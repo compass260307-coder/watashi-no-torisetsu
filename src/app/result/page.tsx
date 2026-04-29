@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { BigFiveDimension, DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
@@ -326,18 +326,15 @@ export default function ResultPage() {
 
   const activeFriends = friends.slice(0, friendCount);
 
-  const gapItems = useMemo(() => {
-    if (!isDeep || !result.scores) return [];
-    return computeGapAnalysis(
-      result.scores as Record<BigFiveDimension, number>,
-      activeFriends,
-    );
-  }, [isDeep, result.scores, activeFriends]);
+  const gapItems =
+    isDeep && result.scores
+      ? computeGapAnalysis(
+          result.scores as Record<BigFiveDimension, number>,
+          activeFriends,
+        )
+      : [];
 
-  const gapSummary = useMemo(
-    () => generateGapSummary(gapItems),
-    [gapItems],
-  );
+  const gapSummary = generateGapSummary(gapItems);
 
   const lockedLabels: { emoji: string; name: string }[] = [];
   if (isStage0) lockedLabels.push({ emoji: "🌧️", name: "苦手な環境" });
