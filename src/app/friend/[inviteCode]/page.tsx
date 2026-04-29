@@ -13,6 +13,7 @@ export default function FriendPage({
   params: Promise<{ inviteCode: string }>;
 }) {
   const { inviteCode } = use(params);
+  const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, FriendAnswer>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -97,6 +98,74 @@ export default function FriendPage({
     }
   }, [currentIndex, isTransitioning]);
 
+  // --- Intro screen ---
+  if (!started) {
+    return (
+      <div className="flex flex-col flex-1">
+        <main className="flex flex-col flex-1 items-center justify-center px-5 py-12 max-w-lg mx-auto w-full">
+          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-[10px] font-bold tracking-wider text-muted mb-6 border border-card-border">
+            INSTRUCTION MANUAL
+          </div>
+
+          <div className="text-4xl mb-3">📋</div>
+          <h1 className="text-xl font-extrabold mb-2 text-center">
+            ワタシのトリセツ
+          </h1>
+          <p className="text-sm text-muted text-center leading-relaxed mb-8">
+            友達があなたに
+            <br />
+            <span className="font-bold text-foreground">
+              「自分の印象を教えてほしい」
+            </span>
+            とお願いしています。
+          </p>
+
+          <div className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-8">
+            <p className="text-xs font-bold text-muted mb-3">
+              あなたから見たその人の印象を教えてください
+            </p>
+            <ul className="flex flex-col gap-3">
+              <li className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
+                  ✏️
+                </span>
+                <span className="text-sm">
+                  <span className="font-bold">5問だけ。</span>1分で終わります
+                </span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
+                  🔒
+                </span>
+                <span className="text-sm">ログイン・登録は不要です</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
+                  🤫
+                </span>
+                <span className="text-sm">回答は匿名で届きます</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
+                  💡
+                </span>
+                <span className="text-sm">正解はありません。直感でOK</span>
+              </li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => setStarted(true)}
+            className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-md transition-colors hover:bg-primary-hover active:scale-[0.98]"
+          >
+            回答をはじめる
+          </button>
+        </main>
+      </div>
+    );
+  }
+
+  // --- Completion screen ---
   if (completed) {
     return (
       <div
@@ -133,9 +202,9 @@ export default function FriendPage({
                 ありがとう！
               </h1>
               <p className="text-sm text-muted text-center leading-relaxed mb-2">
-                あなたの回答が、
+                あなたの回答で、
                 <br />
-                友達のトリセツを完成させます
+                友達のトリセツが少し完成しました
               </p>
               <p className="text-xs text-muted/60 mb-10">
                 回答は匿名で届きます
@@ -169,6 +238,7 @@ export default function FriendPage({
     );
   }
 
+  // --- Question screen ---
   return (
     <div className="flex flex-col flex-1">
       {/* Header */}
@@ -199,16 +269,12 @@ export default function FriendPage({
         </div>
       </header>
 
-      {/* Intro banner (first question only) */}
-      {currentIndex === 0 && !isTransitioning && (
-        <div className="bg-label-bg border-b border-card-border px-5 py-3 text-center">
-          <p className="text-xs text-muted leading-relaxed">
-            友達があなたにトリセツの回答をお願いしています
-            <br />
-            <span className="font-bold">5問だけ、1分で終わります</span>
-          </p>
-        </div>
-      )}
+      {/* Context bar */}
+      <div className="bg-label-bg border-b border-card-border px-5 py-2 text-center">
+        <p className="text-[11px] text-muted">
+          友達について回答中 ・ あなたから見た印象でOK
+        </p>
+      </div>
 
       {/* Question */}
       <main className="flex flex-col flex-1 items-center justify-center px-5 py-8 max-w-lg mx-auto w-full">

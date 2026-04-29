@@ -3,19 +3,19 @@ import type { FriendQuestion } from "./types";
 export const friendQuestions: FriendQuestion[] = [
   {
     id: 1,
-    text: "知らない人がいる場でも、わりと自然に話せる",
+    text: "この人は、知らない人がいる場でも自然に話せるタイプだと思う",
     type: "scale",
     dimension: "E",
   },
   {
     id: 2,
-    text: "困ってる人がいたら、自分のこと後回しにしてでも助ける",
+    text: "この人は、困ってる人がいたら自分のこと後回しにしてでも助けるタイプだと思う",
     type: "scale",
     dimension: "A",
   },
   {
     id: 3,
-    text: "急な予定変更とかハプニング、むしろ楽しんでる",
+    text: "この人は、急な予定変更やハプニングも楽しめるタイプだと思う",
     type: "scale",
     dimension: "O",
   },
