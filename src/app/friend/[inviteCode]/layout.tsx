@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     siteName: "ワタシのトリセツ",
     images: [
       {
-        url: `${BASE_URL}/ogp.png`,
+        url: `${BASE_URL}/ogp-v2.png`,
         width: 1200,
         height: 630,
         alt: "ワタシのトリセツ",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ワタシのトリセツ",
     description: "友達から見たあなたを5問で教えてもらう診断",
-    images: [`${BASE_URL}/ogp.png`],
+    images: [`${BASE_URL}/ogp-v2.png`],
   },
 };
 
