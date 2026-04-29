@@ -14,60 +14,39 @@ const FIRST_FRIEND_COMMENTS = [
   "これ本人に言ったら絶対否定するやつ",
 ];
 
-const MOCK_FRIENDS = [
-  {
-    name: "友達A",
-    q4: "一緒にいると楽しい",
-    q5: "実はめっちゃ繊細",
-  },
-  {
-    name: "友達B",
-    q4: "刺激をもらえる",
-    q5: "実はめっちゃ頼りになる",
-  },
-  {
-    name: "友達C",
-    q4: "安心感がある",
-    q5: "実はめっちゃ面白い",
-  },
-  {
-    name: "友達D",
-    q4: "素でいられる",
-    q5: "実はめっちゃ優しい",
-  },
-  {
-    name: "友達E",
-    q4: "一緒にいると楽しい",
-    q5: "実はめっちゃ繊細",
-  },
-];
+type FriendData = {
+  id: string;
+  answers: Record<string, string | number>;
+  created_at: string;
+};
 
 // --- Sub-components ---
 
 const LINE_ICON_PATH =
   "M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314";
 
-function getShareTexts(
-  typeData: (typeof torisetsuTypes)[keyof typeof torisetsuTypes],
-  url: string
-) {
+function getShareUrl(inviteCode: string | null) {
+  const base = "https://watashi-no-torisetsu.vercel.app/friend";
+  return inviteCode ? `${base}/${inviteCode}` : base;
+}
+
+function getShareTexts(shareUrl: string) {
   return [
-    `自分のトリセツ作れるやつやってみたんだけど\nちょっとこれやってみてw 5問だけ、1分で終わる\n${url}`,
-    `${typeData.emoji}「${typeData.name}」って出たw\n私ってそう見える？ 5問だけ答えてみて、1分で終わる\n${url}`,
-    `これ絶対${typeData.name}っぽいって言われそうw\nどう思うか5問だけ教えて、1分で終わる\n${url}`,
+    `ワタシのトリセツっていう\n自分の取扱説明書を作れるやつやってみた！\n\n友達からどう見えてるか知りたくて\n5問で終わるからよかったら〜\n\n${shareUrl}`,
+    `自分の取説作れるやつやってみたんだけど\n友達の回答で完成するらしい笑\n\n暇なとき5問だけやってみて〜\n\n${shareUrl}`,
+    `ワタシのトリセツっていうアプリで\n自分の取扱説明書みたいなの作ってて\n\n友達から見た自分も知りたいなと思って！\n5問だけで終わるから気が向いたら〜\n\n${shareUrl}`,
   ];
 }
 
 function ShareButtons({
-  typeData,
+  inviteCode,
 }: {
-  typeData: (typeof torisetsuTypes)[keyof typeof torisetsuTypes];
+  inviteCode: string | null;
 }) {
   const [copied, setCopied] = useState(false);
 
-  const shareUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/friend` : "";
-  const texts = getShareTexts(typeData, shareUrl);
+  const shareUrl = getShareUrl(inviteCode);
+  const texts = getShareTexts(shareUrl);
   const lineText = texts[Math.floor(Date.now() / 60000) % texts.length];
   const lineUrl = `https://line.me/R/share?text=${encodeURIComponent(lineText)}`;
 
@@ -79,26 +58,24 @@ function ShareButtons({
   };
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex flex-col gap-2.5 w-full">
       <a
         href={lineUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`flex items-center justify-center gap-2 w-full rounded-full py-4 text-base font-bold text-white transition-all duration-300 active:scale-[0.98] ${
-          copied ? "shadow-lg shadow-[#06C755]/25" : "shadow-md"
-        }`}
+        className="flex items-center justify-center gap-2.5 w-full rounded-full py-[18px] text-[17px] font-bold text-white shadow-lg shadow-[#06C755]/20 transition-all duration-300 active:scale-[0.98]"
         style={{ backgroundColor: "#06C755" }}
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
           <path d={LINE_ICON_PATH} />
         </svg>
         LINEで友達に送る
       </a>
       <button
         onClick={handleCopy}
-        className="flex items-center justify-center gap-2 w-full rounded-full border-2 border-card-border bg-card-bg py-3.5 text-sm font-bold text-foreground transition-all hover:border-primary/40 active:scale-[0.98]"
+        className="flex items-center justify-center gap-2 w-full rounded-full py-3 text-xs font-bold text-muted transition-all active:scale-[0.98]"
       >
-        {copied ? "✅ コピーしました" : "📋 リンクをコピー"}
+        {copied ? "コピーしました" : "リンクをコピー"}
       </button>
     </div>
   );
@@ -152,22 +129,18 @@ function ProgressRing({
 function TorisetsuCard({
   label,
   value,
-  locked,
   color,
   isNew,
 }: {
   label: string;
   value: string;
-  locked?: boolean;
   color: string;
   isNew?: boolean;
 }) {
   return (
     <div
-      className={`rounded-xl border bg-card-bg p-4 transition-all ${locked ? "border-card-border" : "border-card-border"}`}
-      style={
-        locked ? undefined : { borderLeftWidth: 4, borderLeftColor: color }
-      }
+      className="rounded-xl border border-card-border bg-card-bg p-4"
+      style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-xs font-bold text-muted">{label}</span>
@@ -177,29 +150,29 @@ function TorisetsuCard({
           </span>
         )}
       </div>
-      {locked ? (
-        <div className="flex items-center gap-2 text-sm text-muted/60">
-          <span>🔒</span>
-          <span>友達の回答で解放されます</span>
-        </div>
-      ) : (
-        <div className="text-sm leading-relaxed">{value}</div>
-      )}
+      <div className="text-sm leading-relaxed">{value}</div>
     </div>
   );
 }
 
 function FriendVoiceCard({
   friend,
+  index,
   color,
   isFirst,
   comment,
 }: {
-  friend: (typeof MOCK_FRIENDS)[number];
+  friend: FriendData;
+  index: number;
   color: string;
   isFirst?: boolean;
   comment?: string;
 }) {
+  const labels = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const label = labels[index] ?? String(index + 1);
+  const q4 = friend.answers?.["4"] as string | undefined;
+  const q5 = friend.answers?.["5"] as string | undefined;
+
   return (
     <div
       className="rounded-xl border border-card-border bg-card-bg overflow-hidden"
@@ -211,9 +184,9 @@ function FriendVoiceCard({
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
             style={{ backgroundColor: color }}
           >
-            {friend.name.slice(-1)}
+            {label}
           </div>
-          <span className="text-xs font-bold">{friend.name}</span>
+          <span className="text-xs font-bold">友達{label}</span>
           {isFirst && (
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               最初の回答！
@@ -230,16 +203,22 @@ function FriendVoiceCard({
           </div>
         )}
 
-        <div className="flex gap-3">
-          <div className="flex-1 rounded-lg bg-background p-2.5">
-            <div className="text-[10px] text-muted mb-0.5">ここが好き</div>
-            <div className="text-xs font-bold">{friend.q4}</div>
+        {(q4 || q5) && (
+          <div className="flex gap-3">
+            {q4 && (
+              <div className="flex-1 rounded-lg bg-background p-2.5">
+                <div className="text-[10px] text-muted mb-0.5">ここが好き</div>
+                <div className="text-xs font-bold">{q4}</div>
+              </div>
+            )}
+            {q5 && (
+              <div className="flex-1 rounded-lg bg-background p-2.5">
+                <div className="text-[10px] text-muted mb-0.5">隠れた魅力</div>
+                <div className="text-xs font-bold">{q5}</div>
+              </div>
+            )}
           </div>
-          <div className="flex-1 rounded-lg bg-background p-2.5">
-            <div className="text-[10px] text-muted mb-0.5">隠れた魅力</div>
-            <div className="text-xs font-bold">{friend.q5}</div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -285,13 +264,31 @@ export default function ResultPage() {
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [friendCount, setFriendCount] = useState(0);
+  const [friends, setFriends] = useState<FriendData[]>([]);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("torisetsu_result");
     if (stored) {
       setResult(JSON.parse(stored));
     }
-    setLoading(false);
+
+    const code = localStorage.getItem("torisetsu_invite_code");
+    if (code) {
+      setInviteCode(code);
+      fetch(`/api/result?code=${code}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) {
+            setFriendCount(data.friendCount);
+            setFriends(data.friendAnswers ?? []);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   if (loading) {
@@ -320,25 +317,34 @@ export default function ResultPage() {
   const isStage0 = friendCount === 0;
   const isStage1 = friendCount >= 1 && friendCount < 3;
   const isStage3 = friendCount >= 3 && friendCount < 5;
-  const isStage5 = friendCount >= 5;
   const isComplete = friendCount >= REQUIRED_FOR_COMPLETE;
   const isDeep = friendCount >= REQUIRED_FOR_DEEP;
 
   const remaining3 = Math.max(0, REQUIRED_FOR_COMPLETE - friendCount);
   const remaining5 = Math.max(0, REQUIRED_FOR_DEEP - friendCount);
 
-  const activeFriends = MOCK_FRIENDS.slice(0, friendCount);
+  const activeFriends = friends.slice(0, friendCount);
 
-  function getProgressLabel() {
-    if (isDeep) return "🎊 特別レポート解放！";
+  const lockedLabels: { emoji: string; name: string }[] = [];
+  if (isStage0) lockedLabels.push({ emoji: "🌧️", name: "苦手な環境" });
+  if (!isComplete) {
+    lockedLabels.push(
+      { emoji: "📖", name: "取扱いのコツ" },
+      { emoji: "👀", name: "隠れ能力" },
+      { emoji: "✨", name: "気づいてない魅力" },
+      { emoji: "💕", name: "愛されるクセ" },
+    );
+  }
+
+  function getCtaHeading() {
     if (isComplete) return `あと${remaining5}人で深掘りレポート！`;
+    if (isStage0) return "友達に送って、トリセツを完成させよう";
     return `あと${remaining3}人で完成！`;
   }
 
   function getSectionTitle() {
     if (isDeep) return "ワタシのトリセツ（完全版）";
     if (isComplete) return "ワタシのトリセツ（完成版）";
-    if (isStage1) return "ワタシのトリセツ（仮）";
     return "ワタシのトリセツ（仮）";
   }
 
@@ -351,72 +357,70 @@ export default function ResultPage() {
 
   return (
     <div className="flex flex-col flex-1">
-      <main className="flex flex-col items-center px-5 py-8 max-w-lg mx-auto w-full">
-        {/* Type reveal */}
-        <section className="flex flex-col items-center text-center w-full mb-6">
-          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-[10px] font-bold tracking-wider text-muted mb-4 border border-card-border">
-            あなたのトリセツタイプ
-          </div>
-
+      <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
+        {/* Type reveal - compact */}
+        <section className="flex flex-col items-center text-center w-full mb-4">
           <div
-            className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+            className="text-4xl mb-2 w-16 h-16 flex items-center justify-center rounded-2xl"
             style={{ backgroundColor: typeData.color + "18" }}
           >
             {typeData.emoji}
           </div>
-
           <h1
-            className="text-2xl font-extrabold mb-1"
+            className="text-xl font-extrabold mb-0.5"
             style={{ color: typeData.color }}
           >
             {typeData.name}
           </h1>
-          <p className="text-sm text-muted">{typeData.subtitle}</p>
+          <p className="text-xs text-muted">{typeData.subtitle}</p>
         </section>
 
-        {/* Progress + CTA */}
+        {/* CTA Section */}
         {!isDeep && (
           <section
-            className="w-full rounded-2xl p-6 mb-6"
+            className="w-full rounded-2xl p-5 mb-5"
             style={{
               backgroundColor: typeData.color + "0C",
               border: `1px solid ${typeData.color}30`,
             }}
           >
-            <div className="flex flex-col items-center text-center mb-5">
-              <ProgressRing
-                current={friendCount}
-                total={isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE}
-              />
-              <h2 className="text-base font-extrabold mt-3">
-                {getProgressLabel()}
-              </h2>
-              <p className="text-xs text-muted mt-1 leading-relaxed">
-                {isComplete
-                  ? "さらに2人集めると、自他ギャップの深掘りレポートが見れます"
-                  : "友達から見たあなたの姿で、本当のトリセツが完成します"}
+            {/* Stage 0: No ring, direct CTA */}
+            {isStage0 && (
+              <p className="text-sm font-extrabold text-center mb-4">
+                {getCtaHeading()}
               </p>
-            </div>
+            )}
 
-            <ShareButtons typeData={typeData} />
+            {/* Stage 1+: Ring + heading */}
+            {!isStage0 && (
+              <div className="flex flex-col items-center text-center mb-4">
+                <ProgressRing
+                  current={friendCount}
+                  total={isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE}
+                />
+                <h2 className="text-sm font-extrabold mt-2">
+                  {getCtaHeading()}
+                </h2>
+              </div>
+            )}
 
-            <p className="text-[10px] text-muted text-center mt-3">
-              友達はログイン不要・5問・1分で完了します
+            <ShareButtons inviteCode={inviteCode} />
+
+            <p className="text-[10px] text-muted text-center mt-2">
+              ログイン不要・5問・1分で完了
             </p>
           </section>
         )}
 
-        {/* Stage 1+: Friend voices */}
+        {/* Friend voices */}
         {activeFriends.length > 0 && (
-          <section className="w-full mb-6">
-            <div className="flex items-center gap-2 mb-4">
+          <section className="w-full mb-5">
+            <div className="flex items-center gap-2 mb-3">
               <div
                 className="h-5 w-1 rounded-full"
                 style={{ backgroundColor: typeData.color }}
               />
-              <h3 className="text-sm font-bold">
-                友達から見たワタシ
-              </h3>
+              <h3 className="text-sm font-bold">友達から見たワタシ</h3>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary ml-auto">
                 {activeFriends.length}人回答
               </span>
@@ -424,8 +428,9 @@ export default function ResultPage() {
             <div className="flex flex-col gap-3">
               {activeFriends.map((friend, i) => (
                 <FriendVoiceCard
-                  key={friend.name}
+                  key={friend.id}
                   friend={friend}
+                  index={i}
                   color={typeData.color}
                   isFirst={i === 0 && friendCount === 1}
                   comment={
@@ -443,8 +448,8 @@ export default function ResultPage() {
         )}
 
         {/* Torisetsu cards */}
-        <section className="w-full mb-6">
-          <div className="flex items-center gap-2 mb-4">
+        <section className="w-full mb-5">
+          <div className="flex items-center gap-2 mb-3">
             <div
               className="h-5 w-1 rounded-full"
               style={{ backgroundColor: typeData.color }}
@@ -456,7 +461,6 @@ export default function ResultPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            {/* Always visible */}
             <TorisetsuCard
               label="📦 基本スペック"
               value={typeData.basicSpec}
@@ -473,50 +477,71 @@ export default function ResultPage() {
               color={typeData.color}
             />
 
-            {/* Unlock at 1 friend */}
-            <TorisetsuCard
-              label="🌧️ 苦手な環境"
-              value={typeData.weakEnvironment}
-              locked={isStage0}
-              color={typeData.color}
-              isNew={isStage1}
-            />
+            {!isStage0 && (
+              <TorisetsuCard
+                label="🌧️ 苦手な環境"
+                value={typeData.weakEnvironment}
+                color={typeData.color}
+                isNew={isStage1}
+              />
+            )}
 
-            {/* Unlock at 3 friends */}
-            <TorisetsuCard
-              label="📖 取扱いのコツ"
-              value={typeData.handlingTips}
-              locked={!isComplete}
-              color={typeData.color}
-              isNew={isStage3}
-            />
-            <TorisetsuCard
-              label="👀 友達から見た隠れ能力"
-              value={typeData.hiddenAbility}
-              locked={!isComplete}
-              color={typeData.color}
-              isNew={isStage3}
-            />
-            <TorisetsuCard
-              label="✨ 自分では気づいてない魅力"
-              value={typeData.unknownCharm}
-              locked={!isComplete}
-              color={typeData.color}
-              isNew={isStage3}
-            />
-            <TorisetsuCard
-              label="💕 愛されるクセ"
-              value={typeData.lovedQuirk}
-              locked={!isComplete}
-              color={typeData.color}
-              isNew={isStage3}
-            />
+            {isComplete && (
+              <>
+                <TorisetsuCard
+                  label="📖 取扱いのコツ"
+                  value={typeData.handlingTips}
+                  color={typeData.color}
+                  isNew={isStage3}
+                />
+                <TorisetsuCard
+                  label="👀 友達から見た隠れ能力"
+                  value={typeData.hiddenAbility}
+                  color={typeData.color}
+                  isNew={isStage3}
+                />
+                <TorisetsuCard
+                  label="✨ 自分では気づいてない魅力"
+                  value={typeData.unknownCharm}
+                  color={typeData.color}
+                  isNew={isStage3}
+                />
+                <TorisetsuCard
+                  label="💕 愛されるクセ"
+                  value={typeData.lovedQuirk}
+                  color={typeData.color}
+                  isNew={isStage3}
+                />
+              </>
+            )}
+
+            {/* Locked summary */}
+            {lockedLabels.length > 0 && (
+              <div className="rounded-xl border border-dashed border-card-border p-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-sm">🔒</span>
+                  <span className="text-xs font-bold text-muted">
+                    友達の回答であと{lockedLabels.length}項目が解放
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {lockedLabels.map((item) => (
+                    <span
+                      key={item.name}
+                      className="rounded-full bg-background px-2.5 py-1 text-[11px] text-muted"
+                    >
+                      {item.emoji} {item.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
-        {/* Stage 5: Deep dive report */}
+        {/* Deep report */}
         {isDeep && (
-          <section className="w-full mb-6">
+          <section className="w-full mb-5">
             <div className="flex items-center gap-2 mb-4">
               <div
                 className="h-5 w-1 rounded-full"
@@ -528,23 +553,6 @@ export default function ResultPage() {
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary ml-auto">
                 SPECIAL
               </span>
-            </div>
-
-            <div
-              className="rounded-2xl p-4 mb-4"
-              style={{
-                backgroundColor: typeData.color + "08",
-                border: `1px solid ${typeData.color}20`,
-              }}
-            >
-              <p className="text-xs text-muted text-center leading-relaxed">
-                5人の友達の回答とあなたの自己評価を比較した
-                <br />
-                <span className="font-bold text-foreground">
-                  特別なギャップ分析レポート
-                </span>
-                です
-              </p>
             </div>
 
             <div className="flex flex-col gap-3">
@@ -586,83 +594,45 @@ export default function ResultPage() {
           </section>
         )}
 
-        {/* Bottom CTA */}
-        {!isComplete && (
+        {/* Stage 5: Bottom share */}
+        {isDeep && (
           <section
-            className="w-full rounded-2xl p-5 mb-6 text-center"
+            className="w-full rounded-2xl p-5 mb-5 text-center"
             style={{
               backgroundColor: typeData.color + "0C",
               border: `1px solid ${typeData.color}30`,
             }}
           >
-            <p className="text-sm font-bold mb-1">
-              🔓 ロックを解除するには？
+            <p className="text-sm font-extrabold mb-3">
+              友達にもシェアしてみよう
             </p>
-            <p className="text-xs text-muted mb-4">
-              {isStage1
-                ? `あと${remaining3}人の回答で、隠れた項目が全部見れます`
-                : "友達3人に答えてもらうと、隠れた項目が全部見れます"}
-            </p>
-            <ShareButtons typeData={typeData} />
-          </section>
-        )}
-
-        {/* Complete celebration + share */}
-        {isComplete && (
-          <section
-            className="w-full rounded-2xl p-5 mb-6 text-center"
-            style={{
-              backgroundColor: typeData.color + "0C",
-              border: `1px solid ${typeData.color}30`,
-            }}
-          >
-            {isDeep ? (
-              <>
-                <p className="text-base font-extrabold mb-1">
-                  🎊 特別レポート完成！
-                </p>
-                <p className="text-xs text-muted mb-4 leading-relaxed">
-                  あなたのトリセツは最終形態です。
-                  <br />
-                  友達にもシェアしてみよう！
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-base font-extrabold mb-1">
-                  🎉 トリセツ完成！
-                </p>
-                <p className="text-xs text-muted mb-4 leading-relaxed">
-                  さらに{remaining5}
-                  人集めると、自他ギャップの深掘りレポートが解放されます
-                </p>
-              </>
-            )}
-            <ShareButtons typeData={typeData} />
+            <ShareButtons inviteCode={inviteCode} />
           </section>
         )}
 
         {/* Dev mock switcher */}
-        <section className="w-full rounded-xl border border-dashed border-card-border p-4 mb-6">
-          <p className="text-[10px] text-muted text-center mb-2">
-            🛠 開発用：友達回答数のモック切り替え
-          </p>
-          <div className="flex justify-center gap-2">
-            {[0, 1, 3, 5].map((n) => (
-              <button
-                key={n}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                  friendCount === n
-                    ? "bg-primary text-white"
-                    : "bg-card-bg border border-card-border text-muted hover:border-primary/40"
-                }`}
-                onClick={() => setFriendCount(n)}
-              >
-                {n}人
-              </button>
-            ))}
-          </div>
-        </section>
+        {process.env.NODE_ENV === "development" && (
+          <section className="w-full rounded-xl border border-dashed border-card-border p-4 mb-5">
+            <p className="text-[10px] text-muted text-center mb-2">
+              DEV：友達数の切り替え（実データ: {friends.length}人）
+            </p>
+            <div className="flex justify-center gap-2">
+              {[0, 1, 3, 5].map((n) => (
+                <button
+                  key={n}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                    friendCount === n
+                      ? "bg-primary text-white"
+                      : "bg-card-bg border border-card-border text-muted hover:border-primary/40"
+                  }`}
+                  onClick={() => setFriendCount(n)}
+                >
+                  {n}人
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <Link
           href="/"

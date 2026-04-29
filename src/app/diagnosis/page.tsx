@@ -17,7 +17,7 @@ export default function DiagnosisPage() {
   const progress = (currentIndex / totalQuestions) * 100;
 
   const handleAnswer = useCallback(
-    (value: AnswerValue) => {
+    async (value: AnswerValue) => {
       if (isTransitioning) return;
 
       const newAnswers = { ...answers, [currentQuestion.id]: value };
@@ -31,14 +31,25 @@ export default function DiagnosisPage() {
         }, 300);
       } else {
         const result = diagnose(newAnswers);
-        localStorage.setItem(
-          "torisetsu_answers",
-          JSON.stringify(newAnswers)
-        );
-        localStorage.setItem(
-          "torisetsu_result",
-          JSON.stringify(result)
-        );
+        localStorage.setItem("torisetsu_result", JSON.stringify(result));
+
+        try {
+          const res = await fetch("/api/diagnosis", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              typeId: result.typeId,
+              scores: result.scores,
+            }),
+          });
+          const data = await res.json();
+          if (data.inviteCode) {
+            localStorage.setItem("torisetsu_invite_code", data.inviteCode);
+          }
+        } catch {
+          // Supabase失敗時もlocalStorageで動く
+        }
+
         router.push("/result");
       }
     },
