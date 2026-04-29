@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { DiagnosisResult } from "@/lib/types";
+import type { BigFiveDimension, DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { computeGapAnalysis, generateGapSummary } from "@/lib/gap-analysis";
 
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
@@ -325,6 +326,19 @@ export default function ResultPage() {
 
   const activeFriends = friends.slice(0, friendCount);
 
+  const gapItems = useMemo(() => {
+    if (!isDeep || !result.scores) return [];
+    return computeGapAnalysis(
+      result.scores as Record<BigFiveDimension, number>,
+      activeFriends,
+    );
+  }, [isDeep, result.scores, activeFriends]);
+
+  const gapSummary = useMemo(
+    () => generateGapSummary(gapItems),
+    [gapItems],
+  );
+
   const lockedLabels: { emoji: string; name: string }[] = [];
   if (isStage0) lockedLabels.push({ emoji: "🌧️", name: "苦手な環境" });
   if (!isComplete) {
@@ -540,7 +554,7 @@ export default function ResultPage() {
         </section>
 
         {/* Deep report */}
-        {isDeep && (
+        {isDeep && gapItems.length > 0 && (
           <section className="w-full mb-5">
             <div className="flex items-center gap-2 mb-4">
               <div
@@ -556,41 +570,25 @@ export default function ResultPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <GapAnalysisItem
-                label="🗣️ 社交性"
-                selfLabel="まあまあ話せる"
-                friendLabel="めっちゃ話せる！"
-                color={typeData.color}
-              />
-              <GapAnalysisItem
-                label="🤝 協調性"
-                selfLabel="普通くらい"
-                friendLabel="かなり気配り上手"
-                color={typeData.color}
-              />
-              <GapAnalysisItem
-                label="🌈 好奇心"
-                selfLabel="割と高め"
-                friendLabel="冒険心がすごい"
-                color={typeData.color}
-              />
+              {gapItems.map((item) => (
+                <GapAnalysisItem
+                  key={item.dimension}
+                  label={`${item.emoji} ${item.label}`}
+                  selfLabel={item.selfLabel}
+                  friendLabel={item.friendLabel}
+                  color={typeData.color}
+                />
+              ))}
             </div>
 
-            <div className="rounded-xl border border-card-border bg-card-bg p-4 mt-3">
-              <div className="text-xs font-bold text-muted mb-2">
-                📊 総合ギャップ分析
+            {gapSummary && (
+              <div className="rounded-xl border border-card-border bg-card-bg p-4 mt-3">
+                <div className="text-xs font-bold text-muted mb-2">
+                  📊 総合ギャップ分析
+                </div>
+                <p className="text-sm leading-relaxed">{gapSummary}</p>
               </div>
-              <p className="text-sm leading-relaxed">
-                あなたは自分の社交性を控えめに見ていますが、友達からは
-                <span
-                  className="font-bold"
-                  style={{ color: typeData.color }}
-                >
-                  「もっと話せる人」
-                </span>
-                と見られています。自分が思っているより、周りはあなたの存在に助けられています。
-              </p>
-            </div>
+            )}
           </section>
         )}
 
