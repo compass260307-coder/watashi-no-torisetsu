@@ -9,15 +9,15 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     subtitle: "どこにいても場を明るくする太陽系",
     basicSpec: "エネルギー値：常にMAX ／ 社交性：∞ ／ 好奇心：測定不能",
     happyWords: "「おもしろい！」「一緒にやろう！」「さすが！」",
-    weakEnvironment: "ひとりで黙々と作業する時間が長いと充電切れ",
+    weakEnvironment: "ひとりで黙々と作業する時間が長いとエネルギー切れ",
     handlingTips:
-      "とにかくリアクションを返すこと。既読スルーは最大のダメージ。",
+      "リアクションを返してあげるのが一番。既読スルーだけは避けて。",
     energyBoost:
       "新しい人と出会う場、サプライズ企画、みんなでワイワイする時間",
     hiddenAbility: "場の空気を一瞬で変えるムードチェンジ力",
-    unknownCharm: "誰も気づいてないけど、実はめちゃくちゃ周りを見てる",
+    unknownCharm: "楽しそうに見えて、実はめちゃくちゃ周りを見てる",
     lovedQuirk:
-      "調子に乗りすぎて自爆するところ。それも含めて愛される。",
+      "テンション上がりすぎて暴走するところ。でもそれが場を盛り上げる。",
   },
   "everyones-home": {
     id: "everyones-home",
@@ -69,16 +69,16 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     happyWords:
       "「頼りにしてる」「判断が早い」「あなたが言うなら間違いない」",
     weakEnvironment:
-      "優柔不断な空気、なかなか決まらない会議、空気読み圧力",
+      "なかなか決まらない場面、周りに合わせすぎる空気",
     handlingTips:
-      "結論から話すこと。まわりくどい言い方は通じない。",
+      "結論から話すのがベスト。率直に伝えるほうが信頼される。",
     energyBoost:
       "目標に向かって突き進む時間、信頼できる仲間との本音トーク",
     hiddenAbility: "ピンチの時に一番冷静でいられる判断力",
     unknownCharm:
       "強そうに見えて、信頼した相手にはめちゃくちゃ甘い",
     lovedQuirk:
-      "ストレートすぎて空気読まない発言。でも正論だから反論できない。",
+      "率直すぎる発言で場が一瞬止まるところ。でもみんな内心「正論…」って思ってる。",
   },
   "delicate-creator": {
     id: "delicate-creator",
@@ -152,15 +152,15 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
       "冷静さ：氷点下 ／ 自立度：MAX ／ 分析力：コンピュータ級",
     happyWords:
       "「わかってるね」「ブレないよね」「〇〇の意見が聞きたい」",
-    weakEnvironment: "感情的な場面、馴れ合いの空気、無意味なルール",
+    weakEnvironment: "ペースを乱される状況、中身のない付き合い",
     handlingTips:
-      "ベタベタしないこと。適度な距離感が、この人との最高の関係。",
+      "適度な距離感がベスト。信頼を示しつつ、ペースを尊重してあげて。",
     energyBoost:
       "ひとりの時間、論理的な議論、自分のペースで物事を進められる環境",
     hiddenAbility: "冷静な視点で的確な助言ができるアドバイザー力",
     unknownCharm:
       "クールに見えて、実は心の中ではめちゃくちゃ考えてくれてる",
     lovedQuirk:
-      "興味ないことへの態度があからさますぎるところ。でも正直なのは信頼の証。",
+      "興味あることとないことで態度が全然違うところ。でもその正直さが信頼される。",
   },
 };

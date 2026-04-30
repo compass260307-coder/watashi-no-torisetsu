@@ -142,10 +142,12 @@ function TorisetsuCard({
 }) {
   return (
     <div
-      className={`rounded-xl border border-card-border bg-card-bg p-4 ${extraClass ?? ""}`}
-      style={{ borderLeftWidth: 4, borderLeftColor: color }}
+      className={`rounded-xl border border-card-border bg-card-bg overflow-hidden ${extraClass ?? ""}`}
     >
-      <div className="flex items-center gap-2 mb-1.5">
+      <div
+        className="flex items-center gap-2 px-4 py-2 border-b border-card-border"
+        style={{ backgroundColor: color + "08" }}
+      >
         <span className="text-xs font-bold text-muted">{label}</span>
         {isNew && (
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary animate-fade-in">
@@ -153,7 +155,7 @@ function TorisetsuCard({
           </span>
         )}
       </div>
-      <div className="text-sm leading-relaxed">{value}</div>
+      <div className="px-4 py-3 text-sm leading-relaxed">{value}</div>
     </div>
   );
 }
@@ -431,60 +433,68 @@ export default function ResultPage() {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
-        {/* Type reveal */}
-        <section className="flex flex-col items-center text-center w-full mb-5 animate-scale-in">
-          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-[10px] font-bold tracking-wider text-muted mb-4 border border-card-border">
-            YOUR TYPE
-          </div>
-          <div
-            className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl shadow-lg"
-            style={{
-              backgroundColor: typeData.color + "18",
-              boxShadow: `0 8px 24px ${typeData.color}20`,
-            }}
-          >
-            {typeData.emoji}
-          </div>
-          <h1
-            className="text-2xl font-extrabold mb-1 animate-fade-in-up stagger-1"
-            style={{ color: typeData.color }}
-          >
-            {typeData.name}
-          </h1>
-          <p className="text-sm text-muted animate-fade-in-up stagger-2">
-            {typeData.subtitle}
-          </p>
-        </section>
+        {/* Type card - screenshot-worthy */}
+        <section
+          className="w-full rounded-2xl border bg-card-bg overflow-hidden mb-5 animate-scale-in"
+          style={{ borderColor: typeData.color + "40" }}
+        >
+          {/* Color accent bar */}
+          <div className="h-1.5" style={{ backgroundColor: typeData.color }} />
 
-        {/* Type reasons */}
-        {(result.reasons?.length > 0 || result.supplement) && (
-          <section className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-3">
-            <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
-              <p className="text-[10px] font-bold tracking-wider text-muted text-center">
-                このタイプになった理由
-              </p>
+          <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
+            <div className="text-[10px] font-bold tracking-wider text-muted mb-4">
+              YOUR TYPE
             </div>
-            <div className="p-5">
-              {result.reasons?.length > 0 && (
-                <ul className="flex flex-col gap-2.5">
+            <div
+              className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+              style={{ backgroundColor: typeData.color + "15" }}
+            >
+              {typeData.emoji}
+            </div>
+            <h1
+              className="text-2xl font-extrabold mb-1 animate-fade-in-up stagger-1"
+              style={{ color: typeData.color }}
+            >
+              {typeData.name}
+            </h1>
+            <p className="text-sm text-muted animate-fade-in-up stagger-2">
+              {typeData.subtitle}
+            </p>
+
+            {/* Reasons inline */}
+            {result.reasons?.length > 0 && (
+              <div className="w-full mt-5 pt-4 border-t border-card-border">
+                <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+                  このタイプになった理由
+                </p>
+                <ul className="flex flex-col gap-2 text-left">
                   {result.reasons.map((reason, i) => (
                     <li key={i} className="flex items-start gap-2.5">
                       <span className="text-sm mt-0.5">
                         {["🗣️", "🤝", "🌈"][i] ?? "•"}
                       </span>
-                      <span className="text-sm leading-relaxed">{reason}</span>
+                      <span className="text-[13px] leading-relaxed">
+                        {reason}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              )}
-              {result.supplement && (
-                <p className="text-sm text-muted leading-relaxed mt-3 pt-3 border-t border-card-border">
-                  {result.supplement}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
+                {result.supplement && (
+                  <p className="text-[13px] text-muted leading-relaxed mt-2.5">
+                    {result.supplement}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer watermark */}
+          <div className="bg-label-bg/50 px-5 py-2 text-center border-t border-card-border">
+            <p className="text-[9px] font-bold tracking-wider text-muted/60">
+              ワタシのトリセツ
+            </p>
+          </div>
+        </section>
 
         {/* Name input */}
         {!isDeep && (
@@ -593,30 +603,57 @@ export default function ResultPage() {
           </section>
         )}
 
-        {/* Friend trends */}
-        {isComplete && friendTrends.length > 0 && (
+        {/* Self-other gap + friend trends (3+ friends) */}
+        {isComplete && gapItems.length > 0 && (
           <section className="w-full mb-5 animate-fade-in-up">
             <div className="flex items-center gap-2 mb-3">
               <div
                 className="h-5 w-1 rounded-full"
                 style={{ backgroundColor: typeData.color }}
               />
-              <h3 className="text-sm font-bold">友達から見た傾向</h3>
+              <h3 className="text-sm font-bold">自他ギャップ</h3>
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary ml-auto">
                 {friendCount}人の声
               </span>
             </div>
-            <div className="flex flex-col gap-2.5">
-              {friendTrends.map((trend, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-card-border bg-card-bg p-4"
-                  style={{ borderLeftWidth: 4, borderLeftColor: typeData.color }}
-                >
-                  <p className="text-sm leading-relaxed">{trend}</p>
-                </div>
+
+            <div className="flex flex-col gap-3">
+              {gapItems.map((item) => (
+                <GapAnalysisItem
+                  key={item.dimension}
+                  label={`${item.emoji} ${item.label}`}
+                  selfLabel={item.selfLabel}
+                  friendLabel={item.friendLabel}
+                  color={typeData.color}
+                />
               ))}
             </div>
+
+            {friendTrends.length > 0 && (
+              <div className="flex flex-col gap-2.5 mt-3">
+                {friendTrends.map((trend, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-card-border bg-card-bg p-4"
+                    style={{
+                      borderLeftWidth: 4,
+                      borderLeftColor: typeData.color,
+                    }}
+                  >
+                    <p className="text-sm leading-relaxed">{trend}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {gapSummary && (
+              <div className="rounded-xl border border-card-border bg-card-bg p-4 mt-3">
+                <div className="text-xs font-bold text-muted mb-2">
+                  📊 総合分析
+                </div>
+                <p className="text-sm leading-relaxed">{gapSummary}</p>
+              </div>
+            )}
           </section>
         )}
 
@@ -701,45 +738,6 @@ export default function ResultPage() {
             )}
           </div>
         </section>
-
-        {/* Deep report */}
-        {isDeep && gapItems.length > 0 && (
-          <section className="w-full mb-5 animate-fade-in-up">
-            <div className="flex items-center gap-2 mb-4">
-              <div
-                className="h-5 w-1 rounded-full"
-                style={{ backgroundColor: typeData.color }}
-              />
-              <h3 className="text-sm font-bold">
-                🔬 自他ギャップ深掘りレポート
-              </h3>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary ml-auto">
-                SPECIAL
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {gapItems.map((item) => (
-                <GapAnalysisItem
-                  key={item.dimension}
-                  label={`${item.emoji} ${item.label}`}
-                  selfLabel={item.selfLabel}
-                  friendLabel={item.friendLabel}
-                  color={typeData.color}
-                />
-              ))}
-            </div>
-
-            {gapSummary && (
-              <div className="rounded-xl border border-card-border bg-card-bg p-4 mt-3">
-                <div className="text-xs font-bold text-muted mb-2">
-                  📊 総合ギャップ分析
-                </div>
-                <p className="text-sm leading-relaxed">{gapSummary}</p>
-              </div>
-            )}
-          </section>
-        )}
 
         {/* Stage 5: Bottom share */}
         {isDeep && (

@@ -115,22 +115,18 @@ export default function FriendPage({
     return (
       <div className="flex flex-col flex-1">
         <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
-          {/* 1. Service explanation */}
-          <div className="flex flex-col items-center text-center mb-5 animate-fade-in-up">
+          {/* Header */}
+          <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
             <div className="text-4xl mb-2">📋</div>
-            <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+            <p className="text-[10px] font-bold tracking-wider text-muted mb-1">
               ワタシのトリセツ
             </p>
-            <p className="text-sm text-muted leading-relaxed">
-              友達から見た印象をもとに
-              <br />
-              その人の
-              <span className="font-bold text-foreground">「取扱説明書」</span>
-              を作るアプリです
+            <p className="text-xs text-muted">
+              友達の声で完成する、自分の取扱説明書
             </p>
           </div>
 
-          {/* 2. Request + what gets added (1 card) */}
+          {/* Request card */}
           <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-2">
             <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
               <p className="text-[10px] font-bold tracking-wider text-muted text-center">
@@ -139,93 +135,55 @@ export default function FriendPage({
             </div>
             <div className="p-5">
               <p className="text-sm text-center leading-relaxed mb-4">
-                あなたの回答で、
-                <br />
-                <span className="font-bold text-foreground">
-                  {who}さんのトリセツが少しずつ完成します
-                </span>
+                あなたから見た
+                <span className="font-bold text-foreground">{who}さんの印象</span>
+                を教えてください
               </p>
 
-              <div className="border-t border-card-border pt-4">
-                <p className="text-[10px] font-bold text-muted mb-3">
-                  あなたの回答で追加されること
-                </p>
-                <ul className="flex flex-col gap-2">
-                  <li className="flex items-center gap-2.5">
-                    <span className="text-sm">👀</span>
-                    <span className="text-sm">
-                      友達から見た
-                      <span className="font-bold">{who}さんの第一印象</span>
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="text-sm">✨</span>
-                    <span className="text-sm">
-                      本人が
-                      <span className="font-bold">気づいていない魅力</span>
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="text-sm">📖</span>
-                    <span className="text-sm">
-                      <span className="font-bold">仲良くなるため</span>
-                      のトリセツ
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="text-sm">💕</span>
-                    <span className="text-sm">
-                      {who}さんらしい
-                      <span className="font-bold">愛されるクセ</span>
-                    </span>
-                  </li>
-                </ul>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg bg-background p-2.5 text-center">
+                  <span className="text-sm">👀</span>
+                  <p className="text-[11px] mt-1">第一印象</p>
+                </div>
+                <div className="rounded-lg bg-background p-2.5 text-center">
+                  <span className="text-sm">✨</span>
+                  <p className="text-[11px] mt-1">隠れた魅力</p>
+                </div>
+                <div className="rounded-lg bg-background p-2.5 text-center">
+                  <span className="text-sm">📖</span>
+                  <p className="text-[11px] mt-1">仲良くなるコツ</p>
+                </div>
+                <div className="rounded-lg bg-background p-2.5 text-center">
+                  <span className="text-sm">💕</span>
+                  <p className="text-[11px] mt-1">愛されるクセ</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 3. Safety points */}
-          <div className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-8 animate-fade-in-up stagger-3">
-            <ul className="flex flex-col gap-3">
-              <li className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
-                  ✏️
-                </span>
-                <span className="text-sm">
-                  <span className="font-bold">5問だけ。</span>1分で終わります
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
-                  🔒
-                </span>
-                <span className="text-sm">ログイン・登録は不要です</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
-                  🤫
-                </span>
-                <span className="text-sm">回答は匿名で届きます</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
-                  💡
-                </span>
-                <span className="text-sm">
-                  正解はありません。
-                  <span className="font-bold">直感でOK</span>
-                </span>
-              </li>
-            </ul>
+          {/* Safety points - compact inline */}
+          <div className="w-full flex flex-wrap justify-center gap-2 mb-8 animate-fade-in-up stagger-3">
+            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
+              ✏️ 5問・1分で完了
+            </span>
+            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
+              🔒 登録不要
+            </span>
+            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
+              🤫 匿名で届く
+            </span>
           </div>
 
-          {/* 4. CTA */}
+          {/* CTA */}
           <button
             onClick={() => setStarted(true)}
             className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
           >
             5問に答える
           </button>
+          <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
+            正解はありません。直感でOK
+          </p>
         </main>
       </div>
     );

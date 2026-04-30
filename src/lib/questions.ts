@@ -50,13 +50,13 @@ export const questions: Question[] = [
   },
   {
     id: 8,
-    text: "流行りものより、自分の「好き」を追求したい",
+    text: "知らない文化や価値観に触れると、ワクワクする",
     dimension: "O",
     reversed: false,
   },
   {
     id: 9,
-    text: "旅行は計画をしっかり立てたい派だ",
+    text: "「いつもの」ルーティンやお気に入りが変わるのは苦手だ",
     dimension: "O",
     reversed: true,
   },
