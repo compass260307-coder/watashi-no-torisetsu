@@ -115,38 +115,76 @@ export default function FriendPage({
     return (
       <div className="flex flex-col flex-1">
         <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
-          {/* Service explanation */}
-          <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
-            <div className="text-4xl mb-3">📋</div>
+          {/* 1. Service explanation */}
+          <div className="flex flex-col items-center text-center mb-5 animate-fade-in-up">
+            <div className="text-4xl mb-2">📋</div>
+            <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+              ワタシのトリセツ
+            </p>
             <p className="text-sm text-muted leading-relaxed">
-              友達から見た印象をもとに、
+              友達から見た印象をもとに
               <br />
               その人の
-              <span className="font-bold text-foreground">
-                「取扱説明書」
-              </span>
-              を作るアプリです。
+              <span className="font-bold text-foreground">「取扱説明書」</span>
+              を作るアプリです
             </p>
           </div>
 
-          {/* Request from friend */}
-          <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-5 animate-fade-in-up stagger-2">
+          {/* 2. Request + what gets added (1 card) */}
+          <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-2">
             <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
               <p className="text-[10px] font-bold tracking-wider text-muted text-center">
-                {who}さんから届いたリクエスト
+                {who}さんからのお願い
               </p>
             </div>
-            <div className="p-5 text-center">
-              <p className="text-sm leading-relaxed text-muted mb-1">
+            <div className="p-5">
+              <p className="text-sm text-center leading-relaxed mb-4">
                 あなたの回答で、
+                <br />
+                <span className="font-bold text-foreground">
+                  {who}さんのトリセツが少しずつ完成します
+                </span>
               </p>
-              <p className="text-base font-bold leading-relaxed">
-                {who}さんのトリセツが少し完成します。
-              </p>
+
+              <div className="border-t border-card-border pt-4">
+                <p className="text-[10px] font-bold text-muted mb-3">
+                  あなたの回答で追加されること
+                </p>
+                <ul className="flex flex-col gap-2">
+                  <li className="flex items-center gap-2.5">
+                    <span className="text-sm">👀</span>
+                    <span className="text-sm">
+                      友達から見た
+                      <span className="font-bold">{who}さんの第一印象</span>
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="text-sm">✨</span>
+                    <span className="text-sm">
+                      本人が
+                      <span className="font-bold">気づいていない魅力</span>
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="text-sm">📖</span>
+                    <span className="text-sm">
+                      <span className="font-bold">仲良くなるため</span>
+                      のトリセツ
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <span className="text-sm">💕</span>
+                    <span className="text-sm">
+                      {who}さんらしい
+                      <span className="font-bold">愛されるクセ</span>
+                    </span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {/* How it works */}
+          {/* 3. Safety points */}
           <div className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-8 animate-fade-in-up stagger-3">
             <ul className="flex flex-col gap-3">
               <li className="flex items-center gap-3">
@@ -169,9 +207,19 @@ export default function FriendPage({
                 </span>
                 <span className="text-sm">回答は匿名で届きます</span>
               </li>
+              <li className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
+                  💡
+                </span>
+                <span className="text-sm">
+                  正解はありません。
+                  <span className="font-bold">直感でOK</span>
+                </span>
+              </li>
             </ul>
           </div>
 
+          {/* 4. CTA */}
           <button
             onClick={() => setStarted(true)}
             className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
