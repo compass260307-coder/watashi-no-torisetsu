@@ -115,45 +115,35 @@ export default function FriendPage({
     return (
       <div className="flex flex-col flex-1">
         <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
-          {/* Header */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-[10px] font-bold tracking-wider text-muted mb-4 border border-card-border">
-              INSTRUCTION MANUAL
-            </div>
-            <div className="text-4xl mb-3 animate-scale-in">📋</div>
-            <h1 className="text-xl font-extrabold mb-1 text-center animate-fade-in-up stagger-1">
-              {who}さんのトリセツ
-            </h1>
-            <p className="text-xs text-muted animate-fade-in stagger-2">
-              ワタシのトリセツ
+          {/* Service explanation */}
+          <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
+            <div className="text-4xl mb-3">📋</div>
+            <p className="text-sm text-muted leading-relaxed">
+              友達から見た印象をもとに、
+              <br />
+              その人の
+              <span className="font-bold text-foreground">
+                「取扱説明書」
+              </span>
+              を作るアプリです。
             </p>
           </div>
 
-          {/* What happens */}
+          {/* Request from friend */}
           <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-5 animate-fade-in-up stagger-2">
             <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
               <p className="text-[10px] font-bold tracking-wider text-muted text-center">
-                あなたの回答で追加されること
+                {who}さんから届いたリクエスト
               </p>
             </div>
-            <ul className="p-4 flex flex-col gap-2.5">
-              <li className="flex items-center gap-3">
-                <span className="text-base">👀</span>
-                <span className="text-sm">友達から見た{who}さんの第一印象</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="text-base">✨</span>
-                <span className="text-sm">本人が気づいてない魅力</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="text-base">📖</span>
-                <span className="text-sm">仲良くなるためのトリセツ</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="text-base">💕</span>
-                <span className="text-sm">{who}さんらしい愛されるクセ</span>
-              </li>
-            </ul>
+            <div className="p-5 text-center">
+              <p className="text-sm leading-relaxed text-muted mb-1">
+                あなたの回答で、
+              </p>
+              <p className="text-base font-bold leading-relaxed">
+                {who}さんのトリセツが少し完成します。
+              </p>
+            </div>
           </div>
 
           {/* How it works */}
@@ -179,12 +169,6 @@ export default function FriendPage({
                 </span>
                 <span className="text-sm">回答は匿名で届きます</span>
               </li>
-              <li className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-label-bg text-sm shrink-0">
-                  💡
-                </span>
-                <span className="text-sm">正解はありません。直感でOK</span>
-              </li>
             </ul>
           </div>
 
@@ -192,11 +176,8 @@ export default function FriendPage({
             onClick={() => setStarted(true)}
             className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
           >
-            {who}さんのために回答する
+            5問に答える
           </button>
-          <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-5">
-            あなたの回答で、{who}さんのトリセツが少し完成します
-          </p>
         </main>
       </div>
     );
