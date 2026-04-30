@@ -65,6 +65,11 @@ export default function DiagnosisPage() {
           if (data.inviteCode) {
             localStorage.setItem("torisetsu_invite_code", data.inviteCode);
           }
+          if (data.ownerToken) {
+            localStorage.setItem("torisetsu_owner_token", data.ownerToken);
+            router.push(`/result/${data.ownerToken}`);
+            return;
+          }
         } catch {
           // Supabase失敗時もlocalStorageで動く
         }

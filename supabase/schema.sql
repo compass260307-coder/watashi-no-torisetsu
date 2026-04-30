@@ -5,6 +5,7 @@ create table users (
   type_id text not null,
   scores jsonb not null,
   invite_code text unique not null,
+  owner_token text unique,
   display_name text,
   created_at timestamptz default now()
 );
@@ -16,8 +17,9 @@ create table friend_answers (
   created_at timestamptz default now()
 );
 
--- invite_code の検索を高速化
+-- 検索を高速化
 create index idx_users_invite_code on users(invite_code);
+create index idx_users_owner_token on users(owner_token);
 create index idx_friend_answers_user_id on friend_answers(user_id);
 
 -- RLS を有効化
