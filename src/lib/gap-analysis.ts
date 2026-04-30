@@ -132,3 +132,30 @@ export function generateGapSummary(gaps: GapItem[]): string {
   }
   return GAP_TEMPLATES_LOWER[biggest.dimension] ?? "";
 }
+
+const FRIEND_TREND_HIGH: Record<string, string> = {
+  E: "自分で思っているより、周りからは話しやすい人として見られています",
+  A: "本人は普通だと思っていても、友達からは安心感があるタイプに見られています",
+  O: "友達からは、一緒にいると新しい発見がある人と思われています",
+};
+
+const FRIEND_TREND_LOW: Record<string, string> = {
+  E: "友達からは、落ち着いていて信頼できる人だと思われています",
+  A: "友達からは、自分の意見をしっかり持っている人だと見られています",
+  O: "友達からは、安定感があって頼れる人だと思われています",
+};
+
+export function generateFriendTrends(
+  gaps: GapItem[],
+): string[] {
+  const trends: string[] = [];
+
+  for (const gap of gaps) {
+    if (Math.abs(gap.gap) < 0.3) continue;
+    const templates = gap.gap > 0 ? FRIEND_TREND_HIGH : FRIEND_TREND_LOW;
+    const text = templates[gap.dimension];
+    if (text) trends.push(text);
+  }
+
+  return trends;
+}

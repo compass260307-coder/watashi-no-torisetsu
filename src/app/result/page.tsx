@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { BigFiveDimension, DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import { computeGapAnalysis, generateGapSummary } from "@/lib/gap-analysis";
+import {
+  computeGapAnalysis,
+  generateGapSummary,
+  generateFriendTrends,
+} from "@/lib/gap-analysis";
 
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
@@ -383,14 +387,16 @@ export default function ResultPage() {
   const activeFriends = friends.slice(0, friendCount);
 
   const gapItems =
-    isDeep && result.scores
+    isComplete && result.scores
       ? computeGapAnalysis(
           result.scores as Record<BigFiveDimension, number>,
           activeFriends,
         )
       : [];
 
-  const gapSummary = generateGapSummary(gapItems);
+  const gapSummary = isDeep ? generateGapSummary(gapItems) : "";
+
+  const friendTrends = isComplete ? generateFriendTrends(gapItems) : [];
 
   const lockedLabels: { emoji: string; name: string }[] = [];
   if (isStage0) lockedLabels.push({ emoji: "🌧️", name: "苦手な環境" });
@@ -449,6 +455,36 @@ export default function ResultPage() {
             {typeData.subtitle}
           </p>
         </section>
+
+        {/* Type reasons */}
+        {(result.reasons?.length > 0 || result.supplement) && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-3">
+            <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
+              <p className="text-[10px] font-bold tracking-wider text-muted text-center">
+                このタイプになった理由
+              </p>
+            </div>
+            <div className="p-5">
+              {result.reasons?.length > 0 && (
+                <ul className="flex flex-col gap-2.5">
+                  {result.reasons.map((reason, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="text-sm mt-0.5">
+                        {["🗣️", "🤝", "🌈"][i] ?? "•"}
+                      </span>
+                      <span className="text-sm leading-relaxed">{reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {result.supplement && (
+                <p className="text-sm text-muted leading-relaxed mt-3 pt-3 border-t border-card-border">
+                  {result.supplement}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Name input */}
         {!isDeep && (
@@ -552,6 +588,33 @@ export default function ResultPage() {
                       : undefined
                   }
                 />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Friend trends */}
+        {isComplete && friendTrends.length > 0 && (
+          <section className="w-full mb-5 animate-fade-in-up">
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className="h-5 w-1 rounded-full"
+                style={{ backgroundColor: typeData.color }}
+              />
+              <h3 className="text-sm font-bold">友達から見た傾向</h3>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary ml-auto">
+                {friendCount}人の声
+              </span>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              {friendTrends.map((trend, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border border-card-border bg-card-bg p-4"
+                  style={{ borderLeftWidth: 4, borderLeftColor: typeData.color }}
+                >
+                  <p className="text-sm leading-relaxed">{trend}</p>
+                </div>
               ))}
             </div>
           </section>

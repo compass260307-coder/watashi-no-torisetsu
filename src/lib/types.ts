@@ -28,6 +28,8 @@ export interface FriendQuestion {
 export interface DiagnosisResult {
   scores: Record<BigFiveDimension, number>;
   typeId: TorisetsuTypeId;
+  reasons: string[];
+  supplement: string;
 }
 
 export interface TorisetsuType {
