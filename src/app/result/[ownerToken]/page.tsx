@@ -43,90 +43,6 @@ function getShareTexts(shareUrl: string) {
   ];
 }
 
-function ShareButtons({ inviteCode }: { inviteCode: string | null }) {
-  const [copied, setCopied] = useState(false);
-
-  const shareUrl = getShareUrl(inviteCode);
-  const texts = getShareTexts(shareUrl);
-  const lineText = texts[Math.floor(Date.now() / 60000) % texts.length];
-  const lineUrl = `https://line.me/R/share?text=${encodeURIComponent(lineText)}`;
-
-  const handleCopy = async () => {
-    const copyText = texts[Math.floor(Date.now() / 60000) % texts.length];
-    await navigator.clipboard.writeText(copyText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  return (
-    <div className="flex flex-col gap-2.5 w-full">
-      <a
-        href={lineUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2.5 w-full rounded-full py-[18px] text-[17px] font-bold text-white shadow-lg shadow-[#06C755]/20 transition-all duration-300 active:scale-[0.98]"
-        style={{ backgroundColor: "#06C755" }}
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
-          <path d={LINE_ICON_PATH} />
-        </svg>
-        LINEで友達に送る
-      </a>
-      <button
-        onClick={handleCopy}
-        className="flex items-center justify-center gap-2 w-full rounded-full py-3 text-xs font-bold text-muted transition-all active:scale-[0.98]"
-      >
-        {copied ? "コピーしました" : "リンクをコピー"}
-      </button>
-    </div>
-  );
-}
-
-function ProgressRing({
-  current,
-  total,
-}: {
-  current: number;
-  total: number;
-}) {
-  const capped = Math.min(current, total);
-  const percentage = (capped / total) * 100;
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width="100" height="100" className="-rotate-90">
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="#e8e0d8"
-          strokeWidth="6"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="none"
-          stroke="#FF6B6B"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-500"
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center">
-        <span className="text-2xl font-extrabold">{capped}</span>
-        <span className="text-[10px] text-muted">/ {total}人</span>
-      </div>
-    </div>
-  );
-}
-
 function TorisetsuCard({
   label,
   value,
@@ -293,36 +209,6 @@ function GapAnalysisItem({
   );
 }
 
-function SaveResultSection({ ownerToken }: { ownerToken: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const resultUrl = `https://watashi-no-torisetsu.vercel.app/result/${ownerToken}`;
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(resultUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  return (
-    <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm">🔖</span>
-        <p className="text-xs font-bold text-muted">あとで見返す</p>
-      </div>
-      <p className="text-[12px] text-muted leading-relaxed mb-3">
-        このページを保存しておくと、友達の回答が集まったあとに見返せます
-      </p>
-      <button
-        onClick={handleCopy}
-        className="w-full rounded-xl border border-card-border bg-background px-4 py-3 text-sm font-bold text-foreground transition-all active:scale-[0.98] hover:border-primary/40"
-      >
-        {copied ? "コピーしました ✓" : "結果ページのリンクをコピー"}
-      </button>
-    </section>
-  );
-}
-
 // --- Main ---
 
 export default function OwnerResultPage({
@@ -340,6 +226,8 @@ export default function OwnerResultPage({
   const [nameSaved, setNameSaved] = useState(false);
   const [nameSaving, setNameSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [friendLinkCopied, setFriendLinkCopied] = useState(false);
+  const [resultLinkCopied, setResultLinkCopied] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("torisetsu_result");
@@ -397,6 +285,23 @@ export default function OwnerResultPage({
     }
   };
 
+  const handleCopyFriendLink = async () => {
+    const shareUrl = getShareUrl(inviteCode);
+    const texts = getShareTexts(shareUrl);
+    const text = texts[Math.floor(Date.now() / 60000) % texts.length];
+    await navigator.clipboard.writeText(text);
+    setFriendLinkCopied(true);
+    setTimeout(() => setFriendLinkCopied(false), 2500);
+  };
+
+  const handleCopyResultLink = async () => {
+    await navigator.clipboard.writeText(
+      `https://watashi-no-torisetsu.vercel.app/result/${ownerToken}`,
+    );
+    setResultLinkCopied(true);
+    setTimeout(() => setResultLinkCopied(false), 2500);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
@@ -442,7 +347,6 @@ export default function OwnerResultPage({
       : [];
 
   const gapSummary = isDeep ? generateGapSummary(gapItems) : "";
-
   const friendTrends = isComplete ? generateFriendTrends(gapItems) : [];
 
   const lockedLabels: { emoji: string; name: string }[] = [];
@@ -456,8 +360,14 @@ export default function OwnerResultPage({
     );
   }
 
-  function getCtaHeading() {
-    if (isComplete) return `あと${remaining5}人で深掘りレポート！`;
+  const shareUrl = getShareUrl(inviteCode);
+  const lineTexts = getShareTexts(shareUrl);
+  const lineText = lineTexts[Math.floor(Date.now() / 60000) % lineTexts.length];
+  const lineUrl = `https://line.me/R/share?text=${encodeURIComponent(lineText)}`;
+
+  function getProgressLabel() {
+    if (isDeep) return "完全版が完成しました！";
+    if (isComplete) return `あと${remaining5}人で深掘りレポート`;
     if (isStage0) return "友達に送って、トリセツを完成させよう";
     return `あと${remaining3}人で完成！`;
   }
@@ -478,14 +388,13 @@ export default function OwnerResultPage({
   return (
     <div className="flex flex-col flex-1">
       <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
-        {/* Type card - screenshot-worthy */}
+
+        {/* ===== 1. タイプカード ===== */}
         <section
           className="w-full rounded-2xl border bg-card-bg overflow-hidden mb-5 animate-scale-in"
           style={{ borderColor: typeData.color + "40" }}
         >
-          {/* Color accent bar */}
           <div className="h-1.5" style={{ backgroundColor: typeData.color }} />
-
           <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
             <div className="text-[10px] font-bold tracking-wider text-muted mb-4">
               YOUR TYPE
@@ -506,7 +415,6 @@ export default function OwnerResultPage({
               {typeData.subtitle}
             </p>
 
-            {/* Reasons inline */}
             {result.reasons?.length > 0 && (
               <div className="w-full mt-5 pt-4 border-t border-card-border">
                 <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
@@ -532,8 +440,6 @@ export default function OwnerResultPage({
               </div>
             )}
           </div>
-
-          {/* Footer watermark */}
           <div className="bg-label-bg/50 px-5 py-2 text-center border-t border-card-border">
             <p className="text-[9px] font-bold tracking-wider text-muted/60">
               ワタシのトリセツ
@@ -541,16 +447,60 @@ export default function OwnerResultPage({
           </div>
         </section>
 
-        {/* Name input */}
-        {!isDeep && (
-          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-4 animate-fade-in-up stagger-3">
-            <p className="text-xs font-bold text-muted mb-1">
-              友達に見てもらう名前
+        {/* ===== 2. 友達に聞くCTA ===== */}
+        <section
+          className="w-full rounded-2xl p-5 mb-5 animate-fade-in-up stagger-3"
+          style={{
+            backgroundColor: typeData.color + "0C",
+            border: `1px solid ${typeData.color}30`,
+          }}
+        >
+          {/* Progress */}
+          {!isStage0 && !isDeep && (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative w-12 h-12 shrink-0">
+                <svg width="48" height="48" className="-rotate-90">
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="#e8e0d8" strokeWidth="4" />
+                  <circle
+                    cx="24" cy="24" r="20" fill="none"
+                    stroke="#FF6B6B" strokeWidth="4" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 20}
+                    strokeDashoffset={
+                      2 * Math.PI * 20 -
+                      (Math.min(friendCount, isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE) /
+                        (isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE)) *
+                        2 * Math.PI * 20
+                    }
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-extrabold">{friendCount}</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-extrabold">{getProgressLabel()}</p>
+                <p className="text-[11px] text-muted">
+                  {friendCount}/{isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE}人が回答済み
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isStage0 && (
+            <p className="text-sm font-extrabold text-center mb-4">
+              {getProgressLabel()}
             </p>
-            <p className="text-[10px] text-muted mb-3">
-              この名前が友達の回答画面に表示されます
+          )}
+
+          {isDeep && (
+            <p className="text-sm font-extrabold text-center mb-4">
+              友達にもシェアしてみよう
             </p>
-            <div className="flex gap-2">
+          )}
+
+          {/* Name input — compact */}
+          {!isDeep && !nameSaved && (
+            <div className="flex gap-2 mb-3">
               <input
                 type="text"
                 value={displayName}
@@ -558,67 +508,55 @@ export default function OwnerResultPage({
                   setDisplayName(e.target.value);
                   setNameSaved(false);
                 }}
-                placeholder="ニックネームでOK"
+                placeholder="あなたのニックネーム"
                 maxLength={20}
-                className="flex-1 rounded-xl border border-card-border bg-background px-4 py-3 text-sm outline-none focus:border-primary transition-colors"
+                className="flex-1 rounded-xl border border-card-border bg-card-bg px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors"
               />
               <button
                 onClick={handleSaveName}
                 disabled={nameSaving || !displayName.trim()}
-                className="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-40 active:scale-[0.98]"
+                className="rounded-xl bg-card-bg border border-card-border px-3 py-2.5 text-sm font-bold transition-all disabled:opacity-40 active:scale-[0.98]"
               >
-                {nameSaving ? "..." : nameSaved ? "OK" : "保存"}
+                {nameSaving ? "..." : "保存"}
               </button>
             </div>
-            {nameSaved && (
-              <p className="text-[10px] text-primary mt-2 animate-fade-in">
-                {displayName}さんのトリセツとして友達に表示されます
-              </p>
-            )}
-          </section>
-        )}
-
-        {/* CTA Section */}
-        {!isDeep && (
-          <section
-            className="w-full rounded-2xl p-5 mb-5 animate-fade-in-up stagger-4"
-            style={{
-              backgroundColor: typeData.color + "0C",
-              border: `1px solid ${typeData.color}30`,
-            }}
-          >
-            {isStage0 && (
-              <p className="text-sm font-extrabold text-center mb-4">
-                {getCtaHeading()}
-              </p>
-            )}
-
-            {!isStage0 && (
-              <div className="flex flex-col items-center text-center mb-4">
-                <ProgressRing
-                  current={friendCount}
-                  total={isComplete ? REQUIRED_FOR_DEEP : REQUIRED_FOR_COMPLETE}
-                />
-                <h2 className="text-sm font-extrabold mt-2">
-                  {getCtaHeading()}
-                </h2>
-              </div>
-            )}
-
-            <ShareButtons inviteCode={inviteCode} />
-
-            <p className="text-[10px] text-muted text-center mt-2">
-              ログイン不要・5問・1分で完了
+          )}
+          {!isDeep && nameSaved && displayName && (
+            <p className="text-[11px] text-muted mb-3">
+              {displayName}さんのトリセツとして友達に表示されます
             </p>
-          </section>
-        )}
+          )}
 
-        {/* Save result section */}
-        <SaveResultSection ownerToken={ownerToken} />
+          {/* LINE button — primary */}
+          <a
+            href={lineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2.5 w-full rounded-full py-[16px] text-base font-bold text-white shadow-lg shadow-[#06C755]/20 transition-all active:scale-[0.98]"
+            style={{ backgroundColor: "#06C755" }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d={LINE_ICON_PATH} />
+            </svg>
+            LINEで友達に送る
+          </a>
 
-        {/* Friend voices */}
+          {/* Copy friend link — secondary */}
+          <button
+            onClick={handleCopyFriendLink}
+            className="flex items-center justify-center gap-1.5 w-full rounded-full py-2.5 mt-2 text-xs font-bold text-muted transition-all active:scale-[0.98]"
+          >
+            {friendLinkCopied ? "コピーしました ✓" : "友達用リンクをコピー"}
+          </button>
+
+          <p className="text-[10px] text-muted text-center mt-1">
+            友達はログイン不要・5問・1分で完了
+          </p>
+        </section>
+
+        {/* ===== 3. 友達の声 ===== */}
         {activeFriends.length > 0 && (
-          <section className="w-full mb-5 animate-fade-in-up stagger-4">
+          <section className="w-full mb-5 animate-fade-in-up">
             <div className="flex items-center gap-2 mb-3">
               <div
                 className="h-5 w-1 rounded-full"
@@ -651,7 +589,7 @@ export default function OwnerResultPage({
           </section>
         )}
 
-        {/* Self-other gap + friend trends (3+ friends) */}
+        {/* ===== 自他ギャップ (3+) ===== */}
         {isComplete && gapItems.length > 0 && (
           <section className="w-full mb-5 animate-fade-in-up">
             <div className="flex items-center gap-2 mb-3">
@@ -705,7 +643,7 @@ export default function OwnerResultPage({
           </section>
         )}
 
-        {/* Torisetsu cards */}
+        {/* ===== 4. トリセツ本文 ===== */}
         <section className="w-full mb-5 animate-fade-in-up stagger-4">
           <div className="flex items-center gap-2 mb-3">
             <div
@@ -723,19 +661,16 @@ export default function OwnerResultPage({
               label="📦 基本スペック"
               value={typeData.basicSpec}
               color={typeData.color}
-              className="animate-fade-in-up stagger-5"
             />
             <TorisetsuCard
               label="💬 喜ぶ言葉"
               value={typeData.happyWords}
               color={typeData.color}
-              className="animate-fade-in-up stagger-6"
             />
             <TorisetsuCard
               label="⚡ エネルギーが上がる瞬間"
               value={typeData.energyBoost}
               color={typeData.color}
-              className="animate-fade-in-up stagger-7"
             />
 
             {!isStage0 && (
@@ -744,7 +679,6 @@ export default function OwnerResultPage({
                 value={typeData.weakEnvironment}
                 color={typeData.color}
                 isNew={isStage1}
-                className="animate-fade-in-up stagger-8"
               />
             )}
 
@@ -777,7 +711,6 @@ export default function OwnerResultPage({
               </>
             )}
 
-            {/* Locked cards */}
             {lockedLabels.length > 0 && (
               <LockedCard
                 labels={lockedLabels}
@@ -787,45 +720,23 @@ export default function OwnerResultPage({
           </div>
         </section>
 
-        {/* Stage 5: Bottom share */}
-        {isDeep && (
-          <section
-            className="w-full rounded-2xl p-5 mb-5 text-center"
-            style={{
-              backgroundColor: typeData.color + "0C",
-              border: `1px solid ${typeData.color}30`,
-            }}
-          >
-            <p className="text-sm font-extrabold mb-3">
-              友達にもシェアしてみよう
-            </p>
-            <ShareButtons inviteCode={inviteCode} />
-          </section>
-        )}
-
-        {/* Dev mock switcher */}
-        {process.env.NODE_ENV === "development" && (
-          <section className="w-full rounded-xl border border-dashed border-card-border p-4 mb-5">
-            <p className="text-[10px] text-muted text-center mb-2">
-              DEV：友達数の切り替え（実データ: {friends.length}人）
-            </p>
-            <div className="flex justify-center gap-2">
-              {[0, 1, 3, 5].map((n) => (
-                <button
-                  key={n}
-                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                    friendCount === n
-                      ? "bg-primary text-white"
-                      : "bg-card-bg border border-card-border text-muted hover:border-primary/40"
-                  }`}
-                  onClick={() => setFriendCount(n)}
-                >
-                  {n}人
-                </button>
-              ))}
+        {/* ===== 5. あとで見返す ===== */}
+        <section className="w-full rounded-xl border border-card-border bg-card-bg px-4 py-3 mb-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-muted">🔖 あとで見返す</p>
+              <p className="text-[10px] text-muted mt-0.5">
+                友達の回答が集まったあとに確認できます
+              </p>
             </div>
-          </section>
-        )}
+            <button
+              onClick={handleCopyResultLink}
+              className="shrink-0 rounded-lg border border-card-border px-3 py-2 text-[11px] font-bold text-muted transition-all active:scale-[0.98] hover:border-primary/40"
+            >
+              {resultLinkCopied ? "✓ コピー済" : "リンクをコピー"}
+            </button>
+          </div>
+        </section>
 
         {/* Footer */}
         <Link
