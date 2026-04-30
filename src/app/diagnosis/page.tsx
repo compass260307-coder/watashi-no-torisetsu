@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { questions, answerOptions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
+import { track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 
 const MILESTONES = [5, 10];
@@ -14,6 +15,14 @@ export default function DiagnosisPage() {
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [milestone, setMilestone] = useState<string | null>(null);
+
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (!tracked.current) {
+      tracked.current = true;
+      track("diagnosis_started");
+    }
+  }, []);
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentIndex];
@@ -51,6 +60,7 @@ export default function DiagnosisPage() {
       } else {
         const result = diagnose(newAnswers);
         localStorage.setItem("torisetsu_result", JSON.stringify(result));
+        track("diagnosis_completed", { metadata: { typeId: result.typeId } });
 
         try {
           const res = await fetch("/api/diagnosis", {

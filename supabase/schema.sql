@@ -33,3 +33,21 @@ create policy "anyone can update users" on users for update using (true);
 
 create policy "anyone can insert friend_answers" on friend_answers for insert with check (true);
 create policy "anyone can read friend_answers" on friend_answers for select using (true);
+
+-- KPI計測用
+create table events (
+  id uuid default gen_random_uuid() primary key,
+  event_name text not null,
+  session_id text,
+  invite_code text,
+  owner_token text,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create index idx_events_event_name on events(event_name);
+create index idx_events_created_at on events(created_at);
+
+alter table events enable row level security;
+create policy "anyone can insert events" on events for insert with check (true);
+create policy "anyone can read events" on events for select using (true);

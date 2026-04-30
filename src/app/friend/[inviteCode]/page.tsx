@@ -3,6 +3,7 @@
 import { use, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
+import { track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -48,7 +49,9 @@ export default function FriendPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ inviteCode, answers: finalAnswers }),
         });
-        if (!res.ok) {
+        if (res.ok) {
+          track("friend_answer_completed", { inviteCode });
+        } else {
           setSubmitError(true);
         }
       } catch {
@@ -176,7 +179,10 @@ export default function FriendPage({
 
           {/* CTA */}
           <button
-            onClick={() => setStarted(true)}
+            onClick={() => {
+              setStarted(true);
+              track("friend_answer_started", { inviteCode });
+            }}
             className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
           >
             5問に答える
