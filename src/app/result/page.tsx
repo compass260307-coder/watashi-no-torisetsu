@@ -39,11 +39,7 @@ function getShareTexts(shareUrl: string) {
   ];
 }
 
-function ShareButtons({
-  inviteCode,
-}: {
-  inviteCode: string | null;
-}) {
+function ShareButtons({ inviteCode }: { inviteCode: string | null }) {
   const [copied, setCopied] = useState(false);
 
   const shareUrl = getShareUrl(inviteCode);
@@ -132,26 +128,58 @@ function TorisetsuCard({
   value,
   color,
   isNew,
+  className: extraClass,
 }: {
   label: string;
   value: string;
   color: string;
   isNew?: boolean;
+  className?: string;
 }) {
   return (
     <div
-      className="rounded-xl border border-card-border bg-card-bg p-4"
+      className={`rounded-xl border border-card-border bg-card-bg p-4 ${extraClass ?? ""}`}
       style={{ borderLeftWidth: 4, borderLeftColor: color }}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-xs font-bold text-muted">{label}</span>
         {isNew && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary animate-fade-in">
             NEW
           </span>
         )}
       </div>
       <div className="text-sm leading-relaxed">{value}</div>
+    </div>
+  );
+}
+
+function LockedCard({
+  labels,
+  friendsNeeded,
+}: {
+  labels: { emoji: string; name: string }[];
+  friendsNeeded: number;
+}) {
+  return (
+    <div className="relative rounded-xl border border-dashed border-card-border overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-card-bg/80 to-card-bg/95 backdrop-blur-[2px]" />
+      <div className="relative p-5 flex flex-col items-center text-center">
+        <div className="text-2xl mb-2">🔒</div>
+        <p className="text-xs font-bold text-muted mb-3">
+          友達あと{friendsNeeded}人の回答で解放
+        </p>
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {labels.map((item) => (
+            <span
+              key={item.name}
+              className="rounded-full bg-background/80 px-3 py-1.5 text-[11px] text-muted border border-card-border"
+            >
+              {item.emoji} {item.name}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -295,7 +323,9 @@ export default function ResultPage() {
   if (loading) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-muted text-sm">読み込み中...</div>
+        <div className="text-muted text-sm animate-fade-in">
+          トリセツを読み込み中...
+        </div>
       </div>
     );
   }
@@ -369,40 +399,46 @@ export default function ResultPage() {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
-        {/* Type reveal - compact */}
-        <section className="flex flex-col items-center text-center w-full mb-4">
+        {/* Type reveal */}
+        <section className="flex flex-col items-center text-center w-full mb-5 animate-scale-in">
+          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-[10px] font-bold tracking-wider text-muted mb-4 border border-card-border">
+            YOUR TYPE
+          </div>
           <div
-            className="text-4xl mb-2 w-16 h-16 flex items-center justify-center rounded-2xl"
-            style={{ backgroundColor: typeData.color + "18" }}
+            className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl shadow-lg"
+            style={{
+              backgroundColor: typeData.color + "18",
+              boxShadow: `0 8px 24px ${typeData.color}20`,
+            }}
           >
             {typeData.emoji}
           </div>
           <h1
-            className="text-xl font-extrabold mb-0.5"
+            className="text-2xl font-extrabold mb-1 animate-fade-in-up stagger-1"
             style={{ color: typeData.color }}
           >
             {typeData.name}
           </h1>
-          <p className="text-xs text-muted">{typeData.subtitle}</p>
+          <p className="text-sm text-muted animate-fade-in-up stagger-2">
+            {typeData.subtitle}
+          </p>
         </section>
 
         {/* CTA Section */}
         {!isDeep && (
           <section
-            className="w-full rounded-2xl p-5 mb-5"
+            className="w-full rounded-2xl p-5 mb-5 animate-fade-in-up stagger-3"
             style={{
               backgroundColor: typeData.color + "0C",
               border: `1px solid ${typeData.color}30`,
             }}
           >
-            {/* Stage 0: No ring, direct CTA */}
             {isStage0 && (
               <p className="text-sm font-extrabold text-center mb-4">
                 {getCtaHeading()}
               </p>
             )}
 
-            {/* Stage 1+: Ring + heading */}
             {!isStage0 && (
               <div className="flex flex-col items-center text-center mb-4">
                 <ProgressRing
@@ -425,7 +461,7 @@ export default function ResultPage() {
 
         {/* Friend voices */}
         {activeFriends.length > 0 && (
-          <section className="w-full mb-5">
+          <section className="w-full mb-5 animate-fade-in-up stagger-4">
             <div className="flex items-center gap-2 mb-3">
               <div
                 className="h-5 w-1 rounded-full"
@@ -459,7 +495,7 @@ export default function ResultPage() {
         )}
 
         {/* Torisetsu cards */}
-        <section className="w-full mb-5">
+        <section className="w-full mb-5 animate-fade-in-up stagger-4">
           <div className="flex items-center gap-2 mb-3">
             <div
               className="h-5 w-1 rounded-full"
@@ -476,16 +512,19 @@ export default function ResultPage() {
               label="📦 基本スペック"
               value={typeData.basicSpec}
               color={typeData.color}
+              className="animate-fade-in-up stagger-5"
             />
             <TorisetsuCard
               label="💬 喜ぶ言葉"
               value={typeData.happyWords}
               color={typeData.color}
+              className="animate-fade-in-up stagger-6"
             />
             <TorisetsuCard
               label="⚡ エネルギーが上がる瞬間"
               value={typeData.energyBoost}
               color={typeData.color}
+              className="animate-fade-in-up stagger-7"
             />
 
             {!isStage0 && (
@@ -494,6 +533,7 @@ export default function ResultPage() {
                 value={typeData.weakEnvironment}
                 color={typeData.color}
                 isNew={isStage1}
+                className="animate-fade-in-up stagger-8"
               />
             )}
 
@@ -526,33 +566,19 @@ export default function ResultPage() {
               </>
             )}
 
-            {/* Locked summary */}
+            {/* Locked cards */}
             {lockedLabels.length > 0 && (
-              <div className="rounded-xl border border-dashed border-card-border p-4">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <span className="text-sm">🔒</span>
-                  <span className="text-xs font-bold text-muted">
-                    友達の回答であと{lockedLabels.length}項目が解放
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {lockedLabels.map((item) => (
-                    <span
-                      key={item.name}
-                      className="rounded-full bg-background px-2.5 py-1 text-[11px] text-muted"
-                    >
-                      {item.emoji} {item.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <LockedCard
+                labels={lockedLabels}
+                friendsNeeded={isStage0 ? remaining3 : remaining3}
+              />
             )}
           </div>
         </section>
 
         {/* Deep report */}
         {isDeep && gapItems.length > 0 && (
-          <section className="w-full mb-5">
+          <section className="w-full mb-5 animate-fade-in-up">
             <div className="flex items-center gap-2 mb-4">
               <div
                 className="h-5 w-1 rounded-full"
@@ -629,12 +655,14 @@ export default function ResultPage() {
           </section>
         )}
 
+        {/* Footer */}
         <Link
           href="/"
-          className="text-xs text-muted hover:text-foreground transition-colors mb-4"
+          className="text-xs text-muted hover:text-foreground transition-colors mb-2"
         >
           トップに戻る
         </Link>
+        <p className="text-[10px] text-muted/60 mb-4">ワタシのトリセツ</p>
       </main>
     </div>
   );

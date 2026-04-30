@@ -197,32 +197,43 @@ export default function FriendPage({
             </>
           ) : (
             <>
-              <div className="text-5xl mb-4">🎉</div>
-              <h1 className="text-2xl font-extrabold mb-2 text-center">
+              <div className="text-5xl mb-4 animate-scale-in">🎉</div>
+              <h1 className="text-2xl font-extrabold mb-2 text-center animate-fade-in-up stagger-1">
                 ありがとう！
               </h1>
-              <p className="text-sm text-muted text-center leading-relaxed mb-2">
+              <p className="text-sm text-muted text-center leading-relaxed mb-2 animate-fade-in-up stagger-2">
                 あなたの回答で、
                 <br />
                 友達のトリセツが少し完成しました
               </p>
-              <p className="text-xs text-muted/60 mb-10">
+              <p className="text-xs text-muted/60 mb-10 animate-fade-in stagger-3">
                 回答は匿名で届きます
               </p>
 
-              <div className="w-full rounded-2xl border border-card-border bg-card-bg p-6 text-center mb-6">
-                <p className="text-sm font-bold mb-1">
-                  あなたのトリセツも作ってみない？
-                </p>
-                <p className="text-xs text-muted mb-5 leading-relaxed">
-                  15問答えるだけ、3分で完成
-                </p>
-                <Link
-                  href="/diagnosis"
-                  className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-md transition-colors hover:bg-primary-hover active:scale-[0.98]"
-                >
-                  自分のトリセツを作る
-                </Link>
+              <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
+                <div className="bg-label-bg px-6 py-3 text-center border-b border-card-border">
+                  <p className="text-[10px] font-bold tracking-wider text-muted">
+                    NEXT STEP
+                  </p>
+                </div>
+                <div className="p-6 text-center">
+                  <div className="text-3xl mb-3">📋</div>
+                  <p className="text-sm font-bold mb-1">
+                    あなたのトリセツも作ってみない？
+                  </p>
+                  <p className="text-xs text-muted mb-5 leading-relaxed">
+                    友達にも聞いてみよう。15問・3分で完成
+                  </p>
+                  <Link
+                    href="/diagnosis"
+                    className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
+                  >
+                    自分のトリセツを作る
+                  </Link>
+                  <p className="text-[10px] text-muted mt-3">
+                    登録不要・完全無料
+                  </p>
+                </div>
               </div>
 
               <Link
