@@ -5,6 +5,7 @@ create table users (
   type_id text not null,
   scores jsonb not null,
   invite_code text unique not null,
+  display_name text,
   created_at timestamptz default now()
 );
 
@@ -26,6 +27,7 @@ alter table friend_answers enable row level security;
 -- anon ユーザーの読み書きを許可（MVP 用、後で絞る）
 create policy "anyone can insert users" on users for insert with check (true);
 create policy "anyone can read users" on users for select using (true);
+create policy "anyone can update users" on users for update using (true);
 
 create policy "anyone can insert friend_answers" on friend_answers for insert with check (true);
 create policy "anyone can read friend_answers" on friend_answers for select using (true);

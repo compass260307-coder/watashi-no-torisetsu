@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import type { AnswerValue } from "@/lib/types";
@@ -13,6 +13,7 @@ export default function FriendPage({
   params: Promise<{ inviteCode: string }>;
 }) {
   const { inviteCode } = use(params);
+  const [ownerName, setOwnerName] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, FriendAnswer>>({});
@@ -20,6 +21,17 @@ export default function FriendPage({
   const [completed, setCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/friend-info?code=${inviteCode}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.displayName) setOwnerName(data.displayName);
+      })
+      .catch(() => {});
+  }, [inviteCode]);
+
+  const who = ownerName ?? "友達";
 
   const totalQuestions = friendQuestions.length;
   const currentQuestion = friendQuestions[currentIndex];
@@ -107,12 +119,15 @@ export default function FriendPage({
             INSTRUCTION MANUAL
           </div>
 
-          <div className="text-4xl mb-3">📋</div>
-          <h1 className="text-xl font-extrabold mb-2 text-center">
-            ワタシのトリセツ
+          <div className="text-4xl mb-3 animate-scale-in">📋</div>
+          <h1 className="text-xl font-extrabold mb-1 text-center animate-fade-in-up stagger-1">
+            {who}さんのトリセツ
           </h1>
-          <p className="text-sm text-muted text-center leading-relaxed mb-8">
-            友達があなたに
+          <p className="text-xs text-muted mb-2 animate-fade-in stagger-2">
+            ワタシのトリセツ
+          </p>
+          <p className="text-sm text-muted text-center leading-relaxed mb-8 animate-fade-in-up stagger-2">
+            {who}さんがあなたに
             <br />
             <span className="font-bold text-foreground">
               「自分の印象を教えてほしい」
@@ -120,9 +135,9 @@ export default function FriendPage({
             とお願いしています。
           </p>
 
-          <div className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-8">
+          <div className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-8 animate-fade-in-up stagger-3">
             <p className="text-xs font-bold text-muted mb-3">
-              あなたから見たその人の印象を教えてください
+              あなたから見た{who}さんの印象を教えてください
             </p>
             <ul className="flex flex-col gap-3">
               <li className="flex items-center gap-3">
@@ -156,7 +171,7 @@ export default function FriendPage({
 
           <button
             onClick={() => setStarted(true)}
-            className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-md transition-colors hover:bg-primary-hover active:scale-[0.98]"
+            className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
           >
             回答をはじめる
           </button>
@@ -204,7 +219,7 @@ export default function FriendPage({
               <p className="text-sm text-muted text-center leading-relaxed mb-2 animate-fade-in-up stagger-2">
                 あなたの回答で、
                 <br />
-                友達のトリセツが少し完成しました
+                {who}さんのトリセツが少し完成しました
               </p>
               <p className="text-xs text-muted/60 mb-10 animate-fade-in stagger-3">
                 回答は匿名で届きます
@@ -283,7 +298,7 @@ export default function FriendPage({
       {/* Context bar */}
       <div className="bg-label-bg border-b border-card-border px-5 py-2 text-center">
         <p className="text-[11px] text-muted">
-          友達について回答中 ・ あなたから見た印象でOK
+          {who}さんについて回答中 ・ あなたから見た印象でOK
         </p>
       </div>
 

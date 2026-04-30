@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   const { data: user, error: userError } = await supabase
     .from("users")
-    .select("id, type_id, scores, invite_code")
+    .select("id, type_id, scores, invite_code, display_name")
     .eq("invite_code", inviteCode)
     .single();
 
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     typeId: user.type_id,
     scores: user.scores,
     inviteCode: user.invite_code,
+    displayName: user.display_name ?? null,
     friendAnswers: friendAnswers ?? [],
     friendCount: friendAnswers?.length ?? 0,
   });

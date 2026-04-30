@@ -295,6 +295,9 @@ export default function ResultPage() {
   const [friendCount, setFriendCount] = useState(0);
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [nameSaved, setNameSaved] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("torisetsu_result");
@@ -311,6 +314,10 @@ export default function ResultPage() {
           if (data) {
             setFriendCount(data.friendCount);
             setFriends(data.friendAnswers ?? []);
+            if (data.displayName) {
+              setDisplayName(data.displayName);
+              setNameSaved(true);
+            }
           }
         })
         .catch(() => {})
@@ -319,6 +326,25 @@ export default function ResultPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleSaveName = async () => {
+    if (!inviteCode || !displayName.trim()) return;
+    setNameSaving(true);
+    try {
+      const res = await fetch("/api/user", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteCode, displayName: displayName.trim() }),
+      });
+      if (res.ok) {
+        setNameSaved(true);
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setNameSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -424,10 +450,47 @@ export default function ResultPage() {
           </p>
         </section>
 
+        {/* Name input */}
+        {!isDeep && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-4 animate-fade-in-up stagger-3">
+            <p className="text-xs font-bold text-muted mb-1">
+              友達に見てもらう名前
+            </p>
+            <p className="text-[10px] text-muted mb-3">
+              この名前が友達の回答画面に表示されます
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  setNameSaved(false);
+                }}
+                placeholder="ニックネームでOK"
+                maxLength={20}
+                className="flex-1 rounded-xl border border-card-border bg-background px-4 py-3 text-sm outline-none focus:border-primary transition-colors"
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={nameSaving || !displayName.trim()}
+                className="rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white transition-all disabled:opacity-40 active:scale-[0.98]"
+              >
+                {nameSaving ? "..." : nameSaved ? "OK" : "保存"}
+              </button>
+            </div>
+            {nameSaved && (
+              <p className="text-[10px] text-primary mt-2 animate-fade-in">
+                {displayName}さんのトリセツとして友達に表示されます
+              </p>
+            )}
+          </section>
+        )}
+
         {/* CTA Section */}
         {!isDeep && (
           <section
-            className="w-full rounded-2xl p-5 mb-5 animate-fade-in-up stagger-3"
+            className="w-full rounded-2xl p-5 mb-5 animate-fade-in-up stagger-4"
             style={{
               backgroundColor: typeData.color + "0C",
               border: `1px solid ${typeData.color}30`,
