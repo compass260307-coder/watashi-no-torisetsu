@@ -345,22 +345,22 @@ export default function AdminPage() {
 
   const downloadCsv = () => {
     const rows: string[][] = [];
-    rows.push(["# KPI"]);
-    rows.push(["指標", "値"]);
-    rows.push(["診断開始数", String(stats.diagnosisStarted)]);
-    rows.push(["診断完了数", String(stats.diagnosisCompleted)]);
-    rows.push(["診断完了率", pct(stats.completionRate)]);
-    rows.push(["友達共有数", String(stats.shareCount)]);
-    rows.push(["友達共有率", pct(stats.shareRate)]);
-    rows.push(["友達回答開始数", String(stats.friendAnswerStarted)]);
-    rows.push(["友達回答完了数", String(stats.friendAnswerCompleted)]);
-    rows.push(["友達回答完了率", pct(stats.answerCompletionRate)]);
-    rows.push(["3人達成", String(stats.threeAchieved)]);
-    rows.push(["5人達成", String(stats.fiveAchieved)]);
-    rows.push(["結果再訪数", String(stats.resultRevisited)]);
-    rows.push(["結果再訪率", pct(stats.revisitRate)]);
-    rows.push(["友達→自分も作る", String(stats.friendToDiagClicked)]);
-    rows.push(["友達→自分も作る率", pct(stats.friendToDiagRate)]);
+    rows.push(["# KPI（すべてユニークセッション単位）"]);
+    rows.push(["指標", "値", "計算式"]);
+    rows.push(["診断開始", String(stats.diagnosisStarted), ""]);
+    rows.push(["診断完了", String(stats.diagnosisCompleted), ""]);
+    rows.push(["診断完了率", pct(stats.completionRate), "診断完了÷診断開始"]);
+    rows.push(["友達共有", String(stats.shareCount), ""]);
+    rows.push(["友達共有率", pct(stats.shareRate), "友達共有÷診断完了"]);
+    rows.push(["友達回答開始", String(stats.friendAnswerStarted), ""]);
+    rows.push(["友達回答完了", String(stats.friendAnswerCompleted), ""]);
+    rows.push(["友達回答完了率", pct(stats.answerCompletionRate), "回答完了÷回答開始"]);
+    rows.push(["3人達成", String(stats.threeAchieved), ""]);
+    rows.push(["5人達成", String(stats.fiveAchieved), ""]);
+    rows.push(["結果再訪", String(stats.resultRevisited), ""]);
+    rows.push(["結果再訪率", pct(stats.revisitRate), "再訪÷初回閲覧"]);
+    rows.push(["友達→自分も作る", String(stats.friendToDiagClicked), ""]);
+    rows.push(["友達→自分も作る率", pct(stats.friendToDiagRate), "クリック÷友達回答完了"]);
     rows.push([]);
     rows.push(["# ファネル"]);
     rows.push(["ステップ", "件数"]);
@@ -485,29 +485,29 @@ export default function AdminPage() {
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">KPI</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <KpiCard label="診断開始数" value={stats.diagnosisStarted} />
-            <KpiCard label="診断完了数" value={stats.diagnosisCompleted} />
+            <KpiCard label="診断開始" value={stats.diagnosisStarted} sub="ユニークセッション" />
+            <KpiCard label="診断完了" value={stats.diagnosisCompleted} sub="ユニークセッション" />
             <KpiCard
               label="診断完了率"
               value={pct(stats.completionRate)}
-              sub="開始→完了"
+              sub="診断開始→診断完了"
             />
             <KpiCard
-              label="友達共有数"
+              label="友達共有"
               value={stats.shareCount}
               sub="ユニークセッション"
             />
             <KpiCard
               label="友達共有率"
               value={pct(stats.shareRate)}
-              sub="完了者のうち共有した人"
+              sub="診断完了→共有クリック"
             />
-            <KpiCard label="友達回答開始数" value={stats.friendAnswerStarted} />
-            <KpiCard label="友達回答完了数" value={stats.friendAnswerCompleted} />
+            <KpiCard label="友達回答開始" value={stats.friendAnswerStarted} sub="ユニークセッション" />
+            <KpiCard label="友達回答完了" value={stats.friendAnswerCompleted} sub="ユニークセッション" />
             <KpiCard
               label="友達回答完了率"
               value={pct(stats.answerCompletionRate)}
-              sub="開始→完了"
+              sub="回答開始→回答完了"
             />
             <KpiCard
               label="3人達成"
@@ -520,14 +520,14 @@ export default function AdminPage() {
               sub="深掘りレポート解放"
             />
             <KpiCard
-              label="結果再訪数"
+              label="結果再訪"
               value={stats.resultRevisited}
               sub="ユニークセッション"
             />
             <KpiCard
               label="結果再訪率"
               value={pct(stats.revisitRate)}
-              sub="初回閲覧者のうち再訪した人"
+              sub="結果閲覧→再訪"
             />
             <KpiCard
               label="友達→自分も作る"

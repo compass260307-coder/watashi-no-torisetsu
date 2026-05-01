@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     answerStartedRes,
     answerCompletedRes,
     shareEventsRes,
-    completedSessionsRes,
+    _completedSessionsRes,
     viewedSessionsRes,
     revisitedSessionsRes,
     achievementRes,
@@ -40,25 +40,25 @@ export async function GET(request: NextRequest) {
     applyRange(
       supabase
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .eq("event_name", "diagnosis_started"),
     ),
     applyRange(
       supabase
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .eq("event_name", "diagnosis_completed"),
     ),
     applyRange(
       supabase
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .eq("event_name", "friend_answer_started"),
     ),
     applyRange(
       supabase
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .eq("event_name", "friend_answer_completed"),
     ),
     applyRange(
@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
         .select("session_id")
         .in("event_name", ["friend_share_clicked", "friend_link_copied"]),
     ),
+    // completedSessionsRes is no longer needed as a separate query
     applyRange(
       supabase
         .from("events")
@@ -126,23 +127,16 @@ export async function GET(request: NextRequest) {
     supabase.from("friend_answers").select("user_id"),
   ]);
 
-  const diagnosisStarted = startedRes.count ?? 0;
-  const diagnosisCompleted = completedRes.count ?? 0;
-  const friendAnswerStarted = answerStartedRes.count ?? 0;
-  const friendAnswerCompleted = answerCompletedRes.count ?? 0;
+  const toUnique = (res: { data: { session_id: string }[] | null }) =>
+    new Set(res.data?.map((e) => e.session_id).filter(Boolean)).size;
 
-  const uniqueShare = new Set(
-    shareEventsRes.data?.map((e) => e.session_id).filter(Boolean),
-  ).size;
-  const uniqueCompleted = new Set(
-    completedSessionsRes.data?.map((e) => e.session_id).filter(Boolean),
-  ).size;
-  const uniqueViewed = new Set(
-    viewedSessionsRes.data?.map((e) => e.session_id).filter(Boolean),
-  ).size;
-  const uniqueRevisited = new Set(
-    revisitedSessionsRes.data?.map((e) => e.session_id).filter(Boolean),
-  ).size;
+  const diagnosisStarted = toUnique(startedRes);
+  const diagnosisCompleted = toUnique(completedRes);
+  const friendAnswerStarted = toUnique(answerStartedRes);
+  const friendAnswerCompleted = toUnique(answerCompletedRes);
+  const uniqueShare = toUnique(shareEventsRes);
+  const uniqueViewed = toUnique(viewedSessionsRes);
+  const uniqueRevisited = toUnique(revisitedSessionsRes);
 
   const ownerMax = new Map<string, number>();
   for (const row of achievementRes.data ?? []) {
@@ -274,7 +268,7 @@ export async function GET(request: NextRequest) {
     diagnosisCompleted,
     completionRate: rate(diagnosisCompleted, diagnosisStarted),
     shareCount: uniqueShare,
-    shareRate: rate(uniqueShare, uniqueCompleted),
+    shareRate: rate(uniqueShare, diagnosisCompleted),
     friendAnswerStarted,
     friendAnswerCompleted,
     answerCompletionRate: rate(friendAnswerCompleted, friendAnswerStarted),
