@@ -9,6 +9,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const from = request.nextUrl.searchParams.get("from");
+  const to = request.nextUrl.searchParams.get("to");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function applyRange<T>(query: T): T {
+    let q = query as any;
+    if (from) q = q.gte("created_at", from);
+    if (to) q = q.lte("created_at", to);
+    return q as T;
+  }
+
   const [
     startedRes,
     completedRes,
@@ -21,48 +32,68 @@ export async function GET(request: NextRequest) {
     achievementRes,
     recentRes,
   ] = await Promise.all([
-    supabase
-      .from("events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_name", "diagnosis_started"),
-    supabase
-      .from("events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_name", "diagnosis_completed"),
-    supabase
-      .from("events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_name", "friend_answer_started"),
-    supabase
-      .from("events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_name", "friend_answer_completed"),
-    supabase
-      .from("events")
-      .select("session_id")
-      .in("event_name", ["friend_share_clicked", "friend_link_copied"]),
-    supabase
-      .from("events")
-      .select("session_id")
-      .eq("event_name", "diagnosis_completed"),
-    supabase
-      .from("events")
-      .select("session_id")
-      .eq("event_name", "result_viewed"),
-    supabase
-      .from("events")
-      .select("session_id")
-      .eq("event_name", "result_revisited"),
-    supabase
-      .from("events")
-      .select("owner_token, metadata")
-      .in("event_name", ["result_viewed", "result_revisited"])
-      .not("owner_token", "is", null),
-    supabase
-      .from("events")
-      .select("event_name, session_id, created_at, metadata")
-      .order("created_at", { ascending: false })
-      .limit(50),
+    applyRange(
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("event_name", "diagnosis_started"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("event_name", "diagnosis_completed"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("event_name", "friend_answer_started"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("event_name", "friend_answer_completed"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("session_id")
+        .in("event_name", ["friend_share_clicked", "friend_link_copied"]),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("session_id")
+        .eq("event_name", "diagnosis_completed"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("session_id")
+        .eq("event_name", "result_viewed"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("session_id")
+        .eq("event_name", "result_revisited"),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("owner_token, metadata")
+        .in("event_name", ["result_viewed", "result_revisited"])
+        .not("owner_token", "is", null),
+    ),
+    applyRange(
+      supabase
+        .from("events")
+        .select("event_name, session_id, created_at, metadata")
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ),
   ]);
 
   const diagnosisStarted = startedRes.count ?? 0;

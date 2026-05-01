@@ -24,6 +24,38 @@ type Stats = {
   }[];
 };
 
+type Preset = "today" | "7d" | "30d" | "all" | "custom";
+
+const PRESETS: { key: Preset; label: string }[] = [
+  { key: "today", label: "今日" },
+  { key: "7d", label: "7日" },
+  { key: "30d", label: "30日" },
+  { key: "all", label: "全期間" },
+  { key: "custom", label: "カスタム" },
+];
+
+function toLocalDate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getPresetRange(preset: Preset): { from: string; to: string } | null {
+  if (preset === "all") return null;
+  const now = new Date();
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  let from: Date;
+  if (preset === "today") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (preset === "7d") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+  } else {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+  }
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
 function KpiCard({
@@ -88,42 +120,66 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [preset, setPreset] = useState<Preset>("7d");
+  const [customFrom, setCustomFrom] = useState(() => toLocalDate(new Date()));
+  const [customTo, setCustomTo] = useState(() => toLocalDate(new Date()));
+
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
     if (stored) setAdminKey(stored);
   }, []);
 
-  const fetchStats = useCallback(async (key: string) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/admin/stats", {
-        headers: { "x-admin-key": key },
-      });
-      if (res.status === 401) {
-        setError("パスワードが正しくありません");
-        setAdminKey(null);
-        sessionStorage.removeItem("torisetsu_admin_key");
-        return;
+  const fetchStats = useCallback(
+    async (key: string, p: Preset, cFrom: string, cTo: string) => {
+      setLoading(true);
+      setError("");
+      try {
+        const params = new URLSearchParams();
+        let range: { from: string; to: string } | null;
+        if (p === "custom") {
+          const fromDate = new Date(cFrom);
+          const toDate = new Date(cTo);
+          toDate.setHours(23, 59, 59, 999);
+          range = { from: fromDate.toISOString(), to: toDate.toISOString() };
+        } else {
+          range = getPresetRange(p);
+        }
+        if (range) {
+          params.set("from", range.from);
+          params.set("to", range.to);
+        }
+        const qs = params.toString();
+        const res = await fetch(`/api/admin/stats${qs ? `?${qs}` : ""}`, {
+          headers: { "x-admin-key": key },
+        });
+        if (res.status === 401) {
+          setError("パスワードが正しくありません");
+          setAdminKey(null);
+          sessionStorage.removeItem("torisetsu_admin_key");
+          return;
+        }
+        if (!res.ok) throw new Error();
+        setStats(await res.json());
+        setAdminKey(key);
+        sessionStorage.setItem("torisetsu_admin_key", key);
+      } catch {
+        setError("データの取得に失敗しました");
+      } finally {
+        setLoading(false);
       }
-      if (!res.ok) throw new Error();
-      setStats(await res.json());
-      setAdminKey(key);
-      sessionStorage.setItem("torisetsu_admin_key", key);
-    } catch {
-      setError("データの取得に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (adminKey) fetchStats(adminKey);
-  }, [adminKey, fetchStats]);
+    if (adminKey) fetchStats(adminKey, preset, customFrom, customTo);
+  }, [adminKey, preset, customFrom, customTo, fetchStats]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputKey.trim()) fetchStats(inputKey.trim());
+    if (inputKey.trim()) {
+      setAdminKey(inputKey.trim());
+    }
   };
 
   if (!adminKey) {
@@ -180,7 +236,7 @@ export default function AdminPage() {
             <p className="text-xs text-gray-400">MVP定点観測</p>
           </div>
           <button
-            onClick={() => fetchStats(adminKey)}
+            onClick={() => fetchStats(adminKey, preset, customFrom, customTo)}
             disabled={loading}
             className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-40"
           >
@@ -190,6 +246,47 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-8">
+        {/* Period Filter */}
+        <section className="flex flex-wrap items-center gap-3">
+          <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPreset(p.key)}
+                className={`px-4 py-2 text-xs font-bold transition-colors ${
+                  preset === p.key
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {preset === "custom" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-blue-500"
+              />
+              <span className="text-xs text-gray-400">〜</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
+
+          {loading && (
+            <span className="text-xs text-gray-400">読み込み中...</span>
+          )}
+        </section>
+
         {/* KPI Cards */}
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">KPI</h2>
