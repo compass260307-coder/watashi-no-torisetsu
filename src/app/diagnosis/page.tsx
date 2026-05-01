@@ -43,6 +43,7 @@ export default function DiagnosisPage() {
 
       const newAnswers = { ...answers, [currentQuestion.id]: value };
       setAnswers(newAnswers);
+      track("diagnosis_question_answered", { metadata: { questionIndex: currentIndex } });
 
       if (currentIndex < totalQuestions - 1) {
         const nextIndex = currentIndex + 1;

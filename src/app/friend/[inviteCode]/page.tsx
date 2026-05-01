@@ -97,9 +97,10 @@ export default function FriendPage({
       if (isTransitioning) return;
       const newAnswers = { ...answers, [currentQuestion.id]: value };
       setAnswers(newAnswers);
+      track("friend_question_answered", { inviteCode, metadata: { questionIndex: currentIndex } });
       advance(newAnswers);
     },
-    [answers, currentQuestion?.id, isTransitioning, advance],
+    [answers, currentQuestion?.id, isTransitioning, advance, currentIndex, inviteCode],
   );
 
   const handleChoiceAnswer = useCallback(
@@ -107,9 +108,10 @@ export default function FriendPage({
       if (isTransitioning) return;
       const newAnswers = { ...answers, [currentQuestion.id]: choice };
       setAnswers(newAnswers);
+      track("friend_question_answered", { inviteCode, metadata: { questionIndex: currentIndex } });
       advance(newAnswers);
     },
-    [answers, currentQuestion?.id, isTransitioning, advance],
+    [answers, currentQuestion?.id, isTransitioning, advance, currentIndex, inviteCode],
   );
 
   const handleBack = useCallback(() => {
@@ -279,6 +281,7 @@ export default function FriendPage({
                   </div>
                   <Link
                     href="/diagnosis"
+                    onClick={() => track("friend_to_diagnosis_clicked", { inviteCode })}
                     className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
                   >
                     自分のトリセツを作る

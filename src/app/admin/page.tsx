@@ -2,6 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+const TYPE_LABELS: Record<string, string> = {
+  "festival-sun": "お祭りムードメーカー",
+  "everyones-home": "みんなの実家",
+  "wild-charisma": "暴走カリスマ",
+  "iron-mental": "鉄のメンタル番長",
+  "delicate-creator": "繊細クリエイター",
+  "healing-guardian": "癒しの守護神",
+  "deep-dive-explorer": "沼ハマり探究者",
+  "cool-maverick": "冷静マイペース",
+};
+
 type Stats = {
   diagnosisStarted: number;
   diagnosisCompleted: number;
@@ -22,6 +33,19 @@ type Stats = {
     created_at: string;
     metadata: Record<string, unknown>;
   }[];
+  friendToDiagClicked: number;
+  friendToDiagRate: number;
+  typeDistribution: { typeId: string; count: number }[];
+  friendCountDistribution: {
+    total: number;
+    zero: number;
+    one: number;
+    two: number;
+    threePlus: number;
+    fivePlus: number;
+  };
+  diagQuestionReach: Record<string, number>;
+  friendQuestionReach: Record<string, number>;
 };
 
 type Preset = "today" | "7d" | "30d" | "all" | "custom";
@@ -109,6 +133,88 @@ function FunnelBar({
       <span className="w-16 text-right text-xs text-gray-400 tabular-nums shrink-0">
         {convRate ?? "—"}
       </span>
+    </div>
+  );
+}
+
+function DistributionBar({
+  label,
+  count,
+  max,
+  color,
+}: {
+  label: string;
+  count: number;
+  max: number;
+  color?: string;
+}) {
+  const width = max > 0 ? (count / max) * 100 : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-40 text-right text-sm text-gray-600 shrink-0 truncate">
+        {label}
+      </span>
+      <div className="flex-1 h-7 bg-gray-100 rounded-md overflow-hidden relative">
+        <div
+          className={`h-full rounded-md transition-all duration-500 ${color ?? "bg-purple-500/70"}`}
+          style={{ width: `${Math.max(width, 1)}%` }}
+        />
+        <span className="absolute inset-0 flex items-center px-3 text-sm font-bold text-gray-800">
+          {count}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function QuestionReachChart({
+  title,
+  reach,
+  totalQuestions,
+}: {
+  title: string;
+  reach: Record<string, number>;
+  totalQuestions: number;
+}) {
+  const data = Array.from({ length: totalQuestions }, (_, i) => ({
+    index: i,
+    count: reach[String(i)] ?? 0,
+  }));
+  const max = Math.max(...data.map((d) => d.count), 1);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <h3 className="text-xs font-bold text-gray-500 mb-4">{title}</h3>
+      <div className="flex items-end gap-1 h-32">
+        {data.map((d) => {
+          const height = max > 0 ? (d.count / max) * 100 : 0;
+          return (
+            <div
+              key={d.index}
+              className="flex-1 flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] text-gray-500 tabular-nums">
+                {d.count || ""}
+              </span>
+              <div className="w-full relative" style={{ height: "100px" }}>
+                <div
+                  className="absolute bottom-0 w-full bg-emerald-500/70 rounded-t-sm transition-all duration-500"
+                  style={{ height: `${Math.max(height, 2)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-gray-400">
+                Q{d.index + 1}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {data.length > 1 && data[0].count > 0 && (
+        <p className="text-[11px] text-gray-400 mt-3 text-right">
+          Q1→Q{totalQuestions} 到達率:{" "}
+          {pct(data[totalQuestions - 1].count / data[0].count)}
+        </p>
+      )}
     </div>
   );
 }
@@ -225,6 +331,8 @@ export default function AdminPage() {
   if (!stats) return null;
 
   const funnelMax = Math.max(...stats.funnel.map((f) => f.count), 1);
+  const fc = stats.friendCountDistribution;
+  const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -335,6 +443,11 @@ export default function AdminPage() {
               value={pct(stats.revisitRate)}
               sub="初回閲覧者のうち再訪した人"
             />
+            <KpiCard
+              label="友達→自分も作る"
+              value={stats.friendToDiagClicked}
+              sub={`転換率 ${pct(stats.friendToDiagRate)}`}
+            />
           </div>
         </section>
 
@@ -360,6 +473,90 @@ export default function AdminPage() {
                 />
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Friend Count Distribution */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            友達回答人数の分布
+            <span className="text-xs font-normal text-gray-400 ml-2">全期間</span>
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <p className="text-2xl font-bold tabular-nums">{fc.zero}</p>
+                <p className="text-[11px] text-gray-500 mt-1">0人</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <p className="text-2xl font-bold tabular-nums">{fc.one}</p>
+                <p className="text-[11px] text-gray-500 mt-1">1人</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <p className="text-2xl font-bold tabular-nums">{fc.two}</p>
+                <p className="text-[11px] text-gray-500 mt-1">2人</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-blue-50">
+                <p className="text-2xl font-bold tabular-nums text-blue-600">{fc.threePlus}</p>
+                <p className="text-[11px] text-blue-500 mt-1">3人以上</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-purple-50">
+                <p className="text-2xl font-bold tabular-nums text-purple-600">{fc.fivePlus}</p>
+                <p className="text-[11px] text-purple-500 mt-1">5人以上</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-400 text-right">
+              全診断完了者 {fc.total}人 / 1人以上回答あり {fc.total - fc.zero}人
+              ({fc.total > 0 ? pct((fc.total - fc.zero) / fc.total) : "0.0%"})
+            </p>
+          </div>
+        </section>
+
+        {/* Type Distribution */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            タイプ分布
+            <span className="text-xs font-normal text-gray-400 ml-2">全期間</span>
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            {stats.typeDistribution.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {stats.typeDistribution.map((t) => (
+                  <DistributionBar
+                    key={t.typeId}
+                    label={TYPE_LABELS[t.typeId] ?? t.typeId}
+                    count={t.count}
+                    max={typeMax}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-400 text-xs py-4">
+                データがまだありません
+              </p>
+            )}
+            {stats.typeDistribution.length > 0 && (
+              <p className="text-[11px] text-gray-400 text-right mt-3">
+                合計 {stats.typeDistribution.reduce((s, t) => s + t.count, 0)}人
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* Question Reach */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">質問ごとの到達数</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <QuestionReachChart
+              title="診断（15問）"
+              reach={stats.diagQuestionReach}
+              totalQuestions={15}
+            />
+            <QuestionReachChart
+              title="友達回答（5問）"
+              reach={stats.friendQuestionReach}
+              totalQuestions={5}
+            />
           </div>
         </section>
 

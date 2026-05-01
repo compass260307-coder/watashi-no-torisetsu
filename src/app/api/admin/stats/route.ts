@@ -31,6 +31,11 @@ export async function GET(request: NextRequest) {
     revisitedSessionsRes,
     achievementRes,
     recentRes,
+    friendToDiagRes,
+    diagQuestionRes,
+    friendQuestionRes,
+    usersRes,
+    friendAnswersRes,
   ] = await Promise.all([
     applyRange(
       supabase
@@ -94,6 +99,31 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(50),
     ),
+    // friend_to_diagnosis_clicked count
+    applyRange(
+      supabase
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("event_name", "friend_to_diagnosis_clicked"),
+    ),
+    // diagnosis per-question answered events
+    applyRange(
+      supabase
+        .from("events")
+        .select("metadata")
+        .eq("event_name", "diagnosis_question_answered"),
+    ),
+    // friend per-question answered events
+    applyRange(
+      supabase
+        .from("events")
+        .select("metadata")
+        .eq("event_name", "friend_question_answered"),
+    ),
+    // users with type_id (no date filter — shows all-time distribution)
+    supabase.from("users").select("id, type_id, created_at"),
+    // friend_answers with user_id (no date filter)
+    supabase.from("friend_answers").select("user_id"),
   ]);
 
   const diagnosisStarted = startedRes.count ?? 0;
@@ -129,6 +159,59 @@ export async function GET(request: NextRequest) {
     if (fc >= 5) fiveAchieved++;
   }
 
+  // --- Friend-to-diagnosis conversion ---
+  const friendToDiagClicked = friendToDiagRes.count ?? 0;
+
+  // --- Type distribution ---
+  const typeCounts: Record<string, number> = {};
+  for (const row of usersRes.data ?? []) {
+    const t = row.type_id as string;
+    typeCounts[t] = (typeCounts[t] ?? 0) + 1;
+  }
+  const typeDistribution = Object.entries(typeCounts)
+    .map(([typeId, count]) => ({ typeId, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // --- Friend answer count distribution ---
+  const userFriendCounts = new Map<string, number>();
+  for (const row of friendAnswersRes.data ?? []) {
+    const uid = row.user_id as string;
+    userFriendCounts.set(uid, (userFriendCounts.get(uid) ?? 0) + 1);
+  }
+  const totalUsers = usersRes.data?.length ?? 0;
+  const usersWithFriends = new Set(userFriendCounts.keys()).size;
+  let with1 = 0, with2 = 0, with3plus = 0, with5plus = 0;
+  for (const fc of userFriendCounts.values()) {
+    if (fc >= 1) with1++;
+    if (fc >= 2) with2++;
+    if (fc >= 3) with3plus++;
+    if (fc >= 5) with5plus++;
+  }
+  const friendCountDistribution = {
+    total: totalUsers,
+    zero: totalUsers - usersWithFriends,
+    one: with1 - with2,
+    two: with2 - with3plus,
+    threePlus: with3plus,
+    fivePlus: with5plus,
+  };
+
+  // --- Per-question reach ---
+  const diagQuestionReach: Record<number, number> = {};
+  for (const row of diagQuestionRes.data ?? []) {
+    const qi = (row.metadata as Record<string, unknown>)?.questionIndex;
+    if (typeof qi === "number") {
+      diagQuestionReach[qi] = (diagQuestionReach[qi] ?? 0) + 1;
+    }
+  }
+  const friendQuestionReach: Record<number, number> = {};
+  for (const row of friendQuestionRes.data ?? []) {
+    const qi = (row.metadata as Record<string, unknown>)?.questionIndex;
+    if (typeof qi === "number") {
+      friendQuestionReach[qi] = (friendQuestionReach[qi] ?? 0) + 1;
+    }
+  }
+
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
   return NextResponse.json({
@@ -154,5 +237,11 @@ export async function GET(request: NextRequest) {
       { label: "5人達成", count: fiveAchieved },
     ],
     recentEvents: recentRes.data ?? [],
+    friendToDiagClicked,
+    friendToDiagRate: rate(friendToDiagClicked, friendAnswerCompleted),
+    typeDistribution,
+    friendCountDistribution,
+    diagQuestionReach,
+    friendQuestionReach,
   });
 }
