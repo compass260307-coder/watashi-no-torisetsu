@@ -46,6 +46,15 @@ type Stats = {
   };
   diagQuestionReach: Record<string, number>;
   friendQuestionReach: Record<string, number>;
+  campaignStats: {
+    campaign: string;
+    started: number;
+    completed: number;
+    shared: number;
+    friendCompleted: number;
+  }[];
+  generationDistribution: { generation: number; count: number }[];
+  unknownGeneration: number;
 };
 
 type Preset = "today" | "7d" | "30d" | "all" | "custom";
@@ -475,6 +484,92 @@ export default function AdminPage() {
             </div>
           </div>
         </section>
+
+        {/* Campaign Stats */}
+        {stats.campaignStats.length > 0 && (
+          <section>
+            <h2 className="text-sm font-bold text-gray-700 mb-3">
+              キャンペーン別
+              <span className="text-xs font-normal text-gray-400 ml-2">全期間</span>
+            </h2>
+            <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                    <th className="px-4 py-3 font-medium">campaign</th>
+                    <th className="px-4 py-3 font-medium text-right">診断完了</th>
+                    <th className="px-4 py-3 font-medium text-right">友達回答</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.campaignStats.map((c) => (
+                    <tr key={c.campaign} className="border-b border-gray-50">
+                      <td className="px-4 py-2.5">
+                        <span className="inline-block rounded bg-blue-50 px-2 py-0.5 text-xs font-mono text-blue-700">
+                          {c.campaign}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{c.completed}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{c.friendCompleted}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* Generation Distribution */}
+        {stats.generationDistribution.length > 0 && (
+          <section>
+            <h2 className="text-sm font-bold text-gray-700 mb-3">
+              拡散の世代分布
+              <span className="text-xs font-normal text-gray-400 ml-2">全期間</span>
+            </h2>
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="flex items-end gap-3 justify-center mb-4">
+                {stats.generationDistribution.map((g) => {
+                  const max = Math.max(...stats.generationDistribution.map((d) => d.count), 1);
+                  const height = (g.count / max) * 100;
+                  return (
+                    <div key={g.generation} className="flex flex-col items-center gap-1">
+                      <span className="text-sm font-bold tabular-nums">{g.count}</span>
+                      <div className="w-14 relative" style={{ height: "80px" }}>
+                        <div
+                          className="absolute bottom-0 w-full rounded-t-md transition-all duration-500"
+                          style={{
+                            height: `${Math.max(height, 5)}%`,
+                            backgroundColor: g.generation === 0 ? "#3b82f6" : g.generation === 1 ? "#8b5cf6" : g.generation === 2 ? "#ec4899" : "#f97316",
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {g.generation === 0 ? "Seed" : `第${g.generation}世代`}
+                      </span>
+                    </div>
+                  );
+                })}
+                {stats.unknownGeneration > 0 && (
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-sm font-bold tabular-nums text-gray-400">{stats.unknownGeneration}</span>
+                    <div className="w-14 relative" style={{ height: "80px" }}>
+                      <div
+                        className="absolute bottom-0 w-full bg-gray-200 rounded-t-md"
+                        style={{
+                          height: `${Math.max((stats.unknownGeneration / Math.max(...stats.generationDistribution.map((d) => d.count), 1)) * 100, 5)}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400">不明</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 text-center">
+                Seed = campaignパラメータ付き / 第N世代 = 友達回答後に自分も診断した人
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* Friend Count Distribution */}
         <section>

@@ -7,6 +7,9 @@ create table users (
   invite_code text unique not null,
   owner_token text unique,
   display_name text,
+  campaign text,
+  source_user_id uuid references users(id),
+  generation smallint,
   created_at timestamptz default now()
 );
 

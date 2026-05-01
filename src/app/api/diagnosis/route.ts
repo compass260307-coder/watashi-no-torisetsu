@@ -12,7 +12,7 @@ function generateCode(length: number) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { typeId, scores } = body;
+  const { typeId, scores, campaign, sourceInviteCode } = body;
 
   if (!typeId || !scores) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -21,6 +21,23 @@ export async function POST(request: Request) {
   const inviteCode = generateCode(8);
   const ownerToken = generateCode(16);
 
+  let sourceUserId: string | null = null;
+  let generation: number | null = null;
+
+  if (sourceInviteCode) {
+    const { data: sourceUser } = await supabase
+      .from("users")
+      .select("id, generation")
+      .eq("invite_code", sourceInviteCode)
+      .single();
+    if (sourceUser) {
+      sourceUserId = sourceUser.id;
+      generation = (sourceUser.generation ?? 0) + 1;
+    }
+  } else if (campaign) {
+    generation = 0;
+  }
+
   const { data, error } = await supabase
     .from("users")
     .insert({
@@ -28,6 +45,9 @@ export async function POST(request: Request) {
       scores,
       invite_code: inviteCode,
       owner_token: ownerToken,
+      campaign: campaign || null,
+      source_user_id: sourceUserId,
+      generation,
     })
     .select("id, invite_code, owner_token")
     .single();

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useCallback, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { questions, answerOptions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
 import { track } from "@/lib/track";
@@ -18,7 +18,18 @@ const FOOTER_HINTS = [
 ];
 
 export default function DiagnosisPage() {
+  return (
+    <Suspense>
+      <DiagnosisContent />
+    </Suspense>
+  );
+}
+
+function DiagnosisContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const campaign = searchParams.get("campaign");
+  const source = searchParams.get("source");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -79,6 +90,8 @@ export default function DiagnosisPage() {
             body: JSON.stringify({
               typeId: result.typeId,
               scores: result.scores,
+              campaign: campaign || undefined,
+              sourceInviteCode: source || undefined,
             }),
           });
           const data = await res.json();
@@ -104,6 +117,8 @@ export default function DiagnosisPage() {
       isTransitioning,
       totalQuestions,
       router,
+      campaign,
+      source,
     ],
   );
 

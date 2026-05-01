@@ -120,8 +120,8 @@ export async function GET(request: NextRequest) {
         .select("metadata")
         .eq("event_name", "friend_question_answered"),
     ),
-    // users with type_id (no date filter — shows all-time distribution)
-    supabase.from("users").select("id, type_id, created_at"),
+    // users with type_id, campaign, generation (no date filter)
+    supabase.from("users").select("id, type_id, campaign, generation, invite_code, created_at"),
     // friend_answers with user_id (no date filter)
     supabase.from("friend_answers").select("user_id"),
   ]);
@@ -196,6 +196,61 @@ export async function GET(request: NextRequest) {
     fivePlus: with5plus,
   };
 
+  // --- Campaign stats ---
+  const campaignMap = new Map<string, { started: number; completed: number; shared: number; friendCompleted: number }>();
+  const userInviteCodes = new Map<string, string>();
+  for (const row of usersRes.data ?? []) {
+    const c = row.campaign as string | null;
+    if (c) {
+      if (!campaignMap.has(c)) campaignMap.set(c, { started: 0, completed: 0, shared: 0, friendCompleted: 0 });
+      campaignMap.get(c)!.started++;
+      campaignMap.get(c)!.completed++;
+    }
+    userInviteCodes.set(row.id as string, row.invite_code as string);
+  }
+  // Count shared per campaign: users who have share events
+  for (const row of shareEventsRes.data ?? []) {
+    // We can't directly link session to campaign here; skip for now
+  }
+  // Count friend answers per campaign by tracing invite_code → user → campaign
+  const inviteCodeToCampaign = new Map<string, string>();
+  for (const row of usersRes.data ?? []) {
+    const c = row.campaign as string | null;
+    if (c) inviteCodeToCampaign.set(row.invite_code as string, c);
+  }
+  // Also trace through generations: find root campaign for each user
+  const userIdToCampaign = new Map<string, string>();
+  for (const row of usersRes.data ?? []) {
+    const c = row.campaign as string | null;
+    if (c) userIdToCampaign.set(row.id as string, c);
+  }
+  // Friend answers completed per campaign (direct seed users only for now)
+  for (const row of friendAnswersRes.data ?? []) {
+    const uid = row.user_id as string;
+    const c = userIdToCampaign.get(uid);
+    if (c && campaignMap.has(c)) {
+      campaignMap.get(c)!.friendCompleted++;
+    }
+  }
+  const campaignStats = Array.from(campaignMap.entries())
+    .map(([campaign, stats]) => ({ campaign, ...stats }))
+    .sort((a, b) => b.started - a.started);
+
+  // --- Generation distribution ---
+  const genCounts: Record<number, number> = {};
+  let unknownGen = 0;
+  for (const row of usersRes.data ?? []) {
+    const g = row.generation as number | null;
+    if (g !== null && g !== undefined) {
+      genCounts[g] = (genCounts[g] ?? 0) + 1;
+    } else {
+      unknownGen++;
+    }
+  }
+  const generationDistribution = Object.entries(genCounts)
+    .map(([gen, count]) => ({ generation: Number(gen), count }))
+    .sort((a, b) => a.generation - b.generation);
+
   // --- Per-question reach ---
   const diagQuestionReach: Record<number, number> = {};
   for (const row of diagQuestionRes.data ?? []) {
@@ -243,5 +298,8 @@ export async function GET(request: NextRequest) {
     friendCountDistribution,
     diagQuestionReach,
     friendQuestionReach,
+    campaignStats,
+    generationDistribution,
+    unknownGeneration: unknownGen,
   });
 }

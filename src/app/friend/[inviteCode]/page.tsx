@@ -280,7 +280,7 @@ export default function FriendPage({
                     </p>
                   </div>
                   <Link
-                    href="/diagnosis"
+                    href={`/diagnosis?source=${inviteCode}`}
                     onClick={() => track("friend_to_diagnosis_clicked", { inviteCode })}
                     className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
                   >
