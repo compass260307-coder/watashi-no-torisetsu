@@ -9,6 +9,14 @@ import type { AnswerValue } from "@/lib/types";
 
 const MILESTONES = [5, 10];
 
+const FOOTER_HINTS = [
+  "深く考えなくてOK、直感で選んでね",
+  "パッと浮かんだ方でOK",
+  "正解はないよ、気楽にね",
+  "考えすぎず、サクッと選ぼう",
+  "迷ったら「なんとなく」で大丈夫",
+];
+
 export default function DiagnosisPage() {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -27,6 +35,7 @@ export default function DiagnosisPage() {
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentIndex];
   const progress = (currentIndex / totalQuestions) * 100;
+  const remaining = totalQuestions - currentIndex;
 
   const handleAnswer = useCallback(
     async (value: AnswerValue) => {
@@ -42,8 +51,8 @@ export default function DiagnosisPage() {
           setIsTransitioning(true);
           setMilestone(
             nextIndex === 5
-              ? "いい感じ！あと10問 🎵"
-              : "あともう少し！ラスト5問 🔥",
+              ? "いい調子！あと10問 🎵"
+              : "ラストスパート！あと5問 🔥",
           );
           setTimeout(() => {
             setCurrentIndex(nextIndex);
@@ -107,13 +116,6 @@ export default function DiagnosisPage() {
     }
   }, [currentIndex, isTransitioning]);
 
-  const section =
-    currentIndex < 5
-      ? "前半"
-      : currentIndex < 10
-        ? "中盤"
-        : "ラスト！";
-
   return (
     <div className="flex flex-col flex-1">
       {/* Header */}
@@ -130,10 +132,14 @@ export default function DiagnosisPage() {
             ← 戻る
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted">{section}</span>
             <span className="text-xs font-bold text-muted">
               {currentIndex + 1} / {totalQuestions}
             </span>
+            {remaining <= 5 && remaining > 0 && (
+              <span className="text-[10px] text-primary font-bold">
+                あと{remaining}問
+              </span>
+            )}
           </div>
           <div className="w-12" />
         </div>
@@ -152,7 +158,8 @@ export default function DiagnosisPage() {
         {milestone ? (
           <div className="flex flex-col items-center animate-scale-in">
             <div className="text-2xl font-extrabold mb-2">{milestone}</div>
-            <div className="h-1 w-20 rounded-full bg-primary/30 overflow-hidden">
+            <p className="text-xs text-muted mt-1">このまま直感でサクサクいこう</p>
+            <div className="h-1 w-20 rounded-full bg-primary/30 overflow-hidden mt-3">
               <div className="h-full w-full bg-primary animate-shimmer" />
             </div>
           </div>
@@ -196,9 +203,9 @@ export default function DiagnosisPage() {
         )}
       </main>
 
-      {/* Footer hint */}
+      {/* Footer hint - rotating */}
       <footer className="py-4 text-center text-xs text-muted">
-        直感で選んでね
+        {FOOTER_HINTS[currentIndex % FOOTER_HINTS.length]}
       </footer>
     </div>
   );
