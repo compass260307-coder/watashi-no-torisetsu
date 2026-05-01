@@ -13,6 +13,20 @@ function getSessionId(): string {
   return id;
 }
 
+export function isPreviewMode(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    if (sessionStorage.getItem("torisetsu_preview") === "1") return true;
+    if (new URLSearchParams(window.location.search).get("preview") === "true") {
+      sessionStorage.setItem("torisetsu_preview", "1");
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function track(
   eventName: string,
   params?: {
@@ -21,6 +35,7 @@ export function track(
     metadata?: Record<string, unknown>;
   },
 ) {
+  if (isPreviewMode()) return;
   try {
     fetch("/api/event", {
       method: "POST",

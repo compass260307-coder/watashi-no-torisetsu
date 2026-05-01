@@ -4,7 +4,7 @@ import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { questions, answerOptions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
-import { track } from "@/lib/track";
+import { track, isPreviewMode } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 
 const MILESTONES = [5, 10];
@@ -82,6 +82,12 @@ function DiagnosisContent() {
         const result = diagnose(newAnswers);
         localStorage.setItem("torisetsu_result", JSON.stringify(result));
         track("diagnosis_completed", { metadata: { typeId: result.typeId } });
+
+        if (isPreviewMode()) {
+          localStorage.setItem("torisetsu_invite_code", "preview");
+          router.push("/result");
+          return;
+        }
 
         try {
           const res = await fetch("/api/diagnosis", {

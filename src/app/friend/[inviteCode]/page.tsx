@@ -3,7 +3,7 @@
 import { use, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
-import { track } from "@/lib/track";
+import { track, isPreviewMode } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -52,6 +52,11 @@ export default function FriendPage({
   const submitAnswers = useCallback(
     async (finalAnswers: Record<number, FriendAnswer>) => {
       setSubmitting(true);
+      if (isPreviewMode()) {
+        track("friend_answer_completed", { inviteCode });
+        setSubmitting(false);
+        return;
+      }
       try {
         const res = await fetch("/api/friend-answer", {
           method: "POST",
