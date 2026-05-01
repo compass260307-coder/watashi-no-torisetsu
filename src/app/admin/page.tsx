@@ -528,41 +528,49 @@ export default function AdminPage() {
             </h2>
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="flex items-end gap-3 justify-center mb-4">
-                {stats.generationDistribution.map((g) => {
-                  const max = Math.max(...stats.generationDistribution.map((d) => d.count), 1);
-                  const height = (g.count / max) * 100;
+                {(() => {
+                  const allCounts = [
+                    ...stats.generationDistribution.map((d) => d.count),
+                    stats.unknownGeneration,
+                  ];
+                  const max = Math.max(...allCounts, 1);
                   return (
-                    <div key={g.generation} className="flex flex-col items-center gap-1">
-                      <span className="text-sm font-bold tabular-nums">{g.count}</span>
-                      <div className="w-14 relative" style={{ height: "80px" }}>
-                        <div
-                          className="absolute bottom-0 w-full rounded-t-md transition-all duration-500"
-                          style={{
-                            height: `${Math.max(height, 5)}%`,
-                            backgroundColor: g.generation === 0 ? "#3b82f6" : g.generation === 1 ? "#8b5cf6" : g.generation === 2 ? "#ec4899" : "#f97316",
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {g.generation === 0 ? "Seed" : `第${g.generation}世代`}
-                      </span>
-                    </div>
+                    <>
+                      {stats.generationDistribution.map((g) => {
+                        const height = (g.count / max) * 100;
+                        return (
+                          <div key={g.generation} className="flex flex-col items-center gap-1">
+                            <span className="text-sm font-bold tabular-nums">{g.count}</span>
+                            <div className="w-14 relative" style={{ height: "80px" }}>
+                              <div
+                                className="absolute bottom-0 w-full rounded-t-md transition-all duration-500"
+                                style={{
+                                  height: `${Math.max(height, 5)}%`,
+                                  backgroundColor: g.generation === 0 ? "#3b82f6" : g.generation === 1 ? "#8b5cf6" : g.generation === 2 ? "#ec4899" : "#f97316",
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {g.generation === 0 ? "Seed" : `第${g.generation}世代`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {stats.unknownGeneration > 0 && (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-sm font-bold tabular-nums text-gray-400">{stats.unknownGeneration}</span>
+                          <div className="w-14 relative" style={{ height: "80px" }}>
+                            <div
+                              className="absolute bottom-0 w-full bg-gray-200 rounded-t-md"
+                              style={{ height: `${Math.max((stats.unknownGeneration / max) * 100, 5)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-400">不明</span>
+                        </div>
+                      )}
+                    </>
                   );
-                })}
-                {stats.unknownGeneration > 0 && (
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-sm font-bold tabular-nums text-gray-400">{stats.unknownGeneration}</span>
-                    <div className="w-14 relative" style={{ height: "80px" }}>
-                      <div
-                        className="absolute bottom-0 w-full bg-gray-200 rounded-t-md"
-                        style={{
-                          height: `${Math.max((stats.unknownGeneration / Math.max(...stats.generationDistribution.map((d) => d.count), 1)) * 100, 5)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-400">不明</span>
-                  </div>
-                )}
+                })()}
               </div>
               <p className="text-[11px] text-gray-400 text-center">
                 Seed = campaignパラメータ付き / 第N世代 = 友達回答後に自分も診断した人
