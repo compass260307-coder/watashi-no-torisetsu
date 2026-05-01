@@ -343,6 +343,75 @@ export default function AdminPage() {
   const fc = stats.friendCountDistribution;
   const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
 
+  const downloadCsv = () => {
+    const rows: string[][] = [];
+    rows.push(["# KPI"]);
+    rows.push(["指標", "値"]);
+    rows.push(["診断開始数", String(stats.diagnosisStarted)]);
+    rows.push(["診断完了数", String(stats.diagnosisCompleted)]);
+    rows.push(["診断完了率", pct(stats.completionRate)]);
+    rows.push(["友達共有数", String(stats.shareCount)]);
+    rows.push(["友達共有率", pct(stats.shareRate)]);
+    rows.push(["友達回答開始数", String(stats.friendAnswerStarted)]);
+    rows.push(["友達回答完了数", String(stats.friendAnswerCompleted)]);
+    rows.push(["友達回答完了率", pct(stats.answerCompletionRate)]);
+    rows.push(["3人達成", String(stats.threeAchieved)]);
+    rows.push(["5人達成", String(stats.fiveAchieved)]);
+    rows.push(["結果再訪数", String(stats.resultRevisited)]);
+    rows.push(["結果再訪率", pct(stats.revisitRate)]);
+    rows.push(["友達→自分も作る", String(stats.friendToDiagClicked)]);
+    rows.push(["友達→自分も作る率", pct(stats.friendToDiagRate)]);
+    rows.push([]);
+    rows.push(["# ファネル"]);
+    rows.push(["ステップ", "件数"]);
+    stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
+    rows.push([]);
+    if (stats.campaignStats.length > 0) {
+      rows.push(["# キャンペーン別"]);
+      rows.push(["campaign", "診断完了", "友達回答"]);
+      stats.campaignStats.forEach((c) => rows.push([c.campaign, String(c.completed), String(c.friendCompleted)]));
+      rows.push([]);
+    }
+    if (stats.generationDistribution.length > 0) {
+      rows.push(["# 世代分布"]);
+      rows.push(["世代", "人数"]);
+      stats.generationDistribution.forEach((g) => rows.push([g.generation === 0 ? "Seed" : `第${g.generation}世代`, String(g.count)]));
+      if (stats.unknownGeneration > 0) rows.push(["不明", String(stats.unknownGeneration)]);
+      rows.push([]);
+    }
+    rows.push(["# 友達回答人数の分布"]);
+    rows.push(["人数", "件数"]);
+    rows.push(["0人", String(fc.zero)]);
+    rows.push(["1人", String(fc.one)]);
+    rows.push(["2人", String(fc.two)]);
+    rows.push(["3人以上", String(fc.threePlus)]);
+    rows.push(["5人以上", String(fc.fivePlus)]);
+    rows.push([]);
+    if (stats.typeDistribution.length > 0) {
+      rows.push(["# タイプ分布"]);
+      rows.push(["タイプ", "人数"]);
+      stats.typeDistribution.forEach((t) => rows.push([TYPE_LABELS[t.typeId] ?? t.typeId, String(t.count)]));
+      rows.push([]);
+    }
+    rows.push(["# 診断質問到達数"]);
+    rows.push(["質問", "回答数"]);
+    for (let i = 0; i < 15; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
+    rows.push([]);
+    rows.push(["# 友達質問到達数"]);
+    rows.push(["質問", "回答数"]);
+    for (let i = 0; i < 5; i++) rows.push([`Q${i + 1}`, String(stats.friendQuestionReach[String(i)] ?? 0)]);
+
+    const bom = "﻿";
+    const csv = bom + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `torisetsu_stats_${preset}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -352,13 +421,21 @@ export default function AdminPage() {
             <h1 className="text-base font-bold">ワタシのトリセツ</h1>
             <p className="text-xs text-gray-400">MVP定点観測</p>
           </div>
-          <button
-            onClick={() => fetchStats(adminKey, preset, customFrom, customTo)}
-            disabled={loading}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-40"
-          >
-            {loading ? "更新中..." : "↻ 更新"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={downloadCsv}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-gray-50"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => fetchStats(adminKey, preset, customFrom, customTo)}
+              disabled={loading}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-600 transition-all hover:bg-gray-50 disabled:opacity-40"
+            >
+              {loading ? "更新中..." : "↻ 更新"}
+            </button>
+          </div>
         </div>
       </header>
 
