@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     answerStartedRes,
     answerCompletedRes,
     shareEventsRes,
-    _completedSessionsRes,
     viewedSessionsRes,
     revisitedSessionsRes,
     achievementRes,
@@ -67,13 +66,6 @@ export async function GET(request: NextRequest) {
         .select("session_id")
         .in("event_name", ["friend_share_clicked", "friend_link_copied"]),
     ),
-    // completedSessionsRes is no longer needed as a separate query
-    applyRange(
-      supabase
-        .from("events")
-        .select("session_id")
-        .eq("event_name", "diagnosis_completed"),
-    ),
     applyRange(
       supabase
         .from("events")
@@ -100,31 +92,32 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(50),
     ),
-    // friend_to_diagnosis_clicked count
     applyRange(
       supabase
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .eq("event_name", "friend_to_diagnosis_clicked"),
     ),
-    // diagnosis per-question answered events
     applyRange(
       supabase
         .from("events")
         .select("metadata")
         .eq("event_name", "diagnosis_question_answered"),
     ),
-    // friend per-question answered events
     applyRange(
       supabase
         .from("events")
         .select("metadata")
         .eq("event_name", "friend_question_answered"),
     ),
-    // users with type_id, campaign, generation (no date filter)
-    supabase.from("users").select("id, type_id, campaign, generation, invite_code, created_at"),
-    // friend_answers with user_id (no date filter)
-    supabase.from("friend_answers").select("user_id"),
+    // users — period filter applied
+    applyRange(
+      supabase.from("users").select("id, type_id, campaign, generation, invite_code, created_at"),
+    ),
+    // friend_answers — period filter applied
+    applyRange(
+      supabase.from("friend_answers").select("user_id, created_at"),
+    ),
   ]);
 
   const toUnique = (res: { data: { session_id: string }[] | null }) =>
@@ -136,7 +129,17 @@ export async function GET(request: NextRequest) {
   const friendAnswerCompleted = toUnique(answerCompletedRes);
   const uniqueShare = toUnique(shareEventsRes);
   const uniqueViewed = toUnique(viewedSessionsRes);
-  const uniqueRevisited = toUnique(revisitedSessionsRes);
+  const friendToDiagClicked = toUnique(friendToDiagRes);
+
+  // result_revisited: only count sessions that also have result_viewed
+  const viewedSessions = new Set(
+    viewedSessionsRes.data?.map((e) => e.session_id).filter(Boolean),
+  );
+  const uniqueRevisited = new Set(
+    revisitedSessionsRes.data
+      ?.map((e) => e.session_id)
+      .filter((s): s is string => !!s && viewedSessions.has(s)),
+  ).size;
 
   const ownerMax = new Map<string, number>();
   for (const row of achievementRes.data ?? []) {
@@ -152,9 +155,6 @@ export async function GET(request: NextRequest) {
     if (fc >= 3) threeAchieved++;
     if (fc >= 5) fiveAchieved++;
   }
-
-  // --- Friend-to-diagnosis conversion ---
-  const friendToDiagClicked = friendToDiagRes.count ?? 0;
 
   // --- Type distribution ---
   const typeCounts: Record<string, number> = {};
@@ -191,44 +191,26 @@ export async function GET(request: NextRequest) {
   };
 
   // --- Campaign stats ---
-  const campaignMap = new Map<string, { started: number; completed: number; shared: number; friendCompleted: number }>();
-  const userInviteCodes = new Map<string, string>();
-  for (const row of usersRes.data ?? []) {
-    const c = row.campaign as string | null;
-    if (c) {
-      if (!campaignMap.has(c)) campaignMap.set(c, { started: 0, completed: 0, shared: 0, friendCompleted: 0 });
-      campaignMap.get(c)!.started++;
-      campaignMap.get(c)!.completed++;
-    }
-    userInviteCodes.set(row.id as string, row.invite_code as string);
-  }
-  // Count shared per campaign: users who have share events
-  for (const row of shareEventsRes.data ?? []) {
-    // We can't directly link session to campaign here; skip for now
-  }
-  // Count friend answers per campaign by tracing invite_code → user → campaign
-  const inviteCodeToCampaign = new Map<string, string>();
-  for (const row of usersRes.data ?? []) {
-    const c = row.campaign as string | null;
-    if (c) inviteCodeToCampaign.set(row.invite_code as string, c);
-  }
-  // Also trace through generations: find root campaign for each user
+  const campaignMap = new Map<string, { users: number; friendAnswers: number }>();
   const userIdToCampaign = new Map<string, string>();
   for (const row of usersRes.data ?? []) {
     const c = row.campaign as string | null;
-    if (c) userIdToCampaign.set(row.id as string, c);
+    if (c) {
+      if (!campaignMap.has(c)) campaignMap.set(c, { users: 0, friendAnswers: 0 });
+      campaignMap.get(c)!.users++;
+      userIdToCampaign.set(row.id as string, c);
+    }
   }
-  // Friend answers completed per campaign (direct seed users only for now)
   for (const row of friendAnswersRes.data ?? []) {
     const uid = row.user_id as string;
     const c = userIdToCampaign.get(uid);
     if (c && campaignMap.has(c)) {
-      campaignMap.get(c)!.friendCompleted++;
+      campaignMap.get(c)!.friendAnswers++;
     }
   }
   const campaignStats = Array.from(campaignMap.entries())
-    .map(([campaign, stats]) => ({ campaign, ...stats }))
-    .sort((a, b) => b.started - a.started);
+    .map(([campaign, s]) => ({ campaign, completed: s.users, friendCompleted: s.friendAnswers }))
+    .sort((a, b) => b.completed - a.completed);
 
   // --- Generation distribution ---
   const genCounts: Record<number, number> = {};

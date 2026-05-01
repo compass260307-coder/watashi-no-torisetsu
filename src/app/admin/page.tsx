@@ -11,6 +11,7 @@ const TYPE_LABELS: Record<string, string> = {
   "healing-guardian": "癒しの守護神",
   "deep-dive-explorer": "沼ハマり探究者",
   "cool-maverick": "冷静マイペース",
+  "explorer_leader": "探検リーダー",
 };
 
 type Stats = {
@@ -48,9 +49,7 @@ type Stats = {
   friendQuestionReach: Record<string, number>;
   campaignStats: {
     campaign: string;
-    started: number;
     completed: number;
-    shared: number;
     friendCompleted: number;
   }[];
   generationDistribution: { generation: number; count: number }[];
