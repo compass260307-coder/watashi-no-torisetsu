@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
+
+const mPlusRounded = M_PLUS_Rounded_1c({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "800"],
+  display: "swap",
+  variable: "--font-m-plus-rounded",
+});
 
 const BASE_URL = "https://watashi-no-torisetsu.vercel.app";
 
@@ -29,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" className={mPlusRounded.variable}>
       <body className="min-h-dvh flex flex-col">{children}</body>
     </html>
   );
