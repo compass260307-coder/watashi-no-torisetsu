@@ -2,6 +2,7 @@
 
 import { use, useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
@@ -318,12 +319,27 @@ export default function FriendPage({
                     </p>
                   </div>
                   <div className="p-5 text-center">
-                    <div
-                      className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-3xl mb-3"
-                      style={{ backgroundColor: `${perceivedType.color}15` }}
-                    >
-                      {perceivedType.emoji}
-                    </div>
+                    {perceivedType.imageUrl ? (
+                      <div
+                        className="inline-flex items-center justify-center w-24 h-24 rounded-2xl mb-3"
+                        style={{ backgroundColor: `${perceivedType.color}15` }}
+                      >
+                        <Image
+                          src={perceivedType.imageUrl}
+                          alt={`${perceivedType.name}のキャラクター`}
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-3xl mb-3"
+                        style={{ backgroundColor: `${perceivedType.color}15` }}
+                      >
+                        {perceivedType.emoji}
+                      </div>
+                    )}
                     <p
                       className="text-lg font-extrabold mb-1"
                       style={{ color: perceivedType.color }}
