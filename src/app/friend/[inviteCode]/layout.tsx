@@ -4,10 +4,10 @@ const BASE_URL = "https://watashi-no-torisetsu.vercel.app";
 
 export const metadata: Metadata = {
   title: "ワタシのトリセツ",
-  description: "友達から見たあなたを5問で教えてもらう診断",
+  description: "友達から見たあなたを10問で教えてもらう診断",
   openGraph: {
     title: "ワタシのトリセツ",
-    description: "友達から見たあなたを5問で教えてもらう診断",
+    description: "友達から見たあなたを10問で教えてもらう診断",
     type: "website",
     siteName: "ワタシのトリセツ",
     images: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "ワタシのトリセツ",
-    description: "友達から見たあなたを5問で教えてもらう診断",
+    description: "友達から見たあなたを10問で教えてもらう診断",
     images: [`${BASE_URL}/ogp-v2.png`],
   },
 };

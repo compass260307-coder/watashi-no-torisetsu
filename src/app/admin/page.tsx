@@ -813,9 +813,9 @@ export default function AdminPage() {
               totalQuestions={15}
             />
             <QuestionReachChart
-              title="友達回答（5問）"
+              title="友達回答（10問）"
               reach={stats.friendQuestionReach}
-              totalQuestions={5}
+              totalQuestions={10}
             />
           </div>
         </section>

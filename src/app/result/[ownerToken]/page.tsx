@@ -51,9 +51,9 @@ function getShareUrl(inviteCode: string | null) {
 
 function getShareTexts(shareUrl: string) {
   return [
-    `自分の取説作れるやつやってみたんだけど\n友達から見た自分も知りたくて\n\n5問だけだから、気が向いたらやってみて〜\n\n${shareUrl}`,
-    `自分の取扱説明書作ってみたんだけど\n友達からどう見えてるか気になって！\n\n5問だけで終わるからよかったら〜\n\n${shareUrl}`,
-    `自分のトリセツ作れるやつやってみた！\n友達目線の自分も知りたくて\n\n5問だけだからサクッとお願い〜\n\n${shareUrl}`,
+    `自分の取説作れるやつやってみたんだけど\n友達から見た自分も知りたくて\n\n10問・2分だから、気が向いたらやってみて〜\n\n${shareUrl}`,
+    `自分の取扱説明書作ってみたんだけど\n友達からどう見えてるか気になって！\n\n10問だけだからよかったら〜\n\n${shareUrl}`,
+    `自分のトリセツ作れるやつやってみた！\n友達目線の自分も知りたくて\n\n10問・2分でサクッとお願い〜\n\n${shareUrl}`,
   ];
 }
 
@@ -530,7 +530,7 @@ export default function OwnerResultPage({
               </button>
 
               <p className="text-[10px] text-muted text-center">
-                友達はログイン不要・5問・1分で完了
+                友達はログイン不要・10問・2分で完了
               </p>
             </div>
           )}

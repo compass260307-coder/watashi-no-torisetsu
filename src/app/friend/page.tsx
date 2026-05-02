@@ -153,7 +153,7 @@ export default function FriendPage() {
           <p className="text-xs text-muted leading-relaxed">
             友達があなたにトリセツの回答をお願いしています
             <br />
-            <span className="font-bold">5問だけ、1分で終わります</span>
+            <span className="font-bold">10問・2分で終わります</span>
           </p>
         </div>
       )}
