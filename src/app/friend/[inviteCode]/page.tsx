@@ -10,6 +10,17 @@ import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
 
+const ALL_TYPES = [
+  { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF6B6B" },
+  { emoji: "🏠", name: "みんなの実家", color: "#4ECDC4" },
+  { emoji: "🌪️", name: "暴走カリスマ", color: "#FFD93D" },
+  { emoji: "🛡️", name: "鉄のメンタル番長", color: "#6C5CE7" },
+  { emoji: "🎨", name: "繊細クリエイター", color: "#A8E6CF" },
+  { emoji: "🌿", name: "癒しの守護神", color: "#88D8B0" },
+  { emoji: "🔍", name: "沼ハマり探究者", color: "#DDA0DD" },
+  { emoji: "🧊", name: "冷静マイペース", color: "#74B9FF" },
+];
+
 const FRIEND_FOOTER_HINTS = [
   "パッと思い浮かんだ印象でOK",
   "正解はないよ、感覚で選んでね",
@@ -338,25 +349,34 @@ export default function FriendPage({
               {/* Section C: CTA */}
               <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
                 <div className="p-6 text-center">
-                  <p className="text-[15px] font-bold mb-2">
+                  <p className="text-[15px] font-bold mb-4">
                     じゃあ、あなたは何タイプ？
                   </p>
-                  <p className="text-sm text-muted leading-relaxed mb-5">
-                    {perception
-                      ? `${who}さんのタイプがわかったところで、自分のタイプも気になりませんか？`
-                      : "あなたも、友達からどう見えているか気になりませんか？"}
-                  </p>
-                  <div className="flex flex-col gap-1.5 mb-5">
-                    <p className="text-xs text-muted">
-                      ✓ 自分では気づけない一面が見える
-                    </p>
-                    <p className="text-xs text-muted">
-                      ✓ 友達からの意外な評価がわかる
-                    </p>
-                    <p className="text-xs text-muted">
-                      ✓ 15問・3分・登録不要
-                    </p>
+
+                  {/* 8 types grid */}
+                  <div className="grid grid-cols-4 gap-2 mb-5">
+                    {ALL_TYPES.map((t) => (
+                      <div
+                        key={t.name}
+                        className="flex flex-col items-center gap-1 rounded-xl border bg-background p-2 cursor-default"
+                        style={{ borderColor: `${t.color}40` }}
+                      >
+                        <span className="text-2xl">{t.emoji}</span>
+                        <span
+                          className="text-[10px] font-bold text-center leading-tight"
+                          style={{ color: t.color }}
+                        >
+                          {t.name}
+                        </span>
+                      </div>
+                    ))}
                   </div>
+
+                  <p className="text-sm font-bold mb-1">この中のどれかな？</p>
+                  <p className="text-xs text-muted mb-5">
+                    15問で正確なタイプが分かります
+                  </p>
+
                   <Link
                     href={diagnosisHref}
                     onClick={() =>
@@ -375,6 +395,9 @@ export default function FriendPage({
                   >
                     自分のトリセツを作る
                   </Link>
+                  <p className="text-[11px] text-muted mt-3">
+                    15問・3分・登録不要
+                  </p>
                 </div>
               </div>
 
