@@ -6,19 +6,19 @@ import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import type { AnswerValue } from "@/lib/types";
+import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
 
-const ALL_TYPES = [
-  { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF6B6B" },
-  { emoji: "🏠", name: "みんなの実家", color: "#4ECDC4" },
-  { emoji: "🌪️", name: "暴走カリスマ", color: "#FFD93D" },
-  { emoji: "🛡️", name: "鉄のメンタル番長", color: "#6C5CE7" },
-  { emoji: "🎨", name: "繊細クリエイター", color: "#A8E6CF" },
-  { emoji: "🌿", name: "癒しの守護神", color: "#88D8B0" },
-  { emoji: "🔍", name: "沼ハマり探究者", color: "#DDA0DD" },
-  { emoji: "🧊", name: "冷静マイペース", color: "#74B9FF" },
+const TYPE_ORDER: TorisetsuTypeId[] = [
+  "festival-sun",
+  "everyones-home",
+  "wild-charisma",
+  "iron-mental",
+  "delicate-creator",
+  "healing-guardian",
+  "deep-dive-explorer",
+  "cool-maverick",
 ];
 
 const FRIEND_FOOTER_HINTS = [
@@ -348,56 +348,69 @@ export default function FriendPage({
 
               {/* Section C: CTA */}
               <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
-                <div className="p-6 text-center">
-                  <p className="text-[15px] font-bold mb-4">
+                <div className="p-6">
+                  <p className="text-[15px] font-bold mb-5 text-center">
                     じゃあ、あなたは何タイプ？
                   </p>
 
-                  {/* 8 types grid */}
-                  <div className="grid grid-cols-4 gap-2 mb-5">
-                    {ALL_TYPES.map((t) => (
-                      <div
-                        key={t.name}
-                        className="flex flex-col items-center gap-1 rounded-xl border bg-background p-2 cursor-default"
-                        style={{ borderColor: `${t.color}40` }}
-                      >
-                        <span className="text-2xl">{t.emoji}</span>
-                        <span
-                          className="text-[10px] font-bold text-center leading-tight"
-                          style={{ color: t.color }}
-                        >
-                          {t.name}
-                        </span>
-                      </div>
-                    ))}
+                  {/* Manual-style type list */}
+                  <div className="border-t border-b border-card-border py-2 mb-2 flex items-baseline justify-between">
+                    <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-muted">
+                      TYPE LIST
+                    </span>
+                    <span className="text-[10px] text-muted">全8タイプ</span>
                   </div>
 
-                  <p className="text-sm font-bold mb-1">この中のどれかな？</p>
-                  <p className="text-xs text-muted mb-5">
-                    15問で正確なタイプが分かります
-                  </p>
+                  <ul className="mb-2">
+                    {TYPE_ORDER.map((typeId, i) => {
+                      const t = torisetsuTypes[typeId];
+                      const num = String(i + 1).padStart(2, "0");
+                      return (
+                        <li
+                          key={typeId}
+                          className="flex items-center gap-3 py-2 border-b border-card-border/40 last:border-b-0"
+                        >
+                          <span className="font-mono text-[11px] text-muted tracking-wider">
+                            TYPE.{num}
+                          </span>
+                          <span className="text-base leading-none">
+                            {t.emoji}
+                          </span>
+                          <span className="text-sm">{t.name}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
 
-                  <Link
-                    href={diagnosisHref}
-                    onClick={() =>
-                      track("friend_to_diagnosis_clicked", {
-                        inviteCode,
-                        metadata: perception
-                          ? {
-                              perceptionShown: true,
-                              perceivedTypeId: perception.typeId,
-                              perceivedConfidence: perception.confidence,
-                            }
-                          : { perceptionShown: false },
-                      })
-                    }
-                    className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
-                  >
-                    自分のトリセツを作る
-                  </Link>
-                  <p className="text-[11px] text-muted mt-3">
-                    15問・3分・登録不要
-                  </p>
+                  <div className="border-t border-card-border pt-3 mb-5">
+                    <p className="text-xs text-muted text-center">
+                      ※ あなたのタイプは15問で分かります
+                    </p>
+                  </div>
+
+                  <div className="text-center">
+                    <Link
+                      href={diagnosisHref}
+                      onClick={() =>
+                        track("friend_to_diagnosis_clicked", {
+                          inviteCode,
+                          metadata: perception
+                            ? {
+                                perceptionShown: true,
+                                perceivedTypeId: perception.typeId,
+                                perceivedConfidence: perception.confidence,
+                              }
+                            : { perceptionShown: false },
+                        })
+                      }
+                      className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
+                    >
+                      自分のトリセツを作る
+                    </Link>
+                    <p className="text-[11px] text-muted mt-3">
+                      15問・3分・登録不要
+                    </p>
+                  </div>
                 </div>
               </div>
 
