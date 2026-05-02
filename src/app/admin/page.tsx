@@ -58,6 +58,8 @@ type Stats = {
     friendLandingViewed: number;
     sharingUsersReached: number;
     avgLandingPerSharer: number;
+    landingToStartRate: number;
+    startToCompleteRate: number;
     friendToDiagClickedRate: number;
     childDiagCompleted: number;
     parentDiagCompleted: number;
@@ -375,6 +377,8 @@ export default function AdminPage() {
     rows.push(["指標", "値", "計算式"]);
     rows.push(["友達ページ到達数", String(stats.viral.friendLandingViewed), "ユニークセッション"]);
     rows.push(["共有者あたり平均到達", stats.viral.avgLandingPerSharer.toFixed(2), "到達数÷ユニーク共有者"]);
+    rows.push(["到達→回答開始率", pct(stats.viral.landingToStartRate), "回答開始÷到達"]);
+    rows.push(["回答開始→完了率", pct(stats.viral.startToCompleteRate), "回答完了÷回答開始"]);
     rows.push(["自分も作る転換率", pct(stats.viral.friendToDiagClickedRate), "クリック÷友達回答完了"]);
     rows.push(["子診断完了数", String(stats.viral.childDiagCompleted), "source_user_idあり"]);
     rows.push(["親あたり子診断数", stats.viral.avgChildPerParent.toFixed(2), "子完了÷ユニーク親"]);
@@ -620,7 +624,7 @@ export default function AdminPage() {
             拡散指標
             <span className="text-xs font-normal text-gray-400 ml-2">自然拡散の強さを測る</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <KpiCard
               label="友達ページ到達"
               value={stats.viral.friendLandingViewed}
@@ -629,7 +633,17 @@ export default function AdminPage() {
             <KpiCard
               label="平均到達人数"
               value={stats.viral.avgLandingPerSharer.toFixed(1)}
-              sub="共有者あたり到達数"
+              sub="到達数÷ユニーク共有者"
+            />
+            <KpiCard
+              label="到達→回答開始率"
+              value={pct(stats.viral.landingToStartRate)}
+              sub="友達ページ到達→回答開始"
+            />
+            <KpiCard
+              label="回答開始→完了率"
+              value={pct(stats.viral.startToCompleteRate)}
+              sub="友達回答開始→完了"
             />
             <KpiCard
               label="自分も作る転換率"
@@ -655,6 +669,11 @@ export default function AdminPage() {
           <p className="text-[11px] text-gray-400 mt-2">
             拡散係数 {'>'} 1.0 で自然増殖 / 0.5以上でMVPとして良好
           </p>
+          {stats.viral.friendLandingViewed === 0 && stats.friendAnswerStarted > 0 && (
+            <p className="text-[11px] text-orange-500 mt-1">
+              ⚠ 友達ページ到達が0件：5/2デプロイ以前の回答にはこのイベントがありません。今後のアクセスから計測されます。
+            </p>
+          )}
         </section>
 
         {/* Generation Distribution */}

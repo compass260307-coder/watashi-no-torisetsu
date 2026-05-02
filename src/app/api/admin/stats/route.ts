@@ -321,6 +321,8 @@ export async function GET(request: NextRequest) {
       friendLandingViewed,
       sharingUsersReached,
       avgLandingPerSharer,
+      landingToStartRate: rate(friendAnswerStarted, friendLandingViewed),
+      startToCompleteRate: rate(friendAnswerCompleted, friendAnswerStarted),
       friendToDiagClickedRate: rate(friendToDiagClicked, friendAnswerCompleted),
       childDiagCompleted,
       parentDiagCompleted,
