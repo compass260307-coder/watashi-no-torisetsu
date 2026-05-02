@@ -1,9 +1,11 @@
 "use client";
 
-import { use, useState, useCallback, useEffect } from "react";
+import { use, useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
+import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -13,7 +15,12 @@ const FRIEND_FOOTER_HINTS = [
   "正解はないよ、感覚で選んでね",
   "深く考えなくて大丈夫",
   "あなたの直感が一番正確",
+  "いい感じ、その調子！",
+  "友達だからこそわかることがある",
+  "意外と本人は気づいてないかも",
+  "あなたの視点が一番大事",
   "もう少しで終わるよ",
+  "ラストスパート！",
 ];
 
 export default function FriendPage({
@@ -30,6 +37,7 @@ export default function FriendPage({
   const [completed, setCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  const perceptionTracked = useRef(false);
 
   useEffect(() => {
     track("friend_landing_viewed", { inviteCode });
@@ -130,6 +138,33 @@ export default function FriendPage({
     }
   }, [currentIndex, isTransitioning]);
 
+  const perception = completed ? perceiveFromFriendAnswers(answers) : null;
+  const perceivedType = perception ? torisetsuTypes[perception.typeId] : null;
+  const confidenceDots = perception
+    ? perception.confidence === "high"
+      ? "●●●"
+      : perception.confidence === "medium"
+        ? "●●○"
+        : "●○○"
+    : null;
+
+  useEffect(() => {
+    if (perception && !perceptionTracked.current) {
+      perceptionTracked.current = true;
+      track("friend_perception_shown", {
+        inviteCode,
+        metadata: {
+          perceivedTypeId: perception.typeId,
+          perceivedConfidence: perception.confidence,
+        },
+      });
+    }
+  }, [perception, inviteCode]);
+
+  const diagnosisHref = perception
+    ? `/diagnosis?source=${inviteCode}&perceived=${perception.typeId}`
+    : `/diagnosis?source=${inviteCode}`;
+
   // --- Intro screen ---
   if (!started) {
     return (
@@ -186,7 +221,7 @@ export default function FriendPage({
           {/* Safety points */}
           <div className="w-full flex flex-wrap justify-center gap-2 mb-8 animate-fade-in-up stagger-3">
             <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
-              ✏️ 5問だけ・1分で完了
+              ✏️ 10問・2分で完了
             </span>
             <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
               🔒 ログイン不要
@@ -207,7 +242,7 @@ export default function FriendPage({
             }}
             className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
           >
-            {who}さんについて5問答える
+            {who}さんについて10問答える
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
             正解はありません。感じたままでOK
@@ -249,6 +284,7 @@ export default function FriendPage({
             </>
           ) : (
             <>
+              {/* Section A: Thank you */}
               <div className="text-5xl mb-4 animate-scale-in">🎉</div>
               <h1 className="text-2xl font-extrabold mb-2 text-center animate-fade-in-up stagger-1">
                 ありがとう！
@@ -258,21 +294,57 @@ export default function FriendPage({
                 <span className="font-bold">{who}さんのトリセツ</span>
                 に追加されました
               </p>
-              <p className="text-xs text-muted/60 mb-10 animate-fade-in stagger-3">
+              <p className="text-xs text-muted/60 mb-8 animate-fade-in stagger-3">
                 回答は匿名で届きます
               </p>
 
-              {/* CTA card */}
+              {/* Section B: Perception result */}
+              {perceivedType && perception && (
+                <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-3">
+                  <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
+                    <p className="text-[10px] font-bold tracking-wider text-muted text-center">
+                      あなたから見た{who}さんは…
+                    </p>
+                  </div>
+                  <div className="p-5 text-center">
+                    <div
+                      className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-3xl mb-3"
+                      style={{ backgroundColor: `${perceivedType.color}15` }}
+                    >
+                      {perceivedType.emoji}
+                    </div>
+                    <p
+                      className="text-lg font-extrabold mb-1"
+                      style={{ color: perceivedType.color }}
+                    >
+                      {perceivedType.name}
+                    </p>
+                    <p className="text-xs text-muted mb-3">
+                      {perceivedType.subtitle}
+                    </p>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="text-[10px] text-muted">確信度</span>
+                      <span
+                        className="text-xs tracking-wider"
+                        style={{ color: perceivedType.color }}
+                      >
+                        {confidenceDots}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Section C: CTA */}
               <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
                 <div className="p-6 text-center">
-                  <p className="text-sm text-muted leading-relaxed mb-1">
-                    あなたも、友達からどう見えているか
+                  <p className="text-[15px] font-bold mb-2">
+                    じゃあ、あなたは何タイプ？
                   </p>
                   <p className="text-sm text-muted leading-relaxed mb-5">
-                    気になりませんか？
-                  </p>
-                  <p className="text-[15px] font-bold mb-2">
-                    自分のトリセツを作ると
+                    {perception
+                      ? `${who}さんのタイプがわかったところで、自分のタイプも気になりませんか？`
+                      : "あなたも、友達からどう見えているか気になりませんか？"}
                   </p>
                   <div className="flex flex-col gap-1.5 mb-5">
                     <p className="text-xs text-muted">
@@ -286,8 +358,19 @@ export default function FriendPage({
                     </p>
                   </div>
                   <Link
-                    href={`/diagnosis?source=${inviteCode}`}
-                    onClick={() => track("friend_to_diagnosis_clicked", { inviteCode })}
+                    href={diagnosisHref}
+                    onClick={() =>
+                      track("friend_to_diagnosis_clicked", {
+                        inviteCode,
+                        metadata: perception
+                          ? {
+                              perceptionShown: true,
+                              perceivedTypeId: perception.typeId,
+                              perceivedConfidence: perception.confidence,
+                            }
+                          : { perceptionShown: false },
+                      })
+                    }
                     className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
                   >
                     自分のトリセツを作る
@@ -328,7 +411,7 @@ export default function FriendPage({
             <span className="text-xs font-bold text-muted">
               {currentIndex + 1} / {totalQuestions}
             </span>
-            {remaining <= 3 && remaining > 0 && (
+            {remaining <= 5 && remaining > 0 && (
               <span className="text-[10px] text-primary font-bold">
                 あと{remaining}問
               </span>
