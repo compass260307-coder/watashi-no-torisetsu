@@ -54,6 +54,16 @@ type Stats = {
   }[];
   generationDistribution: { generation: number; count: number }[];
   unknownGeneration: number;
+  viral: {
+    friendLandingViewed: number;
+    sharingUsersReached: number;
+    avgLandingPerSharer: number;
+    friendToDiagClickedRate: number;
+    childDiagCompleted: number;
+    parentDiagCompleted: number;
+    avgChildPerParent: number;
+    viralCoefficient: number;
+  };
 };
 
 type Preset = "today" | "7d" | "30d" | "all" | "custom";
@@ -361,6 +371,15 @@ export default function AdminPage() {
     rows.push(["友達→自分も作る", String(stats.friendToDiagClicked), ""]);
     rows.push(["友達→自分も作る率", pct(stats.friendToDiagRate), "クリック÷友達回答完了"]);
     rows.push([]);
+    rows.push(["# 拡散指標"]);
+    rows.push(["指標", "値", "計算式"]);
+    rows.push(["友達ページ到達数", String(stats.viral.friendLandingViewed), "ユニークセッション"]);
+    rows.push(["共有者あたり平均到達", stats.viral.avgLandingPerSharer.toFixed(2), "到達数÷ユニーク共有者"]);
+    rows.push(["自分も作る転換率", pct(stats.viral.friendToDiagClickedRate), "クリック÷友達回答完了"]);
+    rows.push(["子診断完了数", String(stats.viral.childDiagCompleted), "source_user_idあり"]);
+    rows.push(["親あたり子診断数", stats.viral.avgChildPerParent.toFixed(2), "子完了÷ユニーク親"]);
+    rows.push(["実測拡散係数", stats.viral.viralCoefficient.toFixed(3), "子診断完了÷全診断完了"]);
+    rows.push([]);
     rows.push(["# ファネル"]);
     rows.push(["ステップ", "件数"]);
     stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
@@ -594,6 +613,49 @@ export default function AdminPage() {
             </div>
           </section>
         )}
+
+        {/* Viral Metrics */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            拡散指標
+            <span className="text-xs font-normal text-gray-400 ml-2">自然拡散の強さを測る</span>
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+            <KpiCard
+              label="友達ページ到達"
+              value={stats.viral.friendLandingViewed}
+              sub="ユニークセッション"
+            />
+            <KpiCard
+              label="平均到達人数"
+              value={stats.viral.avgLandingPerSharer.toFixed(1)}
+              sub="共有者あたり到達数"
+            />
+            <KpiCard
+              label="自分も作る転換率"
+              value={pct(stats.viral.friendToDiagClickedRate)}
+              sub="友達回答完了→クリック"
+            />
+            <KpiCard
+              label="子診断完了"
+              value={stats.viral.childDiagCompleted}
+              sub={`親${stats.viral.parentDiagCompleted}人から発生`}
+            />
+            <KpiCard
+              label="親あたり子診断数"
+              value={stats.viral.avgChildPerParent.toFixed(1)}
+              sub="子完了÷ユニーク親"
+            />
+            <KpiCard
+              label="実測拡散係数"
+              value={stats.viral.viralCoefficient.toFixed(3)}
+              sub="子診断完了÷全診断完了"
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">
+            拡散係数 {'>'} 1.0 で自然増殖 / 0.5以上でMVPとして良好
+          </p>
+        </section>
 
         {/* Generation Distribution */}
         {stats.generationDistribution.length > 0 && (

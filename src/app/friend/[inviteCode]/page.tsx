@@ -32,6 +32,7 @@ export default function FriendPage({
   const [submitError, setSubmitError] = useState(false);
 
   useEffect(() => {
+    track("friend_landing_viewed", { inviteCode });
     fetch(`/api/friend-info?code=${inviteCode}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {

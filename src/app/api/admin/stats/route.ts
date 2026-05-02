@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     friendToDiagRes,
     diagQuestionRes,
     friendQuestionRes,
+    friendLandingRes,
     usersRes,
     friendAnswersRes,
   ] = await Promise.all([
@@ -110,9 +111,16 @@ export async function GET(request: NextRequest) {
         .select("metadata")
         .eq("event_name", "friend_question_answered"),
     ),
+    // friend_landing_viewed — for viral reach
+    applyRange(
+      supabase
+        .from("events")
+        .select("session_id, invite_code")
+        .eq("event_name", "friend_landing_viewed"),
+    ),
     // users — period filter applied
     applyRange(
-      supabase.from("users").select("id, type_id, campaign, generation, invite_code, created_at"),
+      supabase.from("users").select("id, type_id, campaign, generation, invite_code, source_user_id, created_at"),
     ),
     // friend_answers — period filter applied
     applyRange(
@@ -243,6 +251,37 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // --- Viral metrics ---
+  const friendLandingSessions = new Set(
+    friendLandingRes.data?.map((e: { session_id: string }) => e.session_id).filter(Boolean),
+  );
+  const friendLandingViewed = friendLandingSessions.size;
+
+  const landingInviteCodes = new Set(
+    friendLandingRes.data
+      ?.map((e: { invite_code: string }) => e.invite_code)
+      .filter(Boolean),
+  );
+  const sharingUsersReached = landingInviteCodes.size;
+  const avgLandingPerSharer = sharingUsersReached > 0
+    ? friendLandingViewed / sharingUsersReached
+    : 0;
+
+  const childUsers = (usersRes.data ?? []).filter(
+    (r: { source_user_id: string | null }) => r.source_user_id != null,
+  );
+  const childDiagCompleted = childUsers.length;
+  const parentIds = new Set(
+    childUsers.map((r: { source_user_id: string }) => r.source_user_id),
+  );
+  const parentDiagCompleted = parentIds.size;
+  const avgChildPerParent = parentDiagCompleted > 0
+    ? childDiagCompleted / parentDiagCompleted
+    : 0;
+  const viralCoefficient = diagnosisCompleted > 0
+    ? childDiagCompleted / diagnosisCompleted
+    : 0;
+
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
   return NextResponse.json({
@@ -262,6 +301,7 @@ export async function GET(request: NextRequest) {
       { label: "診断開始", count: diagnosisStarted },
       { label: "診断完了", count: diagnosisCompleted },
       { label: "友達共有", count: uniqueShare },
+      { label: "友達ページ到達", count: friendLandingViewed },
       { label: "友達回答開始", count: friendAnswerStarted },
       { label: "友達回答完了", count: friendAnswerCompleted },
       { label: "3人達成", count: threeAchieved },
@@ -277,5 +317,15 @@ export async function GET(request: NextRequest) {
     campaignStats,
     generationDistribution,
     unknownGeneration: unknownGen,
+    viral: {
+      friendLandingViewed,
+      sharingUsersReached,
+      avgLandingPerSharer,
+      friendToDiagClickedRate: rate(friendToDiagClicked, friendAnswerCompleted),
+      childDiagCompleted,
+      parentDiagCompleted,
+      avgChildPerParent,
+      viralCoefficient,
+    },
   });
 }
