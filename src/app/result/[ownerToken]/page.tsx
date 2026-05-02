@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { BigFiveDimension, DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { track } from "@/lib/track";
@@ -353,12 +354,30 @@ export default function OwnerResultPage({
             <div className="text-[10px] font-bold tracking-wider text-muted mb-4">
               YOUR TYPE
             </div>
-            <div
-              className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
-              style={{ backgroundColor: typeData.color + "15" }}
-            >
-              {typeData.emoji}
-            </div>
+            {typeData.imageUrl ? (
+              <div className="relative mx-auto mb-2 w-full max-w-[320px] aspect-square">
+                <Image
+                  src={typeData.imageUrl}
+                  alt={`${typeData.name}のキャラクター`}
+                  width={320}
+                  height={320}
+                  className="relative z-10 w-full h-full object-contain"
+                  priority
+                />
+                <div
+                  aria-hidden="true"
+                  className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
+                  style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
+                />
+              </div>
+            ) : (
+              <div
+                className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+                style={{ backgroundColor: typeData.color + "15" }}
+              >
+                {typeData.emoji}
+              </div>
+            )}
             <h1
               className="text-2xl font-extrabold mb-1 animate-fade-in-up stagger-1"
               style={{ color: typeData.color }}

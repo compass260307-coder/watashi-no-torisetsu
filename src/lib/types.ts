@@ -36,6 +36,7 @@ export interface TorisetsuType {
   id: TorisetsuTypeId;
   name: string;
   emoji: string;
+  imageUrl?: string;
   color: string;
   subtitle: string;
   basicSpec: string;
