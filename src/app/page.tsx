@@ -21,10 +21,10 @@ export default function Home() {
           <Image
             src="/types/penguin-base.png"
             alt="ワタシのトリセツのマスコット"
-            width={160}
-            height={160}
+            width={224}
+            height={224}
             priority
-            className="w-36 h-36 sm:w-40 sm:h-40 object-contain mb-4"
+            className="w-48 h-48 sm:w-56 sm:h-56 object-contain mb-1"
           />
 
           <h1 className="text-3xl font-extrabold leading-tight mb-2">
