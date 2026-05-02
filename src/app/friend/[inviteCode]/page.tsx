@@ -320,16 +320,19 @@ export default function FriendPage({
                   </div>
                   <div className="p-5 text-center">
                     {perceivedType.imageUrl ? (
-                      <div
-                        className="inline-flex items-center justify-center w-24 h-24 rounded-2xl mb-3"
-                        style={{ backgroundColor: `${perceivedType.color}15` }}
-                      >
+                      <div className="relative mx-auto mb-2 w-full max-w-[320px] aspect-square">
                         <Image
                           src={perceivedType.imageUrl}
                           alt={`${perceivedType.name}のキャラクター`}
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-contain"
+                          width={320}
+                          height={320}
+                          className="relative z-10 w-full h-full object-contain"
+                          priority
+                        />
+                        <div
+                          aria-hidden="true"
+                          className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
+                          style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
                         />
                       </div>
                     ) : (
