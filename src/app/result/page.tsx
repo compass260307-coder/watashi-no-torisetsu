@@ -90,7 +90,7 @@ export default function ResultFallbackPage() {
 
         <Link
           href="/diagnosis"
-          className="rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25"
+          className="rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25"
         >
           診断をやり直す
         </Link>

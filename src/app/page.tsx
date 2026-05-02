@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 const types = [
-  { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF6B6B" },
-  { emoji: "🏠", name: "みんなの実家", color: "#4ECDC4" },
-  { emoji: "🌪️", name: "暴走カリスマ", color: "#FFD93D" },
+  { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF4081" },
+  { emoji: "🏠", name: "みんなの実家", color: "#2EC4B6" },
+  { emoji: "🌪️", name: "暴走カリスマ", color: "#FFB800" },
   { emoji: "🛡️", name: "鉄のメンタル番長", color: "#6C5CE7" },
-  { emoji: "🎨", name: "繊細クリエイター", color: "#A8E6CF" },
-  { emoji: "🌿", name: "癒しの守護神", color: "#88D8B0" },
-  { emoji: "🔍", name: "沼ハマり探究者", color: "#DDA0DD" },
-  { emoji: "🧊", name: "冷静マイペース", color: "#74B9FF" },
+  { emoji: "🎨", name: "繊細クリエイター", color: "#00D4AA" },
+  { emoji: "🌿", name: "癒しの守護神", color: "#00B894" },
+  { emoji: "🔍", name: "沼ハマり探究者", color: "#C44569" },
+  { emoji: "🧊", name: "冷静マイペース", color: "#1E90FF" },
 ];
 
 export default function Home() {
@@ -35,7 +35,7 @@ export default function Home() {
 
           <Link
             href="/diagnosis"
-            className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
+            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
           >
             無料で診断する（3分）
           </Link>
@@ -117,7 +117,7 @@ export default function Home() {
         <section className="w-full max-w-sm text-center mb-8 animate-fade-in-up stagger-4">
           <Link
             href="/diagnosis"
-            className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
+            className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
           >
             さっそく始める
           </Link>

@@ -5,7 +5,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "festival-sun",
     name: "お祭りムードメーカー",
     emoji: "🎪",
-    color: "#FF6B6B",
+    color: "#FF4081",
     subtitle: "どこにいても場を明るくする太陽系",
     basicSpec: "エネルギー値：常にMAX ／ 社交性：∞ ／ 好奇心：測定不能",
     happyWords: "「おもしろい！」「一緒にやろう！」「さすが！」",
@@ -23,7 +23,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "everyones-home",
     name: "みんなの実家",
     emoji: "🏠",
-    color: "#4ECDC4",
+    color: "#2EC4B6",
     subtitle: "安心感と安定感の塊。いるだけでホッとする",
     basicSpec: "安心感：MAX ／ 包容力：∞ ／ 安定感：揺るがない",
     happyWords:
@@ -42,7 +42,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "wild-charisma",
     name: "暴走カリスマ",
     emoji: "🌪️",
-    color: "#FFD93D",
+    color: "#FFB800",
     subtitle: "自分の道を突き進む。周りは気づいたら巻き込まれてる",
     basicSpec:
       "カリスマ性：測定不能 ／ 行動力：暴走気味 ／ 独自性：唯一無二",
@@ -84,7 +84,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "delicate-creator",
     name: "繊細クリエイター",
     emoji: "🎨",
-    color: "#A8E6CF",
+    color: "#00D4AA",
     subtitle: "感性が鋭すぎて、見えてる世界が違う",
     basicSpec:
       "感受性：超敏感 ／ 創造力：無限大 ／ 観察力：顕微鏡レベル",
@@ -105,7 +105,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "healing-guardian",
     name: "癒しの守護神",
     emoji: "🌿",
-    color: "#88D8B0",
+    color: "#00B894",
     subtitle: "静かに支える。気づいたらみんなの心の拠り所",
     basicSpec: "癒し力：最強 ／ 忍耐力：無限 ／ 信頼度：不動",
     happyWords:
@@ -125,7 +125,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "deep-dive-explorer",
     name: "沼ハマり探究者",
     emoji: "🔍",
-    color: "#DDA0DD",
+    color: "#C44569",
     subtitle: "好きなことへの集中力が異次元。沼の深さは底なし",
     basicSpec:
       "集中力：異次元 ／ 探究心：底なし ／ こだわり：職人レベル",
@@ -146,7 +146,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     id: "cool-maverick",
     name: "冷静マイペース",
     emoji: "🧊",
-    color: "#74B9FF",
+    color: "#1E90FF",
     subtitle: "周りに流されない独自路線。クールに見えて実は…",
     basicSpec:
       "冷静さ：氷点下 ／ 自立度：MAX ／ 分析力：コンピュータ級",

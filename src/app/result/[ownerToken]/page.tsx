@@ -281,7 +281,7 @@ export default function OwnerResultPage({
         <p className="text-muted text-sm mb-6">診断結果が見つかりません</p>
         <Link
           href="/diagnosis"
-          className="rounded-full bg-primary px-8 py-3 text-sm font-bold text-white"
+          className="rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white"
         >
           診断をやり直す
         </Link>

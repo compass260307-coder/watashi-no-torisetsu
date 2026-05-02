@@ -1,14 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fffbf5;
-  --foreground: #333333;
-  --primary: #ff6b6b;
-  --primary-hover: #ff5252;
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --primary: #fe3c72;
+  --primary-hover: #e8265c;
   --card-bg: #ffffff;
-  --card-border: #e8e0d8;
-  --muted: #9a9084;
-  --label-bg: #fff0e6;
+  --card-border: #f0e5e5;
+  --muted: #9a8a8a;
+  --label-bg: #fff0f3;
+  --primary-gradient: linear-gradient(135deg, #fd267a 0%, #ff7854 100%);
+  --primary-gradient-hover: linear-gradient(135deg, #e8265c 0%, #ee6648 100%);
 }
 
 @theme inline {
@@ -28,6 +30,22 @@ body {
   font-family: var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN",
     "Hiragino Sans", Meiryo, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.bg-primary-gradient {
+  background-image: var(--primary-gradient);
+}
+
+.bg-primary-gradient:hover {
+  background-image: var(--primary-gradient-hover);
+}
+
+.text-primary-gradient {
+  background-image: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 @keyframes fade-in-up {

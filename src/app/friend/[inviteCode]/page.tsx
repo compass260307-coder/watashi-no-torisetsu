@@ -251,7 +251,7 @@ export default function FriendPage({
               setStarted(true);
               track("friend_answer_started", { inviteCode });
             }}
-            className="w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98] animate-fade-in-up stagger-4"
+            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4"
           >
             {who}さんについて10問答える
           </button>
@@ -403,7 +403,7 @@ export default function FriendPage({
                             : { perceptionShown: false },
                         })
                       }
-                      className="inline-block w-full max-w-xs rounded-full bg-primary px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover active:scale-[0.98]"
+                      className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
                     >
                       自分のトリセツを作る
                     </Link>
