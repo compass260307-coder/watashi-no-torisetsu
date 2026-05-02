@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const types = [
   { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF4081" },
@@ -17,7 +18,14 @@ export default function Home() {
       <main className="flex flex-col flex-1 items-center px-5 py-12">
         {/* Hero */}
         <section className="flex flex-col items-center text-center max-w-sm w-full mt-4 mb-10 animate-fade-in-up">
-          <div className="text-5xl mb-4">📋</div>
+          <Image
+            src="/types/penguin-base.png"
+            alt="ワタシのトリセツのマスコット"
+            width={160}
+            height={160}
+            priority
+            className="w-36 h-36 sm:w-40 sm:h-40 object-contain mb-4"
+          />
 
           <h1 className="text-3xl font-extrabold leading-tight mb-2">
             ワタシのトリセツ
