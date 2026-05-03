@@ -77,47 +77,76 @@ export default function Home() {
         </section>
 
         {/* Steps */}
-        <section className="w-full max-w-sm mb-10 animate-fade-in-up stagger-3">
-          <div className="rounded-2xl border border-card-border bg-card-bg p-6">
-            <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-5 uppercase">
-              かんたん3ステップ
-            </h2>
+        <section className="w-full max-w-4xl mb-10 animate-fade-in-up stagger-3">
+          <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-5 uppercase">
+            かんたん3ステップ
+          </h2>
 
-            <ol className="flex flex-col gap-4">
-              <li className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0">
-                  📝
-                </div>
-                <div>
-                  <span className="text-sm font-bold">15問に答える</span>
-                  <span className="text-xs text-muted ml-2">直感でOK・3分</span>
-                </div>
-              </li>
-              <li className="flex items-center gap-4 pl-5">
-                <div className="w-px h-4 bg-card-border shrink-0" />
-              </li>
-              <li className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0">
-                  📋
-                </div>
-                <div>
-                  <span className="text-sm font-bold">仮トリセツが届く</span>
-                  <span className="text-xs text-muted ml-2">自分だけの取説</span>
-                </div>
-              </li>
-              <li className="flex items-center gap-4 pl-5">
-                <div className="w-px h-4 bg-card-border shrink-0" />
-              </li>
-              <li className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0">
-                  💬
-                </div>
-                <div>
-                  <span className="text-sm font-bold">友達に聞いてみる</span>
-                  <span className="text-xs text-muted ml-2">3人で完成</span>
-                </div>
-              </li>
-            </ol>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
+              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
+                STEP 1
+              </span>
+              <div className="w-48 h-48 mb-4">
+                <Image
+                  src="/mascot/step1-receive.png"
+                  alt=""
+                  width={192}
+                  height={192}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <h3 className="text-base font-bold text-center leading-snug mb-2">
+                15問に答えて
+                <br />
+                仮トリセツが届く
+              </h3>
+              <p className="text-xs text-muted text-center">
+                直感でOK・3分でできる
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
+              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
+                STEP 2
+              </span>
+              <div className="w-48 h-48 mb-4">
+                <Image
+                  src="/mascot/step2-ask-friend.png"
+                  alt=""
+                  width={192}
+                  height={192}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <h3 className="text-base font-bold text-center leading-snug mb-2">
+                友達に診断してもらう
+              </h3>
+              <p className="text-xs text-muted text-center">
+                友達は10問・2分で完了
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
+              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
+                STEP 3
+              </span>
+              <div className="w-48 h-48 mb-4">
+                <Image
+                  src="/mascot/step3-complete.png"
+                  alt=""
+                  width={192}
+                  height={192}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <h3 className="text-base font-bold text-center leading-snug mb-2">
+                トリセツが完成
+              </h3>
+              <p className="text-xs text-muted text-center">
+                友達3人で深掘りレポート解放
+              </p>
+            </div>
           </div>
         </section>
 
