@@ -183,67 +183,30 @@ export default function FriendPage({
       <div className="flex flex-col flex-1">
         <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
           {/* Header */}
-          <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
-            <div className="text-4xl mb-2">📋</div>
-            <p className="text-[10px] font-bold tracking-wider text-muted mb-1">
+          <div className="flex flex-col items-center text-center mb-8 animate-fade-in-up">
+            <h1 className="text-3xl font-extrabold leading-tight mb-2">
               ワタシのトリセツ
+            </h1>
+            <p className="text-base font-bold text-foreground">
+              {who}さんから回答のお願いです
             </p>
           </div>
 
-          {/* Request card */}
-          <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-2">
-            <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
-              <p className="text-[10px] font-bold tracking-wider text-muted text-center">
-                {who}さんからのお願い
-              </p>
-            </div>
-            <div className="p-5">
-              <p className="text-[15px] font-bold text-center leading-relaxed mb-2">
-                あなたから見た{who}さんの印象を
-                <br />
-                教えてください
-              </p>
-              <p className="text-xs text-muted text-center leading-relaxed mb-4">
-                あなたの回答で、{who}さんのトリセツに
-                <br />
-                「友達から見た印象」が追加されます
-              </p>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg bg-background p-2.5 text-center">
-                  <span className="text-sm">👀</span>
-                  <p className="text-[11px] mt-1">第一印象</p>
-                </div>
-                <div className="rounded-lg bg-background p-2.5 text-center">
-                  <span className="text-sm">✨</span>
-                  <p className="text-[11px] mt-1">隠れた魅力</p>
-                </div>
-                <div className="rounded-lg bg-background p-2.5 text-center">
-                  <span className="text-sm">📖</span>
-                  <p className="text-[11px] mt-1">仲良くなるコツ</p>
-                </div>
-                <div className="rounded-lg bg-background p-2.5 text-center">
-                  <span className="text-sm">💕</span>
-                  <p className="text-[11px] mt-1">愛されるクセ</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Safety points */}
-          <div className="w-full flex flex-wrap justify-center gap-2 mb-8 animate-fade-in-up stagger-3">
-            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
-              ✏️ 10問・2分で完了
-            </span>
-            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
-              🔒 ログイン不要
-            </span>
-            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
-              🤫 匿名で届く
-            </span>
-            <span className="rounded-full bg-card-bg border border-card-border px-3 py-1.5 text-[11px] text-muted">
-              💡 直感でOK
-            </span>
+          {/* Hero block: image → emphasized copy */}
+          <div className="w-full flex flex-col items-center text-center animate-fade-in-up stagger-2">
+            <Image
+              src="/mascot/step3-complete.png"
+              alt=""
+              width={288}
+              height={288}
+              priority
+              className="w-64 sm:w-72 h-auto object-contain mb-6"
+            />
+            <p className="text-lg font-bold leading-relaxed mb-10">
+              <span className="text-primary-gradient">あなただけが知る、</span>
+              <br />
+              {who}さんの素敵な部分を教えてください
+            </p>
           </div>
 
           {/* CTA */}
@@ -364,6 +327,79 @@ export default function FriendPage({
                   </div>
                 </div>
               )}
+
+              {/* 3-step: invite to make own torisetsu */}
+              <div className="w-full mb-6 animate-fade-in-up stagger-4">
+                <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-4 uppercase">
+                  じゃあ、あなたも作ってみよう
+                </h2>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
+                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
+                      STEP 1
+                    </span>
+                    <div className="w-40 h-40 mb-3">
+                      <Image
+                        src="/mascot/step1-receive.png"
+                        alt=""
+                        width={192}
+                        height={192}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <h3 className="text-base font-bold text-center leading-snug mb-1">
+                      15問に答えて
+                      <br />
+                      仮トリセツが届く
+                    </h3>
+                    <p className="text-xs text-muted text-center">
+                      直感でOK・3分でできる
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
+                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
+                      STEP 2
+                    </span>
+                    <div className="w-40 h-40 mb-3">
+                      <Image
+                        src="/mascot/step2-ask-friend.png"
+                        alt=""
+                        width={192}
+                        height={192}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <h3 className="text-base font-bold text-center leading-snug mb-1">
+                      友達に診断してもらう
+                    </h3>
+                    <p className="text-xs text-muted text-center">
+                      友達は10問・2分で完了
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
+                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
+                      STEP 3
+                    </span>
+                    <div className="w-40 h-40 mb-3">
+                      <Image
+                        src="/mascot/step3-complete.png"
+                        alt=""
+                        width={192}
+                        height={192}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <h3 className="text-base font-bold text-center leading-snug mb-1">
+                      トリセツが完成
+                    </h3>
+                    <p className="text-xs text-muted text-center">
+                      友達3人で深掘りレポート解放
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Section C: CTA */}
               <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
