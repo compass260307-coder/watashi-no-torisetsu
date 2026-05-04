@@ -16,7 +16,7 @@ export function AnalyzingLoader() {
   useEffect(() => {
     const interval = setInterval(() => {
       setMessageIndex((prev) => Math.min(prev + 1, MESSAGES.length - 1));
-    }, 1500);
+    }, 1200);
     return () => clearInterval(interval);
   }, []);
 

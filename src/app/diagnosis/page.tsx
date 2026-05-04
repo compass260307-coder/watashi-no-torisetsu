@@ -6,6 +6,9 @@ import { questions, answerOptions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
+import { AnalyzingLoader } from "@/components/AnalyzingLoader";
+
+const MIN_LOADING_MS = 5000;
 
 const MILESTONES = [5, 10];
 
@@ -34,6 +37,7 @@ function DiagnosisContent() {
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [milestone, setMilestone] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const tracked = useRef(false);
   useEffect(() => {
@@ -83,8 +87,18 @@ function DiagnosisContent() {
         localStorage.setItem("torisetsu_result", JSON.stringify(result));
         track("diagnosis_completed", { metadata: { typeId: result.typeId } });
 
+        setSubmitting(true);
+        const startedAt = Date.now();
+        const waitMin = async () => {
+          const remaining = MIN_LOADING_MS - (Date.now() - startedAt);
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+        };
+
         if (isPreviewMode()) {
           localStorage.setItem("torisetsu_invite_code", "preview");
+          await waitMin();
           router.push("/result");
           return;
         }
@@ -106,6 +120,7 @@ function DiagnosisContent() {
           }
           if (data.ownerToken) {
             localStorage.setItem("torisetsu_owner_token", data.ownerToken);
+            await waitMin();
             router.push(`/result/${data.ownerToken}`);
             return;
           }
@@ -113,6 +128,7 @@ function DiagnosisContent() {
           // Supabase失敗時もlocalStorageで動く
         }
 
+        await waitMin();
         router.push("/result");
       }
     },
@@ -137,6 +153,10 @@ function DiagnosisContent() {
       }, 200);
     }
   }, [currentIndex, isTransitioning]);
+
+  if (submitting) {
+    return <AnalyzingLoader />;
+  }
 
   return (
     <div className="flex flex-col flex-1">
