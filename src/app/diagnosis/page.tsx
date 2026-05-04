@@ -6,9 +6,9 @@ import { questions, answerOptions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
-import { AnalyzingLoader } from "@/components/AnalyzingLoader";
+import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 
-const MIN_LOADING_MS = 5000;
+const MIN_LOADING_MS = 20000;
 
 const MILESTONES = [5, 10];
 
@@ -125,7 +125,9 @@ function DiagnosisContent() {
             return;
           }
         } catch {
-          // Supabase失敗時もlocalStorageで動く
+          // Supabase失敗時はlocalStorageでフォールバック、最低待機もスキップ
+          router.push("/result");
+          return;
         }
 
         await waitMin();
@@ -155,7 +157,7 @@ function DiagnosisContent() {
   }, [currentIndex, isTransitioning]);
 
   if (submitting) {
-    return <AnalyzingLoader />;
+    return <DiagnosisAnalyzingLoader />;
   }
 
   return (

@@ -89,6 +89,15 @@ body {
   animation: bounce-slow 1.4s ease-in-out infinite;
 }
 
+@keyframes progress-20s {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-progress-20s {
+  animation: progress-20s 20s linear forwards;
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.5s ease-out both;
 }
