@@ -187,6 +187,7 @@ export default function OwnerResultPage({
     const stored = localStorage.getItem("torisetsu_result");
     if (stored) {
       setResult(JSON.parse(stored));
+      setLoading(false);
     }
 
     fetch(`/api/result?token=${ownerToken}`)
