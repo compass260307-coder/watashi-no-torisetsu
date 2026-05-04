@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 
 export default function ResultFallbackPage() {
   const router = useRouter();
@@ -26,13 +27,7 @@ export default function ResultFallbackPage() {
   }, [router]);
 
   if (checking) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-muted text-sm animate-fade-in">
-          トリセツを読み込み中...
-        </div>
-      </div>
-    );
+    return <AnalyzingLoader />;
   }
 
   if (!result) {

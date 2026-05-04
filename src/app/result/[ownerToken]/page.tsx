@@ -11,6 +11,7 @@ import {
   generateGapSummary,
   generateFriendTrends,
 } from "@/lib/gap-analysis";
+import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
@@ -267,13 +268,7 @@ export default function OwnerResultPage({
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center">
-        <div className="text-muted text-sm animate-fade-in">
-          トリセツを読み込み中...
-        </div>
-      </div>
-    );
+    return <AnalyzingLoader />;
   }
 
   if (notFound || !result) {
