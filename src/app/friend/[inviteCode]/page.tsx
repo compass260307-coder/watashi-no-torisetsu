@@ -384,18 +384,8 @@ export default function FriendPage({
                 </div>
               </div>
 
-              {/* Section: Emotional CTA */}
+              {/* CTA */}
               <div className="w-full flex flex-col items-center mb-6 animate-fade-in-up stagger-4">
-                <Image
-                  src="/mascot/step3-complete.png"
-                  alt=""
-                  width={256}
-                  height={256}
-                  className="w-56 sm:w-64 h-auto object-contain mb-3"
-                />
-                <p className="text-xl font-bold text-center mb-6">
-                  自分のこと、どこまで知ってる？
-                </p>
                 <Link
                   href={diagnosisHref}
                   onClick={() =>
