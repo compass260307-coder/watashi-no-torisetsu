@@ -16,7 +16,7 @@ import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
 
-const LINE_REGISTER_URL = "https://lin.ee/placeholder";
+const LINE_REGISTER_URL = "https://lin.ee/VbAOXrV";
 
 const FIRST_FRIEND_COMMENTS = [
   "なんか当たっててちょっと怖いんだけどw",
