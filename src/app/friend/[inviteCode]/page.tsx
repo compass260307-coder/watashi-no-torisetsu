@@ -249,10 +249,14 @@ export default function FriendPage({
           ) : (
             <>
               {/* Section A: Thank you */}
-              <h1 className="text-2xl font-bold leading-snug mb-2 text-center animate-fade-in-up stagger-1">
-                ありがとう！{who}さんのトリセツに追加されました
+              <h1 className="text-3xl font-extrabold text-center mb-2 animate-fade-in-up stagger-1">
+                ありがとう！
               </h1>
-              <p className="text-sm text-muted text-center mb-8 animate-fade-in stagger-2">
+              <p className="text-lg font-bold leading-snug text-center mb-2 animate-fade-in-up stagger-2">
+                <span className="inline-block">{who}さんのトリセツに</span>
+                <span className="inline-block">追加されました</span>
+              </p>
+              <p className="text-sm text-muted text-center mb-8 animate-fade-in stagger-3">
                 回答は匿名で届きます
               </p>
 
