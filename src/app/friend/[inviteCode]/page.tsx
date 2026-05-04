@@ -7,20 +7,9 @@ import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
+import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
-
-const TYPE_ORDER: TorisetsuTypeId[] = [
-  "festival-sun",
-  "everyones-home",
-  "wild-charisma",
-  "iron-mental",
-  "delicate-creator",
-  "healing-guardian",
-  "deep-dive-explorer",
-  "cool-maverick",
-];
 
 const FRIEND_FOOTER_HINTS = [
   "パッと思い浮かんだ印象でOK",
@@ -260,16 +249,10 @@ export default function FriendPage({
           ) : (
             <>
               {/* Section A: Thank you */}
-              <div className="text-5xl mb-4 animate-scale-in">🎉</div>
-              <h1 className="text-2xl font-extrabold mb-2 text-center animate-fade-in-up stagger-1">
-                ありがとう！
+              <h1 className="text-2xl font-bold leading-snug mb-2 text-center animate-fade-in-up stagger-1">
+                ありがとう！{who}さんのトリセツに追加されました
               </h1>
-              <p className="text-sm text-center leading-relaxed mb-1 animate-fade-in-up stagger-2">
-                あなたの回答が、
-                <span className="font-bold">{who}さんのトリセツ</span>
-                に追加されました
-              </p>
-              <p className="text-xs text-muted/60 mb-8 animate-fade-in stagger-3">
+              <p className="text-sm text-muted text-center mb-8 animate-fade-in stagger-2">
                 回答は匿名で届きます
               </p>
 
@@ -401,72 +384,39 @@ export default function FriendPage({
                 </div>
               </div>
 
-              {/* Section C: CTA */}
-              <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-4">
-                <div className="p-6">
-                  <p className="text-[15px] font-bold mb-5 text-center">
-                    じゃあ、あなたは何タイプ？
-                  </p>
-
-                  {/* Manual-style type list */}
-                  <div className="border-t border-b border-card-border py-2 mb-2 flex items-baseline justify-between">
-                    <span className="font-mono text-[11px] font-bold tracking-[0.2em] text-muted">
-                      TYPE LIST
-                    </span>
-                    <span className="text-[10px] text-muted">全8タイプ</span>
-                  </div>
-
-                  <ul className="mb-2">
-                    {TYPE_ORDER.map((typeId, i) => {
-                      const t = torisetsuTypes[typeId];
-                      const num = String(i + 1).padStart(2, "0");
-                      return (
-                        <li
-                          key={typeId}
-                          className="flex items-center gap-3 py-2 border-b border-card-border/40 last:border-b-0"
-                        >
-                          <span className="font-mono text-[11px] text-muted tracking-wider">
-                            TYPE.{num}
-                          </span>
-                          <span className="text-base leading-none">
-                            {t.emoji}
-                          </span>
-                          <span className="text-sm">{t.name}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  <div className="border-t border-card-border pt-3 mb-5">
-                    <p className="text-xs text-muted text-center">
-                      ※ あなたのタイプは15問で分かります
-                    </p>
-                  </div>
-
-                  <div className="text-center">
-                    <Link
-                      href={diagnosisHref}
-                      onClick={() =>
-                        track("friend_to_diagnosis_clicked", {
-                          inviteCode,
-                          metadata: perception
-                            ? {
-                                perceptionShown: true,
-                                perceivedTypeId: perception.typeId,
-                                perceivedConfidence: perception.confidence,
-                              }
-                            : { perceptionShown: false },
-                        })
-                      }
-                      className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
-                    >
-                      自分のトリセツを作る
-                    </Link>
-                    <p className="text-[11px] text-muted mt-3">
-                      15問・3分・登録不要
-                    </p>
-                  </div>
-                </div>
+              {/* Section: Emotional CTA */}
+              <div className="w-full flex flex-col items-center mb-6 animate-fade-in-up stagger-4">
+                <Image
+                  src="/mascot/step3-complete.png"
+                  alt=""
+                  width={256}
+                  height={256}
+                  className="w-56 sm:w-64 h-auto object-contain mb-3"
+                />
+                <p className="text-xl font-bold text-center mb-6">
+                  自分のこと、どこまで知ってる？
+                </p>
+                <Link
+                  href={diagnosisHref}
+                  onClick={() =>
+                    track("friend_to_diagnosis_clicked", {
+                      inviteCode,
+                      metadata: perception
+                        ? {
+                            perceptionShown: true,
+                            perceivedTypeId: perception.typeId,
+                            perceivedConfidence: perception.confidence,
+                          }
+                        : { perceptionShown: false },
+                    })
+                  }
+                  className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] text-center"
+                >
+                  自分のトリセツを作る
+                </Link>
+                <p className="text-[11px] text-muted mt-3">
+                  15問・3分・登録不要
+                </p>
               </div>
 
               <Link
