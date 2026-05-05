@@ -250,6 +250,10 @@ export default function AdminPage() {
   const [customFrom, setCustomFrom] = useState(() => toLocalDate(new Date()));
   const [customTo, setCustomTo] = useState(() => toLocalDate(new Date()));
 
+  const [testOwnerToken, setTestOwnerToken] = useState("");
+  const [testStatus, setTestStatus] = useState<string | null>(null);
+  const [testSending, setTestSending] = useState(false);
+
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
     if (stored) setAdminKey(stored);
@@ -307,6 +311,40 @@ export default function AdminPage() {
       setAdminKey(inputKey.trim());
     }
   };
+
+  const sendTestNotify = useCallback(
+    async (type: "welcome" | "friend_answered", friendCount?: number) => {
+      if (!adminKey) return;
+      const token = testOwnerToken.trim();
+      if (!token) {
+        setTestStatus("ownerToken を入力してください");
+        return;
+      }
+      setTestSending(true);
+      setTestStatus(null);
+      try {
+        const res = await fetch("/api/admin/test-line-notify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey,
+          },
+          body: JSON.stringify({ ownerToken: token, type, friendCount }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setTestStatus(`✅ 送信完了: ${data.sent}`);
+        } else {
+          setTestStatus(`❌ 失敗: ${data.error ?? res.statusText}`);
+        }
+      } catch (err) {
+        setTestStatus(`❌ 通信エラー: ${(err as Error).message}`);
+      } finally {
+        setTestSending(false);
+      }
+    },
+    [adminKey, testOwnerToken],
+  );
 
   if (!adminKey) {
     return (
@@ -817,6 +855,53 @@ export default function AdminPage() {
               reach={stats.friendQuestionReach}
               totalQuestions={10}
             />
+          </div>
+        </section>
+
+        {/* LINE通知テスト */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">LINE通知テスト</h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+            <input
+              type="text"
+              value={testOwnerToken}
+              onChange={(e) => setTestOwnerToken(e.target.value)}
+              placeholder="owner_token を入力（line_users に紐付け済みのもの）"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono"
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <button
+                disabled={testSending}
+                onClick={() => sendTestNotify("welcome")}
+                className="rounded bg-[#06C755] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                ウェルカム送信
+              </button>
+              <button
+                disabled={testSending}
+                onClick={() => sendTestNotify("friend_answered", 1)}
+                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                1人目通知
+              </button>
+              <button
+                disabled={testSending}
+                onClick={() => sendTestNotify("friend_answered", 2)}
+                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                2人目通知
+              </button>
+              <button
+                disabled={testSending}
+                onClick={() => sendTestNotify("friend_answered", 3)}
+                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                3人目通知
+              </button>
+            </div>
+            {testStatus && (
+              <p className="text-xs text-gray-700">{testStatus}</p>
+            )}
           </div>
         </section>
 
