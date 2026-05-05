@@ -21,13 +21,13 @@ export const metadata: Metadata = {
     description: "15問の診断で、あなたのトリセツを作ろう。",
     type: "website",
     siteName: "ワタシのトリセツ",
-    images: [{ url: "/ogp-v2.png", width: 1200, height: 630 }],
+    images: [{ url: "/ogp-v3.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "ワタシのトリセツ",
     description: "15問の診断で、あなたのトリセツを作ろう。",
-    images: ["/ogp-v2.png"],
+    images: ["/ogp-v3.png"],
   },
 };
 
