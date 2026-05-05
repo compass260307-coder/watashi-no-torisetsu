@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { notifyFriendAnswered } from "@/lib/line-notify";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
 
   const { data: user, error: userError } = await supabase
     .from("users")
-    .select("id")
+    .select("id, owner_token")
     .eq("invite_code", inviteCode)
     .single();
 
@@ -25,6 +26,18 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (user.owner_token) {
+    const { count } = await supabase
+      .from("friend_answers")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    // fire-and-forget: notification failures must not break the response
+    notifyFriendAnswered(user.owner_token, count ?? 0).catch((err) =>
+      console.error("notifyFriendAnswered error:", err),
+    );
   }
 
   return NextResponse.json({ success: true });

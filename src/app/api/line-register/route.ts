@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { sendWelcomeMessage } from "@/lib/line-notify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -25,6 +26,11 @@ export async function POST(request: NextRequest) {
       console.error("line_users upsert error:", error);
       return NextResponse.json({ error: "DB error" }, { status: 500 });
     }
+
+    // fire-and-forget: welcome message must not block the response
+    sendWelcomeMessage(ownerToken, lineUserId).catch((err) =>
+      console.error("sendWelcomeMessage error:", err),
+    );
 
     return NextResponse.json({ ok: true });
   } catch (err) {
