@@ -18,7 +18,22 @@ const LINE_ICON_PATH =
 
 function LineRegisterContent() {
   const searchParams = useSearchParams();
-  const ownerToken = searchParams.get("owner_token");
+
+  // LIFF経由のリダイレクトでは、元のクエリが liff.state にエンコードされて入る
+  let ownerToken = searchParams.get("owner_token");
+  if (!ownerToken) {
+    const liffState = searchParams.get("liff.state");
+    if (liffState) {
+      try {
+        const decoded = decodeURIComponent(liffState);
+        const queryString = decoded.startsWith("?") ? decoded.slice(1) : decoded;
+        const params = new URLSearchParams(queryString);
+        ownerToken = params.get("owner_token");
+      } catch (e) {
+        console.error("Failed to parse liff.state:", e);
+      }
+    }
+  }
 
   const [status, setStatus] = useState<Status>("init");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
