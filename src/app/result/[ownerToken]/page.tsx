@@ -16,7 +16,13 @@ import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
 
-const LINE_REGISTER_URL = "https://lin.ee/VbAOXrV";
+const LINE_FRIEND_URL = "https://lin.ee/VbAOXrV";
+
+function getLineRegisterUrl(ownerToken: string) {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+  if (!liffId) return LINE_FRIEND_URL;
+  return `https://liff.line.me/${liffId}?owner_token=${encodeURIComponent(ownerToken)}`;
+}
 
 const FIRST_FRIEND_COMMENTS = [
   "なんか当たっててちょっと怖いんだけどw",
@@ -437,7 +443,7 @@ export default function OwnerResultPage({
               詳細レポートをLINEでお届けします
             </p>
             <a
-              href={LINE_REGISTER_URL}
+              href={getLineRegisterUrl(ownerToken)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() =>
