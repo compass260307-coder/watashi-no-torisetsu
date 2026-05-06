@@ -268,8 +268,8 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </p>
         </section>
 
-        {/* 4. ギャップ分析 */}
-        {report.topGaps.length > 0 && (
+        {/* 4. ギャップ分析 (全5軸) */}
+        {report.gaps.length > 0 && (
           <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
             <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
               友達から見たあなた
@@ -277,35 +277,81 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             <p className="text-sm text-center text-muted mb-4">
               ギャップが大きい順
             </p>
-            <ul className="flex flex-col gap-3">
-              {report.topGaps.map((g) => {
-                const isHigher = g.gap > 0;
-                const arrow = isHigher ? "↑" : "↓";
-                return (
-                  <li
-                    key={g.dimension}
-                    className="rounded-xl border border-card-border p-3"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-bold">
-                        {g.emoji} {g.label}
-                      </span>
-                      <span
-                        className="text-xs font-mono tabular-nums"
-                        style={{ color: report.typeColor }}
-                      >
-                        {arrow} {Math.abs(g.gap).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted leading-relaxed">
-                      自分: {g.selfLabel}（{g.selfScore.toFixed(1)}）
-                      <br />
-                      友達: {g.friendLabel}（{g.friendScore.toFixed(1)}）
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            {(() => {
+              const sortedGaps = [...report.gaps].sort(
+                (a, b) => Math.abs(b.gap) - Math.abs(a.gap),
+              );
+              const topGaps = sortedGaps.slice(0, 3);
+              const restGaps = sortedGaps.slice(3);
+
+              return (
+                <>
+                  <ul className="flex flex-col gap-3">
+                    {topGaps.map((g) => {
+                      const arrow = g.gap > 0 ? "↑" : "↓";
+                      return (
+                        <li
+                          key={g.dimension}
+                          className="rounded-xl border border-card-border p-3"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-bold">
+                              {g.emoji} {g.label}
+                            </span>
+                            <span
+                              className="text-xs font-mono tabular-nums"
+                              style={{ color: report.typeColor }}
+                            >
+                              {arrow} {Math.abs(g.gap).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted leading-relaxed">
+                            自分: {g.selfLabel}（{g.selfScore.toFixed(1)}）
+                            <br />
+                            友達: {g.friendLabel}（{g.friendScore.toFixed(1)}）
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  {restGaps.length > 0 && (
+                    <>
+                      <p className="text-[11px] text-muted text-center mt-5 mb-2">
+                        ▼ 自己認識との一致度（残り{restGaps.length}軸）
+                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {restGaps.map((g) => {
+                          const arrow = g.gap > 0 ? "↑" : "↓";
+                          return (
+                            <li
+                              key={g.dimension}
+                              className="rounded-xl border border-card-border/60 bg-background/40 p-2.5 opacity-70"
+                            >
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-xs font-bold">
+                                  {g.emoji} {g.label}
+                                </span>
+                                <span
+                                  className="text-[11px] font-mono tabular-nums"
+                                  style={{ color: report.typeColor }}
+                                >
+                                  {arrow} {Math.abs(g.gap).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-muted leading-relaxed">
+                                自分: {g.selfLabel}（{g.selfScore.toFixed(1)}）／
+                                友達: {g.friendLabel}（{g.friendScore.toFixed(1)}）
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </section>
         )}
 
