@@ -355,6 +355,65 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </section>
         )}
 
+        {/* 4.5 友達から見たあなたの印象 (choice 集計) */}
+        {report.friendChoices.length > 0 && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-1">
+              友達から見たあなたの印象
+            </p>
+            <p className="text-xs text-center text-muted mb-5">
+              友達{report.friendCount}人の回答から集計しました
+            </p>
+
+            <div className="flex flex-col gap-5">
+              {report.friendChoices.map((q) => {
+                const visible = q.choices.filter((c) => c.count > 0);
+                if (visible.length === 0) return null;
+                const max = Math.max(...visible.map((c) => c.count));
+
+                return (
+                  <div key={q.questionId}>
+                    <p className="text-sm font-bold mb-3">{q.questionLabel}</p>
+                    <ul className="flex flex-col gap-2">
+                      {visible
+                        .sort((a, b) => b.count - a.count)
+                        .map((c) => {
+                          const widthPct = max > 0 ? (c.count / max) * 100 : 0;
+                          return (
+                            <li
+                              key={c.label}
+                              className="flex items-center gap-3"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[13px] truncate">
+                                    {c.label}
+                                  </span>
+                                  <span className="text-xs font-mono tabular-nums text-muted ml-2 shrink-0">
+                                    {c.count}人
+                                  </span>
+                                </div>
+                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${widthPct}%`,
+                                      backgroundColor: report.typeColor,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* 5. タイプ深掘り */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
           <p className="text-[10px] font-bold tracking-wider text-muted mb-1">

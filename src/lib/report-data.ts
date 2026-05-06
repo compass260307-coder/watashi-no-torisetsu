@@ -1,6 +1,7 @@
 import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 import { computeGapAnalysis, type GapItem } from "./gap-analysis";
 import { mapQ5toN, mapQ9toC } from "./friend-perception";
+import { friendQuestions } from "./friend-questions";
 import { torisetsuTypes } from "./torisetsu-data";
 
 export const REPORT_FRIEND_THRESHOLD = 3;
@@ -16,6 +17,53 @@ export interface RelationshipMatrix {
   closestType: TorisetsuTypeId | null;
   farthestType: TorisetsuTypeId | null;
   bestPartnerType: TorisetsuTypeId | null;
+}
+
+export type FriendChoiceCount = {
+  questionId: number;
+  questionLabel: string;
+  choices: { label: string; count: number }[];
+};
+
+const FRIEND_CHOICE_QUESTION_LABELS: Record<number, string> = {
+  4: "🌟 友達が選ぶ、あなたの好きなところ",
+  5: "💎 本人が気づいてない、あなたの隠れた魅力",
+  6: "🐾 友達が例える、あなたの動物",
+  7: "✨ あなたが一番輝く瞬間",
+  8: "🤝 友達があなたと一緒にいるとき",
+  9: "💬 友達から見たあなたのLINE",
+  10: "🎬 印象に残ってるシーン",
+};
+
+function aggregateFriendChoices(
+  friendAnswers: FriendAnswerRecord[],
+): FriendChoiceCount[] {
+  const result: FriendChoiceCount[] = [];
+
+  for (const q of friendQuestions) {
+    if (q.type !== "choice" || !q.choices || q.choices.length === 0) continue;
+    const label = FRIEND_CHOICE_QUESTION_LABELS[q.id];
+    if (!label) continue;
+
+    const counts = new Map<string, number>();
+    for (const choice of q.choices) {
+      counts.set(choice, 0);
+    }
+    for (const fa of friendAnswers) {
+      const v = fa.answers[String(q.id)];
+      if (typeof v === "string" && counts.has(v)) {
+        counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+    }
+
+    result.push({
+      questionId: q.id,
+      questionLabel: label,
+      choices: q.choices.map((c) => ({ label: c, count: counts.get(c) ?? 0 })),
+    });
+  }
+
+  return result;
 }
 
 export type DeepDiveSection = {
@@ -640,6 +688,7 @@ export interface ReportData {
   friendCount: number;
   meetsThreshold: boolean;
   relationship: RelationshipMatrix;
+  friendChoices: FriendChoiceCount[];
   isDev?: boolean;
 }
 
@@ -726,6 +775,7 @@ export function buildReportData(input: {
     .slice(0, 3);
 
   const r = RELATIONSHIPS[typeId];
+  const friendChoices = aggregateFriendChoices(friendAnswers);
 
   return {
     ownerToken,
@@ -747,5 +797,6 @@ export function buildReportData(input: {
       farthestType: r?.farthest ?? null,
       bestPartnerType: r?.bestPartner ?? null,
     },
+    friendChoices,
   };
 }

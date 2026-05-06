@@ -21,6 +21,18 @@ function jitter(value: number): number {
   return Math.round(clamp(value + offset, 1, 4));
 }
 
+// Q5, Q9 は C/N 軸スコアの元になるため、極端な選択肢のみから50/50で選び
+// dev モードで N/C 軸が中央値に収束する問題を回避する
+const Q5_BIASED_CHOICES = ["実はめっちゃ繊細", "実はめっちゃ頼りになる"];
+const Q9_BIASED_CHOICES = [
+  "マイペースだけど丁寧",
+  "気分が乗った時にバーッと返してくる",
+];
+
+function pickRandom<T>(items: readonly T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 function generateDummyFriendAnswer(
   selfScores: Record<BigFiveDimension, number>,
 ): FriendAnswerRecord {
@@ -31,12 +43,16 @@ function generateDummyFriendAnswer(
     "3": jitter(selfScores.O),
   };
 
-  // Q4〜Q10 (choice 型): choices からランダムに1つ選ぶ
+  // Q4〜Q10 (choice 型) のダミー生成
   for (const q of friendQuestions) {
-    if (q.type === "choice" && q.choices && q.choices.length > 0) {
-      const randomChoice =
-        q.choices[Math.floor(Math.random() * q.choices.length)];
-      answers[String(q.id)] = randomChoice;
+    if (q.type !== "choice" || !q.choices || q.choices.length === 0) continue;
+
+    if (q.id === 5) {
+      answers["5"] = pickRandom(Q5_BIASED_CHOICES);
+    } else if (q.id === 9) {
+      answers["9"] = pickRandom(Q9_BIASED_CHOICES);
+    } else {
+      answers[String(q.id)] = pickRandom(q.choices);
     }
   }
 
