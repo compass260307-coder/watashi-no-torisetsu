@@ -19,6 +19,7 @@ import {
   DEEP_DIVE_SECTION_ORDER,
   REPORT_FRIEND_THRESHOLD,
   TYPE_DEEP_DIVE,
+  TYPE_CATCH_COPY,
   generateConclusionText,
 } from "@/lib/report-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
@@ -504,26 +505,109 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           })()}
         </section>
 
-        {/* 6. 相性診断 */}
-        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-          <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-4">
-            相性診断
-          </p>
-          <ul className="flex flex-col gap-3">
-            <RelationshipRow
-              label="最も近いタイプ"
-              typeId={report.relationship.closestType}
-            />
-            <RelationshipRow
-              label="最も遠いタイプ"
-              typeId={report.relationship.farthestType}
-            />
-            <RelationshipRow
-              label="ベスト相棒"
-              typeId={report.relationship.bestPartnerType}
-            />
-          </ul>
-        </section>
+        {/* 6. ベスト相棒 */}
+        {(() => {
+          const partner = torisetsuTypes[report.bestPartner.partnerTypeId];
+          const partnerCatch =
+            TYPE_CATCH_COPY[report.bestPartner.partnerTypeId] ??
+            partner.subtitle;
+          return (
+            <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+              <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-4">
+                あなたのベスト相棒
+              </p>
+
+              <div
+                className="rounded-2xl border-2 p-5 mb-5"
+                style={{
+                  borderColor: partner.color,
+                  background: `linear-gradient(to bottom, #ffffff, ${partner.color}0D)`,
+                }}
+              >
+                <div className="flex flex-col items-center text-center">
+                  {partner.imageUrl ? (
+                    <div className="relative mx-auto mb-3 w-full max-w-[240px] aspect-square">
+                      <Image
+                        src={partner.imageUrl}
+                        alt={`${partner.name}のキャラクター`}
+                        width={240}
+                        height={240}
+                        className="relative z-10 w-full h-full object-contain"
+                      />
+                      <div
+                        aria-hidden="true"
+                        className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
+                        style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: `${partner.color}15` }}
+                    >
+                      {partner.emoji}
+                    </div>
+                  )}
+                  <p
+                    className="text-xl font-extrabold mb-1"
+                    style={{ color: partner.color }}
+                  >
+                    {partner.emoji} {partner.name}
+                  </p>
+                  <p className="text-xs text-muted">{partnerCatch}</p>
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <p
+                  className="text-sm font-bold mb-2"
+                  style={{ color: partner.color }}
+                >
+                  💎 なぜ相性がいいか
+                </p>
+                <p className="text-[13px] leading-relaxed whitespace-pre-line">
+                  {report.bestPartner.whyCompatible}
+                </p>
+              </div>
+
+              <div className="mb-5">
+                <p
+                  className="text-sm font-bold mb-2"
+                  style={{ color: partner.color }}
+                >
+                  ✨ 一緒にいると起きること
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {report.bestPartner.whatHappens.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span
+                        className="text-xs mt-1"
+                        style={{ color: partner.color }}
+                      >
+                        ●
+                      </span>
+                      <span className="text-[13px] leading-relaxed">
+                        {item}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p
+                  className="text-sm font-bold mb-2"
+                  style={{ color: partner.color }}
+                >
+                  💭 関係を長く続けるために
+                </p>
+                <p className="text-[13px] leading-relaxed whitespace-pre-line">
+                  {report.bestPartner.warning}
+                </p>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* 7. フッター */}
         <footer className="flex flex-col items-center mb-10">
@@ -545,31 +629,3 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
   );
 }
 
-function RelationshipRow({
-  label,
-  typeId,
-}: {
-  label: string;
-  typeId: string | null;
-}) {
-  const data =
-    typeId && typeId in torisetsuTypes
-      ? torisetsuTypes[typeId as keyof typeof torisetsuTypes]
-      : null;
-
-  return (
-    <li className="flex items-center gap-3 rounded-xl border border-card-border p-3">
-      <span className="text-[11px] text-muted shrink-0 w-24">{label}</span>
-      {data ? (
-        <>
-          <span className="text-2xl">{data.emoji}</span>
-          <span className="text-sm font-bold" style={{ color: data.color }}>
-            {data.name}
-          </span>
-        </>
-      ) : (
-        <span className="text-xs text-muted/60">準備中</span>
-      )}
-    </li>
-  );
-}

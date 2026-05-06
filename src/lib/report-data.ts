@@ -13,11 +13,12 @@ export type FriendAnswerRecord = {
 
 export type ShortBigFive = Partial<Record<BigFiveDimension, number>>;
 
-export interface RelationshipMatrix {
-  closestType: TorisetsuTypeId | null;
-  farthestType: TorisetsuTypeId | null;
-  bestPartnerType: TorisetsuTypeId | null;
-}
+export type BestPartnerContent = {
+  partnerTypeId: TorisetsuTypeId;
+  whyCompatible: string;
+  whatHappens: string[];
+  warning: string;
+};
 
 export type FriendChoiceCount = {
   questionId: number;
@@ -795,12 +796,12 @@ export interface ReportData {
   topGaps: GapItem[];
   friendCount: number;
   meetsThreshold: boolean;
-  relationship: RelationshipMatrix;
+  bestPartner: BestPartnerContent;
   friendChoices: FriendChoiceCount[];
   isDev?: boolean;
 }
 
-const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {
+export const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {
   "festival-sun": "みんなを巻き込む、明るい主役",
   "everyones-home": "そこにいるだけで安心の存在",
   "wild-charisma": "自分の道を貫く、規格外の引力",
@@ -811,55 +812,131 @@ const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {
   "cool-maverick": "クールな視点で物事を見る人",
 };
 
-const RELATIONSHIPS: Record<
-  TorisetsuTypeId,
+export const BEST_PARTNER_CONTENT: Record<TorisetsuTypeId, BestPartnerContent> =
   {
-    closest: TorisetsuTypeId;
-    farthest: TorisetsuTypeId;
-    bestPartner: TorisetsuTypeId;
-  }
-> = {
-  "festival-sun": {
-    closest: "wild-charisma",
-    farthest: "cool-maverick",
-    bestPartner: "everyones-home",
-  },
-  "everyones-home": {
-    closest: "healing-guardian",
-    farthest: "deep-dive-explorer",
-    bestPartner: "wild-charisma",
-  },
-  "wild-charisma": {
-    closest: "festival-sun",
-    farthest: "healing-guardian",
-    bestPartner: "cool-maverick",
-  },
-  "iron-mental": {
-    closest: "cool-maverick",
-    farthest: "delicate-creator",
-    bestPartner: "everyones-home",
-  },
-  "delicate-creator": {
-    closest: "deep-dive-explorer",
-    farthest: "iron-mental",
-    bestPartner: "festival-sun",
-  },
-  "healing-guardian": {
-    closest: "everyones-home",
-    farthest: "wild-charisma",
-    bestPartner: "deep-dive-explorer",
-  },
-  "deep-dive-explorer": {
-    closest: "delicate-creator",
-    farthest: "everyones-home",
-    bestPartner: "iron-mental",
-  },
-  "cool-maverick": {
-    closest: "iron-mental",
-    farthest: "festival-sun",
-    bestPartner: "delicate-creator",
-  },
-};
+    "festival-sun": {
+      partnerTypeId: "everyones-home",
+      whyCompatible: `お祭りムードメーカーであるあなたは、エネルギッシュに人を巻き込み、場を動かす力を持っています。一方、みんなの実家タイプは、安定感と包容力で場を整え、誰もが安心できる空気を作り出します。
+
+あなたが「動」、相棒が「静」。あなたが「外向」、相棒が「内省」。あなたが「変化」、相棒が「安定」。
+
+完全に対極ではないけれど、お互いが持っていない要素を相手が持っている。だから、二人がいる場は、エネルギーと安心感が同居する独特の温度になります。`,
+      whatHappens: [
+        "グループの中心になりやすい（あなたが盛り上げ、相棒が支える）",
+        "あなたが暴走しそうな時、相棒が自然に止めてくれる",
+        "相棒の前では、無理に明るくふるまわなくても大丈夫",
+        "二人で関わるイベント・サークルは、長く続く傾向がある",
+      ],
+      warning: `あなたが楽しさを優先しすぎると、相棒の細やかな気配りが「いて当たり前」と扱われがち。相棒は本音を言わないタイプなので、表面では何も問題なく見えても、内側では消耗していることがあります。
+
+時々「ありがとう」を言葉にしたり、相棒のペースに合わせる時間を作ったりすることで、関係は長く深く続きます。`,
+    },
+    "everyones-home": {
+      partnerTypeId: "wild-charisma",
+      whyCompatible: `みんなの実家であるあなたは、安定感と包容力で場を整え、誰もが安心して本音を話せる空気を作り出します。一方、暴走カリスマタイプは、独自の発想とエネルギーで常識の枠を壊し、新しい場所へと突き進んでいく力を持っています。
+
+あなたが「整える側」、相棒が「動かす側」。あなたが「安全基地」、相棒が「冒険者」。あなたが「全員の心の拠り所」、相棒が「群れの先頭」。
+
+立場は対極ですが、根っこには共通点があります。それは、本音をなかなか他人に見せられないこと。あなたは「相手の負担になりたくない」と本音を飲み込み、相棒は「弱さを見せたら『すごい人』ではなくなる」と一人で抱える。だから、二人がお互いの前でだけは素になれる、特別な関係になりやすいのです。`,
+      whatHappens: [
+        "相棒の暴走に、あなたが自然に巻き込まれて新しい世界が開ける",
+        "あなたの安心感の中でだけ、相棒は弱音を吐ける",
+        "あなたの長年の人間関係に、相棒が新しい風を運んでくる",
+        "二人が組むと、個人ではできない大きなプロジェクトが動き出す",
+      ],
+      warning: `あなたが相棒のスピード感に巻き込まれすぎると、自分の安定が崩れて疲弊します。相棒は気づかずに前進してしまうため、自分から「ちょっと立ち止まらせて」と言葉にする勇気が必要です。あなたが安全基地である以上、自分のペースを守ることが、結果的に二人を支えます。`,
+    },
+    "wild-charisma": {
+      partnerTypeId: "cool-maverick",
+      whyCompatible: `暴走カリスマであるあなたは、エネルギッシュに前進し、人を巻き込みながら新しい世界を切り開いていく存在です。一方、冷静マイペースタイプは、流れに乗らず独自の視点で物事を分析し、淡々と自分のペースを守れる人です。
+
+あなたが「熱量」、相棒が「冷静」。あなたが「行動」、相棒が「思考」。あなたが「巻き込む」、相棒が「巻き込まれない」。
+
+普通の人ならあなたのテンポに圧倒されて引いてしまうところを、相棒は揺るがない。逆にあなたのアイデアに「いや、それは違う」と冷静に意見を返してくれる。崇拝者ではなく、本気で議論できる対等な相手。あなたが心の奥で求めていた「本当の理解者」になれる稀有な存在です。`,
+      whatHappens: [
+        "あなたが暴走しそうな時、相棒が一言で冷却してくれる",
+        "相棒の分析が、あなたのアイデアの精度を一段階上げる",
+        "あなたが場を動かし、相棒が静かに戦略を組み立てる役割分担になる",
+        "普段はベタベタしないけど、本当に大事な場面では必ずそばにいてくれる",
+      ],
+      warning: `あなたは自分の熱量を相手に押し付けがちで、相棒が黙っていることを「同意」と勘違いすることがあります。相棒は本音を表に出さないタイプなので、定期的に「どう思う？」と聞いて、相棒のペースで意見を引き出す習慣が、関係を長続きさせる鍵になります。`,
+    },
+    "iron-mental": {
+      partnerTypeId: "everyones-home",
+      whyCompatible: `鉄のメンタル番長であるあなたは、ブレない判断力と確固たる信念で、周囲から信頼を集める存在です。一方、みんなの実家タイプは、安定感と包容力で誰もが安心できる空気を作り、長い時間をかけて深い信頼関係を築ける人です。
+
+あなたが「決める人」、相棒が「支える人」。あなたが「対外的な強さ」、相棒が「内部の温度」。あなたが「最終判断」、相棒が「過程のケア」。
+
+役割は完全に違いますが、共通しているのは「自分の弱さを表に出さない」こと。あなたは強い人として期待され、相棒は気配りができる人として期待される。お互いに、本当に弱音を吐ける相手が少ない。だからこそ、二人だけの前では本音を共有できる、特別な関係になります。`,
+      whatHappens: [
+        "相棒があなたの判断疲れを察知し、休ませてくれる",
+        "あなたが相棒の隠れた頑張りに、ちゃんと気づいて言葉にできる",
+        "二人で組むチームは、判断の速さと心理的安全性を両立する",
+        "表ではクールだけど、相棒の前ではあなたが意外と甘えられる",
+      ],
+      warning: `あなたが頼られすぎる立場であるぶん、相棒のケアを「当然」と受け取ってしまう癖があります。相棒は本音を言わないタイプなので、感謝を言葉にすること、相棒の弱音を聞き出す時間を意識的に作ることが、関係を健全に保ちます。`,
+    },
+    "delicate-creator": {
+      partnerTypeId: "festival-sun",
+      whyCompatible: `繊細クリエイターであるあなたは、細部を見抜く感性と深い内省力を持ち、人の見過ごす美しさや違和感に気づける人です。一方、お祭りムードメーカータイプは、外向的なエネルギーで場を明るくし、誰とでも自然に距離を縮められる人です。
+
+あなたが「内省」、相棒が「外向」。あなたが「深く感じる」、相棒が「広く動く」。あなたが「美しい世界の発見」、相棒が「楽しい時間の創造」。
+
+一見対極ですが、相棒もまた、明るさの裏に繊細な感受性を隠しています。だから、あなたの感じている世界の解像度を、相棒は理解できる数少ない人。相棒はあなたを社交の場に連れ出してくれて、あなたは相棒の表に出ない感性を引き出してあげられる。お互いの世界が、相手によって広がる関係です。`,
+      whatHappens: [
+        "相棒に誘われて、自分一人では行かない場所で新しい発見ができる",
+        "あなたの繊細な観察に、相棒が「分かる」と本気で頷いてくれる",
+        "二人で何かを作ると、相棒が広め、あなたが深める分業が成立する",
+        "相棒が疲れている時、あなただけがその違和感に気づける",
+      ],
+      warning: `相棒のテンポに合わせていると、あなたは消耗しやすいタイプです。相棒は楽しさ優先で動くので、無理に合わせず「今日はひとりの時間が欲しい」と断る勇気を持ってください。あなたが自分のペースを守ることで、相棒もあなたの本音を尊重するようになります。`,
+    },
+    "healing-guardian": {
+      partnerTypeId: "deep-dive-explorer",
+      whyCompatible: `癒しの守護神であるあなたは、静かな忍耐力と包容力で、誰かを支え続けられる存在です。一方、沼ハマり探究者タイプは、好きなことへの異次元の集中力と独自の専門性で、自分の世界を深く掘り下げていく人です。
+
+あなたが「広く受け止める」、相棒が「狭く深く掘る」。あなたが「他者中心」、相棒が「自己中心」。あなたが「平和の守護者」、相棒が「興味の追跡者」。
+
+一見対極ですが、相棒は興味のないことに無関心なぶん、自分の世界に没頭できる相手を必要としています。あなたは相棒の世界観を否定せず、静かに見守れる稀有な存在。あなたにとっても、自分のことを後回しにしがちな日々の中で、相棒の熱量に触れる時間が、自分自身の興味を取り戻すきっかけになります。`,
+      whatHappens: [
+        "相棒が沼トークを始めても、あなたは静かに最後まで聞いてあげられる",
+        "あなたの包容力が、相棒の「変わってる」を「すごい」に変える",
+        "二人の時間は、ベタベタしないのに深く繋がっている独特の温度になる",
+        "あなたが疲れた時、相棒の没頭する姿が、いい意味で気を抜かせてくれる",
+      ],
+      warning: `相棒は興味のあることだけに集中するため、あなたの細やかなケアを見過ごしがちです。あなたは「気づいてもらえない」と感じても言葉にできない癖があるので、自分のニーズを直接的に伝える練習が、関係を健全に保つカギになります。`,
+    },
+    "deep-dive-explorer": {
+      partnerTypeId: "iron-mental",
+      whyCompatible: `沼ハマり探究者であるあなたは、好きなことへの異次元の集中力と独自の専門性で、誰も持っていない深さの知識を蓄えていく人です。一方、鉄のメンタル番長タイプは、感情に流されない判断力と信念で、揺るがない軸を持ち続けられる人です。
+
+あなたが「専門性の深さ」、相棒が「判断の確かさ」。あなたが「自分の世界に没頭」、相棒が「外との関係を引き受ける」。あなたが「興味で動く」、相棒が「責任で動く」。
+
+役割は対極ですが、根っこには共通点があります。それは、流行や周りの評価で動かないこと。あなたは興味のないことに動じず、相棒は感情の波に流されない。だから、二人がいると、お互いを「変わってる」と評価せず、対等に向き合える。あなたの探究を相棒は信頼し、相棒の判断をあなたは尊重する関係です。`,
+      whatHappens: [
+        "あなたが沼トークを始めても、相棒は本気で意見を返してくれる",
+        "相棒の判断力が、あなたが見落としがちな現実的な側面を補ってくれる",
+        "二人で組むプロジェクトは、深さと実行力を両立する",
+        "周りに振り回されず、二人だけのペースで進められる空気が生まれる",
+      ],
+      warning: `相棒は強さを期待される立場で、弱音を見せにくいタイプです。あなたは興味のないことに塩対応する癖があるので、相棒の弱さに気づかず通り過ぎてしまうことがあります。たまに相棒の様子を「最近どう？」と聞く習慣を持つと、相棒の信頼が一気に深まります。`,
+    },
+    "cool-maverick": {
+      partnerTypeId: "delicate-creator",
+      whyCompatible: `冷静マイペースであるあなたは、感情に流されず独自の視点で世界を分析できる、自己完結型の人です。一方、繊細クリエイタータイプは、人の見過ごす細部に気づける深い感受性と、内側に持つ静かな芯の強さを併せ持つ人です。
+
+あなたが「論理」、相棒が「感性」。あなたが「冷静な分析」、相棒が「繊細な観察」。あなたが「外と距離を取る」、相棒が「内側を深める」。
+
+役割は違いますが、根っこには共通点があります。それは、騒がしい場所が苦手で、自分のペースを守りたいこと。あなたは多くを語らず、相棒は静かに感じている。お互いに、ベタベタした関係を求めない。だから、長い沈黙が気にならず、必要な時にだけ深い対話ができる、二人だけの心地よい温度が生まれます。`,
+      whatHappens: [
+        "相棒が考えすぎて動けない時、あなたの淡々とした視点が背中を押す",
+        "あなたが孤独を感じた時、相棒の感性が言葉にならない感情を拾ってくれる",
+        "二人の会話は、雑談より、本質を突くものが多くなる",
+        "何時間でも一緒にいられるのに、お互いの世界を侵食しない",
+      ],
+      warning: `あなたは本音を見せないタイプなので、相棒は「自分のことを大事にされていない」と感じやすい。相棒は評価への過敏さがあるため、感じたことを伝えないままだと関係が冷たく見えてしまいます。たまにでいいから、感じていることを言葉にして渡す習慣が、関係を温め続けます。`,
+    },
+  };
 
 function calculateFriendAverages(
   friendAnswers: FriendAnswerRecord[],
@@ -915,7 +992,6 @@ export function buildReportData(input: {
     .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))
     .slice(0, 3);
 
-  const r = RELATIONSHIPS[typeId];
   const friendChoices = aggregateFriendChoices(friendAnswers);
 
   return {
@@ -933,11 +1009,7 @@ export function buildReportData(input: {
     topGaps,
     friendCount: friendAnswers.length,
     meetsThreshold: friendAnswers.length >= REPORT_FRIEND_THRESHOLD,
-    relationship: {
-      closestType: r.closest,
-      farthestType: r.farthest,
-      bestPartnerType: r.bestPartner,
-    },
+    bestPartner: BEST_PARTNER_CONTENT[typeId],
     friendChoices,
   };
 }
