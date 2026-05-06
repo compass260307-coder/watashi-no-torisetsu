@@ -1,0 +1,361 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts";
+import type { ReportData } from "@/lib/report-data";
+import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
+
+const AXIS_LABELS: Record<string, string> = {
+  E: "外向性",
+  A: "協調性",
+  O: "開放性",
+};
+
+function buildRadarData(report: ReportData) {
+  return (["E", "A", "O"] as const).map((dim) => ({
+    axis: AXIS_LABELS[dim],
+    self: report.selfBigFive[dim] ?? 0,
+    friend: report.friendBigFive[dim] ?? 0,
+  }));
+}
+
+export default function ReportPage({
+  params,
+}: {
+  params: Promise<{ ownerToken: string }>;
+}) {
+  const { ownerToken } = use(params);
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/report?token=${encodeURIComponent(ownerToken)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ReportData | null) => {
+        if (data) setReport(data);
+        else setNotFound(true);
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [ownerToken]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center">
+        <p className="text-sm text-muted">レポートを読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !report) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center px-5">
+        <p className="text-muted text-sm mb-6">レポートが見つかりません</p>
+        <Link
+          href="/"
+          className="rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white"
+        >
+          トップに戻る
+        </Link>
+      </div>
+    );
+  }
+
+  if (!report.meetsThreshold) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full text-center">
+        <Image
+          src="/mascot/step3-complete.png"
+          alt=""
+          width={224}
+          height={224}
+          priority
+          className="w-56 h-auto object-contain mb-6"
+        />
+        <h1 className="text-2xl font-bold mb-3">
+          詳細レポートはまだ準備中です
+        </h1>
+        <p className="text-sm text-muted leading-relaxed mb-6">
+          友達{REPORT_FRIEND_THRESHOLD}人の回答が集まると、
+          <br />
+          詳細レポートが解放されます
+        </p>
+        <p className="text-sm font-bold mb-6">
+          現在 <span className="text-primary">{report.friendCount}</span> /{" "}
+          {REPORT_FRIEND_THRESHOLD} 人
+        </p>
+        <Link
+          href={`/result/${ownerToken}`}
+          className="rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white"
+        >
+          結果ページに戻る
+        </Link>
+      </div>
+    );
+  }
+
+  const radarData = buildRadarData(report);
+
+  return (
+    <div className="flex flex-col flex-1">
+      <main className="flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
+        {/* 1. ヘッダー */}
+        <header className="text-center mb-6 animate-fade-in-up">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+            DETAIL REPORT
+          </p>
+          <h1 className="text-2xl font-extrabold mb-2">
+            ワタシのトリセツ
+            <br />
+            詳細レポート
+          </h1>
+          <p className="text-xs text-muted leading-relaxed">
+            友達{report.friendCount}人の回答から、
+            <br />
+            あなたの本当の姿を分析しました
+          </p>
+        </header>
+
+        {/* 2. タイプ表示 */}
+        <section
+          className="w-full rounded-2xl border bg-card-bg overflow-hidden mb-5 animate-scale-in"
+          style={{ borderColor: `${report.typeColor}40` }}
+        >
+          <div
+            className="h-1.5"
+            style={{ backgroundColor: report.typeColor }}
+          />
+          <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+              YOUR TYPE
+            </p>
+            {report.typeImageUrl ? (
+              <div className="relative mx-auto mb-3 w-full max-w-[280px] aspect-square">
+                <Image
+                  src={report.typeImageUrl}
+                  alt={`${report.typeName}のキャラクター`}
+                  width={280}
+                  height={280}
+                  className="relative z-10 w-full h-full object-contain"
+                  priority
+                />
+                <div
+                  aria-hidden="true"
+                  className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
+                  style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
+                />
+              </div>
+            ) : (
+              <div
+                className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+                style={{ backgroundColor: `${report.typeColor}15` }}
+              >
+                {report.typeEmoji}
+              </div>
+            )}
+            <h2
+              className="text-2xl font-extrabold mb-1"
+              style={{ color: report.typeColor }}
+            >
+              {report.typeName}
+            </h2>
+            <p className="text-sm text-muted">{report.typeCatchCopy}</p>
+          </div>
+        </section>
+
+        {/* 3. レーダーチャート: 自己 vs 友達 */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+            自己評価 vs 友達評価
+          </p>
+          <div className="w-full h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData} outerRadius="75%">
+                <PolarGrid stroke="#e8e0d8" />
+                <PolarAngleAxis
+                  dataKey="axis"
+                  tick={{ fontSize: 12, fill: "#1a1a1a" }}
+                />
+                <PolarRadiusAxis
+                  domain={[0, 4]}
+                  tick={false}
+                  axisLine={false}
+                />
+                <Radar
+                  name="自己評価"
+                  dataKey="self"
+                  stroke={report.typeColor}
+                  fill={report.typeColor}
+                  fillOpacity={0.3}
+                />
+                <Radar
+                  name="友達評価"
+                  dataKey="friend"
+                  stroke="#9a8a8a"
+                  fill="#9a8a8a"
+                  fillOpacity={0.2}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11 }}
+                  iconType="circle"
+                  iconSize={8}
+                />
+                <Tooltip
+                  formatter={(v) =>
+                    typeof v === "number" ? v.toFixed(2) : String(v)
+                  }
+                  contentStyle={{
+                    fontSize: 11,
+                    borderRadius: 8,
+                    border: "1px solid #e8e0d8",
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[11px] text-muted text-center mt-2 leading-relaxed">
+            友達は外向性・協調性・開放性の3軸で回答しています
+          </p>
+        </section>
+
+        {/* 4. ギャップ分析 */}
+        {report.topGaps.length > 0 && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+              友達から見たあなた
+            </p>
+            <p className="text-sm text-center text-muted mb-4">
+              ギャップが大きい順
+            </p>
+            <ul className="flex flex-col gap-3">
+              {report.topGaps.map((g) => {
+                const isHigher = g.gap > 0;
+                const arrow = isHigher ? "↑" : "↓";
+                return (
+                  <li
+                    key={g.dimension}
+                    className="rounded-xl border border-card-border p-3"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-bold">
+                        {g.emoji} {g.label}
+                      </span>
+                      <span
+                        className="text-xs font-mono tabular-nums"
+                        style={{ color: report.typeColor }}
+                      >
+                        {arrow} {Math.abs(g.gap).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted leading-relaxed">
+                      自分: {g.selfLabel}（{g.selfScore.toFixed(1)}）
+                      <br />
+                      友達: {g.friendLabel}（{g.friendScore.toFixed(1)}）
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        {/* 5. タイプ深掘り（プレースホルダ） */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+            タイプ深掘り
+          </p>
+          <p className="text-sm font-bold mb-2">
+            {report.typeName}について
+          </p>
+          <p className="text-xs text-muted leading-relaxed">
+            ここに「{report.typeName}」タイプの詳細解説が入ります。
+            <br />
+            （次のフェーズで本コンテンツを追加予定）
+          </p>
+        </section>
+
+        {/* 6. 相性診断 */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-4">
+            相性診断
+          </p>
+          <ul className="flex flex-col gap-3">
+            <RelationshipRow
+              label="最も近いタイプ"
+              typeId={report.relationship.closestType}
+            />
+            <RelationshipRow
+              label="最も遠いタイプ"
+              typeId={report.relationship.farthestType}
+            />
+            <RelationshipRow
+              label="ベスト相棒"
+              typeId={report.relationship.bestPartnerType}
+            />
+          </ul>
+          <p className="text-[11px] text-muted text-center mt-3 leading-relaxed">
+            ※ 全タイプの相性マトリクスは順次対応予定
+          </p>
+        </section>
+
+        {/* 7. フッター */}
+        <footer className="flex flex-col items-center mb-10">
+          <Link
+            href={`/result/${ownerToken}`}
+            className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] text-center mb-3"
+          >
+            友達に教える
+          </Link>
+          <Link
+            href="/"
+            className="text-xs text-muted hover:text-foreground transition-colors"
+          >
+            トップに戻る
+          </Link>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+function RelationshipRow({
+  label,
+  typeId,
+}: {
+  label: string;
+  typeId: string | null;
+}) {
+  const data =
+    typeId && typeId in torisetsuTypes
+      ? torisetsuTypes[typeId as keyof typeof torisetsuTypes]
+      : null;
+
+  return (
+    <li className="flex items-center gap-3 rounded-xl border border-card-border p-3">
+      <span className="text-[11px] text-muted shrink-0 w-24">{label}</span>
+      {data ? (
+        <>
+          <span className="text-2xl">{data.emoji}</span>
+          <span className="text-sm font-bold" style={{ color: data.color }}>
+            {data.name}
+          </span>
+        </>
+      ) : (
+        <span className="text-xs text-muted/60">準備中</span>
+      )}
+    </li>
+  );
+}
