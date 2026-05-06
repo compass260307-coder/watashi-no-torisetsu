@@ -645,7 +645,7 @@ export interface ReportData {
 const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {
   "festival-sun": "みんなを巻き込む、明るい主役",
   "everyones-home": "そこにいるだけで安心の存在",
-  "wild-charisma": "周りを巻き込んで進む、自分の道",
+  "wild-charisma": "自分の道を貫く、規格外の引力",
   "iron-mental": "ブレない、揺るがない、信頼の人",
   "delicate-creator": "感性で世界を編み直す人",
   "healing-guardian": "静かに支え、誰かを癒す人",
