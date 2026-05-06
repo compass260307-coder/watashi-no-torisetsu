@@ -11,6 +11,7 @@ import {
   generateGapSummary,
   generateFriendTrends,
 } from "@/lib/gap-analysis";
+import { TYPE_DEEP_DIVE } from "@/lib/report-data";
 import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 
 const REQUIRED_FOR_COMPLETE = 3;
@@ -29,19 +30,6 @@ const FIRST_FRIEND_COMMENTS = [
   "まあ知ってたけどね、って感じ",
   "これ本人に言ったら絶対否定するやつ",
 ];
-
-const TORISETSU_ITEMS = [
-  { key: "basicSpec" as const, emoji: "📦", label: "基本スペック", unlockAt: 0 },
-  { key: "happyWords" as const, emoji: "💬", label: "喜ぶ言葉", unlockAt: 0 },
-  { key: "energyBoost" as const, emoji: "⚡", label: "エネルギーが上がる瞬間", unlockAt: 0 },
-  { key: "weakEnvironment" as const, emoji: "🌧️", label: "苦手な環境", unlockAt: 1 },
-  { key: "handlingTips" as const, emoji: "📖", label: "取扱いのコツ", unlockAt: 3 },
-  { key: "hiddenAbility" as const, emoji: "👀", label: "隠れ能力", unlockAt: 3 },
-  { key: "unknownCharm" as const, emoji: "✨", label: "気づいてない魅力", unlockAt: 3 },
-  { key: "lovedQuirk" as const, emoji: "💕", label: "愛されるクセ", unlockAt: 3 },
-];
-
-const TOTAL_ITEMS = TORISETSU_ITEMS.length;
 
 type FriendData = {
   id: string;
@@ -249,8 +237,6 @@ export default function OwnerResultPage({
   const isDeep = friendCount >= REQUIRED_FOR_DEEP;
 
   const activeFriends = friends.slice(0, friendCount);
-  const unlockedCount = TORISETSU_ITEMS.filter((item) => friendCount >= item.unlockAt).length;
-  const allUnlocked = unlockedCount === TOTAL_ITEMS;
 
   const gapItems =
     isComplete && result.scores
@@ -273,13 +259,6 @@ export default function OwnerResultPage({
     if (isComplete) return `友達${friendCount}人の声で完成`;
     if (friendCount > 0) return `自己評価 + 友達${friendCount}人の声を反映`;
     return "自己評価をもとに作成";
-  }
-
-  function isNewItem(unlockAt: number): boolean {
-    if (unlockAt === 0) return false;
-    if (unlockAt === 1) return friendCount >= 1 && friendCount < 3;
-    if (unlockAt === 3) return friendCount >= 3 && friendCount < 5;
-    return false;
   }
 
   return (
@@ -357,86 +336,44 @@ export default function OwnerResultPage({
           </div>
         </section>
 
-        {/* ===== 2. トリセツ親カード ===== */}
-        <section
-          className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-5 animate-fade-in-up stagger-3"
-        >
-          {/* ヘッダー */}
-          <div
-            className="px-5 pt-5 pb-4"
-            style={{ backgroundColor: typeData.color + "06" }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-base">📋</span>
-              <h2 className="text-lg font-extrabold">{getTorisetsuTitle()}</h2>
-            </div>
-            <p className="text-xs text-muted mb-3">{getTorisetsuSub()}</p>
-
-            {/* プログレスバー */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-2 rounded-full bg-card-border overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{
-                    width: `${(unlockedCount / TOTAL_ITEMS) * 100}%`,
-                    backgroundColor: typeData.color,
-                  }}
-                />
-              </div>
-              <span className="text-xs font-bold text-muted shrink-0">
-                {unlockedCount} / {TOTAL_ITEMS}
-              </span>
-            </div>
-          </div>
-
-          {/* 項目一覧 */}
-          {TORISETSU_ITEMS.map((item) => {
-            const isUnlocked = friendCount >= item.unlockAt;
-            const isNew = isNewItem(item.unlockAt);
-
-            if (isUnlocked) {
-              return (
-                <div key={item.key} className="border-t border-card-border">
-                  <div className="px-5 py-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm">{item.emoji}</span>
-                      <span className="text-xs font-bold text-muted">{item.label}</span>
-                      {isNew && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary animate-fade-in">
-                          NEW
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed pl-6">
-                      {typeData[item.key]}
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-
-            const remaining = item.unlockAt - friendCount;
-            return (
+        {/* ===== 2. トリセツ親カード（タイプ深掘りプレビュー） ===== */}
+        {(() => {
+          const dive = TYPE_DEEP_DIVE[result.typeId];
+          const strengthFirst = dive.strength.body.split("\n\n")[0] ?? "";
+          const previewBody = `${dive.essence.body}\n\n${strengthFirst}`;
+          return (
+            <section className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-2 animate-fade-in-up stagger-3">
+              {/* ヘッダー */}
               <div
-                key={item.key}
-                className="border-t border-dashed border-card-border"
+                className="px-5 pt-5 pb-4"
+                style={{ backgroundColor: typeData.color + "06" }}
               >
-                <div className="px-5 py-3 flex items-center justify-between gap-3 opacity-40">
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm">🔒</span>
-                    <span className="text-xs font-bold">{item.label}</span>
-                  </div>
-                  <span className="text-[11px] text-muted text-right leading-tight">
-                    {friendCount === 0
-                      ? "LINE登録して友達に送ると解放"
-                      : `あと${remaining}人で解放`}
-                  </span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">📋</span>
+                  <h2 className="text-lg font-extrabold">
+                    {getTorisetsuTitle()}
+                  </h2>
                 </div>
+                <p className="text-xs text-muted">{getTorisetsuSub()}</p>
               </div>
-            );
-          })}
 
-        </section>
+              {/* タイプ深掘りプレビュー（フェードアウト） */}
+              <div
+                className="px-5 pt-5 pb-2 relative"
+                style={{
+                  WebkitMaskImage:
+                    "linear-gradient(to bottom, black 50%, transparent 100%)",
+                  maskImage:
+                    "linear-gradient(to bottom, black 50%, transparent 100%)",
+                }}
+              >
+                <p className="text-sm leading-relaxed whitespace-pre-line">
+                  {previewBody}
+                </p>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ===== 2.5 LINE登録CTA ===== */}
         <section className="w-full rounded-2xl border border-[#06C755]/30 bg-[#06C755]/5 p-6 mb-5 animate-fade-in-up">
