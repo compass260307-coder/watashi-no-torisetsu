@@ -215,20 +215,45 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
         </section>
 
         {/* 2.5 結論一文 */}
-        {report.gaps.length > 0 && (
-          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
-              友達の回答から見えた、あなた
-            </p>
-            <p className="text-sm leading-relaxed text-center whitespace-pre-line">
-              {generateConclusionText(
-                report.selfBigFive,
-                report.friendBigFive,
-                report.gaps,
-              )}
-            </p>
-          </section>
-        )}
+        {(() => {
+          if (report.gaps.length === 0) return null;
+          const conclusionText = generateConclusionText(
+            report.selfBigFive,
+            report.friendBigFive,
+            report.gaps,
+          );
+          const conclusionLines = conclusionText
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0);
+          if (conclusionLines.length === 0) return null;
+
+          return (
+            <section
+              className="w-full rounded-2xl border-2 p-6 mb-5 text-center"
+              style={{
+                borderColor: report.typeColor,
+                background: `linear-gradient(to bottom, #ffffff, ${report.typeColor}0D)`,
+                boxShadow: `0 4px 16px ${report.typeColor}1A`,
+              }}
+            >
+              <p className="text-sm font-medium text-muted mb-2">
+                友達の回答から見えた、あなた
+              </p>
+              <div
+                className="h-0.5 w-12 mx-auto mb-4 rounded-full"
+                style={{ backgroundColor: report.typeColor }}
+              />
+              <div className="space-y-4">
+                {conclusionLines.map((line, i) => (
+                  <p key={i} className="text-base leading-relaxed">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* 3. レーダーチャート: 自己 vs 友達 */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
