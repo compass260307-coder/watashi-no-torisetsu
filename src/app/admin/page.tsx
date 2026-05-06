@@ -254,6 +254,8 @@ export default function AdminPage() {
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [testSending, setTestSending] = useState(false);
 
+  const [reportOwnerToken, setReportOwnerToken] = useState("");
+
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
     if (stored) setAdminKey(stored);
@@ -902,6 +904,44 @@ export default function AdminPage() {
             {testStatus && (
               <p className="text-xs text-gray-700">{testStatus}</p>
             )}
+          </div>
+        </section>
+
+        {/* レポートプレビュー */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            レポートプレビュー（開発モード）
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+            <input
+              type="text"
+              value={reportOwnerToken}
+              onChange={(e) => setReportOwnerToken(e.target.value)}
+              placeholder="owner_token を入力"
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono"
+            />
+            <button
+              onClick={() => {
+                const token = reportOwnerToken.trim();
+                if (!token || !adminKey) return;
+                const params = new URLSearchParams({
+                  dev: "true",
+                  adminKey,
+                });
+                window.open(
+                  `/report/${encodeURIComponent(token)}?${params.toString()}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }}
+              disabled={!reportOwnerToken.trim()}
+              className="rounded bg-purple-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 self-start"
+            >
+              レポートを表示（新規タブ）
+            </button>
+            <p className="text-[11px] text-gray-500">
+              friend_count が3未満でもダミーデータで補完して表示します
+            </p>
           </div>
         </section>
 

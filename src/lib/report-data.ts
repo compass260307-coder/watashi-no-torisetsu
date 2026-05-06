@@ -33,6 +33,7 @@ export interface ReportData {
   friendCount: number;
   meetsThreshold: boolean;
   relationship: RelationshipMatrix;
+  isDev?: boolean;
 }
 
 const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {

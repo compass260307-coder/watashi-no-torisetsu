@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { Suspense, use, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import {
   Radar,
   RadarChart,
@@ -37,12 +38,35 @@ export default function ReportPage({
   params: Promise<{ ownerToken: string }>;
 }) {
   const { ownerToken } = use(params);
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col flex-1 items-center justify-center">
+          <p className="text-sm text-muted">読み込み中...</p>
+        </div>
+      }
+    >
+      <ReportContent ownerToken={ownerToken} />
+    </Suspense>
+  );
+}
+
+function ReportContent({ ownerToken }: { ownerToken: string }) {
+  const searchParams = useSearchParams();
+  const dev = searchParams.get("dev") === "true";
+  const adminKey = searchParams.get("adminKey");
+
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/report?token=${encodeURIComponent(ownerToken)}`)
+    const params = new URLSearchParams({ token: ownerToken });
+    if (dev && adminKey) {
+      params.set("dev", "true");
+      params.set("adminKey", adminKey);
+    }
+    fetch(`/api/report?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data: ReportData | null) => {
         if (data) setReport(data);
@@ -50,7 +74,7 @@ export default function ReportPage({
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [ownerToken]);
+  }, [ownerToken, dev, adminKey]);
 
   if (loading) {
     return (
@@ -74,7 +98,7 @@ export default function ReportPage({
     );
   }
 
-  if (!report.meetsThreshold) {
+  if (!report.meetsThreshold && !report.isDev) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full text-center">
         <Image
@@ -111,6 +135,11 @@ export default function ReportPage({
 
   return (
     <div className="flex flex-col flex-1">
+      {report.isDev && (
+        <div className="w-full bg-red-500 text-white text-center py-2 px-3 text-xs font-bold sticky top-0 z-20">
+          ⚠️ 開発モード（テストデータで補完中）
+        </div>
+      )}
       <main className="flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
         {/* 1. ヘッダー */}
         <header className="text-center mb-6 animate-fade-in-up">
