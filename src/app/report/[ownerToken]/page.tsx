@@ -19,6 +19,7 @@ import {
   DEEP_DIVE_SECTION_ORDER,
   REPORT_FRIEND_THRESHOLD,
   TYPE_DEEP_DIVE,
+  generateConclusionText,
 } from "@/lib/report-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 
@@ -212,6 +213,22 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             <p className="text-sm text-muted">{report.typeCatchCopy}</p>
           </div>
         </section>
+
+        {/* 2.5 結論一文 */}
+        {report.gaps.length > 0 && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+              友達の回答から見えた、あなた
+            </p>
+            <p className="text-sm leading-relaxed text-center whitespace-pre-line">
+              {generateConclusionText(
+                report.selfBigFive,
+                report.friendBigFive,
+                report.gaps,
+              )}
+            </p>
+          </section>
+        )}
 
         {/* 3. レーダーチャート: 自己 vs 友達 */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">

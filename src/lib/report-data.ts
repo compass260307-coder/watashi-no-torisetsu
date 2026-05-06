@@ -35,6 +35,114 @@ const FRIEND_CHOICE_QUESTION_LABELS: Record<number, string> = {
   10: "🎬 印象に残ってるシーン",
 };
 
+type GapDirection = "self_lower" | "self_higher";
+
+const CONCLUSION_SENTENCE_1: Record<
+  BigFiveDimension,
+  Record<GapDirection, string>
+> = {
+  E: {
+    self_lower:
+      "あなたが思っている以上に、友達はあなたを社交的な人として見ているようです。",
+    self_higher:
+      "あなたは自分を社交的だと感じていますが、友達からは少し落ち着いた印象に映っているかもしれません。",
+  },
+  A: {
+    self_lower:
+      "あなたが思っている以上に、友達はあなたを面倒見の良い人として高く評価しています。",
+    self_higher:
+      "あなたは自分を協調的だと感じていますが、友達からはもう少し自分の意見を持つタイプに見えているようです。",
+  },
+  O: {
+    self_lower:
+      "あなたが思っている以上に、友達はあなたを好奇心旺盛で柔軟な人として見ています。",
+    self_higher:
+      "あなたは自分を新しいもの好きと感じていますが、友達からは慎重派に映っているかもしれません。",
+  },
+  C: {
+    self_lower:
+      "あなたが思っている以上に、友達はあなたを計画的でしっかりした人として見ています。",
+    self_higher:
+      "あなたは自分を計画的だと感じていますが、友達からはもう少し自由なタイプに見えているようです。",
+  },
+  N: {
+    self_lower:
+      "あなたが思っている以上に、友達はあなたの繊細さや感受性の強さに気づいています。",
+    self_higher:
+      "あなたは自分を繊細だと感じていますが、友達からはメンタルの強さや安定感を見られているようです。",
+  },
+};
+
+const CONCLUSION_SENTENCE_2: Record<BigFiveDimension, string> = {
+  E: "一方で、社交性については自己認識と友達からの見え方がほぼ一致しているようです。",
+  A: "一方で、協調性については自己認識と友達からの見え方がほぼ一致しているようです。",
+  O: "一方で、好奇心については自己認識と友達からの見え方がほぼ一致しているようです。",
+  C: "一方で、計画性については自己認識と友達からの見え方がほぼ一致しているようです。",
+  N: "一方で、繊細さについては自己認識と友達からの見え方がほぼ一致しているようです。",
+};
+
+const EMPHASIZED_POSITIVE: Record<BigFiveDimension, string> = {
+  E: "社交的で場を明るくする人",
+  A: "思いやりにあふれる人",
+  O: "柔軟で好奇心の強い人",
+  C: "計画的でしっかりした人",
+  N: "繊細で感受性の高い人",
+};
+
+export function generateConclusionText(
+  _selfBigFive: ShortBigFive,
+  _friendBigFive: ShortBigFive,
+  gaps: GapItem[],
+): string {
+  if (gaps.length === 0) return "";
+
+  const absGaps = gaps.map((g) => Math.abs(g.gap));
+  const maxAbs = Math.max(...absGaps);
+
+  // Case 1: 全軸のギャップ絶対値が 0.3 以下
+  if (gaps.every((g) => Math.abs(g.gap) <= 0.3)) {
+    return "あなたの自己認識は、友達からの見え方とほぼ一致しています。これは、自分を客観的に見られている証拠とも言えます。";
+  }
+
+  // Case 2: 友達評価が全体的に高い (3軸以上で 自己 < 友達 かつ最大ギャップ 0.5以上)
+  const friendHigherCount = gaps.filter((g) => g.gap > 0).length;
+  const selfHigherCount = gaps.filter((g) => g.gap < 0).length;
+
+  if (friendHigherCount >= 3 && maxAbs >= 0.5) {
+    return "あなたは自分を控えめに評価しがちですが、友達はあなたをもっと魅力的に見ているようです。自分が思う以上に、周りに良い印象を与えています。";
+  }
+
+  // Case 3: 自己評価が全体的に高い
+  if (selfHigherCount >= 3 && maxAbs >= 0.5) {
+    return "あなたが自分の魅力をしっかり認識しているのは強みです。ただ、周りからの見え方とは少しズレがあるかもしれません。たまに友達の声を聞いてみると、新しい発見があるかも。";
+  }
+
+  const sortedByAbs = [...gaps].sort(
+    (a, b) => Math.abs(b.gap) - Math.abs(a.gap),
+  );
+  const top = sortedByAbs[0];
+
+  // Case 4: 極端なギャップ (max |gap| >= 1.0 かつ 自己 < 友達)
+  if (Math.abs(top.gap) >= 1.0 && top.gap > 0) {
+    const positive = EMPHASIZED_POSITIVE[top.dimension];
+    return `友達はあなたを${positive}として、想像以上に高く評価しています。これは、あなた自身も気づいていなかった大きな魅力かもしれません。`;
+  }
+
+  // Case 5: 通常パターン (一文目: 最大ギャップ軸 / 二文目: 残り軸の最小ギャップ)
+  const direction: GapDirection = top.gap > 0 ? "self_lower" : "self_higher";
+  const sentence1 = CONCLUSION_SENTENCE_1[top.dimension][direction];
+
+  const remaining = gaps.filter((g) => g.dimension !== top.dimension);
+  if (remaining.length === 0) return sentence1;
+
+  const minGapItem = remaining.reduce((min, g) =>
+    Math.abs(g.gap) < Math.abs(min.gap) ? g : min,
+  );
+  const sentence2 = CONCLUSION_SENTENCE_2[minGapItem.dimension];
+
+  return `${sentence1}\n${sentence2}`;
+}
+
 function aggregateFriendChoices(
   friendAnswers: FriendAnswerRecord[],
 ): FriendChoiceCount[] {
