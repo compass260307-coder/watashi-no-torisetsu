@@ -6,6 +6,7 @@ import {
 } from "@/lib/report-data";
 import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { friendQuestions } from "@/lib/friend-questions";
 import { NextRequest, NextResponse } from "next/server";
 
 const VALID_TYPE_IDS = new Set<string>(Object.keys(torisetsuTypes));
@@ -23,12 +24,24 @@ function jitter(value: number): number {
 function generateDummyFriendAnswer(
   selfScores: Record<BigFiveDimension, number>,
 ): FriendAnswerRecord {
+  // E/A/O: 自己評価±1の範囲で数値生成
+  const answers: Record<string, string | number> = {
+    "1": jitter(selfScores.E),
+    "2": jitter(selfScores.A),
+    "3": jitter(selfScores.O),
+  };
+
+  // Q4〜Q10 (choice 型): choices からランダムに1つ選ぶ
+  for (const q of friendQuestions) {
+    if (q.type === "choice" && q.choices && q.choices.length > 0) {
+      const randomChoice =
+        q.choices[Math.floor(Math.random() * q.choices.length)];
+      answers[String(q.id)] = randomChoice;
+    }
+  }
+
   return {
-    answers: {
-      "1": jitter(selfScores.E),
-      "2": jitter(selfScores.A),
-      "3": jitter(selfScores.O),
-    },
+    answers,
     created_at: new Date().toISOString(),
   };
 }
