@@ -15,7 +15,11 @@ import {
   Tooltip,
 } from "recharts";
 import type { ReportData } from "@/lib/report-data";
-import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
+import {
+  DEEP_DIVE_SECTION_ORDER,
+  REPORT_FRIEND_THRESHOLD,
+  TYPE_DEEP_DIVE,
+} from "@/lib/report-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 
 const AXIS_LABELS: Record<string, string> = {
@@ -301,19 +305,49 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </section>
         )}
 
-        {/* 5. タイプ深掘り（プレースホルダ） */}
+        {/* 5. タイプ深掘り */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-          <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-1">
             タイプ深掘り
           </p>
-          <p className="text-sm font-bold mb-2">
+          <h3 className="text-base font-bold mb-4">
             {report.typeName}について
-          </p>
-          <p className="text-xs text-muted leading-relaxed">
-            ここに「{report.typeName}」タイプの詳細解説が入ります。
-            <br />
-            （次のフェーズで本コンテンツを追加予定）
-          </p>
+          </h3>
+          {(() => {
+            const dive = TYPE_DEEP_DIVE[report.typeId];
+            if (!dive) {
+              return (
+                <p className="text-xs text-muted leading-relaxed">
+                  「{report.typeName}」タイプの詳細解説は準備中です。
+                  <br />
+                  （次のフェーズで本コンテンツを追加予定）
+                </p>
+              );
+            }
+            return (
+              <div className="flex flex-col gap-4">
+                {DEEP_DIVE_SECTION_ORDER.map((key) => {
+                  const sec = dive[key];
+                  return (
+                    <div
+                      key={key}
+                      className="border-t border-card-border pt-3 first:border-t-0 first:pt-0"
+                    >
+                      <p
+                        className="text-sm font-bold mb-2"
+                        style={{ color: report.typeColor }}
+                      >
+                        {sec.title}
+                      </p>
+                      <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-line">
+                        {sec.body}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </section>
 
         {/* 6. 相性診断 */}
