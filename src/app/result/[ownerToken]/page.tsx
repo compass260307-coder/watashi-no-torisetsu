@@ -54,19 +54,6 @@ type FriendData = {
 const LINE_ICON_PATH =
   "M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314";
 
-function getShareUrl(inviteCode: string | null) {
-  const base = "https://watashi-no-torisetsu.vercel.app/friend";
-  return inviteCode ? `${base}/${inviteCode}` : base;
-}
-
-function getShareTexts(shareUrl: string) {
-  return [
-    `自分の取説作れるやつやってみたんだけど\n友達から見た自分も知りたくて\n\n10問・2分だから、気が向いたらやってみて〜\n\n${shareUrl}`,
-    `自分の取扱説明書作ってみたんだけど\n友達からどう見えてるか気になって！\n\n10問だけだからよかったら〜\n\n${shareUrl}`,
-    `自分のトリセツ作れるやつやってみた！\n友達目線の自分も知りたくて\n\n10問・2分でサクッとお願い〜\n\n${shareUrl}`,
-  ];
-}
-
 function FriendVoiceCard({
   friend,
   index,
@@ -183,11 +170,7 @@ export default function OwnerResultPage({
   const [friendCount, setFriendCount] = useState(0);
   const [friends, setFriends] = useState<FriendData[]>([]);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState("");
-  const [nameSaved, setNameSaved] = useState(false);
-  const [nameSaving, setNameSaving] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [friendLinkCopied, setFriendLinkCopied] = useState(false);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
   const tracked = useRef(false);
 
@@ -211,10 +194,6 @@ export default function OwnerResultPage({
           setFriendCount(data.friendCount);
           setFriends(data.friendAnswers ?? []);
           setInviteCode(data.inviteCode);
-          if (data.displayName) {
-            setDisplayName(data.displayName);
-            setNameSaved(true);
-          }
           localStorage.setItem("torisetsu_owner_token", ownerToken);
           if (data.inviteCode) {
             localStorage.setItem("torisetsu_invite_code", data.inviteCode);
@@ -238,35 +217,6 @@ export default function OwnerResultPage({
       })
       .finally(() => setLoading(false));
   }, [ownerToken]);
-
-  const handleSaveName = async () => {
-    if (!displayName.trim()) return;
-    setNameSaving(true);
-    try {
-      const res = await fetch("/api/user", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerToken, displayName: displayName.trim() }),
-      });
-      if (res.ok) {
-        setNameSaved(true);
-      }
-    } catch {
-      // fail silently
-    } finally {
-      setNameSaving(false);
-    }
-  };
-
-  const handleCopyFriendLink = async () => {
-    const shareUrl = getShareUrl(inviteCode);
-    const texts = getShareTexts(shareUrl);
-    const text = texts[Math.floor(Date.now() / 60000) % texts.length];
-    await navigator.clipboard.writeText(text);
-    setFriendLinkCopied(true);
-    setTimeout(() => setFriendLinkCopied(false), 2500);
-    track("friend_link_copied", { ownerToken, inviteCode });
-  };
 
   const handleCopyResultLink = async () => {
     await navigator.clipboard.writeText(
@@ -313,11 +263,6 @@ export default function OwnerResultPage({
   const gapSummary = isDeep ? generateGapSummary(gapItems) : "";
   const friendTrends = isComplete ? generateFriendTrends(gapItems) : [];
 
-  const shareUrl = getShareUrl(inviteCode);
-  const lineTexts = getShareTexts(shareUrl);
-  const lineText = lineTexts[Math.floor(Date.now() / 60000) % lineTexts.length];
-  const lineUrl = `https://line.me/R/share?text=${encodeURIComponent(lineText)}`;
-
   function getTorisetsuTitle() {
     if (isComplete) return "ワタシのトリセツ";
     return "ワタシのトリセツ（仮）";
@@ -335,13 +280,6 @@ export default function OwnerResultPage({
     if (unlockAt === 1) return friendCount >= 1 && friendCount < 3;
     if (unlockAt === 3) return friendCount >= 3 && friendCount < 5;
     return false;
-  }
-
-  function getCtaMessage() {
-    if (isDeep) return null;
-    if (isComplete) return `あと${REQUIRED_FOR_DEEP - friendCount}人の回答で深掘りレポートも解放`;
-    if (friendCount > 0) return `あと${REQUIRED_FOR_COMPLETE - friendCount}人の回答で全項目が解放されます`;
-    return "友達の回答で、残りの項目が解放されます";
   }
 
   return (
@@ -544,89 +482,6 @@ export default function OwnerResultPage({
             );
           })}
 
-          {/* CTA フッター */}
-          {!isDeep && (
-            <div className="border-t border-card-border px-5 py-5">
-              <p className="text-sm font-bold text-center mb-4">
-                {getCtaMessage()}
-              </p>
-
-              {!nameSaved && (
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => {
-                      setDisplayName(e.target.value);
-                      setNameSaved(false);
-                    }}
-                    placeholder="ニックネーム（友達に表示）"
-                    maxLength={20}
-                    className="flex-1 rounded-xl border border-card-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors"
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    disabled={nameSaving || !displayName.trim()}
-                    className="rounded-xl bg-background border border-card-border px-3 py-2.5 text-sm font-bold transition-all disabled:opacity-40 active:scale-[0.98]"
-                  >
-                    {nameSaving ? "..." : "保存"}
-                  </button>
-                </div>
-              )}
-              {nameSaved && displayName && (
-                <p className="text-[11px] text-muted text-center mb-3">
-                  {displayName}さんのトリセツとして表示されます
-                </p>
-              )}
-
-              <a
-                href={lineUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track("friend_share_clicked", { ownerToken, inviteCode, metadata: { method: "line" } })}
-                className="flex items-center justify-center gap-2.5 w-full rounded-full py-[14px] text-base font-bold text-white shadow-lg shadow-[#06C755]/20 transition-all active:scale-[0.98]"
-                style={{ backgroundColor: "#06C755" }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-                  <path d={LINE_ICON_PATH} />
-                </svg>
-                LINEで友達に送る
-              </a>
-
-              <button
-                onClick={handleCopyFriendLink}
-                className="flex items-center justify-center gap-1.5 w-full py-2.5 mt-1.5 text-xs font-bold text-muted transition-all active:scale-[0.98]"
-              >
-                {friendLinkCopied ? "コピーしました ✓" : "リンクをコピー"}
-              </button>
-
-              <p className="text-[10px] text-muted text-center">
-                友達はログイン不要・10問・2分で完了
-              </p>
-            </div>
-          )}
-
-          {/* 完全版のシンプルなシェア */}
-          {isDeep && (
-            <div className="border-t border-card-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted">友達にもシェアしてみよう</p>
-                <a
-                  href={lineUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => track("friend_share_clicked", { ownerToken, inviteCode, metadata: { method: "line" } })}
-                  className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white transition-all active:scale-[0.98]"
-                  style={{ backgroundColor: "#06C755" }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                    <path d={LINE_ICON_PATH} />
-                  </svg>
-                  LINE
-                </a>
-              </div>
-            </div>
-          )}
         </section>
 
         {/* ===== 3. 友達の声 ===== */}
