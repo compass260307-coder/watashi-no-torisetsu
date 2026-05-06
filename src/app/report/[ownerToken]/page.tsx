@@ -59,6 +59,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
   const searchParams = useSearchParams();
   const dev = searchParams.get("dev") === "true";
   const adminKey = searchParams.get("adminKey");
+  const forceType = searchParams.get("forceType");
 
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +70,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
     if (dev && adminKey) {
       params.set("dev", "true");
       params.set("adminKey", adminKey);
+      if (forceType) params.set("forceType", forceType);
     }
     fetch(`/api/report?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -78,7 +80,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [ownerToken, dev, adminKey]);
+  }, [ownerToken, dev, adminKey, forceType]);
 
   if (loading) {
     return (
