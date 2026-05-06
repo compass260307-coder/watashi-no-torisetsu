@@ -336,13 +336,13 @@ export default function OwnerResultPage({
           </div>
         </section>
 
-        {/* ===== 2. トリセツ親カード（タイプ深掘りプレビュー） ===== */}
+        {/* ===== 2. トリセツ親カード + LINE登録CTA（統合） ===== */}
         {(() => {
           const dive = TYPE_DEEP_DIVE[result.typeId];
           const strengthFirst = dive.strength.body.split("\n\n")[0] ?? "";
           const previewBody = `${dive.essence.body}\n\n${strengthFirst}`;
           return (
-            <section className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-2 animate-fade-in-up stagger-3">
+            <section className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-5 animate-fade-in-up stagger-3">
               {/* ヘッダー */}
               <div
                 className="px-5 pt-5 pb-4"
@@ -359,7 +359,7 @@ export default function OwnerResultPage({
 
               {/* タイプ深掘りプレビュー（フェードアウト） */}
               <div
-                className="px-5 pt-5 pb-2 relative"
+                className="px-5 pt-5 pb-0 relative"
                 style={{
                   WebkitMaskImage:
                     "linear-gradient(to bottom, black 50%, transparent 100%)",
@@ -371,57 +371,57 @@ export default function OwnerResultPage({
                   {previewBody}
                 </p>
               </div>
+
+              {/* LINE登録CTA（同じカード内に統合） */}
+              <div className="bg-[#06C755]/5 px-6 pt-2 pb-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#06C755] mb-4">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="w-7 h-7"
+                      fill="white"
+                      aria-hidden="true"
+                    >
+                      <path d={LINE_ICON_PATH} />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold leading-snug mb-2">
+                    あなたの本当の姿、
+                    <br />
+                    続きをLINEで
+                  </h2>
+                  <p className="text-sm text-muted leading-relaxed mb-5">
+                    友達3人の回答が集まったら、
+                    <br />
+                    詳細レポートをLINEでお届けします
+                  </p>
+                  <a
+                    href={getLineRegisterUrl(ownerToken)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      track("line_register_clicked", { ownerToken, inviteCode })
+                    }
+                    className="inline-flex items-center justify-center gap-2 w-full max-w-xs rounded-full bg-[#06C755] px-8 py-4 text-base font-bold text-white shadow-md shadow-[#06C755]/25 transition-all hover:bg-[#05b34a] active:scale-[0.98]"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="w-5 h-5"
+                      fill="white"
+                      aria-hidden="true"
+                    >
+                      <path d={LINE_ICON_PATH} />
+                    </svg>
+                    LINE で友だち追加
+                  </a>
+                  <p className="text-[11px] text-muted leading-relaxed mt-4">
+                    ※ あなたの取扱説明書に深掘り解説・他者から見た自分の分析・相性診断・Big Five 5軸スコアが追加されます
+                  </p>
+                </div>
+              </div>
             </section>
           );
         })()}
-
-        {/* ===== 2.5 LINE登録CTA ===== */}
-        <section className="w-full rounded-2xl border border-[#06C755]/30 bg-[#06C755]/5 p-6 mb-5 animate-fade-in-up">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#06C755] mb-4">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-7 h-7"
-                fill="white"
-                aria-hidden="true"
-              >
-                <path d={LINE_ICON_PATH} />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold leading-snug mb-2">
-              あなたの本当の姿、
-              <br />
-              続きをLINEで
-            </h2>
-            <p className="text-sm text-muted leading-relaxed mb-5">
-              友達3人の回答が集まったら、
-              <br />
-              詳細レポートをLINEでお届けします
-            </p>
-            <a
-              href={getLineRegisterUrl(ownerToken)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() =>
-                track("line_register_clicked", { ownerToken, inviteCode })
-              }
-              className="inline-flex items-center justify-center gap-2 w-full max-w-xs rounded-full bg-[#06C755] px-8 py-4 text-base font-bold text-white shadow-md shadow-[#06C755]/25 transition-all hover:bg-[#05b34a] active:scale-[0.98]"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-                fill="white"
-                aria-hidden="true"
-              >
-                <path d={LINE_ICON_PATH} />
-              </svg>
-              LINE で友だち追加
-            </a>
-            <p className="text-[11px] text-muted leading-relaxed mt-4">
-              ※ あなたの取扱説明書に深掘り解説・他者から見た自分の分析・相性診断・Big Five 5軸スコアが追加されます
-            </p>
-          </div>
-        </section>
 
         {/* ===== 3. 友達の声 ===== */}
         {activeFriends.length > 0 && (
