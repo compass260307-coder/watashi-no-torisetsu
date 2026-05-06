@@ -811,20 +811,53 @@ const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {
   "cool-maverick": "クールな視点で物事を見る人",
 };
 
-const RELATIONSHIPS: Partial<
-  Record<
-    TorisetsuTypeId,
-    {
-      closest: TorisetsuTypeId;
-      farthest: TorisetsuTypeId;
-      bestPartner: TorisetsuTypeId;
-    }
-  >
+const RELATIONSHIPS: Record<
+  TorisetsuTypeId,
+  {
+    closest: TorisetsuTypeId;
+    farthest: TorisetsuTypeId;
+    bestPartner: TorisetsuTypeId;
+  }
 > = {
   "festival-sun": {
     closest: "wild-charisma",
     farthest: "cool-maverick",
     bestPartner: "everyones-home",
+  },
+  "everyones-home": {
+    closest: "healing-guardian",
+    farthest: "deep-dive-explorer",
+    bestPartner: "wild-charisma",
+  },
+  "wild-charisma": {
+    closest: "festival-sun",
+    farthest: "healing-guardian",
+    bestPartner: "cool-maverick",
+  },
+  "iron-mental": {
+    closest: "cool-maverick",
+    farthest: "delicate-creator",
+    bestPartner: "everyones-home",
+  },
+  "delicate-creator": {
+    closest: "deep-dive-explorer",
+    farthest: "iron-mental",
+    bestPartner: "festival-sun",
+  },
+  "healing-guardian": {
+    closest: "everyones-home",
+    farthest: "wild-charisma",
+    bestPartner: "deep-dive-explorer",
+  },
+  "deep-dive-explorer": {
+    closest: "delicate-creator",
+    farthest: "everyones-home",
+    bestPartner: "iron-mental",
+  },
+  "cool-maverick": {
+    closest: "iron-mental",
+    farthest: "festival-sun",
+    bestPartner: "delicate-creator",
   },
 };
 
@@ -901,9 +934,9 @@ export function buildReportData(input: {
     friendCount: friendAnswers.length,
     meetsThreshold: friendAnswers.length >= REPORT_FRIEND_THRESHOLD,
     relationship: {
-      closestType: r?.closest ?? null,
-      farthestType: r?.farthest ?? null,
-      bestPartnerType: r?.bestPartner ?? null,
+      closestType: r.closest,
+      farthestType: r.farthest,
+      bestPartnerType: r.bestPartner,
     },
     friendChoices,
   };

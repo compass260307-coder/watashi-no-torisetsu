@@ -523,9 +523,6 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
               typeId={report.relationship.bestPartnerType}
             />
           </ul>
-          <p className="text-[11px] text-muted text-center mt-3 leading-relaxed">
-            ※ 全タイプの相性マトリクスは順次対応予定
-          </p>
         </section>
 
         {/* 7. フッター */}
