@@ -1,4 +1,5 @@
 import type { BigFiveDimension } from "./types";
+import { mapQ5toN, mapQ9toC } from "./friend-perception";
 
 type FriendAnswerRecord = {
   answers: Record<string, string | number>;
@@ -17,6 +18,8 @@ const DIMENSION_META: Record<
   E: { label: "社交性", emoji: "🗣️" },
   A: { label: "協調性", emoji: "🤝" },
   O: { label: "好奇心", emoji: "🌈" },
+  C: { label: "計画性", emoji: "📋" },
+  N: { label: "繊細さ", emoji: "💧" },
 };
 
 const SCORE_LABELS: Record<BigFiveDimension, [string, string, string, string]> =
@@ -29,8 +32,8 @@ const SCORE_LABELS: Record<BigFiveDimension, [string, string, string, string]> =
       "かなり面倒見いい",
     ],
     O: ["安定志向", "変化は苦手ぎみ", "割と柔軟", "冒険心すごい"],
-    C: ["自由人タイプ", "ゆるめ", "しっかりしてる", "超計画的"],
-    N: ["鉄メンタル", "割と安定", "ちょっと繊細", "かなり繊細"],
+    C: ["衝動的", "やや衝動派", "やや計画派", "計画的"],
+    N: ["メンタル安定", "割と安定", "やや繊細", "繊細派"],
   };
 
 function getScoreLabel(score: number, dimension: BigFiveDimension): string {
@@ -58,16 +61,27 @@ function calculateFriendAverageScores(
   const buckets: Partial<Record<BigFiveDimension, number[]>> = {};
 
   for (const friend of friendAnswers) {
+    // E/A/O: Q1/Q2/Q3 のスケール回答
     for (const [qId, dim] of Object.entries(FRIEND_DIMENSION_MAP)) {
       const value = friend.answers[qId];
       if (typeof value === "number") {
         (buckets[dim] ??= []).push(value);
       }
     }
+    // C: Q9 (LINEイメージ) の選択肢から推定
+    const q9 = friend.answers["9"];
+    if (typeof q9 === "string") {
+      (buckets.C ??= []).push(mapQ9toC(q9));
+    }
+    // N: Q5 (隠れた魅力) の選択肢から推定
+    const q5 = friend.answers["5"];
+    if (typeof q5 === "string") {
+      (buckets.N ??= []).push(mapQ5toN(q5));
+    }
   }
 
   const result: Partial<Record<BigFiveDimension, number>> = {};
-  for (const dim of ["E", "A", "O"] as BigFiveDimension[]) {
+  for (const dim of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
     const values = buckets[dim];
     if (values && values.length > 0) {
       result[dim] = values.reduce((a, b) => a + b, 0) / values.length;
@@ -83,7 +97,7 @@ export function computeGapAnalysis(
   const friendScores = calculateFriendAverageScores(friendAnswers);
   const items: GapItem[] = [];
 
-  for (const dim of ["E", "A", "O"] as BigFiveDimension[]) {
+  for (const dim of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
     const friendScore = friendScores[dim];
     if (friendScore == null) continue;
 

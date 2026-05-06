@@ -1,5 +1,6 @@
 import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 import { computeGapAnalysis, type GapItem } from "./gap-analysis";
+import { mapQ5toN, mapQ9toC } from "./friend-perception";
 import { torisetsuTypes } from "./torisetsu-data";
 
 export const REPORT_FRIEND_THRESHOLD = 3;
@@ -681,16 +682,27 @@ function calculateFriendAverages(
   const buckets: Partial<Record<BigFiveDimension, number[]>> = {};
 
   for (const fa of friendAnswers) {
+    // E/A/O: スケール回答
     for (const [qid, dim] of Object.entries(map)) {
       const v = fa.answers[qid];
       if (typeof v === "number") {
         (buckets[dim] ??= []).push(v);
       }
     }
+    // C: Q9 (LINEイメージ) の選択肢から推定
+    const q9 = fa.answers["9"];
+    if (typeof q9 === "string") {
+      (buckets.C ??= []).push(mapQ9toC(q9));
+    }
+    // N: Q5 (隠れた魅力) の選択肢から推定
+    const q5 = fa.answers["5"];
+    if (typeof q5 === "string") {
+      (buckets.N ??= []).push(mapQ5toN(q5));
+    }
   }
 
   const out: ShortBigFive = {};
-  for (const dim of ["E", "A", "O"] as BigFiveDimension[]) {
+  for (const dim of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
     const values = buckets[dim];
     if (values && values.length > 0) {
       out[dim] = values.reduce((a, b) => a + b, 0) / values.length;

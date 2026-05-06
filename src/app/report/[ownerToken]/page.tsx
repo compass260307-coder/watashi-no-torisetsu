@@ -26,10 +26,12 @@ const AXIS_LABELS: Record<string, string> = {
   E: "外向性",
   A: "協調性",
   O: "開放性",
+  C: "誠実性",
+  N: "神経症傾向",
 };
 
 function buildRadarData(report: ReportData) {
-  return (["E", "A", "O"] as const).map((dim) => ({
+  return (["E", "A", "O", "C", "N"] as const).map((dim) => ({
     axis: AXIS_LABELS[dim],
     self: report.selfBigFive[dim] ?? 0,
     friend: report.friendBigFive[dim] ?? 0,
@@ -262,7 +264,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             </ResponsiveContainer>
           </div>
           <p className="text-[11px] text-muted text-center mt-2 leading-relaxed">
-            友達は外向性・協調性・開放性の3軸で回答しています
+            友達評価は10問の回答から推定しています
           </p>
         </section>
 
