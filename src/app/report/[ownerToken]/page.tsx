@@ -230,14 +230,14 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
 
           return (
             <section
-              className="w-full rounded-2xl border-2 p-6 mb-5 text-center"
+              className="w-full rounded-2xl border-2 p-6 mb-5"
               style={{
                 borderColor: report.typeColor,
                 background: `linear-gradient(to bottom, #ffffff, ${report.typeColor}0D)`,
                 boxShadow: `0 4px 16px ${report.typeColor}1A`,
               }}
             >
-              <p className="text-sm font-medium text-muted mb-2">
+              <p className="text-sm font-medium text-muted text-center mb-2">
                 友達の回答から見えた、あなた
               </p>
               <div
@@ -246,7 +246,10 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
               />
               <div className="space-y-4">
                 {conclusionLines.map((line, i) => (
-                  <p key={i} className="text-base leading-relaxed">
+                  <p
+                    key={i}
+                    className="text-base leading-relaxed font-bold text-left"
+                  >
                     {line}
                   </p>
                 ))}
