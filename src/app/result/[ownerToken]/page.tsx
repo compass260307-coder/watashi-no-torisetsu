@@ -421,13 +421,15 @@ export default function OwnerResultPage({
                 key={item.key}
                 className="border-t border-dashed border-card-border"
               >
-                <div className="px-5 py-3 flex items-center justify-between opacity-40">
-                  <div className="flex items-center gap-2">
+                <div className="px-5 py-3 flex items-center justify-between gap-3 opacity-40">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span className="text-sm">🔒</span>
                     <span className="text-xs font-bold">{item.label}</span>
                   </div>
-                  <span className="text-[11px] text-muted">
-                    あと{remaining}人で解放
+                  <span className="text-[11px] text-muted text-right leading-tight">
+                    {friendCount === 0
+                      ? "LINE登録して友達に送ると解放"
+                      : `あと${remaining}人で解放`}
                   </span>
                 </div>
               </div>
