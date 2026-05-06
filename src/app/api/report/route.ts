@@ -5,7 +5,10 @@ import {
   type FriendAnswerRecord,
 } from "@/lib/report-data";
 import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { NextRequest, NextResponse } from "next/server";
+
+const VALID_TYPE_IDS = new Set<string>(Object.keys(torisetsuTypes));
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -51,6 +54,13 @@ export async function GET(request: NextRequest) {
     isDev = true;
   }
 
+  // forceType: dev モード認証時のみ有効。不正な値は無視。
+  const forceTypeRaw = request.nextUrl.searchParams.get("forceType");
+  const forceType: TorisetsuTypeId | null =
+    isDev && forceTypeRaw && VALID_TYPE_IDS.has(forceTypeRaw)
+      ? (forceTypeRaw as TorisetsuTypeId)
+      : null;
+
   const { data: user, error: userError } = await supabase
     .from("users")
     .select("id, type_id, scores, owner_token")
@@ -84,7 +94,7 @@ export async function GET(request: NextRequest) {
 
   const report = buildReportData({
     ownerToken: user.owner_token as string,
-    typeId: user.type_id as TorisetsuTypeId,
+    typeId: forceType ?? (user.type_id as TorisetsuTypeId),
     selfScores,
     friendAnswers: answersForReport,
   });
