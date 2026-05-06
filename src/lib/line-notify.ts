@@ -2,7 +2,8 @@ import { messagingApi } from "@line/bot-sdk";
 import { supabase } from "./supabase";
 
 const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const PUBLIC_BASE_URL = "https://watashi-no-torisetsu.vercel.app";
+const PUBLIC_BASE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
 
 let cachedClient: messagingApi.MessagingApiClient | null = null;
 function getClient(): messagingApi.MessagingApiClient | null {
@@ -13,7 +14,7 @@ function getClient(): messagingApi.MessagingApiClient | null {
   return cachedClient;
 }
 
-function buildMessage(friendCount: number): string | null {
+function buildMessage(friendCount: number, ownerToken: string): string | null {
   if (friendCount === 1) {
     return [
       "友達があなたのトリセツに回答してくれました🐧",
@@ -22,14 +23,18 @@ function buildMessage(friendCount: number): string | null {
   }
   if (friendCount === 2) {
     return [
-      "2人目の友達が回答してくれました！",
+      "2人目の友達が回答してくれました!",
       "あと1人で詳細レポートが届きます🎁",
     ].join("\n");
   }
   if (friendCount === 3) {
+    const reportUrl = `${PUBLIC_BASE_URL}/report/${ownerToken}`;
     return [
-      "3人の友達からの回答が揃いました!",
-      "詳細レポートの準備が整い次第、改めてお知らせします📖",
+      "3人の友達からの回答が揃いました!🎉",
+      "あなたの詳細レポートが完成しました📖",
+      "",
+      "▼ こちらから確認できます",
+      reportUrl,
     ].join("\n");
   }
   return null;
@@ -89,7 +94,7 @@ export async function notifyFriendAnswered(
   friendCount: number,
 ): Promise<void> {
   try {
-    const text = buildMessage(friendCount);
+    const text = buildMessage(friendCount, ownerToken);
     if (!text) return;
 
     const client = getClient();
