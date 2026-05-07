@@ -373,7 +373,7 @@ export default function OwnerResultPage({
               </div>
 
               {/* LINE登録CTA（同じカード内に統合） */}
-              <div className="bg-[#06C755]/5 px-6 pt-2 pb-6">
+              <div className="px-6 pt-2 pb-6">
                 <div className="flex flex-col items-center text-center">
                   <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#06C755] mb-4">
                     <svg
