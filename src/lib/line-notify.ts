@@ -286,6 +286,33 @@ export async function sendWelcomeMessage(
   return result;
 }
 
+// 紐付けなしユーザー (LIFF 経由せず直接 bot 追加) 向けのシンプル welcome
+export async function sendGenericWelcome(
+  lineUserId: string,
+): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping generic welcome");
+    return { success: false, error: "no_token" };
+  }
+
+  const text = [
+    "ワタシのトリセツへようこそ🐧",
+    "",
+    "まずは15問の自己診断から始めてください",
+    "（3分で完了します）",
+    "",
+    "▼ 診断スタート",
+    PUBLIC_BASE_URL,
+  ].join("\n");
+
+  return sendWithErrorHandling(
+    client,
+    { to: lineUserId, messages: [{ type: "text", text }] },
+    { type: "welcome", recipientId: lineUserId, metadata: { generic: true } },
+  );
+}
+
 export async function notifyFriendAnswered(
   ownerToken: string,
   friendCount: number,

@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { sendWelcomeMessage } from "@/lib/line-notify";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -53,7 +52,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (existing) {
-      // 既に登録済み: owner_token を最新に更新するのみ、welcome はスキップ
+      // 既に登録済み: owner_token を最新に更新するのみ
+      // welcome は webhook 経由で送信されるため、ここでは送らない
       const { error: updateError } = await supabase
         .from("line_users")
         .update({ owner_token: ownerToken })
@@ -63,10 +63,11 @@ export async function POST(request: NextRequest) {
         console.error("line_users update error:", updateError);
         return NextResponse.json({ error: "DB error" }, { status: 500 });
       }
-      return NextResponse.json({ ok: true, welcomed: false });
+      return NextResponse.json({ ok: true, alreadyRegistered: true });
     }
 
-    // 新規登録: insert + welcome
+    // 新規登録: insert のみ
+    // welcome は LINE Webhook の follow イベントで送信される (Phase G+2)
     const { error: insertError } = await supabase
       .from("line_users")
       .insert({ owner_token: ownerToken, line_user_id: lineUserId });
@@ -76,14 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "DB error" }, { status: 500 });
     }
 
-    // welcome は同期的に送信し、結果を返す(success/失敗を呼び出し側で表示できるように)
-    const welcomeResult = await sendWelcomeMessage(ownerToken, lineUserId);
-
-    return NextResponse.json({
-      ok: true,
-      welcomed: welcomeResult.success,
-      welcomeError: welcomeResult.success ? undefined : welcomeResult.error,
-    });
+    return NextResponse.json({ ok: true, alreadyRegistered: false });
   } catch (err) {
     console.error("/api/line-register error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
