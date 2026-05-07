@@ -12,12 +12,15 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 const BASE_URL = "https://watashi-no-torisetsu.vercel.app";
 
 export const metadata: Metadata = {
-  title: "ワタシのトリセツ｜友達と作る、ワタシのトリセツ",
+  title: {
+    default: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
+    template: "%s｜ワタシのトリセツ",
+  },
   description:
     "自分が思う私と、友達から見える私。そのギャップが、本当のあなたを見せてくれる。15問の診断で、あなたのトリセツを作ろう。",
   metadataBase: new URL(BASE_URL),
   openGraph: {
-    title: "ワタシのトリセツ｜友達と作る、ワタシのトリセツ",
+    title: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
     description: "15問の診断で、あなたのトリセツを作ろう。",
     type: "website",
     siteName: "ワタシのトリセツ",

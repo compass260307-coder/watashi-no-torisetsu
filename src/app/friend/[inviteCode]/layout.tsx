@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const BASE_URL = "https://watashi-no-torisetsu.vercel.app";
 
 export const metadata: Metadata = {
-  title: "ワタシのトリセツ",
+  title: { absolute: "ワタシのトリセツ" },
   description: "友達から見たあなたを10問で教えてもらう診断",
   openGraph: {
     title: "ワタシのトリセツ",
