@@ -16,7 +16,9 @@ type Status =
 const PUBLIC_BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
 
-function buildShareMessages(senderName: string, friendInviteUrl: string) {
+type ShareMode = "evaluate" | "invite";
+
+function buildEvaluateMessages(senderName: string, friendInviteUrl: string) {
   return [
     {
       type: "text" as const,
@@ -33,6 +35,31 @@ function buildShareMessages(senderName: string, friendInviteUrl: string) {
   ];
 }
 
+function buildInviteMessages() {
+  return [
+    {
+      type: "text" as const,
+      text: [
+        "ワタシのトリセツ、やってみない？",
+        "意外な自分が見えてくる🐧",
+        "",
+        "▼ 3分で診断できます",
+        PUBLIC_BASE_URL,
+      ].join("\n"),
+    },
+  ];
+}
+
+function buildShareMessages(
+  mode: ShareMode,
+  senderName: string,
+  friendInviteUrl: string,
+) {
+  return mode === "invite"
+    ? buildInviteMessages()
+    : buildEvaluateMessages(senderName, friendInviteUrl);
+}
+
 function ShareContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>("loading");
@@ -41,6 +68,7 @@ function ShareContent() {
   const liffRef = useRef<typeof import("@line/liff").default | null>(null);
   const senderNameRef = useRef<string>("友達");
   const friendInviteUrlRef = useRef<string>("");
+  const modeRef = useRef<ShareMode>("evaluate");
 
   const startShare = async () => {
     const liff = liffRef.current;
@@ -48,6 +76,7 @@ function ShareContent() {
     setStatus("sharing");
     try {
       const messages = buildShareMessages(
+        modeRef.current,
         senderNameRef.current,
         friendInviteUrlRef.current,
       );
@@ -81,7 +110,8 @@ function ShareContent() {
 
         // LIFF経由のリダイレクトでは、元のクエリが liff.state にエンコードされて入る
         let inviteCode = searchParams.get("inviteCode");
-        if (!inviteCode) {
+        let intent = searchParams.get("intent");
+        if (!inviteCode && !intent) {
           const liffState = searchParams.get("liff.state");
           if (liffState) {
             try {
@@ -90,12 +120,19 @@ function ShareContent() {
                 decoded.startsWith("?") ? decoded.slice(1) : decoded,
               );
               inviteCode = stateParams.get("inviteCode");
+              intent = stateParams.get("intent");
             } catch (err) {
               console.error("liff.state parse error:", err);
             }
           }
         }
-        if (!inviteCode) {
+
+        let mode: ShareMode;
+        if (intent === "invite") {
+          mode = "invite";
+        } else if (inviteCode) {
+          mode = "evaluate";
+        } else {
           setStatus("invalid");
           return;
         }
@@ -116,17 +153,20 @@ function ShareContent() {
 
         const profile = await liff.getProfile().catch(() => null);
         const senderName = profile?.displayName?.trim() || "友達";
-        const friendInviteUrl = `${PUBLIC_BASE_URL}/friend/${inviteCode}`;
+        const friendInviteUrl = inviteCode
+          ? `${PUBLIC_BASE_URL}/friend/${inviteCode}`
+          : "";
 
         if (cancelled) return;
         liffRef.current = liff;
         senderNameRef.current = senderName;
         friendInviteUrlRef.current = friendInviteUrl;
+        modeRef.current = mode;
 
         // shareTargetPicker をすぐ起動
         setStatus("sharing");
         const result = await liff.shareTargetPicker(
-          buildShareMessages(senderName, friendInviteUrl),
+          buildShareMessages(mode, senderName, friendInviteUrl),
           { isMultiple: true },
         );
         if (cancelled) return;

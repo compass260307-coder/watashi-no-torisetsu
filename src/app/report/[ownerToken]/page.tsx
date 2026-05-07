@@ -611,12 +611,22 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
 
         {/* 7. フッター */}
         <footer className="flex flex-col items-center mb-10">
-          <Link
-            href={`/result/${ownerToken}`}
-            className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] text-center mb-3"
-          >
-            友達に教える
-          </Link>
+          {(() => {
+            const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
+            const inviteHref = liffShareId
+              ? `https://liff.line.me/${liffShareId}?intent=invite`
+              : "/";
+            return (
+              <a
+                href={inviteHref}
+                target={liffShareId ? "_blank" : undefined}
+                rel={liffShareId ? "noopener noreferrer" : undefined}
+                className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] text-center mb-3"
+              >
+                友達に教える
+              </a>
+            );
+          })()}
           <Link
             href="/"
             className="text-xs text-muted hover:text-foreground transition-colors"
