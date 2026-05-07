@@ -269,6 +269,20 @@ export default function AdminPage() {
 
   const [reportOwnerToken, setReportOwnerToken] = useState("");
 
+  type UndeliveredRow = {
+    id: string;
+    owner_token: string;
+    line_user_id: string;
+    welcome_sent_at: string | null;
+    created_at: string;
+  };
+  const [undelivered, setUndelivered] = useState<UndeliveredRow[]>([]);
+  const [undeliveredLoading, setUndeliveredLoading] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [welcomeStatusMessage, setWelcomeStatusMessage] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
     if (stored) setAdminKey(stored);
@@ -359,6 +373,59 @@ export default function AdminPage() {
       }
     },
     [adminKey, testOwnerToken],
+  );
+
+  const fetchUndelivered = useCallback(async () => {
+    if (!adminKey) return;
+    setUndeliveredLoading(true);
+    setWelcomeStatusMessage(null);
+    try {
+      const res = await fetch("/api/admin/welcome-status", {
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUndelivered(data.undelivered ?? []);
+      } else {
+        setWelcomeStatusMessage(`❌ 取得失敗: ${data.error ?? res.statusText}`);
+      }
+    } catch (err) {
+      setWelcomeStatusMessage(`❌ 通信エラー: ${(err as Error).message}`);
+    } finally {
+      setUndeliveredLoading(false);
+    }
+  }, [adminKey]);
+
+  const resendWelcome = useCallback(
+    async (lineUserId: string, rowId: string) => {
+      if (!adminKey) return;
+      setResendingId(rowId);
+      setWelcomeStatusMessage(null);
+      try {
+        const res = await fetch("/api/admin/welcome-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey,
+          },
+          body: JSON.stringify({ lineUserId }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          setWelcomeStatusMessage(`✅ 再送成功: ${lineUserId.slice(0, 8)}...`);
+          await fetchUndelivered();
+        } else {
+          setWelcomeStatusMessage(
+            `❌ 再送失敗: ${data.error ?? res.statusText} (status ${data.statusCode ?? "?"})`,
+          );
+        }
+      } catch (err) {
+        setWelcomeStatusMessage(`❌ 通信エラー: ${(err as Error).message}`);
+      } finally {
+        setResendingId(null);
+      }
+    },
+    [adminKey, fetchUndelivered],
   );
 
   if (!adminKey) {
@@ -916,6 +983,75 @@ export default function AdminPage() {
             </div>
             {testStatus && (
               <p className="text-xs text-gray-700">{testStatus}</p>
+            )}
+          </div>
+        </section>
+
+        {/* Welcome 未送信ユーザー */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            Welcome 未送信ユーザー（再送）
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchUndelivered}
+                disabled={undeliveredLoading}
+                className="rounded bg-gray-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {undeliveredLoading ? "取得中..." : "未送信一覧を取得"}
+              </button>
+              <span className="text-xs text-gray-500">
+                {undelivered.length} 件
+              </span>
+            </div>
+            {welcomeStatusMessage && (
+              <p className="text-xs text-gray-700">{welcomeStatusMessage}</p>
+            )}
+            {undelivered.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-gray-500">
+                      <th className="px-2 py-2 font-medium">作成日時</th>
+                      <th className="px-2 py-2 font-medium">owner_token</th>
+                      <th className="px-2 py-2 font-medium">line_user_id</th>
+                      <th className="px-2 py-2 font-medium">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {undelivered.map((row) => (
+                      <tr key={row.id} className="border-b border-gray-100">
+                        <td className="px-2 py-2 whitespace-nowrap text-gray-600">
+                          {new Date(row.created_at).toLocaleString("ja-JP", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td className="px-2 py-2 font-mono text-gray-700">
+                          {row.owner_token.slice(0, 8)}…
+                        </td>
+                        <td className="px-2 py-2 font-mono text-gray-700">
+                          {row.line_user_id.slice(0, 10)}…
+                        </td>
+                        <td className="px-2 py-2">
+                          <button
+                            onClick={() =>
+                              resendWelcome(row.line_user_id, row.id)
+                            }
+                            disabled={resendingId === row.id}
+                            className="rounded bg-[#06C755] px-2 py-1 text-[11px] font-bold text-white disabled:opacity-50"
+                          >
+                            {resendingId === row.id ? "送信中..." : "再送"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </section>

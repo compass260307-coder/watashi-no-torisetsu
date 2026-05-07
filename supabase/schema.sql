@@ -60,6 +60,7 @@ create table if not exists line_users (
   id uuid default gen_random_uuid() primary key,
   owner_token text not null,
   line_user_id text not null unique,
+  welcome_sent_at timestamptz null,
   created_at timestamptz default now(),
   constraint fk_owner_token
     foreign key (owner_token)
@@ -67,8 +68,13 @@ create table if not exists line_users (
     on delete cascade
 );
 
+-- 既存テーブルへのカラム追加 (Phase G-2 migration)
+alter table line_users
+  add column if not exists welcome_sent_at timestamptz null;
+
 create index if not exists idx_line_users_owner_token on line_users(owner_token);
 create index if not exists idx_line_users_line_user_id on line_users(line_user_id);
+create index if not exists idx_line_users_welcome_sent_at on line_users(welcome_sent_at);
 
 alter table line_users enable row level security;
 create policy "anyone can insert line_users" on line_users for insert with check (true);

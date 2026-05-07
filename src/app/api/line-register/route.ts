@@ -76,12 +76,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "DB error" }, { status: 500 });
     }
 
-    // fire-and-forget: welcome message must not block the response
-    sendWelcomeMessage(ownerToken, lineUserId).catch((err) =>
-      console.error("sendWelcomeMessage error:", err),
-    );
+    // welcome は同期的に送信し、結果を返す(success/失敗を呼び出し側で表示できるように)
+    const welcomeResult = await sendWelcomeMessage(ownerToken, lineUserId);
 
-    return NextResponse.json({ ok: true, welcomed: true });
+    return NextResponse.json({
+      ok: true,
+      welcomed: welcomeResult.success,
+      welcomeError: welcomeResult.success ? undefined : welcomeResult.error,
+    });
   } catch (err) {
     console.error("/api/line-register error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
