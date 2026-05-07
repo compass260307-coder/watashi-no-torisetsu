@@ -17,20 +17,20 @@ function getClient(): messagingApi.MessagingApiClient | null {
 function buildMessage(friendCount: number, ownerToken: string): string | null {
   if (friendCount === 1) {
     return [
-      "友達があなたのトリセツに回答してくれました🐧",
-      "残り2人で、詳細レポートが解放されます！",
+      "1人目の友達が回答してくれました🐧",
+      "あと2人で詳細レポートが届きます",
     ].join("\n");
   }
   if (friendCount === 2) {
     return [
-      "2人目の友達が回答してくれました!",
+      "2人目の友達が回答してくれました🎉",
       "あと1人で詳細レポートが届きます🎁",
     ].join("\n");
   }
   if (friendCount === 3) {
     const reportUrl = `${PUBLIC_BASE_URL}/report/${ownerToken}`;
     return [
-      "3人の友達からの回答が揃いました!🎉",
+      "3人の友達からの回答が揃いました🎉",
       "あなたの詳細レポートが完成しました📖",
       "",
       "▼ こちらから確認できます",
