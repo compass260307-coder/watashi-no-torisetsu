@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { track } from "@/lib/track";
@@ -53,6 +53,7 @@ function LineRegisterContent() {
   const startedRef = useRef(false);
   const liffRef = useRef<LiffModule | null>(null);
   const profileRef = useRef<LineProfile | null>(null);
+  const checkingRef = useRef(false);
 
   const performRegister = async (
     liff: LiffModule,
@@ -113,23 +114,45 @@ function LineRegisterContent() {
     }
   };
 
-  const handleConfirmFriendAdded = async () => {
-    const liff = liffRef.current;
-    const profile = profileRef.current;
-    if (!liff || !profile) return;
-    setCheckingAgain(true);
-    try {
-      const friendship = await liff.getFriendship();
-      if (friendship.friendFlag) {
-        await performRegister(liff, profile);
-      } else {
-        // まだ追加されていない: そのまま needs-friend-add に留まる
-        setCheckingAgain(false);
+  // 共通の再チェック処理: 自動(focus/visibilitychange)と手動ボタン両方から呼ばれる
+  // 最大3回 (500ms間隔) でリトライし、friendFlag === true なら自動で /api/line-register に進む
+  const recheckFriendshipAndProceed = useCallback(
+    async (showFeedback: boolean) => {
+      const liff = liffRef.current;
+      const profile = profileRef.current;
+      if (!liff || !profile) return;
+      if (checkingRef.current) return;
+
+      checkingRef.current = true;
+      if (showFeedback) setCheckingAgain(true);
+
+      try {
+        for (let i = 0; i < 3; i++) {
+          // LINE 側の friendship キャッシュ反映を待つ
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          try {
+            const friendship = await liff.getFriendship();
+            if (friendship.friendFlag) {
+              await performRegister(liff, profile);
+              return;
+            }
+          } catch (err) {
+            console.error("recheck getFriendship failed:", err);
+            break;
+          }
+        }
+        // 3回試して friend にならなかった: そのまま needs-friend-add に留まる
+      } finally {
+        checkingRef.current = false;
+        if (showFeedback) setCheckingAgain(false);
       }
-    } catch (err) {
-      console.error("re-check getFriendship failed:", err);
-      setCheckingAgain(false);
-    }
+    },
+    [],
+  );
+
+  const handleConfirmFriendAdded = () => {
+    void recheckFriendshipAndProceed(true);
   };
 
   useEffect(() => {
@@ -182,6 +205,26 @@ function LineRegisterContent() {
     })();
   }, [ownerToken]);
 
+  // 自動 friendship 検知: needs-friend-add 状態の間、LIFF にフォーカスが戻ったら再チェック
+  useEffect(() => {
+    if (status !== "needs-friend-add") return;
+
+    const onVisible = () => {
+      void recheckFriendshipAndProceed(false);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") onVisible();
+    };
+
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [status, recheckFriendshipAndProceed]);
+
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
       <Image
@@ -230,8 +273,10 @@ function LineRegisterContent() {
             </svg>
             LINE で友だち追加
           </a>
-          <p className="text-xs text-muted text-center mb-3">
-            追加が完了したら、下のボタンを押してください
+          <p className="text-xs text-muted text-center mb-3 leading-relaxed">
+            友だち追加が完了すると、自動的に次に進みます。
+            <br />
+            進まない場合は下のボタンを押してください。
           </p>
           <button
             onClick={handleConfirmFriendAdded}
