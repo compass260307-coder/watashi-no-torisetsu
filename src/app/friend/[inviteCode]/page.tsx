@@ -208,9 +208,9 @@ export default function FriendPage({
               setStarted(true);
               track("friend_answer_started", { inviteCode });
             }}
-            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4"
+            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4 break-keep"
           >
-            {hasName ? `${ownerName}さんについて10問答える` : "10問答える"}
+            {hasName ? `${ownerName}さんに10問答える` : "友達に10問答える"}
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
             正解はありません。感じたままでOK
