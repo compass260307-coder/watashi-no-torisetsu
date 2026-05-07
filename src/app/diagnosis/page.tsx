@@ -10,8 +10,6 @@ import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader"
 
 const MIN_LOADING_MS = 20000;
 
-const MILESTONES = [5, 10];
-
 const FOOTER_HINTS = [
   "深く考えなくてOK、直感で選んでね",
   "パッと浮かんだ方でOK",
@@ -36,7 +34,6 @@ function DiagnosisContent() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [milestone, setMilestone] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const tracked = useRef(false);
@@ -62,26 +59,11 @@ function DiagnosisContent() {
 
       if (currentIndex < totalQuestions - 1) {
         const nextIndex = currentIndex + 1;
-
-        if (MILESTONES.includes(nextIndex)) {
-          setIsTransitioning(true);
-          setMilestone(
-            nextIndex === 5
-              ? "いい調子！あと10問 🎵"
-              : "ラストスパート！あと5問 🔥",
-          );
-          setTimeout(() => {
-            setCurrentIndex(nextIndex);
-            setMilestone(null);
-            setIsTransitioning(false);
-          }, 1200);
-        } else {
-          setIsTransitioning(true);
-          setTimeout(() => {
-            setCurrentIndex(nextIndex);
-            setIsTransitioning(false);
-          }, 300);
-        }
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setCurrentIndex(nextIndex);
+          setIsTransitioning(false);
+        }, 300);
       } else {
         const result = diagnose(newAnswers);
         localStorage.setItem("torisetsu_result", JSON.stringify(result));
@@ -199,52 +181,42 @@ function DiagnosisContent() {
 
       {/* Question */}
       <main className="flex flex-col flex-1 items-center justify-center px-5 py-8 max-w-lg mx-auto w-full">
-        {milestone ? (
-          <div className="flex flex-col items-center animate-scale-in">
-            <div className="text-2xl font-extrabold mb-2">{milestone}</div>
-            <p className="text-xs text-muted mt-1">このまま直感でサクサクいこう</p>
-            <div className="h-1 w-20 rounded-full bg-primary/30 overflow-hidden mt-3">
-              <div className="h-full w-full bg-primary animate-shimmer" />
-            </div>
+        <div
+          className={`flex flex-col items-center w-full transition-opacity duration-200 ${
+            isTransitioning ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {/* Question label */}
+          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-xs font-bold text-primary mb-6 border border-card-border">
+            Q{currentIndex + 1}
           </div>
-        ) : (
-          <div
-            className={`flex flex-col items-center w-full transition-opacity duration-200 ${
-              isTransitioning ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            {/* Question label */}
-            <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-xs font-bold text-primary mb-6 border border-card-border">
-              Q{currentIndex + 1}
-            </div>
 
-            {/* Question text */}
-            <h2 className="text-lg font-bold text-center leading-relaxed mb-10 px-2">
-              {currentQuestion.text}
-            </h2>
+          {/* Question text */}
+          <h2 className="text-lg font-bold text-center leading-relaxed mb-10 px-2">
+            {currentQuestion.text}
+          </h2>
 
-            {/* Answer options */}
-            <div className="flex flex-col gap-3 w-full max-w-sm">
-              {answerOptions.map((option) => {
-                const isSelected =
-                  answers[currentQuestion.id] === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => handleAnswer(option.value)}
-                    className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all active:scale-[0.98] ${
-                      isSelected
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-card-border bg-card-bg text-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Answer options */}
+          <div className="flex flex-col gap-3 w-full max-w-sm">
+            {answerOptions.map((option) => {
+              const isSelected =
+                answers[currentQuestion.id] === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => handleAnswer(option.value)}
+                  className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all active:scale-[0.98] ${
+                    isSelected
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-card-border bg-card-bg text-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </div>
       </main>
 
       {/* Footer hint - rotating */}
