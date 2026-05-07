@@ -390,11 +390,11 @@ export default function OwnerResultPage({
                     <br />
                     続きをLINEで
                   </h2>
-                  <p className="text-sm text-muted leading-relaxed mb-5">
-                    友達3人の回答が集まったら、
-                    <br />
-                    詳細レポートをLINEでお届けします
-                  </p>
+                  <ol className="text-sm text-muted leading-relaxed text-left space-y-1 mb-5">
+                    <li>1. LINEで友だち追加</li>
+                    <li>2. LINEから友達3人に診断を送る</li>
+                    <li>3. 完全版が解放される</li>
+                  </ol>
                   <a
                     href={getLineRegisterUrl(ownerToken)}
                     target="_blank"
@@ -415,7 +415,7 @@ export default function OwnerResultPage({
                     LINE で友だち追加
                   </a>
                   <p className="text-[11px] text-muted leading-relaxed mt-4">
-                    ※ あなたの取扱説明書に深掘り解説・他者から見た自分の分析・相性診断・Big Five 5軸スコアが追加されます
+                    ※ 深掘り解説の続き、友達評価レーダー、相性診断、自他ギャップなどが追加されます
                   </p>
                 </div>
               </div>
