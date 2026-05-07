@@ -99,7 +99,7 @@ export default function Home() {
               <h3 className="text-base font-bold text-center leading-snug mb-2">
                 15問に答えて
                 <br />
-                仮トリセツが見える
+                仮トリセツが届く
               </h3>
               <p className="text-xs text-muted text-center">
                 直感でOK・3分でできる
