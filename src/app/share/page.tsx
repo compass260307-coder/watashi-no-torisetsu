@@ -79,7 +79,22 @@ function ShareContent() {
           return;
         }
 
-        const inviteCode = searchParams.get("inviteCode");
+        // LIFF経由のリダイレクトでは、元のクエリが liff.state にエンコードされて入る
+        let inviteCode = searchParams.get("inviteCode");
+        if (!inviteCode) {
+          const liffState = searchParams.get("liff.state");
+          if (liffState) {
+            try {
+              const decoded = decodeURIComponent(liffState);
+              const stateParams = new URLSearchParams(
+                decoded.startsWith("?") ? decoded.slice(1) : decoded,
+              );
+              inviteCode = stateParams.get("inviteCode");
+            } catch (err) {
+              console.error("liff.state parse error:", err);
+            }
+          }
+        }
         if (!inviteCode) {
           setStatus("invalid");
           return;
