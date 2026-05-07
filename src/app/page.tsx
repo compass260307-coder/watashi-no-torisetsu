@@ -99,7 +99,7 @@ export default function Home() {
               <h3 className="text-base font-bold text-center leading-snug mb-2">
                 15問に答えて
                 <br />
-                仮トリセツが届く
+                仮トリセツが見える
               </h3>
               <p className="text-xs text-muted text-center">
                 直感でOK・3分でできる
@@ -144,7 +144,7 @@ export default function Home() {
                 トリセツが完成
               </h3>
               <p className="text-xs text-muted text-center">
-                友達3人で深掘りレポート解放
+                友達3人で詳細レポート解放
               </p>
             </div>
           </div>
