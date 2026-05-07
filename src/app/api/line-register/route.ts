@@ -7,12 +7,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const ownerToken = typeof body.ownerToken === "string" ? body.ownerToken : null;
     const lineUserId = typeof body.lineUserId === "string" ? body.lineUserId : null;
+    const displayNameRaw =
+      typeof body.displayName === "string" ? body.displayName.trim() : "";
+    const displayName = displayNameRaw.length > 0 ? displayNameRaw : null;
 
     if (!ownerToken || !lineUserId) {
       return NextResponse.json(
         { error: "ownerToken and lineUserId required" },
         { status: 400 },
       );
+    }
+
+    // users.display_name は既存値を尊重し、未設定 (null/空) の場合のみ LIFF displayName で更新
+    if (displayName) {
+      const { data: userRow, error: userLookupError } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("owner_token", ownerToken)
+        .maybeSingle();
+
+      if (userLookupError) {
+        console.error("users lookup error (display_name):", userLookupError);
+      } else if (userRow && !userRow.display_name) {
+        const { error: nameUpdateError } = await supabase
+          .from("users")
+          .update({ display_name: displayName })
+          .eq("owner_token", ownerToken);
+        if (nameUpdateError) {
+          console.error("users update error (display_name):", nameUpdateError);
+          // 失敗しても LINE 登録自体は続ける
+        }
+      }
     }
 
     // 既存チェック: 既に登録済みなら welcome を送らない

@@ -50,7 +50,7 @@ export default function FriendPage({
       .catch(() => {});
   }, [inviteCode]);
 
-  const who = ownerName ?? "友達";
+  const hasName = ownerName !== null && ownerName.trim().length > 0;
 
   const totalQuestions = friendQuestions.length;
   const currentQuestion = friendQuestions[currentIndex];
@@ -177,7 +177,9 @@ export default function FriendPage({
               ワタシのトリセツ
             </h1>
             <p className="text-base font-bold text-foreground">
-              {who}さんから回答のお願いです
+              {hasName
+                ? `${ownerName}さんから回答のお願いです`
+                : "友達から回答のお願いです"}
             </p>
           </div>
 
@@ -194,7 +196,9 @@ export default function FriendPage({
             <p className="text-lg font-bold leading-relaxed mb-10">
               <span className="text-primary-gradient">あなただけが知る、</span>
               <br />
-              {who}さんの素敵な部分を教えてください
+              {hasName
+                ? `${ownerName}さんの素敵な部分を教えてください`
+                : "あなたの友達の素敵な部分を教えてください"}
             </p>
           </div>
 
@@ -206,7 +210,7 @@ export default function FriendPage({
             }}
             className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4"
           >
-            {who}さんについて10問答える
+            {hasName ? `${ownerName}さんについて10問答える` : "10問答える"}
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
             正解はありません。感じたままでOK
@@ -253,8 +257,14 @@ export default function FriendPage({
                 ありがとう！
               </h1>
               <p className="text-lg font-bold leading-snug text-center mb-2 animate-fade-in-up stagger-2">
-                <span className="inline-block">{who}さんのトリセツに</span>
-                <span className="inline-block">追加されました</span>
+                {hasName ? (
+                  <>
+                    <span className="inline-block">{ownerName}さんのトリセツに</span>
+                    <span className="inline-block">追加されました</span>
+                  </>
+                ) : (
+                  <span className="inline-block">トリセツに追加されました</span>
+                )}
               </p>
               <p className="text-sm text-muted text-center mb-8 animate-fade-in stagger-3">
                 回答は匿名で届きます
@@ -265,7 +275,9 @@ export default function FriendPage({
                 <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-3">
                   <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
                     <p className="text-[10px] font-bold tracking-wider text-muted text-center">
-                      あなたから見た{who}さんは…
+                      {hasName
+                        ? `あなたから見た${ownerName}さんは…`
+                        : "あなたから見た友達の印象は…"}
                     </p>
                   </div>
                   <div className="p-5 text-center">
@@ -467,7 +479,9 @@ export default function FriendPage({
       {/* Context bar */}
       <div className="bg-label-bg border-b border-card-border px-5 py-2 text-center">
         <p className="text-[11px] text-muted">
-          {who}さんについて回答中 ・ あなたの印象でOK
+          {hasName
+            ? `${ownerName}さんについて回答中 ・ あなたの印象でOK`
+            : "回答中 ・ あなたの印象でOK"}
         </p>
       </div>
 

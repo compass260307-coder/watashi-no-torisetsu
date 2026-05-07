@@ -63,13 +63,21 @@ function LineRegisterContent() {
           return;
         }
 
-        const profile = await liff.getProfile();
-        const lineUserId = profile.userId;
+        let lineUserId: string;
+        let displayName: string | null = null;
+        try {
+          const profile = await liff.getProfile();
+          lineUserId = profile.userId;
+          displayName = profile.displayName?.trim() || null;
+        } catch (err) {
+          console.error("liff.getProfile failed:", err);
+          throw err;
+        }
 
         const res = await fetch("/api/line-register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ownerToken, lineUserId }),
+          body: JSON.stringify({ ownerToken, lineUserId, displayName }),
         });
 
         if (cancelled) return;
