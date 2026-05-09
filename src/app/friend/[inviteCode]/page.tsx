@@ -198,21 +198,54 @@ export default function FriendPage({
             />
           </div>
 
-          {/* 3. ワタシのトリセツとは？ */}
+          {/* 3. ワタシのトリセツとは？ (式ビジュアル版) */}
           <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 animate-fade-in-up stagger-2">
             <h3 className="text-base font-bold mb-3 flex items-center justify-center">
               <span className="mr-2">📖</span>
               ワタシのトリセツとは？
             </h3>
-            <div className="flex flex-col gap-3">
-              <p className="text-sm leading-relaxed">
-                世界中の心理学研究で使われている{" "}
-                <strong>Big Five 理論</strong>{" "}
-                に基づく性格診断サービス。
-              </p>
-              <p className="text-sm leading-relaxed">
-                自分自身の自己評価に加え、友達からの「印象」を集めることで、自分でも気づかない一面が見えてきます。
-              </p>
+            <p className="text-sm leading-relaxed text-center mb-5">
+              世界中の心理学研究で使われている
+              <strong>Big Five 理論</strong>
+              に基づく性格診断サービス。
+            </p>
+
+            <div className="flex flex-col items-center gap-2">
+              {/* 自己評価ボックス */}
+              <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
+                <div className="text-[11px] text-muted mb-0.5">
+                  あなた自身が答える
+                </div>
+                <div className="text-base font-bold">自己評価</div>
+              </div>
+
+              {/* + 記号 */}
+              <div className="text-2xl font-bold text-primary leading-none">
+                ＋
+              </div>
+
+              {/* 他己評価ボックス */}
+              <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
+                <div className="text-[11px] text-muted mb-0.5">
+                  友達が答える
+                </div>
+                <div className="text-base font-bold">他己評価</div>
+              </div>
+
+              {/* = 記号 */}
+              <div className="text-2xl font-bold text-primary leading-none">
+                ＝
+              </div>
+
+              {/* ワタシのトリセツ (ハイライト) */}
+              <div className="w-full rounded-xl bg-primary-gradient px-4 py-4 text-center shadow-md">
+                <div className="text-[11px] text-white/90 mb-0.5">
+                  あなただけの
+                </div>
+                <div className="text-base font-bold text-white">
+                  ワタシのトリセツ
+                </div>
+              </div>
             </div>
           </section>
 
