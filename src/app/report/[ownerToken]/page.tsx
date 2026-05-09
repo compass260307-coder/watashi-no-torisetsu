@@ -108,7 +108,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
     );
   }
 
-  if (!report.meetsThreshold && !report.isDev) {
+  if (!report.meetsThreshold && !report.isDev && !report.isSample) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full text-center">
         <Image
@@ -148,6 +148,11 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
       {report.isDev && (
         <div className="w-full bg-red-500 text-white text-center py-2 px-3 text-xs font-bold sticky top-0 z-20">
           ⚠️ 開発モード（テストデータで補完中）
+        </div>
+      )}
+      {report.isSample && (
+        <div className="w-full bg-yellow-100 border-b border-yellow-300 text-yellow-900 text-center py-2 px-3 text-xs font-bold sticky top-0 z-20">
+          ⓘ これはサンプルです。実際のレポートはあなた専用の内容になります
         </div>
       )}
       <main className="flex flex-col px-5 py-6 max-w-lg mx-auto w-full">

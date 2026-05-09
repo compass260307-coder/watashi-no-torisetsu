@@ -62,6 +62,71 @@ function generateDummyFriendAnswer(
   };
 }
 
+function buildSampleReport() {
+  const selfScores: Record<BigFiveDimension, number> = {
+    E: 3.5,
+    A: 3.2,
+    O: 3.8,
+    C: 2.5,
+    N: 2.2,
+  };
+  const friendAnswers: FriendAnswerRecord[] = [
+    {
+      answers: {
+        "1": 4,
+        "2": 3,
+        "3": 4,
+        "4": "一緒にいると楽しい",
+        "5": "実はめっちゃ繊細",
+        "6": "🦮 ゴールデンレトリバー（人懐っこい）",
+        "7": "みんなの中心にいるとき",
+        "8": "完全に素のまま",
+        "9": "マイペースだけど丁寧",
+        "10": "めちゃくちゃ笑った瞬間",
+      },
+      created_at: "2026-04-01T12:00:00Z",
+    },
+    {
+      answers: {
+        "1": 3,
+        "2": 4,
+        "3": 3,
+        "4": "刺激をもらえる",
+        "5": "実はめっちゃ頼りになる",
+        "6": "🐱 猫（マイペース）",
+        "7": "誰かを助けているとき",
+        "8": "ちょっと背伸びする",
+        "9": "気分が乗った時にバーッと返してくる",
+        "10": "助けてもらった瞬間",
+      },
+      created_at: "2026-04-02T12:00:00Z",
+    },
+    {
+      answers: {
+        "1": 4,
+        "2": 4,
+        "3": 4,
+        "4": "素でいられる",
+        "5": "実はめっちゃ面白い",
+        "6": "🦦 カワウソ（好奇心旺盛）",
+        "7": "好きなことに没頭してるとき",
+        "8": "いい意味で刺激される",
+        "9": "即レス・テンション高め",
+        "10": "意外な一面を見た瞬間",
+      },
+      created_at: "2026-04-03T12:00:00Z",
+    },
+  ];
+
+  const report = buildReportData({
+    ownerToken: "sample",
+    typeId: "festival-sun",
+    selfScores,
+    friendAnswers,
+  });
+  return { ...report, isSample: true };
+}
+
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
   const isDevRequested = request.nextUrl.searchParams.get("dev") === "true";
@@ -69,6 +134,11 @@ export async function GET(request: NextRequest) {
 
   if (!token) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
+  }
+
+  // サンプルレポート (認証なし、固定 mock データ)
+  if (token === "sample") {
+    return NextResponse.json(buildSampleReport());
   }
 
   let isDev = false;

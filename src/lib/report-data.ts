@@ -799,6 +799,7 @@ export interface ReportData {
   bestPartner: BestPartnerContent;
   friendChoices: FriendChoiceCount[];
   isDev?: boolean;
+  isSample?: boolean;
 }
 
 export const TYPE_CATCH_COPY: Record<TorisetsuTypeId, string> = {

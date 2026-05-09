@@ -8,6 +8,7 @@ import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { StepCard } from "@/components/StepCard";
+import { SampleReportModal } from "@/components/SampleReportModal";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -38,6 +39,7 @@ export default function FriendPage({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const perceptionTracked = useRef(false);
 
@@ -248,15 +250,24 @@ export default function FriendPage({
                 ＝
               </div>
 
-              {/* ワタシのトリセツ (ハイライト): オーナーのトリセツ */}
-              <div className="w-full rounded-xl bg-primary-gradient px-4 py-4 text-center shadow-md">
+              {/* ワタシのトリセツ (ハイライト + クリックでサンプル表示) */}
+              <button
+                type="button"
+                onClick={() => setIsSampleModalOpen(true)}
+                className="w-full rounded-xl bg-primary-gradient px-4 py-4 text-center shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                aria-label="サンプルレポートを表示"
+              >
                 <div className="text-[11px] text-white/90 mb-0.5">
                   {ownerLabel}だけの
                 </div>
-                <div className="text-base font-bold text-white">
+                <div className="text-base font-bold text-white mb-1">
                   ワタシのトリセツ
                 </div>
-              </div>
+                <div className="text-[11px] text-white/85 flex items-center justify-center gap-1">
+                  <span>👀</span>
+                  <span>タップで例を見る</span>
+                </div>
+              </button>
             </div>
           </section>
 
@@ -313,6 +324,10 @@ export default function FriendPage({
             正解はありません。回答は完全匿名で届きます
           </p>
         </main>
+        <SampleReportModal
+          isOpen={isSampleModalOpen}
+          onClose={() => setIsSampleModalOpen(false)}
+        />
       </div>
     );
   }
