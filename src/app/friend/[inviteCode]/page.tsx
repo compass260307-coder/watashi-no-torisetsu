@@ -371,17 +371,24 @@ export default function FriendPage({
                 </p>
               </div>
 
-              {/* Section 2: あなたから見た{name}さん (既存維持) */}
+              {/* Section 2-3: 統合カード (更新通知 + type 表示 + のぞきCTA) */}
               {perceivedType && perception && (
-                <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-3">
-                  <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
-                    <p className="text-[10px] font-bold tracking-wider text-muted text-center">
+                <div className="w-full mx-auto max-w-md rounded-2xl bg-white shadow-md overflow-hidden mb-6 animate-fade-in-up stagger-3">
+                  {/* Top: 更新通知バー */}
+                  <div className="bg-pink-100 px-4 py-3 text-center">
+                    <p className="text-sm font-bold text-pink-700">
+                      ✨ {hasName ? `${ownerName}さん` : "友達"}
+                      のトリセツが更新されました
+                    </p>
+                  </div>
+
+                  {/* Middle: あなたから見た印象 + キャラ + タイプ */}
+                  <div className="p-6 text-center">
+                    <p className="text-xs text-muted mb-3">
                       {hasName
                         ? `あなたから見た${ownerName}さんは…`
                         : "あなたから見た友達の印象は…"}
                     </p>
-                  </div>
-                  <div className="p-5 text-center">
                     {perceivedType.imageUrl ? (
                       <div className="relative mx-auto mb-2 w-full max-w-[320px] aspect-square">
                         <Image
@@ -416,29 +423,24 @@ export default function FriendPage({
                       {perceivedType.subtitle}
                     </p>
                   </div>
-                </div>
-              )}
 
-              {/* Section 3: 更新通知 + のぞいてみる (notification 風 box) */}
-              {ownerToken && (
-                <div className="my-6 mx-auto w-full max-w-md rounded-2xl bg-pink-50 p-5 text-center animate-fade-in-up stagger-3">
-                  <p className="mb-1 text-sm font-bold text-pink-600">
-                    ✨ トリセツが更新されました
-                  </p>
-                  <p className="mb-4 text-sm text-gray-700 leading-relaxed">
-                    あなたの回答で
-                    <br />
-                    {hasName ? `${ownerName}さん` : "友達"}
-                    のトリセツが更新されました！
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsOwnerTorisetuModalOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-full bg-white border-2 border-pink-300 px-5 py-2.5 text-sm font-bold text-pink-700 hover:bg-pink-100 hover:border-pink-400 transition-colors"
-                  >
-                    <span>👀</span>
-                    <span>のぞいてみる</span>
-                  </button>
+                  {/* Bottom: divider + のぞきCTA */}
+                  {ownerToken && (
+                    <div className="border-t border-pink-100 p-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setIsOwnerTorisetuModalOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-full bg-pink-50 hover:bg-pink-100 border-2 border-pink-300 px-6 py-3 text-base font-bold text-pink-700 transition-colors"
+                      >
+                        <span>👀</span>
+                        <span>
+                          {hasName
+                            ? `${ownerName}さんのトリセツをのぞいてみる`
+                            : "友達のトリセツをのぞいてみる"}
+                        </span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
