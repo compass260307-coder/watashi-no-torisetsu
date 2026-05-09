@@ -297,16 +297,19 @@ export default function FriendPage({
           </section>
 
           {/* 6. CTA */}
-          <button
-            onClick={() => {
-              setStarted(true);
-              track("friend_answer_started", { inviteCode });
-            }}
-            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4 break-keep"
-          >
-            回答を始める
-          </button>
-          <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
+          <div className="my-4 flex justify-center w-full animate-fade-in-up stagger-4">
+            <button
+              onClick={() => {
+                setStarted(true);
+                track("friend_answer_started", { inviteCode });
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-gradient px-10 py-5 text-lg font-bold text-white shadow-xl shadow-primary/40 transition-transform duration-200 hover:scale-105 active:scale-95 break-keep"
+            >
+              回答を始める
+              <span className="text-xl leading-none">→</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-muted mt-1 animate-fade-in stagger-4">
             正解はありません。回答は完全匿名で届きます
           </p>
         </main>
