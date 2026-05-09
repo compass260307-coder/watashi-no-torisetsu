@@ -19,6 +19,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm: "楽しそうに見えて、実はめちゃくちゃ周りを見てる",
     lovedQuirk:
       "テンション上がりすぎて暴走するところ。でもそれが場を盛り上げる。",
+    detailDescription:
+      "人と関わるとエネルギーが湧くタイプ。新しい場でも数分で空気を読み、自然と中心人物になれる。明るく、優しく、新しいものに開かれている。",
+    traits: ["社交性高い", "場を盛り上げる", "新しい挑戦が好き", "感受性豊か"],
   },
   "everyones-home": {
     id: "everyones-home",
@@ -39,6 +42,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm: "一緒にいるだけで安心する、言葉にできない存在感",
     lovedQuirk:
       "心配性すぎて「大丈夫？」が口グセ。でもそれが嬉しい。",
+    detailDescription:
+      "誰にとっても心の拠り所になる安定感の持ち主。包容力があり、グループの空気を整える役割を自然に担う。一緒にいるだけでホッとできる存在。",
+    traits: ["安心感", "包容力", "聞き上手", "気配り上手"],
   },
   "wild-charisma": {
     id: "wild-charisma",
@@ -61,6 +67,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm: "自由に見えて、実は仲間想い",
     lovedQuirk:
       "思いつきで行動して周りを振り回すけど、なぜか許される。",
+    detailDescription:
+      "常識にとらわれない発想と、それを実行に移す行動力で周囲を巻き込んでいくタイプ。一見自由人だが、実は仲間想い。型を破るカリスマ性で道を作る。",
+    traits: ["行動派", "唯一無二", "突破力", "巻き込み上手"],
   },
   "iron-mental": {
     id: "iron-mental",
@@ -83,6 +92,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
       "強そうに見えて、信頼した相手にはめちゃくちゃ甘い",
     lovedQuirk:
       "率直すぎる発言で場が一瞬止まるところ。でもみんな内心「正論…」って思ってる。",
+    detailDescription:
+      "プレッシャーや困難な状況でも冷静に判断できる強さの持ち主。決断が早く、信念がブレない。信頼した相手にはとことん尽くす情の厚さも持つ。",
+    traits: ["決断力", "メンタル強い", "信念が強い", "情に厚い"],
   },
   "delicate-creator": {
     id: "delicate-creator",
@@ -105,6 +117,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm: "控えめに見えて、実は一番芯が強い",
     lovedQuirk:
       "考えすぎて動き出しが遅いところ。でもその分、出てくるものの質が高い。",
+    detailDescription:
+      "細かな空気感や微妙な変化を感じ取れる繊細な感性の持ち主。創造力豊かで、独自の世界観を持っている。控えめに見えて、実は芯が強い。",
+    traits: ["感受性豊か", "創造力", "観察力", "独自の世界観"],
   },
   "healing-guardian": {
     id: "healing-guardian",
@@ -126,6 +141,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm: "おっとりに見えて、実は意志がめちゃくちゃ強い",
     lovedQuirk:
       "NOと言えなくて抱え込みがち。でも頼られると嬉しいのも本当。",
+    detailDescription:
+      "穏やかで聞き上手、誰かの心を癒す力を持つタイプ。表に出ないところで仲間を支え、信頼を集めている。おっとりに見えて、意志はしっかり持っている。",
+    traits: ["癒し系", "聞き上手", "忍耐強い", "影のMVP"],
   },
   "deep-dive-explorer": {
     id: "deep-dive-explorer",
@@ -148,6 +166,9 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
       "興味ないことへの塩対応と、好きなことへの熱量のギャップ",
     lovedQuirk:
       "沼トークが止まらなくなるところ。でも楽しそうだからつい聞いちゃう。",
+    detailDescription:
+      "興味を持ったことを深く掘り下げる職人気質。広く浅くより、好きなことに没頭する時間を大切にする。同じ沼の仲間に出会うと一気に距離が縮まる。",
+    traits: ["集中力", "探究心", "こだわり強い", "ニッチな知識"],
   },
   "cool-maverick": {
     id: "cool-maverick",
@@ -170,5 +191,8 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
       "クールに見えて、実は心の中ではめちゃくちゃ考えてくれてる",
     lovedQuirk:
       "興味あることとないことで態度が全然違うところ。でもその正直さが信頼される。",
+    detailDescription:
+      "周囲に流されず自分のペースを保てる自立タイプ。論理的で分析力があり、的確な助言ができる。クールに見えて、実は心の中で深く考えてくれている。",
+    traits: ["冷静沈着", "マイペース", "分析力", "独立心"],
   },
 };

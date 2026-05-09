@@ -47,6 +47,8 @@ export interface TorisetsuType {
   hiddenAbility: string;
   unknownCharm: string;
   lovedQuirk: string;
+  detailDescription: string;
+  traits: string[];
 }
 
 export type AnswerValue = 1 | 2 | 3 | 4;

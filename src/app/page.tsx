@@ -1,17 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { StepCard } from "@/components/StepCard";
-
-const types = [
-  { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF4081" },
-  { emoji: "🏠", name: "みんなの実家", color: "#2EC4B6" },
-  { emoji: "🌪️", name: "暴走カリスマ", color: "#FFB800" },
-  { emoji: "🛡️", name: "鉄のメンタル番長", color: "#6C5CE7" },
-  { emoji: "🎨", name: "繊細クリエイター", color: "#00D4AA" },
-  { emoji: "🌿", name: "癒しの守護神", color: "#00B894" },
-  { emoji: "🔍", name: "沼ハマり探究者", color: "#C44569" },
-  { emoji: "🧊", name: "冷静マイペース", color: "#1E90FF" },
-];
+import { TypeCarousel } from "@/components/TypeCarousel";
 
 export default function Home() {
   return (
@@ -54,27 +44,12 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Types preview */}
-        <section className="w-full max-w-sm mb-10 animate-fade-in-up stagger-2">
+        {/* Types preview (carousel) */}
+        <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
           <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-4 uppercase">
             8つのタイプ
           </h2>
-          <div className="grid grid-cols-4 gap-2">
-            {types.map((t) => (
-              <div
-                key={t.name}
-                className="flex flex-col items-center gap-1 rounded-xl border border-card-border bg-card-bg p-2.5"
-              >
-                <span className="text-xl">{t.emoji}</span>
-                <span
-                  className="text-[9px] font-bold text-center leading-tight"
-                  style={{ color: t.color }}
-                >
-                  {t.name}
-                </span>
-              </div>
-            ))}
-          </div>
+          <TypeCarousel />
         </section>
 
         {/* Steps */}
