@@ -290,12 +290,12 @@ export default function FriendPage({
             </div>
           </section>
 
-          {/* 5. 一緒に完成させよう (エモーショナル) */}
+          {/* 5. 呼びかけ */}
           <section className="w-full text-center mb-6 animate-fade-in-up stagger-3">
             <p className="text-base font-bold leading-relaxed">
-              一緒に{ownerLabel}のトリセツを
+              あなたから見た{ownerLabel}を、
               <br />
-              完成させよう！
+              教えてくれませんか？
             </p>
           </section>
 
@@ -307,7 +307,7 @@ export default function FriendPage({
             }}
             className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] animate-fade-in-up stagger-4 break-keep"
           >
-            {ownerLabel}に10問答える
+            回答を始める
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
             正解はありません。感じたままでOK
