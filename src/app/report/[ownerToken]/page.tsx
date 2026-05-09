@@ -115,11 +115,13 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
     );
   }
 
-  // /report は閉じない場所。friend count に関わらず常時表示し、
-  // 友達依存セクションはプレースホルダで「楽しみ」として見せる
+  // /report は閉じない場所。friendCount に応じて段階的にセクションを解放
+  // 0: タイプ表示 + タイプ深掘り
+  // 1+: + ベスト相棒
+  // 2+: + レーダー + ギャップ分析
+  // 3+: + 結論一文 (サプライズ) + 友達から見た印象 (サプライズ)
   const friendCount = report.friendCount;
   const filledCount = Math.min(friendCount, REPORT_FRIEND_THRESHOLD);
-  const remaining = Math.max(0, REPORT_FRIEND_THRESHOLD - friendCount);
   const isComplete = friendCount >= REPORT_FRIEND_THRESHOLD;
   const evaluateInviteHref = getEvaluateInviteHref();
   const radarData = buildRadarData(report);
@@ -260,109 +262,240 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </div>
         </section>
 
-        {/* 2.5 結論一文 */}
-        {(() => {
-          if (report.gaps.length === 0) return null;
-          const conclusionText = generateConclusionText(
-            report.selfBigFive,
-            report.friendBigFive,
-            report.gaps,
-          );
-          const conclusionLines = conclusionText
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((l) => l.length > 0);
-          if (conclusionLines.length === 0) return null;
-
-          return (
-            <section
-              className="w-full rounded-2xl border-2 p-6 mb-5"
-              style={{
-                borderColor: report.typeColor,
-                background: `linear-gradient(to bottom, #ffffff, ${report.typeColor}0D)`,
-                boxShadow: `0 4px 16px ${report.typeColor}1A`,
-              }}
-            >
-              <p className="text-sm font-medium text-muted text-center mb-2">
-                友達の回答から見えた、あなた
-              </p>
-              <div
-                className="h-0.5 w-12 mx-auto mb-4 rounded-full"
-                style={{ backgroundColor: report.typeColor }}
-              />
-              <div className="space-y-4">
-                {conclusionLines.map((line, i) => (
-                  <p
-                    key={i}
-                    className="text-base leading-relaxed font-bold text-left"
-                  >
-                    {line}
-                  </p>
-                ))}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 3. レーダーチャート: 自己 vs 友達 (friend > 0 のときのみ) */}
-        {friendCount > 0 && (
+        {/* 5. タイプ深掘り (always: 0人+) */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-          <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
-            自己評価 vs 友達評価
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-1">
+            タイプ深掘り
           </p>
-          <div className="w-full h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData} outerRadius="75%">
-                <PolarGrid stroke="#e8e0d8" />
-                <PolarAngleAxis
-                  dataKey="axis"
-                  tick={{ fontSize: 12, fill: "#1a1a1a" }}
-                />
-                <PolarRadiusAxis
-                  domain={[0, 4]}
-                  tick={false}
-                  axisLine={false}
-                />
-                <Radar
-                  name="自己評価"
-                  dataKey="self"
-                  stroke={report.typeColor}
-                  fill={report.typeColor}
-                  fillOpacity={0.3}
-                />
-                <Radar
-                  name="友達評価"
-                  dataKey="friend"
-                  stroke="#9a8a8a"
-                  fill="#9a8a8a"
-                  fillOpacity={0.2}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 11 }}
-                  iconType="circle"
-                  iconSize={8}
-                />
-                <Tooltip
-                  formatter={(v) =>
-                    typeof v === "number" ? v.toFixed(2) : String(v)
-                  }
-                  contentStyle={{
-                    fontSize: 11,
-                    borderRadius: 8,
-                    border: "1px solid #e8e0d8",
-                  }}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="text-[11px] text-muted text-center mt-2 leading-relaxed">
-            友達評価は10問の回答から推定しています
-          </p>
+          <h3 className="text-base font-bold mb-4">
+            {report.typeName}について
+          </h3>
+          {(() => {
+            const dive = TYPE_DEEP_DIVE[report.typeId];
+            if (!dive) {
+              return (
+                <p className="text-xs text-muted leading-relaxed">
+                  「{report.typeName}」タイプの詳細解説は準備中です。
+                  <br />
+                  （次のフェーズで本コンテンツを追加予定）
+                </p>
+              );
+            }
+            return (
+              <div className="flex flex-col gap-4">
+                {DEEP_DIVE_SECTION_ORDER.map((key) => {
+                  const sec = dive[key];
+                  return (
+                    <div
+                      key={key}
+                      className="border-t border-card-border pt-3 first:border-t-0 first:pt-0"
+                    >
+                      <p
+                        className="text-sm font-bold mb-2"
+                        style={{ color: report.typeColor }}
+                      >
+                        {sec.title}
+                      </p>
+                      <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-line">
+                        {sec.body}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </section>
+
+        {/* 6. ベスト相棒 (1人+) */}
+        {friendCount >= 1 &&
+          (() => {
+            const partner = torisetsuTypes[report.bestPartner.partnerTypeId];
+            const partnerCatch =
+              TYPE_CATCH_COPY[report.bestPartner.partnerTypeId] ??
+              partner.subtitle;
+            return (
+              <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+                <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-4">
+                  あなたのベスト相棒
+                </p>
+
+                <div
+                  className="rounded-2xl border-2 p-5 mb-5"
+                  style={{
+                    borderColor: partner.color,
+                    background: `linear-gradient(to bottom, #ffffff, ${partner.color}0D)`,
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    {partner.imageUrl ? (
+                      <div className="relative mx-auto mb-3 w-full max-w-[240px] aspect-square">
+                        <Image
+                          src={partner.imageUrl}
+                          alt={`${partner.name}のキャラクター`}
+                          width={240}
+                          height={240}
+                          className="relative z-10 w-full h-full object-contain"
+                        />
+                        <div
+                          aria-hidden="true"
+                          className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
+                          style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
+                        style={{ backgroundColor: `${partner.color}15` }}
+                      >
+                        {partner.emoji}
+                      </div>
+                    )}
+                    <p
+                      className="text-xl font-extrabold mb-1"
+                      style={{ color: partner.color }}
+                    >
+                      {partner.emoji} {partner.name}
+                    </p>
+                    <p className="text-xs text-muted">{partnerCatch}</p>
+                  </div>
+                </div>
+
+                <div className="mb-5">
+                  <p
+                    className="text-sm font-bold mb-2"
+                    style={{ color: partner.color }}
+                  >
+                    💎 なぜ相性がいいか
+                  </p>
+                  <p className="text-[13px] leading-relaxed whitespace-pre-line">
+                    {report.bestPartner.whyCompatible}
+                  </p>
+                </div>
+
+                <div className="mb-5">
+                  <p
+                    className="text-sm font-bold mb-2"
+                    style={{ color: partner.color }}
+                  >
+                    ✨ 一緒にいると起きること
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {report.bestPartner.whatHappens.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span
+                          className="text-xs mt-1"
+                          style={{ color: partner.color }}
+                        >
+                          ●
+                        </span>
+                        <span className="text-[13px] leading-relaxed">
+                          {item}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <p
+                    className="text-sm font-bold mb-2"
+                    style={{ color: partner.color }}
+                  >
+                    💭 関係を長く続けるために
+                  </p>
+                  <p className="text-[13px] leading-relaxed whitespace-pre-line">
+                    {report.bestPartner.warning}
+                  </p>
+                </div>
+              </section>
+            );
+          })()}
+
+        {/* P-1. プレースホルダ (1人時のみ): 次に解放されるものを予告 */}
+        {friendCount === 1 && (
+          <section className="w-full rounded-2xl border-2 border-dashed border-pink-200 bg-pink-50/40 p-5 mb-5 text-center">
+            <Image
+              src="/mascot/analyzing-penguin.png"
+              alt=""
+              width={112}
+              height={112}
+              className="w-24 h-24 object-contain mx-auto mb-2 opacity-90"
+            />
+            <p className="text-sm font-bold text-pink-700 mb-1">
+              あと 1 人の他己評価で、自分と他者のグラフが見えるよ🐧
+            </p>
+            <p className="text-xs text-muted leading-relaxed mb-4">
+              友達が増えるほど、深掘りされていきます
+            </p>
+            <a
+              href={evaluateInviteHref}
+              className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
+            >
+              他己評価を依頼する
+            </a>
+          </section>
         )}
 
-        {/* 4. ギャップ分析 (全5軸) */}
-        {report.gaps.length > 0 && (
+        {/* 3. レーダーチャート: 自己 vs 友達 (2人+) */}
+        {friendCount >= 2 && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+              自己評価 vs 友達評価
+            </p>
+            <div className="w-full h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarData} outerRadius="75%">
+                  <PolarGrid stroke="#e8e0d8" />
+                  <PolarAngleAxis
+                    dataKey="axis"
+                    tick={{ fontSize: 12, fill: "#1a1a1a" }}
+                  />
+                  <PolarRadiusAxis
+                    domain={[0, 4]}
+                    tick={false}
+                    axisLine={false}
+                  />
+                  <Radar
+                    name="自己評価"
+                    dataKey="self"
+                    stroke={report.typeColor}
+                    fill={report.typeColor}
+                    fillOpacity={0.3}
+                  />
+                  <Radar
+                    name="友達評価"
+                    dataKey="friend"
+                    stroke="#9a8a8a"
+                    fill="#9a8a8a"
+                    fillOpacity={0.2}
+                  />
+                  <Legend
+                    wrapperStyle={{ fontSize: 11 }}
+                    iconType="circle"
+                    iconSize={8}
+                  />
+                  <Tooltip
+                    formatter={(v) =>
+                      typeof v === "number" ? v.toFixed(2) : String(v)
+                    }
+                    contentStyle={{
+                      fontSize: 11,
+                      borderRadius: 8,
+                      border: "1px solid #e8e0d8",
+                    }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-[11px] text-muted text-center mt-2 leading-relaxed">
+              友達評価は10問の回答から推定しています
+            </p>
+          </section>
+        )}
+
+        {/* 4. ギャップ分析 (2人+ かつ gaps > 0) */}
+        {friendCount >= 2 && report.gaps.length > 0 && (
           <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
             <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
               友達から見たあなた
@@ -448,68 +581,8 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </section>
         )}
 
-        {/* 4.5 友達から見たあなたの印象 (choice 集計) */}
-        {report.friendChoices.length > 0 && (
-          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-1">
-              友達から見たあなたの印象
-            </p>
-            <p className="text-xs text-center text-muted mb-5">
-              友達{report.friendCount}人の回答から集計しました
-            </p>
-
-            <div className="flex flex-col gap-5">
-              {report.friendChoices.map((q) => {
-                const visible = q.choices.filter((c) => c.count > 0);
-                if (visible.length === 0) return null;
-                const max = Math.max(...visible.map((c) => c.count));
-
-                return (
-                  <div key={q.questionId}>
-                    <p className="text-sm font-bold mb-3">{q.questionLabel}</p>
-                    <ul className="flex flex-col gap-2">
-                      {visible
-                        .sort((a, b) => b.count - a.count)
-                        .map((c) => {
-                          const widthPct = max > 0 ? (c.count / max) * 100 : 0;
-                          return (
-                            <li
-                              key={c.label}
-                              className="flex items-center gap-3"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[13px] truncate">
-                                    {c.label}
-                                  </span>
-                                  <span className="text-xs font-mono tabular-nums text-muted ml-2 shrink-0">
-                                    {c.count}人
-                                  </span>
-                                </div>
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{
-                                      width: `${widthPct}%`,
-                                      backgroundColor: report.typeColor,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        })}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 4.6 友達依存セクションの後に置く「あと N 人で…」プレースホルダ
-            (1〜2 人時のみ。0 人は上の招待 CTA があるので不要、3+ 人は完成済) */}
-        {friendCount > 0 && friendCount < REPORT_FRIEND_THRESHOLD && (
+        {/* P-2. プレースホルダ (2人時のみ): "完成" 包括ワード、サプライズ予告なし */}
+        {friendCount === 2 && (
           <section className="w-full rounded-2xl border-2 border-dashed border-pink-200 bg-pink-50/40 p-5 mb-5 text-center">
             <Image
               src="/mascot/analyzing-penguin.png"
@@ -519,10 +592,10 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
               className="w-24 h-24 object-contain mx-auto mb-2 opacity-90"
             />
             <p className="text-sm font-bold text-pink-700 mb-1">
-              あと {remaining} 人の他己評価で見えるよ🐧
+              あと 1 人で 完成🐧
             </p>
             <p className="text-xs text-muted leading-relaxed mb-4">
-              友達が増えるほど、深掘りされていきます
+              あと少しで揃います
             </p>
             <a
               href={evaluateInviteHref}
@@ -533,154 +606,113 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           </section>
         )}
 
-        {/* 5. タイプ深掘り */}
-        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-          <p className="text-[10px] font-bold tracking-wider text-muted mb-1">
-            タイプ深掘り
-          </p>
-          <h3 className="text-base font-bold mb-4">
-            {report.typeName}について
-          </h3>
-          {(() => {
-            const dive = TYPE_DEEP_DIVE[report.typeId];
-            if (!dive) {
-              return (
-                <p className="text-xs text-muted leading-relaxed">
-                  「{report.typeName}」タイプの詳細解説は準備中です。
-                  <br />
-                  （次のフェーズで本コンテンツを追加予定）
-                </p>
-              );
-            }
+        {/* 2.5 結論一文「友達の回答から見えた、あなた」(3人+ サプライズ) */}
+        {friendCount >= REPORT_FRIEND_THRESHOLD &&
+          (() => {
+            if (report.gaps.length === 0) return null;
+            const conclusionText = generateConclusionText(
+              report.selfBigFive,
+              report.friendBigFive,
+              report.gaps,
+            );
+            const conclusionLines = conclusionText
+              .split("\n")
+              .map((l) => l.trim())
+              .filter((l) => l.length > 0);
+            if (conclusionLines.length === 0) return null;
+
             return (
-              <div className="flex flex-col gap-4">
-                {DEEP_DIVE_SECTION_ORDER.map((key) => {
-                  const sec = dive[key];
-                  return (
-                    <div
-                      key={key}
-                      className="border-t border-card-border pt-3 first:border-t-0 first:pt-0"
+              <section
+                className="w-full rounded-2xl border-2 p-6 mb-5"
+                style={{
+                  borderColor: report.typeColor,
+                  background: `linear-gradient(to bottom, #ffffff, ${report.typeColor}0D)`,
+                  boxShadow: `0 4px 16px ${report.typeColor}1A`,
+                }}
+              >
+                <p className="text-sm font-medium text-muted text-center mb-2">
+                  友達の回答から見えた、あなた
+                </p>
+                <div
+                  className="h-0.5 w-12 mx-auto mb-4 rounded-full"
+                  style={{ backgroundColor: report.typeColor }}
+                />
+                <div className="space-y-4">
+                  {conclusionLines.map((line, i) => (
+                    <p
+                      key={i}
+                      className="text-base leading-relaxed font-bold text-left"
                     >
-                      <p
-                        className="text-sm font-bold mb-2"
-                        style={{ color: report.typeColor }}
-                      >
-                        {sec.title}
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+        {/* 4.5 友達から見たあなたの印象 (3人+ サプライズ) */}
+        {friendCount >= REPORT_FRIEND_THRESHOLD &&
+          report.friendChoices.length > 0 && (
+            <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+              <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-1">
+                友達から見たあなたの印象
+              </p>
+              <p className="text-xs text-center text-muted mb-5">
+                友達{report.friendCount}人の回答から集計しました
+              </p>
+
+              <div className="flex flex-col gap-5">
+                {report.friendChoices.map((q) => {
+                  const visible = q.choices.filter((c) => c.count > 0);
+                  if (visible.length === 0) return null;
+                  const max = Math.max(...visible.map((c) => c.count));
+
+                  return (
+                    <div key={q.questionId}>
+                      <p className="text-sm font-bold mb-3">
+                        {q.questionLabel}
                       </p>
-                      <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-line">
-                        {sec.body}
-                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {visible
+                          .sort((a, b) => b.count - a.count)
+                          .map((c) => {
+                            const widthPct =
+                              max > 0 ? (c.count / max) * 100 : 0;
+                            return (
+                              <li
+                                key={c.label}
+                                className="flex items-center gap-3"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[13px] truncate">
+                                      {c.label}
+                                    </span>
+                                    <span className="text-xs font-mono tabular-nums text-muted ml-2 shrink-0">
+                                      {c.count}人
+                                    </span>
+                                  </div>
+                                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all"
+                                      style={{
+                                        width: `${widthPct}%`,
+                                        backgroundColor: report.typeColor,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          })}
+                      </ul>
                     </div>
                   );
                 })}
               </div>
-            );
-          })()}
-        </section>
-
-        {/* 6. ベスト相棒 */}
-        {(() => {
-          const partner = torisetsuTypes[report.bestPartner.partnerTypeId];
-          const partnerCatch =
-            TYPE_CATCH_COPY[report.bestPartner.partnerTypeId] ??
-            partner.subtitle;
-          return (
-            <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
-              <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-4">
-                あなたのベスト相棒
-              </p>
-
-              <div
-                className="rounded-2xl border-2 p-5 mb-5"
-                style={{
-                  borderColor: partner.color,
-                  background: `linear-gradient(to bottom, #ffffff, ${partner.color}0D)`,
-                }}
-              >
-                <div className="flex flex-col items-center text-center">
-                  {partner.imageUrl ? (
-                    <div className="relative mx-auto mb-3 w-full max-w-[240px] aspect-square">
-                      <Image
-                        src={partner.imageUrl}
-                        alt={`${partner.name}のキャラクター`}
-                        width={240}
-                        height={240}
-                        className="relative z-10 w-full h-full object-contain"
-                      />
-                      <div
-                        aria-hidden="true"
-                        className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
-                      style={{ backgroundColor: `${partner.color}15` }}
-                    >
-                      {partner.emoji}
-                    </div>
-                  )}
-                  <p
-                    className="text-xl font-extrabold mb-1"
-                    style={{ color: partner.color }}
-                  >
-                    {partner.emoji} {partner.name}
-                  </p>
-                  <p className="text-xs text-muted">{partnerCatch}</p>
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <p
-                  className="text-sm font-bold mb-2"
-                  style={{ color: partner.color }}
-                >
-                  💎 なぜ相性がいいか
-                </p>
-                <p className="text-[13px] leading-relaxed whitespace-pre-line">
-                  {report.bestPartner.whyCompatible}
-                </p>
-              </div>
-
-              <div className="mb-5">
-                <p
-                  className="text-sm font-bold mb-2"
-                  style={{ color: partner.color }}
-                >
-                  ✨ 一緒にいると起きること
-                </p>
-                <ul className="flex flex-col gap-2">
-                  {report.bestPartner.whatHappens.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span
-                        className="text-xs mt-1"
-                        style={{ color: partner.color }}
-                      >
-                        ●
-                      </span>
-                      <span className="text-[13px] leading-relaxed">
-                        {item}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <p
-                  className="text-sm font-bold mb-2"
-                  style={{ color: partner.color }}
-                >
-                  💭 関係を長く続けるために
-                </p>
-                <p className="text-[13px] leading-relaxed whitespace-pre-line">
-                  {report.bestPartner.warning}
-                </p>
-              </div>
             </section>
-          );
-        })()}
+          )}
 
         {/* 7. フッター */}
         <footer className="flex flex-col items-center mb-10">
