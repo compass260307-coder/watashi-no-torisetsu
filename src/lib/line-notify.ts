@@ -1,9 +1,14 @@
 import { messagingApi } from "@line/bot-sdk";
 import { supabase } from "./supabase";
+import {
+  buildWelcomeRegisteredFlex,
+  buildWelcomeUnregisteredFlex,
+  buildN1Flex,
+  buildN2Flex,
+  buildN3Flex,
+} from "./line-flex";
 
 const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
 
 let cachedClient: messagingApi.MessagingApiClient | null = null;
 function getClient(): messagingApi.MessagingApiClient | null {
@@ -105,141 +110,6 @@ async function sendWithErrorHandling(
   }
 }
 
-function buildMessage(friendCount: number, ownerToken: string): string | null {
-  if (friendCount === 1) {
-    return [
-      "1人目の友達が回答してくれました🐧",
-      "あと2人で詳細レポートが届きます",
-    ].join("\n");
-  }
-  if (friendCount === 2) {
-    return [
-      "2人目の友達が回答してくれました🎉",
-      "あと1人で詳細レポートが届きます🎁",
-    ].join("\n");
-  }
-  if (friendCount === 3) {
-    const reportUrl = `${PUBLIC_BASE_URL}/report/${ownerToken}`;
-    return [
-      "3人の友達からの回答が揃いました🎉",
-      "あなたの詳細レポートが完成しました📖",
-      "",
-      "▼ こちらから確認できます",
-      reportUrl,
-    ].join("\n");
-  }
-  return null;
-}
-
-function buildWelcomeFlexMessage(inviteCode: string): messagingApi.Message {
-  const liffShareIdRaw =
-    process.env.NEXT_PUBLIC_LIFF_ID_SHARE ?? process.env.LIFF_ID_SHARE ?? "";
-  const liffShareUrl = liffShareIdRaw
-    ? `https://liff.line.me/${liffShareIdRaw}?inviteCode=${encodeURIComponent(inviteCode)}`
-    : `${PUBLIC_BASE_URL}/friend/${inviteCode}`;
-
-  return {
-    type: "flex",
-    altText: "ご登録ありがとうございます🐧 完全版を解放する3ステップ",
-    contents: {
-      type: "bubble",
-      hero: {
-        type: "image",
-        url: `${PUBLIC_BASE_URL}/ogp-v3.png`,
-        size: "full",
-        aspectRatio: "20:13",
-        aspectMode: "cover",
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        spacing: "md",
-        contents: [
-          {
-            type: "text",
-            text: "ご登録ありがとうございます🐧",
-            weight: "bold",
-            size: "lg",
-            wrap: true,
-          },
-          { type: "separator", margin: "md" },
-          {
-            type: "text",
-            text: "完全版を解放する3ステップ",
-            weight: "bold",
-            size: "sm",
-            color: "#888888",
-            margin: "md",
-          },
-          {
-            type: "text",
-            text: "1. 友達3人にシェア",
-            size: "sm",
-            margin: "sm",
-            wrap: true,
-          },
-          {
-            type: "text",
-            text: "2. 友達が答えると順次通知",
-            size: "sm",
-            margin: "xs",
-            wrap: true,
-          },
-          {
-            type: "text",
-            text: "3. 3人揃ったら詳細レポート🎁",
-            size: "sm",
-            margin: "xs",
-            wrap: true,
-          },
-          {
-            type: "text",
-            text: "（友達は2分・10問で完了）",
-            size: "xs",
-            color: "#888888",
-            margin: "md",
-            wrap: true,
-          },
-          { type: "separator", margin: "md" },
-          {
-            type: "text",
-            text: "完全版に追加",
-            weight: "bold",
-            size: "xs",
-            color: "#888888",
-            margin: "md",
-          },
-          {
-            type: "text",
-            text: "深掘り解説の続き・友達評価レーダー・相性診断・自他ギャップなど",
-            size: "xs",
-            color: "#666666",
-            wrap: true,
-            margin: "xs",
-          },
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "button",
-            action: {
-              type: "uri",
-              label: "友達にシェア",
-              uri: liffShareUrl,
-            },
-            style: "primary",
-            color: "#06C755",
-            height: "md",
-          },
-        ],
-      },
-    },
-  };
-}
-
 export async function sendWelcomeMessage(
   ownerToken: string,
   lineUserId: string,
@@ -265,7 +135,7 @@ export async function sendWelcomeMessage(
     return { success: false, error: "invite_code_not_found" };
   }
 
-  const flex = buildWelcomeFlexMessage(data.invite_code as string);
+  const flex = buildWelcomeRegisteredFlex(data.invite_code as string);
   const result = await sendWithErrorHandling(
     client,
     { to: lineUserId, messages: [flex] },
@@ -286,7 +156,7 @@ export async function sendWelcomeMessage(
   return result;
 }
 
-// 紐付けなしユーザー (LIFF 経由せず直接 bot 追加) 向けのシンプル welcome
+// 紐付けなしユーザー (LIFF 経由せず直接 bot 追加) 向けの welcome Flex
 export async function sendGenericWelcome(
   lineUserId: string,
 ): Promise<LineSendResult> {
@@ -296,19 +166,10 @@ export async function sendGenericWelcome(
     return { success: false, error: "no_token" };
   }
 
-  const text = [
-    "ワタシのトリセツへようこそ🐧",
-    "",
-    "まずは15問の自己診断から始めてください",
-    "（3分で完了します）",
-    "",
-    "▼ 診断スタート",
-    PUBLIC_BASE_URL,
-  ].join("\n");
-
+  const flex = buildWelcomeUnregisteredFlex();
   return sendWithErrorHandling(
     client,
-    { to: lineUserId, messages: [{ type: "text", text }] },
+    { to: lineUserId, messages: [flex] },
     { type: "welcome", recipientId: lineUserId, metadata: { generic: true } },
   );
 }
@@ -347,8 +208,12 @@ export async function notifyFriendAnswered(
   ownerToken: string,
   friendCount: number,
 ): Promise<LineSendResult> {
-  const text = buildMessage(friendCount, ownerToken);
-  if (!text) return { success: false, error: "out_of_range" };
+  let flex: messagingApi.Message | null = null;
+  if (friendCount === 1) flex = buildN1Flex(ownerToken);
+  else if (friendCount === 2) flex = buildN2Flex(ownerToken);
+  else if (friendCount === 3) flex = buildN3Flex(ownerToken);
+  // friendCount === 0 や 4+ は通知対象外 (silent skip)
+  if (!flex) return { success: false, error: "out_of_range" };
 
   const client = getClient();
   if (!client) {
@@ -373,7 +238,7 @@ export async function notifyFriendAnswered(
 
   return sendWithErrorHandling(
     client,
-    { to: data.line_user_id, messages: [{ type: "text", text }] },
+    { to: data.line_user_id, messages: [flex] },
     {
       type: "notify",
       recipientId: data.line_user_id,
