@@ -1,11 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { StepCard } from "@/components/StepCard";
 import { TypeCarousel } from "@/components/TypeCarousel";
 
+const BASE_URL = "https://www.watashi-torisetsu.com";
+
+export const metadata: Metadata = {
+  alternates: { canonical: BASE_URL },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "ワタシのトリセツ",
+  description:
+    "友達と作る、自分の取扱説明書。Big Five理論ベースの性格診断で、自分でも気づかない一面を発見できる大学生向けサービス。",
+  url: BASE_URL,
+  applicationCategory: "LifestyleApplication",
+  operatingSystem: "Any",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "JPY",
+  },
+  inLanguage: "ja-JP",
+  audience: {
+    "@type": "Audience",
+    audienceType: "大学生",
+  },
+};
+
 export default function Home() {
   return (
     <div className="flex flex-col flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <main className="flex flex-col flex-1 items-center px-5 py-12">
         {/* Hero */}
         <section className="flex flex-col items-center text-center max-w-sm w-full mt-4 mb-10 animate-fade-in-up">

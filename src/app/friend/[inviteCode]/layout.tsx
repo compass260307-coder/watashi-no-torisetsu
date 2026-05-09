@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-const BASE_URL = "https://watashi-no-torisetsu.vercel.app";
+const BASE_URL = "https://www.watashi-torisetsu.com";
 
 export const metadata: Metadata = {
   title: { absolute: "ワタシのトリセツ" },

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "このBotについて",
   description:
     "ワタシのトリセツの公式 LINE アカウントについて。あなたの自己診断と、友達からの他己評価を集める「ホーム」です。",
+  alternates: { canonical: "/about" },
   openGraph: {
     title: "このBotについて｜ワタシのトリセツ",
     description:

@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
 
 type Status =
   | "loading"

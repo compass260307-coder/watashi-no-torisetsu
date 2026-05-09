@@ -207,9 +207,9 @@ export default function OwnerResultPage({
   }, [ownerToken]);
 
   const handleCopyResultLink = async () => {
-    await navigator.clipboard.writeText(
-      `https://watashi-no-torisetsu.vercel.app/result/${ownerToken}`,
-    );
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
+    await navigator.clipboard.writeText(`${baseUrl}/result/${ownerToken}`);
     setResultLinkCopied(true);
     setTimeout(() => setResultLinkCopied(false), 2500);
   };

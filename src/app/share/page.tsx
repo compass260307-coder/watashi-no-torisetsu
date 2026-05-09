@@ -15,7 +15,7 @@ type Status =
   | "needs-self-diagnosis";
 
 const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
 
 type ShareMode = "evaluate" | "invite";
 
