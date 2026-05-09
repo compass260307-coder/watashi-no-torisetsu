@@ -198,27 +198,21 @@ export default function FriendPage({
             />
           </div>
 
-          {/* 3. ワタシのトリセツとは？ (簡潔版) */}
-          <section className="w-full rounded-2xl bg-label-bg p-4 mb-6 animate-fade-in-up stagger-2">
-            <h3 className="text-base font-bold mb-2 text-center">
-              📖 ワタシのトリセツとは？
+          {/* 3. ワタシのトリセツとは？ */}
+          <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 animate-fade-in-up stagger-2">
+            <h3 className="text-base font-bold mb-3 flex items-center justify-center">
+              <span className="mr-2">📖</span>
+              ワタシのトリセツとは？
             </h3>
-            <p className="text-sm text-center mb-3 text-muted">
-              心理学ベースの性格診断サービス
-            </p>
-            <div className="flex justify-around">
-              <div className="flex flex-col items-center text-xs">
-                <span className="text-2xl mb-1">🔒</span>
-                <span>完全匿名</span>
-              </div>
-              <div className="flex flex-col items-center text-xs">
-                <span className="text-2xl mb-1">⏱</span>
-                <span>約2分</span>
-              </div>
-              <div className="flex flex-col items-center text-xs">
-                <span className="text-2xl mb-1">📚</span>
-                <span>10問</span>
-              </div>
+            <div className="flex flex-col gap-3">
+              <p className="text-sm leading-relaxed">
+                世界中の心理学研究で使われている{" "}
+                <strong>Big Five 理論</strong>{" "}
+                に基づく性格診断サービス。
+              </p>
+              <p className="text-sm leading-relaxed">
+                自分自身の自己評価に加え、友達からの「印象」を集めることで、自分でも気づかない一面が見えてきます。
+              </p>
             </div>
           </section>
 
