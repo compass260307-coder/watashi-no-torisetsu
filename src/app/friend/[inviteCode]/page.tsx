@@ -299,7 +299,7 @@ export default function FriendPage({
           </section>
 
           {/* 5. 呼びかけ */}
-          <section className="w-full text-center mb-6 animate-fade-in-up stagger-3">
+          <section className="w-full text-center mb-4 animate-fade-in-up stagger-3">
             <p className="text-base font-bold leading-relaxed">
               あなたから見た{ownerLabel}を、
               <br />
@@ -320,7 +320,7 @@ export default function FriendPage({
               <span className="text-xl leading-none">→</span>
             </button>
           </div>
-          <p className="text-[11px] text-muted mt-1 animate-fade-in stagger-4">
+          <p className="text-[11px] text-muted mt-2 animate-fade-in stagger-4">
             正解はありません。回答は完全匿名で届きます
           </p>
         </main>
