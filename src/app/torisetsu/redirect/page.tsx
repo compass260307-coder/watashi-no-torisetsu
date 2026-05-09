@@ -57,8 +57,30 @@ function RedirectContent() {
         }
         const data: { ownerToken: string | null } = await res.json();
         if (data.ownerToken) {
+          // dest クエリで遷移先を切り替え (cell 1 = report 既定 / cell 2 = zukan)
+          // LIFF 経由の場合 liff.state にクエリが URL エンコードされて入ることがある
+          const search = new URLSearchParams(window.location.search);
+          let dest = search.get("dest");
+          if (!dest) {
+            const liffState = search.get("liff.state");
+            if (liffState) {
+              try {
+                const decoded = decodeURIComponent(liffState);
+                const stateParams = new URLSearchParams(
+                  decoded.startsWith("?") ? decoded.slice(1) : decoded,
+                );
+                dest = stateParams.get("dest");
+              } catch (err) {
+                console.warn("liff.state parse error:", err);
+              }
+            }
+          }
+          const target =
+            dest === "zukan"
+              ? `/zukan/${data.ownerToken}`
+              : `/report/${data.ownerToken}`;
           setStatus("redirecting");
-          window.location.replace(`/report/${data.ownerToken}`);
+          window.location.replace(target);
           return;
         }
         setStatus("needs-self-diagnosis");
