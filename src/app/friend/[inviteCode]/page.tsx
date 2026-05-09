@@ -7,6 +7,7 @@ import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { StepCard } from "@/components/StepCard";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -197,85 +198,57 @@ export default function FriendPage({
             />
           </div>
 
-          {/* 3. ワタシのトリセツとは？ */}
-          <section className="w-full rounded-2xl bg-label-bg p-5 mb-5 animate-fade-in-up stagger-2">
-            <h3 className="text-base font-bold mb-3 flex items-center">
-              <span className="mr-2">📖</span>
-              ワタシのトリセツとは？
+          {/* 3. ワタシのトリセツとは？ (簡潔版) */}
+          <section className="w-full rounded-2xl bg-label-bg p-4 mb-6 animate-fade-in-up stagger-2">
+            <h3 className="text-base font-bold mb-2 text-center">
+              📖 ワタシのトリセツとは？
             </h3>
-            <p className="text-sm leading-relaxed mb-3">
-              心理学（Big Five
-              理論）に基づいて、自分自身の評価と友達からの評価を組み合わせて「自分の取扱説明書」を作る性格診断サービスです。
+            <p className="text-sm text-center mb-3 text-muted">
+              心理学ベースの性格診断サービス
             </p>
-            <ul className="flex flex-col gap-2 text-sm">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0">🔒</span>
-                <span>
-                  <strong>あなたの回答は完全匿名</strong>で届きます
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0">⏱</span>
-                <span>10問・約2分で完了</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0">✨</span>
-                <span>
-                  あなたの回答が{ownerLabel}の新しい発見に繋がります
-                </span>
-              </li>
-            </ul>
+            <div className="flex justify-around">
+              <div className="flex flex-col items-center text-xs">
+                <span className="text-2xl mb-1">🔒</span>
+                <span>完全匿名</span>
+              </div>
+              <div className="flex flex-col items-center text-xs">
+                <span className="text-2xl mb-1">⏱</span>
+                <span>約2分</span>
+              </div>
+              <div className="flex flex-col items-center text-xs">
+                <span className="text-2xl mb-1">📚</span>
+                <span>10問</span>
+              </div>
+            </div>
           </section>
 
-          {/* 4. 今、{ownerLabel}はここ (3 STEPs) */}
-          <section className="w-full mb-5 animate-fade-in-up stagger-3">
-            <h3 className="text-base font-bold text-center mb-3">
+          {/* 4. 今、{ownerLabel}はここ (3 STEP カード) */}
+          <section className="w-full mb-6 animate-fade-in-up stagger-3">
+            <h3 className="text-base font-bold text-center mb-4">
               今、{ownerLabel}はここ
             </h3>
-            <div className="flex flex-col gap-3">
-              {/* STEP 1: 完了済み (薄い) */}
-              <div className="rounded-xl bg-card-bg border border-card-border p-4 opacity-60">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-muted">STEP 1</span>
-                  <span className="text-xs text-emerald-600">✓ 完了</span>
-                </div>
-                <p className="text-sm">
-                  {ownerLabel}が自分自身を15問で診断
-                </p>
-              </div>
-
-              {/* STEP 2: 現在地 (強調) */}
-              <div
-                className="rounded-xl border-2 p-4 shadow-sm"
-                style={{
-                  borderColor: "var(--primary)",
-                  backgroundColor: "color-mix(in srgb, var(--primary) 12%, white)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-primary">STEP 2</span>
-                  <span className="text-xs font-bold text-primary">
-                    ← いまここ
-                  </span>
-                </div>
-                <p className="text-sm font-bold">
-                  友達が10問で{ownerLabel}の印象を答える
-                </p>
-                <p className="text-xs text-muted mt-1">
-                  あなたを含めて3人の友達が答えると完成します
-                </p>
-              </div>
-
-              {/* STEP 3: 未来 */}
-              <div className="rounded-xl bg-card-bg border border-card-border p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-muted">STEP 3</span>
-                </div>
-                <p className="text-sm">{ownerLabel}のトリセツ完成</p>
-                <p className="text-xs text-muted mt-1">
-                  {ownerLabel}が自分のタイプ（8種類）を知れる
-                </p>
-              </div>
+            <div className="flex flex-col gap-4">
+              <StepCard
+                stepNumber={1}
+                imageSrc="/mascot/step1-receive.png"
+                title={`${ownerLabel}が自己診断`}
+                subtitle="15問・3分で完了"
+                variant="completed"
+              />
+              <StepCard
+                stepNumber={2}
+                imageSrc="/mascot/step2-ask-friend.png"
+                title={`あなたが${ownerLabel}の印象を答える`}
+                subtitle="10問・約2分・完全匿名"
+                variant="current"
+              />
+              <StepCard
+                stepNumber={3}
+                imageSrc="/mascot/step3-complete.png"
+                title={`${ownerLabel}のトリセツ完成`}
+                subtitle="3人答えると、8タイプの結果が分かる"
+                variant="future"
+              />
             </div>
           </section>
 
@@ -300,11 +273,6 @@ export default function FriendPage({
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
             正解はありません。感じたままでOK
-          </p>
-          <p className="text-[11px] text-muted/70 text-center mt-2 leading-relaxed animate-fade-in stagger-4">
-            あなたの回答内容は{ownerLabel}には見えず、
-            <br />
-            匿名化された結果のみが届きます
           </p>
         </main>
       </div>

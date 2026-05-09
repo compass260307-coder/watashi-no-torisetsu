@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { StepCard } from "@/components/StepCard";
 
 const types = [
   { emoji: "🎪", name: "お祭りムードメーカー", color: "#FF4081" },
@@ -83,70 +84,30 @@ export default function Home() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
-              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
-                STEP 1
-              </span>
-              <div className="w-48 h-48 mb-4">
-                <Image
-                  src="/mascot/step1-receive.png"
-                  alt=""
-                  width={192}
-                  height={192}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3 className="text-base font-bold text-center leading-snug mb-2">
-                15問に答えて
-                <br />
-                仮トリセツが届く
-              </h3>
-              <p className="text-xs text-muted text-center">
-                直感でOK・3分でできる
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
-              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
-                STEP 2
-              </span>
-              <div className="w-48 h-48 mb-4">
-                <Image
-                  src="/mascot/step2-ask-friend.png"
-                  alt=""
-                  width={192}
-                  height={192}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3 className="text-base font-bold text-center leading-snug mb-2">
-                友達に診断してもらう
-              </h3>
-              <p className="text-xs text-muted text-center">
-                友達は10問・2分で完了
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-6 shadow-sm">
-              <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-4">
-                STEP 3
-              </span>
-              <div className="w-48 h-48 mb-4">
-                <Image
-                  src="/mascot/step3-complete.png"
-                  alt=""
-                  width={192}
-                  height={192}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <h3 className="text-base font-bold text-center leading-snug mb-2">
-                トリセツが完成
-              </h3>
-              <p className="text-xs text-muted text-center">
-                友達3人で詳細レポート解放
-              </p>
-            </div>
+            <StepCard
+              stepNumber={1}
+              imageSrc="/mascot/step1-receive.png"
+              title={
+                <>
+                  15問に答えて
+                  <br />
+                  仮トリセツが届く
+                </>
+              }
+              subtitle="直感でOK・3分でできる"
+            />
+            <StepCard
+              stepNumber={2}
+              imageSrc="/mascot/step2-ask-friend.png"
+              title="友達に診断してもらう"
+              subtitle="友達は10問・2分で完了"
+            />
+            <StepCard
+              stepNumber={3}
+              imageSrc="/mascot/step3-complete.png"
+              title="トリセツが完成"
+              subtitle="友達3人で詳細レポート解放"
+            />
           </div>
         </section>
 
