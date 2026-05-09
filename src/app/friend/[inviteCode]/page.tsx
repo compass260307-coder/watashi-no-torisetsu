@@ -213,11 +213,11 @@ export default function FriendPage({
                 に基づく性格診断サービス。
               </p>
               <p className="text-sm leading-relaxed">
-                従来の自己診断に友達からの
+                従来の性格診断に
                 <span className="font-bold bg-gradient-to-b from-transparent from-50% to-pink-200 to-50% px-0.5">
                   他己評価
                 </span>
-                を加えることで、より高精度な性格診断を実現します。
+                を加えることで、より精度の高い分析を実現します。
               </p>
             </div>
 
