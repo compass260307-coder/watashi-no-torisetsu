@@ -9,6 +9,7 @@ import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { StepCard } from "@/components/StepCard";
 import { SampleReportModal } from "@/components/SampleReportModal";
+import { OwnerTorisetuModal } from "@/components/OwnerTorisetuModal";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -33,6 +34,8 @@ export default function FriendPage({
 }) {
   const { inviteCode } = use(params);
   const [ownerName, setOwnerName] = useState<string | null>(null);
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  const [isOwnerTorisetuModalOpen, setIsOwnerTorisetuModalOpen] = useState(false);
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, FriendAnswer>>({});
@@ -49,6 +52,7 @@ export default function FriendPage({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.displayName) setOwnerName(data.displayName);
+        if (data?.ownerToken) setOwnerToken(data.ownerToken);
       })
       .catch(() => {});
   }, [inviteCode]);
@@ -364,27 +368,19 @@ export default function FriendPage({
             </>
           ) : (
             <>
-              {/* Section A: Thank you */}
-              <h1 className="text-3xl font-extrabold text-center mb-2 animate-fade-in-up stagger-1">
-                ありがとう！
-              </h1>
-              <p className="text-lg font-bold leading-snug text-center mb-2 animate-fade-in-up stagger-2">
-                {hasName ? (
-                  <>
-                    <span className="inline-block">{ownerName}さんのトリセツに</span>
-                    <span className="inline-block">追加されました</span>
-                  </>
-                ) : (
-                  <span className="inline-block">トリセツに追加されました</span>
-                )}
-              </p>
-              <p className="text-sm text-muted text-center mb-8 animate-fade-in stagger-3">
-                回答は匿名で届きます
-              </p>
+              {/* Section 1: お礼 (コンパクト) */}
+              <div className="text-center mb-6 animate-fade-in-up stagger-1">
+                <p className="text-2xl font-extrabold mb-1">
+                  ありがとう！🐧
+                </p>
+                <p className="text-base">
+                  {hasName ? `${ownerName}さんに届きました` : "友達に届きました"}
+                </p>
+              </div>
 
-              {/* Section B: Perception result */}
+              {/* Section 2: あなたから見た{name}さん (既存維持) */}
               {perceivedType && perception && (
-                <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-6 animate-fade-in-up stagger-3">
+                <div className="w-full rounded-2xl border border-card-border bg-card-bg overflow-hidden mb-4 animate-fade-in-up stagger-3">
                   <div className="bg-label-bg px-5 py-2.5 border-b border-card-border">
                     <p className="text-[10px] font-bold tracking-wider text-muted text-center">
                       {hasName
@@ -439,81 +435,35 @@ export default function FriendPage({
                 </div>
               )}
 
-              {/* 3-step: invite to make own torisetsu */}
-              <div className="w-full mb-6 animate-fade-in-up stagger-4">
-                <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-4 uppercase">
-                  じゃあ、あなたも作ってみよう
-                </h2>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
-                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
-                      STEP 1
+              {/* Section 3: {name}さんのトリセツのぞきCTA */}
+              {ownerToken && (
+                <div className="w-full mb-6 text-center animate-fade-in-up stagger-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsOwnerTorisetuModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pink-50 hover:bg-pink-100 border-2 border-pink-200 text-pink-700 font-bold text-sm transition-colors"
+                  >
+                    <span>👀</span>
+                    <span>
+                      {hasName
+                        ? `${ownerName}さんのトリセツをのぞいてみる`
+                        : "友達のトリセツをのぞいてみる"}
                     </span>
-                    <div className="w-40 h-40 mb-3">
-                      <Image
-                        src="/mascot/step1-receive.png"
-                        alt=""
-                        width={192}
-                        height={192}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <h3 className="text-base font-bold text-center leading-snug mb-1">
-                      15問に答えて
-                      <br />
-                      仮トリセツが届く
-                    </h3>
-                    <p className="text-xs text-muted text-center">
-                      直感でOK・3分でできる
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
-                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
-                      STEP 2
-                    </span>
-                    <div className="w-40 h-40 mb-3">
-                      <Image
-                        src="/mascot/step2-ask-friend.png"
-                        alt=""
-                        width={192}
-                        height={192}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <h3 className="text-base font-bold text-center leading-snug mb-1">
-                      友達に診断してもらう
-                    </h3>
-                    <p className="text-xs text-muted text-center">
-                      友達は10問・2分で完了
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col items-center rounded-2xl border border-card-border bg-card-bg p-5 shadow-sm">
-                    <span className="inline-block rounded-full bg-primary-gradient px-3 py-1 text-[11px] font-bold text-white tracking-wider mb-3">
-                      STEP 3
-                    </span>
-                    <div className="w-40 h-40 mb-3">
-                      <Image
-                        src="/mascot/step3-complete.png"
-                        alt=""
-                        width={192}
-                        height={192}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <h3 className="text-base font-bold text-center leading-snug mb-1">
-                      トリセツが完成
-                    </h3>
-                    <p className="text-xs text-muted text-center">
-                      友達3人で詳細レポート解放
-                    </p>
-                  </div>
+                  </button>
                 </div>
+              )}
+
+              {/* Section 4: Hook (curiosity 点火) */}
+              <div className="w-full mb-4 text-center animate-fade-in-up stagger-4">
+                <p className="text-lg font-bold leading-relaxed">
+                  友達からどう見られているか
+                  <br />
+                  知りたくない？
+                </p>
               </div>
 
-              {/* CTA */}
-              <div className="w-full flex flex-col items-center mb-6 animate-fade-in-up stagger-4">
+              {/* Section 5: メインCTA (強化版) */}
+              <div className="w-full flex justify-center mb-2 animate-fade-in-up stagger-4">
                 <Link
                   href={diagnosisHref}
                   onClick={() =>
@@ -528,24 +478,34 @@ export default function FriendPage({
                         : { perceptionShown: false },
                     })
                   }
-                  className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98] text-center"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-gradient px-10 py-5 text-lg font-bold text-white shadow-xl shadow-primary/40 transition-transform duration-200 hover:scale-105 active:scale-95 break-keep"
                 >
-                  自分のトリセツを作る
+                  <span>あなたのトリセツを作る</span>
+                  <span className="text-xl leading-none">→</span>
                 </Link>
-                <p className="text-[11px] text-muted mt-3">
-                  15問・3分・登録不要
-                </p>
               </div>
+              <p className="text-[11px] text-muted text-center mb-6">
+                3分・登録不要・完全匿名
+              </p>
 
+              {/* Section 6: トップに戻る (控えめ) */}
               <Link
                 href="/"
-                className="text-xs text-muted hover:text-foreground transition-colors"
+                className="text-xs text-muted/70 underline hover:text-foreground transition-colors"
               >
                 トップに戻る
               </Link>
             </>
           )}
         </main>
+        {ownerToken && (
+          <OwnerTorisetuModal
+            isOpen={isOwnerTorisetuModalOpen}
+            onClose={() => setIsOwnerTorisetuModalOpen(false)}
+            ownerToken={ownerToken}
+            ownerName={ownerName}
+          />
+        )}
       </div>
     );
   }

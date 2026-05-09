@@ -10,13 +10,16 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("users")
-    .select("display_name")
+    .select("display_name, owner_token")
     .eq("invite_code", inviteCode)
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ displayName: null });
+    return NextResponse.json({ displayName: null, ownerToken: null });
   }
 
-  return NextResponse.json({ displayName: data.display_name ?? null });
+  return NextResponse.json({
+    displayName: data.display_name ?? null,
+    ownerToken: data.owner_token ?? null,
+  });
 }
