@@ -148,13 +148,6 @@ export default function FriendPage({
 
   const perception = completed ? perceiveFromFriendAnswers(answers) : null;
   const perceivedType = perception ? torisetsuTypes[perception.typeId] : null;
-  const confidenceDots = perception
-    ? perception.confidence === "high"
-      ? "●●●"
-      : perception.confidence === "medium"
-        ? "●●○"
-        : "●○○"
-    : null;
 
   useEffect(() => {
     if (perception && !perceptionTracked.current) {
@@ -419,18 +412,9 @@ export default function FriendPage({
                     >
                       {perceivedType.name}
                     </p>
-                    <p className="text-xs text-muted mb-3">
+                    <p className="text-xs text-muted">
                       {perceivedType.subtitle}
                     </p>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className="text-[10px] text-muted">確信度</span>
-                      <span
-                        className="text-xs tracking-wider"
-                        style={{ color: perceivedType.color }}
-                      >
-                        {confidenceDots}
-                      </span>
-                    </div>
                   </div>
                 </div>
               )}
@@ -453,16 +437,40 @@ export default function FriendPage({
                 </div>
               )}
 
-              {/* Section 4: Hook (curiosity 点火) */}
-              <div className="w-full mb-4 text-center animate-fade-in-up stagger-4">
-                <p className="text-lg font-bold leading-relaxed">
-                  友達からどう見られているか
+              {/* Section 4: 「じゃあ、あなたも作ってみよう」見出し */}
+              <div className="w-full text-center mt-2 mb-5 animate-fade-in-up stagger-4">
+                <p className="text-xl font-extrabold leading-relaxed">
+                  じゃあ、あなたも
                   <br />
-                  知りたくない？
+                  作ってみよう
                 </p>
               </div>
 
-              {/* Section 5: メインCTA (強化版) */}
+              {/* Section 5: 3 STEP カード */}
+              <section className="w-full mb-6 animate-fade-in-up stagger-4">
+                <div className="flex flex-col gap-4">
+                  <StepCard
+                    stepNumber={1}
+                    imageSrc="/mascot/step1-receive.png"
+                    title={<>15問に答えて<br />仮トリセツが届く</>}
+                    variant="future"
+                  />
+                  <StepCard
+                    stepNumber={2}
+                    imageSrc="/mascot/step2-ask-friend.png"
+                    title="友達に診断してもらう"
+                    variant="future"
+                  />
+                  <StepCard
+                    stepNumber={3}
+                    imageSrc="/mascot/step3-complete.png"
+                    title="トリセツが完成"
+                    variant="future"
+                  />
+                </div>
+              </section>
+
+              {/* Section 6: メインCTA (強化版) */}
               <div className="w-full flex justify-center mb-2 animate-fade-in-up stagger-4">
                 <Link
                   href={diagnosisHref}
@@ -488,7 +496,7 @@ export default function FriendPage({
                 3分・登録不要・完全匿名
               </p>
 
-              {/* Section 6: トップに戻る (控えめ) */}
+              {/* Section 7: トップに戻る (控えめ) */}
               <Link
                 href="/"
                 className="text-xs text-muted/70 underline hover:text-foreground transition-colors"
