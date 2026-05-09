@@ -24,6 +24,13 @@ import {
 } from "@/lib/report-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 
+// /report 内のプレースホルダ CTA から開く share LIFF (cell 3 と同一)
+// パラ無しで開くと line-resolve でユーザの owner_token を解決し evaluate モードになる
+function getEvaluateInviteHref(): string {
+  const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
+  return liffShareId ? `https://liff.line.me/${liffShareId}` : "/";
+}
+
 const AXIS_LABELS: Record<string, string> = {
   E: "外向性",
   A: "協調性",
@@ -108,39 +115,13 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
     );
   }
 
-  if (!report.meetsThreshold && !report.isDev && !report.isSample) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full text-center">
-        <Image
-          src="/mascot/step3-complete.png"
-          alt=""
-          width={224}
-          height={224}
-          priority
-          className="w-56 h-auto object-contain mb-6"
-        />
-        <h1 className="text-2xl font-bold mb-3">
-          詳細レポートはまだ準備中です
-        </h1>
-        <p className="text-sm text-muted leading-relaxed mb-6">
-          友達{REPORT_FRIEND_THRESHOLD}人の回答が集まると、
-          <br />
-          詳細レポートが解放されます
-        </p>
-        <p className="text-sm font-bold mb-6">
-          現在 <span className="text-primary">{report.friendCount}</span> /{" "}
-          {REPORT_FRIEND_THRESHOLD} 人
-        </p>
-        <Link
-          href={`/result/${ownerToken}`}
-          className="rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white"
-        >
-          結果ページに戻る
-        </Link>
-      </div>
-    );
-  }
-
+  // /report は閉じない場所。friend count に関わらず常時表示し、
+  // 友達依存セクションはプレースホルダで「楽しみ」として見せる
+  const friendCount = report.friendCount;
+  const filledCount = Math.min(friendCount, REPORT_FRIEND_THRESHOLD);
+  const remaining = Math.max(0, REPORT_FRIEND_THRESHOLD - friendCount);
+  const isComplete = friendCount >= REPORT_FRIEND_THRESHOLD;
+  const evaluateInviteHref = getEvaluateInviteHref();
   const radarData = buildRadarData(report);
 
   return (
@@ -157,21 +138,80 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
       )}
       <main className="flex flex-col px-5 py-6 max-w-lg mx-auto w-full">
         {/* 1. ヘッダー */}
-        <header className="text-center mb-6 animate-fade-in-up">
+        <header className="text-center mb-5 animate-fade-in-up">
           <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
-            DETAIL REPORT
+            MY TORISETSU
           </p>
           <h1 className="text-2xl font-extrabold mb-2">
             ワタシのトリセツ
-            <br />
-            詳細レポート
           </h1>
           <p className="text-xs text-muted leading-relaxed">
-            友達{report.friendCount}人の回答から、
-            <br />
-            あなたの本当の姿を分析しました
+            開く度に、少しずつ育っていきます
           </p>
         </header>
+
+        {/* 1.5 進捗インジケータ (ペンギン × 3) */}
+        <section className="w-full rounded-2xl bg-label-bg px-5 py-4 mb-5 animate-fade-in-up stagger-2">
+          <div className="flex items-end justify-center gap-3 mb-2">
+            {[1, 2, 3].map((i) => {
+              const filled = i <= filledCount;
+              return (
+                <div
+                  key={i}
+                  className={`relative w-12 h-12 transition-all duration-500 ${
+                    filled ? "" : "grayscale opacity-30"
+                  }`}
+                >
+                  <Image
+                    src="/types/penguin-base.png"
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-center text-xs font-bold">
+            {isComplete ? (
+              <span className="text-primary">
+                ✓ 完成（友達{friendCount}人の回答）
+              </span>
+            ) : (
+              <span className="text-muted">
+                友達{friendCount} / {REPORT_FRIEND_THRESHOLD}人 回答
+              </span>
+            )}
+          </p>
+        </section>
+
+        {/* 1.6 0 人時の招待 CTA カード */}
+        {friendCount === 0 && (
+          <section className="w-full rounded-2xl border-2 border-pink-200 bg-pink-50/60 p-5 mb-5 text-center animate-fade-in-up stagger-2">
+            <Image
+              src="/mascot/step2-ask-friend.png"
+              alt=""
+              width={144}
+              height={144}
+              className="w-32 h-32 object-contain mx-auto mb-2"
+            />
+            <h2 className="text-base font-extrabold mb-2 text-pink-700">
+              友達3人に他己評価をお願いしてみよう
+            </h2>
+            <p className="text-xs text-muted leading-relaxed mb-4">
+              友達の回答が集まるほど、
+              <br />
+              あなたのトリセツが少しずつ深くなります🐧
+            </p>
+            <a
+              href={evaluateInviteHref}
+              className="inline-block rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white shadow-md"
+            >
+              他己評価を依頼する
+            </a>
+          </section>
+        )}
 
         {/* 2. タイプ表示 */}
         <section
@@ -264,7 +304,8 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
           );
         })()}
 
-        {/* 3. レーダーチャート: 自己 vs 友達 */}
+        {/* 3. レーダーチャート: 自己 vs 友達 (friend > 0 のときのみ) */}
+        {friendCount > 0 && (
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
           <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
             自己評価 vs 友達評価
@@ -318,6 +359,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             友達評価は10問の回答から推定しています
           </p>
         </section>
+        )}
 
         {/* 4. ギャップ分析 (全5軸) */}
         {report.gaps.length > 0 && (
@@ -462,6 +504,32 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {/* 4.6 友達依存セクションの後に置く「あと N 人で…」プレースホルダ
+            (1〜2 人時のみ。0 人は上の招待 CTA があるので不要、3+ 人は完成済) */}
+        {friendCount > 0 && friendCount < REPORT_FRIEND_THRESHOLD && (
+          <section className="w-full rounded-2xl border-2 border-dashed border-pink-200 bg-pink-50/40 p-5 mb-5 text-center">
+            <Image
+              src="/mascot/analyzing-penguin.png"
+              alt=""
+              width={112}
+              height={112}
+              className="w-24 h-24 object-contain mx-auto mb-2 opacity-90"
+            />
+            <p className="text-sm font-bold text-pink-700 mb-1">
+              あと {remaining} 人の他己評価で見えるよ🐧
+            </p>
+            <p className="text-xs text-muted leading-relaxed mb-4">
+              友達が増えるほど、深掘りされていきます
+            </p>
+            <a
+              href={evaluateInviteHref}
+              className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
+            >
+              他己評価を依頼する
+            </a>
           </section>
         )}
 
