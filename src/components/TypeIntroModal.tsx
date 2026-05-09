@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { TorisetsuType } from "@/lib/types";
@@ -13,6 +14,12 @@ interface Props {
 
 export function TypeIntroModal({ type, isOpen, onClose }: Props) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  // SSR 対応: クライアントマウント後のみ Portal 有効化
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,16 +35,19 @@ export function TypeIntroModal({ type, isOpen, onClose }: Props) {
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !type) return null;
+  if (!isOpen || !type || !mounted) return null;
 
   const handleStart = () => {
     onClose();
     router.push("/diagnosis");
   };
 
-  return (
+  // Portal で document.body 直下にレンダリング。
+  // 親要素の transform / filter / contain が position:fixed を破壊する
+  // gotcha を回避し、backdrop が viewport 全体を覆うようにする。
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-modal-fade-in"
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm sm:p-4 animate-modal-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -105,6 +115,7 @@ export function TypeIntroModal({ type, isOpen, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
