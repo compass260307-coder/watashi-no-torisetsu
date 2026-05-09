@@ -551,6 +551,18 @@ export default function FriendPage({
   }
 
   // --- Question screen ---
+  // 「この人」を {name}さん or 「この友達」に置換
+  const questionSubject = hasName ? `${ownerName}さん` : "この友達";
+  const questionText = currentQuestion.text.replace(/この人/g, questionSubject);
+
+  // scale 型回答ボタンの 4段階スタイル (index 0=めっちゃ → 3=ぜんぜん)
+  const scaleButtonStyles = [
+    "bg-primary-gradient text-white shadow-md border border-transparent",
+    "bg-primary/10 text-foreground border border-primary/30",
+    "bg-card-bg text-foreground border border-card-border",
+    "bg-gray-200 text-foreground border border-gray-300",
+  ];
+
   return (
     <div className="flex flex-col flex-1">
       {/* Header */}
@@ -567,11 +579,11 @@ export default function FriendPage({
             ← 戻る
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-muted">
+            <span className="text-sm font-bold text-foreground">
               {currentIndex + 1} / {totalQuestions}
             </span>
-            {remaining <= 5 && remaining > 0 && (
-              <span className="text-[10px] text-primary font-bold">
+            {remaining > 0 && (
+              <span className="text-xs font-bold text-primary">
                 あと{remaining}問
               </span>
             )}
@@ -579,55 +591,44 @@ export default function FriendPage({
           <div className="w-12" />
         </div>
 
-        {/* Progress bar */}
-        <div className="h-1.5 bg-card-border">
+        {/* Progress bar (強化版) */}
+        <div className="h-2 bg-primary/15">
           <div
-            className="h-full bg-primary transition-all duration-300 ease-out rounded-r-full"
+            className="h-full bg-primary-gradient transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       </header>
 
-      {/* Context bar */}
-      <div className="bg-label-bg border-b border-card-border px-5 py-2 text-center">
-        <p className="text-[11px] text-muted">
-          {hasName
-            ? `${ownerName}さんについて回答中 ・ あなたの印象でOK`
-            : "回答中 ・ あなたの印象でOK"}
-        </p>
-      </div>
-
       {/* Question */}
-      <main className="flex flex-col flex-1 items-center justify-center px-5 py-8 max-w-lg mx-auto w-full">
+      <main className="flex flex-col flex-1 items-center px-5 pt-6 pb-4 max-w-lg mx-auto w-full">
         <div
           className={`flex flex-col items-center w-full transition-opacity duration-200 ${
             isTransitioning ? "opacity-0" : "opacity-100"
           }`}
         >
           {/* Question label */}
-          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-xs font-bold text-primary mb-6 border border-card-border">
+          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-xs font-bold text-primary mb-4 border border-card-border">
             Q{currentIndex + 1}
           </div>
 
           {/* Question text */}
-          <h2 className="text-lg font-bold text-center leading-relaxed mb-10 px-2">
-            {currentQuestion.text}
+          <h2 className="text-lg font-bold text-center leading-relaxed mb-6 px-2">
+            {questionText}
           </h2>
 
           {/* Answer options */}
           <div className="flex flex-col gap-3 w-full max-w-sm">
             {currentQuestion.type === "scale" ? (
-              friendAnswerOptions.map((option) => {
+              friendAnswerOptions.map((option, index) => {
                 const isSelected =
                   answers[currentQuestion.id] === option.value;
                 return (
                   <button
                     key={option.value}
                     onClick={() => handleScaleAnswer(option.value)}
-                    className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all active:scale-[0.98] ${
-                      isSelected
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-card-border bg-card-bg text-foreground hover:border-primary/40"
+                    className={`w-full rounded-xl px-5 py-4 text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.98] ${scaleButtonStyles[index]} ${
+                      isSelected ? "ring-2 ring-primary ring-offset-1" : ""
                     }`}
                   >
                     {option.label}
@@ -642,7 +643,7 @@ export default function FriendPage({
                   <button
                     key={choice}
                     onClick={() => handleChoiceAnswer(choice)}
-                    className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all active:scale-[0.98] ${
+                    className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.98] ${
                       isSelected
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-card-border bg-card-bg text-foreground hover:border-primary/40"
