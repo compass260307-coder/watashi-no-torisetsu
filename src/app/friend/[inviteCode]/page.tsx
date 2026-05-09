@@ -556,11 +556,12 @@ export default function FriendPage({
   const questionText = currentQuestion.text.replace(/この人/g, questionSubject);
 
   // scale 型回答ボタンの 4段階スタイル (index 0=めっちゃ → 3=ぜんぜん)
+  // solid color のみ、border なし、グラデは CTA 専用
   const scaleButtonStyles = [
-    "bg-primary-gradient text-white shadow-md border border-transparent",
-    "bg-primary/10 text-foreground border border-primary/30",
-    "bg-card-bg text-foreground border border-card-border",
-    "bg-gray-200 text-foreground border border-gray-300",
+    "bg-pink-400 text-white shadow-sm",
+    "bg-pink-200 text-gray-800 shadow-sm",
+    "bg-gray-200 text-gray-700 shadow-sm",
+    "bg-gray-400 text-white shadow-sm",
   ];
 
   return (
