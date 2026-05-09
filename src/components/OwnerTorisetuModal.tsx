@@ -59,7 +59,7 @@ export function OwnerTorisetuModal({
         </button>
 
         <iframe
-          src={`/result/${ownerToken}`}
+          src={`/report/${ownerToken}`}
           className="w-full h-full border-0"
           title={title}
         />
