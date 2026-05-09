@@ -555,14 +555,13 @@ export default function FriendPage({
   const questionSubject = hasName ? `${ownerName}さん` : "この友達";
   const questionText = currentQuestion.text.replace(/この人/g, questionSubject);
 
-  // scale 型回答ボタンの 4段階スタイル (index 0=めっちゃ → 3=ぜんぜん)
-  // ピンク4段階で統一感を出す (グレーは使わない)
-  const scaleButtonStyles = [
-    "bg-pink-400 text-white shadow-sm",
-    "bg-pink-200 text-gray-800 shadow-sm",
-    "bg-pink-100 text-gray-800 shadow-sm",
-    "bg-white text-gray-800 border-2 border-pink-200 shadow-sm",
-  ];
+  // 全質問で統一する回答ボタンのクラス。選択時はピンク濃 + 太borderで強調
+  const answerButtonClass = (isSelected: boolean) =>
+    `w-full rounded-xl px-4 py-4 text-base font-bold text-gray-800 transition-all hover:scale-[1.02] active:scale-[0.98] ${
+      isSelected
+        ? "bg-pink-100 border-2 border-pink-400 shadow-md"
+        : "bg-pink-50 border border-pink-100 shadow-sm"
+    }`;
 
   return (
     <div className="flex flex-col flex-1">
@@ -620,41 +619,32 @@ export default function FriendPage({
 
           {/* Answer options */}
           <div className="flex flex-col gap-3 w-full max-w-sm">
-            {currentQuestion.type === "scale" ? (
-              friendAnswerOptions.map((option, index) => {
-                const isSelected =
-                  answers[currentQuestion.id] === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => handleScaleAnswer(option.value)}
-                    className={`w-full rounded-xl px-5 py-4 text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.98] ${scaleButtonStyles[index]} ${
-                      isSelected ? "ring-2 ring-primary ring-offset-1" : ""
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })
-            ) : (
-              currentQuestion.choices?.map((choice) => {
-                const isSelected =
-                  answers[currentQuestion.id] === choice;
-                return (
-                  <button
-                    key={choice}
-                    onClick={() => handleChoiceAnswer(choice)}
-                    className={`w-full rounded-xl border-2 px-5 py-4 text-sm font-medium transition-all hover:scale-[1.01] active:scale-[0.98] ${
-                      isSelected
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-card-border bg-card-bg text-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {choice}
-                  </button>
-                );
-              })
-            )}
+            {currentQuestion.type === "scale"
+              ? friendAnswerOptions.map((option) => {
+                  const isSelected =
+                    answers[currentQuestion.id] === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => handleScaleAnswer(option.value)}
+                      className={answerButtonClass(isSelected)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })
+              : currentQuestion.choices?.map((choice) => {
+                  const isSelected = answers[currentQuestion.id] === choice;
+                  return (
+                    <button
+                      key={choice}
+                      onClick={() => handleChoiceAnswer(choice)}
+                      className={answerButtonClass(isSelected)}
+                    >
+                      {choice}
+                    </button>
+                  );
+                })}
           </div>
         </div>
       </main>
