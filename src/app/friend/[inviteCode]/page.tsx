@@ -205,13 +205,19 @@ export default function FriendPage({
               ワタシのトリセツとは？
             </h3>
             <div className="flex flex-col gap-3 mb-5">
-              <p className="text-sm leading-relaxed text-center">
+              <p className="text-sm leading-relaxed">
                 世界中の心理学研究で使われている
-                <strong>Big Five 理論</strong>
+                <span className="font-bold bg-gradient-to-b from-transparent from-50% to-pink-200 to-50% px-0.5">
+                  Big Five 理論
+                </span>
                 に基づく性格診断サービス。
               </p>
-              <p className="text-sm leading-relaxed text-center">
-                従来の自己診断に友達からの<strong>他己評価</strong>を加えることで、より高精度な性格診断を実現します。
+              <p className="text-sm leading-relaxed">
+                従来の自己診断に友達からの
+                <span className="font-bold bg-gradient-to-b from-transparent from-50% to-pink-200 to-50% px-0.5">
+                  他己評価
+                </span>
+                を加えることで、より高精度な性格診断を実現します。
               </p>
             </div>
 
