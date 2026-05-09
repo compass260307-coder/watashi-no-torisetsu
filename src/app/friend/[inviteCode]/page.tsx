@@ -377,7 +377,7 @@ export default function FriendPage({
                   {/* Top: 更新通知バー */}
                   <div className="bg-pink-100 px-4 py-3 text-center">
                     <p className="text-sm font-bold text-pink-700">
-                      ✨ {hasName ? `${ownerName}さん` : "友達"}
+                      {hasName ? `${ownerName}さん` : "友達"}
                       のトリセツが更新されました
                     </p>
                   </div>
@@ -424,22 +424,20 @@ export default function FriendPage({
                     </p>
                   </div>
 
-                  {/* Bottom: divider + のぞきCTA */}
+                  {/* Bottom: full-width tap バー */}
                   {ownerToken && (
-                    <div className="border-t border-pink-100 p-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setIsOwnerTorisetuModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-full bg-pink-50 hover:bg-pink-100 border-2 border-pink-300 px-6 py-3 text-base font-bold text-pink-700 transition-colors"
-                      >
-                        <span>👀</span>
-                        <span>
-                          {hasName
-                            ? `${ownerName}さんのトリセツをのぞいてみる`
-                            : "友達のトリセツをのぞいてみる"}
-                        </span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOwnerTorisetuModalOpen(true)}
+                      className="w-full border-t border-pink-100 bg-white hover:bg-pink-50 active:bg-pink-100 px-6 py-4 text-base font-bold text-pink-700 flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <span>
+                        {hasName
+                          ? `${ownerName}さんのトリセツをのぞいてみる`
+                          : "友達のトリセツをのぞいてみる"}
+                      </span>
+                      <span className="text-lg leading-none">→</span>
+                    </button>
                   )}
                 </div>
               )}
