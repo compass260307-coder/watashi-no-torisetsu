@@ -11,7 +11,8 @@ type Status =
   | "cancelled"
   | "error"
   | "invalid"
-  | "missing-liff";
+  | "missing-liff"
+  | "needs-self-diagnosis";
 
 const PUBLIC_BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://watashi-no-torisetsu.vercel.app";
@@ -127,16 +128,6 @@ function ShareContent() {
           }
         }
 
-        let mode: ShareMode;
-        if (intent === "invite") {
-          mode = "invite";
-        } else if (inviteCode) {
-          mode = "evaluate";
-        } else {
-          setStatus("invalid");
-          return;
-        }
-
         const liff = (await import("@line/liff")).default;
         await liff.init({ liffId });
 
@@ -152,7 +143,49 @@ function ShareContent() {
         }
 
         const profile = await liff.getProfile().catch(() => null);
-        const senderName = profile?.displayName?.trim() || "友達";
+        let senderName = profile?.displayName?.trim() || "友達";
+
+        let mode: ShareMode;
+        if (intent === "invite") {
+          mode = "invite";
+        } else if (inviteCode) {
+          mode = "evaluate";
+        } else if (liff.isInClient() && profile?.userId) {
+          // パラ無し + LIFF コンテキスト → line_users から自分の owner 情報を解決
+          try {
+            const res = await fetch(
+              `/api/line-resolve?lineUserId=${encodeURIComponent(profile.userId)}`,
+            );
+            if (res.ok) {
+              const data: {
+                ownerToken: string | null;
+                displayName: string | null;
+                inviteCode: string | null;
+              } = await res.json();
+              if (data.inviteCode) {
+                inviteCode = data.inviteCode;
+                if (data.displayName) senderName = data.displayName;
+                mode = "evaluate";
+              } else {
+                // 紐付けはあるが invite_code 取得失敗、または line_users 未登録
+                if (!cancelled) setStatus("needs-self-diagnosis");
+                return;
+              }
+            } else {
+              // API エラー → 既存 fallback
+              if (!cancelled) setStatus("invalid");
+              return;
+            }
+          } catch (err) {
+            console.error("line-resolve fetch error:", err);
+            if (!cancelled) setStatus("invalid");
+            return;
+          }
+        } else {
+          setStatus("invalid");
+          return;
+        }
+
         const friendInviteUrl = inviteCode
           ? `${PUBLIC_BASE_URL}/friend/${inviteCode}`
           : "";
@@ -306,6 +339,27 @@ function ShareContent() {
           <p className="text-sm text-muted text-center">
             LIFF設定が見つかりません
           </p>
+        </>
+      )}
+
+      {status === "needs-self-diagnosis" && (
+        <>
+          <p className="text-lg font-bold text-center mb-2">
+            まず自己診断を完了してください
+          </p>
+          <p className="text-sm text-muted text-center mb-6 leading-relaxed">
+            他己評価を集めるには、
+            <br />
+            先にあなた自身の診断が必要です
+          </p>
+          <a
+            href={`${PUBLIC_BASE_URL}/diagnosis`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-md"
+          >
+            自己診断を始める
+          </a>
         </>
       )}
     </div>
