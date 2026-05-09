@@ -419,20 +419,25 @@ export default function FriendPage({
                 </div>
               )}
 
-              {/* Section 3: {name}さんのトリセツのぞきCTA */}
+              {/* Section 3: 更新通知 + のぞいてみる (notification 風 box) */}
               {ownerToken && (
-                <div className="w-full mb-6 text-center animate-fade-in-up stagger-3">
+                <div className="my-6 mx-auto w-full max-w-md rounded-2xl bg-pink-50 p-5 text-center animate-fade-in-up stagger-3">
+                  <p className="mb-1 text-sm font-bold text-pink-600">
+                    ✨ トリセツが更新されました
+                  </p>
+                  <p className="mb-4 text-sm text-gray-700 leading-relaxed">
+                    あなたの回答で
+                    <br />
+                    {hasName ? `${ownerName}さん` : "友達"}
+                    のトリセツが更新されました！
+                  </p>
                   <button
                     type="button"
                     onClick={() => setIsOwnerTorisetuModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-pink-50 hover:bg-pink-100 border-2 border-pink-200 text-pink-700 font-bold text-sm transition-colors"
+                    className="inline-flex items-center gap-2 rounded-full bg-white border-2 border-pink-300 px-5 py-2.5 text-sm font-bold text-pink-700 hover:bg-pink-100 hover:border-pink-400 transition-colors"
                   >
                     <span>👀</span>
-                    <span>
-                      {hasName
-                        ? `${ownerName}さんのトリセツをのぞいてみる`
-                        : "友達のトリセツをのぞいてみる"}
-                    </span>
+                    <span>のぞいてみる</span>
                   </button>
                 </div>
               )}
