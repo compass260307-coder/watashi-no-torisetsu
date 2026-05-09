@@ -556,12 +556,12 @@ export default function FriendPage({
   const questionText = currentQuestion.text.replace(/この人/g, questionSubject);
 
   // scale 型回答ボタンの 4段階スタイル (index 0=めっちゃ → 3=ぜんぜん)
-  // 肯定2段は filled (ピンク濃淡)、否定2段は outline (border濃淡)
+  // ピンク4段階で統一感を出す (グレーは使わない)
   const scaleButtonStyles = [
     "bg-pink-400 text-white shadow-sm",
     "bg-pink-200 text-gray-800 shadow-sm",
-    "bg-white text-gray-700 border border-gray-300",
-    "bg-white text-gray-700 border border-gray-500",
+    "bg-pink-100 text-gray-800 shadow-sm",
+    "bg-white text-gray-800 border-2 border-pink-200 shadow-sm",
   ];
 
   return (
