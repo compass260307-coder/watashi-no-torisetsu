@@ -204,17 +204,22 @@ export default function FriendPage({
               <span className="mr-2">📖</span>
               ワタシのトリセツとは？
             </h3>
-            <p className="text-sm leading-relaxed text-center mb-5">
-              世界中の心理学研究で使われている
-              <strong>Big Five 理論</strong>
-              に基づく性格診断サービス。
-            </p>
+            <div className="flex flex-col gap-3 mb-5">
+              <p className="text-sm leading-relaxed text-center">
+                世界中の心理学研究で使われている
+                <strong>Big Five 理論</strong>
+                に基づく性格診断サービス。
+              </p>
+              <p className="text-sm leading-relaxed text-center">
+                従来の自己診断に友達からの<strong>他己評価</strong>を加えることで、より高精度な性格診断を実現します。
+              </p>
+            </div>
 
             <div className="flex flex-col items-center gap-2">
-              {/* 自己評価ボックス */}
+              {/* 自己評価ボックス: オーナーが答える */}
               <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
                 <div className="text-[11px] text-muted mb-0.5">
-                  あなた自身が答える
+                  {ownerLabel}が答える
                 </div>
                 <div className="text-base font-bold">自己評価</div>
               </div>
@@ -224,10 +229,10 @@ export default function FriendPage({
                 ＋
               </div>
 
-              {/* 他己評価ボックス */}
+              {/* 他己評価ボックス: あなた(friend)が答える */}
               <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
                 <div className="text-[11px] text-muted mb-0.5">
-                  友達が答える
+                  あなたが答える
                 </div>
                 <div className="text-base font-bold">他己評価</div>
               </div>
@@ -237,10 +242,10 @@ export default function FriendPage({
                 ＝
               </div>
 
-              {/* ワタシのトリセツ (ハイライト) */}
+              {/* ワタシのトリセツ (ハイライト): オーナーのトリセツ */}
               <div className="w-full rounded-xl bg-primary-gradient px-4 py-4 text-center shadow-md">
                 <div className="text-[11px] text-white/90 mb-0.5">
-                  あなただけの
+                  {ownerLabel}だけの
                 </div>
                 <div className="text-base font-bold text-white">
                   ワタシのトリセツ
