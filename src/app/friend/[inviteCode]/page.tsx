@@ -270,21 +270,18 @@ export default function FriendPage({
                 stepNumber={1}
                 imageSrc="/mascot/step1-receive.png"
                 title={`${ownerLabel}が自己診断`}
-                subtitle="15問・3分で完了"
                 variant="completed"
               />
               <StepCard
                 stepNumber={2}
                 imageSrc="/mascot/step2-ask-friend.png"
                 title={`あなたが${ownerLabel}の印象を答える`}
-                subtitle="10問・約2分・完全匿名"
                 variant="current"
               />
               <StepCard
                 stepNumber={3}
                 imageSrc="/mascot/step3-complete.png"
                 title={`${ownerLabel}のトリセツ完成`}
-                subtitle="3人答えると、8タイプの結果が分かる"
                 variant="future"
               />
             </div>
@@ -310,7 +307,7 @@ export default function FriendPage({
             回答を始める
           </button>
           <p className="text-[10px] text-muted mt-3 animate-fade-in stagger-4">
-            正解はありません。感じたままでOK
+            正解はありません。回答は完全匿名で届きます
           </p>
         </main>
       </div>
