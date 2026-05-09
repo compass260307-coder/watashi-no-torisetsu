@@ -80,3 +80,19 @@ alter table line_users enable row level security;
 create policy "anyone can insert line_users" on line_users for insert with check (true);
 create policy "anyone can read line_users" on line_users for select using (true);
 create policy "anyone can update line_users" on line_users for update using (true);
+
+-- リッチメニュー「準備中」セルでお知らせを希望したユーザーの登録
+create table if not exists feature_optins (
+  id uuid primary key default gen_random_uuid(),
+  line_user_id text not null,
+  feature text not null,
+  created_at timestamptz default now(),
+  unique(line_user_id, feature)
+);
+
+create index if not exists idx_feature_optins_line_user_id on feature_optins(line_user_id);
+create index if not exists idx_feature_optins_feature on feature_optins(feature);
+
+alter table feature_optins enable row level security;
+create policy "anyone can insert feature_optins" on feature_optins for insert with check (true);
+create policy "anyone can read feature_optins" on feature_optins for select using (true);

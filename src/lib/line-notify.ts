@@ -313,6 +313,36 @@ export async function sendGenericWelcome(
   );
 }
 
+// webhook の reply token を使った reply 専用ヘルパー (push と異なり 1 度しか使えない)
+export async function replyToLine(
+  replyToken: string,
+  messages: messagingApi.Message[],
+  metadata?: Record<string, unknown>,
+): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping reply");
+    return { success: false, error: "no_token" };
+  }
+
+  try {
+    await client.replyMessage({ replyToken, messages });
+    return { success: true };
+  } catch (err) {
+    const status = getErrorStatus(err);
+    console.error("[LINE reply] error", {
+      status,
+      metadata,
+      error: String(err),
+    });
+    return {
+      success: false,
+      statusCode: status,
+      error: status ? `http_${status}` : "unknown",
+    };
+  }
+}
+
 export async function notifyFriendAnswered(
   ownerToken: string,
   friendCount: number,
