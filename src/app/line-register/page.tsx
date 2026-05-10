@@ -72,11 +72,24 @@ function LineRegisterContent() {
         const lineUserId = profile.userId;
         const displayName = profile.displayName?.trim() || null;
 
+        const idToken = liff.getIDToken();
+        if (!idToken) {
+          setStatus("error");
+          setErrorMessage(
+            "LIFF ID token を取得できませんでした (openid scope 必須)",
+          );
+          return;
+        }
+
         // 紐付け保存 (welcome は webhook 経由で送られる)
+        // lineUserId はサーバ側で id_token から導出するため body に含めない (PR-FIX-3 H5)
         const res = await fetch("/api/line-register", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ownerToken, lineUserId, displayName }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ ownerToken, displayName }),
         });
 
         if (!res.ok) {

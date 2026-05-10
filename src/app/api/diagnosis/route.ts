@@ -1,16 +1,22 @@
+import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { checkOrigin } from "@/lib/origin-check";
 import { NextResponse } from "next/server";
 
-function generateCode(length: number) {
-  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-  let code = "";
-  for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
+// PR-FIX-3 H6: Math.random() ではなく CSPRNG (crypto.randomBytes) を使用
+function generateInviteCode(): string {
+  return crypto.randomBytes(8).toString("base64url");
+}
+function generateOwnerToken(): string {
+  return crypto.randomBytes(16).toString("base64url");
 }
 
 export async function POST(request: Request) {
+  const originCheck = checkOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json({ error: originCheck.error }, { status: 403 });
+  }
+
   const body = await request.json();
   const { typeId, scores, campaign, sourceInviteCode } = body;
 
@@ -18,8 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const inviteCode = generateCode(8);
-  const ownerToken = generateCode(16);
+  const inviteCode = generateInviteCode();
+  const ownerToken = generateOwnerToken();
 
   let sourceUserId: string | null = null;
   let generation: number | null = null;

@@ -125,3 +125,12 @@ drop policy if exists "anyone can update line_users" on line_users;
 -- feature_optins
 drop policy if exists "anyone can insert feature_optins" on feature_optins;
 drop policy if exists "anyone can read feature_optins" on feature_optins;
+
+-- =========================================================
+-- PR-FIX-3 H8: friend_count race condition 対策
+--   3 人の friend がほぼ同時に submit したときに通知 N3 が
+--   2 重送信されないよう、最後に通知済みの友達数を保持する。
+--   Dashboard SQL Editor で以下を実行する。
+-- =========================================================
+alter table users
+  add column if not exists last_notified_friend_count int default 0;

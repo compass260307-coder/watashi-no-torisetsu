@@ -1,7 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { checkOrigin } from "@/lib/origin-check";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  const originCheck = checkOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json({ error: originCheck.error }, { status: 403 });
+  }
+
   const body = await request.json();
   const { eventName, sessionId, inviteCode, ownerToken, metadata } = body;
 

@@ -1,18 +1,33 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { verifyBearer } from "@/lib/liff-verify";
+import { checkOrigin } from "@/lib/origin-check";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const originCheck = checkOrigin(request);
+    if (!originCheck.ok) {
+      return NextResponse.json({ error: originCheck.error }, { status: 403 });
+    }
+
+    // PR-FIX-3 H5: クライアントから lineUserId を信用しない
+    // Authorization: Bearer <id_token> を LINE Verify API で検証して
+    // 検証された sub (= lineUserId) のみ受理する
+    const verified = await verifyBearer(request);
+    if (!verified) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const lineUserId = verified.sub;
+
     const body = await request.json();
     const ownerToken = typeof body.ownerToken === "string" ? body.ownerToken : null;
-    const lineUserId = typeof body.lineUserId === "string" ? body.lineUserId : null;
     const displayNameRaw =
       typeof body.displayName === "string" ? body.displayName.trim() : "";
     const displayName = displayNameRaw.length > 0 ? displayNameRaw : null;
 
-    if (!ownerToken || !lineUserId) {
+    if (!ownerToken) {
       return NextResponse.json(
-        { error: "ownerToken and lineUserId required" },
+        { error: "ownerToken required" },
         { status: 400 },
       );
     }
