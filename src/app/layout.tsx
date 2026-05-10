@@ -1,6 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { M_PLUS_Rounded_1c } from "next/font/google";
 import "./globals.css";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
@@ -89,7 +92,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={mPlusRounded.variable}>
-      <body className="min-h-dvh flex flex-col">{children}</body>
+      <body className="min-h-dvh flex flex-col">
+        {children}
+        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <GoogleAnalyticsTracker />
+        </Suspense>
+      </body>
     </html>
   );
 }
