@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           "/report/",
           "/friend/",
           "/zukan/",
+          "/perceptions/",
           "/share",
           "/line-register",
           "/torisetsu/",

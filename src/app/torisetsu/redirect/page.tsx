@@ -77,7 +77,9 @@ function RedirectContent() {
           const target =
             dest === "zukan"
               ? `/zukan/${data.ownerToken}`
-              : `/report/${data.ownerToken}`;
+              : dest === "perceptions"
+                ? `/perceptions/${data.ownerToken}`
+                : `/report/${data.ownerToken}`;
           setStatus("redirecting");
           window.location.replace(target);
           return;
