@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { StepCard } from "@/components/StepCard";
 import { TypeCarousel } from "@/components/TypeCarousel";
+import Footer from "@/components/Footer";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -129,11 +130,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="py-6 text-center">
-        <p className="text-[10px] text-muted/60">
-          ワタシのトリセツ
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import FAQAccordion from "@/components/FAQAccordion";
 import { faqItems } from "@/lib/faq-data";
+import Footer from "@/components/Footer";
 
 const DEVELOPER_NAME =
   process.env.NEXT_PUBLIC_DEVELOPER_NAME ?? "ワタシのトリセツ運営";
@@ -218,9 +219,7 @@ export default function AboutPage() {
         </section>
       </main>
 
-      <footer className="py-6 text-center">
-        <p className="text-[10px] text-muted/60">ワタシのトリセツ</p>
-      </footer>
+      <Footer />
     </div>
   );
 }
