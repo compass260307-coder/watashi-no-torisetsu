@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import type { TorisetsuTypeId } from "@/lib/types";
 import type { ZukanData, ZukanTypeEntry } from "@/lib/zukan-data";
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
   }
 
-  const { data: owner, error: ownerErr } = await supabase
+  const { data: owner, error: ownerErr } = await supabaseAdmin
     .from("users")
     .select("id, type_id")
     .eq("owner_token", token)
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const selfTypeId = owner.type_id as TorisetsuTypeId;
 
   // owner から派生した friend (source_user_id = owner.id) のタイプ集計
-  const { data: descendants, error: descErr } = await supabase
+  const { data: descendants, error: descErr } = await supabaseAdmin
     .from("users")
     .select("type_id")
     .eq("source_user_id", owner.id);

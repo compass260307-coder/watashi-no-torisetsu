@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type { messagingApi } from "@line/bot-sdk";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   sendWelcomeMessage,
   sendGenericWelcome,
@@ -39,7 +39,7 @@ type LineEvent = {
 
 async function handleFollowEvent(lineUserId: string): Promise<void> {
   // line_users で紐付けレコードを検索
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("line_users")
     .select("owner_token, welcome_sent_at")
     .eq("line_user_id", lineUserId)
@@ -160,7 +160,7 @@ async function handleOptin(
   }
 
   // unique(line_user_id, feature) のため重複は ignoreDuplicates でスキップ
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("feature_optins")
     .upsert(
       { line_user_id: lineUserId, feature },

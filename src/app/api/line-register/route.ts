@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // users.display_name は既存値を尊重し、未設定 (null/空) の場合のみ LIFF displayName で更新
     if (displayName) {
-      const { data: userRow, error: userLookupError } = await supabase
+      const { data: userRow, error: userLookupError } = await supabaseAdmin
         .from("users")
         .select("display_name")
         .eq("owner_token", ownerToken)
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       if (userLookupError) {
         console.error("users lookup error (display_name):", userLookupError);
       } else if (userRow && !userRow.display_name) {
-        const { error: nameUpdateError } = await supabase
+        const { error: nameUpdateError } = await supabaseAdmin
           .from("users")
           .update({ display_name: displayName })
           .eq("owner_token", ownerToken);
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 既存チェック: 既に登録済みなら welcome を送らない
-    const { data: existing, error: lookupError } = await supabase
+    const { data: existing, error: lookupError } = await supabaseAdmin
       .from("line_users")
       .select("id")
       .eq("line_user_id", lineUserId)
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (existing) {
       // 既に登録済み: owner_token を最新に更新するのみ
       // welcome は webhook 経由で送信されるため、ここでは送らない
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from("line_users")
         .update({ owner_token: ownerToken })
         .eq("line_user_id", lineUserId);
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // 新規登録: insert のみ
     // welcome は LINE Webhook の follow イベントで送信される (Phase G+2)
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from("line_users")
       .insert({ owner_token: ownerToken, line_user_id: lineUserId });
 

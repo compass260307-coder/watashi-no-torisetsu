@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { sendWelcomeMessage, sendGenericWelcome } from "@/lib/line-notify";
 
 // LINE Webhook の follow イベントをシミュレートして welcome 送信フローを検証する
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   steps.push("env-check-done");
 
   if (resetWelcome) {
-    const { error: resetError } = await supabase
+    const { error: resetError } = await supabaseAdmin
       .from("line_users")
       .update({ welcome_sent_at: null })
       .eq("line_user_id", lineUserId);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   // line_users 検索
-  const { data, error: lookupError } = await supabase
+  const { data, error: lookupError } = await supabaseAdmin
     .from("line_users")
     .select("owner_token, welcome_sent_at, created_at")
     .eq("line_user_id", lineUserId)

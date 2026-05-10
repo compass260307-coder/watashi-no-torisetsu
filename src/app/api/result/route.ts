@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing token or code" }, { status: 400 });
   }
 
-  let query = supabase
+  let query = supabaseAdmin
     .from("users")
     .select("id, type_id, scores, invite_code, owner_token, display_name");
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const { data: friendAnswers } = await supabase
+  const { data: friendAnswers } = await supabaseAdmin
     .from("friend_answers")
     .select("id, answers, created_at")
     .eq("user_id", user.id)

@@ -153,9 +153,14 @@ function ShareContent() {
         } else if (liff.isInClient() && profile?.userId) {
           // パラ無し + LIFF コンテキスト → line_users から自分の owner 情報を解決
           try {
-            const res = await fetch(
-              `/api/line-resolve?lineUserId=${encodeURIComponent(profile.userId)}`,
-            );
+            const idToken = liff.getIDToken();
+            if (!idToken) {
+              if (!cancelled) setStatus("invalid");
+              return;
+            }
+            const res = await fetch("/api/line-resolve", {
+              headers: { Authorization: `Bearer ${idToken}` },
+            });
             if (res.ok) {
               const data: {
                 ownerToken: string | null;

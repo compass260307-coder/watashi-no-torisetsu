@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 function generateCode(length: number) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   let generation: number | null = null;
 
   if (sourceInviteCode) {
-    const { data: sourceUser } = await supabase
+    const { data: sourceUser } = await supabaseAdmin
       .from("users")
       .select("id, generation")
       .eq("invite_code", sourceInviteCode)
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     generation = 0;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .insert({
       type_id: typeId,

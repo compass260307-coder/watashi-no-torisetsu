@@ -40,16 +40,15 @@ function RedirectContent() {
           setStatus("out-of-line");
           return;
         }
-        const profile = await liff.getProfile();
-        const userId = profile.userId;
-        if (!userId) {
+        const idToken = liff.getIDToken();
+        if (!idToken) {
           setStatus("error");
-          setErrorMessage("user id not available");
+          setErrorMessage("LIFF ID token not available (openid scope 必須)");
           return;
         }
-        const res = await fetch(
-          `/api/line-resolve?lineUserId=${encodeURIComponent(userId)}`,
-        );
+        const res = await fetch("/api/line-resolve", {
+          headers: { Authorization: `Bearer ${idToken}` },
+        });
         if (!res.ok) {
           setStatus("error");
           setErrorMessage(`line-resolve ${res.status}`);

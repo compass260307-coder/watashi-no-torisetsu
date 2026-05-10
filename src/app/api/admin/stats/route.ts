@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -38,93 +38,93 @@ export async function GET(request: NextRequest) {
     friendAnswersRes,
   ] = await Promise.all([
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "diagnosis_started"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "diagnosis_completed"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "friend_answer_started"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "friend_answer_completed"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .in("event_name", ["friend_share_clicked", "friend_link_copied"]),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "result_viewed"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "result_revisited"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("owner_token, metadata")
         .in("event_name", ["result_viewed", "result_revisited"])
         .not("owner_token", "is", null),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("event_name, session_id, created_at, metadata")
         .order("created_at", { ascending: false })
         .limit(50),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id")
         .eq("event_name", "friend_to_diagnosis_clicked"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("metadata")
         .eq("event_name", "diagnosis_question_answered"),
     ),
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("metadata")
         .eq("event_name", "friend_question_answered"),
     ),
     // friend_landing_viewed — for viral reach
     applyRange(
-      supabase
+      supabaseAdmin
         .from("events")
         .select("session_id, invite_code")
         .eq("event_name", "friend_landing_viewed"),
     ),
     // users — period filter applied
     applyRange(
-      supabase.from("users").select("id, type_id, campaign, generation, invite_code, source_user_id, created_at"),
+      supabaseAdmin.from("users").select("id, type_id, campaign, generation, invite_code, source_user_id, created_at"),
     ),
     // friend_answers — period filter applied
     applyRange(
-      supabase.from("friend_answers").select("user_id, created_at"),
+      supabaseAdmin.from("friend_answers").select("user_id, created_at"),
     ),
   ]);
 

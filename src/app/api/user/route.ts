@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 export async function PATCH(request: Request) {
@@ -11,7 +11,7 @@ export async function PATCH(request: Request) {
 
   const trimmed = displayName.trim().slice(0, 20);
 
-  let query = supabase.from("users").update({ display_name: trimmed });
+  let query = supabaseAdmin.from("users").update({ display_name: trimmed });
 
   if (ownerToken) {
     query = query.eq("owner_token", ownerToken);

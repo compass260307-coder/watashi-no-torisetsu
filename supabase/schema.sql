@@ -96,3 +96,32 @@ create index if not exists idx_feature_optins_feature on feature_optins(feature)
 alter table feature_optins enable row level security;
 create policy "anyone can insert feature_optins" on feature_optins for insert with check (true);
 create policy "anyone can read feature_optins" on feature_optins for select using (true);
+
+-- =========================================================
+-- PR-FIX-1: RLS lockdown migration (実行手順)
+--   Supabase Dashboard → SQL Editor で以下を実行する。
+--   全 anon ポリシーを drop。service_role はデフォルトで全 CRUD 可能なので
+--   新規ポリシーは不要 (= anon からの直接アクセスを完全に封鎖)。
+-- =========================================================
+
+-- users
+drop policy if exists "anyone can insert users" on users;
+drop policy if exists "anyone can read users" on users;
+drop policy if exists "anyone can update users" on users;
+
+-- friend_answers
+drop policy if exists "anyone can insert friend_answers" on friend_answers;
+drop policy if exists "anyone can read friend_answers" on friend_answers;
+
+-- events
+drop policy if exists "anyone can insert events" on events;
+drop policy if exists "anyone can read events" on events;
+
+-- line_users
+drop policy if exists "anyone can insert line_users" on line_users;
+drop policy if exists "anyone can read line_users" on line_users;
+drop policy if exists "anyone can update line_users" on line_users;
+
+-- feature_optins
+drop policy if exists "anyone can insert feature_optins" on feature_optins;
+drop policy if exists "anyone can read feature_optins" on feature_optins;

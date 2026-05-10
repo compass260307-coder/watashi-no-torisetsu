@@ -1,5 +1,5 @@
 import { sendWelcomeMessage } from "@/lib/line-notify";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 function authorize(request: NextRequest): boolean {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("line_users")
     .select("id, owner_token, line_user_id, welcome_sent_at, created_at")
     .is("welcome_sent_at", null)
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("line_users")
     .select("owner_token")
     .eq("line_user_id", lineUserId)

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { notifyFriendAnswered } from "@/lib/line-notify";
 import { NextResponse } from "next/server";
 
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const { data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabaseAdmin
     .from("users")
     .select("id, owner_token")
     .eq("invite_code", inviteCode)
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from("friend_answers")
     .insert({ user_id: user.id, answers });
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   if (user.owner_token) {
-    const { count } = await supabase
+    const { count } = await supabaseAdmin
       .from("friend_answers")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id);

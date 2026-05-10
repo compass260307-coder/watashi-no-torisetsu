@@ -1,5 +1,5 @@
 import { messagingApi } from "@line/bot-sdk";
-import { supabase } from "./supabase";
+import { supabaseAdmin } from "./supabase-server";
 import {
   buildWelcomeRegisteredFlex,
   buildWelcomeUnregisteredFlex,
@@ -120,7 +120,7 @@ export async function sendWelcomeMessage(
     return { success: false, error: "no_token" };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .select("invite_code")
     .eq("owner_token", ownerToken)
@@ -143,7 +143,7 @@ export async function sendWelcomeMessage(
   );
 
   if (result.success) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("line_users")
       .update({ welcome_sent_at: new Date().toISOString() })
       .eq("line_user_id", lineUserId);
@@ -221,7 +221,7 @@ export async function notifyFriendAnswered(
     return { success: false, error: "no_token" };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("line_users")
     .select("line_user_id")
     .eq("owner_token", ownerToken)

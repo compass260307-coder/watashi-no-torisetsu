@@ -2,7 +2,7 @@ import {
   notifyFriendAnswered,
   sendWelcomeMessage,
 } from "@/lib/line-notify";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabaseAdmin
     .from("line_users")
     .select("line_user_id")
     .eq("owner_token", ownerToken)

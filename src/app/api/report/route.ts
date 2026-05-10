@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   buildReportData,
   REPORT_FRIEND_THRESHOLD,
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       ? (forceTypeRaw as TorisetsuTypeId)
       : null;
 
-  const { data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabaseAdmin
     .from("users")
     .select("id, type_id, scores, owner_token")
     .eq("owner_token", token)
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const { data: friendAnswers } = await supabase
+  const { data: friendAnswers } = await supabaseAdmin
     .from("friend_answers")
     .select("answers, created_at")
     .eq("user_id", user.id)

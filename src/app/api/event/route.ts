@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing eventName" }, { status: 400 });
   }
 
-  await supabase.from("events").insert({
+  await supabaseAdmin.from("events").insert({
     event_name: eventName,
     session_id: sessionId ?? null,
     invite_code: inviteCode ?? null,
