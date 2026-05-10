@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import FAQAccordion from "@/components/FAQAccordion";
+import { faqItems } from "@/lib/faq-data";
 
 const DEVELOPER_NAME =
   process.env.NEXT_PUBLIC_DEVELOPER_NAME ?? "ワタシのトリセツ運営";
@@ -50,6 +52,19 @@ const privacyItems = [
   },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqItems.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
+
 const upcomingFeatures = [
   {
     title: "シーン別ページ",
@@ -68,6 +83,10 @@ const upcomingFeatures = [
 export default function AboutPage() {
   return (
     <div className="flex flex-col flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-xl mx-auto w-full">
         {/* 1. Hero */}
         <section className="flex flex-col items-center text-center w-full mb-12 animate-fade-in-up">
@@ -181,6 +200,12 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* 6.5 よくある質問 (FAQ) */}
+        <section className="w-full mb-10 animate-fade-in-up stagger-4">
+          <h2 className="text-base font-bold mb-3">よくある質問</h2>
+          <FAQAccordion />
         </section>
 
         {/* 7. 困った時は */}
