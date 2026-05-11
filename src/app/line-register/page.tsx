@@ -153,9 +153,9 @@ function LineRegisterContent() {
             友だち追加してください
           </p>
           <p className="text-sm text-muted text-center mb-6 leading-relaxed">
-            友だち追加すると、welcome メッセージと
+            友だち追加すると、リッチメニューから
             <br />
-            完成までのお知らせがLINEで届きます
+            いつでもトリセツに戻ってこられます🐧
           </p>
           <a
             href={FRIEND_ADD_URL}

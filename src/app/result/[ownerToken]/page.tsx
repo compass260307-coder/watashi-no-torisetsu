@@ -386,15 +386,15 @@ export default function OwnerResultPage({
                     </svg>
                   </div>
                   <h2 className="text-xl font-bold leading-snug mb-2">
-                    あなたの本当の姿、
+                    LINEで、いつでも
                     <br />
-                    続きをLINEで
+                    トリセツに戻ってこよう🐧
                   </h2>
-                  <ol className="text-sm text-muted leading-relaxed text-left space-y-1 mb-5">
-                    <li>1. LINEで友だち追加</li>
-                    <li>2. LINEから友達3人に診断を送る</li>
-                    <li>3. 完全版が解放される</li>
-                  </ol>
+                  <ul className="text-sm text-muted leading-relaxed text-left space-y-1 mb-5">
+                    <li>・リッチメニューからいつでも開ける</li>
+                    <li>・友達が答えると通知が届く</li>
+                    <li>・仮トリセツを失わずに保存</li>
+                  </ul>
                   <a
                     href={getLineRegisterUrl(ownerToken)}
                     target="_blank"
@@ -412,10 +412,10 @@ export default function OwnerResultPage({
                     >
                       <path d={LINE_ICON_PATH} />
                     </svg>
-                    LINE で友だち追加
+                    LINE で受け取る
                   </a>
                   <p className="text-[11px] text-muted leading-relaxed mt-4">
-                    ※ 深掘り解説の続き、友達評価レーダー、相性診断、自他ギャップなどが追加されます
+                    ※ リッチメニューから「友達からの印象」「タイプ図鑑」なども開けます🐧
                   </p>
                 </div>
               </div>
