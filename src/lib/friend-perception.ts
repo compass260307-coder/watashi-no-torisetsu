@@ -1,82 +1,104 @@
-import type { AnswerValue, TorisetsuTypeId } from "./types";
+import type {
+  AnswerValue,
+  BigFiveDimension,
+  CModifier,
+  FacetId,
+  NModifier,
+  TorisetsuTypeId,
+} from "./types";
+import { FACET_TO_DIMENSION } from "./types";
+import { friendQuestions } from "./friend-questions";
+import {
+  buildFullCode,
+  classifyModifier,
+  classifyType,
+} from "./diagnosis";
+import { getModifierLabel } from "./modifier-data";
 
 export type FriendPerception = {
+  facetScores: Record<FacetId, number>;       // 10 ファセット (0-10)
+  scores: Record<BigFiveDimension, number>;   // 5 因子 (0-10)
   typeId: TorisetsuTypeId;
+  cModifier: CModifier;
+  nModifier: NModifier;
+  fullCode: string;                            // 例: "EAO-C-N"
+  modifierLabel: string;                       // 例: "計画 × 繊細"
   confidence: "low" | "medium" | "high";
-  scores: { E: number; A: number; O: number; C: number; N: number };
 } | null;
 
-// Q9 (LINEイメージ) → 誠実性(C) のマッピング
-export function mapQ9toC(answer: string): number {
-  switch (answer) {
-    case "マイペースだけど丁寧":
-      return 4;
-    case "気分が乗った時にバーッと返してくる":
-      return 1;
-    case "即レス・テンション高め":
-      return 2.5;
-    case "短文・スタンプ多め":
-      return 2.5;
-    default:
-      return 2.5;
-  }
-}
-
-// Q5 (隠れた魅力) → 神経症傾向(N) のマッピング
-export function mapQ5toN(answer: string): number {
-  switch (answer) {
-    case "実はめっちゃ繊細":
-      return 4;
-    case "実はめっちゃ頼りになる":
-      return 1;
-    case "実はめっちゃ面白い":
-      return 2.5;
-    case "実はめっちゃ優しい":
-      return 2.5;
-    default:
-      return 2.5;
-  }
-}
-
+/**
+ * 友達の回答から、その人がどう見られているかを推定する。
+ * - 友達スケール 10 問 (id 1-10、各 facet 1 問) を 1-7 → 0-10 スケールに変換
+ * - 各 facet から dim を facet 平均で算出
+ * - 自己診断と同じ classify ロジック (diagnosis.ts) を流用
+ * - 必要な scale 回答が 10 問揃わない場合は null
+ */
 export function perceiveFromFriendAnswers(
   answers: Record<number, AnswerValue | string>,
 ): FriendPerception {
-  const e = answers[1];
-  const a = answers[2];
-  const o = answers[3];
+  // ── 1. 10 ファセットのスコア算出 ──
+  const facetScores: Partial<Record<FacetId, number>> = {};
+  const extremeValues: number[] = []; // 信頼度判定用
 
-  if (typeof e !== "number" || typeof a !== "number" || typeof o !== "number") {
+  for (const question of friendQuestions) {
+    if (question.type !== "scale" || !question.facetId) continue;
+
+    const raw = answers[question.id];
+    if (typeof raw !== "number") continue;
+
+    // 1-7 → 0-10 スケール
+    facetScores[question.facetId] = ((raw - 1) / 6) * 10;
+
+    if (raw === 1 || raw === 7) extremeValues.push(raw);
+  }
+
+  if (Object.keys(facetScores).length < 10) {
     return null;
   }
 
-  const q5 = answers[5];
-  const q9 = answers[9];
-  const n = typeof q5 === "string" ? mapQ5toN(q5) : 2.5;
-  const c = typeof q9 === "string" ? mapQ9toC(q9) : 2.5;
+  // ── 2. dim スコア (各 dim の 2 facet 平均) ──
+  const buckets: Record<BigFiveDimension, number[]> = {
+    E: [],
+    A: [],
+    O: [],
+    C: [],
+    N: [],
+  };
+  for (const facetId of Object.keys(facetScores) as FacetId[]) {
+    const score = facetScores[facetId];
+    if (score === undefined) continue;
+    buckets[FACET_TO_DIMENSION[facetId]].push(score);
+  }
 
-  const scores = { E: e, A: a, O: o, C: c, N: n };
+  const scores = {} as Record<BigFiveDimension, number>;
+  for (const dim of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
+    const values = buckets[dim];
+    scores[dim] =
+      values.length > 0
+        ? values.reduce((a, b) => a + b, 0) / values.length
+        : 5.0;
+  }
 
-  const isHighE = e >= 2.5;
-  const isHighA = a >= 2.5;
-  const isHighO = o >= 2.5;
+  // ── 3. タイプ + モディファイア + フルコード (自己診断と同ロジック) ──
+  const typeId = classifyType(scores);
+  const { cModifier, nModifier } = classifyModifier(scores);
+  const fullCode = buildFullCode(typeId, cModifier, nModifier);
+  const modifierLabel = getModifierLabel(cModifier, nModifier);
 
-  let typeId: TorisetsuTypeId;
-  if (isHighE && isHighA && isHighO) typeId = "festival-sun";
-  else if (isHighE && isHighA && !isHighO) typeId = "everyones-home";
-  else if (isHighE && !isHighA && isHighO) typeId = "wild-charisma";
-  else if (isHighE && !isHighA && !isHighO) typeId = "iron-mental";
-  else if (!isHighE && isHighA && isHighO) typeId = "delicate-creator";
-  else if (!isHighE && isHighA && !isHighO) typeId = "healing-guardian";
-  else if (!isHighE && !isHighA && isHighO) typeId = "deep-dive-explorer";
-  else typeId = "cool-maverick";
-
-  const isExtreme = (v: number) => v === 1 || v === 4;
-  const extremeCount = [e, a, o].filter(isExtreme).length;
-
+  // ── 4. 信頼度 (極端な回答が多いほど high) ──
   let confidence: "low" | "medium" | "high";
-  if (extremeCount >= 3) confidence = "high";
-  else if (extremeCount >= 1) confidence = "medium";
+  if (extremeValues.length >= 5) confidence = "high";
+  else if (extremeValues.length >= 2) confidence = "medium";
   else confidence = "low";
 
-  return { typeId, confidence, scores };
+  return {
+    facetScores: facetScores as Record<FacetId, number>,
+    scores,
+    typeId,
+    cModifier,
+    nModifier,
+    fullCode,
+    modifierLabel,
+    confidence,
+  };
 }

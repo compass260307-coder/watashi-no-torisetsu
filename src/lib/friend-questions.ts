@@ -1,48 +1,92 @@
 import type { FriendQuestion } from "./types";
 
 export const friendQuestions: FriendQuestion[] = [
+  // ====== スケール式 10 問（各 facet 1 問、7 段階） ======
   {
     id: 1,
-    text: "この人は、知らない人がいる場でも自然に話せるタイプだと思う",
+    text: "この人は、グループで意見が割れたら自分の考えをはっきり伝えるタイプだと思う",
     type: "scale",
+    facetId: "E_assertiveness",
     dimension: "E",
   },
   {
     id: 2,
-    text: "この人は、困ってる人がいたら自分のこと後回しにしてでも助けるタイプだと思う",
+    text: "この人は、初対面の人にも自然に温かく接するタイプだと思う",
     type: "scale",
-    dimension: "A",
+    facetId: "E_warmth",
+    dimension: "E",
   },
   {
     id: 3,
-    text: "この人は、急な予定変更やハプニングも楽しめるタイプだと思う",
+    text: "この人は、自分のやり方より全体の流れを優先するタイプだと思う",
     type: "scale",
-    dimension: "O",
+    facetId: "A_cooperation",
+    dimension: "A",
   },
   {
     id: 4,
+    text: "この人は、人の気持ちに敏感に共感するタイプだと思う",
+    type: "scale",
+    facetId: "A_sympathy",
+    dimension: "A",
+  },
+  {
+    id: 5,
+    text: "この人は、新しいことに自分から飛び込むタイプだと思う",
+    type: "scale",
+    facetId: "O_adventurousness",
+    dimension: "O",
+  },
+  {
+    id: 6,
+    text: "この人は、頭の中で色々空想してそうなタイプだと思う",
+    type: "scale",
+    facetId: "O_imagination",
+    dimension: "O",
+  },
+  {
+    id: 7,
+    text: "この人は、目標を立ててそれに向かって動くタイプだと思う",
+    type: "scale",
+    facetId: "C_achievement",
+    dimension: "C",
+  },
+  {
+    id: 8,
+    text: "この人は、身の回りや持ち物を整理整頓してるタイプだと思う",
+    type: "scale",
+    facetId: "C_orderliness",
+    dimension: "C",
+  },
+  {
+    id: 9,
+    text: "この人は、感情が表に出やすいタイプだと思う",
+    type: "scale",
+    facetId: "N_volatility",
+    dimension: "N",
+  },
+  {
+    id: 10,
+    text: "この人は、不安や心配が多いタイプだと思う",
+    type: "scale",
+    facetId: "N_anxiety",
+    dimension: "N",
+  },
+
+  // ====== 選択式 3 問（エンゲージメント維持） ======
+  {
+    id: 11,
     text: "この人の「ここが好き！」と思うところは？",
     type: "choice",
     choices: [
-      "一緒にいると楽しい",
+      "一緒にいて楽しい",
       "安心感がある",
       "刺激をもらえる",
       "素でいられる",
     ],
   },
   {
-    id: 5,
-    text: "この人の、たぶん本人は気づいてない魅力は？",
-    type: "choice",
-    choices: [
-      "実はめっちゃ繊細",
-      "実はめっちゃ頼りになる",
-      "実はめっちゃ面白い",
-      "実はめっちゃ優しい",
-    ],
-  },
-  {
-    id: 6,
+    id: 12,
     text: "この人を動物に例えるなら？",
     type: "choice",
     choices: [
@@ -53,40 +97,7 @@ export const friendQuestions: FriendQuestion[] = [
     ],
   },
   {
-    id: 7,
-    text: "この人が一番輝いて見える瞬間は？",
-    type: "choice",
-    choices: [
-      "みんなの中心にいるとき",
-      "誰かを助けているとき",
-      "好きなことに没頭してるとき",
-      "ひとりで静かに過ごしてるとき",
-    ],
-  },
-  {
-    id: 8,
-    text: "この人と一緒にいるとき、自分はどんな感じ？",
-    type: "choice",
-    choices: [
-      "完全に素のまま",
-      "だいたい素",
-      "ちょっと背伸びする",
-      "いい意味で刺激される",
-    ],
-  },
-  {
-    id: 9,
-    text: "この人のLINE、どんなイメージ？",
-    type: "choice",
-    choices: [
-      "即レス・テンション高め",
-      "マイペースだけど丁寧",
-      "短文・スタンプ多め",
-      "気分が乗った時にバーッと返してくる",
-    ],
-  },
-  {
-    id: 10,
+    id: 13,
     text: "この人で一番印象に残ってるシーンは？",
     type: "choice",
     choices: [
@@ -98,9 +109,13 @@ export const friendQuestions: FriendQuestion[] = [
   },
 ];
 
+// 友達質問の回答スケール（自己診断と同じ 7 段階に統一）
 export const friendAnswerOptions = [
-  { value: 4 as const, label: "めっちゃ当てはまる" },
-  { value: 3 as const, label: "まあまあ当てはまる" },
-  { value: 2 as const, label: "あんまり当てはまらない" },
-  { value: 1 as const, label: "ぜんぜん当てはまらない" },
+  { value: 7 as const, label: "強くそう思う" },
+  { value: 6 as const, label: "そう思う" },
+  { value: 5 as const, label: "ややそう思う" },
+  { value: 4 as const, label: "どちらでもない" },
+  { value: 3 as const, label: "あまりそう思わない" },
+  { value: 2 as const, label: "そう思わない" },
+  { value: 1 as const, label: "強くそう思わない" },
 ];
