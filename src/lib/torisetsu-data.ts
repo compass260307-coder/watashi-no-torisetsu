@@ -4,6 +4,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "festival-sun": {
     id: "festival-sun",
     name: "お祭りムードメーカー",
+    shortName: "お祭り系",
     emoji: "🎪",
     imageUrl: "/types/festival-sun.png",
     color: "#FF4081",
@@ -26,6 +27,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "everyones-home": {
     id: "everyones-home",
     name: "みんなの実家",
+    shortName: "実家系",
     emoji: "🏠",
     imageUrl: "/types/everyones-home.png",
     color: "#2EC4B6",
@@ -49,6 +51,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "wild-charisma": {
     id: "wild-charisma",
     name: "暴走カリスマ",
+    shortName: "カリスマ系",
     emoji: "🌪️",
     imageUrl: "/types/wild-charisma.png",
     color: "#FFB800",
@@ -74,6 +77,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "iron-mental": {
     id: "iron-mental",
     name: "鉄のメンタル番長",
+    shortName: "鉄壁系",
     emoji: "🛡️",
     imageUrl: "/types/iron-mental.png",
     color: "#6C5CE7",
@@ -99,6 +103,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "delicate-creator": {
     id: "delicate-creator",
     name: "繊細クリエイター",
+    shortName: "繊細系",
     emoji: "🎨",
     imageUrl: "/types/delicate-creator.png",
     color: "#00D4AA",
@@ -124,6 +129,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "healing-guardian": {
     id: "healing-guardian",
     name: "癒しの守護神",
+    shortName: "癒し系",
     emoji: "🌿",
     imageUrl: "/types/healing-guardian.png",
     color: "#00B894",
@@ -148,6 +154,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "deep-dive-explorer": {
     id: "deep-dive-explorer",
     name: "沼ハマり探究者",
+    shortName: "沼系",
     emoji: "🔍",
     imageUrl: "/types/deep-dive-explorer.png",
     color: "#C44569",
@@ -173,6 +180,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
   "cool-maverick": {
     id: "cool-maverick",
     name: "冷静マイペース",
+    shortName: "冷静系",
     emoji: "🧊",
     imageUrl: "/types/cool-maverick.png",
     color: "#1E90FF",
