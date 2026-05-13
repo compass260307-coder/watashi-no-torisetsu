@@ -515,6 +515,11 @@ export default function FriendPage({
             perceivedTypeId={perception.typeId}
             ownerName={ownerName}
             ctaHref={diagnosisHref}
+            fullCode={perception.fullCode}
+            cModifier={perception.cModifier}
+            nModifier={perception.nModifier}
+            modifierLabel={perception.modifierLabel}
+            facetScores={perception.facetScores}
           />
         )}
       </div>

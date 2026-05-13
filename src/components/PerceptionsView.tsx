@@ -6,12 +6,22 @@ import { OwnerTorisetuModal } from "./OwnerTorisetuModal";
 import PerceptionsAggregate from "./PerceptionsAggregate";
 import PerceptionCard from "./PerceptionCard";
 import EmptyPerceptions from "./EmptyPerceptions";
-import type { TorisetsuTypeId } from "@/lib/types";
+import type {
+  CModifier,
+  FacetId,
+  NModifier,
+  TorisetsuTypeId,
+} from "@/lib/types";
 
 type Perception = {
   id: string;
   typeId: TorisetsuTypeId;
   answeredAt: string;
+  fullCode?: string;
+  cModifier?: CModifier;
+  nModifier?: NModifier;
+  modifierLabel?: string;
+  facetScores?: Record<FacetId, number>;
 };
 
 interface Props {
@@ -31,9 +41,8 @@ export default function PerceptionsView({
   perceptions,
   inviteHref,
 }: Props) {
-  const [selectedTypeId, setSelectedTypeId] = useState<TorisetsuTypeId | null>(
-    null,
-  );
+  const [selectedPerception, setSelectedPerception] =
+    useState<Perception | null>(null);
 
   if (totalCount === 0) {
     return <EmptyPerceptions inviteHref={inviteHref} />;
@@ -69,7 +78,7 @@ export default function PerceptionsView({
               key={p.id}
               typeId={p.typeId}
               answeredAt={p.answeredAt}
-              onTap={() => setSelectedTypeId(p.typeId)}
+              onTap={() => setSelectedPerception(p)}
             />
           ))}
         </div>
@@ -84,13 +93,18 @@ export default function PerceptionsView({
         </Link>
       </section>
 
-      {selectedTypeId && (
+      {selectedPerception && (
         <OwnerTorisetuModal
           isOpen
-          onClose={() => setSelectedTypeId(null)}
-          perceivedTypeId={selectedTypeId}
+          onClose={() => setSelectedPerception(null)}
+          perceivedTypeId={selectedPerception.typeId}
           ownerName={subjectLabel}
           ctaHref="/diagnosis"
+          fullCode={selectedPerception.fullCode}
+          cModifier={selectedPerception.cModifier}
+          nModifier={selectedPerception.nModifier}
+          modifierLabel={selectedPerception.modifierLabel}
+          facetScores={selectedPerception.facetScores}
         />
       )}
     </main>

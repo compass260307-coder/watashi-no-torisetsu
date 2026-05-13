@@ -2,6 +2,7 @@
 
 import { Suspense, use, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import type { ZukanData } from "@/lib/zukan-data";
 import type { TorisetsuTypeId } from "@/lib/types";
 import { TypeDetailModal } from "@/components/TypeDetailModal";
@@ -162,7 +163,7 @@ function ZukanContent({ ownerToken }: { ownerToken: string }) {
         </section>
 
         {/* CTA */}
-        <section className="w-full text-center mb-8 animate-fade-in-up stagger-3">
+        <section className="w-full text-center mb-6 animate-fade-in-up stagger-3">
           <p className="text-xs text-muted leading-relaxed mb-3">
             あなたの招待で診断した友達が
             <br />
@@ -174,6 +175,17 @@ function ZukanContent({ ownerToken }: { ownerToken: string }) {
           >
             他己評価を依頼する
           </a>
+        </section>
+
+        {/* 全 32 サブパターンへの導線 */}
+        <section className="w-full text-center mb-8 animate-fade-in-up stagger-3">
+          <Link
+            href="/zukan/all"
+            className="inline-flex items-center gap-2 text-xs font-bold text-muted hover:text-foreground transition-colors"
+          >
+            <span>全 32 サブパターンを見る</span>
+            <span aria-hidden="true">→</span>
+          </Link>
         </section>
       </main>
 

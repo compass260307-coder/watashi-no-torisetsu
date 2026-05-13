@@ -3,7 +3,13 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import PerceptionsView from "@/components/PerceptionsView";
 import Footer from "@/components/Footer";
-import type { TorisetsuTypeId, AnswerValue } from "@/lib/types";
+import type {
+  AnswerValue,
+  CModifier,
+  FacetId,
+  NModifier,
+  TorisetsuTypeId,
+} from "@/lib/types";
 
 function getInviteHref(): string {
   const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
@@ -33,8 +39,18 @@ export default async function PerceptionsPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const perceptions = (answers ?? [])
-    .map((row) => {
+  type PerceptionItem = {
+    id: string;
+    typeId: TorisetsuTypeId;
+    answeredAt: string;
+    fullCode: string;
+    cModifier: CModifier;
+    nModifier: NModifier;
+    modifierLabel: string;
+    facetScores: Record<FacetId, number>;
+  };
+  const perceptions: PerceptionItem[] = (answers ?? [])
+    .map((row): PerceptionItem | null => {
       const answersObj = row.answers as Record<number, AnswerValue | string>;
       const perception = perceiveFromFriendAnswers(answersObj);
       if (!perception) return null;
@@ -42,11 +58,14 @@ export default async function PerceptionsPage({ params }: PageProps) {
         id: String(row.id),
         typeId: perception.typeId,
         answeredAt: row.created_at as string,
+        fullCode: perception.fullCode,
+        cModifier: perception.cModifier,
+        nModifier: perception.nModifier,
+        modifierLabel: perception.modifierLabel,
+        facetScores: perception.facetScores,
       };
     })
-    .filter((p): p is { id: string; typeId: TorisetsuTypeId; answeredAt: string } =>
-      p !== null,
-    );
+    .filter((p): p is PerceptionItem => p !== null);
 
   const distMap = new Map<TorisetsuTypeId, number>();
   for (const p of perceptions) {
