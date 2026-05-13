@@ -1,6 +1,18 @@
-import type { BigFiveDimension, TorisetsuTypeId } from "./types";
-import { computeGapAnalysis, type GapItem } from "./gap-analysis";
-import { mapQ5toN, mapQ9toC } from "./friend-perception";
+import type {
+  BigFiveDimension,
+  CModifier,
+  FacetId,
+  NModifier,
+  TorisetsuTypeId,
+} from "./types";
+import { FACET_TO_DIMENSION } from "./types";
+import {
+  calculateFriendFacetScores,
+  computeFacetGapAnalysis,
+  computeGapAnalysis,
+  type FacetGapItem,
+  type GapItem,
+} from "./gap-analysis";
 import { friendQuestions } from "./friend-questions";
 import { torisetsuTypes } from "./torisetsu-data";
 
@@ -27,13 +39,9 @@ export type FriendChoiceCount = {
 };
 
 const FRIEND_CHOICE_QUESTION_LABELS: Record<number, string> = {
-  4: "🌟 友達が選ぶ、あなたの好きなところ",
-  5: "💎 本人が気づいてない、あなたの隠れた魅力",
-  6: "🐾 友達が例える、あなたの動物",
-  7: "✨ あなたが一番輝く瞬間",
-  8: "🤝 友達があなたと一緒にいるとき",
-  9: "💬 友達から見たあなたのLINE",
-  10: "🎬 印象に残ってるシーン",
+  11: "🌟 友達が選ぶ、あなたの好きなところ",
+  12: "🐾 友達が例える、あなたの動物",
+  13: "🎬 印象に残ってるシーン",
 };
 
 type GapDirection = "self_lower" | "self_higher";
@@ -100,21 +108,22 @@ export function generateConclusionText(
   const absGaps = gaps.map((g) => Math.abs(g.gap));
   const maxAbs = Math.max(...absGaps);
 
-  // Case 1: 全軸のギャップ絶対値が 0.3 以下
-  if (gaps.every((g) => Math.abs(g.gap) <= 0.3)) {
+  // しきい値は 0-10 スケール基準 (旧 1-4 から ~2.5x スケール)
+  // Case 1: 全軸のギャップ絶対値が 0.75 以下 (ほぼ一致)
+  if (gaps.every((g) => Math.abs(g.gap) <= 0.75)) {
     return "あなたの自己認識は、友達からの見え方とほぼ一致しています。これは、自分を客観的に見られている証拠とも言えます。";
   }
 
-  // Case 2: 友達評価が全体的に高い (3軸以上で 自己 < 友達 かつ最大ギャップ 0.5以上)
+  // Case 2: 友達評価が全体的に高い (3軸以上で 自己 < 友達 かつ最大ギャップ 1.25 以上)
   const friendHigherCount = gaps.filter((g) => g.gap > 0).length;
   const selfHigherCount = gaps.filter((g) => g.gap < 0).length;
 
-  if (friendHigherCount >= 3 && maxAbs >= 0.5) {
+  if (friendHigherCount >= 3 && maxAbs >= 1.25) {
     return "あなたは自分を控えめに評価しがちですが、友達はあなたをもっと魅力的に見ているようです。自分が思う以上に、周りに良い印象を与えています。";
   }
 
   // Case 3: 自己評価が全体的に高い
-  if (selfHigherCount >= 3 && maxAbs >= 0.5) {
+  if (selfHigherCount >= 3 && maxAbs >= 1.25) {
     return "あなたが自分の魅力をしっかり認識しているのは強みです。ただ、周りからの見え方とは少しズレがあるかもしれません。たまに友達の声を聞いてみると、新しい発見があるかも。";
   }
 
@@ -123,8 +132,8 @@ export function generateConclusionText(
   );
   const top = sortedByAbs[0];
 
-  // Case 4: 極端なギャップ (max |gap| >= 1.0 かつ 自己 < 友達)
-  if (Math.abs(top.gap) >= 1.0 && top.gap > 0) {
+  // Case 4: 極端なギャップ (max |gap| >= 2.5 かつ 自己 < 友達)
+  if (Math.abs(top.gap) >= 2.5 && top.gap > 0) {
     const positive = EMPHASIZED_POSITIVE[top.dimension];
     return `友達はあなたを${positive}として、想像以上に高く評価しています。これは、あなた自身も気づいていなかった大きな魅力かもしれません。`;
   }
@@ -798,6 +807,18 @@ export interface ReportData {
   meetsThreshold: boolean;
   bestPartner: BestPartnerContent;
   friendChoices: FriendChoiceCount[];
+
+  // Phase 2F: ファセット粒度の評価
+  selfFacetScores?: Partial<Record<FacetId, number>>;
+  friendFacetScores?: Partial<Record<FacetId, number>>;
+  facetGaps?: FacetGapItem[];
+
+  // Phase 2F: フルコード + モディファイア (5 文字コード表示用)
+  fullCode?: string;
+  cModifier?: CModifier;
+  nModifier?: NModifier;
+  modifierLabel?: string;
+
   isDev?: boolean;
   isSample?: boolean;
 }
@@ -942,31 +963,15 @@ export const BEST_PARTNER_CONTENT: Record<TorisetsuTypeId, BestPartnerContent> =
 function calculateFriendAverages(
   friendAnswers: FriendAnswerRecord[],
 ): ShortBigFive {
-  const map: Record<string, BigFiveDimension> = {
-    "1": "E",
-    "2": "A",
-    "3": "O",
-  };
+  // 友達 scale 質問 (id 1-10) を 10 facet (0-10) に集計し、各 dim は 2 facet の平均
+  const facetScores = calculateFriendFacetScores(friendAnswers);
   const buckets: Partial<Record<BigFiveDimension, number[]>> = {};
 
-  for (const fa of friendAnswers) {
-    // E/A/O: スケール回答
-    for (const [qid, dim] of Object.entries(map)) {
-      const v = fa.answers[qid];
-      if (typeof v === "number") {
-        (buckets[dim] ??= []).push(v);
-      }
-    }
-    // C: Q9 (LINEイメージ) の選択肢から推定
-    const q9 = fa.answers["9"];
-    if (typeof q9 === "string") {
-      (buckets.C ??= []).push(mapQ9toC(q9));
-    }
-    // N: Q5 (隠れた魅力) の選択肢から推定
-    const q5 = fa.answers["5"];
-    if (typeof q5 === "string") {
-      (buckets.N ??= []).push(mapQ5toN(q5));
-    }
+  for (const facetId of Object.keys(facetScores) as FacetId[]) {
+    const score = facetScores[facetId];
+    if (score === undefined) continue;
+    const dim = FACET_TO_DIMENSION[facetId];
+    (buckets[dim] ??= []).push(score);
   }
 
   const out: ShortBigFive = {};
@@ -984,14 +989,35 @@ export function buildReportData(input: {
   typeId: TorisetsuTypeId;
   selfScores: Record<BigFiveDimension, number>;
   friendAnswers: FriendAnswerRecord[];
+  selfFacetScores?: Record<FacetId, number>;
+  fullCode?: string;
+  cModifier?: CModifier;
+  nModifier?: NModifier;
+  modifierLabel?: string;
 }): ReportData {
-  const { ownerToken, typeId, selfScores, friendAnswers } = input;
+  const {
+    ownerToken,
+    typeId,
+    selfScores,
+    friendAnswers,
+    selfFacetScores,
+    fullCode,
+    cModifier,
+    nModifier,
+    modifierLabel,
+  } = input;
   const meta = torisetsuTypes[typeId];
   const friendBigFive = calculateFriendAverages(friendAnswers);
+  const friendFacetScores = calculateFriendFacetScores(friendAnswers);
   const gaps = computeGapAnalysis(selfScores, friendAnswers);
   const topGaps = [...gaps]
     .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))
     .slice(0, 3);
+
+  const facetGaps =
+    selfFacetScores && friendAnswers.length > 0
+      ? computeFacetGapAnalysis(selfFacetScores, friendAnswers)
+      : undefined;
 
   const friendChoices = aggregateFriendChoices(friendAnswers);
 
@@ -1012,5 +1038,12 @@ export function buildReportData(input: {
     meetsThreshold: friendAnswers.length >= REPORT_FRIEND_THRESHOLD,
     bestPartner: BEST_PARTNER_CONTENT[typeId],
     friendChoices,
+    selfFacetScores,
+    friendFacetScores,
+    facetGaps,
+    fullCode,
+    cModifier,
+    nModifier,
+    modifierLabel,
   };
 }

@@ -23,6 +23,10 @@ import {
   generateConclusionText,
 } from "@/lib/report-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
+import { ModifierParagraph } from "@/components/torisetsu/ModifierParagraph";
+import { FacetBarChart } from "@/components/torisetsu/FacetBarChart";
+import { FacetGapList } from "@/components/torisetsu/FacetGapList";
 
 // /report 内のプレースホルダ CTA から開く share LIFF (cell 3 と同一)
 // パラ無しで開くと line-resolve でユーザの owner_token を解決し evaluate モードになる
@@ -259,8 +263,67 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
               {report.typeName}
             </h2>
             <p className="text-sm text-muted">{report.typeCatchCopy}</p>
+
+            {report.fullCode && (
+              <div
+                className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
+                style={{
+                  borderColor: `${report.typeColor}60`,
+                  color: report.typeColor,
+                  backgroundColor: `${report.typeColor}10`,
+                }}
+              >
+                <span>{report.fullCode}</span>
+                {report.modifierLabel && (
+                  <>
+                    <span className="opacity-40">·</span>
+                    <span>{report.modifierLabel}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </section>
+
+        {/* 2.1 TorisetsuCard + ModifierParagraph */}
+        {report.fullCode && (
+          <section className="w-full flex flex-col items-center mb-5 animate-fade-in-up">
+            <TorisetsuCard
+              fullCode={report.fullCode}
+              size="md"
+              alt={`${report.typeName} - ${report.modifierLabel ?? ""}`}
+              priority
+            />
+          </section>
+        )}
+        {report.cModifier && report.nModifier && (
+          <section className="w-full mb-5 animate-fade-in-up">
+            <ModifierParagraph
+              typeId={report.typeId}
+              cModifier={report.cModifier}
+              nModifier={report.nModifier}
+              accentColor={report.typeColor}
+            />
+          </section>
+        )}
+
+        {/* 2.2 自己ファセット詳細 (always 表示) */}
+        {report.selfFacetScores && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+              10 ファセット詳細
+            </p>
+            <FacetBarChart
+              facetScores={
+                report.selfFacetScores as Record<
+                  import("@/lib/types").FacetId,
+                  number
+                >
+              }
+              variant="self"
+            />
+          </section>
+        )}
 
         {/* 5. タイプ深掘り (always: 0人+) */}
         <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
@@ -452,7 +515,7 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
                     tick={{ fontSize: 12, fill: "#1a1a1a" }}
                   />
                   <PolarRadiusAxis
-                    domain={[0, 4]}
+                    domain={[0, 10]}
                     tick={false}
                     axisLine={false}
                   />
@@ -493,6 +556,27 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             </p>
           </section>
         )}
+
+        {/* 3.5 ファセット比較 (2人+ かつ self/friend facet 両方ある場合) */}
+        {friendCount >= 2 &&
+          report.selfFacetScores &&
+          report.friendFacetScores && (
+            <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+              <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+                ファセット別 自己 vs 友達
+              </p>
+              <FacetBarChart
+                facetScores={
+                  report.selfFacetScores as Record<
+                    import("@/lib/types").FacetId,
+                    number
+                  >
+                }
+                friendScores={report.friendFacetScores}
+                variant="comparison"
+              />
+            </section>
+          )}
 
         {/* 4. ギャップ分析 (2人+ かつ gaps > 0) */}
         {friendCount >= 2 && report.gaps.length > 0 && (
@@ -578,6 +662,19 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
                 </>
               );
             })()}
+          </section>
+        )}
+
+        {/* 4.1 ファセット粒度ギャップ (2人+ かつ facetGaps あり) */}
+        {friendCount >= 2 && report.facetGaps && report.facetGaps.length > 0 && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted text-center mb-3">
+              ファセット別 自他ギャップ
+            </p>
+            <p className="text-xs text-center text-muted mb-4">
+              ギャップが大きい順 (上位 3 を強調)
+            </p>
+            <FacetGapList gaps={report.facetGaps} highlightTop={3} />
           </section>
         )}
 

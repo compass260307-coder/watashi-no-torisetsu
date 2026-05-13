@@ -18,11 +18,32 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { typeId, scores, campaign, sourceInviteCode } = body;
+  const {
+    typeId,
+    scores,
+    facetScores,
+    fullCode,
+    cModifier,
+    nModifier,
+    modifierLabel,
+    campaign,
+    sourceInviteCode,
+  } = body;
 
   if (!typeId || !scores) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
+
+  // Phase 2F: scores jsonb に v2 拡張フィールドをマージして 1 カラムに永続化
+  // (DB スキーマは jsonb のままで OK)。レガシー読み出し側は 5 dim キーだけ参照するため安全。
+  const persistedScores = {
+    ...scores,
+    ...(facetScores ? { facetScores } : {}),
+    ...(fullCode ? { fullCode } : {}),
+    ...(cModifier ? { cModifier } : {}),
+    ...(nModifier ? { nModifier } : {}),
+    ...(modifierLabel ? { modifierLabel } : {}),
+  };
 
   const inviteCode = generateInviteCode();
   const ownerToken = generateOwnerToken();
@@ -48,7 +69,7 @@ export async function POST(request: Request) {
     .from("users")
     .insert({
       type_id: typeId,
-      scores,
+      scores: persistedScores,
       invite_code: inviteCode,
       owner_token: ownerToken,
       campaign: campaign || null,
@@ -66,5 +87,12 @@ export async function POST(request: Request) {
     userId: data.id,
     inviteCode: data.invite_code,
     ownerToken: data.owner_token,
+    typeId,
+    scores,
+    facetScores: facetScores ?? null,
+    fullCode: fullCode ?? null,
+    cModifier: cModifier ?? null,
+    nModifier: nModifier ?? null,
+    modifierLabel: modifierLabel ?? null,
   });
 }

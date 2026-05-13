@@ -1,5 +1,35 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
+import type {
+  BigFiveDimension,
+  CModifier,
+  FacetId,
+  NModifier,
+} from "@/lib/types";
+
+type StoredScores = Partial<Record<BigFiveDimension, number>> & {
+  facetScores?: Record<FacetId, number>;
+  fullCode?: string;
+  cModifier?: CModifier;
+  nModifier?: NModifier;
+  modifierLabel?: string;
+};
+
+function extractCoreScores(
+  stored: StoredScores,
+): Record<BigFiveDimension, number> | null {
+  const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+  if (dims.every((d) => typeof stored[d] === "number")) {
+    return {
+      E: stored.E as number,
+      A: stored.A as number,
+      O: stored.O as number,
+      C: stored.C as number,
+      N: stored.N as number,
+    };
+  }
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -31,9 +61,17 @@ export async function GET(request: NextRequest) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
+  const stored = (user.scores ?? {}) as StoredScores;
+  const coreScores = extractCoreScores(stored);
+
   return NextResponse.json({
     typeId: user.type_id,
-    scores: user.scores,
+    scores: coreScores,
+    facetScores: stored.facetScores ?? null,
+    fullCode: stored.fullCode ?? null,
+    cModifier: stored.cModifier ?? null,
+    nModifier: stored.nModifier ?? null,
+    modifierLabel: stored.modifierLabel ?? null,
     inviteCode: user.invite_code,
     ownerToken: user.owner_token ?? null,
     displayName: user.display_name ?? null,

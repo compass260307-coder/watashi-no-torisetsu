@@ -4,54 +4,82 @@ import {
   REPORT_FRIEND_THRESHOLD,
   type FriendAnswerRecord,
 } from "@/lib/report-data";
-import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
+import type {
+  BigFiveDimension,
+  CModifier,
+  FacetId,
+  NModifier,
+  TorisetsuTypeId,
+} from "@/lib/types";
+import { FACET_TO_DIMENSION } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { friendQuestions } from "@/lib/friend-questions";
+import {
+  buildFullCode,
+  classifyModifier,
+} from "@/lib/diagnosis";
+import { getModifierLabel } from "@/lib/modifier-data";
 import { NextRequest, NextResponse } from "next/server";
 
 const VALID_TYPE_IDS = new Set<string>(Object.keys(torisetsuTypes));
+
+const ALL_FACETS: FacetId[] = [
+  "E_assertiveness",
+  "E_warmth",
+  "A_cooperation",
+  "A_sympathy",
+  "O_adventurousness",
+  "O_imagination",
+  "C_achievement",
+  "C_orderliness",
+  "N_volatility",
+  "N_anxiety",
+];
+
+type StoredScores = Partial<Record<BigFiveDimension, number>> & {
+  facetScores?: Record<FacetId, number>;
+  fullCode?: string;
+  cModifier?: CModifier;
+  nModifier?: NModifier;
+  modifierLabel?: string;
+};
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function jitter(value: number): number {
-  // ±1 の差分を加え、1〜4の範囲にクランプ。レーダーが見える程度の自然なズレを作る。
-  const offset = (Math.random() * 2 - 1) * 1.0;
-  return Math.round(clamp(value + offset, 1, 4));
-}
-
-// Q5, Q9 は C/N 軸スコアの元になるため、極端な選択肢のみから50/50で選び
-// dev モードで N/C 軸が中央値に収束する問題を回避する
-const Q5_BIASED_CHOICES = ["実はめっちゃ繊細", "実はめっちゃ頼りになる"];
-const Q9_BIASED_CHOICES = [
-  "マイペースだけど丁寧",
-  "気分が乗った時にバーッと返してくる",
-];
-
 function pickRandom<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+/**
+ * 0-10 スケールの自己評価値を、1-7 スケールの友達スケール回答値 (整数) に変換。
+ * ±1 のジッターを加えて自然なズレを作る。
+ */
+function jitterTo7(selfScore0to10: number): number {
+  const base = (selfScore0to10 / 10) * 6 + 1; // 1..7
+  const offset = (Math.random() * 2 - 1) * 1.0;
+  return Math.round(clamp(base + offset, 1, 7));
+}
+
+/**
+ * ダミーの友達回答を生成 (dev モード用)。
+ * - scale 質問 (id 1-10): 1-7 整数
+ * - choice 質問 (id 11-13): 候補からランダム
+ *
+ * scale 質問の dim マッピングは friendQuestions.ts の facetId 経由で取得し、
+ * selfScores (0-10) を基準値として使う。
+ */
 function generateDummyFriendAnswer(
   selfScores: Record<BigFiveDimension, number>,
 ): FriendAnswerRecord {
-  // E/A/O: 自己評価±1の範囲で数値生成
-  const answers: Record<string, string | number> = {
-    "1": jitter(selfScores.E),
-    "2": jitter(selfScores.A),
-    "3": jitter(selfScores.O),
-  };
+  const answers: Record<string, string | number> = {};
 
-  // Q4〜Q10 (choice 型) のダミー生成
   for (const q of friendQuestions) {
-    if (q.type !== "choice" || !q.choices || q.choices.length === 0) continue;
-
-    if (q.id === 5) {
-      answers["5"] = pickRandom(Q5_BIASED_CHOICES);
-    } else if (q.id === 9) {
-      answers["9"] = pickRandom(Q9_BIASED_CHOICES);
-    } else {
+    if (q.type === "scale" && q.facetId) {
+      const dim = FACET_TO_DIMENSION[q.facetId];
+      answers[String(q.id)] = jitterTo7(selfScores[dim]);
+    } else if (q.type === "choice" && q.choices && q.choices.length > 0) {
       answers[String(q.id)] = pickRandom(q.choices);
     }
   }
@@ -63,66 +91,100 @@ function generateDummyFriendAnswer(
 }
 
 function buildSampleReport() {
+  // 0-10 スケールの自己評価
   const selfScores: Record<BigFiveDimension, number> = {
-    E: 3.5,
-    A: 3.2,
-    O: 3.8,
-    C: 2.5,
-    N: 2.2,
+    E: 7.5,
+    A: 6.8,
+    O: 8.0,
+    C: 5.0,
+    N: 4.5,
   };
+  // 中央近辺の facet スコア (FacetBarChart プレビュー用)
+  const selfFacetScores: Record<FacetId, number> = {
+    E_assertiveness: 7.0,
+    E_warmth: 8.0,
+    A_cooperation: 6.5,
+    A_sympathy: 7.0,
+    O_adventurousness: 8.5,
+    O_imagination: 7.5,
+    C_achievement: 5.5,
+    C_orderliness: 4.5,
+    N_volatility: 5.0,
+    N_anxiety: 4.0,
+  };
+  // 3 件の固定友達回答 (新質問構造: scale id 1-10 + choice id 11-13)
   const friendAnswers: FriendAnswerRecord[] = [
     {
       answers: {
-        "1": 4,
-        "2": 3,
-        "3": 4,
-        "4": "一緒にいると楽しい",
-        "5": "実はめっちゃ繊細",
-        "6": "🦮 ゴールデンレトリバー（人懐っこい）",
-        "7": "みんなの中心にいるとき",
-        "8": "完全に素のまま",
-        "9": "マイペースだけど丁寧",
-        "10": "めちゃくちゃ笑った瞬間",
+        "1": 6,
+        "2": 7,
+        "3": 5,
+        "4": 6,
+        "5": 7,
+        "6": 6,
+        "7": 5,
+        "8": 4,
+        "9": 5,
+        "10": 4,
+        "11": "一緒にいて楽しい",
+        "12": "🦮 ゴールデンレトリバー（人懐っこい）",
+        "13": "めちゃくちゃ笑った瞬間",
       },
       created_at: "2026-04-01T12:00:00Z",
     },
     {
       answers: {
-        "1": 3,
-        "2": 4,
-        "3": 3,
-        "4": "刺激をもらえる",
-        "5": "実はめっちゃ頼りになる",
-        "6": "🐱 猫（マイペース）",
-        "7": "誰かを助けているとき",
-        "8": "ちょっと背伸びする",
-        "9": "気分が乗った時にバーッと返してくる",
-        "10": "助けてもらった瞬間",
+        "1": 5,
+        "2": 6,
+        "3": 6,
+        "4": 7,
+        "5": 6,
+        "6": 7,
+        "7": 4,
+        "8": 5,
+        "9": 4,
+        "10": 5,
+        "11": "刺激をもらえる",
+        "12": "🐱 猫（マイペース）",
+        "13": "助けてもらった瞬間",
       },
       created_at: "2026-04-02T12:00:00Z",
     },
     {
       answers: {
-        "1": 4,
-        "2": 4,
-        "3": 4,
-        "4": "素でいられる",
-        "5": "実はめっちゃ面白い",
-        "6": "🦦 カワウソ（好奇心旺盛）",
-        "7": "好きなことに没頭してるとき",
-        "8": "いい意味で刺激される",
-        "9": "即レス・テンション高め",
-        "10": "意外な一面を見た瞬間",
+        "1": 7,
+        "2": 7,
+        "3": 5,
+        "4": 6,
+        "5": 7,
+        "6": 6,
+        "7": 6,
+        "8": 4,
+        "9": 5,
+        "10": 4,
+        "11": "素でいられる",
+        "12": "🦦 カワウソ（好奇心旺盛）",
+        "13": "意外な一面を見た瞬間",
       },
       created_at: "2026-04-03T12:00:00Z",
     },
   ];
 
+  const typeId: TorisetsuTypeId = "festival-sun";
+  const { cModifier, nModifier } = classifyModifier(selfScores);
+  const fullCode = buildFullCode(typeId, cModifier, nModifier);
+  const modifierLabel = getModifierLabel(cModifier, nModifier);
+
   const report = buildReportData({
     ownerToken: "sample",
-    typeId: "festival-sun",
+    typeId,
     selfScores,
     friendAnswers,
+    selfFacetScores,
+    fullCode,
+    cModifier,
+    nModifier,
+    modifierLabel,
   });
   return { ...report, isSample: true };
 }
@@ -176,7 +238,35 @@ export async function GET(request: NextRequest) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
-  const selfScores = user.scores as Record<BigFiveDimension, number>;
+  const stored = (user.scores ?? {}) as StoredScores;
+  const selfScores: Record<BigFiveDimension, number> = {
+    E: typeof stored.E === "number" ? stored.E : 5,
+    A: typeof stored.A === "number" ? stored.A : 5,
+    O: typeof stored.O === "number" ? stored.O : 5,
+    C: typeof stored.C === "number" ? stored.C : 5,
+    N: typeof stored.N === "number" ? stored.N : 5,
+  };
+
+  // ファセットスコア: 保存値があればそれを、無ければ未指定 (FacetBarChart は表示しない)
+  const selfFacetScores: Record<FacetId, number> | undefined = stored.facetScores
+    ? (Object.fromEntries(
+        ALL_FACETS.map((f) => [f, stored.facetScores?.[f] ?? 5]),
+      ) as Record<FacetId, number>)
+    : undefined;
+
+  const typeId = forceType ?? (user.type_id as TorisetsuTypeId);
+
+  // フルコード等は保存されていれば使用、無ければ scores から再計算
+  const computed = (() => {
+    const { cModifier, nModifier } = classifyModifier(selfScores);
+    return {
+      cModifier,
+      nModifier,
+      fullCode: buildFullCode(typeId, cModifier, nModifier),
+      modifierLabel: getModifierLabel(cModifier, nModifier),
+    };
+  })();
+
   const realAnswers: FriendAnswerRecord[] = (friendAnswers ?? []).map((r) => ({
     answers: r.answers as Record<string, string | number>,
     created_at: r.created_at as string,
@@ -193,9 +283,14 @@ export async function GET(request: NextRequest) {
 
   const report = buildReportData({
     ownerToken: user.owner_token as string,
-    typeId: forceType ?? (user.type_id as TorisetsuTypeId),
+    typeId,
     selfScores,
     friendAnswers: answersForReport,
+    selfFacetScores,
+    fullCode: stored.fullCode ?? computed.fullCode,
+    cModifier: stored.cModifier ?? computed.cModifier,
+    nModifier: stored.nModifier ?? computed.nModifier,
+    modifierLabel: stored.modifierLabel ?? computed.modifierLabel,
   });
 
   return NextResponse.json({ ...report, isDev });

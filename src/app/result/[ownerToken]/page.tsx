@@ -13,6 +13,12 @@ import {
 } from "@/lib/gap-analysis";
 import { TYPE_DEEP_DIVE } from "@/lib/report-data";
 import { AnalyzingLoader } from "@/components/AnalyzingLoader";
+import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
+import { CardDownloadButton } from "@/components/torisetsu/CardDownloadButton";
+import { ModifierParagraph } from "@/components/torisetsu/ModifierParagraph";
+import { FacetBarChart } from "@/components/torisetsu/FacetBarChart";
+import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
+import { getModifierLabel } from "@/lib/modifier-data";
 
 const REQUIRED_FOR_COMPLETE = 3;
 const REQUIRED_FOR_DEEP = 5;
@@ -160,12 +166,20 @@ export default function OwnerResultPage({
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
+  const [hasFacetData, setHasFacetData] = useState(false);
   const tracked = useRef(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const stored = localStorage.getItem("torisetsu_result");
     if (stored) {
-      setResult(JSON.parse(stored));
+      const parsed = JSON.parse(stored) as DiagnosisResult;
+      setResult(parsed);
+      // localStorage 経由なら Phase 2B の diagnose() 出力なので facetScores は実値
+      const facetSum = parsed.facetScores
+        ? Object.values(parsed.facetScores).reduce((a, b) => a + b, 0)
+        : 0;
+      if (facetSum > 0) setHasFacetData(true);
       setLoading(false);
     }
 
@@ -173,12 +187,42 @@ export default function OwnerResultPage({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
+          // API は新形式 (facetScores / fullCode / modifier 等) を返す。
+          // レガシー行 (Phase 2F 以前に保存) では一部 null が返るため、scores から派生して補う。
+          const scores = data.scores as Record<BigFiveDimension, number> | null;
+          const { cModifier: derivedC, nModifier: derivedN } = scores
+            ? classifyModifier(scores)
+            : { cModifier: "C" as const, nModifier: "N" as const };
+          const cModifier = data.cModifier ?? derivedC;
+          const nModifier = data.nModifier ?? derivedN;
+          const fullCode =
+            data.fullCode ?? buildFullCode(data.typeId, cModifier, nModifier);
+          const modifierLabel =
+            data.modifierLabel ?? getModifierLabel(cModifier, nModifier);
+
           setResult({
-            scores: data.scores,
+            scores: scores ?? { E: 5, A: 5, O: 5, C: 5, N: 5 },
             typeId: data.typeId,
             reasons: data.reasons ?? [],
             supplement: data.supplement ?? "",
+            facetScores: data.facetScores ?? {
+              E_assertiveness: 5,
+              E_warmth: 5,
+              A_cooperation: 5,
+              A_sympathy: 5,
+              O_adventurousness: 5,
+              O_imagination: 5,
+              C_achievement: 5,
+              C_orderliness: 5,
+              N_volatility: 5,
+              N_anxiety: 5,
+            },
+            cModifier,
+            nModifier,
+            fullCode,
+            modifierLabel,
           });
+          setHasFacetData(!!data.facetScores);
           setFriendCount(data.friendCount);
           setFriends(data.friendAnswers ?? []);
           setInviteCode(data.inviteCode);
@@ -205,6 +249,7 @@ export default function OwnerResultPage({
       })
       .finally(() => setLoading(false));
   }, [ownerToken]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCopyResultLink = async () => {
     const baseUrl =
@@ -309,6 +354,25 @@ export default function OwnerResultPage({
               {typeData.subtitle}
             </p>
 
+            {result.fullCode && (
+              <div
+                className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
+                style={{
+                  borderColor: typeData.color + "60",
+                  color: typeData.color,
+                  backgroundColor: typeData.color + "10",
+                }}
+              >
+                <span>{result.fullCode}</span>
+                {result.modifierLabel && (
+                  <>
+                    <span className="opacity-40">·</span>
+                    <span>{result.modifierLabel}</span>
+                  </>
+                )}
+              </div>
+            )}
+
             {result.reasons?.length > 0 && (
               <div className="w-full mt-5 pt-4 border-t border-card-border">
                 <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
@@ -326,15 +390,49 @@ export default function OwnerResultPage({
                     </li>
                   ))}
                 </ul>
-                {result.supplement && (
-                  <p className="text-[13px] text-muted leading-relaxed mt-2.5">
-                    {result.supplement}
-                  </p>
-                )}
               </div>
             )}
           </div>
         </section>
+
+        {/* ===== 1.5 TorisetsuCard (5 文字コード ビジュアル) ===== */}
+        {result.fullCode && (
+          <section className="w-full flex flex-col items-center mb-5 animate-fade-in-up stagger-2">
+            <TorisetsuCard
+              fullCode={result.fullCode}
+              size="md"
+              alt={`${typeData.name} - ${result.modifierLabel}`}
+              priority
+            />
+            <div className="mt-4">
+              <CardDownloadButton fullCode={result.fullCode} />
+            </div>
+          </section>
+        )}
+
+        {/* ===== 1.6 ModifierParagraph (個性パーソナライズ文章) ===== */}
+        <section className="w-full mb-5 animate-fade-in-up stagger-3">
+          <ModifierParagraph
+            typeId={result.typeId}
+            cModifier={result.cModifier}
+            nModifier={result.nModifier}
+            accentColor={typeData.color}
+          />
+        </section>
+
+        {/* ===== 1.7 FacetBarChart (10 ファセット詳細) ===== */}
+        {hasFacetData && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5 animate-fade-in-up">
+            <div className="flex items-center gap-2 mb-4">
+              <div
+                className="h-5 w-1 rounded-full"
+                style={{ backgroundColor: typeData.color }}
+              />
+              <h3 className="text-sm font-bold">10 ファセット詳細</h3>
+            </div>
+            <FacetBarChart facetScores={result.facetScores} variant="self" />
+          </section>
+        )}
 
         {/* ===== 2. トリセツ親カード + LINE登録CTA（統合） ===== */}
         {(() => {
