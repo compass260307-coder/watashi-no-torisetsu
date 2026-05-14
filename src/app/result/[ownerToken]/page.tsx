@@ -13,7 +13,6 @@ import {
 import { TYPE_DEEP_DIVE } from "@/lib/report-data";
 import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
-import { CardDownloadButton } from "@/components/torisetsu/CardDownloadButton";
 import { ModifierParagraph } from "@/components/torisetsu/ModifierParagraph";
 import { DimensionPolarityBar } from "@/components/torisetsu/DimensionPolarityBar";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
@@ -320,25 +319,6 @@ export default function OwnerResultPage({
             <p className="text-sm text-muted text-center mt-1">
               {typeData.subtitle}
             </p>
-            <div
-              className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
-              style={{
-                borderColor: typeData.color + "60",
-                color: typeData.color,
-                backgroundColor: typeData.color + "10",
-              }}
-            >
-              <span>{result.fullCode}</span>
-              {result.modifierLabel && (
-                <>
-                  <span className="opacity-40">·</span>
-                  <span>{result.modifierLabel}</span>
-                </>
-              )}
-            </div>
-            <div className="mt-4">
-              <CardDownloadButton fullCode={result.fullCode} />
-            </div>
           </section>
         )}
 
