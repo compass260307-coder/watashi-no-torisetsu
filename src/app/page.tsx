@@ -79,10 +79,24 @@ export default function Home() {
 
         {/* Types preview (carousel) */}
         <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
-          <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-4 uppercase">
-            8つのタイプ
+          <h2 className="text-center text-2xl sm:text-3xl font-extrabold mb-1">
+            あなたはどのペンギン？
           </h2>
+          <p className="text-center text-sm text-muted mb-5 leading-relaxed">
+            8 ベースタイプ × 4 サブパターン
+            <br />
+            <span className="font-bold text-primary">全 32 通りの個性</span>
+          </p>
           <TypeCarousel />
+          <div className="flex justify-center mt-6">
+            <Link
+              href="/zukan/all"
+              className="inline-flex items-center gap-2 rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:scale-[1.04] active:scale-[0.98]"
+            >
+              <span>全 32 タイプの図鑑を見る</span>
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
         </section>
 
         {/* Steps */}

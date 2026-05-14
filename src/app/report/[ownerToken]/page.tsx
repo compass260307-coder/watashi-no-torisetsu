@@ -27,6 +27,8 @@ import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
 import { ModifierParagraph } from "@/components/torisetsu/ModifierParagraph";
 import { FacetBarChart } from "@/components/torisetsu/FacetBarChart";
 import { FacetGapList } from "@/components/torisetsu/FacetGapList";
+import { DimensionPolarityBar } from "@/components/torisetsu/DimensionPolarityBar";
+import type { BigFiveDimension } from "@/lib/types";
 
 // /report 内のプレースホルダ CTA から開く share LIFF (cell 3 と同一)
 // パラ無しで開くと line-resolve でユーザの owner_token を解決し evaluate モードになる
@@ -306,6 +308,39 @@ function ReportContent({ ownerToken }: { ownerToken: string }) {
             />
           </section>
         )}
+
+        {/* 2.15 5 軸プロファイル (極性バー) */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+            あなたの 5 軸プロファイル
+          </p>
+          <div className="flex flex-col gap-5">
+            {(["E", "A", "O", "C", "N"] as BigFiveDimension[]).map((dim) => {
+              const score = report.selfBigFive[dim];
+              if (typeof score !== "number") return null;
+              return (
+                <DimensionPolarityBar
+                  key={dim}
+                  dimension={dim}
+                  score={score}
+                />
+              );
+            })}
+          </div>
+          {report.fullCode && (
+            <div className="mt-6 text-center border-t border-card-border pt-4">
+              <p className="text-[10px] font-bold tracking-wider text-muted">
+                あなたの 5 文字コード
+              </p>
+              <p
+                className="text-2xl font-extrabold tracking-wider mt-1"
+                style={{ color: report.typeColor }}
+              >
+                {report.fullCode}
+              </p>
+            </div>
+          )}
+        </section>
 
         {/* 2.2 自己ファセット詳細 (always 表示) */}
         {report.selfFacetScores && (

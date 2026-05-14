@@ -3,13 +3,14 @@
 import { use, useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { friendQuestions, friendAnswerOptions } from "@/lib/friend-questions";
+import { friendQuestions } from "@/lib/friend-questions";
 import { track, isPreviewMode } from "@/lib/track";
 import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { StepCard } from "@/components/StepCard";
 import { SampleReportModal } from "@/components/SampleReportModal";
 import { OwnerTorisetuModal } from "@/components/OwnerTorisetuModal";
+import { LikertScale } from "@/components/diagnosis/LikertScale";
 import type { AnswerValue } from "@/lib/types";
 
 type FriendAnswer = AnswerValue | string;
@@ -112,27 +113,27 @@ export default function FriendPage({
     [currentIndex, totalQuestions, submitAnswers],
   );
 
-  const handleScaleAnswer = useCallback(
-    (value: AnswerValue) => {
-      if (isTransitioning) return;
-      const newAnswers = { ...answers, [currentQuestion.id]: value };
-      setAnswers(newAnswers);
-      track("friend_question_answered", { inviteCode, metadata: { questionIndex: currentIndex } });
-      advance(newAnswers);
-    },
-    [answers, currentQuestion?.id, isTransitioning, advance, currentIndex, inviteCode],
-  );
+  const handleScaleAnswer = (value: AnswerValue) => {
+    if (isTransitioning) return;
+    const newAnswers = { ...answers, [currentQuestion.id]: value };
+    setAnswers(newAnswers);
+    track("friend_question_answered", {
+      inviteCode,
+      metadata: { questionIndex: currentIndex },
+    });
+    advance(newAnswers);
+  };
 
-  const handleChoiceAnswer = useCallback(
-    (choice: string) => {
-      if (isTransitioning) return;
-      const newAnswers = { ...answers, [currentQuestion.id]: choice };
-      setAnswers(newAnswers);
-      track("friend_question_answered", { inviteCode, metadata: { questionIndex: currentIndex } });
-      advance(newAnswers);
-    },
-    [answers, currentQuestion?.id, isTransitioning, advance, currentIndex, inviteCode],
-  );
+  const handleChoiceAnswer = (choice: string) => {
+    if (isTransitioning) return;
+    const newAnswers = { ...answers, [currentQuestion.id]: choice };
+    setAnswers(newAnswers);
+    track("friend_question_answered", {
+      inviteCode,
+      metadata: { questionIndex: currentIndex },
+    });
+    advance(newAnswers);
+  };
 
   const handleBack = useCallback(() => {
     if (currentIndex > 0 && !isTransitioning) {
@@ -596,19 +597,17 @@ export default function FriendPage({
           {/* Answer options */}
           <div className="flex flex-col gap-3 w-full max-w-sm">
             {currentQuestion.type === "scale"
-              ? friendAnswerOptions.map((option) => {
-                  const isSelected =
-                    answers[currentQuestion.id] === option.value;
+              ? (() => {
+                  const raw = answers[currentQuestion.id];
+                  const scaleValue =
+                    typeof raw === "number" ? (raw as AnswerValue) : undefined;
                   return (
-                    <button
-                      key={option.value}
-                      onClick={() => handleScaleAnswer(option.value)}
-                      className={answerButtonClass(isSelected)}
-                    >
-                      {option.label}
-                    </button>
+                    <LikertScale
+                      value={scaleValue}
+                      onChange={(v) => handleScaleAnswer(v)}
+                    />
                   );
-                })
+                })()
               : currentQuestion.choices?.map((choice) => {
                   const isSelected = answers[currentQuestion.id] === choice;
                   return (

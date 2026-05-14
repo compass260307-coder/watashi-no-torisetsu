@@ -2,7 +2,6 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import type { BigFiveDimension, DiagnosisResult } from "@/lib/types";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { track } from "@/lib/track";
@@ -16,7 +15,7 @@ import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
 import { CardDownloadButton } from "@/components/torisetsu/CardDownloadButton";
 import { ModifierParagraph } from "@/components/torisetsu/ModifierParagraph";
-import { FacetBarChart } from "@/components/torisetsu/FacetBarChart";
+import { DimensionPolarityBar } from "@/components/torisetsu/DimensionPolarityBar";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 
@@ -166,7 +165,6 @@ export default function OwnerResultPage({
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [resultLinkCopied, setResultLinkCopied] = useState(false);
-  const [hasFacetData, setHasFacetData] = useState(false);
   const tracked = useRef(false);
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -175,11 +173,6 @@ export default function OwnerResultPage({
     if (stored) {
       const parsed = JSON.parse(stored) as DiagnosisResult;
       setResult(parsed);
-      // localStorage 経由なら Phase 2B の diagnose() 出力なので facetScores は実値
-      const facetSum = parsed.facetScores
-        ? Object.values(parsed.facetScores).reduce((a, b) => a + b, 0)
-        : 0;
-      if (facetSum > 0) setHasFacetData(true);
       setLoading(false);
     }
 
@@ -222,7 +215,6 @@ export default function OwnerResultPage({
             fullCode,
             modifierLabel,
           });
-          setHasFacetData(!!data.facetScores);
           setFriendCount(data.friendCount);
           setFriends(data.friendAnswers ?? []);
           setInviteCode(data.inviteCode);
@@ -310,100 +302,40 @@ export default function OwnerResultPage({
     <div className="flex flex-col flex-1">
       <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
 
-        {/* ===== 1. タイプカード ===== */}
-        <section
-          className="w-full rounded-2xl border bg-card-bg overflow-hidden mb-5 animate-scale-in"
-          style={{ borderColor: typeData.color + "40" }}
-        >
-          <div className="h-1.5" style={{ backgroundColor: typeData.color }} />
-          <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
-            <div className="text-[10px] font-bold tracking-wider text-muted mb-4">
-              YOUR TYPE
-            </div>
-            {typeData.imageUrl ? (
-              <div className="relative mx-auto mb-2 w-full max-w-[320px] aspect-square">
-                <Image
-                  src={typeData.imageUrl}
-                  alt={`${typeData.name}のキャラクター`}
-                  width={320}
-                  height={320}
-                  className="relative z-10 w-full h-full object-contain"
-                  priority
-                />
-                <div
-                  aria-hidden="true"
-                  className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
-                  style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
-                />
-              </div>
-            ) : (
-              <div
-                className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
-                style={{ backgroundColor: typeData.color + "15" }}
-              >
-                {typeData.emoji}
-              </div>
-            )}
-            <h1
-              className="text-2xl font-extrabold mb-1 animate-fade-in-up stagger-1"
-              style={{ color: typeData.color }}
-            >
-              {typeData.name}
-            </h1>
-            <p className="text-sm text-muted animate-fade-in-up stagger-2">
-              {typeData.subtitle}
-            </p>
-
-            {result.fullCode && (
-              <div
-                className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
-                style={{
-                  borderColor: typeData.color + "60",
-                  color: typeData.color,
-                  backgroundColor: typeData.color + "10",
-                }}
-              >
-                <span>{result.fullCode}</span>
-                {result.modifierLabel && (
-                  <>
-                    <span className="opacity-40">·</span>
-                    <span>{result.modifierLabel}</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            {result.reasons?.length > 0 && (
-              <div className="w-full mt-5 pt-4 border-t border-card-border">
-                <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
-                  このタイプになった理由
-                </p>
-                <ul className="flex flex-col gap-2 text-left">
-                  {result.reasons.map((reason, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="text-sm mt-0.5">
-                        {["🗣️", "🤝", "🌈"][i] ?? "•"}
-                      </span>
-                      <span className="text-[13px] leading-relaxed">
-                        {reason}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ===== 1.5 TorisetsuCard (5 文字コード ビジュアル) ===== */}
+        {/* ===== 1. TorisetsuCard + タイプ名 + 5 文字コード ===== */}
         {result.fullCode && (
-          <section className="w-full flex flex-col items-center mb-5 animate-fade-in-up stagger-2">
+          <section className="w-full flex flex-col items-center mb-5 animate-fade-in-up">
             <TorisetsuCard
               fullCode={result.fullCode}
               size="md"
               alt={`${typeData.name} - ${result.modifierLabel}`}
               priority
             />
+            <h1
+              className="text-2xl font-extrabold mt-4 text-center"
+              style={{ color: typeData.color }}
+            >
+              {typeData.name}
+            </h1>
+            <p className="text-sm text-muted text-center mt-1">
+              {typeData.subtitle}
+            </p>
+            <div
+              className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
+              style={{
+                borderColor: typeData.color + "60",
+                color: typeData.color,
+                backgroundColor: typeData.color + "10",
+              }}
+            >
+              <span>{result.fullCode}</span>
+              {result.modifierLabel && (
+                <>
+                  <span className="opacity-40">·</span>
+                  <span>{result.modifierLabel}</span>
+                </>
+              )}
+            </div>
             <div className="mt-4">
               <CardDownloadButton fullCode={result.fullCode} />
             </div>
@@ -420,19 +352,38 @@ export default function OwnerResultPage({
           />
         </section>
 
-        {/* ===== 1.7 FacetBarChart (10 ファセット詳細) ===== */}
-        {hasFacetData && (
-          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5 animate-fade-in-up">
-            <div className="flex items-center gap-2 mb-4">
-              <div
-                className="h-5 w-1 rounded-full"
-                style={{ backgroundColor: typeData.color }}
+        {/* ===== 1.7 DimensionPolarityBar (5 文字コード由来の極性表示) ===== */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5 animate-fade-in-up">
+          <div className="flex items-center gap-2 mb-4">
+            <div
+              className="h-5 w-1 rounded-full"
+              style={{ backgroundColor: typeData.color }}
+            />
+            <h3 className="text-sm font-bold">あなたの 5 軸プロファイル</h3>
+          </div>
+          <div className="flex flex-col gap-5">
+            {(["E", "A", "O", "C", "N"] as BigFiveDimension[]).map((dim) => (
+              <DimensionPolarityBar
+                key={dim}
+                dimension={dim}
+                score={result.scores[dim]}
               />
-              <h3 className="text-sm font-bold">10 ファセット詳細</h3>
+            ))}
+          </div>
+          {result.fullCode && (
+            <div className="mt-6 text-center border-t border-card-border pt-4">
+              <p className="text-[10px] font-bold tracking-wider text-muted">
+                あなたの 5 文字コード
+              </p>
+              <p
+                className="text-2xl font-extrabold tracking-wider mt-1"
+                style={{ color: typeData.color }}
+              >
+                {result.fullCode}
+              </p>
             </div>
-            <FacetBarChart facetScores={result.facetScores} variant="self" />
-          </section>
-        )}
+          )}
+        </section>
 
         {/* ===== 2. トリセツ親カード + LINE登録CTA（統合） ===== */}
         {(() => {
@@ -470,29 +421,27 @@ export default function OwnerResultPage({
                 </p>
               </div>
 
-              {/* LINE登録CTA（同じカード内に統合） */}
+              {/* LINE登録CTA (ミニマル型) */}
               <div className="px-6 pt-2 pb-6">
                 <div className="flex flex-col items-center text-center">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#06C755] mb-4">
+                  <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#06C755] mb-4">
                     <svg
                       viewBox="0 0 24 24"
-                      className="w-7 h-7"
+                      className="w-9 h-9"
                       fill="white"
                       aria-hidden="true"
                     >
                       <path d={LINE_ICON_PATH} />
                     </svg>
                   </div>
-                  <h2 className="text-xl font-bold leading-snug mb-2">
-                    LINEで、いつでも
-                    <br />
-                    トリセツに戻ってこよう🐧
+                  <h2 className="text-xl sm:text-2xl font-bold leading-snug mb-3">
+                    LINE で、もっと自分を知る
                   </h2>
-                  <ul className="text-sm text-muted leading-relaxed text-left space-y-1 mb-5">
-                    <li>・リッチメニューからいつでも開ける</li>
-                    <li>・友達が答えると通知が届く</li>
-                    <li>・仮トリセツを失わずに保存</li>
-                  </ul>
+                  <p className="text-sm text-muted leading-relaxed mb-6">
+                    続きを読む / 友達評価通知 / 図鑑 / 再診断
+                    <br />
+                    すべてここから
+                  </p>
                   <a
                     href={getLineRegisterUrl(ownerToken)}
                     target="_blank"
@@ -510,11 +459,8 @@ export default function OwnerResultPage({
                     >
                       <path d={LINE_ICON_PATH} />
                     </svg>
-                    LINE で受け取る
+                    LINE で続きを読む
                   </a>
-                  <p className="text-[11px] text-muted leading-relaxed mt-4">
-                    ※ リッチメニューから「友達からの印象」「タイプ図鑑」なども開けます🐧
-                  </p>
                 </div>
               </div>
             </section>

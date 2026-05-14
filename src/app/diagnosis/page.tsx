@@ -276,7 +276,7 @@ function DiagnosisContent() {
                   : "bg-card-border text-muted cursor-not-allowed"
               }`}
             >
-              次へ ({currentPage + 1} → {currentPage + 2})
+              次へ
             </button>
           ) : (
             <button
@@ -289,7 +289,7 @@ function DiagnosisContent() {
                   : "bg-card-border text-muted cursor-not-allowed"
               }`}
             >
-              {submitting ? "診断中..." : "結果を見る 🔥"}
+              {submitting ? "診断中..." : "結果を見る"}
             </button>
           )}
         </div>
