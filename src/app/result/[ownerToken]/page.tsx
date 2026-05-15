@@ -350,19 +350,6 @@ export default function OwnerResultPage({
               />
             ))}
           </div>
-          {result.fullCode && (
-            <div className="mt-6 text-center border-t border-card-border pt-4">
-              <p className="text-[10px] font-bold tracking-wider text-muted">
-                あなたの 5 文字コード
-              </p>
-              <p
-                className="text-2xl font-extrabold tracking-wider mt-1"
-                style={{ color: typeData.color }}
-              >
-                {result.fullCode}
-              </p>
-            </div>
-          )}
         </section>
 
         {/* ===== 2. トリセツ親カード + LINE登録CTA（統合） ===== */}
