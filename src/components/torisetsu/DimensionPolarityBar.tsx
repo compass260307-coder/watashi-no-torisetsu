@@ -91,15 +91,6 @@ export function DimensionPolarityBar({
 
   return (
     <div className={`w-full ${className}`.trim()}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-base" aria-hidden="true">
-          {meta.icon}
-        </span>
-        <span className="text-sm font-bold text-foreground">
-          {meta.title}
-        </span>
-      </div>
-
       <div className="flex items-center gap-3">
         {/* 左ラベル */}
         <div className="flex flex-col items-center w-12 shrink-0 leading-tight">
