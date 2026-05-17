@@ -55,25 +55,38 @@ function RedirectContent() {
           return;
         }
         const data: { ownerToken: string | null } = await res.json();
-        if (data.ownerToken) {
-          // dest クエリで遷移先を切り替え (cell 1 = report 既定 / cell 2 = zukan)
-          // LIFF 経由の場合 liff.state にクエリが URL エンコードされて入ることがある
-          const search = new URLSearchParams(window.location.search);
-          let dest = search.get("dest");
-          if (!dest) {
-            const liffState = search.get("liff.state");
-            if (liffState) {
-              try {
-                const decoded = decodeURIComponent(liffState);
-                const stateParams = new URLSearchParams(
-                  decoded.startsWith("?") ? decoded.slice(1) : decoded,
-                );
-                dest = stateParams.get("dest");
-              } catch (err) {
-                console.warn("liff.state parse error:", err);
-              }
+
+        // dest クエリで遷移先を切り替え:
+        //   既定         → /report/{ownerToken}
+        //   "zukan"      → /zukan/{ownerToken} (cell 2)
+        //   "perceptions"→ /perceptions/{ownerToken} (cell 4)
+        //   "zukan-mine" → /zukan-mine (Phase 3-β B-4、ownerToken 不要)
+        // LIFF 経由の場合 liff.state にクエリが URL エンコードされて入ることがある
+        const search = new URLSearchParams(window.location.search);
+        let dest = search.get("dest");
+        if (!dest) {
+          const liffState = search.get("liff.state");
+          if (liffState) {
+            try {
+              const decoded = decodeURIComponent(liffState);
+              const stateParams = new URLSearchParams(
+                decoded.startsWith("?") ? decoded.slice(1) : decoded,
+              );
+              dest = stateParams.get("dest");
+            } catch (err) {
+              console.warn("liff.state parse error:", err);
             }
           }
+        }
+
+        // dest=zukan-mine は ownerToken に依存しない (LIFF 内で id_token から再解決)
+        if (dest === "zukan-mine") {
+          setStatus("redirecting");
+          window.location.replace("/zukan-mine");
+          return;
+        }
+
+        if (data.ownerToken) {
           const target =
             dest === "zukan"
               ? `/zukan/${data.ownerToken}`
