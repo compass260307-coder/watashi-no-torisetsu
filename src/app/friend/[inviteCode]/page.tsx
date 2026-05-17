@@ -1,31 +1,56 @@
 "use client";
 
-import { use, useState, useCallback, useEffect, useRef } from "react";
+// Phase 3-β B-2: 友達評価 30 問 + choice 3 問 + 完成画面 (B-3 stub) の新フロー。
+// 旧 13 問形式の friend-questions / friend-perception は破壊せず並存。
+// LIFF init はオプショナル: LINE 内で開かれていればプロフィール + id_token を取り、
+// Web ブラウザ経由なら perceiver_name は「友達」固定 + 任意入力で上書き可能。
+
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { friendQuestions } from "@/lib/friend-questions";
-import { track, isPreviewMode } from "@/lib/track";
-import { perceiveFromFriendAnswers } from "@/lib/friend-perception";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
-import { StepCard } from "@/components/StepCard";
-import { SampleReportModal } from "@/components/SampleReportModal";
-import { OwnerTorisetuModal } from "@/components/OwnerTorisetuModal";
+import { track } from "@/lib/track";
+import {
+  FRIEND_QUESTIONS_V2_PAGE_1,
+  FRIEND_QUESTIONS_V2_PAGE_2,
+  FRIEND_QUESTIONS_V2_PAGE_3,
+  FRIEND_QUESTIONS_V2_TOTAL,
+  FRIEND_CHOICE_QUESTIONS_V2,
+  renderQuestionText,
+  type FriendQuestionV2,
+  type FriendChoiceQuestionV2,
+} from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
-import type { AnswerValue } from "@/lib/types";
+import type { AnswerValue, BigFiveDimension, FacetId } from "@/lib/types";
 
-type FriendAnswer = AnswerValue | string;
+// =========================================================================
+// 状態管理 (進行ステート)
+// =========================================================================
+type Phase =
+  | "intro" // 開始前画面
+  | "scale" // 30 問 (3 ページに分割)
+  | "choice" // おまけ 3 問
+  | "submitting" // API 送信中
+  | "complete" // B-3 完成画面
+  | "error"; // 送信失敗
 
-const FRIEND_FOOTER_HINTS = [
-  "パッと思い浮かんだ印象でOK",
-  "正解はないよ、感覚で選んでね",
-  "深く考えなくて大丈夫",
-  "あなたの直感が一番正確",
-  "いい感じ、その調子！",
-  "友達だからこそわかることがある",
-  "意外と本人は気づいてないかも",
-  "あなたの視点が一番大事",
-  "もう少しで終わるよ",
-  "ラストスパート！",
+// B-2 段階では完成画面は最小限の stub (B-3 で本実装に置換)
+type CompletePerception = {
+  typeId: string;
+  cModifier: "C" | "F";
+  nModifier: "N" | "R";
+  fullCode: string;
+  modifierLabel: string;
+  modifierParagraph: string;
+  scores: Record<BigFiveDimension, number>;
+  facetScores: Record<FacetId, number>;
+  confidence: "low" | "medium" | "high";
+  qualitativeData: Record<string, string> | null;
+};
+
+const SCALE_PAGES: FriendQuestionV2[][] = [
+  FRIEND_QUESTIONS_V2_PAGE_1,
+  FRIEND_QUESTIONS_V2_PAGE_2,
+  FRIEND_QUESTIONS_V2_PAGE_3,
 ];
 
 export default function FriendPage({
@@ -34,20 +59,40 @@ export default function FriendPage({
   params: Promise<{ inviteCode: string }>;
 }) {
   const { inviteCode } = use(params);
-  const [ownerName, setOwnerName] = useState<string | null>(null);
-  const [isOwnerTorisetuModalOpen, setIsOwnerTorisetuModalOpen] = useState(false);
-  const [started, setStarted] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, FriendAnswer>>({});
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
-  const [submitError, setSubmitError] = useState(false);
-  const perceptionTracked = useRef(false);
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col flex-1 items-center justify-center">
+          <p className="text-sm text-muted">読み込み中...</p>
+        </div>
+      }
+    >
+      <FriendContent inviteCode={inviteCode} />
+    </Suspense>
+  );
+}
 
+function FriendContent({ inviteCode }: { inviteCode: string }) {
+  // ======== state ========
+  const [ownerName, setOwnerName] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>("intro");
+  const [pageIdx, setPageIdx] = useState<0 | 1 | 2>(0); // scale ページ内 (0-2)
+  const [choiceIdx, setChoiceIdx] = useState<0 | 1 | 2>(0); // choice ページ内 (0-2)
+  const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>({});
+  const [choiceAnswers, setChoiceAnswers] = useState<Record<string, string>>({});
+  const [perceiverName, setPerceiverName] = useState<string>("友達");
+  const [lineIdToken, setLineIdToken] = useState<string | null>(null);
+  const [perception, setPerception] = useState<CompletePerception | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const trackedLanding = useRef(false);
+  const liffInitialized = useRef(false);
+
+  // ======== 初期化: invite_code から owner 取得 ========
   useEffect(() => {
-    track("friend_landing_viewed", { inviteCode });
+    if (!trackedLanding.current) {
+      trackedLanding.current = true;
+      track("friend_landing_viewed", { inviteCode });
+    }
     fetch(`/api/friend-info?code=${inviteCode}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -56,578 +101,545 @@ export default function FriendPage({
       .catch(() => {});
   }, [inviteCode]);
 
-  const hasName = ownerName !== null && ownerName.trim().length > 0;
+  // ======== LIFF init (オプショナル) ========
+  useEffect(() => {
+    if (liffInitialized.current) return;
+    liffInitialized.current = true;
 
-  const totalQuestions = friendQuestions.length;
-  const currentQuestion = friendQuestions[currentIndex];
-  const progress = completed
-    ? 100
-    : (currentIndex / totalQuestions) * 100;
-  const remaining = totalQuestions - currentIndex;
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+    if (!liffId) return; // LIFF 設定なし → スキップ
 
-  const submitAnswers = useCallback(
-    async (finalAnswers: Record<number, FriendAnswer>) => {
-      setSubmitting(true);
-      if (isPreviewMode()) {
-        track("friend_answer_completed", { inviteCode });
-        setSubmitting(false);
+    (async () => {
+      try {
+        const liff = (await import("@line/liff")).default;
+        await liff.init({ liffId });
+        if (!liff.isLoggedIn()) {
+          // LIFF 内だがログインしていない → 強制ログインはしない (Web 経由のケースを壊さない)
+          return;
+        }
+        const profile = await liff.getProfile().catch(() => null);
+        if (profile?.displayName) {
+          setPerceiverName(profile.displayName);
+        }
+        const idToken = liff.getIDToken();
+        if (idToken) setLineIdToken(idToken);
+      } catch {
+        // LIFF init 失敗 (Web ブラウザ等) → フォールバックのまま続行
+      }
+    })();
+  }, []);
+
+  const ownerLabel = ownerName ?? "友達";
+  const subjectLabel = ownerName ? `${ownerName}さん` : "友達";
+
+  // ======== ハンドラ ========
+  const startEvaluation = () => {
+    setPhase("scale");
+    setPageIdx(0);
+    track("friend_v2_started", { inviteCode });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleScaleAnswer = (questionId: number, value: AnswerValue) => {
+    setScaleAnswers((prev) => ({ ...prev, [questionId]: value }));
+  };
+
+  const currentScalePage = SCALE_PAGES[pageIdx];
+  const isCurrentScalePageComplete = currentScalePage.every(
+    (q) => scaleAnswers[q.id] !== undefined,
+  );
+  const answeredScaleCount = Object.keys(scaleAnswers).length;
+
+  const handleScaleNext = () => {
+    if (!isCurrentScalePageComplete) return;
+    if (pageIdx < 2) {
+      setPageIdx((p) => (p + 1) as 0 | 1 | 2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      // 全 30 問完了 → choice フェーズへ
+      setPhase("choice");
+      setChoiceIdx(0);
+      track("friend_v2_scale_completed", { inviteCode });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleScalePrev = () => {
+    if (pageIdx > 0) {
+      setPageIdx((p) => (p - 1) as 0 | 1 | 2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleChoiceAnswer = (choiceId: string, option: string) => {
+    setChoiceAnswers((prev) => ({ ...prev, [choiceId]: option }));
+    advanceChoice();
+  };
+
+  const handleChoiceSkip = () => {
+    advanceChoice();
+  };
+
+  const advanceChoice = () => {
+    if (choiceIdx < 2) {
+      setChoiceIdx((c) => (c + 1) as 0 | 1 | 2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      submit();
+    }
+  };
+
+  const submit = async () => {
+    setPhase("submitting");
+    setSubmitError(null);
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (lineIdToken) {
+        headers["Authorization"] = `Bearer ${lineIdToken}`;
+      }
+      const res = await fetch("/api/friend-answer/v2", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          inviteCode,
+          scaleAnswers,
+          choiceAnswers,
+          perceiverName,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        setSubmitError(data?.error ?? `HTTP ${res.status}`);
+        setPhase("error");
         return;
       }
-      try {
-        const res = await fetch("/api/friend-answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ inviteCode, answers: finalAnswers }),
-        });
-        if (res.ok) {
-          track("friend_answer_completed", { inviteCode });
-        } else {
-          setSubmitError(true);
-        }
-      } catch {
-        setSubmitError(true);
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [inviteCode],
-  );
-
-  const advance = useCallback(
-    (newAnswers: Record<number, FriendAnswer>) => {
-      if (currentIndex < totalQuestions - 1) {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setCurrentIndex((prev) => prev + 1);
-          setIsTransitioning(false);
-        }, 300);
-      } else {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setCompleted(true);
-          setIsTransitioning(false);
-        }, 300);
-        submitAnswers(newAnswers);
-      }
-    },
-    [currentIndex, totalQuestions, submitAnswers],
-  );
-
-  const handleScaleAnswer = (value: AnswerValue) => {
-    if (isTransitioning) return;
-    const newAnswers = { ...answers, [currentQuestion.id]: value };
-    setAnswers(newAnswers);
-    track("friend_question_answered", {
-      inviteCode,
-      metadata: { questionIndex: currentIndex },
-    });
-    advance(newAnswers);
-  };
-
-  const handleChoiceAnswer = (choice: string) => {
-    if (isTransitioning) return;
-    const newAnswers = { ...answers, [currentQuestion.id]: choice };
-    setAnswers(newAnswers);
-    track("friend_question_answered", {
-      inviteCode,
-      metadata: { questionIndex: currentIndex },
-    });
-    advance(newAnswers);
-  };
-
-  const handleBack = useCallback(() => {
-    if (currentIndex > 0 && !isTransitioning) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => prev - 1);
-        setIsTransitioning(false);
-      }, 200);
-    }
-  }, [currentIndex, isTransitioning]);
-
-  const perception = completed ? perceiveFromFriendAnswers(answers) : null;
-  const perceivedType = perception ? torisetsuTypes[perception.typeId] : null;
-
-  useEffect(() => {
-    if (perception && !perceptionTracked.current) {
-      perceptionTracked.current = true;
-      track("friend_perception_shown", {
+      setPerception(data.perception as CompletePerception);
+      setPhase("complete");
+      track("friend_v2_completed", {
         inviteCode,
         metadata: {
-          perceivedTypeId: perception.typeId,
-          perceivedConfidence: perception.confidence,
+          perceivedTypeId: data.perception?.typeId,
+          perceivedFullCode: data.perception?.fullCode,
+          confidence: data.perception?.confidence,
         },
       });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Unknown error");
+      setPhase("error");
     }
-  }, [perception, inviteCode]);
+  };
 
-  const diagnosisHref = perception
-    ? `/diagnosis?source=${inviteCode}&perceived=${perception.typeId}`
-    : `/diagnosis?source=${inviteCode}`;
-
-  // --- Intro screen ---
-  if (!started) {
-    // hasName 時は "○○さん"、未取得時は "友達" にすることで
-    // 「○○さんから/に/の/はここ」「友達から/に/の/はここ」が自然になる
-    const ownerLabel = hasName ? `${ownerName}さん` : "友達";
-
+  // ======== 画面分岐 ========
+  if (phase === "intro") {
     return (
-      <div className="flex flex-col flex-1">
-        <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
-          {/* 1. ヘッダー */}
-          <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
-            <h1 className="text-3xl font-extrabold leading-tight mb-2">
-              ワタシのトリセツ
-            </h1>
-            <p className="text-base font-bold text-foreground">
-              {ownerLabel}から回答のお願いです
-            </p>
-          </div>
-
-          {/* 2. ペアペンギン画像 */}
-          <div className="w-full flex flex-col items-center text-center mb-6 animate-fade-in-up stagger-2">
-            <Image
-              src="/mascot/step3-complete.png"
-              alt=""
-              width={288}
-              height={288}
-              priority
-              className="w-56 sm:w-64 h-auto object-contain"
-            />
-          </div>
-
-          {/* 3. ワタシのトリセツとは？ (式ビジュアル版) */}
-          <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 animate-fade-in-up stagger-2">
-            <h3 className="text-base font-bold mb-3 flex items-center justify-center">
-              <span className="mr-2">📖</span>
-              ワタシのトリセツとは？
-            </h3>
-            <div className="flex flex-col gap-3 mb-5">
-              <p className="text-sm leading-relaxed">
-                世界中の心理学研究で使われている
-                <span className="font-bold bg-gradient-to-b from-transparent from-50% to-pink-200 to-50% px-0.5">
-                  Big Five 理論
-                </span>
-                に基づく性格診断サービス。
-              </p>
-              <p className="text-sm leading-relaxed">
-                従来の性格診断に
-                <span className="font-bold bg-gradient-to-b from-transparent from-50% to-pink-200 to-50% px-0.5">
-                  他己評価
-                </span>
-                を加えることで、より精度の高い分析を実現します。
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center gap-2">
-              {/* 自己評価ボックス: オーナーが答える */}
-              <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
-                <div className="text-[11px] text-muted mb-0.5">
-                  {ownerLabel}が答える
-                </div>
-                <div className="text-base font-bold">自己評価</div>
-              </div>
-
-              {/* + 記号 */}
-              <div className="text-2xl font-bold text-primary leading-none">
-                ＋
-              </div>
-
-              {/* 他己評価ボックス: あなた(friend)が答える */}
-              <div className="w-full rounded-xl bg-card-bg px-4 py-3 text-center shadow-sm">
-                <div className="text-[11px] text-muted mb-0.5">
-                  あなたが答える
-                </div>
-                <div className="text-base font-bold">他己評価</div>
-              </div>
-
-              {/* = 記号 */}
-              <div className="text-2xl font-bold text-primary leading-none">
-                ＝
-              </div>
-
-              {/* ワタシのトリセツ (ハイライト + クリックでサンプル表示) */}
-              <button
-                type="button"
-                onClick={() => setIsSampleModalOpen(true)}
-                className="w-full rounded-xl bg-primary-gradient px-4 py-4 text-center shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer"
-                aria-label="サンプルレポートを表示"
-              >
-                <div className="text-[11px] text-white/90 mb-0.5">
-                  {ownerLabel}だけの
-                </div>
-                <div className="text-base font-bold text-white mb-1">
-                  ワタシのトリセツ
-                </div>
-                <div className="text-[11px] text-white/85 flex items-center justify-center gap-1">
-                  <span>👀</span>
-                  <span>タップで例を見る</span>
-                </div>
-              </button>
-            </div>
-          </section>
-
-          {/* 4. 今、{ownerLabel}はここ (3 STEP カード) */}
-          <section className="w-full mb-6 animate-fade-in-up stagger-3">
-            <h3 className="text-base font-bold text-center mb-4">
-              今、{ownerLabel}はここ
-            </h3>
-            <div className="flex flex-col gap-4">
-              <StepCard
-                stepNumber={1}
-                imageSrc="/mascot/step1-receive.png"
-                title={`${ownerLabel}が自己診断`}
-                variant="completed"
-              />
-              <StepCard
-                stepNumber={2}
-                imageSrc="/mascot/step2-ask-friend.png"
-                title={`あなたが${ownerLabel}の印象を答える`}
-                variant="current"
-              />
-              <StepCard
-                stepNumber={3}
-                imageSrc="/mascot/step3-complete.png"
-                title={`${ownerLabel}のトリセツ完成`}
-                variant="future"
-              />
-            </div>
-          </section>
-
-          {/* 5. 呼びかけ */}
-          <section className="w-full text-center mb-4 animate-fade-in-up stagger-3">
-            <p className="text-base font-bold leading-relaxed">
-              あなたから見た{ownerLabel}を、
-              <br />
-              教えてくれませんか？
-            </p>
-          </section>
-
-          {/* 6. CTA */}
-          <div className="my-4 flex justify-center w-full animate-fade-in-up stagger-4">
-            <button
-              onClick={() => {
-                setStarted(true);
-                track("friend_answer_started", { inviteCode });
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-gradient px-10 py-5 text-lg font-bold text-white shadow-xl shadow-primary/40 transition-transform duration-200 hover:scale-105 active:scale-95 break-keep"
-            >
-              回答を始める
-              <span className="text-xl leading-none">→</span>
-            </button>
-          </div>
-          <p className="text-[11px] text-muted mt-2 animate-fade-in stagger-4">
-            正解はありません。回答は完全匿名で届きます
-          </p>
-        </main>
-        <SampleReportModal
-          isOpen={isSampleModalOpen}
-          onClose={() => setIsSampleModalOpen(false)}
-        />
-      </div>
+      <IntroScreen
+        ownerLabel={ownerLabel}
+        subjectLabel={subjectLabel}
+        perceiverName={perceiverName}
+        onPerceiverNameChange={setPerceiverName}
+        onStart={startEvaluation}
+      />
     );
   }
 
-  // --- Completion screen ---
-  if (completed) {
+  if (phase === "scale") {
     return (
-      <div
-        className={`flex flex-col flex-1 transition-opacity duration-300 ${isTransitioning ? "opacity-0" : "opacity-100"}`}
-      >
-        <main className="flex flex-col flex-1 items-center justify-center px-5 py-12 max-w-lg mx-auto w-full">
-          {submitting ? (
-            <div className="text-muted text-sm">送信中...</div>
-          ) : submitError ? (
-            <>
-              <div className="text-5xl mb-4">😢</div>
-              <h1 className="text-2xl font-extrabold mb-2 text-center">
-                送信できませんでした
-              </h1>
-              <p className="text-sm text-muted text-center leading-relaxed mb-8">
-                通信エラーが発生しました。
-                <br />
-                もう一度お試しください。
-              </p>
-              <button
-                onClick={() => {
-                  setSubmitError(false);
-                  submitAnswers(answers);
-                }}
-                className="rounded-full bg-primary px-8 py-3 text-sm font-bold text-white"
-              >
-                もう一度送信する
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Section 1: お礼 (コンパクト) */}
-              <div className="text-center mb-6 animate-fade-in-up stagger-1">
-                <p className="text-2xl font-extrabold mb-1">
-                  ありがとう！🐧
-                </p>
-                <p className="text-base">
-                  {hasName ? `${ownerName}さんに届きました` : "友達に届きました"}
-                </p>
-              </div>
-
-              {/* Section 2-3: 統合カード (更新通知 + type 表示 + のぞきCTA) */}
-              {perceivedType && perception && (
-                <div className="w-full mx-auto max-w-md rounded-2xl bg-white shadow-md overflow-hidden mb-6 animate-fade-in-up stagger-3">
-                  {/* Top: 更新通知バー */}
-                  <div className="bg-pink-100 px-4 py-3 text-center">
-                    <p className="text-sm font-bold text-pink-700">
-                      {hasName
-                        ? `${ownerName}さんに、あなたの印象が届きました`
-                        : "友達に、あなたの印象が届きました"}
-                    </p>
-                  </div>
-
-                  {/* Middle: あなたから見た印象 + キャラ + タイプ */}
-                  <div className="p-6 text-center">
-                    <p className="text-xs text-muted mb-3">
-                      {hasName
-                        ? `あなたから見た${ownerName}さんは…`
-                        : "あなたから見た友達の印象は…"}
-                    </p>
-                    {perceivedType.imageUrl ? (
-                      <div className="relative mx-auto mb-2 w-full max-w-[320px] aspect-square">
-                        <Image
-                          src={perceivedType.imageUrl}
-                          alt={`${perceivedType.name}のキャラクター`}
-                          width={320}
-                          height={320}
-                          className="relative z-10 w-full h-full object-contain"
-                          priority
-                        />
-                        <div
-                          aria-hidden="true"
-                          className="absolute bottom-1 left-1/2 z-0 h-3 w-[55%] -translate-x-1/2 rounded-[50%] blur-md"
-                          style={{ backgroundColor: "rgba(0, 0, 0, 0.12)" }}
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-3xl mb-3"
-                        style={{ backgroundColor: `${perceivedType.color}15` }}
-                      >
-                        {perceivedType.emoji}
-                      </div>
-                    )}
-                    <p
-                      className="text-lg font-extrabold mb-1"
-                      style={{ color: perceivedType.color }}
-                    >
-                      {perceivedType.name}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {perceivedType.subtitle}
-                    </p>
-                  </div>
-
-                  {/* Bottom: full-width tap バー (perception ベース表示) */}
-                  <button
-                    type="button"
-                    onClick={() => setIsOwnerTorisetuModalOpen(true)}
-                    className="w-full border-t border-pink-100 bg-white hover:bg-pink-50 active:bg-pink-100 px-6 py-4 text-base font-bold text-pink-700 flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <span>
-                      {hasName
-                        ? `あなたから見た${ownerName}さんを見てみる`
-                        : "あなたから見た友達を見てみる"}
-                    </span>
-                    <span className="text-lg leading-none">→</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Section 4: 「じゃあ、あなたも作ってみよう」見出し */}
-              <div className="w-full text-center mt-2 mb-5 animate-fade-in-up stagger-4">
-                <p className="text-xl font-extrabold leading-relaxed">
-                  じゃあ、あなたも
-                  <br />
-                  作ってみよう
-                </p>
-              </div>
-
-              {/* Section 5: 3 STEP カード */}
-              <section className="w-full mb-6 animate-fade-in-up stagger-4">
-                <div className="flex flex-col gap-4">
-                  <StepCard
-                    stepNumber={1}
-                    imageSrc="/mascot/step1-receive.png"
-                    title={<>15問に答えて<br />仮トリセツが届く</>}
-                    variant="future"
-                  />
-                  <StepCard
-                    stepNumber={2}
-                    imageSrc="/mascot/step2-ask-friend.png"
-                    title="友達に診断してもらう"
-                    variant="future"
-                  />
-                  <StepCard
-                    stepNumber={3}
-                    imageSrc="/mascot/step3-complete.png"
-                    title="トリセツが完成"
-                    variant="future"
-                  />
-                </div>
-              </section>
-
-              {/* Section 6: メインCTA (強化版) */}
-              <div className="w-full flex justify-center mb-2 animate-fade-in-up stagger-4">
-                <Link
-                  href={diagnosisHref}
-                  onClick={() =>
-                    track("friend_to_diagnosis_clicked", {
-                      inviteCode,
-                      metadata: perception
-                        ? {
-                            perceptionShown: true,
-                            perceivedTypeId: perception.typeId,
-                            perceivedConfidence: perception.confidence,
-                          }
-                        : { perceptionShown: false },
-                    })
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-gradient px-10 py-5 text-lg font-bold text-white shadow-xl shadow-primary/40 transition-transform duration-200 hover:scale-105 active:scale-95 break-keep"
-                >
-                  <span>あなたのトリセツを作る</span>
-                  <span className="text-xl leading-none">→</span>
-                </Link>
-              </div>
-              <p className="text-[11px] text-muted text-center mb-6">
-                3分・登録不要・完全匿名
-              </p>
-
-              {/* Section 7: トップに戻る (控えめ) */}
-              <Link
-                href="/"
-                className="text-xs text-muted/70 underline hover:text-foreground transition-colors"
-              >
-                トップに戻る
-              </Link>
-            </>
-          )}
-        </main>
-        {perception && (
-          <OwnerTorisetuModal
-            isOpen={isOwnerTorisetuModalOpen}
-            onClose={() => setIsOwnerTorisetuModalOpen(false)}
-            perceivedTypeId={perception.typeId}
-            ownerName={ownerName}
-            ctaHref={diagnosisHref}
-            fullCode={perception.fullCode}
-            cModifier={perception.cModifier}
-            nModifier={perception.nModifier}
-            modifierLabel={perception.modifierLabel}
-            facetScores={perception.facetScores}
-          />
-        )}
-      </div>
+      <ScaleScreen
+        page={pageIdx}
+        questions={currentScalePage}
+        subjectLabel={subjectLabel}
+        scaleAnswers={scaleAnswers}
+        answeredCount={answeredScaleCount}
+        onAnswer={handleScaleAnswer}
+        onNext={handleScaleNext}
+        onPrev={handleScalePrev}
+        isPageComplete={isCurrentScalePageComplete}
+      />
     );
   }
 
-  // --- Question screen ---
-  // 「この人」を {name}さん or 「この友達」に置換
-  const questionSubject = hasName ? `${ownerName}さん` : "この友達";
-  const questionText = currentQuestion.text.replace(/この人/g, questionSubject);
+  if (phase === "choice") {
+    const q = FRIEND_CHOICE_QUESTIONS_V2[choiceIdx];
+    return (
+      <ChoiceScreen
+        question={q}
+        subjectLabel={subjectLabel}
+        choiceIdx={choiceIdx}
+        onSelect={handleChoiceAnswer}
+        onSkip={handleChoiceSkip}
+      />
+    );
+  }
 
-  // 全質問で統一する回答ボタンのクラス。選択時はピンク濃 + 太borderで強調
-  const answerButtonClass = (isSelected: boolean) =>
-    `w-full rounded-xl px-4 py-4 text-base font-bold text-gray-800 transition-all hover:scale-[1.02] active:scale-[0.98] ${
-      isSelected
-        ? "bg-pink-100 border-2 border-pink-400 shadow-md"
-        : "bg-pink-50 border border-pink-100 shadow-sm"
-    }`;
+  if (phase === "submitting") {
+    return <SubmittingScreen subjectLabel={subjectLabel} />;
+  }
 
+  if (phase === "error") {
+    return (
+      <ErrorScreen
+        message={submitError ?? "送信に失敗しました"}
+        onRetry={submit}
+      />
+    );
+  }
+
+  // phase === "complete"
+  return (
+    <CompleteScreenStub
+      subjectLabel={subjectLabel}
+      perception={perception}
+      inviteCode={inviteCode}
+    />
+  );
+}
+
+// =========================================================================
+// Intro 画面
+// =========================================================================
+function IntroScreen({
+  ownerLabel,
+  subjectLabel,
+  perceiverName,
+  onPerceiverNameChange,
+  onStart,
+}: {
+  ownerLabel: string;
+  subjectLabel: string;
+  perceiverName: string;
+  onPerceiverNameChange: (v: string) => void;
+  onStart: () => void;
+}) {
   return (
     <div className="flex flex-col flex-1">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-card-border">
-        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
-          <button
-            onClick={handleBack}
-            className={`text-sm font-medium transition-opacity ${
-              currentIndex > 0
-                ? "text-muted hover:text-foreground"
-                : "opacity-0 pointer-events-none"
-            }`}
-          >
-            ← 戻る
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-foreground">
-              {currentIndex + 1} / {totalQuestions}
-            </span>
-            {remaining > 0 && (
-              <span className="text-xs font-bold text-primary">
-                あと{remaining}問
-              </span>
-            )}
-          </div>
-          <div className="w-12" />
+      <main className="flex flex-col flex-1 items-center px-5 py-10 max-w-lg mx-auto w-full">
+        <div className="flex flex-col items-center text-center mb-6 animate-fade-in-up">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+            WATASHI NO TORISETSU
+          </p>
+          <h1 className="text-2xl font-extrabold leading-tight mb-3">
+            {ownerLabel}から
+            <br />
+            回答のお願いです
+          </h1>
         </div>
 
-        {/* Progress bar (強化版) */}
-        <div className="h-2 bg-primary/15">
-          <div
-            className="h-full bg-primary-gradient transition-all duration-300 ease-out"
-            style={{ width: `${progress}%` }}
+        <div className="w-full flex flex-col items-center text-center mb-6 animate-fade-in-up stagger-2">
+          <Image
+            src="/mascot/step3-complete.png"
+            alt=""
+            width={224}
+            height={224}
+            priority
+            className="w-48 sm:w-56 h-auto object-contain"
           />
         </div>
-      </header>
 
-      {/* Question */}
-      <main className="flex flex-col flex-1 items-center px-5 pt-6 pb-4 max-w-lg mx-auto w-full">
-        <div
-          className={`flex flex-col items-center w-full transition-opacity duration-200 ${
-            isTransitioning ? "opacity-0" : "opacity-100"
-          }`}
+        <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 animate-fade-in-up stagger-2">
+          <p className="text-sm leading-relaxed text-center mb-2">
+            「あなたから見た{subjectLabel}」を 30 問の質問で集めて、
+            <br />
+            {subjectLabel}専用のトリセツを作るサービスです。
+          </p>
+          <p className="text-xs text-muted text-center">
+            約 4 分・登録不要
+          </p>
+        </section>
+
+        <section className="w-full mb-6 animate-fade-in-up stagger-3">
+          <label
+            htmlFor="perceiver-name"
+            className="block text-xs font-bold text-muted mb-2"
+          >
+            あなたの名前 ({subjectLabel}に表示されます)
+          </label>
+          <input
+            id="perceiver-name"
+            type="text"
+            value={perceiverName}
+            onChange={(e) => onPerceiverNameChange(e.target.value)}
+            maxLength={20}
+            className="w-full rounded-xl border border-card-border bg-card-bg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="友達"
+          />
+          <p className="text-[11px] text-muted mt-1">
+            空のままでも OK (「友達」と表示)
+          </p>
+        </section>
+
+        <button
+          type="button"
+          onClick={onStart}
+          className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          {/* Question label */}
-          <div className="inline-block rounded-md bg-label-bg px-3 py-1 text-xs font-bold text-primary mb-4 border border-card-border">
-            Q{currentIndex + 1}
+          回答をはじめる →
+        </button>
+      </main>
+    </div>
+  );
+}
+
+// =========================================================================
+// Scale 画面 (30 問 × 3 ページ)
+// =========================================================================
+function ScaleScreen({
+  page,
+  questions,
+  subjectLabel,
+  scaleAnswers,
+  answeredCount,
+  onAnswer,
+  onNext,
+  onPrev,
+  isPageComplete,
+}: {
+  page: 0 | 1 | 2;
+  questions: FriendQuestionV2[];
+  subjectLabel: string;
+  scaleAnswers: Record<number, AnswerValue>;
+  answeredCount: number;
+  onAnswer: (qId: number, v: AnswerValue) => void;
+  onNext: () => void;
+  onPrev: () => void;
+  isPageComplete: boolean;
+}) {
+  const isLastPage = page === 2;
+  const percent = Math.round((answeredCount / FRIEND_QUESTIONS_V2_TOTAL) * 100);
+
+  return (
+    <div className="flex flex-col flex-1 min-h-screen pb-28">
+      {/* sticky progress */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-card-border">
+        <div className="max-w-lg mx-auto px-4 py-3">
+          <div className="flex justify-between text-xs font-bold text-muted mb-2">
+            <span>
+              質問 {answeredCount} / {FRIEND_QUESTIONS_V2_TOTAL}
+            </span>
+            <span>Page {page + 1} / 3</span>
           </div>
-
-          {/* Question text */}
-          <h2 className="text-lg font-bold text-center leading-relaxed mb-6 px-2">
-            {questionText}
-          </h2>
-
-          {/* Answer options */}
-          <div className="flex flex-col gap-3 w-full max-w-sm">
-            {currentQuestion.type === "scale"
-              ? (() => {
-                  const raw = answers[currentQuestion.id];
-                  const scaleValue =
-                    typeof raw === "number" ? (raw as AnswerValue) : undefined;
-                  return (
-                    <LikertScale
-                      value={scaleValue}
-                      onChange={(v) => handleScaleAnswer(v)}
-                    />
-                  );
-                })()
-              : currentQuestion.choices?.map((choice) => {
-                  const isSelected = answers[currentQuestion.id] === choice;
-                  return (
-                    <button
-                      key={choice}
-                      onClick={() => handleChoiceAnswer(choice)}
-                      className={answerButtonClass(isSelected)}
-                    >
-                      {choice}
-                    </button>
-                  );
-                })}
+          <div className="w-full h-1.5 bg-card-border rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary-gradient transition-all duration-500"
+              style={{ width: `${percent}%` }}
+            />
           </div>
         </div>
+      </div>
+
+      <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
+        {questions.map((q) => (
+          <div
+            key={q.id}
+            className="w-full bg-card-bg rounded-2xl border border-card-border shadow-sm p-5 sm:p-6 mb-4"
+          >
+            <div className="inline-block rounded-md bg-label-bg px-2.5 py-1 text-[11px] font-bold text-primary border border-card-border mb-3">
+              Q{q.id}
+            </div>
+            <p className="text-base sm:text-lg font-bold text-foreground leading-relaxed mb-6">
+              {renderQuestionText(q.text, subjectLabel.replace(/さん$/, ""))}
+            </p>
+            <LikertScale
+              value={scaleAnswers[q.id]}
+              onChange={(v) => onAnswer(q.id, v)}
+            />
+          </div>
+        ))}
+
+        {!isPageComplete && (
+          <p className="text-center text-xs text-muted mt-2 mb-4">
+            このページの 10 問すべてに答えると、次へ進めます
+          </p>
+        )}
       </main>
 
-      {/* Footer hint - rotating */}
-      <footer className="py-4 text-center text-xs text-muted">
-        {FRIEND_FOOTER_HINTS[currentIndex % FRIEND_FOOTER_HINTS.length]}
-      </footer>
+      {/* 下部固定ナビ */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-card-border z-10">
+        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={page === 0}
+            className={`rounded-full border-2 border-card-border px-5 py-3 text-sm font-bold transition-all ${
+              page === 0
+                ? "opacity-0 pointer-events-none"
+                : "text-muted hover:bg-label-bg"
+            }`}
+          >
+            戻る
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={!isPageComplete}
+            className={`flex-1 rounded-full px-6 py-3 text-sm font-bold text-white transition-all ${
+              isPageComplete
+                ? "bg-primary-gradient hover:scale-[1.02] active:scale-[0.98]"
+                : "bg-card-border text-muted cursor-not-allowed"
+            }`}
+          >
+            {isLastPage ? "おまけの質問へ →" : "次へ"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// Choice 画面 (おまけ 3 問、各スキップ可)
+// =========================================================================
+function ChoiceScreen({
+  question,
+  subjectLabel,
+  choiceIdx,
+  onSelect,
+  onSkip,
+}: {
+  question: FriendChoiceQuestionV2;
+  subjectLabel: string;
+  choiceIdx: 0 | 1 | 2;
+  onSelect: (id: string, option: string) => void;
+  onSkip: () => void;
+}) {
+  const inviteeName = subjectLabel.replace(/さん$/, "");
+  return (
+    <div className="flex flex-col flex-1 min-h-screen">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-card-border">
+        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between text-xs font-bold text-muted">
+          <span>おまけ {choiceIdx + 1} / 3</span>
+          <span>スキップ可</span>
+        </div>
+      </div>
+
+      <main className="flex flex-col flex-1 items-center px-5 pt-8 pb-10 max-w-lg mx-auto w-full">
+        <div className="inline-block rounded-md bg-label-bg px-2.5 py-1 text-[11px] font-bold text-primary border border-card-border mb-3">
+          おまけ
+        </div>
+        <h2 className="text-lg font-bold text-center mb-6 leading-relaxed">
+          {renderQuestionText(question.text, inviteeName)}
+        </h2>
+
+        <div className="flex flex-col gap-3 w-full max-w-sm mb-6">
+          {question.options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onSelect(question.id, opt)}
+              className="w-full rounded-xl border-2 border-card-border bg-card-bg px-5 py-4 text-sm font-medium transition-all hover:border-primary/40 active:scale-[0.98]"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-xs text-muted hover:text-foreground underline transition-colors"
+        >
+          この質問はスキップ
+        </button>
+      </main>
+    </div>
+  );
+}
+
+// =========================================================================
+// Submitting 画面
+// =========================================================================
+function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
+  return (
+    <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
+      <Image
+        src="/mascot/analyzing-penguin.png"
+        alt=""
+        width={160}
+        height={160}
+        className="w-32 h-32 object-contain animate-bounce-slow mb-4"
+      />
+      <p className="text-lg font-bold text-foreground mb-2">
+        あなたから見た{subjectLabel}を
+        <br />
+        生成中...
+      </p>
+      <p className="text-xs text-muted">少し待ってね 🐧</p>
+    </div>
+  );
+}
+
+// =========================================================================
+// Error 画面
+// =========================================================================
+function ErrorScreen({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
+      <p className="text-base font-bold text-foreground mb-4">
+        送信に失敗しました
+      </p>
+      <p className="text-xs text-muted mb-6">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-full bg-primary-gradient px-8 py-3 text-sm font-bold text-white"
+      >
+        もう一度送信する
+      </button>
+    </div>
+  );
+}
+
+// =========================================================================
+// Complete 画面 (B-2 段階では stub、B-3 で本実装に置換)
+// =========================================================================
+function CompleteScreenStub({
+  subjectLabel,
+  perception,
+  inviteCode,
+}: {
+  subjectLabel: string;
+  perception: CompletePerception | null;
+  inviteCode: string;
+}) {
+  return (
+    <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
+      <p className="text-2xl font-extrabold mb-4">
+        ✨ 送信ありがとう！
+      </p>
+      {perception ? (
+        <div className="w-full bg-card-bg border border-card-border rounded-2xl p-5 mb-6">
+          <p className="text-xs text-muted text-center mb-2">
+            あなたから見た{subjectLabel}は
+          </p>
+          <p className="text-2xl font-extrabold text-center text-primary mb-1">
+            {perception.fullCode}
+          </p>
+          <p className="text-sm text-center text-muted">
+            {perception.modifierLabel}
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-muted mb-6">結果の表示で問題が発生しました</p>
+      )}
+      <p className="text-sm text-center text-muted mb-2">
+        💌 {subjectLabel}に、あなたの眼が届きました
+      </p>
+      <p className="text-[11px] text-muted text-center mb-6">
+        (詳細な結果画面は B-3 で実装予定)
+      </p>
+      <Link
+        href={`/diagnosis?source=${inviteCode}`}
+        className="rounded-full bg-primary-gradient px-8 py-4 text-sm font-bold text-white shadow-md"
+      >
+        自分のトリセツも作ってみる →
+      </Link>
     </div>
   );
 }
