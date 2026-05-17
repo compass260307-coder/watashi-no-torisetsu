@@ -19,15 +19,23 @@ const PUBLIC_BASE_URL =
 
 type ShareMode = "evaluate" | "invite";
 
+// Phase 3-β D-3 (B-5 連動): 招待文言を新コンセプト「あなたから見た私のトリセツが欲しい」に刷新。
+// 旧文言 (「10問・2分」など) は B-2 で 30 問構成になり乖離していたため、新形式に揃える。
 function buildEvaluateMessages(senderName: string, friendInviteUrl: string) {
   return [
     {
       type: "text" as const,
       text: [
-        `${senderName}さんから、ワタシのトリセツの回答リクエストが届きました🐧`,
+        "🎴 ワタシのトリセツ",
         "",
-        "10問・2分で完了します。",
-        `あなたから見た${senderName}さんの印象を教えてください✨`,
+        `${senderName}さんから:`,
+        "「あなたから見た私のトリセツが欲しい」",
+        "",
+        `30 問・約 4 分で、あなた視点の${senderName}さんの`,
+        "トリセツが完成します。",
+        "",
+        `${senderName}さんの図鑑に、`,
+        `あなたの眼で見た${senderName}さんが追加されます🐧`,
         "",
         "▼ こちらから回答できます",
         friendInviteUrl,
@@ -44,7 +52,7 @@ function buildInviteMessages() {
         "ワタシのトリセツ、やってみない？",
         "意外な自分が見えてくる🐧",
         "",
-        "▼ 3分で診断できます",
+        "▼ 約 5 分で診断できます",
         PUBLIC_BASE_URL,
       ].join("\n"),
     },
