@@ -1,8 +1,19 @@
 import crypto from "crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { verifyBearer } from "@/lib/liff-verify";
+import {
+  sendDiagnosisCompleteMessage,
+  sendWelcomeMessage,
+} from "@/lib/line-notify";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { getModifierLabel } from "@/lib/modifier-data";
+import {
+  buildFullCode as buildFullCodeFromIds,
+  classifyModifier,
+} from "@/lib/diagnosis";
+import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
 
 // PR-FIX-3 H6: Math.random() ではなく CSPRNG (crypto.randomBytes) を使用
 function generateInviteCode(): string {
@@ -123,6 +134,58 @@ export async function POST(request: Request) {
     }
   }
 
+  // Phase 3-β D-6: lineLinked 時は二段通知を fire-and-forget で発火
+  //   1) Welcome (welcome_sent_at が NULL のとき = 初診断 or 再 follow リセット後)
+  //   2) 3 秒後に DiagnosisComplete
+  // 失敗時もレスポンスは止めない (`next/server` の after() で response 送信後に実行)
+  if (lineUserId) {
+    const persistedLineUserId = lineUserId;
+    const persistedOwnerToken = data.owner_token as string;
+    const persistedUserId = data.id as string;
+    const persistedTypeId = typeId as TorisetsuTypeId;
+    const persistedFullCode =
+      (fullCode as string | undefined) ??
+      deriveFullCode(persistedTypeId, scores as Record<BigFiveDimension, number>);
+    const persistedTypeName =
+      torisetsuTypes[persistedTypeId]?.name ?? persistedTypeId;
+    const persistedModifierLabel =
+      (modifierLabel as string | undefined) ??
+      deriveModifierLabel(scores as Record<BigFiveDimension, number>);
+
+    after(async () => {
+      // 1 段目: Welcome (welcome_sent_at がまだなら送信、既送ならスキップ)
+      try {
+        const { data: lineUserRow } = await supabaseAdmin
+          .from("line_users")
+          .select("welcome_sent_at")
+          .eq("line_user_id", persistedLineUserId)
+          .maybeSingle();
+        if (!lineUserRow?.welcome_sent_at) {
+          await sendWelcomeMessage(persistedOwnerToken, persistedLineUserId);
+        }
+      } catch (err) {
+        console.error("[api/diagnosis] welcome step error:", err);
+      }
+
+      // 3 秒インターバル
+      await new Promise((r) => setTimeout(r, 3000));
+
+      // 2 段目: DiagnosisComplete
+      try {
+        await sendDiagnosisCompleteMessage({
+          ownerToken: persistedOwnerToken,
+          lineUserId: persistedLineUserId,
+          fullCode: persistedFullCode,
+          typeName: persistedTypeName,
+          modifierLabel: persistedModifierLabel,
+          userId: persistedUserId,
+        });
+      } catch (err) {
+        console.error("[api/diagnosis] diagnosis_complete step error:", err);
+      }
+    });
+  }
+
   return NextResponse.json({
     userId: data.id,
     inviteCode: data.invite_code,
@@ -136,4 +199,33 @@ export async function POST(request: Request) {
     modifierLabel: modifierLabel ?? null,
     lineLinked: !!lineUserId,
   });
+}
+
+// クライアントから fullCode/modifierLabel が来なかった場合の派生ヘルパー
+// (sidecar 未設定の旧クライアント互換 + サーバ単独算出)
+function deriveFullCode(
+  typeId: TorisetsuTypeId,
+  scores: Record<BigFiveDimension, number>,
+): string {
+  const safeScores: Record<BigFiveDimension, number> = {
+    E: typeof scores.E === "number" ? scores.E : 5,
+    A: typeof scores.A === "number" ? scores.A : 5,
+    O: typeof scores.O === "number" ? scores.O : 5,
+    C: typeof scores.C === "number" ? scores.C : 5,
+    N: typeof scores.N === "number" ? scores.N : 5,
+  };
+  const { cModifier, nModifier } = classifyModifier(safeScores);
+  return buildFullCodeFromIds(typeId, cModifier, nModifier);
+}
+
+function deriveModifierLabel(scores: Record<BigFiveDimension, number>): string {
+  const safeScores: Record<BigFiveDimension, number> = {
+    E: typeof scores.E === "number" ? scores.E : 5,
+    A: typeof scores.A === "number" ? scores.A : 5,
+    O: typeof scores.O === "number" ? scores.O : 5,
+    C: typeof scores.C === "number" ? scores.C : 5,
+    N: typeof scores.N === "number" ? scores.N : 5,
+  };
+  const { cModifier, nModifier } = classifyModifier(safeScores);
+  return getModifierLabel(cModifier, nModifier);
 }

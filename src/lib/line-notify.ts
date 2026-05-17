@@ -1,6 +1,7 @@
 import { messagingApi } from "@line/bot-sdk";
 import { supabaseAdmin } from "./supabase-server";
 import {
+  buildDiagnosisCompleteFlex,
   buildWelcomeRegisteredFlex,
   buildWelcomeUnregisteredFlex,
   buildN1Flex,
@@ -308,6 +309,58 @@ export async function sendGenericWelcome(
     lineUserId,
     messageType: "welcome",
     messageSubtype: "generic",
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// Phase 3-β D-6: 診断完了通知 (二段通知の 2 段目、Welcome の 3 秒後に送る)
+//   - 入力は明示引数 (ownerToken, lineUserId, fullCode, typeName, modifierLabel, userId?)
+//   - Welcome と異なり、welcome_sent_at の更新等の副作用は持たない
+//   - line_messages_sent に message_type='diagnosis_complete' で記録
+export async function sendDiagnosisCompleteMessage(args: {
+  ownerToken: string;
+  lineUserId: string;
+  fullCode: string;
+  typeName: string;
+  modifierLabel: string;
+  userId?: string | null;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping diagnosis_complete");
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.userId ?? null,
+      messageType: "diagnosis_complete",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const flex = buildDiagnosisCompleteFlex({
+    ownerToken: args.ownerToken,
+    fullCode: args.fullCode,
+    typeName: args.typeName,
+    modifierLabel: args.modifierLabel,
+  });
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: { ownerToken: args.ownerToken, kind: "diagnosis_complete" },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.userId ?? null,
+    messageType: "diagnosis_complete",
     flexContent: flex,
     sendResult: resultToLogStatus(result),
     errorDetail: result.error ?? null,
