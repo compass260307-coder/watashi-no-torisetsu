@@ -1,6 +1,8 @@
 // Phase 3-β A-5: 新 30 問形式の友達評価から FriendPerception を派生計算する。
 // 旧 13 問形式 (friend-perception.ts) は破壊せず並存。
-// B-1 で確定する 30 問質問データ (Appendix A) に対応した固定マッピング。
+//
+// Phase 3-β B-1 で質問データを friend-questions-v2.ts に集約 (single source of truth)。
+// 本ファイルは FRIEND_QUESTIONS_V2_MAP をそこから派生生成して計算に利用する。
 
 import type {
   AnswerValue,
@@ -17,53 +19,29 @@ import {
   classifyType,
 } from "./diagnosis";
 import { getModifierLabel, getModifierParagraph } from "./modifier-data";
+import {
+  FRIEND_QUESTIONS_V2,
+  FRIEND_QUESTIONS_V2_TOTAL as TOTAL_FROM_DATA,
+} from "./friend-questions-v2";
 
 // =====================================================================
-// 質問マップ (設計書 Appendix A の最終確定版を反映)
-// 各ファセット 3 問、計 30 問、逆転項目 10 個
+// 質問マップ (B-1 の質問データから派生生成)
+// 各ファセット 3 問、計 30 問、逆転項目 11 個 (Appendix A 非対称配分)
 // =====================================================================
 type QuestionMeta = {
   facetId: FacetId;
   reversed: boolean;
 };
 
-export const FRIEND_QUESTIONS_V2_MAP: Record<number, QuestionMeta> = {
-  // ページ 1 (Q1-10)
-  1:  { facetId: "E_assertiveness",   reversed: false }, // +
-  2:  { facetId: "O_adventurousness", reversed: false }, // +
-  3:  { facetId: "C_orderliness",     reversed: false }, // +
-  4:  { facetId: "A_cooperation",     reversed: true  }, // -
-  5:  { facetId: "N_volatility",      reversed: false }, // +
-  6:  { facetId: "A_sympathy",        reversed: false }, // +
-  7:  { facetId: "O_imagination",     reversed: false }, // +
-  8:  { facetId: "E_assertiveness",   reversed: false }, // +
-  9:  { facetId: "C_orderliness",     reversed: true  }, // -
-  10: { facetId: "N_anxiety",         reversed: false }, // +
-  // ページ 2 (Q11-20)
-  11: { facetId: "E_assertiveness",   reversed: true  }, // -
-  12: { facetId: "E_warmth",          reversed: false }, // +
-  13: { facetId: "O_adventurousness", reversed: false }, // +
-  14: { facetId: "C_achievement",     reversed: false }, // +
-  15: { facetId: "O_adventurousness", reversed: true  }, // -
-  16: { facetId: "A_sympathy",        reversed: false }, // +
-  17: { facetId: "O_imagination",     reversed: true  }, // -
-  18: { facetId: "N_volatility",      reversed: true  }, // -
-  19: { facetId: "A_cooperation",     reversed: false }, // +
-  20: { facetId: "E_warmth",          reversed: false }, // +
-  // ページ 3 (Q21-30)
-  21: { facetId: "C_achievement",     reversed: false }, // +
-  22: { facetId: "N_anxiety",         reversed: false }, // +
-  23: { facetId: "N_anxiety",         reversed: true  }, // -
-  24: { facetId: "A_sympathy",        reversed: true  }, // -
-  25: { facetId: "C_orderliness",     reversed: false }, // +
-  26: { facetId: "A_cooperation",     reversed: true  }, // -
-  27: { facetId: "O_imagination",     reversed: false }, // +
-  28: { facetId: "C_achievement",     reversed: true  }, // -
-  29: { facetId: "E_warmth",          reversed: false }, // +
-  30: { facetId: "N_volatility",      reversed: true  }, // -
-};
+export const FRIEND_QUESTIONS_V2_MAP: Record<number, QuestionMeta> =
+  Object.fromEntries(
+    FRIEND_QUESTIONS_V2.map((q) => [
+      q.id,
+      { facetId: q.facetId, reversed: q.reversed },
+    ]),
+  );
 
-export const FRIEND_QUESTIONS_V2_TOTAL = 30;
+export const FRIEND_QUESTIONS_V2_TOTAL = TOTAL_FROM_DATA;
 const REQUIRED_FACETS = 10;
 const QUESTIONS_PER_FACET = 3;
 
