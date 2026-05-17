@@ -1,6 +1,6 @@
 "use client";
 
-// Phase 3-β B-2: 友達評価 30 問 + choice 3 問 + 完成画面 (B-3 stub) の新フロー。
+// Phase 3-β B-2 + B-3: 友達評価 30 問 + choice 3 問 + 完成画面 (B-3 で本実装)。
 // 旧 13 問形式の friend-questions / friend-perception は破壊せず並存。
 // LIFF init はオプショナル: LINE 内で開かれていればプロフィール + id_token を取り、
 // Web ブラウザ経由なら perceiver_name は「友達」固定 + 任意入力で上書き可能。
@@ -20,7 +20,16 @@ import {
   type FriendChoiceQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
-import type { AnswerValue, BigFiveDimension, FacetId } from "@/lib/types";
+import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
+import { DimensionPolarityBar } from "@/components/torisetsu/DimensionPolarityBar";
+import { FacetBarChart } from "@/components/torisetsu/FacetBarChart";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
+import type {
+  AnswerValue,
+  BigFiveDimension,
+  FacetId,
+  TorisetsuTypeId,
+} from "@/lib/types";
 
 // =========================================================================
 // 状態管理 (進行ステート)
@@ -288,7 +297,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 
   // phase === "complete"
   return (
-    <CompleteScreenStub
+    <CompleteScreen
       subjectLabel={subjectLabel}
       perception={perception}
       inviteCode={inviteCode}
@@ -597,9 +606,9 @@ function ErrorScreen({
 }
 
 // =========================================================================
-// Complete 画面 (B-2 段階では stub、B-3 で本実装に置換)
+// Complete 画面 (B-3 本実装)
 // =========================================================================
-function CompleteScreenStub({
+function CompleteScreen({
   subjectLabel,
   perception,
   inviteCode,
@@ -608,38 +617,212 @@ function CompleteScreenStub({
   perception: CompletePerception | null;
   inviteCode: string;
 }) {
+  if (!perception) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
+        <p className="text-sm text-muted">結果の表示で問題が発生しました</p>
+        <Link
+          href="/"
+          className="mt-6 text-xs text-muted underline hover:text-foreground"
+        >
+          トップに戻る
+        </Link>
+      </div>
+    );
+  }
+
+  const typeData = torisetsuTypes[perception.typeId as TorisetsuTypeId];
+  const hasQualitative =
+    perception.qualitativeData &&
+    Object.keys(perception.qualitativeData).length > 0;
+
+  const handleShareToLine = async () => {
+    // LIFF 内なら shareTargetPicker、それ以外なら現 URL をコピー
+    try {
+      const liff = (await import("@line/liff")).default;
+      if (liff.isInClient && liff.isInClient()) {
+        const shareText = [
+          "🎴 ワタシのトリセツ",
+          "",
+          "あなたから見た私のトリセツを教えて。",
+          "30 問・約 4 分で完成するよ。",
+          "",
+          window.location.href,
+        ].join("\n");
+        await liff.shareTargetPicker([{ type: "text", text: shareText }]);
+        return;
+      }
+    } catch {
+      // LIFF 不可 → クリップボードコピー
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      alert("招待 URL をコピーしました");
+    } catch {
+      alert("コピーに失敗しました");
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
-      <p className="text-2xl font-extrabold mb-4">
-        ✨ 送信ありがとう！
-      </p>
-      {perception ? (
-        <div className="w-full bg-card-bg border border-card-border rounded-2xl p-5 mb-6">
-          <p className="text-xs text-muted text-center mb-2">
-            あなたから見た{subjectLabel}は
+    <div className="flex flex-col flex-1">
+      <main className="flex flex-col items-center px-5 py-8 max-w-lg mx-auto w-full">
+        {/* ヘッダー */}
+        <div className="text-center mb-5 animate-fade-in-up">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+            COMPLETED
           </p>
-          <p className="text-2xl font-extrabold text-center text-primary mb-1">
-            {perception.fullCode}
-          </p>
-          <p className="text-sm text-center text-muted">
-            {perception.modifierLabel}
-          </p>
+          <h1 className="text-2xl font-extrabold leading-tight">
+            ✨ あなたから見た
+            <br />
+            {subjectLabel}は...
+          </h1>
         </div>
-      ) : (
-        <p className="text-sm text-muted mb-6">結果の表示で問題が発生しました</p>
-      )}
-      <p className="text-sm text-center text-muted mb-2">
-        💌 {subjectLabel}に、あなたの眼が届きました
-      </p>
-      <p className="text-[11px] text-muted text-center mb-6">
-        (詳細な結果画面は B-3 で実装予定)
-      </p>
-      <Link
-        href={`/diagnosis?source=${inviteCode}`}
-        className="rounded-full bg-primary-gradient px-8 py-4 text-sm font-bold text-white shadow-md"
-      >
-        自分のトリセツも作ってみる →
-      </Link>
+
+        {/* TorisetsuCard + タイプ情報 */}
+        <section className="w-full flex flex-col items-center mb-6 animate-fade-in-up stagger-2">
+          <TorisetsuCard
+            fullCode={perception.fullCode}
+            size="md"
+            alt={`${typeData?.name ?? perception.typeId} - ${perception.modifierLabel}`}
+            priority
+          />
+          {typeData && (
+            <h2
+              className="text-xl font-extrabold mt-4 text-center"
+              style={{ color: typeData.color }}
+            >
+              {typeData.name}
+            </h2>
+          )}
+          <div
+            className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-wider"
+            style={{
+              borderColor: (typeData?.color ?? "#888") + "60",
+              color: typeData?.color ?? "#888",
+              backgroundColor: (typeData?.color ?? "#888") + "10",
+            }}
+          >
+            <span>{perception.fullCode}</span>
+            <span className="opacity-40">·</span>
+            <span>{perception.modifierLabel}</span>
+          </div>
+        </section>
+
+        {/* 5 軸プロファイル */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-4">
+            あなたから見た 5 軸プロファイル
+          </p>
+          <div className="flex flex-col gap-5">
+            {(["E", "A", "O", "C", "N"] as BigFiveDimension[]).map((dim) => (
+              <DimensionPolarityBar
+                key={dim}
+                dimension={dim}
+                score={perception.scores[dim]}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* 10 ファセット */}
+        <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-4">
+            10 ファセット詳細
+          </p>
+          <FacetBarChart facetScores={perception.facetScores} variant="self" />
+        </section>
+
+        {/* モディファイア文章 */}
+        <section
+          className="w-full rounded-2xl p-5 sm:p-6 border mb-5"
+          style={
+            typeData
+              ? {
+                  borderColor: `${typeData.color}40`,
+                  background: `linear-gradient(to bottom, #ffffff, ${typeData.color}10)`,
+                }
+              : undefined
+          }
+        >
+          <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
+            あなたから見た{subjectLabel}
+          </p>
+          <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+            {perception.modifierParagraph}
+          </p>
+        </section>
+
+        {/* おまけの回答 */}
+        {hasQualitative && perception.qualitativeData && (
+          <section className="w-full rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+            <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
+              おまけで答えてくれた
+            </p>
+            <ul className="flex flex-col gap-2 text-sm">
+              {perception.qualitativeData.favorite_point && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-muted text-xs">好きなところ</span>
+                  <span className="font-bold text-right">
+                    {perception.qualitativeData.favorite_point}
+                  </span>
+                </li>
+              )}
+              {perception.qualitativeData.animal && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-muted text-xs">動物に例えると</span>
+                  <span className="font-bold text-right">
+                    {perception.qualitativeData.animal}
+                  </span>
+                </li>
+              )}
+              {perception.qualitativeData.impression_scene && (
+                <li className="flex justify-between gap-3">
+                  <span className="text-muted text-xs">印象的なシーン</span>
+                  <span className="font-bold text-right">
+                    {perception.qualitativeData.impression_scene}
+                  </span>
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
+
+        {/* 「届きました」メッセージ */}
+        <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 text-center">
+          <p className="text-base font-bold mb-1">
+            💌 {subjectLabel}に、あなたの眼が届きました
+          </p>
+          <p className="text-[11px] text-muted leading-relaxed">
+            {subjectLabel}のトリセツ図鑑に、
+            <br />
+            「あなたから見た{subjectLabel}」が追加されます
+          </p>
+        </section>
+
+        {/* CTA × 2 */}
+        <div className="w-full flex flex-col gap-3 mb-6">
+          <Link
+            href={`/diagnosis?source=${inviteCode}`}
+            className="w-full rounded-full bg-primary-gradient px-6 py-4 text-center text-base font-bold text-white shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            💡 自分のトリセツも作ってみる
+          </Link>
+          <button
+            type="button"
+            onClick={handleShareToLine}
+            className="w-full rounded-full border-2 border-primary px-6 py-4 text-base font-bold text-primary transition-all hover:bg-label-bg active:scale-[0.98]"
+          >
+            📤 LINE でシェア
+          </button>
+        </div>
+
+        <Link
+          href="/"
+          className="text-xs text-muted/70 underline hover:text-foreground transition-colors"
+        >
+          トップに戻る
+        </Link>
+      </main>
     </div>
   );
 }
