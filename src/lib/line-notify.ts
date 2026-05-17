@@ -7,6 +7,12 @@ import {
   buildN2Flex,
   buildN3Flex,
 } from "./line-flex";
+import {
+  buildFullCode as buildFullCodeFromIds,
+  classifyModifier,
+} from "./diagnosis";
+import { torisetsuTypes } from "./torisetsu-data";
+import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 
 const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
@@ -151,6 +157,19 @@ async function sendWithErrorHandling(
   }
 }
 
+// Phase 3-β D-5/D-7: 拡張版 sendWelcomeMessage
+// - users から type_id + scores を SELECT して fullCode/typeName を Flex に注入 (D-5)
+// - source_user_id があれば招待元 (display_name + invite_code) を取得し、inviter として
+//   Flex に渡す → buildWelcomeRegisteredFlex 側で逆向き評価 CTA を組み立てる (D-7)
+// - line_messages_sent に記録
+//
+// 内部派生: scores.fullCode sidecar 優先、なければ classifyModifier + buildFullCode
+//          (Phase 2F 以前の行 / sidecar 未登録のレガシー対応)
+
+type StoredScores = Partial<Record<BigFiveDimension, number>> & {
+  fullCode?: string;
+};
+
 export async function sendWelcomeMessage(
   ownerToken: string,
   lineUserId: string,
@@ -158,12 +177,19 @@ export async function sendWelcomeMessage(
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping welcome");
+    await logLineMessage({
+      lineUserId,
+      messageType: "welcome",
+      messageSubtype: "registered",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
     return { success: false, error: "no_token" };
   }
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("invite_code")
+    .select("id, invite_code, type_id, scores, source_user_id")
     .eq("owner_token", ownerToken)
     .maybeSingle();
 
@@ -176,11 +202,58 @@ export async function sendWelcomeMessage(
     return { success: false, error: "invite_code_not_found" };
   }
 
-  const flex = buildWelcomeRegisteredFlex(data.invite_code as string);
+  // 1) fullCode / typeName 取得 (sidecar 優先、フォールバックでサーバ派生)
+  const typeId = data.type_id as TorisetsuTypeId;
+  const typeName = torisetsuTypes[typeId]?.name ?? typeId;
+  const stored = (data.scores ?? {}) as StoredScores;
+  let fullCode: string | undefined = stored.fullCode;
+  if (!fullCode) {
+    const dimScores: Record<BigFiveDimension, number> = {
+      E: typeof stored.E === "number" ? stored.E : 5,
+      A: typeof stored.A === "number" ? stored.A : 5,
+      O: typeof stored.O === "number" ? stored.O : 5,
+      C: typeof stored.C === "number" ? stored.C : 5,
+      N: typeof stored.N === "number" ? stored.N : 5,
+    };
+    const { cModifier, nModifier } = classifyModifier(dimScores);
+    fullCode = buildFullCodeFromIds(typeId, cModifier, nModifier);
+  }
+
+  // 2) 招待経由判定: source_user_id があれば招待元情報を取得 (D-7)
+  let inviter: { name: string; inviteCode: string } | undefined;
+  let logSubtype = "registered";
+  if (data.source_user_id) {
+    const { data: inviterRow, error: inviterErr } = await supabaseAdmin
+      .from("users")
+      .select("display_name, invite_code")
+      .eq("id", data.source_user_id as string)
+      .maybeSingle();
+    if (inviterErr) {
+      console.error("inviter lookup error:", inviterErr);
+      // 続行 (招待元不明として通常 Welcome に fallback)
+    } else if (inviterRow?.invite_code) {
+      inviter = {
+        name:
+          (inviterRow.display_name as string | null)?.trim() || "招待してくれた人",
+        inviteCode: inviterRow.invite_code as string,
+      };
+      logSubtype = "invited";
+    }
+  }
+
+  const flex = buildWelcomeRegisteredFlex(data.invite_code as string, {
+    fullCode,
+    typeName,
+    inviter,
+  });
   const result = await sendWithErrorHandling(
     client,
     { to: lineUserId, messages: [flex] },
-    { type: "welcome", recipientId: lineUserId, metadata: { ownerToken } },
+    {
+      type: "welcome",
+      recipientId: lineUserId,
+      metadata: { ownerToken, hasInviter: !!inviter },
+    },
   );
 
   if (result.success) {
@@ -193,6 +266,16 @@ export async function sendWelcomeMessage(
       // welcome 自体は成功なので success: true のまま返す
     }
   }
+
+  await logLineMessage({
+    lineUserId,
+    userId: (data.id as string | null) ?? null,
+    messageType: "welcome",
+    messageSubtype: logSubtype,
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
 
   return result;
 }

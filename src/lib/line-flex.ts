@@ -76,17 +76,25 @@ function progressDotsContent(filled: 1 | 2 | 3): messagingApi.FlexText {
 
 // W (紐付け済) - 診断完了済み本人への welcome
 // Phase 3-β B-5: 新コンセプト「他者の眼でコレクションを増やす」を導入。
+// Phase 3-β D-5/D-7: options.inviter (招待元) 渡しで「招待経由オンボーディング」対応。
 // 旧呼び出し互換: 第 1 引数 inviteCode は必須 (share LIFF URL 生成用)。
-// 第 2 引数 options (任意) で fullCode / typeName を渡すと文中に挿入。
-//   提供あり: 「あなたのトリセツは『EAO-C-N (お祭り系)』。」
-//   提供なし: 「ようこそ、ワタシのトリセツへ」(汎用文)
-// D-5 で line-notify 側を更新して options 渡しに切り替える予定。
+//
+// options:
+//   - fullCode / typeName: 提供時「あなたのトリセツは『EAO-C-N (お祭り系)』」を挿入
+//   - inviter: 提供時「{name}さんの招待がきっかけ。ありがとう！」+
+//              footer に「{name}さんへ評価を返す」ボタンを追加 (primary を逆向き評価
+//              に差し替え、マイ図鑑は secondary、友達招待は省略)
 export function buildWelcomeRegisteredFlex(
   inviteCode: string,
-  options?: { fullCode?: string; typeName?: string },
+  options?: {
+    fullCode?: string;
+    typeName?: string;
+    inviter?: { name: string; inviteCode: string };
+  },
 ): messagingApi.Message {
   const shareUrl = getShareLiffUrl(inviteCode);
   const zukanUrl = getZukanMineLiffUrl();
+  const inviter = options?.inviter;
 
   const hasIdentity = !!(options?.fullCode || options?.typeName);
   const identityLine = hasIdentity
@@ -104,6 +112,16 @@ export function buildWelcomeRegisteredFlex(
       wrap: true,
     },
   ];
+  if (inviter) {
+    bodyContents.push({
+      type: "text",
+      text: `${inviter.name}さんの招待がきっかけでしたね。ありがとう！`,
+      size: "sm",
+      color: TEXT_MUTED,
+      wrap: true,
+      margin: "md",
+    });
+  }
   if (identityLine) {
     bodyContents.push({
       type: "text",
@@ -114,28 +132,91 @@ export function buildWelcomeRegisteredFlex(
       margin: "md",
     });
   }
-  bodyContents.push(
-    {
+  if (inviter) {
+    bodyContents.push({
       type: "text",
-      text: "ここから、あなたを知る旅が始まります。",
+      text: `${inviter.name}さんへ、あなたから見た${inviter.name}さんのトリセツを返してあげる？`,
       size: "sm",
       color: TEXT_MUTED,
       wrap: true,
       margin: "md",
-    },
-    {
-      type: "text",
-      text: "友達に「あなたから見た私のトリセツが欲しい」と送って、他者の眼でコレクションを増やしていきましょう。",
-      size: "sm",
-      color: TEXT_MUTED,
-      wrap: true,
-      margin: "md",
-    },
-  );
+    });
+  } else {
+    bodyContents.push(
+      {
+        type: "text",
+        text: "ここから、あなたを知る旅が始まります。",
+        size: "sm",
+        color: TEXT_MUTED,
+        wrap: true,
+        margin: "md",
+      },
+      {
+        type: "text",
+        text: "友達に「あなたから見た私のトリセツが欲しい」と送って、他者の眼でコレクションを増やしていきましょう。",
+        size: "sm",
+        color: TEXT_MUTED,
+        wrap: true,
+        margin: "md",
+      },
+    );
+  }
+
+  // footer 構築: inviter 提供時は逆向き評価 CTA を primary、マイ図鑑 secondary
+  //              不在時は マイ図鑑 primary + 友達招待 secondary (既存)
+  const footerContents: messagingApi.FlexComponent[] = inviter
+    ? [
+        {
+          type: "button",
+          style: "primary",
+          color: PINK,
+          height: "md",
+          action: {
+            type: "uri",
+            label: `${inviter.name}さんへ評価を返す`,
+            uri: `${PUBLIC_BASE_URL}/friend/${encodeURIComponent(inviter.inviteCode)}`,
+          },
+        },
+        {
+          type: "button",
+          style: "secondary",
+          height: "md",
+          action: {
+            type: "uri",
+            label: "マイ図鑑を見る",
+            uri: zukanUrl,
+          },
+        },
+      ]
+    : [
+        {
+          type: "button",
+          style: "primary",
+          color: PINK,
+          height: "md",
+          action: {
+            type: "uri",
+            label: "マイ図鑑を見る",
+            uri: zukanUrl,
+          },
+        },
+        {
+          type: "button",
+          style: "secondary",
+          height: "md",
+          action: {
+            type: "uri",
+            label: "友達を招待する",
+            uri: shareUrl,
+          },
+        },
+      ];
 
   return {
     type: "flex",
-    altText: "ようこそ、ワタシのトリセツへ🐧 他者の眼でコレクションを集めよう",
+    altText: inviter
+      ? `${inviter.name}さんの招待ありがとう🐧 ようこそ、ワタシのトリセツへ`
+      : "ようこそ、ワタシのトリセツへ🐧 他者の眼でコレクションを集めよう",
     contents: {
       type: "bubble",
       hero: {
@@ -156,29 +237,7 @@ export function buildWelcomeRegisteredFlex(
         type: "box",
         layout: "vertical",
         spacing: "sm",
-        contents: [
-          {
-            type: "button",
-            style: "primary",
-            color: PINK,
-            height: "md",
-            action: {
-              type: "uri",
-              label: "マイ図鑑を見る",
-              uri: zukanUrl,
-            },
-          },
-          {
-            type: "button",
-            style: "secondary",
-            height: "md",
-            action: {
-              type: "uri",
-              label: "友達を招待する",
-              uri: shareUrl,
-            },
-          },
-        ],
+        contents: footerContents,
       },
     },
   };
