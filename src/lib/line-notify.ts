@@ -2,6 +2,7 @@ import { messagingApi } from "@line/bot-sdk";
 import { supabaseAdmin } from "./supabase-server";
 import {
   buildDiagnosisCompleteFlex,
+  buildFriendPerceptionReceivedFlex,
   buildWelcomeRegisteredFlex,
   buildWelcomeUnregisteredFlex,
   buildN1Flex,
@@ -361,6 +362,67 @@ export async function sendDiagnosisCompleteMessage(args: {
     lineUserId: args.lineUserId,
     userId: args.userId ?? null,
     messageType: "diagnosis_complete",
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// Phase 3-β D-8: 友達評価到着通知 (friend_perceptions INSERT 後に owner へ発火)
+//   呼び出し側 (/api/friend-answer/v2) で:
+//     - notification_preferences.enable_friend_perception !== false 確認
+//     - friend_perceptions.notified_at IS NULL 確認 (重複防止)
+//   を済ませてから本関数を呼ぶ想定。
+//   本関数は通知送信 + line_messages_sent 記録のみで、notified_at の UPDATE は
+//   呼び出し側で行う (送信成功時のみマーク)。
+export async function sendFriendPerceptionReceivedMessage(args: {
+  lineUserId: string;
+  ownerUserId?: string | null;
+  perceiverName: string;
+  perceivedFullCode: string;
+  perceivedTypeName: string;
+  perceivedModifierLabel: string;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn(
+      "LINE_CHANNEL_ACCESS_TOKEN not set; skipping friend_perception_received",
+    );
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.ownerUserId ?? null,
+      messageType: "friend_perception_received",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const flex = buildFriendPerceptionReceivedFlex({
+    perceiverName: args.perceiverName,
+    perceivedFullCode: args.perceivedFullCode,
+    perceivedTypeName: args.perceivedTypeName,
+    perceivedModifierLabel: args.perceivedModifierLabel,
+  });
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: {
+        kind: "friend_perception_received",
+        perceiver: args.perceiverName,
+        perceivedFullCode: args.perceivedFullCode,
+      },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.ownerUserId ?? null,
+    messageType: "friend_perception_received",
     flexContent: flex,
     sendResult: resultToLogStatus(result),
     errorDetail: result.error ?? null,

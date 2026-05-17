@@ -17,7 +17,7 @@
 //   6. perception を返却 (B-3 完成画面で表示)
 //   7. D-8 通知発火は枠のみ (Phase 4 で本実装)
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { verifyBearer } from "@/lib/liff-verify";
@@ -27,7 +27,9 @@ import {
 } from "@/lib/friend-perception-v2";
 import { writeFriendPerception } from "@/lib/friend-perception-write";
 import { FRIEND_QUESTIONS_V2_TOTAL } from "@/lib/friend-questions-v2";
-import type { AnswerValue } from "@/lib/types";
+import { sendFriendPerceptionReceivedMessage } from "@/lib/line-notify";
+import { torisetsuTypes } from "@/lib/torisetsu-data";
+import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -164,11 +166,93 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // TODO: D-8 で実装 — owner.line_user_id への通知発火 (notified_at 更新含む)
-  //   if (owner_line_user_id && notification_preferences.enable_friend_perception !== false) {
-  //     await sendFriendPerceptionReceivedMessage(...);
-  //     await update friend_perceptions.notified_at;
-  //   }
+  // Phase 3-β D-8: owner への友達評価到着通知 (fire-and-forget)
+  //   - owner.users 行から line_user_id を再取得 (owner.id しか手元にないため)
+  //   - notification_preferences.enable_friend_perception !== false を確認
+  //   - friend_perceptions.notified_at IS NULL を確認 (今回 insert 直後なので true)
+  //   - 通知成功時に notified_at = NOW() で UPDATE
+  //   - レスポンスはこの非同期処理を待たない (after() で response 送信後に実行)
+  const perceptionId = writeResult.id;
+  const perceiverDisplayName = perceiverName;
+  const perceivedFullCode = perception.fullCode;
+  const perceivedTypeId = perception.typeId as TorisetsuTypeId;
+  const perceivedTypeName =
+    torisetsuTypes[perceivedTypeId]?.name ?? perceivedTypeId;
+  const perceivedModifierLabel = perception.modifierLabel;
+  const ownerUserId = owner.id as string;
+
+  after(async () => {
+    try {
+      // 1. owner の line_user_id を取得
+      const { data: ownerRow, error: ownerLookupErr } = await supabaseAdmin
+        .from("users")
+        .select("line_user_id")
+        .eq("id", ownerUserId)
+        .maybeSingle();
+      if (ownerLookupErr) {
+        console.error(
+          "[friend-answer/v2] owner lookup error:",
+          ownerLookupErr.message,
+        );
+        return;
+      }
+      const ownerLineUserId = (ownerRow?.line_user_id as string | null) ?? null;
+      if (!ownerLineUserId) {
+        // LINE 未連携 → 何もしない
+        return;
+      }
+
+      // 2. notification_preferences 確認 (行なし or true なら送信、false ならスキップ)
+      const { data: prefsRow } = await supabaseAdmin
+        .from("notification_preferences")
+        .select("enable_friend_perception")
+        .eq("line_user_id", ownerLineUserId)
+        .maybeSingle();
+      if (prefsRow && prefsRow.enable_friend_perception === false) {
+        console.log(
+          "[friend-answer/v2] notification disabled, skipping for",
+          ownerLineUserId.slice(0, 8),
+        );
+        return;
+      }
+
+      // 3. notified_at 重複防止 (insert 直後は NULL のはずだが、race 防止)
+      const { data: pRow } = await supabaseAdmin
+        .from("friend_perceptions")
+        .select("notified_at")
+        .eq("id", perceptionId)
+        .maybeSingle();
+      if (pRow?.notified_at) {
+        return; // 既に他のリクエストが通知済
+      }
+
+      // 4. 通知発火
+      const result = await sendFriendPerceptionReceivedMessage({
+        lineUserId: ownerLineUserId,
+        ownerUserId,
+        perceiverName: perceiverDisplayName,
+        perceivedFullCode,
+        perceivedTypeName,
+        perceivedModifierLabel,
+      });
+
+      // 5. 成功時のみ notified_at 更新
+      if (result.success) {
+        const { error: updateErr } = await supabaseAdmin
+          .from("friend_perceptions")
+          .update({ notified_at: new Date().toISOString() })
+          .eq("id", perceptionId);
+        if (updateErr) {
+          console.error(
+            "[friend-answer/v2] notified_at update error:",
+            updateErr.message,
+          );
+        }
+      }
+    } catch (err) {
+      console.error("[friend-answer/v2] D-8 notification error:", err);
+    }
+  });
 
   return NextResponse.json({
     ok: true,
