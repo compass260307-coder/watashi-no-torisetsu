@@ -9,7 +9,7 @@ import {
 } from "@/lib/line-notify";
 import {
   buildIntegratedComingSoonFlex,
-  buildSettingsComingSoonFlex,
+  buildSettingsLinkFlex,
 } from "@/lib/line-flex";
 
 export const runtime = "nodejs";
@@ -282,7 +282,10 @@ async function handleIntegratedComingSoon(replyToken: string): Promise<void> {
 }
 
 async function handleOpenSettings(replyToken: string): Promise<void> {
-  await replyToLine(replyToken, [buildSettingsComingSoonFlex()], {
+  // Phase 3-β リリース 3 (D-10+11+12): /settings LIFF への案内 Flex に置換。
+  // リッチメニュー画像差替前は「⚙️ 設定」postback 経由でこの案内が届く。
+  // 画像差替後はリッチメニュー JSON 側で直接 URI ボタン化することも可能。
+  await replyToLine(replyToken, [buildSettingsLinkFlex()], {
     kind: "open_settings",
   });
 }

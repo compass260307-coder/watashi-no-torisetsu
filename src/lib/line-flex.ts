@@ -527,6 +527,8 @@ export function buildIntegratedComingSoonFlex(): messagingApi.Message {
 }
 
 // D-1: 「⚙️ 設定」リッチメニュータップ時 (リリース 3 まで準備中)
+// Phase 3-β リリース 3 で本物の /settings LIFF (buildSettingsLinkFlex) に置き換え。
+// 旧 builder は webhook 側で参照しなくなったが、フォールバック用に保持。
 export function buildSettingsComingSoonFlex(): messagingApi.Message {
   return {
     type: "flex",
@@ -552,6 +554,61 @@ export function buildSettingsComingSoonFlex(): messagingApi.Message {
             color: TEXT_MUTED,
             wrap: true,
             margin: "md",
+          },
+        ],
+      },
+    },
+  };
+}
+
+// Phase 3-β リリース 3 (D-10+11+12): 「⚙️ 設定」案内 Flex (LIFF 経由 /settings へ)
+// LIFF Endpoint URL は /torisetsu/redirect、?dest=settings 分岐で /settings に遷移。
+export function buildSettingsLinkFlex(): messagingApi.Message {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+  const uri = liffId
+    ? `https://liff.line.me/${liffId}?dest=settings`
+    : `${PUBLIC_BASE_URL}/settings`;
+  return {
+    type: "flex",
+    altText: "⚙️ 設定を開く",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "⚙️ 設定",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "通知の ON / OFF、データ削除、ヘルプの閲覧ができます。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "設定を開く",
+              uri,
+            },
           },
         ],
       },
