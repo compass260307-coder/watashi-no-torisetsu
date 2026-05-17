@@ -188,13 +188,59 @@ export async function GET(request: NextRequest) {
     users[0]?.display_name ??
     null;
 
+  // Phase 3-β リリース 3 C-4: 統合トリセツ実データを取得
+  // line_user_id 経由で同 LINE userId に紐付く全 integrated_trisetsu 行を新しい順で。
+  // 上限 10 件、total_count で件数表示可能に。
+  let integrated: Array<{
+    id: string;
+    title: string;
+    summary: string;
+    generatedAt: string;
+    perceptionCount: number;
+    includeSelf: boolean;
+  }> = [];
+  let integratedTotalCount = 0;
+
+  {
+    const { count: totalCount } = await supabaseAdmin
+      .from("integrated_trisetsu")
+      .select("id", { count: "exact", head: true })
+      .eq("line_user_id", lineUserId);
+    integratedTotalCount = totalCount ?? 0;
+  }
+
+  if (integratedTotalCount > 0) {
+    const { data: integratedRows, error: integratedErr } = await supabaseAdmin
+      .from("integrated_trisetsu")
+      .select(
+        "id, generated_title, generated_summary, generated_at, perception_ids, include_self",
+      )
+      .eq("line_user_id", lineUserId)
+      .order("generated_at", { ascending: false })
+      .limit(10);
+    if (integratedErr) {
+      console.error("[zukan-mine] integrated lookup error:", integratedErr);
+    } else {
+      integrated = (integratedRows ?? []).map((r) => ({
+        id: r.id as string,
+        title: (r.generated_title as string | null) ?? "真のトリセツ",
+        summary: (r.generated_summary as string | null) ?? "",
+        generatedAt: r.generated_at as string,
+        perceptionCount: Array.isArray(r.perception_ids)
+          ? (r.perception_ids as unknown[]).length
+          : 0,
+        includeSelf: r.include_self !== false,
+      }));
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     ownerName,
     current,
     past,
     perceptions,
-    // integrated は リリース 3 まで空配列
-    integrated: [],
+    integrated,
+    integratedTotalCount,
   });
 }

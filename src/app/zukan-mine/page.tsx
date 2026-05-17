@@ -42,13 +42,23 @@ type PerceptionCard = {
   createdAt: string;
 };
 
+type IntegratedCard = {
+  id: string;
+  title: string;
+  summary: string;
+  generatedAt: string;
+  perceptionCount: number;
+  includeSelf: boolean;
+};
+
 type ZukanMineResponse = {
   ok: true;
   ownerName: string | null;
   current: DiagnosisCard | null;
   past: DiagnosisCard[];
   perceptions: PerceptionCard[];
-  integrated: unknown[];
+  integrated: IntegratedCard[];
+  integratedTotalCount: number;
 };
 
 type Status =
@@ -285,26 +295,67 @@ export default function ZukanMinePage() {
           )}
         </section>
 
-        {/* 🟣 統合トリセツ (リリース 3 で公開) */}
+        {/* 🟣 統合トリセツ (Phase 3-β リリース 3 C-4: 本物データ表示) */}
         <section className="w-full mb-6 animate-fade-in-up stagger-3">
-          <SectionHeader label="🟣 統合トリセツ" count={0} />
-          <div className="rounded-2xl border-2 border-dashed border-purple-200 bg-purple-50/30 p-6 text-center">
-            <p className="text-3xl mb-2">🔒</p>
-            <p className="text-sm font-bold mb-2">リリース 3 で利用可能</p>
-            <p className="text-xs text-muted leading-relaxed mb-4">
-              友達 1 人から評価をもらうと
-              <br />
-              AI が「真のトリセツ」を
-              <br />
-              生成できるようになるよ
-            </p>
-            <Link
-              href="/share"
-              className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
-            >
-              💌 友達を招待する
-            </Link>
-          </div>
+          <SectionHeader
+            label="🟣 統合トリセツ"
+            count={data.integratedTotalCount}
+          />
+          {data.integratedTotalCount === 0 ? (
+            <div className="rounded-2xl border-2 border-dashed border-purple-200 bg-purple-50/30 p-6 text-center">
+              <p className="text-3xl mb-2">✨</p>
+              <p className="text-sm font-bold mb-2">
+                初めての統合トリセツを作る
+              </p>
+              <p className="text-xs text-muted leading-relaxed mb-4">
+                友達からの評価 + 自分の評価を
+                <br />
+                AI が統合して「真のトリセツ」を生成します
+              </p>
+              <Link
+                href="/integrated/new"
+                className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
+              >
+                🟣 統合トリセツを作る
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {data.integrated.map((it) => (
+                <Link
+                  key={it.id}
+                  href={`/integrated/${it.id}`}
+                  className="block rounded-2xl border border-card-border bg-card-bg p-4 transition-all hover:bg-label-bg active:scale-[0.99]"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="text-sm font-bold text-foreground flex-1 min-w-0 truncate">
+                      ✨ {it.title}
+                    </p>
+                    <span className="text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-0.5 shrink-0">
+                      {it.includeSelf
+                        ? it.perceptionCount + 1
+                        : it.perceptionCount}{" "}
+                      素材
+                    </span>
+                  </div>
+                  {it.summary && (
+                    <p className="text-xs text-muted leading-relaxed line-clamp-2 mb-2">
+                      {it.summary}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted">
+                    {formatDate(it.generatedAt)}
+                  </p>
+                </Link>
+              ))}
+              <Link
+                href="/integrated/new"
+                className="mt-2 block w-full rounded-full bg-primary-gradient text-white px-6 py-3 text-center text-sm font-bold shadow-md"
+              >
+                + 新しい統合トリセツを作る
+              </Link>
+            </div>
+          )}
         </section>
 
         <Link
