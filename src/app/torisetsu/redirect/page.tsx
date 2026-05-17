@@ -86,6 +86,20 @@ function RedirectContent() {
           return;
         }
 
+        // Phase 3-β D-10/D-11/D-12: dest=settings → /settings (LIFF 内で id_token 認可)
+        if (dest === "settings") {
+          setStatus("redirecting");
+          window.location.replace("/settings");
+          return;
+        }
+
+        // Phase 3-β D-1/C-3 連動: dest=integrated-new → /integrated/new
+        if (dest === "integrated-new") {
+          setStatus("redirecting");
+          window.location.replace("/integrated/new");
+          return;
+        }
+
         if (data.ownerToken) {
           const target =
             dest === "zukan"
