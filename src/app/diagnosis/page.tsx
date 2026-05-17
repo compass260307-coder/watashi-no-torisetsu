@@ -29,12 +29,16 @@ function DiagnosisContent() {
   const searchParams = useSearchParams();
   const campaign = searchParams.get("campaign");
   const source = searchParams.get("source");
+  // Phase 3-β D-4: ?source=line (LINE リッチメニュー経由) + 過去診断あり → 再診断モーダル表示
+  const isFromLine = source === "line";
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed (0..4)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  // D-4: 再診断確認モーダル
+  const [showRediagnoseModal, setShowRediagnoseModal] = useState(false);
 
   const trackedStart = useRef(false);
 
@@ -73,8 +77,17 @@ function DiagnosisContent() {
     } catch {
       // 破損データは無視
     }
+    // Phase 3-β D-4: ?source=line + 過去診断結果 (torisetsu_result) があれば再診断確認モーダル表示
+    if (isFromLine) {
+      try {
+        const previousResult = localStorage.getItem("torisetsu_result");
+        if (previousResult) setShowRediagnoseModal(true);
+      } catch {
+        // localStorage 不可なら表示しない (新規扱い)
+      }
+    }
     setHydrated(true);
-  }, []);
+  }, [isFromLine]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // 回答変更時に自動保存
@@ -216,8 +229,28 @@ function DiagnosisContent() {
     return <DiagnosisAnalyzingLoader />;
   }
 
+  // Phase 3-β D-4: 再診断確認モーダル
+  const closeRediagnoseModal = () => setShowRediagnoseModal(false);
+  const cancelRediagnose = () => {
+    // キャンセル時はマイ図鑑へ戻る (LIFF redirect 経由)
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+    if (liffId) {
+      window.location.replace(
+        `https://liff.line.me/${liffId}?dest=zukan-mine`,
+      );
+    } else {
+      router.push("/");
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-screen pb-28">
+      {showRediagnoseModal && (
+        <RediagnoseConfirmModal
+          onConfirm={closeRediagnoseModal}
+          onCancel={cancelRediagnose}
+        />
+      )}
       <ProgressBar
         currentQuestion={answeredCount}
         totalQuestions={TOTAL_QUESTIONS}
@@ -292,6 +325,60 @@ function DiagnosisContent() {
               {submitting ? "診断中..." : "結果を見る"}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// Phase 3-β D-4: 再診断確認モーダル
+// LINE 経由 (?source=line) + 過去診断結果 (localStorage.torisetsu_result) 存在時に
+// 診断 50 問の前にだけ表示。OK で診断スタート、キャンセルでマイ図鑑に戻る。
+// =========================================================================
+function RediagnoseConfirmModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rediagnose-title"
+    >
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
+        <h2
+          id="rediagnose-title"
+          className="text-lg font-extrabold text-center mb-3"
+        >
+          🔄 再診断について
+        </h2>
+        <p className="text-sm text-foreground leading-relaxed mb-2">
+          過去の診断とトリセツ図鑑は
+          <span className="font-bold text-primary">全部残ります</span>。
+        </p>
+        <p className="text-sm text-muted leading-relaxed mb-6">
+          新しいあなたの発見、楽しみですね 🐧
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="w-full rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98]"
+          >
+            OK、新しく診断する
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-xs text-muted hover:text-foreground underline transition-colors"
+          >
+            キャンセル (マイ図鑑に戻る)
+          </button>
         </div>
       </div>
     </div>
