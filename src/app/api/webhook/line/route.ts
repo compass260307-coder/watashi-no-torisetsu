@@ -7,6 +7,10 @@ import {
   sendGenericWelcome,
   replyToLine,
 } from "@/lib/line-notify";
+import {
+  buildIntegratedComingSoonFlex,
+  buildSettingsComingSoonFlex,
+} from "@/lib/line-flex";
 
 export const runtime = "nodejs";
 
@@ -270,6 +274,19 @@ async function handleOptin(
   );
 }
 
+// Phase 3-β D-1: リッチメニュー 「🟣 統合トリセツ」「⚙️ 設定」postback への応答
+async function handleIntegratedComingSoon(replyToken: string): Promise<void> {
+  await replyToLine(replyToken, [buildIntegratedComingSoonFlex()], {
+    kind: "integrated_coming_soon",
+  });
+}
+
+async function handleOpenSettings(replyToken: string): Promise<void> {
+  await replyToLine(replyToken, [buildSettingsComingSoonFlex()], {
+    kind: "open_settings",
+  });
+}
+
 async function handlePostbackEvent(
   replyToken: string,
   lineUserId: string | undefined,
@@ -290,6 +307,16 @@ async function handlePostbackEvent(
       return;
     }
     await handleOptin(replyToken, lineUserId, feature);
+    return;
+  }
+
+  // Phase 3-β D-1: リッチメニュー新ボタン
+  if (action === "integrated_coming_soon") {
+    await handleIntegratedComingSoon(replyToken);
+    return;
+  }
+  if (action === "open_settings") {
+    await handleOpenSettings(replyToken);
     return;
   }
 
