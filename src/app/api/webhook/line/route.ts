@@ -38,6 +38,34 @@ type LineEvent = {
 };
 
 async function handleFollowEvent(lineUserId: string): Promise<void> {
+  // Phase 3-β A-3 (論点 5 a): follow / 再 follow いずれの場合も
+  // notification_preferences を全 ON で UPSERT する。
+  // - 初回 follow → 新規 INSERT (全 ON)
+  // - 再 follow (unfollow → 再追加) → 既存行が全 OFF になっているため、ここで全 ON に戻す
+  // 失敗しても welcome 送信側を止めない (webhook 200 維持原則)。
+  const nowIso = new Date().toISOString();
+  const { error: prefsError } = await supabaseAdmin
+    .from("notification_preferences")
+    .upsert(
+      {
+        line_user_id: lineUserId,
+        enable_welcome: true,
+        enable_diagnosis_complete: true,
+        enable_friend_perception: true,
+        enable_reminder: true,
+        enable_broadcast: true,
+        updated_at: nowIso,
+      },
+      { onConflict: "line_user_id" },
+    );
+  if (prefsError) {
+    console.error(
+      "[webhook follow] notification_preferences upsert error:",
+      prefsError,
+    );
+    // 続行 (welcome 送信は別経路で価値があるため止めない)
+  }
+
   // line_users で紐付けレコードを検索
   const { data, error } = await supabaseAdmin
     .from("line_users")
@@ -57,7 +85,9 @@ async function handleFollowEvent(lineUserId: string): Promise<void> {
   }
 
   if (data.welcome_sent_at) {
-    // 既に送信済み (再 follow 等) → 重複送信スキップ
+    // 既に送信済み (純粋な再起動 push / 別端末再追加等) → 重複送信スキップ
+    // 注: 後述 handleUnfollowEvent が unfollow 時に welcome_sent_at を NULL に戻すため、
+    //     「unfollow → 再 follow」フローでは welcome は **再送される** (リセット体験)。
     console.log(
       "[webhook follow] welcome already sent, skipping for",
       lineUserId.slice(0, 8),
@@ -78,6 +108,52 @@ async function handleFollowEvent(lineUserId: string): Promise<void> {
       result.error,
     );
   }
+}
+
+// Phase 3-β A-3 (論点 5 a): unfollow 受信時のリセット処理
+// - line_users.welcome_sent_at を NULL に戻し、次の follow で welcome 再送できるようにする
+// - notification_preferences の全カラムを false に UPDATE (= 通知停止)
+//   ※ 行が存在しないユーザーは何もしない (follow を一度も通っていない異常系)
+// - 物理削除はしない (再 follow 時のスムーズな復旧のため)
+async function handleUnfollowEvent(lineUserId: string): Promise<void> {
+  const nowIso = new Date().toISOString();
+
+  // 1. welcome_sent_at リセット
+  const { error: welcomeResetError } = await supabaseAdmin
+    .from("line_users")
+    .update({ welcome_sent_at: null })
+    .eq("line_user_id", lineUserId);
+  if (welcomeResetError) {
+    console.error(
+      "[webhook unfollow] line_users.welcome_sent_at reset error:",
+      welcomeResetError,
+    );
+    // 続行 (片方失敗しても他方を試す)
+  }
+
+  // 2. notification_preferences 全カラム OFF (行があれば)
+  const { error: prefsOffError } = await supabaseAdmin
+    .from("notification_preferences")
+    .update({
+      enable_welcome: false,
+      enable_diagnosis_complete: false,
+      enable_friend_perception: false,
+      enable_reminder: false,
+      enable_broadcast: false,
+      updated_at: nowIso,
+    })
+    .eq("line_user_id", lineUserId);
+  if (prefsOffError) {
+    console.error(
+      "[webhook unfollow] notification_preferences disable error:",
+      prefsOffError,
+    );
+  }
+
+  console.log(
+    "[webhook unfollow] processed for",
+    lineUserId.slice(0, 8),
+  );
 }
 
 function buildComingSoonFlex(
@@ -247,6 +323,12 @@ export async function POST(request: NextRequest) {
         if (userId) {
           await handleFollowEvent(userId);
         }
+      } else if (event.type === "unfollow") {
+        // Phase 3-β A-3: unfollow リセット (welcome_sent_at / notification_preferences)
+        const userId = event.source?.userId;
+        if (userId) {
+          await handleUnfollowEvent(userId);
+        }
       } else if (event.type === "postback") {
         const replyToken = (event as { replyToken?: unknown }).replyToken;
         const postback = (event as { postback?: { data?: unknown } }).postback;
@@ -255,7 +337,7 @@ export async function POST(request: NextRequest) {
           await handlePostbackEvent(replyToken, event.source?.userId, data);
         }
       }
-      // unfollow / message 等は将来必要になったら追加
+      // message / beacon 等は将来必要になったら追加
     } catch (err) {
       console.error("[webhook] event handling error:", err);
     }
