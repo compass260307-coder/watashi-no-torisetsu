@@ -1,7 +1,8 @@
 import crypto from "crypto";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
-import { NextResponse } from "next/server";
+import { verifyBearer } from "@/lib/liff-verify";
 
 // PR-FIX-3 H6: Math.random() ではなく CSPRNG (crypto.randomBytes) を使用
 function generateInviteCode(): string {
@@ -15,6 +16,25 @@ export async function POST(request: Request) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
+  }
+
+  // Phase 3-β A-2: Authorization: Bearer <LIFF id_token> がついていれば
+  // LINE userId を verify して users.line_user_id を埋める。
+  // ヘッダ無し or verify 失敗時は LINE 未連携扱い (= 既存の web 単独診断と同じ動作)。
+  // クライアント側 (LIFF 経由 /diagnosis) が後続フェーズで送るようになる予定。
+  let lineUserId: string | null = null;
+  const hasAuthHeader = !!request.headers.get("authorization");
+  if (hasAuthHeader) {
+    const verified = await verifyBearer(request);
+    if (verified) {
+      lineUserId = verified.sub;
+    } else {
+      // Bearer ヘッダはあるが verify 失敗 → 改ざんや期限切れの可能性。
+      // 診断結果の保存自体は止めない (UX 優先)。LINE 紐付けはしないだけ。
+      console.warn(
+        "[api/diagnosis] LIFF id_token verify failed; falling back to web-only diagnosis",
+      );
+    }
   }
 
   const body = await request.json();
@@ -75,12 +95,32 @@ export async function POST(request: Request) {
       campaign: campaign || null,
       source_user_id: sourceUserId,
       generation,
+      // Phase 3-β A-2: LIFF id_token から検証された LINE userId (未連携時は NULL)
+      line_user_id: lineUserId,
     })
     .select("id, invite_code, owner_token")
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Phase 3-β A-2: LINE 連携済の再診断時、line_users.current_owner_token を最新に更新。
+  // 該当 line_users 行が無いケース (= まだ /api/line-register を通っていない初回診断) は
+  // 何もしない。後続で /line-register が新規 INSERT する流れに任せる。
+  // race condition は last-write-wins で OK (同 lineUserId の同時診断は実運用ほぼ皆無)。
+  if (lineUserId) {
+    const { error: updateError } = await supabaseAdmin
+      .from("line_users")
+      .update({ current_owner_token: ownerToken })
+      .eq("line_user_id", lineUserId);
+    if (updateError) {
+      // UPDATE 失敗しても診断結果自体は保存済み。warning のみ。
+      console.warn(
+        "[api/diagnosis] line_users.current_owner_token update failed:",
+        updateError.message,
+      );
+    }
   }
 
   return NextResponse.json({
@@ -94,5 +134,6 @@ export async function POST(request: Request) {
     cModifier: cModifier ?? null,
     nModifier: nModifier ?? null,
     modifierLabel: modifierLabel ?? null,
+    lineLinked: !!lineUserId,
   });
 }
