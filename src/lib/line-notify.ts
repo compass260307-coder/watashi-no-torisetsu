@@ -43,6 +43,47 @@ type SendContext = {
   metadata?: Record<string, unknown>;
 };
 
+// Phase 3-β D-5/D-6/D-8: 送信履歴を line_messages_sent に記録する共通 helper
+// 各 send 関数の末尾で呼ぶ。失敗してもログのみで黙殺 (push 自体の成否を上書きしない)。
+export type LogLineMessageInput = {
+  lineUserId: string;
+  userId?: string | null;
+  messageType: string;        // 'welcome' | 'diagnosis_complete' | 'friend_perception_received' | 'reminder_pending_eval' | 'broadcast' | 'integrated_complete' 等
+  messageSubtype?: string | null; // 例: 'N1' / 'N2' / 'N3' / 'invited'
+  flexContent?: unknown;       // 送ったメッセージの中身 (jsonb)
+  sendResult: "success" | "failed" | "blocked" | "rate_limited" | "skipped";
+  errorDetail?: string | null;
+};
+
+export async function logLineMessage(input: LogLineMessageInput): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.from("line_messages_sent").insert({
+      line_user_id: input.lineUserId,
+      user_id: input.userId ?? null,
+      message_type: input.messageType,
+      message_subtype: input.messageSubtype ?? null,
+      flex_content: (input.flexContent as object) ?? null,
+      send_result: input.sendResult,
+      error_detail: input.errorDetail ?? null,
+    });
+    if (error) {
+      console.error("[logLineMessage] insert error:", error.message);
+    }
+  } catch (err) {
+    console.error("[logLineMessage] unexpected error:", err);
+  }
+}
+
+// 内部: LineSendResult → log 用の send_result 文字列
+function resultToLogStatus(
+  result: LineSendResult,
+): "success" | "failed" | "blocked" | "rate_limited" {
+  if (result.success) return "success";
+  if (result.statusCode === 403) return "blocked";
+  if (result.statusCode === 429) return "rate_limited";
+  return "failed";
+}
+
 async function sendWithErrorHandling(
   client: messagingApi.MessagingApiClient,
   pushParams: messagingApi.PushMessageRequest,
@@ -163,15 +204,32 @@ export async function sendGenericWelcome(
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping generic welcome");
+    await logLineMessage({
+      lineUserId,
+      messageType: "welcome",
+      messageSubtype: "generic",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
     return { success: false, error: "no_token" };
   }
 
   const flex = buildWelcomeUnregisteredFlex();
-  return sendWithErrorHandling(
+  const result = await sendWithErrorHandling(
     client,
     { to: lineUserId, messages: [flex] },
     { type: "welcome", recipientId: lineUserId, metadata: { generic: true } },
   );
+
+  await logLineMessage({
+    lineUserId,
+    messageType: "welcome",
+    messageSubtype: "generic",
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
 }
 
 // webhook の reply token を使った reply 専用ヘルパー (push と異なり 1 度しか使えない)
@@ -209,6 +267,7 @@ export async function notifyFriendAnswered(
   friendCount: number,
 ): Promise<LineSendResult> {
   let flex: messagingApi.Message | null = null;
+  const subtype = `N${friendCount}`;
   if (friendCount === 1) flex = buildN1Flex(ownerToken);
   else if (friendCount === 2) flex = buildN2Flex(ownerToken);
   else if (friendCount === 3) flex = buildN3Flex(ownerToken);
@@ -236,7 +295,7 @@ export async function notifyFriendAnswered(
     return { success: false, error: "no_line_user" };
   }
 
-  return sendWithErrorHandling(
+  const result = await sendWithErrorHandling(
     client,
     { to: data.line_user_id, messages: [flex] },
     {
@@ -245,4 +304,14 @@ export async function notifyFriendAnswered(
       metadata: { ownerToken, friendCount },
     },
   );
+
+  await logLineMessage({
+    lineUserId: data.line_user_id as string,
+    messageType: "friend_perception_received",
+    messageSubtype: subtype,
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
 }
