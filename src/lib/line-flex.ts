@@ -7,7 +7,6 @@ const PINK = "#FF6B9C";
 const PINK_LIGHT = "#E5C5D0";
 const PINK_BG = "#FFF5F8";
 const TEXT_MUTED = "#666666";
-const TEXT_DIM = "#888888";
 
 function getShareLiffUrl(inviteCode?: string): string {
   const liffShareIdRaw =
@@ -20,6 +19,18 @@ function getShareLiffUrl(inviteCode?: string): string {
   return inviteCode
     ? `https://liff.line.me/${liffShareIdRaw}?inviteCode=${encodeURIComponent(inviteCode)}`
     : `https://liff.line.me/${liffShareIdRaw}`;
+}
+
+// Phase 3-β B-5: マイ図鑑 LIFF URL (Welcome / 通知系の CTA で使用)
+// /torisetsu/redirect (cell 1 LIFF) を ?dest=zukan-mine で呼び出す前提 (B-4 で実装)
+function getZukanMineLiffUrl(): string {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+  if (!liffId) return `${PUBLIC_BASE_URL}/`;
+  return `https://liff.line.me/${liffId}?dest=zukan-mine`;
+}
+
+function getResultUrl(ownerToken: string): string {
+  return `${PUBLIC_BASE_URL}/result/${ownerToken}`;
 }
 
 // 進捗ドット (●○○ / ●●○ / ●●● 完成✨) を text コンポーネントで生成
@@ -64,13 +75,67 @@ function progressDotsContent(filled: 1 | 2 | 3): messagingApi.FlexText {
 }
 
 // W (紐付け済) - 診断完了済み本人への welcome
+// Phase 3-β B-5: 新コンセプト「他者の眼でコレクションを増やす」を導入。
+// 旧呼び出し互換: 第 1 引数 inviteCode は必須 (share LIFF URL 生成用)。
+// 第 2 引数 options (任意) で fullCode / typeName を渡すと文中に挿入。
+//   提供あり: 「あなたのトリセツは『EAO-C-N (お祭り系)』。」
+//   提供なし: 「ようこそ、ワタシのトリセツへ」(汎用文)
+// D-5 で line-notify 側を更新して options 渡しに切り替える予定。
 export function buildWelcomeRegisteredFlex(
   inviteCode: string,
+  options?: { fullCode?: string; typeName?: string },
 ): messagingApi.Message {
   const shareUrl = getShareLiffUrl(inviteCode);
+  const zukanUrl = getZukanMineLiffUrl();
+
+  const hasIdentity = !!(options?.fullCode || options?.typeName);
+  const identityLine = hasIdentity
+    ? `あなたのトリセツは「${options?.fullCode ?? "—"}${
+        options?.typeName ? "（" + options.typeName + "）" : ""
+      }」。`
+    : null;
+
+  const bodyContents: messagingApi.FlexComponent[] = [
+    {
+      type: "text",
+      text: "🎴 ようこそ、ワタシのトリセツへ",
+      weight: "bold",
+      size: "lg",
+      wrap: true,
+    },
+  ];
+  if (identityLine) {
+    bodyContents.push({
+      type: "text",
+      text: identityLine,
+      size: "sm",
+      color: TEXT_MUTED,
+      wrap: true,
+      margin: "md",
+    });
+  }
+  bodyContents.push(
+    {
+      type: "text",
+      text: "ここから、あなたを知る旅が始まります。",
+      size: "sm",
+      color: TEXT_MUTED,
+      wrap: true,
+      margin: "md",
+    },
+    {
+      type: "text",
+      text: "友達に「あなたから見た私のトリセツが欲しい」と送って、他者の眼でコレクションを増やしていきましょう。",
+      size: "sm",
+      color: TEXT_MUTED,
+      wrap: true,
+      margin: "md",
+    },
+  );
+
   return {
     type: "flex",
-    altText: "登録ありがとう🐧 あなたのトリセツは育っていくよ",
+    altText: "ようこそ、ワタシのトリセツへ🐧 他者の眼でコレクションを集めよう",
     contents: {
       type: "bubble",
       hero: {
@@ -85,23 +150,7 @@ export function buildWelcomeRegisteredFlex(
         type: "box",
         layout: "vertical",
         spacing: "md",
-        contents: [
-          {
-            type: "text",
-            text: "登録ありがとう🐧",
-            weight: "bold",
-            size: "lg",
-            wrap: true,
-          },
-          {
-            type: "text",
-            text: "あなたのトリセツは、友達が答えてくれるたびに育っていくよ。リッチメニューからいつでも開けるよ。",
-            size: "sm",
-            color: TEXT_MUTED,
-            wrap: true,
-            margin: "md",
-          },
-        ],
+        contents: bodyContents,
       },
       footer: {
         type: "box",
@@ -109,20 +158,23 @@ export function buildWelcomeRegisteredFlex(
         spacing: "sm",
         contents: [
           {
-            type: "text",
-            text: "もっと育てたい人へ ↓",
-            size: "xs",
-            color: TEXT_DIM,
-            align: "center",
-          },
-          {
             type: "button",
             style: "primary",
             color: PINK,
             height: "md",
             action: {
               type: "uri",
-              label: "他己評価を増やす",
+              label: "マイ図鑑を見る",
+              uri: zukanUrl,
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
+            height: "md",
+            action: {
+              type: "uri",
+              label: "友達を招待する",
               uri: shareUrl,
             },
           },
@@ -133,10 +185,11 @@ export function buildWelcomeRegisteredFlex(
 }
 
 // W (未紐付け) - bot を直接 follow した未診断ユーザー向け
+// Phase 3-β B-5: 旧 15 問表記を新 50 問仕様 (約 5 分) に修正、コンセプトも刷新。
 export function buildWelcomeUnregisteredFlex(): messagingApi.Message {
   return {
     type: "flex",
-    altText: "ワタシのトリセツへようこそ🐧 まずは 15問の自己診断から",
+    altText: "ワタシのトリセツへようこそ🐧 まずは 50 問の自己診断から",
     contents: {
       type: "bubble",
       hero: {
@@ -154,14 +207,22 @@ export function buildWelcomeUnregisteredFlex(): messagingApi.Message {
         contents: [
           {
             type: "text",
-            text: "ワタシのトリセツへようこそ🐧",
+            text: "🎴 ようこそ、ワタシのトリセツへ",
             weight: "bold",
             size: "lg",
             wrap: true,
           },
           {
             type: "text",
-            text: "まずは 15問の自己診断から始めよう。3 分くらいで終わるよ。",
+            text: "あなたの「取扱説明書」を、自分の眼と友達の眼の両方から作るサービスです。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "まずは 50 問の自己診断から (約 5 分)。",
             size: "sm",
             color: TEXT_MUTED,
             wrap: true,
@@ -183,6 +244,255 @@ export function buildWelcomeUnregisteredFlex(): messagingApi.Message {
               label: "診断スタート",
               uri: `${PUBLIC_BASE_URL}/diagnosis`,
             },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// ============================================================
+// Phase 3-β B-5 新規 builders (D-6 / D-8 / D-1 で利用)
+// ============================================================
+
+// D-6: 診断完了通知 (Welcome の 3 秒後に送る 2 段目)
+//   - 完成したトリセツのコードを大きく見せて、結果ページとマイ図鑑への 2 CTA
+export function buildDiagnosisCompleteFlex(args: {
+  ownerToken: string;
+  fullCode: string;
+  typeName: string;
+  modifierLabel: string;
+}): messagingApi.Message {
+  const resultUrl = getResultUrl(args.ownerToken);
+  const zukanUrl = getZukanMineLiffUrl();
+  return {
+    type: "flex",
+    altText: `🎴 あなたのトリセツが完成: ${args.fullCode} (${args.typeName})`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "🎴 あなたのトリセツが完成しました！",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: `「${args.fullCode}（${args.typeName}）」`,
+            weight: "bold",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: args.modifierLabel,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "結果ページを見る",
+              uri: resultUrl,
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
+            height: "md",
+            action: {
+              type: "uri",
+              label: "マイ図鑑を見る",
+              uri: zukanUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// D-8: 友達評価到着通知 (perception ごとに 1 度発火、重複防止は notified_at)
+export function buildFriendPerceptionReceivedFlex(args: {
+  perceiverName: string;
+  perceivedFullCode: string;
+  perceivedTypeName: string;
+  perceivedModifierLabel: string;
+}): messagingApi.Message {
+  const zukanUrl = getZukanMineLiffUrl();
+  return {
+    type: "flex",
+    altText: `✨ ${args.perceiverName}さんから見たトリセツが完成: ${args.perceivedFullCode}`,
+    contents: {
+      type: "bubble",
+      hero: {
+        type: "image",
+        url: `${PUBLIC_BASE_URL}/mascot/step3-complete.png`,
+        size: "full",
+        aspectRatio: "1:1",
+        aspectMode: "fit",
+        backgroundColor: PINK_BG,
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: `✨ ${args.perceiverName}さんから見た`,
+            weight: "bold",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "あなたのトリセツが完成しました",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: `「${args.perceivedFullCode}（${args.perceivedTypeName}）」`,
+            weight: "bold",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: args.perceivedModifierLabel,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "マイ図鑑で詳しく見る",
+              uri: zukanUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// D-1: 「🟣 統合トリセツ」リッチメニュータップ時 (リリース 3 まで準備中)
+export function buildIntegratedComingSoonFlex(): messagingApi.Message {
+  const shareUrl = getShareLiffUrl();
+  return {
+    type: "flex",
+    altText: "🟣 統合トリセツは準備中 (リリース 3 で利用可能)",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "🟣 統合トリセツは準備中",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "友達 1 人から評価をもらうと、AI が「真のトリセツ」を作成できるようになるよ。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "まずは友達を招待してみよう。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "💌 友達を招待する",
+              uri: shareUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// D-1: 「⚙️ 設定」リッチメニュータップ時 (リリース 3 まで準備中)
+export function buildSettingsComingSoonFlex(): messagingApi.Message {
+  return {
+    type: "flex",
+    altText: "⚙️ 設定機能は準備中",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "⚙️ 設定機能は準備中",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "通知設定や、データ削除など、もう少しお待ちください。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
           },
         ],
       },
