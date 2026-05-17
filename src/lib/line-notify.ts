@@ -430,6 +430,57 @@ export async function sendFriendPerceptionReceivedMessage(args: {
   return result;
 }
 
+// Phase 3-β D-11: 削除完了通知 (退会フローの最後に LINE bot から送る text)
+//   - notification_preferences は既に削除済みのため、設定チェック無しで強制送信
+//     (= 緊急通知扱い、削除確認の意味合いで必ず届ける)
+//   - line_messages_sent には user_id = null で記録 (users 行も削除済のため FK SET NULL)
+export async function sendDeletionCompleteMessage(args: {
+  lineUserId: string;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn(
+      "LINE_CHANNEL_ACCESS_TOKEN not set; skipping deletion_complete",
+    );
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      messageType: "deletion_complete",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const message: messagingApi.Message = {
+    type: "text",
+    text: [
+      "ご利用ありがとうございました。",
+      "データはすべて削除されました。",
+      "",
+      "また使いたくなったら、いつでも戻ってきてね 🐧",
+    ].join("\n"),
+  };
+
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [message] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: { kind: "deletion_complete" },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    messageType: "deletion_complete",
+    flexContent: message,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
 // webhook の reply token を使った reply 専用ヘルパー (push と異なり 1 度しか使えない)
 export async function replyToLine(
   replyToken: string,

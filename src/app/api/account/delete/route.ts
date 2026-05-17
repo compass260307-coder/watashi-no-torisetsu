@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { verifyBearer } from "@/lib/liff-verify";
+import { sendDeletionCompleteMessage } from "@/lib/line-notify";
 
 export const runtime = "nodejs";
 
@@ -143,10 +144,16 @@ export async function POST(request: NextRequest) {
     deletionCounts.users = count ?? 0;
   }
 
-  // TODO: D-11 で実装する LINE 「削除完了」プッシュ通知
-  //       (notification_preferences は既に消えているため、ここでは notify せず
-  //        LINE 標準の push を直接呼ぶか、削除直前にメッセージ送るかは UI 側で決定)
-  // await sendDeletionCompleteMessage(lineUserId);
+  // Phase 3-β D-11: 削除完了通知 (after() で response 送信後に fire-and-forget)
+  //   notification_preferences は既に DELETE 済 → 設定チェック無しで強制送信。
+  //   logLineMessage は user_id = null で記録 (users 行も削除済、FK は SET NULL)。
+  after(async () => {
+    try {
+      await sendDeletionCompleteMessage({ lineUserId });
+    } catch (err) {
+      console.error("[account/delete] deletion_complete notify error:", err);
+    }
+  });
 
   console.log(
     "[account/delete] completed for",
