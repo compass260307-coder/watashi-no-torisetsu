@@ -181,10 +181,36 @@ export async function POST(request: NextRequest) {
     ((userRow.display_name as string | null) ?? "").trim() || "あなた";
 
   // ===== 自分の全 users.id 取得 (再診断履歴含む、perception 検証用) =====
-  const { data: allMyUsers } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .eq("line_user_id", lineUserId);
+  // 🔴 致命バグ修正 (2026-05-18 続き): /api/zukan-mine と同じく
+  //   users.line_user_id 直接 + line_users.owner_token 経由の OR フォールバック。
+  //   users.line_user_id = NULL のまま放置された古いユーザーでも、line_users 経由で
+  //   自分の users 行を全部拾える (再診断履歴含む)。これにより /zukan-mine で
+  //   表示されていた perception が「他人の」と誤判定されて 403 になる事故を防ぐ。
+  const ownerTokensFromLineUsers: string[] = [];
+  {
+    const { data: lineUsersAll } = await supabaseAdmin
+      .from("line_users")
+      .select("owner_token, current_owner_token")
+      .eq("line_user_id", lineUserId);
+    for (const r of lineUsersAll ?? []) {
+      const ot = (r.owner_token as string | null) ?? null;
+      const cot = (r.current_owner_token as string | null) ?? null;
+      if (ot) ownerTokensFromLineUsers.push(ot);
+      if (cot && cot !== ot) ownerTokensFromLineUsers.push(cot);
+    }
+  }
+  const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
+
+  let allMyUsersQuery = supabaseAdmin.from("users").select("id");
+  if (uniqOwnerTokens.length > 0) {
+    const ownerList = uniqOwnerTokens.map((t) => `"${t}"`).join(",");
+    allMyUsersQuery = allMyUsersQuery.or(
+      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
+    );
+  } else {
+    allMyUsersQuery = allMyUsersQuery.eq("line_user_id", lineUserId);
+  }
+  const { data: allMyUsers } = await allMyUsersQuery;
   const allMyUserIds = (allMyUsers ?? []).map((u) => u.id as string);
   // 安全のため current も明示的に含める
   if (!allMyUserIds.includes(userId)) allMyUserIds.push(userId);
