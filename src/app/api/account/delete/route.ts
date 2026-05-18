@@ -33,6 +33,32 @@ export async function POST(request: NextRequest) {
   }
   const lineUserId = verified.sub;
 
+  // TODO(2026-05-19+): /api/zukan-mine と /api/integrated-trisetsu と同パターンの
+  //   OR フォールバックに統一する。現状は eq('line_user_id', lineUserId) のみで、
+  //   users.line_user_id = NULL のまま放置された過去診断行を削除し残す可能性あり
+  //   (= 個人情報残留リスク)。hotfix-2026-05-18 SQL 実行後の本番では実害ほぼ無いが、
+  //   保守性のために将来必ず統一すること。修正案:
+  //
+  //     const ownerTokensFromLineUsers: string[] = [];
+  //     const { data: lineUsersAll } = await supabaseAdmin
+  //       .from("line_users")
+  //       .select("owner_token, current_owner_token")
+  //       .eq("line_user_id", lineUserId);
+  //     for (const r of lineUsersAll ?? []) {
+  //       if (r.owner_token) ownerTokensFromLineUsers.push(r.owner_token as string);
+  //       if (r.current_owner_token && r.current_owner_token !== r.owner_token)
+  //         ownerTokensFromLineUsers.push(r.current_owner_token as string);
+  //     }
+  //     const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
+  //     let q = supabaseAdmin.from("users").select("id, owner_token");
+  //     if (uniqOwnerTokens.length > 0) {
+  //       const ownerList = uniqOwnerTokens.map((t) => `"${t}"`).join(",");
+  //       q = q.or(`line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`);
+  //     } else {
+  //       q = q.eq("line_user_id", lineUserId);
+  //     }
+  //     const { data: targetUsers, error: targetErr } = await q;
+
   // 削除対象 users (line_user_id で紐付く全診断履歴) の owner_token 一覧
   const { data: targetUsers, error: targetErr } = await supabaseAdmin
     .from("users")
