@@ -78,21 +78,44 @@ export async function POST(request: NextRequest) {
         console.error("line_users update error:", updateError);
         return NextResponse.json({ error: "DB error" }, { status: 500 });
       }
-      return NextResponse.json({ ok: true, alreadyRegistered: true });
+    } else {
+      // 新規登録: insert のみ
+      // welcome は LINE Webhook の follow イベントで送信される (Phase G+2)
+      const { error: insertError } = await supabaseAdmin
+        .from("line_users")
+        .insert({ owner_token: ownerToken, line_user_id: lineUserId });
+
+      if (insertError) {
+        console.error("line_users insert error:", insertError);
+        return NextResponse.json({ error: "DB error" }, { status: 500 });
+      }
     }
 
-    // 新規登録: insert のみ
-    // welcome は LINE Webhook の follow イベントで送信される (Phase G+2)
-    const { error: insertError } = await supabaseAdmin
-      .from("line_users")
-      .insert({ owner_token: ownerToken, line_user_id: lineUserId });
-
-    if (insertError) {
-      console.error("line_users insert error:", insertError);
-      return NextResponse.json({ error: "DB error" }, { status: 500 });
+    // 🔴 致命バグ修正 (2026-05-18): users.line_user_id が空のまま放置される問題
+    //   Web 経由診断 → POST /api/diagnosis (Bearer なし) → users.line_user_id = NULL
+    //   その後 LIFF 連携しても users.line_user_id が更新されず、/api/zukan-mine から
+    //   自分の users 行を取得できず友達評価が永遠に空に見える致命バグ。
+    //   line-register 完了時に users.line_user_id も backfill する。
+    //   過去診断 (再診断履歴) も含めて owner_token + line_user_id で紐付く全行を更新。
+    {
+      const { error: backfillError } = await supabaseAdmin
+        .from("users")
+        .update({ line_user_id: lineUserId })
+        .eq("owner_token", ownerToken)
+        .is("line_user_id", null);
+      if (backfillError) {
+        console.error(
+          "users.line_user_id backfill error (non-fatal):",
+          backfillError,
+        );
+        // 失敗しても LINE 登録自体は成立しているため続行
+      }
     }
 
-    return NextResponse.json({ ok: true, alreadyRegistered: false });
+    return NextResponse.json({
+      ok: true,
+      alreadyRegistered: !!existing,
+    });
   } catch (err) {
     console.error("/api/line-register error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

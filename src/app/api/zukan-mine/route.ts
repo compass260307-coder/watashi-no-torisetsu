@@ -108,12 +108,44 @@ export async function GET(request: NextRequest) {
   const currentOwnerToken =
     lineUserRow?.current_owner_token ?? lineUserRow?.owner_token ?? null;
 
-  // 2. 自分の users 全件 (line_user_id 経由、新しい順)
-  const { data: userRows, error: userErr } = await supabaseAdmin
+  // 2. 自分の users 全件 (新しい順)
+  // 🔴 致命バグ修正 (2026-05-18): users.line_user_id 直接 + line_users.owner_token 経由
+  //   の和集合で取得。/api/line-register backfill 反映前の既存ユーザーや、Bearer
+  //   なしで /api/diagnosis を叩いて users.line_user_id = NULL のまま放置された
+  //   ユーザーも line_users 経由で拾えるように二重保証する。
+  const ownerTokensFromLineUsers: string[] = [];
+  {
+    const { data: lineUsersAll } = await supabaseAdmin
+      .from("line_users")
+      .select("owner_token, current_owner_token")
+      .eq("line_user_id", lineUserId);
+    for (const r of lineUsersAll ?? []) {
+      const ot = (r.owner_token as string | null) ?? null;
+      const cot = (r.current_owner_token as string | null) ?? null;
+      if (ot) ownerTokensFromLineUsers.push(ot);
+      if (cot && cot !== ot) ownerTokensFromLineUsers.push(cot);
+    }
+  }
+  const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
+
+  let usersQuery = supabaseAdmin
     .from("users")
-    .select("id, owner_token, type_id, scores, display_name, created_at")
-    .eq("line_user_id", lineUserId)
-    .order("created_at", { ascending: false });
+    .select("id, owner_token, type_id, scores, display_name, created_at");
+  if (uniqOwnerTokens.length > 0) {
+    // line_user_id 一致 OR owner_token 経由 (or で和集合)
+    const ownerList = uniqOwnerTokens
+      .map((t) => `"${t}"`)
+      .join(",");
+    usersQuery = usersQuery.or(
+      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
+    );
+  } else {
+    usersQuery = usersQuery.eq("line_user_id", lineUserId);
+  }
+  const { data: userRows, error: userErr } = await usersQuery.order(
+    "created_at",
+    { ascending: false },
+  );
   if (userErr) {
     console.error("[zukan-mine] users lookup error:", userErr);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
