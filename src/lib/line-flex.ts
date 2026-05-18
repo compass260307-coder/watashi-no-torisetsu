@@ -561,6 +561,79 @@ export function buildSettingsComingSoonFlex(): messagingApi.Message {
   };
 }
 
+// Phase 3-β リリース 3 D-9: 友達評価依頼リマインド Flex (Cron 経由で送る)
+// 招待してから 3 日経っても評価が来ない owner に「もう一度誘ってみる?」と提案。
+// 「もう通知しない」postback で notification_preferences.enable_reminder = false。
+export function buildFriendEvalReminderFlex(): messagingApi.Message {
+  const shareUrl = getShareLiffUrl();
+  return {
+    type: "flex",
+    altText: "💭 友達からの評価、まだ届いてないみたい",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "💭 友達からの評価、まだ届いてないみたい",
+            weight: "bold",
+            size: "md",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "「あなたから見た私のトリセツが欲しい」",
+            wrap: true,
+            margin: "md",
+            color: PINK,
+            weight: "bold",
+          },
+          {
+            type: "text",
+            text: "友達に伝えてみませんか?",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "💌 友達を招待する",
+              uri: shareUrl,
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
+            height: "md",
+            action: {
+              type: "postback",
+              label: "もう通知しない",
+              data: "action=disable_reminder",
+              displayText: "リマインドを停止",
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
 // Phase 3-β リリース 3 (D-10+11+12): 「⚙️ 設定」案内 Flex (LIFF 経由 /settings へ)
 // LIFF Endpoint URL は /torisetsu/redirect、?dest=settings 分岐で /settings に遷移。
 export function buildSettingsLinkFlex(): messagingApi.Message {

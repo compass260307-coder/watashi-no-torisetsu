@@ -323,7 +323,68 @@ async function handlePostbackEvent(
     return;
   }
 
+  // Phase 3-β リリース 3 D-9: 友達評価リマインドの「もう通知しない」ボタン
+  if (action === "disable_reminder") {
+    if (!lineUserId) {
+      console.warn("[webhook postback] disable_reminder without lineUserId");
+      return;
+    }
+    await handleDisableReminder(replyToken, lineUserId);
+    return;
+  }
+
   console.log("[webhook postback] unknown data, skipping:", data);
+}
+
+async function handleDisableReminder(
+  replyToken: string,
+  lineUserId: string,
+): Promise<void> {
+  // notification_preferences を upsert (enable_reminder = false)
+  // 行が無ければデフォルト全 true で作成 → reminder のみ false に
+  const nowIso = new Date().toISOString();
+  const { data: existing } = await supabaseAdmin
+    .from("notification_preferences")
+    .select(
+      "enable_welcome, enable_diagnosis_complete, enable_friend_perception, enable_broadcast",
+    )
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+
+  const { error } = await supabaseAdmin
+    .from("notification_preferences")
+    .upsert(
+      {
+        line_user_id: lineUserId,
+        enable_welcome: existing?.enable_welcome ?? true,
+        enable_diagnosis_complete: existing?.enable_diagnosis_complete ?? true,
+        enable_friend_perception: existing?.enable_friend_perception ?? true,
+        enable_reminder: false,
+        enable_broadcast: existing?.enable_broadcast ?? true,
+        updated_at: nowIso,
+      },
+      { onConflict: "line_user_id" },
+    );
+  if (error) {
+    console.error("[webhook postback] disable_reminder upsert error:", error);
+    await replyToLine(
+      replyToken,
+      [{ type: "text", text: "設定の保存に失敗しました。少し時間をおいて再試行してください🐧" }],
+      { kind: "disable_reminder_error" },
+    );
+    return;
+  }
+
+  await replyToLine(
+    replyToken,
+    [
+      {
+        type: "text",
+        text: "リマインドを停止しました。\n設定画面からいつでも ON に戻せます 🐧",
+      },
+    ],
+    { kind: "disable_reminder_ok" },
+  );
 }
 
 export async function POST(request: NextRequest) {
