@@ -1,4 +1,5 @@
 // Phase 3-β リリース 3 C-1: AI 統合トリセツ生成エンドポイント
+// プレミアム化 v2 (Week 1 T1-4): Opus 4.7 + 7 章スキーマ + status 管理に対応
 //
 // POST /api/integrated-trisetsu
 //   - Authorization: Bearer <LIFF id_token> 必須
@@ -11,11 +12,17 @@
 //   - perception_ids が全て「自分の users (履歴含む) の target_user_id か」を検証
 //     (他人の perception を統合素材にできないように)
 //
+// status 遷移 (T1-4 時点):
+//   - AI 成功 → INSERT (status='completed', generated_chapters 等を保存)
+//   - AI 失敗 (config 以外) → INSERT (status='failed', failure_reason 記録) + 500
+//   - AI 失敗 (config) → INSERT なし + 500 ("API key not configured")
+//   - 'generating' 中間状態は T2 の Polling 設計で扱う想定 (T1-4 では未使用)
+//
 // AI 失敗時:
-//   - ANTHROPIC_API_KEY 未設定 → 500 "API key not configured"
-//   - SDK エラー (401 / rate limit / network) → 500 + error detail
-//   - JSON 抽出失敗 (1 回リトライ後も失敗) → 500 + parse error
-//   - DB INSERT 失敗 → 500 + aiAlreadyCalled: true (コスト追跡用)
+//   - ANTHROPIC_API_KEY 未設定 → 500 "API key not configured" (DB 書込なし)
+//   - SDK エラー (401 / rate limit / network) → INSERT(failed) + 500 + integrated_trisetsu_id
+//   - JSON 抽出失敗 (リトライ込みで失敗) → INSERT(failed) + 500 + integrated_trisetsu_id
+//   - DB INSERT 失敗 → 500 + aiAlreadyCalled (コスト追跡用)
 
 import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -24,6 +31,7 @@ import { buildIntegratedPrompt } from "@/lib/ai-prompt-builder";
 import {
   AnthropicNotConfiguredError,
   callClaudeForIntegration,
+  type IntegratedAiOutput,
 } from "@/lib/anthropic-client";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import {
@@ -41,8 +49,9 @@ import type {
 } from "@/lib/types";
 
 export const runtime = "nodejs";
-// AI 呼び出しは通常 3-8 秒、上限を余裕持って 60 秒
-export const maxDuration = 60;
+// プレミアム化 v2: Opus 4.7 + 5,000-6,000 字生成で 30-90 秒かかる想定
+// (Vercel Pro / Fluid Compute 前提、Hobby プランでは動作しない)
+export const maxDuration = 120;
 
 type StoredSelfScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -272,7 +281,10 @@ export async function POST(request: NextRequest) {
   });
 
   // ===== AI 呼び出し =====
-  let aiOut;
+  // config エラーは DB に何も残さず即時 500。
+  // それ以外の失敗 (parse / network / 401 / 429 等) は failed 行を残してから 500。
+  let aiOut: IntegratedAiOutput | null = null;
+  let aiFailureReason: string | null = null;
   try {
     aiOut = await callClaudeForIntegration({
       system: prompt.system,
@@ -285,17 +297,12 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+    aiFailureReason = err instanceof Error ? err.message : String(err);
     console.error("[integrated-trisetsu] AI call error:", err);
-    return NextResponse.json(
-      {
-        error: "AI 生成に失敗しました",
-        detail: err instanceof Error ? err.message : "Unknown error",
-      },
-      { status: 500 },
-    );
   }
 
   // ===== integrated_trisetsu INSERT =====
+  // 成功・失敗どちらも 1 行残す (失敗時は T2 の Slack アラート + 手動返金フローで使う)。
   const sourceSummary = {
     self:
       includeSelf && selfData
@@ -307,36 +314,50 @@ export async function POST(request: NextRequest) {
     })),
   };
 
+  const baseInsert = {
+    user_id: userId,
+    line_user_id: lineUserId,
+    include_self: includeSelf,
+    perception_ids: perceptionIds,
+    source_summary: sourceSummary,
+  };
+  const insertPayload = aiOut
+    ? {
+        ...baseInsert,
+        status: "completed",
+        generated_title: aiOut.title,
+        generated_subtitle: aiOut.subtitle,
+        generated_chapters: aiOut.chapters,
+        ai_model: aiOut.model,
+        ai_input_tokens: aiOut.inputTokens,
+        ai_output_tokens: aiOut.outputTokens,
+        ai_cost_usd: aiOut.costUsd,
+      }
+    : {
+        ...baseInsert,
+        status: "failed",
+        failure_reason: aiFailureReason,
+      };
+
   const { data: insertRow, error: insertErr } = await supabaseAdmin
     .from("integrated_trisetsu")
-    .insert({
-      user_id: userId,
-      line_user_id: lineUserId,
-      include_self: includeSelf,
-      perception_ids: perceptionIds,
-      source_summary: sourceSummary,
-      generated_title: aiOut.title,
-      generated_summary: aiOut.summary,
-      generated_body: aiOut.body,
-      ai_model: aiOut.model,
-      ai_input_tokens: aiOut.inputTokens,
-      ai_output_tokens: aiOut.outputTokens,
-      ai_cost_usd: aiOut.costUsd,
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
 
   if (insertErr || !insertRow) {
     console.error(
-      "[integrated-trisetsu] insert error (AI already called, cost burned):",
+      "[integrated-trisetsu] insert error:",
       insertErr,
-      { aiCostUsd: aiOut.costUsd, model: aiOut.model },
+      aiOut
+        ? { aiAlreadyCalled: true, aiCostUsd: aiOut.costUsd, model: aiOut.model }
+        : { aiFailureReason },
     );
     return NextResponse.json(
       {
         error: "DB insert failed",
-        aiAlreadyCalled: true,
-        aiCostUsd: aiOut.costUsd,
+        aiAlreadyCalled: Boolean(aiOut),
+        ...(aiOut ? { aiCostUsd: aiOut.costUsd } : {}),
       },
       { status: 500 },
     );
@@ -344,7 +365,21 @@ export async function POST(request: NextRequest) {
 
   const integratedId = insertRow.id as string;
 
-  // ===== line_messages_sent 記録 (response 送信後) =====
+  // ===== AI 失敗時はここで 500 を返す (DB には failed 行が残っている) =====
+  if (!aiOut) {
+    return NextResponse.json(
+      {
+        error: "AI 生成に失敗しました",
+        detail: aiFailureReason,
+        integrated_trisetsu_id: integratedId,
+        status: "failed",
+      },
+      { status: 500 },
+    );
+  }
+
+  // ===== line_messages_sent 記録 (response 送信後、成功時のみ) =====
+  const aiOutForLog = aiOut;
   after(async () => {
     await logLineMessage({
       lineUserId,
@@ -352,9 +387,9 @@ export async function POST(request: NextRequest) {
       messageType: "integrated_complete",
       flexContent: {
         integratedId,
-        title: aiOut.title,
-        model: aiOut.model,
-        costUsd: aiOut.costUsd,
+        title: aiOutForLog.title,
+        model: aiOutForLog.model,
+        costUsd: aiOutForLog.costUsd,
       },
       sendResult: "success",
     });

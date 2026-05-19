@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local
+
+# T1-8 PDF プロトタイプの生成成果物 (再生成可能なので追跡不要)
+scripts/pdf-prototype-output.pdf
