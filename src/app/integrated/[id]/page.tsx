@@ -17,6 +17,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { CHAPTER_KEYS, type ChapterKey } from "@/lib/anthropic-client";
 import { IntegratedShareButton } from "./IntegratedShareButton";
+import { IntegratedDownloadButton } from "./IntegratedDownloadButton";
 
 const PUBLIC_BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
@@ -270,6 +271,9 @@ export default async function IntegratedPage({
 
         {/* CTA */}
         <section className="flex flex-col gap-3 mt-4">
+          {/* プライマリ: PDF ダウンロード (所有者のみ実行可) */}
+          <IntegratedDownloadButton integratedId={id} />
+          {/* セカンダリ: シェア */}
           <IntegratedShareButton shareUrl={shareUrl} title={title} />
           <Link
             href="/integrated/new"

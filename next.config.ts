@@ -5,10 +5,10 @@ const nextConfig: NextConfig = {
   // サンプル JSON を同梱する (URL fetch 経由だと SSO 保護下で 404 になるため)。
   // T2-2 で本実装 API ルートに置換する際にも同じ tracing が必要。
   outputFileTracingIncludes: {
-    "/api/test-pdf": [
+    // PDF ダウンロード Function に日本語 TTF を同梱
+    "/api/integrated-trisetsu/[id]/pdf": [
       "./public/fonts/NotoSerifJP.ttf",
       "./public/fonts/NotoSansJP.ttf",
-      "./scripts/sample-7chapters.json",
     ],
   },
 };
