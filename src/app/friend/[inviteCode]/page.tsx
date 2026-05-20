@@ -38,6 +38,7 @@ type Phase =
   | "intro" // 開始前画面
   | "scale" // 30 問 (3 ページに分割)
   | "choice" // おまけ 3 問
+  | "consent" // T3-3: PDF 利用同意確認 (オプトイン)
   | "submitting" // API 送信中
   | "complete" // B-3 完成画面
   | "error"; // 送信失敗
@@ -93,6 +94,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const [lineIdToken, setLineIdToken] = useState<string | null>(null);
   const [perception, setPerception] = useState<CompletePerception | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // T3-3: PDF 利用同意 (デフォルト OFF、明示的にチェック必要)
+  const [pdfConsent, setPdfConsent] = useState<boolean>(false);
   const trackedLanding = useRef(false);
   const liffInitialized = useRef(false);
 
@@ -194,7 +197,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       setChoiceIdx((c) => (c + 1) as 0 | 1 | 2);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      submit();
+      // T3-3: 3 問目の後は consent 画面 (旧フローでは直接 submit() だった)
+      setPhase("consent");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -216,6 +221,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           scaleAnswers,
           choiceAnswers,
           perceiverName,
+          pdfConsent, // T3-3: PDF 利用同意フラグ
         }),
       });
       const data = await res.json().catch(() => null);
@@ -278,6 +284,19 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         choiceIdx={choiceIdx}
         onSelect={handleChoiceAnswer}
         onSkip={handleChoiceSkip}
+      />
+    );
+  }
+
+  if (phase === "consent") {
+    return (
+      <ConsentScreen
+        ownerLabel={ownerLabel}
+        subjectLabel={subjectLabel}
+        perceiverName={perceiverName}
+        pdfConsent={pdfConsent}
+        onConsentChange={setPdfConsent}
+        onSubmit={submit}
       />
     );
   }
@@ -552,6 +571,91 @@ function ChoiceScreen({
         </button>
       </main>
     </div>
+  );
+}
+
+// =========================================================================
+// T3-3: PDF 利用同意確認 画面
+// =========================================================================
+function ConsentScreen({
+  ownerLabel,
+  subjectLabel,
+  perceiverName,
+  pdfConsent,
+  onConsentChange,
+  onSubmit,
+}: {
+  ownerLabel: string;
+  subjectLabel: string;
+  perceiverName: string;
+  pdfConsent: boolean;
+  onConsentChange: (value: boolean) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <main className="flex flex-col flex-1 px-5 py-8 max-w-md mx-auto w-full">
+      <header className="mb-6">
+        <p className="text-[10px] font-bold tracking-[0.3em] text-primary/70 mb-2">
+          最後にひとつ
+        </p>
+        <h1 className="text-xl font-bold text-foreground leading-snug">
+          {ownerLabel}さんへの評価、
+          <br />
+          PDF 利用も許可しますか?
+        </h1>
+      </header>
+
+      <section className="rounded-2xl border border-card-border bg-card-bg p-5 mb-5">
+        <p className="text-sm text-foreground leading-relaxed mb-3">
+          {ownerLabel}さんは将来、AI が統合した有料の
+          「真のトリセツ PDF レポート」（¥500）を作るかもしれません。
+        </p>
+        <p className="text-sm text-foreground leading-relaxed mb-3">
+          その PDF には、あなたの名前（
+          <span className="font-bold text-primary">{perceiverName}</span>
+          ）と回答内容が、
+          {subjectLabel}を見たひとつの視点として記載されます。
+        </p>
+        <p className="text-xs text-muted leading-relaxed">
+          PDF は {ownerLabel}さんが第三者に共有する可能性があります。
+        </p>
+      </section>
+
+      <section className="rounded-2xl border-2 border-primary/30 bg-label-bg p-5 mb-5">
+        <label className="flex gap-3 items-start cursor-pointer">
+          <input
+            type="checkbox"
+            checked={pdfConsent}
+            onChange={(e) => onConsentChange(e.target.checked)}
+            className="mt-1 h-5 w-5 accent-primary cursor-pointer flex-shrink-0"
+          />
+          <span className="text-sm text-foreground leading-relaxed">
+            はい、PDF レポートに{perceiverName}の名前付きで
+            載ること、PDF が第三者に共有される可能性に
+            <span className="font-bold">同意します</span>。
+          </span>
+        </label>
+      </section>
+
+      <p className="text-xs text-muted leading-relaxed mb-6">
+        ※ チェックしない場合も評価は送信されます。
+        {ownerLabel}さんは「あなたから見た{ownerLabel}さん」を
+        Web 画面で閲覧できますが、PDF 化と AI 統合素材化は
+        できなくなります。
+      </p>
+
+      <button
+        type="button"
+        onClick={onSubmit}
+        className="w-full rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-md active:scale-[0.98] transition-all"
+      >
+        {pdfConsent ? "✓ 同意して送信する" : "PDF 利用なしで送信する"}
+      </button>
+
+      <p className="mt-4 text-[10px] text-muted text-center leading-relaxed">
+        この設定は後から変更できません。
+      </p>
+    </main>
   );
 }
 

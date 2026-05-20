@@ -12,6 +12,13 @@ export type PerceiverInfo = {
   userId?: string | null;
   /** LINE 連携済の友達なら line_user_id (任意) */
   lineUserId?: string | null;
+  /**
+   * T3-3 (B3): PDF 利用同意フラグ。
+   * - true: AI 統合トリセツ PDF に名前付きで載せることに同意
+   * - false (デフォルト): Web 閲覧のみ可、PDF 化と AI 統合素材化は不可
+   * 省略時は false 扱い (オプトイン制)
+   */
+  pdfConsent?: boolean;
 };
 
 export type WriteFriendPerceptionResult =
@@ -44,6 +51,8 @@ export async function writeFriendPerception(
   const qualitative_data =
     qualitativeOverride ?? perception.qualitativeData ?? null;
 
+  const pdfConsent = perceiver.pdfConsent === true;
+
   const { data, error } = await supabaseAdmin
     .from("friend_perceptions")
     .insert({
@@ -61,6 +70,9 @@ export async function writeFriendPerception(
       perceived_facet_scores: perception.facetScores,
       qualitative_data,
       friend_answer_id: friendAnswerId,
+      // T3-3: pdf_consent_at は同意時のみ NOW()、未同意は null
+      pdf_consent: pdfConsent,
+      pdf_consent_at: pdfConsent ? new Date().toISOString() : null,
       // notified_at: 明示せず DB デフォルト (NULL) のまま。D-8 で通知後に UPDATE。
     })
     .select("id")

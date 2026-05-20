@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
   const rawChoice = body.choiceAnswers;
   const rawName = typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
   const perceiverName = rawName.length > 0 ? rawName : "友達";
+  // T3-3: PDF 利用同意 (オプトイン制、デフォルト false)
+  const pdfConsent = body.pdfConsent === true;
 
   if (!inviteCode) {
     return NextResponse.json({ error: "inviteCode required" }, { status: 400 });
@@ -153,6 +155,7 @@ export async function POST(request: NextRequest) {
       name: perceiverName,
       userId: null, // 評価者自身が users 行を持つかどうかは Phase 3-β 後段で対応
       lineUserId: perceiverLineUserId,
+      pdfConsent, // T3-3: 友達側オプトイン制
     },
   );
   if (!writeResult.ok) {

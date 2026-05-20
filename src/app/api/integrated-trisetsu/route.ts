@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
   if (perceptionIds.length > 0) {
     const { data: ps, error: pErr } = await supabaseAdmin
       .from("friend_perceptions")
-      .select("id, target_user_id")
+      .select("id, target_user_id, pdf_consent")
       .in("id", perceptionIds);
     if (pErr) {
       console.error("[integrated-trisetsu] perceptions lookup error:", pErr);
@@ -153,6 +153,18 @@ export async function POST(request: NextRequest) {
     if (invalid) {
       return NextResponse.json(
         { error: "他人の perception_id は統合素材にできません" },
+        { status: 403 },
+      );
+    }
+    // T3-3: pdf_consent=false の perception は使用不可 (サーバ側ガード)
+    const notConsented = rows.find((p) => p.pdf_consent !== true);
+    if (notConsented) {
+      return NextResponse.json(
+        {
+          error:
+            "PDF 利用未同意の友達評価は統合素材にできません",
+          perception_id: notConsented.id,
+        },
         { status: 403 },
       );
     }

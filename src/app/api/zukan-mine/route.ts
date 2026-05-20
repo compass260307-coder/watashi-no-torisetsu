@@ -180,6 +180,7 @@ export async function GET(request: NextRequest) {
     perceivedModifierLabel: string;
     perceivedModifierParagraph: string;
     qualitativeData: Record<string, string> | null;
+    pdfConsent: boolean;
     createdAt: string;
   }> = [];
 
@@ -187,7 +188,7 @@ export async function GET(request: NextRequest) {
     const { data: perceptionRows, error: perceptionErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select(
-        "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_modifier_paragraph, qualitative_data, created_at",
+        "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_modifier_paragraph, qualitative_data, pdf_consent, pdf_consent_at, created_at",
       )
       .in("target_user_id", targetUserIds)
       .order("created_at", { ascending: false });
@@ -208,6 +209,8 @@ export async function GET(request: NextRequest) {
           perceivedModifierParagraph: r.perceived_modifier_paragraph as string,
           qualitativeData:
             (r.qualitative_data as Record<string, string> | null) ?? null,
+          // T3-3: 友達が PDF 利用を許可したか (NULL = 旧データ、false 扱い)
+          pdfConsent: r.pdf_consent === true,
           createdAt: r.created_at as string,
         };
       });

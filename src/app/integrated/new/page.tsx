@@ -36,6 +36,8 @@ type PerceptionCard = {
   perceivedModifierLabel: string;
   perceivedModifierParagraph: string;
   qualitativeData: Record<string, string> | null;
+  // T3-3: PDF 利用同意フラグ。false の perception は AI 統合素材に使えない。
+  pdfConsent: boolean;
   createdAt: string;
 };
 
@@ -120,8 +122,11 @@ export default function IntegratedNewPage() {
           return;
         }
         setData(json);
-        // デフォルト: 全 perceptions チェック ON
-        setSelectedPerceptionIds(new Set(json.perceptions.map((p) => p.id)));
+        // T3-3: デフォルト ON は「PDF 利用同意済」だけに絞る。
+        // 未同意 (pdfConsent=false) はそもそも統合素材に使えないため選択不可。
+        setSelectedPerceptionIds(
+          new Set(json.perceptions.filter((p) => p.pdfConsent).map((p) => p.id)),
+        );
         setStatus("ready");
       } catch (err) {
         console.error("[integrated/new] init error:", err);
@@ -133,6 +138,9 @@ export default function IntegratedNewPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const togglePerception = (id: string) => {
+    // T3-3: pdfConsent=false の perception は選択不可。UI 側でも防御。
+    const target = data?.perceptions.find((p) => p.id === id);
+    if (!target || !target.pdfConsent) return;
     setSelectedPerceptionIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -377,32 +385,65 @@ export default function IntegratedNewPage() {
                 <p className="text-[10px] font-bold tracking-wider text-muted px-2 mt-4 mb-2">
                   ── 友達からの評価 ({perceptions.length}) ──
                 </p>
-                {perceptions.map((p) => {
-                  const checked = selectedPerceptionIds.has(p.id);
-                  return (
-                    <div
-                      key={p.id}
-                      className="rounded-2xl border border-card-border bg-card-bg p-4 mb-2"
-                    >
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => togglePerception(p.id)}
-                          className="w-5 h-5"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold mb-0.5">
-                            🟡 {p.perceiverName}さんから見た私
-                          </p>
-                          <p className="text-xs text-muted truncate">
-                            {p.perceivedFullCode} ({p.perceivedTypeName})
-                          </p>
-                        </div>
-                      </label>
-                    </div>
+                {(() => {
+                  // T3-3: PDF 利用同意済 ↓ そうでない順 でソート (使えるものを上に)
+                  const sorted = [...perceptions].sort(
+                    (a, b) => Number(b.pdfConsent) - Number(a.pdfConsent),
                   );
-                })}
+                  return sorted.map((p) => {
+                    const checked = selectedPerceptionIds.has(p.id);
+                    const disabled = !p.pdfConsent;
+                    return (
+                      <div
+                        key={p.id}
+                        className={
+                          disabled
+                            ? "rounded-2xl border border-card-border bg-card-bg/50 p-4 mb-2 opacity-60"
+                            : "rounded-2xl border border-card-border bg-card-bg p-4 mb-2"
+                        }
+                      >
+                        <label
+                          className={
+                            disabled
+                              ? "flex items-center gap-3 cursor-not-allowed"
+                              : "flex items-center gap-3 cursor-pointer"
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => togglePerception(p.id)}
+                            className="w-5 h-5 disabled:cursor-not-allowed"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold mb-0.5 flex items-center gap-2 flex-wrap">
+                              <span>🟡 {p.perceiverName}さんから見た私</span>
+                              {p.pdfConsent ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                  PDF 可
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted/10 text-muted">
+                                  Web のみ
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted truncate">
+                              {p.perceivedFullCode} ({p.perceivedTypeName})
+                            </p>
+                            {disabled && (
+                              <p className="text-[10px] text-muted mt-1 leading-tight">
+                                ※ {p.perceiverName}さんが PDF 利用を許可していないため、
+                                統合素材に使えません
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    );
+                  });
+                })()}
               </>
             ) : (
               <div className="rounded-2xl border-2 border-dashed border-card-border bg-card-bg p-5 mt-4 text-center">
@@ -418,7 +459,7 @@ export default function IntegratedNewPage() {
               </div>
             )}
 
-            {/* 統合する素材の確認 */}
+            {/* 統合する素材の確認 + PDF 可能数の内訳 */}
             <div className="mt-5 px-2 text-xs text-muted text-center">
               ── 統合する素材 ──
               <br />
@@ -426,6 +467,16 @@ export default function IntegratedNewPage() {
                 {selectedCount} 件
               </span>{" "}
               から統合します
+              {perceptions.length > 0 && (() => {
+                const consented = perceptions.filter((p) => p.pdfConsent).length;
+                const blocked = perceptions.length - consented;
+                if (blocked === 0) return null;
+                return (
+                  <p className="mt-2 text-[10px] text-muted/80 leading-relaxed">
+                    友達評価 {perceptions.length} 件中 PDF 利用可: {consented} 件 / Web のみ: {blocked} 件
+                  </p>
+                );
+              })()}
             </div>
           </section>
         )}
