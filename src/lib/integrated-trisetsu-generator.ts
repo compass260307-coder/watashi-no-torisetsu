@@ -19,7 +19,10 @@ import {
   classifyModifier,
 } from "./diagnosis";
 import { getModifierLabel, getModifierParagraph } from "./modifier-data";
-import { logLineMessage } from "./line-notify";
+import {
+  sendIntegratedCompletePaidMessage,
+  sendIntegratedFailedMessage,
+} from "./line-notify";
 import { sendSlackAlert } from "./slack-alert";
 import type {
   BigFiveDimension,
@@ -292,20 +295,28 @@ export async function runAIGenerationAndUpdate(
       throw new Error(`UPDATE on completed failed: ${updErr.message}`);
     }
 
-    // ===== 8. LINE 通知 (DB ログのみ。実プッシュは T3-4 で) =====
+    // ===== 8. LINE 完了通知 (T3-4 で実プッシュに置換) =====
+    //   payment 経由 (Webhook 由来) / 既存 API 経由 どちらの整合トリセツでも
+    //   line_user_id が紐付いていれば実プッシュ。本関数は両経路から呼ばれる。
     if (lineUserId) {
-      await logLineMessage({
-        lineUserId,
-        userId,
-        messageType: "integrated_complete",
-        flexContent: {
+      try {
+        await sendIntegratedCompletePaidMessage({
+          lineUserId,
           integratedId: integratedTrisetsuId,
           title: aiOut.title,
-          model: aiOut.model,
-          costUsd: aiOut.costUsd,
-        },
-        sendResult: "success",
-      });
+          subtitle: aiOut.subtitle,
+          ownerUserId: userId,
+          ownerName,
+          aiModel: aiOut.model,
+          aiCostUsd: aiOut.costUsd,
+        });
+      } catch (err) {
+        // 通知失敗は生成成功を覆さない (logLineMessage に内部で記録される)
+        console.error(
+          `[generator] LINE complete notification failed for ${integratedTrisetsuId}:`,
+          err,
+        );
+      }
     }
 
     return { success: true };
@@ -326,7 +337,7 @@ export async function runAIGenerationAndUpdate(
       })
       .eq("id", integratedTrisetsuId);
 
-    // ===== Slack アラート =====
+    // ===== Slack アラート (運営者向け) =====
     await sendSlackAlert(
       "🚨 AI 統合トリセツ生成失敗 (要手動対応)",
       {
@@ -337,6 +348,25 @@ export async function runAIGenerationAndUpdate(
         error: errMsg,
       },
     );
+
+    // ===== LINE 失敗通知 (T3-4、購入者向け) =====
+    // 購入者には実プッシュで「サポートに連絡してください」を送る。
+    // ownerName は失敗時には不要 (フェーズによっては未取得のため明示せず)
+    if (lineUserId) {
+      try {
+        await sendIntegratedFailedMessage({
+          lineUserId,
+          integratedId: integratedTrisetsuId,
+          ownerUserId: userId,
+          failureReason: errMsg,
+        });
+      } catch (notifyErr) {
+        console.error(
+          `[generator] LINE failure notification failed for ${integratedTrisetsuId}:`,
+          notifyErr,
+        );
+      }
+    }
 
     return { success: false, error: errMsg };
   }

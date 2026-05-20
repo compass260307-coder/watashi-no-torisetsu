@@ -29,6 +29,7 @@ import {
   runAIGenerationAndUpdate,
 } from "@/lib/integrated-trisetsu-generator";
 import { sendSlackAlert } from "@/lib/slack-alert";
+import { sendPaymentReceivedMessage } from "@/lib/line-notify";
 
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
@@ -226,10 +227,26 @@ async function handleCheckoutCompleted(
   }
   const integratedId = inserted.id as string;
 
-  // ===== 5. AI 生成は after() で非同期実行 =====
-  // Stripe Webhook は 200 を素早く返す必要があるため、AI 呼び出し (60-100 秒)
-  // は after() で response 送信後に実行。Function は maxDuration まで生存。
+  // ===== 5. LINE 決済受領通知 + AI 生成 (両方 after() で response 送信後に実行) =====
+  // Stripe Webhook は 200 を素早く返す必要があるため、LINE push と AI 呼び出し
+  // (60-100 秒) は after() で response 送信後に実行。
   after(async () => {
+    // a. 決済受領通知 (LINE 連携済のユーザーのみ)
+    if (lineUserId) {
+      try {
+        await sendPaymentReceivedMessage({
+          lineUserId,
+          sessionId: session.id,
+          ownerUserId: userId,
+        });
+      } catch (err) {
+        console.error(
+          `[webhook/stripe] payment_received notification failed for ${integratedId}:`,
+          err,
+        );
+      }
+    }
+    // b. AI 生成キック (completed / failed の LINE 通知は generator 内で発火)
     try {
       await runAIGenerationAndUpdate(integratedId);
     } catch (err) {

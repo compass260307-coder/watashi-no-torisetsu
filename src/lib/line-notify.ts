@@ -8,6 +8,9 @@ import {
   buildN1Flex,
   buildN2Flex,
   buildN3Flex,
+  buildPaymentReceivedFlex,
+  buildIntegratedCompletePaidFlex,
+  buildIntegratedFailedFlex,
 } from "./line-flex";
 import {
   buildFullCode as buildFullCodeFromIds,
@@ -559,6 +562,185 @@ export async function notifyFriendAnswered(
     messageType: "friend_perception_received",
     messageSubtype: subtype,
     flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// =========================================================================
+// プレミアム化 v2 Week 3 T3-4: 決済関連の 3 通知
+// =========================================================================
+
+// 1. 決済受領通知 (Webhook の handleCheckoutCompleted で呼ぶ)
+//    payment_history INSERT 直後、AI 生成キック前のタイミング。
+export async function sendPaymentReceivedMessage(args: {
+  lineUserId: string;
+  sessionId: string;
+  ownerUserId?: string | null;
+  ownerName?: string;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn(
+      "LINE_CHANNEL_ACCESS_TOKEN not set; skipping payment_received",
+    );
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.ownerUserId ?? null,
+      messageType: "payment_received",
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const flex = buildPaymentReceivedFlex({
+    sessionId: args.sessionId,
+    ownerName: args.ownerName,
+  });
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: { kind: "payment_received", sessionId: args.sessionId },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.ownerUserId ?? null,
+    messageType: "payment_received",
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// 2. AI 生成完了通知 (generator.ts の status='completed' UPDATE 後で呼ぶ)
+//    既存 logLineMessage('integrated_complete') の代替として使う。
+export async function sendIntegratedCompletePaidMessage(args: {
+  lineUserId: string;
+  integratedId: string;
+  title: string;
+  subtitle: string;
+  ownerUserId?: string | null;
+  ownerName?: string;
+  aiModel?: string;
+  aiCostUsd?: number;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn(
+      "LINE_CHANNEL_ACCESS_TOKEN not set; skipping integrated_complete_paid",
+    );
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.ownerUserId ?? null,
+      messageType: "integrated_complete",
+      messageSubtype: "paid",
+      flexContent: {
+        integratedId: args.integratedId,
+        title: args.title,
+        model: args.aiModel,
+        costUsd: args.aiCostUsd,
+      },
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const flex = buildIntegratedCompletePaidFlex({
+    integratedId: args.integratedId,
+    title: args.title,
+    subtitle: args.subtitle,
+    ownerName: args.ownerName,
+  });
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: {
+        kind: "integrated_complete_paid",
+        integratedId: args.integratedId,
+      },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.ownerUserId ?? null,
+    messageType: "integrated_complete",
+    messageSubtype: "paid",
+    flexContent: {
+      integratedId: args.integratedId,
+      title: args.title,
+      subtitle: args.subtitle,
+      model: args.aiModel,
+      costUsd: args.aiCostUsd,
+    },
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// 3. 生成失敗通知 (generator.ts の status='failed' UPDATE 後で呼ぶ)
+//    sendSlackAlert (運営者向け) と並行で、ユーザー向けに発火する。
+export async function sendIntegratedFailedMessage(args: {
+  lineUserId: string;
+  integratedId: string;
+  ownerUserId?: string | null;
+  ownerName?: string;
+  failureReason?: string;
+}): Promise<LineSendResult> {
+  const client = getClient();
+  if (!client) {
+    console.warn(
+      "LINE_CHANNEL_ACCESS_TOKEN not set; skipping integrated_failed",
+    );
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.ownerUserId ?? null,
+      messageType: "integrated_failed",
+      flexContent: {
+        integratedId: args.integratedId,
+        failureReason: args.failureReason,
+      },
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const flex = buildIntegratedFailedFlex({
+    integratedId: args.integratedId,
+    ownerName: args.ownerName,
+  });
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: { kind: "integrated_failed", integratedId: args.integratedId },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.ownerUserId ?? null,
+    messageType: "integrated_failed",
+    flexContent: {
+      integratedId: args.integratedId,
+      failureReason: args.failureReason ?? null,
+    },
     sendResult: resultToLogStatus(result),
     errorDetail: result.error ?? null,
   });

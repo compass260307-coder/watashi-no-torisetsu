@@ -467,6 +467,229 @@ export function buildFriendPerceptionReceivedFlex(args: {
   };
 }
 
+// プレミアム化 v2 Week 3 T3-4: 決済受領通知 (Webhook 着信直後)
+// payment_history INSERT 直後に Webhook 経路で発火。
+// AI 生成完了は別途 buildIntegratedCompletePaidFlex で通知する。
+export function buildPaymentReceivedFlex(args: {
+  sessionId: string;
+  ownerName?: string;
+}): messagingApi.Message {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+  const sessionEnc = encodeURIComponent(args.sessionId);
+  const processingUrl = liffId
+    ? `https://liff.line.me/${liffId}?dest=checkout-success&session_id=${sessionEnc}`
+    : `${PUBLIC_BASE_URL}/checkout/success?session_id=${sessionEnc}`;
+  const greeting = args.ownerName
+    ? `${args.ownerName}さん、ご購入ありがとうございます`
+    : "ご購入ありがとうございます";
+  return {
+    type: "flex",
+    altText: "✨ 決済を受け付けました。AI が真のトリセツを生成しています...",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "✨ 決済を受け付けました",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: greeting,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "AI が「真のトリセツ」を生成しています。\n通常 1-2 分で完成します。",
+            size: "sm",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "完成したら、またこのトークでお知らせします 🐧",
+            size: "xs",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "生成状況を見る",
+              uri: processingUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// プレミアム化 v2 Week 3 T3-4: AI 生成完了通知
+// generator.ts で status='completed' UPDATE 後に発火。
+export function buildIntegratedCompletePaidFlex(args: {
+  integratedId: string;
+  title: string;
+  subtitle: string;
+  ownerName?: string;
+}): messagingApi.Message {
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+  const integEnc = encodeURIComponent(args.integratedId);
+  const readUrl = liffId
+    ? `https://liff.line.me/${liffId}?dest=integrated&id=${integEnc}`
+    : `${PUBLIC_BASE_URL}/integrated/${integEnc}`;
+  return {
+    type: "flex",
+    altText: `🎴 ${args.title}が完成しました`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "🎴 真のトリセツが完成しました",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: args.title,
+            size: "md",
+            weight: "bold",
+            wrap: true,
+            margin: "md",
+          },
+          ...(args.subtitle
+            ? [
+                {
+                  type: "text" as const,
+                  text: args.subtitle,
+                  size: "sm" as const,
+                  color: TEXT_MUTED,
+                  wrap: true,
+                  margin: "sm" as const,
+                },
+              ]
+            : []),
+          {
+            type: "text",
+            text: "7 章 / 約 5,000 字の本格レポートです。\n読み終えたら、PDF ダウンロードもできます。",
+            size: "xs",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "📖 真のトリセツを読む",
+              uri: readUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// プレミアム化 v2 Week 3 T3-4: 生成失敗通知 (MVP は手動返金前提)
+// generator.ts で status='failed' UPDATE 後に発火。
+export function buildIntegratedFailedFlex(args: {
+  integratedId: string;
+  ownerName?: string;
+}): messagingApi.Message {
+  const greeting = args.ownerName
+    ? `${args.ownerName}さん、申し訳ありません`
+    : "申し訳ありません";
+  return {
+    type: "flex",
+    altText: "⚠️ 真のトリセツの生成に問題が発生しました",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "text",
+            text: "⚠️ 生成中に問題が発生しました",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: greeting,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "AI 統合トリセツの生成中に予期せぬエラーが発生しました。",
+            size: "sm",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "このトークでサポートまでご返信ください。状況確認のうえ、再生成または返金のご案内をいたします。",
+            size: "sm",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: `参照 ID: ${args.integratedId.slice(0, 8)}...`,
+            size: "xxs",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+        ],
+      },
+    },
+  };
+}
+
 // D-1: 「🟣 統合トリセツ」リッチメニュータップ時 (リリース 3 まで準備中)
 export function buildIntegratedComingSoonFlex(): messagingApi.Message {
   const shareUrl = getShareLiffUrl();
