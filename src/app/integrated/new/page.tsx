@@ -7,7 +7,7 @@
 //   LIFF init → id_token → /api/zukan-mine GET
 //   → デフォルト: pdf_consent=true の perception のみチェック ON
 //   → 折りたたみ「詳細」で個別選択可能 (未同意はグレーアウト)
-//   → 「✨ ¥500 で統合トリセツを生成」→ POST /api/checkout/create-session
+//   → 「¥500 で統合トリセツを生成」→ POST /api/checkout/create-session
 //   → 受信 url で window.location.href (Stripe Checkout hosted page へ遷移)
 //   → 決済成功後は Stripe が /checkout/success?session_id=... に戻す
 //   → /checkout/success の polling UI が AI 生成完了を待って /integrated/[id] に遷移
@@ -268,8 +268,8 @@ export default function IntegratedNewPage() {
           決済ページに移動しています...
         </p>
         <p className="text-sm text-muted text-center leading-relaxed whitespace-pre-line">
-          Stripe の安全な決済画面が開きます 🐧{"\n"}
-          しばらくお待ちください
+          Stripe の安全な決済画面が開きます。{"\n"}
+          しばらくお待ちください。
         </p>
       </div>
     );
@@ -278,7 +278,7 @@ export default function IntegratedNewPage() {
     return (
       <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
         <p className="text-base font-bold text-foreground mb-3">
-          🙏 申し訳ありません
+          申し訳ありません
         </p>
         <p className="text-sm text-muted text-center mb-6 leading-relaxed max-w-sm">
           {errorMessage || "問題が発生しました"}
@@ -317,8 +317,8 @@ export default function IntegratedNewPage() {
           <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
             INTEGRATED TRISETSU
           </p>
-          <h1 className="text-2xl font-extrabold leading-tight">
-            🟣 統合トリセツを作る
+          <h1 className="font-serif text-2xl font-bold leading-tight">
+            統合トリセツを作る
           </h1>
           <p className="text-sm text-muted mt-3 leading-relaxed">
             自己評価 + 友達評価 {perceptions.length} 人分を
@@ -336,9 +336,9 @@ export default function IntegratedNewPage() {
             <span className="text-xs text-muted">（買い切り、税込）</span>
           </div>
           <ul className="text-xs text-foreground leading-relaxed space-y-1.5 mb-3">
-            <li>📖 7 章・5,000 字以上の本格レポート (PDF 約 12 ページ)</li>
-            <li>🔒 永続閲覧可能、PDF はお手元にダウンロード保存</li>
-            <li>🎴 友達評価が増えるたび再統合 (新たに ¥500 で都度購入)</li>
+            <li>・7 章・5,000 字以上の本格レポート (PDF 約 12 ページ)</li>
+            <li>・永続閲覧可能、PDF はお手元にダウンロード保存</li>
+            <li>・友達評価が増えるたび再統合 (新たに ¥500 で都度購入)</li>
           </ul>
           <p className="text-[10px] text-muted leading-relaxed">
             決済はクレジットカード / PayPay / コンビニ / Apple Pay /
@@ -357,7 +357,7 @@ export default function IntegratedNewPage() {
               : "bg-card-border text-muted cursor-not-allowed"
           }`}
         >
-          ✨ ¥500 で統合トリセツを生成
+          ¥500 で統合トリセツを生成
           <br />
           <span className="text-xs font-normal mt-1 inline-block opacity-90">
             ({selectedCount} 素材から統合)
@@ -400,7 +400,7 @@ export default function IntegratedNewPage() {
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold mb-0.5">
-                    🟢 自分の自己評価
+                    自分の自己評価
                   </p>
                   {current && (
                     <p
@@ -453,7 +453,7 @@ export default function IntegratedNewPage() {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold mb-0.5 flex items-center gap-2 flex-wrap">
-                              <span>🟡 {p.perceiverName}さんから見た私</span>
+                              <span>{p.perceiverName}さんから見た私</span>
                               {p.pdfConsent ? (
                                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                                   PDF 可
@@ -489,7 +489,7 @@ export default function IntegratedNewPage() {
                   href="/share"
                   className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white"
                 >
-                  💌 友達を招待する
+                  友達を招待する
                 </Link>
               </div>
             )}

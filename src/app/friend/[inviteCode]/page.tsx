@@ -649,7 +649,7 @@ function ConsentScreen({
         onClick={onSubmit}
         className="w-full rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-md active:scale-[0.98] transition-all"
       >
-        {pdfConsent ? "✓ 同意して送信する" : "PDF 利用なしで送信する"}
+        {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
       </button>
 
       <p className="mt-4 text-[10px] text-muted text-center leading-relaxed">

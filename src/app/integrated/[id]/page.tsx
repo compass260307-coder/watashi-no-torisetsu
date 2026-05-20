@@ -157,13 +157,13 @@ export default async function IntegratedPage({
   if (row.include_self && summarySource.self) {
     sourceBadges.push({
       key: "self",
-      label: `🟢 自己評価 (${summarySource.self.fullCode})`,
+      label: `自己評価 (${summarySource.self.fullCode})`,
     });
   }
   for (const p of summarySource.perceptions) {
     sourceBadges.push({
       key: `p-${p.name}-${p.fullCode}`,
-      label: `🟡 ${p.name}さんから (${p.fullCode})`,
+      label: `${p.name}さんから (${p.fullCode})`,
     });
   }
 
@@ -178,7 +178,7 @@ export default async function IntegratedPage({
   if (status === "failed") {
     return (
       <FallbackLayout
-        emoji="⚠️"
+        label="ERROR"
         title="生成に失敗しました"
         message="申し訳ありません、AI 統合トリセツの生成中に問題が発生しました。"
         secondary={row.failure_reason ? `詳細: ${row.failure_reason}` : null}
@@ -189,7 +189,7 @@ export default async function IntegratedPage({
   if (status === "pending" || status === "generating") {
     return (
       <FallbackLayout
-        emoji="⏳"
+        label="GENERATING"
         title="生成中です"
         message="AI が統合トリセツを作成しています。完了まで 30-90 秒ほどお待ちください。"
         secondary="ページを再読み込みすると最新の状態が表示されます。"
@@ -201,7 +201,7 @@ export default async function IntegratedPage({
     // status='completed' なのに chapters 無し = 旧スキーマ時代のレコード or データ欠落
     return (
       <FallbackLayout
-        emoji="📜"
+        label="LEGACY"
         title="古い形式のトリセツです"
         message="このトリセツはプレミアム版以前の形式で生成されているため、新フォーマットでは表示できません。"
         secondary="新しい統合トリセツを生成すると、7 章構成の本格レポートが手に入ります。"
@@ -220,7 +220,7 @@ export default async function IntegratedPage({
         {/* ヘッダー: メタ情報 */}
         <header className="mb-6 animate-fade-in-up">
           <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
-            🟣 INTEGRATED TRISETSU
+            INTEGRATED TRISETSU
           </p>
           <p className="text-xs text-muted">
             生成日: {formatDate(row.generated_at)}
@@ -279,13 +279,13 @@ export default async function IntegratedPage({
             href="/integrated/new"
             className="w-full rounded-full border-2 border-primary text-primary text-center px-6 py-3 text-sm font-bold transition-all hover:bg-label-bg active:scale-[0.98]"
           >
-            ✨ もう一度、別の組み合わせで作る
+            もう一度、別の組み合わせで作る
           </Link>
           <Link
             href="/zukan-mine"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
-            🎴 マイ図鑑に戻る
+            マイ図鑑に戻る
           </Link>
         </section>
       </main>
@@ -338,14 +338,15 @@ function ChapterSection({
 // フォールバック画面 (failed / pending / 旧形式)
 // ─────────────────────────────────────────
 function FallbackLayout({
-  emoji,
+  label,
   title,
   message,
   secondary,
   generatedAt,
   showCreateNewCta = false,
 }: {
-  emoji: string;
+  /** タイポグラフィのみで状態を表現 (T3-5、絵文字不使用): "ERROR" / "GENERATING" / "LEGACY" */
+  label: string;
   title: string;
   message: string;
   secondary: string | null;
@@ -357,14 +358,16 @@ function FallbackLayout({
       <main className="flex flex-col px-5 py-8 max-w-lg mx-auto w-full pb-12">
         <header className="mb-6 animate-fade-in-up">
           <p className="text-[10px] font-bold tracking-wider text-muted mb-2">
-            🟣 INTEGRATED TRISETSU
+            INTEGRATED TRISETSU
           </p>
           <p className="text-xs text-muted">
             生成日: {formatDate(generatedAt)}
           </p>
         </header>
         <section className="rounded-2xl border-2 border-card-border bg-card-bg p-6 sm:p-8 text-center mb-6 animate-fade-in-up stagger-2">
-          <p className="text-3xl mb-3">{emoji}</p>
+          <p className="font-serif text-xs tracking-[0.4em] text-primary/70 mb-4">
+            {label}
+          </p>
           <h1 className="font-serif text-lg sm:text-xl font-bold text-foreground mb-3">
             {title}
           </h1>
@@ -381,14 +384,14 @@ function FallbackLayout({
               href="/integrated/new"
               className="w-full rounded-full bg-primary-gradient text-white text-center px-6 py-3 text-sm font-bold shadow-md transition-all active:scale-[0.98]"
             >
-              ✨ 新しい統合トリセツを作る
+              新しい統合トリセツを作る
             </Link>
           )}
           <Link
             href="/zukan-mine"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
-            🎴 マイ図鑑に戻る
+            マイ図鑑に戻る
           </Link>
         </section>
       </main>

@@ -156,15 +156,15 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
   const label = (() => {
     switch (phase) {
       case "preparing":
-        return "📄 準備中...";
+        return "準備中...";
       case "downloading":
-        return "📄 PDF を取得中...";
+        return "PDF を取得中...";
       case "done":
-        return "✓ ダウンロード開始";
+        return "ダウンロード開始";
       case "error":
-        return "📄 もう一度試す";
+        return "もう一度試す";
       default:
-        return "📄 PDF をダウンロード";
+        return "PDF をダウンロード";
     }
   })();
 

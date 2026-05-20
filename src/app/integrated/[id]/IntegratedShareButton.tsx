@@ -18,7 +18,7 @@ export function IntegratedShareButton({ shareUrl, title }: Props) {
 
   const buildShareText = () => {
     return [
-      `🟣 ${title}`,
+      title,
       "",
       "ワタシのトリセツ — 複数の眼で生成した「真のトリセツ」",
       "",
@@ -75,10 +75,10 @@ export function IntegratedShareButton({ shareUrl, title }: Props) {
       className="w-full rounded-full bg-primary-gradient text-white text-center px-6 py-4 text-base font-bold shadow-md transition-all active:scale-[0.98] disabled:opacity-70"
     >
       {sharing
-        ? "📤 シェア中..."
+        ? "シェア中..."
         : copied
-          ? "✓ URL をコピーしました"
-          : "📤 シェアする"}
+          ? "URL をコピーしました"
+          : "シェアする"}
     </button>
   );
 }

@@ -127,14 +127,20 @@ export function CheckoutProcessing({ sessionId }: Props) {
           </h1>
         </header>
 
-        {/* スピナー / 状態アイコン */}
+        {/* 状態インジケーター (絵文字不使用、テキスト + 装飾で表現) */}
         <div className="mb-8" aria-hidden>
           {phase === "completed" ? (
-            <div className="text-5xl">✓</div>
+            <p className="font-serif text-base tracking-[0.4em] text-primary">
+              完了
+            </p>
           ) : phase === "failed" ? (
-            <div className="text-5xl">⚠️</div>
+            <p className="font-serif text-base tracking-[0.4em] text-foreground">
+              エラー
+            </p>
           ) : phase === "timeout" ? (
-            <div className="text-5xl">⏳</div>
+            <p className="font-serif text-sm tracking-[0.3em] text-muted">
+              お待ちください
+            </p>
           ) : (
             <Spinner />
           )}
@@ -160,7 +166,7 @@ export function CheckoutProcessing({ sessionId }: Props) {
               href="/integrated/new"
               className="w-full rounded-full border-2 border-primary text-primary text-center px-6 py-3 text-sm font-bold"
             >
-              ✨ もう一度試す
+              もう一度試す
             </Link>
           )}
           {phase === "timeout" && (
@@ -173,7 +179,7 @@ export function CheckoutProcessing({ sessionId }: Props) {
             href="/zukan-mine"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
-            🎴 マイ図鑑に戻る
+            マイ図鑑に戻る
           </Link>
         </div>
       </main>

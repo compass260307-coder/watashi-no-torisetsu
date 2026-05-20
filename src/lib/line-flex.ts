@@ -484,7 +484,7 @@ export function buildPaymentReceivedFlex(args: {
     : "ご購入ありがとうございます";
   return {
     type: "flex",
-    altText: "✨ 決済を受け付けました。AI が真のトリセツを生成しています...",
+    altText: "決済を受け付けました。AI が真のトリセツを生成しています...",
     contents: {
       type: "bubble",
       body: {
@@ -494,7 +494,7 @@ export function buildPaymentReceivedFlex(args: {
         contents: [
           {
             type: "text",
-            text: "✨ 決済を受け付けました",
+            text: "決済を受け付けました",
             weight: "bold",
             size: "lg",
             wrap: true,
@@ -516,7 +516,7 @@ export function buildPaymentReceivedFlex(args: {
           },
           {
             type: "text",
-            text: "完成したら、またこのトークでお知らせします 🐧",
+            text: "完成したら、またこのトークでお知らせします。",
             size: "xs",
             color: TEXT_MUTED,
             wrap: true,
@@ -561,7 +561,7 @@ export function buildIntegratedCompletePaidFlex(args: {
     : `${PUBLIC_BASE_URL}/integrated/${integEnc}`;
   return {
     type: "flex",
-    altText: `🎴 ${args.title}が完成しました`,
+    altText: `${args.title}が完成しました`,
     contents: {
       type: "bubble",
       body: {
@@ -571,7 +571,7 @@ export function buildIntegratedCompletePaidFlex(args: {
         contents: [
           {
             type: "text",
-            text: "🎴 真のトリセツが完成しました",
+            text: "真のトリセツが完成しました",
             weight: "bold",
             size: "lg",
             wrap: true,
@@ -618,7 +618,7 @@ export function buildIntegratedCompletePaidFlex(args: {
             height: "md",
             action: {
               type: "uri",
-              label: "📖 真のトリセツを読む",
+              label: "真のトリセツを読む",
               uri: readUrl,
             },
           },
@@ -639,7 +639,7 @@ export function buildIntegratedFailedFlex(args: {
     : "申し訳ありません";
   return {
     type: "flex",
-    altText: "⚠️ 真のトリセツの生成に問題が発生しました",
+    altText: "真のトリセツの生成に問題が発生しました",
     contents: {
       type: "bubble",
       body: {
@@ -649,7 +649,7 @@ export function buildIntegratedFailedFlex(args: {
         contents: [
           {
             type: "text",
-            text: "⚠️ 生成中に問題が発生しました",
+            text: "生成中に問題が発生しました",
             weight: "bold",
             size: "lg",
             wrap: true,
@@ -702,7 +702,7 @@ export function buildIntegratedPremiumFlex(): messagingApi.Message {
     : `${PUBLIC_BASE_URL}/integrated/new`;
   return {
     type: "flex",
-    altText: "🟣 統合トリセツ プレミアム版が利用可能になりました",
+    altText: "統合トリセツ プレミアム版が利用可能になりました",
     contents: {
       type: "bubble",
       body: {
@@ -712,7 +712,7 @@ export function buildIntegratedPremiumFlex(): messagingApi.Message {
         contents: [
           {
             type: "text",
-            text: "🟣 統合トリセツ プレミアム版",
+            text: "統合トリセツ プレミアム版",
             weight: "bold",
             size: "lg",
             wrap: true,
@@ -727,7 +727,7 @@ export function buildIntegratedPremiumFlex(): messagingApi.Message {
           },
           {
             type: "text",
-            text: "📖 7 章 / 5,000 字以上\n🔒 PDF 付き / 永続閲覧可能\n💴 ¥500 (買い切り、税込)",
+            text: "・7 章 / 5,000 字以上\n・PDF 付き / 永続閲覧可能\n・¥500 (買い切り、税込)",
             size: "sm",
             wrap: true,
             margin: "md",
@@ -754,7 +754,7 @@ export function buildIntegratedPremiumFlex(): messagingApi.Message {
             height: "md",
             action: {
               type: "uri",
-              label: "✨ ¥500 で作る",
+              label: "¥500 で作る",
               uri: integratedNewUrl,
             },
           },
@@ -764,7 +764,7 @@ export function buildIntegratedPremiumFlex(): messagingApi.Message {
             height: "md",
             action: {
               type: "uri",
-              label: "💌 友達を招待する",
+              label: "友達を招待する",
               uri: shareUrl,
             },
           },
