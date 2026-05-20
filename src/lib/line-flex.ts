@@ -690,12 +690,19 @@ export function buildIntegratedFailedFlex(args: {
   };
 }
 
-// D-1: 「🟣 統合トリセツ」リッチメニュータップ時 (リリース 3 まで準備中)
-export function buildIntegratedComingSoonFlex(): messagingApi.Message {
+// プレミアム化 v2 Week 3 T3-7: 旧「準備中」Flex をプレミアム版案内に置換
+// 旧 buildIntegratedComingSoonFlex の役割を更新版 (現在: プレミアム提供開始)。
+// 関数名は新仕様に合わせて改名、postback action 名 "integrated_coming_soon" は
+// 既存リッチメニュー画像の postback と互換維持のため、handler 側で受け続ける。
+export function buildIntegratedPremiumFlex(): messagingApi.Message {
   const shareUrl = getShareLiffUrl();
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
+  const integratedNewUrl = liffId
+    ? `https://liff.line.me/${liffId}?dest=integrated-new`
+    : `${PUBLIC_BASE_URL}/integrated/new`;
   return {
     type: "flex",
-    altText: "🟣 統合トリセツは準備中 (リリース 3 で利用可能)",
+    altText: "🟣 統合トリセツ プレミアム版が利用可能になりました",
     contents: {
       type: "bubble",
       body: {
@@ -705,14 +712,14 @@ export function buildIntegratedComingSoonFlex(): messagingApi.Message {
         contents: [
           {
             type: "text",
-            text: "🟣 統合トリセツは準備中",
+            text: "🟣 統合トリセツ プレミアム版",
             weight: "bold",
             size: "lg",
             wrap: true,
           },
           {
             type: "text",
-            text: "友達 1 人から評価をもらうと、AI が「真のトリセツ」を作成できるようになるよ。",
+            text: "複数の眼を統合して、あなたの「真のトリセツ」を AI が書き上げます。",
             size: "sm",
             color: TEXT_MUTED,
             wrap: true,
@@ -720,22 +727,40 @@ export function buildIntegratedComingSoonFlex(): messagingApi.Message {
           },
           {
             type: "text",
-            text: "まずは友達を招待してみよう。",
+            text: "📖 7 章 / 5,000 字以上\n🔒 PDF 付き / 永続閲覧可能\n💴 ¥500 (買い切り、税込)",
             size: "sm",
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "友達評価が多いほど深い統合になります。まずは友達を招待してみよう。",
+            size: "xs",
             color: TEXT_MUTED,
             wrap: true,
-            margin: "sm",
+            margin: "md",
           },
         ],
       },
       footer: {
         type: "box",
         layout: "vertical",
+        spacing: "sm",
         contents: [
           {
             type: "button",
             style: "primary",
             color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "✨ ¥500 で作る",
+              uri: integratedNewUrl,
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
             height: "md",
             action: {
               type: "uri",

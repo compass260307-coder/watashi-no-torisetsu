@@ -1,12 +1,13 @@
 "use client";
 
 // Phase 3-β B-4: マイ図鑑画面 (LIFF 上で開く想定、Web 直接アクセスも fallback で動く)
+// プレミアム化 v2 (Week 3 T3-7): 旧「準備中」表記を更新済 (¥500 で生成可)。
 //
 // 構造:
 //   🟢 自己トリセツ (current = 最新診断)
 //   📜 過去のあなた (current 以外の users 行、存在時のみ折りたたみ表示)
 //   🟡 ○○さんから見た、あなた (friend_perceptions リスト、空時は招待 CTA)
-//   🟣 統合トリセツ (リリース 3 まで「準備中」表示)
+//   🟣 統合トリセツ (プレミアム ¥500、/integrated/new から購入導線)
 //
 // 認可:
 //   LIFF init → id_token → /api/zukan-mine GET (Bearer 必須)

@@ -1,7 +1,12 @@
 // Phase 3-β リリース 3 C-1: AI 統合トリセツ生成エンドポイント
-// プレミアム化 v2 (Week 1 T1-4 + Week 2 T2-7): 共通 generator に委譲
+// プレミアム化 v2 (Week 1 T1-4 + Week 2 T2-7 + Week 3 T3-7): dev/preview 限定の経路
 //
 // POST /api/integrated-trisetsu
+//   - 本番 (VERCEL_ENV='production') では 410 を返す。
+//     プレミアム化以降、本番の AI 統合生成は Stripe Checkout → Webhook 経路に
+//     一本化。本エンドポイントは dev / Vercel Preview 限定の経路として残置:
+//       * stripe trigger 経由ではない単体動作検証
+//       * Anthropic API 出力のオフラインデバッグ
 //   - Authorization: Bearer <LIFF id_token> 必須
 //   - body: { perception_ids: string[], include_self?: boolean (default true) }
 //   - 自分の current users 行特定 → perception 検証 → INSERT pending →
@@ -16,7 +21,8 @@
 //   - AI 呼び出し本体は src/lib/integrated-trisetsu-generator.ts に分離
 //     (Webhook と本ルートの両方から呼び出される)
 //   - 本ルートは認可 + 入力検証 + INSERT pending + 同期 await のみを担当
-//   - payment_id は付与しない (= 課金フローを通らないパス、開発・テスト向け)
+//   - payment_id は付与しない (= 課金フローを通らないパス)
+//   - 本番ガード: T3-7 で追加。VERCEL_ENV='production' なら 410 Gone を返す
 //
 // 戻り値:
 //   - 200: { ok, integrated_trisetsu_id, redirect_to } (生成成功)
@@ -38,6 +44,26 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
+  // ===== T3-7 本番ガード =====
+  // 本番では Stripe Checkout 経路に一本化、無料生成パスは閉じる。
+  // 判定は NODE_ENV + VERCEL_ENV の両方が "production" の場合のみ。
+  //   - next dev    : NODE_ENV='development' → 通す (.env.local に VERCEL_ENV='production'
+  //     が pull で入っていても local 開発を壊さない)
+  //   - Vercel Preview : VERCEL_ENV='preview'   → 通す (preview デプロイで動作確認可)
+  //   - Vercel Prod    : 両方 'production'      → ガード発動 (410)
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.VERCEL_ENV === "production"
+  ) {
+    return NextResponse.json(
+      {
+        error: "This endpoint is disabled in production.",
+        hint: "本番では Stripe Checkout 経由で生成してください: POST /api/checkout/create-session",
+      },
+      { status: 410 },
+    );
+  }
+
   // ===== 認可 =====
   const verified = await verifyBearer(request);
   if (!verified) {

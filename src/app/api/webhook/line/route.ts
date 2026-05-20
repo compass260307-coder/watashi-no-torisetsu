@@ -8,7 +8,7 @@ import {
   replyToLine,
 } from "@/lib/line-notify";
 import {
-  buildIntegratedComingSoonFlex,
+  buildIntegratedPremiumFlex,
   buildSettingsLinkFlex,
 } from "@/lib/line-flex";
 
@@ -274,10 +274,14 @@ async function handleOptin(
   );
 }
 
-// Phase 3-β D-1: リッチメニュー 「🟣 統合トリセツ」「⚙️ 設定」postback への応答
-async function handleIntegratedComingSoon(replyToken: string): Promise<void> {
-  await replyToLine(replyToken, [buildIntegratedComingSoonFlex()], {
-    kind: "integrated_coming_soon",
+// Phase 3-β D-1 + プレミアム化 v2 T3-7:
+// リッチメニュー 「🟣 統合トリセツ」postback への応答。旧「準備中」案内を
+// プレミアム版案内 (¥500 で作る CTA + 友達招待 CTA) に置換。
+// 既存リッチメニュー画像との互換のため postback action 名 "integrated_coming_soon"
+// は維持 (画像差替の T6-2 で action 名も整理予定)。
+async function handleIntegratedPromo(replyToken: string): Promise<void> {
+  await replyToLine(replyToken, [buildIntegratedPremiumFlex()], {
+    kind: "integrated_premium",
   });
 }
 
@@ -313,9 +317,10 @@ async function handlePostbackEvent(
     return;
   }
 
-  // Phase 3-β D-1: リッチメニュー新ボタン
+  // Phase 3-β D-1 + プレミアム化 v2 T3-7: リッチメニュー「🟣 統合トリセツ」
+  // 旧「準備中」→ プレミアム版案内に置換。action 名は互換維持。
   if (action === "integrated_coming_soon") {
-    await handleIntegratedComingSoon(replyToken);
+    await handleIntegratedPromo(replyToken);
     return;
   }
   if (action === "open_settings") {
