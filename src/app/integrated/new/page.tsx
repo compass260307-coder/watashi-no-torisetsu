@@ -1,16 +1,18 @@
 "use client";
 
 // Phase 3-β リリース 3 C-3: 統合素材選択 UI (LIFF 上で開く想定)
+// プレミアム化 v2 (Week 3 T3-2): Stripe Checkout 経路に置換
 //
 // フロー:
 //   LIFF init → id_token → /api/zukan-mine GET
-//   → デフォルト「全員チェック ON」で表示
-//   → 折りたたみ「詳細」で個別チェック可能
-//   → 「✨ 統合トリセツを生成」→ POST /api/integrated-trisetsu
-//   → レスポンスの redirect_to で router.push
+//   → デフォルト: pdf_consent=true の perception のみチェック ON
+//   → 折りたたみ「詳細」で個別選択可能 (未同意はグレーアウト)
+//   → 「✨ ¥500 で統合トリセツを生成」→ POST /api/checkout/create-session
+//   → 受信 url で window.location.href (Stripe Checkout hosted page へ遷移)
+//   → 決済成功後は Stripe が /checkout/success?session_id=... に戻す
+//   → /checkout/success の polling UI が AI 生成完了を待って /integrated/[id] に遷移
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { TorisetsuTypeId } from "@/lib/types";
@@ -55,11 +57,11 @@ type Status =
   | "missing-liff"
   | "needs-self-diagnosis"
   | "ready"
-  | "generating"
+  | "redirecting" // T3-2: Stripe Checkout への遷移中 (旧 'generating' は廃止、
+  //                       AI 生成は /checkout/success の polling 配下で実行)
   | "error";
 
 export default function IntegratedNewPage() {
-  const router = useRouter();
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [data, setData] = useState<ZukanMineResponse | null>(null);
@@ -71,8 +73,6 @@ export default function IntegratedNewPage() {
     Set<string>
   >(new Set());
   const [isExpanded, setIsExpanded] = useState(false);
-  // ローディング演出の段階表示
-  const [generatingPhase, setGeneratingPhase] = useState<0 | 1>(0);
 
   const initialized = useRef(false);
 
@@ -153,19 +153,18 @@ export default function IntegratedNewPage() {
     return selectedPerceptionIds.size + (includeSelf ? 1 : 0);
   }, [selectedPerceptionIds, includeSelf]);
 
-  const canGenerate = selectedCount > 0 && status === "ready";
+  const canCheckout = selectedCount > 0 && status === "ready";
 
-  const handleGenerate = async () => {
-    if (!canGenerate || !idToken) return;
-    setStatus("generating");
-    setGeneratingPhase(0);
+  // T3-2: 旧 handleGenerate (無料即時 AI 呼び出し) を Stripe Checkout 経路に置換。
+  // create-session で URL を取得 → window.location.href で Stripe に遷移。
+  // 戻ってきた後は /checkout/success の polling UI が AI 完了を待つ。
+  const handleProceedToCheckout = async () => {
+    if (!canCheckout || !idToken) return;
+    setStatus("redirecting");
     setErrorMessage("");
 
-    // 2 秒後に段階 2 のメッセージに切替 (UX 演出)
-    const phaseTimer = setTimeout(() => setGeneratingPhase(1), 2000);
-
     try {
-      const res = await fetch("/api/integrated-trisetsu", {
+      const res = await fetch("/api/checkout/create-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -177,17 +176,23 @@ export default function IntegratedNewPage() {
         }),
       });
       const json = await res.json().catch(() => null);
-      clearTimeout(phaseTimer);
 
-      if (!res.ok || !json?.ok) {
+      if (!res.ok || !json?.url) {
         setStatus("error");
         if (res.status === 403) {
-          setErrorMessage("他人の評価は統合素材に使えません");
+          setErrorMessage(
+            json?.error ??
+              "選択した友達評価が統合素材に使えません",
+          );
         } else if (res.status === 400) {
           setErrorMessage(json?.error ?? "入力が正しくありません");
-        } else if (res.status === 500 && json?.error === "API key not configured") {
+        } else if (
+          res.status === 500 &&
+          (json?.error === "STRIPE_SECRET_KEY not configured" ||
+            json?.error === "STRIPE_PRICE_ID not configured")
+        ) {
           setErrorMessage(
-            "AI 機能が一時的に利用できません (運営側の設定問題)。少し時間をおいてお試しください。",
+            "決済機能が一時的に利用できません (運営側の設定問題)。少し時間をおいてお試しください。",
           );
         } else {
           setErrorMessage(
@@ -197,10 +202,9 @@ export default function IntegratedNewPage() {
         return;
       }
 
-      // 成功 → 表示ページへ
-      router.push(json.redirect_to ?? `/integrated/${json.integrated_trisetsu_id}`);
+      // Stripe Checkout に遷移
+      window.location.href = json.url;
     } catch (err) {
-      clearTimeout(phaseTimer);
       setStatus("error");
       setErrorMessage(err instanceof Error ? err.message : "Unknown error");
     }
@@ -250,7 +254,7 @@ export default function IntegratedNewPage() {
       </div>
     );
   }
-  if (status === "generating") {
+  if (status === "redirecting") {
     return (
       <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
         <Image
@@ -261,12 +265,11 @@ export default function IntegratedNewPage() {
           className="w-32 h-32 object-contain animate-bounce-slow mb-6"
         />
         <p className="text-lg font-extrabold text-center mb-2">
-          ✨ AI が統合トリセツを生成中...
+          決済ページに移動しています...
         </p>
-        <p className="text-sm text-muted text-center transition-opacity duration-500">
-          {generatingPhase === 0
-            ? "複数の眼から、あなたの輪郭が見えてきます"
-            : "あなたの本当の姿が、見えてきました 🐧"}
+        <p className="text-sm text-muted text-center leading-relaxed whitespace-pre-line">
+          Stripe の安全な決済画面が開きます 🐧{"\n"}
+          しばらくお待ちください
         </p>
       </div>
     );
@@ -324,23 +327,55 @@ export default function IntegratedNewPage() {
           </p>
         </div>
 
-        {/* メインボタン */}
+        {/* T3-2: 価格・内容説明カード (購入前提示) */}
+        <section className="rounded-2xl border border-card-border bg-card-bg p-5 mb-4 animate-fade-in-up">
+          <div className="flex items-baseline justify-center gap-2 mb-3">
+            <span className="text-3xl font-extrabold text-foreground tracking-tight">
+              ¥500
+            </span>
+            <span className="text-xs text-muted">（買い切り、税込）</span>
+          </div>
+          <ul className="text-xs text-foreground leading-relaxed space-y-1.5 mb-3">
+            <li>📖 7 章・5,000 字以上の本格レポート (PDF 約 12 ページ)</li>
+            <li>🔒 永続閲覧可能、PDF はお手元にダウンロード保存</li>
+            <li>🎴 友達評価が増えるたび再統合 (新たに ¥500 で都度購入)</li>
+          </ul>
+          <p className="text-[10px] text-muted leading-relaxed">
+            決済はクレジットカード / PayPay / コンビニ / Apple Pay /
+            Google Pay に対応 (Stripe 経由、安全決済)。
+          </p>
+        </section>
+
+        {/* メインボタン (T3-2: Stripe Checkout 遷移) */}
         <button
           type="button"
-          onClick={handleGenerate}
-          disabled={!canGenerate}
+          onClick={handleProceedToCheckout}
+          disabled={!canCheckout}
           className={`w-full rounded-2xl px-6 py-6 text-base font-extrabold text-center transition-all shadow-md mb-3 ${
-            canGenerate
+            canCheckout
               ? "bg-primary-gradient text-white hover:scale-[1.02] active:scale-[0.98]"
               : "bg-card-border text-muted cursor-not-allowed"
           }`}
         >
-          ✨ 統合トリセツを生成
+          ✨ ¥500 で統合トリセツを生成
           <br />
           <span className="text-xs font-normal mt-1 inline-block opacity-90">
             ({selectedCount} 素材から統合)
           </span>
         </button>
+
+        {/* 特商法表記 (Week 5 で本実装、現状は stub ページ) */}
+        <p className="text-[10px] text-muted/80 text-center mb-3 leading-relaxed">
+          ご購入前に{" "}
+          <Link
+            href="/legal/commerce"
+            className="underline hover:text-foreground"
+          >
+            特定商取引法に基づく表記
+          </Link>
+          {" "}
+          をご確認ください
+        </p>
 
         {/* 折りたたみトグル */}
         <button
