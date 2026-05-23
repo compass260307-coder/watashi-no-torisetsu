@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   // ===== current: session.user_id から users 行を取得して導出 =====
   const { data: userRow, error: userErr } = await supabaseAdmin
     .from("users")
-    .select("id, owner_token, type_id, scores, display_name, created_at")
+    .select("id, owner_token, type_id, scores, display_name, email, created_at")
     .eq("id", session.id)
     .maybeSingle();
   if (userErr) {
@@ -203,6 +203,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     ownerName,
+    email: (userRow as UserRow & { email?: string | null }).email ?? null,
     current,
     past,
     perceptions,

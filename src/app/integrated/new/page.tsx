@@ -45,6 +45,7 @@ type PerceptionCard = {
 type ZukanMineResponse = {
   ok: true;
   ownerName: string | null;
+  email: string | null;
   current: DiagnosisCard | null;
   past: DiagnosisCard[];
   perceptions: PerceptionCard[];
@@ -68,6 +69,7 @@ export default function IntegratedNewPage() {
     Set<string>
   >(new Set());
   const [isExpanded, setIsExpanded] = useState(false);
+  const [email, setEmail] = useState<string>("");
 
   const initialized = useRef(false);
 
@@ -96,6 +98,8 @@ export default function IntegratedNewPage() {
           return;
         }
         setData(json);
+        // 既に登録済みの email があれば prefill (購入履歴があるユーザー等)
+        if (json.email) setEmail(json.email);
         // T3-3: デフォルト ON は「PDF 利用同意済」だけに絞る。
         setSelectedPerceptionIds(
           new Set(json.perceptions.filter((p) => p.pdfConsent).map((p) => p.id)),
@@ -125,7 +129,14 @@ export default function IntegratedNewPage() {
     return selectedPerceptionIds.size + (includeSelf ? 1 : 0);
   }, [selectedPerceptionIds, includeSelf]);
 
-  const canCheckout = selectedCount > 0 && status === "ready";
+  // Day 7: email 入力必須 (Stripe customer_email + 完成通知メール送信のため)
+  const trimmedEmail = email.trim();
+  const isEmailValid =
+    trimmedEmail.length > 0 &&
+    trimmedEmail.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+  const canCheckout =
+    selectedCount > 0 && status === "ready" && isEmailValid;
 
   // T3-2: 旧 handleGenerate (無料即時 AI 呼び出し) を Stripe Checkout 経路に置換。
   // create-session で URL を取得 → window.location.href で Stripe に遷移。
@@ -143,6 +154,7 @@ export default function IntegratedNewPage() {
         body: JSON.stringify({
           perception_ids: Array.from(selectedPerceptionIds),
           include_self: includeSelf,
+          email: trimmedEmail,
         }),
       });
       const json = await res.json().catch(() => null);
@@ -295,6 +307,35 @@ export default function IntegratedNewPage() {
           <p className="text-[10px] text-muted leading-relaxed">
             決済はクレジットカード / PayPay / コンビニ / Apple Pay /
             Google Pay に対応 (Stripe 経由、安全決済)。
+          </p>
+        </section>
+
+        {/* Day 7: メール入力 (Stripe Checkout + 完成通知の宛先) */}
+        <section className="mb-4 animate-fade-in-up">
+          <label
+            htmlFor="purchase-email"
+            className="block text-xs font-bold text-muted mb-2"
+          >
+            メールアドレス
+            <span className="ml-2 text-[10px] font-normal text-muted/80">
+              (決済確認 + 完成通知の送信先)
+            </span>
+          </label>
+          <input
+            id="purchase-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            maxLength={254}
+            className="w-full rounded-xl border border-card-border bg-card-bg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <p className="text-[11px] text-muted mt-1 leading-relaxed">
+            完成したトリセツはこのアドレスに永続 URL を送ります。
+            <br />
+            別端末からも同じアドレスでログインできます。
           </p>
         </section>
 

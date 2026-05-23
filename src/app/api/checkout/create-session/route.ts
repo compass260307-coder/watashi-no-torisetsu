@@ -20,8 +20,9 @@ import { getStripe, getPremiumPriceId } from "@/lib/stripe-server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+// .env.local で NEXT_PUBLIC_SITE_URL="" の空文字を弾くため || を使用 (?? は不可)
 const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function POST(request: NextRequest) {
   // ===== Stripe 環境変数チェック =====
@@ -48,7 +49,11 @@ export async function POST(request: NextRequest) {
   const userId = session.id;
 
   // ===== body parse =====
-  let body: { include_self?: unknown; perception_ids?: unknown };
+  let body: {
+    include_self?: unknown;
+    perception_ids?: unknown;
+    email?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -67,6 +72,47 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 },
     );
+  }
+
+  // ===== email 解決 (Web ファースト: 購入時に必須) =====
+  // body.email > session.email の優先で決定。両方なしは 400。
+  // body で来た値は lowercase normalize して users.email に永続化。
+  // Stripe Checkout の customer_email として渡し、決済成功後の連絡経路にする。
+  const bodyEmailRaw =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : null;
+  const isValidEmail = (v: string | null): v is string =>
+    !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 254;
+
+  let customerEmail: string | null = null;
+  if (isValidEmail(bodyEmailRaw)) {
+    customerEmail = bodyEmailRaw;
+  } else if (isValidEmail(session.email)) {
+    customerEmail = session.email;
+  }
+
+  if (!customerEmail) {
+    return NextResponse.json(
+      {
+        error: "メールアドレスが必要です",
+        detail: "決済完了とトリセツ完成のお知らせをこのアドレスに送ります",
+      },
+      { status: 400 },
+    );
+  }
+
+  // body で新規 email を受け取った (= session.email と異なる or 未設定) 場合は永続化
+  if (bodyEmailRaw && bodyEmailRaw === customerEmail && session.email !== bodyEmailRaw) {
+    const { error: emailUpdErr } = await supabaseAdmin
+      .from("users")
+      .update({ email: customerEmail })
+      .eq("id", userId);
+    if (emailUpdErr) {
+      console.error(
+        "[checkout/create-session] email persist error (continuing):",
+        emailUpdErr,
+      );
+      // 永続化失敗でも Stripe Checkout 自体は進める (メール送信時に最新化される機会あり)
+    }
   }
 
   // ===== perception 検証 =====
@@ -106,15 +152,18 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== Stripe Checkout Session 作成 =====
+  // customer_email を必須化: 決済成功通知 + トリセツ完成メールの宛先。
   // line_user_id は Web ファースト化により optional (LINE 連携済みなら付与)。
-  // metadata に Web ファースト判別フラグも含める (Webhook 側で分岐用)。
+  // metadata に email も含めて webhook で参照可能に (users.email は冪等更新済)。
   let stripeSession;
   try {
     stripeSession = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
+      customer_email: customerEmail,
       metadata: {
         user_id: userId,
+        email: customerEmail,
         line_user_id: session.line_user_id ?? "",
         include_self: String(includeSelf),
         perception_ids: JSON.stringify(perceptionIds),
