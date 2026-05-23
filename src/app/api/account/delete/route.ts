@@ -1,128 +1,96 @@
+// プレミアム化 v3 Day 3: アカウント削除 (Web ファースト版)
+//
+// 削除方針:
+//   - 認可: Cookie wn_session (旧: Authorization: Bearer <LIFF id_token>)
+//   - session.user.id 1 件のみを削除対象とする (Web ファーストは 1 user = 1 row)
+//   - CASCADE: friend_answers / friend_perceptions (target) / integrated_trisetsu
+//     / line_users が users 削除で連鎖削除される
+//   - users.line_user_id が設定済なら notification_preferences / feature_optins
+//     を line_user_id で個別削除 (FK 無しのため明示)
+//   - events は owner_token で個別削除 (FK 無し)
+//   - 物理削除のみ。冪等。
+
 import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { verifyBearer } from "@/lib/liff-verify";
+import { getSession } from "@/lib/session";
 import { sendDeletionCompleteMessage } from "@/lib/line-notify";
 
 export const runtime = "nodejs";
 
-// Phase 3-β A-4: ユーザー操作経由のデータ削除 (本人 LIFF id_token で認証)
-//
-// 削除方針:
-//   - 本人確認: Authorization: Bearer <LIFF id_token> → verify → sub (= lineUserId)
-//   - 削除対象: その lineUserId に紐付く全データ
-//       - notification_preferences (line_user_id)
-//       - feature_optins (line_user_id)
-//       - events (owner_token IN 全診断分)
-//       - line_users (line_user_id)
-//       - users (line_user_id) → CASCADE で friend_answers / friend_perceptions
-//         / integrated_trisetsu / 残 line_users まで連鎖削除
-//   - 物理削除のみ (論理削除フラグなし)
-//   - 冪等性: 既に削除済みでも 200 を返す (各 count = 0 になるだけ)
-//   - audit: 開始 / 完了を console.log、レスポンスで削除件数を返す
-//
-// セキュリティ:
-//   - body から line_user_id を**受け取らない** (なりすまし不可)。常に id_token の sub を使用
-//   - id_token 検証失敗 → 401
-//
-// 注意: 本 API は公開エンドポイント。LIFF を持つユーザーが自身を削除するだけのため
-//       誤爆リスクは低いが、D-11 で UI に 2 段階確認を入れる前提。
 export async function POST(request: NextRequest) {
-  const verified = await verifyBearer(request);
-  if (!verified) {
+  const session = await getSession(request);
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const lineUserId = verified.sub;
+  const userId = session.id;
+  const lineUserId = session.line_user_id; // Phase 2 連携済みなら notify する
 
-  // TODO(2026-05-19+): /api/zukan-mine と /api/integrated-trisetsu と同パターンの
-  //   OR フォールバックに統一する。現状は eq('line_user_id', lineUserId) のみで、
-  //   users.line_user_id = NULL のまま放置された過去診断行を削除し残す可能性あり
-  //   (= 個人情報残留リスク)。hotfix-2026-05-18 SQL 実行後の本番では実害ほぼ無いが、
-  //   保守性のために将来必ず統一すること。修正案:
-  //
-  //     const ownerTokensFromLineUsers: string[] = [];
-  //     const { data: lineUsersAll } = await supabaseAdmin
-  //       .from("line_users")
-  //       .select("owner_token, current_owner_token")
-  //       .eq("line_user_id", lineUserId);
-  //     for (const r of lineUsersAll ?? []) {
-  //       if (r.owner_token) ownerTokensFromLineUsers.push(r.owner_token as string);
-  //       if (r.current_owner_token && r.current_owner_token !== r.owner_token)
-  //         ownerTokensFromLineUsers.push(r.current_owner_token as string);
-  //     }
-  //     const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
-  //     let q = supabaseAdmin.from("users").select("id, owner_token");
-  //     if (uniqOwnerTokens.length > 0) {
-  //       const ownerList = uniqOwnerTokens.map((t) => `"${t}"`).join(",");
-  //       q = q.or(`line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`);
-  //     } else {
-  //       q = q.eq("line_user_id", lineUserId);
-  //     }
-  //     const { data: targetUsers, error: targetErr } = await q;
-
-  // 削除対象 users (line_user_id で紐付く全診断履歴) の owner_token 一覧
-  const { data: targetUsers, error: targetErr } = await supabaseAdmin
+  // 削除対象 users 1 件の owner_token を取得 (events 削除に使う)
+  const { data: userRow, error: userErr } = await supabaseAdmin
     .from("users")
-    .select("id, owner_token")
-    .eq("line_user_id", lineUserId);
+    .select("id, owner_token, line_user_id")
+    .eq("id", userId)
+    .maybeSingle();
 
-  if (targetErr) {
-    console.error("[account/delete] target users lookup error:", targetErr);
+  if (userErr) {
+    console.error("[account/delete] users lookup error:", userErr);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
+  if (!userRow) {
+    return NextResponse.json({ ok: true, message: "Already deleted" });
+  }
 
-  const ownerTokens = (targetUsers ?? [])
-    .map((u) => u.owner_token as string | null)
-    .filter((t): t is string => !!t);
+  const ownerToken = (userRow.owner_token as string | null) ?? null;
+  const linkedLineUserId =
+    (userRow.line_user_id as string | null) ?? lineUserId;
 
-  const deletionCounts: Record<string, number> = {
-    target_users_found: targetUsers?.length ?? 0,
-  };
+  const deletionCounts: Record<string, number> = {};
 
   console.log(
-    "[account/delete] start for lineUserId:",
-    lineUserId.slice(0, 8) + "...",
-    "target users:",
-    deletionCounts.target_users_found,
-    "owner_tokens:",
-    ownerTokens.length,
+    "[account/delete] start for userId:",
+    userId.slice(0, 8) + "...",
+    "owner_token:",
+    ownerToken ? ownerToken.slice(0, 6) + "..." : "null",
+    "line_user_id:",
+    linkedLineUserId ? linkedLineUserId.slice(0, 8) + "..." : "null",
   );
 
-  // ===== 段階的削除 (a→e) =====
-  // 各 DELETE は冪等。途中失敗時もログに残しつつ続行し、最後の users DELETE のみ
-  // 致命扱い (失敗時 500)。途中失敗 → users 成功なら CASCADE で大半が消えるため
-  // 半消し残骸が events / feature_optins 等にだけ残る最悪ケースに留まる。
+  // ===== 段階的削除 =====
 
-  // a. notification_preferences
-  {
+  // a. notification_preferences (line_user_id 紐付け、Phase 2 残置テーブル)
+  if (linkedLineUserId) {
     const { error, count } = await supabaseAdmin
       .from("notification_preferences")
       .delete({ count: "exact" })
-      .eq("line_user_id", lineUserId);
+      .eq("line_user_id", linkedLineUserId);
     if (error) {
       console.error("[account/delete] notification_preferences error:", error);
     }
     deletionCounts.notification_preferences = count ?? 0;
+  } else {
+    deletionCounts.notification_preferences = 0;
   }
 
   // b. feature_optins
-  {
+  if (linkedLineUserId) {
     const { error, count } = await supabaseAdmin
       .from("feature_optins")
       .delete({ count: "exact" })
-      .eq("line_user_id", lineUserId);
+      .eq("line_user_id", linkedLineUserId);
     if (error) {
       console.error("[account/delete] feature_optins error:", error);
     }
     deletionCounts.feature_optins = count ?? 0;
+  } else {
+    deletionCounts.feature_optins = 0;
   }
 
-  // c. events (owner_token 経由、line_user_id カラムは events に無い)
-  //    owner_token IS NULL のグローバルイベントは個人情報を含まないため対象外。
-  if (ownerTokens.length > 0) {
+  // c. events (owner_token 経由、events に line_user_id カラムは無い)
+  if (ownerToken) {
     const { error, count } = await supabaseAdmin
       .from("events")
       .delete({ count: "exact" })
-      .in("owner_token", ownerTokens);
+      .eq("owner_token", ownerToken);
     if (error) {
       console.error("[account/delete] events error:", error);
     }
@@ -131,30 +99,17 @@ export async function POST(request: NextRequest) {
     deletionCounts.events = 0;
   }
 
-  // d. line_users (明示削除、users 削除前に。途中失敗時の半消し最小化)
-  //    users CASCADE でも消えるが、トランザクション分離が無い環境で順序保証として明示。
-  {
-    const { error, count } = await supabaseAdmin
-      .from("line_users")
-      .delete({ count: "exact" })
-      .eq("line_user_id", lineUserId);
-    if (error) {
-      console.error("[account/delete] line_users error:", error);
-    }
-    deletionCounts.line_users = count ?? 0;
-  }
-
-  // e. users (致命扱い、失敗時 500)
-  //    CASCADE: friend_answers / friend_perceptions (target_user_id) /
-  //    integrated_trisetsu / 残 line_users が連鎖削除される。
+  // d. users (致命扱い、失敗時 500)
+  //    CASCADE で friend_answers / friend_perceptions (target) /
+  //    integrated_trisetsu / line_users / magic_links が連鎖削除される。
   //    friend_perceptions.perceiver_user_id は ON DELETE SET NULL のため、
-  //    削除対象ユーザーを「他人を評価した側」として持つ既存 perception は
-  //    perceiver_user_id だけ NULL になって残る (= 評価された側の図鑑は維持される)。
+  //    削除対象ユーザーが評価した側として持つ既存 perception は perceiver_user_id
+  //    だけ NULL になって残る。
   {
     const { error, count } = await supabaseAdmin
       .from("users")
       .delete({ count: "exact" })
-      .eq("line_user_id", lineUserId);
+      .eq("id", userId);
     if (error) {
       console.error("[account/delete] users (FATAL) error:", error);
       return NextResponse.json(
@@ -170,20 +125,22 @@ export async function POST(request: NextRequest) {
     deletionCounts.users = count ?? 0;
   }
 
-  // Phase 3-β D-11: 削除完了通知 (after() で response 送信後に fire-and-forget)
-  //   notification_preferences は既に DELETE 済 → 設定チェック無しで強制送信。
-  //   logLineMessage は user_id = null で記録 (users 行も削除済、FK は SET NULL)。
-  after(async () => {
-    try {
-      await sendDeletionCompleteMessage({ lineUserId });
-    } catch (err) {
-      console.error("[account/delete] deletion_complete notify error:", err);
-    }
-  });
+  // LINE 連携済みユーザーには削除完了通知 (fire-and-forget)
+  // Phase 2 で LINE 通知が復活した際にもこの経路は維持される。
+  if (linkedLineUserId) {
+    const persistedLineUserId = linkedLineUserId;
+    after(async () => {
+      try {
+        await sendDeletionCompleteMessage({ lineUserId: persistedLineUserId });
+      } catch (err) {
+        console.error("[account/delete] deletion_complete notify error:", err);
+      }
+    });
+  }
 
   console.log(
     "[account/delete] completed for",
-    lineUserId.slice(0, 8) + "...",
+    userId.slice(0, 8) + "...",
     deletionCounts,
   );
 

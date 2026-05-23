@@ -20,7 +20,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
-import { verifyBearer } from "@/lib/liff-verify";
 import {
   perceiveFromFriendAnswersV2,
   type FriendQualitativeData,
@@ -48,17 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
-  // Bearer (optional): LIFF 内で開かれていれば LINE userId を導出。
-  // 失敗時でも続行 (Web ブラウザ経由 / id_token なし) → perceiver_line_user_id=null
-  let perceiverLineUserId: string | null = null;
-  if (request.headers.get("authorization")) {
-    const v = await verifyBearer(request);
-    if (v) perceiverLineUserId = v.sub;
-    else
-      console.warn(
-        "[friend-answer/v2] Bearer present but verify failed; fallback to null",
-      );
-  }
+  // Web ファースト化により友達評価は完全に匿名扱い。
+  // perceiver_line_user_id は常に null (Phase 2 で LINE 復活時に再導入)。
+  const perceiverLineUserId: string | null = null;
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
