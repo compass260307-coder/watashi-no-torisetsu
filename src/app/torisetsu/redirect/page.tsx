@@ -57,27 +57,31 @@ function RedirectContent() {
         const data: { ownerToken: string | null } = await res.json();
 
         // dest クエリで遷移先を切り替え:
-        //   既定         → /report/{ownerToken}
-        //   "zukan"      → /zukan/{ownerToken} (cell 2)
-        //   "perceptions"→ /perceptions/{ownerToken} (cell 4)
-        //   "zukan-mine" → /zukan-mine (Phase 3-β B-4、ownerToken 不要)
-        // LIFF 経由の場合 liff.state にクエリが URL エンコードされて入ることがある
-        const search = new URLSearchParams(window.location.search);
-        let dest = search.get("dest");
-        if (!dest) {
-          const liffState = search.get("liff.state");
-          if (liffState) {
-            try {
-              const decoded = decodeURIComponent(liffState);
-              const stateParams = new URLSearchParams(
-                decoded.startsWith("?") ? decoded.slice(1) : decoded,
-              );
-              dest = stateParams.get("dest");
-            } catch (err) {
-              console.warn("liff.state parse error:", err);
-            }
+        //   既定           → /report/{ownerToken}
+        //   "zukan"        → /zukan/{ownerToken} (cell 2)
+        //   "perceptions"  → /perceptions/{ownerToken} (cell 4)
+        //   "zukan-mine"   → /zukan-mine (Phase 3-β B-4、ownerToken 不要)
+        //   "settings"     → /settings
+        //   "integrated-new" → /integrated/new
+        //   "integrated"   → /integrated/{id}  (T3-4 真のトリセツ完成通知)
+        // LIFF 経由の場合 liff.state にクエリが URL エンコードされて入ることがあるため、
+        // location.search と liff.state の両方から読めるようにする。
+        const directParams = new URLSearchParams(window.location.search);
+        let stateParams: URLSearchParams | null = null;
+        const liffState = directParams.get("liff.state");
+        if (liffState) {
+          try {
+            const decoded = decodeURIComponent(liffState);
+            stateParams = new URLSearchParams(
+              decoded.startsWith("?") ? decoded.slice(1) : decoded,
+            );
+          } catch (err) {
+            console.warn("liff.state parse error:", err);
           }
         }
+        const getParam = (key: string): string | null =>
+          directParams.get(key) ?? stateParams?.get(key) ?? null;
+        const dest = getParam("dest");
 
         // dest=zukan-mine は ownerToken に依存しない (LIFF 内で id_token から再解決)
         if (dest === "zukan-mine") {
@@ -97,6 +101,23 @@ function RedirectContent() {
         if (dest === "integrated-new") {
           setStatus("redirecting");
           window.location.replace("/integrated/new");
+          return;
+        }
+
+        // プレミアム化 v2 Week 3 T3-4: dest=integrated&id=<uuid> → /integrated/{id}
+        // 完成通知 Flex (buildIntegratedCompletePaidFlex) からの遷移先。
+        if (dest === "integrated") {
+          const integratedId = getParam("id");
+          // UUID 等を想定。path traversal 防止のため英数 + _- に限定。
+          if (integratedId && /^[a-zA-Z0-9_-]+$/.test(integratedId)) {
+            setStatus("redirecting");
+            window.location.replace(
+              `/integrated/${encodeURIComponent(integratedId)}`,
+            );
+            return;
+          }
+          setStatus("error");
+          setErrorMessage("integrated id が指定されていません");
           return;
         }
 
