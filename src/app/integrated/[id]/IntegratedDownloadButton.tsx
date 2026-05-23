@@ -1,9 +1,13 @@
 "use client";
 
-// プレミアム化 v2 Week 2 T2-3: 統合トリセツ PDF ダウンロードボタン
+// プレミアム化 v2 Week 2 T2-3: 統合トリセツ PDF 表示ボタン
 //
 // LIFF 内で id_token を取得 → /api/integrated-trisetsu/[id]/pdf を叩く →
-// Blob を受け取って <a download> でブラウザにダウンロードさせる。
+// Blob を window.open で新規タブに PDF プレビュー表示。
+//
+// iOS WKWebView (LINE 内ブラウザ) は <a download> 属性を無視するため、
+// ダウンロードではなくプレビュー表示にして、ユーザーが共有メニューから
+// 「ファイルに保存」する導線にしている。
 //
 // 非 LIFF 環境 (普通のブラウザ) や認可エラー時は alert で案内。
 
@@ -14,33 +18,6 @@ interface Props {
 }
 
 type Phase = "idle" | "preparing" | "downloading" | "done" | "error";
-
-// RFC 5987 (filename*=UTF-8''<percent-encoded>) を優先、なければ filename= を採用
-function parseFilenameFromDisposition(
-  header: string | null,
-): string | null {
-  if (!header) return null;
-  // filename*=UTF-8''xxx (拡張形式) を最優先
-  const star = /filename\*=([^']+)''([^;]+)/i.exec(header);
-  if (star) {
-    const enc = star[1].toLowerCase();
-    const raw = star[2].trim().replace(/^"|"$/g, "");
-    try {
-      // utf-8 / UTF-8 のみ実用上想定
-      if (enc === "utf-8" || enc === "utf8") {
-        return decodeURIComponent(raw);
-      }
-    } catch {
-      // fall through to legacy filename
-    }
-  }
-  // filename="xxx" (レガシー、ASCII fallback)
-  const legacy = /filename=("[^"]+"|[^;]+)/i.exec(header);
-  if (legacy) {
-    return legacy[1].trim().replace(/^"|"$/g, "");
-  }
-  return null;
-}
 
 export function IntegratedDownloadButton({ integratedId }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -133,23 +110,22 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
       return;
     }
 
-    // 4. Blob を受け取って <a download> でダウンロード起動
+    // 4. Blob を受け取り、新規タブで PDF プレビューを開く
+    //    WKWebView (LIFF) は <a download> を無視するためダウンロードではなくプレビュー表示。
+    //    端末保存はユーザーが共有メニュー → 「ファイルに保存」で行う。
     const blob = await response.blob();
-    const filename =
-      parseFilenameFromDisposition(response.headers.get("Content-Disposition")) ??
-      `trisetsu_${integratedId.slice(0, 8)}.pdf`;
     const blobUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = blobUrl;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    // ObjectURL を即解放するとブラウザによっては DL が中断されるので遅延
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    const opened = window.open(blobUrl, "_blank");
+    if (!opened) {
+      // ポップアップブロック等で新規タブを開けない環境では現在のタブで遷移
+      window.location.href = blobUrl;
+    }
+    // プレビュー表示中に revoke するとタブが空白になる。
+    // 共有メニュー操作の時間も考慮して長めに遅延 (2 分)。
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
 
     setPhase("done");
-    // 数秒後に idle に戻して再度ダウンロード可能に
+    // 数秒後に idle に戻して再度開けるように
     setTimeout(() => setPhase("idle"), 3000);
   };
 
@@ -160,11 +136,11 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
       case "downloading":
         return "PDF を取得中...";
       case "done":
-        return "ダウンロード開始";
+        return "新規タブで開きました";
       case "error":
         return "もう一度試す";
       default:
-        return "PDF をダウンロード";
+        return "PDF を表示";
     }
   })();
 
@@ -178,6 +154,9 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
       >
         {label}
       </button>
+      <p className="text-xs text-muted text-center mt-2 leading-relaxed">
+        新しいタブで PDF が開きます。端末に保存するには、共有メニューから「ファイルに保存」を選択してください。
+      </p>
       {phase === "error" && errorMsg && (
         <p className="text-xs text-muted text-center mt-2 whitespace-pre-line">
           {errorMsg}
