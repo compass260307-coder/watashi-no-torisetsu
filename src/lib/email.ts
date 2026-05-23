@@ -10,6 +10,8 @@
 import { Resend } from "resend";
 
 const SITE_NAME = "ワタシのトリセツ";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -61,6 +63,54 @@ export async function sendMagicLinkEmail(
     }
   } catch (err) {
     console.error("[email] Resend exception:", err);
+  }
+}
+
+interface SendTrisetsuCompleteArgs {
+  to: string;
+  ownerToken: string;
+  ownerName?: string | null;
+  title?: string | null;
+}
+
+/**
+ * 統合トリセツ生成完了メール。
+ *
+ * 永続 URL は /result/[ownerToken] (Day 9 で /me/[token] に切替予定)。
+ * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
+ */
+export async function sendTrisetsuCompleteEmail(
+  args: SendTrisetsuCompleteArgs,
+): Promise<void> {
+  const resend = getResendClient();
+  const from = getFromAddress();
+  if (!resend || !from) return;
+
+  const greetingName = (args.ownerName ?? "").trim();
+  const resultUrl = `${SITE_URL}/result/${encodeURIComponent(args.ownerToken)}`;
+  const subject = `${SITE_NAME}が完成しました`;
+
+  try {
+    const result = await resend.emails.send({
+      from,
+      to: args.to,
+      subject,
+      html: renderTrisetsuCompleteHtml({
+        resultUrl,
+        greetingName,
+        title: args.title ?? null,
+      }),
+      text: renderTrisetsuCompleteText({
+        resultUrl,
+        greetingName,
+        title: args.title ?? null,
+      }),
+    });
+    if (result.error) {
+      console.error("[email] sendTrisetsuCompleteEmail Resend error:", result.error);
+    }
+  } catch (err) {
+    console.error("[email] sendTrisetsuCompleteEmail exception:", err);
   }
 }
 
@@ -135,4 +185,116 @@ function renderText(url: string): string {
     `--`,
     SITE_NAME,
   ].join("\n");
+}
+
+// =========================================================================
+// Trisetsu 完成通知メールのテンプレ
+// =========================================================================
+
+interface TrisetsuCompleteTemplateArgs {
+  resultUrl: string;
+  greetingName: string;
+  title: string | null;
+}
+
+function renderTrisetsuCompleteHtml(
+  args: TrisetsuCompleteTemplateArgs,
+): string {
+  const greeting = args.greetingName
+    ? `${escapeHtml(args.greetingName)}さん、`
+    : "";
+  const titleLine = args.title
+    ? `<p style="margin:0 0 12px;font-size:18px;font-weight:600;line-height:1.6;text-align:center;color:#2A2520;">${escapeHtml(args.title)}</p>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${SITE_NAME}が完成しました</title>
+  </head>
+  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
+            <tr>
+              <td>
+                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
+                <h1 style="margin:0 0 28px;font-size:22px;font-weight:600;line-height:1.55;text-align:center;color:#2A2520;">真のトリセツが完成しました</h1>
+                ${titleLine}
+                <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">
+                  ${greeting}ご購入ありがとうございます。<br />
+                  友達の眼を通して作られた、あなただけの取扱説明書をお届けします。
+                </p>
+                <p style="margin:0 0 32px;text-align:center;">
+                  <a href="${args.resultUrl}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">トリセツを開く</a>
+                </p>
+                <p style="margin:0 0 12px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  <strong>このリンクは永続的にアクセスできます。</strong><br />
+                  ブックマークしておくと、いつでも読み返せます。<br />
+                  PDF として保存することもできます。
+                </p>
+                <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
+                </p>
+                <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
+                  ${args.resultUrl}
+                </p>
+                <hr style="border:none;border-top:1px solid #E8E1D5;margin:32px 0;" />
+                <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#2A2520;">別の端末からアクセスするには</p>
+                <p style="margin:0;font-size:12px;line-height:1.85;color:#6B6359;">
+                  ${SITE_NAME}のトップから「ログインリンクを送る」を選び、このメールアドレスを入力してください。新しい端末にもログインリンクが届きます。
+                </p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function renderTrisetsuCompleteText(
+  args: TrisetsuCompleteTemplateArgs,
+): string {
+  const greeting = args.greetingName ? `${args.greetingName}さん、` : "";
+  const lines = [`${SITE_NAME}が完成しました`, ""];
+  if (args.title) {
+    lines.push(args.title, "");
+  }
+  lines.push(
+    `${greeting}ご購入ありがとうございます。`,
+    "友達の眼を通して作られた、あなただけの取扱説明書をお届けします。",
+    "",
+    "■ トリセツを開く",
+    args.resultUrl,
+    "",
+    "このリンクは永続的にアクセスできます。",
+    "ブックマークしておくと、いつでも読み返せます。",
+    "PDF として保存することもできます。",
+    "",
+    "■ 別の端末からアクセスするには",
+    `${SITE_NAME}のトップから「ログインリンクを送る」を選び、`,
+    "このメールアドレスを入力してください。",
+    "新しい端末にもログインリンクが届きます。",
+    "",
+    `--`,
+    SITE_NAME,
+  );
+  return lines.join("\n");
+}
+
+// HTML テンプレ内で文字を埋め込む際の最低限のエスケープ。
+// owner name や title はユーザー入力 (display_name) / AI 生成テキストが入る可能性あり。
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

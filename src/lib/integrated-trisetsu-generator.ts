@@ -23,6 +23,7 @@ import {
   sendIntegratedCompletePaidMessage,
   sendIntegratedFailedMessage,
 } from "./line-notify";
+import { sendTrisetsuCompleteEmail } from "./email";
 import { sendSlackAlert } from "./slack-alert";
 import type {
   BigFiveDimension,
@@ -224,7 +225,7 @@ export async function runAIGenerationAndUpdate(
     // ===== 3. ユーザー取得 =====
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("id, type_id, scores, display_name")
+      .select("id, type_id, scores, display_name, email, owner_token")
       .eq("id", userId)
       .maybeSingle();
     if (userErr || !userRow) {
@@ -234,6 +235,8 @@ export async function runAIGenerationAndUpdate(
     }
     const ownerName =
       ((userRow.display_name as string | null) ?? "").trim() || "あなた";
+    const ownerEmail = (userRow.email as string | null) ?? null;
+    const ownerToken = (userRow.owner_token as string | null) ?? null;
 
     // ===== 4. perceptions 取得 =====
     let perceptionRows: PerceptionRow[] = [];
@@ -314,6 +317,26 @@ export async function runAIGenerationAndUpdate(
         // 通知失敗は生成成功を覆さない (logLineMessage に内部で記録される)
         console.error(
           `[generator] LINE complete notification failed for ${integratedTrisetsuId}:`,
+          err,
+        );
+      }
+    }
+
+    // ===== 9. Day 7: メール完了通知 (Web ファースト主動線) =====
+    //   users.email が設定済みなら Resend で送信 (sendTrisetsuCompleteEmail 内で
+    //   RESEND_API_KEY 未設定なら no-op になるため、dev 環境でも安全)。
+    //   失敗時は console.error に残し、生成成功は覆さない。
+    if (ownerEmail && ownerToken) {
+      try {
+        await sendTrisetsuCompleteEmail({
+          to: ownerEmail,
+          ownerToken,
+          ownerName: ownerName === "あなた" ? null : ownerName,
+          title: aiOut.title,
+        });
+      } catch (err) {
+        console.error(
+          `[generator] email complete notification failed for ${integratedTrisetsuId}:`,
           err,
         );
       }
