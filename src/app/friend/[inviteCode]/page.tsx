@@ -1,9 +1,9 @@
 "use client";
 
-// Phase 3-β B-2 + B-3: 友達評価 30 問 + choice 3 問 + 完成画面 (B-3 で本実装)。
+// 友達評価 30 問 + choice 3 問 + consent + 完成画面。
 // 旧 13 問形式の friend-questions / friend-perception は破壊せず並存。
-// LIFF init はオプショナル: LINE 内で開かれていればプロフィール + id_token を取り、
-// Web ブラウザ経由なら perceiver_name は「友達」固定 + 任意入力で上書き可能。
+// Web ファースト (v3 Day 3): perceiver_name は intro 画面で手動入力。
+// LIFF プロファイル自動取得は撤去 (Phase 2 復活用に line-* lib は残置)。
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -644,7 +644,7 @@ function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
         <br />
         生成中...
       </p>
-      <p className="text-xs text-muted">少し待ってね 🐧</p>
+      <p className="text-xs text-muted">少し待ってね</p>
     </div>
   );
 }
@@ -710,7 +710,7 @@ function CompleteScreen({
   const handleShareToLine = async () => {
     // Web ファースト: Web Share API → クリップボード fallback
     const shareText = [
-      "🎴 ワタシのトリセツ",
+      "ワタシのトリセツ",
       "",
       "あなたから見た私のトリセツを教えて。",
       "30 問・約 4 分で完成するよ。",
@@ -746,7 +746,7 @@ function CompleteScreen({
             COMPLETED
           </p>
           <h1 className="text-2xl font-extrabold leading-tight">
-            ✨ あなたから見た
+            あなたから見た
             <br />
             {subjectLabel}は...
           </h1>
@@ -864,7 +864,7 @@ function CompleteScreen({
         {/* 「届きました」メッセージ */}
         <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 text-center">
           <p className="text-base font-bold mb-1">
-            💌 {subjectLabel}に、あなたの眼が届きました
+            {subjectLabel}に、あなたの眼が届きました
           </p>
           <p className="text-[11px] text-muted leading-relaxed">
             {subjectLabel}のトリセツ図鑑に、
