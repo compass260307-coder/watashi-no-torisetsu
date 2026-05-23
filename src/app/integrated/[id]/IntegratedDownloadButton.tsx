@@ -28,37 +28,7 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
     setPhase("preparing");
     setErrorMsg(null);
 
-    // 1. LIFF 初期化 + id_token 取得
-    let idToken: string | null = null;
-    try {
-      const liff = (await import("@line/liff")).default;
-      const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-      if (liffId) {
-        try {
-          await liff.init({ liffId });
-        } catch {
-          // already initialized 等は無視
-        }
-      }
-      if (typeof liff.getIDToken === "function") {
-        idToken = liff.getIDToken() ?? null;
-      }
-    } catch {
-      // import 失敗 = LIFF 未対応環境
-    }
-
-    if (!idToken) {
-      setPhase("error");
-      setErrorMsg(
-        "PDF ダウンロードには LINE アプリ内で開いてください。\nLINE トーク画面のメニューからアクセスしてください。",
-      );
-      alert(
-        "PDF ダウンロードには LINE アプリ内で開いてください。\nLINE トーク画面のメニューからアクセスしてください。",
-      );
-      return;
-    }
-
-    // 2. API 呼び出し
+    // Web ファースト: Cookie wn_session で認可。Bearer 不要。
     setPhase("downloading");
     let response: Response;
     try {
@@ -66,7 +36,7 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
         `/api/integrated-trisetsu/${encodeURIComponent(integratedId)}/pdf`,
         {
           method: "GET",
-          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: "include",
         },
       );
     } catch (err) {
@@ -77,11 +47,11 @@ export function IntegratedDownloadButton({ integratedId }: Props) {
       return;
     }
 
-    // 3. ステータス別ハンドリング
+    // ステータス別ハンドリング
     if (response.status === 401) {
       setPhase("error");
-      setErrorMsg("認可に失敗しました。LINE で再ログインしてください。");
-      alert("認可に失敗しました。LINE で再ログインしてからお試しください。");
+      setErrorMsg("セッションが切れています。診断ページからやり直してください。");
+      alert("セッションが切れています。診断ページからやり直してください。");
       return;
     }
     if (response.status === 403) {

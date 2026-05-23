@@ -1,9 +1,9 @@
 "use client";
 
-// Phase 3-β リリース 3 C-4: 統合トリセツのシェアボタン (Client Component)
+// プレミアム化 v3 Day 3: 統合トリセツのシェアボタン (Web ファースト版)
 //
-// LIFF 内なら liff.shareTargetPicker、それ以外なら URL クリップボードコピーで
-// 共有可能。Server Component から切り出して dynamic import を使うため別ファイル化。
+// Web Share API (navigator.share) を最優先、未対応ブラウザはクリップボードコピー。
+// LIFF shareTargetPicker は撤去 (Phase 2 で復活想定)。
 
 import { useState } from "react";
 
@@ -31,28 +31,19 @@ export function IntegratedShareButton({ shareUrl, title }: Props) {
     setSharing(true);
     setCopied(false);
 
-    // 1. LIFF 内なら shareTargetPicker
+    // 1. Web Share API (iOS/Android 標準、ほぼ全モバイルブラウザ対応)
     try {
-      const liff = (await import("@line/liff")).default;
-      // LIFF init は呼び出し側で済んでない可能性 → 明示的に init を試みる
-      // (失敗なら下の fallback に流れる)
-      const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-      if (liffId) {
-        try {
-          await liff.init({ liffId });
-        } catch {
-          // already initialized 等
-        }
-      }
-      if (liff.isInClient && liff.isInClient()) {
-        await liff.shareTargetPicker([
-          { type: "text", text: buildShareText() },
-        ]);
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        await navigator.share({
+          title,
+          text: buildShareText(),
+          url: shareUrl,
+        });
         setSharing(false);
         return;
       }
     } catch {
-      // LIFF 不可 → クリップボード fallback
+      // ユーザーキャンセル or 共有失敗 → クリップボード fallback
     }
 
     // 2. クリップボード fallback

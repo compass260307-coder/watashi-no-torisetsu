@@ -91,13 +91,11 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>({});
   const [choiceAnswers, setChoiceAnswers] = useState<Record<string, string>>({});
   const [perceiverName, setPerceiverName] = useState<string>("友達");
-  const [lineIdToken, setLineIdToken] = useState<string | null>(null);
   const [perception, setPerception] = useState<CompletePerception | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // T3-3: PDF 利用同意 (デフォルト OFF、明示的にチェック必要)
   const [pdfConsent, setPdfConsent] = useState<boolean>(false);
   const trackedLanding = useRef(false);
-  const liffInitialized = useRef(false);
 
   // ======== 初期化: invite_code から owner 取得 ========
   useEffect(() => {
@@ -113,33 +111,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       .catch(() => {});
   }, [inviteCode]);
 
-  // ======== LIFF init (オプショナル) ========
-  useEffect(() => {
-    if (liffInitialized.current) return;
-    liffInitialized.current = true;
-
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    if (!liffId) return; // LIFF 設定なし → スキップ
-
-    (async () => {
-      try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          // LIFF 内だがログインしていない → 強制ログインはしない (Web 経由のケースを壊さない)
-          return;
-        }
-        const profile = await liff.getProfile().catch(() => null);
-        if (profile?.displayName) {
-          setPerceiverName(profile.displayName);
-        }
-        const idToken = liff.getIDToken();
-        if (idToken) setLineIdToken(idToken);
-      } catch {
-        // LIFF init 失敗 (Web ブラウザ等) → フォールバックのまま続行
-      }
-    })();
-  }, []);
+  // Web ファースト化により LIFF プロファイル自動取得は撤去。
+  // perceiverName は consent 画面のフォームでユーザーが入力する。
 
   const ownerLabel = ownerName ?? "友達";
   const subjectLabel = ownerName ? `${ownerName}さん` : "友達";
@@ -207,15 +180,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     setPhase("submitting");
     setSubmitError(null);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (lineIdToken) {
-        headers["Authorization"] = `Bearer ${lineIdToken}`;
-      }
       const res = await fetch("/api/friend-answer/v2", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inviteCode,
           scaleAnswers,
@@ -741,23 +708,26 @@ function CompleteScreen({
     Object.keys(perception.qualitativeData).length > 0;
 
   const handleShareToLine = async () => {
-    // LIFF 内なら shareTargetPicker、それ以外なら現 URL をコピー
+    // Web ファースト: Web Share API → クリップボード fallback
+    const shareText = [
+      "🎴 ワタシのトリセツ",
+      "",
+      "あなたから見た私のトリセツを教えて。",
+      "30 問・約 4 分で完成するよ。",
+      "",
+      window.location.href,
+    ].join("\n");
     try {
-      const liff = (await import("@line/liff")).default;
-      if (liff.isInClient && liff.isInClient()) {
-        const shareText = [
-          "🎴 ワタシのトリセツ",
-          "",
-          "あなたから見た私のトリセツを教えて。",
-          "30 問・約 4 分で完成するよ。",
-          "",
-          window.location.href,
-        ].join("\n");
-        await liff.shareTargetPicker([{ type: "text", text: shareText }]);
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        await navigator.share({
+          title: "ワタシのトリセツ",
+          text: shareText,
+          url: window.location.href,
+        });
         return;
       }
     } catch {
-      // LIFF 不可 → クリップボードコピー
+      // ユーザーキャンセル or 共有失敗 → クリップボード fallback
     }
     try {
       await navigator.clipboard.writeText(window.location.href);

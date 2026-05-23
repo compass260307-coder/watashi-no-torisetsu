@@ -12,8 +12,8 @@ import type {
 } from "@/lib/types";
 
 function getInviteHref(): string {
-  const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
-  return liffShareId ? `https://liff.line.me/${liffShareId}` : "/";
+  // Web ファースト化により LIFF share URL は廃止。Day 9 で再設計予定。
+  return "/";
 }
 
 interface PageProps {

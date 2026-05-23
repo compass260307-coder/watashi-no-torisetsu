@@ -23,10 +23,10 @@ const REQUIRED_FOR_DEEP = 5;
 
 const LINE_FRIEND_URL = "https://lin.ee/VbAOXrV";
 
-function getLineRegisterUrl(ownerToken: string) {
-  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-  if (!liffId) return LINE_FRIEND_URL;
-  return `https://liff.line.me/${liffId}?owner_token=${encodeURIComponent(ownerToken)}`;
+// Web ファースト化により LIFF 経由の LINE 紐付け導線は廃止。
+// Day 9 (/me/[token] 再設計) で Web ネイティブの「友達追加」CTA に置換予定。
+function getLineRegisterUrl() {
+  return LINE_FRIEND_URL;
 }
 
 const FIRST_FRIEND_COMMENTS = [
@@ -410,7 +410,7 @@ export default function OwnerResultPage({
                     すべてここから
                   </p>
                   <a
-                    href={getLineRegisterUrl(ownerToken)}
+                    href={getLineRegisterUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() =>

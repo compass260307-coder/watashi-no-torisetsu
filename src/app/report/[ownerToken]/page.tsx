@@ -33,8 +33,8 @@ import type { BigFiveDimension } from "@/lib/types";
 // /report 内のプレースホルダ CTA から開く share LIFF (cell 3 と同一)
 // パラ無しで開くと line-resolve でユーザの owner_token を解決し evaluate モードになる
 function getEvaluateInviteHref(): string {
-  const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
-  return liffShareId ? `https://liff.line.me/${liffShareId}` : "/";
+  // Web ファースト化により LIFF share URL は廃止。Day 9 で再設計予定。
+  return "/";
 }
 
 const AXIS_LABELS: Record<string, string> = {

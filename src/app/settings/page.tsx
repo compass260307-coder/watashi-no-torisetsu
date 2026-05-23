@@ -1,121 +1,31 @@
 "use client";
 
-// Phase 3-β D-10 + D-11 + D-12: /settings タブ集約ページ (LIFF 上で開く想定)
+// プレミアム化 v3 Day 3: /settings タブ集約ページ (Web ファースト版)
 //
-// 構造:
-//   LIFF init → id_token 取得 (削除タブ等で必須)
-//   タブ切替: 🔔 通知 / 🗑️ 削除 / ❓ ヘルプ
-//   ❓ ヘルプタブは id_token なくても見られる (静的)
-//   通知 / 削除は id_token 必須
+// LIFF 認可を撤去。Cookie wn_session で各 API 呼び出し。
+// 通知タブはプレースホルダ表示 (Phase 2 復活待ち)。
+// 削除タブは Cookie 認可で /api/account/delete を叩く。
+// ヘルプタブは静的。
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { DeleteAccount } from "@/components/settings/DeleteAccount";
 import { HelpFAQ } from "@/components/settings/HelpFAQ";
 
 type Tab = "notifications" | "delete" | "help";
-type Status = "loading" | "missing-liff" | "needs-liff" | "ready" | "error";
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("notifications");
-  const [status, setStatus] = useState<Status>("loading");
-  const [idToken, setIdToken] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const initialized = useRef(false);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-    if (!liffId) {
-      setStatus("missing-liff");
-      return;
-    }
-    (async () => {
-      try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-        const token = liff.getIDToken();
-        if (!token) {
-          setStatus("error");
-          setErrorMessage("LIFF id_token not available");
-          return;
-        }
-        setIdToken(token);
-        setStatus("ready");
-      } catch (err) {
-        console.error("[settings] init error:", err);
-        setStatus("error");
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-      }
-    })();
-  }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // ステータス別レンダリング
-  if (status === "loading") {
-    return (
-      <div className="flex flex-col flex-1 px-5 py-8 max-w-lg mx-auto w-full">
-        <SettingsHeader />
-        <p className="text-sm text-muted text-center py-10">読み込み中...</p>
-      </div>
-    );
-  }
-  if (status === "missing-liff") {
-    return (
-      <div className="flex flex-col flex-1 px-5 py-8 max-w-lg mx-auto w-full">
-        <SettingsHeader />
-        <p className="text-sm text-muted text-center py-10">
-          LIFF 設定が見つかりません
-          <br />
-          管理者にお問い合わせください
-        </p>
-      </div>
-    );
-  }
-  if (status === "needs-liff") {
-    return (
-      <div className="flex flex-col flex-1 px-5 py-8 max-w-lg mx-auto w-full">
-        <SettingsHeader />
-        <p className="text-sm text-muted text-center py-10">
-          LINE 内で開いてください
-          <br />
-          <span className="text-xs">(LIFF 経由でのみ利用できます)</span>
-        </p>
-      </div>
-    );
-  }
-  if (status === "error") {
-    return (
-      <div className="flex flex-col flex-1 px-5 py-8 max-w-lg mx-auto w-full">
-        <SettingsHeader />
-        <div className="text-center py-10">
-          <p className="text-sm text-foreground mb-2">
-            読み込みに失敗しました
-          </p>
-          <p className="text-xs text-muted">{errorMessage}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ready: タブ切替で本体描画
   return (
     <div className="flex flex-col flex-1">
       <main className="flex flex-col px-5 py-8 max-w-lg mx-auto w-full pb-12">
         <SettingsHeader />
         <SettingsTabBar tab={tab} setTab={setTab} />
 
-        {tab === "notifications" && idToken && (
-          <NotificationSettings idToken={idToken} />
-        )}
-        {tab === "delete" && idToken && <DeleteAccount idToken={idToken} />}
+        {tab === "notifications" && <NotificationSettings />}
+        {tab === "delete" && <DeleteAccount />}
         {tab === "help" && <HelpFAQ />}
 
         <Link
@@ -156,7 +66,6 @@ function TabButton({
   );
 }
 
-// react-hooks/static-components: コンポーネントは render 外で宣言する
 function SettingsHeader() {
   return (
     <header className="text-center mb-5">

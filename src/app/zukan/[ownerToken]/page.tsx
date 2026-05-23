@@ -7,9 +7,10 @@ import type { ZukanData } from "@/lib/zukan-data";
 import type { TorisetsuTypeId } from "@/lib/types";
 import { TypeDetailModal } from "@/components/TypeDetailModal";
 
+// Web ファースト化により LIFF share URL は廃止。
+// Day 9 (/me/[token] 再設計) で Web ネイティブの招待 URL に置換予定。
 function getEvaluateInviteHref(): string {
-  const liffShareId = process.env.NEXT_PUBLIC_LIFF_ID_SHARE;
-  return liffShareId ? `https://liff.line.me/${liffShareId}` : "/";
+  return "/";
 }
 
 export default function ZukanPage({
