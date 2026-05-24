@@ -66,6 +66,64 @@ export async function sendMagicLinkEmail(
   }
 }
 
+interface SendFriendPerceptionArgs {
+  to: string;
+  perceiverName: string;
+  ownerName: string | null;
+  ownerToken: string;
+  perceptionType: string;
+  perceptionModifierLabel?: string | null;
+}
+
+/**
+ * 友達評価到着通知メール (Day 11)。
+ *
+ * 友達 (perceiverName) が target (owner) を評価したときに owner.email へ送信。
+ * 永続 URL は /me/[ownerToken]、リンクで詳細確認できる。
+ * 旧 LINE 通知 sendFriendPerceptionReceivedMessage の Web ファースト等価。
+ */
+export async function sendFriendPerceptionEmail(
+  args: SendFriendPerceptionArgs,
+): Promise<void> {
+  const resend = getResendClient();
+  const from = getFromAddress();
+  if (!resend || !from) return;
+
+  const ownerDisplay = (args.ownerName ?? "").trim() || "あなた";
+  const meUrl = `${SITE_URL}/me/${encodeURIComponent(args.ownerToken)}`;
+  const subject = `${args.perceiverName}さんから新しい印象が届きました`;
+
+  try {
+    const result = await resend.emails.send({
+      from,
+      to: args.to,
+      subject,
+      html: renderFriendPerceptionHtml({
+        meUrl,
+        perceiverName: args.perceiverName,
+        ownerDisplay,
+        perceptionType: args.perceptionType,
+        perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+      }),
+      text: renderFriendPerceptionText({
+        meUrl,
+        perceiverName: args.perceiverName,
+        ownerDisplay,
+        perceptionType: args.perceptionType,
+        perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+      }),
+    });
+    if (result.error) {
+      console.error(
+        "[email] sendFriendPerceptionEmail Resend error:",
+        result.error,
+      );
+    }
+  } catch (err) {
+    console.error("[email] sendFriendPerceptionEmail exception:", err);
+  }
+}
+
 interface SendTrisetsuCompleteArgs {
   to: string;
   ownerToken: string;
@@ -283,6 +341,110 @@ function renderTrisetsuCompleteText(
     "新しい端末にもログインリンクが届きます。",
     "",
     `--`,
+    SITE_NAME,
+  );
+  return lines.join("\n");
+}
+
+// =========================================================================
+// 友達評価到着通知メールのテンプレ
+// =========================================================================
+
+interface FriendPerceptionTemplateArgs {
+  meUrl: string;
+  perceiverName: string;
+  ownerDisplay: string;
+  perceptionType: string;
+  perceptionModifierLabel: string | null;
+}
+
+function renderFriendPerceptionHtml(
+  args: FriendPerceptionTemplateArgs,
+): string {
+  // XSS 対策: perceiverName / ownerDisplay / perceptionType / perceptionModifierLabel
+  // はユーザー入力 / 派生計算ラベルが入る。escapeHtml を通す。
+  const perceiverName = escapeHtml(args.perceiverName);
+  const ownerDisplay = escapeHtml(args.ownerDisplay);
+  const perceptionType = escapeHtml(args.perceptionType);
+  const modifierLabel = args.perceptionModifierLabel
+    ? escapeHtml(args.perceptionModifierLabel)
+    : "";
+  const modifierLine = modifierLabel
+    ? `<p style="margin:0 0 12px;font-size:13px;color:#6B6359;text-align:center;">${modifierLabel}</p>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${perceiverName}さんから新しい印象が届きました</title>
+  </head>
+  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
+            <tr>
+              <td>
+                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
+                <h1 style="margin:0 0 24px;font-size:21px;font-weight:600;line-height:1.6;text-align:center;color:#2A2520;">新しい印象が届きました</h1>
+                <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">
+                  ${perceiverName}さんから、${ownerDisplay}さんへの新しい印象が届きました。
+                </p>
+                <div style="margin:0 0 28px;padding:20px 16px;background:#FAF7F2;border:1px solid #E8E1D5;border-radius:8px;text-align:center;">
+                  <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.15em;color:#A89E8E;">PERCEIVED TYPE</p>
+                  <p style="margin:0 0 4px;font-size:17px;font-weight:600;line-height:1.6;color:#2A2520;">${perceptionType}</p>
+                  ${modifierLine}
+                </div>
+                <p style="margin:0 0 32px;text-align:center;">
+                  <a href="${args.meUrl}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">マイ図鑑で詳しく見る</a>
+                </p>
+                <p style="margin:0 0 20px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  友達ごとに違う「眼」が集まると、もっと立体的な自分が見えてきます。
+                  <br />
+                  3 人以上の眼で見てもらうと「真のトリセツ」も作れます。
+                </p>
+                <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
+                  ${args.meUrl}
+                </p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function renderFriendPerceptionText(
+  args: FriendPerceptionTemplateArgs,
+): string {
+  const lines = [
+    `${args.perceiverName}さんから新しい印象が届きました`,
+    "",
+    `${args.perceiverName}さんから、${args.ownerDisplay}さんへの新しい印象が届きました。`,
+    "",
+    "■ 友達から見たあなた",
+    `タイプ: ${args.perceptionType}`,
+  ];
+  if (args.perceptionModifierLabel) {
+    lines.push(`雰囲気: ${args.perceptionModifierLabel}`);
+  }
+  lines.push(
+    "",
+    "■ マイ図鑑で詳しく見る",
+    args.meUrl,
+    "",
+    "友達ごとに違う「眼」が集まると、もっと立体的な自分が見えてきます。",
+    "3 人以上の眼で見てもらうと「真のトリセツ」も作れます。",
+    "",
+    "--",
     SITE_NAME,
   );
   return lines.join("\n");

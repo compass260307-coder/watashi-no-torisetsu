@@ -27,6 +27,8 @@ import {
 import { writeFriendPerception } from "@/lib/friend-perception-write";
 import { FRIEND_QUESTIONS_V2_TOTAL } from "@/lib/friend-questions-v2";
 import { sendFriendPerceptionReceivedMessage } from "@/lib/line-notify";
+import { sendFriendPerceptionEmail } from "@/lib/email";
+import { isLineNotificationsEnabled } from "@/lib/feature-flags";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
@@ -160,12 +162,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Phase 3-β D-8: owner への友達評価到着通知 (fire-and-forget)
-  //   - owner.users 行から line_user_id を再取得 (owner.id しか手元にないため)
-  //   - notification_preferences.enable_friend_perception !== false を確認
-  //   - friend_perceptions.notified_at IS NULL を確認 (今回 insert 直後なので true)
-  //   - 通知成功時に notified_at = NOW() で UPDATE
-  //   - レスポンスはこの非同期処理を待たない (after() で response 送信後に実行)
+  // owner への友達評価到着通知 (fire-and-forget、メール + LINE 並列)
+  //
+  // Phase 1 (Web ファースト主動線): owner.email がある場合のみ Resend メール送信。
+  // Phase 2 復活時 (LINE_NOTIFICATIONS_ENABLED=true) は LINE 通知も並列発火。
+  // 両者は独立、片方の失敗は他方に影響しない。
+  // notified_at は LINE 通知成功時のみ更新 (旧 D-8 ロジック互換、メールは新フロー)。
   const perceptionId = writeResult.id;
   const perceiverDisplayName = perceiverName;
   const perceivedFullCode = perception.fullCode;
@@ -177,10 +179,10 @@ export async function POST(request: NextRequest) {
 
   after(async () => {
     try {
-      // 1. owner の line_user_id を取得
+      // 1. owner の連絡先候補 (email + line_user_id + display_name + owner_token) を取得
       const { data: ownerRow, error: ownerLookupErr } = await supabaseAdmin
         .from("users")
-        .select("line_user_id")
+        .select("email, line_user_id, display_name, owner_token")
         .eq("id", ownerUserId)
         .maybeSingle();
       if (ownerLookupErr) {
@@ -190,13 +192,47 @@ export async function POST(request: NextRequest) {
         );
         return;
       }
-      const ownerLineUserId = (ownerRow?.line_user_id as string | null) ?? null;
-      if (!ownerLineUserId) {
-        // LINE 未連携 → 何もしない
+      if (!ownerRow) return;
+
+      const ownerEmail = (ownerRow.email as string | null) ?? null;
+      const ownerLineUserId =
+        (ownerRow.line_user_id as string | null) ?? null;
+      const ownerDisplayName =
+        ((ownerRow.display_name as string | null) ?? "").trim() || null;
+      const ownerToken = (ownerRow.owner_token as string | null) ?? null;
+
+      // 2-A. メール通知 (Day 11、Phase 1 主動線)
+      //   owner.email がある場合のみ送信。LINE と並列・独立。
+      if (ownerEmail && ownerToken) {
+        try {
+          await sendFriendPerceptionEmail({
+            to: ownerEmail,
+            perceiverName: perceiverDisplayName,
+            ownerName: ownerDisplayName,
+            ownerToken,
+            perceptionType: perceivedTypeName,
+            perceptionModifierLabel: perceivedModifierLabel,
+          });
+        } catch (err) {
+          console.error(
+            "[friend-answer/v2] friend_perception email send error:",
+            err,
+          );
+        }
+      } else {
+        console.log(
+          "[friend-answer/v2] owner has no email; skipping mail notify",
+        );
+      }
+
+      // 2-B. LINE 通知 (Day 10 feature flag、Phase 2 復活時用)
+      //   LINE_NOTIFICATIONS_ENABLED=false ならスキップ。
+      //   line_user_id 未紐付の場合もスキップ。
+      if (!isLineNotificationsEnabled() || !ownerLineUserId) {
         return;
       }
 
-      // 2. notification_preferences 確認 (行なし or true なら送信、false ならスキップ)
+      // notification_preferences 確認 (Phase 2 復活時の per-feature opt-out)
       const { data: prefsRow } = await supabaseAdmin
         .from("notification_preferences")
         .select("enable_friend_perception")
@@ -204,13 +240,13 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       if (prefsRow && prefsRow.enable_friend_perception === false) {
         console.log(
-          "[friend-answer/v2] notification disabled, skipping for",
+          "[friend-answer/v2] LINE notification disabled by user pref, skipping for",
           ownerLineUserId.slice(0, 8),
         );
         return;
       }
 
-      // 3. notified_at 重複防止 (insert 直後は NULL のはずだが、race 防止)
+      // notified_at 重複防止 (insert 直後は NULL のはずだが、race 防止)
       const { data: pRow } = await supabaseAdmin
         .from("friend_perceptions")
         .select("notified_at")
@@ -220,7 +256,6 @@ export async function POST(request: NextRequest) {
         return; // 既に他のリクエストが通知済
       }
 
-      // 4. 通知発火
       const result = await sendFriendPerceptionReceivedMessage({
         lineUserId: ownerLineUserId,
         ownerUserId,
@@ -230,7 +265,6 @@ export async function POST(request: NextRequest) {
         perceivedModifierLabel,
       });
 
-      // 5. 成功時のみ notified_at 更新
       if (result.success) {
         const { error: updateErr } = await supabaseAdmin
           .from("friend_perceptions")
@@ -244,7 +278,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (err) {
-      console.error("[friend-answer/v2] D-8 notification error:", err);
+      console.error("[friend-answer/v2] notification flow error:", err);
     }
   });
 
