@@ -151,6 +151,12 @@ export default function ZukanMinePage() {
         >
           自己診断を始める →
         </Link>
+        <Link
+          href="/login"
+          className="text-xs text-muted/70 underline hover:text-foreground mt-6"
+        >
+          別端末でログイン
+        </Link>
       </div>
     );
   }
