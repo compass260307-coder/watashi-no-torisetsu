@@ -42,9 +42,8 @@ export default function Home() {
       />
 
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
-      {/* TODO(brand-v2): /public/mascot-pair.png (2 ショット) を ChatGPT で生成して差し替え。
-          現状は既存 /types/penguin-base.png を暫定使用。
-          ロゴ・見出しも将来 /public/logo.png / /public/heading-hero.png に画像化予定。 */}
+      {/* TODO(brand-v2): /public/logo.png 未配置のためロゴはテキストのまま。
+          画像が用意され次第、ヘッダーの <div> を <Image> に差し替え。 */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
           {/* ヘッダー: ロゴ + ハンバーガー */}
@@ -69,10 +68,10 @@ export default function Home() {
             🌸
           </div>
 
-          {/* マスコット */}
+          {/* マスコット (2 ショット、Brand v2 画像) */}
           <div className="flex justify-center my-8">
             <Image
-              src="/types/penguin-base.png"
+              src="/mascot-pair.png"
               alt="ワタシのトリセツのマスコット"
               width={300}
               height={300}
@@ -88,12 +87,17 @@ export default function Home() {
             </div>
           </div>
 
-          {/* メイン見出し */}
-          <h1 className="text-center text-4xl md:text-5xl font-black text-[#3A2D6B] leading-tight mb-4">
-            真のアナタを、
-            <br />
-            知ろう。
-          </h1>
+          {/* メイン見出し (Brand v2 画像) */}
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/heading-hero.png"
+              alt="真のアナタを、知ろう。"
+              width={400}
+              height={300}
+              priority
+              className="w-full max-w-[320px] h-auto"
+            />
+          </div>
 
           {/* サブコピー */}
           <p className="text-center text-[#2A2856] text-base font-bold leading-relaxed mb-8 px-4">
