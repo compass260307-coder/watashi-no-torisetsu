@@ -212,26 +212,53 @@ export default function Home() {
           {/* Day 3: 中央ロゴ (旧 /logo.png) はヘッダー左上に移動済のため削除。
               メインキャッチは下段の /logo-hero.png に移行 */}
 
-          {/* マスコット (2 ショット) + アーチ背景 */}
-          <div className="relative flex justify-center my-6">
-            {/* アーチ背景 (Day 2: pink → blue グラデの 40% アルファ) */}
-            <div
-              aria-hidden="true"
-              className="absolute left-1/2 -translate-x-1/2 top-0 w-[300px] h-[280px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
-            />
+          {/* Day 3.5: マスコット + ロゴ重ね合わせブロック (Koi キャラ風)
+              マスコット下半分にロゴが被さるように absolute 配置。
+              ロゴは z-20 でマスコット z-10 より前面、下に bottom-[-30px] で食み出させる */}
+          <div className="relative my-6">
+            {/* マスコット + アーチ */}
+            <div className="relative flex justify-center">
+              {/* アーチ背景 (pink → blue 40% グラデのドーム) */}
+              <div
+                aria-hidden="true"
+                className="absolute left-1/2 -translate-x-1/2 top-0 w-[300px] h-[280px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
+              />
 
-            {/* マスコット (前面) */}
-            <Image
-              src="/mascot-pair.png"
-              alt="ワタシのトリセツのマスコット"
-              width={300}
-              height={300}
-              priority
-              className="relative z-10 w-full max-w-[280px] h-auto"
-            />
+              {/* マスコット画像 (前面) */}
+              <Image
+                src="/mascot-pair.png"
+                alt="ワタシのトリセツのマスコット"
+                width={300}
+                height={300}
+                priority
+                className="relative z-10 w-full max-w-[280px] h-auto"
+              />
+            </div>
+
+            {/* ロゴをマスコット下半分に重ねる (bottom-[-30px] で食み出し、z-20 で前面) */}
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-20 w-full">
+              <div className="relative flex justify-center">
+                {/* halo */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-2 inset-y-[-8px] bg-white/40 rounded-3xl blur-2xl pointer-events-none"
+                />
+                <Image
+                  src="/logo-hero.png"
+                  alt="ワタシのトリセツ by AI"
+                  width={600}
+                  height={300}
+                  priority
+                  className="relative w-full max-w-[300px] h-auto"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* ステッカータグ (2 段重ね、上小逆回転 / 下大正回転) */}
+          {/* マスコット + ロゴ重ねブロック分の余白確保 (bottom-[-30px] のはみ出しを吸収) */}
+          <div aria-hidden="true" className="h-16" />
+
+          {/* ステッカータグ (2 段重ね、ロゴの下に移動) */}
           <div className="flex flex-col items-center gap-2 mb-6">
             <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-3 shadow-[2px_2px_0_#3A2D6B]">
               ぶっちゃけ、自分のこと分かってる？
@@ -239,23 +266,6 @@ export default function Home() {
             <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-sm font-black border-2 border-[#3A2D6B] transform rotate-2 shadow-[2px_2px_0_#3A2D6B]">
               友達には、こう映ってるかも
             </div>
-          </div>
-
-          {/* Day 3: 大きい新ロゴ「ワタシのトリセツ by AI」(メインキャッチ)
-              旧 /heading-hero.png はヒーローから削除、/logo-hero.png に差替 */}
-          <div className="relative flex justify-center mb-6">
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-2 inset-y-[-8px] bg-white/40 rounded-3xl blur-2xl pointer-events-none"
-            />
-            <Image
-              src="/logo-hero.png"
-              alt="ワタシのトリセツ by AI"
-              width={600}
-              height={300}
-              priority
-              className="relative w-full max-w-[340px] h-auto"
-            />
           </div>
 
           {/* サブコピー — Day 2.7: 背後 halo (細長要素) */}
