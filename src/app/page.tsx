@@ -4,6 +4,7 @@ import Image from "next/image";
 import { StepCard } from "@/components/StepCard";
 import { TypeCarousel } from "@/components/TypeCarousel";
 import Footer from "@/components/Footer";
+import FloatingCTABar from "@/components/FloatingCTABar";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -34,49 +35,107 @@ const jsonLd = {
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="flex flex-col flex-1 items-center px-5 py-12">
-        {/* Hero */}
-        <section className="flex flex-col items-center text-center max-w-sm w-full mt-4 mb-10 animate-fade-in-up">
-          <Image
-            src="/types/penguin-base.png"
-            alt="ワタシのトリセツのマスコット"
-            width={224}
-            height={224}
-            priority
-            className="w-48 h-48 sm:w-56 sm:h-56 object-contain mb-1"
-          />
 
-          <h1 className="text-3xl font-extrabold leading-tight mb-2">
-            ワタシのトリセツ
+      {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
+      {/* TODO(brand-v2): /public/mascot-pair.png (2 ショット) を ChatGPT で生成して差し替え。
+          現状は既存 /types/penguin-base.png を暫定使用。
+          ロゴ・見出しも将来 /public/logo.png / /public/heading-hero.png に画像化予定。 */}
+      <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
+        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
+          {/* ヘッダー: ロゴ + ハンバーガー */}
+          <div className="flex justify-between items-center mb-8">
+            <div className="text-2xl font-black text-[#3A2D6B]">
+              ワタシのトリセツ
+            </div>
+            <button
+              type="button"
+              aria-label="メニュー"
+              className="w-10 h-10 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B]"
+            >
+              ☰
+            </button>
+          </div>
+
+          {/* 装飾 (上部) */}
+          <div className="absolute top-20 left-8 text-3xl pointer-events-none" aria-hidden="true">
+            ⭐
+          </div>
+          <div className="absolute top-16 right-8 text-3xl pointer-events-none" aria-hidden="true">
+            🌸
+          </div>
+
+          {/* マスコット */}
+          <div className="flex justify-center my-8">
+            <Image
+              src="/types/penguin-base.png"
+              alt="ワタシのトリセツのマスコット"
+              width={300}
+              height={300}
+              priority
+              className="w-full max-w-[280px] h-auto"
+            />
+          </div>
+
+          {/* ステッカータグ */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-sm font-bold border-2 border-[#3A2D6B] transform -rotate-2">
+              友達には、こう映ってるかも
+            </div>
+          </div>
+
+          {/* メイン見出し */}
+          <h1 className="text-center text-4xl md:text-5xl font-black text-[#3A2D6B] leading-tight mb-4">
+            真のアナタを、
+            <br />
+            知ろう。
           </h1>
 
-          <p className="text-base font-bold text-foreground mb-1">
-            友達と作る、自分の取扱説明書
-          </p>
-
-          <p className="text-sm text-muted leading-relaxed mb-8">
-            15問答えて、友達にも聞いてみる。
+          {/* サブコピー */}
+          <p className="text-center text-[#2A2856] text-base font-bold leading-relaxed mb-8 px-4">
+            自己診断 × 友達評価 × AI で、
             <br />
-            それだけで、自分の知らない自分が見えてくる。
+            自分でも気づかなかった
+            <br />
+            アナタが見えてくる
           </p>
 
-          <Link
-            href="/diagnosis"
-            className="w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
+          {/* メイン CTA */}
+          <div className="flex justify-center mb-3">
+            <Link
+              href="/diagnosis"
+              className="bg-[#FFE993] text-[#3A2D6B] px-10 py-4 rounded-full text-lg font-black border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:shadow-[0_2px_0_#3A2D6B] hover:translate-y-[2px] transition-all"
+            >
+              無料で診断する →
+            </Link>
+          </div>
+
+          {/* 補足 */}
+          <p className="text-center text-sm text-[#2A2856]/70 font-medium">
+            3 分 ・ 登録不要 ・ 全部無料
+          </p>
+
+          {/* 装飾 (下部) */}
+          <div
+            className="absolute bottom-32 left-10 text-3xl pointer-events-none"
+            aria-hidden="true"
           >
-            無料で診断する（3分）
-          </Link>
+            💗
+          </div>
+          <div
+            className="absolute bottom-28 right-10 text-3xl pointer-events-none"
+            aria-hidden="true"
+          >
+            ✨
+          </div>
+        </div>
+      </section>
 
-          <p className="text-[11px] text-muted mt-3">
-            登録不要・完全無料・15問だけ
-          </p>
-        </section>
-
+      <main className="flex flex-col flex-1 items-center px-5 py-12">
         {/* Types preview (carousel) */}
         <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
           <h2 className="text-center text-2xl sm:text-3xl font-extrabold mb-1">
@@ -145,6 +204,9 @@ export default function Home() {
       </main>
 
       <Footer />
+
+      {/* Phase 1.5-α Day 1: Cookie 状態認識フローティング CTA バー (Server Component) */}
+      <FloatingCTABar />
     </div>
   );
 }

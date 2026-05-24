@@ -7,7 +7,8 @@ import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
+  // 900 は Phase 1.5-α Brand v2 ヒーローの h1 / CTA (font-black) で使用
+  weight: ["400", "500", "700", "800", "900"],
   display: "swap",
   variable: "--font-m-plus-rounded",
 });
