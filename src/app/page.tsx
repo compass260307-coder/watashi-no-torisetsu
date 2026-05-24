@@ -44,16 +44,8 @@ export default function Home() {
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
-          {/* ヘッダー: ロゴ + ハンバーガー */}
-          <div className="flex justify-between items-center mb-8">
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={180}
-              height={60}
-              priority
-              className="h-auto w-[140px]"
-            />
+          {/* ヘッダー: ハンバーガーのみ右寄せ (ロゴはヒーロー中央へ移動) */}
+          <div className="flex justify-end items-center mb-4">
             <button
               type="button"
               aria-label="メニュー"
@@ -63,8 +55,20 @@ export default function Home() {
             </button>
           </div>
 
+          {/* ブランドロゴ (Brand v2 メインキャッチ、ヒーロー上段中央) */}
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/logo.png"
+              alt="ワタシのトリセツ"
+              width={360}
+              height={120}
+              priority
+              className="w-full max-w-[240px] h-auto"
+            />
+          </div>
+
           {/* マスコット (2 ショット、Brand v2 画像) */}
-          <div className="flex justify-center my-8">
+          <div className="flex justify-center my-6">
             <Image
               src="/mascot-pair.png"
               alt="ワタシのトリセツのマスコット"
