@@ -42,15 +42,18 @@ export default function Home() {
       />
 
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
-      {/* TODO(brand-v2): /public/logo.png 未配置のためロゴはテキストのまま。
-          画像が用意され次第、ヘッダーの <div> を <Image> に差し替え。 */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
           {/* ヘッダー: ロゴ + ハンバーガー */}
           <div className="flex justify-between items-center mb-8">
-            <div className="text-2xl font-black text-[#3A2D6B]">
-              ワタシのトリセツ
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ワタシのトリセツ"
+              width={180}
+              height={60}
+              priority
+              className="h-auto w-[140px]"
+            />
             <button
               type="button"
               aria-label="メニュー"
@@ -58,14 +61,6 @@ export default function Home() {
             >
               ☰
             </button>
-          </div>
-
-          {/* 装飾 (上部) */}
-          <div className="absolute top-20 left-8 text-3xl pointer-events-none" aria-hidden="true">
-            ⭐
-          </div>
-          <div className="absolute top-16 right-8 text-3xl pointer-events-none" aria-hidden="true">
-            🌸
           </div>
 
           {/* マスコット (2 ショット、Brand v2 画像) */}
@@ -122,20 +117,6 @@ export default function Home() {
           <p className="text-center text-sm text-[#2A2856]/70 font-medium">
             3 分 ・ 登録不要 ・ 全部無料
           </p>
-
-          {/* 装飾 (下部) */}
-          <div
-            className="absolute bottom-32 left-10 text-3xl pointer-events-none"
-            aria-hidden="true"
-          >
-            💗
-          </div>
-          <div
-            className="absolute bottom-28 right-10 text-3xl pointer-events-none"
-            aria-hidden="true"
-          >
-            ✨
-          </div>
         </div>
       </section>
 
