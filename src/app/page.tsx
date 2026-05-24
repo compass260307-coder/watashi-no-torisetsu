@@ -55,59 +55,96 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Day 2: 装飾画像 (マスコット + CTA 周辺に散らす、pointer-events-none で
-              クリック邪魔しない、z-20 でマスコット z-10 より前面) */}
+          {/* Day 2.5: 装飾画像 (大 / 中 / 小 / 極小 の 4 階層、Koi キャラ風メリハリ)
+              全 9 個、pointer-events-none + aria-hidden + z-20 (マスコット z-10 より前面) */}
+
+          {/* === 大型装飾 (マスコット上部、メインの目を引く要素) === */}
+          {/* 大ハート (左上、+15deg) */}
           <div
             aria-hidden="true"
-            className="absolute top-32 left-6 w-14 h-14 rotate-12 z-20 pointer-events-none"
+            className="absolute top-24 left-2 w-20 h-20 rotate-[15deg] z-20 pointer-events-none"
           >
             <Image
               src="/decorations/heart-pink.png"
+              alt=""
+              width={80}
+              height={80}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {/* 大花 (右上、-12deg) */}
+          <div
+            aria-hidden="true"
+            className="absolute top-20 right-2 w-20 h-20 -rotate-[12deg] z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/flower-yellow.png"
+              alt=""
+              width={80}
+              height={80}
+              className="w-full h-full object-contain"
+            />
+          </div>
+
+          {/* === 中型装飾 (マスコット両脇、左右で高さをずらす) === */}
+          {/* 黄星 (右、+25deg) */}
+          <div
+            aria-hidden="true"
+            className="absolute top-64 right-6 w-14 h-14 rotate-[25deg] z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/star-yellow.png"
               alt=""
               width={56}
               height={56}
               className="w-full h-full object-contain"
             />
           </div>
+          {/* 青星 (左、-18deg、少し下にずらし) */}
           <div
             aria-hidden="true"
-            className="absolute top-28 right-8 w-12 h-12 -rotate-12 z-20 pointer-events-none"
+            className="absolute top-72 left-4 w-12 h-12 -rotate-[18deg] z-20 pointer-events-none"
           >
             <Image
-              src="/decorations/flower-yellow.png"
+              src="/decorations/star-blue.png"
               alt=""
               width={48}
               height={48}
               className="w-full h-full object-contain"
             />
           </div>
+
+          {/* === 小型装飾 (見出し周辺・CTA 周辺) === */}
+          {/* キラキラ (見出し右横) */}
           <div
             aria-hidden="true"
-            className="absolute top-56 right-4 w-10 h-10 z-20 pointer-events-none"
+            className="absolute top-[500px] right-4 w-10 h-10 z-20 pointer-events-none"
           >
             <Image
-              src="/decorations/star-yellow.png"
+              src="/decorations/sparkle.png"
               alt=""
               width={40}
               height={40}
               className="w-full h-full object-contain"
             />
           </div>
+          {/* 小ハート (CTA 左下、+20deg) */}
           <div
             aria-hidden="true"
-            className="absolute top-52 left-4 w-10 h-10 z-20 pointer-events-none"
+            className="absolute bottom-36 left-8 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
           >
             <Image
-              src="/decorations/star-blue.png"
+              src="/decorations/heart-pink.png"
               alt=""
               width={40}
               height={40}
               className="w-full h-full object-contain"
             />
           </div>
+          {/* キラキラ (CTA 右横) */}
           <div
             aria-hidden="true"
-            className="absolute top-20 right-1/3 w-8 h-8 z-20 pointer-events-none"
+            className="absolute bottom-40 right-6 w-8 h-8 z-20 pointer-events-none"
           >
             <Image
               src="/decorations/sparkle.png"
@@ -117,9 +154,12 @@ export default function Home() {
               className="w-full h-full object-contain"
             />
           </div>
+
+          {/* === 極小装飾 (アクセント、隙間に散らす) === */}
+          {/* 極小キラキラ (マスコット上の隙間、opacity-70) */}
           <div
             aria-hidden="true"
-            className="absolute top-72 left-1/4 w-6 h-6 z-20 pointer-events-none opacity-80"
+            className="absolute top-40 right-[35%] w-6 h-6 z-20 pointer-events-none opacity-70"
           >
             <Image
               src="/decorations/sparkle.png"
@@ -129,27 +169,16 @@ export default function Home() {
               className="w-full h-full object-contain"
             />
           </div>
+          {/* 極小キラキラ (見出し下の隙間、opacity-60) */}
           <div
             aria-hidden="true"
-            className="absolute bottom-32 left-6 w-12 h-12 z-20 pointer-events-none"
-          >
-            <Image
-              src="/decorations/heart-pink.png"
-              alt=""
-              width={48}
-              height={48}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <div
-            aria-hidden="true"
-            className="absolute bottom-28 right-8 w-8 h-8 z-20 pointer-events-none"
+            className="absolute top-[700px] left-12 w-5 h-5 z-20 pointer-events-none opacity-60"
           >
             <Image
               src="/decorations/sparkle.png"
               alt=""
-              width={32}
-              height={32}
+              width={20}
+              height={20}
               className="w-full h-full object-contain"
             />
           </div>
