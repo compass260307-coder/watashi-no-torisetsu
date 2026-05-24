@@ -25,6 +25,7 @@ import {
 } from "./line-notify";
 import { sendTrisetsuCompleteEmail } from "./email";
 import { sendSlackAlert } from "./slack-alert";
+import { isLineNotificationsEnabled } from "./feature-flags";
 import type {
   BigFiveDimension,
   CModifier,
@@ -298,10 +299,11 @@ export async function runAIGenerationAndUpdate(
       throw new Error(`UPDATE on completed failed: ${updErr.message}`);
     }
 
-    // ===== 8. LINE 完了通知 (T3-4 で実プッシュに置換) =====
+    // ===== 8. LINE 完了通知 (Phase 2 復活時用、Day 10 で feature flag 抑止) =====
     //   payment 経由 (Webhook 由来) / 既存 API 経由 どちらの整合トリセツでも
     //   line_user_id が紐付いていれば実プッシュ。本関数は両経路から呼ばれる。
-    if (lineUserId) {
+    //   Day 10: LINE_NOTIFICATIONS_ENABLED=false (Phase 1 default) では何もしない。
+    if (isLineNotificationsEnabled() && lineUserId) {
       try {
         await sendIntegratedCompletePaidMessage({
           lineUserId,
@@ -372,10 +374,10 @@ export async function runAIGenerationAndUpdate(
       },
     );
 
-    // ===== LINE 失敗通知 (T3-4、購入者向け) =====
+    // ===== LINE 失敗通知 (Phase 2 復活時用、Day 10 で feature flag 抑止) =====
     // 購入者には実プッシュで「サポートに連絡してください」を送る。
-    // ownerName は失敗時には不要 (フェーズによっては未取得のため明示せず)
-    if (lineUserId) {
+    // Day 10: LINE_NOTIFICATIONS_ENABLED=false (Phase 1 default) では何もしない。
+    if (isLineNotificationsEnabled() && lineUserId) {
       try {
         await sendIntegratedFailedMessage({
           lineUserId,
