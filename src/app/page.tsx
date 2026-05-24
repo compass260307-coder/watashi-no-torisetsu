@@ -86,17 +86,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* メイン見出し (Brand v2 画像) */}
-          <div className="flex justify-center mb-6">
-            <Image
-              src="/heading-hero.png"
-              alt="真のアナタを、知ろう。"
-              width={400}
-              height={300}
-              priority
-              className="w-full max-w-[320px] h-auto"
-            />
-          </div>
+          {/* メイン見出し (Brand v2 テキスト版、画像にブランド名重複が含まれていたため暫定的に <h1> に戻す。
+              heading-hero.png をブランド名抜きで再生成後、再度 <Image> に戻す予定) */}
+          <h1 className="text-center text-4xl md:text-5xl font-black text-[#3A2D6B] leading-tight mb-4">
+            真のアナタを、
+            <br />
+            知ろう。
+          </h1>
 
           {/* サブコピー */}
           <p className="text-center text-[#2A2856] text-base font-bold leading-relaxed mb-8 px-4">
