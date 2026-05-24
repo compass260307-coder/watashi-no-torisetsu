@@ -1,28 +1,14 @@
-// Phase 3-β リリース 3 C-1: AI 統合トリセツ生成エンドポイント
-// プレミアム化 v2 (Week 1 T1-4 + Week 2 T2-7 + Week 3 T3-7): dev/preview 限定の経路
+// プレミアム化 v3 Day 3: AI 統合トリセツ生成 (Web ファースト版、dev/preview 限定)
 //
 // POST /api/integrated-trisetsu
 //   - 本番 (VERCEL_ENV='production') では 410 を返す。
-//     プレミアム化以降、本番の AI 統合生成は Stripe Checkout → Webhook 経路に
-//     一本化。本エンドポイントは dev / Vercel Preview 限定の経路として残置:
-//       * stripe trigger 経由ではない単体動作検証
-//       * Anthropic API 出力のオフラインデバッグ
-//   - Authorization: Bearer <LIFF id_token> 必須
+//     本番の AI 統合生成は Stripe Checkout → Webhook 経路に一本化。
+//   - 認可: Cookie wn_session (旧: Authorization: Bearer <LIFF id_token>)
 //   - body: { perception_ids: string[], include_self?: boolean (default true) }
-//   - 自分の current users 行特定 → perception 検証 → INSERT pending →
-//     runAIGenerationAndUpdate (同期 await) → 結果返却
 //
-// 認可:
-//   - verifyBearer で line_user_id 導出
-//   - line_users.current_owner_token から自分の最新 users 行を特定
-//   - perception_ids が全て「自分の users (履歴含む) の target_user_id か」を検証
-//
-// 設計判断:
-//   - AI 呼び出し本体は src/lib/integrated-trisetsu-generator.ts に分離
-//     (Webhook と本ルートの両方から呼び出される)
-//   - 本ルートは認可 + 入力検証 + INSERT pending + 同期 await のみを担当
-//   - payment_id は付与しない (= 課金フローを通らないパス)
-//   - 本番ガード: T3-7 で追加。VERCEL_ENV='production' なら 410 Gone を返す
+// 認可・perception 検証:
+//   - session.user.id を直接使用 (LINE 経由の users.id 集約ロジックは不要)
+//   - perception の target_user_id が session.user.id と一致するかチェック
 //
 // 戻り値:
 //   - 200: { ok, integrated_trisetsu_id, redirect_to } (生成成功)
@@ -32,7 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { verifyBearer } from "@/lib/liff-verify";
+import { getSession } from "@/lib/session";
 import {
   buildSourceSummary,
   runAIGenerationAndUpdate,
@@ -40,17 +26,10 @@ import {
 
 export const runtime = "nodejs";
 // プレミアム化 v2: Opus 4.7 + 5,000-6,000 字生成で 30-90 秒かかる想定
-// (Vercel Pro / Fluid Compute 前提、Hobby プランでは動作しない)
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
   // ===== T3-7 本番ガード =====
-  // 本番では Stripe Checkout 経路に一本化、無料生成パスは閉じる。
-  // 判定は NODE_ENV + VERCEL_ENV の両方が "production" の場合のみ。
-  //   - next dev    : NODE_ENV='development' → 通す (.env.local に VERCEL_ENV='production'
-  //     が pull で入っていても local 開発を壊さない)
-  //   - Vercel Preview : VERCEL_ENV='preview'   → 通す (preview デプロイで動作確認可)
-  //   - Vercel Prod    : 両方 'production'      → ガード発動 (410)
   if (
     process.env.NODE_ENV === "production" &&
     process.env.VERCEL_ENV === "production"
@@ -65,11 +44,11 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== 認可 =====
-  const verified = await verifyBearer(request);
-  if (!verified) {
+  const session = await getSession(request);
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const lineUserId = verified.sub;
+  const userId = session.id;
 
   // ===== body parse =====
   let body: { perception_ids?: unknown; include_self?: unknown };
@@ -93,69 +72,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ===== 自分の current users 行特定 =====
-  const { data: lineUserRow, error: lineUserErr } = await supabaseAdmin
-    .from("line_users")
-    .select("current_owner_token, owner_token")
-    .eq("line_user_id", lineUserId)
-    .maybeSingle();
-  if (lineUserErr) {
-    console.error("[integrated-trisetsu] line_users lookup error:", lineUserErr);
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
-  }
-  const currentOwnerToken =
-    lineUserRow?.current_owner_token ?? lineUserRow?.owner_token ?? null;
-  if (!currentOwnerToken) {
-    return NextResponse.json(
-      { error: "LINE 連携が完了していません" },
-      { status: 400 },
-    );
-  }
-
-  const { data: userRow, error: userErr } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .eq("owner_token", currentOwnerToken)
-    .maybeSingle();
-  if (userErr || !userRow) {
-    console.error("[integrated-trisetsu] users lookup error:", userErr);
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-  const userId = userRow.id as string;
-
-  // ===== 自分の全 users.id 取得 (再診断履歴含む、perception 検証用) =====
-  // 🔴 致命バグ修正 (2026-05-18): users.line_user_id 直接 +
-  //   line_users.owner_token 経由の OR フォールバック。
-  //   users.line_user_id = NULL のまま放置された古いユーザーでも、line_users 経由で
-  //   自分の users 行を全部拾える (再診断履歴含む)。
-  const ownerTokensFromLineUsers: string[] = [];
-  {
-    const { data: lineUsersAll } = await supabaseAdmin
-      .from("line_users")
-      .select("owner_token, current_owner_token")
-      .eq("line_user_id", lineUserId);
-    for (const r of lineUsersAll ?? []) {
-      const ot = (r.owner_token as string | null) ?? null;
-      const cot = (r.current_owner_token as string | null) ?? null;
-      if (ot) ownerTokensFromLineUsers.push(ot);
-      if (cot && cot !== ot) ownerTokensFromLineUsers.push(cot);
-    }
-  }
-  const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
-
-  let allMyUsersQuery = supabaseAdmin.from("users").select("id");
-  if (uniqOwnerTokens.length > 0) {
-    const ownerList = uniqOwnerTokens.map((t) => `"${t}"`).join(",");
-    allMyUsersQuery = allMyUsersQuery.or(
-      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
-    );
-  } else {
-    allMyUsersQuery = allMyUsersQuery.eq("line_user_id", lineUserId);
-  }
-  const { data: allMyUsers } = await allMyUsersQuery;
-  const allMyUserIds = (allMyUsers ?? []).map((u) => u.id as string);
-  if (!allMyUserIds.includes(userId)) allMyUserIds.push(userId);
-
   // ===== perception_ids 検証 =====
   if (perceptionIds.length > 0) {
     const { data: ps, error: pErr } = await supabaseAdmin
@@ -174,7 +90,7 @@ export async function POST(request: NextRequest) {
       );
     }
     const invalid = rows.find(
-      (p) => !allMyUserIds.includes(p.target_user_id as string),
+      (p) => (p.target_user_id as string) !== userId,
     );
     if (invalid) {
       return NextResponse.json(
@@ -187,8 +103,7 @@ export async function POST(request: NextRequest) {
     if (notConsented) {
       return NextResponse.json(
         {
-          error:
-            "PDF 利用未同意の友達評価は統合素材にできません",
+          error: "PDF 利用未同意の友達評価は統合素材にできません",
           perception_id: notConsented.id,
         },
         { status: 403 },
@@ -207,7 +122,7 @@ export async function POST(request: NextRequest) {
     .from("integrated_trisetsu")
     .insert({
       user_id: userId,
-      line_user_id: lineUserId,
+      line_user_id: session.line_user_id, // Phase 2 復活用、optional
       include_self: includeSelf,
       perception_ids: perceptionIds,
       source_summary: sourceSummary,

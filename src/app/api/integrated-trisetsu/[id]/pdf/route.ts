@@ -1,25 +1,16 @@
-// プレミアム化 v2 Week 2 T2-2: 統合トリセツ PDF ダウンロード本実装
+// プレミアム化 v3 Day 3: 統合トリセツ PDF (Web ファースト版)
 //
 // GET /api/integrated-trisetsu/[id]/pdf
-//   - Authorization: Bearer <LIFF id_token> 必須 (所有者のみアクセス可)
-//   - integrated_trisetsu の本人のみが PDF を取得できる
+//   - 認可: Cookie wn_session (旧: Authorization: Bearer <LIFF id_token>)
+//   - integrated_trisetsu.user_id が session.user.id と一致するときのみ取得可
 //
 // 認可フロー:
-//   1. verifyBearer(request) で line_user_id 取得 (401 if 失敗)
-//   2. line_users + users 経由で「自分の全 users.id」を取得 (再診断履歴含む)
-//   3. integrated_trisetsu.user_id がその集合に含まれていなければ 403
-//
-// データフロー:
-//   integrated_trisetsu (id, user_id, perception_ids, include_self,
-//                        status, generated_title, generated_subtitle,
-//                        generated_chapters, ai_model, generated_at, source_summary)
-//   users (display_name, type_id, scores) -- typeCode + typeName + ownerName
-//   friend_perceptions[] -- perceiver_name + perceived_full_code + perceived_modifier_label
-//   → MinimalPdfData
+//   1. getSession(request) で users 行を解決 (401 if 失敗)
+//   2. integrated_trisetsu.user_id === session.user.id でなければ 403
 //
 // レスポンス:
-//   - 200 + application/pdf + Content-Disposition: attachment (本文は PDF バイナリ)
-//   - 401: Bearer 検証失敗
+//   - 200 + application/pdf (本文は PDF バイナリ、新タブ表示前提)
+//   - 401: session 不正
 //   - 403: ownership 不一致
 //   - 404: not found / status != 'completed' / chapters 欠落
 //   - 500: PDF 生成失敗
@@ -31,7 +22,7 @@ import {
 } from "@react-pdf/renderer";
 import { createElement, type ReactElement } from "react";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { verifyBearer } from "@/lib/liff-verify";
+import { getSession } from "@/lib/session";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import {
   IntegratedTrisetsuPDF,
@@ -91,38 +82,6 @@ function modelLabelFor(model: string | null): string {
   return model;
 }
 
-async function getMyUserIds(lineUserId: string): Promise<string[]> {
-  // /api/integrated-trisetsu POST と同じパターン: line_user_id 直接 +
-  // line_users.owner_token / current_owner_token 経由の OR フォールバック。
-  const { data: lineUsersAll } = await supabaseAdmin
-    .from("line_users")
-    .select("owner_token, current_owner_token")
-    .eq("line_user_id", lineUserId);
-  const tokens: string[] = [];
-  for (const r of lineUsersAll ?? []) {
-    if (r.owner_token) tokens.push(r.owner_token as string);
-    if (
-      r.current_owner_token &&
-      r.current_owner_token !== r.owner_token
-    ) {
-      tokens.push(r.current_owner_token as string);
-    }
-  }
-  const uniqTokens = Array.from(new Set(tokens));
-
-  let q = supabaseAdmin.from("users").select("id");
-  if (uniqTokens.length > 0) {
-    const ownerList = uniqTokens.map((t) => `"${t}"`).join(",");
-    q = q.or(
-      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
-    );
-  } else {
-    q = q.eq("line_user_id", lineUserId);
-  }
-  const { data: rows } = await q;
-  return (rows ?? []).map((r) => r.id as string);
-}
-
 function buildChapters(
   raw: Record<string, ChapterFromDb> | null,
 ): PdfChapter[] | null {
@@ -171,12 +130,11 @@ export async function GET(
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  // ===== 認可: LIFF id_token =====
-  const verified = await verifyBearer(request);
-  if (!verified) {
+  // ===== 認可: Cookie session =====
+  const session = await getSession(request);
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const lineUserId = verified.sub;
 
   // ===== integrated_trisetsu 取得 =====
   const { data: row, error: rowErr } = await supabaseAdmin
@@ -212,8 +170,7 @@ export async function GET(
   }
 
   // ===== ownership 確認 =====
-  const myUserIds = await getMyUserIds(lineUserId);
-  if (!myUserIds.includes(trow.user_id)) {
+  if (trow.user_id !== session.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

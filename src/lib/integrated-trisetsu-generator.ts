@@ -23,7 +23,9 @@ import {
   sendIntegratedCompletePaidMessage,
   sendIntegratedFailedMessage,
 } from "./line-notify";
+import { sendTrisetsuCompleteEmail } from "./email";
 import { sendSlackAlert } from "./slack-alert";
+import { isLineNotificationsEnabled } from "./feature-flags";
 import type {
   BigFiveDimension,
   CModifier,
@@ -224,7 +226,7 @@ export async function runAIGenerationAndUpdate(
     // ===== 3. ユーザー取得 =====
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("id, type_id, scores, display_name")
+      .select("id, type_id, scores, display_name, email, owner_token")
       .eq("id", userId)
       .maybeSingle();
     if (userErr || !userRow) {
@@ -234,6 +236,8 @@ export async function runAIGenerationAndUpdate(
     }
     const ownerName =
       ((userRow.display_name as string | null) ?? "").trim() || "あなた";
+    const ownerEmail = (userRow.email as string | null) ?? null;
+    const ownerToken = (userRow.owner_token as string | null) ?? null;
 
     // ===== 4. perceptions 取得 =====
     let perceptionRows: PerceptionRow[] = [];
@@ -295,10 +299,11 @@ export async function runAIGenerationAndUpdate(
       throw new Error(`UPDATE on completed failed: ${updErr.message}`);
     }
 
-    // ===== 8. LINE 完了通知 (T3-4 で実プッシュに置換) =====
+    // ===== 8. LINE 完了通知 (Phase 2 復活時用、Day 10 で feature flag 抑止) =====
     //   payment 経由 (Webhook 由来) / 既存 API 経由 どちらの整合トリセツでも
     //   line_user_id が紐付いていれば実プッシュ。本関数は両経路から呼ばれる。
-    if (lineUserId) {
+    //   Day 10: LINE_NOTIFICATIONS_ENABLED=false (Phase 1 default) では何もしない。
+    if (isLineNotificationsEnabled() && lineUserId) {
       try {
         await sendIntegratedCompletePaidMessage({
           lineUserId,
@@ -314,6 +319,26 @@ export async function runAIGenerationAndUpdate(
         // 通知失敗は生成成功を覆さない (logLineMessage に内部で記録される)
         console.error(
           `[generator] LINE complete notification failed for ${integratedTrisetsuId}:`,
+          err,
+        );
+      }
+    }
+
+    // ===== 9. Day 7: メール完了通知 (Web ファースト主動線) =====
+    //   users.email が設定済みなら Resend で送信 (sendTrisetsuCompleteEmail 内で
+    //   RESEND_API_KEY 未設定なら no-op になるため、dev 環境でも安全)。
+    //   失敗時は console.error に残し、生成成功は覆さない。
+    if (ownerEmail && ownerToken) {
+      try {
+        await sendTrisetsuCompleteEmail({
+          to: ownerEmail,
+          ownerToken,
+          ownerName: ownerName === "あなた" ? null : ownerName,
+          title: aiOut.title,
+        });
+      } catch (err) {
+        console.error(
+          `[generator] email complete notification failed for ${integratedTrisetsuId}:`,
           err,
         );
       }
@@ -349,10 +374,10 @@ export async function runAIGenerationAndUpdate(
       },
     );
 
-    // ===== LINE 失敗通知 (T3-4、購入者向け) =====
+    // ===== LINE 失敗通知 (Phase 2 復活時用、Day 10 で feature flag 抑止) =====
     // 購入者には実プッシュで「サポートに連絡してください」を送る。
-    // ownerName は失敗時には不要 (フェーズによっては未取得のため明示せず)
-    if (lineUserId) {
+    // Day 10: LINE_NOTIFICATIONS_ENABLED=false (Phase 1 default) では何もしない。
+    if (isLineNotificationsEnabled() && lineUserId) {
       try {
         await sendIntegratedFailedMessage({
           lineUserId,

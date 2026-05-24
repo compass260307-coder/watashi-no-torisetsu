@@ -1,10 +1,9 @@
 "use client";
 
-// Phase 3-β リリース 3 C-3: 統合素材選択 UI (LIFF 上で開く想定)
-// プレミアム化 v2 (Week 3 T3-2): Stripe Checkout 経路に置換
+// プレミアム化 v3 Day 3: 統合素材選択 UI (Web ファースト版)
 //
 // フロー:
-//   LIFF init → id_token → /api/zukan-mine GET
+//   Cookie wn_session で認可 → /api/zukan-mine GET
 //   → デフォルト: pdf_consent=true の perception のみチェック ON
 //   → 折りたたみ「詳細」で個別選択可能 (未同意はグレーアウト)
 //   → 「¥500 で統合トリセツを生成」→ POST /api/checkout/create-session
@@ -46,6 +45,7 @@ type PerceptionCard = {
 type ZukanMineResponse = {
   ok: true;
   ownerName: string | null;
+  email: string | null;
   current: DiagnosisCard | null;
   past: DiagnosisCard[];
   perceptions: PerceptionCard[];
@@ -53,19 +53,15 @@ type ZukanMineResponse = {
 
 type Status =
   | "loading"
-  | "needs-liff"
-  | "missing-liff"
   | "needs-self-diagnosis"
   | "ready"
-  | "redirecting" // T3-2: Stripe Checkout への遷移中 (旧 'generating' は廃止、
-  //                       AI 生成は /checkout/success の polling 配下で実行)
+  | "redirecting" // Stripe Checkout への遷移中
   | "error";
 
 export default function IntegratedNewPage() {
   const [status, setStatus] = useState<Status>("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [data, setData] = useState<ZukanMineResponse | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
 
   // 選択状態
   const [includeSelf, setIncludeSelf] = useState(true);
@@ -73,42 +69,22 @@ export default function IntegratedNewPage() {
     Set<string>
   >(new Set());
   const [isExpanded, setIsExpanded] = useState(false);
+  const [email, setEmail] = useState<string>("");
 
   const initialized = useRef(false);
 
-  // LIFF init + データ取得 (初回マウント時のみ; SSR 後のハイドレーション正規パターン)
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // Web ファースト: Cookie wn_session で認可。/api/zukan-mine GET から状態取得。
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-    if (!liffId) {
-      setStatus("missing-liff");
-      return;
-    }
-
     (async () => {
       try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-        const token = liff.getIDToken();
-        if (!token) {
-          setStatus("error");
-          setErrorMessage("LIFF id_token not available");
-          return;
-        }
-        setIdToken(token);
-
         const res = await fetch("/api/zukan-mine", {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
         });
         if (res.status === 401) {
-          setStatus("needs-liff");
+          setStatus("needs-self-diagnosis");
           return;
         }
         if (!res.ok) {
@@ -122,8 +98,9 @@ export default function IntegratedNewPage() {
           return;
         }
         setData(json);
+        // 既に登録済みの email があれば prefill (購入履歴があるユーザー等)
+        if (json.email) setEmail(json.email);
         // T3-3: デフォルト ON は「PDF 利用同意済」だけに絞る。
-        // 未同意 (pdfConsent=false) はそもそも統合素材に使えないため選択不可。
         setSelectedPerceptionIds(
           new Set(json.perceptions.filter((p) => p.pdfConsent).map((p) => p.id)),
         );
@@ -135,7 +112,6 @@ export default function IntegratedNewPage() {
       }
     })();
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const togglePerception = (id: string) => {
     // T3-3: pdfConsent=false の perception は選択不可。UI 側でも防御。
@@ -153,26 +129,32 @@ export default function IntegratedNewPage() {
     return selectedPerceptionIds.size + (includeSelf ? 1 : 0);
   }, [selectedPerceptionIds, includeSelf]);
 
-  const canCheckout = selectedCount > 0 && status === "ready";
+  // Day 7: email 入力必須 (Stripe customer_email + 完成通知メール送信のため)
+  const trimmedEmail = email.trim();
+  const isEmailValid =
+    trimmedEmail.length > 0 &&
+    trimmedEmail.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+  const canCheckout =
+    selectedCount > 0 && status === "ready" && isEmailValid;
 
   // T3-2: 旧 handleGenerate (無料即時 AI 呼び出し) を Stripe Checkout 経路に置換。
   // create-session で URL を取得 → window.location.href で Stripe に遷移。
   // 戻ってきた後は /checkout/success の polling UI が AI 完了を待つ。
   const handleProceedToCheckout = async () => {
-    if (!canCheckout || !idToken) return;
+    if (!canCheckout) return;
     setStatus("redirecting");
     setErrorMessage("");
 
     try {
       const res = await fetch("/api/checkout/create-session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           perception_ids: Array.from(selectedPerceptionIds),
           include_self: includeSelf,
+          email: trimmedEmail,
         }),
       });
       const json = await res.json().catch(() => null);
@@ -213,24 +195,6 @@ export default function IntegratedNewPage() {
   // ===== render branches =====
   if (status === "loading") {
     return <CenteredMessage>読み込み中...</CenteredMessage>;
-  }
-  if (status === "missing-liff") {
-    return (
-      <CenteredMessage>
-        LIFF 設定が見つかりません
-        <br />
-        管理者にお問い合わせください
-      </CenteredMessage>
-    );
-  }
-  if (status === "needs-liff") {
-    return (
-      <CenteredMessage>
-        LINE 内で開いてください
-        <br />
-        <span className="text-xs text-muted">(LIFF 経由でのみ利用できます)</span>
-      </CenteredMessage>
-    );
   }
   if (status === "needs-self-diagnosis") {
     return (
@@ -343,6 +307,35 @@ export default function IntegratedNewPage() {
           <p className="text-[10px] text-muted leading-relaxed">
             決済はクレジットカード / PayPay / コンビニ / Apple Pay /
             Google Pay に対応 (Stripe 経由、安全決済)。
+          </p>
+        </section>
+
+        {/* Day 7: メール入力 (Stripe Checkout + 完成通知の宛先) */}
+        <section className="mb-4 animate-fade-in-up">
+          <label
+            htmlFor="purchase-email"
+            className="block text-xs font-bold text-muted mb-2"
+          >
+            メールアドレス
+            <span className="ml-2 text-[10px] font-normal text-muted/80">
+              (決済確認 + 完成通知の送信先)
+            </span>
+          </label>
+          <input
+            id="purchase-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            maxLength={254}
+            className="w-full rounded-xl border border-card-border bg-card-bg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <p className="text-[11px] text-muted mt-1 leading-relaxed">
+            完成したトリセツはこのアドレスに永続 URL を送ります。
+            <br />
+            別端末からも同じアドレスでログインできます。
           </p>
         </section>
 
@@ -486,7 +479,7 @@ export default function IntegratedNewPage() {
                   まだ友達からの評価がありません
                 </p>
                 <Link
-                  href="/share"
+                  href="/"
                   className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white"
                 >
                   友達を招待する

@@ -1,20 +1,18 @@
-// Phase 3-β B-4: マイ図鑑のデータ取得 API
+// プレミアム化 v3 Day 3: マイ図鑑のデータ取得 API (Web ファースト版)
 //
-// 認可: Authorization: Bearer <LIFF id_token> → verifyBearer で line_user_id 取得
+// 認可: Cookie wn_session → users 行を直接解決
+// (旧: Authorization: Bearer <LIFF id_token>)
 //
 // 取得対象:
-//   1. 自分の users 行全件 (line_user_id 経由、再診断履歴含む)
-//   2. line_users.current_owner_token と一致する users 行 = current、他 = past
-//   3. friend_perceptions: target_user_id IN (上記 users.id 全件)
-//
-// レスポンス側で typeName / modifierLabel / fullCode を補完:
-//   - users.scores jsonb sidecar (Phase 2F) から取得を優先
-//   - 無ければ classifyType + classifyModifier + buildFullCode で派生
-//   - perceived_* は friend_perceptions から直接 (B-2 で書き込み済)
+//   1. current = session の users 行から導出
+//   2. past[] = 同一ユーザーの過去診断 (Web ファースト Day 3 では空配列。
+//      Day 4 以降で「再診断時に旧 users 行へのリンクを残す」設計を入れる予定)
+//   3. friend_perceptions: target_user_id = session.user.id
+//   4. integrated_trisetsu: user_id = session.user.id
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { verifyBearer } from "@/lib/liff-verify";
+import { getSession } from "@/lib/session";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
@@ -59,7 +57,6 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
   const typeMeta = torisetsuTypes[typeId];
   const stored = (row.scores ?? {}) as StoredScores;
 
-  // Sidecar 優先、無ければ scores 5 dim から派生
   let fullCode = stored.fullCode ?? null;
   let modifierLabel = stored.modifierLabel ?? null;
   if (!fullCode || !modifierLabel) {
@@ -89,87 +86,28 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
 }
 
 export async function GET(request: NextRequest) {
-  const verified = await verifyBearer(request);
-  if (!verified) {
+  const session = await getSession(request);
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const lineUserId = verified.sub;
 
-  // 1. line_users から current_owner_token を取得
-  const { data: lineUserRow, error: lineUserErr } = await supabaseAdmin
-    .from("line_users")
-    .select("current_owner_token, owner_token")
-    .eq("line_user_id", lineUserId)
-    .maybeSingle();
-  if (lineUserErr) {
-    console.error("[zukan-mine] line_users lookup error:", lineUserErr);
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
-  }
-  const currentOwnerToken =
-    lineUserRow?.current_owner_token ?? lineUserRow?.owner_token ?? null;
-
-  // 2. 自分の users 全件 (新しい順)
-  // 🔴 致命バグ修正 (2026-05-18): users.line_user_id 直接 + line_users.owner_token 経由
-  //   の和集合で取得。/api/line-register backfill 反映前の既存ユーザーや、Bearer
-  //   なしで /api/diagnosis を叩いて users.line_user_id = NULL のまま放置された
-  //   ユーザーも line_users 経由で拾えるように二重保証する。
-  const ownerTokensFromLineUsers: string[] = [];
-  {
-    const { data: lineUsersAll } = await supabaseAdmin
-      .from("line_users")
-      .select("owner_token, current_owner_token")
-      .eq("line_user_id", lineUserId);
-    for (const r of lineUsersAll ?? []) {
-      const ot = (r.owner_token as string | null) ?? null;
-      const cot = (r.current_owner_token as string | null) ?? null;
-      if (ot) ownerTokensFromLineUsers.push(ot);
-      if (cot && cot !== ot) ownerTokensFromLineUsers.push(cot);
-    }
-  }
-  const uniqOwnerTokens = Array.from(new Set(ownerTokensFromLineUsers));
-
-  let usersQuery = supabaseAdmin
+  // ===== current: session.user_id から users 行を取得して導出 =====
+  const { data: userRow, error: userErr } = await supabaseAdmin
     .from("users")
-    .select("id, owner_token, type_id, scores, display_name, created_at");
-  if (uniqOwnerTokens.length > 0) {
-    // line_user_id 一致 OR owner_token 経由 (or で和集合)
-    const ownerList = uniqOwnerTokens
-      .map((t) => `"${t}"`)
-      .join(",");
-    usersQuery = usersQuery.or(
-      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
-    );
-  } else {
-    usersQuery = usersQuery.eq("line_user_id", lineUserId);
-  }
-  const { data: userRows, error: userErr } = await usersQuery.order(
-    "created_at",
-    { ascending: false },
-  );
+    .select("id, owner_token, type_id, scores, display_name, email, created_at")
+    .eq("id", session.id)
+    .maybeSingle();
   if (userErr) {
     console.error("[zukan-mine] users lookup error:", userErr);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
-  const users = (userRows ?? []) as UserRow[];
-
-  let current: DiagnosisCard | null = null;
-  const past: DiagnosisCard[] = [];
-
-  for (const row of users) {
-    const card = deriveDiagnosisCard(row);
-    if (!current && row.owner_token === currentOwnerToken) {
-      current = card;
-    } else {
-      past.push(card);
-    }
+  if (!userRow) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
-  // current が特定できなければ最新行を current 扱い (バックフィル前のレガシー対応)
-  if (!current && past.length > 0) {
-    current = past.shift() ?? null;
-  }
+  const current = deriveDiagnosisCard(userRow as UserRow);
+  const past: DiagnosisCard[] = []; // Day 4 以降で再診断履歴を実装予定
 
-  // 3. friend_perceptions: target_user_id IN (users.id)
-  const targetUserIds = users.map((u) => u.id);
+  // ===== friend_perceptions: target_user_id = session.user.id =====
   let perceptions: Array<{
     id: string;
     targetUserId: string;
@@ -184,13 +122,13 @@ export async function GET(request: NextRequest) {
     createdAt: string;
   }> = [];
 
-  if (targetUserIds.length > 0) {
+  {
     const { data: perceptionRows, error: perceptionErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select(
         "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_modifier_paragraph, qualitative_data, pdf_consent, pdf_consent_at, created_at",
       )
-      .in("target_user_id", targetUserIds)
+      .eq("target_user_id", session.id)
       .order("created_at", { ascending: false });
     if (perceptionErr) {
       console.error("[zukan-mine] friend_perceptions lookup error:", perceptionErr);
@@ -209,7 +147,6 @@ export async function GET(request: NextRequest) {
           perceivedModifierParagraph: r.perceived_modifier_paragraph as string,
           qualitativeData:
             (r.qualitative_data as Record<string, string> | null) ?? null,
-          // T3-3: 友達が PDF 利用を許可したか (NULL = 旧データ、false 扱い)
           pdfConsent: r.pdf_consent === true,
           createdAt: r.created_at as string,
         };
@@ -217,15 +154,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // owner display name (current 優先)
-  const ownerName =
-    users.find((u) => u.owner_token === currentOwnerToken)?.display_name ??
-    users[0]?.display_name ??
-    null;
+  const ownerName = (userRow as UserRow).display_name ?? null;
 
-  // Phase 3-β リリース 3 C-4: 統合トリセツ実データを取得
-  // line_user_id 経由で同 LINE userId に紐付く全 integrated_trisetsu 行を新しい順で。
-  // 上限 10 件、total_count で件数表示可能に。
+  // ===== integrated_trisetsu: user_id = session.user.id =====
   let integrated: Array<{
     id: string;
     title: string;
@@ -240,7 +171,7 @@ export async function GET(request: NextRequest) {
     const { count: totalCount } = await supabaseAdmin
       .from("integrated_trisetsu")
       .select("id", { count: "exact", head: true })
-      .eq("line_user_id", lineUserId);
+      .eq("user_id", session.id);
     integratedTotalCount = totalCount ?? 0;
   }
 
@@ -250,7 +181,7 @@ export async function GET(request: NextRequest) {
       .select(
         "id, generated_title, generated_summary, generated_at, perception_ids, include_self",
       )
-      .eq("line_user_id", lineUserId)
+      .eq("user_id", session.id)
       .order("generated_at", { ascending: false })
       .limit(10);
     if (integratedErr) {
@@ -272,6 +203,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     ownerName,
+    email: (userRow as UserRow & { email?: string | null }).email ?? null,
     current,
     past,
     perceptions,

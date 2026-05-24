@@ -1,5 +1,6 @@
 import { messagingApi } from "@line/bot-sdk";
 import { supabaseAdmin } from "./supabase-server";
+import { isLineNotificationsEnabled } from "./feature-flags";
 import {
   buildDiagnosisCompleteFlex,
   buildFriendPerceptionReceivedFlex,
@@ -23,11 +24,21 @@ const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
 let cachedClient: messagingApi.MessagingApiClient | null = null;
 function getClient(): messagingApi.MessagingApiClient | null {
+  // Day 10: LINE 通知 feature flag (Phase 1 default OFF)
+  // Flag が false なら client を返さず、各 send 関数は no_token と同じ早期 return に着地。
+  // フラグ独自の挙動を出したい場合は disabledResponse() を直接返す関数も並行で用意。
+  if (!isLineNotificationsEnabled()) return null;
   if (!channelAccessToken) return null;
   if (!cachedClient) {
     cachedClient = new messagingApi.MessagingApiClient({ channelAccessToken });
   }
   return cachedClient;
+}
+
+// Day 10: flag-off は通常運用 (Phase 1 デフォルト) のため warn を出さず黙殺。
+// 呼び出し側は { success: true, error: "line_notifications_disabled" } を skip 扱いで受ける想定。
+function disabledResponse(): LineSendResult {
+  return { success: true, error: "line_notifications_disabled" };
 }
 
 export type LineSendResult = {
@@ -179,6 +190,7 @@ export async function sendWelcomeMessage(
   ownerToken: string,
   lineUserId: string,
 ): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping welcome");
@@ -289,6 +301,7 @@ export async function sendWelcomeMessage(
 export async function sendGenericWelcome(
   lineUserId: string,
 ): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping generic welcome");
@@ -332,6 +345,7 @@ export async function sendDiagnosisCompleteMessage(args: {
   modifierLabel: string;
   userId?: string | null;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping diagnosis_complete");
@@ -387,6 +401,7 @@ export async function sendFriendPerceptionReceivedMessage(args: {
   perceivedTypeName: string;
   perceivedModifierLabel: string;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn(
@@ -440,6 +455,7 @@ export async function sendFriendPerceptionReceivedMessage(args: {
 export async function sendDeletionCompleteMessage(args: {
   lineUserId: string;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn(
@@ -490,6 +506,7 @@ export async function replyToLine(
   messages: messagingApi.Message[],
   metadata?: Record<string, unknown>,
 ): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping reply");
@@ -526,6 +543,7 @@ export async function notifyFriendAnswered(
   // friendCount === 0 や 4+ は通知対象外 (silent skip)
   if (!flex) return { success: false, error: "out_of_range" };
 
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping notify");
@@ -580,6 +598,7 @@ export async function sendPaymentReceivedMessage(args: {
   ownerUserId?: string | null;
   ownerName?: string;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn(
@@ -632,6 +651,7 @@ export async function sendIntegratedCompletePaidMessage(args: {
   aiModel?: string;
   aiCostUsd?: number;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn(
@@ -700,6 +720,7 @@ export async function sendIntegratedFailedMessage(args: {
   ownerName?: string;
   failureReason?: string;
 }): Promise<LineSendResult> {
+  if (!isLineNotificationsEnabled()) return disabledResponse();
   const client = getClient();
   if (!client) {
     console.warn(

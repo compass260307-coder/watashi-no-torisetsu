@@ -232,15 +232,8 @@ function DiagnosisContent() {
   // Phase 3-β D-4: 再診断確認モーダル
   const closeRediagnoseModal = () => setShowRediagnoseModal(false);
   const cancelRediagnose = () => {
-    // キャンセル時はマイ図鑑へ戻る (LIFF redirect 経由)
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-    if (liffId) {
-      window.location.replace(
-        `https://liff.line.me/${liffId}?dest=zukan-mine`,
-      );
-    } else {
-      router.push("/");
-    }
+    // キャンセル時はマイ図鑑へ戻る (Web ファースト: Cookie ベースで直接アクセス可)
+    router.push("/zukan-mine");
   };
 
   return (

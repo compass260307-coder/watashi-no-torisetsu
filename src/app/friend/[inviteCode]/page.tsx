@@ -1,9 +1,9 @@
 "use client";
 
-// Phase 3-β B-2 + B-3: 友達評価 30 問 + choice 3 問 + 完成画面 (B-3 で本実装)。
+// 友達評価 30 問 + choice 3 問 + consent + 完成画面。
 // 旧 13 問形式の friend-questions / friend-perception は破壊せず並存。
-// LIFF init はオプショナル: LINE 内で開かれていればプロフィール + id_token を取り、
-// Web ブラウザ経由なら perceiver_name は「友達」固定 + 任意入力で上書き可能。
+// Web ファースト (v3 Day 3): perceiver_name は intro 画面で手動入力。
+// LIFF プロファイル自動取得は撤去 (Phase 2 復活用に line-* lib は残置)。
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -91,13 +91,11 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>({});
   const [choiceAnswers, setChoiceAnswers] = useState<Record<string, string>>({});
   const [perceiverName, setPerceiverName] = useState<string>("友達");
-  const [lineIdToken, setLineIdToken] = useState<string | null>(null);
   const [perception, setPerception] = useState<CompletePerception | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // T3-3: PDF 利用同意 (デフォルト OFF、明示的にチェック必要)
   const [pdfConsent, setPdfConsent] = useState<boolean>(false);
   const trackedLanding = useRef(false);
-  const liffInitialized = useRef(false);
 
   // ======== 初期化: invite_code から owner 取得 ========
   useEffect(() => {
@@ -113,33 +111,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       .catch(() => {});
   }, [inviteCode]);
 
-  // ======== LIFF init (オプショナル) ========
-  useEffect(() => {
-    if (liffInitialized.current) return;
-    liffInitialized.current = true;
-
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    if (!liffId) return; // LIFF 設定なし → スキップ
-
-    (async () => {
-      try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          // LIFF 内だがログインしていない → 強制ログインはしない (Web 経由のケースを壊さない)
-          return;
-        }
-        const profile = await liff.getProfile().catch(() => null);
-        if (profile?.displayName) {
-          setPerceiverName(profile.displayName);
-        }
-        const idToken = liff.getIDToken();
-        if (idToken) setLineIdToken(idToken);
-      } catch {
-        // LIFF init 失敗 (Web ブラウザ等) → フォールバックのまま続行
-      }
-    })();
-  }, []);
+  // Web ファースト化により LIFF プロファイル自動取得は撤去。
+  // perceiverName は consent 画面のフォームでユーザーが入力する。
 
   const ownerLabel = ownerName ?? "友達";
   const subjectLabel = ownerName ? `${ownerName}さん` : "友達";
@@ -207,15 +180,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     setPhase("submitting");
     setSubmitError(null);
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (lineIdToken) {
-        headers["Authorization"] = `Bearer ${lineIdToken}`;
-      }
       const res = await fetch("/api/friend-answer/v2", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inviteCode,
           scaleAnswers,
@@ -677,7 +644,7 @@ function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
         <br />
         生成中...
       </p>
-      <p className="text-xs text-muted">少し待ってね 🐧</p>
+      <p className="text-xs text-muted">少し待ってね</p>
     </div>
   );
 }
@@ -741,23 +708,26 @@ function CompleteScreen({
     Object.keys(perception.qualitativeData).length > 0;
 
   const handleShareToLine = async () => {
-    // LIFF 内なら shareTargetPicker、それ以外なら現 URL をコピー
+    // Web ファースト: Web Share API → クリップボード fallback
+    const shareText = [
+      "ワタシのトリセツ",
+      "",
+      "あなたから見た私のトリセツを教えて。",
+      "30 問・約 4 分で完成するよ。",
+      "",
+      window.location.href,
+    ].join("\n");
     try {
-      const liff = (await import("@line/liff")).default;
-      if (liff.isInClient && liff.isInClient()) {
-        const shareText = [
-          "🎴 ワタシのトリセツ",
-          "",
-          "あなたから見た私のトリセツを教えて。",
-          "30 問・約 4 分で完成するよ。",
-          "",
-          window.location.href,
-        ].join("\n");
-        await liff.shareTargetPicker([{ type: "text", text: shareText }]);
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        await navigator.share({
+          title: "ワタシのトリセツ",
+          text: shareText,
+          url: window.location.href,
+        });
         return;
       }
     } catch {
-      // LIFF 不可 → クリップボードコピー
+      // ユーザーキャンセル or 共有失敗 → クリップボード fallback
     }
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -776,7 +746,7 @@ function CompleteScreen({
             COMPLETED
           </p>
           <h1 className="text-2xl font-extrabold leading-tight">
-            ✨ あなたから見た
+            あなたから見た
             <br />
             {subjectLabel}は...
           </h1>
@@ -894,7 +864,7 @@ function CompleteScreen({
         {/* 「届きました」メッセージ */}
         <section className="w-full rounded-2xl bg-label-bg p-5 mb-6 text-center">
           <p className="text-base font-bold mb-1">
-            💌 {subjectLabel}に、あなたの眼が届きました
+            {subjectLabel}に、あなたの眼が届きました
           </p>
           <p className="text-[11px] text-muted leading-relaxed">
             {subjectLabel}のトリセツ図鑑に、

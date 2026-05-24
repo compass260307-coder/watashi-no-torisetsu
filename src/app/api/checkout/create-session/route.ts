@@ -1,78 +1,28 @@
-// プレミアム化 v2 Week 2 T2-6: Stripe Checkout Session 作成エンドポイント
+// プレミアム化 v3 Day 3: Stripe Checkout Session 作成 (Web ファースト版)
 //
 // POST /api/checkout/create-session
-//   - Authorization: Bearer <LIFF id_token> 必須
+//   - 認可: Cookie wn_session (旧: Authorization: Bearer <LIFF id_token>)
 //   - body: { include_self: boolean, perception_ids: string[] }
 //   - 戻り値: { sessionId, url } (Stripe Checkout の hosted page URL)
 //
-// 設計判断:
-//   - Payment Element ではなく Stripe Checkout (hosted page) を採用
-//     → 実装複雑度を下げ、Stripe 側 UI 改善の恩恵をそのまま受ける
-//   - payment_method_types を明示せず Adaptive Payment Methods を採用
-//     (Stripe 公式推奨: https://stripe.com/docs/payments/payment-method-types)
-//     → Stripe Dashboard で有効化した決済手段 (Card / PayPay / コンビニ /
-//       Apple Pay / Google Pay 等) が顧客の locale や決済可能性に応じて
-//       自動的に Checkout に表示される。
-//     → PayPay は Stripe 公式サポート済 (https://docs.stripe.com/payments/paypay)、
-//       Dashboard で有効化されていれば Checkout に出る。γ ターゲット (10 代後半〜
-//       20 代) のカード非保有者に対する主要な選択肢となる。
-//     → SDK 22.1.1 の TypeScript 型 (PaymentMethodType enum) には PayPay の
-//       明示列挙はないが、Adaptive Payment Methods 経由ではアプリ側のコード
-//       変更なしで対応されるため問題なし。
+// 認可・perception 検証:
+//   - session.user.id を直接使用 (LINE 経由の users.id 集約ロジックは不要)
+//   - perception の target_user_id が session.user.id と一致するかチェック
 //
 // metadata に user_id / include_self / perception_ids を載せ、Webhook (T2-7) で
 // payment_history + integrated_trisetsu 生成キックに使用する。
-//
-// 認可・perception 検証は POST /api/integrated-trisetsu と同じパターン:
-//   - line_users 経由で自分の users 全行を取得
-//   - perception の target_user_id がその集合に含まれているかチェック
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { verifyBearer } from "@/lib/liff-verify";
+import { getSession } from "@/lib/session";
 import { getStripe, getPremiumPriceId } from "@/lib/stripe-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+// .env.local で NEXT_PUBLIC_SITE_URL="" の空文字を弾くため || を使用 (?? は不可)
 const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
-async function getMyUserIds(
-  lineUserId: string,
-  currentUserId: string,
-): Promise<string[]> {
-  // line_users.line_user_id 直接 + owner_token / current_owner_token 経由の OR
-  const { data: lineUsersAll } = await supabaseAdmin
-    .from("line_users")
-    .select("owner_token, current_owner_token")
-    .eq("line_user_id", lineUserId);
-  const tokens: string[] = [];
-  for (const r of lineUsersAll ?? []) {
-    if (r.owner_token) tokens.push(r.owner_token as string);
-    if (
-      r.current_owner_token &&
-      r.current_owner_token !== r.owner_token
-    ) {
-      tokens.push(r.current_owner_token as string);
-    }
-  }
-  const uniqTokens = Array.from(new Set(tokens));
-
-  let q = supabaseAdmin.from("users").select("id");
-  if (uniqTokens.length > 0) {
-    const ownerList = uniqTokens.map((t) => `"${t}"`).join(",");
-    q = q.or(
-      `line_user_id.eq.${lineUserId},owner_token.in.(${ownerList})`,
-    );
-  } else {
-    q = q.eq("line_user_id", lineUserId);
-  }
-  const { data: rows } = await q;
-  const ids = (rows ?? []).map((r) => r.id as string);
-  if (!ids.includes(currentUserId)) ids.push(currentUserId);
-  return ids;
-}
+  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function POST(request: NextRequest) {
   // ===== Stripe 環境変数チェック =====
@@ -92,14 +42,18 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== 認可 =====
-  const verified = await verifyBearer(request);
-  if (!verified) {
+  const session = await getSession(request);
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const lineUserId = verified.sub;
+  const userId = session.id;
 
   // ===== body parse =====
-  let body: { include_self?: unknown; perception_ids?: unknown };
+  let body: {
+    include_self?: unknown;
+    perception_ids?: unknown;
+    email?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -120,39 +74,49 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ===== ユーザー (current) 取得 =====
-  const { data: lineUserRow, error: lineUserErr } = await supabaseAdmin
-    .from("line_users")
-    .select("current_owner_token, owner_token")
-    .eq("line_user_id", lineUserId)
-    .maybeSingle();
-  if (lineUserErr) {
-    console.error("[checkout/create-session] line_users error:", lineUserErr);
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+  // ===== email 解決 (Web ファースト: 購入時に必須) =====
+  // body.email > session.email の優先で決定。両方なしは 400。
+  // body で来た値は lowercase normalize して users.email に永続化。
+  // Stripe Checkout の customer_email として渡し、決済成功後の連絡経路にする。
+  const bodyEmailRaw =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : null;
+  const isValidEmail = (v: string | null): v is string =>
+    !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 254;
+
+  let customerEmail: string | null = null;
+  if (isValidEmail(bodyEmailRaw)) {
+    customerEmail = bodyEmailRaw;
+  } else if (isValidEmail(session.email)) {
+    customerEmail = session.email;
   }
-  const currentOwnerToken =
-    lineUserRow?.current_owner_token ?? lineUserRow?.owner_token ?? null;
-  if (!currentOwnerToken) {
+
+  if (!customerEmail) {
     return NextResponse.json(
-      { error: "LINE 連携が完了していません" },
+      {
+        error: "メールアドレスが必要です",
+        detail: "決済完了とトリセツ完成のお知らせをこのアドレスに送ります",
+      },
       { status: 400 },
     );
   }
 
-  const { data: userRow, error: userErr } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .eq("owner_token", currentOwnerToken)
-    .maybeSingle();
-  if (userErr || !userRow) {
-    console.error("[checkout/create-session] users lookup error:", userErr);
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  // body で新規 email を受け取った (= session.email と異なる or 未設定) 場合は永続化
+  if (bodyEmailRaw && bodyEmailRaw === customerEmail && session.email !== bodyEmailRaw) {
+    const { error: emailUpdErr } = await supabaseAdmin
+      .from("users")
+      .update({ email: customerEmail })
+      .eq("id", userId);
+    if (emailUpdErr) {
+      console.error(
+        "[checkout/create-session] email persist error (continuing):",
+        emailUpdErr,
+      );
+      // 永続化失敗でも Stripe Checkout 自体は進める (メール送信時に最新化される機会あり)
+    }
   }
-  const userId = userRow.id as string;
 
   // ===== perception 検証 =====
   if (perceptionIds.length > 0) {
-    const myUserIds = await getMyUserIds(lineUserId, userId);
     const { data: ps, error: pErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select("id, target_user_id, pdf_consent")
@@ -167,9 +131,7 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    const invalid = ps.find(
-      (p) => !myUserIds.includes(p.target_user_id as string),
-    );
+    const invalid = ps.find((p) => (p.target_user_id as string) !== userId);
     if (invalid) {
       return NextResponse.json(
         { error: "他人の perception_id は統合素材にできません" },
@@ -181,8 +143,7 @@ export async function POST(request: NextRequest) {
     if (notConsented) {
       return NextResponse.json(
         {
-          error:
-            "PDF 利用未同意の友達評価は統合素材にできません",
+          error: "PDF 利用未同意の友達評価は統合素材にできません",
           perception_id: notConsented.id,
         },
         { status: 403 },
@@ -191,31 +152,25 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== Stripe Checkout Session 作成 =====
-  // metadata の各値は string 必須、500 文字制限あり。
-  // perception_ids JSON が 500 文字を超えるケース (>15 件程度) は
-  // 現実的に発生しないため stringify でそのまま渡す。
-  // (将来万一超えたら、payment_history に id だけ載せて perception_ids は
-  // 別途事前 INSERT する設計に切替検討)
-  let session;
+  // customer_email を必須化: 決済成功通知 + トリセツ完成メールの宛先。
+  // line_user_id は Web ファースト化により optional (LINE 連携済みなら付与)。
+  // metadata に email も含めて webhook で参照可能に (users.email は冪等更新済)。
+  let stripeSession;
   try {
-    session = await stripe.checkout.sessions.create({
+    stripeSession = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
-      // payment_method_types を明示しないと、Stripe Dashboard の
-      // 「Payment methods」設定に従ってカード・コンビニ・ウォレット等が
-      // 自動的に表示される (Stripe 推奨方式)。
-      // 個別に絞り込みたい場合だけ payment_method_types を指定する。
+      customer_email: customerEmail,
       metadata: {
         user_id: userId,
-        line_user_id: lineUserId,
+        email: customerEmail,
+        line_user_id: session.line_user_id ?? "",
         include_self: String(includeSelf),
         perception_ids: JSON.stringify(perceptionIds),
       },
       success_url: `${BASE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${BASE_URL}/integrated/new`,
       locale: "ja",
-      // 顧客の重複作成を抑制 (line_user_id ベースで一意化はしない、
-      // Stripe customer は Phase 2 で導入検討)
     });
   } catch (err) {
     console.error("[checkout/create-session] Stripe error:", err);
@@ -229,7 +184,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    sessionId: session.id,
-    url: session.url,
+    sessionId: stripeSession.id,
+    url: stripeSession.url,
   });
 }

@@ -64,8 +64,6 @@ type ZukanMineResponse = {
 
 type Status =
   | "loading"
-  | "needs-liff"
-  | "missing-liff"
   | "needs-self-diagnosis"
   | "error"
   | "ready";
@@ -97,30 +95,13 @@ export default function ZukanMinePage() {
     initialized.current = true;
 
     (async () => {
-      const liffId = process.env.NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT;
-      if (!liffId) {
-        setStatus("missing-liff");
-        return;
-      }
       try {
-        const liff = (await import("@line/liff")).default;
-        await liff.init({ liffId });
-        if (!liff.isLoggedIn()) {
-          // LIFF 内で開かれているが未ログイン → 強制ログイン (UX 自然)
-          liff.login();
-          return;
-        }
-        const idToken = liff.getIDToken();
-        if (!idToken) {
-          setStatus("error");
-          setErrorMessage("LIFF id_token not available (openid scope 必須)");
-          return;
-        }
+        // Web ファースト: Cookie wn_session が自動送信される。Bearer 不要。
         const res = await fetch("/api/zukan-mine", {
-          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: "include",
         });
         if (res.status === 401) {
-          setStatus("needs-liff");
+          setStatus("needs-self-diagnosis");
           return;
         }
         if (!res.ok) {
@@ -146,26 +127,6 @@ export default function ZukanMinePage() {
   if (status === "loading") {
     return <CenteredMessage>マイ図鑑を読み込み中...</CenteredMessage>;
   }
-  if (status === "missing-liff") {
-    return (
-      <CenteredMessage>
-        LIFF 設定が見つかりません
-        <br />
-        管理者にお問い合わせください
-      </CenteredMessage>
-    );
-  }
-  if (status === "needs-liff") {
-    return (
-      <CenteredMessage>
-        LINE 内で開いてください
-        <br />
-        <span className="text-xs text-muted">
-          (LIFF 経由でのみ閲覧できます)
-        </span>
-      </CenteredMessage>
-    );
-  }
   if (status === "needs-self-diagnosis") {
     return (
       <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
@@ -189,6 +150,12 @@ export default function ZukanMinePage() {
           className="rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-md"
         >
           自己診断を始める →
+        </Link>
+        <Link
+          href="/login"
+          className="text-xs text-muted/70 underline hover:text-foreground mt-6"
+        >
+          別端末でログイン
         </Link>
       </div>
     );
@@ -227,7 +194,7 @@ export default function ZukanMinePage() {
           <section className="w-full mb-6 animate-fade-in-up stagger-2">
             <SectionHeader label="🟢 あなたが思う、あなた" count={1} />
             <Link
-              href={current.ownerToken ? `/result/${current.ownerToken}` : "#"}
+              href={current.ownerToken ? `/me/${current.ownerToken}` : "#"}
               className="block"
             >
               <DiagnosisCardView card={current} isCurrent />
@@ -253,7 +220,7 @@ export default function ZukanMinePage() {
                 {past.map((p) => (
                   <Link
                     key={p.userId}
-                    href={p.ownerToken ? `/result/${p.ownerToken}` : "#"}
+                    href={p.ownerToken ? `/me/${p.ownerToken}` : "#"}
                     className="block"
                   >
                     <PastDiagnosisCardView card={p} />
@@ -286,7 +253,7 @@ export default function ZukanMinePage() {
               ))}
               <div className="mt-2">
                 <Link
-                  href="/share"
+                  href="/"
                   className="block w-full rounded-full bg-primary-gradient px-6 py-4 text-center text-base font-bold text-white shadow-md"
                 >
                   ➕ もっと集める (友達を招待)
@@ -494,7 +461,7 @@ function EmptyPerceptions() {
         他者の眼を集めましょう
       </p>
       <Link
-        href="/share"
+        href="/"
         className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
       >
         💌 友達を招待する

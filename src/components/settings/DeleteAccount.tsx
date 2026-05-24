@@ -17,11 +17,8 @@ type Counts = {
 
 type Stage = "init" | "confirm" | "deleting" | "done" | "error";
 
-interface Props {
-  idToken: string;
-}
-
-export function DeleteAccount({ idToken }: Props) {
+// Web ファースト化により idToken prop は撤去。Cookie wn_session で認可。
+export function DeleteAccount() {
   const [counts, setCounts] = useState<Counts | null>(null);
   const [stage, setStage] = useState<Stage>("init");
   const [confirmText, setConfirmText] = useState("");
@@ -34,7 +31,7 @@ export function DeleteAccount({ idToken }: Props) {
     (async () => {
       try {
         const res = await fetch("/api/zukan-mine", {
-          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: "include",
         });
         if (!res.ok) {
           // 件数取得失敗でも削除自体は実行可能なので、ゼロ件で続行
@@ -68,7 +65,7 @@ export function DeleteAccount({ idToken }: Props) {
         });
       }
     })();
-  }, [idToken]);
+  }, []);
 
   const handleDelete = async () => {
     if (confirmText.trim() !== "削除します") return;
@@ -77,7 +74,7 @@ export function DeleteAccount({ idToken }: Props) {
     try {
       const res = await fetch("/api/account/delete", {
         method: "POST",
-        headers: { Authorization: `Bearer ${idToken}` },
+        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
