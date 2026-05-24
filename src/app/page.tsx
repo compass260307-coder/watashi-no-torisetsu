@@ -55,6 +55,105 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Day 2: 装飾画像 (マスコット + CTA 周辺に散らす、pointer-events-none で
+              クリック邪魔しない、z-20 でマスコット z-10 より前面) */}
+          <div
+            aria-hidden="true"
+            className="absolute top-32 left-6 w-14 h-14 rotate-12 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/heart-pink.png"
+              alt=""
+              width={56}
+              height={56}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute top-28 right-8 w-12 h-12 -rotate-12 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/flower-yellow.png"
+              alt=""
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute top-56 right-4 w-10 h-10 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/star-yellow.png"
+              alt=""
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute top-52 left-4 w-10 h-10 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/star-blue.png"
+              alt=""
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute top-20 right-1/3 w-8 h-8 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/sparkle.png"
+              alt=""
+              width={32}
+              height={32}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute top-72 left-1/4 w-6 h-6 z-20 pointer-events-none opacity-80"
+          >
+            <Image
+              src="/decorations/sparkle.png"
+              alt=""
+              width={24}
+              height={24}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute bottom-32 left-6 w-12 h-12 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/heart-pink.png"
+              alt=""
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute bottom-28 right-8 w-8 h-8 z-20 pointer-events-none"
+          >
+            <Image
+              src="/decorations/sparkle.png"
+              alt=""
+              width={32}
+              height={32}
+              className="w-full h-full object-contain"
+            />
+          </div>
+
           {/* ブランドロゴ (Brand v2 メインキャッチ、ヒーロー上段中央) */}
           <div className="flex justify-center mb-6">
             <Image
@@ -67,21 +166,31 @@ export default function Home() {
             />
           </div>
 
-          {/* マスコット (2 ショット、Brand v2 画像) */}
-          <div className="flex justify-center my-6">
+          {/* マスコット (2 ショット) + アーチ背景 */}
+          <div className="relative flex justify-center my-6">
+            {/* アーチ背景 (Day 2: pink → blue グラデの 40% アルファ) */}
+            <div
+              aria-hidden="true"
+              className="absolute left-1/2 -translate-x-1/2 top-0 w-[300px] h-[280px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
+            />
+
+            {/* マスコット (前面) */}
             <Image
               src="/mascot-pair.png"
               alt="ワタシのトリセツのマスコット"
               width={300}
               height={300}
               priority
-              className="w-full max-w-[280px] h-auto"
+              className="relative z-10 w-full max-w-[280px] h-auto"
             />
           </div>
 
-          {/* ステッカータグ */}
-          <div className="flex justify-center mb-6">
-            <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-sm font-bold border-2 border-[#3A2D6B] transform -rotate-2">
+          {/* ステッカータグ (2 段重ね、上小逆回転 / 下大正回転) */}
+          <div className="flex flex-col items-center gap-2 mb-6">
+            <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-3 shadow-[2px_2px_0_#3A2D6B]">
+              ぶっちゃけ、自分のこと分かってる？
+            </div>
+            <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-sm font-black border-2 border-[#3A2D6B] transform rotate-2 shadow-[2px_2px_0_#3A2D6B]">
               友達には、こう映ってるかも
             </div>
           </div>
