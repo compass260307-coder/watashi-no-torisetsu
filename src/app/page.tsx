@@ -55,21 +55,26 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Day 2.5: 装飾画像 (大 / 中 / 小 / 極小 の 4 階層、Koi キャラ風メリハリ)
+          {/* Day 2.6: 装飾画像 (4 階層、各装飾の背後に半透明白の outer glow を仕込み
+              grid 線をぼかして装飾を浮き上がらせる)
+              - 大/中: inset-[-12px|-8px] + blur-xl|lg + bg-white/60 + drop-shadow-md
+              - 小:   inset-[-6px] + blur-md + bg-white/50 (sparkle は shadow なし)
+              - 極小: glow なし (見た目を軽く保つ)
               全 9 個、pointer-events-none + aria-hidden + z-20 (マスコット z-10 より前面) */}
 
-          {/* === 大型装飾 (マスコット上部、メインの目を引く要素) === */}
+          {/* === 大型装飾 === */}
           {/* 大ハート (左上、+15deg) */}
           <div
             aria-hidden="true"
             className="absolute top-24 left-2 w-20 h-20 rotate-[15deg] z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-12px] bg-white/60 rounded-full blur-xl" />
             <Image
               src="/decorations/heart-pink.png"
               alt=""
               width={80}
               height={80}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain drop-shadow-md"
             />
           </div>
           {/* 大花 (右上、-12deg) */}
@@ -77,27 +82,29 @@ export default function Home() {
             aria-hidden="true"
             className="absolute top-20 right-2 w-20 h-20 -rotate-[12deg] z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-12px] bg-white/60 rounded-full blur-xl" />
             <Image
               src="/decorations/flower-yellow.png"
               alt=""
               width={80}
               height={80}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain drop-shadow-md"
             />
           </div>
 
-          {/* === 中型装飾 (マスコット両脇、左右で高さをずらす) === */}
+          {/* === 中型装飾 (マスコット両脇) === */}
           {/* 黄星 (右、+25deg) */}
           <div
             aria-hidden="true"
             className="absolute top-64 right-6 w-14 h-14 rotate-[25deg] z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-8px] bg-white/60 rounded-full blur-lg" />
             <Image
               src="/decorations/star-yellow.png"
               alt=""
               width={56}
               height={56}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain drop-shadow-md"
             />
           </div>
           {/* 青星 (左、-18deg、少し下にずらし) */}
@@ -105,27 +112,29 @@ export default function Home() {
             aria-hidden="true"
             className="absolute top-72 left-4 w-12 h-12 -rotate-[18deg] z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-8px] bg-white/60 rounded-full blur-lg" />
             <Image
               src="/decorations/star-blue.png"
               alt=""
               width={48}
               height={48}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain drop-shadow-md"
             />
           </div>
 
-          {/* === 小型装飾 (見出し周辺・CTA 周辺) === */}
+          {/* === 小型装飾 (見出し / CTA 周辺) === */}
           {/* キラキラ (見出し右横) */}
           <div
             aria-hidden="true"
             className="absolute top-[500px] right-4 w-10 h-10 z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
             <Image
               src="/decorations/sparkle.png"
               alt=""
               width={40}
               height={40}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain"
             />
           </div>
           {/* 小ハート (CTA 左下、+20deg) */}
@@ -133,12 +142,13 @@ export default function Home() {
             aria-hidden="true"
             className="absolute bottom-36 left-8 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
             <Image
               src="/decorations/heart-pink.png"
               alt=""
               width={40}
               height={40}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain drop-shadow-sm"
             />
           </div>
           {/* キラキラ (CTA 右横) */}
@@ -146,16 +156,17 @@ export default function Home() {
             aria-hidden="true"
             className="absolute bottom-40 right-6 w-8 h-8 z-20 pointer-events-none"
           >
+            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
             <Image
               src="/decorations/sparkle.png"
               alt=""
               width={32}
               height={32}
-              className="w-full h-full object-contain"
+              className="relative w-full h-full object-contain"
             />
           </div>
 
-          {/* === 極小装飾 (アクセント、隙間に散らす) === */}
+          {/* === 極小装飾 (glow なし、軽く) === */}
           {/* 極小キラキラ (マスコット上の隙間、opacity-70) */}
           <div
             aria-hidden="true"
