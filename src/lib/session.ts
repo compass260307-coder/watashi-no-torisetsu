@@ -72,14 +72,25 @@ function buildCookieOptions(): {
  * リクエストの Cookie から session を解決して users 行を返す。
  *
  * Cookie 不在 / token に一致する users 行なし → null。
+ *
+ * 使い分け:
+ *   - API route (Route Handler): getSession(request)
+ *   - Server Component / Server Action: getSession() (next/headers cookies() を使用)
+ *
  * 認可済み API route の入口で呼ぶ:
  *   const user = await getSession(request);
  *   if (!user) return new Response("Unauthorized", { status: 401 });
  */
 export async function getSession(
-  request: NextRequest,
+  request?: NextRequest,
 ): Promise<SessionUser | null> {
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  let token: string | undefined;
+  if (request) {
+    token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  } else {
+    const c = await cookies();
+    token = c.get(SESSION_COOKIE_NAME)?.value;
+  }
   if (!token) return null;
 
   const { data, error } = await supabaseAdmin
