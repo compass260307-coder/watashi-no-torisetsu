@@ -44,8 +44,23 @@ export default function Home() {
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
-          {/* ヘッダー: ハンバーガーのみ右寄せ (ロゴはヒーロー中央へ移動) */}
-          <div className="flex justify-end items-center mb-4">
+          {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー */}
+          <div className="flex justify-between items-center mb-4">
+            {/* 左上ロゴ (halo 付き) */}
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute inset-[-4px] bg-white/40 rounded-2xl blur-md pointer-events-none"
+              />
+              <Image
+                src="/logo.png"
+                alt="ワタシのトリセツ"
+                width={120}
+                height={40}
+                priority
+                className="relative h-auto w-[100px]"
+              />
+            </div>
             <button
               type="button"
               aria-label="メニュー"
@@ -137,10 +152,10 @@ export default function Home() {
               className="relative w-full h-full object-contain"
             />
           </div>
-          {/* 小ハート (CTA 左下、+20deg) */}
+          {/* 小ハート (CTA 左下、+20deg) — Day 3: bottom-36 left-8 → bottom-28 left-6 で CTA から離す */}
           <div
             aria-hidden="true"
-            className="absolute bottom-36 left-8 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
+            className="absolute bottom-28 left-6 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
           >
             <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
             <Image
@@ -194,22 +209,8 @@ export default function Home() {
             />
           </div>
 
-          {/* ブランドロゴ (Brand v2 メインキャッチ、ヒーロー上段中央) */}
-          {/* Day 2.7: 背後 halo で grid 線をぼかして読みやすく */}
-          <div className="relative flex justify-center mb-6">
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-8 inset-y-[-4px] bg-white/40 rounded-3xl blur-xl pointer-events-none"
-            />
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={360}
-              height={120}
-              priority
-              className="relative w-full max-w-[240px] h-auto"
-            />
-          </div>
+          {/* Day 3: 中央ロゴ (旧 /logo.png) はヘッダー左上に移動済のため削除。
+              メインキャッチは下段の /logo-hero.png に移行 */}
 
           {/* マスコット (2 ショット) + アーチ背景 */}
           <div className="relative flex justify-center my-6">
@@ -240,19 +241,20 @@ export default function Home() {
             </div>
           </div>
 
-          {/* メイン見出し (Brand v2 画像) — Day 2.7: 背後 halo */}
+          {/* Day 3: 大きい新ロゴ「ワタシのトリセツ by AI」(メインキャッチ)
+              旧 /heading-hero.png はヒーローから削除、/logo-hero.png に差替 */}
           <div className="relative flex justify-center mb-6">
             <div
               aria-hidden="true"
-              className="absolute inset-x-4 inset-y-0 bg-white/40 rounded-3xl blur-2xl pointer-events-none"
+              className="absolute inset-x-2 inset-y-[-8px] bg-white/40 rounded-3xl blur-2xl pointer-events-none"
             />
             <Image
-              src="/heading-hero.png"
-              alt="真のアナタを、知ろう。"
-              width={400}
+              src="/logo-hero.png"
+              alt="ワタシのトリセツ by AI"
+              width={600}
               height={300}
               priority
-              className="relative w-full max-w-[320px] h-auto"
+              className="relative w-full max-w-[340px] h-auto"
             />
           </div>
 
@@ -271,8 +273,9 @@ export default function Home() {
             </p>
           </div>
 
-          {/* メイン CTA — Day 2.7: 背後 halo + active 状態追加 */}
-          <div className="flex justify-center mb-3">
+          {/* メイン CTA — Day 3: mb-3 → mb-8 で補足テキストとの間に余白を確保
+              (CTA の box shadow と補足が重なるのを防ぐ) */}
+          <div className="flex justify-center mb-8">
             <div className="relative">
               <div
                 aria-hidden="true"
@@ -287,11 +290,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 補足 — Day 2.7: 背後 halo (小要素) */}
+          {/* 補足 — Day 3: halo 強化 (40 → 70%、blur-md → blur-lg、縦方向に拡大)
+              grid 線がより薄く透け、テキスト読みやすさが向上 */}
           <div className="relative flex justify-center">
             <div
               aria-hidden="true"
-              className="absolute inset-x-1/4 inset-y-[-4px] bg-white/40 rounded-full blur-md pointer-events-none"
+              className="absolute inset-x-1/4 inset-y-[-10px] bg-white/70 rounded-full blur-lg pointer-events-none"
             />
             <p className="relative text-center text-sm text-[#2A2856]/70 font-medium">
               3 分 ・ 登録不要 ・ 全部無料
