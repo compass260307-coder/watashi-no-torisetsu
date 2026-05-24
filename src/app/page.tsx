@@ -44,23 +44,17 @@ export default function Home() {
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
-          {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー */}
+          {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー
+              Day 3.6: ロゴの halo を削除 (縁取りで十分浮く)、ロゴサイズ w-[100px] → w-[140px] */}
           <div className="flex justify-between items-center mb-4">
-            {/* 左上ロゴ (halo 付き) */}
-            <div className="relative">
-              <div
-                aria-hidden="true"
-                className="absolute inset-[-4px] bg-white/40 rounded-2xl blur-md pointer-events-none"
-              />
-              <Image
-                src="/logo.png"
-                alt="ワタシのトリセツ"
-                width={120}
-                height={40}
-                priority
-                className="relative h-auto w-[100px]"
-              />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="ワタシのトリセツ"
+              width={160}
+              height={54}
+              priority
+              className="h-auto w-[140px]"
+            />
             <button
               type="button"
               aria-label="メニュー"
@@ -72,8 +66,9 @@ export default function Home() {
 
           {/* Day 2.6: 装飾画像 (4 階層、各装飾の背後に半透明白の outer glow を仕込み
               grid 線をぼかして装飾を浮き上がらせる)
-              - 大/中: inset-[-12px|-8px] + blur-xl|lg + bg-white/60 + drop-shadow-md
-              - 小:   inset-[-6px] + blur-md + bg-white/50 (sparkle は shadow なし)
+              - 大/中: inset-[-12px|-8px] + blur-xl|lg + bg-white/30 + drop-shadow-md
+              - 小:   inset-[-6px] + blur-md + bg-white/25 (sparkle は shadow なし)
+              Day 3.6: 白もや軽減のため glow 不透明度を 60/50 → 30/25 に下げた
               - 極小: glow なし (見た目を軽く保つ)
               全 9 個、pointer-events-none + aria-hidden + z-20 (マスコット z-10 より前面) */}
 
@@ -83,7 +78,7 @@ export default function Home() {
             aria-hidden="true"
             className="absolute top-24 left-2 w-20 h-20 rotate-[15deg] z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-12px] bg-white/60 rounded-full blur-xl" />
+            <div className="absolute inset-[-12px] bg-white/30 rounded-full blur-xl" />
             <Image
               src="/decorations/heart-pink.png"
               alt=""
@@ -97,7 +92,7 @@ export default function Home() {
             aria-hidden="true"
             className="absolute top-20 right-2 w-20 h-20 -rotate-[12deg] z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-12px] bg-white/60 rounded-full blur-xl" />
+            <div className="absolute inset-[-12px] bg-white/30 rounded-full blur-xl" />
             <Image
               src="/decorations/flower-yellow.png"
               alt=""
@@ -108,12 +103,12 @@ export default function Home() {
           </div>
 
           {/* === 中型装飾 (マスコット両脇) === */}
-          {/* 黄星 (右、+25deg) */}
+          {/* 黄星 (右、+25deg) — Day 3.6: マスコット目に被るため top-64 right-6 → top-[420px] right-4 へ下移動 */}
           <div
             aria-hidden="true"
-            className="absolute top-64 right-6 w-14 h-14 rotate-[25deg] z-20 pointer-events-none"
+            className="absolute top-[420px] right-4 w-14 h-14 rotate-[25deg] z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-8px] bg-white/60 rounded-full blur-lg" />
+            <div className="absolute inset-[-8px] bg-white/30 rounded-full blur-lg" />
             <Image
               src="/decorations/star-yellow.png"
               alt=""
@@ -122,12 +117,12 @@ export default function Home() {
               className="relative w-full h-full object-contain drop-shadow-md"
             />
           </div>
-          {/* 青星 (左、-18deg、少し下にずらし) */}
+          {/* 青星 (左、-18deg、少し下にずらし) — Day 3.6: top-72 left-4 → top-[440px] left-4 へ下移動 */}
           <div
             aria-hidden="true"
-            className="absolute top-72 left-4 w-12 h-12 -rotate-[18deg] z-20 pointer-events-none"
+            className="absolute top-[440px] left-4 w-12 h-12 -rotate-[18deg] z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-8px] bg-white/60 rounded-full blur-lg" />
+            <div className="absolute inset-[-8px] bg-white/30 rounded-full blur-lg" />
             <Image
               src="/decorations/star-blue.png"
               alt=""
@@ -143,7 +138,7 @@ export default function Home() {
             aria-hidden="true"
             className="absolute top-[500px] right-4 w-10 h-10 z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
+            <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
               src="/decorations/sparkle.png"
               alt=""
@@ -157,7 +152,7 @@ export default function Home() {
             aria-hidden="true"
             className="absolute bottom-28 left-6 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
+            <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
               src="/decorations/heart-pink.png"
               alt=""
@@ -171,7 +166,7 @@ export default function Home() {
             aria-hidden="true"
             className="absolute bottom-40 right-6 w-8 h-8 z-20 pointer-events-none"
           >
-            <div className="absolute inset-[-6px] bg-white/50 rounded-full blur-md" />
+            <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
               src="/decorations/sparkle.png"
               alt=""
@@ -238,11 +233,7 @@ export default function Home() {
             {/* ロゴをマスコット下半分に重ねる (bottom-[-30px] で食み出し、z-20 で前面) */}
             <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-20 w-full">
               <div className="relative flex justify-center">
-                {/* halo */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-x-2 inset-y-[-8px] bg-white/40 rounded-3xl blur-2xl pointer-events-none"
-                />
+                {/* Day 3.6: 大ロゴの halo を削除 (ロゴ自体の縁取りで十分浮く) */}
                 <Image
                   src="/logo-hero.png"
                   alt="ワタシのトリセツ by AI"
@@ -268,11 +259,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* サブコピー — Day 2.7: 背後 halo (細長要素) */}
+          {/* サブコピー — Day 3.6: halo 不透明度 50 → 25 に下げて白もや軽減 */}
           <div className="relative mb-8 px-4">
             <div
               aria-hidden="true"
-              className="absolute inset-x-2 inset-y-[-8px] bg-white/50 rounded-2xl blur-xl pointer-events-none"
+              className="absolute inset-x-2 inset-y-[-8px] bg-white/25 rounded-2xl blur-xl pointer-events-none"
             />
             <p className="relative text-center text-[#2A2856] text-base font-bold leading-relaxed">
               自己診断 × 友達評価 × AI で、
@@ -283,14 +274,9 @@ export default function Home() {
             </p>
           </div>
 
-          {/* メイン CTA — Day 3: mb-3 → mb-8 で補足テキストとの間に余白を確保
-              (CTA の box shadow と補足が重なるのを防ぐ) */}
+          {/* メイン CTA — Day 3.6: halo を削除 (ボタン黄色背景で grid から十分浮く) */}
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div
-                aria-hidden="true"
-                className="absolute inset-[-16px] bg-white/50 rounded-full blur-xl pointer-events-none"
-              />
               <Link
                 href="/diagnosis"
                 className="relative bg-[#FFE993] text-[#3A2D6B] px-10 py-4 rounded-full text-lg font-black border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:shadow-[0_2px_0_#3A2D6B] hover:translate-y-[2px] active:shadow-[0_0_0_#3A2D6B] active:translate-y-[4px] transition-all"
@@ -300,12 +286,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 補足 — Day 3: halo 強化 (40 → 70%、blur-md → blur-lg、縦方向に拡大)
-              grid 線がより薄く透け、テキスト読みやすさが向上 */}
+          {/* 補足 — Day 3.6: halo 不透明度 70 → 40 に下げて白もや軽減 */}
           <div className="relative flex justify-center">
             <div
               aria-hidden="true"
-              className="absolute inset-x-1/4 inset-y-[-10px] bg-white/70 rounded-full blur-lg pointer-events-none"
+              className="absolute inset-x-1/4 inset-y-[-10px] bg-white/40 rounded-full blur-lg pointer-events-none"
             />
             <p className="relative text-center text-sm text-[#2A2856]/70 font-medium">
               3 分 ・ 登録不要 ・ 全部無料
