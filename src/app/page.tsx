@@ -195,14 +195,19 @@ export default function Home() {
           </div>
 
           {/* ブランドロゴ (Brand v2 メインキャッチ、ヒーロー上段中央) */}
-          <div className="flex justify-center mb-6">
+          {/* Day 2.7: 背後 halo で grid 線をぼかして読みやすく */}
+          <div className="relative flex justify-center mb-6">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-8 inset-y-[-4px] bg-white/40 rounded-3xl blur-xl pointer-events-none"
+            />
             <Image
               src="/logo.png"
               alt="ワタシのトリセツ"
               width={360}
               height={120}
               priority
-              className="w-full max-w-[240px] h-auto"
+              className="relative w-full max-w-[240px] h-auto"
             />
           </div>
 
@@ -235,41 +240,63 @@ export default function Home() {
             </div>
           </div>
 
-          {/* メイン見出し (Brand v2 画像) */}
-          <div className="flex justify-center mb-6">
+          {/* メイン見出し (Brand v2 画像) — Day 2.7: 背後 halo */}
+          <div className="relative flex justify-center mb-6">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-4 inset-y-0 bg-white/40 rounded-3xl blur-2xl pointer-events-none"
+            />
             <Image
               src="/heading-hero.png"
               alt="真のアナタを、知ろう。"
               width={400}
               height={300}
               priority
-              className="w-full max-w-[320px] h-auto"
+              className="relative w-full max-w-[320px] h-auto"
             />
           </div>
 
-          {/* サブコピー */}
-          <p className="text-center text-[#2A2856] text-base font-bold leading-relaxed mb-8 px-4">
-            自己診断 × 友達評価 × AI で、
-            <br />
-            自分でも気づかなかった
-            <br />
-            アナタが見えてくる
-          </p>
-
-          {/* メイン CTA */}
-          <div className="flex justify-center mb-3">
-            <Link
-              href="/diagnosis"
-              className="bg-[#FFE993] text-[#3A2D6B] px-10 py-4 rounded-full text-lg font-black border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:shadow-[0_2px_0_#3A2D6B] hover:translate-y-[2px] transition-all"
-            >
-              無料で診断する →
-            </Link>
+          {/* サブコピー — Day 2.7: 背後 halo (細長要素) */}
+          <div className="relative mb-8 px-4">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-2 inset-y-[-8px] bg-white/50 rounded-2xl blur-xl pointer-events-none"
+            />
+            <p className="relative text-center text-[#2A2856] text-base font-bold leading-relaxed">
+              自己診断 × 友達評価 × AI で、
+              <br />
+              自分でも気づかなかった
+              <br />
+              アナタが見えてくる
+            </p>
           </div>
 
-          {/* 補足 */}
-          <p className="text-center text-sm text-[#2A2856]/70 font-medium">
-            3 分 ・ 登録不要 ・ 全部無料
-          </p>
+          {/* メイン CTA — Day 2.7: 背後 halo + active 状態追加 */}
+          <div className="flex justify-center mb-3">
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute inset-[-16px] bg-white/50 rounded-full blur-xl pointer-events-none"
+              />
+              <Link
+                href="/diagnosis"
+                className="relative bg-[#FFE993] text-[#3A2D6B] px-10 py-4 rounded-full text-lg font-black border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:shadow-[0_2px_0_#3A2D6B] hover:translate-y-[2px] active:shadow-[0_0_0_#3A2D6B] active:translate-y-[4px] transition-all"
+              >
+                無料で診断する →
+              </Link>
+            </div>
+          </div>
+
+          {/* 補足 — Day 2.7: 背後 halo (小要素) */}
+          <div className="relative flex justify-center">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-1/4 inset-y-[-4px] bg-white/40 rounded-full blur-md pointer-events-none"
+            />
+            <p className="relative text-center text-sm text-[#2A2856]/70 font-medium">
+              3 分 ・ 登録不要 ・ 全部無料
+            </p>
+          </div>
         </div>
       </section>
 
