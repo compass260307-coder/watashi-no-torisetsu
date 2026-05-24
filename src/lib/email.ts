@@ -76,7 +76,7 @@ interface SendTrisetsuCompleteArgs {
 /**
  * 統合トリセツ生成完了メール。
  *
- * 永続 URL は /result/[ownerToken] (Day 9 で /me/[token] に切替予定)。
+* 永続 URL は /me/[ownerToken] (Day 9 で旧 /result/[ownerToken] から統一)。
  * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
  */
 export async function sendTrisetsuCompleteEmail(
@@ -87,7 +87,7 @@ export async function sendTrisetsuCompleteEmail(
   if (!resend || !from) return;
 
   const greetingName = (args.ownerName ?? "").trim();
-  const resultUrl = `${SITE_URL}/result/${encodeURIComponent(args.ownerToken)}`;
+  const resultUrl = `${SITE_URL}/me/${encodeURIComponent(args.ownerToken)}`;
   const subject = `${SITE_NAME}が完成しました`;
 
   try {

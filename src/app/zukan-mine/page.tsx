@@ -194,7 +194,7 @@ export default function ZukanMinePage() {
           <section className="w-full mb-6 animate-fade-in-up stagger-2">
             <SectionHeader label="🟢 あなたが思う、あなた" count={1} />
             <Link
-              href={current.ownerToken ? `/result/${current.ownerToken}` : "#"}
+              href={current.ownerToken ? `/me/${current.ownerToken}` : "#"}
               className="block"
             >
               <DiagnosisCardView card={current} isCurrent />
@@ -220,7 +220,7 @@ export default function ZukanMinePage() {
                 {past.map((p) => (
                   <Link
                     key={p.userId}
-                    href={p.ownerToken ? `/result/${p.ownerToken}` : "#"}
+                    href={p.ownerToken ? `/me/${p.ownerToken}` : "#"}
                     className="block"
                   >
                     <PastDiagnosisCardView card={p} />
