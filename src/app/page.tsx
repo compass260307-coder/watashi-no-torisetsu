@@ -313,44 +313,45 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.2 で密度アップ */}
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.3 Koi キャラ準拠
+              キャラ本体は重ねず gap-1 で隣接、円形背景 (inset-[-8px]) がキャラより
+              少し大きく自然に隣の円と少し重なる。中央バッジは z-20 で前面 */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
-            {/* 2 キャラ + 中央バッジ (キャラを w-40 に拡大、-mr/-ml-6 で重ね、バッジ
-                を absolute で z-20 中央前面に乗せる) */}
-            <div className="relative flex items-center justify-center mb-4">
-              {/* 左: キツネ (大、右にずらして重ねる) */}
-              <div className="relative w-40 h-40 -mr-6 z-10">
+            <div className="relative flex items-center justify-center gap-1 mb-4">
+              {/* 左: キツネ (w-32、本体重ねず) */}
+              <div className="relative w-32 h-32 z-10">
+                {/* 円形背景: キャラより 8px 大きく → 隣の円と少し重なる */}
                 <div
                   aria-hidden="true"
-                  className="absolute inset-0 bg-[#BCDEF8]/50 rounded-full"
+                  className="absolute inset-[-8px] bg-[#BCDEF8]/40 rounded-full"
                 />
                 <Image
                   src="/section2-fox.png"
                   alt="キツネ"
-                  width={200}
-                  height={200}
+                  width={150}
+                  height={150}
                   className="relative w-full h-full object-contain"
                 />
               </div>
 
-              {/* 中央バッジ「2 つのワタシ」(キャラの前面に絶対配置、z-20) */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-24 h-24 flex items-center justify-center font-black text-sm leading-tight text-center shadow-xl z-20">
+              {/* 中央バッジ (両キャラの前面、z-20) */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-20 h-20 flex items-center justify-center font-black text-xs leading-tight text-center shadow-xl z-20">
                 2 つの
                 <br />
                 ワタシ
               </div>
 
-              {/* 右: ハムスター (大、左にずらして重ねる) */}
-              <div className="relative w-40 h-40 -ml-6 z-10">
+              {/* 右: ハムスター (w-32、本体重ねず) */}
+              <div className="relative w-32 h-32 z-10">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-0 bg-[#FFD6E0]/50 rounded-full"
+                  className="absolute inset-[-8px] bg-[#FFD6E0]/40 rounded-full"
                 />
                 <Image
                   src="/section2-hamster.png"
                   alt="ハムスター"
-                  width={200}
-                  height={200}
+                  width={150}
+                  height={150}
                   className="relative w-full h-full object-contain"
                 />
               </div>
