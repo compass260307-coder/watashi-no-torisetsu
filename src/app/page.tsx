@@ -370,48 +370,51 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.5 Koi 構造修正
-              バッジを縦楕円 w-20 h-24 にして bottom-0 配置 (キャラの体の下半身に
-              重なる)。キャラの顔は完全に見える。キャラ重ねは -mr-2 / -ml-2 で控えめに */}
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.8 はみ出し構造
+              キャラ w-40 + 円形背景 + Image w-[170%] bottom-[-10%] で上半身が円から
+              立ち上がる構造。バッジは横楕円 w-28 h-20、bottom-[-8px] で下半身に被さる */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
             <div className="relative flex items-center justify-center mb-4">
-              {/* 左: キツネ (w-32、右に -mr-2 で控えめにずらす)
-                  Day 4.7: 円形背景の透明度 /40 → /15 でキャラ本体を立てる */}
-              <div className="relative w-32 h-32 z-10 -mr-2">
+              {/* Day 4.8: 左 キツネ — 円形背景 (後ろ薄く) + キャラ画像 (170% に拡大、
+                  bottom-[-10%] で下にずらして下半身を画面外、上半身が円からはみ出る構造) */}
+              <div className="relative w-40 h-40 -mr-4 z-10">
+                {/* 円形背景 (z-0、薄水色) */}
                 <div
                   aria-hidden="true"
-                  className="absolute inset-[-8px] bg-[#BCDEF8]/15 rounded-full"
+                  className="absolute inset-0 rounded-full bg-[#BCDEF8]/30 z-0"
                 />
+                {/* キャラ画像 (z-10、円より大きくはみ出す) */}
                 <Image
                   src="/section2-fox.png"
-                  alt="キツネ"
-                  width={150}
-                  height={150}
-                  className="relative w-full h-full object-contain"
+                  alt="自分から見た自分 (キツネ)"
+                  width={400}
+                  height={400}
+                  className="absolute w-[170%] h-auto left-1/2 -translate-x-1/2 bottom-[-10%] z-10"
                 />
               </div>
 
-              {/* 中央バッジ (Day 4.5: 縦楕円 w-20 h-24、bottom-0 で下半身に重なる、
-                  顔は完全に見える状態) */}
-              <div className="absolute left-1/2 bottom-0 -translate-x-1/2 bg-[#3A2D6B] text-white rounded-full w-20 h-24 flex items-center justify-center font-black text-sm leading-tight text-center shadow-xl z-20 px-2">
-                2 つの
-                <br />
-                ワタシ
+              {/* Day 4.8: 中央バッジ — 縦楕円 → 横楕円 (w-28 h-20)、bottom-[-8px] で
+                  キャラ下半身〜足元により深く被さる、rounded-[50%] で楕円維持、shadow-lg */}
+              <div className="absolute left-1/2 bottom-[-8px] -translate-x-1/2 z-20 w-28 h-20 rounded-[50%] bg-[#3A2D6B] flex items-center justify-center shadow-lg">
+                <span className="text-white font-black text-sm text-center leading-tight">
+                  2 つの
+                  <br />
+                  ワタシ
+                </span>
               </div>
 
-              {/* 右: ハムスター (w-32、左に -ml-2 で控えめにずらす)
-                  Day 4.7: 円形背景の透明度 /40 → /15 でキャラ本体を立てる */}
-              <div className="relative w-32 h-32 z-10 -ml-2">
+              {/* Day 4.8: 右 ハムスター — はみ出し構造 (キツネと対) */}
+              <div className="relative w-40 h-40 -ml-4 z-10">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-[-8px] bg-[#FFD6E0]/15 rounded-full"
+                  className="absolute inset-0 rounded-full bg-[#FFD6E0]/30 z-0"
                 />
                 <Image
                   src="/section2-hamster.png"
-                  alt="ハムスター"
-                  width={150}
-                  height={150}
-                  className="relative w-full h-full object-contain"
+                  alt="友達から見た自分 (ハムスター)"
+                  width={400}
+                  height={400}
+                  className="absolute w-[170%] h-auto left-1/2 -translate-x-1/2 bottom-[-10%] z-10"
                 />
               </div>
             </div>
