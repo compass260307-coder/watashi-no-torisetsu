@@ -216,8 +216,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* マスコット + ロゴ重ねブロック分の余白確保 (bottom-[-30px] のはみ出しを吸収) */}
-          <div aria-hidden="true" className="h-16" />
+          {/* マスコット + ロゴ重ねブロック分の余白確保 (bottom-[-30px] のはみ出しを吸収)
+              Day 3.12: 余白縮小 h-16 (64px) → h-4 (16px)、ロゴとタグの間をコンパクトに */}
+          <div aria-hidden="true" className="h-4" />
 
           {/* ステッカータグ (2 段重ね、ロゴの下に移動) */}
           <div className="flex flex-col items-center gap-2 mb-6">
