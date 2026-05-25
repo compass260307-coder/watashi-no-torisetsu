@@ -289,6 +289,104 @@ export default function Home() {
         </div>
       </section>
 
+      {/* === Phase 1.5-α Day 4: B セクション「ちがう自分が、見つかる」 === */}
+      {/* ヒーローと同じカード型 (lavender 外枠 + grid-bg + 水色 border)、
+          上部ステッカー → 見出し画像 → 白カード (2 キャラ + バッジ + シチュ文) */}
+      <section className="bg-[#E4E0F5] py-6 px-4">
+        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
+          {/* 上部の小ステッカー (導入) */}
+          <div className="flex justify-center mb-4">
+            <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-2 shadow-[2px_2px_0_#3A2D6B]">
+              自分のつもり、本当？
+            </div>
+          </div>
+
+          {/* 見出し画像 */}
+          <div className="relative flex justify-center mb-8">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-2 inset-y-0 bg-white/25 rounded-3xl blur-2xl pointer-events-none"
+            />
+            <Image
+              src="/heading-section2.png"
+              alt="ちがう自分が、見つかる"
+              width={600}
+              height={400}
+              className="relative w-full max-w-[340px] h-auto"
+            />
+          </div>
+
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) */}
+          <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
+            <div className="flex items-center justify-between gap-1 relative">
+              {/* 左: キツネ (MY VIEW) */}
+              <div className="flex-1 flex flex-col items-center">
+                <div className="relative w-28 h-28 mb-3">
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-[#BCDEF8]/50 rounded-full"
+                  />
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <Image
+                      src="/section2-fox.png"
+                      alt="キツネ"
+                      width={120}
+                      height={120}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
+                  MY VIEW
+                </p>
+                <p className="text-xs text-[#2A2856] mt-1 font-bold">
+                  自分から見た
+                </p>
+              </div>
+
+              {/* 中央バッジ「2 つのワタシ」(z-10 で前面) */}
+              <div className="bg-[#3A2D6B] text-white rounded-full w-20 h-20 flex items-center justify-center font-black text-xs leading-tight text-center shadow-lg z-10 flex-shrink-0">
+                2 つの
+                <br />
+                ワタシ
+              </div>
+
+              {/* 右: ハムスター (FRIENDS VIEW) */}
+              <div className="flex-1 flex flex-col items-center">
+                <div className="relative w-28 h-28 mb-3">
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-[#FFD6E0]/50 rounded-full"
+                  />
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <Image
+                      src="/section2-hamster.png"
+                      alt="ハムスター"
+                      width={120}
+                      height={120}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
+                  FRIENDS
+                </p>
+                <p className="text-xs text-[#2A2856] mt-1 font-bold">
+                  友達から見た
+                </p>
+              </div>
+            </div>
+
+            {/* シチュ文 */}
+            <p className="text-center text-[#2A2856] text-sm mt-6 font-bold leading-relaxed">
+              「ワタシはサバサバ系」って思ってたけど、
+              <br />
+              友達は「実はめっちゃ甘えん坊」って言う
+            </p>
+          </div>
+        </div>
+      </section>
+
       <main className="flex flex-col flex-1 items-center px-5 py-12">
         {/* Types preview (carousel) */}
         <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
