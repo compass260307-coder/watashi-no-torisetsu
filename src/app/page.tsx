@@ -320,13 +320,13 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.4 強化版
-              キャラ本体に -mr-4 / -ml-4 で円形背景の重なりを深く、バッジを w-28 に拡大
-              (text-xs → text-base) して両キャラに大きく被さる Koi キャラ感を再現 */}
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.5 Koi 構造修正
+              バッジを縦楕円 w-20 h-24 にして bottom-0 配置 (キャラの体の下半身に
+              重なる)。キャラの顔は完全に見える。キャラ重ねは -mr-2 / -ml-2 で控えめに */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
             <div className="relative flex items-center justify-center mb-4">
-              {/* 左: キツネ (w-32、右に -mr-4 でずらす) */}
-              <div className="relative w-32 h-32 z-10 -mr-4">
+              {/* 左: キツネ (w-32、右に -mr-2 で控えめにずらす) */}
+              <div className="relative w-32 h-32 z-10 -mr-2">
                 <div
                   aria-hidden="true"
                   className="absolute inset-[-8px] bg-[#BCDEF8]/40 rounded-full"
@@ -340,15 +340,16 @@ export default function Home() {
                 />
               </div>
 
-              {/* 中央バッジ (Day 4.4: w-20 → w-28 / text-xs → text-base、両キャラに大きく被さる) */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-28 h-28 flex items-center justify-center font-black text-base leading-tight text-center shadow-xl z-20">
+              {/* 中央バッジ (Day 4.5: 縦楕円 w-20 h-24、bottom-0 で下半身に重なる、
+                  顔は完全に見える状態) */}
+              <div className="absolute left-1/2 bottom-0 -translate-x-1/2 bg-[#3A2D6B] text-white rounded-full w-20 h-24 flex items-center justify-center font-black text-sm leading-tight text-center shadow-xl z-20 px-2">
                 2 つの
                 <br />
                 ワタシ
               </div>
 
-              {/* 右: ハムスター (w-32、左に -ml-4 でずらす) */}
-              <div className="relative w-32 h-32 z-10 -ml-4">
+              {/* 右: ハムスター (w-32、左に -ml-2 で控えめにずらす) */}
+              <div className="relative w-32 h-32 z-10 -ml-2">
                 <div
                   aria-hidden="true"
                   className="absolute inset-[-8px] bg-[#FFD6E0]/40 rounded-full"
