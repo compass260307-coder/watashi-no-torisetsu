@@ -286,14 +286,11 @@ export default function Home() {
               3 分 ・ 登録不要 ・ 全部無料
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* === Phase 1.5-α Day 4: B セクション「ちがう自分が、見つかる」 === */}
-      {/* ヒーローと同じカード型 (lavender 外枠 + grid-bg + 水色 border)、
-          上部ステッカー → 見出し画像 → 白カード (2 キャラ + バッジ + シチュ文) */}
-      <section className="bg-[#E4E0F5] py-6 px-4">
-        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
+          {/* === Day 4.1: セクション内セパレーター (ヒーロー → B 連結) === */}
+          <div aria-hidden="true" className="my-12" />
+
+          {/* === Phase 1.5-α Day 4: B セクション「ちがう自分が、見つかる」(統合) === */}
           {/* 上部の小ステッカー (導入) */}
           <div className="flex justify-center mb-4">
             <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-2 shadow-[2px_2px_0_#3A2D6B]">
@@ -387,6 +384,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* === Day 4.1: ヒーロー + B が 1 カード統合済。次は既存の他セクション === */}
       <main className="flex flex-col flex-1 items-center px-5 py-12">
         {/* Types preview (carousel) */}
         <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
