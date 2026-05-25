@@ -313,26 +313,52 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) */}
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.2 で密度アップ */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
-            <div className="flex items-center justify-between gap-1 relative">
-              {/* 左: キツネ (MY VIEW) */}
-              <div className="flex-1 flex flex-col items-center">
-                <div className="relative w-28 h-28 mb-3">
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-[#BCDEF8]/50 rounded-full"
-                  />
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <Image
-                      src="/section2-fox.png"
-                      alt="キツネ"
-                      width={120}
-                      height={120}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                </div>
+            {/* 2 キャラ + 中央バッジ (キャラを w-40 に拡大、-mr/-ml-6 で重ね、バッジ
+                を absolute で z-20 中央前面に乗せる) */}
+            <div className="relative flex items-center justify-center mb-4">
+              {/* 左: キツネ (大、右にずらして重ねる) */}
+              <div className="relative w-40 h-40 -mr-6 z-10">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-[#BCDEF8]/50 rounded-full"
+                />
+                <Image
+                  src="/section2-fox.png"
+                  alt="キツネ"
+                  width={200}
+                  height={200}
+                  className="relative w-full h-full object-contain"
+                />
+              </div>
+
+              {/* 中央バッジ「2 つのワタシ」(キャラの前面に絶対配置、z-20) */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-24 h-24 flex items-center justify-center font-black text-sm leading-tight text-center shadow-xl z-20">
+                2 つの
+                <br />
+                ワタシ
+              </div>
+
+              {/* 右: ハムスター (大、左にずらして重ねる) */}
+              <div className="relative w-40 h-40 -ml-6 z-10">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 bg-[#FFD6E0]/50 rounded-full"
+                />
+                <Image
+                  src="/section2-hamster.png"
+                  alt="ハムスター"
+                  width={200}
+                  height={200}
+                  className="relative w-full h-full object-contain"
+                />
+              </div>
+            </div>
+
+            {/* ラベル (キャラの下に左右配置) */}
+            <div className="flex justify-between mb-4 px-2">
+              <div className="text-center flex-1">
                 <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
                   MY VIEW
                 </p>
@@ -340,31 +366,7 @@ export default function Home() {
                   自分から見た
                 </p>
               </div>
-
-              {/* 中央バッジ「2 つのワタシ」(z-10 で前面) */}
-              <div className="bg-[#3A2D6B] text-white rounded-full w-20 h-20 flex items-center justify-center font-black text-xs leading-tight text-center shadow-lg z-10 flex-shrink-0">
-                2 つの
-                <br />
-                ワタシ
-              </div>
-
-              {/* 右: ハムスター (FRIENDS VIEW) */}
-              <div className="flex-1 flex flex-col items-center">
-                <div className="relative w-28 h-28 mb-3">
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-[#FFD6E0]/50 rounded-full"
-                  />
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <Image
-                      src="/section2-hamster.png"
-                      alt="ハムスター"
-                      width={120}
-                      height={120}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                </div>
+              <div className="text-center flex-1">
                 <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
                   FRIENDS
                 </p>
@@ -375,7 +377,7 @@ export default function Home() {
             </div>
 
             {/* シチュ文 */}
-            <p className="text-center text-[#2A2856] text-sm mt-6 font-bold leading-relaxed">
+            <p className="text-center text-[#2A2856] text-sm font-bold leading-relaxed">
               「ワタシはサバサバ系」って思ってたけど、
               <br />
               友達は「実はめっちゃ甘えん坊」って言う
