@@ -305,18 +305,68 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 見出し画像 */}
-          <div className="relative flex justify-center mb-8">
+          {/* Day 4.7: 見出し画像 + 周辺装飾 5 つ (花/星青/ハート/星黄/キラキラ)
+              ヒーローカードと密度を揃えてポップさを担保 */}
+          <div className="relative flex justify-center mb-8 mt-4">
+            {/* halo (Day 4 から引き続き) */}
             <div
               aria-hidden="true"
               className="absolute inset-x-2 inset-y-0 bg-white/25 rounded-3xl blur-2xl pointer-events-none"
             />
+
+            {/* 装飾: 左上 黄色花 (-15deg) */}
+            <Image
+              src="/decorations/flower-yellow.png"
+              alt=""
+              aria-hidden="true"
+              width={64}
+              height={64}
+              className="absolute -left-2 top-2 w-14 h-14 rotate-[-15deg] z-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] pointer-events-none"
+            />
+            {/* 装飾: 右上 青星 (+12deg) */}
+            <Image
+              src="/decorations/star-blue.png"
+              alt=""
+              aria-hidden="true"
+              width={64}
+              height={64}
+              className="absolute -right-1 top-0 w-16 h-16 rotate-[12deg] z-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] pointer-events-none"
+            />
+            {/* 装飾: 左下 ピンクハート (-8deg、小) */}
+            <Image
+              src="/decorations/heart-pink.png"
+              alt=""
+              aria-hidden="true"
+              width={48}
+              height={48}
+              className="absolute left-0 bottom-0 w-10 h-10 rotate-[-8deg] z-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] pointer-events-none"
+            />
+            {/* 装飾: 右下 黄色星 (+20deg) */}
+            <Image
+              src="/decorations/star-yellow.png"
+              alt=""
+              aria-hidden="true"
+              width={48}
+              height={48}
+              className="absolute right-2 bottom-2 w-10 h-10 rotate-[20deg] z-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] pointer-events-none"
+            />
+            {/* 装飾: キラキラ (見出し右寄り、小、アクセント) */}
+            <Image
+              src="/decorations/sparkle.png"
+              alt=""
+              aria-hidden="true"
+              width={32}
+              height={32}
+              className="absolute right-8 top-8 w-8 h-8 z-0 pointer-events-none"
+            />
+
+            {/* 見出し本体 (z-10 で装飾より前面) */}
             <Image
               src="/heading-section2.png"
               alt="ちがう自分が、見つかる"
               width={600}
               height={400}
-              className="relative w-full max-w-[340px] h-auto"
+              className="relative w-full max-w-[340px] h-auto z-10"
             />
           </div>
 
@@ -325,11 +375,12 @@ export default function Home() {
               重なる)。キャラの顔は完全に見える。キャラ重ねは -mr-2 / -ml-2 で控えめに */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
             <div className="relative flex items-center justify-center mb-4">
-              {/* 左: キツネ (w-32、右に -mr-2 で控えめにずらす) */}
+              {/* 左: キツネ (w-32、右に -mr-2 で控えめにずらす)
+                  Day 4.7: 円形背景の透明度 /40 → /15 でキャラ本体を立てる */}
               <div className="relative w-32 h-32 z-10 -mr-2">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-[-8px] bg-[#BCDEF8]/40 rounded-full"
+                  className="absolute inset-[-8px] bg-[#BCDEF8]/15 rounded-full"
                 />
                 <Image
                   src="/section2-fox.png"
@@ -348,11 +399,12 @@ export default function Home() {
                 ワタシ
               </div>
 
-              {/* 右: ハムスター (w-32、左に -ml-2 で控えめにずらす) */}
+              {/* 右: ハムスター (w-32、左に -ml-2 で控えめにずらす)
+                  Day 4.7: 円形背景の透明度 /40 → /15 でキャラ本体を立てる */}
               <div className="relative w-32 h-32 z-10 -ml-2">
                 <div
                   aria-hidden="true"
-                  className="absolute inset-[-8px] bg-[#FFD6E0]/40 rounded-full"
+                  className="absolute inset-[-8px] bg-[#FFD6E0]/15 rounded-full"
                 />
                 <Image
                   src="/section2-hamster.png"
@@ -364,28 +416,11 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ラベル (キャラの下に左右配置) */}
-            <div className="flex justify-between mb-4 px-2">
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
-                  MY VIEW
-                </p>
-                <p className="text-xs text-[#2A2856] mt-1 font-bold">
-                  自分から見た
-                </p>
-              </div>
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-[#3A2D6B] font-black tracking-wider">
-                  FRIENDS
-                </p>
-                <p className="text-xs text-[#2A2856] mt-1 font-bold">
-                  友達から見た
-                </p>
-              </div>
-            </div>
+            {/* Day 4.7: ラベル「MY VIEW / FRIENDS」ブロックを削除
+                (シチュ文だけで意図は伝わる、4 段構成 → 2 段でスッキリ) */}
 
-            {/* シチュ文 */}
-            <p className="text-center text-[#2A2856] text-sm font-bold leading-relaxed">
+            {/* シチュ文 (Day 4.7: ラベル削除でキャラブロック直下に来るため mt-6 で間隔調整) */}
+            <p className="text-center text-[#2A2856] text-sm font-bold leading-relaxed mt-6">
               「ワタシはサバサバ系」って思ってたけど、
               <br />
               友達は「実はめっちゃ甘えん坊」って言う
