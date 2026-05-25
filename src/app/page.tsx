@@ -44,6 +44,11 @@ export default function Home() {
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative border-[3px] border-[#0094D8]">
+          {/* === Day 4.4: ヒーロー本体ラッパー (relative)
+              hero+B 統合後、ヒーロー装飾 (bottom-* / top-[XXXpx]) が B セクションに
+              はみ出るのを防ぐため、ヒーロー範囲を独立した positioning context にする。
+              ラッパー内の absolute 装飾はこの relative wrapper を基準に位置決め。 */}
+          <div className="relative">
           {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー
               Day 3.8: 控えめ halo (bg-white/35 blur-md) を復活、grid との被り解消 */}
           <div className="flex justify-between items-center mb-4">
@@ -286,6 +291,8 @@ export default function Home() {
               3 分 ・ 登録不要 ・ 全部無料
             </p>
           </div>
+          </div>
+          {/* === Day 4.4: ヒーロー本体ラッパー end === */}
 
           {/* === Day 4.1: セクション内セパレーター (ヒーロー → B 連結) === */}
           <div aria-hidden="true" className="my-12" />
@@ -313,14 +320,13 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.3 Koi キャラ準拠
-              キャラ本体は重ねず gap-1 で隣接、円形背景 (inset-[-8px]) がキャラより
-              少し大きく自然に隣の円と少し重なる。中央バッジは z-20 で前面 */}
+          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.4 強化版
+              キャラ本体に -mr-4 / -ml-4 で円形背景の重なりを深く、バッジを w-28 に拡大
+              (text-xs → text-base) して両キャラに大きく被さる Koi キャラ感を再現 */}
           <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
-            <div className="relative flex items-center justify-center gap-1 mb-4">
-              {/* 左: キツネ (w-32、本体重ねず) */}
-              <div className="relative w-32 h-32 z-10">
-                {/* 円形背景: キャラより 8px 大きく → 隣の円と少し重なる */}
+            <div className="relative flex items-center justify-center mb-4">
+              {/* 左: キツネ (w-32、右に -mr-4 でずらす) */}
+              <div className="relative w-32 h-32 z-10 -mr-4">
                 <div
                   aria-hidden="true"
                   className="absolute inset-[-8px] bg-[#BCDEF8]/40 rounded-full"
@@ -334,15 +340,15 @@ export default function Home() {
                 />
               </div>
 
-              {/* 中央バッジ (両キャラの前面、z-20) */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-20 h-20 flex items-center justify-center font-black text-xs leading-tight text-center shadow-xl z-20">
+              {/* 中央バッジ (Day 4.4: w-20 → w-28 / text-xs → text-base、両キャラに大きく被さる) */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3A2D6B] text-white rounded-full w-28 h-28 flex items-center justify-center font-black text-base leading-tight text-center shadow-xl z-20">
                 2 つの
                 <br />
                 ワタシ
               </div>
 
-              {/* 右: ハムスター (w-32、本体重ねず) */}
-              <div className="relative w-32 h-32 z-10">
+              {/* 右: ハムスター (w-32、左に -ml-4 でずらす) */}
+              <div className="relative w-32 h-32 z-10 -ml-4">
                 <div
                   aria-hidden="true"
                   className="absolute inset-[-8px] bg-[#FFD6E0]/40 rounded-full"
