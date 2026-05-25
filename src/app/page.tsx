@@ -157,20 +157,9 @@ export default function Home() {
             />
           </div>
 
-          {/* === 極小装飾 (glow なし、軽く) === */}
-          {/* 極小キラキラ (マスコット上の隙間、opacity-70) */}
-          <div
-            aria-hidden="true"
-            className="absolute top-40 right-[35%] w-6 h-6 z-20 pointer-events-none opacity-70"
-          >
-            <Image
-              src="/decorations/sparkle.png"
-              alt=""
-              width={24}
-              height={24}
-              className="w-full h-full object-contain"
-            />
-          </div>
+          {/* === 極小装飾 (glow なし、軽く) ===
+              Day 3.11: 桃ペンの右目に被る top-40 right-[35%] の極小キラキラを削除
+              (マスコット顔をクリアに見せるため。見出し下の極小キラキラは残置) */}
           {/* 極小キラキラ (見出し下の隙間、opacity-60) */}
           <div
             aria-hidden="true"
