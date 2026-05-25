@@ -203,14 +203,15 @@ export default function Home() {
             {/* ロゴをマスコット下半分に重ねる (bottom-[-30px] で食み出し、z-20 で前面) */}
             <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-20 w-full">
               <div className="relative flex justify-center">
-                {/* Day 3.6: 大ロゴの halo を削除 (ロゴ自体の縁取りで十分浮く) */}
+                {/* Day 3.6: 大ロゴの halo を削除 (ロゴ自体の縁取りで十分浮く)
+                    Day 3.13: max-w-[300px] → max-w-[380px] でカード幅近くまで拡大 (Koi 風) */}
                 <Image
                   src="/logo-hero.png"
                   alt="ワタシのトリセツ by AI"
                   width={600}
                   height={300}
                   priority
-                  className="relative w-full max-w-[300px] h-auto"
+                  className="relative w-full max-w-[380px] h-auto"
                 />
               </div>
             </div>
