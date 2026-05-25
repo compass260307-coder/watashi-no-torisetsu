@@ -259,6 +259,24 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Day 3.7: 見出し画像「真のアナタを、知ろう。」を再追加
+              ステッカータグ 2 段の下、サブコピーの上に配置。メインキャッチとして強調。
+              halo は薄め (bg-white/25) で白もや軽減 */}
+          <div className="relative flex justify-center mb-6">
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-4 inset-y-0 bg-white/25 rounded-3xl blur-2xl pointer-events-none"
+            />
+            <Image
+              src="/heading-hero.png"
+              alt="真のアナタを、知ろう。"
+              width={400}
+              height={300}
+              priority
+              className="relative w-full max-w-[300px] h-auto"
+            />
+          </div>
+
           {/* サブコピー — Day 3.6: halo 不透明度 50 → 25 に下げて白もや軽減 */}
           <div className="relative mb-8 px-4">
             <div
