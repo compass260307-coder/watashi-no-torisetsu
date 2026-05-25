@@ -43,7 +43,7 @@ export default function Home() {
 
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
-        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
+        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative border-[3px] border-[#0094D8]">
           {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー
               Day 3.8: 控えめ halo (bg-white/35 blur-md) を復活、grid との被り解消 */}
           <div className="flex justify-between items-center mb-4">
