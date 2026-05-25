@@ -45,16 +45,22 @@ export default function Home() {
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
         <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative">
           {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー
-              Day 3.6: ロゴの halo を削除 (縁取りで十分浮く)、ロゴサイズ w-[100px] → w-[140px] */}
+              Day 3.8: 控えめ halo (bg-white/35 blur-md) を復活、grid との被り解消 */}
           <div className="flex justify-between items-center mb-4">
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={160}
-              height={54}
-              priority
-              className="h-auto w-[140px]"
-            />
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute inset-[-6px] bg-white/35 rounded-2xl blur-md pointer-events-none"
+              />
+              <Image
+                src="/logo.png"
+                alt="ワタシのトリセツ"
+                width={160}
+                height={54}
+                priority
+                className="relative h-auto w-[140px]"
+              />
+            </div>
             <button
               type="button"
               aria-label="メニュー"
@@ -102,35 +108,10 @@ export default function Home() {
             />
           </div>
 
-          {/* === 中型装飾 (マスコット両脇) === */}
-          {/* 黄星 (右、+25deg) — Day 3.6: マスコット目に被るため top-64 right-6 → top-[420px] right-4 へ下移動 */}
-          <div
-            aria-hidden="true"
-            className="absolute top-[420px] right-4 w-14 h-14 rotate-[25deg] z-20 pointer-events-none"
-          >
-            <div className="absolute inset-[-8px] bg-white/30 rounded-full blur-lg" />
-            <Image
-              src="/decorations/star-yellow.png"
-              alt=""
-              width={56}
-              height={56}
-              className="relative w-full h-full object-contain drop-shadow-md"
-            />
-          </div>
-          {/* 青星 (左、-18deg、少し下にずらし) — Day 3.6: top-72 left-4 → top-[440px] left-4 へ下移動 */}
-          <div
-            aria-hidden="true"
-            className="absolute top-[440px] left-4 w-12 h-12 -rotate-[18deg] z-20 pointer-events-none"
-          >
-            <div className="absolute inset-[-8px] bg-white/30 rounded-full blur-lg" />
-            <Image
-              src="/decorations/star-blue.png"
-              alt=""
-              width={48}
-              height={48}
-              className="relative w-full h-full object-contain drop-shadow-md"
-            />
-          </div>
+          {/* === 中型装飾 (Day 3.8 で削除) ===
+              旧: 黄星 (top-[420px] right-4) + 青星 (top-[440px] left-4) の 2 個
+              いずれもマスコット体に被るため完全削除。star-yellow.png / star-blue.png
+              のアセット自体は /public/decorations/ に残置 (将来 ヒーロー以外で利用可) */}
 
           {/* === 小型装飾 (見出し / CTA 周辺) === */}
           {/* キラキラ (見出し右横) */}

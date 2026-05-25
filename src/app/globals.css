@@ -33,8 +33,7 @@ body {
 }
 
 /* Phase 1.5-α Brand v2: ヒーロー背景 (lavender 外枠 + sky→pink グラデ + grid overlay) */
-/* Day 2.5: ::before 疑似要素で grid を独立描画 (blend-mode の干渉を回避し、線をはっきり出す)
-   調整: rgba 第 4 引数の不透明度 0.5 を 0.3-0.7 で増減すると grid 強度を調整可能 */
+/* Day 3.8: grid 線の不透明度を 0.5 → 0.3 に下げて背景化、装飾を引き立たせる */
 .grid-bg {
   position: relative;
   background: linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%);
@@ -45,8 +44,8 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   border-radius: inherit;
