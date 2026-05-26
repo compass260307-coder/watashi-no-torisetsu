@@ -370,60 +370,22 @@ export default function Home() {
             />
           </div>
 
-          {/* 白カード (2 キャラ対比 + 中央バッジ + シチュ文) — Day 4.8 はみ出し構造
-              キャラ w-40 + 円形背景 + Image w-[170%] bottom-[-10%] で上半身が円から
-              立ち上がる構造。バッジは横楕円 w-28 h-20、bottom-[-8px] で下半身に被さる */}
-          <div className="bg-white rounded-3xl p-6 mb-4 shadow-md border-2 border-[#0094D8]/30">
-            <div className="relative flex items-center justify-center mb-4">
-              {/* Day 4.8: 左 キツネ — 円形背景 (後ろ薄く) + キャラ画像 (170% に拡大、
-                  bottom-[-10%] で下にずらして下半身を画面外、上半身が円からはみ出る構造) */}
-              <div className="relative w-40 h-40 -mr-4 z-10">
-                {/* 円形背景 (z-0、薄水色) */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 rounded-full bg-[#BCDEF8]/30 z-0"
-                />
-                {/* キャラ画像 (z-10、円より大きくはみ出す) */}
-                <Image
-                  src="/section2-fox.png"
-                  alt="自分から見た自分 (キツネ)"
-                  width={400}
-                  height={400}
-                  className="absolute w-[170%] h-auto left-1/2 -translate-x-1/2 bottom-[-10%] z-10"
-                />
-              </div>
+          {/* Day 4.9: 白カード撤廃、キャラ + バッジ + 矢印 + ラベルを 1 枚画像に統合。
+              CSS で配置調整するアプローチを止め、Koi キャラ風の完成度を画像側で担保。
+              /public/section2-fox.png / section2-hamster.png は参照を解除 (ファイル残置) */}
+          <div className="flex justify-center mb-8 mt-4">
+            <Image
+              src="/section2-pair.png"
+              alt="ワタシから見たワタシと、友達から見たワタシ"
+              width={1024}
+              height={1024}
+              className="w-full max-w-[400px] h-auto drop-shadow-[0_8px_16px_rgba(58,45,107,0.15)]"
+            />
+          </div>
 
-              {/* Day 4.8: 中央バッジ — 縦楕円 → 横楕円 (w-28 h-20)、bottom-[-8px] で
-                  キャラ下半身〜足元により深く被さる、rounded-[50%] で楕円維持、shadow-lg */}
-              <div className="absolute left-1/2 bottom-[-8px] -translate-x-1/2 z-20 w-28 h-20 rounded-[50%] bg-[#3A2D6B] flex items-center justify-center shadow-lg">
-                <span className="text-white font-black text-sm text-center leading-tight">
-                  2 つの
-                  <br />
-                  ワタシ
-                </span>
-              </div>
-
-              {/* Day 4.8: 右 ハムスター — はみ出し構造 (キツネと対) */}
-              <div className="relative w-40 h-40 -ml-4 z-10">
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 rounded-full bg-[#FFD6E0]/30 z-0"
-                />
-                <Image
-                  src="/section2-hamster.png"
-                  alt="友達から見た自分 (ハムスター)"
-                  width={400}
-                  height={400}
-                  className="absolute w-[170%] h-auto left-1/2 -translate-x-1/2 bottom-[-10%] z-10"
-                />
-              </div>
-            </div>
-
-            {/* Day 4.7: ラベル「MY VIEW / FRIENDS」ブロックを削除
-                (シチュ文だけで意図は伝わる、4 段構成 → 2 段でスッキリ) */}
-
-            {/* シチュ文 (Day 4.7: ラベル削除でキャラブロック直下に来るため mt-6 で間隔調整) */}
-            <p className="text-center text-[#2A2856] text-sm font-bold leading-relaxed mt-6">
+          {/* シチュ文 (halo 付き、grid 背景の上で読みやすく) */}
+          <div className="flex justify-center mb-12">
+            <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-4 max-w-[360px] shadow-sm">
               「ワタシはサバサバ系」って思ってたけど、
               <br />
               友達は「実はめっちゃ甘えん坊」って言う
