@@ -298,16 +298,18 @@ export default function Home() {
           <div aria-hidden="true" className="my-12" />
 
           {/* === Phase 1.5-α Day 4: B セクション「ちがう自分が、見つかる」(統合) === */}
-          {/* 上部の小ステッカー (導入) */}
+          {/* Day 4.10: ステッカータグを「友達からの評価で」に変更 + サイズアップ
+              「友達からの評価で → ちがう自分が、見つかる」が一連の文として読める設計 */}
           <div className="flex justify-center mb-4">
-            <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-2 shadow-[2px_2px_0_#3A2D6B]">
-              自分のつもり、本当？
+            <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-base font-black border-2 border-[#3A2D6B] transform -rotate-2 shadow-[2px_2px_0_#3A2D6B]">
+              友達からの評価で
             </div>
           </div>
 
           {/* Day 4.7: 見出し画像 + 周辺装飾 5 つ (花/星青/ハート/星黄/キラキラ)
-              ヒーローカードと密度を揃えてポップさを担保 */}
-          <div className="relative flex justify-center mb-8 mt-4">
+              ヒーローカードと密度を揃えてポップさを担保
+              Day 4.10: mb-8 → mb-2 でキャラ画像との距離を詰める */}
+          <div className="relative flex justify-center mb-2 mt-4">
             {/* halo (Day 4 から引き続き) */}
             <div
               aria-hidden="true"
@@ -372,8 +374,9 @@ export default function Home() {
 
           {/* Day 4.9: 白カード撤廃、キャラ + バッジ + 矢印 + ラベルを 1 枚画像に統合。
               CSS で配置調整するアプローチを止め、Koi キャラ風の完成度を画像側で担保。
-              /public/section2-fox.png / section2-hamster.png は参照を解除 (ファイル残置) */}
-          <div className="flex justify-center mb-8 mt-4">
+              /public/section2-fox.png / section2-hamster.png は参照を解除 (ファイル残置)
+              Day 4.10: mb-8 mt-4 → mb-2 (mt 削除) で見出し / シチュ文との距離を詰める */}
+          <div className="flex justify-center mb-2">
             <Image
               src="/section2-pair.png"
               alt="ワタシから見たワタシと、友達から見たワタシ"
@@ -383,8 +386,9 @@ export default function Home() {
             />
           </div>
 
-          {/* シチュ文 (halo 付き、grid 背景の上で読みやすく) */}
-          <div className="flex justify-center mb-12">
+          {/* シチュ文 (halo 付き、grid 背景の上で読みやすく)
+              Day 4.10: mt-0 を明示してキャラ画像直下に詰める */}
+          <div className="flex justify-center mb-12 mt-0">
             <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-4 max-w-[360px] shadow-sm">
               「ワタシはサバサバ系」って思ってたけど、
               <br />
