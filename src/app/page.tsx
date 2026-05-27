@@ -50,13 +50,21 @@ export default function Home() {
               はみ出るのを防ぐため、ヒーロー範囲を独立した positioning context にする。
               ラッパー内の absolute 装飾はこの relative wrapper を基準に位置決め。 */}
           <div className="relative">
-          {/* Day 7.2: ヘッダーロゴ削除、ハンバーガーのみ右寄せ
-              (logo.png は他ページ用にファイル残置) */}
-          <div className="flex justify-end items-center mb-4">
+          {/* Day 7.3: ヘッダーロゴ復活 (左 logo.png + 右ハンバーガー大)
+              ロゴは halo の代わりに drop-shadow でふんわり grid から浮かす */}
+          <div className="flex justify-between items-center mb-4">
+            <Image
+              src="/logo.png"
+              alt="ワタシのトリセツ"
+              width={280}
+              height={80}
+              priority
+              className="w-[140px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
+            />
             <button
               type="button"
               aria-label="メニュー"
-              className="w-10 h-10 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B]"
+              className="w-12 h-12 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B]"
             >
               ☰
             </button>
@@ -69,7 +77,7 @@ export default function Home() {
           {/* 大ハート (左上、+15deg) */}
           <div
             aria-hidden="true"
-            className="absolute top-24 left-2 w-20 h-20 rotate-[15deg] z-20 pointer-events-none"
+            className="absolute top-24 left-2 w-20 h-20 rotate-[15deg] z-0 pointer-events-none"
           >
             <div className="absolute inset-[-12px] bg-white/30 rounded-full blur-xl" />
             <Image
@@ -83,7 +91,7 @@ export default function Home() {
           {/* 大花 (右上、-12deg) */}
           <div
             aria-hidden="true"
-            className="absolute top-20 right-2 w-20 h-20 -rotate-[12deg] z-20 pointer-events-none"
+            className="absolute top-20 right-2 w-20 h-20 -rotate-[12deg] z-0 pointer-events-none"
           >
             <div className="absolute inset-[-12px] bg-white/30 rounded-full blur-xl" />
             <Image
@@ -98,7 +106,7 @@ export default function Home() {
           {/* キラキラ 1 (中段右、メインロゴ右側) */}
           <div
             aria-hidden="true"
-            className="absolute top-[500px] right-4 w-10 h-10 z-20 pointer-events-none"
+            className="absolute top-[500px] right-4 w-10 h-10 z-0 pointer-events-none"
           >
             <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
@@ -112,7 +120,7 @@ export default function Home() {
           {/* キラキラ 2 (下段左、サブコピー左側) */}
           <div
             aria-hidden="true"
-            className="absolute bottom-32 left-4 w-8 h-8 z-20 pointer-events-none"
+            className="absolute bottom-32 left-4 w-8 h-8 z-0 pointer-events-none"
           >
             <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
@@ -139,14 +147,14 @@ export default function Home() {
                 className="absolute left-1/2 -translate-x-1/2 top-0 w-[300px] h-[280px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
               />
 
-              {/* マスコット画像 (前面) */}
+              {/* マスコット画像 (Day 7.3: 装飾より前面 z-30、max-w 280 → 320 で拡大) */}
               <Image
                 src="/mascot-pair.png"
                 alt="ワタシのトリセツのマスコット"
                 width={300}
                 height={300}
                 priority
-                className="relative z-10 w-full max-w-[280px] h-auto"
+                className="relative z-30 w-full max-w-[320px] h-auto"
               />
             </div>
 
@@ -167,18 +175,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Day 7.2: マスコット + ロゴ重ねブロック分の余白を h-4 → h-12 に拡大
-              (ステッカータグ撤廃でロゴ → サブコピー直結のため呼吸を確保) */}
-          <div aria-hidden="true" className="h-12" />
+          {/* Day 7.3: スペーサー h-12 → h-4 でロゴ画像とサブコピーをセットに見せる */}
+          <div aria-hidden="true" className="h-4" />
 
-          {/* Day 7.2: ステッカータグ 2 段を完全撤廃 (Day 7.1 で削除した CTA / 補足と合わせて
-              ヒーローはキャッチビジュアル化、B 以降のストーリーへ自然誘導) */}
-
-          {/* Day 7.2: サブコピー復活 (halo 付き)
-              Day 7.1 で削除したが、ヒーローの最終形として「サービス名 + コンセプト 1 行」
-              の構成を取るため halo 版で復活。B / a / 最終 CTA の halo と統一スタイル */}
+          {/* Day 7.3: サブコピー halo 削除 (シンプル化、grid 背景上に直で配置)
+              deepPurple 文字色は grid 背景 (薄水色〜薄ピンク) に対し十分なコントラスト */}
           <div className="flex justify-center mb-12">
-            <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-3 max-w-[340px] shadow-sm">
+            <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed max-w-[340px]">
               自己診断 × 友達評価 × AI で、
               <br />
               自分でも気づかなかった
