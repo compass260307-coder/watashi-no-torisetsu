@@ -137,7 +137,10 @@ export default function Home() {
 
           {/* Day 3.5: マスコット + ロゴ重ね合わせブロック (Koi キャラ風)
               マスコット下半分にロゴが被さるように absolute 配置。
-              ロゴは z-20 でマスコット z-10 より前面、下に bottom-[-30px] で食み出させる */}
+              Day 7.5: z-index 階層をオリジナル設計通り「ロゴが最前面」に修正。
+              (Day 7.3 で誤って逆転させたためロゴ文字が胴体被りで読めなくなっていた)
+              階層: ロゴ z-30 > マスコット z-10 > 装飾 z-0
+              Day 7.4 の bottom-[-100px] / mb-24 は本指示で巻き戻し、bottom-[-30px] / my-6 へ */}
           <div className="relative my-6">
             {/* マスコット + アーチ */}
             <div className="relative flex justify-center">
@@ -147,19 +150,23 @@ export default function Home() {
                 className="absolute left-1/2 -translate-x-1/2 top-0 w-[300px] h-[280px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
               />
 
-              {/* マスコット画像 (Day 7.3: 装飾より前面 z-30、max-w 280 → 320 で拡大) */}
+              {/* マスコット画像 (Day 7.3: max-w 280 → 320 で拡大、装飾より前面)
+                  Day 7.5: z-30 → z-10 へ降格 (ロゴ z-30 を最前面にするため)。
+                  装飾 z-0 より前 / ロゴ z-30 より後ろの「中間レイヤー」役割に専念 */}
               <Image
                 src="/mascot-pair.png"
                 alt="ワタシのトリセツのマスコット"
                 width={300}
                 height={300}
                 priority
-                className="relative z-30 w-full max-w-[320px] h-auto"
+                className="relative z-10 w-full max-w-[320px] h-auto"
               />
             </div>
 
-            {/* ロゴをマスコット下半分に重ねる (bottom-[-30px] で食み出し、z-20 で前面) */}
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-20 w-full">
+            {/* Day 7.5: ロゴをマスコット下半身に重ねる (bottom-[-30px] でオリジナル設計通り)
+                z-20 → z-30 へ昇格で最前面化、マスコット胴体に被さってもロゴ文字は完全可読。
+                Day 7.4 の bottom-[-100px] / mb-24 は z-index 階層修正で不要のため巻き戻し */}
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-30 w-full">
               <div className="relative flex justify-center">
                 {/* Day 3.6: 大ロゴの halo を削除 (ロゴ自体の縁取りで十分浮く)
                     Day 7.2: max-w-[380px] → max-w-[440px] でほぼフル幅、ヒーロー主役感を出す */}
