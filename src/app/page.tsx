@@ -395,6 +395,103 @@ export default function Home() {
               友達は「実はめっちゃ甘えん坊」って言う
             </p>
           </div>
+
+          {/* ============================================ */}
+          {/* Day 5: a セクション「真のトリセツとは」      */}
+          {/* ストーリー: ヒーロー (問い) → B (発見) → a (完成)
+              ¥500 価値訴求の主役パート、ヒーロー統合カード内に続く */}
+          {/* ============================================ */}
+          <section className="my-12">
+            {/* 1. ステッカータグ (前置き、B と逆方向 +2deg) */}
+            <div className="flex justify-center mb-4">
+              <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md rotate-2 text-base">
+                ぜんぶ揃って、いよいよ
+              </div>
+            </div>
+
+            {/* 2. 大見出し画像「友達から見たワタシが、書かれる」 */}
+            <div className="flex justify-center mb-4 mt-2">
+              <Image
+                src="/heading-section-a.png"
+                alt="友達から見たワタシが、書かれる"
+                width={1024}
+                height={768}
+                className="w-full max-w-[400px] h-auto"
+              />
+            </div>
+
+            {/* 3. サブコピー (halo、B と同じスタイル) */}
+            <div className="flex justify-center mb-8">
+              <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-3 max-w-[340px] shadow-sm">
+                7 章の物語が、
+                <br />
+                アナタを言葉にする
+              </p>
+            </div>
+
+            {/* 4. スマホモックアップ (プロダクト見せ) */}
+            <div className="flex justify-center mb-10">
+              <Image
+                src="/phone-mockup.png"
+                alt="ワタシのトリセツ アプリ画面の例"
+                width={1024}
+                height={1024}
+                className="w-full max-w-[420px] h-auto drop-shadow-[0_8px_16px_rgba(58,45,107,0.15)]"
+              />
+            </div>
+
+            {/* 5. 特徴 3 つ (横長白カード) */}
+            <div className="flex flex-col gap-3 px-2 mb-8">
+              {/* 5-1. 全 7 章のボリュームレポート */}
+              <div className="bg-white rounded-2xl px-5 py-4 shadow-md border-2 border-[#0094D8]/20 flex items-center gap-4">
+                <Image
+                  src="/decorations/icon-book.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={80}
+                  height={80}
+                  className="w-14 h-14 flex-shrink-0"
+                />
+                <p className="text-[#3A2D6B] font-black text-sm leading-snug">
+                  全 7 章のボリュームレポート
+                </p>
+              </div>
+
+              {/* 5-2. ギャップ解明 (vividPink で "ギャップ" を強調) */}
+              <div className="bg-white rounded-2xl px-5 py-4 shadow-md border-2 border-[#0094D8]/20 flex items-center gap-4">
+                <Image
+                  src="/decorations/icon-magnifier.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={80}
+                  height={80}
+                  className="w-14 h-14 flex-shrink-0"
+                />
+                <p className="text-[#3A2D6B] font-black text-sm leading-snug">
+                  自己評価と友達評価の
+                  <br />
+                  <span className="text-[#FE3C72]">&quot;ギャップ&quot;</span>を解明
+                </p>
+              </div>
+
+              {/* 5-3. AI 解析 */}
+              <div className="bg-white rounded-2xl px-5 py-4 shadow-md border-2 border-[#0094D8]/20 flex items-center gap-4">
+                <Image
+                  src="/decorations/icon-ai.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={80}
+                  height={80}
+                  className="w-14 h-14 flex-shrink-0"
+                />
+                <p className="text-[#3A2D6B] font-black text-sm leading-snug">
+                  アナタの回答から、
+                  <br />
+                  AI が深く解析
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
