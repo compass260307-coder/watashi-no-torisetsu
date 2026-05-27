@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import Footer from "@/components/Footer";
+// Day 6.2: <Footer /> の呼び出しを削除しカード内に統合。
+// コンポーネント本体 (components/Footer.tsx) は他ページで利用継続。
 import FloatingCTABar from "@/components/FloatingCTABar";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -41,7 +42,9 @@ export default function Home() {
 
       {/* Phase 1.5-α Brand v2 ヒーロー (full-bleed、外周 lavender + 内側 grid-bg) */}
       <section className="bg-[#E4E0F5] py-6 px-4 min-h-screen">
-        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 pb-32 relative border-[3px] border-[#0094D8]">
+        {/* Day 6.2: pb-32 → p-6 (Footer 統合で底に Footer ブロックが来るため
+            ボトム余白は p-6 で十分) */}
+        <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
           {/* === Day 4.4: ヒーロー本体ラッパー (relative)
               hero+B 統合後、ヒーロー装飾 (bottom-* / top-[XXXpx]) が B セクションに
               はみ出るのを防ぐため、ヒーロー範囲を独立した positioning context にする。
@@ -490,63 +493,97 @@ export default function Home() {
               </div>
             </div>
           </section>
-        </div>
-      </section>
 
-      {/* ============================================ */}
-      {/* Day 6: 最終 CTA セクション (ヒーロー統合カードの外、独立背景)
-          ストーリー回収:「真のアナタを、知ろう」(問い) →「真のアナタに、出会おう」(行動)
-          旧 Phase 1 セクション (32 タイプ / 3 ステップ / Bottom CTA) は全削除済 */}
-      {/* ============================================ */}
-      <section className="px-4 py-16 bg-[#E4E0F5]">
-        <div className="max-w-[480px] mx-auto text-center">
-          {/* マスコット 2 ショット (ヒーロー再登場、サービスの顔) */}
-          <div className="flex justify-center mb-6">
-            <Image
-              src="/mascot-pair.png"
-              alt="ワタシのトリセツ マスコット"
-              width={520}
-              height={520}
-              className="w-full max-w-[260px] h-auto"
+          {/* ============================================ */}
+          {/* Day 6.2: 最終 CTA (簡略化、カード内に移動)
+              旧 Day 6.1 のマスコット / キャッチコピー / サブコピー halo を全削除、
+              ボタン + 補足テキストのみで「ここで決断」感を直接的に訴求 */}
+          {/* ============================================ */}
+          <section className="text-center py-8 mt-4">
+            <div className="mb-3">
+              <Link
+                href="/diagnosis"
+                className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-lg px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] hover:translate-y-1 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-[5px] active:shadow-[0_1px_0_#3A2D6B] transition-all duration-150"
+              >
+                無料で診断する →
+              </Link>
+            </div>
+            {/* 補足テキスト (halo: grid 背景上で読みやすく) */}
+            <div className="flex justify-center">
+              <p className="inline-block text-[#3A2D6B] text-xs font-bold bg-white/40 backdrop-blur-sm rounded-full px-4 py-1.5">
+                3 分 ・ 登録不要 ・ 全部無料
+              </p>
+            </div>
+          </section>
+
+          {/* ============================================ */}
+          {/* Day 6.2: Footer 統合ブロック (カード内)
+              リンク URL / 連絡先 / コピーライトは既存 Footer の内容を流用。
+              <Footer /> コンポーネント本体は他ページ用に保持 (削除しない)。
+              「特定商取引法」は /legal/commerce (既存ルート)、「お問い合わせ」は
+              既存 Footer に従い mailto: のままにする (/contact ルートは未実装) */}
+          {/* ============================================ */}
+          <div className="bg-white/40 backdrop-blur-sm rounded-2xl p-6 mt-8 mb-2">
+            <nav className="flex flex-col gap-3 mb-6">
+              <Link
+                href="/about"
+                className="text-[#3A2D6B] font-bold text-sm hover:text-[#FE3C72] transition-colors w-fit"
+              >
+                サービスについて
+              </Link>
+              <Link
+                href="/terms"
+                className="text-[#3A2D6B] font-bold text-sm hover:text-[#FE3C72] transition-colors w-fit"
+              >
+                利用規約
+              </Link>
+              <Link
+                href="/privacy"
+                className="text-[#3A2D6B] font-bold text-sm hover:text-[#FE3C72] transition-colors w-fit"
+              >
+                プライバシーポリシー
+              </Link>
+              <Link
+                href="/legal/commerce"
+                className="text-[#3A2D6B] font-bold text-sm hover:text-[#FE3C72] transition-colors w-fit"
+              >
+                特定商取引法に基づく表記
+              </Link>
+              <a
+                href="mailto:support@watashi-torisetsu.com"
+                className="text-[#3A2D6B] font-bold text-sm hover:text-[#FE3C72] transition-colors w-fit"
+              >
+                お問い合わせ
+              </a>
+            </nav>
+
+            {/* 区切り線 */}
+            <div
+              aria-hidden="true"
+              className="border-t border-[#3A2D6B]/20 mb-4"
             />
-          </div>
 
-          {/* キャッチコピー (CSS テキスト、3 行、ヒーローと韻を踏む) */}
-          <h2 className="text-[#3A2D6B] font-black text-3xl leading-tight mb-4 drop-shadow-[0_2px_0_rgba(255,255,255,0.5)]">
-            さぁ、
-            <br />
-            真のアナタに、
-            <br />
-            出会おう
-          </h2>
+            {/* お問い合わせメール (既存 Footer の文言を保持) */}
+            <p className="text-[#3A2D6B]/80 text-xs leading-relaxed mb-3">
+              お問い合わせ:{" "}
+              <a
+                href="mailto:support@watashi-torisetsu.com"
+                className="font-bold hover:text-[#FE3C72] transition-colors underline underline-offset-2"
+              >
+                support@watashi-torisetsu.com
+              </a>
+            </p>
 
-          {/* 補足コピー (halo) */}
-          <div className="flex justify-center mb-8">
-            <p className="inline-block text-[#3A2D6B] font-bold text-sm leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-sm">
-              自己診断 × 友達評価 × AI で、
-              <br />
-              気づかなかったアナタが見えてくる
+            {/* コピーライト (既存 Footer 文言を保持) */}
+            <p className="text-[#3A2D6B]/60 text-xs text-center">
+              © {new Date().getFullYear()} ワタシのトリセツ運営事務局
             </p>
           </div>
-
-          {/* CTA ボタン (大きい、ヒーロー CTA より一段上) */}
-          <div className="mb-3">
-            <Link
-              href="/diagnosis"
-              className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-lg px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] hover:translate-y-1 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-[5px] active:shadow-[0_1px_0_#3A2D6B] transition-all duration-150"
-            >
-              無料で診断する →
-            </Link>
-          </div>
-
-          {/* 補足テキスト (ヒーロー補足と同じ、一貫性) */}
-          <p className="text-[#3A2D6B] text-xs font-bold">
-            3 分 ・ 登録不要 ・ 全部無料
-          </p>
         </div>
       </section>
 
-      <Footer />
+      {/* Day 6.2: <Footer /> の呼び出しを削除 (カード内に統合済)。
+          コンポーネント本体 components/Footer.tsx は他ページ用に保持 */}
 
       {/* Phase 1.5-α Day 1: Cookie 状態認識フローティング CTA バー (Server Component) */}
       <FloatingCTABar />
