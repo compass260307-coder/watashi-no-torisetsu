@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { StepCard } from "@/components/StepCard";
-import { TypeCarousel } from "@/components/TypeCarousel";
 import Footer from "@/components/Footer";
 import FloatingCTABar from "@/components/FloatingCTABar";
 
@@ -495,74 +493,58 @@ export default function Home() {
         </div>
       </section>
 
-      {/* === Day 4.1: ヒーロー + B が 1 カード統合済。次は既存の他セクション === */}
-      <main className="flex flex-col flex-1 items-center px-5 py-12">
-        {/* Types preview (carousel) */}
-        <section className="w-full max-w-2xl mb-10 animate-fade-in-up stagger-2">
-          <h2 className="text-center text-2xl sm:text-3xl font-extrabold mb-1">
-            あなたはどのペンギン？
-          </h2>
-          <p className="text-center text-sm text-muted mb-5 leading-relaxed">
-            8 ベースタイプ × 4 サブパターン
+      {/* ============================================ */}
+      {/* Day 6: 最終 CTA セクション (ヒーロー統合カードの外、独立背景)
+          ストーリー回収:「真のアナタを、知ろう」(問い) →「真のアナタに、出会おう」(行動)
+          旧 Phase 1 セクション (32 タイプ / 3 ステップ / Bottom CTA) は全削除済 */}
+      {/* ============================================ */}
+      <section className="px-4 py-16 bg-[#E4E0F5]">
+        <div className="max-w-[480px] mx-auto text-center">
+          {/* マスコット 2 ショット (ヒーロー再登場、サービスの顔) */}
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/mascot-pair.png"
+              alt="ワタシのトリセツ マスコット"
+              width={520}
+              height={520}
+              className="w-full max-w-[260px] h-auto"
+            />
+          </div>
+
+          {/* キャッチコピー (CSS テキスト、3 行、ヒーローと韻を踏む) */}
+          <h2 className="text-[#3A2D6B] font-black text-3xl leading-tight mb-4 drop-shadow-[0_2px_0_rgba(255,255,255,0.5)]">
+            さぁ、
             <br />
-            <span className="font-bold text-primary">全 32 通りの個性</span>
-          </p>
-          <TypeCarousel />
-          <div className="flex justify-center mt-6">
+            真のアナタに、
+            <br />
+            出会おう
+          </h2>
+
+          {/* 補足コピー (halo) */}
+          <div className="flex justify-center mb-8">
+            <p className="inline-block text-[#3A2D6B] font-bold text-sm leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-sm">
+              自己診断 × 友達評価 × AI で、
+              <br />
+              気づかなかったアナタが見えてくる
+            </p>
+          </div>
+
+          {/* CTA ボタン (大きい、ヒーロー CTA より一段上) */}
+          <div className="mb-3">
             <Link
-              href="/zukan/all"
-              className="inline-flex items-center gap-2 rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:scale-[1.04] active:scale-[0.98]"
+              href="/diagnosis"
+              className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-lg px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] hover:translate-y-1 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-[5px] active:shadow-[0_1px_0_#3A2D6B] transition-all duration-150"
             >
-              <span>全 32 タイプの図鑑を見る</span>
-              <span aria-hidden="true">→</span>
+              無料で診断する →
             </Link>
           </div>
-        </section>
 
-        {/* Steps */}
-        <section className="w-full max-w-4xl mb-10 animate-fade-in-up stagger-3">
-          <h2 className="text-center text-xs font-bold tracking-wider text-muted mb-5 uppercase">
-            かんたん3ステップ
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <StepCard
-              stepNumber={1}
-              imageSrc="/mascot/step1-receive.png"
-              title={
-                <>
-                  15問に答えて
-                  <br />
-                  仮トリセツが届く
-                </>
-              }
-              subtitle="直感でOK・3分でできる"
-            />
-            <StepCard
-              stepNumber={2}
-              imageSrc="/mascot/step2-ask-friend.png"
-              title="友達に診断してもらう"
-              subtitle="友達は10問・2分で完了"
-            />
-            <StepCard
-              stepNumber={3}
-              imageSrc="/mascot/step3-complete.png"
-              title="トリセツが完成"
-              subtitle="友達3人で詳細レポート解放"
-            />
-          </div>
-        </section>
-
-        {/* Bottom CTA */}
-        <section className="w-full max-w-sm text-center mb-8 animate-fade-in-up stagger-4">
-          <Link
-            href="/diagnosis"
-            className="inline-block w-full max-w-xs rounded-full bg-primary-gradient px-8 py-4 text-center text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all active:scale-[0.98]"
-          >
-            さっそく始める
-          </Link>
-        </section>
-      </main>
+          {/* 補足テキスト (ヒーロー補足と同じ、一貫性) */}
+          <p className="text-[#3A2D6B] text-xs font-bold">
+            3 分 ・ 登録不要 ・ 全部無料
+          </p>
+        </div>
+      </section>
 
       <Footer />
 
