@@ -50,23 +50,9 @@ export default function Home() {
               はみ出るのを防ぐため、ヒーロー範囲を独立した positioning context にする。
               ラッパー内の absolute 装飾はこの relative wrapper を基準に位置決め。 */}
           <div className="relative">
-          {/* ヘッダー: 左ロゴ (小) + 右ハンバーガー
-              Day 3.8: 控えめ halo (bg-white/35 blur-md) を復活、grid との被り解消 */}
-          <div className="flex justify-between items-center mb-4">
-            <div className="relative">
-              <div
-                aria-hidden="true"
-                className="absolute inset-[-6px] bg-white/35 rounded-2xl blur-md pointer-events-none"
-              />
-              <Image
-                src="/logo.png"
-                alt="ワタシのトリセツ"
-                width={160}
-                height={54}
-                priority
-                className="relative h-auto w-[140px]"
-              />
-            </div>
+          {/* Day 7.2: ヘッダーロゴ削除、ハンバーガーのみ右寄せ
+              (logo.png は他ページ用にファイル残置) */}
+          <div className="flex justify-end items-center mb-4">
             <button
               type="button"
               aria-label="メニュー"
@@ -76,15 +62,10 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Day 2.6: 装飾画像 (4 階層、各装飾の背後に半透明白の outer glow を仕込み
-              grid 線をぼかして装飾を浮き上がらせる)
-              - 大/中: inset-[-12px|-8px] + blur-xl|lg + bg-white/30 + drop-shadow-md
-              - 小:   inset-[-6px] + blur-md + bg-white/25 (sparkle は shadow なし)
-              Day 3.6: 白もや軽減のため glow 不透明度を 60/50 → 30/25 に下げた
-              - 極小: glow なし (見た目を軽く保つ)
-              全 9 個、pointer-events-none + aria-hidden + z-20 (マスコット z-10 より前面) */}
+          {/* Day 7.2: 装飾を 4 つだけに整理 (大ハート / 大花 / キラキラ×2)
+              旧 (Day 3.8 まで 6 つ): 小ハート bottom-28 / 極小キラキラ top-[700px] を削除
+              全 4 個、pointer-events-none + aria-hidden + z-20 (マスコット z-10 より前面) */}
 
-          {/* === 大型装飾 === */}
           {/* 大ハート (左上、+15deg) */}
           <div
             aria-hidden="true"
@@ -114,13 +95,7 @@ export default function Home() {
             />
           </div>
 
-          {/* === 中型装飾 (Day 3.8 で削除) ===
-              旧: 黄星 (top-[420px] right-4) + 青星 (top-[440px] left-4) の 2 個
-              いずれもマスコット体に被るため完全削除。star-yellow.png / star-blue.png
-              のアセット自体は /public/decorations/ に残置 (将来 ヒーロー以外で利用可) */}
-
-          {/* === 小型装飾 (見出し / CTA 周辺) === */}
-          {/* キラキラ (見出し右横) */}
+          {/* キラキラ 1 (中段右、メインロゴ右側) */}
           <div
             aria-hidden="true"
             className="absolute top-[500px] right-4 w-10 h-10 z-20 pointer-events-none"
@@ -134,24 +109,10 @@ export default function Home() {
               className="relative w-full h-full object-contain"
             />
           </div>
-          {/* 小ハート (CTA 左下、+20deg) — Day 3: bottom-36 left-8 → bottom-28 left-6 で CTA から離す */}
+          {/* キラキラ 2 (下段左、サブコピー左側) */}
           <div
             aria-hidden="true"
-            className="absolute bottom-28 left-6 w-10 h-10 rotate-[20deg] z-20 pointer-events-none"
-          >
-            <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
-            <Image
-              src="/decorations/heart-pink.png"
-              alt=""
-              width={40}
-              height={40}
-              className="relative w-full h-full object-contain drop-shadow-sm"
-            />
-          </div>
-          {/* キラキラ (CTA 右横) */}
-          <div
-            aria-hidden="true"
-            className="absolute bottom-40 right-6 w-8 h-8 z-20 pointer-events-none"
+            className="absolute bottom-32 left-4 w-8 h-8 z-20 pointer-events-none"
           >
             <div className="absolute inset-[-6px] bg-white/25 rounded-full blur-md" />
             <Image
@@ -160,23 +121,6 @@ export default function Home() {
               width={32}
               height={32}
               className="relative w-full h-full object-contain"
-            />
-          </div>
-
-          {/* === 極小装飾 (glow なし、軽く) ===
-              Day 3.11: 桃ペンの右目に被る top-40 right-[35%] の極小キラキラを削除
-              (マスコット顔をクリアに見せるため。見出し下の極小キラキラは残置) */}
-          {/* 極小キラキラ (見出し下の隙間、opacity-60) */}
-          <div
-            aria-hidden="true"
-            className="absolute top-[700px] left-12 w-5 h-5 z-20 pointer-events-none opacity-60"
-          >
-            <Image
-              src="/decorations/sparkle.png"
-              alt=""
-              width={20}
-              height={20}
-              className="w-full h-full object-contain"
             />
           </div>
 
@@ -210,41 +154,38 @@ export default function Home() {
             <div className="absolute left-1/2 -translate-x-1/2 bottom-[-30px] z-20 w-full">
               <div className="relative flex justify-center">
                 {/* Day 3.6: 大ロゴの halo を削除 (ロゴ自体の縁取りで十分浮く)
-                    Day 3.13: max-w-[300px] → max-w-[380px] でカード幅近くまで拡大 (Koi 風) */}
+                    Day 7.2: max-w-[380px] → max-w-[440px] でほぼフル幅、ヒーロー主役感を出す */}
                 <Image
                   src="/logo-hero.png"
                   alt="ワタシのトリセツ by AI"
                   width={600}
                   height={300}
                   priority
-                  className="relative w-full max-w-[380px] h-auto"
+                  className="relative w-full max-w-[440px] h-auto"
                 />
               </div>
             </div>
           </div>
 
-          {/* マスコット + ロゴ重ねブロック分の余白確保 (bottom-[-30px] のはみ出しを吸収)
-              Day 3.12: 余白縮小 h-16 (64px) → h-4 (16px)、ロゴとタグの間をコンパクトに */}
-          <div aria-hidden="true" className="h-4" />
+          {/* Day 7.2: マスコット + ロゴ重ねブロック分の余白を h-4 → h-12 に拡大
+              (ステッカータグ撤廃でロゴ → サブコピー直結のため呼吸を確保) */}
+          <div aria-hidden="true" className="h-12" />
 
-          {/* ステッカータグ (2 段重ね、ロゴの下に移動)
-              Day 7.1: ヒーロー大幅簡素化に伴い、ステッカー直下の余白は B へ流れる
-              ストーリーを優先して mb-6 → mb-12 に拡大 */}
-          <div className="flex flex-col items-center gap-2 mb-12">
-            <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-3 shadow-[2px_2px_0_#3A2D6B]">
-              ぶっちゃけ、自分のこと分かってる？
-            </div>
-            <div className="bg-[#FFE993] text-[#3A2D6B] px-5 py-2 rounded-full text-sm font-black border-2 border-[#3A2D6B] transform rotate-2 shadow-[2px_2px_0_#3A2D6B]">
-              友達には、こう映ってるかも
-            </div>
+          {/* Day 7.2: ステッカータグ 2 段を完全撤廃 (Day 7.1 で削除した CTA / 補足と合わせて
+              ヒーローはキャッチビジュアル化、B 以降のストーリーへ自然誘導) */}
+
+          {/* Day 7.2: サブコピー復活 (halo 付き)
+              Day 7.1 で削除したが、ヒーローの最終形として「サービス名 + コンセプト 1 行」
+              の構成を取るため halo 版で復活。B / a / 最終 CTA の halo と統一スタイル */}
+          <div className="flex justify-center mb-12">
+            <p className="text-center text-[#3A2D6B] font-bold text-base leading-relaxed bg-white/50 backdrop-blur-sm rounded-2xl px-5 py-3 max-w-[340px] shadow-sm">
+              自己診断 × 友達評価 × AI で、
+              <br />
+              自分でも気づかなかった
+              <br />
+              アナタが見えてくる
+            </p>
           </div>
-
-          {/* Day 7.1: ヒーロー下半分 (大見出し /heading-hero.png / サブコピー /
-              CTA ボタン / 補足テキスト) を全削除。
-              LP の戦略を「読ませる型」に切替: ヒーローには CTA を持たず、
-              B → a でコンテンツを読ませてから、フローティング CTA / 最終 CTA で
-              決断させる構造に。Koi キャラ参考のヒーロー = キャッチビジュアル化。
-              削除分はマスコット + メインロゴ + ステッカーで完結 */}
           </div>
           {/* === Day 4.4: ヒーロー本体ラッパー end === */}
 
