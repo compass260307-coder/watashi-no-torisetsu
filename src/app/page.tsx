@@ -227,8 +227,10 @@ export default function Home() {
               Day 3.12: 余白縮小 h-16 (64px) → h-4 (16px)、ロゴとタグの間をコンパクトに */}
           <div aria-hidden="true" className="h-4" />
 
-          {/* ステッカータグ (2 段重ね、ロゴの下に移動) */}
-          <div className="flex flex-col items-center gap-2 mb-6">
+          {/* ステッカータグ (2 段重ね、ロゴの下に移動)
+              Day 7.1: ヒーロー大幅簡素化に伴い、ステッカー直下の余白は B へ流れる
+              ストーリーを優先して mb-6 → mb-12 に拡大 */}
+          <div className="flex flex-col items-center gap-2 mb-12">
             <div className="bg-[#FFE993] text-[#3A2D6B] px-4 py-1.5 rounded-full text-xs font-black border-2 border-[#3A2D6B] transform -rotate-3 shadow-[2px_2px_0_#3A2D6B]">
               ぶっちゃけ、自分のこと分かってる？
             </div>
@@ -237,61 +239,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Day 3.7: 見出し画像「真のアナタを、知ろう。」を再追加
-              ステッカータグ 2 段の下、サブコピーの上に配置。メインキャッチとして強調。
-              halo は薄め (bg-white/25) で白もや軽減 */}
-          <div className="relative flex justify-center mb-6">
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-4 inset-y-0 bg-white/25 rounded-3xl blur-2xl pointer-events-none"
-            />
-            <Image
-              src="/heading-hero.png"
-              alt="真のアナタを、知ろう。"
-              width={400}
-              height={300}
-              priority
-              className="relative w-full max-w-[300px] h-auto"
-            />
-          </div>
-
-          {/* サブコピー — Day 3.6: halo 不透明度 50 → 25 に下げて白もや軽減 */}
-          <div className="relative mb-8 px-4">
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-2 inset-y-[-8px] bg-white/25 rounded-2xl blur-xl pointer-events-none"
-            />
-            <p className="relative text-center text-[#2A2856] text-base font-bold leading-relaxed">
-              自己診断 × 友達評価 × AI で、
-              <br />
-              自分でも気づかなかった
-              <br />
-              アナタが見えてくる
-            </p>
-          </div>
-
-          {/* メイン CTA — Day 3.6: halo を削除 (ボタン黄色背景で grid から十分浮く) */}
-          <div className="flex justify-center mb-8">
-            <div className="relative">
-              <Link
-                href="/diagnosis"
-                className="relative bg-[#FFE993] text-[#3A2D6B] px-10 py-4 rounded-full text-lg font-black border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:shadow-[0_2px_0_#3A2D6B] hover:translate-y-[2px] active:shadow-[0_0_0_#3A2D6B] active:translate-y-[4px] transition-all"
-              >
-                無料で診断する →
-              </Link>
-            </div>
-          </div>
-
-          {/* 補足 — Day 3.6: halo 不透明度 70 → 40 に下げて白もや軽減 */}
-          <div className="relative flex justify-center">
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-1/4 inset-y-[-10px] bg-white/40 rounded-full blur-lg pointer-events-none"
-            />
-            <p className="relative text-center text-sm text-[#2A2856]/70 font-medium">
-              3 分 ・ 登録不要 ・ 全部無料
-            </p>
-          </div>
+          {/* Day 7.1: ヒーロー下半分 (大見出し /heading-hero.png / サブコピー /
+              CTA ボタン / 補足テキスト) を全削除。
+              LP の戦略を「読ませる型」に切替: ヒーローには CTA を持たず、
+              B → a でコンテンツを読ませてから、フローティング CTA / 最終 CTA で
+              決断させる構造に。Koi キャラ参考のヒーロー = キャッチビジュアル化。
+              削除分はマスコット + メインロゴ + ステッカーで完結 */}
           </div>
           {/* === Day 4.4: ヒーロー本体ラッパー end === */}
 
