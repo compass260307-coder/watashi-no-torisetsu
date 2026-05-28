@@ -49,6 +49,18 @@ body {
   background-size: 32px 32px;
   pointer-events: none;
   border-radius: inherit;
+  /* Phase 1.5-α Day 8: グリッド線がコンテンツの前面に出るバグ修正。
+     スタッキング階層 — グラデ背景 < ::before グリッド線 (z-0) < 子要素 (z-1) */
+  z-index: 0;
+}
+
+/* Phase 1.5-α Day 8: .grid-bg の直接の子をグリッド線 (::before z-0) より前面へ。
+   各セクションが新しいスタッキングコンテキストを作るため、
+   セクション内部の z-index 階層 (装飾 z-0 / マスコット z-10 / ロゴ z-30) は
+   そのセクション内の相対的な階層として保たれる (ヒーロー設計は壊れない)。 */
+.grid-bg > * {
+  position: relative;
+  z-index: 1;
 }
 
 .bg-primary-gradient {
