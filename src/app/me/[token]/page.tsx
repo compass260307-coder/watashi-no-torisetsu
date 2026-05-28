@@ -1,4 +1,5 @@
 // プレミアム化 v3 Day 9: 個人の永続アクセス点 (/me/[token])
+// Phase 1.5-α Day 10: Koi キャラ風 + Brand v2 に再構成
 //
 // 設計判断 (なぜ Server Component か):
 //   - SEO 対応 (OGP は別途、本ページは noindex で漏洩リスク抑制)
@@ -12,11 +13,14 @@
 //   - 読み取り = token のみで誰でも可 (友達シェア前提)
 //   - 編集 / 購入導線 = session.user.id === users.id (= isOwner) のときのみ表示
 //
-// プライバシー強化:
-//   - <meta name="robots" content="noindex" /> で検索除外
-//   - Referrer-Policy: same-origin で token を referer で漏らさない (next.config で別途設定可、
-//     当面は OGP image を token 非依存にする運用で代替)
+// Day 10 でのスコープ:
+//   - 見た目を Koi 診断結果風に再構成 + Brand v2 化
+//   - Server 維持、クリップボード等は <ResultActions /> (Client) に分離
+//   - 既存 DB クエリ・isOwner 判定・integrated_trisetsu / friend_perceptions
+//     のロジックはすべて維持
+//   - キャラ画像・タイプ説明文は当面プレースホルダー (絵文字不使用、T3-5 方針)
 
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -25,6 +29,7 @@ import { getSession } from "@/lib/session";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
+import { ResultActions } from "@/components/result/ResultActions";
 import type {
   BigFiveDimension,
   CModifier,
@@ -36,6 +41,9 @@ export const metadata: Metadata = {
   // owner_token は推測不可だが、検索エンジン除外で誤共有時の漏洩経路を絞る。
   robots: { index: false, follow: false },
 };
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -162,183 +170,254 @@ export default async function MePage({ params }: PageProps) {
     user.type_id as string,
     stored,
   );
+  const typeMeta =
+    torisetsuTypes[user.type_id as TorisetsuTypeId] ?? undefined;
+  const subtitle = (typeMeta?.subtitle as string | undefined) ?? "";
   const ownerName = ((user.display_name as string | null) ?? "").trim();
-  const displayName = ownerName || "あなた";
+  const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
+  const shareUrl = `${SITE_URL}/me/${token}`;
 
   return (
-    <main className="flex flex-col flex-1 px-5 py-10 max-w-2xl mx-auto w-full pb-16">
-      {/* ===== Header ===== */}
-      <header className="text-center mb-10 animate-fade-in-up">
-        <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
-          WATASHI NO TORISETSU
-        </p>
-        <h1 className="text-2xl font-extrabold leading-tight">
-          {displayName}のトリセツ
-        </h1>
-        {diagnosedAt && (
-          <p className="text-[11px] text-muted/80 mt-2">
-            診断日: {diagnosedAt}
-          </p>
-        )}
-      </header>
+    <div className="min-h-screen bg-[#E4E0F5]">
+      <div className="max-w-[480px] mx-auto px-4 pt-4 pb-12">
+        {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) ===== */}
+        <div className="flex justify-between items-center mb-6">
+          <Image
+            src="/logo.png"
+            alt="ワタシのトリセツ"
+            width={280}
+            height={80}
+            priority
+            className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
+          />
+          <button
+            type="button"
+            aria-label="メニュー"
+            className="w-12 h-12 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B] font-black"
+          >
+            ☰
+          </button>
+        </div>
 
-      {/* ===== 1. 自己診断結果 ===== */}
-      <section className="mb-10 animate-fade-in-up stagger-2">
-        <SectionHeader label="自己診断のあなた" />
-        <div className="rounded-2xl border border-card-border bg-card-bg p-6 text-center">
-          <p className="text-[11px] tracking-wider text-muted mb-2">TYPE</p>
-          <h2 className="text-xl font-extrabold mb-1">{typeName}</h2>
-          {modifierLabel && (
-            <p className="text-sm text-muted mb-3">{modifierLabel}</p>
-          )}
+        {/* ===== ステッカー (傾き付き) ===== */}
+        <div className="flex justify-center mb-4">
+          <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md -rotate-2 text-base">
+            {displayName}のトリセツ
+          </div>
+        </div>
+
+        {/* ===== キャラ画像プレースホルダー =====
+            32 タイプ分のキャラ画像を /public/types/ 配下に後で配置。
+            現状は枠 + テキストプレースホルダー (絵文字なし、T3-5 方針)。 */}
+        <div className="flex justify-center mb-6">
+          <div className="relative w-full max-w-[280px] aspect-square rounded-3xl bg-gradient-to-b from-[#BCDEF8]/40 to-[#FFD6E0]/40 border-2 border-[#0094D8]/25 flex items-center justify-center">
+            <div className="text-center text-[#3A2D6B]/40">
+              <div className="font-black text-2xl tracking-[0.2em] mb-2">
+                CHARACTER
+              </div>
+              <div className="text-xs font-bold">準備中</div>
+            </div>
+            {/* 装飾 (うっすら) */}
+            <Image
+              src="/decorations/heart-pink.png"
+              alt=""
+              width={48}
+              height={48}
+              aria-hidden="true"
+              className="absolute top-3 right-3 w-12 h-12 opacity-60 -rotate-12 pointer-events-none"
+            />
+            <Image
+              src="/decorations/flower-yellow.png"
+              alt=""
+              width={40}
+              height={40}
+              aria-hidden="true"
+              className="absolute bottom-3 left-3 w-10 h-10 opacity-60 rotate-12 pointer-events-none"
+            />
+          </div>
+        </div>
+
+        {/* ===== タイプ名 + 上ラベル + コードバッジ ===== */}
+        <div className="text-center mb-4">
+          <p className="text-[#FE3C72] font-bold text-sm mb-1">
+            アナタのタイプ
+          </p>
+          <h1 className="text-[#3A2D6B] font-black text-3xl mb-3 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+            {typeName}
+          </h1>
           {fullCode && (
-            <p className="text-[11px] tracking-[0.2em] text-muted/80 font-mono">
+            <span className="inline-block bg-[#3A2D6B] text-white font-black text-sm px-4 py-1 rounded-full tracking-[0.25em]">
               {fullCode}
+            </span>
+          )}
+        </div>
+
+        {/* ===== サブ特性 (modifierLabel) ===== */}
+        {modifierLabel && (
+          <div className="flex justify-center mb-6">
+            <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
+              {modifierLabel}
+            </span>
+          </div>
+        )}
+
+        {/* ===== タイプ説明文 (subtitle + プレースホルダー) =====
+            subtitle は既存の torisetsuTypes データ。本格的な性格説明文は
+            32 タイプ分のデータ作成後に流し込む (後フェーズ)。 */}
+        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
+          {subtitle && (
+            <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-3">
+              {subtitle}
+            </p>
+          )}
+          <p className="text-[#3A2D6B]/80 text-sm leading-relaxed">
+            ここにアナタのタイプの性格説明が入ります。Big Five
+            理論ベースの 50 問から、アナタらしさを 32 タイプに分類しています。
+            友達からの評価が集まると、もっと立体的なアナタが見えてきます。
+          </p>
+          {diagnosedAt && (
+            <p className="text-[#3A2D6B]/50 text-xs font-bold mt-4">
+              診断日: {diagnosedAt}
             </p>
           )}
         </div>
-      </section>
 
-      {/* ===== 2. 真のトリセツ (integrated_trisetsu, completed のみ) ===== */}
-      {integrated.length > 0 ? (
-        <section className="mb-10 animate-fade-in-up stagger-2">
-          <SectionHeader label="真のトリセツ" count={integrated.length} />
-          <div className="flex flex-col gap-3">
-            {integrated.map((it) => (
-              <Link
-                key={it.id}
-                href={`/integrated/${it.id}`}
-                className="block rounded-2xl border border-card-border bg-card-bg p-5 hover:bg-label-bg transition-all"
-              >
-                <p className="text-base font-bold mb-1">{it.title}</p>
-                {it.subtitle && (
-                  <p className="text-xs text-muted leading-relaxed mb-2">
-                    {it.subtitle}
-                  </p>
-                )}
-                <p className="text-[10px] text-muted/70">
-                  {formatDate(it.generatedAt)}
-                  {" / "}
-                  友達評価 {it.perceptionCount} 件
-                  {it.includeSelf ? " (自己診断含む)" : ""}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : isOwner ? (
-        <section className="mb-10 animate-fade-in-up stagger-2">
-          <SectionHeader label="真のトリセツ" />
-          <div className="rounded-2xl border border-card-border bg-label-bg p-6 text-center">
-            <p className="text-sm font-bold mb-2">
-              友達 3 人以上の評価で、本格レポートを作れます
-            </p>
-            <p className="text-xs text-muted leading-relaxed mb-4">
-              7 章・5,000 字以上の AI 統合レポート。
-              <br />
-              PDF として永続保存できます。
-            </p>
-            <Link
-              href="/integrated/new"
-              className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
-            >
-              真のトリセツを作る →
-            </Link>
-          </div>
-        </section>
-      ) : null}
+        {/* ===== Client: キャラコード + SNS + 画像保存 ===== */}
+        <ResultActions
+          fullCode={fullCode}
+          typeName={typeName}
+          shareUrl={shareUrl}
+        />
 
-      {/* ===== 3. 友達からの印象 ===== */}
-      {perceptions.length > 0 && (
-        <section className="mb-10 animate-fade-in-up stagger-3">
-          <SectionHeader
-            label={`${displayName}を見た、誰かの眼`}
-            count={perceptions.length}
-          />
-          <div className="flex flex-col gap-3">
-            {perceptions.map((p) => (
-              <article
-                key={p.id}
-                className="rounded-2xl border border-card-border bg-card-bg p-5"
-              >
-                <p className="text-[11px] text-muted mb-1">
-                  {p.perceiverName}さんから見た{displayName}
-                </p>
-                <p className="text-base font-bold">
-                  {p.typeName}
-                  {p.modifierLabel && (
-                    <span className="text-xs font-normal text-muted ml-2">
-                      ({p.modifierLabel})
-                    </span>
-                  )}
-                </p>
-                {p.qualitative && Object.keys(p.qualitative).length > 0 && (
-                  <ul className="text-xs text-foreground leading-relaxed mt-3 space-y-1">
-                    {p.qualitative.favorite_point && (
-                      <li>
-                        <span className="text-muted">好きなところ: </span>
-                        {p.qualitative.favorite_point}
-                      </li>
-                    )}
-                    {p.qualitative.animal && (
-                      <li>
-                        <span className="text-muted">動物にたとえると: </span>
-                        {p.qualitative.animal}
-                      </li>
-                    )}
-                    {p.qualitative.impression_scene && (
-                      <li>
-                        <span className="text-muted">印象的なシーン: </span>
-                        {p.qualitative.impression_scene}
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ===== 4. CTA (Cookie 分岐) ===== */}
-      <section className="mb-6 animate-fade-in-up stagger-3">
+        {/* ===== 下半分: 次アクション (Owner / Visitor で分岐) ===== */}
         {isOwner ? (
-          <OwnerCtaBlock
+          <OwnerCtaSection
             inviteCode={inviteCode}
             hasIntegrated={integrated.length > 0}
           />
         ) : (
-          <VisitorCtaBlock />
+          <VisitorCtaSection />
         )}
-      </section>
 
-      {/* ===== Footer ===== */}
-      <footer className="text-center mt-10">
-        <Link
-          href="/"
-          className="text-xs text-muted/70 underline hover:text-foreground"
-        >
-          トップに戻る
-        </Link>
-      </footer>
-    </main>
+        {/* ===== Owner & integrated > 0: 真のトリセツ履歴 ===== */}
+        {integrated.length > 0 && (
+          <section className="mb-8">
+            <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
+              <span>真のトリセツ</span>
+              <span className="text-xs font-bold text-[#3A2D6B]/60">
+                {integrated.length}
+              </span>
+            </h3>
+            <div className="flex flex-col gap-3">
+              {integrated.map((it) => (
+                <Link
+                  key={it.id}
+                  href={`/integrated/${it.id}`}
+                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#FFF9F0] transition-colors"
+                >
+                  <p className="text-base font-black text-[#3A2D6B] mb-1">
+                    {it.title}
+                  </p>
+                  {it.subtitle && (
+                    <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-2">
+                      {it.subtitle}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-[#3A2D6B]/50 font-bold">
+                    {formatDate(it.generatedAt)}
+                    {" / "}
+                    友達評価 {it.perceptionCount} 件
+                    {it.includeSelf ? " (自己診断含む)" : ""}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ===== 友達からの印象 (件数 > 0 のとき) ===== */}
+        {perceptions.length > 0 && (
+          <section className="mb-8">
+            <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
+              <span>
+                {displayName}を見た、誰かの眼
+              </span>
+              <span className="text-xs font-bold text-[#3A2D6B]/60">
+                {perceptions.length}
+              </span>
+            </h3>
+            <div className="flex flex-col gap-3">
+              {perceptions.map((p) => (
+                <article
+                  key={p.id}
+                  className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5"
+                >
+                  <p className="text-[11px] text-[#3A2D6B]/60 font-bold mb-1">
+                    {p.perceiverName}さんから見た{displayName}
+                  </p>
+                  <p className="text-base font-black text-[#3A2D6B]">
+                    {p.typeName}
+                    {p.modifierLabel && (
+                      <span className="text-xs font-normal text-[#3A2D6B]/60 ml-2">
+                        ({p.modifierLabel})
+                      </span>
+                    )}
+                  </p>
+                  {p.qualitative &&
+                    Object.keys(p.qualitative).length > 0 && (
+                      <ul className="text-xs text-[#3A2D6B] leading-relaxed mt-3 space-y-1">
+                        {p.qualitative.favorite_point && (
+                          <li>
+                            <span className="text-[#3A2D6B]/60 font-bold">
+                              好きなところ:{" "}
+                            </span>
+                            {p.qualitative.favorite_point}
+                          </li>
+                        )}
+                        {p.qualitative.animal && (
+                          <li>
+                            <span className="text-[#3A2D6B]/60 font-bold">
+                              動物にたとえると:{" "}
+                            </span>
+                            {p.qualitative.animal}
+                          </li>
+                        )}
+                        {p.qualitative.impression_scene && (
+                          <li>
+                            <span className="text-[#3A2D6B]/60 font-bold">
+                              印象的なシーン:{" "}
+                            </span>
+                            {p.qualitative.impression_scene}
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ===== Footer ===== */}
+        <div className="text-center pt-2 pb-2">
+          <Link
+            href="/"
+            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+          >
+            トップに戻る
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function SectionHeader({ label, count }: { label: string; count?: number }) {
-  return (
-    <h3 className="text-sm font-bold text-foreground mb-3 flex items-baseline justify-between">
-      <span>{label}</span>
-      {typeof count === "number" && (
-        <span className="text-[11px] text-muted/80 font-normal">{count}</span>
-      )}
-    </h3>
-  );
-}
-
-function OwnerCtaBlock({
+// =========================================================================
+// Owner 経路: 友達評価依頼カード + 真のトリセツ ¥500 訴求 (integrated 0 件時)
+// =========================================================================
+function OwnerCtaSection({
   inviteCode,
   hasIntegrated,
 }: {
@@ -346,55 +425,94 @@ function OwnerCtaBlock({
   hasIntegrated: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-card-border bg-card-bg p-6 text-center">
-      <p className="text-sm font-bold mb-3">友達の眼を集めると、もっと立体的に</p>
-      <p className="text-xs text-muted leading-relaxed mb-4">
-        この招待 URL を友達に送ると、友達があなたを 30 問で評価できます。
-      </p>
-      <Link
-        href={`/friend/${inviteCode}`}
-        className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md mb-4"
-      >
-        招待 URL を開く
-      </Link>
-      <p className="text-[10px] text-muted/70 leading-relaxed">
-        評価が 3 件以上集まると{hasIntegrated ? "、新しく" : ""}「真のトリセツ」を作れます。
-        <br />
-        <Link
-          href="/zukan-mine"
-          className="underline hover:text-foreground"
-        >
-          マイ図鑑で履歴を見る
-        </Link>
-      </p>
-    </div>
+    <>
+      {/* 友達評価依頼カード */}
+      <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+        <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
+          友達の眼を集めると、もっと立体的に
+        </h2>
+        <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
+          この招待 URL を友達に送ると、友達がアナタを 30 問で評価できます。
+        </p>
+        <div className="flex justify-center mb-3">
+          <Link
+            href={`/friend/${inviteCode}`}
+            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+          >
+            招待 URL を開く
+          </Link>
+        </div>
+        <p className="text-[#3A2D6B]/60 text-xs text-center font-bold">
+          評価が 3 件以上集まると{hasIntegrated ? "、新しく" : ""}
+          「真のトリセツ」を作れます。
+        </p>
+        <p className="text-center mt-2">
+          <Link
+            href="/zukan-mine"
+            className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
+          >
+            マイ図鑑で履歴を見る
+          </Link>
+        </p>
+      </div>
+
+      {/* 真のトリセツ ¥500 訴求カード (integrated 未作成のとき) */}
+      {!hasIntegrated && (
+        <div className="bg-gradient-to-b from-[#BCDEF8]/30 to-[#FFD6E0]/30 rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
+          <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
+            友達 3 人以上の評価で、本格レポートを作れます
+          </h2>
+          <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
+            7 章・5,000 字以上の AI 統合レポート。
+            <br />
+            PDF として永続保存できます。
+          </p>
+          <div className="flex justify-center">
+            <Link
+              href="/integrated/new"
+              className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+            >
+              真のトリセツを作る →
+            </Link>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-function VisitorCtaBlock() {
+// =========================================================================
+// Visitor 経路: 自分の診断を始める CTA + 購入済みログイン
+// =========================================================================
+function VisitorCtaSection() {
   return (
-    <div className="flex flex-col gap-4 items-center">
-      <div className="w-full rounded-2xl border border-card-border bg-label-bg p-6 text-center">
-        <p className="text-sm font-bold mb-2">あなたのトリセツも作れます</p>
-        <p className="text-xs text-muted leading-relaxed mb-4">
-          15 問・約 3 分の自己診断から始まります。
+    <>
+      <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+        <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
+          アナタのトリセツも作れます
+        </h2>
+        <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
+          50 問・約 3 分の自己診断から始まります。
           <br />
           登録不要、無料です。
         </p>
+        <div className="flex justify-center">
+          <Link
+            href="/diagnosis"
+            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+          >
+            自己診断を始める →
+          </Link>
+        </div>
+      </div>
+      <div className="text-center mb-6">
         <Link
-          href="/diagnosis"
-          className="inline-block rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md"
+          href="/login"
+          className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
         >
-          自己診断を始める →
+          購入済みの方はログイン
         </Link>
       </div>
-      <Link
-        href="/login"
-        className="text-xs text-muted/80 underline hover:text-foreground"
-      >
-        購入済みの方はログイン
-      </Link>
-    </div>
+    </>
   );
 }
-

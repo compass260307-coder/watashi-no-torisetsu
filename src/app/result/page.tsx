@@ -26,17 +26,21 @@ export default function ResultFallbackPage() {
     setChecking(false);
   }, [router]);
 
+  // Phase 1.5-α Day 10: Brand v2 化 (localStorage フォールバック画面、簡素な見た目のみ)
+  // 本来は /me/[ownerToken] に到達するが、ownerToken が無い旧データ用の保険ルート。
   if (checking) {
     return <AnalyzingLoader />;
   }
 
   if (!result) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center px-5">
-        <p className="text-muted text-sm mb-6">診断結果が見つかりません</p>
+      <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5">
+        <p className="text-[#3A2D6B]/70 font-bold text-sm mb-6">
+          診断結果が見つかりません
+        </p>
         <Link
           href="/diagnosis"
-          className="rounded-full bg-primary px-8 py-3 text-sm font-bold text-white"
+          className="bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] transition-all"
         >
           診断する
         </Link>
@@ -47,52 +51,38 @@ export default function ResultFallbackPage() {
   const typeData = torisetsuTypes[result.typeId];
 
   return (
-    <div className="flex flex-col flex-1">
-      <main className="flex flex-col items-center px-5 py-6 max-w-lg mx-auto w-full">
-        <section
-          className="w-full rounded-2xl border bg-card-bg overflow-hidden mb-5 animate-scale-in"
-          style={{ borderColor: typeData.color + "40" }}
-        >
-          <div className="h-1.5" style={{ backgroundColor: typeData.color }} />
-          <div className="flex flex-col items-center text-center px-5 pt-6 pb-5">
-            <div className="text-[10px] font-bold tracking-wider text-muted mb-4">
-              YOUR TYPE
-            </div>
-            <div
-              className="text-5xl mb-3 w-20 h-20 flex items-center justify-center rounded-2xl"
-              style={{ backgroundColor: typeData.color + "15" }}
-            >
-              {typeData.emoji}
-            </div>
-            <h1
-              className="text-2xl font-extrabold mb-1"
-              style={{ color: typeData.color }}
-            >
+    <div className="min-h-screen bg-[#E4E0F5]">
+      <main className="flex flex-col items-center px-5 py-8 max-w-[480px] mx-auto w-full">
+        <section className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6 animate-scale-in">
+          <div className="text-center">
+            <p className="text-[#FE3C72] font-bold text-sm mb-2">
+              アナタのタイプ
+            </p>
+            <h1 className="text-[#3A2D6B] font-black text-2xl mb-2">
               {typeData.name}
             </h1>
-            <p className="text-sm text-muted">{typeData.subtitle}</p>
-          </div>
-          <div className="bg-label-bg/50 px-5 py-2 text-center border-t border-card-border">
-            <p className="text-[9px] font-bold tracking-wider text-muted/60">
-              ワタシのトリセツ
-            </p>
+            {typeData.subtitle && (
+              <p className="text-[#3A2D6B]/70 text-sm font-bold">
+                {typeData.subtitle}
+              </p>
+            )}
           </div>
         </section>
 
-        <p className="text-sm text-muted text-center mb-6">
+        <p className="text-[#3A2D6B]/70 font-bold text-sm text-center mb-6">
           結果の全機能を使うには、もう一度診断してください
         </p>
 
         <Link
           href="/diagnosis"
-          className="rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25"
+          className="bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all mb-6"
         >
           診断をやり直す
         </Link>
 
         <Link
           href="/"
-          className="text-xs text-muted hover:text-foreground transition-colors mt-6"
+          className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
         >
           トップに戻る
         </Link>
