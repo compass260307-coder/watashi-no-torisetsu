@@ -1,5 +1,7 @@
 // プレミアム化 v3 Day 9: 個人の永続アクセス点 (/me/[token])
 // Phase 1.5-α Day 10: Koi キャラ風 + Brand v2 に再構成
+// Phase 1.5-α Day 11: 自己診断 7 章レポート (全無料) に拡張、¥500 訴求カード削除、
+//                     友達評価カードをギャップ誘導文言に置換
 //
 // 設計判断 (なぜ Server Component か):
 //   - SEO 対応 (OGP は別途、本ページは noindex で漏洩リスク抑制)
@@ -13,12 +15,11 @@
 //   - 読み取り = token のみで誰でも可 (友達シェア前提)
 //   - 編集 / 購入導線 = session.user.id === users.id (= isOwner) のときのみ表示
 //
-// Day 10 でのスコープ:
-//   - 見た目を Koi 診断結果風に再構成 + Brand v2 化
-//   - Server 維持、クリップボード等は <ResultActions /> (Client) に分離
-//   - 既存 DB クエリ・isOwner 判定・integrated_trisetsu / friend_perceptions
-//     のロジックはすべて維持
-//   - キャラ画像・タイプ説明文は当面プレースホルダー (絵文字不使用、T3-5 方針)
+// Day 11 でのスコープ (確定設計):
+//   - 軸1 (このページ) = 自己診断 7 章レポート、全部無料、集客・バイラル用途
+//   - 軸2 (別ページ、Day 12 予定) = 友達評価とのギャップで ¥500 課金
+//   - そのためこのページから ¥500 訴求カードは削除 (課金処理本体は触らない)
+//   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
 import Image from "next/image";
 import Link from "next/link";
@@ -55,6 +56,63 @@ type StoredScores = Partial<Record<BigFiveDimension, number>> & {
 interface PageProps {
   params: Promise<{ token: string }>;
 }
+
+// Phase 1.5-α Day 11: Big Five 5 次元の日本語ラベル定義 (順序固定)
+// stored.{E|A|O|C|N} は lib/diagnosis.ts により 0-10 にスケール化済み (types.ts コメント参照)
+const BIG_FIVE_LABELS: { key: BigFiveDimension; label: string }[] = [
+  { key: "E", label: "外向性" },
+  { key: "A", label: "協調性" },
+  { key: "O", label: "開放性" },
+  { key: "C", label: "誠実性" },
+  { key: "N", label: "神経症傾向" },
+];
+
+// Phase 1.5-α Day 11: 7 章レポートの章タイトル定義 (本文は typeData 接続まで暫定プレースホルダー)
+// ① はバーチャート + 説明、②〜⑦ はタイトル + 本文のみ
+const CHAPTERS: { num: number; title: string; bodyPlaceholder: string }[] = [
+  {
+    num: 1,
+    title: "アナタの性格特性",
+    bodyPlaceholder:
+      "アナタの Big Five プロフィールはこんな形です。各次元のバーが「アナタらしさ」のグラデーション。 高い・低いに優劣はなく、それぞれが「アナタが世界をどう見ているか」のメガネです。",
+  },
+  {
+    num: 2,
+    title: "アナタの強み",
+    bodyPlaceholder:
+      "アナタが自然にできてしまうこと、それがアナタの最大の武器。 周りの人が「すごい」と感じる場面は、アナタにとって当たり前すぎて意識すらしていないかもしれません。",
+  },
+  {
+    num: 3,
+    title: "基本のトリセツ",
+    bodyPlaceholder:
+      "アナタと上手に付き合うには、まずノリを合わせること。 真正面から正論をぶつけられるのは苦手で、共感とテンポが先にあると安心して本音が出てきます。",
+  },
+  {
+    num: 4,
+    title: "アナタの隠れた一面",
+    bodyPlaceholder:
+      "外から見えるアナタと、家に帰ったあとのアナタは別人かもしれません。 みんなが思う「いつも元気」の裏で、人一倍消耗していることがあります。",
+  },
+  {
+    num: 5,
+    title: "アナタの対人スタイル",
+    bodyPlaceholder:
+      "初対面の距離の縮め方、長く付き合う友達への向き合い方には、 アナタ独自のペースがあります。本音を見せる相手とそうでない相手の線引きが、はっきりしているタイプ。",
+  },
+  {
+    num: 6,
+    title: "アナタの活かし方",
+    bodyPlaceholder:
+      "アナタが一番輝くのは、人と人をつなぐ役割や、 空気を切り替える瞬間。逆に、黙々と一人で積み上げる作業は、合う日と合わない日の波が大きめです。",
+  },
+  {
+    num: 7,
+    title: "アナタへのメッセージ",
+    bodyPlaceholder:
+      "アナタへ。アナタの「らしさ」は、まわりにとって本当に貴重なもの。 ときどき疲れる日があっても、それはアナタが手を抜けないからこそ。自分の取扱説明書、ちゃんと持っていてくださいね。",
+  },
+];
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -99,6 +157,18 @@ function deriveTypeLabel(
     }
   }
   return { typeName, fullCode, modifierLabel };
+}
+
+// Phase 1.5-α Day 11: stored.scores から % 化済みの Big Five 配列を生成
+// 値域 0-10 → score * 10 で % 化、欠損時はフォールバック 5 (= 50%)
+function deriveBigFivePercents(
+  stored: StoredScores,
+): { key: BigFiveDimension; label: string; percent: number }[] {
+  return BIG_FIVE_LABELS.map(({ key, label }) => {
+    const raw = typeof stored[key] === "number" ? stored[key]! : 5;
+    const percent = Math.max(0, Math.min(100, Math.round(raw * 10)));
+    return { key, label, percent };
+  });
 }
 
 export default async function MePage({ params }: PageProps) {
@@ -164,7 +234,7 @@ export default async function MePage({ params }: PageProps) {
     includeSelf: r.include_self !== false,
   }));
 
-  // ===== 5. ラベル導出 =====
+  // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
   const { typeName, fullCode, modifierLabel } = deriveTypeLabel(
     user.type_id as string,
@@ -178,6 +248,7 @@ export default async function MePage({ params }: PageProps) {
   const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
   const shareUrl = `${SITE_URL}/me/${token}`;
+  const bigFive = deriveBigFivePercents(stored);
 
   return (
     <div className="min-h-screen bg-[#E4E0F5]">
@@ -256,44 +327,84 @@ export default async function MePage({ params }: PageProps) {
 
         {/* ===== サブ特性 (modifierLabel) ===== */}
         {modifierLabel && (
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-8">
             <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
               {modifierLabel}
             </span>
           </div>
         )}
 
-        {/* ===== タイプ説明文 (subtitle + プレースホルダー) =====
-            subtitle は既存の torisetsuTypes データ。本格的な性格説明文は
-            32 タイプ分のデータ作成後に流し込む (後フェーズ)。 */}
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-          {subtitle && (
-            <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-3">
-              {subtitle}
-            </p>
-          )}
-          <p className="text-[#3A2D6B]/80 text-sm leading-relaxed">
-            ここにアナタのタイプの性格説明が入ります。Big Five
-            理論ベースの 50 問から、アナタらしさを 32 タイプに分類しています。
-            友達からの評価が集まると、もっと立体的なアナタが見えてきます。
-          </p>
-          {diagnosedAt && (
-            <p className="text-[#3A2D6B]/50 text-xs font-bold mt-4">
-              診断日: {diagnosedAt}
-            </p>
-          )}
-        </div>
+        {/* ===== Day 11: 7 章レポート (全無料、MBTI 級の読み応え)
+            ① はバーチャート + 説明、②〜⑦ はタイトル + 本文プレースホルダー
+            章本文は将来 typeData.chapters[i] のような形式で 32 タイプ分のデータを流し込む */}
+        {CHAPTERS.map((ch) => (
+          <section key={ch.num} className="mb-8">
+            {/* 章ヘッダー (番号バッジ + タイトル) */}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+                {ch.num}
+              </span>
+              <h2 className="text-[#3A2D6B] font-black text-xl">
+                {ch.title}
+              </h2>
+            </div>
 
-        {/* ===== Client: キャラコード + SNS + 画像保存 ===== */}
-        <ResultActions
-          fullCode={fullCode}
-          typeName={typeName}
-          shareUrl={shareUrl}
-        />
+            {/* 章本文カード */}
+            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+              {/* ① のみ Big Five バーチャート (実データ、stored.scores より) */}
+              {ch.num === 1 && (
+                <div className="space-y-4 mb-5">
+                  {bigFive.map((dim) => (
+                    <div key={dim.key}>
+                      <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-1">
+                        <span>{dim.label}</span>
+                        <span>{dim.percent}%</span>
+                      </div>
+                      <div
+                        className="h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+                        role="progressbar"
+                        aria-label={`${dim.label} ${dim.percent}%`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={dim.percent}
+                      >
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#FE3C72] to-[#0094D8]"
+                          style={{ width: `${dim.percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-        {/* ===== 下半分: 次アクション (Owner / Visitor で分岐) ===== */}
+              {/* ① 直下に既存 subtitle (タイプの短いキャッチ) を表示 */}
+              {ch.num === 1 && subtitle && (
+                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-3">
+                  {subtitle}
+                </p>
+              )}
+
+              {/* 本文 (プレースホルダー、後で typeData.chapter{ch.num} から取得) */}
+              <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
+                {ch.bodyPlaceholder}
+              </p>
+
+              {/* ① の最後に診断日 (小さく) */}
+              {ch.num === 1 && diagnosedAt && (
+                <p className="text-[#3A2D6B]/50 text-xs font-bold mt-4">
+                  診断日: {diagnosedAt}
+                </p>
+              )}
+            </div>
+          </section>
+        ))}
+
+        {/* ===== Day 11: 軸2 への誘導 (Owner: ギャップ誘導 / Visitor: 自己診断 CTA) =====
+            Day 10 の ¥500 訴求カードは削除。マネタイズは軸2 (ギャップページ) に集約。
+            このページから ¥500 への直接導線は無くす (課金処理本体は触らない、軸2 で再利用) */}
         {isOwner ? (
-          <OwnerCtaSection
+          <OwnerGapCtaSection
             inviteCode={inviteCode}
             hasIntegrated={integrated.length > 0}
           />
@@ -301,7 +412,14 @@ export default async function MePage({ params }: PageProps) {
           <VisitorCtaSection />
         )}
 
-        {/* ===== Owner & integrated > 0: 真のトリセツ履歴 ===== */}
+        {/* ===== Client: キャラコード + SNS + 画像保存 (Day 10 維持) ===== */}
+        <ResultActions
+          fullCode={fullCode}
+          typeName={typeName}
+          shareUrl={shareUrl}
+        />
+
+        {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
           <section className="mb-8">
             <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
@@ -337,7 +455,7 @@ export default async function MePage({ params }: PageProps) {
           </section>
         )}
 
-        {/* ===== 友達からの印象 (件数 > 0 のとき) ===== */}
+        {/* ===== 友達からの印象 (件数 > 0 のとき、Day 10 維持) ===== */}
         {perceptions.length > 0 && (
           <section className="mb-8">
             <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
@@ -415,9 +533,11 @@ export default async function MePage({ params }: PageProps) {
 }
 
 // =========================================================================
-// Owner 経路: 友達評価依頼カード + 真のトリセツ ¥500 訴求 (integrated 0 件時)
+// Day 11: Owner 経路 — 軸2 (ギャップページ) への誘導カード
+// Day 10 の ¥500 訴求カードは削除 (マネタイズは軸2 に集約)。
+// 招待 URL の生成・コピーロジック (/friend/[inviteCode]) は既存ロジックを再利用。
 // =========================================================================
-function OwnerCtaSection({
+function OwnerGapCtaSection({
   inviteCode,
   hasIntegrated,
 }: {
@@ -425,27 +545,34 @@ function OwnerCtaSection({
   hasIntegrated: boolean;
 }) {
   return (
-    <>
-      {/* 友達評価依頼カード */}
-      <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-        <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
-          友達の眼を集めると、もっと立体的に
-        </h2>
-        <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
-          この招待 URL を友達に送ると、友達がアナタを 30 問で評価できます。
-        </p>
-        <div className="flex justify-center mb-3">
-          <Link
-            href={`/friend/${inviteCode}`}
-            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
-          >
-            招待 URL を開く
-          </Link>
-        </div>
-        <p className="text-[#3A2D6B]/60 text-xs text-center font-bold">
-          評価が 3 件以上集まると{hasIntegrated ? "、新しく" : ""}
-          「真のトリセツ」を作れます。
-        </p>
+    <div className="bg-gradient-to-b from-[#BCDEF8]/30 to-[#FFD6E0]/30 rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
+      <p className="text-[#3A2D6B] font-black text-lg text-center mb-2 leading-tight">
+        でも、これはぜんぶ
+        <br />
+        &quot;アナタが思うアナタ&quot;
+      </p>
+      <p className="text-[#3A2D6B]/75 text-sm text-center mb-4 leading-relaxed">
+        友達から見たアナタは、ちょっと違うかも？
+        <br />
+        招待 URL を送ると、友達が 30 問でアナタを評価。
+        <br />
+        <span className="font-bold text-[#FE3C72]">
+          「自分が思う自分」と「友達が見る自分」のギャップ
+        </span>
+        が見えてきます。
+      </p>
+      <div className="flex justify-center">
+        <Link
+          href={`/friend/${inviteCode}`}
+          className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+        >
+          友達に評価を頼む →
+        </Link>
+      </div>
+      <p className="text-[#3A2D6B]/60 text-xs text-center font-bold mt-3">
+        友達 3 人以上の評価で、ギャップが見えるようになります。
+      </p>
+      {hasIntegrated && (
         <p className="text-center mt-2">
           <Link
             href="/zukan-mine"
@@ -454,35 +581,13 @@ function OwnerCtaSection({
             マイ図鑑で履歴を見る
           </Link>
         </p>
-      </div>
-
-      {/* 真のトリセツ ¥500 訴求カード (integrated 未作成のとき) */}
-      {!hasIntegrated && (
-        <div className="bg-gradient-to-b from-[#BCDEF8]/30 to-[#FFD6E0]/30 rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-          <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
-            友達 3 人以上の評価で、本格レポートを作れます
-          </h2>
-          <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
-            7 章・5,000 字以上の AI 統合レポート。
-            <br />
-            PDF として永続保存できます。
-          </p>
-          <div className="flex justify-center">
-            <Link
-              href="/integrated/new"
-              className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
-            >
-              真のトリセツを作る →
-            </Link>
-          </div>
-        </div>
       )}
-    </>
+    </div>
   );
 }
 
 // =========================================================================
-// Visitor 経路: 自分の診断を始める CTA + 購入済みログイン
+// Visitor 経路: 自分の診断を始める CTA + 購入済みログイン (Day 10 から維持)
 // =========================================================================
 function VisitorCtaSection() {
   return (
