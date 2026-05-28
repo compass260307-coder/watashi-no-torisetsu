@@ -18,10 +18,13 @@ export function ProgressBar({
     Math.round((currentQuestion / totalQuestions) * 100),
   );
 
+  // Phase 1.5-α Day 9: Brand v2 化 (sunYellow バー + deepPurple テキスト)
+  // - 背景は lavender 半透明 + blur で下のページ背景と馴染ませる
+  // - バー本体は white/60 で控えめ、フィルは #FFE993 で進捗を明るく可視化
   return (
-    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-card-border">
+    <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
       <div className="max-w-lg mx-auto px-4 py-3">
-        <div className="flex justify-between text-xs font-bold text-muted mb-2">
+        <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-2">
           <span>
             質問 {currentQuestion} / {totalQuestions}
           </span>
@@ -30,14 +33,14 @@ export function ProgressBar({
           </span>
         </div>
         <div
-          className="w-full h-1.5 bg-card-border rounded-full overflow-hidden"
+          className="w-full h-2 bg-white/60 rounded-full overflow-hidden"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={percent}
         >
           <div
-            className="h-full bg-primary-gradient transition-all duration-500 ease-out rounded-full"
+            className="h-full bg-[#FFE993] transition-all duration-500 ease-out rounded-full"
             style={{ width: `${percent}%` }}
           />
         </div>
