@@ -236,8 +236,17 @@ function DiagnosisContent() {
     router.push("/zukan-mine");
   };
 
+  // Phase 1.5-α Day 9: Brand v2 化 (見た目のみ、ロジック / 質問文 / ページ分割は一切変更なし)
+  // - ルート背景: lavender 単色 (grid なし、診断中の集中を妨げない)
+  // - 補助テキスト: deepPurple 透過
+  // - 下部固定ナビ: 白半透明 + lavender ボーダー、CTA は sunYellow 立体シャドウ
+  const navCtaActive =
+    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
+  const navCtaDisabled =
+    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+
   return (
-    <div className="flex flex-col flex-1 min-h-screen pb-28">
+    <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
       {showRediagnoseModal && (
         <RediagnoseConfirmModal
           onConfirm={closeRediagnoseModal}
@@ -263,29 +272,29 @@ function DiagnosisContent() {
         ))}
 
         {!isPageComplete && (
-          <p className="text-center text-xs text-muted mt-2 mb-4">
+          <p className="text-center text-xs text-[#3A2D6B]/70 font-bold mt-2 mb-4">
             このページの 10 問すべてに答えると、次のページに進めるよ
           </p>
         )}
 
         {submitError && (
-          <p className="text-center text-xs text-red-500 mt-2 mb-2">
+          <p className="text-center text-xs text-[#FE3C72] font-bold mt-2 mb-2">
             送信に失敗しました。もう一度お試しください。
           </p>
         )}
       </main>
 
-      {/* 下部固定ナビ */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-card-border z-10">
+      {/* 下部固定ナビ (Day 9: white/85 + lavender ボーダー + sunYellow CTA) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
           <button
             type="button"
             onClick={handlePrev}
             disabled={currentPage === 0}
-            className={`rounded-full border-2 border-card-border px-5 py-3 text-sm font-bold transition-all ${
+            className={`rounded-full border-2 px-5 py-3 text-sm font-bold transition-all ${
               currentPage === 0
-                ? "opacity-0 pointer-events-none"
-                : "text-muted hover:bg-label-bg"
+                ? "opacity-0 pointer-events-none border-transparent"
+                : "border-[#3A2D6B]/30 text-[#3A2D6B] hover:bg-[#E4E0F5]"
             }`}
           >
             戻る
@@ -296,11 +305,7 @@ function DiagnosisContent() {
               type="button"
               onClick={handleNext}
               disabled={!isPageComplete}
-              className={`flex-1 rounded-full px-6 py-3 text-sm font-bold text-white transition-all ${
-                isPageComplete
-                  ? "bg-primary-gradient hover:scale-[1.02] active:scale-[0.98]"
-                  : "bg-card-border text-muted cursor-not-allowed"
-              }`}
+              className={isPageComplete ? navCtaActive : navCtaDisabled}
             >
               次へ
             </button>
@@ -309,11 +314,9 @@ function DiagnosisContent() {
               type="button"
               onClick={handleSubmit}
               disabled={!isAllComplete || submitting}
-              className={`flex-1 rounded-full px-6 py-3 text-sm font-bold text-white transition-all ${
-                isAllComplete && !submitting
-                  ? "bg-primary-gradient hover:scale-[1.02] active:scale-[0.98]"
-                  : "bg-card-border text-muted cursor-not-allowed"
-              }`}
+              className={
+                isAllComplete && !submitting ? navCtaActive : navCtaDisabled
+              }
             >
               {submitting ? "診断中..." : "結果を見る"}
             </button>

@@ -16,12 +16,17 @@ export function QuestionCard({
   value,
   onChange,
 }: QuestionCardProps) {
+  // Phase 1.5-α Day 9: Brand v2 化
+  // - カード: rounded-3xl + border-2 #0094D8/25 + shadow-md で LP の特徴カードと統一
+  // - Q番号バッジ: deepPurple bg + 白字 + 丸ピル
+  // - 質問文: deepPurple
+  // - 質問文 / 回答ロジック / スコアリングは一切変更しない (見た目のみ)
   return (
-    <div className="w-full max-w-lg mx-auto bg-card-bg rounded-2xl border border-card-border shadow-sm p-5 sm:p-6 mb-4">
-      <div className="inline-block rounded-md bg-label-bg px-2.5 py-1 text-[11px] font-bold text-primary border border-card-border mb-3">
+    <div className="w-full max-w-lg mx-auto bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+      <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
         Q{questionNumber}
       </div>
-      <p className="text-base sm:text-lg font-bold text-foreground leading-relaxed mb-6">
+      <p className="text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6">
         {question.text}
       </p>
       <LikertScale value={value} onChange={onChange} />
