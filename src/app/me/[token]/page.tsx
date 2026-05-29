@@ -31,6 +31,7 @@ import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
+import { FriendGapInvite } from "@/components/result/FriendGapInvite";
 import type {
   BigFiveDimension,
   CModifier,
@@ -248,6 +249,8 @@ export default async function MePage({ params }: PageProps) {
   const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
   const shareUrl = `${SITE_URL}/me/${token}`;
+  // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)
+  const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   const bigFive = deriveBigFivePercents(stored);
 
   return (
@@ -406,12 +409,14 @@ export default async function MePage({ params }: PageProps) {
           </section>
         ))}
 
-        {/* ===== Day 11: 軸2 への誘導 (Owner: ギャップ誘導 / Visitor: 自己診断 CTA) =====
-            Day 10 の ¥500 訴求カードは削除。マネタイズは軸2 (ギャップページ) に集約。
-            このページから ¥500 への直接導線は無くす (課金処理本体は触らない、軸2 で再利用) */}
+        {/* ===== Day 11.2: 軸2 への誘導 (Owner: QR + キャラコード / Visitor: 自己診断 CTA) =====
+            Day 11 の OwnerGapCtaSection (CTA ボタン形式) を FriendGapInvite (QR + コード形式)
+            に置換。対面 (QR スキャン) と離れた相手 (キャラコード / URL コピー) の両用途を
+            1 セクションでカバー。¥500 訴求カードは引き続き軸2 (Day 12) に集約のため非表示 */}
         {isOwner ? (
-          <OwnerGapCtaSection
-            inviteCode={inviteCode}
+          <FriendGapInvite
+            inviteUrl={inviteUrl}
+            fullCode={fullCode}
             hasIntegrated={integrated.length > 0}
           />
         ) : (
@@ -535,60 +540,6 @@ export default async function MePage({ params }: PageProps) {
         </div>
       </div>
     </main>
-  );
-}
-
-// =========================================================================
-// Day 11: Owner 経路 — 軸2 (ギャップページ) への誘導カード
-// Day 10 の ¥500 訴求カードは削除 (マネタイズは軸2 に集約)。
-// 招待 URL の生成・コピーロジック (/friend/[inviteCode]) は既存ロジックを再利用。
-// =========================================================================
-function OwnerGapCtaSection({
-  inviteCode,
-  hasIntegrated,
-}: {
-  inviteCode: string;
-  hasIntegrated: boolean;
-}) {
-  return (
-    <div className="bg-gradient-to-b from-[#BCDEF8]/30 to-[#FFD6E0]/30 rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
-      <p className="text-[#3A2D6B] font-black text-lg text-center mb-2 leading-tight">
-        でも、これはぜんぶ
-        <br />
-        &quot;アナタが思うアナタ&quot;
-      </p>
-      <p className="text-[#3A2D6B]/75 text-sm text-center mb-4 leading-relaxed">
-        友達から見たアナタは、ちょっと違うかも？
-        <br />
-        招待 URL を送ると、友達が 30 問でアナタを評価。
-        <br />
-        <span className="font-bold text-[#FE3C72]">
-          「自分が思う自分」と「友達が見る自分」のギャップ
-        </span>
-        が見えてきます。
-      </p>
-      <div className="flex justify-center">
-        <Link
-          href={`/friend/${inviteCode}`}
-          className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
-        >
-          友達に評価を頼む →
-        </Link>
-      </div>
-      <p className="text-[#3A2D6B]/60 text-xs text-center font-bold mt-3">
-        友達 3 人以上の評価で、ギャップが見えるようになります。
-      </p>
-      {hasIntegrated && (
-        <p className="text-center mt-2">
-          <Link
-            href="/zukan-mine"
-            className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
-          >
-            マイ図鑑で履歴を見る
-          </Link>
-        </p>
-      )}
-    </div>
   );
 }
 
