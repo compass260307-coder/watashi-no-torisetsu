@@ -1,36 +1,44 @@
 "use client";
 
 // Phase 1.5-α Day 11.2: 友達評価依頼を QR コード + キャラコード中心に再構成
+// Phase 1.5-α Day 11.3: 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)
+//                       Koi キャラ参考と同じ密度感に。
 //
-// Day 11 までは「友達に評価を頼む →」CTA ボタンの 1 アクション設計だったが、
-// 対面 (QR スキャン) と離れた相手 (キャラコード / URL コピー) の両用途を
-// カバーするため、QR メイン + キャラコード/URL コピーをサブの構成に変更。
+// 削除した要素 (Day 11.3):
+// - サブ文 (「自分が思う自分」と「友達が見る自分」のギャップ訴求)
+//   → 「ギャップ」訴求は 7 章レポートの読後感に任せる、ここはアクションに集中
+// - URL コピーリンク (or 招待 URL をコピー)
+//   → QR + キャラコードの 2 系統で十分、3 つ目はノイズ
+// - 補足 (友達 3 人以上の評価で…)
+//   → 友達評価ページ側で表示するか、軸2 (Day 12) で扱う
+// - マイ図鑑リンク (hasIntegrated 時)
+//   → 履歴へのナビは page.tsx 側の integrated 履歴セクションから辿れるため重複削除
 //
-// 親 (/me/[token]/page.tsx) は Server Component のため、
-// QR 描画とクリップボード操作を伴うこのブロックを Client に切り出す。
+// 残った要素 (Day 11.3 最終形、4 つだけ):
+// 1. 大見出し画像 /heading-friend-invite.png (ChatGPT 生成、Koi 風バブル文字)
+// 2. QR コード (qrcode.react、size=220、deepPurple 描画、白カードで囲む)
+// 3. 説明文「カメラで読み取ってもらって 友達にアナタを評価してもらおう」
+// 4. キャラコード + コピーアイコン (LINE 等代替手段)
 //
 // 触らない:
-// - 招待 URL のロジック (親 Server 側で ${SITE_URL}/friend/${inviteCode} を構築、props で受領)
+// - QR コードの value (招待 URL) / size / color / level の設定 (Day 11.2 維持)
+// - 招待 URL の生成ロジック (親 Server 側で構築、props で受領)
 // - キャラコード (= fullCode、Day 10 / Day 11 のロジック維持、props で受領)
-// - hasIntegrated 判定 (Day 11 維持、マイ図鑑リンクの出し分け)
 
 import { useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 
 interface FriendGapInviteProps {
   inviteUrl: string;
   fullCode: string;
-  hasIntegrated: boolean;
 }
 
 export function FriendGapInvite({
   inviteUrl,
   fullCode,
-  hasIntegrated,
 }: FriendGapInviteProps) {
   const [codeCopied, setCodeCopied] = useState(false);
-  const [urlCopied, setUrlCopied] = useState(false);
 
   const handleCopyCode = async () => {
     if (!fullCode) return;
@@ -43,37 +51,22 @@ export function FriendGapInvite({
     }
   };
 
-  const handleCopyUrl = async () => {
-    if (!inviteUrl) return;
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setUrlCopied(true);
-      window.setTimeout(() => setUrlCopied(false), 1800);
-    } catch {
-      // 無視
-    }
-  };
-
   return (
-    <section className="text-center py-6 mb-8">
-      {/* 大見出し (deepPurple + sunYellow drop-shadow で立体感) */}
-      <h2 className="text-[#3A2D6B] font-black text-2xl mb-3 leading-tight drop-shadow-[0_2px_0_rgba(255,233,147,0.8)]">
-        ともだちに
-        <br />
-        評価してもらおう！
-      </h2>
+    <section className="text-center py-8 mb-8">
+      {/* 1. 大見出し画像 (ChatGPT 生成、heading-section2.png と同テイスト)
+            画像ファイルは /public/heading-friend-invite.png にユーザーが配置 */}
+      <div className="flex justify-center mb-6">
+        <Image
+          src="/heading-friend-invite.png"
+          alt="友達に診断してもらおう！"
+          width={800}
+          height={500}
+          className="w-full max-w-[340px] h-auto"
+        />
+      </div>
 
-      {/* サブ文 (ギャップ訴求、Day 11 から継承) */}
-      <p className="text-[#3A2D6B]/75 text-sm mb-6 leading-relaxed">
-        「自分が思う自分」と「友達が見る自分」の
-        <br />
-        <span className="font-bold text-[#FE3C72]">ギャップ</span>
-        が見えてきます
-      </p>
-
-      {/* QR コード (白カードで囲む、deepPurple 描画、エラー訂正 H で
-          将来キャラアイコン中央挿入の余地を確保) */}
-      <div className="flex justify-center mb-5">
+      {/* 2. QR コード (Day 11.2 から設定維持、白カードで囲む) */}
+      <div className="flex justify-center mb-6">
         <div className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#3A2D6B]/20">
           <QRCodeSVG
             value={inviteUrl}
@@ -86,15 +79,15 @@ export function FriendGapInvite({
         </div>
       </div>
 
-      {/* QR の使い方説明 */}
-      <p className="text-[#3A2D6B] font-bold text-sm mb-6 leading-relaxed">
+      {/* 3. 説明文 (Day 11.2 から維持) */}
+      <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-5">
         カメラで読み取ってもらって
         <br />
         友達にアナタを評価してもらおう
       </p>
 
-      {/* キャラコード + コピー (LINE 等で送る用、QR の代替手段) */}
-      <div className="flex items-center justify-center gap-2 mb-3">
+      {/* 4. キャラコード + コピー (LINE 等代替手段、Day 11.2 から維持) */}
+      <div className="flex items-center justify-center gap-2">
         <span className="text-[#3A2D6B]/70 text-sm font-bold">
           キャラコード:
         </span>
@@ -115,42 +108,6 @@ export function FriendGapInvite({
           </span>
         )}
       </div>
-
-      {/* URL コピー (補助、小さく) */}
-      <div className="relative inline-block">
-        <button
-          type="button"
-          onClick={handleCopyUrl}
-          className="text-[#3A2D6B]/60 underline text-xs font-bold hover:text-[#FE3C72] transition-colors"
-        >
-          or 招待 URL をコピー (LINE などで送る)
-        </button>
-        {urlCopied && (
-          <span
-            role="status"
-            className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#3A2D6B] text-white text-[10px] font-bold px-2 py-1 rounded-full"
-          >
-            コピーしました
-          </span>
-        )}
-      </div>
-
-      {/* 補足 (Day 11 から継承) */}
-      <p className="text-[#3A2D6B]/60 text-xs font-bold mt-4">
-        友達 3 人以上の評価で、ギャップが見えるようになります
-      </p>
-
-      {/* マイ図鑑リンク (Day 11 から継承、履歴あり時のみ) */}
-      {hasIntegrated && (
-        <p className="mt-2">
-          <Link
-            href="/zukan-mine"
-            className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
-          >
-            マイ図鑑で履歴を見る
-          </Link>
-        </p>
-      )}
     </section>
   );
 }

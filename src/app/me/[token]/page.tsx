@@ -409,16 +409,13 @@ export default async function MePage({ params }: PageProps) {
           </section>
         ))}
 
-        {/* ===== Day 11.2: 軸2 への誘導 (Owner: QR + キャラコード / Visitor: 自己診断 CTA) =====
-            Day 11 の OwnerGapCtaSection (CTA ボタン形式) を FriendGapInvite (QR + コード形式)
-            に置換。対面 (QR スキャン) と離れた相手 (キャラコード / URL コピー) の両用途を
-            1 セクションでカバー。¥500 訴求カードは引き続き軸2 (Day 12) に集約のため非表示 */}
+        {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
+            Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。
+            サブ文 / URL コピー / 補足 / マイ図鑑リンクは削除。
+            履歴ナビは下半分の integrated 履歴セクションから辿れるため重複削除。
+            ¥500 訴求カードは引き続き軸2 (Day 12) に集約のため非表示 */}
         {isOwner ? (
-          <FriendGapInvite
-            inviteUrl={inviteUrl}
-            fullCode={fullCode}
-            hasIntegrated={integrated.length > 0}
-          />
+          <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
         ) : (
           <VisitorCtaSection />
         )}
