@@ -251,8 +251,14 @@ export default async function MePage({ params }: PageProps) {
   const bigFive = deriveBigFivePercents(stored);
 
   return (
-    <div className="min-h-screen bg-[#E4E0F5]">
-      <div className="max-w-[480px] mx-auto px-4 pt-4 pb-12">
+    // Phase 1.5-α Day 11.1: LP と同じ grid-bg + 統合カード枠で世界観を連続化。
+    // - 外側: lavender (#E4E0F5) でカード周囲を埋める
+    // - 内側: 統合カード (max-w-[480px] / rounded-[32px] / border-[3px] #0094D8 / grid-bg / p-6)
+    // grid-bg の z-index 階層は globals.css (Day 8) で:
+    //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
+    // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
+    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
+      <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) ===== */}
         <div className="flex justify-between items-center mb-6">
           <Image
@@ -528,7 +534,7 @@ export default async function MePage({ params }: PageProps) {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
