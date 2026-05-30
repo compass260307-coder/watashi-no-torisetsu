@@ -273,9 +273,18 @@ export default async function FriendEvaluationPage() {
                         )}
                       </ul>
                     )}
-                  <p className="text-[10px] text-[#3A2D6B]/50 font-bold mt-3">
-                    {formatDate(p.createdAt)}
-                  </p>
+                  <div className="flex justify-between items-center mt-3">
+                    <p className="text-[10px] text-[#3A2D6B]/50 font-bold">
+                      {formatDate(p.createdAt)}
+                    </p>
+                    {/* Day 12-C1: 詳細結果 (6 章 freemium) へのリンク */}
+                    <Link
+                      href={`/evaluate/result/${p.id}`}
+                      className="text-[#FE3C72] text-xs font-black hover:underline"
+                    >
+                      結果を見る →
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>
