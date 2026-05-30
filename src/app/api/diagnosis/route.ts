@@ -40,10 +40,22 @@ export async function POST(request: NextRequest) {
     modifierLabel,
     campaign,
     sourceInviteCode,
+    displayName,
   } = body;
 
   if (!typeId || !scores) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  }
+
+  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップで取得したニックネームを users.display_name に保存。
+  // クライアント側で trim 済の想定だが、念のため API でも空白除去 + 20 文字制限。
+  // 空文字 / 未指定は null (UI 上「アナタ」フォールバック)。
+  let normalizedDisplayName: string | null = null;
+  if (typeof displayName === "string") {
+    const trimmed = displayName.trim();
+    if (trimmed.length > 0) {
+      normalizedDisplayName = trimmed.slice(0, 20);
+    }
   }
 
   // Phase 2F: scores jsonb に v2 拡張フィールドをマージ
@@ -82,17 +94,28 @@ export async function POST(request: NextRequest) {
 
   // ----- 既存ユーザー: UPDATE (同 user_id 維持) -----
   if (existing) {
+    // Day 12-Polish-B: displayName が指定されていれば再診断時も上書き
+    // (基本情報ステップでニックネーム変更を許容)。未指定 (null) なら触らない。
+    const updatePayload: {
+      type_id: string;
+      scores: typeof persistedScores;
+      invite_code: string;
+      owner_token: string;
+      display_name?: string;
+    } = {
+      type_id: typeId,
+      scores: persistedScores,
+      invite_code: inviteCode,
+      owner_token: ownerToken,
+    };
+    if (normalizedDisplayName !== null) {
+      updatePayload.display_name = normalizedDisplayName;
+    }
     const { data, error } = await supabaseAdmin
       .from("users")
-      .update({
-        type_id: typeId,
-        scores: persistedScores,
-        invite_code: inviteCode,
-        owner_token: ownerToken,
-        // display_name / campaign / source_user_id / generation / line_user_id /
-        // email / email_verified_at / session_token は変更しない (再診断時の
-        // user identity を保つ)。
-      })
+      .update(updatePayload)
+      // campaign / source_user_id / generation / line_user_id / email /
+      // email_verified_at / session_token は変更しない (再診断時の user identity を保つ)。
       .eq("id", existing.id)
       .select("id, invite_code, owner_token")
       .single();
@@ -119,6 +142,8 @@ export async function POST(request: NextRequest) {
   }
 
   // ----- 新規ユーザー: createSession で INSERT + Cookie set -----
+  // Day 12-Polish-B: displayName をそのまま渡す (CreateSessionPayload.display_name は
+  // optional null 許容なので空でも安全)
   try {
     const { user } = await createSession({
       type_id: typeId,
@@ -128,6 +153,7 @@ export async function POST(request: NextRequest) {
       campaign: campaign || null,
       source_user_id: sourceUserId,
       generation,
+      display_name: normalizedDisplayName,
     });
 
     return NextResponse.json({
