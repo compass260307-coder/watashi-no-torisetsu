@@ -14,6 +14,9 @@ const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
 const TOTAL_QUESTIONS = QUESTIONS_PER_PAGE * TOTAL_PAGES;
 const STORAGE_KEY = "torisetsu_answers_v2";
+// Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
+const NICKNAME_KEY = "torisetsu_nickname_v2";
+const NICKNAME_MAX = 20;
 const MIN_LOADING_MS = 20000;
 
 export default function DiagnosisPage() {
@@ -31,6 +34,12 @@ function DiagnosisContent() {
   const source = searchParams.get("source");
   // Phase 3-β D-4: ?source=line (LINE リッチメニュー経由) + 過去診断あり → 再診断モーダル表示
   const isFromLine = source === "line";
+
+  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネーム取得)
+  // step = "basic-info" → ニックネーム入力、"questions" → Q1〜Q50
+  const [step, setStep] = useState<"basic-info" | "questions">("basic-info");
+  const [nickname, setNickname] = useState("");
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed (0..4)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
@@ -86,6 +95,13 @@ function DiagnosisContent() {
         // localStorage 不可なら表示しない (新規扱い)
       }
     }
+    // Day 12-Polish-B: 既保存のニックネームを input にプリフィル (再訪時の自動入力)
+    try {
+      const savedNick = localStorage.getItem(NICKNAME_KEY);
+      if (savedNick) setNickname(savedNick.slice(0, NICKNAME_MAX));
+    } catch {
+      // 無視
+    }
     setHydrated(true);
   }, [isFromLine]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -119,6 +135,29 @@ function DiagnosisContent() {
   const isAllComplete = questions.every((q) => answers[q.id] !== undefined);
   const answeredCount = Object.keys(answers).length;
   const isLastPage = currentPage === TOTAL_PAGES - 1;
+
+  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ → 質問ステップへの遷移
+  const handleBasicInfoNext = () => {
+    const trimmed = nickname.trim();
+    if (trimmed.length === 0) {
+      setNicknameError("ニックネームを入力してね");
+      return;
+    }
+    if (trimmed.length > NICKNAME_MAX) {
+      setNicknameError(`${NICKNAME_MAX} 文字以内で入力してね`);
+      return;
+    }
+    setNicknameError(null);
+    try {
+      localStorage.setItem(NICKNAME_KEY, trimmed);
+    } catch {
+      // localStorage 不可でも進める
+    }
+    setStep("questions");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   const handleAnswer = (questionId: number, value: AnswerValue) => {
     setAnswers((prev) => {
@@ -201,6 +240,8 @@ function DiagnosisContent() {
           modifierLabel: result.modifierLabel,
           campaign: campaign || undefined,
           sourceInviteCode: source || undefined,
+          // Day 12-Polish-B: 基本情報ステップで取得したニックネーム
+          displayName: nickname.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -236,14 +277,108 @@ function DiagnosisContent() {
     router.push("/zukan-mine");
   };
 
-  // Phase 1.5-α Day 9: Brand v2 化 (見た目のみ、ロジック / 質問文 / ページ分割は一切変更なし)
-  // - ルート背景: lavender 単色 (grid なし、診断中の集中を妨げない)
-  // - 補助テキスト: deepPurple 透過
-  // - 下部固定ナビ: 白半透明 + lavender ボーダー、CTA は sunYellow 立体シャドウ
+  // Phase 1.5-α Day 9: Brand v2 化 / Day 12-Polish-B: basic-info でも使うため早期定義
   const navCtaActive =
     "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
   const navCtaDisabled =
     "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+
+  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネームを取得)
+  // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
+  if (step === "basic-info") {
+    return (
+      <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
+        {showRediagnoseModal && (
+          <RediagnoseConfirmModal
+            onConfirm={closeRediagnoseModal}
+            onCancel={cancelRediagnose}
+          />
+        )}
+        {/* sticky 進捗 (Day 9 と同じスタイル、ただし basic-info 表示用) */}
+        <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
+          <div className="max-w-lg mx-auto px-4 py-3">
+            <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-2">
+              <span>はじめに</span>
+              <span>Page 0 / {TOTAL_PAGES}</span>
+            </div>
+            <div
+              className="w-full h-2 bg-white/60 rounded-full overflow-hidden"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={0}
+            >
+              <div className="h-full bg-[#FFE993] rounded-full w-0" />
+            </div>
+          </div>
+        </div>
+
+        <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
+          <div className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+            <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
+              はじめに
+            </div>
+            <p className="text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-2">
+              まずは基本情報を教えてね
+            </p>
+            <p className="text-[#3A2D6B]/70 text-xs font-bold leading-relaxed mb-5">
+              ニックネームでも OK だよ ({NICKNAME_MAX} 文字以内)
+            </p>
+            <label
+              htmlFor="diagnosis-nickname"
+              className="block text-xs font-black text-[#3A2D6B] mb-2"
+            >
+              ニックネーム
+            </label>
+            <input
+              id="diagnosis-nickname"
+              type="text"
+              value={nickname}
+              onChange={(e) => {
+                setNickname(e.target.value);
+                if (nicknameError) setNicknameError(null);
+              }}
+              maxLength={NICKNAME_MAX}
+              placeholder="例: のすけ"
+              autoComplete="off"
+              className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
+            />
+            {nicknameError && (
+              <p
+                role="alert"
+                className="text-[#FE3C72] text-xs font-bold mt-2"
+              >
+                {nicknameError}
+              </p>
+            )}
+            <p className="text-[#3A2D6B]/55 text-[11px] font-bold mt-3 leading-relaxed">
+              入力した名前は、診断結果と友達からの評価ページに表示されます。
+              漢字・英語・かな、どれでも OK。
+            </p>
+          </div>
+        </main>
+
+        {/* 下部固定ナビ (Day 9 と同じ Brand v2) */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
+          <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
+            <button
+              type="button"
+              onClick={handleBasicInfoNext}
+              className={navCtaActive}
+            >
+              次へ
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 1.5-α Day 9: Brand v2 化 (見た目のみ、ロジック / 質問文 / ページ分割は一切変更なし)
+  // - ルート背景: lavender 単色 (grid なし、診断中の集中を妨げない)
+  // - 補助テキスト: deepPurple 透過
+  // - 下部固定ナビ: 白半透明 + lavender ボーダー、CTA は sunYellow 立体シャドウ
+  //   (navCtaActive / navCtaDisabled は basic-info でも使うため上で早期定義済)
 
   return (
     <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">

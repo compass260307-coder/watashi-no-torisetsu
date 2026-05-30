@@ -39,11 +39,16 @@ import type { AnswerValue } from "@/lib/types";
 // =========================================================================
 // 状態管理
 // =========================================================================
+// Phase 1.5-α Day 12-Polish-B: name overlay 追加
+//   旧フロー: intro (名前入力) → scale → choice → consent → submitting
+//   新フロー: intro (名前なし) → scale → choice → consent → name → submitting
+//   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
 type Phase =
   | "intro"
   | "scale"
   | "choice"
   | "consent"
+  | "name"
   | "submitting"
   | "error";
 
@@ -230,8 +235,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         owner={owner}
         ownerName={ownerName}
         subjectLabel={subjectLabel}
-        perceiverName={perceiverName}
-        onPerceiverNameChange={setPerceiverName}
         onStart={startEvaluation}
       />
     );
@@ -267,6 +270,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   }
 
   if (phase === "consent") {
+    // Day 12-Polish-B: consent の「送信する」→ name overlay へ
     return (
       <ConsentScreen
         ownerName={ownerName}
@@ -274,6 +278,21 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         perceiverName={perceiverName}
         pdfConsent={pdfConsent}
         onConsentChange={setPdfConsent}
+        onSubmit={() => {
+          setPhase("name");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
+    );
+  }
+
+  if (phase === "name") {
+    // Day 12-Polish-B: 30 問 + consent 完了直後の overlay で名前を取る
+    return (
+      <NameOverlay
+        ownerName={ownerName}
+        perceiverName={perceiverName}
+        onPerceiverNameChange={setPerceiverName}
         onSubmit={submit}
       />
     );
@@ -293,21 +312,18 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 }
 
 // =========================================================================
-// Intro 画面 (Koi 風、A のキャラ + 充実説明 + 名前入力 + フローティング CTA)
+// Intro 画面 (Koi 風、A のキャラ + 充実説明 + フローティング CTA)
+// Day 12-Polish-B: 名前入力フォームを撤去 (完了直後の name overlay に移動)
 // =========================================================================
 function IntroScreen({
   owner,
   ownerName,
   subjectLabel,
-  perceiverName,
-  onPerceiverNameChange,
   onStart,
 }: {
   owner: OwnerInfo;
   ownerName: string;
   subjectLabel: string;
-  perceiverName: string;
-  onPerceiverNameChange: (v: string) => void;
   onStart: () => void;
 }) {
   return (
@@ -428,27 +444,7 @@ function IntroScreen({
           </p>
         </div>
 
-        {/* ===== 名前入力 ===== */}
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-          <label
-            htmlFor="perceiver-name"
-            className="block text-xs font-black text-[#3A2D6B] mb-2"
-          >
-            アナタの名前 ({ownerName}に表示されます)
-          </label>
-          <input
-            id="perceiver-name"
-            type="text"
-            value={perceiverName}
-            onChange={(e) => onPerceiverNameChange(e.target.value)}
-            maxLength={20}
-            placeholder="友達"
-            className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-sm text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
-          />
-          <p className="text-[#3A2D6B]/60 text-[11px] font-bold mt-2">
-            空のままでも OK (「友達」と表示)
-          </p>
-        </div>
+        {/* Day 12-Polish-B: 名前入力フォームは削除 (完了直後の name overlay に移動) */}
       </div>
 
       {/* ===== フローティング CTA ===== */}
@@ -766,6 +762,78 @@ function ErrorScreen({
       >
         もう一度送信する
       </button>
+    </div>
+  );
+}
+
+// =========================================================================
+// Phase 1.5-α Day 12-Polish-B: NameOverlay (30 問 + consent 完了直後の名前入力)
+// 「結果を見る前に、お名前を教えてください」
+// 必須 (空文字スキップ不可)、入力後 submit() で /api/friend-answer/v2 + router.push
+// =========================================================================
+function NameOverlay({
+  ownerName,
+  perceiverName,
+  onPerceiverNameChange,
+  onSubmit,
+}: {
+  ownerName: string;
+  perceiverName: string;
+  onPerceiverNameChange: (v: string) => void;
+  onSubmit: () => void;
+}) {
+  const trimmed = perceiverName.trim();
+  // 初期値 "友達" (state 初期値) は「未入力」と同等扱いで送信不可にする
+  const isPlaceholder = trimmed === "" || trimmed === "友達";
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="お名前の入力"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
+    >
+      <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
+        <p className="text-[10px] font-black tracking-[0.3em] text-[#FE3C72] mb-2">
+          あと、1 つだけ
+        </p>
+        <h2 className="text-[#3A2D6B] font-black text-xl leading-snug mb-2">
+          結果を見る前に、
+          <br />
+          お名前を教えてください
+        </h2>
+        <p className="text-[#3A2D6B]/70 text-xs font-bold leading-relaxed mb-5">
+          {ownerName}さんの結果画面に「アナタから見た」として表示されます。
+          ニックネームでも OK (20 文字以内)。
+        </p>
+
+        <label
+          htmlFor="perceiver-name-overlay"
+          className="block text-xs font-black text-[#3A2D6B] mb-2"
+        >
+          アナタの名前
+        </label>
+        <input
+          id="perceiver-name-overlay"
+          type="text"
+          value={isPlaceholder ? "" : perceiverName}
+          onChange={(e) => onPerceiverNameChange(e.target.value)}
+          maxLength={20}
+          placeholder="例: のすけ"
+          autoComplete="off"
+          autoFocus
+          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-5"
+        />
+
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={isPlaceholder}
+          className="w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
+        >
+          結果を見る →
+        </button>
+      </div>
     </div>
   );
 }
