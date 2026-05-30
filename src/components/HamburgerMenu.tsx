@@ -1,21 +1,25 @@
 "use client";
 
 // Phase 1.5-α Day 12-A: グローバルハンバーガーメニュー (3 項目)
+// Phase 1.5-α Day 12-Polish-A: z-index 修正 + 画面ほぼ全体を覆う Koi 風ドロワーに拡大
 //
-// 背景: これまで LP / /me/[token] / /friend-evaluation のヘッダー右端の ☰ は
-// 装飾のみだった (Day 10/11.x の Server Component 内の <button>☰</button>)。
-// Day 12 で「友達による評価」ページ A (ハブ) を新設したため、3 項目のメニューを
-// オーバーレイ形式で開けるようにする。
+// 修正内容 (Polish-A):
+//   - z-50 → z-[100] (overlay) / inner-card は親で覆われる
+//     → マスコット画像 (z-30 など) や FloatingCTABar (z-40/50) より確実に上に来る
+//   - 中身カード: min-w-[260px] → 画面ほぼ全体 (inset-x-2 top-3 bottom-3) を占有する Koi 風ドロワー
+//   - 内部 padding 増 (p-6 → p-8) + 項目間 gap-3 → gap-5 でゆったり配置
+//   - iOS safe-area: paddingBottom: env(safe-area-inset-bottom)
 //
-// 含む 3 項目:
+// 含む 3 項目 (Day 12-A 確定、本 PR で変更なし):
 //   1. トップ                  → /
-//   2. アナタのトリセツ        → myTrisetsuUrl prop (Server で /me/{ownerToken} を構築、未指定なら /diagnosis)
-//   3. 友達による評価          → /friend-evaluation (Day 12-A 新設のハブページ)
+//   2. アナタのトリセツ        → myTrisetsuUrl prop
+//   3. 友達による評価          → /friend-evaluation
 //
 // 触らない:
-//   - メニュー以外のヘッダー要素 (ロゴ、Image 配置)
-//   - メニューが置かれる各ページ自体の Server / Client 区分
-//   - ☰ / ✕ のグリフ (T3-5「絵文字一切不使用」だが ☰=U+2630, ✕=U+2715 は記号文字のため対象外、既存 me/[token] line 280 でも ☰ をそのまま使用)
+//   - メニュー項目の中身 / 順序 / リンク先
+//   - sunYellow CTA スタイル
+//   - 開閉動作 (☰ で開く / ✕ / 背景クリックで閉じる)
+//   - ☰ / ✕ のグリフ (記号文字、T3-5 対象外)
 
 import { useState } from "react";
 import Link from "next/link";
@@ -46,24 +50,31 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
           role="dialog"
           aria-modal="true"
           aria-label="メニュー"
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-start justify-end p-4 animate-modal-fade-in"
+          className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm animate-modal-fade-in"
           onClick={handleClose}
         >
           <div
-            className="mt-4 bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 min-w-[260px] animate-modal-slide-up"
+            className="absolute inset-x-2 top-3 bottom-3 bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-8 flex flex-col animate-modal-slide-up overflow-y-auto"
+            style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-end mb-3">
+            {/* ヘッダー: タイトル + ✕ */}
+            <div className="flex justify-between items-center mb-8">
+              <p className="text-[#3A2D6B]/60 font-black text-xs tracking-[0.3em]">
+                MENU
+              </p>
               <button
                 type="button"
                 aria-label="メニューを閉じる"
                 onClick={handleClose}
-                className="w-9 h-9 rounded-full bg-[#E4E0F5] flex items-center justify-center text-[#3A2D6B] font-black text-base hover:bg-[#FFD6E0] transition-colors"
+                className="w-10 h-10 rounded-full bg-[#E4E0F5] flex items-center justify-center text-[#3A2D6B] font-black text-base hover:bg-[#FFD6E0] transition-colors"
               >
                 ✕
               </button>
             </div>
-            <nav className="flex flex-col gap-3">
+
+            {/* メニュー本体 (ゆったり配置) */}
+            <nav className="flex flex-col gap-5">
               <MenuLink href="/" label="トップ" onClose={handleClose} />
               <MenuLink
                 href={myTrisetsuUrl || "/diagnosis"}
@@ -96,7 +107,7 @@ function MenuLink({
     <Link
       href={href}
       onClick={onClose}
-      className="block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+      className="block bg-[#FFE993] text-[#3A2D6B] font-black text-lg px-6 py-5 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
     >
       {label}
     </Link>
