@@ -37,6 +37,8 @@ import {
   topGaps,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
+import { isPerceptionUnlocked } from "@/lib/perception-unlock";
+import { UnlockCta } from "@/components/result/UnlockCta";
 import type { TorisetsuTypeId } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -61,9 +63,14 @@ export default async function EvaluationResultPage({
 }: PageProps) {
   const { perceptionId } = await params;
   const sp = await searchParams;
-  // Day 12-C1: Stripe 接続前の UI 確認用、?unlocked=1 で全章解除表示。
-  // Day 12-C2 で payment_history からの本判定に置き換える。
-  const unlocked = sp.unlocked === "1";
+  // Day 12-C2: payment_history からの本判定 + ?unlocked=1 は開発時 override として残す。
+  // - 本判定: isPerceptionUnlocked() が payment_history を SELECT
+  //   (status='completed' AND payment_kind='perception_unlock')
+  // - ?unlocked=1 は QA / UI 確認用 (本番でも誰でも付けられるが、
+  //   ロック解除ボタンが消える程度の影響なので脅威評価は無視可)
+  const devOverride = sp.unlocked === "1";
+  const paidUnlocked = await isPerceptionUnlocked(perceptionId);
+  const unlocked = paidUnlocked || devOverride;
 
   // ===== 1. perception 取得 =====
   const { data: perception, error: pErr } = await supabaseAdmin
@@ -181,8 +188,9 @@ export default async function EvaluationResultPage({
           unlocked={unlocked}
         />
 
-        {/* ===== ロック解除カード (Owner かつ 未 unlock のみ) =====
-            Day 12-C1 では disabled。Day 12-C2 で Stripe Checkout に接続。 */}
+        {/* ===== ロック解除カード (Owner かつ未 unlock のみ) =====
+            Day 12-C2: <UnlockCta> Client が POST → Stripe Checkout 起動。
+            paidUnlocked が true の場合はこのカード自体が非表示 (unlocked=true)。 */}
         {isOwner && !unlocked && (
           <div className="bg-gradient-to-b from-[#FFE993]/40 to-[#BCDEF8]/30 rounded-3xl border-2 border-[#3A2D6B] shadow-md p-6 mb-8 text-center">
             <p className="text-[#3A2D6B]/60 font-black text-xs tracking-[0.3em] mb-2">
@@ -196,16 +204,9 @@ export default async function EvaluationResultPage({
               <br />
               全部読めます。
             </p>
-            <button
-              type="button"
-              disabled
-              className="inline-block bg-[#FFE993] text-[#3A2D6B]/40 font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B]/30 cursor-not-allowed"
-              aria-label="¥500 で解除 (Day 12-C2 で Stripe 接続予定)"
-            >
-              ¥500 で今すぐ解除
-            </button>
+            <UnlockCta perceptionId={perceptionId} />
             <p className="text-[#3A2D6B]/50 text-[10px] font-bold mt-3">
-              Stripe Checkout 接続は Day 12-C2 にて
+              この {perceiverShort}さんの評価結果だけ、一度の決済で解除されます
             </p>
           </div>
         )}
