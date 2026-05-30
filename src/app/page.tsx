@@ -4,6 +4,8 @@ import Image from "next/image";
 // Day 6.2: <Footer /> の呼び出しを削除しカード内に統合。
 // コンポーネント本体 (components/Footer.tsx) は他ページで利用継続。
 import FloatingCTABar from "@/components/FloatingCTABar";
+// Day 12-A: 装飾だけだった ☰ を 3 項目ハンバーガーメニューに置換
+import { HamburgerMenu } from "@/components/HamburgerMenu";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -51,7 +53,9 @@ export default function Home() {
               ラッパー内の absolute 装飾はこの relative wrapper を基準に位置決め。 */}
           <div className="relative">
           {/* Day 7.3: ヘッダーロゴ復活 (左 logo.png + 右ハンバーガー大)
-              ロゴは halo の代わりに drop-shadow でふんわり grid から浮かす */}
+              ロゴは halo の代わりに drop-shadow でふんわり grid から浮かす
+              Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> に置換
+              LP は未ログイン前提のため myTrisetsuUrl は省略 (fallback で /diagnosis に飛ぶ) */}
           <div className="flex justify-between items-center mb-4">
             <Image
               src="/logo.png"
@@ -61,13 +65,7 @@ export default function Home() {
               priority
               className="w-[140px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
-            <button
-              type="button"
-              aria-label="メニュー"
-              className="w-12 h-12 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B]"
-            >
-              ☰
-            </button>
+            <HamburgerMenu />
           </div>
 
           {/* Day 7.2: 装飾を 4 つだけに整理 (大ハート / 大花 / キラキラ×2)

@@ -32,6 +32,7 @@ import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
+import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
   CModifier,
@@ -262,23 +263,20 @@ export default async function MePage({ params }: PageProps) {
     // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
       <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
-        {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) ===== */}
+        {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
+            Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
-          <Image
-            src="/logo.png"
-            alt="ワタシのトリセツ"
-            width={280}
-            height={80}
-            priority
-            className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
-          />
-          <button
-            type="button"
-            aria-label="メニュー"
-            className="w-12 h-12 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B] font-black"
-          >
-            ☰
-          </button>
+          <Link href="/" aria-label="トップへ">
+            <Image
+              src="/logo.png"
+              alt="ワタシのトリセツ"
+              width={280}
+              height={80}
+              priority
+              className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
+            />
+          </Link>
+          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
         {/* ===== ステッカー (傾き付き) ===== */}
