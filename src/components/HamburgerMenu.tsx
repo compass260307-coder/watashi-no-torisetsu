@@ -3,6 +3,10 @@
 // Phase 1.5-α Day 12-A: グローバルハンバーガーメニュー (3 項目)
 // Phase 1.5-α Day 12-Polish-A: z-index 修正 + 画面ほぼ全体を覆う Koi 風ドロワーに拡大
 // Phase 1.5-α Day 12-Polish-A.1: React Portal で document.body 直下にレンダリング
+// Phase 1.5-α Day 12-Polish-A.2: メニュー項目を画面の縦中央に配置 (下半分の空白解消)
+//   - 親 div は既存 flex flex-col、子 nav に flex-1 + justify-center で縦中央に。
+//   - ヘッダー (MENU タイトル + ✕) は nav の上に普通に並ぶ、nav が残り空間を埋める。
+//   - 項目間 gap-5 は維持、ドロワー型 (inset-x-2 top-3 bottom-3) も維持。
 //
 // 背景 (Polish-A.1):
 //   Polish-A で z-50 → z-[100] に上げたが、本番で LP のコンテンツ (バブル文字 /
@@ -82,8 +86,8 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
           </button>
         </div>
 
-        {/* メニュー本体 (ゆったり配置) */}
-        <nav className="flex flex-col gap-5">
+        {/* メニュー本体 (Polish-A.2: flex-1 + justify-center で残りスペースを縦中央に) */}
+        <nav className="flex-1 flex flex-col justify-center gap-5">
           <MenuLink href="/" label="トップ" onClose={handleClose} />
           <MenuLink
             href={myTrisetsuUrl || "/diagnosis"}
