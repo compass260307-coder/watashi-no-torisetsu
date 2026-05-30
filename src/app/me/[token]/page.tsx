@@ -515,6 +515,15 @@ export default async function MePage({ params }: PageProps) {
                         )}
                       </ul>
                     )}
+                  {/* Day 12-C1: 詳細結果 (6 章 freemium) へのリンク */}
+                  <div className="text-right mt-3">
+                    <Link
+                      href={`/evaluate/result/${p.id}`}
+                      className="text-[#FE3C72] text-xs font-black hover:underline"
+                    >
+                      結果を見る →
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>
