@@ -420,12 +420,9 @@ export default async function MePage({ params }: PageProps) {
           <VisitorCtaSection />
         )}
 
-        {/* ===== Client: キャラコード + SNS + 画像保存 (Day 10 維持) ===== */}
-        <ResultActions
-          fullCode={fullCode}
-          typeName={typeName}
-          shareUrl={shareUrl}
-        />
+        {/* ===== Client: SNS + 画像保存 (Day 10 / Day 11.4 で キャラコード重複削除) =====
+            キャラコードは FriendGapInvite 内で表示 (Day 11.3)、ResultActions からは撤去 */}
+        <ResultActions typeName={typeName} shareUrl={shareUrl} />
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
