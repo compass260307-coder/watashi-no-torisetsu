@@ -117,6 +117,15 @@ async function handleCheckoutCompleted(
       `session.metadata.user_id missing for session ${session.id}`,
     );
   }
+
+  // Phase 1.5-α Day 12-C2: payment_kind 分岐
+  // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
+  // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
+  if (metadata.payment_kind === "perception_unlock") {
+    await handlePerceptionUnlockCompleted(session, userId, metadata);
+    return;
+  }
+
   const includeSelf = metadata.include_self === "true";
   let perceptionIds: string[] = [];
   try {
@@ -256,6 +265,71 @@ async function handleCheckoutCompleted(
         err,
       );
     }
+  });
+}
+
+// ---------- Phase 1.5-α Day 12-C2: perception_unlock 経路 ----------
+// 評価 1 件ごとに ¥500 で解除する Stripe Checkout 完了処理。
+// payment_history に perception_id + payment_kind='perception_unlock' で INSERT するだけ、
+// integrated_trisetsu (AI 統合トリセツ) は生成しない (別経路)。
+//
+// Idempotency:
+//   - stripe_session_id UNIQUE で二重 Webhook を防ぐ (upsert ignoreDuplicates)
+//   - perception_id 部分 UNIQUE (migration day12-c2) で同一 perception への二重 completed
+//     を DB レベル防止 (アプリ層は /api/checkout/create-perception-unlock-session で
+//     事前 SELECT 拒否)
+async function handlePerceptionUnlockCompleted(
+  session: Stripe.Checkout.Session,
+  userId: string,
+  metadata: Record<string, string>,
+): Promise<void> {
+  const perceptionId = metadata.perception_id;
+  if (!perceptionId) {
+    throw new Error(
+      `session.metadata.perception_id missing for perception_unlock session ${session.id}`,
+    );
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+
+  const paymentRecord = {
+    user_id: userId,
+    perception_id: perceptionId,
+    payment_kind: "perception_unlock" as const,
+    stripe_session_id: session.id,
+    stripe_payment_intent_id: paymentIntentId,
+    amount_jpy: session.amount_total ?? 500,
+    currency: session.currency ?? "jpy",
+    status: "completed" as const,
+    paid_at: new Date().toISOString(),
+    metadata: {
+      perception_id: perceptionId,
+      payment_kind: "perception_unlock",
+    },
+  };
+
+  const { error: upsertErr } = await supabaseAdmin
+    .from("payment_history")
+    .upsert(paymentRecord, {
+      onConflict: "stripe_session_id",
+      ignoreDuplicates: true,
+    });
+
+  if (upsertErr) {
+    // 部分 UNIQUE 違反 (二重 unlock 試行) も含めて throw → Stripe にリトライさせる
+    // ただし二重 unlock は アプリ層で 409 拒否済のため、ここに来るのは race のみ
+    throw new Error(
+      `[perception_unlock] payment_history upsert failed: ${upsertErr.message}`,
+    );
+  }
+
+  console.log("[webhook/stripe] perception_unlock completed", {
+    session_id: session.id,
+    user_id: userId,
+    perception_id: perceptionId,
   });
 }
 
