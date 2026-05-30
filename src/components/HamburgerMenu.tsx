@@ -4,9 +4,11 @@
 // Phase 1.5-α Day 12-Polish-A: z-index 修正 + 画面ほぼ全体を覆う Koi 風ドロワーに拡大
 // Phase 1.5-α Day 12-Polish-A.1: React Portal で document.body 直下にレンダリング
 // Phase 1.5-α Day 12-Polish-A.2: メニュー項目を画面の縦中央に配置 (下半分の空白解消)
-//   - 親 div は既存 flex flex-col、子 nav に flex-1 + justify-center で縦中央に。
-//   - ヘッダー (MENU タイトル + ✕) は nav の上に普通に並ぶ、nav が残り空間を埋める。
-//   - 項目間 gap-5 は維持、ドロワー型 (inset-x-2 top-3 bottom-3) も維持。
+// Phase 1.5-α Day 12-Polish-A.3: ドロワー型を諦め、カード高さを内容に合わせる
+//   - inset-x-2 top-3 bottom-3 (画面全体ドロワー) → inset-x-2 top-3 (高さ自動)
+//   - Polish-A.2 で入れた flex-1 / justify-center は撤去 (中身に合った高さなので不要)
+//   - 結果: 上から自然に開く小〜中サイズのメニュー、下の空白が消える
+//   - 内部 padding (p-8) / safe-area / z-[100] / React Portal は維持
 //
 // 背景 (Polish-A.1):
 //   Polish-A で z-50 → z-[100] に上げたが、本番で LP のコンテンツ (バブル文字 /
@@ -67,7 +69,7 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
       onClick={handleClose}
     >
       <div
-        className="absolute inset-x-2 top-3 bottom-3 bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-8 flex flex-col animate-modal-slide-up overflow-y-auto"
+        className="absolute inset-x-2 top-3 max-h-[calc(100vh-24px)] bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-8 animate-modal-slide-up overflow-y-auto"
         style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -86,8 +88,8 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
           </button>
         </div>
 
-        {/* メニュー本体 (Polish-A.2: flex-1 + justify-center で残りスペースを縦中央に) */}
-        <nav className="flex-1 flex flex-col justify-center gap-5">
+        {/* メニュー本体 (Polish-A.3: カード高さは内容ベース、中央寄せは撤去) */}
+        <nav className="flex flex-col gap-5">
           <MenuLink href="/" label="トップ" onClose={handleClose} />
           <MenuLink
             href={myTrisetsuUrl || "/diagnosis"}
