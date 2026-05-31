@@ -812,7 +812,7 @@ function NameOverlay({
           value={isPlaceholder ? "" : perceiverName}
           onChange={(e) => onPerceiverNameChange(e.target.value)}
           maxLength={20}
-          placeholder="名前"
+          placeholder=""
           autoComplete="off"
           autoFocus
           className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-6"

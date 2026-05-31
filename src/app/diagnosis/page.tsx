@@ -326,7 +326,7 @@ function DiagnosisContent() {
                 if (nicknameError) setNicknameError(null);
               }}
               maxLength={NICKNAME_MAX}
-              placeholder="ニックネーム"
+              placeholder=""
               autoComplete="off"
               className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
             />
