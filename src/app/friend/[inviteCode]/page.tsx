@@ -542,8 +542,9 @@ function ScaleScreen({
         )}
       </main>
 
-      {/* Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter */}
-      <StickyCtaFooter>
+      {/* variant="solid": スケール 30 問は footer 直上に LikertScale の○が来るため
+          ボタン裏で透けないように不透明クリームを敷く */}
+      <StickyCtaFooter variant="solid">
         {page > 0 && (
           <button type="button" onClick={onPrev} className={ctaSecondary}>
             戻る
