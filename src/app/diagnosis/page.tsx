@@ -304,24 +304,18 @@ function DiagnosisContent() {
           </span>
         </div>
 
-        <main className="flex flex-col flex-1 px-4 pt-12 pb-4 max-w-lg mx-auto w-full">
-          {/* Polish-B.2: ステッカー風 大見出し (sunYellow + 立体シャドウ + 微回転) */}
-          <div className="flex justify-center mb-8 mt-2">
-            <h1 className="bg-[#FFE993] text-[#3A2D6B] font-black text-2xl sm:text-3xl px-7 py-3 rounded-full border-[3px] border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] -rotate-2 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.4)]">
-              ニックネームを教えて
-            </h1>
-          </div>
-
-          {/* Polish-B.2: ぷっくり入力カード (border 太め + 立体シャドウ) */}
-          <div className="w-full bg-white rounded-[28px] border-[3px] border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] p-7 mb-6">
-            {/* バブル文字風ラベル (BCDEF8 ステッカー、tracking 広め) */}
-            <div className="flex justify-center mb-5">
-              <span className="inline-block bg-[#BCDEF8] text-[#3A2D6B] font-black text-xs px-5 py-1.5 rounded-full border-2 border-[#3A2D6B] tracking-[0.2em]">
-                ニックネーム
-              </span>
+        {/* Polish-B.3: Q11/Q12 と同じ世界観に揃える
+            (カード + deepPurple ピルバッジ + 太字 deepPurple 見出し + 白入力欄) */}
+        <main className="flex flex-col flex-1 px-4 pt-10 pb-4 max-w-lg mx-auto w-full">
+          <div className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+            <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
+              はじめに
             </div>
-            <label htmlFor="diagnosis-nickname" className="sr-only">
-              ニックネーム
+            <label
+              htmlFor="diagnosis-nickname"
+              className="block text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6"
+            >
+              ニックネームを教えて
             </label>
             <input
               id="diagnosis-nickname"
@@ -332,15 +326,12 @@ function DiagnosisContent() {
                 if (nicknameError) setNicknameError(null);
               }}
               maxLength={NICKNAME_MAX}
-              placeholder=""
+              placeholder="ニックネーム"
               autoComplete="off"
-              className="w-full rounded-2xl border-[3px] border-[#3A2D6B]/30 bg-[#FFFCEF] px-5 py-4 text-lg text-[#3A2D6B] font-black text-center focus:outline-none focus:ring-4 focus:ring-[#FFE993]/60 focus:border-[#3A2D6B] transition-all"
+              className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
             />
             {nicknameError && (
-              <p
-                role="alert"
-                className="text-[#FE3C72] text-xs font-bold mt-3 text-center"
-              >
+              <p role="alert" className="text-[#FE3C72] text-xs font-bold mt-2">
                 {nicknameError}
               </p>
             )}
