@@ -696,13 +696,16 @@ function ConsentScreen({
           PDF 化と AI 統合素材化はできなくなります。
         </p>
 
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
-        >
-          {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
-        </button>
+        {/* Polish-D-A: w-full → 中央寄せ + min-w (Brand v2 標準 CTA) */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onSubmit}
+            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
+          >
+            {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
+          </button>
+        </div>
 
         <p className="mt-4 text-[10px] text-[#3A2D6B]/60 text-center font-bold">
           この設定は後から変更できません。
@@ -754,10 +757,11 @@ function ErrorScreen({
       <p className="text-xs text-[#3A2D6B]/70 font-bold mb-6 text-center">
         {message}
       </p>
+      {/* Polish-D-A: py-3 → py-4 + min-w-[220px] (Brand v2 標準 CTA) */}
       <button
         type="button"
         onClick={onRetry}
-        className="bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
       >
         もう一度送信する
       </button>
