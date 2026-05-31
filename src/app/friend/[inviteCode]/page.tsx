@@ -790,33 +790,50 @@ function NameOverlay({
       aria-label="お名前の入力"
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
     >
-      <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
-        <label
-          htmlFor="perceiver-name-overlay"
-          className="block text-[#3A2D6B] font-black text-xl leading-snug mb-4"
-        >
-          お名前を教えて
-        </label>
-        <input
-          id="perceiver-name-overlay"
-          type="text"
-          value={isPlaceholder ? "" : perceiverName}
-          onChange={(e) => onPerceiverNameChange(e.target.value)}
-          maxLength={20}
-          placeholder=""
-          autoComplete="off"
-          autoFocus
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-5"
-        />
+      {/* Polish-B.2: 外枠を lavender にして A 側 basic-info と世界観統一、内側に白カード */}
+      <div className="w-full max-w-md bg-[#E4E0F5] rounded-[28px] border-[3px] border-[#3A2D6B] shadow-2xl px-5 pt-7 pb-6 animate-modal-slide-up">
+        {/* Polish-B.2: ステッカー風 大見出し (sunYellow + 立体シャドウ + 微回転) */}
+        <div className="flex justify-center mb-6">
+          <h2 className="bg-[#FFE993] text-[#3A2D6B] font-black text-2xl px-7 py-3 rounded-full border-[3px] border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] -rotate-2 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.4)]">
+            お名前を教えて
+          </h2>
+        </div>
 
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={isPlaceholder}
-          className="w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
-        >
-          結果を見る →
-        </button>
+        {/* Polish-B.2: ぷっくり入力カード (border 太め + 立体シャドウ) */}
+        <div className="w-full bg-white rounded-[24px] border-[3px] border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] p-6 mb-6">
+          {/* バブル文字風ラベル */}
+          <div className="flex justify-center mb-5">
+            <span className="inline-block bg-[#BCDEF8] text-[#3A2D6B] font-black text-xs px-5 py-1.5 rounded-full border-2 border-[#3A2D6B] tracking-[0.2em]">
+              アナタの名前
+            </span>
+          </div>
+          <label htmlFor="perceiver-name-overlay" className="sr-only">
+            アナタの名前
+          </label>
+          <input
+            id="perceiver-name-overlay"
+            type="text"
+            value={isPlaceholder ? "" : perceiverName}
+            onChange={(e) => onPerceiverNameChange(e.target.value)}
+            maxLength={20}
+            placeholder=""
+            autoComplete="off"
+            autoFocus
+            className="w-full rounded-2xl border-[3px] border-[#3A2D6B]/30 bg-[#FFFCEF] px-5 py-4 text-lg text-[#3A2D6B] font-black text-center focus:outline-none focus:ring-4 focus:ring-[#FFE993]/60 focus:border-[#3A2D6B] transition-all"
+          />
+        </div>
+
+        {/* Polish-B.2: CTA 中央寄せ + max-w 制限 */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isPlaceholder}
+            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
+          >
+            結果を見る →
+          </button>
+        </div>
       </div>
     </div>
   );

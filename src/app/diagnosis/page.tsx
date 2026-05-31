@@ -287,39 +287,41 @@ function DiagnosisContent() {
   // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
   if (step === "basic-info") {
     return (
-      <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
+      <div className="relative flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
         {showRediagnoseModal && (
           <RediagnoseConfirmModal
             onConfirm={closeRediagnoseModal}
             onCancel={cancelRediagnose}
           />
         )}
-        {/* sticky 進捗 (Day 9 と同じスタイル、ただし basic-info 表示用) */}
-        <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
-          <div className="max-w-lg mx-auto px-4 py-3">
-            <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-2">
-              <span>はじめに</span>
-              <span>Page 0 / {TOTAL_PAGES}</span>
-            </div>
-            <div
-              className="w-full h-2 bg-white/60 rounded-full overflow-hidden"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={0}
-            >
-              <div className="h-full bg-[#FFE993] rounded-full w-0" />
-            </div>
-          </div>
+        {/* Polish-B.2: 進捗インジケータは右上に極小表示 (basic-info はミニマル) */}
+        <div className="absolute top-3 right-4 z-10">
+          <span
+            className="text-[10px] font-black tracking-[0.25em] text-[#3A2D6B]/45"
+            aria-label={`Step 0 of ${TOTAL_PAGES}`}
+          >
+            0 / {TOTAL_PAGES}
+          </span>
         </div>
 
-        <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
-          <div className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-            <label
-              htmlFor="diagnosis-nickname"
-              className="block text-base sm:text-lg font-black text-[#3A2D6B] mb-4"
-            >
+        <main className="flex flex-col flex-1 px-4 pt-12 pb-4 max-w-lg mx-auto w-full">
+          {/* Polish-B.2: ステッカー風 大見出し (sunYellow + 立体シャドウ + 微回転) */}
+          <div className="flex justify-center mb-8 mt-2">
+            <h1 className="bg-[#FFE993] text-[#3A2D6B] font-black text-2xl sm:text-3xl px-7 py-3 rounded-full border-[3px] border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] -rotate-2 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.4)]">
               ニックネームを教えて
+            </h1>
+          </div>
+
+          {/* Polish-B.2: ぷっくり入力カード (border 太め + 立体シャドウ) */}
+          <div className="w-full bg-white rounded-[28px] border-[3px] border-[#3A2D6B] shadow-[0_6px_0_#3A2D6B] p-7 mb-6">
+            {/* バブル文字風ラベル (BCDEF8 ステッカー、tracking 広め) */}
+            <div className="flex justify-center mb-5">
+              <span className="inline-block bg-[#BCDEF8] text-[#3A2D6B] font-black text-xs px-5 py-1.5 rounded-full border-2 border-[#3A2D6B] tracking-[0.2em]">
+                ニックネーム
+              </span>
+            </div>
+            <label htmlFor="diagnosis-nickname" className="sr-only">
+              ニックネーム
             </label>
             <input
               id="diagnosis-nickname"
@@ -332,12 +334,12 @@ function DiagnosisContent() {
               maxLength={NICKNAME_MAX}
               placeholder=""
               autoComplete="off"
-              className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
+              className="w-full rounded-2xl border-[3px] border-[#3A2D6B]/30 bg-[#FFFCEF] px-5 py-4 text-lg text-[#3A2D6B] font-black text-center focus:outline-none focus:ring-4 focus:ring-[#FFE993]/60 focus:border-[#3A2D6B] transition-all"
             />
             {nicknameError && (
               <p
                 role="alert"
-                className="text-[#FE3C72] text-xs font-bold mt-2"
+                className="text-[#FE3C72] text-xs font-bold mt-3 text-center"
               >
                 {nicknameError}
               </p>
@@ -345,13 +347,13 @@ function DiagnosisContent() {
           </div>
         </main>
 
-        {/* 下部固定ナビ (Day 9 と同じ Brand v2) */}
+        {/* Polish-B.2: 下部固定ナビ - 中央寄せ + max-w 制限 (フルワイド廃止) */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-          <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
+          <div className="max-w-lg mx-auto px-4 py-3 flex justify-center">
             <button
               type="button"
               onClick={handleBasicInfoNext}
-              className={navCtaActive}
+              className="rounded-full px-12 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]"
             >
               次へ
             </button>
