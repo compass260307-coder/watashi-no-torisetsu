@@ -290,7 +290,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     // Day 12-Polish-B: 30 問 + consent 完了直後の overlay で名前を取る
     return (
       <NameOverlay
-        ownerName={ownerName}
         perceiverName={perceiverName}
         onPerceiverNameChange={setPerceiverName}
         onSubmit={submit}
@@ -772,12 +771,10 @@ function ErrorScreen({
 // 必須 (空文字スキップ不可)、入力後 submit() で /api/friend-answer/v2 + router.push
 // =========================================================================
 function NameOverlay({
-  ownerName,
   perceiverName,
   onPerceiverNameChange,
   onSubmit,
 }: {
-  ownerName: string;
   perceiverName: string;
   onPerceiverNameChange: (v: string) => void;
   onSubmit: () => void;
@@ -794,24 +791,11 @@ function NameOverlay({
       className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
     >
       <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
-        <p className="text-[10px] font-black tracking-[0.3em] text-[#FE3C72] mb-2">
-          あと、1 つだけ
-        </p>
-        <h2 className="text-[#3A2D6B] font-black text-xl leading-snug mb-2">
-          結果を見る前に、
-          <br />
-          お名前を教えてください
-        </h2>
-        <p className="text-[#3A2D6B]/70 text-xs font-bold leading-relaxed mb-5">
-          {ownerName}さんの結果画面に「アナタから見た」として表示されます。
-          ニックネームでも OK (20 文字以内)。
-        </p>
-
         <label
           htmlFor="perceiver-name-overlay"
-          className="block text-xs font-black text-[#3A2D6B] mb-2"
+          className="block text-[#3A2D6B] font-black text-xl leading-snug mb-4"
         >
-          アナタの名前
+          お名前を教えて
         </label>
         <input
           id="perceiver-name-overlay"
@@ -819,7 +803,7 @@ function NameOverlay({
           value={isPlaceholder ? "" : perceiverName}
           onChange={(e) => onPerceiverNameChange(e.target.value)}
           maxLength={20}
-          placeholder="例: のすけ"
+          placeholder=""
           autoComplete="off"
           autoFocus
           className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-5"
