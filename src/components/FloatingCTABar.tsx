@@ -1,63 +1,33 @@
-// Phase 1.5-α Day 1: フローティング CTA バー (Cookie 状態認識)
+// Phase 1.5-α Day 12-Polish-D-B: LP フローティング CTA を 1 ボタン化 + 白背景撤去
 //
-// Server Component。getSession() で session を取得し、
-// (1) ゲスト / (2) 自己診断済み / (3) 友達評価あり / (4) 統合トリセツ完成済
-// の 4 状態に応じて主 / 副 2 ボタンを出し分ける。
+// 旧 (Day 1): 4 状態 (guest/diagnosed/perceived/paid) × 主 / 副 2 ボタン構成、
+//             白カプセル背景バー (rgba(255,249,240,0.95) + lavender border + boxShadow)
 //
-// 実スキーマ準拠の差し替え (Brand v2 spec → 既存実装):
-//   - 想定された users.result_json は存在しない
-//     → getSession() が返れば「診断済」とみなす (createSession は type_id 必須のため)
-//   - 想定された users.payment_status は存在しない
-//     → integrated_trisetsu.status='completed' の存在で判定
-//   - URL に使う token は users.owner_token (公開トークン)、
-//     users.session_token (Cookie 値) は URL に出さない
+// 新 (Polish-D-B):
+//   - 状態を 2 つに統合: guest / diagnosed (diagnosed には perceived / paid を含む)
+//   - 状態別 1 ボタンのみ表示、サービスのコア体験 (相互理解度) への自然な誘導に統一
+//     - guest:     「無料で診断する」     → /diagnosis
+//     - diagnosed: 「相互理解度を測る」  → /friend-evaluation
+//   - 白背景バーを撤去、ボタン単体を grid-bg の上にふわっと浮かせる
+//     (FriendFlowFloatingCta = Day 12-C3-fix と同じ方針)
+//   - Brand v2 標準 CTA スタイル (sunYellow + deepPurple border + shadow-[0_4px_0])
+//   - iOS safe-area 対応 (padding-bottom: env(safe-area-inset-bottom))
+//
+// 古い言語「真のトリセツ ¥500」が LP から消え、「相互理解度」というサービスの
+// 新しい核に言語統一される。
+//
+// セッション判定は getSession() のみ。owner_token があれば diagnosed 扱い
+// (createSession は type_id 必須のため、有効 session ≒ 診断済)。
 
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import { supabaseAdmin } from "@/lib/supabase-server";
 
-type CTAState =
-  | { type: "guest" }
-  | { type: "diagnosed"; token: string }
-  | { type: "perceived"; token: string }
-  | { type: "paid"; token: string; integratedId: string };
+type CTAState = { type: "guest" } | { type: "diagnosed" };
 
 async function detectState(): Promise<CTAState> {
   const session = await getSession();
-  if (!session) return { type: "guest" };
-  // owner_token が無いセッション (理論上発生しないが防御) はゲスト扱い
-  const ownerToken = session.owner_token;
-  if (!ownerToken) return { type: "guest" };
-
-  // 完成済 integrated_trisetsu があれば paid (Phase 1 では存在 = 課金済の proxy)
-  const { data: integrated } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .select("id")
-    .eq("user_id", session.id)
-    .eq("status", "completed")
-    .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (integrated) {
-    return {
-      type: "paid",
-      token: ownerToken,
-      integratedId: integrated.id as string,
-    };
-  }
-
-  // 友達評価の有無
-  const { count } = await supabaseAdmin
-    .from("friend_perceptions")
-    .select("id", { count: "exact", head: true })
-    .eq("target_user_id", session.id);
-
-  if ((count ?? 0) >= 1) {
-    return { type: "perceived", token: ownerToken };
-  }
-
-  return { type: "diagnosed", token: ownerToken };
+  if (!session?.owner_token) return { type: "guest" };
+  return { type: "diagnosed" };
 }
 
 interface CtaButton {
@@ -65,69 +35,30 @@ interface CtaButton {
   href: string;
 }
 
-function buttonsFor(state: CTAState): { primary: CtaButton; secondary: CtaButton } {
+function buttonFor(state: CTAState): CtaButton {
   switch (state.type) {
     case "guest":
-      return {
-        primary: { label: "無料で診断する", href: "/diagnosis" },
-        // ゲストには 32 タイプ図鑑をサンプルとして紹介 (zukan-mine は要 session)
-        secondary: { label: "サンプルを見る", href: "/zukan/all" },
-      };
+      return { label: "無料で診断する", href: "/diagnosis" };
     case "diagnosed":
-      return {
-        primary: {
-          label: "友達に診断を頼む",
-          href: `/me/${state.token}?tab=share`,
-        },
-        secondary: { label: "自分のトリセツ", href: `/me/${state.token}` },
-      };
-    case "perceived":
-      return {
-        primary: { label: "真のトリセツを作る ¥500", href: "/integrated/new" },
-        secondary: { label: "自分のトリセツ", href: `/me/${state.token}` },
-      };
-    case "paid":
-      return {
-        primary: {
-          label: "真のトリセツを見る",
-          href: `/integrated/${state.integratedId}`,
-        },
-        secondary: { label: "自分のトリセツ", href: `/me/${state.token}` },
-      };
+      return { label: "相互理解度を測る", href: "/friend-evaluation" };
   }
 }
 
 export default async function FloatingCTABar() {
   const state = await detectState();
-  const { primary, secondary } = buttonsFor(state);
+  const button = buttonFor(state);
 
   return (
     <div
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[480px] z-50"
-      style={{
-        backgroundColor: "rgba(255, 249, 240, 0.95)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        padding: "12px",
-        borderRadius: "9999px",
-        border: "2px solid #C8B7F0",
-        boxShadow: "0 4px 16px rgba(58, 45, 107, 0.15)",
-      }}
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[480px] z-50 flex justify-center"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="flex gap-2">
-        <Link
-          href={primary.href}
-          className="flex-1 bg-[#FFE993] text-[#3A2D6B] py-3 px-4 rounded-full text-sm font-black text-center border-2 border-[#3A2D6B] truncate"
-        >
-          {primary.label}
-        </Link>
-        <Link
-          href={secondary.href}
-          className="flex-1 bg-white text-[#3A2D6B] py-3 px-4 rounded-full text-sm font-bold text-center border-2 border-[#3A2D6B] truncate"
-        >
-          {secondary.label}
-        </Link>
-      </div>
+      <Link
+        href={button.href}
+        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] text-center"
+      >
+        {button.label}
+      </Link>
     </div>
   );
 }
