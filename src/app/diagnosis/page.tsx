@@ -398,7 +398,9 @@ function DiagnosisContent() {
         )}
       </main>
 
-      <StickyCtaFooter>
+      {/* variant="solid": 50 問 ScaleScreen は footer 直上に回答の○が来るため
+          ボタン裏で透けないように不透明クリームを敷く */}
+      <StickyCtaFooter variant="solid">
         {currentPage > 0 && (
           <button type="button" onClick={handlePrev} className={ctaSecondary}>
             戻る

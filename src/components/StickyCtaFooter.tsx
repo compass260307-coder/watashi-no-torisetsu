@@ -1,33 +1,68 @@
-// Phase 1.5-α Day 12-Polish-D-A FINAL: 全画面共通の固定 CTA フッター
+// Phase 1.5-α Day 12-Polish-D-A FINAL + variant 化: 全画面共通の固定 CTA フッター
 //
 // 設計思想:
 //   - 白い矩形バー (床) を全廃。代わりに「フロスト・グラデーション・スクリム」で統一。
 //     - 下端は不透明クリーム (#FFF9F0) → ボタン直下のコントラスト確保 (視認性◎)
 //     - 上端は完全フェード (transparent) → 矩形の白エッジを作らない
-//     - backdrop-blur で grid-bg をふんわりぼかして透けさせる (LP 世界観統一)
 //   - LP / 名前入力 / 診断 / friend 評価フロー、全画面でこの 1 部品を使う。
-//     Day 12-C3-fix で FriendFlowFloatingCta に行った白背景撤去方針を本部品で正式化。
+//
+// variant (画面の性質で 2 種類):
+//   - "scrim" (既定): 半透明クリーム + grid-bg ぼかし透過 + 上端マスクフェード
+//     用途: footer 直上に回答や選択肢が来ない画面
+//           (LP / 名前入力 / friend intro·consent·error / NameOverlay)
+//   - "solid": 不透明クリーム (下 60% ベタ) + 上端羽根フェード、ぼかしフィルタなし
+//     用途: footer 直上に回答 / 選択肢が来る画面
+//           (診断 50 問 ScaleScreen / friend スケール ScaleScreen)
+//     "solid" の理由: scrim の半透明 + blur だと、ボタン裏に回答の○が霧がかって
+//     透けて見えてしまい、ごちゃつく。不透明クリームならボタン裏でブロックされる。
+//
+// レイアウト:
+//   - 背景レイヤー (絶対配置 inset-0) にだけ blur / mask を当てる。
+//   - ボタンは前面レイヤーで常に不透明 (マスク非対象)。
 //
 // 使い方:
 //   <StickyCtaFooter>
 //     <button className={ctaPrimary}>次へ</button>
 //   </StickyCtaFooter>
 //
-//   <StickyCtaFooter>
+//   <StickyCtaFooter variant="solid">
 //     <button className={ctaSecondary}>戻る</button>
 //     <button className={ctaPrimary}>次へ</button>
 //   </StickyCtaFooter>
 //
 // 注意:
-//   - 本文側に pb-32 程度の下部余白を確保すること (コンテンツが footer に隠れない)
+//   - 本文側に pb-32 程度の下部余白を確保 (コンテンツが footer に隠れない)
 //   - z-50。HamburgerMenu (z-[100] Portal) より下、それ以外より上。
 
 import type { ReactNode } from "react";
 
-export function StickyCtaFooter({ children }: { children: ReactNode }) {
+type Variant = "scrim" | "solid";
+
+const bgClass: Record<Variant, string> = {
+  // scrim: 半透明クリーム + blur + 上端マスクフェードで blur 上端の薄い線も消す
+  scrim:
+    "bg-gradient-to-t from-[#FFF9F0]/95 via-[#FFF9F0]/80 to-transparent backdrop-blur-sm " +
+    "[mask-image:linear-gradient(to_top,#000_55%,transparent)] " +
+    "[-webkit-mask-image:linear-gradient(to_top,#000_55%,transparent)]",
+  // solid: 下 60% ベタの不透明クリーム + 上 40% フェード。blur なし。
+  solid: "bg-gradient-to-t from-[#FFF9F0] from-[60%] to-transparent",
+};
+
+export function StickyCtaFooter({
+  children,
+  variant = "scrim",
+}: {
+  children: ReactNode;
+  variant?: Variant;
+}) {
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-center gap-3 pt-12 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#FFF9F0]/95 via-[#FFF9F0]/80 to-transparent backdrop-blur-sm">
-      {children}
+    <div className="fixed bottom-0 inset-x-0 z-50 pt-12 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      {/* 背景レイヤー (ボタンの裏)。mask / ぼかしはここだけに効かせる */}
+      <div aria-hidden className={`absolute inset-0 ${bgClass[variant]}`} />
+      {/* 前面: 主要 CTA (常に不透明・マスク非対象) */}
+      <div className="relative flex items-center justify-center gap-3">
+        {children}
+      </div>
     </div>
   );
 }
