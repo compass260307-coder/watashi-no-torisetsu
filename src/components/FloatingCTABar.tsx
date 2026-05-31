@@ -53,9 +53,10 @@ export default async function FloatingCTABar() {
       className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[480px] z-50 flex justify-center"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
+      {/* Polish-D-B revised: Polish-D-A 統一基準 (px-10 → px-8) に揃える */}
       <Link
         href={button.href}
-        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] text-center"
+        className="rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px] text-center"
       >
         {button.label}
       </Link>
