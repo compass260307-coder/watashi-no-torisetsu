@@ -9,6 +9,11 @@ import type { AnswerValue } from "@/lib/types";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { ProgressBar } from "@/components/diagnosis/ProgressBar";
 import { QuestionCard } from "@/components/diagnosis/QuestionCard";
+import {
+  StickyCtaFooter,
+  ctaPrimary,
+  ctaSecondary,
+} from "@/components/StickyCtaFooter";
 
 const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
@@ -277,17 +282,15 @@ function DiagnosisContent() {
     router.push("/zukan-mine");
   };
 
-  // Phase 1.5-α Day 9: Brand v2 化 / Day 12-Polish-B: basic-info でも使うため早期定義
-  const navCtaActive =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
-  const navCtaDisabled =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+  // Polish-D-A FINAL: 標準 CTA は components/StickyCtaFooter.tsx の
+  //   ctaPrimary / ctaSecondary を import して使用する (ローカル定義は廃止)。
+  //   disabled は CSS で opacity:50 + cursor-not-allowed のみ、形・枠は維持。
 
   // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネームを取得)
   // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
   if (step === "basic-info") {
     return (
-      <div className="relative flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
+      <div className="relative flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
         {showRediagnoseModal && (
           <RediagnoseConfirmModal
             onConfirm={closeRediagnoseModal}
@@ -338,30 +341,26 @@ function DiagnosisContent() {
           </div>
         </main>
 
-        {/* Polish-B.2: 下部固定ナビ - 中央寄せ + max-w 制限 (フルワイド廃止) */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-          <div className="max-w-lg mx-auto px-4 py-3 flex justify-center">
-            <button
-              type="button"
-              onClick={handleBasicInfoNext}
-              className="rounded-full px-12 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]"
-            >
-              次へ
-            </button>
-          </div>
-        </div>
+        {/* Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter (フロスト・グラデ・スクリム) */}
+        <StickyCtaFooter>
+          <button
+            type="button"
+            onClick={handleBasicInfoNext}
+            className={ctaPrimary}
+          >
+            次へ
+          </button>
+        </StickyCtaFooter>
       </div>
     );
   }
 
-  // Phase 1.5-α Day 9: Brand v2 化 (見た目のみ、ロジック / 質問文 / ページ分割は一切変更なし)
-  // - ルート背景: lavender 単色 (grid なし、診断中の集中を妨げない)
-  // - 補助テキスト: deepPurple 透過
-  // - 下部固定ナビ: 白半透明 + lavender ボーダー、CTA は sunYellow 立体シャドウ
-  //   (navCtaActive / navCtaDisabled は basic-info でも使うため上で早期定義済)
+  // Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter (全画面共通)
+  //   - 戻る は conditional render (page 0 では非表示で 次へ を完全中央に)
+  //   - 次へ / 結果を見る は常に同じ ctaPrimary (disabled は opacity のみ)
 
   return (
-    <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
+    <div className="flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
       {showRediagnoseModal && (
         <RediagnoseConfirmModal
           onConfirm={closeRediagnoseModal}
@@ -399,45 +398,32 @@ function DiagnosisContent() {
         )}
       </main>
 
-      {/* 下部固定ナビ (Day 9: white/85 + lavender ボーダー + sunYellow CTA) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={currentPage === 0}
-            className={`rounded-full border-2 px-5 py-3 text-sm font-bold transition-all ${
-              currentPage === 0
-                ? "opacity-0 pointer-events-none border-transparent"
-                : "border-[#3A2D6B]/30 text-[#3A2D6B] hover:bg-[#E4E0F5]"
-            }`}
-          >
+      <StickyCtaFooter>
+        {currentPage > 0 && (
+          <button type="button" onClick={handlePrev} className={ctaSecondary}>
             戻る
           </button>
-
-          {!isLastPage ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={!isPageComplete}
-              className={isPageComplete ? navCtaActive : navCtaDisabled}
-            >
-              次へ
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!isAllComplete || submitting}
-              className={
-                isAllComplete && !submitting ? navCtaActive : navCtaDisabled
-              }
-            >
-              {submitting ? "診断中..." : "結果を見る"}
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+        {!isLastPage ? (
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={!isPageComplete}
+            className={ctaPrimary}
+          >
+            次へ
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!isAllComplete || submitting}
+            className={ctaPrimary}
+          >
+            {submitting ? "診断中..." : "結果を見る"}
+          </button>
+        )}
+      </StickyCtaFooter>
     </div>
   );
 }

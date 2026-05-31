@@ -33,7 +33,11 @@ import {
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
-import { FriendFlowFloatingCta } from "@/components/friend/FriendFlowFloatingCta";
+import {
+  StickyCtaFooter,
+  ctaPrimary,
+  ctaSecondary,
+} from "@/components/StickyCtaFooter";
 import type { AnswerValue } from "@/lib/types";
 
 // =========================================================================
@@ -446,8 +450,12 @@ function IntroScreen({
         {/* Day 12-Polish-B: 名前入力フォームは削除 (完了直後の name overlay に移動) */}
       </div>
 
-      {/* ===== フローティング CTA ===== */}
-      <FriendFlowFloatingCta onClick={onStart} label="相互理解度を測る" />
+      {/* Polish-D-A FINAL: FriendFlowFloatingCta を撤去、StickyCtaFooter に統一 */}
+      <StickyCtaFooter>
+        <button type="button" onClick={onStart} className={ctaPrimary}>
+          相互理解度を測る →
+        </button>
+      </StickyCtaFooter>
     </main>
   );
 }
@@ -480,13 +488,10 @@ function ScaleScreen({
   const percent = Math.round((answeredCount / FRIEND_QUESTIONS_V2_TOTAL) * 100);
   const inviteeName = subjectLabel.replace(/さん$/, "");
 
-  const navCtaActive =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
-  const navCtaDisabled =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+  // Polish-D-A FINAL: ctaPrimary / ctaSecondary を import (ローカル navCta* 廃止)
 
   return (
-    <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
+    <div className="flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
       {/* sticky progress (Day 9 と同じ Brand v2 化済 ProgressBar 互換) */}
       <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
         <div className="max-w-lg mx-auto px-4 py-3">
@@ -537,31 +542,22 @@ function ScaleScreen({
         )}
       </main>
 
-      {/* 下部固定ナビ (Day 9 と同じ Brand v2) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={page === 0}
-            className={`rounded-full border-2 px-5 py-3 text-sm font-bold transition-all ${
-              page === 0
-                ? "opacity-0 pointer-events-none border-transparent"
-                : "border-[#3A2D6B]/30 text-[#3A2D6B] hover:bg-[#E4E0F5]"
-            }`}
-          >
+      {/* Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter */}
+      <StickyCtaFooter>
+        {page > 0 && (
+          <button type="button" onClick={onPrev} className={ctaSecondary}>
             戻る
           </button>
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={!isPageComplete}
-            className={isPageComplete ? navCtaActive : navCtaDisabled}
-          >
-            {isLastPage ? "おまけの質問へ →" : "次へ"}
-          </button>
-        </div>
-      </div>
+        )}
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!isPageComplete}
+          className={ctaPrimary}
+        >
+          {isLastPage ? "おまけの質問へ →" : "次へ"}
+        </button>
+      </StickyCtaFooter>
     </div>
   );
 }
@@ -645,7 +641,7 @@ function ConsentScreen({
   onSubmit: () => void;
 }) {
   return (
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 flex flex-col flex-1">
+    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32 flex flex-col flex-1">
       <div className="max-w-[480px] mx-auto w-full">
         <header className="text-center mb-6">
           <p className="text-[10px] font-black tracking-[0.3em] text-[#FE3C72] mb-2">
@@ -690,27 +686,22 @@ function ConsentScreen({
           </label>
         </section>
 
-        <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-6 font-bold">
+        <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-2 font-bold">
           ※ チェックしない場合も評価は送信されます。{ownerName}さんは
           「アナタから見た{ownerName}さん」を Web 画面で閲覧できますが、
           PDF 化と AI 統合素材化はできなくなります。
         </p>
-
-        {/* Polish-D-A: w-full → 中央寄せ + min-w (Brand v2 標準 CTA) */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onSubmit}
-            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
-          >
-            {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
-          </button>
-        </div>
-
-        <p className="mt-4 text-[10px] text-[#3A2D6B]/60 text-center font-bold">
+        <p className="text-[10px] text-[#3A2D6B]/60 text-center font-bold mb-2">
           この設定は後から変更できません。
         </p>
       </div>
+
+      {/* Polish-D-A FINAL: 送信ボタンを StickyCtaFooter に移動 */}
+      <StickyCtaFooter>
+        <button type="button" onClick={onSubmit} className={ctaPrimary}>
+          {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
+        </button>
+      </StickyCtaFooter>
     </main>
   );
 }
@@ -750,21 +741,19 @@ function ErrorScreen({
   onRetry: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5 py-10">
+    <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5 py-10 pb-32">
       <p className="text-base font-black text-[#3A2D6B] mb-4">
         送信に失敗しました
       </p>
       <p className="text-xs text-[#3A2D6B]/70 font-bold mb-6 text-center">
         {message}
       </p>
-      {/* Polish-D-A: py-3 → py-4 + min-w-[220px] (Brand v2 標準 CTA) */}
-      <button
-        type="button"
-        onClick={onRetry}
-        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
-      >
-        もう一度送信する
-      </button>
+      {/* Polish-D-A FINAL: 再試行ボタンを StickyCtaFooter に移動 */}
+      <StickyCtaFooter>
+        <button type="button" onClick={onRetry} className={ctaPrimary}>
+          もう一度送信する
+        </button>
+      </StickyCtaFooter>
     </div>
   );
 }
@@ -787,15 +776,18 @@ function NameOverlay({
   // 初期値 "友達" (state 初期値) は「未入力」と同等扱いで送信不可にする
   const isPlaceholder = trimmed === "" || trimmed === "友達";
 
+  // Polish-D-A FINAL: モーダル内のボタンを StickyCtaFooter に移動。
+  //   - モーダル親 div の中に配置することで、ダイアログの暗背景の上に footer が乗る
+  //     (DOM 順で後ろなので、同じ z-50 でも footer が前面に来る)
+  //   - 親に pb-32 を追加して、カードが footer に重ならないよう中央領域を上にずらす
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="お名前の入力"
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 pb-32 animate-modal-fade-in"
     >
-      {/* Polish-B.3: Q11/Q12 と同じ世界観に揃える
-          (白カード + deepPurple ピルバッジ + 太字 deepPurple 見出し + 白入力欄) */}
+      {/* Polish-B.3: Q11/Q12 と同じ世界観 (白カード + ピル + 太字見出し + 白入力欄) */}
       <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
         <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
           最後に
@@ -815,21 +807,20 @@ function NameOverlay({
           placeholder=""
           autoComplete="off"
           autoFocus
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-6"
+          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
         />
-
-        {/* Polish-B.3: CTA 中央寄せ + max-w 制限 (B.2 から維持) */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={isPlaceholder}
-            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
-          >
-            結果を見る →
-          </button>
-        </div>
       </div>
+
+      <StickyCtaFooter>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={isPlaceholder}
+          className={ctaPrimary}
+        >
+          結果を見る →
+        </button>
+      </StickyCtaFooter>
     </div>
   );
 }
