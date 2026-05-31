@@ -1,26 +1,23 @@
-// Phase 1.5-α Day 12-Polish-D-B: LP フローティング CTA を 1 ボタン化 + 白背景撤去
+// Phase 1.5-α Day 12-Polish-D-B FINAL: LP フローティングを StickyCtaFooter (scrim) に載せ替え
 //
-// 旧 (Day 1): 4 状態 (guest/diagnosed/perceived/paid) × 主 / 副 2 ボタン構成、
-//             白カプセル背景バー (rgba(255,249,240,0.95) + lavender border + boxShadow)
+// 旧 (Day 1):     4 状態 (guest / diagnosed / perceived / paid) × 主 / 副 2 ボタン構成、
+//                 白カプセル背景バー (rgba(255,249,240,0.95) + lavender border + boxShadow)
+// 旧 (Polish-D-B): 2 状態に統合、白背景撤去 (Link を fixed bottom-4 で浮かせる)
+//                  → 独自 fixed レイアウト + 立体シャドウだけ持つ、他画面と微妙にズレ
 //
-// 新 (Polish-D-B):
-//   - 状態を 2 つに統合: guest / diagnosed (diagnosed には perceived / paid を含む)
-//   - 状態別 1 ボタンのみ表示、サービスのコア体験 (相互理解度) への自然な誘導に統一
-//     - guest:     「無料で診断する」     → /diagnosis
-//     - diagnosed: 「相互理解度を測る」  → /friend-evaluation
-//   - 白背景バーを撤去、ボタン単体を grid-bg の上にふわっと浮かせる
-//     (FriendFlowFloatingCta = Day 12-C3-fix と同じ方針)
-//   - Brand v2 標準 CTA スタイル (sunYellow + deepPurple border + shadow-[0_4px_0])
-//   - iOS safe-area 対応 (padding-bottom: env(safe-area-inset-bottom))
+// 新 (D-B FINAL): 全画面共通の StickyCtaFooter (scrim 既定) に載せ替え。
+//                 LP は背景が grid-bg + 装飾的でスクリム (半透明 + blur) がそのまま
+//                 ハマる画面なので variant 既定の scrim でよい。
+//                 ボタンは ctaPrimary (D-A 標準 CTA) に統一。
+//                 古い言語「真のトリセツ ¥500」は既に Polish-D-B (Day 12) で
+//                 排除済、「相互理解度」に統一済。
 //
-// 古い言語「真のトリセツ ¥500」が LP から消え、「相互理解度」というサービスの
-// 新しい核に言語統一される。
-//
-// セッション判定は getSession() のみ。owner_token があれば diagnosed 扱い
+// セッション判定: getSession() のみ。owner_token があれば diagnosed 扱い
 // (createSession は type_id 必須のため、有効 session ≒ 診断済)。
 
 import Link from "next/link";
 import { getSession } from "@/lib/session";
+import { StickyCtaFooter, ctaPrimary } from "./StickyCtaFooter";
 
 type CTAState = { type: "guest" } | { type: "diagnosed" };
 
@@ -49,16 +46,10 @@ export default async function FloatingCTABar() {
   const button = buttonFor(state);
 
   return (
-    <div
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[480px] z-50 flex justify-center"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-    >
-      <Link
-        href={button.href}
-        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] text-center"
-      >
+    <StickyCtaFooter>
+      <Link href={button.href} className={ctaPrimary}>
         {button.label}
       </Link>
-    </div>
+    </StickyCtaFooter>
   );
 }
