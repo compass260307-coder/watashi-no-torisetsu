@@ -315,20 +315,11 @@ function DiagnosisContent() {
 
         <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
           <div className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-            <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
-              はじめに
-            </div>
-            <p className="text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-2">
-              まずは基本情報を教えてね
-            </p>
-            <p className="text-[#3A2D6B]/70 text-xs font-bold leading-relaxed mb-5">
-              ニックネームでも OK だよ ({NICKNAME_MAX} 文字以内)
-            </p>
             <label
               htmlFor="diagnosis-nickname"
-              className="block text-xs font-black text-[#3A2D6B] mb-2"
+              className="block text-base sm:text-lg font-black text-[#3A2D6B] mb-4"
             >
-              ニックネーム
+              ニックネームを教えて
             </label>
             <input
               id="diagnosis-nickname"
@@ -339,7 +330,7 @@ function DiagnosisContent() {
                 if (nicknameError) setNicknameError(null);
               }}
               maxLength={NICKNAME_MAX}
-              placeholder="例: のすけ"
+              placeholder=""
               autoComplete="off"
               className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
             />
@@ -351,10 +342,6 @@ function DiagnosisContent() {
                 {nicknameError}
               </p>
             )}
-            <p className="text-[#3A2D6B]/55 text-[11px] font-bold mt-3 leading-relaxed">
-              入力した名前は、診断結果と友達からの評価ページに表示されます。
-              漢字・英語・かな、どれでも OK。
-            </p>
           </div>
         </main>
 
