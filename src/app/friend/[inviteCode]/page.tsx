@@ -480,10 +480,15 @@ function ScaleScreen({
   const percent = Math.round((answeredCount / FRIEND_QUESTIONS_V2_TOTAL) * 100);
   const inviteeName = subjectLabel.replace(/さん$/, "");
 
+  // Polish-D-A revised: LP フローティング基準の標準 CTA に統一
+  //   - flex-1 廃止 → 中央寄せ + min-w-[220px]
+  //   - px-6 text-sm → px-8 py-4 text-base
   const navCtaActive =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
+    "rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]";
   const navCtaDisabled =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+    "rounded-full px-8 py-4 text-base font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed min-w-[220px]";
+  const navCtaSecondary =
+    "rounded-full px-5 py-3 text-sm font-bold bg-white text-[#3A2D6B] border-2 border-[#3A2D6B] hover:bg-[#E4E0F5] transition-all";
 
   return (
     <div className="flex flex-col flex-1 min-h-screen pb-28 bg-[#E4E0F5]">
@@ -537,21 +542,16 @@ function ScaleScreen({
         )}
       </main>
 
-      {/* 下部固定ナビ (Day 9 と同じ Brand v2) */}
+      {/* Polish-D-A revised: 下部固定ナビ
+          - flex-1 廃止 → 中央寄せ + button 個別 min-w
+          - 戻る conditional render (page 0 は 次へ を完全中央に) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={page === 0}
-            className={`rounded-full border-2 px-5 py-3 text-sm font-bold transition-all ${
-              page === 0
-                ? "opacity-0 pointer-events-none border-transparent"
-                : "border-[#3A2D6B]/30 text-[#3A2D6B] hover:bg-[#E4E0F5]"
-            }`}
-          >
-            戻る
-          </button>
+        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center justify-center">
+          {page > 0 && (
+            <button type="button" onClick={onPrev} className={navCtaSecondary}>
+              戻る
+            </button>
+          )}
           <button
             type="button"
             onClick={onNext}
@@ -696,12 +696,12 @@ function ConsentScreen({
           PDF 化と AI 統合素材化はできなくなります。
         </p>
 
-        {/* Polish-D-A: w-full → 中央寄せ + min-w (Brand v2 標準 CTA) */}
+        {/* Polish-D-A revised: LP フローティング基準 (px-8 py-4 + min-w-[220px]) */}
         <div className="flex justify-center">
           <button
             type="button"
             onClick={onSubmit}
-            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
+            className="rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]"
           >
             {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
           </button>
@@ -757,11 +757,11 @@ function ErrorScreen({
       <p className="text-xs text-[#3A2D6B]/70 font-bold mb-6 text-center">
         {message}
       </p>
-      {/* Polish-D-A: py-3 → py-4 + min-w-[220px] (Brand v2 標準 CTA) */}
+      {/* Polish-D-A revised: LP フローティング基準 (px-8 py-4 + min-w-[220px]) */}
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px]"
+        className="rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]"
       >
         もう一度送信する
       </button>
@@ -818,13 +818,13 @@ function NameOverlay({
           className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors mb-6"
         />
 
-        {/* Polish-B.3: CTA 中央寄せ + max-w 制限 (B.2 から維持) */}
+        {/* Polish-D-A revised: LP フローティング基準 (px-8 py-4 + min-w-[220px]) */}
         <div className="flex justify-center">
           <button
             type="button"
             onClick={onSubmit}
             disabled={isPlaceholder}
-            className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
+            className="rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-[0_4px_0_#3A2D6B]"
           >
             結果を見る →
           </button>

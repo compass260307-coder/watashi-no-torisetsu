@@ -32,7 +32,7 @@ export function FriendFlowFloatingCta({
   label = "相互理解度を測る",
   children,
 }: FriendFlowFloatingCtaProps) {
-  // Polish-D-A: w-full → 中央寄せ + min-w-[220px] (Brand v2 標準 CTA)
+  // Polish-D-A revised: LP フローティング基準 (px-8 py-4 + min-w-[220px])
   return (
     <div
       className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[480px] z-40 flex justify-center"
@@ -42,7 +42,7 @@ export function FriendFlowFloatingCta({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="rounded-full px-10 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all min-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {children ?? label} →
       </button>

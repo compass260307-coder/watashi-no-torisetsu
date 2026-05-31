@@ -277,11 +277,17 @@ function DiagnosisContent() {
     router.push("/zukan-mine");
   };
 
-  // Phase 1.5-α Day 9: Brand v2 化 / Day 12-Polish-B: basic-info でも使うため早期定義
+  // Polish-D-A revised: LP フローティング基準の標準 CTA に統一
+  //   - flex-1 廃止 → 中央寄せ + min-w-[220px] (フルワイドではない)
+  //   - px-6 text-sm → px-8 py-4 text-base (LP floating と同じ)
+  //   - 立体シャドウ + hover/active 沈み込みは維持
   const navCtaActive =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150";
+    "rounded-full px-8 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]";
   const navCtaDisabled =
-    "flex-1 rounded-full px-6 py-4 text-sm font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed";
+    "rounded-full px-8 py-4 text-base font-black bg-[#FFE993]/40 text-[#3A2D6B]/40 border-2 border-[#3A2D6B]/20 cursor-not-allowed min-w-[220px]";
+  // Polish-D-A revised: 戻る secondary (white bg + deepPurple border、small)
+  const navCtaSecondary =
+    "rounded-full px-5 py-3 text-sm font-bold bg-white text-[#3A2D6B] border-2 border-[#3A2D6B] hover:bg-[#E4E0F5] transition-all";
 
   // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネームを取得)
   // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
@@ -344,7 +350,7 @@ function DiagnosisContent() {
             <button
               type="button"
               onClick={handleBasicInfoNext}
-              className="rounded-full px-12 py-4 text-base font-black bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all duration-150 min-w-[220px]"
+              className={navCtaActive}
             >
               次へ
             </button>
@@ -399,21 +405,20 @@ function DiagnosisContent() {
         )}
       </main>
 
-      {/* 下部固定ナビ (Day 9: white/85 + lavender ボーダー + sunYellow CTA) */}
+      {/* Polish-D-A revised: 下部固定ナビ
+          - flex-1 廃止 → 中央寄せ (justify-center) + button 個別の min-w
+          - 戻る は conditional render (page 0 では非表示で 次へ を完全中央に) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-sm border-t border-[#E4E0F5] z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center">
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={currentPage === 0}
-            className={`rounded-full border-2 px-5 py-3 text-sm font-bold transition-all ${
-              currentPage === 0
-                ? "opacity-0 pointer-events-none border-transparent"
-                : "border-[#3A2D6B]/30 text-[#3A2D6B] hover:bg-[#E4E0F5]"
-            }`}
-          >
-            戻る
-          </button>
+        <div className="max-w-lg mx-auto px-4 py-3 flex gap-3 items-center justify-center">
+          {currentPage > 0 && (
+            <button
+              type="button"
+              onClick={handlePrev}
+              className={navCtaSecondary}
+            >
+              戻る
+            </button>
+          )}
 
           {!isLastPage ? (
             <button
