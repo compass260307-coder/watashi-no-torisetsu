@@ -17,6 +17,7 @@
 
 import type { DimensionGap } from "@/lib/perception-analysis";
 import { InlineLockCard } from "./InlineLockCard";
+import { LockedBlur } from "./LockedBlur";
 
 interface ChaptersProps {
   gaps: DimensionGap[];
@@ -316,23 +317,20 @@ function LockedSnippet({
     );
   }
   // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
+  // Polish-G 追加: ブラー部分タップ → メイン解除カードへスクロール (LockedBlur)
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      <p
-        className="absolute inset-0 p-4 text-[#3A2D6B] text-xs leading-relaxed select-none"
-        style={{ filter: "blur(3px)" }}
-        aria-hidden="true"
-      >
-        友達が感じている細かいニュアンスと、2 人の関係性に活かすためのアドバイスがここに書かれています。
-      </p>
-      <div className="relative flex justify-center px-3 py-4">
-        <InlineLockCard
-          perceptionId={perceptionId}
-          value="このズレについての本音とアドバイスを読む"
-          canPurchase={isOwner}
-        />
-      </div>
-    </div>
+    <LockedBlur
+      blurText="友達が感じている細かいニュアンスと、2 人の関係性に活かすためのアドバイスがここに書かれています。"
+      blurTextClassName="text-xs leading-relaxed"
+      blurPx={3}
+      padClassName="py-4"
+    >
+      <InlineLockCard
+        perceptionId={perceptionId}
+        value="このズレについての本音とアドバイスを読む"
+        canPurchase={isOwner}
+      />
+    </LockedBlur>
   );
 }
 
@@ -390,23 +388,20 @@ function LockedBody({
     );
   }
   // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
+  // Polish-G 追加: ブラー部分タップ → メイン解除カードへスクロール (LockedBlur)
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      <p
-        className="absolute inset-0 p-4 text-[#3A2D6B] text-sm leading-relaxed select-none whitespace-pre-line"
-        style={{ filter: "blur(4px)" }}
-        aria-hidden="true"
-      >
-        {body}
-      </p>
-      <div className="relative flex justify-center px-3 py-5">
-        <InlineLockCard
-          perceptionId={perceptionId}
-          value={value}
-          canPurchase={isOwner}
-        />
-      </div>
-    </div>
+    <LockedBlur
+      blurText={body}
+      blurTextClassName="text-sm leading-relaxed whitespace-pre-line"
+      blurPx={4}
+      padClassName="py-5"
+    >
+      <InlineLockCard
+        perceptionId={perceptionId}
+        value={value}
+        canPurchase={isOwner}
+      />
+    </LockedBlur>
   );
 }
 
