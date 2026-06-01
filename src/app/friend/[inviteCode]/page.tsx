@@ -278,7 +278,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     return (
       <ConsentScreen
         ownerName={ownerName}
-        subjectLabel={subjectLabel}
         perceiverName={perceiverName}
         pdfConsent={pdfConsent}
         onConsentChange={setPdfConsent}
@@ -626,16 +625,21 @@ function ChoiceScreen({
 // =========================================================================
 // Consent 画面 (PDF 利用同意)
 // =========================================================================
+// Polish-E E-2: ConsentScreen 軽量化 (1 カード圧縮)
+//   - 旧: 3 段落の説明 + 別カードのチェック + 否定形 CTA「PDF 利用なしで送信する」
+//   - 新: eyebrow + 短いタイトル + 1 行説明白カード + opt-in cream カード + 小注記
+//     + 単一 CTA「送信する」(同意フラグはチェック状態で送信、否定形 CTA 廃止)
+//   - 保持: 名前付き掲載 / 第三者共有の可能性 / opt-in / 後から変更不可
+//     (権利説明の実質はそのまま、表現を圧縮しただけ)
+//   - subjectLabel は使わず ownerName + さん で統一
 function ConsentScreen({
   ownerName,
-  subjectLabel,
   perceiverName,
   pdfConsent,
   onConsentChange,
   onSubmit,
 }: {
   ownerName: string;
-  subjectLabel: string;
   perceiverName: string;
   pdfConsent: boolean;
   onConsentChange: (value: boolean) => void;
@@ -644,63 +648,56 @@ function ConsentScreen({
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32 flex flex-col flex-1">
       <div className="max-w-[480px] mx-auto w-full">
-        <header className="text-center mb-6">
+        <header className="text-center mb-5">
           <p className="text-[10px] font-black tracking-[0.3em] text-[#FE3C72] mb-2">
             最後にひとつ
           </p>
-          <h1 className="text-xl font-black text-[#3A2D6B] leading-snug">
-            {ownerName}さんへの評価、
+          <h1 className="text-lg sm:text-xl font-black text-[#3A2D6B] leading-snug">
+            この評価、{ownerName}さんの
             <br />
-            PDF 利用も許可しますか?
+            レポートにも使っていい?
           </h1>
         </header>
 
-        <section className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-          <p className="text-sm text-[#3A2D6B] leading-relaxed mb-3">
-            {ownerName}さんは将来、AI が統合した有料の
-            「真のトリセツ PDF レポート」(¥500) を作るかもしれません。
-          </p>
-          <p className="text-sm text-[#3A2D6B] leading-relaxed mb-3">
-            その PDF には、アナタの名前 (
-            <span className="font-bold text-[#FE3C72]">{perceiverName}</span>
-            ) と回答内容が、
-            {subjectLabel}を見たひとつの視点として記載されます。
-          </p>
-          <p className="text-xs text-[#3A2D6B]/70 leading-relaxed">
-            PDF は{ownerName}さんが第三者に共有する可能性があります。
+        {/* 1 行説明 (1 枚の白カードに圧縮) */}
+        <section className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 mb-4">
+          <p className="text-sm text-[#3A2D6B] leading-relaxed">
+            アナタの名前 (
+            <span className="font-bold text-[#FE3C72]">{perceiverName}</span>) と
+            回答が、{ownerName}さんの
+            <span className="font-bold">有料レポート</span>
+            に「ひとつの視点」として載ることがあります (第三者に共有される
+            可能性も)。
           </p>
         </section>
 
-        <section className="bg-[#FFE993]/30 rounded-3xl border-2 border-[#FFE993] shadow-md p-5 mb-5">
+        {/* opt-in (cream / sunYellow 枠) */}
+        <section className="bg-[#FFF9F0] rounded-3xl border-2 border-[#FFE993] shadow-md p-5 mb-4">
           <label className="flex gap-3 items-start cursor-pointer">
             <input
               type="checkbox"
               checked={pdfConsent}
               onChange={(e) => onConsentChange(e.target.checked)}
-              className="mt-1 h-5 w-5 accent-[#3A2D6B] cursor-pointer flex-shrink-0"
+              className="mt-0.5 h-5 w-5 accent-[#3A2D6B] cursor-pointer flex-shrink-0"
             />
             <span className="text-sm text-[#3A2D6B] leading-relaxed font-bold">
-              はい、PDF レポートに{perceiverName}の名前付きで載ること、
-              PDF が第三者に共有される可能性に
-              <span className="text-[#FE3C72]">同意します</span>。
+              名前付きで載ること・共有の可能性に
+              <span className="text-[#FE3C72]">同意する</span>
             </span>
           </label>
         </section>
 
-        <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-2 font-bold">
-          ※ チェックしない場合も評価は送信されます。{ownerName}さんは
-          「アナタから見た{ownerName}さん」を Web 画面で閲覧できますが、
-          PDF 化と AI 統合素材化はできなくなります。
-        </p>
-        <p className="text-[10px] text-[#3A2D6B]/60 text-center font-bold mb-2">
+        {/* 小注記 (未チェック時の挙動 + 後から変更不可) */}
+        <p className="text-[11px] text-[#3A2D6B]/65 leading-relaxed font-bold">
+          ※ 未チェックでも評価は届きます (Web で閲覧可・レポート化のみ不可)。
           この設定は後から変更できません。
         </p>
       </div>
 
-      {/* Polish-D-A FINAL: 送信ボタンを StickyCtaFooter に移動 */}
+      {/* 単一 CTA「送信する」(同意フラグはチェック状態で送信) */}
       <StickyCtaFooter>
         <button type="button" onClick={onSubmit} className={ctaPrimary}>
-          {pdfConsent ? "同意して送信する" : "PDF 利用なしで送信する"}
+          送信する
         </button>
       </StickyCtaFooter>
     </main>
@@ -778,15 +775,18 @@ function NameOverlay({
   const isPlaceholder = trimmed === "" || trimmed === "友達";
 
   // Polish-D-A FINAL: モーダル内のボタンを StickyCtaFooter に移動。
-  //   - モーダル親 div の中に配置することで、ダイアログの暗背景の上に footer が乗る
+  //   - モーダル親 div の中に配置することで、ダイアログ背景の上に footer が乗る
   //     (DOM 順で後ろなので、同じ z-50 でも footer が前面に来る)
   //   - 親に pb-32 を追加して、カードが footer に重ならないよう中央領域を上にずらす
+  // Polish-E E-3: 幕を黒ディム (bg-black/50) → lavender 半透明 (bg-[#E4E0F5]/85) に。
+  //   暗いグレーの幕で「怖い」+「上下分断」感が出ていたため、A 側 basic-info と
+  //   同じパステルトーンに統一。
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="お名前の入力"
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 pb-32 animate-modal-fade-in"
+      className="fixed inset-0 z-50 bg-[#E4E0F5]/85 backdrop-blur-sm flex items-center justify-center px-4 py-6 pb-32 animate-modal-fade-in"
     >
       {/* Polish-B.3: Q11/Q12 と同じ世界観 (白カード + ピル + 太字見出し + 白入力欄) */}
       <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
