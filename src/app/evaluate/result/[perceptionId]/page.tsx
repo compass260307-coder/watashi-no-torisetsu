@@ -23,7 +23,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
@@ -72,7 +72,7 @@ export default async function EvaluationResultPage({
   const paidUnlocked = await isPerceptionUnlocked(perceptionId);
   const unlocked = paidUnlocked || devOverride;
 
-  // ===== 1. perception 取得 =====
+  // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
   const { data: perception, error: pErr } = await supabaseAdmin
     .from("friend_perceptions")
     .select(
@@ -87,7 +87,23 @@ export default async function EvaluationResultPage({
     notFound();
   }
 
-  // ===== 2. target user (= 評価された A) 取得 =====
+  // ===== 2. owner ゲート (Polish-H: プライバシー穴塞ぎ) =====
+  // このページは owner (= 評価された本人 A) の自己診断スコア (レーダー/バー) を
+  // 表示するため、owner 本人だけに見せる。owner 識別は cookie ベース session
+  // (wn_session, httpOnly, server-readable) で判定する。
+  //
+  // フェイルクローズ: session 不在 / session.id が perception.target_user_id と
+  // 一致しない (= 評価した友達や第三者、判定不可) 場合はすべて非 owner 扱いとし、
+  // owner の自己スコアを「取得する前に」/evaluate/sent (友達セーフ版) へリダイレクト。
+  // これにより非 owner の端末へ自己診断スコアが一切送信されない。
+  const session = await getSession();
+  const isOwner =
+    !!session && session.id === (perception.target_user_id as string);
+  if (!isOwner) {
+    redirect(`/evaluate/sent/${perceptionId}`);
+  }
+
+  // ===== 3. target user (= 評価された A) 取得 (owner 確定後にのみ self scores を取得) =====
   const { data: user } = await supabaseAdmin
     .from("users")
     .select("id, type_id, scores, display_name, owner_token")
@@ -96,10 +112,6 @@ export default async function EvaluationResultPage({
   if (!user) {
     notFound();
   }
-
-  // ===== 3. session で isOwner 判定 (Owner = A 本人) =====
-  const session = await getSession();
-  const isOwner = !!session && session.id === (user.id as string);
 
   // ===== 4. 派生計算 =====
   const selfScores = (user.scores ?? {}) as BigFiveScores;
