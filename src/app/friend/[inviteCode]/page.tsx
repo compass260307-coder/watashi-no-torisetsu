@@ -7,7 +7,8 @@
 //     充実説明文 + フローティング CTA)
 //   - scale 画面: Day 9 /diagnosis と同じ Brand v2 (lavender + sunYellow バー + 立体 CTA)
 //   - choice / consent / submitting / error: 最低限の Brand v2 化
-//   - complete 画面: 削除 → submit 成功時に router.push(/evaluate/result/{perceptionId})
+//   - complete 画面: 削除 → submit 成功時に router.push(/evaluate/sent/{perceptionId})
+//     (Day 12-Polish-F で着地先を獲得エンジン /evaluate/sent に変更)
 //
 // 触らない (Day 12-C3 スコープ外):
 //   - 評価ロジック本体 (lib/friend-questions-v2 / FRIEND_QUESTIONS_V2_*)
@@ -224,8 +225,10 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           confidence: data.perception?.confidence,
         },
       });
-      // Day 12-C3: 完了画面を廃止、Day 12-C1 で実装した結果ページへ直接遷移
-      router.push(`/evaluate/result/${data.friendPerceptionId}`);
+      // Day 12-Polish-F: 送信完了後は獲得エンジン (理解度 + アナタの目に映る owner
+      // + 自己診断 CTA) を返す遷移ページへ。詳細ギャップ/課金は owner 限定の
+      // /evaluate/result 側に集約し、友達にはここでは出さない。
+      router.push(`/evaluate/sent/${data.friendPerceptionId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Unknown error");
       setPhase("error");

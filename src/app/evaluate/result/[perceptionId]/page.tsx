@@ -38,7 +38,7 @@ import {
   type BigFiveScores,
 } from "@/lib/perception-analysis";
 import { isPerceptionUnlocked } from "@/lib/perception-unlock";
-import { UnlockCta } from "@/components/result/UnlockCta";
+import { UnlockCard } from "@/components/result/UnlockCard";
 import type { TorisetsuTypeId } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -186,29 +186,25 @@ export default async function EvaluationResultPage({
           displayName={displayName}
           perceiverShort={perceiverShort}
           unlocked={unlocked}
+          perceptionId={perceptionId}
+          isOwner={isOwner}
         />
 
-        {/* ===== ロック解除カード (Owner かつ未 unlock のみ) =====
-            Day 12-C2: <UnlockCta> Client が POST → Stripe Checkout 起動。
+        {/* ===== メイン解除カード (Owner かつ未 unlock のみ) =====
+            Day 12-Polish-G: 16P 構造の共通 <UnlockCard> に置き換え。
+            決済フロー (create-perception-unlock-session) は不変、コピーのみ評価結果用。
             paidUnlocked が true の場合はこのカード自体が非表示 (unlocked=true)。 */}
         {isOwner && !unlocked && (
-          <div className="bg-gradient-to-b from-[#FFE993]/40 to-[#BCDEF8]/30 rounded-3xl border-2 border-[#3A2D6B] shadow-md p-6 mb-8 text-center">
-            <p className="text-[#3A2D6B]/60 font-black text-xs tracking-[0.3em] mb-2">
-              UNLOCK
-            </p>
-            <h2 className="text-[#3A2D6B] font-black text-xl mb-3 leading-tight">
-              今すぐ全部のロックを解除
-            </h2>
-            <p className="text-[#3A2D6B]/75 text-sm leading-relaxed mb-5">
-              {perceiverShort}の本音、4 特性、関係性アドバイス、取扱説明書。
-              <br />
-              全部読めます。
-            </p>
-            <UnlockCta perceptionId={perceptionId} />
-            <p className="text-[#3A2D6B]/50 text-[10px] font-bold mt-3">
-              この {perceiverShort}さんの評価結果だけ、一度の決済で解除されます
-            </p>
-          </div>
+          <UnlockCard
+            perceptionId={perceptionId}
+            heading={`${perceiverShort}さんから見た『本当のアナタ』を全部読む`}
+            bullets={[
+              "隠れた本音と 4 特性の深掘り",
+              "ズレを縮める関係性アドバイス",
+              "アナタ専用の取扱説明書",
+            ]}
+            reassurance={`この${perceiverShort}さんの評価結果だけ・一度の決済で解除`}
+          />
         )}
 
         {/* ===== バイラル誘導 (perceiver = 評価した友達 へのインバイト) =====
