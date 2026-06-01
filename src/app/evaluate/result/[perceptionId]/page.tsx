@@ -209,11 +209,23 @@ export default async function EvaluationResultPage({
         {isOwner && !unlocked && (
           <UnlockCard
             perceptionId={perceptionId}
-            heading={`${perceiverShort}さんから見た『本当のアナタ』を全部読む`}
+            heading={`${perceiverShort}さんから見た『本当のアナタ』のすべてを解放`}
+            body={`いま見えている『ズレ』は、ほんの入り口。${perceiverShort}さんの目に映るアナタを、本音もアドバイスもまとめて全部読めます。`}
+            // 箇条書きは実際の有料解除対象に一致させる (章② 強みは「全無料」のため
+            // 「相手が見た強み」の行は外し、有料の本音＋4特性に差し替え)。
             bullets={[
-              "隠れた本音と 4 特性の深掘り",
-              "ズレを縮める関係性アドバイス",
-              "アナタ専用の取扱説明書",
+              {
+                lead: 'ズレを縮める"次の一歩"',
+                detail: "見え方の差を、こじれる前に埋める具体アドバイス。",
+              },
+              {
+                lead: "隠れた本音と4つの特性",
+                detail: `${perceiverShort}さんにだけ見えている、表に出さない一面の深掘り。`,
+              },
+              {
+                lead: "アナタ専用の取扱説明書",
+                detail: `${perceiverShort}さんとうまく付き合うための関係ガイド。`,
+              },
             ]}
             reassurance={`この${perceiverShort}さんの評価結果だけ・一度の決済で解除`}
           />
