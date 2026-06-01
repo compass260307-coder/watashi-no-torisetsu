@@ -38,7 +38,10 @@ export function UnlockCard({
   ctaLabel = "¥500 で全部読む →",
 }: UnlockCardProps) {
   return (
-    <div className="bg-[#FFF9F0] border-[3px] border-[#3A2D6B] rounded-[24px] p-5 mb-8">
+    // id: Polish-G 追加でロック本文タップ時のスクロール先 + pulse 対象 (LockedBlur が参照)
+    <div
+      id="unlock-card"
+      className="bg-[#FFF9F0] border-[3px] border-[#3A2D6B] rounded-[24px] p-5 mb-8">
       {/* eyebrow */}
       <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
         {eyebrow}
