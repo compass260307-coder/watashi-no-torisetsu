@@ -211,21 +211,25 @@ export default async function EvaluationResultPage({
           </div>
         )}
 
-        {/* ===== バイラル誘導 ===== */}
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6 text-center">
-          <h2 className="text-[#3A2D6B] font-black text-base mb-2">
-            {perceiverShort}さんも、自分のトリセツ作ってみない？
-          </h2>
-          <p className="text-[#3A2D6B]/75 text-xs leading-relaxed mb-4">
-            50 問・約 3 分の自己診断、登録不要、無料。
-          </p>
-          <Link
-            href="/diagnosis"
-            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
-          >
-            無料で診断する →
-          </Link>
-        </div>
+        {/* ===== バイラル誘導 (perceiver = 評価した友達 へのインバイト) =====
+            Polish-E E-4: isOwner には不要 (本人は既にトリセツを持っている)。
+            evaluator 視点で表示するため !isOwner でゲート。 */}
+        {!isOwner && (
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6 text-center">
+            <h2 className="text-[#3A2D6B] font-black text-base mb-2">
+              {perceiverShort}さんも、自分のトリセツ作ってみない？
+            </h2>
+            <p className="text-[#3A2D6B]/75 text-xs leading-relaxed mb-4">
+              50 問・約 3 分の自己診断、登録不要、無料。
+            </p>
+            <Link
+              href="/diagnosis"
+              className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+            >
+              無料で診断する →
+            </Link>
+          </div>
+        )}
 
         {/* ===== Footer ===== */}
         <div className="text-center pt-2 pb-2">

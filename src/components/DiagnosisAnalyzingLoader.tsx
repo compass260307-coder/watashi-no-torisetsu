@@ -1,5 +1,13 @@
 "use client";
 
+// Phase 1.5-α Day 12-Polish-E E-1: 解析待ち画面の Brand v2 化
+//   - 背景: 白 → grid-bg (lavender グラデ + 32px グリッドオーバーレイ)
+//   - テキスト: 黒 → deepPurple #3A2D6B、M PLUS Rounded 1c (global font)
+//   - 進捗バー: lavender トラック (#E4E0F5) + vividPink 塗り (#FE3C72)
+//   - チェックリスト: 完了 = vividPink チェック (SVG)、未完 = lavender 空円
+//   - マスコット (青ペンギン)・MESSAGES 文言・STEPS 文言・アニメは維持
+//   - 絵文字なし (T3-5)。チェックは inline SVG。
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
@@ -43,7 +51,7 @@ export function DiagnosisAnalyzingLoader() {
   }, []);
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center px-5 py-10">
+    <div className="grid-bg flex flex-col flex-1 min-h-screen items-center justify-center px-5 py-10">
       <Image
         src="/mascot/analyzing-penguin.png"
         alt=""
@@ -55,14 +63,17 @@ export function DiagnosisAnalyzingLoader() {
 
       <p
         key={messageIndex}
-        className="text-lg font-medium text-center animate-fade-in min-h-[1.75rem] mb-6"
+        className="text-lg font-bold text-[#3A2D6B] text-center animate-fade-in min-h-[1.75rem] mb-6"
       >
         {MESSAGES[messageIndex]}
       </p>
 
-      {/* Progress bar */}
-      <div className="w-72 max-w-full h-1.5 rounded-full bg-card-border overflow-hidden mb-6">
-        <div className="h-full bg-primary-gradient rounded-full animate-progress-20s" />
+      {/* Progress bar (lavender track + vividPink fill) */}
+      <div
+        className="w-72 max-w-full h-1.5 rounded-full bg-[#E4E0F5] overflow-hidden mb-6"
+        aria-hidden
+      >
+        <div className="h-full bg-[#FE3C72] rounded-full animate-progress-20s" />
       </div>
 
       {/* Checkmark steps */}
@@ -71,23 +82,36 @@ export function DiagnosisAnalyzingLoader() {
           const isDone = completedSteps > i;
           const isCurrent = completedSteps === i;
           return (
-            <li key={label} className="flex items-center gap-2 text-sm">
+            <li
+              key={label}
+              className="flex items-center gap-2 text-sm font-bold"
+            >
               {isDone ? (
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold shrink-0">
-                  ✓
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#FE3C72] text-white shrink-0">
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                 </span>
               ) : isCurrent ? (
-                <span className="inline-flex w-5 h-5 rounded-full border-2 border-primary/50 bg-primary/10 animate-pulse shrink-0" />
+                <span className="inline-flex w-5 h-5 rounded-full border-2 border-[#FE3C72] bg-[#FE3C72]/15 animate-pulse shrink-0" />
               ) : (
-                <span className="inline-flex w-5 h-5 rounded-full border-2 border-card-border shrink-0" />
+                <span className="inline-flex w-5 h-5 rounded-full border-2 border-[#E4E0F5] bg-white shrink-0" />
               )}
               <span
                 className={
-                  isDone
-                    ? "text-foreground"
-                    : isCurrent
-                      ? "text-foreground"
-                      : "text-muted/60"
+                  isDone || isCurrent
+                    ? "text-[#3A2D6B]"
+                    : "text-[#3A2D6B]/40"
                 }
               >
                 {label}

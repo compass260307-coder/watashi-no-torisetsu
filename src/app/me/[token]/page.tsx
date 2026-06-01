@@ -530,6 +530,41 @@ export default async function MePage({ params }: PageProps) {
           </section>
         )}
 
+        {/* ===== Polish-E E-4: 相互理解度フック (Owner のみ、末尾)
+            自己診断は「アナタから見たアナタ」止まり。次の一歩 = 友達評価 で
+            相互理解度を測る、への汎用誘導。実数は出さない (友達データの有無
+            に依らず使えるテキスト)。実数は Polish-C ランキング + 評価結果
+            ページに既出。 */}
+        {isOwner && (
+          <section className="mb-8">
+            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
+              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+                次のステップ
+              </p>
+              <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-3">
+                友達に診断してもらおう
+              </h2>
+              <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-5">
+                自己診断、完成!
+                <br />
+                でもこれはまだ「アナタから見たアナタ」。
+                <br />
+                友達に診断してもらうと
+                <span className="font-bold text-[#FE3C72]">相互理解度</span>
+                が分かって、
+                <br />
+                自分でも気づかなかったアナタが見えてくる。
+              </p>
+              <Link
+                href="/friend-evaluation"
+                className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
+              >
+                友達に診断してもらう →
+              </Link>
+            </div>
+          </section>
+        )}
+
         {/* ===== Footer ===== */}
         <div className="text-center pt-2 pb-2">
           <Link
