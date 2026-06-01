@@ -16,6 +16,7 @@
 // 触らない: prop interface はそのまま保つ (Day 12-D で本文だけ差し替え)。
 
 import type { DimensionGap } from "@/lib/perception-analysis";
+import { InlineLockCard } from "./InlineLockCard";
 
 interface ChaptersProps {
   gaps: DimensionGap[];
@@ -23,6 +24,9 @@ interface ChaptersProps {
   displayName: string;
   perceiverShort: string;
   unlocked: boolean;
+  // Day 12-Polish-G: インライン・ロックの「解除する」ボタンを owner 限定で出すため
+  perceptionId: string;
+  isOwner: boolean;
 }
 
 export function EvaluationChapters({
@@ -31,6 +35,8 @@ export function EvaluationChapters({
   displayName,
   perceiverShort,
   unlocked,
+  perceptionId,
+  isOwner,
 }: ChaptersProps) {
   void gaps; // 現状は topGapList のみ使用、Day 12-D で全 gap を本文に活かす想定
   return (
@@ -56,6 +62,8 @@ export function EvaluationChapters({
             displayName={displayName}
             perceiverShort={perceiverShort}
             unlocked={unlocked}
+            perceptionId={perceptionId}
+            isOwner={isOwner}
           />
         ))}
       </section>
@@ -153,6 +161,9 @@ export function EvaluationChapters({
           </p>
           <LockedBody
             unlocked={unlocked}
+            perceptionId={perceptionId}
+            isOwner={isOwner}
+            value="ズレを縮める関係性アドバイスを読む"
             body={renderTemplate(RELATIONSHIP_BODY_TEMPLATE, {
               A: displayName,
               B: perceiverShort,
@@ -173,6 +184,9 @@ export function EvaluationChapters({
           </p>
           <LockedBody
             unlocked={unlocked}
+            perceptionId={perceptionId}
+            isOwner={isOwner}
+            value="アナタ専用の取扱説明書を読む"
             body={renderTemplate(MANUAL_BODY_TEMPLATE, {
               A: displayName,
               B: perceiverShort,
@@ -206,11 +220,15 @@ function GapCard({
   displayName,
   perceiverShort,
   unlocked,
+  perceptionId,
+  isOwner,
 }: {
   gap: DimensionGap;
   displayName: string;
   perceiverShort: string;
   unlocked: boolean;
+  perceptionId: string;
+  isOwner: boolean;
 }) {
   const direction =
     gap.selfPercent > gap.otherPercent
@@ -243,7 +261,12 @@ function GapCard({
         {direction}
       </p>
       <div className="border-t border-dashed border-[#3A2D6B]/20 my-3" />
-      <LockedSnippet unlocked={unlocked} perceiverShort={perceiverShort} />
+      <LockedSnippet
+        unlocked={unlocked}
+        perceiverShort={perceiverShort}
+        perceptionId={perceptionId}
+        isOwner={isOwner}
+      />
     </div>
   );
 }
@@ -276,9 +299,13 @@ function ScoreRow({
 function LockedSnippet({
   unlocked,
   perceiverShort,
+  perceptionId,
+  isOwner,
 }: {
   unlocked: boolean;
   perceiverShort: string;
+  perceptionId: string;
+  isOwner: boolean;
 }) {
   if (unlocked) {
     return (
@@ -288,20 +315,22 @@ function LockedSnippet({
       </p>
     );
   }
+  // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
   return (
-    <div className="relative">
+    <div className="relative rounded-2xl overflow-hidden">
       <p
-        className="text-[#3A2D6B] text-xs leading-relaxed select-none"
+        className="absolute inset-0 p-4 text-[#3A2D6B] text-xs leading-relaxed select-none"
         style={{ filter: "blur(3px)" }}
         aria-hidden="true"
       >
         友達が感じている細かいニュアンスと、2 人の関係性に活かすためのアドバイスがここに書かれています。
       </p>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="bg-[#3A2D6B] text-white text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1">
-          <LockIcon className="w-3 h-3" />
-          ¥500 で解除
-        </span>
+      <div className="relative flex justify-center px-3 py-4">
+        <InlineLockCard
+          perceptionId={perceptionId}
+          value="このズレについての本音とアドバイスを読む"
+          canPurchase={isOwner}
+        />
       </div>
     </div>
   );
@@ -340,7 +369,19 @@ function FourTraitCircle({
   );
 }
 
-function LockedBody({ unlocked, body }: { unlocked: boolean; body: string }) {
+function LockedBody({
+  unlocked,
+  body,
+  value,
+  perceptionId,
+  isOwner,
+}: {
+  unlocked: boolean;
+  body: string;
+  value: string;
+  perceptionId: string;
+  isOwner: boolean;
+}) {
   if (unlocked) {
     return (
       <p className="text-[#3A2D6B] text-sm leading-relaxed whitespace-pre-line">
@@ -348,20 +389,22 @@ function LockedBody({ unlocked, body }: { unlocked: boolean; body: string }) {
       </p>
     );
   }
+  // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
   return (
-    <div className="relative">
+    <div className="relative rounded-2xl overflow-hidden">
       <p
-        className="text-[#3A2D6B] text-sm leading-relaxed select-none whitespace-pre-line"
+        className="absolute inset-0 p-4 text-[#3A2D6B] text-sm leading-relaxed select-none whitespace-pre-line"
         style={{ filter: "blur(4px)" }}
         aria-hidden="true"
       >
         {body}
       </p>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="bg-[#3A2D6B] text-white px-4 py-2 rounded-full flex items-center gap-2">
-          <LockIcon className="w-4 h-4" />
-          <span className="text-xs font-bold">¥500 で解除</span>
-        </div>
+      <div className="relative flex justify-center px-3 py-5">
+        <InlineLockCard
+          perceptionId={perceptionId}
+          value={value}
+          canPurchase={isOwner}
+        />
       </div>
     </div>
   );
