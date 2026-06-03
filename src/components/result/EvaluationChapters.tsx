@@ -60,9 +60,18 @@ export function EvaluationChapters({
 }: ChaptersProps) {
   void gaps; // ①⑤ は topGapList(差の大きい順) を使う。gaps は将来用に保持。
   // Day 12-D: 知覚16タイプ → ②強み/③あれっ (未生成タイプは既存プレースホルダーにフォールバック)
+  // 項目の title/body に含まれる {B}(=友達名) を確実に置換してから渡す。
+  const renderItem = (it: { title: string; body: string }) => ({
+    title: renderTemplate(it.title, { A: displayName, B: perceiverShort }),
+    body: renderTemplate(it.body, { A: displayName, B: perceiverShort }),
+  });
   const perceivedContent = getPerceivedContent(perceivedTypeId);
-  const strengths = perceivedContent?.strengths ?? STRENGTHS_PLACEHOLDER;
-  const surprises = perceivedContent?.surprises ?? SURPRISES_PLACEHOLDER;
+  const strengths = (perceivedContent?.strengths ?? STRENGTHS_PLACEHOLDER).map(
+    renderItem,
+  );
+  const surprises = (perceivedContent?.surprises ?? SURPRISES_PLACEHOLDER).map(
+    renderItem,
+  );
   // ⑤ 関係性アドバイス = トップ差の次元×向きのアドバイスを組み立て
   const adviceRaw =
     topGapList.length > 0
