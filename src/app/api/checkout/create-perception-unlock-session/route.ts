@@ -140,7 +140,11 @@ export async function POST(request: NextRequest) {
         payment_kind: "perception_unlock",
         email: customerEmail ?? "",
       },
-      success_url: `${BASE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&perception_id=${encodeURIComponent(perceptionId)}`,
+      // Day 12 hotfix: 決済直後は解除済みの結果ページに直接着地させる
+      // (旧: /checkout/success は統合トリセツ専用で perception_id を無視し、
+      //  解除済みページに戻れず magic-link ログインへ流れていた)。
+      // ?checkout=success で戻り、Webhook 反映前なら結果ページ側が「解除確認中」を表示。
+      success_url: `${BASE_URL}/evaluate/result/${encodeURIComponent(perceptionId)}?checkout=success`,
       cancel_url: `${BASE_URL}/evaluate/result/${encodeURIComponent(perceptionId)}`,
       locale: "ja",
     });
