@@ -22,6 +22,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -101,11 +102,12 @@ export default async function EvaluationSentPage({ params }: PageProps) {
     : 0;
 
   // ===== 4. アナタの目に映る owner (友達自身の知覚プロファイル) =====
-  const perceivedType =
+  // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)。
+  const perceivedTypeName = sixteenTypes[classifySixteenType(otherScores)].name;
+  // 特性タグは 8 タイプ master の traits 語 (型名ではなく特性語) を流用
+  const perceivedBase =
     torisetsuTypes[perception.perceived_type_id as TorisetsuTypeId];
-  const perceivedTypeName =
-    perceivedType?.name ?? (perception.perceived_type_id as string);
-  const traits = (perceivedType?.traits ?? []).slice(0, 3);
+  const traits = (perceivedBase?.traits ?? []).slice(0, 3);
 
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">

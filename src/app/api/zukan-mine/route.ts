@@ -16,6 +16,7 @@ import { getSession } from "@/lib/session";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import type {
   BigFiveDimension,
   CModifier,
@@ -77,7 +78,8 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
     userId: row.id,
     ownerToken: row.owner_token,
     typeId,
-    typeName: typeMeta?.name ?? typeId,
+    // Day 12-D: 自己タイプ名は 16 タイプ。色は 8 タイプ master を流用 (色は型名ではない)
+    typeName: sixteenTypes[classifySixteenType(stored)].name,
     typeColor: typeMeta?.color ?? "#888888",
     fullCode,
     modifierLabel,
@@ -126,7 +128,7 @@ export async function GET(request: NextRequest) {
     const { data: perceptionRows, error: perceptionErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select(
-        "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_modifier_paragraph, qualitative_data, pdf_consent, pdf_consent_at, created_at",
+        "id, target_user_id, perceiver_name, perceived_type_id, perceived_scores, perceived_full_code, perceived_modifier_label, perceived_modifier_paragraph, qualitative_data, pdf_consent, pdf_consent_at, created_at",
       )
       .eq("target_user_id", session.id)
       .order("created_at", { ascending: false });
@@ -141,7 +143,15 @@ export async function GET(request: NextRequest) {
           targetUserId: r.target_user_id as string,
           perceiverName: r.perceiver_name as string,
           perceivedTypeId: typeId,
-          perceivedTypeName: torisetsuTypes[typeId]?.name ?? typeId,
+          // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
+          perceivedTypeName:
+            sixteenTypes[
+              classifySixteenType(
+                (r.perceived_scores ?? {}) as Partial<
+                  Record<BigFiveDimension, number>
+                >,
+              )
+            ].name,
           perceivedFullCode: r.perceived_full_code as string,
           perceivedModifierLabel: r.perceived_modifier_label as string,
           perceivedModifierParagraph: r.perceived_modifier_paragraph as string,

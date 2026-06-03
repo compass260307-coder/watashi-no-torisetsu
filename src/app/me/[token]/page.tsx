@@ -157,16 +157,22 @@ export default async function MePage({ params }: PageProps) {
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
     .select(
-      "id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, qualitative_data, created_at",
+      "id, perceiver_name, perceived_type_id, perceived_scores, perceived_full_code, perceived_modifier_label, qualitative_data, created_at",
     )
     .eq("target_user_id", user.id)
     .order("created_at", { ascending: false });
   const perceptions = (perceptionRows ?? []).map((p) => ({
     id: p.id as string,
     perceiverName: (p.perceiver_name as string) ?? "友達",
+    // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
     typeName:
-      torisetsuTypes[p.perceived_type_id as TorisetsuTypeId]?.name ??
-      (p.perceived_type_id as string),
+      sixteenTypes[
+        classifySixteenType(
+          (p.perceived_scores ?? {}) as Partial<
+            Record<BigFiveDimension, number>
+          >,
+        )
+      ].name,
     fullCode: (p.perceived_full_code as string) ?? "",
     modifierLabel: (p.perceived_modifier_label as string | null) ?? null,
     qualitative:

@@ -15,7 +15,19 @@
 //
 // 触らない: prop interface はそのまま保つ (Day 12-D で本文だけ差し替え)。
 
-import type { DimensionGap } from "@/lib/perception-analysis";
+import type { DimensionGap, BigFiveScores } from "@/lib/perception-analysis";
+import type { SixteenTypeId } from "@/lib/sixteen-types";
+import {
+  directionOf,
+  honneFor,
+  adviceFor,
+  FOUR_TRAITS,
+  fourTraitBody,
+  levelForScore,
+  getPerceivedContent,
+  getOwnerManual,
+  type TraitLevel,
+} from "@/lib/mutual-result-content";
 import { InlineLockCard } from "./InlineLockCard";
 import { LockedBlur } from "./LockedBlur";
 
@@ -28,6 +40,10 @@ interface ChaptersProps {
   // Day 12-Polish-G: インライン・ロックの「解除する」ボタンを owner 限定で出すため
   perceptionId: string;
   isOwner: boolean;
+  // Day 12-D: 組み立て式コンテンツ用 (知覚スコア / 知覚16タイプ / owner16タイプ)
+  perceivedScores: BigFiveScores;
+  perceivedTypeId: SixteenTypeId;
+  ownerTypeId: SixteenTypeId;
 }
 
 export function EvaluationChapters({
@@ -38,8 +54,37 @@ export function EvaluationChapters({
   unlocked,
   perceptionId,
   isOwner,
+  perceivedScores,
+  perceivedTypeId,
+  ownerTypeId,
 }: ChaptersProps) {
-  void gaps; // 現状は topGapList のみ使用、Day 12-D で全 gap を本文に活かす想定
+  void gaps; // ①⑤ は topGapList(差の大きい順) を使う。gaps は将来用に保持。
+  // Day 12-D: 知覚16タイプ → ②強み/③あれっ (未生成タイプは既存プレースホルダーにフォールバック)
+  const perceivedContent = getPerceivedContent(perceivedTypeId);
+  const strengths = perceivedContent?.strengths ?? STRENGTHS_PLACEHOLDER;
+  const surprises = perceivedContent?.surprises ?? SURPRISES_PLACEHOLDER;
+  // ⑤ 関係性アドバイス = トップ差の次元×向きのアドバイスを組み立て
+  const adviceRaw =
+    topGapList.length > 0
+      ? topGapList
+          .map((g) =>
+            adviceFor(g.key, directionOf(g.selfPercent, g.otherPercent)),
+          )
+          .join("\n\n")
+      : RELATIONSHIP_BODY_TEMPLATE;
+  const adviceBody = renderTemplate(adviceRaw, {
+    A: displayName,
+    B: perceiverShort,
+  });
+  // ⑥ 取扱説明書 = owner16タイプの項目を組み立て (未生成は既存テンプレにフォールバック)
+  const manualItems = getOwnerManual(ownerTypeId);
+  const manualRaw = manualItems
+    ? manualItems.map((it) => `${it.title}：${it.body}`).join("\n\n")
+    : MANUAL_BODY_TEMPLATE;
+  const manualBody = renderTemplate(manualRaw, {
+    A: displayName,
+    B: perceiverShort,
+  });
   return (
     <>
       {/* 章 ① ギャップの全体像 */}
@@ -80,14 +125,12 @@ export function EvaluationChapters({
             {displayName}が自覚していない、{perceiverShort}から見える 6 つの長所。
           </p>
           <ul className="flex flex-col gap-3">
-            {STRENGTHS_PLACEHOLDER.map((s, i) => (
+            {strengths.map((s, i) => (
               <li key={i} className="flex gap-2">
                 <span
                   aria-hidden="true"
-                  className="text-[#FE3C72] font-black text-base flex-shrink-0 leading-snug"
-                >
-                  ✓
-                </span>
+                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#FE3C72] flex-shrink-0"
+                />
                 <div>
                   <p className="text-[#3A2D6B] font-black text-sm">
                     {s.title}
@@ -113,14 +156,12 @@ export function EvaluationChapters({
             {displayName}が思ってる以上に、{perceiverShort}にはこう見えてる 6 つのポイント。
           </p>
           <ul className="flex flex-col gap-3">
-            {SURPRISES_PLACEHOLDER.map((s, i) => (
+            {surprises.map((s, i) => (
               <li key={i} className="flex gap-2">
                 <span
                   aria-hidden="true"
-                  className="text-[#0094D8] font-black text-base flex-shrink-0 leading-snug"
-                >
-                  !
-                </span>
+                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0094D8] flex-shrink-0"
+                />
                 <div>
                   <p className="text-[#3A2D6B] font-black text-sm">
                     {s.title}
@@ -146,9 +187,22 @@ export function EvaluationChapters({
             {perceiverShort}は、{displayName}のこんな側面を見てるかも。
           </p>
           <div className="grid grid-cols-2 gap-4">
-            {FOUR_TRAITS_PLACEHOLDER.map((t, i) => (
-              <FourTraitCircle key={i} trait={t} unlocked={unlocked} />
-            ))}
+            {FOUR_TRAITS.map((t) => {
+              const level = levelForScore(perceivedScores[t.dim]);
+              return (
+                <FourTraitCircle
+                  key={t.label}
+                  label={t.label}
+                  color={t.color}
+                  level={level}
+                  body={renderTemplate(fourTraitBody(t.label, level), {
+                    A: displayName,
+                    B: perceiverShort,
+                  })}
+                  unlocked={unlocked}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
@@ -165,10 +219,7 @@ export function EvaluationChapters({
             perceptionId={perceptionId}
             isOwner={isOwner}
             value="ズレを縮める関係性アドバイスを読む"
-            body={renderTemplate(RELATIONSHIP_BODY_TEMPLATE, {
-              A: displayName,
-              B: perceiverShort,
-            })}
+            body={adviceBody}
           />
         </div>
       </section>
@@ -188,10 +239,7 @@ export function EvaluationChapters({
             perceptionId={perceptionId}
             isOwner={isOwner}
             value="アナタ専用の取扱説明書を読む"
-            body={renderTemplate(MANUAL_BODY_TEMPLATE, {
-              A: displayName,
-              B: perceiverShort,
-            })}
+            body={manualBody}
           />
         </div>
       </section>
@@ -264,7 +312,10 @@ function GapCard({
       <div className="border-t border-dashed border-[#3A2D6B]/20 my-3" />
       <LockedSnippet
         unlocked={unlocked}
-        perceiverShort={perceiverShort}
+        honne={renderTemplate(
+          honneFor(gap.key, directionOf(gap.selfPercent, gap.otherPercent)),
+          { A: displayName, B: perceiverShort },
+        )}
         perceptionId={perceptionId}
         isOwner={isOwner}
       />
@@ -299,28 +350,26 @@ function ScoreRow({
 
 function LockedSnippet({
   unlocked,
-  perceiverShort,
+  honne,
   perceptionId,
   isOwner,
 }: {
   unlocked: boolean;
-  perceiverShort: string;
+  honne: string;
   perceptionId: string;
   isOwner: boolean;
 }) {
   if (unlocked) {
+    // Day 12-D: このズレ(次元×向き)の「本音」を表示
     return (
-      <p className="text-[#3A2D6B] text-xs leading-relaxed">
-        {perceiverShort}が感じている細かいニュアンスと、関係性アドバイスがここに入ります。
-        (32 タイプ × ギャップパターンの実データは Day 12-D で接続)
-      </p>
+      <p className="text-[#3A2D6B] text-xs leading-relaxed">{honne}</p>
     );
   }
   // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
   // Polish-G 追加: ブラー部分タップ → メイン解除カードへスクロール (LockedBlur)
   return (
     <LockedBlur
-      blurText="友達が感じている細かいニュアンスと、2 人の関係性に活かすためのアドバイスがここに書かれています。"
+      blurText={honne}
       blurTextClassName="text-xs leading-relaxed"
       blurPx={3}
       padClassName="py-4"
@@ -335,32 +384,34 @@ function LockedSnippet({
 }
 
 function FourTraitCircle({
-  trait,
+  label,
+  color,
+  level,
+  body,
   unlocked,
 }: {
-  trait: { label: string; color: string };
+  label: string;
+  color: string;
+  level: TraitLevel;
+  body: string;
   unlocked: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center text-center">
       <div
         className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-[#3A2D6B]/25"
-        style={{ backgroundColor: `${trait.color}40` }}
+        style={{ backgroundColor: `${color}40` }}
       >
         {unlocked ? (
-          <span className="text-[#3A2D6B] font-black text-2xl" aria-hidden="true">
-            ?
-          </span>
+          <span className="text-[#3A2D6B] font-black text-2xl">{level}</span>
         ) : (
           <LockIcon className="w-6 h-6 text-[#3A2D6B]/70" />
         )}
       </div>
-      <p className="text-[#3A2D6B] font-bold text-xs mt-2 text-center">
-        {trait.label}
-      </p>
+      <p className="text-[#3A2D6B] font-black text-xs mt-2">{label}</p>
       {unlocked && (
-        <p className="text-[#3A2D6B]/55 text-[10px] mt-0.5 text-center">
-          (Day 12-D で本文)
+        <p className="text-[#3A2D6B]/75 text-[11px] leading-relaxed mt-1">
+          {body}
         </p>
       )}
     </div>
@@ -489,13 +540,6 @@ const SURPRISES_PLACEHOLDER: { title: string; body: string }[] = [
     title: "他人の感情に巻き込まれやすい",
     body: "周りが沈むと、自分まで本気で重くなる。境界線の引き方を探している。",
   },
-];
-
-const FOUR_TRAITS_PLACEHOLDER: { label: string; color: string }[] = [
-  { label: "頼れる度", color: "#0094D8" },
-  { label: "ノリの良さ", color: "#FFE993" },
-  { label: "本音の見せ方", color: "#FFD6E0" },
-  { label: "距離の取り方", color: "#BCDEF8" },
 ];
 
 const RELATIONSHIP_BODY_TEMPLATE = `{A}と{B}さんの距離感は、お互いの「言い切らない」を尊重するところから始まる気がします。

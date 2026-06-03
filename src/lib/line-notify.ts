@@ -17,7 +17,7 @@ import {
   buildFullCode as buildFullCodeFromIds,
   classifyModifier,
 } from "./diagnosis";
-import { torisetsuTypes } from "./torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "./sixteen-types";
 import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 
 const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -221,8 +221,9 @@ export async function sendWelcomeMessage(
 
   // 1) fullCode / typeName 取得 (sidecar 優先、フォールバックでサーバ派生)
   const typeId = data.type_id as TorisetsuTypeId;
-  const typeName = torisetsuTypes[typeId]?.name ?? typeId;
   const stored = (data.scores ?? {}) as StoredScores;
+  // Day 12-D: 自己タイプ名は 16 タイプ (scores から派生)
+  const typeName = sixteenTypes[classifySixteenType(stored)].name;
   let fullCode: string | undefined = stored.fullCode;
   if (!fullCode) {
     const dimScores: Record<BigFiveDimension, number> = {

@@ -23,14 +23,14 @@ import {
 import { createElement, type ReactElement } from "react";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import {
   IntegratedTrisetsuPDF,
   type MinimalPdfData,
   type PdfChapter,
   type PdfSource,
 } from "@/components/pdf/IntegratedTrisetsuPDF";
-import type { TorisetsuTypeId } from "@/lib/types";
+import type { BigFiveDimension } from "@/lib/types";
 
 export const runtime = "nodejs";
 // PDF 生成は通常 < 1 秒だが、フォント Cold start + DB 取得込みで余裕を持つ
@@ -193,10 +193,13 @@ export async function GET(
     typeof storedScores.modifierLabel === "string"
       ? (storedScores.modifierLabel as string)
       : "";
+  // Day 12-D: 自己タイプ名は 16 タイプ (scores から派生)
   const typeName =
-    (owner?.type_id &&
-      torisetsuTypes[owner.type_id as TorisetsuTypeId]?.name) ||
-    "";
+    sixteenTypes[
+      classifySixteenType(
+        storedScores as Partial<Record<BigFiveDimension, number>>,
+      )
+    ].name;
   const typeNameLabel =
     typeName && modifierLabel
       ? `${typeName} ・ ${modifierLabel}`
