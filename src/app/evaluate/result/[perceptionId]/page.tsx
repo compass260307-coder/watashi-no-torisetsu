@@ -147,6 +147,18 @@ export default async function EvaluationResultPage({
   const perceivedTypeName = perceivedType16.name;
   const perceivedCode = perceivedType16.code;
 
+  // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
+  // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
+  const qualitative =
+    (perception.qualitative_data as Record<string, string> | null) ?? null;
+  const qualEntries = (
+    [
+      { label: "好きなところ", value: qualitative?.favorite_point },
+      { label: "動物にたとえると", value: qualitative?.animal },
+      { label: "印象的なシーン", value: qualitative?.impression_scene },
+    ] as const
+  ).filter((e) => typeof e.value === "string" && e.value.trim().length > 0);
+
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
       <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
@@ -202,6 +214,27 @@ export default async function EvaluationResultPage({
             otherLabel={`${perceiverShort}から`}
           />
         </div>
+
+        {/* ===== おまけ3問 (/me から移設、無料) ===== */}
+        {qualEntries.length > 0 && (
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
+            <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
+              {perceiverShort}さんからのメッセージ
+            </p>
+            <ul className="flex flex-col gap-3">
+              {qualEntries.map((e) => (
+                <li key={e.label}>
+                  <p className="text-[#3A2D6B]/60 font-bold text-xs mb-0.5">
+                    {e.label}
+                  </p>
+                  <p className="text-[#3A2D6B] text-sm leading-relaxed">
+                    {e.value}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* ===== 6 章レイアウト ===== */}
         <EvaluationChapters

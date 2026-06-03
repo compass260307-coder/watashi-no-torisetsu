@@ -153,32 +153,15 @@ export default async function MePage({ params }: PageProps) {
   const session = await getSession();
   const isOwner = !!session && session.id === (user.id as string);
 
-  // ===== 3. friend_perceptions =====
+  // ===== 3. friend_perceptions (件数のみ) =====
+  // オプションA: /me の「誰かの眼」カードは廃止し、相互理解度ランキング
+  // (/friend-evaluation) への単一エントリに一本化。タイプ名/おまけ3問は
+  // 詳細ページ (/evaluate/result) に集約したため、ここでは件数だけ見る。
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
-    .select(
-      "id, perceiver_name, perceived_type_id, perceived_scores, perceived_full_code, perceived_modifier_label, qualitative_data, created_at",
-    )
-    .eq("target_user_id", user.id)
-    .order("created_at", { ascending: false });
-  const perceptions = (perceptionRows ?? []).map((p) => ({
-    id: p.id as string,
-    perceiverName: (p.perceiver_name as string) ?? "友達",
-    // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
-    typeName:
-      sixteenTypes[
-        classifySixteenType(
-          (p.perceived_scores ?? {}) as Partial<
-            Record<BigFiveDimension, number>
-          >,
-        )
-      ].name,
-    fullCode: (p.perceived_full_code as string) ?? "",
-    modifierLabel: (p.perceived_modifier_label as string | null) ?? null,
-    qualitative:
-      (p.qualitative_data as Record<string, string> | null) ?? null,
-    createdAt: p.created_at as string,
-  }));
+    .select("id")
+    .eq("target_user_id", user.id);
+  const friendEvalCount = (perceptionRows ?? []).length;
 
   // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
   const { data: integratedRows } = await supabaseAdmin
@@ -441,84 +424,13 @@ export default async function MePage({ params }: PageProps) {
           </section>
         )}
 
-        {/* ===== 友達からの印象 (件数 > 0 のとき、Day 10 維持) ===== */}
-        {perceptions.length > 0 && (
-          <section className="mb-8">
-            <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
-              <span>
-                {displayName}を見た、誰かの眼
-              </span>
-              <span className="text-xs font-bold text-[#3A2D6B]/60">
-                {perceptions.length}
-              </span>
-            </h3>
-            <div className="flex flex-col gap-3">
-              {perceptions.map((p) => (
-                <article
-                  key={p.id}
-                  className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5"
-                >
-                  <p className="text-[11px] text-[#3A2D6B]/60 font-bold mb-1">
-                    {p.perceiverName}さんから見た{displayName}
-                  </p>
-                  <p className="text-base font-black text-[#3A2D6B]">
-                    {p.typeName}
-                    {p.modifierLabel && (
-                      <span className="text-xs font-normal text-[#3A2D6B]/60 ml-2">
-                        ({p.modifierLabel})
-                      </span>
-                    )}
-                  </p>
-                  {p.qualitative &&
-                    Object.keys(p.qualitative).length > 0 && (
-                      <ul className="text-xs text-[#3A2D6B] leading-relaxed mt-3 space-y-1">
-                        {p.qualitative.favorite_point && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              好きなところ:{" "}
-                            </span>
-                            {p.qualitative.favorite_point}
-                          </li>
-                        )}
-                        {p.qualitative.animal && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              動物にたとえると:{" "}
-                            </span>
-                            {p.qualitative.animal}
-                          </li>
-                        )}
-                        {p.qualitative.impression_scene && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              印象的なシーン:{" "}
-                            </span>
-                            {p.qualitative.impression_scene}
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  {/* Day 12-C1: 詳細結果 (6 章 freemium) へのリンク */}
-                  <div className="text-right mt-3">
-                    <Link
-                      href={`/evaluate/result/${p.id}`}
-                      className="text-[#FE3C72] text-xs font-black hover:underline"
-                    >
-                      結果を見る →
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ===== Polish-E E-4: 相互理解度フック (Owner のみ、末尾)
-            自己診断は「アナタから見たアナタ」止まり。次の一歩 = 友達評価 で
-            相互理解度を測る、への汎用誘導。実数は出さない (友達データの有無
-            に依らず使えるテキスト)。実数は Polish-C ランキング + 評価結果
-            ページに既出。 */}
-        {isOwner && (
+        {/* ===== 友達評価 導線 (Owner のみ、末尾) =====
+            オプションA: 旧「誰かの眼」カード(型名+おまけ3問+結果を見る)は廃止。
+            - 0 件 = 「友達に診断してもらおう」フック (既存維持)
+            - 1 件以上 = 相互理解度ランキング (/friend-evaluation) への単一エントリ
+            タイプ名/おまけ3問は各 /evaluate/result (詳細) に集約済み。
+            ランキング各行 → /evaluate/result の導線は /friend-evaluation 側に維持。 */}
+        {isOwner && friendEvalCount === 0 && (
           <section className="mb-8">
             <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
               <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
@@ -543,6 +455,32 @@ export default async function MePage({ params }: PageProps) {
                 className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
               >
                 友達に診断してもらう →
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {isOwner && friendEvalCount > 0 && (
+          <section className="mb-8">
+            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
+              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+                相互理解度
+              </p>
+              <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-3">
+                友達から見たアナタを見る
+              </h2>
+              <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-5">
+                {friendEvalCount} 人がアナタを評価してくれました。
+                <br />
+                それぞれとの
+                <span className="font-bold text-[#FE3C72]">相互理解度</span>と、
+                友達の目に映るアナタを見てみよう。
+              </p>
+              <Link
+                href="/friend-evaluation"
+                className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
+              >
+                友達から見たアナタを見る →
               </Link>
             </div>
           </section>
