@@ -28,6 +28,8 @@ import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import { selfResultContent } from "@/lib/self-result-content";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
@@ -69,52 +71,8 @@ const BIG_FIVE_LABELS: { key: BigFiveDimension; label: string }[] = [
   { key: "N", label: "神経症傾向" },
 ];
 
-// Phase 1.5-α Day 11: 7 章レポートの章タイトル定義 (本文は typeData 接続まで暫定プレースホルダー)
-// ① はバーチャート + 説明、②〜⑦ はタイトル + 本文のみ
-const CHAPTERS: { num: number; title: string; bodyPlaceholder: string }[] = [
-  {
-    num: 1,
-    title: "アナタの性格特性",
-    bodyPlaceholder:
-      "アナタの Big Five プロフィールはこんな形です。各次元のバーが「アナタらしさ」のグラデーション。 高い・低いに優劣はなく、それぞれが「アナタが世界をどう見ているか」のメガネです。",
-  },
-  {
-    num: 2,
-    title: "アナタの強み",
-    bodyPlaceholder:
-      "アナタが自然にできてしまうこと、それがアナタの最大の武器。 周りの人が「すごい」と感じる場面は、アナタにとって当たり前すぎて意識すらしていないかもしれません。",
-  },
-  {
-    num: 3,
-    title: "基本のトリセツ",
-    bodyPlaceholder:
-      "アナタと上手に付き合うには、まずノリを合わせること。 真正面から正論をぶつけられるのは苦手で、共感とテンポが先にあると安心して本音が出てきます。",
-  },
-  {
-    num: 4,
-    title: "アナタの隠れた一面",
-    bodyPlaceholder:
-      "外から見えるアナタと、家に帰ったあとのアナタは別人かもしれません。 みんなが思う「いつも元気」の裏で、人一倍消耗していることがあります。",
-  },
-  {
-    num: 5,
-    title: "アナタの対人スタイル",
-    bodyPlaceholder:
-      "初対面の距離の縮め方、長く付き合う友達への向き合い方には、 アナタ独自のペースがあります。本音を見せる相手とそうでない相手の線引きが、はっきりしているタイプ。",
-  },
-  {
-    num: 6,
-    title: "アナタの活かし方",
-    bodyPlaceholder:
-      "アナタが一番輝くのは、人と人をつなぐ役割や、 空気を切り替える瞬間。逆に、黙々と一人で積み上げる作業は、合う日と合わない日の波が大きめです。",
-  },
-  {
-    num: 7,
-    title: "アナタへのメッセージ",
-    bodyPlaceholder:
-      "アナタへ。アナタの「らしさ」は、まわりにとって本当に貴重なもの。 ときどき疲れる日があっても、それはアナタが手を抜けないからこそ。自分の取扱説明書、ちゃんと持っていてくださいね。",
-  },
-];
+// Phase 1.5-α Day 12-Polish: 自己診断 7 章は 16 タイプ別実本文 (lib/self-result-content.ts)
+// に置き換え。章タイトル・本文はそこを単一の source とする (旧プレースホルダー CHAPTERS は廃止)。
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -238,13 +196,13 @@ export default async function MePage({ params }: PageProps) {
 
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
-  const { typeName, fullCode, modifierLabel } = deriveTypeLabel(
-    user.type_id as string,
-    stored,
-  );
-  const typeMeta =
-    torisetsuTypes[user.type_id as TorisetsuTypeId] ?? undefined;
-  const subtitle = (typeMeta?.subtitle as string | undefined) ?? "";
+  // fullCode は友達招待の「キャラコード」(FriendGapInvite) で利用するため引き続き導出。
+  const { fullCode } = deriveTypeLabel(user.type_id as string, stored);
+  // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
+  // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
+  const sixteenTypeId = classifySixteenType(stored);
+  const sixteenType = sixteenTypes[sixteenTypeId];
+  const chapters = selfResultContent[sixteenTypeId];
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
@@ -317,49 +275,48 @@ export default async function MePage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* ===== タイプ名 + 上ラベル + コードバッジ ===== */}
+        {/* ===== タイプ名 (16 タイプ) + 上ラベル + OCEA コードバッジ ===== */}
         <div className="text-center mb-4">
           <p className="text-[#FE3C72] font-bold text-sm mb-1">
             アナタのタイプ
           </p>
-          <h1 className="text-[#3A2D6B] font-black text-3xl mb-3 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
-            {typeName}
+          <h1 className="text-[#3A2D6B] font-black text-3xl mb-1 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+            {sixteenType.name}
           </h1>
-          {fullCode && (
-            <span className="inline-block bg-[#3A2D6B] text-white font-black text-sm px-4 py-1 rounded-full tracking-[0.25em]">
-              {fullCode}
-            </span>
-          )}
+          <p className="text-[#3A2D6B]/70 font-bold text-xs mb-3">
+            {sixteenType.animal}
+          </p>
+          <span className="inline-block bg-[#3A2D6B] text-white font-black text-sm px-4 py-1 rounded-full tracking-[0.2em]">
+            {sixteenType.code}
+          </span>
         </div>
 
-        {/* ===== サブ特性 (modifierLabel) ===== */}
-        {modifierLabel && (
-          <div className="flex justify-center mb-8">
-            <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
-              {modifierLabel}
-            </span>
-          </div>
-        )}
+        {/* ===== エッセンス (16 タイプの一言キャラ付け) ===== */}
+        <div className="flex justify-center mb-8">
+          <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
+            {sixteenType.essence}
+          </span>
+        </div>
 
-        {/* ===== Day 11: 7 章レポート (全無料、MBTI 級の読み応え)
-            ① はバーチャート + 説明、②〜⑦ はタイトル + 本文プレースホルダー
-            章本文は将来 typeData.chapters[i] のような形式で 32 タイプ分のデータを流し込む */}
-        {CHAPTERS.map((ch) => (
-          <section key={ch.num} className="mb-8">
+        {/* ===== Day 12-Polish: 自己診断 7 章レポート (全無料、16 タイプ別実本文)
+            各章 = intro + 名前付きセクション + 項目(タイトル+本文)。
+            第1章のみ Big Five バーチャート (実データ) と診断日を冒頭/末尾に表示。 */}
+        {chapters.map((ch, idx) => (
+          <section key={idx} className="mb-8">
             {/* 章ヘッダー (番号バッジ + タイトル) */}
             <div className="flex items-center gap-3 mb-4">
               <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
-                {ch.num}
+                {idx + 1}
               </span>
-              <h2 className="text-[#3A2D6B] font-black text-xl">
-                {ch.title}
+              <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                {ch.chapter}
               </h2>
             </div>
 
             {/* 章本文カード */}
             <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-              {/* ① のみ Big Five バーチャート (実データ、stored.scores より) */}
-              {ch.num === 1 && (
+              {/* 第1章のみ Big Five バーチャート (実データ、stored.scores より) */}
+              {idx === 0 && (
                 <div className="space-y-4 mb-5">
                   {bigFive.map((dim) => (
                     <div key={dim.key}>
@@ -385,21 +342,41 @@ export default async function MePage({ params }: PageProps) {
                 </div>
               )}
 
-              {/* ① 直下に既存 subtitle (タイプの短いキャッチ) を表示 */}
-              {ch.num === 1 && subtitle && (
-                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-3">
-                  {subtitle}
-                </p>
-              )}
-
-              {/* 本文 (プレースホルダー、後で typeData.chapter{ch.num} から取得) */}
-              <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
-                {ch.bodyPlaceholder}
+              {/* イントロ (章の核) */}
+              <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-5">
+                {ch.intro}
               </p>
 
-              {/* ① の最後に診断日 (小さく) */}
-              {ch.num === 1 && diagnosedAt && (
-                <p className="text-[#3A2D6B]/50 text-xs font-bold mt-4">
+              {/* 名前付きセクション + 項目 */}
+              {ch.sections.map((sec) => (
+                <div key={sec.title} className="mb-5 last:mb-0">
+                  <h3 className="text-[#FE3C72] font-black text-sm mb-3">
+                    {sec.title}
+                  </h3>
+                  <ul className="flex flex-col gap-3">
+                    {sec.items.map((it, i) => (
+                      <li key={i} className="flex gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#FE3C72] flex-shrink-0"
+                        />
+                        <div>
+                          <p className="text-[#3A2D6B] font-black text-sm">
+                            {it.title}
+                          </p>
+                          <p className="text-[#3A2D6B]/75 text-xs leading-relaxed">
+                            {it.body}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              {/* 第1章の最後に診断日 (小さく) */}
+              {idx === 0 && diagnosedAt && (
+                <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
                   診断日: {diagnosedAt}
                 </p>
               )}
@@ -420,7 +397,7 @@ export default async function MePage({ params }: PageProps) {
 
         {/* ===== Client: SNS + 画像保存 (Day 10 / Day 11.4 で キャラコード重複削除) =====
             キャラコードは FriendGapInvite 内で表示 (Day 11.3)、ResultActions からは撤去 */}
-        <ResultActions typeName={typeName} shareUrl={shareUrl} />
+        <ResultActions typeName={sixteenType.name} shareUrl={shareUrl} />
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
