@@ -39,6 +39,7 @@ import {
 } from "@/lib/perception-analysis";
 import { isPerceptionUnlocked } from "@/lib/perception-unlock";
 import { UnlockCard } from "@/components/result/UnlockCard";
+import { UnlockConfirming } from "@/components/result/UnlockConfirming";
 
 export const metadata: Metadata = {
   title: "友達評価の結果",
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
-  searchParams: Promise<{ unlocked?: string }>;
+  searchParams: Promise<{ unlocked?: string; checkout?: string }>;
 }
 
 // 名前が長い場合の省略 (UI 崩れ防止、8 文字 + 「…」)
@@ -70,6 +71,8 @@ export default async function EvaluationResultPage({
   const devOverride = sp.unlocked === "1";
   const paidUnlocked = await isPerceptionUnlocked(perceptionId);
   const unlocked = paidUnlocked || devOverride;
+  // ¥500 決済直後の戻り (success_url)。Webhook 反映前なら「解除確認中」を出す。
+  const justPaid = sp.checkout === "success";
 
   // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
   const { data: perception, error: pErr } = await supabaseAdmin
@@ -110,6 +113,16 @@ export default async function EvaluationResultPage({
     .maybeSingle();
   if (!user) {
     notFound();
+  }
+
+  // ===== 3.5 決済直後の解除確認 (Webhook 反映待ち) =====
+  // success_url から ?checkout=success で戻った直後、まだ payment_history が
+  // 反映されていない (unlocked=false) 場合は、解除済みコンテンツを描く前に
+  // 「解除を確認中」を表示し、反映後に自動で解除済みページへ着地させる。
+  if (justPaid && !unlocked) {
+    return (
+      <UnlockConfirming myTrisetsuUrl={`/me/${user.owner_token as string}`} />
+    );
   }
 
   // ===== 4. 派生計算 =====
