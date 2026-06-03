@@ -27,7 +27,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { EvaluationChapters } from "@/components/result/EvaluationChapters";
@@ -39,7 +39,6 @@ import {
 } from "@/lib/perception-analysis";
 import { isPerceptionUnlocked } from "@/lib/perception-unlock";
 import { UnlockCard } from "@/components/result/UnlockCard";
-import type { TorisetsuTypeId } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "友達評価の結果",
@@ -126,12 +125,14 @@ export default async function EvaluationResultPage({
   const perceiverShort = shortenName(perceiverFull);
   const myTrisetsuUrl = `/me/${user.owner_token as string}`;
 
-  // 評価結果に書かれている型 (B から見た A のタイプ)、副情報として表示
-  const perceivedTypeName =
-    torisetsuTypes[perception.perceived_type_id as TorisetsuTypeId]?.name ??
-    (perception.perceived_type_id as string);
-  const perceivedFullCode =
-    (perception.perceived_full_code as string | null) ?? "";
+  // Day 12-D: 知覚16タイプ / owner16タイプを perceived_scores / users.scores から派生。
+  // 既存の 8 タイプ (perceived_type_id) は温存し、表示・本文の出し分けは 16 タイプで行う。
+  const perceivedTypeId = classifySixteenType(otherScores);
+  const ownerTypeId = classifySixteenType(selfScores);
+  const perceivedType16 = sixteenTypes[perceivedTypeId];
+  // B から見た A のタイプ (16タイプ名 + OCEA コード)、副情報として表示
+  const perceivedTypeName = perceivedType16.name;
+  const perceivedCode = perceivedType16.code;
 
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
@@ -158,20 +159,18 @@ export default async function EvaluationResultPage({
           </div>
         </div>
 
-        {/* ===== B から見たアナタのタイプ (副情報) ===== */}
-        {perceivedFullCode && (
-          <div className="text-center mb-6">
-            <p className="text-[#FE3C72] font-bold text-sm mb-1">
-              {perceiverShort}が見た{displayName}は
-            </p>
-            <h1 className="text-[#3A2D6B] font-black text-2xl mb-2 leading-tight">
-              {perceivedTypeName}
-            </h1>
-            <span className="inline-block bg-[#3A2D6B] text-white font-black text-xs px-3 py-1 rounded-full tracking-[0.25em]">
-              {perceivedFullCode}
-            </span>
-          </div>
-        )}
+        {/* ===== B から見たアナタのタイプ (16タイプ、副情報) ===== */}
+        <div className="text-center mb-6">
+          <p className="text-[#FE3C72] font-bold text-sm mb-1">
+            {perceiverShort}が見た{displayName}は
+          </p>
+          <h1 className="text-[#3A2D6B] font-black text-2xl mb-2 leading-tight">
+            {perceivedTypeName}
+          </h1>
+          <span className="inline-block bg-[#3A2D6B] text-white font-black text-xs px-3 py-1 rounded-full tracking-[0.2em]">
+            {perceivedCode}
+          </span>
+        </div>
 
         {/* ===== 相互理解度 ===== */}
         <div className="text-center mb-6">
@@ -200,6 +199,9 @@ export default async function EvaluationResultPage({
           unlocked={unlocked}
           perceptionId={perceptionId}
           isOwner={isOwner}
+          perceivedScores={otherScores}
+          perceivedTypeId={perceivedTypeId}
+          ownerTypeId={ownerTypeId}
         />
 
         {/* ===== メイン解除カード (Owner かつ未 unlock のみ) =====

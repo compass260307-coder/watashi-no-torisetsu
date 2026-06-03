@@ -13,7 +13,7 @@
 import { supabaseAdmin } from "./supabase-server";
 import { buildIntegratedPrompt } from "./ai-prompt-builder";
 import { callClaudeForIntegration } from "./anthropic-client";
-import { torisetsuTypes } from "./torisetsu-data";
+import { classifySixteenType, sixteenTypes } from "./sixteen-types";
 import {
   buildFullCode as buildFullCodeFromIds,
   classifyModifier,
@@ -76,8 +76,9 @@ function buildSelfData(userRow: {
   scores: unknown;
 }): SelfDataForPrompt {
   const typeId = userRow.type_id as TorisetsuTypeId;
-  const typeName = torisetsuTypes[typeId]?.name ?? typeId;
   const stored = (userRow.scores ?? {}) as StoredSelfScores;
+  // Day 12-D: 自己タイプ名は 16 タイプ (scores から派生)
+  const typeName = sixteenTypes[classifySixteenType(stored)].name;
   const fiveDim: Record<BigFiveDimension, number> = {
     E: typeof stored.E === "number" ? stored.E : 5,
     A: typeof stored.A === "number" ? stored.A : 5,
@@ -265,9 +266,15 @@ export async function runAIGenerationAndUpdate(
       perceptions: perceptionRows.map((p) => ({
         perceiverName: p.perceiver_name,
         perceivedFullCode: p.perceived_full_code,
+        // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
         perceivedTypeName:
-          torisetsuTypes[p.perceived_type_id as TorisetsuTypeId]?.name ??
-          p.perceived_type_id,
+          sixteenTypes[
+            classifySixteenType(
+              (p.perceived_scores ?? {}) as Partial<
+                Record<BigFiveDimension, number>
+              >,
+            )
+          ].name,
         perceivedModifierLabel: p.perceived_modifier_label,
         perceivedScores: p.perceived_scores,
         perceivedFacetScores: p.perceived_facet_scores,
