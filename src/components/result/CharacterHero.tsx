@@ -27,15 +27,16 @@ export function CharacterHero({
   eyebrow,
 }: CharacterHeroProps) {
   return (
-    <div className="flex flex-col items-center text-center mb-8">
-      <div className="w-44 h-44 rounded-[18px] overflow-hidden border-4 border-white shadow-md mb-4 bg-white">
+    <div className="flex flex-col items-center text-center mb-6">
+      {/* キャラ主役級: コンテナ ~85% (最大 320px)、正方形画像×正方形枠で cover (余白なし) */}
+      <div className="w-[85%] max-w-[320px] aspect-square rounded-[24px] overflow-hidden border border-[#3A2D6B]/10 shadow-[0_10px_28px_rgba(58,45,107,0.16)] mb-3 bg-white">
         <Image
           src={imageSrc}
           alt={alt}
-          width={352}
-          height={352}
+          width={640}
+          height={640}
           priority
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
         />
       </div>
       {eyebrow && (
