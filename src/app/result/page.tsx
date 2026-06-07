@@ -10,10 +10,12 @@
 //
 //   - owner_token あり → /me/[token] (16 タイプの本来の結果)
 //   - owner_token なし (未保存) → /diagnosis (再診断で token を発行し /me に到達)
+//
+// ここは「分析」ではなく即時リダイレクトのみ。分析中アニメ (Big Five 算出) は初回診断
+// (/diagnosis の DiagnosisAnalyzingLoader) だけに限定し、ここはニュートラルな短いスピナーにする。
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AnalyzingLoader } from "@/components/AnalyzingLoader";
 
 export default function ResultFallbackPage() {
   const router = useRouter();
@@ -23,5 +25,14 @@ export default function ResultFallbackPage() {
     router.replace(ownerToken ? `/me/${ownerToken}` : "/diagnosis");
   }, [router]);
 
-  return <AnalyzingLoader />;
+  // 分析コピーを出さない最小スピナー (リダイレクトは即時なので一瞬のみ表示)。
+  return (
+    <div className="min-h-screen flex items-center justify-center grid-bg">
+      <div
+        className="w-10 h-10 rounded-full border-[3px] border-[#3A2D6B]/20 border-t-[#3A2D6B] animate-spin"
+        role="status"
+        aria-label="読み込み中"
+      />
+    </div>
+  );
 }

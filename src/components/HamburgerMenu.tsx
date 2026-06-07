@@ -47,20 +47,29 @@ import Link from "next/link";
 
 interface HamburgerMenuProps {
   // Server で解決した「自分のトリセツ」URL (= /me/[token])。
-  // 未指定なら /result にフォールバック → localStorage の owner_token から /me/[token] に解決
-  // (token が無ければ /result 側で /diagnosis にリダイレクト)。
+  // 未指定ならクライアントで localStorage の owner_token から直接 /me/[token] を解決する
+  // (/result の分析ローディングを経由しない。token が無ければ /diagnosis)。
   myTrisetsuUrl?: string;
 }
 
 export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // 「ワタシのトリセツ」の実遷移先。Server で token が解決済み (myTrisetsuUrl) なら即それを使う。
+  // 無ければクライアントで localStorage の owner_token から直接 /me/[token] を組み立て、
+  // /result の分析インタースティシャルを経由せず即座に結果を表示する。
+  const [myUrl, setMyUrl] = useState<string | undefined>(myTrisetsuUrl);
 
   // Portal の描画先 (document.body) はクライアント側でのみ存在するため、
   // hydration mismatch を避けるため初回マウント完了後にだけ Portal を描画する。
+  // 併せて、token が prop で来ていない画面では localStorage から自分の /me を解決する。
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (!myTrisetsuUrl) {
+      const token = localStorage.getItem("torisetsu_owner_token");
+      setMyUrl(token ? `/me/${token}` : "/diagnosis");
+    }
+  }, [myTrisetsuUrl]);
 
   const handleClose = () => setOpen(false);
 
@@ -98,7 +107,7 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
         <nav className="flex flex-col gap-5">
           <MenuLink href="/" label="トップ" onClose={handleClose} />
           <MenuLink
-            href={myTrisetsuUrl || "/result"}
+            href={myUrl || "/diagnosis"}
             label="ワタシのトリセツ"
             onClose={handleClose}
           />
