@@ -5,17 +5,18 @@
 // - 画面右下に position: fixed。スクロールしても常に表示。
 // - 円形 (sunYellow 背景 + deepPurple 文字 + やわらかい影 + M PLUS Rounded 太字)。
 // - 文言「相互理解度 / はこちら →」(矢印は SVG、emoji 不使用=ブランド規約)。
-// - タップ=ヒーロー直下のシェアブロックへスムーズスクロール (友達に評価してもらう導線を起動)。
+// - タップ=/friend-evaluation へ next/link でクライアント遷移 (内部ルート、外部URLは使わない)。
 // - 出現: ヒーローを少しスクロールしたらフェードイン。
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface FloatingShareCtaProps {
-  /** スクロール先アンカーの id (既定: share-block)。 */
-  targetId?: string;
+  /** 遷移先の内部ルート (既定: /friend-evaluation)。 */
+  href?: string;
 }
 
-export function FloatingShareCta({ targetId = "share-block" }: FloatingShareCtaProps) {
+export function FloatingShareCta({ href = "/friend-evaluation" }: FloatingShareCtaProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -25,20 +26,10 @@ export function FloatingShareCta({ targetId = "share-block" }: FloatingShareCtaP
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleClick = () => {
-    const el = document.getElementById(targetId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label="相互理解度はこちら — 友達にシェアして評価してもらう"
+    <Link
+      href={href}
+      aria-label="相互理解度はこちら — 友達から見たアナタを見る"
       className="fixed z-50 transition-all duration-300 ease-out active:scale-95"
       style={{
         right: "16px",
@@ -68,7 +59,7 @@ export function FloatingShareCta({ targetId = "share-block" }: FloatingShareCtaP
           <ArrowRight />
         </span>
       </span>
-    </button>
+    </Link>
   );
 }
 
