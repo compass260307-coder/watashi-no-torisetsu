@@ -28,8 +28,9 @@ export function CharacterHero({
 }: CharacterHeroProps) {
   return (
     <div className="flex flex-col items-center text-center mb-6">
-      {/* キャラ主役級: コンテナ ~85% (最大 320px)、正方形画像×正方形枠で cover (余白なし) */}
-      <div className="w-[85%] max-w-[320px] aspect-square rounded-[24px] overflow-hidden border border-[#3A2D6B]/10 shadow-[0_10px_28px_rgba(58,45,107,0.16)] mb-3 bg-white">
+      {/* キャラ主役級: コンテナ ~85% (最大 320px)。背景込みシーン画像を cover で枠いっぱい。
+          白下地・縁は無し (画像自体がやわらかい背景)。角丸 + やわらか影のみ。 */}
+      <div className="w-[85%] max-w-[320px] aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)] mb-3">
         <Image
           src={imageSrc}
           alt={alt}
