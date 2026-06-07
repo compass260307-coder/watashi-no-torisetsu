@@ -1,11 +1,12 @@
 // Phase 1.5-α: 結果ページ上のヒーロー (箱カードにしない・ページ背景に自然に乗せる)。
 //
-// 構成: [丸枠キャラ画像] → essence(小・上) → タイプ名(大・下) → 短い説明。
-// 見出しは .wtr-sub / .wtr-name (白フチ+黄ドロップ, deepPurple, M PLUS Rounded)。
-// グリッド背景・装飾ヘッダー・シェアコード・フッターは付けない (= 保存画像専用)。
+// 構成: [角丸スクエアのキャラ画像 (コンテンツカードと同じ横幅)] → essence + 型名 (同サイズ・
+// font-black・deepPurple のクリーン塗り) → 短い説明。
+// 見出しは保存画像 (ShareCard) の .wtr-* (白フチ+黄ドロップ) とは別で、装飾なしのクリーンな塗り。
+// スマホでは見出しブロックを画像下端に少し重ねる (frame relative + 負 margin + z-index)。
 // 画像は幅高さ固定でレイアウトシフト防止。
 //
-// 使う場所: /me(自分の型) / /evaluate/result・/evaluate/sent(友達から見た型)。
+// 使う場所: /me(自分の型) / /evaluate/result(友達から見た型)。
 
 import Image from "next/image";
 
@@ -28,23 +29,31 @@ export function CharacterHero({
 }: CharacterHeroProps) {
   return (
     <div className="flex flex-col items-center text-center mb-6">
-      {/* キャラ主役級: コンテナ ~85% (最大 320px)。背景込みシーン画像を cover で枠いっぱい。
-          白下地・縁は無し (画像自体がやわらかい背景)。角丸 + やわらか影のみ。 */}
-      <div className="w-[85%] max-w-[320px] aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)] mb-3">
+      {/* (1) コンテンツカードと同じ横幅 (w-full)・正方形。背景込みシーンを cover で枠いっぱい。
+          (4) スマホで見出しを重ねるため frame は relative。 */}
+      <div className="relative w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
         <Image
           src={imageSrc}
           alt={alt}
-          width={640}
-          height={640}
+          width={960}
+          height={960}
           priority
           className="w-full h-full object-cover"
         />
       </div>
-      {eyebrow && (
-        <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
-      )}
-      <p className="wtr-sub mb-1">{essence}</p>
-      <h1 className="wtr-name mb-3">{name}</h1>
+      {/* (2)(3) essence + 型名: 同サイズ・font-black(900)・deepPurple。装飾(白フチ/黄ドロップ)なしの
+          クリーン塗り。(4) スマホは画像下端に少し重ねる (-mt + z-index)、デスクトップは控えめの間隔。 */}
+      <div className="relative z-10 -mt-5 sm:mt-2 flex flex-col items-center">
+        {eyebrow && (
+          <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
+        )}
+        <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
+          {essence}
+        </p>
+        <h1 className="font-black text-2xl text-[#3A2D6B] leading-tight mb-3">
+          {name}
+        </h1>
+      </div>
       {description && (
         <p className="text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[300px]">
           {description}
