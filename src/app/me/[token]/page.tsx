@@ -37,6 +37,7 @@ import { selfResultContent } from "@/lib/self-result-content";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
+import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import { generateShareCode } from "@/lib/share-code";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
@@ -252,7 +253,9 @@ export default async function MePage({ params }: PageProps) {
         />
 
         {/* ===== Koi 配置: ヒーロー直下のシェア導線 (SNS共有 + 画像保存 + 相互理解度文言) =====
-            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
+            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。
+            id=share-block: フローティング CTA のスムーズスクロール先。 */}
+        <div id="share-block" className="scroll-mt-20" />
         <ResultActions
           typeName={sixteenType.name}
           shareUrl={shareUrl}
@@ -471,6 +474,9 @@ export default async function MePage({ params }: PageProps) {
           </Link>
         </div>
       </div>
+
+      {/* 常時表示フローティング CTA: シェアブロックへスムーズスクロール */}
+      <FloatingShareCta />
     </main>
   );
 }
