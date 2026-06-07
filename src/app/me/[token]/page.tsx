@@ -70,17 +70,7 @@ interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-// Phase 1.5-α Day 11: Big Five 5 次元の日本語ラベル定義 (順序固定)
-// stored.{E|A|O|C|N} は lib/diagnosis.ts により 0-10 にスケール化済み (types.ts コメント参照)
-const BIG_FIVE_LABELS: { key: BigFiveDimension; label: string }[] = [
-  { key: "E", label: "外向性" },
-  { key: "A", label: "協調性" },
-  { key: "O", label: "開放性" },
-  { key: "C", label: "誠実性" },
-  { key: "N", label: "神経症傾向" },
-];
-
-// Phase 1.5-α Day 12-Polish: 自己診断 7 章は 16 タイプ別実本文 (lib/self-result-content.ts)
+// Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
 // に置き換え。章タイトル・本文はそこを単一の source とする (旧プレースホルダー CHAPTERS は廃止)。
 
 function formatDate(iso: string | null | undefined): string {
@@ -126,18 +116,6 @@ function deriveTypeLabel(
     }
   }
   return { typeName, fullCode, modifierLabel };
-}
-
-// Phase 1.5-α Day 11: stored.scores から % 化済みの Big Five 配列を生成
-// 値域 0-10 → score * 10 で % 化、欠損時はフォールバック 5 (= 50%)
-function deriveBigFivePercents(
-  stored: StoredScores,
-): { key: BigFiveDimension; label: string; percent: number }[] {
-  return BIG_FIVE_LABELS.map(({ key, label }) => {
-    const raw = typeof stored[key] === "number" ? stored[key]! : 5;
-    const percent = Math.max(0, Math.min(100, Math.round(raw * 10)));
-    return { key, label, percent };
-  });
 }
 
 export default async function MePage({ params }: PageProps) {
@@ -200,7 +178,7 @@ export default async function MePage({ params }: PageProps) {
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
   const sixteenType = sixteenTypes[sixteenTypeId];
-  const chapters = selfResultContent[sixteenTypeId];
+  const sections = selfResultContent[sixteenTypeId];
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
@@ -209,7 +187,6 @@ export default async function MePage({ params }: PageProps) {
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
   // リンクで来た友達も QR を読んだ友達も同じ「あなたを評価する」フロー (/friend/[inviteCode]) に着地。
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
-  const bigFive = deriveBigFivePercents(stored);
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
   const shareCode = generateShareCode(user.id as string);
 
@@ -268,83 +245,33 @@ export default async function MePage({ params }: PageProps) {
         {/* 相互理解度を促す文言 (Koi 風: 花 + テキスト + 花、中央寄せ) */}
         <SharePromo className="mb-8" />
 
-        {/* ===== Day 12-Polish: 自己診断 7 章レポート (全無料、16 タイプ別実本文)
-            各章 = intro + 名前付きセクション + 項目(タイトル+本文)。
-            第1章のみ Big Five バーチャート (実データ) と診断日を冒頭/末尾に表示。 */}
-        {chapters.map((ch, idx) => (
-          <section key={idx} className="mb-8">
-            {/* 章ヘッダー (番号バッジ + タイトル) */}
+        {/* ===== Day 12-Polish-E: 自己診断本文 = 3 セクション (全無料、16 タイプ別実本文)
+            取扱説明書 / 取扱注意ポイント / 相性の良いお相手。各セクション = 2 段落 (\n\n 区切り)。
+            Big Five バーチャートは撤去。診断日のみ「取扱説明書」セクション末尾に表示。 */}
+        {sections.map((sec, idx) => (
+          <section key={sec.title} className="mb-8">
+            {/* セクションヘッダー (番号バッジ + タイトル) */}
             <div className="flex items-center gap-3 mb-4">
               <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
                 {idx + 1}
               </span>
               <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                {ch.chapter}
+                {sec.title}
               </h2>
             </div>
 
-            {/* 章本文カード */}
+            {/* 本文カード (2 段落) */}
             <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-              {/* 第1章のみ Big Five バーチャート (実データ、stored.scores より) */}
-              {idx === 0 && (
-                <div className="space-y-4 mb-5">
-                  {bigFive.map((dim) => (
-                    <div key={dim.key}>
-                      <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-1">
-                        <span>{dim.label}</span>
-                        <span>{dim.percent}%</span>
-                      </div>
-                      <div
-                        className="h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
-                        role="progressbar"
-                        aria-label={`${dim.label} ${dim.percent}%`}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={dim.percent}
-                      >
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#FE3C72] to-[#0094D8]"
-                          style={{ width: `${dim.percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* イントロ (章の核) */}
-              <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-5">
-                {ch.intro}
-              </p>
-
-              {/* 名前付きセクション + 項目 */}
-              {ch.sections.map((sec) => (
-                <div key={sec.title} className="mb-5 last:mb-0">
-                  <h3 className="text-[#FE3C72] font-black text-sm mb-3">
-                    {sec.title}
-                  </h3>
-                  <ul className="flex flex-col gap-3">
-                    {sec.items.map((it, i) => (
-                      <li key={i} className="flex gap-2.5">
-                        <span
-                          aria-hidden="true"
-                          className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#FE3C72] flex-shrink-0"
-                        />
-                        <div>
-                          <p className="text-[#3A2D6B] font-black text-sm">
-                            {it.title}
-                          </p>
-                          <p className="text-[#3A2D6B]/75 text-xs leading-relaxed">
-                            {it.body}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {sec.body.split("\n\n").map((para, i) => (
+                <p
+                  key={i}
+                  className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
+                >
+                  {para}
+                </p>
               ))}
 
-              {/* 第1章の最後に診断日 (小さく) */}
+              {/* 取扱説明書 (最初のセクション) の末尾に診断日 (小さく) */}
               {idx === 0 && diagnosedAt && (
                 <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
                   診断日: {diagnosedAt}
