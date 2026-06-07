@@ -35,6 +35,7 @@ import {
 } from "@/lib/sixteen-types";
 import { selfResultContent } from "@/lib/self-result-content";
 import { CharacterHero } from "@/components/result/CharacterHero";
+import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { generateShareCode } from "@/lib/share-code";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
@@ -234,13 +235,8 @@ export default async function MePage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== 「{name}のトリセツ」タグ (ヘッダーロゴ wordmark に寄せたレタリング) =====
-            黄ピル背景は外し、ロゴと同系統のスカイブルー塗り + 白フチ + 黄フチの文字主体に。 */}
-        <div className="flex justify-center mb-4">
-          <div className="wtr-logo-text text-2xl">
-            {displayName}のトリセツ
-          </div>
-        </div>
+        {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
+        <TrisetsuNameTag name={displayName} className="mb-4" />
 
         {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
             旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /

@@ -1,0 +1,61 @@
+// Phase 1.5-α: 「{name}のトリセツ」タグ (Koi 参考)。
+//
+// [花] 「{name}のトリセツ」 [ハート] を中央寄せ 1 行。
+// 文字はヘッダーロゴ wordmark に寄せた .wtr-logo-text (logoBlue 塗り + 太い白フチ + にじみ)。
+// 花/ハートは指定 SVG をそのまま使用。
+
+interface TrisetsuNameTagProps {
+  name: string;
+  className?: string;
+}
+
+export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) {
+  return (
+    <div
+      className={`flex items-center justify-center gap-2 ${className}`.trim()}
+    >
+      <FlowerIcon />
+      <span className="wtr-logo-text text-3xl leading-none">
+        {name}のトリセツ
+      </span>
+      <HeartIcon />
+    </div>
+  );
+}
+
+function FlowerIcon() {
+  return (
+    <svg
+      width="26"
+      height="26"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="flex-shrink-0"
+    >
+      <g fill="#B7A8EC">
+        <ellipse cx="12" cy="5" rx="3.2" ry="4.6" />
+        <ellipse cx="12" cy="19" rx="3.2" ry="4.6" />
+        <ellipse cx="5" cy="12" rx="4.6" ry="3.2" />
+        <ellipse cx="19" cy="12" rx="4.6" ry="3.2" />
+      </g>
+      <circle cx="12" cy="12" r="3.6" fill="#FFE07A" />
+    </svg>
+  );
+}
+
+function HeartIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="flex-shrink-0"
+    >
+      <path
+        d="M12 21C12 21 3 14 3 8.5 3 5.5 5.2 3.5 7.8 3.5 9.6 3.5 11.1 4.6 12 6 12.9 4.6 14.4 3.5 16.2 3.5 18.8 3.5 21 5.5 21 8.5 21 14 12 21 12 21Z"
+        fill="#FE8FB0"
+      />
+    </svg>
+  );
+}
