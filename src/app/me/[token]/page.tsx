@@ -253,9 +253,7 @@ export default async function MePage({ params }: PageProps) {
         />
 
         {/* ===== Koi 配置: ヒーロー直下のシェア導線 (SNS共有 + 画像保存 + 相互理解度文言) =====
-            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。
-            id=share-block: フローティング CTA のスムーズスクロール先。 */}
-        <div id="share-block" className="scroll-mt-20" />
+            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
         <ResultActions
           typeName={sixteenType.name}
           shareUrl={shareUrl}
