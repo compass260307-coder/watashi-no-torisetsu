@@ -234,9 +234,10 @@ export default async function MePage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ステッカー (傾き付き) ===== */}
+        {/* ===== 「{name}のトリセツ」タグ (ヘッダーロゴ wordmark に寄せたレタリング) =====
+            黄ピル背景は外し、ロゴと同系統のスカイブルー塗り + 白フチ + 黄フチの文字主体に。 */}
         <div className="flex justify-center mb-4">
-          <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md -rotate-2 text-base">
+          <div className="wtr-logo-text text-2xl">
             {displayName}のトリセツ
           </div>
         </div>
