@@ -11,11 +11,17 @@ interface TrisetsuNameTagProps {
 
 export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) {
   return (
+    // 花［テキスト］ハートを必ず横一列に: flex-nowrap + 中央寄せ。max-w-full でコンテナ幅に収める。
     <div
-      className={`flex items-center justify-center gap-2 ${className}`.trim()}
+      className={`flex flex-nowrap items-center justify-center gap-2 max-w-full ${className}`.trim()}
     >
       <FlowerIcon />
-      <span className="wtr-logo-text text-3xl leading-none">
+      {/* 1行固定 (nowrap) + フォントを clamp でレスポンシブ (スマホは画面幅に合わせ縮小)。
+          min-w-0 で長い名前でも flex がコンテナ幅を超えないように。 */}
+      <span
+        className="wtr-logo-text leading-none min-w-0"
+        style={{ fontSize: "clamp(18px, 5.5vw, 30px)", whiteSpace: "nowrap" }}
+      >
         {name}のトリセツ
       </span>
       <HeartIcon />
