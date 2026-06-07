@@ -231,7 +231,12 @@ export function animalSlugForType(id: SixteenTypeId): string {
   return ANIMAL_SLUG[id] ?? "rabbit";
 }
 
-/** 型 → キャラ画像パス (/characters/{animal}.png) */
+// キャラ画像アセットのバージョン。同名ファイルで差し替えた時に next/image 最適化キャッシュ・
+// CDN・ブラウザのキャッシュを確実に更新するため、src に ?v= で付与する。
+// 画像を差し替えるたびにこの数値を上げる。
+export const CHARACTER_ASSET_VERSION = 2;
+
+/** 型 → キャラ画像パス (/characters/{animal}.png?v=N、キャッシュバスト付き) */
 export function characterImagePath(id: SixteenTypeId): string {
-  return `/characters/${animalSlugForType(id)}.png`;
+  return `/characters/${animalSlugForType(id)}.png?v=${CHARACTER_ASSET_VERSION}`;
 }
