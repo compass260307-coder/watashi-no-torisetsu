@@ -68,16 +68,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             height={44}
             style={{ width: 44, height: 44, transform: "rotate(-12deg)" }}
           />
+          {/* ヒーローのタグと同じロゴ風レタリング (logoBlue 塗り + 太い白フチ)。
+              黄色ピル下地は撤去してヒーローに合わせる。文字スタイルのみ変更。 */}
           <span
+            className="wtr-logo-text"
             style={{
-              background: "#FFE993",
-              color: "#3A2D6B",
-              fontWeight: 800,
-              fontSize: 18,
-              padding: "8px 18px",
-              borderRadius: 9999,
-              border: "2px solid #3A2D6B",
-              transform: "rotate(-2deg)",
+              fontSize: 26,
+              lineHeight: 1.1,
               whiteSpace: "nowrap",
             }}
           >
