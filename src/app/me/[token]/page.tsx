@@ -250,6 +250,32 @@ export default async function MePage({ params }: PageProps) {
           description={sixteenType.oneLiner}
         />
 
+        {/* ===== Koi 配置: ヒーロー直下のシェア導線 (SNS共有 + 画像保存 + 相互理解度文言) =====
+            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
+        <ResultActions
+          typeName={sixteenType.name}
+          shareUrl={shareUrl}
+          ownerName={displayName}
+          essence={sixteenType.essence}
+          description={sixteenType.oneLiner}
+          imageSrc={characterImagePath(sixteenTypeId)}
+          shareCode={shareCode}
+        />
+
+        {/* 相互理解度を促す文言 (装飾つき・中央寄せ)
+            ※コピーは仮置き。確定文言が来たらこの 1 ブロックを差し替え。 */}
+        <div className="flex justify-center mb-8">
+          <div className="bg-[#FFF9F0] border border-[#0094D8]/20 rounded-2xl px-5 py-3 text-center max-w-[360px]">
+            <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-1">
+              SHARE
+            </p>
+            <p className="text-[#3A2D6B]/85 text-sm font-bold leading-relaxed">
+              このトリセツを友達にシェアして診断してもらうと、 二人の
+              <span className="text-[#FE3C72]">相互理解度</span>が分かるよ
+            </p>
+          </div>
+        </div>
+
         {/* ===== Day 12-Polish: 自己診断 7 章レポート (全無料、16 タイプ別実本文)
             各章 = intro + 名前付きセクション + 項目(タイトル+本文)。
             第1章のみ Big Five バーチャート (実データ) と診断日を冒頭/末尾に表示。 */}
@@ -346,18 +372,6 @@ export default async function MePage({ params }: PageProps) {
         ) : (
           <VisitorCtaSection />
         )}
-
-        {/* ===== Client: SNS + 画像保存 (Day 10 / Day 11.4 で キャラコード重複削除) =====
-            キャラコードは FriendGapInvite 内で表示 (Day 11.3)、ResultActions からは撤去 */}
-        <ResultActions
-          typeName={sixteenType.name}
-          shareUrl={shareUrl}
-          ownerName={displayName}
-          essence={sixteenType.essence}
-          description={sixteenType.oneLiner}
-          imageSrc={characterImagePath(sixteenTypeId)}
-          shareCode={shareCode}
-        />
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
