@@ -27,24 +27,28 @@
 //   時には document が存在しないため、useEffect で mounted state を立てて 2 回目以降に
 //   Portal を描画する。これで hydration mismatch を避ける。
 //
-// 含む 3 項目 (Day 12-A 確定、本 PR で変更なし):
-//   1. トップ                  → /
-//   2. アナタのトリセツ        → myTrisetsuUrl prop
-//   3. 友達による評価          → /friend-evaluation
+// 含む 3 項目:
+//   1. トップ              → /
+//   2. ワタシのトリセツ    → myTrisetsuUrl prop (未指定なら /result 経由で自分の /me に解決)
+//   3. 相互理解度          → /friend-evaluation
+//
+// Day 12-Polish: PC でのオーバーレイ幅を max-w-[480px] に制限 + 中央寄せ、
+//   ☰ トグルをブランドの chunky ボタン化 (sunYellow ソリッド + 太枠 + オフセット影 + 太線 SVG)、
+//   項目ラベル/リンク先を更新 (ワタシのトリセツ→/me、相互理解度→/friend-evaluation)。
 //
 // 触らない:
-//   - メニュー項目の中身 / 順序 / リンク先
-//   - sunYellow CTA スタイル
+//   - sunYellow CTA(MenuLink) スタイル
 //   - 開閉動作 (☰ で開く / ✕ / 背景クリックで閉じる)
-//   - ☰ / ✕ のグリフ (記号文字、T3-5 対象外)
-//   - Polish-A の Koi 風ドロワーレイアウト (画面ほぼ全体、p-8、gap-5、safe-area)
+//   - Portal レンダリング (document.body 直下) と SSR mounted ガード
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
 interface HamburgerMenuProps {
-  // Server で解決した「自分のトリセツ」URL。未指定なら /diagnosis (未診断ユーザー)。
+  // Server で解決した「自分のトリセツ」URL (= /me/[token])。
+  // 未指定なら /result にフォールバック → localStorage の owner_token から /me/[token] に解決
+  // (token が無ければ /result 側で /diagnosis にリダイレクト)。
   myTrisetsuUrl?: string;
 }
 
@@ -65,11 +69,13 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
       role="dialog"
       aria-modal="true"
       aria-label="メニュー"
-      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm animate-modal-fade-in"
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm animate-modal-fade-in flex justify-center items-start px-2"
       onClick={handleClose}
     >
+      {/* PC でも全幅に広がらず、アプリのページコンテナと同じ max-w-[480px] に収め中央寄せ。
+          モバイルは px-2 + w-full で従来どおりほぼ全幅。 */}
       <div
-        className="absolute inset-x-2 top-3 max-h-[calc(100vh-24px)] bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-8 animate-modal-slide-up overflow-y-auto"
+        className="w-full max-w-[480px] mt-3 max-h-[calc(100vh-24px)] bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-8 animate-modal-slide-up overflow-y-auto"
         style={{ paddingBottom: "calc(2rem + env(safe-area-inset-bottom))" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -92,13 +98,13 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
         <nav className="flex flex-col gap-5">
           <MenuLink href="/" label="トップ" onClose={handleClose} />
           <MenuLink
-            href={myTrisetsuUrl || "/diagnosis"}
-            label="アナタのトリセツ"
+            href={myTrisetsuUrl || "/result"}
+            label="ワタシのトリセツ"
             onClose={handleClose}
           />
           <MenuLink
             href="/friend-evaluation"
-            label="友達による評価"
+            label="相互理解度"
             onClose={handleClose}
           />
         </nav>
@@ -108,14 +114,23 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
 
   return (
     <>
+      {/* ブランドの chunky ボタン (画像を保存 / シェア) と同じ "ぷっくり" 立体ポップ:
+          sunYellow ソリッド + 太め deepPurple ボーダー + オフセットドロップシャドウ。
+          ☰ は太い deepPurple の SVG 3 本線で確実に見える太さに。少し大きめ(56px)でタップ領域も確保。 */}
       <button
         type="button"
         aria-label="メニューを開く"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="w-12 h-12 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center text-[#3A2D6B] font-black text-xl"
+        className="w-14 h-14 rounded-full bg-[#FFE993] border-[3px] border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all flex items-center justify-center"
       >
-        ☰
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <g stroke="#3A2D6B" strokeWidth="2.6" strokeLinecap="round">
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+          </g>
+        </svg>
       </button>
 
       {/* Portal で document.body 直下に描画 → 親のスタッキングコンテキストから独立 */}

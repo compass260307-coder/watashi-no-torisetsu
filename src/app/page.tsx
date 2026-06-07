@@ -55,7 +55,8 @@ export default function Home() {
           {/* Day 7.3: ヘッダーロゴ復活 (左 logo.png + 右ハンバーガー大)
               ロゴは halo の代わりに drop-shadow でふんわり grid から浮かす
               Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> に置換
-              LP は未ログイン前提のため myTrisetsuUrl は省略 (fallback で /diagnosis に飛ぶ) */}
+              LP は未ログイン前提のため myTrisetsuUrl は省略
+              (fallback /result が localStorage の token から自分の /me に解決、無ければ /diagnosis) */}
           <div className="flex justify-between items-center mb-4">
             <Image
               src="/logo.png"
