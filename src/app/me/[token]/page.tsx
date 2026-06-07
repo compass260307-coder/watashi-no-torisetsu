@@ -205,8 +205,9 @@ export default async function MePage({ params }: PageProps) {
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
-  const shareUrl = `${SITE_URL}/me/${token}`;
-  // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)
+  // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)。
+  // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
+  // リンクで来た友達も QR を読んだ友達も同じ「あなたを評価する」フロー (/friend/[inviteCode]) に着地。
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   const bigFive = deriveBigFivePercents(stored);
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
@@ -256,7 +257,7 @@ export default async function MePage({ params }: PageProps) {
             旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
         <ResultActions
           typeName={sixteenType.name}
-          shareUrl={shareUrl}
+          shareUrl={inviteUrl}
           ownerName={displayName}
           essence={sixteenType.essence}
           description={sixteenType.oneLiner}
