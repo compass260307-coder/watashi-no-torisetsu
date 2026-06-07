@@ -28,8 +28,14 @@ import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import {
+  classifySixteenType,
+  sixteenTypes,
+  characterImagePath,
+} from "@/lib/sixteen-types";
 import { selfResultContent } from "@/lib/self-result-content";
+import { CharacterHero } from "@/components/result/CharacterHero";
+import { generateShareCode } from "@/lib/share-code";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
@@ -200,6 +206,8 @@ export default async function MePage({ params }: PageProps) {
   // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   const bigFive = deriveBigFivePercents(stored);
+  // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
+  const shareCode = generateShareCode(user.id as string);
 
   return (
     // Phase 1.5-α Day 11.1: LP と同じ grid-bg + 統合カード枠で世界観を連続化。
@@ -233,59 +241,17 @@ export default async function MePage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* ===== キャラ画像プレースホルダー =====
-            32 タイプ分のキャラ画像を /public/types/ 配下に後で配置。
-            現状は枠 + テキストプレースホルダー (絵文字なし、T3-5 方針)。 */}
-        <div className="flex justify-center mb-6">
-          <div className="relative w-full max-w-[280px] aspect-square rounded-3xl bg-gradient-to-b from-[#BCDEF8]/40 to-[#FFD6E0]/40 border-2 border-[#0094D8]/25 flex items-center justify-center">
-            <div className="text-center text-[#3A2D6B]/40">
-              <div className="font-black text-2xl tracking-[0.2em] mb-2">
-                CHARACTER
-              </div>
-              <div className="text-xs font-bold">準備中</div>
-            </div>
-            {/* 装飾 (うっすら) */}
-            <Image
-              src="/decorations/heart-pink.png"
-              alt=""
-              width={48}
-              height={48}
-              aria-hidden="true"
-              className="absolute top-3 right-3 w-12 h-12 opacity-60 -rotate-12 pointer-events-none"
-            />
-            <Image
-              src="/decorations/flower-yellow.png"
-              alt=""
-              width={40}
-              height={40}
-              aria-hidden="true"
-              className="absolute bottom-3 left-3 w-10 h-10 opacity-60 rotate-12 pointer-events-none"
-            />
-          </div>
-        </div>
-
-        {/* ===== タイプ名 (16 タイプ) + 上ラベル + OCEA コードバッジ ===== */}
-        <div className="text-center mb-4">
-          <p className="text-[#FE3C72] font-bold text-sm mb-1">
-            アナタのタイプ
-          </p>
-          <h1 className="text-[#3A2D6B] font-black text-3xl mb-1 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
-            {sixteenType.name}
-          </h1>
-          <p className="text-[#3A2D6B]/70 font-bold text-xs mb-3">
-            {sixteenType.animal}
-          </p>
-          <span className="inline-block bg-[#3A2D6B] text-white font-black text-sm px-4 py-1 rounded-full tracking-[0.2em]">
-            {sixteenType.code}
-          </span>
-        </div>
-
-        {/* ===== エッセンス (16 タイプの一言キャラ付け) ===== */}
-        <div className="flex justify-center mb-8">
-          <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
-            {sixteenType.essence}
-          </span>
-        </div>
+        {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
+            旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
+            animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
+            「{owner}のトリセツ」黄ピル(上のステッカー)は維持。 */}
+        <CharacterHero
+          imageSrc={characterImagePath(sixteenTypeId)}
+          alt={sixteenType.name}
+          essence={sixteenType.essence}
+          name={sixteenType.name}
+          description={sixteenType.oneLiner}
+        />
 
         {/* ===== Day 12-Polish: 自己診断 7 章レポート (全無料、16 タイプ別実本文)
             各章 = intro + 名前付きセクション + 項目(タイトル+本文)。
@@ -386,7 +352,15 @@ export default async function MePage({ params }: PageProps) {
 
         {/* ===== Client: SNS + 画像保存 (Day 10 / Day 11.4 で キャラコード重複削除) =====
             キャラコードは FriendGapInvite 内で表示 (Day 11.3)、ResultActions からは撤去 */}
-        <ResultActions typeName={sixteenType.name} shareUrl={shareUrl} />
+        <ResultActions
+          typeName={sixteenType.name}
+          shareUrl={shareUrl}
+          ownerName={displayName}
+          essence={sixteenType.essence}
+          description={sixteenType.oneLiner}
+          imageSrc={characterImagePath(sixteenTypeId)}
+          shareCode={shareCode}
+        />
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (

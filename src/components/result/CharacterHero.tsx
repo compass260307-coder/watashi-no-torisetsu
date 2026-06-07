@@ -1,0 +1,53 @@
+// Phase 1.5-α: 結果ページ上のヒーロー (箱カードにしない・ページ背景に自然に乗せる)。
+//
+// 構成: [丸枠キャラ画像] → essence(小・上) → タイプ名(大・下) → 短い説明。
+// 見出しは .wtr-sub / .wtr-name (白フチ+黄ドロップ, deepPurple, M PLUS Rounded)。
+// グリッド背景・装飾ヘッダー・シェアコード・フッターは付けない (= 保存画像専用)。
+// 画像は幅高さ固定でレイアウトシフト防止。
+//
+// 使う場所: /me(自分の型) / /evaluate/result・/evaluate/sent(友達から見た型)。
+
+import Image from "next/image";
+
+interface CharacterHeroProps {
+  imageSrc: string;
+  alt: string;
+  essence: string; // 小・上 (例: 気まぐれロマンチスト)
+  name: string; // 大・下 (例: きらめきウサギ)
+  description?: string; // 短い説明 (型の essence 文 1〜3 行)
+  eyebrow?: string; // 任意の上ラベル (例: 「{perceiver}が見た{owner}は」)
+}
+
+export function CharacterHero({
+  imageSrc,
+  alt,
+  essence,
+  name,
+  description,
+  eyebrow,
+}: CharacterHeroProps) {
+  return (
+    <div className="flex flex-col items-center text-center mb-8">
+      <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white shadow-md mb-4 bg-white">
+        <Image
+          src={imageSrc}
+          alt={alt}
+          width={320}
+          height={320}
+          priority
+          className="w-full h-full object-cover"
+        />
+      </div>
+      {eyebrow && (
+        <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
+      )}
+      <p className="wtr-sub mb-1">{essence}</p>
+      <h1 className="wtr-name mb-3">{name}</h1>
+      {description && (
+        <p className="text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[300px]">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}

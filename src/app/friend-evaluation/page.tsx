@@ -30,9 +30,17 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
+import {
+  buildDimensionGaps,
+  calcMutualUnderstanding,
+  type BigFiveScores,
+} from "@/lib/perception-analysis";
+import {
+  classifySixteenType,
+  characterImagePath,
+} from "@/lib/sixteen-types";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
@@ -123,32 +131,29 @@ export default async function FriendEvaluationPage() {
     return <UnauthenticatedView />;
   }
 
-  // ===== 3. friend_perceptions =====
+  // ===== 3. friend_perceptions → 相互理解度ランキング (Polish-C) =====
+  // Polish-C: タイプ名・qualitative は出さず、ニックネーム + 相互理解度 % のみ。
+  // perceived_scores と自己 user.scores から calcMutualUnderstanding で % 算出、
+  // 降順にソートして表示。
+  const selfScores = (user.scores ?? {}) as BigFiveScores;
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
-    .select(
-      "id, perceiver_name, perceived_type_id, perceived_scores, perceived_full_code, perceived_modifier_label, qualitative_data, created_at",
-    )
-    .eq("target_user_id", user.id)
-    .order("created_at", { ascending: false });
-  const perceptions = (perceptionRows ?? []).map((p) => ({
-    id: p.id as string,
-    perceiverName: (p.perceiver_name as string) ?? "友達",
-    // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
-    typeName:
-      sixteenTypes[
-        classifySixteenType(
-          (p.perceived_scores ?? {}) as Partial<
-            Record<BigFiveDimension, number>
-          >,
-        )
-      ].name,
-    fullCode: (p.perceived_full_code as string) ?? "",
-    modifierLabel: (p.perceived_modifier_label as string | null) ?? null,
-    qualitative:
-      (p.qualitative_data as Record<string, string> | null) ?? null,
-    createdAt: p.created_at as string,
-  }));
+    .select("id, perceiver_name, perceived_scores")
+    .eq("target_user_id", user.id);
+  const rankedPerceptions = (perceptionRows ?? [])
+    .map((p) => {
+      const otherScores = (p.perceived_scores ?? {}) as BigFiveScores;
+      const gaps = buildDimensionGaps(selfScores, otherScores);
+      const understanding = calcMutualUnderstanding(gaps);
+      return {
+        id: p.id as string,
+        perceiverName: ((p.perceiver_name as string) ?? "").trim() || "友達",
+        understanding,
+        // 知覚タイプ(16)のキャラ画像 = 友達の目に映ったアナタの動物
+        imageSrc: characterImagePath(classifySixteenType(otherScores)),
+      };
+    })
+    .sort((a, b) => b.understanding - a.understanding);
 
   // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
   const { data: integratedRows } = await supabaseAdmin
@@ -176,8 +181,8 @@ export default async function FriendEvaluationPage() {
   const fullCode = deriveFullCode(typeId, stored);
   // modifierLabel は将来「相互理解度」算出と合わせて使う想定で派生だけ確保 (Day 12-A では未表示)
   void deriveModifierLabel(typeId, stored);
-  const ownerName = ((user.display_name as string | null) ?? "").trim();
-  const displayName = ownerName || "アナタ";
+  // Polish-C: displayName / ownerName は ranking 内で使わなくなったため削除
+  // (見出しは「アナタを評価した友達」固定、行内はニックネーム + % のみ)
   const inviteCode = user.invite_code as string;
   const ownerToken = user.owner_token as string;
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
@@ -211,90 +216,22 @@ export default async function FriendEvaluationPage() {
         {/* ===== QR + キャラコード (Day 11.3 FriendGapInvite を再利用) ===== */}
         <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
 
-        {/* ===== 評価履歴セクション ===== */}
+        {/* ===== 相互理解度ランキング (Polish-C) ===== */}
         <section className="mb-8">
-          <h2 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
-            <span>
-              {displayName}を評価した友達
-            </span>
-            <span className="text-xs font-bold text-[#3A2D6B]/60">
-              {perceptions.length}
-            </span>
+          <p className="text-xs font-black text-[#3A2D6B] mb-1">
+            アナタを評価した友達
+          </p>
+          <h2 className="text-[23px] leading-tight font-black text-[#3A2D6B] mb-4">
+            相互理解度ランキング
           </h2>
-          {perceptions.length === 0 ? (
-            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
-              <p className="text-[#3A2D6B] font-black text-base mb-2">
-                まだ評価がありません
-              </p>
-              <p className="text-[#3A2D6B]/70 text-xs leading-relaxed">
-                上の QR コードを友達に見せて
-                <br />
-                {displayName}を評価してもらおう
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {perceptions.map((p) => (
-                <article
-                  key={p.id}
-                  className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5"
-                >
-                  <p className="text-[11px] text-[#3A2D6B]/60 font-bold mb-1">
-                    {p.perceiverName}さんから見た{displayName}
-                  </p>
-                  <p className="text-base font-black text-[#3A2D6B]">
-                    {p.typeName}
-                    {p.modifierLabel && (
-                      <span className="text-xs font-normal text-[#3A2D6B]/60 ml-2">
-                        ({p.modifierLabel})
-                      </span>
-                    )}
-                  </p>
-                  {p.qualitative &&
-                    Object.keys(p.qualitative).length > 0 && (
-                      <ul className="text-xs text-[#3A2D6B] leading-relaxed mt-3 space-y-1">
-                        {p.qualitative.favorite_point && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              好きなところ:{" "}
-                            </span>
-                            {p.qualitative.favorite_point}
-                          </li>
-                        )}
-                        {p.qualitative.animal && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              動物にたとえると:{" "}
-                            </span>
-                            {p.qualitative.animal}
-                          </li>
-                        )}
-                        {p.qualitative.impression_scene && (
-                          <li>
-                            <span className="text-[#3A2D6B]/60 font-bold">
-                              印象的なシーン:{" "}
-                            </span>
-                            {p.qualitative.impression_scene}
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  <div className="flex justify-between items-center mt-3">
-                    <p className="text-[10px] text-[#3A2D6B]/50 font-bold">
-                      {formatDate(p.createdAt)}
-                    </p>
-                    {/* Day 12-C1: 詳細結果 (6 章 freemium) へのリンク */}
-                    <Link
-                      href={`/evaluate/result/${p.id}`}
-                      className="text-[#FE3C72] text-xs font-black hover:underline"
-                    >
-                      結果を見る →
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+
+          <div className="bg-white border-[3px] border-[#0094D8] rounded-[28px] p-4">
+            {rankedPerceptions.length === 0 ? (
+              <EmptyRankingTeaser myTrisetsuUrl={myTrisetsuUrl} />
+            ) : (
+              <RankingList items={rankedPerceptions} />
+            )}
+          </div>
         </section>
 
         {/* ===== 真のトリセツ履歴 (関連、Day 10 から維持) ===== */}
@@ -404,5 +341,160 @@ function UnauthenticatedView() {
         </div>
       </div>
     </main>
+  );
+}
+
+// =========================================================================
+// Polish-C: 相互理解度ランキング (通常状態 + 空状態スケルトン)
+// =========================================================================
+
+interface RankItem {
+  id: string;
+  perceiverName: string;
+  understanding: number;
+  imageSrc: string;
+}
+
+// 順位バッジ色 (絵文字禁止、円形 div + 数字、Polish-C 仕様)
+function rankBadgeColors(rank: number): { bg: string; fg: string } {
+  if (rank === 1) return { bg: "#E8C547", fg: "#2A2856" }; // gold
+  if (rank === 2) return { bg: "#CBD0DA", fg: "#2A2856" }; // silver
+  if (rank === 3) return { bg: "#DDA873", fg: "#FFFFFF" }; // bronze
+  return { bg: "#E4E0F5", fg: "#3A2D6B" }; // lavender (4 以降)
+}
+
+function RankBadge({ rank, size = 32 }: { rank: number; size?: number }) {
+  const { bg, fg } = rankBadgeColors(rank);
+  return (
+    <div
+      className="flex items-center justify-center rounded-full font-black flex-shrink-0"
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: bg,
+        color: fg,
+        fontSize: size >= 32 ? 14 : 12,
+      }}
+      aria-label={`${rank} 位`}
+    >
+      {rank}
+    </div>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg
+      aria-hidden
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#3A2D6B"
+      strokeOpacity="0.4"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function RankingList({ items }: { items: RankItem[] }) {
+  return (
+    <ul>
+      {items.map((p, idx) => {
+        const rank = idx + 1;
+        const isLast = idx === items.length - 1;
+        return (
+          <li
+            key={p.id}
+            className={isLast ? "" : "border-b-2 border-dashed border-[#E7E3F5]"}
+          >
+            <Link
+              href={`/evaluate/result/${p.id}`}
+              className="flex items-center gap-3 py-3 transition-colors hover:bg-[#FFF9F0] rounded-xl px-1 -mx-1"
+            >
+              <RankBadge rank={rank} />
+              {/* アバター 44px = 知覚タイプ(16)のキャラ画像 (丸枠) */}
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-white flex-shrink-0">
+                <Image
+                  src={p.imageSrc}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="flex-1 min-w-0 truncate text-base font-black text-[#3A2D6B]">
+                {p.perceiverName}
+              </span>
+              <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+                {p.understanding}%
+              </span>
+              <ChevronRight />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// マーカー風ハイライト (黄色背景を行末で切らずに丸める)
+const markerClass =
+  "bg-[#FFE993] [box-decoration-break:clone] [-webkit-box-decoration-break:clone] px-1";
+
+function EmptyRankingTeaser({ myTrisetsuUrl }: { myTrisetsuUrl: string }) {
+  return (
+    <>
+      {/* ダッシュ枠のうながしブロック */}
+      <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] p-3.5 flex items-center gap-3 mb-3">
+        <div className="w-[50px] h-[50px] rounded-full overflow-hidden bg-[#E4E0F5] flex-shrink-0">
+          <Image
+            src="/mascot-pair.png"
+            alt=""
+            width={50}
+            height={50}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <p className="text-sm leading-relaxed text-[#3A2D6B] font-black">
+          <span className={markerClass}>友達に診断してもらって</span>
+          <br />
+          <span className={markerClass}>ランキングを埋めよう</span>
+        </p>
+      </div>
+
+      {/* スケルトン行 ×3 (1 金 / 2 銀 / 3 銅、タップ不可・chevron なし) */}
+      {[1, 2, 3].map((rank) => (
+        <div
+          key={rank}
+          className="border-2 border-[#EDE9F8] rounded-[20px] p-3.5 flex items-center gap-3 mt-2"
+        >
+          <RankBadge rank={rank} />
+          <div className="w-[50px] h-[50px] rounded-full bg-[#ECE9F8] flex-shrink-0" />
+          <div className="flex-1 space-y-1.5 min-w-0">
+            <div className="h-[13px] w-[60%] bg-[#E4E0F5] rounded" />
+            <div className="h-[13px] w-[40%] bg-[#E4E0F5] rounded" />
+          </div>
+          <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+            ??%
+          </span>
+        </div>
+      ))}
+
+      {/* 下部リンク (アナタのトリセツへ) */}
+      <div className="text-center mt-5">
+        <Link
+          href={myTrisetsuUrl}
+          className="text-[#1AB6F0] font-black text-sm hover:underline"
+        >
+          アナタのトリセツを見る
+        </Link>
+      </div>
+    </>
   );
 }
