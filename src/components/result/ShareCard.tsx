@@ -93,13 +93,13 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           />
         </div>
 
-        {/* 丸枠キャラ */}
+        {/* 角丸スクエア枠キャラ (白カードに contain で全身) */}
         <div
           style={{
-            width: 220,
-            height: 220,
+            width: 240,
+            height: 240,
             margin: "0 auto 18px",
-            borderRadius: "50%",
+            borderRadius: 18,
             overflow: "hidden",
             border: "5px solid #fff",
             background: "#fff",
@@ -110,9 +110,9 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           <img
             src={imageSrc}
             alt={typeName}
-            width={220}
-            height={220}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            width={240}
+            height={240}
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
           />
         </div>
 

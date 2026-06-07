@@ -28,14 +28,14 @@ export function CharacterHero({
 }: CharacterHeroProps) {
   return (
     <div className="flex flex-col items-center text-center mb-8">
-      <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white shadow-md mb-4 bg-white">
+      <div className="w-44 h-44 rounded-[18px] overflow-hidden border-4 border-white shadow-md mb-4 bg-white">
         <Image
           src={imageSrc}
           alt={alt}
-          width={320}
-          height={320}
+          width={352}
+          height={352}
           priority
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
       </div>
       {eyebrow && (
