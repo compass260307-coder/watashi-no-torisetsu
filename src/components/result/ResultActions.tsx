@@ -15,19 +15,33 @@
 // 触らない: shareUrl の構築は親 Server Component が担当 (env 依存のため)、
 // 画像保存ロジックも未実装 (html2canvas 等を将来導入)。
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ShareCard } from "./ShareCard";
 
 interface ResultActionsProps {
   typeName: string;
   shareUrl: string;
+  // SNS シェア保存画像 (ShareCard) 用
+  ownerName: string;
+  essence: string;
+  description: string;
+  imageSrc: string;
+  shareCode: string;
 }
 
 export function ResultActions({
   typeName,
   shareUrl,
+  ownerName,
+  essence,
+  description,
+  imageSrc,
+  shareCode,
 }: ResultActionsProps) {
   const [linkCopied, setLinkCopied] = useState(false);
-  const [imageNotice, setImageNotice] = useState(false);
+  const [imageNotice, setImageNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const handleCopyLink = async () => {
     if (!shareUrl) return;
@@ -40,9 +54,29 @@ export function ResultActions({
     }
   };
 
-  const handleSaveImage = () => {
-    setImageNotice(true);
-    window.setTimeout(() => setImageNotice(false), 2400);
+  // 確定カード (ShareCard) を 1 枚の PNG として書き出してダウンロード。
+  // M PLUS Rounded は document に読み込み済み (next/font)。fonts.ready 待ち + 自動埋め込み。
+  const handleSaveImage = async () => {
+    if (!cardRef.current || saving) return;
+    setSaving(true);
+    setImageNotice(null);
+    try {
+      if (document.fonts?.ready) await document.fonts.ready;
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(cardRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `watashi-torisetsu-${shareCode}.png`;
+      a.click();
+    } catch {
+      setImageNotice("画像の保存に失敗しました");
+      window.setTimeout(() => setImageNotice(null), 2400);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tweetText = `私のトリセツは「${typeName}」でした！`;
@@ -104,23 +138,45 @@ export function ResultActions({
         </button>
       </div>
 
-      {/* 画像を保存 (プレースホルダー、機能は後フェーズ) */}
+      {/* 画像を保存 (確定カードを PNG 書き出し) */}
       <div className="relative">
         <button
           type="button"
           onClick={handleSaveImage}
-          className="bg-white text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+          disabled={saving}
+          className="bg-white text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-50 disabled:cursor-wait"
         >
-          画像を保存
+          {saving ? "画像を作成中…" : "画像を保存"}
         </button>
         {imageNotice && (
           <span
             role="status"
             className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#3A2D6B] text-white text-xs font-bold px-3 py-1 rounded-full"
           >
-            画像保存は準備中です
+            {imageNotice}
           </span>
         )}
+      </div>
+
+      {/* オフスクリーンの確定カード (PNG 書き出し元) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-99999px",
+          top: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <ShareCard
+          ref={cardRef}
+          ownerName={ownerName}
+          typeName={typeName}
+          essence={essence}
+          description={description}
+          imageSrc={imageSrc}
+          shareCode={shareCode}
+        />
       </div>
     </div>
   );

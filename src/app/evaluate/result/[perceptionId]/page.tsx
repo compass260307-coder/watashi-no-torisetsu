@@ -27,7 +27,12 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import {
+  classifySixteenType,
+  sixteenTypes,
+  characterImagePath,
+} from "@/lib/sixteen-types";
+import { CharacterHero } from "@/components/result/CharacterHero";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { EvaluationChapters } from "@/components/result/EvaluationChapters";
@@ -143,9 +148,8 @@ export default async function EvaluationResultPage({
   const perceivedTypeId = classifySixteenType(otherScores);
   const ownerTypeId = classifySixteenType(selfScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  // B から見た A のタイプ (16タイプ名 + OCEA コード)、副情報として表示
+  // B から見た A のタイプ (16タイプ名)、ヒーローで表示
   const perceivedTypeName = perceivedType16.name;
-  const perceivedCode = perceivedType16.code;
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
@@ -184,18 +188,15 @@ export default async function EvaluationResultPage({
           </div>
         </div>
 
-        {/* ===== B から見たアナタのタイプ (16タイプ、副情報) ===== */}
-        <div className="text-center mb-6">
-          <p className="text-[#FE3C72] font-bold text-sm mb-1">
-            {perceiverShort}が見た{displayName}は
-          </p>
-          <h1 className="text-[#3A2D6B] font-black text-2xl mb-2 leading-tight">
-            {perceivedTypeName}
-          </h1>
-          <span className="inline-block bg-[#3A2D6B] text-white font-black text-xs px-3 py-1 rounded-full tracking-[0.2em]">
-            {perceivedCode}
-          </span>
-        </div>
+        {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー、丸枠キャラ + 同タイポ) ===== */}
+        <CharacterHero
+          imageSrc={characterImagePath(perceivedTypeId)}
+          alt={perceivedTypeName}
+          eyebrow={`${perceiverShort}が見た${displayName}は`}
+          essence={perceivedType16.essence}
+          name={perceivedTypeName}
+          description={perceivedType16.oneLiner}
+        />
 
         {/* ===== 相互理解度 ===== */}
         <div className="text-center mb-6">

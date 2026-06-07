@@ -203,3 +203,35 @@ export function classifySixteenType(
   const key = `${sign(scores.O)}${sign(scores.C)}${sign(scores.E)}${sign(scores.A)}`;
   return CODE_TO_ID[key] ?? "dreamer-rabbit";
 }
+
+// =====================================================================
+// キャラ画像 lookup: 型 → 動物 slug → /characters/{animal}.png
+// 画像は public/characters/{animal}.png (白背景・正方形) を丸枠に流し込む想定。
+// =====================================================================
+const ANIMAL_SLUG: Record<SixteenTypeId, string> = {
+  "sparkle-dolphin": "dolphin",
+  "ambition-lion": "lion",
+  "quiet-owl": "owl",
+  "seeker-wolf": "wolf",
+  "idea-monkey": "monkey",
+  "whim-fox": "fox",
+  "dreamer-rabbit": "rabbit",
+  "fantasy-cat": "cat",
+  "caretaker-dog": "dog",
+  "brisk-tiger": "tiger",
+  "earnest-elephant": "elephant",
+  "steady-turtle": "turtle",
+  "smiley-panda": "panda",
+  "playful-raccoon": "raccoon",
+  "gentle-koala": "koala",
+  "solo-hedgehog": "hedgehog",
+};
+
+export function animalSlugForType(id: SixteenTypeId): string {
+  return ANIMAL_SLUG[id] ?? "rabbit";
+}
+
+/** 型 → キャラ画像パス (/characters/{animal}.png) */
+export function characterImagePath(id: SixteenTypeId): string {
+  return `/characters/${animalSlugForType(id)}.png`;
+}

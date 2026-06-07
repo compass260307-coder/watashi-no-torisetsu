@@ -37,6 +37,10 @@ import {
   calcMutualUnderstanding,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
+import {
+  classifySixteenType,
+  characterImagePath,
+} from "@/lib/sixteen-types";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
@@ -145,6 +149,8 @@ export default async function FriendEvaluationPage() {
         id: p.id as string,
         perceiverName: ((p.perceiver_name as string) ?? "").trim() || "友達",
         understanding,
+        // 知覚タイプ(16)のキャラ画像 = 友達の目に映ったアナタの動物
+        imageSrc: characterImagePath(classifySixteenType(otherScores)),
       };
     })
     .sort((a, b) => b.understanding - a.understanding);
@@ -346,6 +352,7 @@ interface RankItem {
   id: string;
   perceiverName: string;
   understanding: number;
+  imageSrc: string;
 }
 
 // 順位バッジ色 (絵文字禁止、円形 div + 数字、Polish-C 仕様)
@@ -411,10 +418,10 @@ function RankingList({ items }: { items: RankItem[] }) {
               className="flex items-center gap-3 py-3 transition-colors hover:bg-[#FFF9F0] rounded-xl px-1 -mx-1"
             >
               <RankBadge rank={rank} />
-              {/* アバター 44px。キャラ画像未生成のためマスコット流用プレースホルダー */}
-              <div className="w-11 h-11 rounded-full overflow-hidden bg-[#E4E0F5] flex-shrink-0">
+              {/* アバター 44px = 知覚タイプ(16)のキャラ画像 (丸枠) */}
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-white flex-shrink-0">
                 <Image
-                  src="/mascot-pair.png"
+                  src={p.imageSrc}
                   alt=""
                   width={44}
                   height={44}

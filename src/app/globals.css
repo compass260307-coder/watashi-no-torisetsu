@@ -193,6 +193,34 @@ body {
   animation: unlock-pulse 600ms ease-out;
 }
 
+/* 結果ヒーロー/保存カードの見出しタイポ (確定デザイン watashi-torisetsu-result-card-design.html
+   の .wtr-name / .wtr-sub を流用)。deepPurple 文字 + 白フチ + 黄ドロップ。
+   ※ docs/design HTML 入手後、text-shadow の数値はそこに合わせて差し替え可。 */
+.wtr-name,
+.wtr-sub {
+  color: #3a2d6b;
+  font-weight: 800;
+  font-family: var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN",
+    "Hiragino Sans", Meiryo, sans-serif;
+  /* 白フチ (4 方向) + 黄ドロップ */
+  text-shadow:
+    -2px -2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px 2px 0 #fff,
+    0 1px 0 #fff,
+    0 5px 0 #ffe993;
+  line-height: 1.15;
+}
+
+.wtr-name {
+  font-size: 2rem;
+}
+
+.wtr-sub {
+  font-size: 1rem;
+}
+
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
 .stagger-3 { animation-delay: 0.3s; }

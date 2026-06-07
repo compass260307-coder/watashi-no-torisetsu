@@ -22,7 +22,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import {
+  classifySixteenType,
+  sixteenTypes,
+  characterImagePath,
+} from "@/lib/sixteen-types";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -90,7 +94,6 @@ export default async function EvaluationSentPage({ params }: PageProps) {
 
   const ownerNameRaw = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerNameRaw || "この人";
-  const avatarChar = (ownerNameRaw || "?").slice(0, 1);
 
   // ===== 3. 理解度算出 (owner の自己診断がある場合のみ) =====
   const selfScores = (user.scores ?? {}) as BigFiveScores;
@@ -102,8 +105,11 @@ export default async function EvaluationSentPage({ params }: PageProps) {
     : 0;
 
   // ===== 4. アナタの目に映る owner (友達自身の知覚プロファイル) =====
-  // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)。
-  const perceivedTypeName = sixteenTypes[classifySixteenType(otherScores)].name;
+  // Day 12-D: 知覚タイプ (16 タイプ、perceived_scores から派生)。
+  const perceivedTypeId16 = classifySixteenType(otherScores);
+  const perceivedType16 = sixteenTypes[perceivedTypeId16];
+  const perceivedTypeName = perceivedType16.name;
+  const perceivedImage = characterImagePath(perceivedTypeId16);
   // 特性タグは 8 タイプ master の traits 語 (型名ではなく特性語) を流用
   const perceivedBase =
     torisetsuTypes[perception.perceived_type_id as TorisetsuTypeId];
@@ -172,13 +178,20 @@ export default async function EvaluationSentPage({ params }: PageProps) {
             アナタの目に映る{displayName}
           </p>
           <div className="flex flex-col items-center">
-            {/* アバター (丸・プレースホルダー) */}
-            <div className="w-20 h-20 rounded-full bg-[#E4E0F5] border-2 border-[#3A2D6B] flex items-center justify-center mb-3">
-              <span className="text-[#3A2D6B] font-black text-2xl">
-                {avatarChar}
-              </span>
+            {/* 丸枠キャラ + 同タイポ (essence 小 / 型名 大) */}
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-white mb-3">
+              <Image
+                src={perceivedImage}
+                alt={perceivedTypeName}
+                width={192}
+                height={192}
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h2 className="text-[#3A2D6B] font-black text-xl mb-3 text-center leading-tight">
+            <p className="wtr-sub mb-1" style={{ fontSize: "0.875rem" }}>
+              {perceivedType16.essence}
+            </p>
+            <h2 className="wtr-name mb-3" style={{ fontSize: "1.5rem" }}>
               {perceivedTypeName}
             </h2>
             {traits.length > 0 && (
