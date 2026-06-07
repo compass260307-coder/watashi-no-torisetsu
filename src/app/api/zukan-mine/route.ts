@@ -16,7 +16,11 @@ import { getSession } from "@/lib/session";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import {
+  classifySixteenType,
+  sixteenTypes,
+  characterImagePath,
+} from "@/lib/sixteen-types";
 import type {
   BigFiveDimension,
   CModifier,
@@ -51,6 +55,7 @@ type DiagnosisCard = {
   fullCode: string;
   modifierLabel: string;
   diagnosedAt: string;
+  imageSrc: string; // 16 タイプのキャラ画像 (/characters/{animal}.png)
 };
 
 function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
@@ -84,6 +89,7 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
     fullCode,
     modifierLabel,
     diagnosedAt: row.created_at,
+    imageSrc: characterImagePath(classifySixteenType(stored)),
   };
 }
 
@@ -116,6 +122,7 @@ export async function GET(request: NextRequest) {
     perceiverName: string;
     perceivedTypeId: TorisetsuTypeId;
     perceivedTypeName: string;
+    perceivedImageSrc: string;
     perceivedFullCode: string;
     perceivedModifierLabel: string;
     perceivedModifierParagraph: string;
@@ -152,6 +159,13 @@ export async function GET(request: NextRequest) {
                 >,
               )
             ].name,
+          perceivedImageSrc: characterImagePath(
+            classifySixteenType(
+              (r.perceived_scores ?? {}) as Partial<
+                Record<BigFiveDimension, number>
+              >,
+            ),
+          ),
           perceivedFullCode: r.perceived_full_code as string,
           perceivedModifierLabel: r.perceived_modifier_label as string,
           perceivedModifierParagraph: r.perceived_modifier_paragraph as string,

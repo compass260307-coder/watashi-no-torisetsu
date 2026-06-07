@@ -93,7 +93,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           />
         </div>
 
-        {/* 角丸スクエア枠キャラ (主役級・大、cover で全面) */}
+        {/* 角丸スクエア枠キャラ (主役級・大、背景込みシーンを cover で全面。白下地・縁なし) */}
         <div
           style={{
             width: 440,
@@ -101,8 +101,6 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             margin: "0 auto 16px",
             borderRadius: 24,
             overflow: "hidden",
-            border: "1px solid rgba(58,45,107,0.10)",
-            background: "#fff",
             boxShadow: "0 10px 28px rgba(58,45,107,0.16)",
           }}
         >

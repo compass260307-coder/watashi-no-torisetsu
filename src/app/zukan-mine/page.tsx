@@ -16,7 +16,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { TorisetsuCard } from "@/components/torisetsu/TorisetsuCard";
 import type { TorisetsuTypeId } from "@/lib/types";
 
 type DiagnosisCard = {
@@ -28,6 +27,7 @@ type DiagnosisCard = {
   fullCode: string;
   modifierLabel: string;
   diagnosedAt: string;
+  imageSrc: string;
 };
 
 type PerceptionCard = {
@@ -36,6 +36,7 @@ type PerceptionCard = {
   perceiverName: string;
   perceivedTypeId: TorisetsuTypeId;
   perceivedTypeName: string;
+  perceivedImageSrc: string;
   perceivedFullCode: string;
   perceivedModifierLabel: string;
   perceivedModifierParagraph: string;
@@ -380,8 +381,14 @@ function DiagnosisCardView({
       style={{ borderColor: card.typeColor + "60" }}
     >
       <div className="flex gap-4 items-center">
-        <div className="shrink-0">
-          <TorisetsuCard fullCode={card.fullCode} size="sm" />
+        <div className="w-20 h-20 rounded-[14px] overflow-hidden shrink-0 shadow-sm">
+          <Image
+            src={card.imageSrc}
+            alt={card.typeName}
+            width={160}
+            height={160}
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p
@@ -409,7 +416,15 @@ function PastDiagnosisCardView({ card }: { card: DiagnosisCard }) {
   return (
     <div className="rounded-xl border border-card-border bg-card-bg p-3 transition-all active:scale-95">
       <div className="flex justify-center mb-2">
-        <TorisetsuCard fullCode={card.fullCode} size="sm" />
+        <div className="w-16 h-16 rounded-[12px] overflow-hidden shadow-sm">
+          <Image
+            src={card.imageSrc}
+            alt={card.typeName}
+            width={128}
+            height={128}
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
       <p
         className="text-[10px] font-bold text-center truncate"
@@ -428,8 +443,14 @@ function PerceptionCardView({ perception }: { perception: PerceptionCard }) {
   return (
     <div className="rounded-2xl border border-card-border bg-card-bg p-4 transition-all hover:bg-label-bg active:scale-[0.99]">
       <div className="flex gap-3 items-center">
-        <div className="shrink-0">
-          <TorisetsuCard fullCode={perception.perceivedFullCode} size="sm" />
+        <div className="w-16 h-16 rounded-[12px] overflow-hidden shrink-0 shadow-sm">
+          <Image
+            src={perception.perceivedImageSrc}
+            alt={perception.perceivedTypeName}
+            width={128}
+            height={128}
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold mb-1 truncate">
@@ -506,10 +527,15 @@ function PerceptionModal({
             {perception.perceiverName}さんから見た{ownerLabel}
           </p>
           <div className="flex justify-center mb-4">
-            <TorisetsuCard
-              fullCode={perception.perceivedFullCode}
-              size="md"
-            />
+            <div className="w-48 h-48 rounded-[20px] overflow-hidden shadow-md">
+              <Image
+                src={perception.perceivedImageSrc}
+                alt={perception.perceivedTypeName}
+                width={384}
+                height={384}
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           <p className="text-xl font-extrabold mb-1">
             {perception.perceivedTypeName}

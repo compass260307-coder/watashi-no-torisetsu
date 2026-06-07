@@ -178,14 +178,14 @@ export default async function EvaluationSentPage({ params }: PageProps) {
             アナタの目に映る{displayName}
           </p>
           <div className="flex flex-col items-center">
-            {/* 角丸スクエア枠キャラ + 同タイポ (essence 小 / 型名 大) */}
-            <div className="w-28 h-28 rounded-[16px] overflow-hidden border-4 border-white shadow-md bg-white mb-3">
+            {/* 角丸スクエア枠キャラ (背景込みシーンを cover で全面) + 同タイポ */}
+            <div className="w-28 h-28 rounded-[16px] overflow-hidden shadow-md mb-3">
               <Image
                 src={perceivedImage}
                 alt={perceivedTypeName}
                 width={224}
                 height={224}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
             </div>
             <p className="wtr-sub mb-1" style={{ fontSize: "0.875rem" }}>
