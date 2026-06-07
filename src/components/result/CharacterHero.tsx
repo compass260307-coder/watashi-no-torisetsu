@@ -29,9 +29,8 @@ export function CharacterHero({
 }: CharacterHeroProps) {
   return (
     <div className="flex flex-col items-center text-center mb-6">
-      {/* (1) コンテンツカードと同じ横幅 (w-full)・正方形。背景込みシーンを cover で枠いっぱい。
-          (4) スマホで見出しを重ねるため frame は relative。 */}
-      <div className="relative w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
+      {/* コンテンツカードと同じ横幅 (w-full)・正方形。背景込みシーンを cover で枠いっぱい。 */}
+      <div className="w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
         <Image
           src={imageSrc}
           alt={alt}
@@ -41,9 +40,9 @@ export function CharacterHero({
           className="w-full h-full object-cover"
         />
       </div>
-      {/* (2)(3) essence + 型名: 同サイズ・font-black(900)・deepPurple。装飾(白フチ/黄ドロップ)なしの
-          クリーン塗り。(4) スマホは画像下端に少し重ねる (-mt + z-index)、デスクトップは控えめの間隔。 */}
-      <div className="relative z-10 -mt-5 sm:mt-2 flex flex-col items-center">
+      {/* essence + 型名: 型名は一回り大きく・font-black(900)・deepPurple・装飾なしのクリーン塗り。
+          重ねは撤去し、スマホ/PC とも画像の下に通常配置 (重なりなし)。 */}
+      <div className="mt-3 flex flex-col items-center">
         {eyebrow && (
           <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
         )}
