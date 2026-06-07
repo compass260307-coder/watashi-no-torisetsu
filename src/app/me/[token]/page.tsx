@@ -402,11 +402,10 @@ export default async function MePage({ params }: PageProps) {
         )}
 
         {/* ===== 友達評価 導線 (Owner のみ、末尾) =====
-            オプションA: 旧「誰かの眼」カード(型名+おまけ3問+結果を見る)は廃止。
-            - 0 件 = 「友達に診断してもらおう」フック (既存維持)
-            - 1 件以上 = 相互理解度ランキング (/friend-evaluation) への単一エントリ
-            タイプ名/おまけ3問は各 /evaluate/result (詳細) に集約済み。
-            ランキング各行 → /evaluate/result の導線は /friend-evaluation 側に維持。 */}
+            0 件 = 「友達に診断してもらおう」フック (既存維持)。
+            1 件以上の「相互理解度 / 友達から見たアナタを見る」カードは撤去。
+            その導線は常時表示フローティング CTA (相互理解度はこちら → /friend-evaluation)
+            に一本化した (メニュー「相互理解度」からも到達可能、リンク切れなし)。 */}
         {isOwner && friendEvalCount === 0 && (
           <section className="mb-8">
             <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
@@ -432,32 +431,6 @@ export default async function MePage({ params }: PageProps) {
                 className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
               >
                 友達に診断してもらう →
-              </Link>
-            </div>
-          </section>
-        )}
-
-        {isOwner && friendEvalCount > 0 && (
-          <section className="mb-8">
-            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
-              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
-                相互理解度
-              </p>
-              <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-3">
-                友達から見たアナタを見る
-              </h2>
-              <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-5">
-                {friendEvalCount} 人がアナタを評価してくれました。
-                <br />
-                それぞれとの
-                <span className="font-bold text-[#FE3C72]">相互理解度</span>と、
-                友達の目に映るアナタを見てみよう。
-              </p>
-              <Link
-                href="/friend-evaluation"
-                className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
-              >
-                友達から見たアナタを見る →
               </Link>
             </div>
           </section>
