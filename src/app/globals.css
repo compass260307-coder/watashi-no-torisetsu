@@ -228,34 +228,34 @@ body {
   word-break: auto-phrase;
 }
 
-/* ヘッダーロゴ「ワタシのトリセツ」wordmark に寄せたレタリング:
-   M PLUS Rounded 極太 / スカイブルー塗り / 白フチ(内) + 黄フチ(外) のダブルアウトライン。
-   「{name}のトリセツ」等のタグに使用。 */
+/* ヘッダーロゴ「ワタシのトリセツ」wordmark / Koi タグに寄せたレタリング:
+   M PLUS Rounded 極太 / 彩度高めの logoBlue 塗り / 太い白フチ + 白のにじみ (薄背景でも
+   くっきり浮く＝視認性の主役) + ごく薄い影で立体感。「{name}のトリセツ」タグに使用。 */
 .wtr-logo-text {
-  color: #34beef;
+  color: #0094d8;
   font-weight: 900;
   font-family: var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN",
     "Hiragino Sans", Meiryo, sans-serif;
   letter-spacing: 0.02em;
   text-shadow:
-    /* 白フチ (内, 約2px) */
+    /* 太い白フチ (8 方向 + 斜め強化, 約3px) */
+    -3px 0 0 #fff,
+    3px 0 0 #fff,
+    0 -3px 0 #fff,
+    0 3px 0 #fff,
     -2px -2px 0 #fff,
-    0 -2px 0 #fff,
     2px -2px 0 #fff,
-    -2px 0 0 #fff,
-    2px 0 0 #fff,
     -2px 2px 0 #fff,
-    0 2px 0 #fff,
     2px 2px 0 #fff,
-    /* 黄フチ (外, 約4px) */
-    -4px -4px 0 #ffde6e,
-    0 -4px 0 #ffde6e,
-    4px -4px 0 #ffde6e,
-    -4px 0 0 #ffde6e,
-    4px 0 0 #ffde6e,
-    -4px 4px 0 #ffde6e,
-    0 4px 0 #ffde6e,
-    4px 4px 0 #ffde6e;
+    -3px -2px 0 #fff,
+    3px -2px 0 #fff,
+    -3px 2px 0 #fff,
+    3px 2px 0 #fff,
+    /* 白のにじみ (薄背景でも浮く) */
+    0 0 4px #fff,
+    0 0 8px rgba(255, 255, 255, 0.85),
+    /* ごく薄い影で立体感 */
+    0 3px 4px rgba(58, 45, 107, 0.18);
 }
 
 .stagger-1 { animation-delay: 0.1s; }
