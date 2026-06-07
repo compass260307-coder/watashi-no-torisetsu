@@ -221,6 +221,13 @@ body {
   font-size: 1rem;
 }
 
+/* 日本語の説明文を読みやすく折り返す: 行長を均等化 (balance) + 文節で改行 (auto-phrase)。
+   「者。」だけが行末に1文字落ちるのを防ぐ。auto-phrase 非対応ブラウザは通常折返しにフォールバック。 */
+.balance-jp {
+  text-wrap: balance;
+  word-break: auto-phrase;
+}
+
 .stagger-1 { animation-delay: 0.1s; }
 .stagger-2 { animation-delay: 0.2s; }
 .stagger-3 { animation-delay: 0.3s; }

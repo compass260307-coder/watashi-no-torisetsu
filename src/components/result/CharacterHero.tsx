@@ -47,15 +47,17 @@ export function CharacterHero({
         {eyebrow && (
           <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
         )}
+        {/* essence は現状維持 (text-2xl)、型名を一回り大きく (text-3xl) して主役に */}
         <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
           {essence}
         </p>
-        <h1 className="font-black text-2xl text-[#3A2D6B] leading-tight mb-3">
+        <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
           {name}
         </h1>
       </div>
       {description && (
-        <p className="text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[300px]">
+        // balance-jp: text-wrap:balance + word-break:auto-phrase (日本語の文節で均等折返し)
+        <p className="balance-jp text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[340px]">
           {description}
         </p>
       )}
