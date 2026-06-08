@@ -169,13 +169,19 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         </div>
 
         {/* ===== ヒーロータグ (2 行) =====
-            1 行目: 小ラベル「◯◯さんから見た」(評価した友達名。長い場合のみ末尾…で省略)。
-            2 行目: /me の TrisetsuNameTag をそのまま流用「◯◯のトリセツ」(owner 名、省略しない)。
-            花=左端 / ハート=右端、テキスト途中には入らない。 */}
-        <div className="mb-4">
-          <p className="text-center text-[#3A2D6B]/70 font-bold text-sm mb-1 px-4 truncate">
-            {perceiverShort}さんから見た
-          </p>
+            1 行目: 2 行目と同じロゴ風 (.wtr-logo-text = logoBlue 塗り + 太い白フチ) を一回り小さく。
+                    装飾(花/ハート)は付けない。友達名はフル表示、幅をはみ出すときだけ末尾…で省略
+                    (「さんから見た」は常に表示)。
+            2 行目: /me の TrisetsuNameTag「◯◯のトリセツ」(花=左 / ハート=右、owner 名は省略しない)。
+            縦余白を詰めて上下 1 まとまりに見せる。 */}
+        <div className="mb-4 flex flex-col items-center">
+          <div
+            className="wtr-logo-text leading-none flex flex-nowrap items-baseline justify-center max-w-full overflow-hidden px-4 mb-0.5"
+            style={{ fontSize: "clamp(13px, 4.2vw, 21px)" }}
+          >
+            <span className="truncate min-w-0 pr-1">{perceiverFull}</span>
+            <span className="flex-shrink-0">さんから見た</span>
+          </div>
           <TrisetsuNameTag name={displayName} />
         </div>
 
