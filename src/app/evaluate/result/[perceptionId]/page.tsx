@@ -35,6 +35,7 @@ import {
   characterImagePath,
 } from "@/lib/sixteen-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
+import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { EvaluationChapters } from "@/components/result/EvaluationChapters";
@@ -167,18 +168,19 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={myTrisetsuUrl} />
         </div>
 
-        {/* ===== ステッカー ===== */}
-        <div className="flex justify-center mb-4">
-          <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md -rotate-2 text-base">
-            {perceiverShort}さんから見た{displayName}
-          </div>
-        </div>
+        {/* ===== ロゴ風タグ (/me の TrisetsuNameTag を流用、テキストのみ友達視点) =====
+            「のトリセツ」は付けず「◯◯さんから見た△△」を表示。名前は shortenName で
+            8 文字 + … に丸めて 1 行キープ (clamp/nowrap は /me と同一)。 */}
+        <TrisetsuNameTag
+          text={`${perceiverShort}さんから見た${shortenName(displayName)}`}
+          className="mb-4"
+        />
 
-        {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー、丸枠キャラ + 同タイポ) ===== */}
+        {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー = /me と同一構成) =====
+            eyebrow は上部タグと重複するため撤去 (essence + 型名 + 説明文のみ)。 */}
         <CharacterHero
           imageSrc={characterImagePath(perceivedTypeId)}
           alt={perceivedTypeName}
-          eyebrow={`${perceiverShort}が見た${displayName}は`}
           essence={perceivedType16.essence}
           name={perceivedTypeName}
           description={perceivedType16.oneLiner}

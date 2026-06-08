@@ -1,15 +1,26 @@
-// Phase 1.5-α: 「{name}のトリセツ」タグ (Koi 参考)。
+// Phase 1.5-α: ロゴ風タグ (Koi 参考)。
 //
 // [花] 「{name}のトリセツ」 [ハート] を中央寄せ 1 行。
 // 文字はヘッダーロゴ wordmark に寄せた .wtr-logo-text (logoBlue 塗り + 太い白フチ + にじみ)。
 // 花/ハートは指定 SVG をそのまま使用。
+//
+// text を渡すと「のトリセツ」を付けず text をそのまま表示 (例: 相互理解度ページの
+// 「◯◯さんから見た△△」)。スタイル/装飾/レスポンシブは /me と完全に同一。
 
 interface TrisetsuNameTagProps {
-  name: string;
+  /** 「{name}のトリセツ」として表示する名前 (text 未指定時)。 */
+  name?: string;
+  /** 任意のラベル全文。指定時は「のトリセツ」を付けず、これをそのまま表示する。 */
+  text?: string;
   className?: string;
 }
 
-export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) {
+export function TrisetsuNameTag({
+  name,
+  text,
+  className = "",
+}: TrisetsuNameTagProps) {
+  const label = text ?? `${name ?? ""}のトリセツ`;
   return (
     // 花［テキスト］ハートを必ず横一列に: flex-nowrap + 中央寄せ。max-w-full でコンテナ幅に収める。
     <div
@@ -22,7 +33,7 @@ export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) 
         className="wtr-logo-text leading-none min-w-0"
         style={{ fontSize: "clamp(18px, 5.5vw, 30px)", whiteSpace: "nowrap" }}
       >
-        {name}のトリセツ
+        {label}
       </span>
       <HeartIcon />
     </div>
