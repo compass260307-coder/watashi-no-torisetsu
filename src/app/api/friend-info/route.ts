@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
+import { classifySixteenType } from "@/lib/sixteen-types";
 import type {
   BigFiveDimension,
   CModifier,
@@ -93,6 +94,11 @@ export async function GET(request: NextRequest) {
     modifierLabel = derived.modifierLabel || null;
   }
 
+  // Day 12-Polish-E: /friend ランディングを /me レイアウト流用版にするため、
+  // owner の 16 タイプ id (取扱説明書/取扱注意/相性の本文・キャラ画像の lookup キー) を返す。
+  // scores から決定的に派生する公開可能情報 (8 タイプ名や fullCode と同じ class)。owner_token は返さない。
+  const sixteenTypeId = classifySixteenType(stored);
+
   return NextResponse.json({
     displayName: (data.display_name as string | null) ?? null,
     typeId,
@@ -101,5 +107,6 @@ export async function GET(request: NextRequest) {
     typeColor,
     fullCode,
     modifierLabel,
+    sixteenTypeId,
   });
 }
