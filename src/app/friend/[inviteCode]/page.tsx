@@ -39,6 +39,14 @@ import {
   ctaPrimary,
   ctaSecondary,
 } from "@/components/StickyCtaFooter";
+import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
+import { CharacterHero } from "@/components/result/CharacterHero";
+import {
+  sixteenTypes,
+  characterImagePath,
+  type SixteenTypeId,
+} from "@/lib/sixteen-types";
+import { selfResultContent } from "@/lib/self-result-content";
 import type { AnswerValue } from "@/lib/types";
 
 // =========================================================================
@@ -63,6 +71,8 @@ interface OwnerInfo {
   typeSubtitle: string | null;
   fullCode: string | null;
   modifierLabel: string | null;
+  // Day 12-Polish-E: owner の 16 タイプ id (/me レイアウト流用版のキャラ/本文 lookup キー)
+  sixteenTypeId: SixteenTypeId | null;
 }
 
 const SCALE_PAGES: FriendQuestionV2[][] = [
@@ -98,6 +108,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     typeSubtitle: null,
     fullCode: null,
     modifierLabel: null,
+    sixteenTypeId: null,
   });
   const [phase, setPhase] = useState<Phase>("intro");
   const [pageIdx, setPageIdx] = useState<0 | 1 | 2>(0);
@@ -129,6 +140,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           typeSubtitle: data.typeSubtitle ?? null,
           fullCode: data.fullCode ?? null,
           modifierLabel: data.modifierLabel ?? null,
+          sixteenTypeId: (data.sixteenTypeId as SixteenTypeId | null) ?? null,
         });
       })
       .catch(() => {});
@@ -241,7 +253,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       <IntroScreen
         owner={owner}
         ownerName={ownerName}
-        subjectLabel={subjectLabel}
         onStart={startEvaluation}
       />
     );
@@ -304,7 +315,16 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   }
 
   if (phase === "submitting") {
-    return <SubmittingScreen subjectLabel={subjectLabel} />;
+    return (
+      <SubmittingScreen
+        subjectLabel={subjectLabel}
+        imageSrc={
+          owner.sixteenTypeId
+            ? characterImagePath(owner.sixteenTypeId)
+            : "/mascot-pair.png"
+        }
+      />
+    );
   }
 
   // phase === "error"
@@ -317,20 +337,27 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 }
 
 // =========================================================================
-// Intro 画面 (Koi 風、A のキャラ + 充実説明 + フローティング CTA)
-// Day 12-Polish-B: 名前入力フォームを撤去 (完了直後の name overlay に移動)
+// Intro 画面 (Day 12-Polish-E: /me レイアウト流用の "CTA 違い版")
+//   - レイアウトは /me と同じ: タグ / ヒーロー(owner のキャラ+型名+essence) / 3 セクション。
+//     表示データは owner 本人のもの (selfResultContent[owner16型])。
+//   - 友達向けフレーミングをヒーロー付近に追加。
+//   - CTA は owner 用 (シェア/相互理解度) の代わりに「{owner}を評価する →」を
+//     ヒーロー直下 = 3 セクション本文の前に配置 (+ 常時表示の StickyCtaFooter)。
+//   - 旧デザイン (ペアのマスコット等) はこの新レイアウトに置き換え。
 // =========================================================================
 function IntroScreen({
   owner,
   ownerName,
-  subjectLabel,
   onStart,
 }: {
   owner: OwnerInfo;
   ownerName: string;
-  subjectLabel: string;
   onStart: () => void;
 }) {
+  const typeId = owner.sixteenTypeId;
+  const type16 = typeId ? sixteenTypes[typeId] : null;
+  const sections = typeId ? selfResultContent[typeId] : null;
+
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32">
       <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
@@ -349,113 +376,82 @@ function IntroScreen({
           <HamburgerMenu />
         </div>
 
-        {/* ===== ステッカー ===== */}
-        <div className="flex justify-center mb-4">
-          <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md -rotate-2 text-base">
-            {ownerName}のトリセツ
-          </div>
-        </div>
+        {/* ===== タグ ({owner}のトリセツ) = /me と同じ ===== */}
+        <TrisetsuNameTag name={ownerName} className="mb-4" />
 
-        {/* ===== A のキャラ枠 (プレースホルダー、LP のマスコット流用) ===== */}
-        <div className="flex justify-center mb-6">
-          <div className="relative w-full max-w-[280px] aspect-square rounded-3xl bg-gradient-to-b from-[#BCDEF8]/40 to-[#FFD6E0]/40 border-2 border-[#0094D8]/25 flex items-center justify-center overflow-hidden">
-            {/* 32 タイプ分のキャラ画像が出来るまでは LP のマスコットを流用 */}
-            <Image
-              src="/mascot-pair.png"
-              alt={owner.typeName ?? "ワタシのトリセツ"}
-              width={300}
-              height={300}
-              priority
-              className="w-full h-auto object-contain relative z-10"
-            />
-            {/* 装飾 (隅) */}
-            <Image
-              src="/decorations/heart-pink.png"
-              alt=""
-              width={48}
-              height={48}
-              aria-hidden="true"
-              className="absolute top-3 right-3 w-12 h-12 opacity-70 -rotate-12 pointer-events-none"
-            />
-            <Image
-              src="/decorations/flower-yellow.png"
-              alt=""
-              width={40}
-              height={40}
-              aria-hidden="true"
-              className="absolute bottom-3 left-3 w-10 h-10 opacity-70 rotate-12 pointer-events-none"
-            />
+        {!type16 || !sections ? (
+          // owner 情報の取得待ち (invite_code → 16 タイプ)。短時間の読み込み。
+          <div className="py-16 text-center">
+            <p className="text-sm font-bold text-[#3A2D6B]/70">読み込み中...</p>
           </div>
-        </div>
-
-        {/* ===== タイプ名 + コードバッジ + サブ特性 ===== */}
-        <div className="text-center mb-6">
-          <p className="text-[#FE3C72] font-bold text-sm mb-1">
-            アナタが評価するのは…
-          </p>
-          {owner.typeName ? (
-            <>
-              <h1 className="text-[#3A2D6B] font-black text-3xl mb-3 leading-tight drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
-                {owner.typeName}
-              </h1>
-              {owner.fullCode && (
-                <span className="inline-block bg-[#3A2D6B] text-white font-black text-sm px-4 py-1 rounded-full tracking-[0.25em]">
-                  {owner.fullCode}
+        ) : (
+          <>
+            {/* ===== 友達向けフレーミング (ヒーロー付近) ===== */}
+            <div className="text-center mb-4">
+              <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
+                {ownerName}さんの友達のアナタへ。
+                <br />
+                <span className="font-black">
+                  「アナタから見た{ownerName}」
                 </span>
-              )}
-              {owner.modifierLabel && (
-                <div className="flex justify-center mt-3">
-                  <span className="bg-[#BCDEF8]/60 text-[#3A2D6B] font-bold text-sm px-4 py-1.5 rounded-full border border-[#0094D8]/30">
-                    {owner.modifierLabel}
+                を教えて。
+              </p>
+            </div>
+
+            {/* ===== ヒーロー (owner のキャラ + essence + 型名) = /me と同じ ===== */}
+            <CharacterHero
+              imageSrc={characterImagePath(typeId!)}
+              alt={type16.name}
+              essence={type16.essence}
+              name={type16.name}
+              description={type16.oneLiner}
+            />
+
+            {/* ===== CTA (ヒーロー直下 = 3 セクション本文の前)。owner 用 CTA の差し替え ===== */}
+            <div className="mb-8">
+              <button
+                type="button"
+                onClick={onStart}
+                className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+              >
+                {ownerName}を評価する →
+              </button>
+              <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
+                30 問・約 3 分。アナタの目線で答えるだけ。
+              </p>
+            </div>
+
+            {/* ===== 3 セクション (取扱説明書 / 取扱注意ポイント / 相性の良いお相手) = /me と同じ ===== */}
+            {sections.map((sec, idx) => (
+              <section key={sec.title} className="mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+                    {idx + 1}
                   </span>
+                  <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                    {sec.title}
+                  </h2>
                 </div>
-              )}
-            </>
-          ) : (
-            <h1 className="text-[#3A2D6B] font-black text-2xl mb-2 leading-tight">
-              {subjectLabel}
-            </h1>
-          )}
-        </div>
-
-        {/* ===== キャラ説明 (充実版、Koi 参考) ===== */}
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-          {owner.typeSubtitle && (
-            <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4">
-              {owner.typeSubtitle}
-            </p>
-          )}
-          <p className="text-[#3A2D6B]/85 text-sm leading-relaxed mb-3">
-            {ownerName}が「自分はこういう人」と答えたのが、上のタイプ。
-            周りからどう見られているかは、また少し違うかも。
-          </p>
-          <p className="text-[#3A2D6B]/85 text-sm leading-relaxed mb-3">
-            アナタから見える{ownerName}を、30
-            問の質問でアナタの目線で答えてください。
-            考えすぎず、第一印象に近い感覚で大丈夫です。
-          </p>
-          <p className="text-[#3A2D6B]/85 text-sm leading-relaxed mb-4">
-            アナタの回答は、{ownerName}にとって「友達からの眼差し」として
-            届きます。日々の会話では伝わらない、{ownerName}
-            の良いところを言葉にする時間です。
-          </p>
-          <div className="border-t border-dashed border-[#3A2D6B]/20 my-4" />
-          <p className="text-[#3A2D6B] font-black text-sm leading-relaxed">
-            アナタが{ownerName}のことをどう見ているか、答えてみよう。
-            <br />
-            {ownerName}の自己診断と比べることで、ふたりの
-            <span className="text-[#FE3C72]">相互理解度</span>
-            が見えてきます。
-          </p>
-        </div>
-
-        {/* Day 12-Polish-B: 名前入力フォームは削除 (完了直後の name overlay に移動) */}
+                <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+                  {sec.body.split("\n\n").map((para, i) => (
+                    <p
+                      key={i}
+                      className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
       </div>
 
-      {/* Polish-D-A FINAL: FriendFlowFloatingCta を撤去、StickyCtaFooter に統一 */}
+      {/* 常時表示の CTA (スクロール中も評価へ進めるよう footer にも配置) */}
       <StickyCtaFooter>
         <button type="button" onClick={onStart} className={ctaPrimary}>
-          相互理解度を測る →
+          {ownerName}を評価する →
         </button>
       </StickyCtaFooter>
     </main>
@@ -519,6 +515,17 @@ function ScaleScreen({
       </div>
 
       <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
+        {/* Day 12-Polish-E: 評価フロー冒頭のナッジ (素直な第一印象で答えてもらう) */}
+        {page === 0 && (
+          <div className="bg-[#FFF9F0] rounded-2xl border-2 border-[#FFE993] px-5 py-4 mb-5">
+            <p className="text-sm font-bold text-[#3A2D6B] leading-relaxed text-center">
+              {inviteeName}本人の自己診断は気にせず、
+              <br />
+              アナタの素直な印象で答えてね。
+            </p>
+          </div>
+        )}
+
         {questions.map((q) => (
           <div
             key={q.id}
@@ -710,17 +717,26 @@ function ConsentScreen({
 // =========================================================================
 // Submitting 画面
 // =========================================================================
-function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
+function SubmittingScreen({
+  subjectLabel,
+  imageSrc,
+}: {
+  subjectLabel: string;
+  imageSrc: string;
+}) {
   return (
     <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5 py-10">
-      <Image
-        src="/mascot-pair.png"
-        alt=""
-        width={200}
-        height={200}
-        aria-hidden="true"
-        className="w-40 h-40 object-contain animate-bounce-slow mb-4"
-      />
+      {/* Day 12-Polish-E: 旧ペアマスコットを owner のキャラ画像に置換 (新レイアウトと統一) */}
+      <div className="w-40 h-40 rounded-3xl overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)] animate-bounce-slow mb-4">
+        <Image
+          src={imageSrc}
+          alt=""
+          width={320}
+          height={320}
+          aria-hidden="true"
+          className="w-full h-full object-cover"
+        />
+      </div>
       <p className="text-lg font-black text-[#3A2D6B] text-center mb-2 leading-relaxed">
         アナタから見た{subjectLabel}を
         <br />
