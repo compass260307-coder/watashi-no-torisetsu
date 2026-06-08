@@ -1,30 +1,21 @@
-// Phase 1.5-α: ロゴ風タグ (Koi 参考)。
+// Phase 1.5-α: 「{name}のトリセツ」タグ (Koi 参考)。
 //
-// [花] 「{name}のトリセツ」 [ハート] を中央寄せ 1 行。
+// [花] 「{name}のトリセツ」 [ハート] を中央寄せ 1 行。花=左端 / ハート=右端で固定し、
+// テキストの途中には絶対に入らない (flex-nowrap)。
 // 文字はヘッダーロゴ wordmark に寄せた .wtr-logo-text (logoBlue 塗り + 太い白フチ + にじみ)。
 // 花/ハートは指定 SVG をそのまま使用。
-//
-// text を渡すと「のトリセツ」を付けず text をそのまま表示 (例: 相互理解度ページの
-// 「◯◯さんから見た△△」)。スタイル/装飾/レスポンシブは /me と完全に同一。
+// 相互理解度ページの「◯◯さんから見た」は呼び出し側で上に別行ラベルとして添える。
 
 interface TrisetsuNameTagProps {
-  /** 「{name}のトリセツ」として表示する名前 (text 未指定時)。 */
-  name?: string;
-  /** 任意のラベル全文。指定時は「のトリセツ」を付けず、これをそのまま表示する。 */
-  text?: string;
+  name: string;
   className?: string;
 }
 
-export function TrisetsuNameTag({
-  name,
-  text,
-  className = "",
-}: TrisetsuNameTagProps) {
-  const label = text ?? `${name ?? ""}のトリセツ`;
+export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) {
   return (
     // 花［テキスト］ハートを必ず横一列に: flex-nowrap + 中央寄せ。max-w-full でコンテナ幅に収める。
     <div
-      className={`flex flex-nowrap items-center justify-center gap-2 max-w-full ${className}`.trim()}
+      className={`flex flex-nowrap items-center justify-center gap-2 max-w-full overflow-hidden px-2 ${className}`.trim()}
     >
       <FlowerIcon />
       {/* 1行固定 (nowrap) + フォントを clamp でレスポンシブ (スマホは画面幅に合わせ縮小)。
@@ -33,7 +24,7 @@ export function TrisetsuNameTag({
         className="wtr-logo-text leading-none min-w-0"
         style={{ fontSize: "clamp(18px, 5.5vw, 30px)", whiteSpace: "nowrap" }}
       >
-        {label}
+        {name}のトリセツ
       </span>
       <HeartIcon />
     </div>
