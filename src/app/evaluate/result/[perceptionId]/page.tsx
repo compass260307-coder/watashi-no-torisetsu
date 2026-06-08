@@ -36,6 +36,7 @@ import {
 } from "@/lib/sixteen-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
+import { perceivedManualContent } from "@/lib/perception-manual-content";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { EvaluationChapters } from "@/components/result/EvaluationChapters";
@@ -137,6 +138,12 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const perceivedType16 = sixteenTypes[perceivedTypeId];
   // B から見た A のタイプ (16タイプ名)、ヒーローで表示
   const perceivedTypeName = perceivedType16.name;
+  // ① ◯◯さんから見たアナタ: 友達が割り当てた型 (perceivedTypeId) の取扱説明書を
+  // 友達視点に言い換えた本文。{B} を友達名 (perceiverShort) に置換して表示する。
+  const perceivedManualBody = perceivedManualContent[perceivedTypeId].replace(
+    /\{B\}/g,
+    perceiverShort,
+  );
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
@@ -195,6 +202,30 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           description={perceivedType16.oneLiner}
         />
 
+        {/* ===== ① ◯◯さんから見たアナタ (最初のコンテンツ・GAP の上) =====
+            友達が割り当てた型 (ヒーローの型) の取扱説明書を友達視点に言い換えた文章。
+            /me の「取扱説明書」セクションと同一スタイル (丸数字見出し + クリーンな文章カード)。 */}
+        <section className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+              1
+            </span>
+            <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+              {perceiverShort}さんから見たアナタ
+            </h2>
+          </div>
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            {perceivedManualBody.split("\n\n").map((para, i) => (
+              <p
+                key={i}
+                className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
+              >
+                {para}
+              </p>
+            ))}
+          </div>
+        </section>
+
         {/* ===== 相互理解度 ===== */}
         <div className="text-center mb-6">
           <p className="text-[#FE3C72] font-bold text-sm mb-1">相互理解度</p>
@@ -246,6 +277,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           perceivedScores={otherScores}
           perceivedTypeId={perceivedTypeId}
           ownerTypeId={ownerTypeId}
+          numOffset={1}
         />
 
         {/* ===== バイラル導線 (旧・課金解除カードの位置) =====
