@@ -41,6 +41,7 @@ import {
 } from "@/components/StickyCtaFooter";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { CharacterHero } from "@/components/result/CharacterHero";
+import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import {
   sixteenTypes,
   characterImagePath,
@@ -340,10 +341,10 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 // Intro 画面 (Day 12-Polish-E: /me レイアウト流用の "CTA 違い版")
 //   - レイアウトは /me と同じ: タグ / ヒーロー(owner のキャラ+型名+essence) / 3 セクション。
 //     表示データは owner 本人のもの (selfResultContent[owner16型])。
-//   - 友達向けフレーミングをヒーロー付近に追加。
-//   - CTA は owner 用 (シェア/相互理解度) の代わりに「{owner}を評価する →」を
-//     ヒーロー直下 = 3 セクション本文の前に配置 (+ 常時表示の StickyCtaFooter)。
-//   - 旧デザイン (ペアのマスコット等) はこの新レイアウトに置き換え。
+//   - メイン CTA「相互理解度を測る」は最下部 (3 セクションの後) に配置。タップで評価フロー開始。
+//   - フローティング CTA (/me と同じ FloatingShareCta = 右下固定の円形 chunky) を併設。
+//     文言「相互理解度を測る」、タップで評価フロー開始。
+//   - 友達向けフレーミング文は撤去。旧デザイン (ペアのマスコット等) は新レイアウトに置換済み。
 // =========================================================================
 function IntroScreen({
   owner,
@@ -386,18 +387,6 @@ function IntroScreen({
           </div>
         ) : (
           <>
-            {/* ===== 友達向けフレーミング (ヒーロー付近) ===== */}
-            <div className="text-center mb-4">
-              <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
-                {ownerName}さんの友達のアナタへ。
-                <br />
-                <span className="font-black">
-                  「アナタから見た{ownerName}」
-                </span>
-                を教えて。
-              </p>
-            </div>
-
             {/* ===== ヒーロー (owner のキャラ + essence + 型名) = /me と同じ ===== */}
             <CharacterHero
               imageSrc={characterImagePath(typeId!)}
@@ -406,20 +395,6 @@ function IntroScreen({
               name={type16.name}
               description={type16.oneLiner}
             />
-
-            {/* ===== CTA (ヒーロー直下 = 3 セクション本文の前)。owner 用 CTA の差し替え ===== */}
-            <div className="mb-8">
-              <button
-                type="button"
-                onClick={onStart}
-                className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
-              >
-                {ownerName}を評価する →
-              </button>
-              <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
-                30 問・約 3 分。アナタの目線で答えるだけ。
-              </p>
-            </div>
 
             {/* ===== 3 セクション (取扱説明書 / 取扱注意ポイント / 相性の良いお相手) = /me と同じ ===== */}
             {sections.map((sec, idx) => (
@@ -444,16 +419,31 @@ function IntroScreen({
                 </div>
               </section>
             ))}
+
+            {/* ===== メイン CTA (最下部 = 3 セクションの後)。タップで評価フロー開始 ===== */}
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={onStart}
+                className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+              >
+                相互理解度を測る →
+              </button>
+              <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
+                30 問・約 3 分。アナタの目線で答えるだけ。
+              </p>
+            </div>
           </>
         )}
       </div>
 
-      {/* 常時表示の CTA (スクロール中も評価へ進めるよう footer にも配置) */}
-      <StickyCtaFooter>
-        <button type="button" onClick={onStart} className={ctaPrimary}>
-          {ownerName}を評価する →
-        </button>
-      </StickyCtaFooter>
+      {/* /me と同じフローティング CTA (右下固定の円形 chunky)。タップで評価フロー開始。 */}
+      <FloatingShareCta
+        onClick={onStart}
+        line1="相互理解度"
+        line2="を測る"
+        ariaLabel="相互理解度を測る"
+      />
     </main>
   );
 }
