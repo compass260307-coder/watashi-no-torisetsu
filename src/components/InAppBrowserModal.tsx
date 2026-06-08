@@ -49,9 +49,6 @@ export function InAppBrowserModal() {
       className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
     >
       <div className="w-full max-w-[400px] bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-2xl p-6 animate-modal-slide-up">
-        <div className="inline-block rounded-full bg-[#FE3C72] px-3 py-1 text-[10px] font-black tracking-[0.2em] text-white mb-3">
-          おすすめの開き方
-        </div>
         <h2
           id="inapp-modal-title"
           className="text-[#3A2D6B] font-black text-lg leading-snug mb-3"
@@ -70,9 +67,6 @@ export function InAppBrowserModal() {
         >
           {copied ? "コピーしました ✓" : "リンクをコピー"}
         </button>
-        <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
-          コピーしたリンクを Safari / Chrome に貼って開いてください。
-        </p>
 
         {/* clipboard 不可時のフォールバック: URL を直接表示して長押しコピー */}
         {copyFailed && currentUrl && (
