@@ -44,6 +44,9 @@ interface ChaptersProps {
   perceivedScores: BigFiveScores;
   perceivedTypeId: SixteenTypeId;
   ownerTypeId: SixteenTypeId;
+  // Day 12-Polish-E: 上に別セクション(◯◯さんから見たアナタ=①)を足したときの丸数字の繰り上げ。
+  // numOffset=1 で各章が ②③④⑤⑥⑦ になる。既定 0 で従来どおり ①〜⑥。
+  numOffset?: number;
 }
 
 export function EvaluationChapters({
@@ -57,6 +60,7 @@ export function EvaluationChapters({
   perceivedScores,
   perceivedTypeId,
   ownerTypeId,
+  numOffset = 0,
 }: ChaptersProps) {
   void gaps; // ①⑤ は topGapList(差の大きい順) を使う。gaps は将来用に保持。
   // Day 12-D: 知覚16タイプ → ②強み/③あれっ (未生成タイプは既存プレースホルダーにフォールバック)
@@ -98,7 +102,7 @@ export function EvaluationChapters({
     <>
       {/* 章 ① ギャップの全体像 */}
       <section className="mb-8">
-        <ChapterHeader num={1} title="ギャップの全体像" />
+        <ChapterHeader num={1 + numOffset} title="ギャップの全体像" />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-3">
           <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
             {displayName}が「こう」と思っている自分と、{perceiverShort}から
@@ -126,7 +130,7 @@ export function EvaluationChapters({
       {/* 章 ② 強み (全無料) */}
       <section className="mb-8">
         <ChapterHeader
-          num={2}
+          num={2 + numOffset}
           title={`${perceiverShort}から見たアナタの強み`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
@@ -157,7 +161,7 @@ export function EvaluationChapters({
       {/* 章 ③ あれっ? (全無料) */}
       <section className="mb-8">
         <ChapterHeader
-          num={3}
+          num={3 + numOffset}
           title={`${perceiverShort}から見たアナタの「あれっ?」`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
@@ -188,7 +192,7 @@ export function EvaluationChapters({
       {/* 章 ④ B 視点の 4 特性 (全ロック) */}
       <section className="mb-8">
         <ChapterHeader
-          num={4}
+          num={4 + numOffset}
           title={`${perceiverShort}視点での 4 つの特性`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
@@ -218,7 +222,7 @@ export function EvaluationChapters({
 
       {/* 章 ⑤ 関係性アドバイス */}
       <section className="mb-8">
-        <ChapterHeader num={5} title="2 人の関係性アドバイス" />
+        <ChapterHeader num={5 + numOffset} title="2 人の関係性アドバイス" />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
           <p className="text-[#3A2D6B]/75 text-xs font-bold mb-3 leading-relaxed">
             {displayName}と{perceiverShort}さんが、もっと理解し合うためのヒント。
@@ -236,7 +240,7 @@ export function EvaluationChapters({
       {/* 章 ⑥ 取扱説明書・B 視点 */}
       <section className="mb-8">
         <ChapterHeader
-          num={6}
+          num={6 + numOffset}
           title={`${displayName}の取扱説明書・${perceiverShort}視点`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
