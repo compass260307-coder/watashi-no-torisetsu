@@ -168,13 +168,16 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={myTrisetsuUrl} />
         </div>
 
-        {/* ===== ロゴ風タグ (/me の TrisetsuNameTag を流用、テキストのみ友達視点) =====
-            「のトリセツ」は付けず「◯◯さんから見た△△」を表示。名前は shortenName で
-            8 文字 + … に丸めて 1 行キープ (clamp/nowrap は /me と同一)。 */}
-        <TrisetsuNameTag
-          text={`${perceiverShort}さんから見た${shortenName(displayName)}`}
-          className="mb-4"
-        />
+        {/* ===== ヒーロータグ (2 行) =====
+            1 行目: 小ラベル「◯◯さんから見た」(評価した友達名。長い場合のみ末尾…で省略)。
+            2 行目: /me の TrisetsuNameTag をそのまま流用「◯◯のトリセツ」(owner 名、省略しない)。
+            花=左端 / ハート=右端、テキスト途中には入らない。 */}
+        <div className="mb-4">
+          <p className="text-center text-[#3A2D6B]/70 font-bold text-sm mb-1 px-4 truncate">
+            {perceiverShort}さんから見た
+          </p>
+          <TrisetsuNameTag name={displayName} />
+        </div>
 
         {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー = /me と同一構成) =====
             eyebrow は上部タグと重複するため撤去 (essence + 型名 + 説明文のみ)。 */}
