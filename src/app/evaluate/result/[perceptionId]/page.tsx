@@ -1,22 +1,24 @@
 // Phase 1.5-α Day 12-C1: 友達評価結果ページ (軸2 のメイン画面)
 //
-// 役割: 友達 (B) が A に対して 30 問の評価を完了した後、その場で B と A が
-// 一緒に見るための画面。6 章構成 + freemium (¥500 で解除)。
+// 役割: 友達 (B) が A に対して 30 問の評価を完了した後、A (owner) が見るための画面。
+// 6 章構成。Day 12-Polish-E で相互理解度を完全無料化し、課金ゲートを撤去 (全章を無条件表示)。
 //
 // Server Component:
 //   - perception (friend_perceptions) 取得
 //   - target user (= A) 取得して自己 Big Five と displayName を確保
-//   - session で isOwner 判定 (¥500 ロック解除カードは Owner のみに見せる)
+//   - session で isOwner 判定 (非 owner は /evaluate/sent へリダイレクト)
 //   - 相互理解度 % + 5 次元ギャップを派生して描画
-//   - 6 章は EvaluationChapters に委譲 (本文プレースホルダー、Day 12-D で実データ)
+//   - 6 章は EvaluationChapters に委譲 (unlocked=true で全章表示)
 //
-// Day 12-C1 スコープ (今回):
-//   - レイアウト + レーダー + 相互理解度 + 6 章 + ロック表示 + バイラル誘導
-//   - Stripe 接続は未 (Day 12-C2)。?unlocked=1 で全章プレビュー可能 (UI 確認用)
-//   - 章本文は EvaluationChapters 内のプレースホルダー (Day 12-D)
+// 課金ゲート撤去メモ:
+//   - このページの unlock 分岐 (UnlockCard / UnlockConfirming / isPerceptionUnlocked) を撤去。
+//   - 旧・解除カードの位置は PerceptionBoostCta (バイラル導線) に置き換え。
+//   - Stripe インフラ (lib/perception-unlock, create-perception-unlock-session,
+//     webhook/stripe, payment_history) は後の有料機能流用のため温存 (このページから参照しないだけ)。
 //
 // 触らない:
 //   - friend_perceptions / users / payment_history のスキーマ
+//   - Stripe 決済インフラ (API ルート / webhook / perception-unlock lib)
 //   - /api/friend-answer/v2 (既に perceived_scores を保存している、Day 12-B 調査済)
 //   - /me/[token] の本体構造 (Day 11.x 完成、本 PR では perceptions リンク追加のみ)
 //   - LP / /diagnosis / /friend-evaluation の構造
@@ -42,9 +44,13 @@ import {
   topGaps,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
-import { isPerceptionUnlocked } from "@/lib/perception-unlock";
-import { UnlockCard } from "@/components/result/UnlockCard";
-import { UnlockConfirming } from "@/components/result/UnlockConfirming";
+import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
+
+// 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
+// Stripe インフラ (lib/perception-unlock, /api/checkout/create-perception-unlock-session,
+// /api/webhook/stripe, payment_history) は後の有料機能流用のため温存し、ここでは参照しない。
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 export const metadata: Metadata = {
   title: "友達評価の結果",
@@ -54,7 +60,6 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
-  searchParams: Promise<{ unlocked?: string; checkout?: string }>;
 }
 
 // 名前が長い場合の省略 (UI 崩れ防止、8 文字 + 「…」)
@@ -62,22 +67,11 @@ function shortenName(name: string): string {
   return name.length > 8 ? name.slice(0, 8) + "…" : name;
 }
 
-export default async function EvaluationResultPage({
-  params,
-  searchParams,
-}: PageProps) {
+export default async function EvaluationResultPage({ params }: PageProps) {
   const { perceptionId } = await params;
-  const sp = await searchParams;
-  // Day 12-C2: payment_history からの本判定 + ?unlocked=1 は開発時 override として残す。
-  // - 本判定: isPerceptionUnlocked() が payment_history を SELECT
-  //   (status='completed' AND payment_kind='perception_unlock')
-  // - ?unlocked=1 は QA / UI 確認用 (本番でも誰でも付けられるが、
-  //   ロック解除ボタンが消える程度の影響なので脅威評価は無視可)
-  const devOverride = sp.unlocked === "1";
-  const paidUnlocked = await isPerceptionUnlocked(perceptionId);
-  const unlocked = paidUnlocked || devOverride;
-  // ¥500 決済直後の戻り (success_url)。Webhook 反映前なら「解除確認中」を出す。
-  const justPaid = sp.checkout === "success";
+  // 相互理解度 完全無料化: 課金ゲートを撤去し、全章を無条件で表示する。
+  // (購入済みユーザーも従来どおり全部見える。Stripe インフラは温存・ここでは参照しない)
+  const unlocked = true;
 
   // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
   const { data: perception, error: pErr } = await supabaseAdmin
@@ -113,21 +107,11 @@ export default async function EvaluationResultPage({
   // ===== 3. target user (= 評価された A) 取得 (owner 確定後にのみ self scores を取得) =====
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("id, type_id, scores, display_name, owner_token")
+    .select("id, type_id, scores, display_name, owner_token, invite_code")
     .eq("id", perception.target_user_id)
     .maybeSingle();
   if (!user) {
     notFound();
-  }
-
-  // ===== 3.5 決済直後の解除確認 (Webhook 反映待ち) =====
-  // success_url から ?checkout=success で戻った直後、まだ payment_history が
-  // 反映されていない (unlocked=false) 場合は、解除済みコンテンツを描く前に
-  // 「解除を確認中」を表示し、反映後に自動で解除済みページへ着地させる。
-  if (justPaid && !unlocked) {
-    return (
-      <UnlockConfirming myTrisetsuUrl={`/me/${user.owner_token as string}`} />
-    );
   }
 
   // ===== 4. 派生計算 =====
@@ -142,6 +126,8 @@ export default async function EvaluationResultPage({
   const perceiverFull = (perception.perceiver_name as string) ?? "友達";
   const perceiverShort = shortenName(perceiverFull);
   const myTrisetsuUrl = `/me/${user.owner_token as string}`;
+  // バイラル導線: owner の友達評価 招待 URL (より多くの友達に評価してもらう)
+  const inviteUrl = `${SITE_URL}/friend/${user.invite_code as string}`;
 
   // Day 12-D: 知覚16タイプ / owner16タイプを perceived_scores / users.scores から派生。
   // 既存の 8 タイプ (perceived_type_id) は温存し、表示・本文の出し分けは 16 タイプで行う。
@@ -251,34 +237,10 @@ export default async function EvaluationResultPage({
           ownerTypeId={ownerTypeId}
         />
 
-        {/* ===== メイン解除カード (Owner かつ未 unlock のみ) =====
-            Day 12-Polish-G: 16P 構造の共通 <UnlockCard> に置き換え。
-            決済フロー (create-perception-unlock-session) は不変、コピーのみ評価結果用。
-            paidUnlocked が true の場合はこのカード自体が非表示 (unlocked=true)。 */}
-        {isOwner && !unlocked && (
-          <UnlockCard
-            perceptionId={perceptionId}
-            heading={`${perceiverShort}さんから見た『本当のアナタ』のすべてを解放`}
-            body={`いま見えている『ズレ』は、ほんの入り口。${perceiverShort}さんの目に映るアナタを、本音もアドバイスもまとめて全部読めます。`}
-            // 箇条書きは実際の有料解除対象に一致させる (章② 強みは「全無料」のため
-            // 「相手が見た強み」の行は外し、有料の本音＋4特性に差し替え)。
-            bullets={[
-              {
-                lead: 'ズレを縮める"次の一歩"',
-                detail: "見え方の差を、こじれる前に埋める具体アドバイス。",
-              },
-              {
-                lead: "隠れた本音と4つの特性",
-                detail: `${perceiverShort}さんにだけ見えている、表に出さない一面の深掘り。`,
-              },
-              {
-                lead: "アナタ専用の取扱説明書",
-                detail: `${perceiverShort}さんとうまく付き合うための関係ガイド。`,
-              },
-            ]}
-            reassurance={`この${perceiverShort}さんの評価結果だけ・一度の決済で解除`}
-          />
-        )}
+        {/* ===== バイラル導線 (旧・課金解除カードの位置) =====
+            相互理解度を完全無料化。課金ゲートの代わりに、もっと友達に評価してもらう
+            シェア/リンクコピー導線を置く (友達が増えるほど精度が上がる)。 */}
+        <PerceptionBoostCta inviteUrl={inviteUrl} />
 
         {/* ===== バイラル誘導 (perceiver = 評価した友達 へのインバイト) =====
             Polish-E E-4: isOwner には不要 (本人は既にトリセツを持っている)。
