@@ -14,6 +14,7 @@ import {
   ctaPrimary,
   ctaSecondary,
 } from "@/components/StickyCtaFooter";
+import { InAppBrowserModal } from "@/components/InAppBrowserModal";
 
 const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
@@ -291,6 +292,8 @@ function DiagnosisContent() {
   if (step === "basic-info") {
     return (
       <div className="relative flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
+        {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
+        <InAppBrowserModal />
         {showRediagnoseModal && (
           <RediagnoseConfirmModal
             onConfirm={closeRediagnoseModal}
