@@ -100,32 +100,8 @@ export function EvaluationChapters({
   });
   return (
     <>
-      {/* 章 ① ギャップの全体像 */}
-      <section className="mb-8">
-        <ChapterHeader num={1 + numOffset} title="ギャップの全体像" />
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-3">
-          <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
-            {displayName}が「こう」と思っている自分と、{perceiverShort}から
-            見える{displayName}には、いくつかのズレがあります。特に大きいズレが
-            <span className="font-black text-[#FE3C72]">
-              {" "}
-              {topGapList.length} 個
-            </span>
-            。
-          </p>
-        </div>
-        {topGapList.map((g) => (
-          <GapCard
-            key={g.key}
-            gap={g}
-            displayName={displayName}
-            perceiverShort={perceiverShort}
-            unlocked={unlocked}
-            perceptionId={perceptionId}
-            isOwner={isOwner}
-          />
-        ))}
-      </section>
+      {/* Day 12-Polish-E: 「ギャップの全体像」章は撤去し、ページ側の ② 内訳/ギャップ
+          (レーダー + 5特性カード) に統合・整理した。GapCard 等の定義は将来用に残置。 */}
 
       {/* 章 ② 強み (全無料) */}
       <section className="mb-8">
