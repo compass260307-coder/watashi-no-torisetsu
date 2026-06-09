@@ -69,6 +69,14 @@ function shortenName(name: string): string {
   return name.length > 8 ? name.slice(0, 8) + "…" : name;
 }
 
+// 相互理解度スコアの一言ラベル (出し分け)。温かいトーン。
+function mutualLabel(pct: number): string {
+  if (pct >= 80) return "かなり息ぴったり。お互いをよく分かり合えてる。";
+  if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
+  if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
+  return "ギャップ大きめ。意外な発見がたくさんあるかも。";
+}
+
 export default async function EvaluationResultPage({ params }: PageProps) {
   const { perceptionId } = await params;
   // 相互理解度 完全無料化: 課金ゲートを撤去し、全章を無条件で表示する。
@@ -214,7 +222,39 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               {perceiverShort}さんから見たアナタ
             </h2>
           </div>
+          {/* 1 枚の白カード: 相互理解度パート → 区切り → 本文パート (くっついて見せる) */}
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            {/* 相互理解度パート */}
+            <div className="text-center">
+              <p className="text-[#FE3C72] font-bold text-sm mb-1">相互理解度</p>
+              <p className="text-[#3A2D6B] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
+                {mutual}
+                <span className="text-3xl">%</span>
+              </p>
+              {/* vividPink 進捗バー */}
+              <div
+                className="mt-3 h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+                role="progressbar"
+                aria-label={`相互理解度 ${mutual}%`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={mutual}
+              >
+                <div
+                  className="h-full rounded-full bg-[#FE3C72]"
+                  style={{ width: `${mutual}%` }}
+                />
+              </div>
+              {/* 一言ラベル (スコア出し分け) */}
+              <p className="text-[#3A2D6B]/75 text-xs font-bold mt-2 leading-relaxed">
+                {mutualLabel(mutual)}
+              </p>
+            </div>
+
+            {/* 軽い区切り (別カードに見せない) */}
+            <div className="border-t border-dashed border-[#3A2D6B]/15 my-5" />
+
+            {/* 本文パート (◯◯さんから見たアナタは…) */}
             {perceivedManualBody.split("\n\n").map((para, i) => (
               <p
                 key={i}
@@ -226,16 +266,10 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* ===== 相互理解度 ===== */}
-        <div className="text-center mb-6">
-          <p className="text-[#FE3C72] font-bold text-sm mb-1">相互理解度</p>
-          <p className="text-[#3A2D6B] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
-            {mutual}
-            <span className="text-3xl">%</span>
-          </p>
-        </div>
-
-        {/* ===== レーダーチャート ===== */}
+        {/* ===== レーダーチャート (① の内訳としてカード下に残す) ===== */}
+        <p className="text-[#3A2D6B]/60 font-black text-[10px] tracking-[0.3em] text-center mb-2">
+          内訳
+        </p>
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
           <MutualUnderstandingRadar
             gaps={gaps}
