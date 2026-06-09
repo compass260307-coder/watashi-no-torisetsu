@@ -300,7 +300,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* ===== ② 内訳/ギャップ (レーダー + 5特性カード) = ① と同じ白カード/見出し/トーン ===== */}
+        {/* ===== ② 内訳/ギャップ = 1 枚の白カード (レーダー + 5特性を薄線で区切る) ===== */}
         <section className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
@@ -311,53 +311,56 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             </h2>
           </div>
 
-          {/* レーダー (5特性の全体像: 自分 vs 友達) */}
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+          {/* 1 枚のカード: レーダー → 外向性 → 協調性 → 開放性 → 誠実性 → 神経症傾向 を薄線で区切る */}
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            {/* レーダー (5特性の全体像: 自分 vs 友達) */}
             <MutualUnderstandingRadar
               gaps={gaps}
               selfLabel={`${displayName}自身`}
               otherLabel={`${perceiverShort}から`}
             />
-          </div>
 
-          {/* 5特性カード (gaps は 外向性/協調性/開放性/誠実性/神経症傾向 の順) */}
-          {gaps.map((g) => {
-            const dir = gapDir3(g.selfPercent, g.otherPercent);
-            const detail = gapDetail[g.key][dir].replace(/\{B\}/g, perceiverShort);
-            return (
-              <div
-                key={g.key}
-                className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-4 last:mb-0"
-              >
-                {/* 特性名 + 差pt */}
-                <div className="flex items-baseline justify-between mb-3">
-                  <h3 className="text-[#3A2D6B] font-black text-base">
-                    {g.label}
-                  </h3>
-                  <span className="text-[#FE3C72] font-black text-xs">
-                    差 {g.diffPoints}pt
-                  </span>
+            {/* 5特性ブロック (gaps は 外向性/協調性/開放性/誠実性/神経症傾向 の順) */}
+            {gaps.map((g) => {
+              const dir = gapDir3(g.selfPercent, g.otherPercent);
+              const detail = gapDetail[g.key][dir].replace(
+                /\{B\}/g,
+                perceiverShort,
+              );
+              return (
+                <div key={g.key}>
+                  {/* 薄線で区切り (レーダーと各特性の間) */}
+                  <div className="border-t border-[#3A2D6B]/10 my-5" />
+                  {/* 特性名 + 差pt */}
+                  <div className="flex items-baseline justify-between mb-3">
+                    <h3 className="text-[#3A2D6B] font-black text-base">
+                      {g.label}
+                    </h3>
+                    <span className="text-[#FE3C72] font-black text-xs">
+                      差 {g.diffPoints}pt
+                    </span>
+                  </div>
+                  {/* 2 本のバー (のすけ自身 / けんしんから) = ① のバーと同じ見た目 */}
+                  <div className="space-y-2 mb-3">
+                    <TraitBar
+                      label={`${displayName}自身`}
+                      percent={g.selfPercent}
+                      color="#FE3C72"
+                    />
+                    <TraitBar
+                      label={`${perceiverShort}から`}
+                      percent={g.otherPercent}
+                      color="#0094D8"
+                    />
+                  </div>
+                  {/* 2 文のアドバイス/気づき (スコア方向で出し分け、結果説明はしない) */}
+                  <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
+                    {detail}
+                  </p>
                 </div>
-                {/* 2 本のバー (自分 / 友達から) = ① のバーと同じ見た目 */}
-                <div className="space-y-2 mb-4">
-                  <TraitBar
-                    label={`${displayName}自身`}
-                    percent={g.selfPercent}
-                    color="#FE3C72"
-                  />
-                  <TraitBar
-                    label={`${perceiverShort}から`}
-                    percent={g.otherPercent}
-                    color="#0094D8"
-                  />
-                </div>
-                {/* 3 文の解説 (スコア方向に出し分け) */}
-                <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
-                  {detail}
-                </p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </section>
 
         {/* ===== おまけ3問 (/me から移設、無料) ===== */}
