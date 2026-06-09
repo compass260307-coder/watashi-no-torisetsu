@@ -37,6 +37,7 @@ import {
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { perceivedManualContent } from "@/lib/perception-manual-content";
+import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { EvaluationChapters } from "@/components/result/EvaluationChapters";
@@ -292,7 +293,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             {perceivedManualBody.split("\n\n").map((para, i) => (
               <p
                 key={i}
-                className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
+                className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4 last:mb-0`}
               >
                 {para}
               </p>
@@ -353,10 +354,8 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       color="#0094D8"
                     />
                   </div>
-                  {/* 2 文のアドバイス/気づき (スコア方向で出し分け、結果説明はしない) */}
-                  <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
-                    {detail}
-                  </p>
+                  {/* 2 文のアドバイス/気づき (スコア方向で出し分け、結果説明はしない)。本文スタイルは ① と共通 */}
+                  <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
                 </div>
               );
             })}
