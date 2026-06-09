@@ -46,6 +46,7 @@ import {
   topGaps,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
+import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
 import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
@@ -75,6 +76,39 @@ function mutualLabel(pct: number): string {
   if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
   if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
   return "ギャップ大きめ。意外な発見がたくさんあるかも。";
+}
+
+// ② 特性カードのバー (① の相互理解度バーと同じ見た目: h-3 / 角丸 / lavender トラック)。
+function TraitBar({
+  label,
+  percent,
+  color,
+}: {
+  label: string;
+  percent: number;
+  color: string;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs font-bold text-[#3A2D6B] mb-1">
+        <span>{label}</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        className="h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+        role="progressbar"
+        aria-label={`${label} ${percent}%`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${percent}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
 }
 
 export default async function EvaluationResultPage({ params }: PageProps) {
@@ -266,17 +300,65 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* ===== レーダーチャート (① の内訳としてカード下に残す) ===== */}
-        <p className="text-[#3A2D6B]/60 font-black text-[10px] tracking-[0.3em] text-center mb-2">
-          内訳
-        </p>
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
-          <MutualUnderstandingRadar
-            gaps={gaps}
-            selfLabel={`${displayName}自身`}
-            otherLabel={`${perceiverShort}から`}
-          />
-        </div>
+        {/* ===== ② 内訳/ギャップ (レーダー + 5特性カード) = ① と同じ白カード/見出し/トーン ===== */}
+        <section className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+              2
+            </span>
+            <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+              {perceiverShort}さんとのギャップ
+            </h2>
+          </div>
+
+          {/* レーダー (5特性の全体像: 自分 vs 友達) */}
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
+            <MutualUnderstandingRadar
+              gaps={gaps}
+              selfLabel={`${displayName}自身`}
+              otherLabel={`${perceiverShort}から`}
+            />
+          </div>
+
+          {/* 5特性カード (gaps は 外向性/協調性/開放性/誠実性/神経症傾向 の順) */}
+          {gaps.map((g) => {
+            const dir = gapDir3(g.selfPercent, g.otherPercent);
+            const detail = gapDetail[g.key][dir].replace(/\{B\}/g, perceiverShort);
+            return (
+              <div
+                key={g.key}
+                className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-4 last:mb-0"
+              >
+                {/* 特性名 + 差pt */}
+                <div className="flex items-baseline justify-between mb-3">
+                  <h3 className="text-[#3A2D6B] font-black text-base">
+                    {g.label}
+                  </h3>
+                  <span className="text-[#FE3C72] font-black text-xs">
+                    差 {g.diffPoints}pt
+                  </span>
+                </div>
+                {/* 2 本のバー (自分 / 友達から) = ① のバーと同じ見た目 */}
+                <div className="space-y-2 mb-4">
+                  <TraitBar
+                    label={`${displayName}自身`}
+                    percent={g.selfPercent}
+                    color="#FE3C72"
+                  />
+                  <TraitBar
+                    label={`${perceiverShort}から`}
+                    percent={g.otherPercent}
+                    color="#0094D8"
+                  />
+                </div>
+                {/* 3 文の解説 (スコア方向に出し分け) */}
+                <p className="text-[#3A2D6B]/85 text-sm leading-relaxed">
+                  {detail}
+                </p>
+              </div>
+            );
+          })}
+        </section>
 
         {/* ===== おまけ3問 (/me から移設、無料) ===== */}
         {qualEntries.length > 0 && (
