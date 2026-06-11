@@ -51,7 +51,8 @@ import { perceivedManualContent } from "@/lib/perception-manual-content";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
-import { PerceptionFoundYou } from "@/components/result/PerceptionFoundYou";
+import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
+import { PerceptionMessageCard } from "@/components/result/PerceptionMessageCard";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -61,6 +62,7 @@ import {
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
 import { relationGapNote } from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
+import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
 import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
@@ -79,10 +81,8 @@ interface PageProps {
   params: Promise<{ perceptionId: string }>;
 }
 
-// 名前が長い場合の省略 (UI 崩れ防止、8 文字 + 「…」)
-function shortenName(name: string): string {
-  return name.length > 8 ? name.slice(0, 8) + "…" : name;
-}
+// Day 12 ③④改修: 名前の「…」切り捨て (shortenName) を全廃。
+// 友達名は見出しでフル表示し、長い場合は折り返す。本文中には名前を出さない。
 
 // 相互理解度スコアの一言ラベル (出し分け)。温かいトーン。
 function mutualLabel(pct: number): string {
@@ -194,8 +194,8 @@ export default async function EvaluationResultPage({ params }: PageProps) {
 
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
+  // 友達名はフル表示 (切り捨てなし)。見出しでのみ使い、本文には出さない。
   const perceiverFull = (perception.perceiver_name as string) ?? "友達";
-  const perceiverShort = shortenName(perceiverFull);
   const myTrisetsuUrl = `/me/${user.owner_token as string}`;
   // バイラル導線: owner の友達評価 招待 URL (より多くの友達に評価してもらう)
   const inviteUrl = `${SITE_URL}/friend/${user.invite_code as string}`;
@@ -207,37 +207,32 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const perceivedType16 = sixteenTypes[perceivedTypeId];
   // B から見た A のタイプ (16タイプ名)、ヒーローで表示
   const perceivedTypeName = perceivedType16.name;
-  // ① ◯◯さんから見たアナタ: 友達が割り当てた型 (perceivedTypeId) の取扱説明書を
-  // 友達視点に言い換えた本文。{B} を友達名 (perceiverShort) に置換して表示する。
-  // Day 12 再設計: ① は 1 段落目「どう見えているか」の描写に専念し、
-  // 2 段落目「うまく付き合うコツ」は ④ ふたりの関係 が引き継ぐ (文章データは無加工で温存)。
-  const perceivedManualBody = perceivedManualContent[perceivedTypeId].replace(
-    /\{B\}/g,
-    perceiverShort,
-  );
+  // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
+  //   1 段落目 = ① 「どう見えているか」の描写
+  //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)
   const [perceivedLookBody, perceivedTipsBody] =
-    perceivedManualBody.split("\n\n");
+    perceivedManualContent[perceivedTypeId].split("\n\n");
 
-  // {A}=本人名 / {B}=友達名 のテンプレ置換 (③④の組み立てで使用)
-  const fillNames = (s: string) =>
-    s.replace(/\{A\}/g, displayName).replace(/\{B\}/g, perceiverShort);
-
-  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
+  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つを
+  // 文章に織り込む (weaveFound がキーワードの vividPink セグメントを生成。
+  // あれっ?ワードは SOFT_WORD 辞書で柔らかく言い換え済み)。
   // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
   const foundContent = getPerceivedContent(perceivedTypeId);
-  const foundStrengths = (foundContent?.strengths ?? [])
-    .slice(0, 3)
-    .map((it) => ({ title: fillNames(it.title), body: fillNames(it.body) }));
-  const foundSurprises = (foundContent?.surprises ?? [])
-    .slice(0, 3)
-    .map((it) => ({ title: fillNames(it.title), body: fillNames(it.body) }));
+  const foundSeed = seedFromTypeId(perceivedTypeId);
+  const strengthParas = foundContent
+    ? weaveFound(foundContent.strengths, "strengths", foundSeed)
+    : [];
+  const surpriseParas = foundContent
+    ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
+    : [];
 
-  // ④ ふたりの関係: 差が最大の特性から「この二人専用」の一文 (1 段落目) を組み立てる。
-  // 2 段落目は ① から移した「うまく付き合うコツ」(perceivedTipsBody)。
+  // ④ ふたりの関係: 差が最大の特性から「この二人専用」の 3 文 (1 段落目) を選ぶ。
+  // 2 段落目は ① 由来の「付き合い方のコツ」(perceivedTipsBody)。どちらも名前なし。
   const maxGap = sortedGaps[0];
-  const relationGapBody = fillNames(
-    relationGapNote[maxGap.key][gapDir3(maxGap.selfPercent, maxGap.otherPercent)],
-  );
+  const relationGapBody =
+    relationGapNote[maxGap.key][
+      gapDir3(maxGap.selfPercent, maxGap.otherPercent)
+    ];
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
@@ -248,8 +243,11 @@ export default async function EvaluationResultPage({ params }: PageProps) {
       { label: "好きなところ", value: qualitative?.favorite_point },
       { label: "動物にたとえると", value: qualitative?.animal },
       { label: "印象的なシーン", value: qualitative?.impression_scene },
-    ] as const
-  ).filter((e) => typeof e.value === "string" && e.value.trim().length > 0);
+    ] as { label: string; value: string | undefined }[]
+  ).filter(
+    (e): e is { label: string; value: string } =>
+      typeof e.value === "string" && e.value.trim().length > 0,
+  );
 
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
@@ -271,17 +269,16 @@ export default async function EvaluationResultPage({ params }: PageProps) {
 
         {/* ===== ヒーロータグ (2 行) =====
             1 行目: 2 行目と同じロゴ風 (.wtr-logo-text = logoBlue 塗り + 太い白フチ) を一回り小さく。
-                    装飾(花/ハート)は付けない。友達名はフル表示、幅をはみ出すときだけ末尾…で省略
-                    (「さんから見た」は常に表示)。
+                    装飾(花/ハート)は付けない。友達名はフル表示し、幅をはみ出す場合は
+                    折り返す (Day 12 ③④改修: 「…」切り捨ては全廃)。
             2 行目: /me の TrisetsuNameTag「◯◯のトリセツ」(花=左 / ハート=右、owner 名は省略しない)。
             縦余白を詰めて上下 1 まとまりに見せる。 */}
         <div className="mb-4 flex flex-col items-center">
           <div
-            className="wtr-logo-text leading-none flex flex-nowrap items-baseline justify-center max-w-full overflow-hidden px-4 mb-0.5"
+            className="wtr-logo-text leading-tight text-center max-w-full px-4 mb-0.5"
             style={{ fontSize: "clamp(13px, 4.2vw, 21px)" }}
           >
-            <span className="truncate min-w-0 pr-1">{perceiverFull}</span>
-            <span className="flex-shrink-0">さんから見た</span>
+            {perceiverFull}さんから見た
           </div>
           <TrisetsuNameTag name={displayName} />
         </div>
@@ -300,7 +297,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             友達が割り当てた型 (ヒーローの型) の取扱説明書を友達視点に言い換えた文章。
             /me の「取扱説明書」セクションと同一スタイル (丸数字見出し + クリーンな文章カード)。 */}
         <section className="mb-8">
-          <SectionHead num={1} title={`${perceiverShort}さんから見たアナタ`} />
+          <SectionHead num={1} title={`${perceiverFull}さんから見たアナタ`} />
           {/* 1 枚の白カード: 相互理解度パート → 区切り → 本文パート (くっついて見せる) */}
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
             {/* 相互理解度パート */}
@@ -344,24 +341,22 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             上位 2 特性のみフル形式 (2文)、残り 3 特性は一言 (既存2文の1文目) に圧縮。
             裸のデータにしない (バーだけで終わらせない)。 */}
         <section className="mb-8">
-          <SectionHead num={2} title={`${perceiverShort}さんとのギャップ`} />
+          <SectionHead num={2} title={`${perceiverFull}さんとのギャップ`} />
 
           {/* 1 枚のカード: レーダー → 5特性 (差の大きい順) を薄線で区切る */}
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-            {/* レーダー (5特性の全体像: 自分 vs 友達) */}
+            {/* レーダー (5特性の全体像: 自分 vs 友達)。
+                ラベルに友達名は出さない (名前は見出しのみ・切り捨て全廃のため) */}
             <MutualUnderstandingRadar
               gaps={gaps}
               selfLabel={`${displayName}自身`}
-              otherLabel={`${perceiverShort}から`}
+              otherLabel="友達から"
             />
 
             {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=フル、残り3つ=圧縮) */}
             {sortedGaps.map((g, idx) => {
               const dir = gapDir3(g.selfPercent, g.otherPercent);
-              const detailFull = gapDetail[g.key][dir].replace(
-                /\{B\}/g,
-                perceiverShort,
-              );
+              const detailFull = gapDetail[g.key][dir];
               // 圧縮形式の一言 = 既存 2 文の 1 文目を流用
               const detail =
                 idx < 2 ? detailFull : `${detailFull.split("。")[0]}。`;
@@ -386,7 +381,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       color="#FE3C72"
                     />
                     <TraitBar
-                      label={`${perceiverShort}から`}
+                      label="友達から"
                       percent={g.otherPercent}
                       color="#0094D8"
                     />
@@ -399,41 +394,30 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* ===== おまけ3問 (/me から移設、無料) ===== */}
-        {qualEntries.length > 0 && (
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
-            <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
-              {perceiverShort}さんからのメッセージ
-            </p>
-            <ul className="flex flex-col gap-3">
-              {qualEntries.map((e) => (
-                <li key={e.label}>
-                  <p className="text-[#3A2D6B]/60 font-bold text-xs mb-0.5">
-                    {e.label}
-                  </p>
-                  <p className="text-[#3A2D6B] text-sm leading-relaxed">
-                    {e.value}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* ===== ◇ ◯◯さんからのメッセージ (おまけ3問 → 吹き出しカードに改装、③の直前) =====
+            このページで唯一の「生成ではない本物の友達の言葉」。生成文は文章カード、
+            本物の言葉だけが吹き出しに入る、という原則 (Day 12 ③④改修)。
+            未回答は qualEntries で除外済み。3問すべて未回答ならカードごと非表示。 */}
+        <PerceptionMessageCard
+          entries={qualEntries}
+          perceiverName={perceiverFull}
+        />
 
-        {/* ===== ③ ◯◯さんが見つけたアナタ (旧③強み6 + 旧④あれっ?6 を各3つに絞って統合) =====
-            Day 12 再設計。旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」と旧6章レイアウト
-            (EvaluationChapters) はページから撤去。コード・文章データは有料深掘りレポート用に
-            温存 (温存場所はファイル冒頭コメント参照)。 */}
+        {/* ===== ③ ◯◯さんが見つけたアナタ (強み3 + あれっ?3 を文章に織り込む) =====
+            Day 12 ③④改修: バッジ/吹き出し UI (PerceptionFoundYou、温存) を撤去し、
+            ①④と同じ質感の文章カードに全面改装。キーワードは vividPink 太字で文中に埋め込む。
+            旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」と旧6章レイアウト (EvaluationChapters)
+            のコード・文章データは有料深掘りレポート用に温存 (温存場所はファイル冒頭コメント参照)。 */}
         {foundContent && (
           <section className="mb-8">
             <SectionHead
               num={3}
-              title={`${perceiverShort}さんが見つけたアナタ`}
+              title={`${perceiverFull}さんが見つけたアナタ`}
             />
-            <PerceptionFoundYou
-              strengths={foundStrengths}
-              surprises={foundSurprises}
-              perceiverShort={perceiverShort}
+            <PerceptionFoundProse
+              perceiverName={perceiverFull}
+              strengthParas={strengthParas}
+              surpriseParas={surpriseParas}
             />
           </section>
         )}
@@ -464,7 +448,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         {!isOwner && (
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6 text-center">
             <h2 className="text-[#3A2D6B] font-black text-base mb-2">
-              {perceiverShort}さんも、自分のトリセツ作ってみない？
+              {perceiverFull}さんも、自分のトリセツ作ってみない？
             </h2>
             <p className="text-[#3A2D6B]/75 text-xs leading-relaxed mb-4">
               50 問・約 3 分の自己診断、登録不要、無料。
