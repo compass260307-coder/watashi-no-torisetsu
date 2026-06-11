@@ -213,9 +213,9 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const [perceivedLookBody, perceivedTipsBody] =
     perceivedManualContent[perceivedTypeId].split("\n\n");
 
-  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つを
-  // 文章に織り込む (weaveFound がキーワードの vividPink セグメントを生成。
-  // あれっ?ワードは SOFT_WORD 辞書で柔らかく言い換え済み)。
+  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
+  // 各項目 = 独立した段落 (先頭ワードのみ vividPink、続けて説明+締めの2文)。
+  // weaveFound が段落セグメントを生成 (あれっ?ワードは SOFT_WORD 辞書で言い換え済み)。
   // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
   const foundContent = getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
@@ -403,9 +403,9 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           perceiverName={perceiverFull}
         />
 
-        {/* ===== ③ ◯◯さんが見つけたアナタ (強み3 + あれっ?3 を文章に織り込む) =====
+        {/* ===== ③ ◯◯さんが見つけたアナタ (強み3段落 + あれっ?3段落の文章カード) =====
             Day 12 ③④改修: バッジ/吹き出し UI (PerceptionFoundYou、温存) を撤去し、
-            ①④と同じ質感の文章カードに全面改装。キーワードは vividPink 太字で文中に埋め込む。
+            ①④と同じ質感の文章カードに全面改装。vividPink 太字は各段落先頭のワードのみ。
             旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」と旧6章レイアウト (EvaluationChapters)
             のコード・文章データは有料深掘りレポート用に温存 (温存場所はファイル冒頭コメント参照)。 */}
         {foundContent && (
