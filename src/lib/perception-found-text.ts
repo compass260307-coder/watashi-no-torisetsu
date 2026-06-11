@@ -1,16 +1,18 @@
 // Day 12 ③④改修: ③「◯◯さんが見つけたアナタ」の文章生成。
 //
 // PERCEIVED_BY_TYPE (mutual-result-content.ts) の強み/あれっ? 各 3 項目を、
-// 1〜2 段落の流れる文章に織り込む。キーワード (強みワード/言い換え後のあれっ?ワード)
-// は vividPink 太字で埋め込むため、セグメント列 (FoundSegment[]) として返す。
+// 「各項目 = 独立した段落」として組み立てる (③リライト: 織り込み方式は廃止)。
+// 段落の構造: 先頭に「ワード。」(vividPink 太字はここだけ) → 続けて 2 文
+// (= 既存の説明 1 文 + 締めの 1 文)。段落の切れ目が接続の代わりなので、
+// 「最初に挙がったのは」等の順番ナレーション接続は使わない。
 //
 // 品質ルール:
 //   - 本文中に友達名を出さない (主語省略 + 伝聞・推量)
-//   - 文末・接続はパターンセット 3 種 × 文末スタイル 3 種で多様化し、
-//     「〜みたい。」連発や「そして/さらに」の機械的連結を避ける
-//   - パターンは typeId 由来のシード値で決定的に選ぶ (Server Component で安定)
+//   - ① と同じ常体ベース + 「〜みたい」「〜のかも」「〜ようです」に統一
+//     (敬体の地の文を入れない)。締め文プールの並びで文末をばらし「みたい」連発を避ける
+//   - 締め文は typeId 由来のシード値で決定的に選ぶ (Server Component で安定)
 //   - あれっ? のキツいワードは SOFT_WORD 辞書で柔らかい言い換えに変換してから
-//     埋め込む (トーンは指摘ではなく「ちゃんと見られてた」発見の温かさ)
+//     表示する (トーンは指摘ではなく「ちゃんと見られてた」発見の温かさ)
 
 export interface FoundSegment {
   text: string;
@@ -133,99 +135,29 @@ export const SOFT_WORD: Record<string, string> = {
 };
 
 // =====================================================================
-// 文章の織り込みパターン
+// 締め文プール (各段落の 2 文目)
 // =====================================================================
-
-// 文末スタイル: "〜ている。" で終わる説明文にだけ伝聞・推量を足す (それ以外は原文のまま)
-type EndStyle = "asis" | "mitai" | "youdesu";
-
-function applyEnd(desc: string, style: EndStyle): string {
-  if (!desc.endsWith("ている。")) return desc;
-  if (style === "mitai") return `${desc.slice(0, -1)}みたい。`;
-  if (style === "youdesu") return `${desc.slice(0, -1)}ようです。`;
-  return desc;
-}
-
-interface Frame {
-  /** キーワードの前に置く文 */
-  pre: string;
-  /** キーワードの直後 (説明文との橋渡し) */
-  mid: string;
-  end: EndStyle;
-}
-
-interface PatternSet {
-  /** 段落分け (項目 index のグループ)。[[0,1],[2]] = 2 段落 */
-  groups: number[][];
-  frames: [Frame, Frame, Frame];
-}
+// 常体 + 「みたい / のかも / ようです」のみ。シードの偶奇で 3 つずつ使われるため、
+// 偶数番 (0,2,4) と奇数番 (1,3,5) のどちらの組でも文末 3 種が揃う並びにしてある。
 
 // 強みパート: 「友達に認定された」誇らしさのトーン
-const STRENGTH_SETS: PatternSet[] = [
-  {
-    groups: [[0, 1], [2]],
-    frames: [
-      { pre: "いちばんまっすぐ伝わってきたのは、", mid: "。", end: "asis" },
-      { pre: "あわせて、", mid: "も見抜かれていました。", end: "mitai" },
-      { pre: "極めつきは、", mid: "。", end: "youdesu" },
-    ],
-  },
-  {
-    groups: [[0], [1, 2]],
-    frames: [
-      {
-        pre: "3つの強みが、ちゃんと見つかっていました。まずは、",
-        mid: "。",
-        end: "mitai",
-      },
-      { pre: "つぎに、", mid: "。", end: "asis" },
-      { pre: "そして何より大きかったのが、", mid: "。", end: "youdesu" },
-    ],
-  },
-  {
-    groups: [[0, 1], [2]],
-    frames: [
-      { pre: "", mid: "——最初に挙がったのは、この強み。", end: "asis" },
-      { pre: "", mid: "にも、ちゃんと視線が届いています。", end: "mitai" },
-      { pre: "そしてしめくくりに挙がったのは、", mid: "。", end: "youdesu" },
-    ],
-  },
+const STRENGTH_CLOSERS: string[] = [
+  "本人が思うより、ずっとはっきり伝わっている長所みたい。",
+  "自分では当たり前すぎて、かえって気づきにくいところなのかも。",
+  "これはもう、堂々と自分の武器にしていい部分のようです。",
+  "日々の何気ない場面で、ちゃんと見られていたみたい。",
+  "そばで見てきたからこそ、見つけてもらえた強さなのかも。",
+  "言葉にされると照れるけど、まっすぐ受け取っていい評価のようです。",
 ];
 
 // あれっ?パート: 指摘ではなく「ちゃんと見られてた」発見の驚き・温かさのトーン
-const SURPRISE_SETS: PatternSet[] = [
-  {
-    groups: [[0, 1], [2]],
-    frames: [
-      { pre: "意外だったのは、", mid: "に気づかれていたこと。", end: "asis" },
-      { pre: "", mid: "も、ちゃんと見られていました。", end: "mitai" },
-      { pre: "そしてもうひとつ、", mid: "。", end: "youdesu" },
-    ],
-  },
-  {
-    groups: [[0], [1, 2]],
-    frames: [
-      {
-        pre: "隠しているつもりでも、見ている人は見ています。たとえば、",
-        mid: "。",
-        end: "mitai",
-      },
-      { pre: "", mid: "にも気づかれていました。", end: "asis" },
-      { pre: "それから、", mid: "。", end: "youdesu" },
-    ],
-  },
-  {
-    groups: [[0, 1], [2]],
-    frames: [
-      {
-        pre: "",
-        mid: "——そんなところまで、こっそり見つかっていました。",
-        end: "asis",
-      },
-      { pre: "あわせて、", mid: "も。", end: "mitai" },
-      { pre: "最後にもうひとつ、", mid: "。", end: "youdesu" },
-    ],
-  },
+const SURPRISE_CLOSERS: string[] = [
+  "隠していたつもりでも、ちゃんと見えていたみたい。",
+  "そんなところまで見ていてくれたのは、少し意外で、ちょっとうれしいやつなのかも。",
+  "それだけ近くで、ちゃんと見てくれていた証拠のようです。",
+  "本人が隠しているつもりの分まで、お見通しだったみたい。",
+  "指摘というより、「知ってるよ」という小さな合図なのかも。",
+  "気づかれていたこと自体が、距離の近さの証拠のようです。",
 ];
 
 /** typeId から決定的なシード値 (Server Component で安定、型ごとにパターンが変わる) */
@@ -243,7 +175,8 @@ function nameFreeDesc(body: string): string {
 }
 
 /**
- * 強み/あれっ? の 3 項目を 1〜2 段落の文章セグメントに織り込む。
+ * 強み/あれっ? の 3 項目を「1 項目 = 1 段落」のセグメント列にする。
+ * 段落 = 「ワード (pink)。説明 1 文 + 締め 1 文」。
  * items は PERCEIVED_BY_TYPE の先頭 3 つを渡す (残り 3 つは有料レポート用に温存)。
  */
 export function weaveFound(
@@ -251,22 +184,15 @@ export function weaveFound(
   kind: "strengths" | "surprises",
   seed: number,
 ): FoundParagraph[] {
-  const sets = kind === "strengths" ? STRENGTH_SETS : SURPRISE_SETS;
-  const set = sets[seed % sets.length];
-  const three = items.slice(0, 3);
-  const words = three.map((it) =>
-    kind === "surprises" ? (SOFT_WORD[it.title] ?? it.title) : it.title,
-  );
-  const descs = three.map((it) => nameFreeDesc(it.body));
-  return set.groups.map((group) =>
-    group.flatMap((i) => {
-      if (i >= three.length) return [];
-      const f = set.frames[i];
-      const segs: FoundSegment[] = [];
-      if (f.pre) segs.push({ text: f.pre });
-      segs.push({ text: words[i], pink: true });
-      segs.push({ text: f.mid + applyEnd(descs[i], f.end) });
-      return segs;
-    }),
-  );
+  const closers = kind === "strengths" ? STRENGTH_CLOSERS : SURPRISE_CLOSERS;
+  return items.slice(0, 3).map((it, i) => {
+    const word =
+      kind === "surprises" ? (SOFT_WORD[it.title] ?? it.title) : it.title;
+    // シードの偶奇 × 項目位置で締め文を選ぶ (3 段落で文末 3 種が揃う)
+    const closer = closers[(seed + i * 2) % closers.length];
+    return [
+      { text: word, pink: true },
+      { text: `。${nameFreeDesc(it.body)}${closer}` },
+    ];
+  });
 }

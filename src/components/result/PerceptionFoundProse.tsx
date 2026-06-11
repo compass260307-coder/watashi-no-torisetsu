@@ -2,10 +2,10 @@
 //
 // 旧バッジ/吹き出し UI (PerceptionFoundYou) を撤去し、①④と同じ質感の文章カードに
 // 全面改装したもの。リズムは「前半=見る、後半=読む」。
-// 強み/あれっ? のキーワードは vividPink 太字で文中に埋め込み、流し読みでも
-// ワードが拾える視覚アンカーにする。段落は perception-found-text.ts の
-// weaveFound が生成したセグメント列を受け取って描画するだけ (Server Component)。
-// 友達名は小見出しにのみ表示 (フル表示・切り捨てなし)。
+// 各項目 = 独立した段落 (強み3段落 / あれっ?3段落)。vividPink 太字は段落先頭の
+// ワードのみで、本文は deepPurple 太字の一色 (① と同じ)。段落は
+// perception-found-text.ts の weaveFound が生成したセグメント列を描画するだけ
+// (Server Component)。友達名は小見出しにのみ表示 (フル表示・切り捨てなし)。
 
 import { PERCEPTION_BODY_TEXT_CLASS } from "./body-text";
 import type { FoundParagraph } from "@/lib/perception-found-text";
