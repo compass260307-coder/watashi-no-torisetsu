@@ -1,14 +1,25 @@
 // Phase 1.5-α Day 12-C1: 友達評価結果ページ (軸2 のメイン画面)
 //
 // 役割: 友達 (B) が A に対して 30 問の評価を完了した後、A (owner) が見るための画面。
-// 6 章構成。Day 12-Polish-E で相互理解度を完全無料化し、課金ゲートを撤去 (全章を無条件表示)。
+// Day 12-Polish-E で相互理解度を完全無料化し、課金ゲートを撤去。
+// Day 12 コンテンツ再設計で 7 セクション → 4 セクションに圧縮 (バイラル特化):
+//   ヒーロー → ①◯◯さんから見たアナタ → ②ギャップ(TOP2フル+3圧縮) →
+//   ③◯◯さんが見つけたアナタ(強み3+あれっ?3) → ④ふたりの関係 → ブーストCTA
 //
 // Server Component:
 //   - perception (friend_perceptions) 取得
 //   - target user (= A) 取得して自己 Big Five と displayName を確保
 //   - session で isOwner 判定 (非 owner は /evaluate/sent へリダイレクト)
 //   - 相互理解度 % + 5 次元ギャップを派生して描画
-//   - 6 章は EvaluationChapters に委譲 (unlocked=true で全章表示)
+//
+// 旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」はページから削除 (Day 12 再設計)。
+// コンポーネント・生成ロジック・文章データは Stripe コード同様、後日の
+// 「有料深掘りレポート」用に温存 (参照だけ外した):
+//   - 章レイアウト: src/components/result/EvaluationChapters.tsx
+//   - 4特性: src/lib/mutual-result-content.ts (FOUR_TRAITS / fourTraitBody)
+//   - 取説B視点: src/lib/mutual-result-content.ts (getOwnerManual / MANUAL_BY_TYPE)
+//   - 関係性アドバイス部品: src/lib/mutual-result-content.ts (adviceFor / honneFor)
+//   - 強み/あれっ? の残り3つずつ: src/lib/mutual-result-content.ts (PERCEIVED_BY_TYPE)
 //
 // 課金ゲート撤去メモ:
 //   - このページの unlock 分岐 (UnlockCard / UnlockConfirming / isPerceptionUnlocked) を撤去。
@@ -40,7 +51,7 @@ import { perceivedManualContent } from "@/lib/perception-manual-content";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
-import { EvaluationChapters } from "@/components/result/EvaluationChapters";
+import { PerceptionFoundYou } from "@/components/result/PerceptionFoundYou";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -48,6 +59,8 @@ import {
   type BigFiveScores,
 } from "@/lib/perception-analysis";
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
+import { relationGapNote } from "@/lib/perception-relation-content";
+import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
@@ -77,6 +90,20 @@ function mutualLabel(pct: number): string {
   if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
   if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
   return "ギャップ大きめ。意外な発見がたくさんあるかも。";
+}
+
+// 丸数字バッジ + 見出し (①〜④ 共通。新フローの番号は上から連番で振る)
+function SectionHead({ num, title }: { num: number; title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+        {num}
+      </span>
+      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+        {title}
+      </h2>
+    </div>
+  );
 }
 
 // ② 特性カードのバー (① の相互理解度バーと同じ見た目: h-3 / 角丸 / lavender トラック)。
@@ -114,9 +141,7 @@ function TraitBar({
 
 export default async function EvaluationResultPage({ params }: PageProps) {
   const { perceptionId } = await params;
-  // 相互理解度 完全無料化: 課金ゲートを撤去し、全章を無条件で表示する。
-  // (購入済みユーザーも従来どおり全部見える。Stripe インフラは温存・ここでは参照しない)
-  const unlocked = true;
+  // 相互理解度は完全無料 (課金ゲートなし。Stripe インフラは温存・ここでは参照しない)
 
   // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
   const { data: perception, error: pErr } = await supabaseAdmin
@@ -164,7 +189,8 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const otherScores = (perception.perceived_scores ?? {}) as BigFiveScores;
   const gaps = buildDimensionGaps(selfScores, otherScores);
   const mutual = calcMutualUnderstanding(gaps);
-  const topGapList = topGaps(gaps, 3);
+  // ② は差 (pt) の大きい順に全 5 特性を表示 (先頭2つ=フル形式、残り3つ=圧縮形式)
+  const sortedGaps = topGaps(gaps, 5);
 
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
@@ -174,18 +200,43 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   // バイラル導線: owner の友達評価 招待 URL (より多くの友達に評価してもらう)
   const inviteUrl = `${SITE_URL}/friend/${user.invite_code as string}`;
 
-  // Day 12-D: 知覚16タイプ / owner16タイプを perceived_scores / users.scores から派生。
+  // Day 12-D: 知覚16タイプを perceived_scores から派生。
   // 既存の 8 タイプ (perceived_type_id) は温存し、表示・本文の出し分けは 16 タイプで行う。
+  // (owner16タイプは旧⑦撤去で未使用になったが、生成ロジックは mutual-result-content.ts に温存)
   const perceivedTypeId = classifySixteenType(otherScores);
-  const ownerTypeId = classifySixteenType(selfScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
   // B から見た A のタイプ (16タイプ名)、ヒーローで表示
   const perceivedTypeName = perceivedType16.name;
   // ① ◯◯さんから見たアナタ: 友達が割り当てた型 (perceivedTypeId) の取扱説明書を
   // 友達視点に言い換えた本文。{B} を友達名 (perceiverShort) に置換して表示する。
+  // Day 12 再設計: ① は 1 段落目「どう見えているか」の描写に専念し、
+  // 2 段落目「うまく付き合うコツ」は ④ ふたりの関係 が引き継ぐ (文章データは無加工で温存)。
   const perceivedManualBody = perceivedManualContent[perceivedTypeId].replace(
     /\{B\}/g,
     perceiverShort,
+  );
+  const [perceivedLookBody, perceivedTipsBody] =
+    perceivedManualBody.split("\n\n");
+
+  // {A}=本人名 / {B}=友達名 のテンプレ置換 (③④の組み立てで使用)
+  const fillNames = (s: string) =>
+    s.replace(/\{A\}/g, displayName).replace(/\{B\}/g, perceiverShort);
+
+  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
+  // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
+  const foundContent = getPerceivedContent(perceivedTypeId);
+  const foundStrengths = (foundContent?.strengths ?? [])
+    .slice(0, 3)
+    .map((it) => ({ title: fillNames(it.title), body: fillNames(it.body) }));
+  const foundSurprises = (foundContent?.surprises ?? [])
+    .slice(0, 3)
+    .map((it) => ({ title: fillNames(it.title), body: fillNames(it.body) }));
+
+  // ④ ふたりの関係: 差が最大の特性から「この二人専用」の一文 (1 段落目) を組み立てる。
+  // 2 段落目は ① から移した「うまく付き合うコツ」(perceivedTipsBody)。
+  const maxGap = sortedGaps[0];
+  const relationGapBody = fillNames(
+    relationGapNote[maxGap.key][gapDir3(maxGap.selfPercent, maxGap.otherPercent)],
   );
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
@@ -249,14 +300,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             友達が割り当てた型 (ヒーローの型) の取扱説明書を友達視点に言い換えた文章。
             /me の「取扱説明書」セクションと同一スタイル (丸数字見出し + クリーンな文章カード)。 */}
         <section className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
-              1
-            </span>
-            <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-              {perceiverShort}さんから見たアナタ
-            </h2>
-          </div>
+          <SectionHead num={1} title={`${perceiverShort}さんから見たアナタ`} />
           {/* 1 枚の白カード: 相互理解度パート → 区切り → 本文パート (くっついて見せる) */}
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
             {/* 相互理解度パート */}
@@ -289,30 +333,20 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             {/* 軽い区切り (別カードに見せない) */}
             <div className="border-t border-dashed border-[#3A2D6B]/15 my-5" />
 
-            {/* 本文パート (◯◯さんから見たアナタは…) */}
-            {perceivedManualBody.split("\n\n").map((para, i) => (
-              <p
-                key={i}
-                className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4 last:mb-0`}
-              >
-                {para}
-              </p>
-            ))}
+            {/* 本文パート (◯◯さんから見たアナタは…)。描写の 1 段落のみ。
+                「うまく付き合うコツ」段落は ④ ふたりの関係 に移設 (Day 12 再設計) */}
+            <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedLookBody}</p>
           </div>
         </section>
 
-        {/* ===== ② 内訳/ギャップ = 1 枚の白カード (レーダー + 5特性を薄線で区切る) ===== */}
+        {/* ===== ② 内訳/ギャップ = 1 枚の白カード (レーダー + 5特性を薄線で区切る) =====
+            Day 12 再設計: 差TOP2深掘り型に圧縮。差 (pt) の大きい順に並べ、
+            上位 2 特性のみフル形式 (2文)、残り 3 特性は一言 (既存2文の1文目) に圧縮。
+            裸のデータにしない (バーだけで終わらせない)。 */}
         <section className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
-              2
-            </span>
-            <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-              {perceiverShort}さんとのギャップ
-            </h2>
-          </div>
+          <SectionHead num={2} title={`${perceiverShort}さんとのギャップ`} />
 
-          {/* 1 枚のカード: レーダー → 外向性 → 協調性 → 開放性 → 誠実性 → 神経症傾向 を薄線で区切る */}
+          {/* 1 枚のカード: レーダー → 5特性 (差の大きい順) を薄線で区切る */}
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
             {/* レーダー (5特性の全体像: 自分 vs 友達) */}
             <MutualUnderstandingRadar
@@ -321,13 +355,16 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               otherLabel={`${perceiverShort}から`}
             />
 
-            {/* 5特性ブロック (gaps は 外向性/協調性/開放性/誠実性/神経症傾向 の順) */}
-            {gaps.map((g) => {
+            {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=フル、残り3つ=圧縮) */}
+            {sortedGaps.map((g, idx) => {
               const dir = gapDir3(g.selfPercent, g.otherPercent);
-              const detail = gapDetail[g.key][dir].replace(
+              const detailFull = gapDetail[g.key][dir].replace(
                 /\{B\}/g,
                 perceiverShort,
               );
+              // 圧縮形式の一言 = 既存 2 文の 1 文目を流用
+              const detail =
+                idx < 2 ? detailFull : `${detailFull.split("。")[0]}。`;
               return (
                 <div key={g.key}>
                   {/* 薄線で区切り (レーダーと各特性の間) */}
@@ -341,7 +378,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       差 {g.diffPoints}pt
                     </span>
                   </div>
-                  {/* 2 本のバー (のすけ自身 / けんしんから) = ① のバーと同じ見た目 */}
+                  {/* 2 本のバー (本人自身 / 友達から) = ① のバーと同じ見た目 */}
                   <div className="space-y-2 mb-3">
                     <TraitBar
                       label={`${displayName}自身`}
@@ -354,7 +391,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       color="#0094D8"
                     />
                   </div>
-                  {/* 2 文のアドバイス/気づき (スコア方向で出し分け、結果説明はしない)。本文スタイルは ① と共通 */}
+                  {/* アドバイス/気づき (TOP2=2文 / 残り=1文)。本文スタイルは ① と共通 */}
                   <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
                 </div>
               );
@@ -383,20 +420,38 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* ===== 6 章レイアウト ===== */}
-        <EvaluationChapters
-          gaps={gaps}
-          topGapList={topGapList}
-          displayName={displayName}
-          perceiverShort={perceiverShort}
-          unlocked={unlocked}
-          perceptionId={perceptionId}
-          isOwner={isOwner}
-          perceivedScores={otherScores}
-          perceivedTypeId={perceivedTypeId}
-          ownerTypeId={ownerTypeId}
-          numOffset={1}
-        />
+        {/* ===== ③ ◯◯さんが見つけたアナタ (旧③強み6 + 旧④あれっ?6 を各3つに絞って統合) =====
+            Day 12 再設計。旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」と旧6章レイアウト
+            (EvaluationChapters) はページから撤去。コード・文章データは有料深掘りレポート用に
+            温存 (温存場所はファイル冒頭コメント参照)。 */}
+        {foundContent && (
+          <section className="mb-8">
+            <SectionHead
+              num={3}
+              title={`${perceiverShort}さんが見つけたアナタ`}
+            />
+            <PerceptionFoundYou
+              strengths={foundStrengths}
+              surprises={foundSurprises}
+              perceiverShort={perceiverShort}
+            />
+          </section>
+        )}
+
+        {/* ===== ④ ふたりの関係 (旧⑥関係性アドバイスの移設・改装 / ページの締め) =====
+            ① と同じ質感の文章カード。1 段落目 = 差が最大の特性から「この二人専用」の一文、
+            2 段落目 = ① から移した「うまく付き合うコツ」。 */}
+        <section className="mb-8">
+          <SectionHead num={4} title="ふたりの関係" />
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4 last:mb-0`}>
+              {relationGapBody}
+            </p>
+            {perceivedTipsBody && (
+              <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedTipsBody}</p>
+            )}
+          </div>
+        </section>
 
         {/* ===== バイラル導線 (旧・課金解除カードの位置) =====
             相互理解度を完全無料化。課金ゲートの代わりに、もっと友達に評価してもらう
