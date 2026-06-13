@@ -60,7 +60,7 @@ import {
   type BigFiveScores,
 } from "@/lib/perception-analysis";
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
-import { relationGapNote } from "@/lib/perception-relation-content";
+import { relationGapNote, relationGapTip } from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
 import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
@@ -227,13 +227,15 @@ export default async function EvaluationResultPage({ params }: PageProps) {
     ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
     : [];
 
-  // ④ ふたりの関係: 差が最大の特性から「この二人専用」の 3 文 (1 段落目) を選ぶ。
-  // 2 段落目は ① 由来の「付き合い方のコツ」(perceivedTipsBody)。どちらも名前なし。
+  // ④ ふたりの関係 (3 段落): 差が最大の特性 × 方向で「この二人専用」感を出す。
+  //   1 段落目 = 差の事実→解釈→伸びしろ (relationGapNote、3 文)
+  //   2 段落目 = ① 由来の「付き合い方のコツ」(perceivedTipsBody)
+  //   3 段落目 = 「これからのコツ」= 具体行動の粒度のヒント (relationGapTip、未来形締め)
+  // いずれも名前なし。
   const maxGap = sortedGaps[0];
-  const relationGapBody =
-    relationGapNote[maxGap.key][
-      gapDir3(maxGap.selfPercent, maxGap.otherPercent)
-    ];
+  const maxGapDir = gapDir3(maxGap.selfPercent, maxGap.otherPercent);
+  const relationGapBody = relationGapNote[maxGap.key][maxGapDir];
+  const relationTipBody = relationGapTip[maxGap.key][maxGapDir];
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
@@ -424,17 +426,22 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         )}
 
         {/* ===== ④ ふたりの関係 (旧⑥関係性アドバイスの移設・改装 / ページの締め) =====
-            ① と同じ質感の文章カード。1 段落目 = 差が最大の特性から「この二人専用」の一文、
-            2 段落目 = ① から移した「うまく付き合うコツ」。 */}
+            ① と同じ質感の文章カード。3 段落構成:
+            1 段落目 = 差が最大の特性から「この二人専用」の一文、
+            2 段落目 = ① から移した「うまく付き合うコツ」、
+            3 段落目 = 「これからのコツ」(具体行動のヒント・未来形締めでブースト CTA へ接続)。 */}
         <section className="mb-8">
           <SectionHead num={4} title="ふたりの関係" />
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4 last:mb-0`}>
+            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
               {relationGapBody}
             </p>
             {perceivedTipsBody && (
-              <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedTipsBody}</p>
+              <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
+                {perceivedTipsBody}
+              </p>
             )}
+            <p className={PERCEPTION_BODY_TEXT_CLASS}>{relationTipBody}</p>
           </div>
         </section>
 
