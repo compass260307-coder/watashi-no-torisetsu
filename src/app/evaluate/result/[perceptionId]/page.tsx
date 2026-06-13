@@ -368,8 +368,8 @@ export default async function EvaluationResultPage({ params }: PageProps) {
 
         {/* ===== ② 内訳/ギャップ = 1 枚の白カード (レーダー + 5特性を薄線で区切る) =====
             Day 12 再設計: 差TOP2深掘り型に圧縮。差 (pt) の大きい順に並べ、
-            上位 2 特性のみフル形式 (2文)、残り 3 特性は一言 (既存2文の1文目) に圧縮。
-            裸のデータにしない (バーだけで終わらせない)。 */}
+            上位 2 特性はフル形式 (full=2文)、残り 3 特性は圧縮 (short=1文・40〜55字)。
+            量ばらつき解消で文数を固定し、TOP2と圧縮組の間に小見出しで段差を設計に見せる。 */}
         <section className="mb-8">
           <SectionHead num={2} title={`${perceiverFull}さんとのギャップ`} />
 
@@ -383,17 +383,25 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               otherLabel="友達から"
             />
 
-            {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=フル、残り3つ=圧縮) */}
+            {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=full・残り3つ=short) */}
             {sortedGaps.map((g, idx) => {
               const dir = gapDir3(g.selfPercent, g.otherPercent);
-              const detailFull = gapDetail[g.key][dir];
-              // 圧縮形式の一言 = 既存 2 文の 1 文目を流用
-              const detail =
-                idx < 2 ? detailFull : `${detailFull.split("。")[0]}。`;
+              const d = gapDetail[g.key][dir];
+              const detail = idx < 2 ? d.full : d.short;
               return (
                 <div key={g.key}>
-                  {/* 薄線で区切り (レーダーと各特性の間) */}
-                  <div className="border-t border-[#3A2D6B]/10 my-5" />
+                  {/* TOP2 と圧縮組の間に小見出しで段差を作る (圧縮組の先頭=idx 2 の前) */}
+                  {idx === 2 && (
+                    <div className="border-t border-dashed border-[#3A2D6B]/25 mt-6 pt-5">
+                      <p className="text-[#3A2D6B]/55 font-bold text-xs mb-1">
+                        そのほかの3つ
+                      </p>
+                    </div>
+                  )}
+                  {/* 薄線で区切り (レーダーと各特性の間)。圧縮組の先頭だけは小見出しが区切るので省く */}
+                  {idx !== 2 && (
+                    <div className="border-t border-[#3A2D6B]/10 my-5" />
+                  )}
                   {/* 特性名 + 差pt */}
                   <div className="flex items-baseline justify-between mb-3">
                     <h3 className="text-[#3A2D6B] font-black text-base">
@@ -416,7 +424,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       color="#0094D8"
                     />
                   </div>
-                  {/* アドバイス/気づき (TOP2=2文 / 残り=1文)。本文スタイルは ① と共通 */}
+                  {/* アドバイス/気づき (TOP2=full2文 / 圧縮=short1文)。本文スタイルは ① と共通 */}
                   <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
                 </div>
               );
