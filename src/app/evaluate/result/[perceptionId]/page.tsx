@@ -47,7 +47,10 @@ import {
 } from "@/lib/sixteen-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
-import { perceivedManualContent } from "@/lib/perception-manual-content";
+import {
+  perceivedManualContent,
+  PERCEIVED_TIPS_KEY,
+} from "@/lib/perception-manual-content";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
@@ -60,7 +63,12 @@ import {
   type BigFiveScores,
 } from "@/lib/perception-analysis";
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
-import { relationGapNote, relationGapTip } from "@/lib/perception-relation-content";
+import {
+  relationGapNote,
+  relationGapTip,
+  relationGapFact,
+  relationGapTipKey,
+} from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
 import { PerceptionBoostCta } from "@/components/result/PerceptionBoostCta";
@@ -103,6 +111,21 @@ function SectionHead({ num, title }: { num: number; title: string }) {
         {title}
       </h2>
     </div>
+  );
+}
+
+// 本文中の行動キーフレーズ 1 箇所だけを vividPink 太字にする (④ の強調用)。
+// key が無い / 本文に含まれない場合はそのまま plain 表示 (フェイルセーフ)。
+function pinkify(text: string, key?: string) {
+  if (!key) return text;
+  const idx = text.indexOf(key);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <strong className="text-[#FE3C72] font-black">{key}</strong>
+      {text.slice(idx + key.length)}
+    </>
   );
 }
 
@@ -227,15 +250,19 @@ export default async function EvaluationResultPage({ params }: PageProps) {
     ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
     : [];
 
-  // ④ ふたりの関係 (3 段落): 差が最大の特性 × 方向で「この二人専用」感を出す。
-  //   1 段落目 = 差の事実→解釈→伸びしろ (relationGapNote、3 文)
-  //   2 段落目 = ① 由来の「付き合い方のコツ」(perceivedTipsBody)
-  //   3 段落目 = 「これからのコツ」= 具体行動の粒度のヒント (relationGapTip、未来形締め)
-  // いずれも名前なし。
+  // ④ ふたりの関係 (4 段落): 差が最大の特性 × 方向で「この二人ならでは」感を出す。
+  //   1 段落目 = この二人の事実 (② データ起点: 自己評価 vs 相手評価のズレ + 解釈) relationGapFact
+  //   2 段落目 = 相性がいい時 (差の解釈→伸びしろ) relationGapNote
+  //   3 段落目 = 注意点/コツ (① 由来の付き合い方) perceivedTipsBody
+  //   4 段落目 = 未来の締め (これからの具体コツ) relationGapTip
+  // いずれも名前なし。強調 (pink) は行動フレーズのみ・3/4 段落目に各 1 箇所 (計 2 箇所 ≤ 上限 4)。
   const maxGap = sortedGaps[0];
   const maxGapDir = gapDir3(maxGap.selfPercent, maxGap.otherPercent);
+  const relationFactBody = relationGapFact[maxGap.key][maxGapDir];
   const relationGapBody = relationGapNote[maxGap.key][maxGapDir];
   const relationTipBody = relationGapTip[maxGap.key][maxGapDir];
+  const relationTipKey = relationGapTipKey[maxGap.key][maxGapDir];
+  const tipsKey = PERCEIVED_TIPS_KEY[perceivedTypeId];
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
@@ -426,22 +453,28 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         )}
 
         {/* ===== ④ ふたりの関係 (旧⑥関係性アドバイスの移設・改装 / ページの締め) =====
-            ① と同じ質感の文章カード。3 段落構成:
-            1 段落目 = 差が最大の特性から「この二人専用」の一文、
-            2 段落目 = ① から移した「うまく付き合うコツ」、
-            3 段落目 = 「これからのコツ」(具体行動のヒント・未来形締めでブースト CTA へ接続)。 */}
+            ① と同じ質感の文章カード。4 段落構成 (事実→相性→注意点/コツ→未来):
+            1 段落目 = この二人の事実 (② データ起点・差最大の特性のズレ+解釈)、
+            2 段落目 = 相性がいい時、
+            3 段落目 = 注意点/コツ (① 由来。行動フレーズを pink で 1 箇所)、
+            4 段落目 = 未来の締め (これからの具体コツ。行動フレーズを pink で 1 箇所)。 */}
         <section className="mb-8">
           <SectionHead num={4} title="ふたりの関係" />
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
+              {relationFactBody}
+            </p>
             <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
               {relationGapBody}
             </p>
             {perceivedTipsBody && (
               <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
-                {perceivedTipsBody}
+                {pinkify(perceivedTipsBody, tipsKey)}
               </p>
             )}
-            <p className={PERCEPTION_BODY_TEXT_CLASS}>{relationTipBody}</p>
+            <p className={PERCEPTION_BODY_TEXT_CLASS}>
+              {pinkify(relationTipBody, relationTipKey)}
+            </p>
           </div>
         </section>
 
