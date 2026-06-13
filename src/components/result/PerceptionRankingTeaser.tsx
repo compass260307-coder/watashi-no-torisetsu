@@ -1,17 +1,21 @@
-// 相互理解度ページ末尾の「相性ランキング風ぼかしティーザー」CTA。
+// 相互理解度ページ末尾の「相性ランキング風ティーザー」CTA。
 //
-// 旧・紫枠シェアCTA (PerceptionBoostCta、温存) を置き換える格上げ版。koigram の
-// 「あなたとの相性ランキング」CTA の見せ方 (見出しロゴ + 上位3枠ぼかし予告 +
-// メインボタン) を参考に、ブランドは watashi-torisetsu で統一:
-//   文字 deepPurple #3A2D6B / CTA sunYellow #FFE993 / アクセント vividPink #FE3C72 /
-//   logoBlue・skyBlue #0094D8 / 二人称「アナタ」/ 絵文字不使用。
+// 旧・紫枠シェアCTA (PerceptionBoostCta、温存) を置き換える格上げ版。見出しロゴ +
+// 上位3枠の「完成見本」プレビュー + メインボタン。ブランドは watashi-torisetsu で統一:
+//   文字 deepPurple #3A2D6B / CTA・1位 sunYellow #FFE993 / 3位 vividPink #FE3C72 /
+//   2位・logoBlue #0094D8 / 二人称「アナタ」/ 絵文字不使用。
 //
 // 見出しは生成済みロゴ画像 (/heading-ranking.png、羊毛フェルト風・透過2行) を next/image で
-// 表示し、ヒーローの「友達に診断してもらおう！」(heading-friend-invite.png) と方式を統一。
+// 表示 (ヒーロー heading-friend-invite.png と同方式)。
 //
 // ★ ランキング3枠は完全ダミー (実データ非参照)。友達0〜1人でも常に3枠が埋まる。
-//   強めの blur で個人情報に見えない (ダミー名・数値は判読不能)。aria-hidden で装飾扱い。
-// ★ ぼかしは課金/シェアロックではない。ボタンは普通にハブページへ遷移するだけ。
+//   「埋まったらこうなる」完成見本として弱い blur + opacity でうっすら見せる。汎用名
+//   「ともだち A/B/C」で実在の友達と誤解されない。aria-hidden で装飾扱い。
+// ★ blur は課金/シェアロックではない。ボタンは普通にハブページへ遷移するだけ。
+//
+// 順位バッジ色は本ページのブランド色 (1=#FFE993 / 2=#0094D8 / 3=#FE3C72) を使用。
+// 実ランキング (/friend-evaluation の RankBadge) は金/銀/銅だが、本 CTA はページ統一を
+// 優先する指示のためブランド色で揃える (意図的な不一致)。
 
 import Image from "next/image";
 import Link from "next/link";
@@ -21,13 +25,14 @@ interface PerceptionRankingTeaserProps {
   hubHref: string;
 }
 
-// 順位ごとの色 (1=sunYellow / 2=skyBlue系 / 3=vividPink系)
-const RANK_COLORS = ["#FFE993", "#0094D8", "#FE3C72"] as const;
-// ダミー名・%帯の幅 (見た目の変化づけだけ。中身に意味はない)
+// 順位バッジ: 背景=ブランド色 / 文字=背景に合わせた可読色 (1位の薄黄のみ deepPurple)
+const RANK_BG = ["#FFE993", "#0094D8", "#FE3C72"] as const;
+const RANK_FG = ["#3A2D6B", "#FFFFFF", "#FFFFFF"] as const;
+// ダミー見本データ (汎用名 + 80%台の自然な降順。実在の友達と誤解されない)
 const DUMMY_ROWS = [
-  { nameW: "62%", pct: "92%", barW: "84%" },
-  { nameW: "48%", pct: "85%", barW: "71%" },
-  { nameW: "56%", pct: "78%", barW: "63%" },
+  { name: "ともだち A", pct: "88%" },
+  { name: "ともだち B", pct: "82%" },
+  { name: "ともだち C", pct: "79%" },
 ] as const;
 
 export function PerceptionRankingTeaser({
@@ -35,58 +40,46 @@ export function PerceptionRankingTeaser({
 }: PerceptionRankingTeaserProps) {
   return (
     <section className="mb-8">
-      {/* ===== 見出しロゴ画像 (生成済み透過PNG・2行) + サブコピー ===== */}
-      <div className="flex flex-col items-center mb-4">
+      {/* ===== 見出しロゴ画像 (生成済み透過PNG・2行) =====
+          -mx-6 でカード内余白いっぱいまで広げて拡大 (375px 内に収まる範囲)。 */}
+      <div className="-mx-6 mb-3">
         <Image
           src="/heading-ranking.png"
           alt="相互理解度ランキングが見れるようになりました！"
           width={2078}
           height={555}
-          className="w-full max-w-[300px] h-auto"
+          className="w-full max-w-[360px] h-auto mx-auto"
         />
-        <p className="text-[#3A2D6B]/75 font-bold text-xs mt-2 text-center">
-          友達が答えるほど、トップ3が埋まっていく
-        </p>
       </div>
 
-      {/* ===== ぼかしランキング (完全ダミー・飾り) ===== */}
+      {/* ===== ランキング完成見本 (完全ダミー・弱 blur + opacity でうっすら) ===== */}
       <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-        <ul className="flex flex-col gap-3" aria-hidden="true">
+        <ul
+          className="flex flex-col gap-1 opacity-85 select-none pointer-events-none"
+          style={{ filter: "blur(2px)" }}
+          aria-hidden="true"
+        >
           {DUMMY_ROWS.map((row, i) => (
-            <li
-              key={i}
-              className="flex items-center gap-3 rounded-2xl bg-[#F5F2FF] px-3 py-2.5"
-            >
-              {/* 順位バッジ (くっきり = ここだけ読める) */}
+            <li key={i} className="flex items-center gap-3 py-2">
+              {/* 順位バッジ (ブランド色) */}
               <span
-                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white font-black text-sm"
-                style={{ backgroundColor: RANK_COLORS[i] }}
+                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-black text-sm"
+                style={{ backgroundColor: RANK_BG[i], color: RANK_FG[i] }}
               >
                 {i + 1}
               </span>
-              {/* 中身はすべて強めの blur (ダミー名・数値は判読不能) */}
-              <div
-                className="flex-1 flex items-center gap-3 blur-[6px] select-none pointer-events-none"
-                style={{ filter: "blur(6px)" }}
-              >
-                {/* ぼかしアバター円 */}
-                <span className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-[#BCDEF8] to-[#B7A8EC]" />
-                {/* ぼかし名前帯 + ぼかしバー */}
-                <div className="flex-1">
-                  <span
-                    className="block h-3 rounded-full bg-[#3A2D6B]/30 mb-1.5"
-                    style={{ width: row.nameW }}
-                  />
-                  <span
-                    className="block h-2.5 rounded-full bg-[#0094D8]/35"
-                    style={{ width: row.barW }}
-                  />
-                </div>
-                {/* ぼかし%帯 */}
-                <span className="flex-shrink-0 text-[#FE3C72] font-black text-base">
-                  {row.pct}
-                </span>
-              </div>
+              {/* 汎用シルエットアバター */}
+              <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#E4E0F5] flex items-center justify-center overflow-hidden">
+                <AvatarSilhouette />
+              </span>
+              {/* ダミー名 */}
+              <span className="flex-1 text-[#3A2D6B] font-black text-sm">
+                {row.name}
+              </span>
+              {/* 相互理解度 % (実ランキングと同じ sunYellow ピル) */}
+              <span className="flex-shrink-0 bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-2.5 py-0.5 text-sm">
+                {row.pct}
+              </span>
             </li>
           ))}
         </ul>
@@ -100,5 +93,24 @@ export function PerceptionRankingTeaser({
         </Link>
       </div>
     </section>
+  );
+}
+
+// 汎用の人型シルエット (個人を特定しないプレースホルダ)
+function AvatarSilhouette() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="text-[#3A2D6B]/45"
+    >
+      <circle cx="12" cy="8.5" r="4" fill="currentColor" />
+      <path
+        d="M4.5 20c0-4.2 3.4-7 7.5-7s7.5 2.8 7.5 7z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
