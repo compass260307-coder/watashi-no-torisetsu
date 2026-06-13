@@ -214,13 +214,14 @@ export default async function EvaluationResultPage({ params }: PageProps) {
     perceivedManualContent[perceivedTypeId].split("\n\n");
 
   // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
-  // 各項目 = 独立した段落 (先頭ワードのみ vividPink、続けて説明+締めの2文)。
-  // weaveFound が段落セグメントを生成 (あれっ?ワードは SOFT_WORD 辞書で言い換え済み)。
+  // 各項目 = 独立した段落 (先頭ワードのみ vividPink)。強み=3文 (見え方+型固有の具体描写+締め)、
+  // あれっ?=2文 (見え方+締め)。weaveFound が段落セグメントを生成
+  // (あれっ?ワードは SOFT_WORD 辞書で言い換え済み)。
   // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
   const foundContent = getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
   const strengthParas = foundContent
-    ? weaveFound(foundContent.strengths, "strengths", foundSeed)
+    ? weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
     : [];
   const surpriseParas = foundContent
     ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
