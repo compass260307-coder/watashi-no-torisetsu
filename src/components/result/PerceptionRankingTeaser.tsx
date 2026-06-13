@@ -1,15 +1,19 @@
 // 相互理解度ページ末尾の「相性ランキング風ぼかしティーザー」CTA。
 //
 // 旧・紫枠シェアCTA (PerceptionBoostCta、温存) を置き換える格上げ版。koigram の
-// 「あなたとの相性ランキング」CTA の見せ方 (もこもこ見出し + 上位3枠ぼかし予告 +
+// 「あなたとの相性ランキング」CTA の見せ方 (見出しロゴ + 上位3枠ぼかし予告 +
 // メインボタン) を参考に、ブランドは watashi-torisetsu で統一:
 //   文字 deepPurple #3A2D6B / CTA sunYellow #FFE993 / アクセント vividPink #FE3C72 /
-//   logoBlue・skyBlue #0094D8 / ロゴ風 wtr-logo-text / 二人称「アナタ」/ 絵文字不使用 SVG。
+//   logoBlue・skyBlue #0094D8 / 二人称「アナタ」/ 絵文字不使用。
+//
+// 見出しは生成済みロゴ画像 (/heading-ranking.png、羊毛フェルト風・透過2行) を next/image で
+// 表示し、ヒーローの「友達に診断してもらおう！」(heading-friend-invite.png) と方式を統一。
 //
 // ★ ランキング3枠は完全ダミー (実データ非参照)。友達0〜1人でも常に3枠が埋まる。
 //   強めの blur で個人情報に見えない (ダミー名・数値は判読不能)。aria-hidden で装飾扱い。
 // ★ ぼかしは課金/シェアロックではない。ボタンは普通にハブページへ遷移するだけ。
 
+import Image from "next/image";
 import Link from "next/link";
 
 interface PerceptionRankingTeaserProps {
@@ -31,19 +35,16 @@ export function PerceptionRankingTeaser({
 }: PerceptionRankingTeaserProps) {
   return (
     <section className="mb-8">
-      {/* ===== ヒーロー見出し (ロゴ風もこもこ + 花/ハート装飾) ===== */}
+      {/* ===== 見出しロゴ画像 (生成済み透過PNG・2行) + サブコピー ===== */}
       <div className="flex flex-col items-center mb-4">
-        <div className="flex flex-nowrap items-center justify-center gap-1.5 max-w-full px-1">
-          <FlowerIcon />
-          <span
-            className="wtr-logo-text leading-none min-w-0"
-            style={{ fontSize: "clamp(13px, 4.2vw, 22px)", whiteSpace: "nowrap" }}
-          >
-            アナタとの相性ランキング
-          </span>
-          <HeartIcon />
-        </div>
-        <p className="text-[#3A2D6B]/70 font-bold text-xs mt-1.5 text-center">
+        <Image
+          src="/heading-ranking.png"
+          alt="相互理解度ランキングが見れるようになりました！"
+          width={2078}
+          height={555}
+          className="w-full max-w-[300px] h-auto"
+        />
+        <p className="text-[#3A2D6B]/75 font-bold text-xs mt-2 text-center">
           友達が答えるほど、トップ3が埋まっていく
         </p>
       </div>
@@ -99,44 +100,5 @@ export function PerceptionRankingTeaser({
         </Link>
       </div>
     </section>
-  );
-}
-
-// 花 (TrisetsuNameTag と同一)。ヒーロー見出しの左に置く装飾。
-function FlowerIcon() {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="flex-shrink-0"
-    >
-      <g fill="#B7A8EC">
-        <ellipse cx="12" cy="5" rx="3.2" ry="4.6" />
-        <ellipse cx="12" cy="19" rx="3.2" ry="4.6" />
-        <ellipse cx="5" cy="12" rx="4.6" ry="3.2" />
-        <ellipse cx="19" cy="12" rx="4.6" ry="3.2" />
-      </g>
-      <circle cx="12" cy="12" r="3.6" fill="#FFE07A" />
-    </svg>
-  );
-}
-
-// ハート (TrisetsuNameTag と同一)。ヒーロー見出しの右に置く装飾。
-function HeartIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="flex-shrink-0"
-    >
-      <path
-        d="M12 21C12 21 3 14 3 8.5 3 5.5 5.2 3.5 7.8 3.5 9.6 3.5 11.1 4.6 12 6 12.9 4.6 14.4 3.5 16.2 3.5 18.8 3.5 21 5.5 21 8.5 21 14 12 21 12 21Z"
-        fill="#FE8FB0"
-      />
-    </svg>
   );
 }
