@@ -71,9 +71,11 @@ import {
 } from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
-// 末尾CTA簡素化: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は
-// 撤去し、ハブ (/friend-evaluation = QR + 相互理解度ランキング) への戻りリンク 1 本に置換。
-// シェア導線はハブ側が担う。コンポーネント自体は温存方針に従い残置 (再利用用)。
+import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
+// 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
+// 「相性ランキング風ぼかしティーザー」(PerceptionRankingTeaser) に格上げ。
+// メインボタンはハブ (/friend-evaluation = QR + 相互理解度ランキング) へ遷移。
+// 旧 PerceptionBoostCta は温存方針に従い残置 (再利用用)。
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
 // Stripe インフラ (lib/perception-unlock, /api/checkout/create-perception-unlock-session,
@@ -484,17 +486,13 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* ===== Footer: ハブへの戻りリンク (末尾CTA簡素化) =====
-            紫枠の友達評価シェア CTA は撤去。シェア導線はハブ (/friend-evaluation =
-            QR + 相互理解度ランキング) 側に一本化したため、ここはハブと自分のトリセツへの
-            戻りテキストリンクだけを置く (既存「トリセツに戻る」と同スタイル)。 */}
-        <div className="text-center pt-4 pb-2 flex flex-col gap-3">
-          <Link
-            href="/friend-evaluation"
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
-          >
-            友達からの評価一覧に戻る
-          </Link>
+        {/* ===== 末尾CTA: 相性ランキング風ぼかしティーザー =====
+            旧・紫枠シェアCTAを格上げ。ぼかし3枠 (完全ダミー) で未来を見せ、
+            メインボタンでハブ (/friend-evaluation = QR + 相互理解度ランキング) へ送る。 */}
+        <PerceptionRankingTeaser hubHref="/friend-evaluation" />
+
+        {/* ===== Footer: 自分のトリセツへの戻りリンク (既存・据え置き) ===== */}
+        <div className="text-center pt-2 pb-2">
           <Link
             href={myTrisetsuUrl}
             className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
