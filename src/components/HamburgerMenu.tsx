@@ -59,6 +59,9 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
   // 無ければクライアントで localStorage の owner_token から直接 /me/[token] を組み立て、
   // /result の分析インタースティシャルを経由せず即座に結果を表示する。
   const [myUrl, setMyUrl] = useState<string | undefined>(myTrisetsuUrl);
+  // 「この端末のデータを消す」: 確認パネル表示中か / クリア実行中か。
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   // Portal の描画先 (document.body) はクライアント側でのみ存在するため、
   // hydration mismatch を避けるため初回マウント完了後にだけ Portal を描画する。
@@ -71,7 +74,34 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
     }
   }, [myTrisetsuUrl]);
 
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    // 次に開いたときは通常表示に戻す (確認パネルを開きっぱなしにしない)。
+    setConfirmingClear(false);
+  };
+
+  // この端末の紐付けをクリアして脱出する。
+  //   - サーバ: POST /api/session/clear が session_token を NULL 化 + wn_session cookie 削除
+  //   - クライアント: localStorage の紐付けキーを削除
+  //   - cookie クリア後の未診断状態でトップ LP を確実に出すためハード遷移
+  // 診断結果 (DB の users 行) は消さない。email / LINE で復元可能。
+  const handleClearDevice = async () => {
+    if (clearing) return;
+    setClearing(true);
+    try {
+      await fetch("/api/session/clear", { method: "POST" });
+    } catch {
+      // ネットワークエラーでもローカルだけは消して脱出を成立させる。
+    }
+    try {
+      localStorage.removeItem("torisetsu_owner_token");
+      localStorage.removeItem("torisetsu_invite_code");
+      localStorage.removeItem("torisetsu_result");
+    } catch {
+      // localStorage 不可環境は無視。
+    }
+    window.location.href = "/";
+  };
 
   const overlay = (
     <div
@@ -119,6 +149,49 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
             onClose={handleClose}
           />
         </nav>
+
+        {/* ===== この端末のデータを消す (共用端末からの脱出 / 自動リダイレクトの逃げ道) =====
+            破壊的操作なので他項目より控えめ。区切り線で分離し、押すと確認パネルを 1 枚挟む。
+            実態は「DB 削除」ではなく「この端末の紐付けクリア」なので文言もそれに合わせる。 */}
+        <div className="mt-8 pt-5 border-t border-[#3A2D6B]/10">
+          {!confirmingClear ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingClear(true)}
+              className="w-full flex items-center justify-center gap-1.5 text-[#3A2D6B]/55 font-bold text-sm py-2 hover:text-[#FE3C72] transition-colors"
+            >
+              <ResetIcon />
+              この端末のデータを消す
+            </button>
+          ) : (
+            <div className="rounded-2xl bg-[#F7F5FF] border border-[#3A2D6B]/15 p-4">
+              <p className="text-[#3A2D6B]/80 text-xs font-black leading-relaxed mb-1">
+                この端末を他の人と共有していますか？
+              </p>
+              <p className="text-[#3A2D6B]/60 text-xs leading-relaxed mb-4">
+                この端末からあなたの診断データの紐付けを消します。診断結果そのものは残っていて、メール / LINE 連携で復元できます。よろしいですか？
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleClearDevice}
+                  disabled={clearing}
+                  className="flex-1 bg-[#FFD6E0] text-[#3A2D6B] font-black text-sm px-4 py-2.5 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                >
+                  {clearing ? "消しています…" : "消す"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingClear(false)}
+                  disabled={clearing}
+                  className="flex-1 bg-white text-[#3A2D6B]/70 font-bold text-sm px-4 py-2.5 rounded-full border-2 border-[#3A2D6B]/20 hover:border-[#3A2D6B]/40 transition-colors disabled:opacity-60 disabled:pointer-events-none"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -167,5 +240,33 @@ function MenuLink({
     >
       {label}
     </Link>
+  );
+}
+
+// リセット (ぐるっと矢印) を表す控えめなアイコン。currentColor でラベル色に追従。
+function ResetIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 12a9 9 0 1 0 2.6-6.3"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3 4v4h4"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
