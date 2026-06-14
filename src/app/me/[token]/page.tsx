@@ -202,7 +202,9 @@ export default async function MePage({ params }: PageProps) {
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
             Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
-          <Link href="/" aria-label="トップへ">
+          {/* ?stay=1: 診断済み本人が押しても / の自動リダイレクトで /me に
+              戻されず、トップ LP を表示できるようにする。 */}
+          <Link href="/?stay=1" aria-label="トップへ">
             <Image
               src="/logo.png"
               alt="ワタシのトリセツ"
@@ -365,8 +367,9 @@ export default async function MePage({ params }: PageProps) {
 
         {/* ===== Footer ===== */}
         <div className="text-center pt-2 pb-2">
+          {/* ?stay=1: 自動リダイレクト回避 (上のロゴリンクと同趣旨)。 */}
           <Link
-            href="/"
+            href="/?stay=1"
             className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
           >
             トップに戻る
