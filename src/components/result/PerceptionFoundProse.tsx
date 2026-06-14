@@ -14,16 +14,21 @@ export function PerceptionFoundProse({
   perceiverName,
   strengthParas,
   surpriseParas,
+  // 小見出しを明示指定 (評価者視点ページ用)。未指定なら「◯◯さん認定の強み」等。
+  strengthLabel,
+  surpriseLabel,
 }: {
   perceiverName: string;
   strengthParas: FoundParagraph[];
   surpriseParas: FoundParagraph[];
+  strengthLabel?: string;
+  surpriseLabel?: string;
 }) {
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
       {/* 強みパート */}
       <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
-        {perceiverName}さん認定の強み
+        {strengthLabel ?? `${perceiverName}さん認定の強み`}
       </p>
       {strengthParas.map((para, i) => (
         <ProseParagraph key={i} para={para} />
@@ -34,7 +39,7 @@ export function PerceptionFoundProse({
 
       {/* あれっ?パート */}
       <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
-        {perceiverName}さんの「あれっ?」
+        {surpriseLabel ?? `${perceiverName}さんの「あれっ?」`}
       </p>
       {surpriseParas.map((para, i) => (
         <ProseParagraph key={i} para={para} />
