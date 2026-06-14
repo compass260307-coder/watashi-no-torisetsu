@@ -217,15 +217,10 @@ export default async function FriendEvaluationPage() {
         {/* ===== QR + キャラコード (Day 11.3 FriendGapInvite を再利用) ===== */}
         <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
 
-        {/* ===== 相互理解度ランキング (Polish-C) ===== */}
-        <section className="mb-8">
-          <p className="text-xs font-black text-[#3A2D6B] mb-1">
-            アナタを評価した友達
-          </p>
-          <h2 className="text-[23px] leading-tight font-black text-[#3A2D6B] mb-4">
-            相互理解度ランキング
-          </h2>
-
+        {/* ===== 相互理解度ランキング (見出し2つは撤去・カード本体のみ) =====
+            「アナタを評価した友達」「相互理解度ランキング」の見出しを削除し、上の
+            QR+キャラコードからプロモ枠ロゴへ自然につなぐ。aria-label で意味は保持。 */}
+        <section className="mb-8" aria-label="相互理解度ランキング">
           <div className="bg-white border-[3px] border-[#0094D8] rounded-[28px] p-4">
             <RankingBoard items={rankedPerceptions} />
           </div>
