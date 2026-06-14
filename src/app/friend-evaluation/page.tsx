@@ -429,13 +429,14 @@ function RankingBoard({ items }: { items: RankItem[] }) {
 // next/image で表示。点線ボーダーは維持し、誘導枠なので末尾CTAロゴより小さめに収める。
 function RankingPromo() {
   return (
-    <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] px-3 py-2.5 mb-3 flex justify-center">
+    // -mx-3 でカードの内パディングへ少し広げ、内側 px-2 で点線枠との余白を残しつつ拡大。
+    <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] -mx-3 px-2 py-3 mb-3 flex justify-center">
       <Image
         src="/heading-ranking-promo.png"
         alt="たくさん診断してもらってランキングを埋めよう"
         width={2129}
         height={628}
-        className="w-full max-w-[250px] h-auto"
+        className="w-full max-w-[320px] h-auto"
       />
     </div>
   );
