@@ -269,6 +269,23 @@ function nameFreeDesc(body: string): string {
     .replace(/\{B\}さん/g, "友達"); // 文中に残った場合の安全網
 }
 
+// 評価者視点 (/evaluate/sent): {B}さん(=評価者)→「アナタ」、アナタ(=対象者)→targetName。
+// 衝突回避にセンチネルで退避してから置換する。
+const EVAL_PH = "__WTR_TARGET__";
+function evaluatorDesc(body: string, targetName: string): string {
+  return body
+    .split("アナタ")
+    .join(EVAL_PH) // 対象者 → 退避
+    .split("{B}さん")
+    .join("アナタ") // 評価者 → 閲覧者
+    .split("この相手")
+    .join("アナタ")
+    .split("相手")
+    .join("アナタ")
+    .split(EVAL_PH)
+    .join(targetName); // 退避した対象者 → 名前
+}
+
 /**
  * 強み/あれっ? の 3 項目を「1 項目 = 1 段落」のセグメント列にする。
  * 段落 = 「ワード (pink)。説明 1 文 + 締め 1 文」。
@@ -279,6 +296,8 @@ export function weaveFound(
   kind: "strengths" | "surprises",
   seed: number,
   typeId?: SixteenTypeId,
+  // 指定時は評価者視点 (/evaluate/sent)。対象者名で「アナタ↔相手」を反転する。
+  evaluatorTargetName?: string,
 ): FoundParagraph[] {
   const closers = kind === "strengths" ? STRENGTH_CLOSERS : SURPRISE_CLOSERS;
   // 強みのみ: 型固有の具体描写を見え方と締めの間に挟んで 3 文化 (あれっ? は 2 文据え置き)
@@ -289,10 +308,21 @@ export function weaveFound(
       kind === "surprises" ? (SOFT_WORD[it.title] ?? it.title) : it.title;
     // シードの偶奇 × 項目位置で締め文を選ぶ (3 段落で文末 3 種が揃う)
     const closer = closers[(seed + i * 2) % closers.length];
-    const scene = scenes?.[i] ?? "";
+    const sceneRaw = scenes?.[i] ?? "";
+    // 評価者視点では本文・具体描写・締め文すべてに視点反転を適用
+    // (scene/closer にも「アナタ」(=対象者) が含まれるため。{B}さん は無いので副作用なし)。
+    const desc = evaluatorTargetName
+      ? evaluatorDesc(it.body, evaluatorTargetName)
+      : nameFreeDesc(it.body);
+    const scene = evaluatorTargetName
+      ? evaluatorDesc(sceneRaw, evaluatorTargetName)
+      : sceneRaw;
+    const closerText = evaluatorTargetName
+      ? evaluatorDesc(closer, evaluatorTargetName)
+      : closer;
     return [
       { text: word, pink: true },
-      { text: `。${nameFreeDesc(it.body)}${scene}${closer}` },
+      { text: `。${desc}${scene}${closerText}` },
     ];
   });
 }

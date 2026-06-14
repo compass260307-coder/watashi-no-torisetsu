@@ -1,27 +1,22 @@
-// Phase 1.5-α Day 12-Polish-F: 友達の評価送信後「遷移ページ」(獲得エンジン)
+// Phase 1.5-α Day 12: 友達の評価送信後「遷移ページ」(獲得エンジン)
 //
-// 役割: 友達 (B) が owner (A) の 30 問評価を送信した直後に着地する画面。
-// 完了画面廃止 (Day 12-C3) 後の着地先を、評価者 → 新規ユーザー化の獲得エンジン
-// として設計し直したもの。post-submit の router.push 先 (friend/[inviteCode])
-// をこのルートへ置き換えている。
+// 役割: 友達 (B) が owner (A=のすけ) の 30 問評価を送信した直後に着地する画面。
+// 閲覧者 = 評価した友達 (アナタ)、対象 = 評価された人 (のすけ)。
 //
-// 無料で見せる:
-//   ①「{owner}理解度」%  (calcMutualUnderstanding、owner ランキングと同一値)
-//   ② アナタの目に映る {owner} (友達自身の知覚プロファイルを整形して返す)
-// 見せない ({owner} 本人限定・課金。/evaluate/result 側に集約):
-//   {owner} の自己診断スコア・自己 vs 友達の詳細ギャップ・関係性アドバイス
-// → 友達には満足感のある報酬とデモを返しつつ、課金の壁と owner のプライバシーは
-//    一切崩さない。
+// 本人ページ (/evaluate/result) の ①②③④ を同じ部品・質感で表示し、視点だけ反転する:
+//   - 「アナタ」(本人ページ=対象者) → のすけ / 「相手」(=評価者) → 「アナタ」
+//     (flipToEvaluatorView / weaveFound の evaluator モード)
+//   - 見出し・バーラベルは評価者視点で出し分け
+// プライバシー方針変更 (ユーザー承認済み): のすけの自己スコア・ギャップ・関係性も評価者に開示。
 //
-// 触らない: friend_perceptions / users スキーマ、決済、トラッキング。
-//   ここでは SELECT して表示するだけ。
+// 末尾はシンプルな獲得 CTA (評価者自身に診断させる) + 右下フローティング診断 CTA。
 
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
 import {
   classifySixteenType,
   sixteenTypes,
@@ -30,14 +25,33 @@ import {
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
+  topGaps,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
+import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
+import {
+  relationGapNote,
+  relationGapFact,
+  relationGapTip,
+  relationGapTipKey,
+} from "@/lib/perception-relation-content";
+import {
+  perceivedManualContent,
+  PERCEIVED_TIPS_KEY,
+} from "@/lib/perception-manual-content";
+import { getPerceivedContent } from "@/lib/mutual-result-content";
+import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
+import { flipToEvaluatorView } from "@/lib/perception-viewpoint";
+import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
+import { CharacterHero } from "@/components/result/CharacterHero";
+import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
+import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
+import { FloatingDiagnosisCta } from "@/components/result/FloatingDiagnosisCta";
 import { ctaPrimary } from "@/components/StickyCtaFooter";
-import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
+import type { BigFiveDimension } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "評価を送ったよ",
-  // 個人の着地ページ。誤共有時の漏洩経路を絞るため noindex
   robots: { index: false, follow: false },
 };
 
@@ -46,33 +60,88 @@ interface PageProps {
 }
 
 const DIMS: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+const END_CTA_ID = "sent-end-cta";
 
-// owner が自己診断済みか (5 次元すべて数値であれば算出可能)
+// owner が自己診断済みか (5 次元すべて数値なら ②④/% を算出可能)
 function hasFullSelfScores(s: BigFiveScores): boolean {
   return DIMS.every((d) => typeof s[d] === "number");
 }
 
-// 名前が長い場合の省略 (UI 崩れ防止、8 文字 + 「…」)
-function shortenName(name: string): string {
-  return name.length > 8 ? name.slice(0, 8) + "…" : name;
+function mutualLabel(pct: number): string {
+  if (pct >= 80) return "かなり息ぴったり。お互いをよく分かり合えてる。";
+  if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
+  if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
+  return "ギャップ大きめ。意外な発見がたくさんあるかも。";
 }
 
-// %帯コメント (すべて前向き・煽らない)
-function understandingComment(pct: number): string {
-  if (pct >= 80) return "かなり分かってる方かも!";
-  if (pct >= 60) return "けっこう分かってる!";
-  return "意外な一面があるのかも?";
+// 丸数字バッジ + 見出し (本人ページと同一マークアップ)
+function SectionHead({ num, title }: { num: number; title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+        {num}
+      </span>
+      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+// ② 特性カードのバー (本人ページと同一)
+function TraitBar({
+  label,
+  percent,
+  color,
+}: {
+  label: string;
+  percent: number;
+  color: string;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs font-bold text-[#3A2D6B] mb-1">
+        <span>{label}</span>
+        <span>{percent}%</span>
+      </div>
+      <div
+        className="h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+        role="progressbar"
+        aria-label={`${label} ${percent}%`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${percent}%`, background: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// 本文中の行動キーフレーズ 1 箇所だけを vividPink 太字にする (④ の強調用、本人ページと同一)
+function pinkify(text: string, key?: string): ReactNode {
+  if (!key) return text;
+  const idx = text.indexOf(key);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <strong className="text-[#FE3C72] font-black">{key}</strong>
+      {text.slice(idx + key.length)}
+    </>
+  );
 }
 
 export default async function EvaluationSentPage({ params }: PageProps) {
   const { perceptionId } = await params;
 
-  // ===== 1. perception 取得 (友達自身の評価。SELECT のみ) =====
+  // ===== 1. perception 取得 (友達自身の評価) =====
   const { data: perception, error: pErr } = await supabaseAdmin
     .from("friend_perceptions")
-    .select(
-      "id, target_user_id, perceiver_name, perceived_type_id, perceived_scores",
-    )
+    .select("id, target_user_id, perceiver_name, perceived_scores")
     .eq("id", perceptionId)
     .maybeSingle();
   if (pErr) {
@@ -82,7 +151,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
     notFound();
   }
 
-  // ===== 2. owner (= 評価された A) 取得 =====
+  // ===== 2. owner (= 評価された のすけ) 取得 =====
   const { data: user } = await supabaseAdmin
     .from("users")
     .select("display_name, scores")
@@ -93,27 +162,68 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   }
 
   const ownerNameRaw = ((user.display_name as string | null) ?? "").trim();
-  const displayName = ownerNameRaw || "この人";
+  // のすけ = 対象者。本文の「アナタ」反転先 (素の名前。長くてもそのまま=本人ページ準拠)。
+  const targetName = ownerNameRaw || "この人";
 
-  // ===== 3. 理解度算出 (owner の自己診断がある場合のみ) =====
+  // ===== 3. 派生 (本人ページと同一ロジック) =====
   const selfScores = (user.scores ?? {}) as BigFiveScores;
   const otherScores = (perception.perceived_scores ?? {}) as BigFiveScores;
-  const showUnderstanding = hasFullSelfScores(selfScores);
-  // owner ランキング / 評価結果ページと同一ロジック・同一値
-  const mutual = showUnderstanding
-    ? calcMutualUnderstanding(buildDimensionGaps(selfScores, otherScores))
-    : 0;
+  const showFull = hasFullSelfScores(selfScores); // ②④/% は自己スコア必須
+  const gaps = buildDimensionGaps(selfScores, otherScores);
+  const mutual = calcMutualUnderstanding(gaps);
+  const sortedGaps = topGaps(gaps, 5);
 
-  // ===== 4. アナタの目に映る owner (友達自身の知覚プロファイル) =====
-  // Day 12-D: 知覚タイプ (16 タイプ、perceived_scores から派生)。
-  const perceivedTypeId16 = classifySixteenType(otherScores);
-  const perceivedType16 = sixteenTypes[perceivedTypeId16];
+  const perceivedTypeId = classifySixteenType(otherScores);
+  const perceivedType16 = sixteenTypes[perceivedTypeId];
   const perceivedTypeName = perceivedType16.name;
-  const perceivedImage = characterImagePath(perceivedTypeId16);
-  // 特性タグは 8 タイプ master の traits 語 (型名ではなく特性語) を流用
-  const perceivedBase =
-    torisetsuTypes[perception.perceived_type_id as TorisetsuTypeId];
-  const traits = (perceivedBase?.traits ?? []).slice(0, 3);
+
+  // ① 本文 (主語省略のため反転はほぼ no-op) / ④ 2段落目 (付き合い方)
+  const [lookRaw, tipsRaw] =
+    perceivedManualContent[perceivedTypeId].split("\n\n");
+  const perceivedLookBody = flipToEvaluatorView(lookRaw, targetName);
+  const perceivedTipsBody = tipsRaw
+    ? flipToEvaluatorView(tipsRaw, targetName)
+    : "";
+
+  // ③ 強み/あれっ? (評価者視点 weave: {B}さん→アナタ / アナタ→のすけ)
+  const foundContent = getPerceivedContent(perceivedTypeId);
+  const foundSeed = seedFromTypeId(perceivedTypeId);
+  const strengthParas = foundContent
+    ? weaveFound(
+        foundContent.strengths,
+        "strengths",
+        foundSeed,
+        perceivedTypeId,
+        targetName,
+      )
+    : [];
+  const surpriseParas = foundContent
+    ? weaveFound(
+        foundContent.surprises,
+        "surprises",
+        foundSeed + 1,
+        undefined,
+        targetName,
+      )
+    : [];
+  const tipsKey = PERCEIVED_TIPS_KEY[perceivedTypeId];
+
+  // ④ ふたりの関係 (差最大の特性で出し分け、評価者視点に反転)
+  const maxGap = sortedGaps[0];
+  const maxGapDir = gapDir3(maxGap.selfPercent, maxGap.otherPercent);
+  const relationFactBody = flipToEvaluatorView(
+    relationGapFact[maxGap.key][maxGapDir],
+    targetName,
+  );
+  const relationGapBody = flipToEvaluatorView(
+    relationGapNote[maxGap.key][maxGapDir],
+    targetName,
+  );
+  const relationTipBody = flipToEvaluatorView(
+    relationGapTip[maxGap.key][maxGapDir],
+    targetName,
+  );
+  const relationTipKey = relationGapTipKey[maxGap.key][maxGapDir];
 
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
@@ -132,110 +242,183 @@ export default async function EvaluationSentPage({ params }: PageProps) {
           </Link>
         </div>
 
-        {/* ===== 1. 完了お礼 (軽く) ===== */}
-        <div className="flex flex-col items-center text-center mb-8">
+        {/* ===== 完了お礼 (軽く) ===== */}
+        <div className="flex flex-col items-center text-center mb-6">
           <Image
             src="/mascot/step3-complete.png"
             alt=""
             width={160}
             height={160}
-            className="w-24 h-24 object-contain mb-3"
+            className="w-20 h-20 object-contain mb-2"
           />
           <p className="text-[#3A2D6B] font-black text-base leading-relaxed">
-            評価を{displayName}さんに送ったよ。
-            <br />
-            ありがとう!
+            評価を{targetName}さんに送ったよ。ありがとう!
           </p>
         </div>
 
-        {/* ===== 2. 報酬: 理解度 (主役) =====
-            owner の自己診断が無い稀ケースでは算出できないため非表示 (3・4 のみ)。 */}
-        {showUnderstanding && (
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-            <p className="text-center text-[#FE3C72] font-bold text-sm mb-1">
-              アナタの「{displayName}理解度」
-            </p>
-            <p className="text-center text-[#3A2D6B] font-black text-5xl leading-none mb-4 drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
-              {mutual}
-              <span className="text-2xl">%</span>
-            </p>
-            {/* バー: lavender トラック + vividPink 塗り (解析画面 E-1 と同配色) */}
-            <div className="h-4 rounded-full bg-[#E4E0F5] overflow-hidden mb-3">
-              <div
-                className="h-full rounded-full bg-[#FE3C72]"
-                style={{ width: `${mutual}%` }}
-              />
-            </div>
-            <p className="text-center text-[#3A2D6B] font-bold text-sm">
-              {understandingComment(mutual)}
-            </p>
+        {/* ===== ヒーロー: アナタの目に映る のすけ (知覚タイプ) ===== */}
+        <p className="text-center text-[#FE3C72] font-bold text-sm mb-2">
+          アナタの目に映る{targetName}
+        </p>
+        <CharacterHero
+          imageSrc={characterImagePath(perceivedTypeId)}
+          alt={perceivedTypeName}
+          essence={perceivedType16.essence}
+          name={perceivedTypeName}
+          description={perceivedType16.oneLiner}
+        />
+
+        {/* ===== ① アナタから見た のすけ (相互理解度% + 本文) ===== */}
+        <section className="mb-8">
+          <SectionHead num={1} title={`アナタから見た${targetName}`} />
+          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+            {showFull && (
+              <>
+                <div className="text-center">
+                  <p className="text-[#FE3C72] font-bold text-sm mb-1">
+                    相互理解度
+                  </p>
+                  <p className="text-[#3A2D6B] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
+                    {mutual}
+                    <span className="text-3xl">%</span>
+                  </p>
+                  <div
+                    className="mt-3 h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+                    role="progressbar"
+                    aria-label={`相互理解度 ${mutual}%`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={mutual}
+                  >
+                    <div
+                      className="h-full rounded-full bg-[#FE3C72]"
+                      style={{ width: `${mutual}%` }}
+                    />
+                  </div>
+                  <p className="text-[#3A2D6B]/75 text-xs font-bold mt-2 leading-relaxed">
+                    {mutualLabel(mutual)}
+                  </p>
+                </div>
+                <div className="border-t border-dashed border-[#3A2D6B]/15 my-5" />
+              </>
+            )}
+            <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedLookBody}</p>
           </div>
+        </section>
+
+        {/* ===== ② のすけ とのギャップ (自己スコア必須なので showFull のみ) ===== */}
+        {showFull && (
+          <section className="mb-8">
+            <SectionHead num={2} title={`${targetName}とのギャップ`} />
+            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+              <MutualUnderstandingRadar
+                gaps={gaps}
+                selfLabel={`${targetName}自身`}
+                otherLabel="アナタから"
+              />
+              {sortedGaps.map((g, idx) => {
+                const dir = gapDir3(g.selfPercent, g.otherPercent);
+                const d = gapDetail[g.key][dir];
+                const detail = flipToEvaluatorView(
+                  idx < 2 ? d.full : d.short,
+                  targetName,
+                );
+                return (
+                  <div key={g.key}>
+                    {idx === 2 && (
+                      <div className="border-t border-dashed border-[#3A2D6B]/25 mt-6 pt-5">
+                        <p className="text-[#3A2D6B]/55 font-bold text-xs mb-1">
+                          そのほかの3つ
+                        </p>
+                      </div>
+                    )}
+                    {idx !== 2 && (
+                      <div className="border-t border-[#3A2D6B]/10 my-5" />
+                    )}
+                    <div className="flex items-baseline justify-between mb-3">
+                      <h3 className="text-[#3A2D6B] font-black text-base">
+                        {g.label}
+                      </h3>
+                      <span className="text-[#FE3C72] font-black text-xs">
+                        差 {g.diffPoints}pt
+                      </span>
+                    </div>
+                    <div className="space-y-2 mb-3">
+                      <TraitBar
+                        label={`${targetName}自身`}
+                        percent={g.selfPercent}
+                        color="#FE3C72"
+                      />
+                      <TraitBar
+                        label="アナタから"
+                        percent={g.otherPercent}
+                        color="#0094D8"
+                      />
+                    </div>
+                    <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
 
-        {/* ===== 3. 報酬: アナタの目に映る owner (友達自身の評価の整形版) ===== */}
-        <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-6">
-          <p className="text-center text-[#FE3C72] font-bold text-sm mb-4">
-            アナタの目に映る{displayName}
-          </p>
-          <div className="flex flex-col items-center">
-            {/* 角丸スクエア枠キャラ (背景込みシーンを cover で全面) + 同タイポ */}
-            <div className="w-28 h-28 rounded-[16px] overflow-hidden shadow-md mb-3">
-              <Image
-                src={perceivedImage}
-                alt={perceivedTypeName}
-                width={224}
-                height={224}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <p className="wtr-sub mb-1" style={{ fontSize: "0.875rem" }}>
-              {perceivedType16.essence}
-            </p>
-            <h2 className="wtr-name mb-3" style={{ fontSize: "1.5rem" }}>
-              {perceivedTypeName}
-            </h2>
-            {traits.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mb-4">
-                {traits.map((t, i) => (
-                  <span
-                    key={t}
-                    className={
-                      i % 2 === 0
-                        ? "bg-[#FFE993] text-[#3A2D6B] font-bold text-xs px-4 py-1.5 rounded-full border border-[#3A2D6B]/25"
-                        : "bg-[#E4E0F5] text-[#3A2D6B] font-bold text-xs px-4 py-1.5 rounded-full border border-[#0094D8]/30"
-                    }
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* 小注記 (無料 / 課金の線引きを兼ねる) */}
-          <p className="text-center text-[#3A2D6B]/60 text-xs leading-relaxed">
-            これはアナタの見方。{displayName}本人の自己診断とのギャップは、
-            {displayName}さんだけが見られるよ。
-          </p>
-        </div>
+        {/* ===== ③ アナタが見つけた のすけ (強み3 + あれっ?3) ===== */}
+        {foundContent && (
+          <section className="mb-8">
+            <SectionHead num={3} title={`アナタが見つけた${targetName}`} />
+            <PerceptionFoundProse
+              perceiverName="アナタ"
+              strengthLabel="アナタが見つけた強み"
+              surpriseLabel="アナタが感じた「あれっ?」"
+              strengthParas={strengthParas}
+              surpriseParas={surpriseParas}
+            />
+          </section>
+        )}
 
-        {/* ===== 4. 転換 CTA (獲得) ===== */}
-        <div className="bg-gradient-to-b from-[#FFE993]/40 to-[#BCDEF8]/30 rounded-3xl border-2 border-[#3A2D6B] shadow-md p-6 mb-2 text-center">
-          <h2 className="text-[#3A2D6B] font-black text-lg mb-2 leading-tight">
-            じゃあ逆に、{displayName}からアナタはどう見えてる?
+        {/* ===== ④ ふたりの関係 (自己スコア必須なので showFull のみ) ===== */}
+        {showFull && (
+          <section className="mb-8">
+            <SectionHead num={4} title="ふたりの関係" />
+            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+              <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
+                {relationFactBody}
+              </p>
+              <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
+                {relationGapBody}
+              </p>
+              {perceivedTipsBody && (
+                <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
+                  {pinkify(perceivedTipsBody, tipsKey)}
+                </p>
+              )}
+              <p className={PERCEPTION_BODY_TEXT_CLASS}>
+                {pinkify(relationTipBody, relationTipKey)}
+              </p>
+            </div>
+          </section>
+        )}
+
+        {/* ===== 末尾メインCTA (シンプル・獲得) ===== */}
+        <div
+          id={END_CTA_ID}
+          className="bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] p-6 text-center"
+        >
+          <h2 className="text-[#3A2D6B] font-black text-lg mb-4 leading-snug">
+            じゃあ逆に、{targetName}からアナタはどう見えてる?
           </h2>
-          <p className="text-[#3A2D6B]/75 text-sm leading-relaxed mb-5">
-            アナタも診断すれば、自分のトリセツも、{displayName}との相互理解度も分かるよ。
-          </p>
-          <div className="flex justify-center">
-            <Link href="/diagnosis" className={ctaPrimary}>
-              アナタも無料で診断する →
-            </Link>
-          </div>
+          <Link href="/diagnosis" className={ctaPrimary}>
+            アナタも無料で診断する →
+          </Link>
           <p className="text-[#3A2D6B]/50 text-[10px] font-bold mt-3">
             登録不要・約3分・無料
           </p>
         </div>
       </div>
+
+      {/* ===== 右下フローティング診断 CTA (末尾CTAが見えたら隠す) ===== */}
+      <FloatingDiagnosisCta href="/diagnosis" hideWhenId={END_CTA_ID} />
     </main>
   );
 }
