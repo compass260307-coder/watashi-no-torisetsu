@@ -400,10 +400,6 @@ function ChevronRight() {
   );
 }
 
-// マーカー風ハイライト (黄色背景を行末で切らずに丸める)
-const markerClass =
-  "bg-[#FFE993] [box-decoration-break:clone] [-webkit-box-decoration-break:clone] px-1";
-
 // ランキング本体: TOP3 固定 + 4位以降は実人数 + 末尾に空き枠 1 つ (参考デザイン移植)。
 //   枠数 = max(3, N+1)。rank<=N は実データ、それ以外は空き枠プレースホルダ。
 //   - N=0 → 1〜3 すべて空き / N=2 → 1,2 実 + 3 空き / N=3 → 1〜3 実 + 4 空き /
@@ -429,16 +425,18 @@ function RankingBoard({ items }: { items: RankItem[] }) {
   );
 }
 
-// プロモ枠: もこもこ花アイコン + 2 行コピー (相互理解度の文脈)。点線ボーダー。
+// プロモ枠: 生成ロゴ画像 (羊毛フェルト風・透過2行+花、/heading-ranking-promo.png) を
+// next/image で表示。点線ボーダーは維持し、誘導枠なので末尾CTAロゴより小さめに収める。
 function RankingPromo() {
   return (
-    <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] p-3.5 flex items-center gap-3 mb-3">
-      <FeltFlowerIcon />
-      <p className="text-sm leading-relaxed text-[#3A2D6B] font-black">
-        <span className={markerClass}>たくさん診断してもらって</span>
-        <br />
-        <span className={markerClass}>ランキングを埋めよう</span>
-      </p>
+    <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] px-3 py-2.5 mb-3 flex justify-center">
+      <Image
+        src="/heading-ranking-promo.png"
+        alt="たくさん診断してもらってランキングを埋めよう"
+        width={2129}
+        height={628}
+        className="w-full max-w-[250px] h-auto"
+      />
     </div>
   );
 }
@@ -490,30 +488,5 @@ function EmptyRankRow({ rank }: { rank: number }) {
         ??%
       </span>
     </li>
-  );
-}
-
-// もこもこ羊毛フェルト風の花アイコン (プロモ枠用、ブランドの花 SVG を一回り大きく)。
-function FeltFlowerIcon() {
-  return (
-    <svg
-      width="46"
-      height="46"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="flex-shrink-0 drop-shadow-[0_1px_1px_rgba(58,45,107,0.18)]"
-    >
-      <g fill="#B7A8EC">
-        <ellipse cx="12" cy="5" rx="3.4" ry="4.8" />
-        <ellipse cx="12" cy="19" rx="3.4" ry="4.8" />
-        <ellipse cx="5" cy="12" rx="4.8" ry="3.4" />
-        <ellipse cx="19" cy="12" rx="4.8" ry="3.4" />
-        <ellipse cx="7" cy="7" rx="3.6" ry="3.6" />
-        <ellipse cx="17" cy="7" rx="3.6" ry="3.6" />
-        <ellipse cx="7" cy="17" rx="3.6" ry="3.6" />
-        <ellipse cx="17" cy="17" rx="3.6" ry="3.6" />
-      </g>
-      <circle cx="12" cy="12" r="3.8" fill="#FFE07A" />
-    </svg>
   );
 }
