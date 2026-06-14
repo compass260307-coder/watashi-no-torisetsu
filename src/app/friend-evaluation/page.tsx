@@ -226,11 +226,7 @@ export default async function FriendEvaluationPage() {
           </h2>
 
           <div className="bg-white border-[3px] border-[#0094D8] rounded-[28px] p-4">
-            {rankedPerceptions.length === 0 ? (
-              <EmptyRankingTeaser myTrisetsuUrl={myTrisetsuUrl} />
-            ) : (
-              <RankingList items={rankedPerceptions} />
-            )}
+            <RankingBoard items={rankedPerceptions} />
           </div>
         </section>
 
@@ -355,11 +351,13 @@ interface RankItem {
   imageSrc: string;
 }
 
-// 順位バッジ色 (絵文字禁止、円形 div + 数字、Polish-C 仕様)
+// 順位バッジ色 (絵文字禁止、円形 div + 数字)。
+// 末尾CTAティーザーと統一: 1=sunYellow / 2=skyBlue / 3=vividPink。4位以降は淡いラベンダー。
+// 1位は薄黄のため文字は deepPurple (可読性)。
 function rankBadgeColors(rank: number): { bg: string; fg: string } {
-  if (rank === 1) return { bg: "#E8C547", fg: "#2A2856" }; // gold
-  if (rank === 2) return { bg: "#CBD0DA", fg: "#2A2856" }; // silver
-  if (rank === 3) return { bg: "#DDA873", fg: "#FFFFFF" }; // bronze
+  if (rank === 1) return { bg: "#FFE993", fg: "#3A2D6B" };
+  if (rank === 2) return { bg: "#0094D8", fg: "#FFFFFF" };
+  if (rank === 3) return { bg: "#FE3C72", fg: "#FFFFFF" };
   return { bg: "#E4E0F5", fg: "#3A2D6B" }; // lavender (4 以降)
 }
 
@@ -402,99 +400,120 @@ function ChevronRight() {
   );
 }
 
-function RankingList({ items }: { items: RankItem[] }) {
-  return (
-    <ul>
-      {items.map((p, idx) => {
-        const rank = idx + 1;
-        const isLast = idx === items.length - 1;
-        return (
-          <li
-            key={p.id}
-            className={isLast ? "" : "border-b-2 border-dashed border-[#E7E3F5]"}
-          >
-            <Link
-              href={`/evaluate/result/${p.id}`}
-              className="flex items-center gap-3 py-3 transition-colors hover:bg-[#FFF9F0] rounded-xl px-1 -mx-1"
-            >
-              <RankBadge rank={rank} />
-              {/* アバター 44px = 知覚タイプ(16)のキャラ画像 (小さい角丸スクエア・cover) */}
-              <div className="w-11 h-11 rounded-[10px] overflow-hidden flex-shrink-0">
-                <Image
-                  src={p.imageSrc}
-                  alt=""
-                  width={44}
-                  height={44}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span className="flex-1 min-w-0 truncate text-base font-black text-[#3A2D6B]">
-                {p.perceiverName}
-              </span>
-              <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
-                {p.understanding}%
-              </span>
-              <ChevronRight />
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 // マーカー風ハイライト (黄色背景を行末で切らずに丸める)
 const markerClass =
   "bg-[#FFE993] [box-decoration-break:clone] [-webkit-box-decoration-break:clone] px-1";
 
-function EmptyRankingTeaser({ myTrisetsuUrl }: { myTrisetsuUrl: string }) {
+// ランキング本体: TOP3 固定 + 4位以降は実人数 + 末尾に空き枠 1 つ (参考デザイン移植)。
+//   枠数 = max(3, N+1)。rank<=N は実データ、それ以外は空き枠プレースホルダ。
+//   - N=0 → 1〜3 すべて空き / N=2 → 1,2 実 + 3 空き / N=3 → 1〜3 実 + 4 空き /
+//     N=5 → 1〜5 実 + 6 空き。空き枠が必ず 1 つ以上あるのでプロモ枠は常に表示。
+function RankingBoard({ items }: { items: RankItem[] }) {
+  const filled = items.length;
+  const totalSlots = Math.max(3, filled + 1);
+  const ranks = Array.from({ length: totalSlots }, (_, i) => i + 1);
   return (
     <>
-      {/* ダッシュ枠のうながしブロック */}
-      <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] p-3.5 flex items-center gap-3 mb-3">
-        <div className="w-[50px] h-[50px] rounded-full overflow-hidden bg-[#E4E0F5] flex-shrink-0">
+      {/* 「ランキングを埋めよう」プロモ枠 (空き枠が 1 つでもある間は表示) */}
+      <RankingPromo />
+      <ul className="flex flex-col gap-2.5">
+        {ranks.map((rank) =>
+          rank <= filled ? (
+            <RealRankRow key={rank} rank={rank} item={items[rank - 1]} />
+          ) : (
+            <EmptyRankRow key={rank} rank={rank} />
+          ),
+        )}
+      </ul>
+    </>
+  );
+}
+
+// プロモ枠: もこもこ花アイコン + 2 行コピー (相互理解度の文脈)。点線ボーダー。
+function RankingPromo() {
+  return (
+    <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] p-3.5 flex items-center gap-3 mb-3">
+      <FeltFlowerIcon />
+      <p className="text-sm leading-relaxed text-[#3A2D6B] font-black">
+        <span className={markerClass}>たくさん診断してもらって</span>
+        <br />
+        <span className={markerClass}>ランキングを埋めよう</span>
+      </p>
+    </div>
+  );
+}
+
+// 実データ枠 (実線・塗り、タップで各相互理解度ページへ)。
+function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
+  return (
+    <li>
+      <Link
+        href={`/evaluate/result/${item.id}`}
+        className="flex items-center gap-3 rounded-[20px] border-2 border-[#0094D8]/20 bg-white p-3 transition-colors hover:bg-[#FFF9F0]"
+      >
+        <RankBadge rank={rank} />
+        {/* アバター = 知覚タイプ(16)のキャラ画像 (角丸スクエア・cover) */}
+        <div className="w-11 h-11 rounded-[10px] overflow-hidden flex-shrink-0">
           <Image
-            src="/mascot-pair.png"
+            src={item.imageSrc}
             alt=""
-            width={50}
-            height={50}
+            width={44}
+            height={44}
             className="w-full h-full object-cover"
           />
         </div>
-        <p className="text-sm leading-relaxed text-[#3A2D6B] font-black">
-          <span className={markerClass}>友達に診断してもらって</span>
-          <br />
-          <span className={markerClass}>ランキングを埋めよう</span>
-        </p>
-      </div>
+        <span className="flex-1 min-w-0 truncate text-base font-black text-[#3A2D6B]">
+          {item.perceiverName}
+        </span>
+        <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+          {item.understanding}%
+        </span>
+        <ChevronRight />
+      </Link>
+    </li>
+  );
+}
 
-      {/* スケルトン行 ×3 (1 金 / 2 銀 / 3 銅、タップ不可・chevron なし) */}
-      {[1, 2, 3].map((rank) => (
-        <div
-          key={rank}
-          className="border-2 border-[#EDE9F8] rounded-[20px] p-3.5 flex items-center gap-3 mt-2"
-        >
-          <RankBadge rank={rank} />
-          <div className="w-[50px] h-[50px] rounded-full bg-[#ECE9F8] flex-shrink-0" />
-          <div className="flex-1 space-y-1.5 min-w-0">
-            <div className="h-[13px] w-[60%] bg-[#E4E0F5] rounded" />
-            <div className="h-[13px] w-[40%] bg-[#E4E0F5] rounded" />
-          </div>
-          <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
-            ??%
-          </span>
-        </div>
-      ))}
-
-      {/* 下部リンク (アナタのトリセツへ) */}
-      <div className="text-center mt-5">
-        <Link
-          href={myTrisetsuUrl}
-          className="text-[#1AB6F0] font-black text-sm hover:underline"
-        >
-          アナタのトリセツを見る
-        </Link>
+// 空き枠プレースホルダ (点線・グレー円 + 帯 + ??%、タップ不可)。
+function EmptyRankRow({ rank }: { rank: number }) {
+  return (
+    <li className="flex items-center gap-3 rounded-[20px] border-2 border-dashed border-[#C9DEF5] p-3">
+      <RankBadge rank={rank} />
+      {/* アバター位置: グレーの円 */}
+      <div className="w-11 h-11 rounded-full bg-[#ECE9F8] flex-shrink-0" />
+      {/* 名前位置: グレーの帯 */}
+      <div className="flex-1 min-w-0">
+        <div className="h-3.5 w-[55%] rounded-full bg-[#E4E0F5]" />
       </div>
-    </>
+      {/* %位置: 淡い ??% */}
+      <span className="bg-[#EDE9F8] text-[#3A2D6B]/45 font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+        ??%
+      </span>
+    </li>
+  );
+}
+
+// もこもこ羊毛フェルト風の花アイコン (プロモ枠用、ブランドの花 SVG を一回り大きく)。
+function FeltFlowerIcon() {
+  return (
+    <svg
+      width="46"
+      height="46"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="flex-shrink-0 drop-shadow-[0_1px_1px_rgba(58,45,107,0.18)]"
+    >
+      <g fill="#B7A8EC">
+        <ellipse cx="12" cy="5" rx="3.4" ry="4.8" />
+        <ellipse cx="12" cy="19" rx="3.4" ry="4.8" />
+        <ellipse cx="5" cy="12" rx="4.8" ry="3.4" />
+        <ellipse cx="19" cy="12" rx="4.8" ry="3.4" />
+        <ellipse cx="7" cy="7" rx="3.6" ry="3.6" />
+        <ellipse cx="17" cy="7" rx="3.6" ry="3.6" />
+        <ellipse cx="7" cy="17" rx="3.6" ry="3.6" />
+        <ellipse cx="17" cy="17" rx="3.6" ry="3.6" />
+      </g>
+      <circle cx="12" cy="12" r="3.8" fill="#FFE07A" />
+    </svg>
   );
 }
