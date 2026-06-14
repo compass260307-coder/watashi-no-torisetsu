@@ -105,7 +105,9 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
 
         {/* メニュー本体 (Polish-A.3: カード高さは内容ベース、中央寄せは撤去) */}
         <nav className="flex flex-col gap-5">
-          <MenuLink href="/" label="トップ" onClose={handleClose} />
+          {/* 診断済みユーザーが押しても /(自動リダイレクト)で /me に跳ね返らないよう
+              ?stay=1 を付与してトップ LP を表示できるようにする。 */}
+          <MenuLink href="/?stay=1" label="トップ" onClose={handleClose} />
           <MenuLink
             href={myUrl || "/diagnosis"}
             label="ワタシのトリセツ"

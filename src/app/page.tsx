@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 // Day 6.2: <Footer /> の呼び出しを削除しカード内に統合。
 // コンポーネント本体 (components/Footer.tsx) は他ページで利用継続。
 import FloatingCTABar from "@/components/FloatingCTABar";
 // Day 12-A: 装飾だけだった ☰ を 3 項目ハンバーガーメニューに置換
 import { HamburgerMenu } from "@/components/HamburgerMenu";
+// 診断済みユーザーを自分の結果ページへ自動誘導するための session 解決。
+import { getSession } from "@/lib/session";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
+
+// wn_session cookie を参照して出し分けるため、LP は動的レンダリングにする。
+// (cookie 不在の新規訪問者・bot は getSession 内で DB を引かず即 null を返すので、
+//  従来どおり LP がそのまま描画される。)
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   alternates: { canonical: BASE_URL },
@@ -34,7 +42,25 @@ const jsonLd = {
   },
 };
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  // ?stay=1 のときは自動リダイレクトせず LP を表示する (診断済みユーザーが
+  // トップを見たい / 再診断したいときの逃げ道。/me 等の「トップ」リンクが付与する)。
+  searchParams: Promise<{ stay?: string }>;
+}) {
+  const { stay } = await searchParams;
+
+  // 診断済み (wn_session cookie → users 行に owner_token) なら自分の結果へ。
+  // stay=1・cookie 不在・owner_token 不在 はいずれも従来どおり LP を表示。
+  if (stay !== "1") {
+    const session = await getSession();
+    if (session?.owner_token) {
+      // 注: redirect() は内部で例外を投げるため try/catch で囲まない。
+      redirect(`/me/${session.owner_token}`);
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 pb-24">
       <script
