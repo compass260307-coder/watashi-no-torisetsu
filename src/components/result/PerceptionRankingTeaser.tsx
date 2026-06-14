@@ -2,8 +2,7 @@
 //
 // 旧・紫枠シェアCTA (PerceptionBoostCta、温存) を置き換える格上げ版。見出しロゴ +
 // 上位3枠の「完成見本」プレビュー + メインボタン。ブランドは watashi-torisetsu で統一:
-//   文字 deepPurple #3A2D6B / CTA・1位 sunYellow #FFE993 / 3位 vividPink #FE3C72 /
-//   2位・logoBlue #0094D8 / 二人称「アナタ」/ 絵文字不使用。
+//   文字 deepPurple #3A2D6B / CTA sunYellow #FFE993 / 二人称「アナタ」/ 絵文字不使用。
 //
 // 見出しは生成済みロゴ画像 (/heading-ranking.png、羊毛フェルト風・透過2行) を next/image で
 // 表示 (ヒーロー heading-friend-invite.png と同方式)。
@@ -13,21 +12,18 @@
 //   「ともだち A/B/C」で実在の友達と誤解されない。aria-hidden で装飾扱い。
 // ★ blur は課金/シェアロックではない。ボタンは普通にハブページへ遷移するだけ。
 //
-// 順位バッジ色は本ページのブランド色 (1=#FFE993 / 2=#0094D8 / 3=#FE3C72) を使用。
-// 実ランキング (/friend-evaluation の RankBadge) は金/銀/銅だが、本 CTA はページ統一を
-// 優先する指示のためブランド色で揃える (意図的な不一致)。
+// 順位バッジは金・銀・銅メダル (共通コンポーネント RankMedalBadge)。実ランキング
+// (/friend-evaluation) と同一見た目で統一。
 
 import Image from "next/image";
 import Link from "next/link";
+import { RankMedalBadge } from "./RankMedalBadge";
 
 interface PerceptionRankingTeaserProps {
   /** 友達評価ハブ (QR + 相互理解度ランキング) への遷移先パス。 */
   hubHref: string;
 }
 
-// 順位バッジ: 背景=ブランド色 / 文字=背景に合わせた可読色 (1位の薄黄のみ deepPurple)
-const RANK_BG = ["#FFE993", "#0094D8", "#FE3C72"] as const;
-const RANK_FG = ["#3A2D6B", "#FFFFFF", "#FFFFFF"] as const;
 // ダミー見本データ (汎用名 + 80%台の自然な降順。実在の友達と誤解されない)
 const DUMMY_ROWS = [
   { name: "ともだち A", pct: "88%" },
@@ -61,13 +57,8 @@ export function PerceptionRankingTeaser({
         >
           {DUMMY_ROWS.map((row, i) => (
             <li key={i} className="flex items-center gap-3 py-2">
-              {/* 順位バッジ (ブランド色) */}
-              <span
-                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center font-black text-sm"
-                style={{ backgroundColor: RANK_BG[i], color: RANK_FG[i] }}
-              >
-                {i + 1}
-              </span>
+              {/* 順位バッジ (金・銀・銅メダル、共通コンポーネント) */}
+              <RankMedalBadge rank={i + 1} size={28} />
               {/* 汎用シルエットアバター */}
               <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#E4E0F5] flex items-center justify-center overflow-hidden">
                 <AvatarSilhouette />

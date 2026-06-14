@@ -42,6 +42,7 @@ import {
   characterImagePath,
 } from "@/lib/sixteen-types";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
+import { RankMedalBadge } from "@/components/result/RankMedalBadge";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
@@ -352,34 +353,6 @@ interface RankItem {
 }
 
 // 順位バッジ色 (絵文字禁止、円形 div + 数字)。
-// 末尾CTAティーザーと統一: 1=sunYellow / 2=skyBlue / 3=vividPink。4位以降は淡いラベンダー。
-// 1位は薄黄のため文字は deepPurple (可読性)。
-function rankBadgeColors(rank: number): { bg: string; fg: string } {
-  if (rank === 1) return { bg: "#FFE993", fg: "#3A2D6B" };
-  if (rank === 2) return { bg: "#0094D8", fg: "#FFFFFF" };
-  if (rank === 3) return { bg: "#FE3C72", fg: "#FFFFFF" };
-  return { bg: "#E4E0F5", fg: "#3A2D6B" }; // lavender (4 以降)
-}
-
-function RankBadge({ rank, size = 32 }: { rank: number; size?: number }) {
-  const { bg, fg } = rankBadgeColors(rank);
-  return (
-    <div
-      className="flex items-center justify-center rounded-full font-black flex-shrink-0"
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: bg,
-        color: fg,
-        fontSize: size >= 32 ? 14 : 12,
-      }}
-      aria-label={`${rank} 位`}
-    >
-      {rank}
-    </div>
-  );
-}
-
 function ChevronRight() {
   return (
     <svg
@@ -450,7 +423,7 @@ function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
         href={`/evaluate/result/${item.id}`}
         className="flex items-center gap-3 rounded-[20px] border-2 border-[#0094D8]/20 bg-white p-3 transition-colors hover:bg-[#FFF9F0]"
       >
-        <RankBadge rank={rank} />
+        <RankMedalBadge rank={rank} />
         {/* アバター = 知覚タイプ(16)のキャラ画像 (角丸スクエア・cover) */}
         <div className="w-11 h-11 rounded-[10px] overflow-hidden flex-shrink-0">
           <Image
@@ -477,7 +450,7 @@ function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
 function EmptyRankRow({ rank }: { rank: number }) {
   return (
     <li className="flex items-center gap-3 rounded-[20px] border-2 border-dashed border-[#C9DEF5] p-3">
-      <RankBadge rank={rank} />
+      <RankMedalBadge rank={rank} />
       {/* アバター位置: グレーの円 */}
       <div className="w-11 h-11 rounded-full bg-[#ECE9F8] flex-shrink-0" />
       {/* 名前位置: グレーの帯 */}
