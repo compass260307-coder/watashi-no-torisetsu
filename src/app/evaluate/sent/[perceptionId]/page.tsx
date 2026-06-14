@@ -403,20 +403,11 @@ export default async function EvaluationSentPage({ params }: PageProps) {
           </section>
         )}
 
-        {/* ===== 末尾メインCTA (シンプル・獲得) ===== */}
-        <div
-          id={END_CTA_ID}
-          className="bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] p-6 text-center"
-        >
-          <h2 className="text-[#3A2D6B] font-black text-lg mb-4 leading-snug">
-            じゃあ逆に、{targetName}からアナタはどう見えてる?
-          </h2>
+        {/* ===== 末尾CTA (ボタン1個のみ・枠/見出し/注記なし・背景に直接) ===== */}
+        <div id={END_CTA_ID} className="flex justify-center pt-1 pb-2">
           <Link href="/diagnosis" className={ctaPrimary}>
-            アナタも無料で診断する →
+            自分のトリセツを生成 →
           </Link>
-          <p className="text-[#3A2D6B]/50 text-[10px] font-bold mt-3">
-            登録不要・約3分・無料
-          </p>
         </div>
       </div>
 
