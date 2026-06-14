@@ -44,6 +44,8 @@ import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
 import { flipToEvaluatorView } from "@/lib/perception-viewpoint";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { CharacterHero } from "@/components/result/CharacterHero";
+import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
+import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
 import { FloatingDiagnosisCta } from "@/components/result/FloatingDiagnosisCta";
@@ -164,6 +166,8 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   const ownerNameRaw = ((user.display_name as string | null) ?? "").trim();
   // のすけ = 対象者。本文の「アナタ」反転先 (素の名前。長くてもそのまま=本人ページ準拠)。
   const targetName = ownerNameRaw || "この人";
+  // 評価者 (= 閲覧者、例 Ryunosuke)。ヒーロー1段目「◯◯さんから見た」に使う。
+  const perceiverFull = ((perception.perceiver_name as string) ?? "").trim() || "友達";
 
   // ===== 3. 派生 (本人ページと同一ロジック) =====
   const selfScores = (user.scores ?? {}) as BigFiveScores;
@@ -228,8 +232,10 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
       <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
-        {/* ===== ロゴ ===== */}
-        <div className="flex justify-center mb-4">
+        {/* ===== ヘッダー (ロゴ左 + ハンバーガー右、本人ページと同一) =====
+            ハンバーガーは myTrisetsuUrl 未指定 → 閲覧者(=評価者)自身の token を
+            client で解決 (のすけ本人のものを渡さない)。 */}
+        <div className="flex justify-between items-center mb-6">
           <Link href="/" aria-label="トップへ">
             <Image
               src="/logo.png"
@@ -240,26 +246,23 @@ export default async function EvaluationSentPage({ params }: PageProps) {
               className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
           </Link>
+          <HamburgerMenu />
         </div>
 
-        {/* ===== 完了お礼 (軽く) ===== */}
-        <div className="flex flex-col items-center text-center mb-6">
-          <Image
-            src="/mascot/step3-complete.png"
-            alt=""
-            width={160}
-            height={160}
-            className="w-20 h-20 object-contain mb-2"
-          />
-          <p className="text-[#3A2D6B] font-black text-base leading-relaxed">
-            評価を{targetName}さんに送ったよ。ありがとう!
-          </p>
+        {/* ===== ヒーロータグ (2段ロゴ風、本人ページと同一) =====
+            1段目: 評価者名「◯◯さんから見た」 / 2段目: 対象者「△△のトリセツ」(花/ハート)。
+            視点反転: ◯◯=評価者(閲覧者)、△△=対象者(のすけ)。 */}
+        <div className="mb-4 flex flex-col items-center">
+          <div
+            className="wtr-logo-text leading-tight text-center max-w-full px-4 mb-0.5"
+            style={{ fontSize: "clamp(13px, 4.2vw, 21px)" }}
+          >
+            {perceiverFull}さんから見た
+          </div>
+          <TrisetsuNameTag name={targetName} />
         </div>
 
-        {/* ===== ヒーロー: アナタの目に映る のすけ (知覚タイプ) ===== */}
-        <p className="text-center text-[#FE3C72] font-bold text-sm mb-2">
-          アナタの目に映る{targetName}
-        </p>
+        {/* ===== ヒーロー (知覚タイプのキャラ、本人ページと同一構成) ===== */}
         <CharacterHero
           imageSrc={characterImagePath(perceivedTypeId)}
           alt={perceivedTypeName}
