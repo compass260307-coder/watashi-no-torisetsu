@@ -48,6 +48,9 @@ import {
   type SixteenTypeId,
 } from "@/lib/sixteen-types";
 import { selfResultContent } from "@/lib/self-result-content";
+// 32タイプ本文 (フラグ on 時のみ・①本文だけ32化。型名/画像は16のまま=解釈A)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import { selfContentFor, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
 
 // =========================================================================
@@ -74,6 +77,8 @@ interface OwnerInfo {
   modifierLabel: string | null;
   // Day 12-Polish-E: owner の 16 タイプ id (/me レイアウト流用版のキャラ/本文 lookup キー)
   sixteenTypeId: SixteenTypeId | null;
+  // 32タイプ id (フラグ on 時の①本文 lookup 用。型名/画像は sixteenTypeId のまま)
+  thirtyTwoTypeId: ThirtyTwoTypeId | null;
 }
 
 const SCALE_PAGES: FriendQuestionV2[][] = [
@@ -110,6 +115,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     fullCode: null,
     modifierLabel: null,
     sixteenTypeId: null,
+    thirtyTwoTypeId: null,
   });
   const [phase, setPhase] = useState<Phase>("intro");
   const [pageIdx, setPageIdx] = useState<0 | 1 | 2>(0);
@@ -142,6 +148,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           fullCode: data.fullCode ?? null,
           modifierLabel: data.modifierLabel ?? null,
           sixteenTypeId: (data.sixteenTypeId as SixteenTypeId | null) ?? null,
+          thirtyTwoTypeId:
+            (data.thirtyTwoTypeId as ThirtyTwoTypeId | null) ?? null,
         });
       })
       .catch(() => {});
@@ -355,9 +363,15 @@ function IntroScreen({
   ownerName: string;
   onStart: () => void;
 }) {
-  const typeId = owner.sixteenTypeId;
+  const typeId = owner.sixteenTypeId; // 型名・画像は16のまま (解釈A)
   const type16 = typeId ? sixteenTypes[typeId] : null;
-  const sections = typeId ? selfResultContent[typeId] : null;
+  // ①本文のみフラグで32化。on=32実データ(N高低)→base16フォールバック / off=従来16。
+  const sections =
+    isThirtyTwoEnabled() && owner.thirtyTwoTypeId
+      ? selfContentFor(owner.thirtyTwoTypeId)
+      : typeId
+        ? selfResultContent[typeId]
+        : null;
 
   return (
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32">

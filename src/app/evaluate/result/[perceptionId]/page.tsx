@@ -71,6 +71,14 @@ import {
 } from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
+// 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま=解釈A)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import {
+  classifyThirtyTwoType,
+  perceivedManualFor,
+  perceivedContentFor,
+  perceivedTipsKeyFor,
+} from "@/lib/thirty-two-types";
 import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
 // 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
 // 「相性ランキング風ぼかしティーザー」(PerceptionRankingTeaser) に格上げ。
@@ -228,20 +236,30 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   // (owner16タイプは旧⑦撤去で未使用になったが、生成ロジックは mutual-result-content.ts に温存)
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  // B から見た A のタイプ (16タイプ名)、ヒーローで表示
+  // B から見た A のタイプ (16タイプ名)、ヒーローで表示。型名・画像は16のまま (解釈A)。
   const perceivedTypeName = perceivedType16.name;
+  // フラグ on のときのみ本文を32化 (N高低で出し分け)。off=従来16で挙動不変。
+  const flag32 = isThirtyTwoEnabled();
+  const perceived32Id = classifyThirtyTwoType(otherScores);
   // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
   //   1 段落目 = ① 「どう見えているか」の描写
   //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)
-  const [perceivedLookBody, perceivedTipsBody] =
-    perceivedManualContent[perceivedTypeId].split("\n\n");
+  const [perceivedLookBody, perceivedTipsBody] = (
+    flag32
+      ? perceivedManualFor(perceived32Id)
+      : perceivedManualContent[perceivedTypeId]
+  ).split("\n\n");
 
   // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
   // 各項目 = 独立した段落 (先頭ワードのみ vividPink)。強み=3文 (見え方+型固有の具体描写+締め)、
   // あれっ?=2文 (見え方+締め)。weaveFound が段落セグメントを生成
   // (あれっ?ワードは SOFT_WORD 辞書で言い換え済み)。
   // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
-  const foundContent = getPerceivedContent(perceivedTypeId);
+  // ③データ本体のみ32化。weaveFound の typeId 引数 (STRENGTH_SCENES=16キー) と
+  // seed は perceivedTypeId(16)のまま=ベース性格の場面描写は共通。
+  const foundContent = flag32
+    ? perceivedContentFor(perceived32Id)
+    : getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
   const strengthParas = foundContent
     ? weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
@@ -262,7 +280,9 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const relationGapBody = relationGapNote[maxGap.key][maxGapDir];
   const relationTipBody = relationGapTip[maxGap.key][maxGapDir];
   const relationTipKey = relationGapTipKey[maxGap.key][maxGapDir];
-  const tipsKey = PERCEIVED_TIPS_KEY[perceivedTypeId];
+  const tipsKey = flag32
+    ? perceivedTipsKeyFor(perceived32Id)
+    : PERCEIVED_TIPS_KEY[perceivedTypeId];
 
   // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
   // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
