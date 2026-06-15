@@ -13,6 +13,8 @@ import { torisetsuTypes } from "@/lib/torisetsu-data";
 import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { classifySixteenType } from "@/lib/sixteen-types";
+// 32タイプ: friend ページの①本文フラグ分岐用に owner の32 id も返す (型名/画像は16のまま)
+import { classifyThirtyTwoType } from "@/lib/thirty-two-types";
 import type {
   BigFiveDimension,
   CModifier,
@@ -98,6 +100,7 @@ export async function GET(request: NextRequest) {
   // owner の 16 タイプ id (取扱説明書/取扱注意/相性の本文・キャラ画像の lookup キー) を返す。
   // scores から決定的に派生する公開可能情報 (8 タイプ名や fullCode と同じ class)。owner_token は返さない。
   const sixteenTypeId = classifySixteenType(stored);
+  const thirtyTwoTypeId = classifyThirtyTwoType(stored);
 
   return NextResponse.json({
     displayName: (data.display_name as string | null) ?? null,
@@ -108,5 +111,6 @@ export async function GET(request: NextRequest) {
     fullCode,
     modifierLabel,
     sixteenTypeId,
+    thirtyTwoTypeId,
   });
 }

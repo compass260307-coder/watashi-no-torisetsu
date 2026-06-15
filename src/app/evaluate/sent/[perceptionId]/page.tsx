@@ -42,6 +42,14 @@ import {
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
 import { flipToEvaluatorView } from "@/lib/perception-viewpoint";
+// 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま=解釈A)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import {
+  classifyThirtyTwoType,
+  perceivedManualFor,
+  perceivedContentFor,
+  perceivedTipsKeyFor,
+} from "@/lib/thirty-two-types";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
@@ -179,18 +187,27 @@ export default async function EvaluationSentPage({ params }: PageProps) {
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  const perceivedTypeName = perceivedType16.name;
+  const perceivedTypeName = perceivedType16.name; // 型名・画像は16のまま (解釈A)
+  // フラグ on のときのみ本文を32化。off=従来16で挙動不変。
+  const flag32 = isThirtyTwoEnabled();
+  const perceived32Id = classifyThirtyTwoType(otherScores);
 
   // ① 本文 (主語省略のため反転はほぼ no-op) / ④ 2段落目 (付き合い方)
-  const [lookRaw, tipsRaw] =
-    perceivedManualContent[perceivedTypeId].split("\n\n");
+  const [lookRaw, tipsRaw] = (
+    flag32
+      ? perceivedManualFor(perceived32Id)
+      : perceivedManualContent[perceivedTypeId]
+  ).split("\n\n");
   const perceivedLookBody = flipToEvaluatorView(lookRaw, targetName);
   const perceivedTipsBody = tipsRaw
     ? flipToEvaluatorView(tipsRaw, targetName)
     : "";
 
   // ③ 強み/あれっ? (評価者視点 weave: {B}さん→アナタ / アナタ→のすけ)
-  const foundContent = getPerceivedContent(perceivedTypeId);
+  // ③データ本体のみ32化。weaveFound の typeId(STRENGTH_SCENES=16キー)/seed は16維持。
+  const foundContent = flag32
+    ? perceivedContentFor(perceived32Id)
+    : getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
   const strengthParas = foundContent
     ? weaveFound(
@@ -210,7 +227,9 @@ export default async function EvaluationSentPage({ params }: PageProps) {
         targetName,
       )
     : [];
-  const tipsKey = PERCEIVED_TIPS_KEY[perceivedTypeId];
+  const tipsKey = flag32
+    ? perceivedTipsKeyFor(perceived32Id)
+    : PERCEIVED_TIPS_KEY[perceivedTypeId];
 
   // ④ ふたりの関係 (差最大の特性で出し分け、評価者視点に反転)
   const maxGap = sortedGaps[0];
