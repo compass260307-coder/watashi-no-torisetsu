@@ -34,6 +34,9 @@ import {
   characterImagePath,
 } from "@/lib/sixteen-types";
 import { selfResultContent } from "@/lib/self-result-content";
+// 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import { classifyThirtyTwoType, selfContentFor } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
@@ -177,8 +180,12 @@ export default async function MePage({ params }: PageProps) {
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
-  const sixteenType = sixteenTypes[sixteenTypeId];
-  const sections = selfResultContent[sixteenTypeId];
+  const sixteenType = sixteenTypes[sixteenTypeId]; // 型名は16のまま (解釈A)
+  // ① 自己診断本文のみフラグで32化。on=32実データ(N高低で出し分け)→base16フォールバック /
+  // off=従来16。型名・画像は sixteenTypeId のままで変更しない。
+  const sections = isThirtyTwoEnabled()
+    ? selfContentFor(classifyThirtyTwoType(stored))
+    : selfResultContent[sixteenTypeId];
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
