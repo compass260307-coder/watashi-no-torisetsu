@@ -49,6 +49,10 @@ import {
   perceivedManualFor,
   perceivedContentFor,
   perceivedTipsKeyFor,
+  thirtyTwoName,
+  thirtyTwoEssence,
+  thirtyTwoImagePath,
+  thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { CharacterHero } from "@/components/result/CharacterHero";
@@ -187,10 +191,21 @@ export default async function EvaluationSentPage({ params }: PageProps) {
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  const perceivedTypeName = perceivedType16.name; // 型名・画像は16のまま (解釈A)
-  // フラグ on のときのみ本文を32化。off=従来16で挙動不変。
+  // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16で挙動不変。
   const flag32 = isThirtyTwoEnabled();
   const perceived32Id = classifyThirtyTwoType(otherScores);
+  const perceivedTypeName = flag32
+    ? thirtyTwoName(perceived32Id)
+    : perceivedType16.name;
+  const dispEssence = flag32
+    ? thirtyTwoEssence(perceived32Id)
+    : perceivedType16.essence;
+  const dispImage = flag32
+    ? thirtyTwoImagePath(perceived32Id)
+    : characterImagePath(perceivedTypeId);
+  const dispDesc = flag32
+    ? thirtyTwoOneLiner(perceived32Id)
+    : perceivedType16.oneLiner;
 
   // ① 本文 (主語省略のため反転はほぼ no-op) / ④ 2段落目 (付き合い方)
   const [lookRaw, tipsRaw] = (
@@ -283,11 +298,11 @@ export default async function EvaluationSentPage({ params }: PageProps) {
 
         {/* ===== ヒーロー (知覚タイプのキャラ、本人ページと同一構成) ===== */}
         <CharacterHero
-          imageSrc={characterImagePath(perceivedTypeId)}
+          imageSrc={dispImage}
           alt={perceivedTypeName}
-          essence={perceivedType16.essence}
+          essence={dispEssence}
           name={perceivedTypeName}
-          description={perceivedType16.oneLiner}
+          description={dispDesc}
         />
 
         {/* ===== ① アナタから見た のすけ (相互理解度% + 本文) ===== */}

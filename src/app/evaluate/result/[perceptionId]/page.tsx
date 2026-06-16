@@ -71,13 +71,17 @@ import {
 } from "@/lib/perception-relation-content";
 import { getPerceivedContent } from "@/lib/mutual-result-content";
 import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
-// 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま=解釈A)
+// 32タイプ (フラグ on 時。解釈B=本文・型名・画像・essence を32化)
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import {
   classifyThirtyTwoType,
   perceivedManualFor,
   perceivedContentFor,
   perceivedTipsKeyFor,
+  thirtyTwoName,
+  thirtyTwoEssence,
+  thirtyTwoImagePath,
+  thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
 // 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
@@ -236,11 +240,22 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   // (owner16タイプは旧⑦撤去で未使用になったが、生成ロジックは mutual-result-content.ts に温存)
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  // B から見た A のタイプ (16タイプ名)、ヒーローで表示。型名・画像は16のまま (解釈A)。
-  const perceivedTypeName = perceivedType16.name;
-  // フラグ on のときのみ本文を32化 (N高低で出し分け)。off=従来16で挙動不変。
+  // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16で挙動不変。
   const flag32 = isThirtyTwoEnabled();
   const perceived32Id = classifyThirtyTwoType(otherScores);
+  // ヒーロー表示用 (型名/essence/画像/説明)。off=16, on=32キャラ。
+  const perceivedTypeName = flag32
+    ? thirtyTwoName(perceived32Id)
+    : perceivedType16.name;
+  const dispEssence = flag32
+    ? thirtyTwoEssence(perceived32Id)
+    : perceivedType16.essence;
+  const dispImage = flag32
+    ? thirtyTwoImagePath(perceived32Id)
+    : characterImagePath(perceivedTypeId);
+  const dispDesc = flag32
+    ? thirtyTwoOneLiner(perceived32Id)
+    : perceivedType16.oneLiner;
   // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
   //   1 段落目 = ① 「どう見えているか」の描写
   //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)
@@ -336,11 +351,11 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー = /me と同一構成) =====
             eyebrow は上部タグと重複するため撤去 (essence + 型名 + 説明文のみ)。 */}
         <CharacterHero
-          imageSrc={characterImagePath(perceivedTypeId)}
+          imageSrc={dispImage}
           alt={perceivedTypeName}
-          essence={perceivedType16.essence}
+          essence={dispEssence}
           name={perceivedTypeName}
-          description={perceivedType16.oneLiner}
+          description={dispDesc}
         />
 
         {/* ===== ① ◯◯さんから見たアナタ (最初のコンテンツ・GAP の上) =====

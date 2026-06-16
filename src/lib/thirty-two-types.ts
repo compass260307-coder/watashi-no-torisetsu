@@ -144,6 +144,12 @@ import {
   PERCEIVED_TIPS_KEY32,
 } from "./thirty-two-content/perceived-manual-32";
 import {
+  thirtyTwoCharacter,
+  THIRTY_TWO_GROUP_COLOR,
+  THIRTY_TWO_ASSET_VERSION,
+  type ThirtyTwoGroup,
+} from "./thirty-two-content/character-32";
+import {
   selfResultContent,
   type SelfSection,
 } from "./self-result-content";
@@ -183,6 +189,41 @@ export function perceivedManualFor(id: ThirtyTwoTypeId): string {
 /** ② vividPink 強調キーフレーズ: 32 実データ → base16 フォールバック */
 export function perceivedTipsKeyFor(id: ThirtyTwoTypeId): string {
   return PERCEIVED_TIPS_KEY32[id] ?? PERCEIVED_TIPS_KEY[baseIdOf(id)];
+}
+
+// =====================================================================
+// 解釈B: 32キャラの 名前 / essence / 画像(v3) / グループ色 (フラグ on 表示用)
+// 表示パスは flag on のとき下記 resolver を使い、off は従来16 (sixteenTypes / v2)。
+// =====================================================================
+
+/** 32キャラの正式名 (例: きらめきインコ) */
+export function thirtyTwoName(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].name;
+}
+
+/** 32キャラの essence (例: 太陽の社交家) */
+export function thirtyTwoEssence(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].essence;
+}
+
+/** 32キャラの oneLiner (一文紹介。ヒーロー/ShareCard の説明文) */
+export function thirtyTwoOneLiner(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].oneLiner;
+}
+
+/** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */
+export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
+  return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.png`;
+}
+
+/** 32キャラの生息地グループ */
+export function thirtyTwoGroup(id: ThirtyTwoTypeId): ThirtyTwoGroup {
+  return thirtyTwoCharacter[id].group;
+}
+
+/** 32キャラのグループ色 (例: 空=#A8D88A) */
+export function thirtyTwoColor(id: ThirtyTwoTypeId): string {
+  return THIRTY_TWO_GROUP_COLOR[thirtyTwoCharacter[id].group];
 }
 
 /**

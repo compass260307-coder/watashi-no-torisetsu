@@ -41,6 +41,12 @@ import {
   classifySixteenType,
   characterImagePath,
 } from "@/lib/sixteen-types";
+// 解釈B: フラグ on でランキングのキャラ画像を32化 (off=従来16)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoImagePath,
+} from "@/lib/thirty-two-types";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
 import { RankMedalBadge } from "@/components/result/RankMedalBadge";
 import { HamburgerMenu } from "@/components/HamburgerMenu";
@@ -150,8 +156,10 @@ export default async function FriendEvaluationPage() {
         id: p.id as string,
         perceiverName: ((p.perceiver_name as string) ?? "").trim() || "友達",
         understanding,
-        // 知覚タイプ(16)のキャラ画像 = 友達の目に映ったアナタの動物
-        imageSrc: characterImagePath(classifySixteenType(otherScores)),
+        // 知覚タイプのキャラ画像 = 友達の目に映ったアナタの動物。on=32 / off=従来16。
+        imageSrc: isThirtyTwoEnabled()
+          ? thirtyTwoImagePath(classifyThirtyTwoType(otherScores))
+          : characterImagePath(classifySixteenType(otherScores)),
       };
     })
     .sort((a, b) => b.understanding - a.understanding);

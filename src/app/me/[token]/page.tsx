@@ -36,7 +36,14 @@ import {
 import { selfResultContent } from "@/lib/self-result-content";
 // 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま)
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
-import { classifyThirtyTwoType, selfContentFor } from "@/lib/thirty-two-types";
+import {
+  classifyThirtyTwoType,
+  selfContentFor,
+  thirtyTwoName,
+  thirtyTwoEssence,
+  thirtyTwoImagePath,
+  thirtyTwoOneLiner,
+} from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
@@ -180,12 +187,18 @@ export default async function MePage({ params }: PageProps) {
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
-  const sixteenType = sixteenTypes[sixteenTypeId]; // 型名は16のまま (解釈A)
-  // ① 自己診断本文のみフラグで32化。on=32実データ(N高低で出し分け)→base16フォールバック /
-  // off=従来16。型名・画像は sixteenTypeId のままで変更しない。
-  const sections = isThirtyTwoEnabled()
-    ? selfContentFor(classifyThirtyTwoType(stored))
-    : selfResultContent[sixteenTypeId];
+  const sixteenType = sixteenTypes[sixteenTypeId];
+  // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
+  const flag32 = isThirtyTwoEnabled();
+  const t32 = classifyThirtyTwoType(stored);
+  const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
+  const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
+  const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
+  const dispImage = flag32
+    ? thirtyTwoImagePath(t32)
+    : characterImagePath(sixteenTypeId);
+  // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
+  const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
@@ -232,22 +245,22 @@ export default async function MePage({ params }: PageProps) {
             animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
             「{owner}のトリセツ」黄ピル(上のステッカー)は維持。 */}
         <CharacterHero
-          imageSrc={characterImagePath(sixteenTypeId)}
-          alt={sixteenType.name}
-          essence={sixteenType.essence}
-          name={sixteenType.name}
-          description={sixteenType.oneLiner}
+          imageSrc={dispImage}
+          alt={dispName}
+          essence={dispEssence}
+          name={dispName}
+          description={dispDesc}
         />
 
         {/* ===== Koi 配置: ヒーロー直下のシェア導線 (SNS共有 + 画像保存 + 相互理解度文言) =====
             旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
         <ResultActions
-          typeName={sixteenType.name}
+          typeName={dispName}
           shareUrl={inviteUrl}
           ownerName={displayName}
-          essence={sixteenType.essence}
-          description={sixteenType.oneLiner}
-          imageSrc={characterImagePath(sixteenTypeId)}
+          essence={dispEssence}
+          description={dispDesc}
+          imageSrc={dispImage}
           shareCode={shareCode}
         />
 
