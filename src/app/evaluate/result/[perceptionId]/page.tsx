@@ -81,6 +81,7 @@ import {
   thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoImagePath,
+  thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
 // 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
@@ -252,7 +253,9 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const dispImage = flag32
     ? thirtyTwoImagePath(perceived32Id)
     : characterImagePath(perceivedTypeId);
-  const dispDesc = flag32 ? "" : perceivedType16.oneLiner; // 32は oneLiner なし
+  const dispDesc = flag32
+    ? thirtyTwoOneLiner(perceived32Id)
+    : perceivedType16.oneLiner;
   // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
   //   1 段落目 = ① 「どう見えているか」の描写
   //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)

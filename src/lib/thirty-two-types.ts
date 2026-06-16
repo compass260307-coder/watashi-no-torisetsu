@@ -206,6 +206,11 @@ export function thirtyTwoEssence(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].essence;
 }
 
+/** 32キャラの oneLiner (一文紹介。ヒーロー/ShareCard の説明文) */
+export function thirtyTwoOneLiner(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].oneLiner;
+}
+
 /** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */
 export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
   return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.png`;

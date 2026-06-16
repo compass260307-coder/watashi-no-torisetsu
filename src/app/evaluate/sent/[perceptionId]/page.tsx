@@ -52,6 +52,7 @@ import {
   thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoImagePath,
+  thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
 import { CharacterHero } from "@/components/result/CharacterHero";
@@ -202,7 +203,9 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   const dispImage = flag32
     ? thirtyTwoImagePath(perceived32Id)
     : characterImagePath(perceivedTypeId);
-  const dispDesc = flag32 ? "" : perceivedType16.oneLiner; // 32は oneLiner なし
+  const dispDesc = flag32
+    ? thirtyTwoOneLiner(perceived32Id)
+    : perceivedType16.oneLiner;
 
   // ① 本文 (主語省略のため反転はほぼ no-op) / ④ 2段落目 (付き合い方)
   const [lookRaw, tipsRaw] = (

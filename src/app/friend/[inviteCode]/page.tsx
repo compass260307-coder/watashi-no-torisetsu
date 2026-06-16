@@ -55,6 +55,7 @@ import {
   thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoImagePath,
+  thirtyTwoOneLiner,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
@@ -417,7 +418,7 @@ function IntroScreen({
               alt={c32 ? thirtyTwoName(c32) : type16.name}
               essence={c32 ? thirtyTwoEssence(c32) : type16.essence}
               name={c32 ? thirtyTwoName(c32) : type16.name}
-              description={c32 ? "" : type16.oneLiner}
+              description={c32 ? thirtyTwoOneLiner(c32) : type16.oneLiner}
             />
 
             {/* ===== 3 セクション (取扱説明書 / 取扱注意ポイント / 相性の良いお相手) = /me と同じ ===== */}

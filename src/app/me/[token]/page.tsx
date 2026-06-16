@@ -42,6 +42,7 @@ import {
   thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoImagePath,
+  thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
@@ -196,8 +197,8 @@ export default async function MePage({ params }: PageProps) {
   const dispImage = flag32
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
-  // 32マスターに oneLiner(説明文) は無いため 32時は空 (Hero は任意なので非表示)。
-  const dispDesc = flag32 ? "" : sixteenType.oneLiner;
+  // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
+  const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const diagnosedAt = formatDate(user.created_at as string);
