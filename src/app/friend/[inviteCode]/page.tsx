@@ -50,7 +50,13 @@ import {
 import { selfResultContent } from "@/lib/self-result-content";
 // 32タイプ本文 (フラグ on 時のみ・①本文だけ32化。型名/画像は16のまま=解釈A)
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
-import { selfContentFor, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import {
+  selfContentFor,
+  thirtyTwoName,
+  thirtyTwoEssence,
+  thirtyTwoImagePath,
+  type ThirtyTwoTypeId,
+} from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
 
 // =========================================================================
@@ -328,9 +334,11 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       <SubmittingScreen
         subjectLabel={subjectLabel}
         imageSrc={
-          owner.sixteenTypeId
-            ? characterImagePath(owner.sixteenTypeId)
-            : "/mascot-pair.png"
+          isThirtyTwoEnabled() && owner.thirtyTwoTypeId
+            ? thirtyTwoImagePath(owner.thirtyTwoTypeId)
+            : owner.sixteenTypeId
+              ? characterImagePath(owner.sixteenTypeId)
+              : "/mascot-pair.png"
         }
       />
     );
@@ -363,8 +371,10 @@ function IntroScreen({
   ownerName: string;
   onStart: () => void;
 }) {
-  const typeId = owner.sixteenTypeId; // 型名・画像は16のまま (解釈A)
+  const typeId = owner.sixteenTypeId;
   const type16 = typeId ? sixteenTypes[typeId] : null;
+  // 解釈B: フラグ on で型名・essence・画像を32化 (off=従来16)。
+  const c32 = isThirtyTwoEnabled() ? owner.thirtyTwoTypeId : null;
   // ①本文のみフラグで32化。on=32実データ(N高低)→base16フォールバック / off=従来16。
   const sections =
     isThirtyTwoEnabled() && owner.thirtyTwoTypeId
@@ -403,11 +413,11 @@ function IntroScreen({
           <>
             {/* ===== ヒーロー (owner のキャラ + essence + 型名) = /me と同じ ===== */}
             <CharacterHero
-              imageSrc={characterImagePath(typeId!)}
-              alt={type16.name}
-              essence={type16.essence}
-              name={type16.name}
-              description={type16.oneLiner}
+              imageSrc={c32 ? thirtyTwoImagePath(c32) : characterImagePath(typeId!)}
+              alt={c32 ? thirtyTwoName(c32) : type16.name}
+              essence={c32 ? thirtyTwoEssence(c32) : type16.essence}
+              name={c32 ? thirtyTwoName(c32) : type16.name}
+              description={c32 ? "" : type16.oneLiner}
             />
 
             {/* ===== 3 セクション (取扱説明書 / 取扱注意ポイント / 相性の良いお相手) = /me と同じ ===== */}

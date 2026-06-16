@@ -21,6 +21,14 @@ import {
   sixteenTypes,
   characterImagePath,
 } from "@/lib/sixteen-types";
+// 解釈B: フラグ on で型名・画像・色を32化 (off=従来16)
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoName,
+  thirtyTwoImagePath,
+  thirtyTwoColor,
+} from "@/lib/thirty-two-types";
 import type {
   BigFiveDimension,
   CModifier,
@@ -79,17 +87,19 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
       stored.modifierLabel ?? getModifierLabel(cModifier, nModifier);
   }
 
+  const id16 = classifySixteenType(stored);
+  const t32 = isThirtyTwoEnabled() ? classifyThirtyTwoType(stored) : null;
   return {
     userId: row.id,
     ownerToken: row.owner_token,
     typeId,
-    // Day 12-D: 自己タイプ名は 16 タイプ。色は 8 タイプ master を流用 (色は型名ではない)
-    typeName: sixteenTypes[classifySixteenType(stored)].name,
-    typeColor: typeMeta?.color ?? "#888888",
+    // 型名・画像・色: on=32キャラ / off=従来16 (+8タイプ色)
+    typeName: t32 ? thirtyTwoName(t32) : sixteenTypes[id16].name,
+    typeColor: t32 ? thirtyTwoColor(t32) : (typeMeta?.color ?? "#888888"),
     fullCode,
     modifierLabel,
     diagnosedAt: row.created_at,
-    imageSrc: characterImagePath(classifySixteenType(stored)),
+    imageSrc: t32 ? thirtyTwoImagePath(t32) : characterImagePath(id16),
   };
 }
 
@@ -145,27 +155,23 @@ export async function GET(request: NextRequest) {
     } else {
       perceptions = (perceptionRows ?? []).map((r) => {
         const typeId = r.perceived_type_id as TorisetsuTypeId;
+        const pScores = (r.perceived_scores ?? {}) as Partial<
+          Record<BigFiveDimension, number>
+        >;
+        const pId16 = classifySixteenType(pScores);
+        const pT32 = isThirtyTwoEnabled() ? classifyThirtyTwoType(pScores) : null;
         return {
           id: r.id as string,
           targetUserId: r.target_user_id as string,
           perceiverName: r.perceiver_name as string,
           perceivedTypeId: typeId,
-          // Day 12-D: 知覚タイプ名は 16 タイプ (perceived_scores から派生)
-          perceivedTypeName:
-            sixteenTypes[
-              classifySixteenType(
-                (r.perceived_scores ?? {}) as Partial<
-                  Record<BigFiveDimension, number>
-                >,
-              )
-            ].name,
-          perceivedImageSrc: characterImagePath(
-            classifySixteenType(
-              (r.perceived_scores ?? {}) as Partial<
-                Record<BigFiveDimension, number>
-              >,
-            ),
-          ),
+          // 知覚タイプ名/画像: on=32キャラ / off=従来16 (perceived_scores から派生)
+          perceivedTypeName: pT32
+            ? thirtyTwoName(pT32)
+            : sixteenTypes[pId16].name,
+          perceivedImageSrc: pT32
+            ? thirtyTwoImagePath(pT32)
+            : characterImagePath(pId16),
           perceivedFullCode: r.perceived_full_code as string,
           perceivedModifierLabel: r.perceived_modifier_label as string,
           perceivedModifierParagraph: r.perceived_modifier_paragraph as string,
