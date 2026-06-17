@@ -1,0 +1,50 @@
+// ① ファーストビュー (改修): 大キャッチ(テキスト) + サブ + マスコット + FV内CTA + バッジ。
+// logo-hero.png は廃止しテキストキャッチを主役に (ヘッダーの logo.png は page 側で維持)。
+import Image from "next/image";
+import { CtaButton, ReassureBadge } from "./CtaButton";
+
+export function HeroSection() {
+  return (
+    <section className="text-center pt-2">
+      {/* 大キャッチ */}
+      <h1 className="text-[#3A2D6B] font-black leading-snug text-[26px] mt-3 mb-3">
+        友達が知ってる
+        <br />
+        <span className="text-[#FE3C72]">&quot;ホントのアナタ&quot;</span>、
+        <br />
+        見たくない?
+      </h1>
+
+      {/* サブコピー */}
+      <p className="text-[#3A2D6B]/85 font-bold text-sm leading-relaxed mb-4">
+        自己診断 × 友達評価 × AI で、
+        <br />
+        アナタも気づかなかったアナタが見えてくる
+      </p>
+
+      {/* キービジュアル (マスコット維持。アーチ背景でポップに) */}
+      <div className="relative my-4 flex justify-center">
+        <div
+          aria-hidden="true"
+          className="absolute left-1/2 -translate-x-1/2 top-2 w-[260px] h-[200px] bg-gradient-to-b from-pink-200/40 to-blue-200/40 rounded-t-full"
+        />
+        <Image
+          src="/mascot-pair.png"
+          alt="ワタシのトリセツのマスコット"
+          width={300}
+          height={300}
+          priority
+          className="relative z-10 w-full max-w-[280px] h-auto"
+        />
+      </div>
+
+      {/* FV内CTA + バッジ */}
+      <div className="mb-2">
+        <CtaButton href="/diagnosis" label="無料で診断する →" />
+      </div>
+      <div className="flex justify-center">
+        <ReassureBadge />
+      </div>
+    </section>
+  );
+}
