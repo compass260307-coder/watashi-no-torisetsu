@@ -10,7 +10,7 @@ export function HeroSection() {
       <h1 className="flex justify-center mt-3 mb-3">
         <Image
           src="/fv-catch.webp"
-          alt={`友達が知ってる "ホントのアナタ"、見たくない?`}
+          alt="友達しか知らない「ホントのアナタ」見たくない？"
           width={1113}
           height={604}
           priority
