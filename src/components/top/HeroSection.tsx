@@ -6,13 +6,16 @@ import { CtaButton, ReassureBadge } from "./CtaButton";
 export function HeroSection() {
   return (
     <section className="text-center pt-2">
-      {/* 大キャッチ */}
-      <h1 className="text-[#3A2D6B] font-black leading-snug text-[26px] mt-3 mb-3">
-        友達が知ってる
-        <br />
-        <span className="text-[#FE3C72]">&quot;ホントのアナタ&quot;</span>、
-        <br />
-        見たくない?
+      {/* 大キャッチ (透過 webp 画像)。命名/参照は /logo.png と同じ public 直下の絶対パス。 */}
+      <h1 className="flex justify-center mt-3 mb-3">
+        <Image
+          src="/fv-catch.webp"
+          alt={`友達が知ってる "ホントのアナタ"、見たくない?`}
+          width={1113}
+          height={604}
+          priority
+          className="w-full max-w-[380px] h-auto"
+        />
       </h1>
 
       {/* サブコピー */}
