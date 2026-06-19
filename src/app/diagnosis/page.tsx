@@ -20,6 +20,16 @@ const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
 const TOTAL_QUESTIONS = QUESTIONS_PER_PAGE * TOTAL_PAGES;
 const STORAGE_KEY = "torisetsu_answers_v2";
+// 質問セットのバージョン (質問数で構成を識別)。質問構成が変わると保存を破棄して最初から。
+// ※ 質問数が同じまま構成だけ変えた場合は、この末尾の数字を手動で上げて旧保存を弾く。
+const QUESTION_SET_VERSION = `q${questions.length}-1`;
+
+// localStorage 保存フォーマット (回答 + 現在ページ + バージョン)。
+type SavedProgress = {
+  v: string;
+  answers: Record<number, AnswerValue>;
+  page: number;
+};
 // Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
 const NICKNAME_KEY = "torisetsu_nickname_v2";
 const NICKNAME_MAX = 20;
@@ -52,6 +62,11 @@ function DiagnosisContent() {
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  // 途中保存の再開候補 (null = 保存なし / すでに選択済み)。選択UI表示中だけ非 null。
+  const [pendingResume, setPendingResume] = useState<{
+    answers: Record<number, AnswerValue>;
+    page: number;
+  } | null>(null);
   // D-4: 再診断確認モーダル
   const [showRediagnoseModal, setShowRediagnoseModal] = useState(false);
 
@@ -63,34 +78,51 @@ function DiagnosisContent() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as Record<number, AnswerValue>;
-        // 不正な保存値は弾く
-        const valid: Record<number, AnswerValue> = {};
-        for (const [k, v] of Object.entries(parsed)) {
-          const id = Number(k);
-          if (
-            Number.isInteger(id) &&
-            id >= 1 &&
-            id <= TOTAL_QUESTIONS &&
-            typeof v === "number" &&
-            v >= 1 &&
-            v <= 7
-          ) {
-            valid[id] = v as AnswerValue;
+        const parsed = JSON.parse(saved) as Partial<SavedProgress>;
+        // #4 バージョン整合: 旧フォーマット / 構成不一致は破棄して最初から
+        if (!parsed || parsed.v !== QUESTION_SET_VERSION) {
+          localStorage.removeItem(STORAGE_KEY);
+        } else {
+          // 不正な保存値は弾く
+          const valid: Record<number, AnswerValue> = {};
+          for (const [k, v] of Object.entries(parsed.answers ?? {})) {
+            const id = Number(k);
+            if (
+              Number.isInteger(id) &&
+              id >= 1 &&
+              id <= TOTAL_QUESTIONS &&
+              typeof v === "number" &&
+              v >= 1 &&
+              v <= 7
+            ) {
+              valid[id] = v as AnswerValue;
+            }
           }
-        }
-        setAnswers(valid);
-        // 既に途中まで回答済みなら、最初の未回答が含まれるページに飛ばす
-        const firstUnanswered = questions.find((q) => valid[q.id] === undefined);
-        if (firstUnanswered) {
-          const pageIdx = Math.floor(
-            (firstUnanswered.id - 1) / QUESTIONS_PER_PAGE,
-          );
-          setCurrentPage(pageIdx);
+          if (Object.keys(valid).length > 0) {
+            // 再開ページ: 保存ページが有効ならそれ、無効なら最初の未回答ページ
+            let page = parsed.page;
+            if (
+              typeof page !== "number" ||
+              !Number.isInteger(page) ||
+              page < 0 ||
+              page > TOTAL_PAGES - 1
+            ) {
+              const firstUnanswered = questions.find(
+                (q) => valid[q.id] === undefined,
+              );
+              page = firstUnanswered
+                ? Math.floor((firstUnanswered.id - 1) / QUESTIONS_PER_PAGE)
+                : TOTAL_PAGES - 1;
+            }
+            // #2 自動復元はせず、選択UI (続きから / 最初から) を出すため候補だけ保持
+            setPendingResume({ answers: valid, page });
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+          }
         }
       }
     } catch {
-      // 破損データは無視
+      // 破損データは無視 (通常どおり最初から)
     }
     // Phase 3-β D-4: ?source=line + 過去診断結果 (torisetsu_result) があれば再診断確認モーダル表示
     if (isFromLine) {
@@ -112,16 +144,21 @@ function DiagnosisContent() {
   }, [isFromLine]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // 回答変更時に自動保存
+  // #1 自動保存: 回答 or ページ変更のたびに、回答内容 + 現在ページ + バージョンを保存
   useEffect(() => {
     if (!hydrated) return;
     if (Object.keys(answers).length === 0) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+      const payload: SavedProgress = {
+        v: QUESTION_SET_VERSION,
+        answers,
+        page: currentPage,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // quota など失敗してもクリティカルではない
     }
-  }, [answers, hydrated]);
+  }, [answers, currentPage, hydrated]);
 
   // 起動 track (1 回のみ)
   useEffect(() => {
@@ -163,6 +200,28 @@ function DiagnosisContent() {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  };
+
+  // #2 「続きから」: 保存した回答と進捗を復元し、質問ステップへ
+  const handleResumeContinue = () => {
+    if (!pendingResume) return;
+    setAnswers(pendingResume.answers);
+    setCurrentPage(pendingResume.page);
+    setStep("questions");
+    setPendingResume(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  // #2 「最初から」: 保存を削除して新規スタート (basic-info のまま)
+  const handleResumeFresh = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // 無視
+    }
+    setPendingResume(null);
   };
 
   const handleAnswer = (questionId: number, value: AnswerValue) => {
@@ -300,6 +359,14 @@ function DiagnosisContent() {
             onCancel={cancelRediagnose}
           />
         )}
+        {pendingResume && !showRediagnoseModal && (
+          <ResumeChoiceModal
+            answeredCount={Object.keys(pendingResume.answers).length}
+            totalQuestions={TOTAL_QUESTIONS}
+            onContinue={handleResumeContinue}
+            onFresh={handleResumeFresh}
+          />
+        )}
         {/* Polish-B.2: 進捗インジケータは右上に極小表示 (basic-info はミニマル) */}
         <div className="absolute top-3 right-4 z-10">
           <span
@@ -370,6 +437,14 @@ function DiagnosisContent() {
           onCancel={cancelRediagnose}
         />
       )}
+      {pendingResume && !showRediagnoseModal && (
+        <ResumeChoiceModal
+          answeredCount={Object.keys(pendingResume.answers).length}
+          totalQuestions={TOTAL_QUESTIONS}
+          onContinue={handleResumeContinue}
+          onFresh={handleResumeFresh}
+        />
+      )}
       <ProgressBar
         currentQuestion={answeredCount}
         totalQuestions={TOTAL_QUESTIONS}
@@ -429,6 +504,65 @@ function DiagnosisContent() {
           </button>
         )}
       </StickyCtaFooter>
+    </div>
+  );
+}
+
+// =========================================================================
+// 途中保存の再開選択モーダル (前回の続きから / 最初から)
+// 保存があるときだけ表示。続きから = 復元、最初から = 保存削除して新規。
+// =========================================================================
+function ResumeChoiceModal({
+  answeredCount,
+  totalQuestions,
+  onContinue,
+  onFresh,
+}: {
+  answeredCount: number;
+  totalQuestions: number;
+  onContinue: () => void;
+  onFresh: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="resume-title"
+    >
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
+        <h2
+          id="resume-title"
+          className="text-lg font-extrabold text-center text-[#3A2D6B] mb-3"
+        >
+          🔖 前回の続きから?
+        </h2>
+        <p className="text-sm text-[#3A2D6B] leading-relaxed text-center mb-6">
+          前回の回答が残っています (
+          <span className="font-bold text-[#FE3C72]">
+            {answeredCount} / {totalQuestions} 問
+          </span>
+          )。
+          <br />
+          続きから再開できます。
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onContinue}
+            className="w-full rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98]"
+          >
+            前回の続きから
+          </button>
+          <button
+            type="button"
+            onClick={onFresh}
+            className="text-xs text-muted hover:text-foreground underline transition-colors"
+          >
+            最初からやり直す
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
