@@ -48,6 +48,7 @@ import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
+import { CompatibleTypes } from "@/components/result/CompatibleTypes";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
@@ -292,44 +293,51 @@ export default async function MePage({ params }: PageProps) {
           description={dispDesc}
         />
 
-        {/* ===== 取扱説明書 等 3 セクション (キャラ直後へ移動: self-result-content / thirty-two-content) =====
-            取扱説明書 / 取扱注意ポイント / 相性の良いお相手。各セクション = 2 段落 (\n\n 区切り)。
-            診断日のみ「取扱説明書」セクション末尾に表示。バッジは 🎀 でやわらかいトーンに統一。 */}
-        {sections.map((sec, idx) => (
-          <section key={sec.title} className="mb-8">
-            {/* セクションヘッダー (🎀 バッジ + タイトル) */}
-            <div className="flex items-center gap-3 mb-4">
-              <span
-                aria-hidden="true"
-                className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
-              >
-                🎀
-              </span>
-              <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                {sec.title}
-              </h2>
-            </div>
-
-            {/* 本文カード (2 段落) */}
-            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-              {sec.body.split("\n\n").map((para, i) => (
-                <p
-                  key={i}
-                  className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
+        {/* ===== 取説 (人物像 + 愛されるクセ) を各1段落に圧縮 =====
+            役割分担: 取説=「人柄・共有用の軽い紹介」、深掘り=「分析的・場面別」。
+            #3 取扱説明書 → 人物像の短い紹介に限定 (能力分析=場を動かす/巻き込み等は深掘り「強み」へ)。
+            #2 取扱注意 → "愛されるクセ" の軽い1段落に圧縮 (具体的対処=ひとりの時間/弱さを見せる相手選び
+            等は深掘り 弱み→成長 に集約)。
+            実装: 各 body の段落1のみ表示。段落2 (重複していた能力分析 / ひとりの時間 等) は非表示にし、
+            「ひとりの時間が必要」の三重 (取説/弱み/成長) を深掘り側 (弱み=課題 → 成長=対処) に集約する。
+            相性 (3つ目のセクション) は下の相性キャラ表示に置き換えるため slice(0, 2)。 */}
+        {sections.slice(0, 2).map((sec, idx) => {
+          const firstPara = sec.body.split("\n\n")[0];
+          return (
+            <section key={sec.title} className="mb-8">
+              {/* セクションヘッダー (🎀 バッジ + タイトル) */}
+              <div className="flex items-center gap-3 mb-4">
+                <span
+                  aria-hidden="true"
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
                 >
-                  {para}
-                </p>
-              ))}
+                  🎀
+                </span>
+                <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                  {sec.title}
+                </h2>
+              </div>
 
-              {/* 取扱説明書 (最初のセクション) の末尾に診断日 (小さく) */}
-              {idx === 0 && diagnosedAt && (
-                <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
-                  診断日: {diagnosedAt}
+              {/* 本文カード (段落1のみ) */}
+              <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
+                  {firstPara}
                 </p>
-              )}
-            </div>
-          </section>
-        ))}
+
+                {/* 取扱説明書 (最初のセクション) の末尾に診断日 (小さく) */}
+                {idx === 0 && diagnosedAt && (
+                  <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
+                    診断日: {diagnosedAt}
+                  </p>
+                )}
+              </div>
+            </section>
+          );
+        })}
+
+        {/* ===== 相性キャラ 2 体 (取説「相性の良いお相手」文章の置き換え) =====
+            1位=BEST_PARTNER_CONTENT / 2位=SECOND_PARTNER(暫定) を 32 キャラ(v3)で表示。 */}
+        <CompatibleTypes typeId={deepDiveTypeId} />
 
         {/* ===== Big Five 5 軸の発散バー (取扱説明書の下、深掘りの上) =====
             スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
