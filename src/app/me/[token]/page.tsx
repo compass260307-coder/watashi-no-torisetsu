@@ -322,6 +322,19 @@ export default async function MePage({ params }: PageProps) {
           description={dispDesc}
         />
 
+        {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
+            画像シェアボタンを含む ResultActions をキャラ(CharacterHero)の真下に配置。 */}
+        <ResultActions
+          typeName={dispName}
+          shareUrl={inviteUrl}
+          ownerName={displayName}
+          essence={dispEssence}
+          description={dispDesc}
+          imageSrc={dispImage}
+          shareCode={shareCode}
+        />
+        <SharePromo className="mb-8" />
+
         {/* ===== 取説 (人物像 + 愛されるクセ) を各1段落に圧縮 =====
             役割分担: 取説=「人柄・共有用の軽い紹介」、深掘り=「分析的・場面別」。
             #3 取扱説明書 → 人物像の短い紹介に限定 (能力分析=場を動かす/巻き込み等は深掘り「強み」へ)。
@@ -393,17 +406,6 @@ export default async function MePage({ params }: PageProps) {
           inviteUrl={inviteUrl}
         />
 
-        {/* ===== シェア導線 (深掘りの下へ移動: SNS共有 + 画像保存 + 相互理解度文言) ===== */}
-        <ResultActions
-          typeName={dispName}
-          shareUrl={inviteUrl}
-          ownerName={displayName}
-          essence={dispEssence}
-          description={dispDesc}
-          imageSrc={dispImage}
-          shareCode={shareCode}
-        />
-        <SharePromo className="mb-8" />
 
         {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
             Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。
