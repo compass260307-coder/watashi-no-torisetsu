@@ -390,6 +390,7 @@ export default async function MePage({ params }: PageProps) {
           friendAvgScores={friendAvgScores}
           friendNames={friendNames}
           friendMessages={friendMessages}
+          inviteUrl={inviteUrl}
         />
 
         {/* ===== シェア導線 (深掘りの下へ移動: SNS共有 + 画像保存 + 相互理解度文言) ===== */}

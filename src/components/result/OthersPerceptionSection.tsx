@@ -12,6 +12,7 @@
 
 import { LockedBlur } from "./LockedBlur";
 import { InlineLockCard } from "./InlineLockCard";
+import { LockedInviteShare } from "./LockedInviteShare";
 import { BigFiveDivergingBars } from "./BigFiveDivergingBars";
 import {
   buildDimensionGaps,
@@ -35,6 +36,8 @@ interface OthersPerceptionSectionProps {
   friendNames?: string[];
   /** ③ 友達からのメッセージ (記名)。空メッセージは含めない。 */
   friendMessages?: { name: string; message: string }[];
+  /** 友達評価への招待 URL (ロック中の招待導線 QR/共有に使用)。 */
+  inviteUrl: string;
   className?: string;
 }
 
@@ -65,6 +68,7 @@ export function OthersPerceptionSection({
   friendAvgScores,
   friendNames = [],
   friendMessages = [],
+  inviteUrl,
   className = "",
 }: OthersPerceptionSectionProps) {
   const unlocked = friendCount >= threshold && friendAvgScores !== null;
@@ -96,6 +100,7 @@ export function OthersPerceptionSection({
           friendCount={friendCount}
           threshold={threshold}
           isOwner={isOwner}
+          inviteUrl={inviteUrl}
         />
       )}
     </section>
@@ -109,10 +114,12 @@ function LockedContent({
   friendCount,
   threshold,
   isOwner,
+  inviteUrl,
 }: {
   friendCount: number;
   threshold: number;
   isOwner: boolean;
+  inviteUrl: string;
 }) {
   const remaining = Math.max(0, threshold - friendCount);
   const progressPct = Math.min(100, Math.round((friendCount / threshold) * 100));
@@ -161,24 +168,18 @@ function LockedContent({
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <p className="text-[#3A2D6B]/70 font-bold text-xs mb-4 tabular-nums">
+        <p className="text-[#3A2D6B]/70 font-bold text-xs tabular-nums">
           {friendCount} / {threshold} 人
         </p>
-
-        {isOwner ? (
-          // 既存 FriendGapInvite (QR招待) へスクロール
-          <a
-            href="#friend-invite"
-            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
-          >
-            友達に評価してもらう →
-          </a>
-        ) : (
-          <p className="text-[#3A2D6B]/70 font-bold text-sm leading-relaxed">
+        {!isOwner && (
+          <p className="text-[#3A2D6B]/70 font-bold text-xs leading-relaxed mt-3">
             友達の評価が {threshold} 人集まると公開されます。
           </p>
         )}
       </div>
+
+      {/* 友達招待導線 (QR + LINE + インスタ=コピー)。課金導線は一切なし。 */}
+      <LockedInviteShare inviteUrl={inviteUrl} />
     </div>
   );
 }
