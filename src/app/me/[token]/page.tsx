@@ -46,11 +46,12 @@ import {
 } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
+import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import { generateShareCode } from "@/lib/share-code";
-import { buildFullCode, classifyModifier } from "@/lib/diagnosis";
+import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
@@ -185,6 +186,15 @@ export default async function MePage({ params }: PageProps) {
   const stored = (user.scores ?? {}) as StoredScores;
   // fullCode は友達招待の「キャラコード」(FriendGapInvite) で利用するため引き続き導出。
   const { fullCode } = deriveTypeLabel(user.type_id as string, stored);
+  // 深掘り (TYPE_DEEP_DIVE) 用の 8 タイプ ID。user.scores から決定論的に導出
+  // (classifyType は E/A/O のみ参照、欠損は中央 5.0 fallback)。
+  const deepDiveTypeId = classifyType({
+    E: stored.E ?? 5,
+    A: stored.A ?? 5,
+    O: stored.O ?? 5,
+    C: stored.C ?? 5,
+    N: stored.N ?? 5,
+  });
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
@@ -272,6 +282,11 @@ export default async function MePage({ params }: PageProps) {
             スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
             診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
         <BigFiveDivergingBars scores={stored} />
+
+        {/* ===== 深掘り (強み/弱み/恋愛/仕事/成長) =====
+            本文は固定テンプレ report-data.ts の TYPE_DEEP_DIVE を再利用 (新規AI生成なし)。
+            各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
+        <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
 
         {/* ===== Day 12-Polish-E: 自己診断本文 = 3 セクション (全無料、16 タイプ別実本文)
             取扱説明書 / 取扱注意ポイント / 相性の良いお相手。各セクション = 2 段落 (\n\n 区切り)。
