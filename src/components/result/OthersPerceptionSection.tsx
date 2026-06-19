@@ -31,6 +31,10 @@ interface OthersPerceptionSectionProps {
   selfScores: BigFiveScores;
   /** 友達評価の平均スコア (0-10)。0 件のときは null。 */
   friendAvgScores: BigFiveScores | null;
+  /** ② 評価してくれた友達の名前 (記名表示)。 */
+  friendNames?: string[];
+  /** ③ 友達からのメッセージ (記名)。空メッセージは含めない。 */
+  friendMessages?: { name: string; message: string }[];
   className?: string;
 }
 
@@ -59,6 +63,8 @@ export function OthersPerceptionSection({
   isOwner,
   selfScores,
   friendAvgScores,
+  friendNames = [],
+  friendMessages = [],
   className = "",
 }: OthersPerceptionSectionProps) {
   const unlocked = friendCount >= threshold && friendAvgScores !== null;
@@ -82,6 +88,8 @@ export function OthersPerceptionSection({
           friendCount={friendCount}
           selfScores={selfScores}
           friendAvgScores={friendAvgScores}
+          friendNames={friendNames}
+          friendMessages={friendMessages}
         />
       ) : (
         <LockedContent
@@ -182,10 +190,14 @@ function UnlockedContent({
   friendCount,
   selfScores,
   friendAvgScores,
+  friendNames,
+  friendMessages,
 }: {
   friendCount: number;
   selfScores: BigFiveScores;
   friendAvgScores: BigFiveScores;
+  friendNames: string[];
+  friendMessages: { name: string; message: string }[];
 }) {
   const gaps = buildDimensionGaps(selfScores, friendAvgScores);
   const mutual = calcMutualUnderstanding(gaps);
@@ -220,6 +232,25 @@ function UnlockedContent({
             </li>
           ))}
         </ul>
+
+        {/* ② 評価してくれた友達 (記名)。名前はユーザー入力 → JSX で自動エスケープ。 */}
+        {friendNames.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-[#0094D8]/15">
+            <p className="text-[#3A2D6B]/60 font-bold text-xs mb-2">
+              評価してくれた友達
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {friendNames.map((name, i) => (
+                <span
+                  key={`${name}-${i}`}
+                  className="inline-block bg-[#FFF0F3] text-[#3A2D6B] font-bold text-xs rounded-full px-3 py-1"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </article>
 
       {/* 隠れた強み */}
@@ -250,6 +281,30 @@ function UnlockedContent({
           </p>
         )}
       </article>
+
+      {/* ③ 友達からのメッセージ (記名)。本文・名前はユーザー入力 → JSX で自動エスケープ。 */}
+      {friendMessages.length > 0 && (
+        <article className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+          <h3 className="text-[#3A2D6B] font-black text-lg mb-3">
+            友達からのメッセージ
+          </h3>
+          <ul className="flex flex-col gap-3">
+            {friendMessages.map((m, i) => (
+              <li
+                key={`${m.name}-${i}`}
+                className="bg-[#FFF9F0] rounded-2xl border border-[#FFE993] p-4"
+              >
+                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed whitespace-pre-wrap break-words">
+                  {m.message}
+                </p>
+                <p className="text-[#3A2D6B]/60 font-bold text-xs mt-2 text-right">
+                  — {m.name} より
+                </p>
+              </li>
+            ))}
+          </ul>
+        </article>
+      )}
 
       {/* 自己認知ギャップ (発散バーに友達平均を重ねる) */}
       <BigFiveDivergingBars

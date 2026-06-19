@@ -42,8 +42,6 @@ export const FRIEND_QUESTIONS_V2_MAP: Record<number, QuestionMeta> =
   );
 
 export const FRIEND_QUESTIONS_V2_TOTAL = TOTAL_FROM_DATA;
-const REQUIRED_FACETS = 10;
-const QUESTIONS_PER_FACET = 3;
 
 // =====================================================================
 // qualitative_data (おまけ choice 3 問、各 optional)
@@ -85,23 +83,31 @@ const ALL_FACETS: FacetId[] = [
 const SCALE_MIDPOINT = 5.0;
 
 /**
- * 30 問の Likert 回答 (1-7) と任意 qualitative_data から FriendPerceptionV2 を計算する。
+ * 10 問の Likert 回答 (1-7) と任意 qualitative_data から FriendPerceptionV2 を計算する。
  *
- * - 各 facet に属する 3 問の回答を、逆転項目を考慮しつつ平均
- * - 平均値 (1-7 範囲) を 0-10 スケールに変換: ((avg - 1) / 6) * 10
- * - 5 軸スコアは各 dim の 2 facet 平均
- * - typeId / modifier は diagnosis.ts のロジックを再利用
- * - 必要な scale 質問 (30 問) が揃わない場合は null
+ * 改修 (10 問 = 5 軸 × 2 問):
+ * - 各軸 (dim) に属する 2 問を直接平均 (逆転項目を考慮)。
+ * - 平均値 (1-7 範囲) を 0-10 スケールに変換: ((avg - 1) / 6) * 10。
+ * - perceived_facet_scores は 10 問では精度が出ないため、各ファセットに親軸スコアを
+ *   埋める (DB の NOT NULL 制約と既存 consumer 向けのフォールバック)。
+ * - typeId / modifier は diagnosis.ts のロジックを再利用。
+ * - 必要な scale 質問 (10 問) が揃わない場合は null。
  *
- * @param answers id (1-30) → AnswerValue (1-7) のマップ
+ * @param answers id (1-10) → AnswerValue (1-7) のマップ
  * @param qualitative おまけ choice 3 問 (好きなところ / 動物 / 印象シーン)、任意
  */
 export function perceiveFromFriendAnswersV2(
   answers: Record<number, AnswerValue>,
   qualitative?: FriendQualitativeData,
 ): FriendPerceptionV2 | null {
-  // === 1. facet ごとの集計 ===
-  const buckets: Partial<Record<FacetId, number[]>> = {};
+  // === 1. 軸 (dim) ごとに集計 ===
+  const dimBuckets: Record<BigFiveDimension, number[]> = {
+    E: [],
+    A: [],
+    O: [],
+    C: [],
+    N: [],
+  };
   const extremeValues: number[] = []; // 信頼度判定用 (極端な 1 / 7 のカウント)
   let answeredCount = 0;
 
@@ -115,7 +121,7 @@ export function perceiveFromFriendAnswersV2(
 
     // 逆転項目: 7 段階の中央 (4) を軸に反転
     const normalized = meta.reversed ? 8 - raw : raw;
-    (buckets[meta.facetId] ??= []).push(normalized);
+    dimBuckets[FACET_TO_DIMENSION[meta.facetId]].push(normalized);
     answeredCount++;
 
     if (raw === 1 || raw === 7) extremeValues.push(raw);
@@ -125,43 +131,19 @@ export function perceiveFromFriendAnswersV2(
     return null; // 1 問でも欠損があれば不確定として返却拒否
   }
 
-  // === 2. facet → 0-10 スケール化 ===
-  const facetScores = {} as Record<FacetId, number>;
-  for (const facetId of ALL_FACETS) {
-    const values = buckets[facetId];
-    if (!values || values.length !== QUESTIONS_PER_FACET) {
-      // 設計通りなら 3 問ずつ揃うはずだが、ガード
-      facetScores[facetId] = SCALE_MIDPOINT;
-      continue;
-    }
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    facetScores[facetId] = ((avg - 1) / 6) * 10;
-  }
-
-  // ガード: 全 10 facet 揃っていない場合は不確定
-  if (
-    Object.keys(facetScores).filter((f) => facetScores[f as FacetId] !== undefined)
-      .length !== REQUIRED_FACETS
-  ) {
-    return null;
-  }
-
-  // === 3. dim スコア (各 dim の 2 facet 平均) ===
-  const dimBuckets: Record<BigFiveDimension, number[]> = {
-    E: [],
-    A: [],
-    O: [],
-    C: [],
-    N: [],
-  };
-  for (const facetId of ALL_FACETS) {
-    dimBuckets[FACET_TO_DIMENSION[facetId]].push(facetScores[facetId]);
-  }
+  // === 2. 軸 → 0-10 スケール化 ===
   const scores = {} as Record<BigFiveDimension, number>;
   for (const dim of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
     const v = dimBuckets[dim];
-    scores[dim] =
-      v.length > 0 ? v.reduce((a, b) => a + b, 0) / v.length : SCALE_MIDPOINT;
+    const avg = v.length > 0 ? v.reduce((a, b) => a + b, 0) / v.length : 4;
+    scores[dim] = v.length > 0 ? ((avg - 1) / 6) * 10 : SCALE_MIDPOINT;
+  }
+
+  // === 2'. facet フォールバック: 各ファセットに親軸スコアを埋める ===
+  // 10 問ではファセット粒度の精度が出ないため、表示・DB NOT NULL 用に軸値を流用。
+  const facetScores = {} as Record<FacetId, number>;
+  for (const facetId of ALL_FACETS) {
+    facetScores[facetId] = scores[FACET_TO_DIMENSION[facetId]];
   }
 
   // === 4. type / modifier / fullCode / modifier paragraph (自己診断と同一ロジック) ===
@@ -171,11 +153,10 @@ export function perceiveFromFriendAnswersV2(
   const modifierLabel = getModifierLabel(cModifier, nModifier);
   const modifierParagraph = getModifierParagraph(typeId, cModifier, nModifier);
 
-  // === 5. 信頼度 (30 問版に閾値再調整) ===
-  // 旧 10 問版は 5+/2-4/<2 → 新 30 問版は 3 倍に概算スケール
+  // === 5. 信頼度 (10 問版に閾値調整) ===
   let confidence: "low" | "medium" | "high";
-  if (extremeValues.length >= 15) confidence = "high";
-  else if (extremeValues.length >= 6) confidence = "medium";
+  if (extremeValues.length >= 5) confidence = "high";
+  else if (extremeValues.length >= 2) confidence = "medium";
   else confidence = "low";
 
   return {

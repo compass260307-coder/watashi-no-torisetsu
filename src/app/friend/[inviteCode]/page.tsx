@@ -24,8 +24,6 @@ import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
 import {
   FRIEND_QUESTIONS_V2_PAGE_1,
-  FRIEND_QUESTIONS_V2_PAGE_2,
-  FRIEND_QUESTIONS_V2_PAGE_3,
   FRIEND_QUESTIONS_V2_TOTAL,
   FRIEND_CHOICE_QUESTIONS_V2,
   renderQuestionText,
@@ -88,11 +86,8 @@ interface OwnerInfo {
   thirtyTwoTypeId: ThirtyTwoTypeId | null;
 }
 
-const SCALE_PAGES: FriendQuestionV2[][] = [
-  FRIEND_QUESTIONS_V2_PAGE_1,
-  FRIEND_QUESTIONS_V2_PAGE_2,
-  FRIEND_QUESTIONS_V2_PAGE_3,
-];
+// 改修: 10 問 = 1 ページ。
+const SCALE_PAGES: FriendQuestionV2[][] = [FRIEND_QUESTIONS_V2_PAGE_1];
 
 export default function FriendPage({
   params,
@@ -125,7 +120,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     thirtyTwoTypeId: null,
   });
   const [phase, setPhase] = useState<Phase>("intro");
-  const [pageIdx, setPageIdx] = useState<0 | 1 | 2>(0);
+  const [pageIdx, setPageIdx] = useState<number>(0);
   const [choiceIdx, setChoiceIdx] = useState<0 | 1 | 2>(0);
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>(
     {},
@@ -134,6 +129,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     {},
   );
   const [perceiverName, setPerceiverName] = useState<string>("友達");
+  // ③ 本人へのメッセージ (任意・最大200字)
+  const [message, setMessage] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pdfConsent, setPdfConsent] = useState<boolean>(false);
   const trackedLanding = useRef(false);
@@ -187,8 +184,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 
   const handleScaleNext = () => {
     if (!isCurrentScalePageComplete) return;
-    if (pageIdx < 2) {
-      setPageIdx((p) => (p + 1) as 0 | 1 | 2);
+    if (pageIdx < SCALE_PAGES.length - 1) {
+      setPageIdx((p) => p + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setPhase("choice");
@@ -200,7 +197,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 
   const handleScalePrev = () => {
     if (pageIdx > 0) {
-      setPageIdx((p) => (p - 1) as 0 | 1 | 2);
+      setPageIdx((p) => p - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -236,6 +233,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           scaleAnswers,
           choiceAnswers,
           perceiverName,
+          message,
           pdfConsent,
         }),
       });
@@ -278,6 +276,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     return (
       <ScaleScreen
         page={pageIdx}
+        totalPages={SCALE_PAGES.length}
         questions={currentScalePage}
         subjectLabel={subjectLabel}
         scaleAnswers={scaleAnswers}
@@ -325,6 +324,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       <NameOverlay
         perceiverName={perceiverName}
         onPerceiverNameChange={setPerceiverName}
+        message={message}
+        onMessageChange={setMessage}
         onSubmit={submit}
       />
     );
@@ -455,7 +456,7 @@ function IntroScreen({
                 相互理解度を測る →
               </button>
               <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
-                30 問・約 3 分。アナタの目線で答えるだけ。
+                10 問・約 1 分。アナタの目線で答えるだけ。
               </p>
             </div>
           </>
@@ -478,6 +479,7 @@ function IntroScreen({
 // =========================================================================
 function ScaleScreen({
   page,
+  totalPages,
   questions,
   subjectLabel,
   scaleAnswers,
@@ -487,7 +489,8 @@ function ScaleScreen({
   onPrev,
   isPageComplete,
 }: {
-  page: 0 | 1 | 2;
+  page: number;
+  totalPages: number;
   questions: FriendQuestionV2[];
   subjectLabel: string;
   scaleAnswers: Record<number, AnswerValue>;
@@ -497,7 +500,7 @@ function ScaleScreen({
   onPrev: () => void;
   isPageComplete: boolean;
 }) {
-  const isLastPage = page === 2;
+  const isLastPage = page === totalPages - 1;
   const percent = Math.round((answeredCount / FRIEND_QUESTIONS_V2_TOTAL) * 100);
   const inviteeName = subjectLabel.replace(/さん$/, "");
 
@@ -512,7 +515,9 @@ function ScaleScreen({
             <span>
               質問 {answeredCount} / {FRIEND_QUESTIONS_V2_TOTAL}
             </span>
-            <span>Page {page + 1} / 3</span>
+            <span>
+              Page {page + 1} / {totalPages}
+            </span>
           </div>
           <div
             className="w-full h-2 bg-white/60 rounded-full overflow-hidden"
@@ -795,13 +800,19 @@ function ErrorScreen({
 // 「結果を見る前に、お名前を教えてください」
 // 必須 (空文字スキップ不可)、入力後 submit() で /api/friend-answer/v2 + router.push
 // =========================================================================
+const MESSAGE_MAX = 200;
+
 function NameOverlay({
   perceiverName,
   onPerceiverNameChange,
+  message,
+  onMessageChange,
   onSubmit,
 }: {
   perceiverName: string;
   onPerceiverNameChange: (v: string) => void;
+  message: string;
+  onMessageChange: (v: string) => void;
   onSubmit: () => void;
 }) {
   const trimmed = perceiverName.trim();
@@ -844,6 +855,26 @@ function NameOverlay({
           autoFocus
           className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
         />
+
+        {/* ③ 本人へのメッセージ (任意) */}
+        <label
+          htmlFor="perceiver-message-overlay"
+          className="block text-sm font-bold text-[#3A2D6B] leading-relaxed mt-5 mb-2"
+        >
+          ひとことメッセージ (任意)
+        </label>
+        <textarea
+          id="perceiver-message-overlay"
+          value={message}
+          onChange={(e) => onMessageChange(e.target.value.slice(0, MESSAGE_MAX))}
+          maxLength={MESSAGE_MAX}
+          rows={3}
+          placeholder="本人に伝えたいことがあれば自由にどうぞ"
+          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-sm text-[#3A2D6B] font-bold resize-none focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
+        />
+        <p className="text-right text-[11px] text-[#3A2D6B]/50 font-bold mt-1">
+          {message.length} / {MESSAGE_MAX}
+        </p>
       </div>
 
       <StickyCtaFooter>

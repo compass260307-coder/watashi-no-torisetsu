@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
   const rawChoice = body.choiceAnswers;
   const rawName = typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
   const perceiverName = rawName.length > 0 ? rawName : "友達";
+  // ③ 本人へのメッセージ (任意・最大200字)。プレーンテキストとして保存し、
+  //    表示時は React が自動エスケープ (XSS 対策)。空なら null。
+  const ownerMessage =
+    typeof body.message === "string"
+      ? body.message.trim().slice(0, 200)
+      : "";
   // T3-3: PDF 利用同意 (オプトイン制、デフォルト false)
   const pdfConsent = body.pdfConsent === true;
 
@@ -160,6 +166,25 @@ export async function POST(request: NextRequest) {
       { error: "DB error (friend_perceptions)" },
       { status: 500 },
     );
+  }
+
+  // ③ メッセージは best-effort で更新 (owner_message カラム未適用でも本体送信は壊さない)。
+  //    migration 適用後に保存が有効化される。
+  if (ownerMessage.length > 0) {
+    try {
+      const { error: msgErr } = await supabaseAdmin
+        .from("friend_perceptions")
+        .update({ owner_message: ownerMessage })
+        .eq("id", writeResult.id);
+      if (msgErr) {
+        console.warn(
+          "[friend-answer/v2] owner_message update skipped (column may be missing):",
+          msgErr.message,
+        );
+      }
+    } catch (e) {
+      console.warn("[friend-answer/v2] owner_message update threw:", e);
+    }
   }
 
   // owner への友達評価到着通知 (fire-and-forget、メール + LINE 並列)

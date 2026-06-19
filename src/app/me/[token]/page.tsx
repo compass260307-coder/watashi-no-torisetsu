@@ -160,9 +160,38 @@ export default async function MePage({ params }: PageProps) {
   // perceived_scores (Big Five 0-10) を取得し、自己認知ギャップ表示用に平均する。
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
-    .select("id, perceived_scores")
-    .eq("target_user_id", user.id);
+    .select("id, perceived_scores, perceiver_name, created_at")
+    .eq("target_user_id", user.id)
+    .order("created_at", { ascending: true });
   const friendEvalCount = (perceptionRows ?? []).length;
+
+  // ② 評価してくれた友達の名前 (記名表示用)。未入力は「ともだち」にフォールバック。
+  const friendNames: string[] = (perceptionRows ?? []).map((r) => {
+    const n = ((r.perceiver_name as string | null) ?? "").trim();
+    return n.length > 0 ? n : "ともだち";
+  });
+
+  // ③ 友達からのメッセージ (記名)。owner_message カラム未適用でも壊れないよう best-effort。
+  //    取得失敗 (列なし等) は空配列にフォールバック。表示は React が自動エスケープ。
+  let friendMessages: { name: string; message: string }[] = [];
+  try {
+    const { data: msgRows, error: msgErr } = await supabaseAdmin
+      .from("friend_perceptions")
+      .select("perceiver_name, owner_message, created_at")
+      .eq("target_user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (!msgErr && msgRows) {
+      friendMessages = msgRows
+        .map((r) => ({
+          name: (((r.perceiver_name as string | null) ?? "").trim() ||
+            "ともだち") as string,
+          message: ((r.owner_message as string | null) ?? "").trim(),
+        }))
+        .filter((m) => m.message.length > 0);
+    }
+  } catch {
+    // owner_message カラム未適用などは無視 (メッセージ非表示)
+  }
 
   // 友達評価の平均 (0-10)。各軸、数値がある行だけを母数に平均。0 件なら null。
   const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =
@@ -359,6 +388,8 @@ export default async function MePage({ params }: PageProps) {
           isOwner={isOwner}
           selfScores={stored}
           friendAvgScores={friendAvgScores}
+          friendNames={friendNames}
+          friendMessages={friendMessages}
         />
 
         {/* ===== シェア導線 (深掘りの下へ移動: SNS共有 + 画像保存 + 相互理解度文言) ===== */}
