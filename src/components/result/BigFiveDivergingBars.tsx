@@ -75,7 +75,7 @@ export function BigFiveDivergingBars({
           aria-hidden="true"
           className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
         >
-          📊
+          ✨
         </span>
         <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
           5つの軸で見るアナタ

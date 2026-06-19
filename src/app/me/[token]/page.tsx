@@ -263,40 +263,18 @@ export default async function MePage({ params }: PageProps) {
           description={dispDesc}
         />
 
-        {/* ===== Koi 配置: ヒーロー直下のシェア導線 (SNS共有 + 画像保存 + 相互理解度文言) =====
-            旧・最下部にあった ResultActions をここへ移動 (下部の重複は撤去)。 */}
-        <ResultActions
-          typeName={dispName}
-          shareUrl={inviteUrl}
-          ownerName={displayName}
-          essence={dispEssence}
-          description={dispDesc}
-          imageSrc={dispImage}
-          shareCode={shareCode}
-        />
-
-        {/* 相互理解度を促す文言 (Koi 風: 花 + テキスト + 花、中央寄せ) */}
-        <SharePromo className="mb-8" />
-
-        {/* ===== Big Five 5 軸の発散バー (ヒーロー + シェア導線クラスタの直下、長文章の前) =====
-            スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
-            診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
-        <BigFiveDivergingBars scores={stored} />
-
-        {/* ===== 深掘り (強み/弱み/恋愛/仕事/成長) =====
-            本文は固定テンプレ report-data.ts の TYPE_DEEP_DIVE を再利用 (新規AI生成なし)。
-            各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
-        <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
-
-        {/* ===== Day 12-Polish-E: 自己診断本文 = 3 セクション (全無料、16 タイプ別実本文)
+        {/* ===== 取扱説明書 等 3 セクション (キャラ直後へ移動: self-result-content / thirty-two-content) =====
             取扱説明書 / 取扱注意ポイント / 相性の良いお相手。各セクション = 2 段落 (\n\n 区切り)。
-            Big Five バーチャートは撤去。診断日のみ「取扱説明書」セクション末尾に表示。 */}
+            診断日のみ「取扱説明書」セクション末尾に表示。バッジは 🎀 でやわらかいトーンに統一。 */}
         {sections.map((sec, idx) => (
           <section key={sec.title} className="mb-8">
-            {/* セクションヘッダー (番号バッジ + タイトル) */}
+            {/* セクションヘッダー (🎀 バッジ + タイトル) */}
             <div className="flex items-center gap-3 mb-4">
-              <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
-                {idx + 1}
+              <span
+                aria-hidden="true"
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+              >
+                🎀
               </span>
               <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
                 {sec.title}
@@ -323,6 +301,28 @@ export default async function MePage({ params }: PageProps) {
             </div>
           </section>
         ))}
+
+        {/* ===== Big Five 5 軸の発散バー (取扱説明書の下、深掘りの上) =====
+            スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
+            診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
+        <BigFiveDivergingBars scores={stored} />
+
+        {/* ===== 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) =====
+            本文は固定テンプレ report-data.ts の TYPE_DEEP_DIVE を再利用 (新規AI生成なし)。
+            各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
+        <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+
+        {/* ===== シェア導線 (深掘りの下へ移動: SNS共有 + 画像保存 + 相互理解度文言) ===== */}
+        <ResultActions
+          typeName={dispName}
+          shareUrl={inviteUrl}
+          ownerName={displayName}
+          essence={dispEssence}
+          description={dispDesc}
+          imageSrc={dispImage}
+          shareCode={shareCode}
+        />
+        <SharePromo className="mb-8" />
 
         {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
             Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。
