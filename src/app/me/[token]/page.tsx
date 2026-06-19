@@ -45,6 +45,7 @@ import {
   thirtyTwoOneLiner,
 } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
+import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
@@ -266,6 +267,11 @@ export default async function MePage({ params }: PageProps) {
 
         {/* 相互理解度を促す文言 (Koi 風: 花 + テキスト + 花、中央寄せ) */}
         <SharePromo className="mb-8" />
+
+        {/* ===== Big Five 5 軸の発散バー (ヒーロー + シェア導線クラスタの直下、長文章の前) =====
+            スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
+            診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
+        <BigFiveDivergingBars scores={stored} />
 
         {/* ===== Day 12-Polish-E: 自己診断本文 = 3 セクション (全無料、16 タイプ別実本文)
             取扱説明書 / 取扱注意ポイント / 相性の良いお相手。各セクション = 2 段落 (\n\n 区切り)。

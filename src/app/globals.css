@@ -11,6 +11,22 @@
   --label-bg: #fff0f3;
   --primary-gradient: linear-gradient(135deg, #fd267a 0%, #ff7854 100%);
   --primary-gradient-hover: linear-gradient(135deg, #e8265c 0%, #ee6648 100%);
+
+  /* Big Five 発散バーの左右トラック色 (BigFiveDivergingBars が参照)。
+     色は「左極側 / 右極側」を区別するための視覚的手がかりにすぎず、
+     色自体に良し悪し・意味は持たせない。全軸で同一の左右色対を使う
+     (軸ごとに変えると虹色化し、無関係な軸どうしが同色で関連して見えるため)。 */
+  --axis-tint-left: #e1f5ee; /* 極薄 teal = 左極側 */
+  --axis-tint-right: #fbeaf0; /* 極薄 pink = 右極側 */
+}
+
+/* ダーク追従 (将来ダークテーマ有効時に備えトークンで対応)。
+   トーンを落とした左右ティント。意味づけは light と同じ (左右の手がかりのみ)。 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --axis-tint-left: #14302a;
+    --axis-tint-right: #331f29;
+  }
 }
 
 @theme inline {
