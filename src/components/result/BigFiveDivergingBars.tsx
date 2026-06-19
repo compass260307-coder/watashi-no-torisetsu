@@ -60,13 +60,26 @@ function leanLabel(value: number, left: string, right: string): string {
 interface BigFiveDivergingBarsProps {
   /** 0-10 スケールの 5 軸スコア (user.scores)。欠損軸は中央 50% 扱い。 */
   scores: Partial<Record<BigFiveDimension, number>>;
+  /**
+   * 友達評価の平均スコア (0-10)。指定時は各軸に「友達の平均」マーカー (◆) を重ね、
+   * 凡例 (自分 ● / 友達 ◆) を表示する。自己認知ギャップの可視化に使う。
+   */
+  friendScores?: Partial<Record<BigFiveDimension, number>>;
+  /** 見出し (既定: 自己単体表示。友達重ね時は別タイトルにして重複見出しを避ける)。 */
+  title?: string;
+  /** 見出しバッジの絵文字。 */
+  emoji?: string;
   className?: string;
 }
 
 export function BigFiveDivergingBars({
   scores,
+  friendScores,
+  title = "5つの軸で見るアナタ",
+  emoji = "✨",
   className = "",
 }: BigFiveDivergingBarsProps) {
+  const hasFriend = !!friendScores;
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* セクション見出し (他セクションと同じ deepPurple トーン) */}
@@ -75,25 +88,54 @@ export function BigFiveDivergingBars({
           aria-hidden="true"
           className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
         >
-          ✨
+          {emoji}
         </span>
         <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-          5つの軸で見るアナタ
+          {title}
         </h2>
       </div>
 
       <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 space-y-5">
+        {/* 凡例 (友達スコア重ね表示時のみ): 自分 ● / 友達 ◆ */}
+        {hasFriend && (
+          <div
+            aria-hidden="true"
+            className="flex items-center justify-end gap-4 text-[11px] font-bold text-[#3A2D6B]/70"
+          >
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-3 h-3 rounded-full border-2 border-white shadow"
+                style={{ background: "var(--primary)" }}
+              />
+              自分
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rotate-45 border-2 border-white shadow"
+                style={{ background: "#3A2D6B" }}
+              />
+              友達の平均
+            </span>
+          </div>
+        )}
         {AXES.map((axis) => {
           const value = toPercent(scores[axis.dim]);
           const lean = leanLabel(value, axis.left, axis.right);
           // 発散フィル: 中央 50% を起点に、傾いた側へ伸ばす。
           const fillLeft = value >= 50 ? 50 : value;
           const fillWidth = value >= 50 ? value - 50 : 50 - value;
+          // 友達の平均 (該当軸に数値があるときのみ第2マーカーを出す)。
+          const friendValue =
+            friendScores && typeof friendScores[axis.dim] === "number"
+              ? toPercent(friendScores[axis.dim])
+              : null;
 
           return (
             <div key={axis.dim}>
               {/* スクリーンリーダー用の要約 (色だけに意味を持たせない) */}
-              <span className="sr-only">{`${axis.title}：${lean} ${value}%`}</span>
+              <span className="sr-only">{`${axis.title}：${lean} ${value}%${
+                friendValue !== null ? `、友達の平均 ${friendValue}%` : ""
+              }`}</span>
 
               {/* 軸名 + 「寄りラベル ・ %」(視覚) */}
               <div
@@ -141,7 +183,15 @@ export function BigFiveDivergingBars({
                   {/* 中央ティック (常時表示。トラックより前面) */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-5 bg-[#3A2D6B]/45" />
 
-                  {/* マーカー (単色円 + 白リング)。軸ごとのキャラは置かない */}
+                  {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
+                  {friendValue !== null && (
+                    <div
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rotate-45 border-2 border-white shadow-md transition-all duration-500"
+                      style={{ left: `${friendValue}%`, background: "#3A2D6B" }}
+                    />
+                  )}
+
+                  {/* 自分のマーカー (単色円 + 白リング)。軸ごとのキャラは置かない */}
                   <div
                     className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-all duration-500"
                     style={{ left: `${value}%`, background: "var(--primary)" }}

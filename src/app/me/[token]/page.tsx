@@ -47,6 +47,8 @@ import {
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
+import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
+import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
@@ -152,15 +154,42 @@ export default async function MePage({ params }: PageProps) {
   const session = await getSession();
   const isOwner = !!session && session.id === (user.id as string);
 
-  // ===== 3. friend_perceptions (件数のみ) =====
-  // オプションA: /me の「誰かの眼」カードは廃止し、相互理解度ランキング
-  // (/friend-evaluation) への単一エントリに一本化。タイプ名/おまけ3問は
-  // 詳細ページ (/evaluate/result) に集約したため、ここでは件数だけ見る。
+  // ===== 3. friend_perceptions (件数 + 平均スコア) =====
+  // 件数は招待CTA / 人数ゲート (他者評価セクション) の判定に使う。
+  // perceived_scores (Big Five 0-10) を取得し、自己認知ギャップ表示用に平均する。
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
-    .select("id")
+    .select("id, perceived_scores")
     .eq("target_user_id", user.id);
   const friendEvalCount = (perceptionRows ?? []).length;
+
+  // 友達評価の平均 (0-10)。各軸、数値がある行だけを母数に平均。0 件なら null。
+  const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =
+    (() => {
+      const rows = perceptionRows ?? [];
+      if (rows.length === 0) return null;
+      const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+      const acc: Record<BigFiveDimension, { sum: number; n: number }> = {
+        E: { sum: 0, n: 0 },
+        A: { sum: 0, n: 0 },
+        O: { sum: 0, n: 0 },
+        C: { sum: 0, n: 0 },
+        N: { sum: 0, n: 0 },
+      };
+      for (const r of rows) {
+        const ps = (r.perceived_scores ?? {}) as Record<string, unknown>;
+        for (const d of dims) {
+          const v = ps[d];
+          if (typeof v === "number") {
+            acc[d].sum += v;
+            acc[d].n += 1;
+          }
+        }
+      }
+      const avg: Partial<Record<BigFiveDimension, number>> = {};
+      for (const d of dims) if (acc[d].n > 0) avg[d] = acc[d].sum / acc[d].n;
+      return avg;
+    })();
 
   // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
   const { data: integratedRows } = await supabaseAdmin
@@ -312,6 +341,18 @@ export default async function MePage({ params }: PageProps) {
             各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
         <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
 
+        {/* ===== ロックされた他者評価 (深掘りの直下) =====
+            友達 REPORT_FRIEND_THRESHOLD(=3) 人で解除する人数ゲート。
+            解除後は他者分析 / 隠れた強み / 自己認知ギャップ (発散バーに友達平均を重ね)。
+            既存の ¥500 課金ロック (perception-unlock.ts) には触れない別ゲート。 */}
+        <OthersPerceptionSection
+          friendCount={friendEvalCount}
+          threshold={REPORT_FRIEND_THRESHOLD}
+          isOwner={isOwner}
+          selfScores={stored}
+          friendAvgScores={friendAvgScores}
+        />
+
         {/* ===== シェア導線 (深掘りの下へ移動: SNS共有 + 画像保存 + 相互理解度文言) ===== */}
         <ResultActions
           typeName={dispName}
@@ -330,7 +371,10 @@ export default async function MePage({ params }: PageProps) {
             履歴ナビは下半分の integrated 履歴セクションから辿れるため重複削除。
             ¥500 訴求カードは引き続き軸2 (Day 12) に集約のため非表示 */}
         {isOwner ? (
-          <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
+          // id: 他者評価ロックの「友達に評価してもらう」CTA からのスクロール先
+          <div id="friend-invite" className="scroll-mt-6">
+            <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
+          </div>
         ) : (
           <VisitorCtaSection />
         )}
