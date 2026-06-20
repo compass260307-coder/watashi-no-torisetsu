@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { questions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
+import { readAcquisition } from "@/lib/acquisition";
 import type { AnswerValue } from "@/lib/types";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { ProgressBar } from "@/components/diagnosis/ProgressBar";
@@ -291,6 +292,10 @@ function DiagnosisContent() {
       return;
     }
 
+    // Day 12-C3: first-touch で保存した流入元 (媒体/キャンペーン) を読む。
+    // 新規ユーザー作成時のみ users に書かれる (API 側で creation 分岐のみ採用)。
+    const acq = readAcquisition();
+
     try {
       const res = await fetch("/api/diagnosis", {
         method: "POST",
@@ -307,6 +312,9 @@ function DiagnosisContent() {
           sourceInviteCode: source || undefined,
           // Day 12-Polish-B: 基本情報ステップで取得したニックネーム
           displayName: nickname.trim() || undefined,
+          // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch)
+          acquisitionSource: acq.source || undefined,
+          acquisitionCampaign: acq.campaign || undefined,
         }),
       });
       const data = await res.json();
