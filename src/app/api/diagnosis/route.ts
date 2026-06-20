@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
     campaign,
     sourceInviteCode,
     displayName,
+    // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch / 新規作成時のみ書込)
+    acquisitionSource,
+    acquisitionCampaign,
   } = body;
 
   if (!typeId || !scores) {
@@ -154,6 +157,16 @@ export async function POST(request: NextRequest) {
       source_user_id: sourceUserId,
       generation,
       display_name: normalizedDisplayName,
+      // Day 12-C3: 媒体/キャンペーン流入元。新規作成時のみ・無ければ NULL。
+      // source_user_id / generation (招待ツリー) とは別系統で独立。
+      acquisition_source:
+        typeof acquisitionSource === "string" && acquisitionSource
+          ? acquisitionSource.slice(0, 100)
+          : null,
+      acquisition_campaign:
+        typeof acquisitionCampaign === "string" && acquisitionCampaign
+          ? acquisitionCampaign.slice(0, 100)
+          : null,
     });
 
     return NextResponse.json({

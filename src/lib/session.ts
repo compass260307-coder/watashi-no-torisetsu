@@ -46,6 +46,10 @@ export interface CreateSessionPayload {
   source_user_id?: string | null;
   generation?: number | null;
   line_user_id?: string | null;
+  // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (新規作成時のみ・first-touch)。
+  // source_user_id / generation (招待ツリー) とは別系統。
+  acquisition_source?: string | null;
+  acquisition_campaign?: string | null;
 }
 
 function generateSessionToken(): string {
