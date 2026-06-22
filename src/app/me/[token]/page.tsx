@@ -123,6 +123,24 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// hex を白に alpha 分だけ混ぜた「不透明の淡色」を返す (全面背景用。半透明の重ね掛けを防ぐ)。
+function paleSurface(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const n =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if ([r, g, b].some((v) => Number.isNaN(v))) return "#ffffff";
+  const mix = (c: number) => Math.round(255 * (1 - alpha) + c * alpha);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
 function deriveTypeLabel(
   typeId: string,
   stored: StoredScores,
@@ -283,9 +301,10 @@ export default async function MePage({ params }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
-  // 背景のグループ色 (flag32 に関係なく t32 由来)。極薄ウォッシュ + 同系グリッド線。
+  // 背景のグループ色 (flag32 に関係なく t32 由来)。画面全面を不透明の淡色で染め、
+  // コンテナも同色にして枠なく全面化。グリッド線は同系色の極薄。
   const groupColor = thirtyTwoColor(t32);
-  const groupBgWash = hexToRgba(groupColor, 0.22);
+  const groupSurface = paleSurface(groupColor, 0.22);
   const groupGridLine = hexToRgba(groupColor, 0.16);
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
@@ -317,14 +336,18 @@ export default async function MePage({ params }: PageProps) {
     // grid-bg の z-index 階層は globals.css (Day 8) で:
     //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
     // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 md:py-10">
+    // 背景はグループ色の淡色を画面全面に (旧薄紫グラデは撤去)。
+    <main
+      className="min-h-screen py-6 px-4 md:py-10"
+      style={{ background: groupSurface }}
+    >
       {/* モバイルは従来 480px。PC(md以上)は max-w-3xl(768px) に広げ、padding も増やしてゆったり。
-          背景はグループ色の極薄ウォッシュ + 同系グリッド線 (白ベースの上にほんのり)。 */}
+          コンテナも main と同じ淡色にして枠なく全面化。グリッド線は同系色の極薄。 */}
       <div
         className="max-w-[480px] md:max-w-3xl mx-auto rounded-[32px] overflow-hidden grid-bg p-6 md:p-10 relative border-[3px] border-[#0094D8]"
         style={
           {
-            "--grid-bg-fill": `linear-gradient(180deg, ${groupBgWash} 0%, ${groupBgWash} 100%), #ffffff`,
+            "--grid-bg-fill": groupSurface,
             "--grid-line": groupGridLine,
           } as CSSProperties
         }
@@ -420,7 +443,8 @@ export default async function MePage({ params }: PageProps) {
                     {sec.title}
                   </h3>
                 </div>
-                <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+                {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
+                <div className="px-1 pb-1">
                   <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
                     {firstPara}
                   </p>
