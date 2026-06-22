@@ -49,6 +49,8 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 import { CompatibleTypes } from "@/components/result/CompatibleTypes";
+import { ResultTabs } from "@/components/result/ResultTabs";
+import { JobReveal } from "@/components/result/JobReveal";
 import { computeJob, JOB_FRIEND_THRESHOLD } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
@@ -346,75 +348,77 @@ export default async function MePage({ params }: PageProps) {
         />
         <SharePromo className="mb-8" />
 
-        {/* ===== 取説 (人物像 + 愛されるクセ) を各1段落に圧縮 =====
-            役割分担: 取説=「人柄・共有用の軽い紹介」、深掘り=「分析的・場面別」。
-            #3 取扱説明書 → 人物像の短い紹介に限定 (能力分析=場を動かす/巻き込み等は深掘り「強み」へ)。
-            #2 取扱注意 → "愛されるクセ" の軽い1段落に圧縮 (具体的対処=ひとりの時間/弱さを見せる相手選び
-            等は深掘り 弱み→成長 に集約)。
-            実装: 各 body の段落1のみ表示。段落2 (重複していた能力分析 / ひとりの時間 等) は非表示にし、
-            「ひとりの時間が必要」の三重 (取説/弱み/成長) を深掘り側 (弱み=課題 → 成長=対処) に集約する。
-            相性 (3つ目のセクション) は下の相性キャラ表示に置き換えるため slice(0, 2)。 */}
-        {sections.slice(0, 2).map((sec, idx) => {
-          const firstPara = sec.body.split("\n\n")[0];
-          return (
-            <section key={sec.title} className="mb-8">
-              {/* セクションヘッダー (🎀 バッジ + タイトル) */}
-              <div className="flex items-center gap-3 mb-4">
-                <span
-                  aria-hidden="true"
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
-                >
-                  🎀
-                </span>
-                <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                  {sec.title}
-                </h2>
-              </div>
+        {/* ===== 自分 / 友達 タブ (名前=CharacterHero は上に固定、その下で対等に切替) =====
+            自分タブ: 取説 → 相性キャラ → 発散バー → 深掘り。
+            友達タブ: 職業の発表 (JobReveal) → ロック他者評価 (OthersPerceptionSection)。
+            パネルはサーバ描画し、ResultTabs(client) がタップ+スワイプで切替。 */}
+        <ResultTabs
+          friendBadge={friendEvalCount >= JOB_FRIEND_THRESHOLD}
+          selfPanel={
+            <>
+              {/* 取説 (段落1のみ) */}
+              {sections.slice(0, 2).map((sec, idx) => {
+                const firstPara = sec.body.split("\n\n")[0];
+                return (
+                  <section key={sec.title} className="mb-8">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span
+                        aria-hidden="true"
+                        className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+                      >
+                        🎀
+                      </span>
+                      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                        {sec.title}
+                      </h2>
+                    </div>
+                    <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+                      <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
+                        {firstPara}
+                      </p>
+                      {idx === 0 && diagnosedAt && (
+                        <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
+                          診断日: {diagnosedAt}
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
 
-              {/* 本文カード (段落1のみ) */}
-              <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
-                  {firstPara}
-                </p>
+              {/* 相性キャラ 2 体 */}
+              <CompatibleTypes typeId={deepDiveTypeId} />
 
-                {/* 取扱説明書 (最初のセクション) の末尾に診断日 (小さく) */}
-                {idx === 0 && diagnosedAt && (
-                  <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
-                    診断日: {diagnosedAt}
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        })}
+              {/* Big Five 発散バー */}
+              <BigFiveDivergingBars scores={stored} />
 
-        {/* ===== 相性キャラ 2 体 (取説「相性の良いお相手」文章の置き換え) =====
-            1位=BEST_PARTNER_CONTENT / 2位=SECOND_PARTNER(暫定) を 32 キャラ(v3)で表示。 */}
-        <CompatibleTypes typeId={deepDiveTypeId} />
+              {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) */}
+              <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+            </>
+          }
+          friendPanel={
+            <>
+              {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」/未定はティーザー) */}
+              <JobReveal
+                job={job}
+                animal={animalName}
+                threshold={JOB_FRIEND_THRESHOLD}
+                friendCount={friendEvalCount}
+              />
 
-        {/* ===== Big Five 5 軸の発散バー (取扱説明書の下、深掘りの上) =====
-            スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
-            診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
-        <BigFiveDivergingBars scores={stored} />
-
-        {/* ===== 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) =====
-            本文は固定テンプレ report-data.ts の TYPE_DEEP_DIVE を再利用 (新規AI生成なし)。
-            各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
-        <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
-
-        {/* ===== ロックされた他者評価 (深掘りの直下) =====
-            友達 REPORT_FRIEND_THRESHOLD(=3) 人で解除する人数ゲート。
-            解除後は他者分析 / 隠れた強み / 自己認知ギャップ (発散バーに友達平均を重ね)。
-            既存の ¥500 課金ロック (perception-unlock.ts) には触れない別ゲート。 */}
-        <OthersPerceptionSection
-          friendCount={friendEvalCount}
-          threshold={REPORT_FRIEND_THRESHOLD}
-          isOwner={isOwner}
-          selfScores={stored}
-          friendAvgScores={friendAvgScores}
-          friendNames={friendNames}
-          friendMessages={friendMessages}
-          inviteUrl={inviteUrl}
+              {/* ロックされた他者評価 (友達3人で解除、課金なし) */}
+              <OthersPerceptionSection
+                friendCount={friendEvalCount}
+                threshold={REPORT_FRIEND_THRESHOLD}
+                isOwner={isOwner}
+                selfScores={stored}
+                friendAvgScores={friendAvgScores}
+                friendNames={friendNames}
+                friendMessages={friendMessages}
+                inviteUrl={inviteUrl}
+              />
+            </>
+          }
         />
 
 
