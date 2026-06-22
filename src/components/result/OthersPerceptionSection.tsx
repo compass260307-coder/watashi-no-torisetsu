@@ -283,7 +283,7 @@ function UnlockedContent({
           <h3 className="text-[#3A2D6B] font-black text-lg mb-3">
             友達からのメッセージ
           </h3>
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3">
             {friendMessages.map((m, i) => (
               <li
                 key={`${m.name}-${i}`}

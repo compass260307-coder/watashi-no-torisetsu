@@ -294,8 +294,9 @@ export default async function MePage({ params }: PageProps) {
     // grid-bg の z-index 階層は globals.css (Day 8) で:
     //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
     // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
-      <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
+    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 md:py-10">
+      {/* モバイルは従来 480px。PC(md以上)は max-w-3xl(768px) に広げ、padding も増やしてゆったり。 */}
+      <div className="max-w-[480px] md:max-w-3xl mx-auto rounded-[32px] overflow-hidden grid-bg p-6 md:p-10 relative border-[3px] border-[#0094D8]">
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
             Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
@@ -321,19 +322,22 @@ export default async function MePage({ params }: PageProps) {
             旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
             animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
             「{owner}のトリセツ」黄ピル(上のステッカー)は維持。 */}
-        <CharacterHero
-          imageSrc={dispImage}
-          alt={dispName}
-          essence={dispEssence}
-          name={dispName}
-          description={dispDesc}
-          jobSlot={{
-            animal: animalName,
-            job,
-            friendCount: friendEvalCount,
-            threshold: JOB_FRIEND_THRESHOLD,
-          }}
-        />
+        {/* PC ではキャラ画像が巨大になりすぎないよう中央で幅を抑える (本文は広いまま)。 */}
+        <div className="md:max-w-md md:mx-auto">
+          <CharacterHero
+            imageSrc={dispImage}
+            alt={dispName}
+            essence={dispEssence}
+            name={dispName}
+            description={dispDesc}
+            jobSlot={{
+              animal: animalName,
+              job,
+              friendCount: friendEvalCount,
+              threshold: JOB_FRIEND_THRESHOLD,
+            }}
+          />
+        </div>
 
         {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
             画像シェアボタンを含む ResultActions をキャラ(CharacterHero)の真下に配置。 */}
@@ -429,25 +433,42 @@ export default async function MePage({ params }: PageProps) {
           />
 
           {/* 発散バー (章②に一本化)。
-              ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。 */}
-          <BigFiveDivergingBars
-            scores={stored}
-            friendScores={
-              friendEvalCount >= REPORT_FRIEND_THRESHOLD
-                ? (friendAvgScores ?? undefined)
-                : undefined
-            }
-            title={
-              friendEvalCount >= REPORT_FRIEND_THRESHOLD
-                ? "自己認知ギャップ（自分 × 友達）"
-                : "5つの軸で見るアナタ"
-            }
-            emoji={friendEvalCount >= REPORT_FRIEND_THRESHOLD ? "🪞" : "✨"}
-          />
-          {friendEvalCount < REPORT_FRIEND_THRESHOLD && (
-            <p className="text-[#3A2D6B]/60 font-bold text-xs leading-relaxed -mt-4 mb-8">
-              いまは自分の評価（●）だけ。友達 {REPORT_FRIEND_THRESHOLD} 人が評価すると、友達の平均（◆）が重なって「ズレ」が見えます。
-            </p>
+              ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。
+              PC(md以上)では解除後のみバー(左) + 読み方説明(右)の2カラム。 */}
+          {friendEvalCount >= REPORT_FRIEND_THRESHOLD ? (
+            <div className="md:grid md:grid-cols-2 md:gap-6 md:items-start">
+              <BigFiveDivergingBars
+                scores={stored}
+                friendScores={friendAvgScores ?? undefined}
+                title="自己認知ギャップ（自分 × 友達）"
+                emoji="🪞"
+              />
+              <aside className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
+                <h3 className="text-[#3A2D6B] font-black text-lg mb-2">
+                  このバーの読み方
+                </h3>
+                <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-3">
+                  <span className="text-[var(--primary)]">●</span> ＝ 自分の評価／
+                  <span className="text-[#3A2D6B]">◆</span> ＝ 友達の平均。
+                  2 つが離れている軸ほど、自分と友達で見え方がズレている軸です。
+                </p>
+                <p className="text-[#3A2D6B]/70 font-bold text-xs leading-relaxed">
+                  軸ごとの差は下の「他者分析」で数値でも確認できます。
+                </p>
+              </aside>
+            </div>
+          ) : (
+            <>
+              <BigFiveDivergingBars
+                scores={stored}
+                title="5つの軸で見るアナタ"
+                emoji="✨"
+              />
+              <p className="text-[#3A2D6B]/60 font-bold text-xs leading-relaxed -mt-4 mb-8">
+                いまは自分の評価（●）だけ。友達 {REPORT_FRIEND_THRESHOLD}{" "}
+                人が評価すると、友達の平均（◆）が重なって「ズレ」が見えます。
+              </p>
+            </>
           )}
 
           {/* ロックされた他者評価 (友達3人で解除、課金なし)。
