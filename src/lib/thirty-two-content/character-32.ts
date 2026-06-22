@@ -21,9 +21,10 @@ export interface ThirtyTwoCharacter {
 }
 
 /** グループ色 (生息地) */
+// グループ色 (淡色・明度高め)。背景の極薄ウォッシュにも、zukan のタイプ色アクセントにも使う。
 export const THIRTY_TWO_GROUP_COLOR: Record<ThirtyTwoGroup, string> = {
-  sky: "#A8D88A", // 空・緑
-  land: "#F5A9C0", // 陸・ピンク
+  sky: "#F3DF7A", // 空・黄
+  land: "#A8D88A", // 陸・緑
   sea: "#8EC5E8", // 海・青
   unknown: "#C3A0E0", // 未知・紫
 };

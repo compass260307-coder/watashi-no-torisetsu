@@ -52,16 +52,18 @@ body {
 /* grid 線の不透明度を 0.3 → 0.12 に下げ、文章を主役に (気配が残る程度に減衰) */
 .grid-bg {
   position: relative;
-  background: linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%);
+  /* 既定は従来のグラデ。/me ではインラインで --grid-bg-fill をグループ色の極薄ウォッシュに差し替える。 */
+  background: var(--grid-bg-fill, linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%));
 }
 
 .grid-bg::before {
   content: "";
   position: absolute;
   inset: 0;
+  /* 既定は白の極薄グリッド。/me では --grid-line をグループ色(極薄)に差し替える。 */
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    linear-gradient(var(--grid-line, rgba(255, 255, 255, 0.12)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line, rgba(255, 255, 255, 0.12)) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   border-radius: inherit;

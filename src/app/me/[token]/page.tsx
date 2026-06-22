@@ -43,7 +43,9 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoColor,
 } from "@/lib/thirty-two-types";
+import type { CSSProperties } from "react";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
@@ -102,6 +104,23 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return "";
   }
+}
+
+// hex (#RGB / #RRGGBB) → rgba 文字列。背景の極薄ウォッシュ生成用。
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const n =
+    h.length === 3
+      ? h
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : h;
+  const r = parseInt(n.slice(0, 2), 16);
+  const g = parseInt(n.slice(2, 4), 16);
+  const b = parseInt(n.slice(4, 6), 16);
+  if ([r, g, b].some((v) => Number.isNaN(v))) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function deriveTypeLabel(
@@ -264,6 +283,10 @@ export default async function MePage({ params }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+  // 背景のグループ色 (flag32 に関係なく t32 由来)。極薄ウォッシュ + 同系グリッド線。
+  const groupColor = thirtyTwoColor(t32);
+  const groupBgWash = hexToRgba(groupColor, 0.22);
+  const groupGridLine = hexToRgba(groupColor, 0.16);
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -295,8 +318,17 @@ export default async function MePage({ params }: PageProps) {
     //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
     // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 md:py-10">
-      {/* モバイルは従来 480px。PC(md以上)は max-w-3xl(768px) に広げ、padding も増やしてゆったり。 */}
-      <div className="max-w-[480px] md:max-w-3xl mx-auto rounded-[32px] overflow-hidden grid-bg p-6 md:p-10 relative border-[3px] border-[#0094D8]">
+      {/* モバイルは従来 480px。PC(md以上)は max-w-3xl(768px) に広げ、padding も増やしてゆったり。
+          背景はグループ色の極薄ウォッシュ + 同系グリッド線 (白ベースの上にほんのり)。 */}
+      <div
+        className="max-w-[480px] md:max-w-3xl mx-auto rounded-[32px] overflow-hidden grid-bg p-6 md:p-10 relative border-[3px] border-[#0094D8]"
+        style={
+          {
+            "--grid-bg-fill": `linear-gradient(180deg, ${groupBgWash} 0%, ${groupBgWash} 100%), #ffffff`,
+            "--grid-line": groupGridLine,
+          } as CSSProperties
+        }
+      >
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
             Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
