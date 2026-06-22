@@ -445,7 +445,7 @@ export default async function MePage({ params }: PageProps) {
                 </div>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
                 <div className="px-1 pb-1">
-                  <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
+                  <p className="body-mincho text-[#3A2D6B] font-medium text-lg leading-[1.6]">
                     {firstPara}
                   </p>
                   {idx === 0 && diagnosedAt && (
