@@ -134,11 +134,9 @@ export function DeepDiveSections({
         })}
       </div>
 
-      {/* 選択中カテゴリの本文 */}
-      <article
-        role="tabpanel"
-        className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6"
-      >
+      {/* 選択中カテゴリの本文。白い囲み(カード)を外し、地の文として背景に直接流す。
+          左右の padding は維持して端で文字が切れないようにする。 */}
+      <article role="tabpanel" className="px-1 pt-1 pb-2">
         <h3 className="text-[#3A2D6B] font-black text-lg leading-tight mb-3">
           {section.title}
         </h3>
