@@ -13,7 +13,6 @@
 import { LockedBlur } from "./LockedBlur";
 import { InlineLockCard } from "./InlineLockCard";
 import { LockedInviteShare } from "./LockedInviteShare";
-import { BigFiveDivergingBars } from "./BigFiveDivergingBars";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -52,11 +51,6 @@ const LOCKED_TEASERS = [
     value: "自分では気づいていない、隠れた強み",
     blurText:
       "アナタが控えめに評価している◯◯を、友達はずっと高く見ています。これは自分では気づきにくい、隠れた強みです。",
-  },
-  {
-    value: "自己評価と友達評価のズレ",
-    blurText:
-      "5つの軸それぞれで、アナタ自身の点と友達の平均点を重ねて表示。どこが一致して、どこがズレているかが一目で分かります。",
   },
 ];
 
@@ -306,15 +300,7 @@ function UnlockedContent({
           </ul>
         </article>
       )}
-
-      {/* 自己認知ギャップ (発散バーに友達平均を重ねる) */}
-      <BigFiveDivergingBars
-        scores={selfScores}
-        friendScores={friendAvgScores}
-        title="自己認知ギャップ（自分 × 友達）"
-        emoji="🪞"
-        className="mb-0"
-      />
+      {/* 発散バー (自己認知ギャップ) は章②ページ側に一本化したため、ここには置かない。 */}
     </div>
   );
 }

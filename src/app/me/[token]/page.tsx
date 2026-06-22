@@ -48,7 +48,8 @@ import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
-import { CompatibleTypes } from "@/components/result/CompatibleTypes";
+// 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
+// 結果ページからは呼び出さない (import も外す)。
 import { JobReveal } from "@/components/result/JobReveal";
 import { computeJob, JOB_FRIEND_THRESHOLD } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
@@ -397,13 +398,8 @@ export default async function MePage({ params }: PageProps) {
             );
           })}
 
-          {/* 相性キャラ 2 体 */}
-          <CompatibleTypes typeId={deepDiveTypeId} />
-
-          {/* Big Five 発散バー (自己のみ) */}
-          <BigFiveDivergingBars scores={stored} />
-
-          {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) */}
+          {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替)。
+              相性キャラ・自己のみ発散バーは撤去 (発散バーは章②に一本化)。 */}
           <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
         </section>
 
@@ -432,9 +428,31 @@ export default async function MePage({ params }: PageProps) {
             friendCount={friendEvalCount}
           />
 
+          {/* 発散バー (章②に一本化)。
+              ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。 */}
+          <BigFiveDivergingBars
+            scores={stored}
+            friendScores={
+              friendEvalCount >= REPORT_FRIEND_THRESHOLD
+                ? (friendAvgScores ?? undefined)
+                : undefined
+            }
+            title={
+              friendEvalCount >= REPORT_FRIEND_THRESHOLD
+                ? "自己認知ギャップ（自分 × 友達）"
+                : "5つの軸で見るアナタ"
+            }
+            emoji={friendEvalCount >= REPORT_FRIEND_THRESHOLD ? "🪞" : "✨"}
+          />
+          {friendEvalCount < REPORT_FRIEND_THRESHOLD && (
+            <p className="text-[#3A2D6B]/60 font-bold text-xs leading-relaxed -mt-4 mb-8">
+              いまは自分の評価（●）だけ。友達 {REPORT_FRIEND_THRESHOLD} 人が評価すると、友達の平均（◆）が重なって「ズレ」が見えます。
+            </p>
+          )}
+
           {/* ロックされた他者評価 (友達3人で解除、課金なし)。
-              解除後は他者分析 / 隠れた強み / 自己認知ギャップ(自分●+友達◆ overlay) / 名前 / メッセージ
-              = 自己×他者の統合分析を内包。 */}
+              ロック中: チラ見せ + ゲージ + QR/LINE 招待。
+              解除後: 他者分析(gap) / 隠れた強み / 評価者名 / メッセージ (発散バーは上に一本化)。 */}
           <OthersPerceptionSection
             friendCount={friendEvalCount}
             threshold={REPORT_FRIEND_THRESHOLD}
