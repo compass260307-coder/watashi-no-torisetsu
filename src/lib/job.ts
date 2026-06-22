@@ -128,6 +128,18 @@ export const JOB_SCORE_MIDPOINT = 5;
 // 職業が判明する友達評価人数の閾値 (課金なしの人数ゲート、ロック解除と同条件)。
 export const JOB_FRIEND_THRESHOLD = 3;
 
+// 統合考察の一言 (仮・差し替え可)。動物(自己) と 職業(他者) のズレを示す。
+// {animal} / {job} を formatJobGapNote で置換する。
+export const JOB_GAP_NOTE_TEMPLATE =
+  "自分では「{animal}」のつもりでも、友達からは「{job}」として見られているみたい。そのギャップこそ、アナタらしさかも。";
+
+export function formatJobGapNote(animal: string, jobName: string): string {
+  return JOB_GAP_NOTE_TEMPLATE.replaceAll("{animal}", animal).replaceAll(
+    "{job}",
+    jobName,
+  );
+}
+
 // タイブレーク順 (偏差が同値のとき先頭の軸を採用)。
 const AXIS_PRIORITY: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
 

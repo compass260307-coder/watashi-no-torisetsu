@@ -49,7 +49,6 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 import { CompatibleTypes } from "@/components/result/CompatibleTypes";
-import { ResultTabs } from "@/components/result/ResultTabs";
 import { JobReveal } from "@/components/result/JobReveal";
 import { computeJob, JOB_FRIEND_THRESHOLD } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
@@ -348,78 +347,105 @@ export default async function MePage({ params }: PageProps) {
         />
         <SharePromo className="mb-8" />
 
-        {/* ===== 自分 / 友達 タブ (名前=CharacterHero は上に固定、その下で対等に切替) =====
-            自分タブ: 取説 → 相性キャラ → 発散バー → 深掘り。
-            友達タブ: 職業の発表 (JobReveal) → ロック他者評価 (OthersPerceptionSection)。
-            パネルはサーバ描画し、ResultTabs(client) がタップ+スワイプで切替。 */}
-        <ResultTabs
-          friendBadge={friendEvalCount >= JOB_FRIEND_THRESHOLD}
-          selfPanel={
-            <>
-              {/* 取説 (段落1のみ) */}
-              {sections.slice(0, 2).map((sec, idx) => {
-                const firstPara = sec.body.split("\n\n")[0];
-                return (
-                  <section key={sec.title} className="mb-8">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span
-                        aria-hidden="true"
-                        className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
-                      >
-                        🎀
-                      </span>
-                      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                        {sec.title}
-                      </h2>
-                    </div>
-                    <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-                      <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
-                        {firstPara}
-                      </p>
-                      {idx === 0 && diagnosedAt && (
-                        <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
-                          診断日: {diagnosedAt}
-                        </p>
-                      )}
-                    </div>
-                  </section>
-                );
-              })}
+        {/* ===== 章① 自分が見た自分 (緑系見出し・動物名のみ・職業は出さない) ===== */}
+        <section aria-labelledby="chapter-self" className="mb-10">
+          <div className="flex items-center gap-3 mb-2">
+            <span
+              aria-hidden="true"
+              className="flex-shrink-0 w-9 h-9 rounded-full bg-[#1FA37A] text-white text-lg flex items-center justify-center"
+            >
+              🪞
+            </span>
+            <h2
+              id="chapter-self"
+              className="text-[#1FA37A] font-black text-2xl leading-tight"
+            >
+              自分が見た自分
+            </h2>
+          </div>
+          <p className="text-[#3A2D6B]/70 font-bold text-sm mb-5 pl-12">
+            アナタは「{animalName}」
+          </p>
 
-              {/* 相性キャラ 2 体 */}
-              <CompatibleTypes typeId={deepDiveTypeId} />
+          {/* 取説 (段落1のみ) */}
+          {sections.slice(0, 2).map((sec, idx) => {
+            const firstPara = sec.body.split("\n\n")[0];
+            return (
+              <section key={sec.title} className="mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <span
+                    aria-hidden="true"
+                    className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+                  >
+                    🎀
+                  </span>
+                  <h3 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                    {sec.title}
+                  </h3>
+                </div>
+                <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+                  <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
+                    {firstPara}
+                  </p>
+                  {idx === 0 && diagnosedAt && (
+                    <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
+                      診断日: {diagnosedAt}
+                    </p>
+                  )}
+                </div>
+              </section>
+            );
+          })}
 
-              {/* Big Five 発散バー */}
-              <BigFiveDivergingBars scores={stored} />
+          {/* 相性キャラ 2 体 */}
+          <CompatibleTypes typeId={deepDiveTypeId} />
 
-              {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) */}
-              <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
-            </>
-          }
-          friendPanel={
-            <>
-              {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」/未定はティーザー) */}
-              <JobReveal
-                job={job}
-                animal={animalName}
-                threshold={JOB_FRIEND_THRESHOLD}
-                friendCount={friendEvalCount}
-              />
+          {/* Big Five 発散バー (自己のみ) */}
+          <BigFiveDivergingBars scores={stored} />
 
-              {/* ロックされた他者評価 (友達3人で解除、課金なし) */}
-              <OthersPerceptionSection
-                friendCount={friendEvalCount}
-                threshold={REPORT_FRIEND_THRESHOLD}
-                isOwner={isOwner}
-                selfScores={stored}
-                friendAvgScores={friendAvgScores}
-                friendNames={friendNames}
-                friendMessages={friendMessages}
-                inviteUrl={inviteUrl}
-              />
-            </>
-          }
-        />
+          {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) */}
+          <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+        </section>
+
+        {/* ===== 章② 友達が見た自分 (ピンク系見出し・①と同格・職業/統合分析) ===== */}
+        <section aria-labelledby="chapter-friend" className="mb-8">
+          <div className="flex items-center gap-3 mb-5">
+            <span
+              aria-hidden="true"
+              className="flex-shrink-0 w-9 h-9 rounded-full bg-[#FE3C72] text-white text-lg flex items-center justify-center"
+            >
+              👀
+            </span>
+            <h2
+              id="chapter-friend"
+              className="text-[#FE3C72] font-black text-2xl leading-tight"
+            >
+              友達が見た自分
+            </h2>
+          </div>
+
+          {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」+ 統合考察の一言 / 未定はティーザー) */}
+          <JobReveal
+            job={job}
+            animal={animalName}
+            threshold={JOB_FRIEND_THRESHOLD}
+            friendCount={friendEvalCount}
+          />
+
+          {/* ロックされた他者評価 (友達3人で解除、課金なし)。
+              解除後は他者分析 / 隠れた強み / 自己認知ギャップ(自分●+友達◆ overlay) / 名前 / メッセージ
+              = 自己×他者の統合分析を内包。 */}
+          <OthersPerceptionSection
+            friendCount={friendEvalCount}
+            threshold={REPORT_FRIEND_THRESHOLD}
+            isOwner={isOwner}
+            selfScores={stored}
+            friendAvgScores={friendAvgScores}
+            friendNames={friendNames}
+            friendMessages={friendMessages}
+            inviteUrl={inviteUrl}
+          />
+        </section>
 
 
         {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
