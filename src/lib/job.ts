@@ -16,8 +16,10 @@ export interface Job {
   name: string;
   /** 一言 (仮・差し替え可)。 */
   oneLiner: string;
-  /** tabler アイコンのクラス名 (例 "ti-news")。 */
+  /** tabler アイコンのクラス名 (例 "ti-news")。将来アイコンライブラリ導入時用に温存。 */
   icon: string;
+  /** バッジ描画用の絵文字 (アイコンライブラリ未導入のため現状はこれを表示)。 */
+  emoji: string;
   /** 決定軸。 */
   axis: BigFiveDimension;
   /** 軸の方向。 */
@@ -31,6 +33,7 @@ export const JOBS = {
     name: "営業",
     oneLiner: "人を巻き込む力がある",
     icon: "ti-businessplan",
+    emoji: "💼",
     axis: "E",
     direction: "high",
   },
@@ -39,6 +42,7 @@ export const JOBS = {
     name: "作家",
     oneLiner: "ひとりの世界を深く耕す",
     icon: "ti-pencil",
+    emoji: "✍️",
     axis: "E",
     direction: "low",
   },
@@ -47,6 +51,7 @@ export const JOBS = {
     name: "看護師",
     oneLiner: "誰かのために動ける",
     icon: "ti-heart-handshake",
+    emoji: "🩺",
     axis: "A",
     direction: "high",
   },
@@ -55,6 +60,7 @@ export const JOBS = {
     name: "革命家",
     oneLiner: "常識を疑い、こわす",
     icon: "ti-flame",
+    emoji: "🔥",
     axis: "A",
     direction: "low",
   },
@@ -63,6 +69,7 @@ export const JOBS = {
     name: "記者",
     oneLiner: "気になったら聞かずにいられない",
     icon: "ti-news",
+    emoji: "📰",
     axis: "O",
     direction: "high",
   },
@@ -71,6 +78,7 @@ export const JOBS = {
     name: "整備士",
     oneLiner: "確かなものを、確実に",
     icon: "ti-tool",
+    emoji: "🔧",
     axis: "O",
     direction: "low",
   },
@@ -79,6 +87,7 @@ export const JOBS = {
     name: "秘書",
     oneLiner: "段取りで支える",
     icon: "ti-checklist",
+    emoji: "📋",
     axis: "C",
     direction: "high",
   },
@@ -87,6 +96,7 @@ export const JOBS = {
     name: "旅人",
     oneLiner: "その時の風まかせ",
     icon: "ti-walk",
+    emoji: "🎒",
     axis: "C",
     direction: "low",
   },
@@ -95,6 +105,7 @@ export const JOBS = {
     name: "詩人",
     oneLiner: "揺れるからこそ、感じ取れる",
     icon: "ti-feather",
+    emoji: "🪶",
     axis: "N",
     direction: "high",
   },
@@ -103,6 +114,7 @@ export const JOBS = {
     name: "船長",
     oneLiner: "動じず、舵を取る",
     icon: "ti-anchor",
+    emoji: "⚓",
     axis: "N",
     direction: "low",
   },

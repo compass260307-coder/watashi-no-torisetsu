@@ -9,6 +9,16 @@
 // 使う場所: /me(自分の型) / /evaluate/result(友達から見た型)。
 
 import Image from "next/image";
+import type { Job } from "@/lib/job";
+
+// 動物＋職業システム用スロット (/me のみ渡す)。
+// job が決まれば「{職業}{動物}」+ アバター右下バッジ。未定なら「？{動物}」+ 判明ゲージ。
+export interface CharacterHeroJobSlot {
+  animal: string; // bare 動物名 (例: イルカ)
+  job: Job | null; // 友達3人以上で確定。null = 未定
+  friendCount: number;
+  threshold: number; // 職業判明に必要な友達人数 (= 3)
+}
 
 interface CharacterHeroProps {
   imageSrc: string;
@@ -17,6 +27,7 @@ interface CharacterHeroProps {
   name: string; // 大・下 (例: きらめきウサギ)
   description?: string; // 短い説明 (型の essence 文 1〜3 行)
   eyebrow?: string; // 任意の上ラベル (例: 「{perceiver}が見た{owner}は」)
+  jobSlot?: CharacterHeroJobSlot; // 指定時は名前を動物＋職業表示に切替 (/me)
 }
 
 export function CharacterHero({
@@ -26,19 +37,40 @@ export function CharacterHero({
   name,
   description,
   eyebrow,
+  jobSlot,
 }: CharacterHeroProps) {
+  const job = jobSlot?.job ?? null;
+  const remaining = jobSlot
+    ? Math.max(0, jobSlot.threshold - jobSlot.friendCount)
+    : 0;
+  const progressPct = jobSlot
+    ? Math.min(100, Math.round((jobSlot.friendCount / jobSlot.threshold) * 100))
+    : 0;
+
   return (
     <div className="flex flex-col items-center text-center mb-6">
       {/* コンテンツカードと同じ横幅 (w-full)・正方形。背景込みシーンを cover で枠いっぱい。 */}
-      <div className="w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
-        <Image
-          src={imageSrc}
-          alt={alt}
-          width={960}
-          height={960}
-          priority
-          className="w-full h-full object-cover"
-        />
+      <div className="relative w-full">
+        <div className="w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
+          <Image
+            src={imageSrc}
+            alt={alt}
+            width={960}
+            height={960}
+            priority
+            className="w-full h-full object-cover"
+          />
+        </div>
+        {/* 職業バッジ (確定時のみ、アバター右下)。overflow-hidden の外なのでクリップされない。 */}
+        {job && (
+          <div
+            className="absolute bottom-2 right-2 w-11 h-11 rounded-full bg-white border-2 border-[#3A2D6B] shadow-md flex items-center justify-center text-xl"
+            role="img"
+            aria-label={`職業: ${job.name}`}
+          >
+            <span aria-hidden="true">{job.emoji}</span>
+          </div>
+        )}
       </div>
       {/* essence + 型名: 型名は一回り大きく・font-black(900)・deepPurple・装飾なしのクリーン塗り。
           重ねは撤去し、スマホ/PC とも画像の下に通常配置 (重なりなし)。 */}
@@ -51,9 +83,49 @@ export function CharacterHero({
           {essence}
         </p>
         <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
-          {name}
+          {jobSlot ? (
+            job ? (
+              `${job.name}${jobSlot.animal}`
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex items-center justify-center min-w-[1.6em] px-1 rounded-lg border-2 border-dashed border-[#3A2D6B]/35 text-[#3A2D6B]/40"
+                >
+                  ？
+                </span>
+                {jobSlot.animal}
+                <span className="sr-only">（職業は友達{jobSlot.threshold}人の評価で判明）</span>
+              </span>
+            )
+          ) : (
+            name
+          )}
         </h1>
       </div>
+
+      {/* 職業未定: 判明ゲージ */}
+      {jobSlot && !job && (
+        <div className="w-full max-w-[280px] mb-3">
+          <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.2em] mb-1.5">
+            あと {remaining} 人で職業が判明
+          </p>
+          <div
+            className="w-full h-2.5 bg-card-border rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={jobSlot.friendCount}
+            aria-valuemin={0}
+            aria-valuemax={jobSlot.threshold}
+            aria-label={`友達評価 ${jobSlot.friendCount} / ${jobSlot.threshold} 人`}
+          >
+            <div
+              className="h-full bg-[var(--primary)] transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {description && (
         // balance-jp: text-wrap:balance + word-break:auto-phrase (日本語の文節で均等折返し)
         <p className="balance-jp text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[340px]">

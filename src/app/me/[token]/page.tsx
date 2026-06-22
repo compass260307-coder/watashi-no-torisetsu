@@ -49,6 +49,7 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 import { CompatibleTypes } from "@/components/result/CompatibleTypes";
+import { computeJob, JOB_FRIEND_THRESHOLD } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
@@ -279,6 +280,10 @@ export default async function MePage({ params }: PageProps) {
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
   const shareCode = generateShareCode(user.id as string);
+  // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
+  // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
+  const animalName = sixteenType.animal;
+  const job = computeJob(friendAvgScores, friendEvalCount);
 
   return (
     // Phase 1.5-α Day 11.1: LP と同じ grid-bg + 統合カード枠で世界観を連続化。
@@ -320,6 +325,12 @@ export default async function MePage({ params }: PageProps) {
           essence={dispEssence}
           name={dispName}
           description={dispDesc}
+          jobSlot={{
+            animal: animalName,
+            job,
+            friendCount: friendEvalCount,
+            threshold: JOB_FRIEND_THRESHOLD,
+          }}
         />
 
         {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
