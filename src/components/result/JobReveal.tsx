@@ -22,7 +22,7 @@ export function JobReveal({
 }: JobRevealProps) {
   if (job) {
     return (
-      <article className="bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] p-6 mb-6 text-center">
+      <article className="mb-8 text-center">
         <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-3">
           友達から見たアナタ
         </p>
@@ -51,7 +51,7 @@ export function JobReveal({
   // 未定 (ティーザー)
   const remaining = Math.max(0, threshold - friendCount);
   return (
-    <article className="bg-white rounded-3xl border-2 border-dashed border-[#3A2D6B]/35 shadow-md p-6 mb-6 text-center">
+    <article className="mb-8 text-center">
       <p className="text-[#3A2D6B]/55 font-black text-[10px] tracking-[0.3em] mb-3">
         友達から見たアナタの職業
       </p>

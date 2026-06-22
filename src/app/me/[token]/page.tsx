@@ -45,7 +45,6 @@ import {
   thirtyTwoOneLiner,
   thirtyTwoColor,
 } from "@/lib/thirty-two-types";
-import type { CSSProperties } from "react";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
@@ -104,23 +103,6 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return "";
   }
-}
-
-// hex (#RGB / #RRGGBB) → rgba 文字列。背景の極薄ウォッシュ生成用。
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const n =
-    h.length === 3
-      ? h
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : h;
-  const r = parseInt(n.slice(0, 2), 16);
-  const g = parseInt(n.slice(2, 4), 16);
-  const b = parseInt(n.slice(4, 6), 16);
-  if ([r, g, b].some((v) => Number.isNaN(v))) return `rgba(255,255,255,${alpha})`;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // hex を白に alpha 分だけ混ぜた「不透明の淡色」を返す (全面背景用。半透明の重ね掛けを防ぐ)。
@@ -305,7 +287,6 @@ export default async function MePage({ params }: PageProps) {
   // コンテナも同色にして枠なく全面化。グリッド線は同系色の極薄。
   const groupColor = thirtyTwoColor(t32);
   const groupSurface = paleSurface(groupColor, 0.22);
-  const groupGridLine = hexToRgba(groupColor, 0.16);
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -338,20 +319,13 @@ export default async function MePage({ params }: PageProps) {
     // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
     // 背景はグループ色の淡色を画面全面に (旧薄紫グラデは撤去)。
     <main
-      className="min-h-screen py-6 px-4 md:py-10"
+      className="min-h-screen py-6 px-4 md:py-10 md:px-8"
       style={{ background: groupSurface }}
     >
-      {/* モバイルは従来 480px。PC(md以上)は max-w-3xl(768px) に広げ、padding も増やしてゆったり。
-          コンテナも main と同じ淡色にして枠なく全面化。グリッド線は同系色の極薄。 */}
-      <div
-        className="max-w-[480px] md:max-w-3xl mx-auto rounded-[32px] overflow-hidden grid-bg p-6 md:p-10 relative border-[3px] border-[#0094D8]"
-        style={
-          {
-            "--grid-bg-fill": groupSurface,
-            "--grid-line": groupGridLine,
-          } as CSSProperties
-        }
-      >
+      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去し、背景は main の
+          groupSurface 全面一色。本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、
+          PC は読める上限 max-w-[1000px] で中央寄せ。 */}
+      <div className="max-w-[1000px] mx-auto relative">
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
             Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
