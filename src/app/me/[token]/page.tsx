@@ -98,18 +98,6 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-// 変身演出のデモ強制トリガー。?revealDemo=1 で「職業判明済み＋初回再生」を強制表示する。
-// 本番ユーザーに露出しないよう、開発(NODE_ENV!==production) か 明示フラグ
-// (NEXT_PUBLIC_REVEAL_DEMO==="true") のときだけ有効。通常ユーザーは param を知らない上、
-// 本番でフラグ off なら param を付けても一切無視される。データ・職業決定ロジックは不変
-// (表示用に displayJob を差し込むだけ)。
-function isRevealDemoAllowed(): boolean {
-  return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.NEXT_PUBLIC_REVEAL_DEMO === "true"
-  );
-}
-
 // Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
 // に置き換え。章タイトル・本文はそこを単一の source とする (旧プレースホルダー CHAPTERS は廃止)。
 
@@ -343,10 +331,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
   // 変身演出の制御。
   // - revealKey: ユーザーごとの「再生済み」フラグ (localStorage)。判明後の初回のみ再生。
-  // - forceReveal (デモ): ?revealDemo=1 + 許可環境のとき、職業を仮(記者)で差し込み毎回再生。
-  //   ※ 職業決定ロジック (computeJob) は不変。デモは「表示用の job」を差し替えるだけ。
+  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込み毎回再生。
+  //   /me/[token] は推測不可のトークン限定URLで、通常ユーザーが param を付けて踏むことはない
+  //   ため実質的に露出しない。職業決定ロジック (computeJob) は不変で、デモは「表示用の job」を
+  //   差し替えてヒーローの見た目だけ変える (章②/スコア/解除条件には一切影響しない)。
   const revealKey = `wt_job_revealed_${shareCode}`;
-  const forceReveal = isRevealDemoAllowed() && sp.revealDemo === "1";
+  const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
 
   return (
