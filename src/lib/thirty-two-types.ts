@@ -201,6 +201,11 @@ export function thirtyTwoName(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].name;
 }
 
+/** 32キャラの素の動物名 (例: ユニコーン)。職業表示「{job}{animal}」/「？{animal}」/ 統合解説で使用。 */
+export function thirtyTwoAnimal(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].animal;
+}
+
 /** 32キャラの essence (例: 太陽の社交家) */
 export function thirtyTwoEssence(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].essence;

@@ -39,6 +39,7 @@ import {
   classifyThirtyTwoType,
   selfContentFor,
   thirtyTwoName,
+  thirtyTwoAnimal,
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
@@ -313,7 +314,9 @@ export default async function MePage({ params }: PageProps) {
   const shareCode = generateShareCode(user.id as string);
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
   // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
-  const animalName = sixteenType.animal;
+  // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
+  // off は従来 16 タイプの動物。画像/型名/essence と動物名の不一致を解消。
+  const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
   return (
