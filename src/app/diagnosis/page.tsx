@@ -252,29 +252,49 @@ function DiagnosisContent() {
       metadata: { questionId },
     });
 
-    // 選び直し(既に回答済みの質問の変更)では自動スクロールしない。
+    // 選び直し(既に回答済みの質問の変更)では自動送りしない。
     // → その場で選択肢を見比べて変更でき、勝手に次へ送られない (戻り見直しと整合)。
     if (!isFirstAnswer) return;
 
-    // オートスクロール (初回回答のみ): 同ページ内で「今答えた質問より後ろ・まだ未回答」の
-    // 質問を画面中央へ。後続の回答状況は今回の回答で変わらないため現在の answers 参照で OK。
-    // ページ最後の質問だった場合 (next なし) はスクロールせず、StickyCtaFooter の「次へ」に任せる。
+    // === 初回回答 → 自動送り ===
+    // 同ページ内に未回答が残れば「次の未回答質問」へオートスクロール、
+    // ページの全問が埋まったら「次のページ」へ自動で進む (最終ページは結果ボタンに委譲)。
     const idx = pageQuestions.findIndex((q) => q.id === questionId);
     if (idx === -1) return;
-    const next = pageQuestions
-      .slice(idx + 1)
-      .find((q) => answers[q.id] === undefined);
-    if (!next) return;
-    const el = questionRefs.current[next.id];
-    if (!el) return;
-    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
-    // クリックのレンダリング後に実行 (1 フレーム遅延)。
-    requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior, block: "center" });
-      // a11y: フォーカスを次の質問へ移し、スクロール後の迷子を防ぐ
-      // (スクロールは上で実施済みなので preventScroll で二重スクロールを避ける)。
-      el.focus({ preventScroll: true });
-    });
+    // 今回の回答を反映した「回答済み」判定 (answers は上書き前だが当該 id は回答済み扱い)。
+    const isAnswered = (qid: number) =>
+      qid === questionId || answers[qid] !== undefined;
+    // 後続を優先し、なければ前方の未回答 (順不同回答の取りこぼし) も拾う。
+    const nextUnanswered =
+      pageQuestions.slice(idx + 1).find((q) => !isAnswered(q.id)) ??
+      pageQuestions.slice(0, idx).find((q) => !isAnswered(q.id));
+
+    if (nextUnanswered) {
+      // まだ未回答が残る → その質問を画面中央へスムーズに寄せる。
+      const el = questionRefs.current[nextUnanswered.id];
+      if (!el) return;
+      const behavior: ScrollBehavior = prefersReducedMotion()
+        ? "auto"
+        : "smooth";
+      // クリックのレンダリング後に実行 (1 フレーム遅延)。
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior, block: "center" });
+        // a11y: フォーカスも次の質問へ移し、スクロール後の迷子を防ぐ
+        // (スクロールは上で実施済みなので preventScroll で二重スクロールを避ける)。
+        el.focus({ preventScroll: true });
+      });
+      return;
+    }
+
+    // ページの全問に回答済み → 次のページへ自動送り。選択が見えるよう短い間を置く。
+    // 最終ページは自動送信せず、sticky の「結果を見る」に委ねる (誤送信防止)。
+    // 次ページ先頭へのスクロールは currentPage 変化を見る useEffect が担う。
+    if (isLastPage) return;
+    const fromPage = currentPage;
+    window.setTimeout(() => {
+      // 待機中に手動で 次へ/戻る していたら二重送りしない (同ページのままのときだけ進む)。
+      setCurrentPage((p) => (p === fromPage ? p + 1 : p));
+    }, 420);
   };
 
   const handleNext = () => {
