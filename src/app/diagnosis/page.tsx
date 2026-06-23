@@ -242,16 +242,22 @@ function DiagnosisContent() {
   };
 
   const handleAnswer = (questionId: number, value: AnswerValue) => {
+    // 初回回答か「選び直し(既回答の変更)」かを、上書き前の状態で判定。
+    const isFirstAnswer = answers[questionId] === undefined;
     setAnswers((prev) => {
       if (prev[questionId] === value) return prev;
-      return { ...prev, [questionId]: value };
+      return { ...prev, [questionId]: value }; // 別の選択肢なら上書き (選び直し可)
     });
     track("diagnosis_question_answered", {
       metadata: { questionId },
     });
 
-    // オートスクロール: 同ページ内で「今答えた質問より後ろ・まだ未回答」の質問を画面中央へ。
-    // 後続の質問の回答状況は今回の回答で変わらないため、現在の answers 参照で判定して OK。
+    // 選び直し(既に回答済みの質問の変更)では自動スクロールしない。
+    // → その場で選択肢を見比べて変更でき、勝手に次へ送られない (戻り見直しと整合)。
+    if (!isFirstAnswer) return;
+
+    // オートスクロール (初回回答のみ): 同ページ内で「今答えた質問より後ろ・まだ未回答」の
+    // 質問を画面中央へ。後続の回答状況は今回の回答で変わらないため現在の answers 参照で OK。
     // ページ最後の質問だった場合 (next なし) はスクロールせず、StickyCtaFooter の「次へ」に任せる。
     const idx = pageQuestions.findIndex((q) => q.id === questionId);
     if (idx === -1) return;
@@ -530,7 +536,12 @@ function DiagnosisContent() {
           ボタン裏で透けないように不透明クリームを敷く */}
       <StickyCtaFooter variant="solid">
         {currentPage > 0 && (
-          <button type="button" onClick={handlePrev} className={ctaSecondary}>
+          <button
+            type="button"
+            onClick={handlePrev}
+            aria-label="前のページに戻る (回答は保持されます)"
+            className={ctaSecondary}
+          >
             戻る
           </button>
         )}

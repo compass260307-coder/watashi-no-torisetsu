@@ -102,6 +102,7 @@ export function LikertScale({
               aria-pressed={isSelected}
               className={[
                 "rounded-full border-2 transition-all duration-150 outline-none flex-shrink-0",
+                "flex items-center justify-center",
                 "hover:scale-110 active:scale-95",
                 "focus-visible:ring-4",
                 style.sizeClass,
@@ -110,7 +111,27 @@ export function LikertScale({
                   ? `${style.selectedBgClass} ${style.selectedRingClass} ring-4`
                   : "bg-white",
               ].join(" ")}
-            />
+            >
+              {/* 選択中の非色の手がかり (色覚に依存しない): 白チェック + deepPurple の縁取り影で
+                  濃淡どちらの塗りでも視認できる。aria-pressed と併せて選択状態を伝える。 */}
+              {isSelected && (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-1/2 h-1/2 text-white"
+                  style={{
+                    filter: "drop-shadow(0 0.5px 1px rgba(58,45,107,0.9))",
+                  }}
+                >
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
           );
         })}
       </div>
