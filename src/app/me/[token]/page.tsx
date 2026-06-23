@@ -52,7 +52,12 @@ import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSec
 // 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
 // 結果ページからは呼び出さない (import も外す)。
 import { JobReveal } from "@/components/result/JobReveal";
-import { computeJob, JOB_FRIEND_THRESHOLD } from "@/lib/job";
+import {
+  computeJob,
+  JOB_FRIEND_THRESHOLD,
+  getJobDescription,
+  formatJobIntegration,
+} from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import { SharePromo } from "@/components/result/SharePromo";
@@ -480,13 +485,29 @@ export default async function MePage({ params }: PageProps) {
             </h2>
           </div>
 
-          {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」+ 統合考察の一言 / 未定はティーザー) */}
+          {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」+ 一言 / 未定はティーザー) */}
           <JobReveal
             job={job}
             animal={animalName}
             threshold={JOB_FRIEND_THRESHOLD}
             friendCount={friendEvalCount}
           />
+
+          {/* 職業判明後 (job !== null) のみ: 職業単体の説明 → 動物×職業の統合解説 を
+              本文として流れで表示。文言はすべて仮・定数 (job.ts) で後から差し替え/AI生成可。
+              未判明 (友達<3) は「？{動物}」ティーザーのままで非表示。 */}
+          {job && (
+            <div className="mb-8">
+              {/* 職業単体の説明 (NEW・仮 JOB_DESCRIPTION) */}
+              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-5">
+                {getJobDescription(job)}
+              </p>
+              {/* 動物×職業の統合解説 (NEW・仮 JOB_INTEGRATION、{animal} 差し込み) */}
+              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
+                {formatJobIntegration(job, animalName)}
+              </p>
+            </div>
+          )}
 
           {/* 発散バー (章②に一本化)。
               ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。

@@ -5,7 +5,6 @@
 // - 未定: 「？{動物}」のティーザー。"開けたくなる扉" にする (ゲージ/招待は下の他者評価セクション)。
 
 import type { Job } from "@/lib/job";
-import { formatJobGapNote } from "@/lib/job";
 
 interface JobRevealProps {
   job: Job | null;
@@ -37,12 +36,8 @@ export function JobReveal({
           {job.name}
           {animal}
         </h2>
-        <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-3">
+        <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
           {job.oneLiner}
-        </p>
-        {/* 統合考察の一言: 動物(自己) × 職業(他者) のズレ (仮・job.ts の定数で差替可) */}
-        <p className="body-gothic text-[#3A2D6B] font-medium text-sm leading-[1.6] bg-[#FFF9F0] rounded-2xl border border-[#FFE993] px-4 py-3">
-          {formatJobGapNote(animal, job.name)}
         </p>
       </article>
     );
