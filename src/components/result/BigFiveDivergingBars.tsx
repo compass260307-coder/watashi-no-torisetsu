@@ -140,71 +140,76 @@ export function BigFiveDivergingBars({
                 friendValue !== null ? `、友達の平均 ${friendValue}%` : ""
               }`}</span>
 
-              {/* 軸名 + 「寄りラベル ・ %」(視覚) */}
+              {/* 上段: 軸名 + 「寄りラベル ・ %」(視覚・装飾) */}
               <div
                 aria-hidden="true"
-                className="flex items-baseline justify-between mb-2"
+                className="flex items-baseline justify-between mb-1.5"
               >
                 <span className="text-[#3A2D6B] font-black text-sm">
                   {axis.title}
                 </span>
-                <span className="text-[#3A2D6B]/70 font-bold text-xs tabular-nums">
+                <span className="text-[#3A2D6B]/75 font-bold text-xs tabular-nums">
                   {lean} ・ {value}%
                 </span>
               </div>
 
-              {/* 両極ラベル + 発散バー (すべて装飾 → aria-hidden) */}
-              <div aria-hidden="true" className="flex items-center gap-2">
-                {/* 左極ラベル: truncate せず、min/max 幅 + 必要なら折り返しで収める */}
-                <span className="text-[#3A2D6B] font-bold text-[11px] leading-tight text-center min-w-[2.75rem] max-w-[4.5rem] shrink-0 break-words">
-                  {axis.left}
-                </span>
+              {/* 中段: 両極ラベルをバーの真上に左右端で配置 (バーの横には置かない)。
+                  これでバーを全幅にしてもテキストが押し出されず、画面端で切れない。 */}
+              <div
+                aria-hidden="true"
+                className="flex items-center justify-between mb-1 text-[11px] font-bold text-[#3A2D6B]/80 leading-tight"
+              >
+                <span>{axis.left}</span>
+                <span>{axis.right}</span>
+              </div>
 
-                <div className="relative flex-1 h-4">
-                  {/* 2 色トラック (中央を境にベタ塗り 2 色。グラデにはしない) */}
-                  <div className="absolute inset-0 rounded-full overflow-hidden flex">
-                    <div
-                      className="w-1/2 h-full"
-                      style={{ background: "var(--axis-tint-left)" }}
-                    />
-                    <div
-                      className="w-1/2 h-full"
-                      style={{ background: "var(--axis-tint-right)" }}
-                    />
-                    {/* 発散フィル (中央起点・ブランドピンク)。value===50 は 2px で可視化 */}
-                    <div
-                      className="absolute top-0 h-full transition-all duration-500"
-                      style={{
-                        left: `${fillLeft}%`,
-                        width: `${fillWidth}%`,
-                        minWidth: value === 50 ? "2px" : undefined,
-                        background: "var(--primary)",
-                      }}
-                    />
-                  </div>
-
-                  {/* 中央ティック (常時表示。トラックより前面) */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#3A2D6B]/45" />
-
-                  {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
-                  {friendValue !== null && (
-                    <div
-                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-45 border-2 border-white shadow-md transition-all duration-500"
-                      style={{ left: `${friendValue}%`, background: "#3A2D6B" }}
-                    />
-                  )}
-
-                  {/* 自分のマーカー (単色円 + 白リング)。軸ごとのキャラは置かない */}
+              {/* 下段: 発散バー (全幅・装飾 → aria-hidden)。
+                  淡色グループ背景 (黄/緑/青/紫) でも輪郭が出るよう、白寄りレール +
+                  deepPurple 細アウトラインで土台を固定色化 (背景非依存)。両極の色分けは
+                  薄いガイド程度に抑え、中央→スコアの塗り (ブランドピンク) と ● を主役に。 */}
+              <div aria-hidden="true" className="relative w-full h-4">
+                {/* 土台レール: 白寄り + deepPurple アウトライン。固定色なので 4 背景すべてで浮く。 */}
+                <div
+                  className="absolute inset-0 rounded-full overflow-hidden flex border-[1.5px] border-[#3A2D6B]/25"
+                  style={{ background: "rgba(255,255,255,0.9)" }}
+                >
+                  {/* 両極の色分け (薄いガイド程度・固定色 = dark mode やグループ色に依存しない) */}
                   <div
-                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all duration-500"
-                    style={{ left: `${value}%`, background: "var(--primary)" }}
+                    className="w-1/2 h-full"
+                    style={{ background: "rgba(31,163,122,0.12)" }}
+                  />
+                  <div
+                    className="w-1/2 h-full"
+                    style={{ background: "rgba(254,60,114,0.10)" }}
+                  />
+                  {/* 中央→スコアの強調塗り (ブランドピンク)。value===50 は 2px で可視化 */}
+                  <div
+                    className="absolute top-0 h-full transition-all duration-500"
+                    style={{
+                      left: `${fillLeft}%`,
+                      width: `${fillWidth}%`,
+                      minWidth: value === 50 ? "2px" : undefined,
+                      background: "var(--primary)",
+                    }}
                   />
                 </div>
 
-                {/* 右極ラベル (左と同フォント・同色 = 優劣感を出さない) */}
-                <span className="text-[#3A2D6B] font-bold text-[11px] leading-tight text-center min-w-[2.75rem] max-w-[4.5rem] shrink-0 break-words">
-                  {axis.right}
-                </span>
+                {/* 中央ティック (常時表示・トラックより前面) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#3A2D6B]/55" />
+
+                {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
+                {friendValue !== null && (
+                  <div
+                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-45 border-2 border-white shadow-md transition-all duration-500"
+                    style={{ left: `${friendValue}%`, background: "#3A2D6B" }}
+                  />
+                )}
+
+                {/* 自分のマーカー (主役・単色円 + 白リング + 影)。軸ごとのキャラは置かない */}
+                <div
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all duration-500"
+                  style={{ left: `${value}%`, background: "var(--primary)" }}
+                />
               </div>
             </div>
           );
