@@ -239,13 +239,13 @@ body {
   font-size: 1rem;
 }
 
-/* 結果ページ本文の明朝体 (読ませる文章ブロック用)。Noto Serif JP (next/font) →
-   端末内蔵明朝 (Hiragino Mincho / Yu Mincho) → serif の順でフォールバック。
-   明朝は細く見えるため、利用箇所では deepPurple の濃い文字色でコントラストを確保する。 */
-.body-mincho {
+/* 結果ページ本文の角ゴシック (読ませる文章ブロック用)。
+   ヒラギノ角ゴ → Hiragino Sans → Noto Sans JP (next/font / 非搭載端末向け) の順でフォールバック。
+   見出しと同様に角ゴで統一し、明朝は使わない。 */
+.body-gothic {
   font-family:
-    var(--font-noto-serif-jp), "Hiragino Mincho ProN", "Yu Mincho", "YuMincho",
-    "Noto Serif JP", serif;
+    var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    "Noto Sans JP", sans-serif;
 }
 
 /* 日本語の説明文を読みやすく折り返す: 行長を均等化 (balance) + 文節で改行 (auto-phrase)。

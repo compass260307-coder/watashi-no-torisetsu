@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { M_PLUS_Rounded_1c, Noto_Serif_JP } from "next/font/google";
+import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
@@ -13,13 +13,14 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   variable: "--font-m-plus-rounded",
 });
 
-// 結果ページ本文の明朝体 (.body-mincho が参照)。JP フォントは巨大なので preload しない。
-const notoSerifJP = Noto_Serif_JP({
+// 結果ページ本文の角ゴシック (.body-gothic が参照)。ヒラギノ非搭載端末向けフォールバック。
+// JP フォントは巨大なので preload しない。
+const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["400", "500"],
   display: "swap",
   preload: false,
-  variable: "--font-noto-serif-jp",
+  variable: "--font-noto-sans-jp",
 });
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -122,7 +123,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${mPlusRounded.variable} ${notoSerifJP.variable}`}
+      className={`${mPlusRounded.variable} ${notoSansJP.variable}`}
     >
       <body className="min-h-dvh flex flex-col">
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}

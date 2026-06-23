@@ -37,11 +37,11 @@ export function JobReveal({
           {job.name}
           {animal}
         </h2>
-        <p className="body-mincho text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-3">
+        <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-3">
           {job.oneLiner}
         </p>
         {/* 統合考察の一言: 動物(自己) × 職業(他者) のズレ (仮・job.ts の定数で差替可) */}
-        <p className="body-mincho text-[#3A2D6B] font-medium text-sm leading-[1.6] bg-[#FFF9F0] rounded-2xl border border-[#FFE993] px-4 py-3">
+        <p className="body-gothic text-[#3A2D6B] font-medium text-sm leading-[1.6] bg-[#FFF9F0] rounded-2xl border border-[#FFE993] px-4 py-3">
           {formatJobGapNote(animal, job.name)}
         </p>
       </article>
@@ -61,7 +61,7 @@ export function JobReveal({
       <h2 className="text-[#3A2D6B] font-black text-2xl leading-tight mb-2">
         ？{animal}
       </h2>
-      <p className="body-mincho text-[#3A2D6B] font-medium text-base leading-[1.6]">
+      <p className="body-gothic text-[#3A2D6B] font-medium text-base leading-[1.6]">
         友達 {threshold} 人の評価で、アナタの「職業」が判明します（あと {remaining} 人）。
       </p>
     </article>

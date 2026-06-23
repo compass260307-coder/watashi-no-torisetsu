@@ -311,12 +311,9 @@ export default async function MePage({ params }: PageProps) {
   const job = computeJob(friendAvgScores, friendEvalCount);
 
   return (
-    // Phase 1.5-α Day 11.1: LP と同じ grid-bg + 統合カード枠で世界観を連続化。
-    // - 外側: lavender (#E4E0F5) でカード周囲を埋める
-    // - 内側: 統合カード (max-w-[480px] / rounded-[32px] / border-[3px] #0094D8 / grid-bg / p-6)
-    // grid-bg の z-index 階層は globals.css (Day 8) で:
-    //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
-    // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
+    // 背景はキャラのグループ色 (groupSurface) の全面一色。最外周の枠線・カード(border/
+    // 角丸/grid-bg)・中央寄せ余白は撤去し、本文は左右ぎりぎり (mobile px-4 / PC px-8) +
+    // PC 上限 max-w-[1080px] 中央寄せで全幅に流す (1行を長く→行数減→縦が短く)。
     // 背景はグループ色の淡色を画面全面に (旧薄紫グラデは撤去)。
     <main
       className="min-h-screen py-6 px-4 md:py-10 md:px-8"
@@ -324,8 +321,8 @@ export default async function MePage({ params }: PageProps) {
     >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去し、背景は main の
           groupSurface 全面一色。本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、
-          PC は読める上限 max-w-[1000px] で中央寄せ。 */}
-      <div className="max-w-[1000px] mx-auto relative">
+          PC は読める上限 max-w-[1080px] で中央寄せ。 */}
+      <div className="max-w-[1080px] mx-auto relative">
         {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
             Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
         <div className="flex justify-between items-center mb-6">
@@ -419,7 +416,7 @@ export default async function MePage({ params }: PageProps) {
                 </div>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
                 <div className="px-1 pb-1">
-                  <p className="body-mincho text-[#3A2D6B] font-medium text-lg leading-[1.6]">
+                  <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
                     {firstPara}
                   </p>
                   {idx === 0 && diagnosedAt && (

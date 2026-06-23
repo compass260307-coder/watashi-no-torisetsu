@@ -150,7 +150,7 @@ export function DeepDiveSections({
         {section.body.split("\n\n").map((para, i) => (
           <p
             key={i}
-            className="body-mincho text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+            className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
           >
             {para}
           </p>
