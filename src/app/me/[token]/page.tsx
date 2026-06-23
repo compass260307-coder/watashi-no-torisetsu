@@ -57,6 +57,7 @@ import {
   JOB_FRIEND_THRESHOLD,
   getJobDescription,
   formatJobIntegration,
+  JOBS,
 } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
@@ -94,6 +95,19 @@ type StoredScores = Partial<Record<BigFiveDimension, number>> & {
 
 interface PageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+// 変身演出のデモ強制トリガー。?revealDemo=1 で「職業判明済み＋初回再生」を強制表示する。
+// 本番ユーザーに露出しないよう、開発(NODE_ENV!==production) か 明示フラグ
+// (NEXT_PUBLIC_REVEAL_DEMO==="true") のときだけ有効。通常ユーザーは param を知らない上、
+// 本番でフラグ off なら param を付けても一切無視される。データ・職業決定ロジックは不変
+// (表示用に displayJob を差し込むだけ)。
+function isRevealDemoAllowed(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_REVEAL_DEMO === "true"
+  );
 }
 
 // Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
@@ -162,8 +176,9 @@ function deriveTypeLabel(
   return { typeName, fullCode, modifierLabel };
 }
 
-export default async function MePage({ params }: PageProps) {
+export default async function MePage({ params, searchParams }: PageProps) {
   const { token } = await params;
+  const sp = await searchParams;
 
   // ===== 1. token → users 行 =====
   const { data: user, error: userErr } = await supabaseAdmin
@@ -326,6 +341,14 @@ export default async function MePage({ params }: PageProps) {
   const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
+  // 変身演出の制御。
+  // - revealKey: ユーザーごとの「再生済み」フラグ (localStorage)。判明後の初回のみ再生。
+  // - forceReveal (デモ): ?revealDemo=1 + 許可環境のとき、職業を仮(記者)で差し込み毎回再生。
+  //   ※ 職業決定ロジック (computeJob) は不変。デモは「表示用の job」を差し替えるだけ。
+  const revealKey = `wt_job_revealed_${shareCode}`;
+  const forceReveal = isRevealDemoAllowed() && sp.revealDemo === "1";
+  const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
+
   return (
     // 背景はキャラのグループ色 (groupSurface) の全面一色。最外周の枠線・カード(border/
     // 角丸/grid-bg)・中央寄せ余白は撤去し、本文は左右ぎりぎり (mobile px-4 / PC px-8) +
@@ -381,10 +404,11 @@ export default async function MePage({ params }: PageProps) {
             imageFitClassName="object-contain"
             imageMaxWidthClassName="max-w-[230px] mx-auto"
             imageBlend
-
+            revealKey={revealKey}
+            forceReveal={forceReveal}
             jobSlot={{
               animal: animalName,
-              job,
+              job: displayJob,
               friendCount: friendEvalCount,
               threshold: JOB_FRIEND_THRESHOLD,
             }}

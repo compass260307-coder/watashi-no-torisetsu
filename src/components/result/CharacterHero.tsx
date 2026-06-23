@@ -10,6 +10,7 @@
 
 import Image from "next/image";
 import type { Job } from "@/lib/job";
+import { JobRevealName } from "./JobRevealName";
 
 // 動物＋職業システム用スロット (/me のみ渡す)。
 // job が決まれば「{職業}{動物}」+ アバター右下バッジ。未定なら「？{動物}」+ 判明ゲージ。
@@ -39,6 +40,11 @@ interface CharacterHeroProps {
   // 透過フェードさせ、四角いカードの縁をページ背景に馴染ませる。中心 (キャラ本体) は不透過の
   // ままなのでキャラは切れない。ヒーロー背景がキャラ画像の背景トーンのとき没入感が出る。
   imageBlend?: boolean;
+  // 職業判明時の「変身」演出キー (localStorage、ユーザーごと)。指定時のみ名前を JobRevealName
+  // で描画し初回判明で 1 回だけ再生する。未指定 (例: /evaluate/result) は静的表示のまま。
+  revealKey?: string;
+  // デモ用: 変身演出を毎回強制再生 (フラグを見ない/書かない)。開発確認用。
+  forceReveal?: boolean;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -57,6 +63,8 @@ export function CharacterHero({
   imageFitClassName = "object-cover object-top",
   imageMaxWidthClassName = "",
   imageBlend = false,
+  revealKey,
+  forceReveal = false,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -116,7 +124,17 @@ export function CharacterHero({
         <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
           {jobSlot ? (
             job ? (
-              `${job.name}${jobSlot.animal}`
+              revealKey ? (
+                // 判明時: 初回だけ「動物 → 演出 → 職業動物」の変身を再生 (以降は静的)。
+                <JobRevealName
+                  animal={jobSlot.animal}
+                  jobName={job.name}
+                  revealKey={revealKey}
+                  forcePlay={forceReveal}
+                />
+              ) : (
+                `${job.name}${jobSlot.animal}`
+              )
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 <span
