@@ -28,9 +28,13 @@ interface CharacterHeroProps {
   description?: string; // 短い説明 (型の essence 文 1〜3 行)
   eyebrow?: string; // 任意の上ラベル (例: 「{perceiver}が見た{owner}は」)
   jobSlot?: CharacterHeroJobSlot; // 指定時は名前を動物＋職業表示に切替 (/me)
-  // 画像枠のアスペクト比 (Tailwind クラス)。既定は正方形。/me は横長 (aspect-[3/2]) で
-  // ファーストビューの縦占有を抑える。object-cover でキャラ中心が見える位置に収める。
+  // 画像枠のアスペクト比 (Tailwind クラス)。既定は正方形。
   imageAspectClassName?: string;
+  // 画像の object-fit (Tailwind クラス)。既定は cover/top。/me は contain で全身を切らさず表示。
+  imageFitClassName?: string;
+  // 画像枠の最大幅 (Tailwind クラス)。既定は無し (= 親の横幅いっぱい)。/me は小さめ「引き」+
+  // 余白を見せるため max-w を指定。テキスト (名前/肩書き) は親幅のまま広く読ませる。
+  imageMaxWidthClassName?: string;
 }
 
 export function CharacterHero({
@@ -42,6 +46,8 @@ export function CharacterHero({
   eyebrow,
   jobSlot,
   imageAspectClassName = "aspect-square",
+  imageFitClassName = "object-cover object-top",
+  imageMaxWidthClassName = "",
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -53,9 +59,9 @@ export function CharacterHero({
 
   return (
     <div className="flex flex-col items-center text-center mb-4">
-      {/* コンテンツカードと同じ横幅 (w-full)。アスペクトは imageAspectClassName で可変
-          (既定 正方形 / me は横長)。背景込みシーンを cover で枠いっぱい・中心を見せる。 */}
-      <div className="relative w-full">
+      {/* 画像枠。imageMaxWidthClassName で「引き」(小さめ+余白) も可。アスペクト/object-fit も可変。
+          contain 指定時はキャラ全身が枠内に収まり切れず欠けない (見切れ解消)。 */}
+      <div className={`relative w-full ${imageMaxWidthClassName}`.trim()}>
         <div
           className={`w-full ${imageAspectClassName} rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]`}
         >
@@ -65,9 +71,7 @@ export function CharacterHero({
             width={960}
             height={960}
             priority
-            // object-top: 横長クロップ時に頭(角/耳)〜抱えたハートを優先して残し、足元側を切る。
-            // 正方形 (aspect-square) 利用時はクロップが起きないため位置指定は無影響。
-            className="w-full h-full object-cover object-top"
+            className={`w-full h-full ${imageFitClassName}`}
           />
         </div>
         {/* 職業バッジ (確定時のみ、アバター右下)。overflow-hidden の外なのでクリップされない。 */}

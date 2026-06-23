@@ -27,6 +27,9 @@ interface ResultActionsProps {
   description: string;
   imageSrc: string;
   shareCode: string;
+  // 表示形態: "full" = アイコン+ラベルのしっかり版 (下部・本命) /
+  //           "iconbar" = アイコンのみコンパクト版 (上部・三本線の横、省スペース)
+  variant?: "full" | "iconbar";
 }
 
 export function ResultActions({
@@ -37,6 +40,7 @@ export function ResultActions({
   description,
   imageSrc,
   shareCode,
+  variant = "full",
 }: ResultActionsProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [imageNotice, setImageNotice] = useState<string | null>(null);
@@ -86,10 +90,83 @@ export function ResultActions({
   const lineText = `${tweetText} ${shareUrl}`;
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
 
+  // iconbar: 上部の三本線の横に置くアイコンのみのコンパクト版 (省スペース)。
+  if (variant === "iconbar") {
+    return (
+      <div className="flex items-center gap-1.5">
+        <a
+          href={xUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-9 h-9 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+          aria-label="X でシェア"
+        >
+          <XIcon className="w-4 h-4 text-white" />
+        </a>
+        <a
+          href={lineUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-9 h-9 rounded-full bg-[#06C755] flex items-center justify-center hover:scale-110 transition-transform"
+          aria-label="LINE でシェア"
+        >
+          <LineIcon className="w-4 h-4 text-white" />
+        </a>
+        <button
+          type="button"
+          onClick={handleSaveImage}
+          disabled={saving}
+          aria-label="結果画像を保存"
+          className="w-9 h-9 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-wait"
+        >
+          <ImageIcon className="w-4 h-4 text-[#3A2D6B]" />
+        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            aria-label="リンクをコピー"
+            className="w-9 h-9 rounded-full bg-[#FFE993] border-2 border-[#3A2D6B] flex items-center justify-center hover:scale-110 transition-transform"
+          >
+            <LinkIcon className="w-4 h-4 text-[#3A2D6B]" />
+          </button>
+          {linkCopied && (
+            <span
+              role="status"
+              className="absolute top-full mt-1 right-0 whitespace-nowrap bg-[#3A2D6B] text-white text-[10px] font-bold px-2 py-1 rounded-full z-10"
+            >
+              コピーしました
+            </span>
+          )}
+        </div>
+        {/* オフスクリーンの確定カード (PNG 書き出し元) */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: "-99999px",
+            top: 0,
+            pointerEvents: "none",
+          }}
+        >
+          <ShareCard
+            ref={cardRef}
+            ownerName={ownerName}
+            typeName={typeName}
+            essence={essence}
+            description={description}
+            imageSrc={imageSrc}
+            shareCode={shareCode}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-2">
-      {/* コンパクトな横並びシェア導線 (アイコン + 短ラベル)。キャラ画像の「上」に配置し
-          ファーストビューを圧縮。狭い端末では 2〜3 個ずつ自然に折り返す (flex-wrap)。
+      {/* コンパクトな横並びシェア導線 (アイコン + 短ラベル)。下部・本命の導線。
+          狭い端末では 2〜3 個ずつ自然に折り返す (flex-wrap)。
           ※ 旧 Instagram 円ボタンは「保存」と同じ画像書き出しのため「保存」に集約。 */}
       <div className="flex flex-wrap items-center justify-center gap-2">
         {/* X でシェア */}

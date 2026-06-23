@@ -332,32 +332,28 @@ export default async function MePage({ params }: PageProps) {
           groupSurface 全面一色。本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、
           PC は読める上限 max-w-[1080px] で中央寄せ。 */}
       <div className="max-w-[1080px] mx-auto relative">
-        {/* ===== 最小トップバー (引き算: ロゴ「ワタシのトリセツ」と「{name}のトリセツ」タグは
-            撤去し上部をスッキリ。ナビのハンバーガーのみ右上に残す)。 ===== */}
-        <div className="flex justify-end items-center mb-2">
+        {/* ===== トップバー (引き算) =====
+            ロゴ「ワタシのトリセツ」/「{name}のトリセツ」タグ/長い相互理解度文は撤去。
+            三本線メニューの左に、シェアをアイコンのみコンパクトに横並び (省スペース)。
+            ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
+        <div className="flex justify-end items-center gap-2 mb-3">
+          <ResultActions
+            variant="iconbar"
+            typeName={dispName}
+            shareUrl={inviteUrl}
+            ownerName={displayName}
+            essence={dispEssence}
+            description={dispDesc}
+            imageSrc={dispImage}
+            shareCode={shareCode}
+          />
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ファーストビュー (引き算) =====
-            シェア導線 (コンパクト横並び) を最上部に → 短い一言 → 横長キャラ画像 →
-            キャラ名 → 取説、の順。長い相互理解度文は撤去し短い一言だけ添える。 */}
-        <ResultActions
-          typeName={dispName}
-          shareUrl={inviteUrl}
-          ownerName={displayName}
-          essence={dispEssence}
-          description={dispDesc}
-          imageSrc={dispImage}
-          shareCode={shareCode}
-        />
-        {/* シェアの一言 (定数 SHARE_CTA_CAPTION。なぜシェアするかを一言だけ。後で消せる) */}
-        <p className="text-center text-[#3A2D6B]/80 font-bold text-xs mb-4 px-4">
-          {SHARE_CTA_CAPTION}
-        </p>
-
-        {/* ===== ヒーロー (キャラ + essence + 型名 + 短い説明) =====
-            画像は全幅・横長 (aspect-[4/3]) + object-top で、角〜抱えたハートまでを残し
-            足元のみクロップ (見切れ解消)。PC は max-w-md で中央寄せ。本文は広いまま。 */}
+        {/* ===== ヒーロー (引き) =====
+            キャラを枠いっぱいにせず小さめ + object-contain で全身 (顔〜抱えたハート) を
+            切らずに表示し、まわりに背景 (グループ色) の余白を見せて「色の中に浮かぶ」構図に。
+            キャラ名/肩書きは画像下の余白に主役級でレイアウト (CharacterHero 内)。 */}
         <div className="w-full md:max-w-md md:mx-auto">
           <CharacterHero
             imageSrc={dispImage}
@@ -365,7 +361,9 @@ export default async function MePage({ params }: PageProps) {
             essence={dispEssence}
             name={dispName}
             description={dispDesc}
-            imageAspectClassName="aspect-[4/3]"
+            imageAspectClassName="aspect-square"
+            imageFitClassName="object-contain"
+            imageMaxWidthClassName="max-w-[230px] mx-auto"
             jobSlot={{
               animal: animalName,
               job,
@@ -377,25 +375,10 @@ export default async function MePage({ params }: PageProps) {
 
         {/* ===== 章① 自分が見た自分 (緑系見出し・動物名のみ・職業は出さない) ===== */}
         <section aria-labelledby="chapter-self" className="mb-10">
-          <div className="flex items-center gap-3 mb-2">
-            <span
-              aria-hidden="true"
-              className="flex-shrink-0 w-9 h-9 rounded-full bg-[#1FA37A] text-white text-lg flex items-center justify-center"
-            >
-              🪞
-            </span>
-            <h2
-              id="chapter-self"
-              className="text-[#1FA37A] font-black text-2xl leading-tight"
-            >
-              自分が見た自分
-            </h2>
-          </div>
-          <p className="text-[#3A2D6B]/70 font-bold text-sm mb-5 pl-12">
-            アナタは「{animalName}」
-          </p>
+          {/* 「自分が見た自分」見出し・「アナタは「animal」」サブ行は撤去。
+              取説の見出しはキャラ名「{animal}のトリセツ」に集約 (下の map 1問目)。 */}
 
-          {/* 取説 (段落1のみ) */}
+          {/* 取説 (各セクション段落1のみ) */}
           {sections.slice(0, 2).map((sec, idx) => {
             const firstPara = sec.body.split("\n\n")[0];
             return (
@@ -407,9 +390,22 @@ export default async function MePage({ params }: PageProps) {
                   >
                     🎀
                   </span>
-                  <h3 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                    {sec.title}
-                  </h3>
+                  {idx === 0 ? (
+                    // 1問目(取扱説明書)の見出しを「{animal}のトリセツ」に置換。
+                    // 緑「自分が見た自分」+「取扱説明書」見出しの代替を兼ね、取説ニュアンスは
+                    // キャラ名+トリセツで残す。aria のため id=chapter-self はここへ移設。
+                    <h2
+                      id="chapter-self"
+                      className="text-[#3A2D6B] font-black text-2xl leading-tight"
+                    >
+                      「{animalName}」のトリセツ
+                    </h2>
+                  ) : (
+                    // 2問目以降 (取扱注意ポイント等) は従来のセクション見出しを維持。
+                    <h3 className="text-[#3A2D6B] font-black text-xl leading-tight">
+                      {sec.title}
+                    </h3>
+                  )}
                 </div>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
                 <div className="px-1 pb-1">
@@ -527,6 +523,24 @@ export default async function MePage({ params }: PageProps) {
           />
         </section>
 
+
+        {/* ===== 下部・本命シェア導線 (読み終えた位置) =====
+            上部はアイコンのみの省スペース版。ここはアイコン+ラベルのしっかり版 + 短い一言。
+            owner はこの直下に QR (FriendGapInvite) も続く二段構え。 */}
+        <div className="mb-2">
+          <p className="text-center text-[#3A2D6B]/80 font-bold text-sm mb-3 px-4">
+            {SHARE_CTA_CAPTION}
+          </p>
+          <ResultActions
+            typeName={dispName}
+            shareUrl={inviteUrl}
+            ownerName={displayName}
+            essence={dispEssence}
+            description={dispDesc}
+            imageSrc={dispImage}
+            shareCode={shareCode}
+          />
+        </div>
 
         {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
             Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。
