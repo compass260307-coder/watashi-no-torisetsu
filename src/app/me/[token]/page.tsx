@@ -490,20 +490,21 @@ export default async function MePage({ params }: PageProps) {
 
           {/* 発散バー (章②に一本化)。
               ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。
-              PC(md以上)では解除後のみバー(左) + 読み方説明(右)の2カラム。 */}
+              枠なしで本文と同じ全幅。解除後の「読み方」も白カードを外し地の文で続ける
+              (バーだけ浮かないよう世界観に揃える)。 */}
           {friendEvalCount >= REPORT_FRIEND_THRESHOLD ? (
-            <div className="md:grid md:grid-cols-2 md:gap-6 md:items-start">
+            <>
               <BigFiveDivergingBars
                 scores={stored}
                 friendScores={friendAvgScores ?? undefined}
                 title="自己認知ギャップ（自分 × 友達）"
                 emoji="🪞"
               />
-              <aside className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
-                <h3 className="text-[#3A2D6B] font-black text-lg mb-2">
+              <aside className="mb-8">
+                <h3 className="text-[#3A2D6B] font-black text-base mb-2">
                   このバーの読み方
                 </h3>
-                <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-3">
+                <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-2">
                   <span className="text-[var(--primary)]">●</span> ＝ 自分の評価／
                   <span className="text-[#3A2D6B]">◆</span> ＝ 友達の平均。
                   2 つが離れている軸ほど、自分と友達で見え方がズレている軸です。
@@ -512,7 +513,7 @@ export default async function MePage({ params }: PageProps) {
                   軸ごとの差は下の「他者分析」で数値でも確認できます。
                 </p>
               </aside>
-            </div>
+            </>
           ) : (
             <>
               <BigFiveDivergingBars

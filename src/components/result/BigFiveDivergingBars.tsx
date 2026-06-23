@@ -95,7 +95,10 @@ export function BigFiveDivergingBars({
         </h2>
       </div>
 
-      <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 space-y-5">
+      {/* 枠 (白背景/ボーダー/角丸/内側 padding) を撤去し、他の本文ブロックと同様に
+          背景へ直接置く。左右余白は親 (main の px-4 / md:px-8) が確保するので、バーは
+          本文と同じ全幅まで伸びて横長になる。縦の間隔のみ space-y で維持。 */}
+      <div className="space-y-6">
         {/* 凡例 (友達スコア重ね表示時のみ): 自分 ● / 友達 ◆ */}
         {hasFriend && (
           <div
@@ -157,7 +160,7 @@ export function BigFiveDivergingBars({
                   {axis.left}
                 </span>
 
-                <div className="relative flex-1 h-3">
+                <div className="relative flex-1 h-4">
                   {/* 2 色トラック (中央を境にベタ塗り 2 色。グラデにはしない) */}
                   <div className="absolute inset-0 rounded-full overflow-hidden flex">
                     <div
@@ -181,19 +184,19 @@ export function BigFiveDivergingBars({
                   </div>
 
                   {/* 中央ティック (常時表示。トラックより前面) */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-5 bg-[#3A2D6B]/45" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#3A2D6B]/45" />
 
                   {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
                   {friendValue !== null && (
                     <div
-                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rotate-45 border-2 border-white shadow-md transition-all duration-500"
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-45 border-2 border-white shadow-md transition-all duration-500"
                       style={{ left: `${friendValue}%`, background: "#3A2D6B" }}
                     />
                   )}
 
                   {/* 自分のマーカー (単色円 + 白リング)。軸ごとのキャラは置かない */}
                   <div
-                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md transition-all duration-500"
+                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all duration-500"
                     style={{ left: `${value}%`, background: "var(--primary)" }}
                   />
                 </div>
