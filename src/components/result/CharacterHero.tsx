@@ -35,7 +35,15 @@ interface CharacterHeroProps {
   // 画像枠の最大幅 (Tailwind クラス)。既定は無し (= 親の横幅いっぱい)。/me は小さめ「引き」+
   // 余白を見せるため max-w を指定。テキスト (名前/肩書き) は親幅のまま広く読ませる。
   imageMaxWidthClassName?: string;
+  // 縁を溶かす表示。true で角丸/影を外し、ラジアルマスクで画像の外周 (背景の余白部) を
+  // 透過フェードさせ、四角いカードの縁をページ背景に馴染ませる。中心 (キャラ本体) は不透過の
+  // ままなのでキャラは切れない。ヒーロー背景がキャラ画像の背景トーンのとき没入感が出る。
+  imageBlend?: boolean;
 }
+
+// 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
+const BLEND_MASK =
+  "radial-gradient(closest-side at 50% 50%, #000 80%, transparent 100%)";
 
 export function CharacterHero({
   imageSrc,
@@ -48,6 +56,7 @@ export function CharacterHero({
   imageAspectClassName = "aspect-square",
   imageFitClassName = "object-cover object-top",
   imageMaxWidthClassName = "",
+  imageBlend = false,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -63,7 +72,16 @@ export function CharacterHero({
           contain 指定時はキャラ全身が枠内に収まり切れず欠けない (見切れ解消)。 */}
       <div className={`relative w-full ${imageMaxWidthClassName}`.trim()}>
         <div
-          className={`w-full ${imageAspectClassName} rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]`}
+          className={
+            imageBlend
+              ? `w-full ${imageAspectClassName}`
+              : `w-full ${imageAspectClassName} rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]`
+          }
+          style={
+            imageBlend
+              ? { WebkitMaskImage: BLEND_MASK, maskImage: BLEND_MASK }
+              : undefined
+          }
         >
           <Image
             src={imageSrc}

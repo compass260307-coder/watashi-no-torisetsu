@@ -294,6 +294,13 @@ export default async function MePage({ params }: PageProps) {
   // コンテナも同色にして枠なく全面化。グリッド線は同系色の極薄。
   const groupColor = thirtyTwoColor(t32);
   const groupSurface = paleSurface(groupColor, 0.22);
+  // ヒーロー背景の発光 (キャラ画像の背景トーンに寄せて画面上部を埋める)。
+  // 中央=明るい光 (画像の glow に対応) → 外側=グループ色の濃いめ淡色 → 端で groupSurface に
+  // 戻して読み物エリアへ継ぎ目なく繋ぐ。groupColor 由来なので 4 グループ自動対応。
+  const heroGlow = `radial-gradient(135% 90% at 50% 30%, ${paleSurface(
+    groupColor,
+    0.1,
+  )} 0%, ${paleSurface(groupColor, 0.4)} 44%, ${groupSurface} 80%)`;
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -325,13 +332,22 @@ export default async function MePage({ params }: PageProps) {
     // PC 上限 max-w-[1080px] 中央寄せで全幅に流す (1行を長く→行数減→縦が短く)。
     // 背景はグループ色の淡色を画面全面に (旧薄紫グラデは撤去)。
     <main
-      className="min-h-screen py-6 px-4 md:py-10 md:px-8"
+      className="relative min-h-screen py-6 px-4 md:py-10 md:px-8"
       style={{ background: groupSurface }}
     >
+      {/* ===== ヒーロー背景 (全幅・画面上部) =====
+          キャラ画像の背景トーンに寄せたグループ色のラジアル発光で画面を埋め、四角い画像
+          カードの縁が背景に溶けて見えるようにする (迫力・没入感)。下端で groupSurface に
+          フェードし、読み物エリアへ継ぎ目なく繋ぐ。装飾なので aria-hidden / クリック透過。 */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[90svh] z-0"
+        style={{ background: heroGlow }}
+      />
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去し、背景は main の
           groupSurface 全面一色。本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、
-          PC は読める上限 max-w-[1080px] で中央寄せ。 */}
-      <div className="max-w-[1080px] mx-auto relative">
+          PC は読める上限 max-w-[1080px] で中央寄せ。z-10 でヒーロー背景レイヤーより前面。 */}
+      <div className="relative z-10 max-w-[1080px] mx-auto">
         {/* ===== トップバー (引き算) =====
             ロゴ「ワタシのトリセツ」/「{name}のトリセツ」タグ/長い相互理解度文は撤去。
             三本線メニューの左に、シェアをアイコンのみコンパクトに横並び (省スペース)。
@@ -364,6 +380,8 @@ export default async function MePage({ params }: PageProps) {
             imageAspectClassName="aspect-square"
             imageFitClassName="object-contain"
             imageMaxWidthClassName="max-w-[230px] mx-auto"
+            imageBlend
+
             jobSlot={{
               animal: animalName,
               job,
