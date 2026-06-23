@@ -36,6 +36,15 @@ const NICKNAME_KEY = "torisetsu_nickname_v2";
 const NICKNAME_MAX = 20;
 const MIN_LOADING_MS = 20000;
 
+// prefers-reduced-motion 尊重: 有効時はスムーズスクロールを無効化 (auto = 瞬間)。
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export default function DiagnosisPage() {
   return (
     <Suspense>
@@ -72,6 +81,8 @@ function DiagnosisContent() {
   const [showRediagnoseModal, setShowRediagnoseModal] = useState(false);
 
   const trackedStart = useRef(false);
+  // 各質問要素への参照 (回答時の次質問オートスクロール用)。キー = question.id。
+  const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   // localStorage 復元 (初回マウント時のみ; SSR 後のハイドレーション正規パターン)
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -161,6 +172,15 @@ function DiagnosisContent() {
     }
   }, [answers, currentPage, hydrated]);
 
+  // ページ送り / 質問ステップ突入時: 先頭 (一番上の質問) へスクロールを戻す。
+  // クリックハンドラ内の同期 scrollTo は再レンダー前に走り効かないことがあるため、
+  // コミット後の effect で実行する。ページ切替は文脈が変わるので auto (瞬間移動)。
+  useEffect(() => {
+    if (!hydrated || step !== "questions") return;
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [currentPage, step, hydrated]);
+
   // 起動 track (1 回のみ)
   useEffect(() => {
     if (!trackedStart.current) {
@@ -198,9 +218,7 @@ function DiagnosisContent() {
       // localStorage 不可でも進める
     }
     setStep("questions");
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // 先頭へのスクロールは step/currentPage 変化を見る useEffect に集約。
   };
 
   // #2 「続きから」: 保存した回答と進捗を復元し、質問ステップへ
@@ -210,9 +228,7 @@ function DiagnosisContent() {
     setCurrentPage(pendingResume.page);
     setStep("questions");
     setPendingResume(null);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // 先頭へのスクロールは step/currentPage 変化を見る useEffect に集約。
   };
 
   // #2 「最初から」: 保存を削除して新規スタート (basic-info のまま)
@@ -233,22 +249,38 @@ function DiagnosisContent() {
     track("diagnosis_question_answered", {
       metadata: { questionId },
     });
+
+    // オートスクロール: 同ページ内で「今答えた質問より後ろ・まだ未回答」の質問を画面中央へ。
+    // 後続の質問の回答状況は今回の回答で変わらないため、現在の answers 参照で判定して OK。
+    // ページ最後の質問だった場合 (next なし) はスクロールせず、StickyCtaFooter の「次へ」に任せる。
+    const idx = pageQuestions.findIndex((q) => q.id === questionId);
+    if (idx === -1) return;
+    const next = pageQuestions
+      .slice(idx + 1)
+      .find((q) => answers[q.id] === undefined);
+    if (!next) return;
+    const el = questionRefs.current[next.id];
+    if (!el) return;
+    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+    // クリックのレンダリング後に実行 (1 フレーム遅延)。
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior, block: "center" });
+      // a11y: フォーカスを次の質問へ移し、スクロール後の迷子を防ぐ
+      // (スクロールは上で実施済みなので preventScroll で二重スクロールを避ける)。
+      el.focus({ preventScroll: true });
+    });
   };
 
   const handleNext = () => {
     if (!isPageComplete || isLastPage) return;
     setCurrentPage((p) => p + 1);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
   const handlePrev = () => {
     if (currentPage === 0) return;
     setCurrentPage((p) => p - 1);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
   const handleSubmit = async () => {
@@ -462,13 +494,23 @@ function DiagnosisContent() {
 
       <main className="flex flex-col flex-1 px-4 pt-6 pb-4 w-full">
         {pageQuestions.map((q) => (
-          <QuestionCard
+          // ref + tabIndex(-1): 回答時に次の未回答質問へ scrollIntoView/focus するための受け皿。
+          // 視覚は QuestionCard が担うので wrapper は無装飾 (outline は programmatic focus 用に消す)。
+          <div
             key={q.id}
-            question={q}
-            questionNumber={q.id}
-            value={answers[q.id]}
-            onChange={(v) => handleAnswer(q.id, v)}
-          />
+            ref={(el) => {
+              questionRefs.current[q.id] = el;
+            }}
+            tabIndex={-1}
+            className="outline-none"
+          >
+            <QuestionCard
+              question={q}
+              questionNumber={q.id}
+              value={answers[q.id]}
+              onChange={(v) => handleAnswer(q.id, v)}
+            />
+          </div>
         ))}
 
         {!isPageComplete && (
