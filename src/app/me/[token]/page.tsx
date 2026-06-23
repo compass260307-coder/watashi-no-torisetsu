@@ -21,7 +21,6 @@
 //   - そのためこのページから ¥500 訴求カードは削除 (課金処理本体は触らない)
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -59,8 +58,6 @@ import {
   formatJobIntegration,
 } from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
-import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
-import { SharePromo } from "@/components/result/SharePromo";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import { generateShareCode } from "@/lib/share-code";
 import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
@@ -82,6 +79,10 @@ export const metadata: Metadata = {
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+
+// シェアボタン直下の短い一言 (旧 SharePromo の長い相互理解度文を置換)。
+// ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
+const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -328,35 +329,15 @@ export default async function MePage({ params }: PageProps) {
           groupSurface 全面一色。本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、
           PC は読める上限 max-w-[1080px] で中央寄せ。 */}
       <div className="max-w-[1080px] mx-auto relative">
-        {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
-            Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
-        <div className="flex justify-between items-center mb-6">
-          {/* ?stay=1: 診断済み本人が押しても / の自動リダイレクトで /me に
-              戻されず、トップ LP を表示できるようにする。 */}
-          <Link href="/?stay=1" aria-label="トップへ">
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={280}
-              height={80}
-              priority
-              className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
-            />
-          </Link>
+        {/* ===== 最小トップバー (引き算: ロゴ「ワタシのトリセツ」と「{name}のトリセツ」タグは
+            撤去し上部をスッキリ。ナビのハンバーガーのみ右上に残す)。 ===== */}
+        <div className="flex justify-end items-center mb-2">
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ファーストビュー (圧縮) =====
-            シェア導線 (コンパクト横並び) → 横長キャラ画像 → キャラ名 の順に詰め、
-            直後の「自分が見た自分」/取説の冒頭が初期画面に入り込むようにする。
-            旧 min-h-[78svh] による縦占有とシェブロンは廃止し、取説のチラ見えで
-            「読み物が続く」を示す (見切れの考え方と整合)。 */}
-
-        {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
-        <TrisetsuNameTag name={displayName} className="mb-3" />
-
-        {/* ===== シェア導線をキャラ画像の「上」へ (コンパクト横並び・アイコン+短ラベル) =====
-            結果画像を SNS シェア/保存。促し文 (相互理解度) はボタンのキャプションとして直下に。 */}
+        {/* ===== ファーストビュー (引き算) =====
+            シェア導線 (コンパクト横並び) を最上部に → 短い一言 → 横長キャラ画像 →
+            キャラ名 → 取説、の順。長い相互理解度文は撤去し短い一言だけ添える。 */}
         <ResultActions
           typeName={dispName}
           shareUrl={inviteUrl}
@@ -366,11 +347,14 @@ export default async function MePage({ params }: PageProps) {
           imageSrc={dispImage}
           shareCode={shareCode}
         />
-        <SharePromo className="mb-4" />
+        {/* シェアの一言 (定数 SHARE_CTA_CAPTION。なぜシェアするかを一言だけ。後で消せる) */}
+        <p className="text-center text-[#3A2D6B]/80 font-bold text-xs mb-4 px-4">
+          {SHARE_CTA_CAPTION}
+        </p>
 
-        {/* ===== ヒーロー (横長キャラ + essence + 型名 + 短い説明) =====
-            画像は全幅・横長 (aspect-[3/2]) で縦を圧縮、object-cover でキャラ中心を見せる。
-            PC は max-w-md で中央寄せ (巨大化防止)。本文は広いまま。 */}
+        {/* ===== ヒーロー (キャラ + essence + 型名 + 短い説明) =====
+            画像は全幅・横長 (aspect-[4/3]) + object-top で、角〜抱えたハートまでを残し
+            足元のみクロップ (見切れ解消)。PC は max-w-md で中央寄せ。本文は広いまま。 */}
         <div className="w-full md:max-w-md md:mx-auto">
           <CharacterHero
             imageSrc={dispImage}
@@ -378,7 +362,7 @@ export default async function MePage({ params }: PageProps) {
             essence={dispEssence}
             name={dispName}
             description={dispDesc}
-            imageAspectClassName="aspect-[3/2]"
+            imageAspectClassName="aspect-[4/3]"
             jobSlot={{
               animal: animalName,
               job,

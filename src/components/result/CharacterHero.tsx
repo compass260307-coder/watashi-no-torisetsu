@@ -65,7 +65,9 @@ export function CharacterHero({
             width={960}
             height={960}
             priority
-            className="w-full h-full object-cover object-center"
+            // object-top: 横長クロップ時に頭(角/耳)〜抱えたハートを優先して残し、足元側を切る。
+            // 正方形 (aspect-square) 利用時はクロップが起きないため位置指定は無影響。
+            className="w-full h-full object-cover object-top"
           />
         </div>
         {/* 職業バッジ (確定時のみ、アバター右下)。overflow-hidden の外なのでクリップされない。 */}
