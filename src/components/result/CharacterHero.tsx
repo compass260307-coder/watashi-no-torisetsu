@@ -28,6 +28,9 @@ interface CharacterHeroProps {
   description?: string; // 短い説明 (型の essence 文 1〜3 行)
   eyebrow?: string; // 任意の上ラベル (例: 「{perceiver}が見た{owner}は」)
   jobSlot?: CharacterHeroJobSlot; // 指定時は名前を動物＋職業表示に切替 (/me)
+  // 画像枠のアスペクト比 (Tailwind クラス)。既定は正方形。/me は横長 (aspect-[3/2]) で
+  // ファーストビューの縦占有を抑える。object-cover でキャラ中心が見える位置に収める。
+  imageAspectClassName?: string;
 }
 
 export function CharacterHero({
@@ -38,6 +41,7 @@ export function CharacterHero({
   description,
   eyebrow,
   jobSlot,
+  imageAspectClassName = "aspect-square",
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -48,17 +52,20 @@ export function CharacterHero({
     : 0;
 
   return (
-    <div className="flex flex-col items-center text-center mb-6">
-      {/* コンテンツカードと同じ横幅 (w-full)・正方形。背景込みシーンを cover で枠いっぱい。 */}
+    <div className="flex flex-col items-center text-center mb-4">
+      {/* コンテンツカードと同じ横幅 (w-full)。アスペクトは imageAspectClassName で可変
+          (既定 正方形 / me は横長)。背景込みシーンを cover で枠いっぱい・中心を見せる。 */}
       <div className="relative w-full">
-        <div className="w-full aspect-square rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]">
+        <div
+          className={`w-full ${imageAspectClassName} rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]`}
+        >
           <Image
             src={imageSrc}
             alt={alt}
             width={960}
             height={960}
             priority
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
           />
         </div>
         {/* 職業バッジ (確定時のみ、アバター右下)。overflow-hidden の外なのでクリップされない。 */}

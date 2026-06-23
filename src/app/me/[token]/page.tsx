@@ -346,61 +346,17 @@ export default async function MePage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ファーストビュー (キャラのヒーロー) =====
-            画面の ~8割の高さに収め、下の取説セクションの頭を少し覗かせて
-            「続きがある」と気づかせる。min-h は下限のみで clip しないため、
-            内容が大きい端末でも崩れない。svh で端末ごとのブラウザ UI 差を吸収。 */}
-        <section className="flex flex-col min-h-[78svh]">
-          <div className="flex-1 flex flex-col justify-center">
-            {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
-            <TrisetsuNameTag name={displayName} className="mb-4" />
+        {/* ===== ファーストビュー (圧縮) =====
+            シェア導線 (コンパクト横並び) → 横長キャラ画像 → キャラ名 の順に詰め、
+            直後の「自分が見た自分」/取説の冒頭が初期画面に入り込むようにする。
+            旧 min-h-[78svh] による縦占有とシェブロンは廃止し、取説のチラ見えで
+            「読み物が続く」を示す (見切れの考え方と整合)。 */}
 
-            {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
-                旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
-                animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
-                「{owner}のトリセツ」黄ピル(上のステッカー)は維持。
-                キャラは主役なので過度に縮めず、縦長端末で画面を占有しすぎないよう
-                viewport 高ベースで最大幅のみ制限 (正方形を保つ)。PC は従来の max-w-md。 */}
-            <div className="max-w-[min(100%,56svh)] mx-auto md:max-w-md">
-              <CharacterHero
-                imageSrc={dispImage}
-                alt={dispName}
-                essence={dispEssence}
-                name={dispName}
-                description={dispDesc}
-                jobSlot={{
-                  animal: animalName,
-                  job,
-                  friendCount: friendEvalCount,
-                  threshold: JOB_FRIEND_THRESHOLD,
-                }}
-              />
-            </div>
-          </div>
+        {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
+        <TrisetsuNameTag name={displayName} className="mb-3" />
 
-          {/* スクロール継続サイン (装飾)。下に取説が続くことを示す控えめなシェブロン。
-              スクロールすると自然に視界外へ。aria-hidden で読み上げ対象外。 */}
-          <div
-            aria-hidden="true"
-            className="flex justify-center pt-1 pb-1 text-[#3A2D6B]/40 animate-scroll-hint"
-          >
-            <svg
-              width="26"
-              height="26"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </div>
-        </section>
-
-        {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
-            画像シェアボタンを含む ResultActions をキャラ(CharacterHero)の真下に配置。 */}
+        {/* ===== シェア導線をキャラ画像の「上」へ (コンパクト横並び・アイコン+短ラベル) =====
+            結果画像を SNS シェア/保存。促し文 (相互理解度) はボタンのキャプションとして直下に。 */}
         <ResultActions
           typeName={dispName}
           shareUrl={inviteUrl}
@@ -410,7 +366,27 @@ export default async function MePage({ params }: PageProps) {
           imageSrc={dispImage}
           shareCode={shareCode}
         />
-        <SharePromo className="mb-8" />
+        <SharePromo className="mb-4" />
+
+        {/* ===== ヒーロー (横長キャラ + essence + 型名 + 短い説明) =====
+            画像は全幅・横長 (aspect-[3/2]) で縦を圧縮、object-cover でキャラ中心を見せる。
+            PC は max-w-md で中央寄せ (巨大化防止)。本文は広いまま。 */}
+        <div className="w-full md:max-w-md md:mx-auto">
+          <CharacterHero
+            imageSrc={dispImage}
+            alt={dispName}
+            essence={dispEssence}
+            name={dispName}
+            description={dispDesc}
+            imageAspectClassName="aspect-[3/2]"
+            jobSlot={{
+              animal: animalName,
+              job,
+              friendCount: friendEvalCount,
+              threshold: JOB_FRIEND_THRESHOLD,
+            }}
+          />
+        </div>
 
         {/* ===== 章① 自分が見た自分 (緑系見出し・動物名のみ・職業は出さない) ===== */}
         <section aria-labelledby="chapter-self" className="mb-10">

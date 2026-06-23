@@ -87,46 +87,54 @@ export function ResultActions({
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
 
   return (
-    <div className="flex flex-col items-center gap-6 mb-8">
-      {/* SNS シェアボタン 4 つ */}
-      <div className="flex justify-center gap-3">
+    <div className="mb-2">
+      {/* コンパクトな横並びシェア導線 (アイコン + 短ラベル)。キャラ画像の「上」に配置し
+          ファーストビューを圧縮。狭い端末では 2〜3 個ずつ自然に折り返す (flex-wrap)。
+          ※ 旧 Instagram 円ボタンは「保存」と同じ画像書き出しのため「保存」に集約。 */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {/* X でシェア */}
         <a
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-12 h-12 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
+          className="flex items-center gap-1.5 rounded-full bg-black text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="X でシェア"
         >
-          <XIcon className="w-5 h-5 text-white" />
+          <XIcon className="w-4 h-4" />X
         </a>
-        <button
-          type="button"
-          onClick={handleSaveImage}
-          className="w-12 h-12 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
-          style={{
-            background:
-              "linear-gradient(45deg, #F58529, #DD2A7B, #8134AF)",
-          }}
-          aria-label="Instagram でシェア (画像を保存してストーリーへ)"
-        >
-          <InstagramIcon className="w-5 h-5 text-white" />
-        </button>
+        {/* LINE でシェア */}
         <a
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-12 h-12 rounded-full bg-[#06C755] flex items-center justify-center hover:scale-110 transition-transform"
+          className="flex items-center gap-1.5 rounded-full bg-[#06C755] text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="LINE でシェア"
         >
-          <LineIcon className="w-5 h-5 text-white" />
+          <LineIcon className="w-4 h-4" />
+          LINE
         </a>
+        {/* 画像を保存 (確定カードを PNG 書き出し / Instagram ストーリー等へ) */}
         <button
           type="button"
-          onClick={handleCopyLink}
-          aria-label="リンクをコピー"
-          className="w-12 h-12 rounded-full bg-[#FFE993] border-2 border-[#3A2D6B] flex items-center justify-center hover:scale-110 transition-transform relative"
+          onClick={handleSaveImage}
+          disabled={saving}
+          aria-label="結果画像を保存"
+          className="flex items-center gap-1.5 rounded-full bg-white text-[#3A2D6B] border-2 border-[#3A2D6B] px-3 py-2 text-xs font-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-wait"
         >
-          <LinkIcon className="w-5 h-5 text-[#3A2D6B]" />
+          <ImageIcon className="w-4 h-4" />
+          {saving ? "作成中…" : "保存"}
+        </button>
+        {/* リンクをコピー */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            aria-label="リンクをコピー"
+            className="flex items-center gap-1.5 rounded-full bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] px-3 py-2 text-xs font-black hover:scale-105 transition-transform"
+          >
+            <LinkIcon className="w-4 h-4" />
+            リンク
+          </button>
           {linkCopied && (
             <span
               role="status"
@@ -135,28 +143,17 @@ export function ResultActions({
               コピーしました
             </span>
           )}
-        </button>
+        </div>
       </div>
 
-      {/* 画像を保存 (確定カードを PNG 書き出し) */}
-      <div className="relative">
-        <button
-          type="button"
-          onClick={handleSaveImage}
-          disabled={saving}
-          className="bg-white text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-50 disabled:cursor-wait"
+      {imageNotice && (
+        <p
+          role="status"
+          className="text-center text-xs text-[#FE3C72] font-bold mt-2"
         >
-          {saving ? "画像を作成中…" : "画像を保存"}
-        </button>
-        {imageNotice && (
-          <span
-            role="status"
-            className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#3A2D6B] text-white text-xs font-bold px-3 py-1 rounded-full"
-          >
-            {imageNotice}
-          </span>
-        )}
-      </div>
+          {imageNotice}
+        </p>
+      )}
 
       {/* オフスクリーンの確定カード (PNG 書き出し元) */}
       <div
@@ -201,21 +198,22 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-function InstagramIcon({ className }: { className?: string }) {
+function ImageIcon({ className }: { className?: string }) {
+  // 画像保存: 下向きダウンロード矢印 + 受け皿
   return (
     <svg
       className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <rect x="2" y="2" width="20" height="20" rx="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
-      <line x1="17.5" y1="6.5" x2="17.5" y2="6.5" />
+      <path d="M12 3v12" />
+      <path d="m7 12 5 5 5-5" />
+      <path d="M5 21h14" />
     </svg>
   );
 }
