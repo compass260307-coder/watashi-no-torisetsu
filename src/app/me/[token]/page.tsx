@@ -341,29 +341,58 @@ export default async function MePage({ params }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
-        <TrisetsuNameTag name={displayName} className="mb-4" />
+        {/* ===== ファーストビュー (キャラのヒーロー) =====
+            画面の ~8割の高さに収め、下の取説セクションの頭を少し覗かせて
+            「続きがある」と気づかせる。min-h は下限のみで clip しないため、
+            内容が大きい端末でも崩れない。svh で端末ごとのブラウザ UI 差を吸収。 */}
+        <section className="flex flex-col min-h-[78svh]">
+          <div className="flex-1 flex flex-col justify-center">
+            {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
+            <TrisetsuNameTag name={displayName} className="mb-4" />
 
-        {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
-            旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
-            animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
-            「{owner}のトリセツ」黄ピル(上のステッカー)は維持。 */}
-        {/* PC ではキャラ画像が巨大になりすぎないよう中央で幅を抑える (本文は広いまま)。 */}
-        <div className="md:max-w-md md:mx-auto">
-          <CharacterHero
-            imageSrc={dispImage}
-            alt={dispName}
-            essence={dispEssence}
-            name={dispName}
-            description={dispDesc}
-            jobSlot={{
-              animal: animalName,
-              job,
-              friendCount: friendEvalCount,
-              threshold: JOB_FRIEND_THRESHOLD,
-            }}
-          />
-        </div>
+            {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
+                旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
+                animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
+                「{owner}のトリセツ」黄ピル(上のステッカー)は維持。
+                キャラは主役なので過度に縮めず、縦長端末で画面を占有しすぎないよう
+                viewport 高ベースで最大幅のみ制限 (正方形を保つ)。PC は従来の max-w-md。 */}
+            <div className="max-w-[min(100%,56svh)] mx-auto md:max-w-md">
+              <CharacterHero
+                imageSrc={dispImage}
+                alt={dispName}
+                essence={dispEssence}
+                name={dispName}
+                description={dispDesc}
+                jobSlot={{
+                  animal: animalName,
+                  job,
+                  friendCount: friendEvalCount,
+                  threshold: JOB_FRIEND_THRESHOLD,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* スクロール継続サイン (装飾)。下に取説が続くことを示す控えめなシェブロン。
+              スクロールすると自然に視界外へ。aria-hidden で読み上げ対象外。 */}
+          <div
+            aria-hidden="true"
+            className="flex justify-center pt-1 pb-1 text-[#3A2D6B]/40 animate-scroll-hint"
+          >
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </section>
 
         {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
             画像シェアボタンを含む ResultActions をキャラ(CharacterHero)の真下に配置。 */}

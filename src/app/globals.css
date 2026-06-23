@@ -138,6 +138,23 @@ body {
   animation: bounce-slow 1.4s ease-in-out infinite;
 }
 
+/* 結果ファーストビュー下端のスクロール継続サイン (chevron)。控えめに数px だけ上下。
+   prefers-reduced-motion では静止させる。 */
+@keyframes scroll-hint {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+
+.animate-scroll-hint {
+  animation: scroll-hint 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scroll-hint {
+    animation: none;
+  }
+}
+
 @keyframes progress-20s {
   from { width: 0%; }
   to { width: 100%; }
