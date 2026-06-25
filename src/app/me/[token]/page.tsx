@@ -332,13 +332,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
-  // 変身演出の制御。
-  // - revealKey: ユーザーごとの「再生済み」フラグ (localStorage)。判明後の初回のみ再生。
-  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込み毎回再生。
+  // 職業表示の制御 (デモ)。
+  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
   //   /me/[token] は推測不可のトークン限定URLで、通常ユーザーが param を付けて踏むことはない
   //   ため実質的に露出しない。職業決定ロジック (computeJob) は不変で、デモは「表示用の job」を
-  //   差し替えてヒーローの見た目だけ変える (章②/スコア/解除条件には一切影響しない)。
-  const revealKey = `wt_job_revealed_${shareCode}`;
+  //   差し替えるだけ (章②/スコア/解除条件には一切影響しない)。
+  // ※ ヒーローは imageOnly (画像下テキスト非表示) のため変身演出 (JobRevealName) は出さない。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
 
@@ -365,28 +364,33 @@ export default async function MePage({ params, searchParams }: PageProps) {
           (mobile px-4 / PC px-8) まで広げ、PC は読める上限 max-w-[1080px] で中央寄せ。
           z-10 でヒーロー背景レイヤーより前面。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== トップバー (引き算) =====
-            ロゴ「ワタシのトリセツ」/「{name}のトリセツ」タグ/長い相互理解度文は撤去。
-            三本線メニューの左に、シェアをアイコンのみコンパクトに横並び (省スペース)。
+        {/* ===== トップバー =====
+            左端にキャラ名 (ページ見出し h1)、右端にシェアアイコン (iconbar) + 三本線メニュー。
+            キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
-        <div className="flex justify-end items-center gap-2 mb-3">
-          <ResultActions
-            variant="iconbar"
-            typeName={dispName}
-            shareUrl={inviteUrl}
-            ownerName={displayName}
-            essence={dispEssence}
-            description={dispDesc}
-            imageSrc={dispImage}
-            shareCode={shareCode}
-          />
-          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-base sm:text-lg leading-tight">
+            {animalName}のトリセツ
+          </h1>
+          <div className="flex items-center gap-2 shrink-0">
+            <ResultActions
+              variant="iconbar"
+              typeName={dispName}
+              shareUrl={inviteUrl}
+              ownerName={displayName}
+              essence={dispEssence}
+              description={dispDesc}
+              imageSrc={dispImage}
+              shareCode={shareCode}
+            />
+            <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+          </div>
         </div>
 
-        {/* ===== ヒーロー (引き) =====
-            キャラを枠いっぱいにせず小さめ + object-contain で全身 (顔〜抱えたハート) を
-            切らずに表示し、まわりに背景 (グループ色) の余白を見せて「色の中に浮かぶ」構図に。
-            キャラ名/肩書きは画像下の余白に主役級でレイアウト (CharacterHero 内)。 */}
+        {/* ===== ヒーロー (引き・画像のみ) =====
+            キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示し、まわりに
+            背景 (グループ色) の余白を見せる。imageOnly で画像下のテキスト (肩書き/一言/判明
+            ゲージ等) は一切出さない。キャラ名はトップバー h1 へ移設済み。 */}
         <div className="w-full md:max-w-md md:mx-auto">
           <CharacterHero
             imageSrc={dispImage}
@@ -398,8 +402,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             imageFitClassName="object-contain"
             imageMaxWidthClassName="max-w-[230px] mx-auto"
             imageBlend
-            revealKey={revealKey}
-            forceReveal={forceReveal}
+            imageOnly
             jobSlot={{
               animal: animalName,
               job: displayJob,
@@ -409,34 +412,27 @@ export default async function MePage({ params, searchParams }: PageProps) {
           />
         </div>
 
-        {/* ===== 章① 自分が見た自分 (キャラ名のトリセツ + パート別の取説) ===== */}
+        {/* ===== 章① 自分が見た自分 =====
+            章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
+            キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
+            aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
         <section aria-labelledby="chapter-self" className="mb-10">
-          {/* 章見出し: 「{animal}のトリセツ」を章の冒頭に 1 回だけ (h2, id=chapter-self,
-              aria-labelledby の参照先)。各パートの見出しは下の map で h3 として出す。 */}
-          <h2
-            id="chapter-self"
-            className="text-[#3A2D6B] font-black text-2xl leading-tight mb-6"
-          >
-            「{animalName}」のトリセツ
-          </h2>
-
-          {/* 取説 (各パート: メイン見出し(heading) → 全段落本文)。絵文字+機能ラベル(🎀/⚠️)は
-              出さず、タイプ固有の小見出しだけを見出しにして静かで洗練された見え方に。
-              heading 未設定 (16タイプ等) は idx0=見出しなし、idx1=従来 title にフォールバック。 */}
+          {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
+              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。 */}
           {sections.slice(0, 2).map((sec, idx) => {
             const paragraphs = sec.body.split("\n\n");
-            // メイン見出し: タイプ固有 heading を優先。未設定時は idx0 は章見出しが担うため
-            // 非表示、idx1 は従来の title にフォールバック (破綻しない最小限)。
-            const mainHeading = sec.heading ?? (idx === 0 ? null : sec.title);
+            // メイン見出し: タイプ固有 heading を優先、未設定は title。常に出してパートを示す。
+            const mainHeading = sec.heading ?? sec.title;
             return (
               <section key={sec.title} className="mb-10">
-                {/* メイン見出し (h3)。未設定 idx0 は非表示 (章見出しがトリセツ名を担う)。
-                    パート区別 (人柄/注意) は見出し文言のニュアンスと余白で自然に伝える。 */}
-                {mainHeading && (
-                  <h3 className="text-[#3A2D6B] font-black text-xl leading-tight mb-3">
-                    {mainHeading}
-                  </h3>
-                )}
+                {/* メイン見出し。章見出しを廃したぶん、パート見出しが章①の最上位 (h2)。
+                    最初のパートに id=chapter-self を付け、section の aria-labelledby を解決。 */}
+                <h2
+                  id={idx === 0 ? "chapter-self" : undefined}
+                  className="text-[#3A2D6B] font-black text-xl leading-tight mb-3"
+                >
+                  {mainHeading}
+                </h2>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
                 <div className="px-1 pb-1">
                   {paragraphs.map((para, pIdx) => (

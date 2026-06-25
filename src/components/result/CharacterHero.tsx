@@ -45,6 +45,9 @@ interface CharacterHeroProps {
   revealKey?: string;
   // デモ用: 変身演出を毎回強制再生 (フラグを見ない/書かない)。開発確認用。
   forceReveal?: boolean;
+  // true で画像のみ表示 (essence/型名/判明ゲージ/説明など画像下のテキストブロックを一切出さない)。
+  // /me はキャラ名をトップバーへ移し、画像下を空にするために使用。
+  imageOnly?: boolean;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -65,6 +68,7 @@ export function CharacterHero({
   imageBlend = false,
   revealKey,
   forceReveal = false,
+  imageOnly = false,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -111,6 +115,9 @@ export function CharacterHero({
           </div>
         )}
       </div>
+      {/* imageOnly: 画像下のテキスト群 (essence/型名/判明ゲージ/説明) を一切出さない。 */}
+      {!imageOnly && (
+        <>
       {/* essence + 型名: 型名は一回り大きく・font-black(900)・deepPurple・装飾なしのクリーン塗り。
           重ねは撤去し、スマホ/PC とも画像の下に通常配置 (重なりなし)。 */}
       <div className="mt-3 flex flex-col items-center">
@@ -180,6 +187,8 @@ export function CharacterHero({
         <p className="balance-jp text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[340px]">
           {description}
         </p>
+      )}
+        </>
       )}
     </div>
   );
