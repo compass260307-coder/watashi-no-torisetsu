@@ -332,15 +332,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
-  // 変身演出の制御。
-  // - revealKey: ユーザーごとの「再生済み」フラグ (localStorage)。判明後の初回のみ再生。
-  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込み毎回再生。
+  // 職業表示の制御。
+  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
   //   /me/[token] は推測不可のトークン限定URLで通常ユーザーが踏むことはなく実質露出しない。
-  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ
-  //   (章②/スコア/解除条件には一切影響しない)。
-  const revealKey = `wt_job_revealed_${shareCode}`;
+  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
+  // ヘッダー左のキャラ名 (静的表示。変身アニメ JobRevealName は使わない)。
+  //   判明 (displayJob あり / ?revealDemo=1 含む): 「{職業}{動物}」(例 記者イルカ)
+  //   未判明: 「{動物}のトリセツ」(例 イルカのトリセツ)
+  const headerName = displayJob
+    ? `${displayJob.name}${animalName}`
+    : `${animalName}のトリセツ`;
 
   return (
     // 背景はファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白。
@@ -371,7 +374,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
           <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-sm leading-tight">
-            {animalName}のトリセツ
+            {headerName}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
             <ResultActions
@@ -390,8 +393,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
         {/* ===== ヒーロー (引き) =====
             キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示。
-            hideDecorations で装飾 (肩書き/一言/説明) は非表示にしつつ、職業まわり (判明前
-            ティーザー+ゲージ / 判明後の職業名 / 変身演出) は残す。キャラ名はトップバー h1 へ。
+            hideDecorations で画像下のテキスト (肩書き/一言/説明 + キャラ名 h1) は非表示にしつつ、
+            「あと○人で職業が判明」ゲージは残す。キャラ名はトップバー h1 に静的表示 (変身演出なし)。
             mb-8 で画像〜本文の余白を戻し、本文が詰め上がらないようにする。 */}
         <div className="w-full md:max-w-md md:mx-auto mb-8">
           <CharacterHero
@@ -405,8 +408,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
             imageMaxWidthClassName="max-w-[230px] mx-auto"
             imageBlend
             hideDecorations
-            revealKey={revealKey}
-            forceReveal={forceReveal}
             jobSlot={{
               animal: animalName,
               job: displayJob,

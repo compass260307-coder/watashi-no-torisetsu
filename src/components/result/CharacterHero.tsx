@@ -116,18 +116,19 @@ export function CharacterHero({
           </div>
         )}
       </div>
-      {/* 画像下: 装飾 (eyebrow/essence 肩書き/説明) は hideDecorations で非表示。
-          職業まわり (型名 h1 / 判明ゲージ / 変身演出) は残す。 */}
-      <div className="mt-3 flex flex-col items-center">
-        {!hideDecorations && eyebrow && (
-          <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
-        )}
-        {/* essence (肩書き): 装飾なので hideDecorations 時は非表示 */}
-        {!hideDecorations && (
+      {/* 画像下: eyebrow / essence(肩書き) / 型名 h1 は「画像下のテキスト」として hideDecorations
+          時にまとめて非表示 (キャラ名はトップバーへ移設済み)。判明ゲージは下で別途残す。
+          ※ h1 内の変身演出 JobRevealName は revealKey 指定時のみ描画する設計だが、現在 /me は
+          hideDecorations + revealKey 未指定のため、ここ (JobRevealName 含む) はどこにもマウント
+          されない。コンポーネントは将来再利用のため温存し削除しない。 */}
+      {!hideDecorations && (
+        <div className="mt-3 flex flex-col items-center">
+          {eyebrow && (
+            <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
+          )}
           <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
             {essence}
           </p>
-        )}
         <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
           {jobSlot ? (
             job ? (
@@ -158,7 +159,8 @@ export function CharacterHero({
             name
           )}
         </h1>
-      </div>
+        </div>
+      )}
 
       {/* 職業未定: 判明ゲージ */}
       {jobSlot && !job && (
