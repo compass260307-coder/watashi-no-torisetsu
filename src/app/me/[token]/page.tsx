@@ -339,11 +339,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
   // ヘッダー左のキャラ名 (静的表示。変身アニメ JobRevealName は使わない)。「のトリセツ」は付けない。
-  //   判明 (displayJob あり / ?revealDemo=1 含む): 「{職業}{動物}」(例 記者イルカ)
-  //   未判明: 「?{動物}」(例 ?イルカ。変更前のティーザー表記に合わせる)
-  const headerName = displayJob
-    ? `${displayJob.name}${animalName}`
-    : `?${animalName}`;
+  // プレフィックス (アクセントのバッジ風) + 動物名 (縁取り) の 2 要素に分けて表示する。
+  //   判明 (displayJob あり / ?revealDemo=1 含む): プレフィックス=職業 (例 記者) / 動物名
+  //   未判明: プレフィックス="?" (職業が入る空欄ティーザー) / 動物名
+  const headerPrefix = displayJob ? displayJob.name : "?";
+  const headerAnimal = animalName;
 
   return (
     // 背景はファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白。
@@ -373,8 +373,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-3xl sm:text-4xl leading-tight">
-            {headerName}
+          {/* キャラ名: プレフィックス (?=職業の空欄ティーザー / 確定後は職業) をアクセントの
+              バッジ風、動物名を白フチ+黄ドロップの縁取り (ロゴのぷっくり世界観) で目立たせる。
+              バッジは shrink-0、動物名は min-w-0 truncate でアイコンと重ならない/長ければ省略。 */}
+          <h1 className="flex items-center gap-1.5 min-w-0">
+            <span className="shrink-0 inline-flex items-center rounded-xl bg-[#FE3C72] text-white font-black px-2.5 py-0.5 text-lg sm:text-2xl leading-none shadow-[0_2px_0_rgba(58,45,107,0.18)]">
+              {headerPrefix}
+            </span>
+            <span className="header-charname min-w-0 truncate font-black text-3xl sm:text-4xl leading-tight pb-1">
+              {headerAnimal}
+            </span>
           </h1>
           <div className="flex items-center gap-2 shrink-0">
             <ResultActions

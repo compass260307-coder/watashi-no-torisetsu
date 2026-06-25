@@ -359,6 +359,20 @@ input[type="reset"]:active {
   font-size: 1rem;
 }
 
+/* ヘッダー左キャラ名の「動物名」: deepPurple + 白フチ + 黄ドロップで、ロゴ (.wtr-logo-text /
+   .wtr-name) のぷっくり立体な世界観に合わせる。font-size は付けず Tailwind (text-3xl/4xl) で制御。
+   iOS/Safari 安全のため -webkit-text-stroke ではなく text-shadow の多重がけで縁取りを作る。 */
+.header-charname {
+  color: #3a2d6b;
+  text-shadow:
+    -2px -2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px 2px 0 #fff,
+    0 1px 0 #fff,
+    0 3px 0 #ffe993;
+}
+
 /* 結果ページ本文の角ゴシック (読ませる文章ブロック用)。
    ヒラギノ角ゴ → Hiragino Sans → Noto Sans JP (next/font / 非搭載端末向け) の順でフォールバック。
    見出しと同様に角ゴで統一し、明朝は使わない。 */
