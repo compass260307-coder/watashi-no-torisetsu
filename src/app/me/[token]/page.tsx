@@ -414,9 +414,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 「自分が見た自分」見出し・「アナタは「animal」」サブ行は撤去。
               取説の見出しはキャラ名「{animal}のトリセツ」に集約 (下の map 1問目)。 */}
 
-          {/* 取説 (各セクション段落1のみ) */}
+          {/* 取説 (各セクション全段落表示)。body を "\n\n" で分割し、各段落を p でレンダー。 */}
           {sections.slice(0, 2).map((sec, idx) => {
-            const firstPara = sec.body.split("\n\n")[0];
+            const paragraphs = sec.body.split("\n\n");
             return (
               <section key={sec.title} className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
@@ -445,9 +445,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </div>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
                 <div className="px-1 pb-1">
-                  <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
-                    {firstPara}
-                  </p>
+                  {paragraphs.map((para, pIdx) => (
+                    <p
+                      key={`${sec.title}-${pIdx}`}
+                      className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+                    >
+                      {para}
+                    </p>
+                  ))}
                   {idx === 0 && diagnosedAt && (
                     <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
                       診断日: {diagnosedAt}
