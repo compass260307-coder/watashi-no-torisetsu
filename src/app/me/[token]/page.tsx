@@ -332,12 +332,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
-  // 職業表示の制御 (デモ)。
-  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
-  //   /me/[token] は推測不可のトークン限定URLで、通常ユーザーが param を付けて踏むことはない
-  //   ため実質的に露出しない。職業決定ロジック (computeJob) は不変で、デモは「表示用の job」を
-  //   差し替えるだけ (章②/スコア/解除条件には一切影響しない)。
-  // ※ ヒーローは imageOnly (画像下テキスト非表示) のため変身演出 (JobRevealName) は出さない。
+  // 変身演出の制御。
+  // - revealKey: ユーザーごとの「再生済み」フラグ (localStorage)。判明後の初回のみ再生。
+  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込み毎回再生。
+  //   /me/[token] は推測不可のトークン限定URLで通常ユーザーが踏むことはなく実質露出しない。
+  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ
+  //   (章②/スコア/解除条件には一切影響しない)。
+  const revealKey = `wt_job_revealed_${shareCode}`;
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
 
@@ -369,7 +370,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-base sm:text-lg leading-tight">
+          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-sm leading-tight">
             {animalName}のトリセツ
           </h1>
           <div className="flex items-center gap-2 shrink-0">
@@ -387,11 +388,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* ===== ヒーロー (引き・画像のみ) =====
-            キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示し、まわりに
-            背景 (グループ色) の余白を見せる。imageOnly で画像下のテキスト (肩書き/一言/判明
-            ゲージ等) は一切出さない。キャラ名はトップバー h1 へ移設済み。 */}
-        <div className="w-full md:max-w-md md:mx-auto">
+        {/* ===== ヒーロー (引き) =====
+            キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示。
+            hideDecorations で装飾 (肩書き/一言/説明) は非表示にしつつ、職業まわり (判明前
+            ティーザー+ゲージ / 判明後の職業名 / 変身演出) は残す。キャラ名はトップバー h1 へ。
+            mb-8 で画像〜本文の余白を戻し、本文が詰め上がらないようにする。 */}
+        <div className="w-full md:max-w-md md:mx-auto mb-8">
           <CharacterHero
             imageSrc={dispImage}
             alt={dispName}
@@ -402,7 +404,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             imageFitClassName="object-contain"
             imageMaxWidthClassName="max-w-[230px] mx-auto"
             imageBlend
-            imageOnly
+            hideDecorations
+            revealKey={revealKey}
+            forceReveal={forceReveal}
             jobSlot={{
               animal: animalName,
               job: displayJob,

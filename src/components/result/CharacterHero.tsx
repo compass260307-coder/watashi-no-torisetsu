@@ -45,9 +45,10 @@ interface CharacterHeroProps {
   revealKey?: string;
   // デモ用: 変身演出を毎回強制再生 (フラグを見ない/書かない)。開発確認用。
   forceReveal?: boolean;
-  // true で画像のみ表示 (essence/型名/判明ゲージ/説明など画像下のテキストブロックを一切出さない)。
-  // /me はキャラ名をトップバーへ移し、画像下を空にするために使用。
-  imageOnly?: boolean;
+  // true で画像下の「装飾」(eyebrow / essence 肩書き / 説明文) を非表示にする。
+  // 職業まわり (型名 h1 / 判明ゲージ / 変身演出 JobRevealName) は残す。
+  // /me はキャラ名をトップバーへ移したため装飾は隠しつつ、職業表示は維持する用途。
+  hideDecorations?: boolean;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -68,7 +69,7 @@ export function CharacterHero({
   imageBlend = false,
   revealKey,
   forceReveal = false,
-  imageOnly = false,
+  hideDecorations = false,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -115,19 +116,18 @@ export function CharacterHero({
           </div>
         )}
       </div>
-      {/* imageOnly: 画像下のテキスト群 (essence/型名/判明ゲージ/説明) を一切出さない。 */}
-      {!imageOnly && (
-        <>
-      {/* essence + 型名: 型名は一回り大きく・font-black(900)・deepPurple・装飾なしのクリーン塗り。
-          重ねは撤去し、スマホ/PC とも画像の下に通常配置 (重なりなし)。 */}
+      {/* 画像下: 装飾 (eyebrow/essence 肩書き/説明) は hideDecorations で非表示。
+          職業まわり (型名 h1 / 判明ゲージ / 変身演出) は残す。 */}
       <div className="mt-3 flex flex-col items-center">
-        {eyebrow && (
+        {!hideDecorations && eyebrow && (
           <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
         )}
-        {/* essence は現状維持 (text-2xl)、型名を一回り大きく (text-3xl) して主役に */}
-        <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
-          {essence}
-        </p>
+        {/* essence (肩書き): 装飾なので hideDecorations 時は非表示 */}
+        {!hideDecorations && (
+          <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
+            {essence}
+          </p>
+        )}
         <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
           {jobSlot ? (
             job ? (
@@ -182,13 +182,11 @@ export function CharacterHero({
         </div>
       )}
 
-      {description && (
+      {!hideDecorations && description && (
         // balance-jp: text-wrap:balance + word-break:auto-phrase (日本語の文節で均等折返し)
         <p className="balance-jp text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[340px]">
           {description}
         </p>
-      )}
-        </>
       )}
     </div>
   );
