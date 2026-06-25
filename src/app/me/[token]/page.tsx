@@ -297,16 +297,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // コンテナも同色にして枠なく全面化。グリッド線は同系色の極薄。
   const groupColor = thirtyTwoColor(t32);
   // ファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白にする。
-  // 上部=グループ色の淡色 (中央に白のやわらかい光=画像の glow に対応) → 下端で白へフェードし、
-  // 本文エリア(白)へ自然に繋ぐ。groupColor 由来なので 4 グループ(黄/緑/青/紫)自動対応。
-  // ※ 色が届く高さ/フェード位置は下のレイヤー (h-[600px]) と stop 値で調整可能。
-  const heroBand = `radial-gradient(120% 60% at 50% 24%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 62%), linear-gradient(180deg, ${paleSurface(
+  // ヒーローを包むコンテナ(自己サイズ)の全幅背景として使う。上部=グループ色の淡色 (中央に
+  // 白のやわらかい光) → コンテナ下端で白へフェードして本文エリア(白)へ自然に繋ぐ。
+  // コンテナ高さに追従するので、機種/画面高さが変わっても本文は常に「色が終わって白」から始まる。
+  // groupColor 由来なので 4 グループ(黄/緑/青/紫)自動対応。
+  const heroBand = `radial-gradient(120% 60% at 50% 22%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 60%), linear-gradient(180deg, ${paleSurface(
     groupColor,
     0.42,
-  )} 0%, ${paleSurface(groupColor, 0.42)} 64%, ${paleSurface(
+  )} 0%, ${paleSurface(groupColor, 0.42)} 78%, ${paleSurface(
     groupColor,
-    0.18,
-  )} 85%, #ffffff 100%)`;
+    0.16,
+  )} 92%, #ffffff 100%)`;
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -350,25 +351,28 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // main 自体は白。上部だけ heroBand レイヤーでグループ色を敷き、下端で白へフェードする。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <main
-      className="relative min-h-screen py-6 px-4 md:py-10 md:px-8"
+      className="relative min-h-screen overflow-x-clip py-6 px-4 md:py-10 md:px-8"
       style={{ background: "#ffffff" }}
     >
-      {/* ===== ヒーロー背景 (全幅・画面上部だけグループ色) =====
-          ファーストビュー(キャラ画像〜キャラ名〜肩書き〜「あと3人で…」あたり)の背後だけを
-          グループ色で塗り、下端で白へフェードして本文エリア(白背景)へ自然に繋ぐ。
-          inset-x-0 で main 全幅 (= 画面幅いっぱい)、h-[600px] で色が届く範囲を決める。
-          4 グループ(黄/緑/青/紫)とも groupColor 由来で自動対応。装飾なので aria-hidden/クリック透過。 */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[600px] z-0"
-        style={{ background: heroBand }}
-      />
-      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景はヒーローのみ
-          グループ色 (上の heroBand レイヤー)、本文エリアは main の白。本文は左右ぎりぎり
+      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景はヒーローゾーンのみ
+          グループ色 (下のゾーン内の背景レイヤー)、本文エリアは main の白。本文は左右ぎりぎり
           (mobile px-4 / PC px-8) まで広げ、PC は読める上限 max-w-[1080px] で中央寄せ。
-          z-10 でヒーロー背景レイヤーより前面。 */}
+          overflow-x-clip はヒーローゾーン背景の w-screen ブリードの横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== トップバー =====
+        {/* ===== ヒーローゾーン (色背景 → 下端で白) =====
+            トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめ、その背後だけを
+            全幅のグループ色で塗る。背景レイヤーはゾーンの自己サイズ (inset-y-0) に追従し、下端で
+            白へフェード → 本文(章①)は常にこのゾーン直後=白エリアの頭から始まる (機種/画面高さに
+            依らず色エリアに食い込まない)。full-bleed は left-1/2 -translate-x-1/2 w-screen
+            (main は overflow-x-clip)。pb で職業ゲージ下に色の余白を確保しつつ下端で白へ、
+            mb-8 で本文との間に白の余白。 */}
+        <div className="relative pb-16 mb-8">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-screen -z-10"
+            style={{ background: heroBand }}
+          />
+          {/* ===== トップバー =====
             左端にキャラ名 (ページ見出し h1)、右端にシェアアイコン (iconbar) + 三本線メニュー。
             キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
@@ -403,8 +407,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示。
             hideDecorations で画像下のテキスト (肩書き/一言/説明 + キャラ名 h1) は非表示にしつつ、
             「あと○人で職業が判明」ゲージは残す。キャラ名はトップバー h1 に静的表示 (変身演出なし)。
-            mb-12 で画像〜本文の余白を確保し、本文が詰め上がらないようにする。 */}
-        <div className="w-full md:max-w-md md:mx-auto mb-12">
+            画像〜本文の余白はヒーローゾーンの pb-16 / mb-8 が担う。 */}
+        <div className="w-full md:max-w-md md:mx-auto">
           <CharacterHero
             imageSrc={dispImage}
             alt={dispName}
@@ -423,6 +427,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               threshold: JOB_FRIEND_THRESHOLD,
             }}
           />
+          </div>
         </div>
 
         {/* ===== 章① 自分が見た自分 =====
