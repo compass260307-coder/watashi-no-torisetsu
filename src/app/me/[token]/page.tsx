@@ -373,7 +373,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-2xl sm:text-4xl leading-tight">
+          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-3xl sm:text-4xl leading-tight">
             {headerName}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
@@ -395,8 +395,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示。
             hideDecorations で画像下のテキスト (肩書き/一言/説明 + キャラ名 h1) は非表示にしつつ、
             「あと○人で職業が判明」ゲージは残す。キャラ名はトップバー h1 に静的表示 (変身演出なし)。
-            mb-8 で画像〜本文の余白を戻し、本文が詰め上がらないようにする。 */}
-        <div className="w-full md:max-w-md md:mx-auto mb-8">
+            mb-12 で画像〜本文の余白を確保し、本文が詰め上がらないようにする。 */}
+        <div className="w-full md:max-w-md md:mx-auto mb-12">
           <CharacterHero
             imageSrc={dispImage}
             alt={dispName}
