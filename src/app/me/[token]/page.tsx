@@ -86,14 +86,6 @@ const SITE_URL =
 // ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
 const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
 
-// 取説パートの区別ラベル/アイコン (セクション配列の index で引く静的マップ)。
-// データ (SelfSection) には持たせず、index = 0 取扱説明書 / 1 取扱注意ポイント の固定順に対応。
-// 色だけに依存しないようアイコン + テキストでパートを示す。
-const PART_META = [
-  { label: "取扱説明書", icon: "🎀" },
-  { label: "注意ポイント", icon: "⚠️" },
-] as const;
-
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
   cModifier?: CModifier;
@@ -428,29 +420,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
             「{animalName}」のトリセツ
           </h2>
 
-          {/* 取説 (各パート: 小ラベル+アイコン → メイン見出し(heading ?? フォールバック) → 全段落本文)。
-              heading は SelfSection の任意フィールド。未設定なら従来表示にフォールバックする
-              (フェーズ2: 全タイプ未設定なので、小ラベルが付く以外はほぼ現状維持)。 */}
+          {/* 取説 (各パート: メイン見出し(heading) → 全段落本文)。絵文字+機能ラベル(🎀/⚠️)は
+              出さず、タイプ固有の小見出しだけを見出しにして静かで洗練された見え方に。
+              heading 未設定 (16タイプ等) は idx0=見出しなし、idx1=従来 title にフォールバック。 */}
           {sections.slice(0, 2).map((sec, idx) => {
             const paragraphs = sec.body.split("\n\n");
-            const part = PART_META[idx];
             // メイン見出し: タイプ固有 heading を優先。未設定時は idx0 は章見出しが担うため
-            // 非表示、idx1 は従来の title ("取扱注意ポイント") にフォールバック。
+            // 非表示、idx1 は従来の title にフォールバック (破綻しない最小限)。
             const mainHeading = sec.heading ?? (idx === 0 ? null : sec.title);
             return (
-              <section key={sec.title} className="mb-8">
-                {/* パート区別ラベル (小・アイコン+テキスト = 色だけに依存しない区別) */}
-                {part && (
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#3A2D6B]/[0.06] px-3 py-1 mb-2">
-                    <span aria-hidden="true" className="text-sm leading-none">
-                      {part.icon}
-                    </span>
-                    <span className="text-[#3A2D6B] font-black text-xs tracking-[0.12em]">
-                      {part.label}
-                    </span>
-                  </div>
-                )}
-                {/* メイン見出し (h3)。未設定 idx0 は非表示 (章見出しがトリセツ名を担う)。 */}
+              <section key={sec.title} className="mb-10">
+                {/* メイン見出し (h3)。未設定 idx0 は非表示 (章見出しがトリセツ名を担う)。
+                    パート区別 (人柄/注意) は見出し文言のニュアンスと余白で自然に伝える。 */}
                 {mainHeading && (
                   <h3 className="text-[#3A2D6B] font-black text-xl leading-tight mb-3">
                     {mainHeading}
