@@ -338,12 +338,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヘッダー左のキャラ名 (静的表示。変身アニメ JobRevealName は使わない)。
+  // ヘッダー左のキャラ名 (静的表示。変身アニメ JobRevealName は使わない)。「のトリセツ」は付けない。
   //   判明 (displayJob あり / ?revealDemo=1 含む): 「{職業}{動物}」(例 記者イルカ)
-  //   未判明: 「{動物}のトリセツ」(例 イルカのトリセツ)
+  //   未判明: 「?{動物}」(例 ?イルカ。変更前のティーザー表記に合わせる)
   const headerName = displayJob
     ? `${displayJob.name}${animalName}`
-    : `${animalName}のトリセツ`;
+    : `?${animalName}`;
 
   return (
     // 背景はファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白。
@@ -373,7 +373,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
             ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-sm leading-tight">
+          <h1 className="min-w-0 truncate text-[#3A2D6B] font-black text-2xl sm:text-4xl leading-tight">
             {headerName}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
