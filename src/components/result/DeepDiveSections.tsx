@@ -26,18 +26,17 @@ const AXIS_LABEL: Record<BigFiveDimension, string> = {
 // 表示する 5 カテゴリ (要望順: 強み/弱み/恋愛/仕事/成長)。
 // hint = スコア一文の素材の選び方:
 //   "top"    → 最も高い軸、"bottom" → 最も低い軸、または特定軸 ("A" / "C")。
-// emoji = やわらかい可愛いトーンの絵文字 (弱みは 🌱 でダメ出し感を出さない)。
+// ※ 絵文字は撤去し、タブ/見出しはテキストラベルのみ。
 const DEEP_DIVE_CARDS: {
   key: keyof TypeDeepDive;
   tab: string;
-  emoji: string;
   hint: "top" | "bottom" | "growth" | BigFiveDimension;
 }[] = [
-  { key: "strength", tab: "強み", emoji: "🌟", hint: "top" },
-  { key: "weakness", tab: "弱み", emoji: "🌱", hint: "bottom" },
-  { key: "love", tab: "恋愛", emoji: "💗", hint: "A" },
-  { key: "career", tab: "仕事", emoji: "🎯", hint: "C" },
-  { key: "growth", tab: "成長", emoji: "🌷", hint: "growth" },
+  { key: "strength", tab: "強み", hint: "top" },
+  { key: "weakness", tab: "弱み", hint: "bottom" },
+  { key: "love", tab: "恋愛", hint: "A" },
+  { key: "career", tab: "仕事", hint: "C" },
+  { key: "growth", tab: "成長", hint: "growth" },
 ];
 
 function toPercent(score: number | undefined): number {
@@ -94,18 +93,10 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* 見出し (バッジ絵文字は選択中カテゴリに連動) */}
-      <div className="flex items-center gap-3 mb-4">
-        <span
-          aria-hidden="true"
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
-        >
-          {current.emoji}
-        </span>
-        <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-          アナタの深掘り
-        </h2>
-      </div>
+      {/* 見出し (絵文字バッジは撤去し、テキストのみ) */}
+      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight mb-4">
+        アナタの深掘り
+      </h2>
 
       {/* タブ (横並びボタン。モバイルは横スクロール) */}
       <div
@@ -128,7 +119,7 @@ export function DeepDiveSections({
                   : "bg-white text-[#3A2D6B] border-[#0094D8]/25 hover:bg-[#FFF0F3]"
               }`}
             >
-              <span aria-hidden="true">{c.emoji}</span> {c.tab}
+              {c.tab}
             </button>
           );
         })}
@@ -142,8 +133,7 @@ export function DeepDiveSections({
         </h3>
 
         {/* スコア由来の一文 (パーソナライズ。色だけに意味を持たせない) */}
-        <p className="inline-flex items-start gap-1.5 bg-[#FFF0F3] text-[#3A2D6B] font-bold text-xs rounded-full px-3 py-1.5 mb-4">
-          <span aria-hidden="true">📊</span>
+        <p className="inline-flex items-start bg-[#FFF0F3] text-[#3A2D6B] font-bold text-xs rounded-full px-3 py-1.5 mb-4">
           <span>{note}</span>
         </p>
 
