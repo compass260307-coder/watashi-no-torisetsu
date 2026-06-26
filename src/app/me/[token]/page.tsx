@@ -345,10 +345,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
             新 unicorn 画像は背景が均一な淡い紫 (#E7DCFB) の無地。ヒーローのバンド背景を同じ
             #E7DCFB の単色 (グラデ/白は使わない) にして、画像の四角い縁を完全に不可視化する。
             object-contain で全体表示 (クロップなし)、角丸/影/ring/マスク なし (背景一致で縁が消える)。
-            PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。キャラ名は画像左上に薄い楕円
-            スクリム + 文字の縁取り/影で重ねる。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
+            PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。キャラ名は画像に重ねず、画像の
+            外 (上) にヘッダー的に通常配置 (スクリムなし)。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
         <div className="mx-[calc(50%-50vw)] w-screen bg-[#E7DCFB] px-4 py-6 md:py-10">
-          <div className="relative max-w-[520px] mx-auto">
+          <div className="max-w-[520px] mx-auto">
+            {/* キャラ名: 画像の外 (上) にヘッダー的に通常配置 (オーバーレイ廃止・画像には何も重ねない)。
+                背景 #E7DCFB 単色に直接乗せスクリムなし。pt-3 で旧オーバーレイと同じ縦位置を維持、
+                mb-2 で画像と分ける。文字はネイビー基調 (白フチ + タイプ名の軽い白シャドウ)。 */}
+            <div className="pt-3 mb-2">{heroTitle}</div>
             <CharacterHero
               imageSrc={dispImage}
               alt={dispName}
@@ -368,17 +372,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 threshold: JOB_FRIEND_THRESHOLD,
               }}
             />
-            {/* キャラ名オーバーレイ: 画像の左上。背景が #E7DCFB 単色なのでスクリムは薄め (white/30)
-                の楕円 radial + 文字の白フチ/影で読ませる (直線の縁は出さない)。クリックは透過。 */}
-            <div
-              className="pointer-events-none absolute top-0 left-0 max-w-[80%] pt-3 pl-4 pr-12 pb-12"
-              style={{
-                background:
-                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.3), transparent 70%)",
-              }}
-            >
-              {heroTitle}
-            </div>
           </div>
         </div>
         </div>
