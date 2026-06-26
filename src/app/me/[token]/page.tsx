@@ -373,9 +373,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             style={{ background: heroBand }}
           />
           {/* ===== トップバー =====
-            左端にキャラ名 (ページ見出し h1)、右端にシェアアイコン (iconbar) + 三本線メニュー。
-            キャラ名は min-w-0 + truncate、右グループは shrink-0 でスマホでも重ならない。
-            ※ 本命のシェア導線 (QR / X / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
+            左端にキャラ名 (ページ見出し h1)、右端に三本線メニューのみ (シェアアイコンは撤去)。
+            キャラ名は min-w-0 + truncate、☰ は shrink-0。名前の表示幅を広く確保。
+            ※ 本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
         <div className="flex items-center justify-between gap-3 mb-3">
           {/* キャラ名: プレフィックス (?=職業の空欄ティーザー / 確定後は職業) をアクセントの
               バッジ風、動物名を白フチ+黄ドロップの縁取り (ロゴのぷっくり世界観) で目立たせる。
@@ -388,17 +388,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
               {headerAnimal}
             </span>
           </h1>
-          <div className="flex items-center gap-2 shrink-0">
-            <ResultActions
-              variant="iconbar"
-              typeName={dispName}
-              shareUrl={inviteUrl}
-              ownerName={displayName}
-              essence={dispEssence}
-              description={dispDesc}
-              imageSrc={dispImage}
-              shareCode={shareCode}
-            />
+          {/* ヘッダー右はハンバーガーのみ (シェアアイコンは撤去し名前の表示幅を確保)。
+              本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
+          <div className="shrink-0">
             <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
           </div>
         </div>
