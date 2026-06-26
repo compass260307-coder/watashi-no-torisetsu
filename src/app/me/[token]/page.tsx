@@ -280,6 +280,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
     "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N)
     "earnest-elephant__R": "#E3CFFA", // ドラゴン (dragon_R・情景版)
     "steady-turtle__R": "#E4D5FB", // フェニックス (phoenix_R・情景版)
+    "steady-turtle__N": "#E7DCFB", // ペガサス (pegasus_N・背景実測 #E7DCFB)
+    "gentle-koala__N": "#E7DCFB", // エンジェル (angel_N・背景実測 #E7DCFB)
   };
   const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
