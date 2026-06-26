@@ -310,23 +310,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   未判明: プレフィックス="?" (職業が入る空欄ティーザー) / 動物名
   const headerPrefix = displayJob ? displayJob.name : "?";
   const headerAnimal = animalName;
-  // 取説の冒頭セクション (取扱説明書)。PC は右カラム、md 未満は画像の下に表示する。
-  const firstSection = sections[0];
-  // ヒーローのタイトル (❓バッジ + 動物名の縁取り + タイプ名)。md 以上は右カラム見出し、
-  // md 未満は画像上のオーバーレイ、の 2 箇所で同じものを描画する (ヘッダーの重複 h1 は撤去)。
-  const heroTitle = (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <span className="shrink-0 inline-flex items-center rounded-xl bg-[#FE3C72] text-white font-black px-2.5 py-0.5 text-lg sm:text-2xl leading-none shadow-[0_2px_0_rgba(58,45,107,0.18)]">
-          {headerPrefix}
-        </span>
-        <span className="header-charname font-black text-3xl sm:text-4xl leading-tight pb-1">
-          {headerAnimal}
-        </span>
-      </div>
-      <p className="text-[#3A2D6B]/80 font-bold text-sm">{dispEssence}</p>
-    </div>
-  );
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -340,89 +323,80 @@ export default async function MePage({ params, searchParams }: PageProps) {
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== トップバー (ハンバーガーのみ。キャラ名はヒーローに一本化し重複 h1 は撤去) ===== */}
-        <div className="flex justify-end mb-3">
-          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+        {/* ===== ヒーローゾーン =====
+            トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめる。色背景帯は撤去し、
+            キャラ画像のみ下のラッパーでフルブリード表示。mb-8 で本文との間に余白。 */}
+        <div className="mb-8">
+          {/* ===== トップバー =====
+            左端にキャラ名 (ページ見出し h1)、右端に三本線メニューのみ (シェアアイコンは撤去)。
+            キャラ名は min-w-0 + truncate、☰ は shrink-0。名前の表示幅を広く確保。
+            ※ 本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
+        <div className="flex items-center justify-between gap-3 mb-3">
+          {/* キャラ名: プレフィックス (?=職業の空欄ティーザー / 確定後は職業) をアクセントの
+              バッジ風、動物名を白フチ+黄ドロップの縁取り (ロゴのぷっくり世界観) で目立たせる。
+              バッジは shrink-0、動物名は min-w-0 truncate でアイコンと重ならない/長ければ省略。 */}
+          <h1 className="flex items-center gap-1.5 min-w-0">
+            <span className="shrink-0 inline-flex items-center rounded-xl bg-[#FE3C72] text-white font-black px-2.5 py-0.5 text-lg sm:text-2xl leading-none shadow-[0_2px_0_rgba(58,45,107,0.18)]">
+              {headerPrefix}
+            </span>
+            <span className="header-charname min-w-0 truncate font-black text-3xl sm:text-4xl leading-tight pb-1">
+              {headerAnimal}
+            </span>
+          </h1>
+          {/* ヘッダー右はハンバーガーのみ (シェアアイコンは撤去し名前の表示幅を確保)。
+              本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
+          <div className="shrink-0">
+            <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+          </div>
         </div>
 
-        {/* ===== ヒーロー (レスポンシブ 2 カラム) =====
-            /me 限定。薄紫の全幅バンド内に、md 以上で [左:正方形画像 / 右:タイトル+取説冒頭] の
-            2 カラム (上揃え)。md 未満は縦積み (画像フルブリード → 取説冒頭) で、PC 着地時に本文の頭が
-            画像の右に見える。キャラ名は md 未満は画像上にオーバーレイ、md 以上は右カラム見出し。
-            背景は白を使わず薄紫グラデ。※ 全幅バンドは mx-[calc(50%-50vw)] w-screen、横はみ出しは
-            main の overflow-x-clip で抑止。左右カラムの幅・余白バランスはスクショ後に調整予定。 */}
-        <section
-          aria-labelledby="chapter-self"
-          className="mx-[calc(50%-50vw)] w-screen bg-gradient-to-b from-[#F1ECFB] to-[#FBF1F7] mb-10"
-        >
-          <div className="mx-auto max-w-[1080px] md:flex md:items-start md:gap-8 md:px-8 md:py-8">
-            {/* 左: キャラ画像。md 未満フルブリード / md 以上カラム幅の 1:1 (max-h 制限・角丸+影)。
-                relative で md 未満のキャラ名オーバーレイを画像上に重ねる。 */}
-            <div className="relative md:w-1/2 md:shrink-0">
-              <CharacterHero
-                imageSrc={dispImage}
-                alt={dispName}
-                essence={dispEssence}
-                name={dispName}
-                description={dispDesc}
-                imageAspectClassName="aspect-square"
-                imageFitClassName="object-cover"
-                imageCardClassName="overflow-hidden md:rounded-3xl md:shadow-lg md:max-h-[70vh]"
-                imageSizes="(min-width: 768px) 50vw, 100vw"
-                hideDecorations
-                jobSlot={{
-                  animal: animalName,
-                  job: displayJob,
-                  friendCount: friendEvalCount,
-                  threshold: JOB_FRIEND_THRESHOLD,
-                }}
-              />
-              {/* md 未満: キャラ名を画像上部にオーバーレイ (白系スクリムで可読性確保)。 */}
-              <div className="md:hidden absolute top-0 inset-x-0 px-4 pt-3 pb-10 bg-gradient-to-b from-white/55 to-transparent">
-                {heroTitle}
-              </div>
-            </div>
-            {/* 右: md 以上はタイトル見出し + 取説冒頭、md 未満は取説冒頭のみ (本文を縦積み)。
-                px は md 未満のみ (画像はフルブリード、本文は左右に余白)。 */}
-            <div className="md:w-1/2 px-4 py-6 md:px-0 md:py-0">
-              <div className="hidden md:block mb-4">{heroTitle}</div>
-              {firstSection && (
-                <>
-                  <h2
-                    id="chapter-self"
-                    className="text-[#3A2D6B] font-black text-xl leading-tight mb-3"
-                  >
-                    {firstSection.heading ?? firstSection.title}
-                  </h2>
-                  <div className="px-1 pb-1">
-                    {firstSection.body.split("\n\n").map((para, pIdx) => (
-                      <p
-                        key={`self-0-${pIdx}`}
-                        className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
-                      >
-                        {para}
-                      </p>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+        {/* ===== ヒーロー =====
+            キャラ画像をフルブリード表示: モバイルは画面端から端まで (w-auto + 負マージン
+            mx-[calc(50%-50vw)] で w-screen 相当)、md 以上は max-w-[640px] 中央寄せ (mx-auto)。
+            角丸/影/リングはモバイルで外し (フラット)、md のみ rounded-3xl。object-cover (1:1 で
+            切れない)。hideDecorations で画像下テキストは非表示、職業ゲージは残す。余白はゾーン mb-8。
+            ※ 負マージンの横はみ出しは main の overflow-x-clip で抑止。 */}
+        <div className="w-auto mx-[calc(50%-50vw)] md:mx-auto md:max-w-[640px]">
+          <CharacterHero
+            imageSrc={dispImage}
+            alt={dispName}
+            essence={dispEssence}
+            name={dispName}
+            description={dispDesc}
+            imageAspectClassName="aspect-square"
+            imageFitClassName="object-cover"
+            imageCardClassName="overflow-hidden md:rounded-3xl"
+            imageSizes="(min-width: 768px) 640px, 100vw"
+            hideDecorations
+            jobSlot={{
+              animal: animalName,
+              job: displayJob,
+              friendCount: friendEvalCount,
+              threshold: JOB_FRIEND_THRESHOLD,
+            }}
+          />
           </div>
-        </section>
+        </div>
 
-        {/* ===== 章① の続き (取扱注意ポイント) =====
-            冒頭の取扱説明書 (sections[0]) はヒーロー右カラムへ移設済みのため、ここは sections[1]
-            以降のみ。id=chapter-self はヒーロー側にあるので、ここでは付けない (id 重複回避)。 */}
-        <section aria-label="取扱注意ポイントと深掘り" className="mb-10">
-          {/* 取説の続き (メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
-              heading 優先、未設定 (16タイプ等) は title にフォールバック。 */}
-          {sections.slice(1, 2).map((sec) => {
+        {/* ===== 章① 自分が見た自分 =====
+            章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
+            キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
+            aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
+        <section aria-labelledby="chapter-self" className="mb-10">
+          {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
+              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。 */}
+          {sections.slice(0, 2).map((sec, idx) => {
             const paragraphs = sec.body.split("\n\n");
-            // メイン見出し: タイプ固有 heading を優先、未設定は title。
+            // メイン見出し: タイプ固有 heading を優先、未設定は title。常に出してパートを示す。
             const mainHeading = sec.heading ?? sec.title;
             return (
               <section key={sec.title} className="mb-10">
-                <h2 className="text-[#3A2D6B] font-black text-xl leading-tight mb-3">
+                {/* メイン見出し。章見出しを廃したぶん、パート見出しが章①の最上位 (h2)。
+                    最初のパートに id=chapter-self を付け、section の aria-labelledby を解決。 */}
+                <h2
+                  id={idx === 0 ? "chapter-self" : undefined}
+                  className="text-[#3A2D6B] font-black text-xl leading-tight mb-3"
+                >
                   {mainHeading}
                 </h2>
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
