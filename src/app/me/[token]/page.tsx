@@ -274,6 +274,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+  // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
+  // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
+  const HERO_BG_BY_TYPE: Record<string, string> = {
+    "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N)
+    "earnest-elephant__R": "#E3CFFA", // ドラゴン (dragon_R・情景版)
+  };
+  const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -342,12 +349,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
         </div>
 
         {/* ===== ヒーロー (無地背景画像に一致・確定仕様) =====
-            新 unicorn 画像は背景が均一な淡い紫 (#E7DCFB) の無地。ヒーローのバンド背景を同じ
-            #E7DCFB の単色 (グラデ/白は使わない) にして、画像の四角い縁を完全に不可視化する。
+            各キャラ画像は背景が均一な淡い紫の無地。ヒーローのバンド背景をキャラごとに画像の
+            背景色 (heroBg・四隅実測) に一致させ (グラデ/白は使わない)、画像の四角い縁を不可視化する。
             object-contain で全体表示 (クロップなし)、角丸/影/ring/マスク なし (背景一致で縁が消える)。
             PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。キャラ名は画像に重ねず、画像の
             外 (上) にヘッダー的に通常配置 (スクリムなし)。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
-        <div className="mx-[calc(50%-50vw)] w-screen bg-[#E7DCFB] px-4 py-6 md:py-10">
+        <div
+          className="mx-[calc(50%-50vw)] w-screen px-4 py-6 md:py-10"
+          style={{ background: heroBg }}
+        >
           <div className="max-w-[520px] mx-auto">
             {/* キャラ名: 画像の外 (上) にヘッダー的に通常配置 (オーバーレイ廃止・画像には何も重ねない)。
                 背景 #E7DCFB 単色に直接乗せスクリムなし。pt-3 で旧オーバーレイと同じ縦位置を維持、
