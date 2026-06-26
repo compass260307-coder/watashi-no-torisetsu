@@ -341,14 +341,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ヒーロー (B案: ごく細い四辺フェード・確定仕様) =====
-            正方形を object-contain で全体表示 (クロップなし)。画像はほぼ全体をそのまま見せ、
-            外周だけ細く (各辺 4%) フェードして淡い紫バンドに溶かす。マスクは縦横 linear-gradient を
-            mask-composite:intersect で合成した矩形マスク (radial の深い削りはやめる)。
-            画像の外側 (左右の余白) は淡い紫グラデ (#EAE1F6→#F4EFFB) で埋め、白を見せない。
-            PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。角丸/影/ring なし。
-            ※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
-        <div className="mx-[calc(50%-50vw)] w-screen bg-gradient-to-b from-[#EAE1F6] to-[#F4EFFB] px-4 py-6 md:py-10">
+        {/* ===== ヒーロー (無地背景画像に一致・確定仕様) =====
+            新 unicorn 画像は背景が均一な淡い紫 (#E7DCFB) の無地。ヒーローのバンド背景を同じ
+            #E7DCFB の単色 (グラデ/白は使わない) にして、画像の四角い縁を完全に不可視化する。
+            object-contain で全体表示 (クロップなし)、角丸/影/ring/マスク なし (背景一致で縁が消える)。
+            PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。キャラ名は画像左上に薄い楕円
+            スクリム + 文字の縁取り/影で重ねる。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
+        <div className="mx-[calc(50%-50vw)] w-screen bg-[#E7DCFB] px-4 py-6 md:py-10">
           <div className="relative max-w-[520px] mx-auto">
             <CharacterHero
               imageSrc={dispImage}
@@ -358,15 +357,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               description={dispDesc}
               imageAspectClassName="aspect-square"
               imageFitClassName="object-contain"
-              imageBlend
-              imageBlendStyle={{
-                WebkitMaskImage:
-                  "linear-gradient(to right, transparent, #000 4%, #000 96%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)",
-                maskImage:
-                  "linear-gradient(to right, transparent, #000 4%, #000 96%, transparent), linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)",
-                WebkitMaskComposite: "source-in",
-                maskComposite: "intersect",
-              }}
+              imageCardClassName=""
               imageSizes="(min-width: 768px) 520px, 100vw"
               hideDecorations
               hideJobGauge
@@ -377,14 +368,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 threshold: JOB_FRIEND_THRESHOLD,
               }}
             />
-            {/* キャラ名オーバーレイ: 画像の左上 (スマホ/PC 共通)。スクリムは楕円 radial で
-                直線の縁を出さず、文字の縁取り/影と合わせて全32キャラの背景でも読めるように。
-                クリックは透過。 */}
+            {/* キャラ名オーバーレイ: 画像の左上。背景が #E7DCFB 単色なのでスクリムは薄め (white/30)
+                の楕円 radial + 文字の白フチ/影で読ませる (直線の縁は出さない)。クリックは透過。 */}
             <div
               className="pointer-events-none absolute top-0 left-0 max-w-[80%] pt-3 pl-4 pr-12 pb-12"
               style={{
                 background:
-                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.6), transparent 70%)",
+                  "radial-gradient(ellipse at top left, rgba(255,255,255,0.3), transparent 70%)",
               }}
             >
               {heroTitle}
