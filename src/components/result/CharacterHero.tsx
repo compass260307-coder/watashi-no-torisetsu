@@ -8,6 +8,7 @@
 //
 // 使う場所: /me(自分の型) / /evaluate/result(友達から見た型)。
 
+import type { CSSProperties } from "react";
 import Image from "next/image";
 import type { Job } from "@/lib/job";
 import { JobRevealName } from "./JobRevealName";
@@ -55,6 +56,9 @@ interface CharacterHeroProps {
   hideDecorations?: boolean;
   // true で「あと○人で職業が判明」ゲージのみ非表示にする (職業バッジ/ロジックは残す)。/me 用。
   hideJobGauge?: boolean;
+  // imageBlend 時のマスク style を上書き (未指定なら既定の radial BLEND_MASK)。
+  // /me は四辺だけ細く溶かす矩形マスク (linear×2 を mask-composite:intersect) を渡す。
+  imageBlendStyle?: CSSProperties;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -79,6 +83,7 @@ export function CharacterHero({
   forceReveal = false,
   hideDecorations = false,
   hideJobGauge = false,
+  imageBlendStyle,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -101,7 +106,10 @@ export function CharacterHero({
           }
           style={
             imageBlend
-              ? { WebkitMaskImage: BLEND_MASK, maskImage: BLEND_MASK }
+              ? (imageBlendStyle ?? {
+                  WebkitMaskImage: BLEND_MASK,
+                  maskImage: BLEND_MASK,
+                })
               : undefined
           }
         >
