@@ -277,9 +277,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
   // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
   const HERO_BG_BY_TYPE: Record<string, string> = {
-    "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N)
-    "earnest-elephant__R": "#E3CFFA", // ドラゴン (dragon_R・情景版)
-    "steady-turtle__R": "#E4D5FB", // フェニックス (phoenix_R・情景版)
+    "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N・無地版)
+    "earnest-elephant__R": "#E7DCFB", // ドラゴン (dragon_R・無地正規化版)
+    "steady-turtle__R": "#E7DCFB", // フェニックス (phoenix_R・無地正規化版)
     "steady-turtle__N": "#E7DCFB", // ペガサス (pegasus_N・背景実測 #E7DCFB)
     "gentle-koala__N": "#E7DCFB", // エンジェル (angel_N・背景実測 #E7DCFB)
     "gentle-koala__R": "#E7DCFB", // ゴーレム (golem_R・背景実測 #E7DCFB)
