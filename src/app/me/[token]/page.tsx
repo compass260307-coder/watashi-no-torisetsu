@@ -332,8 +332,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
         {/* ===== ヒーローゾーン =====
-            トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめる。色背景帯は撤去し、
-            キャラ画像のみ下のラッパーでフルブリード表示。mb-8 で本文との間に余白。 */}
+            トップバー(☰) + キャラ画像 (淡紫バンドに四辺フェードで溶かす) をまとめる。
+            mb-8 で本文との間に余白。 */}
         <div className="mb-8">
           {/* ===== トップバー (ハンバーガーのみ。キャラ名は画像左上オーバーレイへ移設) =====
               本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
@@ -341,37 +341,37 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
-        {/* ===== ヒーロー =====
-            キャラ画像をフルブリード表示: モバイルは画面端から端まで (w-auto + 負マージン
-            mx-[calc(50%-50vw)] で w-screen 相当)、md 以上は max-w-[640px] 中央寄せ (mx-auto)。
-            角丸/影/リングはモバイルで外し (フラット)、md のみ rounded-3xl。object-cover (1:1 で
-            切れない)。hideDecorations で画像下テキスト非表示、hideJobGauge で職業ゲージも非表示。
-            relative + 左上 absolute でキャラ名 (heroTitle) を画像に重ねる (スマホ/PC 共通)。
-            ※ 負マージンの横はみ出しは main の overflow-x-clip で抑止。 */}
-        <div className="relative w-auto mx-[calc(50%-50vw)] md:mx-auto md:max-w-[640px]">
-          <CharacterHero
-            imageSrc={dispImage}
-            alt={dispName}
-            essence={dispEssence}
-            name={dispName}
-            description={dispDesc}
-            imageAspectClassName="aspect-square"
-            imageFitClassName="object-cover"
-            imageCardClassName="overflow-hidden md:rounded-3xl"
-            imageSizes="(min-width: 768px) 640px, 100vw"
-            hideDecorations
-            hideJobGauge
-            jobSlot={{
-              animal: animalName,
-              job: displayJob,
-              friendCount: friendEvalCount,
-              threshold: JOB_FRIEND_THRESHOLD,
-            }}
-          />
-          {/* キャラ名オーバーレイ: 画像の左上 (スマホ/PC 共通)。薄スクリム (左上→透明) +
-              文字の縁取り/影で、全32キャラの背景でも読めるように。クリックは透過。 */}
-          <div className="pointer-events-none absolute top-0 left-0 max-w-[80%] pt-3 pl-4 pr-12 pb-12 bg-gradient-to-br from-white/55 to-transparent">
-            {heroTitle}
+        {/* ===== ヒーロー (B案: 四辺フェード・確定仕様) =====
+            正方形を object-contain で全体表示 (クロップなし)。imageBlend の CSS マスクで四辺・
+            四隅をフェードし、淡い紫の全幅バンド (#F1ECFB) に溶かす (角丸/影/ring なし)。PC は
+            max-w-[480px] 中央寄せで巨大化を防止。キャラ名は画像左上に absolute オーバーレイ
+            (スマホ/PC 共通)。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
+        <div className="mx-[calc(50%-50vw)] w-screen bg-[#F1ECFB] px-6 py-6 md:py-10">
+          <div className="relative max-w-[480px] mx-auto">
+            <CharacterHero
+              imageSrc={dispImage}
+              alt={dispName}
+              essence={dispEssence}
+              name={dispName}
+              description={dispDesc}
+              imageAspectClassName="aspect-square"
+              imageFitClassName="object-contain"
+              imageBlend
+              imageSizes="(min-width: 768px) 480px, 100vw"
+              hideDecorations
+              hideJobGauge
+              jobSlot={{
+                animal: animalName,
+                job: displayJob,
+                friendCount: friendEvalCount,
+                threshold: JOB_FRIEND_THRESHOLD,
+              }}
+            />
+            {/* キャラ名オーバーレイ: 画像の左上 (スマホ/PC 共通)。薄スクリム (左上→透明) +
+                文字の縁取り/影で、全32キャラの背景でも読めるように。クリックは透過。 */}
+            <div className="pointer-events-none absolute top-0 left-0 max-w-[80%] pt-3 pl-4 pr-12 pb-12 bg-gradient-to-br from-white/55 to-transparent">
+              {heroTitle}
+            </div>
           </div>
         </div>
         </div>
