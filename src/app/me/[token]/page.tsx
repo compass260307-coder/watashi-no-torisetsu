@@ -318,7 +318,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
-  const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
   // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)。
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
@@ -453,11 +452,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       {para}
                     </p>
                   ))}
-                  {idx === 0 && diagnosedAt && (
-                    <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
-                      診断日: {diagnosedAt}
-                    </p>
-                  )}
                 </div>
               </section>
             );
