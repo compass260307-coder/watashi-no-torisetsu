@@ -43,7 +43,6 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
-  thirtyTwoColor,
 } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
@@ -112,24 +111,6 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return "";
   }
-}
-
-// hex を白に alpha 分だけ混ぜた「不透明の淡色」を返す (全面背景用。半透明の重ね掛けを防ぐ)。
-function paleSurface(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const n =
-    h.length === 3
-      ? h
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : h;
-  const r = parseInt(n.slice(0, 2), 16);
-  const g = parseInt(n.slice(2, 4), 16);
-  const b = parseInt(n.slice(4, 6), 16);
-  if ([r, g, b].some((v) => Number.isNaN(v))) return "#ffffff";
-  const mix = (c: number) => Math.round(255 * (1 - alpha) + c * alpha);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
 function deriveTypeLabel(
@@ -293,21 +274,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
-  // 背景のグループ色 (flag32 に関係なく t32 由来)。画面全面を不透明の淡色で染め、
-  // コンテナも同色にして枠なく全面化。グリッド線は同系色の極薄。
-  const groupColor = thirtyTwoColor(t32);
-  // ファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白にする。
-  // ヒーローを包むコンテナ(自己サイズ)の全幅背景として使う。上部=グループ色の淡色 (中央に
-  // 白のやわらかい光) → コンテナ下端で白へフェードして本文エリア(白)へ自然に繋ぐ。
-  // コンテナ高さに追従するので、機種/画面高さが変わっても本文は常に「色が終わって白」から始まる。
-  // groupColor 由来なので 4 グループ(黄/緑/青/紫)自動対応。
-  const heroBand = `radial-gradient(120% 60% at 50% 22%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 60%), linear-gradient(180deg, ${paleSurface(
-    groupColor,
-    0.42,
-  )} 0%, ${paleSurface(groupColor, 0.42)} 78%, ${paleSurface(
-    groupColor,
-    0.16,
-  )} 92%, #ffffff 100%)`;
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -346,31 +312,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const headerAnimal = animalName;
 
   return (
-    // 背景はファーストビュー(ヒーロー)だけグループ色、その下の本文エリアは白。
-    // main 自体は白。上部だけ heroBand レイヤーでグループ色を敷き、下端で白へフェードする。
+    // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
+    // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <main
       className="relative min-h-screen overflow-x-clip py-6 px-4 md:py-10 md:px-8"
       style={{ background: "#ffffff" }}
     >
-      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景はヒーローゾーンのみ
-          グループ色 (下のゾーン内の背景レイヤー)、本文エリアは main の白。本文は左右ぎりぎり
-          (mobile px-4 / PC px-8) まで広げ、PC は読める上限 max-w-[1080px] で中央寄せ。
-          overflow-x-clip はヒーローゾーン背景の w-screen ブリードの横はみ出し抑止用。 */}
+      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
+          本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
+          overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== ヒーローゾーン (色背景 → 下端で白) =====
-            トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめ、その背後だけを
-            全幅のグループ色で塗る。背景レイヤーはゾーンの自己サイズ (inset-y-0) に追従し、下端で
-            白へフェード → 本文(章①)は常にこのゾーン直後=白エリアの頭から始まる (機種/画面高さに
-            依らず色エリアに食い込まない)。full-bleed は left-1/2 -translate-x-1/2 w-screen
-            (main は overflow-x-clip)。pb で職業ゲージ下に色の余白を確保しつつ下端で白へ、
-            mb-8 で本文との間に白の余白。 */}
-        <div className="relative pb-16 mb-8">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-screen -z-10"
-            style={{ background: heroBand }}
-          />
+        {/* ===== ヒーローゾーン =====
+            トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめる。色背景帯は撤去し、
+            キャラ画像のみ下のラッパーでフルブリード表示。mb-8 で本文との間に余白。 */}
+        <div className="mb-8">
           {/* ===== トップバー =====
             左端にキャラ名 (ページ見出し h1)、右端に三本線メニューのみ (シェアアイコンは撤去)。
             キャラ名は min-w-0 + truncate、☰ は shrink-0。名前の表示幅を広く確保。
@@ -395,12 +351,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
         </div>
 
         {/* ===== ヒーロー =====
-            キャラを max-w-[320px] の角丸カード (影+薄リング) + object-contain で全身を切らずに表示。
-            imageBlend (マスク) は外して四角いカードとして見せる。
-            hideDecorations で画像下のテキスト (肩書き/一言/説明 + キャラ名 h1) は非表示にしつつ、
-            「あと○人で職業が判明」ゲージは残す。キャラ名はトップバー h1 に静的表示 (変身演出なし)。
-            画像〜本文の余白はヒーローゾーンの pb-16 / mb-8 が担う。 */}
-        <div className="w-full md:max-w-md md:mx-auto">
+            キャラ画像をフルブリード表示: モバイルは画面端から端まで (w-auto + 負マージン
+            mx-[calc(50%-50vw)] で w-screen 相当)、md 以上は max-w-[640px] 中央寄せ (mx-auto)。
+            角丸/影/リングはモバイルで外し (フラット)、md のみ rounded-3xl。object-cover (1:1 で
+            切れない)。hideDecorations で画像下テキストは非表示、職業ゲージは残す。余白はゾーン mb-8。
+            ※ 負マージンの横はみ出しは main の overflow-x-clip で抑止。 */}
+        <div className="w-auto mx-[calc(50%-50vw)] md:mx-auto md:max-w-[640px]">
           <CharacterHero
             imageSrc={dispImage}
             alt={dispName}
@@ -408,10 +364,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             name={dispName}
             description={dispDesc}
             imageAspectClassName="aspect-square"
-            imageFitClassName="object-contain"
-            imageMaxWidthClassName="max-w-[320px] mx-auto"
-            imageCardClassName="rounded-3xl shadow-lg ring-1 ring-black/5 overflow-hidden"
-            imageSizes="320px"
+            imageFitClassName="object-cover"
+            imageCardClassName="overflow-hidden md:rounded-3xl"
+            imageSizes="(min-width: 768px) 640px, 100vw"
             hideDecorations
             jobSlot={{
               animal: animalName,
