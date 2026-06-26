@@ -304,12 +304,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヘッダー左のキャラ名 (静的表示。変身アニメ JobRevealName は使わない)。「のトリセツ」は付けない。
-  // プレフィックス (アクセントのバッジ風) + 動物名 (縁取り) の 2 要素に分けて表示する。
-  //   判明 (displayJob あり / ?revealDemo=1 含む): プレフィックス=職業 (例 記者) / 動物名
-  //   未判明: プレフィックス="?" (職業が入る空欄ティーザー) / 動物名
-  const headerPrefix = displayJob ? displayJob.name : "?";
+  // ヒーローのタイトル (キャラ名 + タイプ名)。画像の左上に absolute オーバーレイで重ねる。
+  // ❓バッジ (旧 headerPrefix) は撤去。全32キャラで使い回すため、文字裏の薄スクリム + 文字の
+  // 縁取り/影で、どの背景画像でも読めるようにする (名前は .header-charname の白フチ、タイプ名は白影)。
   const headerAnimal = animalName;
+  const heroTitle = (
+    <div className="flex flex-col gap-0.5">
+      <span className="header-charname font-black text-3xl sm:text-4xl leading-tight">
+        {headerAnimal}
+      </span>
+      <span className="text-[#3A2D6B] font-bold text-sm [text-shadow:0_1px_2px_rgba(255,255,255,0.85)]">
+        {dispEssence}
+      </span>
+    </div>
+  );
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -327,36 +335,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
             トップバー(キャラ名+アイコン) + キャラ画像 + 職業ゲージ をまとめる。色背景帯は撤去し、
             キャラ画像のみ下のラッパーでフルブリード表示。mb-8 で本文との間に余白。 */}
         <div className="mb-8">
-          {/* ===== トップバー =====
-            左端にキャラ名 (ページ見出し h1)、右端に三本線メニューのみ (シェアアイコンは撤去)。
-            キャラ名は min-w-0 + truncate、☰ は shrink-0。名前の表示幅を広く確保。
-            ※ 本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          {/* キャラ名: プレフィックス (?=職業の空欄ティーザー / 確定後は職業) をアクセントの
-              バッジ風、動物名を白フチ+黄ドロップの縁取り (ロゴのぷっくり世界観) で目立たせる。
-              バッジは shrink-0、動物名は min-w-0 truncate でアイコンと重ならない/長ければ省略。 */}
-          <h1 className="flex items-center gap-1.5 min-w-0">
-            <span className="shrink-0 inline-flex items-center rounded-xl bg-[#FE3C72] text-white font-black px-2.5 py-0.5 text-lg sm:text-2xl leading-none shadow-[0_2px_0_rgba(58,45,107,0.18)]">
-              {headerPrefix}
-            </span>
-            <span className="header-charname min-w-0 truncate font-black text-3xl sm:text-4xl leading-tight pb-1">
-              {headerAnimal}
-            </span>
-          </h1>
-          {/* ヘッダー右はハンバーガーのみ (シェアアイコンは撤去し名前の表示幅を確保)。
+          {/* ===== トップバー (ハンバーガーのみ。キャラ名は画像左上オーバーレイへ移設) =====
               本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
-          <div className="shrink-0">
-            <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-          </div>
+        <div className="flex justify-end mb-3">
+          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
         </div>
 
         {/* ===== ヒーロー =====
             キャラ画像をフルブリード表示: モバイルは画面端から端まで (w-auto + 負マージン
             mx-[calc(50%-50vw)] で w-screen 相当)、md 以上は max-w-[640px] 中央寄せ (mx-auto)。
             角丸/影/リングはモバイルで外し (フラット)、md のみ rounded-3xl。object-cover (1:1 で
-            切れない)。hideDecorations で画像下テキストは非表示、職業ゲージは残す。余白はゾーン mb-8。
+            切れない)。hideDecorations で画像下テキスト非表示、hideJobGauge で職業ゲージも非表示。
+            relative + 左上 absolute でキャラ名 (heroTitle) を画像に重ねる (スマホ/PC 共通)。
             ※ 負マージンの横はみ出しは main の overflow-x-clip で抑止。 */}
-        <div className="w-auto mx-[calc(50%-50vw)] md:mx-auto md:max-w-[640px]">
+        <div className="relative w-auto mx-[calc(50%-50vw)] md:mx-auto md:max-w-[640px]">
           <CharacterHero
             imageSrc={dispImage}
             alt={dispName}
@@ -368,6 +360,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             imageCardClassName="overflow-hidden md:rounded-3xl"
             imageSizes="(min-width: 768px) 640px, 100vw"
             hideDecorations
+            hideJobGauge
             jobSlot={{
               animal: animalName,
               job: displayJob,
@@ -375,7 +368,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
               threshold: JOB_FRIEND_THRESHOLD,
             }}
           />
+          {/* キャラ名オーバーレイ: 画像の左上 (スマホ/PC 共通)。薄スクリム (左上→透明) +
+              文字の縁取り/影で、全32キャラの背景でも読めるように。クリックは透過。 */}
+          <div className="pointer-events-none absolute top-0 left-0 max-w-[80%] pt-3 pl-4 pr-12 pb-12 bg-gradient-to-br from-white/55 to-transparent">
+            {heroTitle}
           </div>
+        </div>
         </div>
 
         {/* ===== 章① 自分が見た自分 =====

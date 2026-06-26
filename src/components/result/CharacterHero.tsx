@@ -53,6 +53,8 @@ interface CharacterHeroProps {
   // 職業まわり (型名 h1 / 判明ゲージ / 変身演出 JobRevealName) は残す。
   // /me はキャラ名をトップバーへ移したため装飾は隠しつつ、職業表示は維持する用途。
   hideDecorations?: boolean;
+  // true で「あと○人で職業が判明」ゲージのみ非表示にする (職業バッジ/ロジックは残す)。/me 用。
+  hideJobGauge?: boolean;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -76,6 +78,7 @@ export function CharacterHero({
   revealKey,
   forceReveal = false,
   hideDecorations = false,
+  hideJobGauge = false,
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -169,8 +172,8 @@ export function CharacterHero({
         </div>
       )}
 
-      {/* 職業未定: 判明ゲージ */}
-      {jobSlot && !job && (
+      {/* 職業未定: 判明ゲージ (hideJobGauge で表示のみ抑止可。ロジックは不変) */}
+      {jobSlot && !job && !hideJobGauge && (
         <div className="w-full max-w-[280px] mb-3">
           <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.2em] mb-1.5">
             あと {remaining} 人で職業が判明
