@@ -394,8 +394,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* ===== ヒーロー (引き) =====
-            キャラを枠いっぱいにせず小さめ + object-contain で全身を切らずに表示。
+        {/* ===== ヒーロー =====
+            キャラを max-w-[320px] の角丸カード (影+薄リング) + object-contain で全身を切らずに表示。
+            imageBlend (マスク) は外して四角いカードとして見せる。
             hideDecorations で画像下のテキスト (肩書き/一言/説明 + キャラ名 h1) は非表示にしつつ、
             「あと○人で職業が判明」ゲージは残す。キャラ名はトップバー h1 に静的表示 (変身演出なし)。
             画像〜本文の余白はヒーローゾーンの pb-16 / mb-8 が担う。 */}
@@ -408,8 +409,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             description={dispDesc}
             imageAspectClassName="aspect-square"
             imageFitClassName="object-contain"
-            imageMaxWidthClassName="max-w-[230px] mx-auto"
-            imageBlend
+            imageMaxWidthClassName="max-w-[320px] mx-auto"
+            imageCardClassName="rounded-3xl shadow-lg ring-1 ring-black/5 overflow-hidden"
+            imageSizes="320px"
             hideDecorations
             jobSlot={{
               animal: animalName,

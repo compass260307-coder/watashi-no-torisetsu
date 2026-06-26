@@ -40,6 +40,10 @@ interface CharacterHeroProps {
   // 透過フェードさせ、四角いカードの縁をページ背景に馴染ませる。中心 (キャラ本体) は不透過の
   // ままなのでキャラは切れない。ヒーロー背景がキャラ画像の背景トーンのとき没入感が出る。
   imageBlend?: boolean;
+  // <Image> の sizes 属性 (実表示幅。例 "320px")。未指定なら従来どおり sizes を省略。
+  imageSizes?: string;
+  // imageBlend=false 時のカード枠クラスを上書き (角丸/影/リング等)。未指定なら既定カード。
+  imageCardClassName?: string;
   // 職業判明時の「変身」演出キー (localStorage、ユーザーごと)。指定時のみ名前を JobRevealName
   // で描画し初回判明で 1 回だけ再生する。未指定 (例: /evaluate/result) は静的表示のまま。
   revealKey?: string;
@@ -67,6 +71,8 @@ export function CharacterHero({
   imageFitClassName = "object-cover object-top",
   imageMaxWidthClassName = "",
   imageBlend = false,
+  imageSizes,
+  imageCardClassName,
   revealKey,
   forceReveal = false,
   hideDecorations = false,
@@ -88,7 +94,7 @@ export function CharacterHero({
           className={
             imageBlend
               ? `w-full ${imageAspectClassName}`
-              : `w-full ${imageAspectClassName} rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]`
+              : `w-full ${imageAspectClassName} ${imageCardClassName ?? "rounded-[24px] overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)]"}`
           }
           style={
             imageBlend
@@ -102,6 +108,7 @@ export function CharacterHero({
             width={960}
             height={960}
             priority
+            sizes={imageSizes}
             className={`w-full h-full ${imageFitClassName}`}
           />
         </div>
