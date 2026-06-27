@@ -337,6 +337,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
     "steady-turtle__N": "#E7DCFB", // ペガサス (pegasus_N・背景実測 #E7DCFB)
     "gentle-koala__N": "#E7DCFB", // エンジェル (angel_N・背景実測 #E7DCFB)
     "gentle-koala__R": "#E7DCFB", // ゴーレム (golem_R・背景実測 #E7DCFB)
+    "solo-hedgehog__N": "#E7DCFB", // オバケ (ghost_N・無地版・背景実測 #E7DCFB)
+    "solo-hedgehog__R": "#E7DCFB", // ガイコツ (skeleton_R・無地版・背景実測 #E7DCFB)
   };
   const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
