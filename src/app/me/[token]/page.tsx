@@ -43,6 +43,9 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  baseIdOf,
+  nAxisOf,
+  type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
@@ -145,37 +148,86 @@ function deriveTypeLabel(
   return { typeName, fullCode, modifierLabel };
 }
 
+// users 行のうち /me が使う最小フィールド (本番DB行 / 開発プレビュー用モック 共通の型)。
+type MeUserRow = {
+  id: string;
+  type_id: string | null;
+  scores: unknown;
+  display_name: string | null;
+  invite_code: string | null;
+};
+
 export default async function MePage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const sp = await searchParams;
 
-  // ===== 1. token → users 行 =====
-  const { data: user, error: userErr } = await supabaseAdmin
-    .from("users")
-    .select(
-      "id, type_id, scores, display_name, invite_code, owner_token, created_at",
-    )
-    .eq("owner_token", token)
-    .maybeSingle();
-  if (userErr) {
-    console.error("[/me/[token]] users lookup error:", userErr);
+  // ===== 開発専用プレビュー (本番では完全に無効) =====
+  // NODE_ENV!=='production' のときだけ有効。?previewType=<32タイプID> を付けると、token /
+  // Supabase を介さず、そのタイプの High/Low モックスコアで結果ページを描画する。
+  // 例: /me/preview?previewType=earnest-elephant__N  (動物名スラッグでなく内部タイプID)。
+  const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewType: ThirtyTwoTypeId | null =
+    process.env.NODE_ENV !== "production" &&
+    /^[a-z-]+__[NR]$/.test(rawPreview) &&
+    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+      ? (rawPreview as ThirtyTwoTypeId)
+      : null;
+  // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
+  const previewScores: Record<BigFiveDimension, number> | null = previewType
+    ? (() => {
+        const code = sixteenTypes[baseIdOf(previewType)].code;
+        const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
+        return {
+          O: hi("O"),
+          C: hi("C"),
+          E: hi("E"),
+          A: hi("A"),
+          N: nAxisOf(previewType) === "N" ? 8 : 2,
+        };
+      })()
+    : null;
+
+  // ===== 1. token → users 行 (プレビュー時は Supabase を介さずモック) =====
+  let user: MeUserRow | null;
+  if (previewType) {
+    user = {
+      id: "preview",
+      type_id: classifyType(previewScores!),
+      scores: previewScores!,
+      display_name: "プレビュー",
+      invite_code: "preview",
+    };
+  } else {
+    const { data, error: userErr } = await supabaseAdmin
+      .from("users")
+      .select(
+        "id, type_id, scores, display_name, invite_code, owner_token, created_at",
+      )
+      .eq("owner_token", token)
+      .maybeSingle();
+    if (userErr) {
+      console.error("[/me/[token]] users lookup error:", userErr);
+    }
+    user = data as MeUserRow | null;
   }
   if (!user) {
     notFound();
   }
 
   // ===== 2. session 解決 → isOwner 判定 =====
-  const session = await getSession();
+  const session = previewType ? null : await getSession();
   const isOwner = !!session && session.id === (user.id as string);
 
   // ===== 3. friend_perceptions (件数 + 平均スコア) =====
   // 件数は招待CTA / 人数ゲート (他者評価セクション) の判定に使う。
   // perceived_scores (Big Five 0-10) を取得し、自己認知ギャップ表示用に平均する。
-  const { data: perceptionRows } = await supabaseAdmin
-    .from("friend_perceptions")
-    .select("id, perceived_scores, perceiver_name, created_at")
-    .eq("target_user_id", user.id)
-    .order("created_at", { ascending: true });
+  const { data: perceptionRows } = previewType
+    ? { data: null }
+    : await supabaseAdmin
+        .from("friend_perceptions")
+        .select("id, perceived_scores, perceiver_name, created_at")
+        .eq("target_user_id", user.id)
+        .order("created_at", { ascending: true });
   const friendEvalCount = (perceptionRows ?? []).length;
 
   // ② 評価してくれた友達の名前 (記名表示用)。未入力は「ともだち」にフォールバック。
@@ -187,7 +239,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // ③ 友達からのメッセージ (記名)。owner_message カラム未適用でも壊れないよう best-effort。
   //    取得失敗 (列なし等) は空配列にフォールバック。表示は React が自動エスケープ。
   let friendMessages: { name: string; message: string }[] = [];
-  try {
+  if (!previewType) try {
     const { data: msgRows, error: msgErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select("perceiver_name, owner_message, created_at")
@@ -235,14 +287,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
     })();
 
   // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
-  const { data: integratedRows } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .select(
-      "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
-    )
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .order("generated_at", { ascending: false });
+  const { data: integratedRows } = previewType
+    ? { data: null }
+    : await supabaseAdmin
+        .from("integrated_trisetsu")
+        .select(
+          "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
+        )
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .order("generated_at", { ascending: false });
   const integrated = (integratedRows ?? []).map((r) => ({
     id: r.id as string,
     title: (r.generated_title as string | null) ?? "真のトリセツ",
@@ -272,7 +326,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const sixteenTypeId = classifySixteenType(stored);
   const sixteenType = sixteenTypes[sixteenTypeId];
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
-  const flag32 = isThirtyTwoEnabled();
+  const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
   // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
   // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
