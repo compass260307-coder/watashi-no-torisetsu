@@ -339,6 +339,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
     "gentle-koala__R": "#E7DCFB", // ゴーレム (golem_R・背景実測 #E7DCFB)
     "solo-hedgehog__N": "#E7DCFB", // オバケ (ghost_N・無地版・背景実測 #E7DCFB)
     "solo-hedgehog__R": "#E7DCFB", // ガイコツ (skeleton_R・無地版・背景実測 #E7DCFB)
+    // 空グループ (クリームイエロー無地 #FDEFB4・ばらつき0 で確認済み)
+    "quiet-owl__N": "#FDEFB4", // インコ (parakeet_N)
+    "quiet-owl__R": "#FDEFB4", // ワシ (eagle_R)
+    "seeker-wolf__N": "#FDEFB4", // ツバメ (swallow_N)
+    "seeker-wolf__R": "#FDEFB4", // タカ (hawk_R)
+    "dreamer-rabbit__N": "#FDEFB4", // ペンギン (penguin_N)
+    "dreamer-rabbit__R": "#FDEFB4", // ハクチョウ (swan_R)
+    "fantasy-cat__N": "#FDEFB4", // カラス (crow_N)
+    "fantasy-cat__R": "#FDEFB4", // ペリカン (pelican_R)
   };
   const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
