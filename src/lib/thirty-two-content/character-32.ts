@@ -52,13 +52,18 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "豪快な突進者", oneLiner: "迷わずまっすぐ突き進む、豪快で動じない突破役。", slug: "rhino_R", group: "land" },
 
   // ===== 海グループ (青) base16: sparkle-dolphin / ambition-lion / idea-monkey / whim-fox =====
-  "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "好奇心の探究者", oneLiner: "好奇心いっぱいに世界を泳ぐ、感受性ゆたかな探究者。", slug: "dolphin_N", group: "sea" },
-  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "冷静な知将", oneLiner: "冷静に状況を読み解く、揺るがない知将。", slug: "orca_R", group: "sea" },
-  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "寄り添う癒し手", oneLiner: "そっと寄り添い心を癒す、繊細でやさしい癒し手。", slug: "seahorse_N", group: "sea" },
-  "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "悠久の賢者", oneLiner: "時間をかけて深く見通す、悠久の落ち着きを持つ賢者。", slug: "seaturtle_R", group: "sea" },
-  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "儚い夢想家", oneLiner: "ひとりの世界で空想をふくらませる、儚くやさしい夢想家。", slug: "jellyfish_N", group: "sea" },
-  "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "おおらかな大物", oneLiner: "何事もゆったり受け流す、おおらかで動じない大物。", slug: "sunfish_R", group: "sea" },
-  "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "自由な気分屋", oneLiner: "自分の心地よさを大切にする、自由な気分屋。", slug: "clownfish_N", group: "sea" },
+  // ⚠ 海グループは画像を EN系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
+  //   Big Five 標準対応 (E=E / O=N / A=F·T / C=J·P) による: ENFJ=sparkle-dolphin /
+  //   ENTJ=ambition-lion / ENTP=whim-fox / ENFP=idea-monkey。
+  //   ※ name/animal/essence/oneLiner と本文(self-result-32 等)は旧動物のままで、新画像と不一致。
+  //     コンテンツ更新は別途必要 (レポート済み)。
+  "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "好奇心の探究者", oneLiner: "好奇心いっぱいに世界を泳ぐ、感受性ゆたかな探究者。", slug: "jellyfish_N", group: "sea" },
+  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "冷静な知将", oneLiner: "冷静に状況を読み解く、揺るがない知将。", slug: "dolphin_R", group: "sea" },
+  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "寄り添う癒し手", oneLiner: "そっと寄り添い心を癒す、繊細でやさしい癒し手。", slug: "swordfish_N", group: "sea" },
+  "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "悠久の賢者", oneLiner: "時間をかけて深く見通す、悠久の落ち着きを持つ賢者。", slug: "orca_R", group: "sea" },
+  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "儚い夢想家", oneLiner: "ひとりの世界で空想をふくらませる、儚くやさしい夢想家。", slug: "clownfish_N", group: "sea" },
+  "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "おおらかな大物", oneLiner: "何事もゆったり受け流す、おおらかで動じない大物。", slug: "seal_R", group: "sea" },
+  "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "自由な気分屋", oneLiner: "自分の心地よさを大切にする、自由な気分屋。", slug: "octopus_N", group: "sea" },
   "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "動じない一匹狼", oneLiner: "誰にも流されず自分の道をゆく、動じない一匹狼。", slug: "shark_R", group: "sea" },
 
   // ===== 未知グループ (紫) base16: earnest-elephant / steady-turtle / gentle-koala / solo-hedgehog =====
