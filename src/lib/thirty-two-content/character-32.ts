@@ -46,14 +46,14 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   // ⚠ 陸グループは画像を ES系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
   //   Big Five 標準対応: ESFJ=caretaker-dog / ESTJ=brisk-tiger / ESFP=smiley-panda /
   //   ESTP=playful-raccoon。※ name/animal/essence/oneLiner と本文は旧動物のまま (別途更新)。
-  "caretaker-dog__N": { name: "せわやきイヌ", animal: "イヌ", essence: "アテンダント", oneLiner: "みんなの変化に誰より早く気づく、あたたかい世話役。", catchphrase: "あなたの小さな変化に、まっ先に気づく。", slug: "rabbit_N", group: "land" },
-  "caretaker-dog__R": { name: "たよれるウマ", animal: "ウマ", essence: "幹事", oneLiner: "どんな時も背中を預けられる、頼れる相棒。", catchphrase: "そばにいるだけで、頼れる存在でいたい。", slug: "dog_R", group: "land" },
-  "brisk-tiger__N": { name: "がんばりトラ", animal: "トラ", essence: "師範", oneLiner: "目標へひたむきに走る、努力を惜しまない実務家。", catchphrase: "積み重ねた一歩が、確かな力になる。", slug: "elephant_N", group: "land" },
-  "brisk-tiger__R": { name: "どっしりクマ", animal: "クマ", essence: "支配人", oneLiner: "プレッシャーの中でも崩れない、揺るがない大黒柱。", catchphrase: "重圧の中でこそ、静かに立っていたい。", slug: "bear_R", group: "land" },
-  "smiley-panda__N": { name: "にこにこパンダ", animal: "パンダ", essence: "演出家", oneLiner: "いるだけで場が和む、みんなに愛されるムードメーカー。", catchphrase: "私がいる場所が、笑顔であふれるように。", slug: "fox_N", group: "land" },
-  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "楽天家", oneLiner: "ゆったり大きく構える、何でも受け止める包容力の主。", catchphrase: "明日は、きっといい日になる。", slug: "squirrel_R", group: "land" },
-  "playful-raccoon__N": { name: "やんちゃアライグマ", animal: "アライグマ", essence: "開拓者", oneLiner: "その場のノリで楽しさを生む、しばられない自由な遊び人。", catchphrase: "楽しさは、いつも自分の手でつくる。", slug: "cheetah_N", group: "land" },
-  "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "勝負師", oneLiner: "迷わずまっすぐ突き進む、豪快で動じない突破役。", catchphrase: "迷ったら、まっすぐ進むと決めている。", slug: "tiger_R", group: "land" },
+  "caretaker-dog__N": { name: "せわやきイヌ", animal: "イヌ", essence: "アテンダント", oneLiner: "みんなの小さな変化に、誰より早く気づいてしまう。", catchphrase: "あなたの小さな変化に、まっ先に気づく。", slug: "rabbit_N", group: "land" },
+  "caretaker-dog__R": { name: "たよれるウマ", animal: "ウマ", essence: "幹事", oneLiner: "どんな時も背中を預けられる、揺るがず支え続ける頼れる相棒。", catchphrase: "そばにいるだけで、頼れる存在でいたい。", slug: "dog_R", group: "land" },
+  "brisk-tiger__N": { name: "がんばりトラ", animal: "トラ", essence: "師範", oneLiner: "積み重ねた一歩は、決して裏切らない。", catchphrase: "地道こそ、いちばんの近道。", slug: "elephant_N", group: "land" },
+  "brisk-tiger__R": { name: "どっしりクマ", animal: "クマ", essence: "支配人", oneLiner: "どんな重圧の前でも、その背中だけは揺るがない。", catchphrase: "重圧の中でこそ、静かに立っていたい。", slug: "bear_R", group: "land" },
+  "smiley-panda__N": { name: "にこにこパンダ", animal: "パンダ", essence: "演出家", oneLiner: "その場にいるだけで、空気がふっとやわらかくなる。", catchphrase: "私がいる場所が、笑顔であふれるように。", slug: "fox_N", group: "land" },
+  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "楽天家", oneLiner: "明日はきっといい日になる、と本気で思える。", catchphrase: "明日は、きっといい日になる。", slug: "squirrel_R", group: "land" },
+  "playful-raccoon__N": { name: "やんちゃアライグマ", animal: "アライグマ", essence: "開拓者", oneLiner: "楽しいことは、待つものじゃなく、自分でつくるもの。", catchphrase: "楽しさは、いつも自分の手でつくる。", slug: "cheetah_N", group: "land" },
+  "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "勝負師", oneLiner: "迷ったら、まっすぐ進む。それだけは決めている。", catchphrase: "迷ったら、まっすぐ進むと決めている。", slug: "tiger_R", group: "land" },
 
   // ===== 海グループ (青) base16: sparkle-dolphin / ambition-lion / idea-monkey / whim-fox =====
   // ⚠ 海グループは画像を EN系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
@@ -61,14 +61,14 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   //   ENTJ=ambition-lion / ENTP=whim-fox / ENFP=idea-monkey。
   //   ※ name/animal/essence/oneLiner と本文(self-result-32 等)は旧動物のままで、新画像と不一致。
   //     コンテンツ更新は別途必要 (レポート済み)。
-  "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "寄添者", oneLiner: "好奇心いっぱいに世界を泳ぐ、感受性ゆたかな探究者。", catchphrase: "心に寄り添いながら、世界を知っていく。", slug: "jellyfish_N", group: "sea" },
-  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先導者", oneLiner: "冷静に状況を読み解く、揺るがない知将。", catchphrase: "冷静さは、未来を切りひらく羅針盤。", slug: "dolphin_R", group: "sea" },
-  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "そっと寄り添い心を癒す、繊細でやさしい癒し手。", catchphrase: "盤面を読みきって、最善の一手を。", slug: "swordfish_N", group: "sea" },
-  "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "将軍", oneLiner: "時間をかけて深く見通す、悠久の落ち着きを持つ賢者。", catchphrase: "時をかけて、ものごとの本質を見通す。", slug: "orca_R", group: "sea" },
-  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "ひとりの世界で空想をふくらませる、儚くやさしい夢想家。", catchphrase: "見つけたものを、そっと光に変えて。", slug: "clownfish_N", group: "sea" },
-  "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "フェススター", oneLiner: "何事もゆったり受け流す、おおらかで動じない大物。", catchphrase: "ゆったり流すほど、毎日は軽くなる。", slug: "seal_R", group: "sea" },
-  "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "弁才家", oneLiner: "自分の心地よさを大切にする、自由な気分屋。", catchphrase: "心地よさを大切に、自分らしく語る。", slug: "octopus_N", group: "sea" },
-  "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "革命家", oneLiner: "誰にも流されず自分の道をゆく、動じない一匹狼。", catchphrase: "流されない心が、新しい道をひらく。", slug: "shark_R", group: "sea" },
+  "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "寄添者", oneLiner: "人の心に寄り添い、新しい世界へ一緒に踏み出していける伴走者。", catchphrase: "心に寄り添いながら、世界を知っていく。", slug: "jellyfish_N", group: "sea" },
+  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先導者", oneLiner: "みんなの想いを束ね、同じ夢へ向かって一緒に駆けていける主人公。", catchphrase: "冷静さは、未来を切りひらく羅針盤。", slug: "dolphin_R", group: "sea" },
+  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "全体を見渡し、最善の配置で人と場を動かす采配役。", catchphrase: "盤面を読みきって、最善の一手を。", slug: "swordfish_N", group: "sea" },
+  "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "将軍", oneLiner: "大局を見通し、揺るがぬ判断で全体を統べていける指揮官。", catchphrase: "時をかけて、ものごとの本質を見通す。", slug: "orca_R", group: "sea" },
+  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "心に響いたものを見つけ出し、自分の言葉で誰かに届けていける発信者。", catchphrase: "見つけたものを、そっと光に変えて。", slug: "clownfish_N", group: "sea" },
+  "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "フェススター", oneLiner: "その場を一瞬で明るく染め、みんなを巻き込んで楽しませる祭りの主役。", catchphrase: "ゆったり流すほど、毎日は軽くなる。", slug: "seal_R", group: "sea" },
+  "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "弁才家", oneLiner: "自分の言葉で人を惹きつけ、心地よく語りで動かしていける話し手。", catchphrase: "心地よさを大切に、自分らしく語る。", slug: "octopus_N", group: "sea" },
+  "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "革命家", oneLiner: "常識を疑い、自分の信じる未来を世界に突きつけていける革命家。", catchphrase: "流されない心が、新しい道をひらく。", slug: "shark_R", group: "sea" },
 
   // ===== 未知グループ (紫) base16: earnest-elephant / steady-turtle / gentle-koala / solo-hedgehog =====
   "earnest-elephant__N": { name: "じゅんすいユニコーン", animal: "ユニコーン", essence: "夢想家", oneLiner: "まっすぐな理想を胸に抱く、純粋でやさしい夢追い人。", catchphrase: "まっすぐな理想が、世界を少しやさしくする。", slug: "unicorn_N", group: "unknown" },
