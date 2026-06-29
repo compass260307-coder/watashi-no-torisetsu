@@ -81,6 +81,9 @@ export default function PreviewAllPage() {
                         <div className="text-[#3A2D6B] font-bold text-sm truncate">
                           {c.name}
                         </div>
+                        <div className="text-[#FE3C72] font-bold text-xs truncate">
+                          {c.essence}
+                        </div>
                         <div className="text-[#3A2D6B]/60 text-[11px] truncate">
                           {c.animal} ／ {c.slug}.png
                         </div>
