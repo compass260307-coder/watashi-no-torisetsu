@@ -404,9 +404,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヒーロー見出し: 称号(essence)を主役の大見出しに、動物名(animal)は小さく従に (2行)。
-  // ※ name/animal データは温存。表示の主従だけ入れ替え (動物名の全廃は別フェーズ)。
-  const headerAnimal = animalName;
+  // ヒーロー見出し: 称号(essence)のみを大見出しに表示。動物名(小キッカー)は非表示。
+  // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
   const heroTitle = (
     <div className="text-left">
       <div
@@ -414,9 +413,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
         style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
       >
         {dispEssence}
-      </div>
-      <div className="mt-1 font-bold text-base text-[#2B2A6B]/55">
-        {headerAnimal}
       </div>
     </div>
   );
@@ -514,7 +510,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </div>
         </div>
         {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
-            スクロール誘導 (↓ + 「アナタのトリセツ」) をこの肩に載せ、直下に取説が続く。
+            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。
             main 背景=クリームなので、ここから下はシームレスにクリーム。 ===== */}
         <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 pb-1">
           <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
@@ -532,9 +528,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
-            <h2 className="mt-1 font-black text-xl text-[#2B2A6B]">
-              アナタのトリセツ
-            </h2>
           </div>
         </div>
 
