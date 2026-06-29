@@ -424,7 +424,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // ヒーロー見出し: 称号(essence)のみを大見出しに表示。動物名(小キッカー)は非表示。
   // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
   const heroTitle = (
-    <div className="text-left">
+    <div className="text-center">
       <div
         className="font-extrabold leading-[1.04] text-[#2B2A6B]"
         style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
@@ -439,7 +439,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
   const oceanRow = (
-    <div className="mt-3 flex items-baseline gap-1.5">
+    <div className="mt-3 flex items-baseline justify-center gap-1.5">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
         const high = oceanIsHigh(k);
         return (
@@ -458,39 +458,42 @@ export default async function MePage({ params, searchParams }: PageProps) {
       })}
     </div>
   );
-  // キャラ名言: コード直下にセリフ体italicで1行。先頭=金スパークル(大)/末尾=スパークル(小)。
+  // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
+  //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
   const catchphraseRow = dispCatch ? (
-    <p
-      className="mt-3 italic"
-      style={{
-        fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
-        fontSize: "16px",
-        lineHeight: 1.7,
-        color: "#6E4A2A",
-      }}
-    >
+    <div className="mt-3 flex items-center justify-center gap-2">
       <svg
         viewBox="0 0 24 24"
         width="17"
         height="17"
         fill="#B8860B"
         aria-hidden="true"
-        style={{ display: "inline-block", verticalAlign: "-2px", marginRight: "5px" }}
+        className="flex-none"
       >
         <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
       </svg>
-      {dispCatch}
+      <p
+        className="italic text-center"
+        style={{
+          fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          fontSize: "21px",
+          lineHeight: 1.7,
+          color: "#6E4A2A",
+        }}
+      >
+        {dispCatch}
+      </p>
       <svg
         viewBox="0 0 24 24"
         width="11"
         height="11"
         fill="#C99A2E"
         aria-hidden="true"
-        style={{ display: "inline-block", verticalAlign: "1px", marginLeft: "4px" }}
+        className="flex-none"
       >
         <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
       </svg>
-    </p>
+    </div>
   ) : null;
 
   return (

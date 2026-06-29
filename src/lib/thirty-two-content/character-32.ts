@@ -51,7 +51,7 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   "brisk-tiger__N": { name: "がんばりトラ", animal: "トラ", essence: "師範", oneLiner: "目標へひたむきに走る、努力を惜しまない実務家。", catchphrase: "積み重ねた一歩が、確かな力になる。", slug: "elephant_N", group: "land" },
   "brisk-tiger__R": { name: "どっしりクマ", animal: "クマ", essence: "支配人", oneLiner: "プレッシャーの中でも崩れない、揺るがない大黒柱。", catchphrase: "重圧の中でこそ、静かに立っていたい。", slug: "bear_R", group: "land" },
   "smiley-panda__N": { name: "にこにこパンダ", animal: "パンダ", essence: "演出家", oneLiner: "いるだけで場が和む、みんなに愛されるムードメーカー。", catchphrase: "私がいる場所が、笑顔であふれるように。", slug: "fox_N", group: "land" },
-  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "楽天家", oneLiner: "ゆったり大きく構える、何でも受け止める包容力の主。", catchphrase: "大きく構えて、すべてを受け止める。", slug: "squirrel_R", group: "land" },
+  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "楽天家", oneLiner: "ゆったり大きく構える、何でも受け止める包容力の主。", catchphrase: "明日は、きっといい日になる。", slug: "squirrel_R", group: "land" },
   "playful-raccoon__N": { name: "やんちゃアライグマ", animal: "アライグマ", essence: "開拓者", oneLiner: "その場のノリで楽しさを生む、しばられない自由な遊び人。", catchphrase: "楽しさは、いつも自分の手でつくる。", slug: "cheetah_N", group: "land" },
   "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "勝負師", oneLiner: "迷わずまっすぐ突き進む、豪快で動じない突破役。", catchphrase: "迷ったら、まっすぐ進むと決めている。", slug: "tiger_R", group: "land" },
 
@@ -63,9 +63,9 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   //     コンテンツ更新は別途必要 (レポート済み)。
   "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "寄添者", oneLiner: "好奇心いっぱいに世界を泳ぐ、感受性ゆたかな探究者。", catchphrase: "心に寄り添いながら、世界を知っていく。", slug: "jellyfish_N", group: "sea" },
   "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先駆者", oneLiner: "冷静に状況を読み解く、揺るがない知将。", catchphrase: "冷静さは、未来を切りひらく羅針盤。", slug: "dolphin_R", group: "sea" },
-  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "そっと寄り添い心を癒す、繊細でやさしい癒し手。", catchphrase: "そっと差し出す手が、誰かを癒す。", slug: "swordfish_N", group: "sea" },
+  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "そっと寄り添い心を癒す、繊細でやさしい癒し手。", catchphrase: "盤面を読みきって、最善の一手を。", slug: "swordfish_N", group: "sea" },
   "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "将軍", oneLiner: "時間をかけて深く見通す、悠久の落ち着きを持つ賢者。", catchphrase: "時をかけて、ものごとの本質を見通す。", slug: "orca_R", group: "sea" },
-  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "ひとりの世界で空想をふくらませる、儚くやさしい夢想家。", catchphrase: "ひとりの空想が、いつか誰かに届く。", slug: "clownfish_N", group: "sea" },
+  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "ひとりの世界で空想をふくらませる、儚くやさしい夢想家。", catchphrase: "見つけたものを、そっと光に変えて。", slug: "clownfish_N", group: "sea" },
   "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "フェススター", oneLiner: "何事もゆったり受け流す、おおらかで動じない大物。", catchphrase: "ゆったり流すほど、毎日は軽くなる。", slug: "seal_R", group: "sea" },
   "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "弁才家", oneLiner: "自分の心地よさを大切にする、自由な気分屋。", catchphrase: "心地よさを大切に、自分らしく語る。", slug: "octopus_N", group: "sea" },
   "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "革命家", oneLiner: "誰にも流されず自分の道をゆく、動じない一匹狼。", catchphrase: "流されない心が、新しい道をひらく。", slug: "shark_R", group: "sea" },
@@ -76,8 +76,8 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   "steady-turtle__N": { name: "あこがれペガサス", animal: "ペガサス", essence: "飛翔家", oneLiner: "高い理想へ静かに羽ばたく、感受性ゆたかな夢追い。", catchphrase: "高い空へ、静かに羽ばたいていく。", slug: "pegasus_N", group: "unknown" },
   "steady-turtle__R": { name: "ふくつのフェニックス", animal: "フェニックス", essence: "不屈者", oneLiner: "何度でも立ち上がる、折れない不屈の再生者。", catchphrase: "何度でも立ち上がる、それが私の強さ。", slug: "phoenix_R", group: "unknown" },
   "gentle-koala__N": { name: "おもいやりエンジェル", animal: "エンジェル", essence: "審美者", oneLiner: "誰かの幸せをそっと願う、慈愛にあふれた癒し手。", catchphrase: "誰かの幸せを、そっと願いつづける。", slug: "angel_N", group: "unknown" },
-  "gentle-koala__R": { name: "ふどうゴーレム", animal: "ゴーレム", essence: "数寄者", oneLiner: "どっしり構えて動じない、静かに守り抜く不動の番人。", catchphrase: "動じない心で、静かに守りつづける。", slug: "golem_R", group: "unknown" },
-  "solo-hedgehog__N": { name: "てれやオバケ", animal: "オバケ", essence: "探偵", oneLiner: "自分の世界をそっと守る、はにかみ屋の独立心。", catchphrase: "自分の世界を、そっと大切に守る。", slug: "ghost_N", group: "unknown" },
+  "gentle-koala__R": { name: "ふどうゴーレム", animal: "ゴーレム", essence: "数寄者", oneLiner: "どっしり構えて動じない、静かに守り抜く不動の番人。", catchphrase: "好きを極めるほど、世界は澄んでいく。", slug: "golem_R", group: "unknown" },
+  "solo-hedgehog__N": { name: "てれやオバケ", animal: "オバケ", essence: "探偵", oneLiner: "自分の世界をそっと守る、はにかみ屋の独立心。", catchphrase: "何も言わないまま、ぜんぶ見えている。", slug: "ghost_N", group: "unknown" },
   "solo-hedgehog__R": { name: "のんきガイコツ", animal: "ガイコツ", essence: "風雲児", oneLiner: "何にも縛られず飄々と生きる、マイペースな自由人。", catchphrase: "何にも縛られず、飄々と生きていく。", slug: "skeleton_R", group: "unknown" },
 };
 
