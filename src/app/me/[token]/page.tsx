@@ -401,17 +401,43 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヒーローのタイトル (キャラ名 + タイプ名)。画像の左上に absolute オーバーレイで重ねる。
-  // ❓バッジ (旧 headerPrefix) は撤去。全32キャラで使い回すため、文字裏の薄スクリム + 文字の
-  // 縁取り/影で、どの背景画像でも読めるようにする (名前は .header-charname の白フチ、タイプ名は白影)。
+  // ヒーロー見出し: 称号(essence)を主役の大見出しに、動物名(animal)は小さく従に (2行)。
+  // ※ name/animal データは温存。表示の主従だけ入れ替え (動物名の全廃は別フェーズ)。
   const headerAnimal = animalName;
   const heroTitle = (
-    <div className="flex flex-col gap-0.5">
-      <span className="header-charname font-black text-3xl sm:text-4xl leading-tight">
-        {headerAnimal}
-      </span>
-      <span className="text-[#3A2D6B] font-bold text-sm [text-shadow:0_1px_2px_rgba(255,255,255,0.85)]">
+    <div className="text-left">
+      <div
+        className="font-extrabold leading-[1.04] text-[#2B2A6B]"
+        style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
+      >
         {dispEssence}
+      </div>
+      <div className="mt-1 font-bold text-base text-[#2B2A6B]/55">
+        {headerAnimal}
+      </div>
+    </div>
+  );
+  // OCEAN コード行: 各軸の高低 (stored スコア ≥5 = 高) を色で表す。高=濃紺 / 低=濃紺30%。
+  const oceanIsHigh = (k: BigFiveDimension) =>
+    (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
+  const oceanRow = (
+    <div className="mt-3 flex items-center justify-between max-w-[260px]">
+      <div className="flex flex-1 justify-between pr-3">
+        {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => (
+          <span
+            key={k}
+            className="font-black text-lg leading-none"
+            style={{ color: oceanIsHigh(k) ? "#2B2A6B" : "rgba(43,42,107,0.3)" }}
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+      <span
+        className="text-[11px] font-bold tracking-wider"
+        style={{ color: "rgba(43,42,107,0.4)" }}
+      >
+        CODE
       </span>
     </div>
   );
@@ -428,52 +454,66 @@ export default async function MePage({ params, searchParams }: PageProps) {
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== ヒーローゾーン =====
-            トップバー(☰) + キャラ画像 (淡紫バンドに四辺フェードで溶かす) をまとめる。
-            mb-8 で本文との間に余白。 */}
-        <div className="mb-8">
-          {/* ===== トップバー (ハンバーガーのみ。キャラ名は画像左上オーバーレイへ移設) =====
-              本命のシェア導線 (QR / LINE / 保存 / リンク + 一言) はページ下部に残す。 */}
-        <div className="flex justify-end mb-3">
-          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-        </div>
-
-        {/* ===== ヒーロー (無地背景画像に一致・確定仕様) =====
-            各キャラ画像は背景が均一な淡い紫の無地。ヒーローのバンド背景をキャラごとに画像の
-            背景色 (heroBg・四隅実測) に一致させ (グラデ/白は使わない)、画像の四角い縁を不可視化する。
-            object-contain で全体表示 (クロップなし)、角丸/影/ring/マスク なし (背景一致で縁が消える)。
-            PC は max-w-[520px] 中央寄せ、スマホは画面幅にフィット。キャラ名は画像に重ねず、画像の
-            外 (上) にヘッダー的に通常配置 (スクリムなし)。※ 全幅バンドの横はみ出しは main の overflow-x-clip で抑止。 */}
-        <div
-          className="mx-[calc(50%-50vw)] w-screen px-4 py-6 md:py-10"
-          style={{ background: heroBg }}
-        >
-          <div className="max-w-[520px] mx-auto">
-            {/* キャラ名: 画像の外 (上) にヘッダー的に通常配置 (オーバーレイ廃止・画像には何も重ねない)。
-                背景 #E7DCFB 単色に直接乗せスクリムなし。pt-3 で旧オーバーレイと同じ縦位置を維持、
-                mb-2 で画像と分ける。文字はネイビー基調 (白フチ + タイプ名の軽い白シャドウ)。 */}
-            <div className="pt-3 mb-2">{heroTitle}</div>
-            <CharacterHero
-              imageSrc={dispImage}
-              alt={dispName}
-              essence={dispEssence}
-              name={dispName}
-              description={dispDesc}
-              imageAspectClassName="aspect-square"
-              imageFitClassName="object-contain"
-              imageCardClassName=""
-              imageSizes="(min-width: 768px) 520px, 100vw"
-              hideDecorations
-              hideJobGauge
-              jobSlot={{
-                animal: animalName,
-                job: displayJob,
-                friendCount: friendEvalCount,
-                threshold: JOB_FRIEND_THRESHOLD,
-              }}
-            />
+        {/* ===== ヒーローゾーン (リデザイン: 称号主役 + OCEAN + 舞台帯 + スクロール誘導) =====
+            self-sizing (中身追従) は維持。固定 height にしない (commit 4af2773 の仕様を踏襲)。 */}
+        <div className="mb-6">
+          {/* 上部バー: 右上に☰のみ (シェアアイコンは出さない) */}
+          <div className="flex justify-end mb-2">
+            <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
           </div>
-        </div>
+          {/* 称号(大・主役) + 動物名(小・従) + OCEAN コード行 (白地・左寄せ) */}
+          {heroTitle}
+          {oceanRow}
+          {/* 舞台帯: 背景=グループ色 (画像の無地背景と一致し四角い縁が溶ける)。画像は中央。
+              ※ ハロー円/四隅ドット/接地シャドウ (仕様 #5) は、キャラ画像が不透明スクエア
+                 (背景=帯色) のため背後/周囲が隠れて成立しないので今回は省略。透過素材 or
+                 画像縮小での「舞台」化は別途検討 (レポート参照)。 */}
+          <div
+            className="relative mt-4 mx-[calc(50%-50vw)] w-screen px-4 py-6 md:py-10"
+            style={{ background: heroBg }}
+          >
+            <div className="max-w-[520px] mx-auto">
+              <CharacterHero
+                imageSrc={dispImage}
+                alt={dispName}
+                essence={dispEssence}
+                name={dispName}
+                description={dispDesc}
+                imageAspectClassName="aspect-square"
+                imageFitClassName="object-contain"
+                imageCardClassName=""
+                imageSizes="(min-width: 768px) 520px, 100vw"
+                hideDecorations
+                hideJobGauge
+                jobSlot={{
+                  animal: animalName,
+                  job: displayJob,
+                  friendCount: friendEvalCount,
+                  threshold: JOB_FRIEND_THRESHOLD,
+                }}
+              />
+            </div>
+          </div>
+          {/* スクロール誘導: ↓ + 「アナタのトリセツ」。直下の取説本文1段落目が自然に覗く。 */}
+          <div className="mt-6 flex flex-col items-center text-center">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2B2A6B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="opacity-60 animate-bounce"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            <h2 className="mt-1 font-black text-xl text-[#2B2A6B]">
+              アナタのトリセツ
+            </h2>
+          </div>
         </div>
 
         {/* ===== 章① 自分が見た自分 =====
