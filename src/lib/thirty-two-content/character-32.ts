@@ -71,14 +71,14 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "革命家", oneLiner: "常識を疑い、自分の信じる未来を世界に突きつけていける革命家。", catchphrase: "流されない心が、新しい道をひらく。", slug: "shark_R", group: "sea" },
 
   // ===== 未知グループ (紫) base16: earnest-elephant / steady-turtle / gentle-koala / solo-hedgehog =====
-  "earnest-elephant__N": { name: "じゅんすいユニコーン", animal: "ユニコーン", essence: "夢想家", oneLiner: "まっすぐな理想を胸に抱く、純粋でやさしい夢追い人。", catchphrase: "まっすぐな理想が、世界を少しやさしくする。", slug: "unicorn_N", group: "unknown" },
-  "earnest-elephant__R": { name: "ゆるぎないドラゴン", animal: "ドラゴン", essence: "守護者", oneLiner: "何があっても揺らがない、静かな威厳を持つ守護者。", catchphrase: "静かな強さで、大切なものを守りぬく。", slug: "dragon_R", group: "unknown" },
-  "steady-turtle__N": { name: "あこがれペガサス", animal: "ペガサス", essence: "飛翔家", oneLiner: "高い理想へ静かに羽ばたく、感受性ゆたかな夢追い。", catchphrase: "高い空へ、静かに羽ばたいていく。", slug: "pegasus_N", group: "unknown" },
-  "steady-turtle__R": { name: "ふくつのフェニックス", animal: "フェニックス", essence: "不屈者", oneLiner: "何度でも立ち上がる、折れない不屈の再生者。", catchphrase: "何度でも立ち上がる、それが私の強さ。", slug: "phoenix_R", group: "unknown" },
-  "gentle-koala__N": { name: "おもいやりエンジェル", animal: "エンジェル", essence: "審美者", oneLiner: "誰かの幸せをそっと願う、慈愛にあふれた癒し手。", catchphrase: "誰かの幸せを、そっと願いつづける。", slug: "angel_N", group: "unknown" },
-  "gentle-koala__R": { name: "ふどうゴーレム", animal: "ゴーレム", essence: "数寄者", oneLiner: "どっしり構えて動じない、静かに守り抜く不動の番人。", catchphrase: "好きを極めるほど、世界は澄んでいく。", slug: "golem_R", group: "unknown" },
-  "solo-hedgehog__N": { name: "てれやオバケ", animal: "オバケ", essence: "探偵", oneLiner: "自分の世界をそっと守る、はにかみ屋の独立心。", catchphrase: "何も言わないまま、ぜんぶ見えている。", slug: "ghost_N", group: "unknown" },
-  "solo-hedgehog__R": { name: "のんきガイコツ", animal: "ガイコツ", essence: "風雲児", oneLiner: "何にも縛られず飄々と生きる、マイペースな自由人。", catchphrase: "何にも縛られず、飄々と生きていく。", slug: "skeleton_R", group: "unknown" },
+  "earnest-elephant__N": { name: "じゅんすいユニコーン", animal: "ユニコーン", essence: "夢想家", oneLiner: "まっすぐな理想だけは、どうしても手放せない。", catchphrase: "まっすぐな理想が、世界を少しやさしくする。", slug: "unicorn_N", group: "unknown" },
+  "earnest-elephant__R": { name: "ゆるぎないドラゴン", animal: "ドラゴン", essence: "守護者", oneLiner: "何があっても、守ると決めたものは守りぬく。", catchphrase: "静かな強さで、大切なものを守りぬく。", slug: "dragon_R", group: "unknown" },
+  "steady-turtle__N": { name: "あこがれペガサス", animal: "ペガサス", essence: "飛翔家", oneLiner: "誰にも見せず、ただ高みへ羽ばたいていく。", catchphrase: "高い空へ、静かに羽ばたいていく。", slug: "pegasus_N", group: "unknown" },
+  "steady-turtle__R": { name: "ふくつのフェニックス", animal: "フェニックス", essence: "不屈者", oneLiner: "倒れても、また立つ。それだけは、誰にも負けない。", catchphrase: "何度でも立ち上がる、それが私の強さ。", slug: "phoenix_R", group: "unknown" },
+  "gentle-koala__N": { name: "おもいやりエンジェル", animal: "エンジェル", essence: "審美者", oneLiner: "誰かの幸せを願うことが、いちばんの幸せ。", catchphrase: "誰かの幸せを、そっと願いつづける。", slug: "angel_N", group: "unknown" },
+  "gentle-koala__R": { name: "ふどうゴーレム", animal: "ゴーレム", essence: "数寄者", oneLiner: "好きなものを、ただ静かに、深く愛していたい。", catchphrase: "好きを極めるほど、世界は澄んでいく。", slug: "golem_R", group: "unknown" },
+  "solo-hedgehog__N": { name: "てれやオバケ", animal: "オバケ", essence: "探偵", oneLiner: "何も言わないけれど、ちゃんと、ぜんぶ見えている。", catchphrase: "何も言わないまま、ぜんぶ見えている。", slug: "ghost_N", group: "unknown" },
+  "solo-hedgehog__R": { name: "のんきガイコツ", animal: "ガイコツ", essence: "風雲児", oneLiner: "何にも縛られず、飄々と、自分の風で生きていく。", catchphrase: "何にも縛られず、飄々と生きていく。", slug: "skeleton_R", group: "unknown" },
 };
 
 /** 画像アセットのバージョン (32キャラは v3 ディレクトリ)。 */
