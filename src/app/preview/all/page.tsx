@@ -60,9 +60,10 @@ export default function PreviewAllPage() {
                   const c = thirtyTwoCharacter[id];
                   const src = `/characters/v${THIRTY_TWO_ASSET_VERSION}/${c.slug}.png`;
                   return (
-                    <div
+                    <a
                       key={id}
-                      className="rounded-xl overflow-hidden border border-black/10"
+                      href={`/preview/${id}`}
+                      className="block rounded-xl overflow-hidden border border-black/10 hover:ring-2 hover:ring-[#3A2D6B]/30 transition"
                     >
                       <div
                         className="aspect-square"
@@ -87,7 +88,7 @@ export default function PreviewAllPage() {
                           {id}
                         </div>
                       </div>
-                    </div>
+                    </a>
                   );
                 })}
               </div>

@@ -161,13 +161,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const sp = await searchParams;
 
-  // ===== 開発専用プレビュー (本番では完全に無効) =====
-  // NODE_ENV!=='production' のときだけ有効。?previewType=<32タイプID> を付けると、token /
-  // Supabase を介さず、そのタイプの High/Low モックスコアで結果ページを描画する。
-  // 例: /me/preview?previewType=earnest-elephant__N  (動物名スラッグでなく内部タイプID)。
+  // ===== プレビュー (token/Supabase を介さずモックスコアで結果ページを描画) =====
+  // ?previewType=<32タイプID> 指定時、そのタイプの High/Low モックで描画する。実ユーザー
+  // データは一切参照しない (モックのみ)。許可条件は「開発環境」または「/preview/[typeId]
+  // 経由 (fromPreview=1)」。本番の通常フロー (?previewType 無し) には影響しない。
+  // 例(dev): /me/x?previewType=earnest-elephant__N ／ 本番: /preview/earnest-elephant__N
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewAllowed =
+    process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
   const previewType: ThirtyTwoTypeId | null =
-    process.env.NODE_ENV !== "production" &&
+    previewAllowed &&
     /^[a-z-]+__[NR]$/.test(rawPreview) &&
     sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
       ? (rawPreview as ThirtyTwoTypeId)
