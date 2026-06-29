@@ -25,13 +25,7 @@ export function JobReveal({
         <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-3">
           友達から見たアナタ
         </p>
-        <div
-          className="mx-auto w-14 h-14 rounded-full bg-[#FFF0F3] border-2 border-[#3A2D6B] flex items-center justify-center text-3xl mb-3"
-          role="img"
-          aria-label={`職業: ${job.name}`}
-        >
-          <span aria-hidden="true">{job.emoji}</span>
-        </div>
+        {/* 職業アイコン円 (確定時の絵文字バッジ) は撤去。職業テキスト/ロジックは不変。 */}
         <h2 className="text-[#3A2D6B] font-black text-2xl leading-tight mb-2">
           {job.name}
           {animal}

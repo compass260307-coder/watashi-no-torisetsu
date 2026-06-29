@@ -119,16 +119,7 @@ export function CharacterHero({
             className={`w-full h-full ${imageFitClassName}`}
           />
         </div>
-        {/* 職業バッジ (確定時のみ、アバター右下)。overflow-hidden の外なのでクリップされない。 */}
-        {job && (
-          <div
-            className="absolute bottom-2 right-2 w-11 h-11 rounded-full bg-white border-2 border-[#3A2D6B] shadow-md flex items-center justify-center text-xl"
-            role="img"
-            aria-label={`職業: ${job.name}`}
-          >
-            <span aria-hidden="true">{job.emoji}</span>
-          </div>
-        )}
+        {/* 職業バッジ (アバター右下のアイコン) は撤去。職業テキスト/ロジックは不変。 */}
       </div>
       {/* 画像下のテキスト。称号(essence)を主役の見出しに表示し、動物名(name/animal)は表示しない
           (データは温存・別系統で参照)。hideDecorations 時はまとめて非表示 (/me は独自ヒーロー)。 */}

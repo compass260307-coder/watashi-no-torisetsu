@@ -426,15 +426,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const heroTitle = (
     <div className="text-center">
       <div
-        className="font-extrabold leading-[1.04]"
-        style={{
-          fontSize: "clamp(44px, 14vw, 60px)",
-          // 白フチ抜き: 塗り=白、縁取り=グレー (淡い帯でも白が抜けて縁で字形が立つ)。
-          color: "#FFFFFF",
-          WebkitTextStrokeWidth: "1.5px",
-          WebkitTextStrokeColor: "#8A8A8A",
-          paintOrder: "stroke",
-        }}
+        className="font-extrabold leading-[1.04] text-[#2B2A6B]"
+        style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
       >
         {dispEssence}
       </div>
