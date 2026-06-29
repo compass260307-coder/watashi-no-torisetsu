@@ -11,7 +11,6 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
 import type { Job } from "@/lib/job";
-import { JobRevealName } from "./JobRevealName";
 
 // 動物＋職業システム用スロット (/me のみ渡す)。
 // job が決まれば「{職業}{動物}」+ アバター右下バッジ。未定なら「？{動物}」+ 判明ゲージ。
@@ -69,7 +68,6 @@ export function CharacterHero({
   imageSrc,
   alt,
   essence,
-  name,
   description,
   eyebrow,
   jobSlot,
@@ -79,8 +77,6 @@ export function CharacterHero({
   imageBlend = false,
   imageSizes,
   imageCardClassName,
-  revealKey,
-  forceReveal = false,
   hideDecorations = false,
   hideJobGauge = false,
   imageBlendStyle,
@@ -134,49 +130,16 @@ export function CharacterHero({
           </div>
         )}
       </div>
-      {/* 画像下: eyebrow / essence(肩書き) / 型名 h1 は「画像下のテキスト」として hideDecorations
-          時にまとめて非表示 (キャラ名はトップバーへ移設済み)。判明ゲージは下で別途残す。
-          ※ h1 内の変身演出 JobRevealName は revealKey 指定時のみ描画する設計だが、現在 /me は
-          hideDecorations + revealKey 未指定のため、ここ (JobRevealName 含む) はどこにもマウント
-          されない。コンポーネントは将来再利用のため温存し削除しない。 */}
+      {/* 画像下のテキスト。称号(essence)を主役の見出しに表示し、動物名(name/animal)は表示しない
+          (データは温存・別系統で参照)。hideDecorations 時はまとめて非表示 (/me は独自ヒーロー)。 */}
       {!hideDecorations && (
         <div className="mt-3 flex flex-col items-center">
           {eyebrow && (
             <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
           )}
-          <p className="font-black text-2xl text-[#3A2D6B] leading-tight">
+          <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
             {essence}
-          </p>
-        <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
-          {jobSlot ? (
-            job ? (
-              revealKey ? (
-                // 判明時: 初回だけ「動物 → 演出 → 職業動物」の変身を再生 (以降は静的)。
-                <JobRevealName
-                  animal={jobSlot.animal}
-                  jobName={job.name}
-                  revealKey={revealKey}
-                  forcePlay={forceReveal}
-                />
-              ) : (
-                `${job.name}${jobSlot.animal}`
-              )
-            ) : (
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-flex items-center justify-center min-w-[1.6em] px-1 rounded-lg border-2 border-dashed border-[#3A2D6B]/35 text-[#3A2D6B]/40"
-                >
-                  ？
-                </span>
-                {jobSlot.animal}
-                <span className="sr-only">（職業は友達{jobSlot.threshold}人の評価で判明）</span>
-              </span>
-            )
-          ) : (
-            name
-          )}
-        </h1>
+          </h1>
         </div>
       )}
 

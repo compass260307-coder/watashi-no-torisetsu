@@ -416,7 +416,7 @@ function IntroScreen({
             {/* ===== ヒーロー (owner のキャラ + essence + 型名) = /me と同じ ===== */}
             <CharacterHero
               imageSrc={c32 ? thirtyTwoImagePath(c32) : characterImagePath(typeId!)}
-              alt={c32 ? thirtyTwoName(c32) : type16.name}
+              alt={c32 ? thirtyTwoEssence(c32) : type16.essence}
               essence={c32 ? thirtyTwoEssence(c32) : type16.essence}
               name={c32 ? thirtyTwoName(c32) : type16.name}
               description={c32 ? thirtyTwoOneLiner(c32) : type16.oneLiner}

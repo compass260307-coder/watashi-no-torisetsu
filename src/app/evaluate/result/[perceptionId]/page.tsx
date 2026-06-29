@@ -352,7 +352,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
             eyebrow は上部タグと重複するため撤去 (essence + 型名 + 説明文のみ)。 */}
         <CharacterHero
           imageSrc={dispImage}
-          alt={perceivedTypeName}
+          alt={dispEssence}
           essence={dispEssence}
           name={perceivedTypeName}
           description={dispDesc}

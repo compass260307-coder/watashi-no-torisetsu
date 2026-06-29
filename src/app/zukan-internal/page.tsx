@@ -10,7 +10,6 @@ import type { Metadata } from "next";
 import { sixteenTypes, type SixteenTypeId } from "@/lib/sixteen-types";
 import {
   type ThirtyTwoTypeId,
-  thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoOneLiner,
   thirtyTwoImagePath,
@@ -76,7 +75,7 @@ function CharCard({ id }: { id: ThirtyTwoTypeId }) {
       <div className="flex items-start gap-3">
         <Image
           src={thirtyTwoImagePath(id)}
-          alt={thirtyTwoName(id)}
+          alt={thirtyTwoEssence(id)}
           width={88}
           height={88}
           className="w-[72px] h-[72px] rounded-xl bg-[#F4F1FB] flex-shrink-0 object-cover"
@@ -89,9 +88,6 @@ function CharCard({ id }: { id: ThirtyTwoTypeId }) {
             {nLabel}
           </span>
           <p className="text-[#3A2D6B] font-black text-base leading-tight">
-            {thirtyTwoName(id)}
-          </p>
-          <p className="text-[#3A2D6B]/70 text-xs font-bold">
             {thirtyTwoEssence(id)}
           </p>
         </div>

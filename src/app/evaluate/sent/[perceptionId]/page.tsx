@@ -299,7 +299,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
         {/* ===== ヒーロー (知覚タイプのキャラ、本人ページと同一構成) ===== */}
         <CharacterHero
           imageSrc={dispImage}
-          alt={perceivedTypeName}
+          alt={dispEssence}
           essence={dispEssence}
           name={perceivedTypeName}
           description={dispDesc}

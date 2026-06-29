@@ -112,14 +112,14 @@ export default function ThirtyTwoTypePocPage() {
                 <div className="flex items-center gap-3">
                   <Image
                     src={thirtyTwoCharacterImagePath(id32)}
-                    alt={meta.name}
+                    alt={meta.essence}
                     width={64}
                     height={64}
                     className="w-16 h-16 rounded-full bg-[#E4E0F5]"
                   />
                   <div>
                     <p className="text-[#3A2D6B] font-black text-lg leading-tight">
-                      {meta.name}
+                      {meta.essence}
                     </p>
                     <p className="text-[#3A2D6B]/60 text-xs">
                       base16: <b>{base16}</b> / 32: <b>{id32}</b>
