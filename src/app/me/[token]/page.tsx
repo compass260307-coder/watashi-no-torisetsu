@@ -43,6 +43,7 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoColor,
   baseIdOf,
   nAxisOf,
   type ThirtyTwoTypeId,
@@ -371,6 +372,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
     "playful-raccoon__R": "#D8F2C0", // 画像 tiger_R
   };
   const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
+  // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
+  const dotColor = flag32 ? thirtyTwoColor(t32) : "#C3A0E0";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -447,32 +450,42 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <main
-      className="relative min-h-screen overflow-x-clip py-6 px-4 md:py-10 md:px-8"
-      style={{ background: "#ffffff" }}
+      className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
+      style={{ background: "#FFFDF4" }}
     >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== ヒーローゾーン (リデザイン: 称号主役 + OCEAN + 舞台帯 + スクロール誘導) =====
-            self-sizing (中身追従) は維持。固定 height にしない (commit 4af2773 の仕様を踏襲)。 */}
-        <div className="mb-6">
-          {/* 上部バー: 右上に☰のみ (シェアアイコンは出さない) */}
-          <div className="flex justify-end mb-2">
-            <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-          </div>
-          {/* 称号(大・主役) + 動物名(小・従) + OCEAN コード行 (白地・左寄せ) */}
-          {heroTitle}
-          {oceanRow}
-          {/* 舞台帯: 背景=グループ色 (画像の無地背景と一致し四角い縁が溶ける)。画像は中央。
-              ※ ハロー円/四隅ドット/接地シャドウ (仕様 #5) は、キャラ画像が不透明スクエア
-                 (背景=帯色) のため背後/周囲が隠れて成立しないので今回は省略。透過素材 or
-                 画像縮小での「舞台」化は別途検討 (レポート参照)。 */}
+        {/* ===== ヒーロー色面 (全幅 heroBg: 上部中央グロー + フェルトドット + 称号/OCEAN + 画像) =====
+            self-sizing 維持 (固定 height なし)。名前は上部中央グローの上 (画像より前面=隠れない)。
+            ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
+        <div
+          className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
+          style={{ background: heroBg }}
+        >
+          {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
           <div
-            className="relative mt-4 mx-[calc(50%-50vw)] w-screen px-4 py-6 md:py-10"
-            style={{ background: heroBg }}
-          >
-            <div className="max-w-[520px] mx-auto">
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
+            }}
+          />
+          {/* フェルトドット (中間ティント・上半分/主に PC 側余白。中央の画像には重ねない) */}
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 11, height: 11, top: "15%", left: "6%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
+          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面 */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 pb-2">
+            <div className="flex justify-end mb-2">
+              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+            </div>
+            {heroTitle}
+            {oceanRow}
+            <div className="max-w-[600px] mx-auto mt-4">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
@@ -482,7 +495,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 imageAspectClassName="aspect-square"
                 imageFitClassName="object-contain"
                 imageCardClassName=""
-                imageSizes="(min-width: 768px) 520px, 100vw"
+                imageSizes="(min-width: 768px) 600px, 100vw"
                 hideDecorations
                 hideJobGauge
                 jobSlot={{
@@ -494,8 +507,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
               />
             </div>
           </div>
-          {/* スクロール誘導: ↓ + 「アナタのトリセツ」。直下の取説本文1段落目が自然に覗く。 */}
-          <div className="mt-6 flex flex-col items-center text-center">
+        </div>
+        {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
+            スクロール誘導 (↓ + 「アナタのトリセツ」) をこの肩に載せ、直下に取説が続く。
+            main 背景=クリームなので、ここから下はシームレスにクリーム。 ===== */}
+        <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 pb-1">
+          <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
             <svg
               width="22"
               height="22"
