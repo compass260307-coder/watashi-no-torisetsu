@@ -426,8 +426,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const heroTitle = (
     <div className="text-center">
       <div
-        className="font-extrabold leading-[1.04] text-[#2B2A6B]"
-        style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
+        className="font-extrabold leading-[1.04]"
+        style={{
+          fontSize: "clamp(44px, 14vw, 60px)",
+          // 白フチ抜き: 塗り=白、縁取り=グレー (淡い帯でも白が抜けて縁で字形が立つ)。
+          color: "#FFFFFF",
+          WebkitTextStrokeWidth: "1.5px",
+          WebkitTextStrokeColor: "#8A8A8A",
+          paintOrder: "stroke",
+        }}
       >
         {dispEssence}
       </div>
@@ -476,7 +483,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
         className="italic text-center"
         style={{
           fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
-          fontSize: "21px",
+          fontSize: "27px",
           lineHeight: 1.7,
           color: "#6E4A2A",
         }}
