@@ -420,28 +420,33 @@ export default async function MePage({ params, searchParams }: PageProps) {
       </div>
     </div>
   );
-  // OCEAN コード行: 各軸の高低 (stored スコア ≥5 = 高) を色で表す。高=濃紺 / 低=濃紺30%。
+  // OCEAN コード行 (大文字小文字方式): 各軸の高低 (stored スコア ≥5 = 高) を文字の大小で表す。
+  //   高 = 大文字・40px・weight800・#2B2A6B / 低 = 小文字・27px・#2B2A6B 40% (baseline 揃え)。
+  //   ●○ インジケータは廃止 (大小で高低が伝わる)。ラベル「BIG FIVE CODE」は維持。
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
   const oceanRow = (
-    <div className="mt-3 flex items-center justify-between max-w-[260px]">
-      <div className="flex flex-1 justify-between pr-3">
-        {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => (
-          <span
-            key={k}
-            className="font-black text-lg leading-none"
-            style={{ color: oceanIsHigh(k) ? "#2B2A6B" : "rgba(43,42,107,0.3)" }}
-          >
-            {k}
-          </span>
-        ))}
+    <div className="mt-3">
+      <div className="text-[11px] font-bold tracking-[0.22em] text-[#2B2A6B]/50 mb-0.5">
+        BIG FIVE CODE
       </div>
-      <span
-        className="text-[11px] font-bold tracking-wider"
-        style={{ color: "rgba(43,42,107,0.4)" }}
-      >
-        CODE
-      </span>
+      <div className="flex items-baseline gap-1.5">
+        {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
+          const high = oceanIsHigh(k);
+          return (
+            <span
+              key={k}
+              className="font-extrabold leading-none"
+              style={{
+                fontSize: high ? "40px" : "27px",
+                color: high ? "#2B2A6B" : "rgba(43,42,107,0.4)",
+              }}
+            >
+              {high ? k : k.toLowerCase()}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 
