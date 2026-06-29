@@ -43,6 +43,7 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoCatchphrase,
   thirtyTwoColor,
   baseIdOf,
   nAxisOf,
@@ -382,6 +383,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
     : characterImagePath(sixteenTypeId);
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
+  // ヒーローのキャラ名言 (コード直下・セリフ体)。16タイプ時は oneLiner で代替。
+  const dispCatch = flag32 ? thirtyTwoCatchphrase(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const inviteCode = user.invite_code as string;
@@ -422,29 +425,58 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
   const oceanRow = (
-    <div className="mt-3">
-      <div className="text-[11px] font-bold tracking-[0.22em] text-[#2B2A6B]/50 mb-0.5">
-        BIG FIVE CODE
-      </div>
-      <div className="flex items-baseline gap-1.5">
-        {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
-          const high = oceanIsHigh(k);
-          return (
-            <span
-              key={k}
-              className="font-extrabold leading-none"
-              style={{
-                fontSize: high ? "40px" : "27px",
-                color: high ? "#2B2A6B" : "rgba(43,42,107,0.4)",
-              }}
-            >
-              {high ? k : k.toLowerCase()}
-            </span>
-          );
-        })}
-      </div>
+    <div className="mt-3 flex items-baseline gap-1.5">
+      {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
+        const high = oceanIsHigh(k);
+        return (
+          <span
+            key={k}
+            className="font-extrabold leading-none"
+            style={{
+              fontSize: high ? "40px" : "27px",
+              color: high ? "#2B2A6B" : "rgba(43,42,107,0.4)",
+            }}
+          >
+            {high ? k : k.toLowerCase()}
+          </span>
+        );
+      })}
     </div>
   );
+  // キャラ名言: コード直下にセリフ体italicで1行。先頭=金スパークル(大)/末尾=スパークル(小)。
+  const catchphraseRow = dispCatch ? (
+    <p
+      className="mt-3 italic"
+      style={{
+        fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
+        fontSize: "16px",
+        lineHeight: 1.7,
+        color: "#6E4A2A",
+      }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="17"
+        height="17"
+        fill="#B8860B"
+        aria-hidden="true"
+        style={{ display: "inline-block", verticalAlign: "-2px", marginRight: "5px" }}
+      >
+        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
+      </svg>
+      {dispCatch}
+      <svg
+        viewBox="0 0 24 24"
+        width="11"
+        height="11"
+        fill="#C99A2E"
+        aria-hidden="true"
+        style={{ display: "inline-block", verticalAlign: "1px", marginLeft: "4px" }}
+      >
+        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
+      </svg>
+    </p>
+  ) : null;
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -486,6 +518,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </div>
             {heroTitle}
             {oceanRow}
+            {catchphraseRow}
             <div className="max-w-[600px] mx-auto mt-4">
               <CharacterHero
                 imageSrc={dispImage}
