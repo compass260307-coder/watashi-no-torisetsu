@@ -33,14 +33,14 @@ export const THIRTY_TWO_GROUP_COLOR: Record<ThirtyTwoGroup, string> = {
 
 export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   // ===== 空グループ (緑) base16: quiet-owl / seeker-wolf / dreamer-rabbit / fantasy-cat =====
-  "quiet-owl__N": { name: "きらめきインコ", animal: "インコ", essence: "詩人", oneLiner: "明るい好奇心で人の輪を彩る、みんなの気持ちに敏感な社交家。", catchphrase: "心の機微を、そっと言葉に変えていく。", slug: "parakeet_N", group: "sky" },
-  "quiet-owl__R": { name: "どうどうワシ", animal: "ワシ", essence: "賢者", oneLiner: "何があっても揺るがない、堂々と前を照らす不動のリーダー。", catchphrase: "揺るがない心が、誰かの灯りになる。", slug: "eagle_R", group: "sky" },
-  "seeker-wolf__N": { name: "すいすいツバメ", animal: "ツバメ", essence: "理論家", oneLiner: "身軽に新しい世界へ飛び込む、感受性ゆたかな先駆者。", catchphrase: "知りたい気持ちが、私を遠くへ運ぶ。", slug: "swallow_N", group: "sky" },
-  "seeker-wolf__R": { name: "クールタカ", animal: "タカ", essence: "ストラテジスト", oneLiner: "一人静かに狙いを定める、冷静で揺るがない孤高の狩人。", catchphrase: "静けさの中で、最善の一手を選ぶ。", slug: "hawk_R", group: "sky" },
-  "dreamer-rabbit__N": { name: "なかよしペンギン", animal: "ペンギン", essence: "空想家", oneLiner: "人懐っこくて甘え上手、みんなに愛される心やさしい人気者。", catchphrase: "想いを描くほど、世界はやわらかくなる。", slug: "penguin_N", group: "sky" },
-  "dreamer-rabbit__R": { name: "ゆうがハクチョウ", animal: "ハクチョウ", essence: "表現者", oneLiner: "落ち着いた佇まいで場を包む、動じない優雅な大物。", catchphrase: "落ち着いた佇まいが、その場を美しく整える。", slug: "swan_R", group: "sky" },
-  "fantasy-cat__N": { name: "きまぐれカラス", animal: "カラス", essence: "収集家", oneLiner: "自由気ままに世界を眺める、独自の感性を持つ観察者。", catchphrase: "私の眼にだけ映る景色を、集めていく。", slug: "crow_N", group: "sky" },
-  "fantasy-cat__R": { name: "おおらかペリカン", animal: "ペリカン", essence: "職人", oneLiner: "細かいことは気にしない、ゆったり構えた動じない楽天家。", catchphrase: "急がないことが、いちばんの近道。", slug: "pelican_R", group: "sky" },
+  "quiet-owl__N": { name: "きらめきインコ", animal: "インコ", essence: "詩人", oneLiner: "言わぬ声 すくいあげては 花にする", catchphrase: "心の機微を、そっと言葉に変えていく。", slug: "parakeet_N", group: "sky" },
+  "quiet-owl__R": { name: "どうどうワシ", animal: "ワシ", essence: "賢者", oneLiner: "多くを語らずとも、その佇まいが灯りになる。", catchphrase: "揺るがない心が、誰かの灯りになる。", slug: "eagle_R", group: "sky" },
+  "seeker-wolf__N": { name: "すいすいツバメ", animal: "ツバメ", essence: "理論家", oneLiner: "知りたいという衝動が、一人でも遠くまで連れていく。", catchphrase: "知りたい気持ちが、私を遠くへ運ぶ。", slug: "swallow_N", group: "sky" },
+  "seeker-wolf__R": { name: "クールタカ", animal: "タカ", essence: "ストラテジスト", oneLiner: "風さえ、味方につけてみせる。", catchphrase: "静けさの中で、最善の一手を選ぶ。", slug: "hawk_R", group: "sky" },
+  "dreamer-rabbit__N": { name: "なかよしペンギン", animal: "ペンギン", essence: "空想家", oneLiner: "頭の中の世界はいつも、やさしい色で満ちている。", catchphrase: "想いを描くほど、世界はやわらかくなる。", slug: "penguin_N", group: "sky" },
+  "dreamer-rabbit__R": { name: "ゆうがハクチョウ", animal: "ハクチョウ", essence: "表現者", oneLiner: "人と比べない強さが、自分らしさを美しくする。", catchphrase: "落ち着いた佇まいが、その場を美しく整える。", slug: "swan_R", group: "sky" },
+  "fantasy-cat__N": { name: "きまぐれカラス", animal: "カラス", essence: "収集家", oneLiner: "みんなが素通りするものに、ひとり立ち止まれる。", catchphrase: "私の眼にだけ映る景色を、集めていく。", slug: "crow_N", group: "sky" },
+  "fantasy-cat__R": { name: "おおらかペリカン", animal: "ペリカン", essence: "職人", oneLiner: "急がず、媚びず、自分の「これだ」を突き詰める。", catchphrase: "急がないことが、いちばんの近道。", slug: "pelican_R", group: "sky" },
 
   // ===== 陸グループ (ピンク) base16: caretaker-dog / brisk-tiger / smiley-panda / playful-raccoon =====
   // ⚠ 陸グループは画像を ES系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
