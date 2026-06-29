@@ -439,7 +439,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
   const oceanRow = (
-    <div className="mt-3 flex items-baseline justify-center gap-1.5">
+    <div className="mt-3 md:mt-1 flex items-baseline justify-center gap-1.5">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
         const high = oceanIsHigh(k);
         return (
@@ -461,7 +461,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
   //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
   const catchphraseRow = dispCatch ? (
-    <div className="mt-3 flex items-center justify-center gap-2">
+    <div className="mt-3 md:mt-1 flex items-center justify-center gap-2">
       <svg
         viewBox="0 0 24 24"
         width="17"
@@ -529,22 +529,23 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
-          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面 */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 pb-2">
+          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
+              PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 md:pt-2 pb-2">
             <div className="flex justify-end mb-2">
               <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
             </div>
             {heroTitle}
             {oceanRow}
             {catchphraseRow}
-            <div className="max-w-[600px] mx-auto mt-4">
+            <div className="max-w-[600px] mx-auto mt-4 md:mt-2">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
                 essence={dispEssence}
                 name={dispName}
                 description={dispDesc}
-                imageAspectClassName="aspect-square"
+                imageAspectClassName="aspect-square md:max-h-[400px]"
                 imageFitClassName="object-contain"
                 imageCardClassName=""
                 imageSizes="(min-width: 768px) 600px, 100vw"
@@ -563,7 +564,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
         {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
             スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。
             main 背景=クリームなので、ここから下はシームレスにクリーム。 ===== */}
-        <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 pb-1">
+        <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 md:pt-3 pb-1">
           <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
             <svg
               width="22"
