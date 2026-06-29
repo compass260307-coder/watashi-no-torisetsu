@@ -42,14 +42,17 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   "fantasy-cat__R": { name: "おおらかペリカン", animal: "ペリカン", essence: "動じない楽天家", oneLiner: "細かいことは気にしない、ゆったり構えた動じない楽天家。", slug: "pelican_R", group: "sky" },
 
   // ===== 陸グループ (ピンク) base16: caretaker-dog / brisk-tiger / smiley-panda / playful-raccoon =====
-  "caretaker-dog__N": { name: "せわやきイヌ", animal: "イヌ", essence: "あたたかい世話役", oneLiner: "みんなの変化に誰より早く気づく、あたたかい世話役。", slug: "dog_N", group: "land" },
-  "caretaker-dog__R": { name: "たよれるウマ", animal: "ウマ", essence: "頼れる相棒", oneLiner: "どんな時も背中を預けられる、頼れる相棒。", slug: "horse_R", group: "land" },
-  "brisk-tiger__N": { name: "がんばりトラ", animal: "トラ", essence: "努力家の実務家", oneLiner: "目標へひたむきに走る、努力を惜しまない実務家。", slug: "tiger_N", group: "land" },
+  // ⚠ 陸グループは画像を ES系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
+  //   Big Five 標準対応: ESFJ=caretaker-dog / ESTJ=brisk-tiger / ESFP=smiley-panda /
+  //   ESTP=playful-raccoon。※ name/animal/essence/oneLiner と本文は旧動物のまま (別途更新)。
+  "caretaker-dog__N": { name: "せわやきイヌ", animal: "イヌ", essence: "あたたかい世話役", oneLiner: "みんなの変化に誰より早く気づく、あたたかい世話役。", slug: "rabbit_N", group: "land" },
+  "caretaker-dog__R": { name: "たよれるウマ", animal: "ウマ", essence: "頼れる相棒", oneLiner: "どんな時も背中を預けられる、頼れる相棒。", slug: "dog_R", group: "land" },
+  "brisk-tiger__N": { name: "がんばりトラ", animal: "トラ", essence: "努力家の実務家", oneLiner: "目標へひたむきに走る、努力を惜しまない実務家。", slug: "elephant_N", group: "land" },
   "brisk-tiger__R": { name: "どっしりクマ", animal: "クマ", essence: "揺るがない大黒柱", oneLiner: "プレッシャーの中でも崩れない、揺るがない大黒柱。", slug: "bear_R", group: "land" },
-  "smiley-panda__N": { name: "にこにこパンダ", animal: "パンダ", essence: "愛されムード", oneLiner: "いるだけで場が和む、みんなに愛されるムードメーカー。", slug: "panda_N", group: "land" },
-  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "包容力の主", oneLiner: "ゆったり大きく構える、何でも受け止める包容力の主。", slug: "elephant_R", group: "land" },
-  "playful-raccoon__N": { name: "やんちゃアライグマ", animal: "アライグマ", essence: "自由な遊び人", oneLiner: "その場のノリで楽しさを生む、しばられない自由な遊び人。", slug: "raccoon_N", group: "land" },
-  "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "豪快な突進者", oneLiner: "迷わずまっすぐ突き進む、豪快で動じない突破役。", slug: "rhino_R", group: "land" },
+  "smiley-panda__N": { name: "にこにこパンダ", animal: "パンダ", essence: "愛されムード", oneLiner: "いるだけで場が和む、みんなに愛されるムードメーカー。", slug: "fox_N", group: "land" },
+  "smiley-panda__R": { name: "おっとりゾウ", animal: "ゾウ", essence: "包容力の主", oneLiner: "ゆったり大きく構える、何でも受け止める包容力の主。", slug: "squirrel_R", group: "land" },
+  "playful-raccoon__N": { name: "やんちゃアライグマ", animal: "アライグマ", essence: "自由な遊び人", oneLiner: "その場のノリで楽しさを生む、しばられない自由な遊び人。", slug: "cheetah_N", group: "land" },
+  "playful-raccoon__R": { name: "ごうかいサイ", animal: "サイ", essence: "豪快な突進者", oneLiner: "迷わずまっすぐ突き進む、豪快で動じない突破役。", slug: "tiger_R", group: "land" },
 
   // ===== 海グループ (青) base16: sparkle-dolphin / ambition-lion / idea-monkey / whim-fox =====
   // ⚠ 海グループは画像を EN系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
