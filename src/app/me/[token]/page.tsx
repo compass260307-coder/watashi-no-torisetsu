@@ -45,10 +45,12 @@ import {
   thirtyTwoOneLiner,
   thirtyTwoCatchphrase,
   thirtyTwoColor,
+  thirtyTwoGroup,
   baseIdOf,
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
@@ -375,6 +377,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
   // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
   const dotColor = flag32 ? thirtyTwoColor(t32) : "#C3A0E0";
+  // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
+  //   帯色→濃トーン: 紫帯→濃紫 / 青帯→深青緑 / 緑帯→濃緑 / 黄帯→濃オリーブ (名言の茶と分離)。
+  //   ※内部グループ名は 空=黄・陸=緑 (帯色で対応付け)。称号(名前)はブランド固定ネイビーのまま。
+  const CODE_COLOR_BY_GROUP: Record<ThirtyTwoGroup, string> = {
+    unknown: "#4A2A78", // 紫帯 (#E7DCFB)
+    sea: "#0E5A6B", // 青帯 (#BEF2F9)
+    land: "#2C5212", // 緑帯 (#D8F2C0)
+    sky: "#5E6B12", // 黄帯 (#FDEFB4) — 濃オリーブ
+  };
+  const codeColor = flag32
+    ? CODE_COLOR_BY_GROUP[thirtyTwoGroup(t32)]
+    : "#2B2A6B";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -434,7 +448,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
             className="font-extrabold leading-none"
             style={{
               fontSize: high ? "40px" : "27px",
-              color: high ? "#2B2A6B" : "rgba(43,42,107,0.4)",
+              color: codeColor,
+              opacity: high ? 1 : 0.4,
             }}
           >
             {high ? k : k.toLowerCase()}
