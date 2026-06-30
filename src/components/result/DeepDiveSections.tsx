@@ -13,6 +13,8 @@
 import { useState } from "react";
 import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
 import { TYPE_DEEP_DIVE, type TypeDeepDive } from "@/lib/report-data";
+import { classifyThirtyTwoType } from "@/lib/thirty-two-types";
+import { LOVE_BY_TYPE_32 } from "@/lib/love-by-type-32";
 
 // 一文に使う軸の表示名 (発散バーと整合。N はやわらかく「繊細さ」)。
 const AXIS_LABEL: Record<BigFiveDimension, string> = {
@@ -88,7 +90,14 @@ export function DeepDiveSections({
   }
 
   const current = DEEP_DIVE_CARDS[active];
-  const section = deepDive[current.key];
+  // ⚠ 恋愛カードのみ 32タイプ解決（非対称設計。理由は love-by-type-32.ts 冒頭を参照）:
+  //   恋愛は神経症傾向 N軸(_R/_N)で内容が大きく変わるため、scores から 32タイプ(base16__N/R)を
+  //   判定して LOVE_BY_TYPE_32 から引く。未投入タイプは従来の8タイプ love にフォールバック。
+  //   他カード(強み/弱み/仕事/成長)は従来どおり 8タイプ(deepDive)を共有する。
+  const thirtyTwoId = classifyThirtyTwoType(scores);
+  const love32 = LOVE_BY_TYPE_32[thirtyTwoId];
+  const section =
+    current.key === "love" && love32 ? love32 : deepDive[current.key];
   const note = scoreNote(current.hint);
 
   return (
