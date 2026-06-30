@@ -62,7 +62,7 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   //   ※ name/animal/essence/oneLiner と本文(self-result-32 等)は旧動物のままで、新画像と不一致。
   //     コンテンツ更新は別途必要 (レポート済み)。
   "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "寄添者", oneLiner: "人の心に寄り添い、新しい世界へ一緒に踏み出していける伴走者。", catchphrase: "心に寄り添いながら、世界を知っていく。", slug: "jellyfish_N", group: "sea" },
-  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先導者", oneLiner: "みんなの想いを束ね、同じ夢へ向かって一緒に駆けていける主人公。", catchphrase: "冷静さは、未来を切りひらく羅針盤。", slug: "dolphin_R", group: "sea" },
+  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先導者", oneLiner: "みんなの想いを束ね、同じ夢へ向かって一緒に駆けていける主人公。", catchphrase: "その熱は、人の心に火をともす。", slug: "dolphin_R", group: "sea" },
   "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "全体を見渡し、最善の配置で人と場を動かす采配役。", catchphrase: "盤面を読みきって、最善の一手を。", slug: "swordfish_N", group: "sea" },
   "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "将軍", oneLiner: "大局を見通し、揺るがぬ判断で全体を統べていける指揮官。", catchphrase: "時をかけて、ものごとの本質を見通す。", slug: "orca_R", group: "sea" },
   "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "心に響いたものを見つけ出し、自分の言葉で誰かに届けていける発信者。", catchphrase: "見つけたものを、そっと光に変えて。", slug: "clownfish_N", group: "sea" },
