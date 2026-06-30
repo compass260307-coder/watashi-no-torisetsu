@@ -25,18 +25,19 @@ const AXIS_LABEL: Record<BigFiveDimension, string> = {
   N: "繊細さ",
 };
 
-// 表示する 5 カテゴリ (要望順: 強み/弱み/恋愛/仕事/成長)。
+// 表示する 3 カテゴリ (恋愛/仕事/成長)。
+// ※ strength(強み)/weakness(弱み) は「表示から外す」だけで、データ本体
+//   (report-data.ts の TYPE_DEEP_DIVE.strength / .weakness) は温存。後で各
+//   セクションへ組み込む素材として残してある (この配列から除外＝非表示のみ)。
 // hint = スコア一文の素材の選び方:
-//   "top"    → 最も高い軸、"bottom" → 最も低い軸、または特定軸 ("A" / "C")。
+//   "top" → 最も高い軸、"bottom" → 最も低い軸、または特定軸 ("A" / "C")、"growth"。
 // ※ 絵文字は撤去し、タブ/見出しはテキストラベルのみ。
 const DEEP_DIVE_CARDS: {
   key: keyof TypeDeepDive;
   tab: string;
   hint: "top" | "bottom" | "growth" | BigFiveDimension;
 }[] = [
-  { key: "strength", tab: "強み", hint: "top" },
-  { key: "weakness", tab: "弱み", hint: "bottom" },
-  { key: "love", tab: "恋愛", hint: "A" },
+  { key: "love", tab: "恋愛傾向", hint: "A" },
   { key: "career", tab: "仕事", hint: "C" },
   { key: "growth", tab: "成長", hint: "growth" },
 ];
@@ -60,7 +61,12 @@ export function DeepDiveSections({
   className = "",
 }: DeepDiveSectionsProps) {
   const deepDive = TYPE_DEEP_DIVE[typeId];
-  const [active, setActive] = useState(0); // 初期選択は「強み」
+  // 初期選択は「恋愛傾向」(love) を明示指定 (カード配列の並びが変わっても love を初期表示)。
+  const loveIndex = Math.max(
+    0,
+    DEEP_DIVE_CARDS.findIndex((c) => c.key === "love"),
+  );
+  const [active, setActive] = useState(loveIndex);
 
   // 全 5 軸を % 化し、最高 / 最低の軸を求める (中立的なスコア一文の素材)。
   const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
@@ -137,14 +143,11 @@ export function DeepDiveSections({
       {/* 選択中カテゴリの本文。白い囲み(カード)を外し、地の文として背景に直接流す。
           左右の padding は維持して端で文字が切れないようにする。 */}
       <article role="tabpanel" className="px-1 pt-1 pb-2">
-        <h3 className="text-[#3A2D6B] font-black text-lg leading-tight mb-3">
-          {section.title}
-        </h3>
+        {/* カード大見出し(section.title)は非表示 (タブにラベルが出るため冗長)。
+            ※ title データ自体は report-data.ts / LOVE_BY_TYPE_32 に温存 (表示しないだけ)。 */}
 
-        {/* スコア由来の一文 (パーソナライズ。色だけに意味を持たせない) */}
-        <p className="inline-flex items-start bg-[#FFF0F3] text-[#3A2D6B] font-bold text-xs rounded-full px-3 py-1.5 mb-4">
-          <span>{note}</span>
-        </p>
+        {/* スコア由来の一文 (パーソナライズ)。ピンクのバッジ装飾は外しプレーンテキスト表示に。 */}
+        <p className="text-[#3A2D6B]/70 text-sm mb-4">{note}</p>
 
         {section.body.split("\n\n").map((para, i) => (
           <p
