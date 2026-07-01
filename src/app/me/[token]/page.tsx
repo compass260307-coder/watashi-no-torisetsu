@@ -92,6 +92,10 @@ const SITE_URL =
 // ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
 const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
 
+// 章②「友達が見た自分」の職業ブロック（見出し＋職業の発表＋職業説明本文）の表示フラグ。
+// 枠組み再設計のため一時非表示（後日作り直し）。false の間、発散バー/他者評価は残す。
+const SHOW_FRIEND_VIEW = false;
+
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
   cModifier?: CModifier;
@@ -626,13 +630,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
         {/* ===== 章② 友達が見た自分 (ピンク系見出し・①と同格・職業/統合分析) ===== */}
         <section aria-labelledby="chapter-friend" className="mb-8">
-          <div className="flex items-center gap-3 mb-5">
-            <span
-              aria-hidden="true"
-              className="flex-shrink-0 w-9 h-9 rounded-full bg-[#FE3C72] text-white text-lg flex items-center justify-center"
-            >
-              👀
-            </span>
+          {/* 職業ブロック（見出し＋職業の発表＋職業説明本文）は SHOW_FRIEND_VIEW で一括ON/OFF。
+              枠組み再設計のため現在は非表示（後日作り直し）。発散バー/他者評価は下に残す。 */}
+          {SHOW_FRIEND_VIEW && (
+            <>
+              <div className="flex items-center gap-3 mb-5">
+                <span
+                  aria-hidden="true"
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#FE3C72] text-white text-lg flex items-center justify-center"
+                >
+                  👀
+                </span>
             <h2
               id="chapter-friend"
               className="text-[#FE3C72] font-black text-2xl leading-tight"
@@ -663,6 +671,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 {formatJobIntegration(job, animalName)}
               </p>
             </div>
+          )}
+            </>
           )}
 
           {/* 発散バー (章②に一本化)。
