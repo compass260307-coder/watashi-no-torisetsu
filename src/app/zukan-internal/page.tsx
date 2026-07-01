@@ -20,7 +20,7 @@ import {
 import {
   type ThirtyTwoTypeId,
   thirtyTwoEssence,
-  thirtyTwoOneLiner,
+  thirtyTwoZukanDesc,
   thirtyTwoImagePath,
   thirtyTwoColor,
   thirtyTwoGroup,
@@ -163,12 +163,9 @@ function CharCard({ id }: { id: ThirtyTwoTypeId }) {
         </span>
       </div>
 
-      {/* 5. 一言説明文 (★後日確定。暫定で oneLiner を流用・プレースホルダ表示) */}
-      <p className="text-[#3A2D6B]/45 text-xs leading-relaxed mt-2">
-        {thirtyTwoOneLiner(id)}
-        <span className="block text-[10px] text-[#3A2D6B]/35 mt-0.5">
-          (説明文は後日)
-        </span>
+      {/* 5. 一言説明文 (図鑑専用 zukanDesc。性格を端的に説明する事典風) */}
+      <p className="text-[#3A2D6B]/75 text-xs leading-relaxed mt-2">
+        {thirtyTwoZukanDesc(id)}
       </p>
 
       {/* 6. 結果ページ (フル結果へ) */}
@@ -208,7 +205,7 @@ export default function ZukanInternalPage() {
               ※ Big Five コードは OCEAN の順で高=大文字・低=小文字 (末尾Nは神経症)。MBTI の N(直感) とは別物。
             </p>
             <p className="text-[#3A2D6B]/55">
-              ※ 一言説明文は暫定 (後日の文言確定タスクで差し替え予定)。
+              ※ 一言説明文は図鑑専用テキスト (character-32 の zukanDesc)。
             </p>
           </div>
         </header>

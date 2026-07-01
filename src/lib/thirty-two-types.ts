@@ -221,6 +221,11 @@ export function thirtyTwoCatchphrase(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].catchphrase;
 }
 
+/** 32キャラの図鑑用説明文 (/zukan-internal カードの一言説明。事典風) */
+export function thirtyTwoZukanDesc(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].zukanDesc;
+}
+
 /** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */
 export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
   return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.png`;
