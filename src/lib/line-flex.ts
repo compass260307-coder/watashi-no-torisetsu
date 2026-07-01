@@ -1044,3 +1044,349 @@ export function buildN3Flex(ownerToken: string): messagingApi.Message {
     buttonLabel: "完成したトリセツを開く",
   });
 }
+
+// ============================================================================
+// LINE 手紙通知｜小出し3段階 (line_letter_notifications_v1)
+//   友達の回答が 1 通届くごとに、届いた通数 (1/2/3) で出し分ける「手紙」通知。
+//   【大原則】手紙の言葉そのもの (好きなところ/落ち込んだ時の言葉/自由記述) は
+//   開封まで一文字も出さない。小出しにするのは「言葉の"周り"」だけ =
+//   動物・共通点の予兆・ズレの予兆。
+//   ボタンの share LIFF は getShareLiffUrl() (未設定時は /friend/{code} にフォールバック)。
+// ============================================================================
+
+function getMePageUrl(ownerToken: string): string {
+  return `${PUBLIC_BASE_URL}/me/${ownerToken}`;
+}
+
+// TODO(line-letters): 開封フロー /me/{ownerToken}/open (一通ずつ封を開ける演出) は
+//   別タスク。実装後はこの関数の戻り値を /me/{ownerToken}/open に差し替える。
+//   現状 /open ルートは未実装 (404) のため、暫定で既存の /me/{ownerToken} を返す。
+function getLetterOpenUrl(ownerToken: string): string {
+  return `${PUBLIC_BASE_URL}/me/${ownerToken}`;
+}
+
+// 敬称付与。フォールバック名「お友達」には「さん」を付けない (「お友達さん」回避)。
+function withHonorific(name: string): string {
+  return name === "お友達" ? name : `${name}さん`;
+}
+
+// 通知①｜1通目到着 (friend 1人目の回答完了時)
+//   animal は「動物名のみ」(理由は出さない)。未回答時は null → 汎用文にフォールバック。
+export function buildLetter1Flex(args: {
+  ownerToken: string;
+  inviteCode: string;
+  friendName: string;
+  animal?: string | null;
+}): messagingApi.Message {
+  const shareUrl = getShareLiffUrl(args.inviteCode);
+  const meUrl = getMePageUrl(args.ownerToken);
+  const friend = withHonorific(args.friendName);
+
+  const bodyContents: messagingApi.FlexComponent[] = [
+    {
+      type: "text",
+      text: "📩 1通目、届きました",
+      weight: "bold",
+      size: "lg",
+      wrap: true,
+    },
+    {
+      type: "text",
+      text: `${friend}が、あなたのことを書いてくれたよ。`,
+      size: "sm",
+      color: TEXT_MUTED,
+      wrap: true,
+      margin: "md",
+    },
+    { type: "separator", margin: "lg" },
+  ];
+
+  if (args.animal) {
+    bodyContents.push(
+      {
+        type: "text",
+        text: `${friend}は、あなたを「${args.animal}」に例えたみたい🐾`,
+        weight: "bold",
+        wrap: true,
+        margin: "lg",
+      },
+      {
+        type: "text",
+        text: "理由は…開封してからのお楽しみ。",
+        size: "sm",
+        color: TEXT_MUTED,
+        wrap: true,
+        margin: "sm",
+      },
+    );
+  } else {
+    bodyContents.push({
+      type: "text",
+      text: "どんなふうに見えているかは、開封してからのお楽しみ。",
+      weight: "bold",
+      wrap: true,
+      margin: "lg",
+    });
+  }
+
+  bodyContents.push({
+    type: "text",
+    text: "あと 2 人で、みんなの言葉が読めるよ",
+    size: "xs",
+    color: PINK,
+    wrap: true,
+    margin: "lg",
+  });
+
+  return {
+    type: "flex",
+    altText: `📩 1通目、届きました｜${friend}が書いてくれたよ`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "none",
+        contents: bodyContents,
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "残り2人にお願いする",
+              uri: shareUrl,
+            },
+          },
+          {
+            type: "button",
+            style: "secondary",
+            height: "md",
+            action: { type: "uri", label: "進捗を見る", uri: meUrl },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// 通知②｜2通目到着 (friend 2人目の回答完了時)
+//   共通点/ズレは「予兆」だけ。軸名も中身も出さない (固定文)。
+export function buildLetter2Flex(args: {
+  ownerToken: string;
+  inviteCode: string;
+  friend1Name: string;
+  friend2Name: string;
+}): messagingApi.Message {
+  const shareUrl = getShareLiffUrl(args.inviteCode);
+  const friend1 = withHonorific(args.friend1Name);
+  const friend2 = withHonorific(args.friend2Name);
+
+  return {
+    type: "flex",
+    altText: "📩📩 2通目、届きました｜あと1人で開封！",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "none",
+        contents: [
+          {
+            type: "text",
+            text: "📩📩 2通目、届きました",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: `${friend1}と${friend2}、2人とも あなたの "あるところ" を同じように見てるみたい。`,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "それが何かは、開けてのお楽しみ。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+          { type: "separator", margin: "lg" },
+          {
+            type: "text",
+            text: "そして…自分のイメージと、ちょっとズレてる軸があるかも？",
+            weight: "bold",
+            wrap: true,
+            margin: "lg",
+          },
+          {
+            type: "text",
+            text: "あと 1 人で開封！",
+            weight: "bold",
+            size: "lg",
+            color: PINK,
+            wrap: true,
+            margin: "lg",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "あと1人にお願いする",
+              uri: shareUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// 通知③｜3通目到着 = 開封解禁 (friend 3人目の回答完了時 = 3人ゲート達成)
+export function buildLetter3Flex(args: {
+  ownerToken: string;
+  friend1Name: string;
+  friend2Name: string;
+  friend3Name: string;
+}): messagingApi.Message {
+  const openUrl = getLetterOpenUrl(args.ownerToken);
+  const friend1 = withHonorific(args.friend1Name);
+  const friend2 = withHonorific(args.friend2Name);
+  const friend3 = withHonorific(args.friend3Name);
+
+  return {
+    type: "flex",
+    altText: "🎉 3通、ぜんぶ揃いました｜今すぐ読めるよ",
+    contents: {
+      type: "bubble",
+      hero: {
+        type: "image",
+        url: `${PUBLIC_BASE_URL}/mascot/step3-complete.png`,
+        size: "full",
+        aspectRatio: "1:1",
+        aspectMode: "fit",
+        backgroundColor: PINK_BG,
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "none",
+        contents: [
+          {
+            type: "text",
+            text: "🎉 3通、ぜんぶ揃いました",
+            weight: "bold",
+            size: "xl",
+            color: PINK,
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: `${friend1}・${friend2}・${friend3}が書いてくれた言葉、今すぐ読めるよ。`,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+          {
+            type: "text",
+            text: "一通ずつ、そっと開けてみて。",
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "sm",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: {
+              type: "uri",
+              label: "手紙を開封する",
+              uri: openUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+// 4通目以降｜3人ゲート達成後の追加回答 → 軽い通知のみ (開封済みなら即読める)
+export function buildLetterExtraFlex(args: {
+  ownerToken: string;
+  friendName: string;
+}): messagingApi.Message {
+  const meUrl = getMePageUrl(args.ownerToken);
+  const friend = withHonorific(args.friendName);
+
+  return {
+    type: "flex",
+    altText: `📩 新しい手紙が届いたよ｜${friend}から`,
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "none",
+        contents: [
+          {
+            type: "text",
+            text: "📩 新しい手紙が届いたよ",
+            weight: "bold",
+            size: "lg",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: `${friend}も、あなたのことを書いてくれたよ。`,
+            size: "sm",
+            color: TEXT_MUTED,
+            wrap: true,
+            margin: "md",
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "button",
+            style: "primary",
+            color: PINK,
+            height: "md",
+            action: { type: "uri", label: "手紙を読む", uri: meUrl },
+          },
+        ],
+      },
+    },
+  };
+}
