@@ -146,6 +146,54 @@ function parseAndValidateChapters(text: string): {
   return { title, subtitle, chapters };
 }
 
+export type PlainTextAiOutput = {
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  model: string;
+};
+
+/**
+ * 平文 (プレーンテキスト) 生成。7 章 JSON 検証を通さない汎用版。
+ * 「みんなの目」他者視点解説文 (600 字前後) など、単一本文を返す用途に使う。
+ * SDK 例外 (ネットワーク / 401 / 429 / 500 等) はリトライせず即 throw
+ * (二重課金回避、callClaudeForIntegration と同方針)。空応答のみ Parse エラー。
+ */
+export async function callClaudeForText(args: {
+  system: string;
+  user: string;
+  model?: string;
+  maxTokens?: number;
+}): Promise<PlainTextAiOutput> {
+  const client = getClient();
+  if (!client) throw new AnthropicNotConfiguredError();
+
+  const model = args.model ?? AI_MODEL_DEFAULT;
+  const maxTokens = args.maxTokens ?? 1500;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: maxTokens,
+    system: args.system,
+    messages: [{ role: "user", content: args.user }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new AnthropicResponseParseError("No text content in Claude response");
+  }
+  const text = textBlock.text.trim();
+  if (text.length === 0) {
+    throw new AnthropicResponseParseError("Empty text in Claude response");
+  }
+
+  const inputTokens = response.usage.input_tokens;
+  const outputTokens = response.usage.output_tokens;
+  const costUsd = calculateCostUsd(model, inputTokens, outputTokens);
+  return { text, inputTokens, outputTokens, costUsd, model };
+}
+
 export async function callClaudeForIntegration(args: {
   system: string;
   user: string;
