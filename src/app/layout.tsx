@@ -1,10 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import {
-  M_PLUS_Rounded_1c,
-  Zen_Maru_Gothic,
-  Noto_Sans_JP,
-} from "next/font/google";
+import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
@@ -17,23 +13,25 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   variable: "--font-m-plus-rounded",
 });
 
-// feat/top-page: 新トップページ (TopHero) 専用フォント。
-// 既存ページの M PLUS Rounded はそのまま、トップだけ Zen Maru Gothic を使う
-// (見出し/ロゴ/ラベル/CTA = 700, 本文 = 400)。CSS 変数で局所適用する。
-const zenMaru = Zen_Maru_Gothic({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  variable: "--font-zen-maru",
-});
-
-// feat/top-page (16P型リニューアル): トップヒーローのタイポ。
+// feat/top-page (16P型リニューアル): トップヒーローのタイポ (--font-noto-sans)。
 // H1=極太ゴシック(Noto Sans JP 800)、本文=ゴシック(Noto Sans JP 400/500/700)。
-const notoSansJP = Noto_Sans_JP({
+// ※ 下の notoSansJP (--font-noto-sans-jp、結果ページ用) とは別インスタンス。
+//   同一ファミリーだが用途・weight・preload が異なるため統合しない。
+const notoSansTop = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["400", "500", "700", "800"],
   display: "swap",
   variable: "--font-noto-sans",
+});
+
+// 結果ページ本文の角ゴシック (.body-gothic が参照)。ヒラギノ非搭載端末向けフォールバック。
+// JP フォントは巨大なので preload しない。
+const notoSansJP = Noto_Sans_JP({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  preload: false,
+  variable: "--font-noto-sans-jp",
 });
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -136,7 +134,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${mPlusRounded.variable} ${zenMaru.variable} ${notoSansJP.variable}`}
+      className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
     >
       <body className="min-h-dvh flex flex-col">
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}

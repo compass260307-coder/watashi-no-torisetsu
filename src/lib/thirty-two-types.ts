@@ -201,6 +201,11 @@ export function thirtyTwoName(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].name;
 }
 
+/** 32キャラの素の動物名 (例: ユニコーン)。職業表示「{job}{animal}」/「？{animal}」/ 統合解説で使用。 */
+export function thirtyTwoAnimal(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].animal;
+}
+
 /** 32キャラの essence (例: 太陽の社交家) */
 export function thirtyTwoEssence(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].essence;
@@ -209,6 +214,16 @@ export function thirtyTwoEssence(id: ThirtyTwoTypeId): string {
 /** 32キャラの oneLiner (一文紹介。ヒーロー/ShareCard の説明文) */
 export function thirtyTwoOneLiner(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].oneLiner;
+}
+
+/** 32キャラの catchphrase (キャラ名言。ヒーローのコード直下にセリフ体で表示) */
+export function thirtyTwoCatchphrase(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].catchphrase;
+}
+
+/** 32キャラの図鑑用説明文 (/zukan-internal カードの一言説明。事典風) */
+export function thirtyTwoZukanDesc(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].zukanDesc;
 }
 
 /** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */

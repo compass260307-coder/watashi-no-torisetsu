@@ -52,20 +52,125 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* iOS の文字自動拡大 (横向き等での予期せぬ拡大) を抑止。 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ===== iOS 風タップフィードバック (全ボタン共通・見た目のみ) =====
+   - タップ時の青いハイライト除去 / テキスト誤選択防止 / 300ms 遅延除去
+   - :active で軽く縮む + 短いトランジションでなめらかに
+   個別ボタンの Tailwind transform (active:scale-* / active:translate-*) は詳細度が高く
+   優先されるため、既存の押下挙動は壊さず、未指定のボタンにだけ既定の縮みを足す。 */
+button,
+[role="button"],
+a[role="button"],
+label[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  user-select: none;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+button:active,
+[role="button"]:active,
+a[role="button"]:active,
+label[role="button"]:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  a[role="button"],
+  label[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    transition: none;
+  }
+  button:active,
+  [role="button"]:active,
+  a[role="button"]:active,
+  label[role="button"]:active,
+  input[type="button"]:active,
+  input[type="submit"]:active,
+  input[type="reset"]:active {
+    transform: none;
+  }
+}
+
+/* iOS: フォーカス時の自動ズーム防止 (16px 未満の入力欄をズームする挙動を抑える)。 */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* ===== 職業判明の「変身」演出 (JobRevealName) ===== kawaii×ガチャの当たり感を控えめに。 */
+@keyframes job-name-pop {
+  0% { transform: scale(0.7); opacity: 0; }
+  55% { transform: scale(1.16); opacity: 1; }
+  78% { transform: scale(0.96); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes job-sparkle {
+  0% { transform: scale(0) rotate(-12deg); opacity: 0; }
+  35% { transform: scale(1.25) rotate(8deg); opacity: 1; }
+  100% { transform: scale(0.2) rotate(26deg); opacity: 0; }
+}
+@keyframes job-flash {
+  0% { opacity: 0; }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+@keyframes job-intro-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.animate-job-name-pop {
+  animation: job-name-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.animate-job-sparkle { animation: job-sparkle 0.7s ease-out both; }
+.animate-job-flash { animation: job-flash 0.5s ease-out both; }
+.animate-job-intro-pulse {
+  animation: job-intro-pulse 0.7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-job-name-pop,
+  .animate-job-sparkle,
+  .animate-job-flash,
+  .animate-job-intro-pulse {
+    animation: none;
+  }
+}
+
 /* Phase 1.5-α Brand v2: ヒーロー背景 (lavender 外枠 + sky→pink グラデ + grid overlay) */
-/* Day 3.8: grid 線の不透明度を 0.5 → 0.3 に下げて背景化、装飾を引き立たせる */
+/* grid 線の不透明度を 0.3 → 0.12 に下げ、文章を主役に (気配が残る程度に減衰) */
 .grid-bg {
   position: relative;
-  background: linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%);
+  /* 既定は従来のグラデ。/me ではインラインで --grid-bg-fill をグループ色の極薄ウォッシュに差し替える。 */
+  background: var(--grid-bg-fill, linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%));
 }
 
 .grid-bg::before {
   content: "";
   position: absolute;
   inset: 0;
+  /* 既定は白の極薄グリッド。/me では --grid-line をグループ色(極薄)に差し替える。 */
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+    linear-gradient(var(--grid-line, rgba(255, 255, 255, 0.12)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line, rgba(255, 255, 255, 0.12)) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
   border-radius: inherit;
@@ -138,6 +243,23 @@ body {
 
 .animate-bounce-slow {
   animation: bounce-slow 1.4s ease-in-out infinite;
+}
+
+/* 結果ファーストビュー下端のスクロール継続サイン (chevron)。控えめに数px だけ上下。
+   prefers-reduced-motion では静止させる。 */
+@keyframes scroll-hint {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+
+.animate-scroll-hint {
+  animation: scroll-hint 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-scroll-hint {
+    animation: none;
+  }
 }
 
 @keyframes progress-20s {
@@ -418,6 +540,29 @@ body {
 
 .wtr-sub {
   font-size: 1rem;
+}
+
+/* ヘッダー左キャラ名の「動物名」: deepPurple + 白フチ + 黄ドロップで、ロゴ (.wtr-logo-text /
+   .wtr-name) のぷっくり立体な世界観に合わせる。font-size は付けず Tailwind (text-3xl/4xl) で制御。
+   iOS/Safari 安全のため -webkit-text-stroke ではなく text-shadow の多重がけで縁取りを作る。 */
+.header-charname {
+  color: #3a2d6b;
+  text-shadow:
+    -2px -2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px 2px 0 #fff,
+    2px 2px 0 #fff,
+    0 1px 0 #fff,
+    0 3px 0 #ffe993;
+}
+
+/* 結果ページ本文の角ゴシック (読ませる文章ブロック用)。
+   ヒラギノ角ゴ → Hiragino Sans → Noto Sans JP (next/font / 非搭載端末向け) の順でフォールバック。
+   見出しと同様に角ゴで統一し、明朝は使わない。 */
+.body-gothic {
+  font-family:
+    var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    "Noto Sans JP", sans-serif;
 }
 
 /* 日本語の説明文を読みやすく折り返す: 行長を均等化 (balance) + 文節で改行 (auto-phrase)。

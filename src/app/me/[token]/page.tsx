@@ -21,7 +21,6 @@
 //   - そのためこのページから ¥500 訴求カードは削除 (課金処理本体は触らない)
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -40,18 +39,34 @@ import {
   classifyThirtyTwoType,
   selfContentFor,
   thirtyTwoName,
+  thirtyTwoAnimal,
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoCatchphrase,
+  thirtyTwoColor,
+  thirtyTwoGroup,
+  baseIdOf,
+  nAxisOf,
+  type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
+import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
-import { CompatibleTypes } from "@/components/result/CompatibleTypes";
+// 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
+// 結果ページからは呼び出さない (import も外す)。
+import { JobReveal } from "@/components/result/JobReveal";
+import {
+  computeJob,
+  JOB_FRIEND_THRESHOLD,
+  getJobDescription,
+  formatJobIntegration,
+  JOBS,
+} from "@/lib/job";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
-import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
-import { SharePromo } from "@/components/result/SharePromo";
 import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import { generateShareCode } from "@/lib/share-code";
 import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
@@ -74,6 +89,14 @@ export const metadata: Metadata = {
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
+// シェアボタン直下の短い一言 (旧 SharePromo の長い相互理解度文を置換)。
+// ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
+const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
+
+// 章②「友達が見た自分」の職業ブロック（見出し＋職業の発表＋職業説明本文）の表示フラグ。
+// 枠組み再設計のため一時非表示（後日作り直し）。false の間、発散バー/他者評価は残す。
+const SHOW_FRIEND_VIEW = false;
+
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
   cModifier?: CModifier;
@@ -83,6 +106,7 @@ type StoredScores = Partial<Record<BigFiveDimension, number>> & {
 
 interface PageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
@@ -133,36 +157,91 @@ function deriveTypeLabel(
   return { typeName, fullCode, modifierLabel };
 }
 
-export default async function MePage({ params }: PageProps) {
-  const { token } = await params;
+// users 行のうち /me が使う最小フィールド (本番DB行 / 開発プレビュー用モック 共通の型)。
+type MeUserRow = {
+  id: string;
+  type_id: string | null;
+  scores: unknown;
+  display_name: string | null;
+  invite_code: string | null;
+};
 
-  // ===== 1. token → users 行 =====
-  const { data: user, error: userErr } = await supabaseAdmin
-    .from("users")
-    .select(
-      "id, type_id, scores, display_name, invite_code, owner_token, created_at",
-    )
-    .eq("owner_token", token)
-    .maybeSingle();
-  if (userErr) {
-    console.error("[/me/[token]] users lookup error:", userErr);
+export default async function MePage({ params, searchParams }: PageProps) {
+  const { token } = await params;
+  const sp = await searchParams;
+
+  // ===== プレビュー (token/Supabase を介さずモックスコアで結果ページを描画) =====
+  // ?previewType=<32タイプID> 指定時、そのタイプの High/Low モックで描画する。実ユーザー
+  // データは一切参照しない (モックのみ)。許可条件は「開発環境」または「/preview/[typeId]
+  // 経由 (fromPreview=1)」。本番の通常フロー (?previewType 無し) には影響しない。
+  // 例(dev): /me/x?previewType=earnest-elephant__N ／ 本番: /preview/earnest-elephant__N
+  const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewAllowed =
+    process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
+  const previewType: ThirtyTwoTypeId | null =
+    previewAllowed &&
+    /^[a-z-]+__[NR]$/.test(rawPreview) &&
+    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+      ? (rawPreview as ThirtyTwoTypeId)
+      : null;
+  // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
+  const previewScores: Record<BigFiveDimension, number> | null = previewType
+    ? (() => {
+        const code = sixteenTypes[baseIdOf(previewType)].code;
+        const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
+        return {
+          O: hi("O"),
+          C: hi("C"),
+          E: hi("E"),
+          A: hi("A"),
+          N: nAxisOf(previewType) === "N" ? 8 : 2,
+        };
+      })()
+    : null;
+
+  // ===== 1. token → users 行 (プレビュー時は Supabase を介さずモック) =====
+  let user: MeUserRow | null;
+  if (previewType) {
+    user = {
+      id: "preview",
+      type_id: classifyType(previewScores!),
+      scores: previewScores!,
+      display_name: "プレビュー",
+      invite_code: "preview",
+    };
+  } else {
+    const { data, error: userErr } = await supabaseAdmin
+      .from("users")
+      .select(
+        "id, type_id, scores, display_name, invite_code, owner_token, created_at",
+      )
+      .eq("owner_token", token)
+      .maybeSingle();
+    if (userErr) {
+      console.error("[/me/[token]] users lookup error:", userErr);
+    }
+    user = data as MeUserRow | null;
   }
   if (!user) {
     notFound();
   }
 
   // ===== 2. session 解決 → isOwner 判定 =====
-  const session = await getSession();
+  const session = previewType ? null : await getSession();
   const isOwner = !!session && session.id === (user.id as string);
 
   // ===== 3. friend_perceptions (件数 + 平均スコア) =====
   // 件数は招待CTA / 人数ゲート (他者評価セクション) の判定に使う。
   // perceived_scores (Big Five 0-10) を取得し、自己認知ギャップ表示用に平均する。
-  const { data: perceptionRows } = await supabaseAdmin
-    .from("friend_perceptions")
-    .select("id, perceived_scores, perceiver_name, created_at")
-    .eq("target_user_id", user.id)
-    .order("created_at", { ascending: true });
+  const { data: perceptionRows } = previewType
+    ? { data: null }
+    : await supabaseAdmin
+        .from("friend_perceptions")
+        .select(
+          "id, perceived_scores, perceiver_name, qualitative_data, created_at",
+        )
+        .eq("target_user_id", user.id)
+        .order("created_at", { ascending: true });
   const friendEvalCount = (perceptionRows ?? []).length;
 
   // ② 評価してくれた友達の名前 (記名表示用)。未入力は「ともだち」にフォールバック。
@@ -174,7 +253,7 @@ export default async function MePage({ params }: PageProps) {
   // ③ 友達からのメッセージ (記名)。owner_message カラム未適用でも壊れないよう best-effort。
   //    取得失敗 (列なし等) は空配列にフォールバック。表示は React が自動エスケープ。
   let friendMessages: { name: string; message: string }[] = [];
-  try {
+  if (!previewType) try {
     const { data: msgRows, error: msgErr } = await supabaseAdmin
       .from("friend_perceptions")
       .select("perceiver_name, owner_message, created_at")
@@ -222,14 +301,16 @@ export default async function MePage({ params }: PageProps) {
     })();
 
   // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
-  const { data: integratedRows } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .select(
-      "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
-    )
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .order("generated_at", { ascending: false });
+  const { data: integratedRows } = previewType
+    ? { data: null }
+    : await supabaseAdmin
+        .from("integrated_trisetsu")
+        .select(
+          "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
+        )
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .order("generated_at", { ascending: false });
   const integrated = (integratedRows ?? []).map((r) => ({
     id: r.id as string,
     title: (r.generated_title as string | null) ?? "真のトリセツ",
@@ -259,8 +340,85 @@ export default async function MePage({ params }: PageProps) {
   const sixteenTypeId = classifySixteenType(stored);
   const sixteenType = sixteenTypes[sixteenTypeId];
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
-  const flag32 = isThirtyTwoEnabled();
+  const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+
+  // 「みんなの目」タブ (深掘り4つ目) 用の文脈をサーバー側で算出。
+  //   解除後 (friendEvalCount >= REPORT_FRIEND_THRESHOLD) のみ context を作る。
+  //   友達平均→32タイプ判定・最大乖離軸のギャップ文・好きなところは同期算出、
+  //   AI 解説文 (600字) だけは MinnaNoMePanel が /api/minna-no-me で遅延生成する。
+  const minnaContext =
+    !previewType && friendEvalCount >= REPORT_FRIEND_THRESHOLD
+      ? computeMinnaNoMeContext({
+          selfScores: stored,
+          friends: (perceptionRows ?? []).map((r) => ({
+            name:
+              ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
+            perceivedScores: (r.perceived_scores ?? null) as Record<
+              string,
+              unknown
+            > | null,
+            qualitative: (r.qualitative_data ?? null) as Record<
+              string,
+              unknown
+            > | null,
+          })),
+        })
+      : null;
+  // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
+  // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
+  const HERO_BG_BY_TYPE: Record<string, string> = {
+    "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N・無地版)
+    "earnest-elephant__R": "#E7DCFB", // ドラゴン (dragon_R・無地正規化版)
+    "steady-turtle__R": "#E7DCFB", // フェニックス (phoenix_R・無地正規化版)
+    "steady-turtle__N": "#E7DCFB", // ペガサス (pegasus_N・背景実測 #E7DCFB)
+    "gentle-koala__N": "#E7DCFB", // エンジェル (angel_N・背景実測 #E7DCFB)
+    "gentle-koala__R": "#E7DCFB", // ゴーレム (golem_R・背景実測 #E7DCFB)
+    "solo-hedgehog__N": "#E7DCFB", // オバケ (ghost_N・無地版・背景実測 #E7DCFB)
+    "solo-hedgehog__R": "#E7DCFB", // ガイコツ (skeleton_R・無地版・背景実測 #E7DCFB)
+    // 空グループ (クリームイエロー無地 #FDEFB4・ばらつき0 で確認済み)
+    "quiet-owl__N": "#FDEFB4", // インコ (parakeet_N)
+    "quiet-owl__R": "#FDEFB4", // ワシ (eagle_R)
+    "seeker-wolf__N": "#FDEFB4", // ツバメ (swallow_N)
+    "seeker-wolf__R": "#FDEFB4", // タカ (hawk_R)
+    "dreamer-rabbit__N": "#FDEFB4", // ペンギン (penguin_N)
+    "dreamer-rabbit__R": "#FDEFB4", // ハクチョウ (swan_R)
+    "fantasy-cat__N": "#FDEFB4", // カラス (crow_N)
+    "fantasy-cat__R": "#FDEFB4", // ペリカン (pelican_R)
+    // 海グループ (EN系・新マスコット・背景 #BEF2F9 無地・ばらつき0 で確認済み)
+    "sparkle-dolphin__N": "#BEF2F9", // 画像 jellyfish_N
+    "sparkle-dolphin__R": "#BEF2F9", // 画像 dolphin_R
+    "ambition-lion__N": "#BEF2F9", // 画像 swordfish_N
+    "ambition-lion__R": "#BEF2F9", // 画像 orca_R
+    "whim-fox__N": "#BEF2F9", // 画像 octopus_N
+    "whim-fox__R": "#BEF2F9", // 画像 shark_R
+    "idea-monkey__N": "#BEF2F9", // 画像 clownfish_N
+    "idea-monkey__R": "#BEF2F9", // 画像 seal_R
+    // 陸グループ (ES系・新マスコット・背景 #D8F2C0 無地・ばらつき0 で確認済み)
+    "caretaker-dog__N": "#D8F2C0", // 画像 rabbit_N
+    "caretaker-dog__R": "#D8F2C0", // 画像 dog_R
+    "brisk-tiger__N": "#D8F2C0", // 画像 elephant_N
+    "brisk-tiger__R": "#D8F2C0", // 画像 bear_R
+    "smiley-panda__N": "#D8F2C0", // 画像 fox_N
+    "smiley-panda__R": "#D8F2C0", // 画像 squirrel_R
+    "playful-raccoon__N": "#D8F2C0", // 画像 cheetah_N
+    "playful-raccoon__R": "#D8F2C0", // 画像 tiger_R
+  };
+  const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
+  // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
+  const dotColor = flag32 ? thirtyTwoColor(t32) : "#C3A0E0";
+  // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
+  //   帯色→濃トーン: 紫帯→濃紫 / 青帯→深青緑 / 緑帯→濃緑 / 黄帯→濃オリーブ (名言の茶と分離)。
+  //   ※内部グループ名は 空=黄・陸=緑 (帯色で対応付け)。称号(名前)はブランド固定ネイビーのまま。
+  const CODE_COLOR_BY_GROUP: Record<ThirtyTwoGroup, string> = {
+    unknown: "#4A2A78", // 紫帯 (#E7DCFB)
+    sea: "#0E5A6B", // 青帯 (#BEF2F9)
+    land: "#2C5212", // 緑帯 (#D8F2C0)
+    sky: "#5E6B12", // 黄帯 (#FDEFB4) — 濃オリーブ
+  };
+  const codeColor = flag32
+    ? CODE_COLOR_BY_GROUP[thirtyTwoGroup(t32)]
+    : "#2B2A6B";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -269,9 +427,10 @@ export default async function MePage({ params }: PageProps) {
     : characterImagePath(sixteenTypeId);
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
+  // ヒーローのキャラ名言 (コード直下・セリフ体)。16タイプ時は oneLiner で代替。
+  const dispCatch = flag32 ? thirtyTwoCatchphrase(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
-  const diagnosedAt = formatDate(user.created_at as string);
   const inviteCode = user.invite_code as string;
   // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)。
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
@@ -279,133 +438,362 @@ export default async function MePage({ params }: PageProps) {
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
   const shareCode = generateShareCode(user.id as string);
+  // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
+  // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
+  // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
+  // off は従来 16 タイプの動物。画像/型名/essence と動物名の不一致を解消。
+  const animalName = flag32 ? thirtyTwoAnimal(t32) : sixteenType.animal;
+  const job = computeJob(friendAvgScores, friendEvalCount);
+
+  // 職業表示の制御。
+  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
+  //   /me/[token] は推測不可のトークン限定URLで通常ユーザーが踏むことはなく実質露出しない。
+  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
+  const forceReveal = sp.revealDemo === "1";
+  const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
+  // ヒーロー見出し: 称号(essence)のみを大見出しに表示。動物名(小キッカー)は非表示。
+  // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
+  const heroTitle = (
+    <div className="text-center">
+      <div
+        className="font-extrabold leading-[1.04] text-[#2B2A6B]"
+        style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
+      >
+        {dispEssence}
+      </div>
+    </div>
+  );
+  // OCEAN コード行 (大文字小文字方式): 各軸の高低 (stored スコア ≥5 = 高) を文字の大小で表す。
+  //   高 = 大文字・40px・weight800・#2B2A6B / 低 = 小文字・27px・#2B2A6B 40% (baseline 揃え)。
+  //   ●○ インジケータは廃止 (大小で高低が伝わる)。ラベル「BIG FIVE CODE」は維持。
+  const oceanIsHigh = (k: BigFiveDimension) =>
+    (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
+  const oceanRow = (
+    <div className="mt-3 md:mt-1 flex items-baseline justify-center gap-1.5">
+      {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
+        const high = oceanIsHigh(k);
+        return (
+          <span
+            key={k}
+            className="font-extrabold leading-none"
+            style={{
+              fontSize: high ? "40px" : "27px",
+              color: codeColor,
+              opacity: high ? 1 : 0.4,
+            }}
+          >
+            {high ? k : k.toLowerCase()}
+          </span>
+        );
+      })}
+    </div>
+  );
+  // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
+  //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
+  const catchphraseRow = dispCatch ? (
+    <div className="mt-3 md:mt-1 flex items-center justify-center gap-2">
+      <svg
+        viewBox="0 0 24 24"
+        width="17"
+        height="17"
+        fill="#B8860B"
+        aria-hidden="true"
+        className="flex-none"
+      >
+        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
+      </svg>
+      <p
+        className="italic text-center"
+        style={{
+          fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          fontSize: "27px",
+          lineHeight: 1.7,
+          color: "#6E4A2A",
+        }}
+      >
+        {dispCatch}
+      </p>
+      <svg
+        viewBox="0 0 24 24"
+        width="11"
+        height="11"
+        fill="#C99A2E"
+        aria-hidden="true"
+        className="flex-none"
+      >
+        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
+      </svg>
+    </div>
+  ) : null;
 
   return (
-    // Phase 1.5-α Day 11.1: LP と同じ grid-bg + 統合カード枠で世界観を連続化。
-    // - 外側: lavender (#E4E0F5) でカード周囲を埋める
-    // - 内側: 統合カード (max-w-[480px] / rounded-[32px] / border-[3px] #0094D8 / grid-bg / p-6)
-    // grid-bg の z-index 階層は globals.css (Day 8) で:
-    //   ::before (z-0) < .grid-bg > * (z-1) なので各章カードは自動でグリッド線より前面。
-    // /diagnosis (50 問) は集中環境のため lavender 単色のまま、grid-bg は適用しない。
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
-      <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
-        {/* ===== ヘッダー (左ロゴ + 右ハンバーガー、LP と同じ) =====
-            Day 12-A: 装飾だけだった ☰ を <HamburgerMenu> (3 項目メニュー) に置換 */}
-        <div className="flex justify-between items-center mb-6">
-          {/* ?stay=1: 診断済み本人が押しても / の自動リダイレクトで /me に
-              戻されず、トップ LP を表示できるようにする。 */}
-          <Link href="/?stay=1" aria-label="トップへ">
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={280}
-              height={80}
-              priority
-              className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
-            />
-          </Link>
-          <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+    // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
+    // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
+    // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
+    <main
+      className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
+      style={{ background: "#FFFDF4" }}
+    >
+      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
+          本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
+          overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
+      <div className="relative z-10 max-w-[1080px] mx-auto">
+        {/* ===== ヒーロー色面 (全幅 heroBg: 上部中央グロー + フェルトドット + 称号/OCEAN + 画像) =====
+            self-sizing 維持 (固定 height なし)。名前は上部中央グローの上 (画像より前面=隠れない)。
+            ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
+        <div
+          className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
+          style={{ background: heroBg }}
+        >
+          {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
+            }}
+          />
+          {/* フェルトドット (中間ティント・上半分/主に PC 側余白。中央の画像には重ねない) */}
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 11, height: 11, top: "15%", left: "6%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
+          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
+              PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 md:pt-2 pb-2">
+            <div className="flex justify-end mb-2">
+              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
+            </div>
+            {heroTitle}
+            {oceanRow}
+            {catchphraseRow}
+            <div className="max-w-[600px] mx-auto mt-4 md:mt-2">
+              <CharacterHero
+                imageSrc={dispImage}
+                alt={dispName}
+                essence={dispEssence}
+                name={dispName}
+                description={dispDesc}
+                imageAspectClassName="aspect-square md:max-h-[400px]"
+                imageFitClassName="object-contain"
+                imageCardClassName=""
+                imageSizes="(min-width: 768px) 600px, 100vw"
+                hideDecorations
+                hideJobGauge
+                jobSlot={{
+                  animal: animalName,
+                  job: displayJob,
+                  friendCount: friendEvalCount,
+                  threshold: JOB_FRIEND_THRESHOLD,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
+            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。
+            main 背景=クリームなので、ここから下はシームレスにクリーム。 ===== */}
+        <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 md:pt-3 pb-1">
+          <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#2B2A6B"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="opacity-60 animate-bounce"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
         </div>
 
-        {/* ===== 「{name}のトリセツ」タグ (Koi 参考: 花 + ロゴ風レタリング + ハート) ===== */}
-        <TrisetsuNameTag name={displayName} className="mb-4" />
+        {/* ===== 章① 自分が見た自分 =====
+            章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
+            キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
+            aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
+        <section aria-labelledby="chapter-self" className="mb-10">
+          {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
+              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。 */}
+          {sections.slice(0, 2).map((sec, idx) => {
+            const paragraphs = sec.body.split("\n\n");
+            // メイン見出し: タイプ固有 heading を優先、未設定は title。常に出してパートを示す。
+            const mainHeading = sec.heading ?? sec.title;
+            return (
+              <section key={sec.title} className="mb-10">
+                {/* メイン見出し。章見出しを廃したぶん、パート見出しが章①の最上位 (h2)。
+                    最初のパートに id=chapter-self を付け、section の aria-labelledby を解決。 */}
+                <h2
+                  id={idx === 0 ? "chapter-self" : undefined}
+                  className="text-[#3A2D6B] font-black text-xl leading-tight mb-3"
+                >
+                  {mainHeading}
+                </h2>
+                {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
+                <div className="px-1 pb-1">
+                  {paragraphs.map((para, pIdx) => (
+                    <p
+                      key={`${sec.title}-${pIdx}`}
+                      className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
 
-        {/* ===== ヒーロー (丸枠キャラ + essence + 型名 + 短い説明) =====
-            旧「CHARACTER 準備中」プレースホルダー / アナタのタイプ eyebrow /
-            animal 表示 / OCEA ピル / essence ピル を廃止し CharacterHero に統合。
-            「{owner}のトリセツ」黄ピル(上のステッカー)は維持。 */}
-        <CharacterHero
-          imageSrc={dispImage}
-          alt={dispName}
-          essence={dispEssence}
-          name={dispName}
-          description={dispDesc}
-        />
+          {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替)。
+              相性キャラ・自己のみ発散バーは撤去 (発散バーは章②に一本化)。 */}
+          <DeepDiveSections
+            typeId={deepDiveTypeId}
+            scores={stored}
+            minna={{
+              ownerToken: token,
+              friendCount: friendEvalCount,
+              threshold: REPORT_FRIEND_THRESHOLD,
+              context: minnaContext
+                ? {
+                    selfEssence: minnaContext.selfEssence,
+                    friendEssence: minnaContext.friendEssence,
+                    friendTypeName: minnaContext.friendTypeName,
+                    friendPreviewPath: minnaContext.friendPreviewPath,
+                    matched: minnaContext.matched,
+                    gapSentence: minnaContext.gapSentence,
+                    favoritePoints: minnaContext.favoritePoints,
+                    letters: friendMessages,
+                  }
+                : null,
+            }}
+          />
+        </section>
 
-        {/* ===== シェア導線 (キャラ直下に集約: 結果画像を SNS シェア/保存 + 相互理解度文言) =====
-            画像シェアボタンを含む ResultActions をキャラ(CharacterHero)の真下に配置。 */}
-        <ResultActions
-          typeName={dispName}
-          shareUrl={inviteUrl}
-          ownerName={displayName}
-          essence={dispEssence}
-          description={dispDesc}
-          imageSrc={dispImage}
-          shareCode={shareCode}
-        />
-        <SharePromo className="mb-8" />
-
-        {/* ===== 取説 (人物像 + 愛されるクセ) を各1段落に圧縮 =====
-            役割分担: 取説=「人柄・共有用の軽い紹介」、深掘り=「分析的・場面別」。
-            #3 取扱説明書 → 人物像の短い紹介に限定 (能力分析=場を動かす/巻き込み等は深掘り「強み」へ)。
-            #2 取扱注意 → "愛されるクセ" の軽い1段落に圧縮 (具体的対処=ひとりの時間/弱さを見せる相手選び
-            等は深掘り 弱み→成長 に集約)。
-            実装: 各 body の段落1のみ表示。段落2 (重複していた能力分析 / ひとりの時間 等) は非表示にし、
-            「ひとりの時間が必要」の三重 (取説/弱み/成長) を深掘り側 (弱み=課題 → 成長=対処) に集約する。
-            相性 (3つ目のセクション) は下の相性キャラ表示に置き換えるため slice(0, 2)。 */}
-        {sections.slice(0, 2).map((sec, idx) => {
-          const firstPara = sec.body.split("\n\n")[0];
-          return (
-            <section key={sec.title} className="mb-8">
-              {/* セクションヘッダー (🎀 バッジ + タイトル) */}
-              <div className="flex items-center gap-3 mb-4">
+        {/* ===== 章② 友達が見た自分 (ピンク系見出し・①と同格・職業/統合分析) ===== */}
+        <section aria-labelledby="chapter-friend" className="mb-8">
+          {/* 職業ブロック（見出し＋職業の発表＋職業説明本文）は SHOW_FRIEND_VIEW で一括ON/OFF。
+              枠組み再設計のため現在は非表示（後日作り直し）。発散バー/他者評価は下に残す。 */}
+          {SHOW_FRIEND_VIEW && (
+            <>
+              <div className="flex items-center gap-3 mb-5">
                 <span
                   aria-hidden="true"
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#FE3C72] text-white text-lg flex items-center justify-center"
                 >
-                  🎀
+                  👀
                 </span>
-                <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                  {sec.title}
-                </h2>
-              </div>
+            <h2
+              id="chapter-friend"
+              className="text-[#FE3C72] font-black text-2xl leading-tight"
+            >
+              友達が見た自分
+            </h2>
+          </div>
 
-              {/* 本文カード (段落1のみ) */}
-              <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed">
-                  {firstPara}
+          {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」+ 一言 / 未定はティーザー) */}
+          <JobReveal
+            job={job}
+            animal={animalName}
+            threshold={JOB_FRIEND_THRESHOLD}
+            friendCount={friendEvalCount}
+          />
+
+          {/* 職業判明後 (job !== null) のみ: 職業単体の説明 → 動物×職業の統合解説 を
+              本文として流れで表示。文言はすべて仮・定数 (job.ts) で後から差し替え/AI生成可。
+              未判明 (友達<3) は「？{動物}」ティーザーのままで非表示。 */}
+          {job && (
+            <div className="mb-8">
+              {/* 職業単体の説明 (NEW・仮 JOB_DESCRIPTION) */}
+              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-5">
+                {getJobDescription(job)}
+              </p>
+              {/* 動物×職業の統合解説 (NEW・仮 JOB_INTEGRATION、{animal} 差し込み) */}
+              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
+                {formatJobIntegration(job, animalName)}
+              </p>
+            </div>
+          )}
+            </>
+          )}
+
+          {/* 発散バー (章②に一本化)。
+              ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。
+              枠なしで本文と同じ全幅。解除後の「読み方」も白カードを外し地の文で続ける
+              (バーだけ浮かないよう世界観に揃える)。 */}
+          {friendEvalCount >= REPORT_FRIEND_THRESHOLD ? (
+            <>
+              <BigFiveDivergingBars
+                scores={stored}
+                friendScores={friendAvgScores ?? undefined}
+                title="自己認知ギャップ（自分 × 友達）"
+                emoji="🪞"
+              />
+              <aside className="mb-8">
+                <h3 className="text-[#3A2D6B] font-black text-base mb-2">
+                  このバーの読み方
+                </h3>
+                <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-2">
+                  <span className="text-[var(--primary)]">●</span> ＝ 自分の評価／
+                  <span className="text-[#3A2D6B]">◆</span> ＝ 友達の平均。
+                  2 つが離れている軸ほど、自分と友達で見え方がズレている軸です。
                 </p>
+                <p className="text-[#3A2D6B]/70 font-bold text-xs leading-relaxed">
+                  軸ごとの差は下の「他者分析」で数値でも確認できます。
+                </p>
+              </aside>
+            </>
+          ) : (
+            <>
+              <BigFiveDivergingBars
+                scores={stored}
+                title="5つの軸で見るアナタ"
+                emoji="✨"
+              />
+              <p className="text-[#3A2D6B]/60 font-bold text-xs leading-relaxed -mt-4 mb-8">
+                いまは自分の評価（●）だけ。友達 {REPORT_FRIEND_THRESHOLD}{" "}
+                人が評価すると、友達の平均（◆）が重なって「ズレ」が見えます。
+              </p>
+            </>
+          )}
 
-                {/* 取扱説明書 (最初のセクション) の末尾に診断日 (小さく) */}
-                {idx === 0 && diagnosedAt && (
-                  <p className="text-[#3A2D6B]/50 text-xs font-bold mt-5">
-                    診断日: {diagnosedAt}
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        })}
+          {/* ロックされた他者評価 (友達3人で解除、課金なし)。
+              ロック中: チラ見せ + ゲージ + QR/LINE 招待。
+              解除後: 他者分析(gap) / 隠れた強み / 評価者名 / メッセージ (発散バーは上に一本化)。 */}
+          <OthersPerceptionSection
+            friendCount={friendEvalCount}
+            threshold={REPORT_FRIEND_THRESHOLD}
+            isOwner={isOwner}
+            selfScores={stored}
+            friendAvgScores={friendAvgScores}
+            friendNames={friendNames}
+            friendMessages={friendMessages}
+            inviteUrl={inviteUrl}
+          />
+        </section>
 
-        {/* ===== 相性キャラ 2 体 (取説「相性の良いお相手」文章の置き換え) =====
-            1位=BEST_PARTNER_CONTENT / 2位=SECOND_PARTNER(暫定) を 32 キャラ(v3)で表示。 */}
-        <CompatibleTypes typeId={deepDiveTypeId} />
 
-        {/* ===== Big Five 5 軸の発散バー (取扱説明書の下、深掘りの上) =====
-            スコアは user.scores (0-10) を真実源に、コンポーネント側で 0-100% へ変換して表示。
-            診断ロジック・スキーマは触らず、ここでは派生表示のみ (二重計算しない)。 */}
-        <BigFiveDivergingBars scores={stored} />
-
-        {/* ===== 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替) =====
-            本文は固定テンプレ report-data.ts の TYPE_DEEP_DIVE を再利用 (新規AI生成なし)。
-            各カードに user.scores 由来のスコア一文 (ルールベース) を添える。 */}
-        <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
-
-        {/* ===== ロックされた他者評価 (深掘りの直下) =====
-            友達 REPORT_FRIEND_THRESHOLD(=3) 人で解除する人数ゲート。
-            解除後は他者分析 / 隠れた強み / 自己認知ギャップ (発散バーに友達平均を重ね)。
-            既存の ¥500 課金ロック (perception-unlock.ts) には触れない別ゲート。 */}
-        <OthersPerceptionSection
-          friendCount={friendEvalCount}
-          threshold={REPORT_FRIEND_THRESHOLD}
-          isOwner={isOwner}
-          selfScores={stored}
-          friendAvgScores={friendAvgScores}
-          friendNames={friendNames}
-          friendMessages={friendMessages}
-          inviteUrl={inviteUrl}
-        />
-
+        {/* ===== 下部・本命シェア導線 (読み終えた位置) =====
+            上部はアイコンのみの省スペース版。ここはアイコン+ラベルのしっかり版 + 短い一言。
+            owner はこの直下に QR (FriendGapInvite) も続く二段構え。 */}
+        <div className="mb-2">
+          <p className="text-center text-[#3A2D6B]/80 font-bold text-sm mb-3 px-4">
+            {SHARE_CTA_CAPTION}
+          </p>
+          <ResultActions
+            typeName={dispName}
+            shareUrl={inviteUrl}
+            ownerName={displayName}
+            essence={dispEssence}
+            description={dispDesc}
+            imageSrc={dispImage}
+            shareCode={shareCode}
+          />
+        </div>
 
         {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
             Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。

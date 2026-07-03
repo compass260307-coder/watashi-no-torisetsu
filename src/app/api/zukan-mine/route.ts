@@ -25,7 +25,7 @@ import {
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import {
   classifyThirtyTwoType,
-  thirtyTwoName,
+  thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoColor,
 } from "@/lib/thirty-two-types";
@@ -94,7 +94,7 @@ function deriveDiagnosisCard(row: UserRow): DiagnosisCard {
     ownerToken: row.owner_token,
     typeId,
     // 型名・画像・色: on=32キャラ / off=従来16 (+8タイプ色)
-    typeName: t32 ? thirtyTwoName(t32) : sixteenTypes[id16].name,
+    typeName: t32 ? thirtyTwoEssence(t32) : sixteenTypes[id16].essence,
     typeColor: t32 ? thirtyTwoColor(t32) : (typeMeta?.color ?? "#888888"),
     fullCode,
     modifierLabel,
@@ -167,8 +167,8 @@ export async function GET(request: NextRequest) {
           perceivedTypeId: typeId,
           // 知覚タイプ名/画像: on=32キャラ / off=従来16 (perceived_scores から派生)
           perceivedTypeName: pT32
-            ? thirtyTwoName(pT32)
-            : sixteenTypes[pId16].name,
+            ? thirtyTwoEssence(pT32)
+            : sixteenTypes[pId16].essence,
           perceivedImageSrc: pT32
             ? thirtyTwoImagePath(pT32)
             : characterImagePath(pId16),
