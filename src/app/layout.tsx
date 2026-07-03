@@ -14,6 +14,17 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   variable: "--font-m-plus-rounded",
 });
 
+// feat/top-page (16P型リニューアル): トップヒーローのタイポ (--font-noto-sans)。
+// H1=極太ゴシック(Noto Sans JP 800)、本文=ゴシック(Noto Sans JP 400/500/700)。
+// ※ 下の notoSansJP (--font-noto-sans-jp、結果ページ用) とは別インスタンス。
+//   同一ファミリーだが用途・weight・preload が異なるため統合しない。
+const notoSansTop = Noto_Sans_JP({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "800"],
+  display: "swap",
+  variable: "--font-noto-sans",
+});
+
 // 結果ページ本文の角ゴシック (.body-gothic が参照)。ヒラギノ非搭載端末向けフォールバック。
 // JP フォントは巨大なので preload しない。
 const notoSansJP = Noto_Sans_JP({
@@ -124,7 +135,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${mPlusRounded.variable} ${notoSansJP.variable}`}
+      className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
     >
       <body
         className="min-h-dvh flex flex-col"

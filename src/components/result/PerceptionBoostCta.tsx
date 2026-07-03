@@ -17,7 +17,7 @@ interface PerceptionBoostCtaProps {
   inviteUrl: string;
 }
 
-const SHARE_TEXT = "友達から見たわたしを教えて！「ワタシのトリセツ」で相互理解度がわかるよ";
+const SHARE_TEXT = "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
 
 export function PerceptionBoostCta({ inviteUrl }: PerceptionBoostCtaProps) {
   const [copied, setCopied] = useState(false);
@@ -47,7 +47,7 @@ export function PerceptionBoostCta({ inviteUrl }: PerceptionBoostCtaProps) {
       <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-2">
         もっと友達に答えてもらうと、
         <br />
-        相互理解度の精度が上がる
+        他己診断テストの精度が上がる
       </h2>
       <p className="text-[#3A2D6B]/75 text-sm leading-relaxed mb-5">
         答えてくれる友達が増えるほど、&ldquo;友達から見たアナタ&rdquo;の解像度が上がります。リンクをシェアして、もっと答えてもらおう。
