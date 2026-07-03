@@ -158,22 +158,25 @@ export default function TypesPage() {
                 </div>
 
                 {/* キャラ列は巨大タイポの下半分に重ねる (pt = 巨大タイポの ~55%) */}
-                <div className="relative mx-auto max-w-[1160px] px-6 pb-10 pt-[clamp(80px,12.5vw,190px)] md:pb-14">
-                  {/* タイプ 8 体 (SP 2 列 / PC 4 列)。白リング円形 + 影で立体感を統一 */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 lg:grid-cols-4">
+                {/* コンテナ広め (1360px)・左右パディング/列間を詰めて、キャラに横幅を最大限使わせる */}
+                <div className="relative mx-auto max-w-[1360px] px-3 pb-10 pt-[clamp(80px,12.5vw,190px)] md:px-6 md:pb-14">
+                  {/* タイプ 8 体 (SP 2 列 / PC 4 列)。画像は列幅いっぱい (w-full) */}
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-10 md:gap-x-4 lg:grid-cols-4">
                     {ids.map((id) => (
                       <article
                         key={id}
-                        className="flex flex-col items-center text-center"
+                        // min-w-0: グリッドアイテムが画像の指定幅 (320px) を最小幅として
+                        // 主張して列が縮まなくなる (SP で横はみ出しする) のを防ぐ
+                        className="flex min-w-0 flex-col items-center text-center"
                       >
                         {/* キャラ: 枠・影・クロップなしの素置き。画像背景 = 帯色なので
                             境界が消えて帯の上にいるように見える (16P 風) */}
                         <Image
                           src={thirtyTwoImagePath(id)}
                           alt={thirtyTwoEssence(id)}
-                          width={260}
-                          height={260}
-                          className="w-full max-w-[170px] md:max-w-[250px]"
+                          width={320}
+                          height={320}
+                          className="h-auto w-full"
                         />
                         {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード */}
                         <h3
