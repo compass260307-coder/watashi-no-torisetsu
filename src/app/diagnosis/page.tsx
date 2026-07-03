@@ -257,16 +257,34 @@ function DiagnosisContent() {
       metadata: { questionId },
     });
 
+    // === 自動ページ送り (16P 方式): この回答でページの全問が埋まったら次ページへ ===
+    // 発火条件は「未回答だった質問に答えて、ページの未回答が 0 になった瞬間」のみ。
+    //  - 戻って見直し中の答え直し (すでに全問回答済み) では発火しない
+    //    (見直しの途中で勝手にページが変わらない)。その場合の前進は footer の
+    //    「次へ」(ページ完了時のみ表示) で行う。
+    //  - 最終ページは自動送信しない (「結果を見る」を明示的に押す。
+    //    API 送信 + 分析ローディングに勝手に入らない)。
+    const wasUnanswered = answers[questionId] === undefined;
+    const pageJustCompleted =
+      wasUnanswered &&
+      pageQuestions.every(
+        (q) => q.id === questionId || answers[q.id] !== undefined,
+      );
+    if (pageJustCompleted && !isLastPage) {
+      // 選択の色が付くのを一拍見せてからページ送り (ページ先頭へのスクロールは
+      // currentPage 変化を見る useEffect に集約済み)。
+      window.setTimeout(() => setCurrentPage((p) => p + 1), 550);
+      return;
+    }
+
     // === 自動送り: 「次の質問が未回答のときだけ」その質問へ進む ===
     // 判定基準は「初回かどうか」ではなく「進む先 (= 次の質問) が未回答か」。
     //  - 通常進行 (次が未回答) → 次の質問へオートスクロール。
     //  - 戻って答え直し等で次がすでに回答済み → 進まず留まる (答え済みの先へ飛ばさない)。
-    //  - ページ最後の質問 (次が無い) / 全問回答済み → 自動送りせず、StickyCtaFooter の
-    //    「次へ / 結果を見る」で明示的に進める (勝手にページを飛ばさない)。
     const idx = pageQuestions.findIndex((q) => q.id === questionId);
     if (idx === -1) return;
     const target = pageQuestions[idx + 1]; // 同ページ内の「次の質問」
-    if (!target) return; // ページ最後 → ボタンに委譲
+    if (!target) return; // ページ最後 (未完了 = どこかに未回答が残っている) → 留まる
     if (answers[target.id] !== undefined) return; // 次が回答済み → 留まる
     const el = questionRefs.current[target.id];
     if (!el) return;
@@ -527,7 +545,7 @@ function DiagnosisContent() {
 
         {!isPageComplete && (
           <p className="text-center text-xs text-[#8A8AA3] font-bold mt-4 mb-4">
-            このページの 10 問すべてに答えると、次のページに進めるよ
+            10 問すべてに答えると、自動で次のページに進むよ
           </p>
         )}
 
@@ -539,7 +557,10 @@ function DiagnosisContent() {
       </main>
 
       {/* variant="white": 白基調ページのため footer も白ベタ + 上端フェード
-          (footer 直上に回答の○が来るので半透明 scrim は使わない) */}
+          (footer 直上に回答の○が来るので半透明 scrim は使わない)。
+          自動ページ送り化に伴い、置くボタンが 1 つもない状態 (1 ページ目の回答中)
+          では footer 自体を出さない。 */}
+      {(currentPage > 0 || isPageComplete) && (
       <StickyCtaFooter variant="white">
         {currentPage > 0 && (
           <button
@@ -552,14 +573,13 @@ function DiagnosisContent() {
           </button>
         )}
         {!isLastPage ? (
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!isPageComplete}
-            className={soraPrimary}
-          >
-            次へ
-          </button>
+          // 通常フローは自動ページ送りなので「次へ」は出さない。
+          // 「戻る」で見直しに来た完了済みページからの前進用にだけ表示する。
+          isPageComplete && (
+            <button type="button" onClick={handleNext} className={soraPrimary}>
+              次へ
+            </button>
+          )
         ) : (
           <button
             type="button"
@@ -571,6 +591,7 @@ function DiagnosisContent() {
           </button>
         )}
       </StickyCtaFooter>
+      )}
     </div>
   );
 }
