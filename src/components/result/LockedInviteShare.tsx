@@ -16,7 +16,7 @@ interface LockedInviteShareProps {
 }
 
 const SHARE_TEXT =
-  "友達から見たわたしを教えて！「ワタシのトリセツ」で相互理解度がわかるよ";
+  "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
 
 export function LockedInviteShare({ inviteUrl }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);

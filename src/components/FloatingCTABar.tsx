@@ -37,7 +37,7 @@ function buttonFor(state: CTAState): CtaButton {
     case "guest":
       return { label: "無料で診断する", href: "/diagnosis" };
     case "diagnosed":
-      return { label: "相互理解度を測る", href: "/friend-evaluation" };
+      return { label: "他己診断テストへ", href: "/friend-evaluation" };
   }
 }
 

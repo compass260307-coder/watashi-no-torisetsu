@@ -359,9 +359,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
 // Intro 画面 (Day 12-Polish-E: /me レイアウト流用の "CTA 違い版")
 //   - レイアウトは /me と同じ: タグ / ヒーロー(owner のキャラ+型名+essence) / 3 セクション。
 //     表示データは owner 本人のもの (selfResultContent[owner16型])。
-//   - メイン CTA「相互理解度を測る」は最下部 (3 セクションの後) に配置。タップで評価フロー開始。
+//   - メイン CTA「他己診断テストをはじめる」は最下部 (3 セクションの後) に配置。タップで評価フロー開始。
 //   - フローティング CTA (/me と同じ FloatingShareCta = 右下固定の円形 chunky) を併設。
-//     文言「相互理解度を測る」、タップで評価フロー開始。
+//     文言「他己診断テスト」、タップで評価フロー開始。
 //   - 友達向けフレーミング文は撤去。旧デザイン (ペアのマスコット等) は新レイアウトに置換済み。
 // =========================================================================
 function IntroScreen({
@@ -453,7 +453,7 @@ function IntroScreen({
                 onClick={onStart}
                 className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
               >
-                相互理解度を測る →
+                他己診断テストをはじめる →
               </button>
               <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
                 10 問・約 1 分。アナタの目線で答えるだけ。
@@ -466,9 +466,9 @@ function IntroScreen({
       {/* /me と同じフローティング CTA (右下固定の円形 chunky)。タップで評価フロー開始。 */}
       <FloatingShareCta
         onClick={onStart}
-        line1="相互理解度"
-        line2="を測る"
-        ariaLabel="相互理解度を測る"
+        line1="他己診断"
+        line2="テスト"
+        ariaLabel="他己診断テストをはじめる"
       />
     </main>
   );

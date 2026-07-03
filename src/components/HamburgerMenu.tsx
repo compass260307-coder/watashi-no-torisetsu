@@ -27,10 +27,14 @@
 //   時には document が存在しないため、useEffect で mounted state を立てて 2 回目以降に
 //   Portal を描画する。これで hydration mismatch を避ける。
 //
-// 含む 3 項目:
+// 含む項目 (ヘッダー TopHeader のナビ構成と揃える + アプリ内専用 2 項目):
 //   1. トップ              → /
 //   2. ワタシのトリセツ    → myTrisetsuUrl prop (未指定なら /result 経由で自分の /me に解決)
-//   3. 相互理解度          → /friend-evaluation
+//   3. 性格診断テスト      → /diagnosis
+//   4. 他己診断テスト      → /friend-evaluation (旧表記: 相互理解度)
+//   5. 性格タイプ          → /zukan/all
+//   6. サービスについて    → /about
+//   7. ログイン            → /login
 //
 // Day 12-Polish: PC でのオーバーレイ幅を max-w-[480px] に制限 + 中央寄せ、
 //   ☰ トグルをブランドの chunky ボタン化 (sunYellow ソリッド + 太枠 + オフセット影 + 太線 SVG)、
@@ -144,10 +148,18 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
             onClose={handleClose}
           />
           <MenuLink
-            href="/friend-evaluation"
-            label="相互理解度"
+            href="/diagnosis"
+            label="性格診断テスト"
             onClose={handleClose}
           />
+          <MenuLink
+            href="/friend-evaluation"
+            label="他己診断テスト"
+            onClose={handleClose}
+          />
+          <MenuLink href="/zukan/all" label="性格タイプ" onClose={handleClose} />
+          <MenuLink href="/about" label="サービスについて" onClose={handleClose} />
+          <MenuLink href="/login" label="ログイン" onClose={handleClose} />
         </nav>
 
         {/* ===== この端末のデータを消す (共用端末からの脱出 / 自動リダイレクトの逃げ道) =====
