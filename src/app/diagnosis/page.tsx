@@ -21,8 +21,6 @@ const FONT_STACK =
 
 const soraPrimary =
   "sora-cta rounded-full px-10 py-4 min-w-[180px] font-bold text-center block transition-all duration-150 hover:translate-y-px active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed";
-const soraSecondary =
-  "bg-white border border-[#2E2E5C]/25 text-[#2E2E5C] font-bold rounded-full px-8 py-4 text-center block transition active:translate-y-[2px]";
 
 const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
@@ -79,6 +77,10 @@ function DiagnosisContent() {
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
+  // 自動ページ送りの待機中 (0.55s)。この間は footer (次へ) を出さない —
+  // ページ完了と同時に isPageComplete が立つため、抑制しないと遷移直前に
+  // 「次へ」が一瞬チラつく。
+  const [autoAdvancing, setAutoAdvancing] = useState(false);
   // 途中保存の再開候補 (null = 保存なし / すでに選択済み)。選択UI表示中だけ非 null。
   const [pendingResume, setPendingResume] = useState<{
     answers: Record<number, AnswerValue>;
@@ -272,8 +274,12 @@ function DiagnosisContent() {
       );
     if (pageJustCompleted && !isLastPage) {
       // 選択の色が付くのを一拍見せてからページ送り (ページ先頭へのスクロールは
-      // currentPage 変化を見る useEffect に集約済み)。
-      window.setTimeout(() => setCurrentPage((p) => p + 1), 550);
+      // currentPage 変化を見る useEffect に集約済み)。待機中は footer を抑制。
+      setAutoAdvancing(true);
+      window.setTimeout(() => {
+        setCurrentPage((p) => p + 1);
+        setAutoAdvancing(false);
+      }, 550);
       return;
     }
 
@@ -301,12 +307,6 @@ function DiagnosisContent() {
   const handleNext = () => {
     if (!isPageComplete || isLastPage) return;
     setCurrentPage((p) => p + 1);
-    // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
-  };
-
-  const handlePrev = () => {
-    if (currentPage === 0) return;
-    setCurrentPage((p) => p - 1);
     // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
@@ -492,9 +492,8 @@ function DiagnosisContent() {
     );
   }
 
-  // Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter (全画面共通)
-  //   - 戻る は conditional render (page 0 では非表示で 次へ を完全中央に)
-  //   - 次へ / 結果を見る は常に同じ ctaPrimary (disabled は opacity のみ)
+  // 16P 方式: 前進は自動ページ送りが担い、「戻る」ボタンは置かない
+  // (16P 同様、迷わず前へ進む一方通行の体験にする)。
 
   return (
     <div
@@ -558,28 +557,18 @@ function DiagnosisContent() {
 
       {/* variant="white": 白基調ページのため footer も白ベタ + 上端フェード
           (footer 直上に回答の○が来るので半透明 scrim は使わない)。
-          自動ページ送り化に伴い、置くボタンが 1 つもない状態 (1 ページ目の回答中)
-          では footer 自体を出さない。 */}
-      {(currentPage > 0 || isPageComplete) && (
+          自動ページ送り化に伴い footer を出すのは:
+            - 最終ページ (結果を見る) 常時
+            - 完了済みページに「自動送りなし」で居るとき (途中保存の再開で
+              ちょうど完了済みページに着地したレアケース) の「次へ」のみ。
+          自動送りの待機中 (autoAdvancing) は isPageComplete が立っていても
+          出さない — 遷移直前に「次へ」が一瞬チラつくのを防ぐ。 */}
+      {(isLastPage || (isPageComplete && !autoAdvancing)) && (
       <StickyCtaFooter variant="white">
-        {currentPage > 0 && (
-          <button
-            type="button"
-            onClick={handlePrev}
-            aria-label="前のページに戻る (回答は保持されます)"
-            className={soraSecondary}
-          >
-            戻る
-          </button>
-        )}
         {!isLastPage ? (
-          // 通常フローは自動ページ送りなので「次へ」は出さない。
-          // 「戻る」で見直しに来た完了済みページからの前進用にだけ表示する。
-          isPageComplete && (
-            <button type="button" onClick={handleNext} className={soraPrimary}>
-              次へ
-            </button>
-          )
+          <button type="button" onClick={handleNext} className={soraPrimary}>
+            次へ
+          </button>
         ) : (
           <button
             type="button"
