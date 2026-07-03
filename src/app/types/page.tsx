@@ -162,7 +162,7 @@ export default function TypesPage() {
                 <div className="relative w-full px-3 pb-10 pt-[clamp(80px,12.5vw,190px)] md:px-8 md:pb-14">
                   {/* タイプ 8 体 (SP 2 列 / PC 4 列)。画像は列幅いっぱい (w-full) */}
                   <div className="grid grid-cols-2 gap-x-2 gap-y-10 md:gap-x-6 lg:grid-cols-4">
-                    {ids.map((id) => (
+                    {ids.map((id, i) => (
                       <article
                         key={id}
                         // min-w-0: グリッドアイテムが画像の指定幅 (320px) を最小幅として
@@ -170,14 +170,24 @@ export default function TypesPage() {
                         className="flex min-w-0 flex-col items-center text-center"
                       >
                         {/* キャラ: 枠・影・クロップなしの素置き。画像背景 = 帯色なので
-                            境界が消えて帯の上にいるように見える (16P 風) */}
-                        <Image
-                          src={thirtyTwoImagePath(id)}
-                          alt={thirtyTwoEssence(id)}
-                          width={512}
-                          height={512}
-                          className="h-auto w-full"
-                        />
+                            境界が消えて帯の上にいるように見える (16P 風)。
+                            アイドルモーションは index で位相・周期をずらし、
+                            隣どうしが同時に動かないようにする。 */}
+                        <div
+                          className="type-idle w-full"
+                          style={{
+                            animationDelay: `${(i % 4) * 0.9 + (i % 2) * 0.4}s`,
+                            animationDuration: `${4.6 + (i % 3) * 0.7}s`,
+                          }}
+                        >
+                          <Image
+                            src={thirtyTwoImagePath(id)}
+                            alt={thirtyTwoEssence(id)}
+                            width={512}
+                            height={512}
+                            className="h-auto w-full"
+                          />
+                        </div>
                         {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード。
                             ワイド画面 (xl) ではキャラに合わせて文字も一段大きく */}
                         <h3
