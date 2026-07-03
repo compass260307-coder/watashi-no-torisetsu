@@ -54,6 +54,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
+import { computeMinnaNoMeContext, scoreImpressionLine } from "@/lib/minna-no-me";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 // 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
 // 結果ページからは呼び出さない (import も外す)。
@@ -236,7 +237,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
     ? { data: null }
     : await supabaseAdmin
         .from("friend_perceptions")
-        .select("id, perceived_scores, perceiver_name, created_at")
+        .select(
+          "id, perceived_scores, perceiver_name, qualitative_data, created_at",
+        )
         .eq("target_user_id", user.id)
         .order("created_at", { ascending: true });
   const friendEvalCount = (perceptionRows ?? []).length;
@@ -339,6 +342,29 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+
+  // 「みんなの目」タブ (深掘り4つ目) 用の文脈をサーバー側で算出。
+  //   解除後 (friendEvalCount >= REPORT_FRIEND_THRESHOLD) のみ context を作る。
+  //   友達平均→32タイプ判定・最大乖離軸のギャップ文・好きなところは同期算出、
+  //   AI 解説文 (600字) だけは MinnaNoMePanel が /api/minna-no-me で遅延生成する。
+  const minnaContext =
+    !previewType && friendEvalCount >= REPORT_FRIEND_THRESHOLD
+      ? computeMinnaNoMeContext({
+          selfScores: stored,
+          friends: (perceptionRows ?? []).map((r) => ({
+            name:
+              ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
+            perceivedScores: (r.perceived_scores ?? null) as Record<
+              string,
+              unknown
+            > | null,
+            qualitative: (r.qualitative_data ?? null) as Record<
+              string,
+              unknown
+            > | null,
+          })),
+        })
+      : null;
   // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
   // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
   const HERO_BG_BY_TYPE: Record<string, string> = {
@@ -625,7 +651,32 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
           {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替)。
               相性キャラ・自己のみ発散バーは撤去 (発散バーは章②に一本化)。 */}
-          <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+          <DeepDiveSections
+            typeId={deepDiveTypeId}
+            scores={stored}
+            minna={{
+              ownerToken: token,
+              friendCount: friendEvalCount,
+              threshold: REPORT_FRIEND_THRESHOLD,
+              context: minnaContext
+                ? {
+                    selfEssence: minnaContext.selfEssence,
+                    friendEssence: minnaContext.friendEssence,
+                    friendTypeName: minnaContext.friendTypeName,
+                    friendPreviewPath: minnaContext.friendPreviewPath,
+                    matched: minnaContext.matched,
+                    gapSentence: minnaContext.gapSentence,
+                    favoritePoints: minnaContext.favoritePoints,
+                    letters: friendMessages,
+                    // B-1: 手紙/チップの空判定はパネル側。ここでは常にスコア由来の
+                    //   1行を用意しておき、両方空のときだけパネルが表示する。
+                    scoreImpression: scoreImpressionLine(
+                      minnaContext.friendAvgScores,
+                    ),
+                  }
+                : null,
+            }}
+          />
         </section>
 
         {/* ===== 章② 友達が見た自分 (ピンク系見出し・①と同格・職業/統合分析) ===== */}
