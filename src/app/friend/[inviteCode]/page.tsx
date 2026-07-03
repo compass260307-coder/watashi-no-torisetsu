@@ -19,7 +19,6 @@
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
 import {
@@ -31,29 +30,20 @@ import {
   type FriendChoiceQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
+import { ProgressBar } from "@/components/diagnosis/ProgressBar";
 import {
   StickyCtaFooter,
   ctaPrimary,
   ctaSecondary,
 } from "@/components/StickyCtaFooter";
-import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
-import { CharacterHero } from "@/components/result/CharacterHero";
-import { FloatingShareCta } from "@/components/result/FloatingShareCta";
 import {
-  sixteenTypes,
   characterImagePath,
   type SixteenTypeId,
 } from "@/lib/sixteen-types";
-import { selfResultContent } from "@/lib/self-result-content";
 // 32タイプ本文 (フラグ on 時のみ・①本文だけ32化。型名/画像は16のまま=解釈A)
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import {
-  selfContentFor,
-  thirtyTwoName,
-  thirtyTwoEssence,
   thirtyTwoImagePath,
-  thirtyTwoOneLiner,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
@@ -66,7 +56,6 @@ import type { AnswerValue } from "@/lib/types";
 //   新フロー: intro (名前なし) → scale → choice → consent → name → submitting
 //   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
 type Phase =
-  | "intro"
   | "scale"
   | "choice"
   | "consent"
@@ -88,6 +77,13 @@ interface OwnerInfo {
 
 // 改修: 10 問 = 1 ページ。
 const SCALE_PAGES: FriendQuestionV2[][] = [FRIEND_QUESTIONS_V2_PAGE_1];
+
+// prefers-reduced-motion 尊重 (自己診断 diagnosis/page.tsx と同挙動)。
+// true のときオートスクロールを smooth ではなく auto (瞬間) にする。
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 export default function FriendPage({
   params,
@@ -119,7 +115,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     sixteenTypeId: null,
     thirtyTwoTypeId: null,
   });
-  const [phase, setPhase] = useState<Phase>("intro");
+  // 導線改善: intro (owner トリセツ全文) を廃止し、踏んだ瞬間から質問 (scale) 直行。
+  // owner のトリセツ相当は送信完了後の /evaluate/sent で「ご褒美」+自己診断CTAとして表示。
+  const [phase, setPhase] = useState<Phase>("scale");
   const [pageIdx, setPageIdx] = useState<number>(0);
   const [choiceIdx, setChoiceIdx] = useState<0 | 1 | 2>(0);
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>(
@@ -140,6 +138,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     if (!trackedLanding.current) {
       trackedLanding.current = true;
       track("friend_landing_viewed", { inviteCode });
+      // intro 廃止に伴い、評価開始 = マウント時 (質問直行) に発火へ移設。
+      track("friend_v2_started", { inviteCode });
     }
     fetch(`/api/friend-info?code=${inviteCode}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -165,13 +165,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     : "友達";
 
   // ===== ハンドラ =====
-  const startEvaluation = () => {
-    setPhase("scale");
-    setPageIdx(0);
-    track("friend_v2_started", { inviteCode });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const handleScaleAnswer = (questionId: number, value: AnswerValue) => {
     setScaleAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
@@ -261,17 +254,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     }
   };
 
-  // ===== 画面分岐 =====
-  if (phase === "intro") {
-    return (
-      <IntroScreen
-        owner={owner}
-        ownerName={ownerName}
-        onStart={startEvaluation}
-      />
-    );
-  }
-
+  // ===== 画面分岐 (intro 廃止: 初期 phase="scale" で質問直行) =====
   if (phase === "scale") {
     return (
       <ScaleScreen
@@ -355,124 +338,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   );
 }
 
-// =========================================================================
-// Intro 画面 (Day 12-Polish-E: /me レイアウト流用の "CTA 違い版")
-//   - レイアウトは /me と同じ: タグ / ヒーロー(owner のキャラ+型名+essence) / 3 セクション。
-//     表示データは owner 本人のもの (selfResultContent[owner16型])。
-//   - メイン CTA「相互理解度を測る」は最下部 (3 セクションの後) に配置。タップで評価フロー開始。
-//   - フローティング CTA (/me と同じ FloatingShareCta = 右下固定の円形 chunky) を併設。
-//     文言「相互理解度を測る」、タップで評価フロー開始。
-//   - 友達向けフレーミング文は撤去。旧デザイン (ペアのマスコット等) は新レイアウトに置換済み。
-// =========================================================================
-function IntroScreen({
-  owner,
-  ownerName,
-  onStart,
-}: {
-  owner: OwnerInfo;
-  ownerName: string;
-  onStart: () => void;
-}) {
-  const typeId = owner.sixteenTypeId;
-  const type16 = typeId ? sixteenTypes[typeId] : null;
-  // 解釈B: フラグ on で型名・essence・画像を32化 (off=従来16)。
-  const c32 = isThirtyTwoEnabled() ? owner.thirtyTwoTypeId : null;
-  // ①本文のみフラグで32化。on=32実データ(N高低)→base16フォールバック / off=従来16。
-  const sections =
-    isThirtyTwoEnabled() && owner.thirtyTwoTypeId
-      ? selfContentFor(owner.thirtyTwoTypeId)
-      : typeId
-        ? selfResultContent[typeId]
-        : null;
-
-  return (
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32">
-      <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
-        {/* ===== ヘッダー ===== */}
-        <div className="flex justify-between items-center mb-6">
-          <Link href="/" aria-label="トップへ">
-            <Image
-              src="/logo.png"
-              alt="ワタシのトリセツ"
-              width={280}
-              height={80}
-              priority
-              className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
-            />
-          </Link>
-          <HamburgerMenu />
-        </div>
-
-        {/* ===== タグ ({owner}のトリセツ) = /me と同じ ===== */}
-        <TrisetsuNameTag name={ownerName} className="mb-4" />
-
-        {!type16 || !sections ? (
-          // owner 情報の取得待ち (invite_code → 16 タイプ)。短時間の読み込み。
-          <div className="py-16 text-center">
-            <p className="text-sm font-bold text-[#3A2D6B]/70">読み込み中...</p>
-          </div>
-        ) : (
-          <>
-            {/* ===== ヒーロー (owner のキャラ + essence + 型名) = /me と同じ ===== */}
-            <CharacterHero
-              imageSrc={c32 ? thirtyTwoImagePath(c32) : characterImagePath(typeId!)}
-              alt={c32 ? thirtyTwoEssence(c32) : type16.essence}
-              essence={c32 ? thirtyTwoEssence(c32) : type16.essence}
-              name={c32 ? thirtyTwoName(c32) : type16.name}
-              description={c32 ? thirtyTwoOneLiner(c32) : type16.oneLiner}
-            />
-
-            {/* ===== 3 セクション (取扱説明書 / 取扱注意ポイント / 相性の良いお相手) = /me と同じ ===== */}
-            {sections.map((sec, idx) => (
-              <section key={sec.title} className="mb-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
-                    {sec.title}
-                  </h2>
-                </div>
-                <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-                  {sec.body.split("\n\n").map((para, i) => (
-                    <p
-                      key={i}
-                      className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-4 last:mb-0"
-                    >
-                      {para}
-                    </p>
-                  ))}
-                </div>
-              </section>
-            ))}
-
-            {/* ===== メイン CTA (最下部 = 3 セクションの後)。タップで評価フロー開始 ===== */}
-            <div className="mb-2">
-              <button
-                type="button"
-                onClick={onStart}
-                className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
-              >
-                相互理解度を測る →
-              </button>
-              <p className="text-center text-[11px] text-[#3A2D6B]/65 font-bold mt-2">
-                10 問・約 1 分。アナタの目線で答えるだけ。
-              </p>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* /me と同じフローティング CTA (右下固定の円形 chunky)。タップで評価フロー開始。 */}
-      <FloatingShareCta
-        onClick={onStart}
-        line1="相互理解度"
-        line2="を測る"
-        ariaLabel="相互理解度を測る"
-      />
-    </main>
-  );
-}
 
 // =========================================================================
 // Scale 画面 (Day 9 /diagnosis と統一: lavender + sunYellow + 立体 CTA)
@@ -501,38 +366,39 @@ function ScaleScreen({
   isPageComplete: boolean;
 }) {
   const isLastPage = page === totalPages - 1;
-  const percent = Math.round((answeredCount / FRIEND_QUESTIONS_V2_TOTAL) * 100);
   const inviteeName = subjectLabel.replace(/さん$/, "");
 
-  // Polish-D-A FINAL: ctaPrimary / ctaSecondary を import (ローカル navCta* 廃止)
+  // 自己診断 (diagnosis/page.tsx 244-274) と同じオートスクロール:
+  //   回答すると同ページ内の「次の未回答質問」へスクロール + フォーカス。
+  //   次が回答済み (答え直し等) / ページ最後の質問 は自動送りしない。
+  const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const answerAndAdvance = (questionId: number, value: AnswerValue) => {
+    onAnswer(questionId, value);
+    const idx = questions.findIndex((q) => q.id === questionId);
+    if (idx === -1) return;
+    const next = questions[idx + 1];
+    if (!next) return; // ページ最後 → 「次へ」ボタンに委譲
+    if (scaleAnswers[next.id] !== undefined) return; // 次が回答済み → 留まる
+    const el = questionRefs.current[next.id];
+    if (!el) return;
+    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+    // クリックの再レンダー後に実行 (1 フレーム遅延)。
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior, block: "center" });
+      // a11y: フォーカスも次の質問へ (スクロール済みなので preventScroll)。
+      el.focus({ preventScroll: true });
+    });
+  };
 
   return (
     <div className="flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
-      {/* sticky progress (Day 9 と同じ Brand v2 化済 ProgressBar 互換) */}
-      <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
-        <div className="max-w-lg mx-auto px-4 py-3">
-          <div className="flex justify-between text-sm font-bold text-[#3A2D6B] mb-2">
-            <span>
-              質問 {answeredCount} / {FRIEND_QUESTIONS_V2_TOTAL}
-            </span>
-            <span>
-              Page {page + 1} / {totalPages}
-            </span>
-          </div>
-          <div
-            className="w-full h-2 bg-white/60 rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <div
-              className="h-full bg-[#FFE993] transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-        </div>
-      </div>
+      {/* 進捗バー: 自己診断と同じ共有 <ProgressBar> に統一 (旧インライン実装を置換) */}
+      <ProgressBar
+        currentQuestion={answeredCount}
+        totalQuestions={FRIEND_QUESTIONS_V2_TOTAL}
+        currentPage={page + 1}
+        totalPages={totalPages}
+      />
 
       <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
         {/* Day 12-Polish-E: 評価フロー冒頭のナッジ (素直な第一印象で答えてもらう) */}
@@ -549,7 +415,11 @@ function ScaleScreen({
         {questions.map((q) => (
           <div
             key={q.id}
-            className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5"
+            ref={(el) => {
+              questionRefs.current[q.id] = el;
+            }}
+            tabIndex={-1}
+            className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5 outline-none"
           >
             <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
               Q{q.id}
@@ -559,7 +429,7 @@ function ScaleScreen({
             </p>
             <LikertScale
               value={scaleAnswers[q.id]}
-              onChange={(v) => onAnswer(q.id, v)}
+              onChange={(v) => answerAndAdvance(q.id, v)}
             />
           </div>
         ))}
