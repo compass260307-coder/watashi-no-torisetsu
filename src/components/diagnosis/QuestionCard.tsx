@@ -16,17 +16,24 @@ export function QuestionCard({
   value,
   onChange,
 }: QuestionCardProps) {
-  // Phase 1.5-α Day 9: Brand v2 化
-  // - カード: rounded-3xl + border-2 #0094D8/25 + shadow-md で LP の特徴カードと統一
-  // - Q番号バッジ: deepPurple bg + 白字 + 丸ピル
-  // - 質問文: deepPurple
-  // - 質問文 / 回答ロジック / スコアリングは一切変更しない (見た目のみ)
+  // feat/top-page: 16Personalities のテスト画面を参考にした構成へ刷新。
+  //   - 白カード / Q番号バッジを廃止し、質問文を中央寄せの大きめテキストに
+  //   - 質問間は細い区切り線のみ (白背景に質問が縦に流れる 16P の型)
+  //   - 回答済みの質問はフェード (現在の質問に視線が集まる 16P の挙動。
+  //     hover / focus 内包時は戻して答え直しも読みやすく)
+  //   - 質問文 / 回答ロジック / スコアリングは一切変更しない (見た目のみ)
+  const answered = value !== undefined;
   return (
-    <div className="w-full max-w-lg mx-auto bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-      <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
-        Q{questionNumber}
-      </div>
-      <p className="text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6">
+    <div
+      aria-label={`質問 ${questionNumber}`}
+      className={[
+        "w-full max-w-2xl mx-auto px-2 py-8 sm:py-10",
+        "border-b border-[#2E2E5C]/10",
+        "transition-opacity duration-300",
+        answered ? "opacity-50 hover:opacity-100 focus-within:opacity-100" : "",
+      ].join(" ")}
+    >
+      <p className="text-center text-[17px] sm:text-[20px] font-bold text-[#2E2E5C] leading-relaxed mb-7">
         {question.text}
       </p>
       <LikertScale value={value} onChange={onChange} />

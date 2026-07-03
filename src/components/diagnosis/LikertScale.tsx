@@ -11,9 +11,10 @@ interface LikertScaleProps {
 
 const BUTTON_VALUES: AnswerValue[] = [7, 6, 5, 4, 3, 2, 1];
 
-// Phase 1.5-α Day 9: Brand v2 化 — ピンク階調 → #FE3C72 系、ブルー階調 → #0094D8 系
-// サイズ・選択値・並び順・ラベル文言は一切変更しない (見た目のみ)
-// 7-5: 同意 (vividPink + pinkBlush) / 4: 中央 (deepPurple 透過) / 3-1: 不同意 (logoBlue + skyBlue)
+// feat/top-page: トップページのデザイン言語に統一 (16Personalities のスケールを参考)。
+//   同意側 (7-5) = Sora ブルー #5B5BEF 階調 / 中央 (4) = ニュートラルグレー /
+//   不同意側 (3-1) = ウォームピンク #E86AA6 階調 (TopStats のアクセントと同系)。
+// サイズ・選択値・並び順・ラベル文言は一切変更しない (見た目のみ)。
 const BUTTON_STYLES: Record<
   AnswerValue,
   {
@@ -26,51 +27,51 @@ const BUTTON_STYLES: Record<
 > = {
   7: {
     sizeClass: "h-11 w-11 sm:h-14 sm:w-14",
-    borderClass: "border-[#FE3C72]",
-    selectedBgClass: "bg-[#FE3C72]",
-    selectedRingClass: "ring-[#FFD6E0]",
+    borderClass: "border-[#5B5BEF]",
+    selectedBgClass: "bg-[#5B5BEF]",
+    selectedRingClass: "ring-[#DCDCFA]",
     label: "強くそう思う",
   },
   6: {
     sizeClass: "h-9 w-9 sm:h-12 sm:w-12",
-    borderClass: "border-[#FE3C72]/70",
-    selectedBgClass: "bg-[#FE3C72]/70",
-    selectedRingClass: "ring-[#FFD6E0]/70",
+    borderClass: "border-[#5B5BEF]/70",
+    selectedBgClass: "bg-[#5B5BEF]/70",
+    selectedRingClass: "ring-[#DCDCFA]/70",
     label: "そう思う",
   },
   5: {
     sizeClass: "h-8 w-8 sm:h-10 sm:w-10",
-    borderClass: "border-[#FFD6E0]",
-    selectedBgClass: "bg-[#FFD6E0]",
-    selectedRingClass: "ring-[#FFD6E0]/50",
+    borderClass: "border-[#C6C6F5]",
+    selectedBgClass: "bg-[#C6C6F5]",
+    selectedRingClass: "ring-[#DCDCFA]/50",
     label: "ややそう思う",
   },
   4: {
     sizeClass: "h-7 w-7 sm:h-8 sm:w-8",
-    borderClass: "border-[#3A2D6B]/30",
-    selectedBgClass: "bg-[#3A2D6B]/50",
-    selectedRingClass: "ring-[#3A2D6B]/15",
+    borderClass: "border-[#2E2E5C]/30",
+    selectedBgClass: "bg-[#2E2E5C]/50",
+    selectedRingClass: "ring-[#2E2E5C]/15",
     label: "どちらでもない",
   },
   3: {
     sizeClass: "h-8 w-8 sm:h-10 sm:w-10",
-    borderClass: "border-[#BCDEF8]",
-    selectedBgClass: "bg-[#BCDEF8]",
-    selectedRingClass: "ring-[#BCDEF8]/50",
+    borderClass: "border-[#F3C4DA]",
+    selectedBgClass: "bg-[#F3C4DA]",
+    selectedRingClass: "ring-[#F3C4DA]/50",
     label: "あまりそう思わない",
   },
   2: {
     sizeClass: "h-9 w-9 sm:h-12 sm:w-12",
-    borderClass: "border-[#0094D8]/70",
-    selectedBgClass: "bg-[#0094D8]/70",
-    selectedRingClass: "ring-[#BCDEF8]/70",
+    borderClass: "border-[#E86AA6]/70",
+    selectedBgClass: "bg-[#E86AA6]/70",
+    selectedRingClass: "ring-[#F8D8E8]/70",
     label: "そう思わない",
   },
   1: {
     sizeClass: "h-11 w-11 sm:h-14 sm:w-14",
-    borderClass: "border-[#0094D8]",
-    selectedBgClass: "bg-[#0094D8]",
-    selectedRingClass: "ring-[#BCDEF8]",
+    borderClass: "border-[#E86AA6]",
+    selectedBgClass: "bg-[#E86AA6]",
+    selectedRingClass: "ring-[#F8D8E8]",
     label: "強くそう思わない",
   },
 };
@@ -83,11 +84,10 @@ export function LikertScale({
 }: LikertScaleProps) {
   return (
     <div className="flex flex-col gap-3 w-full">
-      {/* モバイル: ラベルはスケール上に左右配置
-          Day 9: ピンク → #FE3C72 (vividPink) / ブルー → #0094D8 (logoBlue) */}
+      {/* ラベルはスケール上に左右配置 (同意 = Sora ブルー / 不同意 = ピンク) */}
       <div className="flex justify-between text-[10px] sm:text-xs px-1">
-        <span className="text-[#FE3C72] font-bold">{leftLabel}</span>
-        <span className="text-[#0094D8] font-bold">{rightLabel}</span>
+        <span className="text-[#5B5BEF] font-bold">{leftLabel}</span>
+        <span className="text-[#E86AA6] font-bold">{rightLabel}</span>
       </div>
       <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 w-full">
         {BUTTON_VALUES.map((v) => {
@@ -112,7 +112,7 @@ export function LikertScale({
                   : "bg-white",
               ].join(" ")}
             >
-              {/* 選択中の非色の手がかり (色覚に依存しない): 白チェック + deepPurple の縁取り影で
+              {/* 選択中の非色の手がかり (色覚に依存しない): 白チェック + ネイビーの縁取り影で
                   濃淡どちらの塗りでも視認できる。aria-pressed と併せて選択状態を伝える。 */}
               {isSelected && (
                 <svg
@@ -125,7 +125,7 @@ export function LikertScale({
                   strokeLinejoin="round"
                   className="w-1/2 h-1/2 text-white"
                   style={{
-                    filter: "drop-shadow(0 0.5px 1px rgba(58,45,107,0.9))",
+                    filter: "drop-shadow(0 0.5px 1px rgba(46,46,92,0.9))",
                   }}
                 >
                   <path d="M5 13l4 4L19 7" />

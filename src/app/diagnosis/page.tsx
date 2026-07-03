@@ -10,12 +10,19 @@ import type { AnswerValue } from "@/lib/types";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { ProgressBar } from "@/components/diagnosis/ProgressBar";
 import { QuestionCard } from "@/components/diagnosis/QuestionCard";
-import {
-  StickyCtaFooter,
-  ctaPrimary,
-  ctaSecondary,
-} from "@/components/StickyCtaFooter";
+import { StickyCtaFooter } from "@/components/StickyCtaFooter";
 import { InAppBrowserModal } from "@/components/InAppBrowserModal";
+
+// feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
+// Noto Sans) に統一。CTA も共通の sunYellow ではなくトップの sora-cta ピルを使う。
+// 質問文・回答ロジック・自動送り・途中保存・計測は一切変更しない (見た目のみ)。
+const FONT_STACK =
+  "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
+
+const soraPrimary =
+  "sora-cta rounded-full px-10 py-4 min-w-[180px] font-bold text-center block transition-all duration-150 hover:translate-y-px active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed";
+const soraSecondary =
+  "bg-white border border-[#2E2E5C]/25 text-[#2E2E5C] font-bold rounded-full px-8 py-4 text-center block transition active:translate-y-[2px]";
 
 const QUESTIONS_PER_PAGE = 10;
 const TOTAL_PAGES = 5;
@@ -392,7 +399,10 @@ function DiagnosisContent() {
   // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
   if (step === "basic-info") {
     return (
-      <div className="relative flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
+      <div
+        className="relative flex flex-col flex-1 min-h-screen pb-32 bg-white"
+        style={{ fontFamily: FONT_STACK }}
+      >
         {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
         <InAppBrowserModal />
         {showRediagnoseModal && (
@@ -409,56 +419,53 @@ function DiagnosisContent() {
             onFresh={handleResumeFresh}
           />
         )}
-        {/* Polish-B.2: 進捗インジケータは右上に極小表示 (basic-info はミニマル) */}
+        {/* 進捗インジケータは右上に極小表示 (basic-info はミニマル) */}
         <div className="absolute top-3 right-4 z-10">
           <span
-            className="text-[10px] font-black tracking-[0.25em] text-[#3A2D6B]/45"
+            className="text-[10px] font-bold tracking-[0.25em] text-[#2E2E5C]/45"
             aria-label={`Step 0 of ${TOTAL_PAGES}`}
           >
             0 / {TOTAL_PAGES}
           </span>
         </div>
 
-        {/* Polish-B.3: Q11/Q12 と同じ世界観に揃える
-            (カード + deepPurple ピルバッジ + 太字 deepPurple 見出し + 白入力欄) */}
-        <main className="flex flex-col flex-1 px-4 pt-10 pb-4 max-w-lg mx-auto w-full">
-          <div className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-            <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
-              はじめに
-            </div>
-            <label
-              htmlFor="diagnosis-nickname"
-              className="block text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6"
+        {/* 16P 風ミニマル: 白背景に中央寄せの見出し + 入力欄のみ (カード/バッジ廃止) */}
+        <main className="flex flex-col flex-1 justify-center px-6 pt-10 pb-4 max-w-md mx-auto w-full">
+          <label
+            htmlFor="diagnosis-nickname"
+            className="block text-center font-bold text-[#2E2E5C] leading-relaxed mb-8"
+            style={{ fontSize: "clamp(20px, 2.4vw, 26px)" }}
+          >
+            ニックネームを教えて
+          </label>
+          <input
+            id="diagnosis-nickname"
+            type="text"
+            value={nickname}
+            onChange={(e) => {
+              setNickname(e.target.value);
+              if (nicknameError) setNicknameError(null);
+            }}
+            maxLength={NICKNAME_MAX}
+            placeholder=""
+            autoComplete="off"
+            className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3.5 text-center text-lg text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
+          />
+          {nicknameError && (
+            <p
+              role="alert"
+              className="text-[#E86AA6] text-xs font-bold mt-2 text-center"
             >
-              ニックネームを教えて
-            </label>
-            <input
-              id="diagnosis-nickname"
-              type="text"
-              value={nickname}
-              onChange={(e) => {
-                setNickname(e.target.value);
-                if (nicknameError) setNicknameError(null);
-              }}
-              maxLength={NICKNAME_MAX}
-              placeholder=""
-              autoComplete="off"
-              className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
-            />
-            {nicknameError && (
-              <p role="alert" className="text-[#FE3C72] text-xs font-bold mt-2">
-                {nicknameError}
-              </p>
-            )}
-          </div>
+              {nicknameError}
+            </p>
+          )}
         </main>
 
-        {/* Polish-D-A FINAL: 白い床撤去 → StickyCtaFooter (フロスト・グラデ・スクリム) */}
-        <StickyCtaFooter>
+        <StickyCtaFooter variant="white">
           <button
             type="button"
             onClick={handleBasicInfoNext}
-            className={ctaPrimary}
+            className={soraPrimary}
           >
             次へ
           </button>
@@ -472,7 +479,10 @@ function DiagnosisContent() {
   //   - 次へ / 結果を見る は常に同じ ctaPrimary (disabled は opacity のみ)
 
   return (
-    <div className="flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
+    <div
+      className="flex flex-col flex-1 min-h-screen pb-32 bg-white"
+      style={{ fontFamily: FONT_STACK }}
+    >
       {showRediagnoseModal && (
         <RediagnoseConfirmModal
           onConfirm={closeRediagnoseModal}
@@ -516,27 +526,27 @@ function DiagnosisContent() {
         ))}
 
         {!isPageComplete && (
-          <p className="text-center text-xs text-[#3A2D6B]/70 font-bold mt-2 mb-4">
+          <p className="text-center text-xs text-[#8A8AA3] font-bold mt-4 mb-4">
             このページの 10 問すべてに答えると、次のページに進めるよ
           </p>
         )}
 
         {submitError && (
-          <p className="text-center text-xs text-[#FE3C72] font-bold mt-2 mb-2">
+          <p className="text-center text-xs text-[#E86AA6] font-bold mt-2 mb-2">
             送信に失敗しました。もう一度お試しください。
           </p>
         )}
       </main>
 
-      {/* variant="solid": 50 問 ScaleScreen は footer 直上に回答の○が来るため
-          ボタン裏で透けないように不透明クリームを敷く */}
-      <StickyCtaFooter variant="solid">
+      {/* variant="white": 白基調ページのため footer も白ベタ + 上端フェード
+          (footer 直上に回答の○が来るので半透明 scrim は使わない) */}
+      <StickyCtaFooter variant="white">
         {currentPage > 0 && (
           <button
             type="button"
             onClick={handlePrev}
             aria-label="前のページに戻る (回答は保持されます)"
-            className={ctaSecondary}
+            className={soraSecondary}
           >
             戻る
           </button>
@@ -546,7 +556,7 @@ function DiagnosisContent() {
             type="button"
             onClick={handleNext}
             disabled={!isPageComplete}
-            className={ctaPrimary}
+            className={soraPrimary}
           >
             次へ
           </button>
@@ -555,7 +565,7 @@ function DiagnosisContent() {
             type="button"
             onClick={handleSubmit}
             disabled={!isAllComplete || submitting}
-            className={ctaPrimary}
+            className={soraPrimary}
           >
             {submitting ? "診断中..." : "結果を見る"}
           </button>
@@ -590,13 +600,13 @@ function ResumeChoiceModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="resume-title"
-          className="text-lg font-extrabold text-center text-[#3A2D6B] mb-3"
+          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
         >
           🔖 前回の続きから?
         </h2>
-        <p className="text-sm text-[#3A2D6B] leading-relaxed text-center mb-6">
+        <p className="text-sm text-[#2E2E5C] leading-relaxed text-center mb-6">
           前回の回答が残っています (
-          <span className="font-bold text-[#FE3C72]">
+          <span className="font-bold text-[#5B5BEF]">
             {answeredCount} / {totalQuestions} 問
           </span>
           )。
@@ -607,14 +617,14 @@ function ResumeChoiceModal({
           <button
             type="button"
             onClick={onContinue}
-            className="w-full rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98]"
+            className="sora-cta w-full rounded-full px-6 py-3 text-sm font-bold shadow-md transition-all active:scale-[0.98]"
           >
             前回の続きから
           </button>
           <button
             type="button"
             onClick={onFresh}
-            className="text-xs text-muted hover:text-foreground underline transition-colors"
+            className="text-xs text-[#8A8AA3] hover:text-[#2E2E5C] underline transition-colors"
           >
             最初からやり直す
           </button>
@@ -646,29 +656,29 @@ function RediagnoseConfirmModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="rediagnose-title"
-          className="text-lg font-extrabold text-center mb-3"
+          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
         >
           🔄 再診断について
         </h2>
-        <p className="text-sm text-foreground leading-relaxed mb-2">
+        <p className="text-sm text-[#2E2E5C] leading-relaxed mb-2">
           過去の診断とトリセツ図鑑は
-          <span className="font-bold text-primary">全部残ります</span>。
+          <span className="font-bold text-[#5B5BEF]">全部残ります</span>。
         </p>
-        <p className="text-sm text-muted leading-relaxed mb-6">
+        <p className="text-sm text-[#8A8AA3] leading-relaxed mb-6">
           新しいあなたの発見、楽しみですね 🐧
         </p>
         <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={onConfirm}
-            className="w-full rounded-full bg-primary-gradient px-6 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98]"
+            className="sora-cta w-full rounded-full px-6 py-3 text-sm font-bold shadow-md transition-all active:scale-[0.98]"
           >
             OK、新しく診断する
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="text-xs text-muted hover:text-foreground underline transition-colors"
+            className="text-xs text-[#8A8AA3] hover:text-[#2E2E5C] underline transition-colors"
           >
             キャンセル (マイ図鑑に戻る)
           </button>

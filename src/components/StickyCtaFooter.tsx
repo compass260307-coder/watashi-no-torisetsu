@@ -36,7 +36,7 @@
 
 import type { ReactNode } from "react";
 
-type Variant = "scrim" | "solid";
+type Variant = "scrim" | "solid" | "white";
 
 const bgClass: Record<Variant, string> = {
   // scrim: 半透明クリーム + blur + 上端マスクフェードで blur 上端の薄い線も消す
@@ -46,6 +46,8 @@ const bgClass: Record<Variant, string> = {
     "[-webkit-mask-image:linear-gradient(to_top,#000_55%,transparent)]",
   // solid: 下 60% ベタの不透明クリーム + 上 40% フェード。blur なし。
   solid: "bg-gradient-to-t from-[#FFF9F0] from-[60%] to-transparent",
+  // white: solid の白背景版。白基調ページ (トップ準拠デザインの /diagnosis) 用。
+  white: "bg-gradient-to-t from-white from-[60%] to-transparent",
 };
 
 export function StickyCtaFooter({
