@@ -82,9 +82,10 @@ function GridIcon() {
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   // トリセツ(2)=/me/[token]、他己診断(4)=/tako/[token] を localStorage の
-  // owner_token から解決。無ければ /diagnosis (未診断者はまず自己診断へ)。
+  // owner_token から解決。トリセツは無ければ /diagnosis、他己診断は無ければ
+  // /tako (未診断ガード=「まず自己診断から」誘導画面) へ。
   const [torisetsuUrl, setTorisetsuUrl] = useState("/diagnosis");
-  const [takoUrl, setTakoUrl] = useState("/diagnosis");
+  const [takoUrl, setTakoUrl] = useState("/tako");
   useEffect(() => {
     // localStorage は SSR 時に存在しないため初期化子では読めず、マウント後に読む。
     // この用途 (外部ストレージ→state の同期) は set-state-in-effect の正当なケース。
