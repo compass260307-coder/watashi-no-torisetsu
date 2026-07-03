@@ -22,9 +22,10 @@ const INACTIVE = "#9BA3B4";
 // ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
 //   - /diagnosis : 自己診断の回答フロー (全幅 StickyCtaFooter)
 //   - /friend/   : /friend/{招待コード} の友達回答フロー (StickyCtaFooter)。末尾スラッシュ必須で
-//                  /friend-evaluation (他己診断タブの目的地) と /friend (招待無し) は対象外。
+//                  /friend-evaluation (オーナー管理ハブ・ナビ非対象) と /friend (招待無し) は対象外。
 //   - /evaluate/ : 友達評価の着地/完了ページ (FloatingDiagnosisCta 等・ナビの目的地ではない)
-// ※ /me・/ は右下フローティングCTAのみ持つが「ナビの目的地」なのでナビは表示したまま。
+// ※ /me・/tako・/ は「ナビの目的地」なので (フローティングCTAがあっても) ナビは表示したまま。
+//   他己診断タブは /friend-evaluation ではなく /tako/[token] を指す。
 const HIDE_ON_PREFIXES = ["/diagnosis", "/friend/", "/evaluate/"];
 
 function HomeIcon() {
@@ -80,20 +81,27 @@ function GridIcon() {
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
-  // トリセツ(2) の遷移先: localStorage の owner_token から /me/[token] を解決。
-  // 無ければ /diagnosis (既存 HamburgerMenu の挙動をそのまま踏襲)。
+  // トリセツ(2)=/me/[token]、他己診断(4)=/tako/[token] を localStorage の
+  // owner_token から解決。無ければトリセツ=/diagnosis、他己診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState("/diagnosis");
+  const [takoUrl, setTakoUrl] = useState("/tako");
+  // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
+  //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
+  //   古い誘導URLに固定される。usePathname() を依存に入れ「遷移のたびに再読込」して
+  //   最新 token を反映する。token 消失 (端末クリア等) 時はフォールバックへ戻す。
+  //   localStorage は SSR 時に無いため初期化子ではなく effect で読む (set-state-in-effect
+  //   は外部ストレージ→state 同期の正当なケース)。
   useEffect(() => {
-    // localStorage は SSR 時に存在しないため初期化子では読めず、マウント後に読む。
-    // この用途 (外部ストレージ→state の同期) は set-state-in-effect の正当なケース。
+    let token: string | null = null;
     try {
-      const token = localStorage.getItem("torisetsu_owner_token");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (token) setTorisetsuUrl(`/me/${token}`);
+      token = localStorage.getItem("torisetsu_owner_token");
     } catch {
-      // localStorage 不可環境は /diagnosis のまま。
+      // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTorisetsuUrl(token ? `/me/${token}` : "/diagnosis");
+    setTakoUrl(token ? `/tako/${token}` : "/tako");
+  }, [pathname]);
 
   // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
   // ※ フックは全て呼び終えてから early return する (rules-of-hooks 遵守)。
@@ -111,7 +119,7 @@ export function BottomNav() {
     { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
     { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
     { key: "diagnosis", label: "自己診断", href: "/diagnosis", active: pathname.startsWith("/diagnosis"), Icon: UserSearchIcon },
-    { key: "friend", label: "他己診断", href: "/friend-evaluation", active: pathname.startsWith("/friend-evaluation"), Icon: UsersIcon },
+    { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
     { key: "type", label: "タイプ", href: "/zukan-internal", active: pathname.startsWith("/zukan"), Icon: GridIcon },
   ];
 
