@@ -12,10 +12,7 @@ import {
   thirtyTwoGroup,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import {
-  THIRTY_TWO_GROUP_COLOR,
-  type ThirtyTwoGroup,
-} from "@/lib/thirty-two-content/character-32";
+import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 // /types: 性格タイプ一覧 (16Personalities の /ja/性格タイプ を参考にした構成)。
 //   16P 風の演出: グループごとに全幅の色帯セクション + 帯の上に巨大グループ名 +
@@ -38,6 +35,15 @@ export const metadata: Metadata = {
   description:
     "ワタシのトリセツの32の性格タイプを、空・海・陸・未知の4つのグループで紹介。Big Five理論ベースの性格診断でわかる、あなたと友達のタイプをチェックしよう。",
   robots: { index: false, follow: false },
+};
+
+// 帯の背景色: 16P 風に彩度を落としたグループ色 (このページ専用)。
+// 図鑑などが参照する THIRTY_TWO_GROUP_COLOR (パステル原色) はいじらない。
+const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#D6C77E", // 空・くすんだ砂金
+  sea: "#8FAEC6", // 海・グレイッシュブルー
+  land: "#9CBB8B", // 陸・モスグリーン
+  unknown: "#A899BE", // 未知・グレイッシュパープル (16P 分析家に最も近いトーン)
 };
 
 // グループの表示順・見出し・紹介文 (⚠️ 紹介文は仮。データ側に正本ができたら移す)。
@@ -113,51 +119,42 @@ export default function TypesPage() {
         <div className="mt-12 md:mt-16">
           {GROUPS.map((g) => {
             const ids = byGroup.get(g.key) ?? [];
-            const color = THIRTY_TWO_GROUP_COLOR[g.key];
+            const band = BAND_COLOR[g.key];
             return (
               <section
                 key={g.key}
                 aria-label={g.name}
                 className="relative w-full overflow-hidden"
-                style={{
-                  // 帯: グループ色 → わずかに白へ抜けるグラデで平板さを回避
-                  background: `linear-gradient(180deg, ${color} 0%, ${color}CC 100%)`,
-                }}
+                style={{ backgroundColor: band }}
               >
-                {/* 巨大グループ名 (帯の背景に敷く白タイポ。キャラが少し重なる) */}
+                {/* 巨大グループ名 (16P の「分析家」ポジション。ソリッドな白、
+                    キャラ列が下半分に重なってレイヤー感を出す) */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-2 select-none text-center font-bold leading-none text-white/80 md:top-4"
+                  className="pointer-events-none absolute inset-x-0 top-[clamp(8px,2vw,28px)] select-none text-center font-bold leading-none text-white"
                   style={{
-                    fontSize: "clamp(110px, 18vw, 260px)",
-                    letterSpacing: "0.04em",
+                    fontSize: "clamp(120px, 19vw, 280px)",
+                    letterSpacing: "0.02em",
                   }}
                 >
                   {g.giant}
                 </div>
 
-                <div className="relative mx-auto max-w-[1160px] px-6 pb-12 pt-[clamp(70px,12vw,170px)] md:pb-16">
-                  {/* グループ紹介 (巨大タイポの下・キャラ列の上) */}
-                  <p
-                    className="mx-auto max-w-[620px] text-center text-[14px] font-bold leading-relaxed md:text-[16px]"
-                    style={{ color: NAVY }}
-                  >
-                    {g.lede}
-                  </p>
-
+                {/* キャラ列は巨大タイポの下半分に重ねる (pt = 巨大タイポの ~55%) */}
+                <div className="relative mx-auto max-w-[1160px] px-6 pb-10 pt-[clamp(80px,12.5vw,190px)] md:pb-14">
                   {/* タイプ 8 体 (SP 2 列 / PC 4 列)。白リング円形 + 影で立体感を統一 */}
-                  <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:mt-10 md:gap-x-6 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:gap-x-6 lg:grid-cols-4">
                     {ids.map((id) => (
                       <article
                         key={id}
                         className="flex flex-col items-center text-center"
                       >
-                        <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white shadow-[0_14px_28px_rgba(46,46,92,0.28)] md:h-36 md:w-36">
+                        <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white shadow-[0_16px_32px_rgba(30,30,60,0.35)] md:h-40 md:w-40">
                           <Image
                             src={thirtyTwoImagePath(id)}
                             alt={thirtyTwoName(id)}
-                            width={144}
-                            height={144}
+                            width={160}
+                            height={160}
                             className="h-full w-full object-cover"
                           />
                         </div>
@@ -182,6 +179,14 @@ export default function TypesPage() {
                       </article>
                     ))}
                   </div>
+
+                  {/* グループ紹介 (16P に合わせ帯の主役はキャラ。紹介文は末尾に小さく) */}
+                  <p
+                    className="mx-auto mt-10 max-w-[620px] text-center text-[13px] font-bold leading-relaxed md:text-[14px]"
+                    style={{ color: `${NAVY}CC` }}
+                  >
+                    {g.lede}
+                  </p>
                 </div>
               </section>
             );
