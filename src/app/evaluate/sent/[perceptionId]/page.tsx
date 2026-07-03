@@ -61,7 +61,7 @@ import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
 import { FloatingDiagnosisCta } from "@/components/result/FloatingDiagnosisCta";
-import { ctaPrimary } from "@/components/StickyCtaFooter";
+import { SelfDiagnosisCtaButton } from "@/components/result/SelfDiagnosisCtaButton";
 import type { BigFiveDimension } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -437,12 +437,8 @@ export default async function EvaluationSentPage({ params }: PageProps) {
           </section>
         )}
 
-        {/* ===== 末尾CTA (ボタン1個のみ・枠/見出し/注記なし・背景に直接) ===== */}
-        <div id={END_CTA_ID} className="flex justify-center pt-1 pb-2">
-          <Link href="/diagnosis" className={ctaPrimary}>
-            自分のトリセツを生成 →
-          </Link>
-        </div>
+        {/* ===== 末尾CTA (新オーナー転換の主導線・クリックを計測) ===== */}
+        <SelfDiagnosisCtaButton id={END_CTA_ID} />
       </div>
 
       {/* ===== 右下フローティング診断 CTA (末尾CTAが見えたら隠す) ===== */}
