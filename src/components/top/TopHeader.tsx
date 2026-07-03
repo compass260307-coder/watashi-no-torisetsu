@@ -15,12 +15,14 @@ const NAVY = "#2E2E5C";
 // ナビ表記ルール: 機能名は「性格診断テスト / 他己診断テスト / 性格タイプ」で統一。
 // (旧表記: 相互理解度 → 他己診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
-const NAV: { label: string; href: string }[] = [
+// disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
+//   - 性格タイプ: /types を 16Personalities 風に作成中 (公開時に href: "/types")
+const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "性格診断テスト", href: "/diagnosis" },
   { label: "他己診断テスト", href: "/friend-evaluation" },
-  { label: "性格タイプ", href: "/zukan/all" },
-  { label: "サービスについて", href: "/about" },
-  { label: "ログイン", href: "/login" },
+  { label: "性格タイプ", href: "/types", disabled: true },
+  { label: "サービスについて", href: "/about", disabled: true },
+  { label: "ログイン", href: "/login", disabled: true },
 ];
 
 export default function TopHeader() {
@@ -49,16 +51,27 @@ export default function TopHeader() {
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
         <div className="ml-auto hidden items-center gap-5 xl:gap-8 lg:flex">
-          {NAV.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              className={navLinkClass}
-              style={{ color: NAVY }}
-            >
-              {n.label}
-            </Link>
-          ))}
+          {NAV.map((n) =>
+            n.disabled ? (
+              <span
+                key={n.href}
+                className="whitespace-nowrap text-[16px] xl:text-[20px] font-bold text-[#B4B4C4]"
+                aria-disabled="true"
+              >
+                {n.label}
+                <span className="text-[11px] xl:text-[13px]">（準備中）</span>
+              </span>
+            ) : (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={navLinkClass}
+                style={{ color: NAVY }}
+              >
+                {n.label}
+              </Link>
+            ),
+          )}
 
           {/* 言語切替 (⚠️ 一旦プレースホルダ。英語は準備中) */}
           <div className="relative">
@@ -128,17 +141,28 @@ export default function TopHeader() {
             aria-hidden="true"
           />
           <nav className="relative z-50 border-t border-[#2E2E5C]/10 bg-white px-8 py-2 lg:hidden">
-            {NAV.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                onClick={() => setOpen(false)}
-                className="block py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-                style={{ color: NAVY }}
-              >
-                {n.label}
-              </Link>
-            ))}
+            {NAV.map((n) =>
+              n.disabled ? (
+                <span
+                  key={n.href}
+                  className="block py-3.5 text-[19px] font-bold text-[#B4B4C4]"
+                  aria-disabled="true"
+                >
+                  {n.label}
+                  <span className="text-[12px]">（準備中）</span>
+                </span>
+              ) : (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  onClick={() => setOpen(false)}
+                  className="block py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  style={{ color: NAVY }}
+                >
+                  {n.label}
+                </Link>
+              ),
+            )}
             {/* SP でも言語表示 (プレースホルダ) */}
             <div className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold" style={{ color: NAVY }}>
               <GlobeIcon />

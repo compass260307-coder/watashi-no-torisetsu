@@ -9,11 +9,13 @@ const FONT_STACK =
 
 // external: Next の Link を使わない生 <a> (mailto / 外部サイト)。
 // newTab: 外部サイトは別タブで開く (target="_blank" + rel="noopener noreferrer")。
+// disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
 type FooterLink = {
   label: string;
   href: string;
   external?: boolean;
   newTab?: boolean;
+  disabled?: boolean;
 };
 
 // 3 カラム (診断 / サービス / サポート)。規約系は最下段 (コピーライト横) に移動。
@@ -23,13 +25,14 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "性格診断テスト", href: "/diagnosis" },
       { label: "他己診断テスト", href: "/friend-evaluation" },
-      { label: "性格タイプ", href: "/zukan/all" },
+      // 性格タイプ: /types を作成中 (公開時に disabled を外す)
+      { label: "性格タイプ", href: "/types", disabled: true },
     ],
   },
   {
     title: "サービス",
     links: [
-      { label: "サービスについて", href: "/about" },
+      { label: "サービスについて", href: "/about", disabled: true },
       {
         label: "運営会社",
         href: "https://sora-team.com",
@@ -117,7 +120,16 @@ export default function TopFooter() {
             <nav key={col.title} className="flex flex-col gap-4">
               <p className="mb-1 text-[18px] font-bold text-[#2E2E5C]">{col.title}</p>
               {col.links.map((l) =>
-                l.external ? (
+                l.disabled ? (
+                  <span
+                    key={l.label}
+                    className="w-fit text-[18px] text-[#B4B4C4]"
+                    aria-disabled="true"
+                  >
+                    {l.label}
+                    <span className="text-[12px]">（準備中）</span>
+                  </span>
+                ) : l.external ? (
                   <a
                     key={l.label}
                     href={l.href}

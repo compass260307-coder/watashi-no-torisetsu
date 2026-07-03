@@ -32,9 +32,9 @@
 //   2. ワタシのトリセツ    → myTrisetsuUrl prop (未指定なら /result 経由で自分の /me に解決)
 //   3. 性格診断テスト      → /diagnosis
 //   4. 他己診断テスト      → /friend-evaluation (旧表記: 相互理解度)
-//   5. 性格タイプ          → /zukan/all
-//   6. サービスについて    → /about
-//   7. ログイン            → /login
+//   5. 性格タイプ          → 準備中 (/types 作成中。公開時にリンク化)
+//   6. サービスについて    → 準備中
+//   7. ログイン            → 準備中
 //
 // Day 12-Polish: PC でのオーバーレイ幅を max-w-[480px] に制限 + 中央寄せ、
 //   ☰ トグルをブランドの chunky ボタン化 (sunYellow ソリッド + 太枠 + オフセット影 + 太線 SVG)、
@@ -157,9 +157,10 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
             label="他己診断テスト"
             onClose={handleClose}
           />
-          <MenuLink href="/zukan/all" label="性格タイプ" onClose={handleClose} />
-          <MenuLink href="/about" label="サービスについて" onClose={handleClose} />
-          <MenuLink href="/login" label="ログイン" onClose={handleClose} />
+          {/* 準備中 (ヘッダーと同期。公開時に MenuLink に戻す) */}
+          <MenuLinkDisabled label="性格タイプ" />
+          <MenuLinkDisabled label="サービスについて" />
+          <MenuLinkDisabled label="ログイン" />
         </nav>
 
         {/* ===== この端末のデータを消す (共用端末からの脱出 / 自動リダイレクトの逃げ道) =====
@@ -232,6 +233,19 @@ export function HamburgerMenu({ myTrisetsuUrl }: HamburgerMenuProps) {
       {/* Portal で document.body 直下に描画 → 親のスタッキングコンテキストから独立 */}
       {open && mounted && createPortal(overlay, document.body)}
     </>
+  );
+}
+
+// 準備中の項目 (グレーの非活性ボタン。ヘッダーの「（準備中）」表記と揃える)
+function MenuLinkDisabled({ label }: { label: string }) {
+  return (
+    <span
+      aria-disabled="true"
+      className="block bg-[#F0EEF8] text-[#3A2D6B]/40 font-black text-lg px-6 py-5 rounded-full border-2 border-[#3A2D6B]/15 text-center select-none"
+    >
+      {label}
+      <span className="text-xs">（準備中）</span>
+    </span>
   );
 }
 
