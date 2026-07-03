@@ -18,6 +18,15 @@ import { useEffect, useState, type ReactElement } from "react";
 const ACTIVE = "#2A3A5C";
 const INACTIVE = "#9BA3B4";
 
+// 下部固定CTA (StickyCtaFooter / Floating* CTA) を持つフロー系ページでは、
+// ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
+//   - /diagnosis : 自己診断の回答フロー (全幅 StickyCtaFooter)
+//   - /friend/   : /friend/{招待コード} の友達回答フロー (StickyCtaFooter)。末尾スラッシュ必須で
+//                  /friend-evaluation (他己診断タブの目的地) と /friend (招待無し) は対象外。
+//   - /evaluate/ : 友達評価の着地/完了ページ (FloatingDiagnosisCta 等・ナビの目的地ではない)
+// ※ /me・/ は右下フローティングCTAのみ持つが「ナビの目的地」なのでナビは表示したまま。
+const HIDE_ON_PREFIXES = ["/diagnosis", "/friend/", "/evaluate/"];
+
 function HomeIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -85,6 +94,12 @@ export function BottomNav() {
       // localStorage 不可環境は /diagnosis のまま。
     }
   }, []);
+
+  // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
+  // ※ フックは全て呼び終えてから early return する (rules-of-hooks 遵守)。
+  if (HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return null;
+  }
 
   const items: {
     key: string;
