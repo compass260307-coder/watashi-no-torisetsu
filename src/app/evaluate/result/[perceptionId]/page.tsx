@@ -52,7 +52,6 @@ import {
   PERCEIVED_TIPS_KEY,
 } from "@/lib/perception-manual-content";
 import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
 import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
 import { PerceptionMessageCard } from "@/components/result/PerceptionMessageCard";
@@ -329,7 +328,6 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
           </Link>
-          <HamburgerMenu myTrisetsuUrl={myTrisetsuUrl} />
         </div>
 
         {/* ===== ヒーロータグ (2 行) =====

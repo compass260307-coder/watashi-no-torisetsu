@@ -73,7 +73,6 @@ import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
   CModifier,
@@ -559,14 +558,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
-          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
-              PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
+          {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
+              モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
+              ☰ はボトムナビ導入で撤去。 */}
           <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-2 pb-2">
-            {/* ハンバーガー: モバイルは絶対配置で 1 行分を消し、称号を上部(☰ と同じ帯)へ
-                上詰めする。PC(md+)は従来どおり flex 行 (justify-end + mb-2) を維持。 */}
-            <div className="absolute right-4 top-3 z-20 md:static md:right-auto md:top-auto md:mb-2 md:flex md:justify-end">
-              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-            </div>
             {heroTitle}
             {oceanRow}
             {catchphraseRow}
