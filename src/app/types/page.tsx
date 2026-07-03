@@ -37,6 +37,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// 背景透過の「立ち絵」アセット (16P 風にキャラを帯へ直接立たせる)。
+// ⚠️ 段階導入中: 用意できたタイプから登録し、未登録タイプは円形クロップで
+// フォールバックする。32 体揃ったら thirtyTwoImagePath 同様のヘルパーに昇格させる。
+const STANDING_IMAGE: Partial<Record<ThirtyTwoTypeId, string>> = {
+  "quiet-owl__N": "/characters/standing/parakeet_N.png", // きらめきインコ (プロトタイプ)
+};
+
 // 帯の背景色: 16P 風に彩度を落としたグループ色 (このページ専用)。
 // 図鑑などが参照する THIRTY_TWO_GROUP_COLOR (パステル原色) はいじらない。
 const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
@@ -149,15 +156,32 @@ export default function TypesPage() {
                         key={id}
                         className="flex flex-col items-center text-center"
                       >
-                        <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white shadow-[0_16px_32px_rgba(30,30,60,0.35)] md:h-40 md:w-40">
-                          <Image
-                            src={thirtyTwoImagePath(id)}
-                            alt={thirtyTwoName(id)}
-                            width={160}
-                            height={160}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
+                        {STANDING_IMAGE[id] ? (
+                          /* 立ち絵: 帯に直接立たせる (足元に接地影の楕円) */
+                          <div className="relative flex h-28 w-full items-end justify-center md:h-40">
+                            <div
+                              aria-hidden="true"
+                              className="absolute bottom-0 left-1/2 h-3 w-24 -translate-x-1/2 rounded-full bg-[#1E1E3C]/25 blur-[3px] md:h-4 md:w-32"
+                            />
+                            <Image
+                              src={STANDING_IMAGE[id]}
+                              alt={thirtyTwoName(id)}
+                              width={200}
+                              height={200}
+                              className="relative h-full w-auto object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white shadow-[0_16px_32px_rgba(30,30,60,0.35)] md:h-40 md:w-40">
+                            <Image
+                              src={thirtyTwoImagePath(id)}
+                              alt={thirtyTwoName(id)}
+                              width={160}
+                              height={160}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
                         <h3
                           className="mt-4 text-[15px] font-bold leading-snug md:text-[17px]"
                           style={{ color: NAVY }}
