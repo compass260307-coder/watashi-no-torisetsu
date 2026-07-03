@@ -54,7 +54,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
-import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
+import { computeMinnaNoMeContext, scoreImpressionLine } from "@/lib/minna-no-me";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 // 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
 // 結果ページからは呼び出さない (import も外す)。
@@ -668,6 +668,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     gapSentence: minnaContext.gapSentence,
                     favoritePoints: minnaContext.favoritePoints,
                     letters: friendMessages,
+                    // B-1: 手紙/チップの空判定はパネル側。ここでは常にスコア由来の
+                    //   1行を用意しておき、両方空のときだけパネルが表示する。
+                    scoreImpression: scoreImpressionLine(
+                      minnaContext.friendAvgScores,
+                    ),
                   }
                 : null,
             }}

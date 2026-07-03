@@ -27,6 +27,8 @@ export type MinnaTabContext = {
   gapSentence: string | null;
   favoritePoints: string[];
   letters: { name: string; message: string }[];
+  // B-1: 手紙/チップが両方空のとき出すスコア由来の1行 (ルールベース)。
+  scoreImpression: string | null;
 };
 
 export type MinnaTabProps = {
@@ -203,6 +205,7 @@ export function DeepDiveSections({
               gapSentence={minna.context.gapSentence}
               favoritePoints={minna.context.favoritePoints}
               letters={minna.context.letters}
+              scoreImpression={minna.context.scoreImpression}
             />
           ) : (
             <MinnaLocked
