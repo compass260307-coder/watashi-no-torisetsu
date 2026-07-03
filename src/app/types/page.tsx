@@ -158,10 +158,10 @@ export default function TypesPage() {
                 </div>
 
                 {/* キャラ列は巨大タイポの下半分に重ねる (pt = 巨大タイポの ~55%) */}
-                {/* コンテナ広め (1360px)・左右パディング/列間を詰めて、キャラに横幅を最大限使わせる */}
-                <div className="relative mx-auto max-w-[1360px] px-3 pb-10 pt-[clamp(80px,12.5vw,190px)] md:px-6 md:pb-14">
+                {/* 横幅制限なし: 帯の中身はビューポート全幅を使い、キャラを最大化する */}
+                <div className="relative w-full px-3 pb-10 pt-[clamp(80px,12.5vw,190px)] md:px-8 md:pb-14">
                   {/* タイプ 8 体 (SP 2 列 / PC 4 列)。画像は列幅いっぱい (w-full) */}
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-10 md:gap-x-4 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-10 md:gap-x-6 lg:grid-cols-4">
                     {ids.map((id) => (
                       <article
                         key={id}
@@ -174,25 +174,26 @@ export default function TypesPage() {
                         <Image
                           src={thirtyTwoImagePath(id)}
                           alt={thirtyTwoEssence(id)}
-                          width={320}
-                          height={320}
+                          width={512}
+                          height={512}
                           className="h-auto w-full"
                         />
-                        {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード */}
+                        {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード。
+                            ワイド画面 (xl) ではキャラに合わせて文字も一段大きく */}
                         <h3
-                          className="mt-2 text-[18px] font-bold leading-snug md:text-[22px]"
+                          className="mt-2 text-[18px] font-bold leading-snug md:text-[22px] xl:text-[26px]"
                           style={{ color: DARK_COLOR[g.key] }}
                         >
                           {thirtyTwoEssence(id)}
                         </h3>
                         <p
-                          className="mt-1 text-[12px] font-bold tracking-[0.06em] md:text-[13px]"
+                          className="mt-1 text-[12px] font-bold tracking-[0.06em] md:text-[13px] xl:text-[15px]"
                           style={{ color: `${NAVY}99` }}
                         >
                           {oceanCode(id)}
                         </p>
                         <p
-                          className="mt-2 max-w-[240px] text-[13px] leading-relaxed md:text-[14px]"
+                          className="mt-2 max-w-[240px] text-[13px] leading-relaxed md:text-[14px] xl:max-w-[340px] xl:text-[16px]"
                           style={{ color: `${NAVY}B3` }}
                         >
                           {thirtyTwoZukanDesc(id)}
