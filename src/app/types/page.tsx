@@ -15,6 +15,7 @@ import {
 } from "@/lib/thirty-two-types";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+import { TypeMotionVideo } from "@/components/types/TypeMotionVideo";
 
 // /types: 性格タイプ一覧 (16Personalities の /ja/性格タイプ を参考にした構成)。
 //   16P 風の演出: グループごとに全幅の色帯セクション + 帯の上に巨大グループ名 +
@@ -37,6 +38,17 @@ export const metadata: Metadata = {
   description:
     "ワタシのトリセツの32の性格タイプを、空・海・陸・未知の4つのグループで紹介。Big Five理論ベースの性格診断でわかる、あなたと友達のタイプをチェックしよう。",
   robots: { index: false, follow: false },
+};
+
+// キャラのモーション動画 (AI 生成のアイドルループ、背景色 = 帯色の疑似透過)。
+// ⚠️ 段階導入中: できたタイプから登録し、未登録は静止画 + CSS 浮遊で表示。
+//   動画の仕様: 順→逆の往復ループ (継ぎ目対策) / 640px / H.264 / 無音 / ~500KB。
+//   量産手順: Kling (開始=終了フレームに元画像) で生成 → 以下で往復化・圧縮:
+//   ffmpeg -i in.mp4 -filter_complex \
+//     "[0:v]scale=640:-2,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]" \
+//     -map "[v]" -an -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart out.mp4
+const MOTION_VIDEO: Partial<Record<ThirtyTwoTypeId, string>> = {
+  "quiet-owl__N": "/characters/motion/parakeet_N.mp4", // きらめきインコ (1体目)
 };
 
 // 帯の背景色 = キャラ画像 (v3) の背景色そのもの (全 32 枚を実測、グループ内で完全一致)。
@@ -169,25 +181,33 @@ export default function TypesPage() {
                         // 主張して列が縮まなくなる (SP で横はみ出しする) のを防ぐ
                         className="flex min-w-0 flex-col items-center text-center"
                       >
-                        {/* キャラ: 枠・影・クロップなしの素置き。画像背景 = 帯色なので
+                        {/* キャラ: 枠・影・クロップなしの素置き。背景 = 帯色なので
                             境界が消えて帯の上にいるように見える (16P 風)。
-                            アイドルモーションは index で位相・周期をずらし、
-                            隣どうしが同時に動かないようにする。 */}
-                        <div
-                          className="type-idle w-full"
-                          style={{
-                            animationDelay: `${(i % 4) * 0.9 + (i % 2) * 0.4}s`,
-                            animationDuration: `${4.6 + (i % 3) * 0.7}s`,
-                          }}
-                        >
-                          <Image
-                            src={thirtyTwoImagePath(id)}
+                            モーション動画があるタイプは動画 (キャラ自身が動く)、
+                            ないタイプは静止画 + CSS 浮遊 (index で位相をずらす)。 */}
+                        {MOTION_VIDEO[id] ? (
+                          <TypeMotionVideo
+                            src={MOTION_VIDEO[id]}
+                            poster={thirtyTwoImagePath(id)}
                             alt={thirtyTwoEssence(id)}
-                            width={512}
-                            height={512}
-                            className="h-auto w-full"
                           />
-                        </div>
+                        ) : (
+                          <div
+                            className="type-idle w-full"
+                            style={{
+                              animationDelay: `${(i % 4) * 0.9 + (i % 2) * 0.4}s`,
+                              animationDuration: `${4.6 + (i % 3) * 0.7}s`,
+                            }}
+                          >
+                            <Image
+                              src={thirtyTwoImagePath(id)}
+                              alt={thirtyTwoEssence(id)}
+                              width={512}
+                              height={512}
+                              className="h-auto w-full"
+                            />
+                          </div>
+                        )}
                         {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード。
                             ワイド画面 (xl) ではキャラに合わせて文字も一段大きく */}
                         <h3
