@@ -82,24 +82,26 @@ function GridIcon() {
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   // トリセツ(2)=/me/[token]、他己診断(4)=/tako/[token] を localStorage の
-  // owner_token から解決。トリセツは無ければ /diagnosis、他己診断は無ければ
-  // /tako (未診断ガード=「まず自己診断から」誘導画面) へ。
+  // owner_token から解決。無ければトリセツ=/diagnosis、他己診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState("/diagnosis");
   const [takoUrl, setTakoUrl] = useState("/tako");
+  // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
+  //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
+  //   古い誘導URLに固定される。usePathname() を依存に入れ「遷移のたびに再読込」して
+  //   最新 token を反映する。token 消失 (端末クリア等) 時はフォールバックへ戻す。
+  //   localStorage は SSR 時に無いため初期化子ではなく effect で読む (set-state-in-effect
+  //   は外部ストレージ→state 同期の正当なケース)。
   useEffect(() => {
-    // localStorage は SSR 時に存在しないため初期化子では読めず、マウント後に読む。
-    // この用途 (外部ストレージ→state の同期) は set-state-in-effect の正当なケース。
+    let token: string | null = null;
     try {
-      const token = localStorage.getItem("torisetsu_owner_token");
-      if (token) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setTorisetsuUrl(`/me/${token}`);
-        setTakoUrl(`/tako/${token}`);
-      }
+      token = localStorage.getItem("torisetsu_owner_token");
     } catch {
-      // localStorage 不可環境は /diagnosis のまま。
+      // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTorisetsuUrl(token ? `/me/${token}` : "/diagnosis");
+    setTakoUrl(token ? `/tako/${token}` : "/tako");
+  }, [pathname]);
 
   // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
   // ※ フックは全て呼び終えてから early return する (rules-of-hooks 遵守)。
