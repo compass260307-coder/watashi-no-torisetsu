@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  /* feat/top-page: Sora ブランドカラー (トップヒーローのアクセント) */
+  --sora-blue: #5b5bef;
+  --sora-blue-dark: #4a4ad9;
+
   --background: #ffffff;
   --foreground: #1a1a1a;
   --primary: #fe3c72;
@@ -185,6 +189,185 @@ body {
   background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.4) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
+}
+
+/* ============================================================
+   feat/top-page: 新トップページ (TopHero / リッチ路線) のアニメーション
+   - .wt-floaty / .wt-floaty-soft : 浮遊キャラ (オーブ) のふわふわ上下 + 微回転
+       dur/delay は要素側 style で個別に上書きしてバラす (全部同時に動かさない)。
+       soft は奥行き bg tier 用に揺れ幅を小さく。
+   - .wt-twinkle  : 星屑のゆっくり明滅
+   - .wt-bubble-* : 他己評価コメントの吹き出し (下から出現→上へ消滅をループ)
+   prefers-reduced-motion: reduce では全アニメを停止し静止配置にフォールバック
+   (コメントは opacity:0 のまま消えないよう上書き、JS の差し替えも iteration が
+   発火しなくなり自然に停止)。
+   ============================================================ */
+/* feat/top-page: ヒーローのキービジュアル出し分け。
+   PC/タブレット (640px〜) = 横長 keyvisual.png、スマホ (〜639px) = 縦長
+   keyvisual-mobile.png (横長を cover すると左右が大きく切れるため専用画像)。
+   どちらも cover + center bottom: 上端の純白帯をクロップしつつ、
+   下端の白い雲 (フッター連結) とキャラ帯を常に画面下に見せる。 */
+.top-hero-bg {
+  background-color: #e4e0f4;
+  background-image: url("/characters/keyvisual.png");
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 639px) {
+  .top-hero-bg {
+    background-image: url("/characters/keyvisual-mobile.png");
+  }
+}
+
+/* ヒーローのタイポグラフィ。
+   SP (〜639px): ヒーロー高さが 178vw (画像アスペクト比) で幅に比例するため、
+   文字サイズ・余白も vw 比例 + clamp にして、320〜639px のどの幅でも
+   「上 57% の空にコピーが収まり、下のキャラ帯に被らない」構図を保つ。
+   PC (640px〜): 従来の clamp / 固定値。 */
+.top-hero-h1 {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: clamp(24px, 7.5vw, 34px);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.top-hero-sub {
+  color: #ffffff;
+  font-weight: 500;
+  font-size: clamp(14px, 4.3vw, 19px);
+  line-height: 1.9;
+  margin-top: clamp(12px, 4vw, 20px);
+}
+
+.top-hero-cta-wrap {
+  margin-top: clamp(20px, 7vw, 32px);
+}
+
+.top-hero-cta {
+  font-size: clamp(16px, 4.8vw, 22px);
+}
+
+@media (min-width: 640px) {
+  .top-hero-h1 {
+    font-size: clamp(28px, 4.1vw, 54px);
+  }
+  .top-hero-sub {
+    font-size: clamp(16px, 1.9vw, 24px);
+    margin-top: 20px;
+  }
+  .top-hero-cta-wrap {
+    margin-top: 32px;
+  }
+  .top-hero-cta {
+    font-size: 22px;
+  }
+}
+
+/* feat/top-page: トップ CTA (Sora ブルー / hover で少し暗く) */
+.sora-cta {
+  background: var(--sora-blue);
+  color: #fff;
+}
+.sora-cta:hover {
+  background: var(--sora-blue-dark);
+}
+
+@keyframes wt-floaty {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+
+@keyframes wt-floaty-soft {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-6px) rotate(1deg); }
+}
+
+.wt-floaty {
+  animation: wt-floaty 6s ease-in-out infinite;
+}
+
+.wt-floaty-soft {
+  animation: wt-floaty-soft 6s ease-in-out infinite;
+}
+
+@keyframes wt-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 0.85; transform: scale(1); }
+}
+
+.wt-twinkle {
+  animation: wt-twinkle 4s ease-in-out infinite;
+}
+
+@keyframes wt-bubble {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.93); }
+  14%  { opacity: 1; transform: translateY(3px) scale(1); }
+  70%  { opacity: 1; transform: translateY(-7px) scale(1); }
+  100% { opacity: 0; transform: translateY(-16px) scale(0.97); }
+}
+
+.wt-bubble-anim {
+  /* 初期フレーム (0%) は opacity:0。各枠は負の animation-delay で位相をずらし、
+     常に数個が漂って見える状態にする (delay は要素側 style で付与)。 */
+  animation: wt-bubble 7s ease-in-out infinite;
+}
+
+/* LINE のトーク吹き出し風: 白・大きめ角丸・左下にしっぽ・文字は太く目立たせる */
+.wt-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border-radius: 17px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #2a3a5c;
+  box-shadow: 0 6px 16px rgba(42, 58, 92, 0.16);
+  white-space: nowrap;
+}
+
+/* 左下のしっぽ (下向きの白い三角。シャドウ無しの border 三角で artifact を避ける) */
+.wt-bubble::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 7px 6px 0 6px;
+  border-color: #fff transparent transparent transparent;
+}
+
+.wt-bubble-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wt-floaty,
+  .wt-floaty-soft,
+  .wt-twinkle {
+    animation: none;
+  }
+  .wt-floaty,
+  .wt-floaty-soft {
+    transform: none;
+  }
+  /* 動きを止め、吹き出しを静止表示 (opacity:0 のまま消えないように上書き) */
+  .wt-bubble-anim {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Phase 1.5-α Day 12-Polish-G 追加: ロック本文タップ → メイン解除カードへ

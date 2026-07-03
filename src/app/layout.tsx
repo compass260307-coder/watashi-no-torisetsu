@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { M_PLUS_Rounded_1c } from "next/font/google";
+import {
+  M_PLUS_Rounded_1c,
+  Zen_Maru_Gothic,
+  Noto_Sans_JP,
+} from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
@@ -11,6 +15,25 @@ const mPlusRounded = M_PLUS_Rounded_1c({
   weight: ["400", "500", "700", "800", "900"],
   display: "swap",
   variable: "--font-m-plus-rounded",
+});
+
+// feat/top-page: 新トップページ (TopHero) 専用フォント。
+// 既存ページの M PLUS Rounded はそのまま、トップだけ Zen Maru Gothic を使う
+// (見出し/ロゴ/ラベル/CTA = 700, 本文 = 400)。CSS 変数で局所適用する。
+const zenMaru = Zen_Maru_Gothic({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+  variable: "--font-zen-maru",
+});
+
+// feat/top-page (16P型リニューアル): トップヒーローのタイポ。
+// H1=極太ゴシック(Noto Sans JP 800)、本文=ゴシック(Noto Sans JP 400/500/700)。
+const notoSansJP = Noto_Sans_JP({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "800"],
+  display: "swap",
+  variable: "--font-noto-sans",
 });
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -111,7 +134,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={mPlusRounded.variable}>
+    <html
+      lang="ja"
+      className={`${mPlusRounded.variable} ${zenMaru.variable} ${notoSansJP.variable}`}
+    >
       <body className="min-h-dvh flex flex-col">
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
