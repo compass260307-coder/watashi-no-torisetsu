@@ -476,9 +476,9 @@ export default async function MePage({ params }: PageProps) {
                 <br />
                 でもこれはまだ「アナタから見たアナタ」。
                 <br />
-                友達に診断してもらうと
-                <span className="font-bold text-[#FE3C72]">相互理解度</span>
-                が分かって、
+                友達に
+                <span className="font-bold text-[#FE3C72]">他己診断テスト</span>
+                をしてもらうと、
                 <br />
                 自分でも気づかなかったアナタが見えてくる。
               </p>

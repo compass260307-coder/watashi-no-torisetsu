@@ -30,8 +30,8 @@ interface FloatingShareCtaProps {
 export function FloatingShareCta({
   href = "/friend-evaluation",
   onClick,
-  line1 = "相互理解度",
-  line2 = "はこちら",
+  line1 = "他己診断",
+  line2 = "テストへ",
   ariaLabel,
 }: FloatingShareCtaProps) {
   const [visible, setVisible] = useState(false);

@@ -1,10 +1,11 @@
-// Phase 1.5-α: ヒーロー直下シェアブロックの「相互理解度を促す文言」(確定版)。
+// Phase 1.5-α: ヒーロー直下シェアブロックの「他己診断テストを促す文言」(確定版)。
+// (表記統一: 旧「相互理解度」→「他己診断テスト」)
 //
 // - 2 行を <br> で固定 (auto-wrap しない)。
 //   1: リンクをシェアして友達に答えてもらうと、
-//   2: 友達から見たアナタ＝相互理解度がわかるよ
+//   2: 友達から見たアナタ＝他己診断テストの結果がわかるよ
 // - M PLUS Rounded / deepPurple #3A2D6B / 中央寄せ / line-height 1.75。
-// - 強調: 「リンク」「相互理解度」を weight 800 + vividPink #FE3C72。
+// - 強調: 「リンク」「他己診断テスト」を weight 800 + vividPink #FE3C72。
 // - 花の装飾なし。縁(text-shadow)なしで確定 (極薄白フチにする場合は下記コメント参照)。
 // - スマホで 1 行目が折り返さないよう font-size を clamp() で小さめに (各画面幅で 1 行ずつ収める)。
 
@@ -25,8 +26,8 @@ export function SharePromo({ className = "" }: SharePromoProps) {
         をシェアして友達に答えてもらうと、
         <br />
         友達から見たアナタ＝
-        <span className="font-extrabold text-[#FE3C72]">相互理解度</span>
-        がわかるよ
+        <span className="font-extrabold text-[#FE3C72]">他己診断テスト</span>
+        の結果がわかるよ
       </p>
     </div>
   );
