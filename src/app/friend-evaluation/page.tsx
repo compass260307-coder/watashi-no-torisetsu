@@ -49,7 +49,6 @@ import {
 } from "@/lib/thirty-two-types";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
 import { RankMedalBadge } from "@/components/result/RankMedalBadge";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
   CModifier,
@@ -212,7 +211,6 @@ export default async function FriendEvaluationPage() {
               className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
           </Link>
-          <HamburgerMenu myTrisetsuUrl={myTrisetsuUrl} />
         </div>
 
         {/* ===== ステッカー ===== */}
@@ -302,7 +300,6 @@ function UnauthenticatedView() {
               className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
           </Link>
-          <HamburgerMenu />
         </div>
 
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center my-8">

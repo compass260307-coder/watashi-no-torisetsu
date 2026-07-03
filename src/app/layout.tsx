@@ -4,6 +4,7 @@ import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
+import { BottomNav } from "@/components/BottomNav";
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
@@ -125,10 +126,17 @@ export default function RootLayout({
       lang="ja"
       className={`${mPlusRounded.variable} ${notoSansJP.variable}`}
     >
-      <body className="min-h-dvh flex flex-col">
+      <body
+        className="min-h-dvh flex flex-col"
+        // 全ページ共通のボトムナビ (fixed) に本文が隠れないよう、バー実測高
+        // (56px 相当) + iOS セーフエリア分の余白を最下部に確保する。
+        style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}
+      >
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
         {children}
+        {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
+        <BottomNav />
         <GoogleAnalytics />
         <Suspense fallback={null}>
           <GoogleAnalyticsTracker />

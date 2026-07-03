@@ -72,7 +72,6 @@ import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
   CModifier,
@@ -536,9 +535,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
               PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
           <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 md:pt-2 pb-2">
-            <div className="flex justify-end mb-2">
-              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-            </div>
             {heroTitle}
             {oceanRow}
             {catchphraseRow}

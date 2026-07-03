@@ -31,7 +31,6 @@ import {
   type FriendChoiceQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import {
   StickyCtaFooter,
   ctaPrimary,
@@ -400,7 +399,6 @@ function IntroScreen({
               className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
           </Link>
-          <HamburgerMenu />
         </div>
 
         {/* ===== タグ ({owner}のトリセツ) = /me と同じ ===== */}

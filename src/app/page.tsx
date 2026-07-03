@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 // コンポーネント本体 (components/Footer.tsx) は他ページで利用継続。
 import FloatingCTABar from "@/components/FloatingCTABar";
 // Day 12-A: 装飾だけだった ☰ を 3 項目ハンバーガーメニューに置換
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 // 診断済みユーザーを自分の結果ページへ自動誘導するための session 解決。
 import { getSession } from "@/lib/session";
 
@@ -92,7 +91,6 @@ export default async function Home({
               priority
               className="w-[140px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
             />
-            <HamburgerMenu />
           </div>
 
           {/* Day 7.2: 装飾を 4 つだけに整理 (大ハート / 大花 / キラキラ×2)
