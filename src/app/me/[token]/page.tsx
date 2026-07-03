@@ -54,7 +54,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
-import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
+import { computeMinnaNoMeContext, scoreImpressionLine } from "@/lib/minna-no-me";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 // 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
 // 結果ページからは呼び出さない (import も外す)。
@@ -73,7 +73,6 @@ import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
 import { getModifierLabel } from "@/lib/modifier-data";
 import { ResultActions } from "@/components/result/ResultActions";
 import { FriendGapInvite } from "@/components/result/FriendGapInvite";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
 import type {
   BigFiveDimension,
   CModifier,
@@ -469,7 +468,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
   const oceanRow = (
-    <div className="mt-3 md:mt-1 flex items-baseline justify-center gap-1.5">
+    <div className="mt-1.5 md:mt-1 flex items-baseline justify-center gap-1.5">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
         const high = oceanIsHigh(k);
         return (
@@ -491,7 +490,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
   //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
   const catchphraseRow = dispCatch ? (
-    <div className="mt-3 md:mt-1 flex items-center justify-center gap-2">
+    <div className="mt-1.5 md:mt-1 flex items-center justify-center gap-2">
       <svg
         viewBox="0 0 24 24"
         width="17"
@@ -559,23 +558,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
-          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
-              PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 md:pt-2 pb-2">
-            <div className="flex justify-end mb-2">
-              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-            </div>
+          {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
+              モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
+              ☰ はボトムナビ導入で撤去。 */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-2 pb-2">
             {heroTitle}
             {oceanRow}
             {catchphraseRow}
-            <div className="max-w-[600px] mx-auto mt-4 md:mt-2">
+            <div className="max-w-[600px] mx-auto mt-2 md:mt-2">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
                 essence={dispEssence}
                 name={dispName}
                 description={dispDesc}
-                imageAspectClassName="aspect-square md:max-h-[400px]"
+                imageAspectClassName="aspect-square max-h-[46vh] md:max-h-[400px]"
                 imageFitClassName="object-contain"
                 imageCardClassName=""
                 imageSizes="(min-width: 768px) 600px, 100vw"
@@ -668,6 +665,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     gapSentence: minnaContext.gapSentence,
                     favoritePoints: minnaContext.favoritePoints,
                     letters: friendMessages,
+                    // B-1: 手紙/チップの空判定はパネル側。ここでは常にスコア由来の
+                    //   1行を用意しておき、両方空のときだけパネルが表示する。
+                    scoreImpression: scoreImpressionLine(
+                      minnaContext.friendAvgScores,
+                    ),
                   }
                 : null,
             }}

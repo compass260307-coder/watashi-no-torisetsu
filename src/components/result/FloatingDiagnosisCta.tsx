@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { track } from "@/lib/track";
 
 interface FloatingDiagnosisCtaProps {
   /** 遷移先 (既定: /diagnosis、末尾メインCTAと同じ)。 */
@@ -56,6 +57,9 @@ export function FloatingDiagnosisCta({
     <Link
       href={href}
       aria-label={label}
+      onClick={() =>
+        track("friend_v2_self_cta_clicked", { metadata: { source: "floating" } })
+      }
       className="fixed z-50 flex items-center gap-1.5 rounded-full transition-all duration-300 ease-out active:scale-95"
       style={{
         right: "16px",

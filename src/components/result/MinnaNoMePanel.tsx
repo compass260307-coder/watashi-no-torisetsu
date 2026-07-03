@@ -18,6 +18,8 @@ interface MinnaNoMePanelProps {
   gapSentence: string | null;
   favoritePoints: string[];
   letters: { name: string; message: string }[];
+  // B-1: 手紙/チップが両方空のとき出すスコア由来の1行 (ルールベース)。無ければ null。
+  scoreImpression: string | null;
 }
 
 type FetchState =
@@ -199,6 +201,21 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
           ))}
         </section>
       )}
+
+      {/* B-1: 手紙もチップも無いとき、スコア由来の印象を1行 (別枠・別ラベル)。
+          本物の手紙と誤認させないため封筒UIは使わず、ラベルも「スコアから見えるあなた」。 */}
+      {props.letters.length === 0 &&
+        props.favoritePoints.length === 0 &&
+        props.scoreImpression && (
+          <section>
+            <h3 className="text-[#3A2D6B] font-black text-base mb-2">
+              スコアから見えるあなた
+            </h3>
+            <p className="body-gothic text-[#3A2D6B]/85 text-base leading-[1.7]">
+              {props.scoreImpression}
+            </p>
+          </section>
+        )}
     </div>
   );
 }
