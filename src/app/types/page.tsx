@@ -5,13 +5,15 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import {
   allThirtyTwoTypeIds,
-  thirtyTwoName,
   thirtyTwoEssence,
   thirtyTwoZukanDesc,
   thirtyTwoImagePath,
   thirtyTwoGroup,
+  baseIdOf,
+  nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import { sixteenTypes } from "@/lib/sixteen-types";
 import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 // /types: 性格タイプ一覧 (16Personalities の /ja/性格タイプ を参考にした構成)。
@@ -37,21 +39,29 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// 背景透過の「立ち絵」アセット (16P 風にキャラを帯へ直接立たせる)。
-// ⚠️ 段階導入中: 用意できたタイプから登録し、未登録タイプは円形クロップで
-// フォールバックする。32 体揃ったら thirtyTwoImagePath 同様のヘルパーに昇格させる。
-const STANDING_IMAGE: Partial<Record<ThirtyTwoTypeId, string>> = {
-  "quiet-owl__N": "/characters/standing/parakeet_N.png", // きらめきインコ (プロトタイプ)
+// 帯の背景色 = キャラ画像 (v3) の背景色そのもの (全 32 枚を実測、グループ内で完全一致)。
+// 画像とベタ続きになり境界が消える = 透過素材なしで「キャラが帯の上にいる」ように見せる。
+// ⚠️ v3 画像を差し替えるときは背景色もここと揃えること。
+const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#FDEFB4", // 空・ペールイエロー
+  sea: "#BEF2F9", // 海・ペールシアン
+  land: "#D8F2C0", // 陸・ペールグリーン
+  unknown: "#E7DCFB", // 未知・ペールラベンダー
 };
 
-// 帯の背景色: 16P 風に彩度を落としたグループ色 (このページ専用)。
-// 図鑑などが参照する THIRTY_TWO_GROUP_COLOR (パステル原色) はいじらない。
-const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
-  sky: "#D6C77E", // 空・くすんだ砂金
-  sea: "#8FAEC6", // 海・グレイッシュブルー
-  land: "#9CBB8B", // 陸・モスグリーン
-  unknown: "#A899BE", // 未知・グレイッシュパープル (16P 分析家に最も近いトーン)
+// メイン名 (肩書き) の文字色 = 各グループ色の濃いバージョン (帯の上で読めるコントラスト)
+const DARK_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#8F6B14",
+  sea: "#1D6E86",
+  land: "#3F7A2E",
+  unknown: "#6C4EB8",
 };
+
+// OCEAN コード (サブラベル): base16 の OCEA 高低コード + N 軸 (__N=＋ / __R=−)
+function oceanCode(id: ThirtyTwoTypeId): string {
+  const nSign = nAxisOf(id) === "N" ? "＋" : "−";
+  return `${sixteenTypes[baseIdOf(id)].code}N${nSign}`;
+}
 
 // グループの表示順・見出し・紹介文 (⚠️ 紹介文は仮。データ側に正本ができたら移す)。
 // giant: 帯の背景に敷く巨大タイポ (16P の「分析家」ポジション)。
@@ -156,46 +166,30 @@ export default function TypesPage() {
                         key={id}
                         className="flex flex-col items-center text-center"
                       >
-                        {STANDING_IMAGE[id] ? (
-                          /* 立ち絵: 帯に直接立たせる (足元に接地影の楕円) */
-                          <div className="relative flex h-28 w-full items-end justify-center md:h-40">
-                            <div
-                              aria-hidden="true"
-                              className="absolute bottom-0 left-1/2 h-3 w-24 -translate-x-1/2 rounded-full bg-[#1E1E3C]/25 blur-[3px] md:h-4 md:w-32"
-                            />
-                            <Image
-                              src={STANDING_IMAGE[id]}
-                              alt={thirtyTwoName(id)}
-                              width={200}
-                              height={200}
-                              className="relative h-full w-auto object-contain"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white shadow-[0_16px_32px_rgba(30,30,60,0.35)] md:h-40 md:w-40">
-                            <Image
-                              src={thirtyTwoImagePath(id)}
-                              alt={thirtyTwoName(id)}
-                              width={160}
-                              height={160}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        )}
+                        {/* キャラ: 枠・影・クロップなしの素置き。画像背景 = 帯色なので
+                            境界が消えて帯の上にいるように見える (16P 風) */}
+                        <Image
+                          src={thirtyTwoImagePath(id)}
+                          alt={thirtyTwoEssence(id)}
+                          width={260}
+                          height={260}
+                          className="w-full max-w-[170px] md:max-w-[250px]"
+                        />
+                        {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード */}
                         <h3
-                          className="mt-4 text-[15px] font-bold leading-snug md:text-[17px]"
-                          style={{ color: NAVY }}
-                        >
-                          {thirtyTwoName(id)}
-                        </h3>
-                        <p
-                          className="mt-0.5 text-[11px] font-bold tracking-[0.08em] md:text-[12px]"
-                          style={{ color: `${NAVY}99` }}
+                          className="mt-2 text-[18px] font-bold leading-snug md:text-[22px]"
+                          style={{ color: DARK_COLOR[g.key] }}
                         >
                           {thirtyTwoEssence(id)}
+                        </h3>
+                        <p
+                          className="mt-1 text-[12px] font-bold tracking-[0.06em] md:text-[13px]"
+                          style={{ color: `${NAVY}99` }}
+                        >
+                          {oceanCode(id)}
                         </p>
                         <p
-                          className="mt-1.5 max-w-[220px] text-[12px] leading-relaxed md:text-[13px]"
+                          className="mt-2 max-w-[240px] text-[13px] leading-relaxed md:text-[14px]"
                           style={{ color: `${NAVY}B3` }}
                         >
                           {thirtyTwoZukanDesc(id)}
