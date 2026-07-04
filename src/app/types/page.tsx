@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -41,15 +43,24 @@ export const metadata: Metadata = {
 };
 
 // キャラのモーション動画 (AI 生成のアイドルループ、背景色 = 帯色の疑似透過)。
-// ⚠️ 段階導入中: できたタイプから登録し、未登録は静止画 + CSS 浮遊で表示。
-//   動画の仕様: 順→逆の往復ループ (継ぎ目対策) / 640px / H.264 / 無音 / ~500KB。
-//   量産手順: Kling (開始=終了フレームに元画像) で生成 → 以下で往復化・圧縮:
-//   ffmpeg -i in.mp4 -filter_complex \
-//     "[0:v]scale=640:-2,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]" \
-//     -map "[v]" -an -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart out.mp4
-const MOTION_VIDEO: Partial<Record<ThirtyTwoTypeId, string>> = {
-  "quiet-owl__N": "/characters/motion/parakeet_N.mp4", // きらめきインコ (1体目)
-};
+// public/characters/motion/<slug>.mp4 を置くだけで自動登録される
+// (ビルド時に fs でディレクトリを走査。手動のマップ更新は不要)。
+// 未配置のタイプは静止画 + CSS 浮遊にフォールバック。
+// 動画の仕様・量産手順は docs/motion-videos.md を参照。
+const MOTION_DIR = path.join(process.cwd(), "public", "characters", "motion");
+const motionFiles: Set<string> = (() => {
+  try {
+    return new Set(fs.readdirSync(MOTION_DIR));
+  } catch {
+    return new Set();
+  }
+})();
+
+function motionVideoPath(id: ThirtyTwoTypeId): string | null {
+  // 動画ファイル名は静止画と同じ slug (thirtyTwoImagePath のベース名) に揃える
+  const file = `${path.basename(thirtyTwoImagePath(id), ".png")}.mp4`;
+  return motionFiles.has(file) ? `/characters/motion/${file}` : null;
+}
 
 // 帯の背景色 = キャラ画像 (v3) の背景色そのもの (全 32 枚を実測、グループ内で完全一致)。
 // 画像とベタ続きになり境界が消える = 透過素材なしで「キャラが帯の上にいる」ように見せる。
@@ -185,9 +196,9 @@ export default function TypesPage() {
                             境界が消えて帯の上にいるように見える (16P 風)。
                             モーション動画があるタイプは動画 (キャラ自身が動く)、
                             ないタイプは静止画 + CSS 浮遊 (index で位相をずらす)。 */}
-                        {MOTION_VIDEO[id] ? (
+                        {motionVideoPath(id) ? (
                           <TypeMotionVideo
-                            src={MOTION_VIDEO[id]}
+                            src={motionVideoPath(id)!}
                             poster={thirtyTwoImagePath(id)}
                             alt={thirtyTwoEssence(id)}
                           />
