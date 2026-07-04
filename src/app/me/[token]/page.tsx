@@ -587,7 +587,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               className="block rounded-3xl border-2 border-[#2A3A5C]/25 bg-white p-6 text-center shadow-md transition-colors hover:bg-[#F3F1FB]"
             >
               <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
-                他己診断（タコ診断）
+                他己診断
               </p>
               <h2 className="text-[#2A3A5C] font-black text-lg leading-snug mb-2">
                 友達が見た「あなた」も見てみる →
