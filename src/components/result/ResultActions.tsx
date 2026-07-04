@@ -17,7 +17,6 @@
 
 import { useRef, useState } from "react";
 import { ShareCard } from "./ShareCard";
-import { BragShare } from "./BragShare";
 
 interface ResultActionsProps {
   typeName: string;
@@ -28,10 +27,6 @@ interface ResultActionsProps {
   description: string;
   imageSrc: string;
   shareCode: string;
-  // 拡散シェア (診断を友達にすすめる・従の導線) 用。essence + code + catchphrase + トップURL。
-  catchphrase: string;
-  code: string;
-  topUrl: string;
   // 表示形態: "full" = アイコン+ラベルのしっかり版 (下部・本命) /
   //           "iconbar" = アイコンのみコンパクト版 (上部・三本線の横、省スペース)
   variant?: "full" | "iconbar";
@@ -45,9 +40,6 @@ export function ResultActions({
   description,
   imageSrc,
   shareCode,
-  catchphrase,
-  code,
-  topUrl,
   variant = "full",
 }: ResultActionsProps) {
   const [linkCopied, setLinkCopied] = useState(false);
@@ -240,14 +232,7 @@ export function ResultActions({
         </p>
       )}
 
-      {/* ===== 従: 診断を広める (拡散シェア。主=評価シェアとは逆ベクトル) ===== */}
-      <BragShare
-        essence={essence}
-        code={code}
-        catchphrase={catchphrase}
-        topUrl={topUrl}
-        source="result"
-      />
+      {/* 拡散シェア (BragShare) は主従フラット化のため /me 側で他己診断カードの下へ移設。 */}
 
       {/* オフスクリーンの確定カード (PNG 書き出し元) */}
       <div

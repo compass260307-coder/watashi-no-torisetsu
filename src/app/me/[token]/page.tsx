@@ -58,6 +58,7 @@ import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
+import { BragShare } from "@/components/result/BragShare";
 import type {
   BigFiveDimension,
   CModifier,
@@ -571,9 +572,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
             description={dispDesc}
             imageSrc={dispImage}
             shareCode={shareCode}
-            catchphrase={dispCatch}
-            code={dispCode}
-            topUrl={`${SITE_URL}/`}
           />
         </div>
 
@@ -601,6 +599,22 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </section>
         ) : (
           <VisitorCtaSection />
+        )}
+
+        {/* ===== 拡散シェア (拡散=新規診断を呼ぶ)。主従フラット化: 主(評価依頼)は結果直後、
+            従(拡散)は他己診断カードを挟んだこの位置で対等に目立たせる (混同回避のため場所を離す)。
+            owner 限定 (自分のトリセツを広める文脈)。 ===== */}
+        {isOwner && (
+          <section className="mb-8">
+            <BragShare
+              variant="prominent"
+              essence={dispEssence}
+              code={dispCode}
+              catchphrase={dispCatch}
+              topUrl={`${SITE_URL}/`}
+              source="result"
+            />
+          </section>
         )}
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
