@@ -367,6 +367,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   ●○ インジケータは廃止 (大小で高低が伝わる)。ラベル「BIG FIVE CODE」は維持。
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
+  // 拡散シェア文用のコード表記 (ヒーローの大小方式と同じ: 高=大文字 / 低=小文字)。例 "OCeAN"。
+  const dispCode = (["O", "C", "E", "A", "N"] as BigFiveDimension[])
+    .map((k) => (oceanIsHigh(k) ? k : k.toLowerCase()))
+    .join("");
   const oceanRow = (
     <div className="mt-1.5 md:mt-1 flex items-baseline justify-center gap-1.5">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
@@ -567,6 +571,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             description={dispDesc}
             imageSrc={dispImage}
             shareCode={shareCode}
+            catchphrase={dispCatch}
+            code={dispCode}
+            topUrl={`${SITE_URL}/`}
           />
         </div>
 
