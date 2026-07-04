@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "他己診断（タコ診断）",
+  title: "他己診断",
   robots: { index: false, follow: false },
 };
 

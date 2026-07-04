@@ -24,10 +24,13 @@ export function TakoLockedState({
 
   return (
     <div className="relative min-h-[560px] overflow-hidden rounded-3xl">
-      {/* ===== ぼかしダミー背景 (チラ見せ) ===== */}
+      {/* ===== ぼかしダミー背景 (チラ見せ) =====
+          absolute 背景に敷き、高さは下の中身 (通常フロー) が決める。
+          以前は中身が absolute で親高さに寄与せず、min-h を超えた QR が
+          overflow-hidden で下端見切れしていたため、レイヤーを入れ替えた。 */}
       <div
         aria-hidden="true"
-        className="select-none px-6 pt-10"
+        className="absolute inset-0 select-none px-6 pt-10"
         style={{ filter: "blur(7px)", opacity: 0.4, pointerEvents: "none" }}
       >
         <div className="mx-auto mb-8 h-40 w-40 rounded-full bg-[#2A3A5C]/20" />
@@ -48,9 +51,11 @@ export function TakoLockedState({
         </div>
       </div>
 
-      {/* ===== オーバーレイ (地色グラデ + 中央カード) ===== */}
+      {/* ===== オーバーレイ (地色グラデ + 中央カード) =====
+          通常フロー (relative) にして高さを中身が決める → QR 全体が
+          親に収まり見切れない。下端に余白 (pb-10) を確保。 */}
       <div
-        className="absolute inset-0 flex flex-col items-center px-5 pt-10"
+        className="relative flex flex-col items-center px-5 pt-10 pb-10"
         style={{
           background:
             "linear-gradient(to bottom, rgba(228,224,245,0.35) 0%, rgba(228,224,245,0.94) 42%, #E4E0F5 100%)",

@@ -88,7 +88,7 @@ export default async function TakoPage({ params }: PageProps) {
             みんなの目に映る、{ownerName}
           </h1>
           <p className="mt-1 text-[#2A3A5C]/70 font-bold text-sm">
-            他己診断（タコ診断）— 友達から見たあなた
+            他己診断 — 友達から見たあなた
           </p>
         </div>
 
