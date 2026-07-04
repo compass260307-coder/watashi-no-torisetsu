@@ -52,8 +52,10 @@ import {
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
-// 他己パート (発散バー/他者評価/職業/みんなの目/招待QR/他己フローティングCTA) は
-// /tako/[token] へ移設したため /me からは import しない。
+import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
+// 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
+// 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
+// ただし自己単体の発散バー(②「5つの軸で見るアナタ」)は自己ページの要素なので /me に残す。
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
@@ -565,6 +567,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
           {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
           <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+
+          {/* 自己単体の Big Five 発散バー (②「5つの軸で見るアナタ」)。
+              482f5bb の他己パート撤去で巻き添え削除されていたのを復活。
+              friendScores は渡さない (自己×友達ギャップ① は /tako 側)。 */}
+          <div className="mt-8">
+            <BigFiveDivergingBars scores={stored} title="5つの軸で見るアナタ" />
+          </div>
         </section>
 
 
