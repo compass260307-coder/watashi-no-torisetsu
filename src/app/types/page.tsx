@@ -42,24 +42,48 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// キャラのモーション動画 (AI 生成のアイドルループ、背景色 = 帯色の疑似透過)。
-// public/characters/motion/<slug>.mp4 を置くだけで自動登録される
-// (ビルド時に fs でディレクトリを走査。手動のマップ更新は不要)。
-// 未配置のタイプは静止画 + CSS 浮遊にフォールバック。
-// 動画の仕様・量産手順は docs/motion-videos.md を参照。
+// キャラ表示は「真の透過」素材を使う:
+//   - 静止画: public/characters/cut/<slug>.png (Vision で背景除去した透過版。
+//     元画像 v3 は他ページ用にそのまま残す)
+//   - 動画: public/characters/motion/<slug>.webm (VP9+alpha) と <slug>.mov
+//     (HEVC+alpha, Safari 用) のペア。webm が存在するタイプだけ動画表示。
+// どちらも「ファイルを置くだけで自動登録」(ビルド時に fs 走査、コード変更不要)。
+// 量産手順は docs/motion-videos.md を参照。
 const MOTION_DIR = path.join(process.cwd(), "public", "characters", "motion");
-const motionFiles: Set<string> = (() => {
+const CUT_DIR = path.join(process.cwd(), "public", "characters", "cut");
+const readDirSafe = (dir: string): Set<string> => {
   try {
-    return new Set(fs.readdirSync(MOTION_DIR));
+    return new Set(fs.readdirSync(dir));
   } catch {
     return new Set();
   }
-})();
+};
+const motionFiles = readDirSafe(MOTION_DIR);
+const cutFiles = readDirSafe(CUT_DIR);
 
-function motionVideoPath(id: ThirtyTwoTypeId): string | null {
-  // 動画ファイル名は静止画と同じ slug (thirtyTwoImagePath のベース名) に揃える
-  const file = `${path.basename(thirtyTwoImagePath(id), ".png")}.mp4`;
-  return motionFiles.has(file) ? `/characters/motion/${file}` : null;
+// slug = 静止画ファイル名のベース (thirtyTwoImagePath から導出)
+function slugOf(id: ThirtyTwoTypeId): string {
+  return path.basename(thirtyTwoImagePath(id), ".png");
+}
+
+// 表示用静止画: 透過版があればそれ、なければ元画像 (v3) にフォールバック
+function displayImagePath(id: ThirtyTwoTypeId): string {
+  const file = `${slugOf(id)}.png`;
+  return cutFiles.has(file)
+    ? `/characters/cut/${file}`
+    : thirtyTwoImagePath(id);
+}
+
+function motionVideoPaths(
+  id: ThirtyTwoTypeId,
+): { webm: string; mov: string } | null {
+  const slug = slugOf(id);
+  return motionFiles.has(`${slug}.webm`)
+    ? {
+        webm: `/characters/motion/${slug}.webm`,
+        mov: `/characters/motion/${slug}.mov`,
+      }
+    : null;
 }
 
 // 帯の背景色 = キャラ画像 (v3) の背景色そのもの (全 32 枚を実測、グループ内で完全一致)。
@@ -192,14 +216,15 @@ export default function TypesPage() {
                         // 主張して列が縮まなくなる (SP で横はみ出しする) のを防ぐ
                         className="flex min-w-0 flex-col items-center text-center"
                       >
-                        {/* キャラ: 枠・影・クロップなしの素置き。背景 = 帯色なので
-                            境界が消えて帯の上にいるように見える (16P 風)。
+                        {/* キャラ: 透過素材の素置き (背景が抜けているので巨大タイポや
+                            帯がキャラの輪郭どおりに透けて見える = 16P のレイヤー感)。
                             モーション動画があるタイプは動画 (キャラ自身が動く)、
                             ないタイプは静止画 + CSS 浮遊 (index で位相をずらす)。 */}
-                        {motionVideoPath(id) ? (
+                        {motionVideoPaths(id) ? (
                           <TypeMotionVideo
-                            src={motionVideoPath(id)!}
-                            poster={thirtyTwoImagePath(id)}
+                            movSrc={motionVideoPaths(id)!.mov}
+                            webmSrc={motionVideoPaths(id)!.webm}
+                            poster={displayImagePath(id)}
                             alt={thirtyTwoEssence(id)}
                           />
                         ) : (
@@ -211,7 +236,7 @@ export default function TypesPage() {
                             }}
                           >
                             <Image
-                              src={thirtyTwoImagePath(id)}
+                              src={displayImagePath(id)}
                               alt={thirtyTwoEssence(id)}
                               width={512}
                               height={512}

@@ -2,24 +2,29 @@
 
 // /types: キャラのモーション動画 (AI 生成のアイドルループ) プレイヤー。
 //
-//   - 背景色をページの帯色と揃えた「疑似透過」動画を前提とする (真の透過は不要)。
-//     動画側の背景が僅かに暗い場合は ffmpeg の lutrgb で帯色に補正して収録する。
+//   - 背景を Vision で切り抜いた「真の透過」動画を再生する。
+//     アルファ付き動画はブラウザごとに形式が分かれるため 2 ソース構成:
+//       * <slug>.mov  = HEVC + alpha (hvc1) … Safari / iOS
+//       * <slug>.webm = VP9 + alpha        … Chrome / Edge / Firefox / Android
+//     Safari は quicktime を先に拾い、Chrome は再生不可なので webm へ落ちる。
+//   - poster には切り抜き済みの透過 PNG を渡す (読み込み前・reduced-motion 時も
+//     見た目が静止画版と揃う)。
 //   - 再生トリガー:
 //       * ホバーできる環境 (PC) = マウスを乗せている間だけ再生、離すと一時停止。
 //         初回ホバーで待たされないよう、画面付近に入った時点で読み込みだけ済ませる。
 //       * ホバーがない環境 (スマホ) = 画面内に入ったら再生、外れたら停止。
-//   - poster に既存の静止画 (thirtyTwoImagePath) を渡すことで、
-//     読み込み前・reduced-motion 時も見た目が静止画版と同一になる。
 //   - prefers-reduced-motion: reduce では一切再生しない。
 
 import { useEffect, useRef } from "react";
 
 export function TypeMotionVideo({
-  src,
+  movSrc,
+  webmSrc,
   poster,
   alt,
 }: {
-  src: string;
+  movSrc: string;
+  webmSrc: string;
   poster: string;
   alt: string;
 }) {
@@ -79,7 +84,6 @@ export function TypeMotionVideo({
   return (
     <video
       ref={ref}
-      src={src}
       poster={poster}
       muted
       loop
@@ -87,6 +91,10 @@ export function TypeMotionVideo({
       preload="none"
       aria-label={alt}
       className="h-auto w-full"
-    />
+    >
+      {/* Safari (HEVC+alpha) を先に。Chrome 系は quicktime を飛ばして webm を拾う */}
+      <source src={movSrc} type='video/quicktime; codecs="hvc1"' />
+      <source src={webmSrc} type='video/webm; codecs="vp9"' />
+    </video>
   );
 }

@@ -4,6 +4,10 @@
 1体目 (parakeet_N) は完成・組み込み済み。**このガイドの手順どおりに作れば、
 残りは「生成して送る」だけで自動的にページへ反映される。**
 
+表示は「真の透過」方式: 送られた動画は Claude Code 側で背景除去 (Apple Vision) して
+アルファ付き動画 (webm + mov) に変換する。静止画 32 枚の透過版
+(public/characters/cut/) も同じ方法で処理済み。
+
 ## 生成手順 (Kling)
 
 1. **画像から動画 (Image to Video)** を選ぶ
@@ -38,19 +42,24 @@ character deformation, extra limbs
 ## 納品 → 反映の流れ
 
 - 生成した mp4 を、**どのキャラか分かる状態で** Claude Code に渡す (数本ずつで OK)
-- Claude Code 側で加工して配置する:
-  1. 往復ループ化 + 640px + H.264/CRF26 圧縮 (~500KB):
-     `ffmpeg -i in.mp4 -filter_complex "[0:v]scale=640:-2,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]" -map "[v]" -an -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart out.mp4`
-  2. 背景色を実測し、帯色とズレていれば lutrgb で補正 (グループ別の帯色:
-     空 #FDEFB4 / 海 #BEF2F9 / 陸 #D8F2C0 / 未知 #E7DCFB)
-  3. `public/characters/motion/<slug>.mp4` に配置 → **置くだけで /types に自動反映**
+- Claude Code 側で加工して配置する (全自動・ローカル完結):
+  1. 往復ループ化 (継ぎ目消し) + 640px 化 → フレーム連番に展開
+  2. Apple Vision (`/tmp/vision/removebg_batch`) で全フレームの背景除去
+     — 色抜きと違い淡色部が抜けず、Kling のウォーターマークも背景ごと消える
+  3. アルファ付きで 2 形式にエンコード:
+     - `<slug>.webm` VP9+alpha (`-c:v libvpx-vp9 -pix_fmt yuva420p -crf 34`)
+     - `<slug>.mov` HEVC+alpha (`-c:v hevc_videotoolbox -allow_sw 1 -alpha_quality 0.75 -tag:v hvc1`) … Safari/iOS 用
+  4. `public/characters/motion/` に配置 → **置くだけで /types に自動反映**
      (ページがビルド時にディレクトリを走査するため、コード変更は不要)
+- 透過するため、生成物の背景色ズレはもう問題にならない。ただし背景が
+  ゴチャつくと切り抜き精度が落ちるので、**背景と小物が動かないこと**は引き続き重要
 
 ## ⚠️ 取り違え注意
 
-ファイル名の slug と二つ名の動物は、画像差し替えの経緯で**一致しないものがある**
-(例: slug `fox_N` の中身はパンダ)。**必ず下表の「元画像」を入力に使い、
-出力も同じ slug で扱うこと。** 見た目の動物名でファイルを探さない。
+ファイル名の slug と二つ名の動物は、キャラ改版の経緯で**一致しないものがある**
+(例: slug `fox_N` の中身はキツネの手品師だが、データ上の二つ名は旧称「にこにこパンダ」)。
+**必ず下表の「元画像」を入力に使い、出力も同じ slug で扱うこと。**
+見た目の動物名でファイルを探さない。
 
 ## チェックリスト (32体)
 
