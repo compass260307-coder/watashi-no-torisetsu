@@ -8,7 +8,7 @@
 
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
@@ -22,16 +22,23 @@ import {
   THIRTY_TWO_GROUP_COLOR,
   type ThirtyTwoGroup,
 } from "@/lib/thirty-two-content/character-32";
-import { compat } from "@/lib/aisho-compat";
+import { compat, type CompatResult } from "@/lib/aisho-compat";
 
 const NAVY = "#2A3A5C";
 const INACTIVE = "#9BA3B4";
 
-const GROUP_META: { key: ThirtyTwoGroup; emoji: string; label: string }[] = [
-  { key: "sky", emoji: "🕊", label: "空" },
-  { key: "land", emoji: "🌿", label: "陸" },
-  { key: "sea", emoji: "🌊", label: "海" },
-  { key: "unknown", emoji: "✨", label: "未知" },
+// グループ = base16 の E×O (実データ確認済み)。二軸ラベルは E(外向/内向)×O(感性/現実)。
+//   空 E−O＋=内向×感性 / 陸 E＋O−=外向×現実 / 海 E＋O＋=外向×感性 / 未知 E−O−=内向×現実
+const GROUP_META: {
+  key: ThirtyTwoGroup;
+  emoji: string;
+  label: string;
+  axisLabel: string;
+}[] = [
+  { key: "sky", emoji: "🕊", label: "空", axisLabel: "内向×感性" },
+  { key: "land", emoji: "🌿", label: "陸", axisLabel: "外向×現実" },
+  { key: "sea", emoji: "🌊", label: "海", axisLabel: "外向×感性" },
+  { key: "unknown", emoji: "✨", label: "未知", axisLabel: "内向×現実" },
 ];
 
 const ALL_IDS = allThirtyTwoTypeIds();
@@ -39,6 +46,10 @@ const VALID = new Set<string>(ALL_IDS);
 
 function isValid(id: string | null): id is ThirtyTwoTypeId {
   return id !== null && VALID.has(id);
+}
+
+function sectionId(key: ThirtyTwoGroup): string {
+  return `aisho-group-${key}`;
 }
 
 // ---- インラインSVG (依存ライブラリ不使用) --------------------------------
@@ -92,6 +103,24 @@ function ShuffleIcon() {
       aria-hidden="true"
     >
       <path d="M16 3h5v5M4 20l17-17M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={18}
+      height={18}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
     </svg>
   );
 }
@@ -167,6 +196,45 @@ function Slot({
   );
 }
 
+// ---- 詳細ブロック (良いところ2 / 注意1) ----------------------------------
+// ★将来の購入ゲート単位。%＋★＋サマリー(無料側)とは独立させ、後から
+//   購入フラグでこのコンポーネントごとラップできるようにしてある (今回はゲートなし・常時表示)。
+
+function CompatDetail({ r }: { r: CompatResult }) {
+  return (
+    <div>
+      {/* 良いところ 2 */}
+      <div className="mt-6 space-y-2">
+        <p className="font-black text-sm" style={{ color: NAVY }}>
+          良いところ
+        </p>
+        {r.goods.map((g, i) => (
+          <div
+            key={i}
+            className="rounded-2xl px-4 py-3 text-sm leading-relaxed"
+            style={{ background: "#EEF1F7", color: NAVY }}
+          >
+            {g}
+          </div>
+        ))}
+      </div>
+
+      {/* 気をつけるところ 1 */}
+      <div className="mt-4">
+        <p className="font-black text-sm" style={{ color: NAVY }}>
+          ここだけ気をつけると◎
+        </p>
+        <div
+          className="mt-2 rounded-2xl px-4 py-3 text-sm leading-relaxed border-2"
+          style={{ borderColor: INACTIVE, color: NAVY }}
+        >
+          {r.caution}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- 結果ブロック ---------------------------------------------------------
 
 function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
@@ -176,6 +244,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
       className="rounded-3xl border-2 bg-white px-4 py-6 mt-2"
       style={{ borderColor: NAVY }}
     >
+      {/* --- 無料側 (%＋★＋サマリー・ゲート対象外) --- */}
       {/* 2キャラ左右対面 */}
       <div className="flex items-center justify-center gap-3">
         <div className="flex flex-col items-center w-24">
@@ -213,7 +282,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         </div>
       </div>
 
-      {/* 大% + 星 */}
+      {/* 大% + 星 + サマリー1行 */}
       <div className="flex flex-col items-center mt-5">
         <div className="flex items-end" style={{ color: NAVY }}>
           <span className="font-black leading-none text-6xl">{r.percent}</span>
@@ -232,39 +301,13 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         </span>
       </div>
 
-      {/* 良いところ 2 */}
-      <div className="mt-6 space-y-2">
-        <p className="font-black text-sm" style={{ color: NAVY }}>
-          良いところ
-        </p>
-        {r.goods.map((g, i) => (
-          <div
-            key={i}
-            className="rounded-2xl px-4 py-3 text-sm leading-relaxed"
-            style={{ background: "#EEF1F7", color: NAVY }}
-          >
-            {g}
-          </div>
-        ))}
-      </div>
-
-      {/* 気をつけるところ 1 */}
-      <div className="mt-4">
-        <p className="font-black text-sm" style={{ color: NAVY }}>
-          ここだけ気をつけると◎
-        </p>
-        <div
-          className="mt-2 rounded-2xl px-4 py-3 text-sm leading-relaxed border-2"
-          style={{ borderColor: INACTIVE, color: NAVY }}
-        >
-          {r.caution}
-        </div>
-      </div>
+      {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
+      <CompatDetail r={r} />
     </section>
   );
 }
 
-// ---- グリッド (下部・グループ別) ------------------------------------------
+// ---- グループ別グリッド ---------------------------------------------------
 
 function TypeGrid({
   onPick,
@@ -273,17 +316,19 @@ function TypeGrid({
   onPick: (id: ThirtyTwoTypeId) => void;
   selected: Set<string>;
 }) {
-  const grouped = useMemo(() => {
-    return GROUP_META.map((g) => ({
-      ...g,
-      ids: ALL_IDS.filter((id) => thirtyTwoGroup(id) === g.key),
-    }));
-  }, []);
+  const grouped = useMemo(
+    () =>
+      GROUP_META.map((g) => ({
+        ...g,
+        ids: ALL_IDS.filter((id) => thirtyTwoGroup(id) === g.key),
+      })),
+    [],
+  );
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="mt-4 space-y-6">
       {grouped.map((g) => (
-        <section key={g.key}>
+        <section key={g.key} id={sectionId(g.key)} className="scroll-mt-16">
           <h2
             className="flex items-center gap-2 font-black text-base mb-2"
             style={{ color: NAVY }}
@@ -295,8 +340,11 @@ function TypeGrid({
             />
             <span>{g.emoji}</span>
             <span>{g.label}</span>
+            <span className="text-xs font-bold" style={{ color: INACTIVE }}>
+              {g.axisLabel}
+            </span>
           </h2>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {g.ids.map((id) => {
               const isSel = selected.has(id);
               return (
@@ -306,7 +354,7 @@ function TypeGrid({
                   onClick={() => onPick(id)}
                   disabled={isSel}
                   aria-pressed={isSel}
-                  className="rounded-xl border bg-white flex flex-col items-center px-1 py-2 transition-opacity"
+                  className="rounded-2xl border bg-white flex items-center gap-3 px-3 py-2 transition-opacity text-left"
                   style={{
                     borderColor: isSel ? NAVY : "#E1E4EC",
                     opacity: isSel ? 0.4 : 1,
@@ -315,12 +363,12 @@ function TypeGrid({
                   <Image
                     src={thirtyTwoImagePath(id)}
                     alt={thirtyTwoEssence(id)}
-                    width={80}
-                    height={80}
-                    className="w-full aspect-square rounded-lg object-cover"
+                    width={72}
+                    height={72}
+                    className="w-14 h-14 rounded-xl object-cover shrink-0"
                   />
                   <span
-                    className="mt-1 font-bold text-[10px] leading-tight text-center"
+                    className="font-black text-sm leading-tight"
                     style={{ color: NAVY }}
                   >
                     {thirtyTwoEssence(id)}
@@ -349,20 +397,25 @@ function AishoInner() {
     const b = searchParams.get("b");
     return isValid(b) && b !== a ? b : null;
   });
+  // 結果表示中はキャラ一覧を畳む。「選び直す」で editing=true にして再展開。
+  const [editing, setEditing] = useState(false);
+
+  const bothFilled = slotA !== null && slotB !== null;
+  const resultShown = bothFilled && !editing;
 
   // 選択変更で URL を書き換え (直リンク・シェア可)
-  useEffect(() => {
+  const syncUrl = useCallback((a: string | null, b: string | null) => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams();
-    if (slotA) params.set("a", slotA);
-    if (slotB) params.set("b", slotB);
+    if (a) params.set("a", a);
+    if (b) params.set("b", b);
     const qs = params.toString();
     window.history.replaceState(
       null,
       "",
       qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
     );
-  }, [slotA, slotB]);
+  }, []);
 
   const selected = useMemo(() => {
     const s = new Set<string>();
@@ -373,14 +426,30 @@ function AishoInner() {
 
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
-      setSlotA((prevA) => {
-        if (prevA === null) return id;
-        setSlotB((prevB) => (prevB === null && id !== prevA ? id : prevB));
-        return prevA;
-      });
+      if (slotA === null) {
+        setSlotA(id);
+        syncUrl(id, slotB);
+        if (slotB !== null) setEditing(false); // 2枠埋まった→結果へ
+      } else if (slotB === null && id !== slotA) {
+        setSlotB(id);
+        syncUrl(slotA, id);
+        setEditing(false); // 2枠埋まった→結果へ
+      }
     },
-    [],
+    [slotA, slotB, syncUrl],
   );
+
+  const clearA = useCallback(() => {
+    setSlotA(null);
+    syncUrl(null, slotB);
+    setEditing(true);
+  }, [slotB, syncUrl]);
+
+  const clearB = useCallback(() => {
+    setSlotB(null);
+    syncUrl(slotA, null);
+    setEditing(true);
+  }, [slotA, syncUrl]);
 
   const shuffle = useCallback(() => {
     const i = Math.floor(Math.random() * ALL_IDS.length);
@@ -388,9 +457,16 @@ function AishoInner() {
     if (j >= i) j += 1; // i と重複しない別の1体
     setSlotA(ALL_IDS[i]);
     setSlotB(ALL_IDS[j]);
-  }, []);
+    setEditing(false);
+    syncUrl(ALL_IDS[i], ALL_IDS[j]);
+  }, [syncUrl]);
 
-  const bothFilled = slotA !== null && slotB !== null;
+  const scrollToGroup = useCallback((key: ThirtyTwoGroup) => {
+    if (typeof document === "undefined") return;
+    document
+      .getElementById(sectionId(key))
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#F2EFE6] pb-16">
@@ -405,41 +481,83 @@ function AishoInner() {
           </p>
         </header>
 
-        {/* 上部スロット */}
-        <div className="flex items-stretch gap-3">
-          <Slot id={slotA} label="1人目" onClear={() => setSlotA(null)} />
-          <Slot id={slotB} label="2人目" onClear={() => setSlotB(null)} />
-        </div>
-
-        {/* シャッフル */}
-        <div className="flex justify-center mt-3">
-          <button
-            type="button"
-            onClick={shuffle}
-            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-white font-black text-sm"
-            style={{ background: NAVY }}
-          >
-            <ShuffleIcon />
-            シャッフル
-          </button>
-        </div>
-
-        {/* 結果 */}
-        {bothFilled ? (
-          <ResultBlock a={slotA} b={slotB} />
+        {resultShown ? (
+          /* ===== 結果モード (一覧は畳む) ===== */
+          <>
+            <ResultBlock a={slotA} b={slotB} />
+            <div className="flex justify-center gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-black text-sm border-2 bg-white"
+                style={{ borderColor: NAVY, color: NAVY }}
+              >
+                <EditIcon />
+                選び直す
+              </button>
+              <button
+                type="button"
+                onClick={shuffle}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-white font-black text-sm"
+                style={{ background: NAVY }}
+              >
+                <ShuffleIcon />
+                シャッフル
+              </button>
+            </div>
+          </>
         ) : (
-          <p
-            className="text-center text-xs mt-6"
-            style={{ color: INACTIVE }}
-          >
-            {slotA || slotB
-              ? "もう1人選ぶと相性が表示されます"
-              : "下からキャラを2人選んでね"}
-          </p>
-        )}
+          /* ===== 選択モード ===== */
+          <>
+            {/* 上部スロット */}
+            <div className="flex items-stretch gap-3">
+              <Slot id={slotA} label="1人目" onClear={clearA} />
+              <Slot id={slotB} label="2人目" onClear={clearB} />
+            </div>
 
-        {/* 下部グリッド */}
-        <TypeGrid onPick={pick} selected={selected} />
+            {/* シャッフル */}
+            <div className="flex justify-center mt-3">
+              <button
+                type="button"
+                onClick={shuffle}
+                className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-white font-black text-sm"
+                style={{ background: NAVY }}
+              >
+                <ShuffleIcon />
+                シャッフル
+              </button>
+            </div>
+
+            <p className="text-center text-xs mt-4" style={{ color: INACTIVE }}>
+              {slotA || slotB
+                ? "もう1人選ぶと相性が表示されます"
+                : "下からキャラを2人選んでね"}
+            </p>
+
+            {/* スティッキーのグループチップ (アンカージャンプ・フィルタではない) */}
+            <div className="sticky top-0 z-10 -mx-4 mt-4 px-4 py-2 bg-[#F2EFE6]/95 backdrop-blur flex gap-2 justify-center">
+              {GROUP_META.map((g) => (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => scrollToGroup(g.key)}
+                  className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-black bg-white"
+                  style={{ borderColor: "#E1E4EC", color: NAVY }}
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{ background: THIRTY_TWO_GROUP_COLOR[g.key] }}
+                    aria-hidden="true"
+                  />
+                  {g.label}
+                </button>
+              ))}
+            </div>
+
+            {/* グループ別グリッド */}
+            <TypeGrid onPick={pick} selected={selected} />
+          </>
+        )}
       </div>
     </main>
   );
