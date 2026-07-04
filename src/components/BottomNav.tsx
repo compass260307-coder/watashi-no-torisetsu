@@ -24,9 +24,10 @@ const INACTIVE = "#9BA3B4";
 //   - /friend/   : /friend/{招待コード} の友達回答フロー (StickyCtaFooter)。末尾スラッシュ必須で
 //                  /friend-evaluation (オーナー管理ハブ・ナビ非対象) と /friend (招待無し) は対象外。
 //   - /evaluate/ : 友達評価の着地/完了ページ (FloatingDiagnosisCta 等・ナビの目的地ではない)
+//   - /share/    : キャラシェアの獲得ランディング (新規向け・診断CTA 1点に集中させる)
 // ※ /me・/tako・/ は「ナビの目的地」なので (フローティングCTAがあっても) ナビは表示したまま。
 //   他己診断タブは /friend-evaluation ではなく /tako/[token] を指す。
-const HIDE_ON_PREFIXES = ["/diagnosis", "/friend/", "/evaluate/"];
+const HIDE_ON_PREFIXES = ["/diagnosis", "/friend/", "/evaluate/", "/share/"];
 
 function HomeIcon() {
   return (

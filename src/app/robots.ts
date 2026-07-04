@@ -11,7 +11,8 @@ export default function robots(): MetadataRoute.Robots {
         // 公開の図鑑一覧 /zukan/all だけは許可する (トップのナビ「性格タイプ」から
         // リンクしており、検索流入の受け皿になる汎用コンテンツのため)。
         // クローラはより具体的な (長い) ルールを優先するので allow が勝つ。
-        allow: ["/", "/zukan/all"],
+        // /share = キャラシェアの獲得ランディング (公開・OGクローラ/SEOに開放)。
+        allow: ["/", "/zukan/all", "/share"],
         disallow: [
           "/admin",
           "/admin/",
