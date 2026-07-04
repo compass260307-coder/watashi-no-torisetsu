@@ -16,6 +16,18 @@ import { MinnaNoMePanel } from "@/components/result/MinnaNoMePanel";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
+import { BragShare } from "@/components/result/BragShare";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoEssence,
+  thirtyTwoCatchphrase,
+} from "@/lib/thirty-two-types";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
+import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import type { BigFiveDimension } from "@/lib/types";
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 export const metadata: Metadata = {
   // owner_token は推測不可だが、検索エンジン除外で誤共有時の漏洩経路を絞る (/me と同方針)。
@@ -37,6 +49,26 @@ export default async function TakoPage({ params }: PageProps) {
   const session = await getSession();
   const isOwner = !!session && session.id === data.user.id;
   const ownerName = (data.user.display_name ?? "").trim() || "あなた";
+
+  // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
+  //   称号・キャッチ = 自己タイプ (32/16 フラグ準拠)、code = OCEAN 高低の大小文字表記。
+  const bragStored = data.selfScores;
+  const bragFlag32 = isThirtyTwoEnabled();
+  const bragT32 = classifyThirtyTwoType(bragStored);
+  const bragS16 = classifySixteenType(bragStored);
+  const bragEssence = bragFlag32
+    ? thirtyTwoEssence(bragT32)
+    : sixteenTypes[bragS16].essence;
+  const bragCatch = bragFlag32
+    ? thirtyTwoCatchphrase(bragT32)
+    : sixteenTypes[bragS16].oneLiner;
+  const bragCode = (["O", "C", "E", "A", "N"] as BigFiveDimension[])
+    .map((k) =>
+      (typeof bragStored[k] === "number" ? (bragStored[k] as number) : 5) >= 5
+        ? k
+        : k.toLowerCase(),
+    )
+    .join("");
 
   return (
     <main
@@ -125,6 +157,17 @@ export default async function TakoPage({ params }: PageProps) {
                 )}
               />
             </section>
+
+            {/* 従: 診断拡散シェア (みんなの目を見終わった余韻の位置)。
+                アンロック状態のみ。評価依頼(主)の役目が終わった画面なので従を置いても
+                主とバッティングしない。source="tako" で結果ページ発と測り分け。 */}
+            <BragShare
+              essence={bragEssence}
+              code={bragCode}
+              catchphrase={bragCatch}
+              topUrl={`${SITE_URL}/`}
+              source="tako"
+            />
 
             {/* 他者評価 (発散/隠れた強み/評価者/メッセージ) */}
             <section className="mb-8">

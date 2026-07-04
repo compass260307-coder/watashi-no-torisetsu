@@ -17,7 +17,7 @@
 
 import { useRef, useState } from "react";
 import { ShareCard } from "./ShareCard";
-import { track } from "@/lib/track";
+import { BragShare } from "./BragShare";
 
 interface ResultActionsProps {
   typeName: string;
@@ -97,29 +97,6 @@ export function ResultActions({
   )}&url=${encodeURIComponent(shareUrl)}`;
   const lineText = `${tweetText} ${shareUrl}`;
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
-
-  // ===== 拡散シェア (従: 診断を友達にすすめる) =====
-  // 評価シェア (主) とは別用途。トップ (/) へ飛ばして新規診断を呼ぶ SNS 自慢文。
-  const catchLine = `${catchphrase.replace(/。$/, "")}人らしい。`;
-  const bragBody = `【私のトリセツ、できました🐧】\n私は「${essence} / ${code}」タイプでした。\n${catchLine}\n\nあなたは何タイプ？30秒で診断できるよ👇`;
-  const bragFull = `${bragBody}\n${topUrl}`;
-  const bragXUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    bragBody,
-  )}&url=${encodeURIComponent(topUrl)}`;
-  const bragLineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    bragFull,
-  )}`;
-  const [bragCopied, setBragCopied] = useState(false);
-  const handleCopyBrag = async () => {
-    try {
-      await navigator.clipboard.writeText(bragFull);
-      setBragCopied(true);
-      window.setTimeout(() => setBragCopied(false), 1800);
-      track("share_clicked", { metadata: { channel: "copy", kind: "brag" } });
-    } catch {
-      // 無視
-    }
-  };
 
   // iconbar: 上部の三本線の横に置くアイコンのみのコンパクト版 (省スペース)。
   if (variant === "iconbar") {
@@ -263,53 +240,14 @@ export function ResultActions({
         </p>
       )}
 
-      {/* ===== 従: 診断を友達にすすめる (拡散シェア) =====
-          主 = 上の評価シェア (アンロック直結)。こちらは一回り控えめな
-          テキストリンク寄りトーンで、主の存在感を食わないようにする。 */}
-      <div className="mt-4 pt-3 border-t border-[#3A2D6B]/10 text-center">
-        <p className="text-[11px] font-bold text-[#9BA3B4] mb-1.5">
-          この診断を友達にもすすめる🐧
-        </p>
-        <div className="flex items-center justify-center gap-3 text-[11px] font-bold">
-          <a
-            href={bragXUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              track("share_clicked", { metadata: { channel: "x", kind: "brag" } })
-            }
-            className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
-          >
-            Xでシェア
-          </a>
-          <span aria-hidden="true" className="text-[#9BA3B4]/50">
-            ·
-          </span>
-          <a
-            href={bragLineUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              track("share_clicked", {
-                metadata: { channel: "line", kind: "brag" },
-              })
-            }
-            className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
-          >
-            LINEで送る
-          </a>
-          <span aria-hidden="true" className="text-[#9BA3B4]/50">
-            ·
-          </span>
-          <button
-            type="button"
-            onClick={handleCopyBrag}
-            className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
-          >
-            {bragCopied ? "コピーしました" : "リンクをコピー"}
-          </button>
-        </div>
-      </div>
+      {/* ===== 従: 診断を広める (拡散シェア。主=評価シェアとは逆ベクトル) ===== */}
+      <BragShare
+        essence={essence}
+        code={code}
+        catchphrase={catchphrase}
+        topUrl={topUrl}
+        source="result"
+      />
 
       {/* オフスクリーンの確定カード (PNG 書き出し元) */}
       <div
