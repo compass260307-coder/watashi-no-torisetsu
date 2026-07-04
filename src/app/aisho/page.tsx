@@ -8,7 +8,14 @@
 
 "use client";
 
-import { Suspense, useCallback, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
@@ -104,6 +111,20 @@ function ShuffleIcon() {
       aria-hidden="true"
     >
       <path d="M16 3h5v5M4 20l17-17M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </svg>
+  );
+}
+
+function RevealHeartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={18}
+      height={18}
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
     </svg>
   );
 }
@@ -435,11 +456,17 @@ function AishoInner() {
     const b = searchParams.get("b");
     return isValid(b) && b !== a ? b : null;
   });
-  // 結果表示中はキャラ一覧を畳む。「選び直す」で editing=true にして再展開。
-  const [editing, setEditing] = useState(false);
+  // 2枠そろっても即表示せず、「相性を見る」を押して初めて結果を出す（ワンクッション）。
+  // 直リンク(?a=&b= 両方あり)は共有先で結果を見せたいので初期 revealed=true。
+  const [revealed, setRevealed] = useState(() => {
+    const a = searchParams.get("a");
+    const b = searchParams.get("b");
+    return isValid(a) && isValid(b) && a !== b;
+  });
 
   const bothFilled = slotA !== null && slotB !== null;
-  const resultShown = bothFilled && !editing;
+  const resultShown = bothFilled && revealed;
+  const resultRef = useRef<HTMLDivElement>(null);
 
   // 選択変更で URL を書き換え (直リンク・シェア可)
   const syncUrl = useCallback((a: string | null, b: string | null) => {
@@ -464,14 +491,13 @@ function AishoInner() {
 
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
+      // 2枠埋まっても自動表示しない（revealed は false のまま。「相性を見る」を経由）。
       if (slotA === null) {
         setSlotA(id);
         syncUrl(id, slotB);
-        if (slotB !== null) setEditing(false); // 2枠埋まった→結果へ
       } else if (slotB === null && id !== slotA) {
         setSlotB(id);
         syncUrl(slotA, id);
-        setEditing(false); // 2枠埋まった→結果へ
       }
     },
     [slotA, slotB, syncUrl],
@@ -480,13 +506,13 @@ function AishoInner() {
   const clearA = useCallback(() => {
     setSlotA(null);
     syncUrl(null, slotB);
-    setEditing(true);
+    setRevealed(false); // 解除したら再度「相性を見る」から
   }, [slotB, syncUrl]);
 
   const clearB = useCallback(() => {
     setSlotB(null);
     syncUrl(slotA, null);
-    setEditing(true);
+    setRevealed(false);
   }, [slotA, syncUrl]);
 
   const shuffle = useCallback(() => {
@@ -495,7 +521,7 @@ function AishoInner() {
     if (j >= i) j += 1; // i と重複しない別の1体
     setSlotA(ALL_IDS[i]);
     setSlotB(ALL_IDS[j]);
-    setEditing(false);
+    setRevealed(false); // 差し替えるだけ。押した時だけ結果を出す
     syncUrl(ALL_IDS[i], ALL_IDS[j]);
   }, [syncUrl]);
 
@@ -505,6 +531,13 @@ function AishoInner() {
       .getElementById(sectionId(key))
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  // 結果が現れたらそこへスクロール（「相性を見る」tap・直リンク両対応）
+  useEffect(() => {
+    if (resultShown) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [resultShown]);
 
   return (
     <main className="min-h-screen bg-[#F2EFE6] pb-16">
@@ -522,11 +555,13 @@ function AishoInner() {
         {resultShown ? (
           /* ===== 結果モード (一覧は畳む) ===== */
           <>
-            <ResultBlock a={slotA} b={slotB} />
+            <div ref={resultRef} className="scroll-mt-4">
+              <ResultBlock a={slotA} b={slotB} />
+            </div>
             <div className="flex justify-center gap-3 mt-4">
               <button
                 type="button"
-                onClick={() => setEditing(true)}
+                onClick={() => setRevealed(false)}
                 className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-black text-sm border-2 bg-white"
                 style={{ borderColor: NAVY, color: NAVY }}
               >
@@ -566,11 +601,29 @@ function AishoInner() {
               </button>
             </div>
 
-            <p className="text-center text-xs mt-4" style={{ color: INACTIVE }}>
-              {slotA || slotB
-                ? "もう1人選ぶと相性が表示されます"
-                : "下からキャラを2人選んでね"}
-            </p>
+            {bothFilled ? (
+              /* 2体そろったら「相性を見る」ボタン（ワンクッション） */
+              <div className="flex justify-center mt-5">
+                <button
+                  type="button"
+                  onClick={() => setRevealed(true)}
+                  className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-white font-black text-base shadow-sm"
+                  style={{ background: NAVY }}
+                >
+                  <RevealHeartIcon />
+                  相性を見る
+                </button>
+              </div>
+            ) : (
+              <p
+                className="text-center text-xs mt-4"
+                style={{ color: INACTIVE }}
+              >
+                {slotA || slotB
+                  ? "もう1人選ぶと相性が表示されます"
+                  : "下からキャラを2人選んでね"}
+              </p>
+            )}
 
             {/* スティッキーのグループチップ (アンカージャンプ・フィルタではない) */}
             <div className="sticky top-0 z-10 -mx-4 mt-4 px-4 py-2 bg-[#F2EFE6]/95 backdrop-blur flex gap-2 justify-center">
