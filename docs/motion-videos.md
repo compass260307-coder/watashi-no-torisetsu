@@ -14,22 +14,184 @@
 2. **開始フレーム** に対象の静止画 (`public/characters/v3/<slug>.png` のオリジナル) をアップロード
 3. **終了フレームにも同じ画像を指定**(ループの継ぎ目対策。最重要)
 4. 尺 **5秒**、忠実度(relevance)寄りの設定
-5. プロンプト (毎回同じものを使い回す — 32体の動きのトーンを揃えるため):
+5. プロンプトは下の **キャラ別プロンプト** から該当キャラのものをコピー
+   (共通の骨格 + そのキャラだけの小さな仕草 1 つ、という構成。トーンを揃えるため文面は変えない)
 
-```
-Subtle idle animation. The felt character gently breathes,
-swaying slightly up and down in place, blinking occasionally,
-and once makes a small gesture.
-Camera completely static, no zoom, no pan.
-Background and all surrounding objects remain perfectly still.
-Calm, soft, seamless looping motion.
-```
-
-ネガティブプロンプト:
+ネガティブプロンプト (全キャラ共通):
 
 ```
 camera movement, zoom, pan, background motion, color change,
 character deformation, extra limbs
+```
+
+## キャラ別プロンプト (32体)
+
+> 骨格は全キャラ共通:「呼吸でゆっくり揺れる + 時々まばたき + 1回だけ固有の仕草。
+> カメラ固定・他の物は静止」。固有の仕草だけ画像の役柄に合わせてある。
+
+### 空グループ
+
+**1. parakeet_N（詩人）✅ 生成済み**
+
+**2. eagle_R（賢者）**
+```
+Subtle idle animation. The felt eagle gently breathes and sways slightly in place, blinking occasionally, and once nods slowly with quiet dignity. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**3. swallow_N（理論家）**
+```
+Subtle idle animation. The felt bird gently breathes and sways slightly in place, blinking occasionally, and once tilts its head curiously toward the astrolabe. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**4. hawk_R（ストラテジスト）**
+```
+Subtle idle animation. The felt bird gently breathes and sways slightly in place, blinking occasionally, and once glances thoughtfully to the side. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**5. penguin_N（空想家）**
+```
+Subtle idle animation. The felt parent penguin gently breathes and sways slightly in place, blinking occasionally, and once flaps its flippers happily. Camera completely static, no zoom, no pan. The baby penguins, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**6. swan_R（表現者）**
+```
+Subtle idle animation. The felt swan gently breathes and sways slightly in place, blinking occasionally, and once gracefully stretches its neck. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**7. crow_N（収集家）**
+```
+Subtle idle animation. The felt crow gently breathes and sways slightly in place, blinking occasionally, and once spreads its wings a little wider with pride. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**8. pelican_R（職人）**
+```
+Subtle idle animation. The felt pelican gently breathes and sways slightly in place, blinking occasionally, and once nods with quiet satisfaction at its craftwork. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+### 海グループ
+
+**9. jellyfish_N（寄添者）**
+```
+Subtle idle animation. The felt jellyfish gently breathes and drifts slightly up and down in place, its tentacles swaying softly, blinking occasionally, and once tilts its head warmly. Camera completely static, no zoom, no pan. All other characters, objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**10. dolphin_R（先導者）**
+```
+Subtle idle animation. The felt orca coach gently breathes and sways slightly in place, blinking occasionally, and once nods encouragingly like a coach. Camera completely static, no zoom, no pan. All other characters, objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**11. swordfish_N（采配者）**
+```
+Subtle idle animation. The felt knight character gently breathes and sways slightly in place, blinking occasionally, and once raises its lance slightly with pride. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**12. orca_R（将軍）**
+```
+Subtle idle animation. The felt orca captain gently breathes and sways slightly in place, blinking occasionally, and once gazes into the distance like a captain. Camera completely static, no zoom, no pan. The ship, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**13. clownfish_N（ジャーナリスト）**
+```
+Subtle idle animation. The felt clownfish gently breathes and sways slightly in place, blinking occasionally, and once wiggles its fins happily. Camera completely static, no zoom, no pan. The sea anemone, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**14. seal_R（フェススター）**
+```
+Subtle idle animation. The felt surfer character gently breathes and sways slightly in place, blinking occasionally, and once raises one flipper in a relaxed greeting. Camera completely static, no zoom, no pan. The waves, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**15. octopus_N（弁才家）**
+```
+Subtle idle animation. The felt octopus teacher gently breathes and sways slightly in place, blinking occasionally, and once taps the chalk gently near the blackboard. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**16. shark_R（革命家）**
+```
+Subtle idle animation. The felt shark gently breathes and sways slightly in place, blinking occasionally, and once nods slowly with quiet authority. Camera completely static, no zoom, no pan. The small fish students, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+### 陸グループ
+
+**17. rabbit_N（アテンダント）**
+```
+Subtle idle animation. The felt character gently breathes and sways slightly in place, blinking occasionally, and once bows politely with a warm smile. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**18. dog_R（幹事）**
+```
+Subtle idle animation. The felt dog gently breathes and sways slightly in place, blinking occasionally, and once tilts its head warmly. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**19. elephant_N（師範）**
+```
+Subtle idle animation. The felt elephant gently breathes and sways slightly in place, blinking occasionally, and once raises its trunk energetically. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**20. bear_R（支配人）**
+```
+Subtle idle animation. The felt bear gently breathes and sways slightly in place, blinking occasionally, and once nods firmly with reassurance. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**21. fox_N（演出家）**
+```
+Subtle idle animation. The felt magician fox gently breathes and sways slightly in place, blinking occasionally, and once gives a small theatrical bow. Camera completely static, no zoom, no pan. The dove, the hat, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**22. squirrel_R（楽天家）**
+```
+Subtle idle animation. The felt character gently breathes and sways slightly in place, blinking occasionally, and once smiles and closes its eyes contentedly. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**23. cheetah_N（開拓者）**
+```
+Subtle idle animation. The felt cheetah gently breathes and sways slightly in place, blinking occasionally, and once pumps its fist lightly in triumph. Camera completely static, no zoom, no pan. The trophy, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**24. tiger_R（勝負師）**
+```
+Subtle idle animation. The felt racer tiger gently breathes and sways slightly in place, blinking occasionally, and once flashes a confident grin. Camera completely static, no zoom, no pan. The race car, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+### 未知グループ
+
+**25. unicorn_N（夢想家）**
+```
+Subtle idle animation. The felt unicorn gently breathes and sways slightly in place, blinking occasionally, and once tosses its mane softly. Camera completely static, no zoom, no pan. The rainbow, the castle, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**26. dragon_R（守護者）**
+```
+Subtle idle animation. The felt dragon gently breathes and sways slightly in place, blinking occasionally, and once exhales slowly and peacefully with its eyes half closing. Camera completely static, no zoom, no pan. The bonsai, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**27. pegasus_N（飛翔家）**
+```
+Subtle idle animation. The felt pegasus gently breathes and sways slightly in place, blinking occasionally, and once flutters its wings gently. Camera completely static, no zoom, no pan. The moon, the star, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**28. phoenix_R（不屈者）**
+```
+Subtle idle animation. The felt phoenix gently breathes and sways slightly in place, its flame-like feathers flickering very softly, blinking occasionally, and once tilts its head. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**29. angel_N（審美者）**
+```
+Subtle idle animation. The felt angel gently breathes and sways slightly in place, blinking occasionally, and once flutters its small wings. Camera completely static, no zoom, no pan. The flowers, the watering can, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**30. golem_R（数寄者）**
+```
+Subtle idle animation. The felt stone golem breathes very slowly and heavily in place, and once blinks its glowing eyes slowly. Camera completely static, no zoom, no pan. The moss, the small bird, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**31. ghost_N（探偵）**
+```
+Subtle idle animation. The felt ghost floats gently up and down in place, blinking occasionally, and once peeks shyly to the side. Camera completely static, no zoom, no pan. The desk, the screens, all other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
+```
+
+**32. skeleton_R（風雲児）**
+```
+Subtle idle animation. The felt skeleton dozes lazily, breathing gently, and once yawns in a relaxed way while the hammock sways very slightly with it. Camera completely static, no zoom, no pan. All other objects and the background remain perfectly still. Calm, soft, seamless looping motion.
 ```
 
 ## 合格チェック (生成後に見る4点)
