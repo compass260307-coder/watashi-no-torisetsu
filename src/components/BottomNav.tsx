@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 
 // アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
 const ACTIVE = "#2A3A5C";
@@ -106,25 +106,29 @@ export function BottomNav() {
     setTakoUrl(token ? `/tako/${token}` : "/tako");
   }, [pathname]);
 
-  // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
-  // ※ フックは全て呼び終えてから early return する (rules-of-hooks 遵守)。
-  if (HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p))) {
-    return null;
-  }
-
+  // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
+  // ※ useMemo は hook なので early return より前に呼ぶ (rules-of-hooks 遵守)。
   const items: {
     key: string;
     label: string;
     href: string;
     active: boolean;
     Icon: () => ReactElement;
-  }[] = [
-    { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
-    { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
-    { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
-    { key: "type", label: "タイプ", href: "/zukan-internal", active: pathname.startsWith("/zukan"), Icon: GridIcon },
-    { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
-  ];
+  }[] = useMemo(
+    () => [
+      { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
+      { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
+      { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
+      { key: "type", label: "タイプ", href: "/zukan-internal", active: pathname.startsWith("/zukan"), Icon: GridIcon },
+      { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
+    ],
+    [pathname, torisetsuUrl, takoUrl],
+  );
+
+  // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
+  if (HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return null;
+  }
 
   return (
     <nav
@@ -144,7 +148,9 @@ export function BottomNav() {
               key={it.key}
               href={it.href}
               aria-current={it.active ? "page" : undefined}
-              className="relative flex flex-col items-center justify-center gap-1 py-2"
+              // touch-manipulation: モバイルのタップ遅延を排除。
+              // active:scale/opacity: 押下を即時に視覚反応させ「無反応」感を消す。
+              className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
               style={{ color: it.active ? ACTIVE : INACTIVE }}
             >
               {it.active && (
