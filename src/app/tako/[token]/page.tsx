@@ -189,7 +189,12 @@ export default async function TakoPage({ params }: PageProps) {
                 もっと友達に診断してもらう
               </p>
               <div className="mx-auto max-w-[360px]">
-                <LockedInviteShare inviteUrl={data.inviteUrl} />
+                {/* アンロック後のA招待。従シェア(source: result/tako)と並べて
+                    分析するため source="tako_unlocked" で計測 (kind: friend_invite)。 */}
+                <LockedInviteShare
+                  inviteUrl={data.inviteUrl}
+                  trackSource="tako_unlocked"
+                />
               </div>
             </section>
           </>
