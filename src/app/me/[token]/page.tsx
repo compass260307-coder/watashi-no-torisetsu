@@ -59,6 +59,7 @@ import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
 import { BragShare } from "@/components/result/BragShare";
+import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import type {
   BigFiveDimension,
   CModifier,
@@ -336,6 +337,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
   // リンクで来た友達も QR を読んだ友達も同じ「あなたを評価する」フロー (/friend/[inviteCode]) に着地。
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
+  // キャラシェア(拡散)の共有先。/friend(評価依頼)とは別ルート。
+  const characterShareUrl = `${SITE_URL}/share/${inviteCode}`;
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
   const shareCode = generateShareCode(user.id as string);
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
@@ -449,6 +452,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
           className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
           style={{ background: heroBg }}
         >
+          {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
+          {isOwner && (
+            <div className="absolute top-3 right-3 z-20">
+              <CharacterShareButton
+                shareUrl={characterShareUrl}
+                essence={dispEssence}
+              />
+            </div>
+          )}
           {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
           <div
             aria-hidden="true"
