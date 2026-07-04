@@ -542,12 +542,6 @@ function DiagnosisContent() {
           </div>
         ))}
 
-        {!isPageComplete && (
-          <p className="text-center text-xs text-[#8A8AA3] font-bold mt-4 mb-4">
-            10 問すべてに答えると、自動で次のページに進むよ
-          </p>
-        )}
-
         {submitError && (
           <p className="text-center text-xs text-[#E86AA6] font-bold mt-2 mb-2">
             送信に失敗しました。もう一度お試しください。
