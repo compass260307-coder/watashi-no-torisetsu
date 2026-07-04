@@ -97,7 +97,7 @@ export const metadata: Metadata = {
     description: SHARED_DESCRIPTION,
     images: [
       {
-        url: "/ogp-v3.png",
+        url: "/ogp-v4.png",
         width: 1200,
         height: 630,
         alt: "ワタシのトリセツ - 友達と作る、自分の取扱説明書",
@@ -108,7 +108,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
     description: SHARED_DESCRIPTION,
-    images: ["/ogp-v3.png"],
+    images: ["/ogp-v4.png"],
   },
   robots: {
     index: true,
