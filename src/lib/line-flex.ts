@@ -1,7 +1,9 @@
 import type { messagingApi } from "@line/bot-sdk";
 
+// 空文字 "" も弾くため || を使用 (?? は "" を通し、招待URLが相対 /friend/... 化して
+// LINE メッセージ内で無効になるため不可)。
 const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 const PINK = "#FF6B9C";
 const PINK_LIGHT = "#E5C5D0";

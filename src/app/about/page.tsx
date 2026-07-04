@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     title: "このBotについて｜ワタシのトリセツ",
     description:
       "ワタシのトリセツの公式 LINE アカウントについて。診断のホーム、プライバシー、これから来る機能。",
-    images: [{ url: "/ogp-v3.png", width: 1200, height: 630 }],
+    images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
   },
 };
 

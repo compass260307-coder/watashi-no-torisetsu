@@ -19,8 +19,9 @@ import { CHAPTER_KEYS, type ChapterKey } from "@/lib/anthropic-client";
 import { IntegratedShareButton } from "./IntegratedShareButton";
 import { IntegratedDownloadButton } from "./IntegratedDownloadButton";
 
+// 空文字 "" も弾くため || を使用 (?? は "" を通してしまい相対URL化するため不可)。
 const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.watashi-torisetsu.com";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
 
 type SourceSummary = {
   self: { fullCode: string; name: string } | null;
@@ -90,7 +91,7 @@ export async function generateMetadata({
   const ogImageCode = pickOgImageFullCode(row.source_summary);
   const ogImageUrl = ogImageCode
     ? `${PUBLIC_BASE_URL}/cards/${ogImageCode}.png`
-    : `${PUBLIC_BASE_URL}/ogp-v3.png`;
+    : `${PUBLIC_BASE_URL}/ogp-v4.png`;
   const pageUrl = `${PUBLIC_BASE_URL}/integrated/${id}`;
 
   return {
