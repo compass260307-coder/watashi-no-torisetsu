@@ -47,13 +47,16 @@ function ClipboardIcon() {
   );
 }
 
-function UserSearchIcon() {
+// 相性 (/aisho): 2つ重なるハート。他アイコンと同じ viewBox・stroke 流儀。
+//   フルサイズのハートパスを 0.55 倍に縮小し左右に少し重ねて配置 (strokeWidth は
+//   縮小分を戻して視覚上 2px 相当に)。多色にしない。
+const HEART_PATH =
+  "M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.38 2 4.3 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.3 22 7.38c0 3.78-3.4 6.86-8.55 11.61L12 20.3z";
+function HeartPairIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="10" cy="8" r="3.4" stroke="currentColor" strokeWidth="2" />
-      <path d="M4 20c0-3.3 2.7-5.5 6-5.5 1 0 1.9.2 2.7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="17" cy="16" r="3" stroke="currentColor" strokeWidth="2" />
-      <path d="m21 20-1.8-1.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d={HEART_PATH} transform="translate(-0.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
+      <path d={HEART_PATH} transform="translate(8.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -118,9 +121,9 @@ export function BottomNav() {
   }[] = [
     { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
     { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
-    { key: "diagnosis", label: "自己診断", href: "/diagnosis", active: pathname.startsWith("/diagnosis"), Icon: UserSearchIcon },
     { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
     { key: "type", label: "タイプ", href: "/zukan-internal", active: pathname.startsWith("/zukan"), Icon: GridIcon },
+    { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
   ];
 
   return (
