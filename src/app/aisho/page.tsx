@@ -22,7 +22,8 @@ import {
   THIRTY_TWO_GROUP_COLOR,
   type ThirtyTwoGroup,
 } from "@/lib/thirty-two-content/character-32";
-import { compat, type CompatResult } from "@/lib/aisho-compat";
+import { compat } from "@/lib/aisho-compat";
+import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
 
 const NAVY = "#2A3A5C";
 const INACTIVE = "#9BA3B4";
@@ -196,41 +197,78 @@ function Slot({
   );
 }
 
-// ---- 詳細ブロック (良いところ2 / 注意1) ----------------------------------
+// ---- シーンアイコン (インラインSVG・currentColor) -------------------------
+
+function SceneIcon({ scene }: { scene: SceneKey }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    width: 18,
+    height: 18,
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (scene) {
+    case "love": // heart
+      return (
+        <svg {...common}>
+          <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
+        </svg>
+      );
+    case "friend": // users
+      return (
+        <svg {...common}>
+          <path d="M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="3" />
+          <path d="M22 19v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+        </svg>
+      );
+    case "work": // briefcase
+      return (
+        <svg {...common}>
+          <rect x="3" y="7" width="18" height="13" rx="2" />
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18" />
+        </svg>
+      );
+    case "clash": // alert-circle
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+      );
+  }
+}
+
+// ---- 詳細ブロック (4シーンカード) ----------------------------------------
 // ★将来の購入ゲート単位。%＋★＋サマリー(無料側)とは独立させ、後から
 //   購入フラグでこのコンポーネントごとラップできるようにしてある (今回はゲートなし・常時表示)。
 
-function CompatDetail({ r }: { r: CompatResult }) {
+function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+  const scenes = useMemo(() => sceneLines(a, b), [a, b]);
   return (
-    <div>
-      {/* 良いところ 2 */}
-      <div className="mt-6 space-y-2">
-        <p className="font-black text-sm" style={{ color: NAVY }}>
-          良いところ
-        </p>
-        {r.goods.map((g, i) => (
-          <div
-            key={i}
-            className="rounded-2xl px-4 py-3 text-sm leading-relaxed"
-            style={{ background: "#EEF1F7", color: NAVY }}
-          >
-            {g}
-          </div>
-        ))}
-      </div>
-
-      {/* 気をつけるところ 1 */}
-      <div className="mt-4">
-        <p className="font-black text-sm" style={{ color: NAVY }}>
-          ここだけ気をつけると◎
-        </p>
+    <div className="mt-6 space-y-3">
+      {scenes.map((s) => (
         <div
-          className="mt-2 rounded-2xl px-4 py-3 text-sm leading-relaxed border-2"
-          style={{ borderColor: INACTIVE, color: NAVY }}
+          key={s.key}
+          className="rounded-2xl px-4 py-3"
+          style={{ background: "#EEF1F7" }}
         >
-          {r.caution}
+          <div
+            className="flex items-center gap-1.5 font-black text-sm mb-1"
+            style={{ color: NAVY }}
+          >
+            <SceneIcon scene={s.key} />
+            <span>{s.label}</span>
+          </div>
+          <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
+            {s.text}
+          </p>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -302,7 +340,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
       </div>
 
       {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
-      <CompatDetail r={r} />
+      <CompatDetail a={a} b={b} />
     </section>
   );
 }
