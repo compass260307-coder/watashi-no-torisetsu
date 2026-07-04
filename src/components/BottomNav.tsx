@@ -121,9 +121,9 @@ export function BottomNav() {
   }[] = [
     { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
     { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
-    { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
     { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
     { key: "type", label: "タイプ", href: "/zukan-internal", active: pathname.startsWith("/zukan"), Icon: GridIcon },
+    { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
   ];
 
   return (
