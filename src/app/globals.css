@@ -324,29 +324,6 @@ input[type="reset"]:active {
    (コメントは opacity:0 のまま消えないよう上書き、JS の差し替えも iteration が
    発火しなくなり自然に停止)。
    ============================================================ */
-/* /types: キャラのアイドルモーション (ふわっと上下 + ごく僅かな傾き)。
-   要素側の style で delay/duration をずらして「全員同時に動く」のを避ける。
-   動かすのは画像ラッパーのみ (テキストに transform を載せると滲むため)。 */
-@keyframes type-idle {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-10px) rotate(0.6deg);
-  }
-}
-
-.type-idle {
-  animation: type-idle 5s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .type-idle {
-    animation: none;
-  }
-}
-
 /* feat/top-page: ヒーローのキービジュアル出し分け。
    PC/タブレット (640px〜) = 横長 keyvisual.png、スマホ (〜639px) = 縦長
    keyvisual-mobile.png (横長を cover すると左右が大きく切れるため専用画像)。

@@ -17,7 +17,6 @@ import {
 } from "@/lib/thirty-two-types";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import { TypeMotionVideo } from "@/components/types/TypeMotionVideo";
 
 // /types: 性格タイプ一覧 (16Personalities の /ja/性格タイプ を参考にした構成)。
 //   16P 風の演出: グループごとに全幅の色帯セクション + 帯の上に巨大グループ名 +
@@ -33,6 +32,9 @@ const FONT_STACK =
 
 const NAVY = "#2E2E5C";
 
+// 帯の繋ぎ目の斜めカット量 (右端が左端よりこれだけ下がる)
+const SLANT = "clamp(24px, 3.2vw, 64px)";
+
 // ⚠️ ナビ公開前のため一旦 noindex (ヘッダー/フッターの「性格タイプ（準備中）」を
 // リンク化するタイミングで index に切り替え + sitemap 追加する)。
 export const metadata: Metadata = {
@@ -42,14 +44,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// キャラ表示は「真の透過」素材を使う:
-//   - 静止画: public/characters/cut/<slug>.png (Vision で背景除去した透過版。
-//     元画像 v3 は他ページ用にそのまま残す)
-//   - 動画: public/characters/motion/<slug>.webm (VP9+alpha) と <slug>.mov
-//     (HEVC+alpha, Safari 用) のペア。webm が存在するタイプだけ動画表示。
-// どちらも「ファイルを置くだけで自動登録」(ビルド時に fs 走査、コード変更不要)。
-// 量産手順は docs/motion-videos.md を参照。
-const MOTION_DIR = path.join(process.cwd(), "public", "characters", "motion");
+// キャラ表示は「真の透過」静止画を使う:
+//   public/characters/cut/<slug>.png (Vision で背景除去した透過版。
+//   元画像 v3 は他ページ用にそのまま残す)
+// ファイルを置くだけで自動登録 (ビルド時に fs 走査、コード変更不要)。
+// ⚠️ モーション動画化 (public/characters/motion + TypeMotionVideo) は
+// 最後のタスクとして保留中。量産手順は docs/motion-videos.md を参照。
 const CUT_DIR = path.join(process.cwd(), "public", "characters", "cut");
 const readDirSafe = (dir: string): Set<string> => {
   try {
@@ -58,7 +58,6 @@ const readDirSafe = (dir: string): Set<string> => {
     return new Set();
   }
 };
-const motionFiles = readDirSafe(MOTION_DIR);
 const cutFiles = readDirSafe(CUT_DIR);
 
 // slug = 静止画ファイル名のベース (thirtyTwoImagePath から導出)
@@ -72,18 +71,6 @@ function displayImagePath(id: ThirtyTwoTypeId): string {
   return cutFiles.has(file)
     ? `/characters/cut/${file}`
     : thirtyTwoImagePath(id);
-}
-
-function motionVideoPaths(
-  id: ThirtyTwoTypeId,
-): { webm: string; mov: string } | null {
-  const slug = slugOf(id);
-  return motionFiles.has(`${slug}.webm`)
-    ? {
-        webm: `/characters/motion/${slug}.webm`,
-        mov: `/characters/motion/${slug}.mov`,
-      }
-    : null;
 }
 
 // 帯の背景色 = キャラ画像 (v3) の背景色そのもの (全 32 枚を実測、グループ内で完全一致)。
@@ -104,44 +91,29 @@ const DARK_COLOR: Record<ThirtyTwoGroup, string> = {
   unknown: "#6C4EB8",
 };
 
-// OCEAN コード (サブラベル): base16 の OCEA 高低コード + N 軸 (__N=＋ / __R=−)
-function oceanCode(id: ThirtyTwoTypeId): string {
-  const nSign = nAxisOf(id) === "N" ? "＋" : "−";
-  return `${sixteenTypes[baseIdOf(id)].code}N${nSign}`;
+// OCEAN コード (サブラベル): 診断結果ページと同じ「大文字小文字方式」。
+//   高 = 大文字・大きめ・不透明 / 低 = 小文字・小さめ・40% (baseline 揃え)。
+//   OCEA は base16 の code (例 "O＋C−E−A＋") から高低を読み、N 軸は __N=高 / __R=低。
+function oceanFlags(id: ThirtyTwoTypeId): { letter: string; high: boolean }[] {
+  const code = sixteenTypes[baseIdOf(id)].code;
+  const ocea = (["O", "C", "E", "A"] as const).map((letter) => ({
+    letter: letter as string,
+    high: code.includes(`${letter}＋`),
+  }));
+  return [...ocea, { letter: "N", high: nAxisOf(id) === "N" }];
 }
 
-// グループの表示順・見出し・紹介文 (⚠️ 紹介文は仮。データ側に正本ができたら移す)。
+// グループの表示順 (海→陸→空→未知)・見出し。
 // giant: 帯の背景に敷く巨大タイポ (16P の「分析家」ポジション)。
 const GROUPS: {
   key: ThirtyTwoGroup;
   name: string;
   giant: string;
-  lede: string;
 }[] = [
-  {
-    key: "sky",
-    name: "空グループ",
-    giant: "空",
-    lede: "頭の中に、広い世界を持っている。ことばと想像で世界をとらえる、思索派のタイプたち。",
-  },
-  {
-    key: "sea",
-    name: "海グループ",
-    giant: "海",
-    lede: "人と人のあいだを、じょうずに泳いでいく。共感と社交で流れをつくるタイプたち。",
-  },
-  {
-    key: "land",
-    name: "陸グループ",
-    giant: "陸",
-    lede: "みんなの真ん中で、場をあたためる。行動力と安心感でまわりを支えるタイプたち。",
-  },
-  {
-    key: "unknown",
-    name: "未知グループ",
-    giant: "未知",
-    lede: "じぶんだけの理想と芯を、しずかに貫く。ちょっと不思議なロマン派のタイプたち。",
-  },
+  { key: "sea", name: "海グループ", giant: "海" },
+  { key: "land", name: "陸グループ", giant: "陸" },
+  { key: "sky", name: "空グループ", giant: "空" },
+  { key: "unknown", name: "未知グループ", giant: "未知" },
 ];
 
 export default function TypesPage() {
@@ -160,44 +132,61 @@ export default function TypesPage() {
       <TopHeader />
 
       <main className="w-full pb-0">
-        {/* ページ見出し + リード (白背景ゾーン) */}
+        {/* ページ見出し + CTA (16P と同じ構成: 見出し直下に診断ボタンだけ置く) */}
         <header className="mx-auto max-w-[1160px] px-6 pt-12 text-center md:pt-16">
           <h1
             className="font-bold"
             style={{
               color: NAVY,
-              fontSize: "clamp(28px, 3.4vw, 44px)",
+              fontSize: "clamp(38px, 4.8vw, 60px)",
               lineHeight: 1.4,
             }}
           >
             性格タイプ
           </h1>
-          <p className="mx-auto mt-4 max-w-[680px] text-[15px] leading-[1.9] text-[#5A5A7A] md:text-[17px]">
-            ワタシのトリセツの性格タイプは、ぜんぶで32種類。
-            住んでいる世界ごとに「空・海・陸・未知」の4つのグループに分かれています。
-            あなたは、そして友達は、どのタイプ?
-          </p>
+          <div className="mt-6">
+            <Link
+              href="/diagnosis"
+              className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
+            >
+              テストを受ける →
+            </Link>
+          </div>
         </header>
 
-        {/* グループごとの全幅色帯セクション (16P 風) */}
-        <div className="mt-12 md:mt-16">
-          {GROUPS.map((g) => {
+        {/* ヘッダー CTA と最初の帯のあいだにゆとりを持たせる */}
+        {/* グループごとの全幅色帯セクション (16P 風)。
+            繋ぎ目は 16P と同じ斜めカット: 各帯の上辺を clip-path で「左高・右低」に
+            切り、負マージンで前の帯に重ねる (切られた三角形から前の帯の色が覗く)。
+            先頭帯は上の白、最終帯は下辺も斜めに切って下の白と斜めに繋がる。 */}
+        <div className="mt-16 md:mt-24">
+          {GROUPS.map((g, gi) => {
             const ids = byGroup.get(g.key) ?? [];
             const band = BAND_COLOR[g.key];
+            const isLast = gi === GROUPS.length - 1;
             return (
               <section
                 key={g.key}
                 aria-label={g.name}
                 className="relative w-full overflow-hidden"
-                style={{ backgroundColor: band }}
+                style={{
+                  backgroundColor: band,
+                  clipPath: isLast
+                    ? `polygon(0 0, 100% ${SLANT}, 100% 100%, 0 calc(100% - ${SLANT}))`
+                    : `polygon(0 0, 100% ${SLANT}, 100% 100%, 0 100%)`,
+                  marginTop: gi === 0 ? undefined : `calc(0px - ${SLANT})`,
+                }}
               >
                 {/* 巨大グループ名 (16P の「分析家」ポジション。ソリッドな白、
                     キャラ列が下半分に重なってレイヤー感を出す) */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-[clamp(8px,2vw,28px)] select-none text-center font-bold leading-none text-white"
+                  className="pointer-events-none absolute inset-x-0 select-none text-center font-bold leading-none text-white"
                   style={{
-                    fontSize: "clamp(120px, 19vw, 280px)",
+                    // 斜めカット (SLANT) の分だけ下げないと、右側で文字がカットの縁に
+                    // 触れて窮屈に見える
+                    top: `calc(${SLANT} + clamp(20px, 3vw, 56px))`,
+                    fontSize: "clamp(150px, 25vw, 380px)",
                     letterSpacing: "0.02em",
                   }}
                 >
@@ -206,10 +195,18 @@ export default function TypesPage() {
 
                 {/* キャラ列は巨大タイポの下半分に重ねる (pt = 巨大タイポの ~55%) */}
                 {/* 横幅制限なし: 帯の中身はビューポート全幅を使い、キャラを最大化する */}
-                <div className="relative w-full px-3 pb-10 pt-[clamp(80px,12.5vw,190px)] md:px-8 md:pb-14">
-                  {/* タイプ 8 体 (SP 2 列 / PC 4 列)。画像は列幅いっぱい (w-full) */}
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-10 md:gap-x-6 lg:grid-cols-4">
-                    {ids.map((id, i) => (
+                {/* 下余白は「次の帯の斜めカットに食われる分 (SLANT)」+ 見た目の余白。
+                    これがないと最下行の説明文が繋ぎ目ギリギリで窮屈になる */}
+                <div
+                  className="relative w-full px-3 pt-[clamp(120px,19.5vw,310px)] md:px-8"
+                  style={{
+                    paddingBottom: `calc(${SLANT} + clamp(56px, 7vw, 110px))`,
+                  }}
+                >
+                  {/* タイプ 8 体 (SP 1 列 / タブレット 2 列 / PC 4 列)。
+                      SP は 16P と同じ縦 1 列で 1 体ずつ見せる (画像は上限幅で中央寄せ) */}
+                  <div className="grid grid-cols-1 gap-y-14 sm:grid-cols-2 sm:gap-x-2 sm:gap-y-14 md:gap-x-6 lg:grid-cols-4">
+                    {ids.map((id) => (
                       <article
                         key={id}
                         // min-w-0: グリッドアイテムが画像の指定幅 (320px) を最小幅として
@@ -217,49 +214,42 @@ export default function TypesPage() {
                         className="flex min-w-0 flex-col items-center text-center"
                       >
                         {/* キャラ: 透過素材の素置き (背景が抜けているので巨大タイポや
-                            帯がキャラの輪郭どおりに透けて見える = 16P のレイヤー感)。
-                            モーション動画があるタイプは動画 (キャラ自身が動く)、
-                            ないタイプは静止画 + CSS 浮遊 (index で位相をずらす)。 */}
-                        {motionVideoPaths(id) ? (
-                          <TypeMotionVideo
-                            movSrc={motionVideoPaths(id)!.mov}
-                            webmSrc={motionVideoPaths(id)!.webm}
-                            poster={displayImagePath(id)}
-                            alt={thirtyTwoEssence(id)}
-                          />
-                        ) : (
-                          <div
-                            className="type-idle w-full"
-                            style={{
-                              animationDelay: `${(i % 4) * 0.9 + (i % 2) * 0.4}s`,
-                              animationDuration: `${4.6 + (i % 3) * 0.7}s`,
-                            }}
-                          >
-                            <Image
-                              src={displayImagePath(id)}
-                              alt={thirtyTwoEssence(id)}
-                              width={512}
-                              height={512}
-                              className="h-auto w-full"
-                            />
-                          </div>
-                        )}
+                            帯がキャラの輪郭どおりに透けて見える = 16P のレイヤー感) */}
+                        <Image
+                          src={displayImagePath(id)}
+                          alt={thirtyTwoEssence(id)}
+                          width={512}
+                          height={512}
+                          className="h-auto w-full max-w-[420px] sm:max-w-none"
+                        />
                         {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード。
                             ワイド画面 (xl) ではキャラに合わせて文字も一段大きく */}
                         <h3
-                          className="mt-2 text-[18px] font-bold leading-snug md:text-[22px] xl:text-[26px]"
+                          className="mt-2 text-[24px] font-bold leading-snug md:text-[32px] xl:text-[40px]"
                           style={{ color: DARK_COLOR[g.key] }}
                         >
                           {thirtyTwoEssence(id)}
                         </h3>
+                        {/* OCEAN コード: 高 = 大文字・大 / 低 = 小文字・小・40% (診断結果と同仕様) */}
                         <p
-                          className="mt-1 text-[12px] font-bold tracking-[0.06em] md:text-[13px] xl:text-[15px]"
-                          style={{ color: `${NAVY}99` }}
+                          className="mt-1 flex items-baseline justify-center gap-[3px] text-[18px] font-extrabold leading-none tracking-[0.04em] md:text-[21px] xl:text-[24px]"
+                          style={{ color: NAVY }}
                         >
-                          {oceanCode(id)}
+                          {oceanFlags(id).map(({ letter, high }) => (
+                            <span
+                              key={letter}
+                              style={
+                                high
+                                  ? undefined
+                                  : { fontSize: "0.68em", opacity: 0.4 }
+                              }
+                            >
+                              {high ? letter : letter.toLowerCase()}
+                            </span>
+                          ))}
                         </p>
                         <p
-                          className="mt-2 max-w-[240px] text-[13px] leading-relaxed md:text-[14px] xl:max-w-[340px] xl:text-[16px]"
+                          className="mt-2 max-w-[330px] text-[15px] leading-relaxed sm:max-w-[240px] sm:text-[14px] md:text-[15px] xl:max-w-[340px] xl:text-[17px]"
                           style={{ color: `${NAVY}B3` }}
                         >
                           {thirtyTwoZukanDesc(id)}
@@ -268,13 +258,17 @@ export default function TypesPage() {
                     ))}
                   </div>
 
-                  {/* グループ紹介 (16P に合わせ帯の主役はキャラ。紹介文は末尾に小さく) */}
-                  <p
-                    className="mx-auto mt-10 max-w-[620px] text-center text-[13px] font-bold leading-relaxed md:text-[14px]"
-                    style={{ color: `${NAVY}CC` }}
-                  >
-                    {g.lede}
-                  </p>
+                  {/* 16P と同じ帯中間 CTA: 陸帯の末尾 (陸→空の境目) に設置 */}
+                  {g.key === "land" && (
+                    <div className="mt-16 text-center md:mt-24">
+                      <Link
+                        href="/diagnosis"
+                        className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
+                      >
+                        テストを受ける →
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </section>
             );
@@ -283,21 +277,12 @@ export default function TypesPage() {
 
         {/* 診断への CTA (白背景ゾーン) */}
         <section className="py-16 text-center md:py-24">
-          <h2
-            className="font-bold"
-            style={{ color: NAVY, fontSize: "clamp(20px, 2.2vw, 28px)" }}
+          <Link
+            href="/diagnosis"
+            className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
           >
-            あなたのタイプは、15問でわかる。
-          </h2>
-          <div className="mt-6">
-            <Link
-              href="/diagnosis"
-              className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[18px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
-              style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
-            >
-              無料で診断をはじめる →
-            </Link>
-          </div>
+            テストを受ける →
+          </Link>
         </section>
       </main>
 
