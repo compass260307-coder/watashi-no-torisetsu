@@ -322,6 +322,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const codeColor = flag32
     ? CODE_COLOR_BY_GROUP[thirtyTwoGroup(t32)]
     : "#2B2A6B";
+  // ヒーローの OCEAN コード用: 帯背景より一段暗いだけの控えめトーン (16P 参考。
+  //   称号=白の主役に対し、コードは背景に馴染む脇役にする)。
+  const CODE_TINT_BY_GROUP: Record<ThirtyTwoGroup, string> = {
+    sea: "#8FC9D6", // 帯 #BEF2F9 の少し暗い版
+    sky: "#DECC85", // 帯 #FDEFB4 の少し暗い版
+    land: "#AFD292", // 帯 #D8F2C0 の少し暗い版
+    unknown: "#C3B2E5", // 帯 #E7DCFB の少し暗い版
+  };
+  const codeTint = flag32
+    ? CODE_TINT_BY_GROUP[thirtyTwoGroup(t32)]
+    : "#C3B2E5";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -356,13 +367,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヒーロー見出し: 称号(essence)のみを大見出しに表示。動物名(小キッカー)は非表示。
+  // ヒーロー見出し (16P 参考): 小ラベル「あなたの性格タイプ:」+ 称号(essence)の大見出し。
+  // どちらも白文字 (色帯の上に乗せる 16P の構図)。SP=中央 / PC=左寄せ。
   // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
   const heroTitle = (
-    <div className="text-center">
+    <div className="text-center md:text-left">
+      <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
+        あなたの性格タイプ:
+      </p>
       <div
-        className="font-extrabold leading-[1.04] text-[#2B2A6B]"
-        style={{ fontSize: "clamp(44px, 14vw, 60px)" }}
+        className="font-extrabold leading-[1.04] text-white"
+        style={{ fontSize: "clamp(44px, 14vw, 72px)" }}
       >
         {dispEssence}
       </div>
@@ -378,7 +393,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
     .map((k) => (oceanIsHigh(k) ? k : k.toLowerCase()))
     .join("");
   const oceanRow = (
-    <div className="mt-1.5 md:mt-1 flex items-baseline justify-center gap-1.5">
+    <div className="mt-1.5 md:mt-2 flex items-baseline justify-center gap-1.5 md:justify-start">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
         const high = oceanIsHigh(k);
         return (
@@ -386,9 +401,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             key={k}
             className="font-extrabold leading-none"
             style={{
-              fontSize: high ? "40px" : "27px",
-              color: codeColor,
-              opacity: high ? 1 : 0.4,
+              fontSize: high ? "30px" : "20px",
+              color: codeTint,
+              opacity: high ? 1 : 0.55,
             }}
           >
             {high ? k : k.toLowerCase()}
@@ -397,43 +412,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
       })}
     </div>
   );
-  // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
-  //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
-  const catchphraseRow = dispCatch ? (
-    <div className="mt-1.5 md:mt-1 flex items-center justify-center gap-2">
-      <svg
-        viewBox="0 0 24 24"
-        width="17"
-        height="17"
-        fill="#B8860B"
-        aria-hidden="true"
-        className="flex-none"
-      >
-        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
-      </svg>
-      <p
-        className="italic text-center"
-        style={{
-          fontFamily: "'Hiragino Mincho ProN', 'Yu Mincho', serif",
-          fontSize: "27px",
-          lineHeight: 1.7,
-          color: "#6E4A2A",
-        }}
-      >
-        {dispCatch}
-      </p>
-      <svg
-        viewBox="0 0 24 24"
-        width="11"
-        height="11"
-        fill="#C99A2E"
-        aria-hidden="true"
-        className="flex-none"
-      >
-        <path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z" />
-      </svg>
-    </div>
-  ) : null;
+  // キャラ名言 (サブコピー) はヒーローから撤去 (16P 構成に合わせラベル+称号+OCEAN のみ)。
+  // dispCatch 自体はシェア文言 (ResultActions catchphrase) で引き続き使用。
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -441,7 +421,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <main
       className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
-      style={{ background: "#FFFDF4" }}
+      style={{ background: "#FFFFFF" }}
     >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
@@ -452,7 +432,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
         <div
           className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
-          style={{ background: heroBg }}
+          style={{
+            background: heroBg,
+            // /types の帯繋ぎ目と同じ斜めカット (左高・右低) で下の白へ繋ぐ (16P 参考)
+            clipPath:
+              "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
+            paddingBottom: "clamp(24px, 3.2vw, 64px)",
+          }}
         >
           {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
           {isOwner && (
@@ -480,11 +466,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
               モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
               ☰ はボトムナビ導入で撤去。 */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-2 pb-2">
-            {heroTitle}
-            {oceanRow}
-            {catchphraseRow}
-            <div className="max-w-[600px] mx-auto mt-2 md:mt-2">
+          {/* SP=縦積み(中央) / PC=16P 風 2 カラム (左: ラベル+称号+OCEAN、右: キャラ) */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-10 pb-2 md:flex md:items-center md:gap-8">
+            <div className="md:flex-1">
+              {heroTitle}
+              {oceanRow}
+            </div>
+            <div className="max-w-[600px] mx-auto mt-2 md:mt-0 md:max-w-[480px] md:flex-1">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
@@ -507,10 +495,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </div>
           </div>
         </div>
-        {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
-            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。
-            main 背景=クリームなので、ここから下はシームレスにクリーム。 ===== */}
-        <div className="relative mx-[calc(50%-50vw)] w-screen -mt-4 rounded-t-[18px] bg-[#FFFDF4] pt-6 md:pt-3 pb-1">
+        {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
+            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。 ===== */}
+        <div className="relative mx-[calc(50%-50vw)] w-screen bg-white pt-4 md:pt-2 pb-1">
           <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
             <svg
               width="22"
