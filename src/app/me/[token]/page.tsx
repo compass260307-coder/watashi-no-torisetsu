@@ -324,13 +324,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
     ? cutImage
     : v3Image;
   // 挿絵 (シーン別イラスト・16P の章間イラスト参考):
-  //   public/characters/scenes/<slug>_<variant>.png を「置くだけで自動表示」(無ければ非表示)。
+  //   public/characters/scenes/ に「置くだけで自動表示」(無ければ非表示)。
   //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
-  //   例: jellyfish_N_normal1.png
+  //   解決順: キャラ別 <slug>_<variant>.png → グループ共通 <group>_<variant>.png
+  //   (例 jellyfish_N_love.png → sea_love.png)
   const sceneSlug = path.basename(v3Image, ".png");
+  const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
-    const rel = `/characters/scenes/${sceneSlug}_${variant}.png`;
-    return fs.existsSync(path.join(process.cwd(), "public", rel)) ? rel : null;
+    const candidates = [
+      `/characters/scenes/${sceneSlug}_${variant}.png`,
+      ...(sceneGroup ? [`/characters/scenes/${sceneGroup}_${variant}.png`] : []),
+    ];
+    for (const rel of candidates) {
+      if (fs.existsSync(path.join(process.cwd(), "public", rel))) return rel;
+    }
+    return null;
   };
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
