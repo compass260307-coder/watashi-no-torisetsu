@@ -21,21 +21,21 @@ export function PerceptionMessageCard({
   if (entries.length === 0) return null;
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
-      <p className="text-[#FE3C72] font-bold text-sm mb-4 text-center">
+      <p className="text-[#5B5BEF] font-bold text-sm mb-4 text-center">
         {perceiverName}さんからのメッセージ
       </p>
       <ul className="flex flex-col gap-4">
         {entries.map((e) => (
           <li key={e.label}>
-            <p className="text-[#3A2D6B]/60 font-bold text-xs mb-1.5">
+            <p className="text-[#2E2E5C]/60 font-bold text-xs mb-1.5">
               {e.label}
             </p>
             <div className="flex items-start gap-2">
               <span
                 aria-hidden="true"
-                className="flex-shrink-0 w-9 h-9 rounded-full bg-[#BCDEF8] border-2 border-[#3A2D6B]/15 flex items-center justify-center"
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-[#BCDEF8] border-2 border-[#2E2E5C]/15 flex items-center justify-center"
               >
-                <FriendFaceIcon className="w-5 h-5 text-[#3A2D6B]" />
+                <FriendFaceIcon className="w-5 h-5 text-[#2E2E5C]" />
               </span>
               <div className="relative flex-1">
                 {/* 吹き出しのシッポ (アバター側に向ける) */}
@@ -45,7 +45,7 @@ export function PerceptionMessageCard({
                 />
                 <div className="relative bg-[#EFF7FD] rounded-2xl px-4 py-3">
                   {/* 回答そのまま: deepPurple・やや大きめ・太字 */}
-                  <p className="text-[#3A2D6B] font-bold text-base leading-relaxed">
+                  <p className="text-[#2E2E5C] font-bold text-base leading-relaxed">
                     {e.value}
                   </p>
                 </div>

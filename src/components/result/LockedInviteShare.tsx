@@ -55,10 +55,10 @@ export function LockedInviteShare({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
-      <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+      <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
         友達に評価してもらう
       </p>
-      <h3 className="text-[#3A2D6B] font-black text-lg leading-snug mb-4">
+      <h3 className="text-[#2E2E5C] font-black text-lg leading-snug mb-4">
         友達に評価してもらって
         <br />
         ロックを解除しよう
@@ -67,7 +67,7 @@ export function LockedInviteShare({
       {/* QR (対面スキャン用)。装飾SVGを role="img" でラベル付け */}
       <div className="flex justify-center mb-3">
         <div
-          className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#3A2D6B]/20"
+          className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#2E2E5C]/20"
           role="img"
           aria-label="友達評価ページへの招待QRコード"
         >
@@ -75,13 +75,13 @@ export function LockedInviteShare({
             value={inviteUrl}
             size={180}
             bgColor="#FFFFFF"
-            fgColor="#3A2D6B"
+            fgColor="#2E2E5C"
             level="H"
             marginSize={0}
           />
         </div>
       </div>
-      <p className="text-[#3A2D6B]/75 font-bold text-xs leading-relaxed mb-5">
+      <p className="text-[#2E2E5C]/75 font-bold text-xs leading-relaxed mb-5">
         カメラで読み取って、その場で評価してもらおう
       </p>
 
@@ -107,13 +107,13 @@ export function LockedInviteShare({
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center justify-center gap-2 w-full bg-white text-[#3A2D6B] font-black text-base px-6 py-3.5 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+          className="flex items-center justify-center gap-2 w-full bg-white text-[#2E2E5C] font-black text-base px-6 py-3.5 rounded-full border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] hover:translate-y-0.5 hover:shadow-[0_2px_0_#2E2E5C] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
         >
           {copied
             ? "コピーしました ✓"
             : "インスタ用にリンクをコピー"}
         </button>
-        <p className="text-[#3A2D6B]/55 font-bold text-[11px]">
+        <p className="text-[#2E2E5C]/55 font-bold text-[11px]">
           コピーしたリンクを、インスタの DM やストーリーに貼って送ってね
         </p>
       </div>

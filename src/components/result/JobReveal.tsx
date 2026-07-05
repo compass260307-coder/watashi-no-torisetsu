@@ -22,15 +22,15 @@ export function JobReveal({
   if (job) {
     return (
       <article className="mb-8 text-center">
-        <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-3">
+        <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-3">
           友達から見たアナタ
         </p>
         {/* 職業アイコン円 (確定時の絵文字バッジ) は撤去。職業テキスト/ロジックは不変。 */}
-        <h2 className="text-[#3A2D6B] font-black text-2xl leading-tight mb-2">
+        <h2 className="text-[#2E2E5C] font-black text-2xl leading-tight mb-2">
           {job.name}
           {animal}
         </h2>
-        <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
+        <p className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6]">
           {job.oneLiner}
         </p>
       </article>
@@ -41,16 +41,16 @@ export function JobReveal({
   const remaining = Math.max(0, threshold - friendCount);
   return (
     <article className="mb-8 text-center">
-      <p className="text-[#3A2D6B]/55 font-black text-[10px] tracking-[0.3em] mb-3">
+      <p className="text-[#2E2E5C]/55 font-black text-[10px] tracking-[0.3em] mb-3">
         友達から見たアナタの職業
       </p>
-      <div className="mx-auto w-14 h-14 rounded-full bg-[#F3F0FA] border-2 border-dashed border-[#3A2D6B]/35 flex items-center justify-center text-3xl text-[#3A2D6B]/40 mb-3">
+      <div className="mx-auto w-14 h-14 rounded-full bg-[#F3F0FA] border-2 border-dashed border-[#2E2E5C]/35 flex items-center justify-center text-3xl text-[#2E2E5C]/40 mb-3">
         <span aria-hidden="true">？</span>
       </div>
-      <h2 className="text-[#3A2D6B] font-black text-2xl leading-tight mb-2">
+      <h2 className="text-[#2E2E5C] font-black text-2xl leading-tight mb-2">
         ？{animal}
       </h2>
-      <p className="body-gothic text-[#3A2D6B] font-medium text-base leading-[1.6]">
+      <p className="body-gothic text-[#2E2E5C] font-medium text-base leading-[1.6]">
         友達 {threshold} 人の評価で、アナタの「職業」が判明します（あと {remaining} 人）。
       </p>
     </article>

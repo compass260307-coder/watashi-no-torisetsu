@@ -111,7 +111,7 @@ export function DeepDiveSections({
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* 見出し (絵文字バッジは撤去し、テキストのみ) */}
-      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight mb-4">
+      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-4">
         アナタの深掘り
       </h2>
 
@@ -132,8 +132,8 @@ export function DeepDiveSections({
               onClick={() => setActive(i)}
               className={`shrink-0 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
                 selected
-                  ? "bg-[#3A2D6B] text-white border-[#3A2D6B]"
-                  : "bg-white text-[#3A2D6B] border-[#0094D8]/25 hover:bg-[#FFF0F3]"
+                  ? "bg-[#2E2E5C] text-white border-[#2E2E5C]"
+                  : "bg-white text-[#2E2E5C] border-[#0094D8]/25 hover:bg-[#F4F4FE]"
               }`}
             >
               {c.tab}
@@ -147,12 +147,12 @@ export function DeepDiveSections({
             ※ title データ自体は report-data.ts / LOVE_BY_TYPE_32 に温存 (表示しないだけ)。 */}
 
         {/* スコア由来の一文 (パーソナライズ)。ピンクのバッジ装飾は外しプレーンテキスト表示に。 */}
-        <p className="text-[#3A2D6B]/70 text-sm mb-4">{note}</p>
+        <p className="text-[#2E2E5C]/70 text-sm mb-4">{note}</p>
 
         {section.body.split("\n\n").map((para, i) => (
           <p
             key={i}
-            className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+            className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
           >
             {para}
           </p>

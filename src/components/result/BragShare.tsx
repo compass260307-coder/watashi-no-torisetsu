@@ -114,7 +114,7 @@ export function BragShare({
 
   // ---- subtle: 淡グレー 11px テキストリンク (従来の控えめ版) ----
   return (
-    <div className="mt-4 pt-3 border-t border-[#3A2D6B]/10 text-center">
+    <div className="mt-4 pt-3 border-t border-[#2E2E5C]/10 text-center">
       <p className="text-[11px] font-bold text-[#9BA3B4] mb-1.5">{CAPTION}</p>
       <div className="flex items-center justify-center gap-3 text-[11px] font-bold">
         <a
@@ -122,7 +122,7 @@ export function BragShare({
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => fire("x")}
-          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
+          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#2E2E5C] transition-colors"
         >
           Xでシェア
         </a>
@@ -134,7 +134,7 @@ export function BragShare({
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => fire("line")}
-          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
+          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#2E2E5C] transition-colors"
         >
           LINEで送る
         </a>
@@ -144,7 +144,7 @@ export function BragShare({
         <button
           type="button"
           onClick={handleCopy}
-          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#3A2D6B] transition-colors"
+          className="text-[#9BA3B4] underline underline-offset-2 hover:text-[#2E2E5C] transition-colors"
         >
           {copied ? "コピーしました" : "リンクをコピー"}
         </button>

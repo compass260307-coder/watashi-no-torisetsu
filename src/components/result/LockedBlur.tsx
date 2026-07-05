@@ -64,7 +64,7 @@ export function LockedBlur({
       >
         <span
           aria-hidden="true"
-          className={`block text-[#3A2D6B] ${blurTextClassName}`}
+          className={`block text-[#2E2E5C] ${blurTextClassName}`}
           style={{ filter: `blur(${blurPx}px)` }}
         >
           {blurText}

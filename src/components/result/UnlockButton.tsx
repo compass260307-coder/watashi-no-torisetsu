@@ -27,10 +27,10 @@ interface UnlockButtonProps {
 
 const VARIANT_CLASS: Record<UnlockButtonVariant, string> = {
   // sunYellow 標準ボタン (大)
-  main: "bg-[#FFE993] text-[#3A2D6B] font-black text-base px-10 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all disabled:opacity-50 disabled:cursor-wait",
+  main: "bg-[#5B5BEF] text-white font-black text-base px-10 py-4 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all disabled:opacity-50 disabled:cursor-wait",
   // sunYellow 小 (インライン・ロック用)
   inline:
-    "bg-[#FFE993] text-[#3A2D6B] font-black text-xs px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-[0_3px_0_#3A2D6B] active:translate-y-0.5 active:shadow-[0_1px_0_#3A2D6B] transition-all disabled:opacity-50 disabled:cursor-wait",
+    "bg-[#5B5BEF] text-white font-black text-xs px-5 py-2 rounded-full shadow-[0_6px_16px_rgba(91,91,239,0.30)] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-wait",
 };
 
 export function UnlockButton({
@@ -95,7 +95,7 @@ export function UnlockButton({
         {loading ? loadingLabel : label}
       </button>
       {error && (
-        <p role="alert" className="text-[#FE3C72] text-xs font-bold mt-3">
+        <p role="alert" className="text-[#5B5BEF] text-xs font-bold mt-3">
           {error}
         </p>
       )}

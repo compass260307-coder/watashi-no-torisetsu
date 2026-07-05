@@ -27,7 +27,7 @@ export function PerceptionFoundProse({
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
       {/* 強みパート */}
-      <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
+      <p className="text-[#5B5BEF] font-bold text-sm mb-3 text-center">
         {strengthLabel ?? `${perceiverName}さん認定の強み`}
       </p>
       {strengthParas.map((para, i) => (
@@ -35,10 +35,10 @@ export function PerceptionFoundProse({
       ))}
 
       {/* 薄い区切り (①②のカード内区切りと同じ) */}
-      <div className="border-t border-[#3A2D6B]/10 my-5" />
+      <div className="border-t border-[#2E2E5C]/10 my-5" />
 
       {/* あれっ?パート */}
-      <p className="text-[#FE3C72] font-bold text-sm mb-3 text-center">
+      <p className="text-[#5B5BEF] font-bold text-sm mb-3 text-center">
         {surpriseLabel ?? `${perceiverName}さんの「あれっ?」`}
       </p>
       {surpriseParas.map((para, i) => (
@@ -53,7 +53,7 @@ function ProseParagraph({ para }: { para: FoundParagraph }) {
     <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4 last:mb-0`}>
       {para.map((seg, i) =>
         seg.pink ? (
-          <strong key={i} className="text-[#FE3C72] font-black">
+          <strong key={i} className="text-[#5B5BEF] font-black">
             {seg.text}
           </strong>
         ) : (

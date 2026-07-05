@@ -7,7 +7,7 @@
 //   - 出現: 少しスクロールしたらフェードイン (最初は出さない)
 //   - 退場: hideWhenId の要素 (末尾メインCTA) が画面内に入ったら隠す (二重表示回避)
 //   - safe-area 対応 (env(safe-area-inset-bottom))・本文を妨げないサイズ感
-// 色は CTA と統一 (sunYellow #FFE993 + deepPurple 文字)。遷移先は診断開始。
+// 色は CTA と統一 (sunYellow #5B5BEF + deepPurple 文字)。遷移先は診断開始。
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -64,9 +64,9 @@ export function FloatingDiagnosisCta({
       style={{
         right: "16px",
         bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-        background: "#FFE993",
-        color: "#3A2D6B",
-        fontFamily: "var(--font-m-plus-rounded), sans-serif",
+        background: "#5B5BEF",
+        color: "#FFFFFF",
+        fontFamily: "var(--font-noto-sans), sans-serif",
         fontWeight: 800,
         fontSize: "14px",
         padding: "10px 16px",
@@ -96,7 +96,7 @@ function SparkleIcon() {
     >
       <path
         d="M12 2c.5 4.5 3 7 7.5 7.5C15 10 12.5 12.5 12 17c-.5-4.5-3-7-7.5-7.5C9 9 11.5 6.5 12 2Z"
-        fill="#3A2D6B"
+        fill="#2E2E5C"
       />
     </svg>
   );
@@ -114,7 +114,7 @@ function ArrowRight() {
     >
       <path
         d="M4 12h14M13 6l6 6-6 6"
-        stroke="#3A2D6B"
+        stroke="#2E2E5C"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"

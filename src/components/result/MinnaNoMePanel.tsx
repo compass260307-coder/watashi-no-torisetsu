@@ -76,24 +76,24 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
   return (
     <div className="px-1 pt-1 pb-2">
       {/* リード文 */}
-      <p className="text-[#3A2D6B]/70 text-sm mb-4">
+      <p className="text-[#2E2E5C]/70 text-sm mb-4">
         友達3人が答えてくれました。ここからは「みんなの目に映るあなた」です。
       </p>
 
       {/* ギャップ (数値なし・言葉のみ) */}
       {props.gapSentence && (
-        <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-6">
+        <p className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6] mb-6">
           {props.gapSentence}
         </p>
       )}
 
       {/* もう一人のワタシ */}
       <section className="mb-6">
-        <h3 className="text-[#3A2D6B] font-black text-base mb-2">
+        <h3 className="text-[#2E2E5C] font-black text-base mb-2">
           もう一人のワタシ
         </h3>
         {props.matched ? (
-          <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
+          <p className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6]">
             みんなの目にも、あなたはあなたのまま映ってる。
             自分で選んできた「{props.selfEssence}」は、
             まわりから見てもブレていないみたい。
@@ -101,22 +101,22 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
         ) : (
           <Link
             href={props.friendPreviewPath}
-            className="block rounded-2xl border-2 border-[#0094D8]/25 bg-white px-4 py-4 hover:bg-[#FFF0F3] transition-colors"
+            className="block rounded-2xl border-2 border-[#0094D8]/25 bg-white px-4 py-4 hover:bg-[#F4F4FE] transition-colors"
           >
-            <span className="block text-[#3A2D6B]/60 text-sm font-bold">
+            <span className="block text-[#2E2E5C]/60 text-sm font-bold">
               自分では
             </span>
-            <span className="block text-[#3A2D6B] font-black text-lg mb-2">
+            <span className="block text-[#2E2E5C] font-black text-lg mb-2">
               {props.selfEssence}
             </span>
-            <span className="block text-[#FE3C72]/70 text-sm font-bold">
+            <span className="block text-[#5B5BEF]/70 text-sm font-bold">
               みんなから見ると
             </span>
             <span className="flex items-center justify-between">
-              <span className="text-[#FE3C72] font-black text-lg">
+              <span className="text-[#5B5BEF] font-black text-lg">
                 {props.friendEssence}
               </span>
-              <span className="text-[#FE3C72] text-sm font-bold shrink-0 ml-2">
+              <span className="text-[#5B5BEF] text-sm font-bold shrink-0 ml-2">
                 このタイプを見る →
               </span>
             </span>
@@ -126,16 +126,16 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
 
       {/* AI解説文 (主役) */}
       <section className="mb-6">
-        <h3 className="text-[#3A2D6B] font-black text-base mb-2">
+        <h3 className="text-[#2E2E5C] font-black text-base mb-2">
           みんなの目に映る、あなた
         </h3>
         {state.kind === "loading" && (
           <div
-            className="flex items-center gap-3 text-[#3A2D6B]/60 py-6"
+            className="flex items-center gap-3 text-[#2E2E5C]/60 py-6"
             role="status"
             aria-live="polite"
           >
-            <span className="inline-block w-5 h-5 rounded-full border-2 border-[#FE3C72]/30 border-t-[#FE3C72] animate-spin" />
+            <span className="inline-block w-5 h-5 rounded-full border-2 border-[#5B5BEF]/30 border-t-[#5B5BEF] animate-spin" />
             <span className="text-sm font-bold">
               みんなの言葉から、あなたを読み解いています…
             </span>
@@ -145,20 +145,20 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
           state.text.split("\n\n").map((para, i) => (
             <p
               key={i}
-              className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+              className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
             >
               {para}
             </p>
           ))}
         {state.kind === "error" && (
           <div className="py-4">
-            <p className="text-[#3A2D6B]/70 text-sm font-bold mb-3">
+            <p className="text-[#2E2E5C]/70 text-sm font-bold mb-3">
               解説文の準備がまだ整っていないみたい。少し時間をおいて試してね。
             </p>
             <button
               type="button"
               onClick={retryManually}
-              className="rounded-full border-2 border-[#FE3C72] text-[#FE3C72] font-black text-sm px-4 py-2 hover:bg-[#FFF0F3] transition-colors"
+              className="rounded-full border-2 border-[#5B5BEF] text-[#5B5BEF] font-black text-sm px-4 py-2 hover:bg-[#F4F4FE] transition-colors"
             >
               もう一度読み込む
             </button>
@@ -169,7 +169,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
       {/* みんなの言葉 (手紙・言葉のみ・スコアなし) */}
       {(props.letters.length > 0 || props.favoritePoints.length > 0) && (
         <section>
-          <h3 className="text-[#3A2D6B] font-black text-base mb-3">
+          <h3 className="text-[#2E2E5C] font-black text-base mb-3">
             みんなの言葉
           </h3>
 
@@ -178,7 +178,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
               {props.favoritePoints.map((p, i) => (
                 <span
                   key={`fav-${i}`}
-                  className="rounded-full bg-[#FFF0F3] text-[#FE3C72] font-bold text-sm px-3 py-1"
+                  className="rounded-full bg-[#F4F4FE] text-[#5B5BEF] font-bold text-sm px-3 py-1"
                 >
                   {p}
                 </span>
@@ -191,10 +191,10 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
               key={`letter-${i}`}
               className="rounded-2xl bg-white border-2 border-[#0094D8]/15 px-4 py-3 mb-3 last:mb-0"
             >
-              <blockquote className="body-gothic text-[#3A2D6B] font-medium text-base leading-[1.6]">
+              <blockquote className="body-gothic text-[#2E2E5C] font-medium text-base leading-[1.6]">
                 {l.message}
               </blockquote>
-              <figcaption className="text-[#3A2D6B]/60 text-xs font-bold mt-2 text-right">
+              <figcaption className="text-[#2E2E5C]/60 text-xs font-bold mt-2 text-right">
                 — {l.name}
               </figcaption>
             </figure>
@@ -208,10 +208,10 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
         props.favoritePoints.length === 0 &&
         props.scoreImpression && (
           <section>
-            <h3 className="text-[#3A2D6B] font-black text-base mb-2">
+            <h3 className="text-[#2E2E5C] font-black text-base mb-2">
               スコアから見えるあなた
             </h3>
-            <p className="body-gothic text-[#3A2D6B]/85 text-base leading-[1.7]">
+            <p className="body-gothic text-[#2E2E5C]/85 text-base leading-[1.7]">
               {props.scoreImpression}
             </p>
           </section>

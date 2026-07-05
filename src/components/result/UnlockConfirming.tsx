@@ -51,13 +51,13 @@ export function UnlockConfirming({
           {!gaveUp ? (
             <>
               <div
-                className="h-12 w-12 rounded-full border-4 border-[#0094D8]/25 border-t-[#FE3C72] mb-6 animate-spin"
+                className="h-12 w-12 rounded-full border-4 border-[#0094D8]/25 border-t-[#5B5BEF] mb-6 animate-spin"
                 aria-hidden="true"
               />
-              <p className="text-[#3A2D6B] font-black text-base mb-2">
+              <p className="text-[#2E2E5C] font-black text-base mb-2">
                 解除を確認しています…
               </p>
-              <p className="text-[#3A2D6B]/70 text-sm leading-relaxed">
+              <p className="text-[#2E2E5C]/70 text-sm leading-relaxed">
                 決済ありがとうございます。
                 <br />
                 解除を反映中です。そのままお待ちください。
@@ -65,10 +65,10 @@ export function UnlockConfirming({
             </>
           ) : (
             <>
-              <p className="text-[#3A2D6B] font-black text-base mb-2">
+              <p className="text-[#2E2E5C] font-black text-base mb-2">
                 反映に少し時間がかかっています
               </p>
-              <p className="text-[#3A2D6B]/70 text-sm leading-relaxed mb-6">
+              <p className="text-[#2E2E5C]/70 text-sm leading-relaxed mb-6">
                 決済は完了しています。
                 <br />
                 少し待ってから再読み込みすると、解除済みの結果が表示されます。
@@ -76,13 +76,13 @@ export function UnlockConfirming({
               <button
                 type="button"
                 onClick={reload}
-                className="bg-[#FFE993] text-[#3A2D6B] font-black text-sm px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+                className="bg-[#5B5BEF] text-white font-black text-sm px-8 py-3 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
               >
                 再読み込み
               </button>
               <Link
                 href={myTrisetsuUrl}
-                className="text-[#3A2D6B]/60 font-bold text-xs underline mt-5 hover:text-[#FE3C72] transition-colors"
+                className="text-[#2E2E5C]/60 font-bold text-xs underline mt-5 hover:text-[#5B5BEF] transition-colors"
               >
                 マイトリセツに戻る
               </Link>

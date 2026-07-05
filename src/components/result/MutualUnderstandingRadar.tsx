@@ -41,7 +41,7 @@ function pointsToPolygon(
 
 export function MutualUnderstandingRadar({
   gaps,
-  selfColor = "#FE3C72",
+  selfColor = "#5B5BEF",
   otherColor = "#0094D8",
   selfLabel,
   otherLabel,
@@ -81,7 +81,7 @@ export function MutualUnderstandingRadar({
             key={`ring-${i}`}
             points={points}
             fill="none"
-            stroke="#3A2D6B"
+            stroke="#2E2E5C"
             strokeOpacity="0.12"
             strokeWidth="1"
           />
@@ -94,7 +94,7 @@ export function MutualUnderstandingRadar({
             y1={CENTER}
             x2={a.end.x}
             y2={a.end.y}
-            stroke="#3A2D6B"
+            stroke="#2E2E5C"
             strokeOpacity="0.18"
             strokeWidth="1"
           />
@@ -127,7 +127,7 @@ export function MutualUnderstandingRadar({
             dominantBaseline="middle"
             fontSize="11"
             fontWeight="700"
-            fill="#3A2D6B"
+            fill="#2E2E5C"
           >
             {a.label}
           </text>
@@ -141,7 +141,7 @@ export function MutualUnderstandingRadar({
             style={{ backgroundColor: selfColor }}
             aria-hidden="true"
           />
-          <span className="text-xs font-bold text-[#3A2D6B]">{selfLabel}</span>
+          <span className="text-xs font-bold text-[#2E2E5C]">{selfLabel}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span
@@ -149,7 +149,7 @@ export function MutualUnderstandingRadar({
             style={{ backgroundColor: otherColor }}
             aria-hidden="true"
           />
-          <span className="text-xs font-bold text-[#3A2D6B]">{otherLabel}</span>
+          <span className="text-xs font-bold text-[#2E2E5C]">{otherLabel}</span>
         </div>
       </div>
     </div>

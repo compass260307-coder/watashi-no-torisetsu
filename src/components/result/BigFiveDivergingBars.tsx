@@ -86,11 +86,11 @@ export function BigFiveDivergingBars({
       <div className="flex items-center gap-3 mb-4">
         <span
           aria-hidden="true"
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white text-lg flex items-center justify-center"
         >
           {emoji}
         </span>
-        <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+        <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
           {title}
         </h2>
       </div>
@@ -103,7 +103,7 @@ export function BigFiveDivergingBars({
         {hasFriend && (
           <div
             aria-hidden="true"
-            className="flex items-center justify-end gap-4 text-[11px] font-bold text-[#3A2D6B]/70"
+            className="flex items-center justify-end gap-4 text-[11px] font-bold text-[#2E2E5C]/70"
           >
             <span className="flex items-center gap-1.5">
               <span
@@ -115,7 +115,7 @@ export function BigFiveDivergingBars({
             <span className="flex items-center gap-1.5">
               <span
                 className="w-2.5 h-2.5 rotate-45 border-2 border-white shadow"
-                style={{ background: "#3A2D6B" }}
+                style={{ background: "#2E2E5C" }}
               />
               友達の平均
             </span>
@@ -145,10 +145,10 @@ export function BigFiveDivergingBars({
                 aria-hidden="true"
                 className="flex items-baseline justify-between mb-1.5"
               >
-                <span className="text-[#3A2D6B] font-black text-sm">
+                <span className="text-[#2E2E5C] font-black text-sm">
                   {axis.title}
                 </span>
-                <span className="text-[#3A2D6B]/75 font-bold text-xs tabular-nums">
+                <span className="text-[#2E2E5C]/75 font-bold text-xs tabular-nums">
                   {lean} ・ {value}%
                 </span>
               </div>
@@ -157,7 +157,7 @@ export function BigFiveDivergingBars({
                   これでバーを全幅にしてもテキストが押し出されず、画面端で切れない。 */}
               <div
                 aria-hidden="true"
-                className="flex items-center justify-between mb-1 text-[11px] font-bold text-[#3A2D6B]/80 leading-tight"
+                className="flex items-center justify-between mb-1 text-[11px] font-bold text-[#2E2E5C]/80 leading-tight"
               >
                 <span>{axis.left}</span>
                 <span>{axis.right}</span>
@@ -170,7 +170,7 @@ export function BigFiveDivergingBars({
               <div aria-hidden="true" className="relative w-full h-4">
                 {/* 土台レール: 白寄り + deepPurple アウトライン。固定色なので 4 背景すべてで浮く。 */}
                 <div
-                  className="absolute inset-0 rounded-full overflow-hidden flex border-[1.5px] border-[#3A2D6B]/25"
+                  className="absolute inset-0 rounded-full overflow-hidden flex border-[1.5px] border-[#2E2E5C]/25"
                   style={{ background: "rgba(255,255,255,0.9)" }}
                 >
                   {/* 両極の色分け (薄いガイド程度・固定色 = dark mode やグループ色に依存しない) */}
@@ -180,7 +180,7 @@ export function BigFiveDivergingBars({
                   />
                   <div
                     className="w-1/2 h-full"
-                    style={{ background: "rgba(254,60,114,0.10)" }}
+                    style={{ background: "rgba(91,91,239,0.10)" }}
                   />
                   {/* 中央→スコアの強調塗り (ブランドピンク)。value===50 は 2px で可視化 */}
                   <div
@@ -195,13 +195,13 @@ export function BigFiveDivergingBars({
                 </div>
 
                 {/* 中央ティック (常時表示・トラックより前面) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#3A2D6B]/55" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#2E2E5C]/55" />
 
                 {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
                 {friendValue !== null && (
                   <div
                     className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rotate-45 border-2 border-white shadow-md transition-all duration-500"
-                    style={{ left: `${friendValue}%`, background: "#3A2D6B" }}
+                    style={{ left: `${friendValue}%`, background: "#2E2E5C" }}
                   />
                 )}
 

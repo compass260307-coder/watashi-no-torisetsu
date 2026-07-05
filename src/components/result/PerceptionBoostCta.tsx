@@ -40,16 +40,16 @@ export function PerceptionBoostCta({ inviteUrl }: PerceptionBoostCtaProps) {
   };
 
   return (
-    <div className="bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] p-6 mb-8 text-center">
-      <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+    <div className="bg-white rounded-3xl border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] p-6 mb-8 text-center">
+      <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
         精度をもっと上げる
       </p>
-      <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-2">
+      <h2 className="text-[#2E2E5C] font-black text-lg leading-snug mb-2">
         もっと友達に答えてもらうと、
         <br />
         他己診断テストの精度が上がる
       </h2>
-      <p className="text-[#3A2D6B]/75 text-sm leading-relaxed mb-5">
+      <p className="text-[#2E2E5C]/75 text-sm leading-relaxed mb-5">
         答えてくれる友達が増えるほど、&ldquo;友達から見たアナタ&rdquo;の解像度が上がります。リンクをシェアして、もっと答えてもらおう。
       </p>
 
@@ -57,7 +57,7 @@ export function PerceptionBoostCta({ inviteUrl }: PerceptionBoostCtaProps) {
       <button
         type="button"
         onClick={handleCopy}
-        className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+        className="block w-full bg-[#5B5BEF] text-white font-black text-base px-6 py-4 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all text-center"
       >
         {copied ? "コピーしました ✓" : "友達評価リンクをコピー"}
       </button>

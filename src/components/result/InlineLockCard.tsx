@@ -29,12 +29,12 @@ export function InlineLockCard({
   return (
     <div className="flex flex-col items-center text-center gap-2.5">
       {/* lock アイコン: deepPurple 円 + sunYellow lock SVG */}
-      <span className="w-10 h-10 rounded-full bg-[#3A2D6B] flex items-center justify-center shadow-md">
-        <LockIcon className="w-5 h-5 text-[#FFE993]" />
+      <span className="w-10 h-10 rounded-full bg-[#2E2E5C] flex items-center justify-center shadow-md">
+        <LockIcon className="w-5 h-5 text-[#5B5BEF]" />
       </span>
 
       {/* 価値先行の 1 行 */}
-      <p className="text-[#3A2D6B] font-black text-sm leading-snug">{value}</p>
+      <p className="text-[#2E2E5C] font-black text-sm leading-snug">{value}</p>
 
       {/* 「解除する」ボタン (owner かつ未 unlock のみ) */}
       {canPurchase && (

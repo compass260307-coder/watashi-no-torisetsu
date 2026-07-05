@@ -59,9 +59,9 @@ export function FloatingShareCta({
       style={{
         width: "84px",
         height: "84px",
-        background: "#FFE993",
-        color: "#3A2D6B",
-        fontFamily: "var(--font-m-plus-rounded), sans-serif",
+        background: "#5B5BEF",
+        color: "#FFFFFF",
+        fontFamily: "var(--font-noto-sans), sans-serif",
         fontWeight: 800,
         lineHeight: 1.25,
         boxShadow:
@@ -116,7 +116,7 @@ function ArrowRight() {
     >
       <path
         d="M4 12h14M13 6l6 6-6 6"
-        stroke="#3A2D6B"
+        stroke="#2E2E5C"
         strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"

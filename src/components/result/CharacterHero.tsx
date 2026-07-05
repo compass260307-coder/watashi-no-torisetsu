@@ -126,9 +126,9 @@ export function CharacterHero({
       {!hideDecorations && (
         <div className="mt-3 flex flex-col items-center">
           {eyebrow && (
-            <p className="text-[#3A2D6B]/70 font-bold text-xs mb-1">{eyebrow}</p>
+            <p className="text-[#2E2E5C]/70 font-bold text-xs mb-1">{eyebrow}</p>
           )}
-          <h1 className="font-black text-3xl text-[#3A2D6B] leading-tight mb-3">
+          <h1 className="font-black text-3xl text-[#2E2E5C] leading-tight mb-3">
             {essence}
           </h1>
         </div>
@@ -137,7 +137,7 @@ export function CharacterHero({
       {/* 職業未定: 判明ゲージ (hideJobGauge で表示のみ抑止可。ロジックは不変) */}
       {jobSlot && !job && !hideJobGauge && (
         <div className="w-full max-w-[280px] mb-3">
-          <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.2em] mb-1.5">
+          <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.2em] mb-1.5">
             あと {remaining} 人で職業が判明
           </p>
           <div
@@ -158,7 +158,7 @@ export function CharacterHero({
 
       {!hideDecorations && description && (
         // balance-jp: text-wrap:balance + word-break:auto-phrase (日本語の文節で均等折返し)
-        <p className="balance-jp text-[#3A2D6B]/85 text-sm leading-relaxed max-w-[340px]">
+        <p className="balance-jp text-[#2E2E5C]/85 text-sm leading-relaxed max-w-[340px]">
           {description}
         </p>
       )}

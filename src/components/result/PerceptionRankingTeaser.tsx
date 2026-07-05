@@ -2,7 +2,7 @@
 //
 // 旧・紫枠シェアCTA (PerceptionBoostCta、温存) を置き換える格上げ版。見出しロゴ +
 // 上位3枠の「完成見本」プレビュー + メインボタン。ブランドは watashi-torisetsu で統一:
-//   文字 deepPurple #3A2D6B / CTA sunYellow #FFE993 / 二人称「アナタ」/ 絵文字不使用。
+//   文字 deepPurple #2E2E5C / CTA sunYellow #5B5BEF / 二人称「アナタ」/ 絵文字不使用。
 //
 // 見出しは生成済みロゴ画像 (/heading-ranking.png、羊毛フェルト風・透過2行) を next/image で
 // 表示 (ヒーロー heading-friend-invite.png と同方式)。
@@ -64,11 +64,11 @@ export function PerceptionRankingTeaser({
                 <AvatarSilhouette />
               </span>
               {/* ダミー名 */}
-              <span className="flex-1 text-[#3A2D6B] font-black text-sm">
+              <span className="flex-1 text-[#2E2E5C] font-black text-sm">
                 {row.name}
               </span>
               {/* 相互理解度 % (実ランキングと同じ sunYellow ピル) */}
-              <span className="flex-shrink-0 bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-2.5 py-0.5 text-sm">
+              <span className="flex-shrink-0 bg-[#5B5BEF] text-white font-black rounded-full px-2.5 py-0.5 text-sm">
                 {row.pct}
               </span>
             </li>
@@ -78,7 +78,7 @@ export function PerceptionRankingTeaser({
         {/* ===== メインボタン (sunYellow chunky) ===== */}
         <Link
           href={hubHref}
-          className="mt-5 block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+          className="mt-5 block w-full bg-[#5B5BEF] text-white font-black text-base px-6 py-4 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all text-center"
         >
           相性ランキングを見る →
         </Link>
@@ -95,7 +95,7 @@ function AvatarSilhouette() {
       height="22"
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className="text-[#3A2D6B]/45"
+      className="text-[#2E2E5C]/45"
     >
       <circle cx="12" cy="8.5" r="4" fill="currentColor" />
       <path

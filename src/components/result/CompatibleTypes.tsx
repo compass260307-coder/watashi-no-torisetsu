@@ -52,11 +52,11 @@ export function CompatibleTypes({
       <div className="flex items-center gap-3 mb-4">
         <span
           aria-hidden="true"
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white text-lg flex items-center justify-center"
         >
           💞
         </span>
-        <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+        <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
           アナタと相性のいいタイプ
         </h2>
       </div>
@@ -72,10 +72,10 @@ export function CompatibleTypes({
               key={p.rank}
               className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-4 flex flex-col items-center text-center"
             >
-              <span className="text-[#FE3C72] font-black text-[10px] tracking-[0.2em] mb-2">
+              <span className="text-[#5B5BEF] font-black text-[10px] tracking-[0.2em] mb-2">
                 {p.rank}
               </span>
-              <div className="w-full aspect-square rounded-2xl bg-[#FFF0F3] flex items-center justify-center overflow-hidden mb-3">
+              <div className="w-full aspect-square rounded-2xl bg-[#F4F4FE] flex items-center justify-center overflow-hidden mb-3">
                 <Image
                   src={img}
                   alt={`${name}（${essence}）`}
@@ -84,13 +84,13 @@ export function CompatibleTypes({
                   className="w-[85%] h-[85%] object-contain"
                 />
               </div>
-              <p className="text-[#3A2D6B] font-black text-sm leading-tight">
+              <p className="text-[#2E2E5C] font-black text-sm leading-tight">
                 {name}
               </p>
-              <p className="text-[#3A2D6B]/60 font-bold text-[11px] mb-2">
+              <p className="text-[#2E2E5C]/60 font-bold text-[11px] mb-2">
                 {essence}
               </p>
-              <p className="text-[#3A2D6B]/80 font-bold text-xs leading-relaxed">
+              <p className="text-[#2E2E5C]/80 font-bold text-xs leading-relaxed">
                 {p.reason}
               </p>
             </article>
@@ -98,7 +98,7 @@ export function CompatibleTypes({
         })}
       </div>
 
-      <p className="text-[#3A2D6B]/50 font-bold text-[10px] text-center mt-3">
+      <p className="text-[#2E2E5C]/50 font-bold text-[10px] text-center mt-3">
         ※相性は性格の補い合いをもとにした目安です
       </p>
     </section>

@@ -7,14 +7,15 @@
 
   --background: #ffffff;
   --foreground: #1a1a1a;
-  --primary: #fe3c72;
-  --primary-hover: #e8265c;
+  /* ブランドプライマリ: 旧 vividPink #fe3c72 → トップページの Sora ブルーに統一 */
+  --primary: #5b5bef;
+  --primary-hover: #4a4ad9;
   --card-bg: #ffffff;
   --card-border: #f0e5e5;
   --muted: #9a8a8a;
   --label-bg: #fff0f3;
-  --primary-gradient: linear-gradient(135deg, #fd267a 0%, #ff7854 100%);
-  --primary-gradient-hover: linear-gradient(135deg, #e8265c 0%, #ee6648 100%);
+  --primary-gradient: linear-gradient(135deg, #5b5bef 0%, #7b6bf5 100%);
+  --primary-gradient-hover: linear-gradient(135deg, #4a4ad9 0%, #6a5ae5 100%);
 
   /* Big Five 発散バーの左右トラック色 (BigFiveDivergingBars が参照)。
      色は「左極側 / 右極側」を区別するための視覚的手がかりにすぎず、
@@ -47,7 +48,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN",
+  /* トップページ (feat/top-page) と同じ角ゴシックに全体統一。
+     丸ゴ (M PLUS Rounded) はロゴ (.wtr-logo-text) 等の明示指定のみ残す。 */
+  font-family: var(--font-noto-sans), "Hiragino Kaku Gothic ProN",
     "Hiragino Sans", Meiryo, sans-serif;
   -webkit-font-smoothing: antialiased;
 }

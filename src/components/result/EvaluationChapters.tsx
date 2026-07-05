@@ -116,7 +116,7 @@ export function EvaluationChapters({
           title={`${perceiverShort}から見たアナタの強み`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <p className="text-[#3A2D6B]/75 text-xs font-bold mb-4 leading-relaxed">
+          <p className="text-[#2E2E5C]/75 text-xs font-bold mb-4 leading-relaxed">
             {displayName}が自覚していない、{perceiverShort}から見える 6 つの長所。
           </p>
           <ul className="flex flex-col gap-3">
@@ -124,13 +124,13 @@ export function EvaluationChapters({
               <li key={i} className="flex gap-2">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#FE3C72] flex-shrink-0"
+                  className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#5B5BEF] flex-shrink-0"
                 />
                 <div>
-                  <p className="text-[#3A2D6B] font-black text-sm">
+                  <p className="text-[#2E2E5C] font-black text-sm">
                     {s.title}
                   </p>
-                  <p className="text-[#3A2D6B]/75 text-xs leading-relaxed">
+                  <p className="text-[#2E2E5C]/75 text-xs leading-relaxed">
                     {s.body}
                   </p>
                 </div>
@@ -147,7 +147,7 @@ export function EvaluationChapters({
           title={`${perceiverShort}から見たアナタの「あれっ?」`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <p className="text-[#3A2D6B]/75 text-xs font-bold mb-4 leading-relaxed">
+          <p className="text-[#2E2E5C]/75 text-xs font-bold mb-4 leading-relaxed">
             {displayName}が思ってる以上に、{perceiverShort}にはこう見えてる 6 つのポイント。
           </p>
           <ul className="flex flex-col gap-3">
@@ -158,10 +158,10 @@ export function EvaluationChapters({
                   className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0094D8] flex-shrink-0"
                 />
                 <div>
-                  <p className="text-[#3A2D6B] font-black text-sm">
+                  <p className="text-[#2E2E5C] font-black text-sm">
                     {s.title}
                   </p>
-                  <p className="text-[#3A2D6B]/75 text-xs leading-relaxed">
+                  <p className="text-[#2E2E5C]/75 text-xs leading-relaxed">
                     {s.body}
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export function EvaluationChapters({
           title={`${perceiverShort}視点での 4 つの特性`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <p className="text-[#3A2D6B]/75 text-xs font-bold mb-5 leading-relaxed">
+          <p className="text-[#2E2E5C]/75 text-xs font-bold mb-5 leading-relaxed">
             {perceiverShort}は、{displayName}のこんな側面を見てるかも。
           </p>
           <div className="grid grid-cols-2 gap-4">
@@ -206,7 +206,7 @@ export function EvaluationChapters({
       <section className="mb-8">
         <ChapterHeader num={5 + numOffset} title="2 人の関係性アドバイス" />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <p className="text-[#3A2D6B]/75 text-xs font-bold mb-3 leading-relaxed">
+          <p className="text-[#2E2E5C]/75 text-xs font-bold mb-3 leading-relaxed">
             {displayName}と{perceiverShort}さんが、もっと理解し合うためのヒント。
           </p>
           <LockedBody
@@ -226,7 +226,7 @@ export function EvaluationChapters({
           title={`${displayName}の取扱説明書・${perceiverShort}視点`}
         />
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <p className="text-[#3A2D6B]/75 text-xs font-bold mb-3 leading-relaxed">
+          <p className="text-[#2E2E5C]/75 text-xs font-bold mb-3 leading-relaxed">
             {perceiverShort}さんが{displayName}とうまく付き合うには。
           </p>
           <LockedBody
@@ -249,10 +249,10 @@ export function EvaluationChapters({
 function ChapterHeader({ num, title }: { num: number; title: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white font-black text-lg flex items-center justify-center">
         {num}
       </span>
-      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
         {title}
       </h2>
     </div>
@@ -284,8 +284,8 @@ function GapCard({
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 mb-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[#3A2D6B] font-black text-base">{gap.label}</span>
-        <span className="text-[#FE3C72] font-black text-sm">
+        <span className="text-[#2E2E5C] font-black text-base">{gap.label}</span>
+        <span className="text-[#5B5BEF] font-black text-sm">
           差 {gap.diffPoints}pt
         </span>
       </div>
@@ -293,7 +293,7 @@ function GapCard({
         <ScoreRow
           label={displayName}
           percent={gap.selfPercent}
-          color="#FE3C72"
+          color="#5B5BEF"
         />
         <ScoreRow
           label={`${perceiverShort}から`}
@@ -301,10 +301,10 @@ function GapCard({
           color="#0094D8"
         />
       </div>
-      <p className="text-[#3A2D6B]/85 text-xs leading-relaxed mb-3">
+      <p className="text-[#2E2E5C]/85 text-xs leading-relaxed mb-3">
         {direction}
       </p>
-      <div className="border-t border-dashed border-[#3A2D6B]/20 my-3" />
+      <div className="border-t border-dashed border-[#2E2E5C]/20 my-3" />
       <LockedSnippet
         unlocked={unlocked}
         honne={renderTemplate(
@@ -329,7 +329,7 @@ function ScoreRow({
 }) {
   return (
     <div>
-      <div className="flex justify-between text-[10px] font-bold text-[#3A2D6B] mb-0.5">
+      <div className="flex justify-between text-[10px] font-bold text-[#2E2E5C] mb-0.5">
         <span>{label}</span>
         <span>{percent}%</span>
       </div>
@@ -357,7 +357,7 @@ function LockedSnippet({
   if (unlocked) {
     // Day 12-D: このズレ(次元×向き)の「本音」を表示
     return (
-      <p className="text-[#3A2D6B] text-xs leading-relaxed">{honne}</p>
+      <p className="text-[#2E2E5C] text-xs leading-relaxed">{honne}</p>
     );
   }
   // Day 12-Polish-G: 素ピルを価値先行のインライン・ロックに置き換え
@@ -394,18 +394,18 @@ function FourTraitCircle({
   return (
     <div className="flex flex-col items-center text-center">
       <div
-        className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-[#3A2D6B]/25"
+        className="w-20 h-20 rounded-full flex items-center justify-center border-2 border-[#2E2E5C]/25"
         style={{ backgroundColor: `${color}40` }}
       >
         {unlocked ? (
-          <span className="text-[#3A2D6B] font-black text-2xl">{level}</span>
+          <span className="text-[#2E2E5C] font-black text-2xl">{level}</span>
         ) : (
-          <LockIcon className="w-6 h-6 text-[#3A2D6B]/70" />
+          <LockIcon className="w-6 h-6 text-[#2E2E5C]/70" />
         )}
       </div>
-      <p className="text-[#3A2D6B] font-black text-xs mt-2">{label}</p>
+      <p className="text-[#2E2E5C] font-black text-xs mt-2">{label}</p>
       {unlocked && (
-        <p className="text-[#3A2D6B]/75 text-[11px] leading-relaxed mt-1">
+        <p className="text-[#2E2E5C]/75 text-[11px] leading-relaxed mt-1">
           {body}
         </p>
       )}
@@ -428,7 +428,7 @@ function LockedBody({
 }) {
   if (unlocked) {
     return (
-      <p className="text-[#3A2D6B] text-sm leading-relaxed whitespace-pre-line">
+      <p className="text-[#2E2E5C] text-sm leading-relaxed whitespace-pre-line">
         {body}
       </p>
     );

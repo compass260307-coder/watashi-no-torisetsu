@@ -117,23 +117,23 @@ export function ResultActions({
           onClick={handleSaveImage}
           disabled={saving}
           aria-label="結果画像を保存"
-          className="w-9 h-9 rounded-full bg-white border-2 border-[#3A2D6B] flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-wait"
+          className="w-9 h-9 rounded-full bg-white border-2 border-[#2E2E5C] flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50 disabled:cursor-wait"
         >
-          <ImageIcon className="w-4 h-4 text-[#3A2D6B]" />
+          <ImageIcon className="w-4 h-4 text-[#2E2E5C]" />
         </button>
         <div className="relative">
           <button
             type="button"
             onClick={handleCopyLink}
             aria-label="リンクをコピー"
-            className="w-9 h-9 rounded-full bg-[#FFE993] border-2 border-[#3A2D6B] flex items-center justify-center hover:scale-110 transition-transform"
+            className="w-9 h-9 rounded-full bg-[#5B5BEF] border-2 border-[#2E2E5C] flex items-center justify-center hover:scale-110 transition-transform"
           >
-            <LinkIcon className="w-4 h-4 text-[#3A2D6B]" />
+            <LinkIcon className="w-4 h-4 text-[#2E2E5C]" />
           </button>
           {linkCopied && (
             <span
               role="status"
-              className="absolute top-full mt-1 right-0 whitespace-nowrap bg-[#3A2D6B] text-white text-[10px] font-bold px-2 py-1 rounded-full z-10"
+              className="absolute top-full mt-1 right-0 whitespace-nowrap bg-[#2E2E5C] text-white text-[10px] font-bold px-2 py-1 rounded-full z-10"
             >
               コピーしました
             </span>
@@ -196,7 +196,7 @@ export function ResultActions({
           onClick={handleSaveImage}
           disabled={saving}
           aria-label="結果画像を保存"
-          className="flex items-center gap-1.5 rounded-full bg-white text-[#3A2D6B] border-2 border-[#3A2D6B] px-3 py-2 text-xs font-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-wait"
+          className="flex items-center gap-1.5 rounded-full bg-white text-[#2E2E5C] border-2 border-[#2E2E5C] px-3 py-2 text-xs font-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-wait"
         >
           <ImageIcon className="w-4 h-4" />
           {saving ? "作成中…" : "保存"}
@@ -207,7 +207,7 @@ export function ResultActions({
             type="button"
             onClick={handleCopyLink}
             aria-label="リンクをコピー"
-            className="flex items-center gap-1.5 rounded-full bg-[#FFE993] text-[#3A2D6B] border-2 border-[#3A2D6B] px-3 py-2 text-xs font-black hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 rounded-full bg-[#5B5BEF] text-white px-3 py-2 text-xs font-black hover:scale-105 transition-transform"
           >
             <LinkIcon className="w-4 h-4" />
             リンク
@@ -215,7 +215,7 @@ export function ResultActions({
           {linkCopied && (
             <span
               role="status"
-              className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#3A2D6B] text-white text-[10px] font-bold px-2 py-1 rounded-full"
+              className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#2E2E5C] text-white text-[10px] font-bold px-2 py-1 rounded-full"
             >
               コピーしました
             </span>
@@ -226,7 +226,7 @@ export function ResultActions({
       {imageNotice && (
         <p
           role="status"
-          className="text-center text-xs text-[#FE3C72] font-bold mt-2"
+          className="text-center text-xs text-[#5B5BEF] font-bold mt-2"
         >
           {imageNotice}
         </p>

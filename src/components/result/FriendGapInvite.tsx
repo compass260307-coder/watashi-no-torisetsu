@@ -67,12 +67,12 @@ export function FriendGapInvite({
 
       {/* 2. QR コード (Day 11.2 から設定維持、白カードで囲む) */}
       <div className="flex justify-center mb-6">
-        <div className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#3A2D6B]/20">
+        <div className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#2E2E5C]/20">
           <QRCodeSVG
             value={inviteUrl}
             size={220}
             bgColor="#FFFFFF"
-            fgColor="#3A2D6B"
+            fgColor="#2E2E5C"
             level="H"
             marginSize={0}
           />
@@ -80,7 +80,7 @@ export function FriendGapInvite({
       </div>
 
       {/* 3. 説明文 (Day 11.2 から維持) */}
-      <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed mb-5">
+      <p className="text-[#2E2E5C] font-bold text-sm leading-relaxed mb-5">
         カメラで読み取ってもらって
         <br />
         友達にアナタを評価してもらおう
@@ -88,22 +88,22 @@ export function FriendGapInvite({
 
       {/* 4. キャラコード + コピー (LINE 等代替手段、Day 11.2 から維持) */}
       <div className="flex items-center justify-center gap-2">
-        <span className="text-[#3A2D6B]/70 text-sm font-bold">
+        <span className="text-[#2E2E5C]/70 text-sm font-bold">
           キャラコード:
         </span>
-        <span className="text-[#3A2D6B] font-mono font-bold text-base tracking-wider">
+        <span className="text-[#2E2E5C] font-mono font-bold text-base tracking-wider">
           {fullCode || "------"}
         </span>
         <button
           type="button"
           onClick={handleCopyCode}
           aria-label="キャラコードをコピー"
-          className="text-[#3A2D6B]/60 hover:text-[#FE3C72] transition-colors p-1"
+          className="text-[#2E2E5C]/60 hover:text-[#5B5BEF] transition-colors p-1"
         >
           <CopyIcon className="w-4 h-4" />
         </button>
         {codeCopied && (
-          <span role="status" className="text-[#FE3C72] text-xs font-bold">
+          <span role="status" className="text-[#5B5BEF] text-xs font-bold">
             コピーしました
           </span>
         )}

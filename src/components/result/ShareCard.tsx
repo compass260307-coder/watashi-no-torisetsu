@@ -46,7 +46,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             "linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%)",
           backgroundSize: "32px 32px, 32px 32px, 100% 100%",
           fontFamily:
-            'var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
+            'var(--font-noto-sans), "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif',
           textAlign: "center",
         }}
       >
@@ -122,7 +122,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         {/* 短い説明 */}
         <p
           style={{
-            color: "#3A2D6B",
+            color: "#2E2E5C",
             fontSize: 15,
             lineHeight: 1.7,
             fontWeight: 600,
@@ -137,7 +137,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         <div
           style={{
             display: "inline-block",
-            background: "#3A2D6B",
+            background: "#2E2E5C",
             color: "#fff",
             fontWeight: 800,
             fontSize: 13,
@@ -157,7 +157,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            color: "#3A2D6B",
+            color: "#2E2E5C",
             opacity: 0.7,
             fontSize: 12,
             fontWeight: 700,

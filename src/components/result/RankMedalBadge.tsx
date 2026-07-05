@@ -33,7 +33,7 @@ const PLAIN: Medal = {
   from: "#ECE9F8",
   to: "#D8D2EE",
   border: "#CFC8EA",
-  fg: "#3A2D6B",
+  fg: "#2E2E5C",
 };
 
 export function RankMedalBadge({

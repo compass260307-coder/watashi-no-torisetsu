@@ -72,11 +72,11 @@ export function OthersPerceptionSection({
       <div className="flex items-center gap-3 mb-4">
         <span
           aria-hidden="true"
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white text-lg flex items-center justify-center"
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white text-lg flex items-center justify-center"
         >
           {unlocked ? "🔓" : "🔐"}
         </span>
-        <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+        <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
           みんなから見たアナタ
         </h2>
       </div>
@@ -120,7 +120,7 @@ function LockedContent({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed">
+      <p className="text-[#2E2E5C]/80 font-bold text-sm leading-relaxed">
         友達が {threshold} 人評価してくれると、友達から見たアナタが見られるようになります。
       </p>
 
@@ -146,7 +146,7 @@ function LockedContent({
         id="friend-unlock-cta"
         className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center scroll-mt-6"
       >
-        <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+        <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
           あと {remaining} 人で解除
         </p>
         <div
@@ -162,11 +162,11 @@ function LockedContent({
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <p className="text-[#3A2D6B]/70 font-bold text-xs tabular-nums">
+        <p className="text-[#2E2E5C]/70 font-bold text-xs tabular-nums">
           {friendCount} / {threshold} 人
         </p>
         {!isOwner && (
-          <p className="text-[#3A2D6B]/70 font-bold text-xs leading-relaxed mt-3">
+          <p className="text-[#2E2E5C]/70 font-bold text-xs leading-relaxed mt-3">
             友達の評価が {threshold} 人集まると公開されます。
           </p>
         )}
@@ -209,10 +209,10 @@ function UnlockedContent({
     <div className="flex flex-col gap-5">
       {/* 他者分析 */}
       <article className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-        <h3 className="text-[#3A2D6B] font-black text-lg mb-2">他者分析</h3>
-        <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-4">
+        <h3 className="text-[#2E2E5C] font-black text-lg mb-2">他者分析</h3>
+        <p className="text-[#2E2E5C]/80 font-bold text-sm leading-relaxed mb-4">
           友達 {friendCount} 人が評価してくれました。アナタと友達の見方の一致度
-          (相互理解度) は <span className="text-[#FE3C72]">{mutual}%</span> です。
+          (相互理解度) は <span className="text-[#5B5BEF]">{mutual}%</span> です。
         </p>
         <ul className="flex flex-col gap-2">
           {tops.map((g) => (
@@ -220,8 +220,8 @@ function UnlockedContent({
               key={g.key}
               className="flex items-center justify-between gap-3 text-sm"
             >
-              <span className="text-[#3A2D6B] font-black">{g.label}</span>
-              <span className="text-[#3A2D6B]/70 font-bold tabular-nums">
+              <span className="text-[#2E2E5C] font-black">{g.label}</span>
+              <span className="text-[#2E2E5C]/70 font-bold tabular-nums">
                 自分 {g.selfPercent}% / 友達 {g.otherPercent}%
               </span>
             </li>
@@ -231,14 +231,14 @@ function UnlockedContent({
         {/* ② 評価してくれた友達 (記名)。名前はユーザー入力 → JSX で自動エスケープ。 */}
         {friendNames.length > 0 && (
           <div className="mt-5 pt-4 border-t border-[#0094D8]/15">
-            <p className="text-[#3A2D6B]/60 font-bold text-xs mb-2">
+            <p className="text-[#2E2E5C]/60 font-bold text-xs mb-2">
               評価してくれた友達
             </p>
             <div className="flex flex-wrap gap-2">
               {friendNames.map((name, i) => (
                 <span
                   key={`${name}-${i}`}
-                  className="inline-block bg-[#FFF0F3] text-[#3A2D6B] font-bold text-xs rounded-full px-3 py-1"
+                  className="inline-block bg-[#F4F4FE] text-[#2E2E5C] font-bold text-xs rounded-full px-3 py-1"
                 >
                   {name}
                 </span>
@@ -250,10 +250,10 @@ function UnlockedContent({
 
       {/* 隠れた強み */}
       <article className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-        <h3 className="text-[#3A2D6B] font-black text-lg mb-2">隠れた強み</h3>
+        <h3 className="text-[#2E2E5C] font-black text-lg mb-2">隠れた強み</h3>
         {hidden.length > 0 ? (
           <>
-            <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-4">
+            <p className="text-[#2E2E5C]/80 font-bold text-sm leading-relaxed mb-4">
               アナタが控えめに見ているのに、友達はもっと高く評価している軸です。自分では気づきにくい強みかも。
             </p>
             <ul className="flex flex-col gap-2">
@@ -262,8 +262,8 @@ function UnlockedContent({
                   key={g.key}
                   className="flex items-center justify-between gap-3 text-sm"
                 >
-                  <span className="text-[#3A2D6B] font-black">{g.label}</span>
-                  <span className="text-[#3A2D6B]/70 font-bold tabular-nums">
+                  <span className="text-[#2E2E5C] font-black">{g.label}</span>
+                  <span className="text-[#2E2E5C]/70 font-bold tabular-nums">
                     友達 {g.otherPercent}% ＞ 自分 {g.selfPercent}%
                   </span>
                 </li>
@@ -271,7 +271,7 @@ function UnlockedContent({
             </ul>
           </>
         ) : (
-          <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed">
+          <p className="text-[#2E2E5C]/80 font-bold text-sm leading-relaxed">
             友達の評価は、アナタの自己評価とおおむね一致していました。自己理解がしっかりできています。
           </p>
         )}
@@ -280,19 +280,19 @@ function UnlockedContent({
       {/* ③ 友達からのメッセージ (記名)。本文・名前はユーザー入力 → JSX で自動エスケープ。 */}
       {friendMessages.length > 0 && (
         <article className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-          <h3 className="text-[#3A2D6B] font-black text-lg mb-3">
+          <h3 className="text-[#2E2E5C] font-black text-lg mb-3">
             友達からのメッセージ
           </h3>
           <ul className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-3">
             {friendMessages.map((m, i) => (
               <li
                 key={`${m.name}-${i}`}
-                className="bg-[#FFF9F0] rounded-2xl border border-[#FFE993] p-4"
+                className="bg-[#F4F4FE] rounded-2xl border border-[#5B5BEF] p-4"
               >
-                <p className="text-[#3A2D6B] font-bold text-sm leading-relaxed whitespace-pre-wrap break-words">
+                <p className="text-[#2E2E5C] font-bold text-sm leading-relaxed whitespace-pre-wrap break-words">
                   {m.message}
                 </p>
-                <p className="text-[#3A2D6B]/60 font-bold text-xs mt-2 text-right">
+                <p className="text-[#2E2E5C]/60 font-bold text-xs mt-2 text-right">
                   — {m.name} より
                 </p>
               </li>

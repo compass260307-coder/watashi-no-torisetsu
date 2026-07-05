@@ -546,7 +546,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     最初のパートに id=chapter-self を付け、section の aria-labelledby を解決。 */}
                 <h2
                   id={idx === 0 ? "chapter-self" : undefined}
-                  className="text-[#3A2D6B] font-black text-xl leading-tight mb-3"
+                  className="text-[#2E2E5C] font-black text-xl leading-tight mb-3"
                 >
                   {mainHeading}
                 </h2>
@@ -555,7 +555,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   {paragraphs.map((para, pIdx) => (
                     <p
                       key={`${sec.title}-${pIdx}`}
-                      className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
+                      className="body-gothic text-[#2E2E5C] font-medium text-lg leading-[1.6] mb-4 last:mb-0"
                     >
                       {para}
                     </p>
@@ -582,7 +582,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             上部はアイコンのみの省スペース版。ここはアイコン+ラベルのしっかり版 + 短い一言。
             owner はこの直下に QR (FriendGapInvite) も続く二段構え。 */}
         <div className="mb-2">
-          <p className="text-center text-[#3A2D6B]/80 font-bold text-sm mb-3 px-4">
+          <p className="text-center text-[#2E2E5C]/80 font-bold text-sm mb-3 px-4">
             {SHARE_CTA_CAPTION}
           </p>
           <ResultActions
@@ -605,7 +605,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               href={`/tako/${token}`}
               className="block rounded-3xl border-2 border-[#2A3A5C]/25 bg-white p-6 text-center shadow-md transition-colors hover:bg-[#F3F1FB]"
             >
-              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+              <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
                 他己診断
               </p>
               <h2 className="text-[#2A3A5C] font-black text-lg leading-snug mb-2">
@@ -641,9 +641,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
           <section className="mb-8">
-            <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
+            <h3 className="text-[#2E2E5C] font-black text-sm mb-3 flex items-baseline justify-between">
               <span>真のトリセツ</span>
-              <span className="text-xs font-bold text-[#3A2D6B]/60">
+              <span className="text-xs font-bold text-[#2E2E5C]/60">
                 {integrated.length}
               </span>
             </h3>
@@ -652,17 +652,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 <Link
                   key={it.id}
                   href={`/integrated/${it.id}`}
-                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#FFF9F0] transition-colors"
+                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#F4F4FE] transition-colors"
                 >
-                  <p className="text-base font-black text-[#3A2D6B] mb-1">
+                  <p className="text-base font-black text-[#2E2E5C] mb-1">
                     {it.title}
                   </p>
                   {it.subtitle && (
-                    <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-2">
+                    <p className="text-xs text-[#2E2E5C]/70 leading-relaxed mb-2">
                       {it.subtitle}
                     </p>
                   )}
-                  <p className="text-[10px] text-[#3A2D6B]/50 font-bold">
+                  <p className="text-[10px] text-[#2E2E5C]/50 font-bold">
                     {formatDate(it.generatedAt)}
                     {" / "}
                     友達評価 {it.perceptionCount} 件
@@ -679,7 +679,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* ?stay=1: 自動リダイレクト回避 (上のロゴリンクと同趣旨)。 */}
           <Link
             href="/?stay=1"
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
             トップに戻る
           </Link>
@@ -696,10 +696,10 @@ function VisitorCtaSection() {
   return (
     <>
       <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-        <h2 className="text-[#3A2D6B] font-black text-lg text-center mb-2">
+        <h2 className="text-[#2E2E5C] font-black text-lg text-center mb-2">
           アナタのトリセツも作れます
         </h2>
-        <p className="text-[#3A2D6B]/70 text-sm text-center mb-4 leading-relaxed">
+        <p className="text-[#2E2E5C]/70 text-sm text-center mb-4 leading-relaxed">
           50 問・約 3 分の自己診断から始まります。
           <br />
           登録不要、無料です。
@@ -707,7 +707,7 @@ function VisitorCtaSection() {
         <div className="flex justify-center">
           <Link
             href="/diagnosis"
-            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+            className="inline-block bg-[#5B5BEF] text-white font-black px-8 py-3 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
           >
             自己診断を始める →
           </Link>
@@ -716,7 +716,7 @@ function VisitorCtaSection() {
       <div className="text-center mb-6">
         <Link
           href="/login"
-          className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
+          className="text-[#2E2E5C]/60 text-xs font-bold underline hover:text-[#5B5BEF] transition-colors"
         >
           購入済みの方はログイン
         </Link>

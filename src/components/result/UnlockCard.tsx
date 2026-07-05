@@ -50,28 +50,28 @@ export function UnlockCard({
     // id: Polish-G 追加でロック本文タップ時のスクロール先 + pulse 対象 (LockedBlur が参照)
     <div
       id="unlock-card"
-      className="bg-[#FFF9F0] border-[3px] border-[#3A2D6B] rounded-[24px] p-5 mb-8">
+      className="bg-[#F4F4FE] border-[3px] border-[#2E2E5C] rounded-[24px] p-5 mb-8">
       {/* eyebrow */}
-      <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+      <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
         {eyebrow}
       </p>
 
       {/* 価値先行の見出し */}
-      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight mb-3">
+      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-3">
         {heading}
       </h2>
 
       {/* 続編フレーミングの本文 */}
       {body && (
-        <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-4">{body}</p>
+        <p className="text-[#2E2E5C]/80 text-sm leading-relaxed mb-4">{body}</p>
       )}
 
       {/* 解放項目の箇条書き (check SVG + 太字リード＋具体) */}
       <ul className="flex flex-col gap-2.5 mb-5">
         {bullets.map((b) => (
           <li key={b.lead} className="flex gap-2 items-start">
-            <CheckIcon className="w-4 h-4 text-[#FE3C72] flex-shrink-0 mt-1" />
-            <span className="text-[#3A2D6B] text-sm leading-snug">
+            <CheckIcon className="w-4 h-4 text-[#5B5BEF] flex-shrink-0 mt-1" />
+            <span className="text-[#2E2E5C] text-sm leading-snug">
               <span className="font-black">{b.lead}</span>
               <span className="font-medium">：{b.detail}</span>
             </span>
@@ -80,7 +80,7 @@ export function UnlockCard({
       </ul>
 
       {/* 価格 (大) */}
-      <p className="text-center text-[#3A2D6B] font-black text-4xl leading-none mb-4">
+      <p className="text-center text-[#2E2E5C] font-black text-4xl leading-none mb-4">
         {priceLabel}
       </p>
 
@@ -94,7 +94,7 @@ export function UnlockCard({
       </div>
 
       {/* 安心の一文 (返金保証・満足度評価は入れない) */}
-      <p className="text-center text-[#3A2D6B]/55 text-[11px] font-bold mt-4 leading-relaxed">
+      <p className="text-center text-[#2E2E5C]/55 text-[11px] font-bold mt-4 leading-relaxed">
         {reassurance}
       </p>
     </div>
