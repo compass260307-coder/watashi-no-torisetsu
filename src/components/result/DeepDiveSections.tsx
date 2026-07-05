@@ -155,6 +155,19 @@ export function DeepDiveSections({
       </div>
 
       <article role="tabpanel" className="px-1 pt-1 pb-2">
+        {/* 挿絵 (タブ対応のシーン別イラスト): タブ内の一番上に表示 */}
+        {(current.key === "love" ||
+          current.key === "career" ||
+          current.key === "growth") &&
+          sceneImages?.[current.key] && (
+            <Image
+              src={sceneImages[current.key]!}
+              alt=""
+              width={960}
+              height={640}
+              className="mx-auto mb-6 h-auto w-full max-w-[560px]"
+            />
+          )}
         {/* カード大見出し(section.title)は非表示 (タブにラベルが出るため冗長)。
             ※ title データ自体は report-data.ts / LOVE_BY_TYPE_32 に温存 (表示しないだけ)。 */}
 
@@ -170,19 +183,6 @@ export function DeepDiveSections({
           </p>
         ))}
 
-        {/* 挿絵 (タブ対応のシーン別イラスト: 恋愛/仕事/学校)。無いタブは非表示 */}
-        {(current.key === "love" ||
-          current.key === "career" ||
-          current.key === "growth") &&
-          sceneImages?.[current.key] && (
-            <Image
-              src={sceneImages[current.key]!}
-              alt=""
-              width={960}
-              height={640}
-              className="mx-auto mt-6 h-auto w-full max-w-[560px]"
-            />
-          )}
       </article>
     </section>
   );

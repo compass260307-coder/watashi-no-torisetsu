@@ -546,7 +546,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               <div key={sec.title}>
                 {/* パート1 (基本特性) と パート2 (取扱注意) の間に 5 つの軸を挟む */}
                 {idx === 1 && (
-                  <div className="mb-10">
+                  <div className="mb-14 mt-4">
                     <BigFiveDivergingBars
                       scores={stored}
                       title="五つの性格傾向"
@@ -554,7 +554,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     />
                   </div>
                 )}
-                <section className="mb-10">
+                <section className="mb-14">
                   {/* パート2 見出し: タイプ別文言 (mainHeading) は使わず、章として固定の
                       「② アナタの注意点」(① 五つの性格傾向 と同じ 16P 風スタイル) */}
                   {idx > 0 && (
@@ -581,14 +581,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       </p>
                     ))}
                   </div>
-                  {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2 */}
+                  {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2。
+                      前後にゆとりを持たせる (本文・次章見出しと近すぎない) */}
                   {sceneImage(idx === 0 ? "normal1" : "normal2") && (
                     <Image
                       src={sceneImage(idx === 0 ? "normal1" : "normal2")!}
                       alt=""
                       width={960}
                       height={640}
-                      className="mx-auto mt-8 h-auto w-full max-w-[560px]"
+                      className="mx-auto mb-4 mt-12 h-auto w-full max-w-[560px]"
                     />
                   )}
                 </section>
