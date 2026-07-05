@@ -525,7 +525,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   {paragraphs.map((para, pIdx) => (
                     <p
                       key={`${sec.title}-${pIdx}`}
-                      className="body-gothic text-[#2E2E5C]/90 font-normal text-[16px] leading-[1.9] mb-4 last:mb-0"
+                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.75] mb-4 last:mb-0"
                     >
                       {para}
                     </p>

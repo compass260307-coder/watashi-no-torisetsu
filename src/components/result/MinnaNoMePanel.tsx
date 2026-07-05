@@ -82,7 +82,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
 
       {/* ギャップ (数値なし・言葉のみ) */}
       {props.gapSentence && (
-        <p className="body-gothic text-[#2E2E5C]/90 font-normal text-[16px] leading-[1.9] mb-6">
+        <p className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.75] mb-6">
           {props.gapSentence}
         </p>
       )}
@@ -93,7 +93,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
           もう一人のワタシ
         </h3>
         {props.matched ? (
-          <p className="body-gothic text-[#2E2E5C]/90 font-normal text-[16px] leading-[1.9]">
+          <p className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.75]">
             みんなの目にも、あなたはあなたのまま映ってる。
             自分で選んできた「{props.selfEssence}」は、
             まわりから見てもブレていないみたい。
@@ -145,7 +145,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
           state.text.split("\n\n").map((para, i) => (
             <p
               key={i}
-              className="body-gothic text-[#2E2E5C]/90 font-normal text-[16px] leading-[1.9] mb-4 last:mb-0"
+              className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.75] mb-4 last:mb-0"
             >
               {para}
             </p>
@@ -191,7 +191,7 @@ export function MinnaNoMePanel(props: MinnaNoMePanelProps) {
               key={`letter-${i}`}
               className="rounded-2xl bg-white border-2 border-[#0094D8]/15 px-4 py-3 mb-3 last:mb-0"
             >
-              <blockquote className="body-gothic text-[#2E2E5C]/90 font-normal text-[15px] leading-[1.85]">
+              <blockquote className="body-gothic text-[#1A1A1A] font-normal text-[16px] leading-[1.7]">
                 {l.message}
               </blockquote>
               <figcaption className="text-[#2E2E5C]/60 text-xs font-bold mt-2 text-right">

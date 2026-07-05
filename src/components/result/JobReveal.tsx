@@ -30,7 +30,7 @@ export function JobReveal({
           {job.name}
           {animal}
         </h2>
-        <p className="body-gothic text-[#2E2E5C]/90 font-normal text-[16px] leading-[1.9]">
+        <p className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.75]">
           {job.oneLiner}
         </p>
       </article>
@@ -50,7 +50,7 @@ export function JobReveal({
       <h2 className="text-[#2E2E5C] font-black text-2xl leading-tight mb-2">
         ？{animal}
       </h2>
-      <p className="body-gothic text-[#2E2E5C]/90 font-normal text-[15px] leading-[1.85]">
+      <p className="body-gothic text-[#1A1A1A] font-normal text-[16px] leading-[1.7]">
         友達 {threshold} 人の評価で、アナタの「職業」が判明します（あと {remaining} 人）。
       </p>
     </article>
