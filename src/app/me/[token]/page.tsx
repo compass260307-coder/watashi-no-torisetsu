@@ -63,6 +63,8 @@ import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
 import { BragShare } from "@/components/result/BragShare";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
+import TopHeader from "@/components/top/TopHeader";
+import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import type {
   BigFiveDimension,
   CModifier,
@@ -400,6 +402,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
+    <>
+    {/* 16P と同じスクロール連動ヘッダー (下スクロールで隠れ、上スクロールで出る) */}
+    <ScrollHideHeader>
+      <TopHeader />
+    </ScrollHideHeader>
     <main
       className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
       style={{ background: "#FFFFFF" }}
@@ -503,23 +510,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
             キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
             aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
-        <section aria-labelledby="chapter-self" className="mb-10">
+        <section aria-label="自分が見た自分" className="mb-10">
           {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
-              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。 */}
+              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。
+              ※最初のパート (idx 0 = キャラ直下) は見出しを出さず本文から始める (16P 同様)。 */}
           {sections.slice(0, 2).map((sec, idx) => {
             const paragraphs = sec.body.split("\n\n");
-            // メイン見出し: タイプ固有 heading を優先、未設定は title。常に出してパートを示す。
+            // メイン見出し: タイプ固有 heading を優先、未設定は title。
             const mainHeading = sec.heading ?? sec.title;
             return (
               <section key={sec.title} className="mb-10">
-                {/* メイン見出し。章見出しを廃したぶん、パート見出しが章①の最上位 (h2)。
-                    最初のパートに id=chapter-self を付け、section の aria-labelledby を解決。 */}
-                <h2
-                  id={idx === 0 ? "chapter-self" : undefined}
-                  className="text-[#2E2E5C] font-black text-xl leading-tight mb-3"
-                >
-                  {mainHeading}
-                </h2>
+                {idx > 0 && (
+                  <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-3">
+                    {mainHeading}
+                  </h2>
+                )}
                 {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
                 <div className="px-1 pb-1">
                   {paragraphs.map((para, pIdx) => (
@@ -656,6 +661,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
         </div>
       </div>
     </main>
+    </>
   );
 }
 
