@@ -620,49 +620,93 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
 
 
-        {/* ===== 下部・本命シェア導線 (読み終えた位置) =====
-            上部はアイコンのみの省スペース版。ここはアイコン+ラベルのしっかり版 + 短い一言。
-            owner はこの直下に QR (FriendGapInvite) も続く二段構え。 */}
-        <div className="mb-12 mt-16">
-          <p className="mb-4 px-4 text-center text-[16px] font-bold text-[#2E2E5C]">
-            {SHARE_CTA_CAPTION}
-          </p>
-          <ResultActions
-            typeName={dispName}
-            shareUrl={inviteUrl}
-            ownerName={displayName}
-            essence={dispEssence}
-            description={dispDesc}
-            imageSrc={dispImage}
-            shareCode={shareCode}
-          />
-        </div>
-
-        {/* ===== 他己診断 (タコ診断) への導線 (Owner) / 自己診断 CTA (Visitor) =====
-            他己パート (友達が見たあなた・招待QR) は /tako/[token] に集約したため、
-            /me からは「他己診断ページへ」のリンクカードのみ置く。 */}
-        {isOwner ? (
-          <section className="mb-8">
-            <Link
-              href={`/tako/${token}`}
-              className="block rounded-2xl border border-[#E3E6F5] bg-white p-6 text-center transition-colors hover:bg-[#F4F4FE]"
+        {/* ===== ④ 友達から見たアナタ (16P 風ロックティーザー) =====
+            ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
+            解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
+            他己パートの本体は /tako/[token]。 */}
+        <section className="mb-12 mt-16">
+          <div className="mb-4 flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
-                他己診断
+              4
+            </span>
+            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+              友達から見たアナタ
+            </h2>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-8 md:px-8">
+            {/* 背面: ぼかしダミー (友達評価バーの雰囲気。実データではない) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-6 top-6 select-none blur-[7px]"
+            >
+              {[72, 45, 63, 81, 38, 57, 69].map((v, i) => (
+                <div key={i} className="mb-6">
+                  <div className="mb-2 h-3 w-28 rounded-full bg-[#2E2E5C]/25" />
+                  <div className="h-4 w-full overflow-hidden rounded-full bg-[#B9C0E8]/35">
+                    <div
+                      className="h-full rounded-full bg-[#5B5BEF]/60"
+                      style={{ width: `${v}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 前面: ロック解除カード (16P の「今すぐロックを解除」参考) */}
+            <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+              <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              </span>
+              <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
+                今すぐロックを解除
               </p>
-              <h2 className="text-[#2A3A5C] font-black text-lg leading-snug mb-2">
-                友達が見た「あなた」も見てみる →
-              </h2>
-              <p className="text-[#2A3A5C]/70 text-sm leading-relaxed">
-                これは「アナタから見たアナタ」。
-                <br />
-                友達 3 人が診断すると、みんなの目に映るあなたが解けます。
+              <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+                {SHARE_CTA_CAPTION}
               </p>
-            </Link>
-          </section>
-        ) : (
-          <VisitorCtaSection />
-        )}
+              <ResultActions
+                typeName={dispName}
+                shareUrl={inviteUrl}
+                ownerName={displayName}
+                essence={dispEssence}
+                description={dispDesc}
+                imageSrc={dispImage}
+                shareCode={shareCode}
+              />
+            </div>
+          </div>
+
+          {/* Owner: 集まった友達評価の本体 (/tako) への控えめリンク */}
+          {isOwner && (
+            <div className="mt-4 text-center">
+              <Link
+                href={`/tako/${token}`}
+                className="text-[14px] font-bold text-[#5B5BEF] underline underline-offset-4 transition-colors hover:text-[#4A4AD9]"
+              >
+                友達が見た「あなた」を見る →
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {/* Visitor: 自分の診断を始める CTA */}
+        {!isOwner && <VisitorCtaSection />}
 
         {/* ===== 拡散シェア (拡散=新規診断を呼ぶ)。主従フラット化: 主(評価依頼)は結果直後、
             従(拡散)は他己診断カードを挟んだこの位置で対等に目立たせる (混同回避のため場所を離す)。
