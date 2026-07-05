@@ -681,11 +681,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   友達から見た強み
                 </h3>
                 <div className="relative mb-10 overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                  {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-5 top-5 grid select-none grid-cols-2 gap-3 blur-[7px] md:inset-x-8"
+                    className="pointer-events-none absolute inset-x-5 inset-y-5 grid select-none grid-cols-2 content-start gap-3 blur-[7px] md:inset-x-8"
                   >
-                    {Array.from({ length: 8 }, (_, i) => (
+                    {Array.from({ length: 16 }, (_, i) => (
                       <div
                         key={i}
                         className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
@@ -704,11 +705,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   友達からの意見
                 </h3>
                 <div className="relative overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                  {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-5 top-5 select-none blur-[7px] md:inset-x-8"
+                    className="pointer-events-none absolute inset-x-5 inset-y-5 select-none blur-[7px] md:inset-x-8"
                   >
-                    {Array.from({ length: 4 }, (_, i) => (
+                    {Array.from({ length: 10 }, (_, i) => (
                       <div
                         key={i}
                         className="mb-3 flex items-start gap-3 rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
