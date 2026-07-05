@@ -211,14 +211,21 @@ export default function TypesPage() {
                         className="flex min-w-0 flex-col items-center text-center"
                       >
                         {/* キャラ: 透過素材の素置き (背景が抜けているので巨大タイポや
-                            帯がキャラの輪郭どおりに透けて見える = 16P のレイヤー感) */}
-                        <Image
-                          src={displayImagePath(id)}
-                          alt={thirtyTwoEssence(id)}
-                          width={512}
-                          height={512}
-                          className="h-auto w-full max-w-[420px] sm:max-w-none"
-                        />
+                            帯がキャラの輪郭どおりに透けて見える = 16P のレイヤー感)。
+                            クリックでそのタイプのフル結果ページ (/preview/[typeId]) へ */}
+                        <Link
+                          href={`/preview/${id}`}
+                          aria-label={`${thirtyTwoEssence(id)}の結果ページを見る`}
+                          className="w-full transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
+                        >
+                          <Image
+                            src={displayImagePath(id)}
+                            alt={thirtyTwoEssence(id)}
+                            width={512}
+                            height={512}
+                            className="mx-auto h-auto w-full max-w-[420px] sm:max-w-none"
+                          />
+                        </Link>
                         {/* メイン名 = 肩書き (グループ濃色) / サブ = OCEAN コード。
                             ワイド画面 (xl) ではキャラに合わせて文字も一段大きく */}
                         <h3
