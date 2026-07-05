@@ -637,60 +637,95 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </h2>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-8 md:px-8">
-            {/* 背面: ぼかしダミー (友達評価バーの雰囲気。実データではない) */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-6 top-6 select-none blur-[7px]"
-            >
-              {[72, 45, 63, 81, 38, 57, 69].map((v, i) => (
-                <div key={i} className="mb-6">
-                  <div className="mb-2 h-3 w-28 rounded-full bg-[#2E2E5C]/25" />
-                  <div className="h-4 w-full overflow-hidden rounded-full bg-[#B9C0E8]/35">
-                    <div
-                      className="h-full rounded-full bg-[#5B5BEF]/60"
-                      style={{ width: `${v}%` }}
-                    />
+          {(() => {
+            // ロック解除カード (2 ブロックで共用。16P の「今すぐロックを解除」参考)
+            const lockCard = (
+              <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  </svg>
+                </span>
+                <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
+                  今すぐロックを解除
+                </p>
+                <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+                  {SHARE_CTA_CAPTION}
+                </p>
+                <ResultActions
+                  typeName={dispName}
+                  shareUrl={inviteUrl}
+                  ownerName={displayName}
+                  essence={dispEssence}
+                  description={dispDesc}
+                  imageSrc={dispImage}
+                  shareCode={shareCode}
+                />
+              </div>
+            );
+            return (
+              <>
+                {/* ── ブロック1: 友達から見た強み (ぼかしチェックリスト風) ── */}
+                <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+                  友達から見た強み
+                </h3>
+                <div className="relative mb-10 overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-5 top-5 grid select-none grid-cols-2 gap-3 blur-[7px] md:inset-x-8"
+                  >
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <div
+                        key={i}
+                        className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
+                      >
+                        <div className="mb-2 h-3 w-3/4 rounded-full bg-[#2E2E5C]/30" />
+                        <div className="mb-1.5 h-2 w-full rounded-full bg-[#2E2E5C]/15" />
+                        <div className="h-2 w-5/6 rounded-full bg-[#2E2E5C]/15" />
+                      </div>
+                    ))}
                   </div>
+                  {lockCard}
                 </div>
-              ))}
-            </div>
 
-            {/* 前面: ロック解除カード (16P の「今すぐロックを解除」参考) */}
-            <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-              <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                </svg>
-              </span>
-              <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
-                今すぐロックを解除
-              </p>
-              <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-                {SHARE_CTA_CAPTION}
-              </p>
-              <ResultActions
-                typeName={dispName}
-                shareUrl={inviteUrl}
-                ownerName={displayName}
-                essence={dispEssence}
-                description={dispDesc}
-                imageSrc={dispImage}
-                shareCode={shareCode}
-              />
-            </div>
-          </div>
+                {/* ── ブロック2: 友達からの意見 (ぼかしコメント風) ── */}
+                <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+                  友達からの意見
+                </h3>
+                <div className="relative overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-5 top-5 select-none blur-[7px] md:inset-x-8"
+                  >
+                    {Array.from({ length: 4 }, (_, i) => (
+                      <div
+                        key={i}
+                        className="mb-3 flex items-start gap-3 rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
+                      >
+                        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#5B5BEF]/40" />
+                        <div className="flex-1 pt-1">
+                          <div className="mb-1.5 h-2.5 w-full rounded-full bg-[#2E2E5C]/20" />
+                          <div className="h-2.5 w-2/3 rounded-full bg-[#2E2E5C]/20" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {lockCard}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Owner: 集まった友達評価の本体 (/tako) への控えめリンク */}
           {isOwner && (
