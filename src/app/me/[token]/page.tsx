@@ -623,8 +623,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
         {/* ===== 下部・本命シェア導線 (読み終えた位置) =====
             上部はアイコンのみの省スペース版。ここはアイコン+ラベルのしっかり版 + 短い一言。
             owner はこの直下に QR (FriendGapInvite) も続く二段構え。 */}
-        <div className="mb-2">
-          <p className="text-center text-[#2E2E5C]/80 font-bold text-sm mb-3 px-4">
+        <div className="mb-12 mt-16">
+          <p className="mb-4 px-4 text-center text-[16px] font-bold text-[#2E2E5C]">
             {SHARE_CTA_CAPTION}
           </p>
           <ResultActions
@@ -645,7 +645,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <section className="mb-8">
             <Link
               href={`/tako/${token}`}
-              className="block rounded-3xl border-2 border-[#2A3A5C]/25 bg-white p-6 text-center shadow-md transition-colors hover:bg-[#F3F1FB]"
+              className="block rounded-2xl border border-[#E3E6F5] bg-white p-6 text-center transition-colors hover:bg-[#F4F4FE]"
             >
               <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
                 他己診断
@@ -694,7 +694,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 <Link
                   key={it.id}
                   href={`/integrated/${it.id}`}
-                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#F4F4FE] transition-colors"
+                  className="block bg-white rounded-2xl border border-[#E3E6F5] p-5 hover:bg-[#F4F4FE] transition-colors"
                 >
                   <p className="text-base font-black text-[#2E2E5C] mb-1">
                     {it.title}
@@ -716,12 +716,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </section>
         )}
 
-        {/* ===== Footer ===== */}
-        <div className="text-center pt-2 pb-2">
+        {/* ===== ページ末尾リンク (サイト共通フッターが下に続くため控えめに) ===== */}
+        <div className="pb-4 pt-2 text-center">
           {/* ?stay=1: 自動リダイレクト回避 (上のロゴリンクと同趣旨)。 */}
           <Link
             href="/?stay=1"
-            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
+            className="text-[13px] font-bold text-[#2E2E5C]/60 underline underline-offset-4 transition-colors hover:text-[#5B5BEF]"
           >
             トップに戻る
           </Link>
@@ -741,28 +741,24 @@ export default async function MePage({ params, searchParams }: PageProps) {
 function VisitorCtaSection() {
   return (
     <>
-      <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5">
-        <h2 className="text-[#2E2E5C] font-black text-lg text-center mb-2">
+      <div className="mb-3 rounded-2xl border border-[#E3E6F5] bg-white px-6 py-8 text-center">
+        <h2 className="mb-2 text-[20px] font-black text-[#2E2E5C] md:text-[22px]">
           アナタのトリセツも作れます
         </h2>
-        <p className="text-[#2E2E5C]/70 text-sm text-center mb-4 leading-relaxed">
-          50 問・約 3 分の自己診断から始まります。
-          <br />
-          登録不要、無料です。
+        <p className="mb-5 text-[14px] leading-relaxed text-[#2E2E5C]/70">
+          50 問・約 3 分の自己診断から始まります。登録不要、無料です。
         </p>
-        <div className="flex justify-center">
-          <Link
-            href="/diagnosis"
-            className="inline-block bg-[#5B5BEF] text-white font-black px-8 py-3 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
-          >
-            自己診断を始める →
-          </Link>
-        </div>
+        <Link
+          href="/diagnosis"
+          className="sora-cta inline-block rounded-full px-12 py-4 text-center text-[17px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
+        >
+          テストを受ける →
+        </Link>
       </div>
-      <div className="text-center mb-6">
+      <div className="mb-8 text-center">
         <Link
           href="/login"
-          className="text-[#2E2E5C]/60 text-xs font-bold underline hover:text-[#5B5BEF] transition-colors"
+          className="text-[13px] font-bold text-[#2E2E5C]/60 underline underline-offset-4 transition-colors hover:text-[#5B5BEF]"
         >
           購入済みの方はログイン
         </Link>
