@@ -19,17 +19,20 @@ interface AxisMeta {
   left: string;
   /** 右極 (= スコア高) のラベル */
   right: string;
+  /** 軸カラー (16P 参考: 軸ごとに固有色。バー塗り・マーカー・% 数字に使用) */
+  color: string;
 }
 
 // 表示順は性格 5 因子の一般的な並びに寄せつつ、E→O→A→C→N とする。
 // 極ラベルは「スペック感・優劣感」を消すため、神経症傾向も必ず両極命名する
 // (高 = 繊細 / 低 = 安定。「神経症的かどうか」の一極評価にしない)。
+// 軸カラーは 16P の 5 色 (青/黄/緑/紫/赤) を踏襲。
 const AXES: readonly AxisMeta[] = [
-  { dim: "E", title: "外向性", left: "内向", right: "外向" },
-  { dim: "O", title: "開放性", left: "現実的", right: "探究的" },
-  { dim: "A", title: "協調性", left: "独立", right: "協調" },
-  { dim: "C", title: "誠実性", left: "柔軟", right: "計画的" },
-  { dim: "N", title: "神経症傾向", left: "安定", right: "繊細" },
+  { dim: "E", title: "外向性", left: "内向", right: "外向", color: "#4298B4" },
+  { dim: "O", title: "開放性", left: "現実的", right: "探究的", color: "#E4AE3A" },
+  { dim: "A", title: "協調性", left: "独立", right: "協調", color: "#33A474" },
+  { dim: "C", title: "誠実性", left: "柔軟", right: "計画的", color: "#88619A" },
+  { dim: "N", title: "神経症傾向", left: "安定", right: "繊細", color: "#F25E62" },
 ];
 
 /**
@@ -140,62 +143,48 @@ export function BigFiveDivergingBars({
                 friendValue !== null ? `、友達の平均 ${friendValue}%` : ""
               }`}</span>
 
-              {/* 上段: 軸名 + 「寄りラベル ・ %」(視覚・装飾) */}
+              {/* 上段 (16P 参考): 「軸名: %(軸色) 判定」を左寄せで 1 行に */}
               <div
                 aria-hidden="true"
-                className="flex items-baseline justify-between mb-1.5"
+                className="mb-2 flex items-baseline gap-1.5"
               >
-                <span className="text-[#2E2E5C] font-black text-sm">
-                  {axis.title}
+                <span className="text-[#2E2E5C] font-bold text-[15px]">
+                  {axis.title}:
                 </span>
-                <span className="text-[#2E2E5C]/75 font-bold text-xs tabular-nums">
-                  {lean} ・ {value}%
-                </span>
-              </div>
-
-              {/* 中段: 両極ラベルをバーの真上に左右端で配置 (バーの横には置かない)。
-                  これでバーを全幅にしてもテキストが押し出されず、画面端で切れない。 */}
-              <div
-                aria-hidden="true"
-                className="flex items-center justify-between mb-1 text-[11px] font-bold text-[#2E2E5C]/80 leading-tight"
-              >
-                <span>{axis.left}</span>
-                <span>{axis.right}</span>
-              </div>
-
-              {/* 下段: 発散バー (全幅・装飾 → aria-hidden)。
-                  淡色グループ背景 (黄/緑/青/紫) でも輪郭が出るよう、白寄りレール +
-                  deepPurple 細アウトラインで土台を固定色化 (背景非依存)。両極の色分けは
-                  薄いガイド程度に抑え、中央→スコアの塗り (ブランドピンク) と ● を主役に。 */}
-              <div aria-hidden="true" className="relative w-full h-4">
-                {/* 土台レール: 白寄り + deepPurple アウトライン。固定色なので 4 背景すべてで浮く。 */}
-                <div
-                  className="absolute inset-0 rounded-full overflow-hidden flex border-[1.5px] border-[#2E2E5C]/25"
-                  style={{ background: "rgba(255,255,255,0.9)" }}
+                <span
+                  className="font-black text-[15px] tabular-nums"
+                  style={{ color: axis.color }}
                 >
-                  {/* 両極の色分け (薄いガイド程度・固定色 = dark mode やグループ色に依存しない) */}
-                  <div
-                    className="w-1/2 h-full"
-                    style={{ background: "rgba(31,163,122,0.12)" }}
-                  />
-                  <div
-                    className="w-1/2 h-full"
-                    style={{ background: "rgba(91,91,239,0.10)" }}
-                  />
-                  {/* 中央→スコアの強調塗り (ブランドピンク)。value===50 は 2px で可視化 */}
+                  {value}%
+                </span>
+                <span className="text-[#2E2E5C] font-bold text-[15px]">
+                  {lean}
+                </span>
+              </div>
+
+              {/* 中段: 発散バー (全幅・装飾 → aria-hidden)。
+                  レール = 軸色の淡ティント、中央→スコアの塗りとマーカー = 軸色 (16P の
+                  軸ごと固有色)。発散形式 (中央起点) は従来のまま。 */}
+              <div aria-hidden="true" className="relative w-full h-4">
+                {/* 土台レール: 軸色の淡ティント (16P のバー地色風) */}
+                <div
+                  className="absolute inset-0 rounded-full overflow-hidden"
+                  style={{ background: `${axis.color}2E` }}
+                >
+                  {/* 中央→スコアの強調塗り (軸色)。value===50 は 2px で可視化 */}
                   <div
                     className="absolute top-0 h-full transition-all duration-500"
                     style={{
                       left: `${fillLeft}%`,
                       width: `${fillWidth}%`,
                       minWidth: value === 50 ? "2px" : undefined,
-                      background: "var(--primary)",
+                      background: axis.color,
                     }}
                   />
                 </div>
 
-                {/* 中央ティック (常時表示・トラックより前面) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-6 bg-[#2E2E5C]/55" />
+                {/* 中央ティック (発散の起点を示す・控えめ) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-5 bg-[#2E2E5C]/30" />
 
                 {/* 友達の平均マーカー (◆ deepPurple)。自分の円と形・色で区別 */}
                 {friendValue !== null && (
@@ -205,11 +194,23 @@ export function BigFiveDivergingBars({
                   />
                 )}
 
-                {/* 自分のマーカー (主役・単色円 + 白リング + 影)。軸ごとのキャラは置かない */}
+                {/* 自分のマーカー (16P 風: 白地の円 + 軸色の太リング) */}
                 <div
-                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md transition-all duration-500"
-                  style={{ left: `${value}%`, background: "var(--primary)" }}
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-white shadow-md transition-all duration-500"
+                  style={{
+                    left: `${value}%`,
+                    border: `4px solid ${axis.color}`,
+                  }}
                 />
+              </div>
+
+              {/* 下段 (16P 参考): 両極ラベルをバーの下に左右端で配置 (グレー控えめ) */}
+              <div
+                aria-hidden="true"
+                className="mt-1.5 flex items-center justify-between text-[12px] font-bold text-[#2E2E5C]/55 leading-tight"
+              >
+                <span>{axis.left}</span>
+                <span>{axis.right}</span>
               </div>
             </div>
           );
