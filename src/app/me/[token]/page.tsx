@@ -430,7 +430,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
               />
             </div>
           )}
-          {/* 上部の白グローは撤去 (濃トーンの帯ではグラデのムラに見えるため。16P 同様ソリッド) */}
+          {/* 上部中央の放射状グロー (濃トーンの帯に上品な明るみを足す) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
+            style={{
+              background:
+                "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
+            }}
+          />
           {/* フェルトドット (中間ティント・上半分/主に PC 側余白。中央の画像には重ねない) */}
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 11, height: 11, top: "15%", left: "6%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
