@@ -570,6 +570,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       </h2>
                     </div>
                   )}
+                  {/* 挿絵 normal2: 「② アナタの注意点」タイトル直下 (本文の前) に表示 */}
+                  {idx === 1 && sceneImage("normal2") && (
+                    <Image
+                      src={sceneImage("normal2")!}
+                      alt=""
+                      width={960}
+                      height={640}
+                      className="mx-auto mb-6 h-auto w-full max-w-[560px]"
+                    />
+                  )}
                   {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
                   <div className="px-1 pb-1">
                     {paragraphs.map((para, pIdx) => (
@@ -581,11 +591,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       </p>
                     ))}
                   </div>
-                  {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2。
-                      前後にゆとりを持たせる (本文・次章見出しと近すぎない) */}
-                  {sceneImage(idx === 0 ? "normal1" : "normal2") && (
+                  {/* 挿絵 normal1: パート1 (基本特性) の本文の後に表示 */}
+                  {idx === 0 && sceneImage("normal1") && (
                     <Image
-                      src={sceneImage(idx === 0 ? "normal1" : "normal2")!}
+                      src={sceneImage("normal1")!}
                       alt=""
                       width={960}
                       height={640}
