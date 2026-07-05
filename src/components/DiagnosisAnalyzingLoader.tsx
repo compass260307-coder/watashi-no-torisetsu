@@ -1,15 +1,21 @@
 "use client";
 
-// Phase 1.5-α Day 12-Polish-E E-1: 解析待ち画面の Brand v2 化
-//   - 背景: 白 → grid-bg (lavender グラデ + 32px グリッドオーバーレイ)
-//   - テキスト: 黒 → deepPurple #3A2D6B、M PLUS Rounded 1c (global font)
-//   - 進捗バー: lavender トラック (#E4E0F5) + vividPink 塗り (#FE3C72)
-//   - チェックリスト: 完了 = vividPink チェック (SVG)、未完 = lavender 空円
-//   - マスコット (青ペンギン)・MESSAGES 文言・STEPS 文言・アニメは維持
-//   - 絵文字なし (T3-5)。チェックは inline SVG。
-
+// 診断結果作成ページ (解析待ち画面)。デザインはトップページ (feat/top-page) と統一:
+//   - フォント: Noto Sans JP (トップと同じ FONT_STACK)
+//   - 背景: 白 / テキスト: ブランドネイビー #2E2E5C
+//   - 進捗バー: 淡ブルートラック + Sora ブルー #5B5BEF 塗り (CTA と同色)
+//   - チェックリスト: 完了 = Sora ブルーのチェック、未完 = 淡ブルーの空円
+//   - マスコット: フェルト調ペンギン (characters/cut の透過素材 = /types と同じ世界観)
+//   - MESSAGES / STEPS の文言・タイマー進行は従来のまま
 import { useEffect, useState } from "react";
 import Image from "next/image";
+
+const FONT_STACK =
+  "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
+
+const NAVY = "#2E2E5C";
+const SORA = "#5B5BEF";
+const TRACK = "#E6E6FB"; // Sora ブルーの淡ティント (トラック / 空円)
 
 const MESSAGES = [
   "あなたの回答を読み込んでいます...",
@@ -51,33 +57,41 @@ export function DiagnosisAnalyzingLoader() {
   }, []);
 
   return (
-    <div className="grid-bg flex flex-col flex-1 min-h-screen items-center justify-center px-5 py-10">
+    <div
+      className="flex min-h-screen flex-1 flex-col items-center justify-center bg-white px-5 py-10"
+      style={{ fontFamily: FONT_STACK }}
+    >
       <Image
-        src="/mascot/analyzing-penguin.png"
+        src="/characters/cut/penguin_N.png"
         alt=""
         width={224}
         height={224}
         priority
-        className="w-48 h-48 object-contain mb-6 animate-bounce-slow"
+        className="mb-6 h-52 w-52 object-contain"
       />
 
       <p
         key={messageIndex}
-        className="text-lg font-bold text-[#3A2D6B] text-center animate-fade-in min-h-[1.75rem] mb-6"
+        className="animate-fade-in mb-6 min-h-[1.75rem] text-center text-lg font-bold"
+        style={{ color: NAVY }}
       >
         {MESSAGES[messageIndex]}
       </p>
 
-      {/* Progress bar (lavender track + vividPink fill) */}
+      {/* Progress bar (淡ブルートラック + Sora ブルー塗り) */}
       <div
-        className="w-72 max-w-full h-1.5 rounded-full bg-[#E4E0F5] overflow-hidden mb-6"
+        className="mb-6 h-1.5 w-72 max-w-full overflow-hidden rounded-full"
+        style={{ backgroundColor: TRACK }}
         aria-hidden
       >
-        <div className="h-full bg-[#FE3C72] rounded-full animate-progress-20s" />
+        <div
+          className="animate-progress-20s h-full rounded-full"
+          style={{ backgroundColor: SORA }}
+        />
       </div>
 
       {/* Checkmark steps */}
-      <ul className="w-72 max-w-full flex flex-col gap-2.5">
+      <ul className="flex w-72 max-w-full flex-col gap-2.5">
         {STEPS.map((label, i) => {
           const isDone = completedSteps > i;
           const isCurrent = completedSteps === i;
@@ -87,7 +101,10 @@ export function DiagnosisAnalyzingLoader() {
               className="flex items-center gap-2 text-sm font-bold"
             >
               {isDone ? (
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#FE3C72] text-white shrink-0">
+                <span
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
+                  style={{ backgroundColor: SORA }}
+                >
                   <svg
                     width="11"
                     height="11"
@@ -103,16 +120,23 @@ export function DiagnosisAnalyzingLoader() {
                   </svg>
                 </span>
               ) : isCurrent ? (
-                <span className="inline-flex w-5 h-5 rounded-full border-2 border-[#FE3C72] bg-[#FE3C72]/15 animate-pulse shrink-0" />
+                <span
+                  className="inline-flex h-5 w-5 shrink-0 animate-pulse rounded-full border-2"
+                  style={{
+                    borderColor: SORA,
+                    backgroundColor: "rgba(91,91,239,0.15)",
+                  }}
+                />
               ) : (
-                <span className="inline-flex w-5 h-5 rounded-full border-2 border-[#E4E0F5] bg-white shrink-0" />
+                <span
+                  className="inline-flex h-5 w-5 shrink-0 rounded-full border-2 bg-white"
+                  style={{ borderColor: TRACK }}
+                />
               )}
               <span
-                className={
-                  isDone || isCurrent
-                    ? "text-[#3A2D6B]"
-                    : "text-[#3A2D6B]/40"
-                }
+                style={{
+                  color: isDone || isCurrent ? NAVY : `${NAVY}66`,
+                }}
               >
                 {label}
               </span>
