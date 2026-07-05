@@ -555,7 +555,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 )}
                 <section className="mb-10">
                   {/* パート2 見出し: タイプ別文言 (mainHeading) は使わず、章として固定の
-                      「② 気をつけるべきこと」(① 五つの性格傾向 と同じ 16P 風スタイル) */}
+                      「② アナタの注意点」(① 五つの性格傾向 と同じ 16P 風スタイル) */}
                   {idx > 0 && (
                     <div className="mb-4 flex items-center gap-3">
                       <span
@@ -565,7 +565,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                         2
                       </span>
                       <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                        気をつけるべきこと
+                        アナタの注意点
                       </h2>
                     </div>
                   )}
