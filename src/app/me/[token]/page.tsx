@@ -536,39 +536,51 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
               heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。
               ※最初のパート (idx 0 = キャラ直下) は見出しを出さず本文から始める (16P 同様)。 */}
+          {/* コンテンツ順: 基本特性 → 5つの軸 → 取扱注意 → 深掘り */}
           {sections.slice(0, 2).map((sec, idx) => {
             const paragraphs = sec.body.split("\n\n");
             // メイン見出し: タイプ固有 heading を優先、未設定は title。
             const mainHeading = sec.heading ?? sec.title;
             return (
-              <section key={sec.title} className="mb-10">
-                {idx > 0 && (
-                  <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-3">
-                    {mainHeading}
-                  </h2>
+              <div key={sec.title}>
+                {/* パート1 (基本特性) と パート2 (取扱注意) の間に 5 つの軸を挟む */}
+                {idx === 1 && (
+                  <div className="mb-10">
+                    <BigFiveDivergingBars
+                      scores={stored}
+                      title="5つの軸で見るアナタ"
+                    />
+                  </div>
                 )}
-                {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
-                <div className="px-1 pb-1">
-                  {paragraphs.map((para, pIdx) => (
-                    <p
-                      key={`${sec.title}-${pIdx}`}
-                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
-                    >
-                      {para}
-                    </p>
-                  ))}
-                </div>
-                {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2 */}
-                {sceneImage(idx === 0 ? "normal1" : "normal2") && (
-                  <Image
-                    src={sceneImage(idx === 0 ? "normal1" : "normal2")!}
-                    alt=""
-                    width={960}
-                    height={640}
-                    className="mx-auto mt-8 h-auto w-full max-w-[560px]"
-                  />
-                )}
-              </section>
+                <section className="mb-10">
+                  {idx > 0 && (
+                    <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-3">
+                      {mainHeading}
+                    </h2>
+                  )}
+                  {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
+                  <div className="px-1 pb-1">
+                    {paragraphs.map((para, pIdx) => (
+                      <p
+                        key={`${sec.title}-${pIdx}`}
+                        className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                      >
+                        {para}
+                      </p>
+                    ))}
+                  </div>
+                  {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2 */}
+                  {sceneImage(idx === 0 ? "normal1" : "normal2") && (
+                    <Image
+                      src={sceneImage(idx === 0 ? "normal1" : "normal2")!}
+                      alt=""
+                      width={960}
+                      height={640}
+                      className="mx-auto mt-8 h-auto w-full max-w-[560px]"
+                    />
+                  )}
+                </section>
+              </div>
             );
           })}
 
@@ -582,13 +594,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
               growth: sceneImage("school"),
             }}
           />
-
-          {/* 自己単体の Big Five 発散バー (②「5つの軸で見るアナタ」)。
-              482f5bb の他己パート撤去で巻き添え削除されていたのを復活。
-              friendScores は渡さない (自己×友達ギャップ① は /tako 側)。 */}
-          <div className="mt-8">
-            <BigFiveDivergingBars scores={stored} title="5つの軸で見るアナタ" />
-          </div>
         </section>
 
 
