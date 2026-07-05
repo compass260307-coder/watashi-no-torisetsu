@@ -454,7 +454,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
               {heroTitle}
               {oceanRow}
             </div>
-            <div className="max-w-[640px] mx-auto mt-2 md:mt-0 md:max-w-[560px] md:flex-1">
+            {/* SP: 透過画像の上側余白ぶん -mt で引き上げ、OCEAN との間を詰める */}
+            <div className="max-w-[640px] mx-auto -mt-8 md:mt-0 md:max-w-[560px] md:flex-1">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
