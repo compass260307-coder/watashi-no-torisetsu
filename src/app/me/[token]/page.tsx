@@ -26,7 +26,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
 import {
   classifySixteenType,
   sixteenTypes,
@@ -52,33 +51,21 @@ import {
 } from "@/lib/thirty-two-types";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { CharacterHero } from "@/components/result/CharacterHero";
-import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
-import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
-import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
-// 相性キャラ (CompatibleTypes) は将来の /compatibility ページで再利用するため温存し、
-// 結果ページからは呼び出さない (import も外す)。
-import { JobReveal } from "@/components/result/JobReveal";
-import {
-  computeJob,
-  JOB_FRIEND_THRESHOLD,
-  getJobDescription,
-  formatJobIntegration,
-  JOBS,
-} from "@/lib/job";
-import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
-import { FloatingShareCta } from "@/components/result/FloatingShareCta";
+import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
+// 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
+// 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
+// ただし自己単体の発散バー(②「5つの軸で見るアナタ」)は自己ページの要素なので /me に残す。
+import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
-import { buildFullCode, classifyModifier, classifyType } from "@/lib/diagnosis";
-import { getModifierLabel } from "@/lib/modifier-data";
+import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
-import { FriendGapInvite } from "@/components/result/FriendGapInvite";
-import { HamburgerMenu } from "@/components/HamburgerMenu";
+import { BragShare } from "@/components/result/BragShare";
+import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import type {
   BigFiveDimension,
   CModifier,
   NModifier,
-  TorisetsuTypeId,
 } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -93,9 +80,6 @@ const SITE_URL =
 // ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
 const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
 
-// 章②「友達が見た自分」の職業ブロック（見出し＋職業の発表＋職業説明本文）の表示フラグ。
-// 枠組み再設計のため一時非表示（後日作り直し）。false の間、発散バー/他者評価は残す。
-const SHOW_FRIEND_VIEW = false;
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -123,38 +107,6 @@ function formatDate(iso: string | null | undefined): string {
   } catch {
     return "";
   }
-}
-
-function deriveTypeLabel(
-  typeId: string,
-  stored: StoredScores,
-): { typeName: string; fullCode: string; modifierLabel: string } {
-  const typeMeta = torisetsuTypes[typeId as TorisetsuTypeId];
-  const typeName = typeMeta?.name ?? typeId;
-
-  let fullCode = stored.fullCode ?? "";
-  let modifierLabel = stored.modifierLabel ?? "";
-  if (!fullCode || !modifierLabel) {
-    const dimScores: Record<BigFiveDimension, number> = {
-      E: typeof stored.E === "number" ? stored.E : 5,
-      A: typeof stored.A === "number" ? stored.A : 5,
-      O: typeof stored.O === "number" ? stored.O : 5,
-      C: typeof stored.C === "number" ? stored.C : 5,
-      N: typeof stored.N === "number" ? stored.N : 5,
-    };
-    const { cModifier, nModifier } = classifyModifier(dimScores);
-    if (!fullCode) {
-      fullCode = buildFullCode(
-        typeId as TorisetsuTypeId,
-        cModifier,
-        nModifier,
-      );
-    }
-    if (!modifierLabel) {
-      modifierLabel = getModifierLabel(cModifier, nModifier);
-    }
-  }
-  return { typeName, fullCode, modifierLabel };
 }
 
 // users 行のうち /me が使う最小フィールド (本番DB行 / 開発プレビュー用モック 共通の型)。
@@ -244,33 +196,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
         .order("created_at", { ascending: true });
   const friendEvalCount = (perceptionRows ?? []).length;
 
-  // ② 評価してくれた友達の名前 (記名表示用)。未入力は「ともだち」にフォールバック。
-  const friendNames: string[] = (perceptionRows ?? []).map((r) => {
-    const n = ((r.perceiver_name as string | null) ?? "").trim();
-    return n.length > 0 ? n : "ともだち";
-  });
-
-  // ③ 友達からのメッセージ (記名)。owner_message カラム未適用でも壊れないよう best-effort。
-  //    取得失敗 (列なし等) は空配列にフォールバック。表示は React が自動エスケープ。
-  let friendMessages: { name: string; message: string }[] = [];
-  if (!previewType) try {
-    const { data: msgRows, error: msgErr } = await supabaseAdmin
-      .from("friend_perceptions")
-      .select("perceiver_name, owner_message, created_at")
-      .eq("target_user_id", user.id)
-      .order("created_at", { ascending: true });
-    if (!msgErr && msgRows) {
-      friendMessages = msgRows
-        .map((r) => ({
-          name: (((r.perceiver_name as string | null) ?? "").trim() ||
-            "ともだち") as string,
-          message: ((r.owner_message as string | null) ?? "").trim(),
-        }))
-        .filter((m) => m.message.length > 0);
-    }
-  } catch {
-    // owner_message カラム未適用などは無視 (メッセージ非表示)
-  }
+  // ② 友達名・手紙・みんなの目 context は /tako へ移設 (owner-report-data.ts)。
 
   // 友達評価の平均 (0-10)。各軸、数値がある行だけを母数に平均。0 件なら null。
   const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =
@@ -324,8 +250,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
-  // fullCode は友達招待の「キャラコード」(FriendGapInvite) で利用するため引き続き導出。
-  const { fullCode } = deriveTypeLabel(user.type_id as string, stored);
   // 深掘り (TYPE_DEEP_DIVE) 用の 8 タイプ ID。user.scores から決定論的に導出
   // (classifyType は E/A/O のみ参照、欠損は中央 5.0 fallback)。
   const deepDiveTypeId = classifyType({
@@ -343,28 +267,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
 
-  // 「みんなの目」タブ (深掘り4つ目) 用の文脈をサーバー側で算出。
-  //   解除後 (friendEvalCount >= REPORT_FRIEND_THRESHOLD) のみ context を作る。
-  //   友達平均→32タイプ判定・最大乖離軸のギャップ文・好きなところは同期算出、
-  //   AI 解説文 (600字) だけは MinnaNoMePanel が /api/minna-no-me で遅延生成する。
-  const minnaContext =
-    !previewType && friendEvalCount >= REPORT_FRIEND_THRESHOLD
-      ? computeMinnaNoMeContext({
-          selfScores: stored,
-          friends: (perceptionRows ?? []).map((r) => ({
-            name:
-              ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
-            perceivedScores: (r.perceived_scores ?? null) as Record<
-              string,
-              unknown
-            > | null,
-            qualitative: (r.qualitative_data ?? null) as Record<
-              string,
-              unknown
-            > | null,
-          })),
-        })
-      : null;
+  // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
   // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
   const HERO_BG_BY_TYPE: Record<string, string> = {
@@ -436,6 +339,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
   // リンクで来た友達も QR を読んだ友達も同じ「あなたを評価する」フロー (/friend/[inviteCode]) に着地。
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
+  // キャラシェア(拡散)の共有先。/friend(評価依頼)とは別ルート。
+  const characterShareUrl = `${SITE_URL}/share/${inviteCode}`;
   // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
   const shareCode = generateShareCode(user.id as string);
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
@@ -468,8 +373,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   ●○ インジケータは廃止 (大小で高低が伝わる)。ラベル「BIG FIVE CODE」は維持。
   const oceanIsHigh = (k: BigFiveDimension) =>
     (typeof stored[k] === "number" ? (stored[k] as number) : 5) >= 5;
+  // 拡散シェア文用のコード表記 (ヒーローの大小方式と同じ: 高=大文字 / 低=小文字)。例 "OCeAN"。
+  const dispCode = (["O", "C", "E", "A", "N"] as BigFiveDimension[])
+    .map((k) => (oceanIsHigh(k) ? k : k.toLowerCase()))
+    .join("");
   const oceanRow = (
-    <div className="mt-3 md:mt-1 flex items-baseline justify-center gap-1.5">
+    <div className="mt-1.5 md:mt-1 flex items-baseline justify-center gap-1.5">
       {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
         const high = oceanIsHigh(k);
         return (
@@ -491,7 +400,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // キャラ名言: コード直下にセリフ体italicで中央表示。テキストの左右に✦を1つずつ置きブロックを
   //   センタリング (行頭/行末ではなく両脇)。先頭=金スパークル(大)/末尾=スパークル(小)。
   const catchphraseRow = dispCatch ? (
-    <div className="mt-3 md:mt-1 flex items-center justify-center gap-2">
+    <div className="mt-1.5 md:mt-1 flex items-center justify-center gap-2">
       <svg
         viewBox="0 0 24 24"
         width="17"
@@ -545,6 +454,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
           className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
           style={{ background: heroBg }}
         >
+          {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
+          {isOwner && (
+            <div className="absolute top-3 right-3 z-20">
+              <CharacterShareButton
+                shareUrl={characterShareUrl}
+                essence={dispEssence}
+              />
+            </div>
+          )}
           {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
           <div
             aria-hidden="true"
@@ -559,23 +477,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
-          {/* 中身 (☰ / 称号 / OCEAN / 画像) — グロー・ドットより前面。
-              PC(md+)のみ上部余白を詰め、本文の出だしがビュー下端に覗くようにする。 */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-4 md:pt-2 pb-2">
-            <div className="flex justify-end mb-2">
-              <HamburgerMenu myTrisetsuUrl={`/me/${token}`} />
-            </div>
+          {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
+              モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
+              ☰ はボトムナビ導入で撤去。 */}
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-2 pb-2">
             {heroTitle}
             {oceanRow}
             {catchphraseRow}
-            <div className="max-w-[600px] mx-auto mt-4 md:mt-2">
+            <div className="max-w-[600px] mx-auto mt-2 md:mt-2">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
                 essence={dispEssence}
                 name={dispName}
                 description={dispDesc}
-                imageAspectClassName="aspect-square md:max-h-[400px]"
+                imageAspectClassName="aspect-square max-h-[46vh] md:max-h-[400px]"
                 imageFitClassName="object-contain"
                 imageCardClassName=""
                 imageSizes="(min-width: 768px) 600px, 100vw"
@@ -649,132 +565,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
           })}
 
-          {/* 深掘り (強み/弱み/恋愛/仕事/成長、タブ切替)。
-              相性キャラ・自己のみ発散バーは撤去 (発散バーは章②に一本化)。 */}
-          <DeepDiveSections
-            typeId={deepDiveTypeId}
-            scores={stored}
-            minna={{
-              ownerToken: token,
-              friendCount: friendEvalCount,
-              threshold: REPORT_FRIEND_THRESHOLD,
-              context: minnaContext
-                ? {
-                    selfEssence: minnaContext.selfEssence,
-                    friendEssence: minnaContext.friendEssence,
-                    friendTypeName: minnaContext.friendTypeName,
-                    friendPreviewPath: minnaContext.friendPreviewPath,
-                    matched: minnaContext.matched,
-                    gapSentence: minnaContext.gapSentence,
-                    favoritePoints: minnaContext.favoritePoints,
-                    letters: friendMessages,
-                  }
-                : null,
-            }}
-          />
-        </section>
+          {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
+          <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
 
-        {/* ===== 章② 友達が見た自分 (ピンク系見出し・①と同格・職業/統合分析) ===== */}
-        <section aria-labelledby="chapter-friend" className="mb-8">
-          {/* 職業ブロック（見出し＋職業の発表＋職業説明本文）は SHOW_FRIEND_VIEW で一括ON/OFF。
-              枠組み再設計のため現在は非表示（後日作り直し）。発散バー/他者評価は下に残す。 */}
-          {SHOW_FRIEND_VIEW && (
-            <>
-              <div className="flex items-center gap-3 mb-5">
-                <span
-                  aria-hidden="true"
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-[#FE3C72] text-white text-lg flex items-center justify-center"
-                >
-                  👀
-                </span>
-            <h2
-              id="chapter-friend"
-              className="text-[#FE3C72] font-black text-2xl leading-tight"
-            >
-              友達が見た自分
-            </h2>
+          {/* 自己単体の Big Five 発散バー (②「5つの軸で見るアナタ」)。
+              482f5bb の他己パート撤去で巻き添え削除されていたのを復活。
+              friendScores は渡さない (自己×友達ギャップ① は /tako 側)。 */}
+          <div className="mt-8">
+            <BigFiveDivergingBars scores={stored} title="5つの軸で見るアナタ" />
           </div>
-
-          {/* 職業の発表 (確定で「友達から見たアナタ＝{職業}」+ 一言 / 未定はティーザー) */}
-          <JobReveal
-            job={job}
-            animal={animalName}
-            threshold={JOB_FRIEND_THRESHOLD}
-            friendCount={friendEvalCount}
-          />
-
-          {/* 職業判明後 (job !== null) のみ: 職業単体の説明 → 動物×職業の統合解説 を
-              本文として流れで表示。文言はすべて仮・定数 (job.ts) で後から差し替え/AI生成可。
-              未判明 (友達<3) は「？{動物}」ティーザーのままで非表示。 */}
-          {job && (
-            <div className="mb-8">
-              {/* 職業単体の説明 (NEW・仮 JOB_DESCRIPTION) */}
-              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6] mb-5">
-                {getJobDescription(job)}
-              </p>
-              {/* 動物×職業の統合解説 (NEW・仮 JOB_INTEGRATION、{animal} 差し込み) */}
-              <p className="body-gothic text-[#3A2D6B] font-medium text-lg leading-[1.6]">
-                {formatJobIntegration(job, animalName)}
-              </p>
-            </div>
-          )}
-            </>
-          )}
-
-          {/* 発散バー (章②に一本化)。
-              ロック中: 自己のみ (●) + 予告 / 解除後: 自己(●)+友達平均(◆) オーバーレイ。
-              枠なしで本文と同じ全幅。解除後の「読み方」も白カードを外し地の文で続ける
-              (バーだけ浮かないよう世界観に揃える)。 */}
-          {friendEvalCount >= REPORT_FRIEND_THRESHOLD ? (
-            <>
-              <BigFiveDivergingBars
-                scores={stored}
-                friendScores={friendAvgScores ?? undefined}
-                title="自己認知ギャップ（自分 × 友達）"
-                emoji="🪞"
-              />
-              <aside className="mb-8">
-                <h3 className="text-[#3A2D6B] font-black text-base mb-2">
-                  このバーの読み方
-                </h3>
-                <p className="text-[#3A2D6B]/80 font-bold text-sm leading-relaxed mb-2">
-                  <span className="text-[var(--primary)]">●</span> ＝ 自分の評価／
-                  <span className="text-[#3A2D6B]">◆</span> ＝ 友達の平均。
-                  2 つが離れている軸ほど、自分と友達で見え方がズレている軸です。
-                </p>
-                <p className="text-[#3A2D6B]/70 font-bold text-xs leading-relaxed">
-                  軸ごとの差は下の「他者分析」で数値でも確認できます。
-                </p>
-              </aside>
-            </>
-          ) : (
-            <>
-              <BigFiveDivergingBars
-                scores={stored}
-                title="5つの軸で見るアナタ"
-                emoji="✨"
-              />
-              <p className="text-[#3A2D6B]/60 font-bold text-xs leading-relaxed -mt-4 mb-8">
-                いまは自分の評価（●）だけ。友達 {REPORT_FRIEND_THRESHOLD}{" "}
-                人が評価すると、友達の平均（◆）が重なって「ズレ」が見えます。
-              </p>
-            </>
-          )}
-
-          {/* ロックされた他者評価 (友達3人で解除、課金なし)。
-              ロック中: チラ見せ + ゲージ + QR/LINE 招待。
-              解除後: 他者分析(gap) / 隠れた強み / 評価者名 / メッセージ (発散バーは上に一本化)。 */}
-          <OthersPerceptionSection
-            friendCount={friendEvalCount}
-            threshold={REPORT_FRIEND_THRESHOLD}
-            isOwner={isOwner}
-            selfScores={stored}
-            friendAvgScores={friendAvgScores}
-            friendNames={friendNames}
-            friendMessages={friendMessages}
-            inviteUrl={inviteUrl}
-          />
         </section>
+
 
 
         {/* ===== 下部・本命シェア導線 (読み終えた位置) =====
@@ -795,18 +596,46 @@ export default async function MePage({ params, searchParams }: PageProps) {
           />
         </div>
 
-        {/* ===== Day 11.3: 軸2 への誘導 (Owner: QR + キャラコード 4 要素 / Visitor: 自己診断 CTA) =====
-            Day 11.2 の FriendGapInvite を 4 要素にシンプル化 (見出し画像 / QR / 説明 / キャラコード)。
-            サブ文 / URL コピー / 補足 / マイ図鑑リンクは削除。
-            履歴ナビは下半分の integrated 履歴セクションから辿れるため重複削除。
-            ¥500 訴求カードは引き続き軸2 (Day 12) に集約のため非表示 */}
+        {/* ===== 他己診断 (タコ診断) への導線 (Owner) / 自己診断 CTA (Visitor) =====
+            他己パート (友達が見たあなた・招待QR) は /tako/[token] に集約したため、
+            /me からは「他己診断ページへ」のリンクカードのみ置く。 */}
         {isOwner ? (
-          // id: 他者評価ロックの「友達に評価してもらう」CTA からのスクロール先
-          <div id="friend-invite" className="scroll-mt-6">
-            <FriendGapInvite inviteUrl={inviteUrl} fullCode={fullCode} />
-          </div>
+          <section className="mb-8">
+            <Link
+              href={`/tako/${token}`}
+              className="block rounded-3xl border-2 border-[#2A3A5C]/25 bg-white p-6 text-center shadow-md transition-colors hover:bg-[#F3F1FB]"
+            >
+              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
+                他己診断
+              </p>
+              <h2 className="text-[#2A3A5C] font-black text-lg leading-snug mb-2">
+                友達が見た「あなた」も見てみる →
+              </h2>
+              <p className="text-[#2A3A5C]/70 text-sm leading-relaxed">
+                これは「アナタから見たアナタ」。
+                <br />
+                友達 3 人が診断すると、みんなの目に映るあなたが解けます。
+              </p>
+            </Link>
+          </section>
         ) : (
           <VisitorCtaSection />
+        )}
+
+        {/* ===== 拡散シェア (拡散=新規診断を呼ぶ)。主従フラット化: 主(評価依頼)は結果直後、
+            従(拡散)は他己診断カードを挟んだこの位置で対等に目立たせる (混同回避のため場所を離す)。
+            owner 限定 (自分のトリセツを広める文脈)。 ===== */}
+        {isOwner && (
+          <section className="mb-8">
+            <BragShare
+              variant="prominent"
+              essence={dispEssence}
+              code={dispCode}
+              catchphrase={dispCatch}
+              topUrl={`${SITE_URL}/`}
+              source="result"
+            />
+          </section>
         )}
 
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
@@ -845,41 +674,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </section>
         )}
 
-        {/* ===== 友達評価 導線 (Owner のみ、末尾) =====
-            0 件 = 「友達に診断してもらおう」フック (既存維持)。
-            1 件以上の「相互理解度 / 友達から見たアナタを見る」カードは撤去。
-            その導線は常時表示フローティング CTA (相互理解度はこちら → /friend-evaluation)
-            に一本化した (メニュー「相互理解度」からも到達可能、リンク切れなし)。 */}
-        {isOwner && friendEvalCount === 0 && (
-          <section className="mb-8">
-            <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
-              <p className="text-[#FE3C72] font-black text-[10px] tracking-[0.3em] mb-2">
-                次のステップ
-              </p>
-              <h2 className="text-[#3A2D6B] font-black text-lg leading-snug mb-3">
-                友達に診断してもらおう
-              </h2>
-              <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-5">
-                自己診断、完成!
-                <br />
-                でもこれはまだ「アナタから見たアナタ」。
-                <br />
-                友達に
-                <span className="font-bold text-[#FE3C72]">他己診断テスト</span>
-                をしてもらうと、
-                <br />
-                自分でも気づかなかったアナタが見えてくる。
-              </p>
-              <Link
-                href="/friend-evaluation"
-                className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black text-base px-8 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B]"
-              >
-                友達に診断してもらう →
-              </Link>
-            </div>
-          </section>
-        )}
-
         {/* ===== Footer ===== */}
         <div className="text-center pt-2 pb-2">
           {/* ?stay=1: 自動リダイレクト回避 (上のロゴリンクと同趣旨)。 */}
@@ -891,9 +685,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </Link>
         </div>
       </div>
-
-      {/* 常時表示フローティング CTA: シェアブロックへスムーズスクロール */}
-      <FloatingShareCta />
     </main>
   );
 }

@@ -232,6 +232,8 @@ export function ResultActions({
         </p>
       )}
 
+      {/* 拡散シェア (BragShare) は主従フラット化のため /me 側で他己診断カードの下へ移設。 */}
+
       {/* オフスクリーンの確定カード (PNG 書き出し元) */}
       <div
         aria-hidden="true"

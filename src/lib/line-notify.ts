@@ -9,6 +9,10 @@ import {
   buildN1Flex,
   buildN2Flex,
   buildN3Flex,
+  buildLetter1Flex,
+  buildLetter2Flex,
+  buildLetter3Flex,
+  buildLetterExtraFlex,
   buildPaymentReceivedFlex,
   buildIntegratedCompletePaidFlex,
   buildIntegratedFailedFlex,
@@ -578,6 +582,102 @@ export async function notifyFriendAnswered(
 
   await logLineMessage({
     lineUserId: data.line_user_id as string,
+    messageType: "friend_perception_received",
+    messageSubtype: subtype,
+    flexContent: flex,
+    sendResult: resultToLogStatus(result),
+    errorDetail: result.error ?? null,
+  });
+  return result;
+}
+
+// LINE 手紙通知｜小出し3段階 (line_letter_notifications_v1)
+//   友達の回答が 1 通届くごとに、届いた通数 (friendCount) で 1/2/3 を出し分ける。
+//   3人ゲートは維持し、3通目 = 開封解禁。4通目以降は軽い通知のみ。
+//   呼び出し側 (/api/friend-answer/v2) で:
+//     - isLineNotificationsEnabled() / line_user_id 紐付け確認
+//     - notification_preferences の opt-out 確認
+//     - last_notified_friend_count の条件付き UPDATE (冪等ガード) 成功時のみ呼ぶ
+//   を済ませてから本関数を呼ぶ想定。二重 push 防止はゲート側 (呼び出し元) の責務。
+//   friendNames は friend_perceptions.perceiver_name を created_at 昇順で並べたもの。
+//   未入力/欠落時は「お友達」にフォールバック。
+export async function sendLetterNotification(args: {
+  lineUserId: string;
+  ownerUserId?: string | null;
+  ownerToken: string;
+  inviteCode: string;
+  friendCount: number;
+  friendNames: string[];
+  animal?: string | null; // 1通目のみ使用 (動物名のみ、理由は出さない)
+}): Promise<LineSendResult> {
+  const count = args.friendCount;
+  const nameAt = (i: number): string => args.friendNames[i]?.trim() || "お友達";
+
+  let flex: messagingApi.Message | null = null;
+  let subtype: string;
+  if (count === 1) {
+    flex = buildLetter1Flex({
+      ownerToken: args.ownerToken,
+      inviteCode: args.inviteCode,
+      friendName: nameAt(0),
+      animal: args.animal ?? null,
+    });
+    subtype = "L1";
+  } else if (count === 2) {
+    flex = buildLetter2Flex({
+      ownerToken: args.ownerToken,
+      inviteCode: args.inviteCode,
+      friend1Name: nameAt(0),
+      friend2Name: nameAt(1),
+    });
+    subtype = "L2";
+  } else if (count === 3) {
+    flex = buildLetter3Flex({
+      ownerToken: args.ownerToken,
+      friend1Name: nameAt(0),
+      friend2Name: nameAt(1),
+      friend3Name: nameAt(2),
+    });
+    subtype = "L3";
+  } else if (count >= 4) {
+    // 4通目以降: 直近 (= 最新) の回答者名で軽い通知
+    flex = buildLetterExtraFlex({
+      ownerToken: args.ownerToken,
+      friendName: nameAt(count - 1),
+    });
+    subtype = "L4";
+  } else {
+    return { success: false, error: "out_of_range" };
+  }
+
+  if (!isLineNotificationsEnabled()) return disabledResponse();
+  const client = getClient();
+  if (!client) {
+    console.warn("LINE_CHANNEL_ACCESS_TOKEN not set; skipping letter notify");
+    await logLineMessage({
+      lineUserId: args.lineUserId,
+      userId: args.ownerUserId ?? null,
+      messageType: "friend_perception_received",
+      messageSubtype: subtype,
+      sendResult: "skipped",
+      errorDetail: "no_token",
+    });
+    return { success: false, error: "no_token" };
+  }
+
+  const result = await sendWithErrorHandling(
+    client,
+    { to: args.lineUserId, messages: [flex] },
+    {
+      type: "notify",
+      recipientId: args.lineUserId,
+      metadata: { kind: "letter_notification", friendCount: count },
+    },
+  );
+
+  await logLineMessage({
+    lineUserId: args.lineUserId,
+    userId: args.ownerUserId ?? null,
     messageType: "friend_perception_received",
     messageSubtype: subtype,
     flexContent: flex,

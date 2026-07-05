@@ -186,3 +186,72 @@ export function computeMinnaNoMeContext(input: {
     animals,
   };
 }
+
+// ─── 「みんなの言葉」空状態フォールバック (B-1) ───────────────────────────
+// 友達の質的入力 (owner_message=手紙 / favorite_point=チップ) が両方空のとき、
+// second self のスコア (friend-average Big Five, 0-10 スケール) から読んだ印象を
+// 1 行返す純ルールベース (LLM 非依存)。本物の手紙とは別枠・別ラベルで出す想定。
+
+// スコアの中央値。perceived_scores は 0-10 スケールで、既存 classify と同じ中央 5.0。
+const MINNA_SCORE_CENTER = 5.0;
+// 発火の最小偏差 = フルレンジ (10) の約 8%。これ未満のフラットさなら FINAL_FALLBACK。
+// ★調整ノブ: 大きくするほど「はっきり出た軸」だけ拾い、FINAL_FALLBACK が増える。
+const MINNA_SCORE_THRESHOLD = 0.8;
+
+// 軸の評価順 (固定。同点はこの順で先勝ち)。※ 通常の DIMS (E,A,O,C,N) とは別順。
+const MINNA_SCORE_AXES: BigFiveDimension[] = ["O", "C", "E", "A", "N"];
+
+const MINNA_SCORE_TABLE: Record<
+  BigFiveDimension,
+  { high: string; low: string }
+> = {
+  O: {
+    high: "新しいものや面白い視点に、まっさきに反応する人だと映ってるみたい。",
+    low: "地に足のついた、安心して頼れる人だと見られてるみたい。",
+  },
+  C: {
+    high: "やると決めたことをちゃんとやりきる人だと思われてるみたい。",
+    low: "その場の流れを楽しめる、しなやかな人だと映ってるみたい。",
+  },
+  E: {
+    high: "一緒にいると場が明るくなる人だと感じられてるみたい。",
+    low: "静かに深くつながれる人だと見られてるみたい。",
+  },
+  A: {
+    high: "まず相手の気持ちを考えられる、やさしい人だと映ってるみたい。",
+    low: "自分の芯を持って正直に向き合う人だと思われてるみたい。",
+  },
+  N: {
+    high: "人の痛みに気づける、繊細なアンテナを持つ人だと見られてるみたい。",
+    low: "どっしり構えて、まわりを安心させる人だと映ってるみたい。",
+  },
+};
+
+const MINNA_SCORE_FINAL_FALLBACK =
+  "まだ言葉は届いてないけど、みんなの目に映るあなたが、少しずつ形になってきてるよ。";
+
+/**
+ * second self スコアから「スコアから見えるあなた」1 行を返す (純ルールベース)。
+ * 手紙/チップが両方空のときだけ呼ぶ想定。最大乖離軸が中央からフラット (< THRESHOLD)
+ * or スコアが皆無なら FINAL_FALLBACK。スケールは friendAvgScores と同一 (再正規化なし)。
+ */
+export function scoreImpressionLine(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): string {
+  let best: BigFiveDimension | null = null;
+  let bestDev = -1;
+  for (const axis of MINNA_SCORE_AXES) {
+    const v = scores[axis];
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    const dev = Math.abs(v - MINNA_SCORE_CENTER);
+    if (dev > bestDev) {
+      bestDev = dev; // 厳密 > なので同点は MINNA_SCORE_AXES の先頭が勝つ
+      best = axis;
+    }
+  }
+  if (!best || bestDev < MINNA_SCORE_THRESHOLD) {
+    return MINNA_SCORE_FINAL_FALLBACK;
+  }
+  const level = (scores[best] as number) >= MINNA_SCORE_CENTER ? "high" : "low";
+  return MINNA_SCORE_TABLE[best][level];
+}

@@ -9,27 +9,45 @@
 
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { track } from "@/lib/track";
 
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
   inviteUrl: string;
+  /**
+   * 計測ソース。指定時のみ LINE/コピー タップで share_clicked を発火する
+   * (metadata: { channel, kind: "friend_invite", source })。
+   * 未指定 (ロック状態など) は従来どおり無発火で挙動を変えない。
+   */
+  trackSource?: string;
 }
 
 const SHARE_TEXT =
   "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
 
-export function LockedInviteShare({ inviteUrl }: LockedInviteShareProps) {
+export function LockedInviteShare({
+  inviteUrl,
+  trackSource,
+}: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
 
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
     `${SHARE_TEXT} ${inviteUrl}`,
   )}`;
 
+  const fire = (channel: "line" | "copy") => {
+    if (!trackSource) return;
+    track("share_clicked", {
+      metadata: { channel, kind: "friend_invite", source: trackSource },
+    });
+  };
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
+      fire("copy");
     } catch {
       // クリップボード不可環境では何もしない (QR / LINE を使ってもらう)
     }
@@ -73,6 +91,7 @@ export function LockedInviteShare({ inviteUrl }: LockedInviteShareProps) {
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => fire("line")}
           className="flex items-center justify-center gap-2 w-full bg-[#06C755] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#04a648] hover:translate-y-0.5 hover:shadow-[0_2px_0_#04a648] active:translate-y-1 active:shadow-[0_0_0_#04a648] transition-all"
         >
           <svg

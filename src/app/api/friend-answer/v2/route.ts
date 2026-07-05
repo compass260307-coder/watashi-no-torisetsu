@@ -26,7 +26,7 @@ import {
 } from "@/lib/friend-perception-v2";
 import { writeFriendPerception } from "@/lib/friend-perception-write";
 import { FRIEND_QUESTIONS_V2_TOTAL } from "@/lib/friend-questions-v2";
-import { sendFriendPerceptionReceivedMessage } from "@/lib/line-notify";
+import { sendLetterNotification } from "@/lib/line-notify";
 import { sendFriendPerceptionEmail } from "@/lib/email";
 import { isLineNotificationsEnabled } from "@/lib/feature-flags";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
@@ -41,6 +41,15 @@ function isValidScale(value: unknown): value is AnswerValue {
     value >= 1 &&
     value <= 7
   );
+}
+
+// 「動物に例えると」の回答は "猫（マイペース）" のような「動物名（性格）」形式。
+// 手紙通知①では【動物名のみ】を出す (理由=括弧内は開封まで出さない、が大原則)。
+// 全角/半角どちらの括弧でも手前で切る。未回答/空なら null。
+function extractAnimalName(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const name = raw.trim().split(/[（(]/)[0].trim();
+  return name.length > 0 ? name : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -190,12 +199,11 @@ export async function POST(request: NextRequest) {
   // owner への友達評価到着通知 (fire-and-forget、メール + LINE 並列)
   //
   // Phase 1 (Web ファースト主動線): owner.email がある場合のみ Resend メール送信。
-  // Phase 2 復活時 (LINE_NOTIFICATIONS_ENABLED=true) は LINE 通知も並列発火。
+  // Phase 2 復活時 (LINE_NOTIFICATIONS_ENABLED=true) は LINE 手紙通知も並列発火。
   // 両者は独立、片方の失敗は他方に影響しない。
-  // notified_at は LINE 通知成功時のみ更新 (旧 D-8 ロジック互換、メールは新フロー)。
-  const perceptionId = writeResult.id;
+  // LINE は「小出し3段階」(line_letter_notifications_v1)。届いた通数で 1/2/3 を出し分け、
+  // 冪等は users.last_notified_friend_count の条件付き UPDATE で担保する。
   const perceiverDisplayName = perceiverName;
-  const perceivedFullCode = perception.fullCode;
   const perceivedTypeId = perception.typeId as TorisetsuTypeId;
   const perceivedTypeName =
     torisetsuTypes[perceivedTypeId]?.name ?? perceivedTypeId;
@@ -250,9 +258,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 2-B. LINE 通知 (Day 10 feature flag、Phase 2 復活時用)
-      //   LINE_NOTIFICATIONS_ENABLED=false ならスキップ。
-      //   line_user_id 未紐付の場合もスキップ。
+      // 2-B. LINE 手紙通知｜小出し3段階 (line_letter_notifications_v1)
+      //   届いた通数 (1/2/3) で出し分け、3通目 = 開封解禁。4通目以降は軽い通知のみ。
+      //   LINE_NOTIFICATIONS_ENABLED=false / line_user_id 未紐付ならスキップ。
       if (!isLineNotificationsEnabled() || !ownerLineUserId) {
         return;
       }
@@ -271,37 +279,63 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      // notified_at 重複防止 (insert 直後は NULL のはずだが、race 防止)
-      const { data: pRow } = await supabaseAdmin
-        .from("friend_perceptions")
-        .select("notified_at")
-        .eq("id", perceptionId)
+      if (!ownerToken) return;
+
+      // 届いた友達回答の総数 (owner ごと)
+      const { count: friendCount, error: countErr } = await supabaseAdmin
+        .from("friend_answers")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", ownerUserId);
+      if (countErr || friendCount === null) {
+        console.error(
+          "[friend-answer/v2] friend_answers count error:",
+          countErr?.message,
+        );
+        return;
+      }
+      if (friendCount < 1) return;
+
+      // 冪等ガード: last_notified_friend_count < friendCount のときだけ UPDATE 成功。
+      //   同一 count に同時到達しても最初の 1 件だけが通知され、二重 push を防ぐ。
+      //   (旧 /api/friend-answer の H8 race condition 対策パターンを踏襲)
+      const { data: gateRow, error: gateErr } = await supabaseAdmin
+        .from("users")
+        .update({ last_notified_friend_count: friendCount })
+        .eq("owner_token", ownerToken)
+        .lt("last_notified_friend_count", friendCount)
+        .select("owner_token")
         .maybeSingle();
-      if (pRow?.notified_at) {
-        return; // 既に他のリクエストが通知済
+      if (gateErr) {
+        console.error(
+          "[friend-answer/v2] last_notified_friend_count update error:",
+          gateErr.message,
+        );
+        return;
+      }
+      if (!gateRow) {
+        // 別リクエストが先に同 count を通知済み → スキップ
+        return;
       }
 
-      const result = await sendFriendPerceptionReceivedMessage({
+      // 表示用: 友達名 (created_at 昇順) と 1通目の動物 (動物名のみ)
+      const { data: perceptionRows } = await supabaseAdmin
+        .from("friend_perceptions")
+        .select("perceiver_name")
+        .eq("target_user_id", ownerUserId)
+        .order("created_at", { ascending: true });
+      const friendNames = (perceptionRows ?? []).map((r) =>
+        ((r.perceiver_name as string | null) ?? "").trim(),
+      );
+
+      await sendLetterNotification({
         lineUserId: ownerLineUserId,
         ownerUserId,
-        perceiverName: perceiverDisplayName,
-        perceivedFullCode,
-        perceivedTypeName,
-        perceivedModifierLabel,
+        ownerToken,
+        inviteCode,
+        friendCount,
+        friendNames,
+        animal: extractAnimalName(choiceAnswers.animal),
       });
-
-      if (result.success) {
-        const { error: updateErr } = await supabaseAdmin
-          .from("friend_perceptions")
-          .update({ notified_at: new Date().toISOString() })
-          .eq("id", perceptionId);
-        if (updateErr) {
-          console.error(
-            "[friend-answer/v2] notified_at update error:",
-            updateErr.message,
-          );
-        }
-      }
     } catch (err) {
       console.error("[friend-answer/v2] notification flow error:", err);
     }

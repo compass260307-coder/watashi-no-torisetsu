@@ -4,6 +4,7 @@ import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
+import { BottomNav } from "@/components/BottomNav";
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
@@ -96,7 +97,7 @@ export const metadata: Metadata = {
     description: SHARED_DESCRIPTION,
     images: [
       {
-        url: "/ogp-v3.png",
+        url: "/ogp-v4.png",
         width: 1200,
         height: 630,
         alt: "ワタシのトリセツ - 友達と作る、自分の取扱説明書",
@@ -107,7 +108,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
     description: SHARED_DESCRIPTION,
-    images: ["/ogp-v3.png"],
+    images: ["/ogp-v4.png"],
   },
   robots: {
     index: true,
@@ -136,10 +137,17 @@ export default function RootLayout({
       lang="ja"
       className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
     >
-      <body className="min-h-dvh flex flex-col">
+      <body
+        className="min-h-dvh flex flex-col"
+        // 全ページ共通のボトムナビ (fixed) に本文が隠れないよう、バー実測高
+        // (56px 相当) + iOS セーフエリア分の余白を最下部に確保する。
+        style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}
+      >
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
         {children}
+        {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
+        <BottomNav />
         <GoogleAnalytics />
         <Suspense fallback={null}>
           <GoogleAnalyticsTracker />
