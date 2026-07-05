@@ -45,7 +45,6 @@ import {
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
   thirtyTwoCatchphrase,
-  thirtyTwoColor,
   thirtyTwoGroup,
   baseIdOf,
   nAxisOf,
@@ -283,7 +282,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
     ? HERO_BAND_BY_GROUP[thirtyTwoGroup(t32)]
     : "#B49BE8";
   // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
-  const dotColor = flag32 ? thirtyTwoColor(t32) : "#C3A0E0";
+  // 帯を濃トーン化したため、中間色だと沈む → 半透明の白で「浮かぶ」装飾に変更。
+  const dotColor = "rgba(255,255,255,0.55)";
   // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
   //   帯色→濃トーン: 紫帯→濃紫 / 青帯→深青緑 / 緑帯→濃緑 / 黄帯→濃オリーブ (名言の茶と分離)。
   //   ※内部グループ名は 空=黄・陸=緑 (帯色で対応付け)。称号(名前)はブランド固定ネイビーのまま。
@@ -444,6 +444,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 10, height: 10, top: "72%", left: "13%" }} />
+          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "78%", right: "15%" }} />
           {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
               モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
               ☰ はボトムナビ導入で撤去。 */}
