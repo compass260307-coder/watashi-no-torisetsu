@@ -11,6 +11,7 @@
 //     user.scores(0-10) → 0-100% に変換し、最も高い軸 / 最も低い軸などを中立的に提示するだけ。
 
 import { useState } from "react";
+import Image from "next/image";
 import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
 import { TYPE_DEEP_DIVE, type TypeDeepDive } from "@/lib/report-data";
 import { classifyThirtyTwoType } from "@/lib/thirty-two-types";
@@ -54,12 +55,15 @@ interface DeepDiveSectionsProps {
   typeId: TorisetsuTypeId;
   /** 0-10 スケールの 5 軸スコア (user.scores)。 */
   scores: Partial<Record<BigFiveDimension, number>>;
+  /** タブ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
+  sceneImages?: Partial<Record<"love" | "career" | "growth", string | null>>;
   className?: string;
 }
 
 export function DeepDiveSections({
   typeId,
   scores,
+  sceneImages,
   className = "",
 }: DeepDiveSectionsProps) {
   const deepDive = TYPE_DEEP_DIVE[typeId];
@@ -157,6 +161,20 @@ export function DeepDiveSections({
             {para}
           </p>
         ))}
+
+        {/* 挿絵 (タブ対応のシーン別イラスト: 恋愛/仕事/学校)。無いタブは非表示 */}
+        {(current.key === "love" ||
+          current.key === "career" ||
+          current.key === "growth") &&
+          sceneImages?.[current.key] && (
+            <Image
+              src={sceneImages[current.key]!}
+              alt=""
+              width={960}
+              height={640}
+              className="mx-auto mt-6 h-auto w-full max-w-[560px]"
+            />
+          )}
       </article>
     </section>
   );

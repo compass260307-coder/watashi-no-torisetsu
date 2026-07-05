@@ -23,6 +23,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -322,6 +323,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const dispImage = fs.existsSync(path.join(process.cwd(), "public", cutImage))
     ? cutImage
     : v3Image;
+  // 挿絵 (シーン別イラスト・16P の章間イラスト参考):
+  //   public/characters/scenes/<slug>_<variant>.png を「置くだけで自動表示」(無ければ非表示)。
+  //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
+  //   例: jellyfish_N_normal1.png
+  const sceneSlug = path.basename(v3Image, ".png");
+  const sceneImage = (variant: string): string | null => {
+    const rel = `/characters/scenes/${sceneSlug}_${variant}.png`;
+    return fs.existsSync(path.join(process.cwd(), "public", rel)) ? rel : null;
+  };
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
   // ヒーローのキャラ名言 (コード直下・セリフ体)。16タイプ時は oneLiner で代替。
@@ -540,12 +550,30 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     </p>
                   ))}
                 </div>
+                {/* 挿絵 (通常バージョン): パート1の後に normal1、パート2の後に normal2 */}
+                {sceneImage(idx === 0 ? "normal1" : "normal2") && (
+                  <Image
+                    src={sceneImage(idx === 0 ? "normal1" : "normal2")!}
+                    alt=""
+                    width={960}
+                    height={640}
+                    className="mx-auto mt-8 h-auto w-full max-w-[560px]"
+                  />
+                )}
               </section>
             );
           })}
 
           {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
-          <DeepDiveSections typeId={deepDiveTypeId} scores={stored} />
+          <DeepDiveSections
+            typeId={deepDiveTypeId}
+            scores={stored}
+            sceneImages={{
+              love: sceneImage("love"),
+              career: sceneImage("work"),
+              growth: sceneImage("school"),
+            }}
+          />
 
           {/* 自己単体の Big Five 発散バー (②「5つの軸で見るアナタ」)。
               482f5bb の他己パート撤去で巻き添え削除されていたのを復活。
