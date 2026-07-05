@@ -5,10 +5,10 @@
 //   - 背景: 白 / テキスト: ブランドネイビー #2E2E5C
 //   - 進捗バー: 淡ブルートラック + Sora ブルー #5B5BEF 塗り (CTA と同色)
 //   - チェックリスト: 完了 = Sora ブルーのチェック、未完 = 淡ブルーの空円
-//   - マスコット: フェルト調ペンギン (characters/cut の透過素材 = /types と同じ世界観)
+//   - マスコット: フェルト調ペンギンのループ動画 (Kling 生成・5秒ループ)。
+//     reduced-motion 環境では再生せず静止画 (poster) を表示
 //   - MESSAGES / STEPS の文言・タイマー進行は従来のまま
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -40,6 +40,18 @@ const STEPS = [
 export function DiagnosisAnalyzingLoader() {
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // prefers-reduced-motion: 再生を止めて poster (静止画) のままにする
+  useEffect(() => {
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
+      videoRef.current
+    ) {
+      videoRef.current.pause();
+      videoRef.current.removeAttribute("autoplay");
+    }
+  }, []);
 
   useEffect(() => {
     const messageInterval = setInterval(() => {
@@ -58,17 +70,23 @@ export function DiagnosisAnalyzingLoader() {
 
   return (
     <div
-      className="flex min-h-screen flex-1 flex-col items-center justify-center bg-white px-5 py-10"
+      // 背景は動画の地色 (#FCFCFC 実測) に合わせ、動画の四角い縁を不可視化する
+      className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#FCFCFC] px-5 py-10"
       style={{ fontFamily: FONT_STACK }}
     >
-      <Image
-        src="/characters/cut/penguin_N.png"
-        alt=""
-        width={224}
-        height={224}
-        priority
-        className="mb-6 h-52 w-52 object-contain"
-      />
+      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し) */}
+      <div className="mb-6 h-52 overflow-hidden" aria-hidden="true">
+        <video
+          ref={videoRef}
+          src="/mascot/analyzing-loop.mp4"
+          poster="/characters/cut/penguin_N.png"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="h-full w-auto scale-[1.16] object-contain"
+        />
+      </div>
 
       <p
         key={messageIndex}
