@@ -215,7 +215,7 @@ export default async function FriendEvaluationPage() {
 
         {/* ===== ステッカー ===== */}
         <div className="flex justify-center mb-2">
-          <div className="bg-[#FFE993] text-[#3A2D6B] font-black px-5 py-2 rounded-full border-2 border-[#3A2D6B] shadow-md -rotate-2 text-base">
+          <div className="bg-[#5B5BEF] text-white font-black px-5 py-2 rounded-full shadow-md -rotate-2 text-base">
             友達による評価
           </div>
         </div>
@@ -235,9 +235,9 @@ export default async function FriendEvaluationPage() {
         {/* ===== 真のトリセツ履歴 (関連、Day 10 から維持) ===== */}
         {integrated.length > 0 && (
           <section className="mb-8">
-            <h3 className="text-[#3A2D6B] font-black text-sm mb-3 flex items-baseline justify-between">
+            <h3 className="text-[#2E2E5C] font-black text-sm mb-3 flex items-baseline justify-between">
               <span>真のトリセツ</span>
-              <span className="text-xs font-bold text-[#3A2D6B]/60">
+              <span className="text-xs font-bold text-[#2E2E5C]/60">
                 {integrated.length}
               </span>
             </h3>
@@ -246,17 +246,17 @@ export default async function FriendEvaluationPage() {
                 <Link
                   key={it.id}
                   href={`/integrated/${it.id}`}
-                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#FFF9F0] transition-colors"
+                  className="block bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 hover:bg-[#F4F4FE] transition-colors"
                 >
-                  <p className="text-base font-black text-[#3A2D6B] mb-1">
+                  <p className="text-base font-black text-[#2E2E5C] mb-1">
                     {it.title}
                   </p>
                   {it.subtitle && (
-                    <p className="text-xs text-[#3A2D6B]/70 leading-relaxed mb-2">
+                    <p className="text-xs text-[#2E2E5C]/70 leading-relaxed mb-2">
                       {it.subtitle}
                     </p>
                   )}
-                  <p className="text-[10px] text-[#3A2D6B]/50 font-bold">
+                  <p className="text-[10px] text-[#2E2E5C]/50 font-bold">
                     {formatDate(it.generatedAt)}
                     {" / "}
                     友達評価 {it.perceptionCount} 件
@@ -272,7 +272,7 @@ export default async function FriendEvaluationPage() {
         <div className="text-center pt-2 pb-2">
           <Link
             href={myTrisetsuUrl}
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
             アナタのトリセツに戻る
           </Link>
@@ -303,17 +303,17 @@ function UnauthenticatedView() {
         </div>
 
         <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center my-8">
-          <h1 className="text-[#3A2D6B] font-black text-xl mb-2">
+          <h1 className="text-[#2E2E5C] font-black text-xl mb-2">
             まずは自己診断から
           </h1>
-          <p className="text-[#3A2D6B]/70 text-sm leading-relaxed mb-5">
+          <p className="text-[#2E2E5C]/70 text-sm leading-relaxed mb-5">
             友達評価を受けるには、先にアナタ自身の
             <br />
             自己診断 (50 問・約 3 分) が必要です。
           </p>
           <Link
             href="/diagnosis"
-            className="inline-block bg-[#FFE993] text-[#3A2D6B] font-black px-8 py-3 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all"
+            className="inline-block bg-[#5B5BEF] text-white font-black px-8 py-3 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
           >
             自己診断を始める →
           </Link>
@@ -322,7 +322,7 @@ function UnauthenticatedView() {
         <div className="text-center mb-6">
           <Link
             href="/login"
-            className="text-[#3A2D6B]/60 text-xs font-bold underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 text-xs font-bold underline hover:text-[#5B5BEF] transition-colors"
           >
             購入済み・診断済みの方はログイン
           </Link>
@@ -331,7 +331,7 @@ function UnauthenticatedView() {
         <div className="text-center pt-2 pb-2">
           <Link
             href="/"
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
             トップに戻る
           </Link>
@@ -361,7 +361,7 @@ function ChevronRight() {
       height="18"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#3A2D6B"
+      stroke="#2E2E5C"
       strokeOpacity="0.4"
       strokeWidth="3"
       strokeLinecap="round"
@@ -421,7 +421,7 @@ function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
     <li>
       <Link
         href={`/evaluate/result/${item.id}`}
-        className="flex items-center gap-3 rounded-[20px] border-2 border-[#0094D8]/20 bg-white p-3 transition-colors hover:bg-[#FFF9F0]"
+        className="flex items-center gap-3 rounded-[20px] border-2 border-[#0094D8]/20 bg-white p-3 transition-colors hover:bg-[#F4F4FE]"
       >
         <RankMedalBadge rank={rank} />
         {/* アバター = 知覚タイプ(16)のキャラ画像 (角丸スクエア・cover) */}
@@ -434,10 +434,10 @@ function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
             className="w-full h-full object-cover"
           />
         </div>
-        <span className="flex-1 min-w-0 truncate text-base font-black text-[#3A2D6B]">
+        <span className="flex-1 min-w-0 truncate text-base font-black text-[#2E2E5C]">
           {item.perceiverName}
         </span>
-        <span className="bg-[#FFE993] text-[#3A2D6B] font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+        <span className="bg-[#5B5BEF] text-white font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
           {item.understanding}%
         </span>
         <ChevronRight />
@@ -458,7 +458,7 @@ function EmptyRankRow({ rank }: { rank: number }) {
         <div className="h-3.5 w-[55%] rounded-full bg-[#E4E0F5]" />
       </div>
       {/* %位置: 淡い ??% */}
-      <span className="bg-[#EDE9F8] text-[#3A2D6B]/45 font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
+      <span className="bg-[#EDE9F8] text-[#2E2E5C]/45 font-black rounded-full px-3 py-1 text-sm flex-shrink-0">
         ??%
       </span>
     </li>

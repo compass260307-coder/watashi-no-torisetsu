@@ -29,7 +29,7 @@ export default function ResultFallbackPage() {
   return (
     <div className="min-h-screen flex items-center justify-center grid-bg">
       <div
-        className="w-10 h-10 rounded-full border-[3px] border-[#3A2D6B]/20 border-t-[#3A2D6B] animate-spin"
+        className="w-10 h-10 rounded-full border-[3px] border-[#2E2E5C]/20 border-t-[#2E2E5C] animate-spin"
         role="status"
         aria-label="読み込み中"
       />

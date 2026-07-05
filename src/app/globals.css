@@ -162,8 +162,9 @@ input[type="reset"]:active {
 /* grid 線の不透明度を 0.3 → 0.12 に下げ、文章を主役に (気配が残る程度に減衰) */
 .grid-bg {
   position: relative;
-  /* 既定は従来のグラデ。/me ではインラインで --grid-bg-fill をグループ色の極薄ウォッシュに差し替える。 */
-  background: var(--grid-bg-fill, linear-gradient(180deg, #BCDEF8 0%, #FFD6E0 100%));
+  /* 既定は淡ブルーのウォッシュ (トップページの Sora トーンに追従。旧 sky→pink グラデから変更)。
+     /me ではインラインで --grid-bg-fill をグループ色の極薄ウォッシュに差し替える。 */
+  background: var(--grid-bg-fill, linear-gradient(180deg, #E9EEFE 0%, #F7F5FF 100%));
 }
 
 .grid-bg::before {

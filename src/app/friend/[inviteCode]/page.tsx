@@ -95,7 +95,7 @@ export default function FriendPage({
     <Suspense
       fallback={
         <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center">
-          <p className="text-sm font-bold text-[#3A2D6B]/70">読み込み中...</p>
+          <p className="text-sm font-bold text-[#2E2E5C]/70">読み込み中...</p>
         </div>
       }
     >
@@ -403,8 +403,8 @@ function ScaleScreen({
       <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
         {/* Day 12-Polish-E: 評価フロー冒頭のナッジ (素直な第一印象で答えてもらう) */}
         {page === 0 && (
-          <div className="bg-[#FFF9F0] rounded-2xl border-2 border-[#FFE993] px-5 py-4 mb-5">
-            <p className="text-sm font-bold text-[#3A2D6B] leading-relaxed text-center">
+          <div className="bg-[#F4F4FE] rounded-2xl border-2 border-[#5B5BEF] px-5 py-4 mb-5">
+            <p className="text-sm font-bold text-[#2E2E5C] leading-relaxed text-center">
               {inviteeName}本人の自己診断は気にせず、
               <br />
               アナタの素直な印象で答えてね。
@@ -421,10 +421,10 @@ function ScaleScreen({
             tabIndex={-1}
             className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5 outline-none"
           >
-            <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
+            <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-3">
               Q{q.id}
             </div>
-            <p className="text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6">
+            <p className="text-base sm:text-lg font-bold text-[#2E2E5C] leading-relaxed mb-6">
               {renderQuestionText(q.text, inviteeName)}
             </p>
             <LikertScale
@@ -435,7 +435,7 @@ function ScaleScreen({
         ))}
 
         {!isPageComplete && (
-          <p className="text-center text-xs text-[#3A2D6B]/70 font-bold mt-2 mb-4">
+          <p className="text-center text-xs text-[#2E2E5C]/70 font-bold mt-2 mb-4">
             このページの 10 問すべてに答えると、次へ進めるよ
           </p>
         )}
@@ -483,17 +483,17 @@ function ChoiceScreen({
     <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1">
       {/* sticky header */}
       <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
-        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between text-xs font-bold text-[#3A2D6B]">
+        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between text-xs font-bold text-[#2E2E5C]">
           <span>おまけ {choiceIdx + 1} / 3</span>
           <span>スキップ可</span>
         </div>
       </div>
 
       <main className="flex flex-col flex-1 items-center px-4 pt-8 pb-10 max-w-lg mx-auto w-full">
-        <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-4">
+        <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-4">
           おまけ
         </div>
-        <h2 className="text-lg font-black text-[#3A2D6B] text-center mb-6 leading-relaxed">
+        <h2 className="text-lg font-black text-[#2E2E5C] text-center mb-6 leading-relaxed">
           {renderQuestionText(question.text, inviteeName)}
         </h2>
 
@@ -503,7 +503,7 @@ function ChoiceScreen({
               key={opt}
               type="button"
               onClick={() => onSelect(question.id, opt)}
-              className="w-full bg-white rounded-2xl border-2 border-[#0094D8]/30 px-5 py-4 text-sm font-bold text-[#3A2D6B] transition-all hover:bg-[#FFE993]/30 hover:border-[#3A2D6B] active:scale-[0.98]"
+              className="w-full bg-white rounded-2xl border-2 border-[#0094D8]/30 px-5 py-4 text-sm font-bold text-[#2E2E5C] transition-all hover:bg-[#5B5BEF]/30 hover:border-[#2E2E5C] active:scale-[0.98]"
             >
               {opt}
             </button>
@@ -513,7 +513,7 @@ function ChoiceScreen({
         <button
           type="button"
           onClick={onSkip}
-          className="text-xs text-[#3A2D6B]/60 hover:text-[#FE3C72] font-bold underline transition-colors"
+          className="text-xs text-[#2E2E5C]/60 hover:text-[#5B5BEF] font-bold underline transition-colors"
         >
           この質問はスキップ
         </button>
@@ -549,10 +549,10 @@ function ConsentScreen({
     <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32 flex flex-col flex-1">
       <div className="max-w-[480px] mx-auto w-full">
         <header className="text-center mb-5">
-          <p className="text-[10px] font-black tracking-[0.3em] text-[#FE3C72] mb-2">
+          <p className="text-[10px] font-black tracking-[0.3em] text-[#5B5BEF] mb-2">
             最後にひとつ
           </p>
-          <h1 className="text-lg sm:text-xl font-black text-[#3A2D6B] leading-snug">
+          <h1 className="text-lg sm:text-xl font-black text-[#2E2E5C] leading-snug">
             この評価、{ownerName}さんの
             <br />
             レポートにも使っていい?
@@ -561,9 +561,9 @@ function ConsentScreen({
 
         {/* 1 行説明 (1 枚の白カードに圧縮) */}
         <section className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 mb-4">
-          <p className="text-sm text-[#3A2D6B] leading-relaxed">
+          <p className="text-sm text-[#2E2E5C] leading-relaxed">
             アナタの名前 (
-            <span className="font-bold text-[#FE3C72]">{perceiverName}</span>) と
+            <span className="font-bold text-[#5B5BEF]">{perceiverName}</span>) と
             回答が、{ownerName}さんの
             <span className="font-bold">有料レポート</span>
             に「ひとつの視点」として載ることがあります (第三者に共有される
@@ -572,23 +572,23 @@ function ConsentScreen({
         </section>
 
         {/* opt-in (cream / sunYellow 枠) */}
-        <section className="bg-[#FFF9F0] rounded-3xl border-2 border-[#FFE993] shadow-md p-5 mb-4">
+        <section className="bg-[#F4F4FE] rounded-3xl border-2 border-[#5B5BEF] shadow-md p-5 mb-4">
           <label className="flex gap-3 items-start cursor-pointer">
             <input
               type="checkbox"
               checked={pdfConsent}
               onChange={(e) => onConsentChange(e.target.checked)}
-              className="mt-0.5 h-5 w-5 accent-[#3A2D6B] cursor-pointer flex-shrink-0"
+              className="mt-0.5 h-5 w-5 accent-[#2E2E5C] cursor-pointer flex-shrink-0"
             />
-            <span className="text-sm text-[#3A2D6B] leading-relaxed font-bold">
+            <span className="text-sm text-[#2E2E5C] leading-relaxed font-bold">
               名前付きで載ること・共有の可能性に
-              <span className="text-[#FE3C72]">同意する</span>
+              <span className="text-[#5B5BEF]">同意する</span>
             </span>
           </label>
         </section>
 
         {/* 小注記 (未チェック時の挙動 + 後から変更不可) */}
-        <p className="text-[11px] text-[#3A2D6B]/65 leading-relaxed font-bold">
+        <p className="text-[11px] text-[#2E2E5C]/65 leading-relaxed font-bold">
           ※ 未チェックでも評価は届きます (Web で閲覧可・レポート化のみ不可)。
           この設定は後から変更できません。
         </p>
@@ -627,12 +627,12 @@ function SubmittingScreen({
           className="w-full h-full object-cover"
         />
       </div>
-      <p className="text-lg font-black text-[#3A2D6B] text-center mb-2 leading-relaxed">
+      <p className="text-lg font-black text-[#2E2E5C] text-center mb-2 leading-relaxed">
         アナタから見た{subjectLabel}を
         <br />
         生成中...
       </p>
-      <p className="text-xs text-[#3A2D6B]/70 font-bold">少し待ってね</p>
+      <p className="text-xs text-[#2E2E5C]/70 font-bold">少し待ってね</p>
     </div>
   );
 }
@@ -649,10 +649,10 @@ function ErrorScreen({
 }) {
   return (
     <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5 py-10 pb-32">
-      <p className="text-base font-black text-[#3A2D6B] mb-4">
+      <p className="text-base font-black text-[#2E2E5C] mb-4">
         送信に失敗しました
       </p>
-      <p className="text-xs text-[#3A2D6B]/70 font-bold mb-6 text-center">
+      <p className="text-xs text-[#2E2E5C]/70 font-bold mb-6 text-center">
         {message}
       </p>
       {/* Polish-D-A FINAL: 再試行ボタンを StickyCtaFooter に移動 */}
@@ -705,12 +705,12 @@ function NameOverlay({
     >
       {/* Polish-B.3: Q11/Q12 と同じ世界観 (白カード + ピル + 太字見出し + 白入力欄) */}
       <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
-        <div className="inline-block rounded-full bg-[#3A2D6B] px-3 py-1 text-xs font-black text-white mb-3">
+        <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-3">
           最後に
         </div>
         <label
           htmlFor="perceiver-name-overlay"
-          className="block text-base sm:text-lg font-bold text-[#3A2D6B] leading-relaxed mb-6"
+          className="block text-base sm:text-lg font-bold text-[#2E2E5C] leading-relaxed mb-6"
         >
           お名前を教えて
         </label>
@@ -723,13 +723,13 @@ function NameOverlay({
           placeholder=""
           autoComplete="off"
           autoFocus
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#3A2D6B] font-bold focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
+          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#2E2E5C] transition-colors"
         />
 
         {/* ③ 本人へのメッセージ (任意) */}
         <label
           htmlFor="perceiver-message-overlay"
-          className="block text-sm font-bold text-[#3A2D6B] leading-relaxed mt-5 mb-2"
+          className="block text-sm font-bold text-[#2E2E5C] leading-relaxed mt-5 mb-2"
         >
           ひとことメッセージ (任意)
         </label>
@@ -740,9 +740,9 @@ function NameOverlay({
           maxLength={MESSAGE_MAX}
           rows={3}
           placeholder="本人に伝えたいことがあれば自由にどうぞ"
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-sm text-[#3A2D6B] font-bold resize-none focus:outline-none focus:ring-2 focus:ring-[#FFE993] focus:border-[#3A2D6B] transition-colors"
+          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-sm text-[#2E2E5C] font-bold resize-none focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#2E2E5C] transition-colors"
         />
-        <p className="text-right text-[11px] text-[#3A2D6B]/50 font-bold mt-1">
+        <p className="text-right text-[11px] text-[#2E2E5C]/50 font-bold mt-1">
           {message.length} / {MESSAGE_MAX}
         </p>
       </div>

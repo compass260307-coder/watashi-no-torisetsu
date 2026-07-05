@@ -91,10 +91,10 @@ function mutualLabel(pct: number): string {
 function SectionHead({ num, title }: { num: number; title: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white font-black text-lg flex items-center justify-center">
         {num}
       </span>
-      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
         {title}
       </h2>
     </div>
@@ -113,7 +113,7 @@ function TraitBar({
 }) {
   return (
     <div>
-      <div className="flex justify-between text-xs font-bold text-[#3A2D6B] mb-1">
+      <div className="flex justify-between text-xs font-bold text-[#2E2E5C] mb-1">
         <span>{label}</span>
         <span>{percent}%</span>
       </div>
@@ -142,7 +142,7 @@ function pinkify(text: string, key?: string): ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <strong className="text-[#FE3C72] font-black">{key}</strong>
+      <strong className="text-[#5B5BEF] font-black">{key}</strong>
       {text.slice(idx + key.length)}
     </>
   );
@@ -310,10 +310,10 @@ export default async function EvaluationSentPage({ params }: PageProps) {
             {showFull && (
               <>
                 <div className="text-center">
-                  <p className="text-[#FE3C72] font-bold text-sm mb-1">
+                  <p className="text-[#5B5BEF] font-bold text-sm mb-1">
                     相互理解度
                   </p>
-                  <p className="text-[#3A2D6B] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
+                  <p className="text-[#2E2E5C] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
                     {mutual}
                     <span className="text-3xl">%</span>
                   </p>
@@ -326,15 +326,15 @@ export default async function EvaluationSentPage({ params }: PageProps) {
                     aria-valuenow={mutual}
                   >
                     <div
-                      className="h-full rounded-full bg-[#FE3C72]"
+                      className="h-full rounded-full bg-[#5B5BEF]"
                       style={{ width: `${mutual}%` }}
                     />
                   </div>
-                  <p className="text-[#3A2D6B]/75 text-xs font-bold mt-2 leading-relaxed">
+                  <p className="text-[#2E2E5C]/75 text-xs font-bold mt-2 leading-relaxed">
                     {mutualLabel(mutual)}
                   </p>
                 </div>
-                <div className="border-t border-dashed border-[#3A2D6B]/15 my-5" />
+                <div className="border-t border-dashed border-[#2E2E5C]/15 my-5" />
               </>
             )}
             <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedLookBody}</p>
@@ -361,20 +361,20 @@ export default async function EvaluationSentPage({ params }: PageProps) {
                 return (
                   <div key={g.key}>
                     {idx === 2 && (
-                      <div className="border-t border-dashed border-[#3A2D6B]/25 mt-6 pt-5">
-                        <p className="text-[#3A2D6B]/55 font-bold text-xs mb-1">
+                      <div className="border-t border-dashed border-[#2E2E5C]/25 mt-6 pt-5">
+                        <p className="text-[#2E2E5C]/55 font-bold text-xs mb-1">
                           そのほかの3つ
                         </p>
                       </div>
                     )}
                     {idx !== 2 && (
-                      <div className="border-t border-[#3A2D6B]/10 my-5" />
+                      <div className="border-t border-[#2E2E5C]/10 my-5" />
                     )}
                     <div className="flex items-baseline justify-between mb-3">
-                      <h3 className="text-[#3A2D6B] font-black text-base">
+                      <h3 className="text-[#2E2E5C] font-black text-base">
                         {g.label}
                       </h3>
-                      <span className="text-[#FE3C72] font-black text-xs">
+                      <span className="text-[#5B5BEF] font-black text-xs">
                         差 {g.diffPoints}pt
                       </span>
                     </div>
@@ -382,7 +382,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
                       <TraitBar
                         label={`${targetName}自身`}
                         percent={g.selfPercent}
-                        color="#FE3C72"
+                        color="#5B5BEF"
                       />
                       <TraitBar
                         label="アナタから"

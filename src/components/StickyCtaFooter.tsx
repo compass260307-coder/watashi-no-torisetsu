@@ -2,7 +2,7 @@
 //
 // 設計思想:
 //   - 白い矩形バー (床) を全廃。代わりに「フロスト・グラデーション・スクリム」で統一。
-//     - 下端は不透明クリーム (#FFF9F0) → ボタン直下のコントラスト確保 (視認性◎)
+//     - 下端は不透明クリーム (#F4F4FE) → ボタン直下のコントラスト確保 (視認性◎)
 //     - 上端は完全フェード (transparent) → 矩形の白エッジを作らない
 //   - LP / 名前入力 / 診断 / friend 評価フロー、全画面でこの 1 部品を使う。
 //
@@ -41,11 +41,11 @@ type Variant = "scrim" | "solid" | "white";
 const bgClass: Record<Variant, string> = {
   // scrim: 半透明クリーム + blur + 上端マスクフェードで blur 上端の薄い線も消す
   scrim:
-    "bg-gradient-to-t from-[#FFF9F0]/95 via-[#FFF9F0]/80 to-transparent backdrop-blur-sm " +
+    "bg-gradient-to-t from-[#F4F4FE]/95 via-[#F4F4FE]/80 to-transparent backdrop-blur-sm " +
     "[mask-image:linear-gradient(to_top,#000_55%,transparent)] " +
     "[-webkit-mask-image:linear-gradient(to_top,#000_55%,transparent)]",
   // solid: 下 60% ベタの不透明クリーム + 上 40% フェード。blur なし。
-  solid: "bg-gradient-to-t from-[#FFF9F0] from-[60%] to-transparent",
+  solid: "bg-gradient-to-t from-[#F4F4FE] from-[60%] to-transparent",
   // white: solid の白背景版。白基調ページ (トップ準拠デザインの /diagnosis) 用。
   white: "bg-gradient-to-t from-white from-[60%] to-transparent",
 };
@@ -84,7 +84,7 @@ export function StickyCtaFooter({
 //   - 立体シャドウは持たない (主従関係をはっきりさせる)
 
 export const ctaPrimary =
-  "bg-[#FFE993] border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] text-[#3A2D6B] font-black rounded-full px-8 py-4 w-auto max-w-[300px] block disabled:opacity-50 disabled:cursor-not-allowed transition active:translate-y-[2px] active:shadow-[0_2px_0_#3A2D6B] text-center";
+  "bg-[#5B5BEF] border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] text-[#2E2E5C] font-black rounded-full px-8 py-4 w-auto max-w-[300px] block disabled:opacity-50 disabled:cursor-not-allowed transition active:translate-y-[2px] active:shadow-[0_2px_0_#2E2E5C] text-center";
 
 export const ctaSecondary =
-  "bg-white border-2 border-[#3A2D6B]/40 text-[#3A2D6B] font-bold rounded-full px-6 py-4 w-auto block text-center transition active:translate-y-[2px]";
+  "bg-white border-2 border-[#2E2E5C]/40 text-[#2E2E5C] font-bold rounded-full px-6 py-4 w-auto block text-center transition active:translate-y-[2px]";

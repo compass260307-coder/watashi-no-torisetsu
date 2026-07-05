@@ -48,14 +48,14 @@ export function InAppBrowserModal() {
       aria-labelledby="inapp-modal-title"
       className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4 py-6 animate-modal-fade-in"
     >
-      <div className="w-full max-w-[400px] bg-white rounded-3xl border-2 border-[#3A2D6B] shadow-2xl p-6 animate-modal-slide-up">
+      <div className="w-full max-w-[400px] bg-white rounded-3xl border-2 border-[#2E2E5C] shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="inapp-modal-title"
-          className="text-[#3A2D6B] font-black text-lg leading-snug mb-3"
+          className="text-[#2E2E5C] font-black text-lg leading-snug mb-3"
         >
           SafariやChromeでの利用を推奨しています
         </h2>
-        <p className="text-[#3A2D6B]/80 text-sm leading-relaxed mb-5">
+        <p className="text-[#2E2E5C]/80 text-sm leading-relaxed mb-5">
           LINEやInstagramなどのSNSアプリ内で診断すると、結果が保存されなかったり、エラーが発生する場合があります。
         </p>
 
@@ -63,7 +63,7 @@ export function InAppBrowserModal() {
         <button
           type="button"
           onClick={handleCopy}
-          className="block w-full bg-[#FFE993] text-[#3A2D6B] font-black text-base px-6 py-4 rounded-full border-2 border-[#3A2D6B] shadow-[0_4px_0_#3A2D6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A2D6B] active:translate-y-1 active:shadow-[0_0_0_#3A2D6B] transition-all text-center"
+          className="block w-full bg-[#5B5BEF] text-white font-black text-base px-6 py-4 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all text-center"
         >
           {copied ? "コピーしました ✓" : "リンクをコピー"}
         </button>
@@ -71,10 +71,10 @@ export function InAppBrowserModal() {
         {/* clipboard 不可時のフォールバック: URL を直接表示して長押しコピー */}
         {copyFailed && currentUrl && (
           <div className="mt-3 rounded-xl border-2 border-[#0094D8]/30 bg-[#E4E0F5]/40 px-3 py-2">
-            <p className="text-[10px] text-[#3A2D6B]/60 font-bold mb-1">
+            <p className="text-[10px] text-[#2E2E5C]/60 font-bold mb-1">
               うまくコピーできない場合は、下のURLを長押しでコピー：
             </p>
-            <p className="text-[11px] text-[#3A2D6B] font-bold break-all select-all">
+            <p className="text-[11px] text-[#2E2E5C] font-bold break-all select-all">
               {currentUrl}
             </p>
           </div>
@@ -85,7 +85,7 @@ export function InAppBrowserModal() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
             このまま続ける
           </button>

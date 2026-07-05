@@ -117,10 +117,10 @@ function mutualLabel(pct: number): string {
 function SectionHead({ num, title }: { num: number; title: string }) {
   return (
     <div className="flex items-center gap-3 mb-4">
-      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#3A2D6B] text-white font-black text-lg flex items-center justify-center">
+      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white font-black text-lg flex items-center justify-center">
         {num}
       </span>
-      <h2 className="text-[#3A2D6B] font-black text-xl leading-tight">
+      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
         {title}
       </h2>
     </div>
@@ -136,7 +136,7 @@ function pinkify(text: string, key?: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <strong className="text-[#FE3C72] font-black">{key}</strong>
+      <strong className="text-[#5B5BEF] font-black">{key}</strong>
       {text.slice(idx + key.length)}
     </>
   );
@@ -154,7 +154,7 @@ function TraitBar({
 }) {
   return (
     <div>
-      <div className="flex justify-between text-xs font-bold text-[#3A2D6B] mb-1">
+      <div className="flex justify-between text-xs font-bold text-[#2E2E5C] mb-1">
         <span>{label}</span>
         <span>{percent}%</span>
       </div>
@@ -365,8 +365,8 @@ export default async function EvaluationResultPage({ params }: PageProps) {
           <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
             {/* 相互理解度パート */}
             <div className="text-center">
-              <p className="text-[#FE3C72] font-bold text-sm mb-1">相互理解度</p>
-              <p className="text-[#3A2D6B] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
+              <p className="text-[#5B5BEF] font-bold text-sm mb-1">相互理解度</p>
+              <p className="text-[#2E2E5C] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
                 {mutual}
                 <span className="text-3xl">%</span>
               </p>
@@ -380,18 +380,18 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                 aria-valuenow={mutual}
               >
                 <div
-                  className="h-full rounded-full bg-[#FE3C72]"
+                  className="h-full rounded-full bg-[#5B5BEF]"
                   style={{ width: `${mutual}%` }}
                 />
               </div>
               {/* 一言ラベル (スコア出し分け) */}
-              <p className="text-[#3A2D6B]/75 text-xs font-bold mt-2 leading-relaxed">
+              <p className="text-[#2E2E5C]/75 text-xs font-bold mt-2 leading-relaxed">
                 {mutualLabel(mutual)}
               </p>
             </div>
 
             {/* 軽い区切り (別カードに見せない) */}
-            <div className="border-t border-dashed border-[#3A2D6B]/15 my-5" />
+            <div className="border-t border-dashed border-[#2E2E5C]/15 my-5" />
 
             {/* 本文パート (◯◯さんから見たアナタは…)。描写の 1 段落のみ。
                 「うまく付き合うコツ」段落は ④ ふたりの関係 に移設 (Day 12 再設計) */}
@@ -425,22 +425,22 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                 <div key={g.key}>
                   {/* TOP2 と圧縮組の間に小見出しで段差を作る (圧縮組の先頭=idx 2 の前) */}
                   {idx === 2 && (
-                    <div className="border-t border-dashed border-[#3A2D6B]/25 mt-6 pt-5">
-                      <p className="text-[#3A2D6B]/55 font-bold text-xs mb-1">
+                    <div className="border-t border-dashed border-[#2E2E5C]/25 mt-6 pt-5">
+                      <p className="text-[#2E2E5C]/55 font-bold text-xs mb-1">
                         そのほかの3つ
                       </p>
                     </div>
                   )}
                   {/* 薄線で区切り (レーダーと各特性の間)。圧縮組の先頭だけは小見出しが区切るので省く */}
                   {idx !== 2 && (
-                    <div className="border-t border-[#3A2D6B]/10 my-5" />
+                    <div className="border-t border-[#2E2E5C]/10 my-5" />
                   )}
                   {/* 特性名 + 差pt */}
                   <div className="flex items-baseline justify-between mb-3">
-                    <h3 className="text-[#3A2D6B] font-black text-base">
+                    <h3 className="text-[#2E2E5C] font-black text-base">
                       {g.label}
                     </h3>
-                    <span className="text-[#FE3C72] font-black text-xs">
+                    <span className="text-[#5B5BEF] font-black text-xs">
                       差 {g.diffPoints}pt
                     </span>
                   </div>
@@ -449,7 +449,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                     <TraitBar
                       label={`${displayName}自身`}
                       percent={g.selfPercent}
-                      color="#FE3C72"
+                      color="#5B5BEF"
                     />
                     <TraitBar
                       label="友達から"
@@ -528,7 +528,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
         <div className="text-center pt-2 pb-2">
           <Link
             href={myTrisetsuUrl}
-            className="text-[#3A2D6B]/60 font-bold text-sm underline hover:text-[#FE3C72] transition-colors"
+            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
             {displayName}のトリセツに戻る
           </Link>
