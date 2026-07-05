@@ -16,11 +16,10 @@ const NAVY = "#2E2E5C";
 // (旧表記: 相互理解度 → 他己診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
 // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
-//   - 性格タイプ: /types を 16Personalities 風に作成中 (公開時に href: "/types")
 const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "性格診断テスト", href: "/diagnosis" },
   { label: "他己診断テスト", href: "/friend-evaluation" },
-  { label: "性格タイプ", href: "/types", disabled: true },
+  { label: "性格タイプ", href: "/types" },
   { label: "サービスについて", href: "/about", disabled: true },
   { label: "ログイン", href: "/login", disabled: true },
 ];

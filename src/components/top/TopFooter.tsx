@@ -25,8 +25,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "性格診断テスト", href: "/diagnosis" },
       { label: "他己診断テスト", href: "/friend-evaluation" },
-      // 性格タイプ: /types を作成中 (公開時に disabled を外す)
-      { label: "性格タイプ", href: "/types", disabled: true },
+      { label: "性格タイプ", href: "/types" },
     ],
   },
   {
