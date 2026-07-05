@@ -31,7 +31,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "サービス",
     links: [
-      { label: "サービスについて", href: "/about", disabled: true },
+      { label: "サービスについて", href: "/about" },
       {
         label: "運営会社",
         href: "https://sora-team.com",

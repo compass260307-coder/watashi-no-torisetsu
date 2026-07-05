@@ -13,21 +13,21 @@ export default function FAQAccordion() {
         return (
           <div
             key={i}
-            className="border border-pink-100 rounded-xl overflow-hidden bg-white"
+            className="border border-[#D9DCF5] rounded-xl overflow-hidden bg-white"
           >
             <button
               type="button"
               onClick={() => setOpenIndex(isOpen ? null : i)}
               aria-expanded={isOpen}
-              className="w-full px-5 py-4 flex items-start justify-between gap-3 text-left hover:bg-pink-50 transition-colors"
+              className="w-full px-5 py-4 flex items-start justify-between gap-3 text-left hover:bg-[#F4F4FE] transition-colors"
             >
               <span className="text-sm font-bold text-foreground leading-snug">
-                <span className="text-pink-500 mr-1">Q.</span>
+                <span className="text-[#5B5BEF] mr-1">Q.</span>
                 {item.question}
               </span>
               <span
                 aria-hidden
-                className={`text-pink-400 text-xl leading-none transition-transform shrink-0 ${
+                className={`text-[#5B5BEF] text-xl leading-none transition-transform shrink-0 ${
                   isOpen ? "rotate-180" : ""
                 }`}
               >
@@ -35,8 +35,8 @@ export default function FAQAccordion() {
               </span>
             </button>
             {isOpen && (
-              <div className="px-5 pb-4 pt-0 text-sm text-muted leading-relaxed bg-pink-50/30">
-                <span className="text-pink-500 font-bold mr-1">A.</span>
+              <div className="px-5 pb-4 pt-0 text-sm text-muted leading-relaxed bg-[#F4F4FE]">
+                <span className="text-[#5B5BEF] font-bold mr-1">A.</span>
                 {item.answer}
               </div>
             )}

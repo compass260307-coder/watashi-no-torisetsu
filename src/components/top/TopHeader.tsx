@@ -20,7 +20,7 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "性格診断テスト", href: "/diagnosis" },
   { label: "他己診断テスト", href: "/friend-evaluation" },
   { label: "性格タイプ", href: "/types" },
-  { label: "サービスについて", href: "/about", disabled: true },
+  { label: "サービスについて", href: "/about" },
   { label: "ログイン", href: "/login", disabled: true },
 ];
 
