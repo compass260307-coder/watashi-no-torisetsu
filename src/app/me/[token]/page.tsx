@@ -501,7 +501,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 絶対配置をやめ in-flow にすることで、スマホで称号にモロ被りする問題を解消。
                 owner 限定。 */}
             {isOwner && (
-              <div className="mt-1 flex justify-end">
+              // 右端に明確な余白 (pr-3)。親の px-4 と合わせ画面端からしっかり離し「切れかけ」を解消。
+              // 横並びが画面幅を超えないよう、ボタン側で shrink/縮小も担保 (CharacterShareButton)。
+              <div className="mt-1 flex justify-end pr-3">
                 <CharacterShareButton
                   shareUrl={characterShareUrl}
                   essence={dispEssence}

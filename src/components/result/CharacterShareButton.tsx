@@ -47,12 +47,13 @@ export function CharacterShareButton({
     }
   };
 
+  // アイコンは縮まない (shrink-0)。行全体は親幅を超えない (max-w-full)。
   const btn =
-    "w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-transform";
+    "w-8 h-8 shrink-0 rounded-full flex items-center justify-center active:scale-90 transition-transform";
 
   return (
-    <div className="flex items-center gap-1.5 rounded-full bg-white/85 backdrop-blur px-2.5 py-1.5 shadow-sm">
-      <span className="text-[10px] font-black leading-none" style={{ color: NAVY }}>
+    <div className="flex items-center gap-1.5 max-w-full rounded-full bg-white/85 backdrop-blur px-2.5 py-1.5 shadow-sm">
+      <span className="text-[10px] font-black leading-none shrink" style={{ color: NAVY }}>
         キャラを
         <br />
         シェア
