@@ -554,10 +554,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   </div>
                 )}
                 <section className="mb-10">
+                  {/* パート2 見出し: タイプ別文言 (mainHeading) は使わず、章として固定の
+                      「② 気をつけるべきこと」(① 五つの性格傾向 と同じ 16P 風スタイル) */}
                   {idx > 0 && (
-                    <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-3">
-                      {mainHeading}
-                    </h2>
+                    <div className="mb-4 flex items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                      >
+                        2
+                      </span>
+                      <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                        気をつけるべきこと
+                      </h2>
+                    </div>
                   )}
                   {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
                   <div className="px-1 pb-1">
