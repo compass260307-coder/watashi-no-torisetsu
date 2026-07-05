@@ -548,7 +548,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   <div className="mb-10">
                     <BigFiveDivergingBars
                       scores={stored}
-                      title="5つの軸で見るアナタ"
+                      title="五つの性格傾向"
+                      number="1"
                     />
                   </div>
                 )}

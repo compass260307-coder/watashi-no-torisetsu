@@ -70,8 +70,10 @@ interface BigFiveDivergingBarsProps {
   friendScores?: Partial<Record<BigFiveDimension, number>>;
   /** 見出し (既定: 自己単体表示。友達重ね時は別タイトルにして重複見出しを避ける)。 */
   title?: string;
-  /** 見出しバッジの絵文字。 */
+  /** 見出しバッジの絵文字。number 指定時は使われない。 */
   emoji?: string;
+  /** 章番号 (16P 風の丸囲み数字バッジ)。指定時は絵文字バッジの代わりに表示。 */
+  number?: string;
   className?: string;
 }
 
@@ -80,28 +82,36 @@ export function BigFiveDivergingBars({
   friendScores,
   title = "5つの軸で見るアナタ",
   emoji = "✨",
+  number,
   className = "",
 }: BigFiveDivergingBarsProps) {
   const hasFriend = !!friendScores;
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* セクション見出し (他セクションと同じ deepPurple トーン) */}
+      {/* セクション見出し (16P 風: 丸囲み数字 + 大きめタイトル。number 未指定は絵文字バッジ) */}
       <div className="flex items-center gap-3 mb-4">
-        <span
-          aria-hidden="true"
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white text-lg flex items-center justify-center"
-        >
-          {emoji}
-        </span>
-        <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
+        {number ? (
+          <span
+            aria-hidden="true"
+            className="flex-shrink-0 w-10 h-10 rounded-full border-[3px] border-[#2E2E5C] text-[#2E2E5C] font-black text-lg flex items-center justify-center"
+          >
+            {number}
+          </span>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white text-lg flex items-center justify-center"
+          >
+            {emoji}
+          </span>
+        )}
+        <h2 className="text-[#2E2E5C] font-black text-[24px] md:text-[28px] leading-tight">
           {title}
         </h2>
       </div>
 
-      {/* 枠 (白背景/ボーダー/角丸/内側 padding) を撤去し、他の本文ブロックと同様に
-          背景へ直接置く。左右余白は親 (main の px-4 / md:px-8) が確保するので、バーは
-          本文と同じ全幅まで伸びて横長になる。縦の間隔のみ space-y で維持。 */}
-      <div className="space-y-6">
+      {/* バー本体は 16P 同様に白カード (角丸 + 薄ボーダー) で囲む */}
+      <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
         {/* 凡例 (友達スコア重ね表示時のみ): 自分 ● / 友達 ◆ */}
         {hasFriend && (
           <div
