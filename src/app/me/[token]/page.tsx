@@ -21,6 +21,8 @@
 //   - そのためこのページから ¥500 訴求カードは削除 (課金処理本体は触らない)
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
+import fs from "node:fs";
+import path from "node:path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -336,9 +338,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
-  const dispImage = flag32
+  // キャラ画像: /types と同じく背景除去済みの透過版 (characters/cut) を優先。
+  //   v3 原画の地色は帯色と微妙にズレて四角い縁が見えるため、透過版なら帯に完全に馴染む。
+  //   透過版が無いタイプのみ v3 にフォールバック。
+  const v3Image = flag32
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
+  const cutImage = `/characters/cut/${path.basename(v3Image)}`;
+  const dispImage = fs.existsSync(path.join(process.cwd(), "public", cutImage))
+    ? cutImage
+    : v3Image;
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
   // ヒーローのキャラ名言 (コード直下・セリフ体)。16タイプ時は oneLiner で代替。
