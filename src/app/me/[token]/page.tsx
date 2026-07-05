@@ -577,7 +577,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       alt=""
                       width={960}
                       height={640}
-                      className="mx-auto mb-6 h-auto w-full max-w-[560px]"
+                      className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                     />
                   )}
                   {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
@@ -598,7 +598,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       alt=""
                       width={960}
                       height={640}
-                      className="mx-auto mb-4 mt-12 h-auto w-full max-w-[560px]"
+                      className="mx-auto mb-4 mt-12 h-auto w-full max-w-[560px] md:max-w-[760px]"
                     />
                   )}
                 </section>

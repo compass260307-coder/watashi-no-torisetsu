@@ -165,7 +165,7 @@ export function DeepDiveSections({
               alt=""
               width={960}
               height={640}
-              className="mx-auto mb-6 h-auto w-full max-w-[560px]"
+              className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
             />
           )}
         {/* カード大見出し(section.title)は非表示 (タブにラベルが出るため冗長)。
