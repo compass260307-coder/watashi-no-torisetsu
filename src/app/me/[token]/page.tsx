@@ -740,8 +740,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           )}
         </section>
 
-        {/* Visitor: 自分の診断を始める CTA */}
-        {!isOwner && <VisitorCtaSection />}
 
         {/* ===== 拡散シェア (拡散=新規診断を呼ぶ)。主従フラット化: 主(評価依頼)は結果直後、
             従(拡散)は他己診断カードを挟んだこの位置で対等に目立たせる (混同回避のため場所を離す)。
@@ -795,16 +793,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </section>
         )}
 
-        {/* ===== ページ末尾リンク (サイト共通フッターが下に続くため控えめに) ===== */}
-        <div className="pb-4 pt-2 text-center">
-          {/* ?stay=1: 自動リダイレクト回避 (上のロゴリンクと同趣旨)。 */}
-          <Link
-            href="/?stay=1"
-            className="text-[13px] font-bold text-[#2E2E5C]/60 underline underline-offset-4 transition-colors hover:text-[#5B5BEF]"
-          >
-            トップに戻る
-          </Link>
-        </div>
+        {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
+            ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
@@ -814,34 +804,5 @@ export default async function MePage({ params, searchParams }: PageProps) {
   );
 }
 
-// =========================================================================
-// Visitor 経路: 自分の診断を始める CTA + 購入済みログイン (Day 10 から維持)
-// =========================================================================
-function VisitorCtaSection() {
-  return (
-    <>
-      <div className="mb-3 rounded-2xl border border-[#E3E6F5] bg-white px-6 py-8 text-center">
-        <h2 className="mb-2 text-[20px] font-black text-[#2E2E5C] md:text-[22px]">
-          アナタのトリセツも作れます
-        </h2>
-        <p className="mb-5 text-[14px] leading-relaxed text-[#2E2E5C]/70">
-          50 問・約 3 分の自己診断から始まります。登録不要、無料です。
-        </p>
-        <Link
-          href="/diagnosis"
-          className="sora-cta inline-block rounded-full px-12 py-4 text-center text-[17px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
-        >
-          テストを受ける →
-        </Link>
-      </div>
-      <div className="mb-8 text-center">
-        <Link
-          href="/login"
-          className="text-[13px] font-bold text-[#2E2E5C]/60 underline underline-offset-4 transition-colors hover:text-[#5B5BEF]"
-        >
-          購入済みの方はログイン
-        </Link>
-      </div>
-    </>
-  );
-}
+// Visitor 向け CTA (アナタのトリセツも作れます / 購入済みログイン) と「トップに戻る」は
+// 2026-07-06 に撤去 (ナビはサイト共通フッター + ボトムナビに集約)。

@@ -16,6 +16,7 @@
 // 画像保存ロジックも未実装 (html2canvas 等を将来導入)。
 
 import { useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { ShareCard } from "./ShareCard";
 
 interface ResultActionsProps {
@@ -45,6 +46,7 @@ export function ResultActions({
   const [linkCopied, setLinkCopied] = useState(false);
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleCopyLink = async () => {
@@ -190,16 +192,16 @@ export function ResultActions({
           <LineIcon className="w-4 h-4" />
           LINE
         </a>
-        {/* 画像を保存 (確定カードを PNG 書き出し / Instagram ストーリー等へ) */}
+        {/* QR コード表示 (その場で友達に読み取ってもらう。旧「保存」を置き換え) */}
         <button
           type="button"
-          onClick={handleSaveImage}
-          disabled={saving}
-          aria-label="結果画像を保存"
-          className="flex items-center gap-1.5 rounded-full bg-white text-[#2E2E5C] border-2 border-[#2E2E5C] px-3 py-2 text-xs font-black hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-wait"
+          onClick={() => setShowQr((v) => !v)}
+          aria-expanded={showQr}
+          aria-label="QR コードを表示"
+          className="flex items-center gap-1.5 rounded-full bg-white text-[#2E2E5C] border-2 border-[#2E2E5C] px-3 py-2 text-xs font-black hover:scale-105 transition-transform"
         >
-          <ImageIcon className="w-4 h-4" />
-          {saving ? "作成中…" : "保存"}
+          <QrIcon className="w-4 h-4" />
+          QR
         </button>
         {/* リンクをコピー */}
         <div className="relative">
@@ -222,6 +224,18 @@ export function ResultActions({
           )}
         </div>
       </div>
+
+      {/* QR パネル (トグル表示): 招待 URL をその場で読み取ってもらう */}
+      {showQr && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <div className="rounded-2xl border border-[#E3E6F5] bg-white p-3">
+            <QRCodeSVG value={shareUrl} size={140} fgColor="#2E2E5C" />
+          </div>
+          <p className="text-[11px] font-bold text-[#2E2E5C]/60">
+            友達のスマホで読み取ってもらおう
+          </p>
+        </div>
+      )}
 
       {imageNotice && (
         <p
@@ -273,6 +287,27 @@ function XIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
+    </svg>
+  );
+}
+
+function QrIcon({ className }: { className?: string }) {
+  // QR コード: 四隅のファインダー風パターン
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <path d="M14 14h3v3h-3zM21 14v.01M14 21v.01M21 21v.01M17.5 17.5H21v3.5" />
     </svg>
   );
 }
