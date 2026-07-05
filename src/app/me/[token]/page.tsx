@@ -418,7 +418,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // /types の帯繋ぎ目と同じ斜めカット (左高・右低) で下の白へ繋ぐ (16P 参考)
             clipPath:
               "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
-            paddingBottom: "clamp(24px, 3.2vw, 64px)",
           }}
         >
           {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
