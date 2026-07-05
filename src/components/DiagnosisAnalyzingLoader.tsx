@@ -77,7 +77,8 @@ export function DiagnosisAnalyzingLoader() {
       {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。
           poster は置かない (動画開始時に別画像が一瞬見えるチラつきの原因になるため。
           reduced-motion 時は動画の先頭フレームが静止表示される)。 */}
-      <div className="mb-6 h-72 overflow-hidden md:h-80" aria-hidden="true">
+      {/* -mb: 動画フレーム下側の余白 (絵柄の外側) を詰めてメッセージに近づける */}
+      <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
         <video
           ref={videoRef}
           src="/mascot/analyzing-loop.mp4"
