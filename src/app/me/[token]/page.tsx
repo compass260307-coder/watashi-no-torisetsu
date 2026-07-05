@@ -270,46 +270,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const t32 = classifyThirtyTwoType(stored);
 
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
-  // /me ヒーローのバンド背景色: キャラ画像の無地背景 (四隅実測) に一致させ、画像の四角い縁を
-  // 不可視化する。未登録キャラは #E7DCFB にフォールバック。画像差し替え時はここに実測色を追記。
-  const HERO_BG_BY_TYPE: Record<string, string> = {
-    "earnest-elephant__N": "#E7DCFB", // ユニコーン (unicorn_N・無地版)
-    "earnest-elephant__R": "#E7DCFB", // ドラゴン (dragon_R・無地正規化版)
-    "steady-turtle__R": "#E7DCFB", // フェニックス (phoenix_R・無地正規化版)
-    "steady-turtle__N": "#E7DCFB", // ペガサス (pegasus_N・背景実測 #E7DCFB)
-    "gentle-koala__N": "#E7DCFB", // エンジェル (angel_N・背景実測 #E7DCFB)
-    "gentle-koala__R": "#E7DCFB", // ゴーレム (golem_R・背景実測 #E7DCFB)
-    "solo-hedgehog__N": "#E7DCFB", // オバケ (ghost_N・無地版・背景実測 #E7DCFB)
-    "solo-hedgehog__R": "#E7DCFB", // ガイコツ (skeleton_R・無地版・背景実測 #E7DCFB)
-    // 空グループ (クリームイエロー無地 #FDEFB4・ばらつき0 で確認済み)
-    "quiet-owl__N": "#FDEFB4", // インコ (parakeet_N)
-    "quiet-owl__R": "#FDEFB4", // ワシ (eagle_R)
-    "seeker-wolf__N": "#FDEFB4", // ツバメ (swallow_N)
-    "seeker-wolf__R": "#FDEFB4", // タカ (hawk_R)
-    "dreamer-rabbit__N": "#FDEFB4", // ペンギン (penguin_N)
-    "dreamer-rabbit__R": "#FDEFB4", // ハクチョウ (swan_R)
-    "fantasy-cat__N": "#FDEFB4", // カラス (crow_N)
-    "fantasy-cat__R": "#FDEFB4", // ペリカン (pelican_R)
-    // 海グループ (EN系・新マスコット・背景 #BEF2F9 無地・ばらつき0 で確認済み)
-    "sparkle-dolphin__N": "#BEF2F9", // 画像 jellyfish_N
-    "sparkle-dolphin__R": "#BEF2F9", // 画像 dolphin_R
-    "ambition-lion__N": "#BEF2F9", // 画像 swordfish_N
-    "ambition-lion__R": "#BEF2F9", // 画像 orca_R
-    "whim-fox__N": "#BEF2F9", // 画像 octopus_N
-    "whim-fox__R": "#BEF2F9", // 画像 shark_R
-    "idea-monkey__N": "#BEF2F9", // 画像 clownfish_N
-    "idea-monkey__R": "#BEF2F9", // 画像 seal_R
-    // 陸グループ (ES系・新マスコット・背景 #D8F2C0 無地・ばらつき0 で確認済み)
-    "caretaker-dog__N": "#D8F2C0", // 画像 rabbit_N
-    "caretaker-dog__R": "#D8F2C0", // 画像 dog_R
-    "brisk-tiger__N": "#D8F2C0", // 画像 elephant_N
-    "brisk-tiger__R": "#D8F2C0", // 画像 bear_R
-    "smiley-panda__N": "#D8F2C0", // 画像 fox_N
-    "smiley-panda__R": "#D8F2C0", // 画像 squirrel_R
-    "playful-raccoon__N": "#D8F2C0", // 画像 cheetah_N
-    "playful-raccoon__R": "#D8F2C0", // 画像 tiger_R
+  // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
+  //   キャラ画像は透過版 (characters/cut) を使うため、旧「画像の地色に一致させる」制約は撤廃。
+  //   白文字の称号・ラベルが立つ濃さにする。
+  const HERO_BAND_BY_GROUP: Record<ThirtyTwoGroup, string> = {
+    sea: "#5BC6DB", // 海: ミディアムシアン
+    sky: "#EDCF62", // 空: ミディアムイエロー
+    land: "#8FCE70", // 陸: ミディアムグリーン
+    unknown: "#B49BE8", // 未知: ミディアムラベンダー
   };
-  const heroBg = HERO_BG_BY_TYPE[t32] ?? "#E7DCFB";
+  const heroBg = flag32
+    ? HERO_BAND_BY_GROUP[thirtyTwoGroup(t32)]
+    : "#B49BE8";
   // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
   const dotColor = flag32 ? thirtyTwoColor(t32) : "#C3A0E0";
   // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
@@ -327,14 +299,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // ヒーローの OCEAN コード用: 帯背景より一段暗いだけの控えめトーン (16P 参考。
   //   称号=白の主役に対し、コードは背景に馴染む脇役にする)。
   const CODE_TINT_BY_GROUP: Record<ThirtyTwoGroup, string> = {
-    sea: "#8FC9D6", // 帯 #BEF2F9 の少し暗い版
-    sky: "#DECC85", // 帯 #FDEFB4 の少し暗い版
-    land: "#AFD292", // 帯 #D8F2C0 の少し暗い版
-    unknown: "#C3B2E5", // 帯 #E7DCFB の少し暗い版
+    sea: "#3D9DB1", // 帯 #5BC6DB の少し暗い版
+    sky: "#C4A83F", // 帯 #EDCF62 の少し暗い版
+    land: "#6DAA50", // 帯 #8FCE70 の少し暗い版
+    unknown: "#9377CC", // 帯 #B49BE8 の少し暗い版
   };
   const codeTint = flag32
     ? CODE_TINT_BY_GROUP[thirtyTwoGroup(t32)]
-    : "#C3B2E5";
+    : "#9377CC";
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
@@ -458,15 +430,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               />
             </div>
           )}
-          {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
-            style={{
-              background:
-                "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
-            }}
-          />
+          {/* 上部の白グローは撤去 (濃トーンの帯ではグラデのムラに見えるため。16P 同様ソリッド) */}
           {/* フェルトドット (中間ティント・上半分/主に PC 側余白。中央の画像には重ねない) */}
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 11, height: 11, top: "15%", left: "6%" }} />
           <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
@@ -481,14 +445,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
               {heroTitle}
               {oceanRow}
             </div>
-            <div className="max-w-[600px] mx-auto mt-2 md:mt-0 md:max-w-[480px] md:flex-1">
+            <div className="max-w-[640px] mx-auto mt-2 md:mt-0 md:max-w-[560px] md:flex-1">
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
                 essence={dispEssence}
                 name={dispName}
                 description={dispDesc}
-                imageAspectClassName="aspect-square max-h-[46vh] md:max-h-[400px]"
+                imageAspectClassName="aspect-square max-h-[54vh] md:max-h-[500px]"
                 imageFitClassName="object-contain"
                 imageCardClassName=""
                 imageSizes="(min-width: 768px) 600px, 100vw"
