@@ -359,8 +359,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
         あなたの性格タイプ:
       </p>
       <div
-        className="font-extrabold leading-[1.04] text-white"
-        style={{ fontSize: "clamp(44px, 14vw, 72px)" }}
+        className="whitespace-nowrap font-extrabold leading-[1.04] text-white"
+        style={{
+          // SP でも必ず 1 行に収める: 文字数が多い称号 (例 ジャーナリスト) は
+          // 1 文字あたりの上限 (88vw / 文字数) が 14vw より小さくなり自動縮小される
+          fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(dispEssence.length, 1)).toFixed(2)}vw), 72px)`,
+        }}
       >
         {dispEssence}
       </div>
@@ -456,7 +460,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
               ☰ はボトムナビ導入で撤去。 */}
           {/* SP=縦積み(中央) / PC=16P 風 2 カラム (左: ラベル+称号+OCEAN、右: キャラ) */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-3 md:pt-10 pb-2 md:flex md:items-center md:gap-8">
+          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-9 md:pt-14 pb-2 md:flex md:items-center md:gap-8">
             <div className="md:flex-1">
               {heroTitle}
               {oceanRow}
