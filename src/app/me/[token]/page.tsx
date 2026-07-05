@@ -65,6 +65,7 @@ import { ResultActions } from "@/components/result/ResultActions";
 import { BragShare } from "@/components/result/BragShare";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import type {
   BigFiveDimension,
@@ -717,6 +718,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
         </div>
       </div>
     </main>
+    {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
+        TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
+    <TopFooter />
     </>
   );
 }
