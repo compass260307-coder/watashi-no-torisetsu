@@ -450,15 +450,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
           }}
         >
-          {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
-          {isOwner && (
-            <div className="absolute top-3 right-3 z-20">
-              <CharacterShareButton
-                shareUrl={characterShareUrl}
-                essence={dispEssence}
-              />
-            </div>
-          )}
+          {/* キャラシェアボタンは PR#47 で右上絶対配置 → 画像直下の in-flow に移動 */}
           {/* 上部中央の放射状グロー (濃トーンの帯に上品な明るみを足す) */}
           <div
             aria-hidden="true"
@@ -506,6 +498,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 }}
               />
             </div>
+            {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
+                称号(上部)にも画像(中央)にも被らないよう、キャラ画像コンテナの直下・右寄せに配置。
+                絶対配置をやめ in-flow にすることで、スマホで称号にモロ被りする問題を解消。
+                owner 限定。 */}
+            {isOwner && (
+              <div className="mt-1 flex justify-end">
+                <CharacterShareButton
+                  shareUrl={characterShareUrl}
+                  essence={dispEssence}
+                />
+              </div>
+            )}
           </div>
         </div>
         {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
