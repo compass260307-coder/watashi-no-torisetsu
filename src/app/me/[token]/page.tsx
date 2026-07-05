@@ -454,15 +454,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
           style={{ background: heroBg }}
         >
-          {/* 右上: 自分のキャラをシェア (拡散→/share/{invite_code})。owner 限定。 */}
-          {isOwner && (
-            <div className="absolute top-3 right-3 z-20">
-              <CharacterShareButton
-                shareUrl={characterShareUrl}
-                essence={dispEssence}
-              />
-            </div>
-          )}
           {/* 上部中央の放射状グロー (heroBg の明るいティント) */}
           <div
             aria-hidden="true"
@@ -505,6 +496,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 }}
               />
             </div>
+            {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
+                称号(上部)にも画像(中央)にも被らないよう、キャラ画像コンテナの直下・右寄せに配置。
+                絶対配置をやめ in-flow にすることで、スマホで称号にモロ被りする問題を解消。
+                owner 限定。 */}
+            {isOwner && (
+              <div className="mt-1 flex justify-end">
+                <CharacterShareButton
+                  shareUrl={characterShareUrl}
+                  essence={dispEssence}
+                />
+              </div>
+            )}
           </div>
         </div>
         {/* ===== 本文の肩: クリームの角丸が色面の上にふわっと乗る (色→クリームのベタ切り解消)。
