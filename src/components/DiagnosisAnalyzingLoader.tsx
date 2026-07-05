@@ -74,12 +74,13 @@ export function DiagnosisAnalyzingLoader() {
       className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#FCFCFC] px-5 py-10"
       style={{ fontFamily: FONT_STACK }}
     >
-      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し) */}
-      <div className="mb-6 h-52 overflow-hidden" aria-hidden="true">
+      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。
+          poster は置かない (動画開始時に別画像が一瞬見えるチラつきの原因になるため。
+          reduced-motion 時は動画の先頭フレームが静止表示される)。 */}
+      <div className="mb-6 h-72 overflow-hidden md:h-80" aria-hidden="true">
         <video
           ref={videoRef}
           src="/mascot/analyzing-loop.mp4"
-          poster="/characters/cut/penguin_N.png"
           autoPlay
           muted
           loop
