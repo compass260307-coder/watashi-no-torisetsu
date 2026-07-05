@@ -114,10 +114,18 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* 見出し (絵文字バッジは撤去し、テキストのみ) */}
-      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight mb-4">
-        アナタの深掘り
-      </h2>
+      {/* 見出し: ①②と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+        >
+          3
+        </span>
+        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+          アナタの深掘り
+        </h2>
+      </div>
 
       {/* タブ (横並びボタン。モバイルは横スクロール) */}
       <div
