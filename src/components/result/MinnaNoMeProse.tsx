@@ -59,9 +59,6 @@ export function MinnaNoMeProse({ ownerToken }: { ownerToken: string }) {
 
   return (
     <section>
-      <h3 className="text-[#2E2E5C] font-black text-base mb-2">
-        みんなの目に映る、あなた
-      </h3>
       {state.kind === "loading" && (
         <div
           className="flex items-center gap-3 text-[#2E2E5C]/60 py-6"
