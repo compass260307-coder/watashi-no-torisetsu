@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { TakoLockPopover } from "@/components/TakoLockPopover";
 
 // アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
 const ACTIVE = "#2A3A5C";
@@ -72,6 +73,23 @@ function UsersIcon() {
   );
 }
 
+// 未診断時に「他己診断」アイコンの右上へ重ねるミニ南京錠バッジ。
+//   白フチ付きで下のアイコンと視覚的に分離する。
+function LockBadge() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -top-1.5 -right-2 flex h-[15px] w-[15px] items-center justify-center rounded-full"
+      style={{ background: "#9BA3B4", boxShadow: "0 0 0 2px #fff" }}
+    >
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="#fff" />
+        <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 function GridIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -89,6 +107,11 @@ export function BottomNav() {
   // owner_token から解決。無ければトリセツ=/diagnosis、他己診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState("/diagnosis");
   const [takoUrl, setTakoUrl] = useState("/tako");
+  // 未診断 (token 無し) なら他己診断タブをロック表示にし、タップでポップアップを出す。
+  //   初期値 true (=ロックなし) にすると診断済みユーザーに一瞬ロックが見えるのを避けられる
+  //   一方、未診断ユーザーには hydration 後にバッジが現れるが、こちらの方が違和感が小さい。
+  const [hasToken, setHasToken] = useState(true);
+  const [lockOpen, setLockOpen] = useState(false);
   // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
   //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
   //   古い誘導URLに固定される。usePathname() を依存に入れ「遷移のたびに再読込」して
@@ -105,6 +128,7 @@ export function BottomNav() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTorisetsuUrl(token ? `/me/${token}` : "/diagnosis");
     setTakoUrl(token ? `/tako/${token}` : "/tako");
+    setHasToken(Boolean(token));
   }, [pathname]);
 
   // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
@@ -115,15 +139,17 @@ export function BottomNav() {
     href: string;
     active: boolean;
     Icon: () => ReactElement;
+    locked?: boolean;
   }[] = useMemo(
     () => [
       { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
       { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
-      { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon },
+      // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
+      { key: "friend", label: "他己診断", href: takoUrl, active: pathname.startsWith("/tako"), Icon: UsersIcon, locked: !hasToken },
       { key: "type", label: "タイプ", href: "/types", active: pathname.startsWith("/types"), Icon: GridIcon },
       { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
     ],
-    [pathname, torisetsuUrl, takoUrl],
+    [pathname, torisetsuUrl, takoUrl, hasToken],
   );
 
   // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
@@ -144,6 +170,25 @@ export function BottomNav() {
       <div className="mx-auto grid max-w-[480px] grid-cols-5">
         {items.map((it) => {
           const { Icon } = it;
+          if (it.locked) {
+            return (
+              <button
+                key={it.key}
+                type="button"
+                onClick={() => setLockOpen(true)}
+                className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
+                style={{ color: INACTIVE }}
+              >
+                <span className="relative">
+                  <Icon />
+                  <LockBadge />
+                </span>
+                <span className="text-[10px] font-bold leading-none">
+                  {it.label}
+                </span>
+              </button>
+            );
+          }
           return (
             <Link
               key={it.key}
@@ -169,6 +214,7 @@ export function BottomNav() {
           );
         })}
       </div>
+      <TakoLockPopover isOpen={lockOpen} onClose={() => setLockOpen(false)} />
     </nav>
   );
 }
