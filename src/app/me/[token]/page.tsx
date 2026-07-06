@@ -22,6 +22,7 @@
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
 import path from "node:path";
+import { resolveSiteUrl } from "@/lib/site-url";
 // 画像の存在チェックはビルド時生成のマニフェストで行う (scripts/generate-image-manifest.mjs)。
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
 // Vercel の 250MB 上限を超えるため、fs は使わない。
@@ -82,7 +83,7 @@ export const metadata: Metadata = {
 };
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 // シェアボタン直下の短い一言 (旧 SharePromo の長い相互理解度文を置換)。
 // ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。

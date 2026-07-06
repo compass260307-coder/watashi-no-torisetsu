@@ -8,6 +8,7 @@
 // supabaseAdmin を使うためサーバーコンポーネント/ルートからのみ import すること。
 
 import { supabaseAdmin } from "./supabase-server";
+import { resolveSiteUrl } from "./site-url";
 import {
   computeMinnaNoMeContext,
   type MinnaNoMeContext,
@@ -23,7 +24,7 @@ import {
 import type { BigFiveDimension } from "./types";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 const DIMS: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
 
