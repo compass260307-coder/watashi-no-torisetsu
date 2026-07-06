@@ -38,6 +38,7 @@ import {
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import { preferCutImage } from "@/lib/character-image";
 import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import type { BigFiveDimension } from "@/lib/types";
@@ -118,7 +119,7 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
       type32: t,
       essence: thirtyTwoEssence(t),
       name: thirtyTwoName(t),
-      imageSrc: thirtyTwoImagePath(t),
+      imageSrc: preferCutImage(thirtyTwoImagePath(t)),
       previewPath: `/preview/${t}`,
     },
   };

@@ -21,6 +21,7 @@ import {
   thirtyTwoImagePath,
   type ThirtyTwoTypeId,
 } from "./thirty-two-types";
+import { preferCutImage } from "./character-image";
 import type { BigFiveDimension } from "./types";
 
 const SITE_URL =
@@ -177,7 +178,7 @@ export async function loadOwnerReportData(
             type32: t,
             essence: thirtyTwoEssence(t),
             name: thirtyTwoName(t),
-            imageSrc: thirtyTwoImagePath(t),
+            imageSrc: preferCutImage(thirtyTwoImagePath(t)),
             previewPath: `/preview/${t}`,
           };
         })()

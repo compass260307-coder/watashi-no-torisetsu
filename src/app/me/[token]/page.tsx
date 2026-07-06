@@ -57,6 +57,7 @@ import {
 } from "@/lib/thirty-two-types";
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
+import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -293,9 +294,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const v3Image = flag32
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
-  const dispImage = characterImages.cut.includes(path.basename(v3Image))
-    ? `/characters/cut/${path.basename(v3Image)}`
-    : v3Image;
+  const dispImage = preferCutImage(v3Image);
   // SP ヒーローの画像引き上げ量 (下の -mt-*)。既定は -mt-8 (32px) で OCEAN 行と詰めるが、
   // 家など上端まで絵が詰まったキャラは称号/OCEAN に被るため、ビルド時に実測した
   // 「上端の透過余白の割合」(cutTopMargin) が小さいキャラほど引き上げを弱める。
