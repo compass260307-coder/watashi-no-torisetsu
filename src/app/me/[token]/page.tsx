@@ -22,6 +22,7 @@
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
 import path from "node:path";
+import { resolveSiteUrl } from "@/lib/site-url";
 // 画像の存在チェックはビルド時生成のマニフェストで行う (scripts/generate-image-manifest.mjs)。
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
 // Vercel の 250MB 上限を超えるため、fs は使わない。
@@ -82,7 +83,7 @@ export const metadata: Metadata = {
 };
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 // シェアボタン直下の短い一言 (旧 SharePromo の長い相互理解度文を置換)。
 // ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
@@ -514,18 +515,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 }}
               />
             </div>
-            {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
-                称号(上部)にも画像(中央)にも被らないよう、キャラ画像コンテナの直下・右寄せに配置。
-                絶対配置をやめ in-flow にすることで、スマホで称号にモロ被りする問題を解消。
-                owner 限定。 */}
-            {isOwner && (
-              <div className="mt-1 flex justify-end">
-                <CharacterShareButton
-                  shareUrl={characterShareUrl}
-                  essence={dispEssence}
-                />
-              </div>
-            )}
           </div>
         </div>
         {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
@@ -548,6 +537,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </svg>
           </div>
         </div>
+
+        {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
+            ヒーロー画像エリアの外＝本文側に配置し、キャラ画像には一切被せない(画像エリアはクリーン)。
+            横並び・右寄せ。右端に余白 (pr-3) を保ち画面端で見切れない。owner 限定。計測 kind:character。 */}
+        {isOwner && (
+          <div className="flex justify-end pr-3 mb-4">
+            <CharacterShareButton
+              shareUrl={characterShareUrl}
+              essence={dispEssence}
+            />
+          </div>
+        )}
 
         {/* ===== 章① 自分が見た自分 =====
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。

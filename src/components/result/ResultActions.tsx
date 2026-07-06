@@ -84,11 +84,13 @@ export function ResultActions({
     }
   };
 
-  const tweetText = `私のトリセツは「${typeName}」でした！`;
+  // 評価依頼シェア文言。旧・動物名 (typeName) ではなく称号 (essence) を使用し、
+  // 「あなたから見た私を教えて」という依頼だと文言だけで伝わるようにする。
+  const shareText = `私のトリセツは「${essence}」でした！\nあなたから見た私はどう見えてる？10問だけ、こっそり教えて👀`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    tweetText,
+    shareText,
   )}&url=${encodeURIComponent(shareUrl)}`;
-  const lineText = `${tweetText} ${shareUrl}`;
+  const lineText = `${shareText}\n${shareUrl}`;
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(lineText)}`;
 
   // iconbar: 上部の三本線の横に置くアイコンのみのコンパクト版 (省スペース)。

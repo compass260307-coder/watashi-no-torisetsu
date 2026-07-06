@@ -8,10 +8,11 @@
 // HTML + plain text を両方送る (受信側のクライアント・spam フィルタ対応)。
 
 import { Resend } from "resend";
+import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;

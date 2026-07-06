@@ -5,6 +5,7 @@
 //   友達の回答が 3人 (REPORT_FRIEND_THRESHOLD) 未満なら TakoLockedState (ロック空状態)。
 
 import type { Metadata } from "next";
+import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
@@ -27,7 +28,7 @@ import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import type { BigFiveDimension } from "@/lib/types";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 export const metadata: Metadata = {
   // owner_token は推測不可だが、検索エンジン除外で誤共有時の漏洩経路を絞る (/me と同方針)。
