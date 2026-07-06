@@ -12,6 +12,7 @@
 //   - 'pending' / 'generating' → 「生成中」プレースホルダ (T1-4 時点では発生しないが防御的に)
 
 import { notFound } from "next/navigation";
+import { resolveSiteUrl } from "@/lib/site-url";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -21,7 +22,7 @@ import { IntegratedDownloadButton } from "./IntegratedDownloadButton";
 
 // 空文字 "" も弾くため || を使用 (?? は "" を通してしまい相対URL化するため不可)。
 const PUBLIC_BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 type SourceSummary = {
   self: { fullCode: string; name: string } | null;

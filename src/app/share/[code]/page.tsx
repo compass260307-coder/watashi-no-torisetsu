@@ -6,6 +6,7 @@
 //     32タイプの称号・キャラ画像・OGカードに解決する。
 
 import type { Metadata } from "next";
+import { resolveSiteUrl } from "@/lib/site-url";
 import Link from "next/link";
 import Image from "next/image";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -17,7 +18,7 @@ import {
 import type { BigFiveDimension } from "@/lib/types";
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 const NAVY = "#2A3A5C";
 
 interface ShareData {

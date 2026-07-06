@@ -26,6 +26,7 @@
 //   - /friend/[inviteCode] (友達評価フロー本体、Day 12-B で扱う)
 
 import Image from "next/image";
+import { resolveSiteUrl } from "@/lib/site-url";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
 };
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.watashi-torisetsu.com";
+  resolveSiteUrl();
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
