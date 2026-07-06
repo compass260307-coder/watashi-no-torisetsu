@@ -49,7 +49,6 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
-  thirtyTwoCatchphrase,
   thirtyTwoGroup,
   baseIdOf,
   nAxisOf,
@@ -66,7 +65,6 @@ import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
-import { BragShare } from "@/components/result/BragShare";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -359,8 +357,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   };
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
-  // ヒーローのキャラ名言 (コード直下・セリフ体)。16タイプ時は oneLiner で代替。
-  const dispCatch = flag32 ? thirtyTwoCatchphrase(t32) : sixteenType.oneLiner;
   const ownerName = ((user.display_name as string | null) ?? "").trim();
   const displayName = ownerName || "アナタ";
   const inviteCode = user.invite_code as string;
@@ -435,7 +431,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
     </div>
   );
   // キャラ名言 (サブコピー) はヒーローから撤去 (16P 構成に合わせラベル+称号+OCEAN のみ)。
-  // dispCatch 自体はシェア文言 (ResultActions catchphrase) で引き続き使用。
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -645,7 +640,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
             他己パートの本体は /tako/[token]。 */}
-        <section className="mb-12 mt-16">
+        <section className="mt-16">
           <div className="mb-4 flex items-center gap-3">
             <span
               aria-hidden="true"
@@ -750,39 +745,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
           })()}
 
-          {/* Owner: 集まった友達評価の本体 (/tako) への控えめリンク */}
-          {isOwner && (
-            <div className="mt-4 text-center">
-              <Link
-                href={`/tako/${token}`}
-                className="text-[14px] font-bold text-[#5B5BEF] underline underline-offset-4 transition-colors hover:text-[#4A4AD9]"
-              >
-                友達が見た「あなた」を見る →
-              </Link>
-            </div>
-          )}
         </section>
 
 
-        {/* ===== 拡散シェア (拡散=新規診断を呼ぶ)。主従フラット化: 主(評価依頼)は結果直後、
-            従(拡散)は他己診断カードを挟んだこの位置で対等に目立たせる (混同回避のため場所を離す)。
-            owner 限定 (自分のトリセツを広める文脈)。 ===== */}
-        {isOwner && (
-          <section className="mb-8">
-            <BragShare
-              variant="prominent"
-              essence={dispEssence}
-              code={dispCode}
-              catchphrase={dispCatch}
-              topUrl={`${SITE_URL}/`}
-              source="result"
-            />
-          </section>
-        )}
-
         {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
         {integrated.length > 0 && (
-          <section className="mb-8">
+          <section className="mt-12">
             <h3 className="text-[#2E2E5C] font-black text-sm mb-3 flex items-baseline justify-between">
               <span>真のトリセツ</span>
               <span className="text-xs font-bold text-[#2E2E5C]/60">
