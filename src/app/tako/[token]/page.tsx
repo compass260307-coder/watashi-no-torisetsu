@@ -268,7 +268,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   </h2>
                 </div>
                 <TakoDeepDive
-                  friendCount={data.friendEvalCount}
                   deep={deep}
                   letters={data.friendMessages}
                   ownerToken={token}

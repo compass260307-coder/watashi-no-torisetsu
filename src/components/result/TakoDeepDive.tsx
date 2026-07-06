@@ -2,10 +2,11 @@
 //   ネイビー #2E2E5C / アクセント #5B5BEF / 淡ラベンダー #F4F4FE) にそろえた縦積み。
 //
 // "声の大きさ" で格付けし、線ではなく余白で塊を分ける:
-//   小 = 一致度 (ヘッダー直下1行) / 隠れた長所 (最下・控えめグレー)
 //   大 = ギャップ (背景色カード・最大文字・数値だけアクセント色) ← 唯一の見せ場
 //   中 = 友達からの声 (白カード・実物感・記名)
+//   小 = 隠れた長所 (最下・控えめグレー)
 // AI解説長文 (MinnaNoMeProse) は据え置きで、ギャップと友達の声のあいだに置く。
+// ※ 一致度行・ギャップ小ラベル・AI解説見出しの3文言は撤去 (中身は保持)。
 
 import { MinnaNoMeProse } from "./MinnaNoMeProse";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/lib/tako-deepdive";
 
 interface TakoDeepDiveProps {
-  friendCount: number;
   deep: DeepDiveData;
   /** 友達からのメッセージ (記名・空は除外済み)。0件ならブロック非表示。 */
   letters: { name: string; message: string }[];
@@ -23,7 +23,6 @@ interface TakoDeepDiveProps {
 }
 
 export function TakoDeepDive({
-  friendCount,
   deep,
   letters,
   ownerToken,
@@ -31,16 +30,9 @@ export function TakoDeepDive({
   const gap = deep.gap;
   return (
     <div className="flex flex-col gap-10">
-      {/* 小: 一致度 (ヘッダー直下・控えめ1行。「(相互理解度)」は付けない) */}
-      <p className="-mt-2 text-[#2E2E5C]/60 font-bold text-sm">
-        友達 {friendCount} 人 ・ 見方の一致 {deep.agreement}%
-      </p>
-
-      {/* 大: ギャップ (唯一の見せ場。背景色カード・最大文字・数値だけアクセント色) */}
+      {/* 大: ギャップ (唯一の見せ場。背景色カード・最大文字・数値だけアクセント色)。
+          小ラベルは撤去し、本文「一番のギャップは〜」だけで見せる。 */}
       <div className="rounded-3xl bg-[#F4F4FE] px-6 py-7">
-        <p className="text-[#5B5BEF] font-black text-xs mb-2 tracking-[0.08em]">
-          いちばんのギャップ
-        </p>
         <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
           一番のギャップは{gap.label}。自分では
           <span className="text-[#5B5BEF]">
