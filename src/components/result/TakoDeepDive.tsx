@@ -20,12 +20,15 @@ interface TakoDeepDiveProps {
   letters: { name: string; message: string }[];
   /** AI解説文取得用 (/api/minna-no-me/[ownerToken])。 */
   ownerToken: string;
+  /** dev/プレビュー限定: 解説長文の done 表示を確認するためのダミー本文。 */
+  previewProse?: string;
 }
 
 export function TakoDeepDive({
   deep,
   letters,
   ownerToken,
+  previewProse,
 }: TakoDeepDiveProps) {
   const gap = deep.gap;
   return (
@@ -45,7 +48,7 @@ export function TakoDeepDive({
       </div>
 
       {/* AI解説長文 (据え置き) */}
-      <MinnaNoMeProse ownerToken={ownerToken} />
+      <MinnaNoMeProse ownerToken={ownerToken} previewText={previewProse} />
 
       {/* 中: 友達からの声 (実物感の白カード・記名)。0件は非表示。 */}
       {letters.length > 0 && (
