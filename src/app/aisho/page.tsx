@@ -25,29 +25,71 @@ import {
   thirtyTwoGroup,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import {
-  THIRTY_TWO_GROUP_COLOR,
-  type ThirtyTwoGroup,
-} from "@/lib/thirty-two-content/character-32";
-import { compat } from "@/lib/aisho-compat";
+import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+import { compat, type AxisKey } from "@/lib/aisho-compat";
 import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
+import characterImages from "@/generated/character-images.json";
+import TopHeader from "@/components/top/TopHeader";
 
-const NAVY = "#2A3A5C";
+// 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
+const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
+
+// /me ヒーロー帯と同じグループ別ミディアムトーン (白文字が立つ濃さ)。
+const HERO_BAND_BY_GROUP: Record<ThirtyTwoGroup, string> = {
+  sea: "#5BC6DB",
+  sky: "#EDCF62",
+  land: "#8FCE70",
+  unknown: "#B49BE8",
+};
+
+// キャラ画像: /me と同じく背景除去済みの透過版 (characters/cut) を優先し、
+// 無いタイプのみ v3 原画へフォールバック (ヒーロー帯に自然に乗せるため)。
+function heroImagePath(id: ThirtyTwoTypeId): string {
+  const v3 = thirtyTwoImagePath(id);
+  const file = v3.split("/").pop() ?? "";
+  return characterImages.cut.includes(file) ? `/characters/cut/${file}` : v3;
+}
+
+// カードのサムネ: 顔ズーム版 (characters/face・16P の顔アバター風) があれば優先。
+// 無いタイプは v3 原画のまま。face 版は丸抜き、v3 は角丸で表示する。
+function faceImagePath(id: ThirtyTwoTypeId): { src: string; isFace: boolean } {
+  const v3 = thirtyTwoImagePath(id);
+  const file = v3.split("/").pop() ?? "";
+  // 空配列だと JSON から never[] に推論されるため string[] に明示キャスト
+  return (characterImages.face as string[]).includes(file)
+    ? { src: `/characters/face/${file}`, isFace: true }
+    : { src: v3, isFace: false };
+}
 
 // グループ = base16 の E×O (実データ確認済み)。二軸ラベルは E(外向/内向)×O(感性/現実)。
 //   空 E−O＋=内向×感性 / 陸 E＋O−=外向×現実 / 海 E＋O＋=外向×感性 / 未知 E−O−=内向×現実
+// 表示順は /types の帯と同じ 海→陸→空→未知。
 const GROUP_META: {
   key: ThirtyTwoGroup;
-  emoji: string;
   label: string;
-  axisLabel: string;
 }[] = [
-  { key: "sky", emoji: "🕊", label: "空", axisLabel: "内向×感性" },
-  { key: "land", emoji: "🌿", label: "陸", axisLabel: "外向×現実" },
-  { key: "sea", emoji: "🌊", label: "海", axisLabel: "外向×感性" },
-  { key: "unknown", emoji: "✨", label: "未知", axisLabel: "内向×現実" },
+  { key: "sea", label: "海" },
+  { key: "land", label: "陸" },
+  { key: "sky", label: "空" },
+  { key: "unknown", label: "未知" },
 ];
+
+// /types の帯と同じペール色 (v3 キャラ画像の背景色そのもの) と濃色見出し・斜めカット。
+const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#FDEFB4",
+  sea: "#BEF2F9",
+  land: "#D8F2C0",
+  unknown: "#E7DCFB",
+};
+// グループ名の文字色 = 各グループ色の濃いバージョン (/types の DARK_COLOR と同じ値。
+// 白だとペール帯とのコントラストが足りず読みにくい)。
+const DARK_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#8F6B14",
+  sea: "#1D6E86",
+  land: "#3F7A2E",
+  unknown: "#6C4EB8",
+};
 
 const ALL_IDS = allThirtyTwoTypeIds();
 const VALID = new Set<string>(ALL_IDS);
@@ -62,23 +104,6 @@ function sectionId(key: ThirtyTwoGroup): string {
 
 // ---- インラインSVG (依存ライブラリ不使用) --------------------------------
 
-function StarIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={22}
-      height={22}
-      fill={filled ? NAVY : "none"}
-      stroke={filled ? NAVY : INACTIVE}
-      strokeWidth={1.6}
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.8L12 16.9l-5.2 2.73.99-5.8-4.21-4.1 5.82-.85L12 3.5z" />
-    </svg>
-  );
-}
-
 function HeartIcon() {
   return (
     <svg
@@ -90,38 +115,6 @@ function HeartIcon() {
       strokeWidth={1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
-    </svg>
-  );
-}
-
-function ShuffleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={18}
-      height={18}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 3h5v5M4 20l17-17M21 16v5h-5M15 15l6 6M4 4l5 5" />
-    </svg>
-  );
-}
-
-function RevealHeartIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={18}
-      height={18}
-      fill="currentColor"
       aria-hidden="true"
     >
       <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
@@ -164,6 +157,34 @@ function CloseIcon() {
   );
 }
 
+// ---- ヘッダーのループ動画 (kling 生成のアイドルループ) ---------------------
+// autoplay + muted + loop。prefers-reduced-motion: reduce では再生しない。
+
+function HeroLoopVideo() {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      video.pause();
+    }
+  }, []);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+      className="w-full rounded-3xl object-cover"
+    >
+      <source src="/aisho/hero-loop.mp4" type="video/mp4" />
+    </video>
+  );
+}
+
 // ---- スロット (上部の選択枠) ---------------------------------------------
 
 function Slot({
@@ -175,21 +196,23 @@ function Slot({
   label: string;
   onClear: () => void;
 }) {
+  // 空/選択済みで高さが変わると選択のたびにレイアウトが揺れるため、両状態とも固定高。
+  const SLOT_H = "h-[136px] md:h-[180px]";
   if (!id) {
     return (
       <div
-        className="flex-1 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 py-6 px-2 text-center"
+        className={`flex-1 ${SLOT_H} rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 px-2 text-center`}
         style={{ borderColor: INACTIVE, color: INACTIVE }}
       >
-        <span className="text-3xl leading-none">＋</span>
-        <span className="text-xs font-bold">タップで選ぶ</span>
-        <span className="text-[10px]">{label}</span>
+        <span className="text-3xl md:text-4xl leading-none">＋</span>
+        <span className="text-xs md:text-sm font-bold">タップで選ぶ</span>
+        <span className="text-[10px] md:text-xs">{label}</span>
       </div>
     );
   }
   return (
     <div
-      className="flex-1 relative rounded-2xl border-2 bg-white flex flex-col items-center py-4 px-2"
+      className={`flex-1 ${SLOT_H} relative rounded-2xl border-2 bg-white flex flex-col items-center justify-center px-2`}
       style={{ borderColor: NAVY }}
     >
       <button
@@ -204,12 +227,12 @@ function Slot({
       <Image
         src={thirtyTwoImagePath(id)}
         alt={thirtyTwoEssence(id)}
-        width={120}
-        height={120}
-        className="w-20 h-20 rounded-2xl object-cover"
+        width={160}
+        height={160}
+        className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover"
       />
       <span
-        className="mt-2 font-black text-base leading-tight"
+        className="mt-2 font-black text-base md:text-lg leading-tight"
         style={{ color: NAVY }}
       >
         {thirtyTwoEssence(id)}
@@ -264,100 +287,274 @@ function SceneIcon({ scene }: { scene: SceneKey }) {
   }
 }
 
-// ---- 詳細ブロック (4シーンカード) ----------------------------------------
+// ---- 結果セクション見出し (/me の丸数字見出しと同じ文法) -------------------
+
+function SectionHeading({ n, title }: { n: number; title: string }) {
+  return (
+    <h3
+      className="flex items-center gap-2.5 font-black text-[19px] mb-3"
+      style={{ color: NAVY }}
+    >
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px] text-white"
+        style={{ background: NAVY }}
+      >
+        {n}
+      </span>
+      {title}
+    </h3>
+  );
+}
+
+// ---- 詳細ブロック (バランス / いいところ / 注意 / シーン別) ----------------
 // ★将来の購入ゲート単位。%＋★＋サマリー(無料側)とは独立させ、後から
 //   購入フラグでこのコンポーネントごとラップできるようにしてある (今回はゲートなし・常時表示)。
 
+// 5軸メーターの表示ラベル (取扱説明書トーンの平易語)。
+const AXIS_LABEL: Record<AxisKey, string> = {
+  A: "思いやり",
+  N: "情緒の安定",
+  O: "価値観",
+  C: "生活リズム",
+  E: "社交バランス",
+};
+const AXIS_ORDER_VIEW: AxisKey[] = ["A", "N", "O", "C", "E"];
+
+// スコア→判定マーク (◎/○/△)。数値の羅列より取説っぽく、直感的に読める。
+function axisMark(v: number): string {
+  return v >= 0.9 ? "◎" : v >= 0.5 ? "○" : "△";
+}
+
 function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+  const r = useMemo(() => compat(a, b), [a, b]);
   const scenes = useMemo(() => sceneLines(a, b), [a, b]);
   return (
-    <div className="mt-6 space-y-3">
-      {scenes.map((s) => (
+    <div className="mx-auto mt-8 max-w-[640px] space-y-9">
+      {/* ① 二人のバランス (5軸メーター) */}
+      <section>
+        <SectionHeading n={1} title="二人のバランス" />
         <div
-          key={s.key}
-          className="rounded-2xl px-4 py-3"
-          style={{ background: "#EEF1F7" }}
+          className="rounded-2xl border bg-white px-4 py-4 space-y-3"
+          style={{ borderColor: "#E3E6F5" }}
         >
-          <div
-            className="flex items-center gap-1.5 font-black text-sm mb-1"
-            style={{ color: NAVY }}
+          {AXIS_ORDER_VIEW.map((k) => {
+            const v = r.s[k];
+            return (
+              <div key={k} className="flex items-center gap-3">
+                <span
+                  className="w-[86px] shrink-0 text-[12px] font-black"
+                  style={{ color: NAVY }}
+                >
+                  {AXIS_LABEL[k]}
+                </span>
+                <div
+                  className="h-2.5 flex-1 overflow-hidden rounded-full"
+                  style={{ background: "#EEF1F7" }}
+                  role="meter"
+                  aria-valuenow={Math.round(v * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={AXIS_LABEL[k]}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.round(v * 100)}%`,
+                      background: "#5B5BEF",
+                    }}
+                  />
+                </div>
+                <span
+                  className="w-5 shrink-0 text-center text-[13px] font-black"
+                  style={{ color: v >= 0.5 ? "#5B5BEF" : INACTIVE }}
+                >
+                  {axisMark(v)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ② 二人のいいところ (compat の goods = 相性を支えるトップ2軸) */}
+      <section>
+        <SectionHeading n={2} title="二人のいいところ" />
+        <ul className="space-y-2.5">
+          {r.goods.map((g) => (
+            <li
+              key={g}
+              className="flex items-start gap-2.5 rounded-2xl border bg-white px-4 py-3"
+              style={{ borderColor: "#E3E6F5" }}
+            >
+              <span
+                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
+                style={{ background: "#5B5BEF" }}
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              </span>
+              <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
+                {g}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ③ ここだけ注意 (compat の caution。ゆるい警告トーン) */}
+      <section>
+        <SectionHeading n={3} title="ここだけ注意" />
+        <div
+          className="flex items-start gap-2.5 rounded-2xl border px-4 py-3"
+          style={{ borderColor: "#F2E3B3", background: "#FFFBEF" }}
+        >
+          <span
+            className="mt-0.5 shrink-0"
+            style={{ color: "#C79A2A" }}
+            aria-hidden="true"
           >
-            <SceneIcon scene={s.key} />
-            <span>{s.label}</span>
-          </div>
+            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3.5 21.5 20h-19L12 3.5z" />
+              <path d="M12 10v4.2M12 17.2h.01" />
+            </svg>
+          </span>
           <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
-            {s.text}
+            {r.caution}
           </p>
         </div>
-      ))}
+      </section>
+
+      {/* ④ シーン別トリセツ (恋愛/友情/働く/すれ違い) */}
+      <section>
+        <SectionHeading n={4} title="シーン別トリセツ" />
+        <div className="space-y-3">
+          {scenes.map((s) => (
+            <div
+              key={s.key}
+              className="rounded-2xl border bg-white px-4 py-3.5"
+              style={{ borderColor: "#E3E6F5" }}
+            >
+              <div
+                className="flex items-center gap-1.5 font-black text-sm mb-1.5"
+                style={{ color: NAVY }}
+              >
+                <SceneIcon scene={s.key} />
+                <span>{s.label}</span>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
+                {s.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
 
 // ---- 結果ブロック ---------------------------------------------------------
+// /me ヒーローと同じ文法: グループ色の全幅帯 + 白抜きの大% + 斜めカットで白へ接続。
 
 function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const r = useMemo(() => compat(a, b), [a, b]);
+  const bandA = HERO_BAND_BY_GROUP[thirtyTwoGroup(a)];
+  const bandB = HERO_BAND_BY_GROUP[thirtyTwoGroup(b)];
+  const dotColor = "rgba(255,255,255,0.55)";
   return (
-    <section
-      className="rounded-3xl border-2 bg-white px-4 py-6 mt-2"
-      style={{ borderColor: NAVY }}
-    >
-      {/* --- 無料側 (%＋★＋サマリー・ゲート対象外) --- */}
-      {/* 2キャラ左右対面 */}
-      <div className="flex items-center justify-center gap-3">
-        <div className="flex flex-col items-center w-24">
-          <Image
-            src={thirtyTwoImagePath(a)}
-            alt={thirtyTwoEssence(a)}
-            width={120}
-            height={120}
-            className="w-24 h-24 rounded-2xl object-cover"
-          />
-          <span
-            className="mt-1 font-black text-sm text-center leading-tight"
-            style={{ color: NAVY }}
-          >
-            {thirtyTwoEssence(a)}
-          </span>
-        </div>
-        <div style={{ color: NAVY }}>
-          <HeartIcon />
-        </div>
-        <div className="flex flex-col items-center w-24">
-          <Image
-            src={thirtyTwoImagePath(b)}
-            alt={thirtyTwoEssence(b)}
-            width={120}
-            height={120}
-            className="w-24 h-24 rounded-2xl object-cover"
-          />
-          <span
-            className="mt-1 font-black text-sm text-center leading-tight"
-            style={{ color: NAVY }}
-          >
-            {thirtyTwoEssence(b)}
-          </span>
-        </div>
-      </div>
+    <section>
+      {/* ===== ヒーロー帯 (全幅・2グループ色グラデ・斜めカット) ===== */}
+      <div
+        className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
+        style={{
+          background: `linear-gradient(105deg, ${bandA} 0%, ${bandA} 38%, ${bandB} 62%, ${bandB} 100%)`,
+          clipPath:
+            "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(20px, 3vw, 48px)))",
+        }}
+      >
+        {/* 上部中央の放射状グロー + フェルトドット (/me と同じ装飾) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[240px]"
+          style={{
+            background:
+              "radial-gradient(ellipse at top center, rgba(255,255,255,0.55) 0%, transparent 68%)",
+          }}
+        />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 10, height: 10, top: "14%", left: "7%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "40%", left: "12%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 12, height: 12, top: "18%", right: "8%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "52%", right: "13%" }} />
 
-      {/* 大% + 星 + サマリー1行 */}
-      <div className="flex flex-col items-center mt-5">
-        <div className="flex items-end" style={{ color: NAVY }}>
-          <span className="font-black leading-none text-6xl">{r.percent}</span>
-          <span className="font-black text-2xl mb-1">%</span>
+        <div className="relative mx-auto max-w-[560px] px-4 pt-7 pb-10 text-center">
+          <p className="text-[11px] font-black tracking-[0.25em] text-white/90">
+            二人の相性
+          </p>
+
+          {/* 2キャラ対面 (透過版 cut を優先) */}
+          <div className="mt-3 flex items-end justify-center gap-2">
+            <div className="flex w-[132px] flex-col items-center">
+              <Image
+                src={heroImagePath(a)}
+                alt={thirtyTwoEssence(a)}
+                width={240}
+                height={240}
+                className="h-[116px] w-[116px] object-contain"
+              />
+              <span className="mt-1.5 text-[13px] font-black leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
+                {thirtyTwoEssence(a)}
+              </span>
+            </div>
+            <div className="mb-9 text-white" aria-hidden="true">
+              <HeartIcon />
+            </div>
+            <div className="flex w-[132px] flex-col items-center">
+              <Image
+                src={heroImagePath(b)}
+                alt={thirtyTwoEssence(b)}
+                width={240}
+                height={240}
+                className="h-[116px] w-[116px] object-contain"
+              />
+              <span className="mt-1.5 text-[13px] font-black leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
+                {thirtyTwoEssence(b)}
+              </span>
+            </div>
+          </div>
+
+          {/* 大% + 星 + サマリーピル (白抜き) */}
+          <div className="mt-4 flex items-end justify-center text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.14)]">
+            <span className="text-[64px] font-black leading-none">
+              {r.percent}
+            </span>
+            <span className="mb-1.5 text-2xl font-black">%</span>
+          </div>
+          <div className="mt-2 flex justify-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <svg
+                key={n}
+                viewBox="0 0 24 24"
+                width={22}
+                height={22}
+                fill={n <= r.stars ? "#FFFFFF" : "none"}
+                stroke="#FFFFFF"
+                strokeWidth={1.6}
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{ opacity: n <= r.stars ? 1 : 0.55 }}
+              >
+                <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.8L12 16.9l-5.2 2.73.99-5.8-4.21-4.1 5.82-.85L12 3.5z" />
+              </svg>
+            ))}
+          </div>
+          <span
+            className="mt-4 inline-block rounded-full bg-white px-5 py-2 text-sm font-black shadow-md"
+            style={{ color: NAVY }}
+          >
+            {r.summary}
+          </span>
         </div>
-        <div className="flex gap-0.5 mt-2">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <StarIcon key={n} filled={n <= r.stars} />
-          ))}
-        </div>
-        <span
-          className="mt-3 inline-block rounded-full px-4 py-1.5 text-white font-black text-sm"
-          style={{ background: NAVY }}
-        >
-          {r.summary}
-        </span>
       </div>
 
       {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
@@ -385,59 +582,75 @@ function TypeGrid({
   );
 
   return (
-    <div className="mt-4 space-y-6">
-      {grouped.map((g) => (
-        <section key={g.key} id={sectionId(g.key)} className="scroll-mt-16">
-          <h2
-            className="flex items-center gap-2 font-black text-base mb-2"
-            style={{ color: NAVY }}
+    // 全幅色帯をそのまま積む (帯どうしの境界は水平)。
+    <div className="mt-10 md:mt-14">
+      {grouped.map((g, gi) => {
+        const isLast = gi === grouped.length - 1;
+        return (
+          <section
+            key={g.key}
+            id={sectionId(g.key)}
+            aria-label={`${g.label}グループ`}
+            className="relative mx-[calc(50%-50vw)] w-screen"
+            style={{ backgroundColor: BAND_COLOR[g.key] }}
           >
-            <span
-              className="inline-block w-3 h-3 rounded-full"
-              style={{ background: THIRTY_TWO_GROUP_COLOR[g.key] }}
-              aria-hidden="true"
-            />
-            <span>{g.emoji}</span>
-            <span>{g.label}</span>
-            <span className="text-xs font-bold" style={{ color: INACTIVE }}>
-              {g.axisLabel}
-            </span>
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {g.ids.map((id) => {
-              const isSel = selected.has(id);
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => onPick(id)}
-                  disabled={isSel}
-                  aria-pressed={isSel}
-                  className="rounded-2xl border bg-white flex items-center gap-3 px-3 py-2 transition-opacity text-left"
-                  style={{
-                    borderColor: isSel ? NAVY : "#E1E4EC",
-                    opacity: isSel ? 0.4 : 1,
-                  }}
-                >
-                  <Image
-                    src={thirtyTwoImagePath(id)}
-                    alt={thirtyTwoEssence(id)}
-                    width={72}
-                    height={72}
-                    className="w-14 h-14 rounded-xl object-cover shrink-0"
-                  />
-                  <span
-                    className="font-black text-sm leading-tight"
-                    style={{ color: NAVY }}
-                  >
-                    {thirtyTwoEssence(id)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+            {/* 列数は 2列 (SP) / 4列 (md 以上) のみ。1行8枚や3列は不自然なので使わず、
+                画面幅にはカードの大きさ (可変カラム幅 + 大画面は max-w 拡大) で追従する */}
+            {/* 最終帯はページ末尾 (下の白を無くし紫で終える) なので、
+                固定ボトムナビに最終行が隠れないぶんの下余白を足す */}
+            <div
+              className={`mx-auto max-w-[1080px] px-4 md:px-8 2xl:max-w-[1400px] pt-9 md:pt-11 ${
+                isLast ? "pb-20 md:pb-24" : "pb-12 md:pb-14"
+              }`}
+            >
+              <h2
+                className="font-black text-[28px] md:text-[36px] leading-none mb-4 md:mb-5"
+                style={{ color: DARK_COLOR[g.key] }}
+              >
+                {g.label}グループ
+              </h2>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+                {g.ids.map((id) => {
+                  const isSel = selected.has(id);
+                  const thumb = faceImagePath(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => onPick(id)}
+                      disabled={isSel}
+                      aria-pressed={isSel}
+                      className="rounded-2xl bg-white flex items-center gap-3 px-3 py-2 md:px-4 md:py-3 transition-opacity text-left shadow-[0_2px_10px_rgba(42,58,92,0.08)]"
+                      style={{
+                        border: isSel
+                          ? `2px solid ${NAVY}`
+                          : "2px solid transparent",
+                        opacity: isSel ? 0.45 : 1,
+                      }}
+                    >
+                      <Image
+                        src={thumb.src}
+                        alt={thirtyTwoEssence(id)}
+                        width={96}
+                        height={96}
+                        className={`w-14 h-14 md:w-16 md:h-16 object-cover shrink-0 ${
+                          thumb.isFace ? "rounded-full" : "rounded-xl"
+                        }`}
+                      />
+                      <span
+                        className="font-black text-sm md:text-[15px] leading-tight"
+                        style={{ color: NAVY }}
+                      >
+                        {thirtyTwoEssence(id)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -491,13 +704,15 @@ function AishoInner() {
 
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
-      // 2枠埋まっても自動表示しない（revealed は false のまま。「相性を見る」を経由）。
+      // 2枠そろったら自動で結果表示 (ワンクッションの「相性を見る」は廃止)。
       if (slotA === null) {
         setSlotA(id);
         syncUrl(id, slotB);
+        if (slotB !== null) setRevealed(true);
       } else if (slotB === null && id !== slotA) {
         setSlotB(id);
         syncUrl(slotA, id);
+        setRevealed(true);
       }
     },
     [slotA, slotB, syncUrl],
@@ -515,23 +730,6 @@ function AishoInner() {
     setRevealed(false);
   }, [slotA, syncUrl]);
 
-  const shuffle = useCallback(() => {
-    const i = Math.floor(Math.random() * ALL_IDS.length);
-    let j = Math.floor(Math.random() * (ALL_IDS.length - 1));
-    if (j >= i) j += 1; // i と重複しない別の1体
-    setSlotA(ALL_IDS[i]);
-    setSlotB(ALL_IDS[j]);
-    setRevealed(false); // 差し替えるだけ。押した時だけ結果を出す
-    syncUrl(ALL_IDS[i], ALL_IDS[j]);
-  }, [syncUrl]);
-
-  const scrollToGroup = useCallback((key: ThirtyTwoGroup) => {
-    if (typeof document === "undefined") return;
-    document
-      .getElementById(sectionId(key))
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
-
   // 結果が現れたらそこへスクロール（「相性を見る」tap・直リンク両対応）
   useEffect(() => {
     if (resultShown) {
@@ -540,117 +738,79 @@ function AishoInner() {
   }, [resultShown]);
 
   return (
-    <main className="min-h-screen bg-[#F2EFE6] pb-16">
-      <div className="max-w-[560px] mx-auto px-4 pt-6">
-        {/* ヘッダー */}
-        <header className="text-center mb-5">
-          <h1 className="font-black text-2xl" style={{ color: NAVY }}>
-            相性診断
-          </h1>
-          <p className="text-xs mt-1" style={{ color: INACTIVE }}>
-            2キャラを選ぶと相性が出ます・診断不要
-          </p>
-        </header>
-
+    <>
+    <TopHeader />
+    <main className="min-h-screen overflow-x-clip bg-white">
+      {/* コンテンツ幅は帯の中身 (TypeGrid 内) と同じ 1080/2xl:1400 に揃える */}
+      <div className="max-w-[1080px] 2xl:max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10">
         {resultShown ? (
           /* ===== 結果モード (一覧は畳む) ===== */
           <>
             <div ref={resultRef} className="scroll-mt-4">
               <ResultBlock a={slotA} b={slotB} />
             </div>
-            <div className="flex justify-center gap-3 mt-4">
+            <div className="flex justify-center mt-6 pb-16">
               <button
                 type="button"
                 onClick={() => setRevealed(false)}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2 font-black text-sm border-2 bg-white"
+                className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 font-black text-sm border-2 bg-white"
                 style={{ borderColor: NAVY, color: NAVY }}
               >
                 <EditIcon />
                 選び直す
-              </button>
-              <button
-                type="button"
-                onClick={shuffle}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-white font-black text-sm"
-                style={{ background: NAVY }}
-              >
-                <ShuffleIcon />
-                シャッフル
               </button>
             </div>
           </>
         ) : (
           /* ===== 選択モード ===== */
           <>
-            {/* 上部スロット */}
-            <div className="flex items-stretch gap-3">
+            {/* ヘッダー: 左=見出し / 右=ループ動画 (16P のセクション見出し文法)。
+                SP は縦積み (見出し→動画→スロット)。 */}
+            <header className="mb-7 md:mb-12 md:flex md:items-center md:gap-12">
+              <div className="md:flex-1">
+                <h1
+                  className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
+                  style={{ color: NAVY }}
+                >
+                  気になるあの子との
+                  <br className="md:hidden" />
+                  相性を、
+                  <br className="hidden md:block" />
+                  診断してみよう。
+                </h1>
+                <p
+                  className="mt-2.5 text-[12.5px] md:text-sm font-bold"
+                  style={{ color: INACTIVE }}
+                >
+                  2キャラを選ぶだけ・自分の診断がなくてもOK
+                </p>
+              </div>
+              <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
+                <HeroLoopVideo />
+              </div>
+            </header>
+
+            {/* 上部スロット: 結果ヒーローと同じ「2キャラ対面 + ハート」の文法。
+                PC では小さな点線ボックスが余白に浮いて見えたため、一回り大きくする */}
+            <div className="mx-auto flex max-w-[560px] md:max-w-[700px] items-stretch gap-3 md:gap-5">
               <Slot id={slotA} label="1人目" onClear={clearA} />
+              <span
+                className="self-center shrink-0"
+                style={{ color: NAVY }}
+                aria-hidden="true"
+              >
+                <HeartIcon />
+              </span>
               <Slot id={slotB} label="2人目" onClear={clearB} />
             </div>
 
-            {/* シャッフル */}
-            <div className="flex justify-center mt-3">
-              <button
-                type="button"
-                onClick={shuffle}
-                className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-white font-black text-sm"
-                style={{ background: NAVY }}
-              >
-                <ShuffleIcon />
-                シャッフル
-              </button>
-            </div>
-
-            {bothFilled ? (
-              /* 2体そろったら「相性を見る」ボタン（ワンクッション） */
-              <div className="flex justify-center mt-5">
-                <button
-                  type="button"
-                  onClick={() => setRevealed(true)}
-                  className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-white font-black text-base shadow-sm"
-                  style={{ background: NAVY }}
-                >
-                  <RevealHeartIcon />
-                  相性を見る
-                </button>
-              </div>
-            ) : (
-              <p
-                className="text-center text-xs mt-4"
-                style={{ color: INACTIVE }}
-              >
-                {slotA || slotB
-                  ? "もう1人選ぶと相性が表示されます"
-                  : "下からキャラを2人選んでね"}
-              </p>
-            )}
-
-            {/* スティッキーのグループチップ (アンカージャンプ・フィルタではない) */}
-            <div className="sticky top-0 z-10 -mx-4 mt-4 px-4 py-2 bg-[#F2EFE6]/95 backdrop-blur flex gap-2 justify-center">
-              {GROUP_META.map((g) => (
-                <button
-                  key={g.key}
-                  type="button"
-                  onClick={() => scrollToGroup(g.key)}
-                  className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-black bg-white"
-                  style={{ borderColor: "#E1E4EC", color: NAVY }}
-                >
-                  <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{ background: THIRTY_TWO_GROUP_COLOR[g.key] }}
-                    aria-hidden="true"
-                  />
-                  {g.label}
-                </button>
-              ))}
-            </div>
-
-            {/* グループ別グリッド */}
+            {/* グループ別グリッド (2キャラ選んだ時点で自動的に結果表示に切り替わる) */}
             <TypeGrid onPick={pick} selected={selected} />
           </>
         )}
       </div>
     </main>
+    </>
   );
 }
 
@@ -658,7 +818,7 @@ export default function AishoPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[#F2EFE6] flex items-center justify-center">
+        <main className="min-h-screen bg-white flex items-center justify-center">
           <p className="text-sm font-bold" style={{ color: INACTIVE }}>
             読み込み中…
           </p>

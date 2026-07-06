@@ -103,6 +103,9 @@ for (const f of cut) {
 const manifest = {
   cut,
   scenes: listDir("characters/scenes"),
+  // 顔ズーム版 (16P の顔アバター風・/aisho のキャラカード用)。
+  // public/characters/face/<slug>.png を置くだけで次のビルドから自動使用。
+  face: listDir("characters/face"),
   cutTopMargin,
 };
 
@@ -113,5 +116,5 @@ fs.writeFileSync(
   JSON.stringify(manifest, null, 2) + "\n",
 );
 console.log(
-  `character-images.json: cut=${manifest.cut.length} scenes=${manifest.scenes.length} topMargin=${Object.keys(cutTopMargin).length}`,
+  `character-images.json: cut=${manifest.cut.length} scenes=${manifest.scenes.length} face=${manifest.face.length} topMargin=${Object.keys(cutTopMargin).length}`,
 );
