@@ -91,6 +91,7 @@ const DARK_COLOR: Record<ThirtyTwoGroup, string> = {
   unknown: "#6C4EB8",
 };
 
+
 const ALL_IDS = allThirtyTwoTypeIds();
 const VALID = new Set<string>(ALL_IDS);
 
@@ -197,46 +198,68 @@ function Slot({
   onClear: () => void;
 }) {
   // 空/選択済みで高さが変わると選択のたびにレイアウトが揺れるため、両状態とも固定高。
-  const SLOT_H = "h-[136px] md:h-[180px]";
+  // 一覧カードと同じ文法: 白カードの上端から顔ズーム版キャラの頭をはみ出させ、
+  // 体の切れ目はカード下端に揃えて隠す。名前はカードの下に出す (SP の幅でも破綻しない)。
+  const CARD_H = "h-[96px] md:h-[120px]";
   if (!id) {
     return (
-      <div
-        className={`flex-1 ${SLOT_H} rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 px-2 text-center`}
-        style={{ borderColor: INACTIVE, color: INACTIVE }}
-      >
-        <span className="text-3xl md:text-4xl leading-none">＋</span>
-        <span className="text-xs md:text-sm font-bold">タップで選ぶ</span>
-        <span className="text-[10px] md:text-xs">{label}</span>
+      <div className="flex-1">
+        <div
+          className={`${CARD_H} rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 px-2 text-center`}
+          style={{ borderColor: INACTIVE, color: INACTIVE }}
+        >
+          <span className="text-2xl md:text-3xl leading-none">＋</span>
+          <span className="text-xs md:text-sm font-bold">タップで選ぶ</span>
+        </div>
+        <p
+          className="mt-1.5 text-center text-[11px] md:text-xs font-bold"
+          style={{ color: INACTIVE }}
+        >
+          {label}
+        </p>
       </div>
     );
   }
+  const thumb = faceImagePath(id);
   return (
-    <div
-      className={`flex-1 ${SLOT_H} relative rounded-2xl border-2 bg-white flex flex-col items-center justify-center px-2`}
-      style={{ borderColor: NAVY }}
-    >
-      <button
-        type="button"
-        onClick={onClear}
-        aria-label={`${thirtyTwoEssence(id)}を外す`}
-        className="absolute top-1.5 right-1.5 rounded-full p-1 text-white"
-        style={{ background: NAVY }}
+    <div className="flex-1">
+      <div
+        className={`relative ${CARD_H} rounded-2xl border-2 bg-white`}
+        style={{ borderColor: NAVY }}
       >
-        <CloseIcon />
-      </button>
-      <Image
-        src={thirtyTwoImagePath(id)}
-        alt={thirtyTwoEssence(id)}
-        width={160}
-        height={160}
-        className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-cover"
-      />
-      <span
-        className="mt-2 font-black text-base md:text-lg leading-tight"
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={`${thirtyTwoEssence(id)}を外す`}
+          className="absolute top-1.5 right-1.5 z-10 rounded-full p-1 text-white"
+          style={{ background: NAVY }}
+        >
+          <CloseIcon />
+        </button>
+        {thumb.isFace ? (
+          <Image
+            src={thumb.src}
+            alt={thirtyTwoEssence(id)}
+            width={300}
+            height={300}
+            className="absolute bottom-0 left-1/2 w-[120px] md:w-[150px] max-w-none -translate-x-1/2"
+          />
+        ) : (
+          <Image
+            src={thumb.src}
+            alt={thirtyTwoEssence(id)}
+            width={240}
+            height={240}
+            className="h-full w-full rounded-[14px] object-cover"
+          />
+        )}
+      </div>
+      <p
+        className="mt-1.5 text-center font-black text-sm md:text-base leading-tight"
         style={{ color: NAVY }}
       >
         {thirtyTwoEssence(id)}
-      </span>
+      </p>
     </div>
   );
 }
@@ -609,10 +632,49 @@ function TypeGrid({
               >
                 {g.label}グループ
               </h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+              {/* 行間 (gap-y) は頭のはみ出し (約16px) が上のカードに触れない広さにする */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4 md:gap-x-4 md:gap-y-7">
                 {g.ids.map((id) => {
                   const isSel = selected.has(id);
                   const thumb = faceImagePath(id);
+                  if (thumb.isFace) {
+                    /* 顔ズーム版 (透過): 台座は置かず、キャラの頭を白カードの
+                       上端からはみ出させる (背面のグループ色帯に頭が重なる)。
+                       体の四角い切れ目はカード下端に揃えて見えなくする。
+                       画像の左端はカードの角丸 (r=16px) が終わる x=16px に置き、
+                       下端フラッシュでも角がカード外にはみ出さないようにする。 */
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => onPick(id)}
+                        disabled={isSel}
+                        aria-pressed={isSel}
+                        className="relative flex h-[60px] md:h-[68px] items-center rounded-2xl bg-white pl-[96px] md:pl-[112px] pr-3 text-left transition-opacity shadow-[0_2px_10px_rgba(42,58,92,0.08)]"
+                        style={{
+                          border: isSel
+                            ? `2px solid ${NAVY}`
+                            : "2px solid transparent",
+                          opacity: isSel ? 0.45 : 1,
+                        }}
+                      >
+                        <Image
+                          src={thumb.src}
+                          alt={thirtyTwoEssence(id)}
+                          width={168}
+                          height={168}
+                          className="absolute bottom-0 left-4 w-[72px] md:w-[84px] max-w-none"
+                        />
+                        {/* 役職名は画像を除いた残り幅の中央に置く */}
+                        <span
+                          className="flex-1 text-center font-black text-sm md:text-[15px] leading-tight"
+                          style={{ color: NAVY }}
+                        >
+                          {thirtyTwoEssence(id)}
+                        </span>
+                      </button>
+                    );
+                  }
                   return (
                     <button
                       key={id}
@@ -633,9 +695,7 @@ function TypeGrid({
                         alt={thirtyTwoEssence(id)}
                         width={96}
                         height={96}
-                        className={`w-14 h-14 md:w-16 md:h-16 object-cover shrink-0 ${
-                          thumb.isFace ? "rounded-full" : "rounded-xl"
-                        }`}
+                        className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover shrink-0"
                       />
                       <span
                         className="font-black text-sm md:text-[15px] leading-tight"
@@ -676,6 +736,16 @@ function AishoInner() {
     const b = searchParams.get("b");
     return isValid(a) && isValid(b) && a !== b;
   });
+  // 選択操作で2枠そろった直後の「診断中…」演出 (直リンクでは出さない)。
+  const [analyzing, setAnalyzing] = useState(false);
+  useEffect(() => {
+    if (!analyzing) return;
+    const t = setTimeout(() => {
+      setAnalyzing(false);
+      setRevealed(true);
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [analyzing]);
 
   const bothFilled = slotA !== null && slotB !== null;
   const resultShown = bothFilled && revealed;
@@ -704,15 +774,16 @@ function AishoInner() {
 
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
-      // 2枠そろったら自動で結果表示 (ワンクッションの「相性を見る」は廃止)。
+      // 2枠そろったら「診断中…」演出を挟んで自動で結果表示
+      // (ワンクッションの「相性を見る」ボタンは廃止)。
       if (slotA === null) {
         setSlotA(id);
         syncUrl(id, slotB);
-        if (slotB !== null) setRevealed(true);
+        if (slotB !== null) setAnalyzing(true);
       } else if (slotB === null && id !== slotA) {
         setSlotB(id);
         syncUrl(slotA, id);
-        setRevealed(true);
+        setAnalyzing(true);
       }
     },
     [slotA, slotB, syncUrl],
@@ -721,13 +792,15 @@ function AishoInner() {
   const clearA = useCallback(() => {
     setSlotA(null);
     syncUrl(null, slotB);
-    setRevealed(false); // 解除したら再度「相性を見る」から
+    setRevealed(false);
+    setAnalyzing(false);
   }, [slotB, syncUrl]);
 
   const clearB = useCallback(() => {
     setSlotB(null);
     syncUrl(slotA, null);
     setRevealed(false);
+    setAnalyzing(false);
   }, [slotA, syncUrl]);
 
   // 結果が現れたらそこへスクロール（「相性を見る」tap・直リンク両対応）
@@ -743,7 +816,43 @@ function AishoInner() {
     <main className="min-h-screen overflow-x-clip bg-white">
       {/* コンテンツ幅は帯の中身 (TypeGrid 内) と同じ 1080/2xl:1400 に揃える */}
       <div className="max-w-[1080px] 2xl:max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10">
-        {resultShown ? (
+        {analyzing && slotA && slotB ? (
+          /* ===== 診断中演出 (約1.6秒): 2キャラ対面 + 鼓動するハート ===== */
+          <div className="flex min-h-[60vh] flex-col items-center justify-center">
+            <div className="flex items-center gap-5 md:gap-8">
+              <Image
+                src={heroImagePath(slotA)}
+                alt={thirtyTwoEssence(slotA)}
+                width={280}
+                height={280}
+                className="w-[120px] md:w-[160px] object-contain"
+              />
+              <span
+                className="animate-pulse"
+                style={{ color: NAVY }}
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" width={34} height={34} fill="currentColor">
+                  <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
+                </svg>
+              </span>
+              <Image
+                src={heroImagePath(slotB)}
+                alt={thirtyTwoEssence(slotB)}
+                width={280}
+                height={280}
+                className="w-[120px] md:w-[160px] object-contain"
+              />
+            </div>
+            <p
+              className="mt-7 text-[15px] md:text-base font-black"
+              style={{ color: NAVY }}
+              role="status"
+            >
+              二人の相性を診断中…
+            </p>
+          </div>
+        ) : resultShown ? (
           /* ===== 結果モード (一覧は畳む) ===== */
           <>
             <div ref={resultRef} className="scroll-mt-4">
@@ -794,8 +903,9 @@ function AishoInner() {
                 PC では小さな点線ボックスが余白に浮いて見えたため、一回り大きくする */}
             <div className="mx-auto flex max-w-[560px] md:max-w-[700px] items-stretch gap-3 md:gap-5">
               <Slot id={slotA} label="1人目" onClear={clearA} />
+              {/* ハートはカード (名前ラベルを除く) の縦中央に合わせる */}
               <span
-                className="self-center shrink-0"
+                className="self-start mt-[38px] md:mt-[50px] shrink-0"
                 style={{ color: NAVY }}
                 aria-hidden="true"
               >
