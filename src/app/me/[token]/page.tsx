@@ -514,18 +514,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 }}
               />
             </div>
-            {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
-                称号(上部)にも画像(中央)にも被らないよう、キャラ画像コンテナの直下・右寄せに配置。
-                絶対配置をやめ in-flow にすることで、スマホで称号にモロ被りする問題を解消。
-                owner 限定。 */}
-            {isOwner && (
-              <div className="mt-1 flex justify-end">
-                <CharacterShareButton
-                  shareUrl={characterShareUrl}
-                  essence={dispEssence}
-                />
-              </div>
-            )}
           </div>
         </div>
         {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
@@ -548,6 +536,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </svg>
           </div>
         </div>
+
+        {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
+            ヒーロー画像エリアの外＝本文側に配置し、キャラ画像には一切被せない(画像エリアはクリーン)。
+            横並び・右寄せ。右端に余白 (pr-3) を保ち画面端で見切れない。owner 限定。計測 kind:character。 */}
+        {isOwner && (
+          <div className="flex justify-end pr-3 mb-4">
+            <CharacterShareButton
+              shareUrl={characterShareUrl}
+              essence={dispEssence}
+            />
+          </div>
+        )}
 
         {/* ===== 章① 自分が見た自分 =====
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
