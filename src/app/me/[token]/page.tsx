@@ -426,10 +426,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
         </div>
 
         {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
-            ヒーロー画像エリアの外＝本文側に配置し、キャラ画像には一切被せない(画像エリアはクリーン)。
-            横並び・右寄せ。右端に余白 (pr-3) を保ち画面端で見切れない。owner 限定。計測 kind:character。 */}
+            画面右下・ボトムナビ (fixed bottom-0 / z-40) の直上にフローティング固定。
+            ナビ高さ (約60px) + iOS セーフエリアぶんを bottom で確保。owner 限定。計測 kind:character。 */}
         {isOwner && (
-          <div className="flex justify-end pr-3 mb-4">
+          <div className="fixed right-3 z-40 bottom-[calc(72px+env(safe-area-inset-bottom))]">
             <CharacterShareButton
               shareUrl={characterShareUrl}
               essence={dispEssence}
