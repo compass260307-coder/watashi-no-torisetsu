@@ -326,6 +326,19 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const dispImage = characterImages.cut.includes(path.basename(v3Image))
     ? `/characters/cut/${path.basename(v3Image)}`
     : v3Image;
+  // SP ヒーローの画像引き上げ量 (下の -mt-*)。既定は -mt-8 (32px) で OCEAN 行と詰めるが、
+  // 家など上端まで絵が詰まったキャラは称号/OCEAN に被るため、ビルド時に実測した
+  // 「上端の透過余白の割合」(cutTopMargin) が小さいキャラほど引き上げを弱める。
+  //   目安: SP の画像幅 ≈ 360px なので 割合 0.1 ≈ 36px の余白 = 32px 引き上げても安全。
+  const cutTopMargin: number | undefined = (
+    characterImages.cutTopMargin as Record<string, number>
+  )[path.basename(dispImage)];
+  const heroPullClass =
+    cutTopMargin === undefined || cutTopMargin >= 0.1
+      ? "-mt-8"
+      : cutTopMargin >= 0.05
+        ? "-mt-4"
+        : "mt-0";
   // 挿絵 (シーン別イラスト・16P の章間イラスト参考):
   //   public/characters/scenes/ に「置くだけで自動表示」(無ければ非表示)。
   //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
@@ -478,8 +491,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
               {heroTitle}
               {oceanRow}
             </div>
-            {/* SP: 透過画像の上側余白ぶん -mt で引き上げ、OCEAN との間を詰める */}
-            <div className="max-w-[640px] mx-auto -mt-8 md:mt-0 md:max-w-[560px] md:flex-1">
+            {/* SP: 透過画像の上側余白ぶん -mt で引き上げ、OCEAN との間を詰める
+                (引き上げ量はキャラ画像の実測余白に応じて可変 = heroPullClass) */}
+            <div className={`max-w-[640px] mx-auto ${heroPullClass} md:mt-0 md:max-w-[560px] md:flex-1`}>
               <CharacterHero
                 imageSrc={dispImage}
                 alt={dispName}
