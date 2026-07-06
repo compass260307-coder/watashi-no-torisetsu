@@ -8,22 +8,18 @@ import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getSession } from "@/lib/session";
 import {
   loadOwnerReportData,
   type OwnerReportData,
 } from "@/lib/owner-report-data";
-import {
-  scoreImpressionLine,
-  computeMinnaNoMeContext,
-} from "@/lib/minna-no-me";
+import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
+import { buildDeepDive } from "@/lib/tako-deepdive";
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
-import { MinnaNoMePanel } from "@/components/result/MinnaNoMePanel";
-import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
+import { TakoDeepDive } from "@/components/result/TakoDeepDive";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
 import { BragShare } from "@/components/result/BragShare";
@@ -146,9 +142,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
-  const session = previewType ? null : await getSession();
-  const isOwner = !!session && session.id === data.user.id;
-
   // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
   //   称号・キャッチ = 自己タイプ (32/16 フラグ準拠)、code = OCEAN 高低の大小文字表記。
   const bragStored = data.selfScores;
@@ -173,6 +166,9 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   const takoHero = data.friendCharacter
     ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
     : null;
+
+  // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
+  const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
 
   return (
     <>
@@ -246,72 +242,74 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 </div>
               </section>
 
-            {/* 自己認知ギャップ (自分 × 友達) */}
-            <section className="mb-8">
+            {/* ① 五つの性格傾向 (発散バー: 自己 × 友達ギャップ)。/me の①と同じ丸数字見出し。 */}
+            <section className="mb-14">
               <BigFiveDivergingBars
                 scores={data.selfScores}
                 friendScores={data.friendAvgScores ?? undefined}
-                title="自己認知ギャップ（自分 × 友達）"
-                emoji="🪞"
+                title="五つの性格傾向"
+                number="1"
               />
             </section>
 
-            {/* みんなの目 (別タイプ・解説文・手紙 / B-1) */}
-            <section className="mb-8">
-              <h2 className="text-[#2A3A5C] font-black text-xl mb-3">みんなの目</h2>
-              <MinnaNoMePanel
-                ownerToken={token}
-                selfEssence={data.minnaContext.selfEssence}
-                friendEssence={data.minnaContext.friendEssence}
-                friendTypeName={data.minnaContext.friendTypeName}
-                friendPreviewPath={data.minnaContext.friendPreviewPath}
-                matched={data.minnaContext.matched}
-                gapSentence={data.minnaContext.gapSentence}
-                favoritePoints={data.minnaContext.favoritePoints}
-                letters={data.friendMessages}
-                scoreImpression={scoreImpressionLine(
-                  data.minnaContext.friendAvgScores,
-                )}
-              />
-            </section>
-
-            {/* 従: 診断拡散シェア (みんなの目を見終わった余韻の位置)。
-                アンロック状態のみ。評価依頼(主)の役目が終わった画面なので従を置いても
-                主とバッティングしない。source="tako" で結果ページ発と測り分け。 */}
-            <BragShare
-              essence={bragEssence}
-              code={bragCode}
-              catchphrase={bragCatch}
-              topUrl={`${SITE_URL}/`}
-              source="tako"
-            />
-
-            {/* 他者評価 (発散/隠れた強み/評価者/メッセージ) */}
-            <section className="mb-8">
-              <OthersPerceptionSection
-                friendCount={data.friendEvalCount}
-                threshold={data.threshold}
-                isOwner={isOwner}
-                selfScores={data.selfScores}
-                friendAvgScores={data.friendAvgScores}
-                friendNames={data.friendNames}
-                friendMessages={data.friendMessages}
-                inviteUrl={data.inviteUrl}
-              />
-            </section>
-
-            {/* 招待 / もっと友達に診断してもらう */}
-            <section className="mb-6">
-              <p className="text-center text-[#2A3A5C] font-black text-sm mb-3">
-                もっと友達に診断してもらう
-              </p>
-              <div className="mx-auto max-w-[360px]">
-                {/* アンロック後のA招待。従シェア(source: result/tako)と並べて
-                    分析するため source="tako_unlocked" で計測 (kind: friend_invite)。 */}
-                <LockedInviteShare
-                  inviteUrl={data.inviteUrl}
-                  trackSource="tako_unlocked"
+            {/* ② アナタの深掘り (一致度 → ギャップ → AI解説 → 友達の声 → 隠れた長所)。
+                みんなの目 + 他者評価を統合。/me の丸数字見出しスタイルに準拠。 */}
+            {deep && (
+              <section className="mb-14">
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                  >
+                    2
+                  </span>
+                  <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                    アナタの深掘り
+                  </h2>
+                </div>
+                <TakoDeepDive
+                  friendCount={data.friendEvalCount}
+                  deep={deep}
+                  letters={data.friendMessages}
+                  ownerToken={token}
                 />
+              </section>
+            )}
+
+            {/* ③ 友達にシェア (拡散シェア + もっと友達に診断してもらう招待)。 */}
+            <section className="mb-6">
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                >
+                  3
+                </span>
+                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                  友達にシェア
+                </h2>
+              </div>
+
+              {/* 拡散シェア。source="tako" で結果ページ発と測り分け。 */}
+              <BragShare
+                essence={bragEssence}
+                code={bragCode}
+                catchphrase={bragCatch}
+                topUrl={`${SITE_URL}/`}
+                source="tako"
+              />
+
+              {/* もっと友達に診断してもらう招待。source="tako_unlocked" で計測。 */}
+              <div className="mt-8">
+                <p className="text-center text-[#2A3A5C] font-black text-sm mb-3">
+                  もっと友達に診断してもらう
+                </p>
+                <div className="mx-auto max-w-[360px]">
+                  <LockedInviteShare
+                    inviteUrl={data.inviteUrl}
+                    trackSource="tako_unlocked"
+                  />
+                </div>
               </div>
             </section>
           </>
