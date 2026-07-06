@@ -9,9 +9,18 @@ import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import { loadOwnerReportData } from "@/lib/owner-report-data";
-import { scoreImpressionLine } from "@/lib/minna-no-me";
-import { CharacterHero } from "@/components/result/CharacterHero";
+import {
+  loadOwnerReportData,
+  type OwnerReportData,
+} from "@/lib/owner-report-data";
+import {
+  scoreImpressionLine,
+  computeMinnaNoMeContext,
+} from "@/lib/minna-no-me";
+import { ResultHero } from "@/components/result/ResultHero";
+import { heroColorsForGroup } from "@/lib/hero-colors";
+import TopHeader from "@/components/top/TopHeader";
+import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { MinnaNoMePanel } from "@/components/result/MinnaNoMePanel";
 import { OthersPerceptionSection } from "@/components/result/OthersPerceptionSection";
@@ -22,6 +31,12 @@ import {
   classifyThirtyTwoType,
   thirtyTwoEssence,
   thirtyTwoCatchphrase,
+  thirtyTwoGroup,
+  thirtyTwoName,
+  thirtyTwoImagePath,
+  baseIdOf,
+  nAxisOf,
+  type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
@@ -37,19 +52,101 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function TakoPage({ params }: PageProps) {
-  const { token } = await params;
+// ?previewType=<32タイプID> 指定時のモック解除後データ (dev / fromPreview=1 のみ)。実DBは介さない。
+// /me のプレビュー機構と同型。実 compute 関数を流用して現実的な描画にする。
+function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
+  const code = sixteenTypes[baseIdOf(previewType)].code;
+  const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
+  const selfScores = {
+    O: hi("O"),
+    C: hi("C"),
+    E: hi("E"),
+    A: hi("A"),
+    N: nAxisOf(previewType) === "N" ? 8 : 2,
+  };
+  // 友達3人: 本人スコアを少しずらして「自己認知ギャップ」が見えるように。
+  const shifts: Record<string, number>[] = [
+    { E: 2, O: -2 },
+    { E: 1, A: 1 },
+    { E: 3, N: -2 },
+  ];
+  const clamp = (v: number) => Math.max(0, Math.min(10, v));
+  const friends = shifts.map((s, i) => ({
+    name: ["ゆい", "そら", "はる"][i],
+    perceivedScores: Object.fromEntries(
+      (["O", "C", "E", "A", "N"] as const).map((k) => [
+        k,
+        clamp(selfScores[k] + (s[k] ?? 0)),
+      ]),
+    ) as Record<string, number>,
+    qualitative: null,
+  }));
+  const friendAvgScores = Object.fromEntries(
+    (["O", "C", "E", "A", "N"] as const).map((k) => [
+      k,
+      friends.reduce((a, f) => a + (f.perceivedScores[k] as number), 0) /
+        friends.length,
+    ]),
+  ) as Partial<Record<BigFiveDimension, number>>;
+  const t = classifyThirtyTwoType(friendAvgScores);
+  return {
+    user: {
+      id: "preview",
+      type_id: null,
+      scores: selfScores,
+      display_name: "プレビュー",
+      invite_code: "preview",
+      owner_token: "preview",
+    },
+    selfScores,
+    friendEvalCount: friends.length,
+    friendAvgScores,
+    friendNames: friends.map((f) => f.name),
+    friendMessages: [
+      { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
+      { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
+    ],
+    minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
+    inviteCode: "preview",
+    inviteUrl: `${SITE_URL}/friend/preview`,
+    threshold: 3,
+    unlocked: true,
+    friendCharacter: {
+      type32: t,
+      essence: thirtyTwoEssence(t),
+      name: thirtyTwoName(t),
+      imageSrc: thirtyTwoImagePath(t),
+      previewPath: `/preview/${t}`,
+    },
+  };
+}
 
-  const data = await loadOwnerReportData(token);
+export default async function TakoPage({ params, searchParams }: PageProps) {
+  const { token } = await params;
+  const sp = await searchParams;
+
+  const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewAllowed =
+    process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
+  const previewType: ThirtyTwoTypeId | null =
+    previewAllowed &&
+    /^[a-z-]+__[NR]$/.test(rawPreview) &&
+    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+      ? (rawPreview as ThirtyTwoTypeId)
+      : null;
+
+  const data = previewType
+    ? mockTakoData(previewType)
+    : await loadOwnerReportData(token);
   if (!data) {
     notFound();
   }
 
-  const session = await getSession();
+  const session = previewType ? null : await getSession();
   const isOwner = !!session && session.id === data.user.id;
-  const ownerName = (data.user.display_name ?? "").trim() || "あなた";
 
   // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
   //   称号・キャッチ = 自己タイプ (32/16 フラグ準拠)、code = OCEAN 高低の大小文字表記。
@@ -71,64 +168,82 @@ export default async function TakoPage({ params }: PageProps) {
     )
     .join("");
 
-  return (
-    <main
-      className="relative min-h-dvh px-4 pb-8 md:px-8"
-      style={{ background: "#E4E0F5" }}
-    >
-      <div className="relative z-10 mx-auto max-w-[560px] pt-6">
-        {/* ===== ヘッダー: 戻り導線 + タイトル ===== */}
-        <div className="mb-5">
-          <Link
-            href={`/me/${token}`}
-            className="inline-flex items-center gap-1 text-[#2A3A5C]/70 font-bold text-sm hover:text-[#2A3A5C] transition-colors"
-          >
-            ← 自分のトリセツに戻る
-          </Link>
-          <h1 className="mt-3 text-[#2A3A5C] font-black text-2xl leading-tight">
-            みんなの目に映る、{ownerName}
-          </h1>
-          <p className="mt-1 text-[#2A3A5C]/70 font-bold text-sm">
-            他己診断 — 友達から見たあなた
-          </p>
-        </div>
+  // 解除後ヒーロー用: 友達平均キャラのグループから帯トーンを解決 (/me と共通)。
+  const takoHero = data.friendCharacter
+    ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
+    : null;
 
-        {!data.unlocked || !data.minnaContext || !data.friendCharacter ? (
-          /* ===== ロック空状態 (友達3人未満) ===== */
-          <TakoLockedState
-            friendCount={data.friendEvalCount}
-            threshold={data.threshold}
-            inviteUrl={data.inviteUrl}
-          />
-        ) : (
-          /* ===== 解除後: 他己コンテンツ ===== */
-          <>
-            {/* 友達平均から算出したキャラ */}
-            <section className="mb-8">
-              <p className="text-center text-[#2A3A5C]/70 font-bold text-xs mb-1">
-                友達 {data.friendEvalCount} 人の平均から
-              </p>
-              <div className="mx-auto max-w-[420px]">
-                <CharacterHero
-                  imageSrc={data.friendCharacter.imageSrc}
-                  alt={data.friendCharacter.essence}
-                  essence={data.friendCharacter.essence}
-                  name={data.friendCharacter.name}
-                  description={`みんなから見たあなたは「${data.friendCharacter.essence}」タイプ。`}
-                  imageAspectClassName="aspect-square max-h-[44vh] md:max-h-[360px]"
-                  imageFitClassName="object-contain"
-                  imageCardClassName=""
-                />
-              </div>
-              <div className="text-center">
+  return (
+    <>
+      {/* 自己診断と同じ 16P 風スクロール連動ヘッダー (世界観統一) */}
+      <ScrollHideHeader>
+        <TopHeader />
+      </ScrollHideHeader>
+      <main
+        className="relative min-h-dvh overflow-x-clip px-4 pb-8 md:px-8"
+        style={{ background: "#FFFFFF" }}
+      >
+        <div className="relative z-10 mx-auto max-w-[560px]">
+          {!data.unlocked ||
+          !data.minnaContext ||
+          !data.friendCharacter ||
+          !takoHero ? (
+            /* ===== ロック空状態 (友達3人未満) ===== */
+            <div className="pt-6">
+              <Link
+                href={`/me/${token}`}
+                className="inline-flex items-center gap-1 text-[#2A3A5C]/70 font-bold text-sm hover:text-[#2A3A5C] transition-colors mb-5"
+              >
+                ← 自分のトリセツに戻る
+              </Link>
+              <TakoLockedState
+                friendCount={data.friendEvalCount}
+                threshold={data.threshold}
+                inviteUrl={data.inviteUrl}
+              />
+            </div>
+          ) : (
+            /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観) ===== */
+            <>
+              {/* 戻り導線 + 友達平均コンテキスト (ヒーロー上のスリムなキャプション) */}
+              <div className="pt-4">
                 <Link
-                  href={data.friendCharacter.previewPath}
-                  className="inline-block rounded-full border-2 border-[#2A3A5C] text-[#2A3A5C] font-black text-sm px-5 py-2 hover:bg-white/60 transition-colors"
+                  href={`/me/${token}`}
+                  className="inline-flex items-center gap-1 text-[#2A3A5C]/70 font-bold text-sm hover:text-[#2A3A5C] transition-colors"
                 >
-                  このタイプを詳しく見る →
+                  ← 自分のトリセツに戻る
                 </Link>
+                <p className="mt-2 text-center text-[#2A3A5C]/70 font-bold text-xs">
+                  友達 {data.friendEvalCount} 人の平均から
+                </p>
               </div>
-            </section>
+
+              {/* ヒーロー帯 (/me と同じ ResultHero・色帯 (a))。他己は単カラム縦積み・本文幅560。
+                  称号=友達平均キャラ / OCEAN=友達平均スコア。 */}
+              <ResultHero
+                label="みんなから見たあなたは:"
+                essence={data.friendCharacter.essence}
+                scores={data.friendAvgScores ?? {}}
+                heroBg={takoHero.heroBg}
+                codeTint={takoHero.codeTint}
+                imageSrc={data.friendCharacter.imageSrc}
+                alt={data.friendCharacter.essence}
+                name={data.friendCharacter.name}
+                imageAspectClassName="aspect-square max-h-[44vh] md:max-h-[360px]"
+                contentMaxWidthClass="max-w-[560px]"
+                twoColumn={false}
+              />
+
+              <section className="mb-8">
+                <div className="text-center pt-4">
+                  <Link
+                    href={data.friendCharacter.previewPath}
+                    className="inline-block rounded-full border-2 border-[#2A3A5C] text-[#2A3A5C] font-black text-sm px-5 py-2 hover:bg-[#2A3A5C]/5 transition-colors"
+                  >
+                    このタイプを詳しく見る →
+                  </Link>
+                </div>
+              </section>
 
             {/* 自己認知ギャップ (自分 × 友達) */}
             <section className="mb-8">
@@ -201,16 +316,17 @@ export default async function TakoPage({ params }: PageProps) {
           </>
         )}
 
-        {/* ===== フッター: 戻り ===== */}
-        <div className="text-center pt-2 pb-2">
-          <Link
-            href={`/me/${token}`}
-            className="text-[#2A3A5C]/60 font-bold text-sm underline hover:text-[#2A3A5C] transition-colors"
-          >
-            自分のトリセツに戻る
-          </Link>
+          {/* ===== フッター: 戻り ===== */}
+          <div className="text-center pt-2 pb-2">
+            <Link
+              href={`/me/${token}`}
+              className="text-[#2A3A5C]/60 font-bold text-sm underline hover:text-[#2A3A5C] transition-colors"
+            >
+              自分のトリセツに戻る
+            </Link>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
