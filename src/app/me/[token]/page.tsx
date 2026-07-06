@@ -55,8 +55,8 @@ import {
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { ResultHero } from "@/components/result/ResultHero";
+import { heroColorsForGroup } from "@/lib/hero-colors";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -280,40 +280,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
   //   キャラ画像は透過版 (characters/cut) を使うため、旧「画像の地色に一致させる」制約は撤廃。
   //   白文字の称号・ラベルが立つ濃さにする。
-  const HERO_BAND_BY_GROUP: Record<ThirtyTwoGroup, string> = {
-    sea: "#5BC6DB", // 海: ミディアムシアン
-    sky: "#EDCF62", // 空: ミディアムイエロー
-    land: "#8FCE70", // 陸: ミディアムグリーン
-    unknown: "#B49BE8", // 未知: ミディアムラベンダー
-  };
-  const heroBg = flag32
-    ? HERO_BAND_BY_GROUP[thirtyTwoGroup(t32)]
-    : "#B49BE8";
-  // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
-  // 帯を濃トーン化したため、中間色だと沈む → 半透明の白で「浮かぶ」装飾に変更。
-  // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
-  //   帯色→濃トーン: 紫帯→濃紫 / 青帯→深青緑 / 緑帯→濃緑 / 黄帯→濃オリーブ (名言の茶と分離)。
-  //   ※内部グループ名は 空=黄・陸=緑 (帯色で対応付け)。称号(名前)はブランド固定ネイビーのまま。
-  const CODE_COLOR_BY_GROUP: Record<ThirtyTwoGroup, string> = {
-    unknown: "#4A2A78", // 紫帯 (#E7DCFB)
-    sea: "#0E5A6B", // 青帯 (#BEF2F9)
-    land: "#2C5212", // 緑帯 (#D8F2C0)
-    sky: "#5E6B12", // 黄帯 (#FDEFB4) — 濃オリーブ
-  };
-  const codeColor = flag32
-    ? CODE_COLOR_BY_GROUP[thirtyTwoGroup(t32)]
-    : "#2B2A6B";
-  // ヒーローの OCEAN コード用: 帯背景より一段暗いだけの控えめトーン (16P 参考。
-  //   称号=白の主役に対し、コードは背景に馴染む脇役にする)。
-  const CODE_TINT_BY_GROUP: Record<ThirtyTwoGroup, string> = {
-    sea: "#3D9DB1", // 帯 #5BC6DB の少し暗い版
-    sky: "#C4A83F", // 帯 #EDCF62 の少し暗い版
-    land: "#6DAA50", // 帯 #8FCE70 の少し暗い版
-    unknown: "#9377CC", // 帯 #B49BE8 の少し暗い版
-  };
-  const codeTint = flag32
-    ? CODE_TINT_BY_GROUP[thirtyTwoGroup(t32)]
-    : "#9377CC";
+  // ヒーロー帯トーンは共通ヘルパで解決 (/tako と共有)。flag off(16) は unknown で解決。
+  const { heroBg, codeTint } = heroColorsForGroup(
+    flag32 ? thirtyTwoGroup(t32) : "unknown",
+  );
   const sections = flag32 ? selfContentFor(t32) : selfResultContent[sixteenTypeId];
   const dispName = flag32 ? thirtyTwoName(t32) : sixteenType.name;
   const dispEssence = flag32 ? thirtyTwoEssence(t32) : sixteenType.essence;
