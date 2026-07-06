@@ -54,7 +54,11 @@ interface PageProps {
 
 // ?previewType=<32タイプID> 指定時のモック解除後データ (dev / fromPreview=1 のみ)。実DBは介さない。
 // /me のプレビュー機構と同型。実 compute 関数を流用して現実的な描画にする。
-function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
+function mockTakoData(
+  previewType: ThirtyTwoTypeId,
+  opts: { withMessages?: boolean } = {},
+): OwnerReportData {
+  const { withMessages = true } = opts;
   const code = sixteenTypes[baseIdOf(previewType)].code;
   const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
   const selfScores = {
@@ -102,10 +106,13 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
     friendEvalCount: friends.length,
     friendAvgScores,
     friendNames: friends.map((f) => f.name),
-    friendMessages: [
-      { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
-      { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
-    ],
+    // ?msgs=0 で 0件 (友達からの声が非表示になるか確認用)。既定はダミー2件。
+    friendMessages: withMessages
+      ? [
+          { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
+          { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
+        ]
+      : [],
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
@@ -136,11 +143,17 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       : null;
 
   const data = previewType
-    ? mockTakoData(previewType)
+    ? mockTakoData(previewType, { withMessages: sp.msgs !== "0" })
     : await loadOwnerReportData(token);
   if (!data) {
     notFound();
   }
+
+  // dev/プレビュー限定: 解説長文の done (実データ形式) 表示を確認するためのダミー本文。
+  //   本番通常フロー (previewType=null) では undefined → 従来どおり API から取得。
+  const previewProse = previewType
+    ? "自分では、鈍感なくらいに物事を受け流しているつもりでも、友達の目には、もっと繊細でまわりの空気をよく拾う人として映っているみたい。\n\nその感じ取る力は、あなたが思うより頼りにされている。落ち着いて見えるぶん、実は細やかに気を配っていることが、みんなにはちゃんと伝わっているのだと思う。"
+    : undefined;
 
   // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
   //   称号・キャッチ = 自己タイプ (32/16 フラグ準拠)、code = OCEAN 高低の大小文字表記。
@@ -271,6 +284,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   deep={deep}
                   letters={data.friendMessages}
                   ownerToken={token}
+                  previewProse={previewProse}
                 />
               </section>
             )}

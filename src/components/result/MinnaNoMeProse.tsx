@@ -16,12 +16,24 @@ type FetchState =
 const MAX_RETRIES = 8;
 const RETRY_DELAY_MS = 4000;
 
-export function MinnaNoMeProse({ ownerToken }: { ownerToken: string }) {
-  const [state, setState] = useState<FetchState>({ kind: "loading" });
+export function MinnaNoMeProse({
+  ownerToken,
+  previewText,
+}: {
+  ownerToken: string;
+  /** dev/プレビュー限定: 実データ形式 (done) の表示を確認するためのダミー本文。
+   *  指定時は API を叩かず即 done 表示。本番通常フロー (未指定) の挙動は不変。 */
+  previewText?: string;
+}) {
+  const [state, setState] = useState<FetchState>(
+    previewText ? { kind: "done", text: previewText } : { kind: "loading" },
+  );
   // 手動リトライ用: インクリメントで effect を再実行する。
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    // プレビュー: ダミー本文が渡っていれば fetch せず done のまま。
+    if (previewText) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -53,7 +65,7 @@ export function MinnaNoMeProse({ ownerToken }: { ownerToken: string }) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [ownerToken, reloadKey]);
+  }, [ownerToken, reloadKey, previewText]);
 
   const retryManually = () => setReloadKey((k) => k + 1);
 
