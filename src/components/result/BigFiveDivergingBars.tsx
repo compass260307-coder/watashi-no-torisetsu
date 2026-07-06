@@ -27,11 +27,13 @@ interface AxisMeta {
 // 極ラベルは「スペック感・優劣感」を消すため、神経症傾向も必ず両極命名する
 // (高 = 繊細 / 低 = 安定。「神経症的かどうか」の一極評価にしない)。
 // 軸カラーは 16P の 5 色 (青/黄/緑/紫/赤) を踏襲。
+// 表示順は OCEAN 軸順 (O→C→E→A→N)。各要素に title/left/right/color/dim(スコア参照) が
+// まとまっているため、配列の並べ替えだけで色・ラベル・スコアが完全連動する (対応ズレなし)。
 const AXES: readonly AxisMeta[] = [
-  { dim: "E", title: "外向性", left: "内向", right: "外向", color: "#4298B4" },
   { dim: "O", title: "開放性", left: "現実的", right: "探究的", color: "#E4AE3A" },
-  { dim: "A", title: "協調性", left: "独立", right: "協調", color: "#33A474" },
   { dim: "C", title: "誠実性", left: "柔軟", right: "計画的", color: "#88619A" },
+  { dim: "E", title: "外向性", left: "内向", right: "外向", color: "#4298B4" },
+  { dim: "A", title: "協調性", left: "独立", right: "協調", color: "#33A474" },
   { dim: "N", title: "神経症傾向", left: "安定", right: "繊細", color: "#F25E62" },
 ];
 
