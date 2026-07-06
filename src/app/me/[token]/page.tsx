@@ -21,8 +21,11 @@
 //   - そのためこのページから ¥500 訴求カードは削除 (課金処理本体は触らない)
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
-import fs from "node:fs";
 import path from "node:path";
+// 画像の存在チェックはビルド時生成のマニフェストで行う (scripts/generate-image-manifest.mjs)。
+// ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
+// Vercel の 250MB 上限を超えるため、fs は使わない。
+import characterImages from "@/generated/character-images.json";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -320,9 +323,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const v3Image = flag32
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
-  const cutImage = `/characters/cut/${path.basename(v3Image)}`;
-  const dispImage = fs.existsSync(path.join(process.cwd(), "public", cutImage))
-    ? cutImage
+  const dispImage = characterImages.cut.includes(path.basename(v3Image))
+    ? `/characters/cut/${path.basename(v3Image)}`
     : v3Image;
   // 挿絵 (シーン別イラスト・16P の章間イラスト参考):
   //   public/characters/scenes/ に「置くだけで自動表示」(無ければ非表示)。
@@ -333,11 +335,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
     const candidates = [
-      `/characters/scenes/${sceneSlug}_${variant}.png`,
-      ...(sceneGroup ? [`/characters/scenes/${sceneGroup}_${variant}.png`] : []),
+      `${sceneSlug}_${variant}.png`,
+      ...(sceneGroup ? [`${sceneGroup}_${variant}.png`] : []),
     ];
-    for (const rel of candidates) {
-      if (fs.existsSync(path.join(process.cwd(), "public", rel))) return rel;
+    for (const name of candidates) {
+      if (characterImages.scenes.includes(name)) return `/characters/scenes/${name}`;
     }
     return null;
   };

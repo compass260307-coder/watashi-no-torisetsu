@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --webpack",
     "dev:turbo": "next dev",
+    "prebuild": "node scripts/generate-image-manifest.mjs",
     "build": "next build",
+    "prebuild:local": "node scripts/generate-image-manifest.mjs",
     "build:local": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
