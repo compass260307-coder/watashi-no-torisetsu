@@ -9,8 +9,14 @@ import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import { loadOwnerReportData } from "@/lib/owner-report-data";
-import { scoreImpressionLine } from "@/lib/minna-no-me";
+import {
+  loadOwnerReportData,
+  type OwnerReportData,
+} from "@/lib/owner-report-data";
+import {
+  scoreImpressionLine,
+  computeMinnaNoMeContext,
+} from "@/lib/minna-no-me";
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
@@ -26,6 +32,11 @@ import {
   thirtyTwoEssence,
   thirtyTwoCatchphrase,
   thirtyTwoGroup,
+  thirtyTwoName,
+  thirtyTwoImagePath,
+  baseIdOf,
+  nAxisOf,
+  type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
@@ -41,17 +52,100 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function TakoPage({ params }: PageProps) {
-  const { token } = await params;
+// ?previewType=<32タイプID> 指定時のモック解除後データ (dev / fromPreview=1 のみ)。実DBは介さない。
+// /me のプレビュー機構と同型。実 compute 関数を流用して現実的な描画にする。
+function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
+  const code = sixteenTypes[baseIdOf(previewType)].code;
+  const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
+  const selfScores = {
+    O: hi("O"),
+    C: hi("C"),
+    E: hi("E"),
+    A: hi("A"),
+    N: nAxisOf(previewType) === "N" ? 8 : 2,
+  };
+  // 友達3人: 本人スコアを少しずらして「自己認知ギャップ」が見えるように。
+  const shifts: Record<string, number>[] = [
+    { E: 2, O: -2 },
+    { E: 1, A: 1 },
+    { E: 3, N: -2 },
+  ];
+  const clamp = (v: number) => Math.max(0, Math.min(10, v));
+  const friends = shifts.map((s, i) => ({
+    name: ["ゆい", "そら", "はる"][i],
+    perceivedScores: Object.fromEntries(
+      (["O", "C", "E", "A", "N"] as const).map((k) => [
+        k,
+        clamp(selfScores[k] + (s[k] ?? 0)),
+      ]),
+    ) as Record<string, number>,
+    qualitative: null,
+  }));
+  const friendAvgScores = Object.fromEntries(
+    (["O", "C", "E", "A", "N"] as const).map((k) => [
+      k,
+      friends.reduce((a, f) => a + (f.perceivedScores[k] as number), 0) /
+        friends.length,
+    ]),
+  ) as Partial<Record<BigFiveDimension, number>>;
+  const t = classifyThirtyTwoType(friendAvgScores);
+  return {
+    user: {
+      id: "preview",
+      type_id: null,
+      scores: selfScores,
+      display_name: "プレビュー",
+      invite_code: "preview",
+      owner_token: "preview",
+    },
+    selfScores,
+    friendEvalCount: friends.length,
+    friendAvgScores,
+    friendNames: friends.map((f) => f.name),
+    friendMessages: [
+      { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
+      { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
+    ],
+    minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
+    inviteCode: "preview",
+    inviteUrl: `${SITE_URL}/friend/preview`,
+    threshold: 3,
+    unlocked: true,
+    friendCharacter: {
+      type32: t,
+      essence: thirtyTwoEssence(t),
+      name: thirtyTwoName(t),
+      imageSrc: thirtyTwoImagePath(t),
+      previewPath: `/preview/${t}`,
+    },
+  };
+}
 
-  const data = await loadOwnerReportData(token);
+export default async function TakoPage({ params, searchParams }: PageProps) {
+  const { token } = await params;
+  const sp = await searchParams;
+
+  const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewAllowed =
+    process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
+  const previewType: ThirtyTwoTypeId | null =
+    previewAllowed &&
+    /^[a-z-]+__[NR]$/.test(rawPreview) &&
+    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+      ? (rawPreview as ThirtyTwoTypeId)
+      : null;
+
+  const data = previewType
+    ? mockTakoData(previewType)
+    : await loadOwnerReportData(token);
   if (!data) {
     notFound();
   }
 
-  const session = await getSession();
+  const session = previewType ? null : await getSession();
   const isOwner = !!session && session.id === data.user.id;
 
   // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
