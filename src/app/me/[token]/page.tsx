@@ -56,7 +56,7 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import { CharacterHero } from "@/components/result/CharacterHero";
+import { ResultHero } from "@/components/result/ResultHero";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -291,7 +291,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
     : "#B49BE8";
   // ヒーロー色面のフェルトドット色 (中間ティント = グループの彩度高め色)。off は紫フォールバック。
   // 帯を濃トーン化したため、中間色だと沈む → 半透明の白で「浮かぶ」装飾に変更。
-  const dotColor = "rgba(255,255,255,0.55)";
   // OCEAN コード色: 各グループの帯色を濃トーン化 (帯背景に対し十分なコントラスト)。
   //   帯色→濃トーン: 紫帯→濃紫 / 青帯→深青緑 / 緑帯→濃緑 / 黄帯→濃オリーブ (名言の茶と分離)。
   //   ※内部グループ名は 空=黄・陸=緑 (帯色で対応付け)。称号(名前)はブランド固定ネイビーのまま。
@@ -388,23 +387,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // ヒーロー見出し (16P 参考): 小ラベル「あなたの性格タイプ:」+ 称号(essence)の大見出し。
   // どちらも白文字 (色帯の上に乗せる 16P の構図)。SP=中央 / PC=左寄せ。
   // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
-  const heroTitle = (
-    <div className="text-center md:text-left">
-      <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
-        あなたの性格タイプ:
-      </p>
-      <div
-        className="whitespace-nowrap font-extrabold leading-[1.04] text-white"
-        style={{
-          // SP でも必ず 1 行に収める: 文字数が多い称号 (例 ジャーナリスト) は
-          // 1 文字あたりの上限 (88vw / 文字数) が 14vw より小さくなり自動縮小される
-          fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(dispEssence.length, 1)).toFixed(2)}vw), 72px)`,
-        }}
-      >
-        {dispEssence}
-      </div>
-    </div>
-  );
   // OCEAN コード行 (大文字小文字方式): 各軸の高低 (stored スコア ≥5 = 高) を文字の大小で表す。
   //   高 = 大文字・40px・weight800・#2B2A6B / 低 = 小文字・27px・#2B2A6B 40% (baseline 揃え)。
   //   ●○ インジケータは廃止 (大小で高低が伝わる)。ラベル「BIG FIVE CODE」は維持。
@@ -414,26 +396,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const dispCode = (["O", "C", "E", "A", "N"] as BigFiveDimension[])
     .map((k) => (oceanIsHigh(k) ? k : k.toLowerCase()))
     .join("");
-  const oceanRow = (
-    <div className="mt-1.5 md:mt-2 flex items-baseline justify-center gap-1.5 md:justify-start">
-      {(["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((k) => {
-        const high = oceanIsHigh(k);
-        return (
-          <span
-            key={k}
-            className="font-extrabold leading-none"
-            style={{
-              fontSize: high ? "30px" : "20px",
-              color: codeTint,
-              opacity: high ? 1 : 0.55,
-            }}
-          >
-            {high ? k : k.toLowerCase()}
-          </span>
-        );
-      })}
-    </div>
-  );
   // キャラ名言 (サブコピー) はヒーローから撤去 (16P 構成に合わせラベル+称号+OCEAN のみ)。
   // dispCatch 自体はシェア文言 (ResultActions catchphrase) で引き続き使用。
 
@@ -457,66 +419,26 @@ export default async function MePage({ params, searchParams }: PageProps) {
         {/* ===== ヒーロー色面 (全幅 heroBg: 上部中央グロー + フェルトドット + 称号/OCEAN + 画像) =====
             self-sizing 維持 (固定 height なし)。名前は上部中央グローの上 (画像より前面=隠れない)。
             ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
-        <div
-          className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
-          style={{
-            background: heroBg,
-            // /types の帯繋ぎ目と同じ斜めカット (左高・右低) で下の白へ繋ぐ (16P 参考)
-            clipPath:
-              "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
+        {/* ヒーロー帯 (色帯+斜めクリップ+グロー+ドット+称号/OCEAN+キャラ) は ResultHero に共通化。
+            /me は 2カラム・本文幅1080 (既定)。/tako でも同コンポーネントを流用し世界観統一。 */}
+        <ResultHero
+          label="あなたの性格タイプ:"
+          essence={dispEssence}
+          scores={stored}
+          heroBg={heroBg}
+          codeTint={codeTint}
+          imageSrc={dispImage}
+          alt={dispName}
+          name={dispName}
+          description={dispDesc}
+          heroPullClass={heroPullClass}
+          jobSlot={{
+            animal: animalName,
+            job: displayJob,
+            friendCount: friendEvalCount,
+            threshold: JOB_FRIEND_THRESHOLD,
           }}
-        >
-          {/* キャラシェアボタンは PR#47 で右上絶対配置 → 画像直下の in-flow に移動 */}
-          {/* 上部中央の放射状グロー (濃トーンの帯に上品な明るみを足す) */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
-            style={{
-              background:
-                "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
-            }}
-          />
-          {/* フェルトドット (中間ティント・上半分/主に PC 側余白。中央の画像には重ねない) */}
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 11, height: 11, top: "15%", left: "6%" }} />
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "42%", left: "9%" }} />
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 13, height: 13, top: "20%", right: "7%" }} />
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 8, height: 8, top: "50%", right: "10%" }} />
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 10, height: 10, top: "72%", left: "13%" }} />
-          <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "78%", right: "15%" }} />
-          {/* 中身 (称号 / OCEAN / 画像) — グロー・ドットより前面。
-              モバイルは上部余白を詰め、本文の出だしがビュー下端に覗くようにする。
-              ☰ はボトムナビ導入で撤去。 */}
-          {/* SP=縦積み(中央) / PC=16P 風 2 カラム (左: ラベル+称号+OCEAN、右: キャラ) */}
-          <div className="relative max-w-[1080px] mx-auto px-4 md:px-8 pt-9 md:pt-14 pb-2 md:flex md:items-center md:gap-8">
-            <div className="md:flex-1">
-              {heroTitle}
-              {oceanRow}
-            </div>
-            {/* SP: 透過画像の上側余白ぶん -mt で引き上げ、OCEAN との間を詰める
-                (引き上げ量はキャラ画像の実測余白に応じて可変 = heroPullClass) */}
-            <div className={`max-w-[640px] mx-auto ${heroPullClass} md:mt-0 md:max-w-[560px] md:flex-1`}>
-              <CharacterHero
-                imageSrc={dispImage}
-                alt={dispName}
-                essence={dispEssence}
-                name={dispName}
-                description={dispDesc}
-                imageAspectClassName="aspect-square max-h-[54vh] md:max-h-[500px]"
-                imageFitClassName="object-contain"
-                imageCardClassName=""
-                imageSizes="(min-width: 768px) 600px, 100vw"
-                hideDecorations
-                hideJobGauge
-                jobSlot={{
-                  animal: animalName,
-                  job: displayJob,
-                  friendCount: friendEvalCount,
-                  threshold: JOB_FRIEND_THRESHOLD,
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        />
         {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
             スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。 ===== */}
         <div className="relative mx-[calc(50%-50vw)] w-screen bg-white pt-4 md:pt-2 pb-1">
