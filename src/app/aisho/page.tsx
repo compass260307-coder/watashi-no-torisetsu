@@ -200,7 +200,7 @@ function Slot({
   // 空/選択済みで高さが変わると選択のたびにレイアウトが揺れるため、両状態とも固定高。
   // 一覧カードと同じ文法: 白カードの上端から顔ズーム版キャラの頭をはみ出させ、
   // 体の切れ目はカード下端に揃えて隠す。名前はカードの下に出す (SP の幅でも破綻しない)。
-  const CARD_H = "h-[96px] md:h-[120px]";
+  const CARD_H = "h-[96px] md:h-[150px]";
   if (!id) {
     return (
       <div className="flex-1">
@@ -242,7 +242,7 @@ function Slot({
             alt={thirtyTwoEssence(id)}
             width={300}
             height={300}
-            className="absolute bottom-0 left-1/2 w-[120px] md:w-[150px] max-w-none -translate-x-1/2"
+            className="absolute bottom-0 left-1/2 w-[120px] md:w-[190px] max-w-none -translate-x-1/2"
           />
         ) : (
           <Image
@@ -255,7 +255,7 @@ function Slot({
         )}
       </div>
       <p
-        className="mt-1.5 text-center font-black text-sm md:text-base leading-tight"
+        className="mt-1.5 md:mt-2.5 text-center font-black text-sm md:text-lg leading-tight"
         style={{ color: NAVY }}
       >
         {thirtyTwoEssence(id)}
@@ -774,16 +774,14 @@ function AishoInner() {
 
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
-      // 2枠そろったら「診断中…」演出を挟んで自動で結果表示
-      // (ワンクッションの「相性を見る」ボタンは廃止)。
+      // 選ぶだけでは診断しない。2枠そろうと CTA「相性を見る」が押せるようになり、
+      // 押した時に「診断中…」演出 → 結果表示。
       if (slotA === null) {
         setSlotA(id);
         syncUrl(id, slotB);
-        if (slotB !== null) setAnalyzing(true);
       } else if (slotB === null && id !== slotA) {
         setSlotB(id);
         syncUrl(slotA, id);
-        setAnalyzing(true);
       }
     },
     [slotA, slotB, syncUrl],
@@ -901,11 +899,11 @@ function AishoInner() {
 
             {/* 上部スロット: 結果ヒーローと同じ「2キャラ対面 + ハート」の文法。
                 PC では小さな点線ボックスが余白に浮いて見えたため、一回り大きくする */}
-            <div className="mx-auto flex max-w-[560px] md:max-w-[700px] items-stretch gap-3 md:gap-5">
+            <div className="mx-auto flex max-w-[560px] md:max-w-[860px] items-stretch gap-3 md:gap-8">
               <Slot id={slotA} label="1人目" onClear={clearA} />
               {/* ハートはカード (名前ラベルを除く) の縦中央に合わせる */}
               <span
-                className="self-start mt-[38px] md:mt-[50px] shrink-0"
+                className="self-start mt-[38px] md:mt-[65px] shrink-0"
                 style={{ color: NAVY }}
                 aria-hidden="true"
               >
@@ -914,7 +912,23 @@ function AishoInner() {
               <Slot id={slotB} label="2人目" onClear={clearB} />
             </div>
 
-            {/* グループ別グリッド (2キャラ選んだ時点で自動的に結果表示に切り替わる) */}
+            {/* CTA: 2キャラそろうまでは薄色 (disabled)、そろったら押せる */}
+            <div className="flex justify-center mt-6 md:mt-8">
+              <button
+                type="button"
+                onClick={() => setAnalyzing(true)}
+                disabled={!bothFilled}
+                className="rounded-full px-12 py-3 md:px-14 md:py-3.5 text-white font-black text-base md:text-lg shadow-sm transition-all disabled:cursor-not-allowed"
+                style={{
+                  background: NAVY,
+                  opacity: bothFilled ? 1 : 0.35,
+                }}
+              >
+                相性を診断する
+              </button>
+            </div>
+
+            {/* グループ別グリッド */}
             <TypeGrid onPick={pick} selected={selected} />
           </>
         )}
