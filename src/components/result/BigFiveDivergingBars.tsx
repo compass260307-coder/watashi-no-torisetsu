@@ -80,6 +80,11 @@ interface BigFiveDivergingBarsProps {
   number?: string;
   /** 見出し(バッジ+タイトル)を隠す。上位に別の見出しがある入れ子表示で重複を避ける。 */
   hideHeading?: boolean;
+  /**
+   * バー本体を囲む白カード枠 (border/背景/padding) を外し、地の白に溶け込ませる。
+   * 既定 false = 従来どおりカード枠あり。個別ページ (/tako 個別) のみ true で使う。
+   */
+  bareCard?: boolean;
   className?: string;
 }
 
@@ -91,6 +96,7 @@ export function BigFiveDivergingBars({
   emoji = "✨",
   number,
   hideHeading = false,
+  bareCard = false,
   className = "",
 }: BigFiveDivergingBarsProps) {
   const hasFriend = !!friendScores;
@@ -121,8 +127,15 @@ export function BigFiveDivergingBars({
         </div>
       )}
 
-      {/* バー本体は 16P 同様に白カード (角丸 + 薄ボーダー) で囲む */}
-      <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
+      {/* バー本体は 16P 同様に白カード (角丸 + 薄ボーダー) で囲む。
+          bareCard=true (個別ページ) では枠/背景/padding を外し地に溶け込ませる。 */}
+      <div
+        className={
+          bareCard
+            ? "space-y-6"
+            : "space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7"
+        }
+      >
         {/* 凡例 (友達スコア重ね表示時のみ): 自分 ● / 友達 ◆ */}
         {hasFriend && (
           <div
