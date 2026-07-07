@@ -16,6 +16,7 @@ import {
   thirtyTwoOneLiner,
   thirtyTwoGroup,
 } from "./thirty-two-types";
+import type { ThirtyTwoGroup } from "./thirty-two-content/character-32";
 import { heroColorsForGroup } from "./hero-colors";
 import { preferCutImage } from "./character-image";
 import {
@@ -72,6 +73,8 @@ export interface PerceptionView {
   dispImageCut: string;
   heroBg: string;
   codeTint: string;
+  /** その友達が見たタイプのグループ (sky/land/sea/unknown)。グループ別挿絵の解決に使う。 */
+  perceivedGroup: ThirtyTwoGroup;
   // 本文
   perceivedLookBody: string;
   perceivedTipsBody: string | undefined;
@@ -115,9 +118,10 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const dispDesc = flag32
     ? thirtyTwoOneLiner(perceived32Id)
     : perceivedType16.oneLiner;
-  const hero = heroColorsForGroup(
-    flag32 ? thirtyTwoGroup(perceived32Id) : "unknown",
-  );
+  const perceivedGroup: ThirtyTwoGroup = flag32
+    ? thirtyTwoGroup(perceived32Id)
+    : "unknown";
+  const hero = heroColorsForGroup(perceivedGroup);
   const dispImageCut = preferCutImage(dispImage);
 
   const [perceivedLookBody, perceivedTipsBody] = (
@@ -170,6 +174,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
     perceivedTypeName,
     dispDesc,
     dispImageCut,
+    perceivedGroup,
     heroBg: hero.heroBg,
     codeTint: hero.codeTint,
     perceivedLookBody,

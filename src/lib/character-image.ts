@@ -5,6 +5,7 @@
 // 自己/友達どちらのキャラも同一の透過アセットを参照するよう統一する。
 
 import characterImages from "@/generated/character-images.json";
+import type { ThirtyTwoGroup } from "./thirty-two-content/character-32";
 
 /** v3 原画パスを受け取り、透過版があれば /characters/cut のパスを、無ければ引数のまま返す。 */
 export function preferCutImage(v3Path: string): string {
@@ -12,4 +13,20 @@ export function preferCutImage(v3Path: string): string {
   return (characterImages.cut as string[]).includes(base)
     ? `/characters/cut/${base}`
     : v3Path;
+}
+
+/**
+ * グループ別のシーン挿絵 (public/characters/scenes/<group>_<variant>.png) の URL を返す。
+ * アセットが無ければ null (= 非表示)。/me ページの sceneImage と同じ characterImages.scenes
+ * インデックスを参照する共有版 (個別ページ /tako 個別 でも使えるよう切り出し)。
+ * variant 例: normal1 / normal2 / love / work / school。
+ */
+export function sceneImageForGroup(
+  group: ThirtyTwoGroup,
+  variant: string,
+): string | null {
+  const name = `${group}_${variant}.png`;
+  return (characterImages.scenes as string[]).includes(name)
+    ? `/characters/scenes/${name}`
+    : null;
 }

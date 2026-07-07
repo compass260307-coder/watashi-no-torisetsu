@@ -11,6 +11,7 @@
 // は従来サイズのまま (各三項の false 側が従来値)。
 
 import type { ReactNode } from "react";
+import Image from "next/image";
 import { ResultHero } from "./ResultHero";
 import { TrisetsuNameTag } from "./TrisetsuNameTag";
 import { MutualUnderstandingRadar } from "./MutualUnderstandingRadar";
@@ -18,6 +19,7 @@ import { BigFiveDivergingBars } from "./BigFiveDivergingBars";
 import { PerceptionMessageCard } from "./PerceptionMessageCard";
 import { PerceptionFoundProse } from "./PerceptionFoundProse";
 import { PERCEPTION_BODY_TEXT_CLASS } from "./body-text";
+import { sceneImageForGroup } from "@/lib/character-image";
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
 import type { PerceptionView } from "@/lib/perception-view";
 import type { BigFiveScores } from "@/lib/perception-analysis";
@@ -117,6 +119,12 @@ export function PerceptionResultBody({
     ? "body-gothic text-[#1A1A1A] font-normal text-[19px] leading-[1.55]"
     : PERCEPTION_BODY_TEXT_CLASS;
   const sectionCls = L ? "mb-10" : "mb-8";
+  // 個別ページのみ: ①(相互理解度)と②(ギャップ)の間に、その友達が見たタイプのグループ別
+  // 挿絵を1枚。相互理解度の後・分析の前に、その友達視点のグループをビジュアルで伝える。
+  // アセットが無ければ null → 非表示 (安全)。
+  const bodySceneSrc = isIndividual
+    ? sceneImageForGroup(view.perceivedGroup, "normal1")
+    : null;
 
   return (
     <>
@@ -203,6 +211,19 @@ export function PerceptionResultBody({
           <p className={bodyCls}>{view.perceivedLookBody}</p>
         </div>
       </section>
+
+      {/* ===== ①→② の間: その友達が見たタイプのグループ別挿絵 (個別ページのみ・1枚) ===== */}
+      {bodySceneSrc && (
+        <div className={sectionCls}>
+          <Image
+            src={bodySceneSrc}
+            alt=""
+            width={1532}
+            height={800}
+            className="mx-auto h-auto w-full max-w-[560px]"
+          />
+        </div>
+      )}
 
       {/* ===== ② ギャップ (レーダー + 共通発散バー + 軸ごと解説文) ===== */}
       <section className={sectionCls}>
