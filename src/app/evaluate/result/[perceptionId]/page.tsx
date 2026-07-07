@@ -500,6 +500,7 @@ export default async function EvaluationResultPage({
                 scores={selfScores}
                 friendScores={otherScores}
                 friendLabel="友達から"
+                hideHeading
               />
             </div>
 
