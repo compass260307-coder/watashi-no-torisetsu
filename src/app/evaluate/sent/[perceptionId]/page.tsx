@@ -167,7 +167,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   // ===== 2. owner (= 評価された のすけ) 取得 =====
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("display_name, scores")
+    .select("display_name, scores, invite_code")
     .eq("id", perception.target_user_id)
     .maybeSingle();
   if (!user) {
@@ -175,6 +175,13 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   }
 
   const ownerNameRaw = ((user.display_name as string | null) ?? "").trim();
+  // 友達→自分も診断の導線に「誰の招待から来たか」を載せる (/diagnosis?source=<招待元コード>)。
+  // /diagnosis がこれを sourceInviteCode として API に渡し、users.source_user_id / generation
+  // (バイラルツリー) が埋まる。招待元コードが無ければ素の /diagnosis にフォールバック。
+  const ownerInviteCode = ((user.invite_code as string | null) ?? "").trim();
+  const diagnosisHref = ownerInviteCode
+    ? `/diagnosis?source=${encodeURIComponent(ownerInviteCode)}`
+    : "/diagnosis";
   // のすけ = 対象者。本文の「アナタ」反転先 (素の名前。長くてもそのまま=本人ページ準拠)。
   const targetName = ownerNameRaw || "この人";
   // 評価者 (= 閲覧者、例 Ryunosuke)。ヒーロー1段目「◯◯さんから見た」に使う。
@@ -436,11 +443,11 @@ export default async function EvaluationSentPage({ params }: PageProps) {
         )}
 
         {/* ===== 末尾CTA (新オーナー転換の主導線・クリックを計測) ===== */}
-        <SelfDiagnosisCtaButton id={END_CTA_ID} />
+        <SelfDiagnosisCtaButton id={END_CTA_ID} href={diagnosisHref} />
       </div>
 
       {/* ===== 右下フローティング診断 CTA (末尾CTAが見えたら隠す) ===== */}
-      <FloatingDiagnosisCta href="/diagnosis" hideWhenId={END_CTA_ID} />
+      <FloatingDiagnosisCta href={diagnosisHref} hideWhenId={END_CTA_ID} />
     </main>
   );
 }

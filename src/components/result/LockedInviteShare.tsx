@@ -1,23 +1,24 @@
 "use client";
 
-// ロック中の「友達に評価してもらう」招待導線 (QR + LINE + インスタ=コピー)。
-// OthersPerceptionSection のロック表示内に埋め込む。課金導線は一切含めない。
+// ロック中の「友達に評価してもらう」招待導線 (QR + シェアピル)。
+// TakoLockedState / OthersPerceptionSection(/me) / 解除後 /tako で共用。課金導線は一切含めない。
 //
+// - シェアピル: X(黒) / LINE(緑) / リンク(ブランド紫) の 3 つを横並び。ラベル付きの塗りピルで
+//   世界観に合わせる (色は CharacterShareButton と同系統)。
 // - QR: 友達評価への招待URL (inviteCode 付き) を対面スキャン用に表示。
-// - LINE: line.me 共有リンクで招待URL + 一言。
-// - インスタ: URL直接共有が弱いため「リンクをコピー」にフォールバック (DM/ストーリーに貼る前提)。
+// - 見出し/長い注意書きは持たない (呼び出し側の文脈に委ねてシンプルに)。
 
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
+import { withRef } from "@/lib/acquisition-link";
 
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
   inviteUrl: string;
   /**
-   * 計測ソース。指定時のみ LINE/コピー タップで friend_invite_clicked を発火する
-   * (metadata: { channel, source })。
-   * 未指定 (ロック状態など) は従来どおり無発火で挙動を変えない。
+   * 計測ソース。指定時のみ X/LINE/コピー タップで friend_invite_clicked を発火する
+   * (metadata: { channel, source })。未指定 (ロック状態など) は無発火で挙動を変えない。
    */
   trackSource?: string;
 }
@@ -31,11 +32,15 @@ export function LockedInviteShare({
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
 
+  // チャネル別に ?ref を付けて、この招待から来た友達の流入元 (acquisition_source) を計測する。
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    `${SHARE_TEXT} ${inviteUrl}`,
+    `${SHARE_TEXT} ${withRef(inviteUrl, "line")}`,
   )}`;
+  const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+    SHARE_TEXT,
+  )}&url=${encodeURIComponent(withRef(inviteUrl, "x"))}`;
 
-  const fire = (channel: "line" | "copy") => {
+  const fire = (channel: "x" | "line" | "copy") => {
     if (!trackSource) return;
     track("friend_invite_clicked", {
       metadata: { channel, source: trackSource },
@@ -44,78 +49,89 @@ export function LockedInviteShare({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(inviteUrl);
+      await navigator.clipboard.writeText(withRef(inviteUrl, "copy"));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
       fire("copy");
     } catch {
-      // クリップボード不可環境では何もしない (QR / LINE を使ってもらう)
+      // クリップボード不可環境では何もしない (QR / 他ピルを使ってもらう)
     }
   };
 
+  const pill =
+    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-[13px] font-black text-white transition-transform active:scale-95";
+
   return (
-    <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 text-center">
-      <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.3em] mb-2">
-        友達に評価してもらう
-      </p>
-      <h3 className="text-[#2E2E5C] font-black text-lg leading-snug mb-4">
-        友達に評価してもらって
-        <br />
-        ロックを解除しよう
-      </h3>
-
-      {/* QR (対面スキャン用)。装飾SVGを role="img" でラベル付け */}
-      <div className="flex justify-center mb-3">
-        <div
-          className="bg-white rounded-2xl p-4 shadow-md border-2 border-[#2E2E5C]/20"
-          role="img"
-          aria-label="友達評価ページへの招待QRコード"
-        >
-          <QRCodeSVG
-            value={inviteUrl}
-            size={180}
-            bgColor="#FFFFFF"
-            fgColor="#2E2E5C"
-            level="H"
-            marginSize={0}
-          />
-        </div>
+    <div className="mx-auto max-w-[288px]">
+      {/* QR (対面スキャン用)。白タイルはピル行と同じ幅 (w-full)、QRは中央フレーム。 */}
+      <div
+        className="w-full rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(46,46,92,0.10)]"
+        role="img"
+        aria-label="友達評価ページへの招待QRコード"
+      >
+        <QRCodeSVG
+          value={withRef(inviteUrl, "qr")}
+          size={248}
+          className="h-auto w-full"
+          bgColor="#FFFFFF"
+          fgColor="#2E2E5C"
+          level="H"
+          marginSize={0}
+        />
       </div>
-      <p className="text-[#2E2E5C]/75 font-bold text-xs leading-relaxed mb-5">
-        カメラで読み取って、その場で評価してもらおう
+      <p className="mt-3 text-center text-[12px] font-bold text-[#2E2E5C]/50">
+        友達のスマホで読み取ってもらおう
       </p>
 
-      {/* LINE / インスタ(=コピー) で送る */}
-      <div className="flex flex-col gap-3">
+      {/* シェアピル: X / LINE / リンク (QR と同じ幅・ラベル付き塗りピル) */}
+      <div className="mt-4 flex items-center gap-2">
+        <a
+          href={xUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => fire("x")}
+          className={`${pill} bg-black`}
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white" aria-hidden="true">
+            <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
+          </svg>
+          X
+        </a>
         <a
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => fire("line")}
-          className="flex items-center justify-center gap-2 w-full bg-[#06C755] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#04a648] hover:translate-y-0.5 hover:shadow-[0_2px_0_#04a648] active:translate-y-1 active:shadow-[0_0_0_#04a648] transition-all"
+          className={`${pill} bg-[#06C755]`}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="w-5 h-5 fill-white"
-            aria-hidden="true"
-          >
-            <path d="M12 2C6.48 2 2 5.69 2 10.23c0 4.07 3.55 7.48 8.35 8.12.32.07.77.21.88.49.1.25.07.65.03.9l-.14.86c-.04.25-.2.99.87.54s5.77-3.4 7.87-5.82c1.45-1.59 2.14-3.2 2.14-5.09C22 5.69 17.52 2 12 2zM8.13 12.6h-2c-.29 0-.53-.24-.53-.53V8.36c0-.29.24-.53.53-.53s.53.24.53.53v3.18h1.47c.29 0 .53.24.53.53s-.24.53-.53.53zm2.07-.53c0 .29-.24.53-.53.53s-.53-.24-.53-.53V8.36c0-.29.24-.53.53-.53s.53.24.53.53v3.71zm4.34 0c0 .23-.15.43-.36.5-.06.02-.11.03-.17.03-.17 0-.33-.08-.43-.22l-1.88-2.56v2.25c0 .29-.24.53-.53.53s-.53-.24-.53-.53V8.36c0-.23.15-.43.36-.5.05-.02.11-.03.17-.03.17 0 .33.08.43.22l1.88 2.56V8.36c0-.29.24-.53.53-.53s.53.24.53.53v3.71zm3.24-2.39c.29 0 .53.24.53.53s-.24.53-.53.53h-1.47v.79h1.47c.29 0 .53.24.53.53s-.24.53-.53.53h-2c-.29 0-.53-.24-.53-.53V8.36c0-.29.24-.53.53-.53h2c.29 0 .53.24.53.53s-.24.53-.53.53h-1.47v.79z" />
+          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
+            <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
           </svg>
-          LINEで送る
+          LINE
         </a>
-
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center justify-center gap-2 w-full bg-white text-[#2E2E5C] font-black text-base px-6 py-3.5 rounded-full border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] hover:translate-y-0.5 hover:shadow-[0_2px_0_#2E2E5C] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
+          aria-label="招待リンクをコピー"
+          className={`${pill} bg-[#5B5BEF]`}
         >
-          {copied
-            ? "コピーしました ✓"
-            : "インスタ用にリンクをコピー"}
+          {copied ? (
+            <>
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12l5 5L20 6" />
+              </svg>
+              コピー済
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              リンク
+            </>
+          )}
         </button>
-        <p className="text-[#2E2E5C]/55 font-bold text-[11px]">
-          コピーしたリンクを、インスタの DM やストーリーに貼って送ってね
-        </p>
       </div>
     </div>
   );

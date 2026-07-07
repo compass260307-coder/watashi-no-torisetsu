@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { track } from "@/lib/track";
+import { withRef } from "@/lib/acquisition-link";
 
 const NAVY = "#2A3A5C";
 
@@ -24,11 +25,12 @@ export function CharacterShareButton({
   const [copied, setCopied] = useState(false);
 
   const text = `私は「${essence}」でした🐧\nあなたは何タイプ？30秒で診断できるよ👇`;
+  // チャネル別に ?ref を付けて流入元 (acquisition_source) を計測できるようにする。
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     text,
-  )}&url=${encodeURIComponent(shareUrl)}`;
+  )}&url=${encodeURIComponent(withRef(shareUrl, "x"))}`;
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    `${text}\n${shareUrl}`,
+    `${text}\n${withRef(shareUrl, "line")}`,
   )}`;
 
   const fire = (channel: "x" | "line" | "copy") =>
@@ -38,7 +40,7 @@ export function CharacterShareButton({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(`${text}\n${shareUrl}`);
+      await navigator.clipboard.writeText(`${text}\n${withRef(shareUrl, "copy")}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
       fire("copy");

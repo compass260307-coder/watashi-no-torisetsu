@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { track } from "@/lib/track";
+import { withRef } from "@/lib/acquisition-link";
 
 const NAVY = "#2A3A5C";
 
@@ -39,12 +40,13 @@ export function BragShare({
 
   const catchLine = `${catchphrase.replace(/。$/, "")}人らしい。`;
   const bragBody = `【私のトリセツ、できました🐧】\n私は「${essence} / ${code}」タイプでした。\n${catchLine}\n\nあなたは何タイプ？30秒で診断できるよ👇`;
-  const bragFull = `${bragBody}\n${topUrl}`;
+  // チャネル別に ?ref を付けて流入元 (acquisition_source) を計測できるようにする。
+  const bragFull = `${bragBody}\n${withRef(topUrl, "copy")}`;
   const bragXUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     bragBody,
-  )}&url=${encodeURIComponent(topUrl)}`;
+  )}&url=${encodeURIComponent(withRef(topUrl, "x"))}`;
   const bragLineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    bragFull,
+    `${bragBody}\n${withRef(topUrl, "line")}`,
   )}`;
 
   const fire = (channel: "x" | "line" | "copy") =>

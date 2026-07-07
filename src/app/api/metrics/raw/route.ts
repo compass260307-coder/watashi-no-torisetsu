@@ -73,6 +73,8 @@ export async function GET(request: NextRequest) {
   let rows: Record<string, unknown>[];
 
   if (table === "events") {
+    // metadata (JSON) は event_name ごとにキーが違うので、よく使うキーを個別列に展開して
+    // ピボットしやすくする。元の JSON も metadata 列に残す。
     columnOrder = [
       "created_at",
       "date_jst",
@@ -80,6 +82,12 @@ export async function GET(request: NextRequest) {
       "session_id",
       "invite_code",
       "owner_token",
+      "meta_type_id",
+      "meta_source",
+      "meta_channel",
+      "meta_kind",
+      "meta_friend_count",
+      "meta_question_id",
       "metadata",
     ];
     const raw = await fetchAll(
@@ -87,40 +95,58 @@ export async function GET(request: NextRequest) {
       "created_at, event_name, session_id, invite_code, owner_token, metadata",
       sinceIso,
     );
-    rows = raw.map((r) => ({
-      created_at: r.created_at,
-      date_jst: jstDate(r.created_at as string),
-      event_name: r.event_name ?? "",
-      session_id: r.session_id ?? "",
-      invite_code: r.invite_code ?? "",
-      owner_token: r.owner_token ?? "",
-      metadata: r.metadata ? JSON.stringify(r.metadata) : "",
-    }));
+    rows = raw.map((r) => {
+      const m = (r.metadata ?? {}) as Record<string, unknown>;
+      const s = (v: unknown) => (v === undefined || v === null ? "" : v);
+      return {
+        created_at: r.created_at,
+        date_jst: jstDate(r.created_at as string),
+        event_name: r.event_name ?? "",
+        session_id: r.session_id ?? "",
+        invite_code: r.invite_code ?? "",
+        owner_token: r.owner_token ?? "",
+        // 自己タイプ(typeId) と 友達が見たタイプ(perceivedTypeId) を1列に集約
+        meta_type_id: s(m.typeId ?? m.perceivedTypeId),
+        meta_source: s(m.source),
+        meta_channel: s(m.channel),
+        meta_kind: s(m.kind),
+        meta_friend_count: s(m.friendCount),
+        meta_question_id: s(m.questionId),
+        metadata: r.metadata ? JSON.stringify(r.metadata) : "",
+      };
+    });
   } else {
+    // 流入元は新フィールド acquisition_* を主に出す (旧 campaign は空になりがち)。
+    // acq_campaign は新フィールド優先、無ければ旧 campaign にフォールバックして一本化する。
     columnOrder = [
       "created_at",
       "date_jst",
       "id",
+      "display_name",
       "type_id",
-      "campaign",
+      "acq_source",
+      "acq_campaign",
       "generation",
-      "invite_code",
       "source_user_id",
+      "plan",
     ];
     const raw = await fetchAll(
       "users",
-      "created_at, id, type_id, campaign, generation, invite_code, source_user_id",
+      "created_at, id, display_name, type_id, acquisition_source, acquisition_campaign, campaign, generation, source_user_id, plan",
       sinceIso,
     );
     rows = raw.map((r) => ({
       created_at: r.created_at,
       date_jst: jstDate(r.created_at as string),
       id: r.id ?? "",
+      display_name: r.display_name ?? "",
       type_id: r.type_id ?? "",
-      campaign: r.campaign ?? "",
+      acq_source: r.acquisition_source ?? "",
+      // 新フィールド優先・無ければ旧 campaign にフォールバック (流入元を1列に統合)
+      acq_campaign: r.acquisition_campaign ?? r.campaign ?? "",
       generation: r.generation ?? "",
-      invite_code: r.invite_code ?? "",
       source_user_id: r.source_user_id ?? "",
+      plan: r.plan ?? "",
     }));
   }
 
