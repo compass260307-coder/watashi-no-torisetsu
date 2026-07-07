@@ -81,9 +81,11 @@ export default function LoginPage() {
           className="w-full flex flex-col gap-4 animate-fade-in-up stagger-2"
         >
           <p className="text-sm text-foreground leading-relaxed text-center mb-2">
-            ご購入時に登録したメールアドレスを入力すると、
+            機種変更やデータ消失で自分の結果に戻れなくなった方は、
             <br />
-            ログイン用のリンクをお送りします。
+            登録済みのメールアドレスでログインできます。
+            <br />
+            入力すると、ログイン用のリンクをお送りします。
           </p>
 
           <div>
