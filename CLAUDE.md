@@ -77,7 +77,6 @@
 - friend_invite_clicked
 - friend_answer_completed
 - three_friends_unlocked
-- line_registered
 - share_clicked
 
 ## エージェント追加ルール

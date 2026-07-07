@@ -139,7 +139,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       trackedLanding.current = true;
       track("friend_landing_viewed", { inviteCode });
       // intro 廃止に伴い、評価開始 = マウント時 (質問直行) に発火へ移設。
-      track("friend_v2_started", { inviteCode });
+      track("friend_answer_started", { inviteCode });
     }
     fetch(`/api/friend-info?code=${inviteCode}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -183,7 +183,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     } else {
       setPhase("choice");
       setChoiceIdx(0);
-      track("friend_v2_scale_completed", { inviteCode });
+      track("friend_answer_scale_completed", { inviteCode });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -236,7 +236,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         setPhase("error");
         return;
       }
-      track("friend_v2_completed", {
+      track("friend_answer_completed", {
         inviteCode,
         metadata: {
           perceivedTypeId: data.perception?.typeId,

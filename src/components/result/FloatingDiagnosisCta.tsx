@@ -58,7 +58,7 @@ export function FloatingDiagnosisCta({
       href={href}
       aria-label={label}
       onClick={() =>
-        track("friend_v2_self_cta_clicked", { metadata: { source: "floating" } })
+        track("friend_to_diagnosis_clicked", { metadata: { source: "floating" } })
       }
       className="fixed z-50 flex items-center gap-1.5 rounded-full transition-all duration-300 ease-out active:scale-95"
       style={{

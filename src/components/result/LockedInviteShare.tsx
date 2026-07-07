@@ -15,8 +15,8 @@ interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
   inviteUrl: string;
   /**
-   * 計測ソース。指定時のみ LINE/コピー タップで share_clicked を発火する
-   * (metadata: { channel, kind: "friend_invite", source })。
+   * 計測ソース。指定時のみ LINE/コピー タップで friend_invite_clicked を発火する
+   * (metadata: { channel, source })。
    * 未指定 (ロック状態など) は従来どおり無発火で挙動を変えない。
    */
   trackSource?: string;
@@ -37,8 +37,8 @@ export function LockedInviteShare({
 
   const fire = (channel: "line" | "copy") => {
     if (!trackSource) return;
-    track("share_clicked", {
-      metadata: { channel, kind: "friend_invite", source: trackSource },
+    track("friend_invite_clicked", {
+      metadata: { channel, source: trackSource },
     });
   };
 

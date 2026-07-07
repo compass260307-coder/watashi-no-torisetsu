@@ -59,7 +59,6 @@ type Stats = {
     fivePlus: number;
   };
   diagQuestionReach: Record<string, number>;
-  friendQuestionReach: Record<string, number>;
   campaignStats: {
     campaign: string;
     completed: number;
@@ -538,10 +537,6 @@ export default function AdminPage() {
     rows.push(["# 診断質問到達数"]);
     rows.push(["質問", "回答数"]);
     for (let i = 0; i < 15; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
-    rows.push([]);
-    rows.push(["# 友達質問到達数"]);
-    rows.push(["質問", "回答数"]);
-    for (let i = 0; i < 5; i++) rows.push([`Q${i + 1}`, String(stats.friendQuestionReach[String(i)] ?? 0)]);
 
     const bom = "﻿";
     const csv = bom + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -926,16 +921,11 @@ export default function AdminPage() {
         {/* Question Reach */}
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">質問ごとの到達数</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <QuestionReachChart
               title="診断（15問）"
               reach={stats.diagQuestionReach}
               totalQuestions={15}
-            />
-            <QuestionReachChart
-              title="友達回答（10問）"
-              reach={stats.friendQuestionReach}
-              totalQuestions={10}
             />
           </div>
         </section>

@@ -67,6 +67,7 @@ import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
+import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
@@ -368,6 +369,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <>
+    {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
+        プレビュー (?previewType) はモック描画なので計測しない。 */}
+    {!previewType && (
+      <ResultViewTracker ownerToken={token} friendCount={friendEvalCount} />
+    )}
     {/* 16P と同じスクロール連動ヘッダー (下スクロールで隠れ、上スクロールで出る) */}
     <ScrollHideHeader>
       <TopHeader />

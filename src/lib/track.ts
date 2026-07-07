@@ -27,6 +27,26 @@ export function isPreviewMode(): boolean {
   }
 }
 
+// ===== 計測イベントの正規名カタログ (single source of truth) =====
+// CLAUDE.md の KPI 規約名に統一する。新規イベントを足すときはまずここに追記し、
+// admin/stats/route.ts の集計名と必ず一致させること。旧名は stats 側で暫定併合中。
+//
+//   diagnosis_started            自己診断の開始
+//   diagnosis_question_answered  設問到達 (metadata.questionIndex) ※内部計測
+//   diagnosis_completed          自己診断の完了 (metadata.typeId)
+//   friend_landing_viewed        友達招待ページ到達 (inviteCode)
+//   friend_answer_started        友達回答の開始            (旧 friend_v2_started)
+//   friend_answer_scale_completed 友達スケール回答の完了   (旧 friend_v2_scale_completed) ※内部計測
+//   friend_answer_completed      友達回答の完了            (旧 friend_v2_completed)
+//   friend_to_diagnosis_clicked  友達→自分も診断 CTA       (旧 friend_v2_self_cta_clicked)
+//   friend_invite_clicked        自分の結果から友達を招待  (旧 share_clicked kind:friend_invite)
+//   share_clicked                拡散シェア (metadata.kind: character | brag)
+//   result_viewed                結果(/me)の初回表示 (metadata.friendCount, ownerToken)
+//   result_revisited             結果(/me)の再訪 (ownerToken)
+//   three_friends_unlocked       友達3人達成 (ownerToken)
+//
+// ⚠️ 旧名 friend_v2_* / share_clicked(kind:friend_invite) は既存 DB 行に残るため、
+//    stats 側は当面 .in([新, 旧]) で両方集計する。
 export function track(
   eventName: string,
   params?: {
@@ -36,6 +56,24 @@ export function track(
   },
 ) {
   if (isPreviewMode()) return;
+
+  // GA4 へ同じイベントを転送 (gtag.js が読めている本番のみ)。Supabase 集計と二重化するが、
+  // GA 側でもコンバージョン計測できるようにする。gtag が無い環境 (dev/未設定) では無害にスキップ。
+  try {
+    const w = window as unknown as {
+      gtag?: (command: string, name: string, params?: Record<string, unknown>) => void;
+    };
+    if (typeof w.gtag === "function") {
+      w.gtag("event", eventName, {
+        invite_code: params?.inviteCode ?? undefined,
+        owner_token: params?.ownerToken ?? undefined,
+        ...(params?.metadata ?? {}),
+      });
+    }
+  } catch {
+    // GA 転送失敗は無視 (Supabase 側が主計測)
+  }
+
   try {
     fetch("/api/event", {
       method: "POST",

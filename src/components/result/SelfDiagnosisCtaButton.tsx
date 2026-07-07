@@ -29,7 +29,7 @@ export function SelfDiagnosisCtaButton({
         href={href}
         className={ctaPrimary}
         onClick={() =>
-          track("friend_v2_self_cta_clicked", { metadata: { source } })
+          track("friend_to_diagnosis_clicked", { metadata: { source } })
         }
       >
         {label}
