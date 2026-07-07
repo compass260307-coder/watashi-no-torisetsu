@@ -111,7 +111,8 @@ GET /api/metrics/raw?key=<METRICS_KEY>&table=events|users&days=<1..365>
   `created_at, date_jst, event_name, session_id, invite_code, owner_token, meta_type_id, meta_source, meta_channel, meta_kind, meta_friend_count, meta_question_id, metadata`
   - `meta_*` は metadata(JSON) のよく使うキーを展開したもの（`metadata` 列に元のJSONも残す）。ピボットが楽になる
 - `table=users` … users テーブルの行。列:
-  `created_at, date_jst, id, display_name, type_id, acq_source, acq_campaign, generation, source_user_id, plan`
+  `created_at, date_jst, id, display_name, type_name, acq_source, acq_campaign, generation, source_user_id, plan`
+  - `type_name` = 現行サイトの表示キャラ名（scores から算出。32タイプ有効時は32名、無効時は16名でサイトと一致）
   - `acq_source` = 流入元媒体（line/x/copy/qr/utm_source等）、`acq_campaign` = キャンペーン（新 acquisition_campaign 優先・無ければ旧 campaign）
   - `display_name` = ニックネーム、`generation` = バイラル世代、`source_user_id` = 招待元ユーザー、`plan` = 料金プラン
 - `date_jst` は **日本時間の YYYY-MM-DD**（集計しやすいよう追加している唯一の派生列）
