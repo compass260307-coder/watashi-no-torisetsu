@@ -111,15 +111,15 @@ GET /api/metrics/raw?key=<METRICS_KEY>&table=events|users&days=<1..365>
   `created_at, date_jst, event_name, session_id, invite_code, owner_token, meta_type_id, meta_source, meta_channel, meta_kind, meta_friend_count, meta_question_id, metadata`
   - `meta_*` は metadata(JSON) のよく使うキーを展開したもの（`metadata` 列に元のJSONも残す）。ピボットが楽になる
 - `table=users` … users テーブルの行。列:
-  `created_at, date_jst, id, display_name, type_name, acq_source, acq_campaign, generation, source_user_id, plan`
+  `created_at, date_jst, id, display_name, type_name, friend_count, acq_source, acq_campaign, generation, source_user_id, plan`
   - `type_name` = サイトの「性格タイプ」= 称号(essence)（例 采配者 / 将軍 / 寄添者）。scores から算出しサイト表示と一致（32有効時は32称号）
+  - `friend_count` = 友達に評価された人数（累計）。**3 以上 = 友達診断が完成した人**。`=COUNTIF(users_raw!<friend_count列>, ">=3")` で達成者数
   - `acq_source` = 流入元媒体（line/x/copy/qr/utm_source等）、`acq_campaign` = キャンペーン（新 acquisition_campaign 優先・無ければ旧 campaign）
   - `display_name` = ニックネーム、`generation` = バイラル世代、`source_user_id` = 招待元ユーザー、`plan` = 料金プラン
 - `table=friend_perceptions` … 友達診断(他己評価)の結果。列:
-  `created_at, date_jst, target_user_id, perceiver_name, perceived_type_name, perceived_full_code, perceived_modifier_label, qualitative`
+  `created_at, date_jst, target_user_id, perceiver_name, perceived_type_name`
   - `target_user_id` = 評価された人(owner)の users.id（`users_raw` の `id` とVLOOKUPで名前を突合可）
   - `perceiver_name` = 評価した友達の名前、`perceived_type_name` = 友達が見た称号（サイト表示と一致）
-  - `qualitative` = おまけ自由記述（好きなところ/動物/印象シーン）のJSON
 - `date_jst` は **日本時間の YYYY-MM-DD**（集計しやすいよう追加している唯一の派生列）
 - `days` は直近何日分か（既定90）。返却は最大 50,000 行（超える分は古い行が切れる → `days` を絞る）
 

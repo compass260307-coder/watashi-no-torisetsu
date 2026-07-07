@@ -44,6 +44,27 @@ function jstDate(iso: string): string {
 const PAGE = 1000;
 const MAX_ROWS = 50000;
 
+// 各ユーザーの友達評価人数 (= friend_perceptions の件数) を集計する。
+// 「友達診断が完了した (3人いけた) 人」= friend_count >= 3 で絞れるように users_raw に載せる。
+// 期間フィルタなし (ユーザーの累計評価数)。
+async function friendCountByUser(): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  for (let from = 0; from < MAX_ROWS; from += PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("friend_perceptions")
+      .select("target_user_id")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    for (const r of data as { target_user_id: string | null }[]) {
+      const t = r.target_user_id;
+      if (t) map.set(t, (map.get(t) ?? 0) + 1);
+    }
+    if (data.length < PAGE) break;
+  }
+  return map;
+}
+
 async function fetchAll(
   table: string,
   columns: string,
@@ -147,23 +168,29 @@ export async function GET(request: NextRequest) {
       "id",
       "display_name",
       "type_name",
+      "friend_count",
       "acq_source",
       "acq_campaign",
       "generation",
       "source_user_id",
       "plan",
     ];
-    const raw = await fetchAll(
-      "users",
-      "created_at, id, display_name, scores, acquisition_source, acquisition_campaign, campaign, generation, source_user_id, plan",
-      sinceIso,
-    );
+    const [raw, friendCounts] = await Promise.all([
+      fetchAll(
+        "users",
+        "created_at, id, display_name, scores, acquisition_source, acquisition_campaign, campaign, generation, source_user_id, plan",
+        sinceIso,
+      ),
+      friendCountByUser(),
+    ]);
     rows = raw.map((r) => ({
       created_at: r.created_at,
       date_jst: jstDate(r.created_at as string),
       id: r.id ?? "",
       display_name: r.display_name ?? "",
       type_name: typeNameFromScores(r.scores),
+      // 友達に評価された人数。3 以上 = 友達診断が完成した人。
+      friend_count: friendCounts.get(r.id as string) ?? 0,
       acq_source: r.acquisition_source ?? "",
       // 新フィールド優先・無ければ旧 campaign にフォールバック (流入元を1列に統合)
       acq_campaign: r.acquisition_campaign ?? r.campaign ?? "",
@@ -180,13 +207,10 @@ export async function GET(request: NextRequest) {
       "target_user_id",
       "perceiver_name",
       "perceived_type_name",
-      "perceived_full_code",
-      "perceived_modifier_label",
-      "qualitative",
     ];
     const raw = await fetchAll(
       "friend_perceptions",
-      "created_at, target_user_id, perceiver_name, perceived_scores, perceived_full_code, perceived_modifier_label, qualitative_data",
+      "created_at, target_user_id, perceiver_name, perceived_scores",
       sinceIso,
     );
     rows = raw.map((r) => ({
@@ -196,10 +220,6 @@ export async function GET(request: NextRequest) {
       target_user_id: r.target_user_id ?? "",
       perceiver_name: r.perceiver_name ?? "",
       perceived_type_name: typeNameFromScores(r.perceived_scores),
-      perceived_full_code: r.perceived_full_code ?? "",
-      perceived_modifier_label: r.perceived_modifier_label ?? "",
-      // おまけ3問 (好きなところ/動物/印象シーン等) を JSON 文字列で
-      qualitative: r.qualitative_data ? JSON.stringify(r.qualitative_data) : "",
     }));
   }
 
