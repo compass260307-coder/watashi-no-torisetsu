@@ -108,6 +108,11 @@ export function PerceptionResultBody({
   const cardCls = `bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md ${
     L ? "p-7" : "p-6"
   }`;
+  // ①相互理解度・②ギャップは、個別ページでは外枠(border/カード背景/shadow)を外して
+  // 地の白に溶け込ませる (中身=数値・バー・ラベルはそのまま)。padding も外して
+  // 見出し直下に中身を流す。評価者ページ(evaluate)は従来どおりカード枠を維持。
+  // ※③贈りものカードは対象外 (cardCls のまま枠を残す)。
+  const panelCls = L ? "" : cardCls;
   const bodyCls = L
     ? "body-gothic text-[#1A1A1A] font-normal text-[19px] leading-[1.55]"
     : PERCEPTION_BODY_TEXT_CLASS;
@@ -137,7 +142,7 @@ export function PerceptionResultBody({
       {/* ===== ① 相互理解度 (+個別は位置づけ) + 本文 ===== */}
       <section className={sectionCls}>
         <SectionHead num={1} title={`${p}さんから見た${youWord}`} large={L} />
-        <div className={cardCls}>
+        <div className={panelCls}>
           <div className="text-center">
             <p
               className={`text-[#5B5BEF] font-bold mb-1 ${
@@ -202,7 +207,7 @@ export function PerceptionResultBody({
       {/* ===== ② ギャップ (レーダー + 共通発散バー + 軸ごと解説文) ===== */}
       <section className={sectionCls}>
         <SectionHead num={2} title={`${p}さんとのギャップ`} large={L} />
-        <div className={cardCls}>
+        <div className={panelCls}>
           <MutualUnderstandingRadar
             gaps={view.gaps}
             selfLabel={`${view.displayName}自身`}
@@ -214,6 +219,7 @@ export function PerceptionResultBody({
               friendScores={otherScores}
               friendLabel="友達から"
               hideHeading
+              bareCard={L}
             />
           </div>
           {view.sortedGaps.map((g, idx) => {
