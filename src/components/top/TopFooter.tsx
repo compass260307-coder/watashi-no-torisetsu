@@ -112,8 +112,8 @@ export default function TopFooter() {
       style={{ fontFamily: FONT_STACK }}
     >
       {/* MBTI 風: 中央寄せのコンテナ(左右に余白) + エアリーな間隔。
-          幅は /aisho のヒーロー本文に合わせ、全ページで統一する。 */}
-      <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px]">
+          幅は自己診断結果 (/me) と同じ max-w-[1080px] に統一する。 */}
+      <div className="mx-auto max-w-[1080px]">
         {/* リンク列 */}
         <div className="grid grid-cols-2 gap-x-10 gap-y-12 md:grid-cols-3">
           {COLUMNS.map((col) => (

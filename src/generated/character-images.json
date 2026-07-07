@@ -100,6 +100,12 @@
     "tiger_R.png",
     "unicorn_N.png"
   ],
+  "ranks": [
+    "A",
+    "B",
+    "C",
+    "S"
+  ],
   "cutTopMargin": {
     "angel_N.png": 0.104,
     "bear_R.png": 0.127,

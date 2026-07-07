@@ -26,22 +26,21 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import { compat, type AxisKey } from "@/lib/aisho-compat";
+import { compat, type AxisKey, type CompatRank } from "@/lib/aisho-compat";
 import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
 import characterImages from "@/generated/character-images.json";
 import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 
-// /me ヒーロー帯と同じグループ別ミディアムトーン (白文字が立つ濃さ)。
-const HERO_BAND_BY_GROUP: Record<ThirtyTwoGroup, string> = {
-  sea: "#5BC6DB",
-  sky: "#EDCF62",
-  land: "#8FCE70",
-  unknown: "#B49BE8",
-};
+// 結果ヒーロー帯はランクに関わらず単一のピンクで統一する。
+// トーンは /types の性格タイプ背景と同じ淡いパステル (明度86%・彩度61%相当)。
+// 淡いので文字は白ではなくネイビー (HERO_TEXT) を乗せる。奥行き用に近い2値グラデ。
+const HERO_BAND: [string, string] = ["#FAD3E3", "#F8C9DC"];
+const HERO_TEXT = NAVY;
 
 // キャラ画像: /me と同じく背景除去済みの透過版 (characters/cut) を優先し、
 // 無いタイプのみ v3 原画へフォールバック (ヒーロー帯に自然に乗せるため)。
@@ -49,6 +48,13 @@ function heroImagePath(id: ThirtyTwoTypeId): string {
   const v3 = thirtyTwoImagePath(id);
   const file = v3.split("/").pop() ?? "";
   return characterImages.cut.includes(file) ? `/characters/cut/${file}` : v3;
+}
+
+// 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<rank>.png があれば使い、
+// 無ければ null (呼び出し側で文字バッジにフォールバック)。
+const RANK_IMAGES = new Set(characterImages.ranks as string[]);
+function rankImagePath(rank: CompatRank): string | null {
+  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.png` : null;
 }
 
 // カードのサムネ: 顔ズーム版 (characters/face・16P の顔アバター風) があれば優先。
@@ -312,20 +318,24 @@ function SceneIcon({ scene }: { scene: SceneKey }) {
 
 // ---- 結果セクション見出し (/me の丸数字見出しと同じ文法) -------------------
 
+// 見出しは /me (自己診断結果) と同じ 16P 風: 枠線の丸数字 + 大きめ太字タイトル。
 function SectionHeading({ n, title }: { n: number; title: string }) {
   return (
-    <h3
-      className="flex items-center gap-2.5 font-black text-[19px] mb-3"
-      style={{ color: NAVY }}
-    >
+    <div className="mb-4 flex items-center gap-3">
       <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px] text-white"
-        style={{ background: NAVY }}
+        aria-hidden="true"
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] text-lg font-black"
+        style={{ borderColor: NAVY, color: NAVY }}
       >
         {n}
       </span>
-      {title}
-    </h3>
+      <h2
+        className="text-[30px] font-black leading-tight md:text-[36px]"
+        style={{ color: NAVY }}
+      >
+        {title}
+      </h2>
+    </div>
   );
 }
 
@@ -333,142 +343,181 @@ function SectionHeading({ n, title }: { n: number; title: string }) {
 // ★将来の購入ゲート単位。%＋★＋サマリー(無料側)とは独立させ、後から
 //   購入フラグでこのコンポーネントごとラップできるようにしてある (今回はゲートなし・常時表示)。
 
-// 5軸メーターの表示ラベル (取扱説明書トーンの平易語)。
-const AXIS_LABEL: Record<AxisKey, string> = {
-  A: "思いやり",
-  N: "情緒の安定",
-  O: "価値観",
-  C: "生活リズム",
-  E: "社交バランス",
-};
-const AXIS_ORDER_VIEW: AxisKey[] = ["A", "N", "O", "C", "E"];
+// 5軸メーター。/me の BigFiveDivergingBars と同じ視覚言語 (軸色レール + 白丸マーカー +
+// 「軸名: %(軸色) 判定」)。ただし相性スコアは 0..1 の一方向 (高いほど噛み合う) なので
+// 発散ではなく左→右のフィルにする。軸色は /me と対応させて統一感を出す。
+const AXIS_META_VIEW: { key: AxisKey; label: string; color: string }[] = [
+  { key: "A", label: "思いやり", color: "#33A474" },
+  { key: "N", label: "情緒の安定", color: "#F25E62" },
+  { key: "O", label: "価値観", color: "#E4AE3A" },
+  { key: "C", label: "生活リズム", color: "#88619A" },
+  { key: "E", label: "社交バランス", color: "#4298B4" },
+];
 
-// スコア→判定マーク (◎/○/△)。数値の羅列より取説っぽく、直感的に読める。
-function axisMark(v: number): string {
-  return v >= 0.9 ? "◎" : v >= 0.5 ? "○" : "△";
+// スコア(0..1)→ 判定ラベル。ネガティブに寄せず、低い側も「補い合い」と前向きに。
+function matchLabel(v: number): string {
+  const p = v * 100;
+  if (p >= 85) return "ぴったり";
+  if (p >= 65) return "かみ合う";
+  if (p >= 45) return "まあまあ";
+  return "補い合い";
+}
+
+// 相性度(%)→ 総評リードの言い回し。「〇〇と〇〇の相性は{これ}」と続く。
+function percentLead(p: number): string {
+  if (p >= 90) return "文句なしにいい";
+  if (p >= 75) return "かなりいい";
+  if (p >= 60) return "なかなかいい";
+  if (p >= 45) return "歩み寄り次第でぐっと良くなる";
+  return "一筋縄ではいかないぶん、学びが大きい";
+}
+
+// シーン別の主役2軸 (aisho-scene-copy と対応)。各シーンの言い切り判定に使う。
+const SCENE_AXES: Record<SceneKey, [AxisKey, AxisKey]> = {
+  love: ["A", "N"],
+  friend: ["O", "E"],
+  work: ["C", "E"],
+  clash: ["N", "O"],
+};
+
+// 各シーン文章の頭に置く「言い切り」。そのシーンの主役2軸の平均で高/中/低を判定。
+function sceneVerdict(key: SceneKey, s: Record<AxisKey, number>): string {
+  const [x, y] = SCENE_AXES[key];
+  const v = (s[x] + s[y]) / 2;
+  const hi = v >= 0.75;
+  const lo = v < 0.5;
+  switch (key) {
+    case "love":
+      return hi ? "恋愛では、かなり相性がいい。" : lo ? "恋愛は、すれ違いに気をつけたい。" : "恋愛は、丁寧にいけば深まる。";
+    case "friend":
+      return hi ? "友達としては、最高のふたり。" : lo ? "友情は、違いを面白がれるかがカギ。" : "友達としては、いい距離感。";
+    case "work":
+      return hi ? "一緒に動くと、めっちゃ捗る。" : lo ? "作業は、役割分担がカギ。" : "一緒に動けば、いいコンビ。";
+    case "clash":
+      return hi ? "すれ違っても、すぐ立て直せる。" : lo ? "すれ違うと、少し長引きがち。" : "すれ違っても、ちゃんと戻れる。";
+  }
 }
 
 function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const r = useMemo(() => compat(a, b), [a, b]);
   const scenes = useMemo(() => sceneLines(a, b), [a, b]);
+  // /me と同じ本文タイポ (body-gothic・濃色・17px)。段落はこの class を使い回す。
+  const PROSE =
+    "body-gothic text-[#1A1A1A] font-normal text-[16px] md:text-[17px] leading-[1.7]";
+  const nameA = thirtyTwoEssence(a);
+  const nameB = thirtyTwoEssence(b);
   return (
-    <div className="mx-auto mt-8 max-w-[640px] space-y-9">
-      {/* ① 二人のバランス (5軸メーター) */}
+    // 幅は自己診断結果 (/me) と同じ親 (max-w-[1080px]) いっぱいまで使う (旧 640 撤廃)。
+    <div className="mx-auto mt-8 w-full space-y-9 md:space-y-11">
+      {/* ⓪ 相性の総評 (長文リード)。★・サマリー・%バッジは廃し、compat の
+          summary/percent/goods を地の文へ織り込んで「〇〇と〇〇の相性は〜」から
+          始まる長めの文章にする。 */}
+      <div>
+        <p className={PROSE}>
+          {`「${nameA}」と「${nameB}」の相性は${percentLead(r.percent)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
+        </p>
+        <p className={`${PROSE} mt-4`}>
+          {"だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
+        </p>
+      </div>
+
+      {/* ① ふたりのバランス (5軸メーター・/me の BigFiveDivergingBars と同じ見た目) */}
       <section>
-        <SectionHeading n={1} title="二人のバランス" />
-        <div
-          className="rounded-2xl border bg-white px-4 py-4 space-y-3"
-          style={{ borderColor: "#E3E6F5" }}
-        >
-          {AXIS_ORDER_VIEW.map((k) => {
-            const v = r.s[k];
+        <SectionHeading n={1} title="ふたりのバランス" />
+        <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
+          {AXIS_META_VIEW.map(({ key, label, color }) => {
+            const v = r.s[key];
+            const pct = Math.round(v * 100);
+            const lab = matchLabel(v);
             return (
-              <div key={k} className="flex items-center gap-3">
-                <span
-                  className="w-[86px] shrink-0 text-[12px] font-black"
-                  style={{ color: NAVY }}
-                >
-                  {AXIS_LABEL[k]}
-                </span>
+              <div key={key}>
+                <span className="sr-only">{`${label}：${lab} ${pct}%`}</span>
+                {/* 上段: 軸名: %(軸色) 判定 */}
                 <div
-                  className="h-2.5 flex-1 overflow-hidden rounded-full"
-                  style={{ background: "#EEF1F7" }}
-                  role="meter"
-                  aria-valuenow={Math.round(v * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={AXIS_LABEL[k]}
+                  aria-hidden="true"
+                  className="mb-2 flex items-baseline gap-1.5"
                 >
+                  <span className="text-[15px] font-bold" style={{ color: NAVY }}>
+                    {label}:
+                  </span>
+                  <span
+                    className="text-[15px] font-black tabular-nums"
+                    style={{ color }}
+                  >
+                    {pct}%
+                  </span>
+                  <span className="text-[15px] font-bold" style={{ color: NAVY }}>
+                    {lab}
+                  </span>
+                </div>
+                {/* 中段: 左→右の一方向フィル + 白丸マーカー */}
+                <div aria-hidden="true" className="relative h-4 w-full">
                   <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.round(v * 100)}%`,
-                      background: "#5B5BEF",
-                    }}
+                    className="absolute inset-0 overflow-hidden rounded-full"
+                    style={{ background: `${color}2E` }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%`, background: color }}
+                    />
+                  </div>
+                  <div
+                    className="absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-md transition-all duration-500"
+                    style={{ left: `${pct}%`, border: `4px solid ${color}` }}
                   />
                 </div>
-                <span
-                  className="w-5 shrink-0 text-center text-[13px] font-black"
-                  style={{ color: v >= 0.5 ? "#5B5BEF" : INACTIVE }}
+                {/* 下段: 両端ラベル (どちらも前向き表現) */}
+                <div
+                  aria-hidden="true"
+                  className="mt-1.5 flex justify-between text-[12px] font-bold leading-tight"
+                  style={{ color: `${NAVY}8C` }}
                 >
-                  {axisMark(v)}
-                </span>
+                  <span>補い合う</span>
+                  <span>ぴったり</span>
+                </div>
               </div>
             );
           })}
         </div>
       </section>
 
-      {/* ② 二人のいいところ (compat の goods = 相性を支えるトップ2軸) */}
+      {/* ② ふたりのいいところ (goods を /me 風の地の文で) */}
       <section>
-        <SectionHeading n={2} title="二人のいいところ" />
-        <ul className="space-y-2.5">
-          {r.goods.map((g) => (
-            <li
-              key={g}
-              className="flex items-start gap-2.5 rounded-2xl border bg-white px-4 py-3"
-              style={{ borderColor: "#E3E6F5" }}
-            >
-              <span
-                className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
-                style={{ background: "#5B5BEF" }}
-                aria-hidden="true"
-              >
-                <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-              </span>
-              <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
-                {g}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading n={2} title="ふたりのいいところ" />
+        <p className={PROSE}>
+          {`このふたりがいっしょにいて心地いいのには、ちゃんと理由があるよ。${r.goods[0]}`}
+        </p>
+        <p className={`${PROSE} mt-3`}>{r.goods[1]}</p>
       </section>
 
-      {/* ③ ここだけ注意 (compat の caution。ゆるい警告トーン) */}
+      {/* ③ ここだけ注意 (caution を前後の一言で挟んで文章量を足す) */}
       <section>
         <SectionHeading n={3} title="ここだけ注意" />
-        <div
-          className="flex items-start gap-2.5 rounded-2xl border px-4 py-3"
-          style={{ borderColor: "#F2E3B3", background: "#FFFBEF" }}
-        >
-          <span
-            className="mt-0.5 shrink-0"
-            style={{ color: "#C79A2A" }}
-            aria-hidden="true"
-          >
-            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3.5 21.5 20h-19L12 3.5z" />
-              <path d="M12 10v4.2M12 17.2h.01" />
-            </svg>
-          </span>
-          <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
-            {r.caution}
-          </p>
-        </div>
+        <p className={PROSE}>
+          {`どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
+        </p>
+        <p className={`${PROSE} mt-3`}>
+          {"大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
+        </p>
       </section>
 
       {/* ④ シーン別トリセツ (恋愛/友情/働く/すれ違い) */}
       <section>
         <SectionHeading n={4} title="シーン別トリセツ" />
-        <div className="space-y-3">
+        <p className={PROSE}>
+          {"恋愛・友情・仕事・すれ違い。場面ごとに、ふたりのトリセツをまとめたよ。"}
+        </p>
+        <div className="mt-6 space-y-7">
           {scenes.map((s) => (
-            <div
-              key={s.key}
-              className="rounded-2xl border bg-white px-4 py-3.5"
-              style={{ borderColor: "#E3E6F5" }}
-            >
+            <div key={s.key}>
               <div
-                className="flex items-center gap-1.5 font-black text-sm mb-1.5"
+                className="mb-1.5 flex items-center gap-1.5 text-[18px] font-black"
                 style={{ color: NAVY }}
               >
                 <SceneIcon scene={s.key} />
                 <span>{s.label}</span>
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: NAVY }}>
-                {s.text}
-              </p>
+              <p className={PROSE}>{`${sceneVerdict(s.key, r.s)}${s.text}`}</p>
             </div>
           ))}
         </div>
@@ -482,27 +531,27 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
 
 function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const r = useMemo(() => compat(a, b), [a, b]);
-  const bandA = HERO_BAND_BY_GROUP[thirtyTwoGroup(a)];
-  const bandB = HERO_BAND_BY_GROUP[thirtyTwoGroup(b)];
-  const dotColor = "rgba(255,255,255,0.55)";
+  const [band0, band1] = HERO_BAND;
+  // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
+  const dotColor = "rgba(214,120,158,0.35)";
+  const rankImg = rankImagePath(r.rank);
   return (
     <section>
-      {/* ===== ヒーロー帯 (全幅・2グループ色グラデ・斜めカット) ===== */}
+      {/* ===== ヒーロー帯 (全幅・単一ピンク・斜めカット) ===== */}
       <div
         className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
         style={{
-          background: `linear-gradient(105deg, ${bandA} 0%, ${bandA} 38%, ${bandB} 62%, ${bandB} 100%)`,
-          clipPath:
-            "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(20px, 3vw, 48px)))",
+          background: `linear-gradient(105deg, ${band0} 0%, ${band1} 100%)`,
         }}
       >
         {/* 上部中央の放射状グロー + フェルトドット (/me と同じ装飾) */}
+        {/* グローは控えめに (強すぎると帯上部が白飛びして白ラベルが読めなくなる) */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-[240px]"
           style={{
             background:
-              "radial-gradient(ellipse at top center, rgba(255,255,255,0.55) 0%, transparent 68%)",
+              "radial-gradient(ellipse at top center, rgba(255,255,255,0.28) 0%, transparent 60%)",
           }}
         />
         <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 10, height: 10, top: "14%", left: "7%" }} />
@@ -510,73 +559,35 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 12, height: 12, top: "18%", right: "8%" }} />
         <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "52%", right: "13%" }} />
 
-        <div className="relative mx-auto max-w-[560px] px-4 pt-7 pb-10 text-center">
-          <p className="text-[11px] font-black tracking-[0.25em] text-white/90">
-            二人の相性
+        {/* SP: 「二人の相性」ラベル → ランク画像の縦積み・中央寄せ。
+            PC: 左に大きな「二人の相性」テキスト / 右にランク画像の横並び。
+            ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
+        <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-12 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-14 md:text-left">
+          <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
+            ふたりの相性
           </p>
-
-          {/* 2キャラ対面 (透過版 cut を優先) */}
-          <div className="mt-3 flex items-end justify-center gap-2">
-            <div className="flex w-[132px] flex-col items-center">
+          <div className="mt-4 md:mt-0 md:shrink-0">
+            {/* 透過 PNG (装飾) は unoptimized で直接配信する。
+                dev の画像 optimizer がこの手の PNG で固まりローディングが終わらないため。 */}
+            {rankImg ? (
               <Image
-                src={heroImagePath(a)}
-                alt={thirtyTwoEssence(a)}
-                width={240}
-                height={240}
-                className="h-[116px] w-[116px] object-contain"
+                src={rankImg}
+                alt={`相性ランク ${r.rank}`}
+                width={512}
+                height={512}
+                unoptimized
+                priority
+                className="w-[80vw] max-w-[500px] md:w-[560px] md:max-w-[52vw] object-contain"
               />
-              <span className="mt-1.5 text-[13px] font-black leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
-                {thirtyTwoEssence(a)}
-              </span>
-            </div>
-            <div className="mb-9 text-white" aria-hidden="true">
-              <HeartIcon />
-            </div>
-            <div className="flex w-[132px] flex-col items-center">
-              <Image
-                src={heroImagePath(b)}
-                alt={thirtyTwoEssence(b)}
-                width={240}
-                height={240}
-                className="h-[116px] w-[116px] object-contain"
-              />
-              <span className="mt-1.5 text-[13px] font-black leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.18)]">
-                {thirtyTwoEssence(b)}
-              </span>
-            </div>
-          </div>
-
-          {/* 大% + 星 + サマリーピル (白抜き) */}
-          <div className="mt-4 flex items-end justify-center text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.14)]">
-            <span className="text-[64px] font-black leading-none">
-              {r.percent}
-            </span>
-            <span className="mb-1.5 text-2xl font-black">%</span>
-          </div>
-          <div className="mt-2 flex justify-center gap-0.5">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <svg
-                key={n}
-                viewBox="0 0 24 24"
-                width={22}
-                height={22}
-                fill={n <= r.stars ? "#FFFFFF" : "none"}
-                stroke="#FFFFFF"
-                strokeWidth={1.6}
-                strokeLinejoin="round"
-                aria-hidden="true"
-                style={{ opacity: n <= r.stars ? 1 : 0.55 }}
+            ) : (
+              <span
+                className="block text-[52vw] md:text-[280px] font-black leading-none"
+                style={{ color: HERO_TEXT }}
               >
-                <path d="M12 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.8L12 16.9l-5.2 2.73.99-5.8-4.21-4.1 5.82-.85L12 3.5z" />
-              </svg>
-            ))}
+                {r.rank}
+              </span>
+            )}
           </div>
-          <span
-            className="mt-4 inline-block rounded-full bg-white px-5 py-2 text-sm font-black shadow-md"
-            style={{ color: NAVY }}
-          >
-            {r.summary}
-          </span>
         </div>
       </div>
 
@@ -812,59 +823,65 @@ function AishoInner() {
     <>
     <TopHeader />
     <main className="min-h-screen overflow-x-clip bg-white">
-      {/* コンテンツ幅は帯の中身 (TypeGrid 内) と同じ 1080/2xl:1400 に揃える */}
-      <div className="max-w-[1080px] 2xl:max-w-[1400px] mx-auto px-4 md:px-8 pt-6 md:pt-10">
+      {/* コンテンツ幅は自己診断結果 (/me) と同じ max-w-[1080px] に揃える。
+          結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
+      <div
+        className={`max-w-[1080px] mx-auto px-4 md:px-8 ${
+          resultShown ? "" : "pt-6 md:pt-10"
+        }`}
+      >
         {analyzing && slotA && slotB ? (
           /* ===== 診断中演出 (約1.6秒): 2キャラ対面 + 鼓動するハート ===== */
-          <div className="flex min-h-[60vh] flex-col items-center justify-center">
-            <div className="flex items-center gap-5 md:gap-8">
+          <div className="flex min-h-[70vh] flex-col items-center justify-center">
+            <div className="flex items-center gap-6 md:gap-12">
               <Image
                 src={heroImagePath(slotA)}
                 alt={thirtyTwoEssence(slotA)}
-                width={280}
-                height={280}
-                className="w-[120px] md:w-[160px] object-contain"
+                width={360}
+                height={360}
+                className="w-[42vw] max-w-[240px] md:w-[240px] object-contain"
               />
               <span
                 className="animate-pulse"
                 style={{ color: NAVY }}
                 aria-hidden="true"
               >
-                <svg viewBox="0 0 24 24" width={34} height={34} fill="currentColor">
+                <svg viewBox="0 0 24 24" width={52} height={52} fill="currentColor">
                   <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
                 </svg>
               </span>
               <Image
                 src={heroImagePath(slotB)}
                 alt={thirtyTwoEssence(slotB)}
-                width={280}
-                height={280}
-                className="w-[120px] md:w-[160px] object-contain"
+                width={360}
+                height={360}
+                className="w-[42vw] max-w-[240px] md:w-[240px] object-contain"
               />
             </div>
             <p
-              className="mt-7 text-[15px] md:text-base font-black"
+              className="mt-10 text-[19px] md:text-[22px] font-black"
               style={{ color: NAVY }}
               role="status"
             >
-              二人の相性を診断中…
+              ふたりの相性を診断中…
             </p>
           </div>
         ) : resultShown ? (
           /* ===== 結果モード (一覧は畳む) ===== */
           <>
-            <div ref={resultRef} className="scroll-mt-4">
+            {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
+                足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
+            <div ref={resultRef} className="scroll-mt-[72px]">
               <ResultBlock a={slotA} b={slotB} />
             </div>
-            <div className="flex justify-center mt-6 pb-16">
+            <div className="flex justify-center mt-10 pb-3">
               <button
                 type="button"
                 onClick={() => setRevealed(false)}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 font-black text-sm border-2 bg-white"
-                style={{ borderColor: NAVY, color: NAVY }}
+                className="inline-flex items-center justify-center gap-2 rounded-full px-16 py-3.5 font-black text-base text-white"
+                style={{ background: NAVY }}
               >
-                <EditIcon />
-                選び直す
+                相性を再度診断
               </button>
             </div>
           </>
@@ -934,6 +951,9 @@ function AishoInner() {
         )}
       </div>
     </main>
+    {/* フッターは常時表示 (選択モード・結果表示とも)。
+        幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
+    <TopFooter />
     </>
   );
 }
