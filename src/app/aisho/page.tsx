@@ -827,26 +827,32 @@ function AishoInner() {
           結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
       <div
         className={`max-w-[1080px] mx-auto px-4 md:px-8 ${
-          resultShown ? "" : "pt-6 md:pt-10"
+          resultShown || analyzing ? "" : "pt-6 md:pt-10"
         }`}
       >
         {analyzing && slotA && slotB ? (
           /* ===== 診断中演出 (約1.6秒): 2キャラ対面 + 鼓動するハート ===== */
-          <div className="flex min-h-[70vh] flex-col items-center justify-center">
-            <div className="flex items-center gap-6 md:gap-12">
+          /* ヘッダー(約72px)を除いた高さいっぱいで縦中央に。SP はキャラ幅を
+             抑えて2体+ハートが横に収まるようにする (見切れ防止)。 */
+          <div className="flex min-h-[calc(100dvh-72px)] flex-col items-center justify-center">
+            <div className="flex w-full items-center justify-center gap-3 md:gap-12">
               <Image
                 src={heroImagePath(slotA)}
                 alt={thirtyTwoEssence(slotA)}
                 width={360}
                 height={360}
-                className="w-[42vw] max-w-[240px] md:w-[240px] object-contain"
+                className="w-[34vw] max-w-[240px] object-contain"
               />
               <span
-                className="animate-pulse"
+                className="animate-pulse shrink-0"
                 style={{ color: NAVY }}
                 aria-hidden="true"
               >
-                <svg viewBox="0 0 24 24" width={52} height={52} fill="currentColor">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-9 w-9 md:h-[52px] md:w-[52px]"
+                  fill="currentColor"
+                >
                   <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
                 </svg>
               </span>
@@ -855,7 +861,7 @@ function AishoInner() {
                 alt={thirtyTwoEssence(slotB)}
                 width={360}
                 height={360}
-                className="w-[42vw] max-w-[240px] md:w-[240px] object-contain"
+                className="w-[34vw] max-w-[240px] object-contain"
               />
             </div>
             <p
