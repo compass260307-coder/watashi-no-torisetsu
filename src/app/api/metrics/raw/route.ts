@@ -13,21 +13,20 @@
 
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
-import { classifyThirtyTwoType, thirtyTwoName } from "@/lib/thirty-two-types";
+import { classifyThirtyTwoType, thirtyTwoEssence } from "@/lib/thirty-two-types";
 import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import { NextRequest, NextResponse } from "next/server";
 
-// scores からサイト表示と同じキャラ名を算出して type_name 列に出す。
-// サイト (/me) と同じ分岐: 32 タイプ有効時は 32 キャラ名 (例「きらめきインコ」)、
-// 無効時は 16 タイプ名。isThirtyTwoEnabled() はビルド時にフラグがインライン化されるため、
-// このデプロイの本番フラグと自動で一致する。
+// scores からサイト表示の「性格タイプ」= essence (称号。例 采配者 / 将軍 / 寄添者) を算出。
+// /me ヒーローが「あなたの性格タイプ:」として大きく見せている値。キャラ名(どっしりクマ等)
+// ではなくこの称号が識別名。サイトと同じフラグ分岐 (32有効→32称号 / 無効→16称号) で一致させる。
 function typeNameFromScores(scores: unknown): string {
   try {
     const s = (scores ?? {}) as Record<string, number>;
     if (isThirtyTwoEnabled()) {
-      return thirtyTwoName(classifyThirtyTwoType(s)) ?? "";
+      return thirtyTwoEssence(classifyThirtyTwoType(s)) ?? "";
     }
-    return sixteenTypes[classifySixteenType(s)]?.name ?? "";
+    return sixteenTypes[classifySixteenType(s)]?.essence ?? "";
   } catch {
     return "";
   }
