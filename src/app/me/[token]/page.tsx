@@ -587,7 +587,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
                   友達から見た強み
                 </h3>
-                <div className="relative mb-10 overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                <div className="relative mb-10 overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
                   {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
                   <div
                     aria-hidden="true"
@@ -611,7 +611,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
                   友達からの意見
                 </h3>
-                <div className="relative overflow-hidden rounded-2xl border border-[#E3E6F5] bg-white px-5 py-10 md:px-8">
+                <div className="relative overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
                   {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
                   <div
                     aria-hidden="true"

@@ -111,8 +111,9 @@ export default function TopFooter() {
       className="w-full bg-white px-8 py-20"
       style={{ fontFamily: FONT_STACK }}
     >
-      {/* MBTI 風: 中央寄せのコンテナ(左右に余白) + エアリーな間隔 */}
-      <div className="mx-auto max-w-[1680px]">
+      {/* MBTI 風: 中央寄せのコンテナ(左右に余白) + エアリーな間隔。
+          幅は /aisho のヒーロー本文に合わせ、全ページで統一する。 */}
+      <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px]">
         {/* リンク列 */}
         <div className="grid grid-cols-2 gap-x-10 gap-y-12 md:grid-cols-3">
           {COLUMNS.map((col) => (
