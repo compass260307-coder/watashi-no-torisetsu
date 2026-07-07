@@ -22,6 +22,10 @@ import {
   type ThirtyTwoTypeId,
 } from "./thirty-two-types";
 import { preferCutImage } from "./character-image";
+import {
+  buildDimensionGaps,
+  calcMutualUnderstanding,
+} from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
 
 const SITE_URL =
@@ -46,6 +50,20 @@ export type FriendCharacter = {
   previewPath: string;
 };
 
+// 友達一覧・個別ページ用の評価者1人分サマリ (総合ページ /tako → 個別ページの導線に使う)。
+export type FriendSummary = {
+  /** friend_perceptions.id (個別ページ /tako/[token]/friend/[perceptionId] のキー)。 */
+  perceptionId: string;
+  /** 評価者ニックネーム (空は「ともだち」)。 */
+  name: string;
+  /** その友達が付けた perceived_scores (0-10)。 */
+  perceivedScores: Partial<Record<BigFiveDimension, number>>;
+  /** 本人自己スコアとの相互理解度 % (0-100)。 */
+  mutual: number;
+  /** ひとことメッセージ (owner_message) がある友達か。 */
+  hasMessage: boolean;
+};
+
 export type OwnerReportData = {
   user: OwnerReportUser;
   selfScores: Partial<Record<BigFiveDimension, number>>;
@@ -53,6 +71,8 @@ export type OwnerReportData = {
   friendAvgScores: Partial<Record<BigFiveDimension, number>> | null;
   friendNames: string[];
   friendMessages: { name: string; message: string }[];
+  /** 評価してくれた全員 (メッセージ有無問わず・相互理解度の高い順)。友達一覧に使う。 */
+  friends: FriendSummary[];
   minnaContext: MinnaNoMeContext | null;
   inviteCode: string;
   inviteUrl: string;
@@ -102,25 +122,50 @@ export async function loadOwnerReportData(
   });
 
   // owner_message (手紙) は best-effort (列未適用でも壊さない)。
-  let friendMessages: { name: string; message: string }[] = [];
+  //   手紙表示用 friendMessages と、友達一覧用の「メッセージ有りID集合」を同時に作る。
+  const friendMessages: { name: string; message: string }[] = [];
+  const idsWithMessage = new Set<string>();
   try {
     const { data: msgRows, error: msgErr } = await supabaseAdmin
       .from("friend_perceptions")
-      .select("perceiver_name, owner_message, created_at")
+      .select("id, perceiver_name, owner_message, created_at")
       .eq("target_user_id", user.id)
       .order("created_at", { ascending: true });
     if (!msgErr && msgRows) {
-      friendMessages = msgRows
-        .map((r) => ({
-          name:
-            ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
-          message: ((r.owner_message as string | null) ?? "").trim(),
-        }))
-        .filter((m) => m.message.length > 0);
+      for (const r of msgRows) {
+        const message = ((r.owner_message as string | null) ?? "").trim();
+        if (message.length > 0) {
+          friendMessages.push({
+            name:
+              ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
+            message,
+          });
+          idsWithMessage.add(r.id as string);
+        }
+      }
     }
   } catch {
     // 列未適用などは無視 (手紙非表示)
   }
+
+  // 友達一覧 (評価者全員・メッセージ有無問わず)。相互理解度の高い順。
+  const friends: FriendSummary[] = rows
+    .map((r) => {
+      const perceivedScores = (r.perceived_scores ?? {}) as Partial<
+        Record<BigFiveDimension, number>
+      >;
+      const mutual = calcMutualUnderstanding(
+        buildDimensionGaps(selfScores, perceivedScores),
+      );
+      return {
+        perceptionId: r.id as string,
+        name: ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
+        perceivedScores,
+        mutual,
+        hasMessage: idsWithMessage.has(r.id as string),
+      };
+    })
+    .sort((a, b) => b.mutual - a.mutual);
 
   // 友達平均 (0-10)。数値のある軸だけ母数に平均。0件 or 全欠損なら null。
   const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =
@@ -194,6 +239,7 @@ export async function loadOwnerReportData(
     friendAvgScores,
     friendNames,
     friendMessages,
+    friends,
     minnaContext,
     inviteCode,
     inviteUrl,

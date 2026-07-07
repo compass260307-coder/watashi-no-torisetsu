@@ -9,22 +9,27 @@
 // ※ 一致度行・ギャップ小ラベル・AI解説見出しの3文言は撤去 (中身は保持)。
 
 import { MinnaNoMeProse } from "./MinnaNoMeProse";
+import { FriendList } from "./FriendList";
 import {
   hiddenStrengthSentence,
   type DeepDiveData,
 } from "@/lib/tako-deepdive";
+import type { FriendSummary } from "@/lib/owner-report-data";
 
 interface TakoDeepDiveProps {
   deep: DeepDiveData;
-  /** 友達からのメッセージ (記名・空は除外済み)。0件ならブロック非表示。 */
-  letters: { name: string; message: string }[];
+  /** 評価してくれた友達全員 (相互理解度順)。友達一覧→個別ページの導線に使う。 */
+  friends: FriendSummary[];
+  /** 個別ページ /tako/[token]/friend/[perceptionId] のリンク組み立て用。 */
+  token: string;
   /** AI解説文取得用 (/api/minna-no-me/[ownerToken])。 */
   ownerToken: string;
 }
 
 export function TakoDeepDive({
   deep,
-  letters,
+  friends,
+  token,
   ownerToken,
 }: TakoDeepDiveProps) {
   const gap = deep.gap;
@@ -47,29 +52,8 @@ export function TakoDeepDive({
       {/* AI解説長文 (据え置き) */}
       <MinnaNoMeProse ownerToken={ownerToken} />
 
-      {/* 中: 友達からの声 (実物感の白カード・記名)。0件は非表示。 */}
-      {letters.length > 0 && (
-        <section>
-          <h3 className="text-[#2E2E5C] font-black text-base mb-3">
-            友達からの声
-          </h3>
-          <ul className="flex flex-col gap-3">
-            {letters.map((l, i) => (
-              <li
-                key={`${l.name}-${i}`}
-                className="rounded-2xl bg-white border-2 border-[#0094D8]/15 px-4 py-3"
-              >
-                <p className="body-gothic text-[#1A1A1A] font-normal text-[16px] leading-[1.4] whitespace-pre-wrap break-words">
-                  {l.message}
-                </p>
-                <p className="text-[#2E2E5C]/60 text-xs font-bold mt-2 text-right">
-                  — {l.name}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* 中: 友達一覧 (旧「友達からの声」の格上げ)。評価者全員をタップで個別ページへ。 */}
+      <FriendList friends={friends} token={token} />
 
       {/* 小: 隠れた長所 (最下・控えめグレー。主役を邪魔しない) */}
       {deep.hiddenStrength && (
