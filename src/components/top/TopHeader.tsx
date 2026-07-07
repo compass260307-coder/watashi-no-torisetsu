@@ -21,7 +21,7 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "他己診断テスト", href: "/friend-evaluation" },
   { label: "性格タイプ", href: "/types" },
   { label: "サービスについて", href: "/about" },
-  { label: "ログイン", href: "/login", disabled: true },
+  { label: "ログイン", href: "/login" },
 ];
 
 export default function TopHeader() {
