@@ -25,7 +25,10 @@ export function PerceptionFoundProse({
   surpriseLabel?: string;
 }) {
   return (
-    <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
+    // 本文プローズのみのセクションなので機能カード枠 (border/shadow) は付けず、
+    // 見出し直下に本文を流す (④ふたりの関係と統一)。強み/あれっ?間の薄い区切り線は
+    // 本文内の機能的セパレータとして残す。
+    <div>
       {/* 強みパート */}
       <p className="text-[#5B5BEF] font-bold text-sm mb-3 text-center">
         {strengthLabel ?? `${perceiverName}さん認定の強み`}
