@@ -248,9 +248,11 @@ export function PerceptionResultBody({
       )}
 
       {/* ===== ④ ふたりの関係 ===== */}
+      {/* 本文プローズのみのセクションなので機能カード枠 (CARD) は付けず、見出し直下に
+          本文を流す。相互理解度①・レーダー②・贈りもの③ の機能的な囲みは残す。 */}
       <section className="mb-8">
         <SectionHead num={4} title="ふたりの関係" />
-        <div className={CARD}>
+        <div>
           <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
             {view.relationFactBody}
           </p>
