@@ -40,60 +40,11 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import {
-  classifySixteenType,
-  sixteenTypes,
-  characterImagePath,
-} from "@/lib/sixteen-types";
-import { ResultHero } from "@/components/result/ResultHero";
-import { heroColorsForGroup } from "@/lib/hero-colors";
-import { preferCutImage } from "@/lib/character-image";
-import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
-import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
-import {
-  perceivedManualContent,
-  PERCEIVED_TIPS_KEY,
-} from "@/lib/perception-manual-content";
-import { PERCEPTION_BODY_TEXT_CLASS } from "@/components/result/body-text";
-import { MutualUnderstandingRadar } from "@/components/result/MutualUnderstandingRadar";
-import { PerceptionFoundProse } from "@/components/result/PerceptionFoundProse";
-import { PerceptionMessageCard } from "@/components/result/PerceptionMessageCard";
-import {
-  buildDimensionGaps,
-  calcMutualUnderstanding,
-  topGaps,
-  type BigFiveScores,
-} from "@/lib/perception-analysis";
-import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
-import {
-  relationGapNote,
-  relationGapTip,
-  relationGapFact,
-  relationGapTipKey,
-} from "@/lib/perception-relation-content";
-import { getPerceivedContent } from "@/lib/mutual-result-content";
-import { weaveFound, seedFromTypeId } from "@/lib/perception-found-text";
-// 32タイプ (フラグ on 時。解釈B=本文・型名・画像・essence を32化)
-import { isThirtyTwoEnabled } from "@/lib/feature-flags";
-import {
-  classifyThirtyTwoType,
-  perceivedManualFor,
-  perceivedContentFor,
-  perceivedTipsKeyFor,
-  thirtyTwoName,
-  thirtyTwoEssence,
-  thirtyTwoImagePath,
-  thirtyTwoOneLiner,
-  thirtyTwoGroup,
-  baseIdOf,
-  nAxisOf,
-  type ThirtyTwoTypeId,
-} from "@/lib/thirty-two-types";
-import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
-// 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
-// 「相性ランキング風ぼかしティーザー」(PerceptionRankingTeaser) に格上げ。
-// メインボタンはハブ (/friend-evaluation = QR + 相互理解度ランキング) へ遷移。
-// 旧 PerceptionBoostCta は温存方針に従い残置 (再利用用)。
+import { sixteenTypes } from "@/lib/sixteen-types";
+import { type BigFiveScores } from "@/lib/perception-analysis";
+import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import { buildPerceptionView } from "@/lib/perception-view";
+import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
 // Stripe インフラ (lib/perception-unlock, /api/checkout/create-perception-unlock-session,
@@ -132,50 +83,7 @@ type EvalUserRow = {
   invite_code: string | null;
 };
 
-// Day 12 ③④改修: 名前の「…」切り捨て (shortenName) を全廃。
-// 友達名は見出しでフル表示し、長い場合は折り返す。本文中には名前を出さない。
-
-// 相互理解度スコアの一言ラベル (出し分け)。温かいトーン。
-function mutualLabel(pct: number): string {
-  if (pct >= 80) return "かなり息ぴったり。お互いをよく分かり合えてる。";
-  if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
-  if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
-  return "ギャップ大きめ。意外な発見がたくさんあるかも。";
-}
-
-// 丸数字バッジ + 見出し (①〜④ 共通。新フローの番号は上から連番で振る)
-function SectionHead({ num, title }: { num: number; title: string }) {
-  // 丸数字は /me・/tako と同一 (白抜き・ネイビー太リング)。見出しは友達名込みで長くなり得るため
-  // /me のヒーロー級 (30-36px) ではなく可読性優先で text-2xl 前後に留める (トーンは同一)。
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span
-        aria-hidden="true"
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-      >
-        {num}
-      </span>
-      <h2 className="text-[#2E2E5C] font-black text-2xl leading-tight">
-        {title}
-      </h2>
-    </div>
-  );
-}
-
-// 本文中の行動キーフレーズ 1 箇所だけを vividPink 太字にする (④ の強調用)。
-// key が無い / 本文に含まれない場合はそのまま plain 表示 (フェイルセーフ)。
-function pinkify(text: string, key?: string) {
-  if (!key) return text;
-  const idx = text.indexOf(key);
-  if (idx === -1) return text;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <strong className="text-[#5B5BEF] font-black">{key}</strong>
-      {text.slice(idx + key.length)}
-    </>
-  );
-}
+// 相互理解度・見出し・pinkify・各セクションの描画は共有ボディ (PerceptionResultBody) へ移設。
 
 export default async function EvaluationResultPage({
   params,
@@ -294,103 +202,18 @@ export default async function EvaluationResultPage({
     notFound();
   }
 
-  // ===== 4. 派生計算 =====
+  // ===== 4. 派生計算 (評価者1人分 → 表示データ。/tako 個別ページと共有) =====
   const selfScores = (user.scores ?? {}) as BigFiveScores;
   const otherScores = (perception.perceived_scores ?? {}) as BigFiveScores;
-  const gaps = buildDimensionGaps(selfScores, otherScores);
-  const mutual = calcMutualUnderstanding(gaps);
-  // ② は差 (pt) の大きい順に全 5 特性を表示 (先頭2つ=フル形式、残り3つ=圧縮形式)
-  const sortedGaps = topGaps(gaps, 5);
-
-  const ownerName = ((user.display_name as string | null) ?? "").trim();
-  const displayName = ownerName || "アナタ";
-  // 友達名はフル表示 (切り捨てなし)。見出しでのみ使い、本文には出さない。
-  const perceiverFull = (perception.perceiver_name as string) ?? "友達";
-  const myTrisetsuUrl = `/me/${user.owner_token as string}`;
-
-  // Day 12-D: 知覚16タイプを perceived_scores から派生。
-  // 既存の 8 タイプ (perceived_type_id) は温存し、表示・本文の出し分けは 16 タイプで行う。
-  // (owner16タイプは旧⑦撤去で未使用になったが、生成ロジックは mutual-result-content.ts に温存)
-  const perceivedTypeId = classifySixteenType(otherScores);
-  const perceivedType16 = sixteenTypes[perceivedTypeId];
-  // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16で挙動不変。
-  const flag32 = isThirtyTwoEnabled();
-  const perceived32Id = classifyThirtyTwoType(otherScores);
-  // ヒーロー表示用 (型名/essence/画像/説明)。off=16, on=32キャラ。
-  const perceivedTypeName = flag32
-    ? thirtyTwoName(perceived32Id)
-    : perceivedType16.name;
-  const dispEssence = flag32
-    ? thirtyTwoEssence(perceived32Id)
-    : perceivedType16.essence;
-  const dispImage = flag32
-    ? thirtyTwoImagePath(perceived32Id)
-    : characterImagePath(perceivedTypeId);
-  const dispDesc = flag32
-    ? thirtyTwoOneLiner(perceived32Id)
-    : perceivedType16.oneLiner;
-  // 統一ヒーロー (/me・/tako と共通): グループ別の帯トーン + 透過キャラ (v3 の四角背景を消して帯に溶け込ませる)。
-  const evalHero = heroColorsForGroup(
-    flag32 ? thirtyTwoGroup(perceived32Id) : "unknown",
-  );
-  const dispImageCut = preferCutImage(dispImage);
-  // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
-  //   1 段落目 = ① 「どう見えているか」の描写
-  //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)
-  const [perceivedLookBody, perceivedTipsBody] = (
-    flag32
-      ? perceivedManualFor(perceived32Id)
-      : perceivedManualContent[perceivedTypeId]
-  ).split("\n\n");
-
-  // ③ ◯◯さんが見つけたアナタ: 知覚16タイプの強み/あれっ? 各6つから先頭3つ。
-  // 各項目 = 独立した段落 (先頭ワードのみ vividPink)。強み=3文 (見え方+型固有の具体描写+締め)、
-  // あれっ?=2文 (見え方+締め)。weaveFound が段落セグメントを生成
-  // (あれっ?ワードは SOFT_WORD 辞書で言い換え済み)。
-  // 残り3つずつは有料深掘りレポート用にデータとして温存 (PERCEIVED_BY_TYPE)。
-  // ③データ本体のみ32化。weaveFound の typeId 引数 (STRENGTH_SCENES=16キー) と
-  // seed は perceivedTypeId(16)のまま=ベース性格の場面描写は共通。
-  const foundContent = flag32
-    ? perceivedContentFor(perceived32Id)
-    : getPerceivedContent(perceivedTypeId);
-  const foundSeed = seedFromTypeId(perceivedTypeId);
-  const strengthParas = foundContent
-    ? weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
-    : [];
-  const surpriseParas = foundContent
-    ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
-    : [];
-
-  // ④ ふたりの関係 (4 段落): 差が最大の特性 × 方向で「この二人ならでは」感を出す。
-  //   1 段落目 = この二人の事実 (② データ起点: 自己評価 vs 相手評価のズレ + 解釈) relationGapFact
-  //   2 段落目 = 相性がいい時 (差の解釈→伸びしろ) relationGapNote
-  //   3 段落目 = 注意点/コツ (① 由来の付き合い方) perceivedTipsBody
-  //   4 段落目 = 未来の締め (これからの具体コツ) relationGapTip
-  // いずれも名前なし。強調 (pink) は行動フレーズのみ・3/4 段落目に各 1 箇所 (計 2 箇所 ≤ 上限 4)。
-  const maxGap = sortedGaps[0];
-  const maxGapDir = gapDir3(maxGap.selfPercent, maxGap.otherPercent);
-  const relationFactBody = relationGapFact[maxGap.key][maxGapDir];
-  const relationGapBody = relationGapNote[maxGap.key][maxGapDir];
-  const relationTipBody = relationGapTip[maxGap.key][maxGapDir];
-  const relationTipKey = relationGapTipKey[maxGap.key][maxGapDir];
-  const tipsKey = flag32
-    ? perceivedTipsKeyFor(perceived32Id)
-    : PERCEIVED_TIPS_KEY[perceivedTypeId];
-
-  // おまけ3問 (好きなところ / 動物にたとえると / 印象的なシーン)。
-  // /me から表示を移設 (詳細ページに集約)。無回答キーは除外。
-  const qualitative =
-    (perception.qualitative_data as Record<string, string> | null) ?? null;
-  const qualEntries = (
-    [
-      { label: "好きなところ", value: qualitative?.favorite_point },
-      { label: "動物にたとえると", value: qualitative?.animal },
-      { label: "印象的なシーン", value: qualitative?.impression_scene },
-    ] as { label: string; value: string | undefined }[]
-  ).filter(
-    (e): e is { label: string; value: string } =>
-      typeof e.value === "string" && e.value.trim().length > 0,
-  );
+  const view = buildPerceptionView({
+    selfScores,
+    otherScores,
+    perceiverName: perception.perceiver_name as string | null,
+    ownerDisplayName: user.display_name as string | null,
+    ownerToken: user.owner_token as string | null,
+    qualitative:
+      (perception.qualitative_data as Record<string, string> | null) ?? null,
+  });
 
   return (
     <main
@@ -412,203 +235,23 @@ export default async function EvaluationResultPage({
           </Link>
         </div>
 
-        {/* ===== ヒーロー = /me・/tako と同一の ResultHero (色帯 + 透過キャラ) =====
-            帯上に「◯◯のトリセツ」を控えめキャプション、帯内 label=「◯◯さんから見た」、
-            称号=友達が割り当てた型の essence、OCEAN=友達評価スコア。装飾袋文字は廃止。 */}
-        <div className="mb-2 flex justify-center">
-          <TrisetsuNameTag name={displayName} />
-        </div>
-        <ResultHero
-          label={`${perceiverFull}さんから見た`}
-          essence={dispEssence}
-          scores={otherScores}
-          heroBg={evalHero.heroBg}
-          codeTint={evalHero.codeTint}
-          imageSrc={dispImageCut}
-          alt={dispEssence}
-          name={perceivedTypeName}
-          description={dispDesc}
-          imageAspectClassName="aspect-square max-h-[44vh] md:max-h-[360px]"
-          contentMaxWidthClass="max-w-[560px]"
-          twoColumn={false}
-        />
-
-        {/* ===== ① ◯◯さんから見たアナタ (最初のコンテンツ・GAP の上) =====
-            友達が割り当てた型 (ヒーローの型) の取扱説明書を友達視点に言い換えた文章。
-            /me の「取扱説明書」セクションと同一スタイル (丸数字見出し + クリーンな文章カード)。 */}
-        <section className="mb-8">
-          <SectionHead num={1} title={`${perceiverFull}さんから見たアナタ`} />
-          {/* 1 枚の白カード: 相互理解度パート → 区切り → 本文パート (くっついて見せる) */}
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-            {/* 相互理解度パート */}
-            <div className="text-center">
-              <p className="text-[#5B5BEF] font-bold text-sm mb-1">相互理解度</p>
-              <p className="text-[#2E2E5C] font-black text-6xl leading-none drop-shadow-[0_2px_0_rgba(255,233,147,0.6)]">
-                {mutual}
-                <span className="text-3xl">%</span>
-              </p>
-              {/* vividPink 進捗バー */}
-              <div
-                className="mt-3 h-3 rounded-full bg-[#2E2E5C]/10 overflow-hidden"
-                role="progressbar"
-                aria-label={`相互理解度 ${mutual}%`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={mutual}
+        {/* ===== 相互理解ボディ (/tako 個別ページと共有) ===== */}
+        <PerceptionResultBody
+          view={view}
+          selfScores={selfScores}
+          otherScores={otherScores}
+          variant="evaluate"
+          footer={
+            <div className="text-center pt-2 pb-2">
+              <Link
+                href={view.myTrisetsuUrl}
+                className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
               >
-                <div
-                  className="h-full rounded-full bg-[#5B5BEF]"
-                  style={{ width: `${mutual}%` }}
-                />
-              </div>
-              {/* 一言ラベル (スコア出し分け) */}
-              <p className="text-[#2E2E5C]/75 text-xs font-bold mt-2 leading-relaxed">
-                {mutualLabel(mutual)}
-              </p>
+                {view.displayName}のトリセツに戻る
+              </Link>
             </div>
-
-            {/* 軽い区切り (別カードに見せない) */}
-            <div className="border-t border-dashed border-[#2E2E5C]/15 my-5" />
-
-            {/* 本文パート (◯◯さんから見たアナタは…)。描写の 1 段落のみ。
-                「うまく付き合うコツ」段落は ④ ふたりの関係 に移設 (Day 12 再設計) */}
-            <p className={PERCEPTION_BODY_TEXT_CLASS}>{perceivedLookBody}</p>
-          </div>
-        </section>
-
-        {/* ===== ② 内訳/ギャップ = 1 枚の白カード (レーダー + 5特性を薄線で区切る) =====
-            Day 12 再設計: 差TOP2深掘り型に圧縮。差 (pt) の大きい順に並べ、
-            上位 2 特性はフル形式 (full=2文)、残り 3 特性は圧縮 (short=1文・40〜55字)。
-            量ばらつき解消で文数を固定し、TOP2と圧縮組の間に小見出しで段差を設計に見せる。 */}
-        <section className="mb-8">
-          <SectionHead num={2} title={`${perceiverFull}さんとのギャップ`} />
-
-          {/* 1 枚のカード: レーダー → 5特性 (差の大きい順) を薄線で区切る */}
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-            {/* レーダー (5特性の全体像: 自分 vs 友達)。
-                ラベルに友達名は出さない (名前は見出しのみ・切り捨て全廃のため) */}
-            <MutualUnderstandingRadar
-              gaps={gaps}
-              selfLabel={`${displayName}自身`}
-              otherLabel="友達から"
-            />
-
-            {/* 発散バー (/me・/tako と共通の BigFiveDivergingBars。自分 × 友達から の差分)。
-                軸ごとの 2 本 TraitBar はここに一本化し、下は解説文のみ残す。 */}
-            <div className="mt-2">
-              <BigFiveDivergingBars
-                scores={selfScores}
-                friendScores={otherScores}
-                friendLabel="友達から"
-                hideHeading
-              />
-            </div>
-
-            {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=full・残り3つ=short) */}
-            {sortedGaps.map((g, idx) => {
-              const dir = gapDir3(g.selfPercent, g.otherPercent);
-              const d = gapDetail[g.key][dir];
-              const detail = idx < 2 ? d.full : d.short;
-              return (
-                <div key={g.key}>
-                  {/* TOP2 と圧縮組の間に小見出しで段差を作る (圧縮組の先頭=idx 2 の前) */}
-                  {idx === 2 && (
-                    <div className="border-t border-dashed border-[#2E2E5C]/25 mt-6 pt-5">
-                      <p className="text-[#2E2E5C]/55 font-bold text-xs mb-1">
-                        そのほかの3つ
-                      </p>
-                    </div>
-                  )}
-                  {/* 薄線で区切り (レーダーと各特性の間)。圧縮組の先頭だけは小見出しが区切るので省く */}
-                  {idx !== 2 && (
-                    <div className="border-t border-[#2E2E5C]/10 my-5" />
-                  )}
-                  {/* 特性名 + 差pt */}
-                  <div className="flex items-baseline justify-between mb-3">
-                    <h3 className="text-[#2E2E5C] font-black text-base">
-                      {g.label}
-                    </h3>
-                    <span className="text-[#5B5BEF] font-black text-xs">
-                      差 {g.diffPoints}pt
-                    </span>
-                  </div>
-                  {/* 軸ごとの 2 本バーは発散バーへ一本化。ここは解説文のみ残す。 */}
-                  {/* アドバイス/気づき (TOP2=full2文 / 圧縮=short1文)。本文スタイルは ① と共通 */}
-                  <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ===== ◇ ◯◯さんからのメッセージ (おまけ3問 → 吹き出しカードに改装、③の直前) =====
-            このページで唯一の「生成ではない本物の友達の言葉」。生成文は文章カード、
-            本物の言葉だけが吹き出しに入る、という原則 (Day 12 ③④改修)。
-            未回答は qualEntries で除外済み。3問すべて未回答ならカードごと非表示。 */}
-        <PerceptionMessageCard
-          entries={qualEntries}
-          perceiverName={perceiverFull}
+          }
         />
-
-        {/* ===== ③ ◯◯さんが見つけたアナタ (強み3段落 + あれっ?3段落の文章カード) =====
-            Day 12 ③④改修: バッジ/吹き出し UI (PerceptionFoundYou、温存) を撤去し、
-            ①④と同じ質感の文章カードに全面改装。vividPink 太字は各段落先頭のワードのみ。
-            旧⑤「4つの特性」/ 旧⑦「友達視点の取扱説明書」と旧6章レイアウト (EvaluationChapters)
-            のコード・文章データは有料深掘りレポート用に温存 (温存場所はファイル冒頭コメント参照)。 */}
-        {foundContent && (
-          <section className="mb-8">
-            <SectionHead
-              num={3}
-              title={`${perceiverFull}さんが見つけたアナタ`}
-            />
-            <PerceptionFoundProse
-              perceiverName={perceiverFull}
-              strengthParas={strengthParas}
-              surpriseParas={surpriseParas}
-            />
-          </section>
-        )}
-
-        {/* ===== ④ ふたりの関係 (旧⑥関係性アドバイスの移設・改装 / ページの締め) =====
-            ① と同じ質感の文章カード。4 段落構成 (事実→相性→注意点/コツ→未来):
-            1 段落目 = この二人の事実 (② データ起点・差最大の特性のズレ+解釈)、
-            2 段落目 = 相性がいい時、
-            3 段落目 = 注意点/コツ (① 由来。行動フレーズを pink で 1 箇所)、
-            4 段落目 = 未来の締め (これからの具体コツ。行動フレーズを pink で 1 箇所)。 */}
-        <section className="mb-8">
-          <SectionHead num={4} title="ふたりの関係" />
-          <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6">
-            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
-              {relationFactBody}
-            </p>
-            <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
-              {relationGapBody}
-            </p>
-            {perceivedTipsBody && (
-              <p className={`${PERCEPTION_BODY_TEXT_CLASS} mb-4`}>
-                {pinkify(perceivedTipsBody, tipsKey)}
-              </p>
-            )}
-            <p className={PERCEPTION_BODY_TEXT_CLASS}>
-              {pinkify(relationTipBody, relationTipKey)}
-            </p>
-          </div>
-        </section>
-
-        {/* ===== 末尾CTA: 相性ランキング風ぼかしティーザー =====
-            旧・紫枠シェアCTAを格上げ。ぼかし3枠 (完全ダミー) で未来を見せ、
-            メインボタンでハブ (/friend-evaluation = QR + 相互理解度ランキング) へ送る。 */}
-        <PerceptionRankingTeaser hubHref="/friend-evaluation" />
-
-        {/* ===== Footer: 自分のトリセツへの戻りリンク (既存・据え置き) ===== */}
-        <div className="text-center pt-2 pb-2">
-          <Link
-            href={myTrisetsuUrl}
-            className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
-          >
-            {displayName}のトリセツに戻る
-          </Link>
-        </div>
       </div>
     </main>
   );

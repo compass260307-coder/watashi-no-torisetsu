@@ -14,6 +14,11 @@ import {
 } from "@/lib/owner-report-data";
 import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
 import { buildDeepDive } from "@/lib/tako-deepdive";
+import {
+  buildDimensionGaps,
+  calcMutualUnderstanding,
+  type BigFiveScores,
+} from "@/lib/perception-analysis";
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
@@ -106,6 +111,19 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
       { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
       { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
     ],
+    friends: friends
+      .map((f, i) => ({
+        perceptionId: `preview-${i}`,
+        name: f.name,
+        perceivedScores: f.perceivedScores as Partial<
+          Record<BigFiveDimension, number>
+        >,
+        mutual: calcMutualUnderstanding(
+          buildDimensionGaps(selfScores, f.perceivedScores as BigFiveScores),
+        ),
+        hasMessage: ["ゆい", "そら"].includes(f.name),
+      }))
+      .sort((a, b) => b.mutual - a.mutual),
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
@@ -269,7 +287,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 </div>
                 <TakoDeepDive
                   deep={deep}
-                  letters={data.friendMessages}
+                  friends={data.friends}
+                  token={token}
                   ownerToken={token}
                 />
               </section>
