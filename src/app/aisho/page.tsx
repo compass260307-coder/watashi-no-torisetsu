@@ -562,7 +562,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         {/* SP: 「二人の相性」ラベル → ランク画像の縦積み・中央寄せ。
             PC: 左に大きな「二人の相性」テキスト / 右にランク画像の横並び。
             ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
-        <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-12 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-14 md:text-left">
+        <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-6 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-8 md:text-left">
           <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
             ふたりの相性
           </p>
