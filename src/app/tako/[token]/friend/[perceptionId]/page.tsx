@@ -20,6 +20,8 @@ import {
 import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { buildPerceptionView } from "@/lib/perception-view";
 import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
+import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide";
+import { getSession } from "@/lib/session";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 
@@ -112,6 +114,19 @@ export default async function FriendIndividualPage({
       .eq("owner_token", token)
       .maybeSingle();
     if (!user) notFound();
+
+    // ===== 本人ゲート (セキュリティ監査②前半: 個別ページは本人限定) =====
+    // 個別ページは本人のプライベートな深掘り (相互理解・ギャップ・贈りもの全文)。
+    // owner_token URL を踏んだだけの友達/第三者には中身を一切見せず、案内ページへ。
+    // 判定は owner_token の有無ではなく、session が本人と一致するか (isOwner) で行う。
+    // フェイルクローズ: session 不在 / 不一致はすべて非 owner 扱いとし、perception や
+    // 贈りものを「取得する前に」案内ページを返す (非 owner の端末へ中身を一切送らない)。
+    const session = await getSession();
+    const isOwner = !!session && session.id === (user.id as string);
+    if (!isOwner) {
+      return <FriendIndividualGuide />;
+    }
+
     selfScores = (user.scores ?? {}) as BigFiveScores;
     ownerDisplayName = (user.display_name as string | null) ?? null;
 
