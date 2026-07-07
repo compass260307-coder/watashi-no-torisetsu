@@ -12,7 +12,20 @@
 // それ以外は Supabase の行をそのまま (metadata は JSON 文字列化)。
 
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
 import { NextRequest, NextResponse } from "next/server";
+
+// users.type_id は 8 タイプの内部スラッグ (例 iron-mental)。サイト表示は 16 タイプの
+// 日本語名なので、scores から現行サイトと同じ 16 タイプ名を算出して type_name 列に出す。
+// (32 タイプ有効時も型名は 16 のまま据え置き＝本文だけ 32 化、なので 16 名で一致する)
+function typeNameFromScores(scores: unknown): string {
+  try {
+    const s = (scores ?? {}) as Record<string, number>;
+    return sixteenTypes[classifySixteenType(s)]?.name ?? "";
+  } catch {
+    return "";
+  }
+}
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 function jstDate(iso: string): string {
@@ -124,6 +137,7 @@ export async function GET(request: NextRequest) {
       "id",
       "display_name",
       "type_id",
+      "type_name",
       "acq_source",
       "acq_campaign",
       "generation",
@@ -132,7 +146,7 @@ export async function GET(request: NextRequest) {
     ];
     const raw = await fetchAll(
       "users",
-      "created_at, id, display_name, type_id, acquisition_source, acquisition_campaign, campaign, generation, source_user_id, plan",
+      "created_at, id, display_name, type_id, scores, acquisition_source, acquisition_campaign, campaign, generation, source_user_id, plan",
       sinceIso,
     );
     rows = raw.map((r) => ({
@@ -141,6 +155,7 @@ export async function GET(request: NextRequest) {
       id: r.id ?? "",
       display_name: r.display_name ?? "",
       type_id: r.type_id ?? "",
+      type_name: typeNameFromScores(r.scores),
       acq_source: r.acquisition_source ?? "",
       // 新フィールド優先・無ければ旧 campaign にフォールバック (流入元を1列に統合)
       acq_campaign: r.acquisition_campaign ?? r.campaign ?? "",
