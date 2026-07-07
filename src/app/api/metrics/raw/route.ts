@@ -77,8 +77,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tableParam = request.nextUrl.searchParams.get("table");
   const table =
-    request.nextUrl.searchParams.get("table") === "users" ? "users" : "events";
+    tableParam === "users"
+      ? "users"
+      : tableParam === "friend_perceptions"
+        ? "friend_perceptions"
+        : "events";
   const daysRaw = parseInt(
     request.nextUrl.searchParams.get("days") ?? "90",
     10,
@@ -133,7 +138,7 @@ export async function GET(request: NextRequest) {
         metadata: r.metadata ? JSON.stringify(r.metadata) : "",
       };
     });
-  } else {
+  } else if (table === "users") {
     // 流入元は新フィールド acquisition_* を主に出す (旧 campaign は空になりがち)。
     // acq_campaign は新フィールド優先、無ければ旧 campaign にフォールバックして一本化する。
     columnOrder = [
@@ -165,6 +170,36 @@ export async function GET(request: NextRequest) {
       generation: r.generation ?? "",
       source_user_id: r.source_user_id ?? "",
       plan: r.plan ?? "",
+    }));
+  } else {
+    // friend_perceptions = 友達診断(他己評価)の結果。誰が誰をどのタイプに見たか＋おまけ自由記述。
+    // 称号は perceived_scores ({E,A,O,C,N}) から users と同じ算出でサイト表示に一致させる。
+    columnOrder = [
+      "created_at",
+      "date_jst",
+      "target_user_id",
+      "perceiver_name",
+      "perceived_type_name",
+      "perceived_full_code",
+      "perceived_modifier_label",
+      "qualitative",
+    ];
+    const raw = await fetchAll(
+      "friend_perceptions",
+      "created_at, target_user_id, perceiver_name, perceived_scores, perceived_full_code, perceived_modifier_label, qualitative_data",
+      sinceIso,
+    );
+    rows = raw.map((r) => ({
+      created_at: r.created_at,
+      date_jst: jstDate(r.created_at as string),
+      // 評価された人 (owner) の users.id。users_raw の id と VLOOKUP で名前を突合できる。
+      target_user_id: r.target_user_id ?? "",
+      perceiver_name: r.perceiver_name ?? "",
+      perceived_type_name: typeNameFromScores(r.perceived_scores),
+      perceived_full_code: r.perceived_full_code ?? "",
+      perceived_modifier_label: r.perceived_modifier_label ?? "",
+      // おまけ3問 (好きなところ/動物/印象シーン等) を JSON 文字列で
+      qualitative: r.qualitative_data ? JSON.stringify(r.qualitative_data) : "",
     }));
   }
 

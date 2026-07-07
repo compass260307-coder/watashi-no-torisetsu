@@ -115,6 +115,11 @@ GET /api/metrics/raw?key=<METRICS_KEY>&table=events|users&days=<1..365>
   - `type_name` = サイトの「性格タイプ」= 称号(essence)（例 采配者 / 将軍 / 寄添者）。scores から算出しサイト表示と一致（32有効時は32称号）
   - `acq_source` = 流入元媒体（line/x/copy/qr/utm_source等）、`acq_campaign` = キャンペーン（新 acquisition_campaign 優先・無ければ旧 campaign）
   - `display_name` = ニックネーム、`generation` = バイラル世代、`source_user_id` = 招待元ユーザー、`plan` = 料金プラン
+- `table=friend_perceptions` … 友達診断(他己評価)の結果。列:
+  `created_at, date_jst, target_user_id, perceiver_name, perceived_type_name, perceived_full_code, perceived_modifier_label, qualitative`
+  - `target_user_id` = 評価された人(owner)の users.id（`users_raw` の `id` とVLOOKUPで名前を突合可）
+  - `perceiver_name` = 評価した友達の名前、`perceived_type_name` = 友達が見た称号（サイト表示と一致）
+  - `qualitative` = おまけ自由記述（好きなところ/動物/印象シーン）のJSON
 - `date_jst` は **日本時間の YYYY-MM-DD**（集計しやすいよう追加している唯一の派生列）
 - `days` は直近何日分か（既定90）。返却は最大 50,000 行（超える分は古い行が切れる → `days` を絞る）
 
@@ -126,10 +131,11 @@ GET /api/metrics/raw?key=<METRICS_KEY>&table=events|users&days=<1..365>
 ```javascript
 const RAW_BASE = 'https://www.watashi-torisetsu.com/api/metrics/raw?key=<METRICS_KEYの値>';
 
-// events と users の生データを各タブに全置換で書き込む
+// events / users / 友達診断結果 の生データを各タブに全置換で書き込む
 function syncRawData() {
   writeRawTable('events_raw', RAW_BASE + '&table=events&days=30');
   writeRawTable('users_raw', RAW_BASE + '&table=users&days=365');
+  writeRawTable('friend_results', RAW_BASE + '&table=friend_perceptions&days=365');
 }
 
 function writeRawTable(sheetName, url) {
