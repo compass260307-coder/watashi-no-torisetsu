@@ -18,7 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { rotateSession } from "@/lib/session";
+import { rotateSession, getSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -60,6 +60,19 @@ export async function GET(request: NextRequest) {
 
   const linkId = row.id as string;
   const userId = row.user_id as string;
+
+  // ===== 衝突検知 (v1 インタースティシャル) =====
+  // 現 Cookie セッション A が存在し、リンク先アカウント B (userId) と別 user_id のとき、
+  // サイレントな切替を避ける。ここでは token をまだ消費せず /login/confirm へ誘導し、
+  // 確認画面で「続ける」(?confirm=1) が押されたときだけ実際に消費 + rotate する。
+  // A が無い / A.id === B は従来どおり素通し。
+  const confirmed = request.nextUrl.searchParams.get("confirm") === "1";
+  const current = await getSession(request);
+  if (current && current.id !== userId && !confirmed) {
+    const url = new URL("/login/confirm", request.nextUrl);
+    url.searchParams.set("token", token);
+    return NextResponse.redirect(url);
+  }
 
   // ===== magic_links.used_at = now() (単発消費) =====
   // race 防止: WHERE used_at IS NULL も追加し、二重消費を atomic に弾く
@@ -103,8 +116,15 @@ export async function GET(request: NextRequest) {
     return errorRedirect(request, "server_error");
   }
 
-  // ===== /zukan-mine にリダイレクト =====
-  // Day 9 で /me/[token] に切り替え予定。それまでは /zukan-mine が
-  // ログイン後の永続アクセス点として機能する。
-  return NextResponse.redirect(new URL("/zukan-mine", request.nextUrl));
+  // ===== 着地: /me/[owner_token] (自分のトリセツ) =====
+  // 復元の目的は「自分の結果に戻る」なので、B の owner_token を引いて /me/[owner_token] へ。
+  // owner_token が無い (レガシー行) 場合のみ /zukan-mine にフォールバック。
+  const { data: userRow } = await supabaseAdmin
+    .from("users")
+    .select("owner_token")
+    .eq("id", userId)
+    .maybeSingle();
+  const ownerToken = (userRow?.owner_token as string | null) ?? null;
+  const dest = ownerToken ? `/me/${ownerToken}` : "/zukan-mine";
+  return NextResponse.redirect(new URL(dest, request.nextUrl));
 }
