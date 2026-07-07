@@ -10,10 +10,7 @@
 
 import { MinnaNoMeProse } from "./MinnaNoMeProse";
 import { FriendList } from "./FriendList";
-import {
-  hiddenStrengthSentence,
-  type DeepDiveData,
-} from "@/lib/tako-deepdive";
+import { type DeepDiveData } from "@/lib/tako-deepdive";
 import type { FriendSummary } from "@/lib/owner-report-data";
 
 interface TakoDeepDiveProps {
@@ -54,14 +51,6 @@ export function TakoDeepDive({
 
       {/* 中: 友達一覧 (旧「友達からの声」の格上げ)。評価者全員をタップで個別ページへ。 */}
       <FriendList friends={friends} token={token} />
-
-      {/* 小: 隠れた長所 (最下・控えめグレー。主役を邪魔しない) */}
-      {deep.hiddenStrength && (
-        <p className="text-[#2E2E5C]/55 font-bold text-sm leading-[1.5]">
-          <span aria-hidden="true">🌱 </span>
-          {hiddenStrengthSentence(deep.hiddenStrength)}
-        </p>
-      )}
     </div>
   );
 }
