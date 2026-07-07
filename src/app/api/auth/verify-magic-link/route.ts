@@ -68,7 +68,20 @@ export async function GET(request: NextRequest) {
   // A が無い / A.id === B は従来どおり素通し。
   const confirmed = request.nextUrl.searchParams.get("confirm") === "1";
   const current = await getSession(request);
-  if (current && current.id !== userId && !confirmed) {
+  const conflict = !!current && current.id !== userId;
+
+  // 観測ログ: 衝突検知の判定を数値で残す。値は user_id(uuid) のみ=個人情報なし。
+  // token/メールはログしない。切り分け確認後に残す/外すを判断する。
+  console.log("[auth/verify-magic-link] decision", {
+    hasA: !!current, // 現Cookie(A)が存在したか
+    aId: current?.id ?? null, // A の user_id
+    bId: userId, // B の user_id (メールのアカウント)
+    conflict, // A有り かつ A.id !== B か
+    confirmed, // ?confirm=1 か
+    action: conflict && !confirmed ? "interstitial" : "passthrough",
+  });
+
+  if (conflict && !confirmed) {
     const url = new URL("/login/confirm", request.nextUrl);
     url.searchParams.set("token", token);
     return NextResponse.redirect(url);
