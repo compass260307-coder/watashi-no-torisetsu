@@ -62,6 +62,8 @@ export type FriendSummary = {
   mutual: number;
   /** ひとことメッセージ (owner_message) がある友達か。 */
   hasMessage: boolean;
+  /** ひとことメッセージ本文 (一覧チラ見せ用)。無ければ空文字。全文は個別ページで表示。 */
+  message: string;
 };
 
 export type OwnerReportData = {
@@ -124,7 +126,7 @@ export async function loadOwnerReportData(
   // owner_message (手紙) は best-effort (列未適用でも壊さない)。
   //   手紙表示用 friendMessages と、友達一覧用の「メッセージ有りID集合」を同時に作る。
   const friendMessages: { name: string; message: string }[] = [];
-  const idsWithMessage = new Set<string>();
+  const messageById = new Map<string, string>();
   try {
     const { data: msgRows, error: msgErr } = await supabaseAdmin
       .from("friend_perceptions")
@@ -140,7 +142,7 @@ export async function loadOwnerReportData(
               ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
             message,
           });
-          idsWithMessage.add(r.id as string);
+          messageById.set(r.id as string, message);
         }
       }
     }
@@ -157,12 +159,14 @@ export async function loadOwnerReportData(
       const mutual = calcMutualUnderstanding(
         buildDimensionGaps(selfScores, perceivedScores),
       );
+      const message = messageById.get(r.id as string) ?? "";
       return {
         perceptionId: r.id as string,
         name: ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
         perceivedScores,
         mutual,
-        hasMessage: idsWithMessage.has(r.id as string),
+        hasMessage: message.length > 0,
+        message,
       };
     })
     .sort((a, b) => b.mutual - a.mutual);

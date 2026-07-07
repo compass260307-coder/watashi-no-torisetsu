@@ -54,9 +54,17 @@ export function FriendList({
                       </span>
                     )}
                   </span>
-                  <span className="block text-[#2E2E5C]/55 font-bold text-xs">
-                    見方の一致 {f.mutual}%
-                  </span>
+                  {/* メッセージあり: 本文を1行チラ見せ (途中カット・…省略。全文は個別ページ)。
+                      メッセージ無し: 従来どおり相互理解度。 */}
+                  {f.hasMessage ? (
+                    <span className="block text-[#2E2E5C]/70 font-bold text-xs truncate">
+                      {f.message}
+                    </span>
+                  ) : (
+                    <span className="block text-[#2E2E5C]/55 font-bold text-xs">
+                      見方の一致 {f.mutual}%
+                    </span>
+                  )}
                 </span>
                 <span
                   aria-hidden="true"

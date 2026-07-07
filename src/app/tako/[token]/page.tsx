@@ -112,17 +112,26 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
       { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
     ],
     friends: friends
-      .map((f, i) => ({
-        perceptionId: `preview-${i}`,
-        name: f.name,
-        perceivedScores: f.perceivedScores as Partial<
-          Record<BigFiveDimension, number>
-        >,
-        mutual: calcMutualUnderstanding(
-          buildDimensionGaps(selfScores, f.perceivedScores as BigFiveScores),
-        ),
-        hasMessage: ["ゆい", "そら"].includes(f.name),
-      }))
+      .map((f, i) => {
+        const message =
+          f.name === "ゆい"
+            ? "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜"
+            : f.name === "そら"
+              ? "自分の考えをちゃんと持ってて素敵だと思う！"
+              : "";
+        return {
+          perceptionId: `preview-${i}`,
+          name: f.name,
+          perceivedScores: f.perceivedScores as Partial<
+            Record<BigFiveDimension, number>
+          >,
+          mutual: calcMutualUnderstanding(
+            buildDimensionGaps(selfScores, f.perceivedScores as BigFiveScores),
+          ),
+          hasMessage: message.length > 0,
+          message,
+        };
+      })
       .sort((a, b) => b.mutual - a.mutual),
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
     inviteCode: "preview",
