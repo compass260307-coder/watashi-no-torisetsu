@@ -449,7 +449,7 @@ export default async function EvaluationResultPage({
               </p>
               {/* vividPink 進捗バー */}
               <div
-                className="mt-3 h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
+                className="mt-3 h-3 rounded-full bg-[#2E2E5C]/10 overflow-hidden"
                 role="progressbar"
                 aria-label={`相互理解度 ${mutual}%`}
                 aria-valuemin={0}
