@@ -105,6 +105,72 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
+// ---------- 全課金経路共通: ログイン用 email バックフィル ----------
+// マジックリンク復元 (POST /api/auth/request-magic-link) は users.email が
+// 埋まっている行しか救えない。従来 email を永続化するのは create-session の
+// body 入力経路のみで、perception_unlock (¥500 個別解除) や Stripe 側の email
+// 入力欄経由では users.email が NULL のまま残り、機種変・キャッシュ削除で
+// 課金済みユーザーが復元不能になる穴があった。全 checkout.session.completed が
+// payment_kind 分岐の手前で必ず通るここで、Stripe 確定 email を 1 箇所で埋める。
+//
+// 冪等 & 非破壊: WHERE id = userId AND email IS NULL。
+//   - 二重 Webhook 着信 → 2 回目は既設なので 0 行更新の no-op
+//   - create-session が事前に入れた「ログイン用メール」を上書きしない
+//     (先に入れた方が残る fill-if-empty)。両者は競合せず相補的。
+//   - users.email は UNIQUE ではない (再診断で複数行が同一 email を持ち得る) ため
+//     id 指定の UPDATE で UNIQUE 衝突は起きない。
+// best-effort: 失敗しても throw しない (決済記録と Webhook 200 応答を止めない)。
+//
+// スコープ外メモ (課金本格開始前・実害小のため今回は未対応・別 PR):
+//   ① 本 PR 以前に email=NULL のまま課金済みの既存行はここでは埋まらない
+//      (Webhook は新規イベントのみ)。要・一度きりのバックフィル是正。
+//   ② request-magic-link は同一 email 複数行のうち created_at 最新 1 行しか
+//      復元先にしない。複数端末で別 user_id 課金した場合、旧行の課金が
+//      取り残される。復元先マージ / 課金集約は別課題。
+function normalizeEmail(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim().toLowerCase();
+  if (v.length === 0 || v.length > 254) return null;
+  // create-session / request-magic-link と同じ簡易 email 検証
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return null;
+  return v;
+}
+
+async function persistLoginEmailIfEmpty(
+  userId: string,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  // 優先順: 客が Checkout で確定した値 > prefill(customer_email) > metadata 保険
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
+  if (!email) return;
+
+  // best-effort: この関数は決済記録より前に呼ばれるため、DB エラーでも例外でも
+  // 絶対に外へ throw しない (throw すると handleCheckoutCompleted が中断し
+  // payment_history の記録が飛ぶ)。返り値 error・予期せぬ reject の両方を握りつぶす。
+  try {
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({ email })
+      .eq("id", userId)
+      .is("email", null); // 冪等 & 非破壊の肝: 空の行だけ埋める
+
+    if (error) {
+      console.error(
+        "[webhook/stripe] login email backfill failed (continuing):",
+        error.message,
+      );
+    }
+  } catch (err) {
+    console.error(
+      "[webhook/stripe] login email backfill threw (continuing):",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
 // ---------- checkout.session.completed ----------
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
@@ -117,6 +183,11 @@ async function handleCheckoutCompleted(
       `session.metadata.user_id missing for session ${session.id}`,
     );
   }
+
+  // ★ 全課金経路共通: Stripe が確定した email を users.email が空なら埋める (復元用)。
+  //   payment_kind 分岐の手前に置くことで perception_unlock / integrated_trisetsu
+  //   の両経路 + 将来経路を 1 箇所でカバーする。詳細は persistLoginEmailIfEmpty 参照。
+  await persistLoginEmailIfEmpty(userId, session);
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
