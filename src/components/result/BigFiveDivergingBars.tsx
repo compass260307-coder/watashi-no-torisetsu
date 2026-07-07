@@ -70,6 +70,8 @@ interface BigFiveDivergingBarsProps {
    * 凡例 (自分 ● / 友達 ◆) を表示する。自己認知ギャップの可視化に使う。
    */
   friendScores?: Partial<Record<BigFiveDimension, number>>;
+  /** 友達マーカー(◆)の凡例・aria ラベル。既定「友達の平均」。単一評価者ページでは「友達から」等に差し替える。 */
+  friendLabel?: string;
   /** 見出し (既定: 自己単体表示。友達重ね時は別タイトルにして重複見出しを避ける)。 */
   title?: string;
   /** 見出しバッジの絵文字。number 指定時は使われない。 */
@@ -82,6 +84,7 @@ interface BigFiveDivergingBarsProps {
 export function BigFiveDivergingBars({
   scores,
   friendScores,
+  friendLabel = "友達の平均",
   title = "5つの軸で見るアナタ",
   emoji = "✨",
   number,
@@ -132,7 +135,7 @@ export function BigFiveDivergingBars({
                 className="w-2.5 h-2.5 rotate-45 border-2 border-white shadow"
                 style={{ background: "#2E2E5C" }}
               />
-              友達の平均
+              {friendLabel}
             </span>
           </div>
         )}
@@ -152,7 +155,7 @@ export function BigFiveDivergingBars({
             <div key={axis.dim}>
               {/* スクリーンリーダー用の要約 (色だけに意味を持たせない) */}
               <span className="sr-only">{`${axis.title}：${lean} ${value}%${
-                friendValue !== null ? `、友達の平均 ${friendValue}%` : ""
+                friendValue !== null ? `、${friendLabel} ${friendValue}%` : ""
               }`}</span>
 
               {/* 上段 (16P 参考): 「軸名: %(軸色) 判定」を左寄せで 1 行に */}

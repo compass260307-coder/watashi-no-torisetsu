@@ -45,7 +45,10 @@ import {
   sixteenTypes,
   characterImagePath,
 } from "@/lib/sixteen-types";
-import { CharacterHero } from "@/components/result/CharacterHero";
+import { ResultHero } from "@/components/result/ResultHero";
+import { heroColorsForGroup } from "@/lib/hero-colors";
+import { preferCutImage } from "@/lib/character-image";
+import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { TrisetsuNameTag } from "@/components/result/TrisetsuNameTag";
 import {
   perceivedManualContent,
@@ -81,6 +84,10 @@ import {
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoGroup,
+  baseIdOf,
+  nAxisOf,
+  type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { PerceptionRankingTeaser } from "@/components/result/PerceptionRankingTeaser";
 // 末尾CTA: 紫枠の PerceptionBoostCta (友達評価リンクのコピー + X/LINE シェア) は撤去し、
@@ -100,7 +107,30 @@ export const metadata: Metadata = {
 
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
+
+// 本番DBを介さずデザイン確認するための行の最小形 (実DB行 / プレビュー用モック 共通)。
+type PerceptionRow = {
+  id: string;
+  target_user_id: string;
+  perceiver_name: string | null;
+  perceived_type_id: string | null;
+  perceived_full_code: string | null;
+  perceived_modifier_label: string | null;
+  perceived_scores: unknown;
+  perceived_facet_scores: unknown;
+  qualitative_data: unknown;
+  created_at: string | null;
+};
+type EvalUserRow = {
+  id: string;
+  type_id: string | null;
+  scores: unknown;
+  display_name: string | null;
+  owner_token: string | null;
+  invite_code: string | null;
+};
 
 // Day 12 ③④改修: 名前の「…」切り捨て (shortenName) を全廃。
 // 友達名は見出しでフル表示し、長い場合は折り返す。本文中には名前を出さない。
@@ -115,12 +145,17 @@ function mutualLabel(pct: number): string {
 
 // 丸数字バッジ + 見出し (①〜④ 共通。新フローの番号は上から連番で振る)
 function SectionHead({ num, title }: { num: number; title: string }) {
+  // 丸数字は /me・/tako と同一 (白抜き・ネイビー太リング)。見出しは友達名込みで長くなり得るため
+  // /me のヒーロー級 (30-36px) ではなく可読性優先で text-2xl 前後に留める (トーンは同一)。
   return (
     <div className="flex items-center gap-3 mb-4">
-      <span className="flex-shrink-0 w-9 h-9 rounded-full bg-[#2E2E5C] text-white font-black text-lg flex items-center justify-center">
+      <span
+        aria-hidden="true"
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+      >
         {num}
       </span>
-      <h2 className="text-[#2E2E5C] font-black text-xl leading-tight">
+      <h2 className="text-[#2E2E5C] font-black text-2xl leading-tight">
         {title}
       </h2>
     </div>
@@ -142,81 +177,120 @@ function pinkify(text: string, key?: string) {
   );
 }
 
-// ② 特性カードのバー (① の相互理解度バーと同じ見た目: h-3 / 角丸 / lavender トラック)。
-function TraitBar({
-  label,
-  percent,
-  color,
-}: {
-  label: string;
-  percent: number;
-  color: string;
-}) {
-  return (
-    <div>
-      <div className="flex justify-between text-xs font-bold text-[#2E2E5C] mb-1">
-        <span>{label}</span>
-        <span>{percent}%</span>
-      </div>
-      <div
-        className="h-3 rounded-full bg-[#E4E0F5] overflow-hidden"
-        role="progressbar"
-        aria-label={`${label} ${percent}%`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-      >
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${percent}%`, background: color }}
-        />
-      </div>
-    </div>
-  );
-}
-
-export default async function EvaluationResultPage({ params }: PageProps) {
+export default async function EvaluationResultPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { perceptionId } = await params;
+  const sp = await searchParams;
   // 相互理解度は完全無料 (課金ゲートなし。Stripe インフラは温存・ここでは参照しない)
 
-  // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
-  const { data: perception, error: pErr } = await supabaseAdmin
-    .from("friend_perceptions")
-    .select(
-      "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_scores, perceived_facet_scores, qualitative_data, created_at",
-    )
-    .eq("id", perceptionId)
-    .maybeSingle();
-  if (pErr) {
-    console.error("[/evaluate/result] perception lookup error:", pErr);
-  }
-  if (!perception) {
-    notFound();
+  // ===== プレビュー (実DB/session を介さずモックでデザイン確認) =====
+  // ?previewType=<32タイプID> 指定時、そのタイプの High/Low モックで描画 (実ユーザーデータ不参照)。
+  // 許可条件は dev または /preview 経由 (fromPreview=1)。owner ゲートもスキップ。
+  const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
+  const previewAllowed =
+    process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
+  const previewType: ThirtyTwoTypeId | null =
+    previewAllowed &&
+    /^[a-z-]+__[NR]$/.test(rawPreview) &&
+    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+      ? (rawPreview as ThirtyTwoTypeId)
+      : null;
+
+  let perception: PerceptionRow | null;
+  let user: EvalUserRow | null;
+
+  if (previewType) {
+    const code = sixteenTypes[baseIdOf(previewType)].code;
+    const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
+    const clamp = (v: number) => Math.max(0, Math.min(10, v));
+    const perceivedScores = {
+      O: hi("O"),
+      C: hi("C"),
+      E: hi("E"),
+      A: hi("A"),
+      N: nAxisOf(previewType) === "N" ? 8 : 2,
+    };
+    // 自己スコアは少しずらしてギャップが見えるように。
+    const selfMock = {
+      O: clamp(perceivedScores.O - 3),
+      C: perceivedScores.C,
+      E: clamp(perceivedScores.E + 3),
+      A: clamp(perceivedScores.A - 2),
+      N: perceivedScores.N,
+    };
+    perception = {
+      id: "preview",
+      target_user_id: "preview",
+      perceiver_name: "たっきん",
+      perceived_type_id: null,
+      perceived_full_code: null,
+      perceived_modifier_label: null,
+      perceived_scores: perceivedScores,
+      perceived_facet_scores: null,
+      qualitative_data: {
+        favorite_point: "いつも落ち着いてて頼れるところ",
+        animal: "ふくろう",
+        impression_scene: "みんなが慌ててる時に一人だけ冷静だった",
+      },
+      created_at: null,
+    };
+    user = {
+      id: "preview",
+      type_id: null,
+      scores: selfMock,
+      display_name: "ゆうわインド",
+      owner_token: "preview",
+      invite_code: "preview",
+    };
+  } else {
+    // ===== 1. perception 取得 (owner 自己診断スコアは含まない) =====
+    const { data: pRow, error: pErr } = await supabaseAdmin
+      .from("friend_perceptions")
+      .select(
+        "id, target_user_id, perceiver_name, perceived_type_id, perceived_full_code, perceived_modifier_label, perceived_scores, perceived_facet_scores, qualitative_data, created_at",
+      )
+      .eq("id", perceptionId)
+      .maybeSingle();
+    if (pErr) {
+      console.error("[/evaluate/result] perception lookup error:", pErr);
+    }
+    if (!pRow) {
+      notFound();
+    }
+    perception = pRow as PerceptionRow;
+
+    // ===== 2. owner ゲート (Polish-H: プライバシー穴塞ぎ) =====
+    // このページは owner (= 評価された本人 A) の自己診断スコア (レーダー/バー) を
+    // 表示するため、owner 本人だけに見せる。owner 識別は cookie ベース session
+    // (wn_session, httpOnly, server-readable) で判定する。
+    //
+    // フェイルクローズ: session 不在 / session.id が perception.target_user_id と
+    // 一致しない (= 評価した友達や第三者、判定不可) 場合はすべて非 owner 扱いとし、
+    // owner の自己スコアを「取得する前に」/evaluate/sent (友達セーフ版) へリダイレクト。
+    // これにより非 owner の端末へ自己診断スコアが一切送信されない。
+    const session = await getSession();
+    const isOwner =
+      !!session && session.id === (perception.target_user_id as string);
+    if (!isOwner) {
+      redirect(`/evaluate/sent/${perceptionId}`);
+    }
+
+    // ===== 3. target user (= 評価された A) 取得 (owner 確定後にのみ self scores を取得) =====
+    const { data: uRow } = await supabaseAdmin
+      .from("users")
+      .select("id, type_id, scores, display_name, owner_token, invite_code")
+      .eq("id", perception.target_user_id)
+      .maybeSingle();
+    if (!uRow) {
+      notFound();
+    }
+    user = uRow as EvalUserRow;
   }
 
-  // ===== 2. owner ゲート (Polish-H: プライバシー穴塞ぎ) =====
-  // このページは owner (= 評価された本人 A) の自己診断スコア (レーダー/バー) を
-  // 表示するため、owner 本人だけに見せる。owner 識別は cookie ベース session
-  // (wn_session, httpOnly, server-readable) で判定する。
-  //
-  // フェイルクローズ: session 不在 / session.id が perception.target_user_id と
-  // 一致しない (= 評価した友達や第三者、判定不可) 場合はすべて非 owner 扱いとし、
-  // owner の自己スコアを「取得する前に」/evaluate/sent (友達セーフ版) へリダイレクト。
-  // これにより非 owner の端末へ自己診断スコアが一切送信されない。
-  const session = await getSession();
-  const isOwner =
-    !!session && session.id === (perception.target_user_id as string);
-  if (!isOwner) {
-    redirect(`/evaluate/sent/${perceptionId}`);
-  }
-
-  // ===== 3. target user (= 評価された A) 取得 (owner 確定後にのみ self scores を取得) =====
-  const { data: user } = await supabaseAdmin
-    .from("users")
-    .select("id, type_id, scores, display_name, owner_token, invite_code")
-    .eq("id", perception.target_user_id)
-    .maybeSingle();
-  if (!user) {
+  // 型ナローイング (プレビュー/実データ双方で以降 non-null が保証される)。
+  if (!perception || !user) {
     notFound();
   }
 
@@ -255,6 +329,11 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   const dispDesc = flag32
     ? thirtyTwoOneLiner(perceived32Id)
     : perceivedType16.oneLiner;
+  // 統一ヒーロー (/me・/tako と共通): グループ別の帯トーン + 透過キャラ (v3 の四角背景を消して帯に溶け込ませる)。
+  const evalHero = heroColorsForGroup(
+    flag32 ? thirtyTwoGroup(perceived32Id) : "unknown",
+  );
+  const dispImageCut = preferCutImage(dispImage);
   // 本文 2 段落 (perception-manual-content.ts は名前なし・主語省略で生成済み):
   //   1 段落目 = ① 「どう見えているか」の描写
   //   2 段落目 = ④ ふたりの関係の「付き合い方のコツ」(ふたり視点・3〜4文)
@@ -314,10 +393,13 @@ export default async function EvaluationResultPage({ params }: PageProps) {
   );
 
   return (
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4">
-      <div className="max-w-[480px] mx-auto rounded-[32px] overflow-hidden grid-bg p-6 relative border-[3px] border-[#0094D8]">
-        {/* ===== ヘッダー ===== */}
-        <div className="flex justify-between items-center mb-6">
+    <main
+      className="relative min-h-dvh overflow-x-clip px-4 pb-10 md:px-8"
+      style={{ background: "#FFFFFF" }}
+    >
+      <div className="relative z-10 mx-auto max-w-[560px] pt-6">
+        {/* ===== ヘッダー (ロゴ) ===== */}
+        <div className="flex justify-between items-center mb-5">
           <Link href="/" aria-label="トップへ">
             <Image
               src="/logo.png"
@@ -325,35 +407,30 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               width={280}
               height={80}
               priority
-              className="w-[120px] h-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.35)]"
+              className="w-[120px] h-auto"
             />
           </Link>
         </div>
 
-        {/* ===== ヒーロータグ (2 行) =====
-            1 行目: 2 行目と同じロゴ風 (.wtr-logo-text = logoBlue 塗り + 太い白フチ) を一回り小さく。
-                    装飾(花/ハート)は付けない。友達名はフル表示し、幅をはみ出す場合は
-                    折り返す (Day 12 ③④改修: 「…」切り捨ては全廃)。
-            2 行目: /me の TrisetsuNameTag「◯◯のトリセツ」(花=左 / ハート=右、owner 名は省略しない)。
-            縦余白を詰めて上下 1 まとまりに見せる。 */}
-        <div className="mb-4 flex flex-col items-center">
-          <div
-            className="wtr-logo-text leading-tight text-center max-w-full px-4 mb-0.5"
-            style={{ fontSize: "clamp(13px, 4.2vw, 21px)" }}
-          >
-            {perceiverFull}さんから見た
-          </div>
+        {/* ===== ヒーロー = /me・/tako と同一の ResultHero (色帯 + 透過キャラ) =====
+            帯上に「◯◯のトリセツ」を控えめキャプション、帯内 label=「◯◯さんから見た」、
+            称号=友達が割り当てた型の essence、OCEAN=友達評価スコア。装飾袋文字は廃止。 */}
+        <div className="mb-2 flex justify-center">
           <TrisetsuNameTag name={displayName} />
         </div>
-
-        {/* ===== B から見たアナタのタイプ (16タイプ・ヒーロー = /me と同一構成) =====
-            eyebrow は上部タグと重複するため撤去 (essence + 型名 + 説明文のみ)。 */}
-        <CharacterHero
-          imageSrc={dispImage}
-          alt={dispEssence}
+        <ResultHero
+          label={`${perceiverFull}さんから見た`}
           essence={dispEssence}
+          scores={otherScores}
+          heroBg={evalHero.heroBg}
+          codeTint={evalHero.codeTint}
+          imageSrc={dispImageCut}
+          alt={dispEssence}
           name={perceivedTypeName}
           description={dispDesc}
+          imageAspectClassName="aspect-square max-h-[44vh] md:max-h-[360px]"
+          contentMaxWidthClass="max-w-[560px]"
+          twoColumn={false}
         />
 
         {/* ===== ① ◯◯さんから見たアナタ (最初のコンテンツ・GAP の上) =====
@@ -416,6 +493,16 @@ export default async function EvaluationResultPage({ params }: PageProps) {
               otherLabel="友達から"
             />
 
+            {/* 発散バー (/me・/tako と共通の BigFiveDivergingBars。自分 × 友達から の差分)。
+                軸ごとの 2 本 TraitBar はここに一本化し、下は解説文のみ残す。 */}
+            <div className="mt-2">
+              <BigFiveDivergingBars
+                scores={selfScores}
+                friendScores={otherScores}
+                friendLabel="友達から"
+              />
+            </div>
+
             {/* 5特性ブロック (sortedGaps = 差の大きい順。先頭2つ=full・残り3つ=short) */}
             {sortedGaps.map((g, idx) => {
               const dir = gapDir3(g.selfPercent, g.otherPercent);
@@ -444,19 +531,7 @@ export default async function EvaluationResultPage({ params }: PageProps) {
                       差 {g.diffPoints}pt
                     </span>
                   </div>
-                  {/* 2 本のバー (本人自身 / 友達から) = ① のバーと同じ見た目 */}
-                  <div className="space-y-2 mb-3">
-                    <TraitBar
-                      label={`${displayName}自身`}
-                      percent={g.selfPercent}
-                      color="#5B5BEF"
-                    />
-                    <TraitBar
-                      label="友達から"
-                      percent={g.otherPercent}
-                      color="#0094D8"
-                    />
-                  </div>
+                  {/* 軸ごとの 2 本バーは発散バーへ一本化。ここは解説文のみ残す。 */}
                   {/* アドバイス/気づき (TOP2=full2文 / 圧縮=short1文)。本文スタイルは ① と共通 */}
                   <p className={PERCEPTION_BODY_TEXT_CLASS}>{detail}</p>
                 </div>
