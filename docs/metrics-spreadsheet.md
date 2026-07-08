@@ -180,3 +180,81 @@ function createRawTrigger() {
 日付別の一覧が欲しいときは **ピボットテーブル**：
 `users_raw` を範囲に、行 = `date_jst`、値 = `id` の COUNTA。これで「日付ごとの診断人数」表になる。
 イベント別に見たいときは `events_raw` を範囲に、行 = `date_jst`、列 = `event_name`、値 = COUNTA。
+
+---
+
+# ダッシュボードタブを自動生成する
+
+`dashboard` タブに主要KPIを自動で組む Apps Script。1回貼って `buildDashboard` を実行するだけ。
+数式なので、`syncRawData` で生データが更新されれば dashboard も自動で追従する。
+
+前提: 列順は `syncRawData` が書く固定順（users_raw: A created_at / B date_jst / C id /
+D display_name / E type_name / F friend_count / G acq_source …）。タイムゾーンはJST。
+
+```javascript
+function buildDashboard() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('dashboard') || ss.insertSheet('dashboard');
+  sh.clear();
+
+  const today = 'TEXT(TODAY(),"yyyy-mm-dd")';
+  const yday = 'TEXT(TODAY()-1,"yyyy-mm-dd")';
+
+  // ── サマリー (A1:B9) ──
+  sh.getRange('A1').setValue('■ サマリー（30分ごとに自動更新）').setFontWeight('bold');
+  const kpi = [
+    ['総診断者数', '=COUNTA(users_raw!C2:C)'],
+    ['今日の診断者', '=COUNTIF(users_raw!B2:B, ' + today + ')'],
+    ['昨日の診断者', '=COUNTIF(users_raw!B2:B, ' + yday + ')'],
+    ['友達診断 完成者(3人以上)', '=COUNTIF(users_raw!F2:F, ">=3")'],
+    ['友達診断 完成率', '=IFERROR(COUNTIF(users_raw!F2:F,">=3")/COUNTA(users_raw!C2:C),0)'],
+    ['友達評価の総数', '=COUNTA(friend_results!C2:C)'],
+    ['今日の友達回答完了', '=COUNTIFS(events_raw!C:C,"friend_answer_completed", events_raw!B:B, ' + today + ')'],
+    ['今日の友達招待クリック', '=COUNTIFS(events_raw!C:C,"friend_invite_clicked", events_raw!B:B, ' + today + ')'],
+  ];
+  for (var i = 0; i < kpi.length; i++) {
+    sh.getRange(2 + i, 1).setValue(kpi[i][0]);
+    sh.getRange(2 + i, 2).setFormula(kpi[i][1]);
+  }
+  sh.getRange('B6').setNumberFormat('0.0%'); // 完成率
+
+  // ── 友達人数の分布 (A11:B16) ──
+  sh.getRange('A11').setValue('■ 友達人数の分布').setFontWeight('bold');
+  const dist = [
+    ['0人', '=COUNTIF(users_raw!F2:F,0)'],
+    ['1人', '=COUNTIF(users_raw!F2:F,1)'],
+    ['2人', '=COUNTIF(users_raw!F2:F,2)'],
+    ['3人以上', '=COUNTIF(users_raw!F2:F,">=3")'],
+    ['5人以上', '=COUNTIF(users_raw!F2:F,">=5")'],
+  ];
+  for (var j = 0; j < dist.length; j++) {
+    sh.getRange(12 + j, 1).setValue(dist[j][0]);
+    sh.getRange(12 + j, 2).setFormula(dist[j][1]);
+  }
+
+  // ── タイプ(称号)別 人数 (A19〜) ──
+  sh.getRange('A19').setValue('■ タイプ(称号)別 人数').setFontWeight('bold');
+  sh.getRange('A20').setFormula(
+    '=QUERY(users_raw!E2:E, "select E, count(E) where E is not null group by E order by count(E) desc label E \'称号\', count(E) \'人数\'", 0)'
+  );
+
+  // ── 日別 診断者数 (D1〜, 新しい順) ──
+  sh.getRange('D1').setValue('■ 日別 診断者数（新しい順）').setFontWeight('bold');
+  sh.getRange('D2').setFormula(
+    '=QUERY(users_raw!B2:B, "select B, count(B) where B is not null group by B order by B desc label B \'日付\', count(B) \'診断者\'", 0)'
+  );
+
+  // ── 流入元(acq_source)別 (G1〜) ──
+  sh.getRange('G1').setValue('■ 流入元(acq_source)別').setFontWeight('bold');
+  sh.getRange('G2').setFormula(
+    '=QUERY(users_raw!G2:G, "select G, count(G) group by G order by count(G) desc label G \'流入元\', count(G) \'人数\'", 0)'
+  );
+
+  sh.setColumnWidth(1, 200);
+  sh.setColumnWidth(4, 110);
+  sh.setColumnWidth(7, 130);
+}
+```
+
+`buildDashboard` を1回実行すれば `dashboard` タブができる。中身は数式なので、以後は
+`syncRawData`（30分トリガー）で生データが更新されるたびに自動で最新化される。
