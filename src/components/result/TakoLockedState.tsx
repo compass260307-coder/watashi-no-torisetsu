@@ -45,6 +45,119 @@ const STEPS = [
   },
 ] as const;
 
+const UNLOCK_PREVIEW_ITEMS = [
+  {
+    icon: "sparkle",
+    color: "#69C7D8",
+    title: "みんなから見たあなた",
+    desc: "友達の回答をもとに、自分では気づきにくい印象や魅力を言葉にします。",
+  },
+  {
+    icon: "compare",
+    color: "#8FCE70",
+    title: "自分とのギャップ",
+    desc: "自己診断と友達の見え方を比べて、強みや意外な一面を見つけます。",
+  },
+  {
+    icon: "chat",
+    color: "#B49BE8",
+    title: "関わり方のヒント",
+    desc: "まわりが感じているあなたらしさから、仲良くなるコツを整理します。",
+  },
+  {
+    icon: "check",
+    color: "#F0B84D",
+    title: "友達ごとの見え方",
+    desc: "回答してくれた友達それぞれの印象も、あとから見返せる形で残ります。",
+  },
+] as const;
+
+const REMAINING_VISUALS = {
+  1: { src: "/tako/ato-1.png", width: 1525, height: 456 },
+  2: { src: "/tako/ato-2.png", width: 1526, height: 456 },
+  3: { src: "/tako/ato-3.png", width: 1525, height: 457 },
+} as const;
+
+type RemainingCount = keyof typeof REMAINING_VISUALS;
+
+function remainingCount(friendCount: number, threshold: number): RemainingCount {
+  const remaining = threshold - friendCount;
+  if (remaining <= 1) return 1;
+  if (remaining === 2) return 2;
+  return 3;
+}
+
+function UnlockPreviewIcon({
+  icon,
+  color,
+}: {
+  icon: (typeof UNLOCK_PREVIEW_ITEMS)[number]["icon"];
+  color: string;
+}) {
+  return (
+    <div
+      className="flex h-14 w-14 shrink-0 items-center justify-center bg-[#F7F8FC] md:h-16 md:w-16"
+      style={{
+        clipPath: "polygon(25% 7%, 75% 7%, 100% 50%, 75% 93%, 25% 93%, 0 50%)",
+      }}
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 40 40"
+        fill="none"
+        className="h-8 w-8 md:h-9 md:w-9"
+      >
+        {icon === "sparkle" && (
+          <>
+            <path
+              d="M20 5l3.4 9.5L33 18l-9.6 3.5L20 31l-3.4-9.5L7 18l9.6-3.5L20 5z"
+              fill={color}
+            />
+            <path d="M10 27l1.4 3.8L15 32l-3.6 1.2L10 37l-1.4-3.8L5 32l3.6-1.2L10 27z" fill={color} opacity="0.55" />
+          </>
+        )}
+        {icon === "compare" && (
+          <>
+            <path
+              d="M11 13h15l-4-4 2.6-2.6L33 14.8l-8.4 8.4L22 20.6l4-4H11V13z"
+              fill={color}
+            />
+            <path
+              d="M29 27H14l4 4-2.6 2.6L7 25.2l8.4-8.4 2.6 2.6-4 4h15V27z"
+              fill={color}
+              opacity="0.72"
+            />
+          </>
+        )}
+        {icon === "chat" && (
+          <>
+            <path
+              d="M8 10.5A5.5 5.5 0 0113.5 5h13A5.5 5.5 0 0132 10.5v9A5.5 5.5 0 0126.5 25H18l-7.5 6v-6A5.5 5.5 0 018 19.5v-9z"
+              fill={color}
+            />
+            <circle cx="15" cy="15" r="2" fill="white" opacity="0.9" />
+            <circle cx="20" cy="15" r="2" fill="white" opacity="0.9" />
+            <circle cx="25" cy="15" r="2" fill="white" opacity="0.9" />
+          </>
+        )}
+        {icon === "check" && (
+          <>
+            <rect x="9" y="7" width="22" height="27" rx="5" fill={color} opacity="0.92" />
+            <path
+              d="M15 20.5l4 4 7-9"
+              stroke="white"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M15 12h10" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 // FV 右側のループ動画。/aisho の HeroLoopVideo と同流儀 (autoPlay/muted/loop、
 // prefers-reduced-motion で一時停止)。動画ファイル (/tako/hero-loop.mp4) 生成前でも
 // 崩れないよう、コンテナに淡いグラデ背景と固定アスペクトを持たせる (差し替えは source のみ)。
@@ -89,6 +202,9 @@ export function TakoLockedState({
   threshold,
   inviteUrl,
 }: TakoLockedStateProps) {
+  const remaining = remainingCount(friendCount, threshold);
+  const remainingVisual = REMAINING_VISUALS[remaining];
+
   return (
     <div>
       {/* ===== FV: /aisho と同じ「左=見出し / 右=動画」ヒーロー (最上部) ===== */}
@@ -117,39 +233,17 @@ export function TakoLockedState({
       </header>
 
       {/* ===== 結果解放セクション (背景色付きの帯)。友達招待(QR)＋あと○人ビジュアル。 ===== */}
-      <div
-        className="mb-10 md:mb-14 rounded-3xl p-8 md:px-10 md:py-12"
-        style={{ background: "#EDEFFB" }}
-      >
-        <section className="md:flex md:items-center md:gap-12">
-          {/* 左: 進捗ドット + 画像 (テキストは廃し、画像で内容を伝える) */}
+      <div className="mb-10 rounded-3xl p-6 md:mb-12 md:px-9 md:py-6" style={{ background: "#EDEFFB" }}>
+        <section className="md:flex md:items-center md:gap-9 lg:gap-12">
+          {/* 左: 画像 (テキストは廃し、画像で内容を伝える) */}
           <div className="md:flex-1">
-            {/* 進捗ドット。SP では画像/QR/ピルと同じ 288px 幅に揃える (mx-auto)。 */}
-            <div
-              className="mx-auto flex max-w-[340px] items-center gap-2 md:mx-0 md:max-w-none"
-              role="progressbar"
-              aria-valuenow={friendCount}
-              aria-valuemin={0}
-              aria-valuemax={threshold}
-            >
-              {Array.from({ length: threshold }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    i < friendCount ? "bg-[#5B5BEF]" : "bg-[#2E2E5C]/15"
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* あと○人ビジュアル (フェルト調イラスト・透過PNG)。テキストの代わりにこの画像で伝える。
-                dev の画像 optimizer 対策で unoptimized 配信。画像は「あと3人」固定 (人数別に差し替え可)。 */}
-            <div className="mt-5 -mx-4 md:mx-0 md:max-w-[540px]">
+            {/* あと○人ビジュアル (フェルト調イラスト・透過PNG)。friendCount に合わせて出し分ける。 */}
+            <div className="-mx-2 md:mx-0 md:max-w-[560px]">
               <Image
-                src="/tako/ato-3.png"
-                alt="あと3人の回答で結果が解放"
-                width={1444}
-                height={400}
+                src={remainingVisual.src}
+                alt={`あと${remaining}人の回答で結果が解放`}
+                width={remainingVisual.width}
+                height={remainingVisual.height}
                 unoptimized
                 priority
                 className="h-auto w-full"
@@ -158,11 +252,36 @@ export function TakoLockedState({
           </div>
 
           {/* 右: 招待 (QR + シェア)。唯一のカードとして行動を促す */}
-          <div className="mt-4 md:mt-0 md:w-[42%] md:max-w-[420px] md:shrink-0">
-            <LockedInviteShare inviteUrl={inviteUrl} />
+          <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
+            <LockedInviteShare inviteUrl={inviteUrl} compact />
           </div>
         </section>
       </div>
+
+      {/* ===== 解放後に見えるもの。あと1人カードの直下で、回答を集める理由を補足する。 ===== */}
+      <section className="mb-12 md:mb-16">
+        <p
+          className="mb-7 text-[17px] font-bold leading-relaxed md:mb-8 md:text-[19px]"
+          style={{ color: INACTIVE }}
+        >
+          3人集まると、こんなことが見えます。
+        </p>
+        <div className="grid gap-8 md:grid-cols-2 md:gap-x-14 md:gap-y-10">
+          {UNLOCK_PREVIEW_ITEMS.map((item) => (
+            <div key={item.title} className="flex gap-4 md:gap-5">
+              <UnlockPreviewIcon icon={item.icon} color={item.color} />
+              <div className="min-w-0">
+                <h3 className="text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
+                  {item.title}
+                </h3>
+                <p className="body-gothic mt-2 text-[14px] font-normal leading-relaxed text-[#5F687A] md:text-[15px]">
+                  {item.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ===== 3ステップ (どう進むか)。MBTI 風: カードの真後ろに各グループ色 (海=青/陸=緑/
           未知=紫) の淡いグローを全幅で滲ませ、背景とカードを地続きに見せる。カードは枠線なし・

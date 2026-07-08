@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "WATCHPACK_POLLING=true next dev --webpack",
     "dev:turbo": "next dev",
     "prebuild": "node scripts/generate-image-manifest.mjs",
     "build": "next build",

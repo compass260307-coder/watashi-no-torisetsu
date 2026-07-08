@@ -373,16 +373,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
             </section>
             </div>
         )}
-
-          {/* ===== フッター: 戻り ===== */}
-          <div className="mx-auto max-w-[560px] text-center pt-2 pb-2">
-            <Link
-              href={`/me/${token}`}
-              className="text-[#2A3A5C]/60 font-bold text-sm underline hover:text-[#2A3A5C] transition-colors"
-            >
-              自分のトリセツに戻る
-            </Link>
-          </div>
         </div>
       </main>
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}

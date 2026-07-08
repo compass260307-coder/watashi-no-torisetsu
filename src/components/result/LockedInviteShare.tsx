@@ -16,6 +16,8 @@ import { withRef } from "@/lib/acquisition-link";
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
   inviteUrl: string;
+  /** 横並びレイアウト用にQRとボタンを少し締める。 */
+  compact?: boolean;
   /**
    * 計測ソース。指定時のみ X/LINE/コピー タップで friend_invite_clicked を発火する
    * (metadata: { channel, source })。未指定 (ロック状態など) は無発火で挙動を変えない。
@@ -28,6 +30,7 @@ const SHARE_TEXT =
 
 export function LockedInviteShare({
   inviteUrl,
+  compact = false,
   trackSource,
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
@@ -58,20 +61,29 @@ export function LockedInviteShare({
     }
   };
 
-  const pill =
-    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-[13px] font-black text-white transition-transform active:scale-95";
+  const pill = `inline-flex flex-1 items-center justify-center gap-1.5 rounded-full ${
+    compact ? "py-2.5 md:py-1.5 text-[13px] md:text-[12px]" : "py-2.5 text-[13px]"
+  } font-black text-white transition-transform active:scale-95`;
 
   return (
-    <div className="mx-auto max-w-[340px] md:max-w-[288px]">
+    <div
+      className={
+        compact
+          ? "mx-auto max-w-[320px] md:max-w-[236px]"
+          : "mx-auto max-w-[340px] md:max-w-[288px]"
+      }
+    >
       {/* QR (対面スキャン用)。白タイルはピル行と同じ幅 (w-full)、QRは中央フレーム。 */}
       <div
-        className="w-full rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(46,46,92,0.10)]"
+        className={`w-full rounded-2xl bg-white ${
+          compact ? "p-4" : "p-5"
+        } shadow-[0_8px_24px_rgba(46,46,92,0.10)]`}
         role="img"
         aria-label="友達評価ページへの招待QRコード"
       >
         <QRCodeSVG
           value={withRef(inviteUrl, "qr")}
-          size={248}
+          size={compact ? 204 : 248}
           className="h-auto w-full"
           bgColor="#FFFFFF"
           fgColor="#2E2E5C"
@@ -79,12 +91,12 @@ export function LockedInviteShare({
           marginSize={0}
         />
       </div>
-      <p className="mt-3 text-center text-[12px] font-bold text-[#2E2E5C]/50">
+      <p className="mt-2.5 text-center text-[12px] font-bold text-[#2E2E5C]/50">
         友達のスマホで読み取ってもらおう
       </p>
 
       {/* シェアピル: X / LINE / リンク (QR と同じ幅・ラベル付き塗りピル) */}
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         <a
           href={xUrl}
           target="_blank"
@@ -95,7 +107,7 @@ export function LockedInviteShare({
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white" aria-hidden="true">
             <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
           </svg>
-          X
+          <span className="sr-only">Xで共有</span>
         </a>
         <a
           href={lineUrl}

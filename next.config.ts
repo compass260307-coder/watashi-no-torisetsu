@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  // /Users/wakan/package-lock.json を誤って workspace root と判定すると、
+  // dev server が全ルートを 404 に落とすことがあるため明示する。
+  outputFileTracingRoot: projectRoot,
+  turbopack: {
+    root: projectRoot,
+  },
+
   // T1-8 PDF プロトタイプ: Vercel Functions に日本語フォント TTF と
   // サンプル JSON を同梱する (URL fetch 経由だと SSO 保護下で 404 になるため)。
   // T2-2 で本実装 API ルートに置換する際にも同じ tracing が必要。
