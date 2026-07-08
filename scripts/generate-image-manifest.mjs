@@ -22,10 +22,12 @@ const listDir = (rel) => {
   }
 };
 
-// PNG の上端から「実質不透明なピクセルが現れる行」を探し、高さに対する割合を返す。
+// PNG の上下端の透過余白を割合で返す { top, bottom }。
+//   top    = 上端〜最初の不透明行 / 高さ
+//   bottom = 最後の不透明行〜下端 / 高さ (下側の透過余白の割合)
 // 8bit RGBA・非インターレースのみ対応 (cut 画像はすべてこの形式)。
 // 対応外・パース失敗は null (呼び出し側で既定挙動にフォールバック)。
-function pngTopAlphaFraction(file) {
+function pngAlphaMargins(file) {
   try {
     const buf = fs.readFileSync(file);
     // シグネチャ確認
@@ -55,6 +57,8 @@ function pngTopAlphaFraction(file) {
     const bpp = 4;
     const stride = w * bpp;
     let prev = Buffer.alloc(stride);
+    let firstOpaque = -1;
+    let lastOpaque = -1;
     for (let y = 0; y < h; y++) {
       const off = y * (stride + 1);
       const filter = raw[off];
@@ -81,13 +85,21 @@ function pngTopAlphaFraction(file) {
         row[x] = v;
       }
       prev = row;
-      // ノイズ除け: alpha>20 のピクセルが 4 つ以上ある行を「絵の始まり」とみなす
+      // ノイズ除け: alpha>20 のピクセルが 4 つ以上ある行を「絵のある行」とみなす
       let opaque = 0;
       for (let x = 3; x < stride; x += 4) {
-        if (row[x] > 20 && ++opaque >= 4) return Math.round((y / h) * 1000) / 1000;
+        if (row[x] > 20 && ++opaque >= 4) break;
+      }
+      if (opaque >= 4) {
+        if (firstOpaque === -1) firstOpaque = y;
+        lastOpaque = y;
       }
     }
-    return 1;
+    if (firstOpaque === -1) return { top: 1, bottom: 1 };
+    return {
+      top: Math.round((firstOpaque / h) * 1000) / 1000,
+      bottom: Math.round(((h - 1 - lastOpaque) / h) * 1000) / 1000,
+    };
   } catch {
     return null;
   }
@@ -95,9 +107,13 @@ function pngTopAlphaFraction(file) {
 
 const cut = listDir("characters/cut");
 const cutTopMargin = {};
+const cutBottomMargin = {};
 for (const f of cut) {
-  const frac = pngTopAlphaFraction(path.join(root, "public", "characters", "cut", f));
-  if (frac !== null) cutTopMargin[f] = frac;
+  const m = pngAlphaMargins(path.join(root, "public", "characters", "cut", f));
+  if (m !== null) {
+    cutTopMargin[f] = m.top;
+    cutBottomMargin[f] = m.bottom;
+  }
 }
 
 const manifest = {
@@ -110,6 +126,7 @@ const manifest = {
   // 結果ページの主役表示に使われる (無いランクは文字バッジにフォールバック)。
   ranks: listDir("aisho/ranks").map((f) => f.replace(/\.png$/, "")),
   cutTopMargin,
+  cutBottomMargin,
 };
 
 const outDir = path.join(root, "src", "generated");

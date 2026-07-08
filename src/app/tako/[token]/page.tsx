@@ -22,6 +22,7 @@ import {
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { TakoDeepDive } from "@/components/result/TakoDeepDive";
@@ -148,6 +149,35 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
   };
 }
 
+// ?previewLocked=1 用: 解放前 (友達 threshold 未満) のモック。実DBは介さない。
+// friends は 0..threshold-1 にクランプ (進捗ドット確認用)。
+function mockLockedTakoData(friends: number): OwnerReportData {
+  const threshold = 3;
+  const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
+  return {
+    user: {
+      id: "preview",
+      type_id: null,
+      scores: {},
+      display_name: "プレビュー",
+      invite_code: "preview",
+      owner_token: "preview",
+    },
+    selfScores: {},
+    friendEvalCount: count,
+    friendAvgScores: null,
+    friendNames: [],
+    friendMessages: [],
+    friends: [],
+    minnaContext: null,
+    inviteCode: "preview",
+    inviteUrl: `${SITE_URL}/friend/preview`,
+    threshold,
+    unlocked: false,
+    friendCharacter: null,
+  };
+}
+
 export default async function TakoPage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const sp = await searchParams;
@@ -162,9 +192,17 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       ? (rawPreview as ThirtyTwoTypeId)
       : null;
 
+  // ?previewLocked=1 (任意 &friends=N): 解放前 (ロック空状態) のモック。dev / fromPreview=1 のみ。
+  // 友達 friends 人 (0..threshold-1) の未達データを組み立て、TakoLockedState を描画させる。
+  const previewLocked = previewAllowed && sp.previewLocked === "1";
+
   const data = previewType
     ? mockTakoData(previewType)
-    : await loadOwnerReportData(token);
+    : previewLocked
+      ? mockLockedTakoData(
+          typeof sp.friends === "string" ? Number(sp.friends) : 0,
+        )
+      : await loadOwnerReportData(token);
   if (!data) {
     notFound();
   }
@@ -207,19 +245,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         className="relative min-h-dvh overflow-x-clip px-4 pb-8 md:px-8"
         style={{ background: "#FFFFFF" }}
       >
-        <div className="relative z-10 mx-auto max-w-[560px]">
+        <div className="relative z-10">
           {!data.unlocked ||
           !data.minnaContext ||
           !data.friendCharacter ||
           !takoHero ? (
-            /* ===== ロック空状態 (友達3人未満) ===== */
-            <div className="pt-6">
-              <Link
-                href={`/me/${token}`}
-                className="inline-flex items-center gap-1 text-[#2A3A5C]/70 font-bold text-sm hover:text-[#2A3A5C] transition-colors mb-5"
-              >
-                ← 自分のトリセツに戻る
-              </Link>
+            /* ===== ロック空状態 (友達3人未満)。FV は /aisho と同じ幅 (1080 / 2xl 1400)。 ===== */
+            <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px] pt-6">
               <TakoLockedState
                 friendCount={data.friendEvalCount}
                 threshold={data.threshold}
@@ -227,8 +259,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               />
             </div>
           ) : (
-            /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観) ===== */
-            <>
+            /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観)。単カラム・本文幅560。 ===== */
+            <div className="mx-auto max-w-[560px]">
               {/* 戻り導線 + 友達平均コンテキスト (ヒーロー上のスリムなキャプション) */}
               <div className="pt-4">
                 <Link
@@ -339,11 +371,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 </div>
               </div>
             </section>
-          </>
+            </div>
         )}
 
           {/* ===== フッター: 戻り ===== */}
-          <div className="text-center pt-2 pb-2">
+          <div className="mx-auto max-w-[560px] text-center pt-2 pb-2">
             <Link
               href={`/me/${token}`}
               className="text-[#2A3A5C]/60 font-bold text-sm underline hover:text-[#2A3A5C] transition-colors"
@@ -353,6 +385,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           </div>
         </div>
       </main>
+      {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
+      <TopFooter />
     </>
   );
 }

@@ -62,7 +62,7 @@ export function LockedInviteShare({
     "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-[13px] font-black text-white transition-transform active:scale-95";
 
   return (
-    <div className="mx-auto max-w-[288px]">
+    <div className="mx-auto max-w-[340px] md:max-w-[288px]">
       {/* QR (対面スキャン用)。白タイルはピル行と同じ幅 (w-full)、QRは中央フレーム。 */}
       <div
         className="w-full rounded-2xl bg-white p-5 shadow-[0_8px_24px_rgba(46,46,92,0.10)]"
