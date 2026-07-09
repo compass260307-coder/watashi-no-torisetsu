@@ -171,6 +171,35 @@ async function persistLoginEmailIfEmpty(
   }
 }
 
+// ---------- PR1: フルアクセス(全解放) 完了 ----------
+// plan='full' に更新 (冪等: 同一 webhook が複数回届いても結果同じ)。
+// full_access_at は初回のみ (WHERE full_access_at IS NULL で再送上書きを防止)。
+// email backfill は handleCheckoutCompleted 冒頭の persistLoginEmailIfEmpty で共通処理済み。
+async function handleFullAccessCompleted(userId: string): Promise<void> {
+  const nowIso = new Date().toISOString();
+
+  const { error: planErr } = await supabaseAdmin
+    .from("users")
+    .update({ plan: "full" })
+    .eq("id", userId);
+  if (planErr) {
+    // throw → Stripe がリトライ。plan 更新は冪等なので安全。
+    throw new Error(`[full_access] plan update failed: ${planErr.message}`);
+  }
+
+  const { error: atErr } = await supabaseAdmin
+    .from("users")
+    .update({ full_access_at: nowIso })
+    .eq("id", userId)
+    .is("full_access_at", null);
+  if (atErr) {
+    // 致命ではない (購入日時は分析用)。plan='full' は確定済みなので続行。
+    console.warn("[full_access] full_access_at update warning:", atErr.message);
+  }
+
+  console.log("[webhook/stripe] full_access completed", { user_id: userId });
+}
+
 // ---------- checkout.session.completed ----------
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
@@ -188,6 +217,14 @@ async function handleCheckoutCompleted(
   //   payment_kind 分岐の手前に置くことで perception_unlock / integrated_trisetsu
   //   の両経路 + 将来経路を 1 箇所でカバーする。詳細は persistLoginEmailIfEmpty 参照。
   await persistLoginEmailIfEmpty(userId, session);
+
+  // PR1: ¥299 買い切り「フルアクセス(全解放)」。metadata.product='full_access' で分岐。
+  //   plan='full' に更新 (冪等: 何度届いても結果同じ)。full_access_at は初回のみ。
+  //   email backfill は上の persistLoginEmailIfEmpty で共通処理済み。
+  if (metadata.product === "full_access") {
+    await handleFullAccessCompleted(userId);
+    return;
+  }
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
