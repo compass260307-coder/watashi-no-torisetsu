@@ -12,7 +12,7 @@ import {
   type OwnerReportData,
 } from "@/lib/owner-report-data";
 import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
-import { buildDeepDive } from "@/lib/tako-deepdive";
+import { buildDeepDive, buildMinnaProse } from "@/lib/tako-deepdive";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -24,14 +24,13 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
-import { TakoDeepDive } from "@/components/result/TakoDeepDive";
+import { MinnaTypeProse } from "@/components/result/MinnaTypeProse";
+import { FriendList } from "@/components/result/FriendList";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
-import { BragShare } from "@/components/result/BragShare";
 import {
   classifyThirtyTwoType,
   thirtyTwoEssence,
-  thirtyTwoCatchphrase,
   thirtyTwoGroup,
   thirtyTwoName,
   thirtyTwoImagePath,
@@ -40,8 +39,7 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { preferCutImage } from "@/lib/character-image";
-import { classifySixteenType, sixteenTypes } from "@/lib/sixteen-types";
-import { isThirtyTwoEnabled } from "@/lib/feature-flags";
+import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
 
 const SITE_URL =
@@ -206,26 +204,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
-  // 拡散シェア (従) 用の自己タイプ素材。/me と同じく selfScores から決定的に導出。
-  //   称号・キャッチ = 自己タイプ (32/16 フラグ準拠)、code = OCEAN 高低の大小文字表記。
-  const bragStored = data.selfScores;
-  const bragFlag32 = isThirtyTwoEnabled();
-  const bragT32 = classifyThirtyTwoType(bragStored);
-  const bragS16 = classifySixteenType(bragStored);
-  const bragEssence = bragFlag32
-    ? thirtyTwoEssence(bragT32)
-    : sixteenTypes[bragS16].essence;
-  const bragCatch = bragFlag32
-    ? thirtyTwoCatchphrase(bragT32)
-    : sixteenTypes[bragS16].oneLiner;
-  const bragCode = (["O", "C", "E", "A", "N"] as BigFiveDimension[])
-    .map((k) =>
-      (typeof bragStored[k] === "number" ? (bragStored[k] as number) : 5) >= 5
-        ? k
-        : k.toLowerCase(),
-    )
-    .join("");
-
   // 解除後ヒーロー用: 友達平均キャラのグループから帯トーンを解決 (/me と共通)。
   const takoHero = data.friendCharacter
     ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
@@ -273,46 +251,85 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 name={data.friendCharacter.name}
               />
 
-            {/* ① 五つの性格傾向 (発散バー: 自己 × 友達ギャップ)。/me の①と同じ丸数字見出し。 */}
+            {/* ① みんなの目に映るあなた (友達平均キャラの自己診断本文を他己視点に再構成)。 */}
             <section className="mb-14">
-              {/* みんなから見たあなたの5軸。主ノブ(●)=友達平均、◆=自分の自己診断を重ね、
-                  「みんなの目」と「自分の診断」のギャップを白カードのクリーン表示で見せる。 */}
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                >
+                  1
+                </span>
+                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                  みんなの目に映るあなた
+                </h2>
+              </div>
+              <MinnaTypeProse
+                type32={data.friendCharacter.type32}
+                essence={data.friendCharacter.essence}
+              />
+            </section>
+
+            {/* ② 自分とのギャップ (五つの性格傾向バー ●友達/◆自分 → 一番のギャップ → 解説)。 */}
+            <section className="mb-14">
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                >
+                  2
+                </span>
+                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                  自分とのギャップ
+                </h2>
+              </div>
+
+              {/* 順番: ① 一番のギャップ (見せ場カード) → ② グラフ → ③ 本文 (固定テンプレ)。 */}
+
+              {/* ① 一番のギャップ (唯一の見せ場・淡ラベンダーカード) */}
+              {deep && (
+                <div className="mb-10 rounded-3xl bg-[#F4F4FE] px-6 py-7">
+                  <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
+                    一番のギャップは{deep.gap.label}。自分では
+                    <span className="text-[#5B5BEF]">
+                      {deep.gap.selfPercent <= 10
+                        ? "ほぼゼロ"
+                        : `${deep.gap.selfPercent}%`}
+                    </span>
+                    、でも友達は
+                    <span className="text-[#5B5BEF]">{deep.gap.otherPercent}%</span>
+                    感じてる。
+                  </p>
+                </div>
+              )}
+
+              {/* ② 五つの性格傾向バー: 主ノブ(●)=友達平均 / ◆=自分の自己診断を重ねギャップを可視化。
+                  見出しは上の②に集約するため hideHeading。 */}
               <BigFiveDivergingBars
                 scores={data.friendAvgScores ?? {}}
                 friendScores={data.selfScores}
                 primaryLabel="みんなの目"
                 friendLabel="自分の診断"
-                title="五つの性格傾向"
-                number="1"
+                hideHeading
               />
+
+              {/* ③ 本文 (AI ではなく deep から決定的に組み立てた固定テンプレ buildMinnaProse)。 */}
+              {deep && (
+                <div>
+                  {buildMinnaProse(deep).map((para, i) => (
+                    <p
+                      key={i}
+                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              )}
             </section>
 
-            {/* ② アナタの深掘り (一致度 → ギャップ → AI解説 → 友達の声 → 隠れた長所)。
-                みんなの目 + 他者評価を統合。/me の丸数字見出しスタイルに準拠。 */}
-            {deep && (
-              <section className="mb-14">
-                <div className="mb-4 flex items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-                  >
-                    2
-                  </span>
-                  <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                    アナタの深掘り
-                  </h2>
-                </div>
-                <TakoDeepDive
-                  deep={deep}
-                  friends={data.friends}
-                  token={token}
-                  ownerToken={token}
-                />
-              </section>
-            )}
-
-            {/* ③ 友達にシェア (拡散シェア + もっと友達に診断してもらう招待)。 */}
-            <section className="mb-6">
+            {/* ③ 友達からの回答 (評価してくれた友達一覧・個別ページ導線)。 */}
+            <section className="mb-14">
               <div className="mb-4 flex items-center gap-3">
                 <span
                   aria-hidden="true"
@@ -321,29 +338,47 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   3
                 </span>
                 <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                  友達にシェア
+                  友達からの回答
                 </h2>
               </div>
+              <FriendList friends={data.friends} token={token} />
+            </section>
 
-              {/* 拡散シェア。source="tako" で結果ページ発と測り分け。 */}
-              <BragShare
-                essence={bragEssence}
-                code={bragCode}
-                catchphrase={bragCatch}
-                topUrl={`${SITE_URL}/`}
-                source="tako"
-              />
-
-              {/* もっと友達に診断してもらう招待。source="tako_unlocked" で計測。 */}
-              <div className="mt-8">
-                <p className="text-center text-[#2A3A5C] font-black text-sm mb-3">
-                  もっと友達に診断してもらう
-                </p>
-                <div className="mx-auto max-w-[360px]">
-                  <LockedInviteShare
-                    inviteUrl={data.inviteUrl}
-                    trackSource="tako_unlocked"
-                  />
+            {/* 友達にシェア (もっと友達に診断してもらう招待)。見出し行は撤去し、招待帯だけ残す。 */}
+            <section className="mb-6">
+              {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
+                  同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
+                  source="tako_unlocked" で計測。 */}
+              <div
+                className="mt-8 rounded-3xl p-6 md:px-9 md:py-7"
+                style={{ background: "#EDEFFB" }}
+              >
+                <div className="md:flex md:items-center md:gap-9 lg:gap-12">
+                  {/* 左: 見出し + サブ (色は TakoLockedState と同じ NAVY / INACTIVE) */}
+                  <div className="md:flex-1">
+                    <h3
+                      className="text-[22px] font-black leading-[1.45] md:text-[26px] md:leading-[1.4]"
+                      style={{ color: "#2E2E5C" }}
+                    >
+                      もっと友達に聞くと、
+                      <br className="hidden md:block" />
+                      新しい自分が見えてくる。
+                    </h3>
+                    <p
+                      className="mt-2.5 text-[12.5px] font-bold md:text-sm"
+                      style={{ color: "#9BA3B4" }}
+                    >
+                      答えてくれる友達が増えるほど、深掘りの精度も上がるよ
+                    </p>
+                  </div>
+                  {/* 右: 招待 (QR + シェア) */}
+                  <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
+                    <LockedInviteShare
+                      inviteUrl={data.inviteUrl}
+                      trackSource="tako_unlocked"
+                      compact
+                    />
+                  </div>
                 </div>
               </div>
             </section>

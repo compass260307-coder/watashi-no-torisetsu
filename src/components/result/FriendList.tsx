@@ -25,7 +25,6 @@ export function FriendList({
 
   return (
     <section>
-      <h3 className="text-[#2E2E5C] font-black text-base mb-3">友達一覧</h3>
       <ul className="flex flex-col gap-2">
         {friends.map((f, i) => {
           const tone = AVATAR_TONES[i % AVATAR_TONES.length];

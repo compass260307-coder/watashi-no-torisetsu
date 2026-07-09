@@ -3,7 +3,7 @@
 // 本文テキストはこれを参照し、二重定義しない。
 //
 // タイポグラフィは自己診断 /me の本文プローズと同一に統一する。
-// /me 本体 (me/[token]/page.tsx) や MinnaNoMeProse / MinnaNoMePanel / aisho が
+// /me 本体 (me/[token]/page.tsx) や /tako のみんなの目プローズ / aisho が
 // 使っている既存の本文クラス文字列をそのまま流用 (body-gothic=角ゴシック / 濃色 /
 // 400 / 17px / 行間1.4)。新規の数値は作らない。
 export const PERCEPTION_BODY_TEXT_CLASS =
