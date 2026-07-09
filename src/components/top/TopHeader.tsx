@@ -4,8 +4,9 @@
 // 構造: ロゴ(左) | メニュー + ログイン + 言語切替(右寄せ)。PC は横並び、SP はハンバーガー。
 // 白背景・ダーク文字。下にキービジュアルのヒーローが続く。sticky で追従。
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -18,7 +19,8 @@ const NAVY = "#2E2E5C";
 // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
 const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "性格診断テスト", href: "/diagnosis" },
-  { label: "他己診断テスト", href: "/friend-evaluation" },
+  // 他己診断テストの href は実行時に上書き (BottomNav と同じ /tako/[token] 解決)。
+  { label: "他己診断テスト", href: "/tako" },
   { label: "性格タイプ", href: "/types" },
   { label: "サービスについて", href: "/about" },
   { label: "ログイン", href: "/login" },
@@ -27,6 +29,26 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
 export default function TopHeader() {
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const pathname = usePathname() ?? "/";
+
+  // 他己診断テストの遷移先を BottomNav と同じルールで解決:
+  //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
+  //   クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
+  const [takoUrl, setTakoUrl] = useState("/tako");
+  useEffect(() => {
+    let token: string | null = null;
+    try {
+      token = localStorage.getItem("torisetsu_owner_token");
+    } catch {
+      // localStorage 不可環境: フォールバックのまま。
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTakoUrl(token ? `/tako/${token}` : "/tako");
+  }, [pathname]);
+
+  const nav = NAV.map((n) =>
+    n.label === "他己診断テスト" ? { ...n, href: takoUrl } : n,
+  );
 
   // lg (1024px) では項目 5 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
@@ -50,7 +72,7 @@ export default function TopHeader() {
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
         <div className="ml-auto hidden items-center gap-5 xl:gap-8 lg:flex">
-          {NAV.map((n) =>
+          {nav.map((n) =>
             n.disabled ? (
               <span
                 key={n.href}
@@ -140,7 +162,7 @@ export default function TopHeader() {
             aria-hidden="true"
           />
           <nav className="relative z-50 border-t border-[#2E2E5C]/10 bg-white px-8 py-2 lg:hidden">
-            {NAV.map((n) =>
+            {nav.map((n) =>
               n.disabled ? (
                 <span
                   key={n.href}
