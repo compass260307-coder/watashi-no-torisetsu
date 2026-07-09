@@ -6,8 +6,8 @@ import { faqItems } from "@/lib/faq-data";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 
-// /about: サービスについて (トップページ / /types と同じ Sora トーンで統一)。
-//   旧「このBotについて」(LINE Bot 中心の説明) から、サービス全体の紹介ページに刷新。
+// /about: サービスについて。読み物ストーリー型 (16personalities の記事ページ風)。
+//   白基調ミニマル・左寄せ章立てで「なぜ作ったか → 仕組み → 科学的背景 → タイプ紹介」と読ませる。
 //   FAQ は lib/faq-data.ts が単一情報源 (UI と FAQPage JSON-LD の両方がここから派生)。
 
 const FONT_STACK =
@@ -58,6 +58,18 @@ const privacyItems = [
   "データは自己理解の精度向上以外に使いません",
 ];
 
+// タイプギャラリー (32タイプから各グループ2体ずつ抜粋)
+const GALLERY = [
+  { name: "なかよしペンギン", src: "/characters/v3/penguin_N.png" },
+  { name: "クールタカ", src: "/characters/v3/hawk_R.png" },
+  { name: "にこにこパンダ", src: "/characters/v3/fox_N.png" },
+  { name: "どっしりクマ", src: "/characters/v3/bear_R.png" },
+  { name: "きらめきイルカ", src: "/characters/v3/jellyfish_N.png" },
+  { name: "マイペースサメ", src: "/characters/v3/shark_R.png" },
+  { name: "おもいやりエンジェル", src: "/characters/v3/angel_N.png" },
+  { name: "ゆるぎないドラゴン", src: "/characters/v3/dragon_R.png" },
+];
+
 const faqJsonLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
@@ -71,6 +83,17 @@ const faqJsonLd = {
   })),
 };
 
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2
+      className="text-[22px] font-bold leading-snug md:text-[26px]"
+      style={{ color: NAVY }}
+    >
+      {children}
+    </h2>
+  );
+}
+
 export default function AboutPage() {
   return (
     <div
@@ -83,52 +106,123 @@ export default function AboutPage() {
       />
       <TopHeader />
 
-      <main className="mx-auto w-full max-w-[720px] flex-1 px-6 pb-20">
-        {/* Hero */}
-        <section className="pt-12 text-center md:pt-16">
+      <main className="mx-auto w-full max-w-[1080px] flex-1 px-4 pb-20 md:px-8">
+        {/* Hero: 大きなコピーだけ */}
+        <section className="pt-16 md:pt-24">
           <h1
             className="font-bold"
             style={{
               color: NAVY,
-              fontSize: "clamp(30px, 4vw, 44px)",
-              lineHeight: 1.4,
+              fontSize: "clamp(32px, 5.5vw, 48px)",
+              lineHeight: 1.45,
             }}
           >
-            サービスについて
+            自分のことは、
+            <br />
+            自分が一番知らない。
           </h1>
           <p
-            className="mx-auto mt-4 max-w-[560px] text-[15px] leading-[1.9] md:text-[16px]"
+            className="mt-6 text-[15px] leading-[2] md:text-[16px]"
             style={{ color: `${NAVY}B3` }}
           >
-            ワタシのトリセツは、自分の診断と友達からの評価をかけ合わせて作る、
-            「自分の取扱説明書」です。
+            ワタシのトリセツは、自分の診断と友達からの評価をかけ合わせて作る「自分の取扱説明書」。
+            友達が答えてくれるほど、あなたのトリセツが完成していきます。
           </p>
-          <Image
-            src="/characters/cut/penguin_N.png"
-            alt=""
-            width={280}
-            height={280}
-            priority
-            className="mx-auto mt-6 h-auto w-[220px] md:w-[260px]"
-          />
         </section>
 
-        {/* 使い方 3 ステップ */}
-        <section className="mt-14">
-          <h2
-            className="text-center text-[22px] font-bold md:text-[26px]"
-            style={{ color: NAVY }}
+        {/* なぜ作ったのか */}
+        <section className="mt-20">
+          <SectionTitle>なぜ作ったのか</SectionTitle>
+          <div
+            className="mt-5 flex flex-col gap-4 text-[15px] leading-[2]"
+            style={{ color: `${NAVY}CC` }}
           >
-            使い方はかんたん
-          </h2>
-          <div className="mt-6 flex flex-col gap-4">
+            <p>
+              性格診断は世の中にたくさんあります。でもそのほとんどは、「自分が答えた自分」しか映しません。
+              いくら正直に答えても、そこに映るのは自分がすでに知っているワタシだけ。
+            </p>
+            <p>
+              一方で、「友達しか知らないワタシ」が確かに存在します。
+              自分では気づいていない口ぐせ、頼られ方、場の空気の変え方。
+              心理学ではこれを「盲点の窓」と呼びます。ここにこそ、自己理解のいちばん面白い部分が眠っています。
+            </p>
+            <p>
+              だからワタシのトリセツは、自分の回答だけで完結しません。
+              友達の回答が集まるほどトリセツが完成していく、そんな仕組みにしました。
+              重たい自己分析ではなく、友達と笑いながら見せ合えるくらいの軽さで。
+            </p>
+          </div>
+        </section>
+
+        {/* 仕組み: 自己評価 × 他己評価 */}
+        <section className="mt-20">
+          <SectionTitle>仕組みはシンプル</SectionTitle>
+          <p
+            className="mt-5 text-[15px] leading-[2]"
+            style={{ color: `${NAVY}CC` }}
+          >
+            あなたの自己診断と、友達からの他己評価。ふたつを重ねると、自分では見えなかった「ギャップ」が浮かび上がります。
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-3 md:flex-row md:justify-center">
+            <div
+              className="w-full rounded-2xl border-2 p-5 text-center md:w-[240px]"
+              style={{ borderColor: "#E3E6F5" }}
+            >
+              <p className="text-[13px] font-bold" style={{ color: `${NAVY}99` }}>
+                自己診断
+              </p>
+              <p className="mt-1 text-[16px] font-bold" style={{ color: NAVY }}>
+                自分が知ってるワタシ
+              </p>
+            </div>
+            <span
+              className="text-[22px] font-bold md:px-2"
+              style={{ color: SORA }}
+              aria-hidden
+            >
+              ×
+            </span>
+            <div
+              className="w-full rounded-2xl border-2 p-5 text-center md:w-[240px]"
+              style={{ borderColor: "#E3E6F5" }}
+            >
+              <p className="text-[13px] font-bold" style={{ color: `${NAVY}99` }}>
+                他己評価
+              </p>
+              <p className="mt-1 text-[16px] font-bold" style={{ color: NAVY }}>
+                友達から見えているワタシ
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 text-center" aria-hidden>
+            <span className="text-[20px]" style={{ color: `${NAVY}66` }}>
+              ↓
+            </span>
+          </div>
+          <div
+            className="mx-auto mt-3 w-full rounded-2xl p-5 text-center md:w-[400px]"
+            style={{ backgroundColor: "#F4F4FE" }}
+          >
+            <p className="text-[16px] font-bold" style={{ color: SORA }}>
+              ギャップ = 自分の知らないワタシ
+            </p>
+            <p
+              className="mt-1 text-[13px] leading-relaxed"
+              style={{ color: `${NAVY}B3` }}
+            >
+              ここが、あなたのトリセツのいちばん面白いページになります。
+            </p>
+          </div>
+        </section>
+
+        {/* 使い方 */}
+        <section className="mt-20">
+          <SectionTitle>使い方はかんたん</SectionTitle>
+          <ol className="mt-6 flex flex-col gap-6">
             {STEPS.map((s) => (
-              <div
-                key={s.num}
-                className="flex items-start gap-4 rounded-2xl border border-[#E3E6F5] bg-white p-5"
-              >
+              <li key={s.num} className="flex items-start gap-4">
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[16px] font-bold text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-white"
                   style={{ backgroundColor: SORA }}
                 >
                   {s.num}
@@ -141,62 +235,88 @@ export default function AboutPage() {
                     {s.title}
                   </h3>
                   <p
-                    className="mt-1 text-[14px] leading-relaxed"
+                    className="mt-1 text-[14px] leading-[1.9]"
                     style={{ color: `${NAVY}B3` }}
                   >
                     {s.body}
                   </p>
                 </div>
-              </div>
+              </li>
             ))}
+          </ol>
+        </section>
+
+        {/* 科学的背景 */}
+        <section className="mt-20">
+          <SectionTitle>科学的背景 — Big Five</SectionTitle>
+          <div
+            className="mt-5 flex flex-col gap-4 text-[15px] leading-[2]"
+            style={{ color: `${NAVY}CC` }}
+          >
+            <p>
+              診断のベースは、性格心理学でもっとも信頼されている「Big Five
+              理論」。開放性・誠実性・外向性・協調性・神経症傾向の5つの軸であなたを分析します。
+            </p>
+            <p>
+              5軸のスコアの組み合わせから、結果は海・陸・空・未知の4グループ・32の性格タイプで表現されます。
+              他己評価も同じ軸で答えてもらうから、自己評価とのギャップをそのまま比べられます。
+            </p>
           </div>
         </section>
 
-        {/* 診断のベース */}
-        <section className="mt-14">
-          <h2
-            className="text-center text-[22px] font-bold md:text-[26px]"
-            style={{ color: NAVY }}
-          >
-            診断のベースは Big Five
-          </h2>
+        {/* 32のタイプたち */}
+        <section className="mt-20">
+          <SectionTitle>32のタイプたち</SectionTitle>
           <p
-            className="mx-auto mt-4 max-w-[560px] text-[14px] leading-[1.9]"
-            style={{ color: `${NAVY}B3` }}
+            className="mt-5 text-[15px] leading-[2]"
+            style={{ color: `${NAVY}CC` }}
           >
-            性格心理学でもっとも信頼されている「Big Five
-            理論」をベースに、開放性・誠実性・外向性・協調性・神経症傾向の5軸であなたを分析。
-            結果は、海・陸・空・未知の4グループ・32の性格タイプで表現されます。
+            あなたはどのタイプ?
+            診断結果は、個性ゆたかな32匹のキャラクターで表現されます。
           </p>
-          <div className="mt-5 text-center">
+          <div className="mt-6 grid grid-cols-4 gap-x-3 gap-y-5">
+            {GALLERY.map((c) => (
+              <div key={c.src} className="text-center">
+                <Image
+                  src={c.src}
+                  alt={c.name}
+                  width={120}
+                  height={120}
+                  className="mx-auto h-auto w-full max-w-[96px]"
+                />
+                <p
+                  className="mt-1.5 text-[10px] font-bold leading-tight md:text-[11px]"
+                  style={{ color: `${NAVY}B3` }}
+                >
+                  {c.name}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 text-center">
             <Link
               href="/types"
               className="text-[14px] font-bold underline underline-offset-4"
               style={{ color: SORA }}
             >
-              32の性格タイプを見る →
+              32の性格タイプをぜんぶ見る →
             </Link>
           </div>
         </section>
 
         {/* プライバシー */}
-        <section className="mt-14">
-          <h2
-            className="text-center text-[22px] font-bold md:text-[26px]"
-            style={{ color: NAVY }}
-          >
-            プライバシーについて
-          </h2>
-          <ul className="mt-6 flex flex-col gap-3 rounded-2xl border border-[#D9DCF5] bg-[#F4F4FE] p-6">
+        <section className="mt-20">
+          <SectionTitle>大切にしていること</SectionTitle>
+          <ul className="mt-6 flex flex-col gap-3">
             {privacyItems.map((text) => (
               <li
                 key={text}
-                className="flex items-start gap-2.5 text-[14px] leading-relaxed"
-                style={{ color: NAVY }}
+                className="flex items-start gap-2.5 text-[14px] leading-[1.9]"
+                style={{ color: `${NAVY}CC` }}
               >
                 <span
                   aria-hidden
-                  className="mt-[7px] inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                  className="mt-[9px] inline-block h-1.5 w-1.5 shrink-0 rounded-full"
                   style={{ backgroundColor: SORA }}
                 />
                 <span>{text}</span>
@@ -206,29 +326,22 @@ export default function AboutPage() {
         </section>
 
         {/* FAQ */}
-        <section className="mt-14">
-          <h2
-            className="text-center text-[22px] font-bold md:text-[26px]"
-            style={{ color: NAVY }}
-          >
-            よくある質問
-          </h2>
+        <section className="mt-20">
+          <SectionTitle>よくある質問</SectionTitle>
           <div className="mt-6">
             <FAQAccordion />
           </div>
         </section>
 
         {/* 運営 */}
-        <section className="mt-14">
-          <h2
-            className="text-center text-[22px] font-bold md:text-[26px]"
-            style={{ color: NAVY }}
+        <section className="mt-20">
+          <SectionTitle>運営について</SectionTitle>
+          <div
+            className="mt-5 text-[15px] leading-[2]"
+            style={{ color: `${NAVY}CC` }}
           >
-            運営について
-          </h2>
-          <div className="mt-6 rounded-2xl border border-[#E3E6F5] bg-white p-6 text-[14px] leading-[1.9]">
-            <p style={{ color: `${NAVY}CC` }}>
-              九州の大学生に向けて作っています。Big Five 心理学を土台に、
+            <p>
+              Big Five 心理学を土台に、
               「自分の知らない自分」を見つけられるサービスを目指しています。
             </p>
             <p className="mt-3 text-[12px]" style={{ color: `${NAVY}80` }}>
@@ -238,10 +351,16 @@ export default function AboutPage() {
         </section>
 
         {/* CTA */}
-        <section className="mt-16 text-center">
+        <section className="mt-20 text-center">
+          <p
+            className="text-[18px] font-bold leading-snug md:text-[20px]"
+            style={{ color: NAVY }}
+          >
+            まずは、自分の知ってるワタシから。
+          </p>
           <Link
             href="/diagnosis"
-            className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
+            className="sora-cta mt-6 inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
           >
             テストを受ける →
           </Link>
