@@ -16,6 +16,7 @@ import type { BigFiveDimension, TorisetsuTypeId } from "@/lib/types";
 import { TYPE_DEEP_DIVE, type TypeDeepDive } from "@/lib/report-data";
 import { classifyThirtyTwoType } from "@/lib/thirty-two-types";
 import { LOVE_BY_TYPE_32 } from "@/lib/love-by-type-32";
+import { CAREER_BY_TYPE_32 } from "@/lib/career-by-type-32";
 
 // ※「みんなの目」(他己) タブは /tako/[token] へ移設。ここは自己深掘り3タブのみ。
 
@@ -105,11 +106,18 @@ export function DeepDiveSections({
   // ⚠ 恋愛カードのみ 32タイプ解決（非対称設計。理由は love-by-type-32.ts 冒頭を参照）:
   //   恋愛は神経症傾向 N軸(_R/_N)で内容が大きく変わるため、scores から 32タイプ(base16__N/R)を
   //   判定して LOVE_BY_TYPE_32 から引く。未投入タイプは従来の8タイプ love にフォールバック。
-  //   他カード(強み/弱み/仕事/成長)は従来どおり 8タイプ(deepDive)を共有する。
+  //   他カード(強み/弱み/成長)は従来どおり 8タイプ(deepDive)を共有する。
+  //   仕事(career)も原則 8タイプ共有だが、特定 32タイプだけ差し替えたい場合は
+  //   CAREER_BY_TYPE_32 に登録 (love と同じ非対称フォールバック。現状=探偵のみ)。
   const thirtyTwoId = classifyThirtyTwoType(scores);
   const love32 = LOVE_BY_TYPE_32[thirtyTwoId];
+  const career32 = CAREER_BY_TYPE_32[thirtyTwoId];
   const section =
-    current.key === "love" && love32 ? love32 : deepDive[current.key];
+    current.key === "love" && love32
+      ? love32
+      : current.key === "career" && career32
+        ? career32
+        : deepDive[current.key];
   const note = scoreNote(current.hint);
 
   return (
