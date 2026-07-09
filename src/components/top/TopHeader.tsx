@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LoginModal } from "@/components/LoginModal";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -29,6 +30,8 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
 export default function TopHeader() {
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  // ログインは別ページ遷移ではなく、現在のページの上にモーダルで重ねる。
+  const [loginOpen, setLoginOpen] = useState(false);
   const pathname = usePathname() ?? "/";
 
   // 他己診断テストの遷移先を BottomNav と同じルールで解決:
@@ -82,6 +85,17 @@ export default function TopHeader() {
                 {n.label}
                 <span className="text-[11px] xl:text-[13px]">（準備中）</span>
               </span>
+            ) : n.href === "/login" ? (
+              // ログインは遷移せずモーダルを開く
+              <button
+                key={n.href}
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className={navLinkClass}
+                style={{ color: NAVY }}
+              >
+                {n.label}
+              </button>
             ) : (
               <Link
                 key={n.href}
@@ -172,6 +186,20 @@ export default function TopHeader() {
                   {n.label}
                   <span className="text-[12px]">（準備中）</span>
                 </span>
+              ) : n.href === "/login" ? (
+                // ログインは遷移せずモーダルを開く (SP はメニューを閉じてから)
+                <button
+                  key={n.href}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setLoginOpen(true);
+                  }}
+                  className="block w-full py-3.5 text-left text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  style={{ color: NAVY }}
+                >
+                  {n.label}
+                </button>
               ) : (
                 <Link
                   key={n.href}
@@ -192,6 +220,9 @@ export default function TopHeader() {
           </nav>
         </>
       )}
+
+      {/* ログインモーダル (現在のページの上に重ねる) */}
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </header>
   );
 }
