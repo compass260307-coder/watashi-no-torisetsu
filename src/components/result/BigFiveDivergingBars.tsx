@@ -72,6 +72,8 @@ interface BigFiveDivergingBarsProps {
   friendScores?: Partial<Record<BigFiveDimension, number>>;
   /** 友達マーカー(◆)の凡例・aria ラベル。既定「友達の平均」。単一評価者ページでは「友達から」等に差し替える。 */
   friendLabel?: string;
+  /** 主マーカー(●)の凡例ラベル。既定「自分」。他己ページ等で「みんなの目」等に差し替える。 */
+  primaryLabel?: string;
   /** 見出し (既定: 自己単体表示。友達重ね時は別タイトルにして重複見出しを避ける)。 */
   title?: string;
   /** 見出しバッジの絵文字。number 指定時は使われない。 */
@@ -92,6 +94,7 @@ export function BigFiveDivergingBars({
   scores,
   friendScores,
   friendLabel = "友達の平均",
+  primaryLabel = "自分",
   title = "5つの軸で見るアナタ",
   emoji = "✨",
   number,
@@ -147,7 +150,7 @@ export function BigFiveDivergingBars({
                 className="w-3 h-3 rounded-full border-2 border-white shadow"
                 style={{ background: "var(--primary)" }}
               />
-              自分
+              {primaryLabel}
             </span>
             <span className="flex items-center gap-1.5">
               <span

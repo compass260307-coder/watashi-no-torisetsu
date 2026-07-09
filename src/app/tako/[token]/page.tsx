@@ -7,7 +7,6 @@
 import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import {
   loadOwnerReportData,
   type OwnerReportData,
@@ -259,23 +258,10 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               />
             </div>
           ) : (
-            /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観)。単カラム・本文幅560。 ===== */
-            <div className="mx-auto max-w-[560px]">
-              {/* 戻り導線 + 友達平均コンテキスト (ヒーロー上のスリムなキャプション) */}
-              <div className="pt-4">
-                <Link
-                  href={`/me/${token}`}
-                  className="inline-flex items-center gap-1 text-[#2A3A5C]/70 font-bold text-sm hover:text-[#2A3A5C] transition-colors"
-                >
-                  ← 自分のトリセツに戻る
-                </Link>
-                <p className="mt-2 text-center text-[#2A3A5C]/70 font-bold text-xs">
-                  友達 {data.friendEvalCount} 人の平均から
-                </p>
-              </div>
-
-              {/* ヒーロー帯 (/me と同じ ResultHero・色帯 (a))。他己は単カラム縦積み・本文幅560。
-                  称号=友達平均キャラ / OCEAN=友達平均スコア。 */}
+            /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観)。本文幅は /me・フッターと統一 (1080)。 ===== */
+            <div className="mx-auto max-w-[1080px]">
+              {/* ヒーロー帯 (/me と同じ ResultHero・色帯 (a))。自己診断と同じ 2カラム・本文幅1080・
+                  大きめキャラ (ResultHero 既定) にそろえる。称号=友達平均キャラ / OCEAN=友達平均スコア。 */}
               <ResultHero
                 label="みんなから見たあなたは:"
                 essence={data.friendCharacter.essence}
@@ -285,27 +271,17 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 imageSrc={data.friendCharacter.imageSrc}
                 alt={data.friendCharacter.essence}
                 name={data.friendCharacter.name}
-                imageAspectClassName="aspect-square max-h-[44vh] md:max-h-[360px]"
-                contentMaxWidthClass="max-w-[560px]"
-                twoColumn={false}
               />
-
-              <section className="mb-8">
-                <div className="text-center pt-4">
-                  <Link
-                    href={data.friendCharacter.previewPath}
-                    className="inline-block rounded-full border-2 border-[#2A3A5C] text-[#2A3A5C] font-black text-sm px-5 py-2 hover:bg-[#2A3A5C]/5 transition-colors"
-                  >
-                    このタイプを詳しく見る →
-                  </Link>
-                </div>
-              </section>
 
             {/* ① 五つの性格傾向 (発散バー: 自己 × 友達ギャップ)。/me の①と同じ丸数字見出し。 */}
             <section className="mb-14">
+              {/* みんなから見たあなたの5軸。主ノブ(●)=友達平均、◆=自分の自己診断を重ね、
+                  「みんなの目」と「自分の診断」のギャップを白カードのクリーン表示で見せる。 */}
               <BigFiveDivergingBars
-                scores={data.selfScores}
-                friendScores={data.friendAvgScores ?? undefined}
+                scores={data.friendAvgScores ?? {}}
+                friendScores={data.selfScores}
+                primaryLabel="みんなの目"
+                friendLabel="自分の診断"
                 title="五つの性格傾向"
                 number="1"
               />
