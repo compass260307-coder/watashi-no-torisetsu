@@ -10,10 +10,17 @@
 //   email 入力 → POST /api/auth/request-magic-link → 送信完了画面 (enumeration 対策で
 //   存在判定はサーバ側で行わない、常に同じ画面に遷移)
 //
-// ブランド方針 (T3-5): 絵文字なし、明朝体、和の上品さ。
+// デザイン: 16personalities のログインモーダル風。淡い背景の上に中央の白カード、
+//   タイトル + 一言説明 + メールアイコン付き入力 + 塗りボタン (Sora ブルー)。
 
 import { useState } from "react";
 import Link from "next/link";
+
+const FONT_STACK =
+  "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
+
+const NAVY = "#2E2E5C";
+const SORA = "#5B5BEF";
 
 type Phase = "input" | "submitting" | "sent" | "error";
 
@@ -61,83 +68,102 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
-      <header className="text-center mb-8 animate-fade-in-up">
-        <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
-          LOGIN
-        </p>
-        <h1 className="text-2xl font-extrabold leading-tight">
-          ログインリンクを送信
-        </h1>
-      </header>
-
-      {phase === "sent" && (
-        <SentScreen email={trimmed} onReset={reset} />
-      )}
-
-      {phase !== "sent" && (
-        <form
-          onSubmit={submit}
-          className="w-full flex flex-col gap-4 animate-fade-in-up stagger-2"
-        >
-          <p className="text-sm text-foreground leading-relaxed text-center mb-2">
-            機種変更やデータ消失で自分の結果に戻れなくなった方は、
-            <br />
-            登録済みのメールアドレスでログインできます。
-            <br />
-            入力すると、ログイン用のリンクをお送りします。
-          </p>
-
-          <div>
-            <label
-              htmlFor="login-email"
-              className="block text-xs font-bold text-muted mb-2"
+    <main
+      className="flex flex-1 flex-col items-center justify-center px-5 py-14"
+      style={{ fontFamily: FONT_STACK, backgroundColor: "#F1F1F7" }}
+    >
+      {/* モーダル風の白カード */}
+      <section
+        className="w-full max-w-[420px] rounded-2xl bg-white px-6 py-8 md:px-8"
+        style={{ boxShadow: "0 18px 50px rgba(46,46,92,0.16)" }}
+      >
+        {phase === "sent" ? (
+          <SentScreen email={trimmed} onReset={reset} />
+        ) : (
+          <>
+            <h1
+              className="text-center text-[20px] font-bold leading-snug md:text-[22px]"
+              style={{ color: NAVY }}
             >
-              メールアドレス
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              maxLength={254}
-              disabled={phase === "submitting"}
-              className="w-full rounded-xl border border-card-border bg-card-bg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={!isValid || phase === "submitting"}
-            className={`w-full rounded-full px-8 py-4 text-base font-bold transition-all shadow-md ${
-              isValid && phase !== "submitting"
-                ? "bg-primary-gradient text-white hover:scale-[1.02] active:scale-[0.98]"
-                : "bg-card-border text-muted cursor-not-allowed"
-            }`}
-          >
-            {phase === "submitting" ? "送信中..." : "リンクを送信"}
-          </button>
-
-          {phase === "error" && errorMessage && (
-            <p className="text-xs text-red-500 text-center whitespace-pre-line">
-              {errorMessage}
+              ログインリンクをリクエスト
+            </h1>
+            <p
+              className="mx-auto mt-3 max-w-[300px] text-center text-[13px] leading-[1.9]"
+              style={{ color: `${NAVY}99` }}
+            >
+              ログインリンクをお送りしますので、
+              メールアドレスを入力してください。
             </p>
-          )}
 
-          <p className="text-[11px] text-muted leading-relaxed text-center mt-2">
-            リンクは <strong>1 時間</strong> で失効します。
-            <br />
-            一度開くと無効になります。
-          </p>
-        </form>
-      )}
+            <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
+              <div>
+                <label
+                  htmlFor="login-email"
+                  className="mb-2 block text-[12px] font-bold"
+                  style={{ color: `${NAVY}B3` }}
+                >
+                  メールアドレス
+                </label>
+                <div className="relative">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2"
+                    style={{ color: `${NAVY}66` }}
+                  >
+                    <MailIcon />
+                  </span>
+                  <input
+                    id="login-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@gmail.com"
+                    maxLength={254}
+                    disabled={phase === "submitting"}
+                    className="w-full rounded-lg border py-3 pl-11 pr-4 text-[14px] focus:outline-none focus:ring-2 disabled:opacity-60"
+                    style={
+                      {
+                        borderColor: "#DBDCEB",
+                        color: NAVY,
+                        "--tw-ring-color": `${SORA}55`,
+                      } as React.CSSProperties
+                    }
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!isValid || phase === "submitting"}
+                className="w-full rounded-lg py-3.5 text-[15px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ backgroundColor: SORA }}
+              >
+                {phase === "submitting" ? "送信中..." : "リンクを送る"}
+              </button>
+
+              {phase === "error" && errorMessage && (
+                <p className="whitespace-pre-line text-center text-[12px] text-red-500">
+                  {errorMessage}
+                </p>
+              )}
+
+              <p
+                className="text-center text-[11px] leading-relaxed"
+                style={{ color: `${NAVY}80` }}
+              >
+                リンクは 1 時間で失効します。一度開くと無効になります。
+              </p>
+            </form>
+          </>
+        )}
+      </section>
 
       <Link
         href="/"
-        className="text-xs text-muted/70 underline hover:text-foreground text-center mt-10"
+        className="mt-8 text-center text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
+        style={{ color: `${NAVY}80` }}
       >
         トップに戻る
       </Link>
@@ -153,28 +179,61 @@ function SentScreen({
   onReset: () => void;
 }) {
   return (
-    <section className="w-full flex flex-col items-center text-center animate-fade-in-up stagger-2">
-      <div className="w-full rounded-2xl border border-card-border bg-label-bg p-6 mb-6">
-        <p className="text-base font-bold mb-3">メールをご確認ください</p>
-        <p className="text-sm text-foreground leading-relaxed mb-3">
-          <span className="font-semibold break-all">{email}</span>
-          <br />
-          宛にログインリンクをお送りしました。
-        </p>
-        <p className="text-xs text-muted leading-relaxed">
-          1 時間以内にリンクをクリックしてください。
-          <br />
-          届かない場合は迷惑メールフォルダもご確認ください。
-        </p>
-      </div>
-
+    <div className="flex flex-col items-center text-center">
+      <h1
+        className="text-[20px] font-bold leading-snug md:text-[22px]"
+        style={{ color: NAVY }}
+      >
+        メールをご確認ください
+      </h1>
+      <p
+        className="mt-4 text-[13px] leading-[1.9]"
+        style={{ color: `${NAVY}CC` }}
+      >
+        <span className="break-all font-bold">{email}</span>
+        <br />
+        宛にログインリンクをお送りしました。
+      </p>
+      <p
+        className="mt-3 text-[12px] leading-relaxed"
+        style={{ color: `${NAVY}80` }}
+      >
+        1 時間以内にリンクをクリックしてください。
+        <br />
+        届かない場合は迷惑メールフォルダもご確認ください。
+      </p>
       <button
         type="button"
         onClick={onReset}
-        className="text-xs text-muted underline hover:text-foreground"
+        className="mt-6 text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
+        style={{ color: `${NAVY}99` }}
       >
         別のメールアドレスで送り直す
       </button>
-    </section>
+    </div>
+  );
+}
+
+// 封筒アイコン (入力欄の左内側)。currentColor で文字色に追従。
+function MailIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect
+        x="3"
+        y="5"
+        width="18"
+        height="14"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4 7.5l8 6 8-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
