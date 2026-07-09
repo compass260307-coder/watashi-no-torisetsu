@@ -3,7 +3,9 @@
 interface DiagnosisProgressBarProps {
   currentQuestion: number; // 回答済み問題数 (0-50)
   totalQuestions: number; // 50
-  onPrev: () => void; // 「前のページ」タップ時 (page 0 は上位ページへ抜ける想定)
+  // 「前のページ」タップ時 (page 0 は上位ページへ抜ける想定)。
+  // 省略時は戻る導線を出さず、ピルだけを右寄せで表示する (前ページが無い画面用)。
+  onPrev?: () => void;
 }
 
 // 16Personalities のテスト画面に寄せた自己診断用の上部バー。
@@ -25,23 +27,28 @@ export function DiagnosisProgressBar({
   return (
     <div className="sticky top-0 z-10 border-b border-[#2E2E5C]/10 bg-white/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[1080px] items-center justify-between gap-4 px-4 py-3.5 md:px-8">
-        {/* 前のページ (16P 同様、上部左に控えめな戻る導線) */}
-        <button
-          type="button"
-          onClick={onPrev}
-          className="flex items-center gap-1.5 text-sm font-bold text-[#5B5BEF] transition-opacity hover:opacity-70 md:text-[15px]"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M15 5l-7 7 7 7"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          前のページ
-        </button>
+        {/* 前のページ (16P 同様、上部左に控えめな戻る導線)。onPrev 省略時は
+            空の spacer にしてピルを右寄せに保つ。 */}
+        {onPrev ? (
+          <button
+            type="button"
+            onClick={onPrev}
+            className="flex items-center gap-1.5 text-sm font-bold text-[#5B5BEF] transition-opacity hover:opacity-70 md:text-[15px]"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M15 5l-7 7 7 7"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            前のページ
+          </button>
+        ) : (
+          <span aria-hidden="true" />
+        )}
 
         {/* 進捗ピル: 回答済み割合。細いバーだけで現在地を示す。 */}
         <div

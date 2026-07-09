@@ -37,7 +37,15 @@ const STEPS = [
   "トリセツを生成",
 ];
 
-export function DiagnosisAnalyzingLoader() {
+// messages / steps は任意。省略時は自己診断の既定文言。
+// (他己診断=friend の生成中でも同デザインを再利用し、文言だけ差し替える。)
+export function DiagnosisAnalyzingLoader({
+  messages = MESSAGES,
+  steps = STEPS,
+}: {
+  messages?: string[];
+  steps?: string[];
+} = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -53,20 +61,22 @@ export function DiagnosisAnalyzingLoader() {
     }
   }, []);
 
+  const messageCount = messages.length;
+  const stepCount = steps.length;
   useEffect(() => {
     const messageInterval = setInterval(() => {
-      setMessageIndex((prev) => Math.min(prev + 1, MESSAGES.length - 1));
+      setMessageIndex((prev) => Math.min(prev + 1, messageCount - 1));
     }, 2000);
 
     const stepInterval = setInterval(() => {
-      setCompletedSteps((prev) => Math.min(prev + 1, STEPS.length));
+      setCompletedSteps((prev) => Math.min(prev + 1, stepCount));
     }, 5000);
 
     return () => {
       clearInterval(messageInterval);
       clearInterval(stepInterval);
     };
-  }, []);
+  }, [messageCount, stepCount]);
 
   return (
     <div
@@ -95,7 +105,7 @@ export function DiagnosisAnalyzingLoader() {
         className="animate-fade-in mb-6 min-h-[1.75rem] text-center text-lg font-bold"
         style={{ color: NAVY }}
       >
-        {MESSAGES[messageIndex]}
+        {messages[messageIndex]}
       </p>
 
       {/* Progress bar (淡ブルートラック + Sora ブルー塗り) */}
@@ -112,7 +122,7 @@ export function DiagnosisAnalyzingLoader() {
 
       {/* Checkmark steps */}
       <ul className="flex w-72 max-w-full flex-col gap-2.5">
-        {STEPS.map((label, i) => {
+        {steps.map((label, i) => {
           const isDone = completedSteps > i;
           const isCurrent = completedSteps === i;
           return (

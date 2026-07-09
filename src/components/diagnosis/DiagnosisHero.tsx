@@ -11,7 +11,17 @@ const FONT_STACK =
 
 const NAVY = "#2E2E5C";
 
-export function DiagnosisHero() {
+// title / subtitle / imageSrc は任意。省略時は自己診断ページの既定。
+// (他己診断=friend フローでは title / 画像を差し替えて再利用する。)
+export function DiagnosisHero({
+  title = "性格診断テスト",
+  subtitle = "Big Five 性格特性モデル",
+  imageSrc = "/mascot/diagnosis-hero.png",
+}: {
+  title?: string;
+  subtitle?: string;
+  imageSrc?: string;
+} = {}) {
   return (
     <section
       className="w-full bg-white px-4 pt-8 pb-6 md:px-8"
@@ -23,18 +33,18 @@ export function DiagnosisHero() {
             className="text-center text-[34px] font-black leading-[1.35] md:text-left md:text-[52px]"
             style={{ color: NAVY }}
           >
-            性格診断テスト
+            {title}
           </h1>
           {/* 権威づけ: 診断の理論的裏付け (Big Five 特性理論ベース) を明記して信頼感を出す。 */}
           <p className="mt-2.5 text-center text-base font-bold tracking-wide text-[#8A8AA3] md:text-left md:text-lg">
-            Big Five 性格特性モデル
+            {subtitle}
           </p>
         </div>
         {/* エンブレム: フェルト調のキャラクターシーン (横長)。LCP 候補なので priority で先読み。
             SP は画面幅いっぱいまで大きく (w-full)、PC は右カラムで w-[460px]。 */}
         <div className="w-full shrink-0 md:w-auto">
           <Image
-            src="/mascot/diagnosis-hero.png"
+            src={imageSrc}
             alt="ワタシのトリセツのマスコット"
             width={1448}
             height={1086}

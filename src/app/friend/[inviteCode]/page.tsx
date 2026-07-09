@@ -18,34 +18,32 @@
 //   - 既存 components/FloatingCTABar (LP 用、別物)
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
 import {
   FRIEND_QUESTIONS_V2_PAGE_1,
-  FRIEND_QUESTIONS_V2_TOTAL,
   FRIEND_CHOICE_QUESTIONS_V2,
   renderQuestionText,
   type FriendQuestionV2,
   type FriendChoiceQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
-import { ProgressBar } from "@/components/diagnosis/ProgressBar";
+import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
+import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
+import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
+import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import {
   StickyCtaFooter,
   ctaPrimary,
   ctaSecondary,
 } from "@/components/StickyCtaFooter";
-import {
-  characterImagePath,
-  type SixteenTypeId,
-} from "@/lib/sixteen-types";
-// 32タイプ本文 (フラグ on 時のみ・①本文だけ32化。型名/画像は16のまま=解釈A)
-import { isThirtyTwoEnabled } from "@/lib/feature-flags";
-import {
-  thirtyTwoImagePath,
-  type ThirtyTwoTypeId,
-} from "@/lib/thirty-two-types";
+
+// 自己診断ページ (diagnosis) と同じ質問下の主要 CTA スタイル。
+const soraPrimary =
+  "sora-cta rounded-full px-10 py-4 min-w-[180px] font-bold text-center block transition-all duration-150 hover:translate-y-px active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed";
+import type { SixteenTypeId } from "@/lib/sixteen-types";
+import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
 
 // =========================================================================
@@ -55,13 +53,7 @@ import type { AnswerValue } from "@/lib/types";
 //   旧フロー: intro (名前入力) → scale → choice → consent → submitting
 //   新フロー: intro (名前なし) → scale → choice → consent → name → submitting
 //   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
-type Phase =
-  | "scale"
-  | "choice"
-  | "consent"
-  | "name"
-  | "submitting"
-  | "error";
+type Phase = "scale" | "choice" | "message" | "submitting" | "error";
 
 interface OwnerInfo {
   displayName: string | null;
@@ -130,7 +122,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   // ③ 本人へのメッセージ (任意・最大200字)
   const [message, setMessage] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [pdfConsent, setPdfConsent] = useState<boolean>(false);
   const trackedLanding = useRef(false);
 
   // ===== 初期化: invite_code から owner 情報取得 =====
@@ -159,7 +150,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       .catch(() => {});
   }, [inviteCode]);
 
-  const ownerName = owner.displayName ?? "友達";
   const subjectLabel = owner.displayName
     ? `${owner.displayName}さん`
     : "友達";
@@ -173,7 +163,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const isCurrentScalePageComplete = currentScalePage.every(
     (q) => scaleAnswers[q.id] !== undefined,
   );
-  const answeredScaleCount = Object.keys(scaleAnswers).length;
 
   const handleScaleNext = () => {
     if (!isCurrentScalePageComplete) return;
@@ -209,7 +198,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       setChoiceIdx((c) => (c + 1) as 0 | 1 | 2);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      setPhase("consent");
+      // 名前は先頭で取得済み。おまけ完了後は最後のメッセージ入力 (message) へ。
+      setPhase("message");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -227,7 +217,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
           choiceAnswers,
           perceiverName,
           message,
-          pdfConsent,
+          // consent 画面を廃止したため、常に false (有料レポートへの名前付き掲載はしない)。
+          pdfConsent: false,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -263,7 +254,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         questions={currentScalePage}
         subjectLabel={subjectLabel}
         scaleAnswers={scaleAnswers}
-        answeredCount={answeredScaleCount}
+        perceiverName={perceiverName}
+        onPerceiverNameChange={setPerceiverName}
         onAnswer={handleScaleAnswer}
         onNext={handleScaleNext}
         onPrev={handleScalePrev}
@@ -285,28 +277,10 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     );
   }
 
-  if (phase === "consent") {
-    // Day 12-Polish-B: consent の「送信する」→ name overlay へ
+  if (phase === "message") {
+    // 名前は先頭で取得済み。ここは質問の最後の自由記入 (任意メッセージ) + 送信。
     return (
-      <ConsentScreen
-        ownerName={ownerName}
-        perceiverName={perceiverName}
-        pdfConsent={pdfConsent}
-        onConsentChange={setPdfConsent}
-        onSubmit={() => {
-          setPhase("name");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-      />
-    );
-  }
-
-  if (phase === "name") {
-    // Day 12-Polish-B: 30 問 + consent 完了直後の overlay で名前を取る
-    return (
-      <NameOverlay
-        perceiverName={perceiverName}
-        onPerceiverNameChange={setPerceiverName}
+      <MessageScreen
         message={message}
         onMessageChange={setMessage}
         onSubmit={submit}
@@ -315,18 +289,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   }
 
   if (phase === "submitting") {
-    return (
-      <SubmittingScreen
-        subjectLabel={subjectLabel}
-        imageSrc={
-          isThirtyTwoEnabled() && owner.thirtyTwoTypeId
-            ? thirtyTwoImagePath(owner.thirtyTwoTypeId)
-            : owner.sixteenTypeId
-              ? characterImagePath(owner.sixteenTypeId)
-              : "/mascot-pair.png"
-        }
-      />
-    );
+    return <SubmittingScreen subjectLabel={subjectLabel} />;
   }
 
   // phase === "error"
@@ -348,7 +311,8 @@ function ScaleScreen({
   questions,
   subjectLabel,
   scaleAnswers,
-  answeredCount,
+  perceiverName,
+  onPerceiverNameChange,
   onAnswer,
   onNext,
   onPrev,
@@ -359,7 +323,8 @@ function ScaleScreen({
   questions: FriendQuestionV2[];
   subjectLabel: string;
   scaleAnswers: Record<number, AnswerValue>;
-  answeredCount: number;
+  perceiverName: string;
+  onPerceiverNameChange: (v: string) => void;
   onAnswer: (qId: number, v: AnswerValue) => void;
   onNext: () => void;
   onPrev: () => void;
@@ -367,6 +332,11 @@ function ScaleScreen({
 }) {
   const isLastPage = page === totalPages - 1;
   const inviteeName = subjectLabel.replace(/さん$/, "");
+  // 名前は自己診断のニックネームと同様、最初のページ先頭で必須入力。
+  // 初期値 "友達" (state 初期値) は未入力と同等扱い。
+  const nameTrimmed = perceiverName.trim();
+  const isPlaceholderName = nameTrimmed === "" || nameTrimmed === "友達";
+  const hasName = !isPlaceholderName;
 
   // 自己診断 (diagnosis/page.tsx 244-274) と同じオートスクロール:
   //   回答すると同ページ内の「次の未回答質問」へスクロール + フォーカス。
@@ -391,74 +361,104 @@ function ScaleScreen({
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-screen pb-32 bg-[#E4E0F5]">
-      {/* 進捗バー: 自己診断と同じ共有 <ProgressBar> に統一 (旧インライン実装を置換) */}
-      <ProgressBar
-        currentQuestion={answeredCount}
-        totalQuestions={FRIEND_QUESTIONS_V2_TOTAL}
-        currentPage={page + 1}
-        totalPages={totalPages}
-      />
+    // 自己診断ページ (diagnosis) と同じ構成: 共通ヘッダー + 白背景 + 区切り線質問 +
+    // 質問下インライン CTA + 共通フッター。
+    <>
+      {/* サイト共通ヘッダー (16P 風スクロール連動) */}
+      <ScrollHideHeader>
+        <TopHeader />
+      </ScrollHideHeader>
+      <div className="flex flex-col flex-1 min-h-screen pb-12 bg-white">
+        {/* 自己診断の page 0 と同様、最上部にヒーロー (見出しは他己診断向けに差し替え)。
+            単一ページのため進捗バーは出さない (diagnosis の page 0 と同じ)。 */}
+        <DiagnosisHero
+          title="他己診断テスト"
+          imageSrc="/mascot/friend-hero.png"
+        />
 
-      <main className="flex flex-col flex-1 px-4 pt-6 pb-4 max-w-lg mx-auto w-full">
-        {/* Day 12-Polish-E: 評価フロー冒頭のナッジ (素直な第一印象で答えてもらう) */}
-        {page === 0 && (
-          <div className="bg-[#F4F4FE] rounded-2xl border-2 border-[#5B5BEF] px-5 py-4 mb-5">
-            <p className="text-sm font-bold text-[#2E2E5C] leading-relaxed text-center">
-              {inviteeName}本人の自己診断は気にせず、
-              <br />
-              アナタの素直な印象で答えてね。
-            </p>
-          </div>
-        )}
-
-        {questions.map((q) => (
-          <div
-            key={q.id}
-            ref={(el) => {
-              questionRefs.current[q.id] = el;
-            }}
-            tabIndex={-1}
-            className="w-full bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-5 outline-none"
-          >
-            <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-3">
-              Q{q.id}
+        <main className="flex flex-col flex-1 w-full pt-6 pb-4">
+          {/* 名前入力: 自己診断のニックネームと同様、最初のページ先頭に白カードで置く。 */}
+          {page === 0 && (
+            <div className="mb-8 mx-auto w-full max-w-[1080px] px-4 md:px-8">
+              <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)]">
+                <div className="mx-auto max-w-md">
+                  <label
+                    htmlFor="perceiver-name"
+                    className="mb-4 block text-center font-bold leading-relaxed text-[#2E2E5C]"
+                    style={{ fontSize: "clamp(20px, 2.4vw, 26px)" }}
+                  >
+                    ニックネームを教えて
+                  </label>
+                  <input
+                    id="perceiver-name"
+                    type="text"
+                    value={isPlaceholderName ? "" : perceiverName}
+                    onChange={(e) => onPerceiverNameChange(e.target.value)}
+                    maxLength={20}
+                    placeholder=""
+                    autoComplete="off"
+                    className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3.5 text-center text-lg font-bold text-[#2E2E5C] transition-colors focus:border-[#5B5BEF] focus:outline-none focus:ring-2 focus:ring-[#5B5BEF]"
+                  />
+                </div>
+              </div>
             </div>
-            <p className="text-base sm:text-lg font-bold text-[#2E2E5C] leading-relaxed mb-6">
-              {renderQuestionText(q.text, inviteeName)}
-            </p>
-            <LikertScale
-              value={scaleAnswers[q.id]}
-              onChange={(v) => answerAndAdvance(q.id, v)}
-            />
+          )}
+
+          {/* 質問: 自己診断の QuestionCard と同じ「区切り線 + 中央見出し + 大きめ○」。
+              friend は質問文が動的 (renderQuestionText) のため同デザインをインライン展開。 */}
+          {questions.map((q) => {
+            const answered = scaleAnswers[q.id] !== undefined;
+            return (
+              <div
+                key={q.id}
+                ref={(el) => {
+                  questionRefs.current[q.id] = el;
+                }}
+                tabIndex={-1}
+                aria-label={`質問 ${q.id}`}
+                className={`mx-auto w-full max-w-[1080px] border-b border-[#2E2E5C]/10 px-4 py-8 outline-none transition-opacity duration-300 sm:py-10 md:px-8 ${
+                  answered ? "opacity-50 hover:opacity-100 focus-within:opacity-100" : ""
+                }`}
+              >
+                <p className="mx-auto mb-7 max-w-3xl text-center text-[17px] font-bold leading-relaxed text-[#2E2E5C] sm:text-[20px]">
+                  {renderQuestionText(q.text, inviteeName)}
+                </p>
+                <LikertScale
+                  value={scaleAnswers[q.id]}
+                  onChange={(v) => answerAndAdvance(q.id, v)}
+                  size="lg"
+                />
+              </div>
+            );
+          })}
+
+          {/* 質問の下の CTA (自己診断と同じインライン配置)。全問回答 + (page 0 は
+              お名前入力) で活性化。 */}
+          <div className="mx-auto mt-10 flex w-full max-w-[1080px] flex-col items-center gap-3 px-4 md:px-8">
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!isPageComplete || (page === 0 && !hasName)}
+              className={soraPrimary}
+            >
+              {isLastPage ? "おまけの質問へ →" : "次へ"}
+            </button>
+            {page > 0 && (
+              <button type="button" onClick={onPrev} className={ctaSecondary}>
+                戻る
+              </button>
+            )}
+            {page === 0 && isPageComplete && !hasName && (
+              <p className="text-center text-xs font-bold text-[#E86AA6]">
+                ニックネームを入力してね
+              </p>
+            )}
           </div>
-        ))}
-
-        {!isPageComplete && (
-          <p className="text-center text-xs text-[#2E2E5C]/70 font-bold mt-2 mb-4">
-            このページの 10 問すべてに答えると、次へ進めるよ
-          </p>
-        )}
-      </main>
-
-      {/* variant="solid": スケール 30 問は footer 直上に LikertScale の○が来るため
-          ボタン裏で透けないように不透明クリームを敷く */}
-      <StickyCtaFooter variant="solid">
-        {page > 0 && (
-          <button type="button" onClick={onPrev} className={ctaSecondary}>
-            戻る
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!isPageComplete}
-          className={ctaPrimary}
-        >
-          {isLastPage ? "おまけの質問へ →" : "次へ"}
-        </button>
-      </StickyCtaFooter>
-    </div>
+        </main>
+      </div>
+      {/* サイト共通フッター */}
+      <TopFooter />
+    </>
   );
 }
 
@@ -480,161 +480,78 @@ function ChoiceScreen({
 }) {
   const inviteeName = subjectLabel.replace(/さん$/, "");
   return (
-    <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1">
-      {/* sticky header */}
-      <div className="sticky top-0 z-10 bg-[#E4E0F5]/95 backdrop-blur-sm border-b border-[#0094D8]/15">
-        <div className="max-w-lg mx-auto px-4 py-3 flex justify-between text-xs font-bold text-[#2E2E5C]">
-          <span>おまけ {choiceIdx + 1} / 3</span>
-          <span>スキップ可</span>
-        </div>
-      </div>
+    // 自己診断 / スケール画面と同じ構成 (共通ヘッダー + ヒーロー + 白背景 + 共通フッター)。
+    <>
+      <ScrollHideHeader>
+        <TopHeader />
+      </ScrollHideHeader>
+      {/* min-h-screen / flex-1 を外し、内容の高さに合わせてフッターを近づける
+          (コンテンツとフッターの間の余白を詰める)。 */}
+      <div className="flex flex-col bg-white pb-8">
+        <DiagnosisHero
+          title="他己診断テスト"
+          imageSrc="/mascot/friend-hero.png"
+        />
 
-      <main className="flex flex-col flex-1 items-center px-4 pt-8 pb-10 max-w-lg mx-auto w-full">
-        <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-4">
-          おまけ
-        </div>
-        <h2 className="text-lg font-black text-[#2E2E5C] text-center mb-6 leading-relaxed">
-          {renderQuestionText(question.text, inviteeName)}
-        </h2>
+        <main className="flex w-full flex-col items-center px-4 pt-6 pb-4 md:px-8">
+          <div className="mx-auto flex w-full max-w-2xl flex-col items-center">
+            {/* おまけの進捗 (X/3・スキップ可) */}
+            <div className="mb-6 flex w-full items-center justify-between text-sm font-bold text-[#2E2E5C]/60">
+              <span>おまけ {choiceIdx + 1} / 3</span>
+              <span>スキップ可</span>
+            </div>
 
-        <div className="flex flex-col gap-3 w-full max-w-sm mb-6">
-          {question.options.map((opt) => (
+            <h2 className="mb-8 text-center text-[24px] font-black leading-relaxed text-[#2E2E5C] sm:text-[28px]">
+              {renderQuestionText(question.text, inviteeName)}
+            </h2>
+
+            <div className="mb-6 flex w-full flex-col gap-4">
+              {question.options.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => onSelect(question.id, opt)}
+                  className="w-full rounded-2xl border-2 border-[#2E2E5C]/15 bg-white px-6 py-5 text-[18px] font-bold text-[#2E2E5C] transition-all hover:border-[#5B5BEF] hover:bg-[#5B5BEF]/5 active:scale-[0.98]"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+
             <button
-              key={opt}
               type="button"
-              onClick={() => onSelect(question.id, opt)}
-              className="w-full bg-white rounded-2xl border-2 border-[#0094D8]/30 px-5 py-4 text-sm font-bold text-[#2E2E5C] transition-all hover:bg-[#5B5BEF]/30 hover:border-[#2E2E5C] active:scale-[0.98]"
+              onClick={onSkip}
+              className="text-sm font-bold text-[#2E2E5C]/60 underline transition-colors hover:text-[#5B5BEF]"
             >
-              {opt}
+              この質問はスキップ
             </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-[#2E2E5C]/60 hover:text-[#5B5BEF] font-bold underline transition-colors"
-        >
-          この質問はスキップ
-        </button>
-      </main>
-    </div>
-  );
-}
-
-// =========================================================================
-// Consent 画面 (PDF 利用同意)
-// =========================================================================
-// Polish-E E-2: ConsentScreen 軽量化 (1 カード圧縮)
-//   - 旧: 3 段落の説明 + 別カードのチェック + 否定形 CTA「PDF 利用なしで送信する」
-//   - 新: eyebrow + 短いタイトル + 1 行説明白カード + opt-in cream カード + 小注記
-//     + 単一 CTA「送信する」(同意フラグはチェック状態で送信、否定形 CTA 廃止)
-//   - 保持: 名前付き掲載 / 第三者共有の可能性 / opt-in / 後から変更不可
-//     (権利説明の実質はそのまま、表現を圧縮しただけ)
-//   - subjectLabel は使わず ownerName + さん で統一
-function ConsentScreen({
-  ownerName,
-  perceiverName,
-  pdfConsent,
-  onConsentChange,
-  onSubmit,
-}: {
-  ownerName: string;
-  perceiverName: string;
-  pdfConsent: boolean;
-  onConsentChange: (value: boolean) => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <main className="min-h-screen bg-[#E4E0F5] py-6 px-4 pb-32 flex flex-col flex-1">
-      <div className="max-w-[480px] mx-auto w-full">
-        <header className="text-center mb-5">
-          <p className="text-[10px] font-black tracking-[0.3em] text-[#5B5BEF] mb-2">
-            最後にひとつ
-          </p>
-          <h1 className="text-lg sm:text-xl font-black text-[#2E2E5C] leading-snug">
-            この評価、{ownerName}さんの
-            <br />
-            レポートにも使っていい?
-          </h1>
-        </header>
-
-        {/* 1 行説明 (1 枚の白カードに圧縮) */}
-        <section className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-5 mb-4">
-          <p className="text-sm text-[#2E2E5C] leading-relaxed">
-            アナタの名前 (
-            <span className="font-bold text-[#5B5BEF]">{perceiverName}</span>) と
-            回答が、{ownerName}さんの
-            <span className="font-bold">有料レポート</span>
-            に「ひとつの視点」として載ることがあります (第三者に共有される
-            可能性も)。
-          </p>
-        </section>
-
-        {/* opt-in (cream / sunYellow 枠) */}
-        <section className="bg-[#F4F4FE] rounded-3xl border-2 border-[#5B5BEF] shadow-md p-5 mb-4">
-          <label className="flex gap-3 items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={pdfConsent}
-              onChange={(e) => onConsentChange(e.target.checked)}
-              className="mt-0.5 h-5 w-5 accent-[#2E2E5C] cursor-pointer flex-shrink-0"
-            />
-            <span className="text-sm text-[#2E2E5C] leading-relaxed font-bold">
-              名前付きで載ること・共有の可能性に
-              <span className="text-[#5B5BEF]">同意する</span>
-            </span>
-          </label>
-        </section>
-
-        {/* 小注記 (未チェック時の挙動 + 後から変更不可) */}
-        <p className="text-[11px] text-[#2E2E5C]/65 leading-relaxed font-bold">
-          ※ 未チェックでも評価は届きます (Web で閲覧可・レポート化のみ不可)。
-          この設定は後から変更できません。
-        </p>
+          </div>
+        </main>
       </div>
-
-      {/* 単一 CTA「送信する」(同意フラグはチェック状態で送信) */}
-      <StickyCtaFooter>
-        <button type="button" onClick={onSubmit} className={ctaPrimary}>
-          送信する
-        </button>
-      </StickyCtaFooter>
-    </main>
+      <TopFooter />
+    </>
   );
 }
 
 // =========================================================================
 // Submitting 画面
 // =========================================================================
-function SubmittingScreen({
-  subjectLabel,
-  imageSrc,
-}: {
-  subjectLabel: string;
-  imageSrc: string;
-}) {
-  return (
-    <div className="min-h-screen bg-[#E4E0F5] flex flex-col flex-1 items-center justify-center px-5 py-10">
-      {/* Day 12-Polish-E: 旧ペアマスコットを owner のキャラ画像に置換 (新レイアウトと統一) */}
-      <div className="w-40 h-40 rounded-3xl overflow-hidden shadow-[0_10px_28px_rgba(58,45,107,0.16)] animate-bounce-slow mb-4">
-        <Image
-          src={imageSrc}
-          alt=""
-          width={320}
-          height={320}
-          aria-hidden="true"
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <p className="text-lg font-black text-[#2E2E5C] text-center mb-2 leading-relaxed">
-        アナタから見た{subjectLabel}を
-        <br />
-        生成中...
-      </p>
-      <p className="text-xs text-[#2E2E5C]/70 font-bold">少し待ってね</p>
-    </div>
-  );
+function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
+  // 自己診断の生成中ページ (DiagnosisAnalyzingLoader) と同じデザインを再利用。
+  // 文言だけ他己診断向けに差し替える (subjectLabel = 評価対象の owner)。
+  const messages = [
+    "アナタの回答を読み込んでいます...",
+    "Big Five 心理学で解析中...",
+    `アナタから見た${subjectLabel}を分析中...`,
+    "印象のパターンを整理しています...",
+    `${subjectLabel}のタイプを見立てています...`,
+    "まだ気づかれていない一面を探しています...",
+    "レポートにまとめています...",
+    "最後の仕上げをしています...",
+    "もうすぐお届けします...",
+  ];
+  const steps = ["回答データを取得", "印象を解析", "タイプを見立て", "レポートを生成"];
+  return <DiagnosisAnalyzingLoader messages={messages} steps={steps} />;
 }
 
 // =========================================================================
@@ -666,97 +583,64 @@ function ErrorScreen({
 }
 
 // =========================================================================
-// Phase 1.5-α Day 12-Polish-B: NameOverlay (30 問 + consent 完了直後の名前入力)
-// 「結果を見る前に、お名前を教えてください」
-// 必須 (空文字スキップ不可)、入力後 submit() で /api/friend-answer/v2 + router.push
+// 質問の最後の自由記入 (任意メッセージ) + 送信。名前は先頭で取得済み。
+// 他画面と同じ共通ヘッダー / 白背景 / 共通フッターに揃える。
 // =========================================================================
 const MESSAGE_MAX = 200;
 
-function NameOverlay({
-  perceiverName,
-  onPerceiverNameChange,
+function MessageScreen({
   message,
   onMessageChange,
   onSubmit,
 }: {
-  perceiverName: string;
-  onPerceiverNameChange: (v: string) => void;
   message: string;
   onMessageChange: (v: string) => void;
   onSubmit: () => void;
 }) {
-  const trimmed = perceiverName.trim();
-  // 初期値 "友達" (state 初期値) は「未入力」と同等扱いで送信不可にする
-  const isPlaceholder = trimmed === "" || trimmed === "友達";
-
-  // Polish-D-A FINAL: モーダル内のボタンを StickyCtaFooter に移動。
-  //   - モーダル親 div の中に配置することで、ダイアログ背景の上に footer が乗る
-  //     (DOM 順で後ろなので、同じ z-50 でも footer が前面に来る)
-  //   - 親に pb-32 を追加して、カードが footer に重ならないよう中央領域を上にずらす
-  // Polish-E E-3: 幕を黒ディム (bg-black/50) → lavender 半透明 (bg-[#E4E0F5]/85) に。
-  //   暗いグレーの幕で「怖い」+「上下分断」感が出ていたため、A 側 basic-info と
-  //   同じパステルトーンに統一。
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="お名前の入力"
-      className="fixed inset-0 z-50 bg-[#E4E0F5]/85 backdrop-blur-sm flex items-center justify-center px-4 py-6 pb-32 animate-modal-fade-in"
-    >
-      {/* Polish-B.3: Q11/Q12 と同じ世界観 (白カード + ピル + 太字見出し + 白入力欄) */}
-      <div className="w-full max-w-md bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-2xl p-6 animate-modal-slide-up">
-        <div className="inline-block rounded-full bg-[#2E2E5C] px-3 py-1 text-xs font-black text-white mb-3">
-          最後に
-        </div>
-        <label
-          htmlFor="perceiver-name-overlay"
-          className="block text-base sm:text-lg font-bold text-[#2E2E5C] leading-relaxed mb-6"
-        >
-          お名前を教えて
-        </label>
-        <input
-          id="perceiver-name-overlay"
-          type="text"
-          value={isPlaceholder ? "" : perceiverName}
-          onChange={(e) => onPerceiverNameChange(e.target.value)}
-          maxLength={20}
-          placeholder=""
-          autoComplete="off"
-          autoFocus
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-base text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#2E2E5C] transition-colors"
+    <>
+      <ScrollHideHeader>
+        <TopHeader />
+      </ScrollHideHeader>
+      {/* min-h-screen / flex-1 を外し、内容の高さに合わせてフッターを近づける
+          (CTA とフッターの間の余白を詰める)。 */}
+      <div className="flex flex-col bg-white pb-8">
+        <DiagnosisHero
+          title="他己診断テスト"
+          imageSrc="/mascot/friend-hero.png"
         />
+        <main className="flex w-full flex-col items-center px-4 pt-6 pb-4 md:px-8">
+          <div className="mx-auto w-full max-w-xl">
+            {/* 見出し・ラベル・プレースホルダの重複を解消: 見出しに「本人へひとこと(任意)」を
+                集約し、ラベルと文字数カウンタは廃止。プレースホルダは補足のみ。 */}
+            <h2 className="mb-6 text-center text-[22px] font-black leading-relaxed text-[#2E2E5C] sm:text-[24px]">
+              最後に、本人へひとこと（任意）
+            </h2>
 
-        {/* ③ 本人へのメッセージ (任意) */}
-        <label
-          htmlFor="perceiver-message-overlay"
-          className="block text-sm font-bold text-[#2E2E5C] leading-relaxed mt-5 mb-2"
-        >
-          ひとことメッセージ (任意)
-        </label>
-        <textarea
-          id="perceiver-message-overlay"
-          value={message}
-          onChange={(e) => onMessageChange(e.target.value.slice(0, MESSAGE_MAX))}
-          maxLength={MESSAGE_MAX}
-          rows={3}
-          placeholder="本人に伝えたいことがあれば自由にどうぞ"
-          className="w-full rounded-xl border-2 border-[#0094D8]/30 bg-white px-4 py-3 text-sm text-[#2E2E5C] font-bold resize-none focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#2E2E5C] transition-colors"
-        />
-        <p className="text-right text-[11px] text-[#2E2E5C]/50 font-bold mt-1">
-          {message.length} / {MESSAGE_MAX}
-        </p>
+            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)]">
+              <textarea
+                id="perceiver-message"
+                aria-label="本人へのひとことメッセージ (任意)"
+                value={message}
+                onChange={(e) =>
+                  onMessageChange(e.target.value.slice(0, MESSAGE_MAX))
+                }
+                maxLength={MESSAGE_MAX}
+                rows={4}
+                placeholder="伝えたいことがあれば自由にどうぞ"
+                className="w-full resize-none rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3 text-[15px] font-bold text-[#2E2E5C] transition-colors focus:border-[#5B5BEF] focus:outline-none focus:ring-2 focus:ring-[#5B5BEF]"
+              />
+            </div>
+
+            <div className="mt-8 flex justify-center">
+              <button type="button" onClick={onSubmit} className={soraPrimary}>
+                結果を見る →
+              </button>
+            </div>
+          </div>
+        </main>
       </div>
-
-      <StickyCtaFooter>
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={isPlaceholder}
-          className={ctaPrimary}
-        >
-          結果を見る →
-        </button>
-      </StickyCtaFooter>
-    </div>
+      <TopFooter />
+    </>
   );
 }
