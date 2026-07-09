@@ -41,7 +41,7 @@ const DEEP_DIVE_CARDS: {
   hint: "top" | "bottom" | "growth" | BigFiveDimension;
 }[] = [
   { key: "love", tab: "恋愛傾向", hint: "A" },
-  { key: "career", tab: "仕事", hint: "C" },
+  { key: "career", tab: "キャリア", hint: "C" },
   { key: "growth", tab: "成長", hint: "growth" },
 ];
 
