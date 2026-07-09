@@ -615,26 +615,28 @@ input[type="reset"]:active {
 .stagger-7 { animation-delay: 0.7s; }
 .stagger-8 { animation-delay: 0.8s; }
 
-/* legal documents (terms / privacy) */
+/* legal documents (terms / privacy) — 16personalities 風のミニマルな文書スタイル */
+.prose-legal {
+  font-size: 1rem;
+  color: #374151;
+}
 .prose-legal h2 {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
   font-weight: 700;
-  color: var(--foreground);
-  margin-top: 2.5rem;
+  color: #111827;
+  margin-top: 3rem;
   margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid #fce7f0;
 }
 .prose-legal h3 {
-  font-size: 1rem;
+  font-size: 1.0625rem;
   font-weight: 700;
-  color: var(--foreground);
-  margin-top: 1.5rem;
+  color: #111827;
+  margin-top: 1.75rem;
   margin-bottom: 0.75rem;
 }
 .prose-legal p {
-  margin-bottom: 1rem;
-  line-height: 1.8;
+  margin-bottom: 1.25rem;
+  line-height: 1.9;
 }
 .prose-legal ol {
   list-style: decimal outside;
@@ -668,23 +670,24 @@ input[type="reset"]:active {
   font-size: 0.875rem;
 }
 .prose-legal th {
-  border: 1px solid #fce7f0;
-  background-color: #fff5f8;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
   padding: 0.5rem 0.75rem;
   text-align: left;
   font-weight: 700;
+  color: #111827;
 }
 .prose-legal td {
-  border: 1px solid #fce7f0;
+  border: 1px solid #e5e7eb;
   padding: 0.5rem 0.75rem;
 }
 .prose-legal hr {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
   border: 0;
-  border-top: 1px solid #fce7f0;
+  border-top: 1px solid #e5e7eb;
 }
 .prose-legal a {
-  color: #FF6B9C;
+  color: #4298b4;
   text-decoration: underline;
 }
