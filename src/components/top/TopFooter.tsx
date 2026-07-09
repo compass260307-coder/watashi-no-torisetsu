@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
 // リンクは実在ルートのみ。SNS アイコンは ⚠️ プレースホルダ (href を実 URL に差し替え)。
+// 他己診断テストの遷移先解決 (localStorage) のためクライアントコンポーネント。
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -24,7 +29,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "診断",
     links: [
       { label: "性格診断テスト", href: "/diagnosis" },
-      { label: "他己診断テスト", href: "/friend-evaluation" },
+      // 他己診断テストの href は実行時に上書き (BottomNav/TopHeader と同じ /tako/[token] 解決)。
+      { label: "他己診断テスト", href: "/tako" },
       { label: "性格タイプ", href: "/types" },
     ],
   },
@@ -102,6 +108,29 @@ const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
 ];
 
 export default function TopFooter() {
+  const pathname = usePathname() ?? "/";
+
+  // 他己診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
+  //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
+  const [takoUrl, setTakoUrl] = useState("/tako");
+  useEffect(() => {
+    let token: string | null = null;
+    try {
+      token = localStorage.getItem("torisetsu_owner_token");
+    } catch {
+      // localStorage 不可環境: フォールバックのまま。
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTakoUrl(token ? `/tako/${token}` : "/tako");
+  }, [pathname]);
+
+  const columns = COLUMNS.map((col) => ({
+    ...col,
+    links: col.links.map((l) =>
+      l.label === "他己診断テスト" ? { ...l, href: takoUrl } : l,
+    ),
+  }));
+
   // MBTI(16Personalities) 風: リンクは色つき(ミュートした Sora ブルー)。
   const linkClass =
     "text-[18px] text-[#6E72C8] transition-colors hover:text-[#5B5BEF] w-fit";
@@ -116,7 +145,7 @@ export default function TopFooter() {
       <div className="mx-auto max-w-[1080px]">
         {/* リンク列 */}
         <div className="grid grid-cols-2 gap-x-10 gap-y-12 md:grid-cols-3">
-          {COLUMNS.map((col) => (
+          {columns.map((col) => (
             <nav key={col.title} className="flex flex-col gap-4">
               <p className="mb-1 text-[18px] font-bold text-[#2E2E5C]">{col.title}</p>
               {col.links.map((l) =>
