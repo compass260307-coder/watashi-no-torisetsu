@@ -63,7 +63,7 @@ export function FriendIndividualPaywall({
             <ul className="mt-3 space-y-1.5 text-[#5A5A72] font-bold text-[13px] leading-[1.6]">
               <li>・友達ひとりずつの相互理解とギャップ</li>
               <li>・その子からの「ひとこと」全文</li>
-              <li>・キャリア／成長タブと相性のくわしい解説</li>
+              <li>・自己診断のキャリア／成長タブ</li>
             </ul>
           </div>
 

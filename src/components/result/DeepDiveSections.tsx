@@ -123,7 +123,7 @@ export function DeepDiveSections({
             <p className="mt-2 text-[#8A8AA3] font-bold text-[13px] leading-[1.6]">
               一度きりの ¥299 で、
               <br className="md:hidden" />
-              キャリアも成長も相性解説もぜんぶ。
+              キャリアも成長も、ぜんぶ。
             </p>
             <div className="mt-5 flex flex-col items-center">
               <div className="w-full max-w-[300px]">
