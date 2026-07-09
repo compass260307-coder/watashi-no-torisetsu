@@ -8,8 +8,18 @@
 import Link from "next/link";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import { GuideDiagnoseButton } from "./GuideDiagnoseButton";
 
-export function FriendIndividualGuide() {
+export function FriendIndividualGuide({
+  // 診断CTAの遷移先。評価者ページは ?source=<owner invite_code> を付けてバイラル計測を維持。
+  // 未指定 (個別ページの案内) は素の /diagnosis = 従来挙動。
+  diagnoseHref = "/diagnosis",
+  // 指定時のみ診断CTAクリックを friend_to_diagnosis_clicked で計測 (評価者→診断の転換KPI)。
+  diagnoseTrackSource,
+}: {
+  diagnoseHref?: string;
+  diagnoseTrackSource?: string;
+} = {}) {
   return (
     <>
       <ScrollHideHeader>
@@ -53,12 +63,12 @@ export function FriendIndividualGuide() {
 
           {/* アクション: 診断する (主) / ログイン (従) */}
           <div className="flex w-full flex-col gap-3">
-            <Link
-              href="/diagnosis"
-              className="flex items-center justify-center w-full bg-[#2E2E5C] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] transition-all"
+            <GuideDiagnoseButton
+              href={diagnoseHref}
+              trackSource={diagnoseTrackSource}
             >
               わたしも診断する
-            </Link>
+            </GuideDiagnoseButton>
             <Link
               href="/login"
               className="flex items-center justify-center w-full bg-white text-[#2E2E5C] font-black text-base px-6 py-3.5 rounded-full border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] hover:translate-y-0.5 hover:shadow-[0_2px_0_#2E2E5C] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all"
