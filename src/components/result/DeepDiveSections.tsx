@@ -108,7 +108,7 @@ export function DeepDiveSections({
   //   判定して LOVE_BY_TYPE_32 から引く。未投入タイプは従来の8タイプ love にフォールバック。
   //   他カード(強み/弱み/成長)は従来どおり 8タイプ(deepDive)を共有する。
   //   仕事(career)も原則 8タイプ共有だが、特定 32タイプだけ差し替えたい場合は
-  //   CAREER_BY_TYPE_32 に登録 (love と同じ非対称フォールバック。現状=探偵のみ)。
+  //   CAREER_BY_TYPE_32 に登録 (love と同じ非対称フォールバック。現状=未知グループ8体)。
   const thirtyTwoId = classifyThirtyTwoType(scores);
   const love32 = LOVE_BY_TYPE_32[thirtyTwoId];
   const career32 = CAREER_BY_TYPE_32[thirtyTwoId];
