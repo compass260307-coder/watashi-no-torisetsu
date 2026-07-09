@@ -27,7 +27,9 @@ export function QuestionCard({
     <div
       aria-label={`質問 ${questionNumber}`}
       className={[
-        "w-full max-w-2xl mx-auto px-2 py-8 sm:py-10",
+        // 横幅は進捗バー・CTA・フッターと同じ max-w-[1080px] に揃える (区切り線が
+        // フッター列の左右端と一致)。
+        "w-full max-w-[1080px] mx-auto px-4 md:px-8 py-8 sm:py-10",
         "border-b border-[#2E2E5C]/10",
         "transition-opacity duration-300",
         answered ? "opacity-50 hover:opacity-100 focus-within:opacity-100" : "",
@@ -36,7 +38,9 @@ export function QuestionCard({
       <p className="text-center text-[17px] sm:text-[20px] font-bold text-[#2E2E5C] leading-relaxed mb-7">
         {question.text}
       </p>
-      <LikertScale value={value} onChange={onChange} />
+      {/* スケール(ラベル+○)はカード幅いっぱいに広げ、質問文・進捗バーと左右端を揃える。
+          size="lg": 横幅の広い自己診断ページでは PC の○を一回り大きくする。 */}
+      <LikertScale value={value} onChange={onChange} size="lg" />
     </div>
   );
 }

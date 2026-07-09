@@ -8,10 +8,13 @@ import { track, isPreviewMode } from "@/lib/track";
 import { readAcquisition } from "@/lib/acquisition";
 import type { AnswerValue } from "@/lib/types";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
-import { ProgressBar } from "@/components/diagnosis/ProgressBar";
+import { DiagnosisProgressBar } from "@/components/diagnosis/DiagnosisProgressBar";
+import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
 import { QuestionCard } from "@/components/diagnosis/QuestionCard";
-import { StickyCtaFooter } from "@/components/StickyCtaFooter";
 import { InAppBrowserModal } from "@/components/InAppBrowserModal";
+import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
+import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 
 // feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
 // Noto Sans) に統一。CTA も共通の sunYellow ではなくトップの sora-cta ピルを使う。
@@ -66,21 +69,17 @@ function DiagnosisContent() {
   // Phase 3-β D-4: ?source=line (LINE リッチメニュー経由) + 過去診断あり → 再診断モーダル表示
   const isFromLine = source === "line";
 
-  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネーム取得)
-  // step = "basic-info" → ニックネーム入力、"questions" → Q1〜Q50
-  const [step, setStep] = useState<"basic-info" | "questions">("basic-info");
+  // ニックネームは独立ステップを廃止し、最初の質問ページ (page 0) の先頭で取得する。
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  // page 0 を抜ける際に未入力なら、この入力欄へスクロール/フォーカスするための参照。
+  const nicknameInputRef = useRef<HTMLInputElement>(null);
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed (0..4)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
-  // 自動ページ送りの待機中 (0.55s)。この間は footer (次へ) を出さない —
-  // ページ完了と同時に isPageComplete が立つため、抑制しないと遷移直前に
-  // 「次へ」が一瞬チラつく。
-  const [autoAdvancing, setAutoAdvancing] = useState(false);
   // 途中保存の再開候補 (null = 保存なし / すでに選択済み)。選択UI表示中だけ非 null。
   const [pendingResume, setPendingResume] = useState<{
     answers: Record<number, AnswerValue>;
@@ -185,10 +184,10 @@ function DiagnosisContent() {
   // クリックハンドラ内の同期 scrollTo は再レンダー前に走り効かないことがあるため、
   // コミット後の effect で実行する。ページ切替は文脈が変わるので auto (瞬間移動)。
   useEffect(() => {
-    if (!hydrated || step !== "questions") return;
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, behavior: "auto" });
-  }, [currentPage, step, hydrated]);
+  }, [currentPage, hydrated]);
 
   // 起動 track (1 回のみ)
   useEffect(() => {
@@ -208,17 +207,28 @@ function DiagnosisContent() {
   const isAllComplete = questions.every((q) => answers[q.id] !== undefined);
   const answeredCount = Object.keys(answers).length;
   const isLastPage = currentPage === TOTAL_PAGES - 1;
+  // ニックネームは必須。page 0 の「次へ」は全問回答 + ニックネーム入力で活性化。
+  const hasNickname = nickname.trim().length > 0;
+  const canAdvance =
+    isPageComplete && (currentPage !== 0 || hasNickname);
 
-  // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ → 質問ステップへの遷移
-  const handleBasicInfoNext = () => {
+  // ニックネーム必須ゲート: page 0 (ニックネーム同居ページ) を抜ける前に呼ぶ。
+  // 未入力/超過なら error を出し入力欄へスクロール&フォーカスして false を返す。
+  // OK なら localStorage に保存して true を返す。
+  const ensureNickname = (): boolean => {
     const trimmed = nickname.trim();
     if (trimmed.length === 0) {
       setNicknameError("ニックネームを入力してね");
-      return;
+      nicknameInputRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      nicknameInputRef.current?.focus({ preventScroll: true });
+      return false;
     }
     if (trimmed.length > NICKNAME_MAX) {
       setNicknameError(`${NICKNAME_MAX} 文字以内で入力してね`);
-      return;
+      return false;
     }
     setNicknameError(null);
     try {
@@ -226,8 +236,7 @@ function DiagnosisContent() {
     } catch {
       // localStorage 不可でも進める
     }
-    setStep("questions");
-    // 先頭へのスクロールは step/currentPage 変化を見る useEffect に集約。
+    return true;
   };
 
   // #2 「続きから」: 保存した回答と進捗を復元し、質問ステップへ
@@ -235,9 +244,8 @@ function DiagnosisContent() {
     if (!pendingResume) return;
     setAnswers(pendingResume.answers);
     setCurrentPage(pendingResume.page);
-    setStep("questions");
     setPendingResume(null);
-    // 先頭へのスクロールは step/currentPage 変化を見る useEffect に集約。
+    // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
   // #2 「最初から」: 保存を削除して新規スタート (basic-info のまま)
@@ -259,29 +267,8 @@ function DiagnosisContent() {
       metadata: { questionId },
     });
 
-    // === 自動ページ送り (16P 方式): この回答でページの全問が埋まったら次ページへ ===
-    // 発火条件は「未回答だった質問に答えて、ページの未回答が 0 になった瞬間」のみ。
-    //  - 戻って見直し中の答え直し (すでに全問回答済み) では発火しない
-    //    (見直しの途中で勝手にページが変わらない)。その場合の前進は footer の
-    //    「次へ」(ページ完了時のみ表示) で行う。
-    //  - 最終ページは自動送信しない (「結果を見る」を明示的に押す。
-    //    API 送信 + 分析ローディングに勝手に入らない)。
-    const wasUnanswered = answers[questionId] === undefined;
-    const pageJustCompleted =
-      wasUnanswered &&
-      pageQuestions.every(
-        (q) => q.id === questionId || answers[q.id] !== undefined,
-      );
-    if (pageJustCompleted && !isLastPage) {
-      // 選択の色が付くのを一拍見せてからページ送り (ページ先頭へのスクロールは
-      // currentPage 変化を見る useEffect に集約済み)。待機中は footer を抑制。
-      setAutoAdvancing(true);
-      window.setTimeout(() => {
-        setCurrentPage((p) => p + 1);
-        setAutoAdvancing(false);
-      }, 550);
-      return;
-    }
+    // ページ送りは自動ではなく、質問の下の「次へ」CTA で明示的に行う (handleNext)。
+    // ここでは同一ページ内の「次の質問」へのオートスクロールだけを担う。
 
     // === 自動送り: 「次の質問が未回答のときだけ」その質問へ進む ===
     // 判定基準は「初回かどうか」ではなく「進む先 (= 次の質問) が未回答か」。
@@ -306,7 +293,18 @@ function DiagnosisContent() {
 
   const handleNext = () => {
     if (!isPageComplete || isLastPage) return;
+    if (currentPage === 0 && !ensureNickname()) return;
     setCurrentPage((p) => p + 1);
+    // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
+  };
+
+  // 進捗バーの「前のページ」: 前ページへ戻す。page 0 (先頭) はトップへ抜ける。
+  const handlePrev = () => {
+    if (currentPage === 0) {
+      router.push("/");
+      return;
+    }
+    setCurrentPage((p) => Math.max(0, p - 1));
     // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
@@ -415,91 +413,21 @@ function DiagnosisContent() {
 
   // Phase 1.5-α Day 12-Polish-B: 基本情報ステップ (50 問の前にニックネームを取得)
   // 「最初の質問」として位置づける UX (ステップではなく Q0 相当)
-  if (step === "basic-info") {
-    return (
-      <div
-        className="relative flex flex-col flex-1 min-h-screen pb-32 bg-white"
-        style={{ fontFamily: FONT_STACK }}
-      >
-        {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
-        <InAppBrowserModal />
-        {showRediagnoseModal && (
-          <RediagnoseConfirmModal
-            onConfirm={closeRediagnoseModal}
-            onCancel={cancelRediagnose}
-          />
-        )}
-        {pendingResume && !showRediagnoseModal && (
-          <ResumeChoiceModal
-            answeredCount={Object.keys(pendingResume.answers).length}
-            totalQuestions={TOTAL_QUESTIONS}
-            onContinue={handleResumeContinue}
-            onFresh={handleResumeFresh}
-          />
-        )}
-        {/* 進捗インジケータは右上に極小表示 (basic-info はミニマル) */}
-        <div className="absolute top-3 right-4 z-10">
-          <span
-            className="text-[10px] font-bold tracking-[0.25em] text-[#2E2E5C]/45"
-            aria-label={`Step 0 of ${TOTAL_PAGES}`}
-          >
-            0 / {TOTAL_PAGES}
-          </span>
-        </div>
-
-        {/* 16P 風ミニマル: 白背景に中央寄せの見出し + 入力欄のみ (カード/バッジ廃止) */}
-        <main className="flex flex-col flex-1 justify-center px-6 pt-10 pb-4 max-w-md mx-auto w-full">
-          <label
-            htmlFor="diagnosis-nickname"
-            className="block text-center font-bold text-[#2E2E5C] leading-relaxed mb-8"
-            style={{ fontSize: "clamp(20px, 2.4vw, 26px)" }}
-          >
-            ニックネームを教えて
-          </label>
-          <input
-            id="diagnosis-nickname"
-            type="text"
-            value={nickname}
-            onChange={(e) => {
-              setNickname(e.target.value);
-              if (nicknameError) setNicknameError(null);
-            }}
-            maxLength={NICKNAME_MAX}
-            placeholder=""
-            autoComplete="off"
-            className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3.5 text-center text-lg text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
-          />
-          {nicknameError && (
-            <p
-              role="alert"
-              className="text-[#E86AA6] text-xs font-bold mt-2 text-center"
-            >
-              {nicknameError}
-            </p>
-          )}
-        </main>
-
-        <StickyCtaFooter variant="white">
-          <button
-            type="button"
-            onClick={handleBasicInfoNext}
-            className={soraPrimary}
-          >
-            次へ
-          </button>
-        </StickyCtaFooter>
-      </div>
-    );
-  }
-
   // 16P 方式: 前進は自動ページ送りが担い、「戻る」ボタンは置かない
   // (16P 同様、迷わず前へ進む一方通行の体験にする)。
 
   return (
+    <>
+    {/* サイト共通ヘッダー (16P 風スクロール連動) */}
+    <ScrollHideHeader>
+      <TopHeader />
+    </ScrollHideHeader>
     <div
-      className="flex flex-col flex-1 min-h-screen pb-32 bg-white"
+      className="flex flex-col flex-1 min-h-screen pb-12 bg-white"
       style={{ fontFamily: FONT_STACK }}
     >
+      {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
+      <InAppBrowserModal />
       {showRediagnoseModal && (
         <RediagnoseConfirmModal
           onConfirm={closeRediagnoseModal}
@@ -514,14 +442,59 @@ function DiagnosisContent() {
           onFresh={handleResumeFresh}
         />
       )}
-      <ProgressBar
-        currentQuestion={answeredCount}
-        totalQuestions={TOTAL_QUESTIONS}
-        currentPage={currentPage + 1}
-        totalPages={TOTAL_PAGES}
-      />
+      {/* page 0 の最上部にだけ 16P 風ヒーロー (マスコット + 見出し)。 */}
+      {currentPage === 0 && <DiagnosisHero />}
+      {/* 最初のページ (page 0) には進捗バーを出さない (ヒーローに集中させる)。 */}
+      {currentPage !== 0 && (
+        <DiagnosisProgressBar
+          currentQuestion={answeredCount}
+          totalQuestions={TOTAL_QUESTIONS}
+          onPrev={handlePrev}
+        />
+      )}
 
-      <main className="flex flex-col flex-1 px-4 pt-6 pb-4 w-full">
+      <main className="flex flex-col flex-1 w-full pt-6 pb-4">
+        {/* page 0 の先頭にニックネーム入力を同居させる (旧: 独立した basic-info ステップ)。
+            Q1 の直前に置き、最初の画面で「ニックネーム + 最初の質問」を一緒に見せる。 */}
+        {currentPage === 0 && (
+          <div className="mb-8 mx-auto w-full max-w-[1080px] px-4 md:px-8">
+            {/* ニックネーム入力は白カードで囲い、質問(区切り線のみ)と差別化する。
+                カードはフッター幅 (max-w-[1080px]) に揃え、入力は中央で読みやすい幅に収める。 */}
+            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)]">
+              <div className="mx-auto max-w-md">
+                <label
+                  htmlFor="diagnosis-nickname"
+                  className="block text-center font-bold text-[#2E2E5C] leading-relaxed mb-4"
+                  style={{ fontSize: "clamp(20px, 2.4vw, 26px)" }}
+                >
+                  ニックネームを教えて
+                </label>
+                <input
+                  ref={nicknameInputRef}
+                  id="diagnosis-nickname"
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => {
+                    setNickname(e.target.value);
+                    if (nicknameError) setNicknameError(null);
+                  }}
+                  maxLength={NICKNAME_MAX}
+                  placeholder=""
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3.5 text-center text-lg text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
+                />
+                {nicknameError && (
+                  <p
+                    role="alert"
+                    className="text-[#E86AA6] text-xs font-bold mt-2 text-center"
+                  >
+                    {nicknameError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {pageQuestions.map((q) => (
           // ref + tabIndex(-1): 回答時に次の未回答質問へ scrollIntoView/focus するための受け皿。
           // 視覚は QuestionCard が担うので wrapper は無装飾 (outline は programmatic focus 用に消す)。
@@ -547,35 +520,41 @@ function DiagnosisContent() {
             送信に失敗しました。もう一度お試しください。
           </p>
         )}
-      </main>
 
-      {/* variant="white": 白基調ページのため footer も白ベタ + 上端フェード
-          (footer 直上に回答の○が来るので半透明 scrim は使わない)。
-          自動ページ送り化に伴い footer を出すのは:
-            - 最終ページ (結果を見る) 常時
-            - 完了済みページに「自動送りなし」で居るとき (途中保存の再開で
-              ちょうど完了済みページに着地したレアケース) の「次へ」のみ。
-          自動送りの待機中 (autoAdvancing) は isPageComplete が立っていても
-          出さない — 遷移直前に「次へ」が一瞬チラつくのを防ぐ。 */}
-      {(isLastPage || (isPageComplete && !autoAdvancing)) && (
-      <StickyCtaFooter variant="white">
-        {!isLastPage ? (
-          <button type="button" onClick={handleNext} className={soraPrimary}>
-            次へ
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!isAllComplete || submitting}
-            className={soraPrimary}
-          >
-            {submitting ? "診断中..." : "結果を見る"}
-          </button>
-        )}
-      </StickyCtaFooter>
-      )}
+        {/* 質問の下の CTA: 押すと次ページへ (自動ページ送りは廃止)。
+            ページ全問回答で活性化。page 0 はニックネーム必須。 */}
+        <div className="mx-auto mt-10 flex w-full max-w-[1080px] flex-col items-center gap-2 px-4 md:px-8">
+          {!isLastPage ? (
+            <button
+              type="button"
+              onClick={handleNext}
+              disabled={!canAdvance}
+              className={soraPrimary}
+            >
+              次へ
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!isAllComplete || submitting}
+              className={soraPrimary}
+            >
+              {submitting ? "診断中..." : "結果を見る"}
+            </button>
+          )}
+          {/* page 0 で全問回答済みなのにニックネーム未入力なら、必須である旨を明示 */}
+          {currentPage === 0 && isPageComplete && !hasNickname && (
+            <p className="text-xs font-bold text-[#E86AA6]">
+              ニックネームを入力してね
+            </p>
+          )}
+        </div>
+      </main>
     </div>
+    {/* サイト共通フッター */}
+    <TopFooter />
+    </>
   );
 }
 

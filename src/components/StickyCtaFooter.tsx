@@ -50,15 +50,23 @@ const bgClass: Record<Variant, string> = {
   white: "bg-gradient-to-t from-white from-[60%] to-transparent",
 };
 
+// aboveBottomNav: 全ページ共通ボトムナビ (56px + セーフエリア) を持つページで、
+//   CTA をナビの真上に持ち上げて両方を見せる。診断フローのようにナビと CTA が
+//   同居する画面で使う。セーフエリアはナビ側が吸収するので CTA 側は pb-4 のみ。
 export function StickyCtaFooter({
   children,
   variant = "scrim",
+  aboveBottomNav = false,
 }: {
   children: ReactNode;
   variant?: Variant;
+  aboveBottomNav?: boolean;
 }) {
+  const positionClass = aboveBottomNav
+    ? "bottom-[calc(56px+env(safe-area-inset-bottom))] pb-4"
+    : "bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))]";
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 pt-12 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className={`fixed inset-x-0 z-50 pt-12 px-4 ${positionClass}`}>
       {/* 背景レイヤー (ボタンの裏)。mask / ぼかしはここだけに効かせる */}
       <div aria-hidden className={`absolute inset-0 ${bgClass[variant]}`} />
       {/* 前面: 主要 CTA (常に不透明・マスク非対象) */}

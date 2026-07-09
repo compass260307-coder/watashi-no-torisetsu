@@ -21,14 +21,15 @@ const INACTIVE = "#9BA3B4";
 
 // 下部固定CTA (StickyCtaFooter / Floating* CTA) を持つフロー系ページでは、
 // ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
-//   - /diagnosis : 自己診断の回答フロー (全幅 StickyCtaFooter)
 //   - /friend/   : /friend/{招待コード} の友達回答フロー (StickyCtaFooter)。末尾スラッシュ必須で
 //                  /friend-evaluation (オーナー管理ハブ・ナビ非対象) と /friend (招待無し) は対象外。
 //   - /evaluate/ : 友達評価の着地/完了ページ (FloatingDiagnosisCta 等・ナビの目的地ではない)
 //   - /share/    : キャラシェアの獲得ランディング (新規向け・診断CTA 1点に集中させる)
 // ※ /me・/tako・/ は「ナビの目的地」なので (フローティングCTAがあっても) ナビは表示したまま。
 //   他己診断タブは /friend-evaluation ではなく /tako/[token] を指す。
-const HIDE_ON_PREFIXES = ["/diagnosis", "/friend/", "/evaluate/", "/share/"];
+// ※ /diagnosis (自己診断の回答フロー) はサイト共通chrome統一のためナビを表示する。
+//   下部の StickyCtaFooter は aboveBottomNav でナビの上に持ち上げて衝突を避ける。
+const HIDE_ON_PREFIXES = ["/friend/", "/evaluate/", "/share/"];
 
 function HomeIcon() {
   return (
