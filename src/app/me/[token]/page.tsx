@@ -612,32 +612,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   </div>
                   {lockCard}
                 </div>
-
-                {/* ── ブロック2: 友達からの意見 (ぼかしコメント風) ── */}
-                <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-                  友達からの意見
-                </h3>
-                <div className="relative overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
-                  {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-5 inset-y-5 select-none blur-[7px] md:inset-x-8"
-                  >
-                    {Array.from({ length: 10 }, (_, i) => (
-                      <div
-                        key={i}
-                        className="mb-3 flex items-start gap-3 rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
-                      >
-                        <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#5B5BEF]/40" />
-                        <div className="flex-1 pt-1">
-                          <div className="mb-1.5 h-2.5 w-full rounded-full bg-[#2E2E5C]/20" />
-                          <div className="h-2.5 w-2/3 rounded-full bg-[#2E2E5C]/20" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {lockCard}
-                </div>
               </>
             );
           })()}
