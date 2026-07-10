@@ -16,10 +16,15 @@ import { FullAccessCta } from "./FullAccessCta";
 export function FriendIndividualPaywall({
   // 無料で見せてよいメタ。誰からの結果かの「引き」に使う。null なら「ともだち」。
   perceiverName = null,
+  // A案: 相手からのメッセージ全文 (owner_message)。相手が自分に向けた言葉＝恵みなので
+  // 未課金でも無料で全文表示する (引き)。null/空なら非表示。診断の中身はロックのまま。
+  ownerMessage = null,
 }: {
   perceiverName?: string | null;
+  ownerMessage?: string | null;
 } = {}) {
   const who = (perceiverName ?? "").trim() || "ともだち";
+  const message = (ownerMessage ?? "").trim();
 
   return (
     <>
@@ -34,13 +39,26 @@ export function FriendIndividualPaywall({
             <br className="md:hidden" />
             個別の結果
           </p>
-          <h1 className="mt-2 text-[#2E2E5C] font-black text-[27px] md:text-[36px] leading-[1.4]">
+
+          {/* A案: 相手からのメッセージ全文 (無料の引き)。診断の中身より先に、恵みとして見せる。 */}
+          {message && (
+            <div className="mt-5 rounded-3xl border-2 border-[#EFE3C8] bg-[#FFFBF0] px-5 py-6 text-left">
+              <p className="text-[#B08A2E] font-black text-[12px] tracking-wide">
+                {who}さんからのメッセージ
+              </p>
+              <p className="mt-2 body-gothic text-[#1A1A1A] font-normal text-[16px] leading-[1.7] whitespace-pre-wrap">
+                {message}
+              </p>
+            </div>
+          )}
+
+          <h1 className="mt-8 text-[#2E2E5C] font-black text-[27px] md:text-[36px] leading-[1.4]">
             この続きは、
             <br />
             全解放でひらきます。
           </h1>
 
-          {/* ロックの表現 (本文は載せない・完全にダミーの目隠し) */}
+          {/* ロックの表現 (診断の中身は載せない・完全にダミーの目隠し) */}
           <div
             aria-hidden="true"
             className="mt-8 space-y-3 select-none"
@@ -62,7 +80,7 @@ export function FriendIndividualPaywall({
             </p>
             <ul className="mt-3 space-y-1.5 text-[#5A5A72] font-bold text-[13px] leading-[1.6]">
               <li>・友達ひとりずつの相互理解とギャップ</li>
-              <li>・その子からの「ひとこと」全文</li>
+              <li>・スコアで見る「見え方のズレ」の全部</li>
               <li>・自己診断のキャリア／成長タブ</li>
             </ul>
           </div>

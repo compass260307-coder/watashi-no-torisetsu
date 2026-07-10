@@ -142,9 +142,25 @@ export default async function FriendIndividualPage({
       if (!metaRow || metaRow.target_user_id !== (user.id as string)) {
         notFound();
       }
+      // A案: 相手からのメッセージ (owner_message) は「相手が自分に向けた言葉＝恵み」
+      // なので未課金でも全文を無料で見せる (引きの役割)。ロックするのは診断の中身
+      // (perceived_scores / qualitative_data) だけ。列未適用でも壊さない best-effort。
+      let paywallMessage: string | null = null;
+      try {
+        const { data: msgRow } = await supabaseAdmin
+          .from("friend_perceptions")
+          .select("owner_message")
+          .eq("id", perceptionId)
+          .maybeSingle();
+        const m = ((msgRow?.owner_message as string | null) ?? "").trim();
+        paywallMessage = m.length > 0 ? m : null;
+      } catch {
+        paywallMessage = null;
+      }
       return (
         <FriendIndividualPaywall
           perceiverName={(metaRow.perceiver_name as string | null) ?? null}
+          ownerMessage={paywallMessage}
         />
       );
     }
