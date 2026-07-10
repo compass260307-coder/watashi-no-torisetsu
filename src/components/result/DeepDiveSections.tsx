@@ -26,12 +26,15 @@ interface DeepDiveSectionsProps {
   sections: ResolvedDeepDiveSection[];
   /** タブ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
+  /** このページの owner_token。¥299 課金導線 (FullAccessCta) に本人解決用として渡す。 */
+  ownerToken?: string;
   className?: string;
 }
 
 export function DeepDiveSections({
   sections,
   sceneImages,
+  ownerToken,
   className = "",
 }: DeepDiveSectionsProps) {
   // 初期選択は「恋愛傾向」(love) を明示指定 (並びが変わっても love を初期表示)。
@@ -127,7 +130,7 @@ export function DeepDiveSections({
             </p>
             <div className="mt-5 flex flex-col items-center">
               <div className="w-full max-w-[300px]">
-                <FullAccessCta />
+                <FullAccessCta ownerToken={ownerToken} />
               </div>
             </div>
           </div>

@@ -161,6 +161,7 @@ export default async function FriendIndividualPage({
         <FriendIndividualPaywall
           perceiverName={(metaRow.perceiver_name as string | null) ?? null}
           ownerMessage={paywallMessage}
+          ownerToken={token}
         />
       );
     }

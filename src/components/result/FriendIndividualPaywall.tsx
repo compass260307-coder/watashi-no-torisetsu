@@ -19,9 +19,12 @@ export function FriendIndividualPaywall({
   // A案: 相手からのメッセージ全文 (owner_message)。相手が自分に向けた言葉＝恵みなので
   // 未課金でも無料で全文表示する (引き)。null/空なら非表示。診断の中身はロックのまま。
   ownerMessage = null,
+  // このページの owner_token。¥299 課金導線に本人解決用として渡す (Cookie 不在対策)。
+  ownerToken,
 }: {
   perceiverName?: string | null;
   ownerMessage?: string | null;
+  ownerToken?: string;
 } = {}) {
   const who = (perceiverName ?? "").trim() || "ともだち";
   const message = (ownerMessage ?? "").trim();
@@ -87,7 +90,7 @@ export function FriendIndividualPaywall({
 
           <div className="mt-6 flex flex-col items-center">
             <div className="w-full max-w-[320px]">
-              <FullAccessCta />
+              <FullAccessCta ownerToken={ownerToken} />
             </div>
             <p className="mt-3 text-[#A0A0B4] font-bold text-[12px]">
               買い切り・追加課金なし
