@@ -12,8 +12,12 @@ import { useState } from "react";
 
 export function FullAccessCta({
   children = "¥299で全部よむ",
+  // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
+  // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
+  ownerToken,
 }: {
   children?: React.ReactNode;
+  ownerToken?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +29,8 @@ export function FullAccessCta({
     try {
       const res = await fetch("/api/checkout/create-full-access-session", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ownerToken ? { owner_token: ownerToken } : {}),
       });
       // 既に課金済み → 本文が見られる状態なので再読込。
       if (res.status === 409) {

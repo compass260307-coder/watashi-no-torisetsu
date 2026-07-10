@@ -531,6 +531,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
           <DeepDiveSections
             sections={deepDiveSections}
+            ownerToken={token}
             sceneImages={{
               love: sceneImage("love"),
               career: sceneImage("work"),

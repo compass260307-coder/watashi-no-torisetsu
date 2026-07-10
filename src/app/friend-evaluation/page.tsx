@@ -229,7 +229,7 @@ export default async function FriendEvaluationPage() {
             QR+キャラコードからプロモ枠ロゴへ自然につなぐ。aria-label で意味は保持。 */}
         <section className="mb-8" aria-label="相互理解度ランキング">
           <div className="bg-white border-[3px] border-[#0094D8] rounded-[28px] p-4">
-            <RankingBoard items={rankedPerceptions} />
+            <RankingBoard items={rankedPerceptions} ownerToken={ownerToken} />
           </div>
         </section>
 
@@ -378,7 +378,13 @@ function ChevronRight() {
 //   枠数 = max(3, N+1)。rank<=N は実データ、それ以外は空き枠プレースホルダ。
 //   - N=0 → 1〜3 すべて空き / N=2 → 1,2 実 + 3 空き / N=3 → 1〜3 実 + 4 空き /
 //     N=5 → 1〜5 実 + 6 空き。空き枠が必ず 1 つ以上あるのでプロモ枠は常に表示。
-function RankingBoard({ items }: { items: RankItem[] }) {
+function RankingBoard({
+  items,
+  ownerToken,
+}: {
+  items: RankItem[];
+  ownerToken: string;
+}) {
   const filled = items.length;
   const totalSlots = Math.max(3, filled + 1);
   const ranks = Array.from({ length: totalSlots }, (_, i) => i + 1);
@@ -389,7 +395,12 @@ function RankingBoard({ items }: { items: RankItem[] }) {
       <ul className="flex flex-col gap-2.5">
         {ranks.map((rank) =>
           rank <= filled ? (
-            <RealRankRow key={rank} rank={rank} item={items[rank - 1]} />
+            <RealRankRow
+              key={rank}
+              rank={rank}
+              item={items[rank - 1]}
+              ownerToken={ownerToken}
+            />
           ) : (
             <EmptyRankRow key={rank} rank={rank} />
           ),
@@ -417,11 +428,22 @@ function RankingPromo() {
 }
 
 // 実データ枠 (実線・塗り、タップで各相互理解度ページへ)。
-function RealRankRow({ rank, item }: { rank: number; item: RankItem }) {
+// リンク先は本人向け個別ページ /tako/[token]/friend/[perceptionId]。
+// 評価者側の完了ページ /evaluate/result は非owner判定で /evaluate/sent に
+// リダイレクトされる (本人でも飛ばされる) ため使わない。
+function RealRankRow({
+  rank,
+  item,
+  ownerToken,
+}: {
+  rank: number;
+  item: RankItem;
+  ownerToken: string;
+}) {
   return (
     <li>
       <Link
-        href={`/evaluate/result/${item.id}`}
+        href={`/tako/${ownerToken}/friend/${item.id}`}
         className="flex items-center gap-3 rounded-[20px] border-2 border-[#0094D8]/20 bg-white p-3 transition-colors hover:bg-[#F4F4FE]"
       >
         <RankMedalBadge rank={rank} />
