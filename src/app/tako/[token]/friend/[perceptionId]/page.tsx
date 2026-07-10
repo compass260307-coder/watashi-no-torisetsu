@@ -20,9 +20,7 @@ import {
 import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { buildPerceptionView } from "@/lib/perception-view";
 import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
-import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide";
 import { FriendIndividualPaywall } from "@/components/result/FriendIndividualPaywall";
-import { getSession } from "@/lib/session";
 import { hasFullAccess } from "@/lib/entitlements";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
@@ -117,19 +115,16 @@ export default async function FriendIndividualPage({
       .maybeSingle();
     if (!user) notFound();
 
-    // ===== 本人ゲート (セキュリティ監査②前半: 個別ページは本人限定) =====
+    // ===== 本人ゲート (owner_token capability) =====
     // 個別ページは本人のプライベートな深掘り (相互理解・ギャップ・贈りもの全文)。
-    // owner_token URL を踏んだだけの友達/第三者には中身を一切見せず、案内ページへ。
-    // 判定は owner_token の有無ではなく、session が本人と一致するか (isOwner) で行う。
-    // フェイルクローズ: session 不在 / 不一致はすべて非 owner 扱いとし、perception や
-    // 贈りものを「取得する前に」案内ページを返す (非 owner の端末へ中身を一切送らない)。
-    const session = await getSession();
-    const isOwner = !!session && session.id === (user.id as string);
-    if (!isOwner) {
-      return <FriendIndividualGuide />;
-    }
+    // 判定は owner_token 保持で行う。owner_token は推測不可 (nanoid 22) の秘密 URL で、
+    // 親の /me/[token]・/tako/[token] と同じ capability。これを踏めている時点で本人。
+    // (第三者に渡るのは友達招待 /friend/[inviteCode] のみで owner_token は渡らない。)
+    // session (Cookie wn_session) は使わない: 別端末 / アプリ内ブラウザ / ITP で Cookie が
+    // 消えると本人でも isOwner=false になり「友達の完了ページ」へ飛ばされる不整合を防ぐ。
+    // (親ページは token だけで中身を見せているのにここだけ session 必須だったのが原因。)
 
-    // ===== 課金ゲート (PR2: isOwner の内側に hasFullAccess を AND) =====
+    // ===== 課金ゲート (PR2: token 本人の内側に hasFullAccess を AND) =====
     // 本人だが未課金 (¥299 全解放なし) → 本文 (perception詳細・owner_message全文) を
     // 「そもそも取得せず」課金導線を返す。フェイルクローズ。無料メタ (誰からの結果か) だけ
     // 最小 SELECT する (本文列 perceived_scores/qualitative_data/owner_message は読まない)。
