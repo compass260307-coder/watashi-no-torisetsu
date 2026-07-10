@@ -33,6 +33,21 @@ const SITE_URL =
 
 const DIMS: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
 
+// 総合ページの友達メッセージ「チラ見せ」上限文字数。
+// PR2 (leak塞ぎ): 全文は総合ページの payload / RSC / View Source に絶対に載せない。
+// 課金判定は噛ませず全員この1行プレビューだけを返す (全文が要るのは個別ページ側のみ)。
+// フロントの CSS truncate はもう「隠す」役割ではなく単なる整形 (データが既に1行)。
+const MESSAGE_PREVIEW_MAX = 40;
+
+function toMessagePreview(message: string | null | undefined): string {
+  if (!message) return "";
+  const oneLine = message.replace(/\s+/g, " ").trim();
+  if (!oneLine) return "";
+  return oneLine.length > MESSAGE_PREVIEW_MAX
+    ? oneLine.slice(0, MESSAGE_PREVIEW_MAX) + "…"
+    : oneLine;
+}
+
 export type OwnerReportUser = {
   id: string;
   type_id: string | null;
@@ -62,7 +77,10 @@ export type FriendSummary = {
   mutual: number;
   /** ひとことメッセージ (owner_message) がある友達か。 */
   hasMessage: boolean;
-  /** ひとことメッセージ本文 (一覧チラ見せ用)。無ければ空文字。全文は個別ページで表示。 */
+  /**
+   * ひとことメッセージの1行プレビュー (最大 MESSAGE_PREVIEW_MAX 文字)。無ければ空文字。
+   * 全文はここに載せない (leak塞ぎ)。全文表示は個別ページが別途 owner_message を取得する。
+   */
   message: string;
 };
 
@@ -159,14 +177,16 @@ export async function loadOwnerReportData(
       const mutual = calcMutualUnderstanding(
         buildDimensionGaps(selfScores, perceivedScores),
       );
-      const message = messageById.get(r.id as string) ?? "";
+      const fullMessage = messageById.get(r.id as string) ?? "";
       return {
         perceptionId: r.id as string,
         name: ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
         perceivedScores,
         mutual,
-        hasMessage: message.length > 0,
-        message,
+        // バッジ判定は全文の有無で行う (「メッセージあり」表示は無料)。
+        hasMessage: fullMessage.trim().length > 0,
+        // ★payload に載せるのは1行プレビューのみ。全文は絶対に載せない (leak塞ぎ)。
+        message: toMessagePreview(fullMessage),
       };
     })
     .sort((a, b) => b.mutual - a.mutual);

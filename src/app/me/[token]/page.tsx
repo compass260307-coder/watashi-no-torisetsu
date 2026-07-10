@@ -58,6 +58,8 @@ import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
+import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
+import { hasFullAccess } from "@/lib/entitlements";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
@@ -267,6 +269,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
     O: stored.O ?? 5,
     C: stored.C ?? 5,
     N: stored.N ?? 5,
+  });
+  // 深掘り本文の課金ゲート (PR2)。本文はここ (サーバ) で解決し、許可されたぶんだけ
+  // props で渡す。判定は /me を所有する user (owner_token 行) の plan。未課金なら
+  // キャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
+  const deepDivePaid = await hasFullAccess(user.id as string);
+  const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
+    hasFullAccess: deepDivePaid,
   });
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
@@ -521,8 +530,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
           {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
           <DeepDiveSections
-            typeId={deepDiveTypeId}
-            scores={stored}
+            sections={deepDiveSections}
             sceneImages={{
               love: sceneImage("love"),
               career: sceneImage("work"),
