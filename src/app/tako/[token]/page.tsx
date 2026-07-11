@@ -40,7 +40,7 @@ import {
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import { preferCutImage } from "@/lib/character-image";
+import { preferCutImage, sceneImageForGroup } from "@/lib/character-image";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
 
@@ -401,18 +401,26 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       </main>
       {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。
           友達キャラの画像・グループ色を渡して MBTI 風カードで表示 (無ければ既定)。 */}
-      {!takoFull && (
-        <FullAccessPromoCard
-          ownerToken={token}
-          imageSrc={data.friendCharacter?.imageSrc}
-          imageAlt={data.friendCharacter?.essence ?? ""}
-          group={
-            data.friendCharacter
-              ? thirtyTwoGroup(data.friendCharacter.type32)
-              : "unknown"
-          }
-        />
-      )}
+      {(() => {
+        if (takoFull) return null;
+        // カードのグループ (色・装飾・シーン画像)。友達平均キャラのグループ。
+        const promoGroup = data.friendCharacter
+          ? thirtyTwoGroup(data.friendCharacter.type32)
+          : "unknown";
+        return (
+          <FullAccessPromoCard
+            ownerToken={token}
+            // /me のカードと同じグループ別シーン挿絵 (無ければキャラ画像にフォールバック)。
+            imageSrc={
+              sceneImageForGroup(promoGroup, "work") ??
+              sceneImageForGroup(promoGroup, "normal1") ??
+              data.friendCharacter?.imageSrc
+            }
+            imageAlt={data.friendCharacter?.essence ?? ""}
+            group={promoGroup}
+          />
+        );
+      })()}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />
     </>

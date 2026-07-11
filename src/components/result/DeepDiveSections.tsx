@@ -67,22 +67,39 @@ export function DeepDiveSections({
         className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1"
       >
         {sections.map((s, i) => {
-          const selected = i === active;
+          const selected = i === active && !s.locked;
+          // ロックタブ (キャリア/成長・未課金) はパネルを開かず、押下で最下部の
+          // 課金カード (#fullaccess-promo) へスクロール。無料タブは通常のタブ切替。
           return (
             <button
               key={s.key}
               type="button"
               role="tab"
               aria-selected={selected}
-              onClick={() => setActive(i)}
-              className={`shrink-0 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
+              onClick={() => (s.locked ? scrollToPaywall() : setActive(i))}
+              className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
                 selected
                   ? "bg-[#2E2E5C] text-white border-[#2E2E5C]"
                   : "bg-white text-[#2E2E5C] border-[#0094D8]/25 hover:bg-[#F4F4FE]"
               }`}
             >
-              {/* PR3: タブに鍵は付けない (「どうせ見れない」で押されず課金導線に乗らないため)。
-                  入口は無料タブと同じ見た目にして開かせ、開いた中でぼかしロック+CTA を見せる。 */}
+              {/* ロックタブは鍵アイコンを添える (押すと下の課金カードへ) */}
+              {s.locked && (
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              )}
               {s.tab}
             </button>
           );
