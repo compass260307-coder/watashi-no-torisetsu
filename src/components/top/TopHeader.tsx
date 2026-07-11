@@ -23,7 +23,6 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
   // 他己診断テストの href は実行時に上書き (BottomNav と同じ /tako/[token] 解決)。
   { label: "他己診断テスト", href: "/tako" },
   { label: "性格タイプ", href: "/types" },
-  { label: "サービスについて", href: "/about" },
   { label: "ログイン", href: "/login" },
 ];
 

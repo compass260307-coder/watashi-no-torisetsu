@@ -365,44 +365,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               />
             </section>
 
-            {/* 友達にシェア (もっと友達に診断してもらう招待)。見出し行は撤去し、招待帯だけ残す。 */}
-            <section className="mb-6">
-              {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
-                  同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
-                  source="tako_unlocked" で計測。 */}
-              <div
-                className="mt-8 rounded-3xl p-6 md:px-9 md:py-7"
-                style={{ background: "#EDEFFB" }}
-              >
-                <div className="md:flex md:items-center md:gap-9 lg:gap-12">
-                  {/* 左: 見出し + サブ (色は TakoLockedState と同じ NAVY / INACTIVE) */}
-                  <div className="md:flex-1">
-                    <h3
-                      className="text-[22px] font-black leading-[1.45] md:text-[26px] md:leading-[1.4]"
-                      style={{ color: "#2E2E5C" }}
-                    >
-                      もっと友達に聞くと、
-                      <br className="hidden md:block" />
-                      新しい自分が見えてくる。
-                    </h3>
-                    <p
-                      className="mt-2.5 text-[12.5px] font-bold md:text-sm"
-                      style={{ color: "#9BA3B4" }}
-                    >
-                      答えてくれる友達が増えるほど、深掘りの精度も上がるよ
-                    </p>
-                  </div>
-                  {/* 右: 招待 (QR + シェア) */}
-                  <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
-                    <LockedInviteShare
-                      inviteUrl={data.inviteUrl}
-                      trackSource="tako_unlocked"
-                      compact
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
             </div>
         )}
         </div>
@@ -444,6 +406,47 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           </>
         );
       })()}
+      {/* 友達にシェア (もっと友達に診断してもらう招待)。課金カードの下に配置。
+          解除後 (!isTakoLocked) のみ表示。main 外に出したため 1080 幅コンテナを自前で付ける。 */}
+      {!isTakoLocked && (
+        <section className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
+          {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
+              同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
+              source="tako_unlocked" で計測。 */}
+          <div
+            className="rounded-3xl p-6 md:px-9 md:py-7"
+            style={{ background: "#EDEFFB" }}
+          >
+            <div className="md:flex md:items-center md:gap-9 lg:gap-12">
+              {/* 左: 見出し + サブ (色は TakoLockedState と同じ NAVY / INACTIVE) */}
+              <div className="md:flex-1">
+                <h3
+                  className="text-[22px] font-black leading-[1.45] md:text-[26px] md:leading-[1.4]"
+                  style={{ color: "#2E2E5C" }}
+                >
+                  もっと友達に聞くと、
+                  <br className="hidden md:block" />
+                  新しい自分が見えてくる。
+                </h3>
+                <p
+                  className="mt-2.5 text-[12.5px] font-bold md:text-sm"
+                  style={{ color: "#9BA3B4" }}
+                >
+                  答えてくれる友達が増えるほど、深掘りの精度も上がるよ
+                </p>
+              </div>
+              {/* 右: 招待 (QR + シェア) */}
+              <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
+                <LockedInviteShare
+                  inviteUrl={data.inviteUrl}
+                  trackSource="tako_unlocked"
+                  compact
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />
     </>
