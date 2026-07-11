@@ -399,8 +399,20 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         )}
         </div>
       </main>
-      {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
-      {!takoFull && <FullAccessPromoCard ownerToken={token} />}
+      {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。
+          友達キャラの画像・グループ色を渡して MBTI 風カードで表示 (無ければ既定)。 */}
+      {!takoFull && (
+        <FullAccessPromoCard
+          ownerToken={token}
+          imageSrc={data.friendCharacter?.imageSrc}
+          imageAlt={data.friendCharacter?.essence ?? ""}
+          group={
+            data.friendCharacter
+              ? thirtyTwoGroup(data.friendCharacter.type32)
+              : "unknown"
+          }
+        />
+      )}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />
     </>

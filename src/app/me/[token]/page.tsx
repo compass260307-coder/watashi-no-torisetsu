@@ -668,8 +668,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
-    {!deepDivePaid && <FullAccessPromoCard ownerToken={token} />}
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。
+        画像・グループ色を渡して MBTI 風カードでフル表示。 */}
+    {!deepDivePaid && (
+      <FullAccessPromoCard
+        ownerToken={token}
+        imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+        imageAlt={dispName}
+        group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+      />
+    )}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     <TopFooter />
