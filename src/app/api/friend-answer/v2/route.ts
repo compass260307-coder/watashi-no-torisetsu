@@ -26,9 +26,7 @@ import {
 } from "@/lib/friend-perception-v2";
 import { writeFriendPerception } from "@/lib/friend-perception-write";
 import { FRIEND_QUESTIONS_V2_TOTAL } from "@/lib/friend-questions-v2";
-import { sendLetterNotification } from "@/lib/line-notify";
 import { sendFriendPerceptionEmail } from "@/lib/email";
-import { isLineNotificationsEnabled } from "@/lib/feature-flags";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
@@ -46,12 +44,6 @@ function isValidScale(value: unknown): value is AnswerValue {
 // 「動物に例えると」の回答は "猫（マイペース）" のような「動物名（性格）」形式。
 // 手紙通知①では【動物名のみ】を出す (理由=括弧内は開封まで出さない、が大原則)。
 // 全角/半角どちらの括弧でも手前で切る。未回答/空なら null。
-function extractAnimalName(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const name = raw.trim().split(/[（(]/)[0].trim();
-  return name.length > 0 ? name : null;
-}
-
 export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
@@ -228,8 +220,6 @@ export async function POST(request: NextRequest) {
       if (!ownerRow) return;
 
       const ownerEmail = (ownerRow.email as string | null) ?? null;
-      const ownerLineUserId =
-        (ownerRow.line_user_id as string | null) ?? null;
       const ownerDisplayName =
         ((ownerRow.display_name as string | null) ?? "").trim() || null;
       const ownerToken = (ownerRow.owner_token as string | null) ?? null;
@@ -258,84 +248,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 2-B. LINE 手紙通知｜小出し3段階 (line_letter_notifications_v1)
-      //   届いた通数 (1/2/3) で出し分け、3通目 = 開封解禁。4通目以降は軽い通知のみ。
-      //   LINE_NOTIFICATIONS_ENABLED=false / line_user_id 未紐付ならスキップ。
-      if (!isLineNotificationsEnabled() || !ownerLineUserId) {
-        return;
-      }
-
-      // notification_preferences 確認 (Phase 2 復活時の per-feature opt-out)
-      const { data: prefsRow } = await supabaseAdmin
-        .from("notification_preferences")
-        .select("enable_friend_perception")
-        .eq("line_user_id", ownerLineUserId)
-        .maybeSingle();
-      if (prefsRow && prefsRow.enable_friend_perception === false) {
-        console.log(
-          "[friend-answer/v2] LINE notification disabled by user pref, skipping for",
-          ownerLineUserId.slice(0, 8),
-        );
-        return;
-      }
-
-      if (!ownerToken) return;
-
-      // 届いた友達回答の総数 (owner ごと)
-      const { count: friendCount, error: countErr } = await supabaseAdmin
-        .from("friend_answers")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", ownerUserId);
-      if (countErr || friendCount === null) {
-        console.error(
-          "[friend-answer/v2] friend_answers count error:",
-          countErr?.message,
-        );
-        return;
-      }
-      if (friendCount < 1) return;
-
-      // 冪等ガード: last_notified_friend_count < friendCount のときだけ UPDATE 成功。
-      //   同一 count に同時到達しても最初の 1 件だけが通知され、二重 push を防ぐ。
-      //   (旧 /api/friend-answer の H8 race condition 対策パターンを踏襲)
-      const { data: gateRow, error: gateErr } = await supabaseAdmin
-        .from("users")
-        .update({ last_notified_friend_count: friendCount })
-        .eq("owner_token", ownerToken)
-        .lt("last_notified_friend_count", friendCount)
-        .select("owner_token")
-        .maybeSingle();
-      if (gateErr) {
-        console.error(
-          "[friend-answer/v2] last_notified_friend_count update error:",
-          gateErr.message,
-        );
-        return;
-      }
-      if (!gateRow) {
-        // 別リクエストが先に同 count を通知済み → スキップ
-        return;
-      }
-
-      // 表示用: 友達名 (created_at 昇順) と 1通目の動物 (動物名のみ)
-      const { data: perceptionRows } = await supabaseAdmin
-        .from("friend_perceptions")
-        .select("perceiver_name")
-        .eq("target_user_id", ownerUserId)
-        .order("created_at", { ascending: true });
-      const friendNames = (perceptionRows ?? []).map((r) =>
-        ((r.perceiver_name as string | null) ?? "").trim(),
-      );
-
-      await sendLetterNotification({
-        lineUserId: ownerLineUserId,
-        ownerUserId,
-        ownerToken,
-        inviteCode,
-        friendCount,
-        friendNames,
-        animal: extractAnimalName(choiceAnswers.animal),
-      });
+      // LINE 撤去: 友達回答の LINE 手紙通知 (2-B) は廃止。メール通知 (2-A) のみ。
     } catch (err) {
       console.error("[friend-answer/v2] notification flow error:", err);
     }

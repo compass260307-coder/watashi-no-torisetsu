@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { notifyFriendAnswered } from "@/lib/line-notify";
 import { checkOrigin } from "@/lib/origin-check";
 import { NextResponse } from "next/server";
 
@@ -55,13 +54,8 @@ export async function POST(request: Request) {
 
       if (updateError) {
         console.error("last_notified_friend_count update error:", updateError);
-      } else if (updated) {
-        // fire-and-forget: notification failures must not break the response
-        notifyFriendAnswered(user.owner_token, count).catch((err) =>
-          console.error("notifyFriendAnswered error:", err),
-        );
       }
-      // updated が null = 別リクエストが先に通知済み → スキップ
+      // LINE 撤去: 友達回答の LINE 通知は廃止 (last_notified_friend_count の更新のみ残置)。
     }
   }
 
