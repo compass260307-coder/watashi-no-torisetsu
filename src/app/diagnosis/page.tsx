@@ -404,7 +404,7 @@ function DiagnosisContent() {
   const closeRediagnoseModal = () => setShowRediagnoseModal(false);
   const cancelRediagnose = () => {
     // キャンセル時はマイ図鑑へ戻る (Web ファースト: Cookie ベースで直接アクセス可)
-    router.push("/zukan-mine");
+    router.push("/");
   };
 
   // Polish-D-A FINAL: 標準 CTA は components/StickyCtaFooter.tsx の
