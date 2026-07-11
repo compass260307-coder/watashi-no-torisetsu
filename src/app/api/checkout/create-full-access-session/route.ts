@@ -43,9 +43,10 @@ const ANCHOR_COUPON_ID = `full-access-anchor-off${DISCOUNT_JPY}-jpy`;
 const PRODUCT_NAME = "ワタシのトリセツ｜フルアクセス";
 const PRODUCT_DESC =
   "深掘り(キャリア・成長)/友達ひとりずつの本音/シーン別の相性まで、ぜんぶ解放。買い切り・追加課金なし。";
-// Checkout 左の商品サムネ (ブランド OG)。Stripe が取得できる公開 https のみ許可。
+// Checkout 左の商品サムネ (現行キービジュアルの PNG・768x512)。
+// Stripe は JPEG/PNG/GIF 推奨なので webp ではなく PNG を使う。取得できる公開 https のみ許可。
 const PRODUCT_IMAGE =
-  BASE_URL.startsWith("https://") ? `${BASE_URL}/ogp-v4.png` : null;
+  BASE_URL.startsWith("https://") ? `${BASE_URL}/checkout-fullaccess.png` : null;
 
 // getStripe() の非 null 戻り値 = Stripe クライアント型。
 type StripeClient = NonNullable<ReturnType<typeof getStripe>>;
