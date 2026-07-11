@@ -9,7 +9,9 @@
 //     なるため、サーバ (/me) が resolveDeepDiveSections() で「許可されたぶんだけ」解決し、
 //     props (sections) で渡す。このコンポーネントは受け取って並べるだけの表示層。
 //   - 未課金の課金タブ (キャリア/成長) は section.body===null / locked===true で来る。
-//     その場合は本文の代わりに ¥299 課金導線 (FullAccessCta) を出す。
+//     その場合は本文の代わりに 16P 風ロックオーバーレイ (ぼかし本文 + 中央ロックカード) を
+//     出す。ここでは Stripe を直接叩かず、ページ最下部の課金カード (#full-access-card) へ
+//     スムーススクロールさせる (決済ボタンは最下部カードに一本化)。
 
 import { useState } from "react";
 import Image from "next/image";
@@ -17,7 +19,10 @@ import type {
   DeepDiveTabKey,
   ResolvedDeepDiveSection,
 } from "@/lib/deep-dive-resolve";
-import { FullAccessCta } from "./FullAccessCta";
+import {
+  FULL_ACCESS_CARD_ID,
+  scrollToFullAccessCard,
+} from "./full-access-anchor";
 
 // ※「みんなの目」(他己) タブは /tako/[token] へ移設。ここは自己深掘り3タブのみ。
 
@@ -26,15 +31,12 @@ interface DeepDiveSectionsProps {
   sections: ResolvedDeepDiveSection[];
   /** タブ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
-  /** このページの owner_token。¥299 課金導線 (FullAccessCta) に本人解決用として渡す。 */
-  ownerToken?: string;
   className?: string;
 }
 
 export function DeepDiveSections({
   sections,
   sceneImages,
-  ownerToken,
   className = "",
 }: DeepDiveSectionsProps) {
   // 初期選択は「恋愛傾向」(love) を明示指定 (並びが変わっても love を初期表示)。
@@ -106,32 +108,57 @@ export function DeepDiveSections({
         <p className="text-[#2E2E5C]/70 text-sm mb-4">{current.note}</p>
 
         {current.locked || current.body === null ? (
-          /* ===== 課金ロック (キャリア/成長・未課金) ===== */
-          <div className="rounded-3xl bg-[#F7F7FB] px-5 py-7 text-center">
-            {/* 本文の代わりのダミー目隠し (本文は載っていない) */}
-            <div aria-hidden="true" className="mb-6 space-y-3 select-none">
-              {[94, 80, 88, 66].map((w, i) => (
+          /* ===== 課金ロック (キャリア/成長・未課金): 16P 風ロックオーバーレイ =====
+              背面にぼかしたダミー本文、その上に中央ロックカードを重ねる。
+              CTA は Stripe を直接叩かず、最下部の課金カード (#full-access-card) へ誘導。 */
+          <div className="relative overflow-hidden rounded-3xl bg-[#F7F7FB] px-5 py-10">
+            {/* 背面: ぼかしダミー本文 (本文はそもそも props に載っていない) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-5 inset-y-8 select-none space-y-3 blur-[6px]"
+            >
+              {[96, 88, 92, 80, 90, 72, 86, 94, 78].map((w, i) => (
                 <div
                   key={i}
-                  className="mx-auto h-4 rounded-full bg-[#E7E7F0] blur-[2px]"
+                  className="h-4 rounded-full bg-[#E1E1EE]"
                   style={{ width: `${w}%` }}
                 />
               ))}
             </div>
-            <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              「{current.tab}」のくわしい深掘りは
-              <br />
-              全解放でひらきます。
-            </p>
-            <p className="mt-2 text-[#8A8AA3] font-bold text-[13px] leading-[1.6]">
-              一度きりの ¥299 で、
-              <br className="md:hidden" />
-              キャリアも成長も、ぜんぶ。
-            </p>
-            <div className="mt-5 flex flex-col items-center">
-              <div className="w-full max-w-[300px]">
-                <FullAccessCta ownerToken={ownerToken} />
-              </div>
+
+            {/* 前面: ロック解除カード (④ 友達から見たアナタ と同じ視覚言語) */}
+            <div className="relative mx-auto max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+              <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              </span>
+              <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
+                今すぐロックを解除
+              </p>
+              <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+                「{current.tab}」の深掘りをはじめ、
+                <br className="md:hidden" />
+                キャリアも成長も、ぜんぶ読めます。
+              </p>
+              <a
+                href={`#${FULL_ACCESS_CARD_ID}`}
+                onClick={scrollToFullAccessCard}
+                className="flex items-center justify-center w-full bg-[#2E2E5C] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] transition-all"
+              >
+                ¥299で全部よむ →
+              </a>
             </div>
           </div>
         ) : (

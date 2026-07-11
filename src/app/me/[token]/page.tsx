@@ -58,6 +58,7 @@ import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
+import { FullAccessPaywallCard } from "@/components/result/FullAccessPaywallCard";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { hasFullAccess } from "@/lib/entitlements";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
@@ -528,10 +529,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
           })}
 
-          {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
+          {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。
+              ロックタブのCTAは最下部の課金カード (#full-access-card) へ誘導する。 */}
           <DeepDiveSections
             sections={deepDiveSections}
-            ownerToken={token}
             sceneImages={{
               love: sceneImage("love"),
               career: sceneImage("work"),
@@ -662,6 +663,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
               ))}
             </div>
           </section>
+        )}
+
+        {/* ===== 最下部: 全解放 (¥299) 課金カード (未課金のみ) =====
+            深掘りのロックCTAなど、各所のロック導線はこのカードへスクロールしてくる。
+            決済ボタン (Stripe) はここ一箇所に集約する。 */}
+        {!deepDivePaid && (
+          <FullAccessPaywallCard
+            ownerToken={token}
+            imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+            imageAlt={dispName}
+            group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+          />
         )}
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
