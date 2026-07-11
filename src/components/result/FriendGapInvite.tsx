@@ -57,7 +57,7 @@ export function FriendGapInvite({
             画像ファイルは /public/heading-friend-invite.png にユーザーが配置 */}
       <div className="flex justify-center mb-6">
         <Image
-          src="/heading-friend-invite.png"
+          src="/heading-friend-invite.webp"
           alt="友達に診断してもらおう！"
           width={800}
           height={500}

@@ -40,7 +40,7 @@ export function PerceptionRankingTeaser({
           -mx-6 でカード内余白いっぱいまで広げて拡大 (375px 内に収まる範囲)。 */}
       <div className="-mx-6 mb-3">
         <Image
-          src="/heading-ranking.png"
+          src="/heading-ranking.webp"
           alt="相互理解度ランキングが見れるようになりました！"
           width={2078}
           height={555}

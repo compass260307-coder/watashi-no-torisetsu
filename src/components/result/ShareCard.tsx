@@ -62,7 +62,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/decorations/heart-pink.png"
+            src="/decorations/heart-pink.webp"
             alt=""
             width={44}
             height={44}
@@ -82,7 +82,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
           </span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/decorations/flower-yellow.png"
+            src="/decorations/flower-yellow.webp"
             alt=""
             width={40}
             height={40}
