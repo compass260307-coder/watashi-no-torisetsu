@@ -417,7 +417,7 @@ function RankingPromo() {
     // -mx-3 でカードの内パディングへ少し広げ、内側 px-2 で点線枠との余白を残しつつ拡大。
     <div className="border-2 border-dashed border-[#C9DEF5] rounded-[20px] -mx-3 px-2 py-3 mb-3 flex justify-center">
       <Image
-        src="/heading-ranking-promo.png"
+        src="/heading-ranking-promo.webp"
         alt="たくさん診断してもらってランキングを埋めよう"
         width={2129}
         height={628}
