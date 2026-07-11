@@ -49,6 +49,16 @@ const UNLOCKS: { title: string; desc: string }[] = [
   },
 ];
 
+// 相性ページ (variant="aisho") 用のピンク基調トーン。グループ色ではなく固定。
+//   mid は隅の折り紙装飾の中間色 (heroBg 相当)。
+const PINK_TONE = {
+  accent: "#D14E86",
+  softBg: "#FDEEF5",
+  border: "#F6D2E2",
+  panelBg: "#FBE1EC",
+  mid: "#EF93BC",
+};
+
 // カード隅の折り紙風ダイヤ装飾 (グループ色の3トーンで折り目の陰影)。
 function CornerDecor({
   dark,
@@ -116,14 +126,22 @@ export function FullAccessPromoCard({
   imageSrc,
   imageAlt = "",
   group = "unknown",
+  // ページ別の配色のみ切替 (コピー・項目・レイアウトは共通)。
+  //   "aisho" = 相性ページ用ピンク基調 / "self" (既定) = その人のグループ色。
+  variant = "self",
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
   imageAlt?: string;
   group?: ThirtyTwoGroup;
+  variant?: "self" | "aisho";
 }) {
-  const tone = cardColorsForGroup(group);
-  const { heroBg } = heroColorsForGroup(group); // 装飾の中間トーン
+  // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
+  // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
+  const groupTone = cardColorsForGroup(group);
+  const tone = variant === "aisho" ? PINK_TONE : groupTone;
+  const midTone =
+    variant === "aisho" ? PINK_TONE.mid : heroColorsForGroup(group).heroBg;
   const hasImage = !!imageSrc;
 
   return (
@@ -143,14 +161,14 @@ export function FullAccessPromoCard({
         {/* 右上・左下の折り紙風装飾 (カード角に半分被せて外へ) */}
         <CornerDecor
           dark={tone.accent}
-          mid={heroBg}
+          mid={midTone}
           light={tone.border}
           mirror
           className="pointer-events-none absolute -right-3 -top-3 z-10 h-14 w-14 rotate-[12deg] drop-shadow-sm md:h-16 md:w-16"
         />
         <CornerDecor
           dark={tone.accent}
-          mid={heroBg}
+          mid={midTone}
           light={tone.border}
           className="pointer-events-none absolute -bottom-3 -left-3 z-10 h-14 w-14 rotate-[-12deg] drop-shadow-sm md:h-16 md:w-16"
         />
