@@ -403,7 +403,15 @@ type ScenesResponse = {
   scenes?: { key: SceneKey; label: string; text: string }[];
 };
 
-function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+function CompatDetail({
+  a,
+  b,
+  onLockedChange,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  onLockedChange?: (locked: boolean | null) => void;
+}) {
   const r = useMemo(() => compat(a, b), [a, b]);
   // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
   // ①〜③・ランクはこの fetch に依存せず即時表示 (バイラル核は無傷)。
@@ -436,6 +444,11 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const sceneData: ScenesResponse | null =
     sceneState?.key === pairKey ? sceneState.resp : null;
   const sceneUnlocked = sceneData?.locked === false;
+  // 課金状態 (locked) を親 (AishoInner) へ通知 → 最下部の課金カードの出し分けに使う。
+  const sceneLocked = sceneData?.locked ?? null;
+  useEffect(() => {
+    onLockedChange?.(sceneLocked);
+  }, [sceneLocked, onLockedChange]);
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
     sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
@@ -665,7 +678,15 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
 // ---- 結果ブロック ---------------------------------------------------------
 // /me ヒーローと同じ文法: グループ色の全幅帯 + 白抜きの大% + 斜めカットで白へ接続。
 
-function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+function ResultBlock({
+  a,
+  b,
+  onLockedChange,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  onLockedChange?: (locked: boolean | null) => void;
+}) {
   const r = useMemo(() => compat(a, b), [a, b]);
   const [band0, band1] = HERO_BAND;
   // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
@@ -728,7 +749,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
       </div>
 
       {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
-      <CompatDetail a={a} b={b} />
+      <CompatDetail a={a} b={b} onLockedChange={onLockedChange} />
     </section>
   );
 }
@@ -866,6 +887,9 @@ function TypeGrid({
 
 function AishoInner() {
   const searchParams = useSearchParams();
+  // ④シーンのサーバゲート結果 (CompatDetail から通知)。true=未課金 / false=課金済 / null=読込中。
+  // 課金済み・読込中は最下部の課金カードを出さないための判定に使う。
+  const [aishoLocked, setAishoLocked] = useState<boolean | null>(null);
   // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
   const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
     const a = searchParams.get("a");
@@ -1014,7 +1038,7 @@ function AishoInner() {
             {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
                 足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
             <div ref={resultRef} className="scroll-mt-[72px]">
-              <ResultBlock a={slotA} b={slotB} />
+              <ResultBlock a={slotA} b={slotB} onLockedChange={setAishoLocked} />
             </div>
           </>
         ) : (
@@ -1087,8 +1111,9 @@ function AishoInner() {
         /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
         FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
         相性①〜④は従来どおり無料・ここではゲートしない。
-        ※ カードは結果表示 (resultShown) のときだけ出す。選択モード・診断中(analyzing)には出さない。 */}
-    {resultShown && (
+        ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
+        選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
+    {resultShown && aishoLocked === true && (
       <FullAccessPromoCard
         variant="aisho"
         imageSrc="/characters/scenes/unknown_love.webp"
