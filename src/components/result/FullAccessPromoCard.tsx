@@ -131,7 +131,9 @@ export function FullAccessPromoCard({
       <div
         id="fullaccess-promo"
         className={`relative mx-auto w-full scroll-mt-[80px] rounded-3xl border-2 shadow-[0_16px_48px_rgba(46,46,92,0.12)] ${
-          hasImage ? "max-w-[720px] md:flex md:items-stretch" : "max-w-[460px]"
+          hasImage
+            ? "max-w-[1080px] md:flex md:items-stretch"
+            : "max-w-[460px]"
         }`}
         style={{ backgroundColor: tone.softBg, borderColor: tone.border }}
       >
