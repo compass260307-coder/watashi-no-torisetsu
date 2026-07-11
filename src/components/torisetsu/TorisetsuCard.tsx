@@ -32,7 +32,7 @@ export function TorisetsuCard({
 }: TorisetsuCardProps) {
   const [hasError, setHasError] = useState(false);
   const { width, height } = SIZE_PRESETS[size];
-  const src = `/cards/${fullCode}.png`;
+  const src = `/cards/${fullCode}.jpg`;
 
   // フォールバック: 画像が見つからない / まだ生成中の場合
   if (hasError) {

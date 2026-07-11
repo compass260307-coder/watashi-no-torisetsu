@@ -3,7 +3,7 @@
 // feat/top-page: トップページ ヒーロー (16Personalities 型・キービジュアル 1 枚構成)
 //
 // 構成:
-//   - 背景: public/characters/keyvisual.png をフルブリード object-cover /
+//   - 背景: public/characters/keyvisual.webp をフルブリード object-cover /
 //     object-position: center bottom → どの画面でもキャラ帯が下端に常に見える
 //     (cover で外周フチもクロップ)。
 //   - テキスト層: ヒーロー上から ~13% にブロックを置き中央寄せ (縦中央にはしない)。
@@ -27,13 +27,13 @@ export default function TopHero() {
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual.png"
+        href="/characters/keyvisual.webp"
         media="(min-width: 640px)"
       />
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual-mobile.png"
+        href="/characters/keyvisual-mobile.webp"
         media="(max-width: 639px)"
       />
     <section

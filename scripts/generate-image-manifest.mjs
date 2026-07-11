@@ -86,9 +86,9 @@ const manifest = {
   // 顔ズーム版 (16P の顔アバター風・/aisho のキャラカード用)。
   // public/characters/face/<slug>.webp を置くだけで次のビルドから自動使用。
   face: listDir("characters/face"),
-  // 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<S|A|B|C>.png を置くだけで
+  // 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<S|A|B|C>.webp を置くだけで
   // 結果ページの主役表示に使われる (無いランクは文字バッジにフォールバック)。
-  ranks: listDir("aisho/ranks", ".png").map((f) => f.replace(/\.png$/, "")),
+  ranks: listDir("aisho/ranks", ".webp").map((f) => f.replace(/\.webp$/, "")),
   cutTopMargin,
   cutBottomMargin,
 };

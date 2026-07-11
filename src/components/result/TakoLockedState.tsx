@@ -17,9 +17,9 @@ const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 
 const REMAINING_VISUALS = {
-  1: { src: "/tako/ato-1.png", width: 1525, height: 456 },
-  2: { src: "/tako/ato-2.png", width: 1526, height: 456 },
-  3: { src: "/tako/ato-3.png", width: 1525, height: 457 },
+  1: { src: "/tako/ato-1.webp", width: 1525, height: 456 },
+  2: { src: "/tako/ato-2.webp", width: 1526, height: 456 },
+  3: { src: "/tako/ato-3.webp", width: 1525, height: 457 },
 } as const;
 
 type RemainingCount = keyof typeof REMAINING_VISUALS;

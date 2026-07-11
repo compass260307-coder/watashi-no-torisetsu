@@ -21,13 +21,13 @@ export function CardDownloadButton({
     setDownloading(true);
     setErrored(false);
     try {
-      const res = await fetch(`/cards/${fullCode}.png`);
+      const res = await fetch(`/cards/${fullCode}.jpg`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `watashi-torisetsu-${fullCode}.png`;
+      a.download = `watashi-torisetsu-${fullCode}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

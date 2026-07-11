@@ -59,7 +59,7 @@ function heroImagePath(id: ThirtyTwoTypeId): string {
 // 無ければ null (呼び出し側で文字バッジにフォールバック)。
 const RANK_IMAGES = new Set(characterImages.ranks as string[]);
 function rankImagePath(rank: CompatRank): string | null {
-  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.png` : null;
+  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.webp` : null;
 }
 
 // カードのサムネ: 顔ズーム版 (characters/face・16P の顔アバター風) があれば優先。

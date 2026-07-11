@@ -91,7 +91,7 @@ export async function generateMetadata({
     "複数の眼から見えた、本当の自分のトリセツ。";
   const ogImageCode = pickOgImageFullCode(row.source_summary);
   const ogImageUrl = ogImageCode
-    ? `${PUBLIC_BASE_URL}/cards/${ogImageCode}.png`
+    ? `${PUBLIC_BASE_URL}/cards/${ogImageCode}.jpg`
     : `${PUBLIC_BASE_URL}/ogp-v4.png`;
   const pageUrl = `${PUBLIC_BASE_URL}/integrated/${id}`;
 
