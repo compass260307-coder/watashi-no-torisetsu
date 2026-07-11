@@ -10,10 +10,9 @@
 //   - events は owner_token で個別削除 (FK 無し)
 //   - 物理削除のみ。冪等。
 
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { sendDeletionCompleteMessage } from "@/lib/line-notify";
 
 export const runtime = "nodejs";
 
@@ -125,18 +124,7 @@ export async function POST(request: NextRequest) {
     deletionCounts.users = count ?? 0;
   }
 
-  // LINE 連携済みユーザーには削除完了通知 (fire-and-forget)
-  // Phase 2 で LINE 通知が復活した際にもこの経路は維持される。
-  if (linkedLineUserId) {
-    const persistedLineUserId = linkedLineUserId;
-    after(async () => {
-      try {
-        await sendDeletionCompleteMessage({ lineUserId: persistedLineUserId });
-      } catch (err) {
-        console.error("[account/delete] deletion_complete notify error:", err);
-      }
-    });
-  }
+  // LINE 撤去: 削除完了の LINE 通知は廃止。
 
   console.log(
     "[account/delete] completed for",
