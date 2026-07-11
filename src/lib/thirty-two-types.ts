@@ -22,7 +22,6 @@ import {
   type SixteenTypeId,
   sixteenTypes,
   classifySixteenType,
-  characterImagePath,
   animalSlugForType,
 } from "./sixteen-types";
 
@@ -110,16 +109,6 @@ export const thirtyTwoTypes: Record<ThirtyTwoTypeId, ThirtyTwoType> = (() => {
 /** 32 タイプのメタデータ取得 */
 export function thirtyTwoType(id: ThirtyTwoTypeId): ThirtyTwoType {
   return thirtyTwoTypes[id];
-}
-
-/**
- * 32 タイプのキャラ画像パス。
- * ⚠️ PoC 仮: N 違いでも同じ 16 動物画像を流用 (characterImagePath(base))。
- *   本実装では N 差分ビジュアル、または既存の 32 カード画像
- *   (/public/cards/{fullCode}.png) を割り当てる。
- */
-export function thirtyTwoCharacterImagePath(id: ThirtyTwoTypeId): string {
-  return characterImagePath(baseIdOf(id));
 }
 
 /** 全 32 タイプ ID 配列 (図鑑・検証用) */
