@@ -6,11 +6,11 @@
 // 目的: 旧導線は「キャリア」しか訴求できておらず「友達の個人結果も解放される」ことが
 //   伝わらなかった。MBTI 式に「解放される中身を項目で見せて価値を可視化」する。
 //
-// 解放される 4 項目 (すべて実際に課金で解放される中身。水増ししない):
-//   - キャリアの深掘りアドバイス   (/me 深掘りタブ・課金ゲート)
-//   - 成長のヒント                 (/me 深掘りタブ・課金ゲート)
-//   - 友達が見た「ほんとうのアナタ」(/tako 個別ページ・課金ゲート)
-//   - 相性のシーン別トリセツ       (/aisho ④・PR4 で課金ゲート)
+// 解放される項目 (見出し+説明の 3 項目。UNLOCKS 定数で管理):
+//   - 全てのセクションを解放     (/me 深掘りタブ キャリア/成長・課金ゲート)
+//   - ダウンロード可能なレポート (トリセツのまとめ保存)
+//   - 友達ひとりずつの回答       (/tako 個別ページ・課金ゲート)
+// ※ /aisho 相性④も full で解放されるが、カード項目は上記3つに集約 (オーナー確定)。
 //
 // id="fullaccess-promo": ページ内のロック要素からの scrollToPaywall() のスクロール先
 //   (着地パルスも同 id を対象にするため必ず維持)。
@@ -29,20 +29,19 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 const LIST_PRICE = "¥1,299";
 const OFF_PERCENT = 77;
 
-// 解放される 4 項目 (実際に課金で解放される中身のみ)。
+// 解放される項目 (見出し + マイクロコピー)。
 const UNLOCKS: { title: string; desc: string }[] = [
   {
-    title: "キャリアの深掘りアドバイス",
-    desc: "向いてる働き方・環境・強みの活かし方まで。",
-  },
-  { title: "成長のヒント", desc: "伸ばし方・つまずきポイント・次の一歩。" },
-  {
-    title: "友達が見た「ほんとうのアナタ」",
-    desc: "ひとりずつ、全員ぶんの個人結果とギャップ。",
+    title: "全てのセクションを解放",
+    desc: "向いてる仕事、強みの活かし方、伸ばし方やつまずき対策まで──ロック中の深掘りが全部読める。",
   },
   {
-    title: "相性のシーン別トリセツ",
-    desc: "恋愛・友情・仕事・すれ違い、場面ごとの付き合い方。",
+    title: "ダウンロード可能なレポート",
+    desc: "アナタのトリセツを1枚にまとめて保存。あとで見返したり、友達に見せたりできる。",
+  },
+  {
+    title: "友達ひとりずつの回答",
+    desc: "誰が・どう見てるかを名前ごとに。もらったメッセージも、自己認識とのズレも全文で。",
   },
 ];
 
@@ -126,7 +125,7 @@ export function FullAccessPromoCard({
   return (
     <section
       aria-labelledby="fullaccess-promo-title"
-      className="px-4 pt-6 pb-14 md:px-8"
+      className="px-4 pt-6 pb-10 md:px-8"
     >
       <div
         id="fullaccess-promo"
@@ -171,8 +170,8 @@ export function FullAccessPromoCard({
         <div
           className={
             hasImage
-              ? "px-6 py-8 text-left md:flex-1 md:px-9 md:py-9"
-              : "px-6 py-8 text-center"
+              ? "px-6 py-6 text-left md:flex-1 md:px-9 md:py-6"
+              : "px-6 py-6 text-center"
           }
         >
           {/* バッジ (★ + 今すぐロックを解除) */}
@@ -193,22 +192,22 @@ export function FullAccessPromoCard({
           {/* 見出し */}
           <h2
             id="fullaccess-promo-title"
-            className="mt-3 text-[24px] font-black leading-[1.35] text-[#2E2E5C] md:text-[28px]"
+            className="mt-2.5 text-[27px] font-black leading-[1.3] text-[#2E2E5C] md:text-[32px]"
           >
             あなたの性格タイプ
-            <br className="hidden md:block" />
+            <br />
             についてのすべてを解放
           </h2>
 
           {/* 続編訴求 */}
-          <p className="mt-3 text-[14px] font-bold leading-[1.7] text-[#5A5A72]">
+          <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
             あなたの詳細な性格タイプから、友達から見たアナタの印象まで、
             自分では気づけなかった魅力や本質を1つのパッケージにまとめました。
           </p>
 
           {/* 解放される 4 項目 */}
           <ul
-            className={`mt-6 grid gap-4 text-left ${
+            className={`mt-4 grid gap-2.5 text-left ${
               hasImage ? "" : "mx-auto max-w-[320px]"
             }`}
           >
@@ -219,7 +218,7 @@ export function FullAccessPromoCard({
 
           {/* 価格 (¥1,299 → ¥299 の値引き表記) */}
           <div
-            className={`mt-7 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+            className={`mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
               hasImage ? "" : "justify-center"
             }`}
           >
@@ -239,13 +238,6 @@ export function FullAccessPromoCard({
               ¥299
             </span>
           </div>
-          <p
-            className={`mt-1.5 text-[12.5px] font-bold text-[#8A8AA3] ${
-              hasImage ? "" : "text-center"
-            }`}
-          >
-            一度きりの購入で、ずっと見返せる。サブスクじゃない。
-          </p>
 
           {/* CTA (金額はカード側に出したのでボタンからは外す) */}
           <div className="mt-4">
@@ -254,10 +246,10 @@ export function FullAccessPromoCard({
             </FullAccessCta>
           </div>
 
-          {/* 30日間の返金保証 */}
+          {/* 30日間の返金保証。SP は左下の折り紙装飾と被らないよう中央寄せ、md+ は左寄せ。 */}
           <p
-            className={`mt-3 flex items-center gap-1.5 text-[12px] font-bold text-[#7A7A92] ${
-              hasImage ? "justify-start" : "justify-center"
+            className={`mt-2.5 flex items-center gap-1.5 text-[12px] font-bold text-[#7A7A92] ${
+              hasImage ? "justify-center md:justify-start" : "justify-center"
             }`}
           >
             <svg
