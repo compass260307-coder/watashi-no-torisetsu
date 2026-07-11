@@ -34,6 +34,14 @@ const nextConfig: NextConfig = {
         destination: "/zukan/all",
         permanent: true,
       },
+      // 旧 self-result 系パス (Day 9 で /me/[token] に統合)。以前は各 page.tsx が
+      // permanentRedirect していたが、ページを撤去し config redirect に一本化。
+      // 過去発行 URL (完成通知メール/SNS/口コミ) を壊さないため恒久 301 で /me へ。
+      { source: "/result/:ownerToken", destination: "/me/:ownerToken", permanent: true },
+      { source: "/report/:ownerToken", destination: "/me/:ownerToken", permanent: true },
+      { source: "/perceptions/:ownerToken", destination: "/me/:ownerToken", permanent: true },
+      // /zukan/all (公開図鑑) は除外し、それ以外の /zukan/<token> のみ /me へ。
+      { source: "/zukan/:ownerToken((?!all$).+)", destination: "/me/:ownerToken", permanent: true },
     ];
   },
 };
