@@ -26,6 +26,8 @@ import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { MinnaTypeProse } from "@/components/result/MinnaTypeProse";
 import { FriendList } from "@/components/result/FriendList";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { hasFullAccess } from "@/lib/entitlements";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
 import {
@@ -204,6 +206,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  // PR3: 閲覧者(本人)が全解放済みか。未課金なら友達カードのタップは課金カードへスライドし、
+  // 最下部に課金案内カードを出す。preview は常に未課金扱い (ロックUIを確認できるように)。
+  const takoFull =
+    previewType || previewLocked
+      ? false
+      : await hasFullAccess(data.user.id as string);
+
   // 解除後ヒーロー用: 友達平均キャラのグループから帯トーンを解決 (/me と共通)。
   const takoHero = data.friendCharacter
     ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
@@ -341,7 +350,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   友達からの回答
                 </h2>
               </div>
-              <FriendList friends={data.friends} token={token} />
+              <FriendList
+                friends={data.friends}
+                token={token}
+                hasFullAccess={takoFull}
+              />
             </section>
 
             {/* 友達にシェア (もっと友達に診断してもらう招待)。見出し行は撤去し、招待帯だけ残す。 */}
@@ -386,6 +399,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         )}
         </div>
       </main>
+      {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
+      {!takoFull && <FullAccessPromoCard ownerToken={token} />}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />
     </>

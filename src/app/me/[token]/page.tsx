@@ -70,6 +70,7 @@ import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
@@ -531,7 +532,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
           <DeepDiveSections
             sections={deepDiveSections}
-            ownerToken={token}
             sceneImages={{
               love: sceneImage("love"),
               career: sceneImage("work"),
@@ -668,6 +668,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
+    {!deepDivePaid && <FullAccessPromoCard ownerToken={token} />}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     <TopFooter />

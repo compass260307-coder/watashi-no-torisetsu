@@ -31,6 +31,7 @@ import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
 import characterImages from "@/generated/character-images.json";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
 const NAVY = "#2E2E5C";
@@ -957,6 +958,11 @@ function AishoInner() {
         )}
       </div>
     </main>
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
+        /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
+        FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
+        相性①〜④は従来どおり無料・ここではゲートしない。 */}
+    <FullAccessPromoCard />
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
     <TopFooter />
