@@ -31,6 +31,79 @@ export const maxDuration = 30;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
+// ===== 「買いたくなる」Checkout 表示の定数 =====
+// 実課金額 (SALE) は必ず STRIPE_PRICE_FULL_ACCESS (Price ID) の実額と一致していること。
+// LIST は値引き表示のアンカー (二重価格)。カード側の ¥1,299 と揃える。
+const SALE_JPY = 299;
+const LIST_JPY = 1299;
+const DISCOUNT_JPY = LIST_JPY - SALE_JPY; // 1000
+// 値引きアンカー用クーポン (once・amount_off=DISCOUNT_JPY)。id に金額を埋めて取り違え防止。
+const ANCHOR_COUPON_ID = `full-access-anchor-off${DISCOUNT_JPY}-jpy`;
+
+const PRODUCT_NAME = "ワタシのトリセツ｜フルアクセス";
+const PRODUCT_DESC =
+  "深掘り(キャリア・成長)/友達ひとりずつの本音/シーン別の相性まで、ぜんぶ解放。買い切り・追加課金なし。";
+// Checkout 左の商品サムネ (ブランド OG)。Stripe が取得できる公開 https のみ許可。
+const PRODUCT_IMAGE =
+  BASE_URL.startsWith("https://") ? `${BASE_URL}/ogp-v4.png` : null;
+
+// getStripe() の非 null 戻り値 = Stripe クライアント型。
+type StripeClient = NonNullable<ReturnType<typeof getStripe>>;
+
+// 値引きアンカー用クーポンを取得 (無ければ作成)。amount_off が一致するものだけ採用。
+// ★実課金安全: 解決できなければ null を返し、呼び出し側は Price ID (実額) にフォールバックする。
+async function resolveAnchorCoupon(stripe: StripeClient): Promise<string | null> {
+  try {
+    const c = await stripe.coupons.retrieve(ANCHOR_COUPON_ID);
+    if (
+      !c.deleted &&
+      c.valid &&
+      c.amount_off === DISCOUNT_JPY &&
+      (c.currency ?? "jpy") === "jpy"
+    ) {
+      return c.id;
+    }
+    // 既存だが金額/通貨が不一致 → 誤課金回避のため使わない。
+    return null;
+  } catch {
+    // 未作成 → 作成 (id 固定で冪等)。
+    try {
+      const created = await stripe.coupons.create({
+        id: ANCHOR_COUPON_ID,
+        amount_off: DISCOUNT_JPY,
+        currency: "jpy",
+        duration: "once",
+        name: "初回特別",
+      });
+      return created.id;
+    } catch {
+      // 競合で他リクエストが作成済み → もう一度取得を試みる。
+      try {
+        const c = await stripe.coupons.retrieve(ANCHOR_COUPON_ID);
+        return !c.deleted && c.valid && c.amount_off === DISCOUNT_JPY
+          ? c.id
+          : null;
+      } catch {
+        return null;
+      }
+    }
+  }
+}
+
+// Price ID の実額が SALE_JPY と一致するか検証 (ダッシュボードで価格変更された場合に
+// 値引き経路 [LIST−DISCOUNT] で誤課金しないための安全弁)。
+async function priceChargesSale(
+  stripe: StripeClient,
+  priceId: string,
+): Promise<boolean> {
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+    return price.unit_amount === SALE_JPY && price.currency === "jpy";
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
@@ -106,14 +179,60 @@ export async function POST(request: NextRequest) {
       ? buyer.email
       : undefined;
 
+  // ===== 「買いたくなる」表示: 商品説明/画像 + 値引き表示 (¥1,299 → ¥299) =====
+  // 安全設計: 値引き経路 (price_data LIST + クーポン) は
+  //   ① Price ID の実額が SALE (¥299) と一致し ② クーポンが amount_off=DISCOUNT で解決
+  //   できたときだけ使う。どちらか欠けたら Price ID (実額) にフォールバックし、
+  //   ¥1,299 を誤課金しない。商品説明/画像は両経路とも付ける。
+  const productData: {
+    name: string;
+    description: string;
+    images?: string[];
+  } = {
+    name: PRODUCT_NAME,
+    description: PRODUCT_DESC,
+    ...(PRODUCT_IMAGE ? { images: [PRODUCT_IMAGE] } : {}),
+  };
+
+  const [couponId, saleOk] = await Promise.all([
+    resolveAnchorCoupon(stripe),
+    priceChargesSale(stripe, priceId),
+  ]);
+  const useDiscount = !!couponId && saleOk;
+
+  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE (=¥299) を課金。
+  //   商品名・説明・画像もここで付く (リッチ表示)。
+  // フォールバック: ダッシュボードの Price ID をそのまま使う (実課金額は常にダッシュボード源泉。
+  //   ¥1,299 を誤課金しない)。この経路は商品表示もダッシュボード Product 依存。
+  const lineItems = useDiscount
+    ? [
+        {
+          price_data: {
+            currency: "jpy",
+            unit_amount: LIST_JPY,
+            product_data: productData,
+          },
+          quantity: 1,
+        },
+      ]
+    : [{ price: priceId, quantity: 1 }];
+
   // ===== Stripe Session 作成 =====
   let stripeSession;
   try {
     stripeSession = await stripe.checkout.sessions.create({
       mode: "payment", // 買い切り (subscription ではない)
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
+      ...(useDiscount ? { discounts: [{ coupon: couponId! }] } : {}),
       client_reference_id: userId,
       ...(customerEmail ? { customer_email: customerEmail } : {}),
+      // 支払い直前の安心コピー (買い切り・返金保証)。
+      custom_text: {
+        submit: {
+          message:
+            "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき・追加課金なし。",
+        },
+      },
       // 既存 webhook は metadata.user_id を読む。product='full_access' で分岐する。
       metadata: {
         user_id: userId,
