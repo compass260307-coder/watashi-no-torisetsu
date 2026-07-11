@@ -40,11 +40,11 @@ async function loadShareData(code: string): Promise<ShareData | null> {
   >;
   const t32 = classifyThirtyTwoType(scores);
   const essence = thirtyTwoEssence(t32);
-  // thirtyTwoImagePath = /characters/v3/{slug}.png → slug を取り出し og-characters/{slug}.jpg に。
+  // thirtyTwoImagePath = /characters/v3/{slug}.webp → slug を取り出し og-characters/{slug}.jpg に。
   const slug = thirtyTwoImagePath(t32)
     .split("/")
     .pop()!
-    .replace(".png", "");
+    .replace(/\.\w+$/, "");
   const name = ((data.display_name as string | null) ?? "").trim() || "ある人";
   return { name, essence, slug };
 }
@@ -108,7 +108,7 @@ export default async function SharePage({
       {d ? (
         <>
           <Image
-            src={`/characters/v3/${d.slug}.png`}
+            src={`/characters/v3/${d.slug}.webp`}
             alt={d.essence}
             width={320}
             height={320}

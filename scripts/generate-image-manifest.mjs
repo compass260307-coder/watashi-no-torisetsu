@@ -9,86 +9,48 @@
 // /me ヒーローは SP で画像を -mt-8 引き上げて OCEAN 行と詰めているが、
 // 家などで上端まで絵が詰まったキャラは称号/OCEAN に被るため、
 // 余白の少ないキャラだけ引き上げを自動で弱める用 (page.tsx 側で参照)。
+//
+// v3/cut/scenes/face は near-lossless WebP へ移行済み (容量削減・見た目不変)。
+// 余白計測は sharp で raw アルファを読むためフォーマット非依存。
+// aisho/ranks は LINE/OG 都合で PNG のまま。
 import fs from "node:fs";
 import path from "node:path";
-import zlib from "node:zlib";
+import sharp from "sharp";
 
 const root = process.cwd();
-const listDir = (rel) => {
+const listDir = (rel, ext = ".webp") => {
   try {
-    return fs.readdirSync(path.join(root, "public", rel)).filter((f) => f.endsWith(".png")).sort();
+    return fs
+      .readdirSync(path.join(root, "public", rel))
+      .filter((f) => f.toLowerCase().endsWith(ext))
+      .sort();
   } catch {
     return [];
   }
 };
 
-// PNG の上下端の透過余白を割合で返す { top, bottom }。
+// 画像の上下端の透過余白を割合で返す { top, bottom }。
 //   top    = 上端〜最初の不透明行 / 高さ
 //   bottom = 最後の不透明行〜下端 / 高さ (下側の透過余白の割合)
-// 8bit RGBA・非インターレースのみ対応 (cut 画像はすべてこの形式)。
-// 対応外・パース失敗は null (呼び出し側で既定挙動にフォールバック)。
-function pngAlphaMargins(file) {
+// sharp で RGBA raw を読むので PNG/WebP どちらでも動く。
+// 失敗時は null (呼び出し側で既定挙動にフォールバック)。
+async function alphaMargins(file) {
   try {
-    const buf = fs.readFileSync(file);
-    // シグネチャ確認
-    if (buf.readUInt32BE(0) !== 0x89504e47) return null;
-    let pos = 8;
-    let w = 0, h = 0, bitDepth = 0, colorType = 0, interlace = 0;
-    const idats = [];
-    while (pos + 12 <= buf.length) {
-      const len = buf.readUInt32BE(pos);
-      const type = buf.toString("ascii", pos + 4, pos + 8);
-      const data = buf.subarray(pos + 8, pos + 8 + len);
-      if (type === "IHDR") {
-        w = data.readUInt32BE(0);
-        h = data.readUInt32BE(4);
-        bitDepth = data[8];
-        colorType = data[9];
-        interlace = data[12];
-      } else if (type === "IDAT") {
-        idats.push(data);
-      } else if (type === "IEND") {
-        break;
-      }
-      pos += 12 + len;
-    }
-    if (bitDepth !== 8 || colorType !== 6 || interlace !== 0) return null;
-    const raw = zlib.inflateSync(Buffer.concat(idats));
-    const bpp = 4;
-    const stride = w * bpp;
-    let prev = Buffer.alloc(stride);
+    const { data, info } = await sharp(file)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const { width: w, height: h, channels } = info;
+    const stride = w * channels;
     let firstOpaque = -1;
     let lastOpaque = -1;
     for (let y = 0; y < h; y++) {
-      const off = y * (stride + 1);
-      const filter = raw[off];
-      const row = Buffer.from(raw.subarray(off + 1, off + 1 + stride));
-      for (let x = 0; x < stride; x++) {
-        const a = x >= bpp ? row[x - bpp] : 0;
-        const b = prev[x];
-        const c = x >= bpp ? prev[x - bpp] : 0;
-        let v = row[x];
-        switch (filter) {
-          case 1: v = (v + a) & 255; break;
-          case 2: v = (v + b) & 255; break;
-          case 3: v = (v + ((a + b) >> 1)) & 255; break;
-          case 4: {
-            const p = a + b - c;
-            const pa = Math.abs(p - a);
-            const pb = Math.abs(p - b);
-            const pc = Math.abs(p - c);
-            const pr = pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
-            v = (v + pr) & 255;
-            break;
-          }
-        }
-        row[x] = v;
-      }
-      prev = row;
+      const rowOff = y * stride;
       // ノイズ除け: alpha>20 のピクセルが 4 つ以上ある行を「絵のある行」とみなす
       let opaque = 0;
-      for (let x = 3; x < stride; x += 4) {
-        if (row[x] > 20 && ++opaque >= 4) break;
+      for (let x = 0; x < w; x++) {
+        const a = data[rowOff + x * channels + (channels - 1)];
+        if (a > 20 && ++opaque >= 4) break;
       }
       if (opaque >= 4) {
         if (firstOpaque === -1) firstOpaque = y;
@@ -109,7 +71,9 @@ const cut = listDir("characters/cut");
 const cutTopMargin = {};
 const cutBottomMargin = {};
 for (const f of cut) {
-  const m = pngAlphaMargins(path.join(root, "public", "characters", "cut", f));
+  const m = await alphaMargins(
+    path.join(root, "public", "characters", "cut", f),
+  );
   if (m !== null) {
     cutTopMargin[f] = m.top;
     cutBottomMargin[f] = m.bottom;
@@ -120,11 +84,11 @@ const manifest = {
   cut,
   scenes: listDir("characters/scenes"),
   // 顔ズーム版 (16P の顔アバター風・/aisho のキャラカード用)。
-  // public/characters/face/<slug>.png を置くだけで次のビルドから自動使用。
+  // public/characters/face/<slug>.webp を置くだけで次のビルドから自動使用。
   face: listDir("characters/face"),
   // 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<S|A|B|C>.png を置くだけで
   // 結果ページの主役表示に使われる (無いランクは文字バッジにフォールバック)。
-  ranks: listDir("aisho/ranks").map((f) => f.replace(/\.png$/, "")),
+  ranks: listDir("aisho/ranks", ".png").map((f) => f.replace(/\.png$/, "")),
   cutTopMargin,
   cutBottomMargin,
 };

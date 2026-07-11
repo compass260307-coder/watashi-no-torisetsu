@@ -59,12 +59,12 @@ const cutFiles = readDirSafe(CUT_DIR);
 
 // slug = 静止画ファイル名のベース (thirtyTwoImagePath から導出)
 function slugOf(id: ThirtyTwoTypeId): string {
-  return path.basename(thirtyTwoImagePath(id), ".png");
+  return path.basename(thirtyTwoImagePath(id), ".webp");
 }
 
 // 表示用静止画: 透過版があればそれ、なければ元画像 (v3) にフォールバック
 function displayImagePath(id: ThirtyTwoTypeId): string {
-  const file = `${slugOf(id)}.png`;
+  const file = `${slugOf(id)}.webp`;
   return cutFiles.has(file)
     ? `/characters/cut/${file}`
     : thirtyTwoImagePath(id);

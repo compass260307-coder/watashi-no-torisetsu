@@ -226,9 +226,9 @@ export function thirtyTwoZukanDesc(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].zukanDesc;
 }
 
-/** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */
+/** 32キャラの画像パス (/characters/v3/<slug>.webp)。画像未配置でもパスだけ組める。 */
 export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
-  return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.png`;
+  return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.webp`;
 }
 
 /** 32キャラの生息地グループ */

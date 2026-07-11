@@ -322,12 +322,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
   //   解決順: キャラ別 <slug>_<variant>.png → グループ共通 <group>_<variant>.png
   //   (例 jellyfish_N_love.png → sea_love.png)
-  const sceneSlug = path.basename(v3Image, ".png");
+  const sceneSlug = path.basename(v3Image).replace(/\.\w+$/, "");
   const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
     const candidates = [
-      `${sceneSlug}_${variant}.png`,
-      ...(sceneGroup ? [`${sceneGroup}_${variant}.png`] : []),
+      `${sceneSlug}_${variant}.webp`,
+      ...(sceneGroup ? [`${sceneGroup}_${variant}.webp`] : []),
     ];
     for (const name of candidates) {
       if (characterImages.scenes.includes(name)) return `/characters/scenes/${name}`;
