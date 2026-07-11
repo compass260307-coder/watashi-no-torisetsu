@@ -218,6 +218,14 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
     : null;
 
+  // ロック空状態 (友達3人未満=未達成) か。下の描画分岐と同条件。
+  // 課金カード上のセクションタイトルは、この未達成ページでのみ出す (完成ページには出さない)。
+  const isTakoLocked =
+    !data.unlocked ||
+    !data.minnaContext ||
+    !data.friendCharacter ||
+    !takoHero;
+
   // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
   const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
 
@@ -236,8 +244,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           !data.minnaContext ||
           !data.friendCharacter ||
           !takoHero ? (
-            /* ===== ロック空状態 (友達3人未満)。FV は /aisho と同じ幅 (1080 / 2xl 1400)。 ===== */
-            <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px] pt-6">
+            /* ===== ロック空状態 (友達3人未満)。本文幅は /me・フッターと統一 (1080)。 ===== */
+            <div className="mx-auto max-w-[1080px] pt-6">
               <TakoLockedState
                 friendCount={data.friendEvalCount}
                 threshold={data.threshold}
@@ -408,17 +416,32 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           ? thirtyTwoGroup(data.friendCharacter.type32)
           : "unknown";
         return (
-          <FullAccessPromoCard
-            ownerToken={token}
-            // /me のカードと同じグループ別シーン挿絵 (無ければキャラ画像にフォールバック)。
-            imageSrc={
-              sceneImageForGroup(promoGroup, "work") ??
-              sceneImageForGroup(promoGroup, "normal1") ??
-              data.friendCharacter?.imageSrc
-            }
-            imageAlt={data.friendCharacter?.essence ?? ""}
-            group={promoGroup}
-          />
+          <>
+            {/* /tako 専用: 課金カードの上に中央寄せのセクションタイトル。
+                未達成 (ロック空状態) ページのみ表示。完成した結果ページには出さない。 */}
+            {isTakoLocked && (
+              <div className="mx-auto max-w-[1080px] px-4 pt-3 text-left md:px-8 md:pt-5 md:text-center">
+                <h2 className="text-[26px] font-black leading-[1.35] text-[#2E2E5C] md:text-[34px]">
+                  トリセツを完成させよう
+                </h2>
+                {/* PC は1行 (whitespace-nowrap)、SP は自然折り返し。 */}
+                <p className="mx-auto mt-3 max-w-[560px] text-[14px] font-bold leading-[1.7] text-[#8A8AA3] md:max-w-none md:whitespace-nowrap md:text-[15px]">
+                  友達ひとりずつの本音も、自分の深掘りも。この先ぜんぶ、読めるようになります。
+                </p>
+              </div>
+            )}
+            <FullAccessPromoCard
+              ownerToken={token}
+              // /me のカードと同じグループ別シーン挿絵 (無ければキャラ画像にフォールバック)。
+              imageSrc={
+                sceneImageForGroup(promoGroup, "work") ??
+                sceneImageForGroup(promoGroup, "normal1") ??
+                data.friendCharacter?.imageSrc
+              }
+              imageAlt={data.friendCharacter?.essence ?? ""}
+              group={promoGroup}
+            />
+          </>
         );
       })()}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
