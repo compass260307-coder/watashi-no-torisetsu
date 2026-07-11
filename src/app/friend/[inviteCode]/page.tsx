@@ -29,7 +29,6 @@ import {
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
-import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
@@ -53,7 +52,9 @@ import type { AnswerValue } from "@/lib/types";
 //   旧フロー: intro (名前入力) → scale → choice → consent → submitting
 //   新フロー: intro (名前なし) → scale → choice → consent → name → submitting
 //   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
-type Phase = "scale" | "choice" | "message" | "submitting" | "error";
+// submitting フェーズ (回答作成中の待機ページ) は廃止。送信中はメッセージ画面のまま
+// ボタンを「送信中...」表示にし、成功後はそのまま結果ページへ遷移する。
+type Phase = "scale" | "choice" | "message" | "error";
 
 interface OwnerInfo {
   displayName: string | null;
@@ -122,6 +123,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   // ③ 本人へのメッセージ (任意・最大200字)
   const [message, setMessage] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // 送信中フラグ (待機ページの代わり: メッセージ画面のボタンをローディング表示にする)。
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const trackedLanding = useRef(false);
 
   // ===== 初期化: invite_code から owner 情報取得 =====
@@ -150,6 +153,19 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       .catch(() => {});
   }, [inviteCode]);
 
+  // 「次へ」等でステップ (ページ / おまけ質問 / フェーズ) が変わったら、必ず最上部へ。
+  //   setState と同フレームで window.scrollTo すると、まだ差し替わっていない旧ページ上で
+  //   スクロールが始まり、直後の DOM 差し替え (特にモバイル + スクロール連動ヘッダー) で
+  //   アニメーションが中断され、中途半端な位置に残ることがある。新画面の描画後 (rAF) に
+  //   実行することで、確実に上まで戻す。
+  useEffect(() => {
+    const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
+    const id = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [phase, pageIdx, choiceIdx]);
+
   const subjectLabel = owner.displayName
     ? `${owner.displayName}さん`
     : "友達";
@@ -164,23 +180,22 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     (q) => scaleAnswers[q.id] !== undefined,
   );
 
+  // 最上部スクロールはステップ変化を監視する useEffect に集約 (旧ページ上での
+  // 早すぎる scrollTo を避けるため、ここでは状態更新のみ)。
   const handleScaleNext = () => {
     if (!isCurrentScalePageComplete) return;
     if (pageIdx < SCALE_PAGES.length - 1) {
       setPageIdx((p) => p + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setPhase("choice");
       setChoiceIdx(0);
       track("friend_answer_scale_completed", { inviteCode });
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handleScalePrev = () => {
     if (pageIdx > 0) {
       setPageIdx((p) => p - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -196,16 +211,15 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const advanceChoice = () => {
     if (choiceIdx < 2) {
       setChoiceIdx((c) => (c + 1) as 0 | 1 | 2);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       // 名前は先頭で取得済み。おまけ完了後は最後のメッセージ入力 (message) へ。
       setPhase("message");
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const submit = async () => {
-    setPhase("submitting");
+    if (isSubmitting) return; // 二重送信ガード
+    setIsSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch("/api/friend-answer/v2", {
@@ -224,6 +238,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok || !data?.friendPerceptionId) {
         setSubmitError(data?.error ?? `HTTP ${res.status}`);
+        setIsSubmitting(false);
         setPhase("error");
         return;
       }
@@ -238,9 +253,12 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       // Day 12-Polish-F: 送信完了後は獲得エンジン (理解度 + アナタの目に映る owner
       // + 自己診断 CTA) を返す遷移ページへ。詳細ギャップ/課金は owner 限定の
       // /evaluate/result 側に集約し、友達にはここでは出さない。
+      // 待機ページは廃止。送信中表示のまま結果ページへ直接遷移する
+      // (遷移するので isSubmitting は false に戻さない = 二重送信も防ぐ)。
       router.push(`/evaluate/sent/${data.friendPerceptionId}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Unknown error");
+      setIsSubmitting(false);
       setPhase("error");
     }
   };
@@ -284,12 +302,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         message={message}
         onMessageChange={setMessage}
         onSubmit={submit}
+        submitting={isSubmitting}
       />
     );
-  }
-
-  if (phase === "submitting") {
-    return <SubmittingScreen subjectLabel={subjectLabel} />;
   }
 
   // phase === "error"
@@ -534,27 +549,6 @@ function ChoiceScreen({
 }
 
 // =========================================================================
-// Submitting 画面
-// =========================================================================
-function SubmittingScreen({ subjectLabel }: { subjectLabel: string }) {
-  // 自己診断の生成中ページ (DiagnosisAnalyzingLoader) と同じデザインを再利用。
-  // 文言だけ他己診断向けに差し替える (subjectLabel = 評価対象の owner)。
-  const messages = [
-    "アナタの回答を読み込んでいます...",
-    "Big Five 心理学で解析中...",
-    `アナタから見た${subjectLabel}を分析中...`,
-    "印象のパターンを整理しています...",
-    `${subjectLabel}のタイプを見立てています...`,
-    "まだ気づかれていない一面を探しています...",
-    "レポートにまとめています...",
-    "最後の仕上げをしています...",
-    "もうすぐお届けします...",
-  ];
-  const steps = ["回答データを取得", "印象を解析", "タイプを見立て", "レポートを生成"];
-  return <DiagnosisAnalyzingLoader messages={messages} steps={steps} />;
-}
-
-// =========================================================================
 // Error 画面
 // =========================================================================
 function ErrorScreen({
@@ -592,10 +586,12 @@ function MessageScreen({
   message,
   onMessageChange,
   onSubmit,
+  submitting,
 }: {
   message: string;
   onMessageChange: (v: string) => void;
   onSubmit: () => void;
+  submitting: boolean;
 }) {
   return (
     <>
@@ -633,8 +629,14 @@ function MessageScreen({
             </div>
 
             <div className="mt-8 flex justify-center">
-              <button type="button" onClick={onSubmit} className={soraPrimary}>
-                結果を見る →
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={submitting}
+                aria-busy={submitting}
+                className={soraPrimary}
+              >
+                {submitting ? "送信中..." : "結果を見る →"}
               </button>
             </div>
           </div>
