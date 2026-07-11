@@ -111,9 +111,6 @@ export default function CommercePage() {
         <p>制定日: 2026 年 7 月 9 日</p>
         <p>最終改定日: 2026 年 7 月 9 日</p>
 
-        <p>
-          <Link href="/integrated/new">← 統合トリセツ作成画面に戻る</Link>
-        </p>
       </LegalDocument>
       <Footer />
     </>

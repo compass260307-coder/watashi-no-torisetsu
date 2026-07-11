@@ -238,27 +238,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
       return avg;
     })();
 
-  // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
-  const { data: integratedRows } = previewType
-    ? { data: null }
-    : await supabaseAdmin
-        .from("integrated_trisetsu")
-        .select(
-          "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
-        )
-        .eq("user_id", user.id)
-        .eq("status", "completed")
-        .order("generated_at", { ascending: false });
-  const integrated = (integratedRows ?? []).map((r) => ({
-    id: r.id as string,
-    title: (r.generated_title as string | null) ?? "真のトリセツ",
-    subtitle: (r.generated_subtitle as string | null) ?? "",
-    generatedAt: r.generated_at as string,
-    perceptionCount: Array.isArray(r.perception_ids)
-      ? (r.perception_ids as unknown[]).length
-      : 0,
-    includeSelf: r.include_self !== false,
-  }));
 
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
@@ -627,42 +606,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
         </section>
 
-
-        {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
-        {integrated.length > 0 && (
-          <section className="mt-12">
-            <h3 className="text-[#2E2E5C] font-black text-sm mb-3 flex items-baseline justify-between">
-              <span>真のトリセツ</span>
-              <span className="text-xs font-bold text-[#2E2E5C]/60">
-                {integrated.length}
-              </span>
-            </h3>
-            <div className="flex flex-col gap-3">
-              {integrated.map((it) => (
-                <Link
-                  key={it.id}
-                  href={`/integrated/${it.id}`}
-                  className="block bg-white rounded-2xl border border-[#E3E6F5] p-5 hover:bg-[#F4F4FE] transition-colors"
-                >
-                  <p className="text-base font-black text-[#2E2E5C] mb-1">
-                    {it.title}
-                  </p>
-                  {it.subtitle && (
-                    <p className="text-xs text-[#2E2E5C]/70 leading-relaxed mb-2">
-                      {it.subtitle}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-[#2E2E5C]/50 font-bold">
-                    {formatDate(it.generatedAt)}
-                    {" / "}
-                    友達評価 {it.perceptionCount} 件
-                    {it.includeSelf ? " (自己診断含む)" : ""}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
