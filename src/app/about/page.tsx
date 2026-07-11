@@ -60,14 +60,14 @@ const privacyItems = [
 
 // タイプギャラリー (32タイプから各グループ2体ずつ抜粋)
 const GALLERY = [
-  { name: "なかよしペンギン", src: "/characters/v3/penguin_N.png" },
-  { name: "クールタカ", src: "/characters/v3/hawk_R.png" },
-  { name: "にこにこパンダ", src: "/characters/v3/fox_N.png" },
-  { name: "どっしりクマ", src: "/characters/v3/bear_R.png" },
-  { name: "きらめきイルカ", src: "/characters/v3/jellyfish_N.png" },
-  { name: "マイペースサメ", src: "/characters/v3/shark_R.png" },
-  { name: "おもいやりエンジェル", src: "/characters/v3/angel_N.png" },
-  { name: "ゆるぎないドラゴン", src: "/characters/v3/dragon_R.png" },
+  { name: "なかよしペンギン", src: "/characters/v3/penguin_N.webp" },
+  { name: "クールタカ", src: "/characters/v3/hawk_R.webp" },
+  { name: "にこにこパンダ", src: "/characters/v3/fox_N.webp" },
+  { name: "どっしりクマ", src: "/characters/v3/bear_R.webp" },
+  { name: "きらめきイルカ", src: "/characters/v3/jellyfish_N.webp" },
+  { name: "マイペースサメ", src: "/characters/v3/shark_R.webp" },
+  { name: "おもいやりエンジェル", src: "/characters/v3/angel_N.webp" },
+  { name: "ゆるぎないドラゴン", src: "/characters/v3/dragon_R.webp" },
 ];
 
 const faqJsonLd = {
