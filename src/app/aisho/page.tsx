@@ -401,16 +401,22 @@ const SCENE_RING: Record<SceneKey, string> = {
 type ScenesResponse = {
   locked: boolean;
   scenes?: { key: SceneKey; label: string; text: string }[];
+  // 未課金かつログイン中のとき、本人の owner_token (課金CTAへ渡す)。匿名は null/未定義。
+  ownerToken?: string | null;
 };
 
 function CompatDetail({
   a,
   b,
-  onLockedChange,
+  onGateChange,
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
-  onLockedChange?: (locked: boolean | null) => void;
+  // 課金状態と本人 owner_token を親 (AishoInner) へ通知 (最下部カードの出し分け + CTA伝搬)。
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
 }) {
   const r = useMemo(() => compat(a, b), [a, b]);
   // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
@@ -444,11 +450,13 @@ function CompatDetail({
   const sceneData: ScenesResponse | null =
     sceneState?.key === pairKey ? sceneState.resp : null;
   const sceneUnlocked = sceneData?.locked === false;
-  // 課金状態 (locked) を親 (AishoInner) へ通知 → 最下部の課金カードの出し分けに使う。
+  // 課金状態 (locked) と本人 owner_token を親 (AishoInner) へ通知。
+  //   → 最下部の課金カードの出し分け + 課金CTAへの owner_token 伝搬 (SPのCookie不在対策) に使う。
   const sceneLocked = sceneData?.locked ?? null;
+  const sceneOwnerToken = sceneData?.ownerToken ?? null;
   useEffect(() => {
-    onLockedChange?.(sceneLocked);
-  }, [sceneLocked, onLockedChange]);
+    onGateChange?.({ locked: sceneLocked, ownerToken: sceneOwnerToken });
+  }, [sceneLocked, sceneOwnerToken, onGateChange]);
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
     sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
@@ -681,11 +689,14 @@ function CompatDetail({
 function ResultBlock({
   a,
   b,
-  onLockedChange,
+  onGateChange,
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
-  onLockedChange?: (locked: boolean | null) => void;
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
 }) {
   const r = useMemo(() => compat(a, b), [a, b]);
   const [band0, band1] = HERO_BAND;
@@ -749,7 +760,7 @@ function ResultBlock({
       </div>
 
       {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
-      <CompatDetail a={a} b={b} onLockedChange={onLockedChange} />
+      <CompatDetail a={a} b={b} onGateChange={onGateChange} />
     </section>
   );
 }
@@ -887,9 +898,13 @@ function TypeGrid({
 
 function AishoInner() {
   const searchParams = useSearchParams();
-  // ④シーンのサーバゲート結果 (CompatDetail から通知)。true=未課金 / false=課金済 / null=読込中。
-  // 課金済み・読込中は最下部の課金カードを出さないための判定に使う。
-  const [aishoLocked, setAishoLocked] = useState<boolean | null>(null);
+  // ④シーンのサーバゲート結果 (CompatDetail から通知)。
+  //   locked: true=未課金 / false=課金済 / null=読込中 → 課金カードの出し分け。
+  //   ownerToken: ログイン中なら本人トークン → 課金CTAに渡す (SPのCookie不在でも401→トップを回避)。
+  const [aishoGate, setAishoGate] = useState<{
+    locked: boolean | null;
+    ownerToken: string | null;
+  }>({ locked: null, ownerToken: null });
   // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
   const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
     const a = searchParams.get("a");
@@ -1038,7 +1053,7 @@ function AishoInner() {
             {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
                 足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
             <div ref={resultRef} className="scroll-mt-[72px]">
-              <ResultBlock a={slotA} b={slotB} onLockedChange={setAishoLocked} />
+              <ResultBlock a={slotA} b={slotB} onGateChange={setAishoGate} />
             </div>
           </>
         ) : (
@@ -1113,11 +1128,13 @@ function AishoInner() {
         相性①〜④は従来どおり無料・ここではゲートしない。
         ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
         選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
-    {resultShown && aishoLocked === true && (
+    {resultShown && aishoGate.locked === true && (
       <FullAccessPromoCard
         variant="aisho"
         imageSrc="/characters/scenes/unknown_love.webp"
         imageAlt="相性"
+        // ログイン中なら owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
+        ownerToken={aishoGate.ownerToken ?? undefined}
       />
     )}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
