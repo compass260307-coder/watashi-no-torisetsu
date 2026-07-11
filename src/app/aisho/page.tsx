@@ -1037,8 +1037,9 @@ function AishoInner() {
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
         /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
         FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
-        相性①〜④は従来どおり無料・ここではゲートしない。 */}
-    <FullAccessPromoCard />
+        相性①〜④は従来どおり無料・ここではゲートしない。
+        ※ カードは結果表示 (resultShown) のときだけ出す。選択モード・診断中(analyzing)には出さない。 */}
+    {resultShown && <FullAccessPromoCard />}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
     <TopFooter />
