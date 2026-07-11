@@ -20,16 +20,11 @@
 //     after() の AI 生成は最大 100 秒程度かかるため maxDuration を引き上げ
 //   - 自動返金は実装しない (MVP)、失敗時は Slack アラート + 手動対応
 
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
-import {
-  buildSourceSummary,
-  runAIGenerationAndUpdate,
-} from "@/lib/integrated-trisetsu-generator";
 import { sendSlackAlert } from "@/lib/slack-alert";
-import { sendPaymentReceivedMessage } from "@/lib/line-notify";
 
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
@@ -206,7 +201,6 @@ async function handleCheckoutCompleted(
 ): Promise<void> {
   const metadata = session.metadata ?? {};
   const userId = metadata.user_id;
-  const lineUserId = metadata.line_user_id ?? null;
   if (!userId) {
     throw new Error(
       `session.metadata.user_id missing for session ${session.id}`,
@@ -233,147 +227,6 @@ async function handleCheckoutCompleted(
     await handlePerceptionUnlockCompleted(session, userId, metadata);
     return;
   }
-
-  const includeSelf = metadata.include_self === "true";
-  let perceptionIds: string[] = [];
-  try {
-    if (metadata.perception_ids) {
-      const parsed = JSON.parse(metadata.perception_ids);
-      if (Array.isArray(parsed)) {
-        perceptionIds = parsed.filter(
-          (v): v is string => typeof v === "string",
-        );
-      }
-    }
-  } catch {
-    perceptionIds = [];
-  }
-
-  // ===== 1. payment_history upsert (Idempotency 第 1 層) =====
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null);
-  const paymentRecord = {
-    user_id: userId,
-    stripe_session_id: session.id,
-    stripe_payment_intent_id: paymentIntentId,
-    amount_jpy: session.amount_total ?? 500,
-    currency: session.currency ?? "jpy",
-    status: "completed" as const,
-    paid_at: new Date().toISOString(),
-    metadata: {
-      include_self: includeSelf,
-      perception_ids: perceptionIds,
-    },
-  };
-
-  const { data: insertedPayments, error: upsertErr } = await supabaseAdmin
-    .from("payment_history")
-    .upsert(paymentRecord, {
-      onConflict: "stripe_session_id",
-      ignoreDuplicates: true,
-    })
-    .select("id");
-
-  if (upsertErr) {
-    throw new Error(`payment_history upsert failed: ${upsertErr.message}`);
-  }
-
-  let paymentId: string;
-  if (insertedPayments && insertedPayments.length > 0) {
-    paymentId = insertedPayments[0].id as string;
-  } else {
-    // 既存 (二重 webhook) → 既存行を fetch
-    const { data: existing, error: existingErr } = await supabaseAdmin
-      .from("payment_history")
-      .select("id")
-      .eq("stripe_session_id", session.id)
-      .maybeSingle();
-    if (existingErr || !existing) {
-      throw new Error(
-        `payment_history upsert returned no row and SELECT found none for ${session.id}`,
-      );
-    }
-    paymentId = existing.id as string;
-  }
-
-  // ===== 2. integrated_trisetsu 存在チェック (Idempotency 第 2 層) =====
-  const { data: existingTrisetsu } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .select("id, status")
-    .eq("payment_id", paymentId)
-    .maybeSingle();
-
-  if (existingTrisetsu) {
-    // 既に作成済み (二重 webhook の 2 回目) → 何もしない
-    // failed の場合も MVP では手動対応とする
-    return;
-  }
-
-  // ===== 3. source_summary 構築 (Webhook 内で同期、< 1 秒) =====
-  const sourceSummary = await buildSourceSummary(
-    userId,
-    includeSelf,
-    perceptionIds,
-  );
-
-  // ===== 4. integrated_trisetsu INSERT (status='pending') =====
-  const { data: inserted, error: insErr } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .insert({
-      user_id: userId,
-      line_user_id: lineUserId,
-      payment_id: paymentId,
-      status: "pending",
-      include_self: includeSelf,
-      perception_ids: perceptionIds,
-      source_summary: sourceSummary,
-    })
-    .select("id")
-    .single();
-
-  if (insErr || !inserted) {
-    // UNIQUE 競合 (= 同時 webhook が先に挿入) → 既存を採用、再生成しない
-    if (insErr?.code === "23505") {
-      return;
-    }
-    throw new Error(
-      `integrated_trisetsu INSERT failed: ${insErr?.message ?? "no row"}`,
-    );
-  }
-  const integratedId = inserted.id as string;
-
-  // ===== 5. LINE 決済受領通知 + AI 生成 (両方 after() で response 送信後に実行) =====
-  // Stripe Webhook は 200 を素早く返す必要があるため、LINE push と AI 呼び出し
-  // (60-100 秒) は after() で response 送信後に実行。
-  after(async () => {
-    // a. 決済受領通知 (LINE 連携済のユーザーのみ)
-    if (lineUserId) {
-      try {
-        await sendPaymentReceivedMessage({
-          lineUserId,
-          sessionId: session.id,
-          ownerUserId: userId,
-        });
-      } catch (err) {
-        console.error(
-          `[webhook/stripe] payment_received notification failed for ${integratedId}:`,
-          err,
-        );
-      }
-    }
-    // b. AI 生成キック (completed / failed の LINE 通知は generator 内で発火)
-    try {
-      await runAIGenerationAndUpdate(integratedId);
-    } catch (err) {
-      // 内部で sendSlackAlert + UPDATE failed まで処理済だが、防御的に catch
-      console.error(
-        `[webhook/stripe] after() AI generation crashed for ${integratedId}:`,
-        err,
-      );
-    }
-  });
 }
 
 // ---------- Phase 1.5-α Day 12-C2: perception_unlock 経路 ----------

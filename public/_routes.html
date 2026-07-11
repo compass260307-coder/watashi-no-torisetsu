@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><title>ページ一覧 (25)</title>
+<style>
+ body{font-family:-apple-system,sans-serif;background:#faf7f2;margin:0;padding:16px;color:#222}
+ h1{margin:0 0 4px}.sum{color:#666;font-size:14px;margin-bottom:16px}
+ table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+ th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #eee;vertical-align:top;font-size:13px}
+ th{background:#f3ede4;position:sticky;top:0}
+ td.r{font-family:ui-monospace,monospace;font-weight:600;white-space:nowrap}
+ .b{color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;white-space:nowrap}
+ .desc{color:#555;font-size:12px;line-height:1.5}
+ a{color:#1565c0}.muted{color:#999;font-size:11px}
+ tr.legacy{background:#fff8f0}
+</style>
+<h1>ページ一覧 — 25ルート</h1>
+<div class="sum">「本番で開く」で実際のページを見て、使っていないものを判断してください。オレンジ=コード内に「旧/移設/リダイレクト」の記述あり(削除候補になりやすい)。動的ページは実データのトークンURLで確認を。</div>
+<table><tr><th>ルート</th><th>分類</th><th>用途 (コード先頭コメント)</th><th>開く</th></tr>
+<tr class="">
+  <td class="r">/</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/about</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/about" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/admin</td>
+  <td><span class="b" style="background:#6a1b9a">管理</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/admin" target="_blank">管理URLで開く ↗</a></td></tr><tr class="">
+  <td class="r">/aisho</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">相性診断ページ /aisho  32タイプから2つ選んで相性を見る、診断不要の回遊コンテンツ。 完全静的 (Supabase/セッション/owner_token 不要)。?a=&b= のクエリ駆動でシェア可。</td>
+  <td><a href="https://www.watashi-torisetsu.com/aisho" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/auth/error</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">プレミアム化 v3 Day 8: マジックリンク検証エラーページ (本格版)  /auth/error?reason=missing_token|invalid_or_expired|server_error </td>
+  <td><a href="https://www.watashi-torisetsu.com/auth/error" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/checkout/success</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">プレミアム化 v2 Week 2 T2-5: 決済成功後のランディングページ  Stripe Checkout の success_url で /checkout/success?session_id={CHECKOUT_SESSION_ID} に到達する。</td>
+  <td><a href="https://www.watashi-torisetsu.com/checkout/success" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/diagnosis</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/diagnosis" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/evaluate/result/[perceptionId]</td>
+  <td><span class="b" style="background:#00838f">動的(デモ可)</span></td>
+  <td class="desc">Phase 1.5-α Day 12-C1: 友達評価結果ページ (軸2 のメイン画面)  役割: 友達 (B) が A に対して 30 問の評価を完了した後、A (owner) が見るための画面。 Day 12-Polish-E で相互理解度を完全無料化し、課金ゲートを撤去。</td>
+  <td><a href="https://www.watashi-torisetsu.com/evaluate/result/demo?previewType=seeker-wolf__N&fromPreview=1" target="_blank">デモで開く ↗</a></td></tr><tr class="">
+  <td class="r">/evaluate/sent/[perceptionId]</td>
+  <td><span class="b" style="background:#1565c0">動的(要トークン)</span></td>
+  <td class="desc">友達の評価送信後の遷移ページ (獲得エンジン)。  役割変更 (2026-07-09): 相互理解の中身表示 (①相互理解度/②ギャップ/③強み/④関係) を撤去し、 案内ページ (FriendIndividualGuide) に差し替え。</td>
+  <td><span class="muted">https://www.watashi-torisetsu.com/evaluate/sent/… （実データのトークンで）</span></td></tr><tr class="">
+  <td class="r">/friend/[inviteCode]</td>
+  <td><span class="b" style="background:#1565c0">動的(要トークン)</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><span class="muted">https://www.watashi-torisetsu.com/friend/… （実データのトークンで）</span></td></tr><tr class="">
+  <td class="r">/integrated/[id]</td>
+  <td><span class="b" style="background:#1565c0">動的(要トークン)</span></td>
+  <td class="desc">Phase 3-β リリース 3 C-4: 統合トリセツ表示ページ (Server Component + OGP) プレミアム化 v2 (Week 1 T1-6): 7 章 generated_chapters JSONB に対応  認可: なし (URL 知っている人なら閲覧可、シェアリンク前提、論点 3 a)</td>
+  <td><span class="muted">https://www.watashi-torisetsu.com/integrated/… （実データのトークンで）</span></td></tr><tr class="">
+  <td class="r">/integrated/new</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/integrated/new" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/legal/commerce</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/legal/commerce" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/login</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/login" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/login/confirm</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">マジックリンク・ログイン確認 (v1 衝突検知インタースティシャル) の container。  verify-magic-link が「現デバイスに別アカウント A の Cookie があり、リンク先 B と 別 user_id」を検知したとき、サイレント切替を避けてここへ誘導する。</td>
+  <td><a href="https://www.watashi-torisetsu.com/login/confirm" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/me/[token]</td>
+  <td><span class="b" style="background:#00838f">動的(デモ可)</span></td>
+  <td class="desc">プレミアム化 v3 Day 9: 個人の永続アクセス点 (/me/[token]) Phase 1.5-α Day 10: Koi キャラ風 + Brand v2 に再構成 Phase 1.5-α Day 11: 自己診断 7 章レポート (全無料) に拡張、¥500 訴求カード削除、                     友達評価カードをギャップ誘導文言に置換</td>
+  <td><a href="https://www.watashi-torisetsu.com/me/demo?previewType=seeker-wolf__N&fromPreview=1" target="_blank">デモで開く ↗</a></td></tr><tr class="">
+  <td class="r">/preview/[typeId]</td>
+  <td><span class="b" style="background:#00838f">動的(デモ可)</span></td>
+  <td class="desc">確認専用: 1タイプ単体のフル結果ページを本番でも踏めるプレビュールート。 - /me の結果ページ (MePage) をそのまま再利用し、token/Supabase を介さずモックスコアで描画する。   MePage 側は ?previewType=&lt;id> + fromPreview=1 でプレビュー分岐に入り、実ユーザーデータは   一切参照しない (モックのみ)。</td>
+  <td><a href="https://www.watashi-torisetsu.com/preview/seeker-wolf__N" target="_blank">デモで開く ↗</a></td></tr><tr class="">
+  <td class="r">/privacy</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/privacy" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/result</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/result" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/share/[code]</td>
+  <td><span class="b" style="background:#1565c0">動的(要トークン)</span></td>
+  <td class="desc">キャラシェア着地ページ /share/{invite_code} (拡散=新規獲得)。   - per-owner OG: そのオーナーの称号キャラOGカードを og:image に出す。   - 目的: 踏んだ人を /diagnosis (新規診断) に誘導する獲得ランディング。   - ⚠ /friend(評価依頼) や /me(private) には誘導しない。純粋な拡散導線。</td>
+  <td><span class="muted">https://www.watashi-torisetsu.com/share/… （実データのトークンで）</span></td></tr><tr class="">
+  <td class="r">/tako</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">他己診断 (タコ診断) の入口・未診断ガード /tako (token 無し)。   ボトムナビ「他己診断」を押したが、まだ自己診断していない (owner_token 無し)   ユーザーに出す誘導画面。「まず自己診断から」+ 3ステップ + 自己診断CTA。   token 有りは BottomNav が /tako/[token] へ送る (解除/ロックは [token] 側)。</td>
+  <td><a href="https://www.watashi-torisetsu.com/tako" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/tako/[token]</td>
+  <td><span class="b" style="background:#00838f">動的(デモ可)</span></td>
+  <td class="desc">他己診断 (タコ診断) 結果ページ /tako/[token]。   owner_token でアクセス (自己 /me/[token] と対)。   /me から切り出した「友達が見た自分」パートを集約:     友達平均キャラ / 自己認知ギャップバー / みんなの目(B-1) / 他者評価 / 招待。</td>
+  <td><a href="https://www.watashi-torisetsu.com/tako/demo?previewType=seeker-wolf__N&fromPreview=1" target="_blank">デモで開く ↗</a></td></tr><tr class="">
+  <td class="r">/tako/[token]/friend/[perceptionId]</td>
+  <td><span class="b" style="background:#00838f">動的(デモ可)</span></td>
+  <td class="desc">本人向け「友達ごとの個別ページ」 /tako/[token]/friend/[perceptionId]。   総合ページ /tako (友達平均) の「友達一覧」から降りてくる先。友達1人との相互理解を表示。   計算・描画は評価者完了ページ (/evaluate/result) と共有 (buildPerceptionView +   PerceptionResultBody variant="individual")。本人視点なので二人称は「あなた」、</td>
+  <td><a href="https://www.watashi-torisetsu.com/tako/demo/friend/demo?previewType=seeker-wolf__N&fromPreview=1" target="_blank">デモで開く ↗</a></td></tr><tr class="">
+  <td class="r">/terms</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/terms" target="_blank">本番で開く ↗</a></td></tr><tr class="">
+  <td class="r">/types</td>
+  <td><span class="b" style="background:#2e7d32">公開</span></td>
+  <td class="desc">(コメント無し)</td>
+  <td><a href="https://www.watashi-torisetsu.com/types" target="_blank">本番で開く ↗</a></td></tr>
+</table>
