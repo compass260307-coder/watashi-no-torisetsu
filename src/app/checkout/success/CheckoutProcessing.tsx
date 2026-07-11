@@ -176,7 +176,7 @@ export function CheckoutProcessing({ sessionId }: Props) {
             </p>
           )}
           <Link
-            href="/zukan-mine"
+            href="/"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
             マイ図鑑に戻る

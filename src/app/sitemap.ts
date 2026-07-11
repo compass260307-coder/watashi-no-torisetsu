@@ -31,13 +31,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
-      // 公開の性格タイプ図鑑 (旧リンク先)
-      url: `${BASE_URL}/zukan/all`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
       url: `${BASE_URL}/terms`,
       lastModified: now,
       changeFrequency: "yearly",

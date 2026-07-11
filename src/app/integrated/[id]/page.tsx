@@ -284,7 +284,7 @@ export default async function IntegratedPage({
             もう一度、別の組み合わせで作る
           </Link>
           <Link
-            href="/zukan-mine"
+            href="/"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
             マイ図鑑に戻る
@@ -390,7 +390,7 @@ function FallbackLayout({
             </Link>
           )}
           <Link
-            href="/zukan-mine"
+            href="/"
             className="text-xs text-muted underline text-center hover:text-foreground transition-colors mt-2"
           >
             マイ図鑑に戻る

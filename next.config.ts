@@ -29,11 +29,10 @@ const nextConfig: NextConfig = {
       // (/zukan 直下に page.tsx は無く 404 になる) ため恒久リダイレクトで受ける。
       // ※ 旧「相互理解度」ページの URL は当初から /friend-evaluation のみで、
       //    改名に伴う旧 URL は存在しない (git 履歴確認済み) ので他のリダイレクトは不要。
-      {
-        source: "/zukan",
-        destination: "/zukan/all",
-        permanent: true,
-      },
+      // 旧公開図鑑 /zukan/all は撤去し性格タイプページ /types に一本化。
+      // /zukan と旧 /zukan/all の被リンク/インデックスを /types へ恒久転送。
+      { source: "/zukan", destination: "/types", permanent: true },
+      { source: "/zukan/all", destination: "/types", permanent: true },
       // 旧 self-result 系パス (Day 9 で /me/[token] に統合)。以前は各 page.tsx が
       // permanentRedirect していたが、ページを撤去し config redirect に一本化。
       // 過去発行 URL (完成通知メール/SNS/口コミ) を壊さないため恒久 301 で /me へ。

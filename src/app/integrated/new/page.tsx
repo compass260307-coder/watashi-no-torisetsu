@@ -259,7 +259,7 @@ export default function IntegratedNewPage() {
             戻る
           </button>
           <Link
-            href="/zukan-mine"
+            href="/"
             className="text-xs text-muted underline text-center"
           >
             マイ図鑑に戻る
@@ -510,7 +510,7 @@ export default function IntegratedNewPage() {
         )}
 
         <Link
-          href="/zukan-mine"
+          href="/"
           className="text-xs text-muted/70 underline hover:text-foreground text-center mt-8"
         >
           マイ図鑑に戻る
