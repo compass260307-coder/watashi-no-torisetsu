@@ -27,7 +27,11 @@ import {
 } from "@/lib/thirty-two-types";
 import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { compat, type AxisKey, type CompatRank } from "@/lib/aisho-compat";
-import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
+// ★PR4: ④シーン別の本文はサーバゲート (/api/aisho/scenes) 経由でのみ取得する。
+//   sceneLines() をクライアント import すると④本文が全部バンドルに載り漏れるため、
+//   value import は撤去し、型 (SceneKey) だけ type-only import する (バンドル無害)。
+import type { SceneKey } from "@/lib/aisho-scene-copy";
+import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import characterImages from "@/generated/character-images.json";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -373,35 +377,62 @@ function percentLead(p: number): string {
   return "一筋縄ではいかないぶん、学びが大きい";
 }
 
-// シーン別の主役2軸 (aisho-scene-copy と対応)。各シーンの言い切り判定に使う。
-const SCENE_AXES: Record<SceneKey, [AxisKey, AxisKey]> = {
-  love: ["A", "N"],
-  friend: ["O", "E"],
-  work: ["C", "E"],
-  clash: ["N", "O"],
-};
+// ★PR4: SCENE_AXES / sceneVerdict はサーバ (/api/aisho/scenes) へ移設。
+//   ④本文 (verdict + text) はクライアントで生成せず、ゲート応答からのみ受け取る。
 
-// 各シーン文章の頭に置く「言い切り」。そのシーンの主役2軸の平均で高/中/低を判定。
-function sceneVerdict(key: SceneKey, s: Record<AxisKey, number>): string {
-  const [x, y] = SCENE_AXES[key];
-  const v = (s[x] + s[y]) / 2;
-  const hi = v >= 0.75;
-  const lo = v < 0.5;
-  switch (key) {
-    case "love":
-      return hi ? "恋愛では、かなり相性がいい。" : lo ? "恋愛は、すれ違いに気をつけたい。" : "恋愛は、丁寧にいけば深まる。";
-    case "friend":
-      return hi ? "友達としては、最高のふたり。" : lo ? "友情は、違いを面白がれるかがカギ。" : "友達としては、いい距離感。";
-    case "work":
-      return hi ? "一緒に動くと、めっちゃ捗る。" : lo ? "作業は、役割分担がカギ。" : "一緒に動けば、いいコンビ。";
-    case "clash":
-      return hi ? "すれ違っても、すぐ立て直せる。" : lo ? "すれ違うと、少し長引きがち。" : "すれ違っても、ちゃんと戻れる。";
-  }
-}
+// 静的な4見出し (SceneKey ごと・内容非依存)。ロック中も「4場面ある」ことを
+// 見出しで見せ、本文だけゲートする (見出しは無料・本文だけ課金)。
+const SCENE_ORDER: { key: SceneKey; label: string }[] = [
+  { key: "love", label: "恋愛では" },
+  { key: "friend", label: "友情では" },
+  { key: "work", label: "一緒に働くと" },
+  { key: "clash", label: "すれ違うとき" },
+];
+
+// ④シーン別のサーバゲート応答。locked=true は本文なし (未課金/匿名)。
+type ScenesResponse = {
+  locked: boolean;
+  scenes?: { key: SceneKey; label: string; text: string }[];
+};
 
 function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const r = useMemo(() => compat(a, b), [a, b]);
-  const scenes = useMemo(() => sceneLines(a, b), [a, b]);
+  // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
+  // ①〜③・ランクはこの fetch に依存せず即時表示 (バイラル核は無傷)。
+  // ペアkeyで保持し、a/b 変更時は key 不一致で sceneData が自動的に null(=読込中)に戻る
+  // (effect 内 setState を避けるため、リセットは派生値で表現する)。
+  const pairKey = `${a}__${b}`;
+  const [sceneState, setSceneState] = useState<{
+    key: string;
+    resp: ScenesResponse;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`)
+      .then((res) =>
+        res.ok
+          ? (res.json() as Promise<ScenesResponse>)
+          : ({ locked: true } as ScenesResponse),
+      )
+      .then((resp) => {
+        if (!cancelled) setSceneState({ key: pairKey, resp });
+      })
+      .catch(() => {
+        if (!cancelled) setSceneState({ key: pairKey, resp: { locked: true } });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [a, b, pairKey]);
+  // 現在のペアに対応する応答だけ採用 (古いペアの応答・読込中は null)。
+  const sceneData: ScenesResponse | null =
+    sceneState?.key === pairKey ? sceneState.resp : null;
+  const sceneUnlocked = sceneData?.locked === false;
+  const sceneByKey = useMemo(() => {
+    const m = new Map<SceneKey, string>();
+    sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
+    return m;
+  }, [sceneData]);
   // /me と同じ本文タイポ (body-gothic・濃色・17px)。段落はこの class を使い回す。
   const PROSE =
     "body-gothic text-[#1A1A1A] font-normal text-[16px] md:text-[17px] leading-[1.7]";
@@ -502,15 +533,20 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         </p>
       </section>
 
-      {/* ④ シーン別トリセツ (恋愛/友情/働く/すれ違い) */}
+      {/* ④ シーン別トリセツ (恋愛/友情/働く/すれ違い)。★PR4: 課金ゲート。
+          見出し(4場面)は常に表示し「4場面ぶんのトリセツがある」ことを予告。
+          本文だけをサーバゲート → 未課金/匿名は本文をぼかしダミー(実本文なし)にし、
+          最下部の課金カードへスライドする「ぜんぶ、ひらく →」を出す。
+          ①〜③・相性度・ランクは触っていない (全員無料=バイラル核)。 */}
       <section>
         <SectionHeading n={4} title="シーン別トリセツ" />
         <p className={PROSE}>
           {"恋愛・友情・仕事・すれ違い。場面ごとに、ふたりのトリセツをまとめたよ。"}
         </p>
         <div className="mt-6 space-y-7">
-          {scenes.map((s) => (
+          {SCENE_ORDER.map((s) => (
             <div key={s.key}>
+              {/* 見出しは無料 (ぼかさない): 4場面の存在感を伝える */}
               <div
                 className="mb-1.5 flex items-center gap-1.5 text-[18px] font-black"
                 style={{ color: NAVY }}
@@ -518,10 +554,50 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
                 <SceneIcon scene={s.key} />
                 <span>{s.label}</span>
               </div>
-              <p className={PROSE}>{`${sceneVerdict(s.key, r.s)}${s.text}`}</p>
+              {sceneUnlocked ? (
+                <p className={PROSE}>{sceneByKey.get(s.key)}</p>
+              ) : (
+                /* 本文だけぼかし (未課金/読込中)。実本文は載っていない。 */
+                <div aria-hidden="true" className="select-none space-y-2.5 py-1">
+                  {[97, 100, 82].map((w, i) => (
+                    <div
+                      key={i}
+                      className="h-3.5 rounded-full bg-[#E7E7F0] blur-[3px]"
+                      style={{ width: `${w}%` }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* ロック確定時のみ CTA (読込中は出さない=課金済のちらつき防止)。
+            押すと最下部の課金カードへスライド (PR3 の scrollToPaywall 流用)。
+            匿名がカードCTAを押すと 401→トップ funnel (診断/ログイン→課金)。 */}
+        {sceneData?.locked === true && (
+          <div className="mt-7 rounded-3xl bg-[#F7F7FB] px-5 py-7 text-center">
+            <p className="text-[15px] font-black leading-[1.6] text-[#2E2E5C]">
+              4場面ぶんのシーン別トリセツは
+              <br />
+              全解放でひらきます。
+            </p>
+            <p className="mt-2 text-[13px] font-bold leading-[1.6] text-[#8A8AA3]">
+              一度きりの ¥299 で、
+              <br className="md:hidden" />
+              恋愛も友情も仕事も、ぜんぶ。
+            </p>
+            <div className="mt-5 flex flex-col items-center">
+              <button
+                type="button"
+                onClick={scrollToPaywall}
+                className="flex w-full max-w-[300px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
+              >
+                ぜんぶ、ひらく →
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
