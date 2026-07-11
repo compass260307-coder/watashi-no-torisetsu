@@ -81,8 +81,9 @@ export function DeepDiveSections({
                   : "bg-white text-[#2E2E5C] border-[#0094D8]/25 hover:bg-[#F4F4FE]"
               }`}
             >
-              {/* ロックタブは鍵アイコンを添える (無料の恋愛と区別) */}
-              {s.locked ? `🔒 ${s.tab}` : s.tab}
+              {/* PR3: タブに鍵は付けない (「どうせ見れない」で押されず課金導線に乗らないため)。
+                  入口は無料タブと同じ見た目にして開かせ、開いた中でぼかしロック+CTA を見せる。 */}
+              {s.tab}
             </button>
           );
         })}
