@@ -55,7 +55,6 @@ export default function CommercePage() {
 
         <h2>販売価格</h2>
         <ul>
-          <li>AI 統合トリセツ: 500 円（税込・1 回分）</li>
           <li>他己評価結果の個別解除: 500 円（税込・1 件分）</li>
           <li>プレミアムレポート: 980 円（税込・1 回分）</li>
         </ul>
