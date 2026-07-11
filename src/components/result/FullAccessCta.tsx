@@ -15,9 +15,13 @@ export function FullAccessCta({
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,
+  // 未ログイン(401)時の遷移先。/aisho など匿名ページのカードでは、決済不能なので
+  // トップへ funnel してアカウント作成→課金の橋渡しにする。既定はトップ。
+  unauthHref = "/",
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
+  unauthHref?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +39,11 @@ export function FullAccessCta({
       // 既に課金済み → 本文が見られる状態なので再読込。
       if (res.status === 409) {
         window.location.reload();
+        return;
+      }
+      // 未ログイン → 決済不能。トップへ funnel (アカウント作成→課金の橋渡し)。
+      if (res.status === 401) {
+        window.location.href = unauthHref;
         return;
       }
       if (!res.ok) {

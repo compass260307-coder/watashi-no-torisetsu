@@ -691,3 +691,23 @@ input[type="reset"]:active {
   color: #4298b4;
   text-decoration: underline;
 }
+
+/* PR3: ロック要素→課金案内カード(#fullaccess-promo)へスライド着地時のパルス。
+   scrollToPaywall() が .paywall-pulse を一時付与する。 */
+@keyframes wtr-paywall-pulse {
+  0%,
+  100% {
+    box-shadow: 0 12px 36px rgba(46, 46, 92, 0.12);
+  }
+  50% {
+    box-shadow: 0 14px 48px rgba(91, 91, 239, 0.5);
+  }
+}
+.paywall-pulse {
+  animation: wtr-paywall-pulse 1.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .paywall-pulse {
+    animation: none;
+  }
+}

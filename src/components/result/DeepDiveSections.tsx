@@ -9,7 +9,8 @@
 //     なるため、サーバ (/me) が resolveDeepDiveSections() で「許可されたぶんだけ」解決し、
 //     props (sections) で渡す。このコンポーネントは受け取って並べるだけの表示層。
 //   - 未課金の課金タブ (キャリア/成長) は section.body===null / locked===true で来る。
-//     その場合は本文の代わりに ¥299 課金導線 (FullAccessCta) を出す。
+//     その場合は本文の代わりに、最下部の課金案内カードへスライドするボタンを出す
+//     (PR3: 実 CTA はページ最下部の FullAccessPromoCard に一本化)。
 
 import { useState } from "react";
 import Image from "next/image";
@@ -17,7 +18,7 @@ import type {
   DeepDiveTabKey,
   ResolvedDeepDiveSection,
 } from "@/lib/deep-dive-resolve";
-import { FullAccessCta } from "./FullAccessCta";
+import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 
 // ※「みんなの目」(他己) タブは /tako/[token] へ移設。ここは自己深掘り3タブのみ。
 
@@ -26,15 +27,12 @@ interface DeepDiveSectionsProps {
   sections: ResolvedDeepDiveSection[];
   /** タブ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
-  /** このページの owner_token。¥299 課金導線 (FullAccessCta) に本人解決用として渡す。 */
-  ownerToken?: string;
   className?: string;
 }
 
 export function DeepDiveSections({
   sections,
   sceneImages,
-  ownerToken,
   className = "",
 }: DeepDiveSectionsProps) {
   // 初期選択は「恋愛傾向」(love) を明示指定 (並びが変わっても love を初期表示)。
@@ -83,8 +81,9 @@ export function DeepDiveSections({
                   : "bg-white text-[#2E2E5C] border-[#0094D8]/25 hover:bg-[#F4F4FE]"
               }`}
             >
-              {/* ロックタブは鍵アイコンを添える (無料の恋愛と区別) */}
-              {s.locked ? `🔒 ${s.tab}` : s.tab}
+              {/* PR3: タブに鍵は付けない (「どうせ見れない」で押されず課金導線に乗らないため)。
+                  入口は無料タブと同じ見た目にして開かせ、開いた中でぼかしロック+CTA を見せる。 */}
+              {s.tab}
             </button>
           );
         })}
@@ -129,9 +128,15 @@ export function DeepDiveSections({
               キャリアも成長も、ぜんぶ。
             </p>
             <div className="mt-5 flex flex-col items-center">
-              <div className="w-full max-w-[300px]">
-                <FullAccessCta ownerToken={ownerToken} />
-              </div>
+              {/* PR3: 押すと同ページ最下部の課金案内カードへスライド (遷移なし)。
+                  実 CTA は最下部カードに一本化。 */}
+              <button
+                type="button"
+                onClick={scrollToPaywall}
+                className="flex w-full max-w-[300px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
+              >
+                ぜんぶ、ひらく →
+              </button>
             </div>
           </div>
         ) : (
