@@ -598,7 +598,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
               <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:max-w-[860px] md:flex-row md:gap-8">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
-                <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                {/* 中身は縦中央寄せ (md 横並びで B と高さが揃ったとき下が空かないように) */}
+                <div className="relative flex flex-1 flex-col justify-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-5 pt-8 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
                   <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     <svg
                       width="15"
@@ -615,10 +616,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                     </svg>
                   </span>
-                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                  <p className="mb-1.5 text-[17px] font-black text-[#2E2E5C]">
                     友達{STAIR_PART_TWO}人でロック解除
                   </p>
-                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
                     {SHARE_CTA_CAPTION}
                   </p>
                   <ResultActions
@@ -629,7 +630,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     description={dispDesc}
                     imageSrc={dispImage}
                     shareCode={shareCode}
-                    qrSize={96}
+                    qrSize={128}
                   />
                 </div>
 

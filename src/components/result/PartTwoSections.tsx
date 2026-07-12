@@ -164,9 +164,9 @@ const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
 
 function RelationsLocked() {
   return (
-    <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-8">
+    <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
       {/* 鍵付きの円 (SP 2列 / md 4列) */}
-      <div className="mb-6 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
         {RELATION_LOCK_ITEMS.map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-2.5">
             <span
@@ -182,8 +182,8 @@ function RelationsLocked() {
         ))}
       </div>
 
-      {/* 解除カード (上辺にアクセント線 + 鍵バッジ) */}
-      <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center">
+      {/* 解除カード (上辺にアクセント線 + 鍵バッジ)。PC は 16P の比率に合わせ広め */}
+      <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
         <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
           <LockGlyph size={14} />
         </span>
@@ -236,7 +236,7 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
                 py でカードの上下にぼかし面をたっぷり見せる (16P の比率参考)。 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="relative flex min-h-[480px] items-center justify-center px-3 pt-44 pb-64 md:py-48"
+              className="relative flex min-h-[480px] items-center justify-center px-3 py-52 md:py-48"
             >
               {lockCard}
             </div>
