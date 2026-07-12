@@ -47,13 +47,14 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* 見出し: ①②と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}
+      {/* 見出し: ①②と同じ 16P 風 (丸囲み数字 + 大きめタイトル)。
+          番号は④ (③友達から見たアナタ との入れ替え後、2026-07-12)。 */}
       <div className="mb-4 flex items-center gap-3">
         <span
           aria-hidden="true"
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
         >
-          3
+          4
         </span>
         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
           アナタの深掘り
@@ -137,12 +138,12 @@ export function DeepDiveSections({
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
               「{current.tab}」のくわしい深掘りは
               <br />
-              全解放でひらきます。
+              友達3人 or ¥299 でひらきます。
             </p>
             <p className="mt-2 text-[#8A8AA3] font-bold text-[13px] leading-[1.6]">
-              一度きりの ¥299 で、
+              友達3人ならタダ。急ぐなら一度きりの ¥299 で、
               <br className="md:hidden" />
-              キャリアも成長も、ぜんぶ。
+              キャリアも成長も相性も、ぜんぶ。
             </p>
             <div className="mt-5 flex flex-col items-center">
               {/* PR3: 押すと同ページ最下部の課金案内カードへスライド (遷移なし)。
