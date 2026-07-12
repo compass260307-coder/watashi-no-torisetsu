@@ -549,20 +549,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
           })}
 
-          {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
-          <DeepDiveSections
-            sections={deepDiveSections}
-            sceneImages={{
-              love: sceneImage("love"),
-              career: sceneImage("work"),
-              growth: sceneImage("school"),
-            }}
-          />
         </section>
 
 
 
-        {/* ===== ④ 友達から見たアナタ (16P 風ロックティーザー) =====
+        {/* ===== ③ 友達から見たアナタ (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
             他己パートの本体は /tako/[token]。 */}
@@ -572,7 +563,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               aria-hidden="true"
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              4
+              3
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
               友達から見たアナタ
@@ -685,6 +676,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
           })()}
 
         </section>
+
+        {/* ===== ④ アナタの深掘り (恋愛/キャリア/成長/相性、タブ切替) =====
+            2026-07-12 指示で「友達から見たアナタ」(③) と順序を入れ替え。
+            「みんなの目」(他己) は /tako へ移設。 */}
+        <div className="mt-16">
+          <DeepDiveSections
+            sections={deepDiveSections}
+            sceneImages={{
+              love: sceneImage("love"),
+              career: sceneImage("work"),
+              growth: sceneImage("school"),
+            }}
+          />
+        </div>
 
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
