@@ -2,22 +2,23 @@
 
 // サイト共通の画像表示ラッパー (next/image)。
 // 「画像がバラバラに出る」体験を統一するために作成:
-//   - 読み込み前は淡いプレースホルダ地色を敷き、白い空白/不安定さを消す
-//     (透過キャラでも見えるのは一瞬。ロード完了で地色は外し、帯色を透かす)。
-//   - 読み込み完了でスッとフェードイン。下スクロールで挿絵が "パッ" と割り込む感を、
-//     どの画像も同じ動きに揃える。
+//   - width/height/fill で場所を先に確保し (CLS 防止)、読み込み完了でスッとフェードイン。
+//     下スクロールで挿絵が "パッ" と割り込む感を、どの画像も同じ動きに揃える。
 //   - priority (ヒーロー/LCP) はフェードで初期描画を遅らせないため、即時不透明で出す。
-// width/height/fill はそのまま next/image に渡すので、レイアウト確保 (CLS) は従来どおり。
+//   - プレースホルダ地色は既定で「透明」。キャラ画像の大半は透過素材を色帯/背景の上に
+//     重ねる設計で、地色を敷くと読み込み中に白い四角の箱が見えてしまうため
+//     (例: /me ヒーロー・/types グリッド)。不透明画像で読み込み中の空白を色で埋めたい
+//     ときだけ placeholderColor に色を渡す。
 // ※ ShareCard の PNG 焼き込み用 <img> は確実性優先のため対象外 (置き換えない)。
 
 import Image, { type ImageProps } from "next/image";
 import { useEffect, useRef, useState } from "react";
 
-// 読み込み前の淡い地色 (ブランドのオフホワイト寄りの薄ラベンダー)。
-const DEFAULT_PLACEHOLDER = "#F1EFF7";
+// 既定は透明 = 箱を出さない。場所は width/height で確保済みなのでズレない。
+const DEFAULT_PLACEHOLDER = "transparent";
 
 interface SmoothImageProps extends ImageProps {
-  // プレースホルダ地色の上書き。帯色に合わせたいときに指定。
+  // 読み込み中の地色。既定は透明 (箱なし)。不透明画像で空白を色で埋めたいときのみ指定。
   placeholderColor?: string;
 }
 
