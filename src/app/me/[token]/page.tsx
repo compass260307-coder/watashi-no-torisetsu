@@ -625,8 +625,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   shareCode={shareCode}
                   hideQr
                 />
-                {/* 2択の副導線: ¥299 スキップ (最下部の課金カードへアンカー移動)。
-                    ¥299 で買えるのは第二部まで = 第三部 (/tako) は金では買えない、を明記。 */}
+                {/* 2択の副導線: ¥299 スキップ (最下部の課金カードへアンカー移動) */}
                 <p className="mt-4 mb-2 text-[12px] font-bold text-[#2E2E5C]/50">
                   または
                 </p>
@@ -636,9 +635,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 >
                   ¥299 で今すぐスキップ
                 </a>
-                <p className="mt-2.5 text-[11px] font-bold leading-relaxed text-[#2E2E5C]/55">
-                  ¥299 で開くのはここ (第二部) まで。本物の見られ方は、友達だけが作れる。
-                </p>
               </div>
             );
             return <PartTwoSections data={partTwo} lockCard={lockCard} />;
