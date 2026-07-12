@@ -31,6 +31,41 @@ function SectionHeading({ title }: { title: string }) {
   );
 }
 
+// 16P「あなたの強み」風のチェックリスト (緑の丸チェック + 太字タイトル + 説明文、枠なし)。
+function CheckList({ items }: { items: ContentItem[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+      {items.map((it) => (
+        <div key={it.title}>
+          <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#4CAF7D] text-[#4CAF7D]"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </span>
+            {it.title}
+          </p>
+          <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+            {it.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CardGrid({ items }: { items: ContentItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -172,11 +207,11 @@ function RelationsLocked() {
 export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
   return (
     <div>
-      {/* ── 1. 武器 (無料・未解放でも公開) ── */}
+      {/* ── 1. 武器 (無料・未解放でも公開)。16P「あなたの強み」風チェックリスト ── */}
       {data.weapons && (
         <div className="mb-10">
           <SectionHeading title="羨ましいアナタの武器" />
-          <CardGrid items={data.weapons} />
+          <CheckList items={data.weapons} />
         </div>
       )}
 
@@ -208,10 +243,19 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
         )}
       </div>
 
-      {/* ── 3. 好かれやすい性格 (無料・未解放でも公開) ── */}
+      {/* ── 3. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
       <div className="mb-10">
         <SectionHeading title="好かれやすい性格" />
-        <CardGrid items={data.likable} />
+        <div className="px-1">
+          {data.likable.map((para, i) => (
+            <p
+              key={i}
+              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+            >
+              {para}
+            </p>
+          ))}
+        </div>
       </div>
 
       {/* ── 4. 関係別の見られ方 (🔒) ── */}
