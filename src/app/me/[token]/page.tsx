@@ -60,6 +60,7 @@ import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { hasFullAccess } from "@/lib/entitlements";
+import { hasPartTwoAccess } from "@/lib/friend-stairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
@@ -252,12 +253,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
     C: stored.C ?? 5,
     N: stored.N ?? 5,
   });
-  // 深掘り本文の課金ゲート (PR2)。本文はここ (サーバ) で解決し、許可されたぶんだけ
-  // props で渡す。判定は /me を所有する user (owner_token 行) の plan。未課金なら
-  // キャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
+  // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
+  // ぶんだけ props で渡す。解放条件 = 課金 (¥299=full) OR 友達3人以上 (friend-stairs.ts)。
+  // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   const deepDivePaid = await hasFullAccess(user.id as string);
+  const partTwoUnlocked = hasPartTwoAccess(deepDivePaid, friendEvalCount);
   const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
-    hasFullAccess: deepDivePaid,
+    hasFullAccess: partTwoUnlocked,
   });
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
@@ -618,9 +620,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
+        ¥299 で買えるのは第二部まで (三層モデル)。友達3人で開いた人には売るものが無いので出さない。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
-    {!deepDivePaid && (
+    {!partTwoUnlocked && (
       <FullAccessPromoCard
         ownerToken={token}
         imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
