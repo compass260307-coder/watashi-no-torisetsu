@@ -277,7 +277,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 >
                   1
                 </span>
-                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                <h2 className="balance-jp text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                   みんなの目に映るあなた
                 </h2>
               </div>

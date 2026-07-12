@@ -5,12 +5,36 @@
 // - フラグ非依存 (NEXT_PUBLIC_THIRTYTWO_ENABLED の状態に関わらず32タイプ表示可)。
 // - 不正な typeId は 404。
 // 例: /preview/sparkle-dolphin__R
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MePage from "@/app/me/[token]/page";
-import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
+import {
+  allThirtyTwoTypeIds,
+  thirtyTwoEssence,
+  thirtyTwoZukanDesc,
+  type ThirtyTwoTypeId,
+} from "@/lib/thirty-two-types";
 
 interface PreviewTypePageProps {
   params: Promise<{ typeId: string }>;
+}
+
+// タイプ別ランディングとして機能させる (トップ→/types→/preview で公開リンクされるため)。
+// 汎用title重複を避け、型ごとの肩書き/図鑑説明でメタを出し、canonical を自己参照・index許可。
+// ※ /me 本体は owner_token 保護のため noindex だが、preview はモックのみで個人情報を含まない。
+export async function generateMetadata({
+  params,
+}: PreviewTypePageProps): Promise<Metadata> {
+  const { typeId } = await params;
+  if (!(allThirtyTwoTypeIds() as string[]).includes(typeId)) return {};
+  const id = typeId as ThirtyTwoTypeId;
+  const essence = thirtyTwoEssence(id);
+  return {
+    title: essence,
+    description: thirtyTwoZukanDesc(id),
+    alternates: { canonical: `/preview/${typeId}` },
+    robots: { index: true, follow: true },
+  };
 }
 
 export default async function PreviewTypePage({
