@@ -592,7 +592,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // ロック解除カード (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
             // 16P 参考のコンパクト版: 上辺アクセント線 + 浮き鍵バッジ、QR なし (hideQr)。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="relative mx-auto w-full max-w-[400px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-5 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+              <div className="relative mx-auto w-full max-w-[340px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-5 pb-5 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
                 <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
                     width="14"
