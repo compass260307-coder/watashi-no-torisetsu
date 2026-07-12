@@ -592,8 +592,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // ロック解除の2択 (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
             // 16P のロックカード参考: 浮き角丸バッジ + 中央タイトル + 説明2行 + 全幅ボタン。
             // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
+            // SP は縦積み: カードBの浮きバッジ (-18px) が上カードに詰まらないよう gap 広め
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-6 md:flex-row md:gap-4">
+              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-12 md:flex-row md:gap-4">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
                 <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
