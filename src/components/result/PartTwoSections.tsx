@@ -136,7 +136,7 @@ function RelationsLocked() {
           href={`#${PART_TWO_LOCK_ID}`}
           className="inline-flex items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-2.5 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
-          解除方法を見る
+          今すぐアクセス
         </a>
       </div>
     </div>
