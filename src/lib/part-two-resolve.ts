@@ -18,22 +18,58 @@ import type { SixteenTypeId } from "./sixteen-types";
 import type { ThirtyTwoTypeId } from "./thirty-two-types";
 import {
   PERCEIVED_BY_TYPE,
+  FOUR_TRAITS,
+  fourTraitBody,
+  levelForScore,
   type ContentItem,
+  type TraitLevel,
 } from "./mutual-result-content";
 import { perceivedByType32 } from "./thirty-two-content/perceived-by-type-32";
 import { perceivedManualContent32 } from "./thirty-two-content/perceived-manual-32";
 
 export type ResolvedPartTwo = {
+  /** 第一印象 (初対面でどう見えるかの予測) の段落。null = 未解放。 */
+  firstImpression: string[] | null;
   /** 強み6カード。null = 未解放 (本文を解決しない)。 */
   strengths: ContentItem[] | null;
   /** あれっ?な一面 (弱み) 6カード。null = 未解放。 */
   surprises: ContentItem[] | null;
+  /** 友達から見た4つのステータス (頼れる度/ノリの良さ/本音の見せ方/距離の取り方)。null = 未解放。 */
+  stats: { label: string; level: TraitLevel; body: string; color: string }[] | null;
   /** アナタの取扱い方 (接し方のコツ) の段落。null = 未解放 or 素材なし。 */
   manual: string[] | null;
   /** ギャップ予告の一文 (無料メタ。ロック時に出してもよい)。 */
   gapTeaser: string;
   locked: boolean;
 };
+
+// ===== 第一印象 (新規・ルールベース) =====
+// 初対面の印象は主に E (自分から出るか) × A (感じの良さ) で決まり、N が緊張の乗り方を
+// 変える、という整理。E×A の4象限 + N の一文で決定的に組む (LLM不使用・B-1思想)。
+// トーンは他ブロックと同じ「伝聞・愛されるクセ変換」(ネガをそのまま出さない)。
+const FIRST_IMPRESSION_BASE: Record<"HH" | "HL" | "LH" | "LL", string> = {
+  HH: "初対面のアナタは、たぶん「感じよくてノリのいい人」。自分から話しかけるし、相手の話にもちゃんと笑う。第一印象では、かなり得をしている側のはず。",
+  HL: "初対面のアナタは「物おじしない人」。思ったことをまっすぐ話すから、最初はちょっと強そうに見られがち。でも裏表のなさが伝わった瞬間、その印象は一気に信頼へ変わる。",
+  LH: "初対面のアナタは「物静かだけど、感じのいい人」。自分からぐいぐいは行かないぶん、相槌ややわらかい空気で好印象を残す。仲良くなるほど評価が上がる、後伸びタイプ。",
+  LL: "初対面のアナタは、ちょっとミステリアス。口数が少なくて、最初は壁があるように見られることも。でもそのぶん、心を開いた相手に「選ばれた感」を渡せる人。",
+};
+const FIRST_IMPRESSION_N: Record<"N" | "R", string> = {
+  N: "そして初対面の場では、けっこう気を張っているはず。帰り道でどっと疲れるのは、それだけ相手の空気を読んでいる証拠。",
+  R: "そして初対面でも、あまり緊張しない。その自然体の余裕が、相手にも安心感を与えている。",
+};
+
+function buildFirstImpression(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): string[] {
+  const hi = (d: BigFiveDimension) =>
+    (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5;
+  const quad = `${hi("E") ? "H" : "L"}${hi("A") ? "H" : "L"}` as
+    | "HH"
+    | "HL"
+    | "LH"
+    | "LL";
+  return [FIRST_IMPRESSION_BASE[quad], FIRST_IMPRESSION_N[hi("N") ? "N" : "R"]];
+}
 
 const AXIS_LABEL: Record<BigFiveDimension, string> = {
   E: "外向性",
@@ -71,8 +107,10 @@ export function resolvePartTwo(
 
   if (!opts.unlocked) {
     return {
+      firstImpression: null,
       strengths: null,
       surprises: null,
+      stats: null,
       manual: null,
       gapTeaser,
       locked: true,
@@ -88,9 +126,25 @@ export function resolvePartTwo(
   const manualParas = manualRaw ? manualRaw.split("\n\n") : [];
   const manual = manualParas.length >= 2 ? [manualParas[1]] : null;
 
+  // 4つのステータス: 既存の対人特性部品 (FOUR_TRAITS × 高/中/低 本文) を自己スコアで
+  // 予測解決。本文の {B}さん は「友達」に置換。
+  const stats = FOUR_TRAITS.map((t) => {
+    const level = levelForScore(
+      typeof scores[t.dim] === "number" ? (scores[t.dim] as number) : 5,
+    );
+    return {
+      label: t.label,
+      level,
+      body: generalize(fourTraitBody(t.label, level)),
+      color: t.color,
+    };
+  });
+
   return {
+    firstImpression: buildFirstImpression(scores),
     strengths: perceived ? generalizeItems(perceived.strengths) : null,
     surprises: perceived ? generalizeItems(perceived.surprises) : null,
+    stats,
     manual,
     gapTeaser,
     locked: false,

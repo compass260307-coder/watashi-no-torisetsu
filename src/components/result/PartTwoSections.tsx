@@ -56,6 +56,23 @@ export function PartTwoSections({
         本物の見られ方は、友達だけが知っている。
       </p>
 
+      {/* ── 第一印象 ── */}
+      {data.firstImpression && (
+        <div className="mb-10">
+          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+            アナタの第一印象
+          </h3>
+          {data.firstImpression.map((para, i) => (
+            <p
+              key={i}
+              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+            >
+              {para}
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* ── 強み ── */}
       {data.strengths && (
         <div className="mb-10">
@@ -73,6 +90,36 @@ export function PartTwoSections({
             友達だけが知ってる、あれっ?な一面
           </h3>
           <CardGrid items={data.surprises} />
+        </div>
+      )}
+
+      {/* ── 友達から見た4つのステータス (対人特性 × 高/中/低) ── */}
+      {data.stats && (
+        <div className="mb-10">
+          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+            友達から見た4つのステータス
+          </h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {data.stats.map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-[#D9DCF5] bg-white px-4 py-3.5"
+                style={{ borderLeft: `6px solid ${s.color}` }}
+              >
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-[15px] font-black text-[#2E2E5C]">
+                    {s.label}
+                  </p>
+                  <span className="rounded-full bg-[#F4F4FE] px-2.5 py-0.5 text-[12px] font-black text-[#2E2E5C]">
+                    {s.level}
+                  </span>
+                </div>
+                <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+                  {s.body}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
