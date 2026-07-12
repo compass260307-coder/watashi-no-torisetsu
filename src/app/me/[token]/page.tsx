@@ -589,52 +589,73 @@ export default async function MePage({ params, searchParams }: PageProps) {
               🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
-            // ロック解除カード (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
-            // 16P 参考のコンパクト版: 上辺アクセント線 + 浮き鍵バッジ、QR なし (hideQr)。
+            // ロック解除の2択 (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
+            // 「友達3人 (無料)」と「¥299 買い切り」を別カードにし、間に or を挟む。
+            // SP は縦積み / md 以上は横並び。QR なし (hideQr) のコンパクト版。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="relative mx-auto w-full max-w-[340px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-5 pb-5 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-                <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+              <div className="mx-auto flex w-full max-w-[720px] flex-col items-stretch gap-2 md:flex-row md:items-stretch md:gap-3">
+                {/* ── カードA: 友達3人 (無料・主) ── */}
+                <div className="relative flex-1 rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-4 pb-4 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+                  <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </span>
+                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                    友達{STAIR_PART_TWO}人でロック解除
+                  </p>
+                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                    {SHARE_CTA_CAPTION}
+                  </p>
+                  <ResultActions
+                    typeName={dispName}
+                    shareUrl={inviteUrl}
+                    ownerName={displayName}
+                    essence={dispEssence}
+                    description={dispDesc}
+                    imageSrc={dispImage}
+                    shareCode={shareCode}
+                    hideQr
+                  />
+                </div>
+
+                {/* ── or ── */}
+                <div className="flex items-center justify-center md:flex-col">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2E2E5C] text-[11px] font-black text-white shadow-[0_4px_12px_rgba(46,46,92,0.25)]">
+                    or
+                  </span>
+                </div>
+
+                {/* ── カードB: ¥299 買い切り (副) ── */}
+                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#2E2E5C] bg-white px-4 pb-4 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+                  <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#2E2E5C] text-[11px] font-black text-white">
+                    ¥
+                  </span>
+                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                    ¥299 でロック解除
+                  </p>
+                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                    待てない人は、一度きりの買い切りで
+                  </p>
+                  {/* 最下部の課金カードへアンカー移動 */}
+                  <a
+                    href="#fullaccess-promo"
+                    className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
                   >
-                    <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                  </svg>
-                </span>
-                <p className="mb-1 text-[16px] font-black text-[#2E2E5C]">
-                  友達{STAIR_PART_TWO}人でロック解除
-                </p>
-                <p className="mb-3 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-                  {SHARE_CTA_CAPTION}
-                </p>
-                <ResultActions
-                  typeName={dispName}
-                  shareUrl={inviteUrl}
-                  ownerName={displayName}
-                  essence={dispEssence}
-                  description={dispDesc}
-                  imageSrc={dispImage}
-                  shareCode={shareCode}
-                  hideQr
-                />
-                {/* 2択の副導線: ¥299 スキップ (最下部の課金カードへアンカー移動) */}
-                <p className="mt-4 mb-2 text-[12px] font-bold text-[#2E2E5C]/50">
-                  または
-                </p>
-                <a
-                  href="#fullaccess-promo"
-                  className="inline-flex items-center justify-center rounded-full border-2 border-[#2E2E5C] bg-white px-5 py-2 text-[13px] font-black text-[#2E2E5C] transition-colors hover:bg-[#F4F4FE]"
-                >
-                  今すぐアクセス
-                </a>
+                    今すぐアクセス
+                  </a>
+                </div>
               </div>
             );
             return <PartTwoSections data={partTwo} lockCard={lockCard} />;
