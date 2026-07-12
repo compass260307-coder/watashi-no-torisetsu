@@ -7,20 +7,27 @@
 //     DeepDiveSections へ渡す。未課金の課金タブ (キャリア/成長) は body=null で渡す
 //     (=バンドルにも props にも本文が乗らない。フェイルクローズ)。
 //
-// 線引き (spec 確定):
-//   - 無料: 恋愛(love) タブ本文 … サービスの核・バイラルの燃料なのでゲートしない。
-//   - 🔒課金(¥299=full): キャリア(career) / 成長(growth) タブ本文。
+// 線引き (三層モデル 2026-07-12 確定):
+//   - 無料 (第一部): 恋愛(love) タブ本文 … サービスの核・バイラルの燃料なのでゲートしない。
+//   - 🔒第二部 (友達3人 or ¥299): キャリア(career) / 成長(growth) / 相性(aisho) タブ本文。
+//     opts.hasFullAccess には hasPartTwoAccess の結果を渡す (呼び出し側 /me)。
 //
 // サーバ専用ではないが (純データのみ)、クライアントから import しないこと
 // (import した時点でバンドル同梱に戻り、ゲートの意味が消える)。
 
 import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 import { TYPE_DEEP_DIVE, type TypeDeepDive } from "./report-data";
-import { classifyThirtyTwoType } from "./thirty-two-types";
+import {
+  classifyThirtyTwoType,
+  allThirtyTwoTypeIds,
+  thirtyTwoName,
+  type ThirtyTwoTypeId,
+} from "./thirty-two-types";
 import { LOVE_BY_TYPE_32 } from "./love-by-type-32";
 import { CAREER_BY_TYPE_32 } from "./career-by-type-32";
+import { compat } from "./aisho-compat";
 
-export type DeepDiveTabKey = "love" | "career" | "growth";
+export type DeepDiveTabKey = "love" | "career" | "growth" | "aisho";
 
 // DeepDiveSections が表示だけで使う、解決済みの1タブぶん。
 export type ResolvedDeepDiveSection = {
@@ -51,11 +58,12 @@ const AXIS_LABEL: Record<BigFiveDimension, string> = {
 const DEEP_DIVE_CARDS: {
   key: DeepDiveTabKey;
   tab: string;
-  hint: "top" | "bottom" | "growth" | BigFiveDimension;
+  hint: "top" | "bottom" | "growth" | "aisho" | BigFiveDimension;
 }[] = [
   { key: "love", tab: "恋愛傾向", hint: "A" },
   { key: "career", tab: "キャリア", hint: "C" },
   { key: "growth", tab: "成長", hint: "growth" },
+  { key: "aisho", tab: "相性", hint: "aisho" },
 ];
 
 // 未課金でも見せてよい無料タブ。ここ以外 (キャリア/成長) は課金でロック。
@@ -100,6 +108,9 @@ export function resolveDeepDiveSections(
     if (hint === "growth") {
       return `${AXIS_LABEL[bottomDim]}（${pct[bottomDim]}%）は、意識すると伸ばしどころ。`;
     }
+    if (hint === "aisho") {
+      return "32タイプ全員と総当たりで計算した、アナタの相性ランキング。";
+    }
     return `アナタの${AXIS_LABEL[hint]}は${pct[hint]}%。`;
   }
 
@@ -112,13 +123,22 @@ export function resolveDeepDiveSections(
   return DEEP_DIVE_CARDS.map((card) => {
     const unlocked = opts.hasFullAccess || FREE_TAB_KEYS.has(card.key);
     if (!unlocked) {
-      // 課金タブ・未課金 → 本文を解決しない (body=null)。
+      // ゲート対象タブ・未解放 → 本文を解決しない (body=null)。
       return {
         key: card.key,
         tab: card.tab,
         note: scoreNote(card.hint),
         body: null,
         locked: true,
+      };
+    }
+    if (card.key === "aisho") {
+      return {
+        key: card.key,
+        tab: card.tab,
+        note: scoreNote(card.hint),
+        body: buildAishoBody(thirtyTwoId),
+        locked: false,
       };
     }
     const section: TypeDeepDive[keyof TypeDeepDive] =
@@ -135,4 +155,24 @@ export function resolveDeepDiveSections(
       locked: false,
     };
   });
+}
+
+// 相性タブ本文 (三層モデル Step3)。/aisho の compat (ルールベース・テーブル直引き) を
+// 流用し、自タイプ×他31タイプの総当たりからベスト3と「いちばん歩み寄りがいる」1タイプを
+// 決定的に組む。段落は "\n\n" 区切り (DeepDiveSections は段落表示のみ)。
+function buildAishoBody(selfId: ThirtyTwoTypeId): string {
+  const ranked = allThirtyTwoTypeIds()
+    .filter((id) => id !== selfId)
+    .map((id) => ({ id, r: compat(selfId, id) }))
+    .sort((a, b) => b.r.percent - a.r.percent);
+  const best = ranked.slice(0, 3);
+  const tough = ranked[ranked.length - 1];
+
+  const para1 = `アナタと特に相性がいいのは、1位「${thirtyTwoName(best[0].id)}」（${best[0].r.percent}%）、2位「${thirtyTwoName(best[1].id)}」（${best[1].r.percent}%）、3位「${thirtyTwoName(best[2].id)}」（${best[2].r.percent}%）。1位のふたりは「${best[0].r.summary}」。`;
+  // 1位との相性が良い理由 (軸コピー。「ふたりとも〜」のペア向け文)
+  const para2 = best[0].r.goods[0];
+  const para3 = `逆に、いちばん歩み寄りがいるのは「${thirtyTwoName(tough.id)}」（${tough.r.percent}%）。${tough.r.caution}`;
+  const para4 =
+    "気になるあの子との1対1の相性は、相性診断ページでふたりのタイプを選ぶとくわしく見られるよ。";
+  return [para1, para2, para3, para4].join("\n\n");
 }
