@@ -60,9 +60,15 @@ import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { hasFullAccess } from "@/lib/entitlements";
-import { hasPartTwoAccess, STAIR_COMPLETE } from "@/lib/friend-stairs";
+import {
+  hasPartTwoAccess,
+  STAIR_TEASE,
+  STAIR_PART_TWO,
+  STAIR_COMPLETE,
+} from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import { PartTwoSections } from "@/components/result/PartTwoSections";
+import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
@@ -280,6 +286,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const partTwo = resolvePartTwo(t32, sixteenTypeId, stored, {
     unlocked: partTwoUnlocked,
   });
+  // 予兆 (階段1段目): 1人目の友達の perceived_scores から動物メタファーだけ小出しする。
+  // 自由記述や友達名は出さない (本人を傷つけない表示ルール)。数値以外は無視。
+  const teaseText: string | null = (() => {
+    const first = (perceptionRows ?? [])[0];
+    if (!first) return null;
+    const raw = (first.perceived_scores ?? {}) as Record<string, unknown>;
+    const ps: Partial<Record<BigFiveDimension, number>> = {};
+    for (const d of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
+      if (typeof raw[d] === "number") ps[d] = raw[d] as number;
+    }
+    if (Object.keys(ps).length === 0) return null;
+    const teaseAnimal = thirtyTwoAnimal(classifyThirtyTwoType(ps));
+    return `友達の目には、アナタは「${teaseAnimal}」っぽく映り始めているみたい…`;
+  })();
 
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
@@ -559,6 +579,19 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </h2>
           </div>
 
+          {/* 階段 (道中の報酬): 1人=予兆 / 3人=第二部 / 5人=本物(/tako)。解放前後とも常設。 */}
+          {!previewType && (
+            <FriendStairs
+              friendCount={friendEvalCount}
+              stairs={{
+                tease: STAIR_TEASE,
+                partTwo: STAIR_PART_TWO,
+                complete: STAIR_COMPLETE,
+              }}
+              teaseText={teaseText}
+            />
+          )}
+
           {/* 解放済み (友達3人 or ¥299) は予測コンテンツ本体、未解放はぼかしティーザー+ロックカード */}
           {partTwoUnlocked ? (
             <PartTwoSections
@@ -588,7 +621,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   </svg>
                 </span>
                 <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
-                  今すぐロックを解除
+                  友達{STAIR_PART_TWO}人でロック解除
                 </p>
                 <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
                   {SHARE_CTA_CAPTION}
@@ -602,6 +635,22 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   imageSrc={dispImage}
                   shareCode={shareCode}
                 />
+                {/* 2択の副導線: ¥299 スキップ (最下部の課金カードへアンカー移動)。
+                    ¥299 で買えるのは第二部まで = 第三部 (/tako) は金では買えない、を明記。 */}
+                <p className="mt-5 mb-2 text-[12px] font-bold text-[#2E2E5C]/50">
+                  または
+                </p>
+                <a
+                  href="#fullaccess-promo"
+                  className="inline-flex items-center justify-center rounded-full border-2 border-[#2E2E5C] bg-white px-6 py-2.5 text-[14px] font-black text-[#2E2E5C] transition-colors hover:bg-[#F4F4FE]"
+                >
+                  ¥299 で今すぐスキップ
+                </a>
+                <p className="mt-3 text-[11px] font-bold leading-relaxed text-[#2E2E5C]/55">
+                  ¥299 で開くのはここ (第二部) まで。
+                  <br />
+                  本物の見られ方は、友達だけが作れる。
+                </p>
               </div>
             );
             return (

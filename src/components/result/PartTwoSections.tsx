@@ -93,16 +93,29 @@ export function PartTwoSections({
         </div>
       )}
 
-      {/* ── ギャップ予告 (第三部 /tako への釣り) ── */}
+      {/* ── ギャップ予告 (第三部 /tako への釣り)。5人到達後は完成カードに変わる ── */}
       <div className="rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_8px_24px_rgba(46,46,92,0.10)]">
-        <p className="mb-2 text-[15px] font-black leading-relaxed text-[#2E2E5C]">
-          {data.gapTeaser}
-        </p>
-        <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-          本物の見られ方は、友達{completeThreshold}人で完成する。
-          {remaining > 0 ? `あと${remaining}人。` : ""}
-          お金では買えない。
-        </p>
+        {remaining > 0 ? (
+          <>
+            <p className="mb-2 text-[15px] font-black leading-relaxed text-[#2E2E5C]">
+              {data.gapTeaser}
+            </p>
+            <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+              本物の見られ方は、友達{completeThreshold}人で完成する。あと{remaining}人。
+              お金では買えない。
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mb-2 text-[17px] font-black leading-relaxed text-[#2E2E5C]">
+              本物の見られ方が、完成してる。
+            </p>
+            <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+              友達{completeThreshold}人の回答が集まった。
+              一人ひとりの答え・自分とのズレ・手紙は、他己診断ページに。
+            </p>
+          </>
+        )}
         <Link
           href={`/tako/${ownerToken}`}
           className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
