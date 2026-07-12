@@ -8,7 +8,7 @@
 //     背景はネイビー階調のダミーを blur した「この先に結果がある」チラ見せ。
 //   - 触れるのは QR・友達誘導・シェアのみ (LockedInviteShare が担う)。
 
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { useEffect, useRef } from "react";
 import { LockedInviteShare } from "./LockedInviteShare";
 import { TakoValueSections } from "./TakoValueSections";
@@ -112,7 +112,7 @@ export function TakoLockedState({
           <div className="md:flex-1">
             {/* あと○人ビジュアル (フェルト調イラスト・透過PNG)。friendCount に合わせて出し分ける。 */}
             <div className="-mx-2 md:mx-0 md:max-w-[560px]">
-              <Image
+              <SmoothImage
                 src={remainingVisual.src}
                 alt={`あと${remaining}人の回答で結果が解放`}
                 width={remainingVisual.width}

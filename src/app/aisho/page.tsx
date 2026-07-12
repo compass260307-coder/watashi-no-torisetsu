@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { useSearchParams } from "next/navigation";
 import {
   allThirtyTwoTypeIds,
@@ -248,7 +248,7 @@ function Slot({
           <CloseIcon />
         </button>
         {thumb.isFace ? (
-          <Image
+          <SmoothImage
             src={thumb.src}
             alt={thirtyTwoEssence(id)}
             width={300}
@@ -256,7 +256,7 @@ function Slot({
             className="absolute bottom-0 left-1/2 w-[120px] md:w-[190px] max-w-none -translate-x-1/2"
           />
         ) : (
-          <Image
+          <SmoothImage
             src={thumb.src}
             alt={thirtyTwoEssence(id)}
             width={240}
@@ -738,7 +738,7 @@ function ResultBlock({
             {/* 透過 PNG (装飾) は unoptimized で直接配信する。
                 dev の画像 optimizer がこの手の PNG で固まりローディングが終わらないため。 */}
             {rankImg ? (
-              <Image
+              <SmoothImage
                 src={rankImg}
                 alt={`相性ランク ${r.rank}`}
                 width={512}
@@ -837,7 +837,7 @@ function TypeGrid({
                           opacity: isSel ? 0.45 : 1,
                         }}
                       >
-                        <Image
+                        <SmoothImage
                           src={thumb.src}
                           alt={thirtyTwoEssence(id)}
                           width={168}
@@ -869,7 +869,7 @@ function TypeGrid({
                         opacity: isSel ? 0.45 : 1,
                       }}
                     >
-                      <Image
+                      <SmoothImage
                         src={thumb.src}
                         alt={thirtyTwoEssence(id)}
                         width={96}
@@ -1011,7 +1011,7 @@ function AishoInner() {
              抑えて2体+ハートが横に収まるようにする (見切れ防止)。 */
           <div className="flex min-h-[calc(100dvh-72px)] flex-col items-center justify-center">
             <div className="flex w-full items-center justify-center gap-3 md:gap-12">
-              <Image
+              <SmoothImage
                 src={heroImagePath(slotA)}
                 alt={thirtyTwoEssence(slotA)}
                 width={360}
@@ -1031,7 +1031,7 @@ function AishoInner() {
                   <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
                 </svg>
               </span>
-              <Image
+              <SmoothImage
                 src={heroImagePath(slotB)}
                 alt={thirtyTwoEssence(slotB)}
                 width={360}

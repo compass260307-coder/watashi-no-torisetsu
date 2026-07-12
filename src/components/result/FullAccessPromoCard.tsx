@@ -20,7 +20,7 @@
 //   - imageSrc: あるとき横並び (md+) の MBTI レイアウト。無いとき中央 1 カラム。
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
@@ -179,7 +179,7 @@ export function FullAccessPromoCard({
             className="flex items-center justify-center rounded-t-3xl px-6 pt-7 md:w-[40%] md:rounded-l-3xl md:rounded-tr-none md:px-6 md:py-8"
             style={{ backgroundColor: tone.panelBg }}
           >
-            <Image
+            <SmoothImage
               src={imageSrc!}
               alt={imageAlt}
               width={640}

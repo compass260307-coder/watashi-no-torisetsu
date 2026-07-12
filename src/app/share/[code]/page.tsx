@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import Link from "next/link";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
@@ -107,7 +107,7 @@ export default async function SharePage({
 
       {d ? (
         <>
-          <Image
+          <SmoothImage
             src={`/characters/v3/${d.slug}.webp`}
             alt={d.essence}
             width={320}

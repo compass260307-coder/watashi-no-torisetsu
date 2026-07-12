@@ -27,7 +27,7 @@ import { resolveSiteUrl } from "@/lib/site-url";
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
 // Vercel の 250MB 上限を超えるため、fs は使わない。
 import characterImages from "@/generated/character-images.json";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -474,7 +474,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   )}
                   {/* 挿絵 normal2: 「② アナタの注意点」タイトル直下 (本文の前) に表示 */}
                   {idx === 1 && sceneImage("normal2") && (
-                    <Image
+                    <SmoothImage
                       src={sceneImage("normal2")!}
                       alt=""
                       width={960}
@@ -495,7 +495,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   </div>
                   {/* 挿絵 normal1: パート1 (基本特性) の本文の後に表示 */}
                   {idx === 0 && sceneImage("normal1") && (
-                    <Image
+                    <SmoothImage
                       src={sceneImage("normal1")!}
                       alt=""
                       width={960}

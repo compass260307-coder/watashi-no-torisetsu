@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 
 export default function Error({
@@ -18,7 +18,7 @@ export default function Error({
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-5 py-10 bg-gradient-to-b from-pink-50 to-white">
       <div className="text-center max-w-md">
-        <Image
+        <SmoothImage
           src="/mascot/analyzing-penguin.png"
           alt=""
           width={144}

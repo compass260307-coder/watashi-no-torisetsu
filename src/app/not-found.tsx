@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -11,7 +11,7 @@ export default function NotFound() {
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-5 py-10 bg-gradient-to-b from-pink-50 to-white">
       <div className="text-center max-w-md">
-        <Image
+        <SmoothImage
           src="/types/penguin-base.png"
           alt=""
           width={144}

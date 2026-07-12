@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import FAQAccordion from "@/components/FAQAccordion";
 import { faqItems } from "@/lib/faq-data";
@@ -277,7 +277,7 @@ export default function AboutPage() {
           <div className="mt-6 grid grid-cols-4 gap-x-3 gap-y-5">
             {GALLERY.map((c) => (
               <div key={c.src} className="text-center">
-                <Image
+                <SmoothImage
                   src={c.src}
                   alt={c.name}
                   width={120}

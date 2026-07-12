@@ -13,7 +13,7 @@
 //     (PR3: 実 CTA はページ最下部の FullAccessPromoCard に一本化)。
 
 import { useState } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import type {
   DeepDiveTabKey,
   ResolvedDeepDiveSection,
@@ -109,7 +109,7 @@ export function DeepDiveSections({
       <article role="tabpanel" className="px-1 pt-1 pb-2">
         {/* 挿絵 (タブ対応のシーン別イラスト): タブ内の一番上に表示 */}
         {sceneImages?.[current.key] && (
-          <Image
+          <SmoothImage
             src={sceneImages[current.key]!}
             alt=""
             width={960}

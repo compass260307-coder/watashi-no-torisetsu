@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -218,7 +218,7 @@ export default function TypesPage() {
                           aria-label={`${thirtyTwoEssence(id)}の結果ページを見る`}
                           className="w-full transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
                         >
-                          <Image
+                          <SmoothImage
                             src={displayImagePath(id)}
                             alt={thirtyTwoEssence(id)}
                             width={512}
