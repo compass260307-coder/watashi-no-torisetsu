@@ -407,7 +407,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
     )}
     {/* 16P と同じスクロール連動ヘッダー。/me だけ、未解放時はヘッダー直下に
         「すべての結果のロックを解除」バーを常時表示 (ヘッダーが隠れてもバーは残る)。 */}
-    <MeStickyHeader showUnlockBar={!partTwoUnlocked}>
+    <MeStickyHeader
+      showUnlockBar={!partTwoUnlocked}
+      inviteUrl={inviteUrl}
+      essence={dispEssence}
+    >
       <TopHeader />
     </MeStickyHeader>
     <main
