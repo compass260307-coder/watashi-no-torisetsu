@@ -15,6 +15,7 @@
 
 import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
+import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
 export const PART_TWO_LOCK_ID = "part2-lock";
@@ -153,9 +154,10 @@ function LockGlyph({ size = 18 }: { size?: number }) {
 
 // 関係別の見られ方・未解放時 (16P「影響力のある特性」参考):
 // 色付きリングの円に鍵アイコン + 関係ラベルを4つ並べ、下に「今すぐロックを解除」カード。
+// 色は 2026-07-13 指定: 友達=水色 / 恋人=ピンク / 家族=緑 / 上司=紫。
 const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
-  { label: "友達から", color: "#4A90D9" },
-  { label: "恋人から", color: "#E0B040" },
+  { label: "友達から", color: "#56BFE8" },
+  { label: "恋人から", color: "#F48BAE" },
   { label: "家族から", color: "#4CAF7D" },
   { label: "上司・先輩から", color: "#9B6BD1" },
 ];
@@ -193,12 +195,11 @@ function RelationsLocked() {
           <br className="md:hidden" />
           それぞれどう見えているかが分かります。
         </p>
-        <a
-          href={`#${PART_TWO_LOCK_ID}`}
-          className="inline-flex items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-2.5 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
-        >
+        {/* 挙動は裏技カードと同一 (最下部の課金カードへスムーススクロール+パルス)。
+            横幅も裏技カードのCTAに合わせて全幅。 */}
+        <PaywallScrollButton className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]">
           今すぐアクセス
-        </a>
+        </PaywallScrollButton>
       </div>
     </div>
   );

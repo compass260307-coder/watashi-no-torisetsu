@@ -672,7 +672,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   />
                   {/* 深掘りロックタブと同じ挙動: 最下部の課金カードへスムーススクロール+パルス */}
                   <PaywallScrollButton className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]">
-                    今すぐアクセス
+                    今すぐロックを解除
                   </PaywallScrollButton>
                 </div>
               </div>
