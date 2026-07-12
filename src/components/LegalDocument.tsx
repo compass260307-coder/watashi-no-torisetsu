@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
 
 type Props = {
   title: string;
@@ -7,8 +9,12 @@ type Props = {
   children: ReactNode;
 };
 
+// 法務ページ (利用規約 / プライバシー / 特商法) 共通レイアウト。
+// ヘッダー・フッターはサイト共通の TopHeader / TopFooter に統一する。
 export default function LegalDocument({ title, lastUpdated, children }: Props) {
   return (
+    <>
+    <TopHeader />
     <main className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-5 pt-14 pb-4">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
@@ -32,5 +38,7 @@ export default function LegalDocument({ title, lastUpdated, children }: Props) {
         </div>
       </div>
     </main>
+    <TopFooter />
+    </>
   );
 }

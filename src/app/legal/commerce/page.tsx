@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import LegalDocument from "@/components/LegalDocument";
-import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "特定商取引法に基づく表記",
@@ -16,7 +14,7 @@ export default function CommercePage() {
     <>
       <LegalDocument
         title="特定商取引法に基づく表記"
-        lastUpdated="2026 年 7 月 11 日"
+        lastUpdated="2026 年 7 月 12 日"
       >
         <p>
           「ワタシのトリセツ」における有料サービスの提供について、特定商取引法第
@@ -132,7 +130,6 @@ export default function CommercePage() {
         <p>最終改定日: 2026 年 7 月 12 日</p>
 
       </LegalDocument>
-      <Footer />
     </>
   );
 }
