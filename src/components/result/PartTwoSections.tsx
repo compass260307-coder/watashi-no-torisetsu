@@ -51,20 +51,42 @@ function CardGrid({ items }: { items: ContentItem[] }) {
   );
 }
 
+// ぼかしの背後に敷くデコイ本文。「見えそうで見えない」もどかしさを作るため、
+// 骨組みバーではなく本物と同じ組版の日本語テキストをぼかす。
+// ⚠ これはダミー (全ユーザー共通のデコイ)。本物の本文はサーバで解決すらしていないので、
+//   ぼかしを外されても漏れるのはこの文だけ (フェイルクローズは維持)。
+const DECOY_ITEMS: ContentItem[] = [
+  { title: "実は頑固なところ", body: "友達には、一度こうと決めたら曲げないアナタが、たまに見えている。" },
+  { title: "連絡が遅くなりがち", body: "友達は、返事を後回しにするアナタに、少しだけやきもきしている。" },
+  { title: "本音を出さない瞬間", body: "友達には、笑って流しているけど本音が見えない時がある、と映っている。" },
+  { title: "気分にムラがある", body: "友達は、日によってテンションが違うアナタに気づいている。" },
+  { title: "抱え込みやすい", body: "友達には、限界まで一人で頑張ってしまうアナタが心配に見えている。" },
+  { title: "詰めが甘い時", body: "友達は、最後の最後で力が抜けるアナタを知っている。" },
+  { title: "距離の取り方", body: "友達には、急に壁を作るように見える瞬間がある、と映っている。" },
+  { title: "頼るのが苦手", body: "友達は、助けを求めないアナタに「言ってよ」と思っている。" },
+  { title: "こだわりが強い", body: "友達には、細かい部分を譲らないアナタが見えている。" },
+  { title: "熱しやすく冷めやすい", body: "友達は、夢中になる速さと飽きる速さの両方を知っている。" },
+  { title: "空気を読みすぎる", body: "友達には、周りに合わせて疲れているアナタが見えている。" },
+  { title: "負けず嫌いな一面", body: "友達は、さりげなく張り合ってくるアナタを面白がっている。" },
+];
+
 function DummyCards({ rows }: { rows: number }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[6px]"
+      className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
     >
-      {Array.from({ length: rows }, (_, i) => (
+      {DECOY_ITEMS.slice(0, rows).map((it) => (
         <div
-          key={i}
-          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
+          key={it.title}
+          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
         >
-          <div className="mb-2 h-3 w-3/4 rounded-full bg-[#2E2E5C]/30" />
-          <div className="mb-1.5 h-2 w-full rounded-full bg-[#2E2E5C]/15" />
-          <div className="h-2 w-5/6 rounded-full bg-[#2E2E5C]/15" />
+          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+            {it.title}
+          </p>
+          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+            {it.body}
+          </p>
         </div>
       ))}
     </div>
