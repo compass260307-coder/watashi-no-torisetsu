@@ -589,13 +589,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
               🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
-            // ロック解除カード (未解放時に最初の🔒ブロックへ重ねる。16P 参考)
+            // ロック解除カード (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
+            // 16P 参考のコンパクト版: 上辺アクセント線 + 浮き鍵バッジ、QR なし (hideQr)。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+              <div className="relative mx-auto w-full max-w-[400px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-5 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
+                <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
-                    width="18"
-                    height="18"
+                    width="14"
+                    height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -608,10 +609,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                   </svg>
                 </span>
-                <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
+                <p className="mb-1 text-[16px] font-black text-[#2E2E5C]">
                   友達{STAIR_PART_TWO}人でロック解除
                 </p>
-                <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
+                <p className="mb-3 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
                   {SHARE_CTA_CAPTION}
                 </p>
                 <ResultActions
@@ -622,22 +623,21 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   description={dispDesc}
                   imageSrc={dispImage}
                   shareCode={shareCode}
+                  hideQr
                 />
                 {/* 2択の副導線: ¥299 スキップ (最下部の課金カードへアンカー移動)。
                     ¥299 で買えるのは第二部まで = 第三部 (/tako) は金では買えない、を明記。 */}
-                <p className="mt-5 mb-2 text-[12px] font-bold text-[#2E2E5C]/50">
+                <p className="mt-4 mb-2 text-[12px] font-bold text-[#2E2E5C]/50">
                   または
                 </p>
                 <a
                   href="#fullaccess-promo"
-                  className="inline-flex items-center justify-center rounded-full border-2 border-[#2E2E5C] bg-white px-6 py-2.5 text-[14px] font-black text-[#2E2E5C] transition-colors hover:bg-[#F4F4FE]"
+                  className="inline-flex items-center justify-center rounded-full border-2 border-[#2E2E5C] bg-white px-5 py-2 text-[13px] font-black text-[#2E2E5C] transition-colors hover:bg-[#F4F4FE]"
                 >
                   ¥299 で今すぐスキップ
                 </a>
-                <p className="mt-3 text-[11px] font-bold leading-relaxed text-[#2E2E5C]/55">
-                  ¥299 で開くのはここ (第二部) まで。
-                  <br />
-                  本物の見られ方は、友達だけが作れる。
+                <p className="mt-2.5 text-[11px] font-bold leading-relaxed text-[#2E2E5C]/55">
+                  ¥299 で開くのはここ (第二部) まで。本物の見られ方は、友達だけが作れる。
                 </p>
               </div>
             );
