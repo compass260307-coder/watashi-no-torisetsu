@@ -594,7 +594,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
             // SP は縦積み: カードBの浮きバッジ (-18px) が上カードに詰まらないよう gap 広め
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-12 md:flex-row md:gap-4">
+              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:flex-row md:gap-6">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
                 <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
@@ -633,8 +633,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </div>
 
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻)。色はAと同じブランド紫 */}
-                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻)。色はAと同じブランド紫。
+                    正方形 (aspect-square)・中に画像プレイスホルダー (差し替え前提)。 */}
+                <div className="relative flex aspect-square flex-1 flex-col items-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
                   <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
@@ -659,6 +660,24 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     <br className="md:hidden" />
                     今すぐぜんぶ見る方法があります。
                   </p>
+                  {/* 画像プレイスホルダー (あとで実画像に差し替え) */}
+                  <div className="mb-3 flex w-full flex-1 items-center justify-center rounded-lg border-2 border-dashed border-[#D9DCF5] bg-[#F7F7FE]">
+                    <svg
+                      width="36"
+                      height="36"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#B9BCCF"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </div>
                   <a
                     href="#fullaccess-promo"
                     className="flex w-full items-center justify-center rounded-lg bg-[#5B5BEF] px-6 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
