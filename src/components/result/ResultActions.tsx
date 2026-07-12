@@ -33,6 +33,8 @@ interface ResultActionsProps {
   variant?: "full" | "iconbar";
   // QR コードを隠す (ロック解除カードのコンパクト版用。既定は表示)
   hideQr?: boolean;
+  // QR コードの一辺 px (既定 140。ロック解除カードでは小さめを指定)
+  qrSize?: number;
 }
 
 export function ResultActions({
@@ -45,6 +47,7 @@ export function ResultActions({
   shareCode,
   variant = "full",
   hideQr = false,
+  qrSize = 140,
 }: ResultActionsProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [imageNotice, setImageNotice] = useState<string | null>(null);
@@ -222,7 +225,7 @@ export function ResultActions({
       {!hideQr && (
         <div className="mt-4 flex flex-col items-center gap-2">
           <div className="rounded-2xl border border-[#E3E6F5] bg-white p-3">
-            <QRCodeSVG value={shareUrl} size={140} fgColor="#2E2E5C" />
+            <QRCodeSVG value={shareUrl} size={qrSize} fgColor="#2E2E5C" />
           </div>
           <p className="text-[11px] font-bold text-[#2E2E5C]/60">
             友達のスマホで読み取ってもらおう

@@ -593,14 +593,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // 16P のロックカード参考: 浮き角丸バッジ + 中央タイトル + 説明2行 + 全幅ボタン。
             // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[760px] flex-col items-stretch gap-6 md:flex-row md:gap-4">
+              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-6 md:flex-row md:gap-4">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
-                <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
-                  <span className="absolute -top-[22px] left-1/2 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
+                <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     <svg
-                      width="18"
-                      height="18"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -613,10 +613,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                     </svg>
                   </span>
-                  <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
+                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
                     友達{STAIR_PART_TWO}人でロック解除
                   </p>
-                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
                     {SHARE_CTA_CAPTION}
                   </p>
                   <ResultActions
@@ -627,17 +627,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     description={dispDesc}
                     imageSrc={dispImage}
                     shareCode={shareCode}
+                    qrSize={96}
                   />
                 </div>
 
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻) */}
-                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border-t-4 border-t-[#2E2E5C] bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
-                  <span className="absolute -top-[22px] left-1/2 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.4)]">
+                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻)。色はAと同じブランド紫 */}
+                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
-                      width="18"
-                      height="18"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -649,17 +650,17 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
                     </svg>
                   </span>
-                  <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
+                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
                     裏技でロック解除
                   </p>
-                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
                     友達を待たなくても、
                     <br className="md:hidden" />
                     今すぐぜんぶ見る方法があります。
                   </p>
                   <a
                     href="#fullaccess-promo"
-                    className="flex w-full items-center justify-center rounded-lg bg-[#2E2E5C] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
+                    className="flex w-full items-center justify-center rounded-lg bg-[#5B5BEF] px-6 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                   >
                     今すぐアクセス
                   </a>

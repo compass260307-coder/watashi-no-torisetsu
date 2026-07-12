@@ -185,13 +185,17 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
           /* 16P 参考の構図: ぼかしダミーを背面 (absolute) に敷き、解除カード側が
              高さを決める (カードが見切れない)。ダミーは min-h とカードの上下余白ぶん見える。 */
           <div className="relative overflow-hidden rounded-2xl">
-            <div aria-hidden="true" className="absolute inset-0">
+            {/* 下端はマスクでフェードアウトし、途中で切れたカードが目立たないようにする */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_78%,transparent)]"
+            >
               <DummyCards rows={12} />
             </div>
             {/* 解除カード本体 (友達3人 or 裏技)。後続🔒ブロックのアンカー先 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="relative flex min-h-[520px] items-center justify-center px-3 py-12"
+              className="relative flex min-h-[480px] items-center justify-center px-3 py-10"
             >
               {lockCard}
             </div>
