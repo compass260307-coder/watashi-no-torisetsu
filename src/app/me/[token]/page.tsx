@@ -77,6 +77,7 @@ import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
+import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
@@ -656,9 +657,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     裏技でロック解除
                   </p>
                   <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
-                    友達を待たなくても、
+                    ぜんぶ解放すると、アナタのどんな性格が
                     <br className="md:hidden" />
-                    今すぐぜんぶ見る方法があります。
+                    友達から嫌われやすいのかまで分かります。
                   </p>
                   {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順)。
                       原寸比のまま全体を見せる (トリミングで見切れさせない)。 */}
@@ -669,12 +670,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     height={640}
                     className="mb-3 h-auto w-full rounded-lg"
                   />
-                  <a
-                    href="#fullaccess-promo"
-                    className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
-                  >
+                  {/* 深掘りロックタブと同じ挙動: 最下部の課金カードへスムーススクロール+パルス */}
+                  <PaywallScrollButton className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]">
                     今すぐアクセス
-                  </a>
+                  </PaywallScrollButton>
                 </div>
               </div>
             );

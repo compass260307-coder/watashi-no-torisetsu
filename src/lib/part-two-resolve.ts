@@ -63,6 +63,45 @@ function generalizeItems(items: ContentItem[]): ContentItem[] {
   return items.map((it) => ({ ...it, body: generalize(it.body) }));
 }
 
+// ===== 武器の文体バリエーション =====
+// 素材は全文「{B}さんは、/{B}さんには、」で始まるため、単純置換だと6項目とも
+// 「友達は、〜」で単調になる (2026-07-13 指摘)。主語をインデックス別に散らし、
+// 補足の一文 (汎用の称賛タグ) を足して 16P 風の2文構成にする。
+const WEAPON_SUBJECT_WA = [
+  "友達は、",
+  "周りは、",
+  "実は友達は、",
+  "みんな、",
+  "仲のいい友達ほど、",
+  "気づけば周りは、",
+];
+const WEAPON_SUBJECT_NIWA = [
+  "友達には、",
+  "周りの目には、",
+  "実は友達には、",
+  "みんなの目には、",
+  "仲のいい友達の目には、",
+  "気づけば周りには、",
+];
+const WEAPON_TAIL = [
+  "自分では当たり前でも、周りから見れば立派な特技。",
+  "これができる人は、実はそんなに多くない。",
+  "本人が思っているより、ずっと大きな武器。",
+  "アナタがいるだけで、助かっている人がいる。",
+  "気づいていないのは、たぶんアナタだけ。",
+  "この安心感は、簡単には真似できない。",
+];
+
+function varyWeapons(items: ContentItem[]): ContentItem[] {
+  return items.map((it, i) => {
+    const body = it.body
+      .replaceAll("{B}さんには、", WEAPON_SUBJECT_NIWA[i % WEAPON_SUBJECT_NIWA.length])
+      .replaceAll("{B}さんは、", WEAPON_SUBJECT_WA[i % WEAPON_SUBJECT_WA.length])
+      .replaceAll("{B}さん", "友達"); // 文中残り (係り方が違うもの) は従来どおり
+    return { ...it, body: `${body}${WEAPON_TAIL[i % WEAPON_TAIL.length]}` };
+  });
+}
+
 // ===== 好かれやすい性格 (無料・ルールベース・文章) =====
 // 5軸の高低から流れのある文章 (3〜4段落) を組む。どちらに転んでも長所として書く
 // (ネガをそのまま出さない)。段落構成: ①E (第一印象の魅力) ②A+C (人柄の信頼)
@@ -182,7 +221,7 @@ export function resolvePartTwo(
     perceivedByType32[thirtyTwoId] ?? PERCEIVED_BY_TYPE[sixteenId] ?? null;
 
   return {
-    weapons: perceived ? generalizeItems(perceived.strengths) : null,
+    weapons: perceived ? varyWeapons(perceived.strengths) : null,
     likable: buildLikable(scores),
     dislikable:
       opts.unlocked && perceived ? generalizeItems(perceived.surprises) : null,
