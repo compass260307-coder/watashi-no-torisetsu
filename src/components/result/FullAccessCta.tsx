@@ -15,9 +15,11 @@ export function FullAccessCta({
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,
-  // 未ログイン(401)時の遷移先。/aisho など匿名ページのカードでは、決済不能なので
-  // トップへ funnel してアカウント作成→課金の橋渡しにする。既定はトップ。
-  unauthHref = "/",
+  // 未ログイン(401)時の遷移先。匿名だと「解放する自分のトリセツ」がまだ無いので
+  // 決済できない → まず診断へ funnel (診断→トリセツ作成→課金 の橋渡し)。
+  // 例: Safari シークレット/SPでCookie不在 かつ URL に owner_token が無い (/aisho) ケース。
+  // /me・/tako は owner_token を渡すのでここには来ない (常に Stripe へ到達)。
+  unauthHref = "/diagnosis",
 }: {
   children?: React.ReactNode;
   ownerToken?: string;

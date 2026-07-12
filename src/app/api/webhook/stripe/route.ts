@@ -20,11 +20,20 @@
 //     after() の AI 生成は最大 100 秒程度かかるため maxDuration を引き上げ
 //   - 自動返金は実装しない (MVP)、失敗時は Slack アラート + 手動対応
 
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
+import { classifyType } from "@/lib/diagnosis";
+
+// ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
+// users は type_id/scores が NOT NULL のため空では INSERT できない。
+const NEUTRAL_SCORES = { O: 5, C: 5, E: 5, A: 5, N: 5 };
+function guestToken(bytes: number): string {
+  return crypto.randomBytes(bytes).toString("base64url");
+}
 
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
@@ -166,33 +175,95 @@ async function persistLoginEmailIfEmpty(
   }
 }
 
-// ---------- PR1: フルアクセス(全解放) 完了 ----------
-// plan='full' に更新 (冪等: 同一 webhook が複数回届いても結果同じ)。
-// full_access_at は初回のみ (WHERE full_access_at IS NULL で再送上書きを防止)。
-// email backfill は handleCheckoutCompleted 冒頭の persistLoginEmailIfEmpty で共通処理済み。
-async function handleFullAccessCompleted(userId: string): Promise<void> {
+// ---------- フルアクセス(全解放) 完了: email 優先で紐付け (ゲスト決済対応) ----------
+// 紐付けキー: Stripe 確定 email を優先 → user_id (metadata)。片方でもあれば紐付く。
+//   ① email があれば: 同 email の users を全部 plan='full' (再診断で複数行あっても全部有効)。
+//   ② user_id があれば: その行も plan='full' + email backfill (空なら埋める)。
+//   ③ どちらにも紐付かない完全ゲスト: email でプレースホルダー users を新規作成 (plan='full')。
+//      後日ログイン→診断で本物のトリセツに UPDATE され、plan は保持される。
+// 冪等: plan/full_access_at の UPDATE は何度届いても同結果。②③は ① で拾えなければ通る。
+async function grantFullAccessByEmailOrId(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
   const nowIso = new Date().toISOString();
+  let linked = false;
 
-  const { error: planErr } = await supabaseAdmin
-    .from("users")
-    .update({ plan: "full" })
-    .eq("id", userId);
-  if (planErr) {
-    // throw → Stripe がリトライ。plan 更新は冪等なので安全。
-    throw new Error(`[full_access] plan update failed: ${planErr.message}`);
+  // ① email 優先: 同 email の全 users を full に
+  if (email) {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .update({ plan: "full" })
+      .eq("email", email)
+      .select("id");
+    if (error) {
+      throw new Error(`[full_access] email link failed: ${error.message}`);
+    }
+    if (data && data.length > 0) {
+      linked = true;
+      await supabaseAdmin
+        .from("users")
+        .update({ full_access_at: nowIso })
+        .eq("email", email)
+        .is("full_access_at", null);
+    }
   }
 
-  const { error: atErr } = await supabaseAdmin
-    .from("users")
-    .update({ full_access_at: nowIso })
-    .eq("id", userId)
-    .is("full_access_at", null);
-  if (atErr) {
-    // 致命ではない (購入日時は分析用)。plan='full' は確定済みなので続行。
-    console.warn("[full_access] full_access_at update warning:", atErr.message);
+  // ② user_id 行も full + email backfill (空なら)
+  if (userId) {
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({ plan: "full" })
+      .eq("id", userId);
+    if (error) {
+      throw new Error(`[full_access] id link failed: ${error.message}`);
+    }
+    linked = true;
+    await supabaseAdmin
+      .from("users")
+      .update({ full_access_at: nowIso })
+      .eq("id", userId)
+      .is("full_access_at", null);
+    if (email) {
+      await supabaseAdmin
+        .from("users")
+        .update({ email })
+        .eq("id", userId)
+        .is("email", null);
+    }
   }
 
-  console.log("[webhook/stripe] full_access completed", { user_id: userId });
+  // ③ 完全ゲスト: email でプレースホルダー users を新規作成 (ログイン→診断で本物に UPDATE)
+  if (!linked) {
+    if (!email) {
+      // email も user_id も無い = 復元不能 (Stripe が email を収集する前提なので通常来ない)。
+      throw new Error(
+        `[full_access] no email and no user_id for session ${session.id}`,
+      );
+    }
+    const { error } = await supabaseAdmin.from("users").insert({
+      email,
+      plan: "full",
+      full_access_at: nowIso,
+      owner_token: guestToken(16),
+      invite_code: guestToken(8),
+      type_id: classifyType(NEUTRAL_SCORES),
+      scores: NEUTRAL_SCORES,
+    });
+    if (error) {
+      throw new Error(`[full_access] guest user create failed: ${error.message}`);
+    }
+  }
+
+  console.log("[webhook/stripe] full_access granted", {
+    user_id: userId ?? "(guest)",
+    email: email ? "set" : "none",
+    linked,
+  });
 }
 
 // ---------- checkout.session.completed ----------
@@ -200,25 +271,28 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
-  const userId = metadata.user_id;
+  // guest 決済では user_id が空。"" は null 扱いにする。
+  const userId =
+    typeof metadata.user_id === "string" && metadata.user_id.length > 0
+      ? metadata.user_id
+      : null;
+
+  // フルアクセス(全解放): guest 対応。user_id が無くても Stripe 確定 email で紐付ける。
+  //   email backfill / プレースホルダー作成も含めて grantFullAccessByEmailOrId が担う。
+  if (metadata.product === "full_access") {
+    await grantFullAccessByEmailOrId(session, userId);
+    return;
+  }
+
+  // ここから先 (perception_unlock 等) は従来どおり user_id 必須。
   if (!userId) {
     throw new Error(
       `session.metadata.user_id missing for session ${session.id}`,
     );
   }
 
-  // ★ 全課金経路共通: Stripe が確定した email を users.email が空なら埋める (復元用)。
-  //   payment_kind 分岐の手前に置くことで perception_unlock / integrated_trisetsu
-  //   の両経路 + 将来経路を 1 箇所でカバーする。詳細は persistLoginEmailIfEmpty 参照。
+  // ★ Stripe が確定した email を users.email が空なら埋める (復元用)。
   await persistLoginEmailIfEmpty(userId, session);
-
-  // PR1: ¥299 買い切り「フルアクセス(全解放)」。metadata.product='full_access' で分岐。
-  //   plan='full' に更新 (冪等: 何度届いても結果同じ)。full_access_at は初回のみ。
-  //   email backfill は上の persistLoginEmailIfEmpty で共通処理済み。
-  if (metadata.product === "full_access") {
-    await handleFullAccessCompleted(userId);
-    return;
-  }
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)

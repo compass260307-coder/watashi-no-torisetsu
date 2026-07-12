@@ -155,28 +155,31 @@ export async function POST(request: NextRequest) {
       };
     }
   }
-  if (!buyer) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  const userId = buyer.id;
+  // ★ゲスト決済: buyer が解決できなくても 401 にしない。誰でも購入できるようにし、
+  //   本人紐付けは webhook が Stripe 確定 email を優先キーに行う (email or id で紐付け)。
+  //   userId=null がゲスト。買い手が判る場合のみ user_id/owner_token を使う。
+  const userId: string | null = buyer?.id ?? null;
 
-  // ===== 二重課金防止 =====
-  if (await hasFullAccess(userId)) {
+  // ===== 二重課金防止 (本人が判るときのみ。ゲストは email 未確定なので webhook 側で冪等) =====
+  if (userId && (await hasFullAccess(userId))) {
     return NextResponse.json(
       { error: "already_full", code: "already_full" },
       { status: 409 },
     );
   }
 
-  // 購入後の着地は自分のトリセツ (/me/[owner_token])。owner_token が無ければトップ。
-  const ownerToken = (buyer.owner_token ?? "").trim();
+  // 購入後の着地:
+  //   ログイン中/owner_token あり → 自分のトリセツ (/me/[owner_token])。
+  //   ゲスト → 「購入完了 → 登録メールでログイン」ページ。
+  const ownerToken = (buyer?.owner_token ?? "").trim();
   const successUrl = ownerToken
     ? `${BASE_URL}/me/${ownerToken}?paid=1`
-    : `${BASE_URL}/?paid=1`;
+    : `${BASE_URL}/purchase-complete`;
   const cancelUrl = ownerToken ? `${BASE_URL}/me/${ownerToken}` : `${BASE_URL}/`;
 
+  // ログイン中は email を prefill。ゲストは Stripe が Checkout で email を収集する。
   const customerEmail =
-    typeof buyer.email === "string" && buyer.email.includes("@")
+    typeof buyer?.email === "string" && buyer.email.includes("@")
       ? buyer.email
       : undefined;
 
@@ -225,7 +228,7 @@ export async function POST(request: NextRequest) {
       mode: "payment", // 買い切り (subscription ではない)
       line_items: lineItems,
       ...(useDiscount ? { discounts: [{ coupon: couponId! }] } : {}),
-      client_reference_id: userId,
+      ...(userId ? { client_reference_id: userId } : {}),
       ...(customerEmail ? { customer_email: customerEmail } : {}),
       // 支払い直前の安心コピー (買い切り・返金保証)。
       custom_text: {
@@ -234,10 +237,12 @@ export async function POST(request: NextRequest) {
             "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき・追加課金なし。",
         },
       },
-      // 既存 webhook は metadata.user_id を読む。product='full_access' で分岐する。
+      // webhook は product='full_access' で分岐。user_id があればその行、無ければ (guest=1)
+      // Stripe 確定 email をキーに紐付ける (email or id・email 優先)。
       metadata: {
-        user_id: userId,
+        user_id: userId ?? "",
         product: "full_access",
+        guest: userId ? "0" : "1",
         email: customerEmail ?? "",
       },
       success_url: successUrl,
