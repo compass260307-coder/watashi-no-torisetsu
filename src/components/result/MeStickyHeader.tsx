@@ -71,7 +71,24 @@ export function MeStickyHeader({
   const [qrOpen, setQrOpen] = useState(false);
   const lastY = useRef(0);
   const headerRef = useRef<HTMLDivElement>(null);
+  const qrAreaRef = useRef<HTMLDivElement>(null);
   const [headerH, setHeaderH] = useState(0);
+
+  // QR 吹き出しの外側クリックで閉じる。
+  // ※ 祖先に transform があるため fixed オーバーレイは使えない (containing block が
+  //   transform 要素になり全画面を覆えない)。document リスナーで判定する。
+  useEffect(() => {
+    if (!qrOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!qrAreaRef.current?.contains(e.target as Node)) setQrOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [qrOpen]);
 
   useEffect(() => {
     // ヘッダー実高を測る (リサイズにも追従)
@@ -126,28 +143,53 @@ export function MeStickyHeader({
             {/* シェア3ボタン (QR / X / LINE)。招待 URL があるときのみ */}
             {inviteUrl && (
               <>
-                <CircleIconButton
-                  label="QRコードを表示"
-                  onClick={() => setQrOpen((v) => !v)}
-                >
-                  {/* QR アイコン */}
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+                {/* QR ボタン + 吹き出し (ボタン基準で直下に、矢印付き) */}
+                <div className="relative" ref={qrAreaRef}>
+                  <CircleIconButton
+                    label="QRコードを表示"
+                    onClick={() => setQrOpen((v) => !v)}
                   >
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1" />
-                  </svg>
-                </CircleIconButton>
+                    {/* QR アイコン */}
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <path d="M14 14h3v3h-3zM20 14h1M14 20h1M20 20h1" />
+                    </svg>
+                  </CircleIconButton>
+
+                  {qrOpen && (
+                    <>
+                      {/* 吹き出し本体: ボタンの左端基準で少し左に出し、右へ広げる
+                          (SP で画面左に見切れない)。矢印はボタン中央 (left 38px) を指す。 */}
+                      <div className="absolute -left-[20px] top-full z-50 mt-3 w-[188px] rounded-2xl border border-[#E3E6F5] bg-white p-4 shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                        {/* 矢印 (ボタンの真下を指す) */}
+                        <span
+                          aria-hidden="true"
+                          className="absolute -top-[7px] left-[38px] h-3.5 w-3.5 -translate-x-1/2 rotate-45 border-l border-t border-[#E3E6F5] bg-white"
+                        />
+                        <div className="flex flex-col items-center">
+                          <QRCodeSVG value={inviteUrl} size={148} fgColor="#2E2E5C" />
+                          <p className="mt-2.5 text-center text-[11px] font-bold leading-snug text-[#2E2E5C]/60">
+                            友達のスマホで
+                            <br />
+                            読み取ってもらおう
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <CircleIconButton label="Xでシェア" href={xUrl}>
                   {/* X ロゴ */}
                   <svg
@@ -173,15 +215,6 @@ export function MeStickyHeader({
                   </svg>
                 </CircleIconButton>
 
-                {/* QR ポップオーバー (バー直下・右寄せ) */}
-                {qrOpen && (
-                  <div className="absolute right-4 top-full z-50 mt-2 rounded-2xl border border-[#E3E6F5] bg-white p-4 shadow-[0_12px_36px_rgba(46,46,92,0.20)] md:right-8">
-                    <QRCodeSVG value={inviteUrl} size={140} fgColor="#2E2E5C" />
-                    <p className="mt-2 text-center text-[11px] font-bold text-[#2E2E5C]/60">
-                      友達のスマホで読み取ってもらおう
-                    </p>
-                  </div>
-                )}
               </>
             )}
 
