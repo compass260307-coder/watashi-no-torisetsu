@@ -60,7 +60,9 @@ import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { hasFullAccess } from "@/lib/entitlements";
-import { hasPartTwoAccess } from "@/lib/friend-stairs";
+import { hasPartTwoAccess, STAIR_COMPLETE } from "@/lib/friend-stairs";
+import { resolvePartTwo } from "@/lib/part-two-resolve";
+import { PartTwoSections } from "@/components/result/PartTwoSections";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
@@ -257,10 +259,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // ぶんだけ props で渡す。解放条件 = 課金 (¥299=full) OR 友達3人以上 (friend-stairs.ts)。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   const deepDivePaid = await hasFullAccess(user.id as string);
-  const partTwoUnlocked = hasPartTwoAccess(deepDivePaid, friendEvalCount);
+  // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
+  const partTwoUnlocked = previewType
+    ? true
+    : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,
   });
+  // 第二部「友達から見たアナタ (予測)」本文 (強み/あれっ?/取扱い方/ギャップ予告)。
+  // 未解放時は本文を解決しない (フェイルクローズ)。sixteenTypeId/t32 は後段で導出するため
+  // 解決自体は分類後 (下) で行う。
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
@@ -268,6 +276,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+  // 第二部本文 (強み/あれっ?/取扱い方/ギャップ予告)。未解放時は本文なし (フェイルクローズ)。
+  const partTwo = resolvePartTwo(t32, sixteenTypeId, stored, {
+    unlocked: partTwoUnlocked,
+  });
 
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
@@ -547,7 +559,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </h2>
           </div>
 
-          {(() => {
+          {/* 解放済み (友達3人 or ¥299) は予測コンテンツ本体、未解放はぼかしティーザー+ロックカード */}
+          {partTwoUnlocked ? (
+            <PartTwoSections
+              data={partTwo}
+              ownerToken={previewType ? "preview" : token}
+              friendCount={friendEvalCount}
+              completeThreshold={STAIR_COMPLETE}
+            />
+          ) : (() => {
             // ロック解除カード (2 ブロックで共用。16P の「今すぐロックを解除」参考)
             const lockCard = (
               <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
