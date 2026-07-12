@@ -1,75 +1,50 @@
-// 第二部「友達から見たアナタ (予測)」本文のサーバ解決 (三層モデル Step2)。
+// 第二部「友達から見たアナタ」本文のサーバ解決 (三層モデル Step2)。
 //
-// 三層モデルの第二部 = 見られ方の"予測"。実際の友達回答 (第三部 /tako) ではなく、
-// 自己回答のタイプから決定的に導出する。解放条件は hasPartTwoAccess (友達3人 or ¥299)。
+// 構成 (2026-07-12 確定):
+//   1. 友達から見たアナタの武器      … 無料 (未解放でも公開。バイラルの燃料)
+//   2. 友達から嫌われやすい性格      … 🔒 友達3人 or ¥299
+//   3. 友達から好かれやすい性格      … 無料 (未解放でも公開)
+//   4. 関係別の見られ方 (友達/恋人/家族/上司) … 🔒 友達3人 or ¥299
+//
+// 中身は自己回答のタイプ/スコアから決定的に導出した"予測" (実際の友達回答は第三部 /tako)。
 //
 // deep-dive-resolve.ts と同じフェイルクローズ方針:
-//   本文データ (perceivedByType32 / perceivedManualContent32) をクライアントから
-//   import するとバンドル同梱で未解放でも読めてしまう。→ 解決はサーバ (/me) 側で
-//   このヘルパに集約し、未解放時は null を返す (本文が payload に載らない)。
+//   🔒ブロックの本文はサーバでこのヘルパに集約し、未解放時は null を返す
+//   (本文が payload にもクライアントバンドルにも載らない)。
 //
-// 素材の流用と置換:
-//   perceivedByType32 (強み6/あれっ?6) と perceivedManualContent32 (段落2=接し方のコツ)
-//   は {B}=友達名 差し込み前提の /tako 用素材。第二部は特定の友達がいない"予測"なので、
-//   {B}さん → 「友達」に置換した汎用文で出す。/tako では同素材が実名入りの本物として出る。
+// 素材:
+//   - 武器/嫌われやすい: perceivedByType32 (strengths/surprises) の流用。
+//     {B}=友達名 差し込み前提の /tako 用素材なので {B}さん → 「友達」に置換。
+//   - 好かれやすい/関係別: このファイル内のルールベース (軸の高低で決定。LLM不使用)。
 
 import type { BigFiveDimension } from "./types";
 import type { SixteenTypeId } from "./sixteen-types";
 import type { ThirtyTwoTypeId } from "./thirty-two-types";
 import {
   PERCEIVED_BY_TYPE,
-  FOUR_TRAITS,
-  fourTraitBody,
-  levelForScore,
   type ContentItem,
-  type TraitLevel,
 } from "./mutual-result-content";
 import { perceivedByType32 } from "./thirty-two-content/perceived-by-type-32";
-import { perceivedManualContent32 } from "./thirty-two-content/perceived-manual-32";
+
+export type RelationView = {
+  /** 関係ラベル (友達/恋人/家族/上司・先輩)。 */
+  relation: string;
+  body: string;
+};
 
 export type ResolvedPartTwo = {
-  /** 第一印象 (初対面でどう見えるかの予測) の段落。null = 未解放。 */
-  firstImpression: string[] | null;
-  /** 強み6カード。null = 未解放 (本文を解決しない)。 */
-  strengths: ContentItem[] | null;
-  /** あれっ?な一面 (弱み) 6カード。null = 未解放。 */
-  surprises: ContentItem[] | null;
-  /** 友達から見た4つのステータス (頼れる度/ノリの良さ/本音の見せ方/距離の取り方)。null = 未解放。 */
-  stats: { label: string; level: TraitLevel; body: string; color: string }[] | null;
-  /** アナタの取扱い方 (接し方のコツ) の段落。null = 未解放 or 素材なし。 */
-  manual: string[] | null;
-  /** ギャップ予告の一文 (無料メタ。ロック時に出してもよい)。 */
+  /** 武器 (強み6カード)。無料 = 未解放でも返す。null は素材欠損時のみ。 */
+  weapons: ContentItem[] | null;
+  /** 好かれやすい性格 (軸由来5カード)。無料 = 未解放でも返す。 */
+  likable: ContentItem[];
+  /** 嫌われやすい性格 (6カード)。🔒 null = 未解放 (本文を解決しない)。 */
+  dislikable: ContentItem[] | null;
+  /** 関係別の見られ方 (友達/恋人/家族/上司)。🔒 null = 未解放。 */
+  relations: RelationView[] | null;
+  /** ギャップ予告の一文 (無料メタ)。 */
   gapTeaser: string;
   locked: boolean;
 };
-
-// ===== 第一印象 (新規・ルールベース) =====
-// 初対面の印象は主に E (自分から出るか) × A (感じの良さ) で決まり、N が緊張の乗り方を
-// 変える、という整理。E×A の4象限 + N の一文で決定的に組む (LLM不使用・B-1思想)。
-// トーンは他ブロックと同じ「伝聞・愛されるクセ変換」(ネガをそのまま出さない)。
-const FIRST_IMPRESSION_BASE: Record<"HH" | "HL" | "LH" | "LL", string> = {
-  HH: "初対面のアナタは、たぶん「感じよくてノリのいい人」。自分から話しかけるし、相手の話にもちゃんと笑う。第一印象では、かなり得をしている側のはず。",
-  HL: "初対面のアナタは「物おじしない人」。思ったことをまっすぐ話すから、最初はちょっと強そうに見られがち。でも裏表のなさが伝わった瞬間、その印象は一気に信頼へ変わる。",
-  LH: "初対面のアナタは「物静かだけど、感じのいい人」。自分からぐいぐいは行かないぶん、相槌ややわらかい空気で好印象を残す。仲良くなるほど評価が上がる、後伸びタイプ。",
-  LL: "初対面のアナタは、ちょっとミステリアス。口数が少なくて、最初は壁があるように見られることも。でもそのぶん、心を開いた相手に「選ばれた感」を渡せる人。",
-};
-const FIRST_IMPRESSION_N: Record<"N" | "R", string> = {
-  N: "そして初対面の場では、けっこう気を張っているはず。帰り道でどっと疲れるのは、それだけ相手の空気を読んでいる証拠。",
-  R: "そして初対面でも、あまり緊張しない。その自然体の余裕が、相手にも安心感を与えている。",
-};
-
-function buildFirstImpression(
-  scores: Partial<Record<BigFiveDimension, number>>,
-): string[] {
-  const hi = (d: BigFiveDimension) =>
-    (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5;
-  const quad = `${hi("E") ? "H" : "L"}${hi("A") ? "H" : "L"}` as
-    | "HH"
-    | "HL"
-    | "LH"
-    | "LL";
-  return [FIRST_IMPRESSION_BASE[quad], FIRST_IMPRESSION_N[hi("N") ? "N" : "R"]];
-}
 
 const AXIS_LABEL: Record<BigFiveDimension, string> = {
   E: "外向性",
@@ -88,9 +63,96 @@ function generalizeItems(items: ContentItem[]): ContentItem[] {
   return items.map((it) => ({ ...it, body: generalize(it.body) }));
 }
 
+// ===== 好かれやすい性格 (無料・ルールベース) =====
+// 5軸それぞれの高低から「友達に好かれているポイント」を1枚ずつ。どちらに転んでも
+// 長所として書く (ネガをそのまま出さない)。計 5 カード。
+const LIKABLE: Record<BigFiveDimension, Record<"H" | "L", ContentItem>> = {
+  E: {
+    H: { title: "場が明るくなる", body: "アナタが来るだけで空気が軽くなる。「呼ぼう」の一番手に挙がるタイプ。" },
+    L: { title: "聞き上手の安心感", body: "騒がないぶん、話をちゃんと受け止めてくれる。二人のときが一番好かれてる。" },
+  },
+  A: {
+    H: { title: "自然な気配り", body: "頼まれる前に動く優しさ。本人が思っている以上に、周りはそれに救われてる。" },
+    L: { title: "裏表のなさ", body: "思ったことをそのまま言うから、褒め言葉に嘘がない。信用の置ける正直さ。" },
+  },
+  O: {
+    H: { title: "話題の引き出し", body: "「それ何?」から会話が転がる。一緒にいて飽きない人だと思われてる。" },
+    L: { title: "ブレない安定感", body: "流行に流されず、いつも同じテンションでいてくれる。それが心地いい。" },
+  },
+  C: {
+    H: { title: "約束を守る誠実さ", body: "時間も秘密もちゃんと守る。「あいつなら大丈夫」の信頼が積み上がってる。" },
+    L: { title: "一緒にいて気楽", body: "きっちりしすぎないゆるさが、相手の肩の力も抜いてくれる。" },
+  },
+  N: {
+    H: { title: "痛みに気づける繊細さ", body: "誰かが沈んでる時、最初に気づくのはアナタ。その一言に救われた友達がいる。" },
+    L: { title: "動じない余裕", body: "トラブルでも慌てないから、そばにいるだけで安心感がある。" },
+  },
+};
+
+// ===== 関係別の見られ方 (🔒・ルールベース) =====
+// 関係ごとに効く2軸の高低 (2×2=4パターン) で本文を決定。トーンは伝聞・やわらか。
+type Quad = "HH" | "HL" | "LH" | "LL";
+
+const RELATION_FRIEND: Record<Quad, string> = {
+  // E × A
+  HH: "グループの中心にいる、ノリが良くて優しいやつ。遊びの誘いはまずアナタに声がかかるし、アナタが来る日は集まりの出席率が上がる。",
+  HL: "言いたいことを言ってくれる、さっぱりした面白いやつ。遠慮がないから最初はひやっとさせるけど、裏で悪く言わない安心感で、長く付き合うほど信頼されていく。",
+  LH: "静かだけど、いてくれると安心するやつ。大人数では目立たないのに、二人になると一番話しやすい。気づけば悩み相談が集まってくるタイプ。",
+  LL: "群れない、自分の世界を持ってるやつ。付き合う相手は狭いけど、アナタが心を許した友達は、それをちょっと誇りに思ってる。",
+};
+
+const RELATION_LOVER: Record<Quad, string> = {
+  // A × N
+  HH: "相手の気持ちを先回りして動く、尽くすタイプ。その優しさは伝わってる。ただ我慢も一緒に溜めがちだから、恋人はアナタの本音をもっと聞きたいと思ってるかも。",
+  HL: "一緒にいて楽な、包容力のある恋人。ぶつかることが少ないぶん、たまに「何を考えてるか分からない」と言われることも。言葉にした分だけ、ちゃんと伝わる。",
+  LH: "好きな相手にだけ見せる顔がある、不器用な一途タイプ。素っ気なく見えて、心の中では相手のことをずっと考えてる。そのギャップに気づいた人が、離れられなくなる。",
+  LL: "ベタベタしない、対等でさっぱりした恋人。束縛しない自由さが魅力。ただ、たまの「好き」のひと言が、相手にとって一番の安心材料になる。",
+};
+
+const RELATION_FAMILY: Record<Quad, string> = {
+  // C × E
+  HH: "家でも外でも頼られる、自慢の存在。何でも自分でやってしまうから、家族は頼られなくて少し寂しいくらい。",
+  HL: "手がかからない、静かなしっかり者。「心配ない」と思われてるぶん、しんどい時ほど言葉にしないと気づいてもらえない。",
+  LH: "にぎやかで憎めない、家のムードメーカー。散らかった部屋も含めて、キャラとして愛されてる。",
+  LL: "マイペースで、家では省エネモード。外での頑張りが家族には見えにくいから、たまに近況をひと言話すだけで、けっこう喜ばれる。",
+};
+
+const RELATION_BOSS: Record<Quad, string> = {
+  // C × A
+  HH: "安心して任せられて、気配りもできる優等生。ただ都合よく頼られやすいから、たまには断ることも覚えていい。",
+  HL: "仕事は確実、意見もはっきり言う戦力。生意気と紙一重だけど、結果で信頼を積んでいくタイプだと見られてる。",
+  LH: "憎めない愛されキャラ。締切より人間関係で評価が保たれてる。ここぞの場面だけきっちり決めると、株が一気に上がる。",
+  LL: "読めないけど、たまに大物感を出す存在。型にはめられるのが苦手なだけで、合う環境なら化けると思われてる。",
+};
+
+function buildRelations(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): RelationView[] {
+  const hi = (d: BigFiveDimension) =>
+    (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5;
+  const quad = (a: BigFiveDimension, b: BigFiveDimension): Quad =>
+    `${hi(a) ? "H" : "L"}${hi(b) ? "H" : "L"}` as Quad;
+  return [
+    { relation: "友達から", body: RELATION_FRIEND[quad("E", "A")] },
+    { relation: "恋人から", body: RELATION_LOVER[quad("A", "N")] },
+    { relation: "家族から", body: RELATION_FAMILY[quad("C", "E")] },
+    { relation: "上司・先輩から", body: RELATION_BOSS[quad("C", "A")] },
+  ];
+}
+
+function buildLikable(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): ContentItem[] {
+  const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+  return dims.map((d) => {
+    const v = typeof scores[d] === "number" ? (scores[d] as number) : 5;
+    return LIKABLE[d][v >= 5 ? "H" : "L"];
+  });
+}
+
 /**
- * 第二部の本文を解決する。unlocked=false なら本文は一切解決しない (null)。
- * gapTeaser だけはスコア由来の無料メタとして常に返す。
+ * 第二部の本文を解決する。無料ブロック (武器/好かれやすい) は常に解決し、
+ * 🔒ブロック (嫌われやすい/関係別) は unlocked=false なら解決しない (null)。
  */
 export function resolvePartTwo(
   thirtyTwoId: ThirtyTwoTypeId,
@@ -105,48 +167,17 @@ export function resolvePartTwo(
   const topDim = dims.reduce((a, b) => (val(b) > val(a) ? b : a));
   const gapTeaser = `アナタが自分でいちばん強いと思っている「${AXIS_LABEL[topDim]}」。友達の目には、違う濃さで映っているかも。`;
 
-  if (!opts.unlocked) {
-    return {
-      firstImpression: null,
-      strengths: null,
-      surprises: null,
-      stats: null,
-      manual: null,
-      gapTeaser,
-      locked: true,
-    };
-  }
-
-  // 強み/あれっ?: 32タイプ (全32キー投入済み) を優先、欠損時のみ 16タイプにフォールバック。
+  // 武器/嫌われやすい: 32タイプ (全32キー投入済み) を優先、欠損時のみ 16タイプにフォールバック。
   const perceived =
     perceivedByType32[thirtyTwoId] ?? PERCEIVED_BY_TYPE[sixteenId] ?? null;
 
-  // 取扱い方: perceived-manual-32 の段落2 (①描写 / ②コツ のうちコツ側) を使う。
-  const manualRaw = perceivedManualContent32[thirtyTwoId];
-  const manualParas = manualRaw ? manualRaw.split("\n\n") : [];
-  const manual = manualParas.length >= 2 ? [manualParas[1]] : null;
-
-  // 4つのステータス: 既存の対人特性部品 (FOUR_TRAITS × 高/中/低 本文) を自己スコアで
-  // 予測解決。本文の {B}さん は「友達」に置換。
-  const stats = FOUR_TRAITS.map((t) => {
-    const level = levelForScore(
-      typeof scores[t.dim] === "number" ? (scores[t.dim] as number) : 5,
-    );
-    return {
-      label: t.label,
-      level,
-      body: generalize(fourTraitBody(t.label, level)),
-      color: t.color,
-    };
-  });
-
   return {
-    firstImpression: buildFirstImpression(scores),
-    strengths: perceived ? generalizeItems(perceived.strengths) : null,
-    surprises: perceived ? generalizeItems(perceived.surprises) : null,
-    stats,
-    manual,
+    weapons: perceived ? generalizeItems(perceived.strengths) : null,
+    likable: buildLikable(scores),
+    dislikable:
+      opts.unlocked && perceived ? generalizeItems(perceived.surprises) : null,
+    relations: opts.unlocked ? buildRelations(scores) : null,
     gapTeaser,
-    locked: false,
+    locked: !opts.unlocked,
   };
 }

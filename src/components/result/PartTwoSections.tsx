@@ -1,16 +1,27 @@
-// 第二部「友達から見たアナタ (予測)」表示層 (三層モデル Step2)。
+// 第二部「友達から見たアナタ」表示層 (三層モデル)。
 //
-// サーバコンポーネント (タブ等の状態なし)。本文は /me がサーバで resolvePartTwo() により
-// 解決して props で渡す (未解放時はこのコンポーネント自体を描画しない)。
-// 中身は自己タイプから導出した"予測"であり、実際の友達回答 (第三部 /tako) ではない。
-// 冒頭の注記とギャップ予告で、その線引きと第三部への期待を明示する。
+// 構成 (2026-07-12 確定・ロック状態でも同じ並び):
+//   1. 友達から見たアナタの武器      … 無料 (未解放でも本物を公開)
+//   2. 友達から嫌われやすい性格      … 🔒 (未解放はぼかし + 解除カード)
+//   3. 友達から好かれやすい性格      … 無料 (未解放でも本物を公開)
+//   4. 関係別の見られ方 (友達/恋人/家族/上司) … 🔒 (未解放はぼかし + 小ボタン)
+//   5. ギャップ予告カード (第三部 /tako への釣り) … 常時
+//
+// サーバコンポーネント。🔒ブロックの本文は未解放時サーバで解決すらされない
+// (part-two-resolve.ts、フェイルクローズ)。ぼかしはダミーであり本物の目隠しではない。
+// 解除カード (lockCard: 友達3人シェア/QR + ¥299) は /me がオーナー情報込みで組んで渡す。
 
 import Link from "next/link";
 import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 
+// 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの小ボタンのアンカー先)。
+export const PART_TWO_LOCK_ID = "part2-lock";
+
 interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
+  /** 未解放時に出す解除カード (友達3人 or ¥299)。解放済みなら不要。 */
+  lockCard?: React.ReactNode;
   /** /tako/[token] への誘導リンク用。 */
   ownerToken: string;
   /** 現在の友達回答数 (ギャップ予告カードの残り人数表示に使う)。 */
@@ -19,26 +30,34 @@ interface PartTwoSectionsProps {
   completeThreshold: number;
 }
 
-// ロック中に見せる「開くと見られるもの」(三層モデル: 未解放時のティーザー)。
-// 16Personalities のロック済みプレミアム章と同じ構図: 解放後と同じセクション見出しを
-// 実際に並べ、中身だけをぼかしダミーにする (本文はサーバで解決すらしていない)。
-// 先頭セクションに大きなロック解除カード (lockCard, 親から受け取る) を重ね、
-// 以降のセクションは小さな解除ボタン (先頭カードへのページ内アンカー) を重ねる。
-const LOCKED_SECTIONS: {
-  title: string;
-  hook: string;
-  /** ダミーの形: cards = 2列カード / paragraphs = 文章のバー */
-  shape: "cards" | "paragraphs";
-}[] = [
-  { title: "アナタの第一印象", hook: "初対面のアナタ、どう見えてる?", shape: "paragraphs" },
-  { title: "友達から見たアナタの強み", hook: "気づいてないのはアナタだけ。6つ", shape: "cards" },
-  { title: "友達だけが知ってる、あれっ?な一面", hook: "愛されてるクセ、6つ", shape: "cards" },
-  { title: "友達から見た4つのステータス", hook: "頼れる度・ノリの良さ・本音・距離感", shape: "cards" },
-  { title: "アナタの取扱い方", hook: "こう接されると伸びる、のトリセツ", shape: "paragraphs" },
-];
+function SectionHeading({ title, hook }: { title: string; hook: string }) {
+  return (
+    <>
+      <h3 className="mb-1 text-[20px] font-black text-[#2E2E5C]">{title}</h3>
+      <p className="mb-3 text-[13px] font-bold text-[#2E2E5C]/60">{hook}</p>
+    </>
+  );
+}
 
-// 先頭のロックカードに付ける id (後続セクションの小ボタンのアンカー先)。
-export const PART_TWO_LOCK_ID = "part2-lock";
+function CardGrid({ items }: { items: ContentItem[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {items.map((it) => (
+        <div
+          key={it.title}
+          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5"
+        >
+          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+            {it.title}
+          </p>
+          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+            {it.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function DummyCards({ rows }: { rows: number }) {
   return (
@@ -47,7 +66,10 @@ function DummyCards({ rows }: { rows: number }) {
       className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[6px]"
     >
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3">
+        <div
+          key={i}
+          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
+        >
           <div className="mb-2 h-3 w-3/4 rounded-full bg-[#2E2E5C]/30" />
           <div className="mb-1.5 h-2 w-full rounded-full bg-[#2E2E5C]/15" />
           <div className="h-2 w-5/6 rounded-full bg-[#2E2E5C]/15" />
@@ -57,21 +79,7 @@ function DummyCards({ rows }: { rows: number }) {
   );
 }
 
-function DummyParagraphs() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none select-none space-y-3 blur-[5px]">
-      {[96, 88, 92, 70].map((w, i) => (
-        <div
-          key={i}
-          className="h-3.5 rounded-full bg-[#2E2E5C]/15"
-          style={{ width: `${w}%` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// 後続セクション用の小さな解除ボタン (先頭のロックカードへスクロール)。
+// 後続🔒ブロック用の小さな解除ボタン (最初の解除カードへスクロール)。
 function SmallUnlockButton() {
   return (
     <a
@@ -97,165 +105,95 @@ function SmallUnlockButton() {
   );
 }
 
-/**
- * 未解放時のセクション群 (16P 風)。見出し+釣り文は本物、中身はぼかしダミー。
- * lockCard には page 側の「友達3人 or ¥299」カードを渡す (先頭セクションに重なる)。
- */
-export function PartTwoLockedSections({ lockCard }: { lockCard: React.ReactNode }) {
-  return (
-    <div>
-      {LOCKED_SECTIONS.map((sec, idx) => (
-        <div key={sec.title} className="mb-10">
-          <h3 className="mb-1 text-[20px] font-black text-[#2E2E5C]">
-            {sec.title}
-          </h3>
-          <p className="mb-3 text-[13px] font-bold text-[#2E2E5C]/60">{sec.hook}</p>
-          <div className="relative overflow-hidden rounded-2xl">
-            {sec.shape === "cards" ? (
-              <DummyCards rows={idx === 0 ? 4 : 6} />
-            ) : (
-              <DummyParagraphs />
-            )}
-            {idx === 0 ? (
-              /* 先頭: 大きなロック解除カード (解除手段の本体) */
-              <div id={PART_TWO_LOCK_ID} className="relative -mt-2 pt-2">
-                {lockCard}
-              </div>
-            ) : (
-              /* 以降: 中央の小ボタンで先頭カードへ誘導 */
-              <div className="absolute inset-0 flex items-center justify-center">
-                <SmallUnlockButton />
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CardGrid({ items }: { items: ContentItem[] }) {
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {items.map((it) => (
-        <div
-          key={it.title}
-          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5"
-        >
-          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
-            {it.title}
-          </p>
-          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
-            {it.body}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function PartTwoSections({
   data,
+  lockCard,
   ownerToken,
   friendCount,
   completeThreshold,
 }: PartTwoSectionsProps) {
-  if (data.locked) return null;
   const remaining = Math.max(0, completeThreshold - friendCount);
 
   return (
     <div>
-      {/* 予測の注記: 第三部 (本物) との線引きをはっきりさせる */}
+      {/* 予測の注記: 第三部 (本物) との線引き */}
       <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
         ここから先は、アナタの回答から予測した「見られ方」。
         本物の見られ方は、友達だけが知っている。
       </p>
 
-      {/* ── 第一印象 ── */}
-      {data.firstImpression && (
+      {/* ── 1. 武器 (無料・未解放でも公開) ── */}
+      {data.weapons && (
         <div className="mb-10">
-          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-            アナタの第一印象
-          </h3>
-          {data.firstImpression.map((para, i) => (
-            <p
-              key={i}
-              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
-            >
-              {para}
-            </p>
-          ))}
+          <SectionHeading
+            title="友達から見たアナタの武器"
+            hook="気づいてないのはアナタだけ。6つ"
+          />
+          <CardGrid items={data.weapons} />
         </div>
       )}
 
-      {/* ── 強み ── */}
-      {data.strengths && (
-        <div className="mb-10">
-          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-            友達から見たアナタの強み
-          </h3>
-          <CardGrid items={data.strengths} />
-        </div>
-      )}
+      {/* ── 2. 嫌われやすい性格 (🔒) ── */}
+      <div className="mb-10">
+        <SectionHeading
+          title="友達から嫌われやすい性格"
+          hook="先に知っておけば、こわくない。6つ"
+        />
+        {data.dislikable ? (
+          <CardGrid items={data.dislikable} />
+        ) : (
+          <div className="relative overflow-hidden rounded-2xl">
+            <DummyCards rows={4} />
+            {/* 最初の🔒ブロック: 解除カード本体 (友達3人 or ¥299) を重ねる */}
+            <div id={PART_TWO_LOCK_ID} className="relative -mt-2 pt-2">
+              {lockCard}
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* ── あれっ?な一面 (弱みの愛されるクセ変換) ── */}
-      {data.surprises && (
-        <div className="mb-10">
-          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-            友達だけが知ってる、あれっ?な一面
-          </h3>
-          <CardGrid items={data.surprises} />
-        </div>
-      )}
+      {/* ── 3. 好かれやすい性格 (無料・未解放でも公開) ── */}
+      <div className="mb-10">
+        <SectionHeading
+          title="友達から好かれやすい性格"
+          hook="アナタの5つの軸から。ぜんぶ本物"
+        />
+        <CardGrid items={data.likable} />
+      </div>
 
-      {/* ── 友達から見た4つのステータス (対人特性 × 高/中/低) ── */}
-      {data.stats && (
-        <div className="mb-10">
-          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-            友達から見た4つのステータス
-          </h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {data.stats.map((s) => (
+      {/* ── 4. 関係別の見られ方 (🔒) ── */}
+      <div className="mb-10">
+        <SectionHeading
+          title="関係別の見られ方"
+          hook="友達・恋人・家族・上司から、それぞれどう見えてる?"
+        />
+        {data.relations ? (
+          <div className="space-y-4">
+            {data.relations.map((r) => (
               <div
-                key={s.label}
-                className="rounded-xl border border-[#D9DCF5] bg-white px-4 py-3.5"
-                style={{ borderLeft: `6px solid ${s.color}` }}
+                key={r.relation}
+                className="rounded-xl border border-[#D9DCF5] bg-white px-4 py-4"
               >
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-[15px] font-black text-[#2E2E5C]">
-                    {s.label}
-                  </p>
-                  <span className="rounded-full bg-[#F4F4FE] px-2.5 py-0.5 text-[12px] font-black text-[#2E2E5C]">
-                    {s.level}
-                  </span>
-                </div>
-                <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
-                  {s.body}
+                <p className="mb-1.5 inline-block rounded-full bg-[#2E2E5C] px-3 py-0.5 text-[12px] font-black text-white">
+                  {r.relation}
+                </p>
+                <p className="body-gothic text-[15px] leading-[1.6] text-[#1A1A1A]">
+                  {r.body}
                 </p>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="relative overflow-hidden rounded-2xl">
+            <DummyCards rows={4} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <SmallUnlockButton />
+            </div>
+          </div>
+        )}
+      </div>
 
-      {/* ── アナタの取扱い方 (接し方のコツ) ── */}
-      {data.manual && (
-        <div className="mb-10">
-          <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-            アナタの取扱い方
-          </h3>
-          {data.manual.map((para, i) => (
-            <p
-              key={i}
-              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
-            >
-              {para}
-            </p>
-          ))}
-        </div>
-      )}
-
-      {/* ── ギャップ予告 (第三部 /tako への釣り)。5人到達後は完成カードに変わる ── */}
+      {/* ── 5. ギャップ予告 (第三部 /tako への釣り)。5人到達後は完成カードに変わる ── */}
       <div className="rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_8px_24px_rgba(46,46,92,0.10)]">
         {remaining > 0 ? (
           <>

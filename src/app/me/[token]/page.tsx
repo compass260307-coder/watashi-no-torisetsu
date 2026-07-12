@@ -67,10 +67,7 @@ import {
   STAIR_COMPLETE,
 } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
-import {
-  PartTwoSections,
-  PartTwoLockedSections,
-} from "@/components/result/PartTwoSections";
+import { PartTwoSections } from "@/components/result/PartTwoSections";
 import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -588,17 +585,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
             />
           )}
 
-          {/* 解放済み (友達3人 or ¥299) は予測コンテンツ本体、未解放はぼかしティーザー+ロックカード */}
-          {partTwoUnlocked ? (
-            <PartTwoSections
-              data={partTwo}
-              ownerToken={previewType ? "preview" : token}
-              friendCount={friendEvalCount}
-              completeThreshold={STAIR_COMPLETE}
-            />
-          ) : (() => {
-            // ロック解除カード (2 ブロックで共用。16P の「今すぐロックを解除」参考)
-            const lockCard = (
+          {/* 第二部本体。無料ブロック (武器/好かれやすい) は未解放でも本物を表示し、
+              🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
+              出し分けは PartTwoSections 内 (data の null 判定)。 */}
+          {(() => {
+            // ロック解除カード (未解放時に最初の🔒ブロックへ重ねる。16P 参考)
+            const lockCard = partTwoUnlocked ? undefined : (
               <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
                 <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
@@ -649,9 +641,15 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </p>
               </div>
             );
-            // 16P 風: 解放後と同じセクション見出しを並べ、中身だけぼかす。
-            // 先頭に lockCard (解除手段本体)、以降は小ボタンで先頭へアンカー誘導。
-            return <PartTwoLockedSections lockCard={lockCard} />;
+            return (
+              <PartTwoSections
+                data={partTwo}
+                lockCard={lockCard}
+                ownerToken={previewType ? "preview" : token}
+                friendCount={friendEvalCount}
+                completeThreshold={STAIR_COMPLETE}
+              />
+            );
           })()}
 
         </section>
