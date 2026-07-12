@@ -223,6 +223,10 @@ export default function TypesPage() {
                             alt={thirtyTwoEssence(id)}
                             width={512}
                             height={512}
+                            // 透過キャラを帯/巨大タイポに重ねる設計なので地色の箱は出さない。
+                            // ギャラリーは eager で先読みし、スクロールで 1 体ずつ出さずまとめて見せる。
+                            placeholderColor="transparent"
+                            loading="eager"
                             className="mx-auto h-auto w-full max-w-[420px] sm:max-w-none"
                           />
                         </Link>
