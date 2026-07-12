@@ -660,23 +660,14 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     <br className="md:hidden" />
                     今すぐぜんぶ見る方法があります。
                   </p>
-                  {/* 画像プレイスホルダー (あとで実画像に差し替え) */}
-                  <div className="mb-3 flex w-full flex-1 items-center justify-center rounded-lg border-2 border-dashed border-[#D9DCF5] bg-[#F7F7FE]">
-                    <svg
-                      width="36"
-                      height="36"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#B9BCCF"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <rect x="3" y="3" width="18" height="18" rx="2" />
-                      <circle cx="9" cy="9" r="2" />
-                      <path d="M21 15l-5-5L5 21" />
-                    </svg>
+                  {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順) */}
+                  <div className="relative mb-3 w-full flex-1 overflow-hidden rounded-lg bg-[#F7F7FE]">
+                    <SmoothImage
+                      src={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+                      alt=""
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                   <a
                     href="#fullaccess-promo"
