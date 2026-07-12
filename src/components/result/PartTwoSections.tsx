@@ -200,7 +200,7 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
                 py でカードの上下にぼかし面をたっぷり見せる (16P の比率参考)。 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="relative flex min-h-[480px] items-center justify-center px-3 py-44 md:py-48"
+              className="relative flex min-h-[480px] items-center justify-center px-3 pt-44 pb-64 md:py-48"
             >
               {lockCard}
             </div>
