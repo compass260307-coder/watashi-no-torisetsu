@@ -71,6 +71,7 @@ import { ResultActions } from "@/components/result/ResultActions";
 import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
@@ -358,6 +359,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <>
+    {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中…」を出して
+        status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
+    {!previewType && sp.paid === "1" && !deepDivePaid && (
+      <PaidUnlockWatcher ownerToken={token} />
+    )}
     {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
         プレビュー (?previewType) はモック描画なので計測しない。 */}
     {!previewType && (

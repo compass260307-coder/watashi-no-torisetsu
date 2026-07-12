@@ -105,6 +105,34 @@ async function priceChargesSale(
   }
 }
 
+// ===== レイテンシ削減: クーポン/価格検証の結果をプロセス内キャッシュ =====
+// クリックのたびに Stripe へ往復すると遷移が遅く離脱に繋がる。値引き設定は不変/ほぼ不変
+// なので warm な Function インスタンス内で使い回す (cold start でリセット=再取得されるので
+// ダッシュボード変更も遠からず反映される)。
+let cachedCouponId: string | null = null; // 成功時のみキャッシュ (null=未解決/失敗、都度再試行)
+let cachedSaleOk: { value: boolean; at: number } | null = null;
+const SALE_OK_TTL_MS = 10 * 60 * 1000; // 価格実額検証は 10 分 TTL
+
+async function getCouponIdCached(stripe: StripeClient): Promise<string | null> {
+  if (cachedCouponId) return cachedCouponId;
+  const id = await resolveAnchorCoupon(stripe);
+  if (id) cachedCouponId = id; // 失敗(null)はキャッシュせず次回再試行
+  return id;
+}
+
+async function getSaleOkCached(
+  stripe: StripeClient,
+  priceId: string,
+): Promise<boolean> {
+  const now = Date.now();
+  if (cachedSaleOk && now - cachedSaleOk.at < SALE_OK_TTL_MS) {
+    return cachedSaleOk.value;
+  }
+  const value = await priceChargesSale(stripe, priceId);
+  cachedSaleOk = { value, at: now };
+  return value;
+}
+
 export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
@@ -199,8 +227,8 @@ export async function POST(request: NextRequest) {
   };
 
   const [couponId, saleOk] = await Promise.all([
-    resolveAnchorCoupon(stripe),
-    priceChargesSale(stripe, priceId),
+    getCouponIdCached(stripe),
+    getSaleOkCached(stripe, priceId),
   ]);
   const useDiscount = !!couponId && saleOk;
 
