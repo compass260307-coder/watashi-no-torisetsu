@@ -595,8 +595,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             const lockCard = partTwoUnlocked ? undefined : (
               <div className="mx-auto flex w-full max-w-[760px] flex-col items-stretch gap-6 md:flex-row md:gap-4">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
-                <div className="relative flex-1 rounded-2xl bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
-                  <span className="absolute -top-5 left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-xl bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
+                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
+                <div className="relative flex-1 rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-[22px] left-1/2 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     <svg
                       width="18"
                       height="18"
@@ -629,16 +630,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   />
                 </div>
 
-                {/* ── or ── */}
-                <div className="flex items-center justify-center">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2E2E5C] text-[12px] font-black text-white shadow-[0_4px_12px_rgba(46,46,92,0.3)]">
-                    or
-                  </span>
-                </div>
-
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                <div className="relative flex flex-1 flex-col items-center justify-center rounded-2xl bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
-                  <span className="absolute -top-5 left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-xl bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.4)]">
+                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻) */}
+                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border-t-4 border-t-[#2E2E5C] bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-[22px] left-1/2 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
                       width="18"
