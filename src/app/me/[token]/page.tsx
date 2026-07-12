@@ -268,7 +268,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const deepDivePaid = await hasFullAccess(user.id as string);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
   const partTwoUnlocked = previewType
-    ? false
+    ? true
     : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,
@@ -640,13 +640,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </div>
 
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の強調枠 + 紫グロー影 +
-                    右上「おすすめ」バッジ + PC はカードAよりやや幅広。 */}
-                <div className="relative flex flex-1 flex-col items-center rounded-xl border-2 border-[#5B5BEF] border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_16px_44px_rgba(91,91,239,0.35)] md:flex-[1.18]">
-                  {/* おすすめバッジ (黄色・右上) */}
-                  <span className="absolute -top-3 right-4 rounded-full bg-[#F2C14E] px-3 py-1 text-[11px] font-black tracking-wide text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.25)]">
-                    おすすめ
-                  </span>
+                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の均一枠 (4px・上と同太) +
+                    弱めの紫グロー影 + PC はカードAよりやや幅広。 */}
+                <div className="relative flex flex-1 flex-col items-center rounded-xl border-4 border-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_32px_rgba(91,91,239,0.18)] md:flex-[1.18]">
                   <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
