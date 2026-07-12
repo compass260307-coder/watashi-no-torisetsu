@@ -590,16 +590,16 @@ export default async function MePage({ params, searchParams }: PageProps) {
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
             // ロック解除の2択 (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
-            // 「友達3人 (無料)」と「¥299 買い切り」を別カードにし、間に or を挟む。
-            // SP は縦積み / md 以上は横並び。QR なし (hideQr) のコンパクト版。
+            // 16P のロックカード参考: 浮き角丸バッジ + 中央タイトル + 説明2行 + 全幅ボタン。
+            // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[720px] flex-col items-stretch gap-2 md:flex-row md:items-stretch md:gap-3">
+              <div className="mx-auto flex w-full max-w-[760px] flex-col items-stretch gap-6 md:flex-row md:gap-4">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
-                <div className="relative flex-1 rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white px-4 pb-4 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-                  <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                <div className="relative flex-1 rounded-2xl bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-5 left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-xl bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     <svg
-                      width="14"
-                      height="14"
+                      width="18"
+                      height="18"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -612,10 +612,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                     </svg>
                   </span>
-                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                  <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
                     友達{STAIR_PART_TWO}人でロック解除
                   </p>
-                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
                     {SHARE_CTA_CAPTION}
                   </p>
                   <ResultActions
@@ -626,32 +626,45 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     description={dispDesc}
                     imageSrc={dispImage}
                     shareCode={shareCode}
-                    hideQr
                   />
                 </div>
 
                 {/* ── or ── */}
-                <div className="flex items-center justify-center md:flex-col">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2E2E5C] text-[11px] font-black text-white shadow-[0_4px_12px_rgba(46,46,92,0.25)]">
+                <div className="flex items-center justify-center">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2E2E5C] text-[12px] font-black text-white shadow-[0_4px_12px_rgba(46,46,92,0.3)]">
                     or
                   </span>
                 </div>
 
-                {/* ── カードB: ¥299 買い切り (副) ── */}
-                <div className="relative flex flex-1 flex-col items-center justify-center rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#2E2E5C] bg-white px-4 pb-4 pt-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-                  <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#2E2E5C] text-[11px] font-black text-white">
-                    ¥
+                {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
+                <div className="relative flex flex-1 flex-col items-center justify-center rounded-2xl bg-white px-5 pb-5 pt-9 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-5 left-1/2 flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-xl bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.4)]">
+                    {/* 稲妻 = 裏技 (ショートカット) の記号 */}
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+                    </svg>
                   </span>
-                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
-                    ¥299 でロック解除
+                  <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
+                    裏技でロック解除
                   </p>
-                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/65">
-                    待てない人は、一度きりの買い切りで
+                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                    友達を待たなくても、
+                    <br className="md:hidden" />
+                    今すぐぜんぶ見る方法があります。
                   </p>
-                  {/* 最下部の課金カードへアンカー移動 */}
                   <a
                     href="#fullaccess-promo"
-                    className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
+                    className="flex w-full items-center justify-center rounded-lg bg-[#2E2E5C] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
                   >
                     今すぐアクセス
                   </a>

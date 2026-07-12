@@ -182,14 +182,16 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
         {data.dislikable ? (
           <CardGrid items={data.dislikable} />
         ) : (
-          /* 16P 参考の構図: ぼかしダミーが高さを作り (カードの上下にも見える)、
-             解除カードはその上に絶対配置で天地中央に浮かせる。 */
+          /* 16P 参考の構図: ぼかしダミーを背面 (absolute) に敷き、解除カード側が
+             高さを決める (カードが見切れない)。ダミーは min-h とカードの上下余白ぶん見える。 */
           <div className="relative overflow-hidden rounded-2xl">
-            <DummyCards rows={12} />
-            {/* 解除カード本体 (友達3人 or ¥299)。後続🔒ブロックのアンカー先 */}
+            <div aria-hidden="true" className="absolute inset-0">
+              <DummyCards rows={12} />
+            </div>
+            {/* 解除カード本体 (友達3人 or 裏技)。後続🔒ブロックのアンカー先 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="absolute inset-0 flex items-center justify-center px-4"
+              className="relative flex min-h-[520px] items-center justify-center px-3 py-12"
             >
               {lockCard}
             </div>
