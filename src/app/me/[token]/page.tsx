@@ -630,9 +630,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </div>
 
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の均一枠 (4px・上と同太) +
+                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の均一枠 (3px) +
                     弱めの紫グロー影 + PC はカードAよりやや幅広。 */}
-                <div className="relative flex flex-1 flex-col items-center rounded-xl border-4 border-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_32px_rgba(91,91,239,0.18)] md:flex-[1.18]">
+                <div className="relative flex flex-1 flex-col items-center rounded-xl border-[3px] border-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_32px_rgba(91,91,239,0.18)] md:flex-[1.18]">
                   <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
