@@ -634,8 +634,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
                 {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (稲妻)。色はAと同じブランド紫。
-                    正方形 (aspect-square)・中に画像プレイスホルダー (差し替え前提)。 */}
-                <div className="relative flex aspect-square flex-1 flex-col items-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                    高さは中身なり (シーン画像は原寸比で見切れなし)。 */}
+                <div className="relative flex flex-1 flex-col items-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
                   <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
                     {/* 稲妻 = 裏技 (ショートカット) の記号 */}
                     <svg
@@ -660,18 +660,18 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     <br className="md:hidden" />
                     今すぐぜんぶ見る方法があります。
                   </p>
-                  {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順) */}
-                  <div className="relative mb-3 w-full flex-1 overflow-hidden rounded-lg bg-[#F7F7FE]">
-                    <SmoothImage
-                      src={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-                      alt=""
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順)。
+                      原寸比のまま全体を見せる (トリミングで見切れさせない)。 */}
+                  <SmoothImage
+                    src={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+                    alt=""
+                    width={960}
+                    height={640}
+                    className="mb-3 h-auto w-full rounded-lg"
+                  />
                   <a
                     href="#fullaccess-promo"
-                    className="flex w-full items-center justify-center rounded-lg bg-[#5B5BEF] px-6 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                    className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                   >
                     今すぐアクセス
                   </a>

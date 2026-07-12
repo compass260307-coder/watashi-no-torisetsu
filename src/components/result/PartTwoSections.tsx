@@ -175,14 +175,14 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
       {/* ── 1. 武器 (無料・未解放でも公開) ── */}
       {data.weapons && (
         <div className="mb-10">
-          <SectionHeading title="友達から見たアナタの武器" />
+          <SectionHeading title="羨ましいアナタの武器" />
           <CardGrid items={data.weapons} />
         </div>
       )}
 
       {/* ── 2. 嫌われやすい性格 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading title="友達から嫌われやすい性格" />
+        <SectionHeading title="嫌われやすい性格" />
         {data.dislikable ? (
           <CardGrid items={data.dislikable} />
         ) : (
@@ -210,7 +210,7 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
 
       {/* ── 3. 好かれやすい性格 (無料・未解放でも公開) ── */}
       <div className="mb-10">
-        <SectionHeading title="友達から好かれやすい性格" />
+        <SectionHeading title="好かれやすい性格" />
         <CardGrid items={data.likable} />
       </div>
 
