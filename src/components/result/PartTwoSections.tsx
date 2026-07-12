@@ -154,12 +154,12 @@ function LockGlyph({ size = 18 }: { size?: number }) {
 
 // 関係別の見られ方・未解放時 (16P「影響力のある特性」参考):
 // 色付きリングの円に鍵アイコン + 関係ラベルを4つ並べ、下に「今すぐロックを解除」カード。
-// 色は 2026-07-13 指定: 友達=水色 / 恋人=ピンク / 家族=緑 / 上司=紫。
+// 色は 2026-07-13 指定: 友達=水色 / 恋人=ピンク / 家族=緑 / 上司=黄色。
 const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "友達から", color: "#56BFE8" },
   { label: "恋人から", color: "#F48BAE" },
   { label: "家族から", color: "#4CAF7D" },
-  { label: "上司・先輩から", color: "#9B6BD1" },
+  { label: "上司・先輩から", color: "#F2C14E" },
 ];
 
 function RelationsLocked() {
@@ -170,10 +170,10 @@ function RelationsLocked() {
         {RELATION_LOCK_ITEMS.map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-2.5">
             <span
-              className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-[3px] bg-white text-[#B9BCCF]"
+              className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
               style={{ borderColor: item.color }}
             >
-              <LockGlyph size={22} />
+              <LockGlyph size={30} />
             </span>
             <span className="text-[13px] font-black text-[#2E2E5C]">
               {item.label}
