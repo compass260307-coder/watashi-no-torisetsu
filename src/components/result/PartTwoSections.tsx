@@ -4,38 +4,30 @@
 //   1. 友達から見たアナタの武器      … 無料 (未解放でも本物を公開)
 //   2. 友達から嫌われやすい性格      … 🔒 (未解放はぼかし + 解除カード)
 //   3. 友達から好かれやすい性格      … 無料 (未解放でも本物を公開)
-//   4. 関係別の見られ方 (友達/恋人/家族/上司) … 🔒 (未解放はぼかし + 小ボタン)
-//   5. ギャップ予告カード (第三部 /tako への釣り) … 常時
+//   4. 関係別の見られ方 (友達/恋人/家族/上司) … 🔒 (未解放は 16P 風の鍵付き円 + 解除カード)
+//
+// 見出しはタイトルのみ (サブタイトル/前置きの注記は 2026-07-12 指示で削除)。
+// ギャップ予告カード (/tako 誘導) も同日「一旦削除」(素材は part-two-resolve の gapTeaser に温存)。
 //
 // サーバコンポーネント。🔒ブロックの本文は未解放時サーバで解決すらされない
 // (part-two-resolve.ts、フェイルクローズ)。ぼかしはダミーであり本物の目隠しではない。
 // 解除カード (lockCard: 友達3人シェア/QR + ¥299) は /me がオーナー情報込みで組んで渡す。
 
-import Link from "next/link";
 import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 
-// 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの小ボタンのアンカー先)。
+// 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
 export const PART_TWO_LOCK_ID = "part2-lock";
 
 interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
   /** 未解放時に出す解除カード (友達3人 or ¥299)。解放済みなら不要。 */
   lockCard?: React.ReactNode;
-  /** /tako/[token] への誘導リンク用。 */
-  ownerToken: string;
-  /** 現在の友達回答数 (ギャップ予告カードの残り人数表示に使う)。 */
-  friendCount: number;
-  /** 第三部 (/tako) が完成する人数 (friend-stairs.ts の STAIR_COMPLETE)。 */
-  completeThreshold: number;
 }
 
-function SectionHeading({ title, hook }: { title: string; hook: string }) {
+function SectionHeading({ title }: { title: string }) {
   return (
-    <>
-      <h3 className="mb-1 text-[20px] font-black text-[#2E2E5C]">{title}</h3>
-      <p className="mb-3 text-[13px] font-bold text-[#2E2E5C]/60">{hook}</p>
-    </>
+    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">{title}</h3>
   );
 }
 
@@ -79,66 +71,92 @@ function DummyCards({ rows }: { rows: number }) {
   );
 }
 
-// 後続🔒ブロック用の小さな解除ボタン (最初の解除カードへスクロール)。
-function SmallUnlockButton() {
+function LockGlyph({ size = 18 }: { size?: number }) {
   return (
-    <a
-      href={`#${PART_TWO_LOCK_ID}`}
-      className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-5 py-2.5 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
     >
-      <svg
-        width="13"
-        height="13"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="4" y="10" width="16" height="11" rx="2.5" />
-        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-      </svg>
-      ロックを解除
-    </a>
+      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
   );
 }
 
-export function PartTwoSections({
-  data,
-  lockCard,
-  ownerToken,
-  friendCount,
-  completeThreshold,
-}: PartTwoSectionsProps) {
-  const remaining = Math.max(0, completeThreshold - friendCount);
+// 関係別の見られ方・未解放時 (16P「影響力のある特性」参考):
+// 色付きリングの円に鍵アイコン + 関係ラベルを4つ並べ、下に「今すぐロックを解除」カード。
+const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
+  { label: "友達から", color: "#4A90D9" },
+  { label: "恋人から", color: "#E0B040" },
+  { label: "家族から", color: "#4CAF7D" },
+  { label: "上司・先輩から", color: "#9B6BD1" },
+];
 
+function RelationsLocked() {
+  return (
+    <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-8">
+      {/* 鍵付きの円 (SP 2列 / md 4列) */}
+      <div className="mb-6 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
+        {RELATION_LOCK_ITEMS.map((item) => (
+          <div key={item.label} className="flex flex-col items-center gap-2.5">
+            <span
+              className="flex h-[76px] w-[76px] items-center justify-center rounded-full border-[3px] bg-white text-[#B9BCCF]"
+              style={{ borderColor: item.color }}
+            >
+              <LockGlyph size={22} />
+            </span>
+            <span className="text-[13px] font-black text-[#2E2E5C]">
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* 解除カード (上辺にアクセント線 + 鍵バッジ) */}
+      <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center">
+        <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+          <LockGlyph size={14} />
+        </span>
+        <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
+          今すぐロックを解除
+        </p>
+        <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+          友達・恋人・家族・上司から、
+          <br className="md:hidden" />
+          それぞれどう見えているかが分かります。
+        </p>
+        <a
+          href={`#${PART_TWO_LOCK_ID}`}
+          className="inline-flex items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-2.5 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+        >
+          解除方法を見る
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
   return (
     <div>
-      {/* 予測の注記: 第三部 (本物) との線引き */}
-      <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-        ここから先は、アナタの回答から予測した「見られ方」。
-        本物の見られ方は、友達だけが知っている。
-      </p>
-
       {/* ── 1. 武器 (無料・未解放でも公開) ── */}
       {data.weapons && (
         <div className="mb-10">
-          <SectionHeading
-            title="友達から見たアナタの武器"
-            hook="気づいてないのはアナタだけ。6つ"
-          />
+          <SectionHeading title="友達から見たアナタの武器" />
           <CardGrid items={data.weapons} />
         </div>
       )}
 
       {/* ── 2. 嫌われやすい性格 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading
-          title="友達から嫌われやすい性格"
-          hook="先に知っておけば、こわくない。6つ"
-        />
+        <SectionHeading title="友達から嫌われやすい性格" />
         {data.dislikable ? (
           <CardGrid items={data.dislikable} />
         ) : (
@@ -154,19 +172,13 @@ export function PartTwoSections({
 
       {/* ── 3. 好かれやすい性格 (無料・未解放でも公開) ── */}
       <div className="mb-10">
-        <SectionHeading
-          title="友達から好かれやすい性格"
-          hook="アナタの5つの軸から。ぜんぶ本物"
-        />
+        <SectionHeading title="友達から好かれやすい性格" />
         <CardGrid items={data.likable} />
       </div>
 
       {/* ── 4. 関係別の見られ方 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading
-          title="関係別の見られ方"
-          hook="友達・恋人・家族・上司から、それぞれどう見えてる?"
-        />
+        <SectionHeading title="関係別の見られ方" />
         {data.relations ? (
           <div className="space-y-4">
             {data.relations.map((r) => (
@@ -184,44 +196,8 @@ export function PartTwoSections({
             ))}
           </div>
         ) : (
-          <div className="relative overflow-hidden rounded-2xl">
-            <DummyCards rows={4} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <SmallUnlockButton />
-            </div>
-          </div>
+          <RelationsLocked />
         )}
-      </div>
-
-      {/* ── 5. ギャップ予告 (第三部 /tako への釣り)。5人到達後は完成カードに変わる ── */}
-      <div className="rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_8px_24px_rgba(46,46,92,0.10)]">
-        {remaining > 0 ? (
-          <>
-            <p className="mb-2 text-[15px] font-black leading-relaxed text-[#2E2E5C]">
-              {data.gapTeaser}
-            </p>
-            <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-              本物の見られ方は、友達{completeThreshold}人で完成する。あと{remaining}人。
-              お金では買えない。
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="mb-2 text-[17px] font-black leading-relaxed text-[#2E2E5C]">
-              本物の見られ方が、完成してる。
-            </p>
-            <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-              友達{completeThreshold}人の回答が集まった。
-              一人ひとりの答え・自分とのズレ・手紙は、他己診断ページに。
-            </p>
-          </>
-        )}
-        <Link
-          href={`/tako/${ownerToken}`}
-          className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
-        >
-          本物の見られ方を見にいく →
-        </Link>
       </div>
     </div>
   );

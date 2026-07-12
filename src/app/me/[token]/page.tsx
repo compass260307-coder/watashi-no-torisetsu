@@ -641,15 +641,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </p>
               </div>
             );
-            return (
-              <PartTwoSections
-                data={partTwo}
-                lockCard={lockCard}
-                ownerToken={previewType ? "preview" : token}
-                friendCount={friendEvalCount}
-                completeThreshold={STAIR_COMPLETE}
-              />
-            );
+            return <PartTwoSections data={partTwo} lockCard={lockCard} />;
           })()}
 
         </section>
