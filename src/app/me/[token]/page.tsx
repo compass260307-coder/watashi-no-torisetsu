@@ -69,7 +69,7 @@ import {
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import {
   PartTwoSections,
-  PartTwoLockedMenu,
+  PartTwoLockedSections,
 } from "@/components/result/PartTwoSections";
 import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
@@ -649,32 +649,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
                 </p>
               </div>
             );
-            return (
-              <>
-                {/* ── 開くと見られるものメニュー (「こんなコンテンツがあるんだ!」ティーザー) ── */}
-                <PartTwoLockedMenu />
-                {/* ── ぼかしダミー + ロック解除カード ── */}
-                <div className="relative mb-10 overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
-                  {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-5 inset-y-5 grid select-none grid-cols-2 content-start gap-3 blur-[7px] md:inset-x-8"
-                  >
-                    {Array.from({ length: 16 }, (_, i) => (
-                      <div
-                        key={i}
-                        className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
-                      >
-                        <div className="mb-2 h-3 w-3/4 rounded-full bg-[#2E2E5C]/30" />
-                        <div className="mb-1.5 h-2 w-full rounded-full bg-[#2E2E5C]/15" />
-                        <div className="h-2 w-5/6 rounded-full bg-[#2E2E5C]/15" />
-                      </div>
-                    ))}
-                  </div>
-                  {lockCard}
-                </div>
-              </>
-            );
+            // 16P 風: 解放後と同じセクション見出しを並べ、中身だけぼかす。
+            // 先頭に lockCard (解除手段本体)、以降は小ボタンで先頭へアンカー誘導。
+            return <PartTwoLockedSections lockCard={lockCard} />;
           })()}
 
         </section>
