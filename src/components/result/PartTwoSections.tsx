@@ -187,13 +187,13 @@ function RelationsLocked() {
         <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
           <LockGlyph size={14} />
         </span>
-        <p className="mb-1.5 text-[16px] font-black text-[#2E2E5C]">
+        <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
           今すぐロックを解除
         </p>
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-          友達・恋人・家族・上司から、
+          完全版のレポートを入手して、これらの結果を見てみましょう。
           <br className="md:hidden" />
-          それぞれどう見えているかが分かります。
+          あなたの印象を理解できます。
         </p>
         {/* 挙動は裏技カードと同一 (最下部の課金カードへスムーススクロール+パルス)。
             横幅も裏技カードのCTAに合わせて全幅。 */}

@@ -85,7 +85,7 @@ import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ResetDataLink } from "@/components/ResetDataLink";
-import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import type {
   BigFiveDimension,
   CModifier,
@@ -405,10 +405,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
     {!previewType && (
       <ResultViewTracker ownerToken={token} friendCount={friendEvalCount} />
     )}
-    {/* 16P と同じスクロール連動ヘッダー (下スクロールで隠れ、上スクロールで出る) */}
-    <ScrollHideHeader>
+    {/* 16P と同じスクロール連動ヘッダー。/me だけ、未解放時はヘッダー直下に
+        「すべての結果のロックを解除」バーを常時表示 (ヘッダーが隠れてもバーは残る)。 */}
+    <MeStickyHeader showUnlockBar={!partTwoUnlocked}>
       <TopHeader />
-    </ScrollHideHeader>
+    </MeStickyHeader>
     <main
       className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
       style={{ background: "#FFFFFF" }}
@@ -616,7 +617,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                     </svg>
                   </span>
-                  <p className="mb-1.5 text-[17px] font-black text-[#2E2E5C]">
+                  <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
                     友達{STAIR_PART_TWO}人でロック解除
                   </p>
                   <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
@@ -654,7 +655,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                       <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
                     </svg>
                   </span>
-                  <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                  <p className="mb-1 text-[19px] font-black text-[#2E2E5C]">
                     裏技でロック解除
                   </p>
                   <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
