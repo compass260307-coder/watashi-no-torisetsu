@@ -67,7 +67,10 @@ import {
   STAIR_COMPLETE,
 } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
-import { PartTwoSections } from "@/components/result/PartTwoSections";
+import {
+  PartTwoSections,
+  PartTwoLockedMenu,
+} from "@/components/result/PartTwoSections";
 import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -648,10 +651,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
             return (
               <>
-                {/* ── ブロック1: 友達から見た強み (ぼかしチェックリスト風) ── */}
-                <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-                  友達から見た強み
-                </h3>
+                {/* ── 開くと見られるものメニュー (「こんなコンテンツがあるんだ!」ティーザー) ── */}
+                <PartTwoLockedMenu />
+                {/* ── ぼかしダミー + ロック解除カード ── */}
                 <div className="relative mb-10 overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
                   {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
                   <div

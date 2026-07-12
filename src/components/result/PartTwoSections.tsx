@@ -19,6 +19,62 @@ interface PartTwoSectionsProps {
   completeThreshold: number;
 }
 
+// ロック中に見せる「開くと見られるもの」メニュー (三層モデル: 未解放時のティーザー)。
+// タイトルと釣り文だけ見せて中身は見せない (本文はサーバで解決すらしていない)。
+// トリセツ風チェックリスト。項目を増減したらここだけ直す。
+const LOCKED_MENU: { title: string; hook: string }[] = [
+  { title: "アナタの第一印象", hook: "初対面のアナタ、どう見えてる?" },
+  { title: "友達から見たアナタの強み", hook: "気づいてないのはアナタだけ。6つ" },
+  { title: "あれっ?な一面", hook: "友達だけが知ってる、愛されてるクセ。6つ" },
+  { title: "友達から見た4つのステータス", hook: "頼れる度・ノリの良さ・本音・距離感" },
+  { title: "アナタの取扱い方", hook: "こう接されると伸びる、のトリセツ" },
+  { title: "深掘り: キャリア・成長・相性", hook: "下の🔒タブもぜんぶ開く" },
+];
+
+/** 未解放時のコンテンツメニュー (「こんなのが見られるんだ!」を作る)。 */
+export function PartTwoLockedMenu() {
+  return (
+    <div className="mb-6">
+      <p className="mb-3 text-[14px] font-black text-[#2E2E5C]">
+        ロックを解除すると、見られるもの
+      </p>
+      <ul className="space-y-2">
+        {LOCKED_MENU.map((item) => (
+          <li
+            key={item.title}
+            className="flex items-start gap-3 rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3"
+          >
+            <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+            </span>
+            <span>
+              <span className="block text-[14px] font-black leading-snug text-[#2E2E5C]">
+                {item.title}
+              </span>
+              <span className="block text-[12px] font-bold leading-snug text-[#2E2E5C]/60">
+                {item.hook}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function CardGrid({ items }: { items: ContentItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
