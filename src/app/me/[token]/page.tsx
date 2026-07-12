@@ -78,7 +78,6 @@ import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
-import { CharacterShareButton } from "@/components/result/CharacterShareButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
@@ -466,17 +465,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
-            画面右下・ボトムナビ (fixed bottom-0 / z-40) の直上にフローティング固定。
-            ナビ高さ (約60px) + iOS セーフエリアぶんを bottom で確保。owner 限定。計測 kind:character。 */}
-        {isOwner && (
-          <div className="fixed right-3 z-40 bottom-[calc(72px+env(safe-area-inset-bottom))]">
-            <CharacterShareButton
-              shareUrl={characterShareUrl}
-              essence={dispEssence}
-            />
-          </div>
-        )}
+        {/* 右下フローティングの「キャラをシェア」(CharacterShareButton) は
+            2026-07-13 指示で撤去 (アンロックバーのシェア導線に集約)。 */}
 
         {/* ===== 章① 自分が見た自分 =====
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
