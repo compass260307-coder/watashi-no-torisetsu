@@ -51,9 +51,30 @@ export default function PurchaseCompletePage() {
       {/* 購入直後にそのままログイン (magic link 発行)。届いたリンクから本人確認。 */}
       <LoginCard />
 
+      {/* 返金の申請動線 (30日間の返金保証)。条件・手順は特商法ページに集約。 */}
+      <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
+        30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて{" "}
+        <a
+          href="mailto:support@watashi-torisetsu.com"
+          className="underline underline-offset-2"
+          style={{ color: NAVY }}
+        >
+          support@watashi-torisetsu.com
+        </a>{" "}
+        までご連絡ください（
+        <Link
+          href="/legal/commerce"
+          className="underline underline-offset-2"
+          style={{ color: NAVY }}
+        >
+          返金条件
+        </Link>
+        ）。
+      </p>
+
       <Link
         href="/"
-        className="mt-8 text-center text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
+        className="mt-6 text-center text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
         style={{ color: `${NAVY}80` }}
       >
         トップに戻る
