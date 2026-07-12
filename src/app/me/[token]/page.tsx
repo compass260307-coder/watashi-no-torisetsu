@@ -633,7 +633,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   href="#fullaccess-promo"
                   className="inline-flex items-center justify-center rounded-full border-2 border-[#2E2E5C] bg-white px-5 py-2 text-[13px] font-black text-[#2E2E5C] transition-colors hover:bg-[#F4F4FE]"
                 >
-                  ¥299 で今すぐスキップ
+                  今すぐアクセス
                 </a>
               </div>
             );
