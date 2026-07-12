@@ -76,19 +76,23 @@ function DummyCards({ rows }: { rows: number }) {
       aria-hidden="true"
       className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
     >
-      {DECOY_ITEMS.slice(0, rows).map((it) => (
-        <div
-          key={it.title}
-          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
-        >
-          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
-            {it.title}
-          </p>
-          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
-            {it.body}
-          </p>
-        </div>
-      ))}
+      {/* rows がデコイ数を超えたら循環して埋める (ぼかし面を必要なだけ長く敷ける) */}
+      {Array.from({ length: rows }, (_, i) => {
+        const it = DECOY_ITEMS[i % DECOY_ITEMS.length];
+        return (
+          <div
+            key={i}
+            className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
+          >
+            <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+              {it.title}
+            </p>
+            <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+              {it.body}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -188,14 +192,15 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
             {/* 下端はマスクでフェードアウトし、途中で切れたカードが目立たないようにする */}
             <div
               aria-hidden="true"
-              className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_78%,transparent)]"
+              className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_82%,transparent)]"
             >
-              <DummyCards rows={12} />
+              <DummyCards rows={24} />
             </div>
-            {/* 解除カード本体 (友達3人 or 裏技)。後続🔒ブロックのアンカー先 */}
+            {/* 解除カード本体 (友達3人 or 裏技)。後続🔒ブロックのアンカー先。
+                py でカードの上下にぼかし面をたっぷり見せる (16P の比率参考)。 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="relative flex min-h-[480px] items-center justify-center px-3 py-10"
+              className="relative flex min-h-[480px] items-center justify-center px-3 py-44 md:py-48"
             >
               {lockCard}
             </div>
