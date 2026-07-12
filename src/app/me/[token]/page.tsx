@@ -579,8 +579,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
             </h2>
           </div>
 
-          {/* 階段 (道中の報酬): 1人=予兆 / 3人=第二部 / 5人=本物(/tako)。解放前後とも常設。 */}
-          {!previewType && (
+          {/* 階段 (道中の報酬): 1人=予兆 / 3人=第二部 / 5人=本物(/tako)。
+              完全未解放 (友達0人) では出さない (2026-07-12 指示。0人時は情報が無くただ重い)。
+              1人目の回答が入ってから「進んでいる感」の装置として登場する。 */}
+          {!previewType && friendEvalCount >= STAIR_TEASE && (
             <FriendStairs
               friendCount={friendEvalCount}
               stairs={{
