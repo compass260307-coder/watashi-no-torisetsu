@@ -74,6 +74,7 @@ import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { ResetDataLink } from "@/components/ResetDataLink";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import type {
   BigFiveDimension,
@@ -627,6 +628,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
         group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
       />
     )}
+    {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。 */}
+    <ResetDataLink />
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     <TopFooter />
