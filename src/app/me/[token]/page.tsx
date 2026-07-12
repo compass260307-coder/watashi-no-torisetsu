@@ -595,7 +595,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
             // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
             // SP は縦積み: カードBの浮きバッジ (-18px) が上カードに詰まらないよう gap 広め
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:max-w-[860px] md:flex-row md:gap-8">
+              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:max-w-[880px] md:flex-row md:gap-14">
                 {/* ── カードA: 友達3人 (無料・主) ── */}
                 {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
                 {/* 中身は縦中央寄せ (md 横並びで B と高さが揃ったとき下が空かないように) */}
