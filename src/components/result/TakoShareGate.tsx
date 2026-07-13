@@ -124,8 +124,8 @@ export function TakoShareGate({
 
   return (
     <div
-      className="rounded-[28px] px-5 py-7 md:px-8 md:py-8 shadow-[0_18px_50px_rgba(46,46,92,0.18)] ring-1 ring-black/5"
-      style={{ background: "rgba(255,255,255,0.96)" }}
+      className="rounded-[28px] px-5 py-7 md:px-8 md:py-8 shadow-[0_22px_60px_rgba(46,46,92,0.22)] ring-1 ring-white/70 backdrop-blur-[5px]"
+      style={{ background: "rgba(255,255,255,0.6)" }}
     >
       {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のとき) ===== */}
       <div className="flex h-8 items-center justify-center">

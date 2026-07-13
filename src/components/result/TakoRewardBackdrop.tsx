@@ -33,11 +33,13 @@ const SECTIONS: { title: string; variant: Variant }[] = [
 ];
 
 // answered(0..threshold) から奥レイヤー全体の霧(フィルタ)を線形補間で決める。
+// ★2026-07-13: 霧を大幅に薄く。0人でも「読めないが“?の並んだ結果ページ”だと分かる」境界に。
+//   スクリムを廃止したぶん、フィルタは軽く (blur 0人=3.5px→3人0 / brightness/saturate もほぼ等倍)。
 function fogFilter(answered: number, threshold: number): string {
   const t = threshold > 0 ? Math.min(1, Math.max(0, answered / threshold)) : 0;
-  const blur = (12 * (1 - t)).toFixed(2);
-  const brightness = (0.82 + 0.18 * t).toFixed(3);
-  const saturate = (0.6 + 0.4 * t).toFixed(3);
+  const blur = (3.5 * (1 - t)).toFixed(2);
+  const brightness = (0.97 + 0.03 * t).toFixed(3);
+  const saturate = (0.85 + 0.15 * t).toFixed(3);
   return `blur(${blur}px) brightness(${brightness}) saturate(${saturate})`;
 }
 
@@ -81,9 +83,9 @@ function BackdropSection({
   revealed: boolean;
 }) {
   return (
-    <section className="relative mb-8">
+    <section className="relative mb-4">
       {/* タイトル行 (revealed のときだけ読める。伏せ時はグレーバー) */}
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span
           className="inline-block h-6 w-6 rounded-full"
           style={{ background: revealed ? "#E7ECFB" : "#E3E5EE" }}
@@ -108,15 +110,16 @@ function BackdropSection({
         <SectionSkeleton variant={variant} revealed={revealed} />
       </div>
 
-      {/* 伏せ字「?」オーバーレイ (revealed で消える) */}
+      {/* 伏せ字「?」オーバーレイ (revealed で消える)。好奇心のフックなので大きめ・高コントラストで、
+          フロストのカード越しでも“?”と認識できるようにする。 */}
       {!revealed && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <span
-            className="flex h-12 w-12 items-center justify-center rounded-2xl text-[26px] font-black"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl text-[30px] font-black"
             style={{
-              color: INACTIVE,
-              background: "rgba(255,255,255,0.55)",
-              boxShadow: "0 4px 14px rgba(46,46,92,0.08)",
+              color: "#7C86A8",
+              background: "rgba(255,255,255,0.72)",
+              boxShadow: "0 6px 18px rgba(46,46,92,0.12)",
             }}
           >
             ?
@@ -144,20 +147,19 @@ function SectionSkeleton({
       return (
         <div className="flex items-center gap-4">
           <div
-            className="h-24 w-24 shrink-0 rounded-full md:h-28 md:w-28"
+            className="h-16 w-16 shrink-0 rounded-full"
             style={{ background: revealed ? "#E7ECFB" : "#EAEDF7" }}
           />
-          <div className="flex-1 space-y-2.5">
-            <div className="h-4 rounded-full" style={bar("70%", tone)} />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 rounded-full" style={bar("70%", tone)} />
             <div className="h-3 rounded-full" style={bar("90%", tone)} />
-            <div className="h-3 rounded-full" style={bar("55%", tone)} />
           </div>
         </div>
       );
     case "chart":
       return (
-        <div className="space-y-3">
-          {[0.9, 0.7, 0.82, 0.6, 0.75].map((w, i) => (
+        <div className="space-y-2">
+          {[0.9, 0.65, 0.8].map((w, i) => (
             <div key={i} className="flex items-center gap-3">
               <div className="h-2.5 w-10 rounded-full" style={bar("100%", tone)} />
               <div
@@ -170,11 +172,11 @@ function SectionSkeleton({
       );
     case "cards":
       return (
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1, 2, 3].map((i) => (
+        <div className="grid grid-cols-2 gap-2.5">
+          {[0, 1].map((i) => (
             <div
               key={i}
-              className="h-16 rounded-2xl"
+              className="h-10 rounded-xl"
               style={{ background: tone }}
             />
           ))}
@@ -182,11 +184,11 @@ function SectionSkeleton({
       );
     case "list":
       return (
-        <div className="space-y-2.5">
-          {[0, 1, 2].map((i) => (
+        <div className="space-y-2">
+          {[0, 1].map((i) => (
             <div key={i} className="flex items-center gap-3">
               <div
-                className="h-9 w-9 rounded-full"
+                className="h-7 w-7 rounded-full"
                 style={{ background: tone }}
               />
               <div className="h-3 flex-1 rounded-full" style={bar("100%", tone)} />
@@ -196,11 +198,11 @@ function SectionSkeleton({
       );
     case "grid":
       return (
-        <div className="grid grid-cols-3 gap-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div className="grid grid-cols-3 gap-2.5">
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-14 rounded-2xl"
+              className="h-9 rounded-xl"
               style={{ background: tone }}
             />
           ))}
@@ -209,8 +211,8 @@ function SectionSkeleton({
     case "prose":
     default:
       return (
-        <div className="space-y-2.5">
-          {[0.95, 0.85, 0.9, 0.6].map((w, i) => (
+        <div className="space-y-2">
+          {[0.95, 0.7].map((w, i) => (
             <div
               key={i}
               className="h-3 rounded-full"
