@@ -2,138 +2,190 @@
 
 // 他己診断 (タコ診断) ページ /tako/[token] のロック空状態。
 // 友達の回答が解除条件 (3人) に満たないとき表示する。
-//   - FV (2026-07-07): /aisho と同じ「左=見出し / 右=ループ動画」ヒーロー。
-//     PC 横並び (見出し flex-1 / 動画 46%)、SP 縦積み (見出し→動画)。色は #2E2E5C 基準。
-//   - FV の下: ロックカード (鍵/進捗) + QR 招待 (LockedInviteShare)。/me のロック表現に統一。
-//     背景はネイビー階調のダミーを blur した「この先に結果がある」チラ見せ。
-//   - 触れるのは QR・友達誘導・シェアのみ (LockedInviteShare が担う)。
+//
+// 三層構造 (奥→手前):
+//   1. 奥(報酬): 統合レポート結果ページの気配 (TakoRewardBackdrop・伏せ字ダミー)。
+//   2. 中間(スクリム): 手前の可読性担保 (TakoRevealStage が内包)。
+//   3. 手前(主役): シェア連動カウンター (TakoShareGate)。
+//   → 器・パララックス・段階リビールは TakoRevealStage が担う。
+//
+//   追加機能②: 再訪リビール「◯人届いた！」。前回見た回答者数(localStorage)より増えていたら、
+//   一旦旧状態を描いてから現在値へバウンド減算 + スロット順次リビールで“勢い”を見せる。
+//   真実はサーバの回答者数。既読(last_seen)だけをローカルに持ち、サーバ状態は書き換えない。
+//
+//   その下 (通常フロー): 招待QR (CTAの着地) + 価値説明3ステップ (TakoValueSections)。
+//   触れるのは QR・友達誘導・シェアのみ。課金導線・無料バイパスは一切作らない。
 
-import { SmoothImage } from "@/components/ui/SmoothImage";
-import { useEffect, useRef } from "react";
-import { LockedInviteShare } from "./LockedInviteShare";
+import { useState } from "react";
+import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
+import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoValueSections } from "./TakoValueSections";
-
-const NAVY = "#2E2E5C";
-const INACTIVE = "#9BA3B4";
-
-const REMAINING_VISUALS = {
-  1: { src: "/tako/ato-1.webp", width: 1525, height: 456 },
-  2: { src: "/tako/ato-2.webp", width: 1526, height: 456 },
-  3: { src: "/tako/ato-3.webp", width: 1525, height: 457 },
-} as const;
-
-type RemainingCount = keyof typeof REMAINING_VISUALS;
-
-function remainingCount(friendCount: number, threshold: number): RemainingCount {
-  const remaining = threshold - friendCount;
-  if (remaining <= 1) return 1;
-  if (remaining === 2) return 2;
-  return 3;
-}
-
-// FV 右側のループ動画。/aisho の HeroLoopVideo と同流儀 (autoPlay/muted/loop、
-// prefers-reduced-motion で一時停止)。動画ファイル (/tako/hero-loop.mp4) 生成前でも
-// 崩れないよう、コンテナに淡いグラデ背景と固定アスペクトを持たせる (差し替えは source のみ)。
-function TakoHeroVideo() {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      video.pause();
-    }
-  }, []);
-  return (
-    // 動画は自然な縦横比で全体を表示 (見切れ防止)。読み込み前は淡いグラデ背景。
-    <video
-      ref={ref}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="auto"
-      aria-hidden="true"
-      className="w-full rounded-3xl object-contain"
-      style={{
-        background:
-          "linear-gradient(135deg, #EEF0FB 0%, #F6F3FC 50%, #EAF6F9 100%)",
-      }}
-    >
-      <source src="/tako/hero-loop.mp4" type="video/mp4" />
-    </video>
-  );
-}
+import { LockedInviteShare } from "./LockedInviteShare";
+import { TakoSendSheet } from "./TakoSendSheet";
+import { TakoAnsweredDetail } from "./TakoAnsweredDetail";
+import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
+import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 interface TakoLockedStateProps {
-  friendCount: number;
+  /** 回答済み (answered) 友達。順に answered スロットへ (顔=その友達から見たあなた)。 */
+  answered: GateAnsweredFriend[];
+  /** 診断中 (pending) の近似人数。events から算出済み。 */
+  pendingCount: number;
   threshold: number;
   inviteUrl: string;
+  /** 既読(last_seen)をスコープするキー種 (通常は owner_token)。 */
+  storageScope: string;
+  /** プレビュー: 送信先シートのフォールバック経路を再現 ('liff-sim' 等)。 */
+  previewShareMode?: string;
+  /**
+   * SSRフラッシュ対策: サーバが cookie(既読) から決めた初期表示 answered 数。
+   * pending 時は「旧状態」= last_seen が入るので、初期HTML自体が演出開始フレームになる。
+   * 非pending 時は serverAnswered と同値。
+   */
+  ssrInitialAnswered: number;
+  /** プレビュー時 true: cookie を書かない (再現用)。 */
+  previewMode?: boolean;
+  /** ④ 相性ループ Path1 の /aisho?a= に使う本人の32型。無ければ Path1 は出ない。 */
+  ownerType32: ThirtyTwoTypeId | null;
+  /** ④ Path2: 友達を自己診断へ誘う導線先 (診断LP=サイトルート)。 */
+  selfDiagnoseUrl: string;
 }
 
 export function TakoLockedState({
-  friendCount,
+  answered,
+  pendingCount,
   threshold,
   inviteUrl,
+  storageScope,
+  ssrInitialAnswered,
+  previewMode = false,
+  previewShareMode,
+  ownerType32,
+  selfDiagnoseUrl,
 }: TakoLockedStateProps) {
-  const remaining = remainingCount(friendCount, threshold);
-  const remainingVisual = REMAINING_VISUALS[remaining];
+  const serverAnswered = Math.min(answered.length, threshold);
+
+  // 再訪リビール: displayAnswered が演出中に ssrInitial(旧状態)→server へ動く。
+  const { displayAnswered, deliveredCount, bounceKey, revealFromIndex } =
+    useTakoRevisitReveal({
+      serverAnswered,
+      ssrInitialAnswered,
+      storageScope,
+      previewMode,
+    });
+
+  // ③ 送信先ピッカー。mode で招待(自分を評価してもらう)/診断誘い(④Path2)を切り替え、
+  //   同じ TakoSendSheet を再利用する。送った実感 = 空スロットを楽観 pending へ。
+  //   ②とは非干渉: displayAnswered は触らず pending 表示数だけに足す。サーバ状態も不変。
+  const [optimisticPending, setOptimisticPending] = useState(0);
+  const shownPending = pendingCount + optimisticPending;
+  const [sendMode, setSendMode] = useState<null | {
+    kind: "invite" | "diagnose";
+    friendName?: string;
+  }>(null);
+
+  // ④ answered タップの詳細シート (相性ループ)。開いている answered の index。
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const detailFriend =
+    detailIndex != null ? answered[detailIndex] ?? null : null;
+
+  const diagnoseText = (name: string) =>
+    `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
 
   return (
     <div>
-      {/* ===== FV: /aisho と同じ「左=見出し / 右=動画」ヒーロー (最上部) ===== */}
-      <header className="mb-9 md:mb-14 md:flex md:items-center md:gap-12">
-        <div className="md:flex-1">
-          <h1
-            className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
-            style={{ color: NAVY }}
-          >
-            自分では気づけない
-            <br className="md:hidden" />
-            あなたを、
-            <br className="hidden md:block" />
-            友達に聞いてみよう。
-          </h1>
-          <p
-            className="mt-2.5 text-[12.5px] md:text-sm font-bold"
-            style={{ color: INACTIVE }}
-          >
-            友達に送るだけ・3人が答えると解ける
-          </p>
-        </div>
-        <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
-          <TakoHeroVideo />
-        </div>
-      </header>
+      {/* ===== 三層ゲート (奥=報酬 / スクリム / 手前=カウンター) ===== */}
+      <section className="pt-2 md:pt-4">
+        <TakoRevealStage answered={displayAnswered} threshold={threshold}>
+          <TakoShareGate
+            answered={answered}
+            pendingCount={shownPending}
+            threshold={threshold}
+            shownAnsweredCount={displayAnswered}
+            deliveredCount={deliveredCount}
+            bounceKey={bounceKey}
+            revealFromIndex={revealFromIndex}
+            onPrimaryAction={() => setSendMode({ kind: "invite" })}
+            onAnsweredTap={(i) => setDetailIndex(i)}
+          />
+        </TakoRevealStage>
+      </section>
 
-      {/* ===== 結果解放セクション (背景色付きの帯)。友達招待(QR)＋あと○人ビジュアル。 ===== */}
-      <div className="mb-10 rounded-3xl p-6 md:mb-12 md:px-9 md:py-6" style={{ background: "#EDEFFB" }}>
-        <section className="md:flex md:items-center md:gap-9 lg:gap-12">
-          {/* 左: 画像 (テキストは廃し、画像で内容を伝える) */}
-          <div className="md:flex-1">
-            {/* あと○人ビジュアル (フェルト調イラスト・透過PNG)。friendCount に合わせて出し分ける。 */}
-            <div className="-mx-2 md:mx-0 md:max-w-[560px]">
-              <SmoothImage
-                src={remainingVisual.src}
-                alt={`あと${remaining}人の回答で結果が解放`}
-                width={remainingVisual.width}
-                height={remainingVisual.height}
-                unoptimized
-                priority
-                className="h-auto w-full"
-              />
-            </div>
-          </div>
+      {/* ④ answered顔タップの詳細 (相性ループ 2分岐) */}
+      <TakoAnsweredDetail
+        open={detailIndex != null}
+        onClose={() => setDetailIndex(null)}
+        friend={
+          detailFriend
+            ? {
+                name: detailFriend.name,
+                perceivedImageSrc: detailFriend.imageSrc,
+                perceivedType32: detailFriend.perceivedType32 ?? null,
+                friendOwnType32: detailFriend.friendOwnType32 ?? null,
+              }
+            : null
+        }
+        ownerType32={ownerType32}
+        onInviteToDiagnose={() => {
+          // Path2: 詳細を閉じ、③シートを「診断に誘う」文脈で開く。
+          const name = detailFriend?.name ?? "友達";
+          setDetailIndex(null);
+          setSendMode({ kind: "diagnose", friendName: name });
+        }}
+      />
 
-          {/* 右: 招待 (QR + シェア)。唯一のカードとして行動を促す */}
-          <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
-            <LockedInviteShare inviteUrl={inviteUrl} compact />
-          </div>
-        </section>
+      {/* ③ 送信先ピッカー (CTA の着地／④Path2 の診断誘い。#tako-invite QR の上位動線) */}
+      <TakoSendSheet
+        open={sendMode != null}
+        onClose={() => setSendMode(null)}
+        inviteUrl={
+          sendMode?.kind === "diagnose" ? selfDiagnoseUrl : inviteUrl
+        }
+        toSend={Math.max(0, threshold - displayAnswered - shownPending)}
+        title={
+          sendMode?.kind === "diagnose"
+            ? `${sendMode.friendName}さんを診断に誘う`
+            : undefined
+        }
+        subtitle={
+          sendMode?.kind === "diagnose"
+            ? `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+            : undefined
+        }
+        shareText={
+          sendMode?.kind === "diagnose"
+            ? diagnoseText(sendMode.friendName ?? "友達")
+            : undefined
+        }
+        onSent={() => {
+          // 招待(自分の評価募集)のときだけ空スロットを楽観 pending へ。
+          // 診断誘い(Path2)は owner の回答者を増やさないので pending は足さない。
+          if (sendMode?.kind !== "diagnose") {
+            setOptimisticPending((p) =>
+              Math.min(
+                p + 1,
+                Math.max(0, threshold - displayAnswered - pendingCount),
+              ),
+            );
+          }
+        }}
+        previewShareMode={previewShareMode}
+      />
+
+      {/* ===== 招待 (QR + シェア)。CTA の着地点。step③ で送信先ピッカーに接続予定。 ===== */}
+      <div id="tako-invite" className="mx-auto mt-8 max-w-[560px] scroll-mt-24">
+        <div
+          className="rounded-3xl p-6 md:px-9 md:py-7"
+          style={{ background: "#EDEFFB" }}
+        >
+          <LockedInviteShare inviteUrl={inviteUrl} compact />
+        </div>
       </div>
 
-      {/* ===== 解放後に見えるもの (4項目グリッド) + 3ステップ。両セクションは
-          FriendIndividualGuide と共通 (TakoValueSections)。 ===== */}
-      <TakoValueSections />
+      {/* ===== 解放後に見えるもの (4項目グリッド) + 3ステップ (TakoValueSections) ===== */}
+      <div className="mt-14 md:mt-20">
+        <TakoValueSections />
+      </div>
     </div>
   );
 }

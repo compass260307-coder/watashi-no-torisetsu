@@ -5,6 +5,7 @@
 //   友達の回答が 3人 (REPORT_FRIEND_THRESHOLD) 未満なら TakoLockedState (ロック空状態)。
 
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import {
@@ -130,10 +131,15 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
           ),
           hasMessage: message.length > 0,
           message,
+          perceivedType32: null,
+          perceivedImageSrc: null,
+          perceiverUserId: null,
+          friendOwnType32: null,
         };
       })
       .sort((a, b) => b.mutual - a.mutual),
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
+    pendingFriendCount: 0,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
     threshold: 3,
@@ -145,14 +151,62 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
       imageSrc: preferCutImage(thirtyTwoImagePath(t)),
       previewPath: `/preview/${t}`,
     },
+    ownerType32: classifyThirtyTwoType(selfScores),
   };
 }
 
 // ?previewLocked=1 用: 解放前 (友達 threshold 未満) のモック。実DBは介さない。
-// friends は 0..threshold-1 にクランプ (進捗ドット確認用)。
-function mockLockedTakoData(friends: number): OwnerReportData {
+// &friends=N (answered 人数 0..threshold-1) と &pending=M (診断中) でゲートの各状態を確認できる。
+// answered には実キャラ画像 (その友達から見たあなた) を割り当て、スロットの“顔”を再現する。
+const MOCK_ANSWERED: {
+  name: string;
+  type32: ThirtyTwoTypeId;
+  ownType32: ThirtyTwoTypeId;
+}[] = [
+  {
+    name: "ゆい",
+    type32: "sparkle-dolphin__N" as ThirtyTwoTypeId,
+    ownType32: "whim-fox__N" as ThirtyTwoTypeId,
+  },
+  {
+    name: "そら",
+    type32: "smiley-panda__N" as ThirtyTwoTypeId,
+    ownType32: "quiet-owl__N" as ThirtyTwoTypeId,
+  },
+];
+
+// &diag=N: 先頭 N 人の answered 友達を「自己診断済み(Path1)」として扱う (相性ループ確認用)。
+function mockLockedTakoData(
+  friends: number,
+  pending: number,
+  diag: number,
+): OwnerReportData {
   const threshold = 3;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
+  const diagCount = Math.max(0, Math.min(count, Math.floor(diag || 0)));
+  const mockFriends = Array.from({ length: count }, (_, i) => {
+    const m = MOCK_ANSWERED[i % MOCK_ANSWERED.length];
+    const valid = sixteenTypes[baseIdOf(m.type32)];
+    const isDiagnosed = i < diagCount;
+    return {
+      perceptionId: `preview-${i}`,
+      name: m.name,
+      perceivedScores: {},
+      mutual: 0,
+      hasMessage: false,
+      message: "",
+      perceivedType32: valid ? m.type32 : null,
+      perceivedImageSrc: valid
+        ? preferCutImage(thirtyTwoImagePath(m.type32))
+        : null,
+      perceiverUserId: isDiagnosed ? `preview-user-${i}` : null,
+      friendOwnType32: isDiagnosed ? m.ownType32 : null,
+    };
+  });
+  const pendingCount = Math.max(
+    0,
+    Math.min(threshold - count, Math.floor(pending || 0)),
+  );
   return {
     user: {
       id: "preview",
@@ -167,14 +221,35 @@ function mockLockedTakoData(friends: number): OwnerReportData {
     friendAvgScores: null,
     friendNames: [],
     friendMessages: [],
-    friends: [],
+    friends: mockFriends,
     minnaContext: null,
+    pendingFriendCount: pendingCount,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
     threshold,
     unlocked: false,
     friendCharacter: null,
+    ownerType32: "gentle-koala__N" as ThirtyTwoTypeId,
   };
+}
+
+// 再訪リビール(②)の既読 cookie (tako_ls = {"s":scope,"n":lastSeen})。
+// サーバで読んで「旧状態」を初期HTMLにレンダリングすることで、SSRフラッシュ(最終値の
+// 一瞬露出)を原理的に無くす。スコープ不一致(別レポート)は安全側で null (誤発火させない)。
+function readLastSeenCookie(raw: string | undefined, scope: string): number | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw)) as {
+      s?: unknown;
+      n?: unknown;
+    };
+    if (parsed.s !== scope) return null;
+    const n =
+      typeof parsed.n === "number" ? parsed.n : Number.parseInt(String(parsed.n), 10);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
 }
 
 export default async function TakoPage({ params, searchParams }: PageProps) {
@@ -200,6 +275,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     : previewLocked
       ? mockLockedTakoData(
           typeof sp.friends === "string" ? Number(sp.friends) : 0,
+          typeof sp.pending === "string" ? Number(sp.pending) : 0,
+          typeof sp.diag === "string" ? Number(sp.diag) : 0,
         )
       : await loadOwnerReportData(token);
   if (!data) {
@@ -229,6 +306,27 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
   const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
 
+  // ===== 再訪リビール(②) の SSR 初期値 =====
+  // 既読 (last_seen) を preview は &lastSeen= から、本番は cookie から読む。
+  // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
+  const previewMode = Boolean(previewType || previewLocked);
+  const storageScope = data.user.owner_token ?? token;
+  const serverAnswered = Math.min(data.friends.length, data.threshold);
+  const lastSeen: number | null = previewLocked
+    ? typeof sp.lastSeen === "string"
+      ? Number(sp.lastSeen)
+      : null
+    : previewMode
+      ? null
+      : readLastSeenCookie((await cookies()).get("tako_ls")?.value, storageScope);
+  const revealPending =
+    lastSeen != null &&
+    serverAnswered < data.threshold &&
+    serverAnswered - lastSeen > 0;
+  const ssrInitialAnswered = revealPending
+    ? Math.max(0, Math.min(data.threshold, lastSeen as number))
+    : serverAnswered;
+
   return (
     <>
       {/* 自己診断と同じ 16P 風スクロール連動ヘッダー (世界観統一) */}
@@ -247,9 +345,26 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
             /* ===== ロック空状態 (友達3人未満)。本文幅は /me・フッターと統一 (1080)。 ===== */
             <div className="mx-auto max-w-[1080px] pt-6">
               <TakoLockedState
-                friendCount={data.friendEvalCount}
+                answered={data.friends.map((f) => ({
+                  perceptionId: f.perceptionId,
+                  name: f.name,
+                  imageSrc: f.perceivedImageSrc,
+                  perceivedType32: f.perceivedType32,
+                  friendOwnType32: f.friendOwnType32,
+                }))}
+                pendingCount={data.pendingFriendCount}
                 threshold={data.threshold}
                 inviteUrl={data.inviteUrl}
+                storageScope={storageScope}
+                ssrInitialAnswered={ssrInitialAnswered}
+                previewMode={previewMode}
+                previewShareMode={
+                  previewMode && typeof sp.share === "string"
+                    ? sp.share
+                    : undefined
+                }
+                ownerType32={data.ownerType32}
+                selfDiagnoseUrl={SITE_URL}
               />
             </div>
           ) : (
