@@ -15,7 +15,6 @@
 // 親 /tako ページは白背景固定のため light 前提。ダーク時も破綻しないよう強い絶対色は避ける。
 
 const NAVY = "#2E2E5C";
-const INACTIVE = "#9BA3B4";
 
 type Variant = "hero" | "prose" | "chart" | "cards" | "list" | "grid";
 
