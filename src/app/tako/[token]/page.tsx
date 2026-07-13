@@ -5,6 +5,7 @@
 //   友達の回答が 3人 (REPORT_FRIEND_THRESHOLD) 未満なら TakoLockedState (ロック空状態)。
 
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import {
@@ -216,6 +217,25 @@ function mockLockedTakoData(friends: number, pending: number): OwnerReportData {
   };
 }
 
+// 再訪リビール(②)の既読 cookie (tako_ls = {"s":scope,"n":lastSeen})。
+// サーバで読んで「旧状態」を初期HTMLにレンダリングすることで、SSRフラッシュ(最終値の
+// 一瞬露出)を原理的に無くす。スコープ不一致(別レポート)は安全側で null (誤発火させない)。
+function readLastSeenCookie(raw: string | undefined, scope: string): number | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw)) as {
+      s?: unknown;
+      n?: unknown;
+    };
+    if (parsed.s !== scope) return null;
+    const n =
+      typeof parsed.n === "number" ? parsed.n : Number.parseInt(String(parsed.n), 10);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function TakoPage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const sp = await searchParams;
@@ -261,6 +281,27 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
   const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
 
+  // ===== 再訪リビール(②) の SSR 初期値 =====
+  // 既読 (last_seen) を preview は &lastSeen= から、本番は cookie から読む。
+  // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
+  const previewMode = Boolean(previewType || previewLocked);
+  const storageScope = data.user.owner_token ?? token;
+  const serverAnswered = Math.min(data.friends.length, data.threshold);
+  const lastSeen: number | null = previewLocked
+    ? typeof sp.lastSeen === "string"
+      ? Number(sp.lastSeen)
+      : null
+    : previewMode
+      ? null
+      : readLastSeenCookie((await cookies()).get("tako_ls")?.value, storageScope);
+  const revealPending =
+    lastSeen != null &&
+    serverAnswered < data.threshold &&
+    serverAnswered - lastSeen > 0;
+  const ssrInitialAnswered = revealPending
+    ? Math.max(0, Math.min(data.threshold, lastSeen as number))
+    : serverAnswered;
+
   return (
     <>
       {/* 自己診断と同じ 16P 風スクロール連動ヘッダー (世界観統一) */}
@@ -287,6 +328,9 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 pendingCount={data.pendingFriendCount}
                 threshold={data.threshold}
                 inviteUrl={data.inviteUrl}
+                storageScope={storageScope}
+                ssrInitialAnswered={ssrInitialAnswered}
+                previewMode={previewMode}
               />
             </div>
           ) : (
