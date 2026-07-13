@@ -18,6 +18,7 @@
 import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { ShareCard } from "./ShareCard";
+import { track } from "@/lib/track";
 
 interface ResultActionsProps {
   typeName: string;
@@ -54,8 +55,16 @@ export function ResultActions({
   const [saving, setSaving] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // 友達招待クリックの計測 (KPI: friend_invite_clicked)。従来 /tako の
+  // LockedInviteShare しか計測がなく「友達共有」が過小だった (2026-07-13 修正)。
+  const trackInvite = (channel: string) =>
+    track("friend_invite_clicked", {
+      metadata: { channel, source: "result_actions" },
+    });
+
   const handleCopyLink = async () => {
     if (!shareUrl) return;
+    trackInvite("link");
     try {
       await navigator.clipboard.writeText(shareUrl);
       setLinkCopied(true);
@@ -107,6 +116,7 @@ export function ResultActions({
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("x")}
           className="w-9 h-9 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
           aria-label="X でシェア"
         >
@@ -116,6 +126,7 @@ export function ResultActions({
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("line")}
           className="w-9 h-9 rounded-full bg-[#06C755] flex items-center justify-center hover:scale-110 transition-transform"
           aria-label="LINE でシェア"
         >
@@ -183,6 +194,7 @@ export function ResultActions({
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("x")}
           className="flex items-center gap-1.5 rounded-full bg-black text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="X でシェア"
         >
@@ -193,6 +205,7 @@ export function ResultActions({
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("line")}
           className="flex items-center gap-1.5 rounded-full bg-[#06C755] text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="LINE でシェア"
         >

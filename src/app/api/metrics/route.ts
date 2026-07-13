@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
     checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
     purchaseCompleted: s.purchaseCompleted,
     purchaseConversionRate: round(s.purchaseConversionRate),
+    paidUsers: s.paidUsers,
+    revenueJpy: s.revenueJpy,
   };
 
   const format = request.nextUrl.searchParams.get("format");

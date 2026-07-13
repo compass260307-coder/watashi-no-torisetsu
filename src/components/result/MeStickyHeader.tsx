@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
+import { track } from "@/lib/track";
 
 interface MeStickyHeaderProps {
   /** ヘッダー本体 (TopHeader)。 */
@@ -48,6 +49,7 @@ function CircleIconButton({
         target="_blank"
         rel="noopener noreferrer"
         aria-label={label}
+        onClick={onClick}
         className={cls}
       >
         {children}
@@ -147,7 +149,14 @@ export function MeStickyHeader({
                 <div className="relative" ref={qrAreaRef}>
                   <CircleIconButton
                     label="QRコードを表示"
-                    onClick={() => setQrOpen((v) => !v)}
+                    onClick={() => {
+                      // 開くときだけ招待クリックとして計測 (KPI: friend_invite_clicked)
+                      if (!qrOpen)
+                        track("friend_invite_clicked", {
+                          metadata: { channel: "qr", source: "sticky_bar" },
+                        });
+                      setQrOpen((v) => !v);
+                    }}
                   >
                     {/* QR アイコン */}
                     <svg
@@ -190,7 +199,15 @@ export function MeStickyHeader({
                     </>
                   )}
                 </div>
-                <CircleIconButton label="Xでシェア" href={xUrl}>
+                <CircleIconButton
+                  label="Xでシェア"
+                  href={xUrl}
+                  onClick={() =>
+                    track("friend_invite_clicked", {
+                      metadata: { channel: "x", source: "sticky_bar" },
+                    })
+                  }
+                >
                   {/* X ロゴ */}
                   <svg
                     width="14"
@@ -202,7 +219,15 @@ export function MeStickyHeader({
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z" />
                   </svg>
                 </CircleIconButton>
-                <CircleIconButton label="LINEでシェア" href={lineUrl}>
+                <CircleIconButton
+                  label="LINEでシェア"
+                  href={lineUrl}
+                  onClick={() =>
+                    track("friend_invite_clicked", {
+                      metadata: { channel: "line", source: "sticky_bar" },
+                    })
+                  }
+                >
                   {/* LINE 吹き出し */}
                   <svg
                     width="16"

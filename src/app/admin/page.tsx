@@ -53,7 +53,9 @@ type Stats = {
   }[];
   friendToDiagClicked: number;
   friendToDiagRate: number;
-  typeDistribution: { typeId: string; count: number }[];
+  typeDistribution: { typeId: string; name?: string; count: number }[];
+  paidUsers: number;
+  revenueJpy: number;
   friendCountDistribution: {
     total: number;
     zero: number;
@@ -454,12 +456,12 @@ export default function AdminPage() {
     if (stats.typeDistribution.length > 0) {
       rows.push(["# タイプ分布"]);
       rows.push(["タイプ", "人数"]);
-      stats.typeDistribution.forEach((t) => rows.push([TYPE_LABELS[t.typeId] ?? t.typeId, String(t.count)]));
+      stats.typeDistribution.forEach((t) => rows.push([t.name ?? TYPE_LABELS[t.typeId] ?? t.typeId, String(t.count)]));
       rows.push([]);
     }
     rows.push(["# 診断質問到達数"]);
     rows.push(["質問", "回答数"]);
-    for (let i = 0; i < 15; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
+    for (let i = 0; i < 50; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
 
     const bom = "﻿";
     const csv = bom + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -572,12 +574,17 @@ export default function AdminPage() {
             <KpiCard
               label="3人達成"
               value={stats.threeAchieved}
-              sub="トリセツ完成"
+              sub="第二部解放 (friend_perceptions)"
             />
             <KpiCard
               label="5人達成"
               value={stats.fiveAchieved}
-              sub="深掘りレポート解放"
+              sub="本物の見られ方 完成"
+            />
+            <KpiCard
+              label="課金ユーザー"
+              value={stats.paidUsers}
+              sub={`概算売上 ¥${(stats.revenueJpy ?? 0).toLocaleString()}`}
             />
             <KpiCard
               label="結果再訪"
@@ -871,7 +878,7 @@ export default function AdminPage() {
                 {stats.typeDistribution.map((t) => (
                   <DistributionBar
                     key={t.typeId}
-                    label={TYPE_LABELS[t.typeId] ?? t.typeId}
+                    label={t.name ?? TYPE_LABELS[t.typeId] ?? t.typeId}
                     count={t.count}
                     max={typeMax}
                   />
@@ -895,9 +902,9 @@ export default function AdminPage() {
           <h2 className="text-sm font-bold text-gray-700 mb-3">質問ごとの到達数</h2>
           <div className="grid grid-cols-1 gap-4">
             <QuestionReachChart
-              title="診断（15問）"
+              title="診断（50問）"
               reach={stats.diagQuestionReach}
-              totalQuestions={15}
+              totalQuestions={50}
             />
           </div>
         </section>
