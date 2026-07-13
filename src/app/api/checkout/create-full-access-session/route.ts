@@ -288,5 +288,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 課金ファネル計測: Stripe Checkout 到達 (サーバ発行なので session_id は無し。件数集計)。
+  // 計測失敗で課金導線を止めない (エラーは握りつぶす)。
+  try {
+    await supabaseAdmin.from("events").insert({
+      event_name: "checkout_session_created",
+      owner_token: buyer?.owner_token ?? null,
+      metadata: {
+        guest: userId ? false : true,
+        stripe_session_id: stripeSession.id,
+      },
+    });
+  } catch {
+    // noop
+  }
+
   return NextResponse.json({ url: stripeSession.url });
 }

@@ -30,6 +30,11 @@ export async function computeStats(from: string | null, to: string | null) {
     friendLandingRes,
     usersRes,
     friendAnswersRes,
+    paywallViewedRes,
+    paywallScrollRes,
+    purchaseCtaRes,
+    checkoutCreatedRes,
+    purchaseCompletedRes,
   ] = await Promise.all([
     applyRange(
       supabaseAdmin
@@ -130,6 +135,39 @@ export async function computeStats(from: string | null, to: string | null) {
     // friend_answers — period filter applied
     applyRange(
       supabaseAdmin.from("friend_answers").select("user_id, created_at"),
+    ),
+    // ----- 課金ファネル (2026-07-13) -----
+    applyRange(
+      supabaseAdmin
+        .from("events")
+        .select("session_id")
+        .eq("event_name", "paywall_viewed"),
+    ),
+    applyRange(
+      // 誘導クリック: source 内訳も見るため metadata ごと取得
+      supabaseAdmin
+        .from("events")
+        .select("session_id, metadata")
+        .eq("event_name", "paywall_scroll_clicked"),
+    ),
+    applyRange(
+      supabaseAdmin
+        .from("events")
+        .select("session_id")
+        .eq("event_name", "purchase_cta_clicked"),
+    ),
+    // サーバ発行イベント (session_id なし) は件数で数える
+    applyRange(
+      supabaseAdmin
+        .from("events")
+        .select("id")
+        .eq("event_name", "checkout_session_created"),
+    ),
+    applyRange(
+      supabaseAdmin
+        .from("events")
+        .select("id")
+        .eq("event_name", "purchase_completed"),
     ),
   ]);
 
@@ -300,6 +338,30 @@ export async function computeStats(from: string | null, to: string | null) {
   const viralCoefficient =
     diagnosisCompleted > 0 ? childDiagCompleted / diagnosisCompleted : 0;
 
+  // --- 課金ファネル (2026-07-13) ---
+  // クライアント発行 (paywall_viewed 等) はユニークセッション、
+  // サーバ発行 (checkout_session_created / purchase_completed) は件数。
+  const paywallViewed = toUnique(paywallViewedRes);
+  const paywallScrollClicked = toUnique(
+    paywallScrollRes as { data: { session_id: string }[] | null },
+  );
+  const purchaseCtaClicked = toUnique(purchaseCtaRes);
+  const checkoutCreated = checkoutCreatedRes.data?.length ?? 0;
+  const purchaseCompleted = purchaseCompletedRes.data?.length ?? 0;
+
+  // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
+  const sourceCounts = new Map<string, number>();
+  for (const row of (paywallScrollRes.data ?? []) as {
+    metadata: Record<string, unknown> | null;
+  }[]) {
+    const s =
+      typeof row.metadata?.source === "string" ? row.metadata.source : "unknown";
+    sourceCounts.set(s, (sourceCounts.get(s) ?? 0) + 1);
+  }
+  const paywallSources = Array.from(sourceCounts.entries())
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count);
+
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
   return {
@@ -325,6 +387,19 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "3人達成", count: threeAchieved },
       { label: "5人達成", count: fiveAchieved },
     ],
+    // 課金ファネル: 結果ページ表示 → カード表示 → 誘導クリック → 購入CTA →
+    // Stripe到達 → 決済完了。前半3つはユニークセッション、後半2つは件数 (サーバ発行)。
+    paywallFunnel: [
+      { label: "結果ページ表示", count: uniqueViewed },
+      { label: "課金カード表示", count: paywallViewed },
+      { label: "解除ボタン押下", count: paywallScrollClicked },
+      { label: "購入CTA押下", count: purchaseCtaClicked },
+      { label: "Stripe到達", count: checkoutCreated },
+      { label: "決済完了", count: purchaseCompleted },
+    ],
+    paywallSources,
+    purchaseCompleted,
+    purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
     recentEvents: recentRes.data ?? [],
     friendToDiagClicked,
     friendToDiagRate: rate(friendToDiagClicked, friendAnswerCompleted),

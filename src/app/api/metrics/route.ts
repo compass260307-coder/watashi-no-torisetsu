@@ -47,6 +47,13 @@ export async function GET(request: NextRequest) {
     totalUsers: s.totalUsers,
     avgChildPerParent: round(s.viral.avgChildPerParent),
     viralCoefficient: round(s.viral.viralCoefficient),
+    // 課金ファネル (2026-07-13 追加。列は末尾に足す = 既存シートの列順を壊さない)
+    paywallViewed: s.paywallFunnel[1]?.count ?? 0,
+    paywallScrollClicked: s.paywallFunnel[2]?.count ?? 0,
+    purchaseCtaClicked: s.paywallFunnel[3]?.count ?? 0,
+    checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
+    purchaseCompleted: s.purchaseCompleted,
+    purchaseConversionRate: round(s.purchaseConversionRate),
   };
 
   const format = request.nextUrl.searchParams.get("format");

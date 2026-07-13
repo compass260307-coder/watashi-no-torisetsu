@@ -91,7 +91,7 @@ export function FriendList({
                   {inner}
                 </Link>
               ) : (
-                <button type="button" onClick={scrollToPaywall} className={cardClass}>
+                <button type="button" onClick={() => scrollToPaywall("friend_list")} className={cardClass}>
                   {inner}
                 </button>
               )}

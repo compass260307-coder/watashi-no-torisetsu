@@ -656,7 +656,7 @@ function CompatDetail({
                   </p>
                   <button
                     type="button"
-                    onClick={scrollToPaywall}
+                    onClick={() => scrollToPaywall("aisho_scene")}
                     className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
                     style={{ background: NAVY }}
                   >

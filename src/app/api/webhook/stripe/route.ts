@@ -266,6 +266,34 @@ async function grantFullAccessByEmailOrId(
   });
 }
 
+// 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
+// Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
+// 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
+async function recordPurchaseCompletedEvent(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from("events")
+      .select("id")
+      .eq("event_name", "purchase_completed")
+      .eq("metadata->>stripe_session_id", session.id)
+      .limit(1);
+    if (existing && existing.length > 0) return;
+    await supabaseAdmin.from("events").insert({
+      event_name: "purchase_completed",
+      metadata: {
+        stripe_session_id: session.id,
+        product: "full_access",
+        guest: session.metadata?.guest === "1",
+        amount_total: session.amount_total ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] purchase_completed event insert failed:", err);
+  }
+}
+
 // ---------- checkout.session.completed ----------
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
@@ -281,6 +309,7 @@ async function handleCheckoutCompleted(
   //   email backfill / プレースホルダー作成も含めて grantFullAccessByEmailOrId が担う。
   if (metadata.product === "full_access") {
     await grantFullAccessByEmailOrId(session, userId);
+    await recordPurchaseCompletedEvent(session);
     return;
   }
 

@@ -220,7 +220,7 @@ export function MeStickyHeader({
 
             <button
               type="button"
-              onClick={scrollToPaywall}
+              onClick={() => scrollToPaywall("sticky_bar")}
               className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
             >
               <svg

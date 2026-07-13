@@ -22,9 +22,11 @@
 //   - imageSrc: あるとき横並び (md+) の MBTI レイアウト。無いとき中央 1 カラム。
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
+import { useEffect, useRef } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
+import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 // 値引き表記に使う元値・現在価格 (77%OFF)。
@@ -146,6 +148,40 @@ export function FullAccessPromoCard({
     variant === "aisho" ? PINK_TONE.mid : heroColorsForGroup(group).heroBg;
   const hasImage = !!imageSrc;
 
+  // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る
+  // (半分以上見えたとき)。dedup はページ単位で sessionStorage (タブ内1回)。
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const page = window.location.pathname.split("/")[1] || "top";
+    const dedupKey = `torisetsu_paywall_viewed_${page}`;
+    try {
+      if (sessionStorage.getItem(dedupKey)) return;
+    } catch {
+      // sessionStorage 不可 (プライベートモード等) でも計測は試みる
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          try {
+            sessionStorage.setItem(dedupKey, "1");
+          } catch {
+            /* noop */
+          }
+          track("paywall_viewed", {
+            ownerToken: ownerToken ?? null,
+            metadata: { page, variant },
+          });
+          io.disconnect();
+        }
+      },
+      { threshold: 0.5 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ownerToken, variant]);
+
   return (
     <section
       aria-labelledby="fullaccess-promo-title"
@@ -153,6 +189,7 @@ export function FullAccessPromoCard({
     >
       <div
         id="fullaccess-promo"
+        ref={cardRef}
         className={`relative mx-auto w-full scroll-mt-[80px] rounded-3xl border-2 shadow-[0_16px_48px_rgba(46,46,92,0.12)] ${
           hasImage
             ? "max-w-[1080px] md:flex md:items-stretch"

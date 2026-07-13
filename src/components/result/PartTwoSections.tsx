@@ -197,7 +197,10 @@ function RelationsLocked() {
         </p>
         {/* 挙動は裏技カードと同一 (最下部の課金カードへスムーススクロール+パルス)。
             横幅も裏技カードのCTAに合わせて全幅。 */}
-        <PaywallScrollButton className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]">
+        <PaywallScrollButton
+          source="relations_card"
+          className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+        >
           今すぐアクセス
         </PaywallScrollButton>
       </div>

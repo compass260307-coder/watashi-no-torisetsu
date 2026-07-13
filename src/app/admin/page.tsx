@@ -41,6 +41,10 @@ type Stats = {
   resultRevisited: number;
   revisitRate: number;
   funnel: { label: string; count: number }[];
+  paywallFunnel: { label: string; count: number }[];
+  paywallSources: { source: string; count: number }[];
+  purchaseCompleted: number;
+  purchaseConversionRate: number;
   recentEvents: {
     event_name: string;
     session_id: string | null;
@@ -371,6 +375,10 @@ export default function AdminPage() {
   if (!stats) return null;
 
   const funnelMax = Math.max(...stats.funnel.map((f) => f.count), 1);
+  const paywallFunnelMax = Math.max(
+    ...(stats.paywallFunnel ?? []).map((f) => f.count),
+    1,
+  );
   const fc = stats.friendCountDistribution;
   const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
 
@@ -408,6 +416,20 @@ export default function AdminPage() {
     rows.push(["ステップ", "件数"]);
     stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
     rows.push([]);
+    rows.push(["# 課金ファネル"]);
+    rows.push(["ステップ", "件数"]);
+    (stats.paywallFunnel ?? []).forEach((s) =>
+      rows.push([s.label, String(s.count)]),
+    );
+    rows.push([]);
+    if ((stats.paywallSources ?? []).length > 0) {
+      rows.push(["# 解除ボタン押下の内訳"]);
+      rows.push(["source", "クリック回数"]);
+      stats.paywallSources.forEach((s) =>
+        rows.push([s.source, String(s.count)]),
+      );
+      rows.push([]);
+    }
     if (stats.campaignStats.length > 0) {
       rows.push(["# キャンペーン別"]);
       rows.push(["campaign", "診断完了", "友達回答"]);
@@ -597,6 +619,55 @@ export default function AdminPage() {
                 />
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            課金ファネル (¥299 フルアクセス)
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
+              <span className="w-28 text-right">ステップ</span>
+              <span className="flex-1">件数</span>
+              <span className="w-16 text-right">前ステップ比</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(stats.paywallFunnel ?? []).map((step, i) => (
+                <FunnelBar
+                  key={step.label}
+                  label={step.label}
+                  count={step.count}
+                  max={paywallFunnelMax}
+                  prevCount={
+                    i > 0 ? stats.paywallFunnel[i - 1].count : undefined
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              前半3ステップはユニークセッション数、Stripe到達・決済完了はサーバ記録の件数。
+              計測開始 (2026-07-13) 以前のデータは含まれません。
+            </p>
+            {/* 誘導クリックの内訳 (どのボタンが課金カードへ連れてきているか) */}
+            {(stats.paywallSources ?? []).length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <p className="mb-2 text-xs font-bold text-gray-500">
+                  解除ボタン押下の内訳 (クリック回数)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {stats.paywallSources.map((s) => (
+                    <span
+                      key={s.source}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
+                    >
+                      {s.source}: <b>{s.count}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

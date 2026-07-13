@@ -77,7 +77,9 @@ export function DeepDiveSections({
               type="button"
               role="tab"
               aria-selected={selected}
-              onClick={() => (s.locked ? scrollToPaywall() : setActive(i))}
+              onClick={() =>
+                s.locked ? scrollToPaywall(`deepdive_tab_${s.key}`) : setActive(i)
+              }
               className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
                 selected
                   ? "bg-[#2E2E5C] text-white border-[#2E2E5C]"
@@ -150,7 +152,7 @@ export function DeepDiveSections({
                   実 CTA は最下部カードに一本化。 */}
               <button
                 type="button"
-                onClick={scrollToPaywall}
+                onClick={() => scrollToPaywall("deepdive_panel")}
                 className="flex w-full max-w-[300px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
               >
                 ぜんぶ、ひらく →

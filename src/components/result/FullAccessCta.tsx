@@ -9,6 +9,7 @@
 // 既に full の場合 (409 already_full) はページを再読込して本文表示へ戻す。
 
 import { useState } from "react";
+import { track } from "@/lib/track";
 
 export function FullAccessCta({
   children = "¥299で全部よむ",
@@ -32,6 +33,12 @@ export function FullAccessCta({
     if (loading) return;
     setLoading(true);
     setError(null);
+    // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
+    // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
+    track("purchase_cta_clicked", {
+      ownerToken: ownerToken ?? null,
+      metadata: { page: window.location.pathname.split("/")[1] || "top" },
+    });
     try {
       const res = await fetch("/api/checkout/create-full-access-session", {
         method: "POST",
