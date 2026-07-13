@@ -9,6 +9,9 @@
 import { computeStats } from "@/lib/admin-stats";
 import { NextRequest, NextResponse } from "next/server";
 
+// 集計はページング + 質問別 count 50本で時間がかかるため余裕を持たせる (admin/stats と同じ)。
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const metricsKey = process.env.METRICS_KEY;
   if (!metricsKey) {

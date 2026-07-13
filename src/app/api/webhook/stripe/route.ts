@@ -273,12 +273,19 @@ async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   try {
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: selErr } = await supabaseAdmin
       .from("events")
       .select("id")
       .eq("event_name", "purchase_completed")
       .eq("metadata->>stripe_session_id", session.id)
       .limit(1);
+    // SELECT 失敗時は重複の有無が判定できない。挿入すると再送時に二重計上の恐れが
+    // あるためスキップ (集計側も stripe_session_id ユニークで数えるので、稀な取りこぼしは
+    // paidUsers (users.plan) 側で補足できる)。
+    if (selErr) {
+      console.error("[webhook] purchase_completed dedup check failed:", selErr);
+      return;
+    }
     if (existing && existing.length > 0) return;
     await supabaseAdmin.from("events").insert({
       event_name: "purchase_completed",

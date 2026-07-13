@@ -288,8 +288,11 @@ export default function AdminPage() {
         const params = new URLSearchParams();
         let range: { from: string; to: string } | null;
         if (p === "custom") {
-          const fromDate = new Date(cFrom);
-          const toDate = new Date(cTo);
+          // "YYYY-MM-DD" を new Date() に直接渡すと UTC 深夜として解釈され、
+          // JST の 00:00〜09:00 が前日に漏れる。T00:00:00 付きでローカル時刻として
+          // 解釈させる (プリセットと同じ挙動に揃える。2026-07-13 修正)。
+          const fromDate = new Date(`${cFrom}T00:00:00`);
+          const toDate = new Date(`${cTo}T00:00:00`);
           toDate.setHours(23, 59, 59, 999);
           range = { from: fromDate.toISOString(), to: toDate.toISOString() };
         } else {
@@ -626,6 +629,10 @@ export default function AdminPage() {
                 />
               ))}
             </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              診断〜友達回答はユニークセッション数、3人/5人達成は「N人目の回答が期間内に届いたオーナー数」。
+              単位が異なるため前ステップ比は目安です。
+            </p>
           </div>
         </section>
 

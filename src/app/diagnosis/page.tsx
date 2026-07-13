@@ -190,12 +190,18 @@ function DiagnosisContent() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [currentPage, hydrated]);
 
-  // 起動 track (1 回のみ)
+  // 起動 track。ref だけだと再マウント (ページ再訪・再診断モーダル表示等) のたびに
+  // 発火して分母が膨らむため、セッション (タブ) 単位で1回に dedup する (2026-07-13)。
   useEffect(() => {
-    if (!trackedStart.current) {
-      trackedStart.current = true;
-      track("diagnosis_started");
+    if (trackedStart.current) return;
+    trackedStart.current = true;
+    try {
+      if (sessionStorage.getItem("torisetsu_diag_started") === "1") return;
+      sessionStorage.setItem("torisetsu_diag_started", "1");
+    } catch {
+      // sessionStorage 不可でも計測は続行 (dedup なし)
     }
+    track("diagnosis_started");
   }, []);
 
   const pageQuestions = questions.slice(
@@ -260,13 +266,19 @@ function DiagnosisContent() {
   };
 
   const handleAnswer = (questionId: number, value: AnswerValue) => {
+    // 到達計測は「その質問に初めて答えたとき」のみ (2026-07-13)。
+    // 同値の再タップ・選び直しでも発火すると diagQuestionReach が水増しされ、
+    // 離脱ポイント分析 (到達曲線) が歪むため。
+    const isFirstAnswer = answers[questionId] === undefined;
     setAnswers((prev) => {
       if (prev[questionId] === value) return prev;
       return { ...prev, [questionId]: value }; // 別の選択肢なら上書き (選び直し可)
     });
-    track("diagnosis_question_answered", {
-      metadata: { questionId },
-    });
+    if (isFirstAnswer) {
+      track("diagnosis_question_answered", {
+        metadata: { questionId },
+      });
+    }
 
     // ページ送りは自動ではなく、質問の下の「次へ」CTA で明示的に行う (handleNext)。
     // ここでは同一ページ内の「次の質問」へのオートスクロールだけを担う。
@@ -359,6 +371,8 @@ function DiagnosisContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // API側で診断結果を再計算し、typeId / scores の改ざんを防ぐための原回答。
+          answers,
           typeId: result.typeId,
           scores: result.scores,
           facetScores: result.facetScores,

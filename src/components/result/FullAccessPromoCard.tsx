@@ -148,12 +148,14 @@ export function FullAccessPromoCard({
     variant === "aisho" ? PINK_TONE.mid : heroColorsForGroup(group).heroBg;
   const hasImage = !!imageSrc;
 
-  // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る
-  // (半分以上見えたとき)。dedup はページ単位で sessionStorage (タブ内1回)。
+  // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る。
+  // dedup はページ単位で sessionStorage (タブ内1回)。
+  // threshold は 0.2: カードは縦長 (画像つきで1000px級) で、背の低い端末では
+  // 50% が同時に画面へ入らず「見たのに未計測」になるため低めにする (2026-07-13)。
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = cardRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
+    if (!el) return;
     const page = window.location.pathname.split("/")[1] || "top";
     const dedupKey = `torisetsu_paywall_viewed_${page}`;
     try {
@@ -161,22 +163,31 @@ export function FullAccessPromoCard({
     } catch {
       // sessionStorage 不可 (プライベートモード等) でも計測は試みる
     }
+    const fire = () => {
+      // 送信を先に、dedup フラグは後 (先にフラグを立てると送信失敗時に永久欠測)
+      track("paywall_viewed", {
+        ownerToken: ownerToken ?? null,
+        metadata: { page, variant },
+      });
+      try {
+        sessionStorage.setItem(dedupKey, "1");
+      } catch {
+        /* noop */
+      }
+    };
+    // IntersectionObserver 非対応環境はマウント時に発火 (無計測より過大side良し)
+    if (typeof IntersectionObserver === "undefined") {
+      fire();
+      return;
+    }
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          try {
-            sessionStorage.setItem(dedupKey, "1");
-          } catch {
-            /* noop */
-          }
-          track("paywall_viewed", {
-            ownerToken: ownerToken ?? null,
-            metadata: { page, variant },
-          });
+          fire();
           io.disconnect();
         }
       },
-      { threshold: 0.5 },
+      { threshold: 0.2 },
     );
     io.observe(el);
     return () => io.disconnect();

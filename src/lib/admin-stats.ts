@@ -18,7 +18,7 @@
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
-  thirtyTwoName,
+  thirtyTwoEssence,
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
 
@@ -55,25 +55,32 @@ export async function computeStats(from: string | null, to: string | null) {
     return out;
   }
 
-  // イベント行の全件取得ファクトリ (ユニークセッション算出用)
+  // イベント行の全件取得ファクトリ (ユニークセッション算出用)。
+  // order は created_at + id の複合 (同時刻行のタイブレークでページ境界の取りこぼしを防ぐ)。
   const evRows = (names: string[], cols = "session_id") => () =>
     applyRange(
       supabaseAdmin
         .from("events")
         .select(cols)
         .in("event_name", names)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
     );
 
-  // 件数だけでよいイベントは count クエリ (行を運ばない)
-  const evCount = async (name: string): Promise<number> => {
-    const { count } = await applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("id", { count: "exact", head: true })
-        .eq("event_name", name),
+  // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
+  // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
+  const evUniqueStripeSession = async (name: string): Promise<number> => {
+    const rows = await fetchAll<{ metadata: Record<string, unknown> | null }>(
+      evRows([name], "metadata"),
     );
-    return count ?? 0;
+    const ids = new Set<string>();
+    let noId = 0;
+    for (const r of rows) {
+      const sid = r.metadata?.stripe_session_id;
+      if (typeof sid === "string" && sid) ids.add(sid);
+      else noId++; // 旧形式など id 無し行は個別に数える (落とさない)
+    }
+    return ids.size + noId;
   };
 
   // 質問到達: 5万行超を運ばず、questionId ごとの count クエリを並列で投げる
@@ -161,25 +168,31 @@ export async function computeStats(from: string | null, to: string | null) {
         supabaseAdmin
           .from("users")
           .select("id, scores, campaign, generation, source_user_id")
-          .order("created_at", { ascending: true }),
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
       ),
     ),
-    // 友達回答の実データ (/me のゲートと同じ friend_perceptions を正とする)
-    fetchAll<{ target_user_id: string }>(() =>
-      applyRange(
+    // 友達回答の実データ (/me のゲートと同じ friend_perceptions を正とする)。
+    // ★期間フィルタを掛けずに全件読む: 3人/5人達成は「累計でN人目が期間内に届いたか」で
+    //   判定するため、期間前からの積み上げが必要 (期間内の回答だけで数えると過小になる)。
+    fetchAll<{ target_user_id: string; created_at: string }>(() =>
+      supabaseAdmin
+        .from("friend_perceptions")
+        .select("target_user_id, created_at")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
+    ),
+    // 課金ユーザー: webhook は同一 email の全 users 行を full にするため、行数で数えると
+    // 再診断ユーザーの購入が多重計上される。email (無ければ id) でユニーク化する。
+    // 期間は full_access_at (購入時刻)。ページングも必須 (1000行上限)。
+    fetchAll<{ id: string; email: string | null; full_access_at: string | null }>(
+      () =>
         supabaseAdmin
-          .from("friend_perceptions")
-          .select("target_user_id")
-          .order("created_at", { ascending: true }),
-      ),
+          .from("users")
+          .select("id, email, full_access_at")
+          .eq("plan", "full")
+          .order("id", { ascending: true }),
     ),
-    // 課金ユーザー: 期間は full_access_at で切る (users.created_at ではない)。
-    // 旧データで full_access_at が null の full ユーザーは全期間表示のみ計上。
-    supabaseAdmin
-      .from("users")
-      .select("id, full_access_at")
-      .eq("plan", "full")
-      .then((res) => res.data ?? []),
     applyRange(
       supabaseAdmin
         .from("events")
@@ -188,8 +201,8 @@ export async function computeStats(from: string | null, to: string | null) {
         .limit(50),
     ),
     questionReachCounts(),
-    evCount("checkout_session_created"),
-    evCount("purchase_completed"),
+    evUniqueStripeSession("checkout_session_created"),
+    evUniqueStripeSession("purchase_completed"),
   ]);
 
   const toUnique = (rows: SessionRow[]) =>
@@ -214,33 +227,52 @@ export async function computeStats(from: string | null, to: string | null) {
   ).size;
 
   // --- 友達人数 (friend_perceptions が正。/me の解放ゲートと同じデータ源) ---
-  const perceptionCounts = new Map<string, number>();
+  // perceptions は全期間ぶん。オーナーごとに回答時刻の昇順リストを作る。
+  const perceptionDates = new Map<string, string[]>();
   for (const row of perceptions) {
     const uid = row.target_user_id;
-    if (uid) perceptionCounts.set(uid, (perceptionCounts.get(uid) ?? 0) + 1);
+    if (!uid) continue;
+    const arr = perceptionDates.get(uid) ?? [];
+    arr.push(row.created_at);
+    perceptionDates.set(uid, arr);
   }
+  const inRange = (iso: string) => {
+    const t = Date.parse(iso);
+    if (from && t < Date.parse(from)) return false;
+    if (to && t > Date.parse(to)) return false;
+    return true;
+  };
+  // 3人/5人達成 = 「N人目の回答が期間内に届いたオーナー数」(全期間なら累計到達数)。
+  // 期間内の回答数だけで数えると、期間前からの積み上げ到達が消えて過小になるため。
   let threeAchieved = 0;
   let fiveAchieved = 0;
-  let with1 = 0,
-    with2 = 0;
-  for (const fc of perceptionCounts.values()) {
-    if (fc >= 1) with1++;
-    if (fc >= 2) with2++;
-    if (fc >= 3) threeAchieved++;
-    if (fc >= 5) fiveAchieved++;
+  for (const dates of perceptionDates.values()) {
+    if (dates.length >= 3 && inRange(dates[2])) threeAchieved++;
+    if (dates.length >= 5 && inRange(dates[4])) fiveAchieved++;
   }
+  // 分布 = 期間内に作成されたユーザー × 累計の友達人数のスナップショット
+  // (バケット合計が必ず total と一致する。zero が負になる旧バグの修正)。
   const totalUsers = users.length;
   const friendCountDistribution = {
     total: totalUsers,
-    zero: totalUsers - perceptionCounts.size,
-    one: with1 - with2,
-    two: with2 - threeAchieved,
-    threePlus: threeAchieved,
-    fivePlus: fiveAchieved,
+    zero: 0,
+    one: 0,
+    two: 0,
+    threePlus: 0,
+    fivePlus: 0,
   };
+  for (const row of users) {
+    const fc = perceptionDates.get(row.id)?.length ?? 0;
+    if (fc === 0) friendCountDistribution.zero++;
+    else if (fc === 1) friendCountDistribution.one++;
+    else if (fc === 2) friendCountDistribution.two++;
+    else friendCountDistribution.threePlus++;
+    if (fc >= 5) friendCountDistribution.fivePlus++;
+  }
 
   // --- タイプ分布 (現仕様 = 32タイプ。users.scores から決定的に導出) ---
   // 旧 users.type_id は 8 タイプで表示と不一致のため使わない。
+  // 表示名はユーザー向けの「称号」(essence。/types・/me ヒーローと同じ。寄添者/夢想家 等)。
   // scores が壊れている行 (ゲスト購入のプレースホルダー等) は "unknown" に寄せる。
   const typeCounts: Record<string, { name: string; count: number }> = {};
   for (const row of users) {
@@ -251,7 +283,7 @@ export async function computeStats(from: string | null, to: string | null) {
       try {
         const t32 = classifyThirtyTwoType(s);
         key = t32;
-        name = thirtyTwoName(t32);
+        name = thirtyTwoEssence(t32);
       } catch {
         // 分類不能は unknown のまま
       }
@@ -278,9 +310,11 @@ export async function computeStats(from: string | null, to: string | null) {
       userIdToCampaign.set(row.id, c);
     }
   }
-  for (const [uid, fc] of perceptionCounts.entries()) {
+  for (const [uid, dates] of perceptionDates.entries()) {
     const c = userIdToCampaign.get(uid);
-    if (c && campaignMap.has(c)) campaignMap.get(c)!.friendAnswers += fc;
+    if (!c || !campaignMap.has(c)) continue;
+    // キャンペーン別の友達回答は期間内の回答数で数える
+    campaignMap.get(c)!.friendAnswers += dates.filter(inRange).length;
   }
   const campaignStats = Array.from(campaignMap.entries())
     .map(([campaign, s]) => ({
@@ -326,14 +360,28 @@ export async function computeStats(from: string | null, to: string | null) {
     diagnosisCompleted > 0 ? childDiagCompleted / diagnosisCompleted : 0;
 
   // --- 課金 ---
-  const paidUsers = paidUserRows.filter((r) => {
-    const at = r.full_access_at as string | null;
-    if (!from && !to) return true; // 全期間は full_access_at 無し (旧データ) も計上
-    if (!at) return false;
-    if (from && at < from) return false;
-    if (to && at > to) return false;
-    return true;
-  }).length;
+  // webhook (grantFullAccessByEmailOrId) は同一 email の全 users 行を full にするため、
+  // 「人」= email (無ければ行id) でユニーク化する。購入時刻はその人の最古の full_access_at。
+  // 期間判定は Date.parse の数値比較 ('+00:00' と 'Z' の表記差で文字列比較が壊れるため)。
+  const paidPersons = new Map<string, string | null>(); // personKey -> earliest full_access_at
+  for (const r of paidUserRows) {
+    const key = (r.email ?? "").trim().toLowerCase() || `id:${r.id}`;
+    const prev = paidPersons.get(key);
+    const at = r.full_access_at;
+    if (prev === undefined) {
+      paidPersons.set(key, at);
+    } else if (at && (!prev || Date.parse(at) < Date.parse(prev))) {
+      paidPersons.set(key, at);
+    }
+  }
+  let paidUsers = 0;
+  for (const at of paidPersons.values()) {
+    if (!from && !to) {
+      paidUsers++; // 全期間は full_access_at 無し (旧データ) も計上
+    } else if (at && inRange(at)) {
+      paidUsers++;
+    }
+  }
   const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
 
   const paywallViewed = toUnique(paywallViewedRows);
