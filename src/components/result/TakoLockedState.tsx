@@ -13,14 +13,13 @@
 //   一旦旧状態を描いてから現在値へバウンド減算 + スロット順次リビールで“勢い”を見せる。
 //   真実はサーバの回答者数。既読(last_seen)だけをローカルに持ち、サーバ状態は書き換えない。
 //
-//   その下 (通常フロー): 招待QR (CTAの着地) + 価値説明3ステップ (TakoValueSections)。
-//   触れるのは QR・友達誘導・シェアのみ。課金導線・無料バイパスは一切作らない。
+//   ★ロック中は「奥=結果画面 / 手前=カウンター」の2つだけ (下部の招待QR帯・価値説明は非表示)。
+//   スクロールで下部セクションが現れて三層の世界観が切れるのを防ぐ。招待/シェアは CTA→送信シート
+//   (③ TakoSendSheet)に集約 (QRもシート末尾に在る)。課金導線・無料バイパスは一切作らない。
 
 import { useState } from "react";
 import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
 import { TakoRevealStage } from "./TakoRevealStage";
-import { TakoValueSections } from "./TakoValueSections";
-import { LockedInviteShare } from "./LockedInviteShare";
 import { TakoSendSheet } from "./TakoSendSheet";
 import { TakoAnsweredDetail } from "./TakoAnsweredDetail";
 import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
@@ -172,20 +171,10 @@ export function TakoLockedState({
         previewShareMode={previewShareMode}
       />
 
-      {/* ===== 招待 (QR + シェア)。CTA の着地点。step③ で送信先ピッカーに接続予定。 ===== */}
-      <div id="tako-invite" className="mx-auto mt-8 max-w-[560px] scroll-mt-24">
-        <div
-          className="rounded-3xl p-6 md:px-9 md:py-7"
-          style={{ background: "#EDEFFB" }}
-        >
-          <LockedInviteShare inviteUrl={inviteUrl} compact />
-        </div>
-      </div>
-
-      {/* ===== 解放後に見えるもの (4項目グリッド) + 3ステップ (TakoValueSections) ===== */}
-      <div className="mt-14 md:mt-20">
-        <TakoValueSections />
-      </div>
+      {/* ★ロック中(<3人)は下部セクション(招待QR帯・価値説明3ステップ)を出さない。
+          スクロールでQR/説明が現れて三層の世界観がぶつ切りになるのを防ぐ。
+          画面は「奥=結果画面 / 手前=カウンター」の2つだけ。QRは③送信シート末尾に在り、
+          招待/シェアは CTA→送信シートへ集約済み(下部導線を消しても失われない)。 */}
     </div>
   );
 }

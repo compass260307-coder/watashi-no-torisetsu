@@ -1,66 +1,48 @@
 "use client";
 
-// 三層ゲートの「奥(報酬)レイヤー」= 友達診断=統合レポート結果ページの“気配”。
-//   ★実結果ページは生レンダリングしない。実結果のセクション順序と縦リズムをミラーした
-//     軽量ダミーDOMを敷く。
-//   ★「構造と?は分かる／中身は読めない」を作る (2026-07-13 実機FB反映):
-//     - 見出し(項目名)は常時うっすら表示 → 「これは自分の結果ページだ」と気づける。
-//     - 「?」は blur を掛けず鮮明に出す → 好奇心のフック。
-//     - 本文スケルトンだけに blur を効かせ、中身は読めないまま (ネタバレしない)。
-//   ★段階リビール: answered が増えるたびに openN = ceil(total*answered/threshold) 個の
-//     セクションから「?」が外れ、本文 blur も緩む (霧が晴れていく)。
+// 三層ゲートの「奥(報酬)レイヤー」= 解放後 /tako 結果ページの“本物の器”を写した軽量ダミー。
+//   ★生レンダリングはしない (ResultHero 等の実体はマウントしない)。実結果ページの
+//     セクション構成・順序・余白・見出し位置・カード形を“完全に”ミラーしたスケルトン。
+//   実結果 /tako(解放後) = ヒーロー帯 + 3つの番号付きセクション:
+//     ① みんなの目に映るあなた / ② 自分とのギャップ / ③ 友達からの回答。
+//   ★診断結果で変わる部分 (キャラ名・本文・スコア・型依存) は ? / バーで伏せる (ネタバレ無し)。
+//   ★変わらない部分 (レイアウト・見出し位置・構造・カード形) だけ本物に寄せる。
+//   ★見出しは「問い」形式を維持 (奥の中だけ)。手前・実結果ページの見出しは不変。
 //
-//   本物のセクションと座標的に対応 (キャラ→みんなの目→ギャップ→強み→取扱注意→恋愛→
-//   キャリア→友達の回答→相性)。※中身はサンプル。実データは解放後の結果ページ遷移先。
-//
-// 色は白基調・無彩 (紫みは撤去)。紫アクセントは手前(数字/CTA)だけに残す。
+// 段階リビール: answered が増えるたびに openN 個のセクションから ? が外れ本文blurが緩む。
+// 色は白基調・無彩 (紫みは撤去)。番号バッジ/見出しは既存ブランドネイビー(実結果と同じ器)。
 
-type Variant = "hero" | "prose" | "chart" | "cards" | "list" | "grid";
+const NAVY = "#2E2E5C";
 
-// 実結果ページ構成に対応するセクション列 (順序=縦座標の対応キー)。
-// ★見出しは奥レイヤーの中だけ「問い」にする (ラベルより答えを知りたくさせる)。
-//   手前・実結果ページの見出しは変えない (page.tsx 側は別・不変)。
-const SECTIONS: { title: string; variant: Variant }[] = [
-  { title: "あなたはどんなキャラ？", variant: "hero" },
-  { title: "みんなから見たあなたは？", variant: "prose" },
-  { title: "自分とのギャップは？", variant: "chart" },
-  { title: "あなたの強みは？", variant: "prose" },
-  { title: "あなたの取扱説明書は？", variant: "cards" },
-  { title: "あなたが恋で見せる顔は？", variant: "prose" },
-  { title: "あなたが力を発揮する場所は？", variant: "cards" },
-  { title: "友達は何て言ってる？", variant: "list" },
-  { title: "相性がいいのは誰？", variant: "grid" },
+// 実結果 /tako(解放後) の 3 セクション (順序=縦座標の対応キー)。見出しは問い形式。
+const SECTIONS: {
+  n: number;
+  title: string;
+  variant: "prose" | "gap" | "friends";
+  teaser?: string;
+}[] = [
+  {
+    n: 1,
+    title: "みんなから見たあなたは？",
+    variant: "prose",
+    teaser: "まわりから見たあなたは、意外にも——",
+  },
+  { n: 2, title: "自分とのギャップは？", variant: "gap" },
+  { n: 3, title: "友達は何て言ってる？", variant: "friends" },
 ];
 
-// cliffhanger: 1〜2セクションだけ、本文の書き出し1行を「読める実文」にして——で切る。
-//   ★型ごとの実文は使わない (課金前ネタバレ厳禁)。どの型でも成立する汎用の書き出しのみ。
-//   ★全セクションには入れない (読めるとゲートの意味が薄れる)。上下の覗き帯に出る位置に限定。
-//   ※カードはほぼ全幅なので、確実に覗き帯(上=hero / 下=section 7)に入る位置に限定する。
-const TEASERS: Record<number, string> = {
-  0: "ひとことで言うと、あなたは——",
-  7: "まわりから見たあなたは、意外にも——",
-};
-
-// 本文スケルトンにだけ掛ける blur。answered が増えるほど緩む (霧が晴れる)。
-// ★見出し/「?」には掛けない (それらは鮮明のまま)。
+// 本文スケルトンにだけ掛ける blur。answered が増えるほど緩む (霧が晴れる)。見出し/?/影絵は掛けない。
 function bodyBlurPx(answered: number, threshold: number, revealed: boolean): number {
   const t = threshold > 0 ? Math.min(1, Math.max(0, answered / threshold)) : 0;
-  const base = 3 * (1 - t); // 0人:3px → 3人:0
-  return revealed ? base * 0.4 : base; // 開いたセクションは更に緩める
+  const base = 3 * (1 - t);
+  return revealed ? base * 0.4 : base;
 }
 
-// 「?」の配置。中央縦一列にせず、各セクションで左右に散らす (実結果ページのレイアウト風)。
-// 手前カードの真裏(中央)に来る?は不透明カードで自然に隠れ、左右に散った?だけが覗く。
+// 「?」の散らし配置 (中央縦一列を避け、数字の背後を貫通させない)。
 const QMARK_SCATTER: { left: string; top: string }[] = [
-  { left: "56%", top: "26px" },
-  { left: "18%", top: "22px" },
-  { left: "64%", top: "20px" },
-  { left: "30%", top: "22px" },
-  { left: "60%", top: "24px" },
-  { left: "20%", top: "22px" },
-  { left: "58%", top: "24px" },
-  { left: "34%", top: "22px" },
-  { left: "62%", top: "22px" },
+  { left: "58%", top: "26px" },
+  { left: "22%", top: "24px" },
+  { left: "60%", top: "22px" },
 ];
 
 interface TakoRewardBackdropProps {
@@ -75,87 +57,149 @@ export function TakoRewardBackdrop({
   const openN = Math.ceil((SECTIONS.length * answered) / Math.max(1, threshold));
 
   return (
-    <div className="mx-auto w-full max-w-[520px] px-5 pb-16" aria-hidden="true">
-      {SECTIONS.map((s, i) => (
-        <BackdropSection
-          key={s.title}
-          index={i}
-          title={s.title}
-          variant={s.variant}
-          revealed={i < openN}
-          bodyBlur={bodyBlurPx(answered, threshold, i < openN)}
-          teaser={TEASERS[i]}
-        />
-      ))}
+    <div aria-hidden="true">
+      {/* ===== ヒーロー帯 (実 ResultHero を写す): 全幅・下端スラント・グロー・ドット・
+          称号(?)・OCEAN・等身大キャラ影絵。色は白基調の無彩帯 (型色は伏せる)。 ===== */}
+      <HeroBand />
+
+      {/* ===== 3つの番号付きセクション (実結果と同じ余白 mb-14 / バッジ h-10 border-[3px])。 ===== */}
+      <div className="mx-auto max-w-[560px] px-5 pb-16 pt-6">
+        {SECTIONS.map((s, i) => (
+          <BackdropSection
+            key={s.n}
+            n={s.n}
+            index={i}
+            title={s.title}
+            variant={s.variant}
+            teaser={s.teaser}
+            revealed={i < openN}
+            bodyBlur={bodyBlurPx(answered, threshold, i < openN)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-// 1セクション: 見出し(常時うっすら)＋本文(blur)＋「?」(鮮明・伏せ時のみ)。
+// ヒーロー帯 (ResultHero のミラー)。等身大の影絵 + 大きな ? を主役に据える。
+function HeroBand() {
+  return (
+    <div
+      className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden pb-8 pt-9"
+      style={{
+        background: "#EDEFF3",
+        clipPath:
+          "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
+      }}
+    >
+      {/* 上部中央の放射状グロー (実ヒーロー帯と同じ) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[280px]"
+        style={{
+          background:
+            "radial-gradient(ellipse at top center, rgba(255,255,255,0.75) 0%, transparent 68%)",
+        }}
+      />
+      <div className="relative mx-auto flex max-w-[560px] flex-col items-center px-5">
+        {/* label + 称号(?) */}
+        <p className="mb-1 text-[15px] font-bold" style={{ color: "#8A90A0" }}>
+          友達から見たあなたのキャラ
+        </p>
+        {/* 称号プレースホルダ (型名=伏せる) */}
+        <div
+          className="h-7 w-52 rounded-full"
+          style={{ background: "#DDE0E6" }}
+        />
+        {/* OCEAN コード行 (5マーク・スコア依存＝伏せる) */}
+        <div className="mt-2.5 flex items-baseline gap-2">
+          {[30, 20, 30, 20, 30].map((h, i) => (
+            <span
+              key={i}
+              className="rounded-full"
+              style={{ width: 12, height: h * 0.5, background: "#D3D6DE" }}
+            />
+          ))}
+        </div>
+        {/* 等身大キャラ影絵 + 大きな ? (誰か分からないが確かにそこにいる) */}
+        <div className="relative mt-4" style={{ width: 200, height: 200 }}>
+          <MascotSilhouette size={200} />
+          <span
+            className="absolute left-1/2 top-[54%] -translate-x-1/2 -translate-y-1/2 font-black"
+            style={{ fontSize: 96, lineHeight: 1, color: "rgba(255,255,255,0.95)" }}
+          >
+            ?
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 1 番号付きセクション (実結果の見出し行を写す): バッジ + 見出し + (teaser) + 本文(blur) + ?。
 function BackdropSection({
+  n,
   index,
   title,
   variant,
+  teaser,
   revealed,
   bodyBlur,
-  teaser,
 }: {
+  n: number;
   index: number;
   title: string;
-  variant: Variant;
+  variant: "prose" | "gap" | "friends";
+  teaser?: string;
   revealed: boolean;
   bodyBlur: number;
-  teaser?: string;
 }) {
   const q = QMARK_SCATTER[index % QMARK_SCATTER.length];
   return (
-    <section className="relative mb-4">
-      {/* 見出し行: 項目名は常時うっすら表示 (何のページか分かる)。開くと少し濃くなる。 */}
-      <div className="mb-2 flex items-center gap-2">
+    <section className="relative mb-14">
+      {/* 見出し行 (実結果と同一): 番号バッジ (h-10 w-10 border-[3px]) + 見出し。 */}
+      <div className="mb-4 flex items-center gap-3">
         <span
-          className="inline-block h-6 w-6 rounded-full"
-          style={{ background: "#E4E6EA" }}
-        />
-        <span
-          className="text-[16px] font-black"
-          style={{ color: revealed ? "#7E8494" : "#AEB3BF" }}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] text-lg font-black"
+          style={{ borderColor: NAVY, color: NAVY, opacity: 0.9 }}
+        >
+          {n}
+        </span>
+        <h2
+          className="text-[26px] font-black leading-tight md:text-[32px]"
+          style={{ color: NAVY, opacity: revealed ? 0.92 : 0.8 }}
         >
           {title}
-        </span>
+        </h2>
       </div>
 
-      {/* cliffhanger: 書き出し1行だけ読める実文 (blur 無し・——で切る)。汎用文=ネタバレ無し。 */}
+      {/* cliffhanger: 書き出し1行だけ読める実文 (blur無し・——で切る)。汎用文=ネタバレ無し。 */}
       {teaser && (
         <p
-          className="mb-1.5 text-[13.5px] font-bold leading-snug"
+          className="mb-2 text-[14px] font-bold leading-snug"
           style={{ color: "#8A90A0" }}
         >
           {teaser}
         </p>
       )}
 
-      {/* 本文スケルトン: ここだけ blur。中身(バー)は読めないまま。
-          hero(あなたのキャラ)の影絵は「絵の想起」を効かせるため blur を弱める。 */}
+      {/* 本文スケルトン: ここだけ blur (中身は読めないまま)。 */}
       <div
         style={{
-          filter: `blur(${((variant === "hero" ? 0.4 : 1) * bodyBlur).toFixed(2)}px)`,
+          filter: `blur(${bodyBlur.toFixed(2)}px)`,
           transition: "filter 0.5s ease",
-          opacity: revealed ? 0.85 : 0.7,
+          opacity: revealed ? 0.9 : 0.72,
         }}
       >
-        <SectionSkeleton variant={variant} revealed={revealed} />
+        <SectionBody variant={variant} revealed={revealed} />
       </div>
 
-      {/* 「?」オーバーレイ: blur を掛けず鮮明に (好奇心のフック)。revealed で消える。
-          中央縦一列にせず QMARK_SCATTER で各セクション左右に散らす → 数字の背後を貫通しない。
-          中央付近の?は不透明カードで自然に隠れ、左右に散った?だけが覗く。 */}
+      {/* 「?」: blur無しで鮮明。散らし配置。revealed で消える。 */}
       {!revealed && (
         <span
           className="pointer-events-none absolute flex h-11 w-11 items-center justify-center rounded-2xl text-[28px] font-black"
           style={{
             left: q.left,
-            // teaser がある行は書き出し文と重ならないよう ? を下にずらす。
-            top: teaser ? "50px" : q.top,
+            top: teaser ? "58px" : q.top,
             color: "#6B7280",
             background: "rgba(255,255,255,0.92)",
             boxShadow: "0 6px 18px rgba(46,46,92,0.14)",
@@ -172,106 +216,92 @@ function bar(w: string, tone: string) {
   return { background: tone, width: w };
 }
 
-// 中立的なマスコットの“影絵”(インラインSVG・単色1枚・画像読み込み無し)。
-// 32体のうち誰か分からない汎用の体型 → 型を特定させない。「確かに誰かが座っている」を作る。
-// 解放後は本物のキャラに置き換わる想定 (現状ダミーでは常にこの影絵)。
-function MascotSilhouette({ size = 72 }: { size?: number }) {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      className="shrink-0"
-      aria-hidden="true"
-    >
-      <g fill="#4B5162">
-        {/* 耳 */}
-        <circle cx="21.5" cy="18" r="8.5" />
-        <circle cx="42.5" cy="18" r="8.5" />
-        {/* 頭+体 (丸い体型) */}
-        <path d="M32 13c11.5 0 19.5 8.4 19.5 20.5C51.5 47 43.5 54.5 32 54.5S12.5 47 12.5 33.5C12.5 21.4 20.5 13 32 13z" />
-      </g>
-    </svg>
-  );
-}
-
-function SectionSkeleton({
+// セクション本文のスケルトン。実結果の各セクションのカード形を写す。
+function SectionBody({
   variant,
   revealed,
 }: {
-  variant: Variant;
+  variant: "prose" | "gap" | "friends";
   revealed: boolean;
 }) {
-  // 無彩の淡グレー (紫み撤去)。開くと少しだけ濃く。
   const tone = revealed ? "#DEE1E6" : "#E8EAEE";
   switch (variant) {
-    case "hero":
-      // 「あなたのキャラ」枠: グレー丸の代わりにマスコットの影絵を1体置く。
+    case "gap":
+      // ② 自分とのギャップ = 一番のギャップ(淡ラベンダーカード) → 五つの傾向バー → 本文。
       return (
-        <div className="flex items-center gap-4">
-          <MascotSilhouette />
-          <div className="flex-1 space-y-2">
-            <div className="h-3.5 rounded-full" style={bar("70%", tone)} />
-            <div className="h-3 rounded-full" style={bar("90%", tone)} />
+        <div>
+          {/* 見せ場カード (実: rounded-3xl bg-[#F4F4FE] px-6 py-7) */}
+          <div className="mb-8 rounded-3xl px-6 py-6" style={{ background: "#F4F4FE" }}>
+            <div className="h-4 rounded-full" style={bar("85%", "#DFE1F1")} />
+            <div className="mt-3 h-4 rounded-full" style={bar("60%", "#DFE1F1")} />
+          </div>
+          {/* 五つの性格傾向バー (発散バー: 中央仕切り + ノブ) */}
+          <div className="space-y-3">
+            {[0.62, 0.4, 0.55, 0.35, 0.58].map((pos, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="h-2.5 w-8 rounded-full" style={{ background: tone }} />
+                <div className="relative h-2.5 flex-1 rounded-full" style={{ background: tone }}>
+                  <span
+                    className="absolute top-1/2 left-1/2 h-4 w-px -translate-x-1/2 -translate-y-1/2"
+                    style={{ background: "#C7CAD3" }}
+                  />
+                  <span
+                    className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full"
+                    style={{ background: "#C2C6D0", left: `${pos * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* 本文 */}
+          <div className="mt-5 space-y-2">
+            {[0.95, 0.7].map((w, i) => (
+              <div key={i} className="h-3 rounded-full" style={bar(`${w * 100}%`, tone)} />
+            ))}
           </div>
         </div>
       );
-    case "chart":
+    case "friends":
+      // ③ 友達からの回答 = 評価者一覧の行 (アバター + 名前 + バッジ)。
       return (
-        <div className="space-y-2">
-          {[0.9, 0.65, 0.8].map((w, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="h-2.5 w-10 rounded-full" style={bar("100%", tone)} />
-              <div
-                className="h-2.5 rounded-full"
-                style={bar(`${w * 100}%`, tone)}
-              />
-            </div>
-          ))}
-        </div>
-      );
-    case "cards":
-      return (
-        <div className="grid grid-cols-2 gap-2.5">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-10 rounded-xl" style={{ background: tone }} />
-          ))}
-        </div>
-      );
-    case "list":
-      return (
-        <div className="space-y-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div
-                className="h-7 w-7 rounded-full"
-                style={{ background: tone }}
-              />
-              <div className="h-3 flex-1 rounded-full" style={bar("100%", tone)} />
-            </div>
-          ))}
-        </div>
-      );
-    case "grid":
-      return (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="space-y-2.5">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-9 rounded-xl" style={{ background: tone }} />
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+              style={{ background: "#F3F4F7" }}
+            >
+              <div className="h-10 w-10 rounded-full" style={{ background: tone }} />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 rounded-full" style={bar("40%", tone)} />
+                <div className="h-2.5 rounded-full" style={bar("72%", tone)} />
+              </div>
+            </div>
           ))}
         </div>
       );
     case "prose":
     default:
+      // ① みんなの目に映るあなた = 本文プロース。
       return (
         <div className="space-y-2">
-          {[0.95, 0.7].map((w, i) => (
-            <div
-              key={i}
-              className="h-3 rounded-full"
-              style={bar(`${w * 100}%`, tone)}
-            />
+          {[0.96, 0.88, 0.7].map((w, i) => (
+            <div key={i} className="h-3 rounded-full" style={bar(`${w * 100}%`, tone)} />
           ))}
         </div>
       );
   }
+}
+
+// 中立的なマスコットの“影絵”(インラインSVG・単色1枚・画像読み込み無し)。型を特定させない。
+function MascotSilhouette({ size = 72 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} className="shrink-0" aria-hidden="true">
+      <g fill="#4B5162">
+        <circle cx="21.5" cy="18" r="8.5" />
+        <circle cx="42.5" cy="18" r="8.5" />
+        <path d="M32 13c11.5 0 19.5 8.4 19.5 20.5C51.5 47 43.5 54.5 32 54.5S12.5 47 12.5 33.5C12.5 21.4 20.5 13 32 13z" />
+      </g>
+    </svg>
+  );
 }
