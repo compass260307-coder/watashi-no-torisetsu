@@ -159,6 +159,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
     sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
       ? (rawPreview as ThirtyTwoTypeId)
       : null;
+  // プレビューは既定で「解放後」の見た目 (コンテンツ QA 用) だが、?previewLock=1 を付けると
+  // 未課金・友達0人の「ロック状態」(ロックカード + ぼかし + 最下部の課金カード) を描画する。
+  // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
+  const previewLocked = previewType !== null && sp.previewLock === "1";
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
   const previewScores: Record<BigFiveDimension, number> | null = previewType
     ? (() => {
@@ -266,8 +270,9 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   const deepDivePaid = await hasFullAccess(user.id as string);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
+  // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
   const partTwoUnlocked = previewType
-    ? true
+    ? !previewLocked
     : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,

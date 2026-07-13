@@ -17,6 +17,7 @@ import {
 
 interface PreviewTypePageProps {
   params: Promise<{ typeId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // タイプ別ランディングとして機能させる (トップ→/types→/preview で公開リンクされるため)。
@@ -39,10 +40,15 @@ export async function generateMetadata({
 
 export default async function PreviewTypePage({
   params,
+  searchParams,
 }: PreviewTypePageProps) {
   const { typeId } = await params;
+  const sp = await searchParams;
   const valid = (allThirtyTwoTypeIds() as string[]).includes(typeId);
   if (!valid) notFound();
+
+  // ?locked=1 で未課金・友達0人の「ロック状態」を確認できる (課金導線の見た目 QA)。
+  const locked = sp.locked === "1";
 
   // MePage を子として描画。params.token は無視され、searchParams のプレビュー指定で
   // モック分岐に入る (fromPreview=1 により本番でも許可)。
@@ -52,6 +58,7 @@ export default async function PreviewTypePage({
       searchParams={Promise.resolve({
         previewType: typeId,
         fromPreview: "1",
+        ...(locked ? { previewLock: "1" } : {}),
       })}
     />
   );
