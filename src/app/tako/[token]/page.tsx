@@ -331,6 +331,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 storageScope={storageScope}
                 ssrInitialAnswered={ssrInitialAnswered}
                 previewMode={previewMode}
+                previewShareMode={
+                  previewMode && typeof sp.share === "string"
+                    ? sp.share
+                    : undefined
+                }
               />
             </div>
           ) : (

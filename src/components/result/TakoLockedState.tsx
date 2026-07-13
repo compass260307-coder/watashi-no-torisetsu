@@ -9,18 +9,19 @@
 //   3. 手前(主役): シェア連動カウンター (TakoShareGate)。
 //   → 器・パララックス・段階リビールは TakoRevealStage が担う。
 //
-//   追加機能②: 再訪リビール「◯人届いた！」。前回見た回答者数(cookie既読)より増えていたら、
-//   一旦旧状態を描いてから現在値へバウンド減算 + スロット順次リビールで“勢い”を見せる。
-//   真実はサーバの回答者数。既読(last_seen)だけを持ち、サーバ状態は書き換えない。
-//   SSRフラッシュ対策は cookie 方式 (サーバが旧状態を初期HTMLとして描く / page.tsx 側)。
+//   追加機能②: 再訪リビール「◯人届いた！」(cookie既読・サーバ状態不変)。
+//   追加機能③: 送信先ピッカー (TakoSendSheet)。CTA押下で即「誰に送る？」を出し、送信後は
+//     空スロットを楽観的に pending へ (クライアント表示のみ・②の displayAnswered とは非干渉)。
 //
 //   その下 (通常フロー): 招待QR (CTAの着地) + 価値説明3ステップ (TakoValueSections)。
 //   触れるのは QR・友達誘導・シェアのみ。課金導線・無料バイパスは一切作らない。
 
+import { useState } from "react";
 import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
 import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoValueSections } from "./TakoValueSections";
 import { LockedInviteShare } from "./LockedInviteShare";
+import { TakoSendSheet } from "./TakoSendSheet";
 import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
 
 interface TakoLockedStateProps {
@@ -40,6 +41,8 @@ interface TakoLockedStateProps {
   ssrInitialAnswered: number;
   /** プレビュー時 true: cookie を書かない (再現用)。 */
   previewMode?: boolean;
+  /** プレビュー: 送信先シートのフォールバック経路を再現 ('liff-sim' 等)。 */
+  previewShareMode?: string;
 }
 
 export function TakoLockedState({
@@ -50,6 +53,7 @@ export function TakoLockedState({
   storageScope,
   ssrInitialAnswered,
   previewMode = false,
+  previewShareMode,
 }: TakoLockedStateProps) {
   const serverAnswered = Math.min(answered.length, threshold);
 
@@ -62,6 +66,12 @@ export function TakoLockedState({
       previewMode,
     });
 
+  // ③ 送信先ピッカー。送った実感として空スロットを楽観的に pending へ (クライアント表示のみ)。
+  //   ②とは非干渉: displayAnswered は触らず、pending 表示数だけに足す。サーバ状態も不変。
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [optimisticPending, setOptimisticPending] = useState(0);
+  const shownPending = pendingCount + optimisticPending;
+
   return (
     <div>
       {/* ===== 三層ゲート (奥=報酬 / スクリム / 手前=カウンター) ===== */}
@@ -69,15 +79,31 @@ export function TakoLockedState({
         <TakoRevealStage answered={displayAnswered} threshold={threshold}>
           <TakoShareGate
             answered={answered}
-            pendingCount={pendingCount}
+            pendingCount={shownPending}
             threshold={threshold}
             shownAnsweredCount={displayAnswered}
             deliveredCount={deliveredCount}
             bounceKey={bounceKey}
             revealFromIndex={revealFromIndex}
+            onPrimaryAction={() => setSheetOpen(true)}
           />
         </TakoRevealStage>
       </section>
+
+      {/* ③ 送信先ピッカー (CTA の着地。#tako-invite QR の上位動線) */}
+      <TakoSendSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        inviteUrl={inviteUrl}
+        toSend={Math.max(0, threshold - displayAnswered - shownPending)}
+        onSent={() =>
+          setOptimisticPending((p) =>
+            // answered + (server pending + optimistic) が threshold を超えない範囲で増やす。
+            Math.min(p + 1, Math.max(0, threshold - displayAnswered - pendingCount)),
+          )
+        }
+        previewShareMode={previewShareMode}
+      />
 
       {/* ===== 招待 (QR + シェア)。CTA の着地点。 ===== */}
       <div id="tako-invite" className="mx-auto mt-8 max-w-[560px] scroll-mt-24">
