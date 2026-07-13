@@ -9,8 +9,9 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         // /zukan/ は個人ページ ([ownerToken]) ごとブロック。
         // (旧 /zukan/all 公開図鑑は撤去し /types に一本化・redirect 済み)
-        // /share = キャラシェアの獲得ランディング (公開・OGクローラ/SEOに開放)。
-        allow: ["/", "/share"],
+        // /share は OG クローラがメタ情報を取得できるようクロールを許可し、
+        // ページ側の noindex で通常の検索結果からのみ除外する。
+        allow: "/",
         disallow: [
           "/admin",
           "/admin/",
@@ -23,7 +24,6 @@ export default function robots(): MetadataRoute.Robots {
           "/friend/",
           "/zukan/",
           "/perceptions/",
-          "/auth/",
         ],
       },
     ],

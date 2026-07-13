@@ -34,7 +34,7 @@ const jsonLd = {
       "@id": `${BASE_URL}/#app`,
       name: "ワタシのトリセツ",
       description:
-        "友達と作る、自分の取扱説明書。Big Five理論ベースの性格診断で、自分でも気づかない一面を発見できる大学生向けサービス。",
+        "約3分でできるOCEAN(Big Five)理論ベースの無料性格診断テスト。16タイプ性格診断よりも細かい32タイプのキャラに分類され、友達の回答で自分では気づかない一面まで見えてくる大学生向けサービス。",
       url: BASE_URL,
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any",

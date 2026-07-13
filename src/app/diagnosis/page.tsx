@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { questions } from "@/lib/questions";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
@@ -54,20 +54,13 @@ function prefersReducedMotion(): boolean {
 }
 
 export default function DiagnosisPage() {
-  return (
-    <Suspense>
-      <DiagnosisContent />
-    </Suspense>
-  );
+  return <DiagnosisContent />;
 }
 
 function DiagnosisContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const campaign = searchParams.get("campaign");
-  const source = searchParams.get("source");
-  // Phase 3-β D-4: ?source=line (LINE リッチメニュー経由) + 過去診断あり → 再診断モーダル表示
-  const isFromLine = source === "line";
+  const [campaign, setCampaign] = useState<string | null>(null);
+  const [source, setSource] = useState<string | null>(null);
 
   // ニックネームは独立ステップを廃止し、最初の質問ページ (page 0) の先頭で取得する。
   const [nickname, setNickname] = useState("");
@@ -95,6 +88,14 @@ function DiagnosisContent() {
   // localStorage 復元 (初回マウント時のみ; SSR 後のハイドレーション正規パターン)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    // useSearchParams による静的ページ全体のクライアント描画化を避けるため、
+    // 計測用クエリだけをマウント後に取得する。回答完了時の API 送信値は従来と同じ。
+    const params = new URLSearchParams(window.location.search);
+    const campaignParam = params.get("campaign");
+    const sourceParam = params.get("source");
+    setCampaign(campaignParam);
+    setSource(sourceParam);
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -145,7 +146,7 @@ function DiagnosisContent() {
       // 破損データは無視 (通常どおり最初から)
     }
     // Phase 3-β D-4: ?source=line + 過去診断結果 (torisetsu_result) があれば再診断確認モーダル表示
-    if (isFromLine) {
+    if (sourceParam === "line") {
       try {
         const previousResult = localStorage.getItem("torisetsu_result");
         if (previousResult) setShowRediagnoseModal(true);
@@ -161,7 +162,7 @@ function DiagnosisContent() {
       // 無視
     }
     setHydrated(true);
-  }, [isFromLine]);
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // #1 自動保存: 回答 or ページ変更のたびに、回答内容 + 現在ページ + バージョンを保存
@@ -443,7 +444,12 @@ function DiagnosisContent() {
         />
       )}
       {/* page 0 の最上部にだけ 16P 風ヒーロー (マスコット + 見出し)。 */}
-      {currentPage === 0 && <DiagnosisHero />}
+      {currentPage === 0 && (
+        <DiagnosisHero
+          title="無料性格診断テスト"
+          subtitle="OCEANでわかる32タイプ"
+        />
+      )}
       {/* 最初のページ (page 0) には進捗バーを出さない (ヒーローに集中させる)。 */}
       {currentPage !== 0 && (
         <DiagnosisProgressBar

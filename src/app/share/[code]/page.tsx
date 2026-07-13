@@ -61,6 +61,7 @@ export async function generateMetadata({
     return {
       title: "ワタシのトリセツ",
       description,
+      robots: { index: false, follow: true },
     };
   }
   const title = `${d.name}さんは【${d.essence}】でした`;
@@ -68,6 +69,9 @@ export async function generateMetadata({
   return {
     title: `${title}｜ワタシのトリセツ`,
     description,
+    // SNS シェア用の公開ページ。OG クローラには読ませるが、ユーザーごとの
+    // URL を検索結果へ大量登録させない。
+    robots: { index: false, follow: true },
     openGraph: {
       title,
       description,
