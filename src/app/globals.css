@@ -711,3 +711,57 @@ input[type="reset"]:active {
     animation: none;
   }
 }
+
+/* ===== 他己診断シェア連動ゲート (TakoShareGate) のモーション =====
+   「動くのは数字・スロット・報酬だけ」。全て prefers-reduced-motion で静止。 */
+
+/* ヒーロー数字の“ぷるっと呼吸する”アイドル。ごく僅かな拡縮で主役性を保つ。 */
+@keyframes gate-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+.animate-gate-breathe {
+  animation: gate-breathe 2.6s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* 回答が届いた瞬間、数字が1回だけバウンドして減る (JS で一度だけ付与)。 */
+@keyframes gate-count-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  55% { transform: scale(0.9); }
+  75% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.animate-gate-count-bounce {
+  animation: gate-count-bounce 0.62s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: center bottom;
+}
+
+/* スロットが埋まる瞬間の“ポン”。マウント時 / 到着時に一度だけ。 */
+@keyframes gate-slot-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-gate-slot-pop {
+  animation: gate-slot-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* pending スロットのゆっくり明滅 (診断中)。 */
+@keyframes gate-slot-breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+.animate-gate-slot-breathe {
+  animation: gate-slot-breathe 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gate-breathe,
+  .animate-gate-count-bounce,
+  .animate-gate-slot-pop,
+  .animate-gate-slot-breathe {
+    animation: none;
+  }
+}

@@ -130,10 +130,15 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
           ),
           hasMessage: message.length > 0,
           message,
+          perceivedType32: null,
+          perceivedImageSrc: null,
+          perceiverUserId: null,
+          friendOwnType32: null,
         };
       })
       .sort((a, b) => b.mutual - a.mutual),
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
+    pendingFriendCount: 0,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
     threshold: 3,
@@ -145,14 +150,46 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
       imageSrc: preferCutImage(thirtyTwoImagePath(t)),
       previewPath: `/preview/${t}`,
     },
+    ownerType32: classifyThirtyTwoType(selfScores),
   };
 }
 
 // ?previewLocked=1 用: 解放前 (友達 threshold 未満) のモック。実DBは介さない。
-// friends は 0..threshold-1 にクランプ (進捗ドット確認用)。
-function mockLockedTakoData(friends: number): OwnerReportData {
+// &friends=N (answered 人数 0..threshold-1) と &pending=M (診断中) でゲートの各状態を確認できる。
+// answered には実キャラ画像 (その友達から見たあなた) を割り当て、スロットの“顔”を再現する。
+const MOCK_ANSWERED: {
+  name: string;
+  type32: ThirtyTwoTypeId;
+}[] = [
+  { name: "ゆい", type32: "sparkle-dolphin__N" as ThirtyTwoTypeId },
+  { name: "そら", type32: "smiley-panda__N" as ThirtyTwoTypeId },
+];
+
+function mockLockedTakoData(friends: number, pending: number): OwnerReportData {
   const threshold = 3;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
+  const mockFriends = Array.from({ length: count }, (_, i) => {
+    const m = MOCK_ANSWERED[i % MOCK_ANSWERED.length];
+    const valid = sixteenTypes[baseIdOf(m.type32)];
+    return {
+      perceptionId: `preview-${i}`,
+      name: m.name,
+      perceivedScores: {},
+      mutual: 0,
+      hasMessage: false,
+      message: "",
+      perceivedType32: valid ? m.type32 : null,
+      perceivedImageSrc: valid
+        ? preferCutImage(thirtyTwoImagePath(m.type32))
+        : null,
+      perceiverUserId: null,
+      friendOwnType32: null,
+    };
+  });
+  const pendingCount = Math.max(
+    0,
+    Math.min(threshold - count, Math.floor(pending || 0)),
+  );
   return {
     user: {
       id: "preview",
@@ -167,13 +204,15 @@ function mockLockedTakoData(friends: number): OwnerReportData {
     friendAvgScores: null,
     friendNames: [],
     friendMessages: [],
-    friends: [],
+    friends: mockFriends,
     minnaContext: null,
+    pendingFriendCount: pendingCount,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
     threshold,
     unlocked: false,
     friendCharacter: null,
+    ownerType32: "gentle-koala__N" as ThirtyTwoTypeId,
   };
 }
 
@@ -200,6 +239,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     : previewLocked
       ? mockLockedTakoData(
           typeof sp.friends === "string" ? Number(sp.friends) : 0,
+          typeof sp.pending === "string" ? Number(sp.pending) : 0,
         )
       : await loadOwnerReportData(token);
   if (!data) {
@@ -239,7 +279,12 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
             /* ===== ロック空状態 (友達3人未満)。FV は /aisho と同じ幅 (1080 / 2xl 1400)。 ===== */
             <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px] pt-6">
               <TakoLockedState
-                friendCount={data.friendEvalCount}
+                answered={data.friends.map((f) => ({
+                  perceptionId: f.perceptionId,
+                  name: f.name,
+                  imageSrc: f.perceivedImageSrc,
+                }))}
+                pendingCount={data.pendingFriendCount}
                 threshold={data.threshold}
                 inviteUrl={data.inviteUrl}
               />

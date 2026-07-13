@@ -19,8 +19,10 @@ import {
   thirtyTwoEssence,
   thirtyTwoName,
   thirtyTwoImagePath,
+  baseIdOf,
   type ThirtyTwoTypeId,
 } from "./thirty-two-types";
+import { sixteenTypes } from "./sixteen-types";
 import { preferCutImage } from "./character-image";
 import {
   buildDimensionGaps,
@@ -46,6 +48,26 @@ function toMessagePreview(message: string | null | undefined): string {
   return oneLine.length > MESSAGE_PREVIEW_MAX
     ? oneLine.slice(0, MESSAGE_PREVIEW_MAX) + "…"
     : oneLine;
+}
+
+// friend_perceptions の perceived_type_id (16タイプ base) + N軸 ('N'/'R') から
+// 32タイプ ID を組み立て、シェア連動ゲートの answered スロットの“顔”に使う。
+// 不正/未知のタイプは null を返し、呼び出し側で頭文字プレースホルダにフォールバックさせる。
+function buildPerceivedFace(
+  typeIdBase: string | null | undefined,
+  nAxis: string | null | undefined,
+): { type32: ThirtyTwoTypeId | null; imageSrc: string | null } {
+  const base = (typeIdBase ?? "").trim();
+  const n = (nAxis ?? "").trim().toUpperCase();
+  if (!base || (n !== "N" && n !== "R")) {
+    return { type32: null, imageSrc: null };
+  }
+  const type32 = `${base}__${n}` as ThirtyTwoTypeId;
+  // base が既知の16タイプでなければ画像パスが壊れるので弾く。
+  if (!sixteenTypes[baseIdOf(type32)]) {
+    return { type32: null, imageSrc: null };
+  }
+  return { type32, imageSrc: preferCutImage(thirtyTwoImagePath(type32)) };
 }
 
 export type OwnerReportUser = {
@@ -82,6 +104,24 @@ export type FriendSummary = {
    * 全文はここに載せない (leak塞ぎ)。全文表示は個別ページが別途 owner_message を取得する。
    */
   message: string;
+  /**
+   * 「その友達から見たあなた」の 32 タイプ (perceived_type_id + N軸)。
+   * シェア連動ゲートの answered スロットの“顔”に使う。不正/欠損時は null。
+   */
+  perceivedType32: ThirtyTwoTypeId | null;
+  /** perceivedType32 のキャラ画像 (透過版優先)。null なら顔なし (頭文字にフォールバック)。 */
+  perceivedImageSrc: string | null;
+  /**
+   * 評価者自身も診断済みユーザーなら users.id。相性ループ (answered→/aisho) の
+   * CTA 可否判定に使う (有りのときだけ「この人との相性を見る」を出す)。
+   */
+  perceiverUserId: string | null;
+  /**
+   * その友達“本人”の32型 (perceiver_user_id → users.scores から算出)。
+   * 相性ループ Path1 (/aisho?b=) に使う。友達が自己診断済み & リンク済みのときだけ非null。
+   * ※現状 friend-answer は perceiver_user_id を書かないため実データは常に null (Path2)。
+   */
+  friendOwnType32: ThirtyTwoTypeId | null;
 };
 
 export type OwnerReportData = {
@@ -94,6 +134,12 @@ export type OwnerReportData = {
   /** 評価してくれた全員 (メッセージ有無問わず・相互理解度の高い順)。友達一覧に使う。 */
   friends: FriendSummary[];
   minnaContext: MinnaNoMeContext | null;
+  /**
+   * いま診断中 (回答開始したが未完了) の友達の近似人数。
+   * events の friend_answer_started / friend_answer_completed から直近ウィンドウで概算。
+   * 厳密ではない (best-effort、失敗時 0)。シェア連動ゲートの pending スロットに使う。
+   */
+  pendingFriendCount: number;
   inviteCode: string;
   inviteUrl: string;
   threshold: number;
@@ -101,6 +147,8 @@ export type OwnerReportData = {
   unlocked: boolean;
   /** 友達平均から算出した「みんなから見たキャラ」(unlocked 時のみ非null)。 */
   friendCharacter: FriendCharacter | null;
+  /** 本人“自身”の32型 (自己スコアから算出)。相性ループ Path1 の /aisho?a= に使う。無ければ null。 */
+  ownerType32: ThirtyTwoTypeId | null;
 };
 
 /**
@@ -130,7 +178,9 @@ export async function loadOwnerReportData(
   // friend_perceptions (件数 + perceived_scores + qualitative_data)
   const { data: perceptionRows } = await supabaseAdmin
     .from("friend_perceptions")
-    .select("id, perceived_scores, perceiver_name, qualitative_data, created_at")
+    .select(
+      "id, perceived_scores, perceiver_name, perceiver_user_id, perceived_type_id, perceived_modifier_n_r, qualitative_data, created_at",
+    )
     .eq("target_user_id", user.id)
     .order("created_at", { ascending: true });
   const rows = perceptionRows ?? [];
@@ -168,6 +218,31 @@ export async function loadOwnerReportData(
     // 列未適用などは無視 (手紙非表示)
   }
 
+  // 相性ループ Path1 用: answered 友達“本人”の32型 (perceiver_user_id → users.scores)。
+  // ※現状 friend-answer は perceiver_user_id を書かないため perceiverIds は常に空 = スキップ。
+  const perceiverIds = Array.from(
+    new Set(
+      rows
+        .map((r) => (r.perceiver_user_id as string | null) ?? null)
+        .filter((v): v is string => !!v),
+    ),
+  );
+  const friendOwnTypeById = new Map<string, ThirtyTwoTypeId>();
+  if (perceiverIds.length > 0) {
+    const { data: friendUsers } = await supabaseAdmin
+      .from("users")
+      .select("id, scores")
+      .in("id", perceiverIds);
+    for (const u of friendUsers ?? []) {
+      const scores = (u.scores ?? {}) as Partial<
+        Record<BigFiveDimension, number>
+      >;
+      if (Object.keys(scores).length > 0) {
+        friendOwnTypeById.set(u.id as string, classifyThirtyTwoType(scores));
+      }
+    }
+  }
+
   // 友達一覧 (評価者全員・メッセージ有無問わず)。相互理解度の高い順。
   const friends: FriendSummary[] = rows
     .map((r) => {
@@ -178,6 +253,10 @@ export async function loadOwnerReportData(
         buildDimensionGaps(selfScores, perceivedScores),
       );
       const fullMessage = messageById.get(r.id as string) ?? "";
+      const face = buildPerceivedFace(
+        r.perceived_type_id as string | null,
+        r.perceived_modifier_n_r as string | null,
+      );
       return {
         perceptionId: r.id as string,
         name: ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
@@ -187,6 +266,13 @@ export async function loadOwnerReportData(
         hasMessage: fullMessage.trim().length > 0,
         // ★payload に載せるのは1行プレビューのみ。全文は絶対に載せない (leak塞ぎ)。
         message: toMessagePreview(fullMessage),
+        perceivedType32: face.type32,
+        perceivedImageSrc: face.imageSrc,
+        perceiverUserId: (r.perceiver_user_id as string | null) ?? null,
+        friendOwnType32: (() => {
+          const pid = (r.perceiver_user_id as string | null) ?? null;
+          return pid ? friendOwnTypeById.get(pid) ?? null : null;
+        })(),
       };
     })
     .sort((a, b) => b.mutual - a.mutual);
@@ -253,8 +339,23 @@ export async function loadOwnerReportData(
         })()
       : null;
 
+  // 本人“自身”の32型 (自己スコアから)。相性ループ Path1 の /aisho?a= に使う。
+  const ownerType32: ThirtyTwoTypeId | null =
+    Object.keys(selfScores).length > 0
+      ? classifyThirtyTwoType(selfScores)
+      : null;
+
   const inviteCode = user.invite_code ?? "";
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
+
+  // 「診断中」の近似人数 (best-effort)。events の friend_answer_started のうち、
+  // 直近 PENDING_WINDOW_MIN 分・同 session が friend_answer_completed していない = まだ回答中、
+  // と見なす。厳密な突合ではないので誤差はある (失敗時 0)。
+  const pendingFriendCount = await countPendingFriendDiagnoses(
+    inviteCode,
+    friendEvalCount,
+    REPORT_FRIEND_THRESHOLD,
+  );
 
   return {
     user,
@@ -265,10 +366,60 @@ export async function loadOwnerReportData(
     friendMessages,
     friends,
     minnaContext,
+    pendingFriendCount,
     inviteCode,
     inviteUrl,
     threshold: REPORT_FRIEND_THRESHOLD,
     unlocked,
     friendCharacter,
+    ownerType32,
   };
+}
+
+// 「診断中」判定の直近ウィンドウ (分)。これより前に開始して未完了なら離脱扱いで数えない。
+const PENDING_WINDOW_MIN = 30;
+
+/**
+ * events から「いま診断中」の友達の近似人数を出す (best-effort)。
+ *   直近 PENDING_WINDOW_MIN 分の friend_answer_started の distinct session のうち、
+ *   同ウィンドウで friend_answer_completed していない session 数を pending とみなす。
+ * 厳密な session 突合ではないため誤差あり。events 取得失敗・列欠損時は 0。
+ *
+ * さらに残り空きスロット (threshold - answered) を上限にクランプし、
+ * 解放間近で pending が過剰表示されないようにする。
+ */
+async function countPendingFriendDiagnoses(
+  inviteCode: string,
+  answeredCount: number,
+  threshold: number,
+): Promise<number> {
+  if (!inviteCode) return 0;
+  const remainingSlots = Math.max(0, threshold - answeredCount);
+  if (remainingSlots === 0) return 0;
+  try {
+    const sinceIso = new Date(
+      Date.now() - PENDING_WINDOW_MIN * 60_000,
+    ).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("events")
+      .select("event_name, session_id, created_at")
+      .eq("invite_code", inviteCode)
+      .in("event_name", ["friend_answer_started", "friend_answer_completed"])
+      .gte("created_at", sinceIso);
+    if (error || !data) return 0;
+
+    const started = new Set<string>();
+    const completed = new Set<string>();
+    for (const row of data) {
+      const sid = (row.session_id as string | null) ?? "";
+      if (!sid) continue;
+      if (row.event_name === "friend_answer_completed") completed.add(sid);
+      else started.add(sid);
+    }
+    let pending = 0;
+    for (const sid of started) if (!completed.has(sid)) pending += 1;
+    return Math.min(pending, remainingSlots);
+  } catch {
+    return 0;
+  }
 }
