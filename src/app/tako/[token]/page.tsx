@@ -161,17 +161,33 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
 const MOCK_ANSWERED: {
   name: string;
   type32: ThirtyTwoTypeId;
+  ownType32: ThirtyTwoTypeId;
 }[] = [
-  { name: "ゆい", type32: "sparkle-dolphin__N" as ThirtyTwoTypeId },
-  { name: "そら", type32: "smiley-panda__N" as ThirtyTwoTypeId },
+  {
+    name: "ゆい",
+    type32: "sparkle-dolphin__N" as ThirtyTwoTypeId,
+    ownType32: "whim-fox__N" as ThirtyTwoTypeId,
+  },
+  {
+    name: "そら",
+    type32: "smiley-panda__N" as ThirtyTwoTypeId,
+    ownType32: "quiet-owl__N" as ThirtyTwoTypeId,
+  },
 ];
 
-function mockLockedTakoData(friends: number, pending: number): OwnerReportData {
+// &diag=N: 先頭 N 人の answered 友達を「自己診断済み(Path1)」として扱う (相性ループ確認用)。
+function mockLockedTakoData(
+  friends: number,
+  pending: number,
+  diag: number,
+): OwnerReportData {
   const threshold = 3;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
+  const diagCount = Math.max(0, Math.min(count, Math.floor(diag || 0)));
   const mockFriends = Array.from({ length: count }, (_, i) => {
     const m = MOCK_ANSWERED[i % MOCK_ANSWERED.length];
     const valid = sixteenTypes[baseIdOf(m.type32)];
+    const isDiagnosed = i < diagCount;
     return {
       perceptionId: `preview-${i}`,
       name: m.name,
@@ -183,8 +199,8 @@ function mockLockedTakoData(friends: number, pending: number): OwnerReportData {
       perceivedImageSrc: valid
         ? preferCutImage(thirtyTwoImagePath(m.type32))
         : null,
-      perceiverUserId: null,
-      friendOwnType32: null,
+      perceiverUserId: isDiagnosed ? `preview-user-${i}` : null,
+      friendOwnType32: isDiagnosed ? m.ownType32 : null,
     };
   });
   const pendingCount = Math.max(
@@ -260,6 +276,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       ? mockLockedTakoData(
           typeof sp.friends === "string" ? Number(sp.friends) : 0,
           typeof sp.pending === "string" ? Number(sp.pending) : 0,
+          typeof sp.diag === "string" ? Number(sp.diag) : 0,
         )
       : await loadOwnerReportData(token);
   if (!data) {
@@ -324,6 +341,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   perceptionId: f.perceptionId,
                   name: f.name,
                   imageSrc: f.perceivedImageSrc,
+                  perceivedType32: f.perceivedType32,
+                  friendOwnType32: f.friendOwnType32,
                 }))}
                 pendingCount={data.pendingFriendCount}
                 threshold={data.threshold}
@@ -336,6 +355,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                     ? sp.share
                     : undefined
                 }
+                ownerType32={data.ownerType32}
+                selfDiagnoseUrl={SITE_URL}
               />
             </div>
           ) : (

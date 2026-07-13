@@ -9,9 +9,9 @@
 //   3. 手前(主役): シェア連動カウンター (TakoShareGate)。
 //   → 器・パララックス・段階リビールは TakoRevealStage が担う。
 //
-//   追加機能②: 再訪リビール「◯人届いた！」(cookie既読・サーバ状態不変)。
-//   追加機能③: 送信先ピッカー (TakoSendSheet)。CTA押下で即「誰に送る？」を出し、送信後は
-//     空スロットを楽観的に pending へ (クライアント表示のみ・②の displayAnswered とは非干渉)。
+//   追加機能②: 再訪リビール「◯人届いた！」。前回見た回答者数(localStorage)より増えていたら、
+//   一旦旧状態を描いてから現在値へバウンド減算 + スロット順次リビールで“勢い”を見せる。
+//   真実はサーバの回答者数。既読(last_seen)だけをローカルに持ち、サーバ状態は書き換えない。
 //
 //   その下 (通常フロー): 招待QR (CTAの着地) + 価値説明3ステップ (TakoValueSections)。
 //   触れるのは QR・友達誘導・シェアのみ。課金導線・無料バイパスは一切作らない。
@@ -22,7 +22,9 @@ import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoValueSections } from "./TakoValueSections";
 import { LockedInviteShare } from "./LockedInviteShare";
 import { TakoSendSheet } from "./TakoSendSheet";
+import { TakoAnsweredDetail } from "./TakoAnsweredDetail";
 import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
+import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 interface TakoLockedStateProps {
   /** 回答済み (answered) 友達。順に answered スロットへ (顔=その友達から見たあなた)。 */
@@ -33,6 +35,8 @@ interface TakoLockedStateProps {
   inviteUrl: string;
   /** 既読(last_seen)をスコープするキー種 (通常は owner_token)。 */
   storageScope: string;
+  /** プレビュー: 送信先シートのフォールバック経路を再現 ('liff-sim' 等)。 */
+  previewShareMode?: string;
   /**
    * SSRフラッシュ対策: サーバが cookie(既読) から決めた初期表示 answered 数。
    * pending 時は「旧状態」= last_seen が入るので、初期HTML自体が演出開始フレームになる。
@@ -41,8 +45,10 @@ interface TakoLockedStateProps {
   ssrInitialAnswered: number;
   /** プレビュー時 true: cookie を書かない (再現用)。 */
   previewMode?: boolean;
-  /** プレビュー: 送信先シートのフォールバック経路を再現 ('liff-sim' 等)。 */
-  previewShareMode?: string;
+  /** ④ 相性ループ Path1 の /aisho?a= に使う本人の32型。無ければ Path1 は出ない。 */
+  ownerType32: ThirtyTwoTypeId | null;
+  /** ④ Path2: 友達を自己診断へ誘う導線先 (診断LP=サイトルート)。 */
+  selfDiagnoseUrl: string;
 }
 
 export function TakoLockedState({
@@ -54,6 +60,8 @@ export function TakoLockedState({
   ssrInitialAnswered,
   previewMode = false,
   previewShareMode,
+  ownerType32,
+  selfDiagnoseUrl,
 }: TakoLockedStateProps) {
   const serverAnswered = Math.min(answered.length, threshold);
 
@@ -66,11 +74,23 @@ export function TakoLockedState({
       previewMode,
     });
 
-  // ③ 送信先ピッカー。送った実感として空スロットを楽観的に pending へ (クライアント表示のみ)。
-  //   ②とは非干渉: displayAnswered は触らず、pending 表示数だけに足す。サーバ状態も不変。
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // ③ 送信先ピッカー。mode で招待(自分を評価してもらう)/診断誘い(④Path2)を切り替え、
+  //   同じ TakoSendSheet を再利用する。送った実感 = 空スロットを楽観 pending へ。
+  //   ②とは非干渉: displayAnswered は触らず pending 表示数だけに足す。サーバ状態も不変。
   const [optimisticPending, setOptimisticPending] = useState(0);
   const shownPending = pendingCount + optimisticPending;
+  const [sendMode, setSendMode] = useState<null | {
+    kind: "invite" | "diagnose";
+    friendName?: string;
+  }>(null);
+
+  // ④ answered タップの詳細シート (相性ループ)。開いている answered の index。
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const detailFriend =
+    detailIndex != null ? answered[detailIndex] ?? null : null;
+
+  const diagnoseText = (name: string) =>
+    `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
 
   return (
     <div>
@@ -85,27 +105,74 @@ export function TakoLockedState({
             deliveredCount={deliveredCount}
             bounceKey={bounceKey}
             revealFromIndex={revealFromIndex}
-            onPrimaryAction={() => setSheetOpen(true)}
+            onPrimaryAction={() => setSendMode({ kind: "invite" })}
+            onAnsweredTap={(i) => setDetailIndex(i)}
           />
         </TakoRevealStage>
       </section>
 
-      {/* ③ 送信先ピッカー (CTA の着地。#tako-invite QR の上位動線) */}
-      <TakoSendSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        inviteUrl={inviteUrl}
-        toSend={Math.max(0, threshold - displayAnswered - shownPending)}
-        onSent={() =>
-          setOptimisticPending((p) =>
-            // answered + (server pending + optimistic) が threshold を超えない範囲で増やす。
-            Math.min(p + 1, Math.max(0, threshold - displayAnswered - pendingCount)),
-          )
+      {/* ④ answered顔タップの詳細 (相性ループ 2分岐) */}
+      <TakoAnsweredDetail
+        open={detailIndex != null}
+        onClose={() => setDetailIndex(null)}
+        friend={
+          detailFriend
+            ? {
+                name: detailFriend.name,
+                perceivedImageSrc: detailFriend.imageSrc,
+                perceivedType32: detailFriend.perceivedType32 ?? null,
+                friendOwnType32: detailFriend.friendOwnType32 ?? null,
+              }
+            : null
         }
+        ownerType32={ownerType32}
+        onInviteToDiagnose={() => {
+          // Path2: 詳細を閉じ、③シートを「診断に誘う」文脈で開く。
+          const name = detailFriend?.name ?? "友達";
+          setDetailIndex(null);
+          setSendMode({ kind: "diagnose", friendName: name });
+        }}
+      />
+
+      {/* ③ 送信先ピッカー (CTA の着地／④Path2 の診断誘い。#tako-invite QR の上位動線) */}
+      <TakoSendSheet
+        open={sendMode != null}
+        onClose={() => setSendMode(null)}
+        inviteUrl={
+          sendMode?.kind === "diagnose" ? selfDiagnoseUrl : inviteUrl
+        }
+        toSend={Math.max(0, threshold - displayAnswered - shownPending)}
+        title={
+          sendMode?.kind === "diagnose"
+            ? `${sendMode.friendName}さんを診断に誘う`
+            : undefined
+        }
+        subtitle={
+          sendMode?.kind === "diagnose"
+            ? `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+            : undefined
+        }
+        shareText={
+          sendMode?.kind === "diagnose"
+            ? diagnoseText(sendMode.friendName ?? "友達")
+            : undefined
+        }
+        onSent={() => {
+          // 招待(自分の評価募集)のときだけ空スロットを楽観 pending へ。
+          // 診断誘い(Path2)は owner の回答者を増やさないので pending は足さない。
+          if (sendMode?.kind !== "diagnose") {
+            setOptimisticPending((p) =>
+              Math.min(
+                p + 1,
+                Math.max(0, threshold - displayAnswered - pendingCount),
+              ),
+            );
+          }
+        }}
         previewShareMode={previewShareMode}
       />
 
-      {/* ===== 招待 (QR + シェア)。CTA の着地点。 ===== */}
+      {/* ===== 招待 (QR + シェア)。CTA の着地点。step③ で送信先ピッカーに接続予定。 ===== */}
       <div id="tako-invite" className="mx-auto mt-8 max-w-[560px] scroll-mt-24">
         <div
           className="rounded-3xl p-6 md:px-9 md:py-7"
