@@ -38,6 +38,20 @@ function bodyBlurPx(answered: number, threshold: number, revealed: boolean): num
   return revealed ? base * 0.4 : base; // 開いたセクションは更に緩める
 }
 
+// 「?」の配置。中央縦一列にせず、各セクションで左右に散らす (実結果ページのレイアウト風)。
+// 手前カードの真裏(中央)に来る?は不透明カードで自然に隠れ、左右に散った?だけが覗く。
+const QMARK_SCATTER: { left: string; top: string }[] = [
+  { left: "56%", top: "26px" },
+  { left: "18%", top: "22px" },
+  { left: "64%", top: "20px" },
+  { left: "30%", top: "22px" },
+  { left: "60%", top: "24px" },
+  { left: "20%", top: "22px" },
+  { left: "58%", top: "24px" },
+  { left: "34%", top: "22px" },
+  { left: "62%", top: "22px" },
+];
+
 interface TakoRewardBackdropProps {
   answered: number;
   threshold: number;
@@ -54,6 +68,7 @@ export function TakoRewardBackdrop({
       {SECTIONS.map((s, i) => (
         <BackdropSection
           key={s.title}
+          index={i}
           title={s.title}
           variant={s.variant}
           revealed={i < openN}
@@ -66,16 +81,19 @@ export function TakoRewardBackdrop({
 
 // 1セクション: 見出し(常時うっすら)＋本文(blur)＋「?」(鮮明・伏せ時のみ)。
 function BackdropSection({
+  index,
   title,
   variant,
   revealed,
   bodyBlur,
 }: {
+  index: number;
   title: string;
   variant: Variant;
   revealed: boolean;
   bodyBlur: number;
 }) {
+  const q = QMARK_SCATTER[index % QMARK_SCATTER.length];
   return (
     <section className="relative mb-4">
       {/* 見出し行: 項目名は常時うっすら表示 (何のページか分かる)。開くと少し濃くなる。 */}
@@ -104,21 +122,21 @@ function BackdropSection({
       </div>
 
       {/* 「?」オーバーレイ: blur を掛けず鮮明に (好奇心のフック)。revealed で消える。
-          本文の右寄り(見出しの下・本文の上に重ねず横にずらす)ではなく中央だが、blur無しで
-          くっきり出す。カード外の覗き帯では鮮明、カードの下ではフロストで柔らかく透ける。 */}
+          中央縦一列にせず QMARK_SCATTER で各セクション左右に散らす → 数字の背後を貫通しない。
+          中央付近の?は不透明カードで自然に隠れ、左右に散った?だけが覗く。 */}
       {!revealed && (
-        <div className="pointer-events-none absolute inset-x-0 top-8 flex justify-center">
-          <span
-            className="flex h-11 w-11 items-center justify-center rounded-2xl text-[28px] font-black"
-            style={{
-              color: "#6B7280",
-              background: "rgba(255,255,255,0.92)",
-              boxShadow: "0 6px 18px rgba(46,46,92,0.14)",
-            }}
-          >
-            ?
-          </span>
-        </div>
+        <span
+          className="pointer-events-none absolute flex h-11 w-11 items-center justify-center rounded-2xl text-[28px] font-black"
+          style={{
+            left: q.left,
+            top: q.top,
+            color: "#6B7280",
+            background: "rgba(255,255,255,0.92)",
+            boxShadow: "0 6px 18px rgba(46,46,92,0.14)",
+          }}
+        >
+          ?
+        </span>
       )}
     </section>
   );

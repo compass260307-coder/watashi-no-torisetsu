@@ -124,8 +124,10 @@ export function TakoShareGate({
 
   return (
     <div
-      className="rounded-[28px] px-5 py-7 md:px-8 md:py-8 shadow-[0_22px_60px_rgba(46,46,92,0.22)] ring-1 ring-white/70 backdrop-blur-[5px]"
-      style={{ background: "rgba(255,255,255,0.6)" }}
+      // 手前の主役として明確に浮かせる: ほぼ不透明の白 + 大きく柔らかい多層シャドウ +
+      // 極淡い縁 (硬い枠線は使わずフェルトの柔らかさを維持)。不透明化で真裏の?も自然に隠れる。
+      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12)] ring-1 ring-black/[0.05] backdrop-blur-md"
+      style={{ background: "rgba(255,255,255,0.95)" }}
     >
       {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のとき) ===== */}
       <div className="flex h-8 items-center justify-center">
