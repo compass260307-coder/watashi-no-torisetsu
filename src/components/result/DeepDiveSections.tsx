@@ -13,7 +13,7 @@
 //     (PR3: 実 CTA はページ最下部の FullAccessPromoCard に一本化)。
 
 import { useState } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import type {
   DeepDiveTabKey,
   ResolvedDeepDiveSection,
@@ -47,13 +47,14 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* 見出し: ①②と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}
+      {/* 見出し: ①②と同じ 16P 風 (丸囲み数字 + 大きめタイトル)。
+          番号は④ (③友達から見たアナタ との入れ替え後、2026-07-12)。 */}
       <div className="mb-4 flex items-center gap-3">
         <span
           aria-hidden="true"
           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
         >
-          3
+          4
         </span>
         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
           アナタの深掘り
@@ -67,22 +68,41 @@ export function DeepDiveSections({
         className="flex gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1"
       >
         {sections.map((s, i) => {
-          const selected = i === active;
+          const selected = i === active && !s.locked;
+          // ロックタブ (キャリア/成長・未課金) はパネルを開かず、押下で最下部の
+          // 課金カード (#fullaccess-promo) へスクロール。無料タブは通常のタブ切替。
           return (
             <button
               key={s.key}
               type="button"
               role="tab"
               aria-selected={selected}
-              onClick={() => setActive(i)}
-              className={`shrink-0 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
+              onClick={() =>
+                s.locked ? scrollToPaywall(`deepdive_tab_${s.key}`) : setActive(i)
+              }
+              className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-2 px-4 py-2 text-sm font-black transition-colors ${
                 selected
                   ? "bg-[#2E2E5C] text-white border-[#2E2E5C]"
                   : "bg-white text-[#2E2E5C] border-[#0094D8]/25 hover:bg-[#F4F4FE]"
               }`}
             >
-              {/* PR3: タブに鍵は付けない (「どうせ見れない」で押されず課金導線に乗らないため)。
-                  入口は無料タブと同じ見た目にして開かせ、開いた中でぼかしロック+CTA を見せる。 */}
+              {/* ロックタブは鍵アイコンを添える (押すと下の課金カードへ) */}
+              {s.locked && (
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              )}
               {s.tab}
             </button>
           );
@@ -92,7 +112,7 @@ export function DeepDiveSections({
       <article role="tabpanel" className="px-1 pt-1 pb-2">
         {/* 挿絵 (タブ対応のシーン別イラスト): タブ内の一番上に表示 */}
         {sceneImages?.[current.key] && (
-          <Image
+          <SmoothImage
             src={sceneImages[current.key]!}
             alt=""
             width={960}
@@ -120,19 +140,19 @@ export function DeepDiveSections({
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
               「{current.tab}」のくわしい深掘りは
               <br />
-              全解放でひらきます。
+              友達3人 or ¥299 でひらきます。
             </p>
             <p className="mt-2 text-[#8A8AA3] font-bold text-[13px] leading-[1.6]">
-              一度きりの ¥299 で、
+              友達3人ならタダ。急ぐなら一度きりの ¥299 で、
               <br className="md:hidden" />
-              キャリアも成長も、ぜんぶ。
+              キャリアも成長も相性も、ぜんぶ。
             </p>
             <div className="mt-5 flex flex-col items-center">
               {/* PR3: 押すと同ページ最下部の課金案内カードへスライド (遷移なし)。
                   実 CTA は最下部カードに一本化。 */}
               <button
                 type="button"
-                onClick={scrollToPaywall}
+                onClick={() => scrollToPaywall("deepdive_panel")}
                 className="flex w-full max-w-[300px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
               >
                 ぜんぶ、ひらく →

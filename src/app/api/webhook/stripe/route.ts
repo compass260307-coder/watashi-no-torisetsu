@@ -20,16 +20,20 @@
 //     after() の AI 生成は最大 100 秒程度かかるため maxDuration を引き上げ
 //   - 自動返金は実装しない (MVP)、失敗時は Slack アラート + 手動対応
 
-import { NextRequest, NextResponse, after } from "next/server";
+import crypto from "crypto";
+import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
-import {
-  buildSourceSummary,
-  runAIGenerationAndUpdate,
-} from "@/lib/integrated-trisetsu-generator";
 import { sendSlackAlert } from "@/lib/slack-alert";
-import { sendPaymentReceivedMessage } from "@/lib/line-notify";
+import { classifyType } from "@/lib/diagnosis";
+
+// ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
+// users は type_id/scores が NOT NULL のため空では INSERT できない。
+const NEUTRAL_SCORES = { O: 5, C: 5, E: 5, A: 5, N: 5 };
+function guestToken(bytes: number): string {
+  return crypto.randomBytes(bytes).toString("base64url");
+}
 
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
@@ -171,33 +175,130 @@ async function persistLoginEmailIfEmpty(
   }
 }
 
-// ---------- PR1: フルアクセス(全解放) 完了 ----------
-// plan='full' に更新 (冪等: 同一 webhook が複数回届いても結果同じ)。
-// full_access_at は初回のみ (WHERE full_access_at IS NULL で再送上書きを防止)。
-// email backfill は handleCheckoutCompleted 冒頭の persistLoginEmailIfEmpty で共通処理済み。
-async function handleFullAccessCompleted(userId: string): Promise<void> {
+// ---------- フルアクセス(全解放) 完了: email 優先で紐付け (ゲスト決済対応) ----------
+// 紐付けキー: Stripe 確定 email を優先 → user_id (metadata)。片方でもあれば紐付く。
+//   ① email があれば: 同 email の users を全部 plan='full' (再診断で複数行あっても全部有効)。
+//   ② user_id があれば: その行も plan='full' + email backfill (空なら埋める)。
+//   ③ どちらにも紐付かない完全ゲスト: email でプレースホルダー users を新規作成 (plan='full')。
+//      後日ログイン→診断で本物のトリセツに UPDATE され、plan は保持される。
+// 冪等: plan/full_access_at の UPDATE は何度届いても同結果。②③は ① で拾えなければ通る。
+async function grantFullAccessByEmailOrId(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
   const nowIso = new Date().toISOString();
+  let linked = false;
 
-  const { error: planErr } = await supabaseAdmin
-    .from("users")
-    .update({ plan: "full" })
-    .eq("id", userId);
-  if (planErr) {
-    // throw → Stripe がリトライ。plan 更新は冪等なので安全。
-    throw new Error(`[full_access] plan update failed: ${planErr.message}`);
+  // ① email 優先: 同 email の全 users を full に
+  if (email) {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .update({ plan: "full" })
+      .eq("email", email)
+      .select("id");
+    if (error) {
+      throw new Error(`[full_access] email link failed: ${error.message}`);
+    }
+    if (data && data.length > 0) {
+      linked = true;
+      await supabaseAdmin
+        .from("users")
+        .update({ full_access_at: nowIso })
+        .eq("email", email)
+        .is("full_access_at", null);
+    }
   }
 
-  const { error: atErr } = await supabaseAdmin
-    .from("users")
-    .update({ full_access_at: nowIso })
-    .eq("id", userId)
-    .is("full_access_at", null);
-  if (atErr) {
-    // 致命ではない (購入日時は分析用)。plan='full' は確定済みなので続行。
-    console.warn("[full_access] full_access_at update warning:", atErr.message);
+  // ② user_id 行も full + email backfill (空なら)
+  if (userId) {
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({ plan: "full" })
+      .eq("id", userId);
+    if (error) {
+      throw new Error(`[full_access] id link failed: ${error.message}`);
+    }
+    linked = true;
+    await supabaseAdmin
+      .from("users")
+      .update({ full_access_at: nowIso })
+      .eq("id", userId)
+      .is("full_access_at", null);
+    if (email) {
+      await supabaseAdmin
+        .from("users")
+        .update({ email })
+        .eq("id", userId)
+        .is("email", null);
+    }
   }
 
-  console.log("[webhook/stripe] full_access completed", { user_id: userId });
+  // ③ 完全ゲスト: email でプレースホルダー users を新規作成 (ログイン→診断で本物に UPDATE)
+  if (!linked) {
+    if (!email) {
+      // email も user_id も無い = 復元不能 (Stripe が email を収集する前提なので通常来ない)。
+      throw new Error(
+        `[full_access] no email and no user_id for session ${session.id}`,
+      );
+    }
+    const { error } = await supabaseAdmin.from("users").insert({
+      email,
+      plan: "full",
+      full_access_at: nowIso,
+      owner_token: guestToken(16),
+      invite_code: guestToken(8),
+      type_id: classifyType(NEUTRAL_SCORES),
+      scores: NEUTRAL_SCORES,
+    });
+    if (error) {
+      throw new Error(`[full_access] guest user create failed: ${error.message}`);
+    }
+  }
+
+  console.log("[webhook/stripe] full_access granted", {
+    user_id: userId ?? "(guest)",
+    email: email ? "set" : "none",
+    linked,
+  });
+}
+
+// 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
+// Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
+// 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
+async function recordPurchaseCompletedEvent(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  try {
+    const { data: existing, error: selErr } = await supabaseAdmin
+      .from("events")
+      .select("id")
+      .eq("event_name", "purchase_completed")
+      .eq("metadata->>stripe_session_id", session.id)
+      .limit(1);
+    // SELECT 失敗時は重複の有無が判定できない。挿入すると再送時に二重計上の恐れが
+    // あるためスキップ (集計側も stripe_session_id ユニークで数えるので、稀な取りこぼしは
+    // paidUsers (users.plan) 側で補足できる)。
+    if (selErr) {
+      console.error("[webhook] purchase_completed dedup check failed:", selErr);
+      return;
+    }
+    if (existing && existing.length > 0) return;
+    await supabaseAdmin.from("events").insert({
+      event_name: "purchase_completed",
+      metadata: {
+        stripe_session_id: session.id,
+        product: "full_access",
+        guest: session.metadata?.guest === "1",
+        amount_total: session.amount_total ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[webhook] purchase_completed event insert failed:", err);
+  }
 }
 
 // ---------- checkout.session.completed ----------
@@ -205,26 +306,29 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
-  const userId = metadata.user_id;
-  const lineUserId = metadata.line_user_id ?? null;
+  // guest 決済では user_id が空。"" は null 扱いにする。
+  const userId =
+    typeof metadata.user_id === "string" && metadata.user_id.length > 0
+      ? metadata.user_id
+      : null;
+
+  // フルアクセス(全解放): guest 対応。user_id が無くても Stripe 確定 email で紐付ける。
+  //   email backfill / プレースホルダー作成も含めて grantFullAccessByEmailOrId が担う。
+  if (metadata.product === "full_access") {
+    await grantFullAccessByEmailOrId(session, userId);
+    await recordPurchaseCompletedEvent(session);
+    return;
+  }
+
+  // ここから先 (perception_unlock 等) は従来どおり user_id 必須。
   if (!userId) {
     throw new Error(
       `session.metadata.user_id missing for session ${session.id}`,
     );
   }
 
-  // ★ 全課金経路共通: Stripe が確定した email を users.email が空なら埋める (復元用)。
-  //   payment_kind 分岐の手前に置くことで perception_unlock / integrated_trisetsu
-  //   の両経路 + 将来経路を 1 箇所でカバーする。詳細は persistLoginEmailIfEmpty 参照。
+  // ★ Stripe が確定した email を users.email が空なら埋める (復元用)。
   await persistLoginEmailIfEmpty(userId, session);
-
-  // PR1: ¥299 買い切り「フルアクセス(全解放)」。metadata.product='full_access' で分岐。
-  //   plan='full' に更新 (冪等: 何度届いても結果同じ)。full_access_at は初回のみ。
-  //   email backfill は上の persistLoginEmailIfEmpty で共通処理済み。
-  if (metadata.product === "full_access") {
-    await handleFullAccessCompleted(userId);
-    return;
-  }
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
@@ -233,147 +337,6 @@ async function handleCheckoutCompleted(
     await handlePerceptionUnlockCompleted(session, userId, metadata);
     return;
   }
-
-  const includeSelf = metadata.include_self === "true";
-  let perceptionIds: string[] = [];
-  try {
-    if (metadata.perception_ids) {
-      const parsed = JSON.parse(metadata.perception_ids);
-      if (Array.isArray(parsed)) {
-        perceptionIds = parsed.filter(
-          (v): v is string => typeof v === "string",
-        );
-      }
-    }
-  } catch {
-    perceptionIds = [];
-  }
-
-  // ===== 1. payment_history upsert (Idempotency 第 1 層) =====
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null);
-  const paymentRecord = {
-    user_id: userId,
-    stripe_session_id: session.id,
-    stripe_payment_intent_id: paymentIntentId,
-    amount_jpy: session.amount_total ?? 500,
-    currency: session.currency ?? "jpy",
-    status: "completed" as const,
-    paid_at: new Date().toISOString(),
-    metadata: {
-      include_self: includeSelf,
-      perception_ids: perceptionIds,
-    },
-  };
-
-  const { data: insertedPayments, error: upsertErr } = await supabaseAdmin
-    .from("payment_history")
-    .upsert(paymentRecord, {
-      onConflict: "stripe_session_id",
-      ignoreDuplicates: true,
-    })
-    .select("id");
-
-  if (upsertErr) {
-    throw new Error(`payment_history upsert failed: ${upsertErr.message}`);
-  }
-
-  let paymentId: string;
-  if (insertedPayments && insertedPayments.length > 0) {
-    paymentId = insertedPayments[0].id as string;
-  } else {
-    // 既存 (二重 webhook) → 既存行を fetch
-    const { data: existing, error: existingErr } = await supabaseAdmin
-      .from("payment_history")
-      .select("id")
-      .eq("stripe_session_id", session.id)
-      .maybeSingle();
-    if (existingErr || !existing) {
-      throw new Error(
-        `payment_history upsert returned no row and SELECT found none for ${session.id}`,
-      );
-    }
-    paymentId = existing.id as string;
-  }
-
-  // ===== 2. integrated_trisetsu 存在チェック (Idempotency 第 2 層) =====
-  const { data: existingTrisetsu } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .select("id, status")
-    .eq("payment_id", paymentId)
-    .maybeSingle();
-
-  if (existingTrisetsu) {
-    // 既に作成済み (二重 webhook の 2 回目) → 何もしない
-    // failed の場合も MVP では手動対応とする
-    return;
-  }
-
-  // ===== 3. source_summary 構築 (Webhook 内で同期、< 1 秒) =====
-  const sourceSummary = await buildSourceSummary(
-    userId,
-    includeSelf,
-    perceptionIds,
-  );
-
-  // ===== 4. integrated_trisetsu INSERT (status='pending') =====
-  const { data: inserted, error: insErr } = await supabaseAdmin
-    .from("integrated_trisetsu")
-    .insert({
-      user_id: userId,
-      line_user_id: lineUserId,
-      payment_id: paymentId,
-      status: "pending",
-      include_self: includeSelf,
-      perception_ids: perceptionIds,
-      source_summary: sourceSummary,
-    })
-    .select("id")
-    .single();
-
-  if (insErr || !inserted) {
-    // UNIQUE 競合 (= 同時 webhook が先に挿入) → 既存を採用、再生成しない
-    if (insErr?.code === "23505") {
-      return;
-    }
-    throw new Error(
-      `integrated_trisetsu INSERT failed: ${insErr?.message ?? "no row"}`,
-    );
-  }
-  const integratedId = inserted.id as string;
-
-  // ===== 5. LINE 決済受領通知 + AI 生成 (両方 after() で response 送信後に実行) =====
-  // Stripe Webhook は 200 を素早く返す必要があるため、LINE push と AI 呼び出し
-  // (60-100 秒) は after() で response 送信後に実行。
-  after(async () => {
-    // a. 決済受領通知 (LINE 連携済のユーザーのみ)
-    if (lineUserId) {
-      try {
-        await sendPaymentReceivedMessage({
-          lineUserId,
-          sessionId: session.id,
-          ownerUserId: userId,
-        });
-      } catch (err) {
-        console.error(
-          `[webhook/stripe] payment_received notification failed for ${integratedId}:`,
-          err,
-        );
-      }
-    }
-    // b. AI 生成キック (completed / failed の LINE 通知は generator 内で発火)
-    try {
-      await runAIGenerationAndUpdate(integratedId);
-    } catch (err) {
-      // 内部で sendSlackAlert + UPDATE failed まで処理済だが、防御的に catch
-      console.error(
-        `[webhook/stripe] after() AI generation crashed for ${integratedId}:`,
-        err,
-      );
-    }
-  });
 }
 
 // ---------- Phase 1.5-α Day 12-C2: perception_unlock 経路 ----------

@@ -25,7 +25,7 @@ export function sceneImageForGroup(
   group: ThirtyTwoGroup,
   variant: string,
 ): string | null {
-  const name = `${group}_${variant}.png`;
+  const name = `${group}_${variant}.webp`;
   return (characterImages.scenes as string[]).includes(name)
     ? `/characters/scenes/${name}`
     : null;

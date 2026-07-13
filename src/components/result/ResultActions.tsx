@@ -18,6 +18,7 @@
 import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { ShareCard } from "./ShareCard";
+import { track } from "@/lib/track";
 
 interface ResultActionsProps {
   typeName: string;
@@ -31,6 +32,10 @@ interface ResultActionsProps {
   // 表示形態: "full" = アイコン+ラベルのしっかり版 (下部・本命) /
   //           "iconbar" = アイコンのみコンパクト版 (上部・三本線の横、省スペース)
   variant?: "full" | "iconbar";
+  // QR コードを隠す (ロック解除カードのコンパクト版用。既定は表示)
+  hideQr?: boolean;
+  // QR コードの一辺 px (既定 140。ロック解除カードでは小さめを指定)
+  qrSize?: number;
 }
 
 export function ResultActions({
@@ -42,14 +47,24 @@ export function ResultActions({
   imageSrc,
   shareCode,
   variant = "full",
+  hideQr = false,
+  qrSize = 140,
 }: ResultActionsProps) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // 友達招待クリックの計測 (KPI: friend_invite_clicked)。従来 /tako の
+  // LockedInviteShare しか計測がなく「友達共有」が過小だった (2026-07-13 修正)。
+  const trackInvite = (channel: string) =>
+    track("friend_invite_clicked", {
+      metadata: { channel, source: "result_actions" },
+    });
+
   const handleCopyLink = async () => {
     if (!shareUrl) return;
+    trackInvite("link");
     try {
       await navigator.clipboard.writeText(shareUrl);
       setLinkCopied(true);
@@ -101,6 +116,7 @@ export function ResultActions({
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("x")}
           className="w-9 h-9 rounded-full bg-black flex items-center justify-center hover:scale-110 transition-transform"
           aria-label="X でシェア"
         >
@@ -110,6 +126,7 @@ export function ResultActions({
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("line")}
           className="w-9 h-9 rounded-full bg-[#06C755] flex items-center justify-center hover:scale-110 transition-transform"
           aria-label="LINE でシェア"
         >
@@ -177,6 +194,7 @@ export function ResultActions({
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("x")}
           className="flex items-center gap-1.5 rounded-full bg-black text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="X でシェア"
         >
@@ -187,6 +205,7 @@ export function ResultActions({
           href={lineUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => trackInvite("line")}
           className="flex items-center gap-1.5 rounded-full bg-[#06C755] text-white px-3 py-2 text-xs font-bold hover:scale-105 transition-transform"
           aria-label="LINE でシェア"
         >
@@ -215,15 +234,17 @@ export function ResultActions({
         </div>
       </div>
 
-      {/* QR コード (常時表示): 招待 URL をその場で読み取ってもらう */}
-      <div className="mt-4 flex flex-col items-center gap-2">
-        <div className="rounded-2xl border border-[#E3E6F5] bg-white p-3">
-          <QRCodeSVG value={shareUrl} size={140} fgColor="#2E2E5C" />
+      {/* QR コード: 招待 URL をその場で読み取ってもらう (hideQr でコンパクト化可) */}
+      {!hideQr && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <div className="rounded-2xl border border-[#E3E6F5] bg-white p-3">
+            <QRCodeSVG value={shareUrl} size={qrSize} fgColor="#2E2E5C" />
+          </div>
+          <p className="text-[11px] font-bold text-[#2E2E5C]/60">
+            友達のスマホで読み取ってもらおう
+          </p>
         </div>
-        <p className="text-[11px] font-bold text-[#2E2E5C]/60">
-          友達のスマホで読み取ってもらおう
-        </p>
-      </div>
+      )}
 
       {imageNotice && (
         <p

@@ -27,7 +27,7 @@ import { resolveSiteUrl } from "@/lib/site-url";
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
 // Vercel の 250MB 上限を超えるため、fs は使わない。
 import characterImages from "@/generated/character-images.json";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -60,6 +60,15 @@ import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { hasFullAccess } from "@/lib/entitlements";
+import {
+  hasPartTwoAccess,
+  STAIR_TEASE,
+  STAIR_PART_TWO,
+  STAIR_COMPLETE,
+} from "@/lib/friend-stairs";
+import { resolvePartTwo } from "@/lib/part-two-resolve";
+import { PartTwoSections } from "@/components/result/PartTwoSections";
+import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
@@ -68,12 +77,14 @@ import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
 import { ResultActions } from "@/components/result/ResultActions";
-import { CharacterShareButton } from "@/components/result/CharacterShareButton";
+import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
-import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import { ResetDataLink } from "@/components/ResetDataLink";
+import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import type {
   BigFiveDimension,
   CModifier,
@@ -238,27 +249,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
       return avg;
     })();
 
-  // ===== 4. integrated_trisetsu (completed のみ、新しい順) =====
-  const { data: integratedRows } = previewType
-    ? { data: null }
-    : await supabaseAdmin
-        .from("integrated_trisetsu")
-        .select(
-          "id, generated_title, generated_subtitle, generated_at, perception_ids, include_self",
-        )
-        .eq("user_id", user.id)
-        .eq("status", "completed")
-        .order("generated_at", { ascending: false });
-  const integrated = (integratedRows ?? []).map((r) => ({
-    id: r.id as string,
-    title: (r.generated_title as string | null) ?? "真のトリセツ",
-    subtitle: (r.generated_subtitle as string | null) ?? "",
-    generatedAt: r.generated_at as string,
-    perceptionCount: Array.isArray(r.perception_ids)
-      ? (r.perception_ids as unknown[]).length
-      : 0,
-    includeSelf: r.include_self !== false,
-  }));
 
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
@@ -271,13 +261,20 @@ export default async function MePage({ params, searchParams }: PageProps) {
     C: stored.C ?? 5,
     N: stored.N ?? 5,
   });
-  // 深掘り本文の課金ゲート (PR2)。本文はここ (サーバ) で解決し、許可されたぶんだけ
-  // props で渡す。判定は /me を所有する user (owner_token 行) の plan。未課金なら
-  // キャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
+  // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
+  // ぶんだけ props で渡す。解放条件 = 課金 (¥299=full) OR 友達3人以上 (friend-stairs.ts)。
+  // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   const deepDivePaid = await hasFullAccess(user.id as string);
+  // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
+  const partTwoUnlocked = previewType
+    ? true
+    : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   const deepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
-    hasFullAccess: deepDivePaid,
+    hasFullAccess: partTwoUnlocked,
   });
+  // 第二部「友達から見たアナタ (予測)」本文 (強み/あれっ?/取扱い方/ギャップ予告)。
+  // 未解放時は本文を解決しない (フェイルクローズ)。sixteenTypeId/t32 は後段で導出するため
+  // 解決自体は分類後 (下) で行う。
   // Day 12-Polish: 自己診断結果の表示は 16 タイプ (O/C/E/A 高低) で行う。
   // 既存の診断ロジック・スキーマは触らず、user.scores から決定的に派生する。
   const sixteenTypeId = classifySixteenType(stored);
@@ -285,6 +282,24 @@ export default async function MePage({ params, searchParams }: PageProps) {
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
   const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
+  // 第二部本文 (強み/あれっ?/取扱い方/ギャップ予告)。未解放時は本文なし (フェイルクローズ)。
+  const partTwo = resolvePartTwo(t32, sixteenTypeId, stored, {
+    unlocked: partTwoUnlocked,
+  });
+  // 予兆 (階段1段目): 1人目の友達の perceived_scores から動物メタファーだけ小出しする。
+  // 自由記述や友達名は出さない (本人を傷つけない表示ルール)。数値以外は無視。
+  const teaseText: string | null = (() => {
+    const first = (perceptionRows ?? [])[0];
+    if (!first) return null;
+    const raw = (first.perceived_scores ?? {}) as Record<string, unknown>;
+    const ps: Partial<Record<BigFiveDimension, number>> = {};
+    for (const d of ["E", "A", "O", "C", "N"] as BigFiveDimension[]) {
+      if (typeof raw[d] === "number") ps[d] = raw[d] as number;
+    }
+    if (Object.keys(ps).length === 0) return null;
+    const teaseAnimal = thirtyTwoAnimal(classifyThirtyTwoType(ps));
+    return `友達の目には、アナタは「${teaseAnimal}」っぽく映り始めているみたい…`;
+  })();
 
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
@@ -322,12 +337,12 @@ export default async function MePage({ params, searchParams }: PageProps) {
   //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
   //   解決順: キャラ別 <slug>_<variant>.png → グループ共通 <group>_<variant>.png
   //   (例 jellyfish_N_love.png → sea_love.png)
-  const sceneSlug = path.basename(v3Image, ".png");
+  const sceneSlug = path.basename(v3Image).replace(/\.\w+$/, "");
   const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
     const candidates = [
-      `${sceneSlug}_${variant}.png`,
-      ...(sceneGroup ? [`${sceneGroup}_${variant}.png`] : []),
+      `${sceneSlug}_${variant}.webp`,
+      ...(sceneGroup ? [`${sceneGroup}_${variant}.webp`] : []),
     ];
     for (const name of candidates) {
       if (characterImages.scenes.includes(name)) return `/characters/scenes/${name}`;
@@ -379,15 +394,25 @@ export default async function MePage({ params, searchParams }: PageProps) {
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <>
+    {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中…」を出して
+        status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
+    {!previewType && sp.paid === "1" && !deepDivePaid && (
+      <PaidUnlockWatcher ownerToken={token} />
+    )}
     {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
         プレビュー (?previewType) はモック描画なので計測しない。 */}
     {!previewType && (
       <ResultViewTracker ownerToken={token} friendCount={friendEvalCount} />
     )}
-    {/* 16P と同じスクロール連動ヘッダー (下スクロールで隠れ、上スクロールで出る) */}
-    <ScrollHideHeader>
+    {/* 16P と同じスクロール連動ヘッダー。/me だけ、未解放時はヘッダー直下に
+        「すべての結果のロックを解除」バーを常時表示 (ヘッダーが隠れてもバーは残る)。 */}
+    <MeStickyHeader
+      showUnlockBar={!partTwoUnlocked}
+      inviteUrl={inviteUrl}
+      essence={dispEssence}
+    >
       <TopHeader />
-    </ScrollHideHeader>
+    </MeStickyHeader>
     <main
       className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
       style={{ background: "#FFFFFF" }}
@@ -440,17 +465,8 @@ export default async function MePage({ params, searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* 自分のキャラをシェア (拡散→/share/{invite_code})。
-            画面右下・ボトムナビ (fixed bottom-0 / z-40) の直上にフローティング固定。
-            ナビ高さ (約60px) + iOS セーフエリアぶんを bottom で確保。owner 限定。計測 kind:character。 */}
-        {isOwner && (
-          <div className="fixed right-3 z-40 bottom-[calc(72px+env(safe-area-inset-bottom))]">
-            <CharacterShareButton
-              shareUrl={characterShareUrl}
-              essence={dispEssence}
-            />
-          </div>
-        )}
+        {/* 右下フローティングの「キャラをシェア」(CharacterShareButton) は
+            2026-07-13 指示で撤去 (アンロックバーのシェア導線に集約)。 */}
 
         {/* ===== 章① 自分が見た自分 =====
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
@@ -495,7 +511,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   )}
                   {/* 挿絵 normal2: 「② アナタの注意点」タイトル直下 (本文の前) に表示 */}
                   {idx === 1 && sceneImage("normal2") && (
-                    <Image
+                    <SmoothImage
                       src={sceneImage("normal2")!}
                       alt=""
                       width={960}
@@ -516,7 +532,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
                   </div>
                   {/* 挿絵 normal1: パート1 (基本特性) の本文の後に表示 */}
                   {idx === 0 && sceneImage("normal1") && (
-                    <Image
+                    <SmoothImage
                       src={sceneImage("normal1")!}
                       alt=""
                       width={960}
@@ -529,20 +545,11 @@ export default async function MePage({ params, searchParams }: PageProps) {
             );
           })}
 
-          {/* 深掘り (恋愛/仕事/成長、タブ切替)。「みんなの目」(他己) は /tako へ移設。 */}
-          <DeepDiveSections
-            sections={deepDiveSections}
-            sceneImages={{
-              love: sceneImage("love"),
-              career: sceneImage("work"),
-              growth: sceneImage("school"),
-            }}
-          />
         </section>
 
 
 
-        {/* ===== ④ 友達から見たアナタ (16P 風ロックティーザー) =====
+        {/* ===== ③ 友達から見たアナタ (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
             他己パートの本体は /tako/[token]。 */}
@@ -552,124 +559,160 @@ export default async function MePage({ params, searchParams }: PageProps) {
               aria-hidden="true"
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              4
+              3
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
               友達から見たアナタ
             </h2>
           </div>
 
+          {/* 階段 (道中の報酬): 1人=予兆 / 3人=第二部 / 5人=本物(/tako)。
+              完全未解放 (友達0人) では出さない (2026-07-12 指示。0人時は情報が無くただ重い)。
+              1人目の回答が入ってから「進んでいる感」の装置として登場する。 */}
+          {!previewType && friendEvalCount >= STAIR_TEASE && (
+            <FriendStairs
+              friendCount={friendEvalCount}
+              stairs={{
+                tease: STAIR_TEASE,
+                partTwo: STAIR_PART_TWO,
+                complete: STAIR_COMPLETE,
+              }}
+              teaseText={teaseText}
+            />
+          )}
+
+          {/* 第二部本体。無料ブロック (武器/好かれやすい) は未解放でも本物を表示し、
+              🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
+              出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
-            // ロック解除カード (2 ブロックで共用。16P の「今すぐロックを解除」参考)
-            const lockCard = (
-              <div className="relative mx-auto w-full max-w-[430px] rounded-2xl border border-[#E3E6F5] bg-white px-5 py-6 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)]">
-                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
+            // ロック解除の2択 (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
+            // 16P のロックカード参考: 浮き角丸バッジ + 中央タイトル + 説明2行 + 全幅ボタン。
+            // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
+            // SP は縦積み: カードBの浮きバッジ (-18px) が上カードに詰まらないよう gap 広め
+            const lockCard = partTwoUnlocked ? undefined : (
+              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:max-w-[880px] md:flex-row md:gap-14">
+                {/* ── カードA: 友達3人 (無料・主) ── */}
+                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
+                {/* 中身は縦中央寄せ (md 横並びで B と高さが揃ったとき下が空かないように) */}
+                <div className="relative flex flex-1 flex-col justify-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-5 pt-8 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
+                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </span>
+                  <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
+                    友達{STAIR_PART_TWO}人でロック解除
+                  </p>
+                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                    {SHARE_CTA_CAPTION}
+                  </p>
+                  <ResultActions
+                    typeName={dispName}
+                    shareUrl={inviteUrl}
+                    ownerName={displayName}
+                    essence={dispEssence}
+                    description={dispDesc}
+                    imageSrc={dispImage}
+                    shareCode={shareCode}
+                    qrSize={128}
+                  />
+                </div>
+
+                {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
+                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の均一枠 (3px) +
+                    弱めの紫グロー影 + PC はカードAよりやや幅広。 */}
+                <div className="relative flex flex-1 flex-col items-center rounded-xl border-[3px] border-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_32px_rgba(91,91,239,0.18)] md:flex-[1.18]">
+                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
+                    {/* 稲妻 = 裏技 (ショートカット) の記号 */}
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
+                    </svg>
+                  </span>
+                  <p className="mb-1 text-[19px] font-black text-[#2E2E5C]">
+                    裏技でロック解除
+                  </p>
+                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
+                    ぜんぶ解放すると、アナタのどんな性格が
+                    <br className="md:hidden" />
+                    友達から嫌われやすいのかまで分かります。
+                  </p>
+                  {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順)。
+                      原寸比のまま全体を見せる (トリミングで見切れさせない)。 */}
+                  <SmoothImage
+                    src={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+                    alt=""
+                    width={960}
+                    height={640}
+                    className="mb-3 h-auto w-full rounded-lg"
+                  />
+                  {/* 深掘りロックタブと同じ挙動: 最下部の課金カードへスムーススクロール+パルス */}
+                  <PaywallScrollButton
+                    source="urawaza_card"
+                    className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                   >
-                    <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                  </svg>
-                </span>
-                <p className="mb-1 text-[18px] font-black text-[#2E2E5C]">
-                  今すぐロックを解除
-                </p>
-                <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/70">
-                  {SHARE_CTA_CAPTION}
-                </p>
-                <ResultActions
-                  typeName={dispName}
-                  shareUrl={inviteUrl}
-                  ownerName={displayName}
-                  essence={dispEssence}
-                  description={dispDesc}
-                  imageSrc={dispImage}
-                  shareCode={shareCode}
-                />
+                    今すぐロックを解除
+                  </PaywallScrollButton>
+                </div>
               </div>
             );
-            return (
-              <>
-                {/* ── ブロック1: 友達から見た強み (ぼかしチェックリスト風) ── */}
-                <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-                  友達から見た強み
-                </h3>
-                <div className="relative mb-10 overflow-hidden rounded-2xl bg-white px-5 py-10 md:px-8">
-                  {/* inset-0 + 多めの行数で、カードが高くても下端まで埋める (溢れはクリップ) */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-5 inset-y-5 grid select-none grid-cols-2 content-start gap-3 blur-[7px] md:inset-x-8"
-                  >
-                    {Array.from({ length: 16 }, (_, i) => (
-                      <div
-                        key={i}
-                        className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] p-3"
-                      >
-                        <div className="mb-2 h-3 w-3/4 rounded-full bg-[#2E2E5C]/30" />
-                        <div className="mb-1.5 h-2 w-full rounded-full bg-[#2E2E5C]/15" />
-                        <div className="h-2 w-5/6 rounded-full bg-[#2E2E5C]/15" />
-                      </div>
-                    ))}
-                  </div>
-                  {lockCard}
-                </div>
-              </>
-            );
+            return <PartTwoSections data={partTwo} lockCard={lockCard} />;
           })()}
 
         </section>
 
+        {/* ===== ④ アナタの深掘り (恋愛/キャリア/成長/相性、タブ切替) =====
+            2026-07-12 指示で「友達から見たアナタ」(③) と順序を入れ替え。
+            「みんなの目」(他己) は /tako へ移設。 */}
+        <div className="mt-16">
+          <DeepDiveSections
+            sections={deepDiveSections}
+            sceneImages={{
+              love: sceneImage("love"),
+              career: sceneImage("work"),
+              growth: sceneImage("school"),
+            }}
+          />
+        </div>
 
-        {/* ===== Owner & integrated > 0: 真のトリセツ履歴 (Day 10 維持) ===== */}
-        {integrated.length > 0 && (
-          <section className="mt-12">
-            <h3 className="text-[#2E2E5C] font-black text-sm mb-3 flex items-baseline justify-between">
-              <span>真のトリセツ</span>
-              <span className="text-xs font-bold text-[#2E2E5C]/60">
-                {integrated.length}
-              </span>
-            </h3>
-            <div className="flex flex-col gap-3">
-              {integrated.map((it) => (
-                <Link
-                  key={it.id}
-                  href={`/integrated/${it.id}`}
-                  className="block bg-white rounded-2xl border border-[#E3E6F5] p-5 hover:bg-[#F4F4FE] transition-colors"
-                >
-                  <p className="text-base font-black text-[#2E2E5C] mb-1">
-                    {it.title}
-                  </p>
-                  {it.subtitle && (
-                    <p className="text-xs text-[#2E2E5C]/70 leading-relaxed mb-2">
-                      {it.subtitle}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-[#2E2E5C]/50 font-bold">
-                    {formatDate(it.generatedAt)}
-                    {" / "}
-                    友達評価 {it.perceptionCount} 件
-                    {it.includeSelf ? " (自己診断含む)" : ""}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
-    {!deepDivePaid && <FullAccessPromoCard ownerToken={token} />}
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
+        ¥299 で買えるのは第二部まで (三層モデル)。友達3人で開いた人には売るものが無いので出さない。
+        画像・グループ色を渡して MBTI 風カードでフル表示。 */}
+    {!partTwoUnlocked && (
+      <FullAccessPromoCard
+        ownerToken={token}
+        imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+        imageAlt={dispName}
+        group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+      />
+    )}
+    {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。 */}
+    <ResetDataLink />
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     <TopFooter />

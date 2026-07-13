@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { customAlphabet } from "nanoid";
+import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { sendMagicLinkEmail } from "@/lib/email";
@@ -64,13 +65,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
-  // ===== body parse =====
-  let body: { email?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  // 異なるメールアドレスを使った大量送信も、接続元単位で抑える。
+  const ipLimit = await consumeRateLimit(request, {
+    scope: "magic-link-request-ip",
+    limit: 20,
+    windowSeconds: 600,
+  });
+  if (!ipLimit.allowed) {
+    // アカウントの有無や制限状態を推測させないため、通常時と同じレスポンスにする。
+    return NextResponse.json({ ok: true });
   }
+
+  // ===== body parse =====
+  const parsedBody = await readJsonObject(request, 2 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value;
 
   if (!isValidEmail(body.email)) {
     return NextResponse.json(
@@ -136,7 +150,11 @@ export async function POST(request: NextRequest) {
 
   // ===== メール送信 (失敗時もレスポンスは 200、enumeration 対策) =====
   const magicLinkUrl = `${SITE_URL}/api/auth/verify-magic-link?token=${encodeURIComponent(token)}`;
-  await sendMagicLinkEmail({ to: email, magicLinkUrl });
+  try {
+    await sendMagicLinkEmail({ to: email, magicLinkUrl });
+  } catch (error) {
+    console.error("[auth/request-magic-link] email send error:", error);
+  }
 
   return NextResponse.json({ ok: true });
 }

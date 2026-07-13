@@ -1,93 +1,197 @@
 // 計測集計の単一実装。/api/admin/stats (管理画面) と /api/metrics (スプレッドシート連携) の
 // 両方がこの関数を使う。集計ロジックを二重管理しないための共有点。
 //
-// from/to は ISO 文字列 (events.created_at / users.created_at / friend_answers.created_at)。
-// null なら全期間。
+// from/to は ISO 文字列 (events.created_at / users.created_at 等)。null なら全期間。
+//
+// ⚠️ 2026-07-13 全面改修 (数値が過小だった不具合の修正 + 現仕様への追随):
+//   1. Supabase の既定 1000 行上限で全クエリが黙って切られていた
+//      (例: diagnosis_question_answered 5.1万行 → 1000行しか集計されない)。
+//      → fetchAll() でページングして全行を読む。件数だけでよいものは count クエリ。
+//   2. タイプ分布が users.type_id (旧8タイプ) だった → 現仕様の 32 タイプを
+//      users.scores から classifyThirtyTwoType で導出し、日本語名も返す。
+//   3. 3人/5人達成が result_viewed イベントの metadata (再訪者しか数えられない)
+//      だった → friend_perceptions (実データ) を target_user_id で数える。
+//   4. 友達回答系の分布/キャンペーンも friend_answers → friend_perceptions に統一
+//      (/me のゲートが参照するのは friend_perceptions)。
+//   5. 課金 KPI (plan=full ユーザー数・概算売上) を追加。
 
 import { supabaseAdmin } from "@/lib/supabase-server";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoEssence,
+} from "@/lib/thirty-two-types";
+import type { BigFiveDimension } from "@/lib/types";
+
+const PAGE = 1000;
+const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
+const FULL_ACCESS_PRICE_JPY = 299;
 
 export async function computeStats(from: string | null, to: string | null) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function applyRange<T>(query: T): T {
+  function applyRange<T>(query: T, column = "created_at"): T {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
-    if (from) q = q.gte("created_at", from);
-    if (to) q = q.lte("created_at", to);
+    if (from) q = q.gte(column, from);
+    if (to) q = q.lte(column, to);
     return q as T;
   }
 
+  // Supabase は既定で 1000 行しか返さないため、range() でページングして全行を読む。
+  // make() は「毎回新しいクエリ」を返すファクトリ (builder は使い回せない)。
+  // 安定ページングのため make() 側で order を付けること。
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function fetchAll<T>(make: () => any): Promise<T[]> {
+    const out: T[] = [];
+    for (let start = 0; ; start += PAGE) {
+      const { data, error } = await make().range(start, start + PAGE - 1);
+      if (error) {
+        console.error("[admin-stats] fetchAll error:", error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+      out.push(...(data as T[]));
+      if (data.length < PAGE) break;
+    }
+    return out;
+  }
+
+  // イベント行の全件取得ファクトリ (ユニークセッション算出用)。
+  // order は created_at + id の複合 (同時刻行のタイブレークでページ境界の取りこぼしを防ぐ)。
+  const evRows = (names: string[], cols = "session_id") => () =>
+    applyRange(
+      supabaseAdmin
+        .from("events")
+        .select(cols)
+        .in("event_name", names)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
+    );
+
+  // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
+  // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
+  const evUniqueStripeSession = async (name: string): Promise<number> => {
+    const rows = await fetchAll<{ metadata: Record<string, unknown> | null }>(
+      evRows([name], "metadata"),
+    );
+    const ids = new Set<string>();
+    let noId = 0;
+    for (const r of rows) {
+      const sid = r.metadata?.stripe_session_id;
+      if (typeof sid === "string" && sid) ids.add(sid);
+      else noId++; // 旧形式など id 無し行は個別に数える (落とさない)
+    }
+    return ids.size + noId;
+  };
+
+  // 質問到達: 5万行超を運ばず、questionId ごとの count クエリを並列で投げる
+  const questionReachCounts = async (): Promise<Record<number, number>> => {
+    const counts = await Promise.all(
+      Array.from({ length: TOTAL_QUESTIONS }, (_, i) =>
+        applyRange(
+          supabaseAdmin
+            .from("events")
+            .select("id", { count: "exact", head: true })
+            .eq("event_name", "diagnosis_question_answered")
+            .eq("metadata->>questionId", String(i + 1)),
+        ).then(
+          (res: { count: number | null }) => [i, res.count ?? 0] as const,
+        ),
+      ),
+    );
+    const reach: Record<number, number> = {};
+    // チャートは 0 始まり index を参照する (questionId は 1 始まり)
+    for (const [idx, c] of counts) if (c > 0) reach[idx] = c;
+    return reach;
+  };
+
+  type SessionRow = { session_id: string | null };
+
   const [
-    startedRes,
-    completedRes,
-    answerStartedRes,
-    answerCompletedRes,
-    shareEventsRes,
-    viewedSessionsRes,
-    revisitedSessionsRes,
-    achievementRes,
+    startedRows,
+    completedRows,
+    answerStartedRows,
+    answerCompletedRows,
+    shareEventRows,
+    viewedSessionRows,
+    revisitedSessionRows,
+    friendToDiagRows,
+    friendLandingRows,
+    paywallViewedRows,
+    paywallScrollRows,
+    purchaseCtaRows,
+    users,
+    perceptions,
+    paidUserRows,
     recentRes,
-    friendToDiagRes,
-    diagQuestionRes,
-    friendLandingRes,
-    usersRes,
-    friendAnswersRes,
+    diagQuestionReach,
+    checkoutCreated,
+    purchaseCompleted,
   ] = await Promise.all([
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .eq("event_name", "diagnosis_started"),
+    fetchAll<SessionRow>(evRows(["diagnosis_started"])),
+    fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
+    // 正規名 + 旧名 (既存データ併合)
+    fetchAll<SessionRow>(evRows(["friend_answer_started", "friend_v2_started"])),
+    fetchAll<SessionRow>(
+      evRows(["friend_answer_completed", "friend_v2_completed"]),
     ),
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .eq("event_name", "diagnosis_completed"),
+    fetchAll<SessionRow>(
+      evRows([
+        "friend_invite_clicked",
+        "friend_share_clicked",
+        "friend_link_copied",
+      ]),
     ),
-    applyRange(
-      // 正規名 friend_answer_started + 旧名 friend_v2_started (既存データ併合)
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .in("event_name", ["friend_answer_started", "friend_v2_started"]),
+    fetchAll<SessionRow>(evRows(["result_viewed"])),
+    fetchAll<SessionRow>(evRows(["result_revisited"])),
+    fetchAll<SessionRow>(
+      evRows(["friend_to_diagnosis_clicked", "friend_v2_self_cta_clicked"]),
     ),
-    applyRange(
-      // 正規名 friend_answer_completed + 旧名 friend_v2_completed
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .in("event_name", ["friend_answer_completed", "friend_v2_completed"]),
+    fetchAll<{ session_id: string | null; invite_code: string | null }>(
+      evRows(["friend_landing_viewed"], "session_id, invite_code"),
     ),
-    applyRange(
-      // 友達招待クリック = friend_invite_clicked (正規)。旧名 friend_share_clicked /
-      // friend_link_copied は実発火実績なしだが将来の互換のため併合。
-      // ※旧 share_clicked(kind:friend_invite) は name で分離できないため未計上 (少量)。
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .in("event_name", [
-          "friend_invite_clicked",
-          "friend_share_clicked",
-          "friend_link_copied",
-        ]),
+    // ----- 課金ファネル -----
+    fetchAll<SessionRow>(evRows(["paywall_viewed"])),
+    fetchAll<{
+      session_id: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["paywall_scroll_clicked"], "session_id, metadata")),
+    fetchAll<SessionRow>(evRows(["purchase_cta_clicked"])),
+    // ----- テーブル (期間は created_at) -----
+    fetchAll<{
+      id: string;
+      scores: Record<string, unknown> | null;
+      campaign: string | null;
+      generation: number | null;
+      source_user_id: string | null;
+    }>(() =>
+      applyRange(
+        supabaseAdmin
+          .from("users")
+          .select("id, scores, campaign, generation, source_user_id")
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
+      ),
     ),
-    applyRange(
+    // 友達回答の実データ (/me のゲートと同じ friend_perceptions を正とする)。
+    // ★期間フィルタを掛けずに全件読む: 3人/5人達成は「累計でN人目が期間内に届いたか」で
+    //   判定するため、期間前からの積み上げが必要 (期間内の回答だけで数えると過小になる)。
+    fetchAll<{ target_user_id: string; created_at: string }>(() =>
       supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .eq("event_name", "result_viewed"),
+        .from("friend_perceptions")
+        .select("target_user_id, created_at")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
     ),
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .eq("event_name", "result_revisited"),
-    ),
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("owner_token, metadata")
-        .in("event_name", ["result_viewed", "result_revisited"])
-        .not("owner_token", "is", null),
+    // 課金ユーザー: webhook は同一 email の全 users 行を full にするため、行数で数えると
+    // 再診断ユーザーの購入が多重計上される。email (無ければ id) でユニーク化する。
+    // 期間は full_access_at (購入時刻)。ページングも必須 (1000行上限)。
+    fetchAll<{ id: string; email: string | null; full_access_at: string | null }>(
+      () =>
+        supabaseAdmin
+          .from("users")
+          .select("id, email, full_access_at")
+          .eq("plan", "full")
+          .order("id", { ascending: true }),
     ),
     applyRange(
       supabaseAdmin
@@ -96,137 +200,121 @@ export async function computeStats(from: string | null, to: string | null) {
         .order("created_at", { ascending: false })
         .limit(50),
     ),
-    applyRange(
-      // 正規名 friend_to_diagnosis_clicked + 旧名 friend_v2_self_cta_clicked
-      supabaseAdmin
-        .from("events")
-        .select("session_id")
-        .in("event_name", [
-          "friend_to_diagnosis_clicked",
-          "friend_v2_self_cta_clicked",
-        ]),
-    ),
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("metadata")
-        .eq("event_name", "diagnosis_question_answered"),
-    ),
-    // friend_landing_viewed — for viral reach
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("session_id, invite_code")
-        .eq("event_name", "friend_landing_viewed"),
-    ),
-    // users — period filter applied
-    applyRange(
-      supabaseAdmin
-        .from("users")
-        .select(
-          "id, type_id, campaign, generation, invite_code, source_user_id, created_at",
-        ),
-    ),
-    // friend_answers — period filter applied
-    applyRange(
-      supabaseAdmin.from("friend_answers").select("user_id, created_at"),
-    ),
+    questionReachCounts(),
+    evUniqueStripeSession("checkout_session_created"),
+    evUniqueStripeSession("purchase_completed"),
   ]);
 
-  const toUnique = (res: { data: { session_id: string }[] | null }) =>
-    new Set(res.data?.map((e) => e.session_id).filter(Boolean)).size;
+  const toUnique = (rows: SessionRow[]) =>
+    new Set(rows.map((e) => e.session_id).filter(Boolean)).size;
 
-  const diagnosisStarted = toUnique(startedRes);
-  const diagnosisCompleted = toUnique(completedRes);
-  const friendAnswerStarted = toUnique(answerStartedRes);
-  const friendAnswerCompleted = toUnique(answerCompletedRes);
-  const uniqueShare = toUnique(shareEventsRes);
-  const uniqueViewed = toUnique(viewedSessionsRes);
-  const friendToDiagClicked = toUnique(friendToDiagRes);
+  const diagnosisStarted = toUnique(startedRows);
+  const diagnosisCompleted = toUnique(completedRows);
+  const friendAnswerStarted = toUnique(answerStartedRows);
+  const friendAnswerCompleted = toUnique(answerCompletedRows);
+  const uniqueShare = toUnique(shareEventRows);
+  const uniqueViewed = toUnique(viewedSessionRows);
+  const friendToDiagClicked = toUnique(friendToDiagRows);
 
-  // result_revisited: only count sessions that also have result_viewed
+  // result_revisited: result_viewed も持つセッションのみ数える
   const viewedSessions = new Set(
-    viewedSessionsRes.data?.map((e) => e.session_id).filter(Boolean),
+    viewedSessionRows.map((e) => e.session_id).filter(Boolean),
   );
   const uniqueRevisited = new Set(
-    revisitedSessionsRes.data
-      ?.map((e) => e.session_id)
+    revisitedSessionRows
+      .map((e) => e.session_id)
       .filter((s): s is string => !!s && viewedSessions.has(s)),
   ).size;
 
-  const ownerMax = new Map<string, number>();
-  for (const row of achievementRes.data ?? []) {
-    const t = row.owner_token as string;
-    const fc = (row.metadata as Record<string, unknown>)?.friendCount;
-    if (t && typeof fc === "number") {
-      ownerMax.set(t, Math.max(ownerMax.get(t) ?? 0, fc));
-    }
+  // --- 友達人数 (friend_perceptions が正。/me の解放ゲートと同じデータ源) ---
+  // perceptions は全期間ぶん。オーナーごとに回答時刻の昇順リストを作る。
+  const perceptionDates = new Map<string, string[]>();
+  for (const row of perceptions) {
+    const uid = row.target_user_id;
+    if (!uid) continue;
+    const arr = perceptionDates.get(uid) ?? [];
+    arr.push(row.created_at);
+    perceptionDates.set(uid, arr);
   }
+  const inRange = (iso: string) => {
+    const t = Date.parse(iso);
+    if (from && t < Date.parse(from)) return false;
+    if (to && t > Date.parse(to)) return false;
+    return true;
+  };
+  // 3人/5人達成 = 「N人目の回答が期間内に届いたオーナー数」(全期間なら累計到達数)。
+  // 期間内の回答数だけで数えると、期間前からの積み上げ到達が消えて過小になるため。
   let threeAchieved = 0;
   let fiveAchieved = 0;
-  for (const fc of ownerMax.values()) {
-    if (fc >= 3) threeAchieved++;
-    if (fc >= 5) fiveAchieved++;
+  for (const dates of perceptionDates.values()) {
+    if (dates.length >= 3 && inRange(dates[2])) threeAchieved++;
+    if (dates.length >= 5 && inRange(dates[4])) fiveAchieved++;
   }
-
-  // --- Type distribution ---
-  const typeCounts: Record<string, number> = {};
-  for (const row of usersRes.data ?? []) {
-    const t = row.type_id as string;
-    typeCounts[t] = (typeCounts[t] ?? 0) + 1;
-  }
-  const typeDistribution = Object.entries(typeCounts)
-    .map(([typeId, count]) => ({ typeId, count }))
-    .sort((a, b) => b.count - a.count);
-
-  // --- Friend answer count distribution ---
-  const userFriendCounts = new Map<string, number>();
-  for (const row of friendAnswersRes.data ?? []) {
-    const uid = row.user_id as string;
-    userFriendCounts.set(uid, (userFriendCounts.get(uid) ?? 0) + 1);
-  }
-  const totalUsers = usersRes.data?.length ?? 0;
-  const usersWithFriends = new Set(userFriendCounts.keys()).size;
-  let with1 = 0,
-    with2 = 0,
-    with3plus = 0,
-    with5plus = 0;
-  for (const fc of userFriendCounts.values()) {
-    if (fc >= 1) with1++;
-    if (fc >= 2) with2++;
-    if (fc >= 3) with3plus++;
-    if (fc >= 5) with5plus++;
-  }
+  // 分布 = 期間内に作成されたユーザー × 累計の友達人数のスナップショット
+  // (バケット合計が必ず total と一致する。zero が負になる旧バグの修正)。
+  const totalUsers = users.length;
   const friendCountDistribution = {
     total: totalUsers,
-    zero: totalUsers - usersWithFriends,
-    one: with1 - with2,
-    two: with2 - with3plus,
-    threePlus: with3plus,
-    fivePlus: with5plus,
+    zero: 0,
+    one: 0,
+    two: 0,
+    threePlus: 0,
+    fivePlus: 0,
   };
+  for (const row of users) {
+    const fc = perceptionDates.get(row.id)?.length ?? 0;
+    if (fc === 0) friendCountDistribution.zero++;
+    else if (fc === 1) friendCountDistribution.one++;
+    else if (fc === 2) friendCountDistribution.two++;
+    else friendCountDistribution.threePlus++;
+    if (fc >= 5) friendCountDistribution.fivePlus++;
+  }
 
-  // --- Campaign stats ---
+  // --- タイプ分布 (現仕様 = 32タイプ。users.scores から決定的に導出) ---
+  // 旧 users.type_id は 8 タイプで表示と不一致のため使わない。
+  // 表示名はユーザー向けの「称号」(essence。/types・/me ヒーローと同じ。寄添者/夢想家 等)。
+  // scores が壊れている行 (ゲスト購入のプレースホルダー等) は "unknown" に寄せる。
+  const typeCounts: Record<string, { name: string; count: number }> = {};
+  for (const row of users) {
+    let key = "unknown";
+    let name = "不明 (scores欠損)";
+    const s = row.scores as Partial<Record<BigFiveDimension, number>> | null;
+    if (s && typeof s === "object" && typeof s.E === "number") {
+      try {
+        const t32 = classifyThirtyTwoType(s);
+        key = t32;
+        name = thirtyTwoEssence(t32);
+      } catch {
+        // 分類不能は unknown のまま
+      }
+    }
+    typeCounts[key] = typeCounts[key] ?? { name, count: 0 };
+    typeCounts[key].count++;
+  }
+  const typeDistribution = Object.entries(typeCounts)
+    .map(([typeId, v]) => ({ typeId, name: v.name, count: v.count }))
+    .sort((a, b) => b.count - a.count);
+
+  // --- キャンペーン (友達回答は perceptions を紐付け) ---
   const campaignMap = new Map<
     string,
     { users: number; friendAnswers: number }
   >();
   const userIdToCampaign = new Map<string, string>();
-  for (const row of usersRes.data ?? []) {
-    const c = row.campaign as string | null;
+  for (const row of users) {
+    const c = row.campaign;
     if (c) {
       if (!campaignMap.has(c))
         campaignMap.set(c, { users: 0, friendAnswers: 0 });
       campaignMap.get(c)!.users++;
-      userIdToCampaign.set(row.id as string, c);
+      userIdToCampaign.set(row.id, c);
     }
   }
-  for (const row of friendAnswersRes.data ?? []) {
-    const uid = row.user_id as string;
+  for (const [uid, dates] of perceptionDates.entries()) {
     const c = userIdToCampaign.get(uid);
-    if (c && campaignMap.has(c)) {
-      campaignMap.get(c)!.friendAnswers++;
-    }
+    if (!c || !campaignMap.has(c)) continue;
+    // キャンペーン別の友達回答は期間内の回答数で数える
+    campaignMap.get(c)!.friendAnswers += dates.filter(inRange).length;
   }
   const campaignStats = Array.from(campaignMap.entries())
     .map(([campaign, s]) => ({
@@ -236,11 +324,11 @@ export async function computeStats(from: string | null, to: string | null) {
     }))
     .sort((a, b) => b.completed - a.completed);
 
-  // --- Generation distribution ---
+  // --- 世代分布 ---
   const genCounts: Record<number, number> = {};
   let unknownGen = 0;
-  for (const row of usersRes.data ?? []) {
-    const g = row.generation as number | null;
+  for (const row of users) {
+    const g = row.generation;
     if (g !== null && g !== undefined) {
       genCounts[g] = (genCounts[g] ?? 0) + 1;
     } else {
@@ -251,54 +339,67 @@ export async function computeStats(from: string | null, to: string | null) {
     .map(([gen, count]) => ({ generation: Number(gen), count }))
     .sort((a, b) => a.generation - b.generation);
 
-  // --- Per-question reach ---
-  // diagnosis_question_answered は metadata.questionId (1 始まりの連番) で発火する。
-  // 到達チャート (admin) は 0 始まり index を参照するため questionId-1 に換算する。
-  // (旧実装は questionIndex を読んでいたが、そのキーは発火されず常に空だった。過去データも遡って救済)
-  const diagQuestionReach: Record<number, number> = {};
-  for (const row of diagQuestionRes.data ?? []) {
-    const meta = (row.metadata ?? {}) as Record<string, unknown>;
-    const qid = meta.questionId;
-    const idx =
-      typeof qid === "number"
-        ? qid - 1
-        : typeof meta.questionIndex === "number"
-          ? (meta.questionIndex as number)
-          : null;
-    if (idx !== null && idx >= 0) {
-      diagQuestionReach[idx] = (diagQuestionReach[idx] ?? 0) + 1;
-    }
-  }
-
-  // --- Viral metrics ---
-  const friendLandingSessions = new Set(
-    friendLandingRes.data
-      ?.map((e: { session_id: string }) => e.session_id)
-      .filter(Boolean),
-  );
-  const friendLandingViewed = friendLandingSessions.size;
-
-  const landingInviteCodes = new Set(
-    friendLandingRes.data
-      ?.map((e: { invite_code: string }) => e.invite_code)
-      .filter(Boolean),
-  );
-  const sharingUsersReached = landingInviteCodes.size;
+  // --- バイラル指標 ---
+  const friendLandingViewed = new Set(
+    friendLandingRows.map((e) => e.session_id).filter(Boolean),
+  ).size;
+  const sharingUsersReached = new Set(
+    friendLandingRows.map((e) => e.invite_code).filter(Boolean),
+  ).size;
   const avgLandingPerSharer =
     sharingUsersReached > 0 ? friendLandingViewed / sharingUsersReached : 0;
 
-  const childUsers = (usersRes.data ?? []).filter(
-    (r: { source_user_id: string | null }) => r.source_user_id != null,
-  );
+  const childUsers = users.filter((r) => r.source_user_id != null);
   const childDiagCompleted = childUsers.length;
-  const parentIds = new Set(
-    childUsers.map((r: { source_user_id: string }) => r.source_user_id),
-  );
-  const parentDiagCompleted = parentIds.size;
+  const parentDiagCompleted = new Set(
+    childUsers.map((r) => r.source_user_id),
+  ).size;
   const avgChildPerParent =
     parentDiagCompleted > 0 ? childDiagCompleted / parentDiagCompleted : 0;
   const viralCoefficient =
     diagnosisCompleted > 0 ? childDiagCompleted / diagnosisCompleted : 0;
+
+  // --- 課金 ---
+  // webhook (grantFullAccessByEmailOrId) は同一 email の全 users 行を full にするため、
+  // 「人」= email (無ければ行id) でユニーク化する。購入時刻はその人の最古の full_access_at。
+  // 期間判定は Date.parse の数値比較 ('+00:00' と 'Z' の表記差で文字列比較が壊れるため)。
+  const paidPersons = new Map<string, string | null>(); // personKey -> earliest full_access_at
+  for (const r of paidUserRows) {
+    const key = (r.email ?? "").trim().toLowerCase() || `id:${r.id}`;
+    const prev = paidPersons.get(key);
+    const at = r.full_access_at;
+    if (prev === undefined) {
+      paidPersons.set(key, at);
+    } else if (at && (!prev || Date.parse(at) < Date.parse(prev))) {
+      paidPersons.set(key, at);
+    }
+  }
+  let paidUsers = 0;
+  for (const at of paidPersons.values()) {
+    if (!from && !to) {
+      paidUsers++; // 全期間は full_access_at 無し (旧データ) も計上
+    } else if (at && inRange(at)) {
+      paidUsers++;
+    }
+  }
+  const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
+
+  const paywallViewed = toUnique(paywallViewedRows);
+  const paywallScrollClicked = toUnique(paywallScrollRows);
+  const purchaseCtaClicked = toUnique(purchaseCtaRows);
+
+  // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
+  const sourceCounts = new Map<string, number>();
+  for (const row of paywallScrollRows) {
+    const s =
+      typeof row.metadata?.source === "string"
+        ? row.metadata.source
+        : "unknown";
+    sourceCounts.set(s, (sourceCounts.get(s) ?? 0) + 1);
+  }
+  const paywallSources = Array.from(sourceCounts.entries())
+    .map(([source, count]) => ({ source, count }))
+    .sort((a, b) => b.count - a.count);
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
@@ -325,6 +426,21 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "3人達成", count: threeAchieved },
       { label: "5人達成", count: fiveAchieved },
     ],
+    // 課金ファネル: 結果ページ表示 → カード表示 → 誘導クリック → 購入CTA →
+    // Stripe到達 → 決済完了。前半はユニークセッション、後半2つは件数 (サーバ発行)。
+    paywallFunnel: [
+      { label: "結果ページ表示", count: uniqueViewed },
+      { label: "課金カード表示", count: paywallViewed },
+      { label: "解除ボタン押下", count: paywallScrollClicked },
+      { label: "購入CTA押下", count: purchaseCtaClicked },
+      { label: "Stripe到達", count: checkoutCreated },
+      { label: "決済完了", count: purchaseCompleted },
+    ],
+    paywallSources,
+    purchaseCompleted,
+    purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
+    paidUsers,
+    revenueJpy,
     recentEvents: recentRes.data ?? [],
     friendToDiagClicked,
     friendToDiagRate: rate(friendToDiagClicked, friendAnswerCompleted),

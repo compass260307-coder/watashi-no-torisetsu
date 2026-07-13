@@ -84,8 +84,10 @@ export async function GET(request: NextRequest) {
   const session = await getSession(request);
   const full = session?.id ? await hasFullAccess(session.id) : false;
   if (!full) {
+    // 未課金。ログイン中なら owner_token を返す → /aisho の課金CTAに渡して、
+    // SP で Cookie が消えても owner_token で本人解決できるようにする (401→トップ回避)。
     return NextResponse.json(
-      { locked: true },
+      { locked: true, ownerToken: session?.owner_token ?? null },
       { headers: { "Cache-Control": "no-store" } },
     );
   }

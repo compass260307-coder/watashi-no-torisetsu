@@ -41,7 +41,7 @@ import {
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import { preferCutImage } from "@/lib/character-image";
+import { preferCutImage, sceneImageForGroup } from "@/lib/character-image";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
 
@@ -295,6 +295,14 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     ? heroColorsForGroup(thirtyTwoGroup(data.friendCharacter.type32))
     : null;
 
+  // ロック空状態 (友達3人未満=未達成) か。下の描画分岐と同条件。
+  // 課金カード上のセクションタイトルは、この未達成ページでのみ出す (完成ページには出さない)。
+  const isTakoLocked =
+    !data.unlocked ||
+    !data.minnaContext ||
+    !data.friendCharacter ||
+    !takoHero;
+
   // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
   const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
 
@@ -334,8 +342,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           !data.minnaContext ||
           !data.friendCharacter ||
           !takoHero ? (
-            /* ===== ロック空状態 (友達3人未満)。FV は /aisho と同じ幅 (1080 / 2xl 1400)。 ===== */
-            <div className="mx-auto max-w-[1080px] 2xl:max-w-[1400px] pt-6">
+            /* ===== ロック空状態 (友達3人未満)。本文幅は /me・フッターと統一 (1080)。 ===== */
+            <div className="mx-auto max-w-[1080px] pt-6">
               <TakoLockedState
                 answered={data.friends.map((f) => ({
                   perceptionId: f.perceptionId,
@@ -384,7 +392,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 >
                   1
                 </span>
-                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                <h2 className="balance-jp text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                   みんなの目に映るあなた
                 </h2>
               </div>
@@ -472,50 +480,88 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               />
             </section>
 
-            {/* 友達にシェア (もっと友達に診断してもらう招待)。見出し行は撤去し、招待帯だけ残す。 */}
-            <section className="mb-6">
-              {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
-                  同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
-                  source="tako_unlocked" で計測。 */}
-              <div
-                className="mt-8 rounded-3xl p-6 md:px-9 md:py-7"
-                style={{ background: "#EDEFFB" }}
-              >
-                <div className="md:flex md:items-center md:gap-9 lg:gap-12">
-                  {/* 左: 見出し + サブ (色は TakoLockedState と同じ NAVY / INACTIVE) */}
-                  <div className="md:flex-1">
-                    <h3
-                      className="text-[22px] font-black leading-[1.45] md:text-[26px] md:leading-[1.4]"
-                      style={{ color: "#2E2E5C" }}
-                    >
-                      もっと友達に聞くと、
-                      <br className="hidden md:block" />
-                      新しい自分が見えてくる。
-                    </h3>
-                    <p
-                      className="mt-2.5 text-[12.5px] font-bold md:text-sm"
-                      style={{ color: "#9BA3B4" }}
-                    >
-                      答えてくれる友達が増えるほど、深掘りの精度も上がるよ
-                    </p>
-                  </div>
-                  {/* 右: 招待 (QR + シェア) */}
-                  <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
-                    <LockedInviteShare
-                      inviteUrl={data.inviteUrl}
-                      trackSource="tako_unlocked"
-                      compact
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
             </div>
         )}
         </div>
       </main>
-      {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。 */}
-      {!takoFull && <FullAccessPromoCard ownerToken={token} />}
+      {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。未課金時のみ。
+          友達キャラの画像・グループ色を渡して MBTI 風カードで表示 (無ければ既定)。 */}
+      {(() => {
+        if (takoFull) return null;
+        // カードのグループ (色・装飾・シーン画像)。友達平均キャラのグループ。
+        const promoGroup = data.friendCharacter
+          ? thirtyTwoGroup(data.friendCharacter.type32)
+          : "unknown";
+        return (
+          <>
+            {/* /tako 専用: 課金カードの上に中央寄せのセクションタイトル。
+                未達成 (ロック空状態) ページのみ表示。完成した結果ページには出さない。 */}
+            {isTakoLocked && (
+              <div className="mx-auto max-w-[1080px] px-4 pt-3 text-left md:px-8 md:pt-5 md:text-center">
+                <h2 className="text-[26px] font-black leading-[1.35] text-[#2E2E5C] md:text-[34px]">
+                  トリセツを完成させよう
+                </h2>
+                {/* PC は1行 (whitespace-nowrap)、SP は自然折り返し。 */}
+                <p className="mx-auto mt-3 max-w-[560px] text-[14px] font-bold leading-[1.7] text-[#8A8AA3] md:max-w-none md:whitespace-nowrap md:text-[15px]">
+                  友達ひとりずつの本音も、自分の深掘りも。この先ぜんぶ、読めるようになります。
+                </p>
+              </div>
+            )}
+            <FullAccessPromoCard
+              ownerToken={token}
+              // /me のカードと同じグループ別シーン挿絵 (無ければキャラ画像にフォールバック)。
+              imageSrc={
+                sceneImageForGroup(promoGroup, "work") ??
+                sceneImageForGroup(promoGroup, "normal1") ??
+                data.friendCharacter?.imageSrc
+              }
+              imageAlt={data.friendCharacter?.essence ?? ""}
+              group={promoGroup}
+            />
+          </>
+        );
+      })()}
+      {/* 友達にシェア (もっと友達に診断してもらう招待)。課金カードの下に配置。
+          解除後 (!isTakoLocked) のみ表示。main 外に出したため 1080 幅コンテナを自前で付ける。 */}
+      {!isTakoLocked && (
+        <section className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
+          {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
+              同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
+              source="tako_unlocked" で計測。 */}
+          <div
+            className="rounded-3xl p-6 md:px-9 md:py-7"
+            style={{ background: "#EDEFFB" }}
+          >
+            <div className="md:flex md:items-center md:gap-9 lg:gap-12">
+              {/* 左: 見出し + サブ (色は TakoLockedState と同じ NAVY / INACTIVE) */}
+              <div className="md:flex-1">
+                <h3
+                  className="text-[22px] font-black leading-[1.45] md:text-[26px] md:leading-[1.4]"
+                  style={{ color: "#2E2E5C" }}
+                >
+                  もっと友達に聞くと、
+                  <br className="hidden md:block" />
+                  新しい自分が見えてくる。
+                </h3>
+                <p
+                  className="mt-2.5 text-[12.5px] font-bold md:text-sm"
+                  style={{ color: "#9BA3B4" }}
+                >
+                  答えてくれる友達が増えるほど、深掘りの精度も上がるよ
+                </p>
+              </div>
+              {/* 右: 招待 (QR + シェア) */}
+              <div className="mt-5 md:mt-0 md:w-[38%] md:max-w-[360px] md:shrink-0">
+                <LockedInviteShare
+                  inviteUrl={data.inviteUrl}
+                  trackSource="tako_unlocked"
+                  compact
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />
     </>

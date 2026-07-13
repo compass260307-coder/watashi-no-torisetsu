@@ -22,7 +22,6 @@ import {
   type SixteenTypeId,
   sixteenTypes,
   classifySixteenType,
-  characterImagePath,
   animalSlugForType,
 } from "./sixteen-types";
 
@@ -110,16 +109,6 @@ export const thirtyTwoTypes: Record<ThirtyTwoTypeId, ThirtyTwoType> = (() => {
 /** 32 タイプのメタデータ取得 */
 export function thirtyTwoType(id: ThirtyTwoTypeId): ThirtyTwoType {
   return thirtyTwoTypes[id];
-}
-
-/**
- * 32 タイプのキャラ画像パス。
- * ⚠️ PoC 仮: N 違いでも同じ 16 動物画像を流用 (characterImagePath(base))。
- *   本実装では N 差分ビジュアル、または既存の 32 カード画像
- *   (/public/cards/{fullCode}.png) を割り当てる。
- */
-export function thirtyTwoCharacterImagePath(id: ThirtyTwoTypeId): string {
-  return characterImagePath(baseIdOf(id));
 }
 
 /** 全 32 タイプ ID 配列 (図鑑・検証用) */
@@ -226,9 +215,9 @@ export function thirtyTwoZukanDesc(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].zukanDesc;
 }
 
-/** 32キャラの画像パス (/characters/v3/<slug>.png)。画像未配置でもパスだけ組める。 */
+/** 32キャラの画像パス (/characters/v3/<slug>.webp)。画像未配置でもパスだけ組める。 */
 export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
-  return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.png`;
+  return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.webp`;
 }
 
 /** 32キャラの生息地グループ */

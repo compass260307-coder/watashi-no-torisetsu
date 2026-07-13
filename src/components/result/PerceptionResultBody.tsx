@@ -11,7 +11,7 @@
 // は従来サイズのまま (各三項の false 側が従来値)。
 
 import type { ReactNode } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { ResultHero } from "./ResultHero";
 import { TrisetsuNameTag } from "./TrisetsuNameTag";
 import { MutualUnderstandingRadar } from "./MutualUnderstandingRadar";
@@ -215,7 +215,7 @@ export function PerceptionResultBody({
       {/* ===== ①→② の間: その友達が見たタイプのグループ別挿絵 (個別ページのみ・1枚) ===== */}
       {bodySceneSrc && (
         <div className={sectionCls}>
-          <Image
+          <SmoothImage
             src={bodySceneSrc}
             alt=""
             width={1532}

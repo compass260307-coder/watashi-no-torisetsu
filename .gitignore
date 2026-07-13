@@ -47,3 +47,7 @@ scripts/pdf-prototype-output.pdf
 # 32キャラ画像の配布用書庫 / 展開先 (コードは v3/<slug>.png を直接参照。これらは未参照)
 public/characters/v3/characters.zip
 public/characters/v3/characters/
+
+# ローカル軽量化ツール (git管理しない)
+/public/_gallery.html
+/public/_routes.html

@@ -6,13 +6,22 @@
 // パルスの見た目は globals.css の .paywall-pulse (prefers-reduced-motion で無効)。
 //
 // ブラウザ専用 (onClick 等のイベントハンドラから呼ぶ前提)。SSR 側で呼ばれても no-op。
+//
+// 課金ファネル計測 (2026-07-13): 呼び出し = 「課金カードへの誘導クリック」なので、
+// ここで paywall_scroll_clicked を一元計測する (metadata.source = どのUIか)。
+// 呼び出し元は source を必ず渡すこと (未指定は "unknown" で記録)。
+
+import { track } from "@/lib/track";
 
 const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
 const PULSE_MS = 1300;
 
-export function scrollToPaywall(): void {
+export function scrollToPaywall(source: string = "unknown"): void {
   if (typeof document === "undefined") return;
+  track("paywall_scroll_clicked", {
+    metadata: { source, page: window.location.pathname.split("/")[1] || "top" },
+  });
   const el = document.getElementById(PAYWALL_ID);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 
 // 診断ページ冒頭のヒーロー。/tako (他己診断) の FV と同じ「左=見出し / 右=イラスト」構成。
 //   - PC (md+): 見出し flex-1 (左) + イラスト (右)。SP: 縦積み (見出し→イラスト)。
@@ -43,7 +43,7 @@ export function DiagnosisHero({
         {/* エンブレム: フェルト調のキャラクターシーン (横長)。LCP 候補なので priority で先読み。
             SP は画面幅いっぱいまで大きく (w-full)、PC は右カラムで w-[460px]。 */}
         <div className="w-full shrink-0 md:w-auto">
-          <Image
+          <SmoothImage
             src={imageSrc}
             alt="ワタシのトリセツのマスコット"
             width={1448}

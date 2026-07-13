@@ -55,20 +55,34 @@ if(!a.s&&!a.c){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=dec
 if(a.s&&!localStorage.getItem(SK))localStorage.setItem(SK,a.s);
 if(a.c&&!localStorage.getItem(CK))localStorage.setItem(CK,a.c);
 }catch(e){}})();`;
+// 16Personalities の SERP を参考に、キーワード直球タイトル + 会話調ベネフィット
+// の説明文へ (2026-07-13)。サイト名は WebSite JSON-LD で別途表示されるため、
+// タイトルは「無料性格診断テスト」を先頭に置く。
+const SHARED_TITLE = "友達と作る無料性格診断テスト｜ワタシのトリセツ";
 const SHARED_DESCRIPTION =
-  "15問答えて、友達3人にも聞いてみる。Big Five理論ベースの性格診断で、自分でも気づかない一面を発見。大学生向け、登録不要・完全無料・3分で完成。";
+  "OCEAN(ビッグファイブ)理論ベースの無料性格診断テスト。約3分で、16タイプ性格診断よりも細かい32タイプのキャラからあなたが見つかります。友達の回答で、自分では気づかない一面までわかる自分だけの取扱説明書が完成。";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
+    default: SHARED_TITLE,
     template: "%s｜ワタシのトリセツ",
   },
   description: SHARED_DESCRIPTION,
   applicationName: "ワタシのトリセツ",
   keywords: [
     "ワタシのトリセツ",
+    "無料性格診断テスト",
+    "性格診断テスト",
     "性格診断",
+    "MBTI",
+    "MBTI診断",
+    "OCEAN",
+    "OCEAN診断",
+    "ビッグファイブ診断",
+    "16タイプ",
+    "キャラ診断",
+    "32タイプ",
     "自己分析",
     "Big Five",
     "ビッグファイブ",
@@ -93,7 +107,7 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     url: BASE_URL,
     siteName: "ワタシのトリセツ",
-    title: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
+    title: SHARED_TITLE,
     description: SHARED_DESCRIPTION,
     images: [
       {
@@ -106,7 +120,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ワタシのトリセツ｜友達と作る、自分の取扱説明書",
+    title: SHARED_TITLE,
     description: SHARED_DESCRIPTION,
     images: ["/ogp-v4.png"],
   },

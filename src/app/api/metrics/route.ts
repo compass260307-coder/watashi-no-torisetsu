@@ -9,6 +9,9 @@
 import { computeStats } from "@/lib/admin-stats";
 import { NextRequest, NextResponse } from "next/server";
 
+// 集計はページング + 質問別 count 50本で時間がかかるため余裕を持たせる (admin/stats と同じ)。
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const metricsKey = process.env.METRICS_KEY;
   if (!metricsKey) {
@@ -47,6 +50,15 @@ export async function GET(request: NextRequest) {
     totalUsers: s.totalUsers,
     avgChildPerParent: round(s.viral.avgChildPerParent),
     viralCoefficient: round(s.viral.viralCoefficient),
+    // 課金ファネル (2026-07-13 追加。列は末尾に足す = 既存シートの列順を壊さない)
+    paywallViewed: s.paywallFunnel[1]?.count ?? 0,
+    paywallScrollClicked: s.paywallFunnel[2]?.count ?? 0,
+    purchaseCtaClicked: s.paywallFunnel[3]?.count ?? 0,
+    checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
+    purchaseCompleted: s.purchaseCompleted,
+    purchaseConversionRate: round(s.purchaseConversionRate),
+    paidUsers: s.paidUsers,
+    revenueJpy: s.revenueJpy,
   };
 
   const format = request.nextUrl.searchParams.get("format");

@@ -41,6 +41,10 @@ type Stats = {
   resultRevisited: number;
   revisitRate: number;
   funnel: { label: string; count: number }[];
+  paywallFunnel: { label: string; count: number }[];
+  paywallSources: { source: string; count: number }[];
+  purchaseCompleted: number;
+  purchaseConversionRate: number;
   recentEvents: {
     event_name: string;
     session_id: string | null;
@@ -49,7 +53,9 @@ type Stats = {
   }[];
   friendToDiagClicked: number;
   friendToDiagRate: number;
-  typeDistribution: { typeId: string; count: number }[];
+  typeDistribution: { typeId: string; name?: string; count: number }[];
+  paidUsers: number;
+  revenueJpy: number;
   friendCountDistribution: {
     total: number;
     zero: number;
@@ -268,19 +274,6 @@ export default function AdminPage() {
 
   const [reportOwnerToken, setReportOwnerToken] = useState("");
 
-  type UndeliveredRow = {
-    id: string;
-    owner_token: string;
-    line_user_id: string;
-    welcome_sent_at: string | null;
-    created_at: string;
-  };
-  const [undelivered, setUndelivered] = useState<UndeliveredRow[]>([]);
-  const [undeliveredLoading, setUndeliveredLoading] = useState(false);
-  const [resendingId, setResendingId] = useState<string | null>(null);
-  const [welcomeStatusMessage, setWelcomeStatusMessage] = useState<string | null>(
-    null,
-  );
 
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
@@ -295,8 +288,11 @@ export default function AdminPage() {
         const params = new URLSearchParams();
         let range: { from: string; to: string } | null;
         if (p === "custom") {
-          const fromDate = new Date(cFrom);
-          const toDate = new Date(cTo);
+          // "YYYY-MM-DD" を new Date() に直接渡すと UTC 深夜として解釈され、
+          // JST の 00:00〜09:00 が前日に漏れる。T00:00:00 付きでローカル時刻として
+          // 解釈させる (プリセットと同じ挙動に揃える。2026-07-13 修正)。
+          const fromDate = new Date(`${cFrom}T00:00:00`);
+          const toDate = new Date(`${cTo}T00:00:00`);
           toDate.setHours(23, 59, 59, 999);
           range = { from: fromDate.toISOString(), to: toDate.toISOString() };
         } else {
@@ -340,92 +336,6 @@ export default function AdminPage() {
     }
   };
 
-  const sendTestNotify = useCallback(
-    async (type: "welcome" | "friend_answered", friendCount?: number) => {
-      if (!adminKey) return;
-      const token = testOwnerToken.trim();
-      if (!token) {
-        setTestStatus("ownerToken を入力してください");
-        return;
-      }
-      setTestSending(true);
-      setTestStatus(null);
-      try {
-        const res = await fetch("/api/admin/test-line-notify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-          },
-          body: JSON.stringify({ ownerToken: token, type, friendCount }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setTestStatus(`✅ 送信完了: ${data.sent}`);
-        } else {
-          setTestStatus(`❌ 失敗: ${data.error ?? res.statusText}`);
-        }
-      } catch (err) {
-        setTestStatus(`❌ 通信エラー: ${(err as Error).message}`);
-      } finally {
-        setTestSending(false);
-      }
-    },
-    [adminKey, testOwnerToken],
-  );
-
-  const fetchUndelivered = useCallback(async () => {
-    if (!adminKey) return;
-    setUndeliveredLoading(true);
-    setWelcomeStatusMessage(null);
-    try {
-      const res = await fetch("/api/admin/welcome-status", {
-        headers: { "x-admin-key": adminKey },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUndelivered(data.undelivered ?? []);
-      } else {
-        setWelcomeStatusMessage(`❌ 取得失敗: ${data.error ?? res.statusText}`);
-      }
-    } catch (err) {
-      setWelcomeStatusMessage(`❌ 通信エラー: ${(err as Error).message}`);
-    } finally {
-      setUndeliveredLoading(false);
-    }
-  }, [adminKey]);
-
-  const resendWelcome = useCallback(
-    async (lineUserId: string, rowId: string) => {
-      if (!adminKey) return;
-      setResendingId(rowId);
-      setWelcomeStatusMessage(null);
-      try {
-        const res = await fetch("/api/admin/welcome-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-          },
-          body: JSON.stringify({ lineUserId }),
-        });
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          setWelcomeStatusMessage(`✅ 再送成功: ${lineUserId.slice(0, 8)}...`);
-          await fetchUndelivered();
-        } else {
-          setWelcomeStatusMessage(
-            `❌ 再送失敗: ${data.error ?? res.statusText} (status ${data.statusCode ?? "?"})`,
-          );
-        }
-      } catch (err) {
-        setWelcomeStatusMessage(`❌ 通信エラー: ${(err as Error).message}`);
-      } finally {
-        setResendingId(null);
-      }
-    },
-    [adminKey, fetchUndelivered],
-  );
 
   if (!adminKey) {
     return (
@@ -470,6 +380,10 @@ export default function AdminPage() {
   if (!stats) return null;
 
   const funnelMax = Math.max(...stats.funnel.map((f) => f.count), 1);
+  const paywallFunnelMax = Math.max(
+    ...(stats.paywallFunnel ?? []).map((f) => f.count),
+    1,
+  );
   const fc = stats.friendCountDistribution;
   const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
 
@@ -507,6 +421,20 @@ export default function AdminPage() {
     rows.push(["ステップ", "件数"]);
     stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
     rows.push([]);
+    rows.push(["# 課金ファネル"]);
+    rows.push(["ステップ", "件数"]);
+    (stats.paywallFunnel ?? []).forEach((s) =>
+      rows.push([s.label, String(s.count)]),
+    );
+    rows.push([]);
+    if ((stats.paywallSources ?? []).length > 0) {
+      rows.push(["# 解除ボタン押下の内訳"]);
+      rows.push(["source", "クリック回数"]);
+      stats.paywallSources.forEach((s) =>
+        rows.push([s.source, String(s.count)]),
+      );
+      rows.push([]);
+    }
     if (stats.campaignStats.length > 0) {
       rows.push(["# キャンペーン別"]);
       rows.push(["campaign", "診断完了", "友達回答"]);
@@ -531,12 +459,12 @@ export default function AdminPage() {
     if (stats.typeDistribution.length > 0) {
       rows.push(["# タイプ分布"]);
       rows.push(["タイプ", "人数"]);
-      stats.typeDistribution.forEach((t) => rows.push([TYPE_LABELS[t.typeId] ?? t.typeId, String(t.count)]));
+      stats.typeDistribution.forEach((t) => rows.push([t.name ?? TYPE_LABELS[t.typeId] ?? t.typeId, String(t.count)]));
       rows.push([]);
     }
     rows.push(["# 診断質問到達数"]);
     rows.push(["質問", "回答数"]);
-    for (let i = 0; i < 15; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
+    for (let i = 0; i < 50; i++) rows.push([`Q${i + 1}`, String(stats.diagQuestionReach[String(i)] ?? 0)]);
 
     const bom = "﻿";
     const csv = bom + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -649,12 +577,17 @@ export default function AdminPage() {
             <KpiCard
               label="3人達成"
               value={stats.threeAchieved}
-              sub="トリセツ完成"
+              sub="第二部解放 (friend_perceptions)"
             />
             <KpiCard
               label="5人達成"
               value={stats.fiveAchieved}
-              sub="深掘りレポート解放"
+              sub="本物の見られ方 完成"
+            />
+            <KpiCard
+              label="課金ユーザー"
+              value={stats.paidUsers}
+              sub={`概算売上 ¥${(stats.revenueJpy ?? 0).toLocaleString()}`}
             />
             <KpiCard
               label="結果再訪"
@@ -696,6 +629,59 @@ export default function AdminPage() {
                 />
               ))}
             </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              診断〜友達回答はユニークセッション数、3人/5人達成は「N人目の回答が期間内に届いたオーナー数」。
+              単位が異なるため前ステップ比は目安です。
+            </p>
+          </div>
+        </section>
+
+        {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
+        <section>
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            課金ファネル (¥299 フルアクセス)
+          </h2>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
+              <span className="w-28 text-right">ステップ</span>
+              <span className="flex-1">件数</span>
+              <span className="w-16 text-right">前ステップ比</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(stats.paywallFunnel ?? []).map((step, i) => (
+                <FunnelBar
+                  key={step.label}
+                  label={step.label}
+                  count={step.count}
+                  max={paywallFunnelMax}
+                  prevCount={
+                    i > 0 ? stats.paywallFunnel[i - 1].count : undefined
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-gray-400">
+              前半3ステップはユニークセッション数、Stripe到達・決済完了はサーバ記録の件数。
+              計測開始 (2026-07-13) 以前のデータは含まれません。
+            </p>
+            {/* 誘導クリックの内訳 (どのボタンが課金カードへ連れてきているか) */}
+            {(stats.paywallSources ?? []).length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <p className="mb-2 text-xs font-bold text-gray-500">
+                  解除ボタン押下の内訳 (クリック回数)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {stats.paywallSources.map((s) => (
+                    <span
+                      key={s.source}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
+                    >
+                      {s.source}: <b>{s.count}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
@@ -899,7 +885,7 @@ export default function AdminPage() {
                 {stats.typeDistribution.map((t) => (
                   <DistributionBar
                     key={t.typeId}
-                    label={TYPE_LABELS[t.typeId] ?? t.typeId}
+                    label={t.name ?? TYPE_LABELS[t.typeId] ?? t.typeId}
                     count={t.count}
                     max={typeMax}
                   />
@@ -923,128 +909,13 @@ export default function AdminPage() {
           <h2 className="text-sm font-bold text-gray-700 mb-3">質問ごとの到達数</h2>
           <div className="grid grid-cols-1 gap-4">
             <QuestionReachChart
-              title="診断（15問）"
+              title="診断（50問）"
               reach={stats.diagQuestionReach}
-              totalQuestions={15}
+              totalQuestions={50}
             />
           </div>
         </section>
 
-        {/* LINE通知テスト */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-700 mb-3">LINE通知テスト</h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
-            <input
-              type="text"
-              value={testOwnerToken}
-              onChange={(e) => setTestOwnerToken(e.target.value)}
-              placeholder="owner_token を入力（line_users に紐付け済みのもの）"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono"
-            />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <button
-                disabled={testSending}
-                onClick={() => sendTestNotify("welcome")}
-                className="rounded bg-[#06C755] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                ウェルカム送信
-              </button>
-              <button
-                disabled={testSending}
-                onClick={() => sendTestNotify("friend_answered", 1)}
-                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                1人目通知
-              </button>
-              <button
-                disabled={testSending}
-                onClick={() => sendTestNotify("friend_answered", 2)}
-                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                2人目通知
-              </button>
-              <button
-                disabled={testSending}
-                onClick={() => sendTestNotify("friend_answered", 3)}
-                className="rounded bg-blue-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                3人目通知
-              </button>
-            </div>
-            {testStatus && (
-              <p className="text-xs text-gray-700">{testStatus}</p>
-            )}
-          </div>
-        </section>
-
-        {/* Welcome 未送信ユーザー */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-700 mb-3">
-            Welcome 未送信ユーザー（再送）
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={fetchUndelivered}
-                disabled={undeliveredLoading}
-                className="rounded bg-gray-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
-              >
-                {undeliveredLoading ? "取得中..." : "未送信一覧を取得"}
-              </button>
-              <span className="text-xs text-gray-500">
-                {undelivered.length} 件
-              </span>
-            </div>
-            {welcomeStatusMessage && (
-              <p className="text-xs text-gray-700">{welcomeStatusMessage}</p>
-            )}
-            {undelivered.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="px-2 py-2 font-medium">作成日時</th>
-                      <th className="px-2 py-2 font-medium">owner_token</th>
-                      <th className="px-2 py-2 font-medium">line_user_id</th>
-                      <th className="px-2 py-2 font-medium">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {undelivered.map((row) => (
-                      <tr key={row.id} className="border-b border-gray-100">
-                        <td className="px-2 py-2 whitespace-nowrap text-gray-600">
-                          {new Date(row.created_at).toLocaleString("ja-JP", {
-                            month: "2-digit",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </td>
-                        <td className="px-2 py-2 font-mono text-gray-700">
-                          {row.owner_token.slice(0, 8)}…
-                        </td>
-                        <td className="px-2 py-2 font-mono text-gray-700">
-                          {row.line_user_id.slice(0, 10)}…
-                        </td>
-                        <td className="px-2 py-2">
-                          <button
-                            onClick={() =>
-                              resendWelcome(row.line_user_id, row.id)
-                            }
-                            disabled={resendingId === row.id}
-                            className="rounded bg-[#06C755] px-2 py-1 text-[11px] font-bold text-white disabled:opacity-50"
-                          >
-                            {resendingId === row.id ? "送信中..." : "再送"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* レポートプレビュー */}
         <section>

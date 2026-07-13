@@ -5,7 +5,7 @@
 // 友達の回答完了後の案内 (FriendIndividualGuide) の両方で同じ見た目を使えるようにする。
 // props 無し・フックなしの静的表示なので Server Component のまま (Image のみ)。
 
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -202,7 +202,7 @@ export function TakoValueSections({
                 }`}
               >
                 <div className="relative w-20 shrink-0 self-stretch bg-white md:h-44 md:w-full">
-                  <Image
+                  <SmoothImage
                     src={s.img}
                     alt={s.title}
                     fill

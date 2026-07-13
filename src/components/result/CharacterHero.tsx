@@ -9,7 +9,7 @@
 // 使う場所: /me(自分の型) / /evaluate/result(友達から見た型)。
 
 import type { CSSProperties } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { Job } from "@/lib/job";
 
 // 動物＋職業システム用スロット (/me のみ渡す)。
@@ -109,7 +109,7 @@ export function CharacterHero({
               : undefined
           }
         >
-          <Image
+          <SmoothImage
             src={imageSrc}
             alt={alt}
             width={960}

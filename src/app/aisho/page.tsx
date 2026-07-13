@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { useSearchParams } from "next/navigation";
 import {
   allThirtyTwoTypeIds,
@@ -59,7 +59,7 @@ function heroImagePath(id: ThirtyTwoTypeId): string {
 // 無ければ null (呼び出し側で文字バッジにフォールバック)。
 const RANK_IMAGES = new Set(characterImages.ranks as string[]);
 function rankImagePath(rank: CompatRank): string | null {
-  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.png` : null;
+  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.webp` : null;
 }
 
 // カードのサムネ: 顔ズーム版 (characters/face・16P の顔アバター風) があれば優先。
@@ -248,7 +248,7 @@ function Slot({
           <CloseIcon />
         </button>
         {thumb.isFace ? (
-          <Image
+          <SmoothImage
             src={thumb.src}
             alt={thirtyTwoEssence(id)}
             width={300}
@@ -256,7 +256,7 @@ function Slot({
             className="absolute bottom-0 left-1/2 w-[120px] md:w-[190px] max-w-none -translate-x-1/2"
           />
         ) : (
-          <Image
+          <SmoothImage
             src={thumb.src}
             alt={thirtyTwoEssence(id)}
             width={240}
@@ -389,13 +389,35 @@ const SCENE_ORDER: { key: SceneKey; label: string }[] = [
   { key: "clash", label: "すれ違うとき" },
 ];
 
+// ロック時の丸バッジのリング色 (MBTI 風・場面ごとに色分け)。
+const SCENE_RING: Record<SceneKey, string> = {
+  love: "#E0559A",
+  friend: "#4AA3D8",
+  work: "#E0A83F",
+  clash: "#9377CC",
+};
+
 // ④シーン別のサーバゲート応答。locked=true は本文なし (未課金/匿名)。
 type ScenesResponse = {
   locked: boolean;
   scenes?: { key: SceneKey; label: string; text: string }[];
+  // 未課金かつログイン中のとき、本人の owner_token (課金CTAへ渡す)。匿名は null/未定義。
+  ownerToken?: string | null;
 };
 
-function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+function CompatDetail({
+  a,
+  b,
+  onGateChange,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  // 課金状態と本人 owner_token を親 (AishoInner) へ通知 (最下部カードの出し分け + CTA伝搬)。
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
+}) {
   const r = useMemo(() => compat(a, b), [a, b]);
   // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
   // ①〜③・ランクはこの fetch に依存せず即時表示 (バイラル核は無傷)。
@@ -428,6 +450,13 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const sceneData: ScenesResponse | null =
     sceneState?.key === pairKey ? sceneState.resp : null;
   const sceneUnlocked = sceneData?.locked === false;
+  // 課金状態 (locked) と本人 owner_token を親 (AishoInner) へ通知。
+  //   → 最下部の課金カードの出し分け + 課金CTAへの owner_token 伝搬 (SPのCookie不在対策) に使う。
+  const sceneLocked = sceneData?.locked ?? null;
+  const sceneOwnerToken = sceneData?.ownerToken ?? null;
+  useEffect(() => {
+    onGateChange?.({ locked: sceneLocked, ownerToken: sceneOwnerToken });
+  }, [sceneLocked, sceneOwnerToken, onGateChange]);
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
     sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
@@ -440,7 +469,8 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
   const nameB = thirtyTwoEssence(b);
   return (
     // 幅は自己診断結果 (/me) と同じ親 (max-w-[1080px]) いっぱいまで使う (旧 640 撤廃)。
-    <div className="mx-auto mt-8 w-full space-y-9 md:space-y-11">
+    // pb: 最後の ④ と、main 外の課金カードの間に余白を確保。
+    <div className="mx-auto mt-8 w-full space-y-9 pb-6 md:space-y-11 md:pb-10">
       {/* ⓪ 相性の総評 (長文リード)。★・サマリー・%バッジは廃し、compat の
           summary/percent/goods を地の文へ織り込んで「〇〇と〇〇の相性は〜」から
           始まる長めの文章にする。 */}
@@ -522,82 +552,132 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
         <p className={`${PROSE} mt-3`}>{r.goods[1]}</p>
       </section>
 
-      {/* ③ ここだけ注意 (caution を前後の一言で挟んで文章量を足す) */}
+      {/* ③ シーン別の相性 (恋愛/友情/働く/すれ違い)。★PR4: 課金ゲート。
+          見出し(4場面)は常に表示し「4場面ぶんの相性がある」ことを予告。
+          本文だけをサーバゲート → 未課金/匿名は本文をぼかしダミー(実本文なし)にし、
+          最下部の課金カードへスライドする「ぜんぶ、ひらく →」を出す。
+          ①②④・相性度・ランクは触っていない (全員無料=バイラル核)。 */}
       <section>
-        <SectionHeading n={3} title="ここだけ注意" />
+        <SectionHeading n={3} title="シーン別の相性" />
+        {sceneUnlocked ? (
+          /* ===== 課金済: 各場面の本文 ===== */
+          <div className="mt-6 space-y-7">
+            {SCENE_ORDER.map((s) => (
+              <div key={s.key}>
+                <div
+                  className="mb-1.5 flex items-center gap-1.5 text-[18px] font-black"
+                  style={{ color: NAVY }}
+                >
+                  <SceneIcon scene={s.key} />
+                  <span>{s.label}</span>
+                </div>
+                <p className={PROSE}>{sceneByKey.get(s.key)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* ===== 未課金/読込中: 4場面の丸ロックバッジ + 解除案内を1枚のカードに (MBTI 風) ===== */
+          <div className="mt-7 rounded-3xl border-2 border-[#F3D6E2] bg-white px-5 py-7 shadow-[0_12px_36px_rgba(46,46,92,0.10)] md:px-9 md:py-8">
+            {/* 4場面の丸ロックバッジ */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4">
+              {SCENE_ORDER.map((s) => (
+                <div
+                  key={s.key}
+                  className="flex flex-col items-center text-center"
+                >
+                  <div
+                    className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] bg-white md:h-[96px] md:w-[96px]"
+                    style={{ borderColor: SCENE_RING[s.key] }}
+                  >
+                    <svg
+                      width="28"
+                      height="28"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={SCENE_RING[s.key]}
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </div>
+                  <span
+                    className="mt-2.5 text-[13px] font-black leading-tight md:text-[14px]"
+                    style={{ color: NAVY }}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* ロック確定時のみ 区切り線 + 解除案内 (読込中は課金済ちらつき防止で出さない)。
+                押すと最下部の課金カードへスライド (scrollToPaywall)。 */}
+            {sceneData?.locked === true && (
+              <>
+                {/* 区切り線 + 中央のロックバッジ */}
+                <div className="relative mx-auto my-7 max-w-[440px]">
+                  <div className="h-px w-full bg-[#F0DBE5]" />
+                  <span
+                    className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white"
+                    style={{ background: "#D14E86" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </span>
+                </div>
+
+                {/* 今すぐロックを解除 */}
+                <div className="text-center">
+                  <p
+                    className="text-[21px] font-black md:text-[24px]"
+                    style={{ color: NAVY }}
+                  >
+                    今すぐロックを解除
+                  </p>
+                  {/* PC は1行 (whitespace-nowrap)、SP は2行に自然折り返し。 */}
+                  <p className="mx-auto mt-2 max-w-[300px] text-[13px] font-bold leading-relaxed text-[#6A6A7C] md:max-w-none md:whitespace-nowrap md:text-[14px]">
+                    全解放して、恋愛・友情・仕事・すれ違い──4場面ぶんのふたりの相性を読もう。
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => scrollToPaywall("aisho_scene")}
+                    className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
+                    style={{ background: NAVY }}
+                  >
+                    今すぐアクセス
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ④ ここだけ注意 (caution を前後の一言で挟んで文章量を足す) */}
+      <section>
+        <SectionHeading n={4} title="ここだけ注意" />
         <p className={PROSE}>
           {`どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
         </p>
         <p className={`${PROSE} mt-3`}>
           {"大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
         </p>
-      </section>
-
-      {/* ④ シーン別トリセツ (恋愛/友情/働く/すれ違い)。★PR4: 課金ゲート。
-          見出し(4場面)は常に表示し「4場面ぶんのトリセツがある」ことを予告。
-          本文だけをサーバゲート → 未課金/匿名は本文をぼかしダミー(実本文なし)にし、
-          最下部の課金カードへスライドする「ぜんぶ、ひらく →」を出す。
-          ①〜③・相性度・ランクは触っていない (全員無料=バイラル核)。 */}
-      <section>
-        <SectionHeading n={4} title="シーン別トリセツ" />
-        <p className={PROSE}>
-          {"恋愛・友情・仕事・すれ違い。場面ごとに、ふたりのトリセツをまとめたよ。"}
-        </p>
-        <div className="mt-6 space-y-7">
-          {SCENE_ORDER.map((s) => (
-            <div key={s.key}>
-              {/* 見出しは無料 (ぼかさない): 4場面の存在感を伝える */}
-              <div
-                className="mb-1.5 flex items-center gap-1.5 text-[18px] font-black"
-                style={{ color: NAVY }}
-              >
-                <SceneIcon scene={s.key} />
-                <span>{s.label}</span>
-              </div>
-              {sceneUnlocked ? (
-                <p className={PROSE}>{sceneByKey.get(s.key)}</p>
-              ) : (
-                /* 本文だけぼかし (未課金/読込中)。実本文は載っていない。 */
-                <div aria-hidden="true" className="select-none space-y-2.5 py-1">
-                  {[97, 100, 82].map((w, i) => (
-                    <div
-                      key={i}
-                      className="h-3.5 rounded-full bg-[#E7E7F0] blur-[3px]"
-                      style={{ width: `${w}%` }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* ロック確定時のみ CTA (読込中は出さない=課金済のちらつき防止)。
-            押すと最下部の課金カードへスライド (PR3 の scrollToPaywall 流用)。
-            匿名がカードCTAを押すと 401→トップ funnel (診断/ログイン→課金)。 */}
-        {sceneData?.locked === true && (
-          <div className="mt-7 rounded-3xl bg-[#F7F7FB] px-5 py-7 text-center">
-            <p className="text-[15px] font-black leading-[1.6] text-[#2E2E5C]">
-              4場面ぶんのシーン別トリセツは
-              <br />
-              全解放でひらきます。
-            </p>
-            <p className="mt-2 text-[13px] font-bold leading-[1.6] text-[#8A8AA3]">
-              一度きりの ¥299 で、
-              <br className="md:hidden" />
-              恋愛も友情も仕事も、ぜんぶ。
-            </p>
-            <div className="mt-5 flex flex-col items-center">
-              <button
-                type="button"
-                onClick={scrollToPaywall}
-                className="flex w-full max-w-[300px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
-              >
-                ぜんぶ、ひらく →
-              </button>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );
@@ -606,7 +686,18 @@ function CompatDetail({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
 // ---- 結果ブロック ---------------------------------------------------------
 // /me ヒーローと同じ文法: グループ色の全幅帯 + 白抜きの大% + 斜めカットで白へ接続。
 
-function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
+function ResultBlock({
+  a,
+  b,
+  onGateChange,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
+}) {
   const r = useMemo(() => compat(a, b), [a, b]);
   const [band0, band1] = HERO_BAND;
   // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
@@ -647,7 +738,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
             {/* 透過 PNG (装飾) は unoptimized で直接配信する。
                 dev の画像 optimizer がこの手の PNG で固まりローディングが終わらないため。 */}
             {rankImg ? (
-              <Image
+              <SmoothImage
                 src={rankImg}
                 alt={`相性ランク ${r.rank}`}
                 width={512}
@@ -669,7 +760,7 @@ function ResultBlock({ a, b }: { a: ThirtyTwoTypeId; b: ThirtyTwoTypeId }) {
       </div>
 
       {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
-      <CompatDetail a={a} b={b} />
+      <CompatDetail a={a} b={b} onGateChange={onGateChange} />
     </section>
   );
 }
@@ -746,7 +837,7 @@ function TypeGrid({
                           opacity: isSel ? 0.45 : 1,
                         }}
                       >
-                        <Image
+                        <SmoothImage
                           src={thumb.src}
                           alt={thirtyTwoEssence(id)}
                           width={168}
@@ -778,7 +869,7 @@ function TypeGrid({
                         opacity: isSel ? 0.45 : 1,
                       }}
                     >
-                      <Image
+                      <SmoothImage
                         src={thumb.src}
                         alt={thirtyTwoEssence(id)}
                         width={96}
@@ -807,6 +898,13 @@ function TypeGrid({
 
 function AishoInner() {
   const searchParams = useSearchParams();
+  // ④シーンのサーバゲート結果 (CompatDetail から通知)。
+  //   locked: true=未課金 / false=課金済 / null=読込中 → 課金カードの出し分け。
+  //   ownerToken: ログイン中なら本人トークン → 課金CTAに渡す (SPのCookie不在でも401→トップを回避)。
+  const [aishoGate, setAishoGate] = useState<{
+    locked: boolean | null;
+    ownerToken: string | null;
+  }>({ locked: null, ownerToken: null });
   // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
   const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
     const a = searchParams.get("a");
@@ -913,7 +1011,7 @@ function AishoInner() {
              抑えて2体+ハートが横に収まるようにする (見切れ防止)。 */
           <div className="flex min-h-[calc(100dvh-72px)] flex-col items-center justify-center">
             <div className="flex w-full items-center justify-center gap-3 md:gap-12">
-              <Image
+              <SmoothImage
                 src={heroImagePath(slotA)}
                 alt={thirtyTwoEssence(slotA)}
                 width={360}
@@ -933,7 +1031,7 @@ function AishoInner() {
                   <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
                 </svg>
               </span>
-              <Image
+              <SmoothImage
                 src={heroImagePath(slotB)}
                 alt={thirtyTwoEssence(slotB)}
                 width={360}
@@ -955,17 +1053,7 @@ function AishoInner() {
             {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
                 足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
             <div ref={resultRef} className="scroll-mt-[72px]">
-              <ResultBlock a={slotA} b={slotB} />
-            </div>
-            <div className="flex justify-center mt-10 pb-3">
-              <button
-                type="button"
-                onClick={() => setRevealed(false)}
-                className="inline-flex items-center justify-center gap-2 rounded-full px-16 py-3.5 font-black text-base text-white"
-                style={{ background: NAVY }}
-              >
-                相性を再度診断
-              </button>
+              <ResultBlock a={slotA} b={slotB} onGateChange={setAishoGate} />
             </div>
           </>
         ) : (
@@ -1037,8 +1125,18 @@ function AishoInner() {
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
         /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
         FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
-        相性①〜④は従来どおり無料・ここではゲートしない。 */}
-    <FullAccessPromoCard />
+        相性①〜④は従来どおり無料・ここではゲートしない。
+        ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
+        選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
+    {resultShown && aishoGate.locked === true && (
+      <FullAccessPromoCard
+        variant="aisho"
+        imageSrc="/characters/scenes/unknown_love.webp"
+        imageAlt="相性"
+        // ログイン中なら owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
+        ownerToken={aishoGate.ownerToken ?? undefined}
+      />
+    )}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
     <TopFooter />

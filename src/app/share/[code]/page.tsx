@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import Link from "next/link";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
@@ -40,11 +40,11 @@ async function loadShareData(code: string): Promise<ShareData | null> {
   >;
   const t32 = classifyThirtyTwoType(scores);
   const essence = thirtyTwoEssence(t32);
-  // thirtyTwoImagePath = /characters/v3/{slug}.png → slug を取り出し og-characters/{slug}.jpg に。
+  // thirtyTwoImagePath = /characters/v3/{slug}.webp → slug を取り出し og-characters/{slug}.jpg に。
   const slug = thirtyTwoImagePath(t32)
     .split("/")
     .pop()!
-    .replace(".png", "");
+    .replace(/\.\w+$/, "");
   const name = ((data.display_name as string | null) ?? "").trim() || "ある人";
   return { name, essence, slug };
 }
@@ -61,6 +61,7 @@ export async function generateMetadata({
     return {
       title: "ワタシのトリセツ",
       description,
+      robots: { index: false, follow: true },
     };
   }
   const title = `${d.name}さんは【${d.essence}】でした`;
@@ -68,6 +69,9 @@ export async function generateMetadata({
   return {
     title: `${title}｜ワタシのトリセツ`,
     description,
+    // SNS シェア用の公開ページ。OG クローラには読ませるが、ユーザーごとの
+    // URL を検索結果へ大量登録させない。
+    robots: { index: false, follow: true },
     openGraph: {
       title,
       description,
@@ -107,8 +111,8 @@ export default async function SharePage({
 
       {d ? (
         <>
-          <Image
-            src={`/characters/v3/${d.slug}.png`}
+          <SmoothImage
+            src={`/characters/v3/${d.slug}.webp`}
             alt={d.essence}
             width={320}
             height={320}

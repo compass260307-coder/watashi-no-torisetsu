@@ -1,10 +1,58 @@
 import type { Metadata } from "next";
+import {
+  DIAGNOSIS_SEO_DESCRIPTION,
+  DIAGNOSIS_SEO_TITLE,
+} from "@/lib/diagnosis-seo";
+
+const BASE_URL = "https://www.watashi-torisetsu.com";
 
 export const metadata: Metadata = {
-  title: "性格診断（無料・3分）",
-  description:
-    "Big Five理論ベースの15問の性格診断。直感で答えるだけ、3分で完成。登録不要・完全無料・大学生向け。",
+  title: DIAGNOSIS_SEO_TITLE,
+  description: DIAGNOSIS_SEO_DESCRIPTION,
   alternates: { canonical: "/diagnosis" },
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    url: `${BASE_URL}/diagnosis`,
+    siteName: "ワタシのトリセツ",
+    title: `${DIAGNOSIS_SEO_TITLE}｜ワタシのトリセツ`,
+    description: DIAGNOSIS_SEO_DESCRIPTION,
+    images: [
+      {
+        url: "/ogp-v4.png",
+        width: 1200,
+        height: 630,
+        alt: "ワタシのトリセツの無料性格診断テスト",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${DIAGNOSIS_SEO_TITLE}｜ワタシのトリセツ`,
+    description: DIAGNOSIS_SEO_DESCRIPTION,
+    images: ["/ogp-v4.png"],
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": `${BASE_URL}/diagnosis#app`,
+      name: "ワタシのトリセツ 無料性格診断テスト",
+      url: `${BASE_URL}/diagnosis`,
+      description: DIAGNOSIS_SEO_DESCRIPTION,
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Any",
+      inLanguage: "ja-JP",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "JPY",
+      },
+    },
+  ],
 };
 
 export default function DiagnosisLayout({
@@ -12,5 +60,15 @@ export default function DiagnosisLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      {children}
+    </>
+  );
 }

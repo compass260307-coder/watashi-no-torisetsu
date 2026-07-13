@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -39,6 +39,7 @@ export const metadata: Metadata = {
   title: "性格タイプ",
   description:
     "ワタシのトリセツの32の性格タイプを、海・陸・空・未知の4つのグループで紹介。Big Five理論ベースの性格診断でわかる、あなたと友達のタイプをチェックしよう。",
+  alternates: { canonical: "/types" },
 };
 
 // キャラ表示は「真の透過」静止画を使う:
@@ -59,12 +60,12 @@ const cutFiles = readDirSafe(CUT_DIR);
 
 // slug = 静止画ファイル名のベース (thirtyTwoImagePath から導出)
 function slugOf(id: ThirtyTwoTypeId): string {
-  return path.basename(thirtyTwoImagePath(id), ".png");
+  return path.basename(thirtyTwoImagePath(id), ".webp");
 }
 
 // 表示用静止画: 透過版があればそれ、なければ元画像 (v3) にフォールバック
 function displayImagePath(id: ThirtyTwoTypeId): string {
-  const file = `${slugOf(id)}.png`;
+  const file = `${slugOf(id)}.webp`;
   return cutFiles.has(file)
     ? `/characters/cut/${file}`
     : thirtyTwoImagePath(id);
@@ -218,11 +219,15 @@ export default function TypesPage() {
                           aria-label={`${thirtyTwoEssence(id)}の結果ページを見る`}
                           className="w-full transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
                         >
-                          <Image
+                          <SmoothImage
                             src={displayImagePath(id)}
                             alt={thirtyTwoEssence(id)}
                             width={512}
                             height={512}
+                            // 透過キャラを帯/巨大タイポに重ねる設計なので地色の箱は出さない。
+                            // ギャラリーは eager で先読みし、スクロールで 1 体ずつ出さずまとめて見せる。
+                            placeholderColor="transparent"
+                            loading="eager"
                             className="mx-auto h-auto w-full max-w-[420px] sm:max-w-none"
                           />
                         </Link>

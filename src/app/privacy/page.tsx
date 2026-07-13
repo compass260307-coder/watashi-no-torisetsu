@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
-import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
@@ -309,7 +308,6 @@ export default function PrivacyPage() {
         <p>制定日: 2026 年 6 月 1 日</p>
         <p>最終改定日: 2026 年 7 月 9 日</p>
       </LegalDocument>
-      <Footer />
     </>
   );
 }

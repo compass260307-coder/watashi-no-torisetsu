@@ -1,9 +1,9 @@
-// Phase 3-β B-2: 新 30 問形式の友達評価受信エンドポイント。
-// 旧 /api/friend-answer (13 問形式) は破壊せず並存。
+// Phase 3-β B-2: 新 10 問形式の友達評価受信エンドポイント。
+// 旧 /api/friend-answer (13 問形式) は任意JSON保存を防ぐため410で停止済み。
 //
 // 受信内容:
 //   - inviteCode: invite_code → users (owner) 特定
-//   - scaleAnswers: Record<1..30, 1..7>
+//   - scaleAnswers: Record<1..10, 1..7>
 //   - choiceAnswers: Record<"favorite_point"|"animal"|"impression_scene", string> (任意、スキップ可)
 //   - perceiverName: 評価者の表示名 (LIFF or 任意入力)
 //   - perceiverLineUserId: Authorization: Bearer <LIFF id_token> から verify (任意)
@@ -18,6 +18,12 @@
 //   7. D-8 通知発火は枠のみ (Phase 4 で本実装)
 
 import { NextRequest, NextResponse, after } from "next/server";
+import {
+  consumeRateLimit,
+  createSubmissionFingerprint,
+  isSafeOpaqueToken,
+  readJsonObject,
+} from "@/lib/api-security";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import {
@@ -25,14 +31,65 @@ import {
   type FriendQualitativeData,
 } from "@/lib/friend-perception-v2";
 import { writeFriendPerception } from "@/lib/friend-perception-write";
-import { FRIEND_QUESTIONS_V2_TOTAL } from "@/lib/friend-questions-v2";
-import { sendLetterNotification } from "@/lib/line-notify";
+import {
+  FRIEND_CHOICE_QUESTIONS_V2,
+  FRIEND_QUESTIONS_V2_TOTAL,
+} from "@/lib/friend-questions-v2";
 import { sendFriendPerceptionEmail } from "@/lib/email";
-import { isLineNotificationsEnabled } from "@/lib/feature-flags";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
 import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
 export const runtime = "nodejs";
+
+type CalculatedPerception = NonNullable<
+  ReturnType<typeof perceiveFromFriendAnswersV2>
+>;
+
+const CHOICE_OPTIONS = new Map(
+  FRIEND_CHOICE_QUESTIONS_V2.map((question) => [
+    question.id,
+    new Set<string>(question.options),
+  ]),
+);
+
+function successResponse(
+  friendAnswerId: string,
+  friendPerceptionId: string,
+  perception: CalculatedPerception,
+  duplicate = false,
+) {
+  return NextResponse.json({
+    ok: true,
+    duplicate,
+    friendAnswerId,
+    friendPerceptionId,
+    perception: {
+      typeId: perception.typeId,
+      cModifier: perception.cModifier,
+      nModifier: perception.nModifier,
+      fullCode: perception.fullCode,
+      modifierLabel: perception.modifierLabel,
+      modifierParagraph: perception.modifierParagraph,
+      scores: perception.scores,
+      facetScores: perception.facetScores,
+      confidence: perception.confidence,
+      qualitativeData: perception.qualitativeData ?? null,
+    },
+  });
+}
+
+function isMissingSubmissionHashColumn(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  return (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    /submission_hash.*(does not exist|could not find)|could not find.*submission_hash/i.test(
+      error.message ?? "",
+    )
+  );
+}
 
 function isValidScale(value: unknown): value is AnswerValue {
   return (
@@ -46,38 +103,67 @@ function isValidScale(value: unknown): value is AnswerValue {
 // 「動物に例えると」の回答は "猫（マイペース）" のような「動物名（性格）」形式。
 // 手紙通知①では【動物名のみ】を出す (理由=括弧内は開封まで出さない、が大原則)。
 // 全角/半角どちらの括弧でも手前で切る。未回答/空なら null。
-function extractAnimalName(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const name = raw.trim().split(/[（(]/)[0].trim();
-  return name.length > 0 ? name : null;
-}
-
 export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
+  const ipLimit = await consumeRateLimit(request, {
+    scope: "friend-answer-ip",
+    limit: 15,
+    windowSeconds: 600,
+  });
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(ipLimit.retryAfterSeconds ?? 60) },
+      },
+    );
+  }
+
   // Web ファースト化により友達評価は完全に匿名扱い。
   // perceiver_line_user_id は常に null (Phase 2 で LINE 復活時に再導入)。
   const perceiverLineUserId: string | null = null;
 
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  const parsedBody = await readJsonObject(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status },
+    );
   }
+  const body = parsedBody.value;
 
-  const inviteCode = typeof body.inviteCode === "string" ? body.inviteCode : null;
+  const inviteCode = isSafeOpaqueToken(body.inviteCode)
+    ? body.inviteCode
+    : null;
   const rawScale = body.scaleAnswers;
   const rawChoice = body.choiceAnswers;
-  const rawName = typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
+  const rawName =
+    typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
+  if (rawName.length > 40 || /[\u0000-\u001F\u007F]/.test(rawName)) {
+    return NextResponse.json(
+      { error: "perceiverName is invalid" },
+      { status: 400 },
+    );
+  }
   const perceiverName = rawName.length > 0 ? rawName : "友達";
   // ③ 本人へのメッセージ (任意・最大200字)。プレーンテキストとして保存し、
   //    表示時は React が自動エスケープ (XSS 対策)。空なら null。
   const ownerMessage =
-    typeof body.message === "string"
-      ? body.message.trim().slice(0, 200)
-      : "";
+    typeof body.message === "string" ? body.message.trim() : "";
+  if (
+    ownerMessage.length > 200 ||
+    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(ownerMessage)
+  ) {
+    return NextResponse.json(
+      { error: "message must be 200 characters or fewer" },
+      { status: 400 },
+    );
+  }
   // T3-3: PDF 利用同意 (オプトイン制、デフォルト false)
   const pdfConsent = body.pdfConsent === true;
 
@@ -85,10 +171,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "inviteCode required" }, { status: 400 });
   }
 
-  // scaleAnswers バリデーション: 1-30 が全て有効値 (1-7) で揃っているか
-  if (!rawScale || typeof rawScale !== "object") {
+  // scaleAnswers バリデーション: 1-10 が全て有効値 (1-7) で揃っているか
+  if (!rawScale || typeof rawScale !== "object" || Array.isArray(rawScale)) {
     return NextResponse.json(
       { error: "scaleAnswers must be an object" },
+      { status: 400 },
+    );
+  }
+  const rawScaleKeys = Object.keys(rawScale);
+  if (
+    rawScaleKeys.length !== FRIEND_QUESTIONS_V2_TOTAL ||
+    rawScaleKeys.some((key) => !/^[1-9][0-9]?$/.test(key))
+  ) {
+    return NextResponse.json(
+      { error: "scaleAnswers contains unexpected questions" },
       { status: 400 },
     );
   }
@@ -106,12 +202,47 @@ export async function POST(request: NextRequest) {
 
   // choiceAnswers (optional, 各キー任意)
   const choiceAnswers: FriendQualitativeData = {};
+  if (
+    rawChoice !== undefined &&
+    rawChoice !== null &&
+    (typeof rawChoice !== "object" || Array.isArray(rawChoice))
+  ) {
+    return NextResponse.json(
+      { error: "choiceAnswers must be an object" },
+      { status: 400 },
+    );
+  }
   if (rawChoice && typeof rawChoice === "object") {
     for (const [k, v] of Object.entries(rawChoice as Record<string, unknown>)) {
-      if (typeof v === "string" && v.trim().length > 0) {
-        choiceAnswers[k] = v;
+      const allowedOptions = CHOICE_OPTIONS.get(
+        k as (typeof FRIEND_CHOICE_QUESTIONS_V2)[number]["id"],
+      );
+      if (!allowedOptions || typeof v !== "string" || !allowedOptions.has(v)) {
+        return NextResponse.json(
+          { error: "choiceAnswers contains an invalid option" },
+          { status: 400 },
+        );
       }
+      choiceAnswers[k] = v;
     }
+  }
+
+  const inviteLimit = await consumeRateLimit(request, {
+    scope: "friend-answer-invite",
+    identifier: inviteCode,
+    limit: 120,
+    windowSeconds: 3600,
+  });
+  if (!inviteLimit.allowed) {
+    return NextResponse.json(
+      { error: "This invitation is receiving too many submissions" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(inviteLimit.retryAfterSeconds ?? 300),
+        },
+      },
+    );
   }
 
   // invite_code → users (owner) 取得
@@ -124,32 +255,95 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // friend_answers INSERT (v2 形式で jsonb 保存)
-  // 旧 13 問形式と区別可能なように { v: 2, scale, choice } を採用
-  const { data: faRow, error: faError } = await supabaseAdmin
-    .from("friend_answers")
-    .insert({
-      user_id: owner.id,
-      answers: {
-        v: 2,
-        scale: scaleAnswers,
-        choice: choiceAnswers,
-      },
-    })
-    .select("id")
-    .single();
-  if (faError || !faRow) {
-    console.error("[friend-answer/v2] friend_answers insert error:", faError);
-    return NextResponse.json({ error: "DB error (friend_answers)" }, { status: 500 });
-  }
-
-  // 派生計算
+  // 派生値は受信せず、検証済みの回答からサーバーで計算する。
   const qualitative =
     Object.keys(choiceAnswers).length > 0 ? choiceAnswers : undefined;
   const perception = perceiveFromFriendAnswersV2(scaleAnswers, qualitative);
   if (!perception) {
     return NextResponse.json(
       { error: "perception calculation failed" },
+      { status: 500 },
+    );
+  }
+
+  const submissionHash = createSubmissionFingerprint(
+    request,
+    `friend-answer:${owner.id}`,
+    JSON.stringify({
+      scale: scaleAnswers,
+      choice: choiceAnswers,
+      perceiverName,
+      message: ownerMessage,
+      pdfConsent,
+    }),
+  );
+
+  // friend_answers INSERT (v2 形式で jsonb 保存)
+  // 旧 13 問形式と区別可能なように { v: 2, scale, choice } を採用
+  const answerPayload = {
+    user_id: owner.id,
+    answers: {
+      v: 2,
+      scale: scaleAnswers,
+      choice: choiceAnswers,
+    },
+    submission_hash: submissionHash,
+  };
+  let { data: faRow, error: faError } = await supabaseAdmin
+    .from("friend_answers")
+    .insert(answerPayload)
+    .select("id")
+    .single();
+
+  // マイグレーション適用前でも回答導線を止めない。適用後はこのfallbackを通らない。
+  if (faError && isMissingSubmissionHashColumn(faError)) {
+    console.warn(
+      "[friend-answer/v2] submission_hash is unavailable; dedupe is disabled",
+    );
+    const fallback = await supabaseAdmin
+      .from("friend_answers")
+      .insert({
+        user_id: answerPayload.user_id,
+        answers: answerPayload.answers,
+      })
+      .select("id")
+      .single();
+    faRow = fallback.data;
+    faError = fallback.error;
+  }
+
+  // DB一意制約に当たった場合は、最初の成功結果を再利用してメールも再送しない。
+  if (faError?.code === "23505") {
+    const { data: existingAnswer } = await supabaseAdmin
+      .from("friend_answers")
+      .select("id")
+      .eq("user_id", owner.id)
+      .eq("submission_hash", submissionHash)
+      .maybeSingle();
+    if (existingAnswer?.id) {
+      const { data: existingPerception } = await supabaseAdmin
+        .from("friend_perceptions")
+        .select("id")
+        .eq("friend_answer_id", existingAnswer.id)
+        .maybeSingle();
+      if (existingPerception?.id) {
+        return successResponse(
+          existingAnswer.id as string,
+          existingPerception.id as string,
+          perception,
+          true,
+        );
+      }
+    }
+    return NextResponse.json(
+      { error: "This submission is already being processed" },
+      { status: 409, headers: { "Retry-After": "2" } },
+    );
+  }
+  if (faError || !faRow) {
+    console.error("[friend-answer/v2] friend_answers insert error:", faError);
+    return NextResponse.json(
+      { error: "Unable to save friend answer" },
       { status: 500 },
     );
   }
@@ -171,6 +365,17 @@ export async function POST(request: NextRequest) {
       "[friend-answer/v2] writeFriendPerception failed:",
       writeResult.error,
     );
+    // 2段目の保存失敗時に生回答だけを残さず、同じ回答を安全に再送できるようにする。
+    const { error: cleanupError } = await supabaseAdmin
+      .from("friend_answers")
+      .delete()
+      .eq("id", faRow.id);
+    if (cleanupError) {
+      console.error(
+        "[friend-answer/v2] orphan friend_answer cleanup failed:",
+        cleanupError.message,
+      );
+    }
     return NextResponse.json(
       { error: "DB error (friend_perceptions)" },
       { status: 500 },
@@ -210,152 +415,70 @@ export async function POST(request: NextRequest) {
   const perceivedModifierLabel = perception.modifierLabel;
   const ownerUserId = owner.id as string;
 
-  after(async () => {
-    try {
-      // 1. owner の連絡先候補 (email + line_user_id + display_name + owner_token) を取得
-      const { data: ownerRow, error: ownerLookupErr } = await supabaseAdmin
-        .from("users")
-        .select("email, line_user_id, display_name, owner_token")
-        .eq("id", ownerUserId)
-        .maybeSingle();
-      if (ownerLookupErr) {
-        console.error(
-          "[friend-answer/v2] owner lookup error:",
-          ownerLookupErr.message,
-        );
-        return;
-      }
-      if (!ownerRow) return;
+  const notificationLimit = await consumeRateLimit(request, {
+    scope: "friend-answer-email-owner",
+    identifier: ownerUserId,
+    limit: 12,
+    windowSeconds: 3600,
+  });
 
-      const ownerEmail = (ownerRow.email as string | null) ?? null;
-      const ownerLineUserId =
-        (ownerRow.line_user_id as string | null) ?? null;
-      const ownerDisplayName =
-        ((ownerRow.display_name as string | null) ?? "").trim() || null;
-      const ownerToken = (ownerRow.owner_token as string | null) ?? null;
-
-      // 2-A. メール通知 (Day 11、Phase 1 主動線)
-      //   owner.email がある場合のみ送信。LINE と並列・独立。
-      if (ownerEmail && ownerToken) {
-        try {
-          await sendFriendPerceptionEmail({
-            to: ownerEmail,
-            perceiverName: perceiverDisplayName,
-            ownerName: ownerDisplayName,
-            ownerToken,
-            perceptionType: perceivedTypeName,
-            perceptionModifierLabel: perceivedModifierLabel,
-          });
-        } catch (err) {
+  if (notificationLimit.allowed) {
+    after(async () => {
+      try {
+        // 1. owner の連絡先候補 (email + line_user_id + display_name + owner_token) を取得
+        const { data: ownerRow, error: ownerLookupErr } = await supabaseAdmin
+          .from("users")
+          .select("email, line_user_id, display_name, owner_token")
+          .eq("id", ownerUserId)
+          .maybeSingle();
+        if (ownerLookupErr) {
           console.error(
-            "[friend-answer/v2] friend_perception email send error:",
-            err,
+            "[friend-answer/v2] owner lookup error:",
+            ownerLookupErr.message,
+          );
+          return;
+        }
+        if (!ownerRow) return;
+
+        const ownerEmail = (ownerRow.email as string | null) ?? null;
+        const ownerDisplayName =
+          ((ownerRow.display_name as string | null) ?? "").trim() || null;
+        const ownerToken = (ownerRow.owner_token as string | null) ?? null;
+
+        // 2-A. メール通知 (Day 11、Phase 1 主動線)
+        //   owner.email がある場合のみ送信。LINE と並列・独立。
+        if (ownerEmail && ownerToken) {
+          try {
+            await sendFriendPerceptionEmail({
+              to: ownerEmail,
+              perceiverName: perceiverDisplayName,
+              ownerName: ownerDisplayName,
+              ownerToken,
+              perceptionType: perceivedTypeName,
+              perceptionModifierLabel: perceivedModifierLabel,
+            });
+          } catch (err) {
+            console.error(
+              "[friend-answer/v2] friend_perception email send error:",
+              err,
+            );
+          }
+        } else {
+          console.log(
+            "[friend-answer/v2] owner has no email; skipping mail notify",
           );
         }
-      } else {
-        console.log(
-          "[friend-answer/v2] owner has no email; skipping mail notify",
-        );
+
+        // LINE 撤去: 友達回答の LINE 手紙通知 (2-B) は廃止。メール通知 (2-A) のみ。
+      } catch (err) {
+        console.error("[friend-answer/v2] notification flow error:", err);
       }
+    });
+  } else {
+    console.warn(
+      "[friend-answer/v2] email notification skipped by rate limit",
+    );
+  }
 
-      // 2-B. LINE 手紙通知｜小出し3段階 (line_letter_notifications_v1)
-      //   届いた通数 (1/2/3) で出し分け、3通目 = 開封解禁。4通目以降は軽い通知のみ。
-      //   LINE_NOTIFICATIONS_ENABLED=false / line_user_id 未紐付ならスキップ。
-      if (!isLineNotificationsEnabled() || !ownerLineUserId) {
-        return;
-      }
-
-      // notification_preferences 確認 (Phase 2 復活時の per-feature opt-out)
-      const { data: prefsRow } = await supabaseAdmin
-        .from("notification_preferences")
-        .select("enable_friend_perception")
-        .eq("line_user_id", ownerLineUserId)
-        .maybeSingle();
-      if (prefsRow && prefsRow.enable_friend_perception === false) {
-        console.log(
-          "[friend-answer/v2] LINE notification disabled by user pref, skipping for",
-          ownerLineUserId.slice(0, 8),
-        );
-        return;
-      }
-
-      if (!ownerToken) return;
-
-      // 届いた友達回答の総数 (owner ごと)
-      const { count: friendCount, error: countErr } = await supabaseAdmin
-        .from("friend_answers")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", ownerUserId);
-      if (countErr || friendCount === null) {
-        console.error(
-          "[friend-answer/v2] friend_answers count error:",
-          countErr?.message,
-        );
-        return;
-      }
-      if (friendCount < 1) return;
-
-      // 冪等ガード: last_notified_friend_count < friendCount のときだけ UPDATE 成功。
-      //   同一 count に同時到達しても最初の 1 件だけが通知され、二重 push を防ぐ。
-      //   (旧 /api/friend-answer の H8 race condition 対策パターンを踏襲)
-      const { data: gateRow, error: gateErr } = await supabaseAdmin
-        .from("users")
-        .update({ last_notified_friend_count: friendCount })
-        .eq("owner_token", ownerToken)
-        .lt("last_notified_friend_count", friendCount)
-        .select("owner_token")
-        .maybeSingle();
-      if (gateErr) {
-        console.error(
-          "[friend-answer/v2] last_notified_friend_count update error:",
-          gateErr.message,
-        );
-        return;
-      }
-      if (!gateRow) {
-        // 別リクエストが先に同 count を通知済み → スキップ
-        return;
-      }
-
-      // 表示用: 友達名 (created_at 昇順) と 1通目の動物 (動物名のみ)
-      const { data: perceptionRows } = await supabaseAdmin
-        .from("friend_perceptions")
-        .select("perceiver_name")
-        .eq("target_user_id", ownerUserId)
-        .order("created_at", { ascending: true });
-      const friendNames = (perceptionRows ?? []).map((r) =>
-        ((r.perceiver_name as string | null) ?? "").trim(),
-      );
-
-      await sendLetterNotification({
-        lineUserId: ownerLineUserId,
-        ownerUserId,
-        ownerToken,
-        inviteCode,
-        friendCount,
-        friendNames,
-        animal: extractAnimalName(choiceAnswers.animal),
-      });
-    } catch (err) {
-      console.error("[friend-answer/v2] notification flow error:", err);
-    }
-  });
-
-  return NextResponse.json({
-    ok: true,
-    friendAnswerId: faRow.id,
-    friendPerceptionId: writeResult.id,
-    perception: {
-      typeId: perception.typeId,
-      cModifier: perception.cModifier,
-      nModifier: perception.nModifier,
-      fullCode: perception.fullCode,
-      modifierLabel: perception.modifierLabel,
-      modifierParagraph: perception.modifierParagraph,
-      scores: perception.scores,
-      facetScores: perception.facetScores,
-      confidence: perception.confidence,
-      qualitativeData: perception.qualitativeData ?? null,
-    },
-  });
+  return successResponse(faRow.id as string, writeResult.id, perception);
 }

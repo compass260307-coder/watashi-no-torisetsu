@@ -9,15 +9,18 @@
 // 既に full の場合 (409 already_full) はページを再読込して本文表示へ戻す。
 
 import { useState } from "react";
+import { track } from "@/lib/track";
 
 export function FullAccessCta({
   children = "¥299で全部よむ",
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,
-  // 未ログイン(401)時の遷移先。/aisho など匿名ページのカードでは、決済不能なので
-  // トップへ funnel してアカウント作成→課金の橋渡しにする。既定はトップ。
-  unauthHref = "/",
+  // 未ログイン(401)時の遷移先。匿名だと「解放する自分のトリセツ」がまだ無いので
+  // 決済できない → まず診断へ funnel (診断→トリセツ作成→課金 の橋渡し)。
+  // 例: Safari シークレット/SPでCookie不在 かつ URL に owner_token が無い (/aisho) ケース。
+  // /me・/tako は owner_token を渡すのでここには来ない (常に Stripe へ到達)。
+  unauthHref = "/diagnosis",
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -30,6 +33,12 @@ export function FullAccessCta({
     if (loading) return;
     setLoading(true);
     setError(null);
+    // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
+    // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
+    track("purchase_cta_clicked", {
+      ownerToken: ownerToken ?? null,
+      metadata: { page: window.location.pathname.split("/")[1] || "top" },
+    });
     try {
       const res = await fetch("/api/checkout/create-full-access-session", {
         method: "POST",
@@ -72,11 +81,14 @@ export function FullAccessCta({
         disabled={loading}
         className="flex items-center justify-center w-full bg-[#2E2E5C] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] transition-all disabled:opacity-60 disabled:pointer-events-none"
       >
-        {loading ? "ひらいています…" : children}
+        {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
+        {loading ? "ひらいています…" : error ? "もう一度ためす →" : children}
       </button>
       {error && (
         <p className="mt-3 text-center text-[13px] font-bold text-[#E5544B]">
           {error}
+          <br />
+          <span className="text-[#8A8AA3]">上のボタンでもう一度お試しください。</span>
         </p>
       )}
     </div>

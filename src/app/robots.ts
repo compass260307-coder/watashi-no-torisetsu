@@ -7,12 +7,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        // /zukan/ は個人ページ ([ownerToken]) ごとブロックしているが、
-        // 公開の図鑑一覧 /zukan/all だけは許可する (トップのナビ「性格タイプ」から
-        // リンクしており、検索流入の受け皿になる汎用コンテンツのため)。
-        // クローラはより具体的な (長い) ルールを優先するので allow が勝つ。
-        // /share = キャラシェアの獲得ランディング (公開・OGクローラ/SEOに開放)。
-        allow: ["/", "/zukan/all", "/share"],
+        // /zukan/ は個人ページ ([ownerToken]) ごとブロック。
+        // (旧 /zukan/all 公開図鑑は撤去し /types に一本化・redirect 済み)
+        // /share は OG クローラがメタ情報を取得できるようクロールを許可し、
+        // ページ側の noindex で通常の検索結果からのみ除外する。
+        allow: "/",
         disallow: [
           "/admin",
           "/admin/",
@@ -25,7 +24,6 @@ export default function robots(): MetadataRoute.Robots {
           "/friend/",
           "/zukan/",
           "/perceptions/",
-          "/auth/",
         ],
       },
     ],

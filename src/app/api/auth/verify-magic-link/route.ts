@@ -138,6 +138,6 @@ export async function GET(request: NextRequest) {
     .eq("id", userId)
     .maybeSingle();
   const ownerToken = (userRow?.owner_token as string | null) ?? null;
-  const dest = ownerToken ? `/me/${ownerToken}` : "/zukan-mine";
+  const dest = ownerToken ? `/me/${ownerToken}` : "/";
   return NextResponse.redirect(new URL(dest, request.nextUrl));
 }

@@ -113,14 +113,15 @@ export function ResultHero({
             <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
               {label}
             </p>
-            <div
+            {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。 */}
+            <h1
               className="whitespace-nowrap font-extrabold leading-[1.04] text-white"
               style={{
                 fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
               }}
             >
               {essence}
-            </div>
+            </h1>
           </div>
           {/* OCEAN コード行 */}
           <div

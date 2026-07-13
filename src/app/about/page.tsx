@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
 import FAQAccordion from "@/components/FAQAccordion";
 import { faqItems } from "@/lib/faq-data";
@@ -60,14 +60,14 @@ const privacyItems = [
 
 // タイプギャラリー (32タイプから各グループ2体ずつ抜粋)
 const GALLERY = [
-  { name: "なかよしペンギン", src: "/characters/v3/penguin_N.png" },
-  { name: "クールタカ", src: "/characters/v3/hawk_R.png" },
-  { name: "にこにこパンダ", src: "/characters/v3/fox_N.png" },
-  { name: "どっしりクマ", src: "/characters/v3/bear_R.png" },
-  { name: "きらめきイルカ", src: "/characters/v3/jellyfish_N.png" },
-  { name: "マイペースサメ", src: "/characters/v3/shark_R.png" },
-  { name: "おもいやりエンジェル", src: "/characters/v3/angel_N.png" },
-  { name: "ゆるぎないドラゴン", src: "/characters/v3/dragon_R.png" },
+  { name: "なかよしペンギン", src: "/characters/v3/penguin_N.webp" },
+  { name: "クールタカ", src: "/characters/v3/hawk_R.webp" },
+  { name: "にこにこパンダ", src: "/characters/v3/fox_N.webp" },
+  { name: "どっしりクマ", src: "/characters/v3/bear_R.webp" },
+  { name: "きらめきイルカ", src: "/characters/v3/jellyfish_N.webp" },
+  { name: "マイペースサメ", src: "/characters/v3/shark_R.webp" },
+  { name: "おもいやりエンジェル", src: "/characters/v3/angel_N.webp" },
+  { name: "ゆるぎないドラゴン", src: "/characters/v3/dragon_R.webp" },
 ];
 
 const faqJsonLd = {
@@ -256,9 +256,11 @@ export default function AboutPage() {
             <p>
               診断のベースは、性格心理学でもっとも信頼されている「Big Five
               理論」。開放性・誠実性・外向性・協調性・神経症傾向の5つの軸であなたを分析します。
+              5軸の頭文字から「OCEANモデル」とも呼ばれ、OCEAN診断として世界中の研究で使われています。
             </p>
             <p>
               5軸のスコアの組み合わせから、結果は海・陸・空・未知の4グループ・32の性格タイプで表現されます。
+              よく知られる16タイプ性格診断よりも細かい分類で、より「あなたらしさ」に近づけます。
               他己評価も同じ軸で答えてもらうから、自己評価とのギャップをそのまま比べられます。
             </p>
           </div>
@@ -277,7 +279,7 @@ export default function AboutPage() {
           <div className="mt-6 grid grid-cols-4 gap-x-3 gap-y-5">
             {GALLERY.map((c) => (
               <div key={c.src} className="text-center">
-                <Image
+                <SmoothImage
                   src={c.src}
                   alt={c.name}
                   width={120}

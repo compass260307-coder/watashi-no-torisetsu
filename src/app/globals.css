@@ -335,7 +335,7 @@ input[type="reset"]:active {
    下端の白い雲 (フッター連結) とキャラ帯を常に画面下に見せる。 */
 .top-hero-bg {
   background-color: #e4e0f4;
-  background-image: url("/characters/keyvisual.png");
+  background-image: url("/characters/keyvisual.webp");
   background-size: cover;
   background-position: center bottom;
   background-repeat: no-repeat;
@@ -343,7 +343,7 @@ input[type="reset"]:active {
 
 @media (max-width: 639px) {
   .top-hero-bg {
-    background-image: url("/characters/keyvisual-mobile.png");
+    background-image: url("/characters/keyvisual-mobile.webp");
   }
 }
 

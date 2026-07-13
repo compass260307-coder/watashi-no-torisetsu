@@ -1,16 +1,48 @@
 let sessionId: string | null = null;
 
-function getSessionId(): string {
-  if (sessionId) return sessionId;
-  const stored = sessionStorage.getItem("torisetsu_session");
-  if (stored) {
-    sessionId = stored;
-    return stored;
+// セッションID (2026-07-13 改修):
+//   旧実装は sessionStorage (タブ単位) で、同一ユーザーがタブ/アプリ内ブラウザを
+//   またぐたびに別セッションになり「診断開始が過大・完了率が過小」に系統的に歪んでいた。
+//   → localStorage + 30分スライディング有効期限 (GA と同じ「訪問」定義) に変更。
+//   ストレージ不可の環境でも例外で計測全体が死なないよう、全体を try/catch し
+//   メモリ内 fallback ID で送信は続ける (旧実装は例外で fetch まで届かなかった)。
+const SESSION_KEY = "torisetsu_session_v2";
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+function newId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // insecure context 等で crypto.randomUUID が無い環境の保険
+    return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   }
-  const id = crypto.randomUUID();
-  sessionStorage.setItem("torisetsu_session", id);
-  sessionId = id;
-  return id;
+}
+
+function getSessionId(): string {
+  const now = Date.now();
+  try {
+    if (!sessionId) {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { id?: string; t?: number };
+        if (
+          typeof parsed.id === "string" &&
+          typeof parsed.t === "number" &&
+          now - parsed.t < SESSION_TTL_MS
+        ) {
+          sessionId = parsed.id;
+        }
+      }
+    }
+    if (!sessionId) sessionId = newId();
+    // スライディング更新 (最後の活動から30分でセッション切れ)
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ id: sessionId, t: now }));
+    return sessionId;
+  } catch {
+    // ストレージ遮断環境: メモリ内IDで送信だけは続ける (イベント全欠落を防ぐ)
+    if (!sessionId) sessionId = newId();
+    return sessionId;
+  }
 }
 
 export function isPreviewMode(): boolean {
@@ -44,6 +76,13 @@ export function isPreviewMode(): boolean {
 //   result_viewed                結果(/me)の初回表示 (metadata.friendCount, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
 //   three_friends_unlocked       友達3人達成 (ownerToken)
+//
+// ----- 課金ファネル (2026-07-13 追加) -----
+//   paywall_viewed               課金カードの表示到達 (metadata.page/variant, ownerToken)
+//   paywall_scroll_clicked       課金カードへの誘導クリック (metadata.source/page)
+//   purchase_cta_clicked         購入CTAクリック=checkout要求 (metadata.page, ownerToken)
+//   checkout_session_created     Stripe Checkout 作成 ※サーバ発行・session_id なし (metadata.guest)
+//   purchase_completed           決済完了 ※サーバ発行 (webhook)・stripe_session_id で冪等
 //
 // ⚠️ 旧名 friend_v2_* / share_clicked(kind:friend_invite) は既存 DB 行に残るため、
 //    stats 側は当面 .in([新, 旧]) で両方集計する。
