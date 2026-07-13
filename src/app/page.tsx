@@ -12,7 +12,7 @@ const BASE_URL = "https://www.watashi-torisetsu.com";
 
 // CTA 補足の診断人数。⚠️ 当面は丸めた固定値 (仮)。
 // 後で Supabase の実カウント (例: diagnosis_completed のユニーク数) に差し替える前提。
-const DIAGNOSED_COUNT = 2400;
+const DIAGNOSED_COUNT = 50000;
 
 // wn_session cookie を参照して出し分けるため、LP は動的レンダリングにする。
 // (cookie 不在の新規訪問者・bot は getSession 内で DB を引かず即 null を返すので、
