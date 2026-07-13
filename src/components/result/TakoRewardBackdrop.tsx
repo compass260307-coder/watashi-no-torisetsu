@@ -18,17 +18,28 @@
 type Variant = "hero" | "prose" | "chart" | "cards" | "list" | "grid";
 
 // 実結果ページ構成に対応するセクション列 (順序=縦座標の対応キー)。
+// ★見出しは奥レイヤーの中だけ「問い」にする (ラベルより答えを知りたくさせる)。
+//   手前・実結果ページの見出しは変えない (page.tsx 側は別・不変)。
 const SECTIONS: { title: string; variant: Variant }[] = [
-  { title: "あなたのキャラ", variant: "hero" },
-  { title: "みんなの目に映るあなた", variant: "prose" },
-  { title: "自分とのギャップ", variant: "chart" },
-  { title: "強み", variant: "prose" },
-  { title: "取扱注意", variant: "cards" },
-  { title: "恋愛での取扱い", variant: "prose" },
-  { title: "キャリア・向いてること", variant: "cards" },
-  { title: "友達からの回答", variant: "list" },
-  { title: "相性ランキング", variant: "grid" },
+  { title: "あなたはどんなキャラ？", variant: "hero" },
+  { title: "みんなから見たあなたは？", variant: "prose" },
+  { title: "自分とのギャップは？", variant: "chart" },
+  { title: "あなたの強みは？", variant: "prose" },
+  { title: "あなたの取扱説明書は？", variant: "cards" },
+  { title: "あなたが恋で見せる顔は？", variant: "prose" },
+  { title: "あなたが力を発揮する場所は？", variant: "cards" },
+  { title: "友達は何て言ってる？", variant: "list" },
+  { title: "相性がいいのは誰？", variant: "grid" },
 ];
+
+// cliffhanger: 1〜2セクションだけ、本文の書き出し1行を「読める実文」にして——で切る。
+//   ★型ごとの実文は使わない (課金前ネタバレ厳禁)。どの型でも成立する汎用の書き出しのみ。
+//   ★全セクションには入れない (読めるとゲートの意味が薄れる)。上下の覗き帯に出る位置に限定。
+//   ※カードはほぼ全幅なので、確実に覗き帯(上=hero / 下=section 7)に入る位置に限定する。
+const TEASERS: Record<number, string> = {
+  0: "ひとことで言うと、あなたは——",
+  7: "まわりから見たあなたは、意外にも——",
+};
 
 // 本文スケルトンにだけ掛ける blur。answered が増えるほど緩む (霧が晴れる)。
 // ★見出し/「?」には掛けない (それらは鮮明のまま)。
@@ -73,6 +84,7 @@ export function TakoRewardBackdrop({
           variant={s.variant}
           revealed={i < openN}
           bodyBlur={bodyBlurPx(answered, threshold, i < openN)}
+          teaser={TEASERS[i]}
         />
       ))}
     </div>
@@ -86,12 +98,14 @@ function BackdropSection({
   variant,
   revealed,
   bodyBlur,
+  teaser,
 }: {
   index: number;
   title: string;
   variant: Variant;
   revealed: boolean;
   bodyBlur: number;
+  teaser?: string;
 }) {
   const q = QMARK_SCATTER[index % QMARK_SCATTER.length];
   return (
@@ -110,12 +124,23 @@ function BackdropSection({
         </span>
       </div>
 
-      {/* 本文スケルトン: ここだけ blur。中身(バー)は読めないまま。 */}
+      {/* cliffhanger: 書き出し1行だけ読める実文 (blur 無し・——で切る)。汎用文=ネタバレ無し。 */}
+      {teaser && (
+        <p
+          className="mb-1.5 text-[13.5px] font-bold leading-snug"
+          style={{ color: "#8A90A0" }}
+        >
+          {teaser}
+        </p>
+      )}
+
+      {/* 本文スケルトン: ここだけ blur。中身(バー)は読めないまま。
+          hero(あなたのキャラ)の影絵は「絵の想起」を効かせるため blur を弱める。 */}
       <div
         style={{
-          filter: `blur(${bodyBlur.toFixed(2)}px)`,
+          filter: `blur(${((variant === "hero" ? 0.4 : 1) * bodyBlur).toFixed(2)}px)`,
           transition: "filter 0.5s ease",
-          opacity: revealed ? 0.85 : 0.65,
+          opacity: revealed ? 0.85 : 0.7,
         }}
       >
         <SectionSkeleton variant={variant} revealed={revealed} />
@@ -129,7 +154,8 @@ function BackdropSection({
           className="pointer-events-none absolute flex h-11 w-11 items-center justify-center rounded-2xl text-[28px] font-black"
           style={{
             left: q.left,
-            top: q.top,
+            // teaser がある行は書き出し文と重ならないよう ? を下にずらす。
+            top: teaser ? "50px" : q.top,
             color: "#6B7280",
             background: "rgba(255,255,255,0.92)",
             boxShadow: "0 6px 18px rgba(46,46,92,0.14)",
@@ -146,6 +172,29 @@ function bar(w: string, tone: string) {
   return { background: tone, width: w };
 }
 
+// 中立的なマスコットの“影絵”(インラインSVG・単色1枚・画像読み込み無し)。
+// 32体のうち誰か分からない汎用の体型 → 型を特定させない。「確かに誰かが座っている」を作る。
+// 解放後は本物のキャラに置き換わる想定 (現状ダミーでは常にこの影絵)。
+function MascotSilhouette({ size = 72 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      className="shrink-0"
+      aria-hidden="true"
+    >
+      <g fill="#4B5162">
+        {/* 耳 */}
+        <circle cx="21.5" cy="18" r="8.5" />
+        <circle cx="42.5" cy="18" r="8.5" />
+        {/* 頭+体 (丸い体型) */}
+        <path d="M32 13c11.5 0 19.5 8.4 19.5 20.5C51.5 47 43.5 54.5 32 54.5S12.5 47 12.5 33.5C12.5 21.4 20.5 13 32 13z" />
+      </g>
+    </svg>
+  );
+}
+
 function SectionSkeleton({
   variant,
   revealed,
@@ -157,12 +206,10 @@ function SectionSkeleton({
   const tone = revealed ? "#DEE1E6" : "#E8EAEE";
   switch (variant) {
     case "hero":
+      // 「あなたのキャラ」枠: グレー丸の代わりにマスコットの影絵を1体置く。
       return (
         <div className="flex items-center gap-4">
-          <div
-            className="h-16 w-16 shrink-0 rounded-full"
-            style={{ background: tone }}
-          />
+          <MascotSilhouette />
           <div className="flex-1 space-y-2">
             <div className="h-3.5 rounded-full" style={bar("70%", tone)} />
             <div className="h-3 rounded-full" style={bar("90%", tone)} />
