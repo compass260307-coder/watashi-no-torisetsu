@@ -12,11 +12,17 @@ function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
 
-  // Vercel preview URL (https://*-vercel.app or https://*.vercel.app)
+  // 現在のVercelデプロイに割り当てられたホストだけを許可する。
+  // 任意の *.vercel.app を許可すると、攻撃者自身のVercelサイトも通ってしまう。
   try {
     const url = new URL(origin);
-    if (url.protocol === "https:" && url.hostname.endsWith(".vercel.app")) {
-      return true;
+    if (url.protocol === "https:") {
+      const vercelHosts = [
+        process.env.VERCEL_URL,
+        process.env.VERCEL_BRANCH_URL,
+        process.env.VERCEL_PROJECT_PRODUCTION_URL,
+      ].filter((host): host is string => Boolean(host));
+      if (vercelHosts.includes(url.hostname)) return true;
     }
     if (
       process.env.NODE_ENV === "development" &&

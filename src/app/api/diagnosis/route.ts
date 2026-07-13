@@ -11,9 +11,49 @@
 
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  consumeRateLimit,
+  isSafeOpaqueToken,
+  normalizeOptionalText,
+  readJsonObject,
+} from "@/lib/api-security";
+import { diagnose } from "@/lib/diagnosis";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { createSession, getSession } from "@/lib/session";
+import type { AnswerValue } from "@/lib/types";
+
+export const runtime = "nodejs";
+
+const DIAGNOSIS_QUESTION_COUNT = 50;
+
+function parseAnswers(value: unknown): Record<number, AnswerValue> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const raw = value as Record<string, unknown>;
+  const keys = Object.keys(raw);
+  if (
+    keys.length !== DIAGNOSIS_QUESTION_COUNT ||
+    keys.some((key) => !/^[1-9][0-9]?$/.test(key))
+  ) {
+    return null;
+  }
+
+  const answers: Record<number, AnswerValue> = {};
+  for (let questionId = 1; questionId <= DIAGNOSIS_QUESTION_COUNT; questionId++) {
+    const answer = raw[String(questionId)];
+    if (
+      typeof answer !== "number" ||
+      !Number.isInteger(answer) ||
+      answer < 1 ||
+      answer > 7
+    ) {
+      return null;
+    }
+    answers[questionId] = answer as AnswerValue;
+  }
+  return answers;
+}
 
 // PR-FIX-3 H6: Math.random() ではなく CSPRNG (crypto.randomBytes) を使用
 function generateInviteCode(): string {
@@ -29,7 +69,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
-  const body = await request.json();
+  const rateLimit = await consumeRateLimit(request, {
+    scope: "diagnosis-submit-ip",
+    limit: 6,
+    windowSeconds: 600,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many diagnosis submissions. Please try again later." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds ?? 60),
+        },
+      },
+    );
+  }
+
+  const parsedBody = await readJsonObject(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value;
+
+  // ブラウザが送る typeId / scores は信用しない。50問の原回答から必ずサーバーで再計算する。
+  const answers = parseAnswers(body.answers);
+  if (!answers) {
+    return NextResponse.json(
+      { error: "All 50 answers must be integers from 1 to 7" },
+      { status: 400 },
+    );
+  }
+  const result = diagnose(answers);
   const {
     typeId,
     scores,
@@ -38,28 +112,32 @@ export async function POST(request: NextRequest) {
     cModifier,
     nModifier,
     modifierLabel,
-    campaign,
-    sourceInviteCode,
-    displayName,
-    // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch / 新規作成時のみ書込)
-    acquisitionSource,
-    acquisitionCampaign,
-  } = body;
+  } = result;
 
-  if (!typeId || !scores) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+  const campaign = normalizeOptionalText(body.campaign, 100);
+  const acquisitionSource = normalizeOptionalText(body.acquisitionSource, 100);
+  const acquisitionCampaign = normalizeOptionalText(
+    body.acquisitionCampaign,
+    100,
+  );
+  const rawSourceInviteCode = body.sourceInviteCode;
+  const sourceInviteCode =
+    rawSourceInviteCode === undefined || rawSourceInviteCode === null
+      ? null
+      : isSafeOpaqueToken(rawSourceInviteCode)
+        ? rawSourceInviteCode
+        : null;
+  if (rawSourceInviteCode != null && !sourceInviteCode) {
+    return NextResponse.json(
+      { error: "Invalid source invite code" },
+      { status: 400 },
+    );
   }
 
   // Phase 1.5-α Day 12-Polish-B: 基本情報ステップで取得したニックネームを users.display_name に保存。
   // クライアント側で trim 済の想定だが、念のため API でも空白除去 + 20 文字制限。
   // 空文字 / 未指定は null (UI 上「アナタ」フォールバック)。
-  let normalizedDisplayName: string | null = null;
-  if (typeof displayName === "string") {
-    const trimmed = displayName.trim();
-    if (trimmed.length > 0) {
-      normalizedDisplayName = trimmed.slice(0, 20);
-    }
-  }
+  const normalizedDisplayName = normalizeOptionalText(body.displayName, 20);
 
   // Phase 2F: scores jsonb に v2 拡張フィールドをマージ
   const persistedScores = {
@@ -125,7 +203,10 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("[api/diagnosis] re-diagnosis UPDATE error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { error: "Unable to save diagnosis" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
@@ -159,14 +240,8 @@ export async function POST(request: NextRequest) {
       display_name: normalizedDisplayName,
       // Day 12-C3: 媒体/キャンペーン流入元。新規作成時のみ・無ければ NULL。
       // source_user_id / generation (招待ツリー) とは別系統で独立。
-      acquisition_source:
-        typeof acquisitionSource === "string" && acquisitionSource
-          ? acquisitionSource.slice(0, 100)
-          : null,
-      acquisition_campaign:
-        typeof acquisitionCampaign === "string" && acquisitionCampaign
-          ? acquisitionCampaign.slice(0, 100)
-          : null,
+      acquisition_source: acquisitionSource,
+      acquisition_campaign: acquisitionCampaign,
     });
 
     return NextResponse.json({
@@ -186,6 +261,9 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[api/diagnosis] createSession error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to save diagnosis" },
+      { status: 500 },
+    );
   }
 }

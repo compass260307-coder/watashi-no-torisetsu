@@ -12,11 +12,17 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { checkOrigin } from "@/lib/origin-check";
 import { getSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  const originCheck = checkOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json({ error: originCheck.error }, { status: 403 });
+  }
+
   const session = await getSession(request);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

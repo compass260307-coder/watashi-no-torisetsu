@@ -17,6 +17,8 @@
 // 触らない: 既存 /api/checkout/create-session、Webhook の integrated_trisetsu 経路。
 
 import { NextRequest, NextResponse } from "next/server";
+import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
+import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { getStripe, getPremiumPriceId } from "@/lib/stripe-server";
@@ -28,6 +30,11 @@ const BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function POST(request: NextRequest) {
+  const originCheck = checkOrigin(request);
+  if (!originCheck.ok) {
+    return NextResponse.json({ error: originCheck.error }, { status: 403 });
+  }
+
   // ===== Stripe 環境変数チェック =====
   const stripe = getStripe();
   if (!stripe) {
@@ -51,15 +58,40 @@ export async function POST(request: NextRequest) {
   }
   const userId = session.id;
 
-  // ===== body parse =====
-  let body: { perceptionId?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  const checkoutLimit = await consumeRateLimit(request, {
+    scope: "perception-checkout-user",
+    identifier: userId,
+    limit: 10,
+    windowSeconds: 600,
+  });
+  if (!checkoutLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(checkoutLimit.retryAfterSeconds ?? 60),
+        },
+      },
+    );
   }
+
+  // ===== body parse =====
+  const parsedBody = await readJsonObject(request, 2 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value;
   const perceptionId =
-    typeof body.perceptionId === "string" ? body.perceptionId : null;
+    typeof body.perceptionId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      body.perceptionId,
+    )
+      ? body.perceptionId
+      : null;
   if (!perceptionId) {
     return NextResponse.json(
       { error: "perceptionId required (string)" },
@@ -154,10 +186,7 @@ export async function POST(request: NextRequest) {
       err,
     );
     return NextResponse.json(
-      {
-        error: "Stripe session 作成に失敗しました",
-        detail: err instanceof Error ? err.message : String(err),
-      },
+      { error: "Stripe session 作成に失敗しました" },
       { status: 500 },
     );
   }

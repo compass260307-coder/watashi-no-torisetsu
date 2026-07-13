@@ -17,6 +17,11 @@
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
+import {
+  consumeRateLimit,
+  isSafeOpaqueToken,
+  readJsonObject,
+} from "@/lib/api-security";
 import { getSession } from "@/lib/session";
 import { hasFullAccess } from "@/lib/entitlements";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
@@ -139,6 +144,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
+  const ipLimit = await consumeRateLimit(request, {
+    scope: "full-access-checkout-ip",
+    limit: 10,
+    windowSeconds: 600,
+  });
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(ipLimit.retryAfterSeconds ?? 60) },
+      },
+    );
+  }
+
   // ===== Stripe 環境 =====
   const stripe = getStripe();
   if (!stripe) {
@@ -158,11 +178,43 @@ export async function POST(request: NextRequest) {
   // ===== 対象本人の解決 (owner_token 優先 → session fallback) =====
   // owner_token は推測不可 (nanoid 22) の秘密トークン。閲覧と同じ capability なので、
   // これで本人を解決してよい。Cookie が無いスマホでも課金できるのが目的。
-  const body = (await request.json().catch(() => ({}))) as {
-    owner_token?: unknown;
-  };
+  const parsedBody = await readJsonObject(request, 2 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status },
+    );
+  }
+  const body = parsedBody.value;
   const bodyToken =
-    typeof body.owner_token === "string" ? body.owner_token.trim() : "";
+    body.owner_token === undefined || body.owner_token === null
+      ? ""
+      : isSafeOpaqueToken(body.owner_token)
+        ? body.owner_token
+        : null;
+  if (bodyToken === null) {
+    return NextResponse.json({ error: "Invalid owner token" }, { status: 400 });
+  }
+
+  if (bodyToken) {
+    const ownerLimit = await consumeRateLimit(request, {
+      scope: "full-access-checkout-owner",
+      identifier: bodyToken,
+      limit: 6,
+      windowSeconds: 600,
+    });
+    if (!ownerLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many checkout attempts" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(ownerLimit.retryAfterSeconds ?? 60),
+          },
+        },
+      );
+    }
+  }
 
   let buyer: Buyer | null = null;
   if (bodyToken) {
@@ -280,10 +332,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
     return NextResponse.json(
-      {
-        error: "Stripe session 作成に失敗しました",
-        detail: err instanceof Error ? err.message : String(err),
-      },
+      { error: "Stripe session 作成に失敗しました" },
       { status: 500 },
     );
   }
