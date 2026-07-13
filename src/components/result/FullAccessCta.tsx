@@ -12,7 +12,7 @@ import { useState } from "react";
 import { track } from "@/lib/track";
 
 export function FullAccessCta({
-  children = "¥299で全部よむ",
+  children = "¥199で全部よむ",
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,

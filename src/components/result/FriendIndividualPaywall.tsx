@@ -77,7 +77,7 @@ export function FriendIndividualPaywall({
 
           <div className="mt-8 rounded-3xl bg-[#F7F7FB] px-5 py-6 text-left">
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              🔓 一度きりの ¥299 で、
+              🔓 一度きりの ¥199 で、
               <br />
               ぜんぶ読めるようになります。
             </p>

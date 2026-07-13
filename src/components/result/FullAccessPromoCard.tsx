@@ -29,9 +29,9 @@ import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
-// 値引き表記に使う元値・現在価格 (77%OFF)。
+// 値引き表記に使う元値・現在価格 (85%OFF)。
 const LIST_PRICE = "¥1,299";
-const OFF_PERCENT = 77;
+const OFF_PERCENT = 85;
 
 // 解放される項目 (見出し + マイクロコピー)。
 const UNLOCKS: { title: string; desc: string }[] = [
@@ -288,7 +288,7 @@ export function FullAccessPromoCard({
             ))}
           </ul>
 
-          {/* 価格 (¥1,299 → ¥299 の値引き表記) */}
+          {/* 価格 (¥1,299 → ¥199 の値引き表記) */}
           <div
             className={`mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
               hasImage ? "" : "justify-center"
@@ -307,7 +307,7 @@ export function FullAccessPromoCard({
               className="text-[36px] font-black leading-none"
               style={{ color: tone.accent }}
             >
-              ¥299
+              ¥199
             </span>
           </div>
 

@@ -1,20 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { torisetsuTypes } from "@/lib/torisetsu-data";
-import type { TorisetsuTypeId } from "@/lib/types";
 
-const TYPE_ORDER_FOR_PREVIEW: TorisetsuTypeId[] = [
-  "festival-sun",
-  "everyones-home",
-  "wild-charisma",
-  "iron-mental",
-  "delicate-creator",
-  "healing-guardian",
-  "deep-dive-explorer",
-  "cool-maverick",
-];
-
+// 旧8タイプの日本語名 (フォールバック用)。現行はサーバが 32 タイプの称号を name で返す。
 const TYPE_LABELS: Record<string, string> = {
   "festival-sun": "お祭りムードメーカー",
   "everyones-home": "みんなの実家",
@@ -271,8 +259,6 @@ export default function AdminPage() {
   const [testOwnerToken, setTestOwnerToken] = useState("");
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [testSending, setTestSending] = useState(false);
-
-  const [reportOwnerToken, setReportOwnerToken] = useState("");
 
 
   useEffect(() => {
@@ -639,7 +625,7 @@ export default function AdminPage() {
         {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">
-            課金ファネル (¥299 フルアクセス)
+            課金ファネル (¥199 フルアクセス)
           </h2>
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
@@ -916,88 +902,6 @@ export default function AdminPage() {
           </div>
         </section>
 
-
-        {/* レポートプレビュー */}
-        <section>
-          <h2 className="text-sm font-bold text-gray-700 mb-3">
-            レポートプレビュー（開発モード）
-          </h2>
-          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
-            <input
-              type="text"
-              value={reportOwnerToken}
-              onChange={(e) => setReportOwnerToken(e.target.value)}
-              placeholder="owner_token を入力"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono"
-            />
-
-            <div>
-              <p className="text-xs font-bold text-gray-700 mb-2">
-                ▼ タイプを指定して表示（開発確認用）
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {TYPE_ORDER_FOR_PREVIEW.map((typeId) => {
-                  const t = torisetsuTypes[typeId];
-                  const disabled = !reportOwnerToken.trim() || !adminKey;
-                  return (
-                    <button
-                      key={typeId}
-                      onClick={() => {
-                        const token = reportOwnerToken.trim();
-                        if (!token || !adminKey) return;
-                        const params = new URLSearchParams({
-                          dev: "true",
-                          adminKey,
-                          forceType: typeId,
-                        });
-                        window.open(
-                          `/report/${encodeURIComponent(token)}?${params.toString()}`,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                      }}
-                      disabled={disabled}
-                      className="flex items-center gap-2 rounded border-2 bg-white px-3 py-2 text-left text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ borderColor: `${t.color}66`, color: t.color }}
-                    >
-                      <span className="text-base shrink-0">{t.emoji}</span>
-                      <span className="truncate">{t.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-bold text-gray-700 mb-2">
-                ▼ または、実データで表示
-              </p>
-              <button
-                onClick={() => {
-                  const token = reportOwnerToken.trim();
-                  if (!token || !adminKey) return;
-                  const params = new URLSearchParams({
-                    dev: "true",
-                    adminKey,
-                  });
-                  window.open(
-                    `/report/${encodeURIComponent(token)}?${params.toString()}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                }}
-                disabled={!reportOwnerToken.trim()}
-                className="rounded bg-purple-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50 self-start"
-              >
-                実データで表示（新規タブ）
-              </button>
-            </div>
-
-            <p className="text-[11px] text-gray-500">
-              friend_count が3未満でもダミーデータで補完。タイプ指定時はタイプ表示・カラー・深掘り・相性のみ上書き（ギャップ・レーダーは実データのまま）
-            </p>
-          </div>
-        </section>
 
         {/* Recent Events */}
         <section>

@@ -140,10 +140,10 @@ export function DeepDiveSections({
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
               「{current.tab}」のくわしい深掘りは
               <br />
-              友達3人 or ¥299 でひらきます。
+              友達3人 or ¥199 でひらきます。
             </p>
             <p className="mt-2 text-[#8A8AA3] font-bold text-[13px] leading-[1.6]">
-              友達3人ならタダ。急ぐなら一度きりの ¥299 で、
+              友達3人ならタダ。急ぐなら一度きりの ¥199 で、
               <br className="md:hidden" />
               キャリアも成長も相性も、ぜんぶ。
             </p>
