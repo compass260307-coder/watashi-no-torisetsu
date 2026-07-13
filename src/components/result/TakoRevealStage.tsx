@@ -163,8 +163,12 @@ export function TakoRevealStage({
   return (
     <div
       ref={rootRef}
-      className="relative isolate mx-auto flex min-h-[780px] w-full max-w-[560px] items-center overflow-hidden rounded-[32px] touch-pan-y select-none md:min-h-[820px]"
-      style={{ background: "#EEF0FA" }}
+      // full-bleed: 器を viewport 全幅に広げ、画面のどこでも奥(結果ページ)が透ける状態に。
+      //   親が mx-auto 中央寄せなので ml-[calc(50%-50vw)]+w-screen で viewport 幅に一致させる
+      //   (main が overflow-x-clip なので横スクロールは出ない)。
+      // 色は白基調・無彩 (紫み撤去)。
+      className="relative isolate flex min-h-[780px] w-screen ml-[calc(50%-50vw)] items-center overflow-hidden touch-pan-y select-none md:min-h-[820px]"
+      style={{ background: "#F6F7F9" }}
     >
       {/* ===== 奥(報酬)レイヤー: 器より少し大きく敷き、transform で気配だけ動かす。
           スクリムは廃止。カードの外側では奥(=?の並んだ結果ページ)がそのまま見える。 ===== */}
