@@ -17,12 +17,28 @@ const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
 const PULSE_MS = 1300;
 
-export function scrollToPaywall(source: string = "unknown"): void {
+// 「シーン別の注意点」(SceneCautionTeaser) のアンカー id。
+export const SCENE_CAUTION_ID = "scene-caution";
+
+// ④「裏技でロック解除」カード (/me の lockCard カードB) のアンカー id。
+// ②深掘りの解除 CTA はここに着地させ、裏技カードをパルスで光らせる。
+export const URAWAZA_CARD_ID = "urawaza-card";
+
+// targetId 指定で課金カード以外 (例: シーン別の注意点 "scene-caution") にも飛べる。
+// 挙動 (スムーススクロール + パルス) と計測イベントは共通。
+export function scrollToPaywall(
+  source: string = "unknown",
+  targetId: string = PAYWALL_ID,
+): void {
   if (typeof document === "undefined") return;
   track("paywall_scroll_clicked", {
-    metadata: { source, page: window.location.pathname.split("/")[1] || "top" },
+    metadata: {
+      source,
+      target: targetId,
+      page: window.location.pathname.split("/")[1] || "top",
+    },
   });
-  const el = document.getElementById(PAYWALL_ID);
+  const el = document.getElementById(targetId);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   // 再トリガー時にアニメを確実に再生させるため一旦外してから付け直す。

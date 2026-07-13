@@ -13,19 +13,22 @@ import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 interface PaywallScrollButtonProps {
   /** 計測用の設置場所ID (例: urawaza_card / relations_card)。 */
   source: string;
+  /** 飛び先の要素 id。省略時は最下部の課金カード (#fullaccess-promo)。 */
+  targetId?: string;
   className?: string;
   children: React.ReactNode;
 }
 
 export function PaywallScrollButton({
   source,
+  targetId,
   className,
   children,
 }: PaywallScrollButtonProps) {
   return (
     <button
       type="button"
-      onClick={() => scrollToPaywall(source)}
+      onClick={() => scrollToPaywall(source, targetId)}
       className={className}
     >
       {children}

@@ -15,6 +15,25 @@ const TYPE_LABELS: Record<string, string> = {
   "explorer_leader": "探検リーダー",
 };
 
+// paywall_scroll_clicked の source → 日本語ラベル (設置場所)。
+// 未知の source はキーをそのまま表示する (title 属性に生キーも残す)。
+const PAYWALL_SOURCE_LABELS: Record<string, string> = {
+  love_payoff_card: "恋愛「もっと楽になる恋」ロック",
+  deepdive_card: "深掘り(キャリア/成長/相性)ロック",
+  scene_caution_card: "シーン別の注意点ロック",
+  urawaza_card: "裏技でロック解除カード",
+  relations_card: "関係別の見られ方ロック",
+  deepdive_panel: "旧:深掘りロックパネル",
+  deepdive_tab_career: "旧:深掘りタブ(キャリア)",
+  deepdive_tab_growth: "旧:深掘りタブ(成長)",
+  deepdive_tab_aisho: "旧:深掘りタブ(相性)",
+  sticky_bar: "追従バー(結果ページ上部)",
+  friend_list: "友達一覧ロック",
+  aisho_scene: "相性ページ(シーン別)",
+  tako_unlocked: "/tako 解放後導線",
+  unknown: "不明",
+};
+
 type Stats = {
   diagnosisStarted: number;
   diagnosisCompleted: number;
@@ -654,15 +673,17 @@ export default function AdminPage() {
             {(stats.paywallSources ?? []).length > 0 && (
               <div className="mt-4 border-t border-gray-100 pt-3">
                 <p className="mb-2 text-xs font-bold text-gray-500">
-                  解除ボタン押下の内訳 (クリック回数)
+                  解除ボタン押下の内訳 (どのCTAから課金カードへ飛んだか・クリック回数)
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {stats.paywallSources.map((s) => (
                     <span
                       key={s.source}
                       className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700"
+                      title={s.source}
                     >
-                      {s.source}: <b>{s.count}</b>
+                      {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}:{" "}
+                      <b>{s.count}</b>
                     </span>
                   ))}
                 </div>

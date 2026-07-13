@@ -68,6 +68,7 @@ import {
 } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import { PartTwoSections } from "@/components/result/PartTwoSections";
+import { SceneCautionTeaser } from "@/components/result/SceneCautionTeaser";
 import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
@@ -477,84 +478,119 @@ export default async function MePage({ params, searchParams }: PageProps) {
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
             キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
             aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
+        {/* ===== ① 基本特性 + 五つの性格傾向 =====
+            基本特性 (キャラ直下・見出しなし本文) → 挿絵 normal1 → ① 五つの性格傾向。
+            ※注意点 (旧②) は深掘りの後 (③) へ移設 (2026-07-14 指示)。 */}
         <section aria-label="自分が見た自分" className="mb-10">
-          {/* 取説 (各パート: メイン見出し → 全段落本文)。絵文字+機能ラベルは出さない。
-              heading 優先、未設定 (16タイプ等) は title にフォールバック (最低限パートが分かる)。
-              ※最初のパート (idx 0 = キャラ直下) は見出しを出さず本文から始める (16P 同様)。 */}
-          {/* コンテンツ順: 基本特性 → 5つの軸 → 取扱注意 → 深掘り */}
-          {sections.slice(0, 2).map((sec, idx) => {
-            const paragraphs = sec.body.split("\n\n");
-            // メイン見出し: タイプ固有 heading を優先、未設定は title。
-            const mainHeading = sec.heading ?? sec.title;
-            return (
-              <div key={sec.title}>
-                {/* パート1 (基本特性) と パート2 (取扱注意) の間に 5 つの軸を挟む */}
-                {idx === 1 && (
-                  <div className="mb-14 mt-4">
-                    <BigFiveDivergingBars
-                      scores={stored}
-                      title="五つの性格傾向"
-                      number="1"
-                    />
-                  </div>
-                )}
+          {sections[0] &&
+            (() => {
+              const paragraphs = sections[0].body.split("\n\n");
+              const introImage = sceneImage("normal1");
+              // 挿絵 normal1 は本文の途中 (中間の段落の後) に差し込む (2026-07-14 指示)。
+              const imageAfter = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
+              return (
                 <section className="mb-14">
-                  {/* パート2 見出し: タイプ別文言 (mainHeading) は使わず、章として固定の
-                      「② アナタの注意点」(① 五つの性格傾向 と同じ 16P 風スタイル) */}
-                  {idx > 0 && (
-                    <div className="mb-4 flex items-center gap-3">
-                      <span
-                        aria-hidden="true"
-                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-                      >
-                        2
-                      </span>
-                      <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                        アナタの注意点
-                      </h2>
-                    </div>
-                  )}
-                  {/* 挿絵 normal2: 「② アナタの注意点」タイトル直下 (本文の前) に表示 */}
-                  {idx === 1 && sceneImage("normal2") && (
-                    <SmoothImage
-                      src={sceneImage("normal2")!}
-                      alt=""
-                      width={960}
-                      height={640}
-                      className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
-                    />
-                  )}
                   {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。全段落表示。 */}
                   <div className="px-1 pb-1">
-                    {paragraphs.map((para, pIdx) => (
-                      <p
-                        key={`${sec.title}-${pIdx}`}
-                        className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
-                      >
-                        {para}
-                      </p>
-                    ))}
+                    {paragraphs.flatMap((para, pIdx) => {
+                      const els = [
+                        <p
+                          key={`intro-${pIdx}`}
+                          className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                        >
+                          {para}
+                        </p>,
+                      ];
+                      if (introImage && pIdx === imageAfter) {
+                        els.push(
+                          <SmoothImage
+                            key="intro-image"
+                            src={introImage}
+                            alt=""
+                            width={960}
+                            height={640}
+                            className="mx-auto my-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
+                          />,
+                        );
+                      }
+                      return els;
+                    })}
                   </div>
-                  {/* 挿絵 normal1: パート1 (基本特性) の本文の後に表示 */}
-                  {idx === 0 && sceneImage("normal1") && (
-                    <SmoothImage
-                      src={sceneImage("normal1")!}
-                      alt=""
-                      width={960}
-                      height={640}
-                      className="mx-auto mb-4 mt-12 h-auto w-full max-w-[560px] md:max-w-[760px]"
-                    />
-                  )}
                 </section>
-              </div>
-            );
-          })}
-
+              );
+            })()}
+          {/* ① 五つの性格傾向 */}
+          <div className="mb-14 mt-4">
+            <BigFiveDivergingBars
+              scores={stored}
+              title="五つの性格傾向"
+              number="1"
+            />
+          </div>
         </section>
 
+        {/* ===== ② アナタの深掘り (恋愛/キャリア/成長/相性) =====
+            2026-07-14 指示: タブ切替を廃止し縦積みで全カテゴリを表示。順序も②へ繰り上げ。
+            「みんなの目」(他己) は /tako へ移設。 */}
+        <div className="mt-16">
+          <DeepDiveSections
+            number="2"
+            sections={deepDiveSections}
+            sceneImages={{
+              love: sceneImage("love"),
+              career: sceneImage("work"),
+              growth: sceneImage("school"),
+            }}
+          />
+        </div>
+
+        {/* ===== ③ アナタの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル) ===== */}
+        {sections[1] &&
+          (() => {
+            const paragraphs = sections[1].body.split("\n\n");
+            return (
+              <section className="mt-16 mb-14">
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                  >
+                    3
+                  </span>
+                  <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                    アナタの注意点
+                  </h2>
+                </div>
+                {/* 挿絵 normal2: タイトル直下 (本文の前) に表示 */}
+                {sceneImage("normal2") && (
+                  <SmoothImage
+                    src={sceneImage("normal2")!}
+                    alt=""
+                    width={960}
+                    height={640}
+                    className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
+                  />
+                )}
+                <div className="px-1 pb-1">
+                  {paragraphs.map((para, pIdx) => (
+                    <p
+                      key={`caution-${pIdx}`}
+                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+                {/* シーン別の注意点 (ロックティーザー)。本文データ未投入のため未解放時のみ。
+                    解放済みに「開かない鍵」を見せない (データ投入後に実表示へ差し替え)。 */}
+                {!partTwoUnlocked && <SceneCautionTeaser />}
+              </section>
+            );
+          })()}
 
 
-        {/* ===== ③ 友達から見たアナタ (16P 風ロックティーザー) =====
+
+        {/* ===== ④ 友達から見たアナタ (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
             他己パートの本体は /tako/[token]。 */}
@@ -564,7 +600,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
               aria-hidden="true"
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              3
+              4
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
               友達から見たアナタ
@@ -685,21 +721,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
           })()}
 
         </section>
-
-        {/* ===== ④ アナタの深掘り (恋愛/キャリア/成長/相性、タブ切替) =====
-            2026-07-12 指示で「友達から見たアナタ」(③) と順序を入れ替え。
-            「みんなの目」(他己) は /tako へ移設。 */}
-        <div className="mt-16">
-          <DeepDiveSections
-            sections={deepDiveSections}
-            sceneImages={{
-              love: sceneImage("love"),
-              career: sceneImage("work"),
-              growth: sceneImage("school"),
-            }}
-          />
-        </div>
-
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}

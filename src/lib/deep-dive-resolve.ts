@@ -41,6 +41,13 @@ export type ResolvedDeepDiveSection = {
    * null のときは本文をそもそも解決していない (payload にも載らない)。
    */
   body: string | null;
+  /**
+   * 本文を見出し付きブロックに分割したもの (2026-07-14・恋愛のみ)。
+   * 登録済みタイプだけ設定され、表示側はこれがあれば body の代わりに見出し付きで描画する。
+   * 未登録は undefined = 従来どおり body を単一表示。
+   * locked=true のブロックは payoff (救い/ヒント) が未解放。body は "" (payload に載せない)。
+   */
+  blocks?: { heading: string; body: string; locked?: boolean }[];
   /** ロック中か (課金導線を出すフラグ)。 */
   locked: boolean;
 };
@@ -70,6 +77,83 @@ const DEEP_DIVE_CARDS: {
 const FREE_TAB_KEYS: ReadonlySet<DeepDiveTabKey> = new Set<DeepDiveTabKey>([
   "love",
 ]);
+
+// 恋愛本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-14)。
+//   本文はどのタイプも「魅力(冒頭) → クセ/不安 → 本音 → 救い/ヒント」の同じ流れなので、
+//   見出しは共通で成立する。原稿(body)は一切変更せず、段落境界で3つに割るだけ。
+const LOVE_HEADINGS = [
+  "アナタの恋の魅力",
+  "つい抱えこんでしまうこと",
+  "アナタがもっと楽になる恋",
+] as const;
+
+// タイプ別の区切り = [ブロック1の段落数, ブロック2の段落数]。ブロック3 = 残り全部。
+//   談話標識 (「でも/じつは」で本音へ、「でも、それは〜じゃない/だから/最後に」で救いへ) を
+//   基準に全タイプ機械決定。R系=[2,1] / N系=[1,2] が基本、原稿に応じ例外あり。
+const LOVE_SPLITS: Partial<Record<ThirtyTwoTypeId, [number, number]>> = {
+  "smiley-panda__R": [2, 1],
+  "smiley-panda__N": [1, 2],
+  "caretaker-dog__R": [2, 1],
+  "caretaker-dog__N": [1, 2],
+  "brisk-tiger__R": [2, 2],
+  "brisk-tiger__N": [1, 2],
+  "playful-raccoon__R": [2, 1],
+  "playful-raccoon__N": [2, 1],
+  "idea-monkey__R": [2, 1],
+  "idea-monkey__N": [1, 2],
+  "sparkle-dolphin__R": [2, 1],
+  "sparkle-dolphin__N": [1, 2],
+  "ambition-lion__R": [2, 1],
+  "ambition-lion__N": [1, 2],
+  "whim-fox__R": [2, 1],
+  "whim-fox__N": [1, 2],
+  "dreamer-rabbit__R": [2, 1],
+  "dreamer-rabbit__N": [1, 2],
+  "quiet-owl__R": [2, 1],
+  "quiet-owl__N": [1, 2],
+  "seeker-wolf__R": [2, 1],
+  "seeker-wolf__N": [1, 2],
+  "fantasy-cat__R": [2, 1],
+  "fantasy-cat__N": [1, 2],
+  "gentle-koala__R": [2, 1],
+  "gentle-koala__N": [1, 2],
+  "earnest-elephant__R": [2, 1],
+  "earnest-elephant__N": [1, 2],
+  "steady-turtle__R": [2, 1],
+  "steady-turtle__N": [1, 2],
+  "solo-hedgehog__R": [2, 1],
+  "solo-hedgehog__N": [1, 2],
+};
+
+// 恋愛 body を共通見出し3ブロックに分割。未登録/段落不足のタイプは undefined
+// (= 従来どおり単一本文表示)。3ブロックとも1段落以上でなければ分割しない。
+//   3ブロック目「アナタがもっと楽になる恋」(救い/ヒントの payoff) は課金ゲート対象。
+//   unlocked=false のときは locked=true・body="" とし、本文を payload に載せない
+//   (フェイルクローズ。表示側はぼかし + 解除カードにする)。
+function buildLoveBlocks(
+  typeId: ThirtyTwoTypeId,
+  body: string,
+  unlocked: boolean,
+): { heading: string; body: string; locked?: boolean }[] | undefined {
+  const split = LOVE_SPLITS[typeId];
+  if (!split) return undefined;
+  const paras = body.split("\n\n");
+  const [c1, c2] = split;
+  if (c1 < 1 || c2 < 1 || c1 + c2 >= paras.length) return undefined;
+  const slices = [
+    paras.slice(0, c1),
+    paras.slice(c1, c1 + c2),
+    paras.slice(c1 + c2),
+  ];
+  return slices.map((s, i) => {
+    const heading = LOVE_HEADINGS[i];
+    const isPayoff = i === slices.length - 1;
+    if (isPayoff && !unlocked) {
+      return { heading, body: "", locked: true };
+    }
+    return { heading, body: s.join("\n\n") };
+  });
+}
 
 function toPercent(score: number | undefined): number {
   const s = typeof score === "number" ? score : 5;
@@ -147,6 +231,30 @@ export function resolveDeepDiveSections(
         : card.key === "career" && career32
           ? career32
           : deepDive[card.key];
+    if (card.key === "love") {
+      // 恋愛は無料表示だが、payoff (3ブロック目「アナタがもっと楽になる恋」) だけは
+      // 課金ゲート。未解放時は locked ブロックの本文を payload に載せない。
+      const blocks = buildLoveBlocks(
+        thirtyTwoId,
+        section.body,
+        opts.hasFullAccess,
+      );
+      // body は blocks があれば表示に使われないが、フェイルクローズのため公開分だけに絞る。
+      const visibleBody = blocks
+        ? blocks
+            .filter((b) => !b.locked)
+            .map((b) => b.body)
+            .join("\n\n")
+        : section.body;
+      return {
+        key: card.key,
+        tab: card.tab,
+        note: scoreNote(card.hint),
+        body: visibleBody,
+        blocks,
+        locked: false,
+      };
+    }
     return {
       key: card.key,
       tab: card.tab,
