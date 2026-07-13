@@ -9,7 +9,7 @@ const FONT_STACK =
 export default function TopStats({ diagnosedCount }: { diagnosedCount: number }) {
   // 数字ごとに異なるアクセント色 (16P 風。felt 世界観に合わせたパステル寄り)。
   const stats = [
-    { num: "3000+", label: "本日の診断回数", color: "#5B5BEF" },
+    { num: "3,000+", label: "本日の診断回数", color: "#5B5BEF" },
     {
       num: `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`,
       label: "診断した人",
