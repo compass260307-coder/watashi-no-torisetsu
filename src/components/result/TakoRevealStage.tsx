@@ -22,7 +22,7 @@ import { TakoRewardBackdrop } from "./TakoRewardBackdrop";
 
 const PEEK_TRAVEL = 90; // このドラッグ距離(px)で退避が最大に
 const PEEK_EASE = 0.18;
-const PEEK_FADE = 0.97; // 退避時の最大フェード (opacity 1 → 0.03。ほぼ完全に消す)
+const PEEK_FADE = 1.0; // 退避時の最大フェード (opacity 1 → 0。手前をまるごと消して奥だけに)
 const PEEK_SHRINK = 0.05; // 退避時の最大縮小 (scale 1 → 1-0.05)
 const PEEK_BLUR_MAX = 24; // フロストの blur(px)。退避量に比例して 0 へ減衰し、奥を素で見せる。
 
