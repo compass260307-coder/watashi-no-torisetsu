@@ -21,6 +21,7 @@
 
 import Image from "next/image";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import { useTakoPeek } from "./TakoRevealStage";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -92,6 +93,7 @@ export function TakoShareGate({
     shownAnsweredCount ?? answered.length,
     threshold,
   );
+  const peek = useTakoPeek();
   const remaining = Math.max(0, threshold - answeredCount);
   // pending は残りスロットを超えない。answered+pending が threshold を超えないよう抑える。
   const pending = Math.max(0, Math.min(pendingCount, remaining));
@@ -126,13 +128,19 @@ export function TakoShareGate({
 
   return (
     <div
-      // フロストガラス: 半透明白 + backdrop-blur で奥をぼかして透過。可読性は blur が、
-      // 浮き(境界)は影+極淡い縁+内側ハイライトが担う(不透明度に頼らない)。
-      // ★blur 量は --peek-blur (既定 24px) を参照。退避ドラッグ中に TakoRevealStage が
-      //   このカスタムプロパティを 0 へ減衰させ、カードが消えると同時に奥を素でくっきり見せる。
-      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06]"
+      // フロストガラス: 静止時は白 0.9 でがっつり主役として立たせる(奥はカード外側で見えれば
+      // よく、カード越しの透過は必須ではない)。frost 質感は backdrop-blur で維持。
+      // ★退避ドラッグ中、TakoRevealStage が親から 2つの custom property を減衰させる:
+      //   --peek-blur (24px→0) でフロストを解き、--peek-opacity (1→0) でカード“自身”を
+      //   まるごと(背景＋中身)フェードさせて奥だけを残す。opacity をこのカード自要素に
+      //   かけるのが要点で、祖先 opacity だと backdrop-filter を持つ本要素の中身が WebKit で
+      //   濃いまま残る癖を回避する(自要素 opacity は backdrop-filter 出力ごと確実に消える)。
+      // ★小型端末(iPhone SE/mini 等・max-height:740px)ではカードの縦を詰めて、最下部の
+      //   退避ピルが下部固定ナビの裏へ回り込まない高さに収める(--gate-num=巨大数字の縮小)。
+      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 [--gate-num:clamp(84px,26vw,152px)] [@media(max-height:740px)]:py-4 [@media(max-height:740px)]:[--gate-num:clamp(52px,16vw,84px)] shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06] [will-change:opacity]"
       style={{
-        background: "rgba(255,255,255,0.6)",
+        background: "rgba(255,255,255,0.9)",
+        opacity: "var(--peek-opacity, 1)",
         backdropFilter: "blur(var(--peek-blur, 24px))",
         WebkitBackdropFilter: "blur(var(--peek-blur, 24px))",
       }}
@@ -160,7 +168,7 @@ export function TakoShareGate({
       </h1>
 
       {/* ===== ヒーロー数字: 「あと [N] 人で開く」。数字だけ圧倒的に主役。 ===== */}
-      <div className="mt-3 flex items-end justify-center gap-2">
+      <div className="mt-3 [@media(max-height:740px)]:mt-1 flex items-end justify-center gap-2">
         <span
           className="pb-2 text-[18px] md:text-[22px] font-black"
           style={{ color: READ_GRAY }}
@@ -180,7 +188,7 @@ export function TakoShareGate({
             className="animate-gate-breathe inline-block font-black leading-none tracking-tight"
             style={{
               color: LAVENDER,
-              fontSize: "clamp(84px, 26vw, 152px)",
+              fontSize: "var(--gate-num)",
             }}
             aria-hidden="true"
           >
@@ -207,7 +215,7 @@ export function TakoShareGate({
       </p>
 
       {/* ===== スロット3枠 ===== */}
-      <ul className="mt-4 flex items-start justify-center gap-4 md:gap-7">
+      <ul className="mt-4 [@media(max-height:740px)]:mt-2 flex items-start justify-center gap-4 md:gap-7">
         {slots.map((slot, i) => (
           <li
             key={i}
@@ -234,12 +242,12 @@ export function TakoShareGate({
       </ul>
 
       {/* ===== CTA (画面の主役ボタン・いちばん大きく)。data-no-drag でドラッグ非開始。 ===== */}
-      <div className="mt-7">
+      <div className="mt-7 [@media(max-height:740px)]:mt-4">
         <button
           type="button"
           onClick={handlePrimary}
           data-no-drag
-          className="mx-auto flex w-full max-w-[420px] items-center justify-center gap-2 rounded-full px-6 py-4 text-[18px] md:text-[20px] font-black text-white shadow-[0_10px_30px_rgba(91,91,239,0.35)] transition-transform active:scale-[0.97]"
+          className="mx-auto flex w-full max-w-[420px] items-center justify-center gap-2 rounded-full px-6 py-4 [@media(max-height:740px)]:py-3 text-[18px] md:text-[20px] font-black text-white shadow-[0_10px_30px_rgba(91,91,239,0.35)] transition-transform active:scale-[0.97]"
           style={{ background: LAVENDER }}
         >
           {ctaLabel}
@@ -263,6 +271,45 @@ export function TakoShareGate({
           送るほど、みんなから見たあなたが完成する
         </p>
       </div>
+
+      {/* ===== 退避トリガ: 押している間だけ手前カードを透過させ奥をチラ見。
+          カード内に置くことで端末サイズ/下部ナビに隠れず常時タップ可能。
+          押下ハンドラは器(TakoRevealStage)の rAF を PeekContext 経由で駆動する。
+          touch-action:none で押下保持中のスクロール奪取を防ぐ。 ===== */}
+      {peek && !peek.hidden && (
+        <div className="mt-5 [@media(max-height:740px)]:mt-3 flex justify-center">
+          <button
+            type="button"
+            aria-label="押している間、奥の結果をチラ見できます"
+            data-no-drag
+            onPointerDown={peek.onPeekStart}
+            onPointerUp={peek.onPeekEnd}
+            onPointerCancel={peek.onPeekEnd}
+            onPointerLeave={peek.onPeekEnd}
+            className="inline-flex select-none items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-black ring-1 ring-black/[0.06] active:scale-95"
+            style={{
+              background: "rgba(240,241,248,0.95)",
+              color: NAVY,
+              touchAction: "none",
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            押して奥をチラ見
+          </button>
+        </div>
+      )}
     </div>
   );
 }
