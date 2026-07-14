@@ -1,28 +1,28 @@
 // スプレッドシート連携用の「主要な数値」エンドポイント (読み取り専用・集計のみ)。
-// Google Apps Script の時間トリガーから ?key=<METRICS_KEY> で GET し、1 行ずつ追記していく想定。
+// Google Apps Script の時間トリガーから GET し、1 行ずつ追記していく想定。
 //
-// 認証: クエリ ?key= と env METRICS_KEY を照合。ADMIN_KEY とは別トークンにして、
+// 認証: Authorization: Bearer <METRICS_KEY>。ADMIN_KEY とは別トークンにして、
 //        シートに置くトークンが管理画面 (/admin) を開けないようにする。
 // 期間: ?from= / ?to= (ISO) 任意。未指定は全期間 (= 現時点の累計スナップショット)。
 // 形式: 既定 JSON (Apps Script 向け)。?format=csv で metric,value の2列CSV (IMPORTDATA 向け)。
 
 import { computeStats } from "@/lib/admin-stats";
+import {
+  authorizeMetricsRequest,
+  metricsPrivateHeaders,
+} from "@/lib/metrics-access";
 import { NextRequest, NextResponse } from "next/server";
 
 // 集計はページング + 質問別 count 50本で時間がかかるため余裕を持たせる (admin/stats と同じ)。
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  const metricsKey = process.env.METRICS_KEY;
-  if (!metricsKey) {
+  const access = authorizeMetricsRequest(request);
+  if (!access.ok) {
     return NextResponse.json(
-      { error: "METRICS_KEY is not configured" },
-      { status: 500 },
+      { error: access.error },
+      { status: access.status, headers: metricsPrivateHeaders },
     );
-  }
-  const key = request.nextUrl.searchParams.get("key");
-  if (key !== metricsKey) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const from = request.nextUrl.searchParams.get("from");
@@ -70,9 +70,12 @@ export async function GET(request: NextRequest) {
         .map(([k, v]) => `${esc(k)},${esc(v)}`)
         .join("\n");
     return new NextResponse(csv, {
-      headers: { "Content-Type": "text/csv; charset=utf-8" },
+      headers: {
+        ...metricsPrivateHeaders,
+        "Content-Type": "text/csv; charset=utf-8",
+      },
     });
   }
 
-  return NextResponse.json(metrics);
+  return NextResponse.json(metrics, { headers: metricsPrivateHeaders });
 }
