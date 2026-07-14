@@ -21,6 +21,7 @@
 
 import Image from "next/image";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import { useTakoPeek } from "./TakoRevealStage";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -92,6 +93,7 @@ export function TakoShareGate({
     shownAnsweredCount ?? answered.length,
     threshold,
   );
+  const peek = useTakoPeek();
   const remaining = Math.max(0, threshold - answeredCount);
   // pending は残りスロットを超えない。answered+pending が threshold を超えないよう抑える。
   const pending = Math.max(0, Math.min(pendingCount, remaining));
@@ -267,6 +269,45 @@ export function TakoShareGate({
           送るほど、みんなから見たあなたが完成する
         </p>
       </div>
+
+      {/* ===== 退避トリガ: 押している間だけ手前カードを透過させ奥をチラ見。
+          カード内に置くことで端末サイズ/下部ナビに隠れず常時タップ可能。
+          押下ハンドラは器(TakoRevealStage)の rAF を PeekContext 経由で駆動する。
+          touch-action:none で押下保持中のスクロール奪取を防ぐ。 ===== */}
+      {peek && !peek.hidden && (
+        <div className="mt-5 flex justify-center">
+          <button
+            type="button"
+            aria-label="押している間、奥の結果をチラ見できます"
+            data-no-drag
+            onPointerDown={peek.onPeekStart}
+            onPointerUp={peek.onPeekEnd}
+            onPointerCancel={peek.onPeekEnd}
+            onPointerLeave={peek.onPeekEnd}
+            className="inline-flex select-none items-center gap-1.5 rounded-full px-4 py-2 text-[12.5px] font-black ring-1 ring-black/[0.06] active:scale-95"
+            style={{
+              background: "rgba(240,241,248,0.95)",
+              color: NAVY,
+              touchAction: "none",
+            }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            押して奥をチラ見
+          </button>
+        </div>
+      )}
     </div>
   );
 }
