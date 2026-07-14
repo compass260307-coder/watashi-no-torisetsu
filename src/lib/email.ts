@@ -173,6 +173,52 @@ export async function sendTrisetsuCompleteEmail(
   }
 }
 
+interface SendDetailedReportArgs {
+  to: string;
+  ownerToken: string;
+  ownerName?: string | null;
+}
+
+/**
+ * 詳細レポートお届けメール (フルアクセス購入特典)。
+ *
+ * Stripe Webhook (checkout.session.completed / product=full_access) から送信。
+ * ボタンは 2 つ:
+ *   - 「レポートを表示」= /me/[ownerToken] (課金解放済みの診断結果ページ)
+ *   - 「電子書籍をダウンロード」= /report/[ownerToken]/pdf (A4 PDF を attachment 返却)
+ * どちらも token ベースの永続 URL。ゲスト決済 (診断前) でも診断完了後に
+ * 同じリンクが本人のタイプの内容になる。
+ * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
+ */
+export async function sendDetailedReportEmail(
+  args: SendDetailedReportArgs,
+): Promise<void> {
+  const resend = getResendClient();
+  const from = getFromAddress();
+  if (!resend || !from) return;
+
+  const greetingName = (args.ownerName ?? "").trim();
+  const token = encodeURIComponent(args.ownerToken);
+  const meUrl = `${SITE_URL}/me/${token}`;
+  const pdfUrl = `${SITE_URL}/report/${token}/pdf`;
+  const subject = `あなたの詳細レポートが届きました`;
+
+  try {
+    const result = await resend.emails.send({
+      from,
+      to: args.to,
+      subject,
+      html: renderDetailedReportHtml({ meUrl, pdfUrl, greetingName }),
+      text: renderDetailedReportText({ meUrl, pdfUrl, greetingName }),
+    });
+    if (result.error) {
+      console.error("[email] sendDetailedReportEmail Resend error:", result.error);
+    }
+  } catch (err) {
+    console.error("[email] sendDetailedReportEmail exception:", err);
+  }
+}
+
 // =========================================================================
 // テンプレ (絵文字なし、明朝体ベースのインライン CSS で和の上品さ)
 // =========================================================================
@@ -345,6 +391,108 @@ function renderTrisetsuCompleteText(
     SITE_NAME,
   );
   return lines.join("\n");
+}
+
+// =========================================================================
+// 詳細レポートお届けメールのテンプレ
+// =========================================================================
+
+interface DetailedReportTemplateArgs {
+  meUrl: string;
+  pdfUrl: string;
+  greetingName: string;
+}
+
+// export はテンプレプレビュー (scripts/preview-report-email.ts) 用
+export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): string {
+  const greeting = args.greetingName
+    ? `${escapeHtml(args.greetingName)}さん、`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>あなたの詳細レポートが届きました</title>
+  </head>
+  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
+            <tr>
+              <td>
+                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
+                <h1 style="margin:0 0 28px;font-size:22px;font-weight:600;line-height:1.55;text-align:center;color:#2A2520;">ご購入ありがとうございます</h1>
+                <p style="margin:0 0 28px;font-size:15px;line-height:1.85;">
+                  ${greeting}すべてのコンテンツが解放されました。<br />
+                  あわせて、あなたの性格タイプを一冊にまとめた詳細レポート (電子書籍) をお届けします。長所と短所、恋愛や友人関係、キャリアの可能性まで、じっくり読める内容です。
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 32px;">
+                  <tr>
+                    <td align="center" style="padding:0 0 14px;">
+                      <a href="${args.meUrl}" style="display:inline-block;min-width:220px;padding:14px 32px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">レポートを表示 &#8594;</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center">
+                      <a href="${args.pdfUrl}" style="display:inline-block;min-width:220px;padding:14px 32px;background:#FFFFFF;border:1.5px solid #2A2520;color:#2A2520;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">電子書籍をダウンロード &#8594;</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 12px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  <strong>どちらのリンクも永続的にアクセスできます。</strong><br />
+                  「レポートを表示」は解放済みの診断結果ページ、<br />
+                  「電子書籍をダウンロード」は PDF ファイルのお届けです。
+                </p>
+                <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
+                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
+                </p>
+                <p style="margin:0 0 8px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
+                  レポート: ${args.meUrl}
+                </p>
+                <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
+                  電子書籍: ${args.pdfUrl}
+                </p>
+                <hr style="border:none;border-top:1px solid #E8E1D5;margin:32px 0;" />
+                <p style="margin:0;font-size:12px;line-height:1.85;color:#A89E8E;">
+                  まだ診断がお済みでない場合は、診断を完了するとこれらのリンクがあなたのタイプの内容になります。
+                </p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
+  const greeting = args.greetingName ? `${args.greetingName}さん、` : "";
+  return [
+    "ご購入ありがとうございます",
+    "",
+    `${greeting}すべてのコンテンツが解放されました。`,
+    "あわせて、あなたの性格タイプを一冊にまとめた詳細レポート (電子書籍) をお届けします。",
+    "長所と短所、恋愛や友人関係、キャリアの可能性まで、じっくり読める内容です。",
+    "",
+    "■ レポートを表示 (解放済みの診断結果ページ)",
+    args.meUrl,
+    "",
+    "■ 電子書籍をダウンロード (PDF)",
+    args.pdfUrl,
+    "",
+    "どちらのリンクも永続的にアクセスできます。",
+    "",
+    "まだ診断がお済みでない場合は、診断を完了すると",
+    "これらのリンクがあなたのタイプの内容になります。",
+    "",
+    "--",
+    SITE_NAME,
+  ].join("\n");
 }
 
 // =========================================================================

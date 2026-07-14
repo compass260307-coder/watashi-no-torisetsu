@@ -26,6 +26,7 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
+import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 
 // ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
@@ -266,6 +267,72 @@ async function grantFullAccessByEmailOrId(
   });
 }
 
+// ---------- フルアクセス特典: 詳細レポートお届けメール ----------
+// grantFullAccessByEmailOrId の後に呼ぶ (users 行が必ず存在する状態)。
+// 宛先 = Stripe 確定 email (無ければ users.email)。リンク先 = /report/[owner_token]。
+// ページ側が閲覧時点の診断結果で描画するため、ゲスト決済 (診断前) でも同じリンクが
+// 診断完了後に本人のタイプのレポートになる。
+// best-effort: 失敗しても throw しない (grant は完了済み。Webhook 200 応答を止めない)。
+// 注意: Stripe が同一 event を再送した場合はメールも再送され得る (grant 系は冪等なので
+// 実害は重複メール 1 通のみ。頻発するようなら payment_history 側の冪等キー参照で抑止)。
+async function sendDetailedReportEmailBestEffort(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  try {
+    const stripeEmail =
+      normalizeEmail(session.customer_details?.email) ??
+      normalizeEmail(session.customer_email) ??
+      normalizeEmail(session.metadata?.email);
+
+    // owner_token の解決: user_id 優先 → email の最新行
+    let row: {
+      owner_token: string | null;
+      display_name: string | null;
+      email: string | null;
+    } | null = null;
+    if (userId) {
+      const { data } = await supabaseAdmin
+        .from("users")
+        .select("owner_token, display_name, email")
+        .eq("id", userId)
+        .maybeSingle();
+      row = data ?? null;
+    }
+    if (!row && stripeEmail) {
+      const { data } = await supabaseAdmin
+        .from("users")
+        .select("owner_token, display_name, email")
+        .eq("email", stripeEmail)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      row = data ?? null;
+    }
+
+    const to = stripeEmail ?? normalizeEmail(row?.email);
+    if (!row?.owner_token || !to) {
+      console.warn("[webhook/stripe] report email skipped", {
+        has_token: !!row?.owner_token,
+        has_email: !!to,
+      });
+      return;
+    }
+
+    await sendDetailedReportEmail({
+      to,
+      ownerToken: row.owner_token,
+      ownerName: row.display_name,
+    });
+    console.log("[webhook/stripe] detailed report email sent");
+  } catch (err) {
+    console.error(
+      "[webhook/stripe] detailed report email failed (continuing):",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
 // 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
 // Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
 // 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
@@ -317,6 +384,7 @@ async function handleCheckoutCompleted(
   if (metadata.product === "full_access") {
     await grantFullAccessByEmailOrId(session, userId);
     await recordPurchaseCompletedEvent(session);
+    await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
 
