@@ -22,8 +22,9 @@ import { TakoRewardBackdrop } from "./TakoRewardBackdrop";
 
 const PEEK_TRAVEL = 90; // このドラッグ距離(px)で退避が最大に
 const PEEK_EASE = 0.18;
-const PEEK_FADE = 0.9; // 退避時の最大フェード (opacity 1 → 1-0.9)
+const PEEK_FADE = 0.97; // 退避時の最大フェード (opacity 1 → 0.03。ほぼ完全に消す)
 const PEEK_SHRINK = 0.05; // 退避時の最大縮小 (scale 1 → 1-0.05)
+const PEEK_BLUR_MAX = 24; // フロストの blur(px)。退避量に比例して 0 へ減衰し、奥を素で見せる。
 
 interface TakoRevealStageProps {
   answered: number;
@@ -62,6 +63,12 @@ export function TakoRevealStage({
     const applyFront = (peek: number) => {
       front.style.opacity = (1 - peek * PEEK_FADE).toFixed(3);
       front.style.transform = `scale(${(1 - peek * PEEK_SHRINK).toFixed(4)})`;
+      // ★退避に応じてフロストの blur も 0 へ減衰 (カード領域の奥を素でくっきり見せる)。
+      //   カードは --peek-blur を参照して backdrop-filter を効かせる (TakoShareGate)。
+      front.style.setProperty(
+        "--peek-blur",
+        `${(PEEK_BLUR_MAX * (1 - peek)).toFixed(1)}px`,
+      );
     };
 
     const reduced = window.matchMedia(

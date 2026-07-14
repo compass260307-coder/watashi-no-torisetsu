@@ -126,11 +126,16 @@ export function TakoShareGate({
 
   return (
     <div
-      // フロストガラス: 半透明白 + 強い backdrop-blur で奥をぼかして透過。可読性は blur が、
+      // フロストガラス: 半透明白 + backdrop-blur で奥をぼかして透過。可読性は blur が、
       // 浮き(境界)は影+極淡い縁+内側ハイライトが担う(不透明度に頼らない)。
-      // → カード越しに奥の結果ページの気配が透け、かつ手前の文字は読める。
-      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 backdrop-blur-[24px] shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06]"
-      style={{ background: "rgba(255,255,255,0.6)" }}
+      // ★blur 量は --peek-blur (既定 24px) を参照。退避ドラッグ中に TakoRevealStage が
+      //   このカスタムプロパティを 0 へ減衰させ、カードが消えると同時に奥を素でくっきり見せる。
+      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06]"
+      style={{
+        background: "rgba(255,255,255,0.6)",
+        backdropFilter: "blur(var(--peek-blur, 24px))",
+        WebkitBackdropFilter: "blur(var(--peek-blur, 24px))",
+      }}
     >
       {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のとき) ===== */}
       <div className="flex h-8 items-center justify-center">
