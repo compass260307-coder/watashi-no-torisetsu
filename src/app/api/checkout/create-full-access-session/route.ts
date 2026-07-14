@@ -79,7 +79,7 @@ async function resolveAnchorCoupon(stripe: StripeClient): Promise<string | null>
         amount_off: DISCOUNT_JPY,
         currency: "jpy",
         duration: "once",
-        name: "初回特別",
+        name: "リリース記念",
       });
       return created.id;
     } catch {
