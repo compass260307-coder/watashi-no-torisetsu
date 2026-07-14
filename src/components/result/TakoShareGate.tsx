@@ -25,6 +25,8 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 const LAVENDER = "#5B5BEF";
+// フロスト(半透明)カード上で小さいグレー文字が沈まないよう、一段濃いグレー。
+const READ_GRAY = "#6B7280";
 const STITCH = "#C9DEF5"; // 点線ステッチ枠 (既存 friend-evaluation と同色)
 
 // 頭文字プレースホルダの淡色トーン (顔画像が無い answered のフォールバック / FriendList と同系)。
@@ -124,10 +126,11 @@ export function TakoShareGate({
 
   return (
     <div
-      // 手前の主役として明確に浮かせる: ほぼ不透明の白 + 大きく柔らかい多層シャドウ +
-      // 極淡い縁 (硬い枠線は使わずフェルトの柔らかさを維持)。不透明化で真裏の?も自然に隠れる。
-      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12)] ring-1 ring-black/[0.05] backdrop-blur-md"
-      style={{ background: "rgba(255,255,255,0.95)" }}
+      // フロストガラス: 半透明白 + 強い backdrop-blur で奥をぼかして透過。可読性は blur が、
+      // 浮き(境界)は影+極淡い縁+内側ハイライトが担う(不透明度に頼らない)。
+      // → カード越しに奥の結果ページの気配が透け、かつ手前の文字は読める。
+      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 backdrop-blur-[24px] shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06]"
+      style={{ background: "rgba(255,255,255,0.6)" }}
     >
       {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のとき) ===== */}
       <div className="flex h-8 items-center justify-center">
@@ -155,7 +158,7 @@ export function TakoShareGate({
       <div className="mt-3 flex items-end justify-center gap-2">
         <span
           className="pb-2 text-[18px] md:text-[22px] font-black"
-          style={{ color: INACTIVE }}
+          style={{ color: READ_GRAY }}
         >
           あと
         </span>
@@ -181,7 +184,7 @@ export function TakoShareGate({
         </span>
         <span
           className="pb-2 text-[18px] md:text-[22px] font-black"
-          style={{ color: INACTIVE }}
+          style={{ color: READ_GRAY }}
         >
           人で開く
         </span>
@@ -250,7 +253,7 @@ export function TakoShareGate({
         </button>
         <p
           className="mt-2.5 text-center text-[12.5px] font-bold"
-          style={{ color: INACTIVE }}
+          style={{ color: READ_GRAY }}
         >
           送るほど、みんなから見たあなたが完成する
         </p>

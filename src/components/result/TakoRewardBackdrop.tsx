@@ -3,8 +3,9 @@
 // 三層ゲートの「奥(報酬)レイヤー」= 解放後 /tako 結果ページの“本物の器”を写した軽量ダミー。
 //   ★生レンダリングはしない (ResultHero 等の実体はマウントしない)。実結果ページの
 //     セクション構成・順序・余白・見出し位置・カード形を“完全に”ミラーしたスケルトン。
-//   実結果 /tako(解放後) = ヒーロー帯 + 3つの番号付きセクション:
-//     ① みんなの目に映るあなた / ② 自分とのギャップ / ③ 友達からの回答。
+//   実結果ページ(完成トリセツ) = ヒーロー帯 + 全セクション:
+//     ① みんなの目 ② ギャップ ③ 強み ④ 取扱注意 ⑤ 恋愛 ⑥ キャリア ⑦ 友達の回答 ⑧ 相性。
+//   ★スクロールしても「まだ下に自分の結果が続いている」感覚を作るため、実結果の全長を敷く。
 //   ★診断結果で変わる部分 (キャラ名・本文・スコア・型依存) は ? / バーで伏せる (ネタバレ無し)。
 //   ★変わらない部分 (レイアウト・見出し位置・構造・カード形) だけ本物に寄せる。
 //   ★見出しは「問い」形式を維持 (奥の中だけ)。手前・実結果ページの見出しは不変。
@@ -14,22 +15,25 @@
 
 const NAVY = "#2E2E5C";
 
-// 実結果 /tako(解放後) の 3 セクション (順序=縦座標の対応キー)。見出しは問い形式。
-const SECTIONS: {
-  n: number;
-  title: string;
-  variant: "prose" | "gap" | "friends";
-  teaser?: string;
-}[] = [
-  {
-    n: 1,
-    title: "みんなから見たあなたは？",
-    variant: "prose",
-    teaser: "まわりから見たあなたは、意外にも——",
-  },
-  { n: 2, title: "自分とのギャップは？", variant: "gap" },
-  { n: 3, title: "友達は何て言ってる？", variant: "friends" },
-];
+type Variant = "prose" | "gap" | "friends" | "cards" | "grid";
+
+// 完成トリセツ結果ページの全セクション (順序=縦座標の対応キー)。見出しは問い形式。
+const SECTIONS: { n: number; title: string; variant: Variant; teaser?: string }[] =
+  [
+    {
+      n: 1,
+      title: "みんなから見たあなたは？",
+      variant: "prose",
+      teaser: "まわりから見たあなたは、意外にも——",
+    },
+    { n: 2, title: "自分とのギャップは？", variant: "gap" },
+    { n: 3, title: "あなたの強みは？", variant: "prose" },
+    { n: 4, title: "あなたの取扱説明書は？", variant: "cards" },
+    { n: 5, title: "あなたが恋で見せる顔は？", variant: "prose" },
+    { n: 6, title: "あなたが力を発揮する場所は？", variant: "cards" },
+    { n: 7, title: "友達は何て言ってる？", variant: "friends" },
+    { n: 8, title: "相性がいいのは誰？", variant: "grid" },
+  ];
 
 // 本文スケルトンにだけ掛ける blur。answered が増えるほど緩む (霧が晴れる)。見出し/?/影絵は掛けない。
 function bodyBlurPx(answered: number, threshold: number, revealed: boolean): number {
@@ -38,11 +42,16 @@ function bodyBlurPx(answered: number, threshold: number, revealed: boolean): num
   return revealed ? base * 0.4 : base;
 }
 
-// 「?」の散らし配置 (中央縦一列を避け、数字の背後を貫通させない)。
+// 「?」の散らし配置 (中央縦一列を避け、数字の背後を貫通させない)。セクション毎に左右へ散らす。
 const QMARK_SCATTER: { left: string; top: string }[] = [
   { left: "58%", top: "26px" },
   { left: "22%", top: "24px" },
   { left: "60%", top: "22px" },
+  { left: "30%", top: "24px" },
+  { left: "56%", top: "22px" },
+  { left: "24%", top: "24px" },
+  { left: "62%", top: "22px" },
+  { left: "34%", top: "24px" },
 ];
 
 interface TakoRewardBackdropProps {
@@ -148,7 +157,7 @@ function BackdropSection({
   n: number;
   index: number;
   title: string;
-  variant: "prose" | "gap" | "friends";
+  variant: Variant;
   teaser?: string;
   revealed: boolean;
   bodyBlur: number;
@@ -221,7 +230,7 @@ function SectionBody({
   variant,
   revealed,
 }: {
-  variant: "prose" | "gap" | "friends";
+  variant: Variant;
   revealed: boolean;
 }) {
   const tone = revealed ? "#DEE1E6" : "#E8EAEE";
@@ -280,9 +289,38 @@ function SectionBody({
           ))}
         </div>
       );
+    case "cards":
+      // 強み/取扱注意/キャリア = 2列カードグリッド (実結果の見せ場カード群)。
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-2xl px-4 py-3"
+              style={{ background: "#F3F4F7" }}
+            >
+              <div className="h-3 rounded-full" style={bar("55%", tone)} />
+              <div className="mt-2 h-2.5 rounded-full" style={bar("90%", tone)} />
+              <div className="mt-1.5 h-2.5 rounded-full" style={bar("70%", tone)} />
+            </div>
+          ))}
+        </div>
+      );
+    case "grid":
+      // 相性ランキング = 3列のキャラ枠グリッド (アバター + 名前バー)。
+      return (
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5">
+              <div className="h-14 w-14 rounded-full" style={{ background: tone }} />
+              <div className="h-2.5 w-10 rounded-full" style={{ background: tone }} />
+            </div>
+          ))}
+        </div>
+      );
     case "prose":
     default:
-      // ① みんなの目に映るあなた = 本文プロース。
+      // 本文プロース。
       return (
         <div className="space-y-2">
           {[0.96, 0.88, 0.7].map((w, i) => (
