@@ -140,7 +140,10 @@ export function TakoRevealStage({
       {/* ===== 手前(主役): sticky で画面中央に留まる。overlay は pointer-events-none にして
           奥への背景スクロールを妨げず、カード/ピルだけ pointer-events-auto。 ===== */}
       <div className="pointer-events-none absolute inset-0 z-20">
-        <div className="sticky top-0 flex h-[100dvh] flex-col items-center justify-center gap-3 px-4">
+        {/* pb-[13vh]: card+ピルの中央寄せグループを少し上へ寄せ、ピルが画面下端(可視
+            viewport)や下部ナビに隠れないよう可視域を確保する(100dvh は Safari の
+            動的ツールバーで実可視より高く出ることがあるため下に余白を持たせる)。 */}
+        <div className="sticky top-0 flex h-[100dvh] flex-col items-center justify-center gap-3 px-4 pb-[13vh]">
           <div
             ref={frontRef}
             className="pointer-events-auto w-full max-w-[400px] [will-change:transform]"
@@ -148,13 +151,18 @@ export function TakoRevealStage({
             {children}
           </div>
 
-          {/* 退避トリガ: 押している間だけ奥をチラ見。常時表示で発見性を確保。 */}
+          {/* 退避トリガ: 押している間だけ奥をチラ見。常時表示で発見性を確保。
+              touch-action:none はインラインで確実に効かせる(押下保持中のスクロール奪取を防ぐ)。 */}
           <button
             ref={peekBtnRef}
             type="button"
             aria-label="押している間、奥の結果をチラ見できます"
-            className="pointer-events-auto inline-flex select-none items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-black shadow-[0_6px_18px_rgba(46,46,92,0.14)] ring-1 ring-black/[0.06] [touch-action:none] active:scale-95"
-            style={{ background: "rgba(255,255,255,0.92)", color: NAVY }}
+            className="pointer-events-auto inline-flex select-none items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-black shadow-[0_6px_18px_rgba(46,46,92,0.14)] ring-1 ring-black/[0.06] active:scale-95"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              color: NAVY,
+              touchAction: "none",
+            }}
           >
             <svg
               viewBox="0 0 24 24"
