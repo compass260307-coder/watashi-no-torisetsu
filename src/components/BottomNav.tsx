@@ -161,7 +161,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="グローバルナビゲーション"
-      className="fixed inset-x-0 bottom-0 z-40 bg-white"
+      className="fixed inset-x-0 bottom-0 z-40 bg-white print:hidden"
       style={{
         borderTop: "0.5px solid rgba(42,58,92,0.14)",
         boxShadow: "0 -2px 10px rgba(42,58,92,0.06)",

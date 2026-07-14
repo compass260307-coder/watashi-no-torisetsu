@@ -46,6 +46,15 @@ export default function PurchaseCompletePage() {
         >
           購入ありがとうございます！
         </h1>
+        <p
+          className="mt-3 text-[13px] font-bold leading-[1.8]"
+          style={{ color: "#8A8AA3" }}
+        >
+          購入に使ったメールアドレスに、
+          <br />
+          あなたの<span style={{ color: NAVY }}>詳細レポート</span>
+          をお届けしました。
+        </p>
       </div>
 
       {/* 購入直後にそのままログイン (magic link 発行)。届いたリンクから本人確認。 */}
