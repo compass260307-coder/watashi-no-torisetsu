@@ -39,8 +39,8 @@ export function getPremiumPriceId(): string | null {
   return process.env.STRIPE_PRICE_ID ?? null;
 }
 
-// PR1: ¥199 買い切り「フルアクセス(全解放)」の Price ID (one-time)。
-// Stripe ダッシュボードで Product「フルアクセス」+ Price ¥199/one-time を作成し、
+// PR1: ¥499 買い切り「フルアクセス(全解放)」の Price ID (one-time)。
+// Stripe ダッシュボードで Product「フルアクセス」+ Price ¥499/one-time を作成し、
 // その Price ID を STRIPE_PRICE_FULL_ACCESS に登録する。
 export function getFullAccessPriceId(): string | null {
   return process.env.STRIPE_PRICE_FULL_ACCESS ?? null;

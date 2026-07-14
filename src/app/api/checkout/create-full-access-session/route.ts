@@ -1,4 +1,4 @@
-// PR1: ¥199 買い切り「フルアクセス(全解放)」の Stripe Checkout Session 作成。
+// PR1: ¥499 買い切り「フルアクセス(全解放)」の Stripe Checkout Session 作成。
 //
 // POST /api/checkout/create-full-access-session
 //   - 認可: body.owner_token (秘密の capability URL のトークン) でその本人を解決。
@@ -13,7 +13,7 @@
 //   - 戻り値: { url }
 //
 // 既存の create-session / create-perception-unlock-session とは別エンドポイント。
-// Price は STRIPE_PRICE_FULL_ACCESS (¥199/one-time)。金額はサーバ側の Price 固定で、
+// Price は STRIPE_PRICE_FULL_ACCESS (¥499/one-time)。金額はサーバ側の Price 固定で、
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
@@ -39,9 +39,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 // ===== 「買いたくなる」Checkout 表示の定数 =====
 // 実課金額 (SALE) は必ず STRIPE_PRICE_FULL_ACCESS (Price ID) の実額と一致していること。
 // LIST は値引き表示のアンカー (二重価格)。カード側の ¥1,299 と揃える。
-const SALE_JPY = 199;
+const SALE_JPY = 499;
 const LIST_JPY = 1299;
-const DISCOUNT_JPY = LIST_JPY - SALE_JPY; // 1100
+const DISCOUNT_JPY = LIST_JPY - SALE_JPY; // 800
 // 値引きアンカー用クーポン (once・amount_off=DISCOUNT_JPY)。id に金額を埋めて取り違え防止。
 const ANCHOR_COUPON_ID = `full-access-anchor-off${DISCOUNT_JPY}-jpy`;
 
@@ -263,9 +263,9 @@ export async function POST(request: NextRequest) {
       ? buyer.email
       : undefined;
 
-  // ===== 「買いたくなる」表示: 商品説明/画像 + 値引き表示 (¥1,299 → ¥199) =====
+  // ===== 「買いたくなる」表示: 商品説明/画像 + 値引き表示 (¥1,299 → ¥499) =====
   // 安全設計: 値引き経路 (price_data LIST + クーポン) は
-  //   ① Price ID の実額が SALE (¥199) と一致し ② クーポンが amount_off=DISCOUNT で解決
+  //   ① Price ID の実額が SALE (¥499) と一致し ② クーポンが amount_off=DISCOUNT で解決
   //   できたときだけ使う。どちらか欠けたら Price ID (実額) にフォールバックし、
   //   ¥1,299 を誤課金しない。商品説明/画像は両経路とも付ける。
   const productData: {
@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
   ]);
   const useDiscount = !!couponId && saleOk;
 
-  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE (=¥199) を課金。
+  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE (=¥499) を課金。
   //   商品名・説明・画像もここで付く (リッチ表示)。
   // フォールバック: ダッシュボードの Price ID をそのまま使う (実課金額は常にダッシュボード源泉。
   //   ¥1,299 を誤課金しない)。この経路は商品表示もダッシュボード Product 依存。

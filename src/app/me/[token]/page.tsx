@@ -267,7 +267,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
     N: stored.N ?? 5,
   });
   // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
-  // ぶんだけ props で渡す。解放条件 = 課金 (¥299=full) OR 友達3人以上 (friend-stairs.ts)。
+  // ぶんだけ props で渡す。解放条件 = 課金 (¥499=full) OR 友達3人以上 (friend-stairs.ts)。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   const deepDivePaid = await hasFullAccess(user.id as string);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
@@ -735,7 +735,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
       </div>
     </main>
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
-        ¥299 で買えるのは第二部まで (三層モデル)。友達3人で開いた人には売るものが無いので出さない。
+        ¥499 で買えるのは第二部まで (三層モデル)。友達3人で開いた人には売るものが無いので出さない。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
     {!partTwoUnlocked && (
       <FullAccessPromoCard
