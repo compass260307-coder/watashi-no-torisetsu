@@ -29,7 +29,7 @@ const INACTIVE = "#9BA3B4";
 //   他己診断タブは /friend-evaluation ではなく /tako/[token] を指す。
 // ※ /diagnosis (自己診断の回答フロー) はサイト共通chrome統一のためナビを表示する。
 //   下部の StickyCtaFooter は aboveBottomNav でナビの上に持ち上げて衝突を避ける。
-const HIDE_ON_PREFIXES = ["/friend/", "/evaluate/", "/share/"];
+const HIDE_ON_PREFIXES = ["/friend/", "/evaluate/", "/share/", "/admin"];
 
 function HomeIcon() {
   return (

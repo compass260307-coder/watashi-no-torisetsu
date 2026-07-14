@@ -68,12 +68,11 @@ export async function computeStats(from: string | null, to: string | null) {
         .order("id", { ascending: true }),
     );
 
+  type StripeEventRow = { metadata: Record<string, unknown> | null };
+
   // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
   // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
-  const evUniqueStripeSession = async (name: string): Promise<number> => {
-    const rows = await fetchAll<{ metadata: Record<string, unknown> | null }>(
-      evRows([name], "metadata"),
-    );
+  const countUniqueStripeSessions = (rows: StripeEventRow[]): number => {
     const ids = new Set<string>();
     let noId = 0;
     for (const r of rows) {
@@ -125,8 +124,8 @@ export async function computeStats(from: string | null, to: string | null) {
     paidUserRows,
     recentRes,
     diagQuestionReach,
-    checkoutCreated,
-    purchaseCompleted,
+    checkoutCreatedRows,
+    purchaseCompletedRows,
   ] = await Promise.all([
     fetchAll<SessionRow>(evRows(["diagnosis_started"])),
     fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
@@ -156,7 +155,10 @@ export async function computeStats(from: string | null, to: string | null) {
       session_id: string | null;
       metadata: Record<string, unknown> | null;
     }>(evRows(["paywall_scroll_clicked"], "session_id, metadata")),
-    fetchAll<SessionRow>(evRows(["purchase_cta_clicked"])),
+    fetchAll<{
+      session_id: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["purchase_cta_clicked"], "session_id, metadata")),
     // ----- テーブル (期間は created_at) -----
     fetchAll<{
       id: string;
@@ -202,8 +204,10 @@ export async function computeStats(from: string | null, to: string | null) {
         .limit(50),
     ),
     questionReachCounts(),
-    evUniqueStripeSession("checkout_session_created"),
-    evUniqueStripeSession("purchase_completed"),
+    fetchAll<StripeEventRow>(
+      evRows(["checkout_session_created"], "metadata"),
+    ),
+    fetchAll<StripeEventRow>(evRows(["purchase_completed"], "metadata")),
   ]);
 
   const toUnique = (rows: SessionRow[]) =>
@@ -388,6 +392,8 @@ export async function computeStats(from: string | null, to: string | null) {
   const paywallViewed = toUnique(paywallViewedRows);
   const paywallScrollClicked = toUnique(paywallScrollRows);
   const purchaseCtaClicked = toUnique(purchaseCtaRows);
+  const checkoutCreated = countUniqueStripeSessions(checkoutCreatedRows);
+  const purchaseCompleted = countUniqueStripeSessions(purchaseCompletedRows);
 
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
@@ -401,6 +407,85 @@ export async function computeStats(from: string | null, to: string | null) {
   const paywallSources = Array.from(sourceCounts.entries())
     .map(([source, count]) => ({ source, count }))
     .sort((a, b) => b.count - a.count);
+
+  type AttributionRow = {
+    session_id?: string | null;
+    metadata: Record<string, unknown> | null;
+  };
+
+  // 導線別CVRの分母・分子は、同じユーザーの連打やWebhook再送で膨らまないよう
+  // クライアントイベントは session_id、サーバイベントは stripe_session_id でユニーク化する。
+  const uniqueCountsBySource = (
+    rows: AttributionRow[],
+    idField: "session_id" | "stripe_session_id",
+  ): Map<string, number> => {
+    const grouped = new Map<string, Set<string>>();
+    rows.forEach((row, index) => {
+      const source =
+        typeof row.metadata?.source === "string"
+          ? row.metadata.source
+          : "unknown";
+      const rawId =
+        idField === "session_id"
+          ? row.session_id
+          : row.metadata?.stripe_session_id;
+      // 旧データなどIDが無い行も落とさず、行単位で1件として扱う。
+      const id =
+        typeof rawId === "string" && rawId
+          ? rawId
+          : `legacy:${index}`;
+      const ids = grouped.get(source) ?? new Set<string>();
+      ids.add(id);
+      grouped.set(source, ids);
+    });
+    return new Map(
+      Array.from(grouped.entries()).map(([source, ids]) => [source, ids.size]),
+    );
+  };
+
+  const scrollBySource = uniqueCountsBySource(
+    paywallScrollRows,
+    "session_id",
+  );
+  const purchaseCtaBySource = uniqueCountsBySource(
+    purchaseCtaRows,
+    "session_id",
+  );
+  const checkoutBySource = uniqueCountsBySource(
+    checkoutCreatedRows,
+    "stripe_session_id",
+  );
+  const purchaseBySource = uniqueCountsBySource(
+    purchaseCompletedRows,
+    "stripe_session_id",
+  );
+  const attributionSources = new Set([
+    ...scrollBySource.keys(),
+    ...purchaseCtaBySource.keys(),
+    ...checkoutBySource.keys(),
+    ...purchaseBySource.keys(),
+  ]);
+  const paywallAttribution = Array.from(attributionSources)
+    .map((source) => {
+      const scrollClicks = scrollBySource.get(source) ?? 0;
+      const purchaseCtaClicks = purchaseCtaBySource.get(source) ?? 0;
+      const stripeReached = checkoutBySource.get(source) ?? 0;
+      const purchases = purchaseBySource.get(source) ?? 0;
+      return {
+        source,
+        scrollClicks,
+        purchaseCtaClicks,
+        stripeReached,
+        purchases,
+        purchaseRate: scrollClicks > 0 ? purchases / scrollClicks : null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.purchases - a.purchases ||
+        b.stripeReached - a.stripeReached ||
+        b.scrollClicks - a.scrollClicks,
+    );
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
@@ -438,6 +523,7 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "決済完了", count: purchaseCompleted },
     ],
     paywallSources,
+    paywallAttribution,
     purchaseCompleted,
     purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
     paidUsers,
