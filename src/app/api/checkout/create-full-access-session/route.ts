@@ -45,7 +45,7 @@ const DISCOUNT_JPY = LIST_JPY - SALE_JPY; // 1100
 // 値引きアンカー用クーポン (once・amount_off=DISCOUNT_JPY)。id に金額を埋めて取り違え防止。
 const ANCHOR_COUPON_ID = `full-access-anchor-off${DISCOUNT_JPY}-jpy`;
 
-const PRODUCT_NAME = "ワタシのトリセツ｜フルアクセス";
+const PRODUCT_NAME = "ワタシのトリセツ 性格レポート完全版";
 const PRODUCT_DESC =
   "深掘り(キャリア・成長)/友達ひとりずつの本音/シーン別の相性まで、ぜんぶ解放。買い切り・追加課金なし。";
 // Checkout 左の商品サムネ (現行キービジュアルの PNG・768x512)。
