@@ -61,10 +61,17 @@ export function TakoRevealStage({
       new URLSearchParams(window.location.search).get("peek") === "1";
 
     const applyFront = (peek: number) => {
-      front.style.opacity = (1 - peek * PEEK_FADE).toFixed(3);
       front.style.transform = `scale(${(1 - peek * PEEK_SHRINK).toFixed(4)})`;
-      // ★退避に応じてフロストの blur も 0 へ減衰 (カード領域の奥を素でくっきり見せる)。
-      //   カードは --peek-blur を参照して backdrop-filter を効かせる (TakoShareGate)。
+      // ★退避は opacity と blur の2値を CSS 変数でカード“自身”へ渡して駆動する。
+      //   opacity を frontRef(祖先)に直接かけると、カードが backdrop-filter を持つため
+      //   WebKit(iOS Safari)は祖先 opacity をサブツリーへ正しく合成できず、中身(見出し/
+      //   数字/スロット/CTA)が濃いまま残る既知の癖がある。カード“自要素”の opacity なら
+      //   backdrop-filter 出力ごとフェードし、手前が丸ごと消える。カードは --peek-opacity /
+      //   --peek-blur を参照する (TakoShareGate)。custom property は子へ継承される。
+      front.style.setProperty(
+        "--peek-opacity",
+        (1 - peek * PEEK_FADE).toFixed(3),
+      );
       front.style.setProperty(
         "--peek-blur",
         `${(PEEK_BLUR_MAX * (1 - peek)).toFixed(1)}px`,
@@ -171,7 +178,7 @@ export function TakoRevealStage({
         <div className="sticky top-0 flex h-[100dvh] items-center justify-center px-4">
           <div
             ref={frontRef}
-            className="pointer-events-auto w-full max-w-[400px] [will-change:transform,opacity]"
+            className="pointer-events-auto w-full max-w-[400px] [will-change:transform]"
           >
             {children}
           </div>

@@ -128,11 +128,14 @@ export function TakoShareGate({
     <div
       // フロストガラス: 半透明白 + backdrop-blur で奥をぼかして透過。可読性は blur が、
       // 浮き(境界)は影+極淡い縁+内側ハイライトが担う(不透明度に頼らない)。
-      // ★blur 量は --peek-blur (既定 24px) を参照。退避ドラッグ中に TakoRevealStage が
-      //   このカスタムプロパティを 0 へ減衰させ、カードが消えると同時に奥を素でくっきり見せる。
-      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06]"
+      // ★退避ドラッグ中、TakoRevealStage が親から 2つの custom property を減衰させる:
+      //   --peek-blur (24px→0) でフロストを解いて奥を素にし、--peek-opacity (1→0.03) で
+      //   カード“自身”をフェードさせる。opacity をこのカード自要素にかけるのが要点で、
+      //   祖先 opacity だと backdrop-filter を持つ本要素の中身が WebKit で濃いまま残る癖を回避。
+      className="rounded-[32px] px-5 py-7 md:px-8 md:py-8 shadow-[0_28px_70px_-10px_rgba(46,46,92,0.34),0_6px_18px_rgba(46,46,92,0.12),inset_0_1px_0_rgba(255,255,255,0.65)] ring-1 ring-black/[0.06] [will-change:opacity]"
       style={{
         background: "rgba(255,255,255,0.6)",
+        opacity: "var(--peek-opacity, 1)",
         backdropFilter: "blur(var(--peek-blur, 24px))",
         WebkitBackdropFilter: "blur(var(--peek-blur, 24px))",
       }}
