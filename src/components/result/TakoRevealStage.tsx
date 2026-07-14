@@ -9,12 +9,16 @@
 //   - 手前: absolute inset-0 の overlay 内で position:sticky。100dvh の枠に中央寄せ。
 //     → スクロール中カードは画面中央に留まり、CTA が常に見える。
 //
-// 退避(奥をチラ見):
-//   - カード内(TakoShareGate)に「押して奥をチラ見」ピルを常時表示。押している間だけ
-//     カード全体(背景＋中身)を opacity 0 へフェード + わずかに縮小し、奥を素で見せる。
-//     指を離すと がっつり(白0.9)戻る。
+// 退避(奥をチラ見) — 2経路で発火:
+//   (a) ピル押下 = がっつり覗く(opacity 0・完全消失)。カード内(TakoShareGate)の
+//       「押して奥をチラ見」ピルを押している間だけ。指を離すと白0.9へ戻る。
+//   (b) 縦スクロール中 = 読みながらチラ見(opacity ~0.18・薄く残す)。ユーザーは必ず
+//       スクロールするので発見性が最強。止まると素早く がっつり戻る。
+//   → 「スクロール=読みながら薄く / ピル=がっつり消す」の役割分担。
 //   - ★横スワイプ検知は廃止(実機iOSで touch-action/pointercancel/斜め開始によりほぼ
 //     不発、かつ発見されにくかった)。押下ジェスチャは軸判定もスクロール競合も無く堅牢。
+//   - ★スクロール透過は passive listener で ts を記録するだけ、判定は既存 rAF 内で行い
+//     余分な rAF を足さない(スクロール性能を最優先)。
 //   - ★ピルは “カード内” に置く。カードは画面内に必ず収まる主役なので、端末サイズや下部
 //     固定ナビに隠れない(カード直下に浮かせる案は小型端末でナビ裏に回り込むため不採用)。
 //     押下ハンドラは PeekContext 経由でこの器の rAF を駆動する。
@@ -40,6 +44,8 @@ const PEEK_EASE = 0.2; // 目標値への追従係数 (押下/解放時のなめ
 const PEEK_FADE = 1.0; // 退避時の最大フェード (opacity 1 → 0。手前をまるごと消して奥だけに)
 const PEEK_SHRINK = 0.05; // 退避時の最大縮小 (scale 1 → 1-0.05)
 const PEEK_BLUR_MAX = 24; // フロストの blur(px)。退避量に比例して 0 へ減衰し、奥を素で見せる。
+const SCROLL_PEEK = 0.82; // 縦スクロール中の退避量 (opacity ~0.18・完全には消さない=ピルとの差別化)
+const SCROLL_STOP_MS = 120; // 最後のスクロールからこの時間で「停止」とみなし がっつり復帰
 
 /** 退避トリガ(カード内ピル)から器の rAF を駆動するための橋渡し。 */
 export interface TakoPeekControl {
@@ -120,19 +126,42 @@ export function TakoRevealStage({
 
     if (previewPeek) state.current.curPeek = 1;
 
+    // 縦スクロール中の退避(b): passive listener で最終スクロール時刻を記録するだけ。
+    //   実際のフェード判定は下の rAF 内で performance ts と比較して行う(rAF を増やさない)。
+    const scroll = { lastAt: -Infinity };
+    const onScroll = () => {
+      scroll.lastAt = performance.now();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
     let raf = 0;
-    const tick = () => {
+    let lastApplied = -1;
+    const tick = (ts: number) => {
       const s = state.current;
-      const target = previewPeek ? 1 : s.pressed ? 1 : 0;
+      const scrolling = ts - scroll.lastAt < SCROLL_STOP_MS;
+      const target = previewPeek
+        ? 1
+        : s.pressed
+          ? 1 // ピル押下 = がっつり覗く(完全消失)
+          : scrolling
+            ? SCROLL_PEEK // スクロール中 = 読みながらチラ見(薄く残す)
+            : 0;
       s.curPeek += (target - s.curPeek) * PEEK_EASE;
       // 目標にほぼ到達したら値を確定 (浮動小数の尾を切って完全な 0/1 に落とす)。
       if (Math.abs(target - s.curPeek) < 0.001) s.curPeek = target;
-      applyFront(s.curPeek);
+      // 静止時(値が変わらない)は style 書き込みを省いて無駄を無くす。
+      if (s.curPeek !== lastApplied) {
+        applyFront(s.curPeek);
+        lastApplied = s.curPeek;
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
 
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   const peekValue = useMemo<TakoPeekControl>(
