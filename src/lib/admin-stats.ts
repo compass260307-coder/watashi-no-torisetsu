@@ -24,9 +24,8 @@ import type { BigFiveDimension } from "@/lib/types";
 
 const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
-// 概算売上の単価。価格変遷: ¥299 → ¥199 → ¥499 → ¥99 (2026-07-14)。
-// 過去に別価格で買った分は誤差になる。正確な実額は purchase_completed の amount_total。
-const FULL_ACCESS_PRICE_JPY = 99;
+// 概算売上の単価。2026-07-14 に ¥199 → ¥499 へ改定 (それ以前の購入分は過大に出る)。
+const FULL_ACCESS_PRICE_JPY = 499;
 
 export async function computeStats(from: string | null, to: string | null) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
