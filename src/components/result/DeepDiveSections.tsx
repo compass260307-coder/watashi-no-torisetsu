@@ -12,6 +12,7 @@
 //     なるため、サーバ (/me) が resolveDeepDiveSections() で「許可されたぶんだけ」解決し、
 //     props (sections) で渡す。未解放カテゴリは body=null / locked=true で来る。
 
+import type { ReactNode } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type {
   DeepDiveTabKey,
@@ -73,38 +74,93 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
     heading: "相手の沈黙を怖がらない",
     body: "連絡が少ない日があっても、それはアナタへの気持ちが減ったわけじゃない。",
   },
+];
+
+// 「失敗する恋愛の特徴」ロック用デコイ。★本文ではない (原稿未投入・未解放時のみ
+// 表示するティザー)。どのタイプでも成立する「恋がつまずくパターン」の汎用調で、
+// 本人を傷つけない「愛されるクセ」トーンに揃える。
+const LOVE_FAILURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "素のアナタを見せる練習",
-    body: "完璧じゃない部分を見せたとき、相手との距離はむしろぐっと近づく。",
+    heading: "尽くしすぎた先にあるもの",
+    body: "がんばりが続かなくなった瞬間、関係がぐらつきやすい。アナタの場合は特に。",
   },
   {
-    heading: "一人の時間も大切にする",
-    body: "相手に尽くすのと同じくらい、自分を満たす時間を持つと、恋はもっと穏やかになる。",
+    heading: "我慢が限界を超える瞬間",
+    body: "ためこんだ気持ちがあふれるとき、アナタには決まったパターンがある。",
   },
   {
-    heading: "「ありがとう」を受け取る",
-    body: "してあげるだけじゃなく、してもらったことを素直に喜べると、関係は循環しはじめる。",
+    heading: "不安なときのNG行動",
+    body: "気持ちが揺れたとき、つい取ってしまう行動が、いちばん相手を遠ざけている。",
   },
   {
-    heading: "焦らないで大丈夫",
-    body: "アナタのペースで心をひらけば、ちゃんと追いついてきてくれる人がいる。",
+    heading: "ズレはじめの見逃しサイン",
+    body: "うまくいかなくなる恋には、アナタが見落としがちな共通の前兆がある。",
   },
 ];
 
-// 恋愛 payoff ブロック (「アナタがもっと楽になる恋」) のロック表示。
+// 「向いているキャリア」ロック用デコイ (★本文ではない。本物はサーバでフェイルクローズ済み)。
+const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "ゼロから立ち上げる仕事",
+    body: "決まった正解のない場所で、自分の判断で形にしていく働き方が向いている可能性。",
+  },
+  {
+    heading: "チームの舵取り役",
+    body: "前に立つか、支えるか。アナタの性格が活きるポジションには傾向がある。",
+  },
+  {
+    heading: "深く潜る専門職",
+    body: "ひとつの領域を極めていく働き方と、広く器用にこなす働き方、合うのはどっちか。",
+  },
+  {
+    heading: "避けたほうがいい環境",
+    body: "アナタのエネルギーをじわじわ削る職場には、はっきりした共通点がある。",
+  },
+];
+
+// 「あなたの隠れた才能」ロック用デコイ (★本文ではない)。
+const CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "当たり前すぎて気づかない力",
+    body: "アナタが「普通でしょ」と思ってやっていることが、実はいちばん希少な武器。",
+  },
+  {
+    heading: "追い込まれたときに出る底力",
+    body: "ピンチの場面でアナタが自然に取る動きには、他の人にない強さが隠れている。",
+  },
+  {
+    heading: "周りが密かに頼っている部分",
+    body: "アナタ本人は自覚していないけれど、チームはその力にずっと支えられている。",
+  },
+  {
+    heading: "伸ばすと化ける素質",
+    body: "少し意識を向けるだけで、キャリアの選択肢が大きく広がる眠った才能がある。",
+  },
+];
+
+// 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「失敗する恋愛の特徴」/
+// キャリアの「向いているキャリア」「あなたの隠れた才能」で共用)。
 // ぼかしたダミー本文の上に解除カードを重ねる (嫌われやすい性格ブロックと同じ構図)。
 // ダミーはカードの上下に溢れる長さにして「裏にたくさんコンテンツがある」感を出す。
 // 本物の本文はここに載っていない (サーバでフェイルクローズ済み)。
-function LockedBlock() {
+function LockedBlock({
+  decoyItems,
+  cardCopy,
+  source,
+}: {
+  decoyItems: { heading: string; body: string }[];
+  cardCopy: ReactNode;
+  source: string;
+}) {
   return (
     <div className="relative overflow-hidden rounded-2xl">
       {/* 後ろに透けるダミー本文 (高さの土台・デコイ)。多数の見出し+本文でボリュームを出し、
           カードの上下からはみ出させる。PC は2カラムで敷き詰め「量がある」見え方に。本文ではない。 */}
       <div
         aria-hidden="true"
-        className="select-none grid grid-cols-1 gap-x-10 gap-y-5 px-1 py-8 blur-[3px] md:grid-cols-2"
+        className="select-none grid grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
       >
-        {LOVE_DECOY_ITEMS.map((it, i) => (
+        {decoyItems.map((it, i) => (
           <div key={i}>
             <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
               {it.heading}
@@ -125,12 +181,10 @@ function LockedBlock() {
             今すぐロックを解除
           </p>
           <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-            完全版のレポートを入手して、これらの結果を見てみましょう。
-            <br className="md:hidden" />
-            恋愛傾向に関してもっと深掘れます。
+            {cardCopy}
           </p>
           <PaywallScrollButton
-            source="love_payoff_card"
+            source={source}
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
             今すぐアクセス
@@ -141,12 +195,53 @@ function LockedBlock() {
   );
 }
 
+// ロック中ブロックの見出し → デコイ/カード文言/計測 source。
+// サーバ (deep-dive-resolve) が返す locked ブロックの heading をキーに表示を組む。
+const LOCKED_BLOCK_CONFIG: Record<
+  string,
+  { decoyItems: { heading: string; body: string }[]; cardCopy: ReactNode; source: string }
+> = {
+  あなたを好きになった人が読むトリセツ: {
+    decoyItems: LOVE_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        完全版のレポートを入手して、これらの結果を見てみましょう。
+        <br className="md:hidden" />
+        恋愛傾向に関してもっと深掘れます。
+      </>
+    ),
+    source: "love_payoff_card",
+  },
+  向いているキャリア: {
+    decoyItems: CAREER_FIT_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        完全版のレポートを入手して、
+        <br className="md:hidden" />
+        あなたの個性に合ったキャリアを知りましょう。
+      </>
+    ),
+    source: "career_fit_card",
+  },
+  あなたの隠れた才能: {
+    decoyItems: CAREER_TALENT_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        完全版のレポートを入手して、
+        <br className="md:hidden" />
+        自分でも気づいていない才能を見つけましょう。
+      </>
+    ),
+    source: "career_talent_card",
+  },
+};
+
 interface DeepDiveSectionsProps {
   /** サーバ (resolveDeepDiveSections) で解決済みのカテゴリ。未解放は body=null。 */
   sections: ResolvedDeepDiveSection[];
   /** カテゴリ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
-  /** 章番号バッジ (①②③…)。既定 "4"。 */
+  /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②恋愛傾向 ③キャリア傾向)。 */
   number?: string;
   className?: string;
 }
@@ -164,28 +259,26 @@ export function DeepDiveSections({
   const locked = sections.filter((s) => s.locked || s.body === null);
   const lockedLabels = locked.map((s) => s.tab).join("・");
 
+  const baseNumber = parseInt(number, 10);
+
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* 見出し: ①②③と同じ 16P 風 (丸囲み数字 + 大きめタイトル)。 */}
-      <div className="mb-6 flex items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-        >
-          {number}
-        </span>
-        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-          アナタの深掘り
-        </h2>
-      </div>
-
-      {/* ===== 解放済みカテゴリ: 縦積みで本文表示 ===== */}
-      {unlocked.map((sec) => (
-        <div key={sec.key} className="mb-12">
-          {/* 小見出し (カテゴリ名): 章 h2 より一段小さく */}
-          <h3 className="mb-2 text-[21px] font-black text-[#2E2E5C] md:text-[24px]">
-            {sec.tab}
-          </h3>
+      {/* ===== 各カテゴリ = 独立した章 (②恋愛傾向 ③キャリア傾向 / 2026-07-14 指示) =====
+          「アナタの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
+      {unlocked.map((sec, si) => (
+        <div key={sec.key} className={si > 0 ? "mb-12 mt-16" : "mb-12"}>
+          {/* 章見出し: ①⑤と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}
+          <div className="mb-4 flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+            >
+              {baseNumber + si}
+            </span>
+            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+              {sec.tab}
+            </h2>
+          </div>
           {/* スコア由来の一文 (パーソナライズ・無料メタ) */}
           <p className="mb-4 text-[#2E2E5C]/70 text-sm">{sec.note}</p>
           {/* 挿絵 (カテゴリ対応のシーン別イラスト) */}
@@ -201,25 +294,51 @@ export function DeepDiveSections({
           {sec.blocks && sec.blocks.length > 0 ? (
             /* 見出し付きブロック (恋愛): 小見出し + 段落。
                payoff ブロック (locked) は本文を伏せ、ぼかし + 解除カードにする。 */
-            sec.blocks.map((b, bi) => (
-              <div key={bi} className={bi > 0 ? "mt-8" : ""}>
-                <h4 className="mb-2.5 text-[18px] md:text-[20px] font-black text-[#2E2E5C]">
-                  {b.heading}
-                </h4>
-                {b.locked ? (
-                  <LockedBlock />
-                ) : (
-                  b.body.split("\n\n").map((para, i) => (
-                    <p
-                      key={i}
-                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
-                    >
-                      {para}
-                    </p>
-                  ))
-                )}
-              </div>
-            ))
+            <>
+              {sec.blocks.map((b, bi) => (
+                <div key={bi} className={bi > 0 ? "mt-8" : ""}>
+                  <h4 className="mb-2.5 text-[18px] md:text-[20px] font-black text-[#2E2E5C]">
+                    {b.heading}
+                  </h4>
+                  {b.locked ? (
+                    <LockedBlock
+                      {...(LOCKED_BLOCK_CONFIG[b.heading] ??
+                        LOCKED_BLOCK_CONFIG["あなたを好きになった人が読むトリセツ"])}
+                    />
+                  ) : (
+                    b.body.split("\n\n").map((para, i) => (
+                      <p
+                        key={i}
+                        className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                      >
+                        {para}
+                      </p>
+                    ))
+                  )}
+                </div>
+              ))}
+              {/* 「失敗する恋愛の特徴」: ⚠本文データ未投入のためロック時のみ表示する
+                  ティザー (シーン別の注意点と同じ方針 —— 解放済みユーザーに開かない鍵を見せない)。
+                  恋愛セクション限定。payoff がロック中 = 未課金のときだけ、その直後に続ける。 */}
+              {sec.key === "love" && sec.blocks.some((b) => b.locked) && (
+                <div className="mt-8">
+                  <h4 className="mb-2.5 text-[18px] md:text-[20px] font-black text-[#2E2E5C]">
+                    失敗する恋愛の特徴
+                  </h4>
+                  <LockedBlock
+                    decoyItems={LOVE_FAILURE_DECOY_ITEMS}
+                    cardCopy={
+                      <>
+                        完全版のレポートを入手して、
+                        <br className="md:hidden" />
+                        アナタの恋がつまずきやすいパターンを知りましょう。
+                      </>
+                    }
+                    source="love_failure_card"
+                  />
+                </div>
+              )}
+            </>
           ) : (
             sec.body!.split("\n\n").map((para, i) => (
               <p

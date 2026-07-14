@@ -18,11 +18,14 @@ const TYPE_LABELS: Record<string, string> = {
 // paywall_scroll_clicked の source → 日本語ラベル (設置場所)。
 // 未知の source はキーをそのまま表示する (title 属性に生キーも残す)。
 const PAYWALL_SOURCE_LABELS: Record<string, string> = {
-  love_payoff_card: "恋愛「もっと楽になる恋」ロック",
+  love_payoff_card: "恋愛「好きになった人が読むトリセツ」ロック",
+  love_failure_card: "恋愛「失敗する恋愛の特徴」ロック",
+  career_fit_card: "キャリア「向いているキャリア」ロック",
+  career_talent_card: "キャリア「隠れた才能」ロック",
   deepdive_card: "深掘り(キャリア/成長/相性)ロック",
   scene_caution_card: "シーン別の注意点ロック",
   urawaza_card: "裏技でロック解除カード",
-  relations_card: "関係別の見られ方ロック",
+  relations_card: "「他人が本当は気づいてほしいこと」ロック (旧:関係別の見られ方)",
   deepdive_panel: "旧:深掘りロックパネル",
   deepdive_tab_career: "旧:深掘りタブ(キャリア)",
   deepdive_tab_growth: "旧:深掘りタブ(成長)",

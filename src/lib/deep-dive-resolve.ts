@@ -19,13 +19,10 @@ import type { BigFiveDimension, TorisetsuTypeId } from "./types";
 import { TYPE_DEEP_DIVE, type TypeDeepDive } from "./report-data";
 import {
   classifyThirtyTwoType,
-  allThirtyTwoTypeIds,
-  thirtyTwoName,
   type ThirtyTwoTypeId,
 } from "./thirty-two-types";
 import { LOVE_BY_TYPE_32 } from "./love-by-type-32";
 import { CAREER_BY_TYPE_32 } from "./career-by-type-32";
-import { compat } from "./aisho-compat";
 
 export type DeepDiveTabKey = "love" | "career" | "growth" | "aisho";
 
@@ -61,30 +58,30 @@ const AXIS_LABEL: Record<BigFiveDimension, string> = {
   N: "繊細さ",
 };
 
-// 表示する 3 カテゴリ (恋愛/キャリア/成長)。hint = スコア一文の素材の選び方。
+// 表示するカテゴリ。hint = スコア一文の素材の選び方。
+// 2026-07-14 指示: 成長/相性は一旦削除し、恋愛+キャリアの2本に絞る。
 const DEEP_DIVE_CARDS: {
-  key: DeepDiveTabKey;
+  key: Extract<DeepDiveTabKey, "love" | "career">;
   tab: string;
   hint: "top" | "bottom" | "growth" | "aisho" | BigFiveDimension;
 }[] = [
   { key: "love", tab: "恋愛傾向", hint: "A" },
-  { key: "career", tab: "キャリア", hint: "C" },
-  { key: "growth", tab: "成長", hint: "growth" },
-  { key: "aisho", tab: "相性", hint: "aisho" },
+  { key: "career", tab: "キャリア傾向", hint: "C" },
 ];
 
-// 未課金でも見せてよい無料タブ。ここ以外 (キャリア/成長) は課金でロック。
+// 未課金でも見せてよい無料タブ (2026-07-14 指示: キャリアもデフォルト表示に)。
 const FREE_TAB_KEYS: ReadonlySet<DeepDiveTabKey> = new Set<DeepDiveTabKey>([
   "love",
+  "career",
 ]);
 
-// 恋愛本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-14)。
-//   本文はどのタイプも「魅力(冒頭) → クセ/不安 → 本音 → 救い/ヒント」の同じ流れなので、
-//   見出しは共通で成立する。原稿(body)は一切変更せず、段落境界で3つに割るだけ。
+// 恋愛本文を分割する共通見出し (全32タイプ固定・2ブロック / 2026-07-14)。
+//   本文はどのタイプも「魅力〜本音 → 救い/ヒント」の同じ流れなので、見出しは共通で成立する。
+//   原稿(body)は一切変更せず、段落境界で2つに割るだけ。
+//   ※「つい抱えこんでしまうこと」は削除し「恋の魅力」に統合 (2026-07-14 指示)。
 const LOVE_HEADINGS = [
-  "アナタの恋の魅力",
-  "つい抱えこんでしまうこと",
-  "アナタがもっと楽になる恋",
+  "あなたの恋の魅力",
+  "あなたを好きになった人が読むトリセツ",
 ] as const;
 
 // タイプ別の区切り = [ブロック1の段落数, ブロック2の段落数]。ブロック3 = 残り全部。
@@ -125,11 +122,12 @@ const LOVE_SPLITS: Partial<Record<ThirtyTwoTypeId, [number, number]>> = {
   "solo-hedgehog__N": [1, 2],
 };
 
-// 恋愛 body を共通見出し3ブロックに分割。未登録/段落不足のタイプは undefined
-// (= 従来どおり単一本文表示)。3ブロックとも1段落以上でなければ分割しない。
-//   3ブロック目「アナタがもっと楽になる恋」(救い/ヒントの payoff) は課金ゲート対象。
+// 恋愛 body を共通見出し2ブロックに分割。未登録/段落不足のタイプは undefined
+// (= 従来どおり単一本文表示)。両ブロックとも1段落以上でなければ分割しない。
+//   2ブロック目「あなたを好きになった人が読むトリセツ」(救い/ヒントの payoff) は課金ゲート対象。
 //   unlocked=false のときは locked=true・body="" とし、本文を payload に載せない
 //   (フェイルクローズ。表示側はぼかし + 解除カードにする)。
+//   LOVE_SPLITS の [c1, c2] は旧3ブロック時代の区切り。payoff 境界 (c1+c2) だけ使う。
 function buildLoveBlocks(
   typeId: ThirtyTwoTypeId,
   body: string,
@@ -140,15 +138,41 @@ function buildLoveBlocks(
   const paras = body.split("\n\n");
   const [c1, c2] = split;
   if (c1 < 1 || c2 < 1 || c1 + c2 >= paras.length) return undefined;
-  const slices = [
-    paras.slice(0, c1),
-    paras.slice(c1, c1 + c2),
-    paras.slice(c1 + c2),
-  ];
+  const slices = [paras.slice(0, c1 + c2), paras.slice(c1 + c2)];
   return slices.map((s, i) => {
     const heading = LOVE_HEADINGS[i];
     const isPayoff = i === slices.length - 1;
     if (isPayoff && !unlocked) {
+      return { heading, body: "", locked: true };
+    }
+    return { heading, body: s.join("\n\n") };
+  });
+}
+
+// キャリア本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-14)。
+//   本文はどのタイプも「働き方のクセ描写 → その希少さ → 向き不向きの領域 → 強みの再定義」
+//   の4段落で統一されているため、[2,1,1] の固定分割で成立する。原稿(body)は無改変。
+const CAREER_HEADINGS = [
+  "あなたの働き方",
+  "向いているキャリア",
+  "あなたの隠れた才能",
+] as const;
+
+// キャリア body を共通見出し3ブロックに分割。1ブロック目 (働き方) は無料、
+// 2・3ブロック目 (向いているキャリア/隠れた才能) は課金ゲート対象 (恋愛 payoff と同じ)。
+// unlocked=false のときは locked=true・body="" とし、本文を payload に載せない
+// (フェイルクローズ。表示側はぼかし + 解除カードにする)。
+// 4段落でない原稿 (8タイプフォールバック等) は undefined = 従来どおり単一本文表示。
+function buildCareerBlocks(
+  body: string,
+  unlocked: boolean,
+): { heading: string; body: string; locked?: boolean }[] | undefined {
+  const paras = body.split("\n\n");
+  if (paras.length < 4) return undefined;
+  const slices = [paras.slice(0, 2), paras.slice(2, 3), paras.slice(3)];
+  return slices.map((s, i) => {
+    const heading = CAREER_HEADINGS[i];
+    if (i > 0 && !unlocked) {
       return { heading, body: "", locked: true };
     }
     return { heading, body: s.join("\n\n") };
@@ -216,15 +240,6 @@ export function resolveDeepDiveSections(
         locked: true,
       };
     }
-    if (card.key === "aisho") {
-      return {
-        key: card.key,
-        tab: card.tab,
-        note: scoreNote(card.hint),
-        body: buildAishoBody(thirtyTwoId),
-        locked: false,
-      };
-    }
     const section: TypeDeepDive[keyof TypeDeepDive] =
       card.key === "love" && love32
         ? love32
@@ -232,7 +247,7 @@ export function resolveDeepDiveSections(
           ? career32
           : deepDive[card.key];
     if (card.key === "love") {
-      // 恋愛は無料表示だが、payoff (3ブロック目「アナタがもっと楽になる恋」) だけは
+      // 恋愛は無料表示だが、payoff (3ブロック目「あなたを好きになった人が読むトリセツ」) だけは
       // 課金ゲート。未解放時は locked ブロックの本文を payload に載せない。
       const blocks = buildLoveBlocks(
         thirtyTwoId,
@@ -255,32 +270,22 @@ export function resolveDeepDiveSections(
         locked: false,
       };
     }
+    // キャリアも恋愛と同じ共通見出し3ブロック。「働き方」は無料、
+    // 「向いているキャリア」「あなたの隠れた才能」は課金ゲート (未解放時はフェイルクローズ)。
+    const careerBlocks = buildCareerBlocks(section.body, opts.hasFullAccess);
+    const careerVisibleBody = careerBlocks
+      ? careerBlocks
+          .filter((b) => !b.locked)
+          .map((b) => b.body)
+          .join("\n\n")
+      : section.body;
     return {
       key: card.key,
       tab: card.tab,
       note: scoreNote(card.hint),
-      body: section.body,
+      body: careerVisibleBody,
+      blocks: careerBlocks,
       locked: false,
     };
   });
-}
-
-// 相性タブ本文 (三層モデル Step3)。/aisho の compat (ルールベース・テーブル直引き) を
-// 流用し、自タイプ×他31タイプの総当たりからベスト3と「いちばん歩み寄りがいる」1タイプを
-// 決定的に組む。段落は "\n\n" 区切り (DeepDiveSections は段落表示のみ)。
-function buildAishoBody(selfId: ThirtyTwoTypeId): string {
-  const ranked = allThirtyTwoTypeIds()
-    .filter((id) => id !== selfId)
-    .map((id) => ({ id, r: compat(selfId, id) }))
-    .sort((a, b) => b.r.percent - a.r.percent);
-  const best = ranked.slice(0, 3);
-  const tough = ranked[ranked.length - 1];
-
-  const para1 = `アナタと特に相性がいいのは、1位「${thirtyTwoName(best[0].id)}」（${best[0].r.percent}%）、2位「${thirtyTwoName(best[1].id)}」（${best[1].r.percent}%）、3位「${thirtyTwoName(best[2].id)}」（${best[2].r.percent}%）。1位のふたりは「${best[0].r.summary}」。`;
-  // 1位との相性が良い理由 (軸コピー。「ふたりとも〜」のペア向け文)
-  const para2 = best[0].r.goods[0];
-  const para3 = `逆に、いちばん歩み寄りがいるのは「${thirtyTwoName(tough.id)}」（${tough.r.percent}%）。${tough.r.caution}`;
-  const para4 =
-    "気になるあの子との1対1の相性は、相性診断ページでふたりのタイプを選ぶとくわしく見られるよ。";
-  return [para1, para2, para3, para4].join("\n\n");
 }

@@ -193,7 +193,7 @@ function RelationsLocked() {
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
           完全版のレポートを入手して、これらの結果を見てみましょう。
           <br className="md:hidden" />
-          あなたの印象を理解できます。
+          他人からの印象を理解できます。
         </p>
         {/* 挙動は裏技カードと同一 (最下部の課金カードへスムーススクロール+パルス)。
             横幅も裏技カードのCTAに合わせて全幅。 */}
@@ -211,13 +211,21 @@ function RelationsLocked() {
 export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
   return (
     <div>
-      {/* ── 1. 武器 (無料・未解放でも公開)。16P「あなたの強み」風チェックリスト ── */}
-      {data.weapons && (
-        <div className="mb-10">
-          <SectionHeading title="羨ましいアナタの武器" />
-          <CheckList items={data.weapons} />
+      {/* ブロック順は 好かれやすい → 嫌われやすい → 武器 → 関係別 (2026-07-14 指示)。 */}
+      {/* ── 1. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
+      <div className="mb-10">
+        <SectionHeading title="好かれやすい性格" />
+        <div className="px-1">
+          {data.likable.map((para, i) => (
+            <p
+              key={i}
+              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+            >
+              {para}
+            </p>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* ── 2. 嫌われやすい性格 (🔒) ── */}
       <div className="mb-10">
@@ -247,24 +255,17 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
         )}
       </div>
 
-      {/* ── 3. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
-      <div className="mb-10">
-        <SectionHeading title="好かれやすい性格" />
-        <div className="px-1">
-          {data.likable.map((para, i) => (
-            <p
-              key={i}
-              className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
-            >
-              {para}
-            </p>
-          ))}
+      {/* ── 3. 武器 (無料・未解放でも公開)。16P「あなたの強み」風チェックリスト ── */}
+      {data.weapons && (
+        <div className="mb-10">
+          <SectionHeading title="羨ましいあなたの武器" />
+          <CheckList items={data.weapons} />
         </div>
-      </div>
+      )}
 
       {/* ── 4. 関係別の見られ方 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading title="関係別の見られ方" />
+        <SectionHeading title="他人が本当は気づいてほしいこと" />
         {data.relations ? (
           <div className="space-y-4">
             {data.relations.map((r) => (
