@@ -153,7 +153,10 @@ export function TakoRevealStage({
       {/* ===== 手前(主役): sticky で画面中央に留まる。overlay は pointer-events-none にして
           奥への背景スクロールを妨げず、カードだけ pointer-events-auto。 ===== */}
       <div className="pointer-events-none absolute inset-0 z-20">
-        <div className="sticky top-0 flex h-[100dvh] items-center justify-center px-4">
+        {/* pb-[84px]: 下部固定ナビ(約64px)ぶんを中央寄せから除外し、カード(最下部の退避
+            ピル)がナビ裏へ回り込まないよう可視域に収める。100dvh は Safari の動的ツール
+            バーで実可視より高く出ることがあるため、この余白で安全側に倒す。 */}
+        <div className="sticky top-0 flex h-[100dvh] items-center justify-center px-4 pb-[84px]">
           <div
             ref={frontRef}
             className="pointer-events-auto w-full max-w-[400px] [will-change:transform]"
