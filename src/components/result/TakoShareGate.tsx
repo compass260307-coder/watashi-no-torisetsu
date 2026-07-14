@@ -19,6 +19,7 @@
 // パララックス競合対策: ドラッグ開始させたくない操作要素には data-no-drag を付ける
 //   (親 TakoRevealStage が pointerdown 時に closest('[data-no-drag]') を見て握らない)。
 
+import { type MouseEvent } from "react";
 import Image from "next/image";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { useTakoPeek } from "./TakoRevealStage";
@@ -56,6 +57,12 @@ interface TakoShareGateProps {
   /** CTA タップ時の着地。既定は #tako-invite へスクロール (招待QRは親が描画)。 */
   onPrimaryAction?: () => void;
   /**
+   * CTA の JS 無しフォールバック先 (LINE送信URL)。ハイドレーション前に押されても、
+   * a要素の既定遷移でそのまま LINE 送信できる (CTA を“最初から押せる”状態にする)。
+   * ハイドレーション後は onClick が既定遷移を止めて送信シートを開く。
+   */
+  primaryFallbackHref?: string;
+  /**
    * 再訪リビール(②)用。表示する answered 数を上書きする (演出中は lastSeen→server へ動く)。
    * 未指定なら answered.length を使う。
    */
@@ -83,6 +90,7 @@ export function TakoShareGate({
   pendingCount,
   threshold,
   onPrimaryAction,
+  primaryFallbackHref,
   shownAnsweredCount,
   deliveredCount = 0,
   bounceKey = 0,
@@ -120,7 +128,11 @@ export function TakoShareGate({
         : `あと${toSend}人に送る`
       : "回答をリマインド"; // toSend=0 かつ未解放: 全スロットが診断中/回答済みだが3人未満
 
-  const handlePrimary = () => {
+  const handlePrimary = (e: MouseEvent<HTMLAnchorElement>) => {
+    // JS が動いている(=ハイドレーション済み)なら href の既定遷移を止めて送信シートを開く。
+    // 未ハイドレーション時は onClick が未装着なので、a要素の LINE 送信がそのまま働く
+    // (=CTA を最初から押せる状態にする。ハイドレーション遅延でも送信導線が死なない)。
+    e.preventDefault();
     if (onPrimaryAction) return onPrimaryAction();
     const el = document.getElementById("tako-invite");
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -243,8 +255,12 @@ export function TakoShareGate({
 
       {/* ===== CTA (画面の主役ボタン・いちばん大きく)。data-no-drag でドラッグ非開始。 ===== */}
       <div className="mt-7 [@media(max-height:740px)]:mt-4">
-        <button
-          type="button"
+        {/* ★プログレッシブCTA: a要素 + LINE送信URL を SSR で描く。ハイドレーション前でも
+            タップで LINE 送信が働く。ハイドレーション後は onClick が遷移を止め送信シートへ。 */}
+        <a
+          href={primaryFallbackHref}
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={handlePrimary}
           data-no-drag
           className="mx-auto flex w-full max-w-[420px] items-center justify-center gap-2 rounded-full px-6 py-4 [@media(max-height:740px)]:py-3 text-[18px] md:text-[20px] font-black text-white shadow-[0_10px_30px_rgba(91,91,239,0.35)] transition-transform active:scale-[0.97]"
@@ -263,7 +279,7 @@ export function TakoShareGate({
           >
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
-        </button>
+        </a>
         <p
           className="mt-2.5 text-center text-[12.5px] font-bold"
           style={{ color: READ_GRAY }}

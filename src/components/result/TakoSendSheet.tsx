@@ -17,13 +17,11 @@ import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { SHARE_TEXT, lineShareUrl } from "@/lib/tako-share";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 const LAVENDER = "#5B5BEF";
-
-const SHARE_TEXT =
-  "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
 
 type LiffPickerResult = "sent" | "cancelled" | "unavailable";
 
@@ -99,9 +97,7 @@ export function TakoSendSheet({
 
   if (!open) return null;
 
-  const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    `${shareText} ${withRef(inviteUrl, "line")}`,
-  )}`;
+  const lineUrl = lineShareUrl(inviteUrl, shareText);
   const pickerMessage = `${shareText} ${withRef(inviteUrl, "line")}`;
 
   const fire = (channel: string) =>

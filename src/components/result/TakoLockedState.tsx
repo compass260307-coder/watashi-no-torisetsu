@@ -23,6 +23,7 @@ import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoSendSheet } from "./TakoSendSheet";
 import { TakoAnsweredDetail } from "./TakoAnsweredDetail";
 import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
+import { lineShareUrl } from "@/lib/tako-share";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 interface TakoLockedStateProps {
@@ -88,6 +89,9 @@ export function TakoLockedState({
   const detailFriend =
     detailIndex != null ? answered[detailIndex] ?? null : null;
 
+  // CTA の JS 無しフォールバック先 (LINE送信URL)。ハイドレーション前に押されても送信できる。
+  const inviteLineHref = lineShareUrl(inviteUrl);
+
   const diagnoseText = (name: string) =>
     `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
 
@@ -105,6 +109,7 @@ export function TakoLockedState({
             bounceKey={bounceKey}
             revealFromIndex={revealFromIndex}
             onPrimaryAction={() => setSendMode({ kind: "invite" })}
+            primaryFallbackHref={inviteLineHref}
             onAnsweredTap={(i) => setDetailIndex(i)}
           />
         </TakoRevealStage>
