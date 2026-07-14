@@ -9,22 +9,27 @@
 //   - 手前: absolute inset-0 の overlay 内で position:sticky。100dvh の枠に中央寄せ。
 //     → スクロール中カードは画面中央に留まり、CTA が常に見える。
 //
-// 操作:
-//   - 縦スクロール = 奥(結果ページ)が流れる (主動線)。touch-action: pan-y で native スクロール。
-//   - 横ドラッグ = 手前カードをフェード+わずかに縮小して退避 → 奥を“即覗く”(副次)。
-//     縦優勢はスクロールに譲り、横優勢でだけ退避を発火。CTA(data-no-drag)上では発火しない。
-//   - ★性能優先: sticky+backdrop-blur が重い場合、退避を最初に捨てる(scroll性能 > 退避)。
-//   - prefers-reduced-motion: 退避無効(カード常時くっきり)。sticky はレイアウトなので維持。
+// 退避(奥をチラ見):
+//   - カード直下に「押して奥をチラ見」ピルを常時表示 (発見性)。押している間だけ
+//     カード全体(背景＋中身)を opacity 0 へフェード + わずかに縮小し、奥を素で見せる。
+//     指を離すと がっつり(白0.9)戻る。
+//   - ★横スワイプ検知は廃止。実機(iOS)で touch-action/pointercancel/斜め開始により
+//     ほぼ発火せず、かつ発見されにくかったため。押下ジェスチャは軸判定もスクロール競合も
+//     無く堅牢 (ピルは touch-action:none で自前処理)。
+//   - opacity はカード“自要素”に効かせる(--peek-opacity を継承)。祖先 opacity だと
+//     backdrop-filter を持つカードの中身が WebKit で濃いまま残る癖があるため。
+//   - prefers-reduced-motion: 退避無効(ピルも出さない)。sticky はレイアウトなので維持。
 //   - ?peek=1 (dev限定): 退避状態を静的描画するスクショ確認用。
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { TakoRewardBackdrop } from "./TakoRewardBackdrop";
 
-const PEEK_TRAVEL = 90; // このドラッグ距離(px)で退避が最大に
-const PEEK_EASE = 0.18;
+const PEEK_EASE = 0.2; // 目標値への追従係数 (押下/解放時のなめらかさ)
 const PEEK_FADE = 1.0; // 退避時の最大フェード (opacity 1 → 0。手前をまるごと消して奥だけに)
 const PEEK_SHRINK = 0.05; // 退避時の最大縮小 (scale 1 → 1-0.05)
 const PEEK_BLUR_MAX = 24; // フロストの blur(px)。退避量に比例して 0 へ減衰し、奥を素で見せる。
+
+const NAVY = "#2E2E5C";
 
 interface TakoRevealStageProps {
   answered: number;
@@ -38,23 +43,15 @@ export function TakoRevealStage({
   threshold,
   children,
 }: TakoRevealStageProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
   const frontRef = useRef<HTMLDivElement>(null);
+  const peekBtnRef = useRef<HTMLButtonElement>(null);
 
-  const state = useRef({
-    curPeek: 0,
-    dragMag: 0,
-    pending: false,
-    dragging: false,
-    startPX: 0,
-    startPY: 0,
-    pointerId: -1,
-  });
+  const state = useRef({ curPeek: 0, pressed: false });
 
   useEffect(() => {
-    const root = rootRef.current;
     const front = frontRef.current;
-    if (!root || !front) return;
+    const btn = peekBtnRef.current;
+    if (!front) return;
 
     const previewPeek =
       process.env.NODE_ENV !== "production" &&
@@ -62,12 +59,9 @@ export function TakoRevealStage({
 
     const applyFront = (peek: number) => {
       front.style.transform = `scale(${(1 - peek * PEEK_SHRINK).toFixed(4)})`;
-      // ★退避は opacity と blur の2値を CSS 変数でカード“自身”へ渡して駆動する。
-      //   opacity を frontRef(祖先)に直接かけると、カードが backdrop-filter を持つため
-      //   WebKit(iOS Safari)は祖先 opacity をサブツリーへ正しく合成できず、中身(見出し/
-      //   数字/スロット/CTA)が濃いまま残る既知の癖がある。カード“自要素”の opacity なら
-      //   backdrop-filter 出力ごとフェードし、手前が丸ごと消える。カードは --peek-opacity /
-      //   --peek-blur を参照する (TakoShareGate)。custom property は子へ継承される。
+      // opacity と blur の2値をカード“自身”へ custom property で渡す(継承)。
+      //   --peek-opacity (1→0): カード全体(背景＋中身)をまるごとフェード。
+      //   --peek-blur (24→0): フロストを解いて奥を素にする。
       front.style.setProperty(
         "--peek-opacity",
         (1 - peek * PEEK_FADE).toFixed(3),
@@ -83,70 +77,40 @@ export function TakoRevealStage({
     ).matches;
     if (reduced) {
       applyFront(previewPeek ? 1 : 0);
+      // 退避無効の環境では操作子(ピル)も出さない。
+      if (btn) btn.style.display = "none";
       return;
     }
 
     if (previewPeek) state.current.curPeek = 1;
 
     let raf = 0;
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest("[data-no-drag]")) return;
-      const s = state.current;
-      s.pending = true;
-      s.dragging = false;
-      s.dragMag = 0;
-      s.pointerId = e.pointerId;
-      s.startPX = e.clientX;
-      s.startPY = e.clientY;
-    };
-    const onMove = (e: PointerEvent) => {
-      const s = state.current;
-      if (e.pointerId !== s.pointerId) return;
-      const dx = e.clientX - s.startPX;
-      const dy = e.clientY - s.startPY;
-      if (s.pending && !s.dragging) {
-        // 縦優勢はスクロールへ譲る。横優勢が閾値超えで退避ドラッグ確定。
-        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 6) {
-          s.pending = false;
-          return;
-        }
-        if (Math.abs(dx) > 6) {
-          s.dragging = true;
-          try {
-            root.setPointerCapture(e.pointerId);
-          } catch {
-            /* capture 不可環境は無視 */
-          }
-        } else {
-          return;
-        }
+    const press = (e: PointerEvent) => {
+      state.current.pressed = true;
+      // 指がボタン外へ出ても pointerup を取りこぼさないよう捕捉。
+      try {
+        btn?.setPointerCapture(e.pointerId);
+      } catch {
+        /* capture 不可環境は無視 */
       }
-      if (!s.dragging) return;
-      s.dragMag = Math.hypot(dx, dy);
     };
-    const onUp = (e: PointerEvent) => {
-      const s = state.current;
-      if (e.pointerId !== s.pointerId) return;
-      s.pending = false;
-      s.dragging = false;
-      s.dragMag = 0;
-      s.pointerId = -1;
+    const release = () => {
+      state.current.pressed = false;
     };
 
-    root.addEventListener("pointerdown", onDown);
-    root.addEventListener("pointermove", onMove);
-    root.addEventListener("pointerup", onUp);
-    root.addEventListener("pointercancel", onUp);
+    if (btn) {
+      btn.addEventListener("pointerdown", press);
+      btn.addEventListener("pointerup", release);
+      btn.addEventListener("pointercancel", release);
+      btn.addEventListener("pointerleave", release);
+    }
 
     const tick = () => {
       const s = state.current;
-      const target = previewPeek
-        ? 1
-        : s.dragging
-          ? Math.min(1, s.dragMag / PEEK_TRAVEL)
-          : 0;
+      const target = previewPeek ? 1 : s.pressed ? 1 : 0;
       s.curPeek += (target - s.curPeek) * PEEK_EASE;
+      // 目標にほぼ到達したら値を確定 (浮動小数の尾を切って完全な 0/1 に落とす)。
+      if (Math.abs(target - s.curPeek) < 0.001) s.curPeek = target;
       applyFront(s.curPeek);
       raf = requestAnimationFrame(tick);
     };
@@ -154,17 +118,18 @@ export function TakoRevealStage({
 
     return () => {
       cancelAnimationFrame(raf);
-      root.removeEventListener("pointerdown", onDown);
-      root.removeEventListener("pointermove", onMove);
-      root.removeEventListener("pointerup", onUp);
-      root.removeEventListener("pointercancel", onUp);
+      if (btn) {
+        btn.removeEventListener("pointerdown", press);
+        btn.removeEventListener("pointerup", release);
+        btn.removeEventListener("pointercancel", release);
+        btn.removeEventListener("pointerleave", release);
+      }
     };
   }, []);
 
   return (
     <div
-      ref={rootRef}
-      className="relative isolate w-screen ml-[calc(50%-50vw)] touch-pan-y select-none"
+      className="relative isolate w-screen ml-[calc(50%-50vw)] select-none"
       style={{ background: "#F6F7F9" }}
     >
       {/* ===== 奥(結果ページの長いダミー): 通常フローでセクション高さを決める ===== */}
@@ -173,15 +138,39 @@ export function TakoRevealStage({
       </div>
 
       {/* ===== 手前(主役): sticky で画面中央に留まる。overlay は pointer-events-none にして
-          奥への背景ドラッグも root が拾えるようにし、カードだけ pointer-events-auto。 ===== */}
+          奥への背景スクロールを妨げず、カード/ピルだけ pointer-events-auto。 ===== */}
       <div className="pointer-events-none absolute inset-0 z-20">
-        <div className="sticky top-0 flex h-[100dvh] items-center justify-center px-4">
+        <div className="sticky top-0 flex h-[100dvh] flex-col items-center justify-center gap-3 px-4">
           <div
             ref={frontRef}
             className="pointer-events-auto w-full max-w-[400px] [will-change:transform]"
           >
             {children}
           </div>
+
+          {/* 退避トリガ: 押している間だけ奥をチラ見。常時表示で発見性を確保。 */}
+          <button
+            ref={peekBtnRef}
+            type="button"
+            aria-label="押している間、奥の結果をチラ見できます"
+            className="pointer-events-auto inline-flex select-none items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-black shadow-[0_6px_18px_rgba(46,46,92,0.14)] ring-1 ring-black/[0.06] [touch-action:none] active:scale-95"
+            style={{ background: "rgba(255,255,255,0.92)", color: NAVY }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            押して奥をチラ見
+          </button>
         </div>
       </div>
     </div>
