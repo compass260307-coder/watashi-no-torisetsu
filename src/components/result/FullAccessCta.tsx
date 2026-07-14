@@ -1,6 +1,6 @@
 "use client";
 
-// ¥499 買い切り「フルアクセス(全解放)」の課金導線ボタン。
+// ¥99 買い切り「フルアクセス(全解放)」の課金導線ボタン。
 // クリックで /api/checkout/create-full-access-session を叩き、返ってきた Stripe Checkout
 // URL へ遷移する。金額・price はサーバ側 (Price 固定) で決まり、ここからは一切渡さない。
 //
@@ -12,7 +12,7 @@ import { useState } from "react";
 import { track } from "@/lib/track";
 
 export function FullAccessCta({
-  children = "¥499で全部よむ",
+  children = "¥99で全部よむ",
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,

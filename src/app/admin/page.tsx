@@ -647,7 +647,7 @@ export default function AdminPage() {
         {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
         <section>
           <h2 className="text-sm font-bold text-gray-700 mb-3">
-            課金ファネル (¥499 フルアクセス)
+            課金ファネル (¥99 フルアクセス)
           </h2>
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">

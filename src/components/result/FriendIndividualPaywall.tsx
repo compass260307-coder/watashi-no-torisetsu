@@ -1,12 +1,12 @@
 // タコ個別ページ /tako/[token]/friend/[perceptionId] の「本人・未課金向け課金導線」。
-// 本人 (isOwner) だが ¥499 全解放 (plan='full') を持っていないときに表示する。
+// 本人 (isOwner) だが ¥99 全解放 (plan='full') を持っていないときに表示する。
 //
 // 重要 (PR2 サーバゲートの肝):
 //   このコンポーネントには perception 本文・owner_message 全文を一切渡さない。
 //   受け取ってよいのは無料メタ (誰からの結果か = perceiverName) だけ。
 //   本文はそもそもサーバで SELECT しない → payload / View Source に載る余地がない。
 //
-// 見た目は PR2 では最小限 (本文ゼロ + ¥499 導線)。作り込みは PR3。
+// 見た目は PR2 では最小限 (本文ゼロ + ¥99 導線)。作り込みは PR3。
 // 世界観は /me・/tako・案内ページと統一 (白背景・M PLUS Rounded(global)・ネイビー見出し)。
 
 import TopHeader from "@/components/top/TopHeader";
@@ -19,7 +19,7 @@ export function FriendIndividualPaywall({
   // A案: 相手からのメッセージ全文 (owner_message)。相手が自分に向けた言葉＝恵みなので
   // 未課金でも無料で全文表示する (引き)。null/空なら非表示。診断の中身はロックのまま。
   ownerMessage = null,
-  // このページの owner_token。¥499 課金導線に本人解決用として渡す (Cookie 不在対策)。
+  // このページの owner_token。¥99 課金導線に本人解決用として渡す (Cookie 不在対策)。
   ownerToken,
 }: {
   perceiverName?: string | null;
@@ -77,7 +77,7 @@ export function FriendIndividualPaywall({
 
           <div className="mt-8 rounded-3xl bg-[#F7F7FB] px-5 py-6 text-left">
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              🔓 一度きりの ¥499 で、
+              🔓 一度きりの ¥99 で、
               <br />
               ぜんぶ読めるようになります。
             </p>

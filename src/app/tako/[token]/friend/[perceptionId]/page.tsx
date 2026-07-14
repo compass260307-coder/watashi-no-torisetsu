@@ -125,7 +125,7 @@ export default async function FriendIndividualPage({
     // (親ページは token だけで中身を見せているのにここだけ session 必須だったのが原因。)
 
     // ===== 課金ゲート (PR2: token 本人の内側に hasFullAccess を AND) =====
-    // 本人だが未課金 (¥499 全解放なし) → 本文 (perception詳細・owner_message全文) を
+    // 本人だが未課金 (¥99 全解放なし) → 本文 (perception詳細・owner_message全文) を
     // 「そもそも取得せず」課金導線を返す。フェイルクローズ。無料メタ (誰からの結果か) だけ
     // 最小 SELECT する (本文列 perceived_scores/qualitative_data/owner_message は読まない)。
     if (!(await hasFullAccess(user.id as string))) {

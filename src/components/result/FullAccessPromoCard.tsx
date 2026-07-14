@@ -27,9 +27,9 @@ import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
-// 値引き表記に使う元値・現在価格 (61%OFF)。
+// 値引き表記に使う元値・現在価格 (92%OFF)。
 const LIST_PRICE = "¥1,299";
-const OFF_PERCENT = 61;
+const OFF_PERCENT = 92;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-14 の結果ページ改修に追随:
 // 恋愛 payoff / キャリア・成長・相性 / シーン別の注意点 / 嫌われやすい性格・関係別。
@@ -283,7 +283,7 @@ export function FullAccessPromoCard({
             ))}
           </ul>
 
-          {/* 価格 (¥1,299 → ¥499 の値引き表記)。
+          {/* 価格 (¥1,299 → ¥99 の値引き表記)。
               値引き理由を「リリース記念」として明示 (安すぎ感の解消 / 2026-07-14 指示)。 */}
           <div
             className={`mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
@@ -303,7 +303,7 @@ export function FullAccessPromoCard({
               className="text-[36px] font-black leading-none"
               style={{ color: tone.accent }}
             >
-              ¥499
+              ¥99
             </span>
           </div>
 

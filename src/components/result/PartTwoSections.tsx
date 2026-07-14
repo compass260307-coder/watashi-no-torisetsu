@@ -11,7 +11,7 @@
 //
 // サーバコンポーネント。🔒ブロックの本文は未解放時サーバで解決すらされない
 // (part-two-resolve.ts、フェイルクローズ)。ぼかしはダミーであり本物の目隠しではない。
-// 解除カード (lockCard: 友達3人シェア/QR + ¥499) は /me がオーナー情報込みで組んで渡す。
+// 解除カード (lockCard: 友達3人シェア/QR + ¥99) は /me がオーナー情報込みで組んで渡す。
 
 import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
@@ -22,7 +22,7 @@ export const PART_TWO_LOCK_ID = "part2-lock";
 
 interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
-  /** 未解放時に出す解除カード (友達3人 or ¥499)。解放済みなら不要。 */
+  /** 未解放時に出す解除カード (友達3人 or ¥99)。解放済みなら不要。 */
   lockCard?: React.ReactNode;
 }
 
