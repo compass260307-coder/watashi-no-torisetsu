@@ -28,6 +28,9 @@ function buildMetadata(opts: {
   return {
     title: { absolute: opts.title },
     description: opts.description,
+    // OG クローラ (robots.txt で許可) にはカードを取らせつつ、検索結果には出さない
+    // (/share と同方針)。
+    robots: { index: false, follow: true },
     openGraph: {
       title: opts.title,
       description: opts.description,
