@@ -6,6 +6,8 @@
 //   - ヘッダー部分は従来の ScrollHideHeader と同じ (下スクロールで隠れ、上で出る)
 //   - その直下のバー (QR/X/LINE + すべての結果のロックを解除) は「常時表示」。
 //     ヘッダーが隠れるときはヘッダーの高さぶんだけ全体を持ち上げ、バーが最上部に残る。
+//   - 解放後もバー自体 (シェア3ボタン) は出し続ける (2026-07-15 指示)。
+//     解除 CTA ボタンだけ未解放時限定 (showUnlockCta)。
 // ScrollHideHeader は children ごと -100% 平行移動するためバーも消えてしまう。
 // ここではヘッダー実高を測り、隠すときは -headerHeight だけ動かす (バーは残る)。
 //
@@ -20,8 +22,9 @@ import { track } from "@/lib/track";
 interface MeStickyHeaderProps {
   /** ヘッダー本体 (TopHeader)。 */
   children: ReactNode;
-  /** バーを出すか (第二部が未解放のときのみ true)。false なら従来ヘッダーと同じ。 */
-  showUnlockBar: boolean;
+  /** 「すべての結果のロックを解除」CTA を出すか (第二部が未解放のときのみ true)。
+      false でもシェア3ボタンのバー自体は inviteUrl があれば表示する。 */
+  showUnlockCta: boolean;
   /** 友達招待 URL (/friend/[inviteCode])。シェア3ボタンで使用。 */
   inviteUrl?: string;
   /** シェア文言用の称号 (essence)。 */
@@ -65,10 +68,12 @@ function CircleIconButton({
 
 export function MeStickyHeader({
   children,
-  showUnlockBar,
+  showUnlockCta,
   inviteUrl,
   essence,
 }: MeStickyHeaderProps) {
+  // バー自体は CTA (未解放) か シェアボタン (inviteUrl) のどちらかがあれば出す。
+  const showBar = showUnlockCta || Boolean(inviteUrl);
   const [hidden, setHidden] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const lastY = useRef(0);
@@ -131,7 +136,7 @@ export function MeStickyHeader({
         className="transition-transform duration-300"
         style={{
           transform:
-            hidden && showUnlockBar
+            hidden && showBar
               ? `translateY(-${headerH}px)`
               : hidden
                 ? "translateY(-100%)"
@@ -140,7 +145,7 @@ export function MeStickyHeader({
       >
         <div ref={headerRef}>{children}</div>
 
-        {showUnlockBar && (
+        {showBar && (
           <div className="relative flex items-center justify-end gap-2 border-b border-[#E9E9F2] bg-white px-4 py-2 md:px-8">
             {/* シェア3ボタン (QR / X / LINE)。招待 URL があるときのみ */}
             {inviteUrl && (
@@ -243,6 +248,7 @@ export function MeStickyHeader({
               </>
             )}
 
+            {showUnlockCta && (
             <button
               type="button"
               onClick={() => scrollToPaywall("sticky_bar")}
@@ -264,6 +270,7 @@ export function MeStickyHeader({
               </svg>
               すべての結果のロックを解除
             </button>
+            )}
           </div>
         )}
       </div>

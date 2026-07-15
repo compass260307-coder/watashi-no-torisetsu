@@ -402,10 +402,10 @@ export default async function MePage({ params, searchParams }: PageProps) {
     {!previewType && (
       <ResultViewTracker ownerToken={token} friendCount={friendEvalCount} />
     )}
-    {/* 16P と同じスクロール連動ヘッダー。/me だけ、未解放時はヘッダー直下に
-        「すべての結果のロックを解除」バーを常時表示 (ヘッダーが隠れてもバーは残る)。 */}
+    {/* 16P と同じスクロール連動ヘッダー。/me はヘッダー直下にシェアバーを常時表示
+        (ヘッダーが隠れてもバーは残る)。解除CTAは未解放時のみ (2026-07-15 指示)。 */}
     <MeStickyHeader
-      showUnlockBar={!partTwoUnlocked}
+      showUnlockCta={!partTwoUnlocked}
       inviteUrl={inviteUrl}
       essence={dispEssence}
     >
