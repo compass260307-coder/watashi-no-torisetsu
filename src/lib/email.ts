@@ -184,8 +184,9 @@ interface SendDetailedReportArgs {
  *
  * Stripe Webhook (checkout.session.completed / product=full_access) から送信。
  * ボタンは 2 つ:
- *   - 「レポートを表示」= /me/[ownerToken] (課金解放済みの診断結果ページ)
- *   - 「電子書籍をダウンロード」= /report/[ownerToken]/pdf (A4 PDF を attachment 返却)
+ *   - 「完全版レポートを読む」= /report/[ownerToken] (Web 版の詳細レポート)
+ *   - 「PDF 版を保存する」= /report/[ownerToken]/pdf (A4 PDF を attachment 返却)
+ * 課金解放済みの診断結果ページ /me/[ownerToken] は補助リンクとして案内する。
  * どちらも token ベースの永続 URL。ゲスト決済 (診断前) でも診断完了後に
  * 同じリンクが本人のタイプの内容になる。
  * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
@@ -199,17 +200,28 @@ export async function sendDetailedReportEmail(
 
   const greetingName = (args.ownerName ?? "").trim();
   const token = encodeURIComponent(args.ownerToken);
+  const reportUrl = `${SITE_URL}/report/${token}`;
   const meUrl = `${SITE_URL}/me/${token}`;
   const pdfUrl = `${SITE_URL}/report/${token}/pdf`;
-  const subject = `あなたの詳細レポートが届きました`;
+  const subject = `【${SITE_NAME}】完全版レポートをお届けします`;
 
   try {
     const result = await resend.emails.send({
       from,
       to: args.to,
       subject,
-      html: renderDetailedReportHtml({ meUrl, pdfUrl, greetingName }),
-      text: renderDetailedReportText({ meUrl, pdfUrl, greetingName }),
+      html: renderDetailedReportHtml({
+        reportUrl,
+        pdfUrl,
+        meUrl,
+        greetingName,
+      }),
+      text: renderDetailedReportText({
+        reportUrl,
+        pdfUrl,
+        meUrl,
+        greetingName,
+      }),
     });
     if (result.error) {
       console.error("[email] sendDetailedReportEmail Resend error:", result.error);
@@ -398,71 +410,112 @@ function renderTrisetsuCompleteText(
 // =========================================================================
 
 interface DetailedReportTemplateArgs {
-  meUrl: string;
+  reportUrl: string;
   pdfUrl: string;
+  meUrl: string;
   greetingName: string;
 }
 
 // export はテンプレプレビュー (scripts/preview-report-email.ts) 用
 export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): string {
   const greeting = args.greetingName
-    ? `${escapeHtml(args.greetingName)}さん、`
-    : "";
+    ? `${escapeHtml(args.greetingName)}さん、こんにちは。`
+    : "こんにちは。";
 
   return `<!DOCTYPE html>
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>あなたの詳細レポートが届きました</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>完全版レポートをお届けします</title>
+    <style>
+      @media only screen and (max-width: 600px) {
+        .email-shell { padding: 0 !important; }
+        .email-card { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
+        .email-content { padding: 36px 24px !important; }
+        .cta-cell { display: block !important; width: 100% !important; padding: 0 0 12px !important; }
+        .cta-link { display: block !important; min-width: 0 !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
+  <body style="margin:0;padding:0;background:#F3F3F7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;color:#2E2E5C;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      ご購入いただいた完全版レポートの準備ができました。Web版とPDF版をご利用いただけます。
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#F3F3F7;">
       <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
+        <td class="email-shell" align="center" style="padding:32px 16px;">
+          <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:620px;background:#FFFFFF;border:1px solid #E4E4F0;border-radius:18px;overflow:hidden;">
             <tr>
-              <td>
-                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
-                <h1 style="margin:0 0 28px;font-size:22px;font-weight:600;line-height:1.55;text-align:center;color:#2A2520;">ご購入ありがとうございます</h1>
-                <p style="margin:0 0 28px;font-size:15px;line-height:1.85;">
-                  ${greeting}すべてのコンテンツが解放されました。<br />
-                  あわせて、あなたの性格タイプを一冊にまとめた詳細レポート (電子書籍) をお届けします。長所と短所、恋愛や友人関係、キャリアの可能性まで、じっくり読める内容です。
+              <td class="email-content" style="padding:48px 46px 44px;">
+                <p style="margin:0 0 36px;text-align:center;">
+                  <img src="${SITE_URL}/checkout-fullaccess.png" width="360" alt="完全版レポート" style="display:inline-block;width:360px;max-width:100%;height:auto;border:0;border-radius:14px;" />
                 </p>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 32px;">
+
+                <p style="margin:0 0 20px;font-size:15px;line-height:1.8;color:#2E2E5C;">
+                  ${greeting}
+                </p>
+                <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">
+                  ご購入ありがとうございます。<br />
+                  完全版レポートをご用意しました。長所と短所、恋愛や友人関係、キャリア・仕事での傾向など、あなたのタイプをさまざまな角度から知ることができます。
+                </p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;">
                   <tr>
-                    <td align="center" style="padding:0 0 14px;">
-                      <a href="${args.meUrl}" style="display:inline-block;min-width:220px;padding:14px 32px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">レポートを表示 &#8594;</a>
+                    <td class="cta-cell" width="50%" align="center" style="width:50%;padding:0 6px 0 0;">
+                      <a class="cta-link" href="${args.reportUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #4A4AD9;">完全版レポートを読む&nbsp; &#8594;</a>
                     </td>
-                  </tr>
-                  <tr>
-                    <td align="center">
-                      <a href="${args.pdfUrl}" style="display:inline-block;min-width:220px;padding:14px 32px;background:#FFFFFF;border:1.5px solid #2A2520;color:#2A2520;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">電子書籍をダウンロード &#8594;</a>
+                    <td class="cta-cell" width="50%" align="center" style="width:50%;padding:0 0 0 6px;">
+                      <a class="cta-link" href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #1B1B3E;">PDF版を保存する&nbsp; &#8594;</a>
                     </td>
                   </tr>
                 </table>
-                <p style="margin:0 0 12px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  <strong>どちらのリンクも永続的にアクセスできます。</strong><br />
-                  「レポートを表示」は解放済みの診断結果ページ、<br />
-                  「電子書籍をダウンロード」は PDF ファイルのお届けです。
+
+                <p style="margin:0 0 32px;font-size:15px;line-height:1.85;color:#5A5A6E;">
+                  Web版はスマートフォンで読みやすく、PDF版は保存や印刷に便利です。どちらのリンクも、いつでも繰り返しご利用いただけます。
                 </p>
-                <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 34px;background:#F3F2FF;border-radius:14px;">
+                  <tr>
+                    <td style="padding:28px 28px 26px;">
+                      <h2 style="margin:0 0 14px;font-size:22px;font-weight:800;line-height:1.55;color:#2E2E5C;">今回のご購入で使えるもの</h2>
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">恋愛・キャリアなどの深掘りコンテンツ</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">長所・短所、人間関係、仕事の傾向をまとめた完全版レポート</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 0;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0;font-size:15px;line-height:1.75;color:#5A5A6E;">Web版への永続アクセスとPDF版の保存</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 18px;font-size:15px;line-height:1.85;color:#5A5A6E;">
+                  解放された診断結果ページは、<a href="${args.meUrl}" style="color:#5B5BEF;font-weight:700;text-decoration:underline;">こちらから確認できます</a>。
                 </p>
-                <p style="margin:0 0 8px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
-                  レポート: ${args.meUrl}
+                <p style="margin:0 0 18px;font-size:15px;line-height:1.85;color:#7A7A92;">
+                  ※ 購入時点で診断がお済みでない場合は、診断完了後にこのメールのリンクを開いてください。あなたのタイプに合わせた内容へ更新されます。
                 </p>
-                <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
-                  電子書籍: ${args.pdfUrl}
+                <p style="margin:0 0 28px;font-size:15px;line-height:1.85;color:#5A5A6E;">
+                  リンクやPDFでお困りの場合は、<a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;text-decoration:underline;">support@watashi-torisetsu.com</a> までご連絡ください。
                 </p>
-                <hr style="border:none;border-top:1px solid #E8E1D5;margin:32px 0;" />
-                <p style="margin:0;font-size:12px;line-height:1.85;color:#A89E8E;">
-                  まだ診断がお済みでない場合は、診断を完了するとこれらのリンクがあなたのタイプの内容になります。
+                <p style="margin:0;font-size:15px;line-height:1.85;color:#5A5A6E;">
+                  それでは、あなただけのトリセツをお楽しみください。<br />
+                  <strong style="color:#2E2E5C;">ワタシのトリセツ運営チーム</strong>
                 </p>
               </td>
             </tr>
           </table>
-          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
+          <p style="margin:22px 0 0;font-size:15px;line-height:1.7;color:#8A8AA3;">&copy; ${SITE_NAME}</p>
         </td>
       </tr>
     </table>
@@ -471,27 +524,43 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
 }
 
 function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
-  const greeting = args.greetingName ? `${args.greetingName}さん、` : "";
+  const greeting = args.greetingName
+    ? `${args.greetingName}さん、こんにちは。`
+    : "こんにちは。";
   return [
-    "ご購入ありがとうございます",
+    greeting,
     "",
-    `${greeting}すべてのコンテンツが解放されました。`,
-    "あわせて、あなたの性格タイプを一冊にまとめた詳細レポート (電子書籍) をお届けします。",
-    "長所と短所、恋愛や友人関係、キャリアの可能性まで、じっくり読める内容です。",
+    "ご購入ありがとうございます。",
+    "完全版レポートをご用意しました。",
+    "長所と短所、恋愛や友人関係、キャリア・仕事での傾向など、",
+    "あなたのタイプをさまざまな角度から知ることができます。",
     "",
-    "■ レポートを表示 (解放済みの診断結果ページ)",
-    args.meUrl,
+    "■ 完全版レポートを読む (Web版)",
+    args.reportUrl,
     "",
-    "■ 電子書籍をダウンロード (PDF)",
+    "■ PDF版を保存する",
     args.pdfUrl,
     "",
-    "どちらのリンクも永続的にアクセスできます。",
+    "Web版はスマートフォンで読みやすく、PDF版は保存や印刷に便利です。",
+    "どちらのリンクも、いつでも繰り返しご利用いただけます。",
     "",
-    "まだ診断がお済みでない場合は、診断を完了すると",
-    "これらのリンクがあなたのタイプの内容になります。",
+    "【今回のご購入で使えるもの】",
+    "・恋愛・キャリアなどの深掘りコンテンツ",
+    "・長所・短所、人間関係、仕事の傾向をまとめた完全版レポート",
+    "・Web版への永続アクセスとPDF版の保存",
+    "",
+    "■ 解放された診断結果ページ",
+    args.meUrl,
+    "",
+    "※ 購入時点で診断がお済みでない場合は、診断完了後にこのメールのリンクを開いてください。",
+    "あなたのタイプに合わせた内容へ更新されます。",
+    "",
+    "リンクやPDFでお困りの場合は、support@watashi-torisetsu.com までご連絡ください。",
+    "",
+    "それでは、あなただけのトリセツをお楽しみください。",
     "",
     "--",
-    SITE_NAME,
+    `${SITE_NAME}運営チーム`,
   ].join("\n");
 }
 

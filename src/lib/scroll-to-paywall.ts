@@ -12,17 +12,64 @@
 // 呼び出し元は source を必ず渡すこと (未指定は "unknown" で記録)。
 
 import { track } from "@/lib/track";
+import {
+  DIRECT_PAYWALL_SOURCE,
+  normalizePaywallSource,
+} from "@/lib/paywall-source";
 
 const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
 const PULSE_MS = 1300;
+const LAST_SOURCE_KEY = "torisetsu_paywall_source_v1";
+const LAST_SOURCE_TTL_MS = 30 * 60 * 1000;
 
 // 「シーン別の注意点」(SceneCautionTeaser) のアンカー id。
 export const SCENE_CAUTION_ID = "scene-caution";
 
-// ④「裏技でロック解除」カード (/me の lockCard カードB) のアンカー id。
-// ②深掘りの解除 CTA はここに着地させ、裏技カードをパルスで光らせる。
-export const URAWAZA_CARD_ID = "urawaza-card";
+type StoredPaywallSource = {
+  source: string;
+  page: string;
+  at: number;
+};
+
+function currentPage(): string {
+  return typeof window === "undefined" ? "" : window.location.pathname;
+}
+
+function rememberPaywallSource(source: string): void {
+  if (typeof window === "undefined") return;
+  const stored: StoredPaywallSource = {
+    source: normalizePaywallSource(source),
+    page: currentPage(),
+    at: Date.now(),
+  };
+  try {
+    sessionStorage.setItem(LAST_SOURCE_KEY, JSON.stringify(stored));
+  } catch {
+    // ストレージが使えなくてもクリック計測と購入処理は継続する。
+  }
+}
+
+// 購入 CTA が押された時点の最終タッチ導線。別ページの古い値は混ぜず、
+// ロックカードを経由せず課金カードを直接押した場合は専用 source に寄せる。
+export function getLastPaywallSource(): string {
+  if (typeof window === "undefined") return DIRECT_PAYWALL_SOURCE;
+  try {
+    const raw = sessionStorage.getItem(LAST_SOURCE_KEY);
+    if (!raw) return DIRECT_PAYWALL_SOURCE;
+    const parsed = JSON.parse(raw) as Partial<StoredPaywallSource>;
+    if (
+      typeof parsed.at !== "number" ||
+      Date.now() - parsed.at > LAST_SOURCE_TTL_MS ||
+      parsed.page !== currentPage()
+    ) {
+      return DIRECT_PAYWALL_SOURCE;
+    }
+    return normalizePaywallSource(parsed.source);
+  } catch {
+    return DIRECT_PAYWALL_SOURCE;
+  }
+}
 
 // targetId 指定で課金カード以外 (例: シーン別の注意点 "scene-caution") にも飛べる。
 // 挙動 (スムーススクロール + パルス) と計測イベントは共通。
@@ -31,9 +78,11 @@ export function scrollToPaywall(
   targetId: string = PAYWALL_ID,
 ): void {
   if (typeof document === "undefined") return;
+  const normalizedSource = normalizePaywallSource(source);
+  rememberPaywallSource(normalizedSource);
   track("paywall_scroll_clicked", {
     metadata: {
-      source,
+      source: normalizedSource,
       target: targetId,
       page: window.location.pathname.split("/")[1] || "top",
     },

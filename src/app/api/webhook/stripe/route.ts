@@ -28,6 +28,7 @@ import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
+import { normalizePaywallSource } from "@/lib/paywall-source";
 
 // ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
 // users は type_id/scores が NOT NULL のため空では INSERT できない。
@@ -361,6 +362,7 @@ async function recordPurchaseCompletedEvent(
         product: "full_access",
         guest: session.metadata?.guest === "1",
         amount_total: session.amount_total ?? null,
+        source: normalizePaywallSource(session.metadata?.paywall_source),
       },
     });
   } catch (err) {

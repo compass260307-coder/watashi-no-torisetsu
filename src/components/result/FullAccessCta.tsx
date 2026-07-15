@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { track } from "@/lib/track";
+import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 
 export function FullAccessCta({
   children = "¥499で全部よむ",
@@ -33,17 +34,24 @@ export function FullAccessCta({
     if (loading) return;
     setLoading(true);
     setError(null);
+    const paywallSource = getLastPaywallSource();
     // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
     // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
     track("purchase_cta_clicked", {
       ownerToken: ownerToken ?? null,
-      metadata: { page: window.location.pathname.split("/")[1] || "top" },
+      metadata: {
+        page: window.location.pathname.split("/")[1] || "top",
+        source: paywallSource,
+      },
     });
     try {
       const res = await fetch("/api/checkout/create-full-access-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ownerToken ? { owner_token: ownerToken } : {}),
+        body: JSON.stringify({
+          ...(ownerToken ? { owner_token: ownerToken } : {}),
+          paywall_source: paywallSource,
+        }),
       });
       // 既に課金済み → 本文が見られる状態なので再読込。
       if (res.status === 409) {

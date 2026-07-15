@@ -27,6 +27,7 @@ import { hasFullAccess } from "@/lib/entitlements";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { normalizePaywallSource } from "@/lib/paywall-source";
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const paywallSource = normalizePaywallSource(body.paywall_source);
   const bodyToken =
     body.owner_token === undefined || body.owner_token === null
       ? ""
@@ -324,6 +326,7 @@ export async function POST(request: NextRequest) {
         product: "full_access",
         guest: userId ? "0" : "1",
         email: customerEmail ?? "",
+        paywall_source: paywallSource,
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -346,6 +349,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         guest: userId ? false : true,
         stripe_session_id: stripeSession.id,
+        source: paywallSource,
       },
     });
   } catch {

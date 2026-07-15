@@ -98,7 +98,8 @@ const LOVE_FAILURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-// 「向いているキャリア」ロック用デコイ (★本文ではない。本物はサーバでフェイルクローズ済み)。
+// 「あなたが活躍できる仕事・避けたほうがいい職場」ロック用デコイ
+// (★本文ではない。本物はサーバでフェイルクローズ済み)。
 const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "ゼロから立ち上げる仕事",
@@ -118,7 +119,7 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-// 「あなたの隠れた才能」ロック用デコイ (★本文ではない)。
+// 「仕事で評価される意外な才能」ロック用デコイ (★本文ではない)。
 const CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "当たり前すぎて気づかない力",
@@ -139,7 +140,7 @@ const CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
 ];
 
 // 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「失敗する恋愛の特徴」/
-// キャリアの「向いているキャリア」「あなたの隠れた才能」で共用)。
+// キャリアの「活躍できる仕事」「評価される才能」で共用)。
 // ぼかしたダミー本文の上に解除カードを重ねる (嫌われやすい性格ブロックと同じ構図)。
 // ダミーはカードの上下に溢れる長さにして「裏にたくさんコンテンツがある」感を出す。
 // 本物の本文はここに載っていない (サーバでフェイルクローズ済み)。
@@ -212,24 +213,35 @@ const LOCKED_BLOCK_CONFIG: Record<
     ),
     source: "love_payoff_card",
   },
-  向いているキャリア: {
+  失敗する恋愛の特徴: {
+    decoyItems: LOVE_FAILURE_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        完全版のレポートを入手して、
+        <br className="md:hidden" />
+        アナタの恋がつまずきやすいパターンを知りましょう。
+      </>
+    ),
+    source: "love_failure_card",
+  },
+  "あなたが活躍できる仕事・避けたほうがいい職場": {
     decoyItems: CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
         完全版のレポートを入手して、
         <br className="md:hidden" />
-        あなたの個性に合ったキャリアを知りましょう。
+        アナタが活躍できる仕事と、避けたほうがいい職場を知りましょう。
       </>
     ),
     source: "career_fit_card",
   },
-  あなたの隠れた才能: {
+  仕事で評価される意外な才能: {
     decoyItems: CAREER_TALENT_DECOY_ITEMS,
     cardCopy: (
       <>
         完全版のレポートを入手して、
         <br className="md:hidden" />
-        自分でも気づいていない才能を見つけましょう。
+        仕事で評価される、アナタの意外な才能を見つけましょう。
       </>
     ),
     source: "career_talent_card",
@@ -317,27 +329,6 @@ export function DeepDiveSections({
                   )}
                 </div>
               ))}
-              {/* 「失敗する恋愛の特徴」: ⚠本文データ未投入のためロック時のみ表示する
-                  ティザー (シーン別の注意点と同じ方針 —— 解放済みユーザーに開かない鍵を見せない)。
-                  恋愛セクション限定。payoff がロック中 = 未課金のときだけ、その直後に続ける。 */}
-              {sec.key === "love" && sec.blocks.some((b) => b.locked) && (
-                <div className="mt-8">
-                  <h4 className="mb-2.5 text-[18px] md:text-[20px] font-black text-[#2E2E5C]">
-                    失敗する恋愛の特徴
-                  </h4>
-                  <LockedBlock
-                    decoyItems={LOVE_FAILURE_DECOY_ITEMS}
-                    cardCopy={
-                      <>
-                        完全版のレポートを入手して、
-                        <br className="md:hidden" />
-                        アナタの恋がつまずきやすいパターンを知りましょう。
-                      </>
-                    }
-                    source="love_failure_card"
-                  />
-                </div>
-              )}
             </>
           ) : (
             sec.body!.split("\n\n").map((para, i) => (

@@ -68,16 +68,17 @@ import {
 } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import { PartTwoSections } from "@/components/result/PartTwoSections";
-import { SceneCautionTeaser } from "@/components/result/SceneCautionTeaser";
+import {
+  SceneCautionTeaser,
+  SceneCautionList,
+} from "@/components/result/SceneCautionTeaser";
 import { FriendStairs } from "@/components/result/FriendStairs";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
 // ただし自己単体の発散バー(②「5つの軸で見るアナタ」)は自己ページの要素なので /me に残す。
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
-import { generateShareCode } from "@/lib/share-code";
 import { classifyType } from "@/lib/diagnosis";
-import { ResultActions } from "@/components/result/ResultActions";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
@@ -99,11 +100,6 @@ export const metadata: Metadata = {
 
 const SITE_URL =
   resolveSiteUrl();
-
-// シェアボタン直下の短い一言 (旧 SharePromo の長い相互理解度文を置換)。
-// ⚠️ 仮・定数化。後で差し替え/削除しやすいようここに集約。
-const SHARE_CTA_CAPTION = "友達に送って、どう見られてるか聞いてみよう";
-
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -357,8 +353,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   };
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = flag32 ? thirtyTwoOneLiner(t32) : sixteenType.oneLiner;
-  const ownerName = ((user.display_name as string | null) ?? "").trim();
-  const displayName = ownerName || "アナタ";
   const inviteCode = user.invite_code as string;
   // Phase 1.5-α Day 11.2: QR コード用に絶対 URL を構築 (友達のスマホから直接アクセス可能に)。
   // この招待 URL を QR とシェアボタン(X/IG/LINE/リンクコピー)で共通利用する →
@@ -366,8 +360,6 @@ export default async function MePage({ params, searchParams }: PageProps) {
   const inviteUrl = `${SITE_URL}/friend/${inviteCode}`;
   // キャラシェア(拡散)の共有先。/friend(評価依頼)とは別ルート。
   const characterShareUrl = `${SITE_URL}/share/${inviteCode}`;
-  // SNS シェア保存画像用 (シェアコードは user.id から決定的に生成、表示のみ)
-  const shareCode = generateShareCode(user.id as string);
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
   // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
   // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
@@ -555,7 +547,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
 
         {/* ===== ④ 友達から見たあなた (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
-            解除手段 = 友達へのシェア (ResultActions) をカード内に置く。
+            完全版への導線だけをカード内に置く。
             他己パートの本体は /tako/[token]。 */}
         <section className="mt-16">
           <div className="mb-4 flex items-center gap-3">
@@ -589,95 +581,41 @@ export default async function MePage({ params, searchParams }: PageProps) {
               🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
-            // ロック解除の2択 (未解放時に最初の🔒ブロックのぼかし中央へ浮かせる)。
-            // 16P のロックカード参考: 浮き角丸バッジ + 中央タイトル + 説明2行 + 全幅ボタン。
-            // カードA = 友達3人 (無料・主、QR あり) / カードB = 裏技 (価格は書かない)。
-            // SP は縦積み: カードBの浮きバッジ (-18px) が上カードに詰まらないよう gap 広め
+            // 未解放時は完全版への課金導線だけを表示する。
+            // 友達3人での解除機能自体は残し、ここでの案内だけ一旦非表示にする。
+            // 見た目は恋愛ロックと同じ、ぼかし中央のコンパクトなカードに揃える。
             const lockCard = partTwoUnlocked ? undefined : (
-              <div className="mx-auto flex w-full max-w-[620px] flex-col items-stretch gap-16 md:max-w-[880px] md:flex-row md:gap-14">
-                {/* ── カードA: 友達3人 (無料・主) ── */}
-                {/* 16P 風: 上辺カラーライン + その中央に丸バッジ (鍵) */}
-                {/* 中身は縦中央寄せ (md 横並びで B と高さが揃ったとき下が空かないように) */}
-                <div className="relative flex flex-1 flex-col justify-center rounded-xl border-t-4 border-t-[#5B5BEF] bg-white px-4 pb-5 pt-8 text-center shadow-[0_12px_36px_rgba(46,46,92,0.20)]">
-                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                    </svg>
-                  </span>
-                  <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-                    友達{STAIR_PART_TWO}人でロック解除
-                  </p>
-                  <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/60">
-                    {SHARE_CTA_CAPTION}
-                  </p>
-                  <ResultActions
-                    typeName={dispName}
-                    shareUrl={inviteUrl}
-                    ownerName={displayName}
-                    essence={dispEssence}
-                    description={dispDesc}
-                    imageSrc={dispImage}
-                    shareCode={shareCode}
-                    qrSize={128}
-                  />
-                </div>
-
-                {/* ── カードB: 裏技 (価格は書かない・最下部の課金カードへ) ── */}
-                {/* こちらを主役に目立たせる (2026-07-13 指示): 紫の均一枠 (3px) +
-                    弱めの紫グロー影 + PC はカードAよりやや幅広。 */}
-                <div className="relative flex flex-1 flex-col items-center rounded-xl border-[3px] border-[#5B5BEF] bg-white px-4 pb-4 pt-7 text-center shadow-[0_12px_32px_rgba(91,91,239,0.18)] md:flex-[1.18]">
-                  <span className="absolute -top-[18px] left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white shadow-[0_4px_12px_rgba(91,91,239,0.4)]">
-                    {/* 稲妻 = 裏技 (ショートカット) の記号 */}
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" />
-                    </svg>
-                  </span>
-                  <p className="mb-1 text-[19px] font-black text-[#2E2E5C]">
-                    裏技でロック解除
-                  </p>
-                  <p className="mb-3 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/60">
-                    ぜんぶ解放すると、アナタのどんな性格が
-                    <br className="md:hidden" />
-                    友達から嫌われやすいのかまで分かります。
-                  </p>
-                  {/* シーン画像 (最下部の課金カード FullAccessPromoCard と同じ解決順)。
-                      原寸比のまま全体を見せる (トリミングで見切れさせない)。 */}
-                  <SmoothImage
-                    src={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-                    alt=""
-                    width={960}
-                    height={640}
-                    className="mb-3 h-auto w-full rounded-lg"
-                  />
-                  {/* 深掘りロックタブと同じ挙動: 最下部の課金カードへスムーススクロール+パルス */}
-                  <PaywallScrollButton
-                    source="urawaza_card"
-                    className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
+                <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
                   >
-                    今すぐロックを解除
-                  </PaywallScrollButton>
-                </div>
+                    <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  </svg>
+                </span>
+                <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
+                  今すぐロックを解除
+                </p>
+                <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                  完全版のレポートを入手して、
+                  <br className="md:hidden" />
+                  アナタが友達から誤解されやすいポイントを知りましょう。
+                </p>
+                <PaywallScrollButton
+                  source="friend_dislike_card"
+                  className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                >
+                  今すぐアクセス
+                </PaywallScrollButton>
               </div>
             );
             return <PartTwoSections data={partTwo} lockCard={lockCard} />;
@@ -723,9 +661,13 @@ export default async function MePage({ params, searchParams }: PageProps) {
                     </p>
                   ))}
                 </div>
-                {/* シーン別の注意点 (ロックティーザー)。本文データ未投入のため未解放時のみ。
-                    解放済みに「開かない鍵」を見せない (データ投入後に実表示へ差し替え)。 */}
-                {!partTwoUnlocked && <SceneCautionTeaser />}
+                {/* シーン別の注意点。解放済みは本文 (2026-07-15 投入)、未解放はロック
+                    ティザー (本文はサーバで解決していない。フェイルクローズ)。 */}
+                {partTwo.sceneCautions ? (
+                  <SceneCautionList items={partTwo.sceneCautions} />
+                ) : (
+                  <SceneCautionTeaser />
+                )}
               </section>
             );
           })()}

@@ -32,6 +32,12 @@ export type RelationView = {
   body: string;
 };
 
+export type SceneCaution = {
+  /** シーンラベル (SceneCautionTeaser の SCENE_ITEMS と一致させる)。 */
+  scene: string;
+  body: string;
+};
+
 export type ResolvedPartTwo = {
   /** 武器 (強み6項目・チェックリスト表示)。無料 = 未解放でも返す。null は素材欠損時のみ。 */
   weapons: ContentItem[] | null;
@@ -41,6 +47,8 @@ export type ResolvedPartTwo = {
   dislikable: ContentItem[] | null;
   /** 関係別の見られ方 (友達/恋人/家族/上司)。🔒 null = 未解放。 */
   relations: RelationView[] | null;
+  /** シーン別の注意点 (③あなたの注意点の直下)。🔒 null = 未解放。 */
+  sceneCautions: SceneCaution[] | null;
   /** ギャップ予告の一文 (無料メタ)。 */
   gapTeaser: string;
   locked: boolean;
@@ -100,6 +108,26 @@ function varyWeapons(items: ContentItem[]): ContentItem[] {
       .replaceAll("{B}さん", "友達"); // 文中残り (係り方が違うもの) は従来どおり
     return { ...it, body: `${body}${WEAPON_TAIL[i % WEAPON_TAIL.length]}` };
   });
+}
+
+// ===== 嫌われやすい性格の増量 (🔒・文体バリエーション) =====
+// 素材 (surprises) は各1文で薄かった (2026-07-15 指摘)。武器の varyWeapons と同じ発想で、
+// インデックス別の補足文を足して2文構成にする。トーンは「欠点の断罪」ではなく
+// 「仲がいいからこそ見えているクセ」(ネガは愛されるクセに変換する、のルール準拠)。
+const DISLIKE_TAIL = [
+  "悪気がないことは、みんなちゃんと分かっている。ただ、先にひと言あるだけで印象はまるで違う。",
+  "これは短所というより、アナタの長所が強く出すぎた瞬間。自覚しておくだけで武器に変わる。",
+  "本人に直接は言わないけれど、仲がいいからこそ気になっている部分。",
+  "隠しているつもりでも、近くにいる人にはちゃんと伝わっている。",
+  "嫌いになるほどのことではない。ただ、積み重なると小さな距離になっていく類のもの。",
+  "気づいた日から変えられるタイプのクセ。むしろ伸びしろだと思われている。",
+];
+
+function varyDislikable(items: ContentItem[]): ContentItem[] {
+  return generalizeItems(items).map((it, i) => ({
+    ...it,
+    body: `${it.body}${DISLIKE_TAIL[i % DISLIKE_TAIL.length]}`,
+  }));
 }
 
 // ===== 好かれやすい性格 (無料・ルールベース・文章) =====
@@ -168,6 +196,73 @@ const RELATION_BOSS: Record<Quad, string> = {
   LL: "読めないけど、たまに大物感を出す存在。型にはめられるのが苦手なだけで、合う環境なら化けると思われてる。",
 };
 
+const RELATION_JUNIOR: Record<Quad, string> = {
+  // A × E
+  HH: "話しかけやすくて面倒見のいい先輩。距離の詰め方が上手いから、後輩の相談ごとが自然と集まってくる。",
+  HL: "物静かだけど、ちゃんと見てくれている先輩。口数は多くないのに、困った時に一番助けてくれる人だと知られてる。",
+  LH: "ノリが良くて、先輩ぶらない人。距離は近いのに干渉してこないから、後輩にとっては一番気楽な存在。",
+  LL: "少し近寄りがたいけど、実力は認められている先輩。素っ気なさも含めて「ああいう人」と一目置かれてる。",
+};
+
+const RELATION_FIRST: Record<Quad, string> = {
+  // E × O
+  HH: "初対面から距離を縮めるのが上手い人。話題の引き出しも多いから、「また会いたい」と思われやすい。",
+  HL: "人懐っこくて感じのいい人。安心感のある話しやすさで、初対面でも警戒されにくい。",
+  LH: "最初は静かだけど、話すと面白い人。ふとした一言のセンスで「もっと話してみたい」と印象に残る。",
+  LL: "第一印象はクールで少しミステリアス。すぐには打ち解けないぶん、仲良くなれた人には特別感がある。",
+};
+
+// ===== シーン別の注意点 (🔒・ルールベース / 2026-07-15) =====
+// SceneCautionTeaser (ロック時ティザー) に対応する本物の本文。関係別と同じ2軸クアッド
+// 方式でシーンごとに決定。トーンは「注意点」だが説教にしない (先回りのヒント口調)。
+// シーンラベルは SceneCautionTeaser の SCENE_ITEMS と一致必須。
+const SCENE_FRIEND: Record<Quad, string> = {
+  // E × A
+  HH: "頼まれごとを断れず、幹事も相談役も全部引き受けてパンクしがち。アナタが疲れている日ほど、周りは気づかず甘えてくる。月に一度は「今日は無理」と言う練習を。",
+  HL: "ノリで言った率直な一言が、思ったより深く刺さっていることがある。笑いにした指摘ほど、本人は忘れない。ツッコミの前にひと呼吸おくだけで、事故はほぼ防げる。",
+  LH: "合わせすぎて、帰り道にどっと疲れるタイプ。嫌と言えずに参加した集まりは、楽しめないうえに消耗だけ残る。「今回はパス」を言える相手から、少しずつ増やしていこう。",
+  LL: "連絡を放置しているうちに、悪気なく疎遠になりがち。アナタは「変わらず友達」のつもりでも、相手には「離れた」と映ることがある。年に数回のひと言で、関係は保てる。",
+};
+
+const SCENE_LOVER: Record<Quad, string> = {
+  // A × N
+  HH: "尽くしながら我慢も一緒に溜めて、限界の日に一気にあふれるパターンに注意。相手からすると「急に爆発した」ように見えて、実は何ヶ月分の在庫。小出しにする方がずっと優しい。",
+  HL: "波風を立てないぶん、不満を言わないまま心の中で結論を出しがち。相手に挽回のチャンスがないまま冷めていくのは、実はいちばん残酷なコース。違和感は小さいうちに口に出して。",
+  LH: "好きなのに素直になれず、「察してほしい」モードに入りがち。でも察せる人はほとんどいない。試すような駆け引きより、不安をそのまま言葉にした方が、結果は良くなる。",
+  LL: "安定しているぶん、愛情表現が省エネになりがち。アナタの「言わなくても分かるでしょ」は、相手には「もう好きじゃないのかも」に変換される。定期的な「好き」はメンテナンス。",
+};
+
+const SCENE_CAREER: Record<Quad, string> = {
+  // C × N
+  HH: "完璧主義と気にしすぎの組み合わせで、自分を追い込みやすい。100点の準備より、60点で出して直す方が評価される場面は多い。「これで十分」のラインを先に決めておこう。",
+  HL: "仕事は回せるぶん、限界を超えても気づかず走り続けてしまう。それと、ルーズな人への無言の圧にも注意。アナタの「普通」は、けっこう高い基準。",
+  LH: "後回しにした仕事が締切前に膨らんで、パニックと自己嫌悪のセットになりがち。やる気を待たず、5分だけ手をつけるのがいちばんの防御。始めれば案外進む。",
+  LL: "ギリギリ進行を楽観で乗り切れてしまうのが、逆にワナ。本人はノーダメージでも、周りの信用は静かに削れていく。締切の1日前を「自分の締切」にするだけで評価は変わる。",
+};
+
+const SCENE_FAMILY: Record<Quad, string> = {
+  // C × E
+  HH: "外で頑張りすぎた反動が、家でいちばん出る。家族への当たりが強くなった日は、疲れのサイン。正論で家族を詰めても、誰も幸せにならない。",
+  HL: "家では省エネモードで、近況をほとんど話さないタイプ。「心配ない子」と思われているぶん、しんどい時に気づいてもらえない。月に一度のひと言報告で、だいぶ違う。",
+  LH: "外では気を使うぶん、家では甘えっぱなしになりがち。いちばん雑に扱っているのが、いちばん味方でいてくれる人——たまに思い出すだけでいい。",
+  LL: "部屋にこもって、生活が家族と完全にすれ違いがち。放っておいてほしい気持ちは正当だけど、顔を見せるだけで安心する人が家にいる。夕飯を一緒に食べる日を、たまに作ろう。",
+};
+
+function buildSceneCautions(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): SceneCaution[] {
+  const hi = (d: BigFiveDimension) =>
+    (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5;
+  const quad = (a: BigFiveDimension, b: BigFiveDimension): Quad =>
+    `${hi(a) ? "H" : "L"}${hi(b) ? "H" : "L"}` as Quad;
+  return [
+    { scene: "友達といる時", body: SCENE_FRIEND[quad("E", "A")] },
+    { scene: "恋人といる時", body: SCENE_LOVER[quad("A", "N")] },
+    { scene: "キャリアにおいて", body: SCENE_CAREER[quad("C", "N")] },
+    { scene: "家族といる時", body: SCENE_FAMILY[quad("C", "E")] },
+  ];
+}
+
 function buildRelations(
   scores: Partial<Record<BigFiveDimension, number>>,
 ): RelationView[] {
@@ -180,6 +275,8 @@ function buildRelations(
     { relation: "恋人から", body: RELATION_LOVER[quad("A", "N")] },
     { relation: "家族から", body: RELATION_FAMILY[quad("C", "E")] },
     { relation: "上司・先輩から", body: RELATION_BOSS[quad("C", "A")] },
+    { relation: "後輩から", body: RELATION_JUNIOR[quad("A", "E")] },
+    { relation: "初対面の人から", body: RELATION_FIRST[quad("E", "O")] },
   ];
 }
 
@@ -224,8 +321,9 @@ export function resolvePartTwo(
     weapons: perceived ? varyWeapons(perceived.strengths) : null,
     likable: buildLikable(scores),
     dislikable:
-      opts.unlocked && perceived ? generalizeItems(perceived.surprises) : null,
+      opts.unlocked && perceived ? varyDislikable(perceived.surprises) : null,
     relations: opts.unlocked ? buildRelations(scores) : null,
+    sceneCautions: opts.unlocked ? buildSceneCautions(scores) : null,
     gapTeaser,
     locked: !opts.unlocked,
   };

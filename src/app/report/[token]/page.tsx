@@ -22,8 +22,10 @@ import {
   thirtyTwoCatchphrase,
   thirtyTwoImagePath,
   thirtyTwoColor,
+  thirtyTwoGroup,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import { sceneImageForGroup } from "@/lib/character-image";
 import type { BigFiveDimension } from "@/lib/types";
 import {
   detailedReportFor,

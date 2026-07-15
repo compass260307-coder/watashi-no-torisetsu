@@ -11,9 +11,9 @@
 //
 // サーバコンポーネント。🔒ブロックの本文は未解放時サーバで解決すらされない
 // (part-two-resolve.ts、フェイルクローズ)。ぼかしはダミーであり本物の目隠しではない。
-// 解除カード (lockCard: 友達3人シェア/QR + ¥499) は /me がオーナー情報込みで組んで渡す。
+// 解除カード (lockCard: 完全版) は /me が組んで渡す。
 
-import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
+import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 
@@ -22,7 +22,7 @@ export const PART_TWO_LOCK_ID = "part2-lock";
 
 interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
-  /** 未解放時に出す解除カード (友達3人 or ¥499)。解放済みなら不要。 */
+  /** 未解放時に出す完全版の解除カード。解放済みなら不要。 */
   lockCard?: React.ReactNode;
 }
 
@@ -67,18 +67,36 @@ function CheckList({ items }: { items: ContentItem[] }) {
   );
 }
 
-function CardGrid({ items }: { items: ContentItem[] }) {
+// 武器の CheckList と同じ組版 (枠なし2カラム) で、アイコンだけ黄色の注意マークにした
+// リスト (嫌われやすい性格用。2026-07-15 指示でカード枠 → チェックリスト風に統一)。
+function WarnList({ items }: { items: ContentItem[] }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
       {items.map((it) => (
-        <div
-          key={it.title}
-          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5"
-        >
-          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+        <div key={it.title}>
+          <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#F2C14E]"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
             {it.title}
           </p>
-          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+          <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
             {it.body}
           </p>
         </div>
@@ -133,6 +151,47 @@ function DummyCards({ rows }: { rows: number }) {
   );
 }
 
+// 関係別の見られ方・解放時 (2026-07-15 指示):
+// 武器の CheckList と同じ組版 (枠なし2カラム) で、アイコンは「言えずにいること」に
+// 合わせた吹き出しマーク。色はロック画面の円と同じ関係別カラーで塗り分ける。
+function RelationList({ relations }: { relations: RelationView[] }) {
+  const colorOf = (relation: string) =>
+    RELATION_LOCK_ITEMS.find((it) => it.label === relation)?.color ??
+    "#2E2E5C";
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+      {relations.map((r) => (
+        <div key={r.relation}>
+          <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center"
+              style={{ color: colorOf(r.relation) }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+            </span>
+            {r.relation}
+          </p>
+          <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+            {r.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function LockGlyph({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -160,13 +219,15 @@ const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "恋人から", color: "#F48BAE" },
   { label: "家族から", color: "#4CAF7D" },
   { label: "上司・先輩から", color: "#F2C14E" },
+  { label: "後輩から", color: "#9B8CF2" },
+  { label: "初対面の人から", color: "#F28C5B" },
 ];
 
 function RelationsLocked() {
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
-      {/* 鍵付きの円 (SP 2列 / md 4列) */}
-      <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
+      {/* 鍵付きの円 (SP 2列 / md 3列。2026-07-15 に 4関係 → 6関係へ増量) */}
+      <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3">
         {RELATION_LOCK_ITEMS.map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-2.5">
             <span
@@ -191,12 +252,11 @@ function RelationsLocked() {
           今すぐロックを解除
         </p>
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-          完全版のレポートを入手して、これらの結果を見てみましょう。
+          完全版のレポートを入手して、
           <br className="md:hidden" />
-          他人からの印象を理解できます。
+          周りの人がアナタに言えずにいることを知りましょう。
         </p>
-        {/* 挙動は裏技カードと同一 (最下部の課金カードへスムーススクロール+パルス)。
-            横幅も裏技カードのCTAに合わせて全幅。 */}
+        {/* 最下部の課金カードへスムーススクロール+パルス。 */}
         <PaywallScrollButton
           source="relations_card"
           className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
@@ -231,23 +291,18 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
       <div className="mb-10">
         <SectionHeading title="嫌われやすい性格" />
         {data.dislikable ? (
-          <CardGrid items={data.dislikable} />
+          <WarnList items={data.dislikable} />
         ) : (
-          /* 16P 参考の構図: ぼかしダミーを背面 (absolute) に敷き、解除カード側が
-             高さを決める (カードが見切れない)。ダミーは min-h とカードの上下余白ぶん見える。 */
+          /* 恋愛ロックと同じ構図: ぼかしダミーを高さの土台にし、
+             その中央へコンパクトな解除カードを重ねる。 */
           <div className="relative overflow-hidden rounded-2xl">
-            {/* 下端はマスクでフェードアウトし、途中で切れたカードが目立たないようにする */}
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 [mask-image:linear-gradient(to_bottom,black_82%,transparent)]"
-            >
-              <DummyCards rows={24} />
+            <div aria-hidden="true">
+              <DummyCards rows={8} />
             </div>
-            {/* 解除カード本体 (友達3人 or 裏技)。後続🔒ブロックのアンカー先。
-                py でカードの上下にぼかし面をたっぷり見せる (16P の比率参考)。 */}
+            {/* 完全版の解除カード。後続🔒ブロックのアンカー先。 */}
             <div
               id={PART_TWO_LOCK_ID}
-              className="relative flex min-h-[480px] items-center justify-center px-3 py-52 md:py-48"
+              className="absolute inset-0 flex items-center justify-center p-3"
             >
               {lockCard}
             </div>
@@ -265,23 +320,9 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
 
       {/* ── 4. 関係別の見られ方 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading title="他人が本当は気づいてほしいこと" />
+        <SectionHeading title="周りの人が、あなたに言えずにいること" />
         {data.relations ? (
-          <div className="space-y-4">
-            {data.relations.map((r) => (
-              <div
-                key={r.relation}
-                className="rounded-xl border border-[#D9DCF5] bg-white px-4 py-4"
-              >
-                <p className="mb-1.5 inline-block rounded-full bg-[#2E2E5C] px-3 py-0.5 text-[12px] font-black text-white">
-                  {r.relation}
-                </p>
-                <p className="body-gothic text-[15px] leading-[1.6] text-[#1A1A1A]">
-                  {r.body}
-                </p>
-              </div>
-            ))}
-          </div>
+          <RelationList relations={data.relations} />
         ) : (
           <RelationsLocked />
         )}
