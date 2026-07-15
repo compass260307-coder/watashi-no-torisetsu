@@ -408,6 +408,7 @@ export default async function MePage({ params, searchParams }: PageProps) {
       showUnlockCta={!partTwoUnlocked}
       inviteUrl={inviteUrl}
       essence={dispEssence}
+      code={dispCode}
     >
       <TopHeader />
     </MeStickyHeader>

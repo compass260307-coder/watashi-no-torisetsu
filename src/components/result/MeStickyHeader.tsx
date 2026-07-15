@@ -29,6 +29,8 @@ interface MeStickyHeaderProps {
   inviteUrl?: string;
   /** シェア文言用の称号 (essence)。 */
   essence?: string;
+  /** シェア文言用の Big Five コード (ヒーローと同じ大小方式。例 "OCeAN")。 */
+  code?: string;
 }
 
 // 丸アイコンボタン (16P のバー左側参考)。
@@ -71,6 +73,7 @@ export function MeStickyHeader({
   showUnlockCta,
   inviteUrl,
   essence,
+  code,
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (inviteUrl) のどちらかがあれば出す。
   const showBar = showUnlockCta || Boolean(inviteUrl);
@@ -121,8 +124,9 @@ export function MeStickyHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // シェア文言は ResultActions と同一トーン (招待 = 評価してもらう導線)。
-  const shareText = `私のトリセツは「${essence ?? ""}」でした！\nあなたから見た私はどう見えてる？10問だけ、こっそり教えて👀`;
+  // シェア文言 (2026-07-15 指示)。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
+  const title = code ? `${essence ?? ""}（${code}）` : (essence ?? "");
+  const shareText = `ワタシのトリセツは「${title}」でした！\nあなたから見たワタシも、同じかな？\n10問だけ、こっそり教えて👀`;
   const xUrl = inviteUrl
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(inviteUrl)}`
     : undefined;
