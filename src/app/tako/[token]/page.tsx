@@ -525,7 +525,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       {/* 友達にシェア (もっと友達に診断してもらう招待)。課金カードの下に配置。
           解除後 (!isTakoLocked) のみ表示。main 外に出したため 1080 幅コンテナを自前で付ける。 */}
       {!isTakoLocked && (
-        <section className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
+        <section id="tako-invite" className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
           {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
               同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
               source="tako_unlocked" で計測。 */}

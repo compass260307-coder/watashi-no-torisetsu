@@ -83,12 +83,22 @@ export function TakoRewardBackdrop({
       {/* ===== 結果サンプル: 解放後ページ (フェススター preview) の実キャプチャをぼかして敷く。
           スケルトン (BackdropSection) から差し替え (2026-07-18)。openN/段階リビールは
           このサンプル方式では使わない (answered/threshold は器の高さ互換のため受け続ける)。 ===== */}
-      <div className="mx-auto max-w-[560px] overflow-hidden px-5 pb-16 pt-6">
+      {/* キャプチャは実結果ページと同じ幅 (SP=430 / PC=1080) で撮り、md で出し分けて
+          等倍表示する。これで幅・文字サイズが実ページと一致する。 */}
+      <div className="mx-auto max-w-[1080px] overflow-hidden pb-2 pt-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/tako/reward-sample.jpg"
+          src="/tako/reward-sample-sp.jpg"
           alt=""
-          className="w-full blur-[2px]"
+          className="w-full blur-[2px] md:hidden"
+          loading="eager"
+          decoding="async"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/tako/reward-sample-pc.jpg"
+          alt=""
+          className="hidden w-full blur-[2px] md:block"
           loading="eager"
           decoding="async"
         />
@@ -114,7 +124,7 @@ function HeroBand({ hero }: { hero: BackdropHero | null }) {
   const colored = hero !== null;
   return (
     <div
-      className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden pb-8 pt-9"
+      className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden pb-8 pt-9 blur-[2px]"
       style={{
         background: colored ? hero.heroBg : "#EDEFF3",
         clipPath:
