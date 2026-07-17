@@ -16,6 +16,17 @@ export function preferCutImage(v3Path: string): string {
 }
 
 /**
+ * v3 原画パスを受け取り、顔ズーム版 (/characters/face・16P の顔アバター風) があれば
+ * そちらを、無ければ引数のまま返す。/aisho のサムネと同じアセットを参照する共有版。
+ */
+export function preferFaceImage(v3Path: string): string {
+  const base = v3Path.slice(v3Path.lastIndexOf("/") + 1);
+  return (characterImages.face as string[]).includes(base)
+    ? `/characters/face/${base}`
+    : v3Path;
+}
+
+/**
  * グループ別のシーン挿絵 (public/characters/scenes/<group>_<variant>.png) の URL を返す。
  * アセットが無ければ null (= 非表示)。/me ページの sceneImage と同じ characterImages.scenes
  * インデックスを参照する共有版 (個別ページ /tako 個別 でも使えるよう切り出し)。

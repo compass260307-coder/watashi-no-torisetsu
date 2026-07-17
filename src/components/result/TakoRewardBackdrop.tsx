@@ -54,49 +54,69 @@ const QMARK_SCATTER: { left: string; top: string }[] = [
   { left: "34%", top: "24px" },
 ];
 
+/** ヒーロー帯を実結果ふうに描くための色+キャラ。null なら従来の無彩フォールバック。 */
+export interface BackdropHero {
+  heroBg: string;
+  codeTint: string;
+}
+
 interface TakoRewardBackdropProps {
   answered: number;
   threshold: number;
+  hero?: BackdropHero | null;
 }
 
 export function TakoRewardBackdrop({
   answered,
   threshold,
+  hero = null,
 }: TakoRewardBackdropProps) {
   const openN = Math.ceil((SECTIONS.length * answered) / Math.max(1, threshold));
 
   return (
     <div aria-hidden="true">
       {/* ===== ヒーロー帯 (実 ResultHero を写す): 全幅・下端スラント・グロー・ドット・
-          称号(?)・OCEAN・等身大キャラ影絵。色は白基調の無彩帯 (型色は伏せる)。 ===== */}
-      <HeroBand />
+          称号(?)・OCEAN・キャラ黒塗りシルエット。hero があれば型色帯 (本物の見た目)、
+          無ければ従来の白基調無彩帯。 ===== */}
+      <HeroBand hero={hero} />
 
-      {/* ===== 3つの番号付きセクション (実結果と同じ余白 mb-14 / バッジ h-10 border-[3px])。 ===== */}
-      <div className="mx-auto max-w-[560px] px-5 pb-16 pt-6">
-        {SECTIONS.map((s, i) => (
-          <BackdropSection
-            key={s.n}
-            n={s.n}
-            index={i}
-            title={s.title}
-            variant={s.variant}
-            teaser={s.teaser}
-            revealed={i < openN}
-            bodyBlur={bodyBlurPx(answered, threshold, i < openN)}
-          />
-        ))}
+      {/* ===== 結果サンプル: 解放後ページ (フェススター preview) の実キャプチャをぼかして敷く。
+          スケルトン (BackdropSection) から差し替え (2026-07-18)。openN/段階リビールは
+          このサンプル方式では使わない (answered/threshold は器の高さ互換のため受け続ける)。 ===== */}
+      <div className="mx-auto max-w-[560px] overflow-hidden px-5 pb-16 pt-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/tako/reward-sample.jpg"
+          alt=""
+          className="w-full blur-[2px]"
+          loading="eager"
+          decoding="async"
+        />
       </div>
     </div>
   );
 }
 
-// ヒーロー帯 (ResultHero のミラー)。等身大の影絵 + 大きな ? を主役に据える。
-function HeroBand() {
+// 実ヒーロー帯 (ResultHero) と同じフェルトドット配置。
+const HERO_DOTS = [
+  { w: 11, h: 11, top: "15%", left: "6%" },
+  { w: 8, h: 8, top: "42%", left: "9%" },
+  { w: 13, h: 13, top: "20%", right: "7%" },
+  { w: 8, h: 8, top: "50%", right: "10%" },
+  { w: 10, h: 10, top: "72%", left: "13%" },
+  { w: 7, h: 7, top: "78%", right: "15%" },
+] as const;
+
+// ヒーロー帯 (ResultHero のミラー)。hero があれば型色帯 + 実キャラの黒塗りシルエット
+// (本物の結果ヒーローがそこにあるが、キャラだけ黒く伏せられている状態)。
+// hero が無ければ従来の無彩帯 + マスコット影絵。
+function HeroBand({ hero }: { hero: BackdropHero | null }) {
+  const colored = hero !== null;
   return (
     <div
       className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden pb-8 pt-9"
       style={{
-        background: "#EDEFF3",
+        background: colored ? hero.heroBg : "#EDEFF3",
         clipPath:
           "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
       }}
@@ -105,40 +125,87 @@ function HeroBand() {
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[280px]"
         style={{
-          background:
-            "radial-gradient(ellipse at top center, rgba(255,255,255,0.75) 0%, transparent 68%)",
+          background: `radial-gradient(ellipse at top center, rgba(255,255,255,${
+            colored ? "0.6" : "0.75"
+          }) 0%, transparent 68%)`,
         }}
       />
-      <div className="relative mx-auto flex max-w-[560px] flex-col items-center px-5">
-        {/* label + 称号(?) */}
-        <p className="mb-1 text-[15px] font-bold" style={{ color: "#8A90A0" }}>
-          友達から見たあなたのキャラ
-        </p>
-        {/* 称号プレースホルダ (型名=伏せる) */}
-        <div
-          className="h-7 w-52 rounded-full"
-          style={{ background: "#DDE0E6" }}
-        />
-        {/* OCEAN コード行 (5マーク・スコア依存＝伏せる) */}
-        <div className="mt-2.5 flex items-baseline gap-2">
-          {[30, 20, 30, 20, 30].map((h, i) => (
-            <span
-              key={i}
-              className="rounded-full"
-              style={{ width: 12, height: h * 0.5, background: "#D3D6DE" }}
-            />
-          ))}
-        </div>
-        {/* 等身大キャラ影絵 + 大きな ? (誰か分からないが確かにそこにいる) */}
-        <div className="relative mt-4" style={{ width: 200, height: 200 }}>
-          <MascotSilhouette size={200} />
+      {/* フェルトドット (実ヒーロー帯と同じ半透明白) */}
+      {colored &&
+        HERO_DOTS.map((d, i) => (
           <span
-            className="absolute left-1/2 top-[54%] -translate-x-1/2 -translate-y-1/2 font-black"
-            style={{ fontSize: 96, lineHeight: 1, color: "rgba(255,255,255,0.95)" }}
+            key={i}
+            className="pointer-events-none absolute rounded-full"
+            style={{
+              background: "rgba(255,255,255,0.55)",
+              width: d.w,
+              height: d.h,
+              top: d.top,
+              ...("left" in d ? { left: d.left } : { right: d.right }),
+            }}
+          />
+        ))}
+      <div className="relative mx-auto flex max-w-[560px] flex-col items-center px-5">
+        {colored ? (
+          <>
+            {/* 見出し (称号・OCEAN コードの伏せバーは置かない。主役は ○ に ?)。 */}
+            <p className="mb-1 text-[24px] font-extrabold tracking-[0.02em] text-white md:text-[30px]">
+              友達から見た性格タイプ:
+            </p>
+          </>
+        ) : (
+          <>
+            {/* label + 称号(?) */}
+            <p className="mb-1 text-[15px] font-bold" style={{ color: "#8A90A0" }}>
+              友達から見たあなたのキャラ
+            </p>
+            {/* 称号プレースホルダ (型名=伏せる) */}
+            <div className="h-7 w-52 rounded-full" style={{ background: "#DDE0E6" }} />
+            {/* OCEAN コード行 (5マーク・スコア依存＝伏せる) */}
+            <div className="mt-2.5 flex items-baseline gap-2">
+              {[30, 20, 30, 20, 30].map((h, i) => (
+                <span
+                  key={i}
+                  className="rounded-full"
+                  style={{ width: 12, height: h * 0.5, background: "#D3D6DE" }}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        {colored ? (
+          /* キャラは半透明の白丸 + 大きな ? (正体は解放まで秘密)。 */
+          <div
+            className="mt-5 flex items-center justify-center rounded-full"
+            style={{
+              width: "min(56vw, 240px)",
+              height: "min(56vw, 240px)",
+              background: "rgba(255,255,255,0.6)",
+            }}
           >
-            ?
-          </span>
-        </div>
+            <span
+              className="font-black leading-none"
+              style={{ fontSize: "min(28vw, 120px)", color: hero.heroBg }}
+            >
+              ?
+            </span>
+          </div>
+        ) : (
+          /* 等身大キャラ影絵 + 大きな ? (誰か分からないが確かにそこにいる) */
+          <div className="relative mt-4" style={{ width: 200, height: 200 }}>
+            <MascotSilhouette size={200} />
+            <span
+              className="absolute left-1/2 top-[54%] -translate-x-1/2 -translate-y-1/2 font-black"
+              style={{
+                fontSize: 96,
+                lineHeight: 1,
+                color: "rgba(255,255,255,0.95)",
+              }}
+            >
+              ?
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

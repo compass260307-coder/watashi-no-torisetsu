@@ -1,6 +1,6 @@
 "use client";
 
-// 他己診断 /tako の「あと◯人で開く」ゲートの前面(主役)カード = シェア連動カウンター。
+// 友達診断 /tako の「あと◯人で開く」ゲートの前面(主役)カード = シェア連動カウンター。
 //   狙いは「カウントを減らしたくなる」体験 (他者が答えるほど自己理解が完成する核と一致)。
 //   静的な数字表示ではなく、送る=減らすレバーが主役。
 //
@@ -19,10 +19,20 @@
 // パララックス競合対策: ドラッグ開始させたくない操作要素には data-no-drag を付ける
 //   (親 TakoRevealStage が pointerdown 時に closest('[data-no-drag]') を見て握らない)。
 
-import { type MouseEvent } from "react";
+import { useState } from "react";
 import Image from "next/image";
+import { QRCodeSVG } from "qrcode.react";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import { track } from "@/lib/track";
+import { withRef } from "@/lib/acquisition-link";
 import { useTakoPeek } from "./TakoRevealStage";
+
+const SHARE_TEXT =
+  "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
+
+// シェアボタン共通の塗りピル (LockedInviteShare と同系統・アイコンのみ)。
+const sharePill =
+  "inline-flex flex-1 items-center justify-center rounded-full py-3 text-white transition-transform active:scale-95";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -75,6 +85,10 @@ interface TakoShareGateProps {
   revealFromIndex?: number;
   /** ④ answered スロットのタップ (相性ループ)。index は answered 配列の位置。 */
   onAnsweredTap?: (index: number) => void;
+  /** 対面QR招待用の招待URL。指定するとカード内にQRを描く。 */
+  qrInviteUrl?: string;
+  /** QR中央に埋め込むキャラ画像 (本人の診断キャラ)。level="H" なので読取りは保たれる。 */
+  qrImageSrc?: string | null;
 }
 
 // remaining ごとの見出しコピー。gate はロック時 (remaining>=1) のみ描画される想定。
@@ -96,6 +110,8 @@ export function TakoShareGate({
   bounceKey = 0,
   revealFromIndex = 0,
   onAnsweredTap,
+  qrInviteUrl,
+  qrImageSrc,
 }: TakoShareGateProps) {
   const answeredCount = Math.min(
     shownAnsweredCount ?? answered.length,
@@ -120,22 +136,42 @@ export function TakoShareGate({
     return { kind: "empty" };
   });
 
-  // CTA ラベル (残数連動)。
-  const ctaLabel =
-    toSend > 0
-      ? toSend === 1
-        ? "ラスト1人に送る"
-        : `あと${toSend}人に送る`
-      : "回答をリマインド"; // toSend=0 かつ未解放: 全スロットが診断中/回答済みだが3人未満
+  // シェアボタン行 (LINE / X / リンクコピー / その他)。channel 別に計測を発火。
+  const [copied, setCopied] = useState(false);
 
-  const handlePrimary = (e: MouseEvent<HTMLAnchorElement>) => {
-    // JS が動いている(=ハイドレーション済み)なら href の既定遷移を止めて送信シートを開く。
-    // 未ハイドレーション時は onClick が未装着なので、a要素の LINE 送信がそのまま働く
-    // (=CTA を最初から押せる状態にする。ハイドレーション遅延でも送信導線が死なない)。
-    e.preventDefault();
-    if (onPrimaryAction) return onPrimaryAction();
-    const el = document.getElementById("tako-invite");
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  const fireShare = (channel: string) => {
+    track("friend_invite_clicked", {
+      metadata: { channel, source: "tako_locked_gate" },
+    });
+  };
+
+  const handleCopy = async () => {
+    if (!qrInviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(withRef(qrInviteUrl, "copy"));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+      fireShare("copy");
+    } catch {
+      // クリップボード不可環境では何もしない (QR / 他ボタンを使ってもらう)
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!qrInviteUrl) return;
+    fireShare("native");
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text: SHARE_TEXT,
+          url: withRef(qrInviteUrl, "share"),
+        });
+      } else {
+        await handleCopy(); // Web Share 非対応環境はコピーにフォールバック
+      }
+    } catch {
+      // ユーザーキャンセル等は無視
+    }
   };
 
   return (
@@ -157,8 +193,12 @@ export function TakoShareGate({
         WebkitBackdropFilter: "blur(var(--peek-blur, 24px))",
       }}
     >
-      {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のとき) ===== */}
-      <div className="flex h-8 items-center justify-center">
+      {/* ===== 再訪リビール: 「◯人届いた！」バナー (deliveredCount>0 のときだけ高さを取る) ===== */}
+      <div
+        className={
+          deliveredCount > 0 ? "mb-1 flex h-8 items-center justify-center" : "hidden"
+        }
+      >
         {deliveredCount > 0 && (
           <span
             key={bounceKey}
@@ -171,122 +211,128 @@ export function TakoShareGate({
         )}
       </div>
 
-      {/* ===== 見出し (remaining で出し分け) ===== */}
-      <h1
-        className="mt-1 text-center font-black text-[26px] md:text-[34px] leading-[1.35]"
-        style={{ color: NAVY }}
-      >
-        {headingFor(remaining)}
-      </h1>
-
-      {/* ===== ヒーロー数字: 「あと [N] 人で開く」。数字だけ圧倒的に主役。 ===== */}
-      <div className="mt-3 [@media(max-height:740px)]:mt-1 flex items-end justify-center gap-2">
-        <span
-          className="pb-2 text-[18px] md:text-[22px] font-black"
-          style={{ color: READ_GRAY }}
-        >
-          あと
-        </span>
-        {/* 外=バウンド(到着時1回・keyで再発火) / 内=呼吸(常時)。transform を分けて共存させる。 */}
-        <span
-          key={bounceKey}
-          className={
-            bounceKey > 0
-              ? "animate-gate-count-bounce inline-block"
-              : "inline-block"
-          }
-        >
-          <span
-            className="animate-gate-breathe inline-block font-black leading-none tracking-tight"
-            style={{
-              color: LAVENDER,
-              fontSize: "var(--gate-num)",
-            }}
-            aria-hidden="true"
-          >
-            {remaining}
-          </span>
-        </span>
-        <span
-          className="pb-2 text-[18px] md:text-[22px] font-black"
-          style={{ color: READ_GRAY }}
-        >
-          人で開く
-        </span>
-      </div>
-      {/* スクリーンリーダー向けの等価テキスト (視覚は分割表示) */}
+      {/* スクリーンリーダー向けの進捗テキスト (見出し/数字/スロットは撤去済み・QRが主役) */}
       <p className="sr-only">あと{remaining}人の回答で結果が開きます。</p>
 
-      {/* ===== 診断中 (pending>0 のとき薄く) ===== */}
-      <p
-        className="mt-1 h-5 text-center text-[13px] md:text-[14px] font-bold"
-        style={{ color: INACTIVE, opacity: pending > 0 ? 1 : 0 }}
-        aria-hidden={pending === 0}
-      >
-        {pending > 0 ? `${pending}人が診断中…` : " "}
-      </p>
-
-      {/* ===== スロット3枠 ===== */}
-      <ul className="mt-4 [@media(max-height:740px)]:mt-2 flex items-start justify-center gap-4 md:gap-7">
-        {slots.map((slot, i) => (
-          <li
-            key={i}
-            className="flex w-[88px] flex-col items-center gap-2 md:w-[104px]"
+      {/* ===== QR招待: その場で友達に読み取ってもらい診断へ (対面ルート) ===== */}
+      {qrInviteUrl && (
+        <div className="mt-1 flex flex-col items-center">
+          {/* キャッチコピー (QR タイルと同じ幅いっぱいに広げる) */}
+          <p
+            className="mb-3 w-full max-w-[300px] whitespace-nowrap text-center text-[24px] md:text-[25px] font-black leading-snug"
+            style={{ color: NAVY }}
           >
-            {slot.kind === "answered" ? (
-              <AnsweredSlot
-                friend={slot.friend}
-                idx={slot.idx}
-                revealDelayMs={
-                  slot.idx >= revealFromIndex
-                    ? (slot.idx - revealFromIndex) * 130
-                    : 0
-                }
-                onTap={onAnsweredTap ? () => onAnsweredTap(slot.idx) : undefined}
+            <span style={{ color: LAVENDER }}>友達診断</span>
+            を完成させよう！
+          </p>
+          <div
+            className="w-full max-w-[300px] rounded-2xl border bg-white p-4 shadow-[0_8px_24px_rgba(46,46,92,0.10)]"
+            style={{ borderColor: STITCH }}
+            role="img"
+            aria-label="友達診断への招待QRコード"
+          >
+            <div className="relative">
+              <QRCodeSVG
+                value={withRef(qrInviteUrl, "qr")}
+                size={260}
+                className="h-auto w-full"
+                bgColor="#FFFFFF"
+                fgColor={NAVY}
+                level="H"
+                marginSize={0}
               />
-            ) : slot.kind === "pending" ? (
-              <PendingSlot />
-            ) : (
-              <EmptySlot />
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {/* ===== CTA (画面の主役ボタン・いちばん大きく)。data-no-drag でドラッグ非開始。 ===== */}
-      <div className="mt-7 [@media(max-height:740px)]:mt-4">
-        {/* ★プログレッシブCTA: a要素 + LINE送信URL を SSR で描く。ハイドレーション前でも
-            タップで LINE 送信が働く。ハイドレーション後は onClick が遷移を止め送信シートへ。 */}
-        <a
-          href={primaryFallbackHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handlePrimary}
-          data-no-drag
-          className="mx-auto flex w-full max-w-[420px] items-center justify-center gap-2 rounded-full px-6 py-4 [@media(max-height:740px)]:py-3 text-[18px] md:text-[20px] font-black text-white shadow-[0_10px_30px_rgba(91,91,239,0.35)] transition-transform active:scale-[0.97]"
-          style={{ background: LAVENDER }}
-        >
-          {ctaLabel}
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+              {/* 中央のキャラ顔 (丸抜き・白リング)。level="H" (30%欠損許容) に対し
+                  約34%幅≈11%面積 (+白リング) の被覆。実機スキャンで読めることを確認して運用する。 */}
+              {qrImageSrc && (
+                <span className="absolute left-1/2 top-1/2 block w-[34%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white ring-4 ring-white shadow-[0_2px_8px_rgba(46,46,92,0.18)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrImageSrc}
+                    alt=""
+                    className="block h-full w-full object-cover"
+                  />
+                </span>
+              )}
+            </div>
+          </div>
+          <p
+            className="mt-2 text-center text-[12.5px] font-bold"
+            style={{ color: READ_GRAY }}
           >
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </a>
-        <p
-          className="mt-2.5 text-center text-[12.5px] font-bold"
-          style={{ color: READ_GRAY }}
+            友達のスマホで読み取って、診断してもらおう！
+          </p>
+        </div>
+      )}
+
+      {/* ===== シェアボタン行: LINE / X / リンクコピー / その他でシェア。
+          data-no-drag でドラッグ非開始。channel 別 ?ref で流入元を計測する。 ===== */}
+      {qrInviteUrl && (
+        <div
+          className="mx-auto mt-6 [@media(max-height:740px)]:mt-4 flex w-full max-w-[300px] items-center gap-2"
+          data-no-drag
         >
-          送るほど、みんなから見たあなたが完成する
-        </p>
-      </div>
+          <a
+            href={`https://line.me/R/msg/text/?${encodeURIComponent(
+              `${SHARE_TEXT} ${withRef(qrInviteUrl, "line")}`,
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fireShare("line")}
+            className={`${sharePill} bg-[#06C755]`}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+              <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
+            </svg>
+            <span className="sr-only">LINEで送る</span>
+          </a>
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+              SHARE_TEXT,
+            )}&url=${encodeURIComponent(withRef(qrInviteUrl, "x"))}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fireShare("x")}
+            className={`${sharePill} bg-black`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
+              <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
+            </svg>
+            <span className="sr-only">Xで共有</span>
+          </a>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="招待リンクをコピー"
+            className={`${sharePill} bg-[#5B5BEF]`}
+          >
+            {copied ? (
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12l5 5L20 6" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleNativeShare}
+            aria-label="その他の方法でシェア"
+            className={`${sharePill}`}
+            style={{ background: NAVY }}
+          >
+            {/* iOS 標準の共有アイコン (箱 + 上矢印) */}
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 11v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9" />
+              <path d="M16 6l-4-4-4 4" />
+              <path d="M12 2v13" />
+            </svg>
+            <span className="sr-only">その他の方法でシェア</span>
+          </button>
+        </div>
+      )}
 
       {/* ===== 退避トリガ: 押している間だけ手前カードを透過させ奥をチラ見。
           カード内に置くことで端末サイズ/下部ナビに隠れず常時タップ可能。

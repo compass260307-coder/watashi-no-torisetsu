@@ -1,6 +1,6 @@
 "use client";
 
-// 他己診断 (タコ診断) ページ /tako/[token] のロック空状態。
+// 友達診断 (タコ診断) ページ /tako/[token] のロック空状態。
 // 友達の回答が解除条件 (3人) に満たないとき表示する。
 //
 // 三層構造 (奥→手前):
@@ -17,14 +17,55 @@
 //   スクロールで下部セクションが現れて三層の世界観が切れるのを防ぐ。招待/シェアは CTA→送信シート
 //   (③ TakoSendSheet)に集約 (QRもシート末尾に在る)。課金導線・無料バイパスは一切作らない。
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
 import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoSendSheet } from "./TakoSendSheet";
 import { TakoAnsweredDetail } from "./TakoAnsweredDetail";
 import { useTakoRevisitReveal } from "./useTakoRevisitReveal";
 import { lineShareUrl } from "@/lib/tako-share";
-import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
+import {
+  thirtyTwoImagePath,
+  type ThirtyTwoTypeId,
+} from "@/lib/thirty-two-types";
+import { preferFaceImage } from "@/lib/character-image";
+import { heroColorsForGroup } from "@/lib/hero-colors";
+import type { BackdropHero } from "./TakoRewardBackdrop";
+
+const NAVY = "#2E2E5C";
+const INACTIVE = "#9BA3B4";
+
+// FV 右側のループ動画 (旧ロックページの FV を復活、2026-07-18)。/aisho の HeroLoopVideo と
+// 同流儀 (autoPlay/muted/loop、prefers-reduced-motion で一時停止)。読み込み前でも崩れない
+// よう、コンテナに淡いグラデ背景を持たせる。
+function TakoHeroVideo() {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      video.pause();
+    }
+  }, []);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+      className="w-full rounded-3xl object-contain"
+      style={{
+        background:
+          "linear-gradient(135deg, #EEF0FB 0%, #F6F3FC 50%, #EAF6F9 100%)",
+      }}
+    >
+      <source src="/tako/hero-loop.mp4" type="video/mp4" />
+    </video>
+  );
+}
 
 interface TakoLockedStateProps {
   /** 回答済み (answered) 友達。順に answered スロットへ (顔=その友達から見たあなた)。 */
@@ -92,14 +133,47 @@ export function TakoLockedState({
   // CTA の JS 無しフォールバック先 (LINE送信URL)。ハイドレーション前に押されても送信できる。
   const inviteLineHref = lineShareUrl(inviteUrl);
 
+  // 奥のヒーロー帯を実結果ふうの型色帯 + ○に? で描くための色。友達平均キャラは
+  // 未確定なので、帯色は「未知」グループのラベンダーで固定する (正体を匂わせない)。
+  const backdropHero: BackdropHero = heroColorsForGroup("unknown");
+
   const diagnoseText = (name: string) =>
     `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
 
   return (
     <div>
+      {/* ===== FV: /aisho と同じ「左=見出し / 右=動画」ヒーロー (最上部) ===== */}
+      <header className="mb-9 md:mb-14 md:flex md:items-center md:gap-12">
+        <div className="md:flex-1">
+          <h1
+            className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
+            style={{ color: NAVY }}
+          >
+            自分では気づけない
+            <br className="md:hidden" />
+            あなたを、
+            <br className="hidden md:block" />
+            友達に聞いてみよう。
+          </h1>
+          <p
+            className="mt-2.5 text-[12.5px] md:text-sm font-bold"
+            style={{ color: INACTIVE }}
+          >
+            友達に送るだけ・{threshold}人が答えると解ける
+          </p>
+        </div>
+        <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
+          <TakoHeroVideo />
+        </div>
+      </header>
+
       {/* ===== 三層ゲート (奥=報酬 / スクリム / 手前=カウンター) ===== */}
       <section className="pt-2 md:pt-4">
-        <TakoRevealStage answered={displayAnswered} threshold={threshold}>
+        <TakoRevealStage
+          answered={displayAnswered}
+          threshold={threshold}
+          backdropHero={backdropHero}
+        >
           <TakoShareGate
             answered={answered}
             pendingCount={shownPending}
@@ -111,6 +185,12 @@ export function TakoLockedState({
             onPrimaryAction={() => setSendMode({ kind: "invite" })}
             primaryFallbackHref={inviteLineHref}
             onAnsweredTap={(i) => setDetailIndex(i)}
+            qrInviteUrl={inviteUrl}
+            qrImageSrc={
+              ownerType32
+                ? preferFaceImage(thirtyTwoImagePath(ownerType32))
+                : null
+            }
           />
         </TakoRevealStage>
       </section>

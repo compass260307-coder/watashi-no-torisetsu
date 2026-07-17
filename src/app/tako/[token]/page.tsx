@@ -1,4 +1,4 @@
-// 他己診断 (タコ診断) 結果ページ /tako/[token]。
+// 友達診断 (タコ診断) 結果ページ /tako/[token]。
 //   owner_token でアクセス (自己 /me/[token] と対)。
 //   /me から切り出した「友達が見た自分」パートを集約:
 //     友達平均キャラ / 自己認知ギャップバー / みんなの目(B-1) / 他者評価 / 招待。
@@ -29,6 +29,7 @@ import { MinnaTypeProse } from "@/components/result/MinnaTypeProse";
 import { FriendList } from "@/components/result/FriendList";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { hasFullAccess } from "@/lib/entitlements";
+import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
 import {
@@ -142,7 +143,7 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
     pendingFriendCount: 0,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
-    threshold: 3,
+    threshold: REPORT_FRIEND_THRESHOLD,
     unlocked: true,
     friendCharacter: {
       type32: t,
@@ -181,7 +182,7 @@ function mockLockedTakoData(
   pending: number,
   diag: number,
 ): OwnerReportData {
-  const threshold = 3;
+  const threshold = REPORT_FRIEND_THRESHOLD;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
   const diagCount = Math.max(0, Math.min(count, Math.floor(diag || 0)));
   const mockFriends = Array.from({ length: count }, (_, i) => {
@@ -229,7 +230,7 @@ function mockLockedTakoData(
     threshold,
     unlocked: false,
     friendCharacter: null,
-    ownerType32: "gentle-koala__N" as ThirtyTwoTypeId,
+    ownerType32: "idea-monkey__R" as ThirtyTwoTypeId,
   };
 }
 

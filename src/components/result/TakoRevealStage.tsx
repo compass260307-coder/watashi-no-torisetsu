@@ -38,7 +38,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { TakoRewardBackdrop } from "./TakoRewardBackdrop";
+import { TakoRewardBackdrop, type BackdropHero } from "./TakoRewardBackdrop";
 
 const PEEK_EASE = 0.2; // 目標値への追従係数 (押下/解放時のなめらかさ)
 const PEEK_FADE = 1.0; // 退避時の最大フェード (opacity 1 → 0。手前をまるごと消して奥だけに)
@@ -65,6 +65,8 @@ export function useTakoPeek(): TakoPeekControl | null {
 interface TakoRevealStageProps {
   answered: number;
   threshold: number;
+  /** 奥のヒーロー帯を実結果ふうに描く色+キャラ (TakoRewardBackdrop へ素通し)。 */
+  backdropHero?: BackdropHero | null;
   /** 手前(主役)レイヤー = カウンターカード。 */
   children: ReactNode;
 }
@@ -72,6 +74,7 @@ interface TakoRevealStageProps {
 export function TakoRevealStage({
   answered,
   threshold,
+  backdropHero = null,
   children,
 }: TakoRevealStageProps) {
   const frontRef = useRef<HTMLDivElement>(null);
@@ -176,7 +179,11 @@ export function TakoRevealStage({
     >
       {/* ===== 奥(結果ページの長いダミー): 通常フローでセクション高さを決める ===== */}
       <div className="relative z-0">
-        <TakoRewardBackdrop answered={answered} threshold={threshold} />
+        <TakoRewardBackdrop
+          answered={answered}
+          threshold={threshold}
+          hero={backdropHero}
+        />
       </div>
 
       {/* ===== 手前(主役): sticky で画面中央に留まる。overlay は pointer-events-none にして

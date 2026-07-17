@@ -16,7 +16,8 @@ import {
 import { friendQuestions } from "./friend-questions";
 import { torisetsuTypes } from "./torisetsu-data";
 
-export const REPORT_FRIEND_THRESHOLD = 3;
+// 友達1人の回答で /tako の結果を解放する (2026-07-18 変更、旧: 3人)。
+export const REPORT_FRIEND_THRESHOLD = 1;
 
 export type FriendAnswerRecord = {
   answers: Record<string, string | number>;
