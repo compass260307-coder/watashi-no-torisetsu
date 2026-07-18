@@ -118,26 +118,30 @@ const WARM_FLAVOR: Record<string, string> = {
  *   P4: 見方の一致 (agreement) で締める。
  * 返り値は段落の配列 (呼び出し側で <p> 化)。ネガ表現は「愛されるクセ」に寄せる。
  */
-export function buildMinnaProse(deep: DeepDiveData): string[] {
+// viewer: 「誰から見たか」の表示名 (例 "ゆかさん")。1人完結モデルの友達別シートで
+// 指定すると「友達/みんな」をその名前に置き換える。省略時は従来の総称。
+export function buildMinnaProse(deep: DeepDiveData, viewer?: string): string[] {
   const { gap, hiddenStrength, agreement } = deep;
   const diff = gap.otherPercent - gap.selfPercent;
   const paras: string[] = [];
+  const who = viewer ?? "みんな"; // 主語 (〜は頼りにしている / 〜との見方の一致)
+  const friendWord = viewer ?? "友達"; // 「友達の目には」の置き換え
 
   // P1: ギャップの方向
   if (diff >= 8) {
     // 友達のほうが高く見ている: 自己評価より周りが頼りにしている軸。
     paras.push(
-      `友達の目には、自分が思うよりずっと「${gap.label}のある人」として映っているみたい。その${gap.label}を、アナタが思う以上にみんなは頼りにしているよ。自分では当たり前にやっていることが、周りにはしっかり届いているんだ。`,
+      `${friendWord}の目には、自分が思うよりずっと「${gap.label}のある人」として映っているみたい。その${gap.label}を、アナタが思う以上に${who}は頼りにしているよ。自分では当たり前にやっていることが、周りにはしっかり届いているんだ。`,
     );
   } else if (diff <= -8) {
     // 友達のほうが低く見ている: 気を張らない姿として伝わっている。
     paras.push(
-      `自分では「${gap.label}」を強めに出しているつもりでも、友達にはもう少し肩の力を抜いた姿として映っているみたい。気を張りすぎないその自然体こそ、まわりが安心して寄ってくる理由になっているよ。`,
+      `自分では「${gap.label}」を強めに出しているつもりでも、${friendWord}にはもう少し肩の力を抜いた姿として映っているみたい。気を張りすぎないその自然体こそ、まわりが安心して寄ってくる理由になっているよ。`,
     );
   } else {
     // ほぼ一致: 自己像と周りの印象が重なっている。
     paras.push(
-      `「${gap.label}」の見え方は、自分とみんなでほとんど同じ。自己イメージと周りの印象がきれいに重なっているのは、アナタが素のままで人と関われている証拠だよ。`,
+      `「${gap.label}」の見え方は、自分と${who}でほとんど同じ。自己イメージと周りの印象がきれいに重なっているのは、アナタが素のままで人と関われている証拠だよ。`,
     );
   }
 
@@ -150,15 +154,15 @@ export function buildMinnaProse(deep: DeepDiveData): string[] {
   if (hiddenStrength) {
     const extra = WARM_FLAVOR[hiddenStrength.label] ?? "";
     paras.push(
-      `それに、自分ではあまり気づいていない「${hiddenStrength.label}」も、みんなにはしっかり届いているみたい。${extra}`.trim(),
+      `それに、自分ではあまり気づいていない「${hiddenStrength.label}」も、${who}にはしっかり届いているみたい。${extra}`.trim(),
     );
   }
 
   // P4: 見方の一致で締める
   paras.push(
     agreement >= 70
-      ? `みんなとの見方の一致は${agreement}%。自分らしさが、そのまま周りに伝わっているみたい。今のアナタのままで、まわりはちゃんと受け取ってくれているよ。`
-      : `みんなとの見方の一致は${agreement}%。自分では当たり前だと思っている一面が、周りには新鮮に映っていることもあるみたい。まだ知られていない良さも、これから少しずつ伝わっていきそうだよ。`,
+      ? `${who}との見方の一致は${agreement}%。自分らしさが、そのまま周りに伝わっているみたい。今のアナタのままで、まわりはちゃんと受け取ってくれているよ。`
+      : `${who}との見方の一致は${agreement}%。自分では当たり前だと思っている一面が、周りには新鮮に映っていることもあるみたい。まだ知られていない良さも、これから少しずつ伝わっていきそうだよ。`,
   );
 
   return paras;

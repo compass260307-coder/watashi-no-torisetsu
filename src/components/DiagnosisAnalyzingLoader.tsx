@@ -38,13 +38,15 @@ const STEPS = [
 ];
 
 // messages / steps は任意。省略時は自己診断の既定文言。
-// (他己診断=friend の生成中でも同デザインを再利用し、文言だけ差し替える。)
+// (友達診断=friend の生成中でも同デザインを再利用し、文言だけ差し替える。)
 export function DiagnosisAnalyzingLoader({
   messages = MESSAGES,
   steps = STEPS,
+  fontFamily = FONT_STACK,
 }: {
   messages?: string[];
   steps?: string[];
+  fontFamily?: string;
 } = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
@@ -82,7 +84,7 @@ export function DiagnosisAnalyzingLoader({
     <div
       // 背景は動画の地色 (#FCFCFC 実測) に合わせ、動画の四角い縁を不可視化する
       className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#FCFCFC] px-5 py-10"
-      style={{ fontFamily: FONT_STACK }}
+      style={{ fontFamily }}
     >
       {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。
           poster は置かない (動画開始時に別画像が一瞬見えるチラつきの原因になるため。

@@ -1,26 +1,18 @@
-// 三層×二ページモデル (2026-07-12 確定) の「階段」しきい値の唯一の真実源。
+// 友達診断のしきい値の唯一の真実源。
 //
-// ルール (3行):
-//   1. 自己分析 (第一部) は無料
-//   2. 「どう見られてるか」の予測と深掘り (第二部) は、友達3人 or ¥499
-//   3. 本物の見られ方 (第三部 /tako) は友達5人で完成。金では買えない
+// 2026-07-18 変更: 友達診断は「1人 × 30問」で完結するモデルへ。
+// 友達1人の回答で第二部 (予測＋深掘り) も第三部 (/tako) もすべて解放される。
+// 旧: 1人=予兆 / 3人=第二部 / 5人=完成 の階段モデル (FriendStairs UI は廃止)。
 //
-// 道中の報酬 (階段):
-//   友達1人 = 予兆 (動物メタファーの小出し)
-//   友達3人 = 第二部が開く (¥499 でスキップ可能なのはここまで)
-//   友達5人 = 第三部 (/tako) が完成
-//
-// 人数しきい値をコードに散らさない。判定は必ずここを経由する
-// (旧 REPORT_FRIEND_THRESHOLD / JOB_FRIEND_THRESHOLD とは役割が別。
-//  /tako 側の 3→5 切替は別フェーズで REPORT_FRIEND_THRESHOLD をこちらへ寄せる)。
+// 人数しきい値をコードに散らさない。判定は必ずここを経由する。
 
-export const STAIR_TEASE = 1; // 予兆カード
-export const STAIR_PART_TWO = 3; // 第二部 (予測＋深掘り) 解放
-export const STAIR_COMPLETE = 5; // 第三部 (/tako) 完成
+export const STAIR_TEASE = 1; // (旧・予兆カード。現在は PART_TWO と同値)
+export const STAIR_PART_TWO = 1; // 第二部 (予測＋深掘り) 解放
+export const STAIR_COMPLETE = 1; // 第三部 (/tako) 完成
 
 /**
  * 第二部 (見られ方の予測＋深掘りキャリア/成長/相性) が開いているか。
- * 課金 (¥499=full) または友達3人以上。純関数 (DB を引かない)。
+ * 課金 (¥499=full) または友達1人以上。純関数 (DB を引かない)。
  * hasFullAccess (entitlements.ts) の結果と friend_perceptions 件数を渡す。
  */
 export function hasPartTwoAccess(

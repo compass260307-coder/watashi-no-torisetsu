@@ -16,7 +16,7 @@ import {
 import type { BigFiveDimension } from "@/lib/types";
 
 const SITE_URL = resolveSiteUrl();
-const FALLBACK_DESCRIPTION = "友達から見たあなたを10問で教えてもらう診断";
+const FALLBACK_DESCRIPTION = "友達から見たあなたを30問で教えてもらう診断";
 
 function buildMetadata(opts: {
   title: string;
@@ -91,7 +91,7 @@ export async function generateMetadata({
       ? `${name}さんは【${essence}】でした`
       : `私は【${essence}】でした`,
     description: name
-      ? `あなたから見た${name}さんを、10問でこっそり教えて👀`
+      ? `あなたから見た${name}さんを、30問でこっそり教えて👀`
       : FALLBACK_DESCRIPTION,
     imageUrl: `${SITE_URL}/og-characters/${slug}.jpg`,
     imageAlt: essence,

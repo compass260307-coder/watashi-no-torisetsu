@@ -20,8 +20,6 @@ import {
 import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { buildPerceptionView } from "@/lib/perception-view";
 import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
-import { FriendIndividualPaywall } from "@/components/result/FriendIndividualPaywall";
-import { hasFullAccess } from "@/lib/entitlements";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 
@@ -124,42 +122,8 @@ export default async function FriendIndividualPage({
     // 消えると本人でも isOwner=false になり「友達の完了ページ」へ飛ばされる不整合を防ぐ。
     // (親ページは token だけで中身を見せているのにここだけ session 必須だったのが原因。)
 
-    // ===== 課金ゲート (PR2: token 本人の内側に hasFullAccess を AND) =====
-    // 本人だが未課金 (¥499 全解放なし) → 本文 (perception詳細・owner_message全文) を
-    // 「そもそも取得せず」課金導線を返す。フェイルクローズ。無料メタ (誰からの結果か) だけ
-    // 最小 SELECT する (本文列 perceived_scores/qualitative_data/owner_message は読まない)。
-    if (!(await hasFullAccess(user.id as string))) {
-      const { data: metaRow } = await supabaseAdmin
-        .from("friend_perceptions")
-        .select("perceiver_name, target_user_id")
-        .eq("id", perceptionId)
-        .maybeSingle();
-      if (!metaRow || metaRow.target_user_id !== (user.id as string)) {
-        notFound();
-      }
-      // A案: 相手からのメッセージ (owner_message) は「相手が自分に向けた言葉＝恵み」
-      // なので未課金でも全文を無料で見せる (引きの役割)。ロックするのは診断の中身
-      // (perceived_scores / qualitative_data) だけ。列未適用でも壊さない best-effort。
-      let paywallMessage: string | null = null;
-      try {
-        const { data: msgRow } = await supabaseAdmin
-          .from("friend_perceptions")
-          .select("owner_message")
-          .eq("id", perceptionId)
-          .maybeSingle();
-        const m = ((msgRow?.owner_message as string | null) ?? "").trim();
-        paywallMessage = m.length > 0 ? m : null;
-      } catch {
-        paywallMessage = null;
-      }
-      return (
-        <FriendIndividualPaywall
-          perceiverName={(metaRow.perceiver_name as string | null) ?? null}
-          ownerMessage={paywallMessage}
-          ownerToken={token}
-        />
-      );
-    }
+    // 課金ゲートは 2026-07-18 に撤去: 友達1人×30問で完結するモデルでは、友達ごとの
+    // 結果は全員ぶん無料 (¥499 は /me の深掘りのみ)。本人ゲート (owner_token) は上記の通り維持。
 
     selfScores = (user.scores ?? {}) as BigFiveScores;
     ownerDisplayName = (user.display_name as string | null) ?? null;

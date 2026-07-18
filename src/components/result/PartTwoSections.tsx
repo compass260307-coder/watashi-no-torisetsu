@@ -16,6 +16,7 @@
 import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import type { ResultLocale } from "@/i18n/result";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
 export const PART_TWO_LOCK_ID = "part2-lock";
@@ -24,6 +25,7 @@ interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
   /** 未解放時に出す完全版の解除カード。解放済みなら不要。 */
   lockCard?: React.ReactNode;
+  locale?: ResultLocale;
 }
 
 function SectionHeading({ title }: { title: string }) {
@@ -36,8 +38,8 @@ function SectionHeading({ title }: { title: string }) {
 function CheckList({ items }: { items: ContentItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-      {items.map((it) => (
-        <div key={it.title}>
+      {items.map((it, index) => (
+        <div key={`${it.title}-${index}`}>
           <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
             <span
               aria-hidden="true"
@@ -72,8 +74,8 @@ function CheckList({ items }: { items: ContentItem[] }) {
 function WarnList({ items }: { items: ContentItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-      {items.map((it) => (
-        <div key={it.title}>
+      {items.map((it, index) => (
+        <div key={`${it.title}-${index}`}>
           <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
             <span
               aria-hidden="true"
@@ -124,7 +126,23 @@ const DECOY_ITEMS: ContentItem[] = [
   { title: "負けず嫌いな一面", body: "友達は、さりげなく張り合ってくるアナタを面白がっている。" },
 ];
 
-function DummyCards({ rows }: { rows: number }) {
+const KO_DECOY_ITEMS: ContentItem[] = [
+  { title: "생각보다 고집스러운 순간", body: "한번 마음먹은 일은 좀처럼 바꾸지 않는 모습이 친구에게 보일 때가 있어요." },
+  { title: "답장이 늦어질 때", body: "답을 미루는 당신을 보며 친구가 조금 애타게 기다릴 때가 있어요." },
+  { title: "속마음을 감추는 순간", body: "웃어넘기지만 진짜 마음은 잘 보이지 않는다고 느끼는 친구가 있어요." },
+  { title: "기분의 온도 차이", body: "날마다 달라지는 에너지와 분위기를 가까운 친구는 알고 있어요." },
+  { title: "혼자 감당하려는 습관", body: "한계까지 혼자 버티는 모습을 보며 친구가 걱정할 때가 있어요." },
+  { title: "마지막에 힘이 빠질 때", body: "끝을 앞두고 긴장이 풀리는 당신의 모습을 친구는 기억하고 있어요." },
+  { title: "갑자기 거리를 둘 때", body: "어느 순간 벽을 세운 것처럼 보일 때가 있다고 느끼는 친구가 있어요." },
+  { title: "도움을 청하기 어려울 때", body: "혼자 해결하려는 당신에게 ‘말해 주지’라고 생각하는 친구가 있어요." },
+  { title: "디테일을 놓지 못할 때", body: "작은 부분까지 쉽게 양보하지 않는 모습을 친구가 알아차릴 때가 있어요." },
+  { title: "빠르게 빠지고 식을 때", body: "무언가에 몰입하는 속도와 흥미가 식는 속도를 친구는 모두 알고 있어요." },
+  { title: "분위기를 너무 살필 때", body: "주변에 맞추느라 지친 당신의 모습을 가까운 친구는 알아봐요." },
+  { title: "은근한 승부욕", body: "티 나지 않게 경쟁하는 당신의 모습을 친구는 재미있게 바라볼 때가 있어요." },
+];
+
+function DummyCards({ rows, locale }: { rows: number; locale: ResultLocale }) {
+  const decoyItems = locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
   return (
     <div
       aria-hidden="true"
@@ -132,7 +150,7 @@ function DummyCards({ rows }: { rows: number }) {
     >
       {/* rows がデコイ数を超えたら循環して埋める (ぼかし面を必要なだけ長く敷ける) */}
       {Array.from({ length: rows }, (_, i) => {
-        const it = DECOY_ITEMS[i % DECOY_ITEMS.length];
+        const it = decoyItems[i % decoyItems.length];
         return (
           <div
             key={i}
@@ -154,9 +172,17 @@ function DummyCards({ rows }: { rows: number }) {
 // 関係別の見られ方・解放時 (2026-07-15 指示):
 // 武器の CheckList と同じ組版 (枠なし2カラム) で、アイコンは「言えずにいること」に
 // 合わせた吹き出しマーク。色はロック画面の円と同じ関係別カラーで塗り分ける。
-function RelationList({ relations }: { relations: RelationView[] }) {
+function RelationList({
+  relations,
+  locale,
+}: {
+  relations: RelationView[];
+  locale: ResultLocale;
+}) {
+  const relationLockItems =
+    locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   const colorOf = (relation: string) =>
-    RELATION_LOCK_ITEMS.find((it) => it.label === relation)?.color ??
+    relationLockItems.find((it) => it.label === relation)?.color ??
     "#2E2E5C";
   return (
     <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
@@ -223,12 +249,23 @@ const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "初対面の人から", color: "#F28C5B" },
 ];
 
-function RelationsLocked() {
+const KO_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
+  { label: "친구에게", color: "#56BFE8" },
+  { label: "연인에게", color: "#F48BAE" },
+  { label: "가족에게", color: "#4CAF7D" },
+  { label: "상사·선배에게", color: "#F2C14E" },
+  { label: "후배에게", color: "#9B8CF2" },
+  { label: "처음 만난 사람에게", color: "#F28C5B" },
+];
+
+function RelationsLocked({ locale }: { locale: ResultLocale }) {
+  const relationLockItems =
+    locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
       {/* 鍵付きの円 (SP 2列 / md 3列。2026-07-15 に 4関係 → 6関係へ増量) */}
       <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3">
-        {RELATION_LOCK_ITEMS.map((item) => (
+        {relationLockItems.map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-2.5">
             <span
               className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
@@ -249,32 +286,43 @@ function RelationsLocked() {
           <LockGlyph size={14} />
         </span>
         <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-          今すぐロックを解除
+          {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
         </p>
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-          完全版のレポートを入手して、
-          <br className="md:hidden" />
-          周りの人がアナタに言えずにいることを知りましょう。
+          {locale === "ko" ? (
+            "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
+          ) : (
+            <>
+              完全版のレポートを入手して、
+              <br className="md:hidden" />
+              周りの人がアナタに言えずにいることを知りましょう。
+            </>
+          )}
         </p>
         {/* 最下部の課金カードへスムーススクロール+パルス。 */}
         <PaywallScrollButton
           source="relations_card"
           className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
-          今すぐアクセス
+          {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
         </PaywallScrollButton>
       </div>
     </div>
   );
 }
 
-export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
+export function PartTwoSections({
+  data,
+  lockCard,
+  locale = "ja",
+}: PartTwoSectionsProps) {
+  const isKorean = locale === "ko";
   return (
     <div>
       {/* ブロック順は 好かれやすい → 嫌われやすい → 武器 → 関係別 (2026-07-14 指示)。 */}
       {/* ── 1. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
       <div className="mb-10">
-        <SectionHeading title="好かれやすい性格" />
+        <SectionHeading title={isKorean ? "호감을 얻기 쉬운 성격" : "好かれやすい性格"} />
         <div className="px-1">
           {data.likable.map((para, i) => (
             <p
@@ -289,7 +337,7 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
 
       {/* ── 2. 嫌われやすい性格 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading title="嫌われやすい性格" />
+        <SectionHeading title={isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
         {data.dislikable ? (
           <WarnList items={data.dislikable} />
         ) : (
@@ -297,7 +345,7 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
              その中央へコンパクトな解除カードを重ねる。 */
           <div className="relative overflow-hidden rounded-2xl">
             <div aria-hidden="true">
-              <DummyCards rows={8} />
+              <DummyCards rows={8} locale={locale} />
             </div>
             {/* 完全版の解除カード。後続🔒ブロックのアンカー先。 */}
             <div
@@ -313,18 +361,24 @@ export function PartTwoSections({ data, lockCard }: PartTwoSectionsProps) {
       {/* ── 3. 武器 (無料・未解放でも公開)。16P「あなたの強み」風チェックリスト ── */}
       {data.weapons && (
         <div className="mb-10">
-          <SectionHeading title="羨ましいあなたの武器" />
+          <SectionHeading title={isKorean ? "부러운 나만의 무기" : "羨ましいあなたの武器"} />
           <CheckList items={data.weapons} />
         </div>
       )}
 
       {/* ── 4. 関係別の見られ方 (🔒) ── */}
       <div className="mb-10">
-        <SectionHeading title="周りの人が、あなたに言えずにいること" />
+        <SectionHeading
+          title={
+            isKorean
+              ? "주변 사람들이 나에게 말하지 못한 것"
+              : "周りの人が、あなたに言えずにいること"
+          }
+        />
         {data.relations ? (
-          <RelationList relations={data.relations} />
+          <RelationList relations={data.relations} locale={locale} />
         ) : (
-          <RelationsLocked />
+          <RelationsLocked locale={locale} />
         )}
       </div>
     </div>

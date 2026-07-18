@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
 // リンクは実在ルートのみ。SNS アイコンは ⚠️ プレースホルダ (href を実 URL に差し替え)。
-// 他己診断テストの遷移先解決 (localStorage) のためクライアントコンポーネント。
+// 友達診断テストの遷移先解決 (localStorage) のためクライアントコンポーネント。
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -29,8 +29,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "診断",
     links: [
       { label: "性格診断テスト", href: "/diagnosis" },
-      // 他己診断テストの href は実行時に上書き (BottomNav/TopHeader と同じ /tako/[token] 解決)。
-      { label: "他己診断テスト", href: "/tako" },
+      // 友達診断テストの href は実行時に上書き (BottomNav/TopHeader と同じ /tako/[token] 解決)。
+      { label: "友達診断テスト", href: "/tako" },
       { label: "性格タイプ", href: "/types" },
     ],
   },
@@ -110,7 +110,7 @@ const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
 export default function TopFooter() {
   const pathname = usePathname() ?? "/";
 
-  // 他己診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
+  // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
   //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
   const [takoUrl, setTakoUrl] = useState("/tako");
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function TopFooter() {
   const columns = COLUMNS.map((col) => ({
     ...col,
     links: col.links.map((l) =>
-      l.label === "他己診断テスト" ? { ...l, href: takoUrl } : l,
+      l.label === "友達診断テスト" ? { ...l, href: takoUrl } : l,
     ),
   }));
 

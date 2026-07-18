@@ -33,6 +33,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   deepdive_tab_aisho: "旧:深掘りタブ(相性)",
   sticky_bar: "追従バー(結果ページ上部)",
   friend_list: "友達一覧ロック",
+  friend_individual_paywall: "友達個別結果ページの課金カード",
   aisho_scene: "相性ページ(シーン別)",
   tako_unlocked: "/tako 解放後導線",
   paywall_direct: "課金カードから直接購入",
@@ -53,6 +54,31 @@ type Stats = {
   resultRevisited: number;
   revisitRate: number;
   funnel: { label: string; count: number }[];
+  friendDiagnosisFunnel: {
+    measurementStartedAt: string;
+    cohortDefinition: string;
+    ownerFunnel: {
+      key: string;
+      label: string;
+      count: number;
+      rateFromPrevious: number | null;
+      rateFromDiagnosis: number;
+    }[];
+    friendFunnel: {
+      key: string;
+      label: string;
+      count: number;
+      rateFromPrevious: number | null;
+      rateFromLanding: number;
+    }[];
+    attention: {
+      badgeShown: number;
+      badgeClicked: number;
+      badgeClickRate: number;
+      takoReached: number;
+      takoReachRate: number;
+    };
+  };
   paywallFunnel: { label: string; count: number }[];
   paywallSources: { source: string; count: number }[];
   paywallAttribution: {
@@ -591,6 +617,14 @@ export default function AdminPage() {
   if (!stats) return null;
 
   const funnelMax = Math.max(...stats.funnel.map((f) => f.count), 1);
+  const ownerFriendFunnelMax = Math.max(
+    ...stats.friendDiagnosisFunnel.ownerFunnel.map((f) => f.count),
+    1,
+  );
+  const visitorFriendFunnelMax = Math.max(
+    ...stats.friendDiagnosisFunnel.friendFunnel.map((f) => f.count),
+    1,
+  );
   const paywallFunnelMax = Math.max(
     ...(stats.paywallFunnel ?? []).map((f) => f.count),
     1,
@@ -631,6 +665,28 @@ export default function AdminPage() {
     rows.push(["# ファネル"]);
     rows.push(["ステップ", "件数"]);
     stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
+    rows.push([]);
+    rows.push(["# 友達診断ファネル（本人コホート）"]);
+    rows.push(["ステップ", "人数", "前段比", "自己診断完了比"]);
+    stats.friendDiagnosisFunnel.ownerFunnel.forEach((s) =>
+      rows.push([
+        s.label,
+        String(s.count),
+        s.rateFromPrevious === null ? "" : pct(s.rateFromPrevious),
+        pct(s.rateFromDiagnosis),
+      ]),
+    );
+    rows.push([]);
+    rows.push(["# 友達側ファネル"]);
+    rows.push(["ステップ", "人数", "前段比", "招待ページ到達比"]);
+    stats.friendDiagnosisFunnel.friendFunnel.forEach((s) =>
+      rows.push([
+        s.label,
+        String(s.count),
+        s.rateFromPrevious === null ? "" : pct(s.rateFromPrevious),
+        pct(s.rateFromLanding),
+      ]),
+    );
     rows.push([]);
     rows.push(["# 課金ファネル"]);
     rows.push(["ステップ", "件数"]);
@@ -742,7 +798,8 @@ export default function AdminPage() {
         <nav className="flex-1 space-y-1 px-3 py-6" aria-label="管理画面メニュー">
           {[
             ["#overview", "概要", "M4 12h16m4-4m0 0 4 4m-4-4v9"],
-            ["#funnel", "利用ファネル", "M4 5h16l-6 7v5l-4 2v-7L4 5Z"],
+            ["#friend-funnel", "友達診断ファネル", "M4 5h16l-6 7v5l-4 2v-7L4 5Z"],
+            ["#funnel", "全体ファネル", "M4 5h16l-6 7v5l-4 2v-7L4 5Z"],
             ["#revenue", "課金分析", "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7"],
             ["#growth", "拡散分析", "m4 16 5-5 4 4 7-8"],
             ["#audience", "ユーザー分析", "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 10v-2a4 4 0 0 0-3-3.87m-1-7.26a4 4 0 0 1 0 7.75"],
@@ -962,11 +1019,102 @@ export default function AdminPage() {
             </div>
           </section>
 
+        {/* 本人コホートと友達側を分けた友達診断ファネル */}
+          <section id="friend-funnel" className="scroll-mt-28">
+            <SectionHeader
+              eyebrow="Friend diagnosis"
+              title="友達診断ファネル"
+              description="自己診断を終えた本人が友達診断へ進み、友達の新しい診断につながるまで"
+              side={
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5">
+                  <p className="text-[10px] font-bold text-rose-600">自己診断→友達診断到達</p>
+                  <p className="text-lg font-black tabular-nums text-rose-900">
+                    {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
+                  </p>
+                </div>
+              }
+            />
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <KpiCard
+                label="赤バッジ表示"
+                value={stats.friendDiagnosisFunnel.attention.badgeShown}
+                sub="ユニーク本人"
+                tone="rose"
+              />
+              <KpiCard
+                label="赤バッジクリック"
+                value={stats.friendDiagnosisFunnel.attention.badgeClicked}
+                sub={`クリック率 ${pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}`}
+                tone="rose"
+              />
+              <KpiCard
+                label="友達診断到達"
+                value={stats.friendDiagnosisFunnel.attention.takoReached}
+                sub="ユニーク本人"
+                tone="indigo"
+              />
+              <KpiCard
+                label="自己診断→到達率"
+                value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
+                sub="自己診断完了を分母"
+                tone="emerald"
+              />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-slate-800">本人側（ユニーク本人）</h3>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  選択期間に自己診断を完了した本人を、現在まで追跡
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
+                    <FunnelBar
+                      key={step.key}
+                      label={step.label}
+                      count={step.count}
+                      max={ownerFriendFunnelMax}
+                      prevCount={
+                        index > 0
+                          ? stats.friendDiagnosisFunnel.ownerFunnel[index - 1].count
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              </Panel>
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-slate-800">友達側（ユニーク友達セッション）</h3>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  同じ本人コホートの招待を受けた友達の行動
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  {stats.friendDiagnosisFunnel.friendFunnel.map((step, index) => (
+                    <FunnelBar
+                      key={step.key}
+                      label={step.label}
+                      count={step.count}
+                      max={visitorFriendFunnelMax}
+                      prevCount={
+                        index > 0
+                          ? stats.friendDiagnosisFunnel.friendFunnel[index - 1].count
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              </Panel>
+            </div>
+            <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
+              {stats.friendDiagnosisFunnel.cohortDefinition}。招待実行はシェアボタン操作に加え、QR経由などで友達の到達が確認できた本人も含めます。
+              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}。
+            </p>
+          </section>
+
         {/* Funnel */}
           <section id="funnel" className="scroll-mt-28">
             <SectionHeader
               eyebrow="Conversion"
-              title="利用ファネル"
+              title="全体ファネル（参考）"
               description="診断開始から友達回答まで、どこで離脱しているかを確認"
             />
             <Panel className="p-5 sm:p-6">

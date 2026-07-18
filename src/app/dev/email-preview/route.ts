@@ -14,9 +14,8 @@ export async function GET(request: Request) {
 
   return new Response(
     renderDetailedReportHtml({
-      reportUrl: `${origin}/report/${token}`,
-      pdfUrl: `${origin}/report/${token}/pdf`,
-      meUrl: `${origin}/me/${token}`,
+      pdfUrl: `${origin}/report/${token}/pdf?previewType=earnest-elephant__N`,
+      meUrl: `${origin}/me/${token}?previewType=earnest-elephant__N`,
       greetingName: "わかん",
     }),
     {

@@ -26,9 +26,11 @@ const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
 // 概算売上の単価。2026-07-14 に ¥199 → ¥499 へ改定 (それ以前の購入分は過大に出る)。
 const FULL_ACCESS_PRICE_JPY = 499;
+// /tako 到達を owner_token + invite_code 付きでページ本体から計測し始める時刻。
+// これ以前を分母に混ぜると「到達していたがイベントが無い人」が離脱扱いになるため除外する。
+const FRIEND_FUNNEL_MEASUREMENT_STARTED_AT = "2026-07-18T04:15:00.000Z";
 
 export async function computeStats(from: string | null, to: string | null) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyRange<T>(query: T, column = "created_at"): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
@@ -67,6 +69,22 @@ export async function computeStats(from: string | null, to: string | null) {
         .order("created_at", { ascending: true })
         .order("id", { ascending: true }),
     );
+
+  // コホートファネルは、期間内に自己診断を完了した本人がその後どこまで進んだかを見る。
+  // 下流イベントには to を掛けず、選択期間終了後の到達も含む（eventual conversion）。
+  const journeyRows = (names: string[], cols: string) => () => {
+    let query = supabaseAdmin
+      .from("events")
+      .select(cols)
+      .in("event_name", names)
+      .gte("created_at", FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
+    if (from && Date.parse(from) > Date.parse(FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)) {
+      query = query.gte("created_at", from);
+    }
+    return query;
+  };
 
   type StripeEventRow = { metadata: Record<string, unknown> | null };
 
@@ -126,6 +144,8 @@ export async function computeStats(from: string | null, to: string | null) {
     diagQuestionReach,
     checkoutCreatedRows,
     purchaseCompletedRows,
+    friendJourneyRows,
+    identityRows,
   ] = await Promise.all([
     fetchAll<SessionRow>(evRows(["diagnosis_started"])),
     fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
@@ -208,6 +228,46 @@ export async function computeStats(from: string | null, to: string | null) {
       evRows(["checkout_session_created"], "metadata"),
     ),
     fetchAll<StripeEventRow>(evRows(["purchase_completed"], "metadata")),
+    fetchAll<{
+      event_name: string;
+      session_id: string | null;
+      invite_code: string | null;
+      owner_token: string | null;
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+    }>(
+      journeyRows(
+        [
+          "result_viewed",
+          "diagnosis_completed",
+          "tako_viewed",
+          "tako_nav_badge_shown",
+          "tako_nav_badge_clicked",
+          "friend_invite_clicked",
+          "friend_share_clicked",
+          "friend_link_copied",
+          "friend_landing_viewed",
+          "friend_answer_completed",
+          "friend_v2_completed",
+          "friend_to_diagnosis_clicked",
+          "friend_v2_self_cta_clicked",
+        ],
+        "event_name, session_id, invite_code, owner_token, metadata, created_at",
+      ),
+    ),
+    fetchAll<{
+      id: string;
+      owner_token: string | null;
+      invite_code: string | null;
+      source_user_id: string | null;
+      created_at: string;
+    }>(() =>
+      supabaseAdmin
+        .from("users")
+        .select("id, owner_token, invite_code, source_user_id, created_at")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
+    ),
   ]);
 
   const toUnique = (rows: SessionRow[]) =>
@@ -220,6 +280,173 @@ export async function computeStats(from: string | null, to: string | null) {
   const uniqueShare = toUnique(shareEventRows);
   const uniqueViewed = toUnique(viewedSessionRows);
   const friendToDiagClicked = toUnique(friendToDiagRows);
+
+  // --- 友達診断コホートファネル ---
+  // 分母は計測開始後、選択期間内に result_viewed が確認できた owner_token。
+  // 同じ本人について、期間終了後に起きた下流イベントも現在時点まで追跡する。
+  type JourneyRow = (typeof friendJourneyRows)[number];
+  const journeyInCohortRange = (iso: string) => {
+    const time = Date.parse(iso);
+    if (time < Date.parse(FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)) return false;
+    if (from && time < Date.parse(from)) return false;
+    if (to && time > Date.parse(to)) return false;
+    return true;
+  };
+
+  const diagnosisCohortSessions = new Map<string, number>();
+  for (const row of friendJourneyRows) {
+    if (
+      row.event_name !== "diagnosis_completed" ||
+      !row.session_id ||
+      !journeyInCohortRange(row.created_at)
+    ) {
+      continue;
+    }
+    const time = Date.parse(row.created_at);
+    const previous = diagnosisCohortSessions.get(row.session_id);
+    if (previous === undefined || time > previous) {
+      diagnosisCohortSessions.set(row.session_id, time);
+    }
+  }
+
+  const cohortResultBySession = new Map<
+    string,
+    { ownerToken: string; resultViewedAt: number }
+  >();
+  for (const row of friendJourneyRows) {
+    if (
+      row.event_name !== "result_viewed" ||
+      !row.owner_token ||
+      !row.session_id ||
+      !journeyInCohortRange(row.created_at)
+    ) {
+      continue;
+    }
+    const time = Date.parse(row.created_at);
+    const completedAt = diagnosisCohortSessions.get(row.session_id);
+    if (completedAt === undefined || completedAt > time) continue;
+    const previous = cohortResultBySession.get(row.session_id);
+    if (!previous || time < previous.resultViewedAt) {
+      cohortResultBySession.set(row.session_id, {
+        ownerToken: row.owner_token,
+        resultViewedAt: time,
+      });
+    }
+  }
+  const cohortStartedAt = new Map<string, number>();
+  for (const { ownerToken, resultViewedAt } of cohortResultBySession.values()) {
+    const previous = cohortStartedAt.get(ownerToken);
+    if (previous === undefined || resultViewedAt < previous) {
+      cohortStartedAt.set(ownerToken, resultViewedAt);
+    }
+  }
+  const cohortOwners = new Set(cohortStartedAt.keys());
+
+  const inviteToOwner = new Map<string, string>();
+  const ownerToUserId = new Map<string, string>();
+  for (const row of identityRows) {
+    if (!row.owner_token) continue;
+    ownerToUserId.set(row.owner_token, row.id);
+    if (row.invite_code) inviteToOwner.set(row.invite_code, row.owner_token);
+  }
+
+  const sessionToOwner = new Map<string, string>();
+  for (const row of friendJourneyRows) {
+    if (!row.session_id) continue;
+    const directOwner =
+      row.owner_token && cohortOwners.has(row.owner_token)
+        ? row.owner_token
+        : row.invite_code
+          ? inviteToOwner.get(row.invite_code)
+          : null;
+    if (directOwner && cohortOwners.has(directOwner)) {
+      sessionToOwner.set(row.session_id, directOwner);
+    }
+  }
+
+  const ownerForJourney = (row: JourneyRow): string | null => {
+    if (row.owner_token && cohortOwners.has(row.owner_token)) {
+      return row.owner_token;
+    }
+    if (row.invite_code) {
+      const owner = inviteToOwner.get(row.invite_code);
+      if (owner && cohortOwners.has(owner)) return owner;
+    }
+    if (row.session_id) {
+      const owner = sessionToOwner.get(row.session_id);
+      if (owner && cohortOwners.has(owner)) return owner;
+    }
+    return null;
+  };
+
+  const happenedAfterCohortStart = (row: JourneyRow, owner: string) =>
+    Date.parse(row.created_at) >= (cohortStartedAt.get(owner) ?? Infinity);
+
+  const takoReachedOwners = new Set<string>();
+  const inviteActionOwners = new Set<string>();
+  const friendReachedOwners = new Set<string>();
+  const friendAnsweredOwners = new Set<string>();
+  const badgeShownOwners = new Set<string>();
+  const badgeClickedOwners = new Set<string>();
+  const friendLandingSessions = new Set<string>();
+  const friendAnswerSessions = new Set<string>();
+  const friendToDiagnosisSessions = new Set<string>();
+
+  for (const row of friendJourneyRows) {
+    const owner = ownerForJourney(row);
+    if (!owner) continue;
+
+    // BottomNav と ResultViewTracker の effect 順により、バッジ表示が result_viewed より
+    // 数ミリ秒先になる場合がある。コホート本人であれば表示・クリックはそのまま採用する。
+    if (row.event_name === "tako_nav_badge_shown") badgeShownOwners.add(owner);
+    if (row.event_name === "tako_nav_badge_clicked") badgeClickedOwners.add(owner);
+    if (!happenedAfterCohortStart(row, owner)) continue;
+
+    if (row.event_name === "tako_viewed") takoReachedOwners.add(owner);
+    if (
+      row.event_name === "friend_invite_clicked" ||
+      row.event_name === "friend_share_clicked" ||
+      row.event_name === "friend_link_copied"
+    ) {
+      inviteActionOwners.add(owner);
+    }
+    if (row.event_name === "friend_landing_viewed") {
+      friendReachedOwners.add(owner);
+      inviteActionOwners.add(owner); // QRなどクリックを伴わない招待も、到達実績で補完する。
+      if (row.session_id) friendLandingSessions.add(row.session_id);
+    }
+    if (
+      row.event_name === "friend_answer_completed" ||
+      row.event_name === "friend_v2_completed"
+    ) {
+      friendAnsweredOwners.add(owner);
+      friendReachedOwners.add(owner);
+      inviteActionOwners.add(owner);
+      if (row.session_id) friendAnswerSessions.add(row.session_id);
+    }
+    if (
+      row.event_name === "friend_to_diagnosis_clicked" ||
+      row.event_name === "friend_v2_self_cta_clicked"
+    ) {
+      if (row.session_id) friendToDiagnosisSessions.add(row.session_id);
+    }
+  }
+
+  // 子診断はイベントではなく users.source_user_id を正とし、コホートの親に紐づく人数を数える。
+  const cohortOwnerByUserId = new Map<string, string>();
+  for (const owner of cohortOwners) {
+    const userId = ownerToUserId.get(owner);
+    if (userId) cohortOwnerByUserId.set(userId, owner);
+  }
+  let cohortChildDiagnosisCompleted = 0;
+  for (const row of identityRows) {
+    if (!row.source_user_id) continue;
+    const owner = cohortOwnerByUserId.get(row.source_user_id);
+    if (!owner) continue;
+    if (Date.parse(row.created_at) >= (cohortStartedAt.get(owner) ?? Infinity)) {
+      cohortChildDiagnosisCompleted++;
+    }
+  }
 
   // result_revisited: result_viewed も持つセッションのみ数える
   const viewedSessions = new Set(
@@ -489,6 +716,59 @@ export async function computeStats(from: string | null, to: string | null) {
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
+  const ownerFunnelCounts = [
+    diagnosisCohortSessions.size,
+    cohortOwners.size,
+    takoReachedOwners.size,
+    inviteActionOwners.size,
+    friendReachedOwners.size,
+    friendAnsweredOwners.size,
+  ];
+  const ownerFunnelLabels = [
+    "自己診断完了",
+    "結果ページ到達",
+    "友達診断ページ到達",
+    "招待実行（友達到達で補完）",
+    "友達がページ到達",
+    "友達が1人以上回答完了",
+  ];
+  const ownerFunnel = ownerFunnelCounts.map((count, index) => ({
+    key: [
+      "diagnosis",
+      "result",
+      "tako",
+      "invite",
+      "friend_landing",
+      "friend_answer",
+    ][index],
+    label: ownerFunnelLabels[index],
+    count,
+    rateFromPrevious:
+      index === 0 ? null : rate(count, ownerFunnelCounts[index - 1]),
+    rateFromDiagnosis: rate(count, ownerFunnelCounts[0]),
+  }));
+
+  const friendFunnelCounts = [
+    friendLandingSessions.size,
+    friendAnswerSessions.size,
+    friendToDiagnosisSessions.size,
+    cohortChildDiagnosisCompleted,
+  ];
+  const friendFunnelLabels = [
+    "友達が招待ページ到達",
+    "友達が回答完了",
+    "友達が「自分も診断」をクリック",
+    "友達が自己診断完了",
+  ];
+  const friendFunnel = friendFunnelCounts.map((count, index) => ({
+    key: ["landing", "answer", "self_cta", "self_complete"][index],
+    label: friendFunnelLabels[index],
+    count,
+    rateFromPrevious:
+      index === 0 ? null : rate(count, friendFunnelCounts[index - 1]),
+    rateFromLanding: rate(count, friendFunnelCounts[0]),
+  }));
+
   return {
     diagnosisStarted,
     diagnosisCompleted,
@@ -512,6 +792,23 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "3人達成", count: threeAchieved },
       { label: "5人達成", count: fiveAchieved },
     ],
+    friendDiagnosisFunnel: {
+      measurementStartedAt: FRIEND_FUNNEL_MEASUREMENT_STARTED_AT,
+      cohortDefinition:
+        "計測開始後、選択期間内に自己診断を完了したセッションを、その後の行動まで追跡",
+      ownerFunnel,
+      friendFunnel,
+      attention: {
+        badgeShown: badgeShownOwners.size,
+        badgeClicked: badgeClickedOwners.size,
+        badgeClickRate: rate(badgeClickedOwners.size, badgeShownOwners.size),
+        takoReached: takoReachedOwners.size,
+        takoReachRate: rate(
+          takoReachedOwners.size,
+          diagnosisCohortSessions.size,
+        ),
+      },
+    },
     // 課金ファネル: 結果ページ表示 → カード表示 → 誘導クリック → 購入CTA →
     // Stripe到達 → 決済完了。前半はユニークセッション、後半2つは件数 (サーバ発行)。
     paywallFunnel: [

@@ -23,15 +23,19 @@ interface LockedInviteShareProps {
    * (metadata: { channel, source })。未指定 (ロック状態など) は無発火で挙動を変えない。
    */
   trackSource?: string;
+  ownerToken?: string;
+  inviteCode?: string;
 }
 
 const SHARE_TEXT =
-  "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
+  "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
 
 export function LockedInviteShare({
   inviteUrl,
   compact = false,
   trackSource,
+  ownerToken,
+  inviteCode,
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
 
@@ -46,6 +50,8 @@ export function LockedInviteShare({
   const fire = (channel: "x" | "line" | "copy") => {
     if (!trackSource) return;
     track("friend_invite_clicked", {
+      ownerToken,
+      inviteCode,
       metadata: { channel, source: trackSource },
     });
   };

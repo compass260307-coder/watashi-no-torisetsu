@@ -19,6 +19,7 @@ import type {
   ResolvedDeepDiveSection,
 } from "@/lib/deep-dive-resolve";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import type { ResultLocale } from "@/i18n/result";
 
 // ※「みんなの目」(他己) は /tako/[token] へ移設。ここは自己深掘りのみ。
 
@@ -139,6 +140,86 @@ const CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
+const KO_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "애쓰지 않고 곁에 있는 날",
+    body: "가끔은 무언가를 해 주려 하지 말고, 그저 옆에 있어 보세요. 그것만으로 전해지는 마음이 있어요.",
+  },
+  {
+    heading: "사랑받으려고 너무 애쓰지 않기",
+    body: "열심히 맞춰 주지 않아도, 당신의 존재 자체에서 편안함을 느끼는 사람은 분명 있어요.",
+  },
+  {
+    heading: "바라는 것을 말로 전하기",
+    body: "알아주기를 기다리기보다 ‘이렇게 해 주면 기쁠 것 같아’라고 먼저 말해 보는 연습을 해 보세요.",
+  },
+  {
+    heading: "보답을 바라는 나를 탓하지 않기",
+    body: "돌려받고 싶다는 마음은 자연스러워요. 관계에 진심으로 임하고 있다는 증거이기도 해요.",
+  },
+  {
+    heading: "상대의 침묵을 두려워하지 않기",
+    body: "연락이 적은 날이 있어도 당신을 향한 마음까지 줄었다는 뜻은 아니에요.",
+  },
+];
+
+const KO_LOVE_FAILURE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "너무 많이 맞춰 준 뒤에 생기는 일",
+    body: "계속되던 노력이 멈추는 순간 관계가 흔들릴 수 있어요. 특히 당신에게 반복되기 쉬운 흐름이 있어요.",
+  },
+  {
+    heading: "참아 온 마음이 넘치는 순간",
+    body: "쌓아 둔 감정이 한꺼번에 나올 때, 당신에게는 일정한 패턴이 나타나요.",
+  },
+  {
+    heading: "불안할 때 피해야 할 행동",
+    body: "마음이 흔들릴 때 무심코 하는 행동이 오히려 상대를 멀어지게 할 수 있어요.",
+  },
+  {
+    heading: "엇갈림이 시작되는 신호",
+    body: "잘 풀리지 않는 관계에는 당신이 놓치기 쉬운 공통의 전조가 있어요.",
+  },
+];
+
+const KO_CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "처음부터 만들어 가는 일",
+    body: "정해진 답이 없는 곳에서 스스로 판단하며 형태를 만드는 방식이 잘 맞을 수 있어요.",
+  },
+  {
+    heading: "팀에서 맡기 좋은 역할",
+    body: "앞에서 이끄는지, 뒤에서 받쳐 주는지에 따라 당신의 강점이 살아나는 자리가 달라져요.",
+  },
+  {
+    heading: "깊이 파고드는 전문 분야",
+    body: "한 분야를 깊게 익히는 방식과 폭넓게 다루는 방식 중 더 잘 맞는 쪽이 있어요.",
+  },
+  {
+    heading: "피하는 편이 좋은 환경",
+    body: "당신의 에너지를 서서히 소모시키는 조직에는 분명한 공통점이 있어요.",
+  },
+];
+
+const KO_CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  {
+    heading: "너무 당연해서 놓친 능력",
+    body: "당신이 평범하다고 여기는 행동이 사실은 가장 희소한 강점일 수 있어요.",
+  },
+  {
+    heading: "막다른 순간에 드러나는 저력",
+    body: "어려운 상황에서 자연스럽게 취하는 행동에 다른 사람에게 없는 힘이 숨어 있어요.",
+  },
+  {
+    heading: "주변이 조용히 의지하는 부분",
+    body: "스스로는 잘 모르지만 팀은 오래전부터 그 능력의 도움을 받고 있어요.",
+  },
+  {
+    heading: "키우면 크게 달라지는 자질",
+    body: "조금만 의식해도 커리어의 선택지를 넓혀 줄 잠재력이 있어요.",
+  },
+];
+
 // 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「失敗する恋愛の特徴」/
 // キャリアの「活躍できる仕事」「評価される才能」で共用)。
 // ぼかしたダミー本文の上に解除カードを重ねる (嫌われやすい性格ブロックと同じ構図)。
@@ -148,10 +229,12 @@ function LockedBlock({
   decoyItems,
   cardCopy,
   source,
+  locale,
 }: {
   decoyItems: { heading: string; body: string }[];
   cardCopy: ReactNode;
   source: string;
+  locale: ResultLocale;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl">
@@ -179,7 +262,7 @@ function LockedBlock({
             <LockGlyph size={14} />
           </span>
           <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
-            今すぐロックを解除
+            {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
           <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
             {cardCopy}
@@ -188,7 +271,7 @@ function LockedBlock({
             source={source}
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            今すぐアクセス
+            {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>
@@ -248,6 +331,53 @@ const LOCKED_BLOCK_CONFIG: Record<
   },
 };
 
+const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
+  "나를 좋아하게 된 사람이 읽는 사용설명서": {
+    decoyItems: KO_LOVE_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        완전판 리포트에서 이 결과를 확인해 보세요.
+        <br className="md:hidden" />
+        나의 연애 성향을 더 깊이 이해할 수 있어요.
+      </>
+    ),
+    source: "love_payoff_card",
+  },
+  "연애가 잘 풀리지 않을 때의 패턴": {
+    decoyItems: KO_LOVE_FAILURE_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        완전판 리포트에서,
+        <br className="md:hidden" />
+        연애가 자주 막히는 나만의 패턴을 확인해 보세요.
+      </>
+    ),
+    source: "love_failure_card",
+  },
+  "잘 맞는 일과 피하고 싶은 환경": {
+    decoyItems: KO_CAREER_FIT_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        완전판 리포트에서,
+        <br className="md:hidden" />
+        잘 맞는 일과 피하는 편이 좋은 환경을 확인해 보세요.
+      </>
+    ),
+    source: "career_fit_card",
+  },
+  "일에서 인정받는 뜻밖의 재능": {
+    decoyItems: KO_CAREER_TALENT_DECOY_ITEMS,
+    cardCopy: (
+      <>
+        완전판 리포트에서,
+        <br className="md:hidden" />
+        일할 때 인정받는 나의 뜻밖의 재능을 발견해 보세요.
+      </>
+    ),
+    source: "career_talent_card",
+  },
+};
+
 interface DeepDiveSectionsProps {
   /** サーバ (resolveDeepDiveSections) で解決済みのカテゴリ。未解放は body=null。 */
   sections: ResolvedDeepDiveSection[];
@@ -256,6 +386,8 @@ interface DeepDiveSectionsProps {
   /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②恋愛傾向 ③キャリア傾向)。 */
   number?: string;
   className?: string;
+  loveFooter?: ReactNode;
+  locale?: ResultLocale;
 }
 
 export function DeepDiveSections({
@@ -263,6 +395,8 @@ export function DeepDiveSections({
   sceneImages,
   number = "4",
   className = "",
+  loveFooter,
+  locale = "ja",
 }: DeepDiveSectionsProps) {
   if (sections.length === 0) return null;
 
@@ -272,6 +406,12 @@ export function DeepDiveSections({
   const lockedLabels = locked.map((s) => s.tab).join("・");
 
   const baseNumber = parseInt(number, 10);
+  const lockedBlockConfig =
+    locale === "ko" ? KO_LOCKED_BLOCK_CONFIG : LOCKED_BLOCK_CONFIG;
+  const fallbackLockedHeading =
+    locale === "ko"
+      ? "나를 좋아하게 된 사람이 읽는 사용설명서"
+      : "あなたを好きになった人が読むトリセツ";
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
@@ -314,8 +454,9 @@ export function DeepDiveSections({
                   </h4>
                   {b.locked ? (
                     <LockedBlock
-                      {...(LOCKED_BLOCK_CONFIG[b.heading] ??
-                        LOCKED_BLOCK_CONFIG["あなたを好きになった人が読むトリセツ"])}
+                      {...(lockedBlockConfig[b.heading] ??
+                        lockedBlockConfig[fallbackLockedHeading])}
+                      locale={locale}
                     />
                   ) : (
                     b.body.split("\n\n").map((para, i) => (
@@ -339,6 +480,9 @@ export function DeepDiveSections({
                 {para}
               </p>
             ))
+          )}
+          {sec.key === "love" && loveFooter && (
+            <div className="mt-10">{loveFooter}</div>
           )}
         </div>
       ))}
@@ -373,19 +517,25 @@ export function DeepDiveSections({
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              他の深掘りも解除
+              {locale === "ko" ? "다른 심층 결과도 해제" : "他の深掘りも解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-              完全版で、{lockedLabels}のくわしい深掘りが
-              <br className="md:hidden" />
-              ぜんぶ読めるようになります。
+              {locale === "ko" ? (
+                <>완전판에서 {lockedLabels}의 자세한 내용을 모두 읽을 수 있어요.</>
+              ) : (
+                <>
+                  完全版で、{lockedLabels}のくわしい深掘りが
+                  <br className="md:hidden" />
+                  ぜんぶ読めるようになります。
+                </>
+              )}
             </p>
             {/* 挙動は他の解除カードと同一 (最下部の課金カードへスムーススクロール+パルス) */}
             <PaywallScrollButton
               source="deepdive_card"
               className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              今すぐアクセス
+              {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>
           </div>
         </div>

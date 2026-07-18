@@ -89,6 +89,8 @@ interface TakoShareGateProps {
   qrInviteUrl?: string;
   /** QR中央に埋め込むキャラ画像 (本人の診断キャラ)。level="H" なので読取りは保たれる。 */
   qrImageSrc?: string | null;
+  ownerToken: string;
+  inviteCode: string;
 }
 
 // remaining ごとの見出しコピー。gate はロック時 (remaining>=1) のみ描画される想定。
@@ -112,6 +114,8 @@ export function TakoShareGate({
   onAnsweredTap,
   qrInviteUrl,
   qrImageSrc,
+  ownerToken,
+  inviteCode,
 }: TakoShareGateProps) {
   const answeredCount = Math.min(
     shownAnsweredCount ?? answered.length,
@@ -141,6 +145,8 @@ export function TakoShareGate({
 
   const fireShare = (channel: string) => {
     track("friend_invite_clicked", {
+      ownerToken,
+      inviteCode,
       metadata: { channel, source: "tako_locked_gate" },
     });
   };

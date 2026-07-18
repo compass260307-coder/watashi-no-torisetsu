@@ -5,9 +5,11 @@
 // allowlist にする。新しい課金導線を追加したときはここにも追記する。
 
 export const DIRECT_PAYWALL_SOURCE = "paywall_direct";
+export const FRIEND_INDIVIDUAL_PAYWALL_SOURCE = "friend_individual_paywall";
 
 const PAYWALL_SOURCES = new Set([
   DIRECT_PAYWALL_SOURCE,
+  FRIEND_INDIVIDUAL_PAYWALL_SOURCE,
   "love_payoff_card",
   "love_failure_card",
   "career_fit_card",

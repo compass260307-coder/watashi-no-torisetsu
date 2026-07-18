@@ -9,20 +9,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
 import { resetLocalData } from "@/lib/reset-data";
+import { localeSwitchPath } from "@/lib/locale-switch";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
 
-// ナビ表記ルール: 機能名は「性格診断テスト / 他己診断テスト / 性格タイプ」で統一。
-// (旧表記: 相互理解度 → 他己診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
+// ナビ表記ルール: 機能名は「性格診断テスト / 友達診断テスト / 性格タイプ」で統一。
+// (旧表記: 相互理解度 → 友達診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
 // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
 const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "性格診断テスト", href: "/diagnosis" },
-  // 他己診断テストの href は実行時に上書き (BottomNav と同じ /tako/[token] 解決)。
-  { label: "他己診断テスト", href: "/tako" },
+  // 友達診断テストの href は実行時に上書き (BottomNav と同じ /tako/[token] 解決)。
+  { label: "友達診断テスト", href: "/tako" },
   { label: "性格タイプ", href: "/types" },
   { label: "ログイン", href: "/login" },
 ];
@@ -36,10 +37,11 @@ export default function TopHeader() {
   const [confirmReset, setConfirmReset] = useState(false);
   const pathname = usePathname() ?? "/";
 
-  // 他己診断テストの遷移先を BottomNav と同じルールで解決:
+  // 友達診断テストの遷移先を BottomNav と同じルールで解決:
   //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
   //   クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
   const [takoUrl, setTakoUrl] = useState("/tako");
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
   useEffect(() => {
     let token: string | null = null;
     try {
@@ -49,7 +51,10 @@ export default function TopHeader() {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakoUrl(token ? `/tako/${token}` : "/tako");
+    setOwnerToken(token);
   }, [pathname]);
+
+  const koreanHref = localeSwitchPath(pathname, "ko", ownerToken);
 
   // ドロワーを開いている間は背景スクロールを固定 + Escape で閉じる。
   useEffect(() => {
@@ -70,7 +75,7 @@ export default function TopHeader() {
 
 
   const nav = NAV.map((n) =>
-    n.label === "他己診断テスト" ? { ...n, href: takoUrl } : n,
+    n.label === "友達診断テスト" ? { ...n, href: takoUrl } : n,
   );
 
   // lg (1024px) では項目 5 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
@@ -128,7 +133,7 @@ export default function TopHeader() {
             ),
           )}
 
-          {/* 言語切替 (⚠️ 一旦プレースホルダ。英語は準備中) */}
+          {/* 言語切替。韓国語トップを公開し、日本語/韓国語を相互に移動可能にする。 */}
           <div className="relative">
             <button
               type="button"
@@ -160,6 +165,13 @@ export default function TopHeader() {
                   >
                     日本語
                   </div>
+                  <Link
+                    href={koreanHref}
+                    onClick={() => setLangOpen(false)}
+                    className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
+                  >
+                    한국어
+                  </Link>
                   <div className="px-4 py-2.5 text-[15px] text-[#B4B4C4]">
                     English（準備中）
                   </div>
@@ -266,11 +278,19 @@ export default function TopHeader() {
               </Link>
             ),
           )}
-          {/* SP でも言語表示 (プレースホルダ) */}
+          {/* SP の言語切替 */}
           <div className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold" style={{ color: NAVY }}>
             <GlobeIcon />
             日本語
           </div>
+          <Link
+            href={koreanHref}
+            tabIndex={open ? 0 : -1}
+            onClick={() => setOpen(false)}
+            className="pb-3.5 text-[17px] font-bold text-[#5B5BEF]"
+          >
+            한국어로 보기
+          </Link>
 
           {/* データをリセット (誤操作防止に確認ステップを挟む) */}
           <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">

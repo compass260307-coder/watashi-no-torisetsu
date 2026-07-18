@@ -90,6 +90,8 @@ interface TakoLockedStateProps {
   ownerType32: ThirtyTwoTypeId | null;
   /** ④ Path2: 友達を自己診断へ誘う導線先 (診断LP=サイトルート)。 */
   selfDiagnoseUrl: string;
+  ownerToken: string;
+  inviteCode: string;
 }
 
 export function TakoLockedState({
@@ -103,6 +105,8 @@ export function TakoLockedState({
   previewShareMode,
   ownerType32,
   selfDiagnoseUrl,
+  ownerToken,
+  inviteCode,
 }: TakoLockedStateProps) {
   const serverAnswered = Math.min(answered.length, threshold);
 
@@ -191,6 +195,8 @@ export function TakoLockedState({
                 ? preferFaceImage(thirtyTwoImagePath(ownerType32))
                 : null
             }
+            ownerToken={ownerToken}
+            inviteCode={inviteCode}
           />
         </TakoRevealStage>
       </section>
@@ -240,6 +246,13 @@ export function TakoLockedState({
           sendMode?.kind === "diagnose"
             ? diagnoseText(sendMode.friendName ?? "友達")
             : undefined
+        }
+        ownerToken={ownerToken}
+        inviteCode={inviteCode}
+        trackingKind={
+          sendMode?.kind === "diagnose"
+            ? "self_diagnosis"
+            : "friend_evaluation"
         }
         onSent={() => {
           // 招待(自分の評価募集)のときだけ空スロットを楽観 pending へ。

@@ -51,3 +51,11 @@ public/characters/v3/characters/
 # ローカル軽量化ツール (git管理しない)
 /public/_gallery.html
 /public/_routes.html
+
+# ローカル生成物・素材・秘密情報 (本番/Gitへ含めない)
+/characters_32/
+/env-secrets.zip
+/output/
+/tmp/
+/public/logo-hero.psd
+/scripts/create_mbti_reel.py

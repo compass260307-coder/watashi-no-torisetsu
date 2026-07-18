@@ -10,6 +10,7 @@
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { SCENE_CAUTION_ID } from "@/lib/scroll-to-paywall";
 import type { SceneCaution } from "@/lib/part-two-resolve";
+import type { ResultLocale } from "@/i18n/result";
 
 // 鍵アイコン (RelationsLocked / DeepDiveSections と同一形状)。
 function LockGlyph({ size = 18 }: { size?: number }) {
@@ -39,15 +40,29 @@ const SCENE_ITEMS: { label: string; color: string }[] = [
   { label: "家族といる時", color: "#F2C14E" },
 ];
 
+const KO_SCENE_ITEMS: { label: string; color: string }[] = [
+  { label: "친구와 있을 때", color: "#56BFE8" },
+  { label: "연인과 있을 때", color: "#F48BAE" },
+  { label: "커리어에서", color: "#4CAF7D" },
+  { label: "가족과 있을 때", color: "#F2C14E" },
+];
+
 // 解放済みの実表示。武器/関係別と同じ組版 (枠なし2カラム・太字タイトル + 字下げ本文)。
 // アイコンは「注意点」なので警告三角。色はティザーの鍵円と同じシーン別カラー。
-export function SceneCautionList({ items }: { items: SceneCaution[] }) {
+export function SceneCautionList({
+  items,
+  locale = "ja",
+}: {
+  items: SceneCaution[];
+  locale?: ResultLocale;
+}) {
+  const sceneItems = locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
   const colorOf = (scene: string) =>
-    SCENE_ITEMS.find((it) => it.label === scene)?.color ?? "#2E2E5C";
+    sceneItems.find((it) => it.label === scene)?.color ?? "#2E2E5C";
   return (
     <div className="mt-10">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-        シーン別の注意点
+        {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
       <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
         {items.map((it) => (
@@ -85,11 +100,16 @@ export function SceneCautionList({ items }: { items: SceneCaution[] }) {
   );
 }
 
-export function SceneCautionTeaser() {
+export function SceneCautionTeaser({
+  locale = "ja",
+}: {
+  locale?: ResultLocale;
+}) {
+  const sceneItems = locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
   return (
     <div className="mt-10">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-        シーン別の注意点
+        {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
       <div
         id={SCENE_CAUTION_ID}
@@ -97,7 +117,7 @@ export function SceneCautionTeaser() {
       >
         {/* 鍵付きの円 (SP 2列 / md 4列) */}
         <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
-          {SCENE_ITEMS.map((item) => (
+          {sceneItems.map((item) => (
             <div key={item.label} className="flex flex-col items-center gap-2.5">
               <span
                 className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
@@ -118,18 +138,24 @@ export function SceneCautionTeaser() {
             <LockGlyph size={14} />
           </span>
           <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-            今すぐロックを解除
+            {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-            完全版のレポートを入手して、これらの結果を見てみましょう。
-            <br className="md:hidden" />
-            シーンごとのつまずきポイントが分かります。
+            {locale === "ko" ? (
+              "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
+            ) : (
+              <>
+                完全版のレポートを入手して、これらの結果を見てみましょう。
+                <br className="md:hidden" />
+                シーンごとのつまずきポイントが分かります。
+              </>
+            )}
           </p>
           <PaywallScrollButton
             source="scene_caution_card"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            今すぐアクセス
+            {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>

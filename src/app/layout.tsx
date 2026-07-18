@@ -6,6 +6,13 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { BottomNav } from "@/components/BottomNav";
 
+const GOOGLE_TAG_MANAGER_ID = "GTM-K39CJGCF";
+const GOOGLE_TAG_MANAGER_SCRIPT = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`;
+
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
   // 900 は Phase 1.5-α Brand v2 ヒーローの h1 / CTA (font-black) で使用
@@ -151,12 +158,24 @@ export default function RootLayout({
       lang="ja"
       className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_MANAGER_SCRIPT }} />
+      </head>
       <body
         className="min-h-dvh flex flex-col"
         // 全ページ共通のボトムナビ (fixed) に本文が隠れないよう、バー実測高
         // (56px 相当) + iOS セーフエリア分の余白を最下部に確保する。
         style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}
       >
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GOOGLE_TAG_MANAGER_ID}`}
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+            title="Google Tag Manager"
+          />
+        </noscript>
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
         {children}

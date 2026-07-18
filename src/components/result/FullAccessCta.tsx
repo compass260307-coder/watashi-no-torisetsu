@@ -9,8 +9,11 @@
 // 既に full の場合 (409 already_full) はページを再読込して本文表示へ戻す。
 
 import { useState } from "react";
+import { normalizePaywallSource } from "@/lib/paywall-source";
+import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
 import { track } from "@/lib/track";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
+import type { ResultLocale } from "@/i18n/result";
 
 export function FullAccessCta({
   children = "¥499で全部よむ",
@@ -22,10 +25,15 @@ export function FullAccessCta({
   // 例: Safari シークレット/SPでCookie不在 かつ URL に owner_token が無い (/aisho) ケース。
   // /me・/tako は owner_token を渡すのでここには来ない (常に Stripe へ到達)。
   unauthHref = "/diagnosis",
+  locale = "ja",
+  source,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
   unauthHref?: string;
+  locale?: ResultLocale;
+  /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
+  source?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +42,9 @@ export function FullAccessCta({
     if (loading) return;
     setLoading(true);
     setError(null);
-    const paywallSource = getLastPaywallSource();
+    const paywallSource = source
+      ? normalizePaywallSource(source)
+      : getLastPaywallSource();
     // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
     // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
     track("purchase_cta_clicked", {
@@ -42,6 +52,7 @@ export function FullAccessCta({
       metadata: {
         page: window.location.pathname.split("/")[1] || "top",
         source: paywallSource,
+        locale,
       },
     });
     try {
@@ -51,6 +62,7 @@ export function FullAccessCta({
         body: JSON.stringify({
           ...(ownerToken ? { owner_token: ownerToken } : {}),
           paywall_source: paywallSource,
+          locale,
         }),
       });
       // 既に課金済み → 本文が見られる状態なので再読込。
@@ -64,19 +76,31 @@ export function FullAccessCta({
         return;
       }
       if (!res.ok) {
-        setError("うまく開けませんでした。少し待ってからもう一度お試しください。");
+        setError(
+          locale === "ko"
+            ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
+            : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+        );
         setLoading(false);
         return;
       }
-      const data = (await res.json()) as { url?: string };
-      if (data.url) {
-        window.location.href = data.url;
+      const data = (await res.json()) as { url?: unknown };
+      if (typeof data.url === "string" && data.url.length > 0) {
+        redirectToFullAccessCheckout(data.url);
         return;
       }
-      setError("うまく開けませんでした。少し待ってからもう一度お試しください。");
+      setError(
+        locale === "ko"
+          ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
+          : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+      );
       setLoading(false);
     } catch {
-      setError("通信に失敗しました。電波のいい場所でもう一度お試しください。");
+      setError(
+        locale === "ko"
+          ? "통신에 실패했어요. 연결 상태가 좋은 곳에서 다시 시도해 주세요."
+          : "通信に失敗しました。電波のいい場所でもう一度お試しください。",
+      );
       setLoading(false);
     }
   }
@@ -90,13 +114,21 @@ export function FullAccessCta({
         className="flex items-center justify-center w-full bg-[#2E2E5C] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] transition-all disabled:opacity-60 disabled:pointer-events-none"
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
-        {loading ? "ひらいています…" : error ? "もう一度ためす →" : children}
+        {loading
+          ? locale === "ko" ? "열고 있어요…" : "ひらいています…"
+          : error
+            ? locale === "ko" ? "다시 시도하기 →" : "もう一度ためす →"
+            : children}
       </button>
       {error && (
         <p className="mt-3 text-center text-[13px] font-bold text-[#E5544B]">
           {error}
           <br />
-          <span className="text-[#8A8AA3]">上のボタンでもう一度お試しください。</span>
+          <span className="text-[#8A8AA3]">
+            {locale === "ko"
+              ? "위 버튼으로 다시 시도해 주세요."
+              : "上のボタンでもう一度お試しください。"}
+          </span>
         </p>
       )}
     </div>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-// /report/[ownerToken] は個人レポートページのため noindex
+// PDFダウンロードとPDF生成専用ページは個人向けのため noindex
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };

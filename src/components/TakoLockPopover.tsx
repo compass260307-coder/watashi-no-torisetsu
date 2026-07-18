@@ -1,8 +1,8 @@
 "use client";
 
-// 他己診断ロック中ポップオーバー。
+// 友達診断ロック中ポップオーバー。
 //   自己診断が終わっていない (owner_token 無し) 状態でボトムナビの
-//   「他己診断」を押したときに、ナビの少し上からぴょこっと出す小カード。
+//   「友達診断」を押したときに、ナビの少し上からぴょこっと出す小カード。
 //   背景は暗くしない (モーダルではなく吹き出し)。外側タップ / Esc / ✕ で閉じ、
 //   外側タップは下の要素の操作 (別タブへの遷移など) をブロックしない。
 //   デザインは自己診断結果ページ (/me) に合わせる: 白カード + #2E2E5C 見出し +
@@ -56,12 +56,12 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
   };
 
   return createPortal(
-    // ナビ (約58px) のすぐ上に固定。ナビ中央=他己診断タブへ下向きの三角で接続する。
+    // ナビ (約58px) のすぐ上に固定。ナビ中央=友達診断タブへ下向きの三角で接続する。
     <div
       className="fixed inset-x-0 z-50 flex justify-center px-5 animate-modal-slide-up"
       style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
       role="dialog"
-      aria-label="他己診断はロック中"
+      aria-label="友達診断はロック中"
     >
       <div
         ref={cardRef}
@@ -73,7 +73,7 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
       >
         {/* 見出し (結果ページの font-black 見出しに合わせる) */}
         <h2 className="mb-1.5 text-[15px] font-black text-[#2E2E5C]">
-          他己診断はまだロック中
+          友達診断はまだロック中
         </h2>
         <p className="mb-3.5 text-[12px] leading-[1.75] text-[#6B7280]">
           自己診断が完了すると、
@@ -89,7 +89,7 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
           テストを受ける
         </button>
 
-        {/* 下向き三角: 他己診断タブ (5列の中央) を指す */}
+        {/* 下向き三角: 友達診断タブ (5列の中央) を指す */}
         <span
           aria-hidden="true"
           className="absolute -bottom-[7px] left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 bg-white"

@@ -7,6 +7,7 @@ interface LikertScaleProps {
   onChange: (value: AnswerValue) => void;
   leftLabel?: string;
   rightLabel?: string;
+  optionLabels?: Partial<Record<AnswerValue, string>>;
   // "lg": PC (md+) で○を一回り大きくする (横幅の広い自己診断ページ用)。
   //   friend フロー等の狭い画面は既定 "base" のまま (追加クラスなし)。
   size?: "base" | "lg";
@@ -92,6 +93,7 @@ export function LikertScale({
   onChange,
   leftLabel = "強くそう思う",
   rightLabel = "強くそう思わない",
+  optionLabels,
   size = "base",
 }: LikertScaleProps) {
   const isLg = size === "lg";
@@ -119,7 +121,7 @@ export function LikertScale({
               key={v}
               type="button"
               onClick={() => onChange(v)}
-              aria-label={style.label}
+              aria-label={optionLabels?.[v] ?? style.label}
               aria-pressed={isSelected}
               className={[
                 "rounded-full border-2 transition-all duration-150 outline-none flex-shrink-0",

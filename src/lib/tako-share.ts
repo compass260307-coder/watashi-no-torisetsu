@@ -6,7 +6,7 @@
 import { withRef } from "./acquisition-link";
 
 export const SHARE_TEXT =
-  "友達から見たわたしを教えて！「ワタシのトリセツ」で他己診断テストができるよ";
+  "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
 
 /** LINE トークに文面+招待URLを流し込む送信URL (a要素の href で JS 無しでも起動できる)。 */
 export function lineShareUrl(

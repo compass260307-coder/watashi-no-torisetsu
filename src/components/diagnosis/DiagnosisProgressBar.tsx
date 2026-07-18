@@ -6,6 +6,8 @@ interface DiagnosisProgressBarProps {
   // 「前のページ」タップ時 (page 0 は上位ページへ抜ける想定)。
   // 省略時は戻る導線を出さず、ピルだけを右寄せで表示する (前ページが無い画面用)。
   onPrev?: () => void;
+  previousLabel?: string;
+  progressAriaLabel?: string;
 }
 
 // 16Personalities のテスト画面に寄せた自己診断用の上部バー。
@@ -18,6 +20,8 @@ export function DiagnosisProgressBar({
   currentQuestion,
   totalQuestions,
   onPrev,
+  previousLabel = "前のページ",
+  progressAriaLabel,
 }: DiagnosisProgressBarProps) {
   const percent = Math.min(
     100,
@@ -44,7 +48,7 @@ export function DiagnosisProgressBar({
                 strokeLinejoin="round"
               />
             </svg>
-            前のページ
+            {previousLabel}
           </button>
         ) : (
           <span aria-hidden="true" />
@@ -57,7 +61,9 @@ export function DiagnosisProgressBar({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={percent}
-          aria-label={`質問 ${currentQuestion} / ${totalQuestions}`}
+          aria-label={
+            progressAriaLabel ?? `質問 ${currentQuestion} / ${totalQuestions}`
+          }
         >
           <div
             className="h-full rounded-full bg-[#5B5BEF] transition-all duration-500 ease-out"

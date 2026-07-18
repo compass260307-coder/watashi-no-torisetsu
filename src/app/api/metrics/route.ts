@@ -59,6 +59,37 @@ export async function GET(request: NextRequest) {
     purchaseConversionRate: round(s.purchaseConversionRate),
     paidUsers: s.paidUsers,
     revenueJpy: s.revenueJpy,
+    // 友達診断コホートファネル（2026-07-18 計測開始）
+    friendFunnelMeasurementStartedAt:
+      s.friendDiagnosisFunnel.measurementStartedAt,
+    friendFunnelDiagnosisCompleted:
+      s.friendDiagnosisFunnel.ownerFunnel[0]?.count ?? 0,
+    friendFunnelResultReached:
+      s.friendDiagnosisFunnel.ownerFunnel[1]?.count ?? 0,
+    friendFunnelTakoReached:
+      s.friendDiagnosisFunnel.ownerFunnel[2]?.count ?? 0,
+    friendFunnelTakoReachRate: round(
+      s.friendDiagnosisFunnel.attention.takoReachRate,
+    ),
+    friendFunnelInviteAction:
+      s.friendDiagnosisFunnel.ownerFunnel[3]?.count ?? 0,
+    friendFunnelFriendReached:
+      s.friendDiagnosisFunnel.ownerFunnel[4]?.count ?? 0,
+    friendFunnelOwnerWithAnswer:
+      s.friendDiagnosisFunnel.ownerFunnel[5]?.count ?? 0,
+    friendFunnelFriendLandingSessions:
+      s.friendDiagnosisFunnel.friendFunnel[0]?.count ?? 0,
+    friendFunnelFriendAnswerSessions:
+      s.friendDiagnosisFunnel.friendFunnel[1]?.count ?? 0,
+    friendFunnelSelfDiagnosisClicks:
+      s.friendDiagnosisFunnel.friendFunnel[2]?.count ?? 0,
+    friendFunnelChildDiagnosisCompleted:
+      s.friendDiagnosisFunnel.friendFunnel[3]?.count ?? 0,
+    takoBadgeShown: s.friendDiagnosisFunnel.attention.badgeShown,
+    takoBadgeClicked: s.friendDiagnosisFunnel.attention.badgeClicked,
+    takoBadgeClickRate: round(
+      s.friendDiagnosisFunnel.attention.badgeClickRate,
+    ),
   };
 
   const format = request.nextUrl.searchParams.get("format");

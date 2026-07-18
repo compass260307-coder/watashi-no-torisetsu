@@ -61,6 +61,9 @@ interface TakoSendSheetProps {
   subtitle?: string;
   /** シェア文面上書き (未指定は評価招待の既定文)。 */
   shareText?: string;
+  ownerToken: string;
+  inviteCode: string;
+  trackingKind?: "friend_evaluation" | "self_diagnosis";
 }
 
 export function TakoSendSheet({
@@ -73,6 +76,9 @@ export function TakoSendSheet({
   title,
   subtitle,
   shareText = SHARE_TEXT,
+  ownerToken,
+  inviteCode,
+  trackingKind = "friend_evaluation",
 }: TakoSendSheetProps) {
   // reduced は一度だけ遅延評価 (シートは開いた時=クライアントでのみ描画)。
   const [reduced] = useState(
@@ -101,9 +107,16 @@ export function TakoSendSheet({
   const pickerMessage = `${shareText} ${withRef(inviteUrl, "line")}`;
 
   const fire = (channel: string) =>
-    track("friend_invite_clicked", {
-      metadata: { channel, source: "tako_send_sheet" },
-    });
+    track(
+      trackingKind === "self_diagnosis"
+        ? "friend_to_diagnosis_invite_clicked"
+        : "friend_invite_clicked",
+      {
+        ownerToken,
+        inviteCode,
+        metadata: { channel, source: "tako_send_sheet" },
+      },
+    );
 
   // LINEで送る: LIFFピッカーが使えれば最優先、無ければ URL 起動 (a要素のデフォルト遷移)。
   const handleLine = async (e: React.MouseEvent<HTMLAnchorElement>) => {

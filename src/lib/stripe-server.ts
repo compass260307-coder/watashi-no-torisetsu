@@ -39,9 +39,11 @@ export function getPremiumPriceId(): string | null {
   return process.env.STRIPE_PRICE_ID ?? null;
 }
 
-// PR1: ¥499 買い切り「フルアクセス(全解放)」の Price ID (one-time)。
-// Stripe ダッシュボードで Product「フルアクセス」+ Price ¥499/one-time を作成し、
-// その Price ID を STRIPE_PRICE_FULL_ACCESS に登録する。
-export function getFullAccessPriceId(): string | null {
-  return process.env.STRIPE_PRICE_FULL_ACCESS ?? null;
+// フルアクセス (買い切り) のロケール別 Price ID。
+// 日本版 ¥499 は STRIPE_PRICE_FULL_ACCESS、韓国版 ₩4,900 は
+// STRIPE_PRICE_FULL_ACCESS_KRW に分離し、通貨の取り違えを防ぐ。
+export function getFullAccessPriceId(locale: "ja" | "ko" = "ja"): string | null {
+  return locale === "ko"
+    ? process.env.STRIPE_PRICE_FULL_ACCESS_KRW ?? null
+    : process.env.STRIPE_PRICE_FULL_ACCESS ?? null;
 }

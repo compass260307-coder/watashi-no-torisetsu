@@ -10,8 +10,23 @@
 
 import { useEffect, useState } from "react";
 import { detectInAppBrowser } from "@/lib/in-app-browser";
+import type { InAppBrowserCopy } from "@/i18n/diagnosis";
 
-export function InAppBrowserModal() {
+const DEFAULT_COPY: InAppBrowserCopy = {
+  title: "SafariやChromeでの利用を推奨しています",
+  description:
+    "LINEやInstagramなどのSNSアプリ内で診断すると、結果が保存されなかったり、エラーが発生する場合があります。",
+  copyButton: "リンクをコピー",
+  copiedButton: "コピーしました ✓",
+  copyFallback: "うまくコピーできない場合は、下のURLを長押しでコピー：",
+  continueButton: "このまま続ける",
+};
+
+export function InAppBrowserModal({
+  copy = DEFAULT_COPY,
+}: {
+  copy?: InAppBrowserCopy;
+} = {}) {
   // SSR とハイドレーション不整合を避けるため、検出はマウント後 (クライアント) にだけ行う。
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -20,10 +35,14 @@ export function InAppBrowserModal() {
 
   useEffect(() => {
     const ua = navigator.userAgent;
-    if (detectInAppBrowser(ua)) {
+    if (!detectInAppBrowser(ua)) return;
+
+    const timer = window.setTimeout(() => {
       setCurrentUrl(window.location.href);
       setOpen(true);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   if (!open) return null;
@@ -53,10 +72,10 @@ export function InAppBrowserModal() {
           id="inapp-modal-title"
           className="text-[#2E2E5C] font-black text-lg leading-snug mb-3"
         >
-          SafariやChromeでの利用を推奨しています
+          {copy.title}
         </h2>
         <p className="text-[#2E2E5C]/80 text-sm leading-relaxed mb-5">
-          LINEやInstagramなどのSNSアプリ内で診断すると、結果が保存されなかったり、エラーが発生する場合があります。
+          {copy.description}
         </p>
 
         {/* リンクをコピー (sunYellow chunky ボタン) */}
@@ -65,14 +84,14 @@ export function InAppBrowserModal() {
           onClick={handleCopy}
           className="block w-full bg-[#5B5BEF] text-white font-black text-base px-6 py-4 rounded-full shadow-[0_8px_20px_rgba(91,91,239,0.30)] hover:translate-y-0.5 hover:shadow-[0_4px_12px_rgba(91,91,239,0.30)] active:translate-y-1 active:shadow-[0_0_0_#2E2E5C] transition-all text-center"
         >
-          {copied ? "コピーしました ✓" : "リンクをコピー"}
+          {copied ? copy.copiedButton : copy.copyButton}
         </button>
 
         {/* clipboard 不可時のフォールバック: URL を直接表示して長押しコピー */}
         {copyFailed && currentUrl && (
           <div className="mt-3 rounded-xl border-2 border-[#0094D8]/30 bg-[#E4E0F5]/40 px-3 py-2">
             <p className="text-[10px] text-[#2E2E5C]/60 font-bold mb-1">
-              うまくコピーできない場合は、下のURLを長押しでコピー：
+              {copy.copyFallback}
             </p>
             <p className="text-[11px] text-[#2E2E5C] font-bold break-all select-all">
               {currentUrl}
@@ -87,7 +106,7 @@ export function InAppBrowserModal() {
             onClick={() => setOpen(false)}
             className="text-[#2E2E5C]/60 font-bold text-sm underline hover:text-[#5B5BEF] transition-colors"
           >
-            このまま続ける
+            {copy.continueButton}
           </button>
         </div>
       </div>

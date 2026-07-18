@@ -22,19 +22,21 @@ import { rotateSession, getSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
-// .env.local で NEXT_PUBLIC_SITE_URL="" 等の空文字も弾くため || を使用 (?? は不可)
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+function localeOf(request: NextRequest): "ja" | "ko" {
+  return request.nextUrl.searchParams.get("locale") === "ko" ? "ko" : "ja";
+}
 
 function errorRedirect(request: NextRequest, reason: string): NextResponse {
   // request.nextUrl は常に絶対 URL なので、これを base に取れば SITE_URL の
   // 値に依存せず安全。Vercel / localhost / preview 全環境で動く。
   const url = new URL("/auth/error", request.nextUrl);
   url.searchParams.set("reason", reason);
+  if (localeOf(request) === "ko") url.searchParams.set("locale", "ko");
   return NextResponse.redirect(url);
 }
 
 export async function GET(request: NextRequest) {
+  const locale = localeOf(request);
   const token = request.nextUrl.searchParams.get("token");
   if (!token) {
     return errorRedirect(request, "missing_token");
@@ -84,6 +86,7 @@ export async function GET(request: NextRequest) {
   if (conflict && !confirmed) {
     const url = new URL("/login/confirm", request.nextUrl);
     url.searchParams.set("token", token);
+    if (locale === "ko") url.searchParams.set("locale", "ko");
     return NextResponse.redirect(url);
   }
 
@@ -138,6 +141,7 @@ export async function GET(request: NextRequest) {
     .eq("id", userId)
     .maybeSingle();
   const ownerToken = (userRow?.owner_token as string | null) ?? null;
-  const dest = ownerToken ? `/me/${ownerToken}` : "/";
+  const prefix = locale === "ko" ? "/ko" : "";
+  const dest = ownerToken ? `${prefix}/me/${ownerToken}` : prefix || "/";
   return NextResponse.redirect(new URL(dest, request.nextUrl));
 }

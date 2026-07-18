@@ -16,9 +16,11 @@ export function FriendIndividualGuide({
   diagnoseHref = "/diagnosis",
   // 指定時のみ診断CTAクリックを friend_to_diagnosis_clicked で計測 (評価者→診断の転換KPI)。
   diagnoseTrackSource,
+  inviteCode,
 }: {
   diagnoseHref?: string;
   diagnoseTrackSource?: string;
+  inviteCode?: string;
 } = {}) {
   return (
     <>
@@ -59,7 +61,7 @@ export function FriendIndividualGuide({
           </div>
         </section>
 
-        {/* ヒーロー下: 他己診断の案内ページ (tako ロック空状態) と同じ価値説明セクション。
+        {/* ヒーロー下: 友達診断の案内ページ (tako ロック空状態) と同じ価値説明セクション。
             「こんなことが見えます」4項目グリッド + 進み方 3ステップ。 */}
         <div className="mx-auto max-w-[1080px] pt-12 md:pt-16">
           <TakoValueSections stepsFirst />
@@ -71,6 +73,7 @@ export function FriendIndividualGuide({
             <GuideDiagnoseButton
               href={diagnoseHref}
               trackSource={diagnoseTrackSource}
+              inviteCode={inviteCode}
             >
               性格診断する
             </GuideDiagnoseButton>

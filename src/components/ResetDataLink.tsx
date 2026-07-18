@@ -7,13 +7,18 @@
 
 import { useState } from "react";
 import { resetLocalData } from "@/lib/reset-data";
+import type { ResultLocale } from "@/i18n/result";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
 
-export function ResetDataLink() {
+export function ResetDataLink({
+  locale = "ja",
+}: {
+  locale?: ResultLocale;
+}) {
   const [confirm, setConfirm] = useState(false);
 
   return (
@@ -28,12 +33,16 @@ export function ResetDataLink() {
           className="inline-flex items-center gap-1.5 text-[14px] font-bold text-[#B4415C] transition-colors hover:text-[#8f2f45]"
         >
           <ResetIcon />
-          診断データをリセットして最初からやり直す
+          {locale === "ko"
+            ? "진단 데이터를 초기화하고 처음부터 다시 하기"
+            : "診断データをリセットして最初からやり直す"}
         </button>
       ) : (
         <div className="rounded-2xl bg-[#FBE9EC] p-5 text-left">
           <p className="text-[13px] font-bold leading-relaxed text-[#8f2f45]">
-            診断結果や招待リンクがこの端末から消えます。もとに戻せません。
+            {locale === "ko"
+              ? "진단 결과와 초대 링크가 이 기기에서 삭제되며 되돌릴 수 없어요."
+              : "診断結果や招待リンクがこの端末から消えます。もとに戻せません。"}
           </p>
           <div className="mt-4 flex gap-2.5">
             <button
@@ -41,7 +50,7 @@ export function ResetDataLink() {
               onClick={resetLocalData}
               className="flex-1 rounded-full bg-[#B4415C] py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
             >
-              リセットする
+              {locale === "ko" ? "초기화" : "リセットする"}
             </button>
             <button
               type="button"
@@ -49,7 +58,7 @@ export function ResetDataLink() {
               className="flex-1 rounded-full bg-white py-3 text-[14px] font-bold transition-colors hover:bg-[#f3f3f7]"
               style={{ color: NAVY }}
             >
-              キャンセル
+              {locale === "ko" ? "취소" : "キャンセル"}
             </button>
           </div>
         </div>

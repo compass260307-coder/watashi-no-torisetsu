@@ -13,11 +13,13 @@ import { track } from "@/lib/track";
 export function GuideDiagnoseButton({
   href = "/diagnosis",
   trackSource,
+  inviteCode,
   children,
 }: {
   href?: string;
   /** 指定時のみ friend_to_diagnosis_clicked を計測 (評価者ページ用)。未指定=計測なし。 */
   trackSource?: string;
+  inviteCode?: string;
   children: ReactNode;
 }) {
   return (
@@ -27,6 +29,7 @@ export function GuideDiagnoseButton({
         trackSource
           ? () =>
               track("friend_to_diagnosis_clicked", {
+                inviteCode,
                 metadata: { source: trackSource },
               })
           : undefined

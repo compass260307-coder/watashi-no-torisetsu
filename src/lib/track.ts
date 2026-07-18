@@ -63,6 +63,8 @@ export function isPreviewMode(): boolean {
 // CLAUDE.md の KPI 規約名に統一する。新規イベントを足すときはまずここに追記し、
 // admin/stats/route.ts の集計名と必ず一致させること。旧名は stats 側で暫定併合中。
 //
+//   top_viewed                  トップページ表示 (metadata.locale/page)
+//   top_cta_clicked             トップ→診断 CTA (metadata.locale/destination)
 //   diagnosis_started            自己診断の開始
 //   diagnosis_question_answered  設問到達 (metadata.questionIndex) ※内部計測
 //   diagnosis_completed          自己診断の完了 (metadata.typeId)
@@ -71,11 +73,15 @@ export function isPreviewMode(): boolean {
 //   friend_answer_scale_completed 友達スケール回答の完了   (旧 friend_v2_scale_completed) ※内部計測
 //   friend_answer_completed      友達回答の完了            (旧 friend_v2_completed)
 //   friend_to_diagnosis_clicked  友達→自分も診断 CTA       (旧 friend_v2_self_cta_clicked)
+//   friend_to_diagnosis_invite_clicked 本人が回答済みの友達へ自己診断を案内
 //   friend_invite_clicked        自分の結果から友達を招待  (旧 share_clicked kind:friend_invite)
 //   share_clicked                拡散シェア (metadata.kind: character | brag)
 //   result_viewed                結果(/me)の初回表示 (metadata.friendCount, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
 //   three_friends_unlocked       友達3人達成 (ownerToken)
+//   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
+//   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
+//   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
 //
 // ----- 課金ファネル (2026-07-13 追加) -----
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant, ownerToken)
@@ -96,6 +102,15 @@ export function track(
 ) {
   if (isPreviewMode()) return;
 
+  const locale =
+    typeof window !== "undefined" && window.location.pathname.startsWith("/ko")
+      ? "ko"
+      : "ja";
+  const localizedMetadata = {
+    ...(params?.metadata ?? {}),
+    locale,
+  };
+
   // GA4 へ同じイベントを転送 (gtag.js が読めている本番のみ)。Supabase 集計と二重化するが、
   // GA 側でもコンバージョン計測できるようにする。gtag が無い環境 (dev/未設定) では無害にスキップ。
   try {
@@ -106,7 +121,7 @@ export function track(
       w.gtag("event", eventName, {
         invite_code: params?.inviteCode ?? undefined,
         owner_token: params?.ownerToken ?? undefined,
-        ...(params?.metadata ?? {}),
+        ...localizedMetadata,
       });
     }
   } catch {
@@ -122,7 +137,8 @@ export function track(
         sessionId: getSessionId(),
         inviteCode: params?.inviteCode ?? null,
         ownerToken: params?.ownerToken ?? null,
-        metadata: params?.metadata ?? {},
+        locale,
+        metadata: localizedMetadata,
       }),
     }).catch(() => {});
   } catch {

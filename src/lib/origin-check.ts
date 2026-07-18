@@ -12,6 +12,18 @@ function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.has(origin)) return true;
 
+  // 環境ごとに運営側が明示した正規URLも許可する。Previewの固定 alias など、
+  // VERCEL_URL / VERCEL_BRANCH_URL には入らないプロジェクト所有ホストを対象にする。
+  // 値は完全一致で比較し、任意の *.vercel.app は許可しない。
+  try {
+    const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (configuredSiteUrl && new URL(configuredSiteUrl).origin === origin) {
+      return true;
+    }
+  } catch {
+    // 不正な環境変数は許可せず、既存のVercelホスト判定へ進む。
+  }
+
   // 現在のVercelデプロイに割り当てられたホストだけを許可する。
   // 任意の *.vercel.app を許可すると、攻撃者自身のVercelサイトも通ってしまう。
   try {

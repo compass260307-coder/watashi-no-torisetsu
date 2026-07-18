@@ -11,6 +11,7 @@
 // 既存の DimensionPolarityBar / FacetBarChart はデッドかつ仕様が異なるため使わない (新規実装)。
 
 import type { BigFiveDimension } from "@/lib/types";
+import type { ResultLocale } from "@/i18n/result";
 
 interface AxisMeta {
   dim: BigFiveDimension;
@@ -37,6 +38,14 @@ const AXES: readonly AxisMeta[] = [
   { dim: "N", title: "神経症傾向", left: "安定", right: "繊細", color: "#F25E62" },
 ];
 
+const KO_AXES: readonly AxisMeta[] = [
+  { dim: "O", title: "개방성", left: "현실적", right: "탐구적", color: "#E4AE3A" },
+  { dim: "C", title: "성실성", left: "유연함", right: "계획적", color: "#88619A" },
+  { dim: "E", title: "외향성", left: "내향적", right: "외향적", color: "#4298B4" },
+  { dim: "A", title: "우호성", left: "독립적", right: "협력적", color: "#33A474" },
+  { dim: "N", title: "정서적 민감성", left: "안정적", right: "섬세함", color: "#F25E62" },
+];
+
 /**
  * 0-10 スコアを 0-100% に変換 (中点 5.0 → 50%)。
  * 欠損時は 5.0 (= 50% = ちょうど中央) にフォールバック。最後に 0-100 へ clamp。
@@ -53,13 +62,20 @@ function toPercent(score: number | undefined): number {
  *   |d| > 20        → ◯◯寄り
  * ◯◯ は value が傾いている側の極ラベル。
  */
-function leanLabel(value: number, left: string, right: string): string {
+function leanLabel(
+  value: number,
+  left: string,
+  right: string,
+  locale: ResultLocale,
+): string {
   const d = value - 50;
   const ad = Math.abs(d);
-  if (ad <= 7) return "ほぼ中央";
+  if (ad <= 7) return locale === "ko" ? "가운데에 가까움" : "ほぼ中央";
   const pole = d > 0 ? right : left;
-  if (ad <= 20) return `やや${pole}寄り`;
-  return `${pole}寄り`;
+  if (locale === "ko") {
+    return ad <= 20 ? `조금 ${pole}` : `${pole} 성향`;
+  }
+  return ad <= 20 ? `やや${pole}寄り` : `${pole}寄り`;
 }
 
 interface BigFiveDivergingBarsProps {
@@ -88,21 +104,30 @@ interface BigFiveDivergingBarsProps {
    */
   bareCard?: boolean;
   className?: string;
+  locale?: ResultLocale;
 }
 
 export function BigFiveDivergingBars({
   scores,
   friendScores,
-  friendLabel = "友達の平均",
-  primaryLabel = "自分",
-  title = "5つの軸で見るアナタ",
+  friendLabel,
+  primaryLabel,
+  title,
   emoji = "✨",
   number,
   hideHeading = false,
   bareCard = false,
   className = "",
+  locale = "ja",
 }: BigFiveDivergingBarsProps) {
   const hasFriend = !!friendScores;
+  const axes = locale === "ko" ? KO_AXES : AXES;
+  const resolvedFriendLabel =
+    friendLabel ?? (locale === "ko" ? "친구 평균" : "友達の平均");
+  const resolvedPrimaryLabel =
+    primaryLabel ?? (locale === "ko" ? "나" : "自分");
+  const resolvedTitle =
+    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るアナタ");
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* セクション見出し (16P 風: 丸囲み数字 + 大きめタイトル。number 未指定は絵文字バッジ)。
@@ -125,7 +150,7 @@ export function BigFiveDivergingBars({
             </span>
           )}
           <h2 className="text-[#2E2E5C] font-black text-[30px] md:text-[36px] leading-tight">
-            {title}
+            {resolvedTitle}
           </h2>
         </div>
       )}
@@ -150,20 +175,20 @@ export function BigFiveDivergingBars({
                 className="w-3 h-3 rounded-full border-2 border-white shadow"
                 style={{ background: "var(--primary)" }}
               />
-              {primaryLabel}
+              {resolvedPrimaryLabel}
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 className="w-2.5 h-2.5 rotate-45 border-2 border-white shadow"
                 style={{ background: "#2E2E5C" }}
               />
-              {friendLabel}
+              {resolvedFriendLabel}
             </span>
           </div>
         )}
-        {AXES.map((axis) => {
+        {axes.map((axis) => {
           const value = toPercent(scores[axis.dim]);
-          const lean = leanLabel(value, axis.left, axis.right);
+          const lean = leanLabel(value, axis.left, axis.right, locale);
           // 発散フィル: 中央 50% を起点に、傾いた側へ伸ばす。
           const fillLeft = value >= 50 ? 50 : value;
           const fillWidth = value >= 50 ? value - 50 : 50 - value;
@@ -177,7 +202,9 @@ export function BigFiveDivergingBars({
             <div key={axis.dim}>
               {/* スクリーンリーダー用の要約 (色だけに意味を持たせない) */}
               <span className="sr-only">{`${axis.title}：${lean} ${value}%${
-                friendValue !== null ? `、${friendLabel} ${friendValue}%` : ""
+                friendValue !== null
+                  ? `${locale === "ko" ? ", " : "、"}${resolvedFriendLabel} ${friendValue}%`
+                  : ""
               }`}</span>
 
               {/* 上段 (16P 参考): 「軸名: %(軸色) 判定」を左寄せで 1 行に */}
