@@ -39,6 +39,7 @@ const HIDE_ON_PREFIXES = [
   "/evaluate/",
   "/share/",
   "/admin",
+  "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
 ];
 
 function HomeIcon() {

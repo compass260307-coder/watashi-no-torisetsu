@@ -5,7 +5,11 @@
 //   平均 (みんなの目) は廃止。パネル本体はサーバで全員ぶん描画済みを props で受け取り、
 //   ここでは表示切替だけを行う (本文の再計算・データ取得をクライアントでしない)。
 //   末尾の「＋」タブ (invitePanel 指定時のみ) は、タブの下に吹き出し (ポップオーバー) で
-//   招待パネルを開く (2026-07-20 指示)。背景は暗くしない。外側タップ / Esc / ＋再タップで閉じる。
+//   招待パネルを開く。背景は暗くしない。外側タップ / Esc / 再タップで閉じる。
+//
+// 2026-07-20: 友達からのひとことメッセージを、その友達のアバターから吹き出しで
+//   しゃべらせる (無料コンテンツ)。タブを選ぶと自動でぽこっと出る。同じアバターを
+//   もう一度タップでトグル。招待吹き出しとは同時に開かない。
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -23,6 +27,8 @@ export type FriendTab = {
   name: string;
   /** その友達から見えたキャラの顔画像 (無ければ頭文字にフォールバック)。 */
   imageSrc: string | null;
+  /** 友達からのひとことメッセージ (全文)。無ければ空/undefined で吹き出しなし。 */
+  message?: string | null;
 };
 
 export function TakoFriendTabs({
@@ -42,37 +48,83 @@ export function TakoFriendTabs({
 }) {
   const [idx, setIdx] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
-  // 吹き出しの矢印位置 (＋ボタン中央)。タブ行ラッパー基準の px。
+  // メッセージ吹き出し: 開いているタブ index (null = 閉)。
+  const [msgOpenIdx, setMsgOpenIdx] = useState<number | null>(null);
+  // 吹き出しの矢印位置 (対象ボタン中央) とバー幅。タブ行ラッパー基準の px。
   const [arrowX, setArrowX] = useState<number | null>(null);
+  const [barW, setBarW] = useState<number | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const plusRef = useRef<HTMLButtonElement | null>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
+  const anchorTo = (el: HTMLElement | null) => {
+    if (!el || !barRef.current) return;
+    const bar = barRef.current.getBoundingClientRect();
+    const btn = el.getBoundingClientRect();
+    setArrowX(btn.left - bar.left + btn.width / 2);
+    setBarW(bar.width);
+  };
+
+  const openMessage = (i: number) => {
+    if (!tabs[i]?.message?.trim()) return;
+    setInviteOpen(false);
+    anchorTo(tabRefs.current[i]);
+    setMsgOpenIdx(i);
+  };
+
+  const handleTabClick = (i: number) => {
+    if (i === idx) {
+      // 同じアバターの再タップは吹き出しトグル
+      if (msgOpenIdx === i) setMsgOpenIdx(null);
+      else openMessage(i);
+      return;
+    }
+    setIdx(i);
+  };
+
+  // タブ選択が変わったら、その友達のメッセージを少し遅らせて自動でぽこっと出す。
+  // (即時 setState は cascading render になるため、閉じる方もタイマーで非同期に行う)
+  useEffect(() => {
+    const close = window.setTimeout(() => setMsgOpenIdx(null), 0);
+    if (!tabs[idx]?.message?.trim()) return () => window.clearTimeout(close);
+    const t = window.setTimeout(() => {
+      anchorTo(tabRefs.current[idx]);
+      setMsgOpenIdx(idx);
+    }, 350);
+    return () => {
+      window.clearTimeout(close);
+      window.clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
+
   const toggleInvite = () => {
-    if (!inviteOpen && barRef.current && plusRef.current) {
-      const bar = barRef.current.getBoundingClientRect();
-      const btn = plusRef.current.getBoundingClientRect();
-      setArrowX(btn.left - bar.left + btn.width / 2);
+    if (!inviteOpen) {
+      setMsgOpenIdx(null);
+      anchorTo(plusRef.current);
     }
     setInviteOpen((v) => !v);
   };
 
+  const anyBubbleOpen = inviteOpen || msgOpenIdx !== null;
+
   // 外側タップ / Esc で閉じる (暗幕オーバーレイは使わない: 下の要素の操作を殺さない)。
   useEffect(() => {
-    if (!inviteOpen) return;
+    if (!anyBubbleOpen) return;
+    const close = () => {
+      setInviteOpen(false);
+      setMsgOpenIdx(null);
+    };
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setInviteOpen(false);
+      if (e.key === "Escape") close();
     };
     const handleOutside = (e: PointerEvent) => {
       const t = e.target as Node;
-      if (
-        bubbleRef.current &&
-        !bubbleRef.current.contains(t) &&
-        plusRef.current &&
-        !plusRef.current.contains(t)
-      ) {
-        setInviteOpen(false);
-      }
+      if (bubbleRef.current?.contains(t)) return;
+      if (plusRef.current?.contains(t)) return;
+      if (tabRefs.current.some((el) => el?.contains(t))) return;
+      close();
     };
     window.addEventListener("keydown", handleEsc);
     document.addEventListener("pointerdown", handleOutside);
@@ -80,7 +132,9 @@ export function TakoFriendTabs({
       window.removeEventListener("keydown", handleEsc);
       document.removeEventListener("pointerdown", handleOutside);
     };
-  }, [inviteOpen]);
+  }, [anyBubbleOpen]);
+
+  const msgTab = msgOpenIdx !== null ? tabs[msgOpenIdx] : null;
 
   return (
     <div>
@@ -97,10 +151,13 @@ export function TakoFriendTabs({
             return (
               <button
                 key={i}
+                ref={(el) => {
+                  tabRefs.current[i] = el;
+                }}
                 role="tab"
                 aria-selected={selected}
-                onClick={() => setIdx(i)}
-                className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
+                onClick={() => handleTabClick(i)}
+                className="relative flex w-14 flex-shrink-0 flex-col items-center gap-1"
               >
                 {/* キャラ顔アバター (選択中は紫リング) */}
                 <span
@@ -124,6 +181,24 @@ export function TakoFriendTabs({
                     </span>
                   )}
                 </span>
+                {/* メッセージ持ちの友達には 💬 ミニバッジ */}
+                {Boolean(tab.message?.trim()) && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-0.5 top-0 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(46,46,92,0.25)]"
+                    style={{ width: 18, height: 18 }}
+                  >
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill={INDIGO}
+                      aria-hidden="true"
+                    >
+                      <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+                    </svg>
+                  </span>
+                )}
                 <span
                   className="max-w-full truncate text-[11px] font-black"
                   style={{ color: selected ? INDIGO : "rgba(46,46,92,0.65)" }}
@@ -181,15 +256,15 @@ export function TakoFriendTabs({
           {unlockCta && <div className="flex-shrink-0 py-3">{unlockCta}</div>}
         </div>
 
-        {/* ── 吹き出し (＋の直下・矢印つき小カード) ── */}
-        {invitePanel && inviteOpen && (
+        {/* ── 吹き出し (対象アバター直下・矢印つき小カード)。招待 or メッセージのどちらか ── */}
+        {(inviteOpen || (msgTab && msgOpenIdx !== null)) && (
           <div
             ref={bubbleRef}
             role="dialog"
-            aria-label="友達を招待"
+            aria-label={inviteOpen ? "友達を招待" : `${msgTab?.name}からのメッセージ`}
             className="animate-modal-slide-up absolute inset-x-0 top-full z-30"
           >
-            {/* 矢印 (＋ボタン中央に合わせた回転スクエア) */}
+            {/* 矢印 (対象ボタン中央に合わせた回転スクエア) */}
             <span
               aria-hidden="true"
               className="absolute -top-[7px] h-[14px] w-[14px] rotate-45 bg-white"
@@ -200,13 +275,45 @@ export function TakoFriendTabs({
               }}
             />
             <div
-              className="mx-auto w-full max-w-[440px] rounded-[20px] bg-white px-5 pb-5 pt-5"
-              style={{
-                border: "1px solid rgba(46,46,92,0.10)",
-                boxShadow: "0 12px 32px rgba(46,46,92,0.18)",
-              }}
+              className="rounded-[20px] bg-white px-5 pb-5 pt-5"
+              // カードは矢印 (アンカーのアバター中央) の近くに寄せ、バー幅内にクランプ。
+              // 中央寄せ固定だと PC 幅で矢印とカードが離れてしまう (2026-07-20 修正)。
+              style={(() => {
+                const w = barW ?? 440;
+                const cardW = Math.min(440, w);
+                const left = Math.min(
+                  Math.max((arrowX ?? 24) - 40, 0),
+                  Math.max(w - cardW, 0),
+                );
+                return {
+                  width: cardW,
+                  marginLeft: left,
+                  border: "1px solid rgba(46,46,92,0.10)",
+                  boxShadow: "0 12px 32px rgba(46,46,92,0.18)",
+                };
+              })()}
             >
-              {invitePanel}
+              {inviteOpen ? (
+                invitePanel
+              ) : (
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black text-[#5B5BEF]">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+                    </svg>
+                    {msgTab?.name}からのひとこと
+                  </p>
+                  <p className="body-gothic whitespace-pre-wrap text-[15px] font-normal leading-[1.7] text-[#1A1A1A]">
+                    {msgTab?.message}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

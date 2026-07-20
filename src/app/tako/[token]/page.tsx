@@ -12,13 +12,8 @@ import {
   loadOwnerReportData,
   type OwnerReportData,
 } from "@/lib/owner-report-data";
-import { computeMinnaNoMeContext } from "@/lib/minna-no-me";
+import { mockTakoData } from "@/lib/tako-mock";
 import { buildDeepDive, estimateCompatFromGaps } from "@/lib/tako-deepdive";
-import {
-  buildDimensionGaps,
-  calcMutualUnderstanding,
-  type BigFiveScores,
-} from "@/lib/perception-analysis";
 import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
@@ -53,7 +48,6 @@ import {
   thirtyTwoName,
   thirtyTwoImagePath,
   baseIdOf,
-  nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import {
@@ -63,7 +57,6 @@ import {
 } from "@/lib/character-image";
 import characterImages from "@/generated/character-images.json";
 import { sixteenTypes } from "@/lib/sixteen-types";
-import type { BigFiveDimension } from "@/lib/types";
 
 const SITE_URL =
   resolveSiteUrl();
@@ -76,108 +69,6 @@ export const metadata: Metadata = {
 interface PageProps {
   params: Promise<{ token: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
-
-// ?previewType=<32タイプID> 指定時のモック解除後データ (dev / fromPreview=1 のみ)。実DBは介さない。
-// /me のプレビュー機構と同型。実 compute 関数を流用して現実的な描画にする。
-function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
-  const code = sixteenTypes[baseIdOf(previewType)].code;
-  const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
-  const selfScores = {
-    O: hi("O"),
-    C: hi("C"),
-    E: hi("E"),
-    A: hi("A"),
-    N: nAxisOf(previewType) === "N" ? 8 : 2,
-  };
-  // 友達3人: 本人スコアを少しずらして「自己認知ギャップ」が見えるように。
-  const shifts: Record<string, number>[] = [
-    { E: 2, O: -2 },
-    { E: 1, A: 1 },
-    { E: 3, N: -2 },
-  ];
-  const clamp = (v: number) => Math.max(0, Math.min(10, v));
-  const mockOwnTypes: (ThirtyTwoTypeId | null)[] = [
-    "whim-fox__N" as ThirtyTwoTypeId,
-    "quiet-owl__N" as ThirtyTwoTypeId,
-    null, // はる = 未診断 (④相性のティザー状態を確認できるように)
-  ];
-  const friends = shifts.map((s, i) => ({
-    name: ["ゆい", "そら", "はる"][i],
-    perceivedScores: Object.fromEntries(
-      (["O", "C", "E", "A", "N"] as const).map((k) => [
-        k,
-        clamp(selfScores[k] + (s[k] ?? 0)),
-      ]),
-    ) as Record<string, number>,
-    qualitative: null,
-  }));
-  const friendAvgScores = Object.fromEntries(
-    (["O", "C", "E", "A", "N"] as const).map((k) => [
-      k,
-      friends.reduce((a, f) => a + (f.perceivedScores[k] as number), 0) /
-        friends.length,
-    ]),
-  ) as Partial<Record<BigFiveDimension, number>>;
-  const t = classifyThirtyTwoType(friendAvgScores);
-  return {
-    user: {
-      id: "preview",
-      type_id: null,
-      scores: selfScores,
-      display_name: "プレビュー",
-      invite_code: "preview",
-      owner_token: "preview",
-    },
-    selfScores,
-    friendEvalCount: friends.length,
-    friendAvgScores,
-    friendNames: friends.map((f) => f.name),
-    friendMessages: [
-      { name: "ゆい", message: "いつも冷静で頼れる。周りをよく見てるよね。" },
-      { name: "そら", message: "自分の考えをちゃんと持ってて素敵だと思う！" },
-    ],
-    friends: friends
-      .map((f, i) => {
-        const message =
-          f.name === "ゆい"
-            ? "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜"
-            : f.name === "そら"
-              ? "自分の考えをちゃんと持ってて素敵だと思う！"
-              : "";
-        return {
-          perceptionId: `preview-${i}`,
-          name: f.name,
-          perceivedScores: f.perceivedScores as Partial<
-            Record<BigFiveDimension, number>
-          >,
-          mutual: calcMutualUnderstanding(
-            buildDimensionGaps(selfScores, f.perceivedScores as BigFiveScores),
-          ),
-          hasMessage: message.length > 0,
-          message,
-          perceivedType32: null,
-          perceivedImageSrc: null,
-          perceiverUserId: mockOwnTypes[i] ? `preview-user-${i}` : null,
-          friendOwnType32: mockOwnTypes[i],
-        };
-      })
-      .sort((a, b) => b.mutual - a.mutual),
-    minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
-    pendingFriendCount: 0,
-    inviteCode: "preview",
-    inviteUrl: `${SITE_URL}/friend/preview`,
-    threshold: REPORT_FRIEND_THRESHOLD,
-    unlocked: true,
-    friendCharacter: {
-      type32: t,
-      essence: thirtyTwoEssence(t),
-      name: thirtyTwoName(t),
-      imageSrc: preferCutImage(thirtyTwoImagePath(t)),
-      previewPath: `/preview/${t}`,
-    },
-    ownerType32: classifyThirtyTwoType(selfScores),
-  };
 }
 
 // ?previewLocked=1 用: 解放前 (友達 threshold 未満) のモック。実DBは介さない。
@@ -351,6 +242,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       key: f.perceptionId,
       tabName: rawName || "ともだち",
       faceSrc,
+      message: f.message,
       viewer,
       type32,
       essence,
@@ -470,6 +362,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 tabs={friendSheets.map((sh) => ({
                   name: sh.tabName,
                   imageSrc: sh.faceSrc,
+                  message: sh.message,
                 }))}
                 invitePanel={
                   /* ＋タブの吹き出し: さらに友達に診断してもらう招待 (2026-07-20 追加)。
@@ -823,6 +716,27 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
 
             {/* 友達からの回答 (一覧) セクションは 2026-07-20 指示で削除。
                 友達ごとの結果は上部のタブで見る。 */}
+
+            {/* 完全版レポートPDF (tako_unlock 購入者のみ)。友達が増えるたびに育つ。 */}
+            {takoUnlocked && !previewMode && (
+              <section className="mb-14 mt-2">
+                <div className="mx-auto max-w-[560px] rounded-3xl border-2 border-[#E3E6F5] bg-[#F7F7FE] px-6 py-6 text-center">
+                  <p className="text-[16px] font-black text-[#2E2E5C]">
+                    📄 友達診断 完全版レポート
+                  </p>
+                  <p className="mt-1.5 text-[12.5px] font-bold leading-[1.7] text-[#8A8AA3]">
+                    {data.friends.length}
+                    人の友達の結果とメッセージを一冊のPDFに。友達が増えたら、また最新版をダウンロードできます
+                  </p>
+                  <a
+                    href={`/tako-report/${encodeURIComponent(token)}/pdf`}
+                    className="mx-auto mt-4 flex w-full max-w-[340px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
+                  >
+                    レポートをダウンロード
+                  </a>
+                </div>
+              </section>
+            )}
             </div>
         )}
         </div>

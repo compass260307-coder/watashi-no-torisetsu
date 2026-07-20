@@ -39,17 +39,6 @@ const DIMS: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
 // PR2 (leak塞ぎ): 全文は総合ページの payload / RSC / View Source に絶対に載せない。
 // 課金判定は噛ませず全員この1行プレビューだけを返す (全文が要るのは個別ページ側のみ)。
 // フロントの CSS truncate はもう「隠す」役割ではなく単なる整形 (データが既に1行)。
-const MESSAGE_PREVIEW_MAX = 40;
-
-function toMessagePreview(message: string | null | undefined): string {
-  if (!message) return "";
-  const oneLine = message.replace(/\s+/g, " ").trim();
-  if (!oneLine) return "";
-  return oneLine.length > MESSAGE_PREVIEW_MAX
-    ? oneLine.slice(0, MESSAGE_PREVIEW_MAX) + "…"
-    : oneLine;
-}
-
 // friend_perceptions の perceived_type_id (16タイプ base) + N軸 ('N'/'R') から
 // 32タイプ ID を組み立て、シェア連動ゲートの answered スロットの“顔”に使う。
 // 不正/未知のタイプは null を返し、呼び出し側で頭文字プレースホルダにフォールバックさせる。
@@ -100,8 +89,9 @@ export type FriendSummary = {
   /** ひとことメッセージ (owner_message) がある友達か。 */
   hasMessage: boolean;
   /**
-   * ひとことメッセージの1行プレビュー (最大 MESSAGE_PREVIEW_MAX 文字)。無ければ空文字。
-   * 全文はここに載せない (leak塞ぎ)。全文表示は個別ページが別途 owner_message を取得する。
+   * ひとことメッセージの全文。無ければ空文字。
+   * 2026-07-20: メッセージは無料コンテンツ (タブの吹き出しで表示) になったため
+   * 全文を載せる (旧: 課金個別ページ向けの leak 塞ぎで 1 行プレビューのみだった)。
    */
   message: string;
   /**
@@ -262,10 +252,9 @@ export async function loadOwnerReportData(
         name: ((r.perceiver_name as string | null) ?? "").trim() || "ともだち",
         perceivedScores,
         mutual,
-        // バッジ判定は全文の有無で行う (「メッセージあり」表示は無料)。
         hasMessage: fullMessage.trim().length > 0,
-        // ★payload に載せるのは1行プレビューのみ。全文は絶対に載せない (leak塞ぎ)。
-        message: toMessagePreview(fullMessage),
+        // メッセージは無料コンテンツ (タブの吹き出し) になったため全文を載せる。
+        message: fullMessage.trim(),
         perceivedType32: face.type32,
         perceivedImageSrc: face.imageSrc,
         perceiverUserId: (r.perceiver_user_id as string | null) ?? null,

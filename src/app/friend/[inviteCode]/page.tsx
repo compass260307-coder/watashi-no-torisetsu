@@ -6,7 +6,7 @@
 //   - intro 画面: Koi キャラ風 (ステッカー + キャラ枠 + タイプ名 + コード + サブ特性 +
 //     充実説明文 + フローティング CTA)
 //   - scale 画面: Day 9 /diagnosis と同じ Brand v2 (lavender + sunYellow バー + 立体 CTA)
-//   - choice / consent / submitting / error: 最低限の Brand v2 化
+//   - message / error: 最低限の Brand v2 化
 //   - complete 画面: 削除 → submit 成功時に router.push(/evaluate/sent/{perceptionId})
 //     (Day 12-Polish-F で着地先を獲得エンジン /evaluate/sent に変更)
 //
@@ -24,10 +24,8 @@ import {
   FRIEND_QUESTIONS_V2_PAGE_1,
   FRIEND_QUESTIONS_V2_PAGE_2,
   FRIEND_QUESTIONS_V2_PAGE_3,
-  FRIEND_CHOICE_QUESTIONS_V2,
   renderQuestionText,
   type FriendQuestionV2,
-  type FriendChoiceQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
@@ -51,12 +49,11 @@ import type { AnswerValue } from "@/lib/types";
 // 状態管理
 // =========================================================================
 // Phase 1.5-α Day 12-Polish-B: name overlay 追加
-//   旧フロー: intro (名前入力) → scale → choice → consent → submitting
-//   新フロー: intro (名前なし) → scale → choice → consent → name → submitting
+//   現行フロー (2026-07-20 おまけ choice 廃止): scale (30問) → message → 送信
 //   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
 // submitting フェーズ (回答作成中の待機ページ) は廃止。送信中はメッセージ画面のまま
 // ボタンを「送信中...」表示にし、成功後はそのまま結果ページへ遷移する。
-type Phase = "scale" | "choice" | "message" | "error";
+type Phase = "scale" | "message" | "error";
 
 interface OwnerInfo {
   displayName: string | null;
@@ -118,11 +115,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   // owner のトリセツ相当は送信完了後の /evaluate/sent で「ご褒美」+自己診断CTAとして表示。
   const [phase, setPhase] = useState<Phase>("scale");
   const [pageIdx, setPageIdx] = useState<number>(0);
-  const [choiceIdx, setChoiceIdx] = useState<0 | 1 | 2>(0);
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>(
-    {},
-  );
-  const [choiceAnswers, setChoiceAnswers] = useState<Record<string, string>>(
     {},
   );
   const [perceiverName, setPerceiverName] = useState<string>("友達");
@@ -159,7 +152,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       .catch(() => {});
   }, [inviteCode]);
 
-  // 「次へ」等でステップ (ページ / おまけ質問 / フェーズ) が変わったら、必ず最上部へ。
+  // 「次へ」等でステップ (ページ / フェーズ) が変わったら、必ず最上部へ。
   //   setState と同フレームで window.scrollTo すると、まだ差し替わっていない旧ページ上で
   //   スクロールが始まり、直後の DOM 差し替え (特にモバイル + スクロール連動ヘッダー) で
   //   アニメーションが中断され、中途半端な位置に残ることがある。新画面の描画後 (rAF) に
@@ -170,7 +163,7 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       window.scrollTo({ top: 0, behavior });
     });
     return () => cancelAnimationFrame(id);
-  }, [phase, pageIdx, choiceIdx]);
+  }, [phase, pageIdx]);
 
   const subjectLabel = owner.displayName
     ? `${owner.displayName}さん`
@@ -193,8 +186,8 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     if (pageIdx < SCALE_PAGES.length - 1) {
       setPageIdx((p) => p + 1);
     } else {
-      setPhase("choice");
-      setChoiceIdx(0);
+      // おまけ choice 3 問は 2026-07-20 に廃止。30問完了後はメッセージ入力へ直行。
+      setPhase("message");
       track("friend_answer_scale_completed", { inviteCode });
     }
   };
@@ -205,23 +198,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     }
   };
 
-  const handleChoiceAnswer = (choiceId: string, option: string) => {
-    setChoiceAnswers((prev) => ({ ...prev, [choiceId]: option }));
-    advanceChoice();
-  };
-
-  const handleChoiceSkip = () => {
-    advanceChoice();
-  };
-
-  const advanceChoice = () => {
-    if (choiceIdx < 2) {
-      setChoiceIdx((c) => (c + 1) as 0 | 1 | 2);
-    } else {
-      // 名前は先頭で取得済み。おまけ完了後は最後のメッセージ入力 (message) へ。
-      setPhase("message");
-    }
-  };
 
   const submit = async () => {
     if (isSubmitting) return; // 二重送信ガード
@@ -234,7 +210,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
         body: JSON.stringify({
           inviteCode,
           scaleAnswers,
-          choiceAnswers,
           perceiverName,
           message,
           // consent 画面を廃止したため、常に false (有料レポートへの名前付き掲載はしない)。
@@ -288,18 +263,6 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
     );
   }
 
-  if (phase === "choice") {
-    const q = FRIEND_CHOICE_QUESTIONS_V2[choiceIdx];
-    return (
-      <ChoiceScreen
-        question={q}
-        subjectLabel={subjectLabel}
-        choiceIdx={choiceIdx}
-        onSelect={handleChoiceAnswer}
-        onSkip={handleChoiceSkip}
-      />
-    );
-  }
 
   if (phase === "message") {
     // 名前は先頭で取得済み。ここは質問の最後の自由記入 (任意メッセージ) + 送信。
@@ -462,7 +425,7 @@ function ScaleScreen({
               disabled={!isPageComplete || (page === 0 && !hasName)}
               className={soraPrimary}
             >
-              {isLastPage ? "おまけの質問へ →" : "次へ"}
+              {isLastPage ? "さいごへ →" : "次へ"}
             </button>
             {page > 0 && (
               <button type="button" onClick={onPrev} className={ctaSecondary}>
@@ -484,76 +447,6 @@ function ScaleScreen({
 }
 
 // =========================================================================
-// Choice 画面 (おまけ 3 問、各スキップ可)
-// =========================================================================
-function ChoiceScreen({
-  question,
-  subjectLabel,
-  choiceIdx,
-  onSelect,
-  onSkip,
-}: {
-  question: FriendChoiceQuestionV2;
-  subjectLabel: string;
-  choiceIdx: 0 | 1 | 2;
-  onSelect: (id: string, option: string) => void;
-  onSkip: () => void;
-}) {
-  const inviteeName = subjectLabel.replace(/さん$/, "");
-  return (
-    // 自己診断 / スケール画面と同じ構成 (共通ヘッダー + ヒーロー + 白背景 + 共通フッター)。
-    <>
-      <ScrollHideHeader>
-        <TopHeader />
-      </ScrollHideHeader>
-      {/* min-h-screen / flex-1 を外し、内容の高さに合わせてフッターを近づける
-          (コンテンツとフッターの間の余白を詰める)。 */}
-      <div className="flex flex-col bg-white pb-8">
-        <DiagnosisHero
-          title="友達診断テスト"
-          imageSrc="/mascot/friend-hero.png"
-        />
-
-        <main className="flex w-full flex-col items-center px-4 pt-6 pb-4 md:px-8">
-          <div className="mx-auto flex w-full max-w-2xl flex-col items-center">
-            {/* おまけの進捗 (X/3・スキップ可) */}
-            <div className="mb-6 flex w-full items-center justify-between text-sm font-bold text-[#2E2E5C]/60">
-              <span>おまけ {choiceIdx + 1} / 3</span>
-              <span>スキップ可</span>
-            </div>
-
-            <h2 className="mb-8 text-center text-[24px] font-black leading-relaxed text-[#2E2E5C] sm:text-[28px]">
-              {renderQuestionText(question.text, inviteeName)}
-            </h2>
-
-            <div className="mb-6 flex w-full flex-col gap-4">
-              {question.options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => onSelect(question.id, opt)}
-                  className="w-full rounded-2xl border-2 border-[#2E2E5C]/15 bg-white px-6 py-5 text-[18px] font-bold text-[#2E2E5C] transition-all hover:border-[#5B5BEF] hover:bg-[#5B5BEF]/5 active:scale-[0.98]"
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={onSkip}
-              className="text-sm font-bold text-[#2E2E5C]/60 underline transition-colors hover:text-[#5B5BEF]"
-            >
-              この質問はスキップ
-            </button>
-          </div>
-        </main>
-      </div>
-      <TopFooter />
-    </>
-  );
-}
-
 // =========================================================================
 // Error 画面
 // =========================================================================
