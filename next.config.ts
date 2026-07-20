@@ -9,9 +9,17 @@ const nextConfig: NextConfig = {
   // dev server が全ルートを 404 に落とすことがあるため明示する。
   outputFileTracingRoot: projectRoot,
 
-  // /report/[token]/pdf の headless Chromium。バンドルせず node_modules から
-  // そのまま読み込む (バイナリ同梱パッケージのため bundler を通すと壊れる)。
+  // /report/[token]/pdf・/tako-report/[token]/pdf の headless Chromium。
+  // バンドルせず node_modules からそのまま読み込む (バイナリ同梱パッケージのため
+  // bundler を通すと壊れる)。
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  // ↑だけでは Lambda への file tracing に bin/ (brotli 圧縮バイナリ) が乗らず、
+  // 本番で「input directory .../bin does not exist」で落ちる (2026-07-21 実測。
+  // turbopack ビルドで顕在化)。PDF ルートには明示的にバイナリ一式を同梱する。
+  outputFileTracingIncludes: {
+    "/report/[token]/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/tako-report/[token]/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
+  },
   turbopack: {
     root: projectRoot,
   },
