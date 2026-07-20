@@ -12,6 +12,11 @@ type Props = {
 
 const STORAGE_KEY = "uranai_interstitial_shown";
 
+// 一時停止 (2026-07-20): /unmei 表示が未完成のため、インタースティシャルの表示を止める。
+// 現状どのページにもマウントされていないが、再マウントされても表示しない防御的キルスイッチ。
+// 再開時は false に戻す。
+const ENTRYPOINT_DISABLED: boolean = true;
+
 function isoNow() {
   try {
     return new Date().toISOString();
@@ -202,6 +207,7 @@ export default function UranaiInterstitial({
     window.location.href = url;
   }
 
+  if (ENTRYPOINT_DISABLED) return null; // 一時停止中は常に非表示
   if (isDisabled) return null;
   if (!visible) return null;
 
