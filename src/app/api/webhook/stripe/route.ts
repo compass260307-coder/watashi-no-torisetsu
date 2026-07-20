@@ -31,6 +31,10 @@ import { sendSlackAlert } from "@/lib/slack-alert";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 import { normalizePaywallSource } from "@/lib/paywall-source";
+import {
+  isCoreKpiPaymentSchemaPending,
+  isMissingCoreKpiColumn,
+} from "@/lib/core-kpis";
 
 // ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
 // users は type_id/scores が NOT NULL のため空では INSERT できない。
@@ -117,6 +121,11 @@ export async function POST(request: NextRequest) {
       case "payment_intent.payment_failed": {
         const intent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentFailed(intent);
+        break;
+      }
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(charge);
         break;
       }
       default:
@@ -213,26 +222,62 @@ async function persistLoginEmailIfEmpty(
 async function grantFullAccessByEmailOrId(
   session: Stripe.Checkout.Session,
   userId: string | null,
-): Promise<void> {
+): Promise<string> {
   const email =
     normalizeEmail(session.customer_details?.email) ??
     normalizeEmail(session.customer_email) ??
     normalizeEmail(session.metadata?.email);
   const nowIso = new Date().toISOString();
   let linked = false;
+  let paymentUserId = userId;
 
   // ① email 優先: 同 email の全 users を full に
   if (email) {
-    const { data, error } = await supabaseAdmin
+    const linkResult = await supabaseAdmin
       .from("users")
       .update({ plan: "full" })
       .eq("email", email)
-      .select("id");
-    if (error) {
-      throw new Error(`[full_access] email link failed: ${error.message}`);
+      .select("id, diagnosis_completed_at, created_at");
+
+    let linkedUsers = linkResult.data as Array<{
+      id: string;
+      diagnosis_completed_at: string | null;
+      created_at: string;
+    }> | null;
+    let linkError = linkResult.error;
+    if (isMissingCoreKpiColumn(linkError, "diagnosis_completed_at")) {
+      const legacyResult = await supabaseAdmin
+        .from("users")
+        .update({ plan: "full" })
+        .eq("email", email)
+        .select("id, created_at");
+      linkError = legacyResult.error;
+      linkedUsers = legacyResult.data
+        ? legacyResult.data.map((row) => ({
+            ...row,
+            diagnosis_completed_at: null,
+          }))
+        : null;
     }
-    if (data && data.length > 0) {
+    if (linkError) {
+      throw new Error(`[full_access] email link failed: ${linkError.message}`);
+    }
+    if (linkedUsers && linkedUsers.length > 0) {
       linked = true;
+      // Anonymous checkout with an already-known email has no metadata.user_id.
+      // Attribute it deterministically to the most recently diagnosed row.
+      const candidate = [...linkedUsers].sort((a, b) => {
+        const aAt = Date.parse(
+          (a.diagnosis_completed_at as string | null) ??
+            (a.created_at as string),
+        );
+        const bAt = Date.parse(
+          (b.diagnosis_completed_at as string | null) ??
+            (b.created_at as string),
+        );
+        return bAt - aAt;
+      })[0];
+      paymentUserId ??= candidate.id as string;
       await supabaseAdmin
         .from("users")
         .update({ full_access_at: nowIso })
@@ -273,18 +318,31 @@ async function grantFullAccessByEmailOrId(
         `[full_access] no email and no user_id for session ${session.id}`,
       );
     }
-    const { error } = await supabaseAdmin.from("users").insert({
-      email,
-      plan: "full",
-      full_access_at: nowIso,
-      owner_token: guestToken(16),
-      invite_code: guestToken(8),
-      type_id: classifyType(NEUTRAL_SCORES),
-      scores: NEUTRAL_SCORES,
-    });
-    if (error) {
-      throw new Error(`[full_access] guest user create failed: ${error.message}`);
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .insert({
+        email,
+        plan: "full",
+        full_access_at: nowIso,
+        owner_token: guestToken(16),
+        invite_code: guestToken(8),
+        type_id: classifyType(NEUTRAL_SCORES),
+        scores: NEUTRAL_SCORES,
+      })
+      .select("id")
+      .single();
+    if (error || !data?.id) {
+      throw new Error(
+        `[full_access] guest user create failed: ${error?.message ?? "no id returned"}`,
+      );
     }
+    paymentUserId = data.id as string;
+  }
+
+  if (!paymentUserId) {
+    throw new Error(
+      `[full_access] payment user could not be resolved for session ${session.id}`,
+    );
   }
 
   console.log("[webhook/stripe] full_access granted", {
@@ -292,6 +350,62 @@ async function grantFullAccessByEmailOrId(
     email: email ? "set" : "none",
     linked,
   });
+  return paymentUserId;
+}
+
+// Full-access revenue source of truth. Unlike the analytics event, this record is
+// required: an insert failure makes Stripe retry the webhook until the fact is saved.
+async function recordFullAccessPayment(
+  session: Stripe.Checkout.Session,
+  userId: string,
+): Promise<void> {
+  if (session.amount_total === null || !session.currency) {
+    throw new Error(
+      `[full_access] missing amount/currency for paid session ${session.id}`,
+    );
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+  const paidAt = new Date().toISOString();
+  const paymentRecord = {
+    user_id: userId,
+    payment_kind: "full_access" as const,
+    stripe_session_id: session.id,
+    stripe_payment_intent_id: paymentIntentId,
+    // Legacy column name. Values are minor units for the row's currency (JPY/KRW
+    // are both zero-decimal), so currency must always be read alongside it.
+    amount_jpy: session.amount_total,
+    amount_refunded_minor: 0,
+    currency: session.currency,
+    status: "completed" as const,
+    paid_at: paidAt,
+    updated_at: paidAt,
+    metadata: {
+      product: "full_access",
+      source: normalizePaywallSource(session.metadata?.paywall_source),
+      locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+    },
+  };
+
+  const { error } = await supabaseAdmin
+    .from("payment_history")
+    .upsert(paymentRecord, {
+      onConflict: "stripe_session_id",
+      ignoreDuplicates: true,
+    });
+  if (isCoreKpiPaymentSchemaPending(error)) {
+    console.warn(
+      "[webhook/stripe] core KPI payment schema pending; purchase event remains the temporary fallback",
+      { stripe_session_id: session.id },
+    );
+    return;
+  }
+  if (error) {
+    throw new Error(`[full_access] payment record failed: ${error.message}`);
+  }
 }
 
 // ---------- フルアクセス特典: 詳細レポートお届けメール ----------
@@ -366,6 +480,7 @@ async function sendDetailedReportEmailBestEffort(
 // 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
 async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
+  userId: string,
 ): Promise<void> {
   try {
     const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
@@ -385,12 +500,18 @@ async function recordPurchaseCompletedEvent(
     if (existing && existing.length > 0) return;
     await supabaseAdmin.from("events").insert({
       event_name: "purchase_completed",
+      owner_token:
+        typeof session.metadata?.owner_token === "string"
+          ? session.metadata.owner_token || null
+          : null,
       locale,
       metadata: {
         stripe_session_id: session.id,
+        user_id: userId,
         product: "full_access",
         guest: session.metadata?.guest === "1",
         amount_total: session.amount_total ?? null,
+        currency: session.currency ?? null,
         source: normalizePaywallSource(session.metadata?.paywall_source),
         locale,
       },
@@ -416,8 +537,9 @@ async function handleCheckoutPaid(
   // フルアクセス(全解放): guest 対応。user_id が無くても Stripe 確定 email で紐付ける。
   //   email backfill / プレースホルダー作成も含めて grantFullAccessByEmailOrId が担う。
   if (metadata.product === "full_access") {
-    await grantFullAccessByEmailOrId(session, userId);
-    await recordPurchaseCompletedEvent(session);
+    const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
+    await recordFullAccessPayment(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId);
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
@@ -548,4 +670,46 @@ async function handlePaymentFailed(
     error_code: intent.last_payment_error?.code,
     error_message: intent.last_payment_error?.message ?? "unknown",
   });
+}
+
+// Stripe sends charge.refunded for both full and partial refunds. Store the exact
+// refunded amount so dashboard revenue is net of refunds; only a full refund moves
+// the legacy status enum to "refunded".
+async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const fullyRefunded = charge.amount_refunded >= charge.amount;
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("payment_history")
+    .update({
+      amount_refunded_minor: charge.amount_refunded,
+      status: fullyRefunded ? "refunded" : "completed",
+      refunded_at: charge.amount_refunded > 0 ? nowIso : null,
+      updated_at: nowIso,
+    })
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .eq("payment_kind", "full_access")
+    .select("id");
+  if (isCoreKpiPaymentSchemaPending(error)) {
+    console.warn(
+      "[webhook/stripe] core KPI refund schema pending; refund fact will require replay after migration",
+      { payment_intent_id: paymentIntentId },
+    );
+    return;
+  }
+  if (error) {
+    throw new Error(`[full_access] refund update failed: ${error.message}`);
+  }
+  if (!data || data.length === 0) {
+    // Webhook delivery order is not guaranteed. A retry after the checkout event
+    // has been persisted is safer than silently losing the refund.
+    throw new Error(
+      `[full_access] refund arrived before payment record: ${paymentIntentId}`,
+    );
+  }
 }

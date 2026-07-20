@@ -17,6 +17,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 
+import { isMissingCoreKpiColumn } from "./core-kpis";
 import { supabaseAdmin } from "./supabase-server";
 
 export const SESSION_COOKIE_NAME = "wn_session";
@@ -24,6 +25,8 @@ const TOKEN_LENGTH = 32; // nanoid 32 文字 = 192 bit エントロピー
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const SESSION_USER_COLUMNS =
+  "id, type_id, owner_token, email, email_verified_at, display_name, line_user_id, diagnosis_completed_at";
+const LEGACY_SESSION_USER_COLUMNS =
   "id, type_id, owner_token, email, email_verified_at, display_name, line_user_id";
 
 export interface SessionUser {
@@ -34,6 +37,7 @@ export interface SessionUser {
   email_verified_at: string | null;
   display_name: string | null;
   line_user_id: string | null;
+  diagnosis_completed_at: string | null;
 }
 
 export interface CreateSessionPayload {
@@ -53,6 +57,7 @@ export interface CreateSessionPayload {
   // 診断データは言語共通。初回流入言語と現在の表示言語だけを別カラムで持つ。
   acquisition_locale?: "ja" | "ko";
   preferred_locale?: "ja" | "ko";
+  diagnosis_completed_at?: string;
 }
 
 function generateSessionToken(): string {
@@ -106,6 +111,23 @@ export async function getSession(
     .eq("session_token", token)
     .maybeSingle();
 
+  if (isMissingCoreKpiColumn(error, "diagnosis_completed_at")) {
+    const legacyResult = await supabaseAdmin
+      .from("users")
+      .select(LEGACY_SESSION_USER_COLUMNS)
+      .eq("session_token", token)
+      .maybeSingle();
+    if (legacyResult.error) {
+      console.error("[session] getSession legacy query error:", legacyResult.error);
+      return null;
+    }
+    return legacyResult.data
+      ? ({
+          ...legacyResult.data,
+          diagnosis_completed_at: null,
+        } as SessionUser)
+      : null;
+  }
   if (error) {
     console.error("[session] getSession query error:", error);
     return null;
@@ -132,16 +154,35 @@ export async function createSession(
     .select(SESSION_USER_COLUMNS)
     .single();
 
-  if (error || !data) {
+  let createdUser: SessionUser | null = (data as SessionUser | null) ?? null;
+  let createError = error;
+  if (isMissingCoreKpiColumn(error, "diagnosis_completed_at")) {
+    const legacyUserData = { ...userData };
+    delete legacyUserData.diagnosis_completed_at;
+    const legacyResult = await supabaseAdmin
+      .from("users")
+      .insert({ ...legacyUserData, session_token: token })
+      .select(LEGACY_SESSION_USER_COLUMNS)
+      .single();
+    createError = legacyResult.error;
+    createdUser = legacyResult.data
+      ? ({
+          ...legacyResult.data,
+          diagnosis_completed_at: null,
+        } as SessionUser)
+      : null;
+  }
+
+  if (createError || !createdUser) {
     throw new Error(
-      `createSession failed: ${error?.message ?? "no row returned"}`,
+      `createSession failed: ${createError?.message ?? "no row returned"}`,
     );
   }
 
   const c = await cookies();
   c.set(SESSION_COOKIE_NAME, token, buildCookieOptions());
 
-  return { user: data as SessionUser, token };
+  return { user: createdUser, token };
 }
 
 /**

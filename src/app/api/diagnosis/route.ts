@@ -21,6 +21,7 @@ import { diagnose } from "@/lib/diagnosis";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { createSession, getSession } from "@/lib/session";
+import { isMissingCoreKpiColumn } from "@/lib/core-kpis";
 import type { AnswerValue } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -158,6 +159,7 @@ export async function POST(request: NextRequest) {
 
   const inviteCode = generateInviteCode();
   const ownerToken = generateOwnerToken();
+  const diagnosisCompletedAt = new Date().toISOString();
 
   // sourceInviteCode が指定された場合のみ source_user_id / generation を解決。
   // 再診断時は基本的に sourceInviteCode は付かないため UPDATE 経路では使わない。
@@ -190,6 +192,7 @@ export async function POST(request: NextRequest) {
       invite_code: string;
       owner_token: string;
       preferred_locale: "ja" | "ko";
+      diagnosis_completed_at?: string;
       display_name?: string;
     } = {
       type_id: typeId,
@@ -197,11 +200,14 @@ export async function POST(request: NextRequest) {
       invite_code: inviteCode,
       owner_token: ownerToken,
       preferred_locale: locale,
+      // 初回の自己診断完了をコホート起点として固定する。再診断では上書きしない。
+      diagnosis_completed_at:
+        existing.diagnosis_completed_at ?? diagnosisCompletedAt,
     };
     if (normalizedDisplayName !== null) {
       updatePayload.display_name = normalizedDisplayName;
     }
-    const { data, error } = await supabaseAdmin
+    const updateResult = await supabaseAdmin
       .from("users")
       .update(updatePayload)
       // campaign / source_user_id / generation / line_user_id / email /
@@ -210,8 +216,28 @@ export async function POST(request: NextRequest) {
       .select("id, invite_code, owner_token")
       .single();
 
-    if (error) {
-      console.error("[api/diagnosis] re-diagnosis UPDATE error:", error);
+    let savedUser = updateResult.data;
+    let updateError = updateResult.error;
+    if (
+      isMissingCoreKpiColumn(updateError, "diagnosis_completed_at")
+    ) {
+      const legacyUpdatePayload = { ...updatePayload };
+      delete legacyUpdatePayload.diagnosis_completed_at;
+      const legacyResult = await supabaseAdmin
+        .from("users")
+        .update(legacyUpdatePayload)
+        .eq("id", existing.id)
+        .select("id, invite_code, owner_token")
+        .single();
+      savedUser = legacyResult.data;
+      updateError = legacyResult.error;
+    }
+
+    if (updateError || !savedUser) {
+      console.error(
+        "[api/diagnosis] re-diagnosis UPDATE error:",
+        updateError,
+      );
       return NextResponse.json(
         { error: "Unable to save diagnosis" },
         { status: 500 },
@@ -219,9 +245,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      userId: data.id,
-      inviteCode: data.invite_code,
-      ownerToken: data.owner_token,
+      userId: savedUser.id,
+      inviteCode: savedUser.invite_code,
+      ownerToken: savedUser.owner_token,
       typeId,
       scores,
       facetScores: facetScores ?? null,
@@ -254,6 +280,7 @@ export async function POST(request: NextRequest) {
       acquisition_campaign: acquisitionCampaign,
       acquisition_locale: locale,
       preferred_locale: locale,
+      diagnosis_completed_at: diagnosisCompletedAt,
     });
 
     return NextResponse.json({

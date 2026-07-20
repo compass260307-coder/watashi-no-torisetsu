@@ -21,6 +21,12 @@ import {
   thirtyTwoEssence,
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
+import {
+  computeCoreKpis,
+  isCoreKpiPaymentSchemaPending,
+  isMissingCoreKpiColumn,
+  type CoreKpiPaymentFact,
+} from "@/lib/core-kpis";
 
 const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
@@ -42,13 +48,18 @@ export async function computeStats(from: string | null, to: string | null) {
   // Supabase は既定で 1000 行しか返さないため、range() でページングして全行を読む。
   // make() は「毎回新しいクエリ」を返すファクトリ (builder は使い回せない)。
   // 安定ページングのため make() 側で order を付けること。
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function fetchAll<T>(make: () => any): Promise<T[]> {
+  async function fetchAll<T>(
+    // Supabase query builders carry table-specific generics; pagination only needs range().
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    make: () => any,
+    onError?: (error: { code?: string; message?: string }) => boolean | void,
+  ): Promise<T[]> {
     const out: T[] = [];
     for (let start = 0; ; start += PAGE) {
       const { data, error } = await make().range(start, start + PAGE - 1);
       if (error) {
-        console.error("[admin-stats] fetchAll error:", error);
+        const handled = onError?.(error) === true;
+        if (!handled) console.error("[admin-stats] fetchAll error:", error);
         break;
       }
       if (!data || data.length === 0) break;
@@ -87,6 +98,23 @@ export async function computeStats(from: string | null, to: string | null) {
   };
 
   type StripeEventRow = { metadata: Record<string, unknown> | null };
+  type PaymentHistoryRow = {
+    user_id: string;
+    stripe_session_id: string;
+    amount_jpy: number;
+    amount_refunded_minor: number | null;
+    currency: string;
+    status: string;
+    paid_at: string | null;
+    created_at: string;
+    payment_kind: string | null;
+  };
+  type KpiPaymentEventRow = {
+    event_name: string;
+    owner_token: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+  };
 
   // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
   // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
@@ -124,6 +152,19 @@ export async function computeStats(from: string | null, to: string | null) {
 
   type SessionRow = { session_id: string | null };
 
+  const coreSchemaIssues: string[] = [];
+  const recordCoreSchemaIssue = (error: {
+    code?: string;
+    message?: string;
+  }) => {
+    const issue = [error.code, error.message].filter(Boolean).join(": ");
+    if (issue && !coreSchemaIssues.includes(issue)) coreSchemaIssues.push(issue);
+    return (
+      isMissingCoreKpiColumn(error, "diagnosis_completed_at") ||
+      isCoreKpiPaymentSchemaPending(error)
+    );
+  };
+
   const [
     startedRows,
     completedRows,
@@ -146,6 +187,9 @@ export async function computeStats(from: string | null, to: string | null) {
     purchaseCompletedRows,
     friendJourneyRows,
     identityRows,
+    coreUserRows,
+    paymentHistoryRows,
+    kpiPaymentEventRows,
   ] = await Promise.all([
     fetchAll<SessionRow>(evRows(["diagnosis_started"])),
     fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
@@ -265,6 +309,42 @@ export async function computeStats(from: string | null, to: string | null) {
       supabaseAdmin
         .from("users")
         .select("id, owner_token, invite_code, source_user_id, created_at")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
+    ),
+    fetchAll<{
+      id: string;
+      diagnosis_completed_at: string | null;
+      full_access_at: string | null;
+      source_user_id: string | null;
+    }>(
+      () =>
+        supabaseAdmin
+          .from("users")
+          .select(
+            "id, diagnosis_completed_at, full_access_at, source_user_id",
+          )
+          .order("id", { ascending: true }),
+      recordCoreSchemaIssue,
+    ),
+    fetchAll<PaymentHistoryRow>(
+      () =>
+        supabaseAdmin
+          .from("payment_history")
+          .select(
+            "user_id, stripe_session_id, amount_jpy, amount_refunded_minor, currency, status, paid_at, created_at, payment_kind",
+          )
+          .eq("payment_kind", "full_access")
+          .in("status", ["completed", "refunded"])
+          .order("created_at", { ascending: true })
+          .order("stripe_session_id", { ascending: true }),
+      recordCoreSchemaIssue,
+    ),
+    fetchAll<KpiPaymentEventRow>(() =>
+      supabaseAdmin
+        .from("events")
+        .select("event_name, owner_token, metadata, created_at")
+        .in("event_name", ["checkout_session_created", "purchase_completed"])
         .order("created_at", { ascending: true })
         .order("id", { ascending: true }),
     ),
@@ -716,6 +796,118 @@ export async function computeStats(from: string | null, to: string | null) {
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
+  // --- 経営KPI（サーバー側の業務データを正本にしたユーザーコホート） ---
+  // payment_history 適用前の購入は purchase_completed と、その Stripe Session を
+  // 発行した checkout_session_created を突合して補完する。Session ID で必ず冪等化。
+  const ownerTokenToUserId = new Map<string, string>();
+  for (const row of identityRows) {
+    if (row.owner_token) ownerTokenToUserId.set(row.owner_token, row.id);
+  }
+
+  const checkoutIdentityBySession = new Map<
+    string,
+    { userId: string | null; ownerToken: string | null }
+  >();
+  for (const row of kpiPaymentEventRows) {
+    if (row.event_name !== "checkout_session_created") continue;
+    const stripeSessionId = row.metadata?.stripe_session_id;
+    if (typeof stripeSessionId !== "string" || !stripeSessionId) continue;
+    const metadataUserId = row.metadata?.user_id;
+    checkoutIdentityBySession.set(stripeSessionId, {
+      userId:
+        typeof metadataUserId === "string" && metadataUserId
+          ? metadataUserId
+          : null,
+      ownerToken: row.owner_token,
+    });
+  }
+
+  const verifiedPaymentFacts: CoreKpiPaymentFact[] = [];
+  const knownStripeSessions = new Set<string>();
+  for (const row of paymentHistoryRows) {
+    const paidAt = row.paid_at ?? row.created_at;
+    knownStripeSessions.add(row.stripe_session_id);
+    verifiedPaymentFacts.push({
+      stripeSessionId: row.stripe_session_id,
+      userId: row.user_id,
+      paidAt,
+      currency: row.currency,
+      amountMinor: row.amount_jpy,
+      refundedAmountMinor: row.amount_refunded_minor ?? 0,
+    });
+  }
+
+  let unmatchedPaymentCount = 0;
+  for (const row of kpiPaymentEventRows) {
+    if (row.event_name !== "purchase_completed") continue;
+    const stripeSessionId = row.metadata?.stripe_session_id;
+    if (typeof stripeSessionId !== "string" || !stripeSessionId) {
+      unmatchedPaymentCount++;
+      continue;
+    }
+    if (knownStripeSessions.has(stripeSessionId)) continue;
+    knownStripeSessions.add(stripeSessionId);
+
+    const checkoutIdentity = checkoutIdentityBySession.get(stripeSessionId);
+    const metadataUserId = row.metadata?.user_id;
+    const metadataOwnerToken = row.metadata?.owner_token;
+    const ownerToken =
+      typeof metadataOwnerToken === "string" && metadataOwnerToken
+        ? metadataOwnerToken
+        : row.owner_token ?? checkoutIdentity?.ownerToken ?? null;
+    const userId =
+      typeof metadataUserId === "string" && metadataUserId
+        ? metadataUserId
+        : checkoutIdentity?.userId ??
+          (ownerToken ? ownerTokenToUserId.get(ownerToken) : null);
+    const amount = row.metadata?.amount_total;
+    const rawCurrency = row.metadata?.currency;
+    const locale = row.metadata?.locale;
+    const currency =
+      typeof rawCurrency === "string" && rawCurrency
+        ? rawCurrency
+        : locale === "ko"
+          ? "krw"
+          : "jpy";
+    if (!userId || typeof amount !== "number" || !Number.isFinite(amount)) {
+      unmatchedPaymentCount++;
+      continue;
+    }
+    verifiedPaymentFacts.push({
+      stripeSessionId,
+      userId,
+      paidAt: row.created_at,
+      currency,
+      amountMinor: amount,
+      refundedAmountMinor: 0,
+    });
+  }
+
+  const computedCoreKpis = computeCoreKpis({
+    users: coreUserRows.map((row) => ({
+      id: row.id,
+      diagnosisCompletedAt: row.diagnosis_completed_at,
+      fullAccessAt: row.full_access_at,
+      sourceUserId: row.source_user_id,
+    })),
+    friends: perceptions.map((row) => ({
+      targetUserId: row.target_user_id,
+      createdAt: row.created_at,
+    })),
+    payments: verifiedPaymentFacts,
+    from,
+    to,
+    unmatchedPaymentCount,
+  });
+  const coreKpis = {
+    ...computedCoreKpis,
+    dataQuality: {
+      ...computedCoreKpis.dataQuality,
+      ready: coreSchemaIssues.length === 0,
+      issues: coreSchemaIssues,
+    },
+  };
+
   const ownerFunnelCounts = [
     diagnosisCohortSessions.size,
     cohortOwners.size,
@@ -770,6 +962,7 @@ export async function computeStats(from: string | null, to: string | null) {
   }));
 
   return {
+    coreKpis,
     diagnosisStarted,
     diagnosisCompleted,
     completionRate: rate(diagnosisCompleted, diagnosisStarted),

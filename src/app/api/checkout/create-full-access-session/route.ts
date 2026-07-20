@@ -411,6 +411,7 @@ export async function POST(request: NextRequest) {
       // Stripe 確定 email をキーに紐付ける (email or id・email 優先)。
       metadata: {
         user_id: userId ?? "",
+        owner_token: ownerToken,
         product: "full_access",
         guest: userId ? "0" : "1",
         email: customerEmail ?? "",
@@ -438,6 +439,7 @@ export async function POST(request: NextRequest) {
       locale: checkoutLocale,
       metadata: {
         guest: userId ? false : true,
+        user_id: userId,
         stripe_session_id: stripeSession.id,
         source: paywallSource,
         locale: checkoutLocale,

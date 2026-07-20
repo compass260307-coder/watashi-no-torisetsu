@@ -345,14 +345,6 @@ export default function DiagnosisPageContent({
     } catch {
       // 無視
     }
-    track("diagnosis_completed", {
-      metadata: {
-        typeId: result.typeId,
-        locale,
-        sourceInviteCode: source || null,
-      },
-    });
-
     const startedAt = Date.now();
     const waitMin = async () => {
       const remaining = MIN_LOADING_MS - (Date.now() - startedAt);
@@ -415,6 +407,17 @@ export default function DiagnosisPageContent({
         localStorage.setItem("torisetsu_invite_code", data.inviteCode);
       }
       if (data.ownerToken) {
+        // 保存APIが成功してからだけ完了イベントを送る。KPIの正本は
+        // users.diagnosis_completed_at だが、イベントファネルも偽陽性にしない。
+        track("diagnosis_completed", {
+          ownerToken: data.ownerToken,
+          metadata: {
+            userId: data.userId,
+            typeId: result.typeId,
+            locale,
+            sourceInviteCode: source || null,
+          },
+        });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
         // 日本版では診断完了直後、下部ナビの「友達診断」に未確認バッジを出す。
         // 同じ owner_token で再診断した場合も再表示できるよう、表示済み記録を戻す。

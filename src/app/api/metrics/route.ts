@@ -35,6 +35,29 @@ export async function GET(request: NextRequest) {
   // 主要な数値だけをフラット化。順序 = スプレッドシートの列順として安定させる。
   const metrics: Record<string, string | number> = {
     asOf: new Date().toISOString(),
+    coreKpiReady: s.coreKpis.dataQuality.ready ? 1 : 0,
+    coreKpiIssues: s.coreKpis.dataQuality.issues.join(" | "),
+    // 経営KPI（業務データ正本・コホート追跡）。先頭に固定し、定期取得先でも
+    // 最重要数字を同じ定義で参照できるようにする。
+    coreDiagnosisCohortUsers: s.coreKpis.cohort.diagnosisUsers,
+    diagnosisToPaidUsers: s.coreKpis.diagnosisToPaid.numerator,
+    diagnosisToPaidRate: round(s.coreKpis.diagnosisToPaid.rate),
+    diagnosisToFriendUsers: s.coreKpis.diagnosisToFriend.numerator,
+    diagnosisToFriendRate: round(s.coreKpis.diagnosisToFriend.rate),
+    paidCohortUsers: s.coreKpis.paidToFriend.denominator,
+    paidToFriendUsers: s.coreKpis.paidToFriend.numerator,
+    paidToFriendRate: round(s.coreKpis.paidToFriend.rate),
+    arpuJpy: round(
+      s.coreKpis.arpu.currencies.find((row) => row.currency === "jpy")
+        ?.arpuMinor ?? 0,
+    ),
+    arpuKrw: round(
+      s.coreKpis.arpu.currencies.find((row) => row.currency === "krw")
+        ?.arpuMinor ?? 0,
+    ),
+    coreViralCoefficient: round(s.coreKpis.viralCoefficient.value),
+    coreViralChildren: s.coreKpis.viralCoefficient.children,
+    paymentUserMatchRate: round(s.coreKpis.dataQuality.paymentUserMatchRate),
     diagnosisStarted: s.diagnosisStarted,
     diagnosisCompleted: s.diagnosisCompleted,
     completionRate: round(s.completionRate),
