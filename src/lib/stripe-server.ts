@@ -45,3 +45,14 @@ export function getPremiumPriceId(): string | null {
 export function getFullAccessPriceId(): string | null {
   return process.env.STRIPE_PRICE_FULL_ACCESS ?? null;
 }
+
+// unmei: ¥1,980 / ¥1,480 の Price ID を環境変数で受ける。
+// Stripe ダッシュボードで Price を作成し、それぞれを以下の環境変数に登録する。
+// - STRIPE_PRICE_UNMEI_1980
+// - STRIPE_PRICE_UNMEI_1480
+export function getUnmeiPriceId(product: "unmei" | "unmei_upgrade"): string | null {
+  if (product === "unmei") {
+    return process.env.STRIPE_PRICE_UNMEI_1980 ?? null;
+  }
+  return process.env.STRIPE_PRICE_UNMEI_1480 ?? null;
+}

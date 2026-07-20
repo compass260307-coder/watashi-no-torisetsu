@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import PurchaseCompleteBirthSection from "@/components/birth/PurchaseCompleteBirthSection";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -59,6 +60,8 @@ export default function PurchaseCompletePage() {
 
       {/* 購入直後にそのままログイン (magic link 発行)。届いたリンクから本人確認。 */}
       <LoginCard />
+
+      <PurchaseCompleteBirthSection />
 
       {/* 返金の申請動線 (30日間の返金保証)。条件・手順は特商法ページに集約。 */}
       <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
