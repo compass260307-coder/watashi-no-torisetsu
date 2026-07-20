@@ -135,7 +135,14 @@ function sendToSupabase(rows: EventRow[]) {
       Prefer: "return=minimal",
     },
     body,
-  }).catch(() => {});
+  })
+    .then((res) => {
+      // RLS ポリシー未適用 (migration 2026-07-20-events-client-insert.sql 前) や
+      // 検証拒否の場合、旧 /api/event へフォールバックして計測全断を防ぐ。
+      // 本番 DB は PR-FIX-1 lockdown 済みで anon insert はポリシー適用まで 403 になる。
+      if (!res.ok) rows.forEach(sendToLegacyApi);
+    })
+    .catch(() => {});
 }
 
 // 旧経路 (Vercel Function)。Supabase env が無い環境の保険としてのみ使う。
