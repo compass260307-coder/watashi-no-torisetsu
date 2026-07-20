@@ -19,6 +19,16 @@ interface PreviewTypePageProps {
   params: Promise<{ typeId: string }>;
 }
 
+// 全32タイプをビルド時に静的生成する (2026-07-20 / Vercel コスト削減)。
+// 内容はモックのみでユーザー固有要素が無いため、リクエスト毎の動的レンダリング
+// (Function 起動・Cached 0%) は不要。未知の typeId は dynamicParams=false で
+// ビルド時一覧に無ければ即 404 (Function を通らない)。
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return allThirtyTwoTypeIds().map((typeId) => ({ typeId }));
+}
+
 // タイプ別ランディングとして機能させる (トップ→/types→/preview で公開リンクされるため)。
 // 汎用title重複を避け、型ごとの肩書き/図鑑説明でメタを出し、canonical を自己参照・index許可。
 // ※ /me 本体は owner_token 保護のため noindex だが、preview はモックのみで個人情報を含まない。

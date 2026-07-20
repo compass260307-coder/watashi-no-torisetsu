@@ -92,6 +92,110 @@ export function isPreviewMode(): boolean {
 //
 // ⚠️ 旧名 friend_v2_* / share_clicked(kind:friend_invite) は既存 DB 行に残るため、
 //    stats 側は当面 .in([新, 旧]) で両方集計する。
+
+// ===== 送信経路 (2026-07-20 改修: Vercel コスト削減) =====
+// 旧実装はイベントごとに /api/event へ POST しており、1イベント = 1 Function 起動 +
+// 1 Edge Request + Observability Events 数件が課金されていた (特に
+// diagnosis_question_answered は診断1回で50発火)。
+// → クライアントでバッファリングし、Supabase REST へ anon key で直接まとめて insert する。
+//   Vercel を一切経由しない。検証は events テーブルの RLS ポリシー
+//   (supabase/migrations/2026-07-20-events-client-insert.sql) がサーバ側の代わりを担う。
+// env 未設定環境 (万一) では旧 /api/event へ1件ずつフォールバックする。
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+type EventRow = {
+  event_name: string;
+  session_id: string | null;
+  invite_code: string | null;
+  owner_token: string | null;
+  locale: "ja" | "ko";
+  metadata: Record<string, unknown>;
+};
+
+const FLUSH_MAX = 10; // これ以上溜まったら即時送信
+const FLUSH_DELAY_MS = 2000; // バッファ先頭イベントからの最大送信待ち
+
+let buffer: EventRow[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let unloadFlushHooked = false;
+
+function sendToSupabase(rows: EventRow[]) {
+  const body = JSON.stringify(rows);
+  fetch(`${SUPABASE_URL}/rest/v1/events`, {
+    method: "POST",
+    // keepalive: ページ離脱 (pagehide/visibilitychange) 中でもリクエストを生かす。
+    // sendBeacon はヘッダー付与不可で PostgREST の JSON insert と相性が悪いため、
+    // keepalive fetch に一本化する (上限 64KB、バッチ10件なら余裕)。
+    keepalive: body.length < 60_000,
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY!,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Prefer: "return=minimal",
+    },
+    body,
+  })
+    .then((res) => {
+      // RLS ポリシー未適用 (migration 2026-07-20-events-client-insert.sql 前) や
+      // 検証拒否の場合、旧 /api/event へフォールバックして計測全断を防ぐ。
+      // 本番 DB は PR-FIX-1 lockdown 済みで anon insert はポリシー適用まで 403 になる。
+      if (!res.ok) rows.forEach(sendToLegacyApi);
+    })
+    .catch(() => {});
+}
+
+// 旧経路 (Vercel Function)。Supabase env が無い環境の保険としてのみ使う。
+function sendToLegacyApi(row: EventRow) {
+  fetch("/api/event", {
+    method: "POST",
+    keepalive: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventName: row.event_name,
+      sessionId: row.session_id,
+      inviteCode: row.invite_code,
+      ownerToken: row.owner_token,
+      locale: row.locale,
+      metadata: row.metadata,
+    }),
+  }).catch(() => {});
+}
+
+function flush() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (buffer.length === 0) return;
+  const rows = buffer;
+  buffer = [];
+  try {
+    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+      sendToSupabase(rows);
+    } else {
+      rows.forEach(sendToLegacyApi);
+    }
+  } catch {
+    // tracking never blocks UX
+  }
+}
+
+function hookUnloadFlush() {
+  if (unloadFlushHooked || typeof window === "undefined") return;
+  unloadFlushHooked = true;
+  try {
+    // モバイル (特に iOS Safari / LINE 内ブラウザ) では pagehide より
+    // visibilitychange:hidden の方が確実に発火する。両方でフラッシュして取りこぼしを防ぐ。
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
+    window.addEventListener("pagehide", () => flush());
+  } catch {
+    // ignore
+  }
+}
+
 export function track(
   eventName: string,
   params?: {
@@ -129,18 +233,20 @@ export function track(
   }
 
   try {
-    fetch("/api/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        eventName,
-        sessionId: getSessionId(),
-        inviteCode: params?.inviteCode ?? null,
-        ownerToken: params?.ownerToken ?? null,
-        locale,
-        metadata: localizedMetadata,
-      }),
-    }).catch(() => {});
+    buffer.push({
+      event_name: eventName,
+      session_id: getSessionId(),
+      invite_code: params?.inviteCode ?? null,
+      owner_token: params?.ownerToken ?? null,
+      locale,
+      metadata: localizedMetadata,
+    });
+    hookUnloadFlush();
+    if (buffer.length >= FLUSH_MAX) {
+      flush();
+    } else if (!flushTimer) {
+      flushTimer = setTimeout(flush, FLUSH_DELAY_MS);
+    }
   } catch {
     // tracking never blocks UX
   }

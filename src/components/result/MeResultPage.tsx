@@ -269,7 +269,11 @@ async function MeResultPageContent({
   // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
   // ぶんだけ props で渡す。解放条件 = 課金 (¥499=full) OR 友達1人以上 (friend-stairs.ts)。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
-  const deepDivePaid = await hasFullAccess(user.id as string);
+  // プレビュー (モック) は DB を引かない。/preview/[typeId] の静的生成をビルド時の
+  // Supabase 接続に依存させないためでもある (課金状態は previewLock で表現済み)。
+  const deepDivePaid = previewType
+    ? false
+    : await hasFullAccess(user.id as string);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
   const partTwoUnlocked = previewType
