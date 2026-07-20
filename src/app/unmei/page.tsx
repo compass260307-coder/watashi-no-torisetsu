@@ -2,6 +2,7 @@ import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiReading from "@/components/uranai/UnmeiReading";
 import { isReadingReady } from "@/lib/unmei/reading";
 
 export const metadata = {
@@ -64,16 +65,6 @@ export default async function UnmeiPage() {
     return <UnmeiClient initialState="pending" />;
   }
 
-  // 購入済み・生成完了 → 鑑定表示 (詳細UIはタスク3で差し替え予定)
-  return (
-    <main className="mx-auto max-w-[640px] px-6 py-12">
-      <h1 className="mb-4 text-2xl font-black">あなたの運命の設計図</h1>
-      <p className="mb-4">
-        鑑定が利用可能です。以下は生成済みのデータです（表示は整形版に差し替え予定）。
-      </p>
-      <pre className="whitespace-pre-wrap rounded bg-[#0F1724] p-4 text-sm text-white">
-        {JSON.stringify(reading!.reading ?? reading, null, 2)}
-      </pre>
-    </main>
-  );
+  // 購入済み・生成完了 → 鑑定表示 (整形版)
+  return <UnmeiReading reading={reading!.reading} />;
 }
