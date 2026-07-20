@@ -13,12 +13,16 @@ type Props = {
 // 生成完了までのタイムアウト (指示書④: 無限スピナー禁止・60秒で再試行案内)
 const TIMEOUT_MS = 60_000;
 const POLL_INTERVAL_MS = 3_000;
+// 60秒で完了しなかった場合、手動リトライ案内を出す前に自動で再生成を試みる回数。
+// (サーバ側の生成試行上限とは別の、クライアント発の再キック。上限超過はサーバが 'failed' で止める)
+const MAX_AUTO_RETRIES = 2;
 
 export default function UnmeiClient({ initialState }: Props) {
   const router = useRouter();
   const [state, setState] = useState<State>(initialState);
   const deadlineRef = useRef<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoRetriesRef = useRef<number>(0);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -27,16 +31,20 @@ export default function UnmeiClient({ initialState }: Props) {
     }
   }, []);
 
-  // 生成をキック (fire-and-forget)。完了はポーリングで検知する。
-  const kickGeneration = useCallback(async () => {
+  // 生成をキック。force=true はサーバ側の自動再生成上限を超えた手動リトライ。
+  const kickGeneration = useCallback(async (force = false) => {
     try {
-      await fetch("/api/unmei/generate", { method: "POST" });
+      await fetch("/api/unmei/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
     } catch {
-      /* ポーリング側でリトライ可能なので握りつぶす */
+      /* ポーリング側で回復可能なので握りつぶす */
     }
   }, []);
 
-  // pending 状態のポーリング開始 (60秒でタイムアウト)
+  // pending 状態のポーリング開始。60秒で MAX_AUTO_RETRIES まで自動再生成、尽きたら手動案内。
   const startPending = useCallback(() => {
     stopPolling();
     setState("pending");
@@ -49,8 +57,7 @@ export default function UnmeiClient({ initialState }: Props) {
           if (j?.state === "ready") {
             stopPolling();
             setState("ready");
-            // サーバコンポーネントを再描画して鑑定を表示
-            router.refresh();
+            router.refresh(); // サーバコンポーネントを再描画して鑑定を表示
             return;
           }
           if (j?.state === "no_birth") {
@@ -58,37 +65,52 @@ export default function UnmeiClient({ initialState }: Props) {
             setState("no_birth");
             return;
           }
+          if (j?.state === "failed") {
+            // サーバが自動再生成の上限に達した → 手動リトライ待ち
+            stopPolling();
+            setState("timeout");
+            return;
+          }
         }
       } catch {
         /* 一時的なネットワークエラーは次のポーリングで回復 */
       }
       if (deadlineRef.current && Date.now() >= deadlineRef.current) {
-        stopPolling();
-        setState("timeout");
+        if (autoRetriesRef.current > 0) {
+          // 自動再生成: もう一度キックして待機時間を延長
+          autoRetriesRef.current -= 1;
+          deadlineRef.current = Date.now() + TIMEOUT_MS;
+          void kickGeneration(false);
+        } else {
+          stopPolling();
+          setState("timeout");
+        }
       }
     }, POLL_INTERVAL_MS);
-  }, [router, stopPolling]);
+  }, [router, stopPolling, kickGeneration]);
 
-  // 初期状態が pending の場合、マウント時に一度生成をキックしてからポーリング
+  // 新規の生成ドライブ開始(自動再生成カウンタをリセット)。
+  const drive = useCallback(
+    (force: boolean) => {
+      autoRetriesRef.current = MAX_AUTO_RETRIES;
+      void kickGeneration(force);
+      startPending();
+    },
+    [kickGeneration, startPending],
+  );
+
+  // 初期状態が pending の場合、マウント時に生成をドライブ
   useEffect(() => {
     if (initialState === "pending") {
-      void kickGeneration();
-      startPending();
+      drive(false);
     }
     return () => stopPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 出生データ保存後: 生成をキックして pending へ
-  const handleSaved = useCallback(() => {
-    void kickGeneration();
-    startPending();
-  }, [kickGeneration, startPending]);
-
-  const handleRetry = useCallback(() => {
-    void kickGeneration();
-    startPending();
-  }, [kickGeneration, startPending]);
+  const handleSaved = useCallback(() => drive(false), [drive]);
+  // 手動リトライはサーバの上限を超えて再試行するため force=true
+  const handleRetry = useCallback(() => drive(true), [drive]);
 
   if (state === "no_birth") {
     return (

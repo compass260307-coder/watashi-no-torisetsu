@@ -6,6 +6,10 @@ import { buildNatalSystemPrompt, buildNatalUserPrompt } from "./prompts.mjs";
 const TOKYO_LAT = 35.6895;
 const TOKYO_LNG = 139.6917;
 
+// 生成状態マシン用の定数 (reading.ts と一致させること)。
+const MAX_GEN_ATTEMPTS = 3; // 自動再生成の上限。超えたら opts.force(手動)でのみ再試行。
+const STALE_LOCK_MS = 180_000; // 'generating' ロックの陳腐化(クラッシュ復帰)閾値=3分。
+
 // birth_profiles の行から ephemeris 用の ISO 日時 (JST) を組み立てる。
 //   - birth_date は 'YYYY-MM-DD'
 //   - time_unknown / birth_time 無し → 正午 (12:00) 仮定
@@ -66,7 +70,15 @@ export async function computeChartForUser(supabaseAdmin, userId) {
 function isReadingReady(row) {
   if (!row) return false;
   const model = row.model;
-  if (!model || model === "pending" || model === "local-placeholder") return false;
+  if (
+    !model ||
+    model === "pending" ||
+    model === "generating" ||
+    model === "failed" ||
+    model === "local-placeholder"
+  ) {
+    return false;
+  }
   const r = row.reading;
   if (!r || typeof r !== "object") return false;
   if (r.generated_from === "not-implemented") return false;
@@ -116,14 +128,35 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       return { skipped: "chart_not_ready" };
     }
 
-    // 3. キャッシュ規律: 有効な鑑定が既にあれば再生成しない(API再呼び出し禁止)。
+    // 3. 既存の生成状態を読む
     const { data: existing } = await supabaseAdmin
       .from("natal_readings")
-      .select("model, reading")
+      .select("model, reading, generated_at")
       .eq("user_id", userId)
       .maybeSingle();
+
+    // 3a. 有効な鑑定が既にあれば再生成しない(キャッシュ規律・API再呼び出し禁止)
     if (isReadingReady(existing)) {
       return { ok: true, cached: true };
+    }
+
+    const attempts =
+      existing && existing.reading && typeof existing.reading === "object"
+        ? Number(existing.reading.attempts) || 0
+        : 0;
+
+    // 3b. 並行生成ロック: 別プロセスが生成中(かつ陳腐化していない)なら重複起動しない。
+    //     クラッシュで放置された 'generating' は STALE_LOCK_MS 経過で再取得を許可。
+    if (existing && existing.model === "generating") {
+      const startedAt = existing.generated_at ? Date.parse(existing.generated_at) : 0;
+      if (startedAt && Date.now() - startedAt < STALE_LOCK_MS) {
+        return { skipped: "in_progress" };
+      }
+    }
+
+    // 3c. 自動再生成の上限。手動(opts.force)でのみ超過リトライを許可。
+    if (attempts >= MAX_GEN_ATTEMPTS && !opts.force) {
+      return { skipped: "failed", attempts };
     }
 
     // 4. 生成入力を用意 (opts 優先、無ければ scores だけ DB から補完)
@@ -143,6 +176,17 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       // モデル未設定は構成ミス。ダミーを書かずエラーで返す(待機のまま)。
       return { error: "CLAUDE_MODEL not set" };
     }
+
+    // 4a. ロック取得 (model='generating')。以降 isReadingReady=false のまま生成中を表す。
+    await supabaseAdmin.from("natal_readings").upsert(
+      {
+        user_id: userId,
+        reading: { status: "generating", attempts },
+        model: "generating",
+        generated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
 
     const system = buildNatalSystemPrompt();
     const userPrompt = buildNatalUserPrompt({ chart, scores, essence, timeUnknown });
@@ -166,11 +210,27 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
         return { ok: true };
       } catch (e) {
         lastErr = e;
-        console.warn(`[generateWorker] attempt ${attempt} failed:`, e);
+        console.warn(`[generateWorker] claude attempt ${attempt} failed:`, e);
       }
     }
-    console.error("[generateWorker] all attempts failed:", lastErr);
-    return { error: String(lastErr) };
+
+    // 6. 失敗を記録 (attempts++)。上限までは呼び出し側が自動再生成できる。
+    const nextAttempts = attempts + 1;
+    console.error(`[generateWorker] generation failed (attempts=${nextAttempts}):`, lastErr);
+    await supabaseAdmin.from("natal_readings").upsert(
+      {
+        user_id: userId,
+        reading: {
+          status: "failed",
+          attempts: nextAttempts,
+          error: String(lastErr).slice(0, 500),
+        },
+        model: "failed",
+        generated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    return { error: String(lastErr), attempts: nextAttempts };
   } catch (e) {
     console.error("[generateWorker] error:", e);
     return { error: String(e) };

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { isReadingReady } from "@/lib/unmei/reading";
+import { isReadingReady, MAX_GEN_ATTEMPTS } from "@/lib/unmei/reading";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
 
 async function loadWorker() {
@@ -45,22 +45,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, state: "ready", skipped: true });
   }
 
+  // 手動リトライ(自動再生成の上限を超えて再試行)は body { force:true } で明示する。
+  let force = false;
+  try {
+    const body = await request.json();
+    force = body?.force === true;
+  } catch {
+    /* body 無しは force=false */
+  }
+
   try {
     // Big Five スコア + 32タイプ称号を解決してプロンプト入力として渡す。
     const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
 
     const worker = await loadWorker();
-    const result = await worker.runForUser(supabaseAdmin, userId, promptInputs);
+    const result = await worker.runForUser(supabaseAdmin, userId, {
+      ...promptInputs,
+      force,
+    });
 
     if (result && "skipped" in result) {
-      // no_birth_profile / chart_not_ready → まだ生成できない状態
-      const state = result.skipped === "no_birth_profile" ? "no_birth" : "pending";
-      return NextResponse.json({ ok: true, state });
+      if (result.skipped === "no_birth_profile") {
+        return NextResponse.json({ ok: true, state: "no_birth" });
+      }
+      if (result.skipped === "failed") {
+        // 自動再生成の上限到達 → 手動リトライ待ち
+        return NextResponse.json({ ok: true, state: "failed", attempts: result.attempts ?? MAX_GEN_ATTEMPTS });
+      }
+      // chart_not_ready / in_progress → 待機(pending)
+      return NextResponse.json({ ok: true, state: "pending" });
     }
     if (result && "error" in result) {
-      // 生成失敗。pending のまま。クライアントはタイムアウトで再試行案内。
+      // 生成失敗。上限到達なら failed、未達なら pending(自動再試行の余地)。
       console.error("[api/unmei/generate] generation error:", result.error);
-      return NextResponse.json({ ok: false, state: "pending" }, { status: 200 });
+      const attempts = result.attempts ?? 0;
+      const state = attempts >= MAX_GEN_ATTEMPTS ? "failed" : "pending";
+      return NextResponse.json({ ok: false, state, attempts }, { status: 200 });
     }
     return NextResponse.json({ ok: true, state: "ready" });
   } catch (e) {

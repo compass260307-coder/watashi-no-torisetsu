@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { isReadingReady } from "@/lib/unmei/reading";
+import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
 
 export const runtime = "nodejs";
 
@@ -46,7 +46,13 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (!isReadingReady(reading)) {
-    return NextResponse.json({ ok: true, state: "pending" });
+    // pending(生成中/未達) と failed(自動再生成の上限到達=手動リトライ待ち)を区別。
+    const { state, attempts } = readingGenState(reading);
+    return NextResponse.json({
+      ok: true,
+      state: state === "failed" ? "failed" : "pending",
+      attempts,
+    });
   }
 
   return NextResponse.json({ ok: true, state: "ready", reading });
