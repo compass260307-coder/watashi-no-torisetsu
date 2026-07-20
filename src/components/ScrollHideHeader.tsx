@@ -33,7 +33,10 @@ export function ScrollHideHeader({ children }: { children: ReactNode }) {
   return (
     <div
       className="sticky top-0 z-50 transition-transform duration-300"
-      style={{ transform: hidden ? "translateY(-100%)" : "translateY(0)" }}
+      // 表示中は transform を持たせない (undefined)。translateY(0) でも transform が
+      // 付いていると、この div が中の TopHeader の fixed 要素 (SPメニュー/オーバーレイ) の
+      // containing block になってしまい、メニューがヘッダーの高さに潰れて背景が消える。
+      style={{ transform: hidden ? "translateY(-100%)" : undefined }}
     >
       {children}
     </div>

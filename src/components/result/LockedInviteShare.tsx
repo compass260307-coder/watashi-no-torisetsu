@@ -25,6 +25,11 @@ interface LockedInviteShareProps {
   trackSource?: string;
   ownerToken?: string;
   inviteCode?: string;
+  /**
+   * QR 中央に重ねるキャラ顔画像 (丸抜き・白リング)。未開放ページ (TakoShareGate) と
+   * 同じ見せ方。level="H" (30%欠損許容) に対し約34%幅の被覆で運用実績あり。
+   */
+  qrImageSrc?: string | null;
 }
 
 const SHARE_TEXT =
@@ -36,6 +41,7 @@ export function LockedInviteShare({
   trackSource,
   ownerToken,
   inviteCode,
+  qrImageSrc,
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
 
@@ -87,15 +93,28 @@ export function LockedInviteShare({
         role="img"
         aria-label="友達評価ページへの招待QRコード"
       >
-        <QRCodeSVG
-          value={withRef(inviteUrl, "qr")}
-          size={compact ? 204 : 248}
-          className="h-auto w-full"
-          bgColor="#FFFFFF"
-          fgColor="#2E2E5C"
-          level="H"
-          marginSize={0}
-        />
+        <div className="relative">
+          <QRCodeSVG
+            value={withRef(inviteUrl, "qr")}
+            size={compact ? 204 : 248}
+            className="h-auto w-full"
+            bgColor="#FFFFFF"
+            fgColor="#2E2E5C"
+            level="H"
+            marginSize={0}
+          />
+          {/* 中央のキャラ顔 (丸抜き・白リング)。TakoShareGate と同じ被覆率。 */}
+          {qrImageSrc && (
+            <span className="absolute left-1/2 top-1/2 block w-[34%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white ring-4 ring-white shadow-[0_2px_8px_rgba(46,46,92,0.18)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrImageSrc}
+                alt=""
+                className="block h-full w-full object-cover"
+              />
+            </span>
+          )}
+        </div>
       </div>
       <p className="mt-2.5 text-center text-[12px] font-bold text-[#2E2E5C]/50">
         友達のスマホで読み取ってもらおう

@@ -1,38 +1,99 @@
-// 友達診断 /tako 結果ページの「友達から見た恋愛傾向 / あなたのモテポイントは実はここ」。
-// 友達平均スコアから決定的に選んだモテポイント (主 + 隠れ) を、他者視点のトーンで見せる。
+// 友達診断 /tako 結果ページの「◯◯さんから見た恋愛傾向」のモテポイント。
+// 2026-07-20: 「関係を深めるヒント」と同じチェックリスト組版 (緑チェック + 太字タイトル +
+// 短文、PC 2カラム) に刷新。5軸ぶんのモテ理由 + 隠れた魅力の 6 項目を
+// resolveFriendLoveChecklist (friend-love-content.ts) から受け取る。
 
-import type { FriendLoveContent } from "@/lib/friend-love-content";
+import type { MoteCheckItem } from "@/lib/friend-love-content";
 
 interface FriendLoveSectionProps {
-  content: FriendLoveContent;
+  items: MoteCheckItem[];
+  /** 「モテるための◯◯さんからのヒント」(resolveMoteHints・6項目のチェックリスト)。 */
+  hints?: MoteCheckItem[];
+  /** 「誰から見たか」の表示名 (例 "ゆかさん")。省略時は総称「友達」。 */
+  viewer?: string;
 }
 
-export function FriendLoveSection({ content }: FriendLoveSectionProps) {
+// リスト行 (丸アイコン + 太字タイトル + 短文)。
+//   icon="check" = 緑チェック (モテポイント) / icon="heart" = ピンクのハート (ヒント)。
+function CheckRow({
+  item,
+  icon = "check",
+}: {
+  item: MoteCheckItem;
+  icon?: "check" | "heart";
+}) {
+  const color = icon === "heart" ? "#FF6B9D" : "#4CAF7D";
   return (
     <div>
-      {/* 主モテポイント (見せ場・淡ピンクカード) */}
-      <div className="mb-8 rounded-3xl bg-[#FFF0F4] px-6 py-7">
-        <p className="mb-2 text-[13px] font-black tracking-wide text-[#FF6B9D]">
-          あなたのモテポイントは実はここ
-        </p>
-        <p className="text-[22px] font-black leading-[1.4] text-[#2E2E5C] md:text-[26px]">
-          {content.main.headline}
-        </p>
-        <p className="body-gothic mt-4 text-[16px] font-normal leading-[1.75] text-[#1A1A1A]">
-          {content.main.body}
-        </p>
+      <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+        <span
+          aria-hidden="true"
+          className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2"
+          style={{ borderColor: color, color }}
+        >
+          {icon === "heart" ? (
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 20.5s-6.2-4-8.6-7.6C1.7 10.4 2.4 7.1 5.1 5.8c1.9-.9 4.1-.4 5.5 1.1L12 8.3l1.4-1.4c1.4-1.5 3.6-2 5.5-1.1 2.7 1.3 3.4 4.6 1.7 7.1C18.2 16.5 12 20.5 12 20.5z" />
+            </svg>
+          ) : (
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          )}
+        </span>
+        {item.title}
+      </p>
+      <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+        {item.body}
+      </p>
+    </div>
+  );
+}
+
+export function FriendLoveSection({ items, hints, viewer }: FriendLoveSectionProps) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
+        {viewer ?? "友達"}から見た隠れモテポイント
+      </h3>
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+        {items.map((it) => (
+          <CheckRow key={it.title} item={it} />
+        ))}
       </div>
 
-      {/* 隠れモテポイント (2番目の軸・淡枠カード) */}
-      <div className="rounded-3xl border-[1.5px] border-[#FFD9E4] px-6 py-6">
-        <p className="mb-2 flex items-center gap-1.5 text-[14px] font-black text-[#FF6B9D]">
-          <span aria-hidden="true">＋</span>
-          もうひとつの隠れた魅力：{content.hidden.keyword}
-        </p>
-        <p className="body-gothic text-[15.5px] font-normal leading-[1.7] text-[#3A3A48]">
-          {content.hidden.body}
-        </p>
-      </div>
+      {/* モテるための◯◯さんからのヒント (同じチェックリスト組版・6項目) */}
+      {hints && hints.length > 0 && (
+        <div className="mt-10">
+          <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
+            モテるための{viewer ?? "友達"}からのヒント
+          </h3>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+            {hints.map((it) => (
+              <CheckRow key={it.title} item={it} icon="heart" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
