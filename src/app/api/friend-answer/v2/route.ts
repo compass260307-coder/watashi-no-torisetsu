@@ -31,6 +31,7 @@ import {
   type FriendQualitativeData,
 } from "@/lib/friend-perception-v2";
 import { writeFriendPerception } from "@/lib/friend-perception-write";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import {
   FRIEND_CHOICE_QUESTIONS_V2,
   FRIEND_QUESTIONS_V2_TOTAL,
@@ -355,7 +356,9 @@ export async function POST(request: NextRequest) {
     perception,
     {
       name: perceiverName,
-      userId: null, // 評価者自身が users 行を持つかどうかは Phase 3-β 後段で対応
+      // INSERT 時点は null 固定 (クリティカルパスを最短に保つ)。回答者が自己診断済みなら
+      // レスポンス後の after() で perceiver_user_id を後追い UPDATE する (下記)。
+      userId: null,
       lineUserId: perceiverLineUserId,
       pdfConsent, // T3-3: 友達側オプトイン制
     },
@@ -400,6 +403,53 @@ export async function POST(request: NextRequest) {
       console.warn("[friend-answer/v2] owner_message update threw:", e);
     }
   }
+
+  // perceiver_user_id 捕捉 (Path1 相性ループ用)。回答者自身も自己診断済み (= wn_session 保持)
+  // なら、その users.id を後追いで刻む。★クリティカルパス(回答書込)からは外す:
+  //   getSession + UPDATE はレスポンス送出後の after() で実行し、遅延/失敗が回答完了に
+  //   一切影響しないようにする (INSERT 件数・カウントは不変)。捕捉漏れは warn で観測可能に。
+  // ★セキュリティ非干渉: レート制限/本文検証/二重送信抑止は全て通過済みの成功パスでのみ実行し、
+  //   perceiver id はクライアント値を受けずサーバ検証済みセッションから導出する (改ざん不可)。
+  const perceptionIdForCapture = writeResult.id;
+  const ownerIdForCapture = owner.id as string;
+  // 未ログイン(トークン無し)は正常系。トークンはあったのに解決不可 = 捕捉漏れとして観測する。
+  const hadSessionToken = Boolean(
+    request.cookies.get(SESSION_COOKIE_NAME)?.value,
+  );
+  after(async () => {
+    let perceiver: Awaited<ReturnType<typeof getSession>> = null;
+    try {
+      perceiver = await getSession(request);
+    } catch (e) {
+      // 例外/タイムアウトで捕捉できなかったケースを観測 (回答自体は既に成功済み)。
+      console.warn(
+        "[friend-answer/v2] perceiver session read threw (capture skipped):",
+        e,
+      );
+      return;
+    }
+    if (!perceiver) {
+      if (hadSessionToken) {
+        // ログイン状態だったのに捕捉できなかった割合を後から追えるように残す。
+        console.warn(
+          "[friend-answer/v2] had session token but no perceiver resolved (Path1 capture miss)",
+        );
+      }
+      return;
+    }
+    // owner除外ガード: 自分で自分に答えた場合は id を刻まない (自己相性は退化・/aisho で a===b 無効)。
+    if (perceiver.id === ownerIdForCapture) return;
+    const { error: capErr } = await supabaseAdmin
+      .from("friend_perceptions")
+      .update({ perceiver_user_id: perceiver.id })
+      .eq("id", perceptionIdForCapture);
+    if (capErr) {
+      console.warn(
+        "[friend-answer/v2] perceiver_user_id capture update failed:",
+        capErr.message,
+      );
+    }
+  });
 
   // owner への友達評価到着通知 (fire-and-forget、メール + LINE 並列)
   //
