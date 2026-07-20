@@ -133,11 +133,13 @@ export async function POST(request: NextRequest) {
             currency: "jpy",
             unit_amount: amount,
             product_data: {
-              name: discounted
-                ? "友達診断 完全版 (全解放オーナー割引)"
-                : "友達診断 完全版",
+              // 表記は ¥499 (性格レポート完全版) の Checkout に揃える:
+              // 統一商品名 + 内容列挙の説明 + フェルトマスコットの商品画像。
+              // 割引はセッションの金額 (¥800) 側で表現し、商品名は変えない。
+              name: "ワタシのトリセツ 友達診断完全版",
               description:
-                "友達から見たあなたの隠れモテポイント・ヒント・ワナをすべて解放",
+                "友達から見た隠れモテポイント、モテるためのヒント、関係を深めるコツ、関係を壊すワナまで、友達ごとにぜんぶ解放。これから答えてくれる友達のぶんも読める。買い切り・追加課金なし。",
+              images: [`${BASE_URL}/mascot/friend-hero.png`],
             },
           },
         },
