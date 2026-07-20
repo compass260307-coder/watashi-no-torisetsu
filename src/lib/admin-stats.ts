@@ -883,6 +883,55 @@ export async function computeStats(from: string | null, to: string | null) {
     });
   }
 
+  // 選択期間中に確定したフルアクセス決済の実売上。
+  // ARPU は「選択期間に診断した人が、その後いくら購入したか」というコホート指標だが、
+  // ダッシュボード最上段の課金額は「選択期間中に実際に入金された額」を表示する。
+  const periodRevenueBuckets = new Map<
+    string,
+    {
+      grossRevenueMinor: number;
+      refundedMinor: number;
+      netRevenueMinor: number;
+      purchases: number;
+      payerIds: Set<string>;
+    }
+  >();
+  for (const payment of verifiedPaymentFacts) {
+    if (!inRange(payment.paidAt)) continue;
+    const currency = payment.currency.toLowerCase();
+    const bucket = periodRevenueBuckets.get(currency) ?? {
+      grossRevenueMinor: 0,
+      refundedMinor: 0,
+      netRevenueMinor: 0,
+      purchases: 0,
+      payerIds: new Set<string>(),
+    };
+    const refundedMinor = Math.min(
+      Math.max(payment.refundedAmountMinor, 0),
+      payment.amountMinor,
+    );
+    bucket.grossRevenueMinor += payment.amountMinor;
+    bucket.refundedMinor += refundedMinor;
+    bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
+    bucket.purchases++;
+    bucket.payerIds.add(payment.userId);
+    periodRevenueBuckets.set(currency, bucket);
+  }
+
+  const periodRevenue = {
+    basis: "選択期間中に支払いが確定したフルアクセス決済の純売上",
+    currencies: Array.from(periodRevenueBuckets.entries())
+      .map(([currency, bucket]) => ({
+        currency,
+        grossRevenueMinor: bucket.grossRevenueMinor,
+        refundedMinor: bucket.refundedMinor,
+        netRevenueMinor: bucket.netRevenueMinor,
+        purchases: bucket.purchases,
+        payers: bucket.payerIds.size,
+      }))
+      .sort((a, b) => a.currency.localeCompare(b.currency)),
+  };
+
   const computedCoreKpis = computeCoreKpis({
     users: coreUserRows.map((row) => ({
       id: row.id,
@@ -901,6 +950,7 @@ export async function computeStats(from: string | null, to: string | null) {
   });
   const coreKpis = {
     ...computedCoreKpis,
+    periodRevenue,
     dataQuality: {
       ...computedCoreKpis.dataQuality,
       ready: coreSchemaIssues.length === 0,

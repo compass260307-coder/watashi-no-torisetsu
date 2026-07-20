@@ -88,6 +88,17 @@ type Stats = {
         payers: number;
       }[];
     };
+    periodRevenue: {
+      basis: string;
+      currencies: {
+        currency: string;
+        grossRevenueMinor: number;
+        refundedMinor: number;
+        netRevenueMinor: number;
+        purchases: number;
+        payers: number;
+      }[];
+    };
     viralCoefficient: {
       children: number;
       denominator: number;
@@ -310,7 +321,7 @@ function formatArpu(currencies: Stats["coreKpis"]["arpu"]["currencies"]): string
 }
 
 function formatNetRevenue(
-  currencies: Stats["coreKpis"]["arpu"]["currencies"],
+  currencies: { currency: string; netRevenueMinor: number }[],
 ): string {
   if (currencies.length === 0) return "—";
   return currencies
@@ -318,122 +329,93 @@ function formatNetRevenue(
     .join(" / ");
 }
 
-function formatTrendDate(date: string) {
-  const [, month, day] = date.split("-");
-  return `${Number(month)}/${Number(day)}`;
-}
+type ExecutiveMetricTone = "indigo" | "emerald" | "cyan";
 
-function DiagnosisTrendPanel({
-  trend,
-  periodLabel,
-  lastUpdatedAt,
+const EXECUTIVE_METRIC_TONES: Record<
+  ExecutiveMetricTone,
+  { accent: string; glow: string; badge: string; icon: string }
+> = {
+  indigo: {
+    accent: "from-indigo-400 via-violet-400 to-fuchsia-400",
+    glow: "bg-indigo-500/25",
+    badge: "border-indigo-300/20 bg-indigo-300/10 text-indigo-100",
+    icon: "bg-indigo-400/15 text-indigo-200 ring-indigo-300/20",
+  },
+  emerald: {
+    accent: "from-emerald-400 via-teal-300 to-cyan-300",
+    glow: "bg-emerald-400/20",
+    badge: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
+    icon: "bg-emerald-400/15 text-emerald-200 ring-emerald-300/20",
+  },
+  cyan: {
+    accent: "from-cyan-300 via-sky-400 to-indigo-400",
+    glow: "bg-cyan-400/20",
+    badge: "border-cyan-300/20 bg-cyan-300/10 text-cyan-100",
+    icon: "bg-cyan-400/15 text-cyan-100 ring-cyan-300/20",
+  },
+};
+
+function ExecutiveMetricCard({
+  index,
+  label,
+  value,
+  unit,
+  detail,
+  badge,
+  tone,
+  compactValue = false,
 }: {
-  trend: Stats["coreKpis"]["diagnosisTrend"];
-  periodLabel: string;
-  lastUpdatedAt: string | null;
+  index: string;
+  label: string;
+  value: string;
+  unit?: string;
+  detail: string;
+  badge: string;
+  tone: ExecutiveMetricTone;
+  compactValue?: boolean;
 }) {
-  const max = Math.max(...trend.points.map((point) => point.count), 1);
-  const changeTone =
-    trend.change === null
-      ? "border-white/10 bg-white/[0.06] text-slate-300"
-      : trend.change >= 0
-        ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
-        : "border-rose-300/20 bg-rose-300/10 text-rose-200";
-  const changeLabel =
-    trend.changeRate === null
-      ? trend.previous === null
-        ? "比較なし"
-        : "前期間 0人"
-      : `${trend.changeRate >= 0 ? "+" : ""}${pct(trend.changeRate)}`;
-  const firstPoint = trend.points[0];
-  const lastPoint = trend.points.at(-1);
-  const chartWidth = Math.max(320, trend.points.length * 12);
-
+  const colors = EXECUTIVE_METRIC_TONES[tone];
   return (
-    <div className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.045] p-5 backdrop-blur sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-200">
-            Daily diagnosis
-          </p>
-          <h3 className="mt-1.5 text-base font-black tracking-[-0.03em] text-white sm:text-lg">
-            日別の診断完了
-          </h3>
-        </div>
-        <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black tabular-nums ${changeTone}`}>
-          前期間比 {changeLabel}
+    <article className="group relative min-h-[220px] overflow-hidden rounded-[24px] border border-white/[0.11] bg-white/[0.055] p-5 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.75)] backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.075] sm:p-6">
+      <span
+        aria-hidden="true"
+        className={`absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl ${colors.glow}`}
+      />
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${colors.accent}`}
+      />
+      <div className="relative flex items-start justify-between gap-4">
+        <span className={`inline-flex rounded-full border px-3 py-1.5 text-[9px] font-black tracking-[0.08em] ${colors.badge}`}>
+          {badge}
+        </span>
+        <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-[10px] font-black ring-1 ${colors.icon}`}>
+          {index}
         </span>
       </div>
-
-      <div
-        className="mt-5 overflow-x-auto pb-1"
-        role="img"
-        aria-label={`${periodLabel}の日別診断完了人数。合計${trend.current.toLocaleString()}人`}
-      >
-        {trend.points.length > 0 ? (
-          <div style={{ minWidth: `${chartWidth}px` }}>
-            <div className="flex h-28 items-end gap-1 border-b border-white/10 px-1">
-              {trend.points.map((point) => {
-                const height =
-                  point.count === 0
-                    ? 2
-                    : Math.max((point.count / max) * 100, 8);
-                return (
-                  <div
-                    key={point.date}
-                    className="group relative flex h-full min-w-0 flex-1 items-end"
-                    title={`${formatTrendDate(point.date)}: ${point.count.toLocaleString()}人`}
-                  >
-                    <div
-                      className="w-full rounded-t-[4px] bg-gradient-to-t from-indigo-500 via-violet-400 to-cyan-300 opacity-90 transition group-hover:opacity-100"
-                      style={{ height: `${height}%` }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-2 flex justify-between px-1 text-[9px] font-bold tabular-nums text-slate-500">
-              <span>{firstPoint ? formatTrendDate(firstPoint.date) : "—"}</span>
-              <span>{lastPoint ? formatTrendDate(lastPoint.date) : "—"}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 text-[11px] font-bold text-slate-500">
-            この期間の診断完了はありません
-          </div>
-        )}
+      <p className="relative mt-5 text-[12px] font-black tracking-[0.02em] text-slate-300">
+        {label}
+      </p>
+      <div className="relative mt-2 flex min-w-0 items-end gap-2">
+        <p
+          className={`min-w-0 font-black leading-none tracking-[-0.065em] tabular-nums text-white ${
+            compactValue
+              ? "text-[clamp(2.25rem,3.3vw,3.9rem)]"
+              : "text-[clamp(3.25rem,4.8vw,5.25rem)]"
+          }`}
+        >
+          {value}
+        </p>
+        {unit ? (
+          <span className="mb-1.5 shrink-0 text-lg font-black text-slate-200 sm:mb-2 sm:text-xl">
+            {unit}
+          </span>
+        ) : null}
       </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-white/10 bg-white/10">
-        {[
-          ["前期間", trend.previous === null ? "—" : `${trend.previous.toLocaleString()}人`],
-          [
-            "増減",
-            trend.change === null
-              ? "—"
-              : `${trend.change >= 0 ? "+" : ""}${trend.change.toLocaleString()}人`,
-          ],
-          [
-            "最終同期",
-            lastUpdatedAt
-              ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "—",
-          ],
-        ].map(([label, value]) => (
-          <div key={label} className="min-w-0 bg-[#11182d]/90 px-3 py-3.5 sm:px-4">
-            <p className="truncate text-[8px] font-bold tracking-[0.04em] text-slate-500">
-              {label}
-            </p>
-            <p className="mt-1.5 truncate text-sm font-black tabular-nums text-white" title={value}>
-              {value}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
+      <p className="relative mt-4 border-t border-white/[0.08] pt-3 text-[11px] font-medium leading-relaxed text-slate-400">
+        {detail}
+      </p>
+    </article>
   );
 }
 
@@ -742,7 +724,7 @@ export default function AdminPage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
-  const [preset, setPreset] = useState<Preset>("7d");
+  const [preset, setPreset] = useState<Preset>("today");
   const [customFrom, setCustomFrom] = useState(() => toLocalDate(new Date()));
   const [customTo, setCustomTo] = useState(() => toLocalDate(new Date()));
 
@@ -1213,7 +1195,39 @@ export default function AdminPage() {
   };
 
   const selectedPeriodLabel =
-    PRESETS.find((item) => item.key === preset)?.label ?? "7日";
+    PRESETS.find((item) => item.key === preset)?.label ?? "今日";
+  const ownerDiagnosisStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
+    (step) => step.key === "diagnosis",
+  );
+  const ownerFriendCompletedStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
+    (step) => step.key === "friend_answer",
+  );
+  const hasTrustedCoreDiagnosis =
+    coreReady &&
+    (stats.coreKpis.cohort.diagnosisUsers > 0 ||
+      stats.diagnosisCompleted === 0);
+  const headlineDiagnosisUsers = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.cohort.diagnosisUsers
+    : stats.diagnosisCompleted;
+  const headlineFriendNumerator = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.diagnosisToFriend.numerator
+    : (ownerFriendCompletedStep?.count ?? 0);
+  const headlineFriendDenominator = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.diagnosisToFriend.denominator
+    : (ownerDiagnosisStep?.count ?? headlineDiagnosisUsers);
+  const headlineFriendRate =
+    headlineFriendDenominator > 0
+      ? headlineFriendNumerator / headlineFriendDenominator
+      : 0;
+  const periodRevenueCurrencies = stats.coreKpis.periodRevenue.currencies;
+  const periodRevenuePurchases = periodRevenueCurrencies.reduce(
+    (sum, row) => sum + row.purchases,
+    0,
+  );
+  const headlineRevenue =
+    periodRevenueCurrencies.length > 0
+      ? formatNetRevenue(periodRevenueCurrencies)
+      : formatMoney(0, "jpy");
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#f5f7fb] text-slate-900">
@@ -1349,7 +1363,7 @@ export default function AdminPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 <span className="hidden xl:inline">{selectedPeriodLabel}の</span>
                 <span className="font-black tabular-nums text-slate-950">
-                  診断完了 {stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人
+                  診断完了 {headlineDiagnosisUsers.toLocaleString()}人
                 </span>
               </span>
               <button
@@ -1441,45 +1455,62 @@ export default function AdminPage() {
                 <circle cx="284" cy="86" r="5" fill="white" />
               </svg>
 
-              <div className="relative grid gap-7 p-6 sm:p-8 xl:p-10 min-[1320px]:grid-cols-[minmax(0,1.05fr)_minmax(390px,0.95fr)] min-[1320px]:items-end">
-                <div>
-                  <div className="mb-5 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-indigo-300/20 bg-indigo-300/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200">
-                      Command Center
-                    </span>
-                    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[9px] font-black ${coreReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${coreReady ? "bg-emerald-300" : "bg-amber-300"}`} />
-                      {coreReady ? "計測準備完了" : "DB更新待ち"}
-                    </span>
-                  </div>
-                  <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">
-                    <span className="h-px w-7 bg-indigo-300/70" aria-hidden="true" />
-                    Most important KPI
-                  </p>
-                  <h2 className="mt-3 text-[13px] font-black tracking-[0.04em] text-slate-300 sm:text-sm">
-                    自己診断完了人数
-                  </h2>
-                  <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-2">
-                    <p className="text-[clamp(3.8rem,7vw,6.5rem)] font-black leading-none tracking-[-0.075em] tabular-nums text-white">
-                      {stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}
-                    </p>
-                    <div className="mb-2 flex items-center gap-2 sm:mb-3">
-                      <span className="text-xl font-black text-white sm:text-2xl">人</span>
-                      <span className="rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-[10px] font-black text-indigo-100">
-                        {selectedPeriodLabel}
+              <div className="relative p-6 sm:p-8 xl:p-10">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="mb-4 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-indigo-300/20 bg-indigo-300/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200">
+                        Executive pulse
+                      </span>
+                      <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[9px] font-black ${coreReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${coreReady ? "bg-emerald-300" : "bg-amber-300"}`} />
+                        {coreReady ? "確定データ" : "イベント値で補完中"}
                       </span>
                     </div>
+                    <h2 className="text-[clamp(1.7rem,3vw,2.65rem)] font-black leading-tight tracking-[-0.055em] text-white">
+                      {selectedPeriodLabel}の重要指標
+                    </h2>
+                    <p className="mt-2 text-xs font-medium leading-6 text-slate-400 sm:text-sm">
+                      診断・売上・友達診断への転換を、最初に確認できます。
+                    </p>
                   </div>
-                  <p className="mt-3 max-w-xl text-xs font-medium leading-6 text-slate-400 sm:text-sm">
-                    選択期間に自己診断を完了した確定ユーザー数。課金率・友達診断率・ARPU・拡散係数は、すべてこの人数から追跡します。
-                  </p>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.7)]" />
+                    最終同期 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  </div>
                 </div>
 
-                <DiagnosisTrendPanel
-                  trend={stats.coreKpis.diagnosisTrend}
-                  periodLabel={selectedPeriodLabel}
-                  lastUpdatedAt={lastUpdatedAt}
-                />
+                <div className="mt-7 grid gap-4 lg:grid-cols-3">
+                  <ExecutiveMetricCard
+                    index="01"
+                    label="診断人数"
+                    value={headlineDiagnosisUsers.toLocaleString()}
+                    unit="人"
+                    badge={`${selectedPeriodLabel}の最重要数値`}
+                    detail={hasTrustedCoreDiagnosis ? "診断完了済みのユニークユーザー" : "診断完了イベントのユニークセッション"}
+                    tone="indigo"
+                  />
+                  <ExecutiveMetricCard
+                    index="02"
+                    label="課金額"
+                    value={headlineRevenue}
+                    badge={`${selectedPeriodLabel}の純売上`}
+                    detail={`フルアクセス決済 ${periodRevenuePurchases.toLocaleString()}件・返金控除後`}
+                    tone="emerald"
+                    compactValue
+                  />
+                  <ExecutiveMetricCard
+                    index="03"
+                    label="診断した人のうち友達診断1人完了"
+                    value={pctOrDash(
+                      headlineFriendRate,
+                      headlineFriendDenominator,
+                    )}
+                    badge={`${selectedPeriodLabel}の友達診断率`}
+                    detail={`${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`}
+                    tone="cyan"
+                  />
+                </div>
               </div>
 
               <div className="relative flex flex-col gap-3 border-t border-white/[0.08] bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 xl:px-10">
