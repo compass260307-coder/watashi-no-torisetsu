@@ -73,6 +73,7 @@ import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import { TakoAttentionOnPaid } from "@/components/result/TakoAttentionOnPaid";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
@@ -424,6 +425,12 @@ async function MeResultPageContent({
       {!previewType && sp.paid === "1" && !deepDivePaid && (
         <PaidUnlockWatcher ownerToken={token} locale={locale} />
       )}
+      {/* 友達診断の赤バッジ付与: 課金 (full_access) 済みの日本語 /me を表示したとき1回だけ。
+          (2026-07-20 変更: 診断完了時の全員付与をやめ、課金完了後に出す) */}
+      {!previewType && !isKorean && deepDivePaid && (
+        <TakoAttentionOnPaid ownerToken={token} />
+      )}
+
       {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
           プレビュー (?previewType) はモック描画なので計測しない。 */}
       {!previewType && (

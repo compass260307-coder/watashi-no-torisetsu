@@ -5,10 +5,6 @@ import { useRouter } from "next/navigation";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
 import { readAcquisition } from "@/lib/acquisition";
-import {
-  TAKO_ATTENTION_PENDING_KEY,
-  takoAttentionImpressionKey,
-} from "@/lib/tako-attention";
 import type { AnswerValue } from "@/lib/types";
 import {
   DIAGNOSIS_LOCALES,
@@ -419,14 +415,8 @@ export default function DiagnosisPageContent({
           },
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
-        // 日本版では診断完了直後、下部ナビの「友達診断」に未確認バッジを出す。
-        // 同じ owner_token で再診断した場合も再表示できるよう、表示済み記録を戻す。
-        if (!isKorean) {
-          localStorage.setItem(TAKO_ATTENTION_PENDING_KEY, data.ownerToken);
-          localStorage.removeItem(
-            takoAttentionImpressionKey(data.ownerToken),
-          );
-        }
+        // 友達診断の赤バッジは診断完了時には出さない (2026-07-20 変更)。
+        // 課金 (full_access) 完了後に /me 側 (TakoAttentionOnPaid) が付与する。
         await waitMin();
         clearProgress();
         router.push(

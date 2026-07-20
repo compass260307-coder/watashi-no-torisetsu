@@ -10,3 +10,12 @@ const TAKO_ATTENTION_IMPRESSION_PREFIX =
 export function takoAttentionImpressionKey(ownerToken: string): string {
   return `${TAKO_ATTENTION_IMPRESSION_PREFIX}${ownerToken}`;
 }
+
+// 課金 (full_access) 後にバッジを1回だけ付与するためのマーカー。
+// 2026-07-20 変更: バッジは「自己診断完了時」ではなく「課金完了後」に出す。
+const TAKO_ATTENTION_PAID_GRANTED_PREFIX =
+  "wt_tako_attention_paid_granted_v1:";
+
+export function takoAttentionPaidGrantedKey(ownerToken: string): string {
+  return `${TAKO_ATTENTION_PAID_GRANTED_PREFIX}${ownerToken}`;
+}
