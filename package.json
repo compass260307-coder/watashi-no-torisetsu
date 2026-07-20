@@ -10,11 +10,14 @@
     "prebuild:local": "node scripts/generate-image-manifest.mjs",
     "build:local": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ephemeris:test": "node scripts/ephemeris-test.mjs"
   },
   "dependencies": {
+    "@line/bot-sdk": "^11.2.0",
     "@sparticuz/chromium": "^149.0.0",
     "@supabase/supabase-js": "^2.105.1",
+    "circular-natal-horoscope-js": "^1.1.0",
     "html-to-image": "^1.11.13",
     "nanoid": "^5.1.11",
     "next": "^16.2.6",

@@ -30,6 +30,7 @@ import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
+import { runForUser } from "@/lib/unmei/generateWorker.mjs";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import {
   isCoreKpiPaymentSchemaPending,
@@ -97,7 +98,9 @@ export async function POST(request: NextRequest) {
           // この時点では権限・購入イベント・メールを一切発行せず、
           // async_payment_succeeded が届くまで待つ。
           if (event.type === "checkout.session.completed") {
-            console.log("[webhook/stripe] checkout awaiting payment", {
+            // PayPay 等の遅延決済では completed 時点で未払いが正常。想定内なので
+            // 200 で受領し(break)、後続の async_payment_succeeded を待つ。warn ログのみ残す。
+            console.warn("[webhook/stripe] checkout awaiting payment (deferred)", {
               session_id: session.id,
               payment_status: session.payment_status,
             });
@@ -210,6 +213,17 @@ async function persistLoginEmailIfEmpty(
       err instanceof Error ? err.message : String(err),
     );
   }
+}
+
+async function resolveUserIdForSession(session: Stripe.Checkout.Session): Promise<string | null> {
+  const metadataUserId = typeof session.metadata?.user_id === "string" && session.metadata.user_id.length > 0 ? session.metadata.user_id : null;
+  if (metadataUserId) return metadataUserId;
+
+  const email = normalizeEmail(session.customer_details?.email) ?? normalizeEmail(session.customer_email) ?? normalizeEmail(session.metadata?.email);
+  if (!email) return null;
+
+  const { data } = await supabaseAdmin.from("users").select("id").eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  return data?.id ?? null;
 }
 
 // ---------- フルアクセス(全解放) 完了: email 優先で紐付け (ゲスト決済対応) ----------
@@ -536,6 +550,64 @@ async function handleCheckoutPaid(
 
   // フルアクセス(全解放): guest 対応。user_id が無くても Stripe 確定 email で紐付ける。
   //   email backfill / プレースホルダー作成も含めて grantFullAccessByEmailOrId が担う。
+  // 新商品: 運命の設計図 (unmei)
+  if (metadata.product === "unmei") {
+    // guest 対応で email で紐付け。unmei フラグを立て、natal_readings プレースホルダを挿入。
+    await grantUnmeiByEmailOrId(session, userId);
+    // record purchase event specific to unmei
+    try {
+      await supabaseAdmin.from("events").insert({
+        event_name: "unmei_purchase_complete",
+        metadata: { stripe_session_id: session.id, amount_total: session.amount_total ?? null },
+      });
+    } catch (e) {
+      console.error("[webhook] unmei event insert failed:", e);
+    }
+    // direct generation trigger (max 2 retries)
+    const linkedUserId = userId ?? (await resolveUserIdForSession(session));
+    if (linkedUserId) {
+      await triggerUnmeiGeneration(linkedUserId);
+    }
+    await sendDetailedReportEmailBestEffort(session, userId);
+    return;
+  }
+
+  // アップグレード (¥1,480): user 専用経路。userId が必須で既に full_access を持っていることを確認してから付与。
+  if (metadata.product === "unmei_upgrade") {
+    // 前提(user_id 有り・full_access 保有)を満たさないセッションは、Stripe が何度リトライしても
+    // 解消しない「毒(poison)」。500 で無限リトライさせず 200 で受領し、Slack 通知で手動対応に回す。
+    // (hasFullAccess の DB エラーは throw されて 500 → transient リトライ。これは正しい挙動として温存)
+    if (!userId) {
+      console.error(`[webhook/stripe] unmei_upgrade without user_id (acknowledged): ${session.id}`);
+      await sendSlackAlert("⚠️ unmei_upgrade: user_id 無しで受領のみ", { session_id: session.id });
+      return;
+    }
+    const { hasFullAccess } = await import("@/lib/entitlements");
+    const ok = await hasFullAccess(userId);
+    if (!ok) {
+      console.error(
+        `[webhook/stripe] unmei_upgrade ineligible user ${userId} (acknowledged): ${session.id}`,
+      );
+      await sendSlackAlert("⚠️ unmei_upgrade: 対象外ユーザーで受領のみ", {
+        user_id: userId,
+        session_id: session.id,
+      });
+      return;
+    }
+    await grantUnmeiToUserId(userId);
+    try {
+      await supabaseAdmin.from("events").insert({
+        event_name: "unmei_upgrade_complete",
+        metadata: { stripe_session_id: session.id, user_id: userId, amount_total: session.amount_total ?? null },
+      });
+    } catch (e) {
+      console.error("[webhook] unmei_upgrade event insert failed:", e);
+    }
+    await triggerUnmeiGeneration(userId);
+    await sendDetailedReportEmailBestEffort(session, userId);
+    return;
+  }
+
   if (metadata.product === "full_access") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
     await recordFullAccessPayment(session, paymentUserId);
@@ -613,6 +685,128 @@ async function handleTakoUnlockCompleted(
     user_id: userId,
     amount: session.amount_total,
   });
+}
+
+// grant unmei (運命の設計図) の付与: email または userId に紐付けて users.unmei=true + plan='full'
+async function grantUnmeiByEmailOrId(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
+  const nowIso = new Date().toISOString();
+  let linked = false;
+
+  if (email) {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .update({ unmei: true, plan: "full" })
+      .eq("email", email)
+      .select("id");
+    if (error) {
+      throw new Error(`[unmei] email link failed: ${error.message}`);
+    }
+    if (data && data.length > 0) {
+      linked = true;
+      await supabaseAdmin.from("users").update({ unmei: true, unmei_at: nowIso }).eq("email", email).is("unmei_at", null);
+    }
+  }
+
+  if (userId) {
+    const { error } = await supabaseAdmin.from("users").update({ unmei: true, plan: "full" }).eq("id", userId);
+    if (error) {
+      throw new Error(`[unmei] id link failed: ${error.message}`);
+    }
+    linked = true;
+    await supabaseAdmin.from("users").update({ unmei: true, unmei_at: nowIso }).eq("id", userId).is("unmei_at", null);
+  }
+
+  if (!linked) {
+    if (!email) {
+      throw new Error(`[unmei] no email and no user_id for session ${session.id}`);
+    }
+    const { error } = await supabaseAdmin.from("users").insert({
+      email,
+      unmei: true,
+      plan: "full",
+      unmei_at: nowIso,
+      owner_token: guestToken(16),
+      invite_code: guestToken(8),
+      type_id: classifyType(NEUTRAL_SCORES),
+      scores: NEUTRAL_SCORES,
+    });
+    if (error) {
+      throw new Error(`[unmei] guest user create failed: ${error.message}`);
+    }
+  }
+
+  // ensure natal_readings placeholder exists for the user(s) linked (upsert by user id where possible)
+  try {
+    // find affected user ids: prefer userId then email
+    let rows: { id: string }[] = [];
+    if (userId) {
+      rows = [{ id: userId }];
+    } else if (email) {
+      const { data } = await supabaseAdmin.from("users").select("id").eq("email", email);
+      rows = (data as Array<{ id: string }> | null | undefined) ?? [];
+    }
+    for (const r of rows) {
+      await supabaseAdmin.from("natal_readings").upsert({ user_id: r.id, reading: {}, model: "pending", generated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    }
+  } catch (e) {
+    console.error("[unmei] natal_readings placeholder upsert failed:", e);
+  }
+
+  console.log("[webhook/stripe] unmei granted", { user_id: userId ?? "(guest)", email: email ?? null });
+}
+
+async function grantUnmeiToUserId(userId: string): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("users").update({ unmei: true, plan: "full", unmei_at: nowIso }).eq("id", userId);
+  if (error) throw new Error(`[unmei] grant to user failed: ${error.message}`);
+  // ensure natal_readings placeholder
+  await supabaseAdmin.from("natal_readings").upsert({ user_id: userId, reading: {}, model: "pending", generated_at: new Date().toISOString() }, { onConflict: "user_id" });
+}
+
+// 鑑定生成トリガー (非致命)。
+// entitlement 付与は既に完了しているため、生成の失敗で Webhook を 500 にしない
+// (500 だと Stripe が Webhook 全体をリトライし、二重メール等の副作用が出る)。
+//   - 出生データ未入力 (skipped) → 正常な待機状態。natal_readings は pending のまま。
+//     ユーザーが /unmei で出生データを入力した時点で生成が走る。
+//   - 生成中の例外 (error / throw) → Slack 通知のみ。/unmei 側が pending を検知して
+//     再生成をトリガーし、60 秒でタイムアウト表示に切り替えるため無限ローディングにならない。
+async function triggerUnmeiGeneration(userId: string): Promise<void> {
+  try {
+    // Big Five スコア + 32タイプ称号を解決してプロンプト入力に渡す。
+    const { resolveUnmeiPromptInputs } = await import("@/lib/unmei/prompt-inputs");
+    const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
+
+    const result = await runForUser(supabaseAdmin, userId, promptInputs);
+    if (result && "skipped" in result) {
+      // no_birth_profile(出生データ未入力) / chart_not_ready(エフェメリス未計算)
+      // いずれも正常な待機状態。natal_readings は pending のまま。
+      console.log(
+        `[webhook/stripe] unmei generation deferred (${result.skipped}):`,
+        userId,
+      );
+      return;
+    }
+    if (result && "error" in result) {
+      console.error("[webhook/stripe] unmei generation error (non-fatal):", result.error);
+      await sendSlackAlert("⚠️ unmei鑑定生成に失敗 (webhook・非致命)", {
+        user_id: userId,
+        error: String(result.error),
+      });
+    }
+  } catch (err) {
+    console.error("[webhook/stripe] unmei generation threw (non-fatal):", err);
+    await sendSlackAlert("⚠️ unmei鑑定生成が例外 (webhook・非致命)", {
+      user_id: userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 // ---------- checkout.session.async_payment_failed ----------
