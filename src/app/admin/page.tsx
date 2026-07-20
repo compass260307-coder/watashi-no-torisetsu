@@ -49,6 +49,17 @@ type Stats = {
       paidUsers: number;
       definition: string;
     };
+    diagnosisTrend: {
+      granularity: "day";
+      timezone: "Asia/Tokyo";
+      current: number;
+      previous: number | null;
+      change: number | null;
+      changeRate: number | null;
+      previousFrom: string | null;
+      previousTo: string | null;
+      points: { date: string; count: number }[];
+    };
     diagnosisToPaid: {
       numerator: number;
       denominator: number;
@@ -305,6 +316,125 @@ function formatNetRevenue(
   return currencies
     .map((row) => formatMoney(row.netRevenueMinor, row.currency))
     .join(" / ");
+}
+
+function formatTrendDate(date: string) {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
+
+function DiagnosisTrendPanel({
+  trend,
+  periodLabel,
+  lastUpdatedAt,
+}: {
+  trend: Stats["coreKpis"]["diagnosisTrend"];
+  periodLabel: string;
+  lastUpdatedAt: string | null;
+}) {
+  const max = Math.max(...trend.points.map((point) => point.count), 1);
+  const changeTone =
+    trend.change === null
+      ? "border-white/10 bg-white/[0.06] text-slate-300"
+      : trend.change >= 0
+        ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
+        : "border-rose-300/20 bg-rose-300/10 text-rose-200";
+  const changeLabel =
+    trend.changeRate === null
+      ? trend.previous === null
+        ? "比較なし"
+        : "前期間 0人"
+      : `${trend.changeRate >= 0 ? "+" : ""}${pct(trend.changeRate)}`;
+  const firstPoint = trend.points[0];
+  const lastPoint = trend.points.at(-1);
+  const chartWidth = Math.max(320, trend.points.length * 12);
+
+  return (
+    <div className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.045] p-5 backdrop-blur sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-200">
+            Daily diagnosis
+          </p>
+          <h3 className="mt-1.5 text-base font-black tracking-[-0.03em] text-white sm:text-lg">
+            日別の診断完了
+          </h3>
+        </div>
+        <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black tabular-nums ${changeTone}`}>
+          前期間比 {changeLabel}
+        </span>
+      </div>
+
+      <div
+        className="mt-5 overflow-x-auto pb-1"
+        role="img"
+        aria-label={`${periodLabel}の日別診断完了人数。合計${trend.current.toLocaleString()}人`}
+      >
+        {trend.points.length > 0 ? (
+          <div style={{ minWidth: `${chartWidth}px` }}>
+            <div className="flex h-28 items-end gap-1 border-b border-white/10 px-1">
+              {trend.points.map((point) => {
+                const height =
+                  point.count === 0
+                    ? 2
+                    : Math.max((point.count / max) * 100, 8);
+                return (
+                  <div
+                    key={point.date}
+                    className="group relative flex h-full min-w-0 flex-1 items-end"
+                    title={`${formatTrendDate(point.date)}: ${point.count.toLocaleString()}人`}
+                  >
+                    <div
+                      className="w-full rounded-t-[4px] bg-gradient-to-t from-indigo-500 via-violet-400 to-cyan-300 opacity-90 transition group-hover:opacity-100"
+                      style={{ height: `${height}%` }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex justify-between px-1 text-[9px] font-bold tabular-nums text-slate-500">
+              <span>{firstPoint ? formatTrendDate(firstPoint.date) : "—"}</span>
+              <span>{lastPoint ? formatTrendDate(lastPoint.date) : "—"}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 text-[11px] font-bold text-slate-500">
+            この期間の診断完了はありません
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-[14px] border border-white/10 bg-white/10">
+        {[
+          ["前期間", trend.previous === null ? "—" : `${trend.previous.toLocaleString()}人`],
+          [
+            "増減",
+            trend.change === null
+              ? "—"
+              : `${trend.change >= 0 ? "+" : ""}${trend.change.toLocaleString()}人`,
+          ],
+          [
+            "最終同期",
+            lastUpdatedAt
+              ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—",
+          ],
+        ].map(([label, value]) => (
+          <div key={label} className="min-w-0 bg-[#11182d]/90 px-3 py-3.5 sm:px-4">
+            <p className="truncate text-[8px] font-bold tracking-[0.04em] text-slate-500">
+              {label}
+            </p>
+            <p className="mt-1.5 truncate text-sm font-black tabular-nums text-white" title={value}>
+              {value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 type KpiTone = "indigo" | "emerald" | "amber" | "rose" | "slate";
@@ -889,6 +1019,22 @@ export default function AdminPage() {
     rows.push(["集計準備状態", coreReady ? "ready" : "migration_required"]);
     rows.push(["指標", "値", "分子", "分母", "定義"]);
     rows.push([
+      "自己診断完了人数",
+      String(stats.coreKpis.cohort.diagnosisUsers),
+      "",
+      "",
+      stats.coreKpis.cohort.definition,
+    ]);
+    rows.push([
+      "前期間の自己診断完了人数",
+      stats.coreKpis.diagnosisTrend.previous === null
+        ? ""
+        : String(stats.coreKpis.diagnosisTrend.previous),
+      "",
+      "",
+      "選択期間と同じ長さの直前期間",
+    ]);
+    rows.push([
       "自己診断完了→課金率",
       pct(stats.coreKpis.diagnosisToPaid.rate),
       String(stats.coreKpis.diagnosisToPaid.numerator),
@@ -926,11 +1072,17 @@ export default function AdminPage() {
       "招待経由の新規診断完了者÷選択期間の自己診断完了者",
     ]);
     rows.push([]);
-    rows.push(["# KPI（すべてユニークセッション単位）"]);
+    rows.push(["# 自己診断完了の日別推移（確定ユーザー・JST）"]);
+    rows.push(["日付", "人数"]);
+    stats.coreKpis.diagnosisTrend.points.forEach((point) =>
+      rows.push([point.date, String(point.count)]),
+    );
+    rows.push([]);
+    rows.push(["# イベント参考値（すべてユニークセッション単位）"]);
     rows.push(["指標", "値", "計算式"]);
-    rows.push(["診断開始", String(stats.diagnosisStarted), ""]);
-    rows.push(["診断完了", String(stats.diagnosisCompleted), ""]);
-    rows.push(["診断完了率", pct(stats.completionRate), "診断完了÷診断開始"]);
+    rows.push(["診断開始イベント", String(stats.diagnosisStarted), ""]);
+    rows.push(["診断完了イベント", String(stats.diagnosisCompleted), ""]);
+    rows.push(["イベント完了率", pct(stats.completionRate), "診断完了イベント÷診断開始イベント"]);
     rows.push(["友達共有", String(stats.shareCount), ""]);
     rows.push(["友達共有率", pct(stats.shareRate), "友達共有÷診断完了"]);
     rows.push(["友達回答開始", String(stats.friendAnswerStarted), ""]);
@@ -958,8 +1110,8 @@ export default function AdminPage() {
     rows.push(["ステップ", "件数"]);
     stats.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
     rows.push([]);
-    rows.push(["# 友達診断ファネル（本人コホート）"]);
-    rows.push(["ステップ", "人数", "前段比", "自己診断完了比"]);
+    rows.push(["# 友達診断ファネル（計測開始後の参考コホート）"]);
+    rows.push(["ステップ", "人数", "前段比", "計測対象比"]);
     stats.friendDiagnosisFunnel.ownerFunnel.forEach((s) =>
       rows.push([
         s.label,
@@ -1193,9 +1345,12 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-[10px] font-bold text-slate-500 shadow-sm md:inline-flex">
+              <span className="hidden items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-[10px] font-bold text-indigo-700 shadow-sm sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                {selectedPeriodLabel}ビュー
+                <span className="hidden xl:inline">{selectedPeriodLabel}の</span>
+                <span className="font-black tabular-nums text-slate-950">
+                  診断完了 {stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人
+                </span>
               </span>
               <button
                 onClick={downloadCsv}
@@ -1286,7 +1441,7 @@ export default function AdminPage() {
                 <circle cx="284" cy="86" r="5" fill="white" />
               </svg>
 
-              <div className="relative grid gap-7 p-6 sm:p-8 xl:p-10 min-[1320px]:grid-cols-[minmax(0,1.25fr)_minmax(400px,0.75fr)] min-[1320px]:items-end">
+              <div className="relative grid gap-7 p-6 sm:p-8 xl:p-10 min-[1320px]:grid-cols-[minmax(0,1.05fr)_minmax(390px,0.95fr)] min-[1320px]:items-end">
                 <div>
                   <div className="mb-5 flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-indigo-300/20 bg-indigo-300/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200">
@@ -1297,31 +1452,34 @@ export default function AdminPage() {
                       {coreReady ? "計測準備完了" : "DB更新待ち"}
                     </span>
                   </div>
-                  <h2 className="max-w-2xl text-[clamp(1.8rem,3.5vw,3rem)] font-black leading-[1.12] tracking-[-0.055em]">
-                    成長の現在地を、
-                    <br className="hidden sm:block" />
-                    ひとつの画面で判断する。
+                  <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">
+                    <span className="h-px w-7 bg-indigo-300/70" aria-hidden="true" />
+                    Most important KPI
+                  </p>
+                  <h2 className="mt-3 text-[13px] font-black tracking-[0.04em] text-slate-300 sm:text-sm">
+                    自己診断完了人数
                   </h2>
-                  <p className="mt-4 max-w-xl text-xs font-medium leading-7 text-slate-400 sm:text-sm">
-                    診断完了を起点に、課金・友達回答・拡散までをコホートで追跡。経営判断に必要な数値を確定データから集約しています。
+                  <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-2">
+                    <p className="text-[clamp(3.8rem,7vw,6.5rem)] font-black leading-none tracking-[-0.075em] tabular-nums text-white">
+                      {stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}
+                    </p>
+                    <div className="mb-2 flex items-center gap-2 sm:mb-3">
+                      <span className="text-xl font-black text-white sm:text-2xl">人</span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 text-[10px] font-black text-indigo-100">
+                        {selectedPeriodLabel}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-3 max-w-xl text-xs font-medium leading-6 text-slate-400 sm:text-sm">
+                    選択期間に自己診断を完了した確定ユーザー数。課金率・友達診断率・ARPU・拡散係数は、すべてこの人数から追跡します。
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[20px] border border-white/10 bg-white/10 sm:grid-cols-4 min-[1320px]:grid-cols-2">
-                  {[
-                    ["対象コホート", `${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人`],
-                    ["紐付け済み決済", `${stats.coreKpis.dataQuality.matchedPayments.toLocaleString()}件`],
-                    ["コホート純売上", coreReady ? formatNetRevenue(stats.coreKpis.arpu.currencies) : "要DB更新"],
-                    ["最終同期", lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"],
-                  ].map(([label, value]) => (
-                    <div key={label} className="bg-[#11182d]/85 px-4 py-4 backdrop-blur sm:px-5 sm:py-5">
-                      <p className="text-[9px] font-bold tracking-[0.08em] text-slate-500">{label}</p>
-                      <p className="mt-2 truncate text-lg font-black tracking-[-0.035em] tabular-nums text-white" title={value}>
-                        {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <DiagnosisTrendPanel
+                  trend={stats.coreKpis.diagnosisTrend}
+                  periodLabel={selectedPeriodLabel}
+                  lastUpdatedAt={lastUpdatedAt}
+                />
               </div>
 
               <div className="relative flex flex-col gap-3 border-t border-white/[0.08] bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 xl:px-10">
@@ -1369,7 +1527,7 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Core KPI"
               title="経営KPI"
-              description="サーバー側の確定データで、選択期間のコホートをその後の行動まで追跡"
+              description={`自己診断完了 ${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を共通の分母に、その後の行動を追跡`}
               side={
                 loading ? (
                   <span className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600">
@@ -1454,14 +1612,14 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <KpiCard label="自己診断完了" value={stats.coreKpis.cohort.diagnosisUsers} sub="選択期間のコホート" tone="indigo" />
+              <KpiCard label="自己診断完了人数" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={`${selectedPeriodLabel}の確定コホート`} tone="indigo" />
               <KpiCard label="実決済紐付け率" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件をユーザーに紐付け`} tone="emerald" />
               <KpiCard label="友達共有" value={stats.shareCount} sub={`共有率 ${pct(stats.shareRate)}`} tone="indigo" />
               <KpiCard label="友達回答完了" value={stats.friendAnswerCompleted} sub={`完了率 ${pct(stats.answerCompletionRate)}`} tone="emerald" />
               <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部の解放" tone="amber" />
               <KpiCard label="5人達成" value={stats.fiveAchieved} sub="見られ方の完成" tone="rose" />
               <KpiCard label="結果再訪" value={stats.resultRevisited} sub={`再訪率 ${pct(stats.revisitRate)}`} />
-              <KpiCard label="診断完了率" value={pct(stats.completionRate)} sub="イベント参考値" />
+              <KpiCard label="イベント完了率" value={pct(stats.completionRate)} sub="セッションイベント参考値" />
               <KpiCard label="課金ユーザー" value={stats.paidUsers} sub="権限テーブル参考値" />
               <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="決済イベント参考値" />
             </div>
@@ -1481,10 +1639,10 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Friend diagnosis"
               title="友達診断ファネル"
-              description="自己診断を終えた本人が友達診断へ進み、友達の新しい診断につながるまで"
+              description="友達導線の計測開始後に取得できたセッションだけを追う、改善用の参考ファネル"
               side={
                 <div className="rounded-2xl border border-rose-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(225,29,72,0.7)]">
-                  <p className="text-[10px] font-bold text-rose-600">自己診断→友達診断到達</p>
+                  <p className="text-[10px] font-bold text-rose-600">計測対象→友達診断到達</p>
                   <p className="text-lg font-black tabular-nums text-rose-900">
                     {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
                   </p>
@@ -1511,9 +1669,9 @@ export default function AdminPage() {
                 tone="indigo"
               />
               <KpiCard
-                label="自己診断→到達率"
+                label="計測対象→到達率"
                 value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
-                sub="自己診断完了を分母"
+                sub="友達導線の計測対象を分母"
                 tone="emerald"
               />
             </div>
@@ -1521,7 +1679,7 @@ export default function AdminPage() {
               <Panel className="p-5 sm:p-6">
                 <h3 className="text-sm font-black text-slate-800">本人側（ユニーク本人）</h3>
                 <p className="mt-1 text-[11px] text-slate-400">
-                  選択期間に自己診断を完了した本人を、現在まで追跡
+                  計測開始後に自己診断完了イベントを送信した本人を追跡
                 </p>
                 <div className="mt-5 flex flex-col gap-2">
                   {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
@@ -1572,7 +1730,7 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Conversion"
               title="全体ファネル（参考）"
-              description="診断開始から友達回答まで、どこで離脱しているかを確認"
+              description="イベントのユニークセッション数で、診断開始から友達回答までの離脱を確認"
             />
             <Panel className="p-5 sm:p-6">
             <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">

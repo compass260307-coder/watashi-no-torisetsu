@@ -58,3 +58,61 @@ export async function hasFullAccess(
 
   return false;
 }
+
+
+// =====================================================================
+// 友達診断 (/tako) の課金解放 'tako_unlock' (2026-07-20)。
+//   価格: ¥1,299 / 全解放 (¥499課金) 保有者は ¥499 OFF の ¥800。
+//   権限は payment_history (payment_kind='tako_unlock', status='completed') から導出。
+// =====================================================================
+
+export const TAKO_UNLOCK_PRICE_JPY = 1299;
+export const TAKO_UNLOCK_DISCOUNTED_PRICE_JPY = 800;
+
+/** user_id 群に tako_unlock の completed 行があるか。 */
+async function anyTakoUnlockPayment(userIds: string[]): Promise<boolean> {
+  if (userIds.length === 0) return false;
+  const { count, error } = await supabaseAdmin
+    .from("payment_history")
+    .select("id", { count: "exact", head: true })
+    .in("user_id", userIds)
+    .eq("payment_kind", "tako_unlock")
+    .eq("status", "completed");
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
+/**
+ * 友達診断の解放を持っているか。判定は必ずこの関数を経由する。
+ * hasFullAccess と同じ思想で email 紐付けも見る (ゲスト決済・再診断で行が
+ * 分かれても、同じ email の行に購入があれば解放扱い)。
+ */
+export async function hasTakoAccess(
+  userId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+
+  // ① 自分の行での購入
+  if (await anyTakoUnlockPayment([userId])) return true;
+
+  // ② email 紐付け: 同一 email の別 user 行での購入
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  const email =
+    typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
+  if (!email) return false;
+
+  const { data: rows } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .limit(20);
+  const otherIds = (rows ?? [])
+    .map((r) => r.id as string)
+    .filter((id) => id !== userId);
+  return anyTakoUnlockPayment(otherIds);
+}

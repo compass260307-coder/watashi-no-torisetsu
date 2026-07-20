@@ -917,7 +917,7 @@ export async function computeStats(from: string | null, to: string | null) {
     friendAnsweredOwners.size,
   ];
   const ownerFunnelLabels = [
-    "自己診断完了",
+    "友達導線の計測対象",
     "結果ページ到達",
     "友達診断ページ到達",
     "招待実行（友達到達で補完）",
@@ -976,8 +976,8 @@ export async function computeStats(from: string | null, to: string | null) {
     resultRevisited: uniqueRevisited,
     revisitRate: rate(uniqueRevisited, uniqueViewed),
     funnel: [
-      { label: "診断開始", count: diagnosisStarted },
-      { label: "診断完了", count: diagnosisCompleted },
+      { label: "診断開始イベント", count: diagnosisStarted },
+      { label: "診断完了イベント", count: diagnosisCompleted },
       { label: "友達共有", count: uniqueShare },
       { label: "友達ページ到達", count: friendLandingViewed },
       { label: "友達回答開始", count: friendAnswerStarted },
@@ -988,7 +988,7 @@ export async function computeStats(from: string | null, to: string | null) {
     friendDiagnosisFunnel: {
       measurementStartedAt: FRIEND_FUNNEL_MEASUREMENT_STARTED_AT,
       cohortDefinition:
-        "計測開始後、選択期間内に自己診断を完了したセッションを、その後の行動まで追跡",
+        "友達導線の計測開始後、選択期間内に自己診断完了イベントを送信したセッションだけを、その後の行動まで追跡する参考ファネル",
       ownerFunnel,
       friendFunnel,
       attention: {

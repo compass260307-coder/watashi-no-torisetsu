@@ -29,6 +29,7 @@ export function TakoFriendTabs({
   tabs,
   panels,
   invitePanel,
+  unlockCta,
 }: {
   /** 友達タブ (panels と同順)。キャラアイコン + 名前で表示する。 */
   tabs: FriendTab[];
@@ -36,6 +37,8 @@ export function TakoFriendTabs({
   panels: ReactNode[];
   /** 「＋」タブの吹き出しで開く招待パネル (さらに友達診断してもらう導線)。省略時はタブを出さない。 */
   invitePanel?: ReactNode;
+  /** タブ行の右端に置く解除CTA (未購入時のみ渡す)。タブとは独立して右端に固定。 */
+  unlockCta?: ReactNode;
 }) {
   const [idx, setIdx] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -81,13 +84,14 @@ export function TakoFriendTabs({
 
   return (
     <div>
-      {/* ── 名前タブ (横スクロール可)。吹き出しの基準にするため relative ── */}
-      <div ref={barRef} className="relative">
-        <div
-          role="tablist"
-          aria-label="友達ごとの結果"
-          className="scrollbar-none -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pt-4 md:mx-0 md:px-0"
-        >
+      {/* ── 名前タブ (横スクロール可・通常スクロール)。吹き出しの基準にするため relative ── */}
+      <div ref={barRef} className="relative mb-2">
+        <div className="-mx-4 flex items-center gap-2 px-4 md:mx-0 md:px-0">
+          <div
+            role="tablist"
+            aria-label="友達ごとの結果"
+            className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 pt-6"
+          >
           {tabs.map((tab, i) => {
             const selected = i === idx;
             return (
@@ -171,6 +175,10 @@ export function TakoFriendTabs({
               </span>
             </button>
           )}
+          </div>
+
+          {/* 右端の解除CTA (タブのスクロールに巻き込まれない) */}
+          {unlockCta && <div className="flex-shrink-0 py-3">{unlockCta}</div>}
         </div>
 
         {/* ── 吹き出し (＋の直下・矢印つき小カード) ── */}

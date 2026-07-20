@@ -32,6 +32,8 @@ interface MeStickyHeaderProps {
   essence?: string;
   /** シェア文言用の Big Five コード (ヒーローと同じ大小方式。例 "OCeAN")。 */
   code?: string;
+  /** 解除CTAのスクロール先 id。省略時は /me の #fullaccess-promo (/tako は "tako-promo")。 */
+  paywallTargetId?: string;
   locale?: ResultLocale;
 }
 
@@ -76,6 +78,7 @@ export function MeStickyHeader({
   shareUrl,
   essence,
   code,
+  paywallTargetId,
   locale = "ja",
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (shareUrl) のどちらかがあれば出す。
@@ -259,7 +262,7 @@ export function MeStickyHeader({
             {showUnlockCta && (
               <button
                 type="button"
-                onClick={() => scrollToPaywall("sticky_bar")}
+                onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
               >
                 <svg

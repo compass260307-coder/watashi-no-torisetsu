@@ -92,6 +92,44 @@ const timestamp = (value: string | null): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const JST_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const jstDateKey = (value: number) => {
+  if (!Number.isFinite(value)) return null;
+  const parts = JST_DATE_FORMATTER.formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : null;
+};
+
+const dateKeysBetween = (fromKey: string, toKey: string) => {
+  const fromDate = new Date(`${fromKey}T00:00:00.000Z`);
+  const toDate = new Date(`${toKey}T00:00:00.000Z`);
+  if (
+    !Number.isFinite(fromDate.getTime()) ||
+    !Number.isFinite(toDate.getTime()) ||
+    fromDate > toDate
+  ) {
+    return [];
+  }
+
+  const keys: string[] = [];
+  for (
+    let cursor = fromDate;
+    cursor <= toDate;
+    cursor = new Date(cursor.getTime() + 86_400_000)
+  ) {
+    keys.push(cursor.toISOString().slice(0, 10));
+  }
+  return keys;
+};
+
 /**
  * Computes the five management KPIs from server-side business facts.
  *
@@ -157,6 +195,51 @@ export function computeCoreKpis({
       user.diagnosisCompletedAt !== null && inRange(user.diagnosisCompletedAt),
   );
   const diagnosisCohortIds = new Set(diagnosisCohort.map((user) => user.id));
+
+  const diagnosisCountsByDay = new Map<string, number>();
+  let firstDiagnosisAt: number | null = null;
+  let lastDiagnosisAt: number | null = null;
+  for (const user of diagnosisCohort) {
+    const completedAt = timestamp(user.diagnosisCompletedAt);
+    if (completedAt === null) continue;
+    if (firstDiagnosisAt === null || completedAt < firstDiagnosisAt) {
+      firstDiagnosisAt = completedAt;
+    }
+    if (lastDiagnosisAt === null || completedAt > lastDiagnosisAt) {
+      lastDiagnosisAt = completedAt;
+    }
+    const key = jstDateKey(completedAt);
+    if (key) diagnosisCountsByDay.set(key, (diagnosisCountsByDay.get(key) ?? 0) + 1);
+  }
+
+  const trendFromKey = jstDateKey(fromMs ?? firstDiagnosisAt ?? Number.NaN);
+  const trendToKey = jstDateKey(toMs ?? lastDiagnosisAt ?? Number.NaN);
+  const diagnosisTrendPoints =
+    trendFromKey && trendToKey
+      ? dateKeysBetween(trendFromKey, trendToKey).map((date) => ({
+          date,
+          count: diagnosisCountsByDay.get(date) ?? 0,
+        }))
+      : [];
+
+  let previousFrom: string | null = null;
+  let previousTo: string | null = null;
+  let previousDiagnosisUsers: number | null = null;
+  if (fromMs !== null && toMs !== null && fromMs <= toMs) {
+    const durationMs = toMs - fromMs + 1;
+    const previousFromMs = fromMs - durationMs;
+    const previousToMs = fromMs - 1;
+    previousFrom = new Date(previousFromMs).toISOString();
+    previousTo = new Date(previousToMs).toISOString();
+    previousDiagnosisUsers = users.filter((user) => {
+      const completedAt = timestamp(user.diagnosisCompletedAt);
+      return (
+        completedAt !== null &&
+        completedAt >= previousFromMs &&
+        completedAt <= previousToMs
+      );
+    }).length;
+  }
 
   let diagnosisToPaidCount = 0;
   let diagnosisToFriendCount = 0;
@@ -267,7 +350,25 @@ export function computeCoreKpis({
       diagnosisUsers: diagnosisCohort.length,
       paidUsers: paidCohort.length,
       definition:
-        "選択期間に起点行動を完了したユーザーを、その後の行動まで現在時点で追跡",
+        "users.diagnosis_completed_at が選択期間内のユニークユーザーを確定診断人数とし、その後の行動まで現在時点で追跡",
+    },
+    diagnosisTrend: {
+      granularity: "day" as const,
+      timezone: "Asia/Tokyo" as const,
+      current: diagnosisCohort.length,
+      previous: previousDiagnosisUsers,
+      change:
+        previousDiagnosisUsers === null
+          ? null
+          : diagnosisCohort.length - previousDiagnosisUsers,
+      changeRate:
+        previousDiagnosisUsers !== null && previousDiagnosisUsers > 0
+          ? (diagnosisCohort.length - previousDiagnosisUsers) /
+            previousDiagnosisUsers
+          : null,
+      previousFrom,
+      previousTo,
+      points: diagnosisTrendPoints,
     },
     diagnosisToPaid: {
       numerator: diagnosisToPaidCount,

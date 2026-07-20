@@ -23,7 +23,7 @@ import { ResultHero } from "@/components/result/ResultHero";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
-import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import {
   MinnaTypeProse,
@@ -36,6 +36,9 @@ import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
 import { FriendLoveSection } from "@/components/result/FriendLoveSection";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
+import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
+import { TakoPromoCard } from "@/components/result/TakoPromoCard";
+import { hasFullAccess, hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
   resolveFriendLoveChecklist,
@@ -53,7 +56,11 @@ import {
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import { preferCutImage, preferFaceImage } from "@/lib/character-image";
+import {
+  preferCutImage,
+  preferFaceImage,
+  sceneImageForGroup,
+} from "@/lib/character-image";
 import characterImages from "@/generated/character-images.json";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
@@ -368,6 +375,20 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   // 既読 (last_seen) を preview は &lastSeen= から、本番は cookie から読む。
   // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
+
+  // ===== tako_unlock (¥1,299 / 全解放オーナー ¥800) の解放判定 =====
+  // プレビュー: &lock=1 でロック状態、&discount=1 で割引価格表示を確認できる。
+  // 実データ: payment_history 由来の hasTakoAccess。割引可否は hasFullAccess。
+  const takoUnlocked = previewMode
+    ? sp.lock !== "1"
+    : await hasTakoAccess(data.user.id as string);
+  const takoDiscounted = previewMode
+    ? sp.discount === "1"
+    : takoUnlocked
+      ? false
+      : await hasFullAccess(data.user.id as string);
+  // ロック中フラグ (未購入)。ロックカードはセクション別の文言で都度生成する。
+  const takoLocked = !takoUnlocked;
   const storageScope = data.user.owner_token ?? token;
   const serverAnswered = Math.min(data.friends.length, data.threshold);
   const lastSeen: number | null = previewLocked
@@ -392,10 +413,18 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         inviteCode={data.inviteCode}
         enabled={!previewMode}
       />
-      {/* 自己診断と同じ 16P 風スクロール連動ヘッダー (世界観統一) */}
-      <ScrollHideHeader>
+      {/* /me と同じ常時表示バー付きヘッダー (シェア3ボタン + 未購入時は解除CTA)。
+          解除CTAは最下部の課金カード (#tako-promo) へスクロールする。 */}
+      <MeStickyHeader
+        showUnlockCta={takoLocked && data.friends.length > 0}
+        shareUrl={`${SITE_URL}/share/${encodeURIComponent(data.inviteCode)}`}
+        essence={
+          data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : undefined
+        }
+        paywallTargetId="tako-promo"
+      >
         <TopHeader />
-      </ScrollHideHeader>
+      </MeStickyHeader>
       <main
         className="relative min-h-dvh overflow-x-clip px-4 pb-8 md:px-8"
         style={{ background: "#FFFFFF" }}
@@ -484,7 +513,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                         (2026-07-18 指示。/me の本文と同じ見た目)。
                         本文中間 (挿絵の直後) に「①五つの性格傾向のギャップ」グラフを差し込む
                         (2026-07-19 指示。/me の「①五つの性格傾向」と同じ構図)。 */}
-                    <section className="mb-14">
+                    <section className="mb-14 mt-10">
                       <MinnaTypeProse
                         type32={sh.type32}
                         viewer={sh.viewer}
@@ -537,10 +566,18 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                              見出し直下に /me と同じ恋愛シーン挿絵 (love) を表示。 */
                           sh.love ? (
                             <section>
-                              {/* 見出し (丸数字なし・2026-07-20 指示) */}
-                              <h2 className="mb-4 text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                                {sh.viewer}から見た恋愛傾向
-                              </h2>
+                              {/* 見出し (丸数字②・2026-07-20 指示で復活) */}
+                              <div className="mb-4 flex items-center gap-3">
+                                <span
+                                  aria-hidden="true"
+                                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                                >
+                                  2
+                                </span>
+                                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                                  {sh.viewer}から見た恋愛傾向
+                                </h2>
+                              </div>
                               {sceneImageFor(sh.type32, "love") && (
                                 <SmoothImage
                                   src={sceneImageFor(sh.type32, "love")!}
@@ -564,9 +601,25 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 </div>
                               )}
                               <FriendLoveSection
-                                items={sh.loveChecks}
-                                hints={sh.loveHints}
+                                items={takoLocked ? [] : sh.loveChecks}
+                                hints={takoLocked ? [] : sh.loveHints}
                                 viewer={sh.viewer}
+                                lockedBlocks={
+                                  takoLocked
+                                    ? {
+                                        mote: (
+                                          <TakoLockedBlock
+                                            description={`完全版で、${sh.viewer}が感じているあなたのモテ理由が分かります。自分では気づいていない魅力を見てみましょう。`}
+                                          />
+                                        ),
+                                        hints: (
+                                          <TakoLockedBlock
+                                            description={`完全版で、${sh.viewer}にもっと好かれるための具体的なヒントが読めます。`}
+                                          />
+                                        ),
+                                      }
+                                    : undefined
+                                }
                               />
                             </section>
                           ) : null
@@ -668,8 +721,19 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
                                 関係を深めるヒント
                               </h3>
-                              <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-                                {c.kotsu.map((k) => (
+                              {takoLocked && (
+                                <TakoLockedBlock
+                                  description={`完全版で、${sh.viewer}ともっと仲良くなるための具体的なコツを見てみましょう。`}
+                                />
+                              )}
+                              <div
+                                className={
+                                  takoLocked
+                                    ? "hidden"
+                                    : "grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2"
+                                }
+                              >
+                                {(takoLocked ? [] : c.kotsu).map((k) => (
                                   <div key={k.title}>
                                     <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
                                       <span
@@ -704,8 +768,19 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
                                 関係を壊すワナ
                               </h3>
-                              <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-                                {c.wana.map((w) => (
+                              {takoLocked && (
+                                <TakoLockedBlock
+                                  description={`完全版で、${sh.viewer}との関係が陥りがちなすれ違いポイントを先回りして知っておきましょう。`}
+                                />
+                              )}
+                              <div
+                                className={
+                                  takoLocked
+                                    ? "hidden"
+                                    : "grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2"
+                                }
+                              >
+                                {(takoLocked ? [] : c.wana).map((w) => (
                                   <div key={w.title}>
                                     <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
                                       <span
@@ -752,8 +827,26 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         )}
         </div>
       </main>
-      {/* 課金カード (FullAccessPromoCard) は 2026-07-20 指示で削除。
-          友達診断は全編無料になり、/tako 上に課金要素は残さない (¥499 は /me 側のみ)。 */}
+      {/* 最下部の課金案内カード (tako_unlock 未購入・結果表示中のみ)。
+          ロックカードの CTA (#tako-promo) のスクロール先。 */}
+      {takoLocked && data.friends.length > 0 && (() => {
+        const promoGroup = data.friendCharacter
+          ? thirtyTwoGroup(data.friendCharacter.type32)
+          : "unknown";
+        return (
+          <TakoPromoCard
+            ownerToken={token}
+            discounted={takoDiscounted}
+            imageSrc={
+              sceneImageForGroup(promoGroup, "love") ??
+              sceneImageForGroup(promoGroup, "normal1") ??
+              data.friendCharacter?.imageSrc
+            }
+            imageAlt={data.friendCharacter?.essence ?? ""}
+            group={promoGroup}
+          />
+        );
+      })()}
       {/* 招待バンド (もっと友達に聞くと〜 + QR) は 2026-07-20 指示で一旦削除。 */}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       <TopFooter />

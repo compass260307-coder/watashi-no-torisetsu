@@ -556,11 +556,63 @@ async function handleCheckoutPaid(
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
+  // 'tako_unlock' = 友達診断の隠しコンテンツ解放 (¥1,299 / 割引 ¥800, 2026-07-20)
   // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
   if (metadata.payment_kind === "perception_unlock") {
     await handlePerceptionUnlockCompleted(session, userId, metadata);
     return;
   }
+  if (metadata.payment_kind === "tako_unlock") {
+    await handleTakoUnlockCompleted(session, userId);
+    return;
+  }
+}
+
+// ---------- tako_unlock 経路 (2026-07-20) ----------
+// 友達診断 (/tako) の隠しコンテンツ解放。payment_history に
+// payment_kind='tako_unlock' で INSERT するだけ (権限は hasTakoAccess が
+// payment_history から導出する。users.plan は変更しない)。
+// Idempotency: stripe_session_id UNIQUE で二重 Webhook を吸収。
+async function handleTakoUnlockCompleted(
+  session: Stripe.Checkout.Session,
+  userId: string,
+): Promise<void> {
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+
+  const { error: upsertErr } = await supabaseAdmin
+    .from("payment_history")
+    .upsert(
+      {
+        user_id: userId,
+        payment_kind: "tako_unlock" as const,
+        stripe_session_id: session.id,
+        stripe_payment_intent_id: paymentIntentId,
+        amount_jpy: session.amount_total ?? 1299,
+        currency: session.currency ?? "jpy",
+        status: "completed" as const,
+        paid_at: new Date().toISOString(),
+        metadata: {
+          payment_kind: "tako_unlock",
+          discounted: session.metadata?.discounted ?? "0",
+        },
+      },
+      { onConflict: "stripe_session_id", ignoreDuplicates: true },
+    );
+
+  if (upsertErr) {
+    throw new Error(
+      `[tako_unlock] payment_history upsert failed: ${upsertErr.message}`,
+    );
+  }
+
+  console.log("[webhook/stripe] tako_unlock completed", {
+    session_id: session.id,
+    user_id: userId,
+    amount: session.amount_total,
+  });
 }
 
 // ---------- checkout.session.async_payment_failed ----------

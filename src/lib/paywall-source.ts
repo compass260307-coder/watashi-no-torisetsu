@@ -21,6 +21,7 @@ const PAYWALL_SOURCES = new Set([
   "sticky_bar",
   "friend_list",
   "aisho_scene",
+  "tako_lock",
 ]);
 
 export function normalizePaywallSource(value: unknown): string {

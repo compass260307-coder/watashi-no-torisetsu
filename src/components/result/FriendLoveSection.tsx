@@ -3,6 +3,7 @@
 // 短文、PC 2カラム) に刷新。5軸ぶんのモテ理由 + 隠れた魅力の 6 項目を
 // resolveFriendLoveChecklist (friend-love-content.ts) から受け取る。
 
+import type { ReactNode } from "react";
 import type { MoteCheckItem } from "@/lib/friend-love-content";
 
 interface FriendLoveSectionProps {
@@ -11,6 +12,13 @@ interface FriendLoveSectionProps {
   hints?: MoteCheckItem[];
   /** 「誰から見たか」の表示名 (例 "ゆかさん")。省略時は総称「友達」。 */
   viewer?: string;
+  /**
+   * tako_unlock 未購入時のロックブロック (TakoLockedBlock)。指定時は
+   * モテポイント/ヒントの中身の代わりに表示する (見出しは残す)。
+   * セクション別に文言を最適化するため 2 つ受け取る。
+   * フェイルクローズ: ロック時は items/hints に実データを渡さないこと。
+   */
+  lockedBlocks?: { mote: ReactNode; hints: ReactNode };
 }
 
 // リスト行 (丸アイコン + 太字タイトル + 短文)。
@@ -68,30 +76,39 @@ function CheckRow({
   );
 }
 
-export function FriendLoveSection({ items, hints, viewer }: FriendLoveSectionProps) {
-  if (items.length === 0) return null;
+export function FriendLoveSection({
+  items,
+  hints,
+  viewer,
+  lockedBlocks,
+}: FriendLoveSectionProps) {
+  if (!lockedBlocks && items.length === 0) return null;
   return (
     <div>
       <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
         {viewer ?? "友達"}から見た隠れモテポイント
       </h3>
-      <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-        {items.map((it) => (
-          <CheckRow key={it.title} item={it} />
-        ))}
-      </div>
+      {lockedBlocks?.mote ?? (
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+          {items.map((it) => (
+            <CheckRow key={it.title} item={it} />
+          ))}
+        </div>
+      )}
 
       {/* モテるための◯◯さんからのヒント (同じチェックリスト組版・6項目) */}
-      {hints && hints.length > 0 && (
+      {(lockedBlocks || (hints && hints.length > 0)) && (
         <div className="mt-10">
           <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
             モテるための{viewer ?? "友達"}からのヒント
           </h3>
-          <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-            {hints.map((it) => (
-              <CheckRow key={it.title} item={it} icon="heart" />
-            ))}
-          </div>
+          {lockedBlocks?.hints ?? (
+            <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+              {(hints ?? []).map((it) => (
+                <CheckRow key={it.title} item={it} icon="heart" />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
