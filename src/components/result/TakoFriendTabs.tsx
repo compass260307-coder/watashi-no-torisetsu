@@ -15,17 +15,24 @@ const INDIGO = "#5B5BEF";
 // タブ表示用: 自由入力の名前が長いときの折返し崩れを防ぐ (表示のみ切り詰め)。
 function tabLabel(name: string): string {
   const trimmed = name.trim() || "ともだち";
-  return trimmed.length > 8 ? `${trimmed.slice(0, 8)}…` : trimmed;
+  return trimmed.length > 6 ? `${trimmed.slice(0, 6)}…` : trimmed;
 }
 
+export type FriendTab = {
+  /** 友達の表示名。 */
+  name: string;
+  /** その友達から見えたキャラの顔画像 (無ければ頭文字にフォールバック)。 */
+  imageSrc: string | null;
+};
+
 export function TakoFriendTabs({
-  names,
+  tabs,
   panels,
   invitePanel,
 }: {
-  /** 友達の表示名 (panels と同順)。 */
-  names: string[];
-  /** 友達ごとの結果シート (サーバ描画済み・names と同順)。 */
+  /** 友達タブ (panels と同順)。キャラアイコン + 名前で表示する。 */
+  tabs: FriendTab[];
+  /** 友達ごとの結果シート (サーバ描画済み・tabs と同順)。 */
   panels: ReactNode[];
   /** 「＋」タブの吹き出しで開く招待パネル (さらに友達診断してもらう導線)。省略時はタブを出さない。 */
   invitePanel?: ReactNode;
@@ -81,7 +88,7 @@ export function TakoFriendTabs({
           aria-label="友達ごとの結果"
           className="scrollbar-none -mx-4 mb-6 flex items-center gap-2 overflow-x-auto px-4 pt-4 md:mx-0 md:px-0"
         >
-          {names.map((name, i) => {
+          {tabs.map((tab, i) => {
             const selected = i === idx;
             return (
               <button
@@ -89,14 +96,36 @@ export function TakoFriendTabs({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setIdx(i)}
-                className="flex-shrink-0 rounded-full border-[3px] px-5 py-2 text-[14px] font-black transition-colors"
-                style={
-                  selected
-                    ? { background: INDIGO, borderColor: INDIGO, color: "#fff" }
-                    : { background: "#fff", borderColor: "#E3E6F5", color: NAVY }
-                }
+                className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
               >
-                {tabLabel(name)}
+                {/* キャラ顔アバター (選択中は紫リング) */}
+                <span
+                  className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white transition-all"
+                  style={{
+                    boxShadow: selected
+                      ? `0 0 0 3px ${INDIGO}`
+                      : "0 0 0 3px #E3E6F5",
+                  }}
+                >
+                  {tab.imageSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={tab.imageSrc}
+                      alt=""
+                      className="block h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[18px] font-black" style={{ color: NAVY }}>
+                      {(tab.name.trim() || "と").slice(0, 1)}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className="max-w-full truncate text-[11px] font-black"
+                  style={{ color: selected ? INDIGO : "rgba(46,46,92,0.65)" }}
+                >
+                  {tabLabel(tab.name)}
+                </span>
               </button>
             );
           })}
@@ -107,14 +136,39 @@ export function TakoFriendTabs({
               aria-expanded={inviteOpen}
               aria-label="友達を招待"
               onClick={toggleInvite}
-              className="flex-shrink-0 rounded-full border-[3px] border-dashed px-5 py-2 text-[14px] font-black transition-colors"
-              style={
-                inviteOpen
-                  ? { background: INDIGO, borderColor: INDIGO, color: "#fff" }
-                  : { background: "#fff", borderColor: "#C9CDF0", color: INDIGO }
-              }
+              className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
             >
-              ＋
+              {/* 友達アバターと同サイズの円。開いている間は紫塗り + ＋が ✕ に回転。 */}
+              <span
+                className="flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200"
+                style={
+                  inviteOpen
+                    ? { background: INDIGO, boxShadow: `0 0 0 3px ${INDIGO}` }
+                    : { background: "#EDEEFC", boxShadow: "0 0 0 3px #E3E6F5" }
+                }
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={inviteOpen ? "#fff" : INDIGO}
+                  strokeWidth="3.4"
+                  strokeLinecap="round"
+                  className={`transition-transform duration-200 ${
+                    inviteOpen ? "rotate-45" : ""
+                  }`}
+                >
+                  <line x1="12" y1="4.5" x2="12" y2="19.5" />
+                  <line x1="4.5" y1="12" x2="19.5" y2="12" />
+                </svg>
+              </span>
+              <span
+                className="text-[11px] font-black"
+                style={{ color: inviteOpen ? INDIGO : "rgba(46,46,92,0.65)" }}
+              >
+                招待
+              </span>
             </button>
           )}
         </div>

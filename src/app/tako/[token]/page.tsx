@@ -315,6 +315,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     const essence = thirtyTwoEssence(type32);
     const imageSrc =
       f.perceivedImageSrc ?? preferCutImage(thirtyTwoImagePath(type32));
+    // タブ用の顔ズーム版アバター (無ければ原画)。
+    const faceSrc = preferFaceImage(thirtyTwoImagePath(type32));
     const sheetHero = heroColorsForGroup(thirtyTwoGroup(type32));
     const sheetDeep = buildDeepDive(data.selfScores, f.perceivedScores);
     const sheetLove = resolveFriendLove(f.perceivedScores);
@@ -341,6 +343,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     return {
       key: f.perceptionId,
       tabName: rawName || "ともだち",
+      faceSrc,
       viewer,
       type32,
       essence,
@@ -435,7 +438,10 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               {/* 友達タブ + 友達1人ごとの結果シート (1人完結モデル)。
                   ヒーロー/本文(見出しなし)/①ギャップ/②恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
-                names={friendSheets.map((sh) => sh.tabName)}
+                tabs={friendSheets.map((sh) => ({
+                  name: sh.tabName,
+                  imageSrc: sh.faceSrc,
+                }))}
                 invitePanel={
                   /* ＋タブの吹き出し: さらに友達に診断してもらう招待 (2026-07-20 追加)。
                      QR + X/LINE/リンクのシェアは LockedInviteShare (compact) を流用。 */
