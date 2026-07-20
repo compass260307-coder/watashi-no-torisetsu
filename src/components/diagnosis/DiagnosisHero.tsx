@@ -1,6 +1,6 @@
 import { SmoothImage } from "@/components/ui/SmoothImage";
 
-// 診断ページ冒頭のヒーロー。/tako (他己診断) の FV と同じ「左=見出し / 右=イラスト」構成。
+// 診断ページ冒頭のヒーロー。/tako (友達診断) の FV と同じ「左=見出し / 右=イラスト」構成。
 //   - PC (md+): 見出し flex-1 (左) + イラスト (右)。SP: 縦積み (見出し→イラスト)。
 //   - 見出しは font-black・ネイビー。下に権威づけのサブコピー (診断の理論的裏付け)。
 //   - 横幅はフッター・質問カードと同じ max-w-[1080px] に揃える。
@@ -12,15 +12,17 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 
 // title / subtitle / imageSrc は任意。省略時は自己診断ページの既定。
-// (他己診断=friend フローでは title / 画像を差し替えて再利用する。)
+// (友達診断=friend フローでは title / 画像を差し替えて再利用する。)
 export function DiagnosisHero({
   title = "性格診断テスト",
   subtitle = "Big Five 性格特性モデル",
   imageSrc = "/mascot/diagnosis-hero.png",
+  imageAlt = "ワタシのトリセツのマスコット",
 }: {
   title?: string;
   subtitle?: string;
   imageSrc?: string;
+  imageAlt?: string;
 } = {}) {
   return (
     <section
@@ -45,7 +47,7 @@ export function DiagnosisHero({
         <div className="w-full shrink-0 md:w-auto">
           <SmoothImage
             src={imageSrc}
-            alt="ワタシのトリセツのマスコット"
+            alt={imageAlt}
             width={1448}
             height={1086}
             priority

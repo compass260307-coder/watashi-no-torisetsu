@@ -11,6 +11,7 @@ import { detailedReportSea1 } from "./report-sea-1";
 import { detailedReportSea2 } from "./report-sea-2";
 import { detailedReportUnknown1 } from "./report-unknown-1";
 import { detailedReportUnknown2 } from "./report-unknown-2";
+import { expandDetailedReport } from "./expand-report";
 
 export type { DetailedReport, ReportChapter, ReportSection, ReportBullet } from "./types";
 export { REPORT_CHAPTER_TITLES } from "./types";
@@ -28,7 +29,8 @@ const ALL: Partial<Record<ThirtyTwoTypeId, DetailedReport>> = {
 
 /** 32 タイプの詳細レポート本文。未登録タイプは null (ページ側で 404 相当の扱い)。 */
 export function detailedReportFor(id: ThirtyTwoTypeId): DetailedReport | null {
-  return ALL[id] ?? null;
+  const report = ALL[id];
+  return report ? expandDetailedReport(id, report) : null;
 }
 
 /** 本文が欠けているタイプ ID の一覧 (QA 用) */

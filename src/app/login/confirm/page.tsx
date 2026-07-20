@@ -36,6 +36,7 @@ interface PageProps {
 
 export default async function LoginConfirmPage({ searchParams }: PageProps) {
   const sp = await searchParams;
+  const locale = sp.locale === "ko" ? "ko" : "ja";
   const token = typeof sp.token === "string" ? sp.token : "";
   if (!token) notFound();
 
@@ -50,7 +51,7 @@ export default async function LoginConfirmPage({ searchParams }: PageProps) {
     .maybeSingle();
 
   if (!link) {
-    return <ExpiredNotice />;
+    return <ExpiredNotice locale={locale} />;
   }
 
   const bUserId = link.user_id as string;
@@ -59,16 +60,19 @@ export default async function LoginConfirmPage({ searchParams }: PageProps) {
   // 現デバイスのアカウント A。
   const current = await getSession();
   const aOwnerToken = current?.owner_token ?? null;
-  const aName = (current?.display_name ?? "").trim() || "あなた";
+  const aName = (current?.display_name ?? "").trim() || (locale === "ko" ? "회원" : "あなた");
+  const localePrefix = locale === "ko" ? "/ko" : "";
   const recoveryUrl = aOwnerToken
-    ? `${resolveSiteUrl()}/me/${aOwnerToken}`
+    ? `${resolveSiteUrl()}${localePrefix}/me/${aOwnerToken}`
     : null;
 
   const continueHref = `/api/auth/verify-magic-link?token=${encodeURIComponent(
     token,
-  )}&confirm=1`;
+  )}&confirm=1${locale === "ko" ? "&locale=ko" : ""}`;
   // キャンセルは「いまのデータのまま」= A の /me に戻す (無ければトップ)。
-  const cancelHref = aOwnerToken ? `/me/${aOwnerToken}` : "/";
+  const cancelHref = aOwnerToken
+    ? `${localePrefix}/me/${aOwnerToken}`
+    : localePrefix || "/";
   // A が無い / A.id === B の場合は本来ここに来ない (verify 側で素通し) が、
   // 直リンク等で来たら切替警告は不要なので、そのまま続行導線だけ見せる。
   const isConflict = !!current && current.id !== bUserId;
@@ -81,27 +85,39 @@ export default async function LoginConfirmPage({ searchParams }: PageProps) {
       continueHref={continueHref}
       cancelHref={cancelHref}
       isConflict={isConflict}
+      locale={locale}
     />
   );
 }
 
-function ExpiredNotice() {
+function ExpiredNotice({ locale }: { locale: "ja" | "ko" }) {
+  const ko = locale === "ko";
   return (
     <main className="min-h-dvh bg-white px-4 py-12">
       <div className="mx-auto max-w-[420px] text-center">
         <h1 className="text-[#2E2E5C] font-black text-2xl leading-tight mb-3">
-          リンクが失効しました
+          {ko ? "링크가 만료되었어요" : "リンクが失効しました"}
         </h1>
         <p className="text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-8">
-          ログインリンクは1時間で失効、または既に使用されています。
-          <br />
-          もう一度お試しください。
+          {ko ? (
+            <>
+              로그인 링크가 만료되었거나 이미 사용되었어요.
+              <br />
+              새 링크를 다시 받아 주세요.
+            </>
+          ) : (
+            <>
+              ログインリンクは1時間で失効、または既に使用されています。
+              <br />
+              もう一度お試しください。
+            </>
+          )}
         </p>
         <Link
-          href="/login"
+          href={ko ? "/ko/login" : "/login"}
           className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-8 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-none transition-all"
         >
-          ログインをやり直す
+          {ko ? "로그인 링크 다시 받기" : "ログインをやり直す"}
         </Link>
       </div>
     </main>

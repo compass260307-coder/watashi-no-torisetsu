@@ -1,0 +1,87 @@
+{
+  "size": {
+    "width": 2500,
+    "height": 1686
+  },
+  "selected": true,
+  "name": "Watashi no Torisetsu - Main Menu v5 (Phase 3-β)",
+  "chatBarText": "メニュー",
+  "areas": [
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "label": "マイ図鑑",
+        "type": "uri",
+        "uri": "https://liff.line.me/2009978315-NOl1VDx9?dest=zukan-mine"
+      }
+    },
+    {
+      "bounds": {
+        "x": 833,
+        "y": 0,
+        "width": 834,
+        "height": 843
+      },
+      "action": {
+        "label": "再診断",
+        "type": "uri",
+        "uri": "https://www.watashi-torisetsu.com/diagnosis?source=line"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1667,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "label": "友達招待",
+        "type": "uri",
+        "uri": "https://liff.line.me/2009978315-oi42dvLy"
+      }
+    },
+    {
+      "bounds": {
+        "x": 0,
+        "y": 843,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "label": "32タイプ図鑑",
+        "type": "uri",
+        "uri": "https://www.watashi-torisetsu.com/zukan/all"
+      }
+    },
+    {
+      "bounds": {
+        "x": 833,
+        "y": 843,
+        "width": 834,
+        "height": 843
+      },
+      "action": {
+        "type": "postback",
+        "data": "action=integrated_coming_soon"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1667,
+        "y": 843,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "postback",
+        "data": "action=open_settings"
+      }
+    }
+  ]
+}

@@ -7,10 +7,11 @@
 //   伝わらなかった。MBTI 式に「解放される中身を項目で見せて価値を可視化」する。
 //
 // 解放される項目 (見出し+説明。UNLOCKS 定数で管理)。2026-07-14 更新:
-//   友達ひとりずつの回答は削除。3項目に絞る。
+//   友達ひとりずつの回答は削除。4項目に絞る。
+//   - 16ページ以上の完全版PDFレポート
 //   - 恋愛とキャリアの深掘りを全解放
+//   - 周りから見たアナタの印象
 //   - シーン別の注意点
-//   - 他人から見たあなた (嫌われやすい性格/他人が気づいてほしいこと をまとめた訴求)
 //
 // id="fullaccess-promo": ページ内のロック要素からの scrollToPaywall() のスクロール先
 //   (着地パルスも同 id を対象にするため必ず維持)。
@@ -21,34 +22,57 @@
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+import type { ResultLocale } from "@/i18n/result";
 
-// 値引き表記に使う元値・現在価格 (61%OFF)。
-const LIST_PRICE = "¥1,299";
-const OFF_PERCENT = 61;
+// 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
+const PRICE_COPY = {
+  ja: { list: "¥1,299", sale: "¥499", offPercent: 61 },
+  ko: { list: "₩12,900", sale: "₩4,900", offPercent: 62 },
+} as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-14 の結果ページ改修に追随:
 // 恋愛 payoff / キャリア・成長・相性 / シーン別の注意点 / 嫌われやすい性格・関係別。
 const UNLOCKS: { title: string; desc: string }[] = [
   {
-    title: "恋愛とキャリアの深掘りを全解放",
-    desc: "「あなたを好きになった人が読むトリセツ」「失敗する恋愛の特徴」から「あなたが活躍できる仕事・避けたほうがいい職場」「仕事で評価される意外な才能」まで読める。",
+    title: "16ページ以上の完全版PDFレポート",
+    desc: "長所・短所、恋愛、友人関係、キャリアまで、あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、友達にも共有できます。",
   },
   {
-    title: "シーン別の注意点",
-    desc: "友達・恋人・キャリア・家族──シーンごとのつまずきポイントが分かる。",
+    title: "恋愛とキャリアの深掘りを全解放",
+    desc: "「あなたを好きになった人が読むトリセツ」「失敗する恋愛の特徴」から「あなたが活躍できる仕事・避けたほうがいい職場」「仕事で評価される意外な才能」まで読める。",
   },
   {
     title: "周りから見たアナタの印象",
     desc: "「嫌われやすいポイント」や「本当は分かってほしいのに伝わっていないこと」——あなたのタイプが誤解されやすいところを解析。",
   },
   {
-    title: "詳細レポートをメールでお届け",
-    desc: "長所と短所・恋愛・友人関係・キャリアまで、あなたのタイプを一冊にまとめた長編レポート。PDF保存もできる。",
+    title: "シーン別の注意点",
+    desc: "友達・恋人・キャリア・家族──シーンごとのつまずきポイントが分かる。",
+  },
+];
+
+const KO_UNLOCKS: { title: string; desc: string }[] = [
+  {
+    title: "웹에서 보는 완전판 성격 리포트",
+    desc: "장점과 단점, 연애, 친구 관계, 커리어까지 내 유형의 상세 결과를 한곳에서 확인할 수 있어요. 구매 후 언제든 다시 볼 수 있어요.",
+  },
+  {
+    title: "연애와 커리어 심층 결과 전체 해제",
+    desc: "‘나를 좋아하게 된 사람이 읽는 사용설명서’와 ‘연애가 잘 풀리지 않을 때의 패턴’부터 잘 맞는 일과 뜻밖의 재능까지 확인할 수 있어요.",
+  },
+  {
+    title: "주변에서 보는 나의 인상",
+    desc: "오해받기 쉬운 포인트와 정말 알아주었으면 하지만 잘 전해지지 않는 부분을 내 유형에 맞춰 분석해요.",
+  },
+  {
+    title: "상황별 주의점",
+    desc: "친구·연인·커리어·가족과 함께할 때 자주 막히는 포인트를 알 수 있어요.",
   },
 ];
 
@@ -132,13 +156,18 @@ export function FullAccessPromoCard({
   // ページ別の配色のみ切替 (コピー・項目・レイアウトは共通)。
   //   "aisho" = 相性ページ用ピンク基調 / "self" (既定) = その人のグループ色。
   variant = "self",
+  locale = "ja",
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
   imageAlt?: string;
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
+  locale?: ResultLocale;
 }) {
+  const isKorean = locale === "ko";
+  const unlocks = isKorean ? KO_UNLOCKS : UNLOCKS;
+  const price = PRICE_COPY[locale];
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
   const groupTone = cardColorsForGroup(group);
@@ -257,7 +286,7 @@ export function FullAccessPromoCard({
             >
               <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
             </svg>
-            今すぐロックを解除
+            {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
           </span>
 
           {/* 見出し */}
@@ -265,15 +294,18 @@ export function FullAccessPromoCard({
             id="fullaccess-promo-title"
             className="mt-2.5 text-[27px] font-black leading-[1.3] text-[#2E2E5C] md:text-[32px]"
           >
-            あなたの性格タイプ
-            <br />
-            についてのすべてを解放
+            {isKorean ? (
+              <>내 성격 유형의<br />모든 결과를 해제</>
+            ) : (
+              <>あなたの性格タイプ<br />についてのすべてを解放</>
+            )}
           </h2>
 
           {/* 続編訴求 */}
           <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
-            あなたの詳細な性格タイプから、友達から見たアナタの印象まで、
-            自分では気づけなかった魅力や本質を1つのパッケージにまとめました。
+            {isKorean
+              ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
+              : "あなたの詳細な性格タイプから、友達から見たアナタの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
           </p>
 
           {/* 解放される 4 項目 */}
@@ -282,12 +314,12 @@ export function FullAccessPromoCard({
               hasImage ? "" : "mx-auto max-w-[320px]"
             }`}
           >
-            {UNLOCKS.map(({ title, desc }) => (
+            {unlocks.map(({ title, desc }) => (
               <CheckItem key={title} title={title} desc={desc} accent={tone.accent} />
             ))}
           </ul>
 
-          {/* 価格 (¥1,299 → ¥499 の値引き表記)。
+          {/* ロケール別価格の値引き表記。
               値引き理由を「リリース記念」として明示 (安すぎ感の解消 / 2026-07-14 指示)。 */}
           <div
             className={`mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
@@ -298,23 +330,29 @@ export function FullAccessPromoCard({
               className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
               style={{ backgroundColor: tone.accent }}
             >
-              リリース記念 {OFF_PERCENT}%OFF
+              {isKorean
+                ? `출시 기념 ${price.offPercent}% 할인`
+                : `リリース記念 ${price.offPercent}%OFF`}
             </span>
             <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
-              {LIST_PRICE}
+              {price.list}
             </span>
             <span
               className="text-[36px] font-black leading-none"
               style={{ color: tone.accent }}
             >
-              ¥499
+              {price.sale}
             </span>
           </div>
 
           {/* CTA (金額はカード側に出したのでボタンからは外す) */}
           <div className="mt-4">
-            <FullAccessCta ownerToken={ownerToken}>
-              すべてのロックを解除
+            <FullAccessCta
+              ownerToken={ownerToken}
+              unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+              locale={locale}
+            >
+              {isKorean ? "모든 잠금 해제" : "すべてのロックを解除"}
             </FullAccessCta>
           </div>
 
@@ -338,8 +376,33 @@ export function FullAccessPromoCard({
               <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            30日間の返金保証つき
+            {isKorean ? "30일 환불 보장" : "30日間の返金保証つき"}
           </p>
+
+          {isKorean && (
+            <p
+              className={`mt-2 text-[11px] leading-[1.7] text-[#7A7A92] ${
+                hasImage ? "text-center md:text-left" : "text-center"
+              }`}
+            >
+              결제 전 {" "}
+              <Link href="/ko/terms" className="underline underline-offset-2">
+                이용약관
+              </Link>
+              , {" "}
+              <Link href="/ko/privacy" className="underline underline-offset-2">
+                개인정보처리방침
+              </Link>
+              , {" "}
+              <Link
+                href="/ko/legal/commerce"
+                className="underline underline-offset-2"
+              >
+                판매 및 환불 안내
+              </Link>
+              를 확인해 주세요.
+            </p>
+          )}
         </div>
       </div>
     </section>

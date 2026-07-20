@@ -1,14 +1,16 @@
-// ③「アナタの注意点」直下の「シーン別の注意点」ロックティーザー (2026-07-14 指示)。
+// ③「アナタの注意点」直下の「シーン別の注意点」(2026-07-14 指示 / 2026-07-15 本文投入)。
 //
-// 深掘りロック (DeepDiveSections) と同じ体裁: 色付きの鍵円を横並び + 中央に解除カード。
-// ⚠ シーン別注意点の本文データはまだ存在しない (ティーザーのみ)。そのため呼び出し側
-//   (/me) は未解放時のみ表示すること。解放済みユーザーに「開かない鍵」を見せない。
-//   本文データ投入後に、解放時の実表示へ差し替える。
+// - 未解放: SceneCautionTeaser … 深掘りロック (DeepDiveSections) と同じ体裁
+//   (色付きの鍵円を横並び + 中央に解除カード)。
+// - 解放済み: SceneCautionList … 本文 (part-two-resolve の buildSceneCautions)。
+//   組版は武器/関係別と同じチェックリスト風で、アイコンはシーン色の注意マーク。
 //
 // サーバコンポーネント (状態なし)。CTA は PaywallScrollButton (client) に委譲。
 
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { SCENE_CAUTION_ID } from "@/lib/scroll-to-paywall";
+import type { SceneCaution } from "@/lib/part-two-resolve";
+import type { ResultLocale } from "@/i18n/result";
 
 // 鍵アイコン (RelationsLocked / DeepDiveSections と同一形状)。
 function LockGlyph({ size = 18 }: { size?: number }) {
@@ -38,11 +40,76 @@ const SCENE_ITEMS: { label: string; color: string }[] = [
   { label: "家族といる時", color: "#F2C14E" },
 ];
 
-export function SceneCautionTeaser() {
+const KO_SCENE_ITEMS: { label: string; color: string }[] = [
+  { label: "친구와 있을 때", color: "#56BFE8" },
+  { label: "연인과 있을 때", color: "#F48BAE" },
+  { label: "커리어에서", color: "#4CAF7D" },
+  { label: "가족과 있을 때", color: "#F2C14E" },
+];
+
+// 解放済みの実表示。武器/関係別と同じ組版 (枠なし2カラム・太字タイトル + 字下げ本文)。
+// アイコンは「注意点」なので警告三角。色はティザーの鍵円と同じシーン別カラー。
+export function SceneCautionList({
+  items,
+  locale = "ja",
+}: {
+  items: SceneCaution[];
+  locale?: ResultLocale;
+}) {
+  const sceneItems = locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
+  const colorOf = (scene: string) =>
+    sceneItems.find((it) => it.label === scene)?.color ?? "#2E2E5C";
   return (
     <div className="mt-10">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-        シーン別の注意点
+        {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
+      </h3>
+      <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+        {items.map((it) => (
+          <div key={it.scene}>
+            <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+              <span
+                aria-hidden="true"
+                className="flex h-5 w-5 flex-shrink-0 items-center justify-center"
+                style={{ color: colorOf(it.scene) }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </span>
+              {it.scene}
+            </p>
+            <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+              {it.body}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SceneCautionTeaser({
+  locale = "ja",
+}: {
+  locale?: ResultLocale;
+}) {
+  const sceneItems = locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
+  return (
+    <div className="mt-10">
+      <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+        {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
       <div
         id={SCENE_CAUTION_ID}
@@ -50,7 +117,7 @@ export function SceneCautionTeaser() {
       >
         {/* 鍵付きの円 (SP 2列 / md 4列) */}
         <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
-          {SCENE_ITEMS.map((item) => (
+          {sceneItems.map((item) => (
             <div key={item.label} className="flex flex-col items-center gap-2.5">
               <span
                 className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
@@ -71,18 +138,24 @@ export function SceneCautionTeaser() {
             <LockGlyph size={14} />
           </span>
           <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-            今すぐロックを解除
+            {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-            完全版のレポートを入手して、これらの結果を見てみましょう。
-            <br className="md:hidden" />
-            シーンごとのつまずきポイントが分かります。
+            {locale === "ko" ? (
+              "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
+            ) : (
+              <>
+                完全版のレポートを入手して、これらの結果を見てみましょう。
+                <br className="md:hidden" />
+                シーンごとのつまずきポイントが分かります。
+              </>
+            )}
           </p>
           <PaywallScrollButton
             source="scene_caution_card"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            今すぐアクセス
+            {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>

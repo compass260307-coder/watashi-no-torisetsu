@@ -126,7 +126,8 @@ export type JobId = keyof typeof JOBS;
 export const JOB_SCORE_MIDPOINT = 5;
 
 // 職業が判明する友達評価人数の閾値 (課金なしの人数ゲート、ロック解除と同条件)。
-export const JOB_FRIEND_THRESHOLD = 3;
+// 2026-07-18: 友達診断が 1人 × 30問 で完結するモデルになったため 1 に変更。
+export const JOB_FRIEND_THRESHOLD = 1;
 
 // 職業単体の説明 (仮・差し替え / AI 生成置換前提)。「その職業がどんな人か」を 1〜2 文で。
 // ⚠️ 文言はすべて仮。職業ごとにここだけ直せば章②の表示に反映される。

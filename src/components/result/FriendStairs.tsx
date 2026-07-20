@@ -7,29 +7,37 @@
 // 予兆テキスト (teaseText) は /me がサーバで1人目の perceived_scores から導出して渡す。
 // 個人が特定される自由記述は含めない (本人を傷つけない表示ルール)。
 
+import type { ResultLocale } from "@/i18n/result";
+
 interface FriendStairsProps {
   friendCount: number;
   /** friend-stairs.ts の STAIR_TEASE / STAIR_PART_TWO / STAIR_COMPLETE。 */
   stairs: { tease: number; partTwo: number; complete: number };
   /** 1人目の回答から導出した予兆の一文。null = まだ0人 (非表示)。 */
   teaseText?: string | null;
+  locale?: ResultLocale;
 }
 
 export function FriendStairs({
   friendCount,
   stairs,
   teaseText,
+  locale = "ja",
 }: FriendStairsProps) {
+  const isKorean = locale === "ko";
   const steps = [
-    { at: stairs.tease, label: "予兆" },
-    { at: stairs.partTwo, label: "予測が開く" },
-    { at: stairs.complete, label: "本物が完成" },
+    { at: stairs.tease, label: isKorean ? "징후" : "予兆" },
+    { at: stairs.partTwo, label: isKorean ? "예측 열림" : "予測が開く" },
+    { at: stairs.complete, label: isKorean ? "실제 결과 완성" : "本物が完成" },
   ];
 
   return (
     <div className="mb-8">
       {/* ── 進捗レール (1 → 3 → 5) ── */}
-      <ol className="flex items-start justify-between gap-2" aria-label="友達回答の階段">
+      <ol
+        className="flex items-start justify-between gap-2"
+        aria-label={isKorean ? "친구 답변 단계" : "友達回答の階段"}
+      >
         {steps.map((step, i) => {
           const reached = friendCount >= step.at;
           return (
@@ -66,20 +74,24 @@ export function FriendStairs({
         })}
       </ol>
       <p className="mt-2 text-center text-[12px] font-bold text-[#2E2E5C]/60">
-        いま友達{friendCount}人が回答済み
+        {isKorean
+          ? `현재 친구 ${friendCount}명이 답변했어요`
+          : `いま友達${friendCount}人が回答済み`}
       </p>
 
       {/* ── 予兆カード (1人目の報酬。第二部が開くまでの間だけ) ── */}
       {teaseText && friendCount >= stairs.tease && friendCount < stairs.partTwo && (
         <div className="mt-4 rounded-2xl border border-[#E3E6F5] bg-[#F7F7FE] px-5 py-4 text-center">
           <p className="mb-1 text-[12px] font-black tracking-wide text-[#5B5BEF]">
-            予兆
+            {isKorean ? "징후" : "予兆"}
           </p>
           <p className="text-[14px] font-bold leading-relaxed text-[#2E2E5C]">
             {teaseText}
           </p>
           <p className="mt-2 text-[12px] font-bold text-[#2E2E5C]/60">
-            あと{stairs.partTwo - friendCount}人で、見られ方の予測がぜんぶ開く。
+            {isKorean
+              ? `친구 ${stairs.partTwo - friendCount}명만 더 답변하면, 친구가 보는 나의 예측이 모두 열려요.`
+              : `あと${stairs.partTwo - friendCount}人で、見られ方の予測がぜんぶ開く。`}
           </p>
         </div>
       )}

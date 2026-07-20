@@ -1,8 +1,8 @@
 // 詳細レポートの PDF ダウンロード: GET /report/[token]/pdf
 //
-// 課金完了メールの「電子書籍をダウンロード」ボタンの着地先。
-// /report/[token] (Web 版) をサーバ側の headless Chromium で開き、A4 PDF に
-// 変換して attachment で返す。印刷スタイル (print:hidden 等) はページ側に
+// 課金完了メールの「完全版PDFをダウンロード」ボタンの着地先。
+// /report/[token]/print (PDF生成専用ページ) をサーバ側の headless Chromium で開き、
+// A4 PDF に変換して attachment で返す。印刷スタイル (print:hidden 等) はページ側に
 // 実装済みなので、ここでは描画と変換だけを行う。
 //
 // - 認可はページと同じ token + hasFullAccess。未課金・不明 token は本文を
@@ -48,7 +48,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const { token } = await ctx.params;
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
-  // ページ側のモック描画を PDF 化する (/report/[token] ページと同じ QA 導線) =====
+  // PDF生成専用ページのモック描画を PDF 化する =====
   const rawPreview = new URL(req.url).searchParams.get("previewType") ?? "";
   const previewQuery =
     process.env.NODE_ENV !== "production" && /^[a-z-]+__[NR]$/.test(rawPreview)
@@ -76,24 +76,39 @@ export async function GET(req: Request, ctx: RouteContext) {
     }
   }
 
-  // ===== /report/[token] を描画して PDF 化 =====
+  // ===== PDF生成専用ページを描画して PDF 化 =====
   // 自デプロイメントの URL を開く。Vercel 上では VERCEL_URL (デプロイ固有 URL) で
   // プレビュー環境でも自分自身を見る。ローカル開発ではリクエスト自身の origin
   // (localhost:3000 等)。
   const origin = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : new URL(req.url).origin;
-  const pageUrl = `${origin}/report/${encodeURIComponent(token)}${previewQuery}`;
+  const pageUrl = `${origin}/report/${encodeURIComponent(token)}/print${previewQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
     browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(pageUrl, { waitUntil: "networkidle0", timeout: 45_000 });
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.all(
+        Array.from(document.images).map((image) => {
+          if (image.complete && image.naturalWidth > 0) {
+            return Promise.resolve();
+          }
+          return new Promise<void>((resolve) => {
+            image.addEventListener("load", () => resolve(), { once: true });
+            image.addEventListener("error", () => resolve(), { once: true });
+          });
+        }),
+      );
+    });
     const pdf = await page.pdf({
       format: "A4",
+      preferCSSPageSize: true,
       printBackground: true,
-      margin: { top: "14mm", bottom: "14mm", left: "0", right: "0" },
+      margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
 
     return new NextResponse(Buffer.from(pdf), {
@@ -108,9 +123,9 @@ export async function GET(req: Request, ctx: RouteContext) {
     });
   } catch (err) {
     console.error("[/report/pdf] pdf generation failed:", err);
-    // 生成失敗時は Web 版レポートへ逃がす (メールのリンクを無駄死にさせない)
+    // 生成失敗時は解放済みの自己診断結果へ案内する。
     return NextResponse.redirect(
-      `${resolveSiteUrl()}/report/${encodeURIComponent(token)}`,
+      `${resolveSiteUrl()}/me/${encodeURIComponent(token)}`,
       303,
     );
   } finally {

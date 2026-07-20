@@ -22,6 +22,8 @@ import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
 import {
   FRIEND_QUESTIONS_V2_PAGE_1,
+  FRIEND_QUESTIONS_V2_PAGE_2,
+  FRIEND_QUESTIONS_V2_PAGE_3,
   FRIEND_CHOICE_QUESTIONS_V2,
   renderQuestionText,
   type FriendQuestionV2,
@@ -68,8 +70,12 @@ interface OwnerInfo {
   thirtyTwoTypeId: ThirtyTwoTypeId | null;
 }
 
-// 改修: 10 問 = 1 ページ。
-const SCALE_PAGES: FriendQuestionV2[][] = [FRIEND_QUESTIONS_V2_PAGE_1];
+// 1人で完結する友達診断 (2026-07-18): 30 問 = 10 問 × 3 ページ。
+const SCALE_PAGES: FriendQuestionV2[][] = [
+  FRIEND_QUESTIONS_V2_PAGE_1,
+  FRIEND_QUESTIONS_V2_PAGE_2,
+  FRIEND_QUESTIONS_V2_PAGE_3,
+];
 
 // prefers-reduced-motion 尊重 (自己診断 diagnosis/page.tsx と同挙動)。
 // true のときオートスクロールを smooth ではなく auto (瞬間) にする。
@@ -384,10 +390,10 @@ function ScaleScreen({
         <TopHeader />
       </ScrollHideHeader>
       <div className="flex flex-col flex-1 min-h-screen pb-12 bg-white">
-        {/* 自己診断の page 0 と同様、最上部にヒーロー (見出しは他己診断向けに差し替え)。
+        {/* 自己診断の page 0 と同様、最上部にヒーロー (見出しは友達診断向けに差し替え)。
             単一ページのため進捗バーは出さない (diagnosis の page 0 と同じ)。 */}
         <DiagnosisHero
-          title="他己診断テスト"
+          title="友達診断テスト"
           imageSrc="/mascot/friend-hero.png"
         />
 
@@ -504,7 +510,7 @@ function ChoiceScreen({
           (コンテンツとフッターの間の余白を詰める)。 */}
       <div className="flex flex-col bg-white pb-8">
         <DiagnosisHero
-          title="他己診断テスト"
+          title="友達診断テスト"
           imageSrc="/mascot/friend-hero.png"
         />
 
@@ -602,7 +608,7 @@ function MessageScreen({
           (CTA とフッターの間の余白を詰める)。 */}
       <div className="flex flex-col bg-white pb-8">
         <DiagnosisHero
-          title="他己診断テスト"
+          title="友達診断テスト"
           imageSrc="/mascot/friend-hero.png"
         />
         <main className="flex w-full flex-col items-center px-4 pt-6 pb-4 md:px-8">

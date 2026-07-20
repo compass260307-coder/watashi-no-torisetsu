@@ -1,5 +1,5 @@
 // 結果ページのヒーロー帯 (色帯 + 斜めクリップ + グロー + フェルトドット + 称号/OCEAN + キャラ画像)。
-// 自己診断 (/me) と 他己診断 (/tako) の結果ページで共用し、世界観を統一する。
+// 自己診断 (/me) と 友達診断 (/tako) の結果ページで共用し、世界観を統一する。
 //   - /me: 2カラム (label+称号+OCEAN 左 / キャラ 右)、本文幅 1080。
 //   - /tako: 単カラム縦積み (中央)、本文幅 560。ヒーロー帯は全幅で共通。
 // 色 (heroBg / codeTint / dotColor) は呼び出し側で算出して渡す (グループ別トーンを各ページで解決)。
@@ -7,6 +7,7 @@
 import { CharacterHero } from "./CharacterHero";
 import type { CharacterHeroJobSlot } from "./CharacterHero";
 import type { BigFiveDimension } from "@/lib/types";
+import type { ResultLocale } from "@/i18n/result";
 
 interface ResultHeroProps {
   /** 称号の上の小ラベル (例「あなたの性格タイプ:」) */
@@ -36,6 +37,7 @@ interface ResultHeroProps {
   contentMaxWidthClass?: string;
   /** true で md 以上 2カラム (/me)、false で常に縦積み中央 (/tako)。既定 true。 */
   twoColumn?: boolean;
+  locale?: ResultLocale;
 }
 
 const OCEAN: readonly BigFiveDimension[] = ["O", "C", "E", "A", "N"];
@@ -64,6 +66,7 @@ export function ResultHero({
   jobSlot,
   contentMaxWidthClass = "max-w-[1080px]",
   twoColumn = true,
+  locale = "ja",
 }: ResultHeroProps) {
   const isHigh = (k: BigFiveDimension) =>
     (typeof scores[k] === "number" ? (scores[k] as number) : 5) >= 5;
@@ -166,6 +169,7 @@ export function ResultHero({
             hideDecorations
             hideJobGauge
             jobSlot={jobSlot}
+            locale={locale}
           />
         </div>
       </div>

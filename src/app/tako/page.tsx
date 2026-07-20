@@ -1,5 +1,5 @@
-// 他己診断 (タコ診断) の入口・未診断ガード /tako (token 無し)。
-//   ボトムナビ「他己診断」を押したが、まだ自己診断していない (owner_token 無し)
+// 友達診断 (タコ診断) の入口・未診断ガード /tako (token 無し)。
+//   ボトムナビ「友達診断」を押したが、まだ自己診断していない (owner_token 無し)
 //   ユーザーに出す誘導画面。「まず自己診断から」+ 3ステップ + 自己診断CTA。
 //   token 有りは BottomNav が /tako/[token] へ送る (解除/ロックは [token] 側)。
 
@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "他己診断",
+  title: "友達診断",
   robots: { index: false, follow: false },
 };
 

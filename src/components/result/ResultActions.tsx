@@ -101,7 +101,7 @@ export function ResultActions({
 
   // 評価依頼シェア文言。旧・動物名 (typeName) ではなく称号 (essence) を使用し、
   // 「あなたから見た私を教えて」という依頼だと文言だけで伝わるようにする。
-  const shareText = `私のトリセツは「${essence}」でした！\nあなたから見た私はどう見えてる？10問だけ、こっそり教えて👀`;
+  const shareText = `私のトリセツは「${essence}」でした！\nあなたから見た私はどう見えてる？30問で、こっそり教えて👀`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     shareText,
   )}&url=${encodeURIComponent(shareUrl)}`;
@@ -255,7 +255,7 @@ export function ResultActions({
         </p>
       )}
 
-      {/* 拡散シェア (BragShare) は主従フラット化のため /me 側で他己診断カードの下へ移設。 */}
+      {/* 拡散シェア (BragShare) は主従フラット化のため /me 側で友達診断カードの下へ移設。 */}
 
       {/* オフスクリーンの確定カード (PNG 書き出し元) */}
       <div

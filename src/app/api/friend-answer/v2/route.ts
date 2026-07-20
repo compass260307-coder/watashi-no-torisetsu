@@ -1,9 +1,9 @@
-// Phase 3-β B-2: 新 10 問形式の友達評価受信エンドポイント。
+// Phase 3-β B-2: 30 問形式の友達評価受信エンドポイント (2026-07-18: 1人×30問で完結)。
 // 旧 /api/friend-answer (13 問形式) は任意JSON保存を防ぐため410で停止済み。
 //
 // 受信内容:
 //   - inviteCode: invite_code → users (owner) 特定
-//   - scaleAnswers: Record<1..10, 1..7>
+//   - scaleAnswers: Record<1..30, 1..7>
 //   - choiceAnswers: Record<"favorite_point"|"animal"|"impression_scene", string> (任意、スキップ可)
 //   - perceiverName: 評価者の表示名 (LIFF or 任意入力)
 //   - perceiverLineUserId: Authorization: Bearer <LIFF id_token> から verify (任意)
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "inviteCode required" }, { status: 400 });
   }
 
-  // scaleAnswers バリデーション: 1-10 が全て有効値 (1-7) で揃っているか
+  // scaleAnswers バリデーション: 1-30 が全て有効値 (1-7) で揃っているか
   if (!rawScale || typeof rawScale !== "object" || Array.isArray(rawScale)) {
     return NextResponse.json(
       { error: "scaleAnswers must be an object" },

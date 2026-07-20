@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 
-type SearchParams = Promise<{ reason?: string }>;
+type SearchParams = Promise<{ reason?: string; locale?: string }>;
 
 interface ReasonContent {
   heading: string;
@@ -58,20 +58,50 @@ const FALLBACK: ReasonContent = {
   },
 };
 
+const KO_REASON_CONTENT: Record<string, ReasonContent> = {
+  missing_token: {
+    heading: "링크가 완전하지 않아요",
+    description:
+      "링크 일부가 빠졌거나 올바르게 복사되지 않았을 수 있어요. 받은 이메일에서 링크를 다시 열어 주세요.",
+    primaryAction: { label: "로그인 링크 다시 받기", href: "/ko/login" },
+  },
+  invalid_or_expired: {
+    heading: "사용할 수 없는 링크예요",
+    description:
+      "링크가 만료되었거나 이미 사용되었어요. 로그인 링크는 발급 후 1시간 동안 한 번만 사용할 수 있어요.",
+    primaryAction: { label: "로그인 링크 다시 받기", href: "/ko/login" },
+  },
+  server_error: {
+    heading: "일시적인 문제가 발생했어요",
+    description:
+      "잠시 뒤 다시 시도해 주세요. 문제가 계속되면 새 로그인 링크를 받아 주세요.",
+    primaryAction: { label: "로그인 링크 다시 받기", href: "/ko/login" },
+  },
+};
+
+const KO_FALLBACK: ReasonContent = {
+  heading: "링크를 확인할 수 없어요",
+  description: "새 로그인 링크를 받아 다시 시도해 주세요.",
+  primaryAction: { label: "로그인 링크 다시 받기", href: "/ko/login" },
+};
+
 export default async function AuthErrorPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  const { reason } = await searchParams;
+  const { reason, locale } = await searchParams;
+  const isKorean = locale === "ko";
+  const contentMap = isKorean ? KO_REASON_CONTENT : REASON_CONTENT;
   const content: ReasonContent =
-    (reason ? REASON_CONTENT[reason] : undefined) ?? FALLBACK;
+    (reason ? contentMap[reason] : undefined) ??
+    (isKorean ? KO_FALLBACK : FALLBACK);
 
   return (
     <main className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
       <header className="text-center mb-8 animate-fade-in-up">
         <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
-          AUTH ERROR
+          {isKorean ? "로그인 링크 오류" : "AUTH ERROR"}
         </p>
         <h1 className="text-2xl font-extrabold leading-tight">
           {content.heading}
@@ -94,10 +124,10 @@ export default async function AuthErrorPage({
       )}
 
       <Link
-        href="/"
+        href={isKorean ? "/ko" : "/"}
         className="text-xs text-muted/70 underline hover:text-foreground text-center mt-8"
       >
-        トップに戻る
+        {isKorean ? "홈으로 돌아가기" : "トップに戻る"}
       </Link>
     </main>
   );

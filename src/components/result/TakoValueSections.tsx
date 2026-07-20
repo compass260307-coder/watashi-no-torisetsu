@@ -1,6 +1,6 @@
-// 他己診断まわりで共通の「価値説明」2セクション:
+// 友達診断まわりで共通の「価値説明」2セクション:
 //   ① 3人集まると、こんなことが見えます。 (4項目グリッド)
-//   ② 他己診断の進み方 3ステップ (友達にシェア → 友達が答える → あなたが解ける)
+//   ② 友達診断の進み方 3ステップ (友達にシェア → 友達が答える → あなたが解ける)
 // 元は TakoLockedState 内にあった JSX を切り出し、タコのロック空状態と
 // 友達の回答完了後の案内 (FriendIndividualGuide) の両方で同じ見た目を使えるようにする。
 // props 無し・フックなしの静的表示なので Server Component のまま (Image のみ)。
@@ -10,7 +10,7 @@ import { SmoothImage } from "@/components/ui/SmoothImage";
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 
-// 3ステップ (他己診断の進み方)。accent=上アクセント帯/pill、tint=イラスト帯/pill 背景。
+// 3ステップ (友達診断の進み方)。accent=上アクセント帯/pill、tint=イラスト帯/pill 背景。
 // 色はグループ色 (海=青/陸=緑/未知=紫) に対応させ、世界観に接続する。
 const STEPS = [
   {
@@ -27,7 +27,7 @@ const STEPS = [
     tint: "#EEF7E9",
     img: "/tako/steps/step2.png",
     title: "友達が答える",
-    desc: "友達は5つの質問でサクッと回答。あなたの印象を教えてくれる。",
+    desc: "友達は30問の診断に回答。あなたの印象をじっくり教えてくれる。",
   },
   {
     n: 3,
@@ -35,7 +35,7 @@ const STEPS = [
     tint: "#F1ECFA",
     img: "/tako/steps/step3.png",
     title: "あなたが解ける",
-    desc: "3人が答えると「みんなから見たあなた」が完成する。",
+    desc: "友達1人が答えると「友達から見たあなた」が完成する。",
   },
 ] as const;
 
@@ -147,7 +147,7 @@ function UnlockPreviewIcon({
 // stepsFirst: true で「3ステップ → 4項目グリッド」の順に上下反転 (完了画面用)。
 //   既定 false は tako ロック空状態の「グリッド → ステップ」順。
 export function TakoValueSections({
-  leadText = "3人集まると、こんなことが見えます。",
+  leadText = "友達1人が答えると、こんなことが見えます。",
   stepsFirst = false,
 }: {
   leadText?: string;

@@ -10,6 +10,8 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const CLIENT_EVENT_NAMES = new Set([
+  "top_viewed",
+  "top_cta_clicked",
   "diagnosis_started",
   "diagnosis_question_answered",
   "diagnosis_completed",
@@ -18,11 +20,15 @@ const CLIENT_EVENT_NAMES = new Set([
   "friend_answer_scale_completed",
   "friend_answer_completed",
   "friend_to_diagnosis_clicked",
+  "friend_to_diagnosis_invite_clicked",
   "friend_invite_clicked",
   "share_clicked",
   "result_viewed",
   "result_revisited",
   "three_friends_unlocked",
+  "tako_nav_badge_shown",
+  "tako_nav_badge_clicked",
+  "tako_viewed",
   "paywall_viewed",
   "paywall_scroll_clicked",
   "purchase_cta_clicked",
@@ -78,10 +84,13 @@ export async function POST(request: Request) {
     );
   }
   const body = parsedBody.value;
-  const { eventName, sessionId, inviteCode, ownerToken, metadata } = body;
+  const { eventName, sessionId, inviteCode, ownerToken, metadata, locale } = body;
 
   if (typeof eventName !== "string" || !CLIENT_EVENT_NAMES.has(eventName)) {
     return NextResponse.json({ error: "Invalid eventName" }, { status: 400 });
+  }
+  if (locale !== "ja" && locale !== "ko") {
+    return NextResponse.json({ error: "Invalid locale" }, { status: 400 });
   }
 
   const parsedSessionId = optionalIdentifier(sessionId);
@@ -122,6 +131,7 @@ export async function POST(request: Request) {
     session_id: parsedSessionId.value,
     invite_code: parsedInviteCode.value,
     owner_token: parsedOwnerToken.value,
+    locale,
     metadata: parsedMetadata,
   });
   if (error) {

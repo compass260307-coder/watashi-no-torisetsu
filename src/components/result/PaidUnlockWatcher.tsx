@@ -11,13 +11,20 @@
 //   URL に置き換えて再描画 (= ロック解除表示)。一定時間で反映されなければ手動再読み込み導線。
 
 import { useEffect, useState } from "react";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const POLL_INTERVAL_MS = 2000;
 const FIRST_DELAY_MS = 1200;
 const MAX_TRIES = 20; // 約 40 秒
 
-export function PaidUnlockWatcher({ ownerToken }: { ownerToken: string }) {
+export function PaidUnlockWatcher({
+  ownerToken,
+  locale = "ja",
+}: {
+  ownerToken: string;
+  locale?: ResultLocale;
+}) {
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
@@ -26,7 +33,7 @@ export function PaidUnlockWatcher({ ownerToken }: { ownerToken: string }) {
 
     const reloadUnlocked = () => {
       // paid= を外した URL に置換 (履歴を汚さない)。full 反映済みなので本文が出る。
-      window.location.replace(`/me/${ownerToken}`);
+      window.location.replace(`${locale === "ko" ? "/ko" : ""}/me/${ownerToken}`);
     };
 
     const poll = async () => {
@@ -60,7 +67,7 @@ export function PaidUnlockWatcher({ ownerToken }: { ownerToken: string }) {
       cancelled = true;
       window.clearTimeout(first);
     };
-  }, [ownerToken]);
+  }, [locale, ownerToken]);
 
   return (
     <div
@@ -81,12 +88,14 @@ export function PaidUnlockWatcher({ ownerToken }: { ownerToken: string }) {
             className="text-[17px] font-black leading-[1.6]"
             style={{ color: NAVY }}
           >
-            決済処理中です…
+            {locale === "ko" ? "결제를 반영하고 있어요…" : "決済処理中です…"}
           </p>
           <p className="mt-1.5 text-[13px] font-bold leading-[1.7] text-[#8A8AA3]">
-            全解放の反映まで、もう少しお待ちください。
-            <br />
-            自動でひらきます。
+            {locale === "ko" ? (
+              <>잠금 해제를 반영하고 있어요.<br />완료되면 자동으로 열립니다.</>
+            ) : (
+              <>全解放の反映まで、もう少しお待ちください。<br />自動でひらきます。</>
+            )}
           </p>
         </>
       ) : (
@@ -95,18 +104,20 @@ export function PaidUnlockWatcher({ ownerToken }: { ownerToken: string }) {
             className="text-[17px] font-black leading-[1.6]"
             style={{ color: NAVY }}
           >
-            反映に少し時間がかかっています
+            {locale === "ko" ? "반영에 조금 시간이 걸리고 있어요" : "反映に少し時間がかかっています"}
           </p>
           <p className="mt-1.5 text-[13px] font-bold leading-[1.7] text-[#8A8AA3]">
-            決済は完了しています。数分後にもう一度お試しください。
+            {locale === "ko"
+              ? "결제는 완료됐어요. 몇 분 뒤 다시 확인해 주세요."
+              : "決済は完了しています。数分後にもう一度お試しください。"}
           </p>
           <button
             type="button"
-            onClick={() => window.location.replace(`/me/${ownerToken}`)}
+            onClick={() => window.location.replace(`${locale === "ko" ? "/ko" : ""}/me/${ownerToken}`)}
             className="mt-6 inline-flex items-center justify-center rounded-full px-8 py-3 text-[15px] font-black text-white"
             style={{ background: NAVY }}
           >
-            再読み込み
+            {locale === "ko" ? "새로고침" : "再読み込み"}
           </button>
         </>
       )}

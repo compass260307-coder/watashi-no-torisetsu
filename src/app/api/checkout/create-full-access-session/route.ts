@@ -1,4 +1,4 @@
-// PR1: ¥499 買い切り「フルアクセス(全解放)」の Stripe Checkout Session 作成。
+// 日本版・韓国版の買い切り「フルアクセス(全解放)」Stripe Checkout Session 作成。
 //
 // POST /api/checkout/create-full-access-session
 //   - 認可: body.owner_token (秘密の capability URL のトークン) でその本人を解決。
@@ -13,7 +13,7 @@
 //   - 戻り値: { url }
 //
 // 既存の create-session / create-perception-unlock-session とは別エンドポイント。
-// Price は STRIPE_PRICE_FULL_ACCESS (¥499/one-time)。金額はサーバ側の Price 固定で、
+// Price はロケール別の環境変数 (one-time)。金額はサーバ側の Price 固定で、
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
@@ -27,27 +27,83 @@ import { hasFullAccess } from "@/lib/entitlements";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { normalizePaywallSource } from "@/lib/paywall-source";
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
+type CheckoutLocale = "ja" | "ko";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-// ===== 「買いたくなる」Checkout 表示の定数 =====
-// 実課金額 (SALE) は必ず STRIPE_PRICE_FULL_ACCESS (Price ID) の実額と一致していること。
-// LIST は値引き表示のアンカー (二重価格)。カード側の ¥1,299 と揃える。
-const SALE_JPY = 499;
-const LIST_JPY = 1299;
-const DISCOUNT_JPY = LIST_JPY - SALE_JPY; // 800
-// 値引きアンカー用クーポン (once・amount_off=DISCOUNT_JPY)。id に金額を埋めて取り違え防止。
-const ANCHOR_COUPON_ID = `full-access-anchor-off${DISCOUNT_JPY}-jpy`;
+// Preview はデプロイごとにホスト名が変わるため、固定の NEXT_PUBLIC_SITE_URL を
+// success_url / cancel_url に使うと別デプロイへ戻ってしまう。Preview だけは実際に
+// Checkout を発行したリクエストの origin を使い、本番は正規ドメインを維持する。
+function getCheckoutBaseUrl(request: NextRequest): string {
+  return process.env.VERCEL_ENV === "preview"
+    ? request.nextUrl.origin
+    : BASE_URL;
+}
 
-const PRODUCT_NAME = "ワタシのトリセツ 性格レポート完全版";
-const PRODUCT_DESC =
-  "深掘り(キャリア・成長)/友達ひとりずつの本音/シーン別の相性まで、ぜんぶ解放。買い切り・追加課金なし。";
+// ===== 「買いたくなる」Checkout 表示の定数 =====
+// 実課金額 (saleAmount) はロケール別 Price ID の実額と一致していること。
+// listAmount は値引き表示のアンカー (二重価格) で、結果カード側の表示と揃える。
+const CHECKOUT_PRICING = {
+  ja: {
+    currency: "jpy",
+    saleAmount: 499,
+    listAmount: 1299,
+    discountAmount: 800,
+  },
+  ko: {
+    currency: "krw",
+    saleAmount: 4900,
+    listAmount: 12900,
+    discountAmount: 8000,
+  },
+} as const satisfies Record<
+  CheckoutLocale,
+  {
+    currency: "jpy" | "krw";
+    saleAmount: number;
+    listAmount: number;
+    discountAmount: number;
+  }
+>;
+
+// 値引きアンカー用クーポン (once・amount_off=discountAmount)。
+// id に金額と通貨を埋めて、ロケール間の取り違えを防止する。
+const CHECKOUT_COPY: Record<
+  CheckoutLocale,
+  {
+    couponId: string;
+    couponName: string;
+    productName: string;
+    productDescription: string;
+    submitMessage: string;
+  }
+> = {
+  ja: {
+    couponId: "full-access-anchor-off800-jpy",
+    couponName: "リリース記念",
+    productName: "ワタシのトリセツ 性格レポート完全版",
+    productDescription:
+      "16ページ以上の完全版PDFレポート、恋愛・キャリアの深掘り、周りから見た印象、友達ごとの見え方・ギャップ、シーン別の相性・注意点まで、ぜんぶ解放。買い切り・追加課金なし。",
+    submitMessage:
+      "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき・追加課金なし。",
+  },
+  ko: {
+    couponId: "full-access-anchor-off8000-krw",
+    couponName: "출시 기념",
+    productName: "나의 사용설명서 성격 리포트 완전판",
+    productDescription:
+      "연애·커리어 심층 분석, 주변에서 보는 나의 인상, 친구별 시선과 차이, 상황별 궁합과 주의점까지 웹에서 모두 열어 드려요. 한 번만 결제하면 언제든 다시 볼 수 있고 추가 비용은 없어요.",
+    submitMessage:
+      "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장, 추가 결제 없음. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
+  },
+};
 // Checkout 左の商品サムネ (現行キービジュアルの PNG・768x512)。
 // Stripe は JPEG/PNG/GIF 推奨なので webp ではなく PNG を使う。取得できる公開 https のみ許可。
 const PRODUCT_IMAGE =
@@ -56,16 +112,21 @@ const PRODUCT_IMAGE =
 // getStripe() の非 null 戻り値 = Stripe クライアント型。
 type StripeClient = NonNullable<ReturnType<typeof getStripe>>;
 
-// 値引きアンカー用クーポンを取得 (無ければ作成)。amount_off が一致するものだけ採用。
+// 値引きアンカー用クーポンを取得 (無ければ作成)。金額・通貨が一致するものだけ採用。
 // ★実課金安全: 解決できなければ null を返し、呼び出し側は Price ID (実額) にフォールバックする。
-async function resolveAnchorCoupon(stripe: StripeClient): Promise<string | null> {
+async function resolveAnchorCoupon(
+  stripe: StripeClient,
+  locale: CheckoutLocale,
+): Promise<string | null> {
+  const coupon = CHECKOUT_COPY[locale];
+  const pricing = CHECKOUT_PRICING[locale];
   try {
-    const c = await stripe.coupons.retrieve(ANCHOR_COUPON_ID);
+    const c = await stripe.coupons.retrieve(coupon.couponId);
     if (
       !c.deleted &&
       c.valid &&
-      c.amount_off === DISCOUNT_JPY &&
-      (c.currency ?? "jpy") === "jpy"
+      c.amount_off === pricing.discountAmount &&
+      c.currency === pricing.currency
     ) {
       return c.id;
     }
@@ -75,18 +136,21 @@ async function resolveAnchorCoupon(stripe: StripeClient): Promise<string | null>
     // 未作成 → 作成 (id 固定で冪等)。
     try {
       const created = await stripe.coupons.create({
-        id: ANCHOR_COUPON_ID,
-        amount_off: DISCOUNT_JPY,
-        currency: "jpy",
+        id: coupon.couponId,
+        amount_off: pricing.discountAmount,
+        currency: pricing.currency,
         duration: "once",
-        name: "リリース記念",
+        name: coupon.couponName,
       });
       return created.id;
     } catch {
       // 競合で他リクエストが作成済み → もう一度取得を試みる。
       try {
-        const c = await stripe.coupons.retrieve(ANCHOR_COUPON_ID);
-        return !c.deleted && c.valid && c.amount_off === DISCOUNT_JPY
+        const c = await stripe.coupons.retrieve(coupon.couponId);
+        return !c.deleted &&
+          c.valid &&
+          c.amount_off === pricing.discountAmount &&
+          c.currency === pricing.currency
           ? c.id
           : null;
       } catch {
@@ -96,15 +160,20 @@ async function resolveAnchorCoupon(stripe: StripeClient): Promise<string | null>
   }
 }
 
-// Price ID の実額が SALE_JPY と一致するか検証 (ダッシュボードで価格変更された場合に
+// Price ID の実額がロケール別の saleAmount と一致するか検証 (ダッシュボードで価格変更された場合に
 // 値引き経路 [LIST−DISCOUNT] で誤課金しないための安全弁)。
 async function priceChargesSale(
   stripe: StripeClient,
   priceId: string,
+  locale: CheckoutLocale,
 ): Promise<boolean> {
+  const pricing = CHECKOUT_PRICING[locale];
   try {
     const price = await stripe.prices.retrieve(priceId);
-    return price.unit_amount === SALE_JPY && price.currency === "jpy";
+    return (
+      price.unit_amount === pricing.saleAmount &&
+      price.currency === pricing.currency
+    );
   } catch {
     return false;
   }
@@ -114,27 +183,38 @@ async function priceChargesSale(
 // クリックのたびに Stripe へ往復すると遷移が遅く離脱に繋がる。値引き設定は不変/ほぼ不変
 // なので warm な Function インスタンス内で使い回す (cold start でリセット=再取得されるので
 // ダッシュボード変更も遠からず反映される)。
-let cachedCouponId: string | null = null; // 成功時のみキャッシュ (null=未解決/失敗、都度再試行)
-let cachedSaleOk: { value: boolean; at: number } | null = null;
+const cachedCouponIds: Partial<Record<CheckoutLocale, string>> = {};
+const cachedSaleChecks: Partial<
+  Record<CheckoutLocale, { value: boolean; at: number; priceId: string }>
+> = {};
 const SALE_OK_TTL_MS = 10 * 60 * 1000; // 価格実額検証は 10 分 TTL
 
-async function getCouponIdCached(stripe: StripeClient): Promise<string | null> {
-  if (cachedCouponId) return cachedCouponId;
-  const id = await resolveAnchorCoupon(stripe);
-  if (id) cachedCouponId = id; // 失敗(null)はキャッシュせず次回再試行
+async function getCouponIdCached(
+  stripe: StripeClient,
+  locale: CheckoutLocale,
+): Promise<string | null> {
+  if (cachedCouponIds[locale]) return cachedCouponIds[locale] ?? null;
+  const id = await resolveAnchorCoupon(stripe, locale);
+  if (id) cachedCouponIds[locale] = id; // 失敗(null)はキャッシュせず次回再試行
   return id;
 }
 
 async function getSaleOkCached(
   stripe: StripeClient,
   priceId: string,
+  locale: CheckoutLocale,
 ): Promise<boolean> {
   const now = Date.now();
-  if (cachedSaleOk && now - cachedSaleOk.at < SALE_OK_TTL_MS) {
-    return cachedSaleOk.value;
+  const cached = cachedSaleChecks[locale];
+  if (
+    cached &&
+    cached.priceId === priceId &&
+    now - cached.at < SALE_OK_TTL_MS
+  ) {
+    return cached.value;
   }
-  const value = await priceChargesSale(stripe, priceId);
-  cachedSaleOk = { value, at: now };
+  const value = await priceChargesSale(stripe, priceId, locale);
+  cachedSaleChecks[locale] = { value, at: now, priceId };
   return value;
 }
 
@@ -167,14 +247,6 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-  const priceId = getFullAccessPriceId();
-  if (!priceId) {
-    return NextResponse.json(
-      { error: "STRIPE_PRICE_FULL_ACCESS not configured" },
-      { status: 500 },
-    );
-  }
-
   // ===== 対象本人の解決 (owner_token 優先 → session fallback) =====
   // owner_token は推測不可 (nanoid 22) の秘密トークン。閲覧と同じ capability なので、
   // これで本人を解決してよい。Cookie が無いスマホでも課金できるのが目的。
@@ -186,6 +258,21 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const checkoutLocale: CheckoutLocale = body.locale === "ko" ? "ko" : "ja";
+  const checkoutCopy = CHECKOUT_COPY[checkoutLocale];
+  const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
+  const priceId = getFullAccessPriceId(checkoutLocale);
+  if (!priceId) {
+    const envName =
+      checkoutLocale === "ko"
+        ? "STRIPE_PRICE_FULL_ACCESS_KRW"
+        : "STRIPE_PRICE_FULL_ACCESS";
+    return NextResponse.json(
+      { error: `${envName} not configured` },
+      { status: 500 },
+    );
+  }
+  const paywallSource = normalizePaywallSource(body.paywall_source);
   const bodyToken =
     body.owner_token === undefined || body.owner_token === null
       ? ""
@@ -252,10 +339,14 @@ export async function POST(request: NextRequest) {
   //   ログイン中/owner_token あり → 自分のトリセツ (/me/[owner_token])。
   //   ゲスト → 「購入完了 → 登録メールでログイン」ページ。
   const ownerToken = (buyer?.owner_token ?? "").trim();
+  const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
+  const checkoutBaseUrl = getCheckoutBaseUrl(request);
   const successUrl = ownerToken
-    ? `${BASE_URL}/me/${ownerToken}?paid=1`
-    : `${BASE_URL}/purchase-complete`;
-  const cancelUrl = ownerToken ? `${BASE_URL}/me/${ownerToken}` : `${BASE_URL}/`;
+    ? `${checkoutBaseUrl}${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
+    : `${checkoutBaseUrl}${localePrefix}/purchase-complete?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = ownerToken
+    ? `${checkoutBaseUrl}${localePrefix}/me/${ownerToken}`
+    : `${checkoutBaseUrl}${localePrefix || "/"}`;
 
   // ログイン中は email を prefill。ゲストは Stripe が Checkout で email を収集する。
   const customerEmail =
@@ -263,37 +354,37 @@ export async function POST(request: NextRequest) {
       ? buyer.email
       : undefined;
 
-  // ===== 「買いたくなる」表示: 商品説明/画像 + 値引き表示 (¥1,299 → ¥499) =====
+  // ===== 「買いたくなる」表示: 商品説明/画像 + ロケール別の値引き表示 =====
   // 安全設計: 値引き経路 (price_data LIST + クーポン) は
-  //   ① Price ID の実額が SALE (¥499) と一致し ② クーポンが amount_off=DISCOUNT で解決
+  //   ① Price ID の実額が SALE と一致し ② クーポンが amount_off=DISCOUNT で解決
   //   できたときだけ使う。どちらか欠けたら Price ID (実額) にフォールバックし、
-  //   ¥1,299 を誤課金しない。商品説明/画像は両経路とも付ける。
+  //   アンカー価格を誤課金しない。商品説明/画像は両経路とも付ける。
   const productData: {
     name: string;
     description: string;
     images?: string[];
   } = {
-    name: PRODUCT_NAME,
-    description: PRODUCT_DESC,
+    name: checkoutCopy.productName,
+    description: checkoutCopy.productDescription,
     ...(PRODUCT_IMAGE ? { images: [PRODUCT_IMAGE] } : {}),
   };
 
   const [couponId, saleOk] = await Promise.all([
-    getCouponIdCached(stripe),
-    getSaleOkCached(stripe, priceId),
+    getCouponIdCached(stripe, checkoutLocale),
+    getSaleOkCached(stripe, priceId, checkoutLocale),
   ]);
   const useDiscount = !!couponId && saleOk;
 
-  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE (=¥499) を課金。
+  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE を課金。
   //   商品名・説明・画像もここで付く (リッチ表示)。
   // フォールバック: ダッシュボードの Price ID をそのまま使う (実課金額は常にダッシュボード源泉。
-  //   ¥1,299 を誤課金しない)。この経路は商品表示もダッシュボード Product 依存。
+  //   アンカー価格を誤課金しない)。この経路は商品表示もダッシュボード Product 依存。
   const lineItems = useDiscount
     ? [
         {
           price_data: {
-            currency: "jpy",
-            unit_amount: LIST_JPY,
+            currency: checkoutPricing.currency,
+            unit_amount: checkoutPricing.listAmount,
             product_data: productData,
           },
           quantity: 1,
@@ -313,8 +404,7 @@ export async function POST(request: NextRequest) {
       // 支払い直前の安心コピー (買い切り・返金保証)。
       custom_text: {
         submit: {
-          message:
-            "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき・追加課金なし。",
+          message: checkoutCopy.submitMessage,
         },
       },
       // webhook は product='full_access' で分岐。user_id があればその行、無ければ (guest=1)
@@ -324,10 +414,12 @@ export async function POST(request: NextRequest) {
         product: "full_access",
         guest: userId ? "0" : "1",
         email: customerEmail ?? "",
+        paywall_source: paywallSource,
+        locale: checkoutLocale,
       },
       success_url: successUrl,
       cancel_url: cancelUrl,
-      locale: "ja",
+      locale: checkoutLocale,
     });
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
@@ -343,9 +435,12 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from("events").insert({
       event_name: "checkout_session_created",
       owner_token: buyer?.owner_token ?? null,
+      locale: checkoutLocale,
       metadata: {
         guest: userId ? false : true,
         stripe_session_id: stripeSession.id,
+        source: paywallSource,
+        locale: checkoutLocale,
       },
     });
   } catch {

@@ -53,6 +53,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
     <FriendIndividualGuide
       diagnoseHref={diagnoseHref}
       diagnoseTrackSource="sent_bottom"
+      inviteCode={inviteCode || undefined}
     />
   );
 }

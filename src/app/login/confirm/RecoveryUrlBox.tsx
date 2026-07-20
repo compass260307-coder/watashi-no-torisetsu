@@ -4,8 +4,15 @@
 // ワンタップでコピーできるようにする。事故防止が目的なので「保存して」を強調。
 
 import { useState } from "react";
+import type { ResultLocale } from "@/i18n/result";
 
-export function RecoveryUrlBox({ url }: { url: string }) {
+export function RecoveryUrlBox({
+  url,
+  locale = "ja",
+}: {
+  url: string;
+  locale?: ResultLocale;
+}) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -28,7 +35,9 @@ export function RecoveryUrlBox({ url }: { url: string }) {
         onClick={copy}
         className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-5 py-3 text-sm font-black text-white shadow-[0_3px_0_#3d3dc4] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:translate-y-1 active:shadow-none transition-all"
       >
-        {copied ? "コピーしました ✓" : "このURLをコピーして保存"}
+        {copied
+          ? locale === "ko" ? "복사했어요 ✓" : "コピーしました ✓"
+          : locale === "ko" ? "이 주소를 복사해 저장하기" : "このURLをコピーして保存"}
       </button>
     </div>
   );

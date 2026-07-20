@@ -1,4 +1,4 @@
-// 他己診断 (タコ診断) 結果ページ /tako/[token]。
+// 友達診断 (タコ診断) 結果ページ /tako/[token]。
 //   owner_token でアクセス (自己 /me/[token] と対)。
 //   /me から切り出した「友達が見た自分」パートを集約:
 //     友達平均キャラ / 自己認知ギャップバー / みんなの目(B-1) / 他者評価 / 招待。
@@ -26,11 +26,16 @@ import TopFooter from "@/components/top/TopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { MinnaTypeProse } from "@/components/result/MinnaTypeProse";
+import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { FriendList } from "@/components/result/FriendList";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { hasFullAccess } from "@/lib/entitlements";
+import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
+import { FriendLoveSection } from "@/components/result/FriendLoveSection";
+import { TakoViewTracker } from "@/components/result/TakoViewTracker";
+import { resolveFriendLove } from "@/lib/friend-love-content";
 import {
   classifyThirtyTwoType,
   thirtyTwoEssence,
@@ -142,7 +147,7 @@ function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
     pendingFriendCount: 0,
     inviteCode: "preview",
     inviteUrl: `${SITE_URL}/friend/preview`,
-    threshold: 3,
+    threshold: REPORT_FRIEND_THRESHOLD,
     unlocked: true,
     friendCharacter: {
       type32: t,
@@ -181,7 +186,7 @@ function mockLockedTakoData(
   pending: number,
   diag: number,
 ): OwnerReportData {
-  const threshold = 3;
+  const threshold = REPORT_FRIEND_THRESHOLD;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
   const diagCount = Math.max(0, Math.min(count, Math.floor(diag || 0)));
   const mockFriends = Array.from({ length: count }, (_, i) => {
@@ -229,7 +234,7 @@ function mockLockedTakoData(
     threshold,
     unlocked: false,
     friendCharacter: null,
-    ownerType32: "gentle-koala__N" as ThirtyTwoTypeId,
+    ownerType32: "idea-monkey__R" as ThirtyTwoTypeId,
   };
 }
 
@@ -303,8 +308,34 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     !data.friendCharacter ||
     !takoHero;
 
-  // ② 深掘りの自動生成データ (一致度・ギャップ・隠れた長所)。友達平均が無ければ null。
-  const deep = buildDeepDive(data.selfScores, data.friendAvgScores);
+  // ===== 友達1人ごとの結果シート (1人完結モデル 2026-07-18) =====
+  // 平均 (みんなの目) は廃止。回答した友達ごとに独立したシートをサーバで描画し、
+  // TakoFriendTabs (client) は表示切替だけを行う。
+  const friendSheets = data.friends.map((f) => {
+    const type32 =
+      f.perceivedType32 ?? classifyThirtyTwoType(f.perceivedScores);
+    const essence = thirtyTwoEssence(type32);
+    const imageSrc =
+      f.perceivedImageSrc ?? preferCutImage(thirtyTwoImagePath(type32));
+    const sheetHero = heroColorsForGroup(thirtyTwoGroup(type32));
+    const sheetDeep = buildDeepDive(data.selfScores, f.perceivedScores);
+    const sheetLove = resolveFriendLove(f.perceivedScores);
+    // 見出し・本文の「誰から見たか」。空/フォールバック名は総称「友達」に落とす。
+    const rawName = f.name.trim();
+    const viewer = rawName && rawName !== "ともだち" ? `${rawName}さん` : "友達";
+    return {
+      key: f.perceptionId,
+      tabName: rawName || "ともだち",
+      viewer,
+      type32,
+      essence,
+      imageSrc,
+      hero: sheetHero,
+      deep: sheetDeep,
+      love: sheetLove,
+      scores: f.perceivedScores,
+    };
+  });
 
   // ===== 再訪リビール(②) の SSR 初期値 =====
   // 既読 (last_seen) を preview は &lastSeen= から、本番は cookie から読む。
@@ -329,6 +360,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
 
   return (
     <>
+      <TakoViewTracker
+        ownerToken={token}
+        inviteCode={data.inviteCode}
+        enabled={!previewMode}
+      />
       {/* 自己診断と同じ 16P 風スクロール連動ヘッダー (世界観統一) */}
       <ScrollHideHeader>
         <TopHeader />
@@ -364,119 +400,148 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                     : undefined
                 }
                 ownerType32={data.ownerType32}
-                selfDiagnoseUrl={SITE_URL}
+                ownerToken={token}
+                inviteCode={data.inviteCode}
+                selfDiagnoseUrl={`${SITE_URL}/diagnosis?source=${encodeURIComponent(data.inviteCode)}`}
               />
             </div>
           ) : (
             /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観)。本文幅は /me・フッターと統一 (1080)。 ===== */
             <div className="mx-auto max-w-[1080px]">
-              {/* ヒーロー帯 (/me と同じ ResultHero・色帯 (a))。自己診断と同じ 2カラム・本文幅1080・
-                  大きめキャラ (ResultHero 既定) にそろえる。称号=友達平均キャラ / OCEAN=友達平均スコア。 */}
-              <ResultHero
-                label="みんなから見たあなたは:"
-                essence={data.friendCharacter.essence}
-                scores={data.friendAvgScores ?? {}}
-                heroBg={takoHero.heroBg}
-                codeTint={takoHero.codeTint}
-                imageSrc={data.friendCharacter.imageSrc}
-                alt={data.friendCharacter.essence}
-                name={data.friendCharacter.name}
+              {/* 友達タブ + 友達1人ごとの結果シート (1人完結モデル)。
+                  ヒーロー/①目に映るあなた/②ギャップ/③恋愛傾向 をその友達のスコアで描画。 */}
+              <TakoFriendTabs
+                names={friendSheets.map((sh) => sh.tabName)}
+                panels={friendSheets.map((sh) => (
+                  <div key={sh.key}>
+                    {/* ヒーロー帯 (/me と同じ ResultHero・色帯)。称号=その友達が見たキャラ。 */}
+                    <ResultHero
+                      label={`${sh.viewer}から見たあなた:`}
+                      essence={sh.essence}
+                      scores={sh.scores}
+                      heroBg={sh.hero.heroBg}
+                      codeTint={sh.hero.codeTint}
+                      imageSrc={sh.imageSrc}
+                      alt={sh.essence}
+                      name={thirtyTwoName(sh.type32)}
+                    />
+
+                    {/* ① その友達の目に映るあなた */}
+                    <section className="mb-14">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                        >
+                          1
+                        </span>
+                        <h2 className="balance-jp text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                          {sh.viewer}の目に映るあなた
+                        </h2>
+                      </div>
+                      <MinnaTypeProse
+                        type32={sh.type32}
+                        essence={sh.essence}
+                        viewer={sh.viewer}
+                      />
+                    </section>
+
+                    {/* ② 自分とのギャップ (●その友達/◆自分 → 一番のギャップ → 解説)。 */}
+                    <section className="mb-14">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                        >
+                          2
+                        </span>
+                        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                          自分とのギャップ
+                        </h2>
+                      </div>
+
+                      {/* ① 一番のギャップ (唯一の見せ場・淡ラベンダーカード) */}
+                      {sh.deep && (
+                        <div className="mb-10 rounded-3xl bg-[#F4F4FE] px-6 py-7">
+                          <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
+                            一番のギャップは{sh.deep.gap.label}。自分では
+                            <span className="text-[#5B5BEF]">
+                              {sh.deep.gap.selfPercent <= 10
+                                ? "ほぼゼロ"
+                                : `${sh.deep.gap.selfPercent}%`}
+                            </span>
+                            、でも{sh.viewer}は
+                            <span className="text-[#5B5BEF]">
+                              {sh.deep.gap.otherPercent}%
+                            </span>
+                            感じてる。
+                          </p>
+                        </div>
+                      )}
+
+                      {/* ② 五つの性格傾向バー: 主ノブ(●)=その友達 / ◆=自分の自己診断。 */}
+                      <BigFiveDivergingBars
+                        scores={sh.scores}
+                        friendScores={data.selfScores}
+                        primaryLabel={`${sh.viewer}の目`}
+                        friendLabel="自分の診断"
+                        hideHeading
+                      />
+
+                      {/* ③ 本文 (deep から決定的に組み立てた固定テンプレ・名前入り)。 */}
+                      {sh.deep && (
+                        <div>
+                          {buildMinnaProse(sh.deep, sh.viewer).map((para, i) => (
+                            <p
+                              key={i}
+                              className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                            >
+                              {para}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* ③ その友達から見た恋愛傾向 (モテポイント)。 */}
+                    {sh.love && (
+                      <section className="mb-14">
+                        <div className="mb-4 flex items-center gap-3">
+                          <span
+                            aria-hidden="true"
+                            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                          >
+                            3
+                          </span>
+                          <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                            {sh.viewer}から見た恋愛傾向
+                          </h2>
+                        </div>
+                        <FriendLoveSection content={sh.love} />
+                      </section>
+                    )}
+                  </div>
+                ))}
               />
 
-            {/* ① みんなの目に映るあなた (友達平均キャラの自己診断本文を他己視点に再構成)。 */}
+            {/* ④ 友達からの回答 (評価してくれた友達一覧・個別ページ導線)。 */}
             <section className="mb-14">
               <div className="mb-4 flex items-center gap-3">
                 <span
                   aria-hidden="true"
                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                 >
-                  1
-                </span>
-                <h2 className="balance-jp text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                  みんなの目に映るあなた
-                </h2>
-              </div>
-              <MinnaTypeProse
-                type32={data.friendCharacter.type32}
-                essence={data.friendCharacter.essence}
-              />
-            </section>
-
-            {/* ② 自分とのギャップ (五つの性格傾向バー ●友達/◆自分 → 一番のギャップ → 解説)。 */}
-            <section className="mb-14">
-              <div className="mb-4 flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-                >
-                  2
-                </span>
-                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                  自分とのギャップ
-                </h2>
-              </div>
-
-              {/* 順番: ① 一番のギャップ (見せ場カード) → ② グラフ → ③ 本文 (固定テンプレ)。 */}
-
-              {/* ① 一番のギャップ (唯一の見せ場・淡ラベンダーカード) */}
-              {deep && (
-                <div className="mb-10 rounded-3xl bg-[#F4F4FE] px-6 py-7">
-                  <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
-                    一番のギャップは{deep.gap.label}。自分では
-                    <span className="text-[#5B5BEF]">
-                      {deep.gap.selfPercent <= 10
-                        ? "ほぼゼロ"
-                        : `${deep.gap.selfPercent}%`}
-                    </span>
-                    、でも友達は
-                    <span className="text-[#5B5BEF]">{deep.gap.otherPercent}%</span>
-                    感じてる。
-                  </p>
-                </div>
-              )}
-
-              {/* ② 五つの性格傾向バー: 主ノブ(●)=友達平均 / ◆=自分の自己診断を重ねギャップを可視化。
-                  見出しは上の②に集約するため hideHeading。 */}
-              <BigFiveDivergingBars
-                scores={data.friendAvgScores ?? {}}
-                friendScores={data.selfScores}
-                primaryLabel="みんなの目"
-                friendLabel="自分の診断"
-                hideHeading
-              />
-
-              {/* ③ 本文 (AI ではなく deep から決定的に組み立てた固定テンプレ buildMinnaProse)。 */}
-              {deep && (
-                <div>
-                  {buildMinnaProse(deep).map((para, i) => (
-                    <p
-                      key={i}
-                      className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
-                    >
-                      {para}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {/* ③ 友達からの回答 (評価してくれた友達一覧・個別ページ導線)。 */}
-            <section className="mb-14">
-              <div className="mb-4 flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-                >
-                  3
+                  4
                 </span>
                 <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                   友達からの回答
                 </h2>
               </div>
+              {/* 2026-07-18: 友達ごとの結果は全員ぶん無料 (¥499 は /me 深掘りのみ)。 */}
               <FriendList
                 friends={data.friends}
                 token={token}
-                hasFullAccess={takoFull}
+                hasFullAccess
               />
             </section>
 
@@ -503,7 +568,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 </h2>
                 {/* PC は1行 (whitespace-nowrap)、SP は自然折り返し。 */}
                 <p className="mx-auto mt-3 max-w-[560px] text-[14px] font-bold leading-[1.7] text-[#8A8AA3] md:max-w-none md:whitespace-nowrap md:text-[15px]">
-                  友達ひとりずつの本音も、自分の深掘りも。この先ぜんぶ、読めるようになります。
+                  恋愛・キャリア・成長——自分の深掘りを、この先ぜんぶ読めるようになります。
                 </p>
               </div>
             )}
@@ -524,7 +589,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       {/* 友達にシェア (もっと友達に診断してもらう招待)。課金カードの下に配置。
           解除後 (!isTakoLocked) のみ表示。main 外に出したため 1080 幅コンテナを自前で付ける。 */}
       {!isTakoLocked && (
-        <section className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
+        <section id="tako-invite" className="mx-auto max-w-[1080px] px-4 pb-6 md:px-8">
           {/* もっと友達に診断してもらう招待。完了前ページ (TakoLockedState) の「結果解放帯」と
               同じ作り: 背景帯 #EDEFFB + 2カラム (左=見出し/サブ, 右=招待カード compact)。
               source="tako_unlocked" で計測。 */}
@@ -547,7 +612,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                   className="mt-2.5 text-[12.5px] font-bold md:text-sm"
                   style={{ color: "#9BA3B4" }}
                 >
-                  答えてくれる友達が増えるほど、深掘りの精度も上がるよ
+                  答えてくれた友達のぶんだけ、結果シートが増えていくよ
                 </p>
               </div>
               {/* 右: 招待 (QR + シェア) */}
@@ -555,6 +620,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 <LockedInviteShare
                   inviteUrl={data.inviteUrl}
                   trackSource="tako_unlocked"
+                  ownerToken={token}
+                  inviteCode={data.inviteCode}
                   compact
                 />
               </div>

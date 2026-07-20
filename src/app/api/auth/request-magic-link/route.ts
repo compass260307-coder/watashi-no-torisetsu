@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const locale = body.locale === "ko" ? "ko" : "ja";
 
   if (!isValidEmail(body.email)) {
     return NextResponse.json(
@@ -149,9 +150,15 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== メール送信 (失敗時もレスポンスは 200、enumeration 対策) =====
-  const magicLinkUrl = `${SITE_URL}/api/auth/verify-magic-link?token=${encodeURIComponent(token)}`;
+  const magicLinkUrl = new URL("/api/auth/verify-magic-link", SITE_URL);
+  magicLinkUrl.searchParams.set("token", token);
+  if (locale === "ko") magicLinkUrl.searchParams.set("locale", "ko");
   try {
-    await sendMagicLinkEmail({ to: email, magicLinkUrl });
+    await sendMagicLinkEmail({
+      to: email,
+      magicLinkUrl: magicLinkUrl.toString(),
+      locale,
+    });
   } catch (error) {
     console.error("[auth/request-magic-link] email send error:", error);
   }

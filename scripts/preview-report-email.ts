@@ -4,8 +4,8 @@ import { renderDetailedReportHtml } from "../src/lib/email";
 
 process.stdout.write(
   renderDetailedReportHtml({
-    meUrl: "https://www.watashi-torisetsu.com/me/EXAMPLE_TOKEN",
     pdfUrl: "https://www.watashi-torisetsu.com/report/EXAMPLE_TOKEN/pdf",
+    meUrl: "https://www.watashi-torisetsu.com/me/EXAMPLE_TOKEN",
     greetingName: "わかん",
   }),
 );

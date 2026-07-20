@@ -7,6 +7,7 @@
 //   - onClose を渡すとカード右上に × (モーダル用) を表示する。
 
 import { useState } from "react";
+import type { ResultLocale } from "@/i18n/result";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -16,10 +17,48 @@ const SORA = "#5B5BEF";
 
 type Phase = "input" | "submitting" | "sent" | "error";
 
-export function LoginCard({ onClose }: { onClose?: () => void }) {
+const LOGIN_COPY = {
+  ja: {
+    close: "閉じる",
+    heading: "ログインリンクをリクエスト",
+    description: "ログインリンクをお送りしますので、\nメールアドレスを入力してください。",
+    emailLabel: "メールアドレス",
+    submitting: "送信中...",
+    submit: "リンクを送る",
+    sendError: "送信に失敗しました",
+    networkError: "通信エラー",
+    sentHeading: "メールをご確認ください",
+    sentBody: "宛にログインリンクをお送りしました。",
+    sentHelp: "1 時間以内にリンクをクリックしてください。\n届かない場合は迷惑メールフォルダもご確認ください。",
+    reset: "別のメールアドレスで送り直す",
+  },
+  ko: {
+    close: "닫기",
+    heading: "로그인 링크 받기",
+    description: "로그인 링크를 보내 드릴게요.\n이메일 주소를 입력해 주세요.",
+    emailLabel: "이메일 주소",
+    submitting: "보내는 중...",
+    submit: "로그인 링크 받기",
+    sendError: "전송에 실패했어요",
+    networkError: "통신 오류가 발생했어요",
+    sentHeading: "이메일을 확인해 주세요",
+    sentBody: "주소로 로그인 링크를 보내 드렸어요.",
+    sentHelp: "1시간 안에 링크를 눌러 주세요.\n메일이 보이지 않으면 스팸 메일함도 확인해 주세요.",
+    reset: "다른 이메일 주소로 다시 받기",
+  },
+} as const;
+
+export function LoginCard({
+  onClose,
+  locale = "ja",
+}: {
+  onClose?: () => void;
+  locale?: ResultLocale;
+}) {
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<Phase>("input");
   const [errorMessage, setErrorMessage] = useState("");
+  const copy = LOGIN_COPY[locale];
 
   const trimmed = email.trim();
   const isValid =
@@ -36,21 +75,21 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
       const res = await fetch("/api/auth/request-magic-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, locale }),
       });
       // enumeration 対策: 成功・失敗を問わず 200 が返るが、念のため status 確認
       if (!res.ok && res.status !== 200) {
         const data = await res.json().catch(() => null);
         setPhase("error");
         setErrorMessage(
-          data?.error ?? `送信に失敗しました (HTTP ${res.status})`,
+          data?.error ?? `${copy.sendError} (HTTP ${res.status})`,
         );
         return;
       }
       setPhase("sent");
     } catch (err) {
       setPhase("error");
-      setErrorMessage(err instanceof Error ? err.message : "通信エラー");
+      setErrorMessage(err instanceof Error ? err.message : copy.networkError);
     }
   };
 
@@ -71,7 +110,7 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="閉じる"
+          aria-label={copy.close}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[#2E2E5C]/5"
           style={{ color: `${NAVY}99` }}
         >
@@ -87,22 +126,25 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
       )}
 
       {phase === "sent" ? (
-        <SentScreen email={trimmed} onReset={reset} />
+        <SentScreen email={trimmed} onReset={reset} locale={locale} />
       ) : (
         <>
           <h1
             className="whitespace-nowrap text-center text-[22px] font-bold leading-snug md:text-[28px]"
             style={{ color: NAVY }}
           >
-            ログインリンクをリクエスト
+            {copy.heading}
           </h1>
           <p
             className="mx-auto mt-3 text-center text-[15px] leading-[1.9]"
             style={{ color: `${NAVY}99` }}
           >
-            ログインリンクをお送りしますので、
-            <br />
-            メールアドレスを入力してください。
+            {copy.description.split("\n").map((line, index) => (
+              <span key={line}>
+                {index > 0 && <br />}
+                {line}
+              </span>
+            ))}
           </p>
 
           <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
@@ -112,7 +154,7 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
                 className="mb-2 block text-[14px] font-bold"
                 style={{ color: `${NAVY}B3` }}
               >
-                メールアドレス
+                {copy.emailLabel}
               </label>
               <div className="relative">
                 <span
@@ -150,7 +192,7 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
               className="w-full rounded-lg py-4 text-[17px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
               style={{ backgroundColor: SORA }}
             >
-              {phase === "submitting" ? "送信中..." : "リンクを送る"}
+              {phase === "submitting" ? copy.submitting : copy.submit}
             </button>
 
             {phase === "error" && errorMessage && (
@@ -168,30 +210,36 @@ export function LoginCard({ onClose }: { onClose?: () => void }) {
 function SentScreen({
   email,
   onReset,
+  locale,
 }: {
   email: string;
   onReset: () => void;
+  locale: ResultLocale;
 }) {
+  const copy = LOGIN_COPY[locale];
   return (
     <div className="flex flex-col items-center text-center">
       <h1
         className="text-[24px] font-bold leading-snug md:text-[28px]"
         style={{ color: NAVY }}
       >
-        メールをご確認ください
+        {copy.sentHeading}
       </h1>
       <p className="mt-4 text-[15px] leading-[1.9]" style={{ color: `${NAVY}CC` }}>
         <span className="break-all font-bold">{email}</span>
         <br />
-        宛にログインリンクをお送りしました。
+        {copy.sentBody}
       </p>
       <p
         className="mt-3 text-[13px] leading-relaxed"
         style={{ color: `${NAVY}80` }}
       >
-        1 時間以内にリンクをクリックしてください。
-        <br />
-        届かない場合は迷惑メールフォルダもご確認ください。
+        {copy.sentHelp.split("\n").map((line, index) => (
+          <span key={line}>
+            {index > 0 && <br />}
+            {line}
+          </span>
+        ))}
       </p>
       <button
         type="button"
@@ -199,7 +247,7 @@ function SentScreen({
         className="mt-6 text-[13px] underline underline-offset-2 transition-colors hover:opacity-70"
         style={{ color: `${NAVY}99` }}
       >
-        別のメールアドレスで送り直す
+        {copy.reset}
       </button>
     </div>
   );

@@ -11,6 +11,7 @@
 
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { FRIEND_INDIVIDUAL_PAYWALL_SOURCE } from "@/lib/paywall-source";
 import { FullAccessCta } from "./FullAccessCta";
 
 export function FriendIndividualPaywall({
@@ -90,7 +91,10 @@ export function FriendIndividualPaywall({
 
           <div className="mt-6 flex flex-col items-center">
             <div className="w-full max-w-[320px]">
-              <FullAccessCta ownerToken={ownerToken} />
+              <FullAccessCta
+                ownerToken={ownerToken}
+                source={FRIEND_INDIVIDUAL_PAYWALL_SOURCE}
+              />
             </div>
             <p className="mt-3 text-[#A0A0B4] font-bold text-[12px]">
               買い切り・追加課金なし

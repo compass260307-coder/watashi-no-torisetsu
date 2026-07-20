@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const locale = body.locale ?? "ja";
+  if (locale !== "ja" && locale !== "ko") {
+    return NextResponse.json(
+      { error: "locale must be ja or ko" },
+      { status: 400 },
+    );
+  }
 
   // ブラウザが送る typeId / scores は信用しない。50問の原回答から必ずサーバーで再計算する。
   const answers = parseAnswers(body.answers);
@@ -182,12 +189,14 @@ export async function POST(request: NextRequest) {
       scores: typeof persistedScores;
       invite_code: string;
       owner_token: string;
+      preferred_locale: "ja" | "ko";
       display_name?: string;
     } = {
       type_id: typeId,
       scores: persistedScores,
       invite_code: inviteCode,
       owner_token: ownerToken,
+      preferred_locale: locale,
     };
     if (normalizedDisplayName !== null) {
       updatePayload.display_name = normalizedDisplayName;
@@ -222,6 +231,7 @@ export async function POST(request: NextRequest) {
       modifierLabel: modifierLabel ?? null,
       lineLinked: !!existing.line_user_id,
       sessionMode: "updated",
+      locale,
     });
   }
 
@@ -242,6 +252,8 @@ export async function POST(request: NextRequest) {
       // source_user_id / generation (招待ツリー) とは別系統で独立。
       acquisition_source: acquisitionSource,
       acquisition_campaign: acquisitionCampaign,
+      acquisition_locale: locale,
+      preferred_locale: locale,
     });
 
     return NextResponse.json({
@@ -257,6 +269,7 @@ export async function POST(request: NextRequest) {
       modifierLabel: modifierLabel ?? null,
       lineLinked: false,
       sessionMode: "created",
+      locale,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

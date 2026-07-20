@@ -4,7 +4,9 @@
 //   - Stripe からの Webhook を受信、署名検証して event 別に処理
 //   - 認可: Stripe 署名 (STRIPE_WEBHOOK_SECRET) のみ。LIFF id_token は不要
 //   - 対応 event:
-//       checkout.session.completed   メイン: payment_history + integrated_trisetsu INSERT + AI 生成キック
+//       checkout.session.completed   即時決済が paid のときだけ購入特典を解放
+//       checkout.session.async_payment_succeeded 遅延決済の支払い確定後に購入特典を解放
+//       checkout.session.async_payment_failed    遅延決済の失敗ログ + Slack アラート
 //       payment_intent.payment_failed 失敗ログ + Slack アラート (DB 更新なし)
 //
 // Idempotency (二重 Webhook 着信耐性):
@@ -29,6 +31,7 @@ import { sendSlackAlert } from "@/lib/slack-alert";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 import { runForUser } from "@/lib/unmei/generateWorker.mjs";
+import { normalizePaywallSource } from "@/lib/paywall-source";
 
 // ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
 // users は type_id/scores が NOT NULL のため空では INSERT できない。
@@ -83,9 +86,35 @@ export async function POST(request: NextRequest) {
   // ===== event 別ハンドラ =====
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
-        await handleCheckoutCompleted(session);
+        if (session.payment_status !== "paid") {
+          // completed は「Checkout 入力完了」であり、遅延決済ではまだ未払いの場合がある。
+          // この時点では権限・購入イベント・メールを一切発行せず、
+          // async_payment_succeeded が届くまで待つ。
+          if (event.type === "checkout.session.completed") {
+            // PayPay 等の遅延決済では completed 時点で未払いが正常。想定内なので
+            // 200 で受領し(break)、後続の async_payment_succeeded を待つ。warn ログのみ残す。
+            console.warn("[webhook/stripe] checkout awaiting payment (deferred)", {
+              session_id: session.id,
+              payment_status: session.payment_status,
+            });
+            break;
+          }
+
+          // async_payment_succeeded なのに paid でない状態は想定外。
+          // 500 を返して Stripe に再送させ、権限の取りこぼしを防ぐ。
+          throw new Error(
+            `async payment succeeded but session is ${session.payment_status}: ${session.id}`,
+          );
+        }
+        await handleCheckoutPaid(session);
+        break;
+      }
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await handleCheckoutAsyncPaymentFailed(session);
         break;
       }
       case "payment_intent.payment_failed": {
@@ -281,9 +310,9 @@ async function grantFullAccessByEmailOrId(
 
 // ---------- フルアクセス特典: 詳細レポートお届けメール ----------
 // grantFullAccessByEmailOrId の後に呼ぶ (users 行が必ず存在する状態)。
-// 宛先 = Stripe 確定 email (無ければ users.email)。リンク先 = /report/[owner_token]。
-// ページ側が閲覧時点の診断結果で描画するため、ゲスト決済 (診断前) でも同じリンクが
-// 診断完了後に本人のタイプのレポートになる。
+// 宛先 = Stripe 確定 email (無ければ users.email)。リンク先は /me/[owner_token] と
+// /report/[owner_token]/pdf。閲覧・生成時点の診断結果を使うため、ゲスト決済
+// (診断前) でも診断完了後に同じリンクから本人向けの内容を利用できる。
 // best-effort: 失敗しても throw しない (grant は完了済み。Webhook 200 応答を止めない)。
 // 注意: Stripe が同一 event を再送した場合はメールも再送され得る (grant 系は冪等なので
 // 実害は重複メール 1 通のみ。頻発するようなら payment_history 側の冪等キー参照で抑止)。
@@ -335,6 +364,7 @@ async function sendDetailedReportEmailBestEffort(
       to,
       ownerToken: row.owner_token,
       ownerName: row.display_name,
+      locale: session.metadata?.locale === "ko" ? "ko" : "ja",
     });
     console.log("[webhook/stripe] detailed report email sent");
   } catch (err) {
@@ -352,6 +382,7 @@ async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   try {
+    const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
     const { data: existing, error: selErr } = await supabaseAdmin
       .from("events")
       .select("id")
@@ -368,11 +399,14 @@ async function recordPurchaseCompletedEvent(
     if (existing && existing.length > 0) return;
     await supabaseAdmin.from("events").insert({
       event_name: "purchase_completed",
+      locale,
       metadata: {
         stripe_session_id: session.id,
         product: "full_access",
         guest: session.metadata?.guest === "1",
         amount_total: session.amount_total ?? null,
+        source: normalizePaywallSource(session.metadata?.paywall_source),
+        locale,
       },
     });
   } catch (err) {
@@ -380,8 +414,10 @@ async function recordPurchaseCompletedEvent(
   }
 }
 
-// ---------- checkout.session.completed ----------
-async function handleCheckoutCompleted(
+// ---------- 支払い確定済み Checkout Session の共通処理 ----------
+// checkout.session.completed (即時決済) と checkout.session.async_payment_succeeded
+// (遅延決済) のどちらからも、payment_status='paid' を確認した後だけ呼ぶ。
+async function handleCheckoutPaid(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
@@ -597,6 +633,30 @@ async function triggerUnmeiGeneration(userId: string): Promise<void> {
       error: err instanceof Error ? err.message : String(err),
     });
   }
+}
+
+// ---------- checkout.session.async_payment_failed ----------
+// 遅延決済が失敗した場合は権限を付与しない。Stripe Dashboard にも記録されるが、
+// 運営側で追跡できるよう session 単位でログと Slack アラートを残す。
+async function handleCheckoutAsyncPaymentFailed(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  console.warn("[webhook/stripe] checkout.session.async_payment_failed", {
+    session_id: session.id,
+    payment_status: session.payment_status,
+    payment_intent:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id,
+  });
+  await sendSlackAlert("⚠️ Stripe checkout.session.async_payment_failed", {
+    session_id: session.id,
+    payment_status: session.payment_status,
+    payment_intent:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : (session.payment_intent?.id ?? "unknown"),
+  });
 }
 
 // ---------- Phase 1.5-α Day 12-C2: perception_unlock 経路 ----------

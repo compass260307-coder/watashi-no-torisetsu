@@ -11,6 +11,7 @@
 import type { CSSProperties } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { Job } from "@/lib/job";
+import type { ResultLocale } from "@/i18n/result";
 
 // 動物＋職業システム用スロット (/me のみ渡す)。
 // job が決まれば「{職業}{動物}」+ アバター右下バッジ。未定なら「？{動物}」+ 判明ゲージ。
@@ -58,6 +59,7 @@ interface CharacterHeroProps {
   // imageBlend 時のマスク style を上書き (未指定なら既定の radial BLEND_MASK)。
   // /me は四辺だけ細く溶かす矩形マスク (linear×2 を mask-composite:intersect) を渡す。
   imageBlendStyle?: CSSProperties;
+  locale?: ResultLocale;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。
@@ -80,6 +82,7 @@ export function CharacterHero({
   hideDecorations = false,
   hideJobGauge = false,
   imageBlendStyle,
+  locale = "ja",
 }: CharacterHeroProps) {
   const job = jobSlot?.job ?? null;
   const remaining = jobSlot
@@ -138,7 +141,9 @@ export function CharacterHero({
       {jobSlot && !job && !hideJobGauge && (
         <div className="w-full max-w-[280px] mb-3">
           <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.2em] mb-1.5">
-            あと {remaining} 人で職業が判明
+            {locale === "ko"
+              ? `친구 ${remaining}명만 더 참여하면 역할을 알 수 있어요`
+              : `あと ${remaining} 人で職業が判明`}
           </p>
           <div
             className="w-full h-2.5 bg-card-border rounded-full overflow-hidden"
@@ -146,7 +151,11 @@ export function CharacterHero({
             aria-valuenow={jobSlot.friendCount}
             aria-valuemin={0}
             aria-valuemax={jobSlot.threshold}
-            aria-label={`友達評価 ${jobSlot.friendCount} / ${jobSlot.threshold} 人`}
+            aria-label={
+              locale === "ko"
+                ? `친구 평가 ${jobSlot.friendCount} / ${jobSlot.threshold}명`
+                : `友達評価 ${jobSlot.friendCount} / ${jobSlot.threshold} 人`
+            }
           >
             <div
               className="h-full bg-[var(--primary)] transition-all duration-500"
