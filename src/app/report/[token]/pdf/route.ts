@@ -24,20 +24,32 @@ interface RouteContext {
   params: Promise<{ token: string }>;
 }
 
+// @sparticuz/chromium と同バージョンの pack tar (フォールバックDL用)。
+const CHROMIUM_PACK_URL =
+  "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar";
+
 async function launchBrowser() {
   // Vercel (Linux serverless) では @sparticuz/chromium のバイナリを使う。
-  // 判定は platform で行うこと。process.env.VERCEL は `vercel env pull` した
-  // .env.local にも入るため、ローカルで Linux バイナリを exec して
-  // spawn ENOEXEC になる (実際に踏んだ)。
+  // 判定は platform で行うこと (詳細は /report/[token]/pdf 参照)。
   if (process.platform === "linux") {
     const chromium = (await import("@sparticuz/chromium")).default;
+    let executablePath: string;
+    try {
+      // 通常経路: Lambda に同梱された bin/ を展開
+      executablePath = await chromium.executablePath();
+    } catch {
+      // turbopack ビルドでは file tracing に bin/ が乗らないことがある
+      // (2026-07-21 本番実測: "input directory .../bin does not exist")。
+      // その場合は GitHub リリースの pack tar を /tmp にDLして展開する
+      // (コールドスタート時のみ数秒かかる。バージョンは package と一致させること)。
+      executablePath = await chromium.executablePath(CHROMIUM_PACK_URL);
+    }
     return puppeteer.launch({
       args: chromium.args,
-      executablePath: await chromium.executablePath(),
+      executablePath,
       headless: true,
     });
   }
-  // ローカル開発 (macOS): インストール済みの Chrome を使う
   const localChrome =
     process.env.PUPPETEER_EXECUTABLE_PATH ??
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
