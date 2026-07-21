@@ -207,7 +207,9 @@ export default function TopFooter() {
               </nav>
             </div>
             <p className="max-w-[720px] text-[15px] leading-relaxed text-[#8A8AA3]">
-              診断結果は Big Five 理論をベースにした、自分を知るための参考情報です。医学的・心理学的な診断を行うものではありません。
+              ワタシのトリセツ（私の取説）は、OCEAN（ビッグファイブ）診断と友達の回答で「自分の取扱説明書」を作る無料の性格診断サービスです。診断結果は
+              Big Five
+              理論をベースにした、自分を知るための参考情報です。医学的・心理学的な診断を行うものではありません。
             </p>
           </div>
 

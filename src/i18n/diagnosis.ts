@@ -69,7 +69,7 @@ interface DiagnosisLocaleSettings {
 
 const JA_COPY: DiagnosisCopy = {
   heroTitle: "無料性格診断テスト",
-  heroSubtitle: "OCEANでわかる32タイプ",
+  heroSubtitle: "OCEAN（ビッグファイブ）診断でわかる32タイプ",
   heroImageAlt: "ワタシのトリセツのマスコット",
   nicknameLabel: "ニックネームを教えて",
   nicknameEmptyError: "ニックネームを入力してね",

@@ -13,34 +13,45 @@ export default function sitemap(): MetadataRoute.Sitemap {
     allThirtyTwoTypeIds() as string[]
   ).map((id) => ({
     url: `${BASE_URL}/preview/${id}`,
+    priority: 0.6,
   }));
+  // priority: トップと診断ページを最重要 (1.0) として明示し、規約系は下げる。
   return [
     {
       url: BASE_URL,
+      priority: 1.0,
     },
     {
       url: `${BASE_URL}/about`,
+      priority: 0.8,
     },
     {
+      // 診断ページはトップと同格の集客ページとして扱う
       url: `${BASE_URL}/diagnosis`,
+      priority: 1.0,
     },
     {
       // 性格タイプ一覧 (トップのナビ「性格タイプ」のリンク先)
       url: `${BASE_URL}/types`,
+      priority: 0.8,
     },
     {
       // 相性診断 (公開・シェア集客ページ)
       url: `${BASE_URL}/aisho`,
+      priority: 0.8,
     },
     ...typePages,
     {
       url: `${BASE_URL}/terms`,
+      priority: 0.3,
     },
     {
       url: `${BASE_URL}/privacy`,
+      priority: 0.3,
     },
     {
       url: `${BASE_URL}/legal/commerce`,
+      priority: 0.3,
     },
   ];
 }

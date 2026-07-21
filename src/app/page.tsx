@@ -53,6 +53,15 @@ const jsonLd = {
       "@type": "WebSite",
       "@id": `${BASE_URL}/#website`,
       name: "ワタシのトリセツ",
+      // 表記ゆれ (私の取説 等) での検索・サイト名認識のヒント。
+      // Google はサイト名の判定に WebSite.alternateName を参照する。
+      alternateName: [
+        "私のトリセツ",
+        "わたしのトリセツ",
+        "ワタシの取説",
+        "私の取説",
+        "私の取扱説明書",
+      ],
       url: BASE_URL,
       inLanguage: "ja-JP",
       publisher: { "@id": `${BASE_URL}/#organization` },

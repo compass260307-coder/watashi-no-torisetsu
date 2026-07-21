@@ -41,6 +41,7 @@ const jsonLd = {
       "@type": "WebApplication",
       "@id": `${BASE_URL}/diagnosis#app`,
       name: "ワタシのトリセツ 無料性格診断テスト",
+      alternateName: "OCEAN(ビッグファイブ)診断",
       url: `${BASE_URL}/diagnosis`,
       description: DIAGNOSIS_SEO_DESCRIPTION,
       applicationCategory: "LifestyleApplication",

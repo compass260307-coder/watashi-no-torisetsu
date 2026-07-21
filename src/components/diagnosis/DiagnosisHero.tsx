@@ -15,7 +15,7 @@ const NAVY = "#2E2E5C";
 // (友達診断=friend フローでは title / 画像を差し替えて再利用する。)
 export function DiagnosisHero({
   title = "性格診断テスト",
-  subtitle = "Big Five 性格特性モデル",
+  subtitle = "OCEAN（Big Five）性格特性モデル",
   imageSrc = "/mascot/diagnosis-hero.png",
   imageAlt = "ワタシのトリセツのマスコット",
 }: {
