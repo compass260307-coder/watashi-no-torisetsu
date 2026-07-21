@@ -34,6 +34,11 @@ interface MeStickyHeaderProps {
   code?: string;
   /** 解除CTAのスクロール先 id。省略時は /me の #fullaccess-promo (/tako は "tako-promo")。 */
   paywallTargetId?: string;
+  /**
+   * 完全版レポート生成ボタンの href (/tako の購入者向け・2026-07-21)。
+   * 指定時はバー右端に「完全版レポートを生成」を表示 (解除CTAとは排他運用を想定)。
+   */
+  reportHref?: string;
   locale?: ResultLocale;
 }
 
@@ -79,10 +84,11 @@ export function MeStickyHeader({
   essence,
   code,
   paywallTargetId,
+  reportHref,
   locale = "ja",
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (shareUrl) のどちらかがあれば出す。
-  const showBar = showUnlockCta || Boolean(shareUrl);
+  const showBar = showUnlockCta || Boolean(shareUrl) || Boolean(reportHref);
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
   const lastY = useRef(0);
@@ -257,6 +263,31 @@ export function MeStickyHeader({
                   </svg>
                 </CircleIconButton>
               </>
+            )}
+
+            {reportHref && (
+              <a
+                href={reportHref}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                  <path d="M14 2v5h5" />
+                  <path d="M12 18v-6" />
+                  <path d="m9 15 3 3 3-3" />
+                </svg>
+                完全版レポートを生成
+              </a>
             )}
 
             {showUnlockCta && (

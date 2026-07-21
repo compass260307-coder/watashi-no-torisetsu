@@ -314,6 +314,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : undefined
         }
         paywallTargetId="tako-promo"
+        reportHref={
+          takoUnlocked && data.friends.length > 0
+            ? previewMode && previewType
+              ? `/tako-report/preview/pdf?previewType=${encodeURIComponent(previewType)}`
+              : `/tako-report/${encodeURIComponent(token)}/pdf`
+            : undefined
+        }
       >
         <TopHeader />
       </MeStickyHeader>
@@ -716,27 +723,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
 
             {/* 友達からの回答 (一覧) セクションは 2026-07-20 指示で削除。
                 友達ごとの結果は上部のタブで見る。 */}
-
-            {/* 完全版レポートPDF (tako_unlock 購入者のみ)。友達が増えるたびに育つ。 */}
-            {takoUnlocked && !previewMode && (
-              <section className="mb-14 mt-2">
-                <div className="mx-auto max-w-[560px] rounded-3xl border-2 border-[#E3E6F5] bg-[#F7F7FE] px-6 py-6 text-center">
-                  <p className="text-[16px] font-black text-[#2E2E5C]">
-                    📄 友達診断 完全版レポート
-                  </p>
-                  <p className="mt-1.5 text-[12.5px] font-bold leading-[1.7] text-[#8A8AA3]">
-                    {data.friends.length}
-                    人の友達の結果とメッセージを一冊のPDFに。友達が増えたら、また最新版をダウンロードできます
-                  </p>
-                  <a
-                    href={`/tako-report/${encodeURIComponent(token)}/pdf`}
-                    className="mx-auto mt-4 flex w-full max-w-[340px] items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e]"
-                  >
-                    レポートをダウンロード
-                  </a>
-                </div>
-              </section>
-            )}
+            {/* ページ下部のレポートDLカードは 2026-07-21 削除。
+                生成導線は常時表示バーの「完全版レポートを生成」に一本化。 */}
             </div>
         )}
         </div>
