@@ -77,29 +77,29 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-// 「失敗する恋愛の特徴」ロック用デコイ。★本文ではない (原稿未投入・未解放時のみ
-// 表示するティザー)。どのタイプでも成立する「恋がつまずくパターン」の汎用調で、
+// 「恋人が密かに我慢していること」ロック用デコイ。★本文ではない (未解放時のみ
+// 表示するティザー)。どのタイプでも成立する「恋人が言えずにいること」の汎用調で、
 // 本人を傷つけない「愛されるクセ」トーンに揃える。
-const LOVE_FAILURE_DECOY_ITEMS: { heading: string; body: string }[] = [
+const LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "尽くしすぎた先にあるもの",
-    body: "がんばりが続かなくなった瞬間、関係がぐらつきやすい。アナタの場合は特に。",
+    heading: "「大丈夫だよ」の本当の意味",
+    body: "恋人の口グセの裏には、アナタに言えずに飲み込んだ気持ちが隠れていることがある。",
   },
   {
-    heading: "我慢が限界を超える瞬間",
-    body: "ためこんだ気持ちがあふれるとき、アナタには決まったパターンがある。",
+    heading: "我慢が溜まりやすい場面",
+    body: "アナタのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
   },
   {
-    heading: "不安なときのNG行動",
-    body: "気持ちが揺れたとき、つい取ってしまう行動が、いちばん相手を遠ざけている。",
+    heading: "言われる前に気づきたいサイン",
+    body: "我慢が限界に近づいた恋人が出す、小さな前兆を見逃さないために。",
   },
   {
-    heading: "ズレはじめの見逃しサイン",
-    body: "うまくいかなくなる恋には、アナタが見落としがちな共通の前兆がある。",
+    heading: "我慢を信頼に変える一言",
+    body: "先回りのひと言があるだけで、二人の関係は驚くほど軽くなる。",
   },
 ];
 
-// 「あなたが活躍できる仕事・避けたほうがいい職場」ロック用デコイ
+// 「あなたに合った働き方・避けたほうがいい職場」ロック用デコイ
 // (★本文ではない。本物はサーバでフェイルクローズ済み)。
 const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
@@ -115,28 +115,28 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
     body: "ひとつの領域を極めていく働き方と、広く器用にこなす働き方、合うのはどっちか。",
   },
   {
-    heading: "避けたほうがいい環境",
-    body: "アナタのエネルギーをじわじわ削る職場には、はっきりした共通点がある。",
+    heading: "エネルギーを削る職場の共通点",
+    body: "アナタのやる気をじわじわ削る環境には、はっきりした共通点がある。",
   },
 ];
 
-// 「仕事で評価される意外な才能」ロック用デコイ (★本文ではない)。
-const CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
+// 「職場の人間関係」ロック用デコイ (★本文ではない)。
+const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "当たり前すぎて気づかない力",
-    body: "アナタが「普通でしょ」と思ってやっていることが、実はいちばん希少な武器。",
+    heading: "アナタに合う距離感",
+    body: "近づきすぎず、離れすぎず。アナタが一番ラクでいられる距離には型がある。",
   },
   {
-    heading: "追い込まれたときに出る底力",
-    body: "ピンチの場面でアナタが自然に取る動きには、他の人にない強さが隠れている。",
+    heading: "頼まれごとの線の引き方",
+    body: "断れずに抱え込む前に、アナタの性格に合った断り方を知っておきたい。",
   },
   {
-    heading: "周りが密かに頼っている部分",
-    body: "アナタ本人は自覚していないけれど、チームはその力にずっと支えられている。",
+    heading: "合わない人との並走のコツ",
+    body: "どうしても合わないあの人と、消耗せずに一緒に働くための距離のとり方。",
   },
   {
-    heading: "伸ばすと化ける素質",
-    body: "少し意識を向けるだけで、キャリアの選択肢が大きく広がる眠った才能がある。",
+    heading: "周りが密かに助かっている部分",
+    body: "アナタが思っているより、チームはアナタのあの動きに支えられている。",
   },
 ];
 
@@ -220,8 +220,8 @@ const KO_CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-// 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「失敗する恋愛の特徴」/
-// キャリアの「活躍できる仕事」「評価される才能」で共用)。
+// 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「恋人が密かに我慢していること」/
+// キャリアの「合った働き方・避けたほうがいい職場」「職場の人間関係」で共用)。
 // ぼかしたダミー本文の上に解除カードを重ねる (嫌われやすい性格ブロックと同じ構図)。
 // ダミーはカードの上下に溢れる長さにして「裏にたくさんコンテンツがある」感を出す。
 // 本物の本文はここに載っていない (サーバでフェイルクローズ済み)。
@@ -296,38 +296,38 @@ const LOCKED_BLOCK_CONFIG: Record<
     ),
     source: "love_payoff_card",
   },
-  失敗する恋愛の特徴: {
-    decoyItems: LOVE_FAILURE_DECOY_ITEMS,
+  恋人が密かに我慢していること: {
+    decoyItems: LOVE_ENDURE_DECOY_ITEMS,
     cardCopy: (
       <>
         完全版のレポートを入手して、
         <br className="md:hidden" />
-        アナタの恋がつまずきやすいパターンを知りましょう。
+        アナタの恋人が言えずにいる気持ちを知りましょう。
       </>
     ),
     source: "love_failure_card",
   },
-  "あなたが活躍できる仕事・避けたほうがいい職場": {
+  "あなたに合った働き方・避けたほうがいい職場": {
     decoyItems: CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
         完全版のレポートを入手して、
         <br className="md:hidden" />
-        アナタが活躍できる仕事と、避けたほうがいい職場を知りましょう。
+        アナタに合った働き方と、避けたほうがいい職場を知りましょう。
       </>
     ),
     source: "career_fit_card",
   },
-  仕事で評価される意外な才能: {
-    decoyItems: CAREER_TALENT_DECOY_ITEMS,
+  職場の人間関係: {
+    decoyItems: CAREER_RELATIONS_DECOY_ITEMS,
     cardCopy: (
       <>
         完全版のレポートを入手して、
         <br className="md:hidden" />
-        仕事で評価される、アナタの意外な才能を見つけましょう。
+        アナタに合った職場の人間関係のつくり方を知りましょう。
       </>
     ),
-    source: "career_talent_card",
+    source: "career_relations_card",
   },
 };
 
@@ -383,7 +383,7 @@ interface DeepDiveSectionsProps {
   sections: ResolvedDeepDiveSection[];
   /** カテゴリ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
-  /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②恋愛傾向 ③キャリア傾向)。 */
+  /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②キャリア傾向 ③恋愛傾向)。 */
   number?: string;
   className?: string;
   loveFooter?: ReactNode;
@@ -415,7 +415,7 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* ===== 各カテゴリ = 独立した章 (②恋愛傾向 ③キャリア傾向 / 2026-07-14 指示) =====
+      {/* ===== 各カテゴリ = 独立した章 (②キャリア傾向 ③恋愛傾向 / 2026-07-22 指示の章順) =====
           「アナタの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
       {unlocked.map((sec, si) => (
         <div key={sec.key} className={si > 0 ? "mb-12 mt-16" : "mb-12"}>

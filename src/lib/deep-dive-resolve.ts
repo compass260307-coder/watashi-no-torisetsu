@@ -65,8 +65,8 @@ const DEEP_DIVE_CARDS: {
   tab: string;
   hint: "top" | "bottom" | "growth" | "aisho" | BigFiveDimension;
 }[] = [
-  { key: "love", tab: "恋愛傾向", hint: "A" },
   { key: "career", tab: "キャリア傾向", hint: "C" },
+  { key: "love", tab: "恋愛傾向", hint: "A" },
 ];
 
 // 未課金でも見せてよい無料タブ (2026-07-14 指示: キャリアもデフォルト表示に)。
@@ -149,78 +149,125 @@ function buildLoveBlocks(
   });
 }
 
-// ===== 失敗する恋愛の特徴 (🔒・ルールベース・文章 / 2026-07-15) =====
-// もともと DeepDiveSections にロック時ティザーだけ存在し本文未投入だったブロック。
+// ===== 恋人が密かに我慢していること (🔒・ルールベース・文章 / 2026-07-22) =====
+// 旧「失敗する恋愛の特徴」を恋人視点にリフレーム (2026-07-22 指示)。
 // part-two-resolve の LIKABLE_PROSE と同じ方式で、軸の高低から段落を組む。
-// 段落構成: ①N (つまずきの引き金) ②A (すれ違い方) ③E+C (行動のクセ) ④締め (固定)。
-// トーンは断罪ではなく「つまずきやすい石の位置を教える」(ネガは愛されるクセに変換)。
-export const LOVE_FAIL_HEADING = "失敗する恋愛の特徴";
+// 段落構成: ①N (不安まわりの我慢) ②A (本音・言葉まわりの我慢) ③E+C (ペース・クセの我慢) ④締め (固定)。
+// トーンは断罪ではなく「相手は関係を大事にしたいから黙っている」(ネガは愛されるクセに変換)。
+export const LOVE_ENDURE_HEADING = "恋人が密かに我慢していること";
 
-const LOVE_FAIL_PROSE: Partial<
+const LOVE_ENDURE_PROSE: Partial<
   Record<BigFiveDimension, Record<"H" | "L", string>>
 > = {
   N: {
-    H: "アナタの恋がつまずくとき、たいてい最初の引き金は「考えすぎ」。既読の速さ、絵文字の数、ちょっとした語尾——相手の何気ない変化に意味を探して、一人で不安を育ててしまう。聞けば10秒で済むことを、聞けないまま一週間悩む。そして不安が限界まで溜まった夜に、重い聞き方をしてしまって、相手を驚かせる。",
-    L: "アナタの恋がつまずくとき、引き金になりやすいのは「気づかなさ」。アナタ自身が安定しているぶん、相手の小さな不安やSOSを「気にしすぎだって」と流してしまいがち。相手がずっと我慢を溜めていたことに、限界が来てから初めて気づく——そんな終わり方をした恋が、思い当たらない?",
+    H: "アナタの恋人が静かに受け止めているのは、アナタの「考えすぎる夜」。既読の速さや語尾の変化を深読みして不安になったアナタの、「ねえ、ほんとに大丈夫?」——その確認に何度も同じ答えを返しながら、「どう伝えたら安心してもらえるんだろう」と、相手も相手で悩んでいたりする。",
+    L: "アナタの恋人が静かに飲み込んでいるのは、小さな不安を打ち明けたときの「気にしすぎだって」のひと言。アナタに悪気がないのは分かっているから責めないけど、「この人には深刻に聞こえないんだな」と思うたび、少しずつ相談することをやめていく。",
   },
   A: {
-    H: "そして、優しさが裏目に出る。嫌われたくなくて合わせすぎて、本当の希望を言わないまま「いい人」を演じてしまう。相手はアナタの本音が見えなくて不安になり、アナタは分かってもらえなくて疲れていく。どちらも悪くないのに、静かにすれ違っていくパターン。",
-    L: "そして、正直さが裏目に出る。思ったことをそのまま言えるのはアナタの強みだけど、恋愛では「正しい指摘」が「冷たい一言」として届くことがある。相手が欲しかったのは答えじゃなくて共感だった——そんな行き違いが、気づかないうちに積もっていく。",
+    H: "それから、アナタの「どこでもいいよ」。合わせてくれる優しさだと分かっていても、本音が見えないことは、相手にとって案外さみしい。「本当はどうしたいの?」を聞き出せないまま、アナタの顔色から答えを探す作業を、恋人は密かに続けている。",
+    L: "それから、アナタの「正しすぎる一言」。的確なのは分かっているから言い返さないけど、欲しかったのは答えじゃなくて「わかるよ」だった——そんな夜を、恋人は言わずに流している。アナタの率直さを好きでいるからこそ、なおさら口にしない。",
   },
   E: {
-    H: "行動面では、テンポの速さがつまずきポイント。盛り上がった勢いで一気に距離を詰めて、相手のペースを置いていってしまうことがある。",
-    L: "行動面では、受け身なところがつまずきポイント。気持ちはあるのに動かないまま、「脈なしなのかな」と誤解されて終わってしまう恋がある。",
+    H: "そして、アナタのスピードとにぎやかさ。予定がどんどん埋まっていくアナタの隣で、「二人だけのゆっくりした時間」を言い出すタイミングを、相手はそっと窺っている。",
+    L: "そして、誘うのがいつも自分側だという小さな偏り。アナタの気持ちを疑ってはいないけど、「たまには先に誘ってほしい」を、相手は言えずにいる。",
   },
   C: {
-    H: "加えて、ちゃんとしすぎる傾向。恋愛にまで「こうあるべき」を持ち込んで、自分も相手も少し窮屈にしてしまう夜がある。",
-    L: "加えて、連絡ペースのムラ。アナタの中ではいつも通りでも、返信の波は相手には「気持ちの波」に見えてしまう。",
+    H: "アナタの「ちゃんとしたい」に合わせて、ゆるく過ごしたい日を少し我慢していることもある。",
+    L: "アナタの返信の波を「気持ちの波じゃない」と自分に言い聞かせている日も、たぶんある。",
   },
 };
 
-const LOVE_FAIL_CLOSING =
-  "ここまで読んで耳が痛くても、大丈夫。これは「アナタが恋愛に向いていない」という話ではなく、ただの「つまずきやすい石の位置」の話。石の場所さえ知っていれば、同じ転び方は繰り返さない。アナタの次の恋は、たぶん今までで一番うまくいく。";
+const LOVE_ENDURE_CLOSING =
+  "ここまで読んで胸がチクッとしても、大丈夫。相手が黙っているのは、アナタが嫌いだからじゃなく、この関係を壊したくないから。我慢の場所を先に知って、こちらから「最近どう?」と聞けたなら——その我慢は、ぜんぶ信頼に変わる。";
 
-function buildLoveFailure(
+function buildLoveEndure(
   scores: Partial<Record<BigFiveDimension, number>>,
 ): string {
   const hl = (d: BigFiveDimension): "H" | "L" =>
     (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5
       ? "H"
       : "L";
-  const p = (d: BigFiveDimension) => LOVE_FAIL_PROSE[d]![hl(d)];
-  return [p("N"), p("A"), `${p("E")}${p("C")}`, LOVE_FAIL_CLOSING].join(
+  const p = (d: BigFiveDimension) => LOVE_ENDURE_PROSE[d]![hl(d)];
+  return [p("N"), p("A"), `${p("E")}${p("C")}`, LOVE_ENDURE_CLOSING].join(
     "\n\n",
   );
 }
 
-// キャリア本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-14)。
+// キャリア本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-22)。
 //   本文はどのタイプも「働き方のクセ描写 → その希少さ → 向き不向きの領域 → 強みの再定義」
-//   の4段落で統一されているため、[2,1,1] の固定分割で成立する。原稿(body)は無改変。
+//   の4段落で統一。1-2段落目 = 働き方 (無料)、3段落目 = 合う/避ける (🔒)。
+//   4段落目 (才能の再定義) は 2026-07-22 指示で非表示 (原稿は温存)。
+//   3ブロック目「職場の人間関係」は原稿ではなくスコア由来のルールベース本文 (下記)。
 const CAREER_HEADINGS = [
   "あなたの働き方",
-  "あなたが活躍できる仕事・避けたほうがいい職場",
-  "仕事で評価される意外な才能",
+  "あなたに合った働き方・避けたほうがいい職場",
 ] as const;
 
+// ===== 職場の人間関係 (🔒・ルールベース・文章 / 2026-07-22) =====
+// 「恋人が密かに我慢していること」(LOVE_ENDURE_PROSE) と同じ方式で、軸の高低から段落を組む。
+// 段落構成: ①E (距離のとり方) ②A (頼まれごと・衝突のクセ) ③N+C (消耗ポイント) ④締め (固定)。
+// トーンは断罪ではなく「合う距離感を教える」(ネガは愛されるクセに変換)。
+export const CAREER_RELATIONS_HEADING = "職場の人間関係";
+
+const CAREER_RELATIONS_PROSE: Partial<
+  Record<BigFiveDimension, Record<"H" | "L", string>>
+> = {
+  E: {
+    H: "職場でのアナタは、自然と輪の真ん中に近いポジションにいる人。誰とでもすぐ打ち解けて、空気が重い会議でも口火を切れる。ただ、広く付き合えるぶん「誰にでもいい顔をする」と見られたり、浅い関係ばかり増えて、本当にしんどいときに頼れる相手がいない——そんな瞬間が、思い当たらない?",
+    L: "職場でのアナタは、雑談の輪にガンガン入っていくタイプじゃない。でもそれは壁があるんじゃなくて、少人数とじっくり信頼を積むスタイルなだけ。ただ、静かにしているだけで「何を考えてるか分からない」と誤解されたり、気づいたら輪の外に置かれていた——そんな損のしかたをすることがある。",
+  },
+  A: {
+    H: "人間関係で一番すり減るのは、頼まれごと。嫌われたくなくて断れず、気づけばアナタの机にだけ仕事が積み上がっていく。衝突を避けて飲み込んだ「それ、おかしくない?」は消えずに溜まって、ある日どっと疲れに変わる。優しさが、いちばんの消耗ポイントになりやすい。",
+    L: "アナタは思ったことを率直に言えるタイプ。それ自体はチームの財産だけど、正しい指摘ほど「キツい一言」として届くことがある。相手が欲しかったのは正解じゃなくて、まず「わかるよ」の一言だった——そんなすれ違いが、評価に響く前に知っておきたいクセ。",
+  },
+  N: {
+    H: "そして、周りの評価や空気の変化に人一倍敏感なぶん、上司の機嫌や同僚の一言を引きずって消耗しやすい。",
+    L: "そして、多少ピリついた空気でも動じない安定感は、周りが思っている以上にチームを落ち着かせている。",
+  },
+  C: {
+    H: "責任感が強いぶん一人で抱え込みやすく、「相談＝迷惑」と思い込んで限界まで言えないところもある。",
+    L: "マイペースに動けるぶん、報告や共有が後回しになって「勝手に進めてる」と見られてしまうこともある。",
+  },
+};
+
+const CAREER_RELATIONS_CLOSING =
+  "人間関係のクセは、直すものじゃなくて「置く場所」の問題。アナタの距離のとり方がそのまま活きるチームなら、無理にキャラを変えなくても、ちゃんと信頼される。合う距離感の職場を選ぶことが、いちばんの処世術なんです。";
+
+function buildCareerRelations(
+  scores: Partial<Record<BigFiveDimension, number>>,
+): string {
+  const hl = (d: BigFiveDimension): "H" | "L" =>
+    (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5
+      ? "H"
+      : "L";
+  const p = (d: BigFiveDimension) => CAREER_RELATIONS_PROSE[d]![hl(d)];
+  return [p("E"), p("A"), `${p("N")}${p("C")}`, CAREER_RELATIONS_CLOSING].join(
+    "\n\n",
+  );
+}
+
 // キャリア body を共通見出し3ブロックに分割。1ブロック目 (働き方) は無料、
-// 2・3ブロック目 (活躍できる仕事/評価される才能) は課金ゲート対象 (恋愛 payoff と同じ)。
+// 2ブロック目 (合った働き方・避けたほうがいい職場 = 原稿3段落目) と
+// 3ブロック目 (職場の人間関係 = ルールベース) は課金ゲート対象 (恋愛 payoff と同じ)。
 // unlocked=false のときは locked=true・body="" とし、本文を payload に載せない
 // (フェイルクローズ。表示側はぼかし + 解除カードにする)。
 // 4段落でない原稿 (8タイプフォールバック等) は undefined = 従来どおり単一本文表示。
 function buildCareerBlocks(
   body: string,
+  scores: Partial<Record<BigFiveDimension, number>>,
   unlocked: boolean,
 ): { heading: string; body: string; locked?: boolean }[] | undefined {
   const paras = body.split("\n\n");
   if (paras.length < 4) return undefined;
-  const slices = [paras.slice(0, 2), paras.slice(2, 3), paras.slice(3)];
-  return slices.map((s, i) => {
-    const heading = CAREER_HEADINGS[i];
-    if (i > 0 && !unlocked) {
-      return { heading, body: "", locked: true };
-    }
-    return { heading, body: s.join("\n\n") };
-  });
+  const gate = (heading: string, text: string) =>
+    unlocked
+      ? { heading, body: text }
+      : { heading, body: "", locked: true as const };
+  return [
+    { heading: CAREER_HEADINGS[0], body: paras.slice(0, 2).join("\n\n") },
+    gate(CAREER_HEADINGS[1], paras[2]),
+    gate(CAREER_RELATIONS_HEADING, buildCareerRelations(scores)),
+  ];
 }
 
 function toPercent(score: number | undefined): number {
@@ -298,14 +345,14 @@ export function resolveDeepDiveSections(
         section.body,
         opts.hasFullAccess,
       );
-      // 「失敗する恋愛の特徴」(🔒) を末尾に追加 (2026-07-15)。スコア由来のルールベース
-      // 本文。未解放時は body を解決せず locked のみ (フェイルクローズ。表示側は
-      // LOCKED_BLOCK_CONFIG のデコイ + 解除カード)。
+      // 「恋人が密かに我慢していること」(🔒) を末尾に追加 (2026-07-15/22 リフレーム)。
+      // スコア由来のルールベース本文。未解放時は body を解決せず locked のみ
+      // (フェイルクローズ。表示側は LOCKED_BLOCK_CONFIG のデコイ + 解除カード)。
       if (blocks) {
         blocks.push(
           opts.hasFullAccess
-            ? { heading: LOVE_FAIL_HEADING, body: buildLoveFailure(scores) }
-            : { heading: LOVE_FAIL_HEADING, body: "", locked: true },
+            ? { heading: LOVE_ENDURE_HEADING, body: buildLoveEndure(scores) }
+            : { heading: LOVE_ENDURE_HEADING, body: "", locked: true },
         );
       }
       // body は blocks があれば表示に使われないが、フェイルクローズのため公開分だけに絞る。
@@ -325,8 +372,12 @@ export function resolveDeepDiveSections(
       };
     }
     // キャリアも恋愛と同じ共通見出し3ブロック。「働き方」は無料、
-    // 「活躍できる仕事」「評価される才能」は課金ゲート (未解放時はフェイルクローズ)。
-    const careerBlocks = buildCareerBlocks(section.body, opts.hasFullAccess);
+    // 「合った働き方・避けたほうがいい職場」「職場の人間関係」は課金ゲート (未解放時はフェイルクローズ)。
+    const careerBlocks = buildCareerBlocks(
+      section.body,
+      scores,
+      opts.hasFullAccess,
+    );
     const careerVisibleBody = careerBlocks
       ? careerBlocks
           .filter((b) => !b.locked)

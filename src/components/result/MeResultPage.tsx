@@ -55,6 +55,8 @@ import { heroColorsForGroup } from "@/lib/hero-colors";
 import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
+import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
+import { MoshimoScenes } from "@/components/result/MoshimoScenes";
 import { hasFullAccess } from "@/lib/entitlements";
 import { hasPartTwoAccess, STAIR_PART_TWO } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
@@ -578,7 +580,7 @@ async function MeResultPageContent({
           })()}
         </section>
 
-        {/* ===== ② 恋愛傾向 / ③ キャリア傾向 =====
+        {/* ===== ② キャリア傾向 / ③ 恋愛傾向 =====
             2026-07-14 指示: 「アナタの深掘り」の親見出しを廃止し、各カテゴリを章に昇格。
             「みんなの目」(他己) は /tako へ移設。 */}
         <div className="mt-16">
@@ -699,8 +701,31 @@ async function MeResultPageContent({
 
         </section>
 
-        {/* ===== ⑤ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル) =====
-            2026-07-14 指示: 友達から見たあなた (④) の後ろに配置。 */}
+        {/* ===== ⑤ もしもの時のアナタ (エンタメ章 / 2026-07-22 指示で友達から見たあなたの後ろへ) =====
+            スコア由来のルールベースであるあるシーンの反応を出す。無料シーンは
+            シェアの燃料、隠しシーンは課金ゲート (moshimo-resolve がフェイルクローズ)。
+            日本語のみ (KO 未対応)。 */}
+        {!isKorean && (
+          <section className="mt-16">
+            <div className="mb-4 flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+              >
+                5
+              </span>
+              <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                もしもの時のアナタ
+              </h2>
+            </div>
+            <MoshimoScenes
+              scenes={buildMoshimoScenes(stored, partTwoUnlocked)}
+            />
+          </section>
+        )}
+
+        {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル / KO は⑤) =====
+            2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
         {sections[1] &&
           (() => {
             const paragraphs = sections[1].body.split("\n\n");
@@ -711,7 +736,7 @@ async function MeResultPageContent({
                     aria-hidden="true"
                     className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                   >
-                    5
+                    {isKorean ? "5" : "6"}
                   </span>
                   <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                     {isKorean ? KO_ME_COPY.cautionTitle : "あなたの注意点"}

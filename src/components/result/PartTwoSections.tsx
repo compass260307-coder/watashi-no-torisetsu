@@ -245,8 +245,6 @@ const RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "恋人から", color: "#F48BAE" },
   { label: "家族から", color: "#4CAF7D" },
   { label: "上司・先輩から", color: "#F2C14E" },
-  { label: "後輩から", color: "#9B8CF2" },
-  { label: "初対面の人から", color: "#F28C5B" },
 ];
 
 const KO_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [

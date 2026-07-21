@@ -196,21 +196,8 @@ const RELATION_BOSS: Record<Quad, string> = {
   LL: "読めないけど、たまに大物感を出す存在。型にはめられるのが苦手なだけで、合う環境なら化けると思われてる。",
 };
 
-const RELATION_JUNIOR: Record<Quad, string> = {
-  // A × E
-  HH: "話しかけやすくて面倒見のいい先輩。距離の詰め方が上手いから、後輩の相談ごとが自然と集まってくる。",
-  HL: "物静かだけど、ちゃんと見てくれている先輩。口数は多くないのに、困った時に一番助けてくれる人だと知られてる。",
-  LH: "ノリが良くて、先輩ぶらない人。距離は近いのに干渉してこないから、後輩にとっては一番気楽な存在。",
-  LL: "少し近寄りがたいけど、実力は認められている先輩。素っ気なさも含めて「ああいう人」と一目置かれてる。",
-};
-
-const RELATION_FIRST: Record<Quad, string> = {
-  // E × O
-  HH: "初対面から距離を縮めるのが上手い人。話題の引き出しも多いから、「また会いたい」と思われやすい。",
-  HL: "人懐っこくて感じのいい人。安心感のある話しやすさで、初対面でも警戒されにくい。",
-  LH: "最初は静かだけど、話すと面白い人。ふとした一言のセンスで「もっと話してみたい」と印象に残る。",
-  LL: "第一印象はクールで少しミステリアス。すぐには打ち解けないぶん、仲良くなれた人には特別感がある。",
-};
+// ※「後輩から」(RELATION_JUNIOR)・「初対面の人から」(RELATION_FIRST) の原稿は
+//   2026-07-22 指示で表示ごと削除 (原稿は git 履歴で復元可能)。
 
 // ===== シーン別の注意点 (🔒・ルールベース / 2026-07-15) =====
 // SceneCautionTeaser (ロック時ティザー) に対応する本物の本文。関係別と同じ2軸クアッド
@@ -270,13 +257,12 @@ function buildRelations(
     (typeof scores[d] === "number" ? (scores[d] as number) : 5) >= 5;
   const quad = (a: BigFiveDimension, b: BigFiveDimension): Quad =>
     `${hi(a) ? "H" : "L"}${hi(b) ? "H" : "L"}` as Quad;
+  // 「後輩から」「初対面の人から」は 2026-07-22 指示で削除 (原稿テーブルは温存)。
   return [
     { relation: "友達から", body: RELATION_FRIEND[quad("E", "A")] },
     { relation: "恋人から", body: RELATION_LOVER[quad("A", "N")] },
     { relation: "家族から", body: RELATION_FAMILY[quad("C", "E")] },
     { relation: "上司・先輩から", body: RELATION_BOSS[quad("C", "A")] },
-    { relation: "後輩から", body: RELATION_JUNIOR[quad("A", "E")] },
-    { relation: "初対面の人から", body: RELATION_FIRST[quad("E", "O")] },
   ];
 }
 

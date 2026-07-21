@@ -19,11 +19,14 @@ const TYPE_LABELS: Record<string, string> = {
 // 未知の source はキーをそのまま表示する (title 属性に生キーも残す)。
 const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   love_payoff_card: "恋愛「好きになった人が読むトリセツ」ロック",
-  love_failure_card: "恋愛「失敗する恋愛の特徴」ロック",
-  career_fit_card: "キャリア「活躍できる仕事・避けたほうがいい職場」ロック",
-  career_talent_card: "キャリア「仕事で評価される意外な才能」ロック",
+  love_failure_card: "恋愛「恋人が密かに我慢していること」ロック",
+  career_fit_card: "キャリア「合った働き方・避けたほうがいい職場」ロック",
+  career_avoid_card: "旧:キャリア「避けたほうがいい職場」ロック",
+  career_relations_card: "キャリア「職場の人間関係」ロック",
+  career_talent_card: "旧:キャリア「仕事で評価される意外な才能」ロック (KO は継続)",
   deepdive_card: "深掘り(キャリア/成長/相性)ロック",
   scene_caution_card: "シーン別の注意点ロック",
+  moshimo_card: "「もしもの時のアナタ」ロック",
   friend_dislike_card: "友達「嫌われやすい性格」ロック",
   urawaza_card: "旧:裏技でロック解除カード",
   relations_card: "「周りの人が、あなたに言えずにいること」ロック",
