@@ -59,3 +59,6 @@ public/characters/v3/characters/
 /tmp/
 /public/logo-hero.psd
 /scripts/create_mbti_reel.py
+
+# ローカルQA用の使い捨てスクリプト (本番DBを触るためコミットしない)
+scratchpad/
