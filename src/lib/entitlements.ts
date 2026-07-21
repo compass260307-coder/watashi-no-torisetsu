@@ -62,12 +62,12 @@ export async function hasFullAccess(
 
 // =====================================================================
 // 友達診断 (/tako) の課金解放 'tako_unlock' (2026-07-20)。
-//   価格: ¥1,299 / 全解放 (¥499課金) 保有者は ¥499 OFF の ¥800。
+//   価格: ¥799 / 全解放 (¥499課金) 保有者は ¥499 OFF の ¥300 (2026-07-21 改定。旧 ¥1,299/¥800)。
 //   権限は payment_history (payment_kind='tako_unlock', status='completed') から導出。
 // =====================================================================
 
-export const TAKO_UNLOCK_PRICE_JPY = 1299;
-export const TAKO_UNLOCK_DISCOUNTED_PRICE_JPY = 800;
+export const TAKO_UNLOCK_PRICE_JPY = 799;
+export const TAKO_UNLOCK_DISCOUNTED_PRICE_JPY = 300;
 
 /** user_id 群に tako_unlock の completed 行があるか。 */
 async function anyTakoUnlockPayment(userIds: string[]): Promise<boolean> {

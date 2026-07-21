@@ -628,7 +628,7 @@ async function handleCheckoutPaid(
 
   // Phase 1.5-α Day 12-C2: payment_kind 分岐
   // 'perception_unlock' = 評価 1 件ごと ¥500 解除 (新フロー、本 PR で追加)
-  // 'tako_unlock' = 友達診断の隠しコンテンツ解放 (¥1,299 / 割引 ¥800, 2026-07-20)
+  // 'tako_unlock' = 友達診断の隠しコンテンツ解放 (¥799 / 割引 ¥300, 2026-07-21 改定)
   // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
   if (metadata.payment_kind === "perception_unlock") {
     await handlePerceptionUnlockCompleted(session, userId, metadata);
@@ -662,7 +662,7 @@ async function handleTakoUnlockCompleted(
         payment_kind: "tako_unlock" as const,
         stripe_session_id: session.id,
         stripe_payment_intent_id: paymentIntentId,
-        amount_jpy: session.amount_total ?? 1299,
+        amount_jpy: session.amount_total ?? 799,
         currency: session.currency ?? "jpy",
         status: "completed" as const,
         paid_at: new Date().toISOString(),

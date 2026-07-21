@@ -4,7 +4,7 @@
 // デザインは /me の FullAccessPromoCard と完全に同じ (2026-07-20 指示):
 //   グループ色の地 + 折り紙ダイヤ装飾 + 画像左カラム (md+) + ★バッジ +
 //   見出し + ✓4項目 + 値引き表記 + 紺の全幅CTA + 返金保証行。
-// 違いは中身だけ: 商品= tako_unlock (¥1,299 / 全解放オーナー ¥800)、
+// 違いは中身だけ: 商品= tako_unlock (¥799 / 全解放オーナー ¥300)、
 // CTA = create-tako-unlock-session への直接決済。
 //
 // id="tako-promo": ページ内のロックカードからの scrollToPaywall() のスクロール先
@@ -17,7 +17,7 @@ import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 // 表示用の価格コピー (実課金額はサーバ側 create-tako-unlock-session が決定する)。
-const PRICE = { list: "¥1,299", sale: "¥800" } as const;
+const PRICE = { list: "¥799", sale: "¥300" } as const;
 
 // 解放される項目 (見出し + マイクロコピー)。
 // 見出しは「買うと何ができるか」のベネフィットで書く (2026-07-20 指示)。
@@ -115,7 +115,7 @@ export function TakoPromoCard({
   group = "unknown",
 }: {
   ownerToken: string;
-  /** 全解放 (¥499) 保有者なら true → ¥499 OFF の ¥800 表示。 */
+  /** 全解放 (¥499) 保有者なら true → ¥499 OFF の ¥300 表示。 */
   discounted: boolean;
   imageSrc?: string | null;
   imageAlt?: string;

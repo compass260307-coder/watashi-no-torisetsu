@@ -268,7 +268,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
 
-  // ===== tako_unlock (¥1,299 / 全解放オーナー ¥800) の解放判定 =====
+  // ===== tako_unlock (¥799 / 全解放オーナー ¥300) の解放判定 =====
   // プレビュー: &lock=1 でロック状態、&discount=1 で割引価格表示を確認できる。
   // 実データ: payment_history 由来の hasTakoAccess。割引可否は hasFullAccess。
   const takoUnlocked = previewMode

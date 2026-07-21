@@ -4,7 +4,7 @@
 //   - 認可: body.ownerToken (秘密の capability URL のトークン) で本人を解決
 //     (create-full-access-session と同方式。/tako の閲覧と同じ capability)。
 //   - 価格はサーバ側で決定 (クライアントから金額は一切受け取らない):
-//       通常 ¥1,299 / 全解放 (plan='full') 保有者は ¥499 OFF の ¥800。
+//       通常 ¥799 / 全解放 (plan='full') 保有者は ¥499 OFF の ¥300。
 //     固定 Price ID ではなく inline price_data を使う (割引分岐があるため)。
 //   - 戻り値: { sessionId, url }
 //
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               // 表記は ¥499 (性格レポート完全版) の Checkout に揃える:
               // 統一商品名 + 内容列挙の説明 + フェルトマスコットの商品画像。
-              // 割引はセッションの金額 (¥800) 側で表現し、商品名は変えない。
+              // 割引はセッションの金額 (¥300) 側で表現し、商品名は変えない。
               name: "ワタシのトリセツ 友達診断完全版",
               description:
                 "友達から見た隠れモテポイント、モテるためのヒント、関係を深めるコツ、関係を壊すワナまで、友達ごとにぜんぶ解放。これから答えてくれる友達のぶんも読める。買い切り・追加課金なし。",
