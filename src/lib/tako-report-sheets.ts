@@ -8,6 +8,8 @@
 import type { OwnerReportData } from "./owner-report-data";
 import {
   classifyThirtyTwoType,
+  perceivedContentFor,
+  perceivedManualFor,
   selfContentFor,
   thirtyTwoEssence,
   thirtyTwoName,
@@ -19,6 +21,7 @@ import type { ThirtyTwoGroup } from "./thirty-two-content/character-32";
 import { preferCutImage, preferFaceImage } from "./character-image";
 import {
   buildDeepDive,
+  buildMinnaProse,
   estimateCompatFromGaps,
   type DeepDiveData,
   type EstimatedCompat,
@@ -30,7 +33,144 @@ import {
   type MoteCheckItem,
 } from "./friend-love-content";
 import { LOVE_BY_TYPE_32 } from "./love-by-type-32";
+import { buildDimensionGaps } from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
+
+const REPORT_AXIS_ORDER: readonly BigFiveDimension[] = ["O", "C", "E", "A", "N"];
+
+const REPORT_AXIS_COPY: Record<
+  BigFiveDimension,
+  { label: string; low: string; high: string }
+> = {
+  O: {
+    label: "新しい体験へのひらかれ",
+    low: "慣れ親しんだものを大切にする",
+    high: "新しい世界を楽しむ",
+  },
+  C: {
+    label: "ものごとの進め方",
+    low: "流れに合わせて柔軟に進む",
+    high: "計画を立てて着実に進む",
+  },
+  E: {
+    label: "エネルギーの向かう先",
+    low: "ひとりの時間で整える",
+    high: "人との時間で活気づく",
+  },
+  A: {
+    label: "人との向き合い方",
+    low: "率直さと合理性を重んじる",
+    high: "調和と思いやりを重んじる",
+  },
+  N: {
+    label: "刺激への敏感さ",
+    low: "落ち着いて受け止める",
+    high: "細かな変化を感じ取る",
+  },
+};
+
+export type TakoReportOverviewAxis = {
+  key: BigFiveDimension;
+  label: string;
+  selfPercent: number;
+  friendPercent: number;
+  diffPoints: number;
+  friendLeaning: string;
+  friendRange: number;
+};
+
+export type TakoReportOverview = {
+  type32: ThirtyTwoTypeId;
+  group: ThirtyTwoGroup;
+  essence: string;
+  charName: string;
+  imageSrc: string;
+  friendCount: number;
+  agreement: number;
+  profileParas: string[];
+  gapParas: string[];
+  strengths: { title: string; body: string }[];
+  surprises: { title: string; body: string }[];
+  axes: TakoReportOverviewAxis[];
+  biggestGap: TakoReportOverviewAxis;
+  mostSharedAxis: TakoReportOverviewAxis | null;
+  mostVariedAxis: TakoReportOverviewAxis | null;
+};
+
+function replaceCollectiveViewer(text: string): string {
+  return text
+    .replaceAll("【B】さん", "友達")
+    .replaceAll("{B}さん", "友達")
+    .replaceAll("【B】", "みんな")
+    .replaceAll("{B}", "みんな");
+}
+
+/**
+ * 友達診断PDFの巻頭に載せる「みんなの目」総合分析。
+ * 課金判定後にだけ呼ぶこと（buildTakoReportSheets と同じ扱い）。
+ */
+export function buildTakoReportOverview(
+  data: OwnerReportData,
+): TakoReportOverview | null {
+  const friendScores = data.friendAvgScores;
+  if (!friendScores || data.friends.length === 0) return null;
+
+  const type32 = classifyThirtyTwoType(friendScores);
+  const deep = buildDeepDive(data.selfScores, friendScores);
+  if (!deep) return null;
+
+  const gapByKey = new Map(
+    buildDimensionGaps(data.selfScores, friendScores).map((gap) => [gap.key, gap]),
+  );
+  const axes = REPORT_AXIS_ORDER.map((key) => {
+    const gap = gapByKey.get(key)!;
+    const values = data.friends
+      .map((friend) => friend.perceivedScores[key])
+      .filter((value): value is number => typeof value === "number")
+      .map((value) => Math.max(0, Math.min(100, Math.round(value * 10))));
+    const friendRange =
+      values.length > 1 ? Math.max(...values) - Math.min(...values) : 0;
+    const copy = REPORT_AXIS_COPY[key];
+    return {
+      key,
+      label: copy.label,
+      selfPercent: gap.selfPercent,
+      friendPercent: gap.otherPercent,
+      diffPoints: gap.diffPoints,
+      friendLeaning: gap.otherPercent >= 50 ? copy.high : copy.low,
+      friendRange,
+    };
+  });
+
+  const biggestGap = [...axes].sort((a, b) => b.diffPoints - a.diffPoints)[0];
+  const byRange = [...axes].sort((a, b) => a.friendRange - b.friendRange);
+  const hasSeveralViewers = data.friends.length > 1;
+  const perceived = perceivedContentFor(type32);
+
+  return {
+    type32,
+    group: thirtyTwoGroup(type32),
+    essence: thirtyTwoEssence(type32),
+    charName: thirtyTwoName(type32),
+    imageSrc: preferCutImage(thirtyTwoImagePath(type32)),
+    friendCount: data.friends.length,
+    agreement: deep.agreement,
+    profileParas: perceivedManualFor(type32).split("\n\n").filter(Boolean),
+    gapParas: buildMinnaProse(deep),
+    strengths: (perceived?.strengths ?? []).slice(0, 4).map((item) => ({
+      title: item.title,
+      body: replaceCollectiveViewer(item.body),
+    })),
+    surprises: (perceived?.surprises ?? []).slice(0, 4).map((item) => ({
+      title: item.title,
+      body: replaceCollectiveViewer(item.body),
+    })),
+    axes,
+    biggestGap,
+    mostSharedAxis: hasSeveralViewers ? byRange[0] : null,
+    mostVariedAxis: hasSeveralViewers ? byRange[byRange.length - 1] : null,
+  };
+}
 
 export type TakoReportSheet = {
   /** 友達の表示名 (生値)。 */

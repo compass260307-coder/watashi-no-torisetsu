@@ -1,0 +1,893 @@
+.reportRoot {
+  --ink: #282535;
+  --muted: #676277;
+  --paper: #fffefc;
+  min-height: 100vh;
+  padding: 32px 16px 64px;
+  background: #efedf4;
+  color: var(--ink);
+}
+
+.screenToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100%, 210mm);
+  margin: 0 auto 18px;
+  color: #5d586a;
+  font-size: 13px;
+}
+
+.reportDocument {
+  width: min(100%, 210mm);
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: 0 18px 60px rgba(44, 38, 66, 0.14);
+}
+
+.cover {
+  position: relative;
+  display: flex;
+  min-height: 297mm;
+  box-sizing: border-box;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 18mm 18mm 14mm;
+  color: #fff;
+  background:
+    radial-gradient(circle at 102% -3%, rgba(255, 255, 255, 0.2) 0 18%, transparent 18.2%),
+    radial-gradient(circle at 86% 74%, rgba(255, 255, 255, 0.16) 0 8%, transparent 8.2%),
+    linear-gradient(145deg, var(--cover-background) 0%, var(--cover-background) 54%, var(--cover-soft) 132%);
+}
+
+.cover::after {
+  position: absolute;
+  right: -35mm;
+  bottom: -38mm;
+  width: 120mm;
+  height: 120mm;
+  border: 1px solid var(--cover-accent-soft);
+  border-radius: 50%;
+  content: "";
+}
+
+.coverOrbOne,
+.coverOrbTwo {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.coverOrbOne {
+  top: -38mm;
+  right: -24mm;
+  width: 92mm;
+  height: 92mm;
+}
+
+.coverOrbTwo {
+  right: 36mm;
+  bottom: 52mm;
+  width: 28mm;
+  height: 28mm;
+}
+
+.coverBrand,
+.coverLabel,
+.coverCopy,
+.coverFooter,
+.coverVisual {
+  position: relative;
+  z-index: 1;
+}
+
+.coverBrand {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+}
+
+.coverLabel {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+}
+
+.coverVisual {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  margin: 7mm 0 2mm;
+}
+
+.coverImage {
+  width: 148mm;
+  height: 148mm;
+  object-fit: contain;
+  filter: drop-shadow(0 8mm 8mm rgba(42, 37, 65, 0.1));
+}
+
+.coverCopy {
+  max-width: 165mm;
+}
+
+.coverEssence {
+  display: inline-block;
+  margin: 0 0 3mm;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.coverTitle {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.18;
+}
+
+.coverSubtitle {
+  margin: 2mm 0 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.coverQuote {
+  max-width: 145mm;
+  margin: 5mm 0 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.coverFooter {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 13mm;
+  padding-top: 4mm;
+  border-top: 1px solid rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.overviewPage,
+.chapter,
+.endPage {
+  box-sizing: border-box;
+  padding: 20mm 19mm 22mm;
+  background: var(--paper);
+}
+
+.overviewPage {
+  min-height: 297mm;
+}
+
+.pageEyebrow,
+.chapterNumber,
+.contentsLabel,
+.sectionEyebrow {
+  margin: 0;
+  color: var(--report-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.overviewTitle {
+  margin: 4mm 0 7mm;
+  font-size: 29px;
+  line-height: 1.3;
+}
+
+.leadText,
+.bodyParagraph,
+.endPage > p,
+.messageLead {
+  color: #373342;
+  font-size: 14px;
+  line-height: 1.95;
+  text-align: justify;
+}
+
+.leadText,
+.bodyParagraph,
+.messageLead {
+  margin: 0 0 5mm;
+  orphans: 3;
+  widows: 3;
+}
+
+.profileStatement {
+  margin: 9mm 0;
+  padding: 6mm 7mm;
+  border-top: 1px solid var(--report-accent);
+  border-bottom: 1px solid var(--report-accent);
+  text-align: center;
+  break-inside: avoid;
+}
+
+.profileStatement p {
+  margin: 0 0 2mm;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.profileStatement strong {
+  display: block;
+  color: #393448;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.profileStatement span {
+  display: block;
+  margin-top: 1.5mm;
+  color: #777181;
+  font-size: 10px;
+}
+
+.scoreSection {
+  margin-top: 8mm;
+}
+
+.sectionHeadingRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6mm;
+  margin-bottom: 4mm;
+}
+
+.sectionHeadingRow h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sectionHeadingRow > span {
+  flex: 0 0 auto;
+  color: #8a8495;
+  font-size: 9px;
+}
+
+.scoreList {
+  display: grid;
+  gap: 3.5mm;
+}
+
+.scoreRow {
+  break-inside: avoid;
+}
+
+.scoreCopy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5mm;
+  margin-bottom: 1.5mm;
+}
+
+.scoreCopy > div {
+  display: flex;
+  align-items: baseline;
+  gap: 2.5mm;
+}
+
+.scoreCopy strong {
+  font-size: 12.5px;
+}
+
+.scoreCopy > span {
+  color: #746e7c;
+  font-size: 9.5px;
+}
+
+.scoreKey {
+  display: inline-grid;
+  width: 6mm;
+  height: 6mm;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--report-accent-soft);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.comparisonTrack {
+  position: relative;
+  height: 2.5mm;
+  border-radius: 999px;
+  background: #ece9f0;
+}
+
+.friendBar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--report-accent);
+}
+
+.selfMarker {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #fff;
+  background: var(--ink);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.scoreRow > p {
+  margin: 1mm 0 0 8.5mm;
+  color: #625c6d;
+  font-size: 10px;
+}
+
+.contents {
+  margin-top: 9mm;
+  padding: 6mm 7mm;
+  border-radius: 4mm;
+  background: var(--report-accent-wash);
+}
+
+.contents ol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2mm 9mm;
+  margin: 4mm 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contents li {
+  display: flex;
+  gap: 3mm;
+  color: #494454;
+  font-size: 11px;
+}
+
+.contents li span:first-child {
+  color: var(--report-accent);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.chapter {
+  min-height: 250mm;
+}
+
+.chapterHeader {
+  margin-bottom: 9mm;
+}
+
+.chapterHeader h2 {
+  margin: 3mm 0 4mm;
+  font-size: 29px;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+.chapterRule {
+  display: block;
+  width: 18mm;
+  height: 1.2mm;
+  border-radius: 999px;
+  background: var(--report-accent);
+}
+
+.sceneFigure {
+  display: grid;
+  place-items: center;
+  height: 61mm;
+  margin: 0 0 9mm;
+  break-inside: avoid;
+}
+
+.sceneImage {
+  width: 100% !important;
+  height: 61mm !important;
+  max-height: 61mm !important;
+  object-fit: contain;
+}
+
+.sectionBlock {
+  margin: 0 0 10mm;
+}
+
+.sectionBlock h3 {
+  margin: 0 0 4mm;
+  color: #332f3d;
+  font-size: 18px;
+  line-height: 1.55;
+  break-after: avoid;
+}
+
+.sectionBlock > h3::before {
+  display: inline-block;
+  width: 2.8mm;
+  height: 2.8mm;
+  margin-right: 2.5mm;
+  border-radius: 50%;
+  background: var(--report-accent);
+  content: "";
+  vertical-align: 0.1em;
+}
+
+.sectionEyebrow {
+  margin-bottom: 3mm;
+}
+
+.sectionBreak {
+  break-before: page;
+}
+
+.axisInsightGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3mm;
+  margin: 8mm 0 10mm;
+  break-inside: avoid;
+}
+
+.axisInsightCard {
+  min-height: 38mm;
+  padding: 5mm;
+  border: 1px solid var(--report-accent-soft);
+  border-radius: 4mm;
+  background: var(--report-accent-wash);
+}
+
+.axisInsightCard p {
+  margin: 0 0 3mm;
+  color: #736d7d;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.axisInsightCard strong {
+  display: block;
+  margin-bottom: 2mm;
+  color: #302c39;
+  font-size: 17px;
+}
+
+.axisInsightCard span {
+  color: #625c6d;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.insightList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8mm;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insightList li {
+  padding: 5mm 0;
+  border-bottom: 1px solid #e4e0e7;
+  break-inside: avoid;
+}
+
+.insightList h4 {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  margin: 0 0 2mm;
+  color: #363140;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.insightList h4 span {
+  width: 2.5mm;
+  height: 2.5mm;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--report-accent);
+}
+
+.insightList_caution h4 span {
+  border-radius: 1px;
+  background: #d2a83f;
+  transform: rotate(45deg);
+}
+
+.insightList_love h4 span {
+  background: #d86b91;
+}
+
+.insightList p {
+  margin: 0 0 0 5.5mm;
+  color: #4f4a58;
+  font-size: 12px;
+  line-height: 1.85;
+}
+
+.friendChapter {
+  --friend-ink: #302c39;
+}
+
+.friendHero {
+  display: grid;
+  grid-template-columns: 48mm 1fr;
+  align-items: center;
+  gap: 7mm;
+  margin-bottom: 8mm;
+  padding: 6mm 8mm;
+  border-radius: 6mm;
+  background: var(--report-accent-wash);
+  break-inside: avoid;
+}
+
+.friendHeroImage {
+  width: 45mm;
+  height: 45mm;
+  object-fit: contain;
+}
+
+.friendHero p {
+  margin: 0 0 2mm;
+  color: var(--report-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.friendHero h3 {
+  margin: 0;
+  color: var(--friend-ink);
+  font-size: 25px;
+  line-height: 1.3;
+}
+
+.friendHero span {
+  display: block;
+  margin-top: 2mm;
+  color: #6f6978;
+  font-size: 11px;
+}
+
+.gapQuote {
+  margin: 0 0 6mm;
+  padding: 5mm 7mm;
+  border-top: 1px solid var(--report-accent);
+  border-bottom: 1px solid var(--report-accent);
+  color: #4b4558;
+  font-size: 14px;
+  line-height: 1.8;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.gapQuote strong {
+  margin: 0 0.25em;
+  color: #332f3d;
+}
+
+.friendScoreList {
+  display: grid;
+  gap: 4mm;
+  break-inside: avoid;
+}
+
+.friendScoreRow {
+  display: grid;
+  grid-template-columns: 24mm 1fr 12mm;
+  align-items: center;
+  gap: 4mm;
+}
+
+.friendScoreRow strong {
+  font-size: 11px;
+}
+
+.friendScoreRow > span {
+  color: #716b79;
+  font-size: 10px;
+  text-align: right;
+}
+
+.subheading {
+  margin: 9mm 0 2mm;
+  color: #373241;
+  font-size: 16px;
+  break-after: avoid;
+}
+
+.compatibilityStatement {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 5mm;
+  margin-bottom: 7mm;
+  padding: 5mm 7mm;
+  border: 1px solid var(--report-accent-soft);
+  border-radius: 4mm;
+  background: var(--report-accent-wash);
+  break-inside: avoid;
+}
+
+.compatibilityStatement span {
+  color: #5f5968;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.compatibilityStatement strong {
+  color: var(--report-accent);
+  font-size: 26px;
+}
+
+.compatibilityStatement em {
+  color: #4b4558;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.messageChapter {
+  min-height: 250mm;
+}
+
+.messageLead {
+  max-width: 145mm;
+}
+
+.messageList {
+  display: grid;
+  gap: 6mm;
+  margin-top: 10mm;
+}
+
+.messageCard {
+  display: grid;
+  grid-template-columns: 18mm 1fr;
+  align-items: start;
+  gap: 4mm;
+  padding: 6mm;
+  border: 1px solid var(--report-accent-soft);
+  border-radius: 5mm;
+  background: var(--report-accent-wash);
+  break-inside: avoid;
+}
+
+.messageFace {
+  width: 17mm;
+  height: 17mm;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.messageCard p {
+  margin: 0 0 2mm;
+  color: var(--report-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.messageCard blockquote {
+  margin: 0;
+  color: #3f3948;
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+}
+
+.endPage {
+  min-height: 250mm;
+  text-align: center;
+}
+
+.endPage h2 {
+  margin: 5mm 0 7mm;
+  font-size: 28px;
+}
+
+.endPage > p:not(.pageEyebrow):not(.generatedAt) {
+  max-width: 145mm;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.endMark {
+  display: grid;
+  width: 82mm;
+  height: 82mm;
+  place-items: center;
+  margin: 22mm auto 8mm;
+  padding: 8mm;
+  border: 1px solid var(--report-accent);
+  border-radius: 50%;
+  background: var(--report-accent-wash);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.8;
+}
+
+.generatedAt {
+  margin: 0 0 8mm;
+  color: #8a8495;
+  font-size: 10px;
+  text-align: center;
+}
+
+.backLink {
+  display: inline-block;
+  padding: 3.5mm 7mm;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 17mm 18mm 20mm;
+
+    @top-right {
+      content: "SOCIAL MIRROR REPORT";
+      color: #8d8795;
+      font-family: sans-serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.14em;
+    }
+
+    @bottom-left {
+      content: "WATASHI NO TORISETSU";
+      color: #8d8795;
+      font-family: sans-serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.12em;
+    }
+
+    @bottom-right {
+      content: counter(page);
+      color: #6f6879;
+      font-family: sans-serif;
+      font-size: 8pt;
+    }
+  }
+
+  @page :first {
+    margin: 0;
+    background: var(--cover-background);
+
+    @top-right {
+      content: none;
+    }
+
+    @bottom-left {
+      content: none;
+    }
+
+    @bottom-right {
+      content: none;
+    }
+  }
+
+  .reportRoot {
+    min-height: auto;
+    padding: 0;
+    background: #fff;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .screenToolbar,
+  .backLink {
+    display: none;
+  }
+
+  .reportDocument {
+    width: 174mm;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  .cover {
+    width: 210mm;
+    min-height: 340mm;
+    margin-left: -18mm;
+    overflow: hidden;
+    box-shadow: 0 0 0 18mm var(--cover-background);
+    break-after: page;
+  }
+
+  .overviewPage,
+  .chapter,
+  .endPage {
+    width: 174mm;
+    min-height: auto;
+    padding: 0;
+    break-before: page;
+  }
+
+  .chapterHeader,
+  .sceneFigure,
+  .profileStatement,
+  .axisInsightGrid,
+  .friendHero,
+  .sectionBlock h3,
+  .gapQuote,
+  .insightList li,
+  .messageCard,
+  .compatibilityStatement {
+    break-inside: avoid;
+  }
+
+  .endPage {
+    break-after: avoid;
+  }
+}
+
+@media (max-width: 760px) {
+  .reportRoot {
+    padding: 0;
+  }
+
+  .screenToolbar {
+    padding: 14px 16px;
+    margin: 0;
+  }
+
+  .cover {
+    min-height: 100vh;
+    padding: 32px 24px 24px;
+  }
+
+  .coverImage {
+    width: min(82vw, 480px);
+    height: min(82vw, 480px);
+  }
+
+  .coverTitle {
+    font-size: 34px;
+  }
+
+  .overviewPage,
+  .chapter,
+  .endPage {
+    min-height: auto;
+    padding: 48px 24px 64px;
+  }
+
+  .contents ol,
+  .insightList,
+  .axisInsightGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .friendHero {
+    grid-template-columns: 100px 1fr;
+    padding: 18px;
+  }
+
+  .friendHeroImage {
+    width: 94px;
+    height: 94px;
+  }
+
+  .sectionHeadingRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
