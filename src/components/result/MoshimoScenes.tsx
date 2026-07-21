@@ -76,14 +76,16 @@ export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
       </div>
 
       {/* 未解放シーン: シーン名入りの鍵チップを敷き詰める (鍵円だと8個で単調 +
-          余白が間延びするため 2026-07-22 にチップ型へ変更)。色はシーン別カラー。 */}
+          余白が間延びするため 2026-07-22 にチップ型へ変更)。色はシーン別カラー。
+          SP はフルのシーン名だと1行1チップになり縦積みが単調なため、「のアナタ」を
+          省いた短縮名で2個ずつ千鳥に並べる (md+ はフル名のまま)。 */}
       {locked.length > 0 && (
         <div className="mt-8 rounded-2xl border border-[#ECEDF6] bg-white px-4 py-8 shadow-[0_6px_20px_rgba(46,46,92,0.09)] md:px-10 md:py-10">
           <div className="mb-8 flex flex-wrap justify-center gap-x-2 gap-y-2.5">
             {locked.map((scene) => (
               <span
                 key={scene.title}
-                className="inline-flex items-center gap-1.5 rounded-full border-2 bg-white py-2 pl-3 pr-3.5 text-[12.5px] font-black leading-none text-[#2E2E5C]"
+                className="inline-flex items-center gap-1.5 rounded-full border-2 bg-white py-2 pl-3 pr-3.5 text-[12px] font-black leading-none text-[#2E2E5C] md:text-[12.5px]"
                 style={{ borderColor: scene.color }}
               >
                 <span
@@ -92,7 +94,10 @@ export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
                 >
                   <LockGlyph size={13} />
                 </span>
-                {scene.title}
+                <span className="md:hidden">
+                  {scene.title.replace(/(で)?のアナタ$/, "")}
+                </span>
+                <span className="hidden md:inline">{scene.title}</span>
               </span>
             ))}
           </div>
