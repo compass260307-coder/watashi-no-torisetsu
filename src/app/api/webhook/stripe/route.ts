@@ -675,6 +675,22 @@ async function handleTakoUnlockCompleted(
     );
 
   if (upsertErr) {
+    // 23505 = idx_payment_tako_unlock_once (同一 user の tako_unlock completed は
+    // 1 行まで) 違反。2 タブ同時 Checkout 等で 2 本目の決済が完了したケースで、
+    // Stripe が何度リトライしても解消しない毒イベント。500 で無限リトライさせず
+    // 200 で受領し、Slack 通知で手動返金に回す (1 本目の記録と権限は有効なまま)。
+    if (upsertErr.code === "23505") {
+      console.error("[webhook/stripe] tako_unlock duplicate purchase (acknowledged)", {
+        session_id: session.id,
+        user_id: userId,
+      });
+      await sendSlackAlert("🚨 tako_unlock 二重課金を検知 (要・手動返金)", {
+        user_id: userId,
+        session_id: session.id,
+        amount: session.amount_total ?? "unknown",
+      });
+      return;
+    }
     throw new Error(
       `[tako_unlock] payment_history upsert failed: ${upsertErr.message}`,
     );
