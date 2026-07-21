@@ -921,6 +921,10 @@ async function handlePaymentFailed(
 // Stripe sends charge.refunded for both full and partial refunds. Store the exact
 // refunded amount so dashboard revenue is net of refunds; only a full refund moves
 // the legacy status enum to "refunded".
+//
+// payment_kind では絞らない: tako_unlock / perception_unlock の返金も同じ
+// payment_intent_id で payment_history に記録される (以前は full_access 限定で、
+// それ以外の返金が 0 行更新 → throw → Stripe が最大 3 日再送し続ける毒イベントだった)。
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
@@ -939,7 +943,6 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
       updated_at: nowIso,
     })
     .eq("stripe_payment_intent_id", paymentIntentId)
-    .eq("payment_kind", "full_access")
     .select("id");
   if (isCoreKpiPaymentSchemaPending(error)) {
     console.warn(
@@ -949,13 +952,50 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     return;
   }
   if (error) {
-    throw new Error(`[full_access] refund update failed: ${error.message}`);
+    throw new Error(`[refund] refund update failed: ${error.message}`);
   }
-  if (!data || data.length === 0) {
-    // Webhook delivery order is not guaranteed. A retry after the checkout event
-    // has been persisted is safer than silently losing the refund.
-    throw new Error(
-      `[full_access] refund arrived before payment record: ${paymentIntentId}`,
-    );
+  if (data && data.length > 0) return;
+
+  // 0 行更新 = payment_history に行が無い。原因は 2 通りで扱いを分ける:
+  //   a) checkout webhook との順序逆転 (行がこれから書かれる) → throw で Stripe に再送させる
+  //   b) unmei / unmei_upgrade: 設計上 payment_history に行を書かない経路 → 再送しても
+  //      永遠に解消しない毒イベント。200 で受領し Slack 通知で手動対応に回す。
+  // 判別のため Checkout Session を payment_intent から引いて product を見る。
+  let product: string | null = null;
+  const stripe = getStripe();
+  if (stripe) {
+    try {
+      const sessions = await stripe.checkout.sessions.list({
+        payment_intent: paymentIntentId,
+        limit: 1,
+      });
+      product = sessions.data[0]?.metadata?.product ?? null;
+    } catch (err) {
+      console.error(
+        "[webhook/stripe] refund: session lookup failed (will retry):",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
+
+  if (product === "unmei" || product === "unmei_upgrade") {
+    console.warn("[webhook/stripe] refund for unrecorded product (acknowledged)", {
+      payment_intent_id: paymentIntentId,
+      product,
+      amount_refunded: charge.amount_refunded,
+    });
+    await sendSlackAlert("⚠️ 返金受領: payment_history 非記録の商品 (要・手動対応)", {
+      payment_intent_id: paymentIntentId,
+      product,
+      amount_refunded: charge.amount_refunded,
+      fully_refunded: fullyRefunded ? "yes" : "no",
+    });
+    return;
+  }
+
+  // Webhook delivery order is not guaranteed. A retry after the checkout event
+  // has been persisted is safer than silently losing the refund.
+  throw new Error(
+    `[refund] refund arrived before payment record: ${paymentIntentId}`,
+  );
 }

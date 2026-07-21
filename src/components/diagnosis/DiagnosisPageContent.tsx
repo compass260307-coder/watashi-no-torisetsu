@@ -197,6 +197,16 @@ export default function DiagnosisPageContent({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [currentPage, hydrated]);
 
+  // 送信失敗でローディングから質問ページへ戻ったとき、最下部のエラー文と
+  // 再送信 CTA が視界に入るようスクロールする (回答は保持されている)。
+  useEffect(() => {
+    if (!submitError) return;
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "auto",
+    });
+  }, [submitError]);
+
   // 起動 track。ref だけだと再マウント (ページ再訪・再診断モーダル表示等) のたびに
   // 発火して分母が膨らむため、セッション (タブ) 単位で1回に dedup する (2026-07-13)。
   useEffect(() => {
@@ -427,14 +437,16 @@ export default function DiagnosisPageContent({
         return;
       }
     } catch {
-      clearProgress();
-      router.push(settings.resultPath);
+      // 送信失敗 (ネットワークエラー・非JSONレスポンス等) では途中保存を消さない。
+      // 進捗を残したまま質問ページに戻し、エラー表示 + 同じボタンで再送信できるようにする。
+      setSubmitting(false);
+      setSubmitError(true);
       return;
     }
 
-    await waitMin();
-    clearProgress();
-    router.push(settings.resultPath);
+    // ownerToken が返らない = API 側のエラーレスポンス。catch と同様に回答を保持する。
+    setSubmitting(false);
+    setSubmitError(true);
   };
 
   if (submitting) {
