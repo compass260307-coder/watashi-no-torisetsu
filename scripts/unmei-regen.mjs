@@ -3,11 +3,12 @@
 // 使い方 (Node 20+):
 //   node --env-file=.env.local scripts/unmei-regen.mjs <userId>
 //
-// 前提: 対象ユーザーの birth_profiles が「フィクスチャ日付」(2004-04-26 02:00 JST)
-//   になっていること。エフェメリスは現状このフィクスチャのみ実データ(太陽 牡牛座 5.8° 等)を返し、
-//   それ以外の日付は not-implemented → 生成スキップ(指示書③タスク①の本エフェメリス実装待ち)。
+// 前提: 対象ユーザーに birth_profiles があること。エフェメリス(ephemeris.mjs =
+//   circular-natal-horoscope-js)は任意の出生日で実データを返すため、日付の縛りはない。
+//   (2004-04-26 02:00 JST は scripts/ephemeris-test.mjs の回帰検証に使うフィクスチャで、
+//    太陽 牡牛座 5.8° 等の既知値を再現する例。実行時のゲートではない。)
 //
-// 無効キャッシュ(旧ダミー / not-implemented)は自動で再生成対象になる。
+// 無効キャッシュ(旧ダミー / 生成中 / 失敗)は自動で再生成対象になる。
 // 明示的にやり直したい場合は natal_readings / natal_charts の行を先に削除してもよい。
 
 import { createClient } from "@supabase/supabase-js";

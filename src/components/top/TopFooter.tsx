@@ -32,8 +32,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       // 友達診断テストの href は実行時に上書き (BottomNav/TopHeader と同じ /tako/[token] 解決)。
       { label: "友達診断テスト", href: "/tako" },
       { label: "性格タイプ", href: "/types" },
-      // 一時停止 (2026-07-20): /unmei 表示が未完成のため導線を止める。再開時はコメント解除。
-      // { label: "運命の設計図", href: "/unmei" },
+      { label: "運命の設計図", href: "/unmei" },
     ],
   },
   {
