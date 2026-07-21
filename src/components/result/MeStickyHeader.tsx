@@ -168,13 +168,15 @@ export function MeStickyHeader({
     <div className="sticky top-0 z-50">
       <div
         className="transition-transform duration-300"
+        // 表示中は transform を持たせない (undefined)。translateY(0) でも transform が
+        // あると子孫の fixed 要素 (TopHeader のドロワー等) の基準がこの div になり、
+        // メニューがヘッダー内に閉じ込められて崩れる (ScrollHideHeader と同じ対策)。
         style={{
-          transform:
-            hidden && showBar
+          transform: hidden
+            ? showBar
               ? `translateY(-${headerH}px)`
-              : hidden
-                ? "translateY(-100%)"
-                : "translateY(0)",
+              : "translateY(-100%)"
+            : undefined,
         }}
       >
         <div ref={headerRef}>{children}</div>
