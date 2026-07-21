@@ -21,7 +21,14 @@ export default function ResultFallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const ownerToken = localStorage.getItem("torisetsu_owner_token");
+    // localStorage 不可環境 (Cookie 全ブロック設定・一部 WebView) では getItem 自体が
+    // throw する。KO 版 (KoResultPageClient) と同様に握りつぶして /diagnosis へ。
+    let ownerToken: string | null = null;
+    try {
+      ownerToken = localStorage.getItem("torisetsu_owner_token");
+    } catch {
+      // 未保存扱いにする
+    }
     router.replace(ownerToken ? `/me/${ownerToken}` : "/diagnosis");
   }, [router]);
 

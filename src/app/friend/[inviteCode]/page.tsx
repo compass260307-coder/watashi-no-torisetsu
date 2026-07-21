@@ -124,6 +124,9 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   // 送信中フラグ (待機ページの代わり: メッセージ画面のボタンをローディング表示にする)。
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // 招待コードが実在しない (friend-info が 404)。30問答えた後の送信で初めて失敗
+  // させないため、判明した時点で回答フェーズに入れず無効リンク画面を出す。
+  const [inviteInvalid, setInviteInvalid] = useState(false);
   const trackedLanding = useRef(false);
 
   // ===== 初期化: invite_code から owner 情報取得 =====
@@ -134,8 +137,16 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
       // intro 廃止に伴い、評価開始 = マウント時 (質問直行) に発火へ移設。
       track("friend_answer_started", { inviteCode });
     }
-    fetch(`/api/friend-info?code=${inviteCode}`)
-      .then((res) => (res.ok ? res.json() : null))
+    fetch(`/api/friend-info?code=${encodeURIComponent(inviteCode)}`)
+      .then((res) => {
+        if (res.status === 404) {
+          setInviteInvalid(true);
+          return null;
+        }
+        // 404 以外の失敗 (一時的なネットワーク/サーバエラー) は従来どおり寛容に進める
+        // (owner 名が「友達」表示になるだけで回答は可能)。
+        return res.ok ? res.json() : null;
+      })
       .then((data) => {
         if (!data) return;
         setOwner({
@@ -245,6 +256,11 @@ function FriendContent({ inviteCode }: { inviteCode: string }) {
   };
 
   // ===== 画面分岐 (intro 廃止: 初期 phase="scale" で質問直行) =====
+  // 無効な招待リンクは回答フェーズより優先して表示 (どのフェーズでも上書き)。
+  if (inviteInvalid) {
+    return <InvalidInviteScreen />;
+  }
+
   if (phase === "scale") {
     return (
       <ScaleScreen
@@ -447,6 +463,35 @@ function ScaleScreen({
 }
 
 // =========================================================================
+// 無効な招待リンク画面 (friend-info が 404 のとき)
+// 回答させてから失敗させない。再試行しても解消しないため、リトライは出さず
+// 自己診断への導線だけ置く。
+// =========================================================================
+function InvalidInviteScreen() {
+  return (
+    <>
+      <ScrollHideHeader>
+        <TopHeader />
+      </ScrollHideHeader>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 pb-32">
+        <p className="mb-4 text-base font-black text-[#2E2E5C]">
+          この招待リンクは無効です
+        </p>
+        <p className="mb-6 max-w-sm text-center text-xs font-bold leading-relaxed text-[#2E2E5C]/70">
+          リンクが正しくコピーされていないか、招待した人のデータが見つかりませんでした。
+          送ってくれた友達に、もう一度リンクを送ってもらってください。
+        </p>
+        <StickyCtaFooter>
+          <a href="/diagnosis" className={ctaPrimary}>
+            自分の診断をやってみる
+          </a>
+        </StickyCtaFooter>
+      </div>
+      <TopFooter />
+    </>
+  );
+}
+
 // =========================================================================
 // Error 画面
 // =========================================================================

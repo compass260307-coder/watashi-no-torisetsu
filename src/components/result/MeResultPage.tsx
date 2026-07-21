@@ -596,7 +596,7 @@ async function MeResultPageContent({
                 <FriendLoveTeaser
                   href={
                     previewType
-                      ? "/tako/preview?previewLocked=1&friends=0"
+                      ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
                       : `/tako/${encodeURIComponent(token)}`
                   }
                   friendCount={friendEvalCount}
@@ -685,7 +685,7 @@ async function MeResultPageContent({
                   <FriendTruthTeaser
                     href={
                       previewType
-                        ? "/tako/preview?previewLocked=1&friends=0"
+                        ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
                         : `/tako/${encodeURIComponent(token)}`
                     }
                     friendCount={friendEvalCount}
@@ -752,7 +752,7 @@ async function MeResultPageContent({
                     <FriendTruthTeaser
                       href={
                         previewType
-                          ? "/tako/preview?previewLocked=1&friends=0"
+                          ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
                           : `/tako/${encodeURIComponent(token)}`
                       }
                       friendCount={friendEvalCount}

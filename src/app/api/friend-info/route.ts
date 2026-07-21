@@ -74,7 +74,10 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ displayName: null });
+    // 存在しない invite_code は 404 で明示する。従来は 200 + {displayName: null} で
+    // 有効コードと区別できず、友達が30問答え終わった後の送信で初めて失敗していた。
+    // 消費者は /friend/[inviteCode] のみで、404 を無効リンク画面の表示に使う。
+    return NextResponse.json({ error: "invalid_code" }, { status: 404 });
   }
 
   const typeId = (data.type_id as string | null) ?? null;
