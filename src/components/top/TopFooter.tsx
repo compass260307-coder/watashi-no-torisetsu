@@ -40,6 +40,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "サービス",
     links: [
       { label: "サービスについて", href: "/about" },
+      { label: "記事・コラム", href: "/articles" },
       {
         label: "運営会社",
         href: "https://sora-team.com",

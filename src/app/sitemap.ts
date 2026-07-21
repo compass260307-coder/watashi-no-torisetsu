@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
+import { ARTICLES } from "@/lib/articles";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -41,6 +42,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     ...typePages,
+    {
+      // 記事一覧 (SEO 用解説コンテンツの入り口)
+      url: `${BASE_URL}/articles`,
+      priority: 0.7,
+    },
+    // 記事詳細。lastModified は記事データの published/updated から実日付を入れる
+    // (ビルド時刻ではなくコンテンツ由来なので更新シグナルとして信頼できる)。
+    ...ARTICLES.map((a) => ({
+      url: `${BASE_URL}/articles/${a.slug}`,
+      lastModified: a.updated ?? a.published,
+      priority: 0.7,
+    })),
     {
       url: `${BASE_URL}/terms`,
       priority: 0.3,
