@@ -718,6 +718,17 @@ async function MeResultPageContent({
                 もしもの時のアナタ
               </h2>
             </div>
+            {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
+                land/sky/sea/unknown_moshimo.webp を解決。他章のシーン挿絵と同じ組版) */}
+            {sceneImage("moshimo") && (
+              <SmoothImage
+                src={sceneImage("moshimo")!}
+                alt=""
+                width={960}
+                height={640}
+                className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
+              />
+            )}
             <MoshimoScenes
               scenes={buildMoshimoScenes(stored, partTwoUnlocked)}
             />
