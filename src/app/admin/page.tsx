@@ -270,6 +270,13 @@ const ADMIN_NAV_ITEMS = [
     path: "M4 13h5V4H4v9Zm0 7h5v-4H4v4Zm8 0h8v-9h-8v9Zm0-16v4h8V4h-8Z",
   },
   {
+    href: "#revenue",
+    id: "revenue",
+    label: "課金分析",
+    shortLabel: "課金",
+    path: "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7",
+  },
+  {
     href: "#friend-funnel",
     id: "friend-funnel",
     label: "友達診断ファネル",
@@ -282,13 +289,6 @@ const ADMIN_NAV_ITEMS = [
     label: "全体ファネル",
     shortLabel: "全体ファネル",
     path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
-  },
-  {
-    href: "#revenue",
-    id: "revenue",
-    label: "課金分析",
-    shortLabel: "課金",
-    path: "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7",
   },
   {
     href: "#growth",
@@ -2029,242 +2029,6 @@ export default function AdminPage() {
             </div>
           </section>
 
-          <section>
-            <SectionHeader
-              eyebrow="Core KPI"
-              title="経営KPI"
-              description={`自己診断完了 ${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を共通の分母に、その後の行動を追跡`}
-              side={
-                loading ? (
-                  <span className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
-                    更新中
-                  </span>
-                ) : undefined
-              }
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-              <KpiCard
-                label="自己診断→課金率"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.diagnosisToPaid.rate,
-                        stats.coreKpis.diagnosisToPaid.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.diagnosisToPaid.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToPaid.denominator.toLocaleString()}人`}
-                tone="indigo"
-                index="01"
-                featured
-              />
-              <KpiCard
-                label="自己診断→友達1人完了率"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.diagnosisToFriend.rate,
-                        stats.coreKpis.diagnosisToFriend.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.diagnosisToFriend.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToFriend.denominator.toLocaleString()}人`}
-                tone="emerald"
-                index="02"
-                featured
-              />
-              <KpiCard
-                label="課金→友達1人完了率"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.paidToFriend.rate,
-                        stats.coreKpis.paidToFriend.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.paidToFriend.numerator.toLocaleString()} / ${stats.coreKpis.paidToFriend.denominator.toLocaleString()}人`}
-                tone="amber"
-                index="03"
-                featured
-              />
-              <KpiCard
-                label="ARPU"
-                value={
-                  coreReady
-                    ? formatArpu(stats.coreKpis.arpu.currencies)
-                    : "要DB更新"
-                }
-                sub={`純売上 ÷ 自己診断完了 ${stats.coreKpis.arpu.denominator.toLocaleString()}人`}
-                tone="rose"
-                index="04"
-                featured
-              />
-              <KpiCard
-                label="拡散係数"
-                value={
-                  !coreReady
-                    ? "要DB更新"
-                    : stats.coreKpis.viralCoefficient.denominator > 0
-                    ? stats.coreKpis.viralCoefficient.value.toFixed(3)
-                    : "—"
-                }
-                sub={`子診断 ${stats.coreKpis.viralCoefficient.children.toLocaleString()} ÷ 親 ${stats.coreKpis.viralCoefficient.denominator.toLocaleString()}人`}
-                tone="indigo"
-                index="05"
-                featured
-              />
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <KpiCard label="自己診断完了人数" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={`${selectedPeriodLabel}の確定コホート`} tone="indigo" />
-              <KpiCard label="実決済紐付け率" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件をユーザーに紐付け`} tone="emerald" />
-              <KpiCard label="友達共有" value={stats.shareCount} sub={`共有率 ${pct(stats.shareRate)}`} tone="indigo" />
-              <KpiCard label="友達回答完了" value={stats.friendAnswerCompleted} sub={`完了率 ${pct(stats.answerCompletionRate)}`} tone="emerald" />
-              <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部の解放" tone="amber" />
-              <KpiCard label="5人達成" value={stats.fiveAchieved} sub="見られ方の完成" tone="rose" />
-              <KpiCard label="結果再訪" value={stats.resultRevisited} sub={`再訪率 ${pct(stats.revisitRate)}`} />
-              <KpiCard label="イベント完了率" value={pct(stats.completionRate)} sub="セッションイベント参考値" />
-              <KpiCard label="課金ユーザー" value={stats.paidUsers} sub="権限テーブル参考値" />
-              <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="決済イベント参考値" />
-            </div>
-            {coreReady ? (
-              <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
-                {stats.coreKpis.cohort.definition}。ARPUは通貨別の実決済額から返金額を引いた純売上で計算し、異なる通貨を合算しません。
-              </p>
-            ) : (
-              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-rose-700">
-                経営KPIはまだ集計できません。Supabaseへ 2026-07-20-core-kpi-facts.sql を適用してから再読み込みしてください。既存の参考指標は引き続き表示しています。
-              </p>
-            )}
-          </section>
-
-        {/* 本人コホートと友達側を分けた友達診断ファネル */}
-          <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Friend diagnosis"
-              title="友達診断ファネル"
-              description="友達導線の計測開始後に取得できたセッションだけを追う、改善用の参考ファネル"
-              side={
-                <div className="rounded-2xl border border-rose-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(225,29,72,0.7)]">
-                  <p className="text-[10px] font-bold text-rose-600">計測対象→友達診断到達</p>
-                  <p className="text-lg font-black tabular-nums text-rose-900">
-                    {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
-                  </p>
-                </div>
-              }
-            />
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiCard
-                label="赤バッジ表示"
-                value={stats.friendDiagnosisFunnel.attention.badgeShown}
-                sub="ユニーク本人"
-                tone="rose"
-              />
-              <KpiCard
-                label="赤バッジクリック"
-                value={stats.friendDiagnosisFunnel.attention.badgeClicked}
-                sub={`クリック率 ${pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}`}
-                tone="rose"
-              />
-              <KpiCard
-                label="友達診断到達"
-                value={stats.friendDiagnosisFunnel.attention.takoReached}
-                sub="ユニーク本人"
-                tone="indigo"
-              />
-              <KpiCard
-                label="計測対象→到達率"
-                value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
-                sub="友達導線の計測対象を分母"
-                tone="emerald"
-              />
-            </div>
-            <div className="grid gap-4 xl:grid-cols-2">
-              <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-slate-800">本人側（ユニーク本人）</h3>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  計測開始後に自己診断完了イベントを送信した本人を追跡
-                </p>
-                <div className="mt-5 flex flex-col gap-2">
-                  {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
-                    <FunnelBar
-                      key={step.key}
-                      label={step.label}
-                      count={step.count}
-                      max={ownerFriendFunnelMax}
-                      prevCount={
-                        index > 0
-                          ? stats.friendDiagnosisFunnel.ownerFunnel[index - 1].count
-                          : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </Panel>
-              <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-slate-800">友達側（ユニーク友達セッション）</h3>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  同じ本人コホートの招待を受けた友達の行動
-                </p>
-                <div className="mt-5 flex flex-col gap-2">
-                  {stats.friendDiagnosisFunnel.friendFunnel.map((step, index) => (
-                    <FunnelBar
-                      key={step.key}
-                      label={step.label}
-                      count={step.count}
-                      max={visitorFriendFunnelMax}
-                      prevCount={
-                        index > 0
-                          ? stats.friendDiagnosisFunnel.friendFunnel[index - 1].count
-                          : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </Panel>
-            </div>
-            <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
-              {stats.friendDiagnosisFunnel.cohortDefinition}。招待実行はシェアボタン操作に加え、QR経由などで友達の到達が確認できた本人も含めます。
-              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}。
-            </p>
-          </section>
-
-        {/* Funnel */}
-          <section id="funnel" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Conversion"
-              title="全体ファネル（参考）"
-              description="イベントのユニークセッション数で、診断開始から友達回答までの離脱を確認"
-            />
-            <Panel className="p-5 sm:p-6">
-            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
-              <span className="w-28 text-right">ステップ</span>
-              <span className="flex-1">件数</span>
-              <span className="w-16 text-right">前段比</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {stats.funnel.map((step, i) => (
-                <FunnelBar
-                  key={step.label}
-                  label={step.label}
-                  count={step.count}
-                  max={funnelMax}
-                  prevCount={
-                    i > 0 ? stats.funnel[i - 1].count : undefined
-                  }
-                />
-              ))}
-            </div>
-            <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
-              診断〜友達回答はユニークセッション数、3人/5人達成は「N人目の回答が期間内に届いたオーナー数」。
-              単位が異なるため前ステップ比は目安です。
-            </p>
-            </Panel>
-        </section>
-
-        {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
           <section id="revenue" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Revenue"
@@ -2541,6 +2305,242 @@ export default function AdminPage() {
             </Panel>
         </section>
 
+          <section>
+            <SectionHeader
+              eyebrow="Core KPI"
+              title="経営KPI"
+              description={`自己診断完了 ${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を共通の分母に、その後の行動を追跡`}
+              side={
+                loading ? (
+                  <span className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+                    更新中
+                  </span>
+                ) : undefined
+              }
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <KpiCard
+                label="自己診断→課金率"
+                value={
+                  coreReady
+                    ? pctOrDash(
+                        stats.coreKpis.diagnosisToPaid.rate,
+                        stats.coreKpis.diagnosisToPaid.denominator,
+                      )
+                    : "要DB更新"
+                }
+                sub={`${stats.coreKpis.diagnosisToPaid.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToPaid.denominator.toLocaleString()}人`}
+                tone="indigo"
+                index="01"
+                featured
+              />
+              <KpiCard
+                label="自己診断→友達1人完了率"
+                value={
+                  coreReady
+                    ? pctOrDash(
+                        stats.coreKpis.diagnosisToFriend.rate,
+                        stats.coreKpis.diagnosisToFriend.denominator,
+                      )
+                    : "要DB更新"
+                }
+                sub={`${stats.coreKpis.diagnosisToFriend.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToFriend.denominator.toLocaleString()}人`}
+                tone="emerald"
+                index="02"
+                featured
+              />
+              <KpiCard
+                label="課金→友達1人完了率"
+                value={
+                  coreReady
+                    ? pctOrDash(
+                        stats.coreKpis.paidToFriend.rate,
+                        stats.coreKpis.paidToFriend.denominator,
+                      )
+                    : "要DB更新"
+                }
+                sub={`${stats.coreKpis.paidToFriend.numerator.toLocaleString()} / ${stats.coreKpis.paidToFriend.denominator.toLocaleString()}人`}
+                tone="amber"
+                index="03"
+                featured
+              />
+              <KpiCard
+                label="ARPU"
+                value={
+                  coreReady
+                    ? formatArpu(stats.coreKpis.arpu.currencies)
+                    : "要DB更新"
+                }
+                sub={`純売上 ÷ 自己診断完了 ${stats.coreKpis.arpu.denominator.toLocaleString()}人`}
+                tone="rose"
+                index="04"
+                featured
+              />
+              <KpiCard
+                label="拡散係数"
+                value={
+                  !coreReady
+                    ? "要DB更新"
+                    : stats.coreKpis.viralCoefficient.denominator > 0
+                    ? stats.coreKpis.viralCoefficient.value.toFixed(3)
+                    : "—"
+                }
+                sub={`子診断 ${stats.coreKpis.viralCoefficient.children.toLocaleString()} ÷ 親 ${stats.coreKpis.viralCoefficient.denominator.toLocaleString()}人`}
+                tone="indigo"
+                index="05"
+                featured
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <KpiCard label="自己診断完了人数" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={`${selectedPeriodLabel}の確定コホート`} tone="indigo" />
+              <KpiCard label="実決済紐付け率" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件をユーザーに紐付け`} tone="emerald" />
+              <KpiCard label="友達共有" value={stats.shareCount} sub={`共有率 ${pct(stats.shareRate)}`} tone="indigo" />
+              <KpiCard label="友達回答完了" value={stats.friendAnswerCompleted} sub={`完了率 ${pct(stats.answerCompletionRate)}`} tone="emerald" />
+              <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部の解放" tone="amber" />
+              <KpiCard label="5人達成" value={stats.fiveAchieved} sub="見られ方の完成" tone="rose" />
+              <KpiCard label="結果再訪" value={stats.resultRevisited} sub={`再訪率 ${pct(stats.revisitRate)}`} />
+              <KpiCard label="イベント完了率" value={pct(stats.completionRate)} sub="セッションイベント参考値" />
+              <KpiCard label="課金ユーザー" value={stats.paidUsers} sub="権限テーブル参考値" />
+              <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="決済イベント参考値" />
+            </div>
+            {coreReady ? (
+              <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
+                {stats.coreKpis.cohort.definition}。ARPUは通貨別の実決済額から返金額を引いた純売上で計算し、異なる通貨を合算しません。
+              </p>
+            ) : (
+              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-rose-700">
+                経営KPIはまだ集計できません。Supabaseへ 2026-07-20-core-kpi-facts.sql を適用してから再読み込みしてください。既存の参考指標は引き続き表示しています。
+              </p>
+            )}
+          </section>
+
+        {/* 本人コホートと友達側を分けた友達診断ファネル */}
+          <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">
+            <SectionHeader
+              eyebrow="Friend diagnosis"
+              title="友達診断ファネル"
+              description="友達導線の計測開始後に取得できたセッションだけを追う、改善用の参考ファネル"
+              side={
+                <div className="rounded-2xl border border-rose-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(225,29,72,0.7)]">
+                  <p className="text-[10px] font-bold text-rose-600">計測対象→友達診断到達</p>
+                  <p className="text-lg font-black tabular-nums text-rose-900">
+                    {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
+                  </p>
+                </div>
+              }
+            />
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <KpiCard
+                label="赤バッジ表示"
+                value={stats.friendDiagnosisFunnel.attention.badgeShown}
+                sub="ユニーク本人"
+                tone="rose"
+              />
+              <KpiCard
+                label="赤バッジクリック"
+                value={stats.friendDiagnosisFunnel.attention.badgeClicked}
+                sub={`クリック率 ${pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}`}
+                tone="rose"
+              />
+              <KpiCard
+                label="友達診断到達"
+                value={stats.friendDiagnosisFunnel.attention.takoReached}
+                sub="ユニーク本人"
+                tone="indigo"
+              />
+              <KpiCard
+                label="計測対象→到達率"
+                value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
+                sub="友達導線の計測対象を分母"
+                tone="emerald"
+              />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-slate-800">本人側（ユニーク本人）</h3>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  計測開始後に自己診断完了イベントを送信した本人を追跡
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
+                    <FunnelBar
+                      key={step.key}
+                      label={step.label}
+                      count={step.count}
+                      max={ownerFriendFunnelMax}
+                      prevCount={
+                        index > 0
+                          ? stats.friendDiagnosisFunnel.ownerFunnel[index - 1].count
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              </Panel>
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-slate-800">友達側（ユニーク友達セッション）</h3>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  同じ本人コホートの招待を受けた友達の行動
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  {stats.friendDiagnosisFunnel.friendFunnel.map((step, index) => (
+                    <FunnelBar
+                      key={step.key}
+                      label={step.label}
+                      count={step.count}
+                      max={visitorFriendFunnelMax}
+                      prevCount={
+                        index > 0
+                          ? stats.friendDiagnosisFunnel.friendFunnel[index - 1].count
+                          : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              </Panel>
+            </div>
+            <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
+              {stats.friendDiagnosisFunnel.cohortDefinition}。招待実行はシェアボタン操作に加え、QR経由などで友達の到達が確認できた本人も含めます。
+              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}。
+            </p>
+          </section>
+
+        {/* Funnel */}
+          <section id="funnel" className="scroll-mt-36 lg:scroll-mt-28">
+            <SectionHeader
+              eyebrow="Conversion"
+              title="全体ファネル（参考）"
+              description="イベントのユニークセッション数で、診断開始から友達回答までの離脱を確認"
+            />
+            <Panel className="p-5 sm:p-6">
+            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+              <span className="w-28 text-right">ステップ</span>
+              <span className="flex-1">件数</span>
+              <span className="w-16 text-right">前段比</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {stats.funnel.map((step, i) => (
+                <FunnelBar
+                  key={step.label}
+                  label={step.label}
+                  count={step.count}
+                  max={funnelMax}
+                  prevCount={
+                    i > 0 ? stats.funnel[i - 1].count : undefined
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
+              診断〜友達回答はユニークセッション数、3人/5人達成は「N人目の回答が期間内に届いたオーナー数」。
+              単位が異なるため前ステップ比は目安です。
+            </p>
+            </Panel>
+        </section>
+
+        {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
         {/* Campaign Stats */}
         {stats.campaignStats.length > 0 && (
           <section>
