@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
+import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 // 表示用の価格コピー (実課金額はサーバ側 create-tako-unlock-session が決定する)。
@@ -174,19 +175,21 @@ export function TakoPromoCard({
     setLoading(true);
     setError(null);
     // 課金ファネル計測: 購入CTAクリック (FullAccessCta と同形式。product で ¥799 を区別)。
+    // 最終タッチ導線 (どのロックカードからここへ来たか) を購入まで引き継ぐ。
+    const paywallSource = getLastPaywallSource();
     track("purchase_cta_clicked", {
       ownerToken,
       metadata: {
         page: window.location.pathname.split("/")[1] || "top",
         product: "tako_unlock",
-        source: "tako_promo_card",
+        source: paywallSource,
       },
     });
     try {
       const res = await fetch("/api/checkout/create-tako-unlock-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerToken }),
+        body: JSON.stringify({ ownerToken, paywall_source: paywallSource }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         url?: string;

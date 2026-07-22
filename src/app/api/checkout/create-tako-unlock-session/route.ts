@@ -24,6 +24,10 @@ import {
   TAKO_UNLOCK_PRICE_JPY,
 } from "@/lib/entitlements";
 import { resolveSiteUrl } from "@/lib/site-url";
+import {
+  DIRECT_PAYWALL_SOURCE,
+  normalizePaywallSource,
+} from "@/lib/paywall-source";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -61,6 +65,13 @@ export async function POST(request: NextRequest) {
   const ownerToken = isSafeOpaqueToken(body.ownerToken)
     ? body.ownerToken
     : null;
+  // 最終タッチ導線 (どのロックカードから来たか)。allowlist 外/未指定は
+  // 「/tako 購入カードから直接」に寄せる (¥499 の paywall_direct に相当)。
+  const normalizedSource = normalizePaywallSource(body.paywall_source);
+  const paywallSource =
+    normalizedSource === DIRECT_PAYWALL_SOURCE
+      ? "tako_promo_card"
+      : normalizedSource;
   if (!ownerToken) {
     return NextResponse.json(
       { error: "ownerToken required" },
@@ -149,6 +160,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         payment_kind: "tako_unlock",
         discounted: discounted ? "1" : "0",
+        paywall_source: paywallSource,
       },
       success_url: `${takoUrl}?checkout=success`,
       cancel_url: `${takoUrl}?checkout=cancel`,
@@ -175,7 +187,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         stripe_session_id: stripeSession.id,
         product: "tako_unlock",
-        source: "tako_promo_card",
+        source: paywallSource,
         discounted,
       },
     });

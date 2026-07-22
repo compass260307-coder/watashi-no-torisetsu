@@ -509,11 +509,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                     ? {
                                         mote: (
                                           <TakoLockedBlock
+                                            source="tako_mote_card"
                                             description={`完全版で、${sh.viewer}が感じているあなたのモテ理由が分かります。自分では気づいていない魅力を見てみましょう。`}
                                           />
                                         ),
                                         hints: (
                                           <TakoLockedBlock
+                                            source="tako_hints_card"
                                             description={`完全版で、${sh.viewer}にもっと好かれるための具体的なヒントが読めます。`}
                                           />
                                         ),
@@ -623,6 +625,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               </h3>
                               {takoLocked && (
                                 <TakoLockedBlock
+                                  source="tako_kotsu_card"
                                   description={`完全版で、${sh.viewer}ともっと仲良くなるための具体的なコツを見てみましょう。`}
                                 />
                               )}
@@ -670,6 +673,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               </h3>
                               {takoLocked && (
                                 <TakoLockedBlock
+                                  source="tako_wana_card"
                                   description={`完全版で、${sh.viewer}との関係が陥りがちなすれ違いポイントを先回りして知っておきましょう。`}
                                 />
                               )}

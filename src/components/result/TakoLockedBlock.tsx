@@ -17,9 +17,13 @@ const DECOY_ITEMS = [
 
 export function TakoLockedBlock({
   description,
+  source = "tako_lock",
 }: {
   /** セクション別の説明文 (課金感を出さない一文。/me の解除カードと同トーン)。 */
   description: string;
+  /** 課金ファネル計測の設置場所ID (paywall-source の allowlist に載せること)。
+      セクション別に分けると ¥799 の導線別テーブルでカード単位の比較ができる。 */
+  source?: string;
 }) {
   return (
     <div className="relative">
@@ -68,7 +72,7 @@ export function TakoLockedBlock({
           </p>
           {/* CTA: 最下部の課金カード (#tako-promo) へスクロール (/me の解除カードと同挙動) */}
           <PaywallScrollButton
-            source="tako_lock"
+            source={source}
             targetId="tako-promo"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >

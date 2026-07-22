@@ -25,6 +25,11 @@ const PAYWALL_SOURCES = new Set([
   "friend_list",
   "aisho_scene",
   "tako_lock",
+  "tako_mote_card",
+  "tako_hints_card",
+  "tako_kotsu_card",
+  "tako_wana_card",
+  "tako_promo_card",
 ]);
 
 export function normalizePaywallSource(value: unknown): string {

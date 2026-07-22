@@ -712,6 +712,10 @@ export async function computeStats(from: string | null, to: string | null) {
     "tako_lock",
     "tako_unlocked",
     "tako_promo_card",
+    "tako_mote_card",
+    "tako_hints_card",
+    "tako_kotsu_card",
+    "tako_wana_card",
   ]);
   const isTakoMeta = (m: Record<string, unknown> | null): boolean =>
     m?.product === "tako_unlock" ||
@@ -847,10 +851,12 @@ export async function computeStats(from: string | null, to: string | null) {
         b.scrollClicks - a.scrollClicks,
     );
   // 商品別に導線テーブルを分離 (tako系 source は ¥799 側へ)。
+  // ¥799 側は決済完了 (payment_history) との突合が必要なため、
+  // verifiedPaymentFacts 構築後 (後段) に組み立てる。
   const paywallAttribution = paywallAttributionAll.filter(
     (row) => !TAKO_SOURCES.has(row.source),
   );
-  const takoAttribution = paywallAttributionAll.filter((row) =>
+  const takoAttributionBase = paywallAttributionAll.filter((row) =>
     TAKO_SOURCES.has(row.source),
   );
 
@@ -1083,6 +1089,52 @@ export async function computeStats(from: string | null, to: string | null) {
       .filter((p) => p.kind === "tako_unlock" && inRange(p.paidAt))
       .map((p) => p.stripeSessionId),
   ).size;
+
+  // ¥799 の導線別テーブル: 決済完了を checkout_session_created (product='tako_unlock')
+  // の stripe_session_id → source で突合して source 別に振る。
+  // 計測追加 (2026-07-22) 以前の決済は突合先が無く「unknown」に入る。
+  const takoAttribution = (() => {
+    const sourceBySession = new Map<string, string>();
+    for (const row of checkoutTakoRows) {
+      const sid = row.metadata?.stripe_session_id;
+      const src = row.metadata?.source;
+      if (typeof sid === "string" && sid) {
+        sourceBySession.set(sid, typeof src === "string" && src ? src : "unknown");
+      }
+    }
+    const purchasesBySource = new Map<string, number>();
+    const counted = new Set<string>();
+    for (const p of verifiedPaymentFacts) {
+      if (p.kind !== "tako_unlock" || !inRange(p.paidAt)) continue;
+      if (counted.has(p.stripeSessionId)) continue;
+      counted.add(p.stripeSessionId);
+      const src = sourceBySession.get(p.stripeSessionId) ?? "unknown";
+      purchasesBySource.set(src, (purchasesBySource.get(src) ?? 0) + 1);
+    }
+    const rowsBySource = new Map(
+      takoAttributionBase.map((row) => [row.source, { ...row }]),
+    );
+    for (const [src, purchases] of purchasesBySource) {
+      const row = rowsBySource.get(src) ?? {
+        source: src,
+        scrollClicks: 0,
+        purchaseCtaClicks: 0,
+        stripeReached: 0,
+        purchases: 0,
+        purchaseRate: null as number | null,
+      };
+      row.purchases = purchases;
+      row.purchaseRate =
+        row.scrollClicks > 0 ? purchases / row.scrollClicks : null;
+      rowsBySource.set(src, row);
+    }
+    return Array.from(rowsBySource.values()).sort(
+      (a, b) =>
+        b.purchases - a.purchases ||
+        b.stripeReached - a.stripeReached ||
+        b.scrollClicks - a.scrollClicks,
+    );
+  })();
 
   const revenueDaily = Array.from(dailyBuckets.values())
     .sort((a, b) => b.date.localeCompare(a.date))
