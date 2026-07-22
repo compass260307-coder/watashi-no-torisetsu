@@ -493,19 +493,6 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
   },
 };
 
-// 導線名 → カテゴリ色 (結果ページのセクション色に揃える)。テーブルの視認性用。
-function attributionCategoryColor(label: string): string {
-  if (label.startsWith("旧")) return "#CBD5E1";
-  if (label.includes("恋愛") || label.includes("恋人")) return "#F48BAE";
-  if (label.includes("キャリア") || label.includes("職場")) return "#4CAF7D";
-  if (label.includes("友達") || label.includes("/tako")) return "#56BFE8";
-  if (label.includes("シーン") || label.includes("相性")) return "#F2C14E";
-  if (label.includes("もしも")) return "#9B8CF2";
-  if (label.includes("周りの人")) return "#F28C5B";
-  if (label.includes("直接購入") || label.includes("追従バー")) return "#5B5BEF";
-  return "#94A3B8";
-}
-
 // 数値セル: 0 は薄く沈め、値がある所だけ目に入るようにする。
 function AttributionNum({ value, strong }: { value: number; strong?: boolean }) {
   if (value === 0) {
@@ -555,7 +542,6 @@ function AttributionTable({
         <tbody className="divide-y divide-slate-100/80">
           {rows.map((s) => {
             const label = PAYWALL_SOURCE_LABELS[s.source] ?? s.source;
-            const color = attributionCategoryColor(label);
             const isLegacy = label.startsWith("旧");
             return (
               <tr
@@ -570,11 +556,6 @@ function AttributionTable({
                       isLegacy ? "text-slate-400" : "text-slate-700"
                     }`}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
                     {label}
                     {s.purchases > 0 && (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
@@ -582,13 +563,13 @@ function AttributionTable({
                       </span>
                     )}
                   </p>
-                  {/* 誘導クリック量のミニバー (最大行=100%・カテゴリ色) */}
-                  <span className="ml-[18px] mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded-full bg-slate-100">
+                  {/* 誘導クリック量のミニバー (最大行=100%) */}
+                  <span className="mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded-full bg-slate-100">
                     <span
-                      className="block h-full rounded-full"
+                      className={`block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400 ${
+                        isLegacy ? "opacity-30" : ""
+                      }`}
                       style={{
-                        backgroundColor: color,
-                        opacity: isLegacy ? 0.4 : 0.8,
                         width: `${Math.max(
                           s.scrollClicks > 0 ? 2 : 0,
                           (s.scrollClicks / maxClicks) * 100,
