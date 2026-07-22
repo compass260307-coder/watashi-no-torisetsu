@@ -493,6 +493,35 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
   },
 };
 
+// 導線名 → カテゴリ色 (結果ページのセクション色に揃える)。テーブルの視認性用。
+function attributionCategoryColor(label: string): string {
+  if (label.startsWith("旧")) return "#CBD5E1";
+  if (label.includes("恋愛") || label.includes("恋人")) return "#F48BAE";
+  if (label.includes("キャリア") || label.includes("職場")) return "#4CAF7D";
+  if (label.includes("友達") || label.includes("/tako")) return "#56BFE8";
+  if (label.includes("シーン") || label.includes("相性")) return "#F2C14E";
+  if (label.includes("もしも")) return "#9B8CF2";
+  if (label.includes("周りの人")) return "#F28C5B";
+  if (label.includes("直接購入") || label.includes("追従バー")) return "#5B5BEF";
+  return "#94A3B8";
+}
+
+// 数値セル: 0 は薄く沈め、値がある所だけ目に入るようにする。
+function AttributionNum({ value, strong }: { value: number; strong?: boolean }) {
+  if (value === 0) {
+    return <span className="tabular-nums text-slate-300">0</span>;
+  }
+  return (
+    <span
+      className={`tabular-nums ${
+        strong ? "font-black text-emerald-600" : "font-bold text-slate-700"
+      }`}
+    >
+      {value}
+    </span>
+  );
+}
+
 // 導線別の決済結果テーブル (¥499 / ¥799 の両商品で共用)。
 function AttributionTable({
   rows,
@@ -514,64 +543,95 @@ function AttributionTable({
           <tr>
             <th className="px-3 py-2.5 text-left font-medium">導線</th>
             <th className="px-3 py-2.5 text-right font-medium">誘導クリック</th>
+            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
             <th className="px-3 py-2.5 text-right font-medium">購入ボタン</th>
+            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
             <th className="px-3 py-2.5 text-right font-medium">Stripe到達</th>
+            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
             <th className="px-3 py-2.5 text-right font-medium">決済完了</th>
             <th className="px-3 py-2.5 text-right font-medium">購入率</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100/80">
-          {rows.map((s) => (
-            <tr
-              key={s.source}
-              className={`transition hover:bg-indigo-50/35 ${
-                s.purchases > 0 ? "bg-emerald-50/40" : ""
-              }`}
-            >
-              <td className="px-3 py-3" title={s.source}>
-                <p className="font-semibold text-slate-700">
-                  {s.purchases > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"
-                    />
-                  )}
-                  {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}
-                </p>
-                {/* 誘導クリック量のミニバー (最大行=100%) */}
-                <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
-                  <span
-                    className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400"
-                    style={{
-                      width: `${Math.max(
-                        s.scrollClicks > 0 ? 2 : 0,
-                        (s.scrollClicks / maxClicks) * 100,
-                      )}%`,
-                    }}
-                  />
-                </span>
-              </td>
-              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                {s.scrollClicks}
-              </td>
-              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                {s.purchaseCtaClicks}
-              </td>
-              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                {s.stripeReached}
-              </td>
-              <td
-                className={`px-3 py-3 text-right font-black tabular-nums ${
-                  s.purchases > 0 ? "text-emerald-600" : "text-slate-400"
+          {rows.map((s) => {
+            const label = PAYWALL_SOURCE_LABELS[s.source] ?? s.source;
+            const color = attributionCategoryColor(label);
+            const isLegacy = label.startsWith("旧");
+            return (
+              <tr
+                key={s.source}
+                className={`transition hover:bg-indigo-50/35 ${
+                  s.purchases > 0 ? "bg-emerald-50/50" : ""
                 }`}
               >
-                {s.purchases}
-              </td>
-              <td className="px-3 py-3 text-right font-black tabular-nums text-indigo-600">
-                {s.purchaseRate === null ? "—" : pct(s.purchaseRate)}
-              </td>
-            </tr>
-          ))}
+                <td className="px-3 py-3" title={s.source}>
+                  <p
+                    className={`flex items-center gap-2 font-semibold ${
+                      isLegacy ? "text-slate-400" : "text-slate-700"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    {label}
+                    {s.purchases > 0 && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                        購入あり
+                      </span>
+                    )}
+                  </p>
+                  {/* 誘導クリック量のミニバー (最大行=100%・カテゴリ色) */}
+                  <span className="ml-[18px] mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded-full bg-slate-100">
+                    <span
+                      className="block h-full rounded-full"
+                      style={{
+                        backgroundColor: color,
+                        opacity: isLegacy ? 0.4 : 0.8,
+                        width: `${Math.max(
+                          s.scrollClicks > 0 ? 2 : 0,
+                          (s.scrollClicks / maxClicks) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <AttributionNum value={s.scrollClicks} />
+                </td>
+                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                  →
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <AttributionNum value={s.purchaseCtaClicks} />
+                </td>
+                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                  →
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <AttributionNum value={s.stripeReached} />
+                </td>
+                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                  →
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <AttributionNum value={s.purchases} strong />
+                </td>
+                <td className="px-3 py-3 text-right">
+                  {s.purchaseRate === null ? (
+                    <span className="text-slate-300">—</span>
+                  ) : s.purchaseRate > 0 ? (
+                    <span className="rounded-full bg-indigo-600 px-2 py-1 text-[11px] font-black tabular-nums text-white">
+                      {pct(s.purchaseRate)}
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-slate-300">0.0%</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
