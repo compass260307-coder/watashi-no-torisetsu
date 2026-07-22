@@ -702,12 +702,14 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
 
-  // ===== 商品別セグメント (2026-07-22) =====
-  //   ¥499 自己診断=full_access / ¥799 友達診断=tako_unlock
-  // 判定: paywall_viewed は metadata.variant ('tako' = ¥799 カード)。
-  // scroll/cta/checkout は metadata.product または source (tako系) で判定。
-  // ¥799 の決済完了はイベントに無いため payment_history (kind='tako_unlock')
-  // を正とする (verifiedPaymentFacts 構築後に集計)。
+  // ===== 入口ページ別セグメント (2026-07-23: ¥499 完全版一本化に追随) =====
+  //   商品は ¥499 完全版 (full_access) の1つ。ファネルは「発生ページ」で2分する:
+  //     自己診断ページ発 (/me 等・非 tako ソース) / 友達診断ページ発 (/tako・tako 系ソース)。
+  //   どちらの決済も full_access。旧 ¥799 単体 (tako_unlock) は販売終了 → 過去実績は
+  //   「商品別売上内訳」に残るだけで、このファネルの決済完了は full_access を source で分ける。
+  // 判定:
+  //   - paywall_viewed: metadata.page==='tako' (新カード) または variant==='tako' (旧カード互換)。
+  //   - scroll/cta/checkout/purchase: metadata.source が tako 系か (isTakoMeta)。
   const TAKO_SOURCES = new Set([
     "tako_lock",
     "tako_unlocked",
@@ -720,12 +722,14 @@ export async function computeStats(from: string | null, to: string | null) {
   const isTakoMeta = (m: Record<string, unknown> | null): boolean =>
     m?.product === "tako_unlock" ||
     (typeof m?.source === "string" && TAKO_SOURCES.has(m.source));
+  const isTakoView = (m: Record<string, unknown> | null): boolean =>
+    m?.page === "tako" || m?.variant === "tako";
 
   const paywallViewedFullRows = paywallViewedRows.filter(
-    (r) => r.metadata?.variant !== "tako",
+    (r) => !isTakoView(r.metadata),
   );
-  const paywallViewedTakoRows = paywallViewedRows.filter(
-    (r) => r.metadata?.variant === "tako",
+  const paywallViewedTakoRows = paywallViewedRows.filter((r) =>
+    isTakoView(r.metadata),
   );
   const scrollFullRows = paywallScrollRows.filter((r) => !isTakoMeta(r.metadata));
   const scrollTakoRows = paywallScrollRows.filter((r) => isTakoMeta(r.metadata));
@@ -737,16 +741,22 @@ export async function computeStats(from: string | null, to: string | null) {
   const checkoutTakoRows = checkoutCreatedRows.filter((r) =>
     isTakoMeta(r.metadata),
   );
+  // 決済完了 (full_access) を source で自己/友達に分割 (合計=全 full_access 決済)。
+  const purchaseFullRows = purchaseCompletedRows.filter(
+    (r) => !isTakoMeta(r.metadata),
+  );
+  const purchaseTakoRows = purchaseCompletedRows.filter((r) =>
+    isTakoMeta(r.metadata),
+  );
 
-  // ¥499 側のファネル数値 (従来の全体値から tako を除いた値)
+  // 自己診断ページ発のファネル数値。
   const paywallViewed = toUnique(paywallViewedFullRows);
   const paywallScrollClicked = toUnique(scrollFullRows);
   const purchaseCtaClicked = toUnique(ctaFullRows);
   const checkoutCreated = countUniqueStripeSessions(checkoutFullRows);
-  // purchase_completed イベントは webhook が full_access のみ発行 → そのまま ¥499 の決済完了。
-  const purchaseCompleted = countUniqueStripeSessions(purchaseCompletedRows);
+  const purchaseCompleted = countUniqueStripeSessions(purchaseFullRows);
 
-  // ¥799 側のファネル数値 (決済完了は後段で payment_history から)
+  // 友達診断ページ発のファネル数値 (決済完了は tako 系 source の full_access 決済)。
   const takoPaywallViewed = toUnique(paywallViewedTakoRows);
   const takoScrollClicked = toUnique(scrollTakoRows);
   const takoCtaClicked = toUnique(ctaTakoRows);
@@ -1082,59 +1092,13 @@ export async function computeStats(from: string | null, to: string | null) {
     bucket.purchases++;
     dailyBuckets.set(date, bucket);
   }
-  // ¥799 (tako_unlock) の決済完了数 (選択期間・stripe_session_id ユニーク)。
-  // webhook は tako の purchase_completed イベントを発行しないため payment_history が正。
-  const takoPurchases = new Set(
-    verifiedPaymentFacts
-      .filter((p) => p.kind === "tako_unlock" && inRange(p.paidAt))
-      .map((p) => p.stripeSessionId),
-  ).size;
+  // 友達診断ページ発の決済完了数 (tako 系 source の full_access 決済・選択期間)。
+  const takoPurchases = countUniqueStripeSessions(purchaseTakoRows);
 
-  // ¥799 の導線別テーブル: 決済完了を checkout_session_created (product='tako_unlock')
-  // の stripe_session_id → source で突合して source 別に振る。
-  // 計測追加 (2026-07-22) 以前の決済は突合先が無く「unknown」に入る。
-  const takoAttribution = (() => {
-    const sourceBySession = new Map<string, string>();
-    for (const row of checkoutTakoRows) {
-      const sid = row.metadata?.stripe_session_id;
-      const src = row.metadata?.source;
-      if (typeof sid === "string" && sid) {
-        sourceBySession.set(sid, typeof src === "string" && src ? src : "unknown");
-      }
-    }
-    const purchasesBySource = new Map<string, number>();
-    const counted = new Set<string>();
-    for (const p of verifiedPaymentFacts) {
-      if (p.kind !== "tako_unlock" || !inRange(p.paidAt)) continue;
-      if (counted.has(p.stripeSessionId)) continue;
-      counted.add(p.stripeSessionId);
-      const src = sourceBySession.get(p.stripeSessionId) ?? "unknown";
-      purchasesBySource.set(src, (purchasesBySource.get(src) ?? 0) + 1);
-    }
-    const rowsBySource = new Map(
-      takoAttributionBase.map((row) => [row.source, { ...row }]),
-    );
-    for (const [src, purchases] of purchasesBySource) {
-      const row = rowsBySource.get(src) ?? {
-        source: src,
-        scrollClicks: 0,
-        purchaseCtaClicks: 0,
-        stripeReached: 0,
-        purchases: 0,
-        purchaseRate: null as number | null,
-      };
-      row.purchases = purchases;
-      row.purchaseRate =
-        row.scrollClicks > 0 ? purchases / row.scrollClicks : null;
-      rowsBySource.set(src, row);
-    }
-    return Array.from(rowsBySource.values()).sort(
-      (a, b) =>
-        b.purchases - a.purchases ||
-        b.stripeReached - a.stripeReached ||
-        b.scrollClicks - a.scrollClicks,
-    );
-  })();
+  // 友達診断ページ発の導線別テーブル。takoAttributionBase は purchase_completed を
+  // source 別に集計済み (full_access・tako 系 source)。旧 tako_unlock の突合は不要
+  // (販売終了。過去 ¥799 実績は purchase_completed を発行しないので出ない = 意図どおり)。
+  const takoAttribution = takoAttributionBase;
 
   const revenueDaily = Array.from(dailyBuckets.values())
     .sort((a, b) => b.date.localeCompare(a.date))
