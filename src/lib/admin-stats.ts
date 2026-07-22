@@ -214,7 +214,11 @@ export async function computeStats(from: string | null, to: string | null) {
       evRows(["friend_landing_viewed"], "session_id, invite_code"),
     ),
     // ----- 課金ファネル -----
-    fetchAll<SessionRow>(evRows(["paywall_viewed"])),
+    // metadata.variant='tako' が ¥799 (友達診断) カードの表示。商品別分離用に metadata も取る。
+    fetchAll<{
+      session_id: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["paywall_viewed"], "session_id, metadata")),
     fetchAll<{
       session_id: string | null;
       metadata: Record<string, unknown> | null;
@@ -698,11 +702,58 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
 
-  const paywallViewed = toUnique(paywallViewedRows);
-  const paywallScrollClicked = toUnique(paywallScrollRows);
-  const purchaseCtaClicked = toUnique(purchaseCtaRows);
-  const checkoutCreated = countUniqueStripeSessions(checkoutCreatedRows);
+  // ===== 商品別セグメント (2026-07-22) =====
+  //   ¥499 自己診断=full_access / ¥799 友達診断=tako_unlock
+  // 判定: paywall_viewed は metadata.variant ('tako' = ¥799 カード)。
+  // scroll/cta/checkout は metadata.product または source (tako系) で判定。
+  // ¥799 の決済完了はイベントに無いため payment_history (kind='tako_unlock')
+  // を正とする (verifiedPaymentFacts 構築後に集計)。
+  const TAKO_SOURCES = new Set([
+    "tako_lock",
+    "tako_unlocked",
+    "tako_promo_card",
+  ]);
+  const isTakoMeta = (m: Record<string, unknown> | null): boolean =>
+    m?.product === "tako_unlock" ||
+    (typeof m?.source === "string" && TAKO_SOURCES.has(m.source));
+
+  const paywallViewedFullRows = paywallViewedRows.filter(
+    (r) => r.metadata?.variant !== "tako",
+  );
+  const paywallViewedTakoRows = paywallViewedRows.filter(
+    (r) => r.metadata?.variant === "tako",
+  );
+  const scrollFullRows = paywallScrollRows.filter((r) => !isTakoMeta(r.metadata));
+  const scrollTakoRows = paywallScrollRows.filter((r) => isTakoMeta(r.metadata));
+  const ctaFullRows = purchaseCtaRows.filter((r) => !isTakoMeta(r.metadata));
+  const ctaTakoRows = purchaseCtaRows.filter((r) => isTakoMeta(r.metadata));
+  const checkoutFullRows = checkoutCreatedRows.filter(
+    (r) => !isTakoMeta(r.metadata),
+  );
+  const checkoutTakoRows = checkoutCreatedRows.filter((r) =>
+    isTakoMeta(r.metadata),
+  );
+
+  // ¥499 側のファネル数値 (従来の全体値から tako を除いた値)
+  const paywallViewed = toUnique(paywallViewedFullRows);
+  const paywallScrollClicked = toUnique(scrollFullRows);
+  const purchaseCtaClicked = toUnique(ctaFullRows);
+  const checkoutCreated = countUniqueStripeSessions(checkoutFullRows);
+  // purchase_completed イベントは webhook が full_access のみ発行 → そのまま ¥499 の決済完了。
   const purchaseCompleted = countUniqueStripeSessions(purchaseCompletedRows);
+
+  // ¥799 側のファネル数値 (決済完了は後段で payment_history から)
+  const takoPaywallViewed = toUnique(paywallViewedTakoRows);
+  const takoScrollClicked = toUnique(scrollTakoRows);
+  const takoCtaClicked = toUnique(ctaTakoRows);
+  const takoCheckoutCreated = countUniqueStripeSessions(checkoutTakoRows);
+  // /tako ページ表示 (friendJourneyRows の tako_viewed・ユニークセッション)
+  const takoPageViewed = new Set(
+    friendJourneyRows
+      .filter((r) => r.event_name === "tako_viewed")
+      .map((r) => r.session_id)
+      .filter(Boolean),
+  ).size;
 
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
@@ -774,7 +825,7 @@ export async function computeStats(from: string | null, to: string | null) {
     ...checkoutBySource.keys(),
     ...purchaseBySource.keys(),
   ]);
-  const paywallAttribution = Array.from(attributionSources)
+  const paywallAttributionAll = Array.from(attributionSources)
     .map((source) => {
       const scrollClicks = scrollBySource.get(source) ?? 0;
       const purchaseCtaClicks = purchaseCtaBySource.get(source) ?? 0;
@@ -795,6 +846,13 @@ export async function computeStats(from: string | null, to: string | null) {
         b.stripeReached - a.stripeReached ||
         b.scrollClicks - a.scrollClicks,
     );
+  // 商品別に導線テーブルを分離 (tako系 source は ¥799 側へ)。
+  const paywallAttribution = paywallAttributionAll.filter(
+    (row) => !TAKO_SOURCES.has(row.source),
+  );
+  const takoAttribution = paywallAttributionAll.filter((row) =>
+    TAKO_SOURCES.has(row.source),
+  );
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
@@ -1018,6 +1076,14 @@ export async function computeStats(from: string | null, to: string | null) {
     bucket.purchases++;
     dailyBuckets.set(date, bucket);
   }
+  // ¥799 (tako_unlock) の決済完了数 (選択期間・stripe_session_id ユニーク)。
+  // webhook は tako の purchase_completed イベントを発行しないため payment_history が正。
+  const takoPurchases = new Set(
+    verifiedPaymentFacts
+      .filter((p) => p.kind === "tako_unlock" && inRange(p.paidAt))
+      .map((p) => p.stripeSessionId),
+  ).size;
+
   const revenueDaily = Array.from(dailyBuckets.values())
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 62)
@@ -1154,8 +1220,8 @@ export async function computeStats(from: string | null, to: string | null) {
         ),
       },
     },
-    // 課金ファネル: 結果ページ表示 → カード表示 → 誘導クリック → 購入CTA →
-    // Stripe到達 → 決済完了。前半はユニークセッション、後半2つは件数 (サーバ発行)。
+    // 課金ファネル (¥499 自己診断・完全版): 結果ページ表示 → カード表示 → 誘導クリック →
+    // 購入CTA → Stripe到達 → 決済完了。前半はユニークセッション、後半2つは件数 (サーバ発行)。
     paywallFunnel: [
       { label: "結果ページ表示", count: uniqueViewed },
       { label: "課金カード表示", count: paywallViewed },
@@ -1164,8 +1230,19 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "Stripe到達", count: checkoutCreated },
       { label: "決済完了", count: purchaseCompleted },
     ],
+    // 課金ファネル (¥799 友達診断・全解放)。Stripe到達は 2026-07-22 に計測追加
+    // (それ以前は 0)。決済完了は payment_history (kind='tako_unlock') が正。
+    takoFunnel: [
+      { label: "/tako 表示", count: takoPageViewed },
+      { label: "課金カード表示", count: takoPaywallViewed },
+      { label: "解除ボタン押下", count: takoScrollClicked },
+      { label: "購入CTA押下", count: takoCtaClicked },
+      { label: "Stripe到達", count: takoCheckoutCreated },
+      { label: "決済完了", count: takoPurchases },
+    ],
     paywallSources,
     paywallAttribution,
+    takoAttribution,
     purchaseCompleted,
     purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
     paidUsers,

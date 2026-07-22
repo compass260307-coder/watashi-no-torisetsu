@@ -173,6 +173,15 @@ export function TakoPromoCard({
     if (loading) return;
     setLoading(true);
     setError(null);
+    // 課金ファネル計測: 購入CTAクリック (FullAccessCta と同形式。product で ¥799 を区別)。
+    track("purchase_cta_clicked", {
+      ownerToken,
+      metadata: {
+        page: window.location.pathname.split("/")[1] || "top",
+        product: "tako_unlock",
+        source: "tako_promo_card",
+      },
+    });
     try {
       const res = await fetch("/api/checkout/create-tako-unlock-session", {
         method: "POST",

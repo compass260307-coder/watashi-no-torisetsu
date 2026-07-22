@@ -40,6 +40,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   aisho_scene: "相性ページ(シーン別)",
   tako_lock: "/tako 未解放ロック",
   tako_unlocked: "/tako 解放後導線",
+  tako_promo_card: "/tako 購入カード (¥799 直接購入)",
   paywall_direct: "課金カードから直接購入",
   unknown: "不明",
 };
@@ -168,8 +169,17 @@ type Stats = {
     };
   };
   paywallFunnel: { label: string; count: number }[];
+  takoFunnel: { label: string; count: number }[];
   paywallSources: { source: string; count: number }[];
   paywallAttribution: {
+    source: string;
+    scrollClicks: number;
+    purchaseCtaClicks: number;
+    stripeReached: number;
+    purchases: number;
+    purchaseRate: number | null;
+  }[];
+  takoAttribution: {
     source: string;
     scrollClicks: number;
     purchaseCtaClicks: number;
@@ -478,6 +488,91 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
     arrow: "―",
   },
 };
+
+// 導線別の決済結果テーブル (¥499 / ¥799 の両商品で共用)。
+function AttributionTable({
+  rows,
+}: {
+  rows: {
+    source: string;
+    scrollClicks: number;
+    purchaseCtaClicks: number;
+    stripeReached: number;
+    purchases: number;
+    purchaseRate: number | null;
+  }[];
+}) {
+  const maxClicks = Math.max(1, ...rows.map((s) => s.scrollClicks));
+  return (
+    <div className="overflow-x-auto rounded-[18px] border border-slate-200/80">
+      <table className="w-full min-w-[760px] text-xs">
+        <thead className="bg-slate-50/90 text-slate-500">
+          <tr>
+            <th className="px-3 py-2.5 text-left font-medium">導線</th>
+            <th className="px-3 py-2.5 text-right font-medium">誘導クリック</th>
+            <th className="px-3 py-2.5 text-right font-medium">購入ボタン</th>
+            <th className="px-3 py-2.5 text-right font-medium">Stripe到達</th>
+            <th className="px-3 py-2.5 text-right font-medium">決済完了</th>
+            <th className="px-3 py-2.5 text-right font-medium">購入率</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100/80">
+          {rows.map((s) => (
+            <tr
+              key={s.source}
+              className={`transition hover:bg-indigo-50/35 ${
+                s.purchases > 0 ? "bg-emerald-50/40" : ""
+              }`}
+            >
+              <td className="px-3 py-3" title={s.source}>
+                <p className="font-semibold text-slate-700">
+                  {s.purchases > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"
+                    />
+                  )}
+                  {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}
+                </p>
+                {/* 誘導クリック量のミニバー (最大行=100%) */}
+                <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
+                  <span
+                    className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400"
+                    style={{
+                      width: `${Math.max(
+                        s.scrollClicks > 0 ? 2 : 0,
+                        (s.scrollClicks / maxClicks) * 100,
+                      )}%`,
+                    }}
+                  />
+                </span>
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                {s.scrollClicks}
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                {s.purchaseCtaClicks}
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                {s.stripeReached}
+              </td>
+              <td
+                className={`px-3 py-3 text-right font-black tabular-nums ${
+                  s.purchases > 0 ? "text-emerald-600" : "text-slate-400"
+                }`}
+              >
+                {s.purchases}
+              </td>
+              <td className="px-3 py-3 text-right font-black tabular-nums text-indigo-600">
+                {s.purchaseRate === null ? "—" : pct(s.purchaseRate)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 type ExecutiveMetricTone = "indigo" | "emerald" | "cyan";
 
@@ -1208,6 +1303,10 @@ export default function AdminPage() {
     ...stats.friendDiagnosisFunnel.friendFunnel.map((f) => f.count),
     1,
   );
+  const takoFunnelMax = Math.max(
+    1,
+    ...(stats.takoFunnel ?? []).map((f) => f.count),
+  );
   const paywallFunnelMax = Math.max(
     ...(stats.paywallFunnel ?? []).map((f) => f.count),
     1,
@@ -1335,9 +1434,15 @@ export default function AdminPage() {
       ]),
     );
     rows.push([]);
-    rows.push(["# 課金ファネル"]);
+    rows.push(["# 課金ファネル (自己診断・完全版 ¥499)"]);
     rows.push(["ステップ", "件数"]);
     (stats.paywallFunnel ?? []).forEach((s) =>
+      rows.push([s.label, String(s.count)]),
+    );
+    rows.push([]);
+    rows.push(["# 課金ファネル (友達診断・全解放 ¥799)"]);
+    rows.push(["ステップ", "件数"]);
+    (stats.takoFunnel ?? []).forEach((s) =>
       rows.push([s.label, String(s.count)]),
     );
     rows.push([]);
@@ -1360,16 +1465,17 @@ export default function AdminPage() {
         "決済完了",
         "クリック→決済率",
       ]);
-      stats.paywallAttribution.forEach((s) =>
-        rows.push([
-          s.source,
-          PAYWALL_SOURCE_LABELS[s.source] ?? s.source,
-          String(s.scrollClicks),
-          String(s.purchaseCtaClicks),
-          String(s.stripeReached),
-          String(s.purchases),
-          s.purchaseRate === null ? "" : pct(s.purchaseRate),
-        ]),
+      [...stats.paywallAttribution, ...(stats.takoAttribution ?? [])].forEach(
+        (s) =>
+          rows.push([
+            s.source,
+            PAYWALL_SOURCE_LABELS[s.source] ?? s.source,
+            String(s.scrollClicks),
+            String(s.purchaseCtaClicks),
+            String(s.stripeReached),
+            String(s.purchases),
+            s.purchaseRate === null ? "" : pct(s.purchaseRate),
+          ]),
       );
       rows.push([]);
     }
@@ -2133,6 +2239,15 @@ export default function AdminPage() {
               }
             />
             <Panel className="p-5 sm:p-6">
+            {/* ===== ① 自己診断・完全版 (¥499 / full_access) ===== */}
+            <div className="mb-4 flex items-center gap-2">
+              <span className="rounded-full bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
+                自己診断・完全版 ¥499
+              </span>
+              <span className="text-[11px] font-medium text-slate-400">
+                /me 結果ページの課金ファネル
+              </span>
+            </div>
             <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
               <span className="w-28 text-right">ステップ</span>
               <span className="flex-1">件数</span>
@@ -2155,96 +2270,66 @@ export default function AdminPage() {
               前半3ステップはユニークセッション数、Stripe到達・決済完了はサーバ記録の件数。
               計測開始 (2026-07-13) 以前のデータは含まれません。
             </p>
-            {/* 「解除ボタン押下の内訳」チップ羅列は 2026-07-22 に撤去
-                (導線別テーブルの誘導クリック列と完全に重複していたため)。 */}
             {(stats.paywallAttribution ?? []).length > 0 && (
               <div className="mt-6 border-t border-slate-100 pt-5">
                 <p className="mb-1 text-sm font-black text-slate-900">
                   導線別の決済結果（最後に押したカード別）
                 </p>
                 <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                  どのロックカードから購入へ進んだかを、Stripe到達・決済完了まで追跡します。
+                  どのロックカードから ¥499 の購入へ進んだかを、Stripe到達・決済完了まで追跡します。
                 </p>
-                <div className="overflow-x-auto rounded-[18px] border border-slate-200/80">
-                  <table className="w-full min-w-[760px] text-xs">
-                    <thead className="bg-slate-50/90 text-slate-500">
-                      <tr>
-                        <th className="px-3 py-2.5 text-left font-medium">導線</th>
-                        <th className="px-3 py-2.5 text-right font-medium">誘導クリック</th>
-                        <th className="px-3 py-2.5 text-right font-medium">購入ボタン</th>
-                        <th className="px-3 py-2.5 text-right font-medium">Stripe到達</th>
-                        <th className="px-3 py-2.5 text-right font-medium">決済完了</th>
-                        <th className="px-3 py-2.5 text-right font-medium">購入率</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100/80">
-                      {(() => {
-                        const maxClicks = Math.max(
-                          1,
-                          ...stats.paywallAttribution.map((s) => s.scrollClicks),
-                        );
-                        return stats.paywallAttribution.map((s) => (
-                          <tr
-                            key={s.source}
-                            className={`transition hover:bg-indigo-50/35 ${
-                              s.purchases > 0 ? "bg-emerald-50/40" : ""
-                            }`}
-                          >
-                            <td className="px-3 py-3" title={s.source}>
-                              <p className="font-semibold text-slate-700">
-                                {s.purchases > 0 && (
-                                  <span
-                                    aria-hidden="true"
-                                    className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"
-                                  />
-                                )}
-                                {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}
-                              </p>
-                              {/* 誘導クリック量のミニバー (最大行=100%) */}
-                              <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
-                                <span
-                                  className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400"
-                                  style={{
-                                    width: `${Math.max(
-                                      s.scrollClicks > 0 ? 2 : 0,
-                                      (s.scrollClicks / maxClicks) * 100,
-                                    )}%`,
-                                  }}
-                                />
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                              {s.scrollClicks}
-                            </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                              {s.purchaseCtaClicks}
-                            </td>
-                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                              {s.stripeReached}
-                            </td>
-                            <td
-                              className={`px-3 py-3 text-right font-black tabular-nums ${
-                                s.purchases > 0
-                                  ? "text-emerald-600"
-                                  : "text-slate-400"
-                              }`}
-                            >
-                              {s.purchases}
-                            </td>
-                            <td className="px-3 py-3 text-right font-black tabular-nums text-indigo-600">
-                              {s.purchaseRate === null ? "—" : pct(s.purchaseRate)}
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
+                <AttributionTable rows={stats.paywallAttribution} />
                 <p className="mt-3 text-[11px] text-slate-400">
                   購入率は「決済完了 ÷ 誘導クリック」。計測更新前の決済は「不明」に含まれます。
                 </p>
               </div>
             )}
+
+            {/* ===== ② 友達診断・全解放 (¥799 / tako_unlock) ===== */}
+            <div className="mt-10 border-t-2 border-slate-100 pt-6">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="rounded-full bg-rose-500 px-3 py-1 text-[11px] font-black text-white">
+                  友達診断・全解放 ¥799
+                </span>
+                <span className="text-[11px] font-medium text-slate-400">
+                  /tako ページの課金ファネル (全解放オーナーは¥300)
+                </span>
+              </div>
+              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+                <span className="w-28 text-right">ステップ</span>
+                <span className="flex-1">件数</span>
+                <span className="w-16 text-right">前段比</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {(stats.takoFunnel ?? []).map((step, i) => (
+                  <FunnelBar
+                    key={step.label}
+                    label={step.label}
+                    count={step.count}
+                    max={takoFunnelMax}
+                    prevCount={
+                      i > 0 ? stats.takoFunnel[i - 1].count : undefined
+                    }
+                  />
+                ))}
+              </div>
+              <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
+                決済完了は payment_history (tako_unlock) の実決済数。購入CTA・Stripe到達は
+                2026-07-22 に計測追加のため、それ以前の期間は 0 になります。
+              </p>
+              {(stats.takoAttribution ?? []).length > 0 && (
+                <div className="mt-6 border-t border-slate-100 pt-5">
+                  <p className="mb-1 text-sm font-black text-slate-900">
+                    導線別の内訳 (¥799)
+                  </p>
+                  <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
+                    /tako 内のロックカード・購入カードごとのクリックとStripe到達。
+                    決済完了の導線紐付けは計測追加以降のデータから溜まります。
+                  </p>
+                  <AttributionTable rows={stats.takoAttribution} />
+                </div>
+              )}
+            </div>
 
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
             {(stats.revenueByKind ?? []).length > 0 && (

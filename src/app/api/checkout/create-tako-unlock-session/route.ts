@@ -164,6 +164,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 課金ファネル計測: Stripe Checkout 到達 (full_access の checkout_session_created と
+  // 同形式・product で商品を区別)。計測失敗で課金導線を止めない。
+  try {
+    await supabaseAdmin.from("events").insert({
+      event_name: "checkout_session_created",
+      owner_token: ownerToken,
+      locale: "ja",
+      metadata: {
+        user_id: userId,
+        stripe_session_id: stripeSession.id,
+        product: "tako_unlock",
+        source: "tako_promo_card",
+        discounted,
+      },
+    });
+  } catch {
+    // noop
+  }
+
   return NextResponse.json({
     sessionId: stripeSession.id,
     url: stripeSession.url,

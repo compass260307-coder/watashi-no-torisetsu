@@ -441,6 +441,7 @@ export async function POST(request: NextRequest) {
         guest: userId ? false : true,
         user_id: userId,
         stripe_session_id: stripeSession.id,
+        product: "full_access",
         source: paywallSource,
         locale: checkoutLocale,
       },
