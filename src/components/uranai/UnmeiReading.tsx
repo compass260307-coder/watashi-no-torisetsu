@@ -10,6 +10,9 @@
 //   { hitokoto: string, sections: [{ id, title, body }] } (sections は haichi/kokoro/chosen/grace の4本)
 // ※ subline に相当するフィールドはデータに存在しないため表示しない (縦位置だけ将来用に確保)。
 
+import NatalChartWheel from "@/components/uranai/NatalChartWheel";
+import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
+
 // 章ごとの淡い色面。hero-colors.ts の CARD_TONE[group].softBg を流用 (海/空/陸/未知の順)。
 const SECTION_TINTS = [
   "#EAF7FA", // 海: 淡いシアン
@@ -21,7 +24,17 @@ const SECTION_TINTS = [
 type UnmeiSection = { id?: string; title?: string; body?: string };
 type UnmeiReadingData = { hitokoto?: string; sections?: UnmeiSection[] };
 
-export default function UnmeiReading({ reading }: { reading: unknown }) {
+export default function UnmeiReading({
+  reading,
+  chart = null,
+  timeUnknown = false,
+  moonArc = null,
+}: {
+  reading: unknown;
+  chart?: Chart | null;
+  timeUnknown?: boolean;
+  moonArc?: MoonArc | null;
+}) {
   const data = (reading ?? {}) as UnmeiReadingData;
   const hitokoto = typeof data.hitokoto === "string" ? data.hitokoto.trim() : "";
   const sections: UnmeiSection[] = Array.isArray(data.sections)
@@ -43,6 +56,10 @@ export default function UnmeiReading({ reading }: { reading: unknown }) {
           </p>
         )}
       </div>
+
+      {/* 出生図ホイール: hitokoto 直後・章1の前。「自分の生年月日と時刻から作られた図」と
+          一目で伝える。chart が無ければ非表示 (フェイルクローズ)。 */}
+      <NatalChartWheel chart={chart} timeUnknown={timeUnknown} moonArc={moonArc} />
 
       {/* 4章それぞれを章として表示。章と章の間は淡い色面で区切る (mt-10 の白余白 + 色帯)。 */}
       {sections.map((sec, i) => {
