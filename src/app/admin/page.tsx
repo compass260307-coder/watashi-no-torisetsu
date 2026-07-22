@@ -295,6 +295,35 @@ function getPresetRange(preset: Preset): { from: string; to: string } | null {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
+// 前期間比較のレンジ: 今日→昨日 / 7日→前の7日 / 30日→前の30日。
+// all/custom は比較なし (基準となる「直前の同じ長さ」が定義できないため)。
+function getPrevPresetRange(
+  preset: Preset,
+): { from: string; to: string; label: string } | null {
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let days: number;
+  let label: string;
+  if (preset === "today") {
+    days = 1;
+    label = "昨日";
+  } else if (preset === "7d") {
+    days = 7;
+    label = "前の7日";
+  } else if (preset === "30d") {
+    days = 30;
+    label = "前の30日";
+  } else {
+    return null;
+  }
+  const from = new Date(base);
+  from.setDate(from.getDate() - days * 2 + 1);
+  const to = new Date(base);
+  to.setDate(to.getDate() - days);
+  to.setHours(23, 59, 59, 999);
+  return { from: from.toISOString(), to: to.toISOString(), label };
+}
+
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 const pctOrDash = (v: number, denominator: number) =>
   denominator > 0 ? pct(v) : "—";
@@ -333,6 +362,68 @@ function formatNetRevenue(
     .join(" / ");
 }
 
+// 期間比較で使う3つの見出し数値 (診断人数/課金額/友達診断率) を Stats から導出。
+// 本体カードと前期間側で同じロジックを使い、比較のズレを防ぐ。
+function computeHeadlines(stats: Stats) {
+  const coreReady = stats.coreKpis.dataQuality.ready;
+  const ownerDiagnosisStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
+    (step) => step.key === "diagnosis",
+  );
+  const ownerFriendCompletedStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
+    (step) => step.key === "friend_answer",
+  );
+  const hasTrustedCoreDiagnosis =
+    coreReady &&
+    (stats.coreKpis.cohort.diagnosisUsers > 0 ||
+      stats.diagnosisCompleted === 0);
+  const diagnosisUsers = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.cohort.diagnosisUsers
+    : stats.diagnosisCompleted;
+  const friendNumerator = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.diagnosisToFriend.numerator
+    : (ownerFriendCompletedStep?.count ?? 0);
+  const friendDenominator = hasTrustedCoreDiagnosis
+    ? stats.coreKpis.diagnosisToFriend.denominator
+    : (ownerDiagnosisStep?.count ?? diagnosisUsers);
+  const friendRate =
+    friendDenominator > 0 ? friendNumerator / friendDenominator : 0;
+  const currencies = stats.coreKpis.periodRevenue.currencies;
+  const purchases = currencies.reduce((sum, row) => sum + row.purchases, 0);
+  const revenueLabel =
+    currencies.length > 0 ? formatNetRevenue(currencies) : formatMoney(0, "jpy");
+  return {
+    hasTrustedCoreDiagnosis,
+    diagnosisUsers,
+    friendNumerator,
+    friendDenominator,
+    friendRate,
+    currencies,
+    purchases,
+    revenueLabel,
+  };
+}
+
+type MetricTrend = "up" | "down" | "flat";
+
+function trendOf(diff: number): MetricTrend {
+  return diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+}
+
+const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
+  up: {
+    chip: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
+    arrow: "▲",
+  },
+  down: {
+    chip: "border-rose-300/25 bg-rose-300/10 text-rose-200",
+    arrow: "▼",
+  },
+  flat: {
+    chip: "border-white/10 bg-white/[0.06] text-slate-300",
+    arrow: "―",
+  },
+};
+
 type ExecutiveMetricTone = "indigo" | "emerald" | "cyan";
 
 const EXECUTIVE_METRIC_TONES: Record<
@@ -368,6 +459,7 @@ function ExecutiveMetricCard({
   badge,
   tone,
   compactValue = false,
+  compare,
 }: {
   index: string;
   label: string;
@@ -377,6 +469,8 @@ function ExecutiveMetricCard({
   badge: string;
   tone: ExecutiveMetricTone;
   compactValue?: boolean;
+  /** 前期間比較チップ (昨日/前の7日 など)。null/undefined なら非表示。 */
+  compare?: { label: string; trend: MetricTrend } | null;
 }) {
   const colors = EXECUTIVE_METRIC_TONES[tone];
   return (
@@ -416,6 +510,14 @@ function ExecutiveMetricCard({
           </span>
         ) : null}
       </div>
+      {compare ? (
+        <p
+          className={`relative mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black tabular-nums ${TREND_STYLES[compare.trend].chip}`}
+        >
+          <span aria-hidden="true">{TREND_STYLES[compare.trend].arrow}</span>
+          {compare.label}
+        </p>
+      ) : null}
       <p className="relative mt-4 border-t border-white/[0.08] pt-3 text-[11px] font-medium leading-relaxed text-slate-400">
         {detail}
       </p>
@@ -723,6 +825,8 @@ export default function AdminPage() {
   const [inputKey, setInputKey] = useState("");
   const [adminKey, setAdminKey] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  // 前期間 (昨日/前の7日/前の30日) の統計。見出しカードの比較チップ用。
+  const [prevStats, setPrevStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
@@ -777,6 +881,30 @@ export default function AdminPage() {
         setLastUpdatedAt(new Date().toISOString());
         setAdminKey(key);
         sessionStorage.setItem("torisetsu_admin_key", key);
+        // 前期間 (昨日/前の7日/前の30日) を追加取得して見出しカードに比較を出す。
+        // 本体の描画をブロックしないよう await せず、失敗時は比較チップ非表示のみ。
+        const prevRange = getPrevPresetRange(p);
+        if (prevRange) {
+          void (async () => {
+            try {
+              const prevParams = new URLSearchParams({
+                from: prevRange.from,
+                to: prevRange.to,
+              });
+              const prevRes = await fetch(
+                `/api/admin/stats?${prevParams.toString()}`,
+                { headers: { "x-admin-key": key } },
+              );
+              setPrevStats(
+                prevRes.ok ? ((await prevRes.json()) as Stats) : null,
+              );
+            } catch {
+              setPrevStats(null);
+            }
+          })();
+        } else {
+          setPrevStats(null);
+        }
       } catch {
         setError("データの取得に失敗しました");
       } finally {
@@ -1200,38 +1328,72 @@ export default function AdminPage() {
 
   const selectedPeriodLabel =
     PRESETS.find((item) => item.key === preset)?.label ?? "今日";
-  const ownerDiagnosisStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
-    (step) => step.key === "diagnosis",
-  );
-  const ownerFriendCompletedStep = stats.friendDiagnosisFunnel.ownerFunnel.find(
-    (step) => step.key === "friend_answer",
-  );
-  const hasTrustedCoreDiagnosis =
-    coreReady &&
-    (stats.coreKpis.cohort.diagnosisUsers > 0 ||
-      stats.diagnosisCompleted === 0);
-  const headlineDiagnosisUsers = hasTrustedCoreDiagnosis
-    ? stats.coreKpis.cohort.diagnosisUsers
-    : stats.diagnosisCompleted;
-  const headlineFriendNumerator = hasTrustedCoreDiagnosis
-    ? stats.coreKpis.diagnosisToFriend.numerator
-    : (ownerFriendCompletedStep?.count ?? 0);
-  const headlineFriendDenominator = hasTrustedCoreDiagnosis
-    ? stats.coreKpis.diagnosisToFriend.denominator
-    : (ownerDiagnosisStep?.count ?? headlineDiagnosisUsers);
-  const headlineFriendRate =
-    headlineFriendDenominator > 0
-      ? headlineFriendNumerator / headlineFriendDenominator
-      : 0;
-  const periodRevenueCurrencies = stats.coreKpis.periodRevenue.currencies;
-  const periodRevenuePurchases = periodRevenueCurrencies.reduce(
-    (sum, row) => sum + row.purchases,
-    0,
-  );
-  const headlineRevenue =
-    periodRevenueCurrencies.length > 0
-      ? formatNetRevenue(periodRevenueCurrencies)
-      : formatMoney(0, "jpy");
+  const headlines = computeHeadlines(stats);
+  const hasTrustedCoreDiagnosis = headlines.hasTrustedCoreDiagnosis;
+  const headlineDiagnosisUsers = headlines.diagnosisUsers;
+  const headlineFriendNumerator = headlines.friendNumerator;
+  const headlineFriendDenominator = headlines.friendDenominator;
+  const headlineFriendRate = headlines.friendRate;
+  const periodRevenuePurchases = headlines.purchases;
+  const headlineRevenue = headlines.revenueLabel;
+
+  // ===== 前期間比較チップ (昨日/前の7日/前の30日) =====
+  const prevRangeInfo = getPrevPresetRange(preset);
+  const prevHeadlines =
+    prevRangeInfo && prevStats ? computeHeadlines(prevStats) : null;
+  const diagCompare = prevHeadlines
+    ? (() => {
+        const diff = headlineDiagnosisUsers - prevHeadlines.diagnosisUsers;
+        return {
+          label: `${prevRangeInfo!.label} ${prevHeadlines.diagnosisUsers.toLocaleString()}人 (${diff > 0 ? "+" : ""}${diff.toLocaleString()})`,
+          trend: trendOf(diff),
+        };
+      })()
+    : null;
+  const revenueCompare = prevHeadlines
+    ? (() => {
+        // 通貨が単一かつ同一のときだけ金額差を出す (混在時は前期間の額のみ表示)。
+        const cur = headlines.currencies;
+        const prevCur = prevHeadlines.currencies;
+        const comparable =
+          cur.length <= 1 &&
+          prevCur.length <= 1 &&
+          (cur.length === 0 ||
+            prevCur.length === 0 ||
+            cur[0].currency === prevCur[0].currency);
+        if (comparable) {
+          const currency =
+            cur[0]?.currency ?? prevCur[0]?.currency ?? "jpy";
+          const nowMinor = cur[0]?.netRevenueMinor ?? 0;
+          const prevMinor = prevCur[0]?.netRevenueMinor ?? 0;
+          const diff = nowMinor - prevMinor;
+          return {
+            label: `${prevRangeInfo!.label} ${formatMoney(prevMinor, currency)} (${diff > 0 ? "+" : diff < 0 ? "−" : "±"}${formatMoney(Math.abs(diff), currency)})`,
+            trend: trendOf(diff),
+          };
+        }
+        return {
+          label: `${prevRangeInfo!.label} ${prevHeadlines.revenueLabel}`,
+          trend: "flat" as MetricTrend,
+        };
+      })()
+    : null;
+  const friendRateCompare = prevHeadlines
+    ? (() => {
+        if (prevHeadlines.friendDenominator === 0) {
+          return {
+            label: `${prevRangeInfo!.label} —`,
+            trend: "flat" as MetricTrend,
+          };
+        }
+        const diffPt =
+          (headlineFriendRate - prevHeadlines.friendRate) * 100;
+        return {
+          label: `${prevRangeInfo!.label} ${pct(prevHeadlines.friendRate)} (${diffPt > 0 ? "+" : ""}${diffPt.toFixed(1)}pt)`,
+          trend: trendOf(diffPt),
+        };
+      })()
+    : null;
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-[#f5f7fb] text-slate-900">
@@ -1493,6 +1655,7 @@ export default function AdminPage() {
                     badge={`${selectedPeriodLabel}の最重要数値`}
                     detail={hasTrustedCoreDiagnosis ? "診断完了済みのユニークユーザー" : "診断完了イベントのユニークセッション"}
                     tone="indigo"
+                    compare={diagCompare}
                   />
                   <ExecutiveMetricCard
                     index="02"
@@ -1502,6 +1665,7 @@ export default function AdminPage() {
                     detail={`フルアクセス決済 ${periodRevenuePurchases.toLocaleString()}件・返金控除後`}
                     tone="emerald"
                     compactValue
+                    compare={revenueCompare}
                   />
                   <ExecutiveMetricCard
                     index="03"
@@ -1513,6 +1677,7 @@ export default function AdminPage() {
                     badge={`${selectedPeriodLabel}の友達診断率`}
                     detail={`${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`}
                     tone="cyan"
+                    compare={friendRateCompare}
                   />
                 </div>
               </div>
