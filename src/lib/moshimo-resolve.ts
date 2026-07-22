@@ -17,6 +17,8 @@ import type { BigFiveDimension } from "./types";
 export interface MoshimoScene {
   /** シーン名 (見出し) */
   title: string;
+  /** ロックチップ用の短縮ラベル (1行で収まる長さに調整済み) */
+  chipLabel: string;
   /** アイコン円の色 (シーン別の注意点と同系統のパレット) */
   color: string;
   /** 反応本文。locked かつ未解放のときは "" (フェイルクローズ)。 */
@@ -28,8 +30,11 @@ export interface MoshimoScene {
 type Prose = Record<"H" | "L", string>;
 
 // シーン定義。main = 反応の骨格を決める軸、spice = 落ちを付ける軸。
+// short はロックチップ用の短縮ラベル (SP の2列グリッドで1行に収まる長さ)。
+// 未指定なら title から「(で)のアナタ」を省いたものを使う。
 const SCENES: {
   title: string;
+  short?: string;
   color: string;
   gated: boolean;
   main: { dim: BigFiveDimension; prose: Prose };
@@ -132,6 +137,7 @@ const SCENES: {
   },
   {
     title: "ヤンキーに絡まれた時のアナタ",
+    short: "ヤンキーとの遭遇",
     color: "#F48BAE",
     gated: true,
     main: {
@@ -170,6 +176,7 @@ const SCENES: {
   },
   {
     title: "無人島でのアナタ",
+    short: "無人島に漂着",
     color: "#F2C14E",
     gated: true,
     main: {
@@ -208,6 +215,7 @@ const SCENES: {
   },
   {
     title: "学校に不審者が来た時のアナタ",
+    short: "学校に不審者",
     color: "#F48BAE",
     gated: true,
     main: {
@@ -277,6 +285,7 @@ export function buildMoshimoScenes(
     const gatedAndLocked = scene.gated && !unlocked;
     return {
       title: scene.title,
+      chipLabel: scene.short ?? scene.title.replace(/(で)?のアナタ$/, ""),
       color: scene.color,
       body: gatedAndLocked
         ? ""

@@ -59,10 +59,10 @@ export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
         {open.map((scene) => (
           <div key={scene.title}>
             <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+              {/* アイコン色はシーン別だと雑多に見えるためインディゴで統一 (2026-07-22 指示) */}
               <span
                 aria-hidden="true"
-                className="flex h-5 w-5 flex-shrink-0 items-center justify-center"
-                style={{ color: scene.color }}
+                className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#5B5BEF]"
               >
                 <BubbleGlyph size={18} />
               </span>
@@ -75,29 +75,28 @@ export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
         ))}
       </div>
 
-      {/* 未解放シーン: シーン名入りの鍵チップを敷き詰める (鍵円だと8個で単調 +
-          余白が間延びするため 2026-07-22 にチップ型へ変更)。色はシーン別カラー。
-          SP はフルのシーン名だと1行1チップになり縦積みが単調なため、「のアナタ」を
-          省いた短縮名で2個ずつ千鳥に並べる (md+ はフル名のまま)。 */}
+      {/* 未解放シーン: シーン名入りの鍵チップ (鍵円だと8個で単調 + 余白が間延び
+          するため 2026-07-22 にチップ型へ変更)。色はシーン別カラー。
+          flex-wrap だと行ごとの個数が揃わず (4+3+1 等) 乱れて見えるため、
+          等幅グリッド (SP 2列 / md+ 4列) で整列させる。ラベルは全幅で
+          「のアナタ」を省いた短縮名に統一し、セル内の収まりを揃える。 */}
       {locked.length > 0 && (
         <div className="mt-8 rounded-2xl border border-[#ECEDF6] bg-white px-4 py-8 shadow-[0_6px_20px_rgba(46,46,92,0.09)] md:px-10 md:py-10">
-          <div className="mb-8 flex flex-wrap justify-center gap-x-2 gap-y-2.5">
+          {/* チップの枠色はシーン別カラーだと雑多に見えるため、解除カードと同じ
+              インディゴ系で統一する (2026-07-22 指示)。 */}
+          <div className="mb-8 grid grid-cols-2 gap-2 md:grid-cols-4">
             {locked.map((scene) => (
               <span
                 key={scene.title}
-                className="inline-flex items-center gap-1.5 rounded-full border-2 bg-white py-2 pl-3 pr-3.5 text-[12px] font-black leading-none text-[#2E2E5C] md:text-[12.5px]"
-                style={{ borderColor: scene.color }}
+                className="flex items-center justify-center gap-1.5 rounded-full border-2 border-[#D5D7F6] bg-white px-2 py-2.5 text-center text-[12px] font-black leading-none text-[#2E2E5C] md:text-[12.5px]"
               >
                 <span
                   aria-hidden="true"
-                  className="flex-shrink-0 text-[#B9BCCF]"
+                  className="flex-shrink-0 text-[#5B5BEF]"
                 >
                   <LockGlyph size={13} />
                 </span>
-                <span className="md:hidden">
-                  {scene.title.replace(/(で)?のアナタ$/, "")}
-                </span>
-                <span className="hidden md:inline">{scene.title}</span>
+                {scene.chipLabel}
               </span>
             ))}
           </div>

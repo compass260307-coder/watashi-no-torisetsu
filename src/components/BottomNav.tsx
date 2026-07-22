@@ -216,7 +216,19 @@ export function BottomNav() {
             { key: "aisho", label: "궁합", href: "/ko", active: false, Icon: HeartPairIcon, disabled: true },
           ]
         : [
-            { key: "home", label: "トップ", href: "/?stay=1", active: pathname === "/", Icon: HomeIcon },
+            // 診断完了後 (owner_token あり) は「トップ」を出さない (2026-07-22 指示)。
+            // 診断済みユーザーのナビは自分の結果・友達診断・タイプ・相性の4つに絞る。
+            ...(hasToken
+              ? []
+              : [
+                  {
+                    key: "home",
+                    label: "トップ",
+                    href: "/?stay=1",
+                    active: pathname === "/",
+                    Icon: HomeIcon,
+                  },
+                ]),
             { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
@@ -258,7 +270,11 @@ export function BottomNav() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <div className="mx-auto grid max-w-[480px] grid-cols-5">
+      <div
+        className={`mx-auto grid max-w-[480px] ${
+          items.length === 4 ? "grid-cols-4" : "grid-cols-5"
+        }`}
+      >
         {items.map((it) => {
           const { Icon } = it;
           const hasAttention =
