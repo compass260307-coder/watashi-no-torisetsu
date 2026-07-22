@@ -324,6 +324,35 @@ function getPrevPresetRange(
   return { from: from.toISOString(), to: to.toISOString(), label };
 }
 
+// 比較期間の選択を実レンジに解決する。
+//   auto   = 直前の同じ長さの期間 (getPrevPresetRange。all/カスタムは比較不能で null)
+//   custom = ユーザー指定の日付範囲 ("YYYY-MM-DD"。ローカル時刻で丸一日に展開)
+//   none   = 比較しない
+function resolveCompareRange(
+  preset: Preset,
+  comparePreset: "auto" | "custom" | "none",
+  compareFrom: string,
+  compareTo: string,
+): { from: string; to: string; label: string } | null {
+  if (comparePreset === "none") return null;
+  if (comparePreset === "custom") {
+    if (!compareFrom || !compareTo) return null;
+    const fromDate = new Date(`${compareFrom}T00:00:00`);
+    const toDate = new Date(`${compareTo}T00:00:00`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return null;
+    }
+    toDate.setHours(23, 59, 59, 999);
+    const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const label =
+      compareFrom === compareTo
+        ? fmt(fromDate)
+        : `${fmt(fromDate)}〜${fmt(toDate)}`;
+    return { from: fromDate.toISOString(), to: toDate.toISOString(), label };
+  }
+  return getPrevPresetRange(preset);
+}
+
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 const pctOrDash = (v: number, denominator: number) =>
   denominator > 0 ? pct(v) : "—";
@@ -825,8 +854,12 @@ export default function AdminPage() {
   const [inputKey, setInputKey] = useState("");
   const [adminKey, setAdminKey] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
-  // 前期間 (昨日/前の7日/前の30日) の統計。見出しカードの比較チップ用。
-  const [prevStats, setPrevStats] = useState<Stats | null>(null);
+  // 比較期間の統計。見出しカードの比較チップ用。rangeKey は「このデータが
+  // どの期間のものか」の照合用 (切替直後に古いデータへ新ラベルが付くのを防ぐ)。
+  const [prevStats, setPrevStats] = useState<{
+    stats: Stats;
+    rangeKey: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
@@ -835,6 +868,20 @@ export default function AdminPage() {
   const [preset, setPreset] = useState<Preset>("today");
   const [customFrom, setCustomFrom] = useState(() => toLocalDate(new Date()));
   const [customTo, setCustomTo] = useState(() => toLocalDate(new Date()));
+  // 比較期間の選択: auto = 直前の同じ長さの期間 / custom = 日付指定 / none = 比較なし
+  const [comparePreset, setComparePreset] = useState<"auto" | "custom" | "none">(
+    "auto",
+  );
+  const [compareFrom, setCompareFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return toLocalDate(d);
+  });
+  const [compareTo, setCompareTo] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return toLocalDate(d);
+  });
 
   useEffect(() => {
     const stored = sessionStorage.getItem("torisetsu_admin_key");
@@ -881,30 +928,6 @@ export default function AdminPage() {
         setLastUpdatedAt(new Date().toISOString());
         setAdminKey(key);
         sessionStorage.setItem("torisetsu_admin_key", key);
-        // 前期間 (昨日/前の7日/前の30日) を追加取得して見出しカードに比較を出す。
-        // 本体の描画をブロックしないよう await せず、失敗時は比較チップ非表示のみ。
-        const prevRange = getPrevPresetRange(p);
-        if (prevRange) {
-          void (async () => {
-            try {
-              const prevParams = new URLSearchParams({
-                from: prevRange.from,
-                to: prevRange.to,
-              });
-              const prevRes = await fetch(
-                `/api/admin/stats?${prevParams.toString()}`,
-                { headers: { "x-admin-key": key } },
-              );
-              setPrevStats(
-                prevRes.ok ? ((await prevRes.json()) as Stats) : null,
-              );
-            } catch {
-              setPrevStats(null);
-            }
-          })();
-        } else {
-          setPrevStats(null);
-        }
       } catch {
         setError("データの取得に失敗しました");
       } finally {
@@ -922,6 +945,46 @@ export default function AdminPage() {
     );
     return () => window.clearTimeout(fetchTimer);
   }, [adminKey, preset, customFrom, customTo, fetchStats]);
+
+  // 比較期間の統計を追加取得 (見出しカードの比較チップ用)。
+  // 本体とは独立して取得し、失敗時はチップ非表示のみ (本体表示は影響なし)。
+  useEffect(() => {
+    if (!adminKey) return;
+    const range = resolveCompareRange(
+      preset,
+      comparePreset,
+      compareFrom,
+      compareTo,
+    );
+    let cancelled = false;
+    (async () => {
+      if (!range) {
+        if (!cancelled) setPrevStats(null);
+        return;
+      }
+      try {
+        const params = new URLSearchParams({ from: range.from, to: range.to });
+        const res = await fetch(`/api/admin/stats?${params.toString()}`, {
+          headers: { "x-admin-key": adminKey },
+        });
+        if (!cancelled) {
+          setPrevStats(
+            res.ok
+              ? {
+                  stats: (await res.json()) as Stats,
+                  rangeKey: `${range.from}|${range.to}`,
+                }
+              : null,
+          );
+        }
+      } catch {
+        if (!cancelled) setPrevStats(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adminKey, preset, comparePreset, compareFrom, compareTo]);
 
   useEffect(() => {
     if (!stats) return;
@@ -1337,10 +1400,19 @@ export default function AdminPage() {
   const periodRevenuePurchases = headlines.purchases;
   const headlineRevenue = headlines.revenueLabel;
 
-  // ===== 前期間比較チップ (昨日/前の7日/前の30日) =====
-  const prevRangeInfo = getPrevPresetRange(preset);
+  // ===== 前期間比較チップ (auto=直前の同期間 / custom=日付指定 / none=なし) =====
+  const prevRangeInfo = resolveCompareRange(
+    preset,
+    comparePreset,
+    compareFrom,
+    compareTo,
+  );
   const prevHeadlines =
-    prevRangeInfo && prevStats ? computeHeadlines(prevStats) : null;
+    prevRangeInfo &&
+    prevStats &&
+    prevStats.rangeKey === `${prevRangeInfo.from}|${prevRangeInfo.to}`
+      ? computeHeadlines(prevStats.stats)
+      : null;
   const diagCompare = prevHeadlines
     ? (() => {
         const diff = headlineDiagnosisUsers - prevHeadlines.diagnosisUsers;
@@ -1717,6 +1789,63 @@ export default function AdminPage() {
                       className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
                     />
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* 比較期間の選択 (見出しカードの ▲▼ チップの比較先) */}
+            <div className="relative flex flex-col gap-3 border-t border-white/[0.08] bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 xl:px-10">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                  Compare with
+                </p>
+                <p className="mt-1 text-[11px] font-medium text-slate-400">
+                  重要指標カードの比較先の期間
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-xl border border-white/10 bg-white/[0.06] p-1">
+                  {(
+                    [
+                      { key: "auto", label: "直前の同期間" },
+                      { key: "custom", label: "期間指定" },
+                      { key: "none", label: "比較なし" },
+                    ] as const
+                  ).map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => setComparePreset(c.key)}
+                      className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[11px] font-black transition ${
+                        comparePreset === c.key
+                          ? "bg-white text-slate-950 shadow-lg"
+                          : "text-slate-400 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+                {comparePreset === "custom" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={compareFrom}
+                      onChange={(e) => setCompareFrom(e.target.value)}
+                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
+                    />
+                    <span className="text-xs text-slate-500">〜</span>
+                    <input
+                      type="date"
+                      value={compareTo}
+                      onChange={(e) => setCompareTo(e.target.value)}
+                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
+                    />
+                  </div>
+                )}
+                {comparePreset === "auto" && !prevRangeInfo && (
+                  <span className="text-[11px] font-medium text-slate-500">
+                    全期間・カスタムでは自動比較できません (期間指定を使ってください)
+                  </span>
                 )}
               </div>
             </div>
