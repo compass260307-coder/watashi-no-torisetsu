@@ -44,6 +44,15 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   unknown: "不明",
 };
 
+// payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
+const PAYMENT_KIND_LABELS: Record<string, string> = {
+  full_access: "完全版レポート (¥499)",
+  tako_unlock: "友達診断の全解放 (¥799 / 全解放者¥300)",
+  perception_unlock: "友達個別の解放",
+  integrated_trisetsu: "旧:統合トリセツ",
+  unknown: "不明 (kind未記録)",
+};
+
 type Stats = {
   coreKpis: {
     cohort: {
@@ -181,6 +190,23 @@ type Stats = {
   typeDistribution: { typeId: string; name?: string; count: number }[];
   paidUsers: number;
   revenueJpy: number;
+  revenueByKind: {
+    kind: string;
+    currency: string;
+    purchases: number;
+    grossRevenueMinor: number;
+    refundedMinor: number;
+    netRevenueMinor: number;
+  }[];
+  revenueDaily: {
+    date: string;
+    purchases: number;
+    currencies: {
+      currency: string;
+      netRevenueMinor: number;
+      refundedMinor: number;
+    }[];
+  }[];
   friendCountDistribution: {
     total: number;
     zero: number;
@@ -1734,7 +1760,7 @@ export default function AdminPage() {
                     label="課金額"
                     value={headlineRevenue}
                     badge={`${selectedPeriodLabel}の純売上`}
-                    detail={`フルアクセス決済 ${periodRevenuePurchases.toLocaleString()}件・返金控除後`}
+                    detail={`全商品の決済 ${periodRevenuePurchases.toLocaleString()}件・返金控除後 (完全版+友達診断ほか)`}
                     tone="emerald"
                     compactValue
                     compare={revenueCompare}
@@ -2198,6 +2224,122 @@ export default function AdminPage() {
                 <p className="mt-3 text-[11px] text-slate-400">
                   購入率は「決済完了 ÷ 誘導クリック」。計測更新前の決済は「不明」に含まれます。
                 </p>
+              </div>
+            )}
+
+            {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
+            {(stats.revenueByKind ?? []).length > 0 && (
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <p className="mb-1 text-sm font-black text-slate-900">
+                  商品別の売上内訳
+                </p>
+                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
+                  完全版レポート以外 (友達診断の全解放など) を含む、選択期間の全決済です。
+                </p>
+                <div className="overflow-x-auto rounded-[18px] border border-slate-200/80">
+                  <table className="w-full min-w-[640px] text-xs">
+                    <thead className="bg-slate-50/90 text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2.5 text-left font-medium">商品</th>
+                        <th className="px-3 py-2.5 text-right font-medium">決済件数</th>
+                        <th className="px-3 py-2.5 text-right font-medium">総売上</th>
+                        <th className="px-3 py-2.5 text-right font-medium">返金</th>
+                        <th className="px-3 py-2.5 text-right font-medium">純売上</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/80">
+                      {stats.revenueByKind.map((row) => (
+                        <tr
+                          key={`${row.kind}-${row.currency}`}
+                          className="transition hover:bg-indigo-50/35"
+                        >
+                          <td className="px-3 py-3 font-semibold text-slate-700" title={row.kind}>
+                            {PAYMENT_KIND_LABELS[row.kind] ?? row.kind}
+                            {row.currency !== "jpy" && (
+                              <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
+                                {row.currency}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                            {row.purchases.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                            {formatMoney(row.grossRevenueMinor, row.currency)}
+                          </td>
+                          <td className="px-3 py-3 text-right tabular-nums text-rose-500">
+                            {row.refundedMinor > 0
+                              ? `−${formatMoney(row.refundedMinor, row.currency)}`
+                              : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-black tabular-nums text-slate-900">
+                            {formatMoney(row.netRevenueMinor, row.currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 日別の売上推移 (選択期間・全商品・JST) */}
+            {(stats.revenueDaily ?? []).length > 0 && (
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <p className="mb-1 text-sm font-black text-slate-900">
+                  日別の売上推移
+                </p>
+                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
+                  選択期間の決済を日付 (JST) ごとに集計。新しい日が上・最大62日分です。
+                </p>
+                <div className="max-h-[420px] overflow-auto rounded-[18px] border border-slate-200/80">
+                  <table className="w-full min-w-[520px] text-xs">
+                    <thead className="sticky top-0 bg-slate-50/95 text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2.5 text-left font-medium">日付</th>
+                        <th className="px-3 py-2.5 text-right font-medium">決済件数</th>
+                        <th className="px-3 py-2.5 text-right font-medium">純売上</th>
+                        <th className="px-3 py-2.5 text-right font-medium">返金</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/80">
+                      {stats.revenueDaily.map((day) => {
+                        const refundedTotal = day.currencies.reduce(
+                          (sum, c) => sum + c.refundedMinor,
+                          0,
+                        );
+                        return (
+                          <tr key={day.date} className="transition hover:bg-indigo-50/35">
+                            <td className="px-3 py-2.5 font-semibold tabular-nums text-slate-700">
+                              {day.date}
+                            </td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
+                              {day.purchases.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-black tabular-nums text-slate-900">
+                              {day.currencies
+                                .map((c) =>
+                                  formatMoney(c.netRevenueMinor, c.currency),
+                                )
+                                .join(" / ")}
+                            </td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-rose-500">
+                              {refundedTotal > 0
+                                ? day.currencies
+                                    .filter((c) => c.refundedMinor > 0)
+                                    .map(
+                                      (c) =>
+                                        `−${formatMoney(c.refundedMinor, c.currency)}`,
+                                    )
+                                    .join(" / ")
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
             </Panel>

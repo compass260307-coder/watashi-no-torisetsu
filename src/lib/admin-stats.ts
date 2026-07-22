@@ -334,7 +334,9 @@ export async function computeStats(from: string | null, to: string | null) {
           .select(
             "user_id, stripe_session_id, amount_jpy, amount_refunded_minor, currency, status, paid_at, created_at, payment_kind",
           )
-          .eq("payment_kind", "full_access")
+          // 全 payment_kind を取得する (2026-07-22: 課金分析強化)。
+          // full_access 以外 (tako_unlock 等) も総売上・商品別内訳に含める。
+          // コホートKPI (ARPU/課金転換) は従来どおり full_access のみで計算する。
           .in("status", ["completed", "refunded"])
           .order("created_at", { ascending: true })
           .order("stripe_session_id", { ascending: true }),
@@ -822,7 +824,9 @@ export async function computeStats(from: string | null, to: string | null) {
     });
   }
 
-  const verifiedPaymentFacts: CoreKpiPaymentFact[] = [];
+  // kind 付きの全商品決済ファクト。総売上・商品別内訳・日別推移の源泉。
+  // コホートKPI (computeCoreKpis) へは full_access のみを渡す (従来と同義)。
+  const verifiedPaymentFacts: (CoreKpiPaymentFact & { kind: string })[] = [];
   const knownStripeSessions = new Set<string>();
   for (const row of paymentHistoryRows) {
     const paidAt = row.paid_at ?? row.created_at;
@@ -834,6 +838,7 @@ export async function computeStats(from: string | null, to: string | null) {
       currency: row.currency,
       amountMinor: row.amount_jpy,
       refundedAmountMinor: row.amount_refunded_minor ?? 0,
+      kind: row.payment_kind ?? "unknown",
     });
   }
 
@@ -873,6 +878,7 @@ export async function computeStats(from: string | null, to: string | null) {
       unmatchedPaymentCount++;
       continue;
     }
+    const rawProduct = row.metadata?.product;
     verifiedPaymentFacts.push({
       stripeSessionId,
       userId,
@@ -880,6 +886,10 @@ export async function computeStats(from: string | null, to: string | null) {
       currency,
       amountMinor: amount,
       refundedAmountMinor: 0,
+      kind:
+        typeof rawProduct === "string" && rawProduct
+          ? rawProduct
+          : "full_access",
     });
   }
 
@@ -919,7 +929,7 @@ export async function computeStats(from: string | null, to: string | null) {
   }
 
   const periodRevenue = {
-    basis: "選択期間中に支払いが確定したフルアクセス決済の純売上",
+    basis: "選択期間中に支払いが確定した全商品の純売上 (返金控除後)",
     currencies: Array.from(periodRevenueBuckets.entries())
       .map(([currency, bucket]) => ({
         currency,
@@ -932,6 +942,97 @@ export async function computeStats(from: string | null, to: string | null) {
       .sort((a, b) => a.currency.localeCompare(b.currency)),
   };
 
+  // ===== 商品別の売上内訳 (選択期間・kind × 通貨) =====
+  const kindBuckets = new Map<
+    string,
+    {
+      kind: string;
+      currency: string;
+      purchases: number;
+      grossRevenueMinor: number;
+      refundedMinor: number;
+      netRevenueMinor: number;
+    }
+  >();
+  for (const payment of verifiedPaymentFacts) {
+    if (!inRange(payment.paidAt)) continue;
+    const currency = payment.currency.toLowerCase();
+    const key = `${payment.kind}|${currency}`;
+    const bucket = kindBuckets.get(key) ?? {
+      kind: payment.kind,
+      currency,
+      purchases: 0,
+      grossRevenueMinor: 0,
+      refundedMinor: 0,
+      netRevenueMinor: 0,
+    };
+    const refundedMinor = Math.min(
+      Math.max(payment.refundedAmountMinor, 0),
+      payment.amountMinor,
+    );
+    bucket.purchases++;
+    bucket.grossRevenueMinor += payment.amountMinor;
+    bucket.refundedMinor += refundedMinor;
+    bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
+    kindBuckets.set(key, bucket);
+  }
+  const revenueByKind = Array.from(kindBuckets.values()).sort(
+    (a, b) =>
+      b.netRevenueMinor - a.netRevenueMinor || b.purchases - a.purchases,
+  );
+
+  // ===== 日別の売上推移 (選択期間・JST の日付単位・全商品) =====
+  // 期間未指定 (全期間) でも直近が見えるよう、末尾 62 日分に丸めて返す。
+  const dailyBuckets = new Map<
+    string,
+    {
+      date: string;
+      purchases: number;
+      currencies: Map<string, { netRevenueMinor: number; refundedMinor: number }>;
+    }
+  >();
+  for (const payment of verifiedPaymentFacts) {
+    if (!inRange(payment.paidAt)) continue;
+    const d = new Date(payment.paidAt);
+    if (Number.isNaN(d.getTime())) continue;
+    // サーバ TZ に依存しないよう JST (+9h) に固定してから日付を切り出す。
+    const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    const date = jst.toISOString().slice(0, 10);
+    const bucket = dailyBuckets.get(date) ?? {
+      date,
+      purchases: 0,
+      currencies: new Map(),
+    };
+    const currency = payment.currency.toLowerCase();
+    const refundedMinor = Math.min(
+      Math.max(payment.refundedAmountMinor, 0),
+      payment.amountMinor,
+    );
+    const cur = bucket.currencies.get(currency) ?? {
+      netRevenueMinor: 0,
+      refundedMinor: 0,
+    };
+    cur.netRevenueMinor += payment.amountMinor - refundedMinor;
+    cur.refundedMinor += refundedMinor;
+    bucket.currencies.set(currency, cur);
+    bucket.purchases++;
+    dailyBuckets.set(date, bucket);
+  }
+  const revenueDaily = Array.from(dailyBuckets.values())
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 62)
+    .map((bucket) => ({
+      date: bucket.date,
+      purchases: bucket.purchases,
+      currencies: Array.from(bucket.currencies.entries())
+        .map(([currency, v]) => ({
+          currency,
+          netRevenueMinor: v.netRevenueMinor,
+          refundedMinor: v.refundedMinor,
+        }))
+        .sort((a, b) => a.currency.localeCompare(b.currency)),
+    }));
+
   const computedCoreKpis = computeCoreKpis({
     users: coreUserRows.map((row) => ({
       id: row.id,
@@ -943,7 +1044,8 @@ export async function computeStats(from: string | null, to: string | null) {
       targetUserId: row.target_user_id,
       createdAt: row.created_at,
     })),
-    payments: verifiedPaymentFacts,
+    // コホートKPI (ARPU/課金転換) は従来定義のまま full_access のみで計算する。
+    payments: verifiedPaymentFacts.filter((p) => p.kind === "full_access"),
     from,
     to,
     unmatchedPaymentCount,
@@ -1068,6 +1170,8 @@ export async function computeStats(from: string | null, to: string | null) {
     purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
     paidUsers,
     revenueJpy,
+    revenueByKind,
+    revenueDaily,
     recentEvents: recentRes.data ?? [],
     friendToDiagClicked,
     friendToDiagRate: rate(friendToDiagClicked, friendAnswerCompleted),
