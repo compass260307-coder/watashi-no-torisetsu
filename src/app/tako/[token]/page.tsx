@@ -32,8 +32,9 @@ import { TakoLockedState } from "@/components/result/TakoLockedState";
 import { FriendLoveSection } from "@/components/result/FriendLoveSection";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
-import { TakoPromoCard } from "@/components/result/TakoPromoCard";
-import { hasFullAccess, hasTakoAccess } from "@/lib/entitlements";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { PaywallModal } from "@/components/result/PaywallModal";
+import { hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
   resolveFriendLoveChecklist,
@@ -268,17 +269,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
   // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
 
-  // ===== tako_unlock (¥799 / 全解放オーナー ¥300) の解放判定 =====
-  // プレビュー: &lock=1 でロック状態、&discount=1 で割引価格表示を確認できる。
-  // 実データ: payment_history 由来の hasTakoAccess。割引可否は hasFullAccess。
+  // ===== 解放判定 (2026-07-22: ¥499 完全版パッケージに一本化) =====
+  // 友達診断は自己診断と同じ ¥499 full_access に含まれる。hasTakoAccess は
+  // full_access 保有者と旧 ¥799 購入者の両方を true にする。
+  // プレビュー: &lock=1 でロック状態を確認できる (旧 &discount は廃止)。
   const takoUnlocked = previewMode
     ? sp.lock !== "1"
     : await hasTakoAccess(data.user.id as string);
-  const takoDiscounted = previewMode
-    ? sp.discount === "1"
-    : takoUnlocked
-      ? false
-      : await hasFullAccess(data.user.id as string);
   // ロック中フラグ (未購入)。ロックカードはセクション別の文言で都度生成する。
   const takoLocked = !takoUnlocked;
   const storageScope = data.user.owner_token ?? token;
@@ -739,18 +736,35 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         const promoGroup = data.friendCharacter
           ? thirtyTwoGroup(data.friendCharacter.type32)
           : "unknown";
+        // 2026-07-22: ¥799 単体販売を廃止し ¥499 完全版パッケージに一本化。
+        // /me と同じ FullAccessPromoCard を使い、購入後は /tako に戻す (returnTo)。
+        // TakoLockedBlock の解除CTA (#tako-promo) のスクロール先を兼ねるため id を付与。
+        const promoImage =
+          sceneImageForGroup(promoGroup, "love") ??
+          sceneImageForGroup(promoGroup, "normal1") ??
+          data.friendCharacter?.imageSrc;
         return (
-          <TakoPromoCard
-            ownerToken={token}
-            discounted={takoDiscounted}
-            imageSrc={
-              sceneImageForGroup(promoGroup, "love") ??
-              sceneImageForGroup(promoGroup, "normal1") ??
-              data.friendCharacter?.imageSrc
-            }
-            imageAlt={data.friendCharacter?.essence ?? ""}
-            group={promoGroup}
-          />
+          <>
+            <div id="tako-promo" className="scroll-mt-16">
+              <FullAccessPromoCard
+                surface="tako"
+                ownerToken={token}
+                returnTo="tako"
+                imageSrc={promoImage}
+                imageAlt={data.friendCharacter?.essence ?? ""}
+                group={promoGroup}
+              />
+            </div>
+            {/* ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
+            <PaywallModal
+              surface="tako"
+              ownerToken={token}
+              returnTo="tako"
+              imageSrc={promoImage}
+              imageAlt={data.friendCharacter?.essence ?? ""}
+              group={promoGroup}
+            />
+          </>
         );
       })()}
       {/* 招待バンド (もっと友達に聞くと〜 + QR) は 2026-07-20 指示で一旦削除。 */}

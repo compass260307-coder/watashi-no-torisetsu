@@ -51,8 +51,8 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
 
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
-  full_access: "完全版レポート (¥499)",
-  tako_unlock: "友達診断の全解放 (¥799 / 全解放者¥300)",
+  full_access: "完全版パッケージ (¥499・自己+友達診断)",
+  tako_unlock: "旧:友達診断の全解放 (¥799・2026-07-22販売終了)",
   perception_unlock: "友達個別の解放",
   integrated_trisetsu: "旧:統合トリセツ",
   unknown: "不明 (kind未記録)",
@@ -2094,14 +2094,14 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* ===== ② 友達診断・全解放 (¥799 / tako_unlock) ===== */}
+            {/* ===== ② 旧: 友達診断・全解放 (¥799 / tako_unlock) — 2026-07-22 販売終了 ===== */}
             <div className="mt-10 border-t-2 border-slate-100 pt-6">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="rounded-full bg-rose-500 px-3 py-1 text-[11px] font-black text-white">
-                  友達診断・全解放 ¥799
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-slate-400 px-3 py-1 text-[11px] font-black text-white">
+                  旧:友達診断・全解放 ¥799
                 </span>
                 <span className="text-[11px] font-medium text-slate-400">
-                  /tako ページの課金ファネル (全解放オーナーは¥300)
+                  2026-07-22 に ¥499 完全版へ統合し販売終了。以下は過去データ。
                 </span>
               </div>
               <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">

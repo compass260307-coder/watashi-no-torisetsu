@@ -6,12 +6,11 @@
 // 目的: 旧導線は「キャリア」しか訴求できておらず「友達の個人結果も解放される」ことが
 //   伝わらなかった。MBTI 式に「解放される中身を項目で見せて価値を可視化」する。
 //
-// 解放される項目 (見出し+説明。UNLOCKS 定数で管理)。2026-07-14 更新:
-//   友達ひとりずつの回答は削除。4項目に絞る。
-//   - 16ページ以上の完全版PDFレポート
-//   - 恋愛とキャリアの深掘りを全解放
-//   - 周りから見たアナタの印象
-//   - シーン別の注意点
+// 解放される項目 (見出し+説明。UNLOCKS 定数で管理)。2026-07-22 更新 (¥499 完全版一本化):
+//   - 自己診断結果の完全解放
+//   - 16ページ以上の自己分析完全版PDFレポート
+//   - 友達診断結果の完全解放
+//   - 何度もダウンロードできる友達分析完全版PDFレポート
 //
 // id="fullaccess-promo": ページ内のロック要素からの scrollToPaywall() のスクロール先
 //   (着地パルスも同 id を対象にするため必ず維持)。
@@ -36,25 +35,58 @@ const PRICE_COPY = {
   ko: { list: "₩12,900", sale: "₩4,900", offPercent: 62 },
 } as const;
 
-// 解放される項目 (見出し + マイクロコピー)。2026-07-22 の結果ページ改修に追随:
-// 恋愛/キャリアの深掘り / 周りから見た印象 / もしもの時のアナタ (隠しシーン)。
-const UNLOCKS: { title: string; desc: string }[] = [
+// 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
+// すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる4項目に集約。
+// 解放項目。設置ページで並びを変える (自己診断=自分の解放が先 / 友達診断=友達の解放が先)。
+// ⑤恋愛パートナー分析 (相性) は ¥499 完全版パッケージに含まれるので両方に載せる。
+type UnlockItem = { title: string; desc: string };
+
+// 自己分析の電子書籍/PDF・自己/友達の解放・相性の共通パーツ (ページ間で文言を揃える)。
+const U_SELF_UNLOCK: UnlockItem = {
+  title: "自己診断結果の完全解放",
+  desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
+};
+const U_FRIEND_UNLOCK: UnlockItem = {
+  title: "友達診断結果の完全解放",
+  desc: "実際に答えてくれた友達の目に映るあなた。隠れモテポイントや関係を深めるコツまで、友達ごとに読める。",
+};
+const U_FRIEND_PDF: UnlockItem = {
+  title: "何度でも作り直せる友達診断レポート",
+  desc: "友達が増えるたびに更新できる、友達視点のレポートPDF。何度でもダウンロードOK。",
+};
+const U_AISHO: UnlockItem = {
+  title: "恋愛パートナー分析",
+  desc: "ふたりの性格がどのように合うかを確認できます。",
+};
+
+// 自己診断結果ページ (/me) 用。
+const SELF_UNLOCKS: UnlockItem[] = [
   {
-    title: "16ページ以上の完全版PDFレポート",
-    desc: "長所・短所、恋愛、友人関係、キャリアまで、あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、友達にも共有できます。",
+    title: "あなたの結果のロックされた8つのセクションすべて",
+    desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
   },
   {
-    title: "恋愛傾向とキャリア傾向の深掘りを全解放",
-    desc: "「あなたを好きになった人が読むトリセツ」「恋人が密かに我慢していること」から「あなたに合った働き方・避けたほうがいい職場」「職場の人間関係」まで読める。",
+    title: "ダウンロード可能な16ページ以上のあなたの電子書籍",
+    desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
   },
+  U_FRIEND_UNLOCK,
+  U_FRIEND_PDF,
+  U_AISHO,
+];
+
+// 友達診断ページ (/tako) 用。友達の解放を先頭に。
+const TAKO_UNLOCKS: UnlockItem[] = [
   {
-    title: "周りから見たアナタの印象を徹底解説",
-    desc: "「嫌われやすいポイント」や「本当は分かってほしいのに伝わっていないこと」——あなたのタイプが誤解されやすいところを解析。",
+    title: "友達診断の結果のロックされた4つのセクション",
+    desc: "隠れモテポイント、関係を深めるコツ、壊すワナまで、友達ごとにぜんぶ読める。",
   },
+  U_FRIEND_PDF,
+  U_SELF_UNLOCK,
   {
-    title: "もしもの時のアナタ",
-    desc: "集合写真・ヤンキー・無人島・宝くじ——鍵つきの隠しシーン全8本の、あるある反応が読める。",
+    title: "ダウンロード可能な自己分析完全版PDFレポート",
+    desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
   },
+  U_AISHO,
 ];
 
 const KO_UNLOCKS: { title: string; desc: string }[] = [
@@ -157,6 +189,15 @@ export function FullAccessPromoCard({
   //   "aisho" = 相性ページ用ピンク基調 / "self" (既定) = その人のグループ色。
   variant = "self",
   locale = "ja",
+  // 購入後の着地。/tako のロックから使うときは "tako" を渡して元の /tako に戻す。
+  returnTo,
+  // アンカー id。既定 "fullaccess-promo"。モーダル内で描画するときは別値を渡して
+  // 最下部の常設カードと id 重複させない (PaywallModal が "fullaccess-promo-modal" を渡す)。
+  anchorId = "fullaccess-promo",
+  // モーダル表示時に渡す閉じるハンドラ。指定時は右上の折り紙装飾の中心に×を乗せる。
+  onClose,
+  // 解放項目の並び。"self"=自己診断ページ / "tako"=友達診断ページ (既定 self)。
+  surface = "self",
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -164,9 +205,18 @@ export function FullAccessPromoCard({
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: ResultLocale;
+  returnTo?: "me" | "tako";
+  anchorId?: string;
+  onClose?: () => void;
+  surface?: "self" | "tako";
 }) {
   const isKorean = locale === "ko";
-  const unlocks = isKorean ? KO_UNLOCKS : UNLOCKS;
+  // KO は友達診断/相性が無いため従来の自己完結リスト。JA は設置ページで並びを切替。
+  const unlocks = isKorean
+    ? KO_UNLOCKS
+    : surface === "tako"
+      ? TAKO_UNLOCKS
+      : SELF_UNLOCKS;
   const price = PRICE_COPY[locale];
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
@@ -223,11 +273,11 @@ export function FullAccessPromoCard({
 
   return (
     <section
-      aria-labelledby="fullaccess-promo-title"
+      aria-labelledby={`${anchorId}-title`}
       className="px-4 pt-6 pb-10 md:px-8"
     >
       <div
-        id="fullaccess-promo"
+        id={anchorId}
         ref={cardRef}
         className={`relative mx-auto w-full scroll-mt-[80px] rounded-3xl border-2 shadow-[0_16px_48px_rgba(46,46,92,0.12)] ${
           hasImage
@@ -236,14 +286,30 @@ export function FullAccessPromoCard({
         }`}
         style={{ backgroundColor: tone.softBg, borderColor: tone.border }}
       >
-        {/* 右上・左下の折り紙風装飾 (カード角に半分被せて外へ) */}
-        <CornerDecor
-          dark={tone.accent}
-          mid={midTone}
-          light={tone.border}
-          mirror
-          className="pointer-events-none absolute -right-3 -top-3 z-10 h-14 w-14 rotate-[12deg] drop-shadow-sm md:h-16 md:w-16"
-        />
+        {/* 右上・左下の折り紙風装飾 (カード角に半分被せて外へ)。
+            モーダル時 (onClose あり) は右上の装飾を出さず、×だけを角に乗せる。 */}
+        {!onClose && (
+          <CornerDecor
+            dark={tone.accent}
+            mid={midTone}
+            light={tone.border}
+            mirror
+            className="pointer-events-none absolute -right-3 -top-3 z-10 h-14 w-14 rotate-[12deg] drop-shadow-sm md:h-16 md:w-16"
+          />
+        )}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={isKorean ? "닫기" : "閉じる"}
+            className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
+            style={{ backgroundColor: tone.accent }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        )}
         <CornerDecor
           dark={tone.accent}
           mid={midTone}
@@ -291,7 +357,7 @@ export function FullAccessPromoCard({
 
           {/* 見出し */}
           <h2
-            id="fullaccess-promo-title"
+            id={`${anchorId}-title`}
             className="mt-2.5 text-[27px] font-black leading-[1.3] text-[#2E2E5C] md:text-[32px]"
           >
             {isKorean ? (
@@ -305,7 +371,7 @@ export function FullAccessPromoCard({
           <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
             {isKorean
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
-              : "あなたの詳細な性格タイプから、友達から見たアナタの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
+              : "あなたの詳細な性格タイプから、友達から見たあなたの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
           </p>
 
           {/* 解放される 4 項目 */}
@@ -351,6 +417,7 @@ export function FullAccessPromoCard({
               ownerToken={ownerToken}
               unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
               locale={locale}
+              returnTo={returnTo}
             >
               {isKorean ? "모든 잠금 해제" : "すべてのロックを解除"}
             </FullAccessCta>
@@ -376,7 +443,9 @@ export function FullAccessPromoCard({
               <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            {isKorean ? "30일 환불 보장" : "30日間の返金保証つき"}
+            {isKorean
+              ? "한 번 결제 · 30일 환불 보장"
+              : "買い切り／30日間の返金保証つき"}
           </p>
 
           {isKorean && (

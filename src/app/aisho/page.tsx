@@ -36,6 +36,7 @@ import characterImages from "@/generated/character-images.json";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { PaywallModal } from "@/components/result/PaywallModal";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
 const NAVY = "#2E2E5C";
@@ -1129,13 +1130,22 @@ function AishoInner() {
         ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
         選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
     {resultShown && aishoGate.locked === true && (
-      <FullAccessPromoCard
-        variant="aisho"
-        imageSrc="/characters/scenes/unknown_love.webp"
-        imageAlt="相性"
-        // ログイン中なら owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
-        ownerToken={aishoGate.ownerToken ?? undefined}
-      />
+      <>
+        <FullAccessPromoCard
+          variant="aisho"
+          imageSrc="/characters/scenes/unknown_love.webp"
+          imageAlt="相性"
+          // ログイン中なら owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
+          ownerToken={aishoGate.ownerToken ?? undefined}
+        />
+        {/* 相性ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
+        <PaywallModal
+          variant="aisho"
+          imageSrc="/characters/scenes/unknown_love.webp"
+          imageAlt="相性"
+          ownerToken={aishoGate.ownerToken ?? undefined}
+        />
+      </>
     )}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}

@@ -71,8 +71,13 @@ export function getLastPaywallSource(): string {
   }
 }
 
-// targetId 指定で課金カード以外 (例: シーン別の注意点 "scene-caution") にも飛べる。
-// 挙動 (スムーススクロール + パルス) と計測イベントは共通。
+// ロック要素の「今すぐアクセス」等を押したときの共通ハンドラ。
+// 2026-07-22: 最下部カードへのスクロールから「その場でモーダル表示」に変更。
+//   - PaywallModal がページに存在する場合: カスタムイベントで開き、スクロールしない。
+//   - モーダルが無いページ (フォールバック): 従来どおり targetId へスクロール+パルス。
+// 計測 (paywall_scroll_clicked) と最終タッチ導線の記憶は挙動に関わらず共通で行う。
+export const PAYWALL_OPEN_EVENT = "torisetsu:open-paywall";
+
 export function scrollToPaywall(
   source: string = "unknown",
   targetId: string = PAYWALL_ID,
@@ -87,6 +92,17 @@ export function scrollToPaywall(
       page: window.location.pathname.split("/")[1] || "top",
     },
   });
+
+  // モーダルを開く要求を発火。PaywallModal が拾ったら preventDefault し、
+  // dispatchEvent は false を返す (= スクロールへフォールバックしない)。
+  const openEvent = new CustomEvent(PAYWALL_OPEN_EVENT, {
+    detail: { source: normalizedSource },
+    cancelable: true,
+  });
+  const notHandled = window.dispatchEvent(openEvent);
+  if (!notHandled) return;
+
+  // フォールバック: モーダルが無いページは従来のスクロール+パルス。
   const el = document.getElementById(targetId);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });

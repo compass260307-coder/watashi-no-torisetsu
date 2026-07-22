@@ -27,6 +27,7 @@ export function FullAccessCta({
   unauthHref = "/diagnosis",
   locale = "ja",
   source,
+  returnTo,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -34,6 +35,8 @@ export function FullAccessCta({
   locale?: ResultLocale;
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
   source?: string;
+  /** 購入後の着地。'tako' で /tako/[token] に戻す (既定は /me/[token])。 */
+  returnTo?: "me" | "tako";
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,7 @@ export function FullAccessCta({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(ownerToken ? { owner_token: ownerToken } : {}),
+          ...(returnTo ? { return_to: returnTo } : {}),
           paywall_source: paywallSource,
           locale,
         }),

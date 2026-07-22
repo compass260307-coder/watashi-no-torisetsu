@@ -148,6 +148,9 @@ export function BottomNav() {
   const [lockOpen, setLockOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
+  // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
+  // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
+  const [hasFull, setHasFull] = useState(false);
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
   // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
   //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
@@ -194,6 +197,44 @@ export function BottomNav() {
     setOwnerToken(token);
     setShowTakoAttention(attentionPending);
   }, [navHidden, pathname]);
+
+  // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
+  //   - キャッシュ: 一度 full を確認した token を localStorage に記録し、以降は即解錠
+  //     (購入は取り消されない前提。token 一致でのみ有効なので別ユーザーには波及しない)。
+  //   - 未確認は full-access-status API で確認 (email 横断込みの hasFullAccess を集約)。
+  const FULL_TOKEN_KEY = "torisetsu_full_token";
+  useEffect(() => {
+    if (!ownerToken) return;
+    let cancelled = false;
+    try {
+      if (localStorage.getItem(FULL_TOKEN_KEY) === ownerToken) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setHasFull(true);
+        return;
+      }
+    } catch {
+      // localStorage 不可環境は API 確認にフォールバック
+    }
+    fetch(
+      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
+    )
+      .then((r) => (r.ok ? r.json() : { full: false }))
+      .then((d: { full?: boolean }) => {
+        if (cancelled || !d?.full) return;
+        setHasFull(true);
+        try {
+          localStorage.setItem(FULL_TOKEN_KEY, ownerToken);
+        } catch {
+          // noop
+        }
+      })
+      .catch(() => {
+        // 通信失敗時はロックのまま (安全側)
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerToken]);
 
   // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
   // ※ useMemo は hook なので early return より前に呼ぶ (rules-of-hooks 遵守)。
@@ -242,9 +283,12 @@ export function BottomNav() {
               locked: !hasToken && !isTakoAttentionPreview,
             },
             { key: "type", label: "タイプ", href: "/types", active: pathname.startsWith("/types"), Icon: GridIcon },
-            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
+            // 相性は ¥499 完全版の一部 (2026-07-23)。未購入はロック (下部バーで選択不可)、
+            // 購入者 (hasFull) は解錠して /aisho へ遷移できる。
+            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon, disabled: !hasFull },
           ],
     [
+      hasFull,
       hasToken,
       isKorean,
       isKoreanResult,
@@ -286,7 +330,7 @@ export function BottomNav() {
                 key={it.key}
                 type="button"
                 disabled
-                aria-label={`${it.label} (준비 중)`}
+                aria-label={`${it.label}${isKorean ? " (준비 중)" : " (準備中)"}`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
                 style={{ color: INACTIVE }}
               >

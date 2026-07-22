@@ -88,20 +88,21 @@ const CHECKOUT_COPY: Record<
   ja: {
     couponId: "full-access-anchor-off800-jpy",
     couponName: "リリース記念",
-    productName: "ワタシのトリセツ 性格レポート完全版",
+    // 2026-07-23: 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージに一本化。
+    productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "16ページ以上の完全版PDFレポート、恋愛傾向とキャリア傾向の深掘り、周りから見たアナタの印象、もしもの時のアナタ（隠しシーン全8本）まで、ぜんぶ解放。買い切り・追加課金なし。",
+      "自己診断結果の完全解放、16ページ以上の自己分析PDFレポート、友達から見たあなたの完全解放、何度でも作り直せる友達診断レポート、恋愛パートナー分析まで——ぜんぶ含んだ完全版パッケージ。買い切り。",
     submitMessage:
-      "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき・追加課金なし。",
+      "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
   ko: {
     couponId: "full-access-anchor-off8000-krw",
     couponName: "출시 기념",
     productName: "나의 사용설명서 성격 리포트 완전판",
     productDescription:
-      "연애·커리어 심층 분석, 주변에서 보는 나의 인상, 친구별 시선과 차이, 상황별 궁합과 주의점까지 웹에서 모두 열어 드려요. 한 번만 결제하면 언제든 다시 볼 수 있고 추가 비용은 없어요.",
+      "연애·커리어 심층 분석, 주변에서 보는 나의 인상, 친구별 시선과 차이, 상황별 궁합과 주의점까지 웹에서 모두 열어 드려요. 한 번만 결제하면 언제든 다시 볼 수 있어요.",
     submitMessage:
-      "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장, 추가 결제 없음. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
+      "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
 };
 // Checkout 左の商品サムネ (現行キービジュアルの PNG・768x512)。
@@ -336,16 +337,24 @@ export async function POST(request: NextRequest) {
   }
 
   // 購入後の着地:
-  //   ログイン中/owner_token あり → 自分のトリセツ (/me/[owner_token])。
+  //   ログイン中/owner_token あり → 既定は自分のトリセツ (/me/[owner_token])。
+  //     body.return_to==='tako' のとき (/tako から購入) は /tako/[owner_token] に戻す
+  //     (2026-07-22 完全版一本化: 友達診断ロックからの購入者は元の /tako に戻す)。
   //   ゲスト → 「購入完了 → 登録メールでログイン」ページ。
   const ownerToken = (buyer?.owner_token ?? "").trim();
   const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
+  // 戻り先は allowlist 化 (任意 URL への open redirect を防ぐ)。既定 me。
+  const returnTo = body.return_to === "tako" ? "tako" : "me";
+  const successPath =
+    returnTo === "tako"
+      ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
+      : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
   const successUrl = ownerToken
-    ? `${checkoutBaseUrl}${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
+    ? `${checkoutBaseUrl}${successPath}`
     : `${checkoutBaseUrl}${localePrefix}/purchase-complete?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = ownerToken
-    ? `${checkoutBaseUrl}${localePrefix}/me/${ownerToken}`
+    ? `${checkoutBaseUrl}${localePrefix}/${returnTo}/${ownerToken}`
     : `${checkoutBaseUrl}${localePrefix || "/"}`;
 
   // ログイン中は email を prefill。ゲストは Stripe が Checkout で email を収集する。

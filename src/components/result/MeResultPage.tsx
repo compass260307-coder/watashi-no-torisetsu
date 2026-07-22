@@ -72,6 +72,7 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { classifyType } from "@/lib/diagnosis";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { PaywallModal } from "@/components/result/PaywallModal";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
@@ -810,13 +811,24 @@ async function MeResultPageContent({
         ¥499 で買えるのは第二部まで (三層モデル)。友達1人で開いた人には売るものが無いので出さない。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
     {!partTwoUnlocked && (
-      <FullAccessPromoCard
-        ownerToken={token}
-        imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-        imageAlt={dispName}
-        group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
-        locale={locale}
-      />
+      <>
+        <FullAccessPromoCard
+          ownerToken={token}
+          imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+          imageAlt={dispName}
+          group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+          locale={locale}
+        />
+        {/* ロック要素の「今すぐアクセス」等はこのモーダルをその場で開く
+            (最下部カードへのスクロールに代わる導線。2026-07-22)。 */}
+        <PaywallModal
+          ownerToken={token}
+          imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+          imageAlt={dispName}
+          group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+          locale={locale}
+        />
+      </>
     )}
     {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。 */}
     <ResetDataLink locale={locale} />

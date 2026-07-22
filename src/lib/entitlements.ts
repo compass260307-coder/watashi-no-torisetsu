@@ -61,11 +61,14 @@ export async function hasFullAccess(
 
 
 // =====================================================================
-// 友達診断 (/tako) の課金解放 'tako_unlock' (2026-07-20)。
-//   価格: ¥799 / 全解放 (¥499課金) 保有者は ¥499 OFF の ¥300 (2026-07-21 改定。旧 ¥1,299/¥800)。
-//   権限は payment_history (payment_kind='tako_unlock', status='completed') から導出。
+// 友達診断 (/tako) の解放。
+//   2026-07-22: 商品を ¥499 完全版パッケージに一本化。full_access(¥499) 購入で
+//   友達診断結果も解放される (hasTakoAccess が hasFullAccess を含む)。
+//   旧 'tako_unlock' (¥799 単体販売) は廃止。ただし過去の ¥799 購入者の権限は
+//   payment_history から引き続き読み取り、解放を維持する (下記 anyTakoUnlockPayment)。
 // =====================================================================
 
+// 旧 ¥799 単体販売の価格定数 (2026-07-22 に販売終了。過去参照・型互換のため残置)。
 export const TAKO_UNLOCK_PRICE_JPY = 799;
 export const TAKO_UNLOCK_DISCOUNTED_PRICE_JPY = 300;
 
@@ -92,7 +95,10 @@ export async function hasTakoAccess(
 ): Promise<boolean> {
   if (!userId) return false;
 
-  // ① 自分の行での購入
+  // ⓪ 完全版パッケージ (¥499 full_access) を持っていれば友達診断も解放 (2026-07-22 一本化)。
+  if (await hasFullAccess(userId)) return true;
+
+  // ① 旧 ¥799 単体購入者の権限維持: 自分の行での tako_unlock 購入
   if (await anyTakoUnlockPayment([userId])) return true;
 
   // ② email 紐付け: 同一 email の別 user 行での購入
