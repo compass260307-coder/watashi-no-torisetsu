@@ -18,44 +18,44 @@ const TYPE_LABELS: Record<string, string> = {
 // paywall_scroll_clicked の source → 日本語ラベル (設置場所)。
 // 未知の source はキーをそのまま表示する (title 属性に生キーも残す)。
 const PAYWALL_SOURCE_LABELS: Record<string, string> = {
-  love_payoff_card: "恋愛「好きになった人が読むトリセツ」ロック",
-  love_failure_card: "恋愛「恋人が密かに我慢していること」ロック",
-  career_fit_card: "キャリア「合った働き方・避けたほうがいい職場」ロック",
-  career_avoid_card: "旧:キャリア「避けたほうがいい職場」ロック",
-  career_relations_card: "キャリア「職場の人間関係」ロック",
-  career_talent_card: "旧:キャリア「仕事で評価される意外な才能」ロック (KO は継続)",
-  deepdive_card: "旧:深掘り(キャリア/成長/相性)ロック",
-  scene_caution_card: "シーン別の注意点ロック",
-  moshimo_card: "「もしもの時のアナタ」ロック",
-  friend_dislike_card: "友達「嫌われやすい性格」ロック",
-  urawaza_card: "旧:裏技でロック解除カード",
-  relations_card: "「周りの人が、あなたに言えずにいること」ロック",
-  deepdive_panel: "旧:深掘りロックパネル",
-  deepdive_tab_career: "旧:深掘りタブ(キャリア)",
-  deepdive_tab_growth: "旧:深掘りタブ(成長)",
-  deepdive_tab_aisho: "旧:深掘りタブ(相性)",
-  sticky_bar: "追従バー(結果ページ上部)",
-  friend_list: "友達一覧ロック",
-  friend_individual_paywall: "友達個別結果ページの課金カード",
-  aisho_scene: "相性ページ(シーン別)",
-  tako_lock: "旧:/tako 共通ロック (カード別計測前)",
-  tako_mote_card: "友達診断「モテ理由」ロック",
-  tako_hints_card: "友達診断「好かれるヒント」ロック",
-  tako_kotsu_card: "友達診断「関係を深めるヒント」ロック",
-  tako_wana_card: "友達診断「関係を壊すワナ」ロック",
-  tako_unlocked: "/tako 解放後導線",
-  tako_promo_card: "/tako 購入カード (直接購入)",
-  paywall_direct: "課金カードから直接購入",
+  love_payoff_card: "恋愛",
+  love_failure_card: "恋愛",
+  career_fit_card: "仕事",
+  career_avoid_card: "旧 仕事",
+  career_relations_card: "仕事",
+  career_talent_card: "旧 仕事",
+  deepdive_card: "旧 深掘り",
+  scene_caution_card: "シーン別",
+  moshimo_card: "もしも",
+  friend_dislike_card: "友達",
+  urawaza_card: "旧 裏技",
+  relations_card: "本音",
+  deepdive_panel: "旧 深掘り",
+  deepdive_tab_career: "旧 仕事タブ",
+  deepdive_tab_growth: "旧 成長タブ",
+  deepdive_tab_aisho: "旧 相性タブ",
+  sticky_bar: "追従バー",
+  friend_list: "友達一覧",
+  friend_individual_paywall: "友達個別",
+  aisho_scene: "相性ページ",
+  tako_lock: "旧 /tako",
+  tako_mote_card: "モテ理由",
+  tako_hints_card: "好かれるヒント",
+  tako_kotsu_card: "深めるヒント",
+  tako_wana_card: "壊すワナ",
+  tako_unlocked: "/tako 解放後",
+  tako_promo_card: "/tako 購入",
+  paywall_direct: "直接購入",
   unknown: "不明",
 };
 
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
-  full_access: "完全版パッケージ (¥499・自己+友達診断)",
-  tako_unlock: "旧:友達診断の全解放 (¥799・2026-07-22販売終了)",
-  perception_unlock: "友達個別の解放",
-  integrated_trisetsu: "旧:統合トリセツ",
-  unknown: "不明 (kind未記録)",
+  full_access: "完全版 ¥499",
+  tako_unlock: "旧 友達診断 ¥799",
+  perception_unlock: "友達個別",
+  integrated_trisetsu: "旧 統合トリセツ",
+  unknown: "不明",
 };
 
 type Stats = {
@@ -265,49 +265,49 @@ const ADMIN_NAV_ITEMS = [
   {
     href: "#overview",
     id: "overview",
-    label: "エグゼクティブ概要",
+    label: "概要",
     shortLabel: "概要",
     path: "M4 13h5V4H4v9Zm0 7h5v-4H4v4Zm8 0h8v-9h-8v9Zm0-16v4h8V4h-8Z",
   },
   {
     href: "#revenue",
     id: "revenue",
-    label: "課金分析",
-    shortLabel: "課金",
+    label: "売上",
+    shortLabel: "売上",
     path: "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7",
   },
   {
     href: "#friend-funnel",
     id: "friend-funnel",
-    label: "友達診断ファネル",
+    label: "友達診断",
     shortLabel: "友達診断",
     path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
   },
   {
     href: "#funnel",
     id: "funnel",
-    label: "全体ファネル",
-    shortLabel: "全体ファネル",
+    label: "ファネル",
+    shortLabel: "ファネル",
     path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
   },
   {
     href: "#growth",
     id: "growth",
-    label: "拡散分析",
+    label: "拡散",
     shortLabel: "拡散",
     path: "m4 16 5-5 4 4 7-8m-6 0h6v6",
   },
   {
     href: "#audience",
     id: "audience",
-    label: "ユーザー分析",
+    label: "ユーザー",
     shortLabel: "ユーザー",
     path: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 10v-2a4 4 0 0 0-3-3.87m-1-7.26a4 4 0 0 1 0 7.75",
   },
   {
     href: "#events",
     id: "events",
-    label: "イベントログ",
+    label: "ログ",
     shortLabel: "ログ",
     path: "M4 4h16v16H4zM8 8h8M8 12h8M8 16h5",
   },
@@ -480,15 +480,15 @@ function trendOf(diff: number): MetricTrend {
 
 const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
   up: {
-    chip: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200",
+    chip: "border-emerald-200 bg-emerald-50 text-emerald-700",
     arrow: "▲",
   },
   down: {
-    chip: "border-rose-300/25 bg-rose-300/10 text-rose-200",
+    chip: "border-rose-200 bg-rose-50 text-rose-700",
     arrow: "▼",
   },
   flat: {
-    chip: "border-white/10 bg-white/[0.06] text-slate-300",
+    chip: "border-stone-200 bg-stone-50 text-stone-500",
     arrow: "―",
   },
 };
@@ -496,12 +496,12 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
 // 数値セル: 0 は薄く沈め、値がある所だけ目に入るようにする。
 function AttributionNum({ value, strong }: { value: number; strong?: boolean }) {
   if (value === 0) {
-    return <span className="tabular-nums text-slate-300">0</span>;
+    return <span className="tabular-nums text-stone-300">0</span>;
   }
   return (
     <span
       className={`tabular-nums ${
-        strong ? "font-black text-emerald-600" : "font-bold text-slate-700"
+        strong ? "font-black text-emerald-600" : "font-bold text-stone-700"
       }`}
     >
       {value}
@@ -509,7 +509,7 @@ function AttributionNum({ value, strong }: { value: number; strong?: boolean }) 
   );
 }
 
-// 導線別の決済結果テーブル (¥499 / ¥799 の両商品で共用)。
+// 導線別の決済結果テーブル (自己診断ページ発 / 友達診断ページ発 で共用・どちらも ¥499)。
 function AttributionTable({
   rows,
 }: {
@@ -524,49 +524,49 @@ function AttributionTable({
 }) {
   const maxClicks = Math.max(1, ...rows.map((s) => s.scrollClicks));
   return (
-    <div className="overflow-x-auto rounded-[18px] border border-slate-200/80">
+    <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
       <table className="w-full min-w-[760px] text-xs">
-        <thead className="bg-slate-50/90 text-slate-500">
+        <thead className="bg-stone-50 text-stone-500">
           <tr>
-            <th className="px-3 py-2.5 text-left font-medium">導線</th>
-            <th className="px-3 py-2.5 text-right font-medium">誘導クリック</th>
-            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">購入ボタン</th>
-            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">Stripe到達</th>
-            <th className="px-2 py-2.5 text-center font-medium text-slate-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">決済完了</th>
-            <th className="px-3 py-2.5 text-right font-medium">購入率</th>
+            <th className="px-3 py-2.5 text-left font-medium">場所</th>
+            <th className="px-3 py-2.5 text-right font-medium">クリック</th>
+            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
+            <th className="px-3 py-2.5 text-right font-medium">購入</th>
+            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
+            <th className="px-3 py-2.5 text-right font-medium">Stripe</th>
+            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
+            <th className="px-3 py-2.5 text-right font-medium">完了</th>
+            <th className="px-3 py-2.5 text-right font-medium">率</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100/80">
+        <tbody className="divide-y divide-stone-100/80">
           {rows.map((s) => {
             const label = PAYWALL_SOURCE_LABELS[s.source] ?? s.source;
             const isLegacy = label.startsWith("旧");
             return (
               <tr
                 key={s.source}
-                className={`transition hover:bg-indigo-50/35 ${
+                className={`transition hover:bg-stone-50 ${
                   s.purchases > 0 ? "bg-emerald-50/50" : ""
                 }`}
               >
                 <td className="px-3 py-3" title={s.source}>
                   <p
                     className={`flex items-center gap-2 font-semibold ${
-                      isLegacy ? "text-slate-400" : "text-slate-700"
+                      isLegacy ? "text-stone-400" : "text-stone-700"
                     }`}
                   >
                     {label}
                     {s.purchases > 0 && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                        購入あり
+                      <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                        購入
                       </span>
                     )}
                   </p>
                   {/* 誘導クリック量のミニバー (最大行=100%) */}
-                  <span className="mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded-full bg-slate-100">
+                  <span className="mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded bg-stone-100">
                     <span
-                      className={`block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400 ${
+                      className={`block h-full rounded bg-teal-500 ${
                         isLegacy ? "opacity-30" : ""
                       }`}
                       style={{
@@ -581,19 +581,19 @@ function AttributionTable({
                 <td className="px-3 py-3 text-right">
                   <AttributionNum value={s.scrollClicks} />
                 </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
                   →
                 </td>
                 <td className="px-3 py-3 text-right">
                   <AttributionNum value={s.purchaseCtaClicks} />
                 </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
                   →
                 </td>
                 <td className="px-3 py-3 text-right">
                   <AttributionNum value={s.stripeReached} />
                 </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-slate-200">
+                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
                   →
                 </td>
                 <td className="px-3 py-3 text-right">
@@ -601,13 +601,13 @@ function AttributionTable({
                 </td>
                 <td className="px-3 py-3 text-right">
                   {s.purchaseRate === null ? (
-                    <span className="text-slate-300">—</span>
+                    <span className="text-stone-300">—</span>
                   ) : s.purchaseRate > 0 ? (
-                    <span className="rounded-full bg-indigo-600 px-2 py-1 text-[11px] font-black tabular-nums text-white">
+                    <span className="rounded bg-stone-900 px-2 py-1 text-[11px] font-black tabular-nums text-white">
                       {pct(s.purchaseRate)}
                     </span>
                   ) : (
-                    <span className="tabular-nums text-slate-300">0.0%</span>
+                    <span className="tabular-nums text-stone-300">0.0%</span>
                   )}
                 </td>
               </tr>
@@ -623,25 +623,28 @@ type ExecutiveMetricTone = "indigo" | "emerald" | "cyan";
 
 const EXECUTIVE_METRIC_TONES: Record<
   ExecutiveMetricTone,
-  { accent: string; glow: string; badge: string; icon: string }
+  { accent: string; badge: string; icon: string; value: string; line: string }
 > = {
   indigo: {
-    accent: "from-indigo-400 via-violet-400 to-fuchsia-400",
-    glow: "bg-indigo-500/25",
-    badge: "border-indigo-300/20 bg-indigo-300/10 text-indigo-100",
-    icon: "bg-indigo-400/15 text-indigo-200 ring-indigo-300/20",
+    accent: "bg-indigo-500",
+    badge: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    icon: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+    value: "text-indigo-700",
+    line: "border-indigo-100",
   },
   emerald: {
-    accent: "from-emerald-400 via-teal-300 to-cyan-300",
-    glow: "bg-emerald-400/20",
-    badge: "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
-    icon: "bg-emerald-400/15 text-emerald-200 ring-emerald-300/20",
+    accent: "bg-emerald-500",
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    icon: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    value: "text-emerald-700",
+    line: "border-emerald-100",
   },
   cyan: {
-    accent: "from-cyan-300 via-sky-400 to-indigo-400",
-    glow: "bg-cyan-400/20",
-    badge: "border-cyan-300/20 bg-cyan-300/10 text-cyan-100",
-    icon: "bg-cyan-400/15 text-cyan-100 ring-cyan-300/20",
+    accent: "bg-sky-500",
+    badge: "border-sky-200 bg-sky-50 text-sky-700",
+    icon: "bg-sky-50 text-sky-700 ring-sky-100",
+    value: "text-sky-700",
+    line: "border-sky-100",
   },
 };
 
@@ -669,51 +672,47 @@ function ExecutiveMetricCard({
 }) {
   const colors = EXECUTIVE_METRIC_TONES[tone];
   return (
-    <article className="group relative min-h-[220px] overflow-hidden rounded-[24px] border border-white/[0.11] bg-white/[0.055] p-5 shadow-[0_20px_50px_-34px_rgba(0,0,0,0.75)] backdrop-blur transition duration-300 hover:-translate-y-0.5 hover:bg-white/[0.075] sm:p-6">
+    <article className={`relative min-h-[206px] overflow-hidden rounded-lg border ${colors.line} bg-white p-5 shadow-[0_16px_42px_-36px_rgba(28,25,23,0.45)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_54px_-38px_rgba(28,25,23,0.5)] sm:p-6`}>
       <span
         aria-hidden="true"
-        className={`absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl ${colors.glow}`}
-      />
-      <span
-        aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${colors.accent}`}
+        className={`absolute inset-y-0 left-0 w-1 ${colors.accent}`}
       />
       <div className="relative flex items-start justify-between gap-4">
-        <span className={`inline-flex rounded-full border px-3 py-1.5 text-[9px] font-black tracking-[0.08em] ${colors.badge}`}>
+        <span className={`inline-flex rounded border px-2.5 py-1 text-[10px] font-black tracking-normal ${colors.badge}`}>
           {badge}
         </span>
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl text-[10px] font-black ring-1 ${colors.icon}`}>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-black ring-1 ${colors.icon}`}>
           {index}
         </span>
       </div>
-      <p className="relative mt-5 text-[12px] font-black tracking-[0.02em] text-slate-300">
+      <p className="relative mt-5 text-[12px] font-black tracking-normal text-stone-500">
         {label}
       </p>
       <div className="relative mt-2 flex min-w-0 items-end gap-2">
         <p
-          className={`min-w-0 font-black leading-none tracking-[-0.065em] tabular-nums text-white ${
+          className={`min-w-0 font-black leading-none tracking-normal tabular-nums ${colors.value} ${
             compactValue
-              ? "text-[clamp(2.25rem,3.3vw,3.9rem)]"
-              : "text-[clamp(3.25rem,4.8vw,5.25rem)]"
+              ? "text-4xl lg:text-5xl"
+              : "text-5xl lg:text-6xl"
           }`}
         >
           {value}
         </p>
         {unit ? (
-          <span className="mb-1.5 shrink-0 text-lg font-black text-slate-200 sm:mb-2 sm:text-xl">
+          <span className="mb-1.5 shrink-0 text-base font-black text-stone-500 sm:mb-2">
             {unit}
           </span>
         ) : null}
       </div>
       {compare ? (
         <p
-          className={`relative mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black tabular-nums ${TREND_STYLES[compare.trend].chip}`}
+          className={`relative mt-3 inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-[10px] font-black tabular-nums ${TREND_STYLES[compare.trend].chip}`}
         >
           <span aria-hidden="true">{TREND_STYLES[compare.trend].arrow}</span>
           {compare.label}
         </p>
       ) : null}
-      <p className="relative mt-4 border-t border-white/[0.08] pt-3 text-[11px] font-medium leading-relaxed text-slate-400">
+      <p className="relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed text-stone-500">
         {detail}
       </p>
     </article>
@@ -724,42 +723,42 @@ type KpiTone = "indigo" | "emerald" | "amber" | "rose" | "slate";
 
 const KPI_TONES: Record<
   KpiTone,
-  { accent: string; icon: string; value: string; glow: string; number: string }
+  { accent: string; icon: string; value: string; number: string; surface: string }
 > = {
   indigo: {
-    accent: "from-indigo-600 via-violet-500 to-fuchsia-400",
+    accent: "bg-indigo-500",
     icon: "bg-indigo-50 text-indigo-600 ring-indigo-100",
     value: "text-indigo-700",
-    glow: "bg-indigo-400/12",
     number: "text-indigo-200",
+    surface: "border-indigo-100",
   },
   emerald: {
-    accent: "from-emerald-600 via-teal-500 to-cyan-400",
+    accent: "bg-emerald-500",
     icon: "bg-emerald-50 text-emerald-600 ring-emerald-100",
     value: "text-emerald-700",
-    glow: "bg-emerald-400/12",
     number: "text-emerald-200",
+    surface: "border-emerald-100",
   },
   amber: {
-    accent: "from-amber-500 via-orange-500 to-rose-400",
+    accent: "bg-amber-500",
     icon: "bg-amber-50 text-amber-600 ring-amber-100",
     value: "text-amber-700",
-    glow: "bg-amber-400/12",
     number: "text-amber-200",
+    surface: "border-amber-100",
   },
   rose: {
-    accent: "from-rose-600 via-pink-500 to-fuchsia-400",
+    accent: "bg-rose-500",
     icon: "bg-rose-50 text-rose-600 ring-rose-100",
     value: "text-rose-700",
-    glow: "bg-rose-400/12",
     number: "text-rose-200",
+    surface: "border-rose-100",
   },
   slate: {
-    accent: "from-slate-700 via-slate-500 to-slate-300",
-    icon: "bg-slate-100 text-slate-600 ring-slate-200",
-    value: "text-slate-900",
-    glow: "bg-slate-400/10",
-    number: "text-slate-200",
+    accent: "bg-stone-800",
+    icon: "bg-stone-100 text-stone-600 ring-stone-200",
+    value: "text-stone-900",
+    number: "text-stone-200",
+    surface: "border-stone-200",
   },
 };
 
@@ -781,30 +780,26 @@ function KpiCard({
   const colors = KPI_TONES[tone];
   return (
     <div
-      className={`group relative overflow-hidden border border-slate-200/75 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-slate-300/80 hover:shadow-[0_18px_42px_-24px_rgba(15,23,42,0.35)] ${
+      className={`group relative overflow-hidden border bg-white transition duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_38px_-30px_rgba(28,25,23,0.45)] ${colors.surface} ${
         featured
-          ? "min-h-[190px] rounded-[24px] p-5 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.38)] xl:p-6"
-          : "min-h-[142px] rounded-[20px] p-4 shadow-[0_8px_28px_-24px_rgba(15,23,42,0.32)]"
+          ? "min-h-[174px] rounded-lg p-5 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] xl:p-6"
+          : "min-h-[132px] rounded-lg p-4 shadow-[0_8px_24px_-24px_rgba(28,25,23,0.36)]"
       }`}
     >
       <span
         aria-hidden="true"
-        className={`absolute -right-12 -top-16 h-36 w-36 rounded-full blur-3xl ${colors.glow}`}
-      />
-      <span
-        aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${colors.accent}`}
+        className={`absolute inset-y-0 left-0 w-1 ${colors.accent}`}
       />
       <div className="flex items-start justify-between gap-3">
         <div className="relative min-w-0">
-          <p className="mb-3 text-[11px] font-bold leading-relaxed tracking-[0.01em] text-slate-500">
+          <p className="mb-3 text-[11px] font-bold leading-relaxed tracking-normal text-stone-500">
             {label}
           </p>
           <p
-            className={`font-black leading-none tracking-[-0.045em] tabular-nums ${colors.value} ${
+            className={`font-black leading-none tracking-normal tabular-nums ${colors.value} ${
               featured
-                ? "text-[clamp(1.7rem,2.25vw,2.35rem)]"
-                : "text-[1.65rem]"
+                ? "text-3xl"
+                : "text-2xl"
             }`}
           >
             {value}
@@ -813,14 +808,14 @@ function KpiCard({
         {index ? (
           <span
             aria-hidden="true"
-            className={`text-sm font-black tracking-[0.08em] ${colors.number}`}
+            className={`text-sm font-black tracking-normal ${colors.number}`}
           >
             {index}
           </span>
         ) : (
           <span
             aria-hidden="true"
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ${colors.icon}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${colors.icon}`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -836,8 +831,8 @@ function KpiCard({
       </div>
       {sub && (
         <p
-          className={`relative mt-4 border-t border-slate-100 pt-3 text-[11px] font-medium leading-relaxed ${
-            featured ? "text-slate-500" : "text-slate-400"
+          className={`relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed ${
+            featured ? "text-stone-500" : "text-stone-400"
           }`}
         >
           {sub}
@@ -861,15 +856,15 @@ function SectionHeader({
   return (
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-3xl">
-        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">
-          <span className="h-px w-5 bg-indigo-500" aria-hidden="true" />
+        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-normal text-teal-700">
+          <span className="h-px w-5 bg-teal-500" aria-hidden="true" />
           {eyebrow}
         </p>
-        <h2 className="text-xl font-black tracking-[-0.035em] text-slate-950 sm:text-[22px]">
+        <h2 className="text-xl font-black tracking-normal text-stone-950 sm:text-[22px]">
           {title}
         </h2>
         {description && (
-          <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500">
+          <p className="mt-1.5 text-xs font-medium leading-relaxed text-stone-500">
             {description}
           </p>
         )}
@@ -888,7 +883,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-[24px] border border-slate-200/75 bg-white shadow-[0_16px_44px_-32px_rgba(15,23,42,0.38)] ${className}`}
+      className={`rounded-lg border border-stone-200 bg-white shadow-[0_14px_34px_-30px_rgba(28,25,23,0.45)] ${className}`}
     >
       {children}
     </div>
@@ -913,19 +908,19 @@ function FunnelBar({
       : null;
   return (
     <div className="grid grid-cols-[6.25rem_minmax(0,1fr)_3.25rem] items-center gap-2.5 sm:grid-cols-[8.5rem_minmax(0,1fr)_4rem] sm:gap-3">
-      <span className="truncate text-right text-[11px] font-bold text-slate-600 sm:text-xs" title={label}>
+      <span className="truncate text-right text-[11px] font-bold text-stone-600 sm:text-xs" title={label}>
         {label}
       </span>
-      <div className="relative h-9 overflow-hidden rounded-xl bg-slate-100/90 ring-1 ring-inset ring-slate-200/50">
+      <div className="relative h-8 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-inset ring-stone-200/60">
         <div
-          className="h-full rounded-xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-500 transition-all duration-500"
+          className="h-full rounded-lg bg-teal-600 transition-all duration-500"
           style={{ width: `${Math.max(width, 1)}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-slate-800">
+        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-stone-800">
           {count.toLocaleString()}
         </span>
       </div>
-      <span className="text-right text-[11px] font-black tabular-nums text-slate-400 sm:text-xs">
+      <span className="text-right text-[11px] font-black tabular-nums text-stone-400 sm:text-xs">
         {convRate ?? "—"}
       </span>
     </div>
@@ -946,15 +941,15 @@ function DistributionBar({
   const width = max > 0 ? (count / max) * 100 : 0;
   return (
     <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
-      <span className="truncate text-right text-[11px] font-bold text-slate-600 sm:text-xs" title={label}>
+      <span className="truncate text-right text-[11px] font-bold text-stone-600 sm:text-xs" title={label}>
         {label}
       </span>
-      <div className="relative h-8 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200/50">
+      <div className="relative h-8 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-inset ring-stone-200/60">
         <div
-          className={`h-full rounded-xl transition-all duration-500 ${color ?? "bg-violet-500/75"}`}
+          className={`h-full rounded-lg transition-all duration-500 ${color ?? "bg-sky-500/80"}`}
           style={{ width: `${Math.max(width, 1)}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-slate-800">
+        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-stone-800">
           {count.toLocaleString()}
         </span>
       </div>
@@ -979,7 +974,7 @@ function QuestionReachChart({
 
   return (
     <Panel className="p-5 sm:p-6">
-      <h3 className="mb-4 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+      <h3 className="mb-4 text-xs font-black uppercase tracking-normal text-stone-500">
         {title}
       </h3>
       <div className="flex items-end gap-1 h-32">
@@ -990,16 +985,16 @@ function QuestionReachChart({
               key={d.index}
               className="flex-1 flex flex-col items-center gap-1"
             >
-              <span className="text-[10px] font-bold tabular-nums text-slate-500">
+              <span className="text-[10px] font-bold tabular-nums text-stone-500">
                 {d.count || ""}
               </span>
               <div className="w-full relative" style={{ height: "100px" }}>
                 <div
-                  className="absolute bottom-0 w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-teal-400 transition-all duration-500"
+                  className="absolute bottom-0 w-full rounded-t bg-teal-600 transition-all duration-500"
                   style={{ height: `${Math.max(height, 2)}%` }}
                 />
               </div>
-              <span className="text-[10px] font-medium text-slate-400">
+              <span className="text-[10px] font-medium text-stone-400">
                 Q{d.index + 1}
               </span>
             </div>
@@ -1007,7 +1002,7 @@ function QuestionReachChart({
         })}
       </div>
       {data.length > 1 && data[0].count > 0 && (
-        <p className="mt-3 text-right text-[11px] font-medium text-slate-400">
+        <p className="mt-3 text-right text-[11px] font-medium text-stone-400">
           Q1→Q{totalQuestions} 到達率:{" "}
           {pct(data[totalQuestions - 1].count / data[0].count)}
         </p>
@@ -1187,20 +1182,11 @@ export default function AdminPage() {
 
   if (!adminKey) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#090e1c] px-4 py-8 text-slate-900 sm:px-6">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-indigo-600/20 blur-3xl" />
-          <div className="absolute -bottom-48 right-[-5%] h-[38rem] w-[38rem] rounded-full bg-violet-500/15 blur-3xl" />
-          <div className="absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:48px_48px]" />
-        </div>
-        <div className="relative grid w-full max-w-[980px] overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.035] shadow-[0_40px_100px_-30px_rgba(0,0,0,0.75)] backdrop-blur md:grid-cols-[1.08fr_0.92fr]">
-          <div className="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.07] p-10 text-white md:flex lg:p-12">
-            <div
-              aria-hidden="true"
-              className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-indigo-500/25 blur-3xl"
-            />
-            <div className="relative flex items-center gap-3.5">
-              <span className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-gradient-to-br from-indigo-500 to-violet-600 shadow-xl shadow-indigo-950/40 ring-1 ring-white/20">
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f3ec] px-4 py-8 text-stone-950 sm:px-6">
+        <div className="grid w-full max-w-[980px] overflow-hidden rounded-lg border border-stone-200 bg-white shadow-[0_28px_80px_-54px_rgba(28,25,23,0.65)] md:grid-cols-[1fr_0.92fr]">
+          <div className="hidden border-r border-stone-200 bg-[#171814] p-9 text-white md:flex md:flex-col md:justify-between lg:p-11">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -1213,112 +1199,128 @@ export default function AdminPage() {
                 </svg>
               </span>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-indigo-300">Intelligence</p>
-                <p className="mt-0.5 text-base font-black tracking-[-0.025em]">ワタシのトリセツ</p>
+                <p className="text-[10px] font-black uppercase tracking-normal text-[#d7ff71]">
+                  Admin Console
+                </p>
+                <p className="mt-0.5 text-base font-black tracking-normal">
+                  ワタシのトリセツ
+                </p>
               </div>
             </div>
 
-            <div className="relative my-16">
-              <span className="mb-5 inline-flex rounded-full border border-indigo-300/20 bg-indigo-300/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-indigo-200">
-                Private workspace
+            <div className="my-14">
+              <span className="mb-5 inline-flex rounded border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-normal text-stone-300">
+                Private dashboard
               </span>
-              <h1 className="text-[38px] font-black leading-[1.14] tracking-[-0.055em]">
-                数字から、次の一手を
-                <br />
-                もっと明確に。
+              <h1 className="text-4xl font-black leading-tight tracking-normal">
+                毎日の数字を、
+                <br className="hidden lg:block" />
+                すぐ見る。
               </h1>
-              <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-slate-400">
-                診断・課金・友達回答・拡散をひとつのコホートで追跡する、運営専用の分析ワークスペースです。
+              <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-stone-400">
+                主要数字を一覧で確認。
               </p>
             </div>
 
-            <p className="relative text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
-              Secure analytics console
-            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {["Diagnosis", "Revenue", "Virality"].map((label) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-white/10 bg-white/[0.045] p-3"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
+                    {label}
+                  </p>
+                  <span className="mt-3 block h-1 rounded bg-[#d7ff71]" />
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="bg-white p-7 sm:p-10 lg:p-12">
             <div className="mb-8 flex items-center gap-3 md:hidden">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[15px] bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
-              </svg>
-            </span>
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-600">
-                Intelligence
-              </p>
-              <p className="text-base font-black tracking-tight text-slate-950">ワタシのトリセツ</p>
-            </div>
-          </div>
-          <form
-            onSubmit={handleLogin}
-            className="flex min-h-full flex-col justify-center"
-          >
-            <div className="mb-8">
-              <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-[14px] bg-slate-950 text-white shadow-lg shadow-slate-950/15">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71]">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="h-4 w-4"
+                  className="h-5 w-5"
                   aria-hidden="true"
                 >
-                  <rect x="5" y="10" width="14" height="10" rx="2" />
-                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
                 </svg>
               </span>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
-                Welcome back
-              </p>
-              <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">
-                管理画面へログイン
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                管理パスワードを入力して、分析画面を開きます。
-              </p>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-normal text-teal-700">
+                  Admin Console
+                </p>
+                <p className="text-base font-black tracking-normal text-stone-950">
+                  ワタシのトリセツ
+                </p>
+              </div>
             </div>
-            <label
-              htmlFor="admin-password"
-              className="mb-2.5 block text-xs font-black text-slate-700"
+            <form
+              onSubmit={handleLogin}
+              className="flex min-h-full flex-col justify-center"
             >
-              管理パスワード
-            </label>
-            <input
-              id="admin-password"
-              type="password"
-              value={inputKey}
-              onChange={(e) => setInputKey(e.target.value)}
-              placeholder="パスワードを入力"
-              autoComplete="current-password"
-              autoFocus
-              className="mb-3 w-full rounded-[14px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm outline-none transition placeholder:text-slate-300 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-            />
-            {error && (
-              <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600">
-                {error}
+              <div className="mb-8">
+                <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <rect x="5" y="10" width="14" height="10" rx="2" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  </svg>
+                </span>
+                <p className="text-[10px] font-black uppercase tracking-normal text-teal-700">
+                  Secure access
+                </p>
+                <h2 className="mt-2 text-2xl font-black tracking-normal text-stone-950">
+                  管理画面へログイン
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-stone-500">
+                パスワードを入力してください。
+                </p>
+              </div>
+              <label
+                htmlFor="admin-password"
+                className="mb-2.5 block text-xs font-black text-stone-700"
+              >
+                管理パスワード
+              </label>
+              <input
+                id="admin-password"
+                type="password"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="パスワードを入力"
+                autoComplete="current-password"
+                autoFocus
+                className="mb-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-4 py-4 text-sm outline-none transition placeholder:text-stone-300 focus:border-teal-600 focus:bg-white focus:ring-4 focus:ring-teal-600/10"
+              />
+              {error && (
+                <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600">
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={loading || !inputKey.trim()}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 py-4 text-sm font-black text-white shadow-[0_18px_34px_-24px_rgba(28,25,23,0.7)] transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {loading ? "確認中..." : "ログイン"}
+                {!loading && <span aria-hidden="true">→</span>}
+              </button>
+              <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-normal text-stone-300">
+                Authorized personnel only
               </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading || !inputKey.trim()}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] bg-slate-950 py-4 text-sm font-black text-white shadow-xl shadow-slate-950/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {loading ? "確認中..." : "ログイン"}
-              {!loading && <span aria-hidden="true">→</span>}
-            </button>
-            <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-slate-300">
-              Authorized personnel only
-            </p>
-          </form>
+            </form>
           </div>
         </div>
       </div>
@@ -1327,11 +1329,11 @@ export default function AdminPage() {
 
   if (loading && !stats) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="text-center text-white">
-          <span className="mx-auto mb-4 block h-9 w-9 animate-spin rounded-full border-[3px] border-indigo-400/30 border-t-indigo-400" />
-          <p className="text-sm font-bold">ダッシュボードを読み込んでいます</p>
-          <p className="mt-1 text-xs text-slate-500">集計には数秒かかる場合があります</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f3ec]">
+        <div className="rounded-lg border border-stone-200 bg-white px-8 py-7 text-center shadow-[0_20px_60px_-44px_rgba(28,25,23,0.6)]">
+          <span className="mx-auto mb-4 block h-9 w-9 animate-spin rounded-full border-[3px] border-stone-200 border-t-teal-600" />
+          <p className="text-sm font-bold text-stone-900">読み込み中</p>
+          <p className="mt-1 text-xs text-stone-500">少し時間がかかります</p>
         </div>
       </div>
     );
@@ -1485,7 +1487,7 @@ export default function AdminPage() {
       rows.push([s.label, String(s.count)]),
     );
     rows.push([]);
-    rows.push(["# 課金ファネル (友達診断・全解放 ¥799)"]);
+    rows.push(["# 課金ファネル (友達診断ページ発 ¥499)"]);
     rows.push(["ステップ", "件数"]);
     (stats.takoFunnel ?? []).forEach((s) =>
       rows.push([s.label, String(s.count)]),
@@ -1645,18 +1647,10 @@ export default function AdminPage() {
     : null;
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-[#f5f7fb] text-slate-900">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(99,102,241,0.08),transparent_24%),radial-gradient(circle_at_18%_88%,rgba(14,165,233,0.05),transparent_28%)]"
-      />
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] flex-col overflow-hidden bg-[#0b1020] text-white shadow-[20px_0_60px_-42px_rgba(15,23,42,0.8)] lg:flex">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -left-28 -top-32 h-80 w-80 rounded-full bg-indigo-500/20 blur-3xl"
-        />
-        <div className="relative flex h-[84px] items-center gap-3.5 border-b border-white/[0.07] px-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-[15px] bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-950/50 ring-1 ring-white/20">
+    <div className="min-h-screen overflow-x-clip bg-[#f5f3ec] text-stone-950">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-stone-800 bg-[#171814] text-white lg:flex">
+        <div className="flex h-[76px] items-center gap-3 border-b border-white/[0.08] px-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -1669,40 +1663,40 @@ export default function AdminPage() {
             </svg>
           </span>
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-indigo-300">
-              Intelligence
+            <p className="text-[10px] font-black uppercase tracking-normal text-[#d7ff71]">
+              Admin Console
             </p>
-            <p className="mt-0.5 text-[15px] font-black tracking-[-0.025em]">
+            <p className="mt-0.5 text-[15px] font-black tracking-normal">
               ワタシのトリセツ
             </p>
           </div>
         </div>
 
-        <nav className="relative flex-1 px-4 py-7" aria-label="管理画面メニュー">
-          <p className="mb-3 px-3 text-[9px] font-black uppercase tracking-[0.22em] text-slate-600">
-            Workspace
+        <nav className="flex-1 px-3 py-6" aria-label="管理画面メニュー">
+          <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-normal text-stone-500">
+            Dashboard
           </p>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
           {ADMIN_NAV_ITEMS.map((item) => (
             <a
               key={item.href}
               href={item.href}
               onClick={() => setActiveSection(item.id)}
-              className={`group relative flex items-center gap-3 rounded-[14px] px-3.5 py-3 text-[13px] font-bold transition ${
+              className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold transition ${
                 activeSection === item.id
-                  ? "bg-white/[0.09] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-                  : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
+                  ? "bg-white text-stone-950"
+                  : "text-stone-400 hover:bg-white/[0.06] hover:text-stone-100"
               }`}
               aria-current={activeSection === item.id ? "location" : undefined}
             >
               {activeSection === item.id && (
-                <span className="absolute -left-1 h-6 w-1 rounded-full bg-indigo-400 shadow-[0_0_14px_rgba(129,140,248,0.8)]" />
+                <span className="absolute -left-1 h-5 w-1 rounded bg-[#d7ff71]" />
               )}
               <span
-                className={`flex h-8 w-8 items-center justify-center rounded-[10px] transition ${
+                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
                   activeSection === item.id
-                    ? "bg-indigo-500/20 text-indigo-300"
-                    : "bg-white/[0.035] text-slate-500 group-hover:text-slate-300"
+                    ? "bg-stone-950 text-[#d7ff71]"
+                    : "bg-white/[0.06] text-stone-500 group-hover:text-stone-200"
                 }`}
               >
               <svg
@@ -1720,39 +1714,61 @@ export default function AdminPage() {
             </a>
           ))}
           </div>
+
+          <p className="mb-3 mt-7 px-3 text-[10px] font-black uppercase tracking-normal text-stone-500">
+            Tools
+          </p>
+          <a
+            href="/admin/social"
+            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold text-stone-400 transition hover:bg-white/[0.06] hover:text-stone-100"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-stone-500 group-hover:text-stone-200">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="h-[15px] w-[15px]"
+                aria-hidden="true"
+              >
+                <path d="M4 7h16M4 12h10M4 17h16" strokeLinecap="round" />
+              </svg>
+            </span>
+            SNSライブラリ
+          </a>
         </nav>
 
-        <div className="relative border-t border-white/[0.07] p-4">
-          <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.04] px-4 py-4">
+        <div className="border-t border-white/[0.08] p-3">
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span
                   className={`h-2 w-2 rounded-full ${
                     coreReady
-                      ? "bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.12)]"
-                      : "bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.12)]"
+                      ? "bg-emerald-400"
+                      : "bg-amber-400"
                   }`}
                 />
-                <p className="text-[11px] font-bold text-slate-200">
-                  {coreReady ? "データ基盤 正常" : "DB更新が必要"}
+                <p className="text-[11px] font-bold text-stone-200">
+                  {coreReady ? "正常" : "DB更新"}
                 </p>
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-600">
+              <span className="text-[10px] font-black uppercase tracking-normal text-stone-500">
                 Status
               </span>
             </div>
-            <p className="mt-3 border-t border-white/[0.06] pt-3 text-[10px] leading-relaxed text-slate-500">
-              最終更新 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
+            <p className="mt-3 border-t border-white/[0.08] pt-3 text-[10px] leading-relaxed text-stone-500">
+              更新 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
             </p>
           </div>
         </div>
       </aside>
 
-      <div className="relative lg:pl-[280px]">
-        <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
-          <div className="flex min-h-[72px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-10">
+      <div className="lg:pl-[252px]">
+        <header className="sticky top-0 z-20 border-b border-stone-200 bg-[#fbfaf6]/95 backdrop-blur">
+          <div className="flex min-h-[68px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-[13px] bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20 lg:hidden">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71] lg:hidden">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -1765,26 +1781,32 @@ export default function AdminPage() {
                 </svg>
               </span>
               <div>
-                <h1 className="text-[15px] font-black tracking-[-0.025em] text-slate-950 sm:text-lg">
-                  経営ダッシュボード
+                <h1 className="text-[15px] font-black tracking-normal text-stone-950 sm:text-lg">
+                  ダッシュボード
                 </h1>
-                <p className="hidden text-[11px] font-medium text-slate-400 sm:block">
+                <p className="hidden text-[11px] font-medium text-stone-500 sm:block">
                   Diagnosis · Revenue · Virality
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-[10px] font-bold text-indigo-700 shadow-sm sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span className="hidden items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[10px] font-bold text-stone-600 shadow-sm sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
                 <span className="hidden xl:inline">{selectedPeriodLabel}の</span>
-                <span className="font-black tabular-nums text-slate-950">
-                  診断完了 {headlineDiagnosisUsers.toLocaleString()}人
+                <span className="font-black tabular-nums text-stone-950">
+                  診断 {headlineDiagnosisUsers.toLocaleString()}人
                 </span>
               </span>
+              <a
+                href="/admin/social"
+                className="hidden h-10 items-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 md:inline-flex"
+              >
+                SNS素材
+              </a>
               <button
                 onClick={downloadCsv}
-                aria-label="CSVをエクスポート"
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3 text-xs font-bold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:px-3.5"
+                aria-label="CSVを出力"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 sm:px-3.5"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1796,13 +1818,13 @@ export default function AdminPage() {
                 >
                   <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="hidden sm:inline">エクスポート</span>
+                <span className="hidden sm:inline">CSV</span>
               </button>
               <button
                 onClick={() => fetchStats(adminKey, preset, customFrom, customTo)}
                 disabled={loading}
-                aria-label={loading ? "データを同期中" : "データを同期"}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white shadow-lg shadow-slate-950/15 transition hover:bg-indigo-700 disabled:opacity-50 sm:px-3.5"
+                aria-label={loading ? "更新中" : "更新"}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-stone-950 px-3 text-xs font-black text-white shadow-[0_12px_26px_-20px_rgba(28,25,23,0.7)] transition hover:bg-teal-700 disabled:opacity-50 sm:px-3.5"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1814,11 +1836,11 @@ export default function AdminPage() {
                 >
                   <path d="M20 11a8 8 0 1 0-2.34 5.66M20 11V5m0 6h-6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="hidden sm:inline">{loading ? "同期中" : "データ同期"}</span>
+                <span className="hidden sm:inline">{loading ? "更新中" : "更新"}</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="hidden h-10 rounded-xl px-3 text-xs font-bold text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 xl:block"
+                className="hidden h-10 rounded-lg px-3 text-xs font-bold text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 xl:block"
               >
                 ログアウト
               </button>
@@ -1827,7 +1849,7 @@ export default function AdminPage() {
         </header>
 
         <nav
-          className="sticky top-[72px] z-10 flex gap-1 overflow-x-auto border-b border-slate-200/70 bg-[#f5f7fb]/95 px-4 py-2 backdrop-blur lg:hidden"
+          className="sticky top-[68px] z-10 flex gap-1 overflow-x-auto border-b border-stone-200 bg-[#f5f3ec]/95 px-4 py-2 backdrop-blur lg:hidden"
           aria-label="セクションメニュー"
         >
           {ADMIN_NAV_ITEMS.map((item) => (
@@ -1838,8 +1860,8 @@ export default function AdminPage() {
               aria-current={activeSection === item.id ? "location" : undefined}
               className={`whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold transition ${
                 activeSection === item.id
-                  ? "bg-slate-950 text-white shadow-sm"
-                  : "text-slate-500 hover:bg-white hover:text-slate-800"
+                  ? "bg-stone-950 text-white shadow-sm"
+                  : "text-stone-500 hover:bg-white hover:text-stone-800"
               }`}
             >
               {item.shortLabel}
@@ -1847,197 +1869,192 @@ export default function AdminPage() {
           ))}
         </nav>
 
-        <main className="relative mx-auto flex max-w-[1540px] flex-col gap-12 px-4 py-5 sm:px-6 sm:py-7 xl:px-10 xl:py-9">
+        <main className="mx-auto flex max-w-[1500px] flex-col gap-10 px-4 py-5 sm:px-6 sm:py-7 xl:px-8 xl:py-8">
           <section id="overview" className="scroll-mt-36 lg:scroll-mt-28">
-            <div className="relative overflow-hidden rounded-[28px] bg-[#11182d] text-white shadow-[0_26px_70px_-38px_rgba(15,23,42,0.72)] ring-1 ring-white/10">
-              <div
-                aria-hidden="true"
-                className="absolute -right-20 -top-40 h-[30rem] w-[30rem] rounded-full bg-indigo-500/30 blur-3xl"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute -bottom-40 left-1/3 h-80 w-80 rounded-full bg-cyan-400/10 blur-3xl"
-              />
-              <svg
-                aria-hidden="true"
-                className="absolute right-0 top-0 h-full w-1/2 opacity-[0.08]"
-                viewBox="0 0 400 300"
-                fill="none"
-              >
-                <path d="M20 255C92 219 106 242 160 180s82-34 124-94 72-54 110-64" stroke="white" strokeWidth="2" />
-                <path d="M20 276c76-34 98-14 148-58s81-31 125-76 68-50 102-55" stroke="white" strokeWidth="1" />
-                <circle cx="160" cy="180" r="5" fill="white" />
-                <circle cx="284" cy="86" r="5" fill="white" />
-              </svg>
-
-              <div className="relative p-6 sm:p-8 xl:p-10">
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-indigo-300/20 bg-indigo-300/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-indigo-200">
-                        Executive pulse
-                      </span>
-                      <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[9px] font-black ${coreReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${coreReady ? "bg-emerald-300" : "bg-amber-300"}`} />
-                        {coreReady ? "確定データ" : "イベント値で補完中"}
-                      </span>
-                    </div>
-                    <h2 className="text-[clamp(1.7rem,3vw,2.65rem)] font-black leading-tight tracking-[-0.055em] text-white">
-                      {selectedPeriodLabel}の重要指標
-                    </h2>
-                    <p className="mt-2 text-xs font-medium leading-6 text-slate-400 sm:text-sm">
-                      診断・売上・友達診断への転換を、最初に確認できます。
+            <div className="grid gap-4 xl:grid-cols-[0.86fr_1.8fr]">
+              <div className="rounded-lg border border-stone-800 bg-[#171814] p-6 text-white shadow-[0_20px_58px_-46px_rgba(28,25,23,0.75)] sm:p-7">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-normal text-stone-300">
+                    Executive pulse
+                  </span>
+                  <span className={`inline-flex items-center gap-2 rounded border px-3 py-1 text-[10px] font-black ${coreReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${coreReady ? "bg-emerald-300" : "bg-amber-300"}`} />
+                  {coreReady ? "確定" : "暫定"}
+                  </span>
+                </div>
+                <h2 className="mt-8 text-3xl font-black leading-tight tracking-normal text-white sm:text-4xl">
+                  {selectedPeriodLabel}の主要数字
+                </h2>
+                <p className="mt-3 text-sm font-medium leading-7 text-stone-400">
+                  まず見る数字です。
+                </p>
+                <div className="mt-8 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
+                    <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
+                      Period
+                    </p>
+                    <p className="mt-2 text-lg font-black text-[#d7ff71]">
+                      {selectedPeriodLabel}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.7)]" />
-                    最終同期 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
+                    <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
+                      Synced
+                    </p>
+                    <p className="mt-2 text-lg font-black tabular-nums text-white">
+                      {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                    </p>
                   </div>
-                </div>
-
-                <div className="mt-7 grid gap-4 lg:grid-cols-3">
-                  <ExecutiveMetricCard
-                    index="01"
-                    label="診断人数"
-                    value={headlineDiagnosisUsers.toLocaleString()}
-                    unit="人"
-                    badge={`${selectedPeriodLabel}の最重要数値`}
-                    detail={hasTrustedCoreDiagnosis ? "診断完了済みのユニークユーザー" : "診断完了イベントのユニークセッション"}
-                    tone="indigo"
-                    compare={diagCompare}
-                  />
-                  <ExecutiveMetricCard
-                    index="02"
-                    label="課金額"
-                    value={headlineRevenue}
-                    badge={`${selectedPeriodLabel}の純売上`}
-                    detail={`全商品の決済 ${periodRevenuePurchases.toLocaleString()}件・返金控除後 (完全版+友達診断ほか)`}
-                    tone="emerald"
-                    compactValue
-                    compare={revenueCompare}
-                  />
-                  <ExecutiveMetricCard
-                    index="03"
-                    label="診断した人のうち友達診断1人完了"
-                    value={pctOrDash(
-                      headlineFriendRate,
-                      headlineFriendDenominator,
-                    )}
-                    badge={`${selectedPeriodLabel}の友達診断率`}
-                    detail={`${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`}
-                    tone="cyan"
-                    compare={friendRateCompare}
-                  />
                 </div>
               </div>
 
-              <div className="relative flex flex-col gap-3 border-t border-white/[0.08] bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 xl:px-10">
+              <div className="grid gap-4 lg:grid-cols-3">
+                <ExecutiveMetricCard
+                  index="01"
+                  label="診断"
+                  value={headlineDiagnosisUsers.toLocaleString()}
+                  unit="人"
+                  badge={selectedPeriodLabel}
+                  detail={hasTrustedCoreDiagnosis ? "完了ユーザー" : "完了セッション"}
+                  tone="indigo"
+                  compare={diagCompare}
+                />
+                <ExecutiveMetricCard
+                  index="02"
+                  label="売上"
+                  value={headlineRevenue}
+                  badge="純売上"
+                  detail={`決済 ${periodRevenuePurchases.toLocaleString()}件・返金後`}
+                  tone="emerald"
+                  compactValue
+                  compare={revenueCompare}
+                />
+                <ExecutiveMetricCard
+                  index="03"
+                  label="友達率"
+                  value={pctOrDash(
+                    headlineFriendRate,
+                    headlineFriendDenominator,
+                  )}
+                  badge="友達診断"
+                  detail={`${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`}
+                  tone="cyan"
+                  compare={friendRateCompare}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 xl:grid-cols-2">
+              <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Analysis window</p>
-                  <p className="mt-1 text-[11px] font-medium text-slate-400">期間変更ですべての指標を再集計</p>
+                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
+                    Analysis window
+                  </p>
+                  <p className="mt-1 text-[11px] font-medium text-stone-500">
+                    期間
+                  </p>
                 </div>
-                <div className="flex min-w-0 max-w-full overflow-x-auto rounded-xl border border-white/10 bg-white/[0.06] p-1">
+                <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-stone-200 bg-stone-50 p-1">
                   {PRESETS.map((p) => (
                     <button
                       key={p.key}
                       onClick={() => setPreset(p.key)}
-                      className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[11px] font-black transition sm:px-4 ${
+                      className={`whitespace-nowrap rounded-md px-3.5 py-2 text-[11px] font-black transition sm:px-4 ${
                         preset === p.key
-                          ? "bg-white text-slate-950 shadow-lg"
-                          : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          ? "bg-stone-950 text-white shadow-sm"
+                          : "text-stone-500 hover:bg-white hover:text-stone-900"
                       }`}
                     >
                       {p.label}
                     </button>
                   ))}
-                {preset === "custom" && (
-                  <div className="flex items-center gap-2 sm:ml-2">
-                    <input
-                      type="date"
-                      value={customFrom}
-                      onChange={(e) => setCustomFrom(e.target.value)}
-                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
-                    />
-                    <span className="text-xs text-slate-500">〜</span>
-                    <input
-                      type="date"
-                      value={customTo}
-                      onChange={(e) => setCustomTo(e.target.value)}
-                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 比較期間の選択 (見出しカードの ▲▼ チップの比較先) */}
-            <div className="relative flex flex-col gap-3 border-t border-white/[0.08] bg-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 xl:px-10">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-                  Compare with
-                </p>
-                <p className="mt-1 text-[11px] font-medium text-slate-400">
-                  重要指標カードの比較先の期間
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex rounded-xl border border-white/10 bg-white/[0.06] p-1">
-                  {(
-                    [
-                      { key: "auto", label: "直前の同期間" },
-                      { key: "custom", label: "期間指定" },
-                      { key: "none", label: "比較なし" },
-                    ] as const
-                  ).map((c) => (
-                    <button
-                      key={c.key}
-                      onClick={() => setComparePreset(c.key)}
-                      className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[11px] font-black transition ${
-                        comparePreset === c.key
-                          ? "bg-white text-slate-950 shadow-lg"
-                          : "text-slate-400 hover:bg-white/5 hover:text-white"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+                  {preset === "custom" && (
+                    <div className="flex items-center gap-2 sm:ml-2">
+                      <input
+                        type="date"
+                        value={customFrom}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
+                      />
+                      <span className="text-xs text-stone-400">〜</span>
+                      <input
+                        type="date"
+                        value={customTo}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
+                      />
+                    </div>
+                  )}
                 </div>
-                {comparePreset === "custom" && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={compareFrom}
-                      onChange={(e) => setCompareFrom(e.target.value)}
-                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
-                    />
-                    <span className="text-xs text-slate-500">〜</span>
-                    <input
-                      type="date"
-                      value={compareTo}
-                      onChange={(e) => setCompareTo(e.target.value)}
-                      className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-xs font-medium text-white outline-none focus:border-indigo-400"
-                    />
-                  </div>
-                )}
-                {comparePreset === "auto" && !prevRangeInfo && (
-                  <span className="text-[11px] font-medium text-slate-500">
-                    全期間・カスタムでは自動比較できません (期間指定を使ってください)
-                  </span>
-                )}
               </div>
-            </div>
+
+              <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
+                    Compare with
+                  </p>
+                  <p className="mt-1 text-[11px] font-medium text-stone-500">
+                    比較先
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+                    {(
+                      [
+                        { key: "auto", label: "前期間" },
+                        { key: "custom", label: "指定" },
+                        { key: "none", label: "なし" },
+                      ] as const
+                    ).map((c) => (
+                      <button
+                        key={c.key}
+                        onClick={() => setComparePreset(c.key)}
+                        className={`whitespace-nowrap rounded-md px-3.5 py-2 text-[11px] font-black transition ${
+                          comparePreset === c.key
+                            ? "bg-stone-950 text-white shadow-sm"
+                            : "text-stone-500 hover:bg-white hover:text-stone-900"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                  {comparePreset === "custom" && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={compareFrom}
+                        onChange={(e) => setCompareFrom(e.target.value)}
+                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
+                      />
+                      <span className="text-xs text-stone-400">〜</span>
+                      <input
+                        type="date"
+                        value={compareTo}
+                        onChange={(e) => setCompareTo(e.target.value)}
+                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
+                      />
+                    </div>
+                  )}
+                  {comparePreset === "auto" && !prevRangeInfo && (
+                    <span className="text-[11px] font-medium text-stone-500">
+                      比較は期間指定で選択
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 
           <section id="revenue" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Revenue"
-              title="課金分析"
-              description="フルアクセスの閲覧から決済完了までと、コホート純売上を追跡"
+              title="売上"
+              description="購入までの流れと売上"
               side={
-                <div className="flex items-center gap-4 rounded-2xl border border-amber-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(217,119,6,0.7)]">
+                <div className="flex items-center gap-4 rounded-lg border border-amber-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
                   <div>
-                    <p className="text-[10px] font-bold text-amber-700">コホート純売上</p>
+                    <p className="text-[10px] font-bold text-amber-700">純売上</p>
                     <p className="text-lg font-black tabular-nums text-amber-900">
                       {coreReady
                         ? formatNetRevenue(stats.coreKpis.arpu.currencies)
@@ -2050,14 +2067,14 @@ export default function AdminPage() {
             <Panel className="p-5 sm:p-6">
             {/* ===== ① 自己診断・完全版 (¥499 / full_access) ===== */}
             <div className="mb-4 flex items-center gap-2">
-              <span className="rounded-full bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
-                自己診断・完全版 ¥499
+              <span className="rounded bg-teal-700 px-3 py-1 text-[11px] font-black text-white">
+                完全版 ¥499
               </span>
-              <span className="text-[11px] font-medium text-slate-400">
-                /me 結果ページの課金ファネル
+              <span className="text-[11px] font-medium text-stone-400">
+                結果ページ
               </span>
             </div>
-            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
               <span className="w-28 text-right">ステップ</span>
               <span className="flex-1">件数</span>
               <span className="w-16 text-right">前段比</span>
@@ -2075,36 +2092,37 @@ export default function AdminPage() {
                 />
               ))}
             </div>
-            <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
-              前半3ステップはユニークセッション数、Stripe到達・決済完了はサーバ記録の件数。
-              計測開始 (2026-07-13) 以前のデータは含まれません。
+            <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
+              クリックから決済までの流れです。
             </p>
             {(stats.paywallAttribution ?? []).length > 0 && (
-              <div className="mt-6 border-t border-slate-100 pt-5">
-                <p className="mb-1 text-sm font-black text-slate-900">
-                  導線別の決済結果（最後に押したカード別）
+              <div className="mt-6 border-t border-stone-100 pt-5">
+                <p className="mb-1 text-sm font-black text-stone-900">
+                  カード別
                 </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                  どのロックカードから ¥499 の購入へ進んだかを、Stripe到達・決済完了まで追跡します。
+                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                  最後に押したカード別の結果です。
                 </p>
                 <AttributionTable rows={stats.paywallAttribution} />
-                <p className="mt-3 text-[11px] text-slate-400">
-                  購入率は「決済完了 ÷ 誘導クリック」。計測更新前の決済は「不明」に含まれます。
+                <p className="mt-3 text-[11px] text-stone-400">
+                  率 = 完了 ÷ クリック。
                 </p>
               </div>
             )}
 
-            {/* ===== ② 旧: 友達診断・全解放 (¥799 / tako_unlock) — 2026-07-22 販売終了 ===== */}
-            <div className="mt-10 border-t-2 border-slate-100 pt-6">
+            {/* ===== ② 友達診断ページ発 (¥499 / full_access) =====
+                商品は ¥499 完全版に一本化。/tako のロックから買われた full_access を集計。
+                旧 ¥799 単体 (tako_unlock) は販売終了で「商品別売上内訳」に過去実績が残るだけ。 */}
+            <div className="mt-10 border-t-2 border-stone-100 pt-6">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-400 px-3 py-1 text-[11px] font-black text-white">
-                  旧:友達診断・全解放 ¥799
+                <span className="rounded bg-rose-500 px-3 py-1 text-[11px] font-black text-white">
+                  友達診断 ¥499
                 </span>
-                <span className="text-[11px] font-medium text-slate-400">
-                  2026-07-22 に ¥499 完全版へ統合し販売終了。以下は過去データ。
+                <span className="text-[11px] font-medium text-stone-400">
+                  /tako 発
                 </span>
               </div>
-              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
                 <span className="w-28 text-right">ステップ</span>
                 <span className="flex-1">件数</span>
                 <span className="w-16 text-right">前段比</span>
@@ -2122,24 +2140,21 @@ export default function AdminPage() {
                   />
                 ))}
               </div>
-              <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
-                決済完了は payment_history (tako_unlock) の実決済数。購入CTA・Stripe到達は
-                2026-07-22 に計測追加のため、それ以前の期間は 0 になります。
+              <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
+                /tako のロックから買われた ¥499 の流れです。
               </p>
-              <div className="mt-6 border-t border-slate-100 pt-5">
-                <p className="mb-1 text-sm font-black text-slate-900">
-                  導線別の決済結果 (¥799・最後に押したカード別)
+              <div className="mt-6 border-t border-stone-100 pt-5">
+                <p className="mb-1 text-sm font-black text-stone-900">
+                  カード別
                 </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                  /tako 内のロックカード・購入カードごとのクリックとStripe到達・決済完了。
-                  カード別の計測は 2026-07-22 開始のため、それ以前の決済は「不明」になります。
+                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                  /tako 内のクリックと決済です。
                 </p>
                 {(stats.takoAttribution ?? []).length > 0 ? (
                   <AttributionTable rows={stats.takoAttribution} />
                 ) : (
-                  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs font-medium text-slate-400">
-                    選択期間に ¥799 導線のクリック・決済はまだありません。
-                    期間を「全期間」にすると過去分が表示されます。
+                  <div className="rounded-lg border border-dashed border-stone-200 bg-stone-50/60 px-4 py-8 text-center text-xs font-medium text-stone-400">
+                    この期間のデータはありません。
                   </div>
                 )}
               </div>
@@ -2147,25 +2162,25 @@ export default function AdminPage() {
 
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
             {(stats.revenueByKind ?? []).length > 0 && (
-              <div className="mt-6 border-t border-slate-100 pt-5">
-                <p className="mb-1 text-sm font-black text-slate-900">
-                  商品別の売上内訳
+              <div className="mt-6 border-t border-stone-100 pt-5">
+                <p className="mb-1 text-sm font-black text-stone-900">
+                  商品別売上
                 </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                  完全版レポート以外 (友達診断の全解放など) を含む、選択期間の全決済です。
+                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                  選択期間の全決済です。
                 </p>
-                <div className="overflow-x-auto rounded-[18px] border border-slate-200/80">
+                <div className="overflow-x-auto rounded-lg border border-stone-200/80">
                   <table className="w-full min-w-[640px] text-xs">
-                    <thead className="bg-slate-50/90 text-slate-500">
+                    <thead className="bg-stone-50/90 text-stone-500">
                       <tr>
                         <th className="px-3 py-2.5 text-left font-medium">商品</th>
-                        <th className="px-3 py-2.5 text-right font-medium">決済件数</th>
+                        <th className="px-3 py-2.5 text-right font-medium">決済数</th>
                         <th className="px-3 py-2.5 text-right font-medium">総売上</th>
                         <th className="px-3 py-2.5 text-right font-medium">返金</th>
-                        <th className="px-3 py-2.5 text-right font-medium">純売上</th>
+                        <th className="px-3 py-2.5 text-right font-medium">売上</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100/80">
+                    <tbody className="divide-y divide-stone-100/80">
                       {(() => {
                         const maxNet = Math.max(
                           1,
@@ -2174,21 +2189,21 @@ export default function AdminPage() {
                         return stats.revenueByKind.map((row) => (
                         <tr
                           key={`${row.kind}-${row.currency}`}
-                          className="transition hover:bg-indigo-50/35"
+                          className="transition hover:bg-stone-50"
                         >
                           <td className="px-3 py-3" title={row.kind}>
-                            <p className="font-semibold text-slate-700">
+                            <p className="font-semibold text-stone-700">
                               {PAYMENT_KIND_LABELS[row.kind] ?? row.kind}
                               {row.currency !== "jpy" && (
-                                <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
+                                <span className="ml-1.5 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-stone-500">
                                   {row.currency}
                                 </span>
                               )}
                             </p>
                             {/* 純売上のミニバー (最大商品=100%) */}
-                            <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
+                            <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded bg-stone-100">
                               <span
-                                className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
+                                className="block h-full rounded bg-teal-600"
                                 style={{
                                   width: `${Math.max(
                                     row.netRevenueMinor > 0 ? 2 : 0,
@@ -2198,10 +2213,10 @@ export default function AdminPage() {
                               />
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                          <td className="px-3 py-3 text-right tabular-nums text-stone-600">
                             {row.purchases.toLocaleString()}
                           </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                          <td className="px-3 py-3 text-right tabular-nums text-stone-600">
                             {formatMoney(row.grossRevenueMinor, row.currency)}
                           </td>
                           <td className="px-3 py-3 text-right tabular-nums text-rose-500">
@@ -2209,7 +2224,7 @@ export default function AdminPage() {
                               ? `−${formatMoney(row.refundedMinor, row.currency)}`
                               : "—"}
                           </td>
-                          <td className="px-3 py-3 text-right font-black tabular-nums text-slate-900">
+                          <td className="px-3 py-3 text-right font-black tabular-nums text-stone-900">
                             {formatMoney(row.netRevenueMinor, row.currency)}
                           </td>
                         </tr>
@@ -2223,24 +2238,24 @@ export default function AdminPage() {
 
             {/* 日別の売上推移 (選択期間・全商品・JST) */}
             {(stats.revenueDaily ?? []).length > 0 && (
-              <div className="mt-6 border-t border-slate-100 pt-5">
-                <p className="mb-1 text-sm font-black text-slate-900">
-                  日別の売上推移
+              <div className="mt-6 border-t border-stone-100 pt-5">
+                <p className="mb-1 text-sm font-black text-stone-900">
+                  日別売上
                 </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                  選択期間の決済を日付 (JST) ごとに集計。新しい日が上・最大62日分です。
+                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                  日ごとの売上です。新しい日が上です。
                 </p>
-                <div className="max-h-[420px] overflow-auto rounded-[18px] border border-slate-200/80">
+                <div className="max-h-[420px] overflow-auto rounded-lg border border-stone-200/80">
                   <table className="w-full min-w-[520px] text-xs">
-                    <thead className="sticky top-0 bg-slate-50/95 text-slate-500">
+                    <thead className="sticky top-0 bg-stone-50/95 text-stone-500">
                       <tr>
                         <th className="px-3 py-2.5 text-left font-medium">日付</th>
-                        <th className="px-3 py-2.5 text-right font-medium">決済件数</th>
-                        <th className="px-3 py-2.5 text-right font-medium">純売上</th>
+                        <th className="px-3 py-2.5 text-right font-medium">決済数</th>
+                        <th className="px-3 py-2.5 text-right font-medium">売上</th>
                         <th className="px-3 py-2.5 text-right font-medium">返金</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100/80">
+                    <tbody className="divide-y divide-stone-100/80">
                       {(() => {
                         const dayNetTotal = (d: (typeof stats.revenueDaily)[number]) =>
                           d.currencies.reduce((sum, c) => sum + c.netRevenueMinor, 0);
@@ -2254,15 +2269,15 @@ export default function AdminPage() {
                           0,
                         );
                         return (
-                          <tr key={day.date} className="transition hover:bg-indigo-50/35">
-                            <td className="px-3 py-2.5 font-semibold tabular-nums text-slate-700">
+                          <tr key={day.date} className="transition hover:bg-stone-50">
+                            <td className="px-3 py-2.5 font-semibold tabular-nums text-stone-700">
                               {day.date}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
+                            <td className="px-3 py-2.5 text-right tabular-nums text-stone-600">
                               {day.purchases.toLocaleString()}
                             </td>
                             <td className="px-3 py-2.5 text-right">
-                              <span className="font-black tabular-nums text-slate-900">
+                              <span className="font-black tabular-nums text-stone-900">
                                 {day.currencies
                                   .map((c) =>
                                     formatMoney(c.netRevenueMinor, c.currency),
@@ -2270,9 +2285,9 @@ export default function AdminPage() {
                                   .join(" / ")}
                               </span>
                               {/* その日の純売上ミニバー (最大日=100%) */}
-                              <span className="ml-auto mt-1 block h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-slate-100">
+                              <span className="ml-auto mt-1 block h-1.5 w-full max-w-[180px] overflow-hidden rounded bg-stone-100">
                                 <span
-                                  className="ml-auto block h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-500"
+                                  className="ml-auto block h-full rounded bg-sky-500"
                                   style={{
                                     width: `${Math.max(
                                       dayNetTotal(day) > 0 ? 2 : 0,
@@ -2308,12 +2323,12 @@ export default function AdminPage() {
           <section>
             <SectionHeader
               eyebrow="Core KPI"
-              title="経営KPI"
-              description={`自己診断完了 ${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を共通の分母に、その後の行動を追跡`}
+              title="KPI"
+              description={`${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を基準に集計`}
               side={
                 loading ? (
-                  <span className="inline-flex items-center gap-2 text-xs font-bold text-indigo-600">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+                  <span className="inline-flex items-center gap-2 text-xs font-bold text-teal-700">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-teal-600" />
                     更新中
                   </span>
                 ) : undefined
@@ -2321,7 +2336,7 @@ export default function AdminPage() {
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <KpiCard
-                label="自己診断→課金率"
+                label="診断→課金"
                 value={
                   coreReady
                     ? pctOrDash(
@@ -2336,7 +2351,7 @@ export default function AdminPage() {
                 featured
               />
               <KpiCard
-                label="自己診断→友達1人完了率"
+                label="診断→友達"
                 value={
                   coreReady
                     ? pctOrDash(
@@ -2351,7 +2366,7 @@ export default function AdminPage() {
                 featured
               />
               <KpiCard
-                label="課金→友達1人完了率"
+                label="課金→友達"
                 value={
                   coreReady
                     ? pctOrDash(
@@ -2372,7 +2387,7 @@ export default function AdminPage() {
                     ? formatArpu(stats.coreKpis.arpu.currencies)
                     : "要DB更新"
                 }
-                sub={`純売上 ÷ 自己診断完了 ${stats.coreKpis.arpu.denominator.toLocaleString()}人`}
+                sub={`売上 ÷ 診断 ${stats.coreKpis.arpu.denominator.toLocaleString()}人`}
                 tone="rose"
                 index="04"
                 featured
@@ -2386,7 +2401,7 @@ export default function AdminPage() {
                     ? stats.coreKpis.viralCoefficient.value.toFixed(3)
                     : "—"
                 }
-                sub={`子診断 ${stats.coreKpis.viralCoefficient.children.toLocaleString()} ÷ 親 ${stats.coreKpis.viralCoefficient.denominator.toLocaleString()}人`}
+                sub={`${stats.coreKpis.viralCoefficient.children.toLocaleString()} ÷ ${stats.coreKpis.viralCoefficient.denominator.toLocaleString()}人`}
                 tone="indigo"
                 index="05"
                 featured
@@ -2394,24 +2409,24 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <KpiCard label="自己診断完了人数" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={`${selectedPeriodLabel}の確定コホート`} tone="indigo" />
-              <KpiCard label="実決済紐付け率" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件をユーザーに紐付け`} tone="emerald" />
-              <KpiCard label="友達共有" value={stats.shareCount} sub={`共有率 ${pct(stats.shareRate)}`} tone="indigo" />
-              <KpiCard label="友達回答完了" value={stats.friendAnswerCompleted} sub={`完了率 ${pct(stats.answerCompletionRate)}`} tone="emerald" />
-              <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部の解放" tone="amber" />
-              <KpiCard label="5人達成" value={stats.fiveAchieved} sub="見られ方の完成" tone="rose" />
+              <KpiCard label="診断完了" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={selectedPeriodLabel} tone="indigo" />
+              <KpiCard label="決済紐付け" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件`} tone="emerald" />
+              <KpiCard label="友達共有" value={stats.shareCount} sub={pct(stats.shareRate)} tone="indigo" />
+              <KpiCard label="友達回答" value={stats.friendAnswerCompleted} sub={pct(stats.answerCompletionRate)} tone="emerald" />
+              <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部" tone="amber" />
+              <KpiCard label="5人達成" value={stats.fiveAchieved} sub="完成" tone="rose" />
               <KpiCard label="結果再訪" value={stats.resultRevisited} sub={`再訪率 ${pct(stats.revisitRate)}`} />
-              <KpiCard label="イベント完了率" value={pct(stats.completionRate)} sub="セッションイベント参考値" />
-              <KpiCard label="課金ユーザー" value={stats.paidUsers} sub="権限テーブル参考値" />
-              <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="決済イベント参考値" />
+              <KpiCard label="完了率" value={pct(stats.completionRate)} sub="イベント値" />
+              <KpiCard label="課金者" value={stats.paidUsers} sub="参考値" />
+              <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="参考値" />
             </div>
             {coreReady ? (
-              <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
-                {stats.coreKpis.cohort.definition}。ARPUは通貨別の実決済額から返金額を引いた純売上で計算し、異なる通貨を合算しません。
+              <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
+                ARPUは返金後の売上で計算しています。
               </p>
             ) : (
-              <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-rose-700">
-                経営KPIはまだ集計できません。Supabaseへ 2026-07-20-core-kpi-facts.sql を適用してから再読み込みしてください。既存の参考指標は引き続き表示しています。
+              <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-rose-700">
+                KPI集計にはDB更新が必要です。
               </p>
             )}
           </section>
@@ -2420,11 +2435,11 @@ export default function AdminPage() {
           <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Friend diagnosis"
-              title="友達診断ファネル"
-              description="友達導線の計測開始後に取得できたセッションだけを追う、改善用の参考ファネル"
+              title="友達診断"
+              description="友達導線の流れ"
               side={
-                <div className="rounded-2xl border border-rose-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(225,29,72,0.7)]">
-                  <p className="text-[10px] font-bold text-rose-600">計測対象→友達診断到達</p>
+                <div className="rounded-lg border border-rose-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
+                  <p className="text-[10px] font-bold text-rose-600">到達率</p>
                   <p className="text-lg font-black tabular-nums text-rose-900">
                     {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
                   </p>
@@ -2433,35 +2448,35 @@ export default function AdminPage() {
             />
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <KpiCard
-                label="赤バッジ表示"
+                label="バッジ表示"
                 value={stats.friendDiagnosisFunnel.attention.badgeShown}
-                sub="ユニーク本人"
+                sub="本人"
                 tone="rose"
               />
               <KpiCard
-                label="赤バッジクリック"
+                label="バッジクリック"
                 value={stats.friendDiagnosisFunnel.attention.badgeClicked}
                 sub={`クリック率 ${pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}`}
                 tone="rose"
               />
               <KpiCard
-                label="友達診断到達"
+                label="到達"
                 value={stats.friendDiagnosisFunnel.attention.takoReached}
-                sub="ユニーク本人"
+                sub="本人"
                 tone="indigo"
               />
               <KpiCard
-                label="計測対象→到達率"
+                label="到達率"
                 value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
-                sub="友達導線の計測対象を分母"
+                sub="計測対象ベース"
                 tone="emerald"
               />
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-slate-800">本人側（ユニーク本人）</h3>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  計測開始後に自己診断完了イベントを送信した本人を追跡
+                <h3 className="text-sm font-black text-stone-800">本人側</h3>
+                <p className="mt-1 text-[11px] text-stone-400">
+                  本人の流れ
                 </p>
                 <div className="mt-5 flex flex-col gap-2">
                   {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
@@ -2480,9 +2495,9 @@ export default function AdminPage() {
                 </div>
               </Panel>
               <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-slate-800">友達側（ユニーク友達セッション）</h3>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  同じ本人コホートの招待を受けた友達の行動
+                <h3 className="text-sm font-black text-stone-800">友達側</h3>
+                <p className="mt-1 text-[11px] text-stone-400">
+                  友達の流れ
                 </p>
                 <div className="mt-5 flex flex-col gap-2">
                   {stats.friendDiagnosisFunnel.friendFunnel.map((step, index) => (
@@ -2501,9 +2516,8 @@ export default function AdminPage() {
                 </div>
               </Panel>
             </div>
-            <p className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-indigo-700">
-              {stats.friendDiagnosisFunnel.cohortDefinition}。招待実行はシェアボタン操作に加え、QR経由などで友達の到達が確認できた本人も含めます。
-              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}。
+            <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
+              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}
             </p>
           </section>
 
@@ -2511,11 +2525,11 @@ export default function AdminPage() {
           <section id="funnel" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Conversion"
-              title="全体ファネル（参考）"
-              description="イベントのユニークセッション数で、診断開始から友達回答までの離脱を確認"
+              title="全体ファネル"
+              description="診断開始から友達回答まで"
             />
             <Panel className="p-5 sm:p-6">
-            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
               <span className="w-28 text-right">ステップ</span>
               <span className="flex-1">件数</span>
               <span className="w-16 text-right">前段比</span>
@@ -2533,9 +2547,8 @@ export default function AdminPage() {
                 />
               ))}
             </div>
-            <p className="mt-4 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400">
-              診断〜友達回答はユニークセッション数、3人/5人達成は「N人目の回答が期間内に届いたオーナー数」。
-              単位が異なるため前ステップ比は目安です。
+            <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
+              単位が混在するため目安です。
             </p>
             </Panel>
         </section>
@@ -2547,12 +2560,12 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Acquisition"
               title="キャンペーン別"
-              description="流入施策ごとの診断完了と友達回答（全期間）"
+              description="流入ごとの成果"
             />
             <Panel className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
-                <thead className="bg-slate-50/90">
-                  <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                <thead className="bg-stone-50/90">
+                  <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
                     <th className="px-4 py-3 font-medium">campaign</th>
                     <th className="px-4 py-3 font-medium text-right">診断完了</th>
                     <th className="px-4 py-3 font-medium text-right">友達回答</th>
@@ -2560,9 +2573,9 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {stats.campaignStats.map((c) => (
-                    <tr key={c.campaign} className="border-b border-slate-100/70 transition last:border-0 hover:bg-indigo-50/35">
+                    <tr key={c.campaign} className="border-b border-stone-100/70 transition last:border-0 hover:bg-stone-50">
                       <td className="px-4 py-3">
-                        <span className="inline-block rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-mono font-bold text-indigo-700">
+                        <span className="inline-block rounded bg-teal-50 px-2.5 py-1 text-xs font-mono font-bold text-teal-800">
                           {c.campaign}
                         </span>
                       </td>
@@ -2580,12 +2593,12 @@ export default function AdminPage() {
           <section id="growth" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Growth"
-              title="拡散分析"
-              description="友達への共有から新しい診断が生まれる力を確認"
+              title="拡散"
+              description="共有から生まれた診断"
               side={
-                <div className="rounded-2xl border border-indigo-100 bg-white px-4 py-3 shadow-[0_10px_30px_-24px_rgba(79,70,229,0.7)]">
-                  <p className="text-[10px] font-bold text-indigo-600">実測拡散係数</p>
-                  <p className="text-lg font-black tabular-nums text-indigo-900">
+                <div className="rounded-lg border border-teal-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
+                  <p className="text-[10px] font-bold text-teal-700">拡散係数</p>
+                  <p className="text-lg font-black tabular-nums text-teal-900">
                     {!coreReady
                       ? "要DB更新"
                       : stats.coreKpis.viralCoefficient.denominator > 0
@@ -2597,42 +2610,42 @@ export default function AdminPage() {
             />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             <KpiCard
-              label="友達ページ到達"
+              label="友達ページ"
               value={stats.viral.friendLandingViewed}
-              sub="ユニークセッション"
+              sub="到達数"
             />
             <KpiCard
-              label="平均到達人数"
+              label="平均到達"
               value={stats.viral.avgLandingPerSharer.toFixed(1)}
-              sub="到達数÷ユニーク共有者"
+              sub="1共有あたり"
             />
             <KpiCard
-              label="到達→回答開始率"
+              label="到達→開始"
               value={pct(stats.viral.landingToStartRate)}
-              sub="友達ページ到達→回答開始"
+              sub="友達ページ"
             />
             <KpiCard
-              label="回答開始→完了率"
+              label="開始→完了"
               value={pct(stats.viral.startToCompleteRate)}
-              sub="友達回答開始→完了"
+              sub="友達回答"
             />
             <KpiCard
-              label="自分も作る転換率"
+              label="自分も作る"
               value={pct(stats.viral.friendToDiagClickedRate)}
-              sub="友達回答完了→クリック"
+              sub="回答後"
             />
             <KpiCard
-              label="子診断完了"
+              label="子診断"
               value={stats.viral.childDiagCompleted}
-              sub={`親${stats.viral.parentDiagCompleted}人から発生`}
+              sub={`親 ${stats.viral.parentDiagCompleted}人`}
             />
             <KpiCard
-              label="親あたり子診断数"
+              label="親あたり子"
               value={stats.viral.avgChildPerParent.toFixed(1)}
-              sub="子完了÷ユニーク親"
+              sub="子 ÷ 親"
             />
             <KpiCard
-              label="実測拡散係数"
+              label="拡散係数"
               value={
                 !coreReady
                   ? "要DB更新"
@@ -2640,15 +2653,15 @@ export default function AdminPage() {
                   ? stats.coreKpis.viralCoefficient.value.toFixed(3)
                   : "—"
               }
-              sub="コホート由来の子診断÷親コホート"
+              sub="子診断 ÷ 親"
             />
           </div>
-          <p className="mt-3 text-[11px] font-medium text-slate-400">
-            拡散係数 {'>'} 1.0 で自然増殖 / 0.5以上でMVPとして良好
+          <p className="mt-3 text-[11px] font-medium text-stone-400">
+            1.0超で自然増。0.5以上は良好。
           </p>
           {stats.viral.friendLandingViewed === 0 && stats.friendAnswerStarted > 0 && (
             <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
-              ⚠ 友達ページ到達が0件：5/2デプロイ以前の回答にはこのイベントがありません。今後のアクセスから計測されます。
+              注意: 友達ページ到達が0件です。今後のアクセスから計測されます。
             </p>
           )}
         </section>
@@ -2658,8 +2671,8 @@ export default function AdminPage() {
           <section>
             <SectionHeader
               eyebrow="Network"
-              title="拡散の世代分布"
-              description="共有が何世代先まで広がっているか（全期間）"
+              title="世代分布"
+              description="何世代まで広がったか"
             />
             <Panel className="p-5 sm:p-6">
               <div className="mb-5 flex items-end justify-center gap-3">
@@ -2675,7 +2688,7 @@ export default function AdminPage() {
                         const height = (g.count / max) * 100;
                         return (
                           <div key={g.generation} className="flex flex-col items-center gap-1">
-                            <span className="text-sm font-black tabular-nums text-slate-800">{g.count}</span>
+                            <span className="text-sm font-black tabular-nums text-stone-800">{g.count}</span>
                             <div className="relative w-14" style={{ height: "96px" }}>
                               <div
                                 className="absolute bottom-0 w-full rounded-t-md transition-all duration-500"
@@ -2685,7 +2698,7 @@ export default function AdminPage() {
                                 }}
                               />
                             </div>
-                            <span className="text-xs font-bold text-slate-500">
+                            <span className="text-xs font-bold text-stone-500">
                               {g.generation === 0 ? "Seed" : `第${g.generation}世代`}
                             </span>
                           </div>
@@ -2693,22 +2706,22 @@ export default function AdminPage() {
                       })}
                       {stats.unknownGeneration > 0 && (
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-sm font-black tabular-nums text-slate-400">{stats.unknownGeneration}</span>
+                          <span className="text-sm font-black tabular-nums text-stone-400">{stats.unknownGeneration}</span>
                           <div className="relative w-14" style={{ height: "96px" }}>
                             <div
-                              className="absolute bottom-0 w-full rounded-t-md bg-slate-200"
+                              className="absolute bottom-0 w-full rounded-t-md bg-stone-200"
                               style={{ height: `${Math.max((stats.unknownGeneration / max) * 100, 5)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-bold text-slate-400">不明</span>
+                          <span className="text-xs font-bold text-stone-400">不明</span>
                         </div>
                       )}
                     </>
                   );
                 })()}
               </div>
-              <p className="border-t border-slate-100 pt-4 text-center text-[11px] text-slate-400">
-                Seed = campaignパラメータ付き / 第N世代 = 友達回答後に自分も診断した人
+              <p className="border-t border-stone-100 pt-4 text-center text-[11px] text-stone-400">
+                Seed = 初回流入 / 第N世代 = 友達経由
               </p>
             </Panel>
           </section>
@@ -2718,34 +2731,34 @@ export default function AdminPage() {
           <section id="audience" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Audience"
-              title="友達回答人数の分布"
-              description="診断ユーザーが何人から回答を集められたか（全期間）"
+              title="友達回答数"
+              description="集まった回答数"
             />
             <Panel className="p-5 sm:p-6">
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-slate-800">{fc.zero}</p>
-                <p className="mt-1 text-[11px] font-bold text-slate-500">0人</p>
+              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
+                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.zero}</p>
+                <p className="mt-1 text-[11px] font-bold text-stone-500">0人</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-slate-800">{fc.one}</p>
-                <p className="mt-1 text-[11px] font-bold text-slate-500">1人</p>
+              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
+                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.one}</p>
+                <p className="mt-1 text-[11px] font-bold text-stone-500">1人</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-slate-800">{fc.two}</p>
-                <p className="mt-1 text-[11px] font-bold text-slate-500">2人</p>
+              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
+                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.two}</p>
+                <p className="mt-1 text-[11px] font-bold text-stone-500">2人</p>
               </div>
-              <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-indigo-700">{fc.threePlus}</p>
-                <p className="mt-1 text-[11px] font-bold text-indigo-500">3人以上</p>
+              <div className="rounded-lg border border-teal-100 bg-teal-50 p-4 text-center">
+                <p className="text-2xl font-black tabular-nums text-teal-800">{fc.threePlus}</p>
+                <p className="mt-1 text-[11px] font-bold text-teal-700">3人以上</p>
               </div>
-              <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-violet-700">{fc.fivePlus}</p>
-                <p className="mt-1 text-[11px] font-bold text-violet-500">5人以上</p>
+              <div className="rounded-lg border border-amber-100 bg-amber-50 p-4 text-center">
+                <p className="text-2xl font-black tabular-nums text-amber-800">{fc.fivePlus}</p>
+                <p className="mt-1 text-[11px] font-bold text-amber-700">5人以上</p>
               </div>
             </div>
-            <p className="border-t border-slate-100 pt-4 text-right text-[11px] text-slate-400">
-              全診断完了者 {fc.total}人 / 1人以上回答あり {fc.total - fc.zero}人
+            <p className="border-t border-stone-100 pt-4 text-right text-[11px] text-stone-400">
+              全体 {fc.total}人 / 1人以上 {fc.total - fc.zero}人
               ({fc.total > 0 ? pct((fc.total - fc.zero) / fc.total) : "0.0%"})
             </p>
             </Panel>
@@ -2756,7 +2769,7 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Segments"
               title="タイプ分布"
-              description="診断結果32タイプの構成（全期間）"
+              description="32タイプの内訳"
             />
             <Panel className="p-5 sm:p-6">
             {stats.typeDistribution.length > 0 ? (
@@ -2771,12 +2784,12 @@ export default function AdminPage() {
                 ))}
               </div>
             ) : (
-              <p className="py-4 text-center text-xs text-slate-400">
+              <p className="py-4 text-center text-xs text-stone-400">
                 データがまだありません
               </p>
             )}
             {stats.typeDistribution.length > 0 && (
-              <p className="mt-4 border-t border-slate-100 pt-4 text-right text-[11px] text-slate-400">
+              <p className="mt-4 border-t border-stone-100 pt-4 text-right text-[11px] text-stone-400">
                 合計 {stats.typeDistribution.reduce((s, t) => s + t.count, 0)}人
               </p>
             )}
@@ -2787,12 +2800,12 @@ export default function AdminPage() {
         <section>
             <SectionHeader
               eyebrow="Engagement"
-              title="質問ごとの到達数"
-              description="50問のうち、どの地点で回答が止まっているか"
+              title="質問到達"
+              description="どこで止まったか"
             />
           <div className="grid grid-cols-1 gap-4">
             <QuestionReachChart
-              title="診断（50問）"
+              title="診断50問"
               reach={stats.diagQuestionReach}
               totalQuestions={50}
             />
@@ -2805,12 +2818,12 @@ export default function AdminPage() {
             <SectionHeader
               eyebrow="Activity"
               title="直近イベント"
-              description="システムが受信した最新50件の計測イベント"
+              description="最新50件"
             />
             <Panel className="overflow-x-auto">
             <table className="w-full min-w-[840px] text-sm">
-              <thead className="bg-slate-50/90">
-                <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+              <thead className="bg-stone-50/90">
+                <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
                   <th className="px-4 py-3 font-medium">event_name</th>
                   <th className="px-4 py-3 font-medium">created_at</th>
                   <th className="px-4 py-3 font-medium">session_id</th>
@@ -2821,14 +2834,14 @@ export default function AdminPage() {
                 {stats.recentEvents.map((ev, i) => (
                   <tr
                     key={i}
-                    className="border-b border-slate-100/70 transition last:border-0 hover:bg-indigo-50/35"
+                    className="border-b border-stone-100/70 transition last:border-0 hover:bg-stone-50"
                   >
                     <td className="px-4 py-2.5">
-                      <span className="inline-block rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-mono font-bold text-slate-700">
+                      <span className="inline-block rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-mono font-bold text-stone-700">
                         {ev.event_name}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-xs tabular-nums text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-xs tabular-nums text-stone-500">
                       {new Date(ev.created_at).toLocaleString("ja-JP", {
                         month: "2-digit",
                         day: "2-digit",
@@ -2837,10 +2850,10 @@ export default function AdminPage() {
                         second: "2-digit",
                       })}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-400">
+                    <td className="px-4 py-2.5 font-mono text-xs text-stone-400">
                       {ev.session_id?.slice(0, 8) ?? "—"}
                     </td>
-                    <td className="max-w-[200px] truncate px-4 py-2.5 font-mono text-xs text-slate-400">
+                    <td className="max-w-[200px] truncate px-4 py-2.5 font-mono text-xs text-stone-400">
                       {Object.keys(ev.metadata ?? {}).length > 0
                         ? JSON.stringify(ev.metadata)
                         : "—"}
@@ -2851,7 +2864,7 @@ export default function AdminPage() {
                   <tr>
                     <td
                       colSpan={4}
-                      className="px-4 py-8 text-center text-xs text-slate-400"
+                      className="px-4 py-8 text-center text-xs text-stone-400"
                     >
                       イベントがまだありません
                     </td>
