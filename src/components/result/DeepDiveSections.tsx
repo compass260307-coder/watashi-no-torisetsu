@@ -383,7 +383,7 @@ interface DeepDiveSectionsProps {
   sections: ResolvedDeepDiveSection[];
   /** カテゴリ別の挿絵 (シーン別イラスト)。null/未指定なら非表示 (親が fs 走査して渡す)。 */
   sceneImages?: Partial<Record<DeepDiveTabKey, string | null>>;
-  /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②キャリア傾向 ③恋愛傾向)。 */
+  /** 先頭カテゴリの章番号バッジ。以降のカテゴリは +1 ずつ振る (②恋愛傾向 ③キャリア傾向)。 */
   number?: string;
   className?: string;
   loveFooter?: ReactNode;
@@ -415,7 +415,7 @@ export function DeepDiveSections({
 
   return (
     <section className={`mb-8 ${className}`.trim()}>
-      {/* ===== 各カテゴリ = 独立した章 (②キャリア傾向 ③恋愛傾向 / 2026-07-22 指示の章順) =====
+      {/* ===== 各カテゴリ = 独立した章 (②恋愛傾向 ③キャリア傾向 / 2026-07-22 指示の章順) =====
           「アナタの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
       {unlocked.map((sec, si) => (
         <div key={sec.key} className={si > 0 ? "mb-12 mt-16" : "mb-12"}>

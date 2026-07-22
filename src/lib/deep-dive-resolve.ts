@@ -65,8 +65,8 @@ const DEEP_DIVE_CARDS: {
   tab: string;
   hint: "top" | "bottom" | "growth" | "aisho" | BigFiveDimension;
 }[] = [
-  { key: "career", tab: "キャリア傾向", hint: "C" },
   { key: "love", tab: "恋愛傾向", hint: "A" },
+  { key: "career", tab: "キャリア傾向", hint: "C" },
 ];
 
 // 未課金でも見せてよい無料タブ (2026-07-14 指示: キャリアもデフォルト表示に)。

@@ -340,17 +340,6 @@ export function buildKoDeepDiveSections(
 
   return [
     {
-      key: "career",
-      tab: "커리어 성향",
-      note: koScoreNote(scores, "C"),
-      body: careerBlocks
-        .filter((block) => !block.locked)
-        .map((block) => block.body)
-        .join("\n\n"),
-      blocks: careerBlocks,
-      locked: false,
-    },
-    {
       key: "love",
       tab: "연애 성향",
       note: koScoreNote(scores, "A"),
@@ -359,6 +348,17 @@ export function buildKoDeepDiveSections(
         .map((block) => block.body)
         .join("\n\n"),
       blocks: loveBlocks,
+      locked: false,
+    },
+    {
+      key: "career",
+      tab: "커리어 성향",
+      note: koScoreNote(scores, "C"),
+      body: careerBlocks
+        .filter((block) => !block.locked)
+        .map((block) => block.body)
+        .join("\n\n"),
+      blocks: careerBlocks,
       locked: false,
     },
   ];
