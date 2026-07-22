@@ -69,14 +69,16 @@ export function PaywallModal(props: PaywallModalProps) {
       role="dialog"
       aria-modal="true"
       aria-label={isKorean ? "잠금 해제" : "ロック解除"}
-      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto overscroll-contain bg-[#2E2E5C]/55 px-3 py-6 backdrop-blur-sm md:items-center md:py-10"
+      // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
       onClick={() => setOpen(false)}
     >
+      {/* 箱: 高さ上限つき + 内部スクロール。中身(カード)がはみ出す分だけ箱内で
+          スクロールする (背景全体はスクロールしない)。×はカード右上に内蔵。 */}
       <div
-        className="relative w-full max-w-[1120px]"
+        className="relative max-h-[calc(100dvh-2.5rem)] w-full max-w-[1120px] overflow-y-auto overscroll-contain rounded-3xl md:max-h-[calc(100dvh-4rem)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 背面パネルは無し。課金カードのみ (×はカード右上角に内蔵)。 */}
         <FullAccessPromoCard
           {...props}
           anchorId="fullaccess-promo-modal"

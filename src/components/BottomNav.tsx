@@ -311,7 +311,10 @@ export function BottomNav() {
       style={{
         borderTop: "0.5px solid rgba(42,58,92,0.14)",
         boxShadow: "0 -2px 10px rgba(42,58,92,0.06)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        // iOS ホームインジケーター用の余白。ただし内蔵ブラウザ (Google アプリ等) では
+        // safe-area がそのまま白い帯=スキマに見えるため、一定量詰める (最低クリアランスは確保)。
+        // env=0 の環境 (Android 等) は影響なし。
+        paddingBottom: "max(env(safe-area-inset-bottom) - 14px, 0px)",
       }}
     >
       <div

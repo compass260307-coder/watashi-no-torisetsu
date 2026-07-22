@@ -169,8 +169,11 @@ export default function RootLayout({
       <body
         className="min-h-dvh flex flex-col"
         // 全ページ共通のボトムナビ (fixed) に本文が隠れないよう、バー実測高
-        // (56px 相当) + iOS セーフエリア分の余白を最下部に確保する。
-        style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}
+        // (56px 相当) + ナビの safe-area 余白と同じ量を最下部に確保する
+        // (BottomNav の padding-bottom と一致させ、本文が隠れず二重スキマも防ぐ)。
+        style={{
+          paddingBottom: "calc(56px + max(env(safe-area-inset-bottom) - 14px, 0px))",
+        }}
       >
         <noscript>
           <iframe
