@@ -2321,18 +2321,23 @@ export default function AdminPage() {
                 決済完了は payment_history (tako_unlock) の実決済数。購入CTA・Stripe到達は
                 2026-07-22 に計測追加のため、それ以前の期間は 0 になります。
               </p>
-              {(stats.takoAttribution ?? []).length > 0 && (
-                <div className="mt-6 border-t border-slate-100 pt-5">
-                  <p className="mb-1 text-sm font-black text-slate-900">
-                    導線別の内訳 (¥799)
-                  </p>
-                  <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
-                    /tako 内のロックカード・購入カードごとのクリックとStripe到達。
-                    決済完了の導線紐付けは計測追加以降のデータから溜まります。
-                  </p>
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <p className="mb-1 text-sm font-black text-slate-900">
+                  導線別の決済結果 (¥799・最後に押したカード別)
+                </p>
+                <p className="mb-4 text-[11px] leading-relaxed text-slate-400">
+                  /tako 内のロックカード・購入カードごとのクリックとStripe到達・決済完了。
+                  カード別の計測は 2026-07-22 開始のため、それ以前の決済は「不明」になります。
+                </p>
+                {(stats.takoAttribution ?? []).length > 0 ? (
                   <AttributionTable rows={stats.takoAttribution} />
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs font-medium text-slate-400">
+                    選択期間に ¥799 導線のクリック・決済はまだありません。
+                    期間を「全期間」にすると過去分が表示されます。
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
