@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { isReadingReady, MAX_GEN_ATTEMPTS } from "@/lib/unmei/reading";
+import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
 
 async function loadWorker() {
@@ -10,13 +10,21 @@ async function loadWorker() {
 }
 
 export const runtime = "nodejs";
-// Claude 生成で最大 120 秒程度 + 余裕
-export const maxDuration = 150;
+// 非同期化 (方式A): 重い生成 (チャート計算 + Claude) は after() で応答後に実行する。
+// after() のコールバックはこのルートの maxDuration 内で走る (Next docs: after#Duration) ため、
+// 将来のバーナム検品×2 (Claude 呼び出し追加・総処理〜180秒想定) を含めても収まるよう
+// 上限を 300 秒 (Vercel Pro 上限) に引き上げる。
+export const maxDuration = 300;
 
 // POST /api/unmei/generate
 //   購入済み(unmei)ユーザー本人の鑑定生成をキックする。
 //   userId は body ではなく session から解決する (なりすまし防止)。
-//   返り値の state で /unmei クライアントが分岐する。
+//
+// 非同期化: 認可・idempotency・終端 failed の判定だけ同期で行い、生成本体 (runForUser) は
+//   after() でバックグラウンド実行する。即座に state:'pending' を返し、クライアントは
+//   /api/unmei/status のポーリングで完了を待つ (状態の正は status = 既存の仕組みを流用)。
+//   ※ ロックは runForUser 側が持つ設計を変えない (事前ロックを打つと runForUser の in_progress
+//      ガードに掛かり生成されなくなるため、ここでは事前ロックしない)。
 export async function POST(request: Request) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });
@@ -35,16 +43,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "not purchased", state: "unpurchased" }, { status: 403 });
   }
 
-  // Idempotency: 有効な鑑定が既にあれば再生成しない(キャッシュ規律)。
-  const { data: existing } = await supabaseAdmin
-    .from("natal_readings")
-    .select("model, reading")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (isReadingReady(existing)) {
-    return NextResponse.json({ ok: true, state: "ready", skipped: true });
-  }
-
   // 手動リトライ(自動再生成の上限を超えて再試行)は body { force:true } で明示する。
   let force = false;
   try {
@@ -54,37 +52,43 @@ export async function POST(request: Request) {
     /* body 無しは force=false */
   }
 
-  try {
-    // Big Five スコア + 32タイプ称号を解決してプロンプト入力として渡す。
-    const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
+  // 既存の生成状態を読む (idempotency + 終端 failed の同期短絡に使う)。
+  const { data: existing } = await supabaseAdmin
+    .from("natal_readings")
+    .select("model, reading, generated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    const worker = await loadWorker();
-    const result = await worker.runForUser(supabaseAdmin, userId, {
-      ...promptInputs,
-      force,
-    });
-
-    if (result && "skipped" in result) {
-      if (result.skipped === "no_birth_profile") {
-        return NextResponse.json({ ok: true, state: "no_birth" });
-      }
-      if (result.skipped === "failed") {
-        // 自動再生成の上限到達 → 手動リトライ待ち
-        return NextResponse.json({ ok: true, state: "failed", attempts: result.attempts ?? MAX_GEN_ATTEMPTS });
-      }
-      // chart_not_ready / in_progress → 待機(pending)
-      return NextResponse.json({ ok: true, state: "pending" });
-    }
-    if (result && "error" in result) {
-      // 生成失敗。上限到達なら failed、未達なら pending(自動再試行の余地)。
-      console.error("[api/unmei/generate] generation error:", result.error);
-      const attempts = result.attempts ?? 0;
-      const state = attempts >= MAX_GEN_ATTEMPTS ? "failed" : "pending";
-      return NextResponse.json({ ok: false, state, attempts }, { status: 200 });
-    }
-    return NextResponse.json({ ok: true, state: "ready" });
-  } catch (e) {
-    console.error("[api/unmei/generate] error:", e);
-    return NextResponse.json({ ok: false, state: "pending" }, { status: 200 });
+  // idempotency: 有効な鑑定が既にあれば再生成しない(キャッシュ規律)。
+  if (isReadingReady(existing)) {
+    return NextResponse.json({ ok: true, state: "ready", skipped: true });
   }
+
+  // 終端 failed (自動再生成の上限到達 = 手動リトライ待ち) は同期で短絡し、無駄な
+  // バックグラウンド起動を避ける。force=true のときは短絡せず再生成に進む。
+  const gen = readingGenState(existing);
+  if (gen.state === "failed" && !force) {
+    return NextResponse.json({ ok: true, state: "failed", attempts: gen.attempts });
+  }
+
+  // プロンプト入力 (Big Five スコア + 32タイプ称号) を同期解決してバックグラウンドに渡す。
+  const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
+
+  // ===== 生成本体は応答後に実行 (after は maxDuration 内で走る) =====
+  //   runForUser が自前でロック(model='generating')取得 → Claude → reading 書き込み、
+  //   失敗時は failed 記録 (attempts++) まで行う。ここでは結果を待たない。
+  after(async () => {
+    try {
+      const worker = await loadWorker();
+      await worker.runForUser(supabaseAdmin, userId, { ...promptInputs, force });
+    } catch (e) {
+      // runForUser は内部 try/catch で failed を記録するが、想定外の throw もログに残す。
+      // 記録漏れのままフリーズ/クラッシュした場合は staleロック(180s)経過 + クライアントの
+      // 自動再キックで回復する (状態は status が正)。
+      console.error("[api/unmei/generate] background runForUser error:", e);
+    }
+  });
+
+  // 即レス: 生成はバックグラウンドで進行中。クライアントは /api/unmei/status をポーリング。
+  return NextResponse.json({ ok: true, state: "pending" });
 }
