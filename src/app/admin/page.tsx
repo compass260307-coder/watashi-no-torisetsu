@@ -2155,26 +2155,8 @@ export default function AdminPage() {
               前半3ステップはユニークセッション数、Stripe到達・決済完了はサーバ記録の件数。
               計測開始 (2026-07-13) 以前のデータは含まれません。
             </p>
-            {/* 誘導クリックの内訳 (どのボタンが課金カードへ連れてきているか) */}
-            {(stats.paywallSources ?? []).length > 0 && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
-                <p className="mb-3 text-xs font-black text-slate-700">
-                  解除ボタン押下の内訳 (どのCTAから課金カードへ飛んだか・クリック回数)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {stats.paywallSources.map((s) => (
-                    <span
-                      key={s.source}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"
-                      title={s.source}
-                    >
-                      {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}:{" "}
-                      <b>{s.count}</b>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* 「解除ボタン押下の内訳」チップ羅列は 2026-07-22 に撤去
+                (導線別テーブルの誘導クリック列と完全に重複していたため)。 */}
             {(stats.paywallAttribution ?? []).length > 0 && (
               <div className="mt-6 border-t border-slate-100 pt-5">
                 <p className="mb-1 text-sm font-black text-slate-900">
@@ -2196,28 +2178,65 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/80">
-                      {stats.paywallAttribution.map((s) => (
-                        <tr key={s.source} className="transition hover:bg-indigo-50/35">
-                          <td className="px-3 py-3 font-semibold text-slate-700" title={s.source}>
-                            {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                            {s.scrollClicks}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                            {s.purchaseCtaClicks}
-                          </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                            {s.stripeReached}
-                          </td>
-                          <td className="px-3 py-3 text-right font-black tabular-nums text-slate-900">
-                            {s.purchases}
-                          </td>
-                          <td className="px-3 py-3 text-right font-black tabular-nums text-indigo-600">
-                            {s.purchaseRate === null ? "—" : pct(s.purchaseRate)}
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const maxClicks = Math.max(
+                          1,
+                          ...stats.paywallAttribution.map((s) => s.scrollClicks),
+                        );
+                        return stats.paywallAttribution.map((s) => (
+                          <tr
+                            key={s.source}
+                            className={`transition hover:bg-indigo-50/35 ${
+                              s.purchases > 0 ? "bg-emerald-50/40" : ""
+                            }`}
+                          >
+                            <td className="px-3 py-3" title={s.source}>
+                              <p className="font-semibold text-slate-700">
+                                {s.purchases > 0 && (
+                                  <span
+                                    aria-hidden="true"
+                                    className="mr-1.5 inline-block h-2 w-2 rounded-full bg-emerald-500"
+                                  />
+                                )}
+                                {PAYWALL_SOURCE_LABELS[s.source] ?? s.source}
+                              </p>
+                              {/* 誘導クリック量のミニバー (最大行=100%) */}
+                              <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
+                                <span
+                                  className="block h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-400"
+                                  style={{
+                                    width: `${Math.max(
+                                      s.scrollClicks > 0 ? 2 : 0,
+                                      (s.scrollClicks / maxClicks) * 100,
+                                    )}%`,
+                                  }}
+                                />
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                              {s.scrollClicks}
+                            </td>
+                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                              {s.purchaseCtaClicks}
+                            </td>
+                            <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                              {s.stripeReached}
+                            </td>
+                            <td
+                              className={`px-3 py-3 text-right font-black tabular-nums ${
+                                s.purchases > 0
+                                  ? "text-emerald-600"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {s.purchases}
+                            </td>
+                            <td className="px-3 py-3 text-right font-black tabular-nums text-indigo-600">
+                              {s.purchaseRate === null ? "—" : pct(s.purchaseRate)}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -2248,18 +2267,37 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/80">
-                      {stats.revenueByKind.map((row) => (
+                      {(() => {
+                        const maxNet = Math.max(
+                          1,
+                          ...stats.revenueByKind.map((r) => r.netRevenueMinor),
+                        );
+                        return stats.revenueByKind.map((row) => (
                         <tr
                           key={`${row.kind}-${row.currency}`}
                           className="transition hover:bg-indigo-50/35"
                         >
-                          <td className="px-3 py-3 font-semibold text-slate-700" title={row.kind}>
-                            {PAYMENT_KIND_LABELS[row.kind] ?? row.kind}
-                            {row.currency !== "jpy" && (
-                              <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
-                                {row.currency}
-                              </span>
-                            )}
+                          <td className="px-3 py-3" title={row.kind}>
+                            <p className="font-semibold text-slate-700">
+                              {PAYMENT_KIND_LABELS[row.kind] ?? row.kind}
+                              {row.currency !== "jpy" && (
+                                <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-slate-500">
+                                  {row.currency}
+                                </span>
+                              )}
+                            </p>
+                            {/* 純売上のミニバー (最大商品=100%) */}
+                            <span className="mt-1.5 block h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-100">
+                              <span
+                                className="block h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
+                                style={{
+                                  width: `${Math.max(
+                                    row.netRevenueMinor > 0 ? 2 : 0,
+                                    (row.netRevenueMinor / maxNet) * 100,
+                                  )}%`,
+                                }}
+                              />
+                            </span>
                           </td>
                           <td className="px-3 py-3 text-right tabular-nums text-slate-600">
                             {row.purchases.toLocaleString()}
@@ -2276,7 +2314,8 @@ export default function AdminPage() {
                             {formatMoney(row.netRevenueMinor, row.currency)}
                           </td>
                         </tr>
-                      ))}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -2303,7 +2342,14 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/80">
-                      {stats.revenueDaily.map((day) => {
+                      {(() => {
+                        const dayNetTotal = (d: (typeof stats.revenueDaily)[number]) =>
+                          d.currencies.reduce((sum, c) => sum + c.netRevenueMinor, 0);
+                        const maxDayNet = Math.max(
+                          1,
+                          ...stats.revenueDaily.map(dayNetTotal),
+                        );
+                        return stats.revenueDaily.map((day) => {
                         const refundedTotal = day.currencies.reduce(
                           (sum, c) => sum + c.refundedMinor,
                           0,
@@ -2316,12 +2362,26 @@ export default function AdminPage() {
                             <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
                               {day.purchases.toLocaleString()}
                             </td>
-                            <td className="px-3 py-2.5 text-right font-black tabular-nums text-slate-900">
-                              {day.currencies
-                                .map((c) =>
-                                  formatMoney(c.netRevenueMinor, c.currency),
-                                )
-                                .join(" / ")}
+                            <td className="px-3 py-2.5 text-right">
+                              <span className="font-black tabular-nums text-slate-900">
+                                {day.currencies
+                                  .map((c) =>
+                                    formatMoney(c.netRevenueMinor, c.currency),
+                                  )
+                                  .join(" / ")}
+                              </span>
+                              {/* その日の純売上ミニバー (最大日=100%) */}
+                              <span className="ml-auto mt-1 block h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-slate-100">
+                                <span
+                                  className="ml-auto block h-full rounded-full bg-gradient-to-r from-indigo-400 to-violet-500"
+                                  style={{
+                                    width: `${Math.max(
+                                      dayNetTotal(day) > 0 ? 2 : 0,
+                                      (dayNetTotal(day) / maxDayNet) * 100,
+                                    )}%`,
+                                  }}
+                                />
+                              </span>
                             </td>
                             <td className="px-3 py-2.5 text-right tabular-nums text-rose-500">
                               {refundedTotal > 0
@@ -2336,7 +2396,8 @@ export default function AdminPage() {
                             </td>
                           </tr>
                         );
-                      })}
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
