@@ -37,10 +37,12 @@ export type Chart = {
 export type MoonArc = { startLon: number; endLon: number; start: Pos; end: Pos };
 
 export type WheelBody = { key: string; label: string; lon: number };
+export type Aspect = { fromLon: number; toLon: number };
 export type ChartView = {
   timeUnknown: boolean;
   points: WheelBody[]; // 点で描く天体 (時刻不明時は月を含まない)
   moonArc: MoonArc | null; // 時刻不明時の月の範囲 (弧)
+  aspects: Aspect[]; // 天体同士の主要アスペクト線 (古典7天体のみ。ASC/MC・時刻不明の月[弧]は除外)
   listItems: { key: string; label: string; text: string }[];
   ariaLabel: string;
 };
@@ -55,6 +57,20 @@ export function signJa(sign: string): string {
 }
 export function fmtPos(p: Pos): string {
   return `${signJa(p.sign)}${p.degree.toFixed(1)}°`;
+}
+
+// 主要アスペクト(角度)とオーブ。60°(セクスタイル)は本数を抑えるため ±4°、他は ±6°。
+const ASPECT_DEFS: { angle: number; orb: number }[] = [
+  { angle: 0, orb: 6 },
+  { angle: 60, orb: 4 },
+  { angle: 90, orb: 6 },
+  { angle: 120, orb: 6 },
+  { angle: 180, orb: 6 },
+];
+// 2つの黄経の角度差 (0〜180)。
+function separationDeg(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
 }
 
 // chart + (時刻不明時の) moonArc からビューモデルを組み立てる。
@@ -99,9 +115,27 @@ export function buildChartView(
     }
   }
 
+  // アスペクト線: 描画する全点 (古典7天体 + ASC/MC) 同士。時刻不明の月[弧]は points に無く対象外。
+  const aspectPoints = points;
+  const aspects: Aspect[] = [];
+  for (let i = 0; i < aspectPoints.length; i++) {
+    for (let j = i + 1; j < aspectPoints.length; j++) {
+      const s = separationDeg(aspectPoints[i].lon, aspectPoints[j].lon);
+      for (const def of ASPECT_DEFS) {
+        if (Math.abs(s - def.angle) <= def.orb) {
+          aspects.push({
+            fromLon: aspectPoints[i].lon,
+            toLon: aspectPoints[j].lon,
+          });
+          break;
+        }
+      }
+    }
+  }
+
   const ariaLabel =
     "出生図。" + listItems.map((it) => `${it.label} ${it.text}`).join("、");
-  return { timeUnknown, points, moonArc, listItems, ariaLabel };
+  return { timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
 }
 
 // ===== SVG レイアウト (純幾何・React とダンプで共有) =====
@@ -111,8 +145,8 @@ export const WHEEL = {
   cx: 170,
   cy: 170,
   rOuter: 150, // 外周円
-  rBand: 120, // 星座帯の内側境界円
-  rSignText: 135, // 星座名の半径
+  rBand: 128, // 星座帯の内側境界円 (帯をやや細く: 120→128)
+  rSignText: 138, // 星座名の半径 (帯の中央に合わせる)
   rDot: 104, // 天体の点 / 月の弧
   rLabel: 78, // 天体名ラベル(内側)
   labelGapDeg: 15, // ラベルの最小角度間隔(重なり回避)
@@ -140,6 +174,8 @@ function declump(items: { lon: number }[], gap: number): number[] {
 
 export type WheelLayout = {
   size: number;
+  stars: { x: number; y: number; r: number; o: number }[];
+  aspectLines: { x1: number; y1: number; x2: number; y2: number }[];
   circles: { r: number }[];
   ticks: { x1: number; y1: number; x2: number; y2: number }[];
   signLabels: { x: number; y: number; text: string }[];
@@ -155,6 +191,42 @@ export function layoutWheel(view: ChartView): WheelLayout {
   const { rOuter, rBand, rSignText, rDot, rLabel, labelGapDeg, size } = WHEEL;
 
   const circles = [{ r: rOuter }, { r: rBand }];
+
+  // 背景の星: 本物の星空風。小さく淡い星が大多数・明るい大きな星は少数。疎密のムラをつける。
+  // 決定的な擬似乱数(sinハッシュ)で固定 = SSRとダンプで一致。
+  const stars: WheelLayout["stars"] = [];
+  let starSeed = 0;
+  const rnd = () => {
+    starSeed += 1;
+    const v = Math.sin(starSeed * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  for (let placed = 0, tries = 0; placed < 84 && tries < 2600; tries++) {
+    const x = 5 + rnd() * (size - 10);
+    const y = 5 + rnd() * (size - 10);
+    if (Math.hypot(x - WHEEL.cx, y - WHEEL.cy) <= rOuter + 3) continue; // 円の内側・縁は避ける
+    // 疎密のムラ: 低周波の密度場で間引く (完全ランダムを避け、濃い所と疎な所を作る)
+    const density =
+      0.3 +
+      0.7 * Math.abs(Math.sin(x * 0.031 + y * 0.019) * Math.cos(x * 0.015 - y * 0.036));
+    if (rnd() > density) continue;
+    const t = rnd(); // 星の「等級」0..1
+    stars.push({
+      x,
+      y,
+      r: 0.3 + 0.9 * Math.pow(t, 3), // 極小(0.3)を圧倒的に多く、たまに小(〜1.2)
+      // 空気遠近法: 星は最も奥=最も淡い層。全要素より暗く抑える(相対的な明暗差は残す)。
+      o: 0.05 + 0.13 * Math.pow(t, 1.4), // 0.05〜0.18 (星座名0.22より暗い)
+    });
+    placed += 1;
+  }
+
+  // アスペクト線: 点リング(rDot)上で2天体を結ぶ弦。最背面に描く。
+  const aspectLines = view.aspects.map((a) => {
+    const [x1, y1] = polar(rDot, a.fromLon);
+    const [x2, y2] = polar(rDot, a.toLon);
+    return { x1, y1, x2, y2 };
+  });
 
   // 星座分割(12本)と星座名(セクター中央)
   const ticks: WheelLayout["ticks"] = [];
@@ -214,5 +286,5 @@ export function layoutWheel(view: ChartView): WheelLayout {
     }
   }
 
-  return { size, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
+  return { size, stars, aspectLines, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
 }
