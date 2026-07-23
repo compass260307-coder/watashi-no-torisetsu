@@ -4,6 +4,8 @@ import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import { isReadingReady } from "@/lib/unmei/reading";
+import { computeMoonDailyArc } from "@/lib/unmei/moon-arc";
+import type { Chart } from "@/lib/unmei/chart-view";
 
 export const metadata = {
   title: "運命の設計図",
@@ -42,10 +44,10 @@ export default async function UnmeiPage() {
     );
   }
 
-  // 購入済み: 出生データの有無で分岐
+  // 購入済み: 出生データの有無で分岐 (出生図ホイール用に birth_date / time_unknown も取得)
   const { data: profile } = await supabaseAdmin
     .from("birth_profiles")
-    .select("user_id")
+    .select("user_id, birth_date, time_unknown")
     .eq("user_id", userId!)
     .maybeSingle();
 
@@ -65,6 +67,27 @@ export default async function UnmeiPage() {
     return <UnmeiClient initialState="pending" />;
   }
 
-  // 購入済み・生成完了 → 鑑定表示 (整形版)
-  return <UnmeiReading reading={reading!.reading} />;
+  // 出生図ホイール用データ: 計算済みチャート + (時刻不明時のみ) 月の日周範囲。
+  // natal_charts は reading が ready なら必ず存在する (生成前に必ず計算するため)。欠損時は非表示。
+  const { data: natal } = await supabaseAdmin
+    .from("natal_charts")
+    .select("chart")
+    .eq("user_id", userId!)
+    .maybeSingle();
+  const chart = (natal?.chart ?? null) as Chart | null;
+  const timeUnknown = profile.time_unknown === true;
+  const moonArc =
+    chart && timeUnknown
+      ? computeMoonDailyArc(chart, profile.birth_date as string | null)
+      : null;
+
+  // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)
+  return (
+    <UnmeiReading
+      reading={reading!.reading}
+      chart={chart}
+      timeUnknown={timeUnknown}
+      moonArc={moonArc}
+    />
+  );
 }
