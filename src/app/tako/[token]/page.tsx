@@ -32,6 +32,7 @@ import { TakoLockedState } from "@/components/result/TakoLockedState";
 import { FriendLoveSection } from "@/components/result/FriendLoveSection";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
+import { JohariWindow } from "@/components/result/JohariWindow";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
@@ -607,7 +608,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                           aria-hidden="true"
                           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                         >
-                          4
+                          3
                         </span>
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {sh.viewer}との相性
@@ -686,6 +687,44 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 </p>
                               ))}
                             </div>
+
+                            {/* 小見出し②「ぶっちゃけ嫌われていない…？」= 相性の中の不安フック。
+                                未購入時はコンテンツを完全に隠し、見出し＋解除カードのみ (2026-07-23 指示)。
+                                解放時のみ 安心ブロック + “危険信号”(surprises を軟化) を全部見せる。 */}
+                            {sh.concernItems.length > 0 && (
+                              <div>
+                                <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+                                  ぶっちゃけ、{sh.viewer}に嫌われていない…？
+                                </h3>
+
+                                {takoLocked ? (
+                                  <TakoLockedBlock
+                                    source="tako_kirai_card"
+                                    description={`完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`}
+                                  />
+                                ) : (
+                                  <>
+                                    {/* 安心ブロック (答えてくれた=好意の証拠)。淡ラベンダーカード。 */}
+                                    <div className="mb-6 rounded-3xl bg-[#F4F4FE] px-6 py-6">
+                                      <p className="mb-2 text-[18px] font-black leading-[1.5] text-[#2E2E5C] md:text-[20px]">
+                                        答え：たぶん、大丈夫。
+                                      </p>
+                                      <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
+                                        だって{sh.viewer}、わざわざ全部の質問に答えてくれた。どうでもいい相手には、そんな時間かけないから。
+                                      </p>
+                                    </div>
+
+                                    <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
+                                      ただ——こういう瞬間だけ、{sh.viewer}
+                                      は静かに「あれ?」と距離を感じてるかも。
+                                    </p>
+
+                                    {/* 危険信号 (解放時のみ・全部見せる) */}
+                                    <ConcernList items={sh.concernItems} />
+                                  </>
+                                )}
+                              </div>
+                            )}
 
                             {/* 小見出し①「関係を深めるヒント・壊すワナ」= 深める(緑)/壊す(黄)の2リスト */}
                             <div>
@@ -781,47 +820,35 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               )}
                             </div>
 
-                            {/* 小見出し②「ぶっちゃけ嫌われていない…？」= 相性の中の不安フック。
-                                未購入時はコンテンツを完全に隠し、見出し＋解除カードのみ (2026-07-23 指示)。
-                                解放時のみ 安心ブロック + “危険信号”(surprises を軟化) を全部見せる。 */}
-                            {sh.concernItems.length > 0 && (
-                              <div>
-                                <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
-                                  ぶっちゃけ、{sh.viewer}に嫌われていない…？
-                                </h3>
-
-                                {takoLocked ? (
-                                  <TakoLockedBlock
-                                    source="tako_kirai_card"
-                                    description={`完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`}
-                                  />
-                                ) : (
-                                  <>
-                                    {/* 安心ブロック (答えてくれた=好意の証拠)。淡ラベンダーカード。 */}
-                                    <div className="mb-6 rounded-3xl bg-[#F4F4FE] px-6 py-6">
-                                      <p className="mb-2 text-[18px] font-black leading-[1.5] text-[#2E2E5C] md:text-[20px]">
-                                        答え：たぶん、大丈夫。
-                                      </p>
-                                      <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
-                                        だって{sh.viewer}、わざわざ全部の質問に答えてくれた。どうでもいい相手には、そんな時間かけないから。
-                                      </p>
-                                    </div>
-
-                                    <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
-                                      ただ——こういう瞬間だけ、{sh.viewer}
-                                      は静かに「あれ?」と距離を感じてるかも。
-                                    </p>
-
-                                    {/* 危険信号 (解放時のみ・全部見せる) */}
-                                    <ConcernList items={sh.concernItems} />
-                                  </>
-                                )}
-                              </div>
-                            )}
-
                           </div>
                         );
                       })()}
+                    </section>
+
+                    {/* ④ 2人がつくるジョハリの窓 (2026-07-23 追加)。
+                        自己診断 × この友達の回答を4つの窓に仕分け。盲点の窓のみ課金ゲート。 */}
+                    <section className="mb-14">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                        >
+                          4
+                        </span>
+                        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                          2人がつくるジョハリの窓
+                        </h2>
+                      </div>
+                      <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
+                        あなたの自己診断と{sh.viewer}
+                        の回答を重ねて、4つの窓に仕分けたよ。
+                      </p>
+                      <JohariWindow
+                        selfScores={data.selfScores}
+                        friendScores={sh.scores}
+                        viewer={sh.viewer}
+                        locked={takoLocked}
+                      />
                     </section>
 
                   </div>

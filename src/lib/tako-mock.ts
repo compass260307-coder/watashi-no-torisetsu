@@ -42,7 +42,8 @@ export function mockTakoData(previewType: ThirtyTwoTypeId): OwnerReportData {
   const shifts: Record<string, number>[] = [
     { E: 2, O: -2 },
     { E: 1, A: 1 },
-    { E: 3, N: -2 },
+    // E+4: 自己が低E(2)のタイプで 2→6 (60%) になり、④ジョハリの盲点の窓を再現できる。
+    { E: 4, N: -2 },
   ];
   const clamp = (v: number) => Math.max(0, Math.min(10, v));
   const mockOwnTypes: (ThirtyTwoTypeId | null)[] = [

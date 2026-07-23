@@ -59,7 +59,7 @@ export function MinnaTypeProse({
   const who = viewer ?? "友達";
 
   // 取扱説明書: 冒頭を「◯◯さんから見たアナタは、〜」へ変換し、友達視点の締めを添える。
-  const [manual, kuse] = sections;
+  const [manual] = sections;
   const manualParas = manual.body.split("\n\n");
   if (manualParas[0]?.startsWith("アナタ")) {
     manualParas[0] = `${who}から見た${manualParas[0]}`;
@@ -68,7 +68,6 @@ export function MinnaTypeProse({
   // 挿絵 normal1 は /me と同じく本文の途中 (中間の段落の後) に差し込む。
   const introImage = sceneImageFor(type32, "normal1");
   const imageAfter = Math.max(0, Math.floor(manualParas.length / 2) - 1);
-  const kuseImage = sceneImageFor(type32, "normal2");
 
   // グラフ (midSlot) の直後で本文を再開する段落は、接続詞 (そして/しかも 等) を落として
   // 「◯◯さんから見たアナタは〜」で仕切り直す (2026-07-20 指示)。
@@ -115,38 +114,7 @@ export function MinnaTypeProse({
       {/* 本文の締めとクセの間に差し込むブロック (例: ②恋愛傾向) */}
       {afterBodySlot}
 
-      {/* 取扱注意ポイント → 「③ ◯◯さんが気になっているクセ」(番号付きセクション見出し。
-          番号は /tako シートの並び ①ギャップ/②恋愛/③クセ に対応) */}
-      {kuse && (
-        <div>
-          <div className="mb-4 flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-            >
-              3
-            </span>
-            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-              {viewer ?? "みんな"}が気になっているクセ
-            </h2>
-          </div>
-          {/* 挿絵 normal2: /me の「あなたの注意点」と同じくタイトル直下 (本文の前) */}
-          {kuseImage && (
-            <SmoothImage
-              src={kuseImage}
-              alt=""
-              width={960}
-              height={640}
-              className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
-            />
-          )}
-          {kuse.body.split("\n\n").map((para, p) => (
-            <p key={p} className={PARA_CLASS}>
-              {para}
-            </p>
-          ))}
-        </div>
-      )}
+      {/* 「③ ◯◯さんが気になっているクセ」は 2026-07-23 指示で削除。 */}
     </div>
   );
 }

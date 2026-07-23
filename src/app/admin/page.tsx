@@ -18,12 +18,12 @@ const TYPE_LABELS: Record<string, string> = {
 // paywall_scroll_clicked の source → 日本語ラベル (設置場所)。
 // 未知の source はキーをそのまま表示する (title 属性に生キーも残す)。
 const PAYWALL_SOURCE_LABELS: Record<string, string> = {
-  love_payoff_card: "恋愛",
-  love_failure_card: "恋愛",
-  career_fit_card: "仕事",
-  career_avoid_card: "旧 仕事",
-  career_relations_card: "仕事",
-  career_talent_card: "旧 仕事",
+  love_payoff_card: "恋愛・好かれる",
+  love_failure_card: "恋愛・我慢",
+  career_fit_card: "仕事・働き方",
+  career_avoid_card: "旧 仕事・避ける",
+  career_relations_card: "仕事・人間関係",
+  career_talent_card: "旧 仕事・才能",
   deepdive_card: "旧 深掘り",
   scene_caution_card: "シーン別",
   moshimo_card: "もしも",
@@ -43,6 +43,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   tako_hints_card: "好かれるヒント",
   tako_kotsu_card: "深めるヒント",
   tako_wana_card: "壊すワナ",
+  tako_johari_card: "ジョハリの窓",
   tako_unlocked: "/tako 解放後",
   tako_promo_card: "/tako 購入",
   paywall_direct: "直接購入",
