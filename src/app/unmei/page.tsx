@@ -5,6 +5,7 @@ import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import { isReadingReady } from "@/lib/unmei/reading";
 import { computeMoonDailyArc } from "@/lib/unmei/moon-arc";
+import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
 import type { Chart } from "@/lib/unmei/chart-view";
 
 export const metadata = {
@@ -80,6 +81,8 @@ export default async function UnmeiPage() {
     chart && timeUnknown
       ? computeMoonDailyArc(chart, profile.birth_date as string | null)
       : null;
+  // 出生図の中央に置く 32タイプ称号 (essence)。scores から決定的に導出 (欠損時は null)。
+  const { essence } = await resolveUnmeiPromptInputs(supabaseAdmin, userId!);
 
   // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)
   return (
@@ -88,6 +91,7 @@ export default async function UnmeiPage() {
       chart={chart}
       timeUnknown={timeUnknown}
       moonArc={moonArc}
+      essence={essence}
     />
   );
 }
