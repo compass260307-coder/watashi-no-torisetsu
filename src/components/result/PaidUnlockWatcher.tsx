@@ -1,12 +1,12 @@
 "use client";
 
-// 決済直後 (/me/[token]?paid=1) の webhook 反映待ちオーバーレイ。
+// 決済直後 (/me/[token]?paid=1, /tako/[token]?paid=1) の webhook 反映待ちオーバーレイ。
 //
-// 背景: Stripe 決済 → success_url (/me/{token}?paid=1) に着地するが、plan='full' を
+// 背景: Stripe 決済 → success_url (/{me|tako}/{token}?paid=1) に着地するが、plan='full' を
 //   付けるのは webhook で非同期。着地した瞬間はまだ未反映のことがあり、そのままだと
 //   「払ったのに課金カード(ロック)が再表示」→ 再購入(二重課金)や離脱を招く。
 //
-// このコンポーネントは「?paid=1 かつ まだ未反映 (ロック中)」のときだけ親 (/me) がマウントし、
+// このコンポーネントは「?paid=1 かつ まだ未反映 (ロック中)」のときだけ親がマウントし、
 //   全画面「決済処理中…」を出しつつ status API をポーリング。full になったら paid= を外した
 //   URL に置き換えて再描画 (= ロック解除表示)。一定時間で反映されなければ手動再読み込み導線。
 
@@ -21,9 +21,11 @@ const MAX_TRIES = 20; // 約 40 秒
 export function PaidUnlockWatcher({
   ownerToken,
   locale = "ja",
+  returnTo = "me",
 }: {
   ownerToken: string;
   locale?: ResultLocale;
+  returnTo?: "me" | "tako";
 }) {
   const [timedOut, setTimedOut] = useState(false);
 
@@ -33,7 +35,9 @@ export function PaidUnlockWatcher({
 
     const reloadUnlocked = () => {
       // paid= を外した URL に置換 (履歴を汚さない)。full 反映済みなので本文が出る。
-      window.location.replace(`${locale === "ko" ? "/ko" : ""}/me/${ownerToken}`);
+      window.location.replace(
+        `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`,
+      );
     };
 
     const poll = async () => {
@@ -67,7 +71,7 @@ export function PaidUnlockWatcher({
       cancelled = true;
       window.clearTimeout(first);
     };
-  }, [locale, ownerToken]);
+  }, [locale, ownerToken, returnTo]);
 
   return (
     <div
@@ -113,7 +117,11 @@ export function PaidUnlockWatcher({
           </p>
           <button
             type="button"
-            onClick={() => window.location.replace(`${locale === "ko" ? "/ko" : ""}/me/${ownerToken}`)}
+            onClick={() =>
+              window.location.replace(
+                `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`,
+              )
+            }
             className="mt-6 inline-flex items-center justify-center rounded-full px-8 py-3 text-[15px] font-black text-white"
             style={{ background: NAVY }}
           >

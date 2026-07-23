@@ -34,6 +34,7 @@ import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
@@ -42,12 +43,14 @@ import {
   resolveMoteHints,
 } from "@/lib/friend-love-content";
 import { LOVE_BY_TYPE_32 } from "@/lib/love-by-type-32";
+import type { ContentItem } from "@/lib/mutual-result-content";
 import {
   classifyThirtyTwoType,
   thirtyTwoEssence,
   thirtyTwoGroup,
   thirtyTwoName,
   thirtyTwoImagePath,
+  perceivedContentFor,
   baseIdOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
@@ -93,6 +96,57 @@ const MOCK_ANSWERED: {
 ];
 
 // &diag=N: 先頭 N 人の answered 友達を「自己診断済み(Path1)」として扱う (相性ループ確認用)。
+// 危険信号の各項目に足す締め文 (surprises は1文で薄いため2文化)。トーンは
+// 「欠点の断罪」ではなく「仲がいいからこそ見えているクセ」(ネガは愛されるクセに変換)。
+// /me の DISLIKE_TAIL と同発想。インデックス別に付け替えてテンプレ感を避ける。
+const CONCERN_TAIL = [
+  "悪気がないのは伝わってる。ただ、先にひと言あるだけで印象はまるで違う。",
+  "嫌われるほどじゃない。むしろ長所が出すぎた瞬間で、気づくだけで武器に変わる。",
+  "面と向かっては言わないけど、仲がいいからこそ気にしてる部分かも。",
+  "隠しているつもりでも、近くにいる人にはちゃんと伝わってる。",
+  "一つひとつは小さいけど、積み重なると静かな距離になっていく類のもの。",
+  "気づいた日から変えられるクセ。むしろ伸びしろだと思われてる。",
+];
+
+// ⑤「ぶっちゃけ嫌われてない…？」の危険信号リスト。/me の「嫌われやすい性格」WarnList と
+// 同じ組版 = 枠なし2カラム・黄色の注意アイコン + 太字タイトル + 字下げ本文。
+// トーンは断罪ではなく「仲がいいからこそ見えるクセ」(傷つけないルール準拠)。
+function ConcernList({ items }: { items: ContentItem[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+      {items.map((it, i) => (
+        <div key={`${it.title}-${i}`}>
+          <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+            <span
+              aria-hidden="true"
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#F2C14E]"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
+            {it.title}
+          </p>
+          <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+            {it.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function mockLockedTakoData(
   friends: number,
   pending: number,
@@ -239,6 +293,17 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     if (loveProse[0]?.startsWith("アナタの恋は")) {
       loveProse[0] = `${viewer}から見た${loveProse[0]}`;
     }
+    // ⑤「ぶっちゃけ嫌われてない…？」の危険信号: その友達が見た認識タイプ(32→16)の
+    //   surprises (あれっ?) を流用。/me の「嫌われやすい」と同じく DISLIKE_TAIL で
+    //   2文化し「仲がいいからこそ見えるクセ」に軟化する (傷つけないルール準拠)。
+    //   本文の {B}さん プレースホルダは、この友達の表示名 (viewer) に解決する。
+    const perceived = perceivedContentFor(type32);
+    const concernItems: ContentItem[] = perceived
+      ? perceived.surprises.map((it, i) => ({
+          title: it.title,
+          body: `${it.body.replace(/\{B\}さん/g, viewer).replace(/\{B\}/g, viewer)}${CONCERN_TAIL[i % CONCERN_TAIL.length]}`,
+        }))
+      : [];
     return {
       key: f.perceptionId,
       tabName: rawName || "ともだち",
@@ -254,6 +319,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       loveChecks: sheetLoveChecks,
       loveHints: sheetLoveHints,
       loveProse,
+      concernItems,
       scores: f.perceivedScores,
       // ④相性: 常に回答ギャップからの推定 (2026-07-20 指示で診断済み分岐は廃止)。
       estCompat: estimateCompatFromGaps(
@@ -302,6 +368,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         inviteCode={data.inviteCode}
         enabled={!previewMode}
       />
+      {/* 決済直後は Stripe webhook の plan='full' 反映が数秒遅れることがある。
+          /me と同じく、払った直後に再ロック表示になるのを防ぐ。 */}
+      {!previewMode && sp.paid === "1" && !takoUnlocked && (
+        <PaidUnlockWatcher ownerToken={token} returnTo="tako" />
+      )}
       {/* /me と同じ常時表示バー付きヘッダー (シェア3ボタン + 未購入時は解除CTA)。
           解除CTAは最下部の課金カード (#tako-promo) へスクロールする。 */}
       <MeStickyHeader
@@ -528,7 +599,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
 
                     {/* ④ ◯◯さんとの相性 (2026-07-20 追加)。
                         友達自身も自己診断済み (friendOwnType32 あり) なら compat() で
-                        ルールベースの相性本文を表示。未診断ならティザー文のみ。 */}
+                        ルールベースの相性本文を表示。未診断ならティザー文のみ。
+                        関係を深めるヒント・壊すワナ をこの中にまとめる。 */}
                     <section className="mb-14">
                       <div className="mb-4 flex items-center gap-3">
                         <span
@@ -615,17 +687,19 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               ))}
                             </div>
 
-                            {/* 関係を深めるヒント (武器 CheckList と同じ組版・8つ) */}
+                            {/* 小見出し①「関係を深めるヒント・壊すワナ」= 深める(緑)/壊す(黄)の2リスト */}
                             <div>
-                              <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
-                                関係を深めるヒント
+                              <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+                                関係を深めるヒント・壊すワナ
                               </h3>
-                              {takoLocked && (
+                              {takoLocked ? (
                                 <TakoLockedBlock
-                                  source="tako_kotsu_card"
-                                  description={`完全版で、${sh.viewer}ともっと仲良くなるための具体的なコツを見てみましょう。`}
+                                  source="tako_kotsu_wana_card"
+                                  description={`完全版で、${sh.viewer}ともっと仲良くなるコツと、避けたいすれ違いポイントの両方が読めます。`}
                                 />
-                              )}
+                              ) : (
+                              <div className="flex flex-col gap-8">
+                                <div>
                               <div
                                 className={
                                   takoLocked
@@ -663,17 +737,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               </div>
                             </div>
 
-                            {/* 関係を壊すワナ (WarnList と同じ組版・黄色の注意アイコン・8つ) */}
+                            {/* 壊すワナ (WarnList と同じ組版・黄色の注意アイコン・8つ)。キャプション削除。 */}
                             <div>
-                              <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
-                                関係を壊すワナ
-                              </h3>
-                              {takoLocked && (
-                                <TakoLockedBlock
-                                  source="tako_wana_card"
-                                  description={`完全版で、${sh.viewer}との関係が陥りがちなすれ違いポイントを先回りして知っておきましょう。`}
-                                />
-                              )}
                               <div
                                 className={
                                   takoLocked
@@ -712,6 +777,47 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 ))}
                               </div>
                             </div>
+                              </div>
+                              )}
+                            </div>
+
+                            {/* 小見出し②「ぶっちゃけ嫌われていない…？」= 相性の中の不安フック。
+                                未購入時はコンテンツを完全に隠し、見出し＋解除カードのみ (2026-07-23 指示)。
+                                解放時のみ 安心ブロック + “危険信号”(surprises を軟化) を全部見せる。 */}
+                            {sh.concernItems.length > 0 && (
+                              <div>
+                                <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+                                  ぶっちゃけ、{sh.viewer}に嫌われていない…？
+                                </h3>
+
+                                {takoLocked ? (
+                                  <TakoLockedBlock
+                                    source="tako_kirai_card"
+                                    description={`完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`}
+                                  />
+                                ) : (
+                                  <>
+                                    {/* 安心ブロック (答えてくれた=好意の証拠)。淡ラベンダーカード。 */}
+                                    <div className="mb-6 rounded-3xl bg-[#F4F4FE] px-6 py-6">
+                                      <p className="mb-2 text-[18px] font-black leading-[1.5] text-[#2E2E5C] md:text-[20px]">
+                                        答え：たぶん、大丈夫。
+                                      </p>
+                                      <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
+                                        だって{sh.viewer}、わざわざ全部の質問に答えてくれた。どうでもいい相手には、そんな時間かけないから。
+                                      </p>
+                                    </div>
+
+                                    <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
+                                      ただ——こういう瞬間だけ、{sh.viewer}
+                                      は静かに「あれ?」と距離を感じてるかも。
+                                    </p>
+
+                                    {/* 危険信号 (解放時のみ・全部見せる) */}
+                                    <ConcernList items={sh.concernItems} />
+                                  </>
+                                )}
+                              </div>
+                            )}
 
                           </div>
                         );
@@ -730,19 +836,28 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
         )}
         </div>
       </main>
-      {/* 最下部の課金案内カード (tako_unlock 未購入・結果表示中のみ)。
-          ロックカードの CTA (#tako-promo) のスクロール先。 */}
-      {takoLocked && data.friends.length > 0 && (() => {
-        const promoGroup = data.friendCharacter
-          ? thirtyTwoGroup(data.friendCharacter.type32)
-          : "unknown";
+      {/* 最下部の課金案内カード (tako_unlock 未購入のとき常設)。
+          ロックカードの CTA (#tako-promo) のスクロール先。
+          解放後(友達≥1人)だけでなく、未解放(友達0人=TakoLockedState)の
+          最下部にも表示する (2026-07-23 指示)。 */}
+      {takoLocked && (() => {
+        // 解放後は友達平均キャラの色/画像。未解放(友達0人)は友達キャラが無いので
+        // 本人の32型でフォールバックする (QR中央と同じ本人の顔・グループ色)。
+        const promoType = data.friendCharacter?.type32 ?? data.ownerType32;
+        const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
+        const promoAlt =
+          data.friendCharacter?.essence ??
+          (data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : "");
         // 2026-07-22: ¥799 単体販売を廃止し ¥499 完全版パッケージに一本化。
         // /me と同じ FullAccessPromoCard を使い、購入後は /tako に戻す (returnTo)。
         // TakoLockedBlock の解除CTA (#tako-promo) のスクロール先を兼ねるため id を付与。
         const promoImage =
           sceneImageForGroup(promoGroup, "love") ??
           sceneImageForGroup(promoGroup, "normal1") ??
-          data.friendCharacter?.imageSrc;
+          data.friendCharacter?.imageSrc ??
+          (data.ownerType32
+            ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+            : undefined);
         return (
           <>
             <div id="tako-promo" className="scroll-mt-16">
@@ -751,7 +866,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                 ownerToken={token}
                 returnTo="tako"
                 imageSrc={promoImage}
-                imageAlt={data.friendCharacter?.essence ?? ""}
+                imageAlt={promoAlt}
                 group={promoGroup}
               />
             </div>
@@ -761,7 +876,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               ownerToken={token}
               returnTo="tako"
               imageSrc={promoImage}
-              imageAlt={data.friendCharacter?.essence ?? ""}
+              imageAlt={promoAlt}
               group={promoGroup}
             />
           </>
