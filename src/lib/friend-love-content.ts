@@ -349,3 +349,175 @@ export function resolveLoveScene(
   };
   return `たとえば、${pick(0)}${pick(1)}`;
 }
+
+
+// =====================================================================
+// 「アナタに沼る人」(2026-07-24 追加。/tako ②恋愛の課金ブロック刷新)。
+// 友達の回答のモテ寄与度トップ3軸から「どんな人が・どこに落ちるか」を出し、
+// トップ軸から「沼る瞬間」のシーン1つを添える。
+// =====================================================================
+
+const NUMA_BY_AXIS: Record<
+  BigFiveDimension,
+  { high: MoteCheckItem; low: MoteCheckItem }
+> = {
+  E: {
+    high: {
+      title: "太陽感に沼る",
+      body: "毎日ちょっと疲れてる人ほど、アナタの明るさに救われて落ちる。「この人といると元気出る」は、恋の入り口として最強だよ。",
+    },
+    low: {
+      title: "静かな聞き上手に沼る",
+      body: "話を最後まで聞いてもらえた経験が少ない人ほど、アナタの前で初めて素になれて、そのまま落ちる。",
+    },
+  },
+  A: {
+    high: {
+      title: "さりげない気づかいに沼る",
+      body: "頑張り屋で人に甘えられない人ほど、アナタの「気づいてくれる」にやられる。本人が無意識なのが、またずるい。",
+    },
+    low: {
+      title: "ブレない自分軸に沼る",
+      body: "周りに合わせて疲れてる人ほど、流されないアナタの芯に憧れて、気づけば目で追ってる。",
+    },
+  },
+  O: {
+    high: {
+      title: "世界が広がる感じに沼る",
+      body: "毎日が同じで退屈してる人ほど、アナタの「ここ行ってみない？」で世界が変わって、抜け出せなくなる。",
+    },
+    low: {
+      title: "変わらない安心感に沼る",
+      body: "刺激的な恋に疲れた人ほど、アナタとの「いつも通り」が心地よくて、帰ってこれなくなる。",
+    },
+  },
+  C: {
+    high: {
+      title: "有言実行に沼る",
+      body: "口だけの人にがっかりしてきた人ほど、黙って約束を守るアナタに「この人は違う」と落ちる。",
+    },
+    low: {
+      title: "マイペースの自由さに沼る",
+      body: "きっちりしすぎる毎日に窮屈さを感じてる人ほど、アナタのゆるさでやっと呼吸できて、離れられなくなる。",
+    },
+  },
+  N: {
+    high: {
+      title: "感情の深さに沼る",
+      body: "浅い会話に飽きてる人ほど、アナタの繊細な感受性に触れて「わかってもらえた」と感じて落ちる。",
+    },
+    low: {
+      title: "動じない包容力に沼る",
+      body: "不安になりやすい人ほど、何があっても慌てないアナタの隣が、世界でいちばん安全な場所になる。",
+    },
+  },
+};
+
+// 沼る瞬間 (トップ軸のシーン描写)。
+const NUMA_MOMENT_BY_AXIS: Record<
+  BigFiveDimension,
+  { high: string; low: string }
+> = {
+  E: {
+    high: "みんなでいた帰り道、ふと二人になった瞬間の落差。さっきまで場を回してた人が、自分にだけ静かなトーンで話す——ここで人は落ちる。",
+    low: "騒がしい飲み会のあとで、アナタだけが自分の話を覚えていてくれたと気づいた瞬間。",
+  },
+  A: {
+    high: "疲れてる日に「大丈夫？」の言葉より先に、温かい飲み物がすっと出てきた瞬間。",
+    low: "みんなが空気を読んで黙る場面で、アナタだけが「私はこう思う」と言った瞬間。",
+  },
+  O: {
+    high: "「ここ、絶対好きだと思って」と連れて行かれた場所が、本当にどストライクだった瞬間。",
+    low: "何度目かの「いつもの店」で、ふと「これが一番落ち着く」と気づいた瞬間。",
+  },
+  C: {
+    high: "冗談みたいな軽い約束を、当たり前の顔できっちり果たしてくれた瞬間。",
+    low: "予定が崩れたのに「じゃあこっちにしよ」と笑った瞬間。",
+  },
+  N: {
+    high: "LINEの短い返事だけで「今日なんかあった？」と気づかれた瞬間。",
+    low: "トラブルの真ん中で、アナタだけが落ち着いていた瞬間。",
+  },
+};
+
+export type NumaruContent = {
+  /** 沼るポイント (寄与度トップ3軸)。 */
+  items: MoteCheckItem[];
+  /** 沼る瞬間 (トップ軸のシーン1つ)。 */
+  moment: string;
+};
+
+/** 友達の回答から「アナタに沼る人」を決定的に生成する。2軸未満なら null。 */
+export function resolveNumaru(
+  friendScores: Partial<Record<BigFiveDimension, number>>,
+): NumaruContent | null {
+  const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+  const contrib = AXES.map((ax) => {
+    const v = friendScores[ax];
+    if (typeof v !== "number") return null;
+    return { ax, v, score: ax === "N" ? 10 - v : v };
+  }).filter((x): x is { ax: BigFiveDimension; v: number; score: number } => x !== null);
+  if (contrib.length < 2) return null;
+
+  contrib.sort((a, b) => b.score - a.score);
+  const items = contrib
+    .slice(0, 3)
+    .map(({ ax, v }) => (v >= 5 ? NUMA_BY_AXIS[ax].high : NUMA_BY_AXIS[ax].low));
+  const top = contrib[0];
+  const moment =
+    top.v >= 5 ? NUMA_MOMENT_BY_AXIS[top.ax].high : NUMA_MOMENT_BY_AXIS[top.ax].low;
+  return { items, moment };
+}
+
+// =====================================================================
+// 「損してるポイント」(2026-07-24 追加)。モテ寄与度が低かった軸 =
+// まだ伝わってない魅力を「もったいない」フレーミングで2つ出し、
+// 取り返すヒントを1行添える。旧「モテるためのヒント」の後継。
+// =====================================================================
+
+export type LossItem = { title: string; body: string; hint: string };
+
+// 各軸が弱い方向 (E/A/O/C 低い・N 高い) で出たときの文言。
+const LOSS_BY_AXIS: Record<BigFiveDimension, LossItem> = {
+  E: {
+    title: "テンションの出し惜しみ",
+    body: "ほんとはもっと楽しい人なのに、初対面枠では「静かな人」で終わりがち。それ、かなり損してるよ。",
+    hint: "次の集まりで一回だけ、思いっきり笑って乗っかってみて。振り幅は最強のギャップだよ。",
+  },
+  A: {
+    title: "やさしさの非公開設定",
+    body: "気づいてるのに一歩引いちゃうから、「クールな人」と誤解されて損してるかも。",
+    hint: "気づいたことの半分でいいから言葉にしてみて。「気づいてたんだ」は想像より刺さるよ。",
+  },
+  O: {
+    title: "引き出しの隠しすぎ",
+    body: "頭の中の面白い世界を出してないから、「無難な人」で処理されてがち。もったいない。",
+    hint: "気になってる場所や作品をひとつ、自分から口に出してみて。それだけで印象が立体になるよ。",
+  },
+  C: {
+    title: "やる時はやる面の未公開",
+    body: "ゆるく見せてるぶん、「実はちゃんとしてる」がまだ伝わってない。信頼の伸びしろを眠らせてるよ。",
+    hint: "小さい約束をひとつ、きっちり守って見せて。ギャップで信頼が跳ねるよ。",
+  },
+  N: {
+    title: "考えすぎブレーキ",
+    body: "「嫌われたかも」のブレーキで、送りかけたメッセージを消してる時間がもったいない。",
+    hint: "悩んだ文面は、そのまま送っていい日のほうが多いよ。アナタの繊細さは重さじゃなくて深さだから。",
+  },
+};
+
+/** 友達の回答でモテ寄与度が低かった2軸を「損してるポイント」として返す。 */
+export function resolveLossPoints(
+  friendScores: Partial<Record<BigFiveDimension, number>>,
+): LossItem[] {
+  const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
+  const contrib = AXES.map((ax) => {
+    const v = friendScores[ax];
+    if (typeof v !== "number") return null;
+    return { ax, score: ax === "N" ? 10 - v : v };
+  }).filter((x): x is { ax: BigFiveDimension; score: number } => x !== null);
+  if (contrib.length < 2) return [];
+
+  contrib.sort((a, b) => a.score - b.score);
+  return contrib.slice(0, 2).map(({ ax }) => LOSS_BY_AXIS[ax]);
+}

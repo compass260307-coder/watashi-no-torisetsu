@@ -39,9 +39,9 @@ import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
-  resolveFriendLoveChecklist,
+  resolveLossPoints,
   resolveLoveScene,
-  resolveMoteHints,
+  resolveNumaru,
 } from "@/lib/friend-love-content";
 import { LOVE_BY_TYPE_32 } from "@/lib/love-by-type-32";
 import type { ContentItem } from "@/lib/mutual-result-content";
@@ -274,11 +274,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     const sheetHero = heroColorsForGroup(thirtyTwoGroup(type32));
     const sheetDeep = buildDeepDive(data.selfScores, f.perceivedScores);
     const sheetLove = resolveFriendLove(f.perceivedScores);
-    const sheetLoveChecks = resolveFriendLoveChecklist(f.perceivedScores);
+    const sheetNuma = resolveNumaru(f.perceivedScores);
     // 見出し・本文の「誰から見たか」。空/フォールバック名は総称「友達」に落とす。
     const rawName = f.name.trim();
     const viewer = rawName && rawName !== "ともだち" ? `${rawName}さん` : "友達";
-    const sheetLoveHints = resolveMoteHints(f.perceivedScores);
+    const sheetLoss = resolveLossPoints(f.perceivedScores);
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
     // 「◯◯さんから見たアナタの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
     // 表示は先頭2段落 (具体的な長所の描写) だけ。3段落目以降の内省パート
@@ -317,8 +317,8 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       hero: sheetHero,
       deep: sheetDeep,
       love: sheetLove,
-      loveChecks: sheetLoveChecks,
-      loveHints: sheetLoveHints,
+      numa: sheetNuma,
+      loss: sheetLoss,
       loveProse,
       concernItems,
       scores: f.perceivedScores,
@@ -570,22 +570,22 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 </div>
                               )}
                               <FriendLoveSection
-                                items={takoLocked ? [] : sh.loveChecks}
-                                hints={takoLocked ? [] : sh.loveHints}
+                                numa={takoLocked ? null : sh.numa}
+                                loss={takoLocked ? [] : sh.loss}
                                 viewer={sh.viewer}
                                 lockedBlocks={
                                   takoLocked
                                     ? {
-                                        mote: (
+                                        numa: (
                                           <TakoLockedBlock
-                                            source="tako_mote_card"
-                                            description={`完全版で、${sh.viewer}が感じているあなたのモテ理由が分かります。自分では気づいていない魅力を見てみましょう。`}
+                                            source="tako_numa_card"
+                                            description={`完全版で、${sh.viewer}の回答からわかった「アナタに落ちる人」の特徴と、沼らせる瞬間が読めます。`}
                                           />
                                         ),
-                                        hints: (
+                                        loss: (
                                           <TakoLockedBlock
-                                            source="tako_hints_card"
-                                            description={`完全版で、${sh.viewer}にもっと好かれるための具体的なヒントが読めます。`}
+                                            source="tako_loss_card"
+                                            description={`完全版で、${sh.viewer}にまだ伝わってない魅力と、損を取り返すコツが読めます。`}
                                           />
                                         ),
                                       }

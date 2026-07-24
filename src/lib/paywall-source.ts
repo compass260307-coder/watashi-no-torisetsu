@@ -30,6 +30,8 @@ const PAYWALL_SOURCES = new Set([
   "tako_kotsu_card",
   "tako_wana_card",
   "tako_johari_card",
+  "tako_numa_card",
+  "tako_loss_card",
   "tako_promo_card",
 ]);
 

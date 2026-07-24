@@ -48,7 +48,7 @@ const U_SELF_UNLOCK: UnlockItem = {
 };
 const U_FRIEND_UNLOCK: UnlockItem = {
   title: "友達診断結果の完全解放",
-  desc: "実際に答えてくれた友達の目に映るあなた。隠れモテポイントや関係を深めるコツまで、友達ごとに読める。",
+  desc: "実際に答えてくれた友達の目に映るあなた。アナタに沼る人の特徴や関係を深めるコツまで、友達ごとに読める。",
 };
 const U_FRIEND_PDF: UnlockItem = {
   title: "何度でも作り直せる友達診断レポート",
@@ -78,7 +78,7 @@ const SELF_UNLOCKS: UnlockItem[] = [
 const TAKO_UNLOCKS: UnlockItem[] = [
   {
     title: "友達診断の結果のロックされた4つのセクション",
-    desc: "隠れモテポイント、関係を深めるコツ、壊すワナまで、友達ごとにぜんぶ読める。",
+    desc: "アナタに沼る人、関係を深めるコツ、壊すワナまで、友達ごとにぜんぶ読める。",
   },
   U_FRIEND_PDF,
   U_SELF_UNLOCK,
