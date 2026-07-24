@@ -287,13 +287,6 @@ const ADMIN_NAV_ITEMS = [
     path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
   },
   {
-    href: "#funnel",
-    id: "funnel",
-    label: "ファネル",
-    shortLabel: "ファネル",
-    path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
-  },
-  {
     href: "#growth",
     id: "growth",
     label: "拡散",
@@ -416,13 +409,6 @@ function formatMoney(minor: number, currency: string): string {
   } catch {
     return `${normalized.toUpperCase()} ${amount.toFixed(1)}`;
   }
-}
-
-function formatArpu(currencies: Stats["coreKpis"]["arpu"]["currencies"]): string {
-  if (currencies.length === 0) return "—";
-  return currencies
-    .map((row) => formatMoney(row.arpuMinor, row.currency))
-    .join(" / ");
 }
 
 function formatNetRevenue(
@@ -722,129 +708,6 @@ function ExecutiveMetricCard({
   );
 }
 
-type KpiTone = "indigo" | "emerald" | "amber" | "rose" | "slate";
-
-const KPI_TONES: Record<
-  KpiTone,
-  { accent: string; icon: string; value: string; number: string; surface: string }
-> = {
-  indigo: {
-    accent: "bg-indigo-500",
-    icon: "bg-indigo-50 text-indigo-600 ring-indigo-100",
-    value: "text-indigo-700",
-    number: "text-indigo-200",
-    surface: "border-indigo-100",
-  },
-  emerald: {
-    accent: "bg-emerald-500",
-    icon: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-    value: "text-emerald-700",
-    number: "text-emerald-200",
-    surface: "border-emerald-100",
-  },
-  amber: {
-    accent: "bg-amber-500",
-    icon: "bg-amber-50 text-amber-600 ring-amber-100",
-    value: "text-amber-700",
-    number: "text-amber-200",
-    surface: "border-amber-100",
-  },
-  rose: {
-    accent: "bg-rose-500",
-    icon: "bg-rose-50 text-rose-600 ring-rose-100",
-    value: "text-rose-700",
-    number: "text-rose-200",
-    surface: "border-rose-100",
-  },
-  slate: {
-    accent: "bg-stone-800",
-    icon: "bg-stone-100 text-stone-600 ring-stone-200",
-    value: "text-stone-900",
-    number: "text-stone-200",
-    surface: "border-stone-200",
-  },
-};
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  tone = "slate",
-  featured = false,
-  index,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  tone?: KpiTone;
-  featured?: boolean;
-  index?: string;
-}) {
-  const colors = KPI_TONES[tone];
-  return (
-    <div
-      className={`group relative overflow-hidden border bg-white transition duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_38px_-30px_rgba(28,25,23,0.45)] ${colors.surface} ${
-        featured
-          ? "min-h-[174px] rounded-lg p-5 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] xl:p-6"
-          : "min-h-[132px] rounded-lg p-4 shadow-[0_8px_24px_-24px_rgba(28,25,23,0.36)]"
-      }`}
-    >
-      <span
-        aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-1 ${colors.accent}`}
-      />
-      <div className="flex items-start justify-between gap-3">
-        <div className="relative min-w-0">
-          <p className="mb-3 text-[11px] font-bold leading-relaxed tracking-normal text-stone-500">
-            {label}
-          </p>
-          <p
-            className={`font-black leading-none tracking-normal tabular-nums ${colors.value} ${
-              featured
-                ? "text-3xl"
-                : "text-2xl"
-            }`}
-          >
-            {value}
-          </p>
-        </div>
-        {index ? (
-          <span
-            aria-hidden="true"
-            className={`text-sm font-black tracking-normal ${colors.number}`}
-          >
-            {index}
-          </span>
-        ) : (
-          <span
-            aria-hidden="true"
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${colors.icon}`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-4 w-4"
-            >
-              <path d="M4 19V9m6 10V5m6 14v-7m4 7H2" strokeLinecap="round" />
-            </svg>
-          </span>
-        )}
-      </div>
-      {sub && (
-        <p
-          className={`relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed ${
-            featured ? "text-stone-500" : "text-stone-400"
-          }`}
-        >
-          {sub}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function SectionHeader({
   eyebrow,
   title,
@@ -926,6 +789,152 @@ function FunnelBar({
       <span className="text-right text-[11px] font-black tabular-nums text-stone-400 sm:text-xs">
         {convRate ?? "—"}
       </span>
+    </div>
+  );
+}
+
+type ReachTone = "teal" | "indigo" | "emerald" | "rose";
+
+const REACH_TONES: Record<
+  ReachTone,
+  { step: string; bar: string; soft: string; text: string; border: string }
+> = {
+  teal: {
+    step: "bg-teal-600 text-white",
+    bar: "bg-teal-600",
+    soft: "bg-teal-50",
+    text: "text-teal-800",
+    border: "border-teal-100",
+  },
+  indigo: {
+    step: "bg-indigo-600 text-white",
+    bar: "bg-indigo-600",
+    soft: "bg-indigo-50",
+    text: "text-indigo-800",
+    border: "border-indigo-100",
+  },
+  emerald: {
+    step: "bg-emerald-600 text-white",
+    bar: "bg-emerald-600",
+    soft: "bg-emerald-50",
+    text: "text-emerald-800",
+    border: "border-emerald-100",
+  },
+  rose: {
+    step: "bg-rose-600 text-white",
+    bar: "bg-rose-600",
+    soft: "bg-rose-50",
+    text: "text-rose-800",
+    border: "border-rose-100",
+  },
+};
+
+function ReachStepRow({
+  index,
+  label,
+  count,
+  max,
+  rateFromBase,
+  rateFromPrevious,
+  baseLabel,
+  tone = "teal",
+}: {
+  index: number;
+  label: string;
+  count: number;
+  max: number;
+  rateFromBase: number;
+  rateFromPrevious: number | null;
+  baseLabel: string;
+  tone?: ReachTone;
+}) {
+  const colors = REACH_TONES[tone];
+  const width = max > 0 ? (count / max) * 100 : 0;
+
+  return (
+    <li className="border-b border-stone-100 pb-4 last:border-b-0">
+      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-black tabular-nums ${colors.step}`}
+            >
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black text-stone-900" title={label}>
+                {label}
+              </p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100 ring-1 ring-inset ring-stone-200/70">
+                <span
+                  className={`block h-full rounded-full ${colors.bar}`}
+                  style={{ width: `${Math.max(width, count > 0 ? 4 : 0)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-100 bg-stone-50/70 text-center">
+          <div className="border-r border-stone-100 px-2 py-2.5">
+            <p className="text-base font-black tabular-nums text-stone-950">
+              {count.toLocaleString()}
+              <span className="ml-0.5 text-[11px] text-stone-500">人</span>
+            </p>
+            <p className="mt-0.5 text-[10px] font-bold text-stone-400">
+              到達
+            </p>
+          </div>
+          <div className={`border-r border-stone-100 px-2 py-2.5 ${colors.soft}`}>
+            <p className={`text-base font-black tabular-nums ${colors.text}`}>
+              {pct(rateFromBase)}
+            </p>
+            <p className="mt-0.5 text-[10px] font-bold text-stone-500">
+              {baseLabel}
+            </p>
+          </div>
+          <div className="px-2 py-2.5">
+            <p className="text-base font-black tabular-nums text-stone-700">
+              {rateFromPrevious === null ? "起点" : pct(rateFromPrevious)}
+            </p>
+            <p className="mt-0.5 text-[10px] font-bold text-stone-400">
+              前段比
+            </p>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function ReachSummaryCard({
+  label,
+  count,
+  rate,
+  sub,
+  tone = "teal",
+}: {
+  label: string;
+  count: number;
+  rate: number;
+  sub: string;
+  tone?: ReachTone;
+}) {
+  const colors = REACH_TONES[tone];
+  return (
+    <div className={`rounded-lg border ${colors.border} bg-white p-4 shadow-[0_10px_28px_-26px_rgba(28,25,23,0.42)]`}>
+      <p className="text-[11px] font-black text-stone-500">{label}</p>
+      <div className="mt-3 flex items-end justify-between gap-3">
+        <p className="text-3xl font-black leading-none tabular-nums text-stone-950">
+          {count.toLocaleString()}
+          <span className="ml-1 text-sm text-stone-500">人</span>
+        </p>
+        <span className={`rounded-lg px-2.5 py-1 text-sm font-black tabular-nums ${colors.soft} ${colors.text}`}>
+          {pct(rate)}
+        </span>
+      </div>
+      <p className="mt-3 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed text-stone-500">
+        {sub}
+      </p>
     </div>
   );
 }
@@ -1344,7 +1353,6 @@ export default function AdminPage() {
 
   if (!stats) return null;
 
-  const funnelMax = Math.max(...stats.funnel.map((f) => f.count), 1);
   const ownerFriendFunnelMax = Math.max(
     ...stats.friendDiagnosisFunnel.ownerFunnel.map((f) => f.count),
     1,
@@ -1364,6 +1372,20 @@ export default function AdminPage() {
   const fc = stats.friendCountDistribution;
   const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
   const coreReady = stats.coreKpis.dataQuality.ready;
+  const ownerFriendFunnel = stats.friendDiagnosisFunnel.ownerFunnel;
+  const visitorFriendFunnel = stats.friendDiagnosisFunnel.friendFunnel;
+  const ownerTakoReached =
+    ownerFriendFunnel.find((step) => step.key === "tako") ??
+    ownerFriendFunnel[2];
+  const ownerFriendAnswered =
+    ownerFriendFunnel.find((step) => step.key === "friend_answer") ??
+    ownerFriendFunnel[ownerFriendFunnel.length - 1];
+  const visitorAnswered =
+    visitorFriendFunnel.find((step) => step.key === "answer") ??
+    visitorFriendFunnel[1];
+  const visitorSelfCompleted =
+    visitorFriendFunnel.find((step) => step.key === "self_complete") ??
+    visitorFriendFunnel[visitorFriendFunnel.length - 1];
 
   const downloadCsv = () => {
     const rows: string[][] = [];
@@ -2323,238 +2345,99 @@ export default function AdminPage() {
             </Panel>
         </section>
 
-          <section>
-            <SectionHeader
-              eyebrow="Core KPI"
-              title="KPI"
-              description={`${stats.coreKpis.cohort.diagnosisUsers.toLocaleString()}人を基準に集計`}
-              side={
-                loading ? (
-                  <span className="inline-flex items-center gap-2 text-xs font-bold text-teal-700">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-teal-600" />
-                    更新中
-                  </span>
-                ) : undefined
-              }
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-              <KpiCard
-                label="診断→課金"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.diagnosisToPaid.rate,
-                        stats.coreKpis.diagnosisToPaid.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.diagnosisToPaid.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToPaid.denominator.toLocaleString()}人`}
-                tone="indigo"
-                index="01"
-                featured
-              />
-              <KpiCard
-                label="診断→友達"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.diagnosisToFriend.rate,
-                        stats.coreKpis.diagnosisToFriend.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.diagnosisToFriend.numerator.toLocaleString()} / ${stats.coreKpis.diagnosisToFriend.denominator.toLocaleString()}人`}
-                tone="emerald"
-                index="02"
-                featured
-              />
-              <KpiCard
-                label="課金→友達"
-                value={
-                  coreReady
-                    ? pctOrDash(
-                        stats.coreKpis.paidToFriend.rate,
-                        stats.coreKpis.paidToFriend.denominator,
-                      )
-                    : "要DB更新"
-                }
-                sub={`${stats.coreKpis.paidToFriend.numerator.toLocaleString()} / ${stats.coreKpis.paidToFriend.denominator.toLocaleString()}人`}
-                tone="amber"
-                index="03"
-                featured
-              />
-              <KpiCard
-                label="ARPU"
-                value={
-                  coreReady
-                    ? formatArpu(stats.coreKpis.arpu.currencies)
-                    : "要DB更新"
-                }
-                sub={`売上 ÷ 診断 ${stats.coreKpis.arpu.denominator.toLocaleString()}人`}
-                tone="rose"
-                index="04"
-                featured
-              />
-              <KpiCard
-                label="拡散係数"
-                value={
-                  !coreReady
-                    ? "要DB更新"
-                    : stats.coreKpis.viralCoefficient.denominator > 0
-                    ? stats.coreKpis.viralCoefficient.value.toFixed(3)
-                    : "—"
-                }
-                sub={`${stats.coreKpis.viralCoefficient.children.toLocaleString()} ÷ ${stats.coreKpis.viralCoefficient.denominator.toLocaleString()}人`}
-                tone="indigo"
-                index="05"
-                featured
-              />
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              <KpiCard label="診断完了" value={stats.coreKpis.cohort.diagnosisUsers.toLocaleString()} sub={selectedPeriodLabel} tone="indigo" />
-              <KpiCard label="決済紐付け" value={coreReady ? pctOrDash(stats.coreKpis.dataQuality.paymentUserMatchRate, stats.coreKpis.dataQuality.matchedPayments + stats.coreKpis.dataQuality.unmatchedPayments) : "要DB更新"} sub={`${stats.coreKpis.dataQuality.matchedPayments}件`} tone="emerald" />
-              <KpiCard label="友達共有" value={stats.shareCount} sub={pct(stats.shareRate)} tone="indigo" />
-              <KpiCard label="友達回答" value={stats.friendAnswerCompleted} sub={pct(stats.answerCompletionRate)} tone="emerald" />
-              <KpiCard label="3人達成" value={stats.threeAchieved} sub="第二部" tone="amber" />
-              <KpiCard label="5人達成" value={stats.fiveAchieved} sub="完成" tone="rose" />
-              <KpiCard label="結果再訪" value={stats.resultRevisited} sub={`再訪率 ${pct(stats.revisitRate)}`} />
-              <KpiCard label="完了率" value={pct(stats.completionRate)} sub="イベント値" />
-              <KpiCard label="課金者" value={stats.paidUsers} sub="参考値" />
-              <KpiCard label="決済完了" value={stats.purchaseCompleted} sub="参考値" />
-            </div>
-            {coreReady ? (
-              <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
-                ARPUは返金後の売上で計算しています。
-              </p>
-            ) : (
-              <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[11px] font-bold leading-relaxed text-rose-700">
-                KPI集計にはDB更新が必要です。
-              </p>
-            )}
-          </section>
-
         {/* 本人コホートと友達側を分けた友達診断ファネル */}
           <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">
             <SectionHeader
               eyebrow="Friend diagnosis"
               title="友達診断"
-              description="友達導線の流れ"
+              description="到達人数と、最初の母数からここまで残った割合"
               side={
                 <div className="rounded-lg border border-rose-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
-                  <p className="text-[10px] font-bold text-rose-600">到達率</p>
+                  <p className="text-[10px] font-bold text-rose-600">友達診断ページ到達</p>
                   <p className="text-lg font-black tabular-nums text-rose-900">
                     {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
                   </p>
                 </div>
               }
             />
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiCard
-                label="バッジ表示"
-                value={stats.friendDiagnosisFunnel.attention.badgeShown}
-                sub="本人"
+            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <ReachSummaryCard
+                label="本人が友達診断ページへ到達"
+                count={ownerTakoReached?.count ?? 0}
+                rate={ownerTakoReached?.rateFromDiagnosis ?? 0}
+                sub="自己診断完了者のうち、友達診断ページまで進んだ人数"
                 tone="rose"
               />
-              <KpiCard
-                label="バッジクリック"
-                value={stats.friendDiagnosisFunnel.attention.badgeClicked}
-                sub={`クリック率 ${pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}`}
-                tone="rose"
+              <ReachSummaryCard
+                label="友達1人以上の回答完了"
+                count={ownerFriendAnswered?.count ?? 0}
+                rate={ownerFriendAnswered?.rateFromDiagnosis ?? 0}
+                sub="自己診断完了者のうち、友達回答まで届いた人数"
+                tone="emerald"
               />
-              <KpiCard
-                label="到達"
-                value={stats.friendDiagnosisFunnel.attention.takoReached}
-                sub="本人"
+              <ReachSummaryCard
+                label="友達が回答完了"
+                count={visitorAnswered?.count ?? 0}
+                rate={visitorAnswered?.rateFromLanding ?? 0}
+                sub="招待ページに来た友達のうち、回答を完了した人数"
                 tone="indigo"
               />
-              <KpiCard
-                label="到達率"
-                value={pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
-                sub="計測対象ベース"
-                tone="emerald"
+              <ReachSummaryCard
+                label="友達が自分の診断も完了"
+                count={visitorSelfCompleted?.count ?? 0}
+                rate={visitorSelfCompleted?.rateFromLanding ?? 0}
+                sub="招待ページに来た友達から、新しい自己診断へつながった人数"
+                tone="teal"
               />
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-stone-800">本人側</h3>
-                <p className="mt-1 text-[11px] text-stone-400">
-                  本人の流れ
+                <h3 className="text-sm font-black text-stone-800">本人側の到達</h3>
+                <p className="mt-1 text-[11px] font-medium text-stone-500">
+                  自己診断完了者を起点に、友達診断へどこまで進んだか。
                 </p>
-                <div className="mt-5 flex flex-col gap-2">
-                  {stats.friendDiagnosisFunnel.ownerFunnel.map((step, index) => (
-                    <FunnelBar
+                <ol className="mt-5 flex flex-col gap-2.5">
+                  {ownerFriendFunnel.map((step, index) => (
+                    <ReachStepRow
                       key={step.key}
+                      index={index}
                       label={step.label}
                       count={step.count}
                       max={ownerFriendFunnelMax}
-                      prevCount={
-                        index > 0
-                          ? stats.friendDiagnosisFunnel.ownerFunnel[index - 1].count
-                          : undefined
-                      }
+                      rateFromBase={step.rateFromDiagnosis}
+                      rateFromPrevious={step.rateFromPrevious}
+                      baseLabel="診断比"
+                      tone={index < 2 ? "teal" : index < 4 ? "rose" : "emerald"}
                     />
                   ))}
-                </div>
+                </ol>
               </Panel>
               <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-stone-800">友達側</h3>
-                <p className="mt-1 text-[11px] text-stone-400">
-                  友達の流れ
+                <h3 className="text-sm font-black text-stone-800">友達側の拡散</h3>
+                <p className="mt-1 text-[11px] font-medium text-stone-500">
+                  招待ページ到達を起点に、友達が回答し、自分の診断へ進む流れ。
                 </p>
-                <div className="mt-5 flex flex-col gap-2">
-                  {stats.friendDiagnosisFunnel.friendFunnel.map((step, index) => (
-                    <FunnelBar
+                <ol className="mt-5 flex flex-col gap-2.5">
+                  {visitorFriendFunnel.map((step, index) => (
+                    <ReachStepRow
                       key={step.key}
+                      index={index}
                       label={step.label}
                       count={step.count}
                       max={visitorFriendFunnelMax}
-                      prevCount={
-                        index > 0
-                          ? stats.friendDiagnosisFunnel.friendFunnel[index - 1].count
-                          : undefined
-                      }
+                      rateFromBase={step.rateFromLanding}
+                      rateFromPrevious={step.rateFromPrevious}
+                      baseLabel="到達比"
+                      tone={index < 1 ? "indigo" : index < 3 ? "teal" : "emerald"}
                     />
                   ))}
-                </div>
+                </ol>
               </Panel>
             </div>
             <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
-              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")}
+              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")} / {stats.friendDiagnosisFunnel.cohortDefinition}
             </p>
           </section>
-
-        {/* Funnel */}
-          <section id="funnel" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Conversion"
-              title="全体ファネル"
-              description="診断開始から友達回答まで"
-            />
-            <Panel className="p-5 sm:p-6">
-            <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
-              <span className="w-28 text-right">ステップ</span>
-              <span className="flex-1">件数</span>
-              <span className="w-16 text-right">前段比</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {stats.funnel.map((step, i) => (
-                <FunnelBar
-                  key={step.label}
-                  label={step.label}
-                  count={step.count}
-                  max={funnelMax}
-                  prevCount={
-                    i > 0 ? stats.funnel[i - 1].count : undefined
-                  }
-                />
-              ))}
-            </div>
-            <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
-              単位が混在するため目安です。
-            </p>
-            </Panel>
-        </section>
 
         {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
         {/* Campaign Stats */}
@@ -2611,57 +2494,88 @@ export default function AdminPage() {
                 </div>
               }
             />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            <KpiCard
-              label="友達ページ"
-              value={stats.viral.friendLandingViewed}
-              sub="到達数"
-            />
-            <KpiCard
-              label="平均到達"
-              value={stats.viral.avgLandingPerSharer.toFixed(1)}
-              sub="1共有あたり"
-            />
-            <KpiCard
-              label="到達→開始"
-              value={pct(stats.viral.landingToStartRate)}
-              sub="友達ページ"
-            />
-            <KpiCard
-              label="開始→完了"
-              value={pct(stats.viral.startToCompleteRate)}
-              sub="友達回答"
-            />
-            <KpiCard
-              label="自分も作る"
-              value={pct(stats.viral.friendToDiagClickedRate)}
-              sub="回答後"
-            />
-            <KpiCard
-              label="子診断"
-              value={stats.viral.childDiagCompleted}
-              sub={`親 ${stats.viral.parentDiagCompleted}人`}
-            />
-            <KpiCard
-              label="親あたり子"
-              value={stats.viral.avgChildPerParent.toFixed(1)}
-              sub="子 ÷ 親"
-            />
-            <KpiCard
-              label="拡散係数"
-              value={
-                !coreReady
-                  ? "要DB更新"
-                  : stats.coreKpis.viralCoefficient.denominator > 0
-                  ? stats.coreKpis.viralCoefficient.value.toFixed(3)
-                  : "—"
-              }
-              sub="子診断 ÷ 親"
-            />
-          </div>
-          <p className="mt-3 text-[11px] font-medium text-stone-400">
-            1.0超で自然増。0.5以上は良好。
-          </p>
+          <Panel className="p-5 sm:p-6">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+              <div>
+                <h3 className="text-sm font-black text-stone-800">
+                  バイラル到達の流れ
+                </h3>
+                <p className="mt-1 text-[11px] font-medium text-stone-500">
+                  招待ページ到達を100%として、友達がどこまで進んだか。
+                </p>
+                <ol className="mt-5 flex flex-col gap-4">
+                  {visitorFriendFunnel.map((step, index) => (
+                    <ReachStepRow
+                      key={step.key}
+                      index={index}
+                      label={step.label}
+                      count={step.count}
+                      max={visitorFriendFunnelMax}
+                      rateFromBase={step.rateFromLanding}
+                      rateFromPrevious={step.rateFromPrevious}
+                      baseLabel="到達比"
+                      tone={index < 1 ? "indigo" : index < 3 ? "teal" : "emerald"}
+                    />
+                  ))}
+                </ol>
+              </div>
+              <div className="border-t border-stone-100 pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+                <h3 className="text-sm font-black text-stone-800">
+                  拡散の要点
+                </h3>
+                <dl className="mt-4 divide-y divide-stone-100">
+                  <div className="flex items-end justify-between gap-4 py-3 first:pt-0">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      共有者あたり到達
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-stone-950">
+                      {stats.viral.avgLandingPerSharer.toFixed(1)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      回答後「自分も作る」
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-teal-800">
+                      {pct(stats.viral.friendToDiagClickedRate)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      子診断完了
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-emerald-800">
+                      {stats.viral.childDiagCompleted.toLocaleString()}
+                      <span className="ml-1 text-sm text-stone-500">人</span>
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      親あたり子診断
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-indigo-800">
+                      {stats.viral.avgChildPerParent.toFixed(1)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      拡散係数
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-stone-950">
+                      {!coreReady
+                        ? "要DB更新"
+                        : stats.coreKpis.viralCoefficient.denominator > 0
+                        ? stats.coreKpis.viralCoefficient.value.toFixed(3)
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <p className="mt-4 rounded-lg bg-stone-50 px-3 py-2 text-[11px] font-medium leading-relaxed text-stone-500">
+                  1.0超で自然増。0.5以上は良好。
+                </p>
+              </div>
+            </div>
+          </Panel>
           {stats.viral.friendLandingViewed === 0 && stats.friendAnswerStarted > 0 && (
             <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
               注意: 友達ページ到達が0件です。今後のアクセスから計測されます。
