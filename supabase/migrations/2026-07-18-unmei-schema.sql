@@ -38,8 +38,6 @@ create table if not exists natal_charts (
 
 alter table natal_charts enable row level security;
 create policy "user_select_own_natal_charts" on natal_charts for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_natal_charts" on natal_charts for insert with check (true);
-create policy "service_update_natal_charts" on natal_charts for update with check (true);
 
 -- users フラグ: natal chart ready
 alter table users
@@ -61,8 +59,6 @@ create table if not exists natal_readings (
 
 alter table natal_readings enable row level security;
 create policy "user_select_own_natal_readings" on natal_readings for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_natal_readings" on natal_readings for insert with check (true);
-create policy "service_update_natal_readings" on natal_readings for update with check (true);
 
 -- transit_readings: 月次経過チャートキャッシュ
 create table if not exists transit_readings (
@@ -75,5 +71,3 @@ create table if not exists transit_readings (
 
 alter table transit_readings enable row level security;
 create policy "user_select_own_transit_readings" on transit_readings for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_transit_readings" on transit_readings for insert with check (true);
-create policy "service_update_transit_readings" on transit_readings for update with check (true);
