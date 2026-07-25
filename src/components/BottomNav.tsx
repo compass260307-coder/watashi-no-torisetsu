@@ -130,6 +130,20 @@ function GridIcon() {
   );
 }
 
+// 運命の設計図 (/unmei): 出生図ホイール (外周円 + アスペクト線の三角 + 天体の点)。
+//   他アイコンと同じ viewBox・stroke 流儀。アスペクト線は細め (1.8) で階層をつける。
+function NatalWheelIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
+      <circle cx="19.36" cy="16.25" r="1.5" fill="currentColor" />
+      <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const isKorean = pathname.startsWith("/ko");
@@ -283,6 +297,8 @@ export function BottomNav() {
               locked: !hasToken && !isTakoAttentionPreview,
             },
             { key: "type", label: "タイプ", href: "/types", active: pathname.startsWith("/types"), Icon: GridIcon },
+            // 運命の設計図 (独立商品・診断不要で誰でも閲覧可)。タブ幅の都合でラベルは短縮 (2026-07-26 指示)。
+            { key: "unmei", label: "運命", href: "/unmei", active: pathname.startsWith("/unmei"), Icon: NatalWheelIcon },
             // 相性は ¥499 完全版の一部 (2026-07-23)。未購入はロック (下部バーで選択不可)、
             // 購入者 (hasFull) は解錠して /aisho へ遷移できる。
             { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon, disabled: !hasFull },
@@ -317,10 +333,15 @@ export function BottomNav() {
         paddingBottom: "max(env(safe-area-inset-bottom) - 14px, 0px)",
       }}
     >
-      {/* 幅を絞って項目間の余白を詰める (2026-07-26 指示。アイコンは 24→28px に拡大)。 */}
+      {/* 幅を絞って項目間の余白を詰める (2026-07-26 指示。アイコンは 24→32px に拡大)。
+          列数は項目数に追随 (ja: 診断済み5 / 未診断6 (トップあり)、KO: 5)。 */}
       <div
         className={`mx-auto grid max-w-[340px] ${
-          items.length === 4 ? "grid-cols-4" : "grid-cols-5"
+          items.length === 4
+            ? "grid-cols-4"
+            : items.length === 5
+              ? "grid-cols-5"
+              : "grid-cols-6"
         }`}
       >
         {items.map((it) => {
