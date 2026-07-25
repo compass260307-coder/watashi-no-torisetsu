@@ -3,7 +3,7 @@
 // 全ページ共通の下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
 //   - 中身は max-w-[340px] 中央寄せ (PCでもアプリ風に中央に収める。md:hidden にはしない)。
-//   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
+//   - 5列均等 grid。各列アイコン(インラインSVG 30px)+ラベル(10px)縦積み。
 //   - 配色は全ネイビー濃淡: アクティブ #2A3A5C / 非アクティブ #9BA3B4。
 //   - アクティブ項目の上端に短いインジケーターバー (幅34px・高さ3px・角丸)。
 //   - iOS セーフエリア: paddingBottom: env(safe-area-inset-bottom)。
@@ -44,7 +44,7 @@ const HIDE_ON_PREFIXES = [
 
 function HomeIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 11.5 12 4l8 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 10.5V19h12v-8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -53,7 +53,7 @@ function HomeIcon() {
 
 function ClipboardIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect x="5" y="4" width="14" height="17" rx="2.5" stroke="currentColor" strokeWidth="2" />
       <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M8.5 11h7M8.5 15h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -68,7 +68,7 @@ const HEART_PATH =
   "M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.38 2 4.3 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.3 22 7.38c0 3.78-3.4 6.86-8.55 11.61L12 20.3z";
 function HeartPairIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d={HEART_PATH} transform="translate(-0.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
       <path d={HEART_PATH} transform="translate(8.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
     </svg>
@@ -77,7 +77,7 @@ function HeartPairIcon() {
 
 function UsersIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
       <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -121,7 +121,7 @@ function AttentionBadge() {
 
 function GridIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
       <rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
       <rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
@@ -342,7 +342,7 @@ export function BottomNav() {
                   <Icon />
                   <LockBadge />
                 </span>
-                <span className="text-[11px] font-bold leading-none">
+                <span className="text-[10px] font-bold leading-none">
                   {it.label}
                 </span>
               </button>
@@ -361,7 +361,7 @@ export function BottomNav() {
                   <Icon />
                   <LockBadge />
                 </span>
-                <span className="text-[11px] font-bold leading-none">
+                <span className="text-[10px] font-bold leading-none">
                   {it.label}
                 </span>
               </button>
@@ -402,7 +402,7 @@ export function BottomNav() {
                 <Icon />
                 {hasAttention ? <AttentionBadge /> : null}
               </span>
-              <span className="text-[11px] font-bold leading-none">
+              <span className="text-[10px] font-bold leading-none">
                 {it.label}
               </span>
             </Link>
