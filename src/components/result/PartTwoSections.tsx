@@ -25,6 +25,11 @@ interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
   /** 未解放時に出す完全版の解除カード。解放済みなら不要。 */
   lockCard?: React.ReactNode;
+  /** true で🔒ブロック (嫌われやすい/関係別) を見出しごと出さない。
+      /share の獲得モード用 (課金コンテンツは「無いもの」として扱う。2026-07-26)。 */
+  hideLocked?: boolean;
+  /** 獲得モード用: 見出しの「あなた」をこの名前 (◯◯さん) に置換する。 */
+  subjectName?: string;
   locale?: ResultLocale;
 }
 
@@ -312,6 +317,8 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
 export function PartTwoSections({
   data,
   lockCard,
+  hideLocked = false,
+  subjectName,
   locale = "ja",
 }: PartTwoSectionsProps) {
   const isKorean = locale === "ko";
@@ -333,7 +340,8 @@ export function PartTwoSections({
         </div>
       </div>
 
-      {/* ── 2. 嫌われやすい性格 (🔒) ── */}
+      {/* ── 2. 嫌われやすい性格 (🔒)。hideLocked (獲得モード) では見出しごと出さない ── */}
+      {!(hideLocked && !data.dislikable) && (
       <div className="mb-10">
         <SectionHeading title={isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
         {data.dislikable ? (
@@ -355,16 +363,26 @@ export function PartTwoSections({
           </div>
         )}
       </div>
+      )}
 
       {/* ── 3. 武器 (無料・未解放でも公開)。16P「あなたの強み」風チェックリスト ── */}
       {data.weapons && (
         <div className="mb-10">
-          <SectionHeading title={isKorean ? "부러운 나만의 무기" : "羨ましいあなたの武器"} />
+          <SectionHeading
+            title={
+              isKorean
+                ? "부러운 나만의 무기"
+                : subjectName
+                  ? `羨ましい${subjectName}さんの武器`
+                  : "羨ましいあなたの武器"
+            }
+          />
           <CheckList items={data.weapons} />
         </div>
       )}
 
-      {/* ── 4. 関係別の見られ方 (🔒) ── */}
+      {/* ── 4. 関係別の見られ方 (🔒)。hideLocked (獲得モード) では見出しごと出さない ── */}
+      {!(hideLocked && !data.relations) && (
       <div className="mb-10">
         <SectionHeading
           title={
@@ -379,6 +397,7 @@ export function PartTwoSections({
           <RelationsLocked locale={locale} />
         )}
       </div>
+      )}
     </div>
   );
 }

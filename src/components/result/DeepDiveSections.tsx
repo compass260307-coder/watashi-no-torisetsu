@@ -387,6 +387,9 @@ interface DeepDiveSectionsProps {
   number?: string;
   className?: string;
   loveFooter?: ReactNode;
+  /** true でロック要素 (未解放カテゴリのパネル / 恋愛の locked ブロック) を丸ごと出さない。
+      /share の獲得モード用 (課金コンテンツは「無いもの」として扱う。2026-07-26)。 */
+  hideLocked?: boolean;
   locale?: ResultLocale;
 }
 
@@ -396,6 +399,7 @@ export function DeepDiveSections({
   number = "4",
   className = "",
   loveFooter,
+  hideLocked = false,
   locale = "ja",
 }: DeepDiveSectionsProps) {
   if (sections.length === 0) return null;
@@ -447,7 +451,9 @@ export function DeepDiveSections({
             /* 見出し付きブロック (恋愛): 小見出し + 段落。
                payoff ブロック (locked) は本文を伏せ、ぼかし + 解除カードにする。 */
             <>
-              {sec.blocks.map((b, bi) => (
+              {sec.blocks
+                .filter((b) => !(hideLocked && b.locked))
+                .map((b, bi) => (
                 <div key={bi} className={bi > 0 ? "mt-8" : ""}>
                   <h4 className="mb-2.5 text-[18px] md:text-[20px] font-black text-[#2E2E5C]">
                     {b.heading}
@@ -489,7 +495,7 @@ export function DeepDiveSections({
 
       {/* ===== 未解放カテゴリ: 関係別の見られ方 と同じ体裁のロック =====
           色付きの鍵円を横並び + 中央に解除カード。課金導線は最下部カードへ。 */}
-      {locked.length > 0 && (
+      {locked.length > 0 && !hideLocked && (
         <div className="rounded-2xl border border-[#ECEDF6] bg-white px-4 py-8 shadow-[0_6px_20px_rgba(46,46,92,0.09)] md:px-10 md:py-10">
           {/* 鍵付きの円 (キャリア/成長/相性) */}
           <div className="mb-8 grid grid-cols-3 gap-x-2 gap-y-6">

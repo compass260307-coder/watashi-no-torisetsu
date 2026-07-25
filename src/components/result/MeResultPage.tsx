@@ -21,6 +21,7 @@
 //   - 友達評価カードは「ギャップを見よう」誘導文言に置換 (バイラル動機)
 
 import path from "node:path";
+import Link from "next/link";
 import { resolveSiteUrl } from "@/lib/site-url";
 // 画像の存在チェックはビルド時生成のマニフェストで行う (scripts/generate-image-manifest.mjs)。
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
@@ -120,6 +121,15 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+// /share/[code] (キャラシェア着地) から渡すシェア主情報。指定時は「獲得モード」:
+// シェア主タイプのモックを解放後の見た目で描画しつつ、課金導線 (解除CTA/ロックカード/
+// 課金カード/モーダル) を一切出さず、CTA を「無料で性格診断をする」(/diagnosis) に
+// 統一する (2026-07-26 指示)。実ユーザーデータは参照しない (モックのみ)。
+export interface ShareLandingInfo {
+  sharerName: string;
+  typeId: ThirtyTwoTypeId;
+}
+
 // Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
 // に置き換え。章タイトル・本文はそこを単一の source とする (旧プレースホルダー CHAPTERS は廃止)。
 
@@ -133,7 +143,7 @@ type MeUserRow = {
 };
 
 export default function MeResultPage(
-  props: PageProps & { locale?: ResultLocale },
+  props: PageProps & { locale?: ResultLocale; share?: ShareLandingInfo },
 ) {
   return <MeResultPageContent {...props} />;
 }
@@ -142,10 +152,22 @@ async function MeResultPageContent({
   params,
   searchParams,
   locale = "ja",
-}: PageProps & { locale?: ResultLocale }) {
+  share,
+}: PageProps & { locale?: ResultLocale; share?: ShareLandingInfo }) {
   const { token } = await params;
   const sp = await searchParams;
   const isKorean = locale === "ko";
+  // 獲得モード (/share 経由)。previewType と同じモック描画だが、課金導線を出さない。
+  const acquisition = share ?? null;
+  // 獲得モードでは二人称 (あなた/アナタ) をシェア主の名前に置換する。読むのは訪問者で、
+  // 「あなた」のままだと誰のトリセツか分からなくなるため (2026-07-26 指示)。
+  // 通常モード (acquisition なし) では何もしない。
+  const personalize = (text: string): string =>
+    acquisition
+      ? text
+          .replaceAll("アナタ", `${acquisition.sharerName}さん`)
+          .replaceAll("あなた", `${acquisition.sharerName}さん`)
+      : text;
 
   // ===== プレビュー (token/Supabase を介さずモックスコアで結果ページを描画) =====
   // ?previewType=<32タイプID> 指定時、そのタイプの High/Low モックで描画する。実ユーザー
@@ -155,10 +177,12 @@ async function MeResultPageContent({
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
   const previewAllowed =
     process.env.NODE_ENV !== "production" || sp.fromPreview === "1";
-  const previewType: ThirtyTwoTypeId | null =
-    previewAllowed &&
-    /^[a-z-]+__[NR]$/.test(rawPreview) &&
-    sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
+  // 獲得モードはシェア主のタイプで常にモック描画 (searchParams は見ない)。
+  const previewType: ThirtyTwoTypeId | null = acquisition
+    ? acquisition.typeId
+    : previewAllowed &&
+        /^[a-z-]+__[NR]$/.test(rawPreview) &&
+        sixteenTypes[baseIdOf(rawPreview as ThirtyTwoTypeId)]
       ? (rawPreview as ThirtyTwoTypeId)
       : null;
   // 本人購入は /me/[token]?paid=1 が完了着地。Stripe 検証は他の DB 取得と
@@ -170,7 +194,8 @@ async function MeResultPageContent({
   // プレビューは既定で「解放後」の見た目 (コンテンツ QA 用) だが、?previewLock=1 を付けると
   // 未課金・友達0人の「ロック状態」(ロックカード + ぼかし + 最下部の課金カード) を描画する。
   // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
-  const previewLocked = previewType !== null && sp.previewLock === "1";
+  const previewLocked =
+    !acquisition && previewType !== null && sp.previewLock === "1";
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
   const previewScores: Record<BigFiveDimension, number> | null = previewType
     ? (() => {
@@ -279,12 +304,20 @@ async function MeResultPageContent({
     : await hasFullAccess(user.id as string);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
-  const partTwoUnlocked = previewType
-    ? !previewLocked
-    : hasPartTwoAccess(deepDivePaid, friendEvalCount);
+  // 獲得モード (/share) は未課金相当で解決する (課金コンテンツの本文は解決しない =
+  // フェイルクローズ)。ロックUI自体も hideLocked で出さず「無いもの」として扱う。
+  const partTwoUnlocked = acquisition
+    ? false
+    : previewType
+      ? !previewLocked
+      : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   // 友達人数での無料解放とは分け、購入後の自己診断結果にだけ「本物の友達の声」への
   // 追加導線を出す。プレビューの既定 (previewLock なし) は購入後相当として扱う。
-  const paidSelfReportUnlocked = previewType ? !previewLocked : deepDivePaid;
+  const paidSelfReportUnlocked = acquisition
+    ? false
+    : previewType
+      ? !previewLocked
+      : deepDivePaid;
   const resolvedDeepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,
   });
@@ -299,14 +332,47 @@ async function MeResultPageContent({
   const flag32 = isKorean || previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
   // 第二部本文 (強み/あれっ?/取扱い方/ギャップ予告)。未解放時は本文なし (フェイルクローズ)。
-  const partTwo = isKorean
+  const partTwoRaw = isKorean
     ? buildKoPartTwo(t32, stored, partTwoUnlocked)
     : resolvePartTwo(t32, sixteenTypeId, stored, {
         unlocked: partTwoUnlocked,
       });
-  const deepDiveSections = isKorean
+  // 獲得モード: 本文の二人称をシェア主の名前へ (🔒系は null のままなので触らない)。
+  const partTwo = acquisition
+    ? {
+        ...partTwoRaw,
+        likable: partTwoRaw.likable.map(personalize),
+        weapons:
+          partTwoRaw.weapons?.map((it) => ({
+            ...it,
+            title: personalize(it.title),
+            body: personalize(it.body),
+          })) ?? null,
+      }
+    : partTwoRaw;
+  const deepDiveSectionsRaw = isKorean
     ? buildKoDeepDiveSections(t32, stored, partTwoUnlocked)
     : resolvedDeepDiveSections;
+  // 獲得モードはロック要素をサーバ側で除去する。DeepDiveSections は client component の
+  // ため、props に残すと見出しが RSC ペイロードに載ってしまう (本文は "" だが痕跡も消す)。
+  // あわせて本文/見出しの二人称もシェア主の名前へ置換する。
+  const deepDiveSections = acquisition
+    ? deepDiveSectionsRaw
+        .filter((s) => !s.locked && s.body !== null)
+        .map((s) => ({
+          ...s,
+          tab: personalize(s.tab),
+          note: personalize(s.note),
+          body: s.body === null ? null : personalize(s.body),
+          blocks: s.blocks
+            ?.filter((b) => !b.locked)
+            .map((b) => ({
+              ...b,
+              heading: personalize(b.heading),
+              body: personalize(b.body),
+            })),
+        }))
+    : deepDiveSectionsRaw;
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
   //   キャラ画像は透過版 (characters/cut) を使うため、旧「画像の地色に一致させる」制約は撤廃。
@@ -315,11 +381,20 @@ async function MeResultPageContent({
   const { heroBg, codeTint } = heroColorsForGroup(
     flag32 ? thirtyTwoGroup(t32) : "unknown",
   );
-  const sections = isKorean
+  const sectionsRaw = isKorean
     ? buildKoSelfSections(t32, stored)
     : flag32
       ? selfContentFor(t32)
       : selfResultContent[sixteenTypeId];
+  // 獲得モード: ①基本特性/⑥注意点の本文もシェア主の名前へ。
+  const sections = acquisition
+    ? sectionsRaw.map((s) => ({
+        ...s,
+        title: personalize(s.title),
+        ...(s.heading ? { heading: personalize(s.heading) } : {}),
+        body: personalize(s.body),
+      }))
+    : sectionsRaw;
   const dispName = isKorean
     ? KO_RESULT_TYPES[t32].name
     : flag32
@@ -449,8 +524,9 @@ async function MeResultPageContent({
     {/* 16P と同じスクロール連動ヘッダー。/me はヘッダー直下にシェアバーを常時表示
         (ヘッダーが隠れてもバーは残る)。解除CTAは未解放時のみ (2026-07-15 指示)。 */}
     <MeStickyHeader
-      showUnlockCta={!partTwoUnlocked}
-      shareUrl={characterShareUrl}
+      showUnlockCta={acquisition ? false : !partTwoUnlocked}
+      shareUrl={acquisition ? undefined : characterShareUrl}
+      diagnosisCta={Boolean(acquisition)}
       essence={dispEssence}
       code={dispCode}
       locale={locale}
@@ -471,7 +547,13 @@ async function MeResultPageContent({
         {/* ヒーロー帯 (色帯+斜めクリップ+グロー+ドット+称号/OCEAN+キャラ) は ResultHero に共通化。
             /me は 2カラム・本文幅1080 (既定)。/tako でも同コンポーネントを流用し世界観統一。 */}
         <ResultHero
-          label={isKorean ? KO_ME_COPY.heroLabel : "あなたの性格タイプ:"}
+          label={
+            acquisition
+              ? `${acquisition.sharerName}さんの性格タイプ:`
+              : isKorean
+                ? KO_ME_COPY.heroLabel
+                : "あなたの性格タイプ:"
+          }
           essence={dispEssence}
           scores={stored}
           heroBg={heroBg}
@@ -479,14 +561,19 @@ async function MeResultPageContent({
           imageSrc={dispImage}
           alt={dispName}
           name={dispName}
-          description={dispDesc}
+          description={personalize(dispDesc)}
           heroPullClass={heroPullClass}
-          jobSlot={{
-            animal: animalName,
-            job: displayJob,
-            friendCount: friendEvalCount,
-            threshold: JOB_FRIEND_THRESHOLD,
-          }}
+          // 獲得モードでは職業ゲージ (友達評価人数) は見せない (訪問者には無関係)。
+          jobSlot={
+            acquisition
+              ? undefined
+              : {
+                  animal: animalName,
+                  job: displayJob,
+                  friendCount: friendEvalCount,
+                  threshold: JOB_FRIEND_THRESHOLD,
+                }
+          }
           locale={locale}
         />
         {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
@@ -588,6 +675,7 @@ async function MeResultPageContent({
           <DeepDiveSections
             number="2"
             sections={deepDiveSections}
+            hideLocked={Boolean(acquisition)}
             locale={locale}
             sceneImages={{
               love: sceneImage("love"),
@@ -595,7 +683,7 @@ async function MeResultPageContent({
               growth: sceneImage("school"),
             }}
             loveFooter={
-              paidSelfReportUnlocked ? (
+              paidSelfReportUnlocked && !acquisition ? (
                 <FriendLoveTeaser
                   href={
                     previewType
@@ -611,7 +699,52 @@ async function MeResultPageContent({
           />
         </div>
 
-        {/* ===== ④ 友達から見たあなた (16P 風ロックティーザー) =====
+        {/* ===== ④ もしもの時のアナタ (エンタメ章 / 2026-07-26 指示で友達から見たあなたの前へ) =====
+            スコア由来のルールベースであるあるシーンの反応を出す。無料シーンは
+            シェアの燃料、隠しシーンは課金ゲート (moshimo-resolve がフェイルクローズ)。
+            日本語のみ (KO 未対応)。 */}
+        {!isKorean && (
+          <section className="mt-16">
+            <div className="mb-4 flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+              >
+                4
+              </span>
+              <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                {personalize("もしもの時のアナタ")}
+              </h2>
+            </div>
+            {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
+                land/sky/sea/unknown_moshimo.webp を解決。他章のシーン挿絵と同じ組版) */}
+            {sceneImage("moshimo") && (
+              <SmoothImage
+                src={sceneImage("moshimo")!}
+                alt=""
+                width={960}
+                height={640}
+                className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
+              />
+            )}
+            <MoshimoScenes
+              // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換
+              scenes={
+                acquisition
+                  ? buildMoshimoScenes(stored, false)
+                      .filter((s) => !s.locked)
+                      .map((s) => ({
+                        ...s,
+                        title: personalize(s.title),
+                        body: personalize(s.body),
+                      }))
+                  : buildMoshimoScenes(stored, partTwoUnlocked)
+              }
+            />
+          </section>
+        )}
+
+        {/* ===== ⑤ 友達から見たあなた (16P 風ロックティーザー / KO は④) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             完全版への導線だけをカード内に置く。
             他己パートの本体は /tako/[token]。 */}
@@ -621,10 +754,12 @@ async function MeResultPageContent({
               aria-hidden="true"
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              4
+              {isKorean ? "4" : "5"}
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-              {isKorean ? KO_ME_COPY.friendSectionTitle : "友達から見たあなた"}
+              {isKorean
+                ? KO_ME_COPY.friendSectionTitle
+                : personalize("友達から見たあなた")}
             </h2>
           </div>
 
@@ -637,7 +772,8 @@ async function MeResultPageContent({
             // 未解放時は完全版への課金導線だけを表示する。
             // 友達1人での解除機能自体は残し、ここでの案内だけ一旦非表示にする。
             // 見た目は恋愛ロックと同じ、ぼかし中央のコンパクトなカードに揃える。
-            const lockCard = partTwoUnlocked ? undefined : (
+            // 獲得モードはロックUI自体を出さない (hideLocked) ためカードも組まない。
+            const lockCard = partTwoUnlocked || acquisition ? undefined : (
               <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
                 <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
@@ -682,9 +818,11 @@ async function MeResultPageContent({
                 <PartTwoSections
                   data={partTwo}
                   lockCard={lockCard}
+                  hideLocked={Boolean(acquisition)}
+                  subjectName={acquisition?.sharerName}
                   locale={locale}
                 />
-                {paidSelfReportUnlocked && (
+                {paidSelfReportUnlocked && !acquisition && (
                   <FriendTruthTeaser
                     href={
                       previewType
@@ -702,40 +840,6 @@ async function MeResultPageContent({
 
         </section>
 
-        {/* ===== ⑤ もしもの時のアナタ (エンタメ章 / 2026-07-22 指示で友達から見たあなたの後ろへ) =====
-            スコア由来のルールベースであるあるシーンの反応を出す。無料シーンは
-            シェアの燃料、隠しシーンは課金ゲート (moshimo-resolve がフェイルクローズ)。
-            日本語のみ (KO 未対応)。 */}
-        {!isKorean && (
-          <section className="mt-16">
-            <div className="mb-4 flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-              >
-                5
-              </span>
-              <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                もしもの時のアナタ
-              </h2>
-            </div>
-            {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
-                land/sky/sea/unknown_moshimo.webp を解決。他章のシーン挿絵と同じ組版) */}
-            {sceneImage("moshimo") && (
-              <SmoothImage
-                src={sceneImage("moshimo")!}
-                alt=""
-                width={960}
-                height={640}
-                className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
-              />
-            )}
-            <MoshimoScenes
-              scenes={buildMoshimoScenes(stored, partTwoUnlocked)}
-            />
-          </section>
-        )}
-
         {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル / KO は⑤) =====
             2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
         {sections[1] &&
@@ -751,7 +855,9 @@ async function MeResultPageContent({
                     {isKorean ? "5" : "6"}
                   </span>
                   <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                    {isKorean ? KO_ME_COPY.cautionTitle : "あなたの注意点"}
+                    {isKorean
+                      ? KO_ME_COPY.cautionTitle
+                      : personalize("あなたの注意点")}
                   </h2>
                 </div>
                 {/* 挿絵 normal2: タイトル直下 (本文の前) に表示 */}
@@ -781,10 +887,11 @@ async function MeResultPageContent({
                     items={partTwo.sceneCautions}
                     locale={locale}
                   />
-                ) : (
+                ) : acquisition ? null : (
+                  // 獲得モードではロックティザーも出さない (課金コンテンツは無いものとして扱う)
                   <SceneCautionTeaser locale={locale} />
                 )}
-                {paidSelfReportUnlocked && (
+                {paidSelfReportUnlocked && !acquisition && (
                   <div className="mt-10">
                     <FriendTruthTeaser
                       href={
@@ -803,6 +910,18 @@ async function MeResultPageContent({
             );
           })()}
 
+        {/* ===== 獲得CTA (/share 経由のみ): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
+        {acquisition && (
+          <div className="mt-16 mb-12 text-center">
+            <Link
+              href="/diagnosis"
+              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+            >
+              無料で性格診断をする →
+            </Link>
+          </div>
+        )}
+
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
@@ -810,7 +929,8 @@ async function MeResultPageContent({
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
         ¥499 で買えるのは第二部まで (三層モデル)。友達1人で開いた人には売るものが無いので出さない。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
-    {!partTwoUnlocked && (
+    {/* 獲得モードは課金導線なし (フェイルクローズで明示ガード) */}
+    {!partTwoUnlocked && !acquisition && (
       <>
         <FullAccessPromoCard
           ownerToken={token}
@@ -830,8 +950,9 @@ async function MeResultPageContent({
         />
       </>
     )}
-    {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。 */}
-    <ResetDataLink locale={locale} />
+    {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。
+        獲得モード (/share) では訪問者に無関係なので出さない。 */}
+    {!acquisition && <ResetDataLink locale={locale} />}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     {isKorean ? <KoTopFooter /> : <TopFooter />}

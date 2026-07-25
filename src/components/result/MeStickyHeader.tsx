@@ -39,6 +39,11 @@ interface MeStickyHeaderProps {
    * 指定時はバー右端に「完全版レポートを生成」を表示 (解除CTAとは排他運用を想定)。
    */
   reportHref?: string;
+  /**
+   * 獲得ランディング (/share) 用: バー右端に「無料で性格診断をする」を表示 (2026-07-26)。
+   * 課金CTA (showUnlockCta) / シェア3ボタンとは排他運用を想定。
+   */
+  diagnosisCta?: boolean;
   locale?: ResultLocale;
 }
 
@@ -85,10 +90,15 @@ export function MeStickyHeader({
   code,
   paywallTargetId,
   reportHref,
+  diagnosisCta,
   locale = "ja",
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (shareUrl) のどちらかがあれば出す。
-  const showBar = showUnlockCta || Boolean(shareUrl) || Boolean(reportHref);
+  const showBar =
+    showUnlockCta ||
+    Boolean(shareUrl) ||
+    Boolean(reportHref) ||
+    Boolean(diagnosisCta);
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
   const lastY = useRef(0);
@@ -289,6 +299,15 @@ export function MeStickyHeader({
                   <path d="m9 15 3 3 3-3" />
                 </svg>
                 完全版レポートを生成
+              </a>
+            )}
+
+            {diagnosisCta && (
+              <a
+                href="/diagnosis"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
+              >
+                無料で性格診断をする
               </a>
             )}
 
