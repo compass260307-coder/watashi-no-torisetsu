@@ -144,7 +144,7 @@ export default function TopHeader() {
               className="flex items-center gap-1.5 whitespace-nowrap text-[16px] xl:text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
               style={{ color: NAVY }}
             >
-              <GlobeIcon />
+              <JapanFlagIcon />
               日本語
               <CaretDown />
             </button>
@@ -281,7 +281,7 @@ export default function TopHeader() {
           )}
           {/* SP の言語切替 */}
           <div className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold" style={{ color: NAVY }}>
-            <GlobeIcon />
+            <JapanFlagIcon />
             日本語
           </div>
           <Link
@@ -341,17 +341,12 @@ export default function TopHeader() {
   );
 }
 
-// 地球アイコン (絵文字不使用の言語切替マーク)。currentColor で文字色に追従。
-function GlobeIcon() {
+// 日の丸アイコン (言語切替マーク)。絵文字の国旗は Windows で表示されないため SVG で描く。
+function JapanFlagIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M3 12h18" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 3c2.7 2.6 2.7 15.4 0 18M12 3c-2.7 2.6-2.7 15.4 0 18"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
+    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
+      <circle cx="11" cy="7.5" r="4" fill="#BC002D" />
     </svg>
   );
 }

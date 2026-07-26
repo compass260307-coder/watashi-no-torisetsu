@@ -106,7 +106,7 @@ export default function KoTopHeader() {
               className="flex items-center gap-1.5 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[18px]"
               style={{ color: NAVY }}
             >
-              <GlobeIcon />
+              <KoreaFlagIcon />
               한국어
               <CaretDownIcon />
             </button>
@@ -208,7 +208,7 @@ export default function KoTopHeader() {
 
             <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
               <div className="flex items-center gap-1.5 py-2 text-[16px] font-bold text-[#5B5BEF]">
-                <GlobeIcon />
+                <KoreaFlagIcon />
                 한국어
               </div>
               <Link
@@ -226,16 +226,13 @@ export default function KoTopHeader() {
   );
 }
 
-function GlobeIcon() {
+// 太極旗アイコン (言語切替マーク)。小サイズで潰れる四卦は省略し、太極のみの簡略版。
+function KoreaFlagIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M3 12h18" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 3c2.7 2.6 2.7 15.4 0 18M12 3c-2.7 2.6-2.7 15.4 0 18"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
+    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
+      <path d="M7 7.5a4 4 0 0 1 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#CD2E3A" />
+      <path d="M7 7.5a4 4 0 0 0 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#0047A0" />
     </svg>
   );
 }
