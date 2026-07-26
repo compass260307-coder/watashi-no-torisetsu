@@ -139,7 +139,8 @@ export default function TopFooter() {
 
   return (
     <footer
-      className="w-full bg-white px-8 py-20"
+      // 16P 参考: 本文との境目にうっすらと区切り線 (2026-07-26 指示)
+      className="w-full border-t border-[#E9E9F2] bg-white px-8 py-20"
       style={{ fontFamily: FONT_STACK }}
     >
       {/* MBTI 風: 中央寄せのコンテナ(左右に余白) + エアリーな間隔。

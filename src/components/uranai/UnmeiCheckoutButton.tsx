@@ -5,9 +5,12 @@ import { track } from "@/lib/track";
 
 export default function UnmeiCheckoutButton({
   ownerToken,
+  product = "unmei",
   children = "運命の設計図を占う",
 }: {
   ownerToken?: string | null;
+  /** unmei=¥1,980 / unmei_upgrade=¥1,480 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
+  product?: "unmei" | "unmei_upgrade";
   children?: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(false);
@@ -27,7 +30,9 @@ export default function UnmeiCheckoutButton({
       const res = await fetch("/api/checkout/create-unmei-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ownerToken ? { owner_token: ownerToken, product: "unmei" } : { product: "unmei" }),
+        body: JSON.stringify(
+          ownerToken ? { owner_token: ownerToken, product } : { product },
+        ),
       });
 
       if (!res.ok) {
@@ -51,12 +56,14 @@ export default function UnmeiCheckoutButton({
   }
 
   return (
-    <div className="w-full">
+    // w-full だと親の flex 行 (ボタン + 返金保証) を占有してしまうため auto 幅
+    <div>
       <button
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="inline-flex items-center justify-center rounded-full bg-[#F2B33D] px-5 py-3 font-black text-[#1A1A1A] disabled:opacity-60"
+        // サイト共通のインディゴCTA (LP のアクセント色をインディゴ1色に統一。2026-07-26 指示)
+        className="inline-flex items-center justify-center rounded-full bg-[#5B5BEF] px-9 py-4 text-[15px] font-black text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_5px_14px_rgba(91,91,239,0.4)] disabled:opacity-60 md:text-[16px]"
       >
         {loading ? "ひらいています…" : error ? "もう一度ためす →" : children}
       </button>
