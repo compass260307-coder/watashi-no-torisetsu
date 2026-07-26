@@ -59,7 +59,7 @@ import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
 import { MoshimoScenes } from "@/components/result/MoshimoScenes";
 import { hasFullAccess } from "@/lib/entitlements";
-import { hasPartTwoAccess, STAIR_PART_TWO } from "@/lib/friend-stairs";
+import { hasPartTwoAccess } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import { PartTwoSections } from "@/components/result/PartTwoSections";
 import {
@@ -86,8 +86,6 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { ResetDataLink } from "@/components/ResetDataLink";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
-import { FriendTruthTeaser } from "@/components/result/FriendTruthTeaser";
-import { FriendLoveTeaser } from "@/components/result/FriendLoveTeaser";
 import type {
   BigFiveDimension,
   CModifier,
@@ -311,13 +309,116 @@ async function MeResultPageContent({
     : previewType
       ? !previewLocked
       : hasPartTwoAccess(deepDivePaid, friendEvalCount);
-  // 友達人数での無料解放とは分け、購入後の自己診断結果にだけ「本物の友達の声」への
-  // 追加導線を出す。プレビューの既定 (previewLock なし) は購入後相当として扱う。
-  const paidSelfReportUnlocked = acquisition
-    ? false
-    : previewType
-      ? !previewLocked
-      : deepDivePaid;
+  // ※ 課金後の /tako 誘導ティーザー (FriendLoveTeaser/FriendTruthTeaser) は
+  //    2026-07-26 指示で撤去。代わりに課金後は 運命の設計図 (/unmei) への
+  //    アップセルセクションを最下部に出す (16P のプレミアムキャリアキット風)。
+  const showUnmeiPromo =
+    !isKorean &&
+    !acquisition &&
+    (previewType ? !previewLocked : deepDivePaid);
+  // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
+  // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
+  // 16P「プレミアムキャリアキット」参考: 柔らかいカード + 締まったタイポ +
+  // ストロークSVGアイコン (絵文字は安っぽいため不使用) + 控えめCTA。
+  const unmeiPromoCard = !showUnmeiPromo ? null : (
+    <div className="rounded-[20px] border border-[#F0F1F8] bg-white px-6 py-10 shadow-[0_10px_40px_rgba(46,46,92,0.08)] md:px-12 md:py-12">
+      <div className="mb-8 text-center">
+        <span className="mb-3 inline-flex rounded-full bg-[#F4F4FE] px-3.5 py-1.5 text-[11px] font-black tracking-[0.12em] text-[#5B5BEF]">
+          あなた専用の鑑定書
+        </span>
+        <h2 className="mb-2.5 text-[21px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+          生まれた瞬間の星から、運命を読み解こう
+        </h2>
+        <p className="text-[14px] font-bold leading-relaxed text-[#2E2E5C]/60">
+          性格診断のさらに先へ。出生図とAIがつくる
+          <Link
+            href="/unmei"
+            className="mx-0.5 font-black text-[#5B5BEF] underline underline-offset-2"
+          >
+            運命の設計図
+          </Link>
+          で深掘りしましょう
+        </p>
+      </div>
+      <ul className="mb-9 flex flex-col gap-5">
+        {[
+          {
+            // 出生図ホイール (下部ナビの運命タブと同モチーフ)
+            icon: (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+                <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
+                <circle cx="19.36" cy="16.25" r="1.5" fill="currentColor" />
+                <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
+              </svg>
+            ),
+            title: "あなただけの出生図ホイール",
+            body: "生年月日・出生時間・出生地から、生まれた瞬間の空を再現。太陽や月をはじめとした天体の配置を、あなただけの一枚の設計図として描きます",
+          },
+          {
+            // 鑑定文 (書類 + 本文行)
+            icon: (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                <path d="M14 2v5h5" />
+                <path d="M9 13h6M9 17h4" />
+              </svg>
+            ),
+            title: "4章立てのAI鑑定文",
+            body: "星の配置・心の天気・挑戦の風向き・最後にひとつだけ。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+          },
+          {
+            // 掛け合わせ (重なる2つの円)
+            icon: (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="9" cy="12" r="5.8" />
+                <circle cx="15" cy="12" r="5.8" />
+              </svg>
+            ),
+            title: "性格診断との掛け合わせ",
+            body: "自己診断でわかった性格と星の素質を照らし合わせ、重なるところも少しのズレも含めて、あなたがこれまで選んできた姿勢に名前をつけます",
+          },
+          {
+            // 自分の原点 (コンパス)
+            icon: (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="m15.5 8.5-2 5-5 2 2-5z" />
+              </svg>
+            ),
+            title: "いつでも戻ってこられる、自分の原点",
+            body: "生まれた瞬間の星の配置は、時間が経っても変わりません。迷ったときに何度でも読み返せる、あなただけの原点として手元に残ります",
+          },
+        ].map((f) => (
+          <li key={f.title} className="flex items-start gap-3.5">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex w-9 flex-shrink-0 justify-center text-[#5B5BEF]"
+            >
+              {f.icon}
+            </span>
+            <div>
+              <p className="text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
+                {f.title}
+              </p>
+              <p className="mt-1 text-[15px] font-normal leading-relaxed text-[#2E2E5C]/65 md:text-[16px]">
+                {f.body}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="text-center">
+        <Link
+          href="/unmei"
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-8 py-3.5 text-[14px] font-black text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_5px_14px_rgba(91,91,239,0.4)]"
+        >
+          詳細はこちら →
+        </Link>
+      </div>
+    </div>
+  );
   const resolvedDeepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,
   });
@@ -682,20 +783,7 @@ async function MeResultPageContent({
               career: sceneImage("work"),
               growth: sceneImage("school"),
             }}
-            loveFooter={
-              paidSelfReportUnlocked && !acquisition ? (
-                <FriendLoveTeaser
-                  href={
-                    previewType
-                      ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
-                      : `/tako/${encodeURIComponent(token)}`
-                  }
-                  friendCount={friendEvalCount}
-                  threshold={STAIR_PART_TWO}
-                  locale={locale}
-                />
-              ) : null
-            }
+            loveFooter={unmeiPromoCard ?? undefined}
           />
         </div>
 
@@ -822,23 +910,15 @@ async function MeResultPageContent({
                   subjectName={acquisition?.sharerName}
                   locale={locale}
                 />
-                {paidSelfReportUnlocked && !acquisition && (
-                  <FriendTruthTeaser
-                    href={
-                      previewType
-                        ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
-                        : `/tako/${encodeURIComponent(token)}`
-                    }
-                    friendCount={friendEvalCount}
-                    threshold={STAIR_PART_TWO}
-                    locale={locale}
-                  />
-                )}
               </>
             );
           })()}
 
         </section>
+
+        {/* 運命の設計図カード (2枚目): ⑤友達から見たあなた と ⑥注意点 の間にも
+            同じものを置く (2026-07-26 指示)。 */}
+        {unmeiPromoCard && <div className="mt-16">{unmeiPromoCard}</div>}
 
         {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル / KO は⑤) =====
             2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
@@ -890,21 +970,6 @@ async function MeResultPageContent({
                 ) : acquisition ? null : (
                   // 獲得モードではロックティザーも出さない (課金コンテンツは無いものとして扱う)
                   <SceneCautionTeaser locale={locale} />
-                )}
-                {paidSelfReportUnlocked && !acquisition && (
-                  <div className="mt-10">
-                    <FriendTruthTeaser
-                      href={
-                        previewType
-                          ? "/tako/preview?previewLocked=1&friends=0&fromPreview=1"
-                          : `/tako/${encodeURIComponent(token)}`
-                      }
-                      friendCount={friendEvalCount}
-                      threshold={STAIR_PART_TWO}
-                      variant="caution"
-                      locale={locale}
-                    />
-                  </div>
                 )}
               </section>
             );
