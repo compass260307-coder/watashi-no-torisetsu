@@ -113,7 +113,7 @@ function UnmeiTeaserLp({
               height={900}
               // mix-blend-multiply: 白背景PNGの白を帯色に溶かす (白い矩形の縁を消す)
               // SP はひと回り小さく + 左寄せでテキストと左端を揃える (16P 参考。2026-07-26 指示)
-              className="h-auto w-full max-w-[340px] mix-blend-multiply md:max-w-none"
+              className="h-auto w-full max-w-[280px] mix-blend-multiply md:max-w-none"
               priority
             />
 
