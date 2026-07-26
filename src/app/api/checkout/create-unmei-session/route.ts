@@ -181,6 +181,13 @@ export async function POST(request: NextRequest) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       locale: "ja",
+      // 決済画面の支払いボタン上に補足を表示 (LP の訴求と揃える。2026-07-26 指示)
+      custom_text: {
+        submit: {
+          message:
+            "30日間の返金保証つき。お支払い後すぐに出生情報の入力へ進み、約1分で鑑定が生成されます。",
+        },
+      },
     });
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
