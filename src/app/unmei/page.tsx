@@ -120,14 +120,14 @@ function UnmeiTeaserLp({
             {/* SP も 16P 同様に左寄せ (2026-07-26 指示) */}
             <div className="text-left">
               <h1 className="leading-tight">
-                <span className="block text-[28px] font-black text-[#2E2E5C] md:text-[36px]">
+                <span className="block text-[30px] font-black text-[#2E2E5C] md:text-[40px]">
                   あなただけの
                 </span>
-                <span className="mt-2 inline-block rounded-xl bg-[#5B5BEF] px-3.5 py-1 text-[33px] font-black text-white md:text-[44px]">
+                <span className="mt-2 inline-block rounded-xl bg-[#5B5BEF] px-3.5 py-1 text-[36px] font-black text-white md:text-[48px]">
                   運命の設計図
                 </span>
               </h1>
-              <p className="mt-5 text-[16px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[18px]">
+              <p className="mt-3 text-[16px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[18px]">
                 星の配置×性格診断で、あなた専用の鑑定書をつくりましょう。
               </p>
               <UnmeiPriceCta
