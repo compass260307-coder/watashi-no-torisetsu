@@ -82,6 +82,8 @@ export function isPreviewMode(): boolean {
 //   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
 //   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
+//   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
+//   unmei_nav_badge_clicked      未確認バッジ付き「運命」タップ (ownerToken)
 //
 // ----- 課金ファネル (2026-07-13 追加) -----
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant, ownerToken)

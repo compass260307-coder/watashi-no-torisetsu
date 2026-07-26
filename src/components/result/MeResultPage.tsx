@@ -78,6 +78,7 @@ import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { TakoAttentionOnPaid } from "@/components/result/TakoAttentionOnPaid";
+import { UnmeiAttentionOnPaid } from "@/components/result/UnmeiAttentionOnPaid";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
@@ -608,10 +609,14 @@ async function MeResultPageContent({
       {!previewType && sp.paid === "1" && !deepDivePaid && (
         <PaidUnlockWatcher ownerToken={token} locale={locale} />
       )}
-      {/* 友達診断の赤バッジ付与: 課金 (full_access) 済みの日本語 /me を表示したとき1回だけ。
+      {/* 友達診断・運命の赤バッジ付与: 課金 (full_access) 済みの日本語 /me を表示したとき
+          1回だけ。両方同時に出す (2026-07-27 指示)。
           (2026-07-20 変更: 診断完了時の全員付与をやめ、課金完了後に出す) */}
       {!previewType && !isKorean && deepDivePaid && (
-        <TakoAttentionOnPaid ownerToken={token} />
+        <>
+          <TakoAttentionOnPaid ownerToken={token} />
+          <UnmeiAttentionOnPaid ownerToken={token} />
+        </>
       )}
 
       {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。

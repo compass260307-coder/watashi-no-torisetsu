@@ -29,6 +29,8 @@ const CLIENT_EVENT_NAMES = new Set([
   "tako_nav_badge_shown",
   "tako_nav_badge_clicked",
   "tako_viewed",
+  "unmei_nav_badge_shown",
+  "unmei_nav_badge_clicked",
   "paywall_viewed",
   "paywall_scroll_clicked",
   "purchase_cta_clicked",

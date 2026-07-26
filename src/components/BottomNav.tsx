@@ -18,6 +18,10 @@ import {
   TAKO_ATTENTION_PENDING_KEY,
   takoAttentionImpressionKey,
 } from "@/lib/tako-attention";
+import {
+  UNMEI_ATTENTION_PENDING_KEY,
+  unmeiAttentionImpressionKey,
+} from "@/lib/unmei-attention";
 import { track } from "@/lib/track";
 
 // アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
@@ -162,6 +166,7 @@ export function BottomNav() {
   const [lockOpen, setLockOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
+  const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
   // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
   const [hasFull, setHasFull] = useState(false);
@@ -176,6 +181,7 @@ export function BottomNav() {
     const koreanPath = pathname.startsWith("/ko");
     let token: string | null = null;
     let attentionPending = false;
+    let unmeiPending = false;
     try {
       token = localStorage.getItem("torisetsu_owner_token");
       const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
@@ -197,6 +203,24 @@ export function BottomNav() {
           }
         }
       }
+
+      // 運命タブの赤バッジ (友達診断と同じ流儀)。/unmei 上では出さない
+      // (未確認解除は /unmei レイアウト内の UnmeiAttentionClear が担う)。
+      const unmeiPendingToken = localStorage.getItem(
+        UNMEI_ATTENTION_PENDING_KEY,
+      );
+      if (!pathname.startsWith("/unmei")) {
+        unmeiPending = Boolean(
+          token && unmeiPendingToken === token && !koreanPath && !navHidden,
+        );
+        if (unmeiPending && token) {
+          const impressionKey = unmeiAttentionImpressionKey(token);
+          if (localStorage.getItem(impressionKey) !== "1") {
+            localStorage.setItem(impressionKey, "1");
+            track("unmei_nav_badge_shown", { ownerToken: token });
+          }
+        }
+      }
     } catch {
       // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
     }
@@ -210,6 +234,7 @@ export function BottomNav() {
     setHasToken(Boolean(token));
     setOwnerToken(token);
     setShowTakoAttention(attentionPending);
+    setShowUnmeiAttention(unmeiPending);
   }, [navHidden, pathname]);
 
   // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
@@ -359,8 +384,9 @@ export function BottomNav() {
         {items.map((it) => {
           const { Icon } = it;
           const hasAttention =
-            it.key === "friend" &&
-            (showTakoAttention || isTakoAttentionPreview);
+            (it.key === "friend" &&
+              (showTakoAttention || isTakoAttentionPreview)) ||
+            (it.key === "unmei" && showUnmeiAttention);
           if (it.disabled) {
             return (
               <button
@@ -411,10 +437,15 @@ export function BottomNav() {
               onClick={
                 hasAttention && ownerToken
                   ? () =>
-                      track("tako_nav_badge_clicked", {
-                        ownerToken,
-                        metadata: { destination: it.href },
-                      })
+                      track(
+                        it.key === "unmei"
+                          ? "unmei_nav_badge_clicked"
+                          : "tako_nav_badge_clicked",
+                        {
+                          ownerToken,
+                          metadata: { destination: it.href },
+                        },
+                      )
                   : undefined
               }
               // touch-manipulation: モバイルのタップ遅延を排除。
