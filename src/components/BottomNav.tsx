@@ -2,7 +2,7 @@
 
 // 全ページ共通の下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
-//   - 中身は max-w-[340px] 中央寄せ (PCでもアプリ風に中央に収める。md:hidden にはしない)。
+//   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
 //   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
 //   - 配色は全ネイビー濃淡: アクティブ #2A3A5C / 非アクティブ #9BA3B4。
 //   - アクティブ項目の上端に短いインジケーターバー (幅34px・高さ3px・角丸)。
@@ -297,8 +297,20 @@ export function BottomNav() {
               locked: !hasToken && !isTakoAttentionPreview,
             },
             { key: "type", label: "タイプ", href: "/types", active: pathname.startsWith("/types"), Icon: GridIcon },
-            // 運命の設計図 (独立商品・診断不要で誰でも閲覧可)。タブ幅の都合でラベルは短縮 (2026-07-26 指示)。
-            { key: "unmei", label: "運命", href: "/unmei", active: pathname.startsWith("/unmei"), Icon: NatalWheelIcon },
+            // 運命の設計図 (独立商品)。タブ幅の都合でラベルは短縮。
+            // 診断前は出さない (診断前=トップあり5タブ / 診断後=トップが消え運命が出る5タブ。
+            // 常に5タブを維持する 2026-07-26 指示)。
+            ...(hasToken
+              ? [
+                  {
+                    key: "unmei",
+                    label: "運命",
+                    href: "/unmei",
+                    active: pathname.startsWith("/unmei"),
+                    Icon: NatalWheelIcon,
+                  },
+                ]
+              : []),
             // 相性は ¥499 完全版の一部 (2026-07-23)。未購入はロック (下部バーで選択不可)、
             // 購入者 (hasFull) は解錠して /aisho へ遷移できる。
             { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon, disabled: !hasFull },
@@ -333,10 +345,10 @@ export function BottomNav() {
         paddingBottom: "max(env(safe-area-inset-bottom) - 14px, 0px)",
       }}
     >
-      {/* 幅を絞って項目間の余白を詰める (2026-07-26 指示。アイコンは 24→32px に拡大)。
-          列数は項目数に追随 (ja: 診断済み5 / 未診断6 (トップあり)、KO: 5)。 */}
+      {/* スマホでは全幅を均等5分割 (左右の死に余白を作らない 2026-07-26 指示)。
+          PC はアプリ風に max-w-[480px] で中央寄せ。列数は項目数に追随 (通常は常に5)。 */}
       <div
-        className={`mx-auto grid max-w-[340px] ${
+        className={`mx-auto grid max-w-[480px] ${
           items.length === 4
             ? "grid-cols-4"
             : items.length === 5
