@@ -98,7 +98,7 @@ export default function UnmeiPriceCta({
   return (
     <>
       {hasFull ? (
-        <p className="mt-7 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
+        <p className="mt-4 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
           <span className="mr-2.5 align-middle text-[20px] font-bold text-[#2E2E5C]/40 line-through md:text-[24px]">
             ¥1,980
           </span>
@@ -109,17 +109,18 @@ export default function UnmeiPriceCta({
           </span>
         </p>
       ) : (
-        <p className="mt-7 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
+        <p className="mt-4 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
           ¥1,980
           <span className="ml-2.5 text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
             買い切り
           </span>
         </p>
       )}
-      {/* 16P 参考: ボタン横に返金保証を1行で (エンタメ表記は特商法/規約ページ側にあるため省略) */}
+      {/* 16P 参考: SP はボタン全幅 + 保証をその下の中央 / PC はボタン横に保証を1行
+          (エンタメ表記は特商法/規約ページ側にあるため省略) */}
       <div
-        className={`mt-6 flex items-center justify-center gap-5 ${
-          align === "start" ? "md:justify-start" : ""
+        className={`mt-4 flex flex-col gap-3 md:flex-row md:items-center md:gap-5 ${
+          align === "start" ? "" : "md:justify-center"
         }`}
       >
         <UnmeiCheckoutButton
@@ -128,7 +129,7 @@ export default function UnmeiPriceCta({
         >
           続ける →
         </UnmeiCheckoutButton>
-        <span className="text-[15px] font-bold text-[#2E2E5C]/55">
+        <span className="text-center text-[15px] font-bold text-[#2E2E5C]/55 md:text-left">
           30日間の返金保証
         </span>
       </div>

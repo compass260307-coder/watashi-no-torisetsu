@@ -56,14 +56,14 @@ export default function UnmeiCheckoutButton({
   }
 
   return (
-    // w-full だと親の flex 行 (ボタン + 返金保証) を占有してしまうため auto 幅
-    <div>
+    // SP はボタン全幅 (16P 参考)。PC は auto 幅で保証テキストと横並び
+    <div className="w-full md:w-auto">
       <button
         type="button"
         onClick={handleClick}
         disabled={loading}
         // サイト共通のインディゴCTA (LP のアクセント色をインディゴ1色に統一。2026-07-26 指示)
-        className="inline-flex items-center justify-center rounded-full bg-[#5B5BEF] px-9 py-4 text-[15px] font-black text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_5px_14px_rgba(91,91,239,0.4)] disabled:opacity-60 md:text-[16px]"
+        className="inline-flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-9 py-4 text-[15px] font-black text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_5px_14px_rgba(91,91,239,0.4)] disabled:opacity-60 md:w-auto md:text-[16px]"
       >
         {loading ? "ひらいています…" : error ? "もう一度ためす →" : children}
       </button>
