@@ -24,6 +24,8 @@ const PAYWALL_SOURCES = new Set([
   "sticky_bar",
   "friend_list",
   "aisho_scene",
+  // 下部ナビのロック中「相性」タブ → 課金カードモーダル (2026-07-28)
+  "nav_aisho_locked",
   "tako_lock",
   "tako_mote_card",
   "tako_hints_card",

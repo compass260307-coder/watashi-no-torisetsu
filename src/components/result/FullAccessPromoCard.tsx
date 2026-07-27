@@ -198,6 +198,7 @@ export function FullAccessPromoCard({
   onClose,
   // 解放項目の並び。"self"=自己診断ページ / "tako"=友達診断ページ (既定 self)。
   surface = "self",
+  ctaSource,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -209,6 +210,7 @@ export function FullAccessPromoCard({
   anchorId?: string;
   onClose?: () => void;
   surface?: "self" | "tako";
+  ctaSource?: string;
 }) {
   const isKorean = locale === "ko";
   // KO は友達診断/相性が無いため従来の自己完結リスト。JA は設置ページで並びを切替。
@@ -417,6 +419,7 @@ export function FullAccessPromoCard({
               ownerToken={ownerToken}
               unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
               locale={locale}
+              source={ctaSource ?? (surface === "tako" ? "tako_promo_card" : undefined)}
               returnTo={returnTo}
             >
               {isKorean ? "모든 잠금 해제" : "すべてのロックを解除"}

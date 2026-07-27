@@ -38,6 +38,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   friend_list: "友達一覧",
   friend_individual_paywall: "友達個別",
   aisho_scene: "相性ページ",
+  nav_aisho_locked: "下部ナビ・相性",
   tako_lock: "旧 /tako",
   tako_mote_card: "旧 モテ理由",
   tako_hints_card: "旧 好かれるヒント",

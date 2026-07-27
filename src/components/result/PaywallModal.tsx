@@ -10,6 +10,10 @@
 // props は最下部の常設 FullAccessPromoCard と同じ (ownerToken / group / imageSrc /
 // locale / returnTo / variant)。カードの anchorId はモーダル専用値にして、常設カードと
 // id を重複させない。
+//
+// 2026-07-28: オーバーレイ本体を PaywallOverlay として分離。イベント駆動 (PaywallModal)
+// のほか、下部ナビのロック相性タブなど「タップでその場で開きたい」呼び出し元が
+// open/onClose を自前管理して直接使えるようにした。
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -29,40 +33,29 @@ interface PaywallModalProps {
   surface?: "self" | "tako";
 }
 
-export function PaywallModal(props: PaywallModalProps) {
-  // open は必ずクライアントの CustomEvent (ユーザークリック) 経由でのみ true になる。
-  // そのため createPortal 時点では常にクライアント環境 (SSR ガード不要)。
-  const [open, setOpen] = useState(false);
-
-  // 開く要求 (scrollToPaywall からの CustomEvent) を拾う。preventDefault で
-  // 呼び出し側のスクロールフォールバックを止める。
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setOpen(true);
-    };
-    window.addEventListener(PAYWALL_OPEN_EVENT, handler);
-    return () => window.removeEventListener(PAYWALL_OPEN_EVENT, handler);
-  }, []);
-
+// オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。
+// 呼び出し側がユーザー操作 (クリック) 経由でマウントする前提のため、
+// createPortal 時点では常にクライアント環境 (SSR ガード不要)。
+export function PaywallOverlay({
+  onClose,
+  ctaSource,
+  ...cardProps
+}: PaywallModalProps & { onClose: () => void; ctaSource?: string }) {
   // 開いている間は背面スクロールをロック + Esc で閉じる。
   useEffect(() => {
-    if (!open) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [onClose]);
 
-  const isKorean = props.locale === "ko";
-
-  if (!open) return null;
+  const isKorean = cardProps.locale === "ko";
 
   return createPortal(
     <div
@@ -71,7 +64,7 @@ export function PaywallModal(props: PaywallModalProps) {
       aria-label={isKorean ? "잠금 해제" : "ロック解除"}
       // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
-      onClick={() => setOpen(false)}
+      onClick={onClose}
     >
       {/* 箱: 高さ上限つき + 内部スクロール。中身(カード)がはみ出す分だけ箱内で
           スクロールする (背景全体はスクロールしない)。×はカード右上に内蔵。 */}
@@ -80,12 +73,42 @@ export function PaywallModal(props: PaywallModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <FullAccessPromoCard
-          {...props}
+          {...cardProps}
           anchorId="fullaccess-promo-modal"
-          onClose={() => setOpen(false)}
+          ctaSource={ctaSource}
+          onClose={onClose}
         />
       </div>
     </div>,
     document.body,
+  );
+}
+
+export function PaywallModal(props: PaywallModalProps) {
+  // open は必ずクライアントの CustomEvent (ユーザークリック) 経由でのみ true になる。
+  const [open, setOpen] = useState(false);
+  const [source, setSource] = useState<string | null>(null);
+
+  // 開く要求 (scrollToPaywall からの CustomEvent) を拾う。preventDefault で
+  // 呼び出し側のスクロールフォールバックを止める。
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      const detail = (e as CustomEvent<{ source?: unknown }>).detail;
+      setSource(typeof detail?.source === "string" ? detail.source : null);
+      setOpen(true);
+    };
+    window.addEventListener(PAYWALL_OPEN_EVENT, handler);
+    return () => window.removeEventListener(PAYWALL_OPEN_EVENT, handler);
+  }, []);
+
+  if (!open) return null;
+
+  return (
+    <PaywallOverlay
+      {...props}
+      ctaSource={source ?? undefined}
+      onClose={() => setOpen(false)}
+    />
   );
 }
