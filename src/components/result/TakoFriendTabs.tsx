@@ -12,6 +12,7 @@
 //   もう一度タップでトグル。招待吹き出しとは同時に開かない。
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 
 const NAVY = "#2E2E5C";
 const INDIGO = "#5B5BEF";
@@ -29,6 +30,10 @@ export type FriendTab = {
   imageSrc: string | null;
   /** 友達からのひとことメッセージ (全文)。無ければ空/undefined で吹き出しなし。 */
   message?: string | null;
+  /** 全ロックシート (2人目以降・未購入)。顔アバター・メッセージは見せたまま
+      ミニ鍵バッジを重ね、タップで課金モーダル (PaywallModal) を開く。
+      シート本文は panels 側で全ロック (実データはクライアントに渡さない)。 */
+  locked?: boolean;
 };
 
 export function TakoFriendTabs({
@@ -57,6 +62,8 @@ export function TakoFriendTabs({
   const plusRef = useRef<HTMLButtonElement | null>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
+  // ロックタブごとに課金モーダルを出したか (同一表示中の再タップでは開き直さない)。
+  const paywallShownRef = useRef<Set<number>>(new Set());
 
   const anchorTo = (el: HTMLElement | null) => {
     if (!el || !barRef.current) return;
@@ -74,6 +81,20 @@ export function TakoFriendTabs({
   };
 
   const handleTabClick = (i: number) => {
+    if (tabs[i]?.locked) {
+      // 全ロックシート (2人目以降・未購入): パネルは切り替えない (1人目の
+      // 無料シートに留まったまま)。コメント吹き出しは無料なので通常どおり
+      // トグルし、課金モーダルは同じタブでは初回タップのみ開く (2回目以降は
+      // コメントを読む操作にモーダルを被せない。購入導線は下部カード等にある)。
+      // source は歴史的に「友達エントリのタップ」を表す friend_list を継続使用。
+      if (msgOpenIdx === i) setMsgOpenIdx(null);
+      else openMessage(i);
+      if (!paywallShownRef.current.has(i)) {
+        paywallShownRef.current.add(i);
+        scrollToPaywall("friend_list");
+      }
+      return;
+    }
     if (i === idx) {
       // 同じアバターの再タップは吹き出しトグル
       if (msgOpenIdx === i) setMsgOpenIdx(null);
@@ -124,6 +145,10 @@ export function TakoFriendTabs({
       if (bubbleRef.current?.contains(t)) return;
       if (plusRef.current?.contains(t)) return;
       if (tabRefs.current.some((el) => el?.contains(t))) return;
+      // 課金モーダル (PaywallModal) 上の操作 (×・背景タップ) では閉じない:
+      // ロックタブはモーダルと同時に吹き出しを開くため、モーダルを閉じた後も
+      // コメントを読めるように残す。
+      if (t instanceof Element && t.closest('[role="dialog"]')) return;
       close();
     };
     window.addEventListener("keydown", handleEsc);
@@ -181,6 +206,26 @@ export function TakoFriendTabs({
                     </span>
                   )}
                 </span>
+                {/* ロックシートの友達: アバター右下にミニ鍵バッジ (顔は見せる) */}
+                {tab.locked && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute flex items-center justify-center rounded-full"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      right: 1,
+                      top: 32,
+                      background: INDIGO,
+                      boxShadow: "0 0 0 2px #fff",
+                    }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="#fff" />
+                      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                )}
                 {/* メッセージ持ちの友達には 💬 ミニバッジ */}
                 {Boolean(tab.message?.trim()) && (
                   <span

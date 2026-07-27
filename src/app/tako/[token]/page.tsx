@@ -344,6 +344,9 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     ? sp.lock !== "1"
     : await hasTakoAccess(data.user.id as string);
   // ロック中フラグ (未購入)。ロックカードはセクション別の文言で都度生成する。
+  // 2026-07-28: 「1人目無料」モデル。最初に回答した友達 (friends は created_at 昇順
+  // なので先頭) のシートは未購入でも全セクション公開し、価値のデモにする。
+  // 2人目以降のシートだけ ¥499 ゲート (シート別の sheetLocked をパネル内で使う)。
   const takoLocked = !takoUnlocked;
   const storageScope = data.user.owner_token ?? token;
   const serverAnswered = Math.min(data.friends.length, data.threshold);
@@ -376,8 +379,10 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       )}
       {/* /me と同じ常時表示バー付きヘッダー (シェア3ボタン + 未購入時は解除CTA)。
           解除CTAは最下部の課金カード (#tako-promo) へスクロールする。 */}
+      {/* 解除CTAは「ページ上に実際にロックがある」= 2人目以降がいる時だけ出す
+          (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
-        showUnlockCta={takoLocked && data.friends.length > 0}
+        showUnlockCta={takoLocked && data.friends.length > 1}
         shareUrl={`${SITE_URL}/share/${encodeURIComponent(data.inviteCode)}`}
         essence={
           data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : undefined
@@ -435,10 +440,14 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
               {/* 友達タブ + 友達1人ごとの結果シート (1人完結モデル)。
                   ヒーロー/本文(見出しなし)/①ギャップ/②恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
-                tabs={friendSheets.map((sh) => ({
+                tabs={friendSheets.map((sh, i) => ({
                   name: sh.tabName,
+                  // 2人目以降 (未購入) も顔アバター・メッセージ吹き出しは見せて
+                  // 「読みたい欲」を起こす。タップで課金モーダルが開く (locked)。
+                  // シート本文は panels 側で全ロックのまま (実データは渡らない)。
                   imageSrc: sh.faceSrc,
                   message: sh.message,
+                  locked: takoLocked && i > 0,
                 }))}
                 invitePanel={
                   /* ＋タブの吹き出し: さらに友達に診断してもらう招待 (2026-07-20 追加)。
@@ -464,7 +473,32 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                     />
                   </div>
                 }
-                panels={friendSheets.map((sh) => (
+                panels={friendSheets.map((sh, shIdx) => {
+                  // 1人目 (最初に回答した友達) は無料公開 = 価値のデモ。
+                  // 2人目以降 (未購入) はシートまるごと非公開で早期 return する
+                  // (2026-07-28。キャラ・本文・相性・ジョハリの一切を描画しない)。
+                  // 以降の本文中に残るセクション別ゲート (sheetLocked 参照) は到達時
+                  // つねに false (部分ロック時代の名残。全ロック方針を戻す時のため残置)。
+                  const sheetLocked = takoLocked && shIdx > 0;
+                  if (sheetLocked) {
+                    return (
+                      <div key={sh.key}>
+                        <section className="mb-14 mt-10">
+                          <h2 className="mb-2 text-center text-[24px] font-black leading-tight text-[#2E2E5C] md:text-[30px]">
+                            {sh.viewer}から見たあなたは…？
+                          </h2>
+                          <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
+                            {sh.viewer}の回答はもう届いてるよ。2人目からの結果シートは、完全版でぜんぶ開くよ。
+                          </p>
+                          <TakoLockedBlock
+                            source="tako_sheet_lock"
+                            description={`完全版で、${sh.viewer}から見たあなたのキャラ・性格のギャップ・恋愛傾向・相性まで、この結果シートをまるごと読めます。`}
+                          />
+                        </section>
+                      </div>
+                    );
+                  }
+                  return (
                   <div key={sh.key}>
                     {/* ヒーロー帯 (/me と同じ ResultHero・色帯)。称号=その友達が見たキャラ。 */}
                     <ResultHero
@@ -570,11 +604,11 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 </div>
                               )}
                               <FriendLoveSection
-                                numa={takoLocked ? null : sh.numa}
-                                loss={takoLocked ? [] : sh.loss}
+                                numa={sheetLocked ? null : sh.numa}
+                                loss={sheetLocked ? [] : sh.loss}
                                 viewer={sh.viewer}
                                 lockedBlocks={
-                                  takoLocked
+                                  sheetLocked
                                     ? {
                                         numa: (
                                           <TakoLockedBlock
@@ -697,7 +731,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                   ぶっちゃけ、{sh.viewer}に嫌われていない…？
                                 </h3>
 
-                                {takoLocked ? (
+                                {sheetLocked ? (
                                   <TakoLockedBlock
                                     source="tako_kirai_card"
                                     description={`完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`}
@@ -731,7 +765,7 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                               <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
                                 関係を深めるヒント・壊すワナ
                               </h3>
-                              {takoLocked ? (
+                              {sheetLocked ? (
                                 <TakoLockedBlock
                                   source="tako_kotsu_wana_card"
                                   description={`完全版で、${sh.viewer}ともっと仲良くなるコツと、避けたいすれ違いポイントの両方が読めます。`}
@@ -741,12 +775,12 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                 <div>
                               <div
                                 className={
-                                  takoLocked
+                                  sheetLocked
                                     ? "hidden"
                                     : "grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2"
                                 }
                               >
-                                {(takoLocked ? [] : c.kotsu).map((k) => (
+                                {(sheetLocked ? [] : c.kotsu).map((k) => (
                                   <div key={k.title}>
                                     <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
                                       <span
@@ -780,12 +814,12 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                             <div>
                               <div
                                 className={
-                                  takoLocked
+                                  sheetLocked
                                     ? "hidden"
                                     : "grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2"
                                 }
                               >
-                                {(takoLocked ? [] : c.wana).map((w) => (
+                                {(sheetLocked ? [] : c.wana).map((w) => (
                                   <div key={w.title}>
                                     <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
                                       <span
@@ -847,12 +881,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                         selfScores={data.selfScores}
                         friendScores={sh.scores}
                         viewer={sh.viewer}
-                        locked={takoLocked}
+                        locked={sheetLocked}
                       />
                     </section>
 
                   </div>
-                ))}
+                  );
+                })}
               />
 
             {/* 友達からの回答 (一覧) セクションは 2026-07-20 指示で削除。

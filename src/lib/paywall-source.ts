@@ -34,6 +34,8 @@ const PAYWALL_SOURCES = new Set([
   "tako_johari_card",
   "tako_numa_card",
   "tako_loss_card",
+  // 2人目以降の友達シート全ロック (1人目無料モデル 2026-07-28)
+  "tako_sheet_lock",
   "tako_promo_card",
 ]);
 

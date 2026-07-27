@@ -47,6 +47,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   tako_kotsu_card: "深めるヒント",
   tako_wana_card: "壊すワナ",
   tako_johari_card: "ジョハリの窓",
+  tako_sheet_lock: "友達シート全ロック",
   tako_unlocked: "/tako 解放後",
   tako_promo_card: "/tako 購入",
   paywall_direct: "直接購入",
