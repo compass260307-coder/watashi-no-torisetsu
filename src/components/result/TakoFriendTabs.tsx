@@ -64,6 +64,16 @@ export function TakoFriendTabs({
   const bubbleRef = useRef<HTMLDivElement | null>(null);
   // ロックタブごとに課金モーダルを出したか (同一表示中の再タップでは開き直さない)。
   const paywallShownRef = useRef<Set<number>>(new Set());
+  // コメント自動ローテーション: メッセージ持ちの友達の吹き出しを2秒ごとに順繰りに
+  // 出す (複数コメントの見せ場)。ユーザーが何か操作したら停止し、以降は従来の
+  // タップ挙動に戻る。state はローテ effect の起動/停止用、ref は idx effect が
+  // レンダーを跨いで同期的に参照するため (タブ切替 effect との競合回避)。
+  const [autoRotate, setAutoRotate] = useState(true);
+  const autoRotateRef = useRef(true);
+  const stopAutoRotate = () => {
+    autoRotateRef.current = false;
+    setAutoRotate(false);
+  };
 
   const anchorTo = (el: HTMLElement | null) => {
     if (!el || !barRef.current) return;
@@ -80,7 +90,22 @@ export function TakoFriendTabs({
     setMsgOpenIdx(i);
   };
 
+  // マウスホバーでそのタブのコメントを出す (デスクトップ用の「触れたら出る」)。
+  //   - mouse 限定: タッチは pointerenter がタップ直前に発火し、click 側の
+  //     トグルと二重になって開閉が暴れるため、タップ挙動 (handleTabClick) に任せる。
+  //   - 開くだけで閉じない (tab→吹き出しへカーソル移動で消えると読めないため)。
+  //     閉じるのは従来どおり外側タップ/Esc/別タブ操作。paywall はホバーでは開かない。
+  const handleTabHover = (i: number, pointerType: string) => {
+    if (pointerType !== "mouse") return;
+    if (!tabs[i]?.message?.trim()) return;
+    if (msgOpenIdx === i) return;
+    stopAutoRotate();
+    openMessage(i);
+  };
+
   const handleTabClick = (i: number) => {
+    // タブ操作が始まったら自動ローテーションは終了 (以降は手動挙動)。
+    stopAutoRotate();
     if (tabs[i]?.locked) {
       // 全ロックシート (2人目以降・未購入): パネルは切り替えない (1人目の
       // 無料シートに留まったまま)。コメント吹き出しは無料なので通常どおり
@@ -106,7 +131,9 @@ export function TakoFriendTabs({
 
   // タブ選択が変わったら、その友達のメッセージを少し遅らせて自動でぽこっと出す。
   // (即時 setState は cascading render になるため、閉じる方もタイマーで非同期に行う)
+  // 自動ローテーション中は吹き出しをローテ側が管理するため何もしない。
   useEffect(() => {
+    if (autoRotateRef.current) return;
     const close = window.setTimeout(() => setMsgOpenIdx(null), 0);
     if (!tabs[idx]?.message?.trim()) return () => window.clearTimeout(close);
     const t = window.setTimeout(() => {
@@ -120,7 +147,39 @@ export function TakoFriendTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
+  // コメント自動ローテーション本体。初回は従来と同じ 350ms 後、以降 2 秒ごとに
+  // メッセージ持ちタブ (ロック含む: コメントは無料コンテンツ) を順繰りに表示。
+  // 1件ならそのまま出しっぱなし (従来挙動と同等)。停止は stopAutoRotate() 経由。
+  useEffect(() => {
+    if (!autoRotate) return;
+    const idxs = tabs
+      .map((t, i) => (t.message?.trim() ? i : -1))
+      .filter((i) => i >= 0);
+    if (idxs.length === 0) return;
+    let pos = 0;
+    let interval: number | undefined;
+    const show = () => {
+      const i = idxs[pos];
+      anchorTo(tabRefs.current[i]);
+      setMsgOpenIdx(i);
+    };
+    const first = window.setTimeout(() => {
+      show();
+      if (idxs.length > 1) {
+        interval = window.setInterval(() => {
+          pos = (pos + 1) % idxs.length;
+          show();
+        }, 2000);
+      }
+    }, 350);
+    return () => {
+      window.clearTimeout(first);
+      if (interval !== undefined) window.clearInterval(interval);
+    };
+  }, [autoRotate, tabs]);
+
   const toggleInvite = () => {
+    stopAutoRotate();
     if (!inviteOpen) {
       setMsgOpenIdx(null);
       anchorTo(plusRef.current);
@@ -134,6 +193,9 @@ export function TakoFriendTabs({
   useEffect(() => {
     if (!anyBubbleOpen) return;
     const close = () => {
+      // 外側タップ/Esc は「もう吹き出しはいい」の意思表示なので自動ローテも止める
+      // (止めないと2秒後にまた開いてしまう)。
+      stopAutoRotate();
       setInviteOpen(false);
       setMsgOpenIdx(null);
     };
@@ -182,6 +244,7 @@ export function TakoFriendTabs({
                 role="tab"
                 aria-selected={selected}
                 onClick={() => handleTabClick(i)}
+                onPointerEnter={(e) => handleTabHover(i, e.pointerType)}
                 className="relative flex w-14 flex-shrink-0 flex-col items-center gap-1"
               >
                 {/* キャラ顔アバター (選択中は紫リング) */}
@@ -304,10 +367,15 @@ export function TakoFriendTabs({
         {/* ── 吹き出し (対象アバター直下・矢印つき小カード)。招待 or メッセージのどちらか ── */}
         {(inviteOpen || (msgTab && msgOpenIdx !== null)) && (
           <div
+            // key: 表示対象が変わるたびに再マウントして「ぽわん」を再生する
+            // (同一要素の中身差し替えだと CSS アニメが再発火しない)。
+            key={inviteOpen ? "invite" : `msg-${msgOpenIdx}`}
             ref={bubbleRef}
             role="dialog"
             aria-label={inviteOpen ? "友達を招待" : `${msgTab?.name}からのメッセージ`}
-            className="animate-modal-slide-up absolute inset-x-0 top-full z-30"
+            className="animate-bubble-pop absolute inset-x-0 top-full z-30"
+            // 膨らむ起点 = 矢印 (対象アバターの中央直下)。キャラがしゃべった感を出す。
+            style={{ transformOrigin: `${(arrowX ?? 24) - 7}px top` }}
           >
             {/* 矢印 (対象ボタン中央に合わせた回転スクエア) */}
             <span
