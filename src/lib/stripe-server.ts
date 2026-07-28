@@ -48,13 +48,15 @@ export function getFullAccessPriceId(locale: "ja" | "ko" = "ja"): string | null 
     : process.env.STRIPE_PRICE_FULL_ACCESS ?? null;
 }
 
-// unmei: Price ID を環境変数で受ける (Stripe ダッシュボードで Price を作成して登録)。
-// セール中 (2026-07-28〜) は通常/アップグレードとも ¥299 の STRIPE_PRICE_UNMEI_299 を使う。
-// 復価するときはここを unmei→STRIPE_PRICE_UNMEI_1980 / unmei_upgrade→STRIPE_PRICE_UNMEI_1480
-// に戻すだけでよい (旧 env は Vercel に残置。出し分けの分岐は温存)。
+// unmei: ¥1,980 / ¥1,480 の Price ID を環境変数で受ける。
+// Stripe ダッシュボードで Price を作成し、それぞれを以下の環境変数に登録する。
+// - STRIPE_PRICE_UNMEI_1980
+// - STRIPE_PRICE_UNMEI_1480
+// セール価格 ¥299 の STRIPE_PRICE_UNMEI_299 も Vercel/ライブStripeに作成済み
+// (2026-07-28 に一時利用)。再セール時は両分岐をこれに向け、saleJpy と表示も揃える。
 export function getUnmeiPriceId(product: "unmei" | "unmei_upgrade"): string | null {
   if (product === "unmei") {
-    return process.env.STRIPE_PRICE_UNMEI_299 ?? null;
+    return process.env.STRIPE_PRICE_UNMEI_1980 ?? null;
   }
-  return process.env.STRIPE_PRICE_UNMEI_299 ?? null;
+  return process.env.STRIPE_PRICE_UNMEI_1480 ?? null;
 }

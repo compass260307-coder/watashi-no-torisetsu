@@ -88,7 +88,7 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
 // PC: 左=出生図イメージ / 右=商品名・説明・価格・CTA。SP: 縦積み。
-// 価格: セール中 (2026-07-28〜) は一律 ¥299 (通常時: ¥1,980 / 完全版保有者 ¥1,480=unmei_upgrade)。
+// 価格: 通常 ¥1,980 / 完全版 (¥499) 保有者は ¥1,480 (unmei_upgrade)。
 // hasFull はログイン済みならサーバ判定、未ログインは UnmeiPriceCta が localStorage の
 // owner_token から判定する (決済APIが最終検証するため表示用の判定でよい)。
 function UnmeiTeaserLp({
@@ -324,7 +324,7 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
     return <UnmeiReading reading={PREVIEW_READING} trackView={false} />;
   }
   if (preview === "teaser" || preview === "teaser_full") {
-    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常) / teaser_full (完全版保有者の表示)
+    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥1,980) / teaser_full (¥1,480 表示)
     return (
       <UnmeiTeaserLp
         ownerToken={null}

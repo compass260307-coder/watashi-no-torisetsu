@@ -9,7 +9,7 @@ export default function UnmeiCheckoutButton({
   children = "運命の設計図を占う",
 }: {
   ownerToken?: string | null;
-  /** unmei / unmei_upgrade=完全版保有者のみ (サーバ側で hasFullAccess を検証)。セール中は両方 ¥299。 */
+  /** unmei=¥1,980 / unmei_upgrade=¥1,480 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
   product?: "unmei" | "unmei_upgrade";
   children?: React.ReactNode;
 }) {
