@@ -376,10 +376,13 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
           (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
         showUnlockCta={takoLocked && data.friends.length > 1}
-        shareUrl={`${SITE_URL}/share/${encodeURIComponent(data.inviteCode)}`}
-        essence={
-          data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : undefined
-        }
+        // シェアは「結果のキャラ共有」ではなく「友達にもっと診断してもらう」招待
+        // (2026-07-28 指示)。URL は /friend/[inviteCode]・文言/計測は招待パネル
+        // (LockedInviteShare) と同じ friend_invite_clicked に揃える。
+        shareUrl={data.inviteUrl}
+        shareKind="invite"
+        ownerToken={token}
+        inviteCode={data.inviteCode}
         paywallTargetId="tako-promo"
         reportHref={
           takoUnlocked && data.friends.length > 0

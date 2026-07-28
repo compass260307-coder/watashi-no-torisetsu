@@ -29,9 +29,19 @@ interface MeStickyHeaderProps {
   /** 「すべての結果のロックを解除」CTA を出すか (第二部が未解放のときのみ true)。
       false でもシェアボタンのバー自体は shareUrl があれば表示する。 */
   showUnlockCta: boolean;
-  /** キャラクター共有 URL (/share/[inviteCode])。シェアモーダルで使用。 */
+  /** 共有 URL。character=/share/[inviteCode]、invite=/friend/[inviteCode]。 */
   shareUrl?: string;
-  /** シェア文言用の称号 (essence)。 */
+  /**
+   * シェアボタンの種別 (2026-07-28)。
+   *   - "character" (既定): 自分の結果 (キャラ) をシェアする従来モード (/me)。
+   *   - "invite": 友達にもっと診断してもらう招待モード (/tako)。文言・計測を
+   *     LockedInviteShare (招待パネル) と揃え、friend_invite_clicked を発火する。
+   */
+  shareKind?: "character" | "invite";
+  /** invite モードの計測用 (friend_invite_clicked に載せる)。 */
+  ownerToken?: string;
+  inviteCode?: string;
+  /** シェア文言用の称号 (essence)。character モードのみ使用。 */
   essence?: string;
   /** シェア文言用の Big Five コード (ヒーローと同じ大小方式。例 "OCeAN")。 */
   code?: string;
@@ -75,6 +85,9 @@ export function MeStickyHeader({
   children,
   showUnlockCta,
   shareUrl,
+  shareKind = "character",
+  ownerToken,
+  inviteCode,
   essence,
   code,
   paywallTargetId,
@@ -129,27 +142,69 @@ export function MeStickyHeader({
     return () => window.removeEventListener("keydown", onKey);
   }, [shareOpen]);
 
+  const isInvite = shareKind === "invite";
+
   // キャラクター共有文言。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
   // 友達診断への回答依頼は含めず、純粋なキャラ共有として扱う。
+  // invite モード (/tako) は LockedInviteShare と同じ招待文言に切り替える。
   const title = code ? `${essence ?? ""}（${code}）` : (essence ?? "");
-  const shareText = locale === "ko"
-    ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
-    : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
+  const shareText = isInvite
+    ? "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ"
+    : locale === "ko"
+      ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
+      : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
   const xUrl = shareUrl
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(shareUrl, "x"))}`
     : undefined;
   const lineUrl = shareUrl
     ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(shareUrl, "line")}`)}`
     : undefined;
+  // Facebook は sharer.php (テキストは付与不可・URL のみ)。
+  const fbUrl = shareUrl
+    ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(shareUrl, "facebook"))}`
+    : undefined;
 
-  const fireShare = (channel: "copy" | "x" | "line") =>
-    track("share_clicked", {
-      metadata: { channel, kind: "character", source: "sticky_bar" },
-    });
+  // 「その他」= OS のシェアシート (Web Share API)。Instagram 等の個別対応が
+  // 不要になる。非対応環境 (主に PC ブラウザ) ではボタン自体を出さない。
+  // navigator は SSR に無いため effect で判定する。
+  const [canNativeShare, setCanNativeShare] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCanNativeShare(typeof navigator !== "undefined" && !!navigator.share);
+  }, []);
+
+  // invite モードは招待ファネルの friend_invite_clicked (LockedInviteShare と同じ
+  // イベント・source だけ設置場所で分ける)。character は従来の share_clicked。
+  const fireShare = (channel: "copy" | "x" | "line" | "facebook" | "native") =>
+    isInvite
+      ? track("friend_invite_clicked", {
+          ownerToken,
+          inviteCode,
+          metadata: { channel, source: "tako_sticky_bar" },
+        })
+      : track("share_clicked", {
+          metadata: { channel, kind: "character", source: "sticky_bar" },
+        });
+
+  const handleNativeShare = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.share({
+        text: shareText,
+        url: withRef(shareUrl, "native"),
+      });
+      // 共有先を選んで完了した時のみ計測 (キャンセルは reject され catch へ)。
+      fireShare("native");
+    } catch {
+      // キャンセル/非対応は無視
+    }
+  };
 
   const handleCopy = async () => {
     if (!shareUrl) return;
-    const value = `${shareText}\n${withRef(shareUrl, "copy")}`;
+    // コピーは文章を付けずリンクだけ (2026-07-28 指示。invite/character 共通形式。
+    // 共有文 shareText は LINE/X/その他 のシェアインテント側でのみ使う)。
+    const value = withRef(shareUrl, "copy");
     let succeeded = false;
     try {
       await navigator.clipboard.writeText(value);
@@ -199,7 +254,13 @@ export function MeStickyHeader({
             {shareUrl && (
               <button
                 type="button"
-                aria-label={isKo ? "결과 공유" : "結果をシェア"}
+                aria-label={
+                  isInvite
+                    ? "友達に診断してもらう"
+                    : isKo
+                      ? "결과 공유"
+                      : "結果をシェア"
+                }
                 aria-haspopup="dialog"
                 onClick={() => setShareOpen(true)}
                 className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
@@ -278,7 +339,13 @@ export function MeStickyHeader({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={isKo ? "결과를 공유해요" : "結果をシェアしよう"}
+            aria-label={
+              isInvite
+                ? "友達に診断してもらおう"
+                : isKo
+                  ? "결과를 공유해요"
+                  : "結果をシェアしよう"
+            }
             className="fixed inset-0 z-[80] flex items-center justify-center px-6"
           >
             {/* 背景 (クリックで閉じる) */}
@@ -311,8 +378,17 @@ export function MeStickyHeader({
               </button>
 
               <p className="mb-5 text-[18px] font-black text-[#2E2E5C]">
-                {isKo ? "결과를 공유해요" : "結果をシェアしよう"}
+                {isInvite
+                  ? "友達に診断してもらおう"
+                  : isKo
+                    ? "결과를 공유해요"
+                    : "結果をシェアしよう"}
               </p>
+              {isInvite && (
+                <p className="-mt-3 mb-5 text-[12.5px] font-bold leading-[1.7] text-[#8A8AA3]">
+                  答えてくれた友達のぶんだけ、結果シートが増えていくよ
+                </p>
+              )}
 
               {/* SNS ボタン (丸アイコン + ラベル。16P の Facebook/X 行の体裁) */}
               <div className="mb-6 flex items-start gap-6">
@@ -362,11 +438,63 @@ export function MeStickyHeader({
                     X
                   </span>
                 </a>
+                <a
+                  href={fbUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => fireShare("facebook")}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1877F2] text-white transition-transform hover:scale-105">
+                    {/* Facebook "f" */}
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M13.5 21v-7h2.4l.45-3H13.5V9.1c0-.87.28-1.6 1.66-1.6h1.34V4.85c-.3-.04-1.3-.13-2.44-.13-2.4 0-4.06 1.47-4.06 4.17V11H7.6v3h2.4v7h3.5z" />
+                    </svg>
+                  </span>
+                  <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                    Facebook
+                  </span>
+                </a>
+                {/* その他 = OS のシェアシート (対応端末のみ。Instagram 等はこちらから) */}
+                {canNativeShare && (
+                  <button
+                    type="button"
+                    onClick={handleNativeShare}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EDEEFC] text-[#5B5BEF] transition-transform hover:scale-105">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <circle cx="5" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="19" cy="12" r="2" />
+                      </svg>
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      その他
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* リンクコピー (URL 表示 + コピー。コピー内容は共有文つき) */}
               <p className="mb-1.5 text-[12px] font-bold text-[#2E2E5C]/60">
-                {isKo ? "캐릭터 링크" : "キャラクターのリンク"}
+                {isInvite
+                  ? "招待リンク"
+                  : isKo
+                    ? "캐릭터 링크"
+                    : "キャラクターのリンク"}
               </p>
               <div className="flex items-center gap-2 rounded-xl border border-[#E3E6F5] bg-[#FAFAFF] px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80">
@@ -377,7 +505,9 @@ export function MeStickyHeader({
                   aria-label={
                     copied
                       ? isKo ? "복사했어요" : "コピーしました"
-                      : isKo ? "캐릭터 공유 문구와 링크 복사" : "キャラクターの共有文とリンクをコピー"
+                      : isInvite
+                        ? "招待リンクをコピー"
+                        : isKo ? "캐릭터 링크 복사" : "キャラクターのリンクをコピー"
                   }
                   onClick={handleCopy}
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-[#5B5BEF]/30 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
@@ -416,9 +546,11 @@ export function MeStickyHeader({
               </div>
               <span className="sr-only" role="status" aria-live="polite">
                 {copied
-                  ? isKo
-                    ? "캐릭터 공유 문구와 링크를 복사했어요"
-                    : "キャラクターの共有文とリンクをコピーしました"
+                  ? isInvite
+                    ? "招待リンクをコピーしました"
+                    : isKo
+                      ? "캐릭터 링크를 복사했어요"
+                      : "キャラクターのリンクをコピーしました"
                   : ""}
               </span>
             </div>
