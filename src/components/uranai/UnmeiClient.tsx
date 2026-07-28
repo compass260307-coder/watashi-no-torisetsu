@@ -44,10 +44,9 @@ export default function UnmeiClient({ initialState }: Props) {
     }
   }, []);
 
-  // pending 状態のポーリング開始。60秒で MAX_AUTO_RETRIES まで自動再生成、尽きたら手動案内。
-  const startPending = useCallback(() => {
+  // 60秒で MAX_AUTO_RETRIES まで自動再生成、尽きたら手動案内。
+  const startPolling = useCallback(() => {
     stopPolling();
-    setState("pending");
     deadlineRef.current = Date.now() + TIMEOUT_MS;
     pollRef.current = setInterval(async () => {
       try {
@@ -89,6 +88,11 @@ export default function UnmeiClient({ initialState }: Props) {
     }, POLL_INTERVAL_MS);
   }, [router, stopPolling, kickGeneration]);
 
+  const startPending = useCallback(() => {
+    setState("pending");
+    startPolling();
+  }, [startPolling]);
+
   // 新規の生成ドライブ開始(自動再生成カウンタをリセット)。
   const drive = useCallback(
     (force: boolean) => {
@@ -102,11 +106,12 @@ export default function UnmeiClient({ initialState }: Props) {
   // 初期状態が pending の場合、マウント時に生成をドライブ
   useEffect(() => {
     if (initialState === "pending") {
-      drive(false);
+      autoRetriesRef.current = MAX_AUTO_RETRIES;
+      void kickGeneration(false);
+      startPolling();
     }
     return () => stopPolling();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialState, kickGeneration, startPolling, stopPolling]);
 
   const handleSaved = useCallback(() => drive(false), [drive]);
   // 手動リトライはサーバの上限を超えて再試行するため force=true
@@ -119,7 +124,11 @@ export default function UnmeiClient({ initialState }: Props) {
         <p className="mb-6 text-sm text-gray-600">
           生まれた日を教えてください。ホロスコープ（出生図）の計算にのみ使用します。
         </p>
-        <BirthProfileForm required onSaved={handleSaved} />
+        <BirthProfileForm
+          required
+          analyticsPage="unmei"
+          onSaved={handleSaved}
+        />
       </main>
     );
   }

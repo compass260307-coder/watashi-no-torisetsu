@@ -113,6 +113,23 @@ export async function GET(request: NextRequest) {
     takoBadgeClickRate: round(
       s.friendDiagnosisFunnel.attention.badgeClickRate,
     ),
+    // 運命の設計図（末尾追加。既存シートの列順を壊さない）
+    unmeiLpViewed: s.unmei.funnel[0]?.count ?? 0,
+    unmeiPurchaseStarted: s.unmei.funnel[1]?.count ?? 0,
+    unmeiCheckoutSessionCreated: s.unmei.funnel[2]?.count ?? 0,
+    unmeiPurchaseCompleted: s.unmei.purchases.total,
+    unmeiPurchaseBasic: s.unmei.purchases.basic,
+    unmeiPurchaseUpgrade: s.unmei.purchases.upgrade,
+    unmeiRevenueJpy:
+      s.unmei.revenue.currencies.find((row) => row.currency === "jpy")
+        ?.netRevenueMinor ?? 0,
+    unmeiBirthFormViewed: s.unmei.birthForm.viewed,
+    unmeiBirthFormSubmitted: s.unmei.birthForm.submitted,
+    unmeiBirthFormSubmitRate: round(s.unmei.birthForm.submitRate),
+    unmeiReadingViewed: s.unmei.funnel[6]?.count ?? 0,
+    unmeiBadgeShown: s.unmei.navBadge.shown,
+    unmeiBadgeClicked: s.unmei.navBadge.clicked,
+    unmeiBadgeClickRate: round(s.unmei.navBadge.clickRate),
   };
 
   const format = request.nextUrl.searchParams.get("format");

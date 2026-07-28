@@ -23,9 +23,11 @@ type Buyer = { id: string; email: string | null; owner_token: string | null };
 
 type ProductKey = "unmei" | "unmei_upgrade";
 
+// セール中 (2026-07-28〜) は両商品とも ¥299。復価時は saleJpy を
+// unmei: 1980 / unmei_upgrade: 1480 に戻す (stripe-server.ts の env 切替とセット)。
 const PRODUCT_LABELS: Record<ProductKey, { saleJpy: number; name: string }> = {
-  unmei: { saleJpy: 1980, name: "運命の設計図（ベーシック）" },
-  unmei_upgrade: { saleJpy: 1480, name: "運命の設計図（アップグレード）" },
+  unmei: { saleJpy: 299, name: "運命の設計図（ベーシック）" },
+  unmei_upgrade: { saleJpy: 299, name: "運命の設計図（アップグレード）" },
 };
 
 async function resolveBuyer(request: NextRequest, bodyToken: string): Promise<{ buyer: Buyer | null; userId: string | null }> {
@@ -96,7 +98,7 @@ export async function POST(request: NextRequest) {
   const priceId = getUnmeiPriceId(product);
   if (!priceId) {
     return NextResponse.json(
-      { error: `STRIPE_PRICE_UNMEI_${product === "unmei" ? "1980" : "1480"} not configured` },
+      { error: "STRIPE_PRICE_UNMEI_299 not configured" },
       { status: 500 },
     );
   }
@@ -167,8 +169,9 @@ export async function POST(request: NextRequest) {
     // price check is best-effort; proceed with checkout creation if Stripe can resolve the price.
   }
 
+  let stripeSession: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
   try {
-    const session = await stripe.checkout.sessions.create({
+    stripeSession = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
       ...(customerEmail ? { customer_email: customerEmail } : {}),
@@ -189,8 +192,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (err) {
     console.error("[checkout/create-unmei-session] Stripe error:", err);
     return NextResponse.json(
@@ -198,4 +199,28 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  try {
+    await supabaseAdmin.from("events").insert({
+      event_name: "checkout_session_created",
+      owner_token: ownerToken || null,
+      locale: "ja",
+      metadata: {
+        guest: userId ? false : true,
+        user_id: userId,
+        stripe_session_id: stripeSession.id,
+        product,
+        page: "unmei",
+        source: "unmei_page",
+        locale: "ja",
+      },
+    });
+  } catch {
+    // 計測失敗で購入導線を止めない
+  }
+
+  return NextResponse.json({
+    sessionId: stripeSession.id,
+    url: stripeSession.url,
+  });
 }

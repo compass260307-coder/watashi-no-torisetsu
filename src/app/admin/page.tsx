@@ -47,6 +47,8 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   tako_kotsu_card: "深めるヒント",
   tako_wana_card: "壊すワナ",
   tako_johari_card: "ジョハリの窓",
+  tako_kirai_card: "嫌われてない？",
+  tako_kotsu_wana_card: "深めるヒント/ワナ",
   tako_sheet_lock: "友達シート全ロック",
   tako_unlocked: "/tako 解放後",
   tako_promo_card: "/tako 購入",
@@ -57,6 +59,9 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
   full_access: "完全版 ¥499",
+  // unmei 系はセールで価格が変動するためラベルに金額を含めない (売上は実額で集計)
+  unmei: "運命の設計図",
+  unmei_upgrade: "運命アップグレード",
   tako_unlock: "旧 友達診断 ¥799",
   perception_unlock: "友達個別",
   integrated_trisetsu: "旧 統合トリセツ",
@@ -179,6 +184,32 @@ type Stats = {
   };
   paywallFunnel: { label: string; count: number }[];
   takoFunnel: { label: string; count: number }[];
+  unmei: {
+    funnel: { label: string; count: number }[];
+    purchases: {
+      total: number;
+      basic: number;
+      upgrade: number;
+    };
+    revenue: {
+      currencies: {
+        currency: string;
+        purchases: number;
+        netRevenueMinor: number;
+      }[];
+    };
+    birthForm: {
+      viewed: number;
+      submitted: number;
+      skipped: number;
+      submitRate: number;
+    };
+    navBadge: {
+      shown: number;
+      clicked: number;
+      clickRate: number;
+    };
+  };
   paywallSources: { source: string; count: number }[];
   paywallAttribution: {
     source: string;
@@ -280,6 +311,13 @@ const ADMIN_NAV_ITEMS = [
     label: "売上",
     shortLabel: "売上",
     path: "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7",
+  },
+  {
+    href: "#unmei",
+    id: "unmei",
+    label: "運命",
+    shortLabel: "運命",
+    path: "M12 3.5 19.36 16.25H4.64L12 3.5Zm0 0v17m7.36-4.75L4.64 16.25M5 6l2 2m12-2-2 2",
   },
   {
     href: "#friend-funnel",
@@ -394,6 +432,34 @@ function resolveCompareRange(
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 const pctOrDash = (v: number, denominator: number) =>
   denominator > 0 ? pct(v) : "—";
+const nullablePct = (v: number | null) => (v === null ? "—" : pct(v));
+
+function rateOrNull(numerator: number, denominator: number): number | null {
+  return denominator > 0 ? numerator / denominator : null;
+}
+
+function countStep(
+  funnel: { label: string; count: number }[],
+  label: string,
+  fallbackIndex: number,
+) {
+  return (
+    funnel.find((step) => step.label === label)?.count ??
+    funnel[fallbackIndex]?.count ??
+    0
+  );
+}
+
+function toneForRate(
+  rate: number | null,
+  goodAt: number,
+  cautionAt: number,
+): InsightTone {
+  if (rate === null) return "stone";
+  if (rate >= goodAt) return "emerald";
+  if (rate >= cautionAt) return "amber";
+  return "rose";
+}
 
 const ZERO_DECIMAL_CURRENCIES = new Set(["jpy", "krw"]);
 
@@ -484,6 +550,109 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
   },
 };
 
+type InsightTone = "emerald" | "amber" | "rose" | "indigo" | "stone";
+
+const INSIGHT_TONES: Record<
+  InsightTone,
+  { border: string; badge: string; value: string; dot: string; hover: string }
+> = {
+  emerald: {
+    border: "border-emerald-200/70",
+    badge: "bg-emerald-950 text-emerald-50",
+    value: "text-emerald-800",
+    dot: "bg-emerald-300",
+    hover: "hover:border-emerald-300 hover:bg-emerald-50/40",
+  },
+  amber: {
+    border: "border-amber-200/80",
+    badge: "bg-amber-900 text-amber-50",
+    value: "text-amber-800",
+    dot: "bg-amber-300",
+    hover: "hover:border-amber-300 hover:bg-amber-50/40",
+  },
+  rose: {
+    border: "border-rose-200/80",
+    badge: "bg-rose-900 text-rose-50",
+    value: "text-rose-800",
+    dot: "bg-rose-300",
+    hover: "hover:border-rose-300 hover:bg-rose-50/40",
+  },
+  indigo: {
+    border: "border-indigo-200/80",
+    badge: "bg-indigo-950 text-indigo-50",
+    value: "text-indigo-800",
+    dot: "bg-indigo-300",
+    hover: "hover:border-indigo-300 hover:bg-indigo-50/40",
+  },
+  stone: {
+    border: "border-stone-200/90",
+    badge: "bg-stone-900 text-stone-50",
+    value: "text-stone-800",
+    dot: "bg-stone-300",
+    hover: "hover:border-stone-300 hover:bg-stone-50/80",
+  },
+};
+
+function AdminInsightCard({
+  label,
+  value,
+  detail,
+  tone,
+  href,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: InsightTone;
+  href: string;
+  onClick: () => void;
+}) {
+  const colors = INSIGHT_TONES[tone];
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      className={`group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-lg border ${colors.border} bg-[#fffdf8] p-4 shadow-[0_18px_46px_-38px_rgba(25,23,20,0.55)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_58px_-42px_rgba(25,23,20,0.62)] ${colors.hover}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-1 ${colors.dot}`}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <span
+          className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-[10px] font-black ${colors.badge}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-55" />
+          {label}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="h-4 w-4 text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500"
+          aria-hidden="true"
+        >
+          <path
+            d="M7 17 17 7m0 0H9m8 0v8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+      <div>
+        <p className={`mt-6 text-3xl font-black leading-none tabular-nums ${colors.value}`}>
+          {value}
+        </p>
+        <p className="mt-2.5 text-[11px] font-semibold leading-relaxed text-stone-500">
+          {detail}
+        </p>
+      </div>
+    </a>
+  );
+}
+
 // 数値セル: 0 は薄く沈め、値がある所だけ目に入るようにする。
 function AttributionNum({ value, strong }: { value: number; strong?: boolean }) {
   if (value === 0) {
@@ -515,19 +684,19 @@ function AttributionTable({
 }) {
   const maxClicks = Math.max(1, ...rows.map((s) => s.scrollClicks));
   return (
-    <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
       <table className="w-full min-w-[760px] text-xs">
-        <thead className="bg-stone-50 text-stone-500">
+        <thead className="bg-stone-950 text-stone-300">
           <tr>
-            <th className="px-3 py-2.5 text-left font-medium">場所</th>
-            <th className="px-3 py-2.5 text-right font-medium">クリック</th>
-            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">購入</th>
-            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">Stripe</th>
-            <th className="px-2 py-2.5 text-center font-medium text-stone-300">→</th>
-            <th className="px-3 py-2.5 text-right font-medium">完了</th>
-            <th className="px-3 py-2.5 text-right font-medium">率</th>
+            <th className="px-3 py-3 text-left font-black">場所</th>
+            <th className="px-3 py-3 text-right font-black">クリック</th>
+            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
+            <th className="px-3 py-3 text-right font-black">購入</th>
+            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
+            <th className="px-3 py-3 text-right font-black">Stripe</th>
+            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
+            <th className="px-3 py-3 text-right font-black">完了</th>
+            <th className="px-3 py-3 text-right font-black">率</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100/80">
@@ -537,8 +706,8 @@ function AttributionTable({
             return (
               <tr
                 key={s.source}
-                className={`transition hover:bg-stone-50 ${
-                  s.purchases > 0 ? "bg-emerald-50/50" : ""
+                className={`transition hover:bg-stone-50/90 ${
+                  s.purchases > 0 ? "bg-emerald-50/70" : ""
                 }`}
               >
                 <td className="px-3 py-3" title={s.source}>
@@ -555,9 +724,9 @@ function AttributionTable({
                     )}
                   </p>
                   {/* 誘導クリック量のミニバー (最大行=100%) */}
-                  <span className="mt-1.5 block h-1.5 w-full max-w-[240px] overflow-hidden rounded bg-stone-100">
+                  <span className="mt-2 block h-2 w-full max-w-[260px] overflow-hidden rounded-full bg-stone-200/70">
                     <span
-                      className={`block h-full rounded bg-teal-500 ${
+                      className={`block h-full rounded-full bg-[linear-gradient(90deg,#0f766e,#14b8a6)] ${
                         isLegacy ? "opacity-30" : ""
                       }`}
                       style={{
@@ -618,24 +787,24 @@ const EXECUTIVE_METRIC_TONES: Record<
 > = {
   indigo: {
     accent: "bg-indigo-500",
-    badge: "border-indigo-200 bg-indigo-50 text-indigo-700",
-    icon: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    value: "text-indigo-700",
-    line: "border-indigo-100",
+    badge: "border-indigo-200 bg-indigo-50 text-indigo-800",
+    icon: "bg-indigo-950 text-indigo-100 ring-indigo-900/10",
+    value: "text-indigo-800",
+    line: "border-indigo-200/80",
   },
   emerald: {
     accent: "bg-emerald-500",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    icon: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    value: "text-emerald-700",
-    line: "border-emerald-100",
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    icon: "bg-emerald-950 text-emerald-100 ring-emerald-900/10",
+    value: "text-emerald-800",
+    line: "border-emerald-200/80",
   },
   cyan: {
     accent: "bg-sky-500",
-    badge: "border-sky-200 bg-sky-50 text-sky-700",
-    icon: "bg-sky-50 text-sky-700 ring-sky-100",
-    value: "text-sky-700",
-    line: "border-sky-100",
+    badge: "border-sky-200 bg-sky-50 text-sky-800",
+    icon: "bg-sky-950 text-sky-100 ring-sky-900/10",
+    value: "text-sky-800",
+    line: "border-sky-200/80",
   },
 };
 
@@ -663,11 +832,17 @@ function ExecutiveMetricCard({
 }) {
   const colors = EXECUTIVE_METRIC_TONES[tone];
   return (
-    <article className={`relative min-h-[206px] overflow-hidden rounded-lg border ${colors.line} bg-white p-5 shadow-[0_16px_42px_-36px_rgba(28,25,23,0.45)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_54px_-38px_rgba(28,25,23,0.5)] sm:p-6`}>
+    <article className={`relative min-h-[218px] overflow-hidden rounded-lg border ${colors.line} bg-[#fffdf8] p-5 shadow-[0_20px_58px_-42px_rgba(25,23,20,0.62)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-46px_rgba(25,23,20,0.68)] sm:p-6`}>
       <span
         aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-1 ${colors.accent}`}
+        className={`absolute inset-x-0 top-0 h-1.5 ${colors.accent}`}
       />
+      <span
+        aria-hidden="true"
+        className="absolute -right-3 top-4 text-[76px] font-black leading-none text-stone-900/[0.035]"
+      >
+        {index}
+      </span>
       <div className="relative flex items-start justify-between gap-4">
         <span className={`inline-flex rounded border px-2.5 py-1 text-[10px] font-black tracking-normal ${colors.badge}`}>
           {badge}
@@ -676,15 +851,15 @@ function ExecutiveMetricCard({
           {index}
         </span>
       </div>
-      <p className="relative mt-5 text-[12px] font-black tracking-normal text-stone-500">
+      <p className="relative mt-6 text-[12px] font-black tracking-normal text-stone-500">
         {label}
       </p>
       <div className="relative mt-2 flex min-w-0 items-end gap-2">
         <p
           className={`min-w-0 font-black leading-none tracking-normal tabular-nums ${colors.value} ${
             compactValue
-              ? "text-4xl lg:text-5xl"
-              : "text-5xl lg:text-6xl"
+              ? "text-[34px] sm:text-4xl xl:text-[42px]"
+              : "text-[44px] sm:text-5xl xl:text-[56px]"
           }`}
         >
           {value}
@@ -697,13 +872,13 @@ function ExecutiveMetricCard({
       </div>
       {compare ? (
         <p
-          className={`relative mt-3 inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-[10px] font-black tabular-nums ${TREND_STYLES[compare.trend].chip}`}
+          className={`relative mt-4 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-black tabular-nums ${TREND_STYLES[compare.trend].chip}`}
         >
           <span aria-hidden="true">{TREND_STYLES[compare.trend].arrow}</span>
           {compare.label}
         </p>
       ) : null}
-      <p className="relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed text-stone-500">
+      <p className="relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-semibold leading-relaxed text-stone-500">
         {detail}
       </p>
     </article>
@@ -722,17 +897,17 @@ function SectionHeader({
   side?: React.ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 border-b border-stone-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-3xl">
-        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-normal text-teal-700">
-          <span className="h-px w-5 bg-teal-500" aria-hidden="true" />
+        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-normal text-stone-500">
+          <span className="h-2 w-2 rounded-full bg-[#d7ff71] ring-4 ring-stone-950" aria-hidden="true" />
           {eyebrow}
         </p>
-        <h2 className="text-xl font-black tracking-normal text-stone-950 sm:text-[22px]">
+        <h2 className="text-[22px] font-black tracking-normal text-stone-950 sm:text-2xl">
           {title}
         </h2>
         {description && (
-          <p className="mt-1.5 text-xs font-medium leading-relaxed text-stone-500">
+          <p className="mt-1.5 text-xs font-semibold leading-relaxed text-stone-500">
             {description}
           </p>
         )}
@@ -751,7 +926,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-stone-200 bg-white shadow-[0_14px_34px_-30px_rgba(28,25,23,0.45)] ${className}`}
+      className={`rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[0_18px_52px_-42px_rgba(25,23,20,0.6)] ring-1 ring-white/80 ${className}`}
     >
       {children}
     </div>
@@ -775,20 +950,20 @@ function FunnelBar({
       ? `${((count / prevCount) * 100).toFixed(1)}%`
       : null;
   return (
-    <div className="grid grid-cols-[6.25rem_minmax(0,1fr)_3.25rem] items-center gap-2.5 sm:grid-cols-[8.5rem_minmax(0,1fr)_4rem] sm:gap-3">
-      <span className="truncate text-right text-[11px] font-bold text-stone-600 sm:text-xs" title={label}>
+    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)_3.5rem] items-center gap-2.5 sm:grid-cols-[9rem_minmax(0,1fr)_4.25rem] sm:gap-3">
+      <span className="truncate text-right text-[11px] font-black text-stone-700 sm:text-xs" title={label}>
         {label}
       </span>
-      <div className="relative h-8 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-inset ring-stone-200/60">
+      <div className="relative h-9 overflow-hidden rounded-full bg-stone-200/70 ring-1 ring-inset ring-stone-300/50">
         <div
-          className="h-full rounded-lg bg-teal-600 transition-all duration-500"
+          className="h-full rounded-full bg-[linear-gradient(90deg,#0f766e,#12b3a6)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500"
           style={{ width: `${Math.max(width, 1)}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-stone-800">
+        <span className="absolute inset-y-1 right-1 flex min-w-10 items-center justify-center rounded-full bg-[#fffdf8]/92 px-2 text-xs font-black tabular-nums text-stone-950 shadow-sm">
           {count.toLocaleString()}
         </span>
       </div>
-      <span className="text-right text-[11px] font-black tabular-nums text-stone-400 sm:text-xs">
+      <span className="text-right text-[11px] font-black tabular-nums text-stone-500 sm:text-xs">
         {convRate ?? "—"}
       </span>
     </div>
@@ -802,32 +977,32 @@ const REACH_TONES: Record<
   { step: string; bar: string; soft: string; text: string; border: string }
 > = {
   teal: {
-    step: "bg-teal-600 text-white",
-    bar: "bg-teal-600",
+    step: "bg-teal-950 text-teal-50",
+    bar: "bg-[linear-gradient(90deg,#0f766e,#14b8a6)]",
     soft: "bg-teal-50",
     text: "text-teal-800",
-    border: "border-teal-100",
+    border: "border-teal-200/80",
   },
   indigo: {
-    step: "bg-indigo-600 text-white",
-    bar: "bg-indigo-600",
+    step: "bg-indigo-950 text-indigo-50",
+    bar: "bg-[linear-gradient(90deg,#3730a3,#6366f1)]",
     soft: "bg-indigo-50",
     text: "text-indigo-800",
-    border: "border-indigo-100",
+    border: "border-indigo-200/80",
   },
   emerald: {
-    step: "bg-emerald-600 text-white",
-    bar: "bg-emerald-600",
+    step: "bg-emerald-950 text-emerald-50",
+    bar: "bg-[linear-gradient(90deg,#047857,#10b981)]",
     soft: "bg-emerald-50",
     text: "text-emerald-800",
-    border: "border-emerald-100",
+    border: "border-emerald-200/80",
   },
   rose: {
-    step: "bg-rose-600 text-white",
-    bar: "bg-rose-600",
+    step: "bg-rose-950 text-rose-50",
+    bar: "bg-[linear-gradient(90deg,#be123c,#fb7185)]",
     soft: "bg-rose-50",
     text: "text-rose-800",
-    border: "border-rose-100",
+    border: "border-rose-200/80",
   },
 };
 
@@ -854,12 +1029,12 @@ function ReachStepRow({
   const width = max > 0 ? (count / max) * 100 : 0;
 
   return (
-    <li className="border-b border-stone-100 pb-4 last:border-b-0">
+    <li className="rounded-lg border border-stone-200/80 bg-white/55 px-3 py-3 shadow-[0_10px_26px_-24px_rgba(25,23,20,0.4)] transition hover:bg-white">
       <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-center">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-black tabular-nums ${colors.step}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-black tabular-nums shadow-sm ${colors.step}`}
             >
               {String(index + 1).padStart(2, "0")}
             </span>
@@ -867,17 +1042,17 @@ function ReachStepRow({
               <p className="truncate text-sm font-black text-stone-900" title={label}>
                 {label}
               </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-stone-100 ring-1 ring-inset ring-stone-200/70">
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-stone-200/70 ring-1 ring-inset ring-stone-300/50">
                 <span
-                  className={`block h-full rounded-full ${colors.bar}`}
+                  className={`block h-full rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] ${colors.bar}`}
                   style={{ width: `${Math.max(width, count > 0 ? 4 : 0)}%` }}
                 />
               </div>
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-100 bg-stone-50/70 text-center">
-          <div className="border-r border-stone-100 px-2 py-2.5">
+        <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200/80 bg-[#fffdf8] text-center shadow-sm">
+          <div className="border-r border-stone-200/70 px-2 py-2.5">
             <p className="text-base font-black tabular-nums text-stone-950">
               {count.toLocaleString()}
               <span className="ml-0.5 text-[11px] text-stone-500">人</span>
@@ -886,7 +1061,7 @@ function ReachStepRow({
               到達
             </p>
           </div>
-          <div className={`border-r border-stone-100 px-2 py-2.5 ${colors.soft}`}>
+          <div className={`border-r border-stone-200/70 px-2 py-2.5 ${colors.soft}`}>
             <p className={`text-base font-black tabular-nums ${colors.text}`}>
               {pct(rateFromBase)}
             </p>
@@ -923,18 +1098,22 @@ function ReachSummaryCard({
 }) {
   const colors = REACH_TONES[tone];
   return (
-    <div className={`rounded-lg border ${colors.border} bg-white p-4 shadow-[0_10px_28px_-26px_rgba(28,25,23,0.42)]`}>
-      <p className="text-[11px] font-black text-stone-500">{label}</p>
+    <div className={`relative overflow-hidden rounded-lg border ${colors.border} bg-[#fffdf8] p-4 shadow-[0_18px_44px_-38px_rgba(25,23,20,0.56)] ring-1 ring-white/80`}>
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-1 ${colors.bar}`}
+      />
+      <p className="pt-1 text-[11px] font-black text-stone-500">{label}</p>
       <div className="mt-3 flex items-end justify-between gap-3">
         <p className="text-3xl font-black leading-none tabular-nums text-stone-950">
           {count.toLocaleString()}
           <span className="ml-1 text-sm text-stone-500">人</span>
         </p>
-        <span className={`rounded-lg px-2.5 py-1 text-sm font-black tabular-nums ${colors.soft} ${colors.text}`}>
+        <span className={`rounded-md px-2.5 py-1 text-sm font-black tabular-nums ${colors.soft} ${colors.text}`}>
           {pct(rate)}
         </span>
       </div>
-      <p className="mt-3 border-t border-stone-100 pt-3 text-[11px] font-medium leading-relaxed text-stone-500">
+      <p className="mt-3 border-t border-stone-100 pt-3 text-[11px] font-semibold leading-relaxed text-stone-500">
         {sub}
       </p>
     </div>
@@ -955,15 +1134,15 @@ function DistributionBar({
   const width = max > 0 ? (count / max) * 100 : 0;
   return (
     <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
-      <span className="truncate text-right text-[11px] font-bold text-stone-600 sm:text-xs" title={label}>
+      <span className="truncate text-right text-[11px] font-black text-stone-700 sm:text-xs" title={label}>
         {label}
       </span>
-      <div className="relative h-8 overflow-hidden rounded-lg bg-stone-100 ring-1 ring-inset ring-stone-200/60">
+      <div className="relative h-8 overflow-hidden rounded-full bg-stone-200/70 ring-1 ring-inset ring-stone-300/50">
         <div
-          className={`h-full rounded-lg transition-all duration-500 ${color ?? "bg-sky-500/80"}`}
+          className={`h-full rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-500 ${color ?? "bg-[linear-gradient(90deg,#0369a1,#38bdf8)]"}`}
           style={{ width: `${Math.max(width, 1)}%` }}
         />
-        <span className="absolute inset-0 flex items-center justify-end px-3 text-xs font-black tabular-nums text-stone-800">
+        <span className="absolute inset-y-1 right-1 flex min-w-10 items-center justify-center rounded-full bg-[#fffdf8]/92 px-2 text-xs font-black tabular-nums text-stone-950 shadow-sm">
           {count.toLocaleString()}
         </span>
       </div>
@@ -991,7 +1170,7 @@ function QuestionReachChart({
       <h3 className="mb-4 text-xs font-black uppercase tracking-normal text-stone-500">
         {title}
       </h3>
-      <div className="flex items-end gap-1 h-32">
+      <div className="flex h-32 items-end gap-1 rounded-lg border border-stone-200/70 bg-white/55 px-3 pt-3">
         {data.map((d) => {
           const height = max > 0 ? (d.count / max) * 100 : 0;
           return (
@@ -1002,9 +1181,9 @@ function QuestionReachChart({
               <span className="text-[10px] font-bold tabular-nums text-stone-500">
                 {d.count || ""}
               </span>
-              <div className="w-full relative" style={{ height: "100px" }}>
+              <div className="relative w-full" style={{ height: "100px" }}>
                 <div
-                  className="absolute bottom-0 w-full rounded-t bg-teal-600 transition-all duration-500"
+                  className="absolute bottom-0 w-full rounded-t bg-[linear-gradient(180deg,#14b8a6,#0f766e)] transition-all duration-500"
                   style={{ height: `${Math.max(height, 2)}%` }}
                 />
               </div>
@@ -1196,9 +1375,9 @@ export default function AdminPage() {
 
   if (!adminKey) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f3ec] px-4 py-8 text-stone-950 sm:px-6">
-        <div className="grid w-full max-w-[980px] overflow-hidden rounded-lg border border-stone-200 bg-white shadow-[0_28px_80px_-54px_rgba(28,25,23,0.65)] md:grid-cols-[1fr_0.92fr]">
-          <div className="hidden border-r border-stone-200 bg-[#171814] p-9 text-white md:flex md:flex-col md:justify-between lg:p-11">
+      <div className="flex min-h-screen items-center justify-center bg-[#f1efe7] px-4 py-8 text-stone-950 sm:px-6">
+        <div className="grid w-full max-w-[980px] overflow-hidden rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[0_34px_100px_-60px_rgba(25,23,20,0.72)] ring-1 ring-white/80 md:grid-cols-[1fr_0.92fr]">
+          <div className="hidden border-r border-white/[0.08] bg-[#10120f] p-9 text-white md:flex md:flex-col md:justify-between lg:p-11">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
                 <svg
@@ -1251,7 +1430,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="bg-white p-7 sm:p-10 lg:p-12">
+          <div className="bg-[#fffdf8] p-7 sm:p-10 lg:p-12">
             <div className="mb-8 flex items-center gap-3 md:hidden">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71]">
                 <svg
@@ -1344,7 +1523,7 @@ export default function AdminPage() {
   if (loading && !stats) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f3ec]">
-        <div className="rounded-lg border border-stone-200 bg-white px-8 py-7 text-center shadow-[0_20px_60px_-44px_rgba(28,25,23,0.6)]">
+        <div className="rounded-lg border border-stone-200/80 bg-[#fffdf8] px-8 py-7 text-center shadow-[0_22px_70px_-48px_rgba(25,23,20,0.65)] ring-1 ring-white/80">
           <span className="mx-auto mb-4 block h-9 w-9 animate-spin rounded-full border-[3px] border-stone-200 border-t-teal-600" />
           <p className="text-sm font-bold text-stone-900">読み込み中</p>
           <p className="mt-1 text-xs text-stone-500">少し時間がかかります</p>
@@ -1371,6 +1550,18 @@ export default function AdminPage() {
     ...(stats.paywallFunnel ?? []).map((f) => f.count),
     1,
   );
+  const unmeiFunnelMax = Math.max(
+    ...(stats.unmei?.funnel ?? []).map((f) => f.count),
+    1,
+  );
+  const unmeiRevenueLabel =
+    stats.unmei.revenue.currencies.length > 0
+      ? formatNetRevenue(stats.unmei.revenue.currencies)
+      : formatMoney(0, "jpy");
+  const unmeiLpCount = stats.unmei.funnel[0]?.count ?? 0;
+  const unmeiPurchaseCount = stats.unmei.purchases.total;
+  const unmeiReadingCount =
+    stats.unmei.funnel.find((step) => step.label === "鑑定表示")?.count ?? 0;
   const fc = stats.friendCountDistribution;
   const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
   const coreReady = stats.coreKpis.dataQuality.ready;
@@ -1520,6 +1711,22 @@ export default function AdminPage() {
       rows.push([s.label, String(s.count)]),
     );
     rows.push([]);
+    rows.push(["# 運命の設計図"]);
+    rows.push(["ステップ", "件数"]);
+    stats.unmei.funnel.forEach((s) => rows.push([s.label, String(s.count)]));
+    rows.push([
+      "購入内訳",
+      `通常 ${stats.unmei.purchases.basic} / アップグレード ${stats.unmei.purchases.upgrade}`,
+    ]);
+    rows.push(["出生フォーム保存率", pct(stats.unmei.birthForm.submitRate)]);
+    rows.push(["運命バッジクリック率", pct(stats.unmei.navBadge.clickRate)]);
+    stats.unmei.revenue.currencies.forEach((currency) =>
+      rows.push([
+        `運命売上 (${currency.currency.toUpperCase()})`,
+        String(currency.netRevenueMinor),
+      ]),
+    );
+    rows.push([]);
     if ((stats.paywallSources ?? []).length > 0) {
       rows.push(["# 解除ボタン押下の内訳"]);
       rows.push(["source", "クリック回数"]);
@@ -1605,6 +1812,93 @@ export default function AdminPage() {
   const headlineFriendRate = headlines.friendRate;
   const periodRevenuePurchases = headlines.purchases;
   const headlineRevenue = headlines.revenueLabel;
+  const fullAccessCtaCount = countStep(
+    stats.paywallFunnel ?? [],
+    "購入CTA押下",
+    3,
+  );
+  const fullAccessStripeCount = countStep(
+    stats.paywallFunnel ?? [],
+    "Stripe到達",
+    4,
+  );
+  const fullAccessPurchaseCount = countStep(
+    stats.paywallFunnel ?? [],
+    "決済完了",
+    5,
+  );
+  const fullAccessStripeRate = rateOrNull(
+    fullAccessStripeCount,
+    fullAccessCtaCount,
+  );
+  const fullAccessCompleteRate = rateOrNull(
+    fullAccessPurchaseCount,
+    fullAccessStripeCount,
+  );
+  const unmeiStartCount = countStep(stats.unmei.funnel, "購入開始", 1);
+  const unmeiStripeCount = countStep(stats.unmei.funnel, "Stripe到達", 2);
+  const unmeiStripeRate = rateOrNull(unmeiStripeCount, unmeiStartCount);
+  const unmeiPurchaseRate = rateOrNull(unmeiPurchaseCount, unmeiLpCount);
+  const dashboardInsights = [
+    {
+      label: "データ",
+      value: coreReady ? "正常" : "要確認",
+      detail: coreReady
+        ? `決済照合 ${pct(stats.coreKpis.dataQuality.paymentUserMatchRate)}`
+        : `${stats.coreKpis.dataQuality.issues.length.toLocaleString()}件の確認事項`,
+      tone: coreReady ? "emerald" : "amber",
+      href: "#overview",
+      sectionId: "overview",
+    },
+    {
+      label: "売上",
+      value: headlineRevenue,
+      detail: `${periodRevenuePurchases.toLocaleString()}件の決済・返金後`,
+      tone: periodRevenuePurchases > 0 ? "emerald" : "stone",
+      href: "#revenue",
+      sectionId: "revenue",
+    },
+    {
+      label: "完全版",
+      value: nullablePct(fullAccessStripeRate),
+      detail: `購入CTA→Stripe / 完了率 ${nullablePct(fullAccessCompleteRate)}`,
+      tone: toneForRate(fullAccessStripeRate, 0.82, 0.58),
+      href: "#revenue",
+      sectionId: "revenue",
+    },
+    {
+      label: "運命",
+      value: nullablePct(unmeiPurchaseRate),
+      detail: `LP→決済完了 / Stripe到達 ${nullablePct(unmeiStripeRate)}`,
+      tone:
+        unmeiLpCount === 0
+          ? "stone"
+          : unmeiPurchaseCount > 0
+            ? "indigo"
+            : "amber",
+      href: "#unmei",
+      sectionId: "unmei",
+    },
+    {
+      label: "友達",
+      value: pctOrDash(headlineFriendRate, headlineFriendDenominator),
+      detail: `${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`,
+      tone: toneForRate(
+        headlineFriendDenominator > 0 ? headlineFriendRate : null,
+        0.22,
+        0.1,
+      ),
+      href: "#friend-funnel",
+      sectionId: "friend-funnel",
+    },
+  ] satisfies {
+    label: string;
+    value: string;
+    detail: string;
+    tone: InsightTone;
+    href: string;
+    sectionId: string;
+  }[];
 
   // ===== 前期間比較チップ (auto=直前の同期間 / custom=日付指定 / none=なし) =====
   const prevRangeInfo = resolveCompareRange(
@@ -1674,8 +1968,8 @@ export default function AdminPage() {
     : null;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#f5f3ec] text-stone-950">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col border-r border-stone-800 bg-[#171814] text-white lg:flex">
+    <div className="min-h-screen overflow-x-clip bg-[#f1efe7] text-stone-950">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-stone-800 bg-[#10120f] text-white shadow-[18px_0_60px_-42px_rgba(0,0,0,0.85)] lg:flex">
         <div className="flex h-[76px] items-center gap-3 border-b border-white/[0.08] px-5">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
             <svg
@@ -1711,13 +2005,13 @@ export default function AdminPage() {
               onClick={() => setActiveSection(item.id)}
               className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold transition ${
                 activeSection === item.id
-                  ? "bg-white text-stone-950"
+                  ? "bg-[#d7ff71] text-stone-950 shadow-[0_12px_28px_-22px_rgba(215,255,113,0.8)]"
                   : "text-stone-400 hover:bg-white/[0.06] hover:text-stone-100"
               }`}
               aria-current={activeSection === item.id ? "location" : undefined}
             >
               {activeSection === item.id && (
-                <span className="absolute -left-1 h-5 w-1 rounded bg-[#d7ff71]" />
+                <span className="absolute -left-1 h-6 w-1 rounded bg-[#d7ff71]" />
               )}
               <span
                 className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
@@ -1766,7 +2060,7 @@ export default function AdminPage() {
         </nav>
 
         <div className="border-t border-white/[0.08] p-3">
-          <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-4">
+          <div className="rounded-lg border border-white/[0.09] bg-white/[0.05] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
                 <span
@@ -1791,8 +2085,8 @@ export default function AdminPage() {
         </div>
       </aside>
 
-      <div className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 border-b border-stone-200 bg-[#fbfaf6]/95 backdrop-blur">
+      <div className="lg:pl-[264px]">
+        <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#fffdf8]/92 shadow-[0_16px_40px_-36px_rgba(25,23,20,0.55)] backdrop-blur">
           <div className="flex min-h-[68px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71] lg:hidden">
@@ -1817,7 +2111,7 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-[10px] font-bold text-stone-600 shadow-sm sm:inline-flex">
+              <span className="hidden items-center gap-2 rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 py-2 text-[10px] font-bold text-stone-600 shadow-sm sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
                 <span className="hidden xl:inline">{selectedPeriodLabel}の</span>
                 <span className="font-black tabular-nums text-stone-950">
@@ -1826,14 +2120,14 @@ export default function AdminPage() {
               </span>
               <a
                 href="/admin/social"
-                className="hidden h-10 items-center rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 md:inline-flex"
+                className="hidden h-10 items-center rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 md:inline-flex"
               >
                 SNS素材
               </a>
               <button
                 onClick={downloadCsv}
                 aria-label="CSVを出力"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 sm:px-3.5"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 sm:px-3.5"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1876,7 +2170,7 @@ export default function AdminPage() {
         </header>
 
         <nav
-          className="sticky top-[68px] z-10 flex gap-1 overflow-x-auto border-b border-stone-200 bg-[#f5f3ec]/95 px-4 py-2 backdrop-blur lg:hidden"
+          className="sticky top-[68px] z-10 flex gap-1 overflow-x-auto border-b border-stone-200/80 bg-[#f1efe7]/95 px-4 py-2 backdrop-blur lg:hidden"
           aria-label="セクションメニュー"
         >
           {ADMIN_NAV_ITEMS.map((item) => (
@@ -1896,10 +2190,14 @@ export default function AdminPage() {
           ))}
         </nav>
 
-        <main className="mx-auto flex max-w-[1500px] flex-col gap-10 px-4 py-5 sm:px-6 sm:py-7 xl:px-8 xl:py-8">
+        <main className="mx-auto flex max-w-[1500px] flex-col gap-11 px-4 py-5 sm:px-6 sm:py-7 xl:px-8 xl:py-8">
           <section id="overview" className="scroll-mt-36 lg:scroll-mt-28">
-            <div className="grid gap-4 xl:grid-cols-[0.86fr_1.8fr]">
-              <div className="rounded-lg border border-stone-800 bg-[#171814] p-6 text-white shadow-[0_20px_58px_-46px_rgba(28,25,23,0.75)] sm:p-7">
+            <div className="grid gap-4 xl:grid-cols-[0.9fr_1.85fr]">
+              <div className="relative overflow-hidden rounded-lg border border-stone-800 bg-[#10120f] p-6 text-white shadow-[0_28px_78px_-52px_rgba(0,0,0,0.85)] sm:p-7">
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 top-0 h-1.5 bg-[#d7ff71]"
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-normal text-stone-300">
                     Executive pulse
@@ -1912,7 +2210,7 @@ export default function AdminPage() {
                 <h2 className="mt-8 text-3xl font-black leading-tight tracking-normal text-white sm:text-4xl">
                   {selectedPeriodLabel}の主要数字
                 </h2>
-                <p className="mt-3 text-sm font-medium leading-7 text-stone-400">
+                <p className="mt-3 text-sm font-semibold leading-7 text-stone-400">
                   まず見る数字です。
                 </p>
                 <div className="mt-8 grid grid-cols-2 gap-2">
@@ -1972,7 +2270,7 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-4 grid gap-3 xl:grid-cols-2">
-              <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-lg border border-stone-200/80 bg-[#fffdf8] p-4 shadow-[0_18px_46px_-40px_rgba(25,23,20,0.55)] ring-1 ring-white/80 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
                     Analysis window
@@ -1981,7 +2279,7 @@ export default function AdminPage() {
                     期間
                   </p>
                 </div>
-                <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-stone-200 bg-stone-50 p-1">
+                <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-stone-200/80 bg-stone-100/80 p-1 shadow-inner">
                   {PRESETS.map((p) => (
                     <button
                       key={p.key}
@@ -2015,7 +2313,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 shadow-[0_12px_30px_-28px_rgba(28,25,23,0.45)] sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-lg border border-stone-200/80 bg-[#fffdf8] p-4 shadow-[0_18px_46px_-40px_rgba(25,23,20,0.55)] ring-1 ring-white/80 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
                     Compare with
@@ -2025,7 +2323,7 @@ export default function AdminPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-lg border border-stone-200 bg-stone-50 p-1">
+                  <div className="flex rounded-lg border border-stone-200/80 bg-stone-100/80 p-1 shadow-inner">
                     {(
                       [
                         { key: "auto", label: "前期間" },
@@ -2070,6 +2368,20 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {dashboardInsights.map((insight) => (
+                <AdminInsightCard
+                  key={insight.label}
+                  label={insight.label}
+                  value={insight.value}
+                  detail={insight.detail}
+                  tone={insight.tone}
+                  href={insight.href}
+                  onClick={() => setActiveSection(insight.sectionId)}
+                />
+              ))}
             </div>
           </section>
 
@@ -2346,6 +2658,139 @@ export default function AdminPage() {
             )}
             </Panel>
         </section>
+
+          <section id="unmei" className="scroll-mt-36 lg:scroll-mt-28">
+            <SectionHeader
+              eyebrow="Unmei"
+              title="運命の設計図"
+              description="LP表示から購入、出生情報、鑑定表示まで"
+              side={
+                <div className="flex items-center gap-4 rounded-lg border border-indigo-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
+                  <div>
+                    <p className="text-[10px] font-bold text-indigo-700">運命売上</p>
+                    <p className="text-lg font-black tabular-nums text-indigo-900">
+                      {unmeiRevenueLabel}
+                    </p>
+                  </div>
+                </div>
+              }
+            />
+            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <ReachSummaryCard
+                label="LP表示"
+                count={unmeiLpCount}
+                rate={1}
+                sub="運命の設計図ページの未購入LP表示"
+                tone="indigo"
+              />
+              <ReachSummaryCard
+                label="決済完了"
+                count={unmeiPurchaseCount}
+                rate={unmeiLpCount > 0 ? unmeiPurchaseCount / unmeiLpCount : 0}
+                sub={`通常 ${stats.unmei.purchases.basic.toLocaleString()} / アップグレード ${stats.unmei.purchases.upgrade.toLocaleString()}`}
+                tone="emerald"
+              />
+              <ReachSummaryCard
+                label="出生情報保存"
+                count={stats.unmei.birthForm.submitted}
+                rate={stats.unmei.birthForm.submitRate}
+                sub={`${stats.unmei.birthForm.viewed.toLocaleString()}表示 / ${stats.unmei.birthForm.skipped.toLocaleString()}スキップ`}
+                tone="teal"
+              />
+              <ReachSummaryCard
+                label="鑑定表示"
+                count={unmeiReadingCount}
+                rate={
+                  stats.unmei.birthForm.submitted > 0
+                    ? unmeiReadingCount / stats.unmei.birthForm.submitted
+                    : 0
+                }
+                sub="生成完了後に鑑定を表示したセッション"
+                tone="rose"
+              />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <Panel className="p-5 sm:p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="rounded bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
+                    運命の設計図
+                  </span>
+                  <span className="text-[11px] font-medium text-stone-400">
+                    /unmei
+                  </span>
+                </div>
+                <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
+                  <span className="w-28 text-right">ステップ</span>
+                  <span className="flex-1">件数</span>
+                  <span className="w-16 text-right">前段比</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {stats.unmei.funnel.map((step, i) => (
+                    <FunnelBar
+                      key={step.label}
+                      label={step.label}
+                      count={step.count}
+                      max={unmeiFunnelMax}
+                      prevCount={
+                        i > 0 ? stats.unmei.funnel[i - 1].count : undefined
+                      }
+                    />
+                  ))}
+                </div>
+                <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
+                  購入開始は専用イベントと既存の purchase_cta_clicked(page=unmei) を同一セッションで重複排除しています。
+                </p>
+              </Panel>
+
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-stone-800">
+                  運命ページの要点
+                </h3>
+                <dl className="mt-4 divide-y divide-stone-100">
+                  <div className="flex items-end justify-between gap-4 py-3 first:pt-0">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      Stripe到達率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-indigo-800">
+                      {pct(
+                        stats.unmei.funnel[1]?.count
+                          ? (stats.unmei.funnel[2]?.count ?? 0) /
+                              stats.unmei.funnel[1].count
+                          : 0,
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      LP→購入率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-emerald-800">
+                      {pct(unmeiLpCount > 0 ? unmeiPurchaseCount / unmeiLpCount : 0)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      出生情報保存率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-teal-800">
+                      {pct(stats.unmei.birthForm.submitRate)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      バッジクリック率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-stone-950">
+                      {pct(stats.unmei.navBadge.clickRate)}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-4 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
+                  表示 {stats.unmei.navBadge.shown.toLocaleString()} / クリック {stats.unmei.navBadge.clicked.toLocaleString()}
+                </div>
+              </Panel>
+            </div>
+          </section>
 
         {/* 本人コホートと友達側を分けた友達診断ファネル */}
           <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">

@@ -13,7 +13,8 @@ type Props = {
     prefecture?: string | null;
     city?: string | null;
   };
-  required?: boolean; // 生年月日を必須にする (¥1,980 purchase)
+  required?: boolean; // 生年月日を必須にする (unmei purchase)
+  analyticsPage?: "unmei";
 };
 
 const PREFS = [
@@ -66,7 +67,13 @@ const PREFS = [
   "沖縄県",
 ];
 
-export function BirthProfileForm({ onSaved, onSkipped, initial, required }: Props) {
+export function BirthProfileForm({
+  onSaved,
+  onSkipped,
+  initial,
+  required,
+  analyticsPage,
+}: Props) {
   const [birthDate, setBirthDate] = useState(initial?.birth_date ?? "");
   const [timeUnknown, setTimeUnknown] = useState(initial?.time_unknown ?? false);
   const [birthTime, setBirthTime] = useState(initial?.birth_time ?? "12:00");
@@ -76,8 +83,11 @@ export function BirthProfileForm({ onSaved, onSkipped, initial, required }: Prop
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    track("birth_form_view");
-  }, []);
+    track(
+      "birth_form_view",
+      analyticsPage ? { metadata: { page: analyticsPage } } : undefined,
+    );
+  }, [analyticsPage]);
 
   function validate() {
     if (required && !birthDate) return "生年月日を入力してください";
@@ -109,6 +119,7 @@ export function BirthProfileForm({ onSaved, onSkipped, initial, required }: Prop
           time_unknown: timeUnknown,
           prefecture: prefecture || null,
           city: city || null,
+          analytics_page: analyticsPage ?? null,
           // for simplicity, latitude/longitude resolved server-side later
         }),
       });
@@ -118,9 +129,15 @@ export function BirthProfileForm({ onSaved, onSkipped, initial, required }: Prop
         setSubmitting(false);
         return;
       }
-      track("birth_form_submit", { metadata: { has_time: !timeUnknown, has_place: !!prefecture } });
+      track("birth_form_submit", {
+        metadata: {
+          has_time: !timeUnknown,
+          has_place: !!prefecture,
+          ...(analyticsPage ? { page: analyticsPage } : {}),
+        },
+      });
       onSaved?.();
-    } catch (err) {
+    } catch {
       setError("ネットワークエラー");
     } finally {
       setSubmitting(false);
@@ -128,7 +145,10 @@ export function BirthProfileForm({ onSaved, onSkipped, initial, required }: Prop
   }
 
   function handleSkip() {
-    track("birth_form_skip");
+    track(
+      "birth_form_skip",
+      analyticsPage ? { metadata: { page: analyticsPage } } : undefined,
+    );
     onSkipped?.();
   }
 

@@ -29,7 +29,6 @@ import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoLockedState } from "@/components/result/TakoLockedState";
-import { FriendLoveSection } from "@/components/result/FriendLoveSection";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { JohariWindow } from "@/components/result/JohariWindow";
@@ -39,9 +38,7 @@ import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
-  resolveLossPoints,
   resolveLoveScene,
-  resolveNumaru,
 } from "@/lib/friend-love-content";
 import { LOVE_BY_TYPE_32 } from "@/lib/love-by-type-32";
 import type { ContentItem } from "@/lib/mutual-result-content";
@@ -274,11 +271,9 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
     const sheetHero = heroColorsForGroup(thirtyTwoGroup(type32));
     const sheetDeep = buildDeepDive(data.selfScores, f.perceivedScores);
     const sheetLove = resolveFriendLove(f.perceivedScores);
-    const sheetNuma = resolveNumaru(f.perceivedScores);
     // 見出し・本文の「誰から見たか」。空/フォールバック名は総称「友達」に落とす。
     const rawName = f.name.trim();
     const viewer = rawName && rawName !== "ともだち" ? `${rawName}さん` : "友達";
-    const sheetLoss = resolveLossPoints(f.perceivedScores);
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
     // 「◯◯さんから見たアナタの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
     // 表示は先頭2段落 (具体的な長所の描写) だけ。3段落目以降の内省パート
@@ -317,8 +312,6 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
       hero: sheetHero,
       deep: sheetDeep,
       love: sheetLove,
-      numa: sheetNuma,
-      loss: sheetLoss,
       loveProse,
       concernItems,
       scores: f.perceivedScores,
@@ -603,29 +596,9 @@ export default async function TakoPage({ params, searchParams }: PageProps) {
                                   ))}
                                 </div>
                               )}
-                              <FriendLoveSection
-                                numa={sheetLocked ? null : sh.numa}
-                                loss={sheetLocked ? [] : sh.loss}
-                                viewer={sh.viewer}
-                                lockedBlocks={
-                                  sheetLocked
-                                    ? {
-                                        numa: (
-                                          <TakoLockedBlock
-                                            source="tako_numa_card"
-                                            description={`完全版で、${sh.viewer}の回答からわかった「アナタに落ちる人」の特徴と、沼らせる瞬間が読めます。`}
-                                          />
-                                        ),
-                                        loss: (
-                                          <TakoLockedBlock
-                                            source="tako_loss_card"
-                                            description={`完全版で、${sh.viewer}にまだ伝わってない魅力と、損を取り返すコツが読めます。`}
-                                          />
-                                        ),
-                                      }
-                                    : undefined
-                                }
-                              />
+                              {/* 「アナタに沼る人」「損してるポイント」(FriendLoveSection) は
+                                  2026-07-28 削除指示で撤去 (コンポーネントと
+                                  friend-love-content の resolver は残置)。 */}
                             </section>
                           ) : null
                         }

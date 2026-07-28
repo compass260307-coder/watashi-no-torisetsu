@@ -6,6 +6,7 @@ import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
+import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import { isReadingReady } from "@/lib/unmei/reading";
 import { computeMoonDailyArc } from "@/lib/unmei/moon-arc";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
@@ -87,18 +88,28 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
 // PC: 左=出生図イメージ / 右=商品名・説明・価格・CTA。SP: 縦積み。
-// 価格: 通常 ¥1,980 / 完全版 (¥499) 保有者は ¥1,480 (unmei_upgrade)。
+// 価格: セール中 (2026-07-28〜) は一律 ¥299 (通常時: ¥1,980 / 完全版保有者 ¥1,480=unmei_upgrade)。
 // hasFull はログイン済みならサーバ判定、未ログインは UnmeiPriceCta が localStorage の
 // owner_token から判定する (決済APIが最終検証するため表示用の判定でよい)。
 function UnmeiTeaserLp({
   ownerToken,
   hasFull,
+  trackView = true,
 }: {
   ownerToken: string | null;
   hasFull: boolean;
+  trackView?: boolean;
 }) {
   return (
       <main className="overflow-x-clip bg-white">
+        {trackView ? (
+          <UnmeiViewTracker
+            eventName="unmei_lp_view"
+            ownerToken={ownerToken}
+            state={hasFull ? "upgrade_eligible" : "standard"}
+            product={hasFull ? "unmei_upgrade" : "unmei"}
+          />
+        ) : null}
         {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いインディゴにし、直下の
             「できること」カードが帯の境目に重なるようにする (2026-07-26 指示)。
             コンテナはフッター (TopFooter) と同じ「padding 外側 + 内側 max-w-[1080px]」。 */}
@@ -310,11 +321,17 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
     return <UnmeiClient initialState="pending" />;
   }
   if (preview === "ready") {
-    return <UnmeiReading reading={PREVIEW_READING} />;
+    return <UnmeiReading reading={PREVIEW_READING} trackView={false} />;
   }
   if (preview === "teaser" || preview === "teaser_full") {
-    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥1,980) / teaser_full (¥1,480 表示)
-    return <UnmeiTeaserLp ownerToken={null} hasFull={preview === "teaser_full"} />;
+    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常) / teaser_full (完全版保有者の表示)
+    return (
+      <UnmeiTeaserLp
+        ownerToken={null}
+        hasFull={preview === "teaser_full"}
+        trackView={false}
+      />
+    );
   }
 
   const session = await getSession();

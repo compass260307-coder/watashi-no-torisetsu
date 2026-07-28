@@ -27,7 +27,10 @@ import { hasFullAccess } from "@/lib/entitlements";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { normalizePaywallSource } from "@/lib/paywall-source";
+import {
+  DIRECT_PAYWALL_SOURCE,
+  normalizePaywallSource,
+} from "@/lib/paywall-source";
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
@@ -260,6 +263,8 @@ export async function POST(request: NextRequest) {
   }
   const body = parsedBody.value;
   const checkoutLocale: CheckoutLocale = body.locale === "ko" ? "ko" : "ja";
+  // 戻り先は allowlist 化 (任意 URL への open redirect を防ぐ)。既定 me。
+  const returnTo = body.return_to === "tako" ? "tako" : "me";
   const checkoutCopy = CHECKOUT_COPY[checkoutLocale];
   const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
   const priceId = getFullAccessPriceId(checkoutLocale);
@@ -273,7 +278,11 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-  const paywallSource = normalizePaywallSource(body.paywall_source);
+  const normalizedPaywallSource = normalizePaywallSource(body.paywall_source);
+  const paywallSource =
+    returnTo === "tako" && normalizedPaywallSource === DIRECT_PAYWALL_SOURCE
+      ? "tako_promo_card"
+      : normalizedPaywallSource;
   const bodyToken =
     body.owner_token === undefined || body.owner_token === null
       ? ""
@@ -344,8 +353,6 @@ export async function POST(request: NextRequest) {
   const ownerToken = (buyer?.owner_token ?? "").trim();
   const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
-  // 戻り先は allowlist 化 (任意 URL への open redirect を防ぐ)。既定 me。
-  const returnTo = body.return_to === "tako" ? "tako" : "me";
   const successPath =
     returnTo === "tako"
       ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
@@ -425,6 +432,7 @@ export async function POST(request: NextRequest) {
         guest: userId ? "0" : "1",
         email: customerEmail ?? "",
         paywall_source: paywallSource,
+        return_to: returnTo,
         locale: checkoutLocale,
       },
       success_url: successUrl,
@@ -452,6 +460,7 @@ export async function POST(request: NextRequest) {
         stripe_session_id: stripeSession.id,
         product: "full_access",
         source: paywallSource,
+        return_to: returnTo,
         locale: checkoutLocale,
       },
     });

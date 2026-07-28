@@ -7,6 +7,23 @@
 export const DIRECT_PAYWALL_SOURCE = "paywall_direct";
 export const FRIEND_INDIVIDUAL_PAYWALL_SOURCE = "friend_individual_paywall";
 
+export const TAKO_PAYWALL_SOURCES = new Set([
+  "tako_lock",
+  "tako_mote_card",
+  "tako_hints_card",
+  "tako_kotsu_card",
+  "tako_wana_card",
+  "tako_johari_card",
+  "tako_numa_card",
+  "tako_loss_card",
+  "tako_kirai_card",
+  "tako_kotsu_wana_card",
+  // 2人目以降の友達シート全ロック (1人目無料モデル 2026-07-28)
+  "tako_sheet_lock",
+  "tako_unlocked",
+  "tako_promo_card",
+]);
+
 const PAYWALL_SOURCES = new Set([
   DIRECT_PAYWALL_SOURCE,
   FRIEND_INDIVIDUAL_PAYWALL_SOURCE,
@@ -26,17 +43,7 @@ const PAYWALL_SOURCES = new Set([
   "aisho_scene",
   // 下部ナビのロック中「相性」タブ → 課金カードモーダル (2026-07-28)
   "nav_aisho_locked",
-  "tako_lock",
-  "tako_mote_card",
-  "tako_hints_card",
-  "tako_kotsu_card",
-  "tako_wana_card",
-  "tako_johari_card",
-  "tako_numa_card",
-  "tako_loss_card",
-  // 2人目以降の友達シート全ロック (1人目無料モデル 2026-07-28)
-  "tako_sheet_lock",
-  "tako_promo_card",
+  ...TAKO_PAYWALL_SOURCES,
 ]);
 
 export function normalizePaywallSource(value: unknown): string {

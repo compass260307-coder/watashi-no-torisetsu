@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
@@ -6,11 +6,11 @@ import { readJsonObject } from "@/lib/api-security";
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });
 
-  const session = await getSession(request as any);
+  const session = await getSession(request);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabaseAdmin
@@ -25,28 +25,34 @@ export async function GET(request: Request) {
   return NextResponse.json({ ok: true, profile: data });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });
 
-  const session = await getSession(request as any);
+  const session = await getSession(request);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const parsed = await readJsonObject(request, 8 * 1024);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
-  const body = parsed.value as any;
+  const body = parsed.value;
 
   // basic validation
-  const birth_date = body.birth_date ?? null;
+  const birth_date =
+    typeof body.birth_date === "string" ? body.birth_date : null;
   if (!birth_date) return NextResponse.json({ error: "birth_date required" }, { status: 400 });
 
-  const time_unknown = !!body.time_unknown;
-  const place_unknown = !!body.place_unknown;
-  const birth_time = time_unknown ? null : body.birth_time ?? null;
-  const prefecture = body.prefecture ?? null;
-  const city = body.city ?? null;
+  const time_unknown = body.time_unknown === true;
+  const place_unknown = body.place_unknown === true;
+  const birth_time =
+    time_unknown || typeof body.birth_time !== "string"
+      ? null
+      : body.birth_time;
+  const prefecture =
+    typeof body.prefecture === "string" ? body.prefecture : null;
+  const city = typeof body.city === "string" ? body.city : null;
   const latitude = typeof body.latitude === "number" ? body.latitude : null;
   const longitude = typeof body.longitude === "number" ? body.longitude : null;
+  const analyticsPage = body.analytics_page === "unmei" ? "unmei" : null;
 
   try {
     // upsert
@@ -89,6 +95,7 @@ export async function POST(request: Request) {
       metadata: {
         has_time: !!birth_time,
         has_place: !place_unknown && !!prefecture,
+        ...(analyticsPage ? { page: analyticsPage } : {}),
       },
     });
 
@@ -99,11 +106,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });
 
-  const session = await getSession(request as any);
+  const session = await getSession(request);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {

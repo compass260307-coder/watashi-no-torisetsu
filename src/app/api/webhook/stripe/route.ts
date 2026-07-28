@@ -527,6 +527,7 @@ async function recordPurchaseCompletedEvent(
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? null,
         source: normalizePaywallSource(session.metadata?.paywall_source),
+        return_to: session.metadata?.return_to === "tako" ? "tako" : "me",
         locale,
       },
     });
@@ -554,17 +555,31 @@ async function handleCheckoutPaid(
   if (metadata.product === "unmei") {
     // guest 対応で email で紐付け。unmei フラグを立て、natal_readings プレースホルダを挿入。
     await grantUnmeiByEmailOrId(session, userId);
+    const linkedUserId = userId ?? (await resolveUserIdForSession(session));
     // record purchase event specific to unmei
     try {
       await supabaseAdmin.from("events").insert({
         event_name: "unmei_purchase_complete",
-        metadata: { stripe_session_id: session.id, amount_total: session.amount_total ?? null },
+        owner_token:
+          typeof metadata.owner_token === "string" && metadata.owner_token
+            ? metadata.owner_token
+            : null,
+        metadata: {
+          stripe_session_id: session.id,
+          user_id: linkedUserId,
+          owner_token:
+            typeof metadata.owner_token === "string" && metadata.owner_token
+              ? metadata.owner_token
+              : null,
+          product: "unmei",
+          amount_total: session.amount_total ?? null,
+          currency: session.currency ?? "jpy",
+        },
       });
     } catch (e) {
       console.error("[webhook] unmei event insert failed:", e);
     }
     // direct generation trigger (max 2 retries)
-    const linkedUserId = userId ?? (await resolveUserIdForSession(session));
     if (linkedUserId) {
       await triggerUnmeiGeneration(linkedUserId);
     }
@@ -598,7 +613,21 @@ async function handleCheckoutPaid(
     try {
       await supabaseAdmin.from("events").insert({
         event_name: "unmei_upgrade_complete",
-        metadata: { stripe_session_id: session.id, user_id: userId, amount_total: session.amount_total ?? null },
+        owner_token:
+          typeof metadata.owner_token === "string" && metadata.owner_token
+            ? metadata.owner_token
+            : null,
+        metadata: {
+          stripe_session_id: session.id,
+          user_id: userId,
+          owner_token:
+            typeof metadata.owner_token === "string" && metadata.owner_token
+              ? metadata.owner_token
+              : null,
+          product: "unmei_upgrade",
+          amount_total: session.amount_total ?? null,
+          currency: session.currency ?? "jpy",
+        },
       });
     } catch (e) {
       console.error("[webhook] unmei_upgrade event insert failed:", e);

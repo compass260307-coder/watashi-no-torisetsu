@@ -27,6 +27,7 @@ import {
   isMissingCoreKpiColumn,
   type CoreKpiPaymentFact,
 } from "@/lib/core-kpis";
+import { TAKO_PAYWALL_SOURCES } from "@/lib/paywall-source";
 
 const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
@@ -115,6 +116,11 @@ export async function computeStats(from: string | null, to: string | null) {
     metadata: Record<string, unknown> | null;
     created_at: string;
   };
+  type UnmeiPurchaseEventRow = StripeEventRow & {
+    event_name: "unmei_purchase_complete" | "unmei_upgrade_complete";
+    owner_token: string | null;
+    created_at: string;
+  };
 
   // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
   // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
@@ -151,6 +157,9 @@ export async function computeStats(from: string | null, to: string | null) {
   };
 
   type SessionRow = { session_id: string | null };
+  type EventMetaSessionRow = SessionRow & {
+    metadata: Record<string, unknown> | null;
+  };
 
   const coreSchemaIssues: string[] = [];
   const recordCoreSchemaIssue = (error: {
@@ -190,6 +199,15 @@ export async function computeStats(from: string | null, to: string | null) {
     coreUserRows,
     paymentHistoryRows,
     kpiPaymentEventRows,
+    unmeiLpRows,
+    unmeiPurchaseStartRows,
+    unmeiReadingRows,
+    unmeiPurchaseEventRows,
+    birthFormViewRows,
+    birthFormSubmitRows,
+    birthFormSkipRows,
+    unmeiBadgeShownRows,
+    unmeiBadgeClickedRows,
   ] = await Promise.all([
     fetchAll<SessionRow>(evRows(["diagnosis_started"])),
     fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
@@ -214,7 +232,7 @@ export async function computeStats(from: string | null, to: string | null) {
       evRows(["friend_landing_viewed"], "session_id, invite_code"),
     ),
     // ----- 課金ファネル -----
-    // metadata.variant='tako' が ¥799 (友達診断) カードの表示。商品別分離用に metadata も取る。
+    // metadata.page/variant で自己診断ページ発と /tako 発を分けるため metadata も取る。
     fetchAll<{
       session_id: string | null;
       metadata: Record<string, unknown> | null;
@@ -354,6 +372,38 @@ export async function computeStats(from: string | null, to: string | null) {
         .order("created_at", { ascending: true })
         .order("id", { ascending: true }),
     ),
+    fetchAll<{
+      session_id: string | null;
+      owner_token: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["unmei_lp_view"], "session_id, owner_token, metadata")),
+    fetchAll<{
+      session_id: string | null;
+      owner_token: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["unmei_purchase_start"], "session_id, owner_token, metadata")),
+    fetchAll<{
+      session_id: string | null;
+      owner_token: string | null;
+      metadata: Record<string, unknown> | null;
+    }>(evRows(["unmei_reading_view"], "session_id, owner_token, metadata")),
+    fetchAll<UnmeiPurchaseEventRow>(
+      evRows(
+        ["unmei_purchase_complete", "unmei_upgrade_complete"],
+        "event_name, owner_token, metadata, created_at",
+      ),
+    ),
+    fetchAll<EventMetaSessionRow>(
+      evRows(["birth_form_view"], "session_id, metadata"),
+    ),
+    fetchAll<EventMetaSessionRow>(
+      evRows(["birth_form_submit"], "session_id, metadata"),
+    ),
+    fetchAll<EventMetaSessionRow>(
+      evRows(["birth_form_skip"], "session_id, metadata"),
+    ),
+    fetchAll<SessionRow>(evRows(["unmei_nav_badge_shown"])),
+    fetchAll<SessionRow>(evRows(["unmei_nav_badge_clicked"])),
   ]);
 
   const toUnique = (rows: SessionRow[]) =>
@@ -709,41 +759,45 @@ export async function computeStats(from: string | null, to: string | null) {
   //   「商品別売上内訳」に残るだけで、このファネルの決済完了は full_access を source で分ける。
   // 判定:
   //   - paywall_viewed: metadata.page==='tako' (新カード) または variant==='tako' (旧カード互換)。
-  //   - scroll/cta/checkout/purchase: metadata.source が tako 系か (isTakoMeta)。
-  const TAKO_SOURCES = new Set([
-    "tako_lock",
-    "tako_unlocked",
-    "tako_promo_card",
-    "tako_mote_card",
-    "tako_hints_card",
-    "tako_kotsu_card",
-    "tako_wana_card",
-  ]);
+  //   - scroll/cta: metadata.page==='tako' または metadata.source が tako 系。
+  //   - checkout/purchase: metadata.return_to==='tako' または metadata.source が tako 系。
   const isTakoMeta = (m: Record<string, unknown> | null): boolean =>
     m?.product === "tako_unlock" ||
-    (typeof m?.source === "string" && TAKO_SOURCES.has(m.source));
+    m?.page === "tako" ||
+    m?.return_to === "tako" ||
+    (typeof m?.source === "string" && TAKO_PAYWALL_SOURCES.has(m.source));
   const isTakoView = (m: Record<string, unknown> | null): boolean =>
     m?.page === "tako" || m?.variant === "tako";
+  const isUnmeiMeta = (m: Record<string, unknown> | null): boolean =>
+    m?.product === "unmei" ||
+    m?.product === "unmei_upgrade" ||
+    m?.page === "unmei" ||
+    m?.return_to === "unmei" ||
+    m?.source === "unmei_page";
 
   const paywallViewedFullRows = paywallViewedRows.filter(
-    (r) => !isTakoView(r.metadata),
+    (r) => !isTakoView(r.metadata) && !isUnmeiMeta(r.metadata),
   );
   const paywallViewedTakoRows = paywallViewedRows.filter((r) =>
     isTakoView(r.metadata),
   );
-  const scrollFullRows = paywallScrollRows.filter((r) => !isTakoMeta(r.metadata));
+  const scrollFullRows = paywallScrollRows.filter(
+    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+  );
   const scrollTakoRows = paywallScrollRows.filter((r) => isTakoMeta(r.metadata));
-  const ctaFullRows = purchaseCtaRows.filter((r) => !isTakoMeta(r.metadata));
+  const ctaFullRows = purchaseCtaRows.filter(
+    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+  );
   const ctaTakoRows = purchaseCtaRows.filter((r) => isTakoMeta(r.metadata));
   const checkoutFullRows = checkoutCreatedRows.filter(
-    (r) => !isTakoMeta(r.metadata),
+    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
   );
   const checkoutTakoRows = checkoutCreatedRows.filter((r) =>
     isTakoMeta(r.metadata),
   );
   // 決済完了 (full_access) を source で自己/友達に分割 (合計=全 full_access 決済)。
   const purchaseFullRows = purchaseCompletedRows.filter(
-    (r) => !isTakoMeta(r.metadata),
+    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
   );
   const purchaseTakoRows = purchaseCompletedRows.filter((r) =>
     isTakoMeta(r.metadata),
@@ -768,6 +822,40 @@ export async function computeStats(from: string | null, to: string | null) {
       .map((r) => r.session_id)
       .filter(Boolean),
   ).size;
+
+  // 運命の設計図 (/unmei) ファネル。購入開始は専用イベントに加え、
+  // リリース済みの purchase_cta_clicked(page=unmei) も併合する。
+  const unmeiCtaRows = purchaseCtaRows.filter((r) => isUnmeiMeta(r.metadata));
+  const unmeiPurchaseIntentRows = [...unmeiPurchaseStartRows, ...unmeiCtaRows];
+  const unmeiCheckoutRows = checkoutCreatedRows.filter((r) =>
+    isUnmeiMeta(r.metadata),
+  );
+  const unmeiBasePurchaseRows = unmeiPurchaseEventRows.filter(
+    (r) => r.event_name === "unmei_purchase_complete",
+  );
+  const unmeiUpgradePurchaseRows = unmeiPurchaseEventRows.filter(
+    (r) => r.event_name === "unmei_upgrade_complete",
+  );
+  const unmeiLpViewed = toUnique(unmeiLpRows);
+  const unmeiPurchaseStarted = toUnique(unmeiPurchaseIntentRows);
+  const unmeiCheckoutCreated = countUniqueStripeSessions(unmeiCheckoutRows);
+  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseEventRows);
+  const unmeiBasePurchases = countUniqueStripeSessions(unmeiBasePurchaseRows);
+  const unmeiUpgradePurchases = countUniqueStripeSessions(
+    unmeiUpgradePurchaseRows,
+  );
+  const unmeiReadingViewed = toUnique(unmeiReadingRows);
+  const birthFormViewed = toUnique(
+    birthFormViewRows.filter((r) => isUnmeiMeta(r.metadata)),
+  );
+  const birthFormSubmitted = toUnique(
+    birthFormSubmitRows.filter((r) => isUnmeiMeta(r.metadata)),
+  );
+  const birthFormSkipped = toUnique(
+    birthFormSkipRows.filter((r) => isUnmeiMeta(r.metadata)),
+  );
+  const unmeiBadgeShown = toUnique(unmeiBadgeShownRows);
+  const unmeiBadgeClicked = toUnique(unmeiBadgeClickedRows);
 
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
@@ -817,30 +905,29 @@ export async function computeStats(from: string | null, to: string | null) {
     );
   };
 
-  const scrollBySource = uniqueCountsBySource(
-    paywallScrollRows,
-    "session_id",
-  );
-  const purchaseCtaBySource = uniqueCountsBySource(
-    purchaseCtaRows,
-    "session_id",
-  );
-  const checkoutBySource = uniqueCountsBySource(
-    checkoutCreatedRows,
-    "stripe_session_id",
-  );
-  const purchaseBySource = uniqueCountsBySource(
-    purchaseCompletedRows,
-    "stripe_session_id",
-  );
-  const attributionSources = new Set([
-    ...scrollBySource.keys(),
-    ...purchaseCtaBySource.keys(),
-    ...checkoutBySource.keys(),
-    ...purchaseBySource.keys(),
-  ]);
-  const paywallAttributionAll = Array.from(attributionSources)
-    .map((source) => {
+  const buildAttribution = (
+    scrollRows: AttributionRow[],
+    ctaRows: AttributionRow[],
+    checkoutRows: AttributionRow[],
+    purchaseRows: AttributionRow[],
+  ) => {
+    const scrollBySource = uniqueCountsBySource(scrollRows, "session_id");
+    const purchaseCtaBySource = uniqueCountsBySource(ctaRows, "session_id");
+    const checkoutBySource = uniqueCountsBySource(
+      checkoutRows,
+      "stripe_session_id",
+    );
+    const purchaseBySource = uniqueCountsBySource(
+      purchaseRows,
+      "stripe_session_id",
+    );
+    const attributionSources = new Set([
+      ...scrollBySource.keys(),
+      ...purchaseCtaBySource.keys(),
+      ...checkoutBySource.keys(),
+      ...purchaseBySource.keys(),
+    ]);
+    return Array.from(attributionSources).map((source) => {
       const scrollClicks = scrollBySource.get(source) ?? 0;
       const purchaseCtaClicks = purchaseCtaBySource.get(source) ?? 0;
       const stripeReached = checkoutBySource.get(source) ?? 0;
@@ -853,21 +940,29 @@ export async function computeStats(from: string | null, to: string | null) {
         purchases,
         purchaseRate: scrollClicks > 0 ? purchases / scrollClicks : null,
       };
-    })
-    .sort(
-      (a, b) =>
-        b.purchases - a.purchases ||
-        b.stripeReached - a.stripeReached ||
-        b.scrollClicks - a.scrollClicks,
-    );
-  // 商品別に導線テーブルを分離 (tako系 source は ¥799 側へ)。
-  // ¥799 側は決済完了 (payment_history) との突合が必要なため、
-  // verifiedPaymentFacts 構築後 (後段) に組み立てる。
-  const paywallAttribution = paywallAttributionAll.filter(
-    (row) => !TAKO_SOURCES.has(row.source),
+    });
+  };
+  const paywallAttribution = buildAttribution(
+    scrollFullRows,
+    ctaFullRows,
+    checkoutFullRows,
+    purchaseFullRows,
+  ).sort(
+    (a, b) =>
+      b.purchases - a.purchases ||
+      b.stripeReached - a.stripeReached ||
+      b.scrollClicks - a.scrollClicks,
   );
-  const takoAttributionBase = paywallAttributionAll.filter((row) =>
-    TAKO_SOURCES.has(row.source),
+  const takoAttribution = buildAttribution(
+    scrollTakoRows,
+    ctaTakoRows,
+    checkoutTakoRows,
+    purchaseTakoRows,
+  ).sort(
+    (a, b) =>
+      b.purchases - a.purchases ||
+      b.stripeReached - a.stripeReached ||
+      b.scrollClicks - a.scrollClicks,
   );
 
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
@@ -917,6 +1012,54 @@ export async function computeStats(from: string | null, to: string | null) {
   }
 
   let unmatchedPaymentCount = 0;
+  for (const row of unmeiPurchaseEventRows) {
+    const rawStripeSessionId = row.metadata?.stripe_session_id;
+    const stripeSessionId =
+      typeof rawStripeSessionId === "string" && rawStripeSessionId
+        ? rawStripeSessionId
+        : `legacy-unmei:${row.event_name}:${row.created_at}`;
+    if (knownStripeSessions.has(stripeSessionId)) continue;
+
+    const amount = row.metadata?.amount_total;
+    if (typeof amount !== "number" || !Number.isFinite(amount)) {
+      continue;
+    }
+
+    knownStripeSessions.add(stripeSessionId);
+    const checkoutIdentity = checkoutIdentityBySession.get(stripeSessionId);
+    const metadataUserId = row.metadata?.user_id;
+    const metadataOwnerToken = row.metadata?.owner_token;
+    const ownerToken =
+      typeof metadataOwnerToken === "string" && metadataOwnerToken
+        ? metadataOwnerToken
+        : row.owner_token ?? checkoutIdentity?.ownerToken ?? null;
+    const userId =
+      typeof metadataUserId === "string" && metadataUserId
+        ? metadataUserId
+        : checkoutIdentity?.userId ??
+          (ownerToken ? ownerTokenToUserId.get(ownerToken) : null) ??
+          `stripe:${stripeSessionId}`;
+    const rawCurrency = row.metadata?.currency;
+    const rawProduct = row.metadata?.product;
+    const kind =
+      rawProduct === "unmei" || rawProduct === "unmei_upgrade"
+        ? rawProduct
+        : row.event_name === "unmei_upgrade_complete"
+          ? "unmei_upgrade"
+          : "unmei";
+
+    verifiedPaymentFacts.push({
+      stripeSessionId,
+      userId,
+      paidAt: row.created_at,
+      currency:
+        typeof rawCurrency === "string" && rawCurrency ? rawCurrency : "jpy",
+      amountMinor: amount,
+      refundedAmountMinor: 0,
+      kind,
+    });
+  }
+
   for (const row of kpiPaymentEventRows) {
     if (row.event_name !== "purchase_completed") continue;
     const stripeSessionId = row.metadata?.stripe_session_id;
@@ -1016,6 +1159,43 @@ export async function computeStats(from: string | null, to: string | null) {
       .sort((a, b) => a.currency.localeCompare(b.currency)),
   };
 
+  const unmeiRevenueBuckets = new Map<
+    string,
+    {
+      purchases: number;
+      netRevenueMinor: number;
+    }
+  >();
+  for (const payment of verifiedPaymentFacts) {
+    if (
+      !inRange(payment.paidAt) ||
+      (payment.kind !== "unmei" && payment.kind !== "unmei_upgrade")
+    ) {
+      continue;
+    }
+    const currency = payment.currency.toLowerCase();
+    const bucket = unmeiRevenueBuckets.get(currency) ?? {
+      purchases: 0,
+      netRevenueMinor: 0,
+    };
+    const refundedMinor = Math.min(
+      Math.max(payment.refundedAmountMinor, 0),
+      payment.amountMinor,
+    );
+    bucket.purchases++;
+    bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
+    unmeiRevenueBuckets.set(currency, bucket);
+  }
+  const unmeiRevenue = {
+    currencies: Array.from(unmeiRevenueBuckets.entries())
+      .map(([currency, bucket]) => ({
+        currency,
+        purchases: bucket.purchases,
+        netRevenueMinor: bucket.netRevenueMinor,
+      }))
+      .sort((a, b) => a.currency.localeCompare(b.currency)),
+  };
+
   // ===== 商品別の売上内訳 (選択期間・kind × 通貨) =====
   const kindBuckets = new Map<
     string,
@@ -1094,11 +1274,6 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   // 友達診断ページ発の決済完了数 (tako 系 source の full_access 決済・選択期間)。
   const takoPurchases = countUniqueStripeSessions(purchaseTakoRows);
-
-  // 友達診断ページ発の導線別テーブル。takoAttributionBase は purchase_completed を
-  // source 別に集計済み (full_access・tako 系 source)。旧 tako_unlock の突合は不要
-  // (販売終了。過去 ¥799 実績は purchase_completed を発行しないので出ない = 意図どおり)。
-  const takoAttribution = takoAttributionBase;
 
   const revenueDaily = Array.from(dailyBuckets.values())
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -1246,8 +1421,8 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "Stripe到達", count: checkoutCreated },
       { label: "決済完了", count: purchaseCompleted },
     ],
-    // 課金ファネル (¥799 友達診断・全解放)。Stripe到達は 2026-07-22 に計測追加
-    // (それ以前は 0)。決済完了は payment_history (kind='tako_unlock') が正。
+    // 課金ファネル (友達診断ページ発の ¥499 完全版)。Stripe到達は 2026-07-22 に計測追加。
+    // 決済完了は tako 系 source / return_to 付きの full_access 決済を数える。
     takoFunnel: [
       { label: "/tako 表示", count: takoPageViewed },
       { label: "課金カード表示", count: takoPaywallViewed },
@@ -1256,6 +1431,34 @@ export async function computeStats(from: string | null, to: string | null) {
       { label: "Stripe到達", count: takoCheckoutCreated },
       { label: "決済完了", count: takoPurchases },
     ],
+    unmei: {
+      funnel: [
+        { label: "LP表示", count: unmeiLpViewed },
+        { label: "購入開始", count: unmeiPurchaseStarted },
+        { label: "Stripe到達", count: unmeiCheckoutCreated },
+        { label: "決済完了", count: unmeiPurchases },
+        { label: "出生フォーム表示", count: birthFormViewed },
+        { label: "出生情報保存", count: birthFormSubmitted },
+        { label: "鑑定表示", count: unmeiReadingViewed },
+      ],
+      purchases: {
+        total: unmeiPurchases,
+        basic: unmeiBasePurchases,
+        upgrade: unmeiUpgradePurchases,
+      },
+      revenue: unmeiRevenue,
+      birthForm: {
+        viewed: birthFormViewed,
+        submitted: birthFormSubmitted,
+        skipped: birthFormSkipped,
+        submitRate: rate(birthFormSubmitted, birthFormViewed),
+      },
+      navBadge: {
+        shown: unmeiBadgeShown,
+        clicked: unmeiBadgeClicked,
+        clickRate: rate(unmeiBadgeClicked, unmeiBadgeShown),
+      },
+    },
     paywallSources,
     paywallAttribution,
     takoAttribution,

@@ -11,6 +11,7 @@
 // ※ subline に相当するフィールドはデータに存在しないため表示しない (縦位置だけ将来用に確保)。
 
 import NatalChartWheel from "@/components/uranai/NatalChartWheel";
+import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
 
 type UnmeiSection = { id?: string; title?: string; body?: string };
@@ -22,12 +23,14 @@ export default function UnmeiReading({
   timeUnknown = false,
   moonArc = null,
   essence = null,
+  trackView = true,
 }: {
   reading: unknown;
   chart?: Chart | null;
   timeUnknown?: boolean;
   moonArc?: MoonArc | null;
   essence?: string | null;
+  trackView?: boolean;
 }) {
   const data = (reading ?? {}) as UnmeiReadingData;
   const hitokoto = typeof data.hitokoto === "string" ? data.hitokoto.trim() : "";
@@ -39,6 +42,9 @@ export default function UnmeiReading({
 
   return (
     <main className="bg-white pb-16">
+      {trackView ? (
+        <UnmeiViewTracker eventName="unmei_reading_view" state="ready" />
+      ) : null}
       {/* 冒頭: タイトル + ひとこと (hitokoto は本文より一回り大きい導入。章見出しではない扱い) */}
       <div className="mx-auto max-w-[640px] px-6 pt-12">
         <h1 className="mb-6 text-2xl font-black text-[#2E2E5C]">

@@ -44,6 +44,67 @@ type SavedProgress = {
 // Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
 const NICKNAME_MAX = 20;
 const MIN_LOADING_MS = 20000;
+const DIAGNOSIS_COMPLETE_DATA_LAYER_STORAGE_PREFIX =
+  "wt_diagnosis_complete_sent_v1:";
+
+type DiagnosisCompleteDataLayerEvent = {
+  event: "diagnosis_complete";
+  diagnosis_id?: string;
+};
+
+type WindowWithDiagnosisDataLayer = Window & {
+  dataLayer?: DiagnosisCompleteDataLayerEvent[];
+};
+
+const diagnosisCompleteSentInMemory = new Set<string>();
+
+function diagnosisCompleteStorageKey(dedupeId: string): string {
+  return `${DIAGNOSIS_COMPLETE_DATA_LAYER_STORAGE_PREFIX}${dedupeId}`;
+}
+
+function wasDiagnosisCompleteDataLayerSent(key: string): boolean {
+  if (diagnosisCompleteSentInMemory.has(key)) return true;
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberDiagnosisCompleteDataLayerSent(key: string): void {
+  diagnosisCompleteSentInMemory.add(key);
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    // In-memory dedupe still prevents double push during the current page lifetime.
+  }
+}
+
+function pushDiagnosisCompleteDataLayer({
+  dedupeId,
+  diagnosisId,
+}: {
+  dedupeId: string;
+  diagnosisId?: string;
+}): void {
+  const key = diagnosisCompleteStorageKey(dedupeId);
+  if (wasDiagnosisCompleteDataLayerSent(key)) return;
+
+  try {
+    const target = window as WindowWithDiagnosisDataLayer;
+    target.dataLayer = target.dataLayer ?? [];
+
+    // React Strict Mode や二重クリックの再入でも重複 push しないよう、
+    // dataLayer より先に送信済みフラグを立てる。
+    rememberDiagnosisCompleteDataLayerSent(key);
+    target.dataLayer.push({
+      event: "diagnosis_complete",
+      ...(diagnosisId ? { diagnosis_id: diagnosisId } : {}),
+    });
+  } catch {
+    // GTM 側の失敗で診断完了 UX を止めない。
+  }
+}
 
 // prefers-reduced-motion 尊重: 有効時はスムーズスクロールを無効化 (auto = 瞬間)。
 function prefersReducedMotion(): boolean {
@@ -423,6 +484,11 @@ export default function DiagnosisPageContent({
             locale,
             sourceInviteCode: source || null,
           },
+        });
+        pushDiagnosisCompleteDataLayer({
+          // ownerToken は診断ごとに新規発行されるため、同じ診断の重複防止にだけ使う。
+          // 結果閲覧権限を持つ秘密トークンなので dataLayer には送らない。
+          dedupeId: data.ownerToken,
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
         // 友達診断の赤バッジは診断完了時には出さない (2026-07-20 変更)。
