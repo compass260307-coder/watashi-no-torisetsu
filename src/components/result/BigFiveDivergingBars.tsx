@@ -10,6 +10,7 @@
 //
 // 既存の DimensionPolarityBar / FacetBarChart はデッドかつ仕様が異なるため使わない (新規実装)。
 
+import type { ReactNode } from "react";
 import type { BigFiveDimension } from "@/lib/types";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -103,6 +104,11 @@ interface BigFiveDivergingBarsProps {
    * 既定 false = 従来どおりカード枠あり。個別ページ (/tako 個別) のみ true で使う。
    */
   bareCard?: boolean;
+  /**
+   * カード下部の footer 帯 (16P のグラフカード下ボタン行・2026-07-28)。
+   * 指定時はバー群の下に区切り線つきでカード枠内に描画する (シェアピル等)。
+   */
+  footer?: ReactNode;
   className?: string;
   locale?: ResultLocale;
 }
@@ -117,6 +123,7 @@ export function BigFiveDivergingBars({
   number,
   hideHeading = false,
   bareCard = false,
+  footer,
   className = "",
   locale = "ja",
 }: BigFiveDivergingBarsProps) {
@@ -279,6 +286,12 @@ export function BigFiveDivergingBars({
             </div>
           );
         })}
+
+        {/* カード下部の footer 帯 (16P のグラフカード下ボタン行)。
+            区切り線でバー群と分け、カード枠の内側に載せる。 */}
+        {footer && (
+          <div className="border-t border-[#E9E9F2] pt-5">{footer}</div>
+        )}
       </div>
     </section>
   );

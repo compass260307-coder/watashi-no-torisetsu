@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
 import type { ResultLocale } from "@/i18n/result";
 
 interface MeStickyHeaderProps {
@@ -104,6 +105,9 @@ export function MeStickyHeader({
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // モーダルを開いた設置場所 (share_clicked の metadata.source)。
+  // ヘッダーのボタン=sticky_bar / 本文中の ShareModalOpenButton=イベントの detail.source。
+  const [shareSource, setShareSource] = useState("sticky_bar");
   const lastY = useRef(0);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerH, setHeaderH] = useState(0);
@@ -131,6 +135,21 @@ export function MeStickyHeader({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // 本文中の「シェア」ピル (ShareModalOpenButton) からの開く要求を拾う。
+  // shareUrl の無いページ (獲得ランディング等) では無視する。
+  useEffect(() => {
+    if (!shareUrl) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ source?: unknown }>).detail;
+      setShareSource(
+        typeof detail?.source === "string" ? detail.source : "sticky_bar",
+      );
+      setShareOpen(true);
+    };
+    window.addEventListener(SHARE_OPEN_EVENT, handler);
+    return () => window.removeEventListener(SHARE_OPEN_EVENT, handler);
+  }, [shareUrl]);
 
   // モーダルは Escape でも閉じられるように。
   useEffect(() => {
@@ -183,7 +202,7 @@ export function MeStickyHeader({
           metadata: { channel, source: "tako_sticky_bar" },
         })
       : track("share_clicked", {
-          metadata: { channel, kind: "character", source: "sticky_bar" },
+          metadata: { channel, kind: "character", source: shareSource },
         });
 
   const handleNativeShare = async () => {
@@ -262,7 +281,10 @@ export function MeStickyHeader({
                       : "結果をシェア"
                 }
                 aria-haspopup="dialog"
-                onClick={() => setShareOpen(true)}
+                onClick={() => {
+                  setShareSource("sticky_bar");
+                  setShareOpen(true);
+                }}
                 className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
               >
                 <ShareGlyph size={20} />

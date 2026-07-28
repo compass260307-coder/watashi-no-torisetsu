@@ -87,6 +87,7 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { ResetDataLink } from "@/components/ResetDataLink";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
+import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import type {
   BigFiveDimension,
   CModifier,
@@ -757,6 +758,17 @@ async function MeResultPageContent({
                     title={isKorean ? KO_ME_COPY.bigFiveTitle : "五つの性格傾向"}
                     number="1"
                     locale={locale}
+                    // カード内下部の「シェア」ピル (16P のグラフカード下ボタン参考
+                    // 2026-07-28)。ヘッダーと同じシェアモーダルを開く
+                    // (source=bigfive_graph で計測)。獲得ランディングはモーダルが
+                    // 無いため出さない。
+                    footer={
+                      !acquisition ? (
+                        <ShareModalOpenButton
+                          label={isKorean ? "공유" : "シェア"}
+                        />
+                      ) : undefined
+                    }
                   />
                   {/* 冒頭本文の続き (挿絵より後の段落) はグラフの下に表示 */}
                   {afterGraph.length > 0 && (
