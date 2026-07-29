@@ -24,6 +24,10 @@ export default function robots(): MetadataRoute.Robots {
           "/report/",
           "/zukan/",
           "/perceptions/",
+          // 韓国語版の個人ページ (日本語版のミラー。/ko/friend/ は OG カード取得の
+          // ため日本語版と同様ここでは Disallow しない)
+          "/ko/me/",
+          "/ko/result/",
         ],
       },
       {
@@ -45,6 +49,10 @@ export default function robots(): MetadataRoute.Robots {
           "/friend/",
           "/zukan/",
           "/perceptions/",
+          // 韓国語版の個人ページ (日本語版のミラー)
+          "/ko/me/",
+          "/ko/result/",
+          "/ko/friend/",
         ],
       },
     ],
