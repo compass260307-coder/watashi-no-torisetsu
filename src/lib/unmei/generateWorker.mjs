@@ -6,6 +6,26 @@ import { buildNatalSystemPrompt, buildNatalUserPrompt } from "./prompts.mjs";
 const TOKYO_LAT = 35.6895;
 const TOKYO_LNG = 139.6917;
 
+// v2: 生成後スキャンで弾く推量表現 (これのみ。「してみてください」は正しい命令形なので弾かない)。
+const HEDGE_TERMS = [
+  "かもしれない",
+  "かもしれません",
+  "でしょう",
+  "だろう",
+  "と思われ",
+  "のかもしれ",
+  "ように見えるかも",
+];
+// reading (hitokoto + 各 section の subline/body) に推量表現が含まれるか。検出語を返す。
+function detectHedges(reading) {
+  const parts = [reading?.hitokoto || ""];
+  for (const s of reading?.sections || []) {
+    parts.push(s?.subline || "", s?.body || "");
+  }
+  const text = parts.join("\n");
+  return HEDGE_TERMS.filter((t) => text.includes(t));
+}
+
 // 生成状態マシン用の定数 (reading.ts と一致させること)。
 const MAX_GEN_ATTEMPTS = 3; // 自動再生成の上限。超えたら opts.force(手動)でのみ再試行。
 const STALE_LOCK_MS = 180_000; // 'generating' ロックの陳腐化(クラッシュ復帰)閾値=3分。
@@ -189,29 +209,55 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
     );
 
     const system = buildNatalSystemPrompt();
-    const userPrompt = buildNatalUserPrompt({ chart, scores, essence, timeUnknown });
+    const userPrompt = buildNatalUserPrompt({
+      chart,
+      scores,
+      essence,
+      typeName: opts.typeName ?? null,
+      timeUnknown,
+    });
 
-    // 5. 生成 (parse失敗時は1回だけリトライ = 最大2試行)
+    // 5. 生成 (parse失敗 or 推量表現検出で1回だけ再生成 = 最大2試行)
+    const saveReading = (parsed) =>
+      supabaseAdmin.from("natal_readings").upsert(
+        { user_id: userId, reading: parsed, model, generated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      );
     let lastErr = null;
+    let hedgedFallback = null; // 1回目が推量表現ありだが有効な reading (再生成が失敗したとき採用)
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const resp = await callClaude({
           system,
           prompt: userPrompt,
           model,
-          maxTokens: 2000,
+          maxTokens: 4500, // v2: 4章×550〜900字 + subline + hitokoto
           timeoutMs: 120_000,
         });
         const parsed = parseReading(resp.text);
-        await supabaseAdmin.from("natal_readings").upsert(
-          { user_id: userId, reading: parsed, model, generated_at: new Date().toISOString() },
-          { onConflict: "user_id" },
-        );
+        const hedges = detectHedges(parsed);
+        if (hedges.length > 0 && attempt < 2) {
+          // 推量表現検出 → 1回だけ再生成。1回目は有効なので fallback に退避。
+          console.warn(`[generateWorker] 推量表現を検出 (attempt ${attempt}): ${hedges.join("/")} → 再生成`);
+          hedgedFallback = parsed;
+          continue;
+        }
+        if (hedges.length > 0) {
+          // 2回目も検出 → 無限ループを避け、ログに残して通す。
+          console.warn(`[generateWorker] 再生成後も推量表現が残存: ${hedges.join("/")} — ログに残して通す`);
+        }
+        await saveReading(parsed);
         return { ok: true };
       } catch (e) {
         lastErr = e;
         console.warn(`[generateWorker] claude attempt ${attempt} failed:`, e);
       }
+    }
+    // 再生成が parse 失敗等で無効だった場合、1回目(推量あり)の有効な reading を採用して通す。
+    if (hedgedFallback) {
+      console.warn("[generateWorker] 再生成が無効。1回目(推量あり)を採用して通す");
+      await saveReading(hedgedFallback);
+      return { ok: true };
     }
 
     // 6. 失敗を記録 (attempts++)。上限までは呼び出し側が自動再生成できる。

@@ -14,7 +14,16 @@ import NatalChartWheel from "@/components/uranai/NatalChartWheel";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
 
-type UnmeiSection = { id?: string; title?: string; body?: string };
+// 表示タイトルの上書き (id→表示名)。プロンプト側の title も同文言だが、既存 readings にも
+// 即時反映させるため表示はこのマップを優先する (id 不変・再生成不要)。
+const UNMEI_TITLE: Record<string, string> = {
+  haichi: "あなたが積み上げてきたもの",
+  kokoro: "誰かといるときのあなた",
+  chosen: "これから訪れる転換点",
+  grace: "最後にひとつだけ",
+};
+
+type UnmeiSection = { id?: string; title?: string; subline?: string; body?: string };
 type UnmeiReadingData = { hitokoto?: string; sections?: UnmeiSection[] };
 
 export default function UnmeiReading({
@@ -88,11 +97,17 @@ export default function UnmeiReading({
                   {i + 1}
                 </span>
                 <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                  {sec.title}
+                  {UNMEI_TITLE[sec.id ?? ""] ?? sec.title}
                 </h2>
               </div>
 
-              {/* subline スロット (データ未提供のため現状は表示なし。将来ここに1行入る)。 */}
+              {/* subline: 見出し直下の1行 (スコア%×星の要素)。無料診断の note と同スタイル。
+                  空 (grace) や未提供 (旧 reading) のときは非表示。 */}
+              {typeof sec.subline === "string" && sec.subline.trim() && (
+                <p className="mt-3 text-sm text-[#2E2E5C]/70">
+                  {sec.subline.trim()}
+                </p>
+              )}
               {/* 章の挿絵スロット: 画像は別途制作。差し込めるよう見出しと本文の間に余白を確保する。 */}
               <div className="mt-6">
                 {paragraphs.map((para, pi) => (
