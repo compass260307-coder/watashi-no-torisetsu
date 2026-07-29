@@ -129,12 +129,14 @@ export function LoginCard({
         <SentScreen email={trimmed} onReset={reset} locale={locale} />
       ) : (
         <>
-          <h1
+          {/* 見出しは h2: 設置先ページ (/login の「おかえりなさい！」や
+              /purchase-complete の「購入ありがとうございます！」) が h1 を持つため。 */}
+          <h2
             className="whitespace-nowrap text-center text-[22px] font-bold leading-snug md:text-[28px]"
             style={{ color: NAVY }}
           >
             {copy.heading}
-          </h1>
+          </h2>
           <p
             className="mx-auto mt-3 text-center text-[15px] leading-[1.9]"
             style={{ color: `${NAVY}99` }}
@@ -219,12 +221,12 @@ function SentScreen({
   const copy = LOGIN_COPY[locale];
   return (
     <div className="flex flex-col items-center text-center">
-      <h1
+      <h2
         className="text-[24px] font-bold leading-snug md:text-[28px]"
         style={{ color: NAVY }}
       >
         {copy.sentHeading}
-      </h1>
+      </h2>
       <p className="mt-4 text-[15px] leading-[1.9]" style={{ color: `${NAVY}CC` }}>
         <span className="break-all font-bold">{email}</span>
         <br />
