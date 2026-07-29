@@ -5,6 +5,8 @@ import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
 import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
+import { LoginCard } from "@/components/LoginCard";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import { isReadingReady } from "@/lib/unmei/reading";
@@ -307,6 +309,56 @@ function UnmeiTeaserLp({
   );
 }
 
+// ゲスト購入 (未ログインで ?checkout=success 着地) の完了画面。
+// 鑑定は webhook が購入メールに紐付けて解放するため、同じメールでログインすれば
+// 出生情報の入力に進める。/purchase-complete (¥499 完全版のゲスト着地) と同じ流儀で
+// LoginCard をその場に置き、販売LPへ戻さない。
+function UnmeiGuestPurchaseComplete() {
+  return (
+    <main className="mx-auto flex max-w-[640px] flex-col items-center px-6 py-14 text-center">
+      <div
+        aria-hidden="true"
+        className="mb-4 flex h-14 w-14 items-center justify-center rounded-full text-white"
+        style={{ background: "#3FA96A" }}
+      >
+        <svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </div>
+      <h1 className="text-2xl font-black text-[#2E2E5C]">
+        購入ありがとうございます！
+      </h1>
+      <p className="mt-3 mb-8 text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
+        あなたの鑑定は、購入に使ったメールアドレスに紐づいています。
+        <br />
+        同じメールアドレスでログインすると、出生情報の入力に進み、
+        <br className="hidden md:inline" />
+        <span className="text-[#2E2E5C]">運命の設計図</span>が作成されます。
+      </p>
+      <LoginCard />
+      <p className="mt-6 max-w-[420px] text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
+        30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて{" "}
+        <a
+          href="mailto:support@watashi-torisetsu.com"
+          className="underline underline-offset-2 text-[#2E2E5C]"
+        >
+          support@watashi-torisetsu.com
+        </a>{" "}
+        までご連絡ください。
+      </p>
+    </main>
+  );
+}
+
 export default async function UnmeiPage({ searchParams }: PageProps) {
   const sp = (await searchParams) ?? {};
   const preview =
@@ -349,6 +401,18 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
   }
 
   if (!unmeiFlag) {
+    // Stripe 決済完了直後 (?checkout=success)。webhook (users.unmei=true) の反映前に
+    // 販売LPを再表示すると再購入・迷子の原因になるため、ここで受け止める。
+    //   - ログイン済み: 反映をポーリングで待ち、反映後に出生情報フォームへ進む
+    //   - ゲスト購入: 購入は webhook が email に紐付ける。ログイン案内を出す
+    //     (パラメータだけでは購入を検証できないが、解放自体はサーバ判定なので
+    //      偽装されても案内文が見えるだけで実害はない)
+    if (sp.checkout === "success") {
+      if (userId) {
+        return <UnmeiCheckoutConfirming />;
+      }
+      return <UnmeiGuestPurchaseComplete />;
+    }
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
     return (
       <UnmeiTeaserLp
