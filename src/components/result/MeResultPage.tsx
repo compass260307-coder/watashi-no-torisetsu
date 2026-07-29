@@ -196,6 +196,12 @@ async function MeResultPageContent({
   // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
   const previewLocked =
     !acquisition && previewType !== null && sp.previewLock === "1";
+  // 公開タイプ別LP (/preview/[typeId]) 判定。ロック状態のモック描画だが、読者は
+  // 未診断の訪問者なので課金導線は出さず、獲得モード (/share) と同じく診断CTAへ寄せる
+  // (owner_token が "preview" のため購入APIはバリデーションで通らず、CTAを出しても壊れる)。
+  // シェアURLも invite_code がモックで /share/preview になり機能しないため出さない。
+  // dev の課金導線QA (?previewType&previewLock=1、fromPreview 無し) は従来どおり。
+  const publicPreview = previewLocked && sp.fromPreview === "1";
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
   const previewScores: Record<BigFiveDimension, number> | null = previewType
     ? (() => {
@@ -631,9 +637,9 @@ async function MeResultPageContent({
     {/* 16P と同じスクロール連動ヘッダー。/me はヘッダー直下にシェアバーを常時表示
         (ヘッダーが隠れてもバーは残る)。解除CTAは未解放時のみ (2026-07-15 指示)。 */}
     <MeStickyHeader
-      showUnlockCta={acquisition ? false : !partTwoUnlocked}
-      shareUrl={acquisition ? undefined : characterShareUrl}
-      diagnosisCta={Boolean(acquisition)}
+      showUnlockCta={acquisition || publicPreview ? false : !partTwoUnlocked}
+      shareUrl={acquisition || publicPreview ? undefined : characterShareUrl}
+      diagnosisCta={Boolean(acquisition) || publicPreview}
       essence={dispEssence}
       code={dispCode}
       locale={locale}
@@ -763,7 +769,7 @@ async function MeResultPageContent({
                     // (source=bigfive_graph で計測)。獲得ランディングはモーダルが
                     // 無いため出さない。
                     footer={
-                      !acquisition ? (
+                      !acquisition && !publicPreview ? (
                         <ShareModalOpenButton
                           label={isKorean ? "공유" : "シェア"}
                         />
@@ -793,7 +799,7 @@ async function MeResultPageContent({
           <DeepDiveSections
             number="2"
             sections={deepDiveSections}
-            hideLocked={Boolean(acquisition)}
+            hideLocked={Boolean(acquisition) || publicPreview}
             locale={locale}
             sceneImages={{
               love: sceneImage("love"),
@@ -833,7 +839,8 @@ async function MeResultPageContent({
               />
             )}
             <MoshimoScenes
-              // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換
+              // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換。
+              // 公開プレビューも同様に無料シーンのみ (解除カードの課金CTAを出さない)。
               scenes={
                 acquisition
                   ? buildMoshimoScenes(stored, false)
@@ -843,7 +850,9 @@ async function MeResultPageContent({
                         title: personalize(s.title),
                         body: personalize(s.body),
                       }))
-                  : buildMoshimoScenes(stored, partTwoUnlocked)
+                  : publicPreview
+                    ? buildMoshimoScenes(stored, false).filter((s) => !s.locked)
+                    : buildMoshimoScenes(stored, partTwoUnlocked)
               }
             />
           </section>
@@ -878,7 +887,8 @@ async function MeResultPageContent({
             // 友達1人での解除機能自体は残し、ここでの案内だけ一旦非表示にする。
             // 見た目は恋愛ロックと同じ、ぼかし中央のコンパクトなカードに揃える。
             // 獲得モードはロックUI自体を出さない (hideLocked) ためカードも組まない。
-            const lockCard = partTwoUnlocked || acquisition ? undefined : (
+            const lockCard =
+              partTwoUnlocked || acquisition || publicPreview ? undefined : (
               <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
                 <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
@@ -923,7 +933,7 @@ async function MeResultPageContent({
                 <PartTwoSections
                   data={partTwo}
                   lockCard={lockCard}
-                  hideLocked={Boolean(acquisition)}
+                  hideLocked={Boolean(acquisition) || publicPreview}
                   subjectName={acquisition?.sharerName}
                   locale={locale}
                 />
@@ -984,16 +994,17 @@ async function MeResultPageContent({
                     items={partTwo.sceneCautions}
                     locale={locale}
                   />
-                ) : acquisition ? null : (
-                  // 獲得モードではロックティザーも出さない (課金コンテンツは無いものとして扱う)
+                ) : acquisition || publicPreview ? null : (
+                  // 獲得モード/公開プレビューではロックティザーも出さない
+                  // (課金コンテンツは無いものとして扱う)
                   <SceneCautionTeaser locale={locale} />
                 )}
               </section>
             );
           })()}
 
-        {/* ===== 獲得CTA (/share 経由のみ): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
-        {acquisition && (
+        {/* ===== 獲得CTA (/share 経由 + 公開タイプ別LP): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
+        {(acquisition || publicPreview) && (
           <div className="mt-16 mb-12 text-center">
             <Link
               href="/diagnosis"
@@ -1011,8 +1022,8 @@ async function MeResultPageContent({
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
         ¥499 で買えるのは第二部まで (三層モデル)。友達1人で開いた人には売るものが無いので出さない。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
-    {/* 獲得モードは課金導線なし (フェイルクローズで明示ガード) */}
-    {!partTwoUnlocked && !acquisition && (
+    {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
+    {!partTwoUnlocked && !acquisition && !publicPreview && (
       <>
         <FullAccessPromoCard
           ownerToken={token}
@@ -1034,7 +1045,7 @@ async function MeResultPageContent({
     )}
     {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。
         獲得モード (/share) では訪問者に無関係なので出さない。 */}
-    {!acquisition && <ResetDataLink locale={locale} />}
+    {!acquisition && !publicPreview && <ResetDataLink locale={locale} />}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     {isKorean ? <KoTopFooter /> : <TopFooter />}
