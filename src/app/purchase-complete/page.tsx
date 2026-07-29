@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PurchaseCompleteView } from "@/components/PurchaseCompleteView";
+import TopHeader from "@/components/top/TopHeader";
 import {
   createMetaPurchaseClaimToken,
   verifyPaidFullAccessCheckoutSession,
@@ -26,6 +27,8 @@ type PageProps = {
 
 function UnverifiedPurchasePage() {
   return (
+    <>
+    <TopHeader />
     <main
       className="flex flex-1 flex-col items-center justify-center px-5 py-14 text-center"
       style={{ fontFamily: FONT_STACK, backgroundColor: "#F1F1F7" }}
@@ -46,6 +49,7 @@ function UnverifiedPurchasePage() {
         トップに戻る
       </Link>
     </main>
+    </>
   );
 }
 

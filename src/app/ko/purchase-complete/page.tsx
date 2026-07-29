@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import {
   createMetaPurchaseClaimToken,
@@ -22,6 +23,8 @@ type PageProps = {
 
 function UnverifiedPurchasePage() {
   return (
+    <>
+    <KoTopHeader />
     <main className="flex flex-1 flex-col items-center justify-center bg-[#F1F1F7] px-5 py-14 text-center">
       <h1 className="text-[22px] font-black" style={{ color: NAVY }}>
         결제 정보를 확인할 수 없었어요
@@ -39,6 +42,7 @@ function UnverifiedPurchasePage() {
         홈으로 돌아가기
       </Link>
     </main>
+    </>
   );
 }
 
@@ -56,6 +60,8 @@ export default async function KoreanPurchaseCompletePage({
         checkoutSessionId={session.id}
         claimToken={claimToken}
       />
+      {/* サイト共通ヘッダー (日本語 /purchase-complete と揃える 2026-07-30 指示) */}
+      <KoTopHeader />
       <main className="flex flex-1 flex-col items-center justify-center bg-[#F1F1F7] px-5 py-14">
       <div className="mb-6 w-full max-w-[420px] text-center">
         <div

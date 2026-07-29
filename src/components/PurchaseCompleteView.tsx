@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import TopHeader from "@/components/top/TopHeader";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -14,6 +15,9 @@ const NAVY = "#2E2E5C";
 
 export function PurchaseCompleteView() {
   return (
+    <>
+    {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
+    <TopHeader />
     <main
       className="flex flex-1 flex-col items-center justify-center px-5 py-14"
       style={{ fontFamily: FONT_STACK, backgroundColor: "#F1F1F7" }}
@@ -97,5 +101,6 @@ export function PurchaseCompleteView() {
         トップに戻る
       </Link>
     </main>
+    </>
   );
 }
