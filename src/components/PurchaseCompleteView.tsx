@@ -52,6 +52,17 @@ export function PurchaseCompleteView() {
           あなたの<span style={{ color: NAVY }}>詳細レポート</span>
           をお届けしました。
         </p>
+        {/* 診断前に購入したゲスト向けの次の一歩。ログイン後は verify-magic-link が
+            診断未完了アカウントを /diagnosis へ着地させる (2026-07-30)。 */}
+        <p
+          className="mt-2 text-[12px] font-bold leading-[1.8]"
+          style={{ color: "#8A8AA3" }}
+        >
+          性格診断がまだの場合は、ログイン後にそのまま
+          <span style={{ color: NAVY }}>無料の性格診断</span>へご案内します。
+          <br />
+          診断が終わると、完全版のレポートが開きます。
+        </p>
       </div>
 
       {/* 購入直後にそのままログイン (magic link 発行)。届いたリンクから本人確認。 */}

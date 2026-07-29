@@ -137,11 +137,39 @@ export async function GET(request: NextRequest) {
   // owner_token が無い (レガシー行) 場合のみ /zukan-mine にフォールバック。
   const { data: userRow } = await supabaseAdmin
     .from("users")
-    .select("owner_token")
+    .select("owner_token, scores, diagnosis_completed_at, unmei")
     .eq("id", userId)
     .maybeSingle();
   const ownerToken = (userRow?.owner_token as string | null) ?? null;
   const prefix = locale === "ko" ? "/ko" : "";
+
+  // ゲスト購入のプレースホルダー行 (webhook が email 紐付けのために新規作成する行。
+  // scores は中央値固定・diagnosis_completed_at 無し) を /me に飛ばすと、
+  // 「診断していないのに中央値のニセ結果」が表示されて不自然 (2026-07-30)。
+  // 診断へ着地させれば、診断API (session あり = 同じ user 行を UPDATE) が本物の
+  // 結果に置き換え、購入済みの完全版がそのまま有効になる。
+  // 判定は「診断完了時刻なし AND スコア未設定 or 中央値のまま」に絞る
+  // (diagnosis_completed_at カラム追加前の実診断行を誤って診断へ送らないため)。
+  const needsDiagnosis =
+    !!userRow &&
+    !userRow.diagnosis_completed_at &&
+    isPlaceholderScores(userRow.scores);
+  if (needsDiagnosis) {
+    // 運命の設計図の購入者は出生情報の入力が先 (/unmei が誘導する。日本語のみ)。
+    const dest = userRow.unmei ? "/unmei" : `${prefix}/diagnosis`;
+    return NextResponse.redirect(new URL(dest, request.nextUrl));
+  }
+
   const dest = ownerToken ? `${prefix}/me/${ownerToken}` : prefix || "/";
   return NextResponse.redirect(new URL(dest, request.nextUrl));
+}
+
+// ゲスト購入プレースホルダー行の scores 判定。
+// api/webhook/stripe の NEUTRAL_SCORES = {O:5,C:5,E:5,A:5,N:5} と揃えること。
+// scores 未設定 (null) も「表示できる本物の結果が無い」ので同じ扱いにする。
+function isPlaceholderScores(scores: unknown): boolean {
+  if (scores === null || scores === undefined) return true;
+  if (typeof scores !== "object") return true;
+  const rec = scores as Record<string, unknown>;
+  return ["O", "C", "E", "A", "N"].every((k) => rec[k] === 5);
 }

@@ -87,6 +87,14 @@ export default async function KoreanPurchaseCompletePage({
           <span style={{ color: NAVY }}>잠금 해제된 상세 결과 링크</span>를 보내
           드렸어요.
         </p>
+        {/* 진단 전에 구매한 게스트 안내. 로그인 후에는 verify-magic-link 가
+            진단 미완료 계정을 /ko/diagnosis 로 보낸다 (2026-07-30). */}
+        <p className="mt-2 break-keep text-[12px] font-bold leading-[1.8] text-[#8A8AA3]">
+          아직 성격 진단을 하지 않았다면, 로그인 후 그대로{" "}
+          <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해 드려요.
+          <br />
+          진단이 끝나면 완전판 결과가 열립니다.
+        </p>
       </div>
 
       <LoginCard locale="ko" />
