@@ -35,8 +35,8 @@ export function FullAccessCta({
   locale?: ResultLocale;
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
   source?: string;
-  /** 購入後の着地。'tako' で /tako/[token] に戻す (既定は /me/[token])。 */
-  returnTo?: "me" | "tako";
+  /** 購入後の着地。'tako' で /tako/[token]、'aisho' で /aisho に戻す (既定は /me/[token])。 */
+  returnTo?: "me" | "tako" | "aisho";
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +65,16 @@ export function FullAccessCta({
         body: JSON.stringify({
           ...(ownerToken ? { owner_token: ownerToken } : {}),
           ...(returnTo ? { return_to: returnTo } : {}),
+          // /aisho からの購入は閲覧中のペア (?a=&b=) ごと戻せるようサーバへ渡す
+          // (サーバ側で実在タイプIDのみ success/cancel URL に反映する)。
+          ...(returnTo === "aisho"
+            ? (() => {
+                const q = new URLSearchParams(window.location.search);
+                const a = q.get("a");
+                const b = q.get("b");
+                return a && b ? { aisho_a: a, aisho_b: b } : {};
+              })()
+            : {}),
           paywall_source: paywallSource,
           locale,
         }),

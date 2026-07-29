@@ -539,6 +539,8 @@ export function BottomNav() {
           imageAlt="相性"
           ownerToken={ownerToken ?? undefined}
           ctaSource="nav_aisho_locked"
+          // 相性タブから買った人は相性 (/aisho) に戻す (2026-07-29)
+          returnTo="aisho"
           onClose={closeAishoPaywall}
         />
       )}

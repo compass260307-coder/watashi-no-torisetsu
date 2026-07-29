@@ -15,6 +15,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { hasFullAccess } from "@/lib/entitlements";
+import { isSafeOpaqueToken } from "@/lib/api-security";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   allThirtyTwoTypeIds,
   type ThirtyTwoTypeId,
@@ -81,8 +83,23 @@ export async function GET(request: NextRequest) {
   }
 
   // 匿名可。未ログイン/未課金は本文を返さない (fail-closed)。
+  // 本人解決は session 優先、無ければ owner_token (推測不可の capability。
+  // checkout / full-access-status と同じ扱い)。SP で Cookie が消えていても
+  // 購入済み本人が /aisho に戻ったときシーン本文を読めるようにする (2026-07-29)。
   const session = await getSession(request);
-  const full = session?.id ? await hasFullAccess(session.id) : false;
+  let userId: string | null = session?.id ?? null;
+  if (!userId) {
+    const rawToken = searchParams.get("owner_token");
+    if (isSafeOpaqueToken(rawToken)) {
+      const { data } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("owner_token", rawToken)
+        .maybeSingle();
+      userId = (data?.id as string | null) ?? null;
+    }
+  }
+  const full = userId ? await hasFullAccess(userId) : false;
   if (!full) {
     // 未課金。ログイン中なら owner_token を返す → /aisho の課金CTAに渡して、
     // SP で Cookie が消えても owner_token で本人解決できるようにする (401→トップ回避)。

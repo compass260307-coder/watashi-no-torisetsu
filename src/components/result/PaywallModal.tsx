@@ -29,7 +29,7 @@ interface PaywallModalProps {
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: ResultLocale;
-  returnTo?: "me" | "tako";
+  returnTo?: "me" | "tako" | "aisho";
   surface?: "self" | "tako";
 }
 

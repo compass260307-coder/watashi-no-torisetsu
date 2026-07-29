@@ -37,6 +37,7 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
 const NAVY = "#2E2E5C";
@@ -431,7 +432,18 @@ function CompatDetail({
   } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`)
+    // SP で Cookie(session) が消えていても購入済み本人を解決できるよう、端末保存の
+    // owner_token も渡す (checkout と同じ capability 扱い。無ければ従来どおり session のみ)。
+    let tokenQuery = "";
+    try {
+      const t = localStorage.getItem("torisetsu_owner_token");
+      if (t) tokenQuery = `&owner_token=${encodeURIComponent(t)}`;
+    } catch {
+      // localStorage 不可環境は session のみで判定
+    }
+    fetch(
+      `/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}${tokenQuery}`,
+    )
       .then((res) =>
         res.ok
           ? (res.json() as Promise<ScenesResponse>)
@@ -906,6 +918,21 @@ function AishoInner() {
     locked: boolean | null;
     ownerToken: string | null;
   }>({ locked: null, ownerToken: null });
+  // Stripe 決済完了直後 (?paid=1 / return_to='aisho' で戻ってきた)。webhook 反映前は
+  // シーンがロックのままなので、PaidUnlockWatcher で「決済処理中…」を出して反映を待つ。
+  const paidPending = searchParams.get("paid") === "1";
+  // 反映ポーリング用の owner_token。session 由来 (aishoGate) を優先し、
+  // Cookie が無い端末では localStorage (診断時に保存) へフォールバック。
+  const [storedToken, setStoredToken] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStoredToken(localStorage.getItem("torisetsu_owner_token"));
+    } catch {
+      // localStorage 不可環境はポーリング不可 (watcher を出さない)
+    }
+  }, []);
+  const watcherToken = aishoGate.ownerToken ?? storedToken;
   // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
   const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
     const a = searchParams.get("a");
@@ -1129,21 +1156,30 @@ function AishoInner() {
         相性①〜④は従来どおり無料・ここではゲートしない。
         ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
         選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
+    {/* 決済直後 (?paid=1) だが webhook 反映がまだでロック表示のとき、「決済処理中…」を
+        出して反映を待つ (/me・/tako の PaidUnlockWatcher と同じ。反映後は paid= を外して再読込)。 */}
+    {paidPending && aishoGate.locked !== false && watcherToken && (
+      <PaidUnlockWatcher ownerToken={watcherToken} returnTo="aisho" />
+    )}
     {resultShown && aishoGate.locked === true && (
       <>
         <FullAccessPromoCard
           variant="aisho"
           imageSrc="/characters/scenes/unknown_love.webp"
           imageAlt="相性"
-          // ログイン中なら owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
-          ownerToken={aishoGate.ownerToken ?? undefined}
+          // owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
+          // session (aishoGate) 優先・無ければ端末保存の token。渡せたときは購入後に
+          // /aisho へ直接戻れる (returnTo)。どちらも無いゲストは /purchase-complete 着地。
+          ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
+          returnTo="aisho"
         />
         {/* 相性ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
         <PaywallModal
           variant="aisho"
           imageSrc="/characters/scenes/unknown_love.webp"
           imageAlt="相性"
-          ownerToken={aishoGate.ownerToken ?? undefined}
+          ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
+          returnTo="aisho"
         />
       </>
     )}

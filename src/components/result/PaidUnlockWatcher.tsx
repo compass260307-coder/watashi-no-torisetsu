@@ -18,6 +18,24 @@ const POLL_INTERVAL_MS = 2000;
 const FIRST_DELAY_MS = 1200;
 const MAX_TRIES = 20; // 約 40 秒
 
+// 反映後 (またはタイムアウト後の手動再読込) の戻し先 URL。
+//   me/tako: /{me|tako}/{token} (paid= を外した canonical URL)。
+//   aisho: token パスを持たないため、現URLから paid/session_id だけ外す
+//          (ペア ?a=&b= は維持 → 解錠済みのシーン本文がそのまま出る)。
+function unlockedUrl(
+  returnTo: "me" | "tako" | "aisho",
+  ownerToken: string,
+  locale: ResultLocale,
+): string {
+  if (returnTo === "aisho") {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("paid");
+    url.searchParams.delete("session_id");
+    return url.toString();
+  }
+  return `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`;
+}
+
 export function PaidUnlockWatcher({
   ownerToken,
   locale = "ja",
@@ -25,7 +43,7 @@ export function PaidUnlockWatcher({
 }: {
   ownerToken: string;
   locale?: ResultLocale;
-  returnTo?: "me" | "tako";
+  returnTo?: "me" | "tako" | "aisho";
 }) {
   const [timedOut, setTimedOut] = useState(false);
 
@@ -35,9 +53,7 @@ export function PaidUnlockWatcher({
 
     const reloadUnlocked = () => {
       // paid= を外した URL に置換 (履歴を汚さない)。full 反映済みなので本文が出る。
-      window.location.replace(
-        `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`,
-      );
+      window.location.replace(unlockedUrl(returnTo, ownerToken, locale));
     };
 
     const poll = async () => {
@@ -118,9 +134,7 @@ export function PaidUnlockWatcher({
           <button
             type="button"
             onClick={() =>
-              window.location.replace(
-                `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`,
-              )
+              window.location.replace(unlockedUrl(returnTo, ownerToken, locale))
             }
             className="mt-6 inline-flex items-center justify-center rounded-full px-8 py-3 text-[15px] font-black text-white"
             style={{ background: NAVY }}

@@ -208,7 +208,7 @@ export function FullAccessPromoCard({
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: ResultLocale;
-  returnTo?: "me" | "tako";
+  returnTo?: "me" | "tako" | "aisho";
   anchorId?: string;
   onClose?: () => void;
   surface?: "self" | "tako";

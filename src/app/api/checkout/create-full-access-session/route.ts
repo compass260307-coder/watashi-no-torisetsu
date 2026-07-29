@@ -24,6 +24,7 @@ import {
 } from "@/lib/api-security";
 import { getSession } from "@/lib/session";
 import { hasFullAccess } from "@/lib/entitlements";
+import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -264,7 +265,12 @@ export async function POST(request: NextRequest) {
   const body = parsedBody.value;
   const checkoutLocale: CheckoutLocale = body.locale === "ko" ? "ko" : "ja";
   // 戻り先は allowlist 化 (任意 URL への open redirect を防ぐ)。既定 me。
-  const returnTo = body.return_to === "tako" ? "tako" : "me";
+  const returnTo =
+    body.return_to === "tako"
+      ? "tako"
+      : body.return_to === "aisho"
+        ? "aisho"
+        : "me";
   const checkoutCopy = CHECKOUT_COPY[checkoutLocale];
   const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
   const priceId = getFullAccessPriceId(checkoutLocale);
@@ -353,16 +359,40 @@ export async function POST(request: NextRequest) {
   const ownerToken = (buyer?.owner_token ?? "").trim();
   const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
+  // /aisho からの購入 (return_to='aisho') は、閲覧中のペア (?a=&b=) ごと /aisho に戻す。
+  // クエリ値は実在の32タイプIDのみ許可 (success/cancel URL への注入を防ぐ)。
+  // /aisho は言語共通ページのため localePrefix は付けない (/ko/aisho は未実装)。
+  const aishoPairQuery = (() => {
+    if (returnTo !== "aisho") return null;
+    const a = body.aisho_a;
+    const b = body.aisho_b;
+    const valid = new Set<string>(allThirtyTwoTypeIds() as string[]);
+    return typeof a === "string" &&
+      typeof b === "string" &&
+      valid.has(a) &&
+      valid.has(b) &&
+      a !== b
+      ? `a=${a}&b=${b}`
+      : null;
+  })();
   const successPath =
-    returnTo === "tako"
-      ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
-      : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
+    returnTo === "aisho"
+      ? `/aisho?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
+      : returnTo === "tako"
+        ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
+        : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
   const successUrl = ownerToken
     ? `${checkoutBaseUrl}${successPath}`
     : `${checkoutBaseUrl}${localePrefix}/purchase-complete?session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = ownerToken
-    ? `${checkoutBaseUrl}${localePrefix}/${returnTo}/${ownerToken}`
-    : `${checkoutBaseUrl}${localePrefix || "/"}`;
+  // キャンセルは購入前にいたページへ戻す。/aisho はゲスト (owner_token なし) でも
+  // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
+  const cancelPath =
+    returnTo === "aisho"
+      ? `/aisho${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
+      : ownerToken
+        ? `${localePrefix}/${returnTo}/${ownerToken}`
+        : localePrefix || "/";
+  const cancelUrl = `${checkoutBaseUrl}${cancelPath}`;
 
   // ログイン中は email を prefill。ゲストは Stripe が Checkout で email を収集する。
   const customerEmail =
