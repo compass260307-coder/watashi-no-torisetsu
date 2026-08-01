@@ -17,6 +17,10 @@ export interface DiagnosisCopy {
   heroSubtitle: string;
   heroImageAlt: string;
   nicknameLabel: string;
+  // 最終カード (16P 風): ニックネーム説明 + 任意のジェンダー設問
+  nicknameHelper: string;
+  genderLabel: string;
+  genderOptions: { value: "male" | "female" | "other"; label: string }[];
   nicknameEmptyError: string;
   nicknameTooLongError: (max: number) => string;
   nicknameRequired: string;
@@ -60,6 +64,7 @@ interface DiagnosisLocaleSettings {
   questions: Question[];
   progressStorageKey: string;
   nicknameStorageKey: string;
+  genderStorageKey: string;
   resultStorageKey: string;
   startedStorageKey: string;
   homePath: string;
@@ -71,7 +76,14 @@ const JA_COPY: DiagnosisCopy = {
   heroTitle: "無料性格診断テスト",
   heroSubtitle: "OCEAN（ビッグファイブ）診断でわかる32タイプ",
   heroImageAlt: "ワタシのトリセツのマスコット",
-  nicknameLabel: "ニックネームを教えて",
+  nicknameLabel: "ニックネーム",
+  nicknameHelper: "結果ページに表示される名前です。",
+  genderLabel: "あなたのジェンダー（任意）",
+  genderOptions: [
+    { value: "male", label: "男性" },
+    { value: "female", label: "女性" },
+    { value: "other", label: "その他" },
+  ],
   nicknameEmptyError: "ニックネームを入力してね",
   nicknameTooLongError: (max) => `${max} 文字以内で入力してね`,
   nicknameRequired: "ニックネームを入力してね",
@@ -200,7 +212,14 @@ const KO_COPY: DiagnosisCopy = {
   heroTitle: "무료 성격 진단 테스트",
   heroSubtitle: "OCEAN으로 알아보는 32가지 유형",
   heroImageAlt: "나의 사용설명서 마스코트",
-  nicknameLabel: "별명을 알려 주세요",
+  nicknameLabel: "닉네임",
+  nicknameHelper: "결과 페이지에 표시되는 이름이에요.",
+  genderLabel: "성별 (선택)",
+  genderOptions: [
+    { value: "male", label: "남성" },
+    { value: "female", label: "여성" },
+    { value: "other", label: "기타" },
+  ],
   nicknameEmptyError: "별명을 입력해 주세요",
   nicknameTooLongError: (max) => `${max}자 이내로 입력해 주세요`,
   nicknameRequired: "별명을 입력해 주세요",
@@ -275,6 +294,7 @@ export const DIAGNOSIS_LOCALES: Record<
     questions,
     progressStorageKey: "torisetsu_answers_v2",
     nicknameStorageKey: "torisetsu_nickname_v2",
+    genderStorageKey: "torisetsu_gender_v1",
     resultStorageKey: "torisetsu_result",
     startedStorageKey: "torisetsu_diag_started",
     homePath: "/",
@@ -286,6 +306,7 @@ export const DIAGNOSIS_LOCALES: Record<
     questions: KO_QUESTIONS,
     progressStorageKey: "torisetsu_answers_v2_ko",
     nicknameStorageKey: "torisetsu_nickname_v2_ko",
+    genderStorageKey: "torisetsu_gender_v1_ko",
     resultStorageKey: "torisetsu_result_ko",
     startedStorageKey: "torisetsu_diag_started_ko",
     homePath: "/ko",

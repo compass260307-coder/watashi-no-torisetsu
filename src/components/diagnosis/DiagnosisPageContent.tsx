@@ -130,11 +130,14 @@ export default function DiagnosisPageContent({
   const [campaign, setCampaign] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
 
-  // ニックネームは独立ステップを廃止し、最初の質問ページ (page 0) の先頭で取得する。
+  // ニックネームは 16P 同様、最終ページ (page 4) の質問の後・「結果を見る」の直前で取得する。
   const [nickname, setNickname] = useState("");
   const [nicknameError, setNicknameError] = useState<string | null>(null);
-  // page 0 を抜ける際に未入力なら、この入力欄へスクロール/フォーカスするための参照。
+  // 送信時に未入力なら、この入力欄へスクロール/フォーカスするための参照。
   const nicknameInputRef = useRef<HTMLInputElement>(null);
+  // ジェンダーは任意 (16P 参考)。未選択 = null のまま送信できる。
+  // DB 保存は users にカラムが無いため未対応 (選択は localStorage に保持し、API へは送る)。
+  const [gender, setGender] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed (0..4)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
@@ -229,6 +232,13 @@ export default function DiagnosisPageContent({
     } catch {
       // 無視
     }
+    // ジェンダーの前回選択もプリフィル (任意項目)
+    try {
+      const savedGender = localStorage.getItem(settings.genderStorageKey);
+      if (savedGender) setGender(savedGender);
+    } catch {
+      // 無視
+    }
     setHydrated(true);
   }, [activeQuestions, questionSetVersion, settings]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -294,12 +304,11 @@ export default function DiagnosisPageContent({
   );
   const answeredCount = Object.keys(answers).length;
   const isLastPage = currentPage === TOTAL_PAGES - 1;
-  // ニックネームは必須。page 0 の「次へ」は全問回答 + ニックネーム入力で活性化。
+  // ニックネームは必須。最終ページの「結果を見る」は全問回答 + ニックネーム入力で活性化。
   const hasNickname = nickname.trim().length > 0;
-  const canAdvance =
-    isPageComplete && (currentPage !== 0 || hasNickname);
+  const canAdvance = isPageComplete;
 
-  // ニックネーム必須ゲート: page 0 (ニックネーム同居ページ) を抜ける前に呼ぶ。
+  // ニックネーム必須ゲート: 最終ページの送信 (handleSubmit) の前に呼ぶ。
   // 未入力/超過なら error を出し入力欄へスクロール&フォーカスして false を返す。
   // OK なら localStorage に保存して true を返す。
   const ensureNickname = (): boolean => {
@@ -324,6 +333,16 @@ export default function DiagnosisPageContent({
       // localStorage 不可でも進める
     }
     return true;
+  };
+
+  // ジェンダー選択 (任意): 選択のたびに localStorage へ保存 (再訪時のプリフィル用)
+  const handleGenderSelect = (value: string) => {
+    setGender(value);
+    try {
+      localStorage.setItem(settings.genderStorageKey, value);
+    } catch {
+      // 無視
+    }
   };
 
   // #2 「続きから」: 保存した回答と進捗を復元し、質問ステップへ
@@ -386,7 +405,6 @@ export default function DiagnosisPageContent({
 
   const handleNext = () => {
     if (!isPageComplete || isLastPage) return;
-    if (currentPage === 0 && !ensureNickname()) return;
     setCurrentPage((p) => p + 1);
     // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
@@ -403,6 +421,8 @@ export default function DiagnosisPageContent({
 
   const handleSubmit = async () => {
     if (!isAllComplete || submitting) return;
+    // ニックネーム必須 + localStorage 保存 (未入力なら入力欄へスクロールして中断)
+    if (!ensureNickname()) return;
     setSubmitError(false);
     setSubmitting(true);
 
@@ -462,6 +482,9 @@ export default function DiagnosisPageContent({
           sourceInviteCode: source || undefined,
           // Day 12-Polish-B: 基本情報ステップで取得したニックネーム
           displayName: nickname.trim() || undefined,
+          // 任意のジェンダー (male/female/other)。API 側は未対応のため現状は無視される
+          // (users にカラム追加後に保存を接続する)。
+          gender: gender || undefined,
           // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch)
           acquisitionSource: acq.source || undefined,
           acquisitionCampaign: acq.campaign || undefined,
@@ -592,47 +615,6 @@ export default function DiagnosisPageContent({
       )}
 
       <main className="flex flex-col flex-1 w-full pt-6 pb-4">
-        {/* page 0 の先頭にニックネーム入力を同居させる (旧: 独立した basic-info ステップ)。
-            Q1 の直前に置き、最初の画面で「ニックネーム + 最初の質問」を一緒に見せる。 */}
-        {currentPage === 0 && (
-          <div className="mb-8 mx-auto w-full max-w-[1080px] px-4 md:px-8">
-            {/* ニックネーム入力は白カードで囲い、質問(区切り線のみ)と差別化する。
-                カードはフッター幅 (max-w-[1080px]) に揃え、入力は中央で読みやすい幅に収める。 */}
-            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)]">
-              <div className="mx-auto max-w-md">
-                <label
-                  htmlFor="diagnosis-nickname"
-                  className="block text-center font-bold text-[#2E2E5C] leading-relaxed mb-4"
-                  style={{ fontSize: "clamp(20px, 2.4vw, 26px)" }}
-                >
-                  {copy.nicknameLabel}
-                </label>
-                <input
-                  ref={nicknameInputRef}
-                  id="diagnosis-nickname"
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => {
-                    setNickname(e.target.value);
-                    if (nicknameError) setNicknameError(null);
-                  }}
-                  maxLength={NICKNAME_MAX}
-                  placeholder=""
-                  autoComplete="off"
-                  className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white px-4 py-3.5 text-center text-lg text-[#2E2E5C] font-bold focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
-                />
-                {nicknameError && (
-                  <p
-                    role="alert"
-                    className="text-[#E86AA6] text-xs font-bold mt-2 text-center"
-                  >
-                    {nicknameError}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
         {pageQuestions.map((q) => (
           // ref + tabIndex(-1): 回答時に次の未回答質問へ scrollIntoView/focus するための受け皿。
           // 視覚は QuestionCard が担うので wrapper は無装飾 (outline は programmatic focus 用に消す)。
@@ -657,16 +639,115 @@ export default function DiagnosisPageContent({
           </div>
         ))}
 
-        {submitError && (
-          <p className="text-center text-xs text-[#E86AA6] font-bold mt-2 mb-2">
-            {copy.submitError}
-          </p>
+        {/* 16P 同様、最終ページの質問の後に基本情報カード (ニックネーム + 任意のジェンダー) を
+            置き、カード内の「結果を見る」で送信する。左寄せの見出し + ヘルパー文の 16P の型。 */}
+        {isLastPage && (
+          <div className="mt-10 mx-auto w-full max-w-[1080px] px-4 md:px-8">
+            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)] md:p-8">
+              {/* ニックネーム (必須) */}
+              <label
+                htmlFor="diagnosis-nickname"
+                className="block text-[22px] font-extrabold text-[#2E2E5C]"
+              >
+                {copy.nicknameLabel}
+              </label>
+              <p className="mt-1.5 text-[17px] leading-relaxed text-[#8A8AA3]">
+                {copy.nicknameHelper}
+              </p>
+              <div className="relative mt-3">
+                {/* 入力欄内の人型アイコン (16P のメール欄の ✉ に相当する装飾) */}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8A8AA3]"
+                >
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5" />
+                </svg>
+                <input
+                  ref={nicknameInputRef}
+                  id="diagnosis-nickname"
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => {
+                    setNickname(e.target.value);
+                    if (nicknameError) setNicknameError(null);
+                  }}
+                  maxLength={NICKNAME_MAX}
+                  placeholder=""
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white py-3.5 pl-11 pr-4 text-[19px] font-bold text-[#2E2E5C] focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
+                />
+              </div>
+              {nicknameError && (
+                <p role="alert" className="mt-2 text-[15px] font-bold text-[#E86AA6]">
+                  {nicknameError}
+                </p>
+              )}
+
+              {/* ジェンダー (任意) */}
+              <fieldset className="mt-8">
+                <legend className="text-[22px] font-extrabold text-[#2E2E5C]">
+                  {copy.genderLabel}
+                </legend>
+                <div className="mt-3 flex flex-col gap-1">
+                  {copy.genderOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-center gap-3 py-1.5"
+                    >
+                      <input
+                        type="radio"
+                        name="diagnosis-gender"
+                        value={option.value}
+                        checked={gender === option.value}
+                        onChange={() => handleGenderSelect(option.value)}
+                        className="h-6 w-6 accent-[#5B5BEF]"
+                      />
+                      <span className="text-lg text-[#2E2E5C]">
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* 結果を見る: 16P 同様カード内に置く (SP は全幅 / PC は左寄せピル)。
+                  全問回答 + ニックネーム入力で活性化。 */}
+              <div className="mt-8 flex flex-col items-start gap-2">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!isAllComplete || !hasNickname || submitting}
+                  className={`${soraPrimary} w-full md:w-auto`}
+                >
+                  {submitting ? copy.submittingButton : copy.resultButton}
+                </button>
+                {/* 全問回答済みなのにニックネーム未入力なら、必須である旨を明示 */}
+                {isPageComplete && !hasNickname && (
+                  <p className="text-[15px] font-bold text-[#E86AA6]">
+                    {copy.nicknameRequired}
+                  </p>
+                )}
+                {submitError && (
+                  <p className="text-[15px] font-bold text-[#E86AA6]">
+                    {copy.submitError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 質問の下の CTA: 押すと次ページへ (自動ページ送りは廃止)。
-            ページ全問回答で活性化。page 0 はニックネーム必須。 */}
-        <div className="mx-auto mt-10 flex w-full max-w-[1080px] flex-col items-center gap-2 px-4 md:px-8">
-          {!isLastPage ? (
+        {/* 質問の下の CTA: 押すと次ページへ (自動ページ送りは廃止)。ページ全問回答で活性化。
+            最終ページの送信 CTA は上の基本情報カード内にある。 */}
+        {!isLastPage && (
+          <div className="mx-auto mt-10 flex w-full max-w-[1080px] flex-col items-center gap-2 px-4 md:px-8">
             <button
               type="button"
               onClick={handleNext}
@@ -675,23 +756,8 @@ export default function DiagnosisPageContent({
             >
               {copy.nextButton}
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!isAllComplete || submitting}
-              className={soraPrimary}
-            >
-              {submitting ? copy.submittingButton : copy.resultButton}
-            </button>
-          )}
-          {/* page 0 で全問回答済みなのにニックネーム未入力なら、必須である旨を明示 */}
-          {currentPage === 0 && isPageComplete && !hasNickname && (
-            <p className="text-xs font-bold text-[#E86AA6]">
-              {copy.nicknameRequired}
-            </p>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
     {/* サイト共通フッター */}
