@@ -14,6 +14,7 @@ import {
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { DiagnosisProgressBar } from "@/components/diagnosis/DiagnosisProgressBar";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
+import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
 import { QuestionCard } from "@/components/diagnosis/QuestionCard";
 import { InAppBrowserModal } from "@/components/InAppBrowserModal";
 import TopHeader from "@/components/top/TopHeader";
@@ -571,7 +572,8 @@ export default function DiagnosisPageContent({
       {isKorean ? <KoTopHeader /> : <TopHeader />}
     </ScrollHideHeader>
     <div
-      className="flex flex-col flex-1 min-h-screen pb-12 bg-white"
+      // 下端はシェアバンドが受けるので pb は付けない (バンド〜フッター間の白帯を作らない)。
+      className="flex flex-col flex-1 min-h-screen bg-white"
       style={{ fontFamily: isKorean ? "inherit" : FONT_STACK }}
     >
       {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
@@ -759,6 +761,10 @@ export default function DiagnosisPageContent({
           </div>
         )}
       </main>
+      {/* フッター直上の 16P 風シェアバンド (実績数 + SNS ボタン) */}
+      <div className="mt-10">
+        <DiagnosisShareBand locale={locale} />
+      </div>
     </div>
     {/* サイト共通フッター */}
     {isKorean ? <KoTopFooter /> : <TopFooter />}
