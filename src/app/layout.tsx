@@ -151,10 +151,16 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  // Search Console 登録時に環境変数で差し替え (未設定時は出力されない)
-  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
-    : undefined,
+  verification: {
+    // Search Console 登録時に環境変数で差し替え (未設定時は google は出力されない)
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+      ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+      : {}),
+    // Meta (Facebook) ビジネスマネージャのドメイン認証 (meta タグ方式)。
+    other: {
+      "facebook-domain-verification": "cr33tjgivkzknog0zudspl9sx2ssxz",
+    },
+  },
 };
 
 export default function RootLayout({
