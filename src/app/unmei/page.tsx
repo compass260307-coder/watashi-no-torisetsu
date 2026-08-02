@@ -57,11 +57,11 @@ const PREVIEW_READING = {
 const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
   {
     q: "「運命の設計図」はどんなことに役立ちますか？",
-    a: "生まれた瞬間の星の配置から、あなたの素質・心の動き・挑戦の方向性を読み解きます。性格診断の結果と掛け合わせるので、「診断でわかった自分」をもう一段深く理解するきっかけになります。",
+    a: "生まれた瞬間の星の配置から、あなたが積み上げてきた素質・人との関わり方・これから訪れる転換点を読み解きます。性格診断の結果と掛け合わせるので、「診断でわかった自分」をもう一段深く理解するきっかけになります。",
   },
   {
     q: "占いの知識がなくても読めますか？",
-    a: "はい。専門用語の羅列ではなく、あなたに語りかける文章でお届けします。4つの章それぞれに、明日から試せる小さな一歩を添えています。",
+    a: "はい。専門用語の羅列ではなく、あなたに語りかける文章でお届けします。明日から試せる小さな一歩も添えながら、4つの章で読み解きます。",
   },
   {
     q: "購入後は何をすればいいですか？",
@@ -86,6 +86,49 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
       </>
     ),
   },
+];
+
+// 実績バンドの浮遊アバター (public/proof-faces)。ChatGPT生成の「実在しない人物」の
+// 笑顔ポートレート (2026-08-02 指示でキャラ顔→写真調に変更。元グリッド1536×1024から
+// 384px角で切り出し)。実在の人物ではないため肖像権・写真ライセンスの問題はない。
+// 「写真はイメージです」注記は一度入れたがオーナー判断で削除 (2026-08-02)。
+// 再度必要になったら人数テキスト <p> 末尾に text-[10px] で戻す。
+// 位置・サイズ・角度・アニメ遅延は固定値 (Math.random だと SSR と hydration がズレる)。
+// 男女が交互になる並び。SP (バンド幅 ~358px) でも中央テキストと重ならない配置にする。
+const FLOATING_FACES: {
+  src: string;
+  pos: React.CSSProperties;
+  size: number;
+  rotate: number;
+  delay: number;
+}[] = [
+  { src: "/proof-faces/face-1.webp", pos: { left: "4%", top: "4%" }, size: 58, rotate: -8, delay: 0 },
+  { src: "/proof-faces/face-5.webp", pos: { left: "26%", top: "-8%" }, size: 42, rotate: 10, delay: 0.3 },
+  { src: "/proof-faces/face-3.webp", pos: { right: "26%", top: "-4%" }, size: 40, rotate: -10, delay: 0.6 },
+  { src: "/proof-faces/face-2.webp", pos: { right: "5%", top: "6%" }, size: 50, rotate: 8, delay: 0.9 },
+  { src: "/proof-faces/face-7.webp", pos: { left: "0%", top: "52%" }, size: 50, rotate: 5, delay: 1.2 },
+  { src: "/proof-faces/face-6.webp", pos: { right: "0%", top: "48%" }, size: 64, rotate: -6, delay: 1.8 },
+  { src: "/proof-faces/face-4.webp", pos: { left: "14%", top: "88%" }, size: 46, rotate: 7, delay: 1.5 },
+  { src: "/proof-faces/face-8.webp", pos: { right: "13%", top: "90%" }, size: 54, rotate: -5, delay: 2.1 },
+];
+
+// 実績ストリップの装飾スパークル (星モチーフ = 運命の設計図)。淡インディゴ+黄の2系統で
+// ゆっくり明滅させ、白地の余白を埋める。位置は SP (~358px) で顔・テキストの両方と
+// 重ならない座標に固定 (顔の座標を動かすときはここも見直す)。
+const SPARKLES: {
+  pos: React.CSSProperties;
+  size: number;
+  color: string;
+  delay: number;
+}[] = [
+  { pos: { left: "22%", top: "16%" }, size: 12, color: "#8F8FF0", delay: 0 },
+  { pos: { right: "24%", top: "14%" }, size: 10, color: "#FFD34D", delay: 0.7 },
+  { pos: { left: "7%", top: "78%" }, size: 10, color: "#FFD34D", delay: 1.3 },
+  { pos: { right: "6%", top: "80%" }, size: 13, color: "#C7C7F5", delay: 0.4 },
+  { pos: { left: "44%", top: "0%" }, size: 9, color: "#C7C7F5", delay: 1.8 },
+  { pos: { right: "36%", top: "90%" }, size: 11, color: "#FFE08A", delay: 1.0 },
+  { pos: { left: "11%", top: "38%" }, size: 8, color: "#C7C7F5", delay: 2.2 },
+  { pos: { right: "12%", top: "34%" }, size: 9, color: "#FFD34D", delay: 1.6 },
 ];
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
@@ -115,7 +158,7 @@ function UnmeiTeaserLp({
         {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いインディゴにし、直下の
             「できること」カードが帯の境目に重なるようにする (2026-07-26 指示)。
             コンテナはフッター (TopFooter) と同じ「padding 外側 + 内側 max-w-[1080px]」。 */}
-        <div className="bg-[#F7F7FE] px-4 pb-24 pt-8 md:px-8 md:pb-32 md:pt-14">
+        <div className="bg-[#F7F7FE] px-4 pb-10 pt-8 md:px-8 md:pb-14 md:pt-14">
         <div className="mx-auto max-w-[1080px]">
           <section className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
             {/* ヒーロー画像 (フェルトジオラマ調・白背景。他ページの mascot と同じ流儀) */}
@@ -149,8 +192,114 @@ function UnmeiTeaserLp({
               />
             </div>
           </section>
+
         </div>
         </div>
+
+        {/* 実績ストリップ: ここだけ白地に切り替え、上下を波エッジで帯とつなぐ (16P の
+            締めCTAセクション参考 / 2026-08-02 指示)。波は帯色 #F7F7FE を塗った SVG を
+            preserveAspectRatio="none" で全幅に伸ばす。
+            中央に人数、周囲に笑顔のアバターがふわふわ浮かぶ。人数は無料診断の累計完了者数
+            (運命の設計図の購入数ではない) — admin統計の実数スナップショット (2026-08-02時点
+            9,756人)。増える一方なので「以上」表記は常に正だが、定期的に最新値へ更新する。
+            顔画像の出自と誤認対策は FLOATING_FACES のコメント参照。 */}
+        <div className="bg-white">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 1440 48"
+            preserveAspectRatio="none"
+            className="block h-8 w-full md:h-12"
+          >
+            <path
+              fill="#F7F7FE"
+              d="M0,0 H1440 V22 C1320,44 1180,6 1040,18 C900,30 800,46 660,32 C520,18 440,42 300,38 C160,34 70,8 0,26 Z"
+            />
+          </svg>
+          <div className="px-4 md:px-8">
+          <section className="relative mx-auto max-w-[640px] py-2 md:py-3">
+            <div aria-hidden="true">
+              {FLOATING_FACES.map((f) => (
+                <span
+                  key={f.src}
+                  className="absolute"
+                  style={{
+                    ...f.pos,
+                    width: f.size,
+                    height: f.size,
+                    transform: `rotate(${f.rotate}deg)`,
+                  }}
+                >
+                  <span
+                    className="animate-face-float relative block h-full w-full overflow-hidden rounded-full bg-white shadow-[0_4px_14px_rgba(46,46,92,0.14)] ring-2 ring-white"
+                    style={{ animationDelay: `${f.delay}s` }}
+                  >
+                    <SmoothImage
+                      src={f.src}
+                      alt=""
+                      width={96}
+                      height={96}
+                      className="h-full w-full object-cover"
+                    />
+                  </span>
+                </span>
+              ))}
+              {SPARKLES.map((s, i) => (
+                <svg
+                  key={i}
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="animate-star-twinkle absolute"
+                  style={{
+                    ...s.pos,
+                    width: s.size,
+                    height: s.size,
+                    color: s.color,
+                    animationDelay: `${s.delay}s`,
+                  }}
+                >
+                  {/* 4方向スパークル (キラッ) */}
+                  <path d="M12 0c1 6.6 5.4 11 12 12-6.6 1-11 5.4-12 12-1-6.6-5.4-11-12-12C6.6 11 11 6.6 12 0Z" />
+                </svg>
+              ))}
+            </div>
+            <p className="relative z-10 mx-auto max-w-[280px] py-8 text-center md:max-w-none md:py-10">
+              <span className="block text-[14px] font-bold text-[#2E2E5C]/60 md:text-[15px]">
+                これまでに
+              </span>
+              <span className="mt-1.5 block leading-none">
+                <span className="relative inline-block text-[36px] font-black leading-none text-[#2E2E5C] md:text-[44px]">
+                  {/* 蛍光マーカー風の黄下線 (鑑定表示の紺・黄トーンと同系) */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute -inset-x-1.5 bottom-0 h-[13px] rounded-[4px] bg-[#FFE58A]/80 md:h-[16px]"
+                  />
+                  <span className="relative">
+                    9,756
+                    <span className="ml-1 text-[20px] md:text-[24px]">人以上</span>
+                  </span>
+                </span>
+              </span>
+              <span className="mt-2.5 block text-[15px] font-bold text-[#2E2E5C]/60 md:text-[16px]">
+                が自分のトリセツを診断しています
+              </span>
+            </p>
+          </section>
+          </div>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 1440 48"
+            preserveAspectRatio="none"
+            className="block h-8 w-full md:h-12"
+          >
+            <path
+              fill="#F7F7FE"
+              d="M0,48 H1440 V24 C1310,4 1180,40 1040,30 C900,20 810,2 670,16 C530,30 450,6 310,10 C170,14 80,40 0,24 Z"
+            />
+          </svg>
+        </div>
+
+        {/* 帯の続き (淡インディゴ): できることカードが境目に重なるための下地 */}
+        <div className="bg-[#F7F7FE] pb-24 md:pb-32" />
 
         {/* 帯より下 (白地)。負マージンで「できること」カードを帯の境目に重ねる */}
         <div className="-mt-14 px-4 md:-mt-20 md:px-8">
@@ -186,7 +335,7 @@ function UnmeiTeaserLp({
                     </svg>
                   ),
                   title: "4章立てのAI鑑定文",
-                  body: "星の配置・心の天気・挑戦の風向き・最後にひとつだけ。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+                  body: "「あなたが積み上げてきたもの」「誰かといるときのあなた」「これから訪れる転換点」「最後にひとつだけ」の4章。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
                 },
                 {
                   // 掛け合わせ (重なる2つの円)

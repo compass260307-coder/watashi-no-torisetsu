@@ -260,8 +260,31 @@ input[type="reset"]:active {
   animation: scroll-hint 1.8s ease-in-out infinite;
 }
 
+/* /unmei 実績バンドの浮遊キャラ顔。ゆっくり数px上下する。
+   回転は外側ラッパーに持たせる (transform が競合するため同一要素に載せない)。 */
+@keyframes face-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-face-float {
+  animation: face-float 3.6s ease-in-out infinite;
+}
+
+/* /unmei 実績ストリップの装飾スパークル。ゆっくり明滅する */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.animate-star-twinkle {
+  animation: star-twinkle 2.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-scroll-hint {
+  .animate-scroll-hint,
+  .animate-face-float,
+  .animate-star-twinkle {
     animation: none;
   }
 }

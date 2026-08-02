@@ -119,21 +119,23 @@ export default function UnmeiPriceCta({
           <span className="ml-2.5 inline-block rounded-lg bg-[#F4F4FE] px-2.5 py-1 align-middle text-[14px] font-black text-[#5B5BEF] md:text-[15px]">
             25%OFF
           </span>
+          {/* SP は行が窮屈なため、折り返すときは語のまとまりごと次行へ落とす */}
+          <span className="ml-2.5 inline-block whitespace-nowrap align-middle text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
+            30日間の返金保証
+          </span>
         </p>
       ) : (
         <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
           ¥1,980
           <span className="ml-2.5 text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
-            買い切り
+            買い切り・30日間の返金保証
           </span>
         </p>
       )}
-      {/* 16P 参考: SP はボタン全幅 + 保証をその下の中央 / PC はボタン横に保証を1行
+      {/* 保証表記は価格行の「買い切り」横に移動 (2026-08-02 指示)。
           (エンタメ表記は特商法/規約ページ側にあるため省略) */}
       <div
-        className={`mt-3 flex flex-col gap-3 md:flex-row md:items-center md:gap-5 ${
-          align === "start" ? "" : "md:justify-center"
-        }`}
+        className={`mt-3 flex ${align === "start" ? "" : "md:justify-center"}`}
       >
         <UnmeiCheckoutButton
           ownerToken={ownerToken}
@@ -141,9 +143,6 @@ export default function UnmeiPriceCta({
         >
           続ける →
         </UnmeiCheckoutButton>
-        <span className="text-center text-[15px] font-bold text-[#2E2E5C]/55 md:text-left">
-          30日間の返金保証
-        </span>
       </div>
     </>
   );
