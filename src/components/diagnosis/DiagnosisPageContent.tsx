@@ -515,8 +515,8 @@ export default function DiagnosisPageContent({
           dedupeId: data.ownerToken,
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
-        // 友達診断の赤バッジは診断完了時には出さない (2026-07-20 変更)。
-        // 課金 (full_access) 完了後に /me 側 (TakoAttentionOnPaid) が付与する。
+        // 友達診断の赤バッジはここでは出さない。/me 側 (TakoAttentionOnResult) が
+        // 初回表示時に全員へ付与する (2026-08-03 変更。旧: 課金完了後のみ)。
         await waitMin();
         clearProgress();
         router.push(
