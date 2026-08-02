@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
@@ -44,6 +45,8 @@ interface MeStickyHeaderProps {
   /** invite モードの計測用 (friend_invite_clicked に載せる)。 */
   ownerToken?: string;
   inviteCode?: string;
+  /** invite モードのQR中央に重ねるキャラ顔 (丸抜き・白リング。LockedInviteShare と同じ)。 */
+  qrImageSrc?: string | null;
   /** シェア文言用の称号 (essence)。character モードのみ使用。 */
   essence?: string;
   /** シェア文言用の Big Five コード (ヒーローと同じ大小方式。例 "OCeAN")。 */
@@ -91,6 +94,7 @@ export function MeStickyHeader({
   shareKind = "character",
   ownerToken,
   inviteCode,
+  qrImageSrc = null,
   essence,
   code,
   paywallTargetId,
@@ -311,6 +315,39 @@ export function MeStickyHeader({
                 className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
               >
                 <ShareGlyph size={20} />
+              </button>
+            )}
+
+            {/* invite モード (/tako ロック中) の明示CTAピル: シェア丸ボタンと同じ招待
+                モーダルを開く (2026-08-03 指示。「ロックを解除」ピルと同スタイル)。
+                他のピル (レポート/解除CTA) が出る画面では二重にしない。 */}
+            {isInvite && !reportHref && !showUnlockCta && (
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setShareSource("sticky_bar");
+                  setShareOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                {isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
               </button>
             )}
 
@@ -629,6 +666,54 @@ export function MeStickyHeader({
                       : "キャラクターのリンクをコピーしました"
                   : ""}
               </span>
+
+              {/* invite モードのみ: 対面スキャン用QR (LockedInviteShare と同じ流儀・
+                  2026-08-03 指示)。リンク行と同じフル幅・中央にキャラ顔 (丸抜き・白リング)。
+                  ref=qr で流入元を分けて計測する。 */}
+              {isInvite && (
+                <div className="mt-4">
+                  <p className="mb-1.5 text-[12px] font-bold text-[#2E2E5C]/60">
+                    {isKo ? "QR 코드" : "QRコード"}
+                  </p>
+                  <div
+                    className="w-full rounded-2xl border border-[#E3E6F5] bg-white p-4"
+                    role="img"
+                    aria-label={
+                      isKo
+                        ? "친구 진단 초대 QR 코드"
+                        : "友達診断への招待QRコード"
+                    }
+                  >
+                    <div className="relative">
+                      <QRCodeSVG
+                        value={withRef(shareUrl, "qr")}
+                        size={248}
+                        className="h-auto w-full"
+                        bgColor="#FFFFFF"
+                        fgColor="#2E2E5C"
+                        level="H"
+                        marginSize={0}
+                      />
+                      {/* 中央のキャラ顔 (丸抜き・白リング)。LockedInviteShare と同じ被覆率 */}
+                      {qrImageSrc && (
+                        <span className="absolute left-1/2 top-1/2 block w-[34%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white ring-4 ring-white shadow-[0_2px_8px_rgba(46,46,92,0.18)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={qrImageSrc}
+                            alt=""
+                            className="block h-full w-full object-cover"
+                          />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-center text-[12px] font-bold text-[#2E2E5C]/50">
+                    {isKo
+                      ? "친구의 스마트폰으로 스캔해 주세요"
+                      : "友達のスマホでスキャンしてもらってね"}
+                  </p>
+                </div>
+              )}
             </div>
           </div>,
           document.body,

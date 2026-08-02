@@ -453,6 +453,11 @@ export async function TakoResultPage({
         shareKind="invite"
         ownerToken={token}
         inviteCode={data.inviteCode}
+        qrImageSrc={
+          data.ownerType32
+            ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+            : null
+        }
         paywallTargetId="tako-promo"
         reportHref={
           takoUnlocked && data.friends.length > 0
