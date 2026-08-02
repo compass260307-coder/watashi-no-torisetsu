@@ -7,6 +7,9 @@ import {
   KO_ARTICLE_CATEGORIES,
 } from "@/lib/articles-ko";
 import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SEO_KEYWORDS,
+  KO_SITE_NAME,
   localizedAlternates,
   SITE_URL,
 } from "@/lib/locale-seo";
@@ -21,18 +24,32 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: { absolute: "글·칼럼 | 나의 사용설명서" },
   description: DESCRIPTION,
+  keywords: [
+    ...KO_SEO_KEYWORDS,
+    "OCEAN 진단 글",
+    "빅파이브 설명",
+    "성격심리학",
+    "자기 이해 칼럼",
+  ],
   alternates: localizedAlternates("ko", "/articles", "/ko/articles"),
   openGraph: {
     type: "website",
     locale: "ko_KR",
     alternateLocale: ["ja_JP"],
     url: `${SITE_URL}/ko/articles`,
-    siteName: "나의 사용설명서",
+    siteName: KO_SITE_NAME,
     title: "글·칼럼 | 나의 사용설명서",
     description:
       "OCEAN 진단(빅파이브)과 성격심리학을 쉽게 설명하는 글을 모았어요.",
-    images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+    images: [KO_DEFAULT_OG_IMAGE],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "글·칼럼 | 나의 사용설명서",
+    description: DESCRIPTION,
+    images: [KO_DEFAULT_OG_IMAGE.url],
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function KoreanArticlesPage() {

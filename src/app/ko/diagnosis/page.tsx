@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
+import { KO_SITE_NAME } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_DIAGNOSIS_URL = `${BASE_URL}/ko/diagnosis`;
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     alternateLocale: ["ja_JP"],
     url: KO_DIAGNOSIS_URL,
-    siteName: "나의 사용설명서",
+    siteName: KO_SITE_NAME,
     title: TITLE,
     description: DESCRIPTION,
     images: [
@@ -51,6 +52,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/mascot/diagnosis-hero.png"],
   },
+  robots: { index: true, follow: true },
 };
 
 const jsonLd = {

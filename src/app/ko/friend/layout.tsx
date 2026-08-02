@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { localizedAlternates } from "@/lib/locale-seo";
+import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SITE_NAME,
+  localizedAlternates,
+} from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "친구 진단",
@@ -9,23 +13,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    siteName: "나의 사용설명서",
+    siteName: KO_SITE_NAME,
     title: "친구 진단 | 나의 사용설명서",
     description: "친구의 눈에 비친 모습을 30개 질문으로 알려 주세요.",
-    images: [
-      {
-        url: "/ogp-v4.png",
-        width: 1200,
-        height: 630,
-        alt: "나의 사용설명서 친구 진단",
-      },
-    ],
+    images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "친구 진단 | 나의 사용설명서",
     description: "친구의 눈에 비친 모습을 30개 질문으로 알려 주세요.",
-    images: ["/ogp-v4.png"],
+    images: [KO_DEFAULT_OG_IMAGE.url],
   },
 };
 

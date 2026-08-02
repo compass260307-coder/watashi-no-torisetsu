@@ -7,7 +7,11 @@ import {
 } from "@/lib/thirty-two-types";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { BigFiveDimension } from "@/lib/types";
-import { localizedAlternates } from "@/lib/locale-seo";
+import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SITE_NAME,
+  localizedAlternates,
+} from "@/lib/locale-seo";
 
 const SITE_URL = resolveSiteUrl();
 const FALLBACK_TITLE = "친구 진단 | 나의 사용설명서";
@@ -40,7 +44,7 @@ function metadataForInvite({
     openGraph: {
       type: "website",
       locale: "ko_KR",
-      siteName: "나의 사용설명서",
+      siteName: KO_SITE_NAME,
       title,
       description,
       url,
@@ -65,8 +69,8 @@ export async function generateMetadata({
     inviteCode,
     title: FALLBACK_TITLE,
     description: FALLBACK_DESCRIPTION,
-    imageUrl: `${SITE_URL}/ogp-v4.png`,
-    imageAlt: "나의 사용설명서 친구 진단",
+    imageUrl: `${SITE_URL}${KO_DEFAULT_OG_IMAGE.url}`,
+    imageAlt: KO_DEFAULT_OG_IMAGE.alt,
   });
 
   const { data } = await supabaseAdmin

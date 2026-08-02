@@ -5,14 +5,19 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopHero from "@/components/ko/top/KoTopHero";
 import KoTopStats from "@/components/ko/top/KoTopStats";
 import { KoTopViewTracker } from "@/components/ko/top/KoTopAnalytics";
-import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import {
+  KO_DEFAULT_DESCRIPTION,
+  KO_DEFAULT_OG_IMAGE,
+  KO_DEFAULT_TITLE,
+  KO_SEO_KEYWORDS,
+  KO_SITE_NAME,
+} from "@/lib/locale-seo";
 import { getSession } from "@/lib/session";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_URL = `${BASE_URL}/ko`;
-const TITLE = "친구와 함께 만드는 무료 성격 진단 | 나의 사용설명서";
-const DESCRIPTION =
-  "Big Five 이론을 바탕으로 한 무료 성격 진단이에요. 50문항으로 32가지 캐릭터 유형 중 나와 닮은 유형을 찾고, 친구의 답변으로 나도 몰랐던 모습을 발견해 보세요.";
+const TITLE = KO_DEFAULT_TITLE;
+const DESCRIPTION = KO_DEFAULT_DESCRIPTION;
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +25,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   keywords: [
+    ...KO_SEO_KEYWORDS,
     "무료 성격 진단",
     "성격 테스트",
     "Big Five",
@@ -41,44 +47,67 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     alternateLocale: ["ja_JP"],
     url: KO_URL,
-    siteName: KO_TOP_CONTENT.siteName,
+    siteName: KO_SITE_NAME,
     title: TITLE,
     description: DESCRIPTION,
-    images: [
-      {
-        url: "/characters/keyvisual.webp",
-        width: 1536,
-        height: 1024,
-        alt: "나의 사용설명서 캐릭터",
-      },
-    ],
+    images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/characters/keyvisual.webp"],
+    images: [KO_DEFAULT_OG_IMAGE.url],
   },
 };
 
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: KO_TOP_CONTENT.siteName,
-  description: DESCRIPTION,
-  url: KO_URL,
-  applicationCategory: "LifestyleApplication",
-  operatingSystem: "Any",
-  inLanguage: "ko-KR",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "KRW",
-  },
-  audience: {
-    "@type": "Audience",
-    audienceType: "대학생",
-  },
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": `${KO_URL}#app`,
+      name: `${KO_SITE_NAME} 무료 성격 진단 테스트`,
+      alternateName: ["Big Five 성격 진단", "OCEAN 진단", "친구 진단"],
+      description: DESCRIPTION,
+      url: KO_URL,
+      applicationCategory: "LifestyleApplication",
+      operatingSystem: "Any",
+      inLanguage: "ko-KR",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "KRW",
+      },
+      audience: {
+        "@type": "Audience",
+        audienceType: "대학생",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${KO_URL}#website`,
+      name: KO_SITE_NAME,
+      alternateName: [
+        "무료 성격 진단 테스트",
+        "빅파이브 성격 테스트",
+        "OCEAN 성격검사",
+        "친구 성격 진단",
+      ],
+      url: KO_URL,
+      inLanguage: "ko-KR",
+      publisher: { "@id": `${BASE_URL}/#organization` },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${BASE_URL}/#organization`,
+      name: "나의 사용설명서 운영팀",
+      url: BASE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${BASE_URL}/icon.png`,
+      },
+    },
+  ],
 };
 
 export default async function KoreanHomePage({

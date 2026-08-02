@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import KoreanLegalDocument from "@/components/ko/KoreanLegalDocument";
-import { localizedAlternates } from "@/lib/locale-seo";
+import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SITE_NAME,
+  SITE_URL,
+  localizedAlternates,
+} from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: { absolute: "판매 및 환불 안내 | 나의 사용설명서" },
@@ -10,6 +15,22 @@ export const metadata: Metadata = {
     "/legal/commerce",
     "/ko/legal/commerce",
   ),
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    alternateLocale: ["ja_JP"],
+    url: `${SITE_URL}/ko/legal/commerce`,
+    siteName: KO_SITE_NAME,
+    title: "판매 및 환불 안내 | 나의 사용설명서",
+    description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
+    images: [KO_DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "판매 및 환불 안내 | 나의 사용설명서",
+    description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
+    images: [KO_DEFAULT_OG_IMAGE.url],
+  },
   robots: { index: true, follow: true },
 };
 
