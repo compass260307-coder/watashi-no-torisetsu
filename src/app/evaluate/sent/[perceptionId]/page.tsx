@@ -16,14 +16,26 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide";
-
-export const metadata: Metadata = {
-  title: "評価を送ったよ",
-  robots: { index: false, follow: false },
-};
+import { localizedAlternates } from "@/lib/locale-seo";
 
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { perceptionId } = await params;
+  const idPath = encodeURIComponent(perceptionId);
+  return {
+    title: "評価を送ったよ",
+    alternates: localizedAlternates(
+      "ja",
+      `/evaluate/sent/${idPath}`,
+      `/ko/evaluate/sent/${idPath}`,
+    ),
+    robots: { index: false, follow: false },
+  };
 }
 
 export default async function EvaluationSentPage({ params }: PageProps) {

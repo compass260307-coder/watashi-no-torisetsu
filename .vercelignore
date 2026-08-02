@@ -1,7 +1,10 @@
 /output/
 /outputs/
+/.next/
 /tmp/
 /.agents/
+/.vercel/
+/.env*
 /scripts/create_mbti_reel.py
 /env-secrets.zip
 /characters_32/

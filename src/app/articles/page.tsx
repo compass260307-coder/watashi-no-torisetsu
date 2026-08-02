@@ -7,6 +7,7 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ArticleGrid } from "@/components/articles/ArticleGrid";
 import { ARTICLES, ARTICLE_CATEGORIES } from "@/lib/articles";
+import { localizedAlternates, SITE_URL } from "@/lib/locale-seo";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -17,8 +18,13 @@ export const metadata: Metadata = {
   title: "記事・コラム",
   description:
     "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する、ワタシのトリセツの記事・コラム一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
-  alternates: { canonical: "/articles" },
+  alternates: localizedAlternates("ja", "/articles", "/ko/articles"),
   openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    alternateLocale: ["ko_KR"],
+    url: `${SITE_URL}/articles`,
+    siteName: "ワタシのトリセツ",
     title: "記事・コラム｜ワタシのトリセツ",
     description:
       "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する記事一覧。",

@@ -28,8 +28,9 @@ import { resolveSiteUrl } from "@/lib/site-url";
 // Vercel の 250MB 上限を超えるため、fs は使わない。
 import characterImages from "@/generated/character-images.json";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { getSession } from "@/lib/session";
 import {
   classifySixteenType,
   sixteenTypes,
@@ -67,7 +68,7 @@ import {
   SceneCautionList,
 } from "@/components/result/SceneCautionTeaser";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
-// 他己パート (他者評価/職業/みんなの目/招待QR/他己フローティングCTA) と、
+// 他己パート (他者評価/職業/みんなの目/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
 // ただし自己単体の発散バー(②「5つの軸で見るアナタ」)は自己ページの要素なので /me に残す。
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
@@ -105,6 +106,7 @@ import {
   createMetaPurchaseClaimToken,
   verifyPaidFullAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
+import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 const SITE_URL =
   resolveSiteUrl();
@@ -140,6 +142,7 @@ type MeUserRow = {
   scores: unknown;
   display_name: string | null;
   invite_code: string | null;
+  diagnosis_completed_at: string | null;
 };
 
 export default function MeResultPage(
@@ -164,10 +167,17 @@ async function MeResultPageContent({
   // 通常モード (acquisition なし) では何もしない。
   const personalize = (text: string): string =>
     acquisition
-      ? text
-          .replaceAll("アナタ", `${acquisition.sharerName}さん`)
-          .replaceAll("あなた", `${acquisition.sharerName}さん`)
+      ? isKorean
+        ? text.replaceAll("당신", `${acquisition.sharerName}님`)
+        : text
+            .replaceAll("アナタ", `${acquisition.sharerName}さん`)
+            .replaceAll("あなた", `${acquisition.sharerName}さん`)
       : text;
+  const personalizeHeading = (text: string): string => {
+    const personalized = personalize(text);
+    if (!acquisition || !isKorean) return personalized;
+    return personalized.replace(/^나의 /, `${acquisition.sharerName}님의 `);
+  };
 
   // ===== プレビュー (token/Supabase を介さずモックスコアで結果ページを描画) =====
   // ?previewType=<32タイプID> 指定時、そのタイプの High/Low モックで描画する。実ユーザー
@@ -226,12 +236,13 @@ async function MeResultPageContent({
       scores: previewScores!,
       display_name: isKorean ? "미리보기" : "プレビュー",
       invite_code: "preview",
+      diagnosis_completed_at: new Date(0).toISOString(),
     };
   } else {
     const { data, error: userErr } = await supabaseAdmin
       .from("users")
       .select(
-        "id, type_id, scores, display_name, invite_code, owner_token, created_at",
+        "id, type_id, scores, display_name, invite_code, owner_token, created_at, diagnosis_completed_at",
       )
       .eq("owner_token", token)
       .maybeSingle();
@@ -242,6 +253,13 @@ async function MeResultPageContent({
   }
   if (!user) {
     notFound();
+  }
+  if (!previewType && isUndiagnosedPlaceholderUser(user)) {
+    const current = await getSession();
+    const prefix = isKorean ? "/ko" : "";
+    redirect(
+      current?.id === user.id ? `${prefix}/diagnosis` : `${prefix}/login`,
+    );
   }
 
   // ===== 2. friend_perceptions (件数 + 平均スコア) =====
@@ -301,7 +319,7 @@ async function MeResultPageContent({
     N: stored.N ?? 5,
   });
   // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
-  // ぶんだけ props で渡す。解放条件 = 課金 (¥499=full) OR 友達1人以上 (friend-stairs.ts)。
+  // ぶんだけ props で渡す。解放条件 = 課金 (¥499=full) のみ。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   // プレビュー (モック) は DB を引かない。/preview/[typeId] の静的生成をビルド時の
   // Supabase 接続に依存させないためでもある (課金状態は previewLock で表現済み)。
@@ -477,7 +495,7 @@ async function MeResultPageContent({
             ?.filter((b) => !b.locked)
             .map((b) => ({
               ...b,
-              heading: personalize(b.heading),
+              heading: personalizeHeading(b.heading),
               body: personalize(b.body),
             })),
         }))
@@ -557,10 +575,10 @@ async function MeResultPageContent({
     : flag32
       ? thirtyTwoOneLiner(t32)
       : sixteenType.oneLiner;
-  const inviteCode = user.invite_code as string;
+  const inviteCode = ((user.invite_code as string | null) ?? "").trim();
   // 自己診断結果の固定バーは、友達評価の依頼ではなくキャラクター共有に専念する。
   // 共有先は per-owner のキャラOGが出る獲得ページ。
-  const characterShareUrl = `${SITE_URL}/share/${inviteCode}`;
+  const characterShareUrl = `${SITE_URL}${isKorean ? "/ko" : ""}/share/${inviteCode}`;
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
   // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
   // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
@@ -642,6 +660,15 @@ async function MeResultPageContent({
       diagnosisCta={Boolean(acquisition) || publicPreview}
       essence={dispEssence}
       code={dispCode}
+      reportHref={
+        !acquisition &&
+        !publicPreview &&
+        (previewType ? partTwoUnlocked : deepDivePaid)
+          ? previewType
+            ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
+            : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
+          : undefined
+      }
       locale={locale}
     >
       {isKorean ? <KoTopHeader /> : <TopHeader />}
@@ -662,7 +689,9 @@ async function MeResultPageContent({
         <ResultHero
           label={
             acquisition
-              ? `${acquisition.sharerName}さんの性格タイプ:`
+              ? isKorean
+                ? `${acquisition.sharerName}님의 성격 유형:`
+                : `${acquisition.sharerName}さんの性格タイプ:`
               : isKorean
                 ? KO_ME_COPY.heroLabel
                 : "あなたの性格タイプ:"
@@ -812,53 +841,57 @@ async function MeResultPageContent({
 
         {/* ===== ④ もしもの時のアナタ (エンタメ章 / 2026-07-26 指示で友達から見たあなたの前へ) =====
             スコア由来のルールベースであるあるシーンの反応を出す。無料シーンは
-            シェアの燃料、隠しシーンは課金ゲート (moshimo-resolve がフェイルクローズ)。
-            日本語のみ (KO 未対応)。 */}
-        {!isKorean && (
-          <section className="mt-16">
-            <div className="mb-4 flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
-              >
-                4
-              </span>
-              <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                {personalize("もしもの時のアナタ")}
-              </h2>
-            </div>
-            {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
+            シェアの燃料、隠しシーンは課金ゲート (moshimo-resolve がフェイルクローズ)。 */}
+        <section className="mt-16">
+          <div className="mb-4 flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+            >
+              4
+            </span>
+            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+              {isKorean
+                ? acquisition
+                  ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
+                  : "만약의 순간에 나타나는 나"
+                : personalize("もしもの時のアナタ")}
+            </h2>
+          </div>
+          {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
                 land/sky/sea/unknown_moshimo.webp を解決。他章のシーン挿絵と同じ組版) */}
-            {sceneImage("moshimo") && (
-              <SmoothImage
-                src={sceneImage("moshimo")!}
-                alt=""
-                width={960}
-                height={640}
-                className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
-              />
-            )}
-            <MoshimoScenes
-              // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換。
-              // 公開プレビューも同様に無料シーンのみ (解除カードの課金CTAを出さない)。
-              scenes={
-                acquisition
-                  ? buildMoshimoScenes(stored, false)
-                      .filter((s) => !s.locked)
-                      .map((s) => ({
-                        ...s,
-                        title: personalize(s.title),
-                        body: personalize(s.body),
-                      }))
-                  : publicPreview
-                    ? buildMoshimoScenes(stored, false).filter((s) => !s.locked)
-                    : buildMoshimoScenes(stored, partTwoUnlocked)
-              }
+          {sceneImage("moshimo") && (
+            <SmoothImage
+              src={sceneImage("moshimo")!}
+              alt=""
+              width={960}
+              height={640}
+              className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
             />
-          </section>
-        )}
+          )}
+          <MoshimoScenes
+            // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換。
+            // 公開プレビューも同様に無料シーンのみ (解除カードの課金CTAを出さない)。
+            scenes={
+              acquisition
+                ? buildMoshimoScenes(stored, false, locale)
+                    .filter((s) => !s.locked)
+                    .map((s) => ({
+                      ...s,
+                      title: personalize(s.title),
+                      body: personalize(s.body),
+                    }))
+                : publicPreview
+                  ? buildMoshimoScenes(stored, false, locale).filter(
+                      (s) => !s.locked,
+                    )
+                  : buildMoshimoScenes(stored, partTwoUnlocked, locale)
+            }
+            locale={locale}
+          />
+        </section>
 
-        {/* ===== ⑤ 友達から見たあなた (16P 風ロックティーザー / KO は④) =====
+        {/* ===== ⑤ 友達から見たあなた (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
             完全版への導線だけをカード内に置く。
             他己パートの本体は /tako/[token]。 */}
@@ -868,23 +901,24 @@ async function MeResultPageContent({
               aria-hidden="true"
               className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
             >
-              {isKorean ? "4" : "5"}
+              5
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
               {isKorean
-                ? KO_ME_COPY.friendSectionTitle
+                ? acquisition
+                  ? `친구가 보는 ${acquisition.sharerName}님`
+                  : KO_ME_COPY.friendSectionTitle
                 : personalize("友達から見たあなた")}
             </h2>
           </div>
 
           {/* 階段UI (1人=予兆/3人=第二部/5人=完成) は 2026-07-18 に撤去。
-              友達1人 × 30問で全部が開くモデルになり、道中の報酬が不要になった。 */}
+              2026-08-01 現在、自己診断ページの完全解放は課金のみ。 */}
           {/* 第二部本体。無料ブロック (武器/好かれやすい) は未解放でも本物を表示し、
               🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
             // 未解放時は完全版への課金導線だけを表示する。
-            // 友達1人での解除機能自体は残し、ここでの案内だけ一旦非表示にする。
             // 見た目は恋愛ロックと同じ、ぼかし中央のコンパクトなカードに揃える。
             // 獲得モードはロックUI自体を出さない (hideLocked) ためカードも組まない。
             const lockCard =
@@ -929,15 +963,13 @@ async function MeResultPageContent({
               </div>
             );
             return (
-              <>
-                <PartTwoSections
-                  data={partTwo}
-                  lockCard={lockCard}
-                  hideLocked={Boolean(acquisition) || publicPreview}
-                  subjectName={acquisition?.sharerName}
-                  locale={locale}
-                />
-              </>
+              <PartTwoSections
+                data={partTwo}
+                lockCard={lockCard}
+                hideLocked={Boolean(acquisition) || publicPreview}
+                subjectName={acquisition?.sharerName}
+                locale={locale}
+              />
             );
           })()}
 
@@ -947,7 +979,7 @@ async function MeResultPageContent({
             同じものを置く (2026-07-26 指示)。 */}
         {unmeiPromoCard && <div className="mt-16">{unmeiPromoCard}</div>}
 
-        {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル / KO は⑤) =====
+        {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル) =====
             2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
         {sections[1] &&
           (() => {
@@ -959,11 +991,13 @@ async function MeResultPageContent({
                     aria-hidden="true"
                     className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                   >
-                    {isKorean ? "5" : "6"}
+                    6
                   </span>
                   <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                     {isKorean
-                      ? KO_ME_COPY.cautionTitle
+                      ? acquisition
+                        ? `${acquisition.sharerName}님의 주의해서 다룰 점`
+                        : KO_ME_COPY.cautionTitle
                       : personalize("あなたの注意点")}
                   </h2>
                 </div>
@@ -1007,10 +1041,10 @@ async function MeResultPageContent({
         {(acquisition || publicPreview) && (
           <div className="mt-16 mb-12 text-center">
             <Link
-              href="/diagnosis"
+              href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              無料で性格診断をする →
+              {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
             </Link>
           </div>
         )}
@@ -1020,7 +1054,7 @@ async function MeResultPageContent({
       </div>
     </main>
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
-        ¥499 で買えるのは第二部まで (三層モデル)。友達1人で開いた人には売るものが無いので出さない。
+        自己診断ページの完全解放は課金のみなので、友達回答が届いていても未課金なら表示する。
         画像・グループ色を渡して MBTI 風カードでフル表示。 */}
     {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
     {!partTwoUnlocked && !acquisition && !publicPreview && (

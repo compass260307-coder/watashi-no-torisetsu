@@ -15,6 +15,8 @@ import {
   thirtyTwoEssence,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import { KO_RESULT_TYPES } from "@/i18n/ko/result";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -35,6 +37,7 @@ interface TakoAnsweredDetailProps {
   ownerType32: ThirtyTwoTypeId | null;
   /** Path2: 診断に誘う (③ TakoSendSheet を相性文脈で開く)。 */
   onInviteToDiagnose: () => void;
+  locale?: ResultLocale;
 }
 
 export function TakoAnsweredDetail({
@@ -43,7 +46,9 @@ export function TakoAnsweredDetail({
   friend,
   ownerType32,
   onInviteToDiagnose,
+  locale = "ja",
 }: TakoAnsweredDetailProps) {
+  const isKo = locale === "ko";
   const [reduced] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -66,14 +71,18 @@ export function TakoAnsweredDetail({
   // Path1 = 友達本人の型 と 本人の型 が両方あるときだけ (= 相性が実際に出せる)。
   const canCompat = Boolean(friend.friendOwnType32 && ownerType32);
   const aishoHref = canCompat
-    ? `/aisho?a=${ownerType32}&b=${friend.friendOwnType32}`
+    ? `${isKo ? "/ko" : ""}/aisho?a=${ownerType32}&b=${friend.friendOwnType32}`
     : "";
 
   const perceivedName = friend.perceivedType32
-    ? thirtyTwoName(friend.perceivedType32)
+    ? isKo
+      ? KO_RESULT_TYPES[friend.perceivedType32].name
+      : thirtyTwoName(friend.perceivedType32)
     : null;
   const perceivedEssence = friend.perceivedType32
-    ? thirtyTwoEssence(friend.perceivedType32)
+    ? isKo
+      ? KO_RESULT_TYPES[friend.perceivedType32].essence
+      : thirtyTwoEssence(friend.perceivedType32)
     : null;
 
   return (
@@ -81,11 +90,15 @@ export function TakoAnsweredDetail({
       className="fixed inset-0 z-50 flex items-end justify-center"
       role="dialog"
       aria-modal="true"
-      aria-label={`${friend.name}から見たあなた`}
+      aria-label={
+        isKo
+          ? `${friend.name}님이 보는 나`
+          : `${friend.name}から見たあなた`
+      }
     >
       <button
         type="button"
-        aria-label="閉じる"
+        aria-label={isKo ? "닫기" : "閉じる"}
         onClick={onClose}
         className={`absolute inset-0 bg-black/40 ${reduced ? "" : "animate-modal-fade-in"}`}
       />
@@ -100,7 +113,7 @@ export function TakoAnsweredDetail({
           ref={closeRef}
           type="button"
           onClick={onClose}
-          aria-label="閉じる"
+          aria-label={isKo ? "닫기" : "閉じる"}
           className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#9BA3B4] transition-colors active:bg-[#F1F3FB]"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -110,7 +123,9 @@ export function TakoAnsweredDetail({
 
         {/* 誰視点かを明示 (混乱防止) */}
         <p className="text-center text-[13px] font-bold" style={{ color: INACTIVE }}>
-          {friend.name}さんから見たあなた
+          {isKo
+            ? `${friend.name}님이 보는 나`
+            : `${friend.name}さんから見たあなた`}
         </p>
 
         {/* 「その友達から見たあなた」のキャラ */}
@@ -122,7 +137,11 @@ export function TakoAnsweredDetail({
             {friend.perceivedImageSrc ? (
               <Image
                 src={friend.perceivedImageSrc}
-                alt={`${friend.name}から見たあなた`}
+                alt={
+                  isKo
+                    ? `${friend.name}님이 보는 나`
+                    : `${friend.name}から見たあなた`
+                }
                 width={96}
                 height={96}
                 unoptimized
@@ -130,7 +149,7 @@ export function TakoAnsweredDetail({
               />
             ) : (
               <span className="text-[34px] font-black" style={{ color: LAVENDER }}>
-                {(friend.name || "と").charAt(0)}
+                {(friend.name || (isKo ? "친" : "と")).charAt(0)}
               </span>
             )}
           </div>
@@ -156,7 +175,9 @@ export function TakoAnsweredDetail({
               className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black text-white shadow-[0_8px_24px_rgba(91,91,239,0.3)] transition-transform active:scale-[0.98]"
               style={{ background: LAVENDER }}
             >
-              {friend.name}さんとの相性を見る
+              {isKo
+                ? `${friend.name}님과의 궁합 보기`
+                : `${friend.name}さんとの相性を見る`}
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
@@ -166,12 +187,18 @@ export function TakoAnsweredDetail({
             <>
               <div className="mb-4 rounded-2xl bg-[#F4F4FE] px-5 py-4">
                 <p className="text-[15px] font-black leading-[1.5]" style={{ color: NAVY }}>
-                  {friend.name}さんはあなたを見てくれた。
+                  {isKo
+                    ? `${friend.name}님은 나를 봐 주었어요.`
+                    : `${friend.name}さんはあなたを見てくれた。`}
                   <br />
-                  でもあなたはまだ{friend.name}さんを知らない。
+                  {isKo
+                    ? `하지만 나는 아직 ${friend.name}님을 잘 몰라요.`
+                    : `でもあなたはまだ${friend.name}さんを知らない。`}
                 </p>
                 <p className="mt-1.5 text-[12.5px] font-bold" style={{ color: INACTIVE }}>
-                  {friend.name}さんが診断すると、2人の相性も見られるようになるよ
+                  {isKo
+                    ? `${friend.name}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
+                    : `${friend.name}さんが診断すると、2人の相性も見られるようになるよ`}
                 </p>
               </div>
               <button
@@ -181,7 +208,9 @@ export function TakoAnsweredDetail({
                 className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black text-white shadow-[0_8px_24px_rgba(91,91,239,0.3)] transition-transform active:scale-[0.98]"
                 style={{ background: LAVENDER }}
               >
-                {friend.name}さんを診断に誘う
+                {isKo
+                  ? `${friend.name}님에게 진단 권하기`
+                  : `${friend.name}さんを診断に誘う`}
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v13M8 7l4-4 4 4" />
                 </svg>

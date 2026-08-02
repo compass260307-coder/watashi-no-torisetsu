@@ -11,6 +11,7 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   amountTotal: number | null;
   currency: string | null;
   locale: "ja" | "ko";
+  guest: boolean;
 }>;
 
 export function isCheckoutSessionId(value: unknown): value is string {
@@ -83,6 +84,7 @@ export async function verifyPaidFullAccessCheckoutSession(
       amountTotal: session.amount_total,
       currency: session.currency,
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      guest: session.metadata?.guest === "1",
     };
   } catch {
     // 無効・失効済み・別環境の Session ID は購入完了として扱わない。

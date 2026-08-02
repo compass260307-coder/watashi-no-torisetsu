@@ -17,6 +17,8 @@ import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasFullAccess } from "@/lib/entitlements";
 import { resolveSiteUrl } from "@/lib/site-url";
+import { getSession } from "@/lib/session";
+import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 export const maxDuration = 60;
 
@@ -58,20 +60,25 @@ async function launchBrowser() {
 
 export async function GET(req: Request, ctx: RouteContext) {
   const { token } = await ctx.params;
+  const requestUrl = new URL(req.url);
+  const isKo = requestUrl.searchParams.get("locale") === "ko";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
-  const rawPreview = new URL(req.url).searchParams.get("previewType") ?? "";
-  const previewQuery =
-    process.env.NODE_ENV !== "production" && /^[a-z-]+__[NR]$/.test(rawPreview)
-      ? `?previewType=${rawPreview}`
-      : "";
+  const rawPreview = requestUrl.searchParams.get("previewType") ?? "";
+  const isPreview =
+    process.env.NODE_ENV !== "production" &&
+    /^[a-z-]+__[NR]$/.test(rawPreview);
+  const printParams = new URLSearchParams();
+  if (isPreview) printParams.set("previewType", rawPreview);
+  if (isKo) printParams.set("locale", "ko");
+  const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未課金にはロック画面 PDF すら作らない) =====
-  if (!previewQuery) {
+  if (!isPreview) {
     const { data, error } = await supabaseAdmin
       .from("users")
-      .select("id")
+      .select("id, diagnosis_completed_at, scores")
       .eq("owner_token", token)
       .maybeSingle();
     if (error) {
@@ -80,9 +87,18 @@ export async function GET(req: Request, ctx: RouteContext) {
     if (!data) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
+    if (isUndiagnosedPlaceholderUser(data)) {
+      const current = await getSession();
+      return NextResponse.redirect(
+        `${resolveSiteUrl()}${isKo ? "/ko" : ""}${
+          current?.id === data.id ? "/diagnosis" : "/login"
+        }`,
+        303,
+      );
+    }
     if (!(await hasFullAccess(data.id))) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}/me/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -95,26 +111,29 @@ export async function GET(req: Request, ctx: RouteContext) {
   const origin = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : new URL(req.url).origin;
-  const pageUrl = `${origin}/report/${encodeURIComponent(token)}/print${previewQuery}`;
+  const pageUrl = `${origin}/report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
     browser = await launchBrowser();
     const page = await browser.newPage();
-    await page.goto(pageUrl, { waitUntil: "networkidle0", timeout: 45_000 });
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.evaluate(async () => {
-      await document.fonts.ready;
-      await Promise.all(
-        Array.from(document.images).map((image) => {
-          if (image.complete && image.naturalWidth > 0) {
-            return Promise.resolve();
-          }
-          return new Promise<void>((resolve) => {
-            image.addEventListener("load", () => resolve(), { once: true });
-            image.addEventListener("error", () => resolve(), { once: true });
-          });
-        }),
-      );
+      const timeout = (ms: number) =>
+        new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+      await Promise.race([document.fonts.ready.then(() => undefined), timeout(15_000)]);
+      await Promise.race([
+        Promise.all(
+          Array.from(document.images).map((image) => {
+            if (image.complete) return Promise.resolve();
+            return new Promise<void>((resolve) => {
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            });
+          }),
+        ).then(() => undefined),
+        timeout(15_000),
+      ]);
     });
     const pdf = await page.pdf({
       format: "A4",
@@ -128,8 +147,8 @@ export async function GET(req: Request, ctx: RouteContext) {
         "Content-Type": "application/pdf",
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
         "Content-Disposition":
-          `attachment; filename="watashi-no-torisetsu-report.pdf"; ` +
-          `filename*=UTF-8''${encodeURIComponent("ワタシのトリセツ詳細レポート.pdf")}`,
+          `attachment; filename="${isKo ? "my-personality-report-ko.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 자기 분석 완전판 리포트.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });
@@ -137,7 +156,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     console.error("[/report/pdf] pdf generation failed:", err);
     // 生成失敗時は解放済みの自己診断結果へ案内する。
     return NextResponse.redirect(
-      `${resolveSiteUrl()}/me/${encodeURIComponent(token)}`,
+      `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
       303,
     );
   } finally {

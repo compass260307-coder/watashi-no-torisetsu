@@ -13,17 +13,21 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INDIGO = "#5B5BEF";
+const FRIEND_HASH_PREFIX = "friend-";
 
 // タブ表示用: 自由入力の名前が長いときの折返し崩れを防ぐ (表示のみ切り詰め)。
-function tabLabel(name: string): string {
-  const trimmed = name.trim() || "ともだち";
+function tabLabel(name: string, locale: ResultLocale): string {
+  const trimmed = name.trim() || (locale === "ko" ? "친구" : "ともだち");
   return trimmed.length > 6 ? `${trimmed.slice(0, 6)}…` : trimmed;
 }
 
 export type FriendTab = {
+  /** friend_perceptions.id。#friend-<id> で直接タブを開くために使う。 */
+  perceptionId?: string;
   /** 友達の表示名。 */
   name: string;
   /** その友達から見えたキャラの顔画像 (無ければ頭文字にフォールバック)。 */
@@ -36,11 +40,27 @@ export type FriendTab = {
   locked?: boolean;
 };
 
+function friendTabDomId(perceptionId: string): string {
+  return `${FRIEND_HASH_PREFIX}${encodeURIComponent(perceptionId)}`;
+}
+
+function perceptionIdFromHash(hash: string): string | null {
+  if (!hash.startsWith(`#${FRIEND_HASH_PREFIX}`)) return null;
+  const raw = hash.slice(FRIEND_HASH_PREFIX.length + 1);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export function TakoFriendTabs({
   tabs,
   panels,
   invitePanel,
   unlockCta,
+  locale = "ja",
 }: {
   /** 友達タブ (panels と同順)。キャラアイコン + 名前で表示する。 */
   tabs: FriendTab[];
@@ -50,7 +70,9 @@ export function TakoFriendTabs({
   invitePanel?: ReactNode;
   /** タブ行の右端に置く解除CTA (未購入時のみ渡す)。タブとは独立して右端に固定。 */
   unlockCta?: ReactNode;
+  locale?: ResultLocale;
 }) {
+  const isKo = locale === "ko";
   const [idx, setIdx] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
   // メッセージ吹き出し: 開いているタブ index (null = 閉)。
@@ -74,6 +96,31 @@ export function TakoFriendTabs({
     autoRotateRef.current = false;
     setAutoRotate(false);
   };
+
+  useEffect(() => {
+    const selectHashTab = () => {
+      const targetId = perceptionIdFromHash(window.location.hash);
+      if (!targetId) return;
+      const nextIdx = tabs.findIndex((tab) => tab.perceptionId === targetId);
+      if (nextIdx < 0) return;
+      autoRotateRef.current = false;
+      setAutoRotate(false);
+      setInviteOpen(false);
+      setMsgOpenIdx(null);
+      setIdx(nextIdx);
+      window.setTimeout(() => {
+        tabRefs.current[nextIdx]?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }, 0);
+    };
+
+    selectHashTab();
+    window.addEventListener("hashchange", selectHashTab);
+    return () => window.removeEventListener("hashchange", selectHashTab);
+  }, [tabs]);
 
   const anchorTo = (el: HTMLElement | null) => {
     if (!el || !barRef.current) return;
@@ -230,7 +277,7 @@ export function TakoFriendTabs({
         <div className="-mx-4 flex items-center gap-2 px-4 md:mx-0 md:px-0">
           <div
             role="tablist"
-            aria-label="友達ごとの結果"
+            aria-label={isKo ? "친구별 결과" : "友達ごとの結果"}
             className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 pt-6"
           >
           {tabs.map((tab, i) => {
@@ -238,6 +285,9 @@ export function TakoFriendTabs({
             return (
               <button
                 key={i}
+                id={
+                  tab.perceptionId ? friendTabDomId(tab.perceptionId) : undefined
+                }
                 ref={(el) => {
                   tabRefs.current[i] = el;
                 }}
@@ -265,7 +315,7 @@ export function TakoFriendTabs({
                     />
                   ) : (
                     <span className="text-[18px] font-black" style={{ color: NAVY }}>
-                      {(tab.name.trim() || "と").slice(0, 1)}
+                      {(tab.name.trim() || (isKo ? "친" : "と")).slice(0, 1)}
                     </span>
                   )}
                 </span>
@@ -311,7 +361,7 @@ export function TakoFriendTabs({
                   className="max-w-full truncate text-[11px] font-black"
                   style={{ color: selected ? INDIGO : "rgba(46,46,92,0.65)" }}
                 >
-                  {tabLabel(tab.name)}
+                  {tabLabel(tab.name, locale)}
                 </span>
               </button>
             );
@@ -321,7 +371,7 @@ export function TakoFriendTabs({
             <button
               ref={plusRef}
               aria-expanded={inviteOpen}
-              aria-label="友達を招待"
+              aria-label={isKo ? "친구 초대" : "友達を招待"}
               onClick={toggleInvite}
               className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
             >
@@ -354,7 +404,7 @@ export function TakoFriendTabs({
                 className="text-[11px] font-black"
                 style={{ color: inviteOpen ? INDIGO : "rgba(46,46,92,0.65)" }}
               >
-                招待
+                {isKo ? "초대" : "招待"}
               </span>
             </button>
           )}
@@ -372,7 +422,15 @@ export function TakoFriendTabs({
             key={inviteOpen ? "invite" : `msg-${msgOpenIdx}`}
             ref={bubbleRef}
             role="dialog"
-            aria-label={inviteOpen ? "友達を招待" : `${msgTab?.name}からのメッセージ`}
+            aria-label={
+              inviteOpen
+                ? isKo
+                  ? "친구 초대"
+                  : "友達を招待"
+                : isKo
+                  ? `${msgTab?.name}님의 메시지`
+                  : `${msgTab?.name}からのメッセージ`
+            }
             className="animate-bubble-pop absolute inset-x-0 top-full z-30"
             // 膨らむ起点 = 矢印 (対象アバターの中央直下)。キャラがしゃべった感を出す。
             style={{ transformOrigin: `${(arrowX ?? 24) - 7}px top` }}
@@ -420,7 +478,9 @@ export function TakoFriendTabs({
                     >
                       <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
                     </svg>
-                    {msgTab?.name}からのひとこと
+                    {isKo
+                      ? `${msgTab?.name}님이 남긴 한마디`
+                      : `${msgTab?.name}からのひとこと`}
                   </p>
                   <p className="body-gothic whitespace-pre-wrap text-[15px] font-normal leading-[1.7] text-[#1A1A1A]">
                     {msgTab?.message}

@@ -13,14 +13,14 @@ const COLUMNS = [
       },
       {
         label: KO_TOP_CONTENT.navigation.friend,
-        href: "/ko/friend",
-        disabled: true,
+        href: "/ko/tako",
+        disabled: false,
         external: false,
       },
       {
         label: KO_TOP_CONTENT.navigation.types,
         href: "/ko/types",
-        disabled: true,
+        disabled: false,
         external: false,
       },
     ],
@@ -28,6 +28,18 @@ const COLUMNS = [
   {
     title: KO_TOP_CONTENT.footer.serviceTitle,
     links: [
+      {
+        label: KO_TOP_CONTENT.footer.about,
+        href: "/ko/about",
+        disabled: false,
+        external: false,
+      },
+      {
+        label: KO_TOP_CONTENT.footer.articles,
+        href: "/ko/articles",
+        disabled: false,
+        external: false,
+      },
       {
         label: KO_TOP_CONTENT.footer.company,
         href: "https://sora-team.com",

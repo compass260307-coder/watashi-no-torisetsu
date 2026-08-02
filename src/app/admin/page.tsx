@@ -513,6 +513,9 @@ function computeHeadlines(stats: Stats) {
     : (ownerDiagnosisStep?.count ?? diagnosisUsers);
   const friendRate =
     friendDenominator > 0 ? friendNumerator / friendDenominator : 0;
+  const paidNumerator = stats.coreKpis.diagnosisToPaid.numerator;
+  const paidDenominator = stats.coreKpis.diagnosisToPaid.denominator;
+  const paidRate = paidDenominator > 0 ? paidNumerator / paidDenominator : 0;
   const currencies = stats.coreKpis.periodRevenue.currencies;
   const purchases = currencies.reduce((sum, row) => sum + row.purchases, 0);
   const revenueLabel =
@@ -523,6 +526,9 @@ function computeHeadlines(stats: Stats) {
     friendNumerator,
     friendDenominator,
     friendRate,
+    paidNumerator,
+    paidDenominator,
+    paidRate,
     currencies,
     purchases,
     revenueLabel,
@@ -1606,7 +1612,7 @@ export default function AdminPage() {
       pct(stats.coreKpis.diagnosisToPaid.rate),
       String(stats.coreKpis.diagnosisToPaid.numerator),
       String(stats.coreKpis.diagnosisToPaid.denominator),
-      "選択期間の自己診断完了者のうち、その後に実決済した人",
+      "選択期間の自己診断完了者のうち、フルアクセス実決済済みの人",
     ]);
     rows.push([
       "自己診断完了→友達診断1人完了率",
@@ -1810,6 +1816,9 @@ export default function AdminPage() {
   const headlineFriendNumerator = headlines.friendNumerator;
   const headlineFriendDenominator = headlines.friendDenominator;
   const headlineFriendRate = headlines.friendRate;
+  const headlinePaidNumerator = headlines.paidNumerator;
+  const headlinePaidDenominator = headlines.paidDenominator;
+  const headlinePaidRate = headlines.paidRate;
   const periodRevenuePurchases = headlines.purchases;
   const headlineRevenue = headlines.revenueLabel;
   const fullAccessCtaCount = countStep(
@@ -1947,6 +1956,21 @@ export default function AdminPage() {
         return {
           label: `${prevRangeInfo!.label} ${prevHeadlines.revenueLabel}`,
           trend: "flat" as MetricTrend,
+        };
+      })()
+    : null;
+  const paidRateCompare = prevHeadlines
+    ? (() => {
+        if (prevHeadlines.paidDenominator === 0) {
+          return {
+            label: `${prevRangeInfo!.label} —`,
+            trend: "flat" as MetricTrend,
+          };
+        }
+        const diffPt = (headlinePaidRate - prevHeadlines.paidRate) * 100;
+        return {
+          label: `${prevRangeInfo!.label} ${pct(prevHeadlines.paidRate)} (${diffPt > 0 ? "+" : ""}${diffPt.toFixed(1)}pt)`,
+          trend: trendOf(diffPt),
         };
       })()
     : null;
@@ -2233,7 +2257,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
                 <ExecutiveMetricCard
                   index="01"
                   label="診断"
@@ -2256,6 +2280,24 @@ export default function AdminPage() {
                 />
                 <ExecutiveMetricCard
                   index="03"
+                  label="課金率"
+                  value={
+                    coreReady
+                      ? pctOrDash(headlinePaidRate, headlinePaidDenominator)
+                      : "要DB更新"
+                  }
+                  badge="診断→購入"
+                  detail={
+                    coreReady
+                      ? `${headlinePaidNumerator.toLocaleString()}人 / ${headlinePaidDenominator.toLocaleString()}人`
+                      : "payment_history の更新が必要です"
+                  }
+                  tone="emerald"
+                  compactValue={!coreReady}
+                  compare={coreReady ? paidRateCompare : null}
+                />
+                <ExecutiveMetricCard
+                  index="04"
                   label="友達率"
                   value={pctOrDash(
                     headlineFriendRate,

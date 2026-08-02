@@ -33,13 +33,14 @@ import { classifyType } from "@/lib/diagnosis";
 import { runForUser } from "@/lib/unmei/generateWorker.mjs";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import {
+  isUndiagnosedPlaceholderUser,
+  PLACEHOLDER_SCORES,
+} from "@/lib/placeholder-user";
+import {
   isCoreKpiPaymentSchemaPending,
   isMissingCoreKpiColumn,
 } from "@/lib/core-kpis";
 
-// ゲスト決済で診断前ユーザーを作るときの中立プレースホルダー (診断で本物に UPDATE される)。
-// users は type_id/scores が NOT NULL のため空では INSERT できない。
-const NEUTRAL_SCORES = { O: 5, C: 5, E: 5, A: 5, N: 5 };
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
 }
@@ -340,8 +341,8 @@ async function grantFullAccessByEmailOrId(
         full_access_at: nowIso,
         owner_token: guestToken(16),
         invite_code: guestToken(8),
-        type_id: classifyType(NEUTRAL_SCORES),
-        scores: NEUTRAL_SCORES,
+        type_id: classifyType(PLACEHOLDER_SCORES),
+        scores: PLACEHOLDER_SCORES,
       })
       .select("id")
       .single();
@@ -425,8 +426,8 @@ async function recordFullAccessPayment(
 // ---------- フルアクセス特典: 詳細レポートお届けメール ----------
 // grantFullAccessByEmailOrId の後に呼ぶ (users 行が必ず存在する状態)。
 // 宛先 = Stripe 確定 email (無ければ users.email)。リンク先は /me/[owner_token] と
-// /report/[owner_token]/pdf。閲覧・生成時点の診断結果を使うため、ゲスト決済
-// (診断前) でも診断完了後に同じリンクから本人向けの内容を利用できる。
+// /report/[owner_token]/pdf。診断前ゲスト購入のプレースホルダー行には送らず、
+// /api/diagnosis が本物の owner_token に更新した後で届ける。
 // best-effort: 失敗しても throw しない (grant は完了済み。Webhook 200 応答を止めない)。
 // 注意: Stripe が同一 event を再送した場合はメールも再送され得る (grant 系は冪等なので
 // 実害は重複メール 1 通のみ。頻発するようなら payment_history 側の冪等キー参照で抑止)。
@@ -445,11 +446,15 @@ async function sendDetailedReportEmailBestEffort(
       owner_token: string | null;
       display_name: string | null;
       email: string | null;
+      diagnosis_completed_at: string | null;
+      scores: unknown;
     } | null = null;
     if (userId) {
       const { data } = await supabaseAdmin
         .from("users")
-        .select("owner_token, display_name, email")
+        .select(
+          "owner_token, display_name, email, diagnosis_completed_at, scores",
+        )
         .eq("id", userId)
         .maybeSingle();
       row = data ?? null;
@@ -457,7 +462,9 @@ async function sendDetailedReportEmailBestEffort(
     if (!row && stripeEmail) {
       const { data } = await supabaseAdmin
         .from("users")
-        .select("owner_token, display_name, email")
+        .select(
+          "owner_token, display_name, email, diagnosis_completed_at, scores",
+        )
         .eq("email", stripeEmail)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -471,6 +478,17 @@ async function sendDetailedReportEmailBestEffort(
         has_token: !!row?.owner_token,
         has_email: !!to,
       });
+      return;
+    }
+
+    if (isUndiagnosedPlaceholderUser(row)) {
+      console.log(
+        "[webhook/stripe] detailed report email deferred until diagnosis",
+        {
+          session_id: session.id,
+          locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        },
+      );
       return;
     }
 
@@ -779,8 +797,8 @@ async function grantUnmeiByEmailOrId(
       unmei_at: nowIso,
       owner_token: guestToken(16),
       invite_code: guestToken(8),
-      type_id: classifyType(NEUTRAL_SCORES),
-      scores: NEUTRAL_SCORES,
+      type_id: classifyType(PLACEHOLDER_SCORES),
+      scores: PLACEHOLDER_SCORES,
     });
     if (error) {
       throw new Error(`[unmei] guest user create failed: ${error.message}`);

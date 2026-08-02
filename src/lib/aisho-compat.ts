@@ -7,6 +7,7 @@
 //
 // 実データで確認済みの文字コード: ＋ = U+FF0B (高=true) / − = U+2212 (低=false)。
 
+import type { ResultLocale } from "@/i18n/result";
 import { thirtyTwoType, type ThirtyTwoTypeId } from "./thirty-two-types";
 
 const PLUS = "＋"; // U+FF0B = 高
@@ -64,7 +65,50 @@ function axisScores(x: Axes, y: Axes): Record<AxisKey, number> {
 
 // 軸×状態のマイクロコピー辞書 (褒め文／ケア文兼用・状態に応じて読み替わる)。
 // 各文は 2 文構成で、結果ページの地の文に馴染む長さ・トーン (「〜。」で完結)。
-function axisCopy(key: AxisKey, x: Axes, y: Axes): string {
+function axisCopyKo(key: AxisKey, x: Axes, y: Axes): string {
+  const a = x[key];
+  const b = y[key];
+  switch (key) {
+    case "A": {
+      const s = pairState(a, b);
+      return s === "both"
+        ? "두 사람 모두 배려가 깊어 상대의 마음을 먼저 생각할 수 있는 유형이에요. 예를 들어 상대가 기운 없어 보이는 날에는 이것저것 캐묻지 않고 살며시 “무리하지 마”라고 한마디 건넬 수 있어요. 조금 부딪혀도 한쪽이 자연스럽게 한발 물러나 부드럽게 풀고, 마음 깊은 곳에 “소중히 대하고 싶다”는 생각이 있어 크게 꼬이기 어려워요."
+        : s === "one"
+          ? "한 사람의 다정함이 이 관계의 윤활유가 되어 주는 것 같아요. 예를 들어 약속 시간에 조금 늦어도 한쪽이 “괜찮아”라며 웃어넘기는 일이 많을 거예요. 늘 받아 주는 쪽에 기대기보다 가끔은 먼저 “고마워”라고 수고를 알아주면 훨씬 대등하고 편안한 균형이 돼요."
+          : "서로 솔직하게 말할 수 있는 만큼 거리낌 없는 한마디가 문득 아프게 꽂힐 때도 있어요. 예를 들어 지친 날에 “그건 아니지 않아?”라는 정답을 들으면 내용이 맞아도 마음은 따끔할 수 있어요. 악의가 없다는 걸 알아도 바쁜 날일수록 말을 골라 주세요. 짧은 격려 한마디만 있어도 분위기는 완전히 달라져요.";
+    }
+    case "N": {
+      const s = pairState(a, b);
+      return s === "both"
+        ? "두 사람 모두 섬세해서 상대의 기분과 주변 분위기를 잘 알아차리는 유형이에요. 예를 들어 반나절 동안 답장이 없으면 둘 다 “내가 뭘 잘못했나?” 하고 불안해지기 쉬워요. 다정함의 이면에서 걱정이 번지기 쉬우니 혼자 품지 말고 그날 안에 “조금 걱정됐을 뿐이야”라고 말하면 관계가 안정돼요."
+        : s === "one"
+          ? "한 사람의 마음이 흔들리는 날에도 다른 한 사람이 든든하게 받아 주는 관계예요. 예를 들어 시험을 앞두고 예민해져도 한쪽이 “괜찮아, 어떻게든 될 거야”라며 분위기를 가라앉혀 줘요. 감정의 파도를 한 사람이 받쳐 주기 때문에 크게 무너지지 않고 안심할 수 있어요."
+          : "두 사람 모두 정서적으로 안정되어 웬만한 파도에는 흔들리지 않는 조합이에요. 예를 들어 기대하던 약속이 갑자기 취소돼도 오래 끌지 않고 “그럼 다음엔 언제 볼까?”라고 바로 전환할 수 있어요. 감정싸움으로 번지기 어려워 다퉈도 “그래서 이제 어떻게 할까?”라는 해결 모드로 빨리 돌아와요.";
+    }
+    case "O":
+      return a === b
+        ? "세상을 바라보는 방향이 닮아서 이야기해도 놀아도 화제가 끊이지 않아요. 예를 들어 같은 영상이나 음악을 보고 동시에 “이거 좋다”라고 느껴 밤늦게까지 대화가 이어지는 유형이에요. 공감이 계속되니 함께 있을 때 가장 편한 사람이 되기 쉬워요."
+        : "가치관은 다르지만 그래서 서로에게 혼자서는 만나지 못했을 풍경을 보여 줘요. 예를 들어 한 사람이 권한 행사나 가게가 다른 사람에게는 처음 만나는 세계일 수 있어요. 서로에게 신선한 자극을 주며 각자의 세계를 넓혀 갈 수 있는 관계예요.";
+    case "C":
+      return a === b
+        ? "계획과 속도에 대한 감각이 비슷해서 함께 움직여도 마찰이 적어요. 예를 들어 여행에서도 “일단 만날 시간만 정하고 나머지는 현지에서 편하게”라는 온도가 잘 맞아요. 일을 진행하는 템포가 같아서 놀이나 과제도 기분 좋게 풀어 갈 수 있어요."
+        : "한 사람은 계획형, 다른 한 사람은 추진형이에요. 예를 들어 한쪽이 일정표를 꼼꼼히 만드는 옆에서 다른 쪽은 “당일 분위기에 맡기면 안 돼?”라고 할 수 있어요. 그래도 처음에 마감과 만날 시간만 정해 두면 이 차이가 오히려 잘 맞물려 즐겁고 빠른 조합이 돼요.";
+    case "E":
+      if (a !== b)
+        return "분위기를 이끄는 사람과 이야기를 깊게 만드는 사람이 만난 보완형 조합이에요. 예를 들어 모임에서는 한쪽이 전체 분위기를 띄우고 다른 한쪽은 옆에서 한 사람 한 사람의 이야기를 제대로 들어 줘요. 정반대라 역할이 자연스럽게 나뉘어 여럿이 있을 때도 둘만 있을 때도 편안하게 어울려요.";
+      return a
+        ? "두 사람 모두 바깥 활동을 좋아하고 에너지가 넘쳐요. 예를 들어 “지금 만날래?”라는 갑작스러운 제안에도 둘 다 신나게 응할 수 있는 유형이에요. 텐션이 오르는 지점이 같아서 활기차고 지루할 틈 없는 관계가 되기 쉬워요."
+        : "두 사람 모두 조용한 시간을 소중히 여기는 유형이에요. 예를 들어 같은 방에서 각자 휴대폰을 보고만 있어도 침묵이 어색하지 않고 오히려 편안해요. 억지로 분위기를 띄우지 않아도 되니 함께 있을 때 자연스럽게 마음이 놓이는 관계예요.";
+  }
+}
+
+function axisCopy(
+  key: AxisKey,
+  x: Axes,
+  y: Axes,
+  locale: ResultLocale,
+): string {
+  if (locale === "ko") return axisCopyKo(key, x, y);
   const a = x[key];
   const b = y[key];
   switch (key) {
@@ -102,12 +146,22 @@ function axisCopy(key: AxisKey, x: Axes, y: Axes): string {
 }
 
 // サマリー (%帯)
-function summaryFor(percent: number): string {
-  if (percent >= 90) return "運命級の相性";
-  if (percent >= 75) return "かなりの好相性";
-  if (percent >= 60) return "バランスのいいふたり";
-  if (percent >= 45) return "歩み寄りで輝くふたり";
-  return "試練は多いが、学びも大きい";
+function summaryFor(percent: number, locale: ResultLocale): string {
+  if (percent >= 90)
+    return locale === "ko" ? "운명처럼 잘 맞는 사이" : "運命級の相性";
+  if (percent >= 75)
+    return locale === "ko" ? "상당히 잘 맞는 사이" : "かなりの好相性";
+  if (percent >= 60)
+    return locale === "ko"
+      ? "균형이 좋은 두 사람"
+      : "バランスのいいふたり";
+  if (percent >= 45)
+    return locale === "ko"
+      ? "맞춰 갈수록 빛나는 두 사람"
+      : "歩み寄りで輝くふたり";
+  return locale === "ko"
+    ? "어려움만큼 배움도 큰 사이"
+    : "試練は多いが、学びも大きい";
 }
 
 // 相性ランク S/A/B/C (表示% 40〜95 を4段階に)。
@@ -134,7 +188,11 @@ export interface CompatResult {
 // s の合成順 (タイ時の決定順・O(1)で対称)
 const AXIS_ORDER: AxisKey[] = ["A", "N", "O", "C", "E"];
 
-export function compat(aId: ThirtyTwoTypeId, bId: ThirtyTwoTypeId): CompatResult {
+export function compat(
+  aId: ThirtyTwoTypeId,
+  bId: ThirtyTwoTypeId,
+  locale: ResultLocale = "ja",
+): CompatResult {
   const x = parseAxes(thirtyTwoType(aId).code);
   const y = parseAxes(thirtyTwoType(bId).code);
   const s = axisScores(x, y);
@@ -148,12 +206,12 @@ export function compat(aId: ThirtyTwoTypeId, bId: ThirtyTwoTypeId): CompatResult
   // 良いところ = s降順トップ2軸のコピー
   const desc = [...AXIS_ORDER].sort((p, q) => s[q] - s[p]);
   const top2 = desc.slice(0, 2);
-  const goods = top2.map((k) => axisCopy(k, x, y));
+  const goods = top2.map((k) => axisCopy(k, x, y, locale));
 
   // 気をつけるところ = s昇順で最下位、ただしトップ2と重複したら次点
   const asc = [...AXIS_ORDER].sort((p, q) => s[p] - s[q]);
   const cautionKey = asc.find((k) => !top2.includes(k)) ?? asc[0];
-  const caution = axisCopy(cautionKey, x, y);
+  const caution = axisCopy(cautionKey, x, y, locale);
 
   return {
     raw,
@@ -161,7 +219,7 @@ export function compat(aId: ThirtyTwoTypeId, bId: ThirtyTwoTypeId): CompatResult
     stars,
     rank: rankFor(percent),
     s,
-    summary: summaryFor(percent),
+    summary: summaryFor(percent, locale),
     goods,
     caution,
   };

@@ -10,11 +10,22 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
+  keywords: [
+    "무료 성격 진단",
+    "무료 성격 테스트",
+    "성격 유형 테스트",
+    "Big Five",
+    "빅파이브",
+    "OCEAN 성격검사",
+    "32가지 성격 유형",
+    "자기 이해",
+  ],
   alternates: {
     canonical: KO_DIAGNOSIS_URL,
     languages: {
       "ja-JP": `${BASE_URL}/diagnosis`,
       "ko-KR": KO_DIAGNOSIS_URL,
+      "x-default": `${BASE_URL}/diagnosis`,
     },
   },
   openGraph: {
@@ -40,8 +51,6 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/mascot/diagnosis-hero.png"],
   },
-  // 韓国語の結果・規約・プライバシーが揃うまでは検索公開しない。
-  robots: { index: false, follow: false },
 };
 
 const jsonLd = {

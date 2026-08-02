@@ -26,9 +26,12 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { useTakoPeek } from "./TakoRevealStage";
+import type { ResultLocale } from "@/i18n/result";
 
 const SHARE_TEXT =
   "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
+const KO_SHARE_TEXT =
+  "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요.";
 
 // シェアボタン共通の塗りピル (LockedInviteShare と同系統・アイコンのみ)。
 const sharePill =
@@ -91,6 +94,7 @@ interface TakoShareGateProps {
   qrImageSrc?: string | null;
   ownerToken: string;
   inviteCode: string;
+  locale?: ResultLocale;
 }
 
 // remaining ごとの見出しコピー。gate はロック時 (remaining>=1) のみ描画される想定。
@@ -116,7 +120,10 @@ export function TakoShareGate({
   qrImageSrc,
   ownerToken,
   inviteCode,
+  locale = "ja",
 }: TakoShareGateProps) {
+  const isKo = locale === "ko";
+  const shareText = isKo ? KO_SHARE_TEXT : SHARE_TEXT;
   const answeredCount = Math.min(
     shownAnsweredCount ?? answered.length,
     threshold,
@@ -169,7 +176,7 @@ export function TakoShareGate({
     try {
       if (navigator.share) {
         await navigator.share({
-          text: SHARE_TEXT,
+          text: shareText,
           url: withRef(qrInviteUrl, "share"),
         });
       } else {
@@ -212,13 +219,19 @@ export function TakoShareGate({
             style={{ background: LAVENDER }}
           >
             <span aria-hidden="true">🎉</span>
-            {deliveredCount}人届いた！
+            {isKo
+              ? `${deliveredCount}명의 답변이 도착했어요!`
+              : `${deliveredCount}人届いた！`}
           </span>
         )}
       </div>
 
       {/* スクリーンリーダー向けの進捗テキスト (見出し/数字/スロットは撤去済み・QRが主役) */}
-      <p className="sr-only">あと{remaining}人の回答で結果が開きます。</p>
+      <p className="sr-only">
+        {isKo
+          ? `${remaining}명이 더 답하면 결과가 열려요.`
+          : `あと${remaining}人の回答で結果が開きます。`}
+      </p>
 
       {/* ===== QR招待: その場で友達に読み取ってもらい診断へ (対面ルート) ===== */}
       {qrInviteUrl && (
@@ -228,14 +241,16 @@ export function TakoShareGate({
             className="mb-3 w-full max-w-[300px] whitespace-nowrap text-center text-[24px] md:text-[25px] font-black leading-snug"
             style={{ color: NAVY }}
           >
-            <span style={{ color: LAVENDER }}>友達診断</span>
-            を完成させよう！
+            <span style={{ color: LAVENDER }}>
+              {isKo ? "친구 진단" : "友達診断"}
+            </span>
+            {isKo ? "을 완성해요!" : "を完成させよう！"}
           </p>
           <div
             className="w-full max-w-[300px] rounded-2xl border bg-white p-4 shadow-[0_8px_24px_rgba(46,46,92,0.10)]"
             style={{ borderColor: STITCH }}
             role="img"
-            aria-label="友達診断への招待QRコード"
+            aria-label={isKo ? "친구 진단 초대 QR 코드" : "友達診断への招待QRコード"}
           >
             <div className="relative">
               <QRCodeSVG
@@ -265,7 +280,9 @@ export function TakoShareGate({
             className="mt-2 text-center text-[12.5px] font-bold"
             style={{ color: READ_GRAY }}
           >
-            友達のスマホで読み取って、診断してもらおう！
+            {isKo
+              ? "친구의 스마트폰으로 읽고 진단에 답해 달라고 부탁해요!"
+              : "友達のスマホで読み取って、診断してもらおう！"}
           </p>
         </div>
       )}
@@ -279,7 +296,7 @@ export function TakoShareGate({
         >
           <a
             href={`https://line.me/R/msg/text/?${encodeURIComponent(
-              `${SHARE_TEXT} ${withRef(qrInviteUrl, "line")}`,
+              `${shareText} ${withRef(qrInviteUrl, "line")}`,
             )}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -289,11 +306,13 @@ export function TakoShareGate({
             <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
               <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
             </svg>
-            <span className="sr-only">LINEで送る</span>
+            <span className="sr-only">
+              {isKo ? "LINE으로 보내기" : "LINEで送る"}
+            </span>
           </a>
           <a
             href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-              SHARE_TEXT,
+              shareText,
             )}&url=${encodeURIComponent(withRef(qrInviteUrl, "x"))}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -303,12 +322,14 @@ export function TakoShareGate({
             <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
               <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
             </svg>
-            <span className="sr-only">Xで共有</span>
+            <span className="sr-only">
+              {isKo ? "X로 공유" : "Xで共有"}
+            </span>
           </a>
           <button
             type="button"
             onClick={handleCopy}
-            aria-label="招待リンクをコピー"
+            aria-label={isKo ? "초대 링크 복사" : "招待リンクをコピー"}
             className={`${sharePill} bg-[#5B5BEF]`}
           >
             {copied ? (
@@ -325,7 +346,7 @@ export function TakoShareGate({
           <button
             type="button"
             onClick={handleNativeShare}
-            aria-label="その他の方法でシェア"
+            aria-label={isKo ? "다른 방법으로 공유" : "その他の方法でシェア"}
             className={`${sharePill}`}
             style={{ background: NAVY }}
           >
@@ -335,7 +356,9 @@ export function TakoShareGate({
               <path d="M16 6l-4-4-4 4" />
               <path d="M12 2v13" />
             </svg>
-            <span className="sr-only">その他の方法でシェア</span>
+            <span className="sr-only">
+              {isKo ? "다른 방법으로 공유" : "その他の方法でシェア"}
+            </span>
           </button>
         </div>
       )}
@@ -348,7 +371,11 @@ export function TakoShareGate({
         <div className="mt-5 [@media(max-height:740px)]:mt-3 flex justify-center">
           <button
             type="button"
-            aria-label="押している間、奥の結果をチラ見できます"
+            aria-label={
+              isKo
+                ? "누르는 동안 뒤의 결과를 미리 볼 수 있어요"
+                : "押している間、奥の結果をチラ見できます"
+            }
             data-no-drag
             onPointerDown={peek.onPeekStart}
             onPointerUp={peek.onPeekEnd}
@@ -374,7 +401,7 @@ export function TakoShareGate({
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            押して奥をチラ見
+            {isKo ? "눌러서 결과 살짝 보기" : "押して奥をチラ見"}
           </button>
         </div>
       )}

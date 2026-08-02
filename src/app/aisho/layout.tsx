@@ -2,12 +2,13 @@
 // トップと同じ汎用 title になっていた。公開・シェアされる集客ページなので、
 // このサーバ層で専用 title / description / canonical を付与する (見た目は不変)。
 import type { Metadata } from "next";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "相性診断",
   description:
     "気になるあの子との相性を、キャラを選ぶだけで診断。自分の診断がなくてもOK。ワタシのトリセツの性格タイプで、ふたりのバランス・いいところ・シーン別の相性がわかる。",
-  alternates: { canonical: "/aisho" },
+  alternates: localizedAlternates("ja", "/aisho", "/ko/aisho"),
   openGraph: {
     title: "相性診断｜ワタシのトリセツ",
     description:

@@ -38,6 +38,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import type { ResultLocale } from "@/i18n/result";
 import { TakoRewardBackdrop, type BackdropHero } from "./TakoRewardBackdrop";
 
 const PEEK_EASE = 0.2; // 目標値への追従係数 (押下/解放時のなめらかさ)
@@ -69,6 +70,7 @@ interface TakoRevealStageProps {
   backdropHero?: BackdropHero | null;
   /** 手前(主役)レイヤー = カウンターカード。 */
   children: ReactNode;
+  locale?: ResultLocale;
 }
 
 export function TakoRevealStage({
@@ -76,6 +78,7 @@ export function TakoRevealStage({
   threshold,
   backdropHero = null,
   children,
+  locale = "ja",
 }: TakoRevealStageProps) {
   const frontRef = useRef<HTMLDivElement>(null);
   const state = useRef({ curPeek: 0, pressed: false });
@@ -183,6 +186,7 @@ export function TakoRevealStage({
           answered={answered}
           threshold={threshold}
           hero={backdropHero}
+          locale={locale}
         />
       </div>
 

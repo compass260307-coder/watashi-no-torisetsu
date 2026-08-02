@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
   description:
     "ワタシのトリセツのプライバシーポリシー。個人情報の取り扱いについてご説明します。",
-  alternates: { canonical: "/privacy" },
+  alternates: localizedAlternates("ja", "/privacy", "/ko/privacy"),
   robots: { index: true, follow: true },
 };
 

@@ -14,8 +14,6 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 
-const ALL = "すべて";
-
 export type ArticleCard = {
   slug: string;
   listTitle: string;
@@ -29,19 +27,33 @@ export type ArticleCard = {
 export function ArticleGrid({
   articles,
   categories,
+  locale = "ja",
 }: {
   articles: ArticleCard[];
   /** 表示順のカテゴリー一覧 (記事が1本以上あるものだけ渡す) */
   categories: string[];
+  locale?: "ja" | "ko";
 }) {
-  const [selected, setSelected] = useState<string>(ALL);
+  const labels =
+    locale === "ko"
+      ? {
+          all: "전체",
+          category: "카테고리:",
+          read: "글 보기 →",
+        }
+      : {
+          all: "すべて",
+          category: "カテゴリー:",
+          read: "記事を見る →",
+        };
+  const [selected, setSelected] = useState<string>(labels.all);
   const [open, setOpen] = useState(false);
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const options = [ALL, ...categories];
+  const options = [labels.all, ...categories];
   const visible =
-    selected === ALL
+    selected === labels.all
       ? articles
       : articles.filter((a) => a.category === selected);
 
@@ -50,7 +62,7 @@ export function ArticleGrid({
       {/* カテゴリー: ドロップダウン */}
       <div className="mt-8 flex items-center gap-4">
         <p className="shrink-0 text-[14px] font-bold" style={{ color: NAVY }}>
-          カテゴリー:
+          {labels.category}
         </p>
         <div
           ref={rootRef}
@@ -110,7 +122,7 @@ export function ArticleGrid({
         {visible.map((a) => (
           <li key={a.slug} className="h-full">
             <Link
-              href={`/articles/${a.slug}`}
+              href={`${locale === "ko" ? "/ko" : ""}/articles/${a.slug}`}
               className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(46,46,92,0.10)] transition-shadow hover:shadow-[0_4px_20px_rgba(46,46,92,0.18)]"
             >
               {/* 上部イラスト (フェルト調シーン)。淡い背景で切り抜き感をなくす */}
@@ -146,7 +158,7 @@ export function ArticleGrid({
                   {a.description}
                 </p>
                 <span className="mt-5 inline-block w-fit rounded-full border-2 border-[#5B5BEF] px-5 py-2 text-[13px] font-bold text-[#5B5BEF] transition-colors group-hover:bg-[#5B5BEF] group-hover:text-white">
-                  記事を見る →
+                  {labels.read}
                 </span>
               </div>
             </Link>

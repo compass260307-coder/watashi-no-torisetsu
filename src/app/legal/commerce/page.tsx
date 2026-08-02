@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "特定商取引法に基づく表記",
   description:
     "ワタシのトリセツの有料サービスに関する特定商取引法に基づく表記。",
-  alternates: { canonical: "/legal/commerce" },
+  alternates: localizedAlternates(
+    "ja",
+    "/legal/commerce",
+    "/ko/legal/commerce",
+  ),
   robots: { index: true, follow: true },
 };
 

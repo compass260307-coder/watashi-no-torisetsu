@@ -15,6 +15,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+type SupabaseAdminClient = typeof import("../src/lib/supabase-server").supabaseAdmin;
+
 function loadEnvLocal() {
   const t = readFileSync(resolve(process.cwd(), ".env.local"), "utf8");
   for (const l of t.split(/\r?\n/)) {
@@ -36,7 +38,7 @@ const TABLES = [
   "magic_links",
 ];
 
-async function countAll(label: string, supabaseAdmin: any) {
+async function countAll(label: string, supabaseAdmin: SupabaseAdminClient) {
   console.log(`\n===== ${label} =====`);
   for (const t of TABLES) {
     const { count, error } = await supabaseAdmin

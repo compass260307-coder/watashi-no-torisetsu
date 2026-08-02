@@ -16,13 +16,18 @@ const NAVIGATION = [
   },
   {
     label: KO_TOP_CONTENT.navigation.friend,
-    href: "/ko/friend",
-    disabled: true,
+    href: "/ko/tako",
+    disabled: false,
   },
   {
     label: KO_TOP_CONTENT.navigation.types,
     href: "/ko/types",
-    disabled: true,
+    disabled: false,
+  },
+  {
+    label: KO_TOP_CONTENT.navigation.login,
+    href: "/ko/login",
+    disabled: false,
   },
 ] as const;
 
@@ -30,6 +35,7 @@ export default function KoTopHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  const [currentSearch, setCurrentSearch] = useState("");
   const pathname = usePathname() ?? "/ko";
 
   useEffect(() => {
@@ -41,9 +47,20 @@ export default function KoTopHeader() {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOwnerToken(token);
+    setCurrentSearch(window.location.search);
   }, [pathname]);
 
-  const japaneseHref = localeSwitchPath(pathname, "ja", ownerToken);
+  const japaneseHref = localeSwitchPath(
+    pathname,
+    "ja",
+    ownerToken,
+    currentSearch,
+  );
+  const navigation = NAVIGATION.map((item) =>
+    item.href === "/ko/tako" && ownerToken
+      ? { ...item, href: `/ko/tako/${encodeURIComponent(ownerToken)}` }
+      : item,
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -73,7 +90,7 @@ export default function KoTopHeader() {
         </Link>
 
         <div className="ml-auto hidden items-center gap-5 lg:flex xl:gap-8">
-          {NAVIGATION.map((item) =>
+          {navigation.map((item) =>
             item.disabled ? (
               <span
                 key={item.href}
@@ -180,7 +197,7 @@ export default function KoTopHeader() {
           </div>
 
           <div className="flex flex-col px-6 py-3">
-            {NAVIGATION.map((item) =>
+            {navigation.map((item) =>
               item.disabled ? (
                 <span
                   key={item.href}

@@ -1,5 +1,3 @@
-"use client";
-
 // プレミアム化 v3 Day 8: マジックリンク発行 UI (Web ファースト永続アクセス点)
 //
 // 用途:
@@ -13,15 +11,22 @@
 // + おかえり感のあるキャラ挿絵 (dog_R: おうちの前で出迎える犬) + ポップな見出し。
 // カード本体は共有コンポーネントのため変更しない (モーダル/購入完了ページに波及させない)。
 
+import type { Metadata } from "next";
 import { LoginCard } from "@/components/LoginCard";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
+
+export const metadata: Metadata = {
+  title: "ログイン",
+  alternates: localizedAlternates("ja", "/login", "/ko/login"),
+};
 
 export default function LoginPage() {
   return (

@@ -20,6 +20,7 @@ import {
 import type { BigFiveDimension } from "@/lib/types";
 import { JohariHelpTip } from "./JohariHelpTip";
 import { PaywallScrollButton } from "./PaywallScrollButton";
+import type { ResultLocale } from "@/i18n/result";
 
 // 強い盲点/秘密のギャップしきい値 (パーセントポイント)。
 const GAP = 15;
@@ -204,9 +205,130 @@ const BLIND_DECOY: Item[] = [
   },
 ];
 
-function windowsFrom(self: BigFiveScores, friend: BigFiveScores, viewer: string) {
+const KO_BLIND_DECOY: Item[] = [
+  {
+    key: "O",
+    title: "이미 전해진 다정함",
+    body: "자연스럽게 건넨 작은 배려를 주변 사람들은 생각보다 오래 기억하고 있어요.",
+  },
+  {
+    key: "C",
+    title: "생각보다 든든한 사람",
+    body: "당연하게 해 온 일이 다른 사람에게는 노력과 성실함으로 보이고 있어요.",
+  },
+  {
+    key: "E",
+    title: "무심코 만드는 좋은 분위기",
+    body: "사소한 한마디와 웃음이 생각보다 크게 주변의 공기를 바꾸고 있어요.",
+  },
+  {
+    key: "A",
+    title: "들켜 버린 섬세함",
+    body: "숨겼다고 생각한 마음도 가까운 사람에게는 이미 다정하게 전해지고 있어요.",
+  },
+];
+
+const KO_TRAITS: Record<
+  BigFiveDimension,
+  { high: string; low: string; unknown: string }
+> = {
+  O: { high: "풍부한 호기심", low: "깊이 즐기는 취향", unknown: "새로운 세계에 푹 빠지는 모습" },
+  C: { high: "성실하고 든든한 면", low: "힘을 뺄 줄 아는 여유", unknown: "누군가를 이끄는 계획력" },
+  E: { high: "분위기를 밝히는 에너지", low: "편안하게 들어 주는 힘", unknown: "마음껏 신나게 즐기는 모습" },
+  A: { high: "자연스럽게 챙기는 다정함", low: "흔들리지 않는 자기 기준", unknown: "마음을 놓고 기대는 모습" },
+  N: { high: "작은 변화를 느끼는 섬세함", low: "쉽게 흔들리지 않는 침착함", unknown: "감정을 솔직하게 표현하는 힘" },
+};
+
+function koTitle(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+): string {
+  const trait = window === "unknown" ? KO_TRAITS[key].unknown : high ? KO_TRAITS[key].high : KO_TRAITS[key].low;
+  if (window === "blind") return `친구가 먼저 발견한 ${trait}`;
+  if (window === "secret") return `아직 보여 주지 않은 ${trait}`;
+  return trait;
+}
+
+function koBody(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+  viewer: string,
+): string {
+  const trait = window === "unknown" ? KO_TRAITS[key].unknown : high ? KO_TRAITS[key].high : KO_TRAITS[key].low;
+  if (window === "open") {
+    return `두 사람이 함께 인정한 당신의 장점: ‘${trait}’. 나도 알고 ${viewer}도 같은 모습으로 보고 있어요.`;
+  }
+  if (window === "blind") {
+    return `${viewer}의 답변에서는 ‘${trait}’ 쪽 모습이 더 선명하게 나타났어요. 스스로는 당연하게 여겼지만 상대에게는 특별한 매력으로 전해진 부분이에요.`;
+  }
+  if (window === "secret") {
+    return `아직 ${viewer}에게 충분히 보이지 않은 모습: ‘${trait}’. 편안한 순간에 조금씩 보여 주면 관계가 더 깊어질 수 있어요.`;
+  }
+  return `아직 두 사람 모두 충분히 만나지 못한 가능성: ‘${trait}’. 새로운 경험 속에서 자연스럽게 열릴 수 있어요.`;
+}
+
+function windowsFrom(
+  self: BigFiveScores,
+  friend: BigFiveScores,
+  viewer: string,
+  locale: ResultLocale,
+) {
   const fill = (t: string) => t.replace(/\{v\}/g, viewer);
   const gaps = buildDimensionGaps(self, friend);
+
+  if (locale === "ko") {
+    const open = [...gaps]
+      .sort(
+        (a, b) =>
+          Math.abs(a.otherPercent - a.selfPercent) -
+          Math.abs(b.otherPercent - b.selfPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => {
+        const high = (g.selfPercent + g.otherPercent) / 2 >= 50;
+        return {
+          key: g.key,
+          title: koTitle(g.key, high, "open"),
+          body: koBody(g.key, high, "open", viewer),
+        };
+      });
+
+    const fillWindow = (
+      kind: "blind" | "secret",
+      score: (g: (typeof gaps)[number]) => number,
+    ): Item[] =>
+      [...gaps]
+        .sort((a, b) => Math.abs(score(b) - 50) - Math.abs(score(a) - 50))
+        .slice(0, PER_WINDOW)
+        .map((g) => {
+          const high = score(g) >= 50;
+          return {
+            key: g.key,
+            title: koTitle(g.key, high, kind),
+            body: koBody(g.key, high, kind, viewer),
+          };
+        });
+
+    const blind = fillWindow("blind", (g) => g.otherPercent);
+    const secret = fillWindow("secret", (g) => g.selfPercent);
+    const unknown = [...gaps]
+      .sort(
+        (a, b) =>
+          a.selfPercent +
+          a.otherPercent -
+          (b.selfPercent + b.otherPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => ({
+        key: g.key,
+        title: koTitle(g.key, false, "unknown"),
+        body: koBody(g.key, false, "unknown", viewer),
+      }));
+
+    return { open, blind, secret, unknown };
+  }
 
   // 開放: 見え方の差が小さい順に4軸。
   const open: Item[] = [...gaps]
@@ -305,12 +427,14 @@ function WindowCard({
   name,
   help,
   children,
+  locale = "ja",
 }: {
   tone: "green" | "indigo" | "navy" | "gray";
   name: string;
   /** 窓名の隣の ? で見せる説明文。 */
   help: string;
   children: React.ReactNode;
+  locale?: ResultLocale;
 }) {
   const frame =
     tone === "indigo"
@@ -332,7 +456,7 @@ function WindowCard({
         className={`mb-3 flex items-center gap-1.5 text-[17px] font-black leading-tight md:gap-2 md:text-[24px] ${nameColor}`}
       >
         {name}
-        <JohariHelpTip text={help} />
+        <JohariHelpTip text={help} locale={locale} />
       </p>
       {/* 正方形の余った縦空間の中で中身をセンターに置く */}
       <div className="flex flex-1 flex-col justify-center pb-2 md:pb-6">
@@ -406,6 +530,7 @@ export function JohariWindow({
   friendScores,
   viewer,
   locked,
+  locale = "ja",
 }: {
   selfScores: BigFiveScores;
   friendScores: BigFiveScores;
@@ -413,12 +538,16 @@ export function JohariWindow({
   viewer: string;
   /** tako 未解放 (盲点の窓をぼかす)。 */
   locked: boolean;
+  locale?: ResultLocale;
 }) {
+  const isKo = locale === "ko";
   const { open, blind, secret, unknown } = windowsFrom(
     selfScores,
     friendScores,
     viewer,
+    locale,
   );
+  const blindDecoy = isKo ? KO_BLIND_DECOY : BLIND_DECOY;
 
   return (
     <div>
@@ -426,8 +555,13 @@ export function JohariWindow({
         {/* 開放の窓 */}
         <WindowCard
           tone="green"
-          name="開放の窓"
-          help="自分もその友達も「そうだよね」と認めてる、公認のあなた。ふたりの回答が一致した持ち味だよ。"
+          name={isKo ? "열린 창" : "開放の窓"}
+          help={
+            isKo
+              ? "나와 친구가 모두 알고 있는 모습이에요. 두 사람의 답변이 비슷하게 나타난 장점이에요."
+              : "自分もその友達も「そうだよね」と認めてる、公認のあなた。ふたりの回答が一致した持ち味だよ。"
+          }
+          locale={locale}
         >
           <TitleList items={open} tone="green" />
         </WindowCard>
@@ -435,8 +569,13 @@ export function JohariWindow({
         {/* 盲点の窓 (課金ゲート) */}
         <WindowCard
           tone="indigo"
-          name="盲点の窓"
-          help="自分では気づいてないけど、友達には見えてるあなた。友達の回答にだけ強く出た持ち味だよ。"
+          name={isKo ? "보이지 않는 창" : "盲点の窓"}
+          help={
+            isKo
+              ? "나는 아직 모르지만 친구에게는 보이는 모습이에요. 친구의 답변에서 더 선명하게 나타난 장점이에요."
+              : "自分では気づいてないけど、友達には見えてるあなた。友達の回答にだけ強く出た持ち味だよ。"
+          }
+          locale={locale}
         >
           {locked ? (
             <div className="relative flex-1">
@@ -445,7 +584,7 @@ export function JohariWindow({
                 aria-hidden="true"
                 className="pointer-events-none select-none blur-[4px]"
               >
-                <TitleList items={BLIND_DECOY} tone="indigo" />
+                <TitleList items={blindDecoy} tone="indigo" />
               </div>
               {/* ぼかしの中央に解錠ミニカード (/me のロックカードと同トーン)。
                   CTA は最下部の購入カード #tako-promo へスクロール。 */}
@@ -467,17 +606,19 @@ export function JohariWindow({
                     </svg>
                   </span>
                   <p className="mb-1 text-[13px] font-black text-[#2E2E5C] md:text-[15px]">
-                    今すぐロックを解除
+                    {isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
                   </p>
                   <p className="mb-3 text-[10px] font-bold leading-[1.7] text-[#8A8AA3] md:text-[12px]">
-                    {viewer}だけが知ってるアナタが読めるよ。
+                    {isKo
+                      ? `${viewer}만 알고 있는 내 모습을 확인할 수 있어요.`
+                      : `${viewer}だけが知ってるアナタが読めるよ。`}
                   </p>
                   <PaywallScrollButton
                     source="tako_johari_card"
                     targetId="tako-promo"
                     className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[11px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:py-3 md:text-[13px]"
                   >
-                    今すぐアクセス
+                    {isKo ? "지금 확인하기" : "今すぐアクセス"}
                   </PaywallScrollButton>
                 </div>
               </div>
@@ -490,8 +631,13 @@ export function JohariWindow({
         {/* 秘密の窓 */}
         <WindowCard
           tone="navy"
-          name="秘密の窓"
-          help="自分は知ってるけど、友達にはまだ見せてないあなた。自分の回答にだけ強く出た持ち味だよ。"
+          name={isKo ? "숨겨진 창" : "秘密の窓"}
+          help={
+            isKo
+              ? "나는 알고 있지만 친구에게는 아직 보여 주지 않은 모습이에요. 내 답변에서 더 선명하게 나타났어요."
+              : "自分は知ってるけど、友達にはまだ見せてないあなた。自分の回答にだけ強く出た持ち味だよ。"
+          }
+          locale={locale}
         >
           <TitleList items={secret} tone="navy" />
         </WindowCard>
@@ -499,8 +645,13 @@ export function JohariWindow({
         {/* 未知の窓 */}
         <WindowCard
           tone="gray"
-          name="未知の窓"
-          help="自分も友達もまだ知らない、これから開いていくあなた。診断にはまだ映らない伸びしろだよ。"
+          name={isKo ? "미지의 창" : "未知の窓"}
+          help={
+            isKo
+              ? "나도 친구도 아직 충분히 만나지 못한 모습이에요. 앞으로 열릴 수 있는 가능성이에요."
+              : "自分も友達もまだ知らない、これから開いていくあなた。診断にはまだ映らない伸びしろだよ。"
+          }
+          locale={locale}
         >
           <TitleList items={unknown} muted tone="gray" />
         </WindowCard>

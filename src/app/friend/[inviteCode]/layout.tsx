@@ -14,11 +14,13 @@ import {
   thirtyTwoImagePath,
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 const SITE_URL = resolveSiteUrl();
 const FALLBACK_DESCRIPTION = "友達から見たあなたを30問で教えてもらう診断";
 
 function buildMetadata(opts: {
+  inviteCode: string;
   title: string;
   description: string;
   imageUrl: string;
@@ -28,6 +30,11 @@ function buildMetadata(opts: {
   return {
     title: { absolute: opts.title },
     description: opts.description,
+    alternates: localizedAlternates(
+      "ja",
+      `/friend/${encodeURIComponent(opts.inviteCode)}`,
+      `/ko/friend/${encodeURIComponent(opts.inviteCode)}`,
+    ),
     // OG クローラ (robots.txt で許可) にはカードを取らせつつ、検索結果には出さない
     // (/share と同方針)。
     robots: { index: false, follow: true },
@@ -57,6 +64,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { inviteCode } = await params;
   const fallback = buildMetadata({
+    inviteCode,
     title: "ワタシのトリセツ",
     description: FALLBACK_DESCRIPTION,
     imageUrl: `${SITE_URL}/ogp-v4.png`,
@@ -87,6 +95,7 @@ export async function generateMetadata({
   const name = ((data.display_name as string | null) ?? "").trim();
 
   return buildMetadata({
+    inviteCode,
     title: name
       ? `${name}さんは【${essence}】でした`
       : `私は【${essence}】でした`,

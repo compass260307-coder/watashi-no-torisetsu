@@ -18,6 +18,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { SHARE_TEXT, lineShareUrl } from "@/lib/tako-share";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -64,6 +65,7 @@ interface TakoSendSheetProps {
   ownerToken: string;
   inviteCode: string;
   trackingKind?: "friend_evaluation" | "self_diagnosis";
+  locale?: ResultLocale;
 }
 
 export function TakoSendSheet({
@@ -75,11 +77,18 @@ export function TakoSendSheet({
   previewShareMode,
   title,
   subtitle,
-  shareText = SHARE_TEXT,
+  shareText: shareTextOverride,
   ownerToken,
   inviteCode,
   trackingKind = "friend_evaluation",
+  locale = "ja",
 }: TakoSendSheetProps) {
+  const isKo = locale === "ko";
+  const shareText =
+    shareTextOverride ??
+    (isKo
+      ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
+      : SHARE_TEXT);
   // reduced は一度だけ遅延評価 (シートは開いた時=クライアントでのみ描画)。
   const [reduced] = useState(
     () =>
@@ -162,34 +171,48 @@ export function TakoSendSheet({
     try {
       await navigator.clipboard.writeText(withRef(inviteUrl, "copy"));
       setCopied(true);
-      setNote("リンクをコピーしました。送りたい相手に貼り付けてね");
+      setNote(
+        isKo
+          ? "링크를 복사했어요. 보내고 싶은 친구에게 붙여 넣어 주세요."
+          : "リンクをコピーしました。送りたい相手に貼り付けてね",
+      );
       window.setTimeout(() => setCopied(false), 2000);
       fire(channel);
       onSent();
     } catch {
-      setNote("コピーできませんでした。下のQRか他の方法を使ってね");
+      setNote(
+        isKo
+          ? "복사하지 못했어요. 아래 QR 코드나 다른 방법을 이용해 주세요."
+          : "コピーできませんでした。下のQRか他の方法を使ってね",
+      );
     }
   };
 
   const heading =
     title ??
     (toSend >= 2
-      ? `あと${toSend}人、誰に送る？`
+      ? isKo
+        ? `${toSend}명 남았어요. 누구에게 보낼까요?`
+        : `あと${toSend}人、誰に送る？`
       : toSend === 1
-        ? "ラスト1人、誰に送る？"
-        : "もう一度、誰に送る？"); // toSend=0 (リマインド) も同じピッカーを再利用
+        ? isKo
+          ? "마지막 1명, 누구에게 보낼까요?"
+          : "ラスト1人、誰に送る？"
+        : isKo
+          ? "한 번 더, 누구에게 보낼까요?"
+          : "もう一度、誰に送る？"); // toSend=0 (リマインド) も同じピッカーを再利用
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center"
       role="dialog"
       aria-modal="true"
-      aria-label="送信先を選ぶ"
+      aria-label={isKo ? "보낼 친구 선택" : "送信先を選ぶ"}
     >
       {/* 背景 */}
       <button
         type="button"
-        aria-label="閉じる"
+        aria-label={isKo ? "닫기" : "閉じる"}
         onClick={onClose}
         className={`absolute inset-0 bg-black/40 ${reduced ? "" : "animate-modal-fade-in"}`}
       />
@@ -206,7 +229,7 @@ export function TakoSendSheet({
           ref={closeRef}
           type="button"
           onClick={onClose}
-          aria-label="閉じる"
+          aria-label={isKo ? "닫기" : "閉じる"}
           className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#9BA3B4] transition-colors active:bg-[#F1F3FB]"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -224,14 +247,19 @@ export function TakoSendSheet({
           className="mt-1.5 text-center text-[12.5px] font-bold"
           style={{ color: INACTIVE }}
         >
-          {subtitle ?? "送った相手が答えると、あなたのトリセツが1つ埋まる"}
+          {subtitle ??
+            (isKo
+              ? "받은 친구가 답하면 나의 사용설명서가 한 칸 채워져요"
+              : "送った相手が答えると、あなたのトリセツが1つ埋まる")}
         </p>
 
         {/* プレビュー: 疑似 shareTargetPicker 面 (Phase2 のイメージ)。実送信はしない。 */}
         {previewShareMode === "liff-sim" && (
           <div className="mt-4 rounded-2xl border border-[#E6E8F5] bg-[#F7F8FD] p-4">
             <p className="mb-2 text-[12px] font-bold" style={{ color: INACTIVE }}>
-              （プレビュー）LINEの友だちを選ぶ
+              {isKo
+                ? "(미리 보기) LINE 친구 선택"
+                : "（プレビュー）LINEの友だちを選ぶ"}
             </p>
             <div className="flex gap-3 overflow-x-auto pb-1">
               {["A", "K", "M", "R", "Y", "S"].map((c, i) => (
@@ -262,7 +290,7 @@ export function TakoSendSheet({
           <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
             <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
           </svg>
-          LINEで送る
+          {isKo ? "LINE으로 보내기" : "LINEで送る"}
         </a>
 
         {/* ② 他アプリで送る (Web Share) / ③ コピー */}
@@ -278,7 +306,7 @@ export function TakoSendSheet({
               <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
               <path d="M12 3v13M8 7l4-4 4 4" />
             </svg>
-            他アプリで送る
+            {isKo ? "다른 앱으로 보내기" : "他アプリで送る"}
           </button>
           <button
             type="button"
@@ -297,7 +325,13 @@ export function TakoSendSheet({
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
               </svg>
             )}
-            {copied ? "コピー済" : "リンクをコピー"}
+            {copied
+              ? isKo
+                ? "복사했어요"
+                : "コピー済"
+              : isKo
+                ? "링크 복사"
+                : "リンクをコピー"}
           </button>
         </div>
 
@@ -320,7 +354,9 @@ export function TakoSendSheet({
             />
           </div>
           <p className="mt-2 text-[12px] font-bold" style={{ color: "#9BA3B4" }}>
-            目の前の友達には QR を読み取ってもらおう
+            {isKo
+              ? "옆에 있는 친구에게는 QR 코드를 보여 주세요"
+              : "目の前の友達には QR を読み取ってもらおう"}
           </p>
         </div>
       </div>

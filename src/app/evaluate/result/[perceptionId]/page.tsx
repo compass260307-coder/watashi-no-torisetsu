@@ -46,20 +46,32 @@ import { type BigFiveScores } from "@/lib/perception-analysis";
 import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { buildPerceptionView } from "@/lib/perception-view";
 import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 // 課金ゲート撤去 (相互理解度を完全無料化): このページの unlock 分岐を外し、全章を無条件表示。
 // Stripe インフラ (lib/perception-unlock, /api/checkout/create-perception-unlock-session,
 // /api/webhook/stripe, payment_history) は後の有料機能流用のため温存し、ここでは参照しない。
 
-export const metadata: Metadata = {
-  title: "友達評価の結果",
-  // perception id は推測困難だが、誤共有時の漏洩経路を絞るため noindex
-  robots: { index: false, follow: false },
-};
-
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<PageProps, "params">): Promise<Metadata> {
+  const { perceptionId } = await params;
+  const idPath = encodeURIComponent(perceptionId);
+  return {
+    title: "友達評価の結果",
+    alternates: localizedAlternates(
+      "ja",
+      `/evaluate/result/${idPath}`,
+      `/ko/evaluate/result/${idPath}`,
+    ),
+    // perception id は推測困難だが、誤共有時の漏洩経路を絞るため noindex
+    robots: { index: false, follow: false },
+  };
 }
 
 // 本番DBを介さずデザイン確認するための行の最小形 (実DB行 / プレビュー用モック 共通)。

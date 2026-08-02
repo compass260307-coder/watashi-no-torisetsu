@@ -13,6 +13,7 @@ import {
   type BigFiveScores,
 } from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
+import type { ResultLocale } from "@/i18n/result";
 
 // ② 一言テンプレート用の軸名 (発散バーの AXES.title と同一)。
 const WARM_AXIS_LABEL: Record<BigFiveDimension, string> = {
@@ -21,6 +22,14 @@ const WARM_AXIS_LABEL: Record<BigFiveDimension, string> = {
   E: "外向性",
   A: "協調性",
   N: "神経症傾向",
+};
+
+const KO_AXIS_LABEL: Record<BigFiveDimension, string> = {
+  O: "개방성",
+  C: "성실성",
+  E: "외향성",
+  A: "우호성",
+  N: "정서적 민감성",
 };
 
 export type DeepDiveGap = {
@@ -48,6 +57,7 @@ export type DeepDiveData = {
 export function buildDeepDive(
   selfScores: BigFiveScores,
   friendAvgScores: BigFiveScores | null,
+  locale: ResultLocale = "ja",
 ): DeepDiveData | null {
   if (!friendAvgScores) return null;
 
@@ -57,7 +67,7 @@ export function buildDeepDive(
   const agreement = calcMutualUnderstanding(gaps);
 
   const toWarm = (g: (typeof gaps)[number]): DeepDiveGap => ({
-    label: WARM_AXIS_LABEL[g.key],
+    label: locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key],
     selfPercent: g.selfPercent,
     otherPercent: g.otherPercent,
   });
@@ -104,9 +114,43 @@ export function hiddenStrengthSentence(gap: DeepDiveGap): string {
  */
 // viewer: 「誰から見たか」の表示名 (例 "ゆかさん")。1人完結モデルの友達別シートで
 // 指定すると「友達/みんな」をその名前に置き換える。省略時は従来の総称。
-export function buildMinnaProse(deep: DeepDiveData, viewer?: string): string[] {
+export function buildMinnaProse(
+  deep: DeepDiveData,
+  viewer?: string,
+  locale: ResultLocale = "ja",
+): string[] {
   const { gap, hiddenStrength, agreement } = deep;
   const diff = gap.otherPercent - gap.selfPercent;
+  if (locale === "ko") {
+    const who = viewer ?? "친구들";
+    const friendWord = viewer ?? "친구들의 눈";
+    const paras: string[] = [];
+    if (diff >= 8) {
+      paras.push(
+        `${friendWord}에는 스스로 생각하는 것보다 훨씬 ‘${gap.label}이 높은 사람’으로 보여요. 자신에게는 당연한 행동이지만 ${who}은 그 모습을 분명한 장점으로 받아들이고 있어요.`,
+      );
+    } else if (diff <= -8) {
+      paras.push(
+        `스스로는 ‘${gap.label}’을 강하게 드러낸다고 생각하지만, ${friendWord}에는 조금 더 힘을 뺀 자연스러운 모습으로 보여요. 그 편안함이 사람들이 가까이 다가오는 이유가 되고 있어요.`,
+      );
+    } else {
+      paras.push(
+        `‘${gap.label}’을 보는 관점은 나와 ${who} 사이에서 거의 같아요. 자기 이미지와 주변의 인상이 겹친다는 것은 꾸미지 않은 모습이 잘 전해지고 있다는 뜻이에요.`,
+      );
+    }
+    if (hiddenStrength) {
+      paras.push(
+        `또 스스로 크게 의식하지 못한 ‘${hiddenStrength.label}’도 ${who}에게는 확실히 전해지고 있어요.`,
+      );
+    }
+    paras.push(
+      agreement >= 70
+        ? `${who}과 보는 관점의 일치도는 ${agreement}%예요. 지금의 나다움이 주변에도 자연스럽게 전달되고 있어요.`
+        : `${who}과 보는 관점의 일치도는 ${agreement}%예요. 차이는 틀림이 아니라 내가 미처 몰랐던 모습을 친구가 발견했다는 뜻이에요.`,
+    );
+    return paras;
+  }
+
   const paras: string[] = [];
   const who = viewer ?? "みんな"; // 主語 (〜は頼りにしている / 〜との見方の一致)
   const friendWord = viewer ?? "友達"; // 「友達の目には」の置き換え
@@ -155,6 +199,7 @@ export function buildMinnaProse(deep: DeepDiveData, viewer?: string): string[] {
 // =====================================================================
 
 export type EstimatedAxisInsight = {
+  key: BigFiveDimension;
   /** 軸名 (発散バーと同じ: 開放性/誠実性/外向性/協調性/神経症傾向) */
   label: string;
   /** 一致度: match=ぴったり (差<=10) / close=すこしズレ (<=25) / gap=ギャップあり */
@@ -490,6 +535,189 @@ function estimatedSummaryParas(percent: number, viewer: string): string[] {
   ];
 }
 
+const KO_AXIS_INSIGHT_COPY: Record<
+  BigFiveDimension,
+  { match: string; higher: string; lower: string }
+> = {
+  O: {
+    match:
+      "새로운 곳이나 재미있는 일을 발견했을 때 움직이는 속도가 두 사람은 꽤 비슷해요. ‘그거 좋다’는 한마디만으로도 계획이 자연스럽게 이어져요.",
+    higher:
+      "{name}과 함께 있을 때 당신은 스스로 생각하는 것보다 훨씬 적극적으로 새로운 일을 즐기는 모습이에요.",
+    lower:
+      "사실 궁금했던 장소나 해 보고 싶은 일을 아직 {name}에게 다 말하지 않았을지도 몰라요. 먼저 꺼내면 둘의 시간이 더 다채로워져요.",
+  },
+  C: {
+    match:
+      "약속과 계획을 대하는 감각이 비슷해서 함께 움직일 때 불필요한 스트레스가 적어요.",
+    higher:
+      "{name}은 약속과 해야 할 일을 지키는 당신을 보며 ‘이 사람에게 맡기면 괜찮다’고 느끼고 있어요.",
+    lower:
+      "당신 나름의 계획은 {name}에게 조금 더 자유롭게 보이는 듯해요. 중요한 일정만 미리 맞추면 훨씬 편해져요.",
+  },
+  E: {
+    match:
+      "신나게 떠드는 날과 조용히 쉬는 날의 온도가 비슷해서 굳이 분위기를 설명하지 않아도 편안해요.",
+    higher:
+      "{name} 앞에서 당신은 평소보다 더 자주 웃고 활기차 보여요. 함께 이야기하는 것만으로 에너지가 채워지는 관계예요.",
+    lower:
+      "{name}에게 당신은 조금 차분하게 보이는 듯해요. 마음껏 즐기는 모습을 보여 주면 둘의 거리가 더 가까워져요.",
+  },
+  A: {
+    match:
+      "서로를 배려하는 온도가 비슷해서 한쪽만 참고 맞추는 일이 적어요. 자연스럽게 타협할 수 있는 관계예요.",
+    higher:
+      "상대가 피곤해 보이면 먼저 살피는 당신의 작은 배려를 {name}은 빠짐없이 느끼고 있어요.",
+    lower:
+      "당신의 배려가 {name}에게는 아직 전부 보이지 않았을 수 있어요. 마음을 말로 표현하면 훨씬 정확히 전해져요.",
+  },
+  N: {
+    match:
+      "힘든 날을 보내는 방식과 감정의 온도가 비슷해서 긴 설명 없이도 서로의 상태를 이해할 수 있어요.",
+    higher:
+      "괜찮다고 웃어도 다시 한번 물어봐 주는 사람이 {name}이에요. 당신의 섬세한 마음을 이미 알아보고 있어요.",
+    lower:
+      "{name} 앞에서 당신은 늘 차분하고 안정적으로 보여요. 힘든 날에는 솔직하게 말해도 충분히 받아 줄 관계예요.",
+  },
+};
+
+const KO_KOTSU_COPY: Record<
+  BigFiveDimension,
+  { match: KotsuItem[]; off: KotsuItem[] }
+> = {
+  O: {
+    match: [
+      { title: "생각난 건 바로 공유하기", body: "재미있다고 느낀 순간 {name}에게 보내 보세요. 같은 온도의 호기심이 관계를 더 즐겁게 해요." },
+      { title: "좋아하는 것 함께 파 보기", body: "한 사람이 빠진 것이 생기면 둘이 같이 경험해 보세요. 공통의 이야기가 자연스럽게 늘어나요." },
+    ],
+    off: [
+      { title: "초대의 온도 맞추기", body: "새로운 일을 권할 때는 ‘나는 궁금한데 어때?’라고 먼저 물어보세요." },
+      { title: "익숙한 안과 새로운 안 준비하기", body: "두 가지 선택지를 함께 내놓으면 속도가 달라도 둘 다 편하게 고를 수 있어요." },
+    ],
+  },
+  C: {
+    match: [
+      { title: "계획은 번갈아 맡기", body: "‘다음에는 내가 정할게’라고 번갈아 맡으면 한쪽에 부담이 몰리지 않아요." },
+      { title: "목표를 함께 선언하기", body: "하고 싶은 일을 서로에게 말해 두면 좋은 페이스메이커가 되어 줄 수 있어요." },
+    ],
+    off: [
+      { title: "중요한 일정은 먼저 확정하기", body: "날짜와 장소를 일찍 정해 두면 계획 감각의 차이가 대부분 사라져요." },
+      { title: "시간 약속은 규칙으로 만들기", body: "서로 탓하기보다 두 사람에게 맞는 느슨한 규칙을 정해 보세요." },
+    ],
+  },
+  E: {
+    match: [
+      { title: "쉬는 날도 함께 보내기", body: "신나는 날뿐 아니라 아무것도 하지 않는 시간도 편하게 공유해 보세요." },
+      { title: "아무 계획 없는 날 만들기", body: "분위기가 잘 맞는 두 사람은 계획하지 않은 시간도 충분히 즐거워요." },
+    ],
+    off: [
+      { title: "오늘의 에너지 먼저 말하기", body: "조용히 있고 싶은지 신나게 놀고 싶은지 먼저 말하면 {name}과의 시간이 편해져요." },
+      { title: "짧고 진하게 만나기", body: "긴 시간보다 짧고 밀도 있는 만남이 서로에게 더 잘 맞을 수 있어요." },
+    ],
+  },
+  A: {
+    match: [
+      { title: "가끔은 원하는 것을 먼저 말하기", body: "배려를 잘하는 두 사람일수록 ‘사실 나는 이게 좋아’라는 말이 관계를 가까이 해요." },
+      { title: "결정도 놀이처럼 하기", body: "서로 양보하다 정하기 어렵다면 가위바위보처럼 가볍게 결정해도 괜찮아요." },
+    ],
+    off: [
+      { title: "원하는 것은 말로 부탁하기", body: "알아주길 기다리기보다 ‘이걸 도와줘’라고 말하면 {name}도 더 편해요." },
+      { title: "고마움은 분명하게 표현하기", body: "작은 배려에도 고맙다고 말하면 서로 다른 표현 방식이 자연스럽게 연결돼요." },
+    ],
+  },
+  N: {
+    match: [
+      { title: "힘든 날엔 곁에만 있어 주기", body: "해결하려 애쓰기보다 들어 주는 것만으로도 충분한 날이 있어요." },
+      { title: "회복한 날 함께 축하하기", body: "서로 힘든 날을 아는 만큼 좋은 날의 기쁨도 크게 나눌 수 있어요." },
+    ],
+    off: [
+      { title: "‘괜찮아?’를 한 번 더 묻기", body: "겉으로 멀쩡해 보여도 마음은 다를 수 있어요. 확인하는 한마디가 안심을 줘요." },
+      { title: "답장 속도를 신경 쓰지 않기", body: "답이 늦은 날은 쉬고 있다는 신호로 받아들이면 관계가 훨씬 편해져요." },
+    ],
+  },
+};
+
+const KO_WANA_COPY: Record<
+  BigFiveDimension,
+  { match: KotsuItem[]; off: KotsuItem[] }
+> = {
+  O: {
+    match: [
+      { title: "신나는 계획의 과부하", body: "둘 다 좋다고 하다 보면 시간과 비용이 꽉 찰 수 있어요. 가끔은 한 사람이 브레이크를 맡아 주세요." },
+      { title: "흥미가 동시에 식는 순간", body: "열기가 같이 식어도 ‘잘 지내?’라는 짧은 연락은 이어 가세요." },
+    ],
+    off: [
+      { title: "한쪽 속도로 계속 초대하기", body: "반응이 느릴 때는 잠깐 쉬어 가라는 신호일 수 있어요." },
+      { title: "새로운 것만 찾기", body: "가끔은 익숙한 장소에서 늘 하던 이야기를 나누는 날도 필요해요." },
+    ],
+  },
+  C: {
+    match: [
+      { title: "서로 맡겼다고 생각하기", body: "둘 다 상대가 하겠지 생각하면 아무도 준비하지 않을 수 있어요. 담당은 말로 정해 주세요." },
+      { title: "일정을 너무 꽉 채우기", body: "빈틈없는 계획은 한 사람이 지치면 함께 무너져요. 여유를 남겨 두세요." },
+    ],
+    off: [
+      { title: "작은 짜증을 쌓아 두기", body: "재촉하는 쪽과 기다리는 쪽의 차이는 잘못이 아니라 성향의 차이예요." },
+      { title: "말했는지 다투기", body: "중요한 약속은 메시지로 한 줄 남기면 불필요한 오해가 줄어요." },
+    ],
+  },
+  E: {
+    match: [
+      { title: "함께 지칠 때까지 놀기", body: "즐거운 두 사람일수록 피로를 늦게 알아차려요. 먼저 쉬자고 말하는 것도 친밀함이에요." },
+      { title: "두 사람 안에서만 끝내기", body: "가끔은 각자의 관계와 시간을 보내야 다시 나눌 이야기도 생겨요." },
+    ],
+    off: [
+      { title: "서로 다른 텐션을 방치하기", body: "한쪽만 계속 신나 있으면 다른 쪽은 조용히 지칠 수 있어요." },
+      { title: "침묵을 불만으로 오해하기", body: "말이 없는 시간이 화난 뜻은 아니라는 걸 서로 기억해 주세요." },
+    ],
+  },
+  A: {
+    match: [
+      { title: "양보만 반복하기", body: "‘아무거나 좋아’만 반복되면 오히려 둘 다 피곤해져요. 한 번씩 먼저 골라 주세요." },
+      { title: "작은 불만을 저장하기", body: "다정한 두 사람일수록 가벼울 때 솔직하게 말하는 연습이 필요해요." },
+    ],
+    off: [
+      { title: "배려를 당연하게 여기기", body: "맞춰 주는 사람의 수고를 알아보고 고맙다는 말을 잊지 마세요." },
+      { title: "말하지 않아도 알 거라 기대하기", body: "눈치의 방식은 사람마다 달라요. 기다리기보다 말하는 편이 정확해요." },
+    ],
+  },
+  N: {
+    match: [
+      { title: "함께 가라앉기", body: "힘든 이야기는 시간을 정해 나누고, 그 뒤에는 가볍게 숨 돌릴 일을 만들어 보세요." },
+      { title: "불안을 서로 키우기", body: "한 사람의 걱정이 다른 사람에게 번질 수 있어요. 잠깐 숨을 고른 뒤 이야기해요." },
+    ],
+    off: [
+      { title: "‘괜찮아’를 그대로 믿기", body: "가끔은 한 번 더 확인하는 것이 상대를 위한 다정함이 될 수 있어요." },
+      { title: "느끼는 온도를 탓하기", body: "감정의 차이는 고칠 문제가 아니라 서로 알아 두어야 할 차이예요." },
+    ],
+  },
+};
+
+function koEstimatedSummaryParas(percent: number, viewer: string): string[] {
+  if (percent >= 85) {
+    return [
+      `답변을 보면 ${viewer}은 당신을 꽤 정확히 이해하고 있어요. 있는 그대로 있어도 편안한 관계예요.`,
+      `말하지 않은 부분까지 알아봐 주는 건 당연한 일이 아니에요. 이 이해와 안심이 두 사람 관계의 가장 큰 힘이에요.`,
+    ];
+  }
+  if (percent >= 70) {
+    return [
+      `${viewer}이 보는 당신과 스스로 생각하는 당신은 대체로 겹쳐요. 가끔 생기는 차이도 편하게 이야기할 수 있는 거리예요.`,
+      `모든 것이 같지 않아서 오히려 좋아요. 서로를 이해하는 바탕 위에서 차이를 새로운 발견처럼 즐길 수 있어요.`,
+    ];
+  }
+  if (percent >= 55) {
+    return [
+      `${viewer}에게 보이는 당신은 자기 인식과 조금 다른 부분이 있어요. 그 차이가 서로를 더 알아 갈 여지를 만들어요.`,
+      `차이는 나쁜 것이 아니라 ${viewer}이 당신도 몰랐던 모습을 발견했다는 뜻이에요. 직접 물어보면 좋은 대화가 시작될 거예요.`,
+    ];
+  }
+  return [
+    `${viewer}과는 서로 보는 방식의 차이가 큰 편이에요. 맞지 않는다기보다 예상 밖의 나를 알려 주는 소중한 관계예요.`,
+    `그 사람 앞에서 보이는 모습과 스스로 생각하는 모습은 둘 다 진짜 당신이에요. 두 모습을 함께 알수록 더 자유로워질 수 있어요.`,
+  ];
+}
+
 /**
  * 自己スコアと友達の perceived_scores のギャップから相性を推定する。
  * 一致度 (calcMutualUnderstanding) を compat() と同じ 40-95% レンジに写像。
@@ -499,6 +727,7 @@ export function estimateCompatFromGaps(
   selfScores: BigFiveScores,
   perceivedScores: BigFiveScores,
   viewer: string,
+  locale: ResultLocale = "ja",
 ): EstimatedCompat | null {
   const gaps = buildDimensionGaps(selfScores, perceivedScores);
   if (gaps.length === 0) return null;
@@ -517,8 +746,11 @@ export function estimateCompatFromGaps(
     (x, y) => GRAPH_ORDER.indexOf(x.key) - GRAPH_ORDER.indexOf(y.key),
   );
   const axes: EstimatedAxisInsight[] = ordered.map((g) => {
-    const label = WARM_AXIS_LABEL[g.key];
-    const copySet = AXIS_INSIGHT_COPY[label];
+    const label = locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key];
+    const copySet =
+      locale === "ko"
+        ? KO_AXIS_INSIGHT_COPY[g.key]
+        : AXIS_INSIGHT_COPY[WARM_AXIS_LABEL[g.key]];
     const state: EstimatedAxisInsight["state"] =
       g.diffPoints <= 10 ? "match" : g.diffPoints <= 25 ? "close" : "gap";
     const body =
@@ -528,6 +760,7 @@ export function estimateCompatFromGaps(
           ? copySet.higher
           : copySet.lower;
     return {
+      key: g.key,
       label,
       state,
       selfPercent: g.selfPercent,
@@ -555,7 +788,10 @@ export function estimateCompatFromGaps(
   // 相性の本文: 総評 → シーン描写 (2つずつ接続詞で連結) → ズレ → 締め、のひと続き。
   // 2026-07-20 指示で少し短く: シーンは合計 4 つまで (ズレ軸を優先し、残りを一致軸で埋める)。
   const MAX_SCENES = 4;
-  const [sumOpen, sumClose] = estimatedSummaryParas(percent, viewer);
+  const [sumOpen, sumClose] =
+    locale === "ko"
+      ? koEstimatedSummaryParas(percent, viewer)
+      : estimatedSummaryParas(percent, viewer);
   const offScenes = offAxes.slice(0, 3).map((ax) => ax.body);
   const matchScenes = matched
     .slice(0, Math.max(0, MAX_SCENES - offScenes.length))
@@ -563,14 +799,26 @@ export function estimateCompatFromGaps(
   const summaryParas: string[] = [sumOpen];
   if (matchScenes.length > 0) {
     // 2 シーンずつ 1 段落に。段落頭だけ接続詞を変える (たとえば → それだけじゃなく)。
-    const CHUNK_LEADS = ["たとえば、", "それだけじゃなく、", "さらに言えば、"];
+    const CHUNK_LEADS =
+      locale === "ko"
+        ? ["예를 들면, ", "그뿐만 아니라, ", "조금 더 말하면, "]
+        : ["たとえば、", "それだけじゃなく、", "さらに言えば、"];
     for (let i = 0; i < matchScenes.length; i += 2) {
       const lead = CHUNK_LEADS[Math.min(i / 2, CHUNK_LEADS.length - 1)];
-      summaryParas.push(lead + matchScenes.slice(i, i + 2).join(""));
+      summaryParas.push(
+        lead +
+          matchScenes
+            .slice(i, i + 2)
+            .join(locale === "ko" ? " " : ""),
+      );
     }
   }
   if (offScenes.length > 0) {
-    summaryParas.push("いっぽうで、" + offScenes.join("それから、"));
+    summaryParas.push(
+      locale === "ko"
+        ? `한편, ${offScenes.join(" 그리고 ")}`
+        : "いっぽうで、" + offScenes.join("それから、"),
+    );
   }
   summaryParas.push(sumClose);
 
@@ -578,8 +826,16 @@ export function estimateCompatFromGaps(
   // ズレた軸 (差が大きい順) の off 版 2 個ずつを優先し、
   // 残りを一致軸 (差が小さい順) の match 版で埋める。
   const kotsu = [
-    ...offAxes.flatMap((ax) => KOTSU_COPY[ax.label].off),
-    ...matched.flatMap((ax) => KOTSU_COPY[ax.label].match),
+    ...offAxes.flatMap((ax) =>
+      locale === "ko"
+        ? KO_KOTSU_COPY[ax.key].off
+        : KOTSU_COPY[ax.label].off,
+    ),
+    ...matched.flatMap((ax) =>
+      locale === "ko"
+        ? KO_KOTSU_COPY[ax.key].match
+        : KOTSU_COPY[ax.label].match,
+    ),
   ]
     .slice(0, 8)
     .map((k) => ({
@@ -590,8 +846,16 @@ export function estimateCompatFromGaps(
   // ===== 関係を壊すワナ (8つ) =====
   // ズレた軸 (差が大きい順) の off 版 2 個ずつを優先し、残りを一致軸の match 版で埋める。
   const wana = [
-    ...offAxes.flatMap((ax) => WANA_COPY[ax.label].off),
-    ...matched.flatMap((ax) => WANA_COPY[ax.label].match),
+    ...offAxes.flatMap((ax) =>
+      locale === "ko"
+        ? KO_WANA_COPY[ax.key].off
+        : WANA_COPY[ax.label].off,
+    ),
+    ...matched.flatMap((ax) =>
+      locale === "ko"
+        ? KO_WANA_COPY[ax.key].match
+        : WANA_COPY[ax.label].match,
+    ),
   ]
     .slice(0, 8)
     .map((k) => ({

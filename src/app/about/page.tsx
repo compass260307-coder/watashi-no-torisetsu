@@ -5,6 +5,7 @@ import FAQAccordion from "@/components/FAQAccordion";
 import { faqItems } from "@/lib/faq-data";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 // /about: サービスについて。読み物ストーリー型 (16personalities の記事ページ風)。
 //   白基調ミニマル・左寄せ章立てで「なぜ作ったか → 仕組み → 科学的背景 → タイプ紹介」と読ませる。
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   title: "サービスについて",
   description:
     "ワタシのトリセツは、自分の診断と友達からの他己評価をかけ合わせて作る自己理解サービス。Big Five 心理学をベースに、「友達から見えているワタシ」がわかります。",
-  alternates: { canonical: "/about" },
+  alternates: localizedAlternates("ja", "/about", "/ko/about"),
   openGraph: {
     title: "サービスについて｜ワタシのトリセツ",
     description:

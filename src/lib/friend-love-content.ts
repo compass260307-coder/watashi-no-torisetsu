@@ -2,6 +2,7 @@
 // 友達平均スコア (他者が付けた OCEAN) からモテ寄与度を出し、主/隠れのモテポイントを決定的に選ぶ。
 
 import type { BigFiveDimension } from "./types";
+import type { ResultLocale } from "@/i18n/result";
 
 export type MotePoint = {
   /** 軸ラベル (見出し用の短いキーワード)。 */
@@ -194,11 +195,58 @@ const MOTE_CHECK_EXTRA_BY_AXIS: Record<
   },
 };
 
+const KO_MOTE_CHECK_BY_AXIS: typeof MOTE_CHECK_BY_AXIS = {
+  E: {
+    high: { title: "분위기를 밝히는 에너지", body: "함께 있으면 공간이 자연스럽게 활기차져요. 당신과 보낸 시간이 오래 기억에 남아요." },
+    low: { title: "둘만의 시간을 깊게 만드는 힘", body: "많은 사람보다 한 사람과 마주할 때 매력이 더 선명해져요. 조용히 집중해 주는 시간이 특별하게 느껴져요." },
+  },
+  A: {
+    high: { title: "마음을 먼저 챙기는 다정함", body: "작은 변화와 필요한 순간을 먼저 알아봐 줘요. 주변에서는 당신을 믿고 기대도 되는 사람으로 느껴요." },
+    low: { title: "흔들리지 않는 자기 기준", body: "분위기에 휩쓸리지 않고 솔직한 의견을 말해요. 그 분명함이 든든한 매력으로 보여요." },
+  },
+  O: {
+    high: { title: "함께 있으면 넓어지는 세계", body: "새로운 놀이와 이야기를 발견해 와요. 당신과 있으면 지루할 틈이 없다고 느껴요." },
+    low: { title: "변하지 않는 편안함", body: "유행에 흔들리지 않는 차분함이 오래 함께하고 싶은 안정감으로 이어져요." },
+  },
+  C: {
+    high: { title: "약속을 지키는 성실함", body: "말한 것을 행동으로 옮기는 모습이 큰 신뢰를 만들어요. 중요한 순간에 의지할 수 있는 사람으로 보여요." },
+    low: { title: "힘을 뺄 수 있는 자유로움", body: "계획이 바뀌어도 자연스럽게 즐길 줄 알아요. 함께 있을 때 긴장하지 않아도 되는 매력이 있어요." },
+  },
+  N: {
+    high: { title: "작은 마음도 놓치지 않는 섬세함", body: "표정과 말투의 변화를 빠르게 알아차려요. 나를 이해해 주는 사람이라는 안심을 줘요." },
+    low: { title: "쉽게 흔들리지 않는 포용력", body: "예상 밖의 상황에도 차분하게 중심을 지켜요. 곁에 있으면 마음이 놓이는 사람으로 보여요." },
+  },
+};
+
+const KO_MOTE_CHECK_EXTRA_BY_AXIS: typeof MOTE_CHECK_EXTRA_BY_AXIS = {
+  E: {
+    high: { title: "기분 좋은 반응", body: "초대와 제안에 즐겁게 답하는 모습이 상대의 용기를 기분 좋은 기억으로 바꿔 줘요." },
+    low: { title: "계속 말하고 싶게 하는 경청", body: "차분하게 끝까지 들어 주는 태도가 상대의 더 깊은 이야기를 끌어내요." },
+  },
+  A: {
+    high: { title: "누구에게나 같은 온도", body: "사람에 따라 태도를 바꾸지 않는 모습이 믿을 수 있는 사람이라는 인상을 줘요." },
+    low: { title: "분명한 취향", body: "좋고 싫은 것을 숨기지 않는 솔직함 덕분에 오히려 함께하기 편하다고 느껴요." },
+  },
+  O: {
+    high: { title: "풍부한 이야기의 서랍", body: "대화가 끊기지 않을 만큼 다양한 관심사가 다시 만나고 싶은 마음을 만들어요." },
+    low: { title: "익숙함을 소중히 하는 마음", body: "좋아하는 장소와 시간을 오래 지키는 모습이 긴 관계에 대한 신뢰로 이어져요." },
+  },
+  C: {
+    high: { title: "연락과 시간을 지키는 마음", body: "답장과 약속 시간을 소중히 다루는 태도에서 상대는 존중받고 있다고 느껴요." },
+    low: { title: "여유가 주는 편안함", body: "예정에 꽉 묶이지 않는 유연함이 긴장하지 않아도 되는 관계를 만들어요." },
+  },
+  N: {
+    high: { title: "마음에 닿는 한마디", body: "힘든 순간에 건네는 정확한 말은 섬세한 당신만이 줄 수 있는 위로예요." },
+    low: { title: "언제 만나도 같은 안정감", body: "늘 비슷한 온도로 맞아 주는 모습이 돌아오고 싶은 편안함을 만들어요." },
+  },
+};
+
 /**
  * チェックリスト版モテポイント: 5軸 (モテ寄与度の高い順) + トップ軸の追加項目 = 6 項目。
  */
 export function resolveFriendLoveChecklist(
   friendScores: Partial<Record<BigFiveDimension, number>>,
+  locale: ResultLocale = "ja",
 ): MoteCheckItem[] {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -209,15 +257,20 @@ export function resolveFriendLoveChecklist(
   if (contrib.length < 2) return [];
 
   contrib.sort((a, b) => b.score - a.score);
+  const copy = locale === "ko" ? KO_MOTE_CHECK_BY_AXIS : MOTE_CHECK_BY_AXIS;
+  const extra =
+    locale === "ko"
+      ? KO_MOTE_CHECK_EXTRA_BY_AXIS
+      : MOTE_CHECK_EXTRA_BY_AXIS;
   const items = contrib.map(({ ax, v }) =>
-    v >= 5 ? MOTE_CHECK_BY_AXIS[ax].high : MOTE_CHECK_BY_AXIS[ax].low,
+    v >= 5 ? copy[ax].high : copy[ax].low,
   );
   // 6項目目: 寄与度トップの軸をもう一押しする追加コピー
   const top = contrib[0];
   items.push(
     top.v >= 5
-      ? MOTE_CHECK_EXTRA_BY_AXIS[top.ax].high
-      : MOTE_CHECK_EXTRA_BY_AXIS[top.ax].low,
+      ? extra[top.ax].high
+      : extra[top.ax].low,
   );
   return items;
 }
@@ -281,12 +334,36 @@ const MOTE_HINT_CHECKS_BY_AXIS: Record<BigFiveDimension, MoteCheckItem[]> = {
   ],
 };
 
+const KO_MOTE_HINT_CHECKS_BY_AXIS: typeof MOTE_HINT_CHECKS_BY_AXIS = {
+  E: [
+    { title: "신나는 모습도 보여 주기", body: "다음 모임에서는 평소보다 조금 더 크게 웃고 즐겨 보세요. 차분한 인상과의 차이가 매력으로 남아요." },
+    { title: "먼저 가볍게 제안하기", body: "‘다음에 여기 갈래?’라는 한마디를 먼저 건네 보세요. 능동적인 모습이 새롭게 보여요." },
+  ],
+  A: [
+    { title: "다정함을 말로 전하기", body: "‘괜찮아?’와 ‘도와줄까?’를 한마디 더 건네 보세요. 마음은 표현되는 순간부터 상대에게 닿아요." },
+    { title: "작은 고마움 남기기", body: "해 준 일에 대한 고마움을 구체적으로 말해 주세요. 배려의 왕복이 거리를 빠르게 좁혀요." },
+  ],
+  O: [
+    { title: "궁금한 것을 입 밖으로 꺼내기", body: "가 보고 싶은 곳과 해 보고 싶은 일을 직접 제안해 보세요. 의외의 적극성이 인상을 입체적으로 만들어요." },
+    { title: "작은 도전 하나 시작하기", body: "새로운 경험 하나만 있어도 이야깃거리가 생겨요. 변화를 즐기는 모습이 자연스럽게 전해져요." },
+  ],
+  C: [
+    { title: "작은 약속부터 지키기", body: "만나는 시간과 답장을 조금 더 세심하게 챙겨 보세요. 그 성실함만으로도 인상이 달라져요." },
+    { title: "말한 것을 행동으로 보여 주기", body: "하겠다고 한 일을 조용히 완성해 보세요. 과장하지 않는 실행력이 오래 마음에 남아요." },
+  ],
+  N: [
+    { title: "힘든 마음을 솔직하게 말하기", body: "기운이 없는 날에는 짧게라도 상태를 알려 주세요. 솔직함이 섬세함을 더 따뜻한 매력으로 바꿔요." },
+    { title: "안정된 온도를 자주 보여 주기", body: "작은 일에 바로 반응하기보다 숨을 한 번 고르고 말해 보세요. 차분함은 관계에서 큰 안심이 돼요." },
+  ],
+};
+
 /**
  * 「モテるための◯◯さんからのヒント」: モテ寄与度が低い軸 (=まだ見せられていない一面)
  * 3 つ × 2 項目 = 6 項目のチェックリストで返す。
  */
 export function resolveMoteHints(
   friendScores: Partial<Record<BigFiveDimension, number>>,
+  locale: ResultLocale = "ja",
 ): MoteCheckItem[] {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -297,7 +374,9 @@ export function resolveMoteHints(
   if (contrib.length < 2) return [];
 
   contrib.sort((a, b) => a.score - b.score); // 寄与度が低い順
-  return contrib.slice(0, 3).flatMap(({ ax }) => MOTE_HINT_CHECKS_BY_AXIS[ax]);
+  const copy =
+    locale === "ko" ? KO_MOTE_HINT_CHECKS_BY_AXIS : MOTE_HINT_CHECKS_BY_AXIS;
+  return contrib.slice(0, 3).flatMap(({ ax }) => copy[ax]);
 }
 
 
@@ -330,9 +409,36 @@ const LOVE_SCENE_BY_AXIS: Record<BigFiveDimension, { high: string; low: string }
   },
 };
 
+const KO_LOVE_SCENE_BY_AXIS: Record<
+  BigFiveDimension,
+  { high: string; low: string }
+> = {
+  E: {
+    high: "모임에서도 어느새 당신 주변에는 웃음이 생겨요. 돌아가는 길에 ‘오늘 즐거웠다’는 말을 듣는 건 대부분 당신 덕분이에요.",
+    low: "여럿이 모인 자리보다 둘이 카페에 있을 때 당신의 매력이 더 또렷해져요. 조용히 이어지는 대화의 편안함에 상대가 어느새 빠져들어요.",
+  },
+  A: {
+    high: "상대의 막차를 살피거나 필요한 것을 먼저 챙기는 작은 배려가 ‘다음에도 만나고 싶다’는 마음을 만들어요.",
+    low: "가고 싶은 곳과 보고 싶은 영화를 분명히 말해 줘서 데이트가 시원하게 정해져요. 솔직한 취향이 큰 매력이에요.",
+  },
+  O: {
+    high: "‘여기 가 볼래?’ 하고 고르는 곳마다 취향을 제대로 저격해요. 당신과 함께하는 데이트는 늘 새롭다고 느껴져요.",
+    low: "늘 가던 가게와 익숙한 길, 편안한 대화가 ‘이 관계는 마음이 놓인다’는 안정감으로 이어져요.",
+  },
+  C: {
+    high: "약속 시간보다 먼저 도착하고 기념일과 작은 약속을 기억하는 성실함이 오래 마음에 남아요.",
+    low: "계획을 꽉 채우지 않고 자연스럽게 만나고 헤어질 수 있는 편안함은 생각보다 귀한 매력이에요.",
+  },
+  N: {
+    high: "메시지 말투가 평소와 조금만 달라도 ‘무슨 일 있어?’라고 알아차려요. 그 섬세함에 위로받은 사람이 분명 있어요.",
+    low: "작은 문제가 생겨도 ‘괜찮아’ 하고 웃으며 즐거운 쪽으로 바꿔요. 함께 있으면 어떤 상황도 안심돼요.",
+  },
+};
+
 /** モテ寄与度トップ2軸のシーンを 1 段落にまとめて返す。計算不能なら null。 */
 export function resolveLoveScene(
   friendScores: Partial<Record<BigFiveDimension, number>>,
+  locale: ResultLocale = "ja",
 ): string | null {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -343,11 +449,14 @@ export function resolveLoveScene(
   if (contrib.length < 2) return null;
 
   contrib.sort((a, b) => b.score - a.score);
+  const copy = locale === "ko" ? KO_LOVE_SCENE_BY_AXIS : LOVE_SCENE_BY_AXIS;
   const pick = (i: number) => {
     const { ax, v } = contrib[i];
-    return v >= 5 ? LOVE_SCENE_BY_AXIS[ax].high : LOVE_SCENE_BY_AXIS[ax].low;
+    return v >= 5 ? copy[ax].high : copy[ax].low;
   };
-  return `たとえば、${pick(0)}${pick(1)}`;
+  return locale === "ko"
+    ? `예를 들면, ${pick(0)} ${pick(1)}`
+    : `たとえば、${pick(0)}${pick(1)}`;
 }
 
 

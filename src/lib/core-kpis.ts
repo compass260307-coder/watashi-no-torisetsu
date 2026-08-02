@@ -248,11 +248,12 @@ export function computeCoreKpis({
     const diagnosisAt = timestamp(user.diagnosisCompletedAt);
     if (diagnosisAt === null) continue;
 
-    const paymentsAfterDiagnosis = (paymentsByUser.get(user.id) ?? []).filter(
-      (payment) => Date.parse(payment.paidAt) >= diagnosisAt,
-    );
-    if (paymentsAfterDiagnosis.length > 0) diagnosisToPaidCount++;
-    cohortPayments.push(...paymentsAfterDiagnosis);
+    // 課金率は「診断コホートの決済済み状態」。先に購入して後から診断した人も分子に入れる。
+    const userPayments = paymentsByUser.get(user.id) ?? [];
+    const hasAuditedPayment = userPayments.length > 0;
+    const hasLegacyEntitlement = timestamp(user.fullAccessAt) !== null;
+    if (hasAuditedPayment || hasLegacyEntitlement) diagnosisToPaidCount++;
+    cohortPayments.push(...userPayments);
 
     const friendAt = firstFriendAtByUser.get(user.id);
     if (friendAt !== undefined && friendAt >= diagnosisAt) {
@@ -350,7 +351,7 @@ export function computeCoreKpis({
       diagnosisUsers: diagnosisCohort.length,
       paidUsers: paidCohort.length,
       definition:
-        "users.diagnosis_completed_at が選択期間内のユニークユーザーを確定診断人数とし、その後の行動まで現在時点で追跡",
+        "users.diagnosis_completed_at が選択期間内のユニークユーザーを確定診断人数とし、フルアクセス決済済み状態とその後の行動まで現在時点で追跡",
     },
     diagnosisTrend: {
       granularity: "day" as const,
@@ -387,7 +388,7 @@ export function computeCoreKpis({
     },
     arpu: {
       denominator: diagnosisCohort.length,
-      basis: "選択期間の自己診断完了ユーザー1人あたりの、その後の純売上",
+      basis: "選択期間の自己診断完了ユーザー1人あたりの、紐づく純売上",
       currencies,
     },
     viralCoefficient: {

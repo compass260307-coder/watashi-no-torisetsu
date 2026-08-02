@@ -11,6 +11,9 @@
     "build:local": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs",
+    "verify:ko:browser": "node scripts/verify-korean-browser.mjs",
+    "verify:ko:prod": "node scripts/verify-korean-production.mjs",
     "ephemeris:test": "node scripts/ephemeris-test.mjs"
   },
   "dependencies": {

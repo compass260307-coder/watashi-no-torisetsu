@@ -91,23 +91,35 @@ const TAKO_UNLOCKS: UnlockItem[] = [
   U_AISHO,
 ];
 
-const KO_UNLOCKS: { title: string; desc: string }[] = [
+const KO_SELF_UNLOCKS: UnlockItem[] = [
   {
-    title: "웹에서 보는 완전판 성격 리포트",
-    desc: "장점과 단점, 연애, 친구 관계, 커리어까지 내 유형의 상세 결과를 한곳에서 확인할 수 있어요. 구매 후 언제든 다시 볼 수 있어요.",
+    title: "내 결과의 잠긴 8개 섹션 전체 해제",
+    desc: "연애와 커리어 심층 분석부터 주변에서 보는 인상, 만약의 순간에 드러나는 모습까지 잠긴 내용을 모두 읽을 수 있어요.",
   },
   {
-    title: "연애와 커리어 심층 결과 전체 해제",
-    desc: "‘나를 좋아하게 된 사람이 읽는 사용설명서’와 ‘연애가 잘 풀리지 않을 때의 패턴’부터 잘 맞는 일과 뜻밖의 재능까지 확인할 수 있어요.",
+    title: "다운로드 가능한 16페이지 이상의 자기 분석 PDF",
+    desc: "내 유형을 한 권에 정리한 완전판 리포트예요. 저장하거나 인쇄하고 언제든 다시 확인할 수 있어요.",
   },
   {
-    title: "주변에서 보는 나의 인상",
-    desc: "오해받기 쉬운 포인트와 정말 알아주었으면 하지만 잘 전해지지 않는 부분을 내 유형에 맞춰 분석해요.",
+    title: "두 번째 친구부터의 친구 진단 결과 전체 해제",
+    desc: "친구가 보는 캐릭터, 성격 차이, 연애 성향과 궁합까지 친구별 결과 시트를 모두 읽을 수 있어요.",
   },
   {
-    title: "상황별 주의점",
-    desc: "친구·연인·커리어·가족과 함께할 때 자주 막히는 포인트를 알 수 있어요.",
+    title: "여러 번 다시 만들 수 있는 친구 진단 PDF",
+    desc: "친구가 늘 때마다 내용이 업데이트되는 친구 시선 리포트예요. 횟수 제한 없이 다시 다운로드할 수 있어요.",
   },
+  {
+    title: "연애 파트너 궁합 분석",
+    desc: "두 사람의 성격이 어떤 부분에서 잘 맞고, 관계를 어떻게 키우면 좋은지 확인할 수 있어요.",
+  },
+];
+
+const KO_TAKO_UNLOCKS: UnlockItem[] = [
+  KO_SELF_UNLOCKS[2],
+  KO_SELF_UNLOCKS[3],
+  KO_SELF_UNLOCKS[0],
+  KO_SELF_UNLOCKS[1],
+  KO_SELF_UNLOCKS[4],
 ];
 
 // 相性ページ (variant="aisho") 用のピンク基調トーン。グループ色ではなく固定。
@@ -215,9 +227,10 @@ export function FullAccessPromoCard({
   ctaSource?: string;
 }) {
   const isKorean = locale === "ko";
-  // KO は友達診断/相性が無いため従来の自己完結リスト。JA は設置ページで並びを切替。
   const unlocks = isKorean
-    ? KO_UNLOCKS
+    ? surface === "tako"
+      ? KO_TAKO_UNLOCKS
+      : KO_SELF_UNLOCKS
     : surface === "tako"
       ? TAKO_UNLOCKS
       : SELF_UNLOCKS;

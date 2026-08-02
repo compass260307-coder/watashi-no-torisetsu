@@ -10,6 +10,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { ResultLocale } from "@/i18n/result";
 import type { FriendSummary } from "@/lib/owner-report-data";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 
@@ -25,12 +27,16 @@ export function FriendList({
   friends,
   token,
   hasFullAccess,
+  locale,
 }: {
   friends: FriendSummary[];
   token: string;
   /** 閲覧者(本人)が全解放済みか。false のときタップは課金カードへスライド。 */
   hasFullAccess: boolean;
+  locale?: ResultLocale;
 }) {
+  const pathname = usePathname() ?? "/";
+  const isKorean = locale ? locale === "ko" : pathname.startsWith("/ko");
   if (friends.length === 0) return null;
 
   return (
@@ -38,7 +44,8 @@ export function FriendList({
       <ul className="flex flex-col gap-2">
         {friends.map((f, i) => {
           const tone = AVATAR_TONES[i % AVATAR_TONES.length];
-          const initial = (f.name.trim()[0] ?? "友").toUpperCase();
+          const initial = (f.name.trim()[0] ?? (isKorean ? "친" : "友")).toUpperCase();
+          const prefix = isKorean ? "/ko" : "";
           const cardClass =
             "flex w-full items-center gap-3 rounded-2xl bg-white border-2 border-[#0094D8]/15 px-4 py-3 text-left hover:bg-[#F4F4FE] transition-colors";
           const inner = (
@@ -57,7 +64,7 @@ export function FriendList({
                   </span>
                   {f.hasMessage && (
                     <span className="flex-shrink-0 rounded-full bg-[#F4F4FE] text-[#5B5BEF] font-bold text-[10px] px-2 py-0.5">
-                      メッセージあり
+                      {isKorean ? "메시지 있음" : "メッセージあり"}
                     </span>
                   )}
                 </span>
@@ -69,7 +76,7 @@ export function FriendList({
                   </span>
                 ) : (
                   <span className="block text-[#2E2E5C]/55 font-bold text-xs">
-                    見方の一致 {f.mutual}%
+                    {isKorean ? "관점 일치" : "見方の一致"} {f.mutual}%
                   </span>
                 )}
               </span>
@@ -85,7 +92,7 @@ export function FriendList({
             <li key={f.perceptionId}>
               {hasFullAccess ? (
                 <Link
-                  href={`/tako/${token}/friend/${f.perceptionId}`}
+                  href={`${prefix}/tako/${token}/friend/${f.perceptionId}`}
                   className={cardClass}
                 >
                   {inner}

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ResultLocale } from "@/i18n/result";
+
 // 三層ゲートの「奥(報酬)レイヤー」= 解放後 /tako 結果ページの“本物の器”を写した軽量ダミー。
 //   ★生レンダリングはしない (ResultHero 等の実体はマウントしない)。実結果ページの
 //     セクション構成・順序・余白・見出し位置・カード形を“完全に”ミラーしたスケルトン。
@@ -35,6 +37,22 @@ const SECTIONS: { n: number; title: string; variant: Variant; teaser?: string }[
     { n: 8, title: "相性がいいのは誰？", variant: "grid" },
   ];
 
+const KO_SECTIONS: typeof SECTIONS = [
+  {
+    n: 1,
+    title: "친구들이 보는 나는?",
+    variant: "prose",
+    teaser: "주변에서 보는 당신은 의외로——",
+  },
+  { n: 2, title: "내 생각과 얼마나 다를까?", variant: "gap" },
+  { n: 3, title: "친구가 발견한 강점은?", variant: "prose" },
+  { n: 4, title: "나를 대하는 방법은?", variant: "cards" },
+  { n: 5, title: "연애할 때 보이는 모습은?", variant: "prose" },
+  { n: 6, title: "내가 힘을 발휘하는 곳은?", variant: "cards" },
+  { n: 7, title: "친구들은 뭐라고 했을까?", variant: "friends" },
+  { n: 8, title: "나와 잘 맞는 사람은?", variant: "grid" },
+];
+
 // 本文スケルトンにだけ掛ける blur。answered が増えるほど緩む (霧が晴れる)。見出し/?/影絵は掛けない。
 function bodyBlurPx(answered: number, threshold: number, revealed: boolean): number {
   const t = threshold > 0 ? Math.min(1, Math.max(0, answered / threshold)) : 0;
@@ -64,27 +82,43 @@ interface TakoRewardBackdropProps {
   answered: number;
   threshold: number;
   hero?: BackdropHero | null;
+  locale?: ResultLocale;
 }
 
 export function TakoRewardBackdrop({
   answered,
   threshold,
   hero = null,
+  locale = "ja",
 }: TakoRewardBackdropProps) {
   const openN = Math.ceil((SECTIONS.length * answered) / Math.max(1, threshold));
+  const isKo = locale === "ko";
 
   return (
     <div aria-hidden="true">
       {/* ===== ヒーロー帯 (実 ResultHero を写す): 全幅・下端スラント・グロー・ドット・
           称号(?)・OCEAN・キャラ黒塗りシルエット。hero があれば型色帯 (本物の見た目)、
           無ければ従来の白基調無彩帯。 ===== */}
-      <HeroBand hero={hero} />
+      <HeroBand hero={hero} locale={locale} />
 
       {/* ===== 結果サンプル: 解放後ページ (フェススター preview) の実キャプチャをぼかして敷く。
           スケルトン (BackdropSection) から差し替え (2026-07-18)。openN/段階リビールは
           このサンプル方式では使わない (answered/threshold は器の高さ互換のため受け続ける)。 ===== */}
       {/* キャプチャは実結果ページと同じ幅 (SP=430 / PC=1080) で撮り、md で出し分けて
           等倍表示する。これで幅・文字サイズが実ページと一致する。 */}
+      {isKo ? (
+        <div className="mx-auto max-w-[1080px] px-4 pb-2 pt-10 md:px-8">
+          {KO_SECTIONS.map((section, index) => (
+            <BackdropSection
+              key={section.n}
+              {...section}
+              index={index}
+              revealed={index < openN}
+              bodyBlur={bodyBlurPx(answered, threshold, index < openN)}
+            />
+          ))}
+        </div>
+      ) : (
       <div className="mx-auto max-w-[1080px] overflow-hidden pb-2 pt-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -103,6 +137,7 @@ export function TakoRewardBackdrop({
           decoding="async"
         />
       </div>
+      )}
     </div>
   );
 }
@@ -120,7 +155,14 @@ const HERO_DOTS = [
 // ヒーロー帯 (ResultHero のミラー)。hero があれば型色帯 + 実キャラの黒塗りシルエット
 // (本物の結果ヒーローがそこにあるが、キャラだけ黒く伏せられている状態)。
 // hero が無ければ従来の無彩帯 + マスコット影絵。
-function HeroBand({ hero }: { hero: BackdropHero | null }) {
+function HeroBand({
+  hero,
+  locale,
+}: {
+  hero: BackdropHero | null;
+  locale: ResultLocale;
+}) {
+  const isKo = locale === "ko";
   const colored = hero !== null;
   return (
     <div
@@ -160,14 +202,14 @@ function HeroBand({ hero }: { hero: BackdropHero | null }) {
           <>
             {/* 見出し (称号・OCEAN コードの伏せバーは置かない。主役は ○ に ?)。 */}
             <p className="mb-1 text-[24px] font-extrabold tracking-[0.02em] text-white md:text-[30px]">
-              友達から見た性格タイプ:
+              {isKo ? "친구가 보는 성격 유형:" : "友達から見た性格タイプ:"}
             </p>
           </>
         ) : (
           <>
             {/* label + 称号(?) */}
             <p className="mb-1 text-[15px] font-bold" style={{ color: "#8A90A0" }}>
-              友達から見たあなたのキャラ
+              {isKo ? "친구가 보는 나의 캐릭터" : "友達から見たあなたのキャラ"}
             </p>
             {/* 称号プレースホルダ (型名=伏せる) */}
             <div className="h-7 w-52 rounded-full" style={{ background: "#DDE0E6" }} />

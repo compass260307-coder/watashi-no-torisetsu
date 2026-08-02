@@ -51,7 +51,7 @@ function evaluateLiteral(rawNode) {
   throw new Error(`Unsupported literal: ${node.getText().slice(0, 120)}`);
 }
 
-function readExport(file, exportName) {
+function readVariable(file, variableName) {
   const absolute = path.join(ROOT, file);
   const sourceText = fs.readFileSync(absolute, "utf8");
   const source = ts.createSourceFile(
@@ -66,79 +66,79 @@ function readExport(file, exportName) {
     for (const declaration of statement.declarationList.declarations) {
       if (
         ts.isIdentifier(declaration.name) &&
-        declaration.name.text === exportName &&
+        declaration.name.text === variableName &&
         declaration.initializer
       ) {
         return evaluateLiteral(declaration.initializer);
       }
     }
   }
-  throw new Error(`${exportName} was not found in ${file}`);
+  throw new Error(`${variableName} was not found in ${file}`);
 }
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-const jpSelf = readExport(
+const jpSelf = readVariable(
   "src/lib/thirty-two-content/self-result-32.ts",
   "selfResultContent32",
 );
-const jpLove = readExport("src/lib/love-by-type-32.ts", "LOVE_BY_TYPE_32");
-const jpCareer = readExport(
+const jpLove = readVariable("src/lib/love-by-type-32.ts", "LOVE_BY_TYPE_32");
+const jpCareer = readVariable(
   "src/lib/career-by-type-32.ts",
   "CAREER_BY_TYPE_32",
 );
-const jpPerceived = readExport(
+const jpPerceived = readVariable(
   "src/lib/thirty-two-content/perceived-by-type-32.ts",
   "perceivedByType32",
 );
-const jpLoveFailProse = readExport(
+const jpLoveFailProse = readVariable(
   "src/lib/deep-dive-resolve.ts",
-  "LOVE_FAIL_PROSE",
+  "LOVE_ENDURE_PROSE",
 );
-const jpLoveFailClosing = readExport(
+const jpLoveFailClosing = readVariable(
   "src/lib/deep-dive-resolve.ts",
-  "LOVE_FAIL_CLOSING",
+  "LOVE_ENDURE_CLOSING",
 );
-const jpLikableProse = readExport(
+const jpLikableProse = readVariable(
   "src/lib/part-two-resolve.ts",
   "LIKABLE_PROSE",
 );
-const jpLikableClosing = readExport(
+const jpLikableClosing = readVariable(
   "src/lib/part-two-resolve.ts",
   "LIKABLE_CLOSING",
 );
 const jpRelationRules = Object.fromEntries(
-  ["FRIEND", "LOVER", "FAMILY", "BOSS", "JUNIOR", "FIRST"].map(
+  ["FRIEND", "LOVER", "FAMILY", "BOSS"].map(
     (name) => [
       name,
-      readExport("src/lib/part-two-resolve.ts", `RELATION_${name}`),
+      readVariable("src/lib/part-two-resolve.ts", `RELATION_${name}`),
     ],
   ),
 );
 const jpSceneRules = Object.fromEntries(
   ["FRIEND", "LOVER", "CAREER", "FAMILY"].map((name) => [
     name,
-    readExport("src/lib/part-two-resolve.ts", `SCENE_${name}`),
+    readVariable("src/lib/part-two-resolve.ts", `SCENE_${name}`),
   ]),
 );
-const koTypeCopy = readExport("src/i18n/ko/result.ts", "KO_RESULT_TYPES");
+const koTypeCopy = readVariable("src/i18n/ko/result.ts", "KO_RESULT_TYPES");
 
 // 手作業で校正済みの夢想家は、再生成しても上書きしない。
-const manualSelf = readExport(
+const manualSelf = readVariable(
   "src/i18n/ko/me-content-32.ts",
   "KO_SELF_RESULT_CONTENT_32",
 );
-const manualLove = readExport(
+const manualLove = readVariable(
   "src/i18n/ko/me-content-32.ts",
   "KO_LOVE_BY_TYPE_32",
 );
-const manualCareer = readExport(
+const manualCareer = readVariable(
   "src/i18n/ko/me-content-32.ts",
   "KO_CAREER_BY_TYPE_32",
 );
-const manualPerceived = readExport(
+const manualPerceived = readVariable(
   "src/i18n/ko/me-content-32.ts",
   "KO_PERCEIVED_BY_TYPE_32",
 );

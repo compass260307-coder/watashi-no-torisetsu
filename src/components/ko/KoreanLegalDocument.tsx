@@ -37,10 +37,10 @@ export default function KoreanLegalDocument({
               홈으로 돌아가기
             </Link>
             <Link
-              href="/ko/diagnosis"
+              href="/ko/about"
               className="text-gray-500 hover:underline"
             >
-              성격 진단 시작하기
+              서비스 소개
             </Link>
           </div>
         </div>

@@ -12,6 +12,7 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import type { ResultLocale } from "@/i18n/result";
 
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
@@ -30,10 +31,13 @@ interface LockedInviteShareProps {
    * 同じ見せ方。level="H" (30%欠損許容) に対し約34%幅の被覆で運用実績あり。
    */
   qrImageSrc?: string | null;
+  locale?: ResultLocale;
 }
 
-const SHARE_TEXT =
-  "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
+const SHARE_TEXT: Record<ResultLocale, string> = {
+  ja: "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ",
+  ko: "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단 테스트에 참여할 수 있어.",
+};
 
 export function LockedInviteShare({
   inviteUrl,
@@ -42,15 +46,18 @@ export function LockedInviteShare({
   ownerToken,
   inviteCode,
   qrImageSrc,
+  locale = "ja",
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
+  const isKorean = locale === "ko";
+  const shareText = SHARE_TEXT[locale];
 
   // チャネル別に ?ref を付けて、この招待から来た友達の流入元 (acquisition_source) を計測する。
   const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    `${SHARE_TEXT} ${withRef(inviteUrl, "line")}`,
+    `${shareText} ${withRef(inviteUrl, "line")}`,
   )}`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    SHARE_TEXT,
+    shareText,
   )}&url=${encodeURIComponent(withRef(inviteUrl, "x"))}`;
 
   const fire = (channel: "x" | "line" | "copy") => {
@@ -91,7 +98,9 @@ export function LockedInviteShare({
           compact ? "p-4" : "p-5"
         } shadow-[0_8px_24px_rgba(46,46,92,0.10)]`}
         role="img"
-        aria-label="友達評価ページへの招待QRコード"
+        aria-label={
+          isKorean ? "친구 진단 초대 QR 코드" : "友達評価ページへの招待QRコード"
+        }
       >
         <div className="relative">
           <QRCodeSVG
@@ -117,7 +126,9 @@ export function LockedInviteShare({
         </div>
       </div>
       <p className="mt-2.5 text-center text-[12px] font-bold text-[#2E2E5C]/50">
-        友達のスマホで読み取ってもらおう
+        {isKorean
+          ? "친구의 스마트폰으로 QR 코드를 스캔해 주세요"
+          : "友達のスマホで読み取ってもらおう"}
       </p>
 
       {/* シェアピル: X / LINE / リンク (QR と同じ幅・ラベル付き塗りピル) */}
@@ -132,7 +143,9 @@ export function LockedInviteShare({
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white" aria-hidden="true">
             <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
           </svg>
-          <span className="sr-only">Xで共有</span>
+          <span className="sr-only">
+            {isKorean ? "X로 공유" : "Xで共有"}
+          </span>
         </a>
         <a
           href={lineUrl}
@@ -149,7 +162,7 @@ export function LockedInviteShare({
         <button
           type="button"
           onClick={handleCopy}
-          aria-label="招待リンクをコピー"
+          aria-label={isKorean ? "초대 링크 복사" : "招待リンクをコピー"}
           className={`${pill} bg-[#5B5BEF]`}
         >
           {copied ? (
@@ -157,7 +170,7 @@ export function LockedInviteShare({
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M5 12l5 5L20 6" />
               </svg>
-              コピー済
+              {isKorean ? "복사됨" : "コピー済"}
             </>
           ) : (
             <>
@@ -165,7 +178,7 @@ export function LockedInviteShare({
                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
               </svg>
-              リンク
+              {isKorean ? "링크" : "リンク"}
             </>
           )}
         </button>

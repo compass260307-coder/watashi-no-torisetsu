@@ -7,6 +7,7 @@ import {
   createMetaPurchaseClaimToken,
   verifyPaidFullAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,11 @@ const NAVY = "#2E2E5C";
 
 export const metadata: Metadata = {
   title: { absolute: "결제가 완료되었습니다 | 나의 사용설명서" },
+  alternates: localizedAlternates(
+    "ko",
+    "/purchase-complete",
+    "/ko/purchase-complete",
+  ),
   robots: { index: false, follow: false },
 };
 
@@ -88,18 +94,42 @@ export default async function KoreanPurchaseCompletePage({
           구매해 주셔서 감사합니다!
         </h1>
         <p className="mt-3 text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
-          결제에 사용한 이메일 주소로
-          <br />
-          <span style={{ color: NAVY }}>잠금 해제된 상세 결과 링크</span>를 보내
-          드렸어요.
+          {session.guest ? (
+            <>
+              결제에 사용한 이메일 주소로
+              <br />
+              바로 <span style={{ color: NAVY }}>로그인</span>할 수 있어요.
+            </>
+          ) : (
+            <>
+              결제에 사용한 이메일 주소로
+              <br />
+              <span style={{ color: NAVY }}>
+                잠금 해제된 상세 결과와 PDF 다운로드 링크
+              </span>
+              {"를 보내 드렸어요."}
+            </>
+          )}
         </p>
         {/* 진단 전에 구매한 게스트 안내. 로그인 후에는 verify-magic-link 가
             진단 미완료 계정을 /ko/diagnosis 로 보낸다 (2026-07-30). */}
         <p className="mt-2 break-keep text-[12px] font-bold leading-[1.8] text-[#8A8AA3]">
-          아직 성격 진단을 하지 않았다면, 로그인 후 그대로{" "}
-          <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해 드려요.
-          <br />
-          진단이 끝나면 완전판 결과가 열립니다.
+          {session.guest ? (
+            <>
+              로그인 후 <span style={{ color: NAVY }}>무료 성격 진단</span>으로
+              안내해 드려요.
+              <br />
+              진단이 끝나면 완전판 리포트를 이메일로 보내 드립니다.
+            </>
+          ) : (
+            <>
+              아직 성격 진단을 하지 않았다면, 로그인 후 그대로{" "}
+              <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해
+              드려요.
+              <br />
+              진단이 끝나면 완전판 결과가 열립니다.
+            </>
+          )}
         </p>
       </div>
 

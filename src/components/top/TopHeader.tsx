@@ -37,6 +37,7 @@ export default function TopHeader() {
   // データリセットは誤操作防止のためドロワー内で確認ステップを挟む。
   const [confirmReset, setConfirmReset] = useState(false);
   const pathname = usePathname() ?? "/";
+  const [currentSearch, setCurrentSearch] = useState("");
 
   // 友達診断テストの遷移先を BottomNav と同じルールで解決:
   //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
@@ -53,9 +54,15 @@ export default function TopHeader() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakoUrl(token ? `/tako/${token}` : "/tako");
     setOwnerToken(token);
+    setCurrentSearch(window.location.search);
   }, [pathname]);
 
-  const koreanHref = localeSwitchPath(pathname, "ko", ownerToken);
+  const koreanHref = localeSwitchPath(
+    pathname,
+    "ko",
+    ownerToken,
+    currentSearch,
+  );
 
   // ドロワーを開いている間は背景スクロールを固定 + Escape で閉じる。
   useEffect(() => {
