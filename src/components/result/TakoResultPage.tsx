@@ -509,6 +509,7 @@ export async function TakoResultPage({
                   ヒーロー/本文(見出しなし)/①ギャップ/②恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
                 tabs={friendSheets.map((sh, i) => ({
+                  perceptionId: sh.key,
                   name: sh.tabName,
                   // 2人目以降 (未購入) も顔アバター・メッセージ吹き出しは見せて
                   // 「読みたい欲」を起こす。タップで課金モーダルが開く (locked)。

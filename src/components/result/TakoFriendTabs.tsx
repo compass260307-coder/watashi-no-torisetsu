@@ -17,6 +17,7 @@ import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INDIGO = "#5B5BEF";
+const FRIEND_HASH_PREFIX = "friend-";
 
 // タブ表示用: 自由入力の名前が長いときの折返し崩れを防ぐ (表示のみ切り詰め)。
 function tabLabel(name: string, locale: ResultLocale): string {
@@ -25,6 +26,8 @@ function tabLabel(name: string, locale: ResultLocale): string {
 }
 
 export type FriendTab = {
+  /** friend_perceptions.id。#friend-<id> で直接タブを開くために使う。 */
+  perceptionId?: string;
   /** 友達の表示名。 */
   name: string;
   /** その友達から見えたキャラの顔画像 (無ければ頭文字にフォールバック)。 */
@@ -36,6 +39,21 @@ export type FriendTab = {
       シート本文は panels 側で全ロック (実データはクライアントに渡さない)。 */
   locked?: boolean;
 };
+
+function friendTabDomId(perceptionId: string): string {
+  return `${FRIEND_HASH_PREFIX}${encodeURIComponent(perceptionId)}`;
+}
+
+function perceptionIdFromHash(hash: string): string | null {
+  if (!hash.startsWith(`#${FRIEND_HASH_PREFIX}`)) return null;
+  const raw = hash.slice(FRIEND_HASH_PREFIX.length + 1);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
 export function TakoFriendTabs({
   tabs,
@@ -78,6 +96,31 @@ export function TakoFriendTabs({
     autoRotateRef.current = false;
     setAutoRotate(false);
   };
+
+  useEffect(() => {
+    const selectHashTab = () => {
+      const targetId = perceptionIdFromHash(window.location.hash);
+      if (!targetId) return;
+      const nextIdx = tabs.findIndex((tab) => tab.perceptionId === targetId);
+      if (nextIdx < 0) return;
+      autoRotateRef.current = false;
+      setAutoRotate(false);
+      setInviteOpen(false);
+      setMsgOpenIdx(null);
+      setIdx(nextIdx);
+      window.setTimeout(() => {
+        tabRefs.current[nextIdx]?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center",
+        });
+      }, 0);
+    };
+
+    selectHashTab();
+    window.addEventListener("hashchange", selectHashTab);
+    return () => window.removeEventListener("hashchange", selectHashTab);
+  }, [tabs]);
 
   const anchorTo = (el: HTMLElement | null) => {
     if (!el || !barRef.current) return;
@@ -242,6 +285,9 @@ export function TakoFriendTabs({
             return (
               <button
                 key={i}
+                id={
+                  tab.perceptionId ? friendTabDomId(tab.perceptionId) : undefined
+                }
                 ref={(el) => {
                   tabRefs.current[i] = el;
                 }}
