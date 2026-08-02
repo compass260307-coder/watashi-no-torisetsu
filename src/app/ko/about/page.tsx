@@ -11,6 +11,9 @@ import {
   KO_ABOUT_STEPS,
 } from "@/i18n/ko/about";
 import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SEO_KEYWORDS,
+  KO_SITE_NAME,
   localizedAlternates,
   SITE_URL as BASE_URL,
 } from "@/lib/locale-seo";
@@ -23,17 +26,30 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   title: { absolute: "서비스 소개 | 나의 사용설명서" },
   description: DESCRIPTION,
+  keywords: [
+    ...KO_SEO_KEYWORDS,
+    "Big Five 자기 이해",
+    "친구가 보는 나",
+    "자기 진단 친구 평가",
+  ],
   alternates: localizedAlternates("ko", "/about", "/ko/about"),
   openGraph: {
     type: "website",
     locale: "ko_KR",
     alternateLocale: ["ja_JP"],
     url: `${BASE_URL}/ko/about`,
-    siteName: "나의 사용설명서",
+    siteName: KO_SITE_NAME,
     title: "서비스 소개 | 나의 사용설명서",
     description: DESCRIPTION,
-    images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+    images: [KO_DEFAULT_OG_IMAGE],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "서비스 소개 | 나의 사용설명서",
+    description: DESCRIPTION,
+    images: [KO_DEFAULT_OG_IMAGE.url],
+  },
+  robots: { index: true, follow: true },
 };
 
 const faqJsonLd = {

@@ -9,6 +9,7 @@ import {
   KO_ARTICLES,
 } from "@/lib/articles-ko";
 import {
+  KO_SITE_NAME,
   localizedAlternates,
   SITE_URL as BASE_URL,
 } from "@/lib/locale-seo";
@@ -38,6 +39,7 @@ export async function generateMetadata({
 
   const japanesePath = `/articles/${article.slug}`;
   const koreanPath = `/ko/articles/${article.slug}`;
+  const image = { url: article.image, alt: article.imageAlt };
 
   return {
     title: { absolute: `${article.title} | 나의 사용설명서` },
@@ -47,18 +49,21 @@ export async function generateMetadata({
       type: "article",
       locale: "ko_KR",
       alternateLocale: ["ja_JP"],
-      siteName: "나의 사용설명서",
+      siteName: KO_SITE_NAME,
       title: `${article.title} | 나의 사용설명서`,
       description: article.description,
       url: `${BASE_URL}${koreanPath}`,
-      images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+      images: [image],
+      publishedTime: article.published,
+      modifiedTime: article.updated ?? article.published,
     },
     twitter: {
       card: "summary_large_image",
       title: `${article.title} | 나의 사용설명서`,
       description: article.description,
-      images: ["/ogp-v4.png"],
+      images: [article.image],
     },
+    robots: { index: true, follow: true },
   };
 }
 
@@ -84,7 +89,7 @@ export default async function KoreanArticlePage({
         mainEntityOfPage: url,
         author: { "@id": `${BASE_URL}/#organization` },
         publisher: { "@id": `${BASE_URL}/#organization` },
-        image: `${BASE_URL}/ogp-v4.png`,
+        image: `${BASE_URL}${article.image}`,
       },
       {
         "@type": "BreadcrumbList",

@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import MeResultPage from "@/components/result/MeResultPage";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { KO_TYPE_ZUKAN_DESCRIPTIONS } from "@/i18n/ko/types";
+import { KO_SITE_NAME } from "@/lib/locale-seo";
 import {
   allThirtyTwoTypeIds,
+  thirtyTwoImagePath,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 
@@ -32,6 +34,7 @@ export async function generateMetadata({
   const type = KO_RESULT_TYPES[id];
   const japaneseUrl = `${BASE_URL}/preview/${typeId}`;
   const koreanUrl = `${BASE_URL}/ko/preview/${typeId}`;
+  const imageUrl = thirtyTwoImagePath(id);
 
   return {
     title: type.essence,
@@ -48,8 +51,21 @@ export async function generateMetadata({
       locale: "ko_KR",
       alternateLocale: ["ja_JP"],
       url: koreanUrl,
+      siteName: KO_SITE_NAME,
       title: `${type.essence} | 나의 사용설명서`,
       description: KO_TYPE_ZUKAN_DESCRIPTIONS[id],
+      images: [
+        {
+          url: imageUrl,
+          alt: `${type.essence} 성격 유형`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${type.essence} | 나의 사용설명서`,
+      description: KO_TYPE_ZUKAN_DESCRIPTIONS[id],
+      images: [imageUrl],
     },
     robots: { index: true, follow: true },
   };

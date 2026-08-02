@@ -1,11 +1,32 @@
 import type { Metadata } from "next";
 import KoreanLegalDocument from "@/components/ko/KoreanLegalDocument";
-import { localizedAlternates } from "@/lib/locale-seo";
+import {
+  KO_DEFAULT_OG_IMAGE,
+  KO_SITE_NAME,
+  SITE_URL,
+  localizedAlternates,
+} from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: { absolute: "이용약관 | 나의 사용설명서" },
   description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
   alternates: localizedAlternates("ko", "/terms", "/ko/terms"),
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    alternateLocale: ["ja_JP"],
+    url: `${SITE_URL}/ko/terms`,
+    siteName: KO_SITE_NAME,
+    title: "이용약관 | 나의 사용설명서",
+    description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
+    images: [KO_DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "이용약관 | 나의 사용설명서",
+    description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
+    images: [KO_DEFAULT_OG_IMAGE.url],
+  },
   robots: { index: true, follow: true },
 };
 

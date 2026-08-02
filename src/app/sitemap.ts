@@ -26,8 +26,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       languages: localizedLanguages(japanesePath, koreanPath),
     };
     return [
-      { url: japaneseUrl, priority: 0.6, alternates },
-      { url: koreanUrl, priority: 0.6, alternates },
+      {
+        url: japaneseUrl,
+        changeFrequency: "monthly",
+        priority: 0.6,
+        alternates,
+      },
+      {
+        url: koreanUrl,
+        changeFrequency: "monthly",
+        priority: 0.6,
+        alternates,
+      },
     ];
   });
 
@@ -40,11 +50,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
         {
           url: absoluteSiteUrl(route.ja),
           priority: route.priority,
+          changeFrequency: route.changeFrequency,
           alternates,
         },
         {
           url: absoluteSiteUrl(route.ko),
           priority: route.priority,
+          changeFrequency: route.changeFrequency,
           alternates,
         },
       ];
@@ -67,12 +79,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       {
         url: absoluteSiteUrl(japanesePath),
         lastModified: article.updated ?? article.published,
+        changeFrequency: "monthly",
         priority: 0.7,
         alternates,
       },
       {
         url: absoluteSiteUrl(koreanPath),
         lastModified: koreanArticle.updated ?? koreanArticle.published,
+        changeFrequency: "monthly",
         priority: 0.7,
         alternates,
       },
@@ -85,6 +99,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       // 運命の設計図 (独立商品LP。ナビ/フッターから公開リンクされる集客ページ)
       url: `${SITE_URL}/unmei`,
+      changeFrequency: "monthly",
       priority: 0.8,
     },
     ...typePages,
