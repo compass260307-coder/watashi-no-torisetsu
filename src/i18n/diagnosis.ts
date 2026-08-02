@@ -262,7 +262,7 @@ const KO_COPY: DiagnosisCopy = {
   inAppBrowser: {
     title: "Safari 또는 Chrome 사용을 권장해요",
     description:
-      "LINE이나 Instagram 같은 SNS 앱 안에서 진단하면 결과가 저장되지 않거나 오류가 발생할 수 있어요.",
+      "카카오톡이나 Instagram 같은 SNS 앱 안에서 진단하면 결과가 저장되지 않거나 오류가 발생할 수 있어요.",
     copyButton: "링크 복사",
     copiedButton: "복사했어요 ✓",
     copyFallback: "복사가 안 되면 아래 URL을 길게 눌러 복사해 주세요:",

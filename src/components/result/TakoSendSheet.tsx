@@ -5,7 +5,7 @@
 //
 // 方針 (shareTargetPicker は現状 infra 未整備のため使えない):
 //   1) tryLiffPicker() … 将来 LIFF SDK 復活時の抜き差し口。今は capability 検知で即 unavailable。
-//   2) LINEで送る … 既存 line.me/R/msg URL を主役化。モバイル/LINEなら実質トーク相手ピッカー。
+//   2) 日本版は LINEで送る / 韓国版は KakaoTalkで送る を主役化。
 //   3) 他アプリで送る … navigator.share (Web Share API)。
 //   4) リンクをコピー … clipboard。
 //   末尾に QR (面前用)。どの経路でも「送れずに詰む」を作らない。
@@ -18,6 +18,8 @@ import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { SHARE_TEXT, lineShareUrl } from "@/lib/tako-share";
+import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
+import { shareToKakaoTalk } from "@/lib/kakao-share";
 import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
@@ -112,8 +114,10 @@ export function TakoSendSheet({
 
   if (!open) return null;
 
-  const lineUrl = lineShareUrl(inviteUrl, shareText);
-  const pickerMessage = `${shareText} ${withRef(inviteUrl, "line")}`;
+  const lineUrl = isKo ? undefined : lineShareUrl(inviteUrl, shareText);
+  const pickerMessage = isKo
+    ? ""
+    : `${shareText} ${withRef(inviteUrl, "line")}`;
 
   const fire = (channel: string) =>
     track(
@@ -148,6 +152,19 @@ export function TakoSendSheet({
     // cancelled は何もしない (詰まない・再操作可)。
   };
 
+  const handleKakao = async () => {
+    const url = withRef(inviteUrl, "kakao");
+    const result = await shareToKakaoTalk({
+      text: shareText,
+      url,
+      fallbackCopy: () => copyInviteLink(url),
+    });
+    if (result === "unavailable") return;
+    fire(result === "copy" ? "kakao_copy" : "kakao");
+    onSent();
+    onClose();
+  };
+
   // 他アプリで送る: Web Share API → 未対応なら copy。
   const handleWebShare = async () => {
     try {
@@ -167,9 +184,9 @@ export function TakoSendSheet({
     await handleCopy("os_share_fallback");
   };
 
-  const handleCopy = async (channel = "copy") => {
+  const copyInviteLink = async (value: string) => {
     try {
-      await navigator.clipboard.writeText(withRef(inviteUrl, "copy"));
+      await navigator.clipboard.writeText(value);
       setCopied(true);
       setNote(
         isKo
@@ -177,15 +194,22 @@ export function TakoSendSheet({
           : "リンクをコピーしました。送りたい相手に貼り付けてね",
       );
       window.setTimeout(() => setCopied(false), 2000);
-      fire(channel);
-      onSent();
+      return true;
     } catch {
       setNote(
         isKo
           ? "복사하지 못했어요. 아래 QR 코드나 다른 방법을 이용해 주세요."
           : "コピーできませんでした。下のQRか他の方法を使ってね",
       );
+      return false;
     }
+  };
+
+  const handleCopy = async (channel = "copy") => {
+    const succeeded = await copyInviteLink(withRef(inviteUrl, "copy"));
+    if (!succeeded) return;
+    fire(channel);
+    onSent();
   };
 
   const heading =
@@ -258,7 +282,7 @@ export function TakoSendSheet({
           <div className="mt-4 rounded-2xl border border-[#E6E8F5] bg-[#F7F8FD] p-4">
             <p className="mb-2 text-[12px] font-bold" style={{ color: INACTIVE }}>
               {isKo
-                ? "(미리 보기) LINE 친구 선택"
+                ? "(미리 보기) 카카오톡 공유"
                 : "（プレビュー）LINEの友だちを選ぶ"}
             </p>
             <div className="flex gap-3 overflow-x-auto pb-1">
@@ -277,21 +301,34 @@ export function TakoSendSheet({
           </div>
         )}
 
-        {/* ① LINEで送る (主役) */}
-        <a
-          href={lineUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleLine}
-          data-no-drag
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black text-white shadow-[0_8px_24px_rgba(6,199,85,0.28)] transition-transform active:scale-[0.98]"
-          style={{ background: "#06C755" }}
-        >
-          <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
-            <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
-          </svg>
-          {isKo ? "LINE으로 보내기" : "LINEで送る"}
-        </a>
+        {/* ① 日本版は LINE / 韓国版は KakaoTalk で送る (主役) */}
+        {isKo ? (
+          <button
+            type="button"
+            onClick={handleKakao}
+            data-no-drag
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black shadow-[0_8px_24px_rgba(60,30,30,0.16)] transition-transform active:scale-[0.98]"
+            style={{ background: "#FEE500", color: "#3C1E1E" }}
+          >
+            <KakaoTalkGlyph className="h-5 w-5" />
+            카카오톡으로 보내기
+          </button>
+        ) : (
+          <a
+            href={lineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleLine}
+            data-no-drag
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black text-white shadow-[0_8px_24px_rgba(6,199,85,0.28)] transition-transform active:scale-[0.98]"
+            style={{ background: "#06C755" }}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+              <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
+            </svg>
+            LINEで送る
+          </a>
+        )}
 
         {/* ② 他アプリで送る (Web Share) / ③ コピー */}
         <div className="mt-3 flex gap-3">

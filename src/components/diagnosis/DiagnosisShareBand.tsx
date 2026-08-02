@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
+import { shareToKakaoTalk } from "@/lib/kakao-share";
 
 // 診断ページ下部 (フッター直上) のシェアバンド。16P のシェア帯
 // (ギザギザ縁のグレー帯 + 実績数 + SNS 丸ボタン) を参考に、サイトの
 // デザイン言語で実装する。
 //   - 数字は TopStats と同じ累計診断数の仮値 (app/page.tsx の DIAGNOSED_COUNT と同値)。
-//   - ボタンは LINE / X / Facebook / リンクコピー + その他 (Web Share 対応端末のみ)。
+//   - ボタンは LINE(ko は KakaoTalk) / X / Facebook / リンクコピー + その他 (Web Share 対応端末のみ)。
 //     アイコン・共有 URL 形式・ref 付与は MeStickyHeader のシェアモーダルと同じ。
 //   - 計測は share_clicked (kind: diagnosis / source: diagnosis_share_band)。
 //   - 共有 URL は診断ページ自体 (/diagnosis, ko は /ko/diagnosis)。
@@ -46,14 +48,14 @@ export function DiagnosisShareBand({
     : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`;
 
   const fireShare = (
-    channel: "line" | "x" | "facebook" | "copy" | "native",
+    channel: "line" | "kakao" | "x" | "facebook" | "copy" | "native",
   ) =>
     track("share_clicked", {
       metadata: { channel, kind: "diagnosis", source: "diagnosis_share_band" },
     });
 
   // 共有内容は診断ページの URL だけ (宣伝文は付けない。2026-08-01 指示)。
-  const lineUrl = shareUrl
+  const lineUrl = shareUrl && !isKo
     ? `https://line.me/R/msg/text/?${encodeURIComponent(withRef(shareUrl, "line"))}`
     : undefined;
   const xUrl = shareUrl
@@ -75,9 +77,7 @@ export function DiagnosisShareBand({
     }
   };
 
-  const handleCopy = async () => {
-    if (!shareUrl) return;
-    const value = withRef(shareUrl, "copy");
+  const copyShareValue = async (value: string) => {
     let succeeded = false;
     try {
       await navigator.clipboard.writeText(value);
@@ -96,9 +96,27 @@ export function DiagnosisShareBand({
         textarea.remove();
       }
     }
-    if (!succeeded) return;
+    if (!succeeded) return false;
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
+    return true;
+  };
+
+  const handleKakaoShare = async () => {
+    if (!shareUrl) return;
+    const value = withRef(shareUrl, "kakao");
+    const result = await shareToKakaoTalk({
+      text: value,
+      url: value,
+      fallbackCopy: () => copyShareValue(value),
+    });
+    if (result !== "unavailable") fireShare("kakao");
+  };
+
+  const handleCopy = async () => {
+    if (!shareUrl) return;
+    const succeeded = await copyShareValue(withRef(shareUrl, "copy"));
+    if (!succeeded) return;
     fireShare("copy");
   };
 
@@ -119,18 +137,30 @@ export function DiagnosisShareBand({
         </p>
 
         <div className="mt-4 flex items-center gap-4">
-          <a
-            href={lineUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={isKo ? "LINE으로 공유" : "LINEでシェア"}
-            onClick={() => fireShare("line")}
-            className={`${circle} bg-[#06C755] text-white`}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
-            </svg>
-          </a>
+          {isKo ? (
+            <button
+              type="button"
+              aria-label="카카오톡으로 공유"
+              onClick={handleKakaoShare}
+              className={`${circle} text-[#3C1E1E]`}
+              style={{ background: "#FEE500" }}
+            >
+              <KakaoTalkGlyph className="h-6 w-6" />
+            </button>
+          ) : (
+            <a
+              href={lineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LINEでシェア"
+              onClick={() => fireShare("line")}
+              className={`${circle} bg-[#06C755] text-white`}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+              </svg>
+            </a>
+          )}
           <a
             href={xUrl}
             target="_blank"

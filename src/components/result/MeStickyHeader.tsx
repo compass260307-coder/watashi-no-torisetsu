@@ -12,7 +12,7 @@
 // ここではヘッダー実高を測り、隠すときは -headerHeight だけ動かす (バーは残る)。
 //
 // シェアは大きめの丸ボタン1個に集約 (2026-07-26 指示、16P のシェアアイコン参考)。
-// 押すとモーダル (結果をシェアしよう: LINE / X / リンクコピー) を開く。
+// 押すとモーダル (結果をシェアしよう: LINE(ko は KakaoTalk) / X / リンクコピー) を開く。
 // モーダルは createPortal で body 直下に出す。ヘッダーは隠れるとき transform を
 // 持つため、この中で fixed を使うと基準がヘッダーになり画面全体を覆えない。
 
@@ -21,6 +21,8 @@ import { createPortal } from "react-dom";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
+import { shareToKakaoTalk } from "@/lib/kakao-share";
 import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -162,6 +164,7 @@ export function MeStickyHeader({
   }, [shareOpen]);
 
   const isInvite = shareKind === "invite";
+  const isKo = locale === "ko";
 
   // キャラクター共有文言。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
   // 友達診断への回答依頼は含めず、純粋なキャラ共有として扱う。
@@ -177,7 +180,7 @@ export function MeStickyHeader({
   const xUrl = shareUrl
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(shareUrl, "x"))}`
     : undefined;
-  const lineUrl = shareUrl
+  const lineUrl = shareUrl && !isKo
     ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(shareUrl, "line")}`)}`
     : undefined;
   // Facebook は sharer.php (テキストは付与不可・URL のみ)。
@@ -196,7 +199,9 @@ export function MeStickyHeader({
 
   // invite モードは招待ファネルの friend_invite_clicked (LockedInviteShare と同じ
   // イベント・source だけ設置場所で分ける)。character は従来の share_clicked。
-  const fireShare = (channel: "copy" | "x" | "line" | "facebook" | "native") =>
+  const fireShare = (
+    channel: "copy" | "x" | "line" | "kakao" | "facebook" | "native",
+  ) =>
     isInvite
       ? track("friend_invite_clicked", {
           ownerToken,
@@ -221,11 +226,7 @@ export function MeStickyHeader({
     }
   };
 
-  const handleCopy = async () => {
-    if (!shareUrl) return;
-    // コピーは文章を付けずリンクだけ (2026-07-28 指示。invite/character 共通形式。
-    // 共有文 shareText は LINE/X/その他 のシェアインテント側でのみ使う)。
-    const value = withRef(shareUrl, "copy");
+  const copyShareValue = async (value: string) => {
     let succeeded = false;
     try {
       await navigator.clipboard.writeText(value);
@@ -244,13 +245,31 @@ export function MeStickyHeader({
         textarea.remove();
       }
     }
-    if (!succeeded) return;
+    if (!succeeded) return false;
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
-    fireShare("copy");
+    return true;
   };
 
-  const isKo = locale === "ko";
+  const handleKakaoShare = async () => {
+    if (!shareUrl) return;
+    const url = withRef(shareUrl, "kakao");
+    const result = await shareToKakaoTalk({
+      text: shareText,
+      url,
+      fallbackCopy: () => copyShareValue(url),
+    });
+    if (result !== "unavailable") fireShare("kakao");
+  };
+
+  const handleCopy = async () => {
+    if (!shareUrl) return;
+    // コピーは文章を付けずリンクだけ (2026-07-28 指示。invite/character 共通形式。
+    // 共有文 shareText は LINE/KakaoTalk/X/その他 のシェア側でのみ使う)。
+    const succeeded = await copyShareValue(withRef(shareUrl, "copy"));
+    if (!succeeded) return;
+    fireShare("copy");
+  };
 
   return (
     <div className="sticky top-0 z-50">
@@ -424,29 +443,48 @@ export function MeStickyHeader({
 
               {/* SNS ボタン (丸アイコン + ラベル。16P の Facebook/X 行の体裁) */}
               <div className="mb-6 flex items-start gap-6">
-                <a
-                  href={lineUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => fireShare("line")}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06C755] text-white transition-transform hover:scale-105">
-                    {/* LINE 吹き出し */}
-                    <svg
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      aria-hidden="true"
+                {isKo ? (
+                  <button
+                    type="button"
+                    aria-label="카카오톡으로 공유"
+                    onClick={handleKakaoShare}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-[#3C1E1E] transition-transform hover:scale-105"
+                      style={{ background: "#FEE500" }}
                     >
-                      <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
-                    </svg>
-                  </span>
-                  <span className="text-[11px] font-bold text-[#2E2E5C]/70">
-                    LINE
-                  </span>
-                </a>
+                      <KakaoTalkGlyph className="h-6 w-6" />
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      카카오톡
+                    </span>
+                  </button>
+                ) : (
+                  <a
+                    href={lineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => fireShare("line")}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06C755] text-white transition-transform hover:scale-105">
+                      {/* LINE 吹き出し */}
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+                      </svg>
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      LINE
+                    </span>
+                  </a>
+                )}
                 <a
                   href={xUrl}
                   target="_blank"

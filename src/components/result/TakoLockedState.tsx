@@ -138,8 +138,9 @@ export function TakoLockedState({
   const detailFriend =
     detailIndex != null ? answered[detailIndex] ?? null : null;
 
-  // CTA の JS 無しフォールバック先 (LINE送信URL)。ハイドレーション前に押されても送信できる。
-  const inviteLineHref = lineShareUrl(inviteUrl);
+  // 日本版 CTA の JS 無しフォールバック先 (LINE送信URL)。韓国版は KakaoTalk ボタンを
+  // ハイドレーション後の共有ハンドラへ寄せる。
+  const inviteFallbackHref = isKo ? undefined : lineShareUrl(inviteUrl);
 
   // 奥のヒーロー帯を実結果ふうの型色帯 + ○に? で描くための色。友達平均キャラは
   // 未確定なので、帯色は「未知」グループのラベンダーで固定する (正体を匂わせない)。
@@ -196,7 +197,7 @@ export function TakoLockedState({
             bounceKey={bounceKey}
             revealFromIndex={revealFromIndex}
             onPrimaryAction={() => setSendMode({ kind: "invite" })}
-            primaryFallbackHref={inviteLineHref}
+            primaryFallbackHref={inviteFallbackHref}
             onAnsweredTap={(i) => setDetailIndex(i)}
             qrInviteUrl={inviteUrl}
             qrImageSrc={
