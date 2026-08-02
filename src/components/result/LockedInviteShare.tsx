@@ -3,7 +3,7 @@
 // ロック中の「友達に評価してもらう」招待導線 (QR + シェアピル)。
 // TakoLockedState / OthersPerceptionSection(/me) / 解除後 /tako で共用。課金導線は一切含めない。
 //
-// - シェアピル: X(黒) / LINE(緑) / リンク(ブランド紫) の 3 つを横並び。ラベル付きの塗りピルで
+// - シェアピル: X(黒) / LINE(ko は KakaoTalk) / リンク(ブランド紫) の 3 つを横並び。ラベル付きの塗りピルで
 //   世界観に合わせる (色は CharacterShareButton と同系統)。
 // - QR: 友達評価への招待URL (inviteCode 付き) を対面スキャン用に表示。
 // - 見出し/長い注意書きは持たない (呼び出し側の文脈に委ねてシンプルに)。
@@ -12,6 +12,8 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
+import { shareToKakaoTalk } from "@/lib/kakao-share";
 import type { ResultLocale } from "@/i18n/result";
 
 interface LockedInviteShareProps {
@@ -20,7 +22,7 @@ interface LockedInviteShareProps {
   /** 横並びレイアウト用にQRとボタンを少し締める。 */
   compact?: boolean;
   /**
-   * 計測ソース。指定時のみ X/LINE/コピー タップで friend_invite_clicked を発火する
+   * 計測ソース。指定時のみ X/LINE/KakaoTalk/コピー タップで friend_invite_clicked を発火する
    * (metadata: { channel, source })。未指定 (ロック状態など) は無発火で挙動を変えない。
    */
   trackSource?: string;
@@ -53,14 +55,16 @@ export function LockedInviteShare({
   const shareText = SHARE_TEXT[locale];
 
   // チャネル別に ?ref を付けて、この招待から来た友達の流入元 (acquisition_source) を計測する。
-  const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(
-    `${shareText} ${withRef(inviteUrl, "line")}`,
-  )}`;
+  const lineUrl = isKorean
+    ? undefined
+    : `https://line.me/R/msg/text/?${encodeURIComponent(
+        `${shareText} ${withRef(inviteUrl, "line")}`,
+      )}`;
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     shareText,
   )}&url=${encodeURIComponent(withRef(inviteUrl, "x"))}`;
 
-  const fire = (channel: "x" | "line" | "copy") => {
+  const fire = (channel: "x" | "line" | "kakao" | "copy") => {
     if (!trackSource) return;
     track("friend_invite_clicked", {
       ownerToken,
@@ -69,15 +73,31 @@ export function LockedInviteShare({
     });
   };
 
-  const handleCopy = async () => {
+  const copyInviteValue = async (value: string) => {
     try {
-      await navigator.clipboard.writeText(withRef(inviteUrl, "copy"));
+      await navigator.clipboard.writeText(value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-      fire("copy");
+      return true;
     } catch {
       // クリップボード不可環境では何もしない (QR / 他ピルを使ってもらう)
+      return false;
     }
+  };
+
+  const handleKakao = async () => {
+    const url = withRef(inviteUrl, "kakao");
+    const result = await shareToKakaoTalk({
+      text: shareText,
+      url,
+      fallbackCopy: () => copyInviteValue(url),
+    });
+    if (result !== "unavailable") fire("kakao");
+  };
+
+  const handleCopy = async () => {
+    const succeeded = await copyInviteValue(withRef(inviteUrl, "copy"));
+    if (succeeded) fire("copy");
   };
 
   const pill = `inline-flex flex-1 items-center justify-center gap-1.5 rounded-full ${
@@ -131,7 +151,7 @@ export function LockedInviteShare({
           : "友達のスマホで読み取ってもらおう"}
       </p>
 
-      {/* シェアピル: X / LINE / リンク (QR と同じ幅・ラベル付き塗りピル) */}
+      {/* シェアピル: X / LINE(ko は KakaoTalk) / リンク (QR と同じ幅・ラベル付き塗りピル) */}
       <div className="mt-3 flex items-center gap-2">
         <a
           href={xUrl}
@@ -147,18 +167,31 @@ export function LockedInviteShare({
             {isKorean ? "X로 공유" : "Xで共有"}
           </span>
         </a>
-        <a
-          href={lineUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => fire("line")}
-          className={`${pill} bg-[#06C755]`}
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
-            <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
-          </svg>
-          LINE
-        </a>
+        {isKorean ? (
+          <button
+            type="button"
+            onClick={handleKakao}
+            aria-label="카카오톡으로 보내기"
+            className={pill}
+            style={{ background: "#FEE500", color: "#3C1E1E" }}
+          >
+            <KakaoTalkGlyph className="h-4 w-4" />
+            카카오톡
+          </button>
+        ) : (
+          <a
+            href={lineUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fire("line")}
+            className={`${pill} bg-[#06C755]`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
+              <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
+            </svg>
+            LINE
+          </a>
+        )}
         <button
           type="button"
           onClick={handleCopy}

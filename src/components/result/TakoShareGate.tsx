@@ -25,6 +25,8 @@ import { QRCodeSVG } from "qrcode.react";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
+import { shareToKakaoTalk } from "@/lib/kakao-share";
 import { useTakoPeek } from "./TakoRevealStage";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -147,7 +149,7 @@ export function TakoShareGate({
     return { kind: "empty" };
   });
 
-  // シェアボタン行 (LINE / X / リンクコピー / その他)。channel 別に計測を発火。
+  // シェアボタン行 (LINE、ko は KakaoTalk / X / リンクコピー / その他)。channel 別に計測を発火。
   const [copied, setCopied] = useState(false);
 
   const fireShare = (channel: string) => {
@@ -158,16 +160,33 @@ export function TakoShareGate({
     });
   };
 
-  const handleCopy = async () => {
-    if (!qrInviteUrl) return;
+  const copyInviteValue = async (value: string) => {
     try {
-      await navigator.clipboard.writeText(withRef(qrInviteUrl, "copy"));
+      await navigator.clipboard.writeText(value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-      fireShare("copy");
+      return true;
     } catch {
       // クリップボード不可環境では何もしない (QR / 他ボタンを使ってもらう)
+      return false;
     }
+  };
+
+  const handleKakaoShare = async () => {
+    if (!qrInviteUrl) return;
+    const url = withRef(qrInviteUrl, "kakao");
+    const result = await shareToKakaoTalk({
+      text: shareText,
+      url,
+      fallbackCopy: () => copyInviteValue(url),
+    });
+    if (result !== "unavailable") fireShare("kakao");
+  };
+
+  const handleCopy = async () => {
+    if (!qrInviteUrl) return;
+    const succeeded = await copyInviteValue(withRef(qrInviteUrl, "copy"));
+    if (succeeded) fireShare("copy");
   };
 
   const handleNativeShare = async () => {
@@ -287,29 +306,39 @@ export function TakoShareGate({
         </div>
       )}
 
-      {/* ===== シェアボタン行: LINE / X / リンクコピー / その他でシェア。
+      {/* ===== シェアボタン行: LINE(ko は KakaoTalk) / X / リンクコピー / その他でシェア。
           data-no-drag でドラッグ非開始。channel 別 ?ref で流入元を計測する。 ===== */}
       {qrInviteUrl && (
         <div
           className="mx-auto mt-6 [@media(max-height:740px)]:mt-4 flex w-full max-w-[300px] items-center gap-2"
           data-no-drag
         >
-          <a
-            href={`https://line.me/R/msg/text/?${encodeURIComponent(
-              `${shareText} ${withRef(qrInviteUrl, "line")}`,
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => fireShare("line")}
-            className={`${sharePill} bg-[#06C755]`}
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
-              <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
-            </svg>
-            <span className="sr-only">
-              {isKo ? "LINE으로 보내기" : "LINEで送る"}
-            </span>
-          </a>
+          {isKo ? (
+            <button
+              type="button"
+              onClick={handleKakaoShare}
+              aria-label="카카오톡으로 보내기"
+              className={sharePill}
+              style={{ background: "#FEE500", color: "#3C1E1E" }}
+            >
+              <KakaoTalkGlyph className="h-5 w-5" />
+            </button>
+          ) : (
+            <a
+              href={`https://line.me/R/msg/text/?${encodeURIComponent(
+                `${shareText} ${withRef(qrInviteUrl, "line")}`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => fireShare("line")}
+              className={`${sharePill} bg-[#06C755]`}
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+                <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
+              </svg>
+              <span className="sr-only">LINEで送る</span>
+            </a>
+          )}
           <a
             href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
               shareText,
