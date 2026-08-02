@@ -31,6 +31,7 @@ import {
 import { preferFaceImage } from "@/lib/character-image";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import type { BackdropHero } from "./TakoRewardBackdrop";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
@@ -92,6 +93,7 @@ interface TakoLockedStateProps {
   selfDiagnoseUrl: string;
   ownerToken: string;
   inviteCode: string;
+  locale?: ResultLocale;
 }
 
 export function TakoLockedState({
@@ -107,7 +109,9 @@ export function TakoLockedState({
   selfDiagnoseUrl,
   ownerToken,
   inviteCode,
+  locale = "ja",
 }: TakoLockedStateProps) {
+  const isKo = locale === "ko";
   const serverAnswered = Math.min(answered.length, threshold);
 
   // 再訪リビール: displayAnswered が演出中に ssrInitial(旧状態)→server へ動く。
@@ -142,7 +146,9 @@ export function TakoLockedState({
   const backdropHero: BackdropHero = heroColorsForGroup("unknown");
 
   const diagnoseText = (name: string) =>
-    `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
+    isKo
+      ? `나를 봐 줘서 고마워! 이번에는 ${name}님의 사용설명서도 만들어 봐. 두 사람의 궁합도 볼 수 있어.`
+      : `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
 
   return (
     <div>
@@ -153,17 +159,19 @@ export function TakoLockedState({
             className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
             style={{ color: NAVY }}
           >
-            自分では気づけない
+            {isKo ? "스스로는 알기 어려운" : "自分では気づけない"}
             <br className="md:hidden" />
-            あなたを、
+            {isKo ? "내 모습을" : "あなたを、"}
             <br className="hidden md:block" />
-            友達に聞いてみよう。
+            {isKo ? "친구에게 물어봐요." : "友達に聞いてみよう。"}
           </h1>
           <p
             className="mt-2.5 text-[12.5px] md:text-sm font-bold"
             style={{ color: INACTIVE }}
           >
-            友達に送るだけ・{threshold}人が答えると解ける
+            {isKo
+              ? `친구에게 보내기만 하면 돼요. ${threshold}명이 답하면 열려요`
+              : `友達に送るだけ・${threshold}人が答えると解ける`}
           </p>
         </div>
         <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
@@ -177,6 +185,7 @@ export function TakoLockedState({
           answered={displayAnswered}
           threshold={threshold}
           backdropHero={backdropHero}
+          locale={locale}
         >
           <TakoShareGate
             answered={answered}
@@ -197,6 +206,7 @@ export function TakoLockedState({
             }
             ownerToken={ownerToken}
             inviteCode={inviteCode}
+            locale={locale}
           />
         </TakoRevealStage>
       </section>
@@ -218,10 +228,11 @@ export function TakoLockedState({
         ownerType32={ownerType32}
         onInviteToDiagnose={() => {
           // Path2: 詳細を閉じ、③シートを「診断に誘う」文脈で開く。
-          const name = detailFriend?.name ?? "友達";
+          const name = detailFriend?.name ?? (isKo ? "친구" : "友達");
           setDetailIndex(null);
           setSendMode({ kind: "diagnose", friendName: name });
         }}
+        locale={locale}
       />
 
       {/* ③ 送信先ピッカー (CTA の着地／④Path2 の診断誘い。#tako-invite QR の上位動線) */}
@@ -234,12 +245,16 @@ export function TakoLockedState({
         toSend={Math.max(0, threshold - displayAnswered - shownPending)}
         title={
           sendMode?.kind === "diagnose"
-            ? `${sendMode.friendName}さんを診断に誘う`
+            ? isKo
+              ? `${sendMode.friendName}님에게 진단 권하기`
+              : `${sendMode.friendName}さんを診断に誘う`
             : undefined
         }
         subtitle={
           sendMode?.kind === "diagnose"
-            ? `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+            ? isKo
+              ? `${sendMode.friendName}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
+              : `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
             : undefined
         }
         shareText={
@@ -267,6 +282,7 @@ export function TakoLockedState({
           }
         }}
         previewShareMode={previewShareMode}
+        locale={locale}
       />
 
       {/* ★ロック中(<3人)は下部セクション(招待QR帯・価値説明3ステップ)を出さない。

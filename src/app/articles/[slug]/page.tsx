@@ -9,6 +9,7 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { ARTICLES, getArticle } from "@/lib/articles";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -37,9 +38,16 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.description,
-    alternates: { canonical: `/articles/${article.slug}` },
+    alternates: localizedAlternates(
+      "ja",
+      `/articles/${article.slug}`,
+      `/ko/articles/${article.slug}`,
+    ),
     openGraph: {
       type: "article",
+      locale: "ja_JP",
+      alternateLocale: ["ko_KR"],
+      siteName: "ワタシのトリセツ",
       title: `${article.title}｜ワタシのトリセツ`,
       description: article.description,
       url: `${BASE_URL}/articles/${article.slug}`,

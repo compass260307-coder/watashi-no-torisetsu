@@ -19,6 +19,8 @@ interface PreviewTypePageProps {
   params: Promise<{ typeId: string }>;
 }
 
+const BASE_URL = "https://www.watashi-torisetsu.com";
+
 // 全32タイプをビルド時に静的生成する (2026-07-20 / Vercel コスト削減)。
 // 内容はモックのみでユーザー固有要素が無いため、リクエスト毎の動的レンダリング
 // (Function 起動・Cached 0%) は不要。未知の typeId は dynamicParams=false で
@@ -39,10 +41,19 @@ export async function generateMetadata({
   if (!(allThirtyTwoTypeIds() as string[]).includes(typeId)) return {};
   const id = typeId as ThirtyTwoTypeId;
   const essence = thirtyTwoEssence(id);
+  const japaneseUrl = `${BASE_URL}/preview/${typeId}`;
+  const koreanUrl = `${BASE_URL}/ko/preview/${typeId}`;
   return {
     title: essence,
     description: thirtyTwoZukanDesc(id),
-    alternates: { canonical: `/preview/${typeId}` },
+    alternates: {
+      canonical: japaneseUrl,
+      languages: {
+        "ja-JP": japaneseUrl,
+        "ko-KR": koreanUrl,
+        "x-default": japaneseUrl,
+      },
+    },
     robots: { index: true, follow: true },
   };
 }

@@ -6,13 +6,19 @@
 
 import { useState } from "react";
 
-export function JohariHelpTip({ text }: { text: string }) {
+export function JohariHelpTip({
+  text,
+  locale = "ja",
+}: {
+  text: string;
+  locale?: "ja" | "ko";
+}) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-flex">
       <button
         type="button"
-        aria-label="この窓の説明"
+        aria-label={locale === "ko" ? "이 창에 대한 설명" : "この窓の説明"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setOpen(false)}

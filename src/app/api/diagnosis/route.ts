@@ -22,11 +22,20 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { createSession, getSession } from "@/lib/session";
 import { isMissingCoreKpiColumn } from "@/lib/core-kpis";
+import { sendDetailedReportEmail } from "@/lib/email";
+import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 import type { AnswerValue } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 const DIAGNOSIS_QUESTION_COUNT = 50;
+
+type PreDiagnosisUserRow = {
+  plan: string | null;
+  email: string | null;
+  scores: unknown;
+  diagnosis_completed_at: string | null;
+};
 
 function parseAnswers(value: unknown): Record<number, AnswerValue> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -62,6 +71,12 @@ function generateInviteCode(): string {
 }
 function generateOwnerToken(): string {
   return crypto.randomBytes(16).toString("base64url");
+}
+
+function normalizeDeliveryEmail(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const email = value.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -184,6 +199,52 @@ export async function POST(request: NextRequest) {
 
   // ----- 既存ユーザー: UPDATE (同 user_id 維持) -----
   if (existing) {
+    let preDiagnosisUser: PreDiagnosisUserRow | null = null;
+    const preDiagnosisResult = await supabaseAdmin
+      .from("users")
+      .select("plan, email, scores, diagnosis_completed_at")
+      .eq("id", existing.id)
+      .maybeSingle();
+    if (
+      isMissingCoreKpiColumn(
+        preDiagnosisResult.error,
+        "diagnosis_completed_at",
+      )
+    ) {
+      const legacyResult = await supabaseAdmin
+        .from("users")
+        .select("plan, email, scores")
+        .eq("id", existing.id)
+        .maybeSingle();
+      if (legacyResult.error) {
+        console.warn(
+          "[api/diagnosis] pre-diagnosis legacy lookup failed:",
+          legacyResult.error.message,
+        );
+      } else if (legacyResult.data) {
+        preDiagnosisUser = {
+          ...(legacyResult.data as Omit<
+            PreDiagnosisUserRow,
+            "diagnosis_completed_at"
+          >),
+          diagnosis_completed_at: null,
+        };
+      }
+    } else if (preDiagnosisResult.error) {
+      console.warn(
+        "[api/diagnosis] pre-diagnosis lookup failed:",
+        preDiagnosisResult.error.message,
+      );
+    } else {
+      preDiagnosisUser =
+        (preDiagnosisResult.data as PreDiagnosisUserRow | null) ?? null;
+    }
+    const postDiagnosisReportEmail =
+      preDiagnosisUser?.plan === "full" &&
+      isUndiagnosedPlaceholderUser(preDiagnosisUser)
+        ? normalizeDeliveryEmail(preDiagnosisUser.email)
+        : null;
+
     // Day 12-Polish-B: displayName が指定されていれば再診断時も上書き
     // (基本情報ステップでニックネーム変更を許容)。未指定 (null) なら触らない。
     const updatePayload: {
@@ -242,6 +303,26 @@ export async function POST(request: NextRequest) {
         { error: "Unable to save diagnosis" },
         { status: 500 },
       );
+    }
+
+    if (postDiagnosisReportEmail) {
+      try {
+        await sendDetailedReportEmail({
+          to: postDiagnosisReportEmail,
+          ownerToken: savedUser.owner_token,
+          ownerName: normalizedDisplayName ?? existing.display_name,
+          locale,
+        });
+        console.log("[api/diagnosis] post-diagnosis detailed report email sent", {
+          user_id: savedUser.id,
+          locale,
+        });
+      } catch (err) {
+        console.error(
+          "[api/diagnosis] post-diagnosis detailed report email failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
     }
 
     return NextResponse.json({

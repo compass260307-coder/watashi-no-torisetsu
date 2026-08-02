@@ -193,7 +193,7 @@ function koScoreNote(scores: Scores, dimension: BigFiveDimension): string {
   return `당신의 ${AXIS_NAME[dimension]}은 ${percent(scores, dimension)}%예요.`;
 }
 
-function buildKoLoveFailure(scores: Scores): string {
+function buildKoLoveEndure(scores: Scores): string {
   const paragraph = (dimension: "N" | "A" | "E" | "C") =>
     KO_LOVE_FAIL_PROSE[dimension][highLow(scores, dimension)];
   return [
@@ -242,11 +242,11 @@ export function buildKoDeepDiveSections(
             },
         unlocked
           ? {
-              heading: "연애가 잘 풀리지 않을 때의 특징",
-              body: buildKoLoveFailure(scores),
+              heading: "연인이 조용히 참고 있는 것",
+              body: buildKoLoveEndure(scores),
             }
           : {
-              heading: "연애가 잘 풀리지 않을 때의 특징",
+              heading: "연인이 조용히 참고 있는 것",
               body: "",
               locked: true,
             },
@@ -268,11 +268,11 @@ export function buildKoDeepDiveSections(
         },
     unlocked
       ? {
-          heading: "연애가 잘 풀리지 않을 때의 패턴",
-          body: `${direction(scores, "N") === "high" ? "작은 변화에 의미를 너무 많이 붙이며 혼자 불안을 키울 수 있어요." : "상대의 작은 불안 신호를 대수롭지 않게 넘겨 뒤늦게 알아차릴 수 있어요."}\n\n${direction(scores, "A") === "high" ? "맞춰 주기만 하다가 내 마음을 늦게 꺼내면 조용한 오해가 쌓여요." : "정확한 말이 필요한 순간에도 상대는 먼저 공감을 원할 수 있어요."}\n\n이것은 연애에 서툴다는 뜻이 아니라 자주 걸리는 돌의 위치를 알게 되었다는 뜻이에요. 위치를 알면 같은 방식으로 넘어지지 않을 수 있어요.`,
+          heading: "연인이 조용히 참고 있는 것",
+          body: buildKoLoveEndure(scores),
         }
       : {
-          heading: "연애가 잘 풀리지 않을 때의 패턴",
+          heading: "연인이 조용히 참고 있는 것",
           body: "",
           locked: true,
         },
@@ -427,14 +427,6 @@ function buildKoRelations(scores: Scores): RelationView[] {
       relation: "상사·선배에게",
       body: KO_RELATION_RULES.BOSS[quad(scores, "C", "A")],
     },
-    {
-      relation: "후배에게",
-      body: KO_RELATION_RULES.JUNIOR[quad(scores, "A", "E")],
-    },
-    {
-      relation: "처음 만난 사람에게",
-      body: KO_RELATION_RULES.FIRST[quad(scores, "E", "O")],
-    },
   ];
 }
 
@@ -482,14 +474,6 @@ const DREAMER_RELATIONS: RelationView[] = [
   {
     relation: "상사·선배에게",
     body: "안심하고 일을 맡길 수 있고 배려까지 할 줄 아는 모범적인 사람으로 보여요. 다만 편리한 사람처럼 계속 의지받기 쉬우니, 가끔은 거절하는 법을 익혀도 괜찮아요.",
-  },
-  {
-    relation: "후배에게",
-    body: "조용하지만 자신을 제대로 지켜봐 주는 선배로 보여요. 말수는 많지 않아도 어려울 때 가장 먼저 도와주는 사람이라는 걸 후배들은 알고 있어요.",
-  },
-  {
-    relation: "처음 만난 사람에게",
-    body: "첫인상은 차분하고 조금은 신비로운 사람으로 보여요. 금방 가까워지지는 않기 때문에, 오히려 친해진 사람은 특별한 관계가 되었다고 느껴요.",
   },
 ];
 

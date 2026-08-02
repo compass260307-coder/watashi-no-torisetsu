@@ -48,7 +48,7 @@ function evaluateLiteral(rawNode) {
   throw new Error(`Unsupported literal: ${node.getText().slice(0, 120)}`);
 }
 
-function readExport(file, exportName) {
+function readVariable(file, variableName) {
   const absolute = path.join(ROOT, file);
   const source = ts.createSourceFile(
     absolute,
@@ -62,14 +62,14 @@ function readExport(file, exportName) {
     for (const declaration of statement.declarationList.declarations) {
       if (
         ts.isIdentifier(declaration.name) &&
-        declaration.name.text === exportName &&
+        declaration.name.text === variableName &&
         declaration.initializer
       ) {
         return evaluateLiteral(declaration.initializer);
       }
     }
   }
-  throw new Error(`${exportName} was not found in ${file}`);
+  throw new Error(`${variableName} was not found in ${file}`);
 }
 
 function compareKeys(label, japanese, korean) {
@@ -139,26 +139,26 @@ function inspectPair(label, japanese, korean) {
 const mappings = [
   [
     "self",
-    readExport("src/lib/thirty-two-content/self-result-32.ts", "selfResultContent32"),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_SELF_RESULT_CONTENT_32"),
+    readVariable("src/lib/thirty-two-content/self-result-32.ts", "selfResultContent32"),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_SELF_RESULT_CONTENT_32"),
   ],
   [
     "love",
-    readExport("src/lib/love-by-type-32.ts", "LOVE_BY_TYPE_32"),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_LOVE_BY_TYPE_32"),
+    readVariable("src/lib/love-by-type-32.ts", "LOVE_BY_TYPE_32"),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_LOVE_BY_TYPE_32"),
   ],
   [
     "career",
-    readExport("src/lib/career-by-type-32.ts", "CAREER_BY_TYPE_32"),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_CAREER_BY_TYPE_32"),
+    readVariable("src/lib/career-by-type-32.ts", "CAREER_BY_TYPE_32"),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_CAREER_BY_TYPE_32"),
   ],
   [
     "perceived",
-    readExport(
+    readVariable(
       "src/lib/thirty-two-content/perceived-by-type-32.ts",
       "perceivedByType32",
     ),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_PERCEIVED_BY_TYPE_32"),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_PERCEIVED_BY_TYPE_32"),
   ],
 ];
 
@@ -168,39 +168,70 @@ for (const [label, japanese, korean] of mappings) {
 }
 
 const shared = [
-  ["loveFailProse", "src/lib/deep-dive-resolve.ts", "LOVE_FAIL_PROSE", "KO_LOVE_FAIL_PROSE"],
-  ["likableProse", "src/lib/part-two-resolve.ts", "LIKABLE_PROSE", "KO_LIKABLE_PROSE"],
+  [
+    "loveEndureProse",
+    "src/lib/deep-dive-resolve.ts",
+    "LOVE_ENDURE_PROSE",
+    "KO_LOVE_FAIL_PROSE",
+  ],
+  [
+    "loveEndureClosing",
+    "src/lib/deep-dive-resolve.ts",
+    "LOVE_ENDURE_CLOSING",
+    "KO_LOVE_FAIL_CLOSING",
+  ],
+  [
+    "likableProse",
+    "src/lib/part-two-resolve.ts",
+    "LIKABLE_PROSE",
+    "KO_LIKABLE_PROSE",
+  ],
+  [
+    "likableClosing",
+    "src/lib/part-two-resolve.ts",
+    "LIKABLE_CLOSING",
+    "KO_LIKABLE_CLOSING",
+  ],
 ];
 for (const [label, jpFile, jpExport, koExport] of shared) {
   inspectPair(
     label,
-    readExport(jpFile, jpExport),
-    readExport("src/i18n/ko/me-content-32.ts", koExport),
+    readVariable(jpFile, jpExport),
+    readVariable("src/i18n/ko/me-content-32.ts", koExport),
   );
 }
 
-for (const name of ["FRIEND", "LOVER", "FAMILY", "BOSS", "JUNIOR", "FIRST"]) {
+for (const name of ["FRIEND", "LOVER", "FAMILY", "BOSS"]) {
   inspectPair(
     `relation.${name}`,
-    readExport("src/lib/part-two-resolve.ts", `RELATION_${name}`),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_RELATION_RULES")[name],
+    readVariable("src/lib/part-two-resolve.ts", `RELATION_${name}`),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_RELATION_RULES")[name],
   );
 }
 for (const name of ["FRIEND", "LOVER", "CAREER", "FAMILY"]) {
   inspectPair(
     `scene.${name}`,
-    readExport("src/lib/part-two-resolve.ts", `SCENE_${name}`),
-    readExport("src/i18n/ko/me-content-32.ts", "KO_SCENE_RULES")[name],
+    readVariable("src/lib/part-two-resolve.ts", `SCENE_${name}`),
+    readVariable("src/i18n/ko/me-content-32.ts", "KO_SCENE_RULES")[name],
   );
 }
 
 lengthOutliers.sort((left, right) => left.ratio - right.ratio);
+const lengthOutlierLimit = Number.parseInt(
+  process.env.KO_VERIFY_LENGTH_OUTLIER_LIMIT ?? "120",
+  10,
+);
 console.log(
   JSON.stringify(
     {
       problems,
       lengthOutlierCount: lengthOutliers.length,
-      lengthOutliers: lengthOutliers.slice(0, 120),
+      lengthOutliers: lengthOutliers.slice(
+        0,
+        Number.isFinite(lengthOutlierLimit) && lengthOutlierLimit >= 0
+          ? lengthOutlierLimit
+          : 120,
+      ),
     },
     null,
     2,

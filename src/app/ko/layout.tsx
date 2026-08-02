@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
+import { DocumentLanguage } from "@/components/DocumentLanguage";
 
 const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
@@ -9,6 +10,10 @@ const notoSansKR = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
+  title: {
+    default: "나의 사용설명서",
+    template: "%s｜나의 사용설명서",
+  },
   applicationName: "나의 사용설명서",
   authors: [{ name: "나의 사용설명서 운영팀" }],
   creator: "나의 사용설명서 운영팀",
@@ -20,6 +25,7 @@ export default function KoreanLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div lang="ko" className={`${notoSansKR.className} flex min-h-dvh flex-1 flex-col`}>
+      <DocumentLanguage lang="ko" />
       {children}
     </div>
   );

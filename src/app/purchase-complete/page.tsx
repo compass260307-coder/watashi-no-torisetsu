@@ -65,7 +65,7 @@ export default async function PurchaseCompletePage({ searchParams }: PageProps) 
         checkoutSessionId={session.id}
         claimToken={claimToken}
       />
-      <PurchaseCompleteView />
+      <PurchaseCompleteView isGuestPurchase={session.guest} />
     </>
   );
 }

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "利用規約",
   description:
     "ワタシのトリセツの利用規約。サービスをご利用いただく前に必ずお読みください。",
-  alternates: { canonical: "/terms" },
+  alternates: localizedAlternates("ja", "/terms", "/ko/terms"),
   robots: { index: true, follow: true },
 };
 

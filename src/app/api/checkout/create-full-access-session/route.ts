@@ -102,9 +102,9 @@ const CHECKOUT_COPY: Record<
   ko: {
     couponId: "full-access-anchor-off8000-krw",
     couponName: "출시 기념",
-    productName: "나의 사용설명서 성격 리포트 완전판",
+    productName: "나의 사용설명서 완전판 패키지",
     productDescription:
-      "연애·커리어 심층 분석, 주변에서 보는 나의 인상, 친구별 시선과 차이, 상황별 궁합과 주의점까지 웹에서 모두 열어 드려요. 한 번만 결제하면 언제든 다시 볼 수 있어요.",
+      "자기 진단 결과 전체 해제, 16페이지 이상의 자기 분석 PDF, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번 다시 만들 수 있는 친구 진단 PDF, 연애 파트너 궁합 분석까지 모두 포함한 완전판 패키지예요. 1회 결제.",
     submitMessage:
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
@@ -359,9 +359,9 @@ export async function POST(request: NextRequest) {
   const ownerToken = (buyer?.owner_token ?? "").trim();
   const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
+  const aishoPath = `${localePrefix}/aisho`;
   // /aisho からの購入 (return_to='aisho') は、閲覧中のペア (?a=&b=) ごと /aisho に戻す。
   // クエリ値は実在の32タイプIDのみ許可 (success/cancel URL への注入を防ぐ)。
-  // /aisho は言語共通ページのため localePrefix は付けない (/ko/aisho は未実装)。
   const aishoPairQuery = (() => {
     if (returnTo !== "aisho") return null;
     const a = body.aisho_a;
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
   })();
   const successPath =
     returnTo === "aisho"
-      ? `/aisho?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
+      ? `${aishoPath}?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
       : returnTo === "tako"
         ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
         : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
@@ -388,7 +388,7 @@ export async function POST(request: NextRequest) {
   // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
   const cancelPath =
     returnTo === "aisho"
-      ? `/aisho${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
+      ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
       : ownerToken
         ? `${localePrefix}/${returnTo}/${ownerToken}`
         : localePrefix || "/";

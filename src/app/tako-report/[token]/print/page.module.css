@@ -8,6 +8,11 @@
   color: var(--ink);
 }
 
+.reportRootKo {
+  font-family: var(--font-noto-sans-kr), sans-serif;
+  word-break: keep-all;
+}
+
 .screenToolbar {
   display: flex;
   align-items: center;
@@ -246,6 +251,7 @@
   justify-content: space-between;
   gap: 6mm;
   margin-bottom: 4mm;
+  min-width: 0;
 }
 
 .sectionHeadingRow h3 {
@@ -255,8 +261,12 @@
 
 .sectionHeadingRow > span {
   flex: 0 0 auto;
+  max-width: 62mm;
   color: #8a8495;
   font-size: 9px;
+  line-height: 1.45;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .scoreList {
@@ -274,12 +284,14 @@
   justify-content: space-between;
   gap: 5mm;
   margin-bottom: 1.5mm;
+  min-width: 0;
 }
 
 .scoreCopy > div {
   display: flex;
   align-items: baseline;
   gap: 2.5mm;
+  min-width: 0;
 }
 
 .scoreCopy strong {
@@ -287,8 +299,18 @@
 }
 
 .scoreCopy > span {
+  max-width: 58mm;
   color: #746e7c;
   font-size: 9.5px;
+  line-height: 1.45;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.reportRootKo .sectionHeadingRow > span,
+.reportRootKo .scoreCopy > span {
+  display: none;
+  word-break: normal;
 }
 
 .scoreKey {

@@ -4,6 +4,7 @@
 // 実本文はサーバで解決しない (フェイルクローズ)。ここに来るのはデコイだけ。
 
 import { PaywallScrollButton } from "./PaywallScrollButton";
+import type { ResultLocale } from "@/i18n/result";
 
 // ぼかしの背後に敷くデコイ (実データは使わない)。ぼかし前提なので中身は汎用文。
 const DECOY_ITEMS = [
@@ -15,16 +16,30 @@ const DECOY_ITEMS = [
   { title: "世界が広がる面白さ", body: "新しい遊びも話題も、次々見つけてくる人。" },
 ] as const;
 
+const KO_DECOY_ITEMS = [
+  { title: "배려의 달인", body: "사소한 도움도 주변 사람들은 제대로 알아보고 있어요." },
+  { title: "분위기를 밝히는 힘", body: "함께 있기만 해도 공기가 환해지고 그 시간이 기억에 남아요." },
+  { title: "약속을 지키는 성실함", body: "말한 것을 행동으로 옮기는 모습이 신뢰를 만들어요." },
+  { title: "흔들리지 않는 자기 기준", body: "쉽게 휩쓸리지 않는 태도가 든든하게 보여요." },
+  { title: "침착한 포용력", body: "무슨 일이 있어도 차분한 모습이 안심을 줘요." },
+  { title: "세상을 넓히는 재미", body: "새로운 놀이와 이야기를 계속 발견하는 사람이에요." },
+] as const;
+
 export function TakoLockedBlock({
   description,
   source = "tako_lock",
+  locale = "ja",
 }: {
   /** セクション別の説明文 (課金感を出さない一文。/me の解除カードと同トーン)。 */
   description: string;
   /** 課金ファネル計測の設置場所ID (paywall-source の allowlist に載せること)。
       セクション別に分けると ¥799 の導線別テーブルでカード単位の比較ができる。 */
   source?: string;
+  locale?: ResultLocale;
 }) {
+  const isKo = locale === "ko";
+  const decoyItems = isKo ? KO_DECOY_ITEMS : DECOY_ITEMS;
+
   return (
     <div className="relative">
       {/* デコイ (ぼかし・操作不可・コピー不可) */}
@@ -33,7 +48,7 @@ export function TakoLockedBlock({
         className="pointer-events-none select-none blur-[7px]"
       >
         <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
-          {DECOY_ITEMS.map((it) => (
+          {decoyItems.map((it) => (
             <div key={it.title}>
               <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
                 {it.title}
@@ -65,7 +80,7 @@ export function TakoLockedBlock({
             </svg>
           </span>
           <p className="mb-2 text-[16px] font-black text-[#2E2E5C]">
-            今すぐロックを解除
+            {isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
             {description}
@@ -76,7 +91,7 @@ export function TakoLockedBlock({
             targetId="tako-promo"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            今すぐアクセス
+            {isKo ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>

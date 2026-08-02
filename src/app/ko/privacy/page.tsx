@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import KoreanLegalDocument from "@/components/ko/KoreanLegalDocument";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: { absolute: "개인정보처리방침 | 나의 사용설명서" },
   description: "나의 사용설명서 한국어 서비스 개인정보처리방침입니다.",
-  alternates: { canonical: "/ko/privacy" },
-  robots: { index: false, follow: true },
+  alternates: localizedAlternates("ko", "/privacy", "/ko/privacy"),
+  robots: { index: true, follow: true },
 };
 
 export default function KoreanPrivacyPage() {

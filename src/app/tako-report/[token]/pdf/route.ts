@@ -54,17 +54,22 @@ async function launchBrowser() {
 
 export async function GET(req: Request, ctx: RouteContext) {
   const { token } = await ctx.params;
+  const requestUrl = new URL(req.url);
+  const isKo = requestUrl.searchParams.get("locale") === "ko";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
-  const rawPreview = new URL(req.url).searchParams.get("previewType") ?? "";
-  const previewQuery =
-    process.env.NODE_ENV !== "production" && /^[a-z-]+__[NR]$/.test(rawPreview)
-      ? `?previewType=${rawPreview}`
-      : "";
+  const rawPreview = requestUrl.searchParams.get("previewType") ?? "";
+  const isPreview =
+    process.env.NODE_ENV !== "production" &&
+    /^[a-z-]+__[NR]$/.test(rawPreview);
+  const printParams = new URLSearchParams();
+  if (isPreview) printParams.set("previewType", rawPreview);
+  if (isKo) printParams.set("locale", "ko");
+  const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未購入にはロック画面 PDF すら作らない) =====
-  if (!previewQuery) {
+  if (!isPreview) {
     const { data, error } = await supabaseAdmin
       .from("users")
       .select("id")
@@ -78,7 +83,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     }
     if (!(await hasTakoAccess(data.id))) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}/tako/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : ""}/tako/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -88,26 +93,29 @@ export async function GET(req: Request, ctx: RouteContext) {
   const origin = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : new URL(req.url).origin;
-  const pageUrl = `${origin}/tako-report/${encodeURIComponent(token)}/print${previewQuery}`;
+  const pageUrl = `${origin}/tako-report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
     browser = await launchBrowser();
     const page = await browser.newPage();
-    await page.goto(pageUrl, { waitUntil: "networkidle0", timeout: 45_000 });
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.evaluate(async () => {
-      await document.fonts.ready;
-      await Promise.all(
-        Array.from(document.images).map((image) => {
-          if (image.complete && image.naturalWidth > 0) {
-            return Promise.resolve();
-          }
-          return new Promise<void>((resolve) => {
-            image.addEventListener("load", () => resolve(), { once: true });
-            image.addEventListener("error", () => resolve(), { once: true });
-          });
-        }),
-      );
+      const timeout = (ms: number) =>
+        new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+      await Promise.race([document.fonts.ready.then(() => undefined), timeout(15_000)]);
+      await Promise.race([
+        Promise.all(
+          Array.from(document.images).map((image) => {
+            if (image.complete) return Promise.resolve();
+            return new Promise<void>((resolve) => {
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            });
+          }),
+        ).then(() => undefined),
+        timeout(15_000),
+      ]);
     });
     const pdf = await page.pdf({
       format: "A4",
@@ -120,8 +128,8 @@ export async function GET(req: Request, ctx: RouteContext) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition":
-          `attachment; filename="watashi-no-torisetsu-friend-report.pdf"; ` +
-          `filename*=UTF-8''${encodeURIComponent("友達診断 完全版レポート.pdf")}`,
+          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : "友達診断 完全版レポート.pdf")}`,
         "Cache-Control": "no-store",
       },
     });

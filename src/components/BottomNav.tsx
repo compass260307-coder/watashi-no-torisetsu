@@ -48,8 +48,12 @@ const INACTIVE = "#9BA3B4";
 const HIDE_ON_PREFIXES = [
   "/friend/",
   "/evaluate/",
+  "/ko/friend/",
+  "/ko/evaluate/",
   "/share/",
+  "/ko/share/",
   "/admin",
+  "/report/", // 自己診断PDF生成専用ページ
   "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
 ];
 
@@ -164,8 +168,12 @@ export function BottomNav() {
     pathname === "/dev/tako-attention-preview";
   // トリセツ(2)=/me/[token]、友達診断(4)=/tako/[token] を localStorage の
   // owner_token から解決。無ければトリセツ=/diagnosis、友達診断=/tako (未診断ガード)。
-  const [torisetsuUrl, setTorisetsuUrl] = useState("/diagnosis");
-  const [takoUrl, setTakoUrl] = useState("/tako");
+  const [torisetsuUrl, setTorisetsuUrl] = useState(() =>
+    isKorean ? "/ko/diagnosis" : "/diagnosis",
+  );
+  const [takoUrl, setTakoUrl] = useState(() =>
+    isKorean ? "/ko/tako" : "/tako",
+  );
   // 未診断 (token 無し) なら友達診断タブをロック表示にし、タップでポップアップを出す。
   //   初期値 true (=ロックなし) にすると診断済みユーザーに一瞬ロックが見えるのを避けられる
   //   一方、未診断ユーザーには hydration 後にバッジが現れるが、こちらの方が違和感が小さい。
@@ -194,7 +202,9 @@ export function BottomNav() {
     try {
       token = localStorage.getItem("torisetsu_owner_token");
       const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
-      const ownerTakoPath = token ? `/tako/${token}` : null;
+      const ownerTakoPath = token
+        ? `${koreanPath ? "/ko" : ""}/tako/${token}`
+        : null;
 
       if (token && pathname === ownerTakoPath) {
         // 到達計測と未確認解除は /tako ページ内の TakoViewTracker が担う。
@@ -239,7 +249,13 @@ export function BottomNav() {
         ? `${koreanPath ? "/ko" : ""}/me/${token}`
         : `${koreanPath ? "/ko" : ""}/diagnosis`,
     );
-    setTakoUrl(token ? `/tako/${token}` : "/tako");
+    setTakoUrl(
+      token
+        ? `${koreanPath ? "/ko" : ""}/tako/${token}`
+        : koreanPath
+          ? "/ko/tako"
+          : "/tako",
+    );
     setHasToken(Boolean(token));
     setOwnerToken(token);
     setShowTakoAttention(attentionPending);
@@ -324,9 +340,32 @@ export function BottomNav() {
         ? [
             { key: "home", label: "홈", href: "/ko", active: pathname === "/ko", Icon: HomeIcon },
             { key: "me", label: "사용설명서", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
-            { key: "friend", label: "친구 진단", href: "/ko", active: false, Icon: UsersIcon, disabled: true },
-            { key: "type", label: "유형", href: "/ko", active: false, Icon: GridIcon, disabled: true },
-            { key: "aisho", label: "궁합", href: "/ko", active: false, Icon: HeartPairIcon, disabled: true },
+            {
+              key: "friend",
+              label: "친구 진단",
+              href: takoUrl,
+              active:
+                pathname.startsWith("/ko/friend") ||
+                pathname.startsWith("/ko/tako"),
+              Icon: UsersIcon,
+            },
+            {
+              key: "type",
+              label: "유형",
+              href: "/ko/types",
+              active:
+                pathname.startsWith("/ko/types") ||
+                pathname.startsWith("/ko/preview"),
+              Icon: GridIcon,
+            },
+            {
+              key: "aisho",
+              label: "궁합",
+              href: "/ko/aisho",
+              active: pathname.startsWith("/ko/aisho"),
+              Icon: HeartPairIcon,
+              paywalled: !hasFull,
+            },
           ]
         : [
             // 診断完了後 (owner_token あり) は「トップ」を出さない (2026-07-22 指示)。
@@ -354,7 +393,15 @@ export function BottomNav() {
               Icon: UsersIcon,
               locked: !hasToken && !isTakoAttentionPreview,
             },
-            { key: "type", label: "タイプ", href: "/types", active: pathname.startsWith("/types"), Icon: GridIcon },
+            {
+              key: "type",
+              label: "タイプ",
+              href: "/types",
+              active:
+                pathname.startsWith("/types") ||
+                pathname.startsWith("/preview"),
+              Icon: GridIcon,
+            },
             // 運命の設計図 (独立商品)。タブ幅の都合でラベルは短縮。
             // 診断前は出さない (診断前=トップあり5タブ / 診断後=トップが消え運命が出る5タブ。
             // 常に5タブを維持する 2026-07-26 指示)。
@@ -532,15 +579,16 @@ export function BottomNav() {
       )}
       {/* 未購入でロック中の相性タブから開く課金カード (/aisho の PaywallModal と同じ見た目)。
           全ページ常駐の BottomNav 側で持つことで、どのページからでもその場で開ける。 */}
-      {!isKorean && aishoPaywallOpen && (
+      {aishoPaywallOpen && (
         <PaywallOverlay
           variant="aisho"
           imageSrc="/characters/scenes/unknown_love.webp"
-          imageAlt="相性"
+          imageAlt={isKorean ? "궁합" : "相性"}
           ownerToken={ownerToken ?? undefined}
           ctaSource="nav_aisho_locked"
           // 相性タブから買った人は相性 (/aisho) に戻す (2026-07-29)
           returnTo="aisho"
+          locale={isKorean ? "ko" : "ja"}
           onClose={closeAishoPaywall}
         />
       )}

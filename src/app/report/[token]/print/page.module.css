@@ -8,6 +8,11 @@
   color: var(--ink);
 }
 
+.reportRootKo {
+  font-family: var(--font-noto-sans-kr), sans-serif;
+  word-break: keep-all;
+}
+
 .screenToolbar {
   display: flex;
   align-items: center;

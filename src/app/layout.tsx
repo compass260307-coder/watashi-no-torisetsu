@@ -62,12 +62,16 @@ if(!a.s&&!a.c){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=dec
 if(a.s&&!localStorage.getItem(SK))localStorage.setItem(SK,a.s);
 if(a.c&&!localStorage.getItem(CK))localStorage.setItem(CK,a.c);
 }catch(e){}})();`;
+const DOCUMENT_LANGUAGE_SCRIPT = `(function(){try{
+document.documentElement.lang=window.location.pathname.indexOf('/ko')===0?'ko':'ja';
+}catch(e){}})();`;
 // 16Personalities の SERP を参考に、キーワード直球タイトル + 会話調ベネフィット
 // の説明文へ (2026-07-13)。サイト名は WebSite JSON-LD で別途表示されるため、
 // タイトルは「無料性格診断テスト」を先頭に置く。
 const SHARED_TITLE = "友達と作る無料性格診断テスト｜ワタシのトリセツ";
 const SHARED_DESCRIPTION =
   "OCEAN(ビッグファイブ)理論ベースの無料性格診断テスト。約3分で、16タイプ性格診断よりも細かい32タイプのキャラからあなたが見つかります。友達の回答で、自分では気づかない一面までわかる自分だけの取扱説明書が完成。";
+const NAVER_SITE_VERIFICATION = "1a6c30462dd160bccda48dddb946fcaaeba0047";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -161,9 +165,12 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
+      suppressHydrationWarning
       className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
     >
       <head>
+        <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
+        <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_MANAGER_SCRIPT }} />
       </head>
       <body

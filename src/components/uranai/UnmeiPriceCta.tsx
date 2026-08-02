@@ -42,29 +42,40 @@ export default function UnmeiPriceCta({
 
   useEffect(() => {
     if (hasFull) return;
+    let cancelled = false;
+    let ownerTokenTimer: number | null = null;
     let token = sessionOwnerToken;
     try {
       if (!token) token = localStorage.getItem(OWNER_TOKEN_KEY);
       if (token && localStorage.getItem(FULL_TOKEN_KEY) === token) {
-        setOwnerToken(token);
-        setHasFull(true);
-        return;
+        const cachedToken = token;
+        ownerTokenTimer = window.setTimeout(() => {
+          if (cancelled) return;
+          setOwnerToken(cachedToken);
+          setHasFull(true);
+        }, 0);
+        return () => {
+          cancelled = true;
+          if (ownerTokenTimer !== null) window.clearTimeout(ownerTokenTimer);
+        };
       }
     } catch {
       // localStorage 不可環境: 通常価格のまま
     }
     if (!token) return;
-    setOwnerToken(token);
-    let cancelled = false;
+    const resolvedToken = token;
+    ownerTokenTimer = window.setTimeout(() => {
+      if (!cancelled) setOwnerToken(resolvedToken);
+    }, 0);
     fetch(
-      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(token)}`,
+      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(resolvedToken)}`,
     )
       .then((r) => (r.ok ? r.json() : { full: false }))
       .then((d: { full?: boolean }) => {
         if (cancelled || !d?.full) return;
         setHasFull(true);
         try {
-          localStorage.setItem(FULL_TOKEN_KEY, token!);
+          localStorage.setItem(FULL_TOKEN_KEY, resolvedToken);
         } catch {
           // noop
         }
@@ -74,6 +85,7 @@ export default function UnmeiPriceCta({
       });
     return () => {
       cancelled = true;
+      if (ownerTokenTimer !== null) window.clearTimeout(ownerTokenTimer);
     };
   }, [hasFull, sessionOwnerToken]);
 

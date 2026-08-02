@@ -257,8 +257,6 @@ const KO_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "연인에게", color: "#F48BAE" },
   { label: "가족에게", color: "#4CAF7D" },
   { label: "상사·선배에게", color: "#F2C14E" },
-  { label: "후배에게", color: "#9B8CF2" },
-  { label: "처음 만난 사람에게", color: "#F28C5B" },
 ];
 
 function RelationsLocked({ locale }: { locale: ResultLocale }) {
@@ -371,7 +369,9 @@ export function PartTwoSections({
           <SectionHeading
             title={
               isKorean
-                ? "부러운 나만의 무기"
+                ? subjectName
+                  ? `부러운 ${subjectName}님만의 무기`
+                  : "부러운 나만의 무기"
                 : subjectName
                   ? `羨ましい${subjectName}さんの武器`
                   : "羨ましいあなたの武器"

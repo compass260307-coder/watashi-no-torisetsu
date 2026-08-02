@@ -9,7 +9,14 @@ const BASE_URL = "https://www.watashi-torisetsu.com";
 export const metadata: Metadata = {
   title: DIAGNOSIS_SEO_TITLE,
   description: DIAGNOSIS_SEO_DESCRIPTION,
-  alternates: { canonical: "/diagnosis" },
+  alternates: {
+    canonical: "/diagnosis",
+    languages: {
+      "ja-JP": `${BASE_URL}/diagnosis`,
+      "ko-KR": `${BASE_URL}/ko/diagnosis`,
+      "x-default": `${BASE_URL}/diagnosis`,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "ja_JP",

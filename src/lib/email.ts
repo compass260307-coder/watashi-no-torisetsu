@@ -192,9 +192,9 @@ interface SendDetailedReportArgs {
  * 詳細レポートお届けメール (フルアクセス購入特典)。
  *
  * Stripe Webhook (checkout.session.completed / product=full_access) から送信。
- * 日本語版のボタンは 2 つ、韓国語版は Web 版への導線だけを表示:
+ * 日本語版・韓国語版ともボタンは 2 つ:
  *   - 「解放された自己診断結果を見る」= /me/[ownerToken] または /ko/me/[ownerToken]
- *   - 日本語版のみ「完全版 PDF をダウンロード」= /report/[ownerToken]/pdf
+ *   - 「完全版 PDF をダウンロード」= /report/[ownerToken]/pdf
  * どちらも token ベースの永続 URL。ゲスト決済 (診断前) でも診断完了後に
  * 同じリンクが本人のタイプの内容になる。
  * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
@@ -211,7 +211,7 @@ export async function sendDetailedReportEmail(
   const greetingName = (args.ownerName ?? "").trim();
   const token = encodeURIComponent(args.ownerToken);
   const meUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/me/${token}`;
-  const pdfUrl = `${SITE_URL}/report/${token}/pdf`;
+  const pdfUrl = `${SITE_URL}/report/${token}/pdf${locale === "ko" ? "?locale=ko" : ""}`;
   const subject =
     locale === "ko"
       ? `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
@@ -632,18 +632,19 @@ function renderDetailedReportHtmlKo(
         <p style="margin:0 0 22px;text-align:center;font-size:15px;font-weight:800;line-height:1.6;letter-spacing:0.08em;color:#2E2E5C;">${KO_SITE_NAME}</p>
         <p style="margin:0 0 36px;text-align:center;"><img src="${SITE_URL}/checkout-fullaccess.png" width="360" alt="완전판 리포트" style="display:inline-block;width:360px;max-width:100%;height:auto;border:0;border-radius:14px;" /></p>
         <p style="margin:0 0 20px;font-size:15px;line-height:1.8;color:#2E2E5C;">${greeting}</p>
-        <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">구매해 주셔서 감사합니다.<br />‘나의 사용설명서 성격 리포트 완전판’이 준비되었어요. 아래 버튼에서 언제든 다시 확인할 수 있어요.</p>
-        <p style="margin:0 0 18px;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">잠금 해제된 상세 결과 보기&nbsp; &#8594;</a></p>
-        <p style="margin:0 0 30px;font-size:15px;line-height:1.85;color:#5A5A6E;">구매한 상세 결과는 웹에서 언제든 다시 확인할 수 있어요.</p>
+        <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">구매해 주셔서 감사합니다.<br />‘나의 사용설명서 완전판 패키지’가 준비되었어요. 아래 버튼에서 언제든 다시 확인할 수 있어요.</p>
+        <p style="margin:0 0 14px;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">잠금 해제된 상세 결과 보기&nbsp; &#8594;</a></p>
+        <p style="margin:0 0 18px;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">자기 분석 완전판 PDF 다운로드&nbsp; &#8594;</a></p>
+        <p style="margin:0 0 30px;font-size:15px;line-height:1.85;color:#5A5A6E;">상세 결과는 웹에서 확인하고, 완전판 리포트는 PDF로 저장하거나 인쇄할 수 있어요. 두 링크 모두 언제든 다시 이용할 수 있어요.</p>
         <div style="margin:0 0 30px;padding:26px 28px;background:#F3F2FF;border-radius:14px;">
           <h2 style="margin:0 0 12px;font-size:21px;font-weight:800;line-height:1.5;color:#2E2E5C;">구매 내용</h2>
-          <p style="margin:0 0 6px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">나의 사용설명서 성격 리포트 완전판</p>
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">나의 사용설명서 완전판 패키지</p>
           <p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:#5A5A6E;">₩4,900 · 1회 결제</p>
-          <p style="margin:0;font-size:15px;line-height:1.9;color:#5A5A6E;">✓ 연애와 커리어 심층 분석<br />✓ 주변에서 보는 나의 인상<br />✓ 상황별 관계와 주의점</p>
+          <p style="margin:0;font-size:15px;line-height:1.9;color:#5A5A6E;">✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석</p>
         </div>
         <p style="margin:0 0 18px;font-size:15px;line-height:1.85;color:#7A7A92;">결제할 때 아직 진단을 완료하지 않았다면 진단을 마친 뒤 이 메일의 링크를 다시 열어 주세요. 내 유형에 맞는 내용으로 표시됩니다.</p>
         <p style="margin:0 0 18px;font-size:13px;line-height:1.85;color:#7A7A92;"><a href="${SITE_URL}/ko/terms" style="color:#5B5BEF;text-decoration:underline;">이용약관</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/privacy" style="color:#5B5BEF;text-decoration:underline;">개인정보처리방침</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/legal/commerce" style="color:#5B5BEF;text-decoration:underline;">판매 및 환불 안내</a></p>
-        <p style="margin:0 0 28px;font-size:15px;line-height:1.85;color:#5A5A6E;">결과 링크 또는 환불과 관련해 도움이 필요하면 <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;text-decoration:underline;">support@watashi-torisetsu.com</a>으로 연락해 주세요.</p>
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.85;color:#5A5A6E;">결과 링크, PDF 또는 환불과 관련해 도움이 필요하면 <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;text-decoration:underline;">support@watashi-torisetsu.com</a>으로 연락해 주세요.</p>
         <p style="margin:0;font-size:15px;line-height:1.85;color:#5A5A6E;">나만의 사용설명서를 천천히 확인해 보세요.<br /><strong style="color:#2E2E5C;">나의 사용설명서 운영팀</strong></p>
       </td></tr></table>
       <p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#8A8AA3;">&copy; ${KO_SITE_NAME}</p>
@@ -662,19 +663,25 @@ function renderDetailedReportTextKo(
     greeting,
     "",
     "구매해 주셔서 감사합니다.",
-    "‘나의 사용설명서 성격 리포트 완전판’이 준비되었어요.",
+    "‘나의 사용설명서 완전판 패키지’가 준비되었어요.",
     "",
     "■ 잠금 해제된 상세 결과 보기",
     args.meUrl,
     "",
-    "구매한 상세 결과는 웹에서 언제든 다시 확인할 수 있어요.",
+    "■ 자기 분석 완전판 PDF 다운로드",
+    args.pdfUrl,
+    "",
+    "상세 결과는 웹에서 확인하고, 완전판 리포트는 PDF로 저장하거나 인쇄할 수 있어요.",
+    "두 링크 모두 언제든 다시 이용할 수 있어요.",
     "",
     "【구매 내용】",
-    "나의 사용설명서 성격 리포트 완전판",
+    "나의 사용설명서 완전판 패키지",
     "₩4,900 · 1회 결제",
-    "・연애와 커리어 심층 분석",
-    "・주변에서 보는 나의 인상",
-    "・상황별 관계와 주의점",
+    "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
+    "・16페이지 이상의 자기 분석 완전판 PDF",
+    "・두 번째 친구부터의 친구 진단 결과 전체 해제",
+    "・친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF",
+    "・연애 파트너 궁합 분석",
     "",
     "결제할 때 아직 진단을 완료하지 않았다면 진단을 마친 뒤 링크를 다시 열어 주세요.",
     "",

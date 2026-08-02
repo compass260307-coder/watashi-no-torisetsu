@@ -6,9 +6,8 @@
 //   いない (moshimo-resolve がフェイルクローズ)。解放済みは無料シーンと同じ組版。
 //
 // サーバコンポーネント (状態なし)。CTA は PaywallScrollButton (client) に委譲。
-// 日本語のみ (呼び出し側で locale を見て出し分ける)。
-
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import type { ResultLocale } from "@/i18n/result";
 import type { MoshimoScene } from "@/lib/moshimo-resolve";
 
 // 鍵アイコン (SceneCautionTeaser / DeepDiveSections と同一形状)。
@@ -50,7 +49,14 @@ function BubbleGlyph({ size = 18 }: { size?: number }) {
   );
 }
 
-export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
+export function MoshimoScenes({
+  scenes,
+  locale = "ja",
+}: {
+  scenes: MoshimoScene[];
+  locale?: ResultLocale;
+}) {
+  const isKorean = locale === "ko";
   const open = scenes.filter((s) => !s.locked);
   const locked = scenes.filter((s) => s.locked);
   return (
@@ -106,18 +112,20 @@ export function MoshimoScenes({ scenes }: { scenes: MoshimoScene[] }) {
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              今すぐロックを解除
+              {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-              完全版のレポートを入手して、
+              {isKorean ? "완전판 리포트를 열고," : "完全版のレポートを入手して、"}
               <br className="md:hidden" />
-              もしもの時のアナタをぜんぶ見てみましょう。
+              {isKorean
+                ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."
+                : "もしもの時のアナタをぜんぶ見てみましょう。"}
             </p>
             <PaywallScrollButton
               source="moshimo_card"
               className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              今すぐアクセス
+              {isKorean ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>
           </div>
         </div>

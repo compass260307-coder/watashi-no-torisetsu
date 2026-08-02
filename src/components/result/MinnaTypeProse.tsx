@@ -15,6 +15,8 @@ import {
   thirtyTwoImagePath,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
+import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
+import type { ResultLocale } from "@/i18n/result";
 
 const PARA_CLASS =
   "body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0";
@@ -44,6 +46,7 @@ export function MinnaTypeProse({
   viewer,
   midSlot,
   afterBodySlot,
+  locale = "ja",
 }: {
   type32: ThirtyTwoTypeId;
   /** 「誰から見たか」の表示名 (例 "ゆかさん")。省略時は総称 (友達/みんな)。 */
@@ -52,16 +55,22 @@ export function MinnaTypeProse({
   midSlot?: ReactNode;
   /** 本文の締めの後・「クセ」見出しの前に差し込むブロック (例: ②恋愛傾向)。 */
   afterBodySlot?: ReactNode;
+  locale?: ResultLocale;
 }) {
+  const isKo = locale === "ko";
   // 取扱説明書 + 取扱注意ポイント の2セクションだけ使う (相性は他己文脈から外す)。
-  const sections = selfContentFor(type32).slice(0, 2);
+  const sections = (
+    isKo ? (KO_SELF_RESULT_CONTENT_32[type32] ?? []) : selfContentFor(type32)
+  ).slice(0, 2);
   if (sections.length === 0) return null;
-  const who = viewer ?? "友達";
+  const who = viewer ?? (isKo ? "친구" : "友達");
 
   // 取扱説明書: 冒頭を「◯◯さんから見たアナタは、〜」へ変換し、友達視点の締めを添える。
   const [manual] = sections;
   const manualParas = manual.body.split("\n\n");
-  if (manualParas[0]?.startsWith("アナタ")) {
+  if (isKo && manualParas[0]?.startsWith("당신")) {
+    manualParas[0] = `${who}이 보는 ${manualParas[0]}`;
+  } else if (manualParas[0]?.startsWith("アナタ")) {
     manualParas[0] = `${who}から見た${manualParas[0]}`;
   }
 
@@ -74,15 +83,24 @@ export function MinnaTypeProse({
   const reopenIdx = imageAfter + 1;
   if (viewer && reopenIdx < manualParas.length) {
     let t = manualParas[reopenIdx];
-    for (const conn of ["そして、", "そして", "しかも", "さらに"]) {
+    const connectors = isKo
+      ? ["그리고 ", "그리고", "게다가 ", "게다가", "더욱이 "]
+      : ["そして、", "そして", "しかも", "さらに"];
+    for (const conn of connectors) {
       if (t.startsWith(conn)) {
         t = t.slice(conn.length);
         break;
       }
     }
-    manualParas[reopenIdx] = t.startsWith("アナタは")
-      ? `${who}から見たアナタは${t.slice("アナタは".length)}`
-      : `${who}から見ると、${t}`;
+    if (isKo) {
+      manualParas[reopenIdx] = t.startsWith("당신")
+        ? `${who}이 보는 ${t}`
+        : `${who}이 보기에는 ${t}`;
+    } else {
+      manualParas[reopenIdx] = t.startsWith("アナタは")
+        ? `${who}から見たアナタは${t.slice("アナタは".length)}`
+        : `${who}から見ると、${t}`;
+    }
   }
 
   return (

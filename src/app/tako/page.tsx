@@ -5,9 +5,11 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "友達診断",
+  alternates: localizedAlternates("ja", "/tako", "/ko/tako"),
   robots: { index: false, follow: false },
 };
 

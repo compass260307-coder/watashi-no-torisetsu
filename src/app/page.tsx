@@ -20,7 +20,14 @@ const DIAGNOSED_COUNT = 50000;
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  alternates: { canonical: BASE_URL },
+  alternates: {
+    canonical: BASE_URL,
+    languages: {
+      "ja-JP": BASE_URL,
+      "ko-KR": `${BASE_URL}/ko`,
+      "x-default": BASE_URL,
+    },
+  },
 };
 
 // 構造化データ: WebApplication (既存) に加え、WebSite / Organization を

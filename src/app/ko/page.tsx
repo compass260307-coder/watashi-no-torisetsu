@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopHero from "@/components/ko/top/KoTopHero";
 import KoTopStats from "@/components/ko/top/KoTopStats";
 import { KoTopViewTracker } from "@/components/ko/top/KoTopAnalytics";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import { getSession } from "@/lib/session";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_URL = `${BASE_URL}/ko`;
 const TITLE = "친구와 함께 만드는 무료 성격 진단 | 나의 사용설명서";
 const DESCRIPTION =
   "Big Five 이론을 바탕으로 한 무료 성격 진단이에요. 50문항으로 32가지 캐릭터 유형 중 나와 닮은 유형을 찾고, 친구의 답변으로 나도 몰랐던 모습을 발견해 보세요.";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -29,6 +33,7 @@ export const metadata: Metadata = {
     languages: {
       "ja-JP": BASE_URL,
       "ko-KR": KO_URL,
+      "x-default": BASE_URL,
     },
   },
   openGraph: {
@@ -54,8 +59,6 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/characters/keyvisual.webp"],
   },
-  // 診断・規約・プライバシーまで揃う前の段階公開なので検索にはまだ出さない。
-  robots: { index: false, follow: false },
 };
 
 const jsonLd = {
@@ -78,7 +81,20 @@ const jsonLd = {
   },
 };
 
-export default function KoreanHomePage() {
+export default async function KoreanHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stay?: string }>;
+}) {
+  const { stay } = await searchParams;
+
+  if (stay !== "1") {
+    const session = await getSession();
+    if (session?.owner_token) {
+      redirect(`/ko/me/${encodeURIComponent(session.owner_token)}`);
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col">
       <script

@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import KoreanLegalDocument from "@/components/ko/KoreanLegalDocument";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: { absolute: "판매 및 환불 안내 | 나의 사용설명서" },
   description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
-  alternates: { canonical: "/ko/legal/commerce" },
-  robots: { index: false, follow: true },
+  alternates: localizedAlternates(
+    "ko",
+    "/legal/commerce",
+    "/ko/legal/commerce",
+  ),
+  robots: { index: true, follow: true },
 };
 
 export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
       title="판매 및 환불 안내"
-      lastUpdated="2026년 7월 18일"
+      lastUpdated="2026년 7월 30일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -40,17 +45,26 @@ export default function KoreanCommercePage() {
 
       <h2>상품명과 판매 가격</h2>
       <ul>
-        <li>나의 사용설명서 성격 리포트 완전판</li>
+        <li>나의 사용설명서 완전판 패키지</li>
         <li>₩4,900 · 1회 결제</li>
         <li>구독, 자동 갱신 또는 추가 결제 없음</li>
       </ul>
       <p>최종 결제 금액은 Stripe 결제 화면에서 다시 확인할 수 있습니다.</p>
 
       <h2>상품 내용</h2>
+      <ul>
+        <li>자기 진단 결과의 잠긴 8개 섹션 전체 해제</li>
+        <li>16페이지 이상의 자기 분석 완전판 PDF 리포트</li>
+        <li>두 번째 친구부터의 친구 진단 결과 전체 해제</li>
+        <li>
+          친구가 늘 때마다 내용을 업데이트해 여러 번 다운로드할 수 있는 친구 진단
+          완전판 PDF 리포트
+        </li>
+        <li>연애 파트너 궁합 분석</li>
+      </ul>
       <p>
-        성격 유형의 연애·커리어 심층 분석, 주변에서 보는 인상과 상황별 주의점 등
-        구매 화면에 표시된 상세 결과를 웹사이트에서 잠금 해제합니다. 한국어
-        상품에는 PDF 다운로드가 포함되지 않습니다.
+        웹 결과와 PDF는 구매 후에도 같은 결과 링크에서 반복해서 이용할 수 있습니다.
+        친구 진단 PDF는 답변한 친구가 한 명 이상 있을 때 생성됩니다.
       </p>
 
       <h2>판매 가격 외 비용</h2>
@@ -73,7 +87,9 @@ export default function KoreanCommercePage() {
           수단은 Stripe에서 결제 성공이 확인된 뒤 잠금 해제됩니다.
         </li>
         <li>
-          결제 완료 안내와 상세 결과 링크는 결제에 사용한 이메일 주소로 발송됩니다.
+          결제 완료 안내, 상세 결과 링크와 자기 분석 PDF 다운로드 링크는 결제에
+          사용한 이메일 주소로 발송됩니다. 친구 진단 PDF는 친구 진단 결과
+          페이지에서 다운로드할 수 있습니다.
         </li>
       </ol>
 
@@ -120,6 +136,7 @@ export default function KoreanCommercePage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
+      <p>최종 개정일: 2026년 7월 30일</p>
     </KoreanLegalDocument>
   );
 }

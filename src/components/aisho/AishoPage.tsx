@@ -1,0 +1,1329 @@
+// 相性診断ページ /aisho・/ko/aisho
+//
+// 32タイプから2つ選んで相性を見る、診断不要の回遊コンテンツ。
+// 完全静的 (Supabase/セッション/owner_token 不要)。?a=&b= のクエリ駆動でシェア可。
+// ロジックは lib/aisho-compat.ts (テーブル直引き・数値化なし)。
+// 配色はネイビー #2A3A5C 直書き・非アクティブ #9BA3B4・グループ色は THIRTY_TWO_GROUP_COLOR。
+// アイコンは依存ライブラリ不使用・インラインSVG (BottomNav.tsx 流儀)。
+
+"use client";
+
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { SmoothImage } from "@/components/ui/SmoothImage";
+import { useSearchParams } from "next/navigation";
+import {
+  allThirtyTwoTypeIds,
+  thirtyTwoEssence,
+  thirtyTwoImagePath,
+  thirtyTwoGroup,
+  type ThirtyTwoTypeId,
+} from "@/lib/thirty-two-types";
+import { type ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+import { compat, type AxisKey, type CompatRank } from "@/lib/aisho-compat";
+// ★PR4: ④シーン別の本文はサーバゲート (/api/aisho/scenes) 経由でのみ取得する。
+//   sceneLines() をクライアント import すると④本文が全部バンドルに載り漏れるため、
+//   value import は撤去し、型 (SceneKey) だけ type-only import する (バンドル無害)。
+import type { SceneKey } from "@/lib/aisho-scene-copy";
+import { scrollToPaywall } from "@/lib/scroll-to-paywall";
+import characterImages from "@/generated/character-images.json";
+import TopHeader from "@/components/top/TopHeader";
+import TopFooter from "@/components/top/TopFooter";
+import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import KoTopFooter from "@/components/ko/top/KoTopFooter";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { PaywallModal } from "@/components/result/PaywallModal";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import { KO_RESULT_TYPES } from "@/i18n/ko/result";
+import type { ResultLocale } from "@/i18n/result";
+
+// 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
+const NAVY = "#2E2E5C";
+const INACTIVE = "#9BA3B4";
+
+// 結果ヒーロー帯はランクに関わらず単一のピンクで統一する。
+// トーンは /types の性格タイプ背景と同じ淡いパステル (明度86%・彩度61%相当)。
+// 淡いので文字は白ではなくネイビー (HERO_TEXT) を乗せる。奥行き用に近い2値グラデ。
+const HERO_BAND: [string, string] = ["#FAD3E3", "#F8C9DC"];
+const HERO_TEXT = NAVY;
+
+// キャラ画像: /me と同じく背景除去済みの透過版 (characters/cut) を優先し、
+// 無いタイプのみ v3 原画へフォールバック (ヒーロー帯に自然に乗せるため)。
+function heroImagePath(id: ThirtyTwoTypeId): string {
+  const v3 = thirtyTwoImagePath(id);
+  const file = v3.split("/").pop() ?? "";
+  return characterImages.cut.includes(file) ? `/characters/cut/${file}` : v3;
+}
+
+// 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<rank>.png があれば使い、
+// 無ければ null (呼び出し側で文字バッジにフォールバック)。
+const RANK_IMAGES = new Set(characterImages.ranks as string[]);
+function rankImagePath(rank: CompatRank): string | null {
+  return RANK_IMAGES.has(rank) ? `/aisho/ranks/${rank}.webp` : null;
+}
+
+// カードのサムネ: 顔ズーム版 (characters/face・16P の顔アバター風) があれば優先。
+// 無いタイプは v3 原画のまま。face 版は丸抜き、v3 は角丸で表示する。
+function faceImagePath(id: ThirtyTwoTypeId): { src: string; isFace: boolean } {
+  const v3 = thirtyTwoImagePath(id);
+  const file = v3.split("/").pop() ?? "";
+  // 空配列だと JSON から never[] に推論されるため string[] に明示キャスト
+  return (characterImages.face as string[]).includes(file)
+    ? { src: `/characters/face/${file}`, isFace: true }
+    : { src: v3, isFace: false };
+}
+
+// グループ = base16 の E×O (実データ確認済み)。二軸ラベルは E(外向/内向)×O(感性/現実)。
+//   空 E−O＋=内向×感性 / 陸 E＋O−=外向×現実 / 海 E＋O＋=外向×感性 / 未知 E−O−=内向×現実
+// 表示順は /types の帯と同じ 海→陸→空→未知。
+const GROUP_META: {
+  key: ThirtyTwoGroup;
+}[] = [
+  { key: "sea" },
+  { key: "land" },
+  { key: "sky" },
+  { key: "unknown" },
+];
+
+// /types の帯と同じペール色 (v3 キャラ画像の背景色そのもの) と濃色見出し・斜めカット。
+const BAND_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#FDEFB4",
+  sea: "#BEF2F9",
+  land: "#D8F2C0",
+  unknown: "#E7DCFB",
+};
+// グループ名の文字色 = 各グループ色の濃いバージョン (/types の DARK_COLOR と同じ値。
+// 白だとペール帯とのコントラストが足りず読みにくい)。
+const DARK_COLOR: Record<ThirtyTwoGroup, string> = {
+  sky: "#8F6B14",
+  sea: "#1D6E86",
+  land: "#3F7A2E",
+  unknown: "#6C4EB8",
+};
+
+
+const ALL_IDS = allThirtyTwoTypeIds();
+const VALID = new Set<string>(ALL_IDS);
+
+function isValid(id: string | null): id is ThirtyTwoTypeId {
+  return id !== null && VALID.has(id);
+}
+
+function sectionId(key: ThirtyTwoGroup): string {
+  return `aisho-group-${key}`;
+}
+
+function typeEssence(id: ThirtyTwoTypeId, locale: ResultLocale): string {
+  return locale === "ko"
+    ? KO_RESULT_TYPES[id].essence
+    : thirtyTwoEssence(id);
+}
+
+function groupLabel(key: ThirtyTwoGroup, locale: ResultLocale): string {
+  const labels: Record<ThirtyTwoGroup, { ja: string; ko: string }> = {
+    sea: { ja: "海", ko: "바다" },
+    land: { ja: "陸", ko: "대지" },
+    sky: { ja: "空", ko: "하늘" },
+    unknown: { ja: "未知", ko: "미지" },
+  };
+  return labels[key][locale];
+}
+
+// ---- インラインSVG (依存ライブラリ不使用) --------------------------------
+
+function HeartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={20}
+      height={20}
+      fill="none"
+      stroke={NAVY}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={16}
+      height={16}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+// ---- ヘッダーのループ動画 (kling 生成のアイドルループ) ---------------------
+// autoplay + muted + loop。prefers-reduced-motion: reduce では再生しない。
+
+function HeroLoopVideo() {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      video.pause();
+    }
+  }, []);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      aria-hidden="true"
+      className="w-full rounded-3xl object-cover"
+    >
+      <source src="/aisho/hero-loop.mp4" type="video/mp4" />
+    </video>
+  );
+}
+
+// ---- スロット (上部の選択枠) ---------------------------------------------
+
+function Slot({
+  id,
+  label,
+  onClear,
+  locale,
+}: {
+  id: ThirtyTwoTypeId | null;
+  label: string;
+  onClear: () => void;
+  locale: ResultLocale;
+}) {
+  // 空/選択済みで高さが変わると選択のたびにレイアウトが揺れるため、両状態とも固定高。
+  // 一覧カードと同じ文法: 白カードの上端から顔ズーム版キャラの頭をはみ出させ、
+  // 体の切れ目はカード下端に揃えて隠す。名前はカードの下に出す (SP の幅でも破綻しない)。
+  const CARD_H = "h-[96px] md:h-[150px]";
+  if (!id) {
+    return (
+      <div className="flex-1">
+        <div
+          className={`${CARD_H} rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-1 px-2 text-center`}
+          style={{ borderColor: INACTIVE, color: INACTIVE }}
+        >
+          <span className="text-2xl md:text-3xl leading-none">＋</span>
+          <span className="text-xs md:text-sm font-bold">
+            {locale === "ko" ? "눌러서 선택" : "タップで選ぶ"}
+          </span>
+        </div>
+        <p
+          className="mt-1.5 text-center text-[11px] md:text-xs font-bold"
+          style={{ color: INACTIVE }}
+        >
+          {label}
+        </p>
+      </div>
+    );
+  }
+  const thumb = faceImagePath(id);
+  return (
+    <div className="flex-1">
+      <div
+        className={`relative ${CARD_H} rounded-2xl border-2 bg-white`}
+        style={{ borderColor: NAVY }}
+      >
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={
+            locale === "ko"
+              ? `${typeEssence(id, locale)} 선택 해제`
+              : `${typeEssence(id, locale)}を外す`
+          }
+          className="absolute top-1.5 right-1.5 z-10 rounded-full p-1 text-white"
+          style={{ background: NAVY }}
+        >
+          <CloseIcon />
+        </button>
+        {thumb.isFace ? (
+          <SmoothImage
+            src={thumb.src}
+            alt={typeEssence(id, locale)}
+            width={300}
+            height={300}
+            className="absolute bottom-0 left-1/2 w-[120px] md:w-[190px] max-w-none -translate-x-1/2"
+          />
+        ) : (
+          <SmoothImage
+            src={thumb.src}
+            alt={typeEssence(id, locale)}
+            width={240}
+            height={240}
+            className="h-full w-full rounded-[14px] object-cover"
+          />
+        )}
+      </div>
+      <p
+        className="mt-1.5 md:mt-2.5 text-center font-black text-sm md:text-lg leading-tight"
+        style={{ color: NAVY }}
+      >
+        {typeEssence(id, locale)}
+      </p>
+    </div>
+  );
+}
+
+// ---- シーンアイコン (インラインSVG・currentColor) -------------------------
+
+function SceneIcon({ scene }: { scene: SceneKey }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    width: 18,
+    height: 18,
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (scene) {
+    case "love": // heart
+      return (
+        <svg {...common}>
+          <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
+        </svg>
+      );
+    case "friend": // users
+      return (
+        <svg {...common}>
+          <path d="M16 19v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="3" />
+          <path d="M22 19v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+        </svg>
+      );
+    case "work": // briefcase
+      return (
+        <svg {...common}>
+          <rect x="3" y="7" width="18" height="13" rx="2" />
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18" />
+        </svg>
+      );
+    case "clash": // alert-circle
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v4M12 16h.01" />
+        </svg>
+      );
+  }
+}
+
+// ---- 結果セクション見出し (/me の丸数字見出しと同じ文法) -------------------
+
+// 見出しは /me (自己診断結果) と同じ 16P 風: 枠線の丸数字 + 大きめ太字タイトル。
+function SectionHeading({ n, title }: { n: number; title: string }) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <span
+        aria-hidden="true"
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] text-lg font-black"
+        style={{ borderColor: NAVY, color: NAVY }}
+      >
+        {n}
+      </span>
+      <h2
+        className="text-[30px] font-black leading-tight md:text-[36px]"
+        style={{ color: NAVY }}
+      >
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+// ---- 詳細ブロック (バランス / いいところ / 注意 / シーン別) ----------------
+// ★将来の購入ゲート単位。%＋★＋サマリー(無料側)とは独立させ、後から
+//   購入フラグでこのコンポーネントごとラップできるようにしてある (今回はゲートなし・常時表示)。
+
+// 5軸メーター。/me の BigFiveDivergingBars と同じ視覚言語 (軸色レール + 白丸マーカー +
+// 「軸名: %(軸色) 判定」)。ただし相性スコアは 0..1 の一方向 (高いほど噛み合う) なので
+// 発散ではなく左→右のフィルにする。軸色は /me と対応させて統一感を出す。
+const AXIS_META_VIEW: {
+  key: AxisKey;
+  label: Record<ResultLocale, string>;
+  color: string;
+}[] = [
+  { key: "A", label: { ja: "思いやり", ko: "배려" }, color: "#33A474" },
+  {
+    key: "N",
+    label: { ja: "情緒の安定", ko: "정서적 안정" },
+    color: "#F25E62",
+  },
+  { key: "O", label: { ja: "価値観", ko: "가치관" }, color: "#E4AE3A" },
+  {
+    key: "C",
+    label: { ja: "生活リズム", ko: "생활 리듬" },
+    color: "#88619A",
+  },
+  {
+    key: "E",
+    label: { ja: "社交バランス", ko: "사교 균형" },
+    color: "#4298B4",
+  },
+];
+
+// スコア(0..1)→ 判定ラベル。ネガティブに寄せず、低い側も「補い合い」と前向きに。
+function matchLabel(v: number, locale: ResultLocale): string {
+  const p = v * 100;
+  if (p >= 85) return locale === "ko" ? "찰떡" : "ぴったり";
+  if (p >= 65) return locale === "ko" ? "잘 맞음" : "かみ合う";
+  if (p >= 45) return locale === "ko" ? "무난함" : "まあまあ";
+  return locale === "ko" ? "서로 보완" : "補い合い";
+}
+
+// 相性度(%)→ 総評リードの言い回し。「〇〇と〇〇の相性は{これ}」と続く。
+function percentLead(p: number, locale: ResultLocale): string {
+  if (p >= 90)
+    return locale === "ko" ? "의심할 여지 없이 좋아요" : "文句なしにいい";
+  if (p >= 75) return locale === "ko" ? "꽤 좋아요" : "かなりいい";
+  if (p >= 60) return locale === "ko" ? "제법 좋아요" : "なかなかいい";
+  if (p >= 45)
+    return locale === "ko"
+      ? "서로 맞춰 갈수록 훨씬 좋아져요"
+      : "歩み寄り次第でぐっと良くなる";
+  return locale === "ko"
+    ? "쉽지는 않지만 그만큼 배울 점이 많아요"
+    : "一筋縄ではいかないぶん、学びが大きい";
+}
+
+// ★PR4: SCENE_AXES / sceneVerdict はサーバ (/api/aisho/scenes) へ移設。
+//   ④本文 (verdict + text) はクライアントで生成せず、ゲート応答からのみ受け取る。
+
+// 静的な4見出し (SceneKey ごと・内容非依存)。ロック中も「4場面ある」ことを
+// 見出しで見せ、本文だけゲートする (見出しは無料・本文だけ課金)。
+const SCENE_ORDER: {
+  key: SceneKey;
+  label: Record<ResultLocale, string>;
+}[] = [
+  { key: "love", label: { ja: "恋愛では", ko: "연애에서는" } },
+  { key: "friend", label: { ja: "友情では", ko: "우정에서는" } },
+  { key: "work", label: { ja: "一緒に働くと", ko: "함께 일하면" } },
+  {
+    key: "clash",
+    label: { ja: "すれ違うとき", ko: "엇갈릴 때" },
+  },
+];
+
+// ロック時の丸バッジのリング色 (MBTI 風・場面ごとに色分け)。
+const SCENE_RING: Record<SceneKey, string> = {
+  love: "#E0559A",
+  friend: "#4AA3D8",
+  work: "#E0A83F",
+  clash: "#9377CC",
+};
+
+// ④シーン別のサーバゲート応答。locked=true は本文なし (未課金/匿名)。
+type ScenesResponse = {
+  locked: boolean;
+  scenes?: { key: SceneKey; label: string; text: string }[];
+  // 未課金かつログイン中のとき、本人の owner_token (課金CTAへ渡す)。匿名は null/未定義。
+  ownerToken?: string | null;
+};
+
+function CompatDetail({
+  a,
+  b,
+  onGateChange,
+  locale,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  locale: ResultLocale;
+  // 課金状態と本人 owner_token を親 (AishoInner) へ通知 (最下部カードの出し分け + CTA伝搬)。
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
+}) {
+  const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
+  const isKorean = locale === "ko";
+  // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
+  // ①〜③・ランクはこの fetch に依存せず即時表示 (バイラル核は無傷)。
+  // ペアkeyで保持し、a/b 変更時は key 不一致で sceneData が自動的に null(=読込中)に戻る
+  // (effect 内 setState を避けるため、リセットは派生値で表現する)。
+  const pairKey = `${a}__${b}`;
+  const [sceneState, setSceneState] = useState<{
+    key: string;
+    resp: ScenesResponse;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // SP で Cookie(session) が消えていても購入済み本人を解決できるよう、端末保存の
+    // owner_token も渡す (checkout と同じ capability 扱い。無ければ従来どおり session のみ)。
+    let tokenQuery = "";
+    try {
+      const t = localStorage.getItem("torisetsu_owner_token");
+      if (t) tokenQuery = `&owner_token=${encodeURIComponent(t)}`;
+    } catch {
+      // localStorage 不可環境は session のみで判定
+    }
+    fetch(
+      `/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&locale=${locale}${tokenQuery}`,
+    )
+      .then((res) =>
+        res.ok
+          ? (res.json() as Promise<ScenesResponse>)
+          : ({ locked: true } as ScenesResponse),
+      )
+      .then((resp) => {
+        if (!cancelled) setSceneState({ key: pairKey, resp });
+      })
+      .catch(() => {
+        if (!cancelled) setSceneState({ key: pairKey, resp: { locked: true } });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [a, b, locale, pairKey]);
+  // 現在のペアに対応する応答だけ採用 (古いペアの応答・読込中は null)。
+  const sceneData: ScenesResponse | null =
+    sceneState?.key === pairKey ? sceneState.resp : null;
+  const sceneUnlocked = sceneData?.locked === false;
+  // 課金状態 (locked) と本人 owner_token を親 (AishoInner) へ通知。
+  //   → 最下部の課金カードの出し分け + 課金CTAへの owner_token 伝搬 (SPのCookie不在対策) に使う。
+  const sceneLocked = sceneData?.locked ?? null;
+  const sceneOwnerToken = sceneData?.ownerToken ?? null;
+  useEffect(() => {
+    onGateChange?.({ locked: sceneLocked, ownerToken: sceneOwnerToken });
+  }, [sceneLocked, sceneOwnerToken, onGateChange]);
+  const sceneByKey = useMemo(() => {
+    const m = new Map<SceneKey, string>();
+    sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
+    return m;
+  }, [sceneData]);
+  // /me と同じ本文タイポ (body-gothic・濃色・17px)。段落はこの class を使い回す。
+  const PROSE =
+    "body-gothic text-[#1A1A1A] font-normal text-[16px] md:text-[17px] leading-[1.7]";
+  const nameA = typeEssence(a, locale);
+  const nameB = typeEssence(b, locale);
+  return (
+    // 幅は自己診断結果 (/me) と同じ親 (max-w-[1080px]) いっぱいまで使う (旧 640 撤廃)。
+    // pb: 最後の ④ と、main 外の課金カードの間に余白を確保。
+    <div className="mx-auto mt-8 w-full space-y-9 pb-6 md:space-y-11 md:pb-10">
+      {/* ⓪ 相性の総評 (長文リード)。★・サマリー・%バッジは廃し、compat の
+          summary/percent/goods を地の文へ織り込んで「〇〇と〇〇の相性は〜」から
+          始まる長めの文章にする。 */}
+      <div>
+        <p className={PROSE}>
+          {isKorean
+            ? `「${nameA}」와 「${nameB}」의 궁합은 ${percentLead(r.percent, locale)}. 궁합도는 ${r.percent}%, 한마디로 ${r.summary}인 두 사람이에요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
+            : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
+        </p>
+        <p className={`${PROSE} mt-4`}>
+          {isKorean
+            ? "그래서 함께 있을 때 있는 그대로 편안하고, 억지로 맞추지 않아도 좋은 시간이 이어지기 쉬워요. 물론 오래 사이좋게 지내려면 작은 요령도 필요해요. 이제 배려, 정서, 가치관, 생활 리듬, 사교 균형의 다섯 관점에서 두 사람의 궁합을 조금 더 자세히 살펴볼게요."
+            : "だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
+        </p>
+      </div>
+
+      {/* ① ふたりのバランス (5軸メーター・/me の BigFiveDivergingBars と同じ見た目) */}
+      <section>
+        <SectionHeading
+          n={1}
+          title={isKorean ? "두 사람의 균형" : "ふたりのバランス"}
+        />
+        <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
+          {AXIS_META_VIEW.map(({ key, label: labels, color }) => {
+            const v = r.s[key];
+            const pct = Math.round(v * 100);
+            const label = labels[locale];
+            const lab = matchLabel(v, locale);
+            return (
+              <div key={key}>
+                <span className="sr-only">{`${label}：${lab} ${pct}%`}</span>
+                {/* 上段: 軸名: %(軸色) 判定 */}
+                <div
+                  aria-hidden="true"
+                  className="mb-2 flex items-baseline gap-1.5"
+                >
+                  <span className="text-[15px] font-bold" style={{ color: NAVY }}>
+                    {label}:
+                  </span>
+                  <span
+                    className="text-[15px] font-black tabular-nums"
+                    style={{ color }}
+                  >
+                    {pct}%
+                  </span>
+                  <span className="text-[15px] font-bold" style={{ color: NAVY }}>
+                    {lab}
+                  </span>
+                </div>
+                {/* 中段: 左→右の一方向フィル + 白丸マーカー */}
+                <div aria-hidden="true" className="relative h-4 w-full">
+                  <div
+                    className="absolute inset-0 overflow-hidden rounded-full"
+                    style={{ background: `${color}2E` }}
+                  >
+                    <div
+                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%`, background: color }}
+                    />
+                  </div>
+                  <div
+                    className="absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-md transition-all duration-500"
+                    style={{ left: `${pct}%`, border: `4px solid ${color}` }}
+                  />
+                </div>
+                {/* 下段: 両端ラベル (どちらも前向き表現) */}
+                <div
+                  aria-hidden="true"
+                  className="mt-1.5 flex justify-between text-[12px] font-bold leading-tight"
+                  style={{ color: `${NAVY}8C` }}
+                >
+                  <span>{isKorean ? "서로 보완" : "補い合う"}</span>
+                  <span>{isKorean ? "찰떡" : "ぴったり"}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ② ふたりのいいところ (goods を /me 風の地の文で) */}
+      <section>
+        <SectionHeading
+          n={2}
+          title={isKorean ? "두 사람의 좋은 점" : "ふたりのいいところ"}
+        />
+        <p className={PROSE}>
+          {isKorean
+            ? `두 사람이 함께 있을 때 편안한 데에는 분명한 이유가 있어요. ${r.goods[0]}`
+            : `このふたりがいっしょにいて心地いいのには、ちゃんと理由があるよ。${r.goods[0]}`}
+        </p>
+        <p className={`${PROSE} mt-3`}>{r.goods[1]}</p>
+      </section>
+
+      {/* ③ シーン別の相性 (恋愛/友情/働く/すれ違い)。★PR4: 課金ゲート。
+          見出し(4場面)は常に表示し「4場面ぶんの相性がある」ことを予告。
+          本文だけをサーバゲート → 未課金/匿名は本文をぼかしダミー(実本文なし)にし、
+          最下部の課金カードへスライドする「ぜんぶ、ひらく →」を出す。
+          ①②④・相性度・ランクは触っていない (全員無料=バイラル核)。 */}
+      <section>
+        <SectionHeading
+          n={3}
+          title={isKorean ? "상황별 궁합" : "シーン別の相性"}
+        />
+        {sceneUnlocked ? (
+          /* ===== 課金済: 各場面の本文 ===== */
+          <div className="mt-6 space-y-7">
+            {SCENE_ORDER.map((s) => (
+              <div key={s.key}>
+                <div
+                  className="mb-1.5 flex items-center gap-1.5 text-[18px] font-black"
+                  style={{ color: NAVY }}
+                >
+                  <SceneIcon scene={s.key} />
+                  <span>{s.label[locale]}</span>
+                </div>
+                <p className={PROSE}>{sceneByKey.get(s.key)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* ===== 未課金/読込中: 4場面の丸ロックバッジ + 解除案内を1枚のカードに (MBTI 風) ===== */
+          <div className="mt-7 rounded-3xl border-2 border-[#F3D6E2] bg-white px-5 py-7 shadow-[0_12px_36px_rgba(46,46,92,0.10)] md:px-9 md:py-8">
+            {/* 4場面の丸ロックバッジ */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4">
+              {SCENE_ORDER.map((s) => (
+                <div
+                  key={s.key}
+                  className="flex flex-col items-center text-center"
+                >
+                  <div
+                    className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] bg-white md:h-[96px] md:w-[96px]"
+                    style={{ borderColor: SCENE_RING[s.key] }}
+                  >
+                    <svg
+                      width="28"
+                      height="28"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={SCENE_RING[s.key]}
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </div>
+                  <span
+                    className="mt-2.5 text-[13px] font-black leading-tight md:text-[14px]"
+                    style={{ color: NAVY }}
+                  >
+                    {s.label[locale]}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* ロック確定時のみ 区切り線 + 解除案内 (読込中は課金済ちらつき防止で出さない)。
+                押すと最下部の課金カードへスライド (scrollToPaywall)。 */}
+            {sceneData?.locked === true && (
+              <>
+                {/* 区切り線 + 中央のロックバッジ */}
+                <div className="relative mx-auto my-7 max-w-[440px]">
+                  <div className="h-px w-full bg-[#F0DBE5]" />
+                  <span
+                    className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white"
+                    style={{ background: "#D14E86" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </span>
+                </div>
+
+                {/* 今すぐロックを解除 */}
+                <div className="text-center">
+                  <p
+                    className="text-[21px] font-black md:text-[24px]"
+                    style={{ color: NAVY }}
+                  >
+                    {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+                  </p>
+                  {/* PC は1行 (whitespace-nowrap)、SP は2行に自然折り返し。 */}
+                  <p className="mx-auto mt-2 max-w-[300px] text-[13px] font-bold leading-relaxed text-[#6A6A7C] md:max-w-none md:whitespace-nowrap md:text-[14px]">
+                    {isKorean
+                      ? "모든 결과를 열고 연애·우정·일·엇갈림, 네 가지 상황 속 두 사람의 궁합을 확인해 보세요."
+                      : "全解放して、恋愛・友情・仕事・すれ違い──4場面ぶんのふたりの相性を読もう。"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => scrollToPaywall("aisho_scene")}
+                    className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
+                    style={{ background: NAVY }}
+                  >
+                    {isKorean ? "지금 확인하기" : "今すぐアクセス"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ④ ここだけ注意 (caution を前後の一言で挟んで文章量を足す) */}
+      <section>
+        <SectionHeading
+          n={4}
+          title={isKorean ? "이것만은 주의" : "ここだけ注意"}
+        />
+        <p className={PROSE}>
+          {isKorean
+            ? `아무리 궁합이 좋아도 오래 편안하게 지내기 위한 요령은 있어요. 오히려 가까운 두 사람일수록 거리낌이 없어져 작은 엇갈림을 놓치기 쉬워요. ${r.caution}`
+            : `どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
+        </p>
+        <p className={`${PROSE} mt-3`}>
+          {isKorean
+            ? "중요한 건 참고 쌓아 두지 않는 거예요. 불편함이 작을 때 “나는 이렇게 느꼈어”라고 가볍게 말해 두면 크게 꼬이기 전에 자연스럽게 풀려요. 반대로 “말하지 않아도 알아줬으면 좋겠어”가 계속되면 아무리 좋은 궁합도 조금씩 어긋날 수 있어요. 이것만 기억해도 두 사람의 장점은 훨씬 자연스럽게 드러날 거예요."
+            : "大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
+        </p>
+      </section>
+    </div>
+  );
+}
+
+// ---- 結果ブロック ---------------------------------------------------------
+// /me ヒーローと同じ文法: グループ色の全幅帯 + 白抜きの大% + 斜めカットで白へ接続。
+
+function ResultBlock({
+  a,
+  b,
+  onGateChange,
+  locale,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  locale: ResultLocale;
+  onGateChange?: (gate: {
+    locked: boolean | null;
+    ownerToken: string | null;
+  }) => void;
+}) {
+  const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
+  const isKorean = locale === "ko";
+  const [band0, band1] = HERO_BAND;
+  // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
+  const dotColor = "rgba(214,120,158,0.35)";
+  const rankImg = rankImagePath(r.rank);
+  return (
+    <section>
+      {/* ===== ヒーロー帯 (全幅・単一ピンク・斜めカット) ===== */}
+      <div
+        className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
+        style={{
+          background: `linear-gradient(105deg, ${band0} 0%, ${band1} 100%)`,
+        }}
+      >
+        {/* 上部中央の放射状グロー + フェルトドット (/me と同じ装飾) */}
+        {/* グローは控えめに (強すぎると帯上部が白飛びして白ラベルが読めなくなる) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[240px]"
+          style={{
+            background:
+              "radial-gradient(ellipse at top center, rgba(255,255,255,0.28) 0%, transparent 60%)",
+          }}
+        />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 10, height: 10, top: "14%", left: "7%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "40%", left: "12%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 12, height: 12, top: "18%", right: "8%" }} />
+        <span aria-hidden="true" className="pointer-events-none absolute rounded-full" style={{ background: dotColor, width: 7, height: 7, top: "52%", right: "13%" }} />
+
+        {/* SP: 「二人の相性」ラベル → ランク画像の縦積み・中央寄せ。
+            PC: 左に大きな「二人の相性」テキスト / 右にランク画像の横並び。
+            ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
+        <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-6 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-8 md:text-left">
+          <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
+            {isKorean ? "두 사람의 궁합" : "ふたりの相性"}
+          </p>
+          <div className="mt-4 md:mt-0 md:shrink-0">
+            {/* 透過 PNG (装飾) は unoptimized で直接配信する。
+                dev の画像 optimizer がこの手の PNG で固まりローディングが終わらないため。 */}
+            {rankImg ? (
+              <SmoothImage
+                src={rankImg}
+                alt={
+                  isKorean
+                    ? `궁합 등급 ${r.rank}`
+                    : `相性ランク ${r.rank}`
+                }
+                width={512}
+                height={512}
+                unoptimized
+                priority
+                className="w-[80vw] max-w-[500px] md:w-[560px] md:max-w-[52vw] object-contain"
+              />
+            ) : (
+              <span
+                className="block text-[52vw] md:text-[280px] font-black leading-none"
+                style={{ color: HERO_TEXT }}
+              >
+                {r.rank}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* --- 詳細 (将来ゲート単位・今回は常時表示) --- */}
+      <CompatDetail
+        a={a}
+        b={b}
+        onGateChange={onGateChange}
+        locale={locale}
+      />
+    </section>
+  );
+}
+
+// ---- グループ別グリッド ---------------------------------------------------
+
+function TypeGrid({
+  onPick,
+  selected,
+  locale,
+}: {
+  onPick: (id: ThirtyTwoTypeId) => void;
+  selected: Set<string>;
+  locale: ResultLocale;
+}) {
+  const grouped = useMemo(
+    () =>
+      GROUP_META.map((g) => ({
+        ...g,
+        ids: ALL_IDS.filter((id) => thirtyTwoGroup(id) === g.key),
+      })),
+    [],
+  );
+
+  return (
+    // 全幅色帯をそのまま積む (帯どうしの境界は水平)。
+    <div className="mt-10 md:mt-14">
+      {grouped.map((g, gi) => {
+        const isLast = gi === grouped.length - 1;
+        const label = groupLabel(g.key, locale);
+        return (
+          <section
+            key={g.key}
+            id={sectionId(g.key)}
+            aria-label={
+              locale === "ko" ? `${label} 그룹` : `${label}グループ`
+            }
+            className="relative mx-[calc(50%-50vw)] w-screen"
+            style={{ backgroundColor: BAND_COLOR[g.key] }}
+          >
+            {/* 列数は 2列 (SP) / 4列 (md 以上) のみ。1行8枚や3列は不自然なので使わず、
+                画面幅にはカードの大きさ (可変カラム幅 + 大画面は max-w 拡大) で追従する */}
+            {/* 最終帯はページ末尾 (下の白を無くし紫で終える) なので、
+                固定ボトムナビに最終行が隠れないぶんの下余白を足す */}
+            <div
+              className={`mx-auto max-w-[1080px] px-4 md:px-8 2xl:max-w-[1400px] pt-9 md:pt-11 ${
+                isLast ? "pb-20 md:pb-24" : "pb-12 md:pb-14"
+              }`}
+            >
+              <h2
+                className="font-black text-[28px] md:text-[36px] leading-none mb-4 md:mb-5"
+                style={{ color: DARK_COLOR[g.key] }}
+              >
+                {locale === "ko" ? `${label} 그룹` : `${label}グループ`}
+              </h2>
+              {/* 行間 (gap-y) は頭のはみ出し (約16px) が上のカードに触れない広さにする */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4 md:gap-x-4 md:gap-y-7">
+                {g.ids.map((id) => {
+                  const isSel = selected.has(id);
+                  const thumb = faceImagePath(id);
+                  if (thumb.isFace) {
+                    /* 顔ズーム版 (透過): 台座は置かず、キャラの頭を白カードの
+                       上端からはみ出させる (背面のグループ色帯に頭が重なる)。
+                       体の四角い切れ目はカード下端に揃えて見えなくする。
+                       画像の左端はカードの角丸 (r=16px) が終わる x=16px に置き、
+                       下端フラッシュでも角がカード外にはみ出さないようにする。 */
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => onPick(id)}
+                        disabled={isSel}
+                        aria-pressed={isSel}
+                        className="relative flex h-[60px] md:h-[68px] items-center rounded-2xl bg-white pl-[96px] md:pl-[112px] pr-3 text-left transition-opacity shadow-[0_2px_10px_rgba(42,58,92,0.08)]"
+                        style={{
+                          border: isSel
+                            ? `2px solid ${NAVY}`
+                            : "2px solid transparent",
+                          opacity: isSel ? 0.45 : 1,
+                        }}
+                      >
+                        <SmoothImage
+                          src={thumb.src}
+                          alt={typeEssence(id, locale)}
+                          width={168}
+                          height={168}
+                          className="absolute bottom-0 left-4 w-[72px] md:w-[84px] max-w-none"
+                        />
+                        {/* 役職名は画像を除いた残り幅の中央に置く */}
+                        <span
+                          className="flex-1 text-center font-black text-sm md:text-[15px] leading-tight"
+                          style={{ color: NAVY }}
+                        >
+                          {typeEssence(id, locale)}
+                        </span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => onPick(id)}
+                      disabled={isSel}
+                      aria-pressed={isSel}
+                      className="rounded-2xl bg-white flex items-center gap-3 px-3 py-2 md:px-4 md:py-3 transition-opacity text-left shadow-[0_2px_10px_rgba(42,58,92,0.08)]"
+                      style={{
+                        border: isSel
+                          ? `2px solid ${NAVY}`
+                          : "2px solid transparent",
+                        opacity: isSel ? 0.45 : 1,
+                      }}
+                    >
+                      <SmoothImage
+                        src={thumb.src}
+                        alt={typeEssence(id, locale)}
+                        width={96}
+                        height={96}
+                        className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover shrink-0"
+                      />
+                      <span
+                        className="font-black text-sm md:text-[15px] leading-tight"
+                        style={{ color: NAVY }}
+                      >
+                        {typeEssence(id, locale)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- 本体 -----------------------------------------------------------------
+
+function AishoInner({ locale }: { locale: ResultLocale }) {
+  const searchParams = useSearchParams();
+  const isKorean = locale === "ko";
+  // ④シーンのサーバゲート結果 (CompatDetail から通知)。
+  //   locked: true=未課金 / false=課金済 / null=読込中 → 課金カードの出し分け。
+  //   ownerToken: ログイン中なら本人トークン → 課金CTAに渡す (SPのCookie不在でも401→トップを回避)。
+  const [aishoGate, setAishoGate] = useState<{
+    locked: boolean | null;
+    ownerToken: string | null;
+  }>({ locked: null, ownerToken: null });
+  // Stripe 決済完了直後 (?paid=1 / return_to='aisho' で戻ってきた)。webhook 反映前は
+  // シーンがロックのままなので、PaidUnlockWatcher で「決済処理中…」を出して反映を待つ。
+  const paidPending = searchParams.get("paid") === "1";
+  // 反映ポーリング用の owner_token。session 由来 (aishoGate) を優先し、
+  // Cookie が無い端末では localStorage (診断時に保存) へフォールバック。
+  const [storedToken, setStoredToken] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStoredToken(localStorage.getItem("torisetsu_owner_token"));
+    } catch {
+      // localStorage 不可環境はポーリング不可 (watcher を出さない)
+    }
+  }, []);
+  const watcherToken = aishoGate.ownerToken ?? storedToken;
+  // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
+  const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
+    const a = searchParams.get("a");
+    return isValid(a) ? a : null;
+  });
+  const [slotB, setSlotB] = useState<ThirtyTwoTypeId | null>(() => {
+    const a = searchParams.get("a");
+    const b = searchParams.get("b");
+    return isValid(b) && b !== a ? b : null;
+  });
+  // 2枠そろっても即表示せず、「相性を見る」を押して初めて結果を出す（ワンクッション）。
+  // 直リンク(?a=&b= 両方あり)は共有先で結果を見せたいので初期 revealed=true。
+  const [revealed, setRevealed] = useState(() => {
+    const a = searchParams.get("a");
+    const b = searchParams.get("b");
+    return isValid(a) && isValid(b) && a !== b;
+  });
+  // 選択操作で2枠そろった直後の「診断中…」演出 (直リンクでは出さない)。
+  const [analyzing, setAnalyzing] = useState(false);
+  useEffect(() => {
+    if (!analyzing) return;
+    const t = setTimeout(() => {
+      setAnalyzing(false);
+      setRevealed(true);
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [analyzing]);
+
+  const bothFilled = slotA !== null && slotB !== null;
+  const resultShown = bothFilled && revealed;
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // 選択変更で URL を書き換え (直リンク・シェア可)
+  const syncUrl = useCallback((a: string | null, b: string | null) => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams();
+    if (a) params.set("a", a);
+    if (b) params.set("b", b);
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+  }, []);
+
+  const selected = useMemo(() => {
+    const s = new Set<string>();
+    if (slotA) s.add(slotA);
+    if (slotB) s.add(slotB);
+    return s;
+  }, [slotA, slotB]);
+
+  const pick = useCallback(
+    (id: ThirtyTwoTypeId) => {
+      // 選ぶだけでは診断しない。2枠そろうと CTA「相性を見る」が押せるようになり、
+      // 押した時に「診断中…」演出 → 結果表示。
+      if (slotA === null) {
+        setSlotA(id);
+        syncUrl(id, slotB);
+      } else if (slotB === null && id !== slotA) {
+        setSlotB(id);
+        syncUrl(slotA, id);
+      }
+    },
+    [slotA, slotB, syncUrl],
+  );
+
+  const clearA = useCallback(() => {
+    setSlotA(null);
+    syncUrl(null, slotB);
+    setRevealed(false);
+    setAnalyzing(false);
+  }, [slotB, syncUrl]);
+
+  const clearB = useCallback(() => {
+    setSlotB(null);
+    syncUrl(slotA, null);
+    setRevealed(false);
+    setAnalyzing(false);
+  }, [slotA, syncUrl]);
+
+  // 結果が現れたらそこへスクロール（「相性を見る」tap・直リンク両対応）
+  useEffect(() => {
+    if (resultShown) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [resultShown]);
+
+  return (
+    <>
+    {isKorean ? <KoTopHeader /> : <TopHeader />}
+    <main className="min-h-screen overflow-x-clip bg-white">
+      {/* コンテンツ幅は自己診断結果 (/me) と同じ max-w-[1080px] に揃える。
+          結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
+      <div
+        className={`max-w-[1080px] mx-auto px-4 md:px-8 ${
+          resultShown || analyzing ? "" : "pt-6 md:pt-10"
+        }`}
+      >
+        {analyzing && slotA && slotB ? (
+          /* ===== 診断中演出 (約1.6秒): 2キャラ対面 + 鼓動するハート ===== */
+          /* ヘッダー(約72px)を除いた高さいっぱいで縦中央に。SP はキャラ幅を
+             抑えて2体+ハートが横に収まるようにする (見切れ防止)。 */
+          <div className="flex min-h-[calc(100dvh-72px)] flex-col items-center justify-center">
+            <div className="flex w-full items-center justify-center gap-3 md:gap-12">
+              <SmoothImage
+                src={heroImagePath(slotA)}
+                alt={typeEssence(slotA, locale)}
+                width={360}
+                height={360}
+                className="w-[34vw] max-w-[240px] object-contain"
+              />
+              <span
+                className="animate-pulse shrink-0"
+                style={{ color: NAVY }}
+                aria-hidden="true"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-9 w-9 md:h-[52px] md:w-[52px]"
+                  fill="currentColor"
+                >
+                  <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
+                </svg>
+              </span>
+              <SmoothImage
+                src={heroImagePath(slotB)}
+                alt={typeEssence(slotB, locale)}
+                width={360}
+                height={360}
+                className="w-[34vw] max-w-[240px] object-contain"
+              />
+            </div>
+            <p
+              className="mt-10 text-[19px] md:text-[22px] font-black"
+              style={{ color: NAVY }}
+              role="status"
+            >
+              {isKorean
+                ? "두 사람의 궁합을 분석하고 있어요…"
+                : "ふたりの相性を診断中…"}
+            </p>
+          </div>
+        ) : resultShown ? (
+          /* ===== 結果モード (一覧は畳む) ===== */
+          <>
+            {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
+                足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
+            <div ref={resultRef} className="scroll-mt-[72px]">
+              <ResultBlock
+                a={slotA}
+                b={slotB}
+                onGateChange={setAishoGate}
+                locale={locale}
+              />
+            </div>
+          </>
+        ) : (
+          /* ===== 選択モード ===== */
+          <>
+            {/* ヘッダー: 左=見出し / 右=ループ動画 (16P のセクション見出し文法)。
+                SP は縦積み (見出し→動画→スロット)。 */}
+            <header className="mb-7 md:mb-12 md:flex md:items-center md:gap-12">
+              <div className="md:flex-1">
+                <h1
+                  className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
+                  style={{ color: NAVY }}
+                >
+                  {isKorean ? (
+                    <>
+                      궁금한 그 사람과의
+                      <br />
+                      궁합을 알아봐요.
+                    </>
+                  ) : (
+                    <>
+                      気になるあの子との
+                      <br className="md:hidden" />
+                      相性を、
+                      <br className="hidden md:block" />
+                      診断してみよう。
+                    </>
+                  )}
+                </h1>
+                <p
+                  className="mt-2.5 text-[12.5px] md:text-sm font-bold"
+                  style={{ color: INACTIVE }}
+                >
+                  {isKorean
+                    ? "캐릭터 두 개만 고르면 돼요 · 내 진단 결과가 없어도 괜찮아요"
+                    : "2キャラを選ぶだけ・自分の診断がなくてもOK"}
+                </p>
+              </div>
+              <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
+                <HeroLoopVideo />
+              </div>
+            </header>
+
+            {/* 上部スロット: 結果ヒーローと同じ「2キャラ対面 + ハート」の文法。
+                PC では小さな点線ボックスが余白に浮いて見えたため、一回り大きくする */}
+            <div className="mx-auto flex max-w-[560px] md:max-w-[860px] items-stretch gap-3 md:gap-8">
+              <Slot
+                id={slotA}
+                label={isKorean ? "첫 번째" : "1人目"}
+                onClear={clearA}
+                locale={locale}
+              />
+              {/* ハートはカード (名前ラベルを除く) の縦中央に合わせる */}
+              <span
+                className="self-start mt-[38px] md:mt-[65px] shrink-0"
+                style={{ color: NAVY }}
+                aria-hidden="true"
+              >
+                <HeartIcon />
+              </span>
+              <Slot
+                id={slotB}
+                label={isKorean ? "두 번째" : "2人目"}
+                onClear={clearB}
+                locale={locale}
+              />
+            </div>
+
+            {/* CTA: 2キャラそろうまでは薄色 (disabled)、そろったら押せる */}
+            <div className="flex justify-center mt-6 md:mt-8">
+              <button
+                type="button"
+                onClick={() => setAnalyzing(true)}
+                disabled={!bothFilled}
+                className="rounded-full px-12 py-3 md:px-14 md:py-3.5 text-white font-black text-base md:text-lg shadow-sm transition-all disabled:cursor-not-allowed"
+                style={{
+                  background: NAVY,
+                  opacity: bothFilled ? 1 : 0.35,
+                }}
+              >
+                {isKorean ? "궁합 알아보기" : "相性を診断する"}
+              </button>
+            </div>
+
+            {/* グループ別グリッド */}
+            <TypeGrid onPick={pick} selected={selected} locale={locale} />
+          </>
+        )}
+      </div>
+    </main>
+    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
+        /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
+        FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
+        相性①〜④は従来どおり無料・ここではゲートしない。
+        ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
+        選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
+    {/* 決済直後 (?paid=1) だが webhook 反映がまだでロック表示のとき、「決済処理中…」を
+        出して反映を待つ (/me・/tako の PaidUnlockWatcher と同じ。反映後は paid= を外して再読込)。 */}
+    {paidPending && aishoGate.locked !== false && watcherToken && (
+      <PaidUnlockWatcher
+        ownerToken={watcherToken}
+        returnTo="aisho"
+        locale={locale}
+      />
+    )}
+    {resultShown && aishoGate.locked === true && (
+      <>
+        <FullAccessPromoCard
+          variant="aisho"
+          imageSrc="/characters/scenes/unknown_love.webp"
+          imageAlt={isKorean ? "궁합" : "相性"}
+          // owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
+          // session (aishoGate) 優先・無ければ端末保存の token。渡せたときは購入後に
+          // /aisho へ直接戻れる (returnTo)。どちらも無いゲストは /purchase-complete 着地。
+          ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
+          returnTo="aisho"
+          locale={locale}
+        />
+        {/* 相性ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
+        <PaywallModal
+          variant="aisho"
+          imageSrc="/characters/scenes/unknown_love.webp"
+          imageAlt={isKorean ? "궁합" : "相性"}
+          ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
+          returnTo="aisho"
+          locale={locale}
+        />
+      </>
+    )}
+    {/* フッターは常時表示 (選択モード・結果表示とも)。
+        幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
+    {isKorean ? <KoTopFooter /> : <TopFooter />}
+    </>
+  );
+}
+
+export default function AishoPage({
+  locale = "ja",
+}: {
+  locale?: ResultLocale;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white flex items-center justify-center">
+          <p className="text-sm font-bold" style={{ color: INACTIVE }}>
+            {locale === "ko" ? "불러오는 중…" : "読み込み中…"}
+          </p>
+        </main>
+      }
+    >
+      <AishoInner locale={locale} />
+    </Suspense>
+  );
+}

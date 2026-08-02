@@ -1,22 +1,13 @@
 import type { MetadataRoute } from "next";
 import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
 import { ARTICLES } from "@/lib/articles";
-
-const BASE_URL = "https://www.watashi-torisetsu.com";
-const HOME_ALTERNATES = {
-  languages: {
-    "ja-JP": BASE_URL,
-    "ko-KR": `${BASE_URL}/ko`,
-    "x-default": BASE_URL,
-  },
-};
-const DIAGNOSIS_ALTERNATES = {
-  languages: {
-    "ja-JP": `${BASE_URL}/diagnosis`,
-    "ko-KR": `${BASE_URL}/ko/diagnosis`,
-    "x-default": `${BASE_URL}/diagnosis`,
-  },
-};
+import { KO_ARTICLES } from "@/lib/articles-ko";
+import {
+  absoluteSiteUrl,
+  INDEXABLE_LOCALIZED_ROUTES,
+  localizedLanguages,
+  SITE_URL,
+} from "@/lib/locale-seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // タイプ別ランディング (/preview/[typeId])。/types から公開リンクされ、型ごとに
@@ -26,91 +17,78 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // 信頼できる更新シグナルにならないため。
   const typePages: MetadataRoute.Sitemap = (
     allThirtyTwoTypeIds() as string[]
-  ).map((id) => ({
-    url: `${BASE_URL}/preview/${id}`,
-    priority: 0.6,
-  }));
+  ).flatMap((id) => {
+    const japanesePath = `/preview/${id}`;
+    const koreanPath = `/ko/preview/${id}`;
+    const japaneseUrl = absoluteSiteUrl(japanesePath);
+    const koreanUrl = absoluteSiteUrl(koreanPath);
+    const alternates = {
+      languages: localizedLanguages(japanesePath, koreanPath),
+    };
+    return [
+      { url: japaneseUrl, priority: 0.6, alternates },
+      { url: koreanUrl, priority: 0.6, alternates },
+    ];
+  });
+
+  const localizedPages: MetadataRoute.Sitemap =
+    INDEXABLE_LOCALIZED_ROUTES.flatMap((route) => {
+      const alternates = {
+        languages: localizedLanguages(route.ja, route.ko),
+      };
+      return [
+        {
+          url: absoluteSiteUrl(route.ja),
+          priority: route.priority,
+          alternates,
+        },
+        {
+          url: absoluteSiteUrl(route.ko),
+          priority: route.priority,
+          alternates,
+        },
+      ];
+    });
+
+  const koreanArticlesBySlug = new Map(
+    KO_ARTICLES.map((article) => [article.slug, article]),
+  );
+  const articlePages: MetadataRoute.Sitemap = ARTICLES.flatMap((article) => {
+    const koreanArticle = koreanArticlesBySlug.get(article.slug);
+    if (!koreanArticle) return [];
+
+    const japanesePath = `/articles/${article.slug}`;
+    const koreanPath = `/ko/articles/${article.slug}`;
+    const alternates = {
+      languages: localizedLanguages(japanesePath, koreanPath),
+    };
+
+    return [
+      {
+        url: absoluteSiteUrl(japanesePath),
+        lastModified: article.updated ?? article.published,
+        priority: 0.7,
+        alternates,
+      },
+      {
+        url: absoluteSiteUrl(koreanPath),
+        lastModified: koreanArticle.updated ?? koreanArticle.published,
+        priority: 0.7,
+        alternates,
+      },
+    ];
+  });
+
   // priority: トップと診断ページを最重要 (1.0) として明示し、規約系は下げる。
   return [
-    {
-      url: BASE_URL,
-      priority: 1.0,
-      alternates: HOME_ALTERNATES,
-    },
-    {
-      // 韓国語トップ。/ と相互 hreflang を出して韓国語版として明示する。
-      url: `${BASE_URL}/ko`,
-      priority: 1.0,
-      alternates: HOME_ALTERNATES,
-    },
-    {
-      url: `${BASE_URL}/about`,
-      priority: 0.8,
-    },
-    {
-      // 診断ページはトップと同格の集客ページとして扱う
-      url: `${BASE_URL}/diagnosis`,
-      priority: 1.0,
-      alternates: DIAGNOSIS_ALTERNATES,
-    },
-    {
-      // 韓国語診断ページ。検索流入の主入口として /diagnosis と同格に扱う。
-      url: `${BASE_URL}/ko/diagnosis`,
-      priority: 1.0,
-      alternates: DIAGNOSIS_ALTERNATES,
-    },
-    {
-      // 性格タイプ一覧 (トップのナビ「性格タイプ」のリンク先)
-      url: `${BASE_URL}/types`,
-      priority: 0.8,
-    },
-    {
-      // 相性診断 (公開・シェア集客ページ)
-      url: `${BASE_URL}/aisho`,
-      priority: 0.8,
-    },
+    ...localizedPages,
     {
       // 運命の設計図 (独立商品LP。ナビ/フッターから公開リンクされる集客ページ)
-      url: `${BASE_URL}/unmei`,
+      url: `${SITE_URL}/unmei`,
       priority: 0.8,
     },
     ...typePages,
-    {
-      // 記事一覧 (SEO 用解説コンテンツの入り口)
-      url: `${BASE_URL}/articles`,
-      priority: 0.7,
-    },
-    // 記事詳細。lastModified は記事データの published/updated から実日付を入れる
-    // (ビルド時刻ではなくコンテンツ由来なので更新シグナルとして信頼できる)。
-    ...ARTICLES.map((a) => ({
-      url: `${BASE_URL}/articles/${a.slug}`,
-      lastModified: a.updated ?? a.published,
-      priority: 0.7,
-    })),
-    {
-      url: `${BASE_URL}/terms`,
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/privacy`,
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/legal/commerce`,
-      priority: 0.3,
-    },
-    // 韓国語版の規約系 (日本語版と同じ実ページが /ko 配下に存在する)
-    {
-      url: `${BASE_URL}/ko/terms`,
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/ko/privacy`,
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/ko/legal/commerce`,
-      priority: 0.3,
-    },
+    // 記事詳細。日本語・韓国語の同一スラッグを hreflang で相互に結ぶ。
+    ...articlePages,
   ];
 }

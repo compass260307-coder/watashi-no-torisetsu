@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { rotateSession, getSession } from "@/lib/session";
+import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 export const runtime = "nodejs";
 
@@ -29,9 +30,12 @@ function localeOf(request: NextRequest): "ja" | "ko" {
 function errorRedirect(request: NextRequest, reason: string): NextResponse {
   // request.nextUrl は常に絶対 URL なので、これを base に取れば SITE_URL の
   // 値に依存せず安全。Vercel / localhost / preview 全環境で動く。
-  const url = new URL("/auth/error", request.nextUrl);
+  const locale = localeOf(request);
+  const url = new URL(
+    locale === "ko" ? "/ko/auth/error" : "/auth/error",
+    request.nextUrl,
+  );
   url.searchParams.set("reason", reason);
-  if (localeOf(request) === "ko") url.searchParams.set("locale", "ko");
   return NextResponse.redirect(url);
 }
 
@@ -84,9 +88,11 @@ export async function GET(request: NextRequest) {
   });
 
   if (conflict && !confirmed) {
-    const url = new URL("/login/confirm", request.nextUrl);
+    const url = new URL(
+      locale === "ko" ? "/ko/login/confirm" : "/login/confirm",
+      request.nextUrl,
+    );
     url.searchParams.set("token", token);
-    if (locale === "ko") url.searchParams.set("locale", "ko");
     return NextResponse.redirect(url);
   }
 
@@ -150,11 +156,8 @@ export async function GET(request: NextRequest) {
   // 結果に置き換え、購入済みの完全版がそのまま有効になる。
   // 判定は「診断完了時刻なし AND スコア未設定 or 中央値のまま」に絞る
   // (diagnosis_completed_at カラム追加前の実診断行を誤って診断へ送らないため)。
-  const needsDiagnosis =
-    !!userRow &&
-    !userRow.diagnosis_completed_at &&
-    isPlaceholderScores(userRow.scores);
-  if (needsDiagnosis) {
+  const needsDiagnosis = isUndiagnosedPlaceholderUser(userRow);
+  if (needsDiagnosis && userRow) {
     // 運命の設計図の購入者は出生情報の入力が先 (/unmei が誘導する。日本語のみ)。
     const dest = userRow.unmei ? "/unmei" : `${prefix}/diagnosis`;
     return NextResponse.redirect(new URL(dest, request.nextUrl));
@@ -162,14 +165,4 @@ export async function GET(request: NextRequest) {
 
   const dest = ownerToken ? `${prefix}/me/${ownerToken}` : prefix || "/";
   return NextResponse.redirect(new URL(dest, request.nextUrl));
-}
-
-// ゲスト購入プレースホルダー行の scores 判定。
-// api/webhook/stripe の NEUTRAL_SCORES = {O:5,C:5,E:5,A:5,N:5} と揃えること。
-// scores 未設定 (null) も「表示できる本物の結果が無い」ので同じ扱いにする。
-function isPlaceholderScores(scores: unknown): boolean {
-  if (scores === null || scores === undefined) return true;
-  if (typeof scores !== "object") return true;
-  const rec = scores as Record<string, unknown>;
-  return ["O", "C", "E", "A", "N"].every((k) => rec[k] === 5);
 }

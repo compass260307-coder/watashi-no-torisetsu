@@ -168,7 +168,9 @@ export function MeStickyHeader({
   // invite モード (/tako) は LockedInviteShare と同じ招待文言に切り替える。
   const title = code ? `${essence ?? ""}（${code}）` : (essence ?? "");
   const shareText = isInvite
-    ? "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ"
+    ? locale === "ko"
+      ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
+      : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ"
     : locale === "ko"
       ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
@@ -275,7 +277,9 @@ export function MeStickyHeader({
                 type="button"
                 aria-label={
                   isInvite
-                    ? "友達に診断してもらう"
+                    ? isKo
+                      ? "친구에게 진단 부탁하기"
+                      : "友達に診断してもらう"
                     : isKo
                       ? "결과 공유"
                       : "結果をシェア"
@@ -312,16 +316,16 @@ export function MeStickyHeader({
                   <path d="M12 18v-6" />
                   <path d="m9 15 3 3 3-3" />
                 </svg>
-                完全版レポートを生成
+                {isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成"}
               </a>
             )}
 
             {diagnosisCta && (
               <a
-                href="/diagnosis"
+                href={isKo ? "/ko/diagnosis" : "/diagnosis"}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
               >
-                無料で性格診断をする
+                {isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする"}
               </a>
             )}
 
@@ -363,7 +367,9 @@ export function MeStickyHeader({
             aria-modal="true"
             aria-label={
               isInvite
-                ? "友達に診断してもらおう"
+                ? isKo
+                  ? "친구에게 진단을 부탁해요"
+                  : "友達に診断してもらおう"
                 : isKo
                   ? "결과를 공유해요"
                   : "結果をシェアしよう"
@@ -401,14 +407,18 @@ export function MeStickyHeader({
 
               <p className="mb-5 text-[18px] font-black text-[#2E2E5C]">
                 {isInvite
-                  ? "友達に診断してもらおう"
+                  ? isKo
+                    ? "친구에게 진단을 부탁해요"
+                    : "友達に診断してもらおう"
                   : isKo
                     ? "결과를 공유해요"
                     : "結果をシェアしよう"}
               </p>
               {isInvite && (
                 <p className="-mt-3 mb-5 text-[12.5px] font-bold leading-[1.7] text-[#8A8AA3]">
-                  答えてくれた友達のぶんだけ、結果シートが増えていくよ
+                  {isKo
+                    ? "답해 준 친구 수만큼 결과 시트가 늘어나요"
+                    : "答えてくれた友達のぶんだけ、結果シートが増えていくよ"}
                 </p>
               )}
 
@@ -504,7 +514,7 @@ export function MeStickyHeader({
                       </svg>
                     </span>
                     <span className="text-[11px] font-bold text-[#2E2E5C]/70">
-                      その他
+                      {isKo ? "기타" : "その他"}
                     </span>
                   </button>
                 )}
@@ -513,7 +523,9 @@ export function MeStickyHeader({
               {/* リンクコピー (URL 表示 + コピー。コピー内容は共有文つき) */}
               <p className="mb-1.5 text-[12px] font-bold text-[#2E2E5C]/60">
                 {isInvite
-                  ? "招待リンク"
+                  ? isKo
+                    ? "초대 링크"
+                    : "招待リンク"
                   : isKo
                     ? "캐릭터 링크"
                     : "キャラクターのリンク"}
@@ -528,7 +540,9 @@ export function MeStickyHeader({
                     copied
                       ? isKo ? "복사했어요" : "コピーしました"
                       : isInvite
-                        ? "招待リンクをコピー"
+                        ? isKo
+                          ? "초대 링크 복사"
+                          : "招待リンクをコピー"
                         : isKo ? "캐릭터 링크 복사" : "キャラクターのリンクをコピー"
                   }
                   onClick={handleCopy}
@@ -569,7 +583,9 @@ export function MeStickyHeader({
               <span className="sr-only" role="status" aria-live="polite">
                 {copied
                   ? isInvite
-                    ? "招待リンクをコピーしました"
+                    ? isKo
+                      ? "초대 링크를 복사했어요"
+                      : "招待リンクをコピーしました"
                     : isKo
                       ? "캐릭터 링크를 복사했어요"
                       : "キャラクターのリンクをコピーしました"

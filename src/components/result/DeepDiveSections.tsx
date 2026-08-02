@@ -163,22 +163,22 @@ const KO_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-const KO_LOVE_FAILURE_DECOY_ITEMS: { heading: string; body: string }[] = [
+const KO_LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "너무 많이 맞춰 준 뒤에 생기는 일",
-    body: "계속되던 노력이 멈추는 순간 관계가 흔들릴 수 있어요. 특히 당신에게 반복되기 쉬운 흐름이 있어요.",
+    heading: "상대가 말하지 못한 작은 불편함",
+    body: "관계를 소중히 여기기 때문에 바로 말하지 못하고 삼키는 마음이 있어요.",
   },
   {
-    heading: "참아 온 마음이 넘치는 순간",
-    body: "쌓아 둔 감정이 한꺼번에 나올 때, 당신에게는 일정한 패턴이 나타나요.",
+    heading: "안심시키고 싶지만 어려운 순간",
+    body: "상대가 같은 말을 반복하면서도 어떻게 전해야 좋을지 고민하는 지점이 있어요.",
   },
   {
-    heading: "불안할 때 피해야 할 행동",
-    body: "마음이 흔들릴 때 무심코 하는 행동이 오히려 상대를 멀어지게 할 수 있어요.",
+    heading: "둘만의 속도를 맞추는 방법",
+    body: "좋아하는 마음이 있어도 서로의 템포가 다르면 조용한 참음이 생길 수 있어요.",
   },
   {
-    heading: "엇갈림이 시작되는 신호",
-    body: "잘 풀리지 않는 관계에는 당신이 놓치기 쉬운 공통의 전조가 있어요.",
+    heading: "참음이 신뢰로 바뀌는 질문",
+    body: "먼저 가볍게 물어보는 한마디가 상대의 침묵을 풀어 줄 수 있어요.",
   },
 ];
 
@@ -305,7 +305,7 @@ const LOCKED_BLOCK_CONFIG: Record<
         アナタの恋人が言えずにいる気持ちを知りましょう。
       </>
     ),
-    source: "love_failure_card",
+    source: "love_endure_card",
   },
   "あなたに合った働き方・避けたほうがいい職場": {
     decoyItems: CAREER_FIT_DECOY_ITEMS,
@@ -343,16 +343,16 @@ const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
     ),
     source: "love_payoff_card",
   },
-  "연애가 잘 풀리지 않을 때의 패턴": {
-    decoyItems: KO_LOVE_FAILURE_DECOY_ITEMS,
+  "연인이 조용히 참고 있는 것": {
+    decoyItems: KO_LOVE_ENDURE_DECOY_ITEMS,
     cardCopy: (
       <>
         완전판 리포트에서,
         <br className="md:hidden" />
-        연애가 자주 막히는 나만의 패턴을 확인해 보세요.
+        연인이 말하지 못하고 삼키는 지점을 확인해 보세요.
       </>
     ),
-    source: "love_failure_card",
+    source: "love_endure_card",
   },
   "잘 맞는 일과 피하고 싶은 환경": {
     decoyItems: KO_CAREER_FIT_DECOY_ITEMS,

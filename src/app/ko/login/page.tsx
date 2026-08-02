@@ -3,11 +3,13 @@ import { LoginCard } from "@/components/LoginCard";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 const NAVY = "#2E2E5C";
 
 export const metadata: Metadata = {
   title: { absolute: "로그인 | 나의 사용설명서" },
+  alternates: localizedAlternates("ko", "/login", "/ko/login"),
   robots: { index: false, follow: false },
 };
 

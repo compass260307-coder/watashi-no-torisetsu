@@ -6,13 +6,15 @@
 // props 無し・フックなしの静的表示なので Server Component のまま (Image のみ)。
 
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 
 // 3ステップ (友達診断の進み方)。accent=上アクセント帯/pill、tint=イラスト帯/pill 背景。
 // 色はグループ色 (海=青/陸=緑/未知=紫) に対応させ、世界観に接続する。
-const STEPS = [
+const STEPS = {
+  ja: [
   {
     n: 1,
     accent: "#5BC6DB",
@@ -37,9 +39,37 @@ const STEPS = [
     title: "あなたが解ける",
     desc: "友達1人が答えると「友達から見たあなた」が完成する。",
   },
-] as const;
+  ],
+  ko: [
+    {
+      n: 1,
+      accent: "#5BC6DB",
+      tint: "#EAF6F9",
+      img: "/tako/steps/step1.png",
+      title: "친구에게 공유",
+      desc: "링크나 QR 코드를 친구에게 보내고, 친구 눈에 비친 내 모습을 물어보세요.",
+    },
+    {
+      n: 2,
+      accent: "#8FCE70",
+      tint: "#EEF7E9",
+      img: "/tako/steps/step2.png",
+      title: "친구가 답변",
+      desc: "친구가 30개 질문에 답하며 평소 느낀 당신의 인상을 알려 줘요.",
+    },
+    {
+      n: 3,
+      accent: "#B49BE8",
+      tint: "#F1ECFA",
+      img: "/tako/steps/step3.png",
+      title: "친구가 본 나 완성",
+      desc: "친구 한 명이 답하면 친구의 눈에 비친 당신의 결과가 완성돼요.",
+    },
+  ],
+} as const;
 
-const UNLOCK_PREVIEW_ITEMS = [
+const UNLOCK_PREVIEW_ITEMS = {
+  ja: [
   {
     icon: "sparkle",
     color: "#69C7D8",
@@ -64,13 +94,42 @@ const UNLOCK_PREVIEW_ITEMS = [
     title: "友達ごとの見え方",
     desc: "回答してくれた友達それぞれの印象も、あとから見返せる形で残ります。",
   },
-] as const;
+  ],
+  ko: [
+    {
+      icon: "sparkle",
+      color: "#69C7D8",
+      title: "친구들이 보는 나",
+      desc: "친구의 답변을 바탕으로 내가 미처 몰랐던 인상과 매력을 정리해 줘요.",
+    },
+    {
+      icon: "compare",
+      color: "#8FCE70",
+      title: "내 생각과의 차이",
+      desc: "자기 진단과 친구의 시선을 비교해 강점과 의외의 모습을 발견해요.",
+    },
+    {
+      icon: "chat",
+      color: "#B49BE8",
+      title: "관계를 위한 힌트",
+      desc: "주변이 느끼는 당신다움을 바탕으로 더 편안하게 가까워지는 방법을 찾아요.",
+    },
+    {
+      icon: "check",
+      color: "#F0B84D",
+      title: "친구마다 다른 시선",
+      desc: "답변해 준 친구마다 당신을 어떻게 보는지 나중에도 다시 확인할 수 있어요.",
+    },
+  ],
+} as const;
+
+type UnlockPreviewIconName = "sparkle" | "compare" | "chat" | "check";
 
 function UnlockPreviewIcon({
   icon,
   color,
 }: {
-  icon: (typeof UNLOCK_PREVIEW_ITEMS)[number]["icon"];
+  icon: UnlockPreviewIconName;
   color: string;
 }) {
   return (
@@ -147,12 +206,21 @@ function UnlockPreviewIcon({
 // stepsFirst: true で「3ステップ → 4項目グリッド」の順に上下反転 (完了画面用)。
 //   既定 false は tako ロック空状態の「グリッド → ステップ」順。
 export function TakoValueSections({
-  leadText = "友達1人が答えると、こんなことが見えます。",
+  leadText,
   stepsFirst = false,
+  locale = "ja",
 }: {
   leadText?: string;
   stepsFirst?: boolean;
+  locale?: ResultLocale;
 } = {}) {
+  const steps = STEPS[locale];
+  const previewItems = UNLOCK_PREVIEW_ITEMS[locale];
+  const resolvedLeadText =
+    leadText ??
+    (locale === "ko"
+      ? "친구 한 명이 답하면 이런 모습을 알 수 있어요."
+      : "友達1人が答えると、こんなことが見えます。");
   const gridSection = (
     <>
       {/* ===== 解放後に見えるもの (4項目グリッド) ===== */}
@@ -161,10 +229,10 @@ export function TakoValueSections({
           className="mb-7 text-[17px] font-bold leading-relaxed md:mb-8 md:text-[19px]"
           style={{ color: INACTIVE }}
         >
-          {leadText}
+          {resolvedLeadText}
         </p>
         <div className="grid gap-8 md:grid-cols-2 md:gap-x-14 md:gap-y-10">
-          {UNLOCK_PREVIEW_ITEMS.map((item) => (
+          {previewItems.map((item) => (
             <div key={item.title} className="flex gap-4 md:gap-5">
               <UnlockPreviewIcon icon={item.icon} color={item.color} />
               <div className="min-w-0">
@@ -187,7 +255,7 @@ export function TakoValueSections({
       {/* ===== 3ステップ (どう進むか)。SP=1枚のカード(行を区切り線で連結)、PC=縦カード3列。 ===== */}
       <section className="relative mb-12 md:mb-16">
         <div className="relative z-10 overflow-hidden rounded-2xl bg-white/95 shadow-[0_14px_40px_rgba(46,46,92,0.10)] ring-1 ring-white/60 backdrop-blur-[2px] md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:rounded-none md:bg-transparent md:shadow-none md:ring-0 md:backdrop-blur-none">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <div
               key={s.n}
               className="flex overflow-hidden md:block md:rounded-2xl md:bg-white/95 md:shadow-[0_14px_40px_rgba(46,46,92,0.10)] md:ring-1 md:ring-white/60 md:backdrop-blur-[2px]"
@@ -217,7 +285,7 @@ export function TakoValueSections({
                     className="hidden rounded-full px-3 py-1 text-[11px] font-black md:inline-block"
                     style={{ background: s.tint, color: NAVY }}
                   >
-                    ステップ{s.n}
+                    {locale === "ko" ? `${s.n}단계` : `ステップ${s.n}`}
                   </span>
                   <h3 className="hidden text-[19px] font-black text-[#2E2E5C] md:mt-3 md:block">
                     {s.title}

@@ -22,15 +22,28 @@ import { buildPerceptionView } from "@/lib/perception-view";
 import { PerceptionResultBody } from "@/components/result/PerceptionResultBody";
 import TopHeader from "@/components/top/TopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
-
-export const metadata: Metadata = {
-  title: "友達ごとの相互理解",
-  robots: { index: false, follow: false },
-};
+import { localizedAlternates } from "@/lib/locale-seo";
 
 interface PageProps {
   params: Promise<{ token: string; perceptionId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export async function generateMetadata({
+  params,
+}: Pick<PageProps, "params">): Promise<Metadata> {
+  const { token, perceptionId } = await params;
+  const tokenPath = encodeURIComponent(token);
+  const perceptionPath = encodeURIComponent(perceptionId);
+  return {
+    title: "友達ごとの相互理解",
+    alternates: localizedAlternates(
+      "ja",
+      `/tako/${tokenPath}/friend/${perceptionPath}`,
+      `/ko/tako/${tokenPath}/friend/${perceptionPath}`,
+    ),
+    robots: { index: false, follow: false },
+  };
 }
 
 // 全体での位置づけ一言 (総合の全友達データ由来)。

@@ -7,8 +7,11 @@
 
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { GuideDiagnoseButton } from "./GuideDiagnoseButton";
 import { TakoValueSections } from "./TakoValueSections";
+import type { ResultLocale } from "@/i18n/result";
 
 export function FriendIndividualGuide({
   // 診断CTAの遷移先。評価者ページは ?source=<owner invite_code> を付けてバイラル計測を維持。
@@ -17,15 +20,18 @@ export function FriendIndividualGuide({
   // 指定時のみ診断CTAクリックを friend_to_diagnosis_clicked で計測 (評価者→診断の転換KPI)。
   diagnoseTrackSource,
   inviteCode,
+  locale = "ja",
 }: {
   diagnoseHref?: string;
   diagnoseTrackSource?: string;
   inviteCode?: string;
+  locale?: ResultLocale;
 } = {}) {
+  const isKorean = locale === "ko";
   return (
     <>
       {/* ヘッダーは常時表示 (TopHeader 自体が sticky top-0)。スクロール連動の非表示はしない。 */}
-      <TopHeader />
+      {isKorean ? <KoTopHeader /> : <TopHeader />}
       <main
         className="relative overflow-x-clip px-4 pb-16 md:px-8"
         style={{ background: "#FFFFFF" }}
@@ -35,14 +41,16 @@ export function FriendIndividualGuide({
         <section className="mx-auto max-w-[1080px] pt-6 md:pt-12 md:flex md:items-center md:gap-12">
           <div className="md:flex-1 text-center md:text-left">
             <h1 className="text-[#2E2E5C] font-black text-[29px] md:text-[40px] leading-[1.4]">
-              診断してくれて、
+              {isKorean ? "진단에 참여해 줘서" : "診断してくれて、"}
               <br />
-              ありがとう。
+              {isKorean ? "고마워요." : "ありがとう。"}
             </h1>
             <p className="mt-3 text-[#8A8AA3] font-bold text-[13px] md:text-base leading-relaxed">
-              あなたの回答が、
+              {isKorean ? "당신의 답변으로" : "あなたの回答が、"}
               <br className="md:hidden" />
-              相手のトリセツを完成させます。
+              {isKorean
+                ? "친구의 사용설명서가 완성돼요."
+                : "相手のトリセツを完成させます。"}
             </p>
           </div>
           <div className="mt-6 md:mt-0 md:w-[48%] md:max-w-[560px] md:shrink-0">
@@ -64,7 +72,7 @@ export function FriendIndividualGuide({
         {/* ヒーロー下: 友達診断の案内ページ (tako ロック空状態) と同じ価値説明セクション。
             「こんなことが見えます」4項目グリッド + 進み方 3ステップ。 */}
         <div className="mx-auto max-w-[1080px] pt-12 md:pt-16">
-          <TakoValueSections stepsFirst />
+          <TakoValueSections stepsFirst locale={locale} />
         </div>
 
         {/* CTA: 性格診断する (単独) */}
@@ -75,13 +83,13 @@ export function FriendIndividualGuide({
               trackSource={diagnoseTrackSource}
               inviteCode={inviteCode}
             >
-              性格診断する
+              {isKorean ? "내 성격도 진단하기" : "性格診断する"}
             </GuideDiagnoseButton>
           </div>
         </div>
       </main>
       {/* サイト共通フッター */}
-      <TopFooter />
+      {isKorean ? <KoTopFooter /> : <TopFooter />}
     </>
   );
 }
