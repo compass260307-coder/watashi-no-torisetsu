@@ -102,14 +102,14 @@ const FLOATING_FACES: {
   rotate: number;
   delay: number;
 }[] = [
-  { src: "/proof-faces/face-1.webp", pos: { left: "4%", top: "4%" }, size: 58, rotate: -8, delay: 0 },
-  { src: "/proof-faces/face-5.webp", pos: { left: "26%", top: "-8%" }, size: 42, rotate: 10, delay: 0.3 },
-  { src: "/proof-faces/face-3.webp", pos: { right: "26%", top: "-4%" }, size: 40, rotate: -10, delay: 0.6 },
-  { src: "/proof-faces/face-2.webp", pos: { right: "5%", top: "6%" }, size: 50, rotate: 8, delay: 0.9 },
-  { src: "/proof-faces/face-7.webp", pos: { left: "0%", top: "52%" }, size: 50, rotate: 5, delay: 1.2 },
-  { src: "/proof-faces/face-6.webp", pos: { right: "0%", top: "48%" }, size: 64, rotate: -6, delay: 1.8 },
-  { src: "/proof-faces/face-4.webp", pos: { left: "14%", top: "88%" }, size: 46, rotate: 7, delay: 1.5 },
-  { src: "/proof-faces/face-8.webp", pos: { right: "13%", top: "90%" }, size: 54, rotate: -5, delay: 2.1 },
+  { src: "/proof-faces/face-1.webp", pos: { left: "4%", top: "4%" }, size: 60, rotate: -8, delay: 0 },
+  { src: "/proof-faces/face-5.webp", pos: { left: "20%", top: "-10%" }, size: 60, rotate: 10, delay: 0.3 },
+  { src: "/proof-faces/face-3.webp", pos: { right: "20%", top: "-8%" }, size: 60, rotate: -10, delay: 0.6 },
+  { src: "/proof-faces/face-2.webp", pos: { right: "5%", top: "6%" }, size: 60, rotate: 8, delay: 0.9 },
+  { src: "/proof-faces/face-7.webp", pos: { left: "0%", top: "52%" }, size: 60, rotate: 5, delay: 1.2 },
+  { src: "/proof-faces/face-6.webp", pos: { right: "0%", top: "48%" }, size: 60, rotate: -6, delay: 1.8 },
+  { src: "/proof-faces/face-4.webp", pos: { left: "14%", top: "88%" }, size: 60, rotate: 7, delay: 1.5 },
+  { src: "/proof-faces/face-8.webp", pos: { right: "13%", top: "90%" }, size: 60, rotate: -5, delay: 2.1 },
 ];
 
 // 実績ストリップの装飾スパークル (星モチーフ = 運命の設計図)。淡インディゴ+黄の2系統で
@@ -196,9 +196,9 @@ function UnmeiTeaserLp({
         </div>
         </div>
 
-        {/* 実績ストリップ: ここだけ白地に切り替え、上下を波エッジで帯とつなぐ (16P の
+        {/* 実績ストリップ: ヒーロー帯の下端を波エッジで白地へ切り替える (16P の
             締めCTAセクション参考 / 2026-08-02 指示)。波は帯色 #F7F7FE を塗った SVG を
-            preserveAspectRatio="none" で全幅に伸ばす。
+            preserveAspectRatio="none" で全幅に伸ばす。以降フッターまで白地。
             中央に人数、周囲に笑顔のアバターがふわふわ浮かぶ。人数は無料診断の累計完了者数
             (運命の設計図の購入数ではない) — admin統計の実数スナップショット (2026-08-02時点
             9,756人)。増える一方なので「以上」表記は常に正だが、定期的に最新値へ更新する。
@@ -216,7 +216,8 @@ function UnmeiTeaserLp({
             />
           </svg>
           <div className="px-4 md:px-8">
-          <section className="relative mx-auto max-w-[640px] py-2 md:py-3">
+          {/* PC はヒーロー/できることカードの内側幅 (1080px) に揃える */}
+          <section className="relative mx-auto max-w-[640px] py-2 md:max-w-[1080px] md:py-3">
             <div aria-hidden="true">
               {FLOATING_FACES.map((f) => (
                 <span
@@ -263,58 +264,48 @@ function UnmeiTeaserLp({
               ))}
             </div>
             <p className="relative z-10 mx-auto max-w-[280px] py-8 text-center md:max-w-none md:py-10">
-              <span className="block text-[14px] font-bold text-[#2E2E5C]/60 md:text-[15px]">
+              <span className="block text-[14px] font-bold text-[#2E2E5C]/60 md:text-[18px]">
                 これまでに
               </span>
-              <span className="mt-1.5 block leading-none">
-                <span className="relative inline-block text-[36px] font-black leading-none text-[#2E2E5C] md:text-[44px]">
+              <span className="mt-1.5 block leading-none md:mt-2.5">
+                <span className="relative inline-block text-[36px] font-black leading-none text-[#2E2E5C] md:text-[56px]">
                   {/* 蛍光マーカー風の黄下線 (鑑定表示の紺・黄トーンと同系) */}
                   <span
                     aria-hidden="true"
-                    className="absolute -inset-x-1.5 bottom-0 h-[13px] rounded-[4px] bg-[#FFE58A]/80 md:h-[16px]"
+                    className="absolute -inset-x-1.5 bottom-0 h-[13px] rounded-[4px] bg-[#FFE58A]/80 md:h-[20px]"
                   />
                   <span className="relative">
                     9,756
-                    <span className="ml-1 text-[20px] md:text-[24px]">人以上</span>
+                    <span className="ml-1 text-[20px] md:text-[30px]">人以上</span>
                   </span>
                 </span>
               </span>
-              <span className="mt-2.5 block text-[15px] font-bold text-[#2E2E5C]/60 md:text-[16px]">
+              <span className="mt-2.5 block text-[15px] font-bold text-[#2E2E5C]/60 md:mt-3.5 md:text-[19px]">
                 が自分のトリセツを診断しています
               </span>
             </p>
           </section>
           </div>
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 1440 48"
-            preserveAspectRatio="none"
-            className="block h-8 w-full md:h-12"
-          >
-            <path
-              fill="#F7F7FE"
-              d="M0,48 H1440 V24 C1310,4 1180,40 1040,30 C900,20 810,2 670,16 C530,30 450,6 310,10 C170,14 80,40 0,24 Z"
-            />
-          </svg>
         </div>
 
-        {/* 帯の続き (淡インディゴ): できることカードが境目に重なるための下地 */}
-        <div className="bg-[#F7F7FE] pb-24 md:pb-32" />
-
-        {/* 帯より下 (白地)。負マージンで「できること」カードを帯の境目に重ねる */}
-        <div className="-mt-14 px-4 md:-mt-20 md:px-8">
+        {/* 白いカード包みと下側の波・帯色の再開は廃止 (2026-08-02 指示)。
+            ヒーロー帯の波エッジ以降はフッターまで白地が続き、タイルを直接置く。
+            mt はストリップ下端からはみ出す浮遊アバターぶんの逃げも兼ねる */}
+        <div className="mt-16 px-4 md:mt-24 md:px-8">
         <div className="mx-auto max-w-[1080px]">
-          {/* ===== できること (白カード + PC 2×2 グリッド / /me のアップセルカードと同素材) ===== */}
-          <section className="rounded-[20px] border border-[#F0F1F8] bg-white px-6 py-10 shadow-[0_10px_40px_rgba(46,46,92,0.08)] md:px-12 md:py-12">
-            <p className="mb-8 text-center text-[16px] font-bold text-[#2E2E5C]/60 md:text-[17px]">
+          {/* ===== できること (4色タイル・PC 2×2 グリッド) ===== */}
+          <section>
+            <h2 className="mb-7 text-center text-[20px] font-black text-[#2E2E5C] md:mb-9 md:text-[26px]">
               運命の設計図でできること
-            </p>
-            <ul className="grid gap-x-10 gap-y-7 md:grid-cols-2">
+            </h2>
+            {/* 32タイプの4グループ色 (/types・相性と同じ空/海/陸/未知パレット) のタイルで
+                ポップに。白丸アイコンバッジ + POINT スタンプ (トリセツ流のラベル使い)。 */}
+            <ul className="grid gap-4 md:grid-cols-2 md:gap-6">
               {[
                 {
                   // 出生図ホイール (下部ナビの運命タブと同モチーフ)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
                       <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
                       <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
@@ -322,59 +313,78 @@ function UnmeiTeaserLp({
                       <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
                     </svg>
                   ),
-                  title: "あなただけの出生図ホイール",
+                  title: "世界にひとつ、あなたの出生図ホイール",
                   body: "生年月日・出生時間・出生地から、生まれた瞬間の空を再現。太陽や月をはじめとした天体の配置を、あなただけの一枚の設計図として描きます",
+                  bg: "#E7DCFB",
+                  dark: "#6C4EB8",
                 },
                 {
                   // 鑑定文 (書類 + 本文行)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
                       <path d="M14 2v5h5" />
                       <path d="M9 13h6M9 17h4" />
                     </svg>
                   ),
-                  title: "4章立てのAI鑑定文",
+                  title: "AIが語りかける、4章の鑑定書",
                   body: "「あなたが積み上げてきたもの」「誰かといるときのあなた」「これから訪れる転換点」「最後にひとつだけ」の4章。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+                  bg: "#BEF2F9",
+                  dark: "#1D6E86",
                 },
                 {
                   // 掛け合わせ (重なる2つの円)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                       <circle cx="9" cy="12" r="5.8" />
                       <circle cx="15" cy="12" r="5.8" />
                     </svg>
                   ),
-                  title: "性格診断との掛け合わせ",
+                  title: "性格診断 × 星、ふたつの答え合わせ",
                   body: "自己診断でわかった性格と星の素質を照らし合わせ、重なるところも少しのズレも含めて、あなたがこれまで選んできた姿勢に名前をつけます",
+                  bg: "#D8F2C0",
+                  dark: "#3F7A2E",
                 },
                 {
                   // 自分の原点 (コンパス)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <circle cx="12" cy="12" r="8.5" />
                       <path d="m15.5 8.5-2 5-5 2 2-5z" />
                     </svg>
                   ),
-                  title: "いつでも戻ってこられる、自分の原点",
+                  title: "何度でも戻ってこられる、自分の原点",
                   body: "生まれた瞬間の星の配置は、時間が経っても変わりません。迷ったときに何度でも読み返せる、あなただけの原点として手元に残ります",
+                  bg: "#FDEFB4",
+                  dark: "#8F6B14",
                 },
-              ].map((f) => (
-                <li key={f.title} className="flex items-start gap-3.5">
-                  <span
-                    aria-hidden="true"
-                    className="mt-0.5 flex w-9 flex-shrink-0 justify-center text-[#5B5BEF]"
-                  >
-                    {f.icon}
-                  </span>
-                  <div>
-                    <p className="text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
-                      {f.title}
-                    </p>
-                    <p className="mt-1 text-[15px] font-normal leading-relaxed text-[#2E2E5C]/65 md:text-[16px]">
-                      {f.body}
-                    </p>
+              ].map((f, i) => (
+                <li
+                  key={f.title}
+                  className="rounded-2xl p-5 transition-transform md:p-7 md:hover:-translate-y-1"
+                  style={{ background: f.bg }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white"
+                      style={{ color: f.dark }}
+                    >
+                      {f.icon}
+                    </span>
+                    <span
+                      className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-black tracking-[0.08em]"
+                      style={{ color: f.dark }}
+                    >
+                      POINT 0{i + 1}
+                    </span>
                   </div>
+                  <p className="mt-3.5 text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
+                    {f.title}
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-normal leading-relaxed text-[#2E2E5C]/70 md:text-[15px]">
+                    {f.body}
+                  </p>
                 </li>
               ))}
             </ul>
