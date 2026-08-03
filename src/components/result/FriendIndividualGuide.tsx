@@ -108,7 +108,7 @@ export function FriendIndividualGuide({
           <TakoValueSections stepsFirst locale={locale} />
         </div>
 
-        {/* CTA: 性格診断する (単独) */}
+        {/* CTA: 自己診断する (単独。ナビ「自己診断」・上部バーと呼称を統一 2026-08-04) */}
         <div className="relative z-10 mx-auto flex max-w-[420px] flex-col items-center pt-2 md:pt-4">
           <div className="w-full max-w-[320px]">
             <GuideDiagnoseButton
@@ -116,7 +116,7 @@ export function FriendIndividualGuide({
               trackSource={diagnoseTrackSource}
               inviteCode={inviteCode}
             >
-              {isKorean ? "내 성격도 진단하기" : "性格診断する"}
+              {isKorean ? "내 성격도 진단하기" : "自己診断する"}
             </GuideDiagnoseButton>
           </div>
         </div>
