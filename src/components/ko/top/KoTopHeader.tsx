@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import { localeSwitchPath } from "@/lib/locale-switch";
 
@@ -36,6 +37,10 @@ export default function KoTopHeader() {
   const [languageOpen, setLanguageOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [currentSearch, setCurrentSearch] = useState("");
+  // 未診断なら친구 진단 테스트をロック表示にする (日本語版 TopHeader と同じ挙動)。
+  // 初期値 true (=ロックなし): 診断済みユーザーに一瞬ロックが見えるのを避ける。
+  const [hasToken, setHasToken] = useState(true);
+  const [takoLockOpen, setTakoLockOpen] = useState(false);
   const pathname = usePathname() ?? "/ko";
 
   useEffect(() => {
@@ -47,6 +52,7 @@ export default function KoTopHeader() {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOwnerToken(token);
+    setHasToken(Boolean(token));
     setCurrentSearch(window.location.search);
   }, [pathname]);
 
@@ -102,6 +108,19 @@ export default function KoTopHeader() {
                   ({KO_TOP_CONTENT.navigation.preparing})
                 </span>
               </span>
+            ) : item.label === KO_TOP_CONTENT.navigation.friend && !hasToken ? (
+              // 未診断時はロック表示: 遷移せずポップオーバーで解放条件を伝える
+              // (日本語版 TopHeader と同じ挙動。色もロック中タブと同じグレー)。
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => setTakoLockOpen(true)}
+                className="flex items-center gap-1 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[19px]"
+                style={{ color: "#9BA3B4" }}
+              >
+                {item.label}
+                <MenuLockIcon />
+              </button>
             ) : (
               <Link
                 key={item.href}
@@ -209,6 +228,24 @@ export default function KoTopHeader() {
                     ({KO_TOP_CONTENT.navigation.preparing})
                   </span>
                 </span>
+              ) : item.label === KO_TOP_CONTENT.navigation.friend &&
+                !hasToken ? (
+                // 未診断時はロック表示。ドロワーを閉じてからポップオーバーを出すと、
+                // 吹き出しの矢印がボトムナビのロック中「친구 진단」タブを指して場所も伝わる。
+                <button
+                  key={item.href}
+                  type="button"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setTakoLockOpen(true);
+                  }}
+                  className="flex w-full items-center gap-1.5 py-3.5 text-left text-[18px] font-bold"
+                  style={{ color: "#9BA3B4" }}
+                >
+                  {item.label}
+                  <MenuLockIcon />
+                </button>
               ) : (
                 <Link
                   key={item.href}
@@ -239,7 +276,30 @@ export default function KoTopHeader() {
           </div>
         </nav>
       </div>
+
+      {/* 未診断でロック中の친구 진단 테스트を押したときの吹き出し (BottomNav と共用)。
+          画面下部・ボトムナビの친구 진단タブの真上に出る。 */}
+      <TakoLockPopover
+        isOpen={takoLockOpen}
+        onClose={() => setTakoLockOpen(false)}
+        locale="ko"
+      />
     </header>
+  );
+}
+
+// 未診断時に「친구 진단 테스트」の横に付けるミニ南京錠。BottomNav の LockBadge と同モチーフ。
+function MenuLockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="currentColor" />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
