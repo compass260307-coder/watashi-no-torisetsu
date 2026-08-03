@@ -614,7 +614,7 @@ input[type="reset"]:active {
    見出しと同様に角ゴで統一し、明朝は使わない。 */
 .body-gothic {
   font-family:
-    var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    var(--font-noto-sans), "Hiragino Kaku Gothic ProN", "Hiragino Sans",
     "Noto Sans JP", sans-serif;
 }
 

@@ -15,31 +15,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 const mPlusRounded = M_PLUS_Rounded_1c({
   subsets: ["latin"],
-  // 900 は Phase 1.5-α Brand v2 ヒーローの h1 / CTA (font-black) で使用
-  weight: ["400", "500", "700", "800", "900"],
+  // 丸ゴはロゴ用レタリングのみ: .wtr-name/.wtr-sub=800 / .wtr-logo-text=900。
+  // 本文は Noto Sans に統一済みのため他ウェイトは読み込まない
+  // (日本語フォントは 1 ウェイト ≈ 125 個の @font-face になり CSS が肥大するため)。
+  weight: ["800", "900"],
   display: "swap",
   variable: "--font-m-plus-rounded",
 });
 
-// feat/top-page (16P型リニューアル): トップヒーローのタイポ (--font-noto-sans)。
+// サイト全体のゴシック (--font-noto-sans)。body 既定 + .body-gothic も共用。
 // H1=極太ゴシック(Noto Sans JP 800)、本文=ゴシック(Noto Sans JP 400/500/700)。
-// ※ 下の notoSansJP (--font-noto-sans-jp、結果ページ用) とは別インスタンス。
-//   同一ファミリーだが用途・weight・preload が異なるため統合しない。
+// ※ 以前は結果ページ本文用に 400/500 の別インスタンス (--font-noto-sans-jp) が
+//   あったが、同一ファミリーで @font-face が丸ごと重複していたため統合した。
 const notoSansTop = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["400", "500", "700", "800"],
   display: "swap",
   variable: "--font-noto-sans",
-});
-
-// 結果ページ本文の角ゴシック (.body-gothic が参照)。ヒラギノ非搭載端末向けフォールバック。
-// JP フォントは巨大なので preload しない。
-const notoSansJP = Noto_Sans_JP({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-  preload: false,
-  variable: "--font-noto-sans-jp",
 });
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -172,7 +164,7 @@ export default function RootLayout({
     <html
       lang="ja"
       suppressHydrationWarning
-      className={`${mPlusRounded.variable} ${notoSansTop.variable} ${notoSansJP.variable}`}
+      className={`${mPlusRounded.variable} ${notoSansTop.variable}`}
     >
       <head>
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
