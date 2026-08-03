@@ -12,12 +12,35 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
+// ja/ko の文言セット。ko は既存の /ko/tako ガードページの言い回し
+// (자기 진단 / 자기 진단 시작하기) に合わせる。
+const COPY = {
+  ja: {
+    ariaLabel: "友達診断はロック中",
+    heading: "友達診断はまだロック中",
+    bodyLine1: "自己診断が完了すると、",
+    bodyLine2: "友達に診断してもらえるよ",
+    cta: "テストを受ける",
+    diagnosisPath: "/diagnosis",
+  },
+  ko: {
+    ariaLabel: "친구 진단 잠금 안내",
+    heading: "친구 진단은 아직 잠겨 있어요",
+    bodyLine1: "자기 진단을 완료하면",
+    bodyLine2: "친구에게 진단을 받을 수 있어요",
+    cta: "자기 진단 시작하기",
+    diagnosisPath: "/ko/diagnosis",
+  },
+} as const;
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  locale?: "ja" | "ko";
 }
 
-export function TakoLockPopover({ isOpen, onClose }: Props) {
+export function TakoLockPopover({ isOpen, onClose, locale = "ja" }: Props) {
+  const copy = COPY[locale];
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -52,7 +75,7 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
 
   const handleStart = () => {
     onClose();
-    router.push("/diagnosis");
+    router.push(copy.diagnosisPath);
   };
 
   return createPortal(
@@ -61,7 +84,7 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
       className="fixed inset-x-0 z-50 flex justify-center px-5 animate-modal-slide-up"
       style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
       role="dialog"
-      aria-label="友達診断はロック中"
+      aria-label={copy.ariaLabel}
     >
       <div
         ref={cardRef}
@@ -72,13 +95,13 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
         }}
       >
         {/* 見出し (結果ページの font-black 見出しに合わせる) */}
-        <h2 className="mb-1.5 text-[15px] font-black text-[#2E2E5C]">
-          友達診断はまだロック中
+        <h2 className="mb-1.5 break-keep text-[15px] font-black text-[#2E2E5C]">
+          {copy.heading}
         </h2>
-        <p className="mb-3.5 text-[12px] leading-[1.75] text-[#6B7280]">
-          自己診断が完了すると、
+        <p className="mb-3.5 break-keep text-[12px] leading-[1.75] text-[#6B7280]">
+          {copy.bodyLine1}
           <br />
-          友達に診断してもらえるよ
+          {copy.bodyLine2}
         </p>
 
         <button
@@ -86,7 +109,7 @@ export function TakoLockPopover({ isOpen, onClose }: Props) {
           onClick={handleStart}
           className="block w-full rounded-full bg-[#2E2E5C] py-2.5 text-[13.5px] font-bold text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
-          テストを受ける
+          {copy.cta}
         </button>
 
         {/* 下向き三角: 友達診断タブ (5列の中央) を指す */}

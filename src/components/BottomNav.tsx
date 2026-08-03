@@ -340,6 +340,7 @@ export function BottomNav() {
         ? [
             { key: "home", label: "홈", href: "/ko", active: pathname === "/ko", Icon: HomeIcon },
             { key: "me", label: "사용설명서", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
+            // 未診断時はロック表示: 遷移せずポップアップで解放条件を伝える (ja と同じ挙動)。
             {
               key: "friend",
               label: "친구 진단",
@@ -348,6 +349,7 @@ export function BottomNav() {
                 pathname.startsWith("/ko/friend") ||
                 pathname.startsWith("/ko/tako"),
               Icon: UsersIcon,
+              locked: !hasToken,
             },
             {
               key: "type",
@@ -574,9 +576,11 @@ export function BottomNav() {
           );
         })}
       </div>
-      {!isKorean && (
-        <TakoLockPopover isOpen={lockOpen} onClose={() => setLockOpen(false)} />
-      )}
+      <TakoLockPopover
+        isOpen={lockOpen}
+        onClose={() => setLockOpen(false)}
+        locale={isKorean ? "ko" : "ja"}
+      />
       {/* 未購入でロック中の相性タブから開く課金カード (/aisho の PaywallModal と同じ見た目)。
           全ページ常駐の BottomNav 側で持つことで、どのページからでもその場で開ける。 */}
       {aishoPaywallOpen && (
