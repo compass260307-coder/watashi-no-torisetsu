@@ -13,6 +13,7 @@ import { GuideDiagnoseButton } from "./GuideDiagnoseButton";
 import { TakoValueSections } from "./TakoValueSections";
 import { ProofFacesBand } from "@/components/ProofFacesBand";
 import { MeAttentionOnGuide } from "./MeAttentionOnGuide";
+import { MeStickyHeader } from "./MeStickyHeader";
 import type { ResultLocale } from "@/i18n/result";
 
 export function FriendIndividualGuide({
@@ -35,8 +36,22 @@ export function FriendIndividualGuide({
       {/* 未診断の訪問者に下部ナビ「自己診断」の赤バッジを付与 (ja のみ。
           既存バッジ (tako/unmei) が ja 限定のため合わせる)。 */}
       {!isKorean && <MeAttentionOnGuide />}
-      {/* ヘッダーは常時表示 (TopHeader 自体が sticky top-0)。スクロール連動の非表示はしない。 */}
-      {isKorean ? <KoTopHeader /> : <TopHeader />}
+      {/* ヘッダー + 直下の「自己診断をする」CTAバー (/me・/share のシェアバーと同じ流儀
+          2026-08-04 指示)。スクロールでヘッダーが隠れてもバーは残る (MeStickyHeader)。
+          計測は friend_to_diagnosis_clicked source=sticky_bar — ページ末尾CTA (sent_bottom)・
+          下部ナビの赤バッジ (nav_badge) と source 別で比較できる。
+          タコ個別ページの非本人向け案内 (diagnoseTrackSource 未指定) は従来どおり計測なし。 */}
+      <MeStickyHeader
+        showUnlockCta={false}
+        diagnosisCta
+        diagnosisCtaHref={diagnoseHref}
+        diagnosisCtaLabel={isKorean ? "내 성격도 진단하기" : "自己診断をする"}
+        diagnosisCtaTrackSource={diagnoseTrackSource ? "sticky_bar" : undefined}
+        inviteCode={inviteCode}
+        locale={locale}
+      >
+        {isKorean ? <KoTopHeader /> : <TopHeader />}
+      </MeStickyHeader>
       <main
         className="relative overflow-x-clip px-4 pb-16 md:px-8"
         style={{ background: "#FFFFFF" }}

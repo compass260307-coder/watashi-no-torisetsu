@@ -63,6 +63,18 @@ interface MeStickyHeaderProps {
    * 課金CTA (showUnlockCta) / シェアボタンとは排他運用を想定。
    */
   diagnosisCta?: boolean;
+  /**
+   * 診断CTAの遷移先の差し替え (既定: /diagnosis)。評価送信後ページは
+   * ?source=<owner invite_code> を載せてバイラルツリー計測を維持する (2026-08-04)。
+   */
+  diagnosisCtaHref?: string;
+  /** 診断CTAの文言差し替え (既定: 無料で性格診断をする)。 */
+  diagnosisCtaLabel?: string;
+  /**
+   * 指定時のみ診断CTAクリックを friend_to_diagnosis_clicked で計測 (評価者ページ用。
+   * inviteCode prop と組で使う)。未指定 (/share) は従来どおり計測なし。
+   */
+  diagnosisCtaTrackSource?: string;
   locale?: ResultLocale;
 }
 
@@ -100,6 +112,9 @@ export function MeStickyHeader({
   paywallTargetId,
   reportHref,
   diagnosisCta,
+  diagnosisCtaHref,
+  diagnosisCtaLabel,
+  diagnosisCtaTrackSource,
   locale = "ja",
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (shareUrl) のどちらかがあれば出す。
@@ -378,10 +393,36 @@ export function MeStickyHeader({
 
             {diagnosisCta && (
               <a
-                href={isKo ? "/ko/diagnosis" : "/diagnosis"}
+                href={diagnosisCtaHref ?? (isKo ? "/ko/diagnosis" : "/diagnosis")}
+                onClick={
+                  diagnosisCtaTrackSource
+                    ? () =>
+                        track("friend_to_diagnosis_clicked", {
+                          inviteCode,
+                          metadata: { source: diagnosisCtaTrackSource },
+                        })
+                    : undefined
+                }
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
               >
-                {isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする"}
+                {/* クリップボード (下部ナビ「自己診断」タブと同モチーフ・他ピルと同じ 13px stroke 流儀) */}
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="4" width="14" height="17" rx="2.5" />
+                  <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+                  <path d="M8.5 11h7M8.5 15h5" />
+                </svg>
+                {diagnosisCtaLabel ??
+                  (isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
               </a>
             )}
 
