@@ -30,6 +30,10 @@ import {
   UNMEI_ATTENTION_PENDING_KEY,
   unmeiAttentionImpressionKey,
 } from "@/lib/unmei-attention";
+import {
+  ME_ATTENTION_GRANTED_EVENT,
+  ME_ATTENTION_PENDING_KEY,
+} from "@/lib/me-attention";
 import { track } from "@/lib/track";
 
 // アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
@@ -48,9 +52,12 @@ const INACTIVE = "#9BA3B4";
 //   下部の StickyCtaFooter は aboveBottomNav でナビの上に持ち上げて衝突を避ける。
 const HIDE_ON_PREFIXES = [
   "/friend/",
-  "/evaluate/",
+  // /evaluate/sent (評価送信後の案内ページ) ではナビを出す (2026-08-04:
+  // 未診断者への「自己診断」誘いバッジの受け皿。旧: /evaluate/ 全体を非表示)。
+  // /evaluate/result は本人向け結果表示のため従来どおり非表示。
+  "/evaluate/result/",
   "/ko/friend/",
-  "/ko/evaluate/",
+  "/ko/evaluate/result/",
   "/share/",
   "/ko/share/",
   "/admin",
@@ -185,6 +192,8 @@ export function BottomNav() {
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
+  // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
+  const [showMeAttention, setShowMeAttention] = useState(false);
   // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
   // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
   const [hasFull, setHasFull] = useState(false);
@@ -201,6 +210,7 @@ export function BottomNav() {
       let token: string | null = null;
       let attentionPending = false;
       let unmeiPending = false;
+      let mePending = false;
       try {
         token = localStorage.getItem("torisetsu_owner_token");
         const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
@@ -242,6 +252,21 @@ export function BottomNav() {
             }
           }
         }
+
+        // 「自己診断」誘いバッジ: 評価送信後ページ (MeAttentionOnGuide) が付与した
+        // pending を未診断の間だけ表示する。診断済みになった / 目的地 (/diagnosis) に
+        // 到達したら役目を終えるので消す。表示は既存バッジと同じく ja のみ。
+        if (localStorage.getItem(ME_ATTENTION_PENDING_KEY) === "1") {
+          if (
+            token ||
+            pathname.startsWith("/diagnosis") ||
+            pathname.startsWith("/ko/diagnosis")
+          ) {
+            localStorage.removeItem(ME_ATTENTION_PENDING_KEY);
+          } else {
+            mePending = !koreanPath && !navHidden;
+          }
+        }
       } catch {
         // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
       }
@@ -261,14 +286,19 @@ export function BottomNav() {
       setOwnerToken(token);
       setShowTakoAttention(attentionPending);
       setShowUnmeiAttention(unmeiPending);
+      setShowMeAttention(mePending);
     };
     evaluate();
     // /me/[token] は loading.tsx が先にコミットされるため、pathname 変化時点の
     // 評価は付与 (TakoAttentionOnResult) より前に走る。付与側が発火する通知を
     // 拾って同一ページ内で再評価し、「/me 滞在中にバッジが出ない」を防ぐ。
+    // 自己診断の誘いバッジ (MeAttentionOnGuide) も同じレースがあるため同様に拾う。
     window.addEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
-    return () =>
+    window.addEventListener(ME_ATTENTION_GRANTED_EVENT, evaluate);
+    return () => {
       window.removeEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
+      window.removeEventListener(ME_ATTENTION_GRANTED_EVENT, evaluate);
+    };
   }, [navHidden, pathname]);
 
   // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
@@ -479,7 +509,8 @@ export function BottomNav() {
           const hasAttention =
             (it.key === "friend" &&
               (showTakoAttention || isTakoAttentionPreview)) ||
-            (it.key === "unmei" && showUnmeiAttention);
+            (it.key === "unmei" && showUnmeiAttention) ||
+            (it.key === "me" && showMeAttention);
           if (it.disabled) {
             return (
               <button
@@ -539,6 +570,37 @@ export function BottomNav() {
               </button>
             );
           }
+          // バッジ付きタブのタップ処理。
+          //   - me (自己診断の誘い / 未診断=ownerToken 無し): pending を消して1回きりにし、
+          //     既存の評価者→診断KPI (friend_to_diagnosis_clicked) に source 違いで載せる
+          //     (新イベント名は events テーブルの RLS 変更が要るため増やさない)。
+          //   - friend / unmei: 従来どおり *_nav_badge_clicked (ownerToken 必須)。
+          const handleAttentionClick = !hasAttention
+            ? undefined
+            : it.key === "me"
+              ? () => {
+                  try {
+                    localStorage.removeItem(ME_ATTENTION_PENDING_KEY);
+                  } catch {
+                    // noop
+                  }
+                  setShowMeAttention(false);
+                  track("friend_to_diagnosis_clicked", {
+                    metadata: { source: "nav_badge", destination: it.href },
+                  });
+                }
+              : ownerToken
+                ? () =>
+                    track(
+                      it.key === "unmei"
+                        ? "unmei_nav_badge_clicked"
+                        : "tako_nav_badge_clicked",
+                      {
+                        ownerToken,
+                        metadata: { destination: it.href },
+                      },
+                    )
+                : undefined;
           return (
             <Link
               key={it.key}
@@ -547,20 +609,7 @@ export function BottomNav() {
               aria-label={
                 hasAttention ? `${it.label}（未確認のお知らせあり）` : undefined
               }
-              onClick={
-                hasAttention && ownerToken
-                  ? () =>
-                      track(
-                        it.key === "unmei"
-                          ? "unmei_nav_badge_clicked"
-                          : "tako_nav_badge_clicked",
-                        {
-                          ownerToken,
-                          metadata: { destination: it.href },
-                        },
-                      )
-                  : undefined
-              }
+              onClick={handleAttentionClick}
               // touch-manipulation: モバイルのタップ遅延を排除。
               // active:scale/opacity: 押下を即時に視覚反応させ「無反応」感を消す。
               className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
