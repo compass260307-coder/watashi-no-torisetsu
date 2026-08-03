@@ -114,8 +114,12 @@ export async function DELETE(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    // 出生データを消したら、それに紐づく鑑定 (natal_readings) も破棄する。
+    // これを残すと /unmei の再入力後に generate が「有効な鑑定あり」で再生成をスキップし
+    // 旧鑑定文が残る (構造的バグ)。3テーブルとも session.id スコープで、本人分だけを消す。
     await supabaseAdmin.from("birth_profiles").delete().eq("user_id", session.id);
     await supabaseAdmin.from("natal_charts").delete().eq("user_id", session.id);
+    await supabaseAdmin.from("natal_readings").delete().eq("user_id", session.id);
     await supabaseAdmin.from("users").update({ natal_chart_ready: false }).eq("id", session.id);
 
     await supabaseAdmin.from("events").insert({
