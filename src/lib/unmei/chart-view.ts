@@ -191,7 +191,6 @@ export type WheelLayout = {
   circles: { r: number }[];
   ticks: { x1: number; y1: number; x2: number; y2: number }[];
   degreeTicks: { x1: number; y1: number; x2: number; y2: number; major: boolean }[];
-  radials: { x1: number; y1: number; x2: number; y2: number }[];
   houseLines: { x1: number; y1: number; x2: number; y2: number; asc: boolean }[];
   houseNumbers: { x: number; y: number; text: string }[];
   signLabels: { x: number; y: number; text: string }[];
@@ -295,7 +294,6 @@ export function layoutWheel(view: ChartView): WheelLayout {
 
   const adj = declump(markers, labelGapDeg);
   const dots: WheelLayout["dots"] = [];
-  const radials: WheelLayout["radials"] = [];
   const leaders: WheelLayout["leaders"] = [];
   const bodyLabels: WheelLayout["bodyLabels"] = [];
   markers.forEach((m, i) => {
@@ -303,9 +301,6 @@ export function layoutWheel(view: ChartView): WheelLayout {
     if (!isMoonArc) {
       const [dx, dy] = polar(rDot, m.lon);
       dots.push({ x: dx, y: dy });
-      // 放射線: 中心(近く)から天体の点へ。中央の称号を避け rHub から始める。
-      const [hx, hy] = polar(rHub, m.lon);
-      radials.push({ x1: hx, y1: hy, x2: dx, y2: dy });
     }
     const [lx, ly] = polar(rLabel, adj[i]);
     const [ax, ay] = polar(rDot - 4, m.lon);
@@ -334,5 +329,5 @@ export function layoutWheel(view: ChartView): WheelLayout {
     }
   }
 
-  return { size, stars, aspectLines, degreeTicks, radials, houseLines, houseNumbers, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
+  return { size, stars, aspectLines, degreeTicks, houseLines, houseNumbers, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
 }

@@ -142,21 +142,6 @@ export default function NatalChartWheel({
             </text>
           ))}
 
-          {/* 放射線 (固定・最背面): 中心(近く)から各天体へ。アスペクト線より細く淡く(白0.2)。
-              中央の称号は rHub の内側なので線と重ならない。 */}
-          {L.radials.map((r, i) => (
-            <line
-              key={`rad${i}`}
-              x1={r.x1}
-              y1={r.y1}
-              x2={r.x2}
-              y2={r.y2}
-              stroke={WHITE}
-              strokeOpacity={0.2}
-              strokeWidth={0.4}
-            />
-          ))}
-
           {/* アスペクト線 (固定・色分け): 調和=青/緊張=赤/合=薄黄。点より内側で結び中央に模様を集める。 */}
           {L.aspectLines.map((a, i) => (
             <line
