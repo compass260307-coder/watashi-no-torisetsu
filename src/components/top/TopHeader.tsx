@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
+import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { resetLocalData } from "@/lib/reset-data";
 import { localeSwitchPath } from "@/lib/locale-switch";
 
@@ -40,10 +41,15 @@ export default function TopHeader() {
   const [currentSearch, setCurrentSearch] = useState("");
 
   // 友達診断テストの遷移先を BottomNav と同じルールで解決:
-  //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
+  //   localStorage の owner_token があれば /tako/[token]、無ければロック表示
+  //   (遷移せず TakoLockPopover。BottomNav の友達診断タブと同じ挙動)。
   //   クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
   const [takoUrl, setTakoUrl] = useState("/tako");
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  // 初期値 true (=ロックなし): 診断済みユーザーに一瞬ロックが見えるのを避ける
+  // (BottomNav と同じ判断。未診断側は hydration 後にロックが現れる)。
+  const [hasToken, setHasToken] = useState(true);
+  const [takoLockOpen, setTakoLockOpen] = useState(false);
   useEffect(() => {
     let token: string | null = null;
     try {
@@ -54,6 +60,7 @@ export default function TopHeader() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakoUrl(token ? `/tako/${token}` : "/tako");
     setOwnerToken(token);
+    setHasToken(Boolean(token));
     setCurrentSearch(window.location.search);
   }, [pathname]);
 
@@ -128,6 +135,19 @@ export default function TopHeader() {
                 style={{ color: NAVY }}
               >
                 {n.label}
+              </button>
+            ) : n.label === "友達診断テスト" && !hasToken ? (
+              // 未診断時はロック表示: 遷移せずポップオーバーで解放条件を伝える
+              // (BottomNav の友達診断タブと同じ挙動。色もロック中タブと同じグレー)。
+              <button
+                key={n.href}
+                type="button"
+                onClick={() => setTakoLockOpen(true)}
+                className={`${navLinkClass} flex items-center gap-1`}
+                style={{ color: "#9BA3B4" }}
+              >
+                {n.label}
+                <MenuLockIcon />
               </button>
             ) : (
               <Link
@@ -273,6 +293,23 @@ export default function TopHeader() {
               >
                 {n.label}
               </button>
+            ) : n.label === "友達診断テスト" && !hasToken ? (
+              // 未診断時はロック表示。ドロワーを閉じてからポップオーバーを出すと、
+              // 吹き出しの矢印がボトムナビのロック中「友達診断」タブを指して場所も伝わる。
+              <button
+                key={n.href}
+                type="button"
+                tabIndex={open ? 0 : -1}
+                onClick={() => {
+                  setOpen(false);
+                  setTakoLockOpen(true);
+                }}
+                className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
+                style={{ color: "#9BA3B4" }}
+              >
+                {n.label}
+                <MenuLockIcon />
+              </button>
             ) : (
               <Link
                 key={n.href}
@@ -346,7 +383,29 @@ export default function TopHeader() {
 
       {/* ログインモーダル (現在のページの上に重ねる) */}
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+
+      {/* 未診断でロック中の友達診断テストを押したときの吹き出し (BottomNav と共用)。
+          画面下部・ボトムナビの友達診断タブの真上に出る。 */}
+      <TakoLockPopover
+        isOpen={takoLockOpen}
+        onClose={() => setTakoLockOpen(false)}
+      />
     </header>
+  );
+}
+
+// 未診断時に「友達診断テスト」の横に付けるミニ南京錠。BottomNav の LockBadge と同モチーフ。
+function MenuLockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="currentColor" />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

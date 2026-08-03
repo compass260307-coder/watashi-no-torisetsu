@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { TakoLockPopover } from "@/components/TakoLockPopover";
 
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
@@ -113,8 +114,13 @@ export default function TopFooter() {
   const pathname = usePathname() ?? "/";
 
   // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
-  //   localStorage の owner_token があれば /tako/[token]、無ければ /tako (未診断ガード)。
+  //   localStorage の owner_token があれば /tako/[token]、無ければロック表示
+  //   (遷移せず TakoLockPopover。ヘッダー/ボトムナビと同じ挙動)。
   const [takoUrl, setTakoUrl] = useState("/tako");
+  // 初期値 true (=ロックなし): 診断済みユーザーに一瞬ロックが見えるのを避ける
+  // (BottomNav/TopHeader と同じ判断)。
+  const [hasToken, setHasToken] = useState(true);
+  const [takoLockOpen, setTakoLockOpen] = useState(false);
   useEffect(() => {
     let token: string | null = null;
     try {
@@ -124,6 +130,7 @@ export default function TopFooter() {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakoUrl(token ? `/tako/${token}` : "/tako");
+    setHasToken(Boolean(token));
   }, [pathname]);
 
   const columns = COLUMNS.map((col) => ({
@@ -161,6 +168,21 @@ export default function TopFooter() {
                     {l.label}
                     <span className="text-[12px]">（準備中）</span>
                   </span>
+                ) : l.label === "友達診断テスト" && !hasToken ? (
+                  // 未診断時はロック表示: 遷移せずポップオーバーで解放条件を伝える
+                  // (TopHeader/BottomNav と同じ挙動。色もロック中タブと同じグレー)。
+                  <button
+                    key={l.label}
+                    type="button"
+                    onClick={() => setTakoLockOpen(true)}
+                    // 南京錠だけが折り返して孤立しないよう常に1行 (はみ出す数pxは
+                    // カラム間の gap-x-10 に逃がす。グリッドは overflow を切らない)。
+                    className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
+                    style={{ color: "#9BA3B4" }}
+                  >
+                    {l.label}
+                    <MenuLockIcon />
+                  </button>
                 ) : l.external ? (
                   <a
                     key={l.label}
@@ -229,6 +251,28 @@ export default function TopFooter() {
           </div>
         </div>
       </div>
+
+      {/* 未診断でロック中の友達診断テストを押したときの吹き出し (BottomNav/TopHeader と共用)。
+          画面下部・ボトムナビの友達診断タブの真上に出る。 */}
+      <TakoLockPopover
+        isOpen={takoLockOpen}
+        onClose={() => setTakoLockOpen(false)}
+      />
     </footer>
+  );
+}
+
+// 未診断時に「友達診断テスト」の横に付けるミニ南京錠。TopHeader の MenuLockIcon と同モチーフ。
+function MenuLockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="currentColor" />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
