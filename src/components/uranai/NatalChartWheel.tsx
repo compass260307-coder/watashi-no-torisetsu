@@ -22,8 +22,15 @@ import {
   type Chart,
   type MoonArc,
 } from "@/lib/unmei/chart-view";
+import { computePlacidusHouses } from "@/lib/unmei/houses.mjs";
 
 const WHITE = "#FFFFFF"; // 線・文字 (天体の点=黄は defs の uw-dot グラデで描く)
+// アスペクト線の色分け: 調和=青系 / 緊張=赤系 / 合=薄い黄。紺地に映える彩度。
+const ASPECT_COLOR = {
+  harmony: "#6FB2FF", // トライン/セクスタイル
+  tension: "#FF7E7E", // スクエア/オポジション
+  neutral: "#EBD68A", // 合
+};
 
 type Props = {
   chart: Chart | null | undefined;
@@ -38,7 +45,9 @@ export default function NatalChartWheel({
   moonArc,
   essence = null,
 }: Props) {
-  const view = buildChartView(chart, { timeUnknown, moonArc });
+  // ハウス分割 (Placidus) を描画時に再計算 (時刻不明は null=線なし)。既存チャートにも即反映。
+  const houseCusps = computePlacidusHouses(chart);
+  const view = buildChartView(chart, { timeUnknown, moonArc, houseCusps });
   if (!view) return null;
   const L = layoutWheel(view);
 
@@ -103,7 +112,37 @@ export default function NatalChartWheel({
               明度切り替わり=2層の主因だったため、影ではなくドームの緩やかなグラデと
               リング線の明るさ(下記 0.45)だけで骨格・奥行きを出す。 */}
 
-          {/* アスペクト線 (白・固定): 天体同士の主要角度を結ぶ弦。実データ。奥行き=中間の明るさ。 */}
+          {/* ハウス分割線 (Placidus・時刻既知のみ・固定=回転しない): rHub〜rBand。外周リングと同じ白・細。
+              ASC(第1ハウス境界)だけ少し強調。時刻不明時は houseLines が空。 */}
+          {L.houseLines.map((h, i) => (
+            <line
+              key={`hl${i}`}
+              x1={h.x1}
+              y1={h.y1}
+              x2={h.x2}
+              y2={h.y2}
+              stroke={WHITE}
+              strokeOpacity={h.asc ? 0.55 : 0.32}
+              strokeWidth={h.asc ? 0.9 : 0.6}
+            />
+          ))}
+          {/* ハウス番号 (1〜12・各扇形の中央に淡く) */}
+          {L.houseNumbers.map((n, i) => (
+            <text
+              key={`hn${i}`}
+              x={n.x}
+              y={n.y}
+              fill={WHITE}
+              fillOpacity={0.35}
+              fontSize={8}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {n.text}
+            </text>
+          ))}
+
+          {/* アスペクト線 (固定・色分け): 調和=青/緊張=赤/合=薄黄。点より内側で結び中央に模様を集める。 */}
           {L.aspectLines.map((a, i) => (
             <line
               key={`a${i}`}
@@ -111,9 +150,9 @@ export default function NatalChartWheel({
               y1={a.y1}
               x2={a.x2}
               y2={a.y2}
-              stroke={WHITE}
-              strokeOpacity={0.4}
-              strokeWidth={0.6}
+              stroke={ASPECT_COLOR[a.tone]}
+              strokeOpacity={0.5}
+              strokeWidth={0.7}
             />
           ))}
 
@@ -159,6 +198,19 @@ export default function NatalChartWheel({
                 stroke={WHITE}
                 strokeOpacity={0.45}
                 strokeWidth={1}
+              />
+            ))}
+            {/* 度数目盛り (5度ごと・10度は長め): 精密な計算図らしさ。リングと一緒に回転。 */}
+            {L.degreeTicks.map((t, i) => (
+              <line
+                key={`dt${i}`}
+                x1={t.x1}
+                y1={t.y1}
+                x2={t.x2}
+                y2={t.y2}
+                stroke={WHITE}
+                strokeOpacity={t.major ? 0.4 : 0.28}
+                strokeWidth={0.6}
               />
             ))}
           </g>
