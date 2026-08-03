@@ -19,3 +19,9 @@ const TAKO_ATTENTION_PAID_GRANTED_PREFIX =
 export function takoAttentionPaidGrantedKey(ownerToken: string): string {
   return `${TAKO_ATTENTION_PAID_GRANTED_PREFIX}${ownerToken}`;
 }
+
+// /me 滞在中に付与されたバッジを BottomNav が同一ページ内で拾うための通知イベント。
+// BottomNav の再評価契機が pathname 変化だけだと、/me/[token] の loading.tsx が
+// コミットされた時点 (= 付与前) に判定が走ったきりになり、/me を読んでいる間
+// バッジが一度も出ない (2026-08-04 修正。バッジ表示率 37.5% の原因)。
+export const TAKO_ATTENTION_GRANTED_EVENT = "wt_tako_attention_granted_v1";

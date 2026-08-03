@@ -22,6 +22,7 @@ import {
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import {
+  TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
   takoAttentionImpressionKey,
 } from "@/lib/tako-attention";
@@ -195,71 +196,79 @@ export function BottomNav() {
   //   localStorage は SSR 時に無いため初期化子ではなく effect で読む (set-state-in-effect
   //   は外部ストレージ→state 同期の正当なケース)。
   useEffect(() => {
-    const koreanPath = pathname.startsWith("/ko");
-    let token: string | null = null;
-    let attentionPending = false;
-    let unmeiPending = false;
-    try {
-      token = localStorage.getItem("torisetsu_owner_token");
-      const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
-      const ownerTakoPath = token
-        ? `${koreanPath ? "/ko" : ""}/tako/${token}`
-        : null;
+    const evaluate = () => {
+      const koreanPath = pathname.startsWith("/ko");
+      let token: string | null = null;
+      let attentionPending = false;
+      let unmeiPending = false;
+      try {
+        token = localStorage.getItem("torisetsu_owner_token");
+        const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
+        const ownerTakoPath = token
+          ? `${koreanPath ? "/ko" : ""}/tako/${token}`
+          : null;
 
-      if (token && pathname === ownerTakoPath) {
-        // 到達計測と未確認解除は /tako ページ内の TakoViewTracker が担う。
-        // ここでは遷移直後にバッジを描画しないための表示判定だけを行う。
-        attentionPending = false;
-      } else {
-        attentionPending = Boolean(
-          token && pendingToken === token && !koreanPath && !navHidden,
-        );
-        if (attentionPending && token) {
-          const impressionKey = takoAttentionImpressionKey(token);
-          if (localStorage.getItem(impressionKey) !== "1") {
-            localStorage.setItem(impressionKey, "1");
-            track("tako_nav_badge_shown", { ownerToken: token });
+        if (token && pathname === ownerTakoPath) {
+          // 到達計測と未確認解除は /tako ページ内の TakoViewTracker が担う。
+          // ここでは遷移直後にバッジを描画しないための表示判定だけを行う。
+          attentionPending = false;
+        } else {
+          attentionPending = Boolean(
+            token && pendingToken === token && !koreanPath && !navHidden,
+          );
+          if (attentionPending && token) {
+            const impressionKey = takoAttentionImpressionKey(token);
+            if (localStorage.getItem(impressionKey) !== "1") {
+              localStorage.setItem(impressionKey, "1");
+              track("tako_nav_badge_shown", { ownerToken: token });
+            }
           }
         }
-      }
 
-      // 運命タブの赤バッジ (友達診断と同じ流儀)。/unmei 上では出さない
-      // (未確認解除は /unmei レイアウト内の UnmeiAttentionClear が担う)。
-      const unmeiPendingToken = localStorage.getItem(
-        UNMEI_ATTENTION_PENDING_KEY,
+        // 運命タブの赤バッジ (友達診断と同じ流儀)。/unmei 上では出さない
+        // (未確認解除は /unmei レイアウト内の UnmeiAttentionClear が担う)。
+        const unmeiPendingToken = localStorage.getItem(
+          UNMEI_ATTENTION_PENDING_KEY,
+        );
+        if (!pathname.startsWith("/unmei")) {
+          unmeiPending = Boolean(
+            token && unmeiPendingToken === token && !koreanPath && !navHidden,
+          );
+          if (unmeiPending && token) {
+            const impressionKey = unmeiAttentionImpressionKey(token);
+            if (localStorage.getItem(impressionKey) !== "1") {
+              localStorage.setItem(impressionKey, "1");
+              track("unmei_nav_badge_shown", { ownerToken: token });
+            }
+          }
+        }
+      } catch {
+        // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
+      }
+      setTorisetsuUrl(
+        token
+          ? `${koreanPath ? "/ko" : ""}/me/${token}`
+          : `${koreanPath ? "/ko" : ""}/diagnosis`,
       );
-      if (!pathname.startsWith("/unmei")) {
-        unmeiPending = Boolean(
-          token && unmeiPendingToken === token && !koreanPath && !navHidden,
-        );
-        if (unmeiPending && token) {
-          const impressionKey = unmeiAttentionImpressionKey(token);
-          if (localStorage.getItem(impressionKey) !== "1") {
-            localStorage.setItem(impressionKey, "1");
-            track("unmei_nav_badge_shown", { ownerToken: token });
-          }
-        }
-      }
-    } catch {
-      // localStorage 不可環境: token=null 扱い (フォールバックのまま)。
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTorisetsuUrl(
-      token
-        ? `${koreanPath ? "/ko" : ""}/me/${token}`
-        : `${koreanPath ? "/ko" : ""}/diagnosis`,
-    );
-    setTakoUrl(
-      token
-        ? `${koreanPath ? "/ko" : ""}/tako/${token}`
-        : koreanPath
-          ? "/ko/tako"
-          : "/tako",
-    );
-    setHasToken(Boolean(token));
-    setOwnerToken(token);
-    setShowTakoAttention(attentionPending);
-    setShowUnmeiAttention(unmeiPending);
+      setTakoUrl(
+        token
+          ? `${koreanPath ? "/ko" : ""}/tako/${token}`
+          : koreanPath
+            ? "/ko/tako"
+            : "/tako",
+      );
+      setHasToken(Boolean(token));
+      setOwnerToken(token);
+      setShowTakoAttention(attentionPending);
+      setShowUnmeiAttention(unmeiPending);
+    };
+    evaluate();
+    // /me/[token] は loading.tsx が先にコミットされるため、pathname 変化時点の
+    // 評価は付与 (TakoAttentionOnResult) より前に走る。付与側が発火する通知を
+    // 拾って同一ページ内で再評価し、「/me 滞在中にバッジが出ない」を防ぐ。
+    window.addEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
+    return () =>
+      window.removeEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
   }, [navHidden, pathname]);
 
   // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
