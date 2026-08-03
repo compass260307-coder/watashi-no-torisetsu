@@ -362,7 +362,7 @@ export function BottomNav() {
               ? [
                   {
                     key: "unmei",
-                    label: "運命",
+                    label: "占い",
                     href: "/unmei",
                     active: pathname.startsWith("/unmei"),
                     Icon: NatalWheelIcon,

@@ -37,12 +37,15 @@ export type Chart = {
 export type MoonArc = { startLon: number; endLon: number; start: Pos; end: Pos };
 
 export type WheelBody = { key: string; label: string; lon: number };
-export type Aspect = { fromLon: number; toLon: number };
+// tone: 調和(60/120)=harmony / 緊張(90/180)=tension / 合(0)=neutral。線の色分けに使う。
+export type AspectTone = "harmony" | "tension" | "neutral";
+export type Aspect = { fromLon: number; toLon: number; tone: AspectTone };
 export type ChartView = {
   timeUnknown: boolean;
   points: WheelBody[]; // 点で描く天体 (時刻不明時は月を含まない)
   moonArc: MoonArc | null; // 時刻不明時の月の範囲 (弧)
   aspects: Aspect[]; // 天体同士の主要アスペクト線 (古典7天体のみ。ASC/MC・時刻不明の月[弧]は除外)
+  houseCusps: number[] | null; // Placidus 12ハウスの黄経 (index0=House1=ASC)。時刻不明は null。
   listItems: { key: string; label: string; text: string }[];
   ariaLabel: string;
 };
@@ -60,12 +63,12 @@ export function fmtPos(p: Pos): string {
 }
 
 // 主要アスペクト(角度)とオーブ。60°(セクスタイル)は本数を抑えるため ±4°、他は ±6°。
-const ASPECT_DEFS: { angle: number; orb: number }[] = [
-  { angle: 0, orb: 6 },
-  { angle: 60, orb: 4 },
-  { angle: 90, orb: 6 },
-  { angle: 120, orb: 6 },
-  { angle: 180, orb: 6 },
+const ASPECT_DEFS: { angle: number; orb: number; tone: AspectTone }[] = [
+  { angle: 0, orb: 6, tone: "neutral" },
+  { angle: 60, orb: 4, tone: "harmony" },
+  { angle: 90, orb: 6, tone: "tension" },
+  { angle: 120, orb: 6, tone: "harmony" },
+  { angle: 180, orb: 6, tone: "tension" },
 ];
 // 2つの黄経の角度差 (0〜180)。
 function separationDeg(a: number, b: number): number {
@@ -76,10 +79,15 @@ function separationDeg(a: number, b: number): number {
 // chart + (時刻不明時の) moonArc からビューモデルを組み立てる。
 export function buildChartView(
   chart: Chart | null | undefined,
-  opts: { timeUnknown?: boolean; moonArc?: MoonArc | null },
+  opts: { timeUnknown?: boolean; moonArc?: MoonArc | null; houseCusps?: number[] | null },
 ): ChartView | null {
   if (!chart || !chart.planets || !chart.planets.sun) return null;
   const timeUnknown = opts.timeUnknown ?? chart.houses_available === false;
+  // ハウス分割は時刻既知のみ。時刻不明は null (線・番号なし)。
+  const houseCusps =
+    timeUnknown || !opts.houseCusps || opts.houseCusps.length !== 12
+      ? null
+      : opts.houseCusps;
   const moonArc = timeUnknown ? opts.moonArc ?? null : null;
   const planets = chart.planets;
   const points: WheelBody[] = [];
@@ -126,6 +134,7 @@ export function buildChartView(
           aspects.push({
             fromLon: aspectPoints[i].lon,
             toLon: aspectPoints[j].lon,
+            tone: def.tone,
           });
           break;
         }
@@ -135,7 +144,7 @@ export function buildChartView(
 
   const ariaLabel =
     "出生図。" + listItems.map((it) => `${it.label} ${it.text}`).join("、");
-  return { timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
+  return { timeUnknown, points, moonArc, aspects, houseCusps, listItems, ariaLabel };
 }
 
 // ===== SVG レイアウト (純幾何・React とダンプで共有) =====
@@ -148,6 +157,9 @@ export const WHEEL = {
   rBand: 128, // 星座帯の内側境界円 (帯をやや細く: 120→128)
   rSignText: 138, // 星座名の半径 (帯の中央に合わせる)
   rDot: 104, // 天体の点 / 月の弧
+  rAspect: 90, // アスペクト線の結節半径 (点より内側に引き込み中央に模様を集める)
+  rHub: 26, // 放射線・ハウス分割線の内側始点半径 (中央の称号を避ける)
+  rHouseNum: 44, // ハウス番号の半径 (中心寄り・各扇形の中央に淡く)
   rLabel: 78, // 天体名ラベル(内側)
   labelGapDeg: 15, // ラベルの最小角度間隔(重なり回避)
 } as const;
@@ -175,9 +187,13 @@ function declump(items: { lon: number }[], gap: number): number[] {
 export type WheelLayout = {
   size: number;
   stars: { x: number; y: number; r: number; o: number }[];
-  aspectLines: { x1: number; y1: number; x2: number; y2: number }[];
+  aspectLines: { x1: number; y1: number; x2: number; y2: number; tone: AspectTone }[];
   circles: { r: number }[];
   ticks: { x1: number; y1: number; x2: number; y2: number }[];
+  degreeTicks: { x1: number; y1: number; x2: number; y2: number; major: boolean }[];
+  radials: { x1: number; y1: number; x2: number; y2: number }[];
+  houseLines: { x1: number; y1: number; x2: number; y2: number; asc: boolean }[];
+  houseNumbers: { x: number; y: number; text: string }[];
   signLabels: { x: number; y: number; text: string }[];
   dots: { x: number; y: number }[];
   leaders: { x1: number; y1: number; x2: number; y2: number }[];
@@ -188,7 +204,7 @@ export type WheelLayout = {
 
 // ビューモデルから描画プリミティブ(座標)を生成する。
 export function layoutWheel(view: ChartView): WheelLayout {
-  const { rOuter, rBand, rSignText, rDot, rLabel, labelGapDeg, size } = WHEEL;
+  const { rOuter, rBand, rSignText, rDot, rAspect, rHub, rHouseNum, rLabel, labelGapDeg, size } = WHEEL;
 
   const circles = [{ r: rOuter }, { r: rBand }];
 
@@ -221,12 +237,40 @@ export function layoutWheel(view: ChartView): WheelLayout {
     placed += 1;
   }
 
-  // アスペクト線: 点リング(rDot)上で2天体を結ぶ弦。最背面に描く。
+  // アスペクト線: 点より内側(rAspect)で2天体を結ぶ弦。中央に模様を集める。tone を色分け用に持つ。
   const aspectLines = view.aspects.map((a) => {
-    const [x1, y1] = polar(rDot, a.fromLon);
-    const [x2, y2] = polar(rDot, a.toLon);
-    return { x1, y1, x2, y2 };
+    const [x1, y1] = polar(rAspect, a.fromLon);
+    const [x2, y2] = polar(rAspect, a.toLon);
+    return { x1, y1, x2, y2, tone: a.tone };
   });
+
+  // 度数目盛り: 星座帯の内側(rBand)から内向きに、5度ごと(10度は長め)。30度は既存の分割線に任せる。
+  const degreeTicks: WheelLayout["degreeTicks"] = [];
+  for (let d = 0; d < 360; d += 5) {
+    if (d % 30 === 0) continue;
+    const major = d % 10 === 0;
+    const [x1, y1] = polar(rBand, d);
+    const [x2, y2] = polar(rBand - (major ? 5 : 3), d);
+    degreeTicks.push({ x1, y1, x2, y2, major });
+  }
+
+  // ハウス分割線 + 番号 (Placidus・時刻既知のみ)。rHub〜rBand。回転させない固定要素。
+  const houseLines: WheelLayout["houseLines"] = [];
+  const houseNumbers: WheelLayout["houseNumbers"] = [];
+  if (view.houseCusps) {
+    for (let i = 0; i < 12; i++) {
+      const cusp = view.houseCusps[i];
+      const [x1, y1] = polar(rHub, cusp);
+      const [x2, y2] = polar(rBand, cusp);
+      houseLines.push({ x1, y1, x2, y2, asc: i === 0 });
+      // 番号は当該ハウス(cusp→次のcusp)の弧中央に、中心寄りで淡く。
+      const next = view.houseCusps[(i + 1) % 12];
+      const delta = ((next - cusp) % 360 + 360) % 360;
+      const mid = (cusp + delta / 2) % 360;
+      const [nx, ny] = polar(rHouseNum, mid);
+      houseNumbers.push({ x: nx, y: ny, text: String(i + 1) });
+    }
+  }
 
   // 星座分割(12本)と星座名(セクター中央)
   const ticks: WheelLayout["ticks"] = [];
@@ -251,6 +295,7 @@ export function layoutWheel(view: ChartView): WheelLayout {
 
   const adj = declump(markers, labelGapDeg);
   const dots: WheelLayout["dots"] = [];
+  const radials: WheelLayout["radials"] = [];
   const leaders: WheelLayout["leaders"] = [];
   const bodyLabels: WheelLayout["bodyLabels"] = [];
   markers.forEach((m, i) => {
@@ -258,6 +303,9 @@ export function layoutWheel(view: ChartView): WheelLayout {
     if (!isMoonArc) {
       const [dx, dy] = polar(rDot, m.lon);
       dots.push({ x: dx, y: dy });
+      // 放射線: 中心(近く)から天体の点へ。中央の称号を避け rHub から始める。
+      const [hx, hy] = polar(rHub, m.lon);
+      radials.push({ x1: hx, y1: hy, x2: dx, y2: dy });
     }
     const [lx, ly] = polar(rLabel, adj[i]);
     const [ax, ay] = polar(rDot - 4, m.lon);
@@ -286,5 +334,5 @@ export function layoutWheel(view: ChartView): WheelLayout {
     }
   }
 
-  return { size, stars, aspectLines, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
+  return { size, stars, aspectLines, degreeTicks, radials, houseLines, houseNumbers, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
 }
