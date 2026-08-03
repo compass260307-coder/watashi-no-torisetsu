@@ -766,8 +766,8 @@ export default function DiagnosisPageContent({
         <DiagnosisShareBand locale={locale} />
       </div>
     </div>
-    {/* サイト共通フッター */}
-    {isKorean ? <KoTopFooter /> : <TopFooter />}
+    {/* サイト共通フッター (直上のシェアバンドの波エッジが区切りになるため上端線は消す) */}
+    {isKorean ? <KoTopFooter /> : <TopFooter topBorder={false} />}
     </>
   );
 }

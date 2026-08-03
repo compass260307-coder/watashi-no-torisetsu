@@ -110,7 +110,13 @@ const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
   },
 ];
 
-export default function TopFooter() {
+// topBorder: 本文との境目のうっすら区切り線 (2026-07-26 指示)。/diagnosis のように
+// 直上がシェアバンドの波エッジで既に区切れているページでは false で消す。
+export default function TopFooter({
+  topBorder = true,
+}: {
+  topBorder?: boolean;
+}) {
   const pathname = usePathname() ?? "/";
 
   // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
@@ -146,8 +152,9 @@ export default function TopFooter() {
 
   return (
     <footer
-      // 16P 参考: 本文との境目にうっすらと区切り線 (2026-07-26 指示)
-      className="w-full border-t border-[#E9E9F2] bg-white px-8 py-20"
+      className={`w-full bg-white px-8 py-20 ${
+        topBorder ? "border-t border-[#E9E9F2]" : ""
+      }`}
       style={{ fontFamily: FONT_STACK }}
     >
       {/* MBTI 風: 中央寄せのコンテナ(左右に余白) + エアリーな間隔。
