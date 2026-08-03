@@ -12,6 +12,7 @@ import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { GuideDiagnoseButton } from "./GuideDiagnoseButton";
 import { TakoValueSections } from "./TakoValueSections";
 import { ProofFacesBand } from "@/components/ProofFacesBand";
+import { MeAttentionOnGuide } from "./MeAttentionOnGuide";
 import type { ResultLocale } from "@/i18n/result";
 
 export function FriendIndividualGuide({
@@ -31,6 +32,9 @@ export function FriendIndividualGuide({
   const isKorean = locale === "ko";
   return (
     <>
+      {/* 未診断の訪問者に下部ナビ「自己診断」の赤バッジを付与 (ja のみ。
+          既存バッジ (tako/unmei) が ja 限定のため合わせる)。 */}
+      {!isKorean && <MeAttentionOnGuide />}
       {/* ヘッダーは常時表示 (TopHeader 自体が sticky top-0)。スクロール連動の非表示はしない。 */}
       {isKorean ? <KoTopHeader /> : <TopHeader />}
       <main
