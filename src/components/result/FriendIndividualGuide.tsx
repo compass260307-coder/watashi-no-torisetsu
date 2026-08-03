@@ -66,11 +66,13 @@ export function FriendIndividualGuide({
               {isKorean ? "고마워요." : "ありがとう。"}
             </h1>
             <p className="mt-3 text-[#8A8AA3] font-bold text-[13px] md:text-base leading-relaxed">
-              {isKorean ? "당신의 답변으로" : "あなたの回答が、"}
+              {isKorean
+                ? "내 얘기도 좀 궁금해졌나요?"
+                : "自分のことも、ちょっと気になってきた？"}
               <br className="md:hidden" />
               {isKorean
-                ? "친구의 사용설명서가 완성돼요."
-                : "相手のトリセツを完成させます。"}
+                ? "당신의 사용설명서도 만들어 보세요."
+                : "あなたのトリセツも、作ってみよう。"}
             </p>
           </div>
           <div className="mt-6 md:mt-0 md:w-[48%] md:max-w-[560px] md:shrink-0">
