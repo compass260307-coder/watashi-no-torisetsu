@@ -295,8 +295,10 @@ export default function TopHeader() {
             href={koreanHref}
             tabIndex={open ? 0 : -1}
             onClick={() => setOpen(false)}
-            className="pb-3.5 text-[17px] font-bold text-[#5B5BEF]"
+            className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+            style={{ color: NAVY }}
           >
+            <KoreaFlagIcon />
             한국어로 보기
           </Link>
 
@@ -354,6 +356,17 @@ function JapanFlagIcon() {
     <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
       <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
       <circle cx="11" cy="7.5" r="4" fill="#BC002D" />
+    </svg>
+  );
+}
+
+// 太極旗アイコン (言語切替マーク)。小サイズで潰れる四卦は省略し、太極のみの簡略版。
+function KoreaFlagIcon() {
+  return (
+    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
+      <path d="M7 7.5a4 4 0 0 1 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#CD2E3A" />
+      <path d="M7 7.5a4 4 0 0 0 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#0047A0" />
     </svg>
   );
 }
