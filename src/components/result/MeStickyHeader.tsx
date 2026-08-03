@@ -185,6 +185,17 @@ export function MeStickyHeader({
   const isInvite = shareKind === "invite";
   const isKo = locale === "ko";
 
+  // 招待モーダルの露出計測 (2026-08-04)。ピル/丸ボタン/本文シェアピルのどの経路で
+  // 開いても、open 遷移の1箇所で拾う (開くたび1回。招待モードのみ)。
+  useEffect(() => {
+    if (!shareOpen || !isInvite) return;
+    track("tako_invite_ui_shown", {
+      ownerToken,
+      inviteCode,
+      metadata: { surface: "sticky_modal" },
+    });
+  }, [shareOpen, isInvite, ownerToken, inviteCode]);
+
   // キャラクター共有文言。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
   // 友達診断への回答依頼は含めず、純粋なキャラ共有として扱う。
   // invite モード (/tako) は LockedInviteShare と同じ招待文言に切り替える。

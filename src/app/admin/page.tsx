@@ -56,6 +56,31 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   unknown: "不明",
 };
 
+// 招待の解剖 (tako_invite_ui_shown / friend_invite_clicked の metadata) → 日本語ラベル。
+const INVITE_SURFACE_LABELS: Record<string, string> = {
+  locked_gate: "ゲートのシェア行",
+  sticky_modal: "上部固定バーのモーダル",
+  send_sheet: "送信シート",
+  unknown: "不明",
+};
+const INVITE_SOURCE_LABELS: Record<string, string> = {
+  tako_locked_gate: "ゲートのシェア行",
+  tako_sticky_bar: "上部固定バー",
+  tako_send_sheet: "送信シート",
+  tako_unlocked: "/tako 解放後",
+  unknown: "不明",
+};
+const INVITE_CHANNEL_LABELS: Record<string, string> = {
+  line: "LINE",
+  kakao: "KakaoTalk",
+  x: "X",
+  native: "OSシェア",
+  copy: "リンクコピー",
+  facebook: "Facebook",
+  qr: "QR",
+  unknown: "不明",
+};
+
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
   full_access: "完全版 ¥499",
@@ -176,10 +201,20 @@ type Stats = {
     }[];
     attention: {
       badgeShown: number;
+      badgeShowRate: number;
       badgeClicked: number;
       badgeClickRate: number;
       takoReached: number;
       takoReachRate: number;
+    };
+    inviteDetail: {
+      uiShownOwners: number;
+      uiSurfaces: { surface: string; owners: number }[];
+      clickOwners: number;
+      clickActions: number;
+      uiToClickRate: number;
+      channels: { channel: string; actions: number; owners: number }[];
+      sources: { source: string; actions: number; owners: number }[];
     };
   };
   paywallFunnel: { label: string; count: number }[];
@@ -2921,6 +2956,102 @@ export default function AdminPage() {
                     />
                   ))}
                 </ol>
+              </Panel>
+            </div>
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-stone-800">友達診断バッジ</h3>
+                <p className="mt-1 text-[11px] font-medium text-stone-500">
+                  診断完了者への下部ナビ赤バッジ。表示率・到達率の分母はコホートの診断完了数。
+                </p>
+                <dl className="mt-4 divide-y divide-stone-100">
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      バッジ表示率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-stone-950">
+                      {pct(stats.friendDiagnosisFunnel.attention.badgeShowRate)}
+                    </dd>
+                  </div>
+                  <div className="flex items-end justify-between gap-4 py-3">
+                    <dt className="text-[11px] font-bold text-stone-500">
+                      バッジクリック率
+                    </dt>
+                    <dd className="text-2xl font-black tabular-nums text-stone-950">
+                      {pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-4 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
+                  表示 {stats.friendDiagnosisFunnel.attention.badgeShown.toLocaleString()} / クリック {stats.friendDiagnosisFunnel.attention.badgeClicked.toLocaleString()} / 友達診断ページ到達 {stats.friendDiagnosisFunnel.attention.takoReached.toLocaleString()}
+                </div>
+              </Panel>
+              <Panel className="p-5 sm:p-6">
+                <h3 className="text-sm font-black text-stone-800">招待の解剖</h3>
+                <p className="mt-1 text-[11px] font-medium text-stone-500">
+                  送信UIの露出から招待クリックまで。露出 (UI表示) の計測は 2026-08-04 開始。
+                </p>
+                <div className="mt-4 flex items-end justify-between gap-4 border-b border-stone-100 pb-3">
+                  <p className="text-[11px] font-bold text-stone-500">
+                    UI表示 → 招待クリック
+                  </p>
+                  <p className="text-2xl font-black tabular-nums text-stone-950">
+                    {pct(stats.friendDiagnosisFunnel.inviteDetail.uiToClickRate)}
+                  </p>
+                </div>
+                <div className="mt-3 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
+                  UI表示 {stats.friendDiagnosisFunnel.inviteDetail.uiShownOwners.toLocaleString()}人 / クリック {stats.friendDiagnosisFunnel.inviteDetail.clickOwners.toLocaleString()}人 ({stats.friendDiagnosisFunnel.inviteDetail.clickActions.toLocaleString()}回)
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                      露出場所 (人)
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {stats.friendDiagnosisFunnel.inviteDetail.uiSurfaces.length === 0 && (
+                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
+                      )}
+                      {stats.friendDiagnosisFunnel.inviteDetail.uiSurfaces.map((row) => (
+                        <li key={row.surface} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
+                          <span>{INVITE_SURFACE_LABELS[row.surface] ?? row.surface}</span>
+                          <span className="tabular-nums font-bold text-stone-800">{row.owners.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                      チャネル (回)
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {stats.friendDiagnosisFunnel.inviteDetail.channels.length === 0 && (
+                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
+                      )}
+                      {stats.friendDiagnosisFunnel.inviteDetail.channels.map((row) => (
+                        <li key={row.channel} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
+                          <span>{INVITE_CHANNEL_LABELS[row.channel] ?? row.channel}</span>
+                          <span className="tabular-nums font-bold text-stone-800">{row.actions.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                      設置場所 (回)
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {stats.friendDiagnosisFunnel.inviteDetail.sources.length === 0 && (
+                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
+                      )}
+                      {stats.friendDiagnosisFunnel.inviteDetail.sources.map((row) => (
+                        <li key={row.source} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
+                          <span>{INVITE_SOURCE_LABELS[row.source] ?? row.source}</span>
+                          <span className="tabular-nums font-bold text-stone-800">{row.actions.toLocaleString()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </Panel>
             </div>
             <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">

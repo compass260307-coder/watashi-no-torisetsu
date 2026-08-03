@@ -112,6 +112,16 @@ export function TakoSendSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // シート露出計測 (2026-08-04)。開くたびに1回。kind で招待/診断誘いを区別する。
+  useEffect(() => {
+    if (!open) return;
+    track("tako_invite_ui_shown", {
+      ownerToken,
+      inviteCode,
+      metadata: { surface: "send_sheet", kind: trackingKind },
+    });
+  }, [open, ownerToken, inviteCode, trackingKind]);
+
   if (!open) return null;
 
   const lineUrl = isKo ? undefined : lineShareUrl(inviteUrl, shareText);

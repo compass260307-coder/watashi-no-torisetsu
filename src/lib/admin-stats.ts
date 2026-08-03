@@ -309,6 +309,7 @@ export async function computeStats(from: string | null, to: string | null) {
           "tako_viewed",
           "tako_nav_badge_shown",
           "tako_nav_badge_clicked",
+          "tako_invite_ui_shown",
           "friend_invite_clicked",
           "friend_share_clicked",
           "friend_link_copied",
@@ -528,6 +529,35 @@ export async function computeStats(from: string | null, to: string | null) {
   const friendAnswerSessions = new Set<string>();
   const friendToDiagnosisSessions = new Set<string>();
 
+  // 招待の解剖 (2026-08-04 計測開始): 送信UI露出 (surface別) と招待クリックの
+  // channel/source 別内訳。招待未実行を「UIまで到達していない」/「見たのに送らない」に分解する。
+  const inviteUiOwners = new Set<string>();
+  const inviteUiSurfaceOwners = new Map<string, Set<string>>();
+  const inviteClickOwners = new Set<string>();
+  let inviteClickActions = 0;
+  const inviteChannelStats = new Map<
+    string,
+    { actions: number; owners: Set<string> }
+  >();
+  const inviteSourceStats = new Map<
+    string,
+    { actions: number; owners: Set<string> }
+  >();
+  const metaString = (row: JourneyRow, key: string): string => {
+    const v = row.metadata?.[key];
+    return typeof v === "string" && v.length > 0 ? v : "unknown";
+  };
+  const bumpBreakdown = (
+    map: Map<string, { actions: number; owners: Set<string> }>,
+    key: string,
+    owner: string,
+  ) => {
+    const cur = map.get(key) ?? { actions: 0, owners: new Set<string>() };
+    cur.actions += 1;
+    cur.owners.add(owner);
+    map.set(key, cur);
+  };
+
   for (const row of friendJourneyRows) {
     const owner = ownerForJourney(row);
     if (!owner) continue;
@@ -539,12 +569,25 @@ export async function computeStats(from: string | null, to: string | null) {
     if (!happenedAfterCohortStart(row, owner)) continue;
 
     if (row.event_name === "tako_viewed") takoReachedOwners.add(owner);
+    if (row.event_name === "tako_invite_ui_shown") {
+      inviteUiOwners.add(owner);
+      const surface = metaString(row, "surface");
+      const set = inviteUiSurfaceOwners.get(surface) ?? new Set<string>();
+      set.add(owner);
+      inviteUiSurfaceOwners.set(surface, set);
+    }
     if (
       row.event_name === "friend_invite_clicked" ||
       row.event_name === "friend_share_clicked" ||
       row.event_name === "friend_link_copied"
     ) {
       inviteActionOwners.add(owner);
+    }
+    if (row.event_name === "friend_invite_clicked") {
+      inviteClickOwners.add(owner);
+      inviteClickActions += 1;
+      bumpBreakdown(inviteChannelStats, metaString(row, "channel"), owner);
+      bumpBreakdown(inviteSourceStats, metaString(row, "source"), owner);
     }
     if (row.event_name === "friend_landing_viewed") {
       friendReachedOwners.add(owner);
@@ -1402,6 +1445,11 @@ export async function computeStats(from: string | null, to: string | null) {
       friendFunnel,
       attention: {
         badgeShown: badgeShownOwners.size,
+        // 表示率の分母は takoReachRate と同じ「コホートの診断完了セッション数」。
+        badgeShowRate: rate(
+          badgeShownOwners.size,
+          diagnosisCohortSessions.size,
+        ),
         badgeClicked: badgeClickedOwners.size,
         badgeClickRate: rate(badgeClickedOwners.size, badgeShownOwners.size),
         takoReached: takoReachedOwners.size,
@@ -1409,6 +1457,32 @@ export async function computeStats(from: string | null, to: string | null) {
           takoReachedOwners.size,
           diagnosisCohortSessions.size,
         ),
+      },
+      // 招待の解剖 (tako_invite_ui_shown は 2026-08-04 計測開始)。
+      // clickOwners は friend_invite_clicked のみ (ownerFunnel の招待実行は
+      // 友達到達による補完込みなので、ここでは実クリックだけを数える)。
+      inviteDetail: {
+        uiShownOwners: inviteUiOwners.size,
+        uiSurfaces: Array.from(inviteUiSurfaceOwners.entries())
+          .map(([surface, owners]) => ({ surface, owners: owners.size }))
+          .sort((a, b) => b.owners - a.owners),
+        clickOwners: inviteClickOwners.size,
+        clickActions: inviteClickActions,
+        uiToClickRate: rate(inviteClickOwners.size, inviteUiOwners.size),
+        channels: Array.from(inviteChannelStats.entries())
+          .map(([channel, v]) => ({
+            channel,
+            actions: v.actions,
+            owners: v.owners.size,
+          }))
+          .sort((a, b) => b.actions - a.actions),
+        sources: Array.from(inviteSourceStats.entries())
+          .map(([source, v]) => ({
+            source,
+            actions: v.actions,
+            owners: v.owners.size,
+          }))
+          .sort((a, b) => b.actions - a.actions),
       },
     },
     // 課金ファネル (¥499 自己診断・完全版): 結果ページ表示 → カード表示 → 誘導クリック →

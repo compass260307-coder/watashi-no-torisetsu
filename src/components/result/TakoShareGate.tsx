@@ -19,7 +19,7 @@
 // パララックス競合対策: ドラッグ開始させたくない操作要素には data-no-drag を付ける
 //   (親 TakoRevealStage が pointerdown 時に closest('[data-no-drag]') を見て握らない)。
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
@@ -151,6 +151,36 @@ export function TakoShareGate({
 
   // シェアボタン行 (LINE、ko は KakaoTalk / X / リンクコピー / その他)。channel 別に計測を発火。
   const [copied, setCopied] = useState(false);
+
+  // 送信UIの露出計測 (2026-08-04): 招待未実行の内訳を「ここまでスクロールしていない」と
+  // 「見たのに送らない」に分解するため、シェアボタン行が視界に半分入った時点で1回だけ発火。
+  const shareRowRef = useRef<HTMLDivElement>(null);
+  const uiShownFired = useRef(false);
+  useEffect(() => {
+    const el = shareRowRef.current;
+    if (
+      !el ||
+      uiShownFired.current ||
+      typeof IntersectionObserver === "undefined"
+    )
+      return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting) || uiShownFired.current)
+          return;
+        uiShownFired.current = true;
+        track("tako_invite_ui_shown", {
+          ownerToken,
+          inviteCode,
+          metadata: { surface: "locked_gate" },
+        });
+        io.disconnect();
+      },
+      { threshold: 0.5 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ownerToken, inviteCode]);
 
   const fireShare = (channel: string) => {
     track("friend_invite_clicked", {
@@ -310,6 +340,7 @@ export function TakoShareGate({
           data-no-drag でドラッグ非開始。channel 別 ?ref で流入元を計測する。 ===== */}
       {qrInviteUrl && (
         <div
+          ref={shareRowRef}
           className="mx-auto mt-6 [@media(max-height:740px)]:mt-4 flex w-full max-w-[300px] items-center gap-2"
           data-no-drag
         >
