@@ -383,7 +383,8 @@ export function BottomNav() {
                     Icon: HomeIcon,
                   },
                 ]),
-            { key: "me", label: "トリセツ", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
+            // ラベルは「トリセツ」から変更 (2026-08-04 指示。取説の意味が伝わりにくい)。
+            { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
               key: "friend",
