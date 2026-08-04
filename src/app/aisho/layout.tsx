@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     // images を書かないと og:image が消えてシェアカードに画像が出ない。
     images: [
       {
-        url: "/ogp-v4.png",
+        url: "/ogp-v5.jpg",
         width: 1200,
         height: 630,
         alt: "相性診断｜ワタシのトリセツ",
