@@ -306,6 +306,11 @@ type Stats = {
     completed: number;
     friendCompleted: number;
   }[];
+  acquisitionStats: {
+    directLabel: string;
+    sources: { source: string; users: number; share: number }[];
+    campaigns: { source: string; campaign: string; users: number }[];
+  };
   generationDistribution: { generation: number; count: number }[];
   unknownGeneration: number;
   viral: {
@@ -1801,6 +1806,14 @@ export default function AdminPage() {
       );
       rows.push([]);
     }
+    if (stats.acquisitionStats.sources.length > 0) {
+      rows.push(["# 流入元別"]);
+      rows.push(["流入元", "新規ユーザー", "構成比"]);
+      stats.acquisitionStats.sources.forEach((s) =>
+        rows.push([s.source, String(s.users), pct(s.share)]),
+      );
+      rows.push([]);
+    }
     if (stats.campaignStats.length > 0) {
       rows.push(["# キャンペーン別"]);
       rows.push(["campaign", "診断完了", "友達回答"]);
@@ -3057,6 +3070,72 @@ export default function AdminPage() {
             <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
               計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")} / {stats.friendDiagnosisFunnel.cohortDefinition}
             </p>
+          </section>
+
+        {/* 流入元別 (2026-08-04 集客フォーカス): first-touch utm_source/ref → users.acquisition_source。
+            外部リンクに ?ref=tiktok 等を付けた流入がここに並ぶ。数字は「流入元別の診断完了者」。 */}
+          <section id="acquisition" className="scroll-mt-36 lg:scroll-mt-28">
+            <SectionHeader
+              eyebrow="Acquisition"
+              title="流入元別"
+              description="どの媒体が診断完了まで連れてきたか (?ref= / ?utm_source= 付きリンクの first-touch)"
+            />
+            {stats.acquisitionStats.sources.length === 0 ? (
+              <Panel>
+                <p className="px-4 py-6 text-center text-xs font-medium text-stone-500">
+                  期間内の新規ユーザーがいません
+                </p>
+              </Panel>
+            ) : (
+              <Panel className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-sm">
+                  <thead className="bg-stone-50/90">
+                    <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
+                      <th className="px-4 py-3 font-medium">流入元</th>
+                      <th className="px-4 py-3 font-medium text-right">新規ユーザー</th>
+                      <th className="px-4 py-3 font-medium text-right">構成比</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.acquisitionStats.sources.map((s) => (
+                      <tr key={s.source} className="border-b border-stone-100/70 transition last:border-0 hover:bg-stone-50">
+                        <td className="px-4 py-3">
+                          {s.source === stats.acquisitionStats.directLabel ? (
+                            <span className="inline-block rounded bg-stone-100 px-2.5 py-1 text-xs font-mono font-bold text-stone-500">
+                              {s.source}
+                            </span>
+                          ) : (
+                            <span className="inline-block rounded bg-teal-50 px-2.5 py-1 text-xs font-mono font-bold text-teal-800">
+                              {s.source}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums">{s.users.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-stone-500">{pct(s.share)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {stats.acquisitionStats.campaigns.length > 0 && (
+                  <div className="border-t border-stone-100 px-4 py-3">
+                    <p className="text-[11px] font-bold text-stone-500">キャンペーン内訳 (utm_campaign / camp)</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {stats.acquisitionStats.campaigns.map((c) => (
+                        <span
+                          key={`${c.source}-${c.campaign}`}
+                          className="inline-flex items-center gap-1.5 rounded border border-stone-200/80 bg-white px-2.5 py-1 text-xs font-medium text-stone-700"
+                        >
+                          <span className="font-mono font-bold text-teal-800">{c.source}</span>
+                          <span className="text-stone-400">/</span>
+                          <span className="font-mono">{c.campaign}</span>
+                          <span className="tabular-nums font-bold">{c.users.toLocaleString()}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Panel>
+            )}
           </section>
 
         {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
