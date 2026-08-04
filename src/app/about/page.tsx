@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "サービスについて｜ワタシのトリセツ",
     description:
       "自分の診断と友達からの他己評価をかけ合わせて作る、自分の取扱説明書。",
-    images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+    images: [{ url: "/ogp-v5.jpg", width: 1200, height: 630 }],
   },
 };
 

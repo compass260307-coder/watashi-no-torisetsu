@@ -3,7 +3,7 @@
 // OGP はキャラ別 (2026-07-15): invite_code からオーナーの32タイプを逆引きし、
 // og-characters/{slug}.jpg (1200x630・32枚) を出す。/share/[code] と同じ方式。
 // シェアバー (X/LINE/QR) のリンク先はここなので、投稿カードに本人のキャラが出る。
-// 逆引き失敗時 (無効コード・preview 等) は従来の汎用 ogp-v4.png にフォールバック。
+// 逆引き失敗時 (無効コード・preview 等) は汎用 ogp-v5.jpg にフォールバック。
 
 import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
@@ -67,7 +67,7 @@ export async function generateMetadata({
     inviteCode,
     title: "ワタシのトリセツ",
     description: FALLBACK_DESCRIPTION,
-    imageUrl: `${SITE_URL}/ogp-v4.png`,
+    imageUrl: `${SITE_URL}/ogp-v5.jpg`,
     imageAlt: "ワタシのトリセツ",
     url: `${SITE_URL}/friend/${encodeURIComponent(inviteCode)}`,
   });

@@ -51,13 +51,13 @@ export async function generateMetadata({
       title: `${article.title}｜ワタシのトリセツ`,
       description: article.description,
       url: `${BASE_URL}/articles/${article.slug}`,
-      images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+      images: [{ url: "/ogp-v5.jpg", width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${article.title}｜ワタシのトリセツ`,
       description: article.description,
-      images: ["/ogp-v4.png"],
+      images: ["/ogp-v5.jpg"],
     },
   };
 }
@@ -82,7 +82,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         mainEntityOfPage: url,
         author: { "@id": `${BASE_URL}/#organization` },
         publisher: { "@id": `${BASE_URL}/#organization` },
-        image: `${BASE_URL}/ogp-v4.png`,
+        image: `${BASE_URL}/ogp-v5.jpg`,
       },
       {
         "@type": "BreadcrumbList",

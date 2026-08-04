@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     description: DIAGNOSIS_SEO_DESCRIPTION,
     images: [
       {
-        url: "/ogp-v4.png",
+        url: "/ogp-v5.jpg",
         width: 1200,
         height: 630,
         alt: "ワタシのトリセツの無料性格診断テスト",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${DIAGNOSIS_SEO_TITLE}｜ワタシのトリセツ`,
     description: DIAGNOSIS_SEO_DESCRIPTION,
-    images: ["/ogp-v4.png"],
+    images: ["/ogp-v5.jpg"],
   },
 };
 
