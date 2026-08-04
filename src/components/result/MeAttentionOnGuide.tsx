@@ -11,12 +11,16 @@ import { useEffect } from "react";
 import {
   ME_ATTENTION_GRANTED_EVENT,
   ME_ATTENTION_PENDING_KEY,
+  savePendingSourceCode,
 } from "@/lib/me-attention";
 
-export function MeAttentionOnGuide() {
+export function MeAttentionOnGuide({ inviteCode }: { inviteCode?: string }) {
   useEffect(() => {
     try {
       if (localStorage.getItem("torisetsu_owner_token")) return;
+      // バッジ経由 (素の /diagnosis) で診断完了してもバイラル帰属できるよう、
+      // 評価対象 (親) の invite_code を保存しておく。複数人を評価した場合は最後の親。
+      if (inviteCode) savePendingSourceCode(inviteCode);
       localStorage.setItem(ME_ATTENTION_PENDING_KEY, "1");
       // BottomNav の判定が付与より先に走っていても、滞在中に再評価させる
       // (tako バッジの 2026-08-04 レース修正と同じ流儀)。
@@ -24,6 +28,6 @@ export function MeAttentionOnGuide() {
     } catch {
       // localStorage 不可環境ではバッジなし (実害なし)
     }
-  }, []);
+  }, [inviteCode]);
   return null;
 }

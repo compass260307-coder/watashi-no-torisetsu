@@ -34,8 +34,9 @@ export function FriendIndividualGuide({
   return (
     <>
       {/* 未診断の訪問者に下部ナビ「自己診断」の赤バッジを付与 (ja のみ。
-          既存バッジ (tako/unmei) が ja 限定のため合わせる)。 */}
-      {!isKorean && <MeAttentionOnGuide />}
+          既存バッジ (tako/unmei) が ja 限定のため合わせる)。inviteCode も渡して
+          バッジ経由 (素の /diagnosis) の診断完了をバイラル帰属できるようにする。 */}
+      {!isKorean && <MeAttentionOnGuide inviteCode={inviteCode} />}
       {/* ヘッダー + 直下の「自己診断をする」CTAバー (/me・/share のシェアバーと同じ流儀
           2026-08-04 指示)。スクロールでヘッダーが隠れてもバーは残る (MeStickyHeader)。
           計測は friend_to_diagnosis_clicked source=sticky_bar — ページ末尾CTA (sent_bottom)・
