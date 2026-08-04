@@ -17,6 +17,9 @@ import type { Chart } from "@/lib/unmei/chart-view";
 
 export const metadata = {
   title: "運命の設計図",
+  description:
+    "星の配置をもとに、あなたがこれまで選んできた姿勢に名前をつけ、これからの選び方を考えるきっかけを届ける本格鑑定。性格診断とかけ合わせて、あなただけの運命の設計図を読み解きます。",
+  alternates: { canonical: "/unmei" },
 };
 
 // 購入完了直後にログイン状態が反映されるよう、都度サーバで状態を解決する。

@@ -15,6 +15,16 @@ export const metadata: Metadata = {
       "気になるあの子との相性を、キャラを選ぶだけで診断。自分の診断がなくてもOK。",
     url: "/aisho",
     type: "website",
+    // openGraph はルート layout の設定を丸ごと置き換えるため、
+    // images を書かないと og:image が消えてシェアカードに画像が出ない。
+    images: [
+      {
+        url: "/ogp-v4.png",
+        width: 1200,
+        height: 630,
+        alt: "相性診断｜ワタシのトリセツ",
+      },
+    ],
   },
 };
 
