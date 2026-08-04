@@ -252,11 +252,15 @@ export async function computeStats(from: string | null, to: string | null) {
       campaign: string | null;
       generation: number | null;
       source_user_id: string | null;
+      acquisition_source: string | null;
+      acquisition_campaign: string | null;
     }>(() =>
       applyRange(
         supabaseAdmin
           .from("users")
-          .select("id, scores, campaign, generation, source_user_id")
+          .select(
+            "id, scores, campaign, generation, source_user_id, acquisition_source, acquisition_campaign",
+          )
           .order("created_at", { ascending: true })
           .order("id", { ascending: true }),
       ),
@@ -734,6 +738,48 @@ export async function computeStats(from: string | null, to: string | null) {
       friendCompleted: s.friendAnswers,
     }))
     .sort((a, b) => b.completed - a.completed);
+
+  // --- 流入元別 (Day 12-C3 の first-touch utm_source/ref → users.acquisition_source) ---
+  // users 行は診断保存時に作られるため、この数字は「流入元別の診断完了者」。
+  // acquisition_source が NULL の行は直接流入・SNSアプリ内ブラウザのクエリ欠落・
+  // 計測開始前ユーザーのいずれかで、区別できないため1グループにまとめる。
+  const ACQ_DIRECT_LABEL = "(直接/不明)";
+  const acqSourceMap = new Map<string, number>();
+  const acqCampaignMap = new Map<string, { source: string; campaign: string; users: number }>();
+  for (const row of users) {
+    const source = row.acquisition_source ?? ACQ_DIRECT_LABEL;
+    acqSourceMap.set(source, (acqSourceMap.get(source) ?? 0) + 1);
+    if (row.acquisition_source && row.acquisition_campaign) {
+      const key = `${row.acquisition_source}${row.acquisition_campaign}`;
+      const entry = acqCampaignMap.get(key) ?? {
+        source: row.acquisition_source,
+        campaign: row.acquisition_campaign,
+        users: 0,
+      };
+      entry.users++;
+      acqCampaignMap.set(key, entry);
+    }
+  }
+  const acquisitionStats = {
+    directLabel: ACQ_DIRECT_LABEL,
+    sources: Array.from(acqSourceMap.entries())
+      .map(([source, count]) => ({
+        source,
+        users: count,
+        share: users.length > 0 ? count / users.length : 0,
+      }))
+      .sort((a, b) =>
+        // 計測できた流入元を上に、(直接/不明) は人数に関わらず最後に置く
+        a.source === ACQ_DIRECT_LABEL
+          ? 1
+          : b.source === ACQ_DIRECT_LABEL
+            ? -1
+            : b.users - a.users,
+      ),
+    campaigns: Array.from(acqCampaignMap.values()).sort(
+      (a, b) => b.users - a.users,
+    ),
+  };
 
   // --- 世代分布 ---
   const genCounts: Record<number, number> = {};
@@ -1549,6 +1595,7 @@ export async function computeStats(from: string | null, to: string | null) {
     friendCountDistribution,
     diagQuestionReach,
     campaignStats,
+    acquisitionStats,
     generationDistribution,
     unknownGeneration: unknownGen,
     totalUsers,
