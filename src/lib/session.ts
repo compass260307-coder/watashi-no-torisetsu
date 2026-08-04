@@ -80,6 +80,77 @@ function buildCookieOptions(): {
   };
 }
 
+// merged_into 列が (migration 未適用で) 無い環境を検出する。検出時は列なしで
+// 再クエリして従来動作にフォールバックするため、migration とデプロイの順序に依存しない。
+function isMissingColumn(error: unknown, column: string): boolean {
+  if (!error) return false;
+  const e = error as {
+    message?: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+  };
+  const text = `${e.message ?? ""} ${e.code ?? ""} ${e.details ?? ""} ${e.hint ?? ""}`.toLowerCase();
+  return (
+    text.includes(column) &&
+    (text.includes("42703") ||
+      text.includes("pgrst204") ||
+      text.includes("does not exist") ||
+      text.includes("schema cache"))
+  );
+}
+
+// users を 1 行取得し SessionUser + merged_into を返す。
+// merged_into 列が無い環境 (migration 前) や diagnosis_completed_at が無いレガシー環境でも壊れない。
+async function fetchSessionRow(
+  by: "session_token" | "id",
+  value: string,
+): Promise<{ user: SessionUser; mergedInto: string | null } | null> {
+  let res = await supabaseAdmin
+    .from("users")
+    .select(`${SESSION_USER_COLUMNS}, merged_into`)
+    .eq(by, value)
+    .maybeSingle();
+
+  // merged_into 列が未追加 → 列なしで再クエリ (従来動作・merged_into は null 扱い)
+  if (isMissingColumn(res.error, "merged_into")) {
+    res = await supabaseAdmin
+      .from("users")
+      .select(SESSION_USER_COLUMNS)
+      .eq(by, value)
+      .maybeSingle();
+  }
+
+  // diagnosis_completed_at が無いレガシー環境
+  if (isMissingCoreKpiColumn(res.error, "diagnosis_completed_at")) {
+    const legacy = await supabaseAdmin
+      .from("users")
+      .select(LEGACY_SESSION_USER_COLUMNS)
+      .eq(by, value)
+      .maybeSingle();
+    if (legacy.error) {
+      console.error("[session] fetchSessionRow legacy query error:", legacy.error);
+      return null;
+    }
+    if (!legacy.data) return null;
+    return {
+      user: { ...(legacy.data as object), diagnosis_completed_at: null } as SessionUser,
+      mergedInto: null,
+    };
+  }
+
+  if (res.error) {
+    console.error("[session] fetchSessionRow query error:", res.error);
+    return null;
+  }
+  if (!res.data) return null;
+
+  const row = res.data as Record<string, unknown>;
+  const mergedInto = (row.merged_into as string | null | undefined) ?? null;
+  delete row.merged_into; // SessionUser には含めない (内部解決用)
+  return { user: row as unknown as SessionUser, mergedInto };
+}
+
 /**
  * リクエストの Cookie から session を解決して users 行を返す。
  *
@@ -105,34 +176,24 @@ export async function getSession(
   }
   if (!token) return null;
 
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .select(SESSION_USER_COLUMNS)
-    .eq("session_token", token)
-    .maybeSingle();
+  const first = await fetchSessionRow("session_token", token);
+  if (!first) return null;
 
-  if (isMissingCoreKpiColumn(error, "diagnosis_completed_at")) {
-    const legacyResult = await supabaseAdmin
-      .from("users")
-      .select(LEGACY_SESSION_USER_COLUMNS)
-      .eq("session_token", token)
-      .maybeSingle();
-    if (legacyResult.error) {
-      console.error("[session] getSession legacy query error:", legacyResult.error);
-      return null;
-    }
-    return legacyResult.data
-      ? ({
-          ...legacyResult.data,
-          diagnosis_completed_at: null,
-        } as SessionUser)
-      : null;
+  // tombstone: merged_into を辿って勝者を返す (統合済みユーザーの session / 招待URL を維持)。
+  // merged_into が NULL なら手前の行をそのまま返す = 既存ユーザーは従来通り。
+  // 連鎖・循環対策で最大 3 ホップ。勝者が見つからなければ手前の行を返す。
+  let current = first;
+  const seen = new Set<string>([current.user.id]);
+  let hops = 0;
+  while (current.mergedInto && hops < 3) {
+    if (seen.has(current.mergedInto)) break; // 循環防御
+    const next = await fetchSessionRow("id", current.mergedInto);
+    if (!next) break;
+    seen.add(next.user.id);
+    current = next;
+    hops += 1;
   }
-  if (error) {
-    console.error("[session] getSession query error:", error);
-    return null;
-  }
-  return (data as SessionUser | null) ?? null;
+  return current.user;
 }
 
 /**
