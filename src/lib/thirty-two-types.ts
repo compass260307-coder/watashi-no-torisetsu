@@ -220,6 +220,12 @@ export function thirtyTwoImagePath(id: ThirtyTwoTypeId): string {
   return `/characters/v${THIRTY_TWO_ASSET_VERSION}/${thirtyTwoCharacter[id].slug}.webp`;
 }
 
+/** 32キャラの動物スラッグ (slug の N 印を除いた部分。例: "dolphin_R" → "dolphin")。
+ *  /unmei 表紙のキャラクター星座 (TypeConstellation) のアート選択に使う。 */
+export function thirtyTwoAnimalSlug(id: ThirtyTwoTypeId): string {
+  return thirtyTwoCharacter[id].slug.split("_")[0];
+}
+
 /** 32キャラの生息地グループ */
 export function thirtyTwoGroup(id: ThirtyTwoTypeId): ThirtyTwoGroup {
   return thirtyTwoCharacter[id].group;

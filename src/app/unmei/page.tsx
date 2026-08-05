@@ -56,6 +56,23 @@ const PREVIEW_READING = {
   ],
 };
 
+// ?preview=ready で出生図ホイールも確認できるよう、実データ相当のサンプルチャート。
+// 値は架空 (時刻既知で ASC/MC あり・アスペクト線が数本出る配置)。
+const PREVIEW_CHART: Chart = {
+  planets: {
+    sun: { sign: "Leo", degree: 15.2 },
+    moon: { sign: "Pisces", degree: 3.4 },
+    mercury: { sign: "Virgo", degree: 2.8 },
+    venus: { sign: "Gemini", degree: 28.5 },
+    mars: { sign: "Virgo", degree: 10.1 },
+    jupiter: { sign: "Virgo", degree: 25.9 },
+    saturn: { sign: "Cancer", degree: 18.3 },
+  },
+  asc: { sign: "Scorpio", degree: 12.0 },
+  mc: { sign: "Leo", degree: 22.0 },
+  houses_available: true,
+};
+
 // よくある質問 (16P 参考のアコーディオン。native <details> なので JS 不要)。
 // 「当たる占い?」の回答がエンタメ目的の明示を兼ねる (LP本文からは表記を撤去済みのため)。
 const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
@@ -428,7 +445,22 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
     return <UnmeiClient initialState="pending" />;
   }
   if (preview === "ready") {
-    return <UnmeiReading reading={PREVIEW_READING} trackView={false} />;
+    return (
+      <UnmeiReading
+        reading={PREVIEW_READING}
+        chart={PREVIEW_CHART}
+        essence="寄添者"
+        characterSlug="jellyfish"
+        identity={{
+          // 寄添者 = sparkle-dolphin__N (画像 jellyfish_N)。character-32.ts の実データと一致。
+          typeName: "きらめきクラゲ",
+          catchphrase: "心に寄り添いながら、世界を知っていく。",
+          groupLabel: "海",
+          groupColor: "#8EC5E8",
+        }}
+        trackView={false}
+      />
+    );
   }
   if (preview === "teaser" || preview === "teaser_full") {
     // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥1,980) / teaser_full (¥1,480 表示)
@@ -513,8 +545,12 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
     chart && timeUnknown
       ? computeMoonDailyArc(chart, profile.birth_date as string | null)
       : null;
-  // 出生図の中央に置く 32タイプ称号 (essence)。scores から決定的に導出 (欠損時は null)。
-  const { essence } = await resolveUnmeiPromptInputs(supabaseAdmin, userId!);
+  // 出生図の中央に置く 32タイプ称号 (essence) と、表紙のキャラクター星座用の動物スラッグ。
+  // scores から決定的に導出 (欠損時は null)。
+  const { essence, animalSlug, identity } = await resolveUnmeiPromptInputs(
+    supabaseAdmin,
+    userId!,
+  );
 
   // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)
   return (
@@ -524,6 +560,8 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
       timeUnknown={timeUnknown}
       moonArc={moonArc}
       essence={essence}
+      characterSlug={animalSlug}
+      identity={identity}
     />
   );
 }
