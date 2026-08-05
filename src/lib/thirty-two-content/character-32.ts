@@ -60,15 +60,16 @@ export const thirtyTwoCharacter: Record<ThirtyTwoTypeId, ThirtyTwoCharacter> = {
   // ⚠ 海グループは画像を EN系の新マスコットに差し替え (slug のみ更新)。MBTI→内部タイプ対応は
   //   Big Five 標準対応 (E=E / O=N / A=F·T / C=J·P) による: ENFJ=sparkle-dolphin /
   //   ENTJ=ambition-lion / ENTP=whim-fox / ENFP=idea-monkey。
-  //   ※ name/animal/essence/oneLiner と本文(self-result-32 等)は旧動物のままで、新画像と不一致。
-  //     コンテンツ更新は別途必要 (レポート済み)。
-  "sparkle-dolphin__N": { name: "きらめきイルカ", animal: "イルカ", essence: "寄添者", oneLiner: "人の心に寄り添い、新しい世界へ一緒に踏み出していける伴走者。", catchphrase: "心に寄り添いながら、世界を知っていく。", zukanDesc: "人の気持ちに寄り添い、支える。繊細で共感力が高い。", slug: "jellyfish_N", group: "sea" },
-  "sparkle-dolphin__R": { name: "れいせいシャチ", animal: "シャチ", essence: "先導者", oneLiner: "みんなの想いを束ね、同じ夢へ向かって一緒に駆けていける主人公。", catchphrase: "その熱は、人の心に火をともす。", zukanDesc: "人をまとめ、同じ目標へ導く。決断が速く、動じない。", slug: "dolphin_R", group: "sea" },
-  "ambition-lion__N": { name: "やさしいタツノオトシゴ", animal: "タツノオトシゴ", essence: "采配者", oneLiner: "全体を見渡し、最善の配置で人と場を動かす采配役。", catchphrase: "盤面を読みきって、最善の一手を。", zukanDesc: "全体を見渡し最適な配置を組む。責任感が強く細部まで詰める。", slug: "swordfish_N", group: "sea" },
-  "ambition-lion__R": { name: "ゆうゆうウミガメ", animal: "ウミガメ", essence: "将軍", oneLiner: "大局を見通し、揺るがぬ判断で全体を統べていける指揮官。", catchphrase: "時をかけて、ものごとの本質を見通す。", zukanDesc: "大局を見て集団を統率する。揺るがない判断力を持つ。", slug: "orca_R", group: "sea" },
-  "idea-monkey__N": { name: "ゆめみるクラゲ", animal: "クラゲ", essence: "ジャーナリスト", oneLiner: "心に響いたものを見つけ出し、自分の言葉で誰かに届けていける発信者。", catchphrase: "見つけたものを、そっと光に変えて。", zukanDesc: "心に響いたものを見つけ発信する。感受性が豊か。", slug: "clownfish_N", group: "sea" },
-  "idea-monkey__R": { name: "のんびりマンボウ", animal: "マンボウ", essence: "フェススター", oneLiner: "その場を一瞬で明るく染め、みんなを巻き込んで楽しませる祭りの主役。", catchphrase: "ゆったり流すほど、毎日は軽くなる。", zukanDesc: "その場を明るくし人を巻き込む。好奇心のまま動く。", slug: "seal_R", group: "sea" },
-  "whim-fox__N": { name: "きままクマノミ", animal: "クマノミ", essence: "弁才家", oneLiner: "自分の言葉で人を惹きつけ、心地よく語りで動かしていける話し手。", catchphrase: "心地よさを大切に、自分らしく語る。", zukanDesc: "言葉で人を惹きつけ動かす。発想が独創的で繊細。", slug: "octopus_N", group: "sea" },
+  //   ※ 2026-08-06: name/animal を新画像(slug)に一致するよう修正 (海グループは旧動物のまま
+  //     ズレていた。オーナー確認: 画像=正)。essence/oneLiner/catchphrase/zukanDesc は動物名を
+  //     含まないためそのまま。本文(self-result-32 等)に旧動物名が残る場合は別途更新が必要。
+  "sparkle-dolphin__N": { name: "きらめきクラゲ", animal: "クラゲ", essence: "寄添者", oneLiner: "人の心に寄り添い、新しい世界へ一緒に踏み出していける伴走者。", catchphrase: "心に寄り添いながら、世界を知っていく。", zukanDesc: "人の気持ちに寄り添い、支える。繊細で共感力が高い。", slug: "jellyfish_N", group: "sea" },
+  "sparkle-dolphin__R": { name: "れいせいイルカ", animal: "イルカ", essence: "先導者", oneLiner: "みんなの想いを束ね、同じ夢へ向かって一緒に駆けていける主人公。", catchphrase: "その熱は、人の心に火をともす。", zukanDesc: "人をまとめ、同じ目標へ導く。決断が速く、動じない。", slug: "dolphin_R", group: "sea" },
+  "ambition-lion__N": { name: "やさしいメカジキ", animal: "メカジキ", essence: "采配者", oneLiner: "全体を見渡し、最善の配置で人と場を動かす采配役。", catchphrase: "盤面を読みきって、最善の一手を。", zukanDesc: "全体を見渡し最適な配置を組む。責任感が強く細部まで詰める。", slug: "swordfish_N", group: "sea" },
+  "ambition-lion__R": { name: "ゆうゆうシャチ", animal: "シャチ", essence: "将軍", oneLiner: "大局を見通し、揺るがぬ判断で全体を統べていける指揮官。", catchphrase: "時をかけて、ものごとの本質を見通す。", zukanDesc: "大局を見て集団を統率する。揺るがない判断力を持つ。", slug: "orca_R", group: "sea" },
+  "idea-monkey__N": { name: "ゆめみるクマノミ", animal: "クマノミ", essence: "ジャーナリスト", oneLiner: "心に響いたものを見つけ出し、自分の言葉で誰かに届けていける発信者。", catchphrase: "見つけたものを、そっと光に変えて。", zukanDesc: "心に響いたものを見つけ発信する。感受性が豊か。", slug: "clownfish_N", group: "sea" },
+  "idea-monkey__R": { name: "のんびりアザラシ", animal: "アザラシ", essence: "フェススター", oneLiner: "その場を一瞬で明るく染め、みんなを巻き込んで楽しませる祭りの主役。", catchphrase: "ゆったり流すほど、毎日は軽くなる。", zukanDesc: "その場を明るくし人を巻き込む。好奇心のまま動く。", slug: "seal_R", group: "sea" },
+  "whim-fox__N": { name: "きままタコ", animal: "タコ", essence: "弁才家", oneLiner: "自分の言葉で人を惹きつけ、心地よく語りで動かしていける話し手。", catchphrase: "心地よさを大切に、自分らしく語る。", zukanDesc: "言葉で人を惹きつけ動かす。発想が独創的で繊細。", slug: "octopus_N", group: "sea" },
   "whim-fox__R": { name: "マイペースサメ", animal: "サメ", essence: "革命家", oneLiner: "常識を疑い、自分の信じる未来を世界に突きつけていける革命家。", catchphrase: "流されない心が、新しい道をひらく。", zukanDesc: "常識を疑い、自分の信じる道を進む。他人に流されない。", slug: "shark_R", group: "sea" },
 
   // ===== 未知グループ (紫) base16: earnest-elephant / steady-turtle / gentle-koala / solo-hedgehog =====

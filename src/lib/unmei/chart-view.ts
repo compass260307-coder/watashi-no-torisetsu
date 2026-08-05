@@ -37,15 +37,12 @@ export type Chart = {
 export type MoonArc = { startLon: number; endLon: number; start: Pos; end: Pos };
 
 export type WheelBody = { key: string; label: string; lon: number };
-// tone: 調和(60/120)=harmony / 緊張(90/180)=tension / 合(0)=neutral。線の色分けに使う。
-export type AspectTone = "harmony" | "tension" | "neutral";
-export type Aspect = { fromLon: number; toLon: number; tone: AspectTone };
+export type Aspect = { fromLon: number; toLon: number };
 export type ChartView = {
   timeUnknown: boolean;
   points: WheelBody[]; // 点で描く天体 (時刻不明時は月を含まない)
   moonArc: MoonArc | null; // 時刻不明時の月の範囲 (弧)
   aspects: Aspect[]; // 天体同士の主要アスペクト線 (古典7天体のみ。ASC/MC・時刻不明の月[弧]は除外)
-  houseCusps: number[] | null; // Placidus 12ハウスの黄経 (index0=House1=ASC)。時刻不明は null。
   listItems: { key: string; label: string; text: string }[];
   ariaLabel: string;
 };
@@ -63,12 +60,12 @@ export function fmtPos(p: Pos): string {
 }
 
 // 主要アスペクト(角度)とオーブ。60°(セクスタイル)は本数を抑えるため ±4°、他は ±6°。
-const ASPECT_DEFS: { angle: number; orb: number; tone: AspectTone }[] = [
-  { angle: 0, orb: 6, tone: "neutral" },
-  { angle: 60, orb: 4, tone: "harmony" },
-  { angle: 90, orb: 6, tone: "tension" },
-  { angle: 120, orb: 6, tone: "harmony" },
-  { angle: 180, orb: 6, tone: "tension" },
+const ASPECT_DEFS: { angle: number; orb: number }[] = [
+  { angle: 0, orb: 6 },
+  { angle: 60, orb: 4 },
+  { angle: 90, orb: 6 },
+  { angle: 120, orb: 6 },
+  { angle: 180, orb: 6 },
 ];
 // 2つの黄経の角度差 (0〜180)。
 function separationDeg(a: number, b: number): number {
@@ -79,15 +76,10 @@ function separationDeg(a: number, b: number): number {
 // chart + (時刻不明時の) moonArc からビューモデルを組み立てる。
 export function buildChartView(
   chart: Chart | null | undefined,
-  opts: { timeUnknown?: boolean; moonArc?: MoonArc | null; houseCusps?: number[] | null },
+  opts: { timeUnknown?: boolean; moonArc?: MoonArc | null },
 ): ChartView | null {
   if (!chart || !chart.planets || !chart.planets.sun) return null;
   const timeUnknown = opts.timeUnknown ?? chart.houses_available === false;
-  // ハウス分割は時刻既知のみ。時刻不明は null (線・番号なし)。
-  const houseCusps =
-    timeUnknown || !opts.houseCusps || opts.houseCusps.length !== 12
-      ? null
-      : opts.houseCusps;
   const moonArc = timeUnknown ? opts.moonArc ?? null : null;
   const planets = chart.planets;
   const points: WheelBody[] = [];
@@ -134,7 +126,6 @@ export function buildChartView(
           aspects.push({
             fromLon: aspectPoints[i].lon,
             toLon: aspectPoints[j].lon,
-            tone: def.tone,
           });
           break;
         }
@@ -144,7 +135,39 @@ export function buildChartView(
 
   const ariaLabel =
     "出生図。" + listItems.map((it) => `${it.label} ${it.text}`).join("、");
-  return { timeUnknown, points, moonArc, aspects, houseCusps, listItems, ariaLabel };
+  return { timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
+}
+
+// 決定的PRNG (mulberry32)。整数演算のみなので JSエンジン間でビット一致し、
+// SSR/クライアント両方で描画してもhydration差分が出ない (Math.sinハッシュは不一致だった)。
+export function mulberry32(seed: number): () => number {
+  let a = seed | 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 星空レイヤー用の星群 (/unmei 結果ページの背景・パララックス層で共有)。
+// 座標は viewBox 0-100。丸め済み = SSR/クライアントで文字列が一致する。
+export function makeStarField(
+  seed: number,
+  n: number,
+  rMax: number,
+  oMax: number,
+): { x: number; y: number; r: number; o: number }[] {
+  const rnd = mulberry32(seed);
+  return Array.from({ length: n }, () => {
+    const t = rnd();
+    return {
+      x: Math.round(rnd() * 1000) / 10,
+      y: Math.round(rnd() * 1000) / 10,
+      r: Math.round((0.08 + rMax * Math.pow(t, 2.2)) * 1000) / 1000,
+      o: Math.round((0.08 + oMax * t) * 1000) / 1000,
+    };
+  });
 }
 
 // ===== SVG レイアウト (純幾何・React とダンプで共有) =====
@@ -157,17 +180,19 @@ export const WHEEL = {
   rBand: 128, // 星座帯の内側境界円 (帯をやや細く: 120→128)
   rSignText: 138, // 星座名の半径 (帯の中央に合わせる)
   rDot: 104, // 天体の点 / 月の弧
-  rAspect: 90, // アスペクト線の結節半径 (点より内側に引き込み中央に模様を集める)
-  rHub: 26, // 放射線・ハウス分割線の内側始点半径 (中央の称号を避ける)
-  rHouseNum: 44, // ハウス番号の半径 (中心寄り・各扇形の中央に淡く)
   rLabel: 78, // 天体名ラベル(内側)
   labelGapDeg: 15, // ラベルの最小角度間隔(重なり回避)
 } as const;
 
 // 黄経 lon(0=牡羊座0°) を固定向きで座標に。牡羊座0°を左(9時)、反時計回りに黄経が増加。
+// 座標は2桁に丸める: Math.cos/sin は同一入力でもJSエンジン間で最下位ビットが異なることが
+// あり、丸めずに出すと SSR/クライアントで hydration mismatch になる (2026-08-05)。
 export function polar(r: number, lon: number): [number, number] {
   const a = ((180 - lon) * Math.PI) / 180;
-  return [WHEEL.cx + r * Math.cos(a), WHEEL.cy + r * Math.sin(a)];
+  return [
+    Math.round((WHEEL.cx + r * Math.cos(a)) * 100) / 100,
+    Math.round((WHEEL.cy + r * Math.sin(a)) * 100) / 100,
+  ];
 }
 
 // 近接天体のラベルを重ならないよう最小角度間隔まで押し広げる(点は正確な位置のまま)。
@@ -187,12 +212,9 @@ function declump(items: { lon: number }[], gap: number): number[] {
 export type WheelLayout = {
   size: number;
   stars: { x: number; y: number; r: number; o: number }[];
-  aspectLines: { x1: number; y1: number; x2: number; y2: number; tone: AspectTone }[];
+  aspectLines: { x1: number; y1: number; x2: number; y2: number }[];
   circles: { r: number }[];
   ticks: { x1: number; y1: number; x2: number; y2: number }[];
-  degreeTicks: { x1: number; y1: number; x2: number; y2: number; major: boolean }[];
-  houseLines: { x1: number; y1: number; x2: number; y2: number; asc: boolean }[];
-  houseNumbers: { x: number; y: number; text: string }[];
   signLabels: { x: number; y: number; text: string }[];
   dots: { x: number; y: number }[];
   leaders: { x1: number; y1: number; x2: number; y2: number }[];
@@ -203,19 +225,16 @@ export type WheelLayout = {
 
 // ビューモデルから描画プリミティブ(座標)を生成する。
 export function layoutWheel(view: ChartView): WheelLayout {
-  const { rOuter, rBand, rSignText, rDot, rAspect, rHub, rHouseNum, rLabel, labelGapDeg, size } = WHEEL;
+  const { rOuter, rBand, rSignText, rDot, rLabel, labelGapDeg, size } = WHEEL;
 
   const circles = [{ r: rOuter }, { r: rBand }];
 
   // 背景の星: 本物の星空風。小さく淡い星が大多数・明るい大きな星は少数。疎密のムラをつける。
-  // 決定的な擬似乱数(sinハッシュ)で固定 = SSRとダンプで一致。
+  // 決定的な擬似乱数で固定 = SSRとクライアントで一致。
+  // ※ sinハッシュは Math.sin の最下位ビットが Node/ブラウザ間で異なり hydration mismatch を
+  //   起こしたため、整数演算のみの mulberry32 (エンジン間でビット一致) に変更 (2026-08-05)。
   const stars: WheelLayout["stars"] = [];
-  let starSeed = 0;
-  const rnd = () => {
-    starSeed += 1;
-    const v = Math.sin(starSeed * 12.9898 + 78.233) * 43758.5453;
-    return v - Math.floor(v);
-  };
+  const rnd = mulberry32(1);
   for (let placed = 0, tries = 0; placed < 84 && tries < 2600; tries++) {
     const x = 5 + rnd() * (size - 10);
     const y = 5 + rnd() * (size - 10);
@@ -226,50 +245,23 @@ export function layoutWheel(view: ChartView): WheelLayout {
       0.7 * Math.abs(Math.sin(x * 0.031 + y * 0.019) * Math.cos(x * 0.015 - y * 0.036));
     if (rnd() > density) continue;
     const t = rnd(); // 星の「等級」0..1
+    // 座標・大きさ・不透明度は丸めて出す (描画に十分な精度 + HTML を短く保つ)
     stars.push({
-      x,
-      y,
-      r: 0.3 + 0.9 * Math.pow(t, 3), // 極小(0.3)を圧倒的に多く、たまに小(〜1.2)
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      r: Math.round((0.3 + 0.9 * Math.pow(t, 3)) * 100) / 100, // 極小(0.3)を圧倒的に多く、たまに小(〜1.2)
       // 空気遠近法: 星は最も奥=最も淡い層。全要素より暗く抑える(相対的な明暗差は残す)。
-      o: 0.05 + 0.13 * Math.pow(t, 1.4), // 0.05〜0.18 (星座名0.22より暗い)
+      o: Math.round((0.05 + 0.13 * Math.pow(t, 1.4)) * 1000) / 1000, // 0.05〜0.18 (星座名0.22より暗い)
     });
     placed += 1;
   }
 
-  // アスペクト線: 点より内側(rAspect)で2天体を結ぶ弦。中央に模様を集める。tone を色分け用に持つ。
+  // アスペクト線: 点リング(rDot)上で2天体を結ぶ弦。最背面に描く。
   const aspectLines = view.aspects.map((a) => {
-    const [x1, y1] = polar(rAspect, a.fromLon);
-    const [x2, y2] = polar(rAspect, a.toLon);
-    return { x1, y1, x2, y2, tone: a.tone };
+    const [x1, y1] = polar(rDot, a.fromLon);
+    const [x2, y2] = polar(rDot, a.toLon);
+    return { x1, y1, x2, y2 };
   });
-
-  // 度数目盛り: 星座帯の内側(rBand)から内向きに、5度ごと(10度は長め)。30度は既存の分割線に任せる。
-  const degreeTicks: WheelLayout["degreeTicks"] = [];
-  for (let d = 0; d < 360; d += 5) {
-    if (d % 30 === 0) continue;
-    const major = d % 10 === 0;
-    const [x1, y1] = polar(rBand, d);
-    const [x2, y2] = polar(rBand - (major ? 5 : 3), d);
-    degreeTicks.push({ x1, y1, x2, y2, major });
-  }
-
-  // ハウス分割線 + 番号 (Placidus・時刻既知のみ)。rHub〜rBand。回転させない固定要素。
-  const houseLines: WheelLayout["houseLines"] = [];
-  const houseNumbers: WheelLayout["houseNumbers"] = [];
-  if (view.houseCusps) {
-    for (let i = 0; i < 12; i++) {
-      const cusp = view.houseCusps[i];
-      const [x1, y1] = polar(rHub, cusp);
-      const [x2, y2] = polar(rBand, cusp);
-      houseLines.push({ x1, y1, x2, y2, asc: i === 0 });
-      // 番号は当該ハウス(cusp→次のcusp)の弧中央に、中心寄りで淡く。
-      const next = view.houseCusps[(i + 1) % 12];
-      const delta = ((next - cusp) % 360 + 360) % 360;
-      const mid = (cusp + delta / 2) % 360;
-      const [nx, ny] = polar(rHouseNum, mid);
-      houseNumbers.push({ x: nx, y: ny, text: String(i + 1) });
-    }
-  }
 
   // 星座分割(12本)と星座名(セクター中央)
   const ticks: WheelLayout["ticks"] = [];
@@ -329,5 +321,5 @@ export function layoutWheel(view: ChartView): WheelLayout {
     }
   }
 
-  return { size, stars, aspectLines, degreeTicks, houseLines, houseNumbers, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
+  return { size, stars, aspectLines, circles, ticks, signLabels, dots, leaders, bodyLabels, moonPath, moonCaps };
 }
