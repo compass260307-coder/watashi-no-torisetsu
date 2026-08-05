@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import BirthProfileForm from "@/components/birth/BirthProfileForm";
+import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
 
 type State = "no_birth" | "pending" | "timeout" | "ready";
 
@@ -20,6 +20,9 @@ const MAX_AUTO_RETRIES = 2;
 export default function UnmeiClient({ initialState }: Props) {
   const router = useRouter();
   const [state, setState] = useState<State>(initialState);
+  // チャット経由で保存した直後は、生成待ちもチャット画面のまま見せる
+  // (別画面のスピナーに切り替えず、会話の続きとして待たせる)。
+  const [viaChat, setViaChat] = useState(false);
   const deadlineRef = useRef<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoRetriesRef = useRef<number>(0);
@@ -113,24 +116,21 @@ export default function UnmeiClient({ initialState }: Props) {
     return () => stopPolling();
   }, [initialState, kickGeneration, startPolling, stopPolling]);
 
-  const handleSaved = useCallback(() => drive(false), [drive]);
+  const handleSaved = useCallback(() => {
+    setViaChat(true);
+    drive(false);
+  }, [drive]);
   // 手動リトライはサーバの上限を超えて再試行するため force=true
   const handleRetry = useCallback(() => drive(true), [drive]);
 
-  if (state === "no_birth") {
-    return (
-      <main className="mx-auto max-w-[640px] px-6 py-12">
-        <h1 className="mb-2 text-2xl font-black">あなたの設計図を描くために</h1>
-        <p className="mb-6 text-sm text-gray-600">
-          生まれた日を教えてください。ホロスコープ（出生図）の計算にのみ使用します。
-        </p>
-        <BirthProfileForm
-          required
-          analyticsPage="unmei"
-          onSaved={handleSaved}
-        />
-      </main>
-    );
+  // no_birth はチャット入力。保存後 (viaChat) は pending/ready になっても
+  // チャットを表示し続け、waiting バブルで生成完了 (router.refresh) を待つ。
+  // 同じ位置・同じコンポーネントを返し続けることで会話ログの state を保つ。
+  if (
+    state === "no_birth" ||
+    (viaChat && (state === "pending" || state === "ready"))
+  ) {
+    return <UnmeiBirthChat onSaved={handleSaved} waiting={state !== "no_birth"} />;
   }
 
   if (state === "timeout") {
