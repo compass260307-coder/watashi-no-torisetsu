@@ -26,11 +26,19 @@ import React, {
 } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { PREFS } from "@/components/birth/BirthProfileForm";
+import UnmeiEmbeddedCheckout from "@/components/uranai/UnmeiEmbeddedCheckout";
 import { track } from "@/lib/track";
 
 type Role = "guide" | "user";
 type Msg = { id: number; role: Role; text: string };
-type Step = "boot" | "date" | "time" | "place" | "confirm" | "submitting";
+type Step =
+  | "boot"
+  | "date"
+  | "time"
+  | "place"
+  | "confirm"
+  | "submitting"
+  | "payment"; // purchase モード: 出生情報保存後の決済ステップ
 type Editing = null | "date" | "time" | "place";
 
 const GUIDE_NAME = "星読みの案内人";
@@ -102,9 +110,17 @@ function Chip({
 export default function UnmeiBirthChat({
   onSaved,
   waiting = false,
+  mode = "input",
+  ownerToken = null,
+  product = "unmei",
 }: {
+  // input:    購入済みの出生情報入力 (保存→即 onSaved で生成)。従来。
+  // purchase: 未購入。入力→保存→チャット内決済→決済完了で onSaved (生成へ)。
   onSaved: () => void;
   waiting?: boolean;
+  mode?: "input" | "purchase";
+  ownerToken?: string | null;
+  product?: "unmei" | "unmei_upgrade";
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
@@ -166,15 +182,25 @@ export default function UnmeiBirthChat({
   useEffect(() => {
     if (bootedRef.current) return;
     bootedRef.current = true;
-    track("birth_form_view", { metadata: { page: "unmei", ui: "chat" } });
-    say(
-      [
-        "ようこそ。ここからは、わたしがあなたの設計図づくりをお手伝いします。",
-        "まずは、あなたが生まれた日を教えてください。",
-      ],
-      () => setStep("date"),
-    );
-  }, [say]);
+    track("birth_form_view", {
+      metadata: {
+        page: "unmei",
+        ui: mode === "purchase" ? "chat_purchase" : "chat",
+      },
+    });
+    // purchase モードは LP を経由せず直接来るため、最初に何をつくるかを一言添える。
+    const intro =
+      mode === "purchase"
+        ? [
+            "運命の設計図へようこそ。星の配置とあなたの性格から、あなただけの鑑定書をおつくりします。",
+            "まずは、あなたが生まれた日を教えてください。",
+          ]
+        : [
+            "ようこそ。ここからは、わたしがあなたの設計図づくりをお手伝いします。",
+            "まずは、あなたが生まれた日を教えてください。",
+          ];
+    say(intro, () => setStep("date"));
+  }, [say, mode]);
 
   // 新しい発言・入力UIの切り替わりでトーク面の末尾へスクロール (内部スクロール)
   useEffect(() => {
@@ -306,9 +332,11 @@ export default function UnmeiBirthChat({
       });
       const j = await res.json();
       if (!res.ok) {
-        say([j?.error ?? "保存に失敗しました。もう一度試してみてください。"], () =>
+        // 生のAPIエラー(英語)はユーザーに出さず、やさしい定型文にする
+        say(["うまく保存できませんでした。もう一度お試しください。"], () =>
           setStep("confirm"),
         );
+        void j;
         return;
       }
       track("birth_form_submit", {
@@ -316,15 +344,36 @@ export default function UnmeiBirthChat({
           has_time: !a.timeUnknown,
           has_place: !!a.prefecture,
           page: "unmei",
-          ui: "chat",
+          ui: mode === "purchase" ? "chat_purchase" : "chat",
         },
       });
+      if (mode === "purchase") {
+        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)
+        track("unmei_checkout_step_view", {
+          ownerToken: ownerToken ?? null,
+          metadata: { page: "unmei", product, ui: "chat_embedded" },
+        });
+        say(
+          [
+            "ありがとうございます。準備ができました。",
+            "最後に、お支払いへ進みます。決済が終わると、その場で星を読みはじめます。",
+          ],
+          () => setStep("payment"),
+        );
+        return;
+      }
       say(["受け取りました。それでは——星を読みはじめますね。"], onSaved);
     } catch {
       say(["ネットワークエラーが起きました。もう一度試してみてください。"], () =>
         setStep("confirm"),
       );
     }
+  }, [say, onSaved, mode, ownerToken, product]);
+
+  // purchase モード: 決済完了 → 生成へ (親が waiting=true を渡してくる)
+  const handlePaymentComplete = useCallback(() => {
+    setStep("boot");
+    say(["お支払いを受け取りました。それでは——星を読みはじめますね。"], onSaved);
   }, [say, onSaved]);
 
   // ---- 描画 ----
@@ -575,8 +624,25 @@ export default function UnmeiBirthChat({
                     disabled={step === "submitting"}
                     className="w-full rounded-full bg-[#5B5BEF] py-3 font-bold text-white disabled:opacity-40"
                   >
-                    {step === "submitting" ? "送信中…" : "この内容で描いてもらう"}
+                    {step === "submitting"
+                      ? "送信中…"
+                      : mode === "purchase"
+                        ? "このまま進む"
+                        : "この内容で描いてもらう"}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* purchase モード: チャット内の Embedded Checkout (決済) */}
+            {interactive && step === "payment" && (
+              <div className="flex justify-end">
+                <div className="w-full max-w-[440px]">
+                  <UnmeiEmbeddedCheckout
+                    product={product}
+                    ownerToken={ownerToken}
+                    onComplete={handlePaymentComplete}
+                  />
                 </div>
               </div>
             )}
