@@ -97,9 +97,11 @@ export default function UnmeiPriceCta({
   if (variant === "compact") {
     return (
       <>
-        <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
-          料金はわずか {hasFull ? "¥1,480" : "¥1,980"} です。
-        </p>
+        {!launchChat && (
+          <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
+            料金はわずか {hasFull ? "¥1,480" : "¥1,980"} です。
+          </p>
+        )}
         <div className="mt-6 flex justify-center">
           <UnmeiCheckoutButton
             ownerToken={ownerToken}
@@ -115,33 +117,35 @@ export default function UnmeiPriceCta({
 
   return (
     <>
-      {hasFull ? (
-        <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
-          <span className="mr-2.5 align-middle text-[20px] font-bold text-[#2E2E5C]/40 line-through md:text-[24px]">
+      {/* チャット決済フロー (launchChat) は価格を後のチャット/決済で提示するため、LP では出さない */}
+      {!launchChat &&
+        (hasFull ? (
+          <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
+            <span className="mr-2.5 align-middle text-[20px] font-bold text-[#2E2E5C]/40 line-through md:text-[24px]">
+              ¥1,980
+            </span>
+            ¥1,480
+            {/* 割引率 = (1980-1480)/1980 ≒ 25%。色はインディゴ系に統一 (赤は使わない) */}
+            <span className="ml-2.5 inline-block rounded-lg bg-[#F4F4FE] px-2.5 py-1 align-middle text-[14px] font-black text-[#5B5BEF] md:text-[15px]">
+              25%OFF
+            </span>
+            {/* SP は行が窮屈なため、折り返すときは語のまとまりごと次行へ落とす */}
+            <span className="ml-2.5 inline-block whitespace-nowrap align-middle text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
+              30日間の返金保証
+            </span>
+          </p>
+        ) : (
+          <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
             ¥1,980
-          </span>
-          ¥1,480
-          {/* 割引率 = (1980-1480)/1980 ≒ 25%。色はインディゴ系に統一 (赤は使わない) */}
-          <span className="ml-2.5 inline-block rounded-lg bg-[#F4F4FE] px-2.5 py-1 align-middle text-[14px] font-black text-[#5B5BEF] md:text-[15px]">
-            25%OFF
-          </span>
-          {/* SP は行が窮屈なため、折り返すときは語のまとまりごと次行へ落とす */}
-          <span className="ml-2.5 inline-block whitespace-nowrap align-middle text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
-            30日間の返金保証
-          </span>
-        </p>
-      ) : (
-        <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
-          ¥1,980
-          <span className="ml-2.5 text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
-            買い切り・30日間の返金保証
-          </span>
-        </p>
-      )}
+            <span className="ml-2.5 text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
+              買い切り・30日間の返金保証
+            </span>
+          </p>
+        ))}
       {/* 保証表記は価格行の「買い切り」横に移動 (2026-08-02 指示)。
           (エンタメ表記は特商法/規約ページ側にあるため省略) */}
       <div
-        className={`mt-3 flex ${align === "start" ? "" : "md:justify-center"}`}
+        className={`${launchChat ? "mt-6" : "mt-3"} flex ${align === "start" ? "" : "md:justify-center"}`}
       >
         <UnmeiCheckoutButton
           ownerToken={ownerToken}

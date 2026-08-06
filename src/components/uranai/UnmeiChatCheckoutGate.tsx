@@ -1,15 +1,16 @@
 "use client";
 
 // /unmei のチャット決済ゲート (2026-08-06)。
-// 既定では LP (children) をそのまま見せ、LP の「設計図を作成する →」CTA が発火する
-// CustomEvent("unmei-chat-launch") を受けたら、チャット決済を全画面オーバーレイで起動する。
-// オーバーレイはヘッダー/フッター/ボトムナビ (z-40) を覆って非表示にし (z-[100])、
-// 右上の × で LP に戻れる。背景スクロールはロックする。
+// 既定では LP (children) を見せ、LP の「設計図を作成する →」CTA が発火する
+// CustomEvent("unmei-chat-launch") を受けたら、LP を隠してチャット決済を表示する。
+// 全画面にはせず通常フローで差し替えるため、/unmei layout の TopHeader / TopFooter と
+// ルート layout の BottomNav はそのまま表示される (2026-08-06 指示で全画面→通常表示に変更)。
+// LP へ戻る手段は TopHeader のナビ (運命の設計図) 等に委ね、専用の戻るボタンは置かない。
 //
 // 決済完了→鑑定生成が終わると UnmeiClient が router.refresh() を呼び、サーバが鑑定本文
-// (unmeiFlag=true) を返してこのゲートごと差し替わるため、オーバーレイは自然に消える。
+// (unmeiFlag=true) を返してこのゲートごと差し替わる。
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 
 type Props = {
@@ -29,40 +30,17 @@ export default function UnmeiChatCheckoutGate({ purchase, children }: Props) {
     return () => window.removeEventListener("unmei-chat-launch", onLaunch);
   }, []);
 
-  // オーバーレイ表示中は背景 (LP) のスクロールを止める。
+  // LP↔チャットの切り替え時は先頭へスクロール (LP の途中位置のまま切り替わらないように)。
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    window.scrollTo({ top: 0 });
   }, [open]);
-
-  const close = useCallback(() => setOpen(false), []);
 
   return (
     <>
-      {children}
+      {/* LP はマウントしたまま隠す (再マウントによる計測二重発火・スクロール喪失を避ける) */}
+      <div className={open ? "hidden" : undefined}>{children}</div>
       {open ? (
-        <div className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain bg-[#F3F3FB]">
-          <button
-            type="button"
-            onClick={close}
-            aria-label="閉じる"
-            className="fixed right-3 top-3 z-[110] flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.18)] backdrop-blur transition-colors hover:bg-white"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M6 6l12 12M18 6L6 18"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <UnmeiClient initialState="no_birth" purchase={purchase} />
-        </div>
+        <UnmeiClient initialState="no_birth" purchase={purchase} />
       ) : null}
     </>
   );
