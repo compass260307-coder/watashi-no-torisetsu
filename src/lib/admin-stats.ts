@@ -946,6 +946,39 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiBadgeShown = toUnique(unmeiBadgeShownRows);
   const unmeiBadgeClicked = toUnique(unmeiBadgeClickedRows);
 
+  // 運命の設計図: チャット決済フロー専用ファネル (ui/payment_method で抽出・旧リダイレクト版と分離)。
+  // 段階順はチャット実態 (LP→作成CTA→出生入力→保存→決済フォーム→完了)。
+  // ⑤決済フォーム到達は checkout_session_created(payment_method=card_embedded)=埋め込みフォーム生成で代替。
+  const unmeiChatLaunched = toUnique(
+    purchaseCtaRows.filter((r) => r.metadata?.ui === "chat_launch"),
+  );
+  const unmeiChatBirthViewed = toUnique(
+    birthFormViewRows.filter((r) => r.metadata?.ui === "chat_purchase"),
+  );
+  const unmeiChatBirthSubmitted = toUnique(
+    birthFormSubmitRows.filter((r) => r.metadata?.ui === "chat_purchase"),
+  );
+  const unmeiChatCheckoutRows = unmeiCheckoutRows.filter(
+    (r) => r.metadata?.payment_method === "card_embedded",
+  );
+  const unmeiChatCheckoutReached = countUniqueStripeSessions(
+    unmeiChatCheckoutRows,
+  );
+  // チャット決済で作られた Stripe セッション (card_embedded=埋め込み / paypay=PayPay直行) の
+  // stripe_session_id を集め、その ID で完了した購入のみをチャット発の決済完了として数える。
+  const unmeiChatCheckoutSessionIds = new Set<string>();
+  for (const r of unmeiCheckoutRows) {
+    const pm = r.metadata?.payment_method;
+    if (pm !== "card_embedded" && pm !== "paypay") continue;
+    const sid = r.metadata?.stripe_session_id;
+    if (typeof sid === "string") unmeiChatCheckoutSessionIds.add(sid);
+  }
+  const unmeiChatPurchaseRows = unmeiPurchaseEventRows.filter((r) => {
+    const sid = r.metadata?.stripe_session_id;
+    return typeof sid === "string" && unmeiChatCheckoutSessionIds.has(sid);
+  });
+  const unmeiChatPurchases = countUniqueStripeSessions(unmeiChatPurchaseRows);
+
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
   for (const row of paywallScrollRows) {
@@ -1560,6 +1593,16 @@ export async function computeStats(from: string | null, to: string | null) {
         { label: "出生フォーム表示", count: birthFormViewed },
         { label: "出生情報保存", count: birthFormSubmitted },
         { label: "鑑定表示", count: unmeiReadingViewed },
+      ],
+      // チャット決済フロー (flag ON) の実態ファネル。段階順が旧リダイレクト版と異なる
+      // (出生入力が決済の前)。ui=chat_launch/chat_purchase・payment_method=card_embedded で抽出。
+      chatFunnel: [
+        { label: "LP表示", count: unmeiLpViewed },
+        { label: "作成CTA(起動)", count: unmeiChatLaunched },
+        { label: "出生情報 入力", count: unmeiChatBirthViewed },
+        { label: "出生情報 保存", count: unmeiChatBirthSubmitted },
+        { label: "決済フォーム到達", count: unmeiChatCheckoutReached },
+        { label: "決済完了", count: unmeiChatPurchases },
       ],
       purchases: {
         total: unmeiPurchases,

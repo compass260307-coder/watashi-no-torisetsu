@@ -221,6 +221,7 @@ type Stats = {
   takoFunnel: { label: string; count: number }[];
   unmei: {
     funnel: { label: string; count: number }[];
+    chatFunnel: { label: string; count: number }[];
     purchases: {
       total: number;
       basic: number;
@@ -1600,6 +1601,10 @@ export default function AdminPage() {
     ...(stats.unmei?.funnel ?? []).map((f) => f.count),
     1,
   );
+  const unmeiChatFunnelMax = Math.max(
+    ...(stats.unmei?.chatFunnel ?? []).map((f) => f.count),
+    1,
+  );
   const unmeiRevenueLabel =
     stats.unmei.revenue.currencies.length > 0
       ? formatNetRevenue(stats.unmei.revenue.currencies)
@@ -2880,6 +2885,37 @@ export default function AdminPage() {
                 </div>
               </Panel>
             </div>
+            <Panel className="mt-4 p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="rounded bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
+                  チャット決済ファネル
+                </span>
+                <span className="text-[11px] font-medium text-stone-400">
+                  flag ON・chat_launch / chat_purchase / card_embedded で抽出
+                </span>
+              </div>
+              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
+                <span className="w-28 text-right">ステップ</span>
+                <span className="flex-1">件数</span>
+                <span className="w-16 text-right">前段比</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {stats.unmei.chatFunnel.map((step, i) => (
+                  <FunnelBar
+                    key={step.label}
+                    label={step.label}
+                    count={step.count}
+                    max={unmeiChatFunnelMax}
+                    prevCount={
+                      i > 0 ? stats.unmei.chatFunnel[i - 1].count : undefined
+                    }
+                  />
+                ))}
+              </div>
+              <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
+                「設計図を作成する」→ チャットで出生入力 → 埋め込み決済 → 完了、の実フロー。決済フォーム到達は埋め込みセッション生成 (card_embedded)、決済完了はそのセッション由来の購入で計上。旧リダイレクト版は上のファネルに含まれます。
+              </p>
+            </Panel>
           </section>
 
         {/* 本人コホートと友達側を分けた友達診断ファネル */}
