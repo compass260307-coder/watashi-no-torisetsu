@@ -391,7 +391,7 @@ export default function UnmeiBirthChat({
     "w-full max-w-[320px] rounded-2xl rounded-br-[4px] border border-[#E9E9F2] bg-white p-3 shadow-[0_1px_2px_rgba(46,46,92,0.06)]";
 
   return (
-    <main className="mx-auto max-w-[640px] px-4 pb-10 pt-5 md:px-6 md:pb-14 md:pt-8">
+    <main className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-5 md:px-8 md:pb-14 md:pt-8">
       <h1 className="sr-only">あなたの設計図を描くために</h1>
 
       {/* チャットウィンドウ (紺ヘッダー + トーク面の1枚パネル) */}
