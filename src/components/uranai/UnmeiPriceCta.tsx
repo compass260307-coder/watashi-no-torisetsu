@@ -22,6 +22,7 @@ export default function UnmeiPriceCta({
   sessionHasFull,
   align = "start",
   variant = "full",
+  launchChat = false,
 }: {
   /** ログイン済みならその owner_token (未ログインは null → localStorage を見る)。 */
   sessionOwnerToken: string | null;
@@ -34,7 +35,11 @@ export default function UnmeiPriceCta({
    * compact: 「料金はわずか¥…です。」の一文 + ボタンのみ (締めCTA用。16P 参考)。
    */
   variant?: "full" | "compact";
+  /** true = リダイレクトせず全画面チャット決済を起動する (チャット決済フロー)。 */
+  launchChat?: boolean;
 }) {
+  // チャット起動モードでは「作成する」文言、従来のリダイレクトは「続ける」。
+  const ctaLabel = launchChat ? "設計図を作成する →" : "続ける →";
   const [ownerToken, setOwnerToken] = useState<string | null>(
     sessionOwnerToken,
   );
@@ -99,8 +104,9 @@ export default function UnmeiPriceCta({
           <UnmeiCheckoutButton
             ownerToken={ownerToken}
             product={hasFull ? "unmei_upgrade" : "unmei"}
+            launchChat={launchChat}
           >
-            続ける →
+            {ctaLabel}
           </UnmeiCheckoutButton>
         </div>
       </>
@@ -140,8 +146,9 @@ export default function UnmeiPriceCta({
         <UnmeiCheckoutButton
           ownerToken={ownerToken}
           product={hasFull ? "unmei_upgrade" : "unmei"}
+          launchChat={launchChat}
         >
-          続ける →
+          {ctaLabel}
         </UnmeiCheckoutButton>
       </div>
     </>

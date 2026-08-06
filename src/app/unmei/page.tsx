@@ -5,6 +5,7 @@ import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
 import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
 import UnmeiPayPreview from "@/components/uranai/UnmeiPayPreview";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
 import { LoginCard } from "@/components/LoginCard";
@@ -122,10 +123,13 @@ function UnmeiTeaserLp({
   ownerToken,
   hasFull,
   trackView = true,
+  launchChat = false,
 }: {
   ownerToken: string | null;
   hasFull: boolean;
   trackView?: boolean;
+  /** true = 購入CTAでリダイレクトせず全画面チャット決済を起動する。 */
+  launchChat?: boolean;
 }) {
   return (
       <main className="overflow-x-clip bg-white">
@@ -171,6 +175,7 @@ function UnmeiTeaserLp({
               <UnmeiPriceCta
                 sessionOwnerToken={ownerToken}
                 sessionHasFull={hasFull}
+                launchChat={launchChat}
               />
             </div>
           </section>
@@ -492,6 +497,19 @@ async function UnmeiPageBody(sp: {
       />
     );
   }
+  if (preview === "chat") {
+    // チャット決済フローの確認用 (dev限定): LP → 「設計図を作成する →」で全画面チャット起動。
+    return (
+      <UnmeiChatCheckoutGate purchase={{ ownerToken: null, product: "unmei" }}>
+        <UnmeiTeaserLp
+          ownerToken={null}
+          hasFull={false}
+          trackView={false}
+          launchChat
+        />
+      </UnmeiChatCheckoutGate>
+    );
+  }
 
   const session = await getSession();
   const userId: string | null = session ? session.id : null;
@@ -528,14 +546,20 @@ async function UnmeiPageBody(sp: {
     const chatCheckout =
       process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
     if (chatCheckout && userId) {
+      // LP を見せ、「設計図を作成する →」CTA で全画面チャット決済を起動する。
       return (
-        <UnmeiClient
-          initialState="no_birth"
+        <UnmeiChatCheckoutGate
           purchase={{
             ownerToken: session?.owner_token ?? null,
             product: sessionHasFull ? "unmei_upgrade" : "unmei",
           }}
-        />
+        >
+          <UnmeiTeaserLp
+            ownerToken={session?.owner_token ?? null}
+            hasFull={sessionHasFull}
+            launchChat
+          />
+        </UnmeiChatCheckoutGate>
       );
     }
 
