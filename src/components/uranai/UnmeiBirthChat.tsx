@@ -348,11 +348,9 @@ export default function UnmeiBirthChat({
         },
       });
       if (mode === "purchase") {
-        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)
-        track("unmei_checkout_step_view", {
-          ownerToken: ownerToken ?? null,
-          metadata: { page: "unmei", product, ui: "chat_embedded" },
-        });
+        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)。
+        // 決済フォーム到達は checkout_session_created(payment_method=card_embedded・サーバ発行)
+        // で計上するため、ここでの追加計測イベントは持たない (RLS 未許可の空撃ちだった)。
         say(
           [
             "ありがとうございます。準備ができました。",
@@ -368,7 +366,7 @@ export default function UnmeiBirthChat({
         setStep("confirm"),
       );
     }
-  }, [say, onSaved, mode, ownerToken, product]);
+  }, [say, onSaved, mode]);
 
   // purchase モード: 決済完了 → 生成へ (親が waiting=true を渡してくる)
   const handlePaymentComplete = useCallback(() => {
