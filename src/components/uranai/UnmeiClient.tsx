@@ -8,6 +8,12 @@ type State = "no_birth" | "pending" | "timeout" | "ready";
 
 type Props = {
   initialState: "no_birth" | "pending";
+  // 未購入からの購入フロー: チャット内で 入力→決済→生成 を行う。
+  // 未指定 (null) は従来の購入済み入力フロー。
+  purchase?: {
+    ownerToken: string | null;
+    product: "unmei" | "unmei_upgrade";
+  } | null;
 };
 
 // 生成完了までのタイムアウト (指示書④: 無限スピナー禁止・60秒で再試行案内)
@@ -17,7 +23,7 @@ const POLL_INTERVAL_MS = 3_000;
 // (サーバ側の生成試行上限とは別の、クライアント発の再キック。上限超過はサーバが 'failed' で止める)
 const MAX_AUTO_RETRIES = 2;
 
-export default function UnmeiClient({ initialState }: Props) {
+export default function UnmeiClient({ initialState, purchase = null }: Props) {
   const router = useRouter();
   const [state, setState] = useState<State>(initialState);
   // チャット経由で保存した直後は、生成待ちもチャット画面のまま見せる
@@ -130,7 +136,15 @@ export default function UnmeiClient({ initialState }: Props) {
     state === "no_birth" ||
     (viaChat && (state === "pending" || state === "ready"))
   ) {
-    return <UnmeiBirthChat onSaved={handleSaved} waiting={state !== "no_birth"} />;
+    return (
+      <UnmeiBirthChat
+        onSaved={handleSaved}
+        waiting={state !== "no_birth"}
+        mode={purchase ? "purchase" : "input"}
+        ownerToken={purchase?.ownerToken ?? null}
+        product={purchase?.product ?? "unmei"}
+      />
+    );
   }
 
   if (state === "timeout") {

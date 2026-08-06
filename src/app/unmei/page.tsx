@@ -5,6 +5,7 @@ import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
 import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiPayPreview from "@/components/uranai/UnmeiPayPreview";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
 import { LoginCard } from "@/components/LoginCard";
 import { ProofFacesBand } from "@/components/ProofFacesBand";
@@ -433,6 +434,12 @@ function UnmeiGuestPurchaseComplete() {
 
 export default async function UnmeiPage({ searchParams }: PageProps) {
   const sp = (await searchParams) ?? {};
+  return UnmeiPageBody(sp);
+}
+
+async function UnmeiPageBody(sp: {
+  [key: string]: string | string[] | undefined;
+}) {
   const preview =
     process.env.NODE_ENV !== "production" && typeof sp.preview === "string"
       ? sp.preview
@@ -440,6 +447,19 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
 
   if (preview === "paid" || preview === "purchased") {
     return <UnmeiClient initialState="no_birth" />;
+  }
+  if (preview === "purchase") {
+    // 未購入からの購入チャット (入力→チャット内決済→生成) の dev 確認用。
+    return (
+      <UnmeiClient
+        initialState="no_birth"
+        purchase={{ ownerToken: null, product: "unmei" }}
+      />
+    );
+  }
+  if (preview === "pay") {
+    // Embedded Checkout 単体プレビュー (決済フォーム描画の確認用)。
+    return <UnmeiPayPreview />;
   }
   if (preview === "pending") {
     return <UnmeiClient initialState="pending" />;
@@ -501,6 +521,24 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
       return <UnmeiGuestPurchaseComplete />;
     }
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
+
+    // チャット内決済フロー (2026-08-06): フラグ ON + セッション有りなら、LP の代わりに
+    // 「入力→チャット内 Embedded 決済→生成」のチャットを出す。フラグ OFF / 未セッションは
+    // 従来の LP + リダイレクト決済 (フラグを外すだけで即座に元へ戻せる)。
+    const chatCheckout =
+      process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
+    if (chatCheckout && userId) {
+      return (
+        <UnmeiClient
+          initialState="no_birth"
+          purchase={{
+            ownerToken: session?.owner_token ?? null,
+            product: sessionHasFull ? "unmei_upgrade" : "unmei",
+          }}
+        />
+      );
+    }
+
     return (
       <UnmeiTeaserLp
         ownerToken={session?.owner_token ?? null}
