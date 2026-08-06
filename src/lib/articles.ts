@@ -761,3 +761,30 @@ export const ARTICLES: Article[] = [
 export function getArticle(slug: string): Article | undefined {
   return ARTICLES.find((a) => a.slug === slug);
 }
+
+// 記事間の内部リンク (トピッククラスタ)。回遊性と関連性シグナルを高めるため、
+// 各記事から関連の深い記事へ相互リンクする。編集時はここだけ直せばよい。
+//   - ビッグファイブ基礎: ocean-shindan(ピラー) ↔ 5因子 ↔ 16タイプ比較
+//   - 自己理解: トリセツの作り方 ↔ ジョハリの窓 ↔ 他己分析
+//   - 相性: seikaku-aisho ↔ 関連因子
+// 存在しない slug は getRelatedArticles 側で安全に除外される。
+const RELATED_ARTICLES: Record<string, string[]> = {
+  "ocean-shindan": ["sixteen-types-vs-ocean", "torisetsu-tsukurikata", "kaihousei"],
+  "sixteen-types-vs-ocean": ["ocean-shindan", "torisetsu-tsukurikata", "seikaku-aisho"],
+  kaihousei: ["ocean-shindan", "seijitsusei", "gaikousei"],
+  seijitsusei: ["ocean-shindan", "kaihousei", "gaikousei"],
+  gaikousei: ["ocean-shindan", "kyouchousei", "shinkeisho-keiko"],
+  kyouchousei: ["ocean-shindan", "gaikousei", "seikaku-aisho"],
+  "shinkeisho-keiko": ["ocean-shindan", "gaikousei", "torisetsu-tsukurikata"],
+  "torisetsu-tsukurikata": ["johari-no-mado", "tako-bunseki", "ocean-shindan"],
+  "johari-no-mado": ["tako-bunseki", "torisetsu-tsukurikata", "ocean-shindan"],
+  "seikaku-aisho": ["ocean-shindan", "kyouchousei", "gaikousei"],
+  "tako-bunseki": ["johari-no-mado", "torisetsu-tsukurikata", "ocean-shindan"],
+};
+
+/** 指定記事に関連する記事を配列で返す (存在しない slug は除外)。 */
+export function getRelatedArticles(slug: string): Article[] {
+  return (RELATED_ARTICLES[slug] ?? [])
+    .map((s) => getArticle(s))
+    .filter((a): a is Article => Boolean(a));
+}
