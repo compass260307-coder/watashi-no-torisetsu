@@ -16,12 +16,14 @@ const FONT_STACK =
 // external: Next の Link を使わない生 <a> (mailto / 外部サイト)。
 // newTab: 外部サイトは別タブで開く (target="_blank" + rel="noopener noreferrer")。
 // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
+// children: 親リンクの下に小さく入れ子表示するサブリンク (内部リンク用)。
 type FooterLink = {
   label: string;
   href: string;
   external?: boolean;
   newTab?: boolean;
   disabled?: boolean;
+  children?: { label: string; href: string }[];
 };
 
 // 3 カラム (診断 / サービス / サポート)。規約系は最下段 (コピーライト横) に移動。
@@ -40,7 +42,18 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "サービス",
     links: [
       { label: "サービスについて", href: "/about" },
-      { label: "記事・コラム", href: "/articles" },
+      {
+        label: "記事・コラム",
+        href: "/articles",
+        // 主要記事への入れ子リンク。フッターは全ページ共通なので、サイト全域からの
+        // 内部リンクになる (クロール促進)。ラベルは短縮形・4本まで。
+        children: [
+          { label: "OCEAN診断とは", href: "/articles/ocean-shindan" },
+          { label: "他己分析のやり方", href: "/articles/tako-bunseki" },
+          { label: "トリセツの作り方", href: "/articles/torisetsu-tsukurikata" },
+          { label: "16タイプとの違い", href: "/articles/sixteen-types-vs-ocean" },
+        ],
+      },
       {
         label: "運営会社",
         href: "https://sora-team.com",
@@ -211,6 +224,26 @@ export default function TopFooter({
                   >
                     {l.label}
                   </a>
+                ) : l.children ? (
+                  // 入れ子リンク: 親リンクの下に一段小さく・薄く並べる (左罫線で階層を示す)。
+                  <div key={l.label} className="flex flex-col gap-2">
+                    <Link href={l.href} className={linkClass}>
+                      {l.label}
+                    </Link>
+                    <div className="ml-1 flex flex-col gap-2 border-l border-[#E9E9F2] pl-3">
+                      {l.children.map((c) => (
+                        <Link
+                          key={c.label}
+                          href={c.href}
+                          // 14px + 短縮ラベル: モバイル2カラム時 (実効幅 ~118px) でも
+                          // 1行に収まるサイズ。15px だと8文字ラベルが折り返す。
+                          className="w-fit text-[14px] text-[#8A8AA3] transition-colors hover:text-[#5B5BEF]"
+                        >
+                          {c.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
                   <Link key={l.label} href={l.href} className={linkClass}>
                     {l.label}
