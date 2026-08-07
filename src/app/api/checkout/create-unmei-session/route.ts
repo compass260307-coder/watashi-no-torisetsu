@@ -24,8 +24,8 @@ type Buyer = { id: string; email: string | null; owner_token: string | null };
 type ProductKey = "unmei" | "unmei_upgrade";
 
 const PRODUCT_LABELS: Record<ProductKey, { saleJpy: number; name: string }> = {
-  unmei: { saleJpy: 1980, name: "運命の設計図（ベーシック）" },
-  unmei_upgrade: { saleJpy: 1480, name: "運命の設計図（アップグレード）" },
+  unmei: { saleJpy: 899, name: "運命の設計図（ベーシック）" },
+  unmei_upgrade: { saleJpy: 400, name: "運命の設計図（アップグレード）" },
 };
 
 async function resolveBuyer(request: NextRequest, bodyToken: string): Promise<{ buyer: Buyer | null; userId: string | null }> {
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   const priceId = getUnmeiPriceId(product);
   if (!priceId) {
     return NextResponse.json(
-      { error: `STRIPE_PRICE_UNMEI_${product === "unmei" ? "1980" : "1480"} not configured` },
+      { error: `STRIPE_PRICE_UNMEI_${product === "unmei" ? "899" : "400"} not configured` },
       { status: 500 },
     );
   }
