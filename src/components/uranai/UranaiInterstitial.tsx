@@ -243,7 +243,7 @@ export default function UranaiInterstitial({
 
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <p className="text-lg font-bold">運命の設計図 ¥1,980</p>
+              <p className="text-lg font-bold">運命の設計図 ¥899</p>
             </div>
             <div>
               <button

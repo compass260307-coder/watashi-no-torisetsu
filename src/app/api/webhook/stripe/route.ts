@@ -605,7 +605,7 @@ async function handleCheckoutPaid(
     return;
   }
 
-  // アップグレード (¥1,480): user 専用経路。userId が必須で既に full_access を持っていることを確認してから付与。
+  // アップグレード (¥400): user 専用経路。userId が必須で既に full_access を持っていることを確認してから付与。
   if (metadata.product === "unmei_upgrade") {
     // 前提(user_id 有り・full_access 保有)を満たさないセッションは、Stripe が何度リトライしても
     // 解消しない「毒(poison)」。500 で無限リトライさせず 200 で受領し、Slack 通知で手動対応に回す。

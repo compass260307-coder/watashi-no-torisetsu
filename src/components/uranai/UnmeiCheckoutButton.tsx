@@ -10,7 +10,7 @@ export default function UnmeiCheckoutButton({
   launchChat = false,
 }: {
   ownerToken?: string | null;
-  /** unmei=¥1,980 / unmei_upgrade=¥1,480 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
+  /** unmei=¥899 / unmei_upgrade=¥400 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
   product?: "unmei" | "unmei_upgrade";
   children?: React.ReactNode;
   /**
