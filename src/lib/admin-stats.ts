@@ -392,11 +392,20 @@ export async function computeStats(from: string | null, to: string | null) {
       owner_token: string | null;
       metadata: Record<string, unknown> | null;
     }>(evRows(["unmei_reading_view"], "session_id, owner_token, metadata")),
-    fetchAll<UnmeiPurchaseEventRow>(
-      evRows(
-        ["unmei_purchase_complete", "unmei_upgrade_complete"],
-        "event_name, owner_token, metadata, created_at",
-      ),
+    // unmei 購入イベントは期間フィルタを掛けず全期間で取得する。webhook 再送で同一決済の
+    // 行が日をまたいで複数入るため、期間で切ると再送行が「期間内の初回」に化けて
+    // 決済日が Stripe とズレる (2026-08-09 に「今日の売上」がズレた原因)。
+    // 期間判定は重複排除後の最初の行 (=実決済時刻) で行う。
+    fetchAll<UnmeiPurchaseEventRow>(() =>
+      supabaseAdmin
+        .from("events")
+        .select("event_name, owner_token, metadata, created_at")
+        .in("event_name", [
+          "unmei_purchase_complete",
+          "unmei_upgrade_complete",
+        ])
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
     ),
     fetchAll<EventMetaSessionRow>(
       evRows(["birth_form_view"], "session_id, metadata"),
@@ -919,16 +928,30 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiCheckoutRows = checkoutCreatedRows.filter((r) =>
     isUnmeiMeta(r.metadata),
   );
-  const unmeiBasePurchaseRows = unmeiPurchaseEventRows.filter(
+  // webhook 再送の重複行を除去し、決済ごとに最初の行 (=実決済時刻) だけ残す。
+  // 行は created_at 昇順で取得済み。ファネル・売上とも期間判定はこの実決済時刻で行い、
+  // Stripe ダッシュボードの計上日と一致させる。
+  const seenUnmeiSessionIds = new Set<string>();
+  const unmeiPurchaseFacts = unmeiPurchaseEventRows.filter((r) => {
+    const sid = r.metadata?.stripe_session_id;
+    if (typeof sid !== "string" || !sid) return true; // 旧形式 (id 無し) は個別に残す
+    if (seenUnmeiSessionIds.has(sid)) return false;
+    seenUnmeiSessionIds.add(sid);
+    return true;
+  });
+  const unmeiPurchaseRowsInRange = unmeiPurchaseFacts.filter((r) =>
+    inRange(r.created_at),
+  );
+  const unmeiBasePurchaseRows = unmeiPurchaseRowsInRange.filter(
     (r) => r.event_name === "unmei_purchase_complete",
   );
-  const unmeiUpgradePurchaseRows = unmeiPurchaseEventRows.filter(
+  const unmeiUpgradePurchaseRows = unmeiPurchaseRowsInRange.filter(
     (r) => r.event_name === "unmei_upgrade_complete",
   );
   const unmeiLpViewed = toUnique(unmeiLpRows);
   const unmeiPurchaseStarted = toUnique(unmeiPurchaseIntentRows);
   const unmeiCheckoutCreated = countUniqueStripeSessions(unmeiCheckoutRows);
-  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseEventRows);
+  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseRowsInRange);
   const unmeiBasePurchases = countUniqueStripeSessions(unmeiBasePurchaseRows);
   const unmeiUpgradePurchases = countUniqueStripeSessions(
     unmeiUpgradePurchaseRows,
@@ -973,7 +996,7 @@ export async function computeStats(from: string | null, to: string | null) {
     const sid = r.metadata?.stripe_session_id;
     if (typeof sid === "string") unmeiChatCheckoutSessionIds.add(sid);
   }
-  const unmeiChatPurchaseRows = unmeiPurchaseEventRows.filter((r) => {
+  const unmeiChatPurchaseRows = unmeiPurchaseRowsInRange.filter((r) => {
     const sid = r.metadata?.stripe_session_id;
     return typeof sid === "string" && unmeiChatCheckoutSessionIds.has(sid);
   });
@@ -1117,11 +1140,16 @@ export async function computeStats(from: string | null, to: string | null) {
 
   // kind 付きの全商品決済ファクト。総売上・商品別内訳・日別推移の源泉。
   // コホートKPI (computeCoreKpis) へは full_access のみを渡す (従来と同義)。
+  // ローカル開発が本番 Supabase + テスト Stripe の構成で動くため、テストモード決済
+  // (cs_test_) が本番 DB に混入している (2026-08-09 実測: 計¥8,860)。Stripe の
+  // ライブ売上には存在しないため、売上ファクトから除外する。
+  const isTestStripeSession = (sid: string) => sid.startsWith("cs_test_");
   const verifiedPaymentFacts: (CoreKpiPaymentFact & { kind: string })[] = [];
   const knownStripeSessions = new Set<string>();
   for (const row of paymentHistoryRows) {
     const paidAt = row.paid_at ?? row.created_at;
     knownStripeSessions.add(row.stripe_session_id);
+    if (isTestStripeSession(row.stripe_session_id)) continue;
     verifiedPaymentFacts.push({
       stripeSessionId: row.stripe_session_id,
       userId: row.user_id,
@@ -1134,13 +1162,14 @@ export async function computeStats(from: string | null, to: string | null) {
   }
 
   let unmatchedPaymentCount = 0;
-  for (const row of unmeiPurchaseEventRows) {
+  for (const row of unmeiPurchaseFacts) {
     const rawStripeSessionId = row.metadata?.stripe_session_id;
     const stripeSessionId =
       typeof rawStripeSessionId === "string" && rawStripeSessionId
         ? rawStripeSessionId
         : `legacy-unmei:${row.event_name}:${row.created_at}`;
     if (knownStripeSessions.has(stripeSessionId)) continue;
+    if (isTestStripeSession(stripeSessionId)) continue;
 
     const amount = row.metadata?.amount_total;
     if (typeof amount !== "number" || !Number.isFinite(amount)) {
@@ -1191,6 +1220,7 @@ export async function computeStats(from: string | null, to: string | null) {
     }
     if (knownStripeSessions.has(stripeSessionId)) continue;
     knownStripeSessions.add(stripeSessionId);
+    if (isTestStripeSession(stripeSessionId)) continue;
 
     const checkoutIdentity = checkoutIdentityBySession.get(stripeSessionId);
     const metadataUserId = row.metadata?.user_id;
