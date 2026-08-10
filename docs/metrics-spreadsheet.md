@@ -1,12 +1,13 @@
 # 主要KPIをスプレッドシートに反映する
 
-Google スプレッドシート側から `/api/metrics` を **30分おき**に pull し、1行ずつ追記して時系列で貯める。
+Google スプレッドシート側から `/api/metrics` を **1日おき**に pull し、1行ずつ追記して時系列で貯める。
+集計結果はVercel Runtime Cacheに24時間保存し、Supabaseから同じ大量データを繰り返し転送しない。
 
 ## 仕組み
 
 ```
 Supabase events/users → /api/metrics (集計・主要数値だけ返す)
-        ↑ 30分おきに GET (Authorization ヘッダーで認証)
+        ↑ 1日おきに GET (Authorization ヘッダーで認証)
 Google Apps Script (時間トリガー) → シートに1行追記
 ```
 
@@ -78,24 +79,22 @@ function appendMetricsSnapshot() {
   sheet.appendRow(keys.map((k) => data[k]));
 }
 
-// 1回だけ実行して 30分おきのトリガーを作成する。
+// 1回だけ実行して1日おきのトリガーを作成する。
 // (二重登録を防ぐため、既存の同名トリガーは消してから作り直す)
-function createHalfHourlyTrigger() {
+function createDailyTrigger() {
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === 'appendMetricsSnapshot')
     .forEach((t) => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('appendMetricsSnapshot').timeBased().everyMinutes(30).create();
+  ScriptApp.newTrigger('appendMetricsSnapshot').timeBased().everyDays(1).atHour(1).create();
 }
 ```
 
 ### 5. トリガー登録
 
-Apps Script エディタで関数 `createHalfHourlyTrigger` を一度実行（初回は権限承認あり）。以後は **30分おき**に自動で1行増える。
+Apps Script エディタで関数 `createDailyTrigger` を一度実行（初回は権限承認あり）。以後は **1日おき**に自動で1行増える。
 手動で1行足したいときは `appendMetricsSnapshot` を実行。
 
-> 30分おき = 1日約48行。データが増えても問題ないが、行が多くなったら古い行を別シートへ退避するか、後述の「間隔を変える」で頻度を落とすとよい。
->
-> **間隔を変えたいとき**: `everyMinutes(30)` の数字を変える（Apps Script が許可するのは `1 / 5 / 10 / 15 / 30` 分、または `everyHours(n)`）。変更後は再度 `createHalfHourlyTrigger` を実行（古いトリガーは自動で消えて作り直される）。
+> 集計は累計スナップショットなので、Free Planでは日次取得で十分。短い間隔へ戻すとEgress超過の原因になる。
 
 ## 反映される列（主要な数値）
 
@@ -177,17 +176,12 @@ function writeRawTable(sheetName, url) {
   if (values.length) sheet.getRange(1, 1, values.length, cols.length).setValues(values);
 }
 
-// 30分おきトリガー（二重登録は消してから作り直す）
-function createRawTrigger() {
-  ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === 'syncRawData')
-    .forEach((t) => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('syncRawData').timeBased().everyMinutes(30).create();
-}
+// 生データ同期は必要なときだけ手動で syncRawData() を実行する。
 ```
 
-`syncRawData` を1回手動実行 → `events_raw` / `users_raw` タブができる。よければ `createRawTrigger`
-を実行して30分おきに全置換更新。
+生データ出力は通信量が大きいため本番では既定で停止している。必要なときだけVercelの
+`METRICS_RAW_EXPORT_ENABLED=1`を一時設定し、`syncRawData`を手動で1回実行する。
+完了後は環境変数を削除して再デプロイする。定期トリガーでは実行しない。
 
 ## 「今日◯人」を出す（集計はスプシ側）
 
@@ -226,7 +220,7 @@ function buildDashboard() {
   const yday = 'TEXT(TODAY()-1,"yyyy-mm-dd")';
 
   // ── サマリー (A1:B9) ──
-  sh.getRange('A1').setValue('■ サマリー（30分ごとに自動更新）').setFontWeight('bold');
+  sh.getRange('A1').setValue('■ サマリー（日次更新）').setFontWeight('bold');
   const kpi = [
     ['総診断者数', '=COUNTA(users_raw!C2:C)'],
     ['今日の診断者', '=COUNTIF(users_raw!B2:B, ' + today + ')'],
@@ -282,4 +276,4 @@ function buildDashboard() {
 ```
 
 `buildDashboard` を1回実行すれば `dashboard` タブができる。中身は数式なので、以後は
-`syncRawData`（30分トリガー）で生データが更新されるたびに自動で最新化される。
+`syncRawData`を手動実行して生データが更新されるたびに自動で最新化される。

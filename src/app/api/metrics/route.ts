@@ -6,15 +6,15 @@
 // 期間: ?from= / ?to= (ISO) 任意。未指定は全期間 (= 現時点の累計スナップショット)。
 // 形式: 既定 JSON (Apps Script 向け)。?format=csv で metric,value の2列CSV (IMPORTDATA 向け)。
 
-import { computeStats } from "@/lib/admin-stats";
 import {
   authorizeMetricsRequest,
   metricsPrivateHeaders,
 } from "@/lib/metrics-access";
+import { getCachedStats } from "@/lib/metrics-stats-cache";
 import { NextRequest, NextResponse } from "next/server";
 
-// 集計はページング + 質問別 count 50本で時間がかかるため余裕を持たせる (admin/stats と同じ)。
-export const maxDuration = 60;
+// 全期間の集計は成長中の events を読むため、DB負荷を制限したうえで実行時間を確保する。
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   const access = authorizeMetricsRequest(request);
@@ -27,7 +27,9 @@ export async function GET(request: NextRequest) {
 
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
-  const s = await computeStats(from, to);
+  // 累計集計は大量の events を読むため、Vercel Runtime Cacheで24時間共有する。
+  // 30分おきのスプレッドシート取得がSupabaseのEgressを増やさないようにする。
+  const s = await getCachedStats(from, to);
 
   // 小数は見やすさのため丸める (率は 0-1、平均は小数)。
   const round = (n: number) => Math.round(n * 1000) / 1000;

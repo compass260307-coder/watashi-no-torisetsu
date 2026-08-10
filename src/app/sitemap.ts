@@ -66,10 +66,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     KO_ARTICLES.map((article) => [article.slug, article]),
   );
   const articlePages: MetadataRoute.Sitemap = ARTICLES.flatMap((article) => {
-    const koreanArticle = koreanArticlesBySlug.get(article.slug);
-    if (!koreanArticle) return [];
-
     const japanesePath = `/articles/${article.slug}`;
+    const koreanArticle = koreanArticlesBySlug.get(article.slug);
+
+    // KO版が無い記事 (日本語のみ) は hreflang alternates を付けず日本語単独で登録する。
+    // 以前は return [] で sitemap から丸ごと除外していたため、JAのみの新規記事が
+    // インデックス対象から漏れていた (/articles からはリンク済みでクロールは可能だった)。
+    if (!koreanArticle) {
+      return [
+        {
+          url: absoluteSiteUrl(japanesePath),
+          lastModified: article.updated ?? article.published,
+          changeFrequency: "monthly",
+          priority: 0.7,
+        },
+      ];
+    }
+
     const koreanPath = `/ko/articles/${article.slug}`;
     const alternates = {
       languages: localizedLanguages(japanesePath, koreanPath),

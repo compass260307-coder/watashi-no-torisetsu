@@ -498,5 +498,11 @@ export async function POST(request: NextRequest) {
     // noop
   }
 
-  return NextResponse.json({ url: stripeSession.url });
+  // amount / currency は meta_initiate_checkout (GTM) 用の実売価格。
+  // 実課金額の源泉はサーバ (ロケール別 Price) なので、クライアントに持たせない。
+  return NextResponse.json({
+    url: stripeSession.url,
+    amount: checkoutPricing.saleAmount,
+    currency: checkoutPricing.currency.toUpperCase(),
+  });
 }

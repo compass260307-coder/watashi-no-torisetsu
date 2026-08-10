@@ -36,6 +36,11 @@ import { JohariWindow } from "@/components/result/JohariWindow";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
+import {
+  createMetaPurchaseClaimToken,
+  verifyPaidFullAccessCheckoutSession,
+} from "@/lib/paid-checkout-session";
 import { hasTakoAccess } from "@/lib/entitlements";
 import {
   resolveFriendLove,
@@ -259,6 +264,13 @@ export async function TakoResultPage({
   // 友達 friends 人 (0..threshold-1) の未達データを組み立て、TakoLockedState を描画させる。
   const previewLocked = previewAllowed && sp.previewLocked === "1";
 
+  // 決済着地 (?paid=1&session_id=) の Meta Purchase 計測候補。/me と同じ流儀で、
+  // Stripe 検証はレポートデータ取得と並列に進める。
+  const paidCheckoutSessionPromise =
+    !previewType && !previewLocked && sp.paid === "1"
+      ? verifyPaidFullAccessCheckoutSession(sp.session_id)
+      : Promise.resolve(null);
+
   const data = previewType
     ? mockTakoData(previewType)
     : previewLocked
@@ -424,8 +436,26 @@ export async function TakoResultPage({
     ? Math.max(0, Math.min(data.threshold, lastSeen as number))
     : serverAnswered;
 
+  // 決済着地の Meta Purchase 計測 (/me と同じ: 支払済み Session の購入者 = 本人のみ)。
+  const paidCheckoutSession = await paidCheckoutSessionPromise;
+  const shouldTrackMetaPurchase =
+    !previewMode && paidCheckoutSession?.userId === (data.user.id as string);
+  const metaPurchaseClaimToken =
+    shouldTrackMetaPurchase && paidCheckoutSession
+      ? createMetaPurchaseClaimToken(paidCheckoutSession.id)
+      : null;
+
   return (
     <>
+      {shouldTrackMetaPurchase &&
+        paidCheckoutSession &&
+        metaPurchaseClaimToken && (
+          <MetaPurchaseDataLayer
+            checkoutSessionId={paidCheckoutSession.id}
+            product={paidCheckoutSession.product}
+            claimToken={metaPurchaseClaimToken}
+          />
+        )}
       <TakoViewTracker
         ownerToken={token}
         inviteCode={data.inviteCode}
@@ -453,6 +483,11 @@ export async function TakoResultPage({
         shareKind="invite"
         ownerToken={token}
         inviteCode={data.inviteCode}
+        qrImageSrc={
+          data.ownerType32
+            ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+            : null
+        }
         paywallTargetId="tako-promo"
         reportHref={
           takoUnlocked && data.friends.length > 0

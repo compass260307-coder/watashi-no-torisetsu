@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { MetaPurchaseFromQuery } from "@/components/MetaPurchaseFromQuery";
 import { useSearchParams } from "next/navigation";
 import {
   allThirtyTwoTypeIds,
@@ -1323,6 +1324,9 @@ export default function AishoPage({
         </main>
       }
     >
+      {/* 決済着地 (?paid=1&session_id=) の Meta Purchase 計測。ページは完全静的の
+          ままにするため、claim token はクライアントから API で取得する。 */}
+      <MetaPurchaseFromQuery />
       <AishoInner locale={locale} />
     </Suspense>
   );

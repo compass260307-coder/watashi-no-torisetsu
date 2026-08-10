@@ -2,18 +2,19 @@
 
 import { useEffect } from "react";
 
-const STORAGE_PREFIX = "wt_meta_purchase_sent_v1:";
+import {
+  metaPurchaseStorageKey,
+  type MetaPurchaseProduct,
+} from "@/lib/meta-purchase";
 
 type ClaimResponse = {
   shouldPush?: boolean;
   checkoutSessionId?: string;
   value?: number;
   currency?: string;
+  contentIds?: string[];
+  contentName?: string;
 };
-
-function storageKey(checkoutSessionId: string): string {
-  return `${STORAGE_PREFIX}${checkoutSessionId}`;
-}
 
 function wasSent(key: string): boolean {
   try {
@@ -33,13 +34,15 @@ function rememberSent(key: string): void {
 
 export function MetaPurchaseDataLayer({
   checkoutSessionId,
+  product,
   claimToken,
 }: {
   checkoutSessionId: string;
+  product: MetaPurchaseProduct;
   claimToken: string;
 }) {
   useEffect(() => {
-    const key = storageKey(checkoutSessionId);
+    const key = metaPurchaseStorageKey(product, checkoutSessionId);
     if (wasSent(key)) return;
 
     void fetch("/api/checkout/meta-purchase", {
@@ -82,12 +85,18 @@ export function MetaPurchaseDataLayer({
           ...(typeof claim.currency === "string"
             ? { currency: claim.currency }
             : {}),
+          ...(Array.isArray(claim.contentIds) && claim.contentIds.length > 0
+            ? { content_ids: claim.contentIds }
+            : {}),
+          ...(typeof claim.contentName === "string"
+            ? { content_name: claim.contentName }
+            : {}),
         });
       })
       .catch(() => {
         // 計測失敗で購入完了 UX を止めない。未クレームなら再訪時に再試行される。
       });
-  }, [checkoutSessionId, claimToken]);
+  }, [checkoutSessionId, product, claimToken]);
 
   return null;
 }

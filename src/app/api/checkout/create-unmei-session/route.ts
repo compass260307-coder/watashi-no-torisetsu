@@ -92,6 +92,12 @@ export async function POST(request: NextRequest) {
   if (!product) {
     return NextResponse.json({ error: "product required" }, { status: 400 });
   }
+  // ui_mode: 'embedded' = チャット内埋め込み決済 (client_secret を返す)。
+  // 既定 (未指定) は従来どおりリダイレクト型 (url を返す)。フラグOFFで即座に元へ戻せる。
+  // payment_method:'paypay' = PayPay専用のリダイレクト決済。embedded_page は PayPay 非対応
+  //   (card/Link のみ) なので、チャットの「PayPayで払う」だけホスト画面へ飛ばす。
+  const paypayRedirect = body.payment_method === "paypay";
+  const embedded = body.ui_mode === "embedded" && !paypayRedirect;
 
   const priceId = getUnmeiPriceId(product);
   if (!priceId) {
@@ -145,7 +151,8 @@ export async function POST(request: NextRequest) {
   }
 
   const ownerToken = (buyer?.owner_token ?? "").trim();
-  const successUrl = `${BASE_URL}/unmei?checkout=success`;
+  // session_id は /unmei 着地での Meta Purchase 計測 (MetaPurchaseDataLayer) 用。
+  const successUrl = `${BASE_URL}/unmei?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${BASE_URL}/unmei`;
 
   let customerEmail = buyer?.email ?? null;
@@ -167,29 +174,49 @@ export async function POST(request: NextRequest) {
     // price check is best-effort; proceed with checkout creation if Stripe can resolve the price.
   }
 
+  const sessionParams: Parameters<
+    typeof stripe.checkout.sessions.create
+  >[0] = {
+    mode: "payment",
+    line_items: [{ price: priceId, quantity: 1 }],
+    ...(customerEmail ? { customer_email: customerEmail } : {}),
+    metadata: {
+      user_id: userId ?? "",
+      product,
+      email: customerEmail ?? "",
+      owner_token: ownerToken,
+    },
+    locale: "ja",
+    // 決済画面の支払いボタン上に補足を表示 (LP の訴求と揃える。2026-07-26 指示)
+    custom_text: {
+      submit: {
+        message:
+          "30日間の返金保証つき。決済が完了すると、約1分で鑑定が生成されます。",
+      },
+    },
+  };
+  if (embedded) {
+    // 埋め込み: ページ内で完結。完了は onComplete + 鑑定生成の webhook で処理するため
+    //   redirect はしない。success/cancel URL は付けない。
+    sessionParams.ui_mode = "embedded_page";
+    sessionParams.redirect_on_completion = "never";
+  } else {
+    // リダイレクト型 (従来): success_url/cancel_url へ遷移。
+    sessionParams.success_url = successUrl;
+    sessionParams.cancel_url = cancelUrl;
+    // PayPay専用ボタン経由は payment_method_types を paypay に固定し、ホスト画面を
+    // PayPay 直行にする (dynamic payment methods を切って card/Link を出さない)。
+    // Stripe SDK の型はまだ paypay を含まないが API は対応済み (実測)。型のみキャスト。
+    if (paypayRedirect) {
+      sessionParams.payment_method_types = ["paypay"] as unknown as NonNullable<
+        typeof sessionParams.payment_method_types
+      >;
+    }
+  }
+
   let stripeSession: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
   try {
-    stripeSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{ price: priceId, quantity: 1 }],
-      ...(customerEmail ? { customer_email: customerEmail } : {}),
-      metadata: {
-        user_id: userId ?? "",
-        product,
-        email: customerEmail ?? "",
-        owner_token: ownerToken,
-      },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      locale: "ja",
-      // 決済画面の支払いボタン上に補足を表示 (LP の訴求と揃える。2026-07-26 指示)
-      custom_text: {
-        submit: {
-          message:
-            "30日間の返金保証つき。お支払い後すぐに出生情報の入力へ進み、約1分で鑑定が生成されます。",
-        },
-      },
-    });
+    stripeSession = await stripe.checkout.sessions.create(sessionParams);
   } catch (err) {
     console.error("[checkout/create-unmei-session] Stripe error:", err);
     return NextResponse.json(
@@ -211,14 +238,20 @@ export async function POST(request: NextRequest) {
         page: "unmei",
         source: "unmei_page",
         locale: "ja",
+        // PayPay採用率の計測用 (paypay=専用ボタン / card_embedded=埋め込み / redirect=従来)。
+        payment_method: paypayRedirect ? "paypay" : embedded ? "card_embedded" : "redirect",
       },
     });
   } catch {
     // 計測失敗で購入導線を止めない
   }
 
+  // 埋め込みは client_secret を返す (Embedded Checkout が使う)。
+  // リダイレクト型は従来どおり url。session_id は完了ポーリング/計測用に両方で返す。
   return NextResponse.json({
     sessionId: stripeSession.id,
-    url: stripeSession.url,
+    ...(embedded
+      ? { clientSecret: stripeSession.client_secret }
+      : { url: stripeSession.url }),
   });
 }

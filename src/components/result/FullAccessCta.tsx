@@ -98,9 +98,28 @@ export function FullAccessCta({
         setLoading(false);
         return;
       }
-      const data = (await res.json()) as { url?: unknown };
+      const data = (await res.json()) as {
+        url?: unknown;
+        amount?: unknown;
+        currency?: unknown;
+      };
       if (typeof data.url === "string" && data.url.length > 0) {
-        redirectToFullAccessCheckout(data.url);
+        // meta_initiate_checkout の value/currency はサーバ応答の実売価格を使う。
+        // 応答に無い場合 (旧レスポンスのキャッシュ等) だけロケール既定にフォールバック。
+        redirectToFullAccessCheckout(data.url, {
+          value:
+            typeof data.amount === "number"
+              ? data.amount
+              : locale === "ko"
+                ? 4900
+                : 499,
+          currency:
+            typeof data.currency === "string"
+              ? data.currency
+              : locale === "ko"
+                ? "KRW"
+                : "JPY",
+        });
         return;
       }
       setError(

@@ -63,6 +63,7 @@ export default async function PurchaseCompletePage({ searchParams }: PageProps) 
     <>
       <MetaPurchaseDataLayer
         checkoutSessionId={session.id}
+        product={session.product}
         claimToken={claimToken}
       />
       <PurchaseCompleteView isGuestPurchase={session.guest} />

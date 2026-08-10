@@ -10,10 +10,16 @@ type WindowWithDataLayer = Window & {
 /**
  * Stripe Checkout Session の作成後だけ、GTM の開始イベントを送ってから遷移する。
  *
+ * value / currency は create-full-access-session の応答 (ロケール別の実売価格)
+ * を渡す (旧実装は 499/JPY 固定で、韓国語版 ₩4,900 でも誤った値を送っていた)。
+ *
  * GTM が未読込・ブロック・設定不備でも購入導線を止めないよう、GTM の
  * eventTimeout とは別にブラウザ側のフォールバックも持つ。
  */
-export function redirectToFullAccessCheckout(checkoutUrl: string): void {
+export function redirectToFullAccessCheckout(
+  checkoutUrl: string,
+  { value, currency }: { value: number; currency: string },
+): void {
   let hasRedirected = false;
 
   const redirect = () => {
@@ -35,8 +41,8 @@ export function redirectToFullAccessCheckout(checkoutUrl: string): void {
     target.dataLayer = target.dataLayer ?? [];
     target.dataLayer.push({
       event: "meta_initiate_checkout",
-      value: 499,
-      currency: "JPY",
+      value,
+      currency,
       eventCallback: redirect,
       eventTimeout: GTM_EVENT_TIMEOUT_MS,
     });

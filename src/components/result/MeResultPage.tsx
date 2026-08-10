@@ -78,7 +78,7 @@ import { PaywallModal } from "@/components/result/PaywallModal";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
-import { TakoAttentionOnPaid } from "@/components/result/TakoAttentionOnPaid";
+import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
 import { UnmeiAttentionOnPaid } from "@/components/result/UnmeiAttentionOnPaid";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
@@ -392,7 +392,7 @@ async function MeResultPageContent({
               </svg>
             ),
             title: "4章立てのAI鑑定文",
-            body: "星の配置・心の天気・挑戦の風向き・最後にひとつだけ。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+            body: "「あなたが積み上げてきたもの」「誰かといるときのあなた」「これから訪れる転換点」「最後にひとつだけ」の4章。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
           },
           {
             // 掛け合わせ (重なる2つの円)
@@ -626,6 +626,7 @@ async function MeResultPageContent({
         metaPurchaseClaimToken && (
           <MetaPurchaseDataLayer
             checkoutSessionId={paidCheckoutSession.id}
+            product={paidCheckoutSession.product}
             claimToken={metaPurchaseClaimToken}
           />
         )}
@@ -634,14 +635,12 @@ async function MeResultPageContent({
       {!previewType && sp.paid === "1" && !deepDivePaid && (
         <PaidUnlockWatcher ownerToken={token} locale={locale} />
       )}
-      {/* 友達診断・運命の赤バッジ付与: 課金 (full_access) 済みの日本語 /me を表示したとき
-          1回だけ。両方同時に出す (2026-07-27 指示)。
-          (2026-07-20 変更: 診断完了時の全員付与をやめ、課金完了後に出す) */}
+      {/* 友達診断の赤バッジ付与: 日本語 /me を表示した全員に1回
+          (2026-08-03 バイラル課題①対応で課金者限定→全員に再拡大)。 */}
+      {!previewType && !isKorean && <TakoAttentionOnResult ownerToken={token} />}
+      {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
       {!previewType && !isKorean && deepDivePaid && (
-        <>
-          <TakoAttentionOnPaid ownerToken={token} />
-          <UnmeiAttentionOnPaid ownerToken={token} />
-        </>
+        <UnmeiAttentionOnPaid ownerToken={token} />
       )}
 
       {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。

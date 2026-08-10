@@ -2,10 +2,11 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
+import { metaPurchaseContent } from "@/lib/meta-purchase";
 import { checkOrigin } from "@/lib/origin-check";
 import {
   isCheckoutSessionId,
-  verifyPaidFullAccessCheckoutSession,
+  verifyPaidMetaPurchaseCheckoutSession,
   verifyMetaPurchaseClaimToken,
 } from "@/lib/paid-checkout-session";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const session = await verifyPaidFullAccessCheckoutSession(checkoutSessionId);
+  const session = await verifyPaidMetaPurchaseCheckoutSession(checkoutSessionId);
   if (!session) {
     return NextResponse.json({ error: "Payment is not confirmed" }, { status: 400 });
   }
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
       amount_total: session.amountTotal,
       currency: session.currency,
       locale: session.locale,
+      product: session.product,
     },
   });
 
@@ -96,10 +98,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to claim event" }, { status: 503 });
   }
 
+  const content = metaPurchaseContent(session.product, session.locale);
   return NextResponse.json({
     shouldPush: true,
     checkoutSessionId: session.id,
     value: valueInMajorUnit(session.amountTotal, session.currency),
     currency: session.currency?.toUpperCase() ?? undefined,
+    contentIds: content.contentIds,
+    contentName: content.contentName,
   });
 }

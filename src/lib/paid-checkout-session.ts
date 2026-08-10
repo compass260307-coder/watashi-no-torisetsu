@@ -2,8 +2,13 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getStripe } from "@/lib/stripe-server";
+import {
+  isCheckoutSessionId,
+  isMetaPurchaseProduct,
+  type MetaPurchaseProduct,
+} from "@/lib/meta-purchase";
 
-const CHECKOUT_SESSION_ID_RE = /^cs_(?:test|live)_[A-Za-z0-9]+$/;
+export { isCheckoutSessionId };
 
 export type VerifiedPaidCheckoutSession = Readonly<{
   id: string;
@@ -12,15 +17,8 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   currency: string | null;
   locale: "ja" | "ko";
   guest: boolean;
+  product: MetaPurchaseProduct;
 }>;
-
-export function isCheckoutSessionId(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= 255 &&
-    CHECKOUT_SESSION_ID_RE.test(value)
-  );
-}
 
 function claimSecret(): string | null {
   return (
@@ -57,8 +55,9 @@ export function verifyMetaPurchaseClaimToken(
 }
 
 // Checkout Session ID をクライアントから信用せず、Stripe の秘密鍵で
-// 取得し直す。買い切りフルアクセスの支払いが完了した Session だけを返す。
-export async function verifyPaidFullAccessCheckoutSession(
+// 取得し直す。買い切り (full_access / unmei / unmei_upgrade) の支払いが
+// 完了した Session だけを返す。
+export async function verifyPaidMetaPurchaseCheckoutSession(
   value: unknown,
 ): Promise<VerifiedPaidCheckoutSession | null> {
   if (!isCheckoutSessionId(value)) return null;
@@ -68,11 +67,12 @@ export async function verifyPaidFullAccessCheckoutSession(
 
   try {
     const session = await stripe.checkout.sessions.retrieve(value);
+    const product = session.metadata?.product;
     if (
       session.status !== "complete" ||
       session.payment_status !== "paid" ||
       session.mode !== "payment" ||
-      session.metadata?.product !== "full_access"
+      !isMetaPurchaseProduct(product)
     ) {
       return null;
     }
@@ -85,9 +85,18 @@ export async function verifyPaidFullAccessCheckoutSession(
       currency: session.currency,
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
       guest: session.metadata?.guest === "1",
+      product,
     };
   } catch {
     // 無効・失効済み・別環境の Session ID は購入完了として扱わない。
     return null;
   }
+}
+
+// 既存呼び出し元 (purchase-complete / /me / /tako) 用: full_access のみ通す。
+export async function verifyPaidFullAccessCheckoutSession(
+  value: unknown,
+): Promise<VerifiedPaidCheckoutSession | null> {
+  const session = await verifyPaidMetaPurchaseCheckoutSession(value);
+  return session?.product === "full_access" ? session : null;
 }

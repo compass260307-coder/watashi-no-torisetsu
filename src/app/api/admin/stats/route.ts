@@ -1,9 +1,8 @@
-import { computeStats } from "@/lib/admin-stats";
+import { getCachedStats } from "@/lib/metrics-stats-cache";
 import { NextRequest, NextResponse } from "next/server";
 
-// 集計は events 全件のページング + 質問別 count 50本を投げるため時間がかかる。
-// 既定タイムアウトで切られて全ゼロ/エラーにならないよう余裕を持たせる。
-export const maxDuration = 60;
+// 全期間の集計は成長中の events を読むため、DB負荷を制限したうえで実行時間を確保する。
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   const key = request.headers.get("x-admin-key");
@@ -16,6 +15,6 @@ export async function GET(request: NextRequest) {
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
 
-  const stats = await computeStats(from, to);
+  const stats = await getCachedStats(from, to);
   return NextResponse.json(stats);
 }

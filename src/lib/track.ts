@@ -124,6 +124,7 @@ const FLUSH_DELAY_MS = 2000; // バッファ先頭イベントからの最大送
 let buffer: EventRow[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let unloadFlushHooked = false;
+let directSupabaseUnavailable = false;
 
 function sendToSupabase(rows: EventRow[]) {
   const body = JSON.stringify(rows);
@@ -145,12 +146,20 @@ function sendToSupabase(rows: EventRow[]) {
       // RLS ポリシー未適用 (migration 2026-07-20-events-client-insert.sql 前) や
       // 検証拒否の場合、旧 /api/event へフォールバックして計測全断を防ぐ。
       // 本番 DB は PR-FIX-1 lockdown 済みで anon insert はポリシー適用まで 403 になる。
-      if (!res.ok) rows.forEach(sendToLegacyApi);
+      if (!res.ok) {
+        directSupabaseUnavailable = true;
+        rows.forEach(sendToLegacyApi);
+      }
     })
-    .catch(() => {});
+    .catch(() => {
+      // DNS・通信遮断など fetch 自体が失敗した場合もイベントを失わない。
+      // 同じページ内では以後 Supabase 直送を試さず、失敗リクエストの連発も防ぐ。
+      directSupabaseUnavailable = true;
+      rows.forEach(sendToLegacyApi);
+    });
 }
 
-// 旧経路 (Vercel Function)。Supabase env が無い環境の保険としてのみ使う。
+// 旧経路 (Vercel Function)。Supabase env が無い／直送できない環境の保険として使う。
 function sendToLegacyApi(row: EventRow) {
   fetch("/api/event", {
     method: "POST",
@@ -176,7 +185,7 @@ function flush() {
   const rows = buffer;
   buffer = [];
   try {
-    if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && !directSupabaseUnavailable) {
       sendToSupabase(rows);
     } else {
       rows.forEach(sendToLegacyApi);

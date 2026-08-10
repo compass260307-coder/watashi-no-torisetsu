@@ -1,12 +1,19 @@
 import Link from "next/link";
+import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
+import {
+  createMetaPurchaseClaimToken,
+  verifyPaidMetaPurchaseCheckoutSession,
+} from "@/lib/paid-checkout-session";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
 import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiPayPreview from "@/components/uranai/UnmeiPayPreview";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
 import { LoginCard } from "@/components/LoginCard";
+import { ProofFacesBand } from "@/components/ProofFacesBand";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import { isReadingReady } from "@/lib/unmei/reading";
@@ -52,16 +59,33 @@ const PREVIEW_READING = {
   ],
 };
 
+// ?preview=ready で出生図ホイールも確認できるよう、実データ相当のサンプルチャート。
+// 値は架空 (時刻既知で ASC/MC あり・アスペクト線が数本出る配置)。
+const PREVIEW_CHART: Chart = {
+  planets: {
+    sun: { sign: "Leo", degree: 15.2 },
+    moon: { sign: "Pisces", degree: 3.4 },
+    mercury: { sign: "Virgo", degree: 2.8 },
+    venus: { sign: "Gemini", degree: 28.5 },
+    mars: { sign: "Virgo", degree: 10.1 },
+    jupiter: { sign: "Virgo", degree: 25.9 },
+    saturn: { sign: "Cancer", degree: 18.3 },
+  },
+  asc: { sign: "Scorpio", degree: 12.0 },
+  mc: { sign: "Leo", degree: 22.0 },
+  houses_available: true,
+};
+
 // よくある質問 (16P 参考のアコーディオン。native <details> なので JS 不要)。
 // 「当たる占い?」の回答がエンタメ目的の明示を兼ねる (LP本文からは表記を撤去済みのため)。
 const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
   {
     q: "「運命の設計図」はどんなことに役立ちますか？",
-    a: "生まれた瞬間の星の配置から、あなたの素質・心の動き・挑戦の方向性を読み解きます。性格診断の結果と掛け合わせるので、「診断でわかった自分」をもう一段深く理解するきっかけになります。",
+    a: "生まれた瞬間の星の配置から、あなたが積み上げてきた素質・人との関わり方・これから訪れる転換点を読み解きます。性格診断の結果と掛け合わせるので、「診断でわかった自分」をもう一段深く理解するきっかけになります。",
   },
   {
     q: "占いの知識がなくても読めますか？",
-    a: "はい。専門用語の羅列ではなく、あなたに語りかける文章でお届けします。4つの章それぞれに、明日から試せる小さな一歩を添えています。",
+    a: "はい。専門用語の羅列ではなく、あなたに語りかける文章でお届けします。明日から試せる小さな一歩も添えながら、4つの章で読み解きます。",
   },
   {
     q: "購入後は何をすればいいですか？",
@@ -87,6 +111,9 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
     ),
   },
 ];
+
+// 実績バンド (浮遊アバター + 人数 + スパークル) は ProofFacesBand に共有化
+// (2026-08-02、/tako 待機ページにも設置するため)。人数の更新もそちらで行う。
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
 // PC: 左=出生図イメージ / 右=商品名・説明・価格・CTA。SP: 縦積み。
@@ -115,7 +142,7 @@ function UnmeiTeaserLp({
         {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いインディゴにし、直下の
             「できること」カードが帯の境目に重なるようにする (2026-07-26 指示)。
             コンテナはフッター (TopFooter) と同じ「padding 外側 + 内側 max-w-[1080px]」。 */}
-        <div className="bg-[#F7F7FE] px-4 pb-24 pt-8 md:px-8 md:pb-32 md:pt-14">
+        <div className="bg-[#F7F7FE] px-4 pb-10 pt-8 md:px-8 md:pb-14 md:pt-14">
         <div className="mx-auto max-w-[1080px]">
           <section className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
             {/* ヒーロー画像 (フェルトジオラマ調・白背景。他ページの mascot と同じ流儀) */}
@@ -149,23 +176,52 @@ function UnmeiTeaserLp({
               />
             </div>
           </section>
+
         </div>
         </div>
 
-        {/* 帯より下 (白地)。負マージンで「できること」カードを帯の境目に重ねる */}
-        <div className="-mt-14 px-4 md:-mt-20 md:px-8">
+        {/* 実績ストリップ: ヒーロー帯の下端を波エッジで白地へ切り替える (16P の
+            締めCTAセクション参考 / 2026-08-02 指示)。波は帯色 #F7F7FE を塗った SVG を
+            preserveAspectRatio="none" で全幅に伸ばす。以降フッターまで白地。
+            中央に人数、周囲に笑顔のアバターがふわふわ浮かぶ。人数は無料診断の累計完了者数
+            (運命の設計図の購入数ではない) — admin統計の実数スナップショット (2026-08-02時点
+            9,756人)。増える一方なので「以上」表記は常に正だが、定期的に最新値へ更新する。
+            顔画像の出自と誤認対策・人数の更新は ProofFacesBand のコメント参照。 */}
+        <div className="bg-white">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 1440 48"
+            preserveAspectRatio="none"
+            className="block h-8 w-full md:h-12"
+          >
+            <path
+              fill="#F7F7FE"
+              d="M0,0 H1440 V22 C1320,44 1180,6 1040,18 C900,30 800,46 660,32 C520,18 440,42 300,38 C160,34 70,8 0,26 Z"
+            />
+          </svg>
+          <div className="px-4 md:px-8">
+          <ProofFacesBand />
+          </div>
+        </div>
+
+        {/* 白いカード包みと下側の波・帯色の再開は廃止 (2026-08-02 指示)。
+            ヒーロー帯の波エッジ以降はフッターまで白地が続き、タイルを直接置く。
+            mt はストリップ下端からはみ出す浮遊アバターぶんの逃げも兼ねる */}
+        <div className="mt-16 px-4 md:mt-24 md:px-8">
         <div className="mx-auto max-w-[1080px]">
-          {/* ===== できること (白カード + PC 2×2 グリッド / /me のアップセルカードと同素材) ===== */}
-          <section className="rounded-[20px] border border-[#F0F1F8] bg-white px-6 py-10 shadow-[0_10px_40px_rgba(46,46,92,0.08)] md:px-12 md:py-12">
-            <p className="mb-8 text-center text-[16px] font-bold text-[#2E2E5C]/60 md:text-[17px]">
+          {/* ===== できること (4色タイル・PC 2×2 グリッド) ===== */}
+          <section>
+            <h2 className="mb-7 text-center text-[20px] font-black text-[#2E2E5C] md:mb-9 md:text-[26px]">
               運命の設計図でできること
-            </p>
-            <ul className="grid gap-x-10 gap-y-7 md:grid-cols-2">
+            </h2>
+            {/* 32タイプの4グループ色 (/types・相性と同じ空/海/陸/未知パレット) のタイルで
+                ポップに。白丸アイコンバッジ + POINT スタンプ (トリセツ流のラベル使い)。 */}
+            <ul className="grid gap-4 md:grid-cols-2 md:gap-6">
               {[
                 {
                   // 出生図ホイール (下部ナビの運命タブと同モチーフ)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
                       <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
                       <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
@@ -173,59 +229,78 @@ function UnmeiTeaserLp({
                       <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
                     </svg>
                   ),
-                  title: "あなただけの出生図ホイール",
+                  title: "世界にひとつ、あなたの出生図ホイール",
                   body: "生年月日・出生時間・出生地から、生まれた瞬間の空を再現。太陽や月をはじめとした天体の配置を、あなただけの一枚の設計図として描きます",
+                  bg: "#E7DCFB",
+                  dark: "#6C4EB8",
                 },
                 {
                   // 鑑定文 (書類 + 本文行)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
                       <path d="M14 2v5h5" />
                       <path d="M9 13h6M9 17h4" />
                     </svg>
                   ),
-                  title: "4章立てのAI鑑定文",
-                  body: "星の配置・心の天気・挑戦の風向き・最後にひとつだけ。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+                  title: "AIが語りかける、4章の鑑定書",
+                  body: "「あなたが積み上げてきたもの」「誰かといるときのあなた」「これから訪れる転換点」「最後にひとつだけ」の4章。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
+                  bg: "#BEF2F9",
+                  dark: "#1D6E86",
                 },
                 {
                   // 掛け合わせ (重なる2つの円)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                       <circle cx="9" cy="12" r="5.8" />
                       <circle cx="15" cy="12" r="5.8" />
                     </svg>
                   ),
-                  title: "性格診断との掛け合わせ",
+                  title: "性格診断 × 星、ふたつの答え合わせ",
                   body: "自己診断でわかった性格と星の素質を照らし合わせ、重なるところも少しのズレも含めて、あなたがこれまで選んできた姿勢に名前をつけます",
+                  bg: "#D8F2C0",
+                  dark: "#3F7A2E",
                 },
                 {
                   // 自分の原点 (コンパス)
                   icon: (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <circle cx="12" cy="12" r="8.5" />
                       <path d="m15.5 8.5-2 5-5 2 2-5z" />
                     </svg>
                   ),
-                  title: "いつでも戻ってこられる、自分の原点",
+                  title: "何度でも戻ってこられる、自分の原点",
                   body: "生まれた瞬間の星の配置は、時間が経っても変わりません。迷ったときに何度でも読み返せる、あなただけの原点として手元に残ります",
+                  bg: "#FDEFB4",
+                  dark: "#8F6B14",
                 },
-              ].map((f) => (
-                <li key={f.title} className="flex items-start gap-3.5">
-                  <span
-                    aria-hidden="true"
-                    className="mt-0.5 flex w-9 flex-shrink-0 justify-center text-[#5B5BEF]"
-                  >
-                    {f.icon}
-                  </span>
-                  <div>
-                    <p className="text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
-                      {f.title}
-                    </p>
-                    <p className="mt-1 text-[15px] font-normal leading-relaxed text-[#2E2E5C]/65 md:text-[16px]">
-                      {f.body}
-                    </p>
+              ].map((f, i) => (
+                <li
+                  key={f.title}
+                  className="rounded-2xl p-5 transition-transform md:p-7 md:hover:-translate-y-1"
+                  style={{ background: f.bg }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white"
+                      style={{ color: f.dark }}
+                    >
+                      {f.icon}
+                    </span>
+                    <span
+                      className="rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-black tracking-[0.08em]"
+                      style={{ color: f.dark }}
+                    >
+                      POINT 0{i + 1}
+                    </span>
                   </div>
+                  <p className="mt-3.5 text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
+                    {f.title}
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-normal leading-relaxed text-[#2E2E5C]/70 md:text-[15px]">
+                    {f.body}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -359,8 +434,48 @@ function UnmeiGuestPurchaseComplete() {
   );
 }
 
+// Stripe 決済着地 (?checkout=success&session_id=) の Meta Purchase 計測。
+// webhook 反映の速さで着地分岐 (確認中 / ゲスト完了 / 購入済み本文) が変わっても
+// 計測が漏れないよう、本文の分岐前に一度だけ検証してマウントする。
+async function UnmeiMetaPurchase(sp: {
+  [key: string]: string | string[] | undefined;
+}) {
+  if (sp.checkout !== "success") return null;
+  const session = await verifyPaidMetaPurchaseCheckoutSession(sp.session_id);
+  if (
+    !session ||
+    (session.product !== "unmei" && session.product !== "unmei_upgrade")
+  ) {
+    return null;
+  }
+  return (
+    <MetaPurchaseDataLayer
+      checkoutSessionId={session.id}
+      product={session.product}
+      claimToken={createMetaPurchaseClaimToken(session.id)}
+    />
+  );
+}
+
 export default async function UnmeiPage({ searchParams }: PageProps) {
   const sp = (await searchParams) ?? {};
+  // 計測 (Stripe 検証) と本文描画は独立なので並列に進める。
+  const [metaPurchase, body] = await Promise.all([
+    UnmeiMetaPurchase(sp),
+    UnmeiPageBody(sp),
+  ]);
+  if (!metaPurchase) return body;
+  return (
+    <>
+      {metaPurchase}
+      {body}
+    </>
+  );
+}
+
+async function UnmeiPageBody(sp: {
+  [key: string]: string | string[] | undefined;
+}) {
   const preview =
     process.env.NODE_ENV !== "production" && typeof sp.preview === "string"
       ? sp.preview
@@ -369,11 +484,39 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
   if (preview === "paid" || preview === "purchased") {
     return <UnmeiClient initialState="no_birth" />;
   }
+  if (preview === "purchase") {
+    // 未購入からの購入チャット (入力→チャット内決済→生成) の dev 確認用。
+    return (
+      <UnmeiClient
+        initialState="no_birth"
+        purchase={{ ownerToken: null, product: "unmei" }}
+      />
+    );
+  }
+  if (preview === "pay") {
+    // Embedded Checkout 単体プレビュー (決済フォーム描画の確認用)。
+    return <UnmeiPayPreview />;
+  }
   if (preview === "pending") {
     return <UnmeiClient initialState="pending" />;
   }
   if (preview === "ready") {
-    return <UnmeiReading reading={PREVIEW_READING} trackView={false} />;
+    return (
+      <UnmeiReading
+        reading={PREVIEW_READING}
+        chart={PREVIEW_CHART}
+        essence="寄添者"
+        characterSlug="jellyfish"
+        identity={{
+          // 寄添者 = sparkle-dolphin__N (画像 jellyfish_N)。character-32.ts の実データと一致。
+          typeName: "きらめきクラゲ",
+          catchphrase: "心に寄り添いながら、世界を知っていく。",
+          groupLabel: "海",
+          groupColor: "#8EC5E8",
+        }}
+        trackView={false}
+      />
+    );
   }
   if (preview === "teaser" || preview === "teaser_full") {
     // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥1,980) / teaser_full (¥1,480 表示)
@@ -414,6 +557,24 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
       return <UnmeiGuestPurchaseComplete />;
     }
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
+
+    // チャット内決済フロー (2026-08-06): フラグ ON + セッション有りなら、LP の代わりに
+    // 「入力→チャット内 Embedded 決済→生成」のチャットを出す。フラグ OFF / 未セッションは
+    // 従来の LP + リダイレクト決済 (フラグを外すだけで即座に元へ戻せる)。
+    const chatCheckout =
+      process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
+    if (chatCheckout && userId) {
+      return (
+        <UnmeiClient
+          initialState="no_birth"
+          purchase={{
+            ownerToken: session?.owner_token ?? null,
+            product: sessionHasFull ? "unmei_upgrade" : "unmei",
+          }}
+        />
+      );
+    }
+
     return (
       <UnmeiTeaserLp
         ownerToken={session?.owner_token ?? null}
@@ -458,8 +619,12 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
     chart && timeUnknown
       ? computeMoonDailyArc(chart, profile.birth_date as string | null)
       : null;
-  // 出生図の中央に置く 32タイプ称号 (essence)。scores から決定的に導出 (欠損時は null)。
-  const { essence } = await resolveUnmeiPromptInputs(supabaseAdmin, userId!);
+  // 出生図の中央に置く 32タイプ称号 (essence) と、表紙のキャラクター星座用の動物スラッグ。
+  // scores から決定的に導出 (欠損時は null)。
+  const { essence, animalSlug, identity } = await resolveUnmeiPromptInputs(
+    supabaseAdmin,
+    userId!,
+  );
 
   // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)
   return (
@@ -469,6 +634,8 @@ export default async function UnmeiPage({ searchParams }: PageProps) {
       timeUnknown={timeUnknown}
       moonArc={moonArc}
       essence={essence}
+      characterSlug={animalSlug}
+      identity={identity}
     />
   );
 }

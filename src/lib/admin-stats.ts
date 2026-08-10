@@ -31,11 +31,32 @@ import { TAKO_PAYWALL_SOURCES } from "@/lib/paywall-source";
 
 const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
+const QUESTION_COUNT_CONCURRENCY = 2;
+const DB_QUERY_CONCURRENCY = 2;
 // 概算売上の単価。2026-07-14 に ¥199 → ¥499 へ改定 (それ以前の購入分は過大に出る)。
 const FULL_ACCESS_PRICE_JPY = 499;
 // /tako 到達を owner_token + invite_code 付きでページ本体から計測し始める時刻。
 // これ以前を分母に混ぜると「到達していたがイベントが無い人」が離脱扱いになるため除外する。
 const FRIEND_FUNNEL_MEASUREMENT_STARTED_AT = "2026-07-18T04:15:00.000Z";
+
+// Fluid Compute では同一インスタンスで複数リクエストが並行実行されるため、集計ごとの
+// Promise.all だけでなくモジュール全体でDB同時実行数を抑える。大量のページング/countが
+// 一斉に走って Supabase の statement_timeout に達するのを防ぐ。
+let activeDbQueries = 0;
+const dbQueryWaiters: Array<() => void> = [];
+
+async function withDbQuerySlot<T>(query: () => PromiseLike<T>): Promise<T> {
+  if (activeDbQueries >= DB_QUERY_CONCURRENCY) {
+    await new Promise<void>((resolve) => dbQueryWaiters.push(resolve));
+  }
+  activeDbQueries++;
+  try {
+    return await query();
+  } finally {
+    activeDbQueries--;
+    dbQueryWaiters.shift()?.();
+  }
+}
 
 export async function computeStats(from: string | null, to: string | null) {
   function applyRange<T>(query: T, column = "created_at"): T {
@@ -46,56 +67,116 @@ export async function computeStats(from: string | null, to: string | null) {
     return q as T;
   }
 
-  // Supabase は既定で 1000 行しか返さないため、range() でページングして全行を読む。
-  // make() は「毎回新しいクエリ」を返すファクトリ (builder は使い回せない)。
-  // 安定ページングのため make() 側で order を付けること。
-  async function fetchAll<T>(
-    // Supabase query builders carry table-specific generics; pagination only needs range().
+  type PageQueryFactory = (() => {
+    // Supabase query builders carry table-specific generics.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    make: () => any,
+    [key: string]: any;
+  }) & { pagination?: "created_at-id" };
+
+  // Supabase は既定で 1000 行しか返さないため、ページングして全行を読む。
+  // make() は「毎回新しいクエリ」を返すファクトリ (builder は使い回せない)。
+  // events は OFFSET が後半ほど遅くなるため created_at + id のキーセット方式を使う。
+  async function fetchAll<T>(
+    make: PageQueryFactory,
     onError?: (error: { code?: string; message?: string }) => boolean | void,
   ): Promise<T[]> {
     const out: T[] = [];
-    for (let start = 0; ; start += PAGE) {
-      const { data, error } = await make().range(start, start + PAGE - 1);
+    let offset = 0;
+    let cursor: { createdAt: string; id: string } | null = null;
+    for (;;) {
+      let query = make();
+      if (make.pagination === "created_at-id" && cursor) {
+        query = query.or(
+          `created_at.gt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.gt.${cursor.id})`,
+        );
+      }
+      const { data, error } = await withDbQuerySlot<{
+        data: T[] | null;
+        error: { code?: string; message?: string } | null;
+      }>(() =>
+        make.pagination === "created_at-id"
+          ? query.limit(PAGE)
+          : query.range(offset, offset + PAGE - 1),
+      );
       if (error) {
         const handled = onError?.(error) === true;
-        if (!handled) console.error("[admin-stats] fetchAll error:", error);
-        break;
+        if (handled) break;
+        throw new Error(
+          `[admin-stats] fetchAll: ${error.code ?? "unknown"} ${error.message ?? "query failed"}`,
+        );
       }
       if (!data || data.length === 0) break;
       out.push(...(data as T[]));
       if (data.length < PAGE) break;
+      if (make.pagination === "created_at-id") {
+        const last = data[data.length - 1] as T & {
+          created_at?: string;
+          id?: string;
+        };
+        if (!last.created_at || !last.id) {
+          throw new Error(
+            "[admin-stats] keyset page is missing created_at or id",
+          );
+        }
+        cursor = { createdAt: last.created_at, id: last.id };
+      } else {
+        offset += PAGE;
+      }
     }
     return out;
   }
 
   // イベント行の全件取得ファクトリ (ユニークセッション算出用)。
   // order は created_at + id の複合 (同時刻行のタイブレークでページ境界の取りこぼしを防ぐ)。
-  const evRows = (names: string[], cols = "session_id") => () =>
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select(cols)
-        .in("event_name", names)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true }),
-    );
+  const evRows = (names: string[], cols = "session_id") => {
+    const selectCols = Array.from(
+      new Set([
+        ...cols.split(",").map((column) => column.trim()),
+        "created_at",
+        "id",
+      ]),
+    ).join(", ");
+    const make = (() =>
+      applyRange(
+        supabaseAdmin
+          .from("events")
+          .select(selectCols)
+          .in("event_name", names)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
+      )) as PageQueryFactory;
+    make.pagination = "created_at-id";
+    return make;
+  };
 
   // コホートファネルは、期間内に自己診断を完了した本人がその後どこまで進んだかを見る。
   // 下流イベントには to を掛けず、選択期間終了後の到達も含む（eventual conversion）。
-  const journeyRows = (names: string[], cols: string) => () => {
-    let query = supabaseAdmin
-      .from("events")
-      .select(cols)
-      .in("event_name", names)
-      .gte("created_at", FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
-    if (from && Date.parse(from) > Date.parse(FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)) {
-      query = query.gte("created_at", from);
-    }
-    return query;
+  const journeyRows = (names: string[], cols: string) => {
+    const selectCols = Array.from(
+      new Set([
+        ...cols.split(",").map((column) => column.trim()),
+        "created_at",
+        "id",
+      ]),
+    ).join(", ");
+    const make = (() => {
+      let query = supabaseAdmin
+        .from("events")
+        .select(selectCols)
+        .in("event_name", names)
+        .gte("created_at", FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+      if (
+        from &&
+        Date.parse(from) > Date.parse(FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
+      ) {
+        query = query.gte("created_at", from);
+      }
+      return query;
+    }) as PageQueryFactory;
+    make.pagination = "created_at-id";
+    return make;
   };
 
   type StripeEventRow = { metadata: Record<string, unknown> | null };
@@ -137,19 +218,40 @@ export async function computeStats(from: string | null, to: string | null) {
 
   // 質問到達: 5万行超を運ばず、questionId ごとの count クエリを並列で投げる
   const questionReachCounts = async (): Promise<Record<number, number>> => {
-    const counts = await Promise.all(
-      Array.from({ length: TOTAL_QUESTIONS }, (_, i) =>
-        applyRange(
-          supabaseAdmin
-            .from("events")
-            .select("id", { count: "exact", head: true })
-            .eq("event_name", "diagnosis_question_answered")
-            .eq("metadata->>questionId", String(i + 1)),
-        ).then(
-          (res: { count: number | null }) => [i, res.count ?? 0] as const,
+    const counts: Array<readonly [number, number]> = [];
+    // 50 本を一度に投げると、アクセス集中時に同じ events テーブルの count が
+    // Supabase の statement_timeout を使い切る。少数ずつ実行してDB負荷を平準化する。
+    for (let start = 0; start < TOTAL_QUESTIONS; start += QUESTION_COUNT_CONCURRENCY) {
+      const batch = await Promise.all(
+        Array.from(
+          {
+            length: Math.min(
+              QUESTION_COUNT_CONCURRENCY,
+              TOTAL_QUESTIONS - start,
+            ),
+          },
+          async (_, offset) => {
+            const index = start + offset;
+            const { count, error } = await withDbQuerySlot(() =>
+              applyRange(
+                supabaseAdmin
+                  .from("events")
+                  .select("id", { count: "exact", head: true })
+                  .eq("event_name", "diagnosis_question_answered")
+                  .eq("metadata->>questionId", String(index + 1)),
+              ),
+            );
+            if (error) {
+              throw new Error(
+                `[admin-stats] question reach ${index + 1}: ${error.code ?? "unknown"} ${error.message}`,
+              );
+            }
+            return [index, count ?? 0] as const;
+          },
         ),
-      ),
-    );
+      );
+      counts.push(...batch);
+    }
     const reach: Record<number, number> = {};
     // チャートは 0 始まり index を参照する (questionId は 1 始まり)
     for (const [idx, c] of counts) if (c > 0) reach[idx] = c;
@@ -282,12 +384,14 @@ export async function computeStats(from: string | null, to: string | null) {
           .eq("plan", "full")
           .order("id", { ascending: true }),
     ),
-    applyRange(
-      supabaseAdmin
-        .from("events")
-        .select("event_name, session_id, created_at, metadata")
-        .order("created_at", { ascending: false })
-        .limit(50),
+    withDbQuerySlot(() =>
+      applyRange(
+        supabaseAdmin
+          .from("events")
+          .select("event_name, session_id, created_at, metadata")
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ),
     ),
     questionReachCounts(),
     fetchAll<StripeEventRow>(

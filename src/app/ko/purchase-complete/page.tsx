@@ -64,6 +64,7 @@ export default async function KoreanPurchaseCompletePage({
     <>
       <MetaPurchaseDataLayer
         checkoutSessionId={session.id}
+        product={session.product}
         claimToken={claimToken}
       />
       {/* サイト共通ヘッダー (日本語 /purchase-complete と揃える 2026-07-30 指示) */}

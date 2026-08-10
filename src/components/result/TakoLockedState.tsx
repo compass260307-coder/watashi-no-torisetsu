@@ -18,6 +18,7 @@
 //   (③ TakoSendSheet)に集約 (QRもシート末尾に在る)。課金導線・無料バイパスは一切作らない。
 
 import { useEffect, useRef, useState } from "react";
+import { ProofFacesBand } from "@/components/ProofFacesBand";
 import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
 import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoSendSheet } from "./TakoSendSheet";
@@ -153,18 +154,29 @@ export function TakoLockedState({
 
   return (
     <div>
-      {/* ===== FV: /aisho と同じ「左=見出し / 右=動画」ヒーロー (最上部) ===== */}
+      {/* ===== FV: /aisho と同じ「左=見出し / 右=動画」ヒーロー (最上部・白地) ===== */}
       <header className="mb-9 md:mb-14 md:flex md:items-center md:gap-12">
         <div className="md:flex-1">
           <h1
             className="font-black text-[29px] md:text-[36px] leading-[1.45] md:leading-[1.4]"
             style={{ color: NAVY }}
           >
-            {isKo ? "스스로는 알기 어려운" : "自分では気づけない"}
-            <br className="md:hidden" />
-            {isKo ? "내 모습을" : "あなたを、"}
-            <br className="hidden md:block" />
-            {isKo ? "친구에게 물어봐요." : "友達に聞いてみよう。"}
+            {isKo ? (
+              <>
+                스스로는 알기 어려운
+                <br className="md:hidden" />
+                내 모습을
+                <br className="hidden md:block" />
+                친구에게 물어봐요.
+              </>
+            ) : (
+              /* 「答え合わせ」コピー (2026-08-03 案2採用。旧: 自分では気づけないあなたを、友達に聞いてみよう。) */
+              <>
+                自分のトリセツ、
+                <br />
+                友達と答え合わせしない？
+              </>
+            )}
           </h1>
           <p
             className="mt-2.5 text-[12.5px] md:text-sm font-bold"
@@ -180,8 +192,41 @@ export function TakoLockedState({
         </div>
       </header>
 
+      {/* ===== 利用者数の実績バンド (/unmei と共通の ProofFacesBand / 2026-08-02 指示) =====
+          /unmei と同じ淡インディゴグレー #F7F7FE の帯に載せ、上下を波エッジで白と
+          つなぐ (帯だけグレー・ヒーローは白のまま)。親が max-w-[1080px]+px 内のため、
+          w-screen + left-1/2 + -translate-x-1/2 で画面幅いっぱいに打ち破る。
+          文言が日本語固定のため ko では出さない (KO対応は別作業)。
+          人数は「友達診断の回答完了者数」の実数 — この画面の不安 (送って答えて
+          もらえるのか) に直接効かせるため、自己診断数ではなく友達側の数を使う。 */}
+      {!isKo && (
+        <div className="relative left-1/2 w-screen -translate-x-1/2">
+          {/* 上端の波: 白→帯色 (帯色を下側に塗る) */}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 1440 48"
+            preserveAspectRatio="none"
+            className="block h-8 w-full md:h-12"
+          >
+            <path
+              fill="#F7F7FE"
+              d="M0,48 H1440 V24 C1310,4 1180,40 1040,30 C900,20 810,2 670,16 C530,30 450,6 310,10 C170,14 80,40 0,24 Z"
+            />
+          </svg>
+          {/* 下端は直線で紫ゲートに直結 (2026-08-03 指示。波は上端のみ)。
+              pb は下段の浮遊アバターが帯からはみ出て紫の見出しに被らないための逃げ */}
+          <div className="bg-[#F7F7FE] px-4 pb-10 md:px-8 md:pb-8">
+            <ProofFacesBand
+              count="1,458"
+              countSuffix="人以上"
+              tail="の友達が、友達診断に回答しています"
+            />
+          </div>
+        </div>
+      )}
+
       {/* ===== 三層ゲート (奥=報酬 / スクリム / 手前=カウンター) ===== */}
-      <section className="pt-2 md:pt-4">
+      <section>
         <TakoRevealStage
           answered={displayAnswered}
           threshold={threshold}

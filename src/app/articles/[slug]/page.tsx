@@ -8,7 +8,7 @@ import { notFound } from "next/navigation";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import { ARTICLES, getArticle } from "@/lib/articles";
+import { ARTICLES, getArticle, getRelatedArticles } from "@/lib/articles";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -68,6 +68,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   if (!article) notFound();
 
   const url = `${BASE_URL}/articles/${article.slug}`;
+  const related = getRelatedArticles(article.slug);
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -259,7 +260,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           </Link>
         </section>
 
-        {/* 関連リンク (内部リンク: /types /about へ回遊) */}
+        {/* 関連リンク (内部リンク: 関連記事でのトピック回遊 + /types /about) */}
         <nav aria-label="関連ページ" className="mt-14">
           <h2
             className="text-[16px] font-bold leading-snug"
@@ -268,6 +269,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             あわせて読みたい
           </h2>
           <ul className="mt-4 flex flex-col gap-2.5">
+            {related.map((a) => (
+              <li key={a.slug}>
+                <Link
+                  href={`/articles/${a.slug}`}
+                  className="text-[14px] font-bold underline underline-offset-4"
+                  style={{ color: SORA }}
+                >
+                  {a.listTitle} →
+                </Link>
+              </li>
+            ))}
             <li>
               <Link
                 href="/types"

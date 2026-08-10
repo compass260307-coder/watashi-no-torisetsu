@@ -110,6 +110,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 最大5万行 × 3種類を30分おきに全件転送する運用が、Free PlanのEgressを
+  // 超過させていた。必要なときだけ明示的に有効化し、通常時はDBへ到達させない。
+  if (process.env.METRICS_RAW_EXPORT_ENABLED !== "1") {
+    return NextResponse.json(
+      {
+        error:
+          "Raw metrics export is disabled to protect the Supabase egress quota.",
+      },
+      {
+        status: 503,
+        headers: { ...metricsPrivateHeaders, "Retry-After": "86400" },
+      },
+    );
+  }
+
   const tableParam = request.nextUrl.searchParams.get("table");
   const table =
     tableParam === "users"

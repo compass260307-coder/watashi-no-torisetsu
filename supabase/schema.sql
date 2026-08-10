@@ -50,6 +50,10 @@ create table events (
 
 create index idx_events_event_name on events(event_name);
 create index idx_events_created_at on events(created_at);
+create index if not exists idx_events_event_name_created_at_id
+  on events(event_name, created_at, id);
+create index if not exists idx_events_question_reach
+  on events(event_name, (metadata ->> 'questionId'), created_at);
 
 alter table events enable row level security;
 create policy "anyone can insert events" on events for insert with check (true);
@@ -170,10 +174,10 @@ create table if not exists natal_charts (
 );
 
 alter table natal_charts enable row level security;
-create policy "user_select_own_natal_charts" on natal_charts for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_natal_charts" on natal_charts for insert with check (true);
-create policy "service_update_natal_charts" on natal_charts for update with check (true);
--- Note: service role should perform compute/insert/update; client access is restricted to the user via select policy above.
+revoke all on natal_charts from anon, authenticated;
+grant select on natal_charts to authenticated;
+create policy "user_select_own_natal_charts" on natal_charts for select to authenticated using ((select auth.uid()) = user_id);
+-- service_role は RLS を迂回するため、クライアントにも適用される書き込み許可ポリシーは作らない。
 
 -- users フラグ: natal chart ready
 alter table users
@@ -190,9 +194,9 @@ create table if not exists natal_readings (
   generated_at timestamptz not null default now()
 );
 alter table natal_readings enable row level security;
-create policy "user_select_own_natal_readings" on natal_readings for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_natal_readings" on natal_readings for insert with check (true);
-create policy "service_update_natal_readings" on natal_readings for update with check (true);
+revoke all on natal_readings from anon, authenticated;
+grant select on natal_readings to authenticated;
+create policy "user_select_own_natal_readings" on natal_readings for select to authenticated using ((select auth.uid()) = user_id);
 
 -- transit_readings: 月次経過チャートキャッシュ
 create table if not exists transit_readings (
@@ -203,7 +207,6 @@ create table if not exists transit_readings (
   primary key (user_id, month)
 );
 alter table transit_readings enable row level security;
-create policy "user_select_own_transit_readings" on transit_readings for select using (auth.uid() = user_id);
-create policy "service_insert_or_update_transit_readings" on transit_readings for insert with check (true);
-create policy "service_update_transit_readings" on transit_readings for update with check (true);
-
+revoke all on transit_readings from anon, authenticated;
+grant select on transit_readings to authenticated;
+create policy "user_select_own_transit_readings" on transit_readings for select to authenticated using ((select auth.uid()) = user_id);

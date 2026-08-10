@@ -113,7 +113,7 @@ export default function UranaiInterstitial({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/uranai-interstitial/status?ownerToken=${encodeURIComponent(
+        const res = await fetch(`/api/uranai-interstitial?ownerToken=${encodeURIComponent(
           ownerToken,
         )}`);
         if (!res.ok || cancelled) return;
@@ -155,7 +155,7 @@ export default function UranaiInterstitial({
   async function markShownServer() {
     if (!ownerToken) return;
     try {
-      await fetch("/api/uranai-interstitial/mark", {
+      await fetch("/api/uranai-interstitial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ownerToken }),
