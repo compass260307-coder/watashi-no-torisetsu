@@ -579,12 +579,15 @@ async function UnmeiPageBody(sp: {
     }
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
 
-    // チャット内決済フロー (2026-08-06): フラグ ON + セッション有りなら、LP の代わりに
-    // 「入力→チャット内 Embedded 決済→生成」のチャットを出す。フラグ OFF / 未セッションは
+    // チャット内決済フロー (2026-08-06): フラグ ON なら、LP の CTA で
+    // 「入力→チャット内 Embedded 決済→生成」のチャットを起動する。フラグ OFF は
     // 従来の LP + リダイレクト決済 (フラグを外すだけで即座に元へ戻せる)。
+    // 未セッション (未診断) も同じチャットに乗せる (2026-08-10): 出生情報の保存時に
+    // /api/birth-profile が匿名ユーザー+セッションを発行するので、以降の決済・生成・
+    // 鑑定表示はセッション有りと同じ経路で進む。
     const chatCheckout =
       process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
-    if (chatCheckout && userId) {
+    if (chatCheckout) {
       // LP を見せ、「設計図を作成する →」CTA で全画面チャット決済を起動する。
       return (
         <UnmeiChatCheckoutGate

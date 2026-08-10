@@ -1,10 +1,18 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { getSession } from "@/lib/session";
+import { createSession, getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { readJsonObject } from "@/lib/api-security";
+import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
+import { classifyType } from "@/lib/diagnosis";
+import { PLACEHOLDER_SCORES } from "@/lib/placeholder-user";
 
 export const runtime = "nodejs";
+
+// webhook のゲスト購入プレースホルダーと同じ流儀のトークン生成。
+function guestToken(bytes: number): string {
+  return crypto.randomBytes(bytes).toString("base64url");
+}
 
 export async function GET(request: NextRequest) {
   const originCheck = checkOrigin(request);
@@ -29,8 +37,7 @@ export async function POST(request: NextRequest) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });
 
-  const session = await getSession(request);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let session = await getSession(request);
 
   const parsed = await readJsonObject(request, 8 * 1024);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
@@ -40,6 +47,40 @@ export async function POST(request: NextRequest) {
   const birth_date =
     typeof body.birth_date === "string" ? body.birth_date : null;
   if (!birth_date) return NextResponse.json({ error: "birth_date required" }, { status: 400 });
+
+  // 未セッション = 未診断ゲストのチャット決済 (2026-08-10)。保存先がないので、
+  // 匿名ユーザー+セッションを発行してから保存する。users の NOT NULL 制約は
+  // webhook のゲスト購入プレースホルダーと同じ中立値で満たす (診断すると
+  // /api/diagnosis が同じ行を本物の結果で UPDATE し、購入・出生データは引き継がれる)。
+  // ボットの行量産を防ぐため IP レートリミットを掛ける (正規ユーザーは1回で足りる)。
+  if (!session) {
+    const guestLimit = await consumeRateLimit(request, {
+      scope: "birth-profile-guest",
+      limit: 5,
+      windowSeconds: 600,
+    });
+    if (!guestLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(guestLimit.retryAfterSeconds ?? 60) },
+        },
+      );
+    }
+    try {
+      const created = await createSession({
+        type_id: classifyType(PLACEHOLDER_SCORES),
+        scores: PLACEHOLDER_SCORES,
+        invite_code: guestToken(8),
+        owner_token: guestToken(16),
+      });
+      session = created.user;
+    } catch (e) {
+      console.error("[api/birth-profile] guest session create failed:", e);
+      return NextResponse.json({ error: "server error" }, { status: 500 });
+    }
+  }
 
   const time_unknown = body.time_unknown === true;
   const place_unknown = body.place_unknown === true;
