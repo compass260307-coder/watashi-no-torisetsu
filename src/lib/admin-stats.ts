@@ -230,7 +230,7 @@ export async function computeStats(from: string | null, to: string | null) {
               TOTAL_QUESTIONS - start,
             ),
           },
-          async (_, offset) => {
+          async (_, offset): Promise<readonly [number, number] | null> => {
             const index = start + offset;
             const { count, error } = await withDbQuerySlot(() =>
               applyRange(
@@ -242,15 +242,25 @@ export async function computeStats(from: string | null, to: string | null) {
               ),
             );
             if (error) {
-              throw new Error(
-                `[admin-stats] question reach ${index + 1}: ${error.code ?? "unknown"} ${error.message}`,
+              // 設問到達は補助チャート。count の statement timeout で管理画面全体を
+              // 500 にしない (2026-08-10 の全損障害。旧実装は失敗を握りつぶしていた)。
+              // 失敗した設問は「データ無し」としてチャートから欠けるだけに留める。
+              console.error(
+                `[admin-stats] question reach ${index + 1} failed (skipping): ${error.code ?? "unknown"} ${error.message}`,
               );
+              return null;
             }
             return [index, count ?? 0] as const;
           },
         ),
       );
-      counts.push(...batch);
+      const succeeded = batch.filter(
+        (b): b is readonly [number, number] => b !== null,
+      );
+      counts.push(...succeeded);
+      // タイムアウトが出始めたら残りの設問も同じ待ち時間を踏む可能性が高いので
+      // 打ち切る (idx_events_question_reach 未作成時に全体で数分待たせない)。
+      if (succeeded.length < batch.length) break;
     }
     const reach: Record<number, number> = {};
     // チャートは 0 始まり index を参照する (questionId は 1 始まり)
