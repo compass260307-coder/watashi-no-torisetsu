@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
 
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
+  // fresh=1 は管理画面の「更新」ボタン。キャッシュを飛ばして最新を再計算する。
+  const forceFresh = request.nextUrl.searchParams.get("fresh") === "1";
 
-  const stats = await getCachedStats(from, to);
+  const stats = await getCachedStats(from, to, { forceFresh });
   return NextResponse.json(stats);
 }
