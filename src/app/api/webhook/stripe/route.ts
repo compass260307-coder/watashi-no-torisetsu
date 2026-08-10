@@ -793,6 +793,11 @@ async function grantUnmeiByEmailOrId(
     }
     linked = true;
     await supabaseAdmin.from("users").update({ unmei: true, unmei_at: nowIso }).eq("id", userId).is("unmei_at", null);
+    // email backfill (full_access と同じ): 匿名セッション購入 (未診断チャット決済) の行に
+    // Stripe 確定 email を埋め、Cookie を失ってもマジックリンクで復元できるようにする。
+    if (email) {
+      await supabaseAdmin.from("users").update({ email }).eq("id", userId).is("email", null);
+    }
   }
 
   if (!linked) {
