@@ -6,9 +6,20 @@ import { createHash } from "node:crypto";
 import { computeStats } from "@/lib/admin-stats";
 
 const METRICS_CACHE_TTL_SECONDS = 24 * 60 * 60;
+// 現在時刻を含む期間 (今日・全期間など) は数字が動き続けるので、24時間キャッシュすると
+// 管理画面が「更新されなくなった」ように見える (2026-08-10)。egress削減効果は保ちつつ
+// 5分で追従させる。過去だけの期間は結果が不変なので24時間のまま。
+const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 const metricsCache = getCache({ namespace: "metrics-stats-v1" });
 
 type AdminStats = Awaited<ReturnType<typeof computeStats>>;
+
+// to が無い (全期間) / 現在以降 (今日・今週など) は「現在を含む期間」。
+function isLiveRange(to: string | null): boolean {
+  if (!to) return true;
+  const end = Date.parse(to);
+  return !Number.isFinite(end) || end >= Date.now();
+}
 
 function statsCacheKey(from: string | null, to: string | null): string {
   return createHash("sha256")
@@ -29,22 +40,26 @@ function statsCacheKey(from: string | null, to: string | null): string {
 export async function getCachedStats(
   from: string | null,
   to: string | null,
+  // forceFresh: 管理画面の「更新」ボタン用。キャッシュを読まず再計算して上書きする。
+  options: { forceFresh?: boolean } = {},
 ): Promise<AdminStats> {
   const key = statsCacheKey(from, to);
 
-  try {
-    const cached = await metricsCache.get(key);
-    if (cached) return cached as AdminStats;
-  } catch (error) {
-    // ローカル実行などでRuntime Cacheが使えない場合も、集計自体は継続する。
-    console.warn("[metrics-cache] get failed; computing directly", error);
+  if (!options.forceFresh) {
+    try {
+      const cached = await metricsCache.get(key);
+      if (cached) return cached as AdminStats;
+    } catch (error) {
+      // ローカル実行などでRuntime Cacheが使えない場合も、集計自体は継続する。
+      console.warn("[metrics-cache] get failed; computing directly", error);
+    }
   }
 
   const stats = await computeStats(from, to);
 
   try {
     await metricsCache.set(key, stats, {
-      ttl: METRICS_CACHE_TTL_SECONDS,
+      ttl: isLiveRange(to) ? LIVE_RANGE_TTL_SECONDS : METRICS_CACHE_TTL_SECONDS,
       tags: ["metrics-stats"],
       name: "metrics-stats-snapshot",
     });
