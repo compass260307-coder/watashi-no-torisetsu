@@ -13,7 +13,7 @@ export async function generateMetadata({
   const { token } = await params;
   const tokenPath = encodeURIComponent(token);
   return {
-    title: "친구가 보는 나 | 나의 사용설명서",
+    title: "친구가 보는 나",
     alternates: localizedAlternates(
       "ko",
       `/tako/${tokenPath}`,

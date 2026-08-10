@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
 import { readAcquisition } from "@/lib/acquisition";
+import {
+  clearPendingSourceCode,
+  readPendingSourceCode,
+  savePendingSourceCode,
+} from "@/lib/me-attention";
 import type { AnswerValue } from "@/lib/types";
 import {
   DIAGNOSIS_LOCALES,
@@ -167,6 +172,12 @@ export default function DiagnosisPageContent({
     const sourceParam = params.get("source");
     setCampaign(campaignParam);
     setSource(sourceParam);
+    // バイラル帰属の invite_code は URL 一発だと 50問の中断→素の /diagnosis 復帰で
+    // 失われるため、localStorage にも保存して完了時のフォールバックにする。
+    // "line" は LINE 流入マーカー (D-4) で invite_code ではないため保存しない。
+    if (sourceParam && sourceParam !== "line") {
+      savePendingSourceCode(sourceParam);
+    }
 
     try {
       const saved = localStorage.getItem(settings.progressStorageKey);
@@ -465,6 +476,10 @@ export default function DiagnosisPageContent({
     // 新規ユーザー作成時のみ users に書かれる (API 側で creation 分岐のみ採用)。
     const acq = readAcquisition();
 
+    // バイラル帰属: URL の ?source= が最優先。無ければ評価送信後ページ等で
+    // 保存した invite_code (下部ナビ赤バッジ経由・中断復帰はこちらに落ちる)。
+    const sourceInviteCode = source || readPendingSourceCode();
+
     try {
       const res = await fetch("/api/diagnosis", {
         method: "POST",
@@ -480,7 +495,7 @@ export default function DiagnosisPageContent({
           nModifier: result.nModifier,
           modifierLabel: result.modifierLabel,
           campaign: campaign || undefined,
-          sourceInviteCode: source || undefined,
+          sourceInviteCode: sourceInviteCode || undefined,
           // Day 12-Polish-B: 基本情報ステップで取得したニックネーム
           displayName: nickname.trim() || undefined,
           // 任意のジェンダー (male/female/other)。API 側は未対応のため現状は無視される
@@ -506,7 +521,7 @@ export default function DiagnosisPageContent({
             userId: data.userId,
             typeId: result.typeId,
             locale,
-            sourceInviteCode: source || null,
+            sourceInviteCode: sourceInviteCode || null,
           },
         });
         pushDiagnosisCompleteDataLayer({
@@ -515,6 +530,8 @@ export default function DiagnosisPageContent({
           dedupeId: data.ownerToken,
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
+        // 帰属を使い切ったら消す (次回以降の無関係な診断を親に紐づけない)。
+        clearPendingSourceCode();
         // 友達診断の赤バッジはここでは出さない。/me 側 (TakoAttentionOnResult) が
         // 初回表示時に全員へ付与する (2026-08-03 変更。旧: 課金完了後のみ)。
         await waitMin();

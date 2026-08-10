@@ -7,21 +7,39 @@ export default function UnmeiCheckoutButton({
   ownerToken,
   product = "unmei",
   children = "運命の設計図を占う",
+  launchChat = false,
 }: {
   ownerToken?: string | null;
-  /** unmei=¥1,980 / unmei_upgrade=¥1,480 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
+  /** unmei=¥899 / unmei_upgrade=¥400 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
   product?: "unmei" | "unmei_upgrade";
   children?: React.ReactNode;
+  /**
+   * true = Stripe リダイレクトの代わりに CustomEvent("unmei-chat-launch") を発火し、
+   * 親の UnmeiChatCheckoutGate が全画面チャット決済を立ち上げる (チャット決済フロー)。
+   * false = 従来のリダイレクト型 Checkout。
+   */
+  launchChat?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
     if (loading) return;
-    setLoading(true);
-    setError(null);
 
     const metadata = { page: "unmei", product };
+
+    // チャット起動モード: 遷移せず親ゲートへ合図するだけ (即時)。
+    if (launchChat) {
+      track("purchase_cta_clicked", {
+        ownerToken: ownerToken ?? null,
+        metadata: { ...metadata, ui: "chat_launch" },
+      });
+      window.dispatchEvent(new CustomEvent("unmei-chat-launch"));
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
 
     track("purchase_cta_clicked", {
       ownerToken: ownerToken ?? null,

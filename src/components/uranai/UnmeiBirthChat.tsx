@@ -348,11 +348,9 @@ export default function UnmeiBirthChat({
         },
       });
       if (mode === "purchase") {
-        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)
-        track("unmei_checkout_step_view", {
-          ownerToken: ownerToken ?? null,
-          metadata: { page: "unmei", product, ui: "chat_embedded" },
-        });
+        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)。
+        // 決済フォーム到達は checkout_session_created(payment_method=card_embedded・サーバ発行)
+        // で計上するため、ここでの追加計測イベントは持たない (RLS 未許可の空撃ちだった)。
         say(
           [
             "ありがとうございます。準備ができました。",
@@ -368,7 +366,7 @@ export default function UnmeiBirthChat({
         setStep("confirm"),
       );
     }
-  }, [say, onSaved, mode, ownerToken, product]);
+  }, [say, onSaved, mode]);
 
   // purchase モード: 決済完了 → 生成へ (親が waiting=true を渡してくる)
   const handlePaymentComplete = useCallback(() => {
@@ -391,7 +389,7 @@ export default function UnmeiBirthChat({
     "w-full max-w-[320px] rounded-2xl rounded-br-[4px] border border-[#E9E9F2] bg-white p-3 shadow-[0_1px_2px_rgba(46,46,92,0.06)]";
 
   return (
-    <main className="mx-auto max-w-[640px] px-4 pb-10 pt-5 md:px-6 md:pb-14 md:pt-8">
+    <main className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-5 md:px-8 md:pb-14 md:pt-8">
       <h1 className="sr-only">あなたの設計図を描くために</h1>
 
       {/* チャットウィンドウ (紺ヘッダー + トーク面の1枚パネル) */}

@@ -23,7 +23,7 @@
 //   - 自動返金は実装しない (MVP)、失敗時は Slack アラート + 手動対応
 
 import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
@@ -554,6 +554,51 @@ async function recordPurchaseCompletedEvent(
   }
 }
 
+// unmei 系の購入イベントも purchase_completed と同様に stripe_session_id で冪等化する。
+// AI 生成タイムアウト → Stripe 再送のたびに行が増え、同一決済が最大5行入っていた
+// (2026-08-08 実測)。集計はユニーク数で数えるが、期間フィルタと組み合わさると
+// 再送行が「期間内の初回」に化けて決済日がズレるため、挿入自体を1回にする。
+async function recordUnmeiPurchaseEventOnce(
+  eventName: "unmei_purchase_complete" | "unmei_upgrade_complete",
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  try {
+    const { data: existing, error: selErr } = await supabaseAdmin
+      .from("events")
+      .select("id")
+      .eq("event_name", eventName)
+      .eq("metadata->>stripe_session_id", session.id)
+      .limit(1);
+    // SELECT 失敗時は重複の有無が判定できないため挿入しない (recordPurchaseCompletedEvent と同方針)。
+    if (selErr) {
+      console.error(`[webhook] ${eventName} dedup check failed:`, selErr);
+      return;
+    }
+    if (existing && existing.length > 0) return;
+    const ownerToken =
+      typeof session.metadata?.owner_token === "string" &&
+      session.metadata.owner_token
+        ? session.metadata.owner_token
+        : null;
+    await supabaseAdmin.from("events").insert({
+      event_name: eventName,
+      owner_token: ownerToken,
+      metadata: {
+        stripe_session_id: session.id,
+        user_id: userId,
+        owner_token: ownerToken,
+        product:
+          eventName === "unmei_purchase_complete" ? "unmei" : "unmei_upgrade",
+        amount_total: session.amount_total ?? null,
+        currency: session.currency ?? "jpy",
+      },
+    });
+  } catch (e) {
+    console.error(`[webhook] ${eventName} insert failed:`, e);
+  }
+}
+
 // ---------- 支払い確定済み Checkout Session の共通処理 ----------
 // checkout.session.completed (即時決済) と checkout.session.async_payment_succeeded
 // (遅延決済) のどちらからも、payment_status='paid' を確認した後だけ呼ぶ。
@@ -574,38 +619,22 @@ async function handleCheckoutPaid(
     // guest 対応で email で紐付け。unmei フラグを立て、natal_readings プレースホルダを挿入。
     await grantUnmeiByEmailOrId(session, userId);
     const linkedUserId = userId ?? (await resolveUserIdForSession(session));
-    // record purchase event specific to unmei
-    try {
-      await supabaseAdmin.from("events").insert({
-        event_name: "unmei_purchase_complete",
-        owner_token:
-          typeof metadata.owner_token === "string" && metadata.owner_token
-            ? metadata.owner_token
-            : null,
-        metadata: {
-          stripe_session_id: session.id,
-          user_id: linkedUserId,
-          owner_token:
-            typeof metadata.owner_token === "string" && metadata.owner_token
-              ? metadata.owner_token
-              : null,
-          product: "unmei",
-          amount_total: session.amount_total ?? null,
-          currency: session.currency ?? "jpy",
-        },
-      });
-    } catch (e) {
-      console.error("[webhook] unmei event insert failed:", e);
-    }
-    // direct generation trigger (max 2 retries)
+    await recordUnmeiPurchaseEventOnce(
+      "unmei_purchase_complete",
+      session,
+      linkedUserId,
+    );
+    // AI 生成 (〜100秒超) は応答後に after() で実行する。同期 await だと maxDuration を
+    // 超えて webhook 全体がタイムアウトし、Stripe が翌日まで再送し続けていた (2026-08-08)。
+    // after() が失敗しても /unmei ページ側の /api/unmei/generate キックで回復できる。
     if (linkedUserId) {
-      await triggerUnmeiGeneration(linkedUserId);
+      after(() => triggerUnmeiGeneration(linkedUserId));
     }
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
 
-  // アップグレード (¥1,480): user 専用経路。userId が必須で既に full_access を持っていることを確認してから付与。
+  // アップグレード (¥400): user 専用経路。userId が必須で既に full_access を持っていることを確認してから付与。
   if (metadata.product === "unmei_upgrade") {
     // 前提(user_id 有り・full_access 保有)を満たさないセッションは、Stripe が何度リトライしても
     // 解消しない「毒(poison)」。500 で無限リトライさせず 200 で受領し、Slack 通知で手動対応に回す。
@@ -628,29 +657,9 @@ async function handleCheckoutPaid(
       return;
     }
     await grantUnmeiToUserId(userId);
-    try {
-      await supabaseAdmin.from("events").insert({
-        event_name: "unmei_upgrade_complete",
-        owner_token:
-          typeof metadata.owner_token === "string" && metadata.owner_token
-            ? metadata.owner_token
-            : null,
-        metadata: {
-          stripe_session_id: session.id,
-          user_id: userId,
-          owner_token:
-            typeof metadata.owner_token === "string" && metadata.owner_token
-              ? metadata.owner_token
-              : null,
-          product: "unmei_upgrade",
-          amount_total: session.amount_total ?? null,
-          currency: session.currency ?? "jpy",
-        },
-      });
-    } catch (e) {
-      console.error("[webhook] unmei_upgrade event insert failed:", e);
-    }
-    await triggerUnmeiGeneration(userId);
+    await recordUnmeiPurchaseEventOnce("unmei_upgrade_complete", session, userId);
+    // 基本購入と同じく、AI 生成は応答後に回して webhook を即 200 で返す。
+    after(() => triggerUnmeiGeneration(userId));
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }

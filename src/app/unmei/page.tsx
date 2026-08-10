@@ -10,6 +10,7 @@ import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
 import { hasFullAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
 import UnmeiPayPreview from "@/components/uranai/UnmeiPayPreview";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
 import { LoginCard } from "@/components/LoginCard";
@@ -23,6 +24,9 @@ import type { Chart } from "@/lib/unmei/chart-view";
 
 export const metadata = {
   title: "運命の設計図",
+  description:
+    "星の配置をもとに、あなたがこれまで選んできた姿勢に名前をつけ、これからの選び方を考えるきっかけを届ける本格鑑定。性格診断とかけ合わせて、あなただけの運命の設計図を読み解きます。",
+  alternates: { canonical: "/unmei" },
 };
 
 // 購入完了直後にログイン状態が反映されるよう、都度サーバで状態を解決する。
@@ -117,17 +121,20 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
 // PC: 左=出生図イメージ / 右=商品名・説明・価格・CTA。SP: 縦積み。
-// 価格: 通常 ¥1,980 / 完全版 (¥499) 保有者は ¥1,480 (unmei_upgrade)。
+// 価格: 通常 ¥899 / 完全版 (¥499) 保有者は ¥400 (unmei_upgrade)。
 // hasFull はログイン済みならサーバ判定、未ログインは UnmeiPriceCta が localStorage の
 // owner_token から判定する (決済APIが最終検証するため表示用の判定でよい)。
 function UnmeiTeaserLp({
   ownerToken,
   hasFull,
   trackView = true,
+  launchChat = false,
 }: {
   ownerToken: string | null;
   hasFull: boolean;
   trackView?: boolean;
+  /** true = 購入CTAでリダイレクトせず全画面チャット決済を起動する。 */
+  launchChat?: boolean;
 }) {
   return (
       <main className="overflow-x-clip bg-white">
@@ -173,6 +180,7 @@ function UnmeiTeaserLp({
               <UnmeiPriceCta
                 sessionOwnerToken={ownerToken}
                 sessionHasFull={hasFull}
+                launchChat={launchChat}
               />
             </div>
           </section>
@@ -519,13 +527,26 @@ async function UnmeiPageBody(sp: {
     );
   }
   if (preview === "teaser" || preview === "teaser_full") {
-    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥1,980) / teaser_full (¥1,480 表示)
+    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥899) / teaser_full (¥400 表示)
     return (
       <UnmeiTeaserLp
         ownerToken={null}
         hasFull={preview === "teaser_full"}
         trackView={false}
       />
+    );
+  }
+  if (preview === "chat") {
+    // チャット決済フローの確認用 (dev限定): LP → 「設計図を作成する →」で全画面チャット起動。
+    return (
+      <UnmeiChatCheckoutGate purchase={{ ownerToken: null, product: "unmei" }}>
+        <UnmeiTeaserLp
+          ownerToken={null}
+          hasFull={false}
+          trackView={false}
+          launchChat
+        />
+      </UnmeiChatCheckoutGate>
     );
   }
 
@@ -564,14 +585,20 @@ async function UnmeiPageBody(sp: {
     const chatCheckout =
       process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
     if (chatCheckout && userId) {
+      // LP を見せ、「設計図を作成する →」CTA で全画面チャット決済を起動する。
       return (
-        <UnmeiClient
-          initialState="no_birth"
+        <UnmeiChatCheckoutGate
           purchase={{
             ownerToken: session?.owner_token ?? null,
             product: sessionHasFull ? "unmei_upgrade" : "unmei",
           }}
-        />
+        >
+          <UnmeiTeaserLp
+            ownerToken={session?.owner_token ?? null}
+            hasFull={sessionHasFull}
+            launchChat
+          />
+        </UnmeiChatCheckoutGate>
       );
     }
 

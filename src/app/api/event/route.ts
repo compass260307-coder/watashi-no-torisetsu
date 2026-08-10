@@ -29,6 +29,8 @@ const CLIENT_EVENT_NAMES = new Set([
   "tako_nav_badge_shown",
   "tako_nav_badge_clicked",
   "tako_viewed",
+  // 招待UIの露出 (2026-08-04)。RLS 未適用の間もこのフォールバックで受ける。
+  "tako_invite_ui_shown",
   "unmei_nav_badge_shown",
   "unmei_nav_badge_clicked",
   "unmei_lp_view",

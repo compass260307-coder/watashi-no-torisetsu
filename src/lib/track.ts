@@ -82,6 +82,7 @@ export function isPreviewMode(): boolean {
 //   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
 //   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
+//   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate=ゲートのシェア行が視界に入った / sticky_modal=上部固定バーの招待モーダルを開いた / send_sheet=送信シートを開いた)
 //   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
 //   unmei_nav_badge_clicked      未確認バッジ付き「運命」タップ (ownerToken)
 //   unmei_lp_view                運命の設計図LP表示 (metadata.product)

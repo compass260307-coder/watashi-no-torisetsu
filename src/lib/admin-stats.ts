@@ -354,11 +354,15 @@ export async function computeStats(from: string | null, to: string | null) {
       campaign: string | null;
       generation: number | null;
       source_user_id: string | null;
+      acquisition_source: string | null;
+      acquisition_campaign: string | null;
     }>(() =>
       applyRange(
         supabaseAdmin
           .from("users")
-          .select("id, scores, campaign, generation, source_user_id")
+          .select(
+            "id, scores, campaign, generation, source_user_id, acquisition_source, acquisition_campaign",
+          )
           .order("created_at", { ascending: true })
           .order("id", { ascending: true }),
       ),
@@ -413,6 +417,7 @@ export async function computeStats(from: string | null, to: string | null) {
           "tako_viewed",
           "tako_nav_badge_shown",
           "tako_nav_badge_clicked",
+          "tako_invite_ui_shown",
           "friend_invite_clicked",
           "friend_share_clicked",
           "friend_link_copied",
@@ -491,11 +496,20 @@ export async function computeStats(from: string | null, to: string | null) {
       owner_token: string | null;
       metadata: Record<string, unknown> | null;
     }>(evRows(["unmei_reading_view"], "session_id, owner_token, metadata")),
-    fetchAll<UnmeiPurchaseEventRow>(
-      evRows(
-        ["unmei_purchase_complete", "unmei_upgrade_complete"],
-        "event_name, owner_token, metadata, created_at",
-      ),
+    // unmei 購入イベントは期間フィルタを掛けず全期間で取得する。webhook 再送で同一決済の
+    // 行が日をまたいで複数入るため、期間で切ると再送行が「期間内の初回」に化けて
+    // 決済日が Stripe とズレる (2026-08-09 に「今日の売上」がズレた原因)。
+    // 期間判定は重複排除後の最初の行 (=実決済時刻) で行う。
+    fetchAll<UnmeiPurchaseEventRow>(() =>
+      supabaseAdmin
+        .from("events")
+        .select("event_name, owner_token, metadata, created_at")
+        .in("event_name", [
+          "unmei_purchase_complete",
+          "unmei_upgrade_complete",
+        ])
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true }),
     ),
     fetchAll<EventMetaSessionRow>(
       evRows(["birth_form_view"], "session_id, metadata"),
@@ -632,6 +646,35 @@ export async function computeStats(from: string | null, to: string | null) {
   const friendAnswerSessions = new Set<string>();
   const friendToDiagnosisSessions = new Set<string>();
 
+  // 招待の解剖 (2026-08-04 計測開始): 送信UI露出 (surface別) と招待クリックの
+  // channel/source 別内訳。招待未実行を「UIまで到達していない」/「見たのに送らない」に分解する。
+  const inviteUiOwners = new Set<string>();
+  const inviteUiSurfaceOwners = new Map<string, Set<string>>();
+  const inviteClickOwners = new Set<string>();
+  let inviteClickActions = 0;
+  const inviteChannelStats = new Map<
+    string,
+    { actions: number; owners: Set<string> }
+  >();
+  const inviteSourceStats = new Map<
+    string,
+    { actions: number; owners: Set<string> }
+  >();
+  const metaString = (row: JourneyRow, key: string): string => {
+    const v = row.metadata?.[key];
+    return typeof v === "string" && v.length > 0 ? v : "unknown";
+  };
+  const bumpBreakdown = (
+    map: Map<string, { actions: number; owners: Set<string> }>,
+    key: string,
+    owner: string,
+  ) => {
+    const cur = map.get(key) ?? { actions: 0, owners: new Set<string>() };
+    cur.actions += 1;
+    cur.owners.add(owner);
+    map.set(key, cur);
+  };
+
   for (const row of friendJourneyRows) {
     const owner = ownerForJourney(row);
     if (!owner) continue;
@@ -643,12 +686,25 @@ export async function computeStats(from: string | null, to: string | null) {
     if (!happenedAfterCohortStart(row, owner)) continue;
 
     if (row.event_name === "tako_viewed") takoReachedOwners.add(owner);
+    if (row.event_name === "tako_invite_ui_shown") {
+      inviteUiOwners.add(owner);
+      const surface = metaString(row, "surface");
+      const set = inviteUiSurfaceOwners.get(surface) ?? new Set<string>();
+      set.add(owner);
+      inviteUiSurfaceOwners.set(surface, set);
+    }
     if (
       row.event_name === "friend_invite_clicked" ||
       row.event_name === "friend_share_clicked" ||
       row.event_name === "friend_link_copied"
     ) {
       inviteActionOwners.add(owner);
+    }
+    if (row.event_name === "friend_invite_clicked") {
+      inviteClickOwners.add(owner);
+      inviteClickActions += 1;
+      bumpBreakdown(inviteChannelStats, metaString(row, "channel"), owner);
+      bumpBreakdown(inviteSourceStats, metaString(row, "source"), owner);
     }
     if (row.event_name === "friend_landing_viewed") {
       friendReachedOwners.add(owner);
@@ -796,6 +852,48 @@ export async function computeStats(from: string | null, to: string | null) {
     }))
     .sort((a, b) => b.completed - a.completed);
 
+  // --- 流入元別 (Day 12-C3 の first-touch utm_source/ref → users.acquisition_source) ---
+  // users 行は診断保存時に作られるため、この数字は「流入元別の診断完了者」。
+  // acquisition_source が NULL の行は直接流入・SNSアプリ内ブラウザのクエリ欠落・
+  // 計測開始前ユーザーのいずれかで、区別できないため1グループにまとめる。
+  const ACQ_DIRECT_LABEL = "(直接/不明)";
+  const acqSourceMap = new Map<string, number>();
+  const acqCampaignMap = new Map<string, { source: string; campaign: string; users: number }>();
+  for (const row of users) {
+    const source = row.acquisition_source ?? ACQ_DIRECT_LABEL;
+    acqSourceMap.set(source, (acqSourceMap.get(source) ?? 0) + 1);
+    if (row.acquisition_source && row.acquisition_campaign) {
+      const key = `${row.acquisition_source}${row.acquisition_campaign}`;
+      const entry = acqCampaignMap.get(key) ?? {
+        source: row.acquisition_source,
+        campaign: row.acquisition_campaign,
+        users: 0,
+      };
+      entry.users++;
+      acqCampaignMap.set(key, entry);
+    }
+  }
+  const acquisitionStats = {
+    directLabel: ACQ_DIRECT_LABEL,
+    sources: Array.from(acqSourceMap.entries())
+      .map(([source, count]) => ({
+        source,
+        users: count,
+        share: users.length > 0 ? count / users.length : 0,
+      }))
+      .sort((a, b) =>
+        // 計測できた流入元を上に、(直接/不明) は人数に関わらず最後に置く
+        a.source === ACQ_DIRECT_LABEL
+          ? 1
+          : b.source === ACQ_DIRECT_LABEL
+            ? -1
+            : b.users - a.users,
+      ),
+    campaigns: Array.from(acqCampaignMap.values()).sort(
+      (a, b) => b.users - a.users,
+    ),
+  };
+
   // --- 世代分布 ---
   const genCounts: Record<number, number> = {};
   let unknownGen = 0;
@@ -934,16 +1032,30 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiCheckoutRows = checkoutCreatedRows.filter((r) =>
     isUnmeiMeta(r.metadata),
   );
-  const unmeiBasePurchaseRows = unmeiPurchaseEventRows.filter(
+  // webhook 再送の重複行を除去し、決済ごとに最初の行 (=実決済時刻) だけ残す。
+  // 行は created_at 昇順で取得済み。ファネル・売上とも期間判定はこの実決済時刻で行い、
+  // Stripe ダッシュボードの計上日と一致させる。
+  const seenUnmeiSessionIds = new Set<string>();
+  const unmeiPurchaseFacts = unmeiPurchaseEventRows.filter((r) => {
+    const sid = r.metadata?.stripe_session_id;
+    if (typeof sid !== "string" || !sid) return true; // 旧形式 (id 無し) は個別に残す
+    if (seenUnmeiSessionIds.has(sid)) return false;
+    seenUnmeiSessionIds.add(sid);
+    return true;
+  });
+  const unmeiPurchaseRowsInRange = unmeiPurchaseFacts.filter((r) =>
+    inRange(r.created_at),
+  );
+  const unmeiBasePurchaseRows = unmeiPurchaseRowsInRange.filter(
     (r) => r.event_name === "unmei_purchase_complete",
   );
-  const unmeiUpgradePurchaseRows = unmeiPurchaseEventRows.filter(
+  const unmeiUpgradePurchaseRows = unmeiPurchaseRowsInRange.filter(
     (r) => r.event_name === "unmei_upgrade_complete",
   );
   const unmeiLpViewed = toUnique(unmeiLpRows);
   const unmeiPurchaseStarted = toUnique(unmeiPurchaseIntentRows);
   const unmeiCheckoutCreated = countUniqueStripeSessions(unmeiCheckoutRows);
-  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseEventRows);
+  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseRowsInRange);
   const unmeiBasePurchases = countUniqueStripeSessions(unmeiBasePurchaseRows);
   const unmeiUpgradePurchases = countUniqueStripeSessions(
     unmeiUpgradePurchaseRows,
@@ -960,6 +1072,39 @@ export async function computeStats(from: string | null, to: string | null) {
   );
   const unmeiBadgeShown = toUnique(unmeiBadgeShownRows);
   const unmeiBadgeClicked = toUnique(unmeiBadgeClickedRows);
+
+  // 運命の設計図: チャット決済フロー専用ファネル (ui/payment_method で抽出・旧リダイレクト版と分離)。
+  // 段階順はチャット実態 (LP→作成CTA→出生入力→保存→決済フォーム→完了)。
+  // ⑤決済フォーム到達は checkout_session_created(payment_method=card_embedded)=埋め込みフォーム生成で代替。
+  const unmeiChatLaunched = toUnique(
+    purchaseCtaRows.filter((r) => r.metadata?.ui === "chat_launch"),
+  );
+  const unmeiChatBirthViewed = toUnique(
+    birthFormViewRows.filter((r) => r.metadata?.ui === "chat_purchase"),
+  );
+  const unmeiChatBirthSubmitted = toUnique(
+    birthFormSubmitRows.filter((r) => r.metadata?.ui === "chat_purchase"),
+  );
+  const unmeiChatCheckoutRows = unmeiCheckoutRows.filter(
+    (r) => r.metadata?.payment_method === "card_embedded",
+  );
+  const unmeiChatCheckoutReached = countUniqueStripeSessions(
+    unmeiChatCheckoutRows,
+  );
+  // チャット決済で作られた Stripe セッション (card_embedded=埋め込み / paypay=PayPay直行) の
+  // stripe_session_id を集め、その ID で完了した購入のみをチャット発の決済完了として数える。
+  const unmeiChatCheckoutSessionIds = new Set<string>();
+  for (const r of unmeiCheckoutRows) {
+    const pm = r.metadata?.payment_method;
+    if (pm !== "card_embedded" && pm !== "paypay") continue;
+    const sid = r.metadata?.stripe_session_id;
+    if (typeof sid === "string") unmeiChatCheckoutSessionIds.add(sid);
+  }
+  const unmeiChatPurchaseRows = unmeiPurchaseRowsInRange.filter((r) => {
+    const sid = r.metadata?.stripe_session_id;
+    return typeof sid === "string" && unmeiChatCheckoutSessionIds.has(sid);
+  });
+  const unmeiChatPurchases = countUniqueStripeSessions(unmeiChatPurchaseRows);
 
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
@@ -1099,11 +1244,16 @@ export async function computeStats(from: string | null, to: string | null) {
 
   // kind 付きの全商品決済ファクト。総売上・商品別内訳・日別推移の源泉。
   // コホートKPI (computeCoreKpis) へは full_access のみを渡す (従来と同義)。
+  // ローカル開発が本番 Supabase + テスト Stripe の構成で動くため、テストモード決済
+  // (cs_test_) が本番 DB に混入している (2026-08-09 実測: 計¥8,860)。Stripe の
+  // ライブ売上には存在しないため、売上ファクトから除外する。
+  const isTestStripeSession = (sid: string) => sid.startsWith("cs_test_");
   const verifiedPaymentFacts: (CoreKpiPaymentFact & { kind: string })[] = [];
   const knownStripeSessions = new Set<string>();
   for (const row of paymentHistoryRows) {
     const paidAt = row.paid_at ?? row.created_at;
     knownStripeSessions.add(row.stripe_session_id);
+    if (isTestStripeSession(row.stripe_session_id)) continue;
     verifiedPaymentFacts.push({
       stripeSessionId: row.stripe_session_id,
       userId: row.user_id,
@@ -1116,13 +1266,14 @@ export async function computeStats(from: string | null, to: string | null) {
   }
 
   let unmatchedPaymentCount = 0;
-  for (const row of unmeiPurchaseEventRows) {
+  for (const row of unmeiPurchaseFacts) {
     const rawStripeSessionId = row.metadata?.stripe_session_id;
     const stripeSessionId =
       typeof rawStripeSessionId === "string" && rawStripeSessionId
         ? rawStripeSessionId
         : `legacy-unmei:${row.event_name}:${row.created_at}`;
     if (knownStripeSessions.has(stripeSessionId)) continue;
+    if (isTestStripeSession(stripeSessionId)) continue;
 
     const amount = row.metadata?.amount_total;
     if (typeof amount !== "number" || !Number.isFinite(amount)) {
@@ -1173,6 +1324,7 @@ export async function computeStats(from: string | null, to: string | null) {
     }
     if (knownStripeSessions.has(stripeSessionId)) continue;
     knownStripeSessions.add(stripeSessionId);
+    if (isTestStripeSession(stripeSessionId)) continue;
 
     const checkoutIdentity = checkoutIdentityBySession.get(stripeSessionId);
     const metadataUserId = row.metadata?.user_id;
@@ -1506,6 +1658,11 @@ export async function computeStats(from: string | null, to: string | null) {
       friendFunnel,
       attention: {
         badgeShown: badgeShownOwners.size,
+        // 表示率の分母は takoReachRate と同じ「コホートの診断完了セッション数」。
+        badgeShowRate: rate(
+          badgeShownOwners.size,
+          diagnosisCohortSessions.size,
+        ),
         badgeClicked: badgeClickedOwners.size,
         badgeClickRate: rate(badgeClickedOwners.size, badgeShownOwners.size),
         takoReached: takoReachedOwners.size,
@@ -1513,6 +1670,32 @@ export async function computeStats(from: string | null, to: string | null) {
           takoReachedOwners.size,
           diagnosisCohortSessions.size,
         ),
+      },
+      // 招待の解剖 (tako_invite_ui_shown は 2026-08-04 計測開始)。
+      // clickOwners は friend_invite_clicked のみ (ownerFunnel の招待実行は
+      // 友達到達による補完込みなので、ここでは実クリックだけを数える)。
+      inviteDetail: {
+        uiShownOwners: inviteUiOwners.size,
+        uiSurfaces: Array.from(inviteUiSurfaceOwners.entries())
+          .map(([surface, owners]) => ({ surface, owners: owners.size }))
+          .sort((a, b) => b.owners - a.owners),
+        clickOwners: inviteClickOwners.size,
+        clickActions: inviteClickActions,
+        uiToClickRate: rate(inviteClickOwners.size, inviteUiOwners.size),
+        channels: Array.from(inviteChannelStats.entries())
+          .map(([channel, v]) => ({
+            channel,
+            actions: v.actions,
+            owners: v.owners.size,
+          }))
+          .sort((a, b) => b.actions - a.actions),
+        sources: Array.from(inviteSourceStats.entries())
+          .map(([source, v]) => ({
+            source,
+            actions: v.actions,
+            owners: v.owners.size,
+          }))
+          .sort((a, b) => b.actions - a.actions),
       },
     },
     // 課金ファネル (¥499 自己診断・完全版): 結果ページ表示 → カード表示 → 誘導クリック →
@@ -1544,6 +1727,16 @@ export async function computeStats(from: string | null, to: string | null) {
         { label: "出生フォーム表示", count: birthFormViewed },
         { label: "出生情報保存", count: birthFormSubmitted },
         { label: "鑑定表示", count: unmeiReadingViewed },
+      ],
+      // チャット決済フロー (flag ON) の実態ファネル。段階順が旧リダイレクト版と異なる
+      // (出生入力が決済の前)。ui=chat_launch/chat_purchase・payment_method=card_embedded で抽出。
+      chatFunnel: [
+        { label: "LP表示", count: unmeiLpViewed },
+        { label: "作成CTA(起動)", count: unmeiChatLaunched },
+        { label: "出生情報 入力", count: unmeiChatBirthViewed },
+        { label: "出生情報 保存", count: unmeiChatBirthSubmitted },
+        { label: "決済フォーム到達", count: unmeiChatCheckoutReached },
+        { label: "決済完了", count: unmeiChatPurchases },
       ],
       purchases: {
         total: unmeiPurchases,
@@ -1579,6 +1772,7 @@ export async function computeStats(from: string | null, to: string | null) {
     friendCountDistribution,
     diagQuestionReach,
     campaignStats,
+    acquisitionStats,
     generationDistribution,
     unknownGeneration: unknownGen,
     totalUsers,

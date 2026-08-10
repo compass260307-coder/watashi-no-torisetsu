@@ -132,6 +132,20 @@ export async function GET(request: NextRequest) {
     unmeiBadgeShown: s.unmei.navBadge.shown,
     unmeiBadgeClicked: s.unmei.navBadge.clicked,
     unmeiBadgeClickRate: round(s.unmei.navBadge.clickRate),
+    // 招待の解剖 (2026-08-04 追加。末尾に足す = 既存シートの列順を壊さない)
+    takoBadgeShowRate: round(s.friendDiagnosisFunnel.attention.badgeShowRate),
+    takoInviteUiShownOwners: s.friendDiagnosisFunnel.inviteDetail.uiShownOwners,
+    takoInviteClickOwners: s.friendDiagnosisFunnel.inviteDetail.clickOwners,
+    takoInviteClickActions: s.friendDiagnosisFunnel.inviteDetail.clickActions,
+    takoInviteUiToClickRate: round(
+      s.friendDiagnosisFunnel.inviteDetail.uiToClickRate,
+    ),
+    // 運命の設計図チャット決済ファネル (2026-08-06 追加。末尾に足す = 既存シートの列順を壊さない)
+    unmeiChatLaunched: s.unmei.chatFunnel[1]?.count ?? 0,
+    unmeiChatBirthViewed: s.unmei.chatFunnel[2]?.count ?? 0,
+    unmeiChatBirthSubmitted: s.unmei.chatFunnel[3]?.count ?? 0,
+    unmeiChatCheckoutReached: s.unmei.chatFunnel[4]?.count ?? 0,
+    unmeiChatPurchases: s.unmei.chatFunnel[5]?.count ?? 0,
   };
 
   const format = request.nextUrl.searchParams.get("format");

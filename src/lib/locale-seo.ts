@@ -4,7 +4,7 @@ export const SITE_URL = "https://www.watashi-torisetsu.com";
 export const JA_SITE_NAME = "ワタシのトリセツ";
 export const KO_SITE_NAME = "나의 사용설명서";
 export const KO_DEFAULT_TITLE =
-  "무료 성격 진단 테스트 | 나의 사용설명서";
+  "친구와 만드는 무료 성격 진단 테스트 | 나의 사용설명서";
 export const KO_DEFAULT_DESCRIPTION =
   "Big Five 이론을 바탕으로 한 무료 성격 진단 테스트예요. 50문항으로 32가지 캐릭터 유형 중 나와 닮은 유형을 찾고, 친구의 답변으로 나도 몰랐던 모습을 발견해 보세요.";
 export const KO_SEO_KEYWORDS: string[] = [

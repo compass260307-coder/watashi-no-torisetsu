@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: "記事・コラム｜ワタシのトリセツ",
     description:
       "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する記事一覧。",
-    images: [{ url: "/ogp-v4.png", width: 1200, height: 630 }],
+    images: [{ url: "/ogp-v5.jpg", width: 1200, height: 630 }],
   },
 };
 

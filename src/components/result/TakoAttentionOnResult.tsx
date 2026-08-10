@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import {
+  TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
   takoAttentionImpressionKey,
   takoAttentionPaidGrantedKey,
@@ -27,6 +28,9 @@ export function TakoAttentionOnResult({ ownerToken }: { ownerToken: string }) {
       localStorage.setItem(grantedKey, "1");
       localStorage.setItem(TAKO_ATTENTION_PENDING_KEY, ownerToken);
       localStorage.removeItem(takoAttentionImpressionKey(ownerToken));
+      // BottomNav は pathname 変化でしか再評価しないため、/me 表示中の付与を
+      // 同一ページ内で反映させる (loading.tsx コミット時の判定はここより先に走る)。
+      window.dispatchEvent(new Event(TAKO_ATTENTION_GRANTED_EVENT));
     } catch {
       // localStorage 不可環境ではバッジなし (実害なし)
     }

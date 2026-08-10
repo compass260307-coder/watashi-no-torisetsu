@@ -145,7 +145,9 @@ export const KO_RESULT_TYPES: Record<ThirtyTwoTypeId, KoResultTypeCopy> = {
   "dreamer-rabbit__N": {
     name: "사이좋은 펭귄",
     animal: "펭귄",
-    essence: "몽상가",
+    // ja は空想家(dreamer-rabbit__N)と夢想家(earnest-elephant__N)を区別している。
+    // 両方「몽상가」だと2タイプの名前が衝突するため、こちらは공상가(空想家)にする。
+    essence: "공상가",
     oneLiner: "마음속 세상을 언제나 부드럽고 다정한 색으로 채워요.",
   },
   "dreamer-rabbit__R": {
