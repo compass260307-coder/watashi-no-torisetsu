@@ -97,13 +97,19 @@ export function FriendIndividualGuide({
             人数は無料診断の累計完了者数 — この画面の CTA は自己診断 (/diagnosis) への誘いなので、
             友達回答数ではなく自己診断の数を社会的証明に使う。
             上下 padding は帯からはみ出す浮遊アバターの逃げ。
-            文言が日本語固定のため ko では出さない (TakoLockedState と同じ扱い。KO対応は別作業)。
+            ko は韓国語文言を渡して表示 (2026-08-09 KO対応。TakoLockedState と同じ扱い)。
             人数の更新方法は ProofFacesBand のコメント参照。 */}
-        {!isKorean && (
-          <div className="mx-auto max-w-[1080px] pt-10 pb-6 md:pt-14 md:pb-8">
+        <div className="mx-auto max-w-[1080px] pt-10 pb-6 md:pt-14 md:pb-8">
+          {isKorean ? (
+            <ProofFacesBand
+              lead="지금까지"
+              countSuffix="명 이상"
+              tail="이 자신의 사용설명서를 진단했어요"
+            />
+          ) : (
             <ProofFacesBand />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ヒーロー下: 友達診断の案内ページ (tako ロック空状態) と同じ価値説明セクション。
             「こんなことが見えます」4項目グリッド + 進み方 3ステップ。 */}
