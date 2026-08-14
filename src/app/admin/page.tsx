@@ -1404,11 +1404,14 @@ export default function AdminPage() {
   }, []);
 
   const fetchStats = useCallback(
-    async (key: string, p: Preset, cFrom: string, cTo: string) => {
+    // fresh=true は「更新」ボタン。サーバキャッシュを飛ばして最新を再集計する
+    // (通常の切替はキャッシュ利用: 現在を含む期間は5分・過去のみは24時間)。
+    async (key: string, p: Preset, cFrom: string, cTo: string, fresh = false) => {
       setLoading(true);
       setError("");
       try {
         const params = new URLSearchParams();
+        if (fresh) params.set("fresh", "1");
         let range: { from: string; to: string } | null;
         if (p === "custom") {
           // "YYYY-MM-DD" を new Date() に直接渡すと UTC 深夜として解釈され、
@@ -2347,7 +2350,7 @@ export default function AdminPage() {
                 <span className="hidden sm:inline">CSV</span>
               </button>
               <button
-                onClick={() => fetchStats(adminKey, preset, customFrom, customTo)}
+                onClick={() => fetchStats(adminKey, preset, customFrom, customTo, true)}
                 disabled={loading}
                 aria-label={loading ? "更新中" : "更新"}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-stone-950 px-3 text-xs font-black text-white shadow-[0_12px_26px_-20px_rgba(28,25,23,0.7)] transition hover:bg-teal-700 disabled:opacity-50 sm:px-3.5"
