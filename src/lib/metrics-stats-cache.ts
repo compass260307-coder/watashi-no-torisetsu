@@ -6,7 +6,9 @@ import { createHash } from "node:crypto";
 import { computeStats } from "@/lib/admin-stats";
 
 const METRICS_CACHE_TTL_SECONDS = 24 * 60 * 60;
-const metricsCache = getCache({ namespace: "metrics-stats-v1" });
+// 割引表示を価格横へ移した計測版に合わせてv4へ更新。旧レイアウトの
+// 24時間キャッシュを返し続けないよう、計測バージョン変更時も更新する。
+const metricsCache = getCache({ namespace: "metrics-stats-v4" });
 
 type AdminStats = Awaited<ReturnType<typeof computeStats>>;
 

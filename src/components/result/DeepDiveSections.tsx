@@ -289,7 +289,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: LOVE_DECOY_ITEMS,
     cardCopy: (
       <>
-        完全版のレポートを入手して、これらの結果を見てみましょう。
+        自己分析レポートを入手して、これらの結果を見てみましょう。
         <br className="md:hidden" />
         恋愛傾向に関してもっと深掘れます。
       </>
@@ -300,7 +300,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: LOVE_ENDURE_DECOY_ITEMS,
     cardCopy: (
       <>
-        完全版のレポートを入手して、
+        自己分析レポートを入手して、
         <br className="md:hidden" />
         アナタの恋人が言えずにいる気持ちを知りましょう。
       </>
@@ -311,7 +311,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
-        完全版のレポートを入手して、
+        自己分析レポートを入手して、
         <br className="md:hidden" />
         アナタに合った働き方と、避けたほうがいい職場を知りましょう。
       </>
@@ -322,7 +322,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: CAREER_RELATIONS_DECOY_ITEMS,
     cardCopy: (
       <>
-        完全版のレポートを入手して、
+        自己分析レポートを入手して、
         <br className="md:hidden" />
         アナタに合った職場の人間関係のつくり方を知りましょう。
       </>
@@ -530,7 +530,7 @@ export function DeepDiveSections({
                 <>완전판에서 {lockedLabels}의 자세한 내용을 모두 읽을 수 있어요.</>
               ) : (
                 <>
-                  完全版で、{lockedLabels}のくわしい深掘りが
+                  自己分析レポートで、{lockedLabels}のくわしい深掘りが
                   <br className="md:hidden" />
                   ぜんぶ読めるようになります。
                 </>

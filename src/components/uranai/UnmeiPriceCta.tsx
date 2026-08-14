@@ -1,9 +1,8 @@
 "use client";
 
 // /unmei 未購入LPの価格表示 + 購入CTA (2026-07-26 指示)。
-// 完全版 (¥499 full_access) 保有者にはアップグレード価格 ¥400
-// (product=unmei_upgrade) を出し分ける。価格の権威はサーバ:
-// create-unmei-session が hasFullAccess を検証するため、ここでの判定は表示用。
+// 完全版 (¥499 full_access) 保有者にはプレミアムへの差額 ¥400 を出し分ける。
+// 価格の権威は統一Checkout APIであり、ここでの判定は表示用。
 //
 // 判定は BottomNav と同じ流儀:
 //   - ログイン session の owner_token か localStorage の torisetsu_owner_token
@@ -105,7 +104,6 @@ export default function UnmeiPriceCta({
         <div className="mt-6 flex justify-center">
           <UnmeiCheckoutButton
             ownerToken={ownerToken}
-            product={hasFull ? "unmei_upgrade" : "unmei"}
             launchChat={launchChat}
           >
             {ctaLabel}
@@ -149,7 +147,6 @@ export default function UnmeiPriceCta({
       >
         <UnmeiCheckoutButton
           ownerToken={ownerToken}
-          product={hasFull ? "unmei_upgrade" : "unmei"}
           launchChat={launchChat}
         >
           {ctaLabel}

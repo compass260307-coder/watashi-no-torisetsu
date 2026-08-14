@@ -83,7 +83,9 @@ const INVITE_CHANNEL_LABELS: Record<string, string> = {
 
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
+  self_report: "自己・友達診断＋PDF ¥199",
   full_access: "完全版 ¥499",
+  premium_bundle: "プレミアム ¥899",
   // unmei 系はセールで価格が変動するためラベルに金額を含めない (売上は実額で集計)
   unmei: "運命の設計図",
   unmei_upgrade: "運命アップグレード",
@@ -91,6 +93,15 @@ const PAYMENT_KIND_LABELS: Record<string, string> = {
   perception_unlock: "友達個別",
   integrated_trisetsu: "旧 統合トリセツ",
   unknown: "不明",
+};
+
+const COURSE_PAYWALL_LABELS: Record<
+  "self_report" | "full_access" | "premium_bundle",
+  string
+> = {
+  self_report: "お試し ¥199",
+  full_access: "完全版 ¥499",
+  premium_bundle: "プレミアム ¥899",
 };
 
 type Stats = {
@@ -218,6 +229,35 @@ type Stats = {
     };
   };
   paywallFunnel: { label: string; count: number }[];
+  coursePaywall: {
+    version: string;
+    cardViewers: number;
+    planViewers: number;
+    ctaClickers: number;
+    stripeReached: number;
+    purchasers: number;
+    transactions: number;
+    newPurchases: number;
+    upgrades: number;
+    revenueJpy: number;
+    revenuePerViewerJpy: number;
+    purchaseRate: number;
+    plans: {
+      product: "self_report" | "full_access" | "premium_bundle";
+      viewers: number;
+      ctaClickers: number;
+      stripeReached: number;
+      purchasers: number;
+      transactions: number;
+      newPurchases: number;
+      upgrades: number;
+      revenueJpy: number;
+      ctaRate: number;
+      stripeRate: number;
+      checkoutCompletionRate: number;
+      purchaseRate: number;
+    }[];
+  };
   takoFunnel: { label: string; count: number }[];
   unmei: {
     funnel: { label: string; count: number }[];
@@ -716,7 +756,7 @@ function AttributionNum({ value, strong }: { value: number; strong?: boolean }) 
   );
 }
 
-// 導線別の決済結果テーブル (自己診断ページ発 / 友達診断ページ発 で共用・どちらも ¥499)。
+// 3コース課金の導線別決済結果テーブル。
 function AttributionTable({
   rows,
 }: {
@@ -820,6 +860,78 @@ function AttributionTable({
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CoursePaywallTable({
+  plans,
+}: {
+  plans: Stats["coursePaywall"]["plans"];
+}) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-stone-200/80 bg-[#fffdf8]">
+      <table className="w-full min-w-[940px] text-xs">
+        <thead className="bg-stone-950 text-stone-300">
+          <tr>
+            <th className="px-3 py-3 text-left font-black">コース</th>
+            <th className="px-3 py-3 text-right font-black">表示</th>
+            <th className="px-3 py-3 text-right font-black">CTA</th>
+            <th className="px-3 py-3 text-right font-black">Stripe</th>
+            <th className="px-3 py-3 text-right font-black">決済</th>
+            <th className="px-3 py-3 text-right font-black">新規 / UP</th>
+            <th className="px-3 py-3 text-right font-black">課金率</th>
+            <th className="px-3 py-3 text-right font-black">実売上</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-stone-100/80">
+          {plans.map((plan) => (
+            <tr key={plan.product} className="hover:bg-stone-50/90">
+              <td className="px-3 py-3 font-black text-stone-800">
+                {COURSE_PAYWALL_LABELS[plan.product]}
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums text-stone-700">
+                {plan.viewers.toLocaleString()}
+              </td>
+              <td className="px-3 py-3 text-right">
+                <p className="font-bold tabular-nums text-stone-700">
+                  {plan.ctaClickers.toLocaleString()}
+                </p>
+                <p className="mt-0.5 text-[10px] tabular-nums text-stone-400">
+                  {pct(plan.ctaRate)}
+                </p>
+              </td>
+              <td className="px-3 py-3 text-right">
+                <p className="font-bold tabular-nums text-stone-700">
+                  {plan.stripeReached.toLocaleString()}
+                </p>
+                <p className="mt-0.5 text-[10px] tabular-nums text-stone-400">
+                  CTA比 {pct(plan.stripeRate)}
+                </p>
+              </td>
+              <td className="px-3 py-3 text-right">
+                <p className="font-black tabular-nums text-emerald-600">
+                  {plan.purchasers.toLocaleString()}
+                </p>
+                <p className="mt-0.5 text-[10px] tabular-nums text-stone-400">
+                  Stripe比 {pct(plan.checkoutCompletionRate)}
+                </p>
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums text-stone-600">
+                {plan.newPurchases.toLocaleString()} / {plan.upgrades.toLocaleString()}
+              </td>
+              <td className="px-3 py-3 text-right">
+                <span className="rounded bg-stone-900 px-2 py-1 font-black tabular-nums text-white">
+                  {pct(plan.purchaseRate)}
+                </span>
+              </td>
+              <td className="px-3 py-3 text-right font-black tabular-nums text-stone-900">
+                {formatMoney(plan.revenueJpy, "jpy")}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -1589,10 +1701,6 @@ export default function AdminPage() {
     ...stats.friendDiagnosisFunnel.friendFunnel.map((f) => f.count),
     1,
   );
-  const takoFunnelMax = Math.max(
-    1,
-    ...(stats.takoFunnel ?? []).map((f) => f.count),
-  );
   const paywallFunnelMax = Math.max(
     ...(stats.paywallFunnel ?? []).map((f) => f.count),
     1,
@@ -1750,16 +1858,36 @@ export default function AdminPage() {
       ]),
     );
     rows.push([]);
-    rows.push(["# 課金ファネル (自己診断・完全版 ¥499)"]);
+    rows.push(["# 3コース課金ファネル"]);
     rows.push(["ステップ", "件数"]);
     (stats.paywallFunnel ?? []).forEach((s) =>
       rows.push([s.label, String(s.count)]),
     );
     rows.push([]);
-    rows.push(["# 課金ファネル (友達診断ページ発 ¥499)"]);
-    rows.push(["ステップ", "件数"]);
-    (stats.takoFunnel ?? []).forEach((s) =>
-      rows.push([s.label, String(s.count)]),
+    rows.push(["# 3コース商品別"]);
+    rows.push([
+      "コース",
+      "表示者",
+      "CTA",
+      "Stripe",
+      "課金者",
+      "新規",
+      "アップグレード",
+      "課金率",
+      "実売上(JPY)",
+    ]);
+    stats.coursePaywall.plans.forEach((plan) =>
+      rows.push([
+        COURSE_PAYWALL_LABELS[plan.product],
+        String(plan.viewers),
+        String(plan.ctaClickers),
+        String(plan.stripeReached),
+        String(plan.purchasers),
+        String(plan.newPurchases),
+        String(plan.upgrades),
+        pct(plan.purchaseRate),
+        String(plan.revenueJpy),
+      ]),
     );
     rows.push([]);
     rows.push(["# 運命の設計図"]);
@@ -1921,7 +2049,7 @@ export default function AdminPage() {
       sectionId: "revenue",
     },
     {
-      label: "完全版",
+      label: "3コース",
       value: nullablePct(fullAccessStripeRate),
       detail: `購入CTA→Stripe / 完了率 ${nullablePct(fullAccessCompleteRate)}`,
       tone: toneForRate(fullAccessStripeRate, 0.82, 0.58),
@@ -2499,14 +2627,53 @@ export default function AdminPage() {
               }
             />
             <Panel className="p-5 sm:p-6">
-            {/* ===== ① 自己診断・完全版 (¥499 / full_access) ===== */}
-            <div className="mb-4 flex items-center gap-2">
+            {/* ===== 3コース課金カード (three_course_v1) ===== */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               <span className="rounded bg-teal-700 px-3 py-1 text-[11px] font-black text-white">
-                完全版 ¥499
+                3コース課金
               </span>
               <span className="text-[11px] font-medium text-stone-400">
-                結果ページ
+                ¥199 / ¥499 / ¥899
               </span>
+              <span
+                className={`ml-auto rounded px-2.5 py-1 text-[11px] font-black ${
+                  stats.purchaseConversionRate > 0.2
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-stone-100 text-stone-500"
+                }`}
+              >
+                カード表示→決済 {pct(stats.purchaseConversionRate)}
+                （{stats.purchaseConversionRate > 0.2 ? "成功ライン達成" : "目標 20%超"}）
+              </span>
+            </div>
+            <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-[10px] font-bold text-stone-400">カード閲覧者</p>
+                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
+                  {stats.coursePaywall.cardViewers.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-[10px] font-bold text-stone-400">課金者</p>
+                <p className="mt-1 text-2xl font-black tabular-nums text-emerald-700">
+                  {stats.coursePaywall.purchasers.toLocaleString()}
+                </p>
+                <p className="mt-1 text-[10px] text-stone-400">
+                  新規 {stats.coursePaywall.newPurchases} / UP {stats.coursePaywall.upgrades}
+                </p>
+              </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-[10px] font-bold text-stone-400">実売上</p>
+                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
+                  {formatMoney(stats.coursePaywall.revenueJpy, "jpy")}
+                </p>
+              </div>
+              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+                <p className="text-[10px] font-bold text-stone-400">閲覧者あたり売上</p>
+                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
+                  {formatMoney(stats.coursePaywall.revenuePerViewerJpy, "jpy")}
+                </p>
+              </div>
             </div>
             <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
               <span className="w-28 text-right">ステップ</span>
@@ -2527,8 +2694,17 @@ export default function AdminPage() {
               ))}
             </div>
             <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
-              クリックから決済までの流れです。
+              3コース版だけを集計し、テスト決済（cs_test_）は除外しています。課金率はユニーク課金者 ÷ カード閲覧者です。
             </p>
+            <div className="mt-6 border-t border-stone-100 pt-5">
+              <p className="mb-1 text-sm font-black text-stone-900">
+                コース別
+              </p>
+              <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                500ms以上中央表示されたコースを分母に、CTA・Stripe・決済を商品別に追跡します。
+              </p>
+              <CoursePaywallTable plans={stats.coursePaywall.plans} />
+            </div>
             {(stats.paywallAttribution ?? []).length > 0 && (
               <div className="mt-6 border-t border-stone-100 pt-5">
                 <p className="mb-1 text-sm font-black text-stone-900">
@@ -2543,56 +2719,6 @@ export default function AdminPage() {
                 </p>
               </div>
             )}
-
-            {/* ===== ② 友達診断ページ発 (¥499 / full_access) =====
-                商品は ¥499 完全版に一本化。/tako のロックから買われた full_access を集計。
-                旧 ¥799 単体 (tako_unlock) は販売終了で「商品別売上内訳」に過去実績が残るだけ。 */}
-            <div className="mt-10 border-t-2 border-stone-100 pt-6">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="rounded bg-rose-500 px-3 py-1 text-[11px] font-black text-white">
-                  友達診断 ¥499
-                </span>
-                <span className="text-[11px] font-medium text-stone-400">
-                  /tako 発
-                </span>
-              </div>
-              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
-                <span className="w-28 text-right">ステップ</span>
-                <span className="flex-1">件数</span>
-                <span className="w-16 text-right">前段比</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {(stats.takoFunnel ?? []).map((step, i) => (
-                  <FunnelBar
-                    key={step.label}
-                    label={step.label}
-                    count={step.count}
-                    max={takoFunnelMax}
-                    prevCount={
-                      i > 0 ? stats.takoFunnel[i - 1].count : undefined
-                    }
-                  />
-                ))}
-              </div>
-              <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
-                /tako のロックから買われた ¥499 の流れです。
-              </p>
-              <div className="mt-6 border-t border-stone-100 pt-5">
-                <p className="mb-1 text-sm font-black text-stone-900">
-                  カード別
-                </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
-                  /tako 内のクリックと決済です。
-                </p>
-                {(stats.takoAttribution ?? []).length > 0 ? (
-                  <AttributionTable rows={stats.takoAttribution} />
-                ) : (
-                  <div className="rounded-lg border border-dashed border-stone-200 bg-stone-50/60 px-4 py-8 text-center text-xs font-medium text-stone-400">
-                    この期間のデータはありません。
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
             {(stats.revenueByKind ?? []).length > 0 && (

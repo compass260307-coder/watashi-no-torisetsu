@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasTakoAccess } from "@/lib/entitlements";
 import { localizedAlternates } from "@/lib/locale-seo";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -64,7 +64,7 @@ export default async function KoreanEvaluationResultPage({
     notFound();
   }
 
-  if (!(await hasFullAccess(perception.target_user_id))) {
+  if (!(await hasTakoAccess(perception.target_user_id))) {
     redirect(`/ko/me/${encodeURIComponent(ownerToken)}?paywall=1`);
   }
 

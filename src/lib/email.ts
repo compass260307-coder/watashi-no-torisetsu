@@ -8,6 +8,15 @@
 // HTML + plain text を両方送る (受信側のクライアント・spam フィルタ対応)。
 
 import { Resend } from "resend";
+import {
+  FULL_ACCESS_PRICE_JPY,
+  FULL_ACCESS_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_JPY,
+  PREMIUM_BUNDLE_PRICE_KRW,
+  SELF_REPORT_PRICE_JPY,
+  SELF_REPORT_PRICE_KRW,
+  type AccessProduct,
+} from "@/lib/access-products";
 import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
@@ -186,13 +195,17 @@ interface SendDetailedReportArgs {
   ownerToken: string;
   ownerName?: string | null;
   locale?: EmailLocale;
+  product?: AccessProduct;
+  purchaseAmountJpy?: number | null;
+  purchaseAmountMinor?: number | null;
 }
 
 /**
  * 詳細レポートお届けメール (フルアクセス購入特典)。
  *
  * Stripe Webhook (checkout.session.completed / product=full_access) から送信。
- * 日本語版・韓国語版ともボタンは 2 つ:
+ * 自己診断とPDFに加え、日本版の完全版/プレミアムは
+ * 運命の設計図への導線も同封する。
  *   - 「解放された自己診断結果を見る」= /me/[ownerToken] または /ko/me/[ownerToken]
  *   - 「完全版 PDF をダウンロード」= /report/[ownerToken]/pdf
  * どちらも token ベースの永続 URL。ゲスト決済 (診断前) でも診断完了後に
@@ -203,6 +216,7 @@ export async function sendDetailedReportEmail(
   args: SendDetailedReportArgs,
 ): Promise<void> {
   const locale = args.locale ?? "ja";
+  const product = args.product ?? "full_access";
   const siteName = locale === "ko" ? KO_SITE_NAME : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
@@ -212,10 +226,20 @@ export async function sendDetailedReportEmail(
   const token = encodeURIComponent(args.ownerToken);
   const meUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/me/${token}`;
   const pdfUrl = `${SITE_URL}/report/${token}/pdf${locale === "ko" ? "?locale=ko" : ""}`;
+  const unmeiUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/unmei`;
+  const hoshiyomiUrl = locale === "ja" ? `${SITE_URL}/hoshiyomi` : undefined;
   const subject =
     locale === "ko"
-      ? `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
-      : `【${SITE_NAME}】完全版レポートをお届けします`;
+      ? product === "self_report"
+        ? `【${KO_SITE_NAME}】자기 분석 리포트를 보내 드립니다`
+        : product === "premium_bundle"
+          ? `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
+          : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
+      : product === "self_report"
+        ? `【${SITE_NAME}】自己分析レポートをお届けします`
+        : product === "premium_bundle"
+          ? `【${SITE_NAME}】プレミアムコースを解放しました`
+          : `【${SITE_NAME}】完全版レポートをお届けします`;
 
   try {
     const result = await resend.emails.send({
@@ -224,12 +248,43 @@ export async function sendDetailedReportEmail(
       subject,
       html:
         locale === "ko"
-          ? renderDetailedReportHtmlKo({ pdfUrl, meUrl, greetingName })
-          : renderDetailedReportHtml({ pdfUrl, meUrl, greetingName }),
+          ? renderDetailedReportHtmlKo({
+              pdfUrl,
+              meUrl,
+              unmeiUrl,
+              hoshiyomiUrl,
+              greetingName,
+              product,
+              purchaseAmountMinor: args.purchaseAmountMinor,
+            })
+          : renderDetailedReportHtml({
+              pdfUrl,
+              meUrl,
+              unmeiUrl,
+              hoshiyomiUrl,
+              greetingName,
+              product,
+              purchaseAmountMinor: args.purchaseAmountMinor,
+              purchaseAmountJpy: args.purchaseAmountJpy,
+            }),
       text:
         locale === "ko"
-          ? renderDetailedReportTextKo({ pdfUrl, meUrl, greetingName })
-          : renderDetailedReportText({ pdfUrl, meUrl, greetingName }),
+          ? renderDetailedReportTextKo({
+              pdfUrl,
+              meUrl,
+              unmeiUrl,
+              hoshiyomiUrl,
+              greetingName,
+              product,
+            })
+          : renderDetailedReportText({
+              pdfUrl,
+              meUrl,
+              unmeiUrl,
+              hoshiyomiUrl,
+              greetingName,
+              product,
+            }),
     });
     if (result.error) {
       console.error("[email] sendDetailedReportEmail Resend error:", result.error);
@@ -459,7 +514,12 @@ function renderTrisetsuCompleteText(
 interface DetailedReportTemplateArgs {
   pdfUrl: string;
   meUrl: string;
+  unmeiUrl?: string;
+  hoshiyomiUrl?: string;
   greetingName: string;
+  product?: AccessProduct;
+  purchaseAmountJpy?: number | null;
+  purchaseAmountMinor?: number | null;
 }
 
 // export はテンプレプレビュー (scripts/preview-report-email.ts) 用
@@ -467,6 +527,63 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   const greeting = args.greetingName
     ? `${escapeHtml(args.greetingName)}さん、こんにちは。`
     : "こんにちは。";
+  const isSelfReport = args.product === "self_report";
+  const isPremiumBundle = args.product === "premium_bundle";
+  const hasUnmei = !isSelfReport;
+  const reportName = isSelfReport
+    ? "ワタシのトリセツ 自己分析レポート"
+    : isPremiumBundle
+      ? "ワタシのトリセツ プレミアムコース"
+      : "ワタシのトリセツ 性格レポート完全版";
+  const pdfLabel = isSelfReport ? "自己分析PDF" : "完全版PDF";
+  const defaultPurchaseAmount = isSelfReport
+    ? SELF_REPORT_PRICE_JPY
+    : isPremiumBundle
+      ? PREMIUM_BUNDLE_PRICE_JPY
+      : FULL_ACCESS_PRICE_JPY;
+  const purchasePrice = `¥${(
+    args.purchaseAmountJpy ?? defaultPurchaseAmount
+  ).toLocaleString("ja-JP")}`;
+  const purchaseItems = isSelfReport
+    ? `<tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">自己診断結果のロックされた8セクションをすべて解放</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">16ページ以上の自己分析PDF</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">2人目以降の友達診断結果もすべて解放</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">何度でも作り直せる友達診断分析PDF</td>
+                        </tr>`
+    : `<tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">キャリア・成長の深掘り</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">友達ひとりずつの本音</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">シーン別の相性</td>
+                        </tr>${
+                          hasUnmei
+                            ? `<tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">あなた専用の運命の設計図</td>
+                        </tr>
+                        <tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">星読みの案内人とのチャット${isPremiumBundle ? "30" : "5"}回分</td>
+                        </tr>`
+                            : ""
+                        }`;
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -475,7 +592,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
-    <title>完全版レポートをお届けします</title>
+    <title>${isSelfReport ? "自己分析レポート" : "完全版レポート"}をお届けします</title>
     <style>
       @media only screen and (max-width: 600px) {
         .email-shell { padding: 0 !important; }
@@ -487,7 +604,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   </head>
   <body style="margin:0;padding:0;background:#F3F3F7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Hiragino Kaku Gothic ProN','Yu Gothic',Meiryo,sans-serif;color:#2E2E5C;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-      ご購入いただいた完全版レポートの準備ができました。自己診断結果と完全版PDFをご利用いただけます。
+      ご購入いただいた${isSelfReport ? "自己分析レポート" : "完全版レポート"}の準備ができました。自己診断結果と${pdfLabel}をご利用いただけます。
     </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#F3F3F7;">
       <tr>
@@ -507,7 +624,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                 </p>
                 <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">
                   ご購入ありがとうございます。<br />
-                  「ワタシのトリセツ 性格レポート完全版」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。
+                  「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。
                 </p>
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;">
@@ -518,34 +635,33 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                   </tr>
                   <tr>
                     <td align="center" style="padding:0;">
-                      <a class="cta-link" href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #1B1B3E;">完全版PDFをダウンロード&nbsp; &#8594;</a>
+                      <a class="cta-link" href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #1B1B3E;">${pdfLabel}をダウンロード&nbsp; &#8594;</a>
                     </td>
                   </tr>
+                  ${hasUnmei && args.unmeiUrl ? `<tr>
+                    <td align="center" style="padding:14px 0 0;">
+                      <a class="cta-link" href="${args.unmeiUrl}" style="display:block;padding:15px 18px;background:#9A6A24;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">運命の設計図を作る&nbsp; &#8594;</a>
+                    </td>
+                  </tr>` : ""}
+                  ${hasUnmei && args.hoshiyomiUrl ? `<tr>
+                    <td align="center" style="padding:14px 0 0;">
+                      <a class="cta-link" href="${args.hoshiyomiUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">星読みの案内人と話す&nbsp; &#8594;</a>
+                    </td>
+                  </tr>` : ""}
                 </table>
 
                 <p style="margin:0 0 32px;font-size:15px;line-height:1.85;color:#5A5A6E;">
-                  自己診断結果はサイト上で確認でき、完全版レポートはPDFで保存・印刷できます。どちらのリンクも、いつでも繰り返しご利用いただけます。
+                  自己診断結果はサイト上で確認でき、${isSelfReport ? "自己分析レポート" : "完全版レポート"}はPDFで保存・印刷できます。どちらのリンクも、いつでも繰り返しご利用いただけます。
                 </p>
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 34px;background:#F3F2FF;border-radius:14px;">
                   <tr>
                     <td style="padding:28px 28px 26px;">
                       <h2 style="margin:0 0 14px;font-size:22px;font-weight:800;line-height:1.55;color:#2E2E5C;">ご購入内容</h2>
-                      <p style="margin:0 0 4px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">ワタシのトリセツ 性格レポート完全版</p>
-                      <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#5A5A6E;">¥499（税込・買い切り）</p>
+                      <p style="margin:0 0 4px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">${reportName}</p>
+                      <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#5A5A6E;">${purchasePrice}（税込・買い切り）</p>
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
-                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">キャリア・成長の深掘り</td>
-                        </tr>
-                        <tr>
-                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
-                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">友達ひとりずつの本音</td>
-                        </tr>
-                        <tr>
-                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
-                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">シーン別の相性</td>
-                        </tr>
+                        ${purchaseItems}
                       </table>
                     </td>
                   </tr>
@@ -576,28 +692,66 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
   const greeting = args.greetingName
     ? `${args.greetingName}さん、こんにちは。`
     : "こんにちは。";
+  const isSelfReport = args.product === "self_report";
+  const isPremiumBundle = args.product === "premium_bundle";
+  const hasUnmei = !isSelfReport;
+  const reportName = isSelfReport
+    ? "ワタシのトリセツ 自己分析レポート"
+    : isPremiumBundle
+      ? "ワタシのトリセツ プレミアムコース"
+      : "ワタシのトリセツ 性格レポート完全版";
+  const purchaseItems = isSelfReport
+    ? [
+        "・自己診断結果のロックされた8セクションをすべて解放",
+        "・16ページ以上の自己分析PDF",
+        "・2人目以降の友達診断結果もすべて解放",
+        "・何度でも作り直せる友達診断分析PDF",
+      ]
+    : [
+        "・キャリア・成長の深掘り",
+        "・友達ひとりずつの本音",
+        "・シーン別の相性",
+        ...(hasUnmei
+          ? [
+              "・あなた専用の運命の設計図",
+              `・星読みの案内人とのチャット${isPremiumBundle ? 30 : 5}回分`,
+            ]
+          : []),
+      ];
+  const defaultPurchaseAmount = isSelfReport
+    ? SELF_REPORT_PRICE_JPY
+    : isPremiumBundle
+      ? PREMIUM_BUNDLE_PRICE_JPY
+      : FULL_ACCESS_PRICE_JPY;
+  const purchasePrice = `¥${(
+    args.purchaseAmountJpy ?? defaultPurchaseAmount
+  ).toLocaleString("ja-JP")}`;
   return [
     greeting,
     "",
     "ご購入ありがとうございます。",
-    "「ワタシのトリセツ 性格レポート完全版」のご用意ができました。",
+    `「${reportName}」のご用意ができました。`,
     "購入いただいた内容は、下のリンクからいつでもご覧いただけます。",
     "",
     "■ 解放された自己診断結果を見る",
     args.meUrl,
     "",
-    "■ 完全版PDFをダウンロード",
+    `■ ${isSelfReport ? "自己分析PDF" : "完全版PDF"}をダウンロード`,
     args.pdfUrl,
+    ...(hasUnmei && args.unmeiUrl
+      ? ["", "■ 運命の設計図を作る", args.unmeiUrl]
+      : []),
+    ...(hasUnmei && args.hoshiyomiUrl
+      ? ["", "■ 星読みの案内人と話す", args.hoshiyomiUrl]
+      : []),
     "",
-    "自己診断結果はサイト上で確認でき、完全版レポートはPDFで保存・印刷できます。",
+    `自己診断結果はサイト上で確認でき、${isSelfReport ? "自己分析レポート" : "完全版レポート"}はPDFで保存・印刷できます。`,
     "どちらのリンクも、いつでも繰り返しご利用いただけます。",
     "",
     "【ご購入内容】",
-    "ワタシのトリセツ 性格レポート完全版",
-    "¥499（税込・買い切り）",
-    "・キャリア・成長の深掘り",
-    "・友達ひとりずつの本音",
-    "・シーン別の相性",
+    reportName,
+    `${purchasePrice}（税込・買い切り）`,
+    ...purchaseItems,
     "",
     "※ 購入時点で診断がお済みでない場合は、診断完了後にこのメールのリンクを開いてください。",
     "あなたのタイプに合わせた内容へ更新されます。",
@@ -617,6 +771,23 @@ function renderDetailedReportHtmlKo(
   const greeting = args.greetingName
     ? `${escapeHtml(args.greetingName)}님, 안녕하세요.`
     : "안녕하세요.";
+  const isSelfReport = args.product === "self_report";
+  const isPremiumBundle = args.product === "premium_bundle";
+  const reportName = isSelfReport
+    ? "나의 사용설명서 라이트 코스"
+    : isPremiumBundle
+      ? "나의 사용설명서 프리미엄 코스"
+      : "나의 사용설명서 완전판 코스";
+  const price =
+    args.purchaseAmountMinor ??
+    (isSelfReport
+      ? SELF_REPORT_PRICE_KRW
+      : isPremiumBundle
+        ? PREMIUM_BUNDLE_PRICE_KRW
+        : FULL_ACCESS_PRICE_KRW);
+  const items = isSelfReport
+    ? "✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 몇 번이든 다시 만들 수 있는 친구 분석 PDF"
+    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${isPremiumBundle ? "<br />✓ 한국어 운명의 설계도" : ""}`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -624,7 +795,7 @@ function renderDetailedReportHtmlKo(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <title>완전판 리포트를 보내 드립니다</title>
+    <title>${reportName}</title>
   </head>
   <body style="margin:0;padding:0;background:#F3F3F7;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;color:#2E2E5C;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#F3F3F7;"><tr><td align="center" style="padding:32px 16px;">
@@ -632,15 +803,16 @@ function renderDetailedReportHtmlKo(
         <p style="margin:0 0 22px;text-align:center;font-size:15px;font-weight:800;line-height:1.6;letter-spacing:0.08em;color:#2E2E5C;">${KO_SITE_NAME}</p>
         <p style="margin:0 0 36px;text-align:center;"><img src="${SITE_URL}/checkout-fullaccess.png" width="360" alt="완전판 리포트" style="display:inline-block;width:360px;max-width:100%;height:auto;border:0;border-radius:14px;" /></p>
         <p style="margin:0 0 20px;font-size:15px;line-height:1.8;color:#2E2E5C;">${greeting}</p>
-        <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">구매해 주셔서 감사합니다.<br />‘나의 사용설명서 완전판 패키지’가 준비되었어요. 아래 버튼에서 언제든 다시 확인할 수 있어요.</p>
+        <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">구매해 주셔서 감사합니다.<br />‘${reportName}’가 준비되었어요. 아래 버튼에서 언제든 다시 확인할 수 있어요.</p>
         <p style="margin:0 0 14px;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">잠금 해제된 상세 결과 보기&nbsp; &#8594;</a></p>
         <p style="margin:0 0 18px;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">자기 분석 완전판 PDF 다운로드&nbsp; &#8594;</a></p>
+        ${isPremiumBundle && args.unmeiUrl ? `<p style="margin:0 0 18px;"><a href="${args.unmeiUrl}" style="display:block;padding:15px 18px;background:#9A6A24;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">운명의 설계도 만들기&nbsp; &#8594;</a></p>` : ""}
         <p style="margin:0 0 30px;font-size:15px;line-height:1.85;color:#5A5A6E;">상세 결과는 웹에서 확인하고, 완전판 리포트는 PDF로 저장하거나 인쇄할 수 있어요. 두 링크 모두 언제든 다시 이용할 수 있어요.</p>
         <div style="margin:0 0 30px;padding:26px 28px;background:#F3F2FF;border-radius:14px;">
           <h2 style="margin:0 0 12px;font-size:21px;font-weight:800;line-height:1.5;color:#2E2E5C;">구매 내용</h2>
-          <p style="margin:0 0 6px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">나의 사용설명서 완전판 패키지</p>
-          <p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:#5A5A6E;">₩4,900 · 1회 결제</p>
-          <p style="margin:0;font-size:15px;line-height:1.9;color:#5A5A6E;">✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석</p>
+          <p style="margin:0 0 6px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">${reportName}</p>
+          <p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:#5A5A6E;">₩${price.toLocaleString("ko-KR")} · 1회 결제</p>
+          <p style="margin:0;font-size:15px;line-height:1.9;color:#5A5A6E;">${items}</p>
         </div>
         <p style="margin:0 0 18px;font-size:15px;line-height:1.85;color:#7A7A92;">결제할 때 아직 진단을 완료하지 않았다면 진단을 마친 뒤 이 메일의 링크를 다시 열어 주세요. 내 유형에 맞는 내용으로 표시됩니다.</p>
         <p style="margin:0 0 18px;font-size:13px;line-height:1.85;color:#7A7A92;"><a href="${SITE_URL}/ko/terms" style="color:#5B5BEF;text-decoration:underline;">이용약관</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/privacy" style="color:#5B5BEF;text-decoration:underline;">개인정보처리방침</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/legal/commerce" style="color:#5B5BEF;text-decoration:underline;">판매 및 환불 안내</a></p>
@@ -659,29 +831,57 @@ function renderDetailedReportTextKo(
   const greeting = args.greetingName
     ? `${args.greetingName}님, 안녕하세요.`
     : "안녕하세요.";
+  const isSelfReport = args.product === "self_report";
+  const isPremiumBundle = args.product === "premium_bundle";
+  const reportName = isSelfReport
+    ? "나의 사용설명서 라이트 코스"
+    : isPremiumBundle
+      ? "나의 사용설명서 프리미엄 코스"
+      : "나의 사용설명서 완전판 코스";
+  const price =
+    args.purchaseAmountMinor ??
+    (isSelfReport
+      ? SELF_REPORT_PRICE_KRW
+      : isPremiumBundle
+        ? PREMIUM_BUNDLE_PRICE_KRW
+        : FULL_ACCESS_PRICE_KRW);
+  const items = isSelfReport
+    ? [
+        "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
+        "・16페이지 이상의 자기 분석 PDF",
+        "・두 번째 친구부터의 친구 진단 결과 전체 해제",
+        "・몇 번이든 다시 만들 수 있는 친구 분석 PDF",
+      ]
+    : [
+        "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
+        "・16페이지 이상의 자기 분석 완전판 PDF",
+        "・두 번째 친구부터의 친구 진단 결과 전체 해제",
+        "・친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF",
+        "・연애 파트너 궁합 분석",
+        ...(isPremiumBundle ? ["・한국어 운명의 설계도"] : []),
+      ];
   return [
     greeting,
     "",
     "구매해 주셔서 감사합니다.",
-    "‘나의 사용설명서 완전판 패키지’가 준비되었어요.",
+    `‘${reportName}’가 준비되었어요.`,
     "",
     "■ 잠금 해제된 상세 결과 보기",
     args.meUrl,
     "",
     "■ 자기 분석 완전판 PDF 다운로드",
     args.pdfUrl,
+    ...(isPremiumBundle && args.unmeiUrl
+      ? ["", "■ 운명의 설계도 만들기", args.unmeiUrl]
+      : []),
     "",
     "상세 결과는 웹에서 확인하고, 완전판 리포트는 PDF로 저장하거나 인쇄할 수 있어요.",
     "두 링크 모두 언제든 다시 이용할 수 있어요.",
     "",
     "【구매 내용】",
-    "나의 사용설명서 완전판 패키지",
-    "₩4,900 · 1회 결제",
-    "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
-    "・16페이지 이상의 자기 분석 완전판 PDF",
-    "・두 번째 친구부터의 친구 진단 결과 전체 해제",
-    "・친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF",
-    "・연애 파트너 궁합 분석",
+    reportName,
+    `₩${price.toLocaleString("ko-KR")} · 1회 결제`,
+    ...items,
     "",
     "결제할 때 아직 진단을 완료하지 않았다면 진단을 마친 뒤 링크를 다시 열어 주세요.",
     "",

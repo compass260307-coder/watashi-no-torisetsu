@@ -28,13 +28,17 @@ import {
   type CoreKpiPaymentFact,
 } from "@/lib/core-kpis";
 import { TAKO_PAYWALL_SOURCES } from "@/lib/paywall-source";
+import {
+  ACCESS_PRODUCTS,
+  FULL_ACCESS_PRICE_JPY,
+  THREE_COURSE_PAYWALL_VERSION,
+  type AccessProduct,
+} from "@/lib/access-products";
 
 const PAGE = 1000;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
 const QUESTION_COUNT_CONCURRENCY = 2;
 const DB_QUERY_CONCURRENCY = 2;
-// 概算売上の単価。2026-07-14 に ¥199 → ¥499 へ改定 (それ以前の購入分は過大に出る)。
-const FULL_ACCESS_PRICE_JPY = 499;
 // /tako 到達を owner_token + invite_code 付きでページ本体から計測し始める時刻。
 // これ以前を分母に混ぜると「到達していたがイベントが無い人」が離脱扱いになるため除外する。
 const FRIEND_FUNNEL_MEASUREMENT_STARTED_AT = "2026-07-18T04:15:00.000Z";
@@ -179,7 +183,10 @@ export async function computeStats(from: string | null, to: string | null) {
     return make;
   };
 
-  type StripeEventRow = { metadata: Record<string, unknown> | null };
+  type StripeEventRow = {
+    owner_token: string | null;
+    metadata: Record<string, unknown> | null;
+  };
   type PaymentHistoryRow = {
     user_id: string;
     stripe_session_id: string;
@@ -205,6 +212,11 @@ export async function computeStats(from: string | null, to: string | null) {
 
   // サーバ発行イベント (checkout/purchase) は webhook 再送等での重複挿入があり得るため、
   // 件数ではなく stripe_session_id のユニーク数で数える (二重計上の恒久対策)。
+  const isTestStripeSession = (sid: string) => sid.startsWith("cs_test_");
+  const isLiveStripeRow = (row: StripeEventRow): boolean => {
+    const sid = row.metadata?.stripe_session_id;
+    return typeof sid === "string" && !!sid && !isTestStripeSession(sid);
+  };
   const countUniqueStripeSessions = (rows: StripeEventRow[]): number => {
     const ids = new Set<string>();
     let noId = 0;
@@ -262,6 +274,9 @@ export async function computeStats(from: string | null, to: string | null) {
   type EventMetaSessionRow = SessionRow & {
     metadata: Record<string, unknown> | null;
   };
+  type PaywallEventRow = EventMetaSessionRow & {
+    owner_token: string | null;
+  };
 
   const coreSchemaIssues: string[] = [];
   const recordCoreSchemaIssue = (error: {
@@ -287,6 +302,7 @@ export async function computeStats(from: string | null, to: string | null) {
     friendToDiagRows,
     friendLandingRows,
     paywallViewedRows,
+    paywallPlanViewedRows,
     paywallScrollRows,
     purchaseCtaRows,
     users,
@@ -335,18 +351,18 @@ export async function computeStats(from: string | null, to: string | null) {
     ),
     // ----- 課金ファネル -----
     // metadata.page/variant で自己診断ページ発と /tako 発を分けるため metadata も取る。
-    fetchAll<{
-      session_id: string | null;
-      metadata: Record<string, unknown> | null;
-    }>(evRows(["paywall_viewed"], "session_id, metadata")),
-    fetchAll<{
-      session_id: string | null;
-      metadata: Record<string, unknown> | null;
-    }>(evRows(["paywall_scroll_clicked"], "session_id, metadata")),
-    fetchAll<{
-      session_id: string | null;
-      metadata: Record<string, unknown> | null;
-    }>(evRows(["purchase_cta_clicked"], "session_id, metadata")),
+    fetchAll<PaywallEventRow>(
+      evRows(["paywall_viewed"], "session_id, owner_token, metadata"),
+    ),
+    fetchAll<PaywallEventRow>(
+      evRows(["paywall_plan_viewed"], "session_id, owner_token, metadata"),
+    ),
+    fetchAll<PaywallEventRow>(
+      evRows(["paywall_scroll_clicked"], "session_id, owner_token, metadata"),
+    ),
+    fetchAll<PaywallEventRow>(
+      evRows(["purchase_cta_clicked"], "session_id, owner_token, metadata"),
+    ),
     // ----- テーブル (期間は created_at) -----
     fetchAll<{
       id: string;
@@ -399,9 +415,11 @@ export async function computeStats(from: string | null, to: string | null) {
     ),
     questionReachCounts(),
     fetchAll<StripeEventRow>(
-      evRows(["checkout_session_created"], "metadata"),
+      evRows(["checkout_session_created"], "owner_token, metadata"),
     ),
-    fetchAll<StripeEventRow>(evRows(["purchase_completed"], "metadata")),
+    fetchAll<StripeEventRow>(
+      evRows(["purchase_completed"], "owner_token, metadata"),
+    ),
     fetchAll<{
       event_name: string;
       session_id: string | null;
@@ -526,6 +544,54 @@ export async function computeStats(from: string | null, to: string | null) {
 
   const toUnique = (rows: SessionRow[]) =>
     new Set(rows.map((e) => e.session_id).filter(Boolean)).size;
+  const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
+
+  // 課金カードは owner_token が取れる場合は本人単位、取れない場合だけセッション単位。
+  // 同じ本人がページ再訪・別タブ表示しても分母を水増ししない。
+  const toUniquePaywallAudience = (rows: PaywallEventRow[]): number => {
+    const keys = new Set<string>();
+    for (const row of rows) {
+      if (row.owner_token) keys.add(`owner:${row.owner_token}`);
+      else if (row.session_id) keys.add(`session:${row.session_id}`);
+    }
+    return keys.size;
+  };
+
+  const countUniquePurchasers = (rows: StripeEventRow[]): number => {
+    const keys = new Set<string>();
+    for (const row of rows) {
+      if (!isLiveStripeRow(row)) continue;
+      const userId = row.metadata?.user_id;
+      const stripeSessionId = row.metadata?.stripe_session_id;
+      if (row.owner_token) keys.add(`owner:${row.owner_token}`);
+      else if (typeof userId === "string" && userId) keys.add(`user:${userId}`);
+      else if (typeof stripeSessionId === "string") {
+        keys.add(`stripe:${stripeSessionId}`);
+      }
+    }
+    return keys.size;
+  };
+
+  const sumUniqueJpyPurchases = (rows: StripeEventRow[]): number => {
+    const seen = new Set<string>();
+    let total = 0;
+    for (const row of rows) {
+      if (!isLiveStripeRow(row)) continue;
+      const sid = row.metadata?.stripe_session_id;
+      if (typeof sid !== "string" || seen.has(sid)) continue;
+      seen.add(sid);
+      const currency = row.metadata?.currency;
+      const amount = row.metadata?.amount_total;
+      if (
+        (currency === "jpy" || currency === "JPY") &&
+        typeof amount === "number" &&
+        Number.isFinite(amount)
+      ) {
+        total += amount;
+      }
+    }
+    return total;
+  };
 
   const diagnosisStarted = toUnique(startedRows);
   const diagnosisCompleted = toUnique(completedRows);
@@ -954,11 +1020,120 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
 
-  // ===== 入口ページ別セグメント (2026-07-23: ¥499 完全版一本化に追随) =====
-  //   商品は ¥499 完全版 (full_access) の1つ。ファネルは「発生ページ」で2分する:
-  //     自己診断ページ発 (/me 等・非 tako ソース) / 友達診断ページ発 (/tako・tako 系ソース)。
-  //   どちらの決済も full_access。旧 ¥799 単体 (tako_unlock) は販売終了 → 過去実績は
-  //   「商品別売上内訳」に残るだけで、このファネルの決済完了は full_access を source で分ける。
+  // ===== 現行3コース課金カード =====
+  // 旧¥199単一カードと混ぜず、カード表示・コース表示・CTA・Stripe・決済を
+  // paywall_version で一貫して接続する。Stripeテストセッションは全段の分子から除外。
+  const isThreeCourseMeta = (
+    metadata: Record<string, unknown> | null,
+  ): boolean => metadata?.paywall_version === THREE_COURSE_PAYWALL_VERSION;
+  const productFromMeta = (
+    metadata: Record<string, unknown> | null,
+  ): AccessProduct | null => {
+    const product = metadata?.product;
+    return typeof product === "string" &&
+      (ACCESS_PRODUCTS as readonly string[]).includes(product)
+      ? (product as AccessProduct)
+      : null;
+  };
+  const isUpgradeMeta = (metadata: Record<string, unknown> | null): boolean => {
+    const upgradeFrom = metadata?.upgrade_from;
+    return typeof upgradeFrom === "string" && upgradeFrom !== "none";
+  };
+
+  const courseCardViewRows = paywallViewedRows.filter((row) =>
+    isThreeCourseMeta(row.metadata),
+  );
+  const coursePlanViewRows = paywallPlanViewedRows.filter((row) =>
+    isThreeCourseMeta(row.metadata),
+  );
+  const courseScrollRows = paywallScrollRows.filter((row) =>
+    isThreeCourseMeta(row.metadata),
+  );
+  const courseCtaRows = purchaseCtaRows.filter((row) =>
+    isThreeCourseMeta(row.metadata),
+  );
+  const courseCheckoutRows = checkoutCreatedRows.filter(
+    (row) => isThreeCourseMeta(row.metadata) && isLiveStripeRow(row),
+  );
+  const coursePurchaseRows = purchaseCompletedRows.filter(
+    (row) => isThreeCourseMeta(row.metadata) && isLiveStripeRow(row),
+  );
+
+  const courseCardViewers = toUniquePaywallAudience(courseCardViewRows);
+  const coursePlanViewers = toUniquePaywallAudience(coursePlanViewRows);
+  const courseScrollClickers = toUniquePaywallAudience(courseScrollRows);
+  const courseCtaClickers = toUniquePaywallAudience(courseCtaRows);
+  const courseStripeReached = countUniqueStripeSessions(courseCheckoutRows);
+  const coursePurchasers = countUniquePurchasers(coursePurchaseRows);
+  const courseTransactions = countUniqueStripeSessions(coursePurchaseRows);
+  const courseNewPurchases = countUniqueStripeSessions(
+    coursePurchaseRows.filter((row) => !isUpgradeMeta(row.metadata)),
+  );
+  const courseUpgrades = countUniqueStripeSessions(
+    coursePurchaseRows.filter((row) => isUpgradeMeta(row.metadata)),
+  );
+  const courseRevenueJpy = sumUniqueJpyPurchases(coursePurchaseRows);
+
+  const eligibleResultSessionIds = new Set<string>();
+  for (const row of viewedSessionRows) {
+    if (row.session_id) eligibleResultSessionIds.add(row.session_id);
+  }
+  for (const row of friendJourneyRows) {
+    if (
+      row.event_name === "tako_viewed" &&
+      row.session_id &&
+      inRange(row.created_at)
+    ) {
+      eligibleResultSessionIds.add(row.session_id);
+    }
+  }
+
+  const coursePlans = ACCESS_PRODUCTS.map((product) => {
+    const planViews = coursePlanViewRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
+    const ctaClicks = courseCtaRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
+    const checkouts = courseCheckoutRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
+    const purchases = coursePurchaseRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
+    const viewers = toUniquePaywallAudience(planViews);
+    const ctaClickers = toUniquePaywallAudience(ctaClicks);
+    const stripeReached = countUniqueStripeSessions(checkouts);
+    const purchasers = countUniquePurchasers(purchases);
+    const transactions = countUniqueStripeSessions(purchases);
+    const newPurchases = countUniqueStripeSessions(
+      purchases.filter((row) => !isUpgradeMeta(row.metadata)),
+    );
+    const upgrades = countUniqueStripeSessions(
+      purchases.filter((row) => isUpgradeMeta(row.metadata)),
+    );
+    const revenueJpy = sumUniqueJpyPurchases(purchases);
+    return {
+      product,
+      viewers,
+      ctaClickers,
+      stripeReached,
+      purchasers,
+      transactions,
+      newPurchases,
+      upgrades,
+      revenueJpy,
+      ctaRate: rate(ctaClickers, viewers),
+      stripeRate: rate(stripeReached, ctaClickers),
+      checkoutCompletionRate: rate(transactions, stripeReached),
+      purchaseRate: rate(purchasers, viewers),
+    };
+  });
+
+  // ===== 商品別課金ファネル =====
+  //   自己診断ページは ¥199 self_report。友達診断・相性・韓国版は
+  //   従来の full_access を維持する。¥199テストの転換率に¥499決済を混ぜないため、
+  //   新イベントは metadata.product で厳密に分ける。
   // 判定:
   //   - paywall_viewed: metadata.page==='tako' (新カード) または variant==='tako' (旧カード互換)。
   //   - scroll/cta: metadata.page==='tako' または metadata.source が tako 系。
@@ -976,41 +1151,33 @@ export async function computeStats(from: string | null, to: string | null) {
     m?.page === "unmei" ||
     m?.return_to === "unmei" ||
     m?.source === "unmei_page";
+  const isSelfReportMeta = (m: Record<string, unknown> | null): boolean =>
+    m?.product === "self_report";
 
-  const paywallViewedFullRows = paywallViewedRows.filter(
-    (r) => !isTakoView(r.metadata) && !isUnmeiMeta(r.metadata),
-  );
   const paywallViewedTakoRows = paywallViewedRows.filter((r) =>
     isTakoView(r.metadata),
   );
   const scrollFullRows = paywallScrollRows.filter(
-    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+    (r) => isSelfReportMeta(r.metadata),
   );
   const scrollTakoRows = paywallScrollRows.filter((r) => isTakoMeta(r.metadata));
   const ctaFullRows = purchaseCtaRows.filter(
-    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+    (r) => isSelfReportMeta(r.metadata),
   );
   const ctaTakoRows = purchaseCtaRows.filter((r) => isTakoMeta(r.metadata));
   const checkoutFullRows = checkoutCreatedRows.filter(
-    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+    (r) => isSelfReportMeta(r.metadata),
   );
   const checkoutTakoRows = checkoutCreatedRows.filter((r) =>
     isTakoMeta(r.metadata),
   );
-  // 決済完了 (full_access) を source で自己/友達に分割 (合計=全 full_access 決済)。
+  // ¥199決済完了は self_report だけを集計する。
   const purchaseFullRows = purchaseCompletedRows.filter(
-    (r) => !isTakoMeta(r.metadata) && !isUnmeiMeta(r.metadata),
+    (r) => isSelfReportMeta(r.metadata),
   );
   const purchaseTakoRows = purchaseCompletedRows.filter((r) =>
     isTakoMeta(r.metadata),
   );
-
-  // 自己診断ページ発のファネル数値。
-  const paywallViewed = toUnique(paywallViewedFullRows);
-  const paywallScrollClicked = toUnique(scrollFullRows);
-  const purchaseCtaClicked = toUnique(ctaFullRows);
-  const checkoutCreated = countUniqueStripeSessions(checkoutFullRows);
-  const purchaseCompleted = countUniqueStripeSessions(purchaseFullRows);
 
   // 友達診断ページ発のファネル数値 (決済完了は tako 系 source の full_access 決済)。
   const takoPaywallViewed = toUnique(paywallViewedTakoRows);
@@ -1213,8 +1380,17 @@ export async function computeStats(from: string | null, to: string | null) {
       b.stripeReached - a.stripeReached ||
       b.scrollClicks - a.scrollClicks,
   );
-
-  const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
+  const courseAttribution = buildAttribution(
+    courseScrollRows,
+    courseCtaRows,
+    courseCheckoutRows,
+    coursePurchaseRows,
+  ).sort(
+    (a, b) =>
+      b.purchases - a.purchases ||
+      b.stripeReached - a.stripeReached ||
+      b.scrollClicks - a.scrollClicks,
+  );
 
   // --- 経営KPI（サーバー側の業務データを正本にしたユーザーコホート） ---
   // payment_history 適用前の購入は purchase_completed と、その Stripe Session を
@@ -1247,7 +1423,6 @@ export async function computeStats(from: string | null, to: string | null) {
   // ローカル開発が本番 Supabase + テスト Stripe の構成で動くため、テストモード決済
   // (cs_test_) が本番 DB に混入している (2026-08-09 実測: 計¥8,860)。Stripe の
   // ライブ売上には存在しないため、売上ファクトから除外する。
-  const isTestStripeSession = (sid: string) => sid.startsWith("cs_test_");
   const verifiedPaymentFacts: (CoreKpiPaymentFact & { kind: string })[] = [];
   const knownStripeSessions = new Set<string>();
   for (const row of paymentHistoryRows) {
@@ -1698,16 +1873,30 @@ export async function computeStats(from: string | null, to: string | null) {
           .sort((a, b) => b.actions - a.actions),
       },
     },
-    // 課金ファネル (¥499 自己診断・完全版): 結果ページ表示 → カード表示 → 誘導クリック →
-    // 購入CTA → Stripe到達 → 決済完了。前半はユニークセッション、後半2つは件数 (サーバ発行)。
+    // 3コース版の合計ファネル。旧単一カードとテスト決済は含めない。
     paywallFunnel: [
-      { label: "結果ページ表示", count: uniqueViewed },
-      { label: "課金カード表示", count: paywallViewed },
-      { label: "解除ボタン押下", count: paywallScrollClicked },
-      { label: "購入CTA押下", count: purchaseCtaClicked },
-      { label: "Stripe到達", count: checkoutCreated },
-      { label: "決済完了", count: purchaseCompleted },
+      { label: "結果ページ表示", count: eligibleResultSessionIds.size },
+      { label: "課金カード表示", count: courseCardViewers },
+      { label: "解除ボタン押下", count: courseScrollClickers },
+      { label: "購入CTA押下", count: courseCtaClickers },
+      { label: "Stripe到達", count: courseStripeReached },
+      { label: "決済完了", count: coursePurchasers },
     ],
+    coursePaywall: {
+      version: THREE_COURSE_PAYWALL_VERSION,
+      cardViewers: courseCardViewers,
+      planViewers: coursePlanViewers,
+      ctaClickers: courseCtaClickers,
+      stripeReached: courseStripeReached,
+      purchasers: coursePurchasers,
+      transactions: courseTransactions,
+      newPurchases: courseNewPurchases,
+      upgrades: courseUpgrades,
+      revenueJpy: courseRevenueJpy,
+      revenuePerViewerJpy: rate(courseRevenueJpy, courseCardViewers),
+      purchaseRate: rate(coursePurchasers, courseCardViewers),
+      plans: coursePlans,
+    },
     // 課金ファネル (友達診断ページ発の ¥499 完全版)。Stripe到達は 2026-07-22 に計測追加。
     // 決済完了は tako 系 source / return_to 付きの full_access 決済を数える。
     takoFunnel: [
@@ -1757,10 +1946,11 @@ export async function computeStats(from: string | null, to: string | null) {
       },
     },
     paywallSources,
-    paywallAttribution,
+    paywallAttribution: courseAttribution,
+    legacyPaywallAttribution: paywallAttribution,
     takoAttribution,
-    purchaseCompleted,
-    purchaseConversionRate: rate(purchaseCompleted, paywallViewed),
+    purchaseCompleted: coursePurchasers,
+    purchaseConversionRate: rate(coursePurchasers, courseCardViewers),
     paidUsers,
     revenueJpy,
     revenueByKind,

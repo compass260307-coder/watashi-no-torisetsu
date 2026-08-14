@@ -24,6 +24,11 @@ import { createSession, getSession } from "@/lib/session";
 import { isMissingCoreKpiColumn } from "@/lib/core-kpis";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
+import {
+  hasPremiumBundleAccess,
+  hasSelfReportAccess,
+} from "@/lib/entitlements";
+import type { AccessProduct } from "@/lib/access-products";
 import type { AnswerValue } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -239,11 +244,24 @@ export async function POST(request: NextRequest) {
       preDiagnosisUser =
         (preDiagnosisResult.data as PreDiagnosisUserRow | null) ?? null;
     }
-    const postDiagnosisReportEmail =
-      preDiagnosisUser?.plan === "full" &&
-      isUndiagnosedPlaceholderUser(preDiagnosisUser)
-        ? normalizeDeliveryEmail(preDiagnosisUser.email)
-        : null;
+    let postDiagnosisReportProduct: AccessProduct | null = null;
+    if (isUndiagnosedPlaceholderUser(preDiagnosisUser)) {
+      const [selfReportAccess, premiumBundleAccess] = await Promise.all([
+        hasSelfReportAccess(existing.id),
+        hasPremiumBundleAccess(existing.id),
+      ]);
+      postDiagnosisReportProduct =
+        premiumBundleAccess
+          ? "premium_bundle"
+          : preDiagnosisUser?.plan === "full"
+          ? "full_access"
+          : selfReportAccess
+            ? "self_report"
+            : null;
+    }
+    const postDiagnosisReportEmail = postDiagnosisReportProduct
+      ? normalizeDeliveryEmail(preDiagnosisUser?.email)
+      : null;
 
     // Day 12-Polish-B: displayName が指定されていれば再診断時も上書き
     // (基本情報ステップでニックネーム変更を許容)。未指定 (null) なら触らない。
@@ -312,6 +330,7 @@ export async function POST(request: NextRequest) {
           ownerToken: savedUser.owner_token,
           ownerName: normalizedDisplayName ?? existing.display_name,
           locale,
+          product: postDiagnosisReportProduct ?? "full_access",
         });
         console.log("[api/diagnosis] post-diagnosis detailed report email sent", {
           user_id: savedUser.id,

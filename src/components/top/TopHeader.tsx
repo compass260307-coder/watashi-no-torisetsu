@@ -27,6 +27,7 @@ const NAV: { label: string; href: string; disabled?: boolean }[] = [
   { label: "友達診断テスト", href: "/tako" },
   { label: "性格タイプ", href: "/types" },
   { label: "運命の設計図", href: "/unmei" },
+  { label: "占い師", href: "/hoshiyomi" },
   { label: "ログイン", href: "/login" },
 ];
 
@@ -93,7 +94,7 @@ export default function TopHeader() {
     n.label === "友達診断テスト" ? { ...n, href: takoUrl } : n,
   );
 
-  // lg (1024px) では項目 5 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
+  // lg (1024px) では項目 6 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
   const navLinkClass =
     "whitespace-nowrap text-[16px] xl:text-[20px] font-bold transition-colors hover:text-[#5B5BEF]";

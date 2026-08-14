@@ -5,13 +5,10 @@ import { track } from "@/lib/track";
 
 export default function UnmeiCheckoutButton({
   ownerToken,
-  product = "unmei",
   children = "運命の設計図を占う",
   launchChat = false,
 }: {
   ownerToken?: string | null;
-  /** unmei=¥899 / unmei_upgrade=¥400 (完全版保有者のみ。サーバ側で hasFullAccess を検証)。 */
-  product?: "unmei" | "unmei_upgrade";
   children?: React.ReactNode;
   /**
    * true = Stripe リダイレクトの代わりに CustomEvent("unmei-chat-launch") を発火し、
@@ -26,7 +23,7 @@ export default function UnmeiCheckoutButton({
   async function handleClick() {
     if (loading) return;
 
-    const metadata = { page: "unmei", product };
+    const metadata = { page: "unmei", product: "premium_bundle" };
 
     // チャット起動モード: 遷移せず親ゲートへ合図するだけ (即時)。
     if (launchChat) {
@@ -51,12 +48,17 @@ export default function UnmeiCheckoutButton({
     });
 
     try {
-      const res = await fetch("/api/checkout/create-unmei-session", {
+      const res = await fetch("/api/checkout/create-full-access-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          ownerToken ? { owner_token: ownerToken, product } : { product },
-        ),
+        body: JSON.stringify({
+          owner_token: ownerToken ?? undefined,
+          product: "premium_bundle",
+          return_to: "unmei",
+          paywall_source: "unmei_page",
+          paywall_version: "three_course_v6_unmei_chat_credits",
+          paywall_placement: "inline",
+        }),
       });
 
       if (!res.ok) {

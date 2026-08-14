@@ -115,7 +115,9 @@ export function MoshimoScenes({
               {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-              {isKorean ? "완전판 리포트를 열고," : "完全版のレポートを入手して、"}
+              {isKorean
+                ? "완전판 리포트를 열고,"
+                : "自己分析レポートを入手して、"}
               <br className="md:hidden" />
               {isKorean
                 ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."

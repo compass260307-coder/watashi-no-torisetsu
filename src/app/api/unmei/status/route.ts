@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
 import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
+import { hasUnmeiAccess } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -21,12 +22,15 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.id;
 
-  const { data: u } = await supabaseAdmin
-    .from("users")
-    .select("unmei")
-    .eq("id", userId)
-    .maybeSingle();
-  if (!u?.unmei) {
+  const [{ data: u }, purchased] = await Promise.all([
+    supabaseAdmin
+      .from("users")
+      .select("preferred_locale")
+      .eq("id", userId)
+      .maybeSingle(),
+    hasUnmeiAccess(userId),
+  ]);
+  if (!purchased) {
     return NextResponse.json({ ok: true, state: "unpurchased" });
   }
 
@@ -45,7 +49,12 @@ export async function GET(request: Request) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!isReadingReady(reading)) {
+  const requiredLocale = u?.preferred_locale === "ko" ? "ko" : "ja";
+  const readingLocale =
+    (reading?.reading as { locale?: unknown } | null)?.locale === "ko"
+      ? "ko"
+      : "ja";
+  if (!isReadingReady(reading) || readingLocale !== requiredLocale) {
     // pending(生成中/未達) と failed(自動再生成の上限到達=手動リトライ待ち)を区別。
     const { state, attempts } = readingGenState(reading);
     return NextResponse.json({

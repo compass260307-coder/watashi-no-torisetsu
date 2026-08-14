@@ -143,7 +143,7 @@ function UnmeiTeaserLp({
             eventName="unmei_lp_view"
             ownerToken={ownerToken}
             state={hasFull ? "upgrade_eligible" : "standard"}
-            product={hasFull ? "unmei_upgrade" : "unmei"}
+            product="premium_bundle"
           />
         ) : null}
         {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いインディゴにし、直下の
@@ -452,7 +452,9 @@ async function UnmeiMetaPurchase(sp: {
   const session = await verifyPaidMetaPurchaseCheckoutSession(sp.session_id);
   if (
     !session ||
-    (session.product !== "unmei" && session.product !== "unmei_upgrade")
+    (session.product !== "unmei" &&
+      session.product !== "unmei_upgrade" &&
+      session.product !== "premium_bundle")
   ) {
     return null;
   }
@@ -493,17 +495,21 @@ async function UnmeiPageBody(sp: {
     return <UnmeiClient initialState="no_birth" />;
   }
   if (preview === "purchase") {
-    // 未購入からの購入チャット (入力→チャット内決済→生成) の dev 確認用。
+    // 未購入からの購入チャット (入力→Stripe Checkout→生成) の dev 確認用。
     return (
       <UnmeiClient
         initialState="no_birth"
-        purchase={{ ownerToken: null, product: "unmei" }}
+        purchase={{ ownerToken: null, product: "premium_bundle" }}
       />
     );
   }
   if (preview === "pay") {
-    // Embedded Checkout 単体プレビュー (決済フォーム描画の確認用)。
+    // Stripe-hosted Checkoutへ進む商品カードの単体プレビュー。
     return <UnmeiPayPreview />;
+  }
+  if (preview === "checkout-success") {
+    // 決済完了後にチャットへ戻った状態の単体プレビュー。
+    return <UnmeiCheckoutConfirming preview />;
   }
   if (preview === "pending") {
     return <UnmeiClient initialState="pending" />;
@@ -539,7 +545,9 @@ async function UnmeiPageBody(sp: {
   if (preview === "chat") {
     // チャット決済フローの確認用 (dev限定): LP → 「設計図を作成する →」で全画面チャット起動。
     return (
-      <UnmeiChatCheckoutGate purchase={{ ownerToken: null, product: "unmei" }}>
+      <UnmeiChatCheckoutGate
+        purchase={{ ownerToken: null, product: "premium_bundle" }}
+      >
         <UnmeiTeaserLp
           ownerToken={null}
           hasFull={false}
@@ -564,52 +572,33 @@ async function UnmeiPageBody(sp: {
     unmeiFlag = !!u?.unmei;
   }
 
+  // Stripe-hosted Checkout から戻ったら、Webhook の反映速度にかかわらず
+  // いったんチャット形式の購入完了・鑑定生成中メッセージで受け止める。
+  // 未ログインのゲスト購入だけは、従来どおりログイン案内を表示する。
+  if (sp.checkout === "success") {
+    return userId ? <UnmeiCheckoutConfirming /> : <UnmeiGuestPurchaseComplete />;
+  }
+
   if (!unmeiFlag) {
-    // Stripe 決済完了直後 (?checkout=success)。webhook (users.unmei=true) の反映前に
-    // 販売LPを再表示すると再購入・迷子の原因になるため、ここで受け止める。
-    //   - ログイン済み: 反映をポーリングで待ち、反映後に出生情報フォームへ進む
-    //   - ゲスト購入: 購入は webhook が email に紐付ける。ログイン案内を出す
-    //     (パラメータだけでは購入を検証できないが、解放自体はサーバ判定なので
-    //      偽装されても案内文が見えるだけで実害はない)
-    if (sp.checkout === "success") {
-      if (userId) {
-        return <UnmeiCheckoutConfirming />;
-      }
-      return <UnmeiGuestPurchaseComplete />;
-    }
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
 
-    // チャット内決済フロー (2026-08-06): フラグ ON なら、LP の CTA で
-    // 「入力→チャット内 Embedded 決済→生成」のチャットを起動する。フラグ OFF は
-    // 従来の LP + リダイレクト決済 (フラグを外すだけで即座に元へ戻せる)。
+    // 購入導線は「入力→商品確認→Stripe-hosted Checkout→生成」に一本化する。
     // 未セッション (未診断) も同じチャットに乗せる (2026-08-10): 出生情報の保存時に
     // /api/birth-profile が匿名ユーザー+セッションを発行するので、以降の決済・生成・
     // 鑑定表示はセッション有りと同じ経路で進む。
-    const chatCheckout =
-      process.env.NEXT_PUBLIC_UNMEI_CHAT_CHECKOUT === "true";
-    if (chatCheckout) {
-      // LP を見せ、「設計図を作成する →」CTA で全画面チャット決済を起動する。
-      return (
-        <UnmeiChatCheckoutGate
-          purchase={{
-            ownerToken: session?.owner_token ?? null,
-            product: sessionHasFull ? "unmei_upgrade" : "unmei",
-          }}
-        >
-          <UnmeiTeaserLp
-            ownerToken={session?.owner_token ?? null}
-            hasFull={sessionHasFull}
-            launchChat
-          />
-        </UnmeiChatCheckoutGate>
-      );
-    }
-
     return (
-      <UnmeiTeaserLp
-        ownerToken={session?.owner_token ?? null}
-        hasFull={sessionHasFull}
-      />
+      <UnmeiChatCheckoutGate
+        purchase={{
+          ownerToken: session?.owner_token ?? null,
+          product: "premium_bundle",
+        }}
+      >
+        <UnmeiTeaserLp
+          ownerToken={session?.owner_token ?? null}
+          hasFull={sessionHasFull}
+          launchChat
+        />
+      </UnmeiChatCheckoutGate>
     );
   }
 

@@ -55,7 +55,8 @@ export function verifyMetaPurchaseClaimToken(
 }
 
 // Checkout Session ID をクライアントから信用せず、Stripe の秘密鍵で
-// 取得し直す。買い切り (full_access / unmei / unmei_upgrade) の支払いが
+// 取得し直す。買い切り (self_report / full_access / premium_bundle /
+// unmei / unmei_upgrade) の支払いが
 // 完了した Session だけを返す。
 export async function verifyPaidMetaPurchaseCheckoutSession(
   value: unknown,
@@ -99,4 +100,17 @@ export async function verifyPaidFullAccessCheckoutSession(
 ): Promise<VerifiedPaidCheckoutSession | null> {
   const session = await verifyPaidMetaPurchaseCheckoutSession(value);
   return session?.product === "full_access" ? session : null;
+}
+
+// 自己診断結果ページ・ゲスト購入完了用。3コースはいずれも
+// 自己診断/PDFを解放するため受け入れる。
+export async function verifyPaidSelfAccessCheckoutSession(
+  value: unknown,
+): Promise<VerifiedPaidCheckoutSession | null> {
+  const session = await verifyPaidMetaPurchaseCheckoutSession(value);
+  return session?.product === "self_report" ||
+    session?.product === "full_access" ||
+    session?.product === "premium_bundle"
+    ? session
+    : null;
 }

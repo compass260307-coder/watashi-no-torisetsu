@@ -1,6 +1,6 @@
 "use client";
 
-// ¥499 買い切り「フルアクセス(全解放)」の課金導線ボタン。
+// 日本版・韓国版の3コースで共用する課金導線ボタン。
 // クリックで /api/checkout/create-full-access-session を叩き、返ってきた Stripe Checkout
 // URL へ遷移する。金額・price はサーバ側 (Price 固定) で決まり、ここからは一切渡さない。
 //
@@ -14,6 +14,17 @@ import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
 import { track } from "@/lib/track";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import type { ResultLocale } from "@/i18n/result";
+import {
+  FULL_ACCESS_PRICE_JPY,
+  FULL_ACCESS_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_JPY,
+  PREMIUM_BUNDLE_PRICE_KRW,
+  SELF_REPORT_PRICE_JPY,
+  SELF_REPORT_PRICE_KRW,
+  THREE_COURSE_PAYWALL_VERSION,
+  type AccessProduct,
+  type PaywallPlacement,
+} from "@/lib/access-products";
 
 export function FullAccessCta({
   children = "¥499で全部よむ",
@@ -28,6 +39,11 @@ export function FullAccessCta({
   locale = "ja",
   source,
   returnTo,
+  product = "full_access",
+  paywallVersion,
+  placement,
+  compact = false,
+  previewMode = false,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -35,14 +51,29 @@ export function FullAccessCta({
   locale?: ResultLocale;
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
   source?: string;
-  /** 購入後の着地。'tako' で /tako/[token]、'aisho' で /aisho に戻す (既定は /me/[token])。 */
-  returnTo?: "me" | "tako" | "aisho";
+  /** 購入後の着地。診断・相性・運命の設計図の購入元へ戻す (既定は /me/[token])。 */
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
+  /** self_report=¥199 / full_access=¥499 / premium_bundle=¥899全部入り。 */
+  product?: AccessProduct;
+  /** 3コース比較テストの識別子。未指定は旧単一カード。 */
+  paywallVersion?: typeof THREE_COURSE_PAYWALL_VERSION;
+  /** 同じカードの常設表示とモーダル表示を分ける。 */
+  placement?: PaywallPlacement;
+  /** 比較カード内では38px固定のコンパクトな高さにする。 */
+  compact?: boolean;
+  /** ローカルUI確認用。CTAを押しても計測・Checkoutを実行しない。 */
+  previewMode?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewNotice, setPreviewNotice] = useState(false);
 
   async function handleClick() {
     if (loading) return;
+    if (previewMode) {
+      setPreviewNotice(true);
+      return;
+    }
     setLoading(true);
     setError(null);
     const paywallSource = source
@@ -56,6 +87,9 @@ export function FullAccessCta({
         page: window.location.pathname.split("/")[1] || "top",
         source: paywallSource,
         locale,
+        product,
+        paywall_version: paywallVersion ?? "legacy",
+        placement: placement ?? "unknown",
       },
     });
     try {
@@ -77,6 +111,9 @@ export function FullAccessCta({
             : {}),
           paywall_source: paywallSource,
           locale,
+          product,
+          ...(paywallVersion ? { paywall_version: paywallVersion } : {}),
+          ...(placement ? { paywall_placement: placement } : {}),
         }),
       });
       // 既に課金済み → 本文が見られる状態なので再読込。
@@ -110,9 +147,17 @@ export function FullAccessCta({
           value:
             typeof data.amount === "number"
               ? data.amount
-              : locale === "ko"
-                ? 4900
-                : 499,
+              : product === "self_report"
+                ? locale === "ko"
+                  ? SELF_REPORT_PRICE_KRW
+                  : SELF_REPORT_PRICE_JPY
+                : product === "premium_bundle"
+                  ? locale === "ko"
+                    ? PREMIUM_BUNDLE_PRICE_KRW
+                    : PREMIUM_BUNDLE_PRICE_JPY
+                : locale === "ko"
+                  ? FULL_ACCESS_PRICE_KRW
+                  : FULL_ACCESS_PRICE_JPY,
           currency:
             typeof data.currency === "string"
               ? data.currency
@@ -144,7 +189,11 @@ export function FullAccessCta({
         type="button"
         onClick={handleClick}
         disabled={loading}
-        className="flex items-center justify-center w-full bg-[#2E2E5C] text-white font-black text-base px-6 py-3.5 rounded-full shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] transition-all disabled:opacity-60 disabled:pointer-events-none"
+        className={`flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] disabled:pointer-events-none disabled:opacity-60 ${
+          compact
+            ? "h-[38px] py-0 text-[14px] font-bold"
+            : "py-3.5 text-base font-black"
+        }`}
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
@@ -164,6 +213,14 @@ export function FullAccessCta({
           </span>
         </p>
       )}
+      {previewNotice ? (
+        <p
+          role="status"
+          className="mt-2 rounded-xl bg-[#F2F0FF] px-3 py-2 text-center text-[11px] font-bold leading-relaxed text-[#5B5BEF]"
+        >
+          ローカルプレビューのため、決済画面には進みません。
+        </p>
+      ) : null}
     </div>
   );
 }

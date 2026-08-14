@@ -5,6 +5,8 @@ import { buildNatalSystemPrompt, buildNatalUserPrompt } from "./prompts.mjs";
 // 出生地未入力時のフォールバック緯度経度 (指示書②: 都道府県未入力なら東京で仮計算)。
 const TOKYO_LAT = 35.6895;
 const TOKYO_LNG = 139.6917;
+const SEOUL_LAT = 37.5665;
+const SEOUL_LNG = 126.978;
 
 // v2: 生成後スキャンで弾く推量表現 (これのみ。「してみてください」は正しい命令形なので弾かない)。
 const HEDGE_TERMS = [
@@ -46,27 +48,43 @@ function buildBirthDateIso(profile) {
 // 出生図チャートを計算して natal_charts に保存し、natal_chart_ready を立てる。
 // 返り値: { chart, timeUnknown } / birth_profiles が無ければ null。
 export async function computeChartForUser(supabaseAdmin, userId) {
-  const { data: profile } = await supabaseAdmin
-    .from("birth_profiles")
-    .select("birth_date, birth_time, time_unknown, latitude, longitude, place_unknown")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const [{ data: profile }, { data: user }] = await Promise.all([
+    supabaseAdmin
+      .from("birth_profiles")
+      .select("birth_date, birth_time, time_unknown, latitude, longitude, place_unknown")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("users")
+      .select("preferred_locale")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
 
   if (!profile || !profile.birth_date) {
     return null;
   }
 
   const dateIso = buildBirthDateIso(profile);
+  const isKorean = user?.preferred_locale === "ko";
   const latitude =
-    typeof profile.latitude === "number" ? profile.latitude : TOKYO_LAT;
+    typeof profile.latitude === "number"
+      ? profile.latitude
+      : isKorean
+        ? SEOUL_LAT
+        : TOKYO_LAT;
   const longitude =
-    typeof profile.longitude === "number" ? profile.longitude : TOKYO_LNG;
+    typeof profile.longitude === "number"
+      ? profile.longitude
+      : isKorean
+        ? SEOUL_LNG
+        : TOKYO_LNG;
 
   const chart = computeNatalChart({
     dateIso,
     latitude,
     longitude,
-    timezone: "Asia/Tokyo",
+    timezone: isKorean ? "Asia/Seoul" : "Asia/Tokyo",
     timeUnknown: !!profile.time_unknown,
   });
 
@@ -156,7 +174,9 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       .maybeSingle();
 
     // 3a. 有効な鑑定が既にあれば再生成しない(キャッシュ規律・API再呼び出し禁止)
-    if (isReadingReady(existing)) {
+    const locale = opts.locale === "ko" ? "ko" : "ja";
+    const existingLocale = existing?.reading?.locale === "ko" ? "ko" : "ja";
+    if (isReadingReady(existing) && existingLocale === locale) {
       return { ok: true, cached: true };
     }
 
@@ -208,13 +228,14 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       { onConflict: "user_id" },
     );
 
-    const system = buildNatalSystemPrompt();
+    const system = buildNatalSystemPrompt(locale);
     const userPrompt = buildNatalUserPrompt({
       chart,
       scores,
       essence,
       typeName: opts.typeName ?? null,
       timeUnknown,
+      locale,
     });
 
     // 5. 生成 (parse失敗 or 推量表現検出で1回だけ再生成 = 最大2試行)
@@ -234,7 +255,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
           maxTokens: 4500, // v2: 4章×550〜900字 + subline + hitokoto
           timeoutMs: 120_000,
         });
-        const parsed = parseReading(resp.text);
+        const parsed = { ...parseReading(resp.text), locale };
         const hedges = detectHedges(parsed);
         if (hedges.length > 0 && attempt < 2) {
           // 推量表現検出 → 1回だけ再生成。1回目は有効なので fallback に退避。

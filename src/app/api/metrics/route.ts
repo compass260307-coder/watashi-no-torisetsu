@@ -75,13 +75,38 @@ export async function GET(request: NextRequest) {
     totalUsers: s.totalUsers,
     avgChildPerParent: round(s.viral.avgChildPerParent),
     viralCoefficient: round(s.viral.viralCoefficient),
-    // 課金ファネル (2026-07-13 追加。列は末尾に足す = 既存シートの列順を壊さない)
+    // 3コース課金ファネル。旧カードとStripeテスト決済を除外した current 指標。
     paywallViewed: s.paywallFunnel[1]?.count ?? 0,
     paywallScrollClicked: s.paywallFunnel[2]?.count ?? 0,
     purchaseCtaClicked: s.paywallFunnel[3]?.count ?? 0,
     checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
     purchaseCompleted: s.purchaseCompleted,
     purchaseConversionRate: round(s.purchaseConversionRate),
+    coursePaywallPlanViewed: s.coursePaywall.planViewers,
+    coursePaywallNewPurchases: s.coursePaywall.newPurchases,
+    coursePaywallUpgrades: s.coursePaywall.upgrades,
+    coursePaywallRevenueJpy: s.coursePaywall.revenueJpy,
+    coursePaywallRevenuePerViewerJpy: round(
+      s.coursePaywall.revenuePerViewerJpy,
+    ),
+    courseLightViewed:
+      s.coursePaywall.plans.find((plan) => plan.product === "self_report")
+        ?.viewers ?? 0,
+    courseLightPurchases:
+      s.coursePaywall.plans.find((plan) => plan.product === "self_report")
+        ?.purchasers ?? 0,
+    courseFullViewed:
+      s.coursePaywall.plans.find((plan) => plan.product === "full_access")
+        ?.viewers ?? 0,
+    courseFullPurchases:
+      s.coursePaywall.plans.find((plan) => plan.product === "full_access")
+        ?.purchasers ?? 0,
+    coursePremiumViewed:
+      s.coursePaywall.plans.find((plan) => plan.product === "premium_bundle")
+        ?.viewers ?? 0,
+    coursePremiumPurchases:
+      s.coursePaywall.plans.find((plan) => plan.product === "premium_bundle")
+        ?.purchasers ?? 0,
     paidUsers: s.paidUsers,
     revenueJpy: s.revenueJpy,
     // 友達診断コホートファネル（2026-07-18 計測開始）

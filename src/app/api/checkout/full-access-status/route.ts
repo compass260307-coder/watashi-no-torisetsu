@@ -1,7 +1,7 @@
 // 決済後の反映確認用の軽量ステータス API。
 //
 // GET /api/checkout/full-access-status?owner_token=<token>
-//   → { full: boolean }
+//   → { full: boolean, selfReport: boolean, friend: boolean, premiumBundle: boolean, astrologer: boolean }
 //
 // 用途: Stripe 決済後の着地 (/me/[token]?paid=1) で webhook 反映を待つポーリング先。
 //   webhook (plan='full') は非同期なので、着地直後はまだ未反映のことがある。
@@ -13,7 +13,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { hasFullAccess } from "@/lib/entitlements";
+import {
+  hasFullAccess,
+  hasPremiumBundleAccess,
+  hasSelfReportAccess,
+  hasTakoAccess,
+} from "@/lib/entitlements";
+import { ensureHoshiyomiCreditsFromPurchase } from "@/lib/hoshiyomi/store";
 
 export const runtime = "nodejs";
 
@@ -22,7 +28,16 @@ const noStore = { headers: { "Cache-Control": "no-store" } };
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("owner_token")?.trim();
   if (!token) {
-    return NextResponse.json({ full: false }, noStore);
+    return NextResponse.json(
+      {
+        full: false,
+        selfReport: false,
+        friend: false,
+        premiumBundle: false,
+        astrologer: false,
+      },
+      noStore,
+    );
   }
 
   const { data } = await supabaseAdmin
@@ -31,9 +46,28 @@ export async function GET(request: NextRequest) {
     .eq("owner_token", token)
     .maybeSingle();
   if (!data) {
-    return NextResponse.json({ full: false }, noStore);
+    return NextResponse.json(
+      {
+        full: false,
+        selfReport: false,
+        friend: false,
+        premiumBundle: false,
+        astrologer: false,
+      },
+      noStore,
+    );
   }
 
-  const full = await hasFullAccess(data.id as string);
-  return NextResponse.json({ full }, noStore);
+  const [full, selfReport, friend, premiumBundle, credits] = await Promise.all([
+    hasFullAccess(data.id as string),
+    hasSelfReportAccess(data.id as string),
+    hasTakoAccess(data.id as string),
+    hasPremiumBundleAccess(data.id as string),
+    ensureHoshiyomiCreditsFromPurchase(data.id as string),
+  ]);
+  const astrologer = full && credits.available && credits.data.total > 0;
+  return NextResponse.json(
+    { full, selfReport, friend, premiumBundle, astrologer },
+    noStore,
+  );
 }

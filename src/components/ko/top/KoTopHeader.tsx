@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import { localeSwitchPath } from "@/lib/locale-switch";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 const NAVY = "#2E2E5C";
 
@@ -25,6 +26,15 @@ const NAVIGATION = [
     href: "/ko/types",
     disabled: false,
   },
+  ...(KO_UNMEI_ENABLED
+    ? [
+        {
+          label: "운명의 설계도",
+          href: "/ko/unmei",
+          disabled: false,
+        },
+      ]
+    : []),
   {
     label: KO_TOP_CONTENT.navigation.login,
     href: "/ko/login",

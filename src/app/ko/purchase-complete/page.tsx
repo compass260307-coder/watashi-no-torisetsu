@@ -5,9 +5,10 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import {
   createMetaPurchaseClaimToken,
-  verifyPaidFullAccessCheckoutSession,
+  verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { localizedAlternates } from "@/lib/locale-seo";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -56,9 +57,16 @@ export default async function KoreanPurchaseCompletePage({
   searchParams,
 }: PageProps) {
   const params = await searchParams;
-  const session = await verifyPaidFullAccessCheckoutSession(params.session_id);
+  const session = await verifyPaidSelfAccessCheckoutSession(params.session_id);
   if (!session) return <UnverifiedPurchasePage />;
   const claimToken = createMetaPurchaseClaimToken(session.id);
+  const productName =
+    session.product === "self_report"
+      ? "라이트 코스"
+      : session.product === "premium_bundle"
+        ? "프리미엄 코스"
+        : "완전판 코스";
+  const isPremium = session.product === "premium_bundle";
 
   return (
     <>
@@ -106,7 +114,7 @@ export default async function KoreanPurchaseCompletePage({
               결제에 사용한 이메일 주소로
               <br />
               <span style={{ color: NAVY }}>
-                잠금 해제된 상세 결과와 PDF 다운로드 링크
+                {productName} 상세 결과와 PDF 다운로드 링크
               </span>
               {"를 보내 드렸어요."}
             </>
@@ -120,7 +128,7 @@ export default async function KoreanPurchaseCompletePage({
               로그인 후 <span style={{ color: NAVY }}>무료 성격 진단</span>으로
               안내해 드려요.
               <br />
-              진단이 끝나면 완전판 리포트를 이메일로 보내 드립니다.
+              진단이 끝나면 {productName} 이용 링크를 이메일로 보내 드립니다.
             </>
           ) : (
             <>
@@ -128,13 +136,22 @@ export default async function KoreanPurchaseCompletePage({
               <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해
               드려요.
               <br />
-              진단이 끝나면 완전판 결과가 열립니다.
+              진단이 끝나면 {productName} 결과가 열립니다.
             </>
           )}
         </p>
       </div>
 
       <LoginCard locale="ko" />
+
+      {isPremium && !session.guest && KO_UNMEI_ENABLED ? (
+        <Link
+          href="/ko/unmei"
+          className="mt-5 w-full max-w-[420px] rounded-full bg-[#9A6A24] px-6 py-4 text-center text-sm font-black text-white"
+        >
+          운명의 설계도 만들기 →
+        </Link>
+      ) : null}
 
       <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
         30일 환불 보장이 포함되어 있어요. 환불을 원하시면 결제에 사용한 이메일

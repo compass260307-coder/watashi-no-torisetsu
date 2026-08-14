@@ -10,9 +10,10 @@
 //     (2026-08-05 指示)。質問への回答がそのまま吹き出しになる流れに揃える。
 //   - 「わからない」「スキップ」「◯◯を直す」は入力カード直上のクイックリプライ
 //     チップ (LINE 流) にする。
-//   - 質問は3つだけ (生年月日[必須] / 出生時刻[わからない可] / 出生地[スキップ可])。
-//     送信前に確認バブルを挟み、各項目を修正できる (誤入力のまま生成が最悪ケースのため)。
-//   - 演出のタイピング待ちは 1 バブル 500ms。3問しかないので待たせない。
+//   - 質問は出生情報に必要な3つだけ (生年月日[必須] / 出生時刻[わからない可] /
+//     出生地[スキップ可])。送信前に確認バブルを挟み、各項目を修正できる
+//     (誤入力のまま生成が最悪ケースのため)。
+//   - 演出のタイピング待ちは 1 バブル 800ms。案内人が考えて返している間をつくる。
 //   - API (/api/birth-profile) と計測 (birth_form_view / birth_form_submit) は
 //     既存フォームと同一。metadata.ui="chat" だけ足してファネル比較できるようにする。
 //   - 保存後は親 (UnmeiClient) が waiting=true を渡してくる間、「星を読んでいます」
@@ -26,7 +27,7 @@ import React, {
 } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { PREFS } from "@/components/birth/BirthProfileForm";
-import UnmeiEmbeddedCheckout from "@/components/uranai/UnmeiEmbeddedCheckout";
+import UnmeiHostedCheckoutCard from "@/components/uranai/UnmeiEmbeddedCheckout";
 import { track } from "@/lib/track";
 
 type Role = "guide" | "user";
@@ -42,7 +43,7 @@ type Step =
 type Editing = null | "date" | "time" | "place";
 
 const GUIDE_NAME = "星読みの案内人";
-const TYPE_DELAY_MS = 500;
+const TYPE_DELAY_MS = 800;
 
 // 生年月日セレクトの範囲 (validate と同じ 120 年)
 const THIS_YEAR = new Date().getFullYear();
@@ -112,15 +113,16 @@ export default function UnmeiBirthChat({
   waiting = false,
   mode = "input",
   ownerToken = null,
-  product = "unmei",
+  previewMode = false,
 }: {
   // input:    購入済みの出生情報入力 (保存→即 onSaved で生成)。従来。
-  // purchase: 未購入。入力→保存→チャット内決済→決済完了で onSaved (生成へ)。
+  // purchase: 未購入。入力→保存→商品確認→Stripe Checkoutへ遷移。
   onSaved: () => void;
   waiting?: boolean;
   mode?: "input" | "purchase";
   ownerToken?: string | null;
-  product?: "unmei" | "unmei_upgrade";
+  /** ローカル確認用。計測・出生情報保存・決済APIを呼ばずに全フローを再現する。 */
+  previewMode?: boolean;
 }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
@@ -172,22 +174,20 @@ export default function UnmeiBirthChat({
     [push],
   );
 
-  useEffect(() => {
-    const timers = timersRef.current; // 同じ配列インスタンスに push し続けるため参照で足りる
-    return () => timers.forEach((id) => window.clearTimeout(id));
-  }, []);
-
   // 初回: 挨拶 → 生年月日へ (view 計測は既存フォームと同イベント)
   const bootedRef = useRef(false);
   useEffect(() => {
     if (bootedRef.current) return;
     bootedRef.current = true;
-    track("birth_form_view", {
-      metadata: {
-        page: "unmei",
-        ui: mode === "purchase" ? "chat_purchase" : "chat",
-      },
-    });
+    const timers = timersRef.current;
+    if (!previewMode) {
+      track("birth_form_view", {
+        metadata: {
+          page: "unmei",
+          ui: mode === "purchase" ? "chat_purchase" : "chat",
+        },
+      });
+    }
     // purchase モードは LP を経由せず直接来るため、最初に何をつくるかを一言添える。
     const intro =
       mode === "purchase"
@@ -200,7 +200,16 @@ export default function UnmeiBirthChat({
             "まずは、あなたが生まれた日を教えてください。",
           ];
     say(intro, () => setStep("date"));
-  }, [say, mode]);
+
+    // React Strict Mode は開発時に Effect の setup → cleanup → setup を行う。
+    // cleanup でタイマーを止めるだけだと bootedRef=true が残り、2回目の setup で
+    // 挨拶が再予約されず「入力中」のまま止まるため、再実行できる状態へ戻す。
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.length = 0;
+      bootedRef.current = false;
+    };
+  }, [say, mode, previewMode]);
 
   // 新しい発言・入力UIの切り替わりでトーク面の末尾へスクロール (内部スクロール)
   useEffect(() => {
@@ -293,10 +302,18 @@ export default function UnmeiBirthChat({
           : `${dockPref}${dockCity.trim() ? ` ${dockCity.trim()}` : ""}`,
       );
       setStep("boot");
-      if (editing) setEditing(null);
-      goConfirm();
+      if (editing) {
+        setEditing(null);
+        goConfirm();
+        return;
+      }
+      if (skip) {
+        say(["わかりました。出生地は未入力のまま進めますね。"], goConfirm);
+      } else {
+        goConfirm();
+      }
     },
-    [dockPref, dockCity, editing, push, goConfirm],
+    [dockPref, dockCity, editing, push, goConfirm, say],
   );
 
   // 確認画面の「◯◯を直す」
@@ -317,6 +334,18 @@ export default function UnmeiBirthChat({
   const handleConfirm = useCallback(async () => {
     const a = answersRef.current;
     setStep("submitting");
+
+    if (previewMode) {
+      say(
+        [
+          "ありがとうございます。入力内容を確認できました。",
+          "本番ではここで出生情報を保存し、最後の商品確認へ進みます。",
+        ],
+        () => setStep("payment"),
+      );
+      return;
+    }
+
     try {
       const res = await fetch("/api/birth-profile", {
         method: "POST",
@@ -348,9 +377,9 @@ export default function UnmeiBirthChat({
         },
       });
       if (mode === "purchase") {
-        // 未購入: 保存できたので、次はチャット内で決済へ (onSaved はまだ呼ばない)。
-        // 決済フォーム到達は checkout_session_created(payment_method=card_embedded・サーバ発行)
-        // で計上するため、ここでの追加計測イベントは持たない (RLS 未許可の空撃ちだった)。
+        // 未購入: 保存できたので、次は商品カードと購入CTAを表示する。
+        // CTAからStripe-hosted Checkoutへ同一タブ遷移し、完了後は
+        // /unmei?checkout=success のチャット形式生成待ちへ戻る。
         say(
           [
             "ありがとうございます。準備ができました。",
@@ -366,13 +395,7 @@ export default function UnmeiBirthChat({
         setStep("confirm"),
       );
     }
-  }, [say, onSaved, mode]);
-
-  // purchase モード: 決済完了 → 生成へ (親が waiting=true を渡してくる)
-  const handlePaymentComplete = useCallback(() => {
-    setStep("boot");
-    say(["お支払いを受け取りました。それでは——星を読みはじめますね。"], onSaved);
-  }, [say, onSaved]);
+  }, [say, onSaved, mode, previewMode]);
 
   // ---- 描画 ----
 
@@ -632,14 +655,13 @@ export default function UnmeiBirthChat({
               </div>
             )}
 
-            {/* purchase モード: チャット内の Embedded Checkout (決済) */}
+            {/* purchase モード: 商品カード → Stripe-hosted Checkout */}
             {interactive && step === "payment" && (
-              <div className="flex justify-end">
-                <div className="w-full max-w-[440px]">
-                  <UnmeiEmbeddedCheckout
-                    product={product}
+              <div className="w-full">
+                <div className="w-full">
+                  <UnmeiHostedCheckoutCard
                     ownerToken={ownerToken}
-                    onComplete={handlePaymentComplete}
+                    previewMode={previewMode}
                   />
                 </div>
               </div>

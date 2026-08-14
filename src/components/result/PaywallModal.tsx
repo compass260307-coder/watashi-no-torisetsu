@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { FullAccessPromoCard } from "./FullAccessPromoCard";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
+import type { AccessProduct } from "@/lib/access-products";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -29,8 +30,9 @@ interface PaywallModalProps {
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: ResultLocale;
-  returnTo?: "me" | "tako" | "aisho";
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
+  products?: readonly AccessProduct[];
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。

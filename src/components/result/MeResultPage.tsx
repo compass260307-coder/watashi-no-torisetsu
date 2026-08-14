@@ -59,7 +59,11 @@ import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
 import { MoshimoScenes } from "@/components/result/MoshimoScenes";
-import { hasFullAccess } from "@/lib/entitlements";
+import {
+  hasFullAccess,
+  hasPremiumBundleAccess,
+  hasSelfReportAccess,
+} from "@/lib/entitlements";
 import { hasPartTwoAccess } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
 import { PartTwoSections } from "@/components/result/PartTwoSections";
@@ -104,7 +108,7 @@ import {
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import {
   createMetaPurchaseClaimToken,
-  verifyPaidFullAccessCheckoutSession,
+  verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
@@ -199,7 +203,7 @@ async function MeResultPageContent({
   // 並列に進め、支払い済みの買い切り Session だけを計測候補にする。
   const paidCheckoutSessionPromise =
     !previewType && sp.paid === "1"
-      ? verifyPaidFullAccessCheckoutSession(sp.session_id)
+      ? verifyPaidSelfAccessCheckoutSession(sp.session_id)
       : Promise.resolve(null);
   // プレビューは既定で「解放後」の見た目 (コンテンツ QA 用) だが、?previewLock=1 を付けると
   // 未課金・友達0人の「ロック状態」(ロックカード + ぼかし + 最下部の課金カード) を描画する。
@@ -319,13 +323,17 @@ async function MeResultPageContent({
     N: stored.N ?? 5,
   });
   // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
-  // ぶんだけ props で渡す。解放条件 = 課金 (¥499=full) のみ。
+  // ぶんだけ props で渡す。解放条件 = ¥199 self_report または既存 full_access。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   // プレビュー (モック) は DB を引かない。/preview/[typeId] の静的生成をビルド時の
   // Supabase 接続に依存させないためでもある (課金状態は previewLock で表現済み)。
-  const deepDivePaid = previewType
-    ? false
-    : await hasFullAccess(user.id as string);
+  const [deepDivePaid, fullAccessPaid, premiumBundlePaid] = previewType
+    ? [false, false, false]
+    : await Promise.all([
+        hasSelfReportAccess(user.id as string),
+        hasFullAccess(user.id as string),
+        hasPremiumBundleAccess(user.id as string),
+      ]);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
   // 獲得モード (/share) は未課金相当で解決する (課金コンテンツの本文は解決しない =
@@ -341,6 +349,7 @@ async function MeResultPageContent({
   const showUnmeiPromo =
     !isKorean &&
     !acquisition &&
+    !fullAccessPaid &&
     (previewType ? !previewLocked : deepDivePaid);
   // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
   // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
@@ -610,6 +619,18 @@ async function MeResultPageContent({
     .join("");
   // キャラ名言 (サブコピー) はヒーローから撤去 (16P 構成に合わせラベル+称号+OCEAN のみ)。
   const paidCheckoutSession = await paidCheckoutSessionPromise;
+  const paidAccessProduct =
+    paidCheckoutSession?.product === "premium_bundle"
+      ? "premium_bundle"
+      : paidCheckoutSession?.product === "full_access"
+        ? "full_access"
+        : "self_report";
+  const waitingForPaidAccess =
+    paidAccessProduct === "premium_bundle"
+      ? !premiumBundlePaid
+      : paidAccessProduct === "full_access"
+        ? !fullAccessPaid
+        : !deepDivePaid;
   const shouldTrackMetaPurchase = paidCheckoutSession?.userId === user.id;
   const metaPurchaseClaimToken =
     shouldTrackMetaPurchase && paidCheckoutSession
@@ -632,14 +653,18 @@ async function MeResultPageContent({
         )}
       {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中…」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
-      {!previewType && sp.paid === "1" && !deepDivePaid && (
-        <PaidUnlockWatcher ownerToken={token} locale={locale} />
+      {!previewType && sp.paid === "1" && waitingForPaidAccess && (
+        <PaidUnlockWatcher
+          ownerToken={token}
+          locale={locale}
+          product={paidAccessProduct}
+        />
       )}
       {/* 友達診断の赤バッジ付与: 日本語 /me を表示した全員に1回
           (2026-08-03 バイラル課題①対応で課金者限定→全員に再拡大)。 */}
       {!previewType && !isKorean && <TakoAttentionOnResult ownerToken={token} />}
       {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
-      {!previewType && !isKorean && deepDivePaid && (
+      {!previewType && !isKorean && fullAccessPaid && !premiumBundlePaid && (
         <UnmeiAttentionOnPaid ownerToken={token} />
       )}
 
@@ -668,6 +693,7 @@ async function MeResultPageContent({
             : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
           : undefined
       }
+      reportLabel={isKorean ? undefined : "自己分析PDFをダウンロード"}
       locale={locale}
     >
       {isKorean ? <KoTopHeader /> : <TopHeader />}
@@ -892,7 +918,7 @@ async function MeResultPageContent({
 
         {/* ===== ⑤ 友達から見たあなた (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
-            完全版への導線だけをカード内に置く。
+            自己診断＋PDFへの導線だけをカード内に置く。
             他己パートの本体は /tako/[token]。 */}
         <section className="mt-16">
           <div className="mb-4 flex items-center gap-3">
@@ -917,7 +943,7 @@ async function MeResultPageContent({
               🔒ブロック (嫌われやすい/関係別) だけ未解放時はぼかし+解除カードになる。
               出し分けは PartTwoSections 内 (data の null 判定)。 */}
           {(() => {
-            // 未解放時は完全版への課金導線だけを表示する。
+            // 未解放時は自己診断＋PDFへの課金導線だけを表示する。
             // 見た目は恋愛ロックと同じ、ぼかし中央のコンパクトなカードに揃える。
             // 獲得モードはロックUI自体を出さない (hideLocked) ためカードも組まない。
             const lockCard =
@@ -947,7 +973,7 @@ async function MeResultPageContent({
                     KO_ME_COPY.friendLockDescription
                   ) : (
                     <>
-                      完全版のレポートを入手して、
+                      自己分析レポートを入手して、
                       <br className="md:hidden" />
                       アナタが友達から誤解されやすいポイントを知りましょう。
                     </>
@@ -1052,9 +1078,7 @@ async function MeResultPageContent({
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。第二部が未解放のときのみ。
-        自己診断ページの完全解放は課金のみなので、友達回答が届いていても未課金なら表示する。
-        画像・グループ色を渡して MBTI 風カードでフル表示。 */}
+    {/* 自己診断＋PDFの¥199課金カード。第二部が未解放のときのみ表示する。 */}
     {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
     {!partTwoUnlocked && !acquisition && !publicPreview && (
       <>
@@ -1065,8 +1089,8 @@ async function MeResultPageContent({
           group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
           locale={locale}
         />
-        {/* ロック要素の「今すぐアクセス」等はこのモーダルをその場で開く
-            (最下部カードへのスクロールに代わる導線。2026-07-22)。 */}
+        {/* ロックCTAはその場で商品カードを表示する。日本語のカードは¥199の
+            self_report、韓国版は従来どおりfull_accessとして決済へ進む。 */}
         <PaywallModal
           ownerToken={token}
           imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}

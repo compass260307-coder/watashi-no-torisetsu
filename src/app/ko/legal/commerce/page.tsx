@@ -6,6 +6,14 @@ import {
   SITE_URL,
   localizedAlternates,
 } from "@/lib/locale-seo";
+import {
+  FULL_ACCESS_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_KRW,
+  SELF_REPORT_PRICE_KRW,
+} from "@/lib/access-products";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
+
+const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
 export const metadata: Metadata = {
   title: { absolute: "판매 및 환불 안내 | 나의 사용설명서" },
@@ -38,7 +46,7 @@ export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
       title="판매 및 환불 안내"
-      lastUpdated="2026년 7월 30일"
+      lastUpdated="2026년 8월 12일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -51,9 +59,13 @@ export default function KoreanCommercePage() {
       <h2>운영 책임자</h2>
       <p>후타미 류노스케</p>
 
+      <h2>사업장 소재 국가</h2>
+      <p>일본</p>
+
       <h2>사업장 주소 및 전화번호</h2>
       <p>
-        요청이 있으면 지체 없이 안내합니다. 아래 이메일로 연락해 주세요.
+        구체적인 주소와 전화번호는 요청이 있으면 지체 없이 안내합니다. 구매 전
+        확인이 필요한 경우 아래 이메일로 연락해 주세요.
       </p>
 
       <h2>문의</h2>
@@ -66,22 +78,52 @@ export default function KoreanCommercePage() {
 
       <h2>상품명과 판매 가격</h2>
       <ul>
-        <li>나의 사용설명서 완전판 패키지</li>
-        <li>₩4,900 · 1회 결제</li>
+        <li>
+          라이트 코스: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단과
+          친구 진단 결과 및 분석 PDF 포함)
+        </li>
+        <li>
+          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트
+          구매자는 차액 {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
+        </li>
+        {KO_UNMEI_ENABLED ? (
+          <li>
+            프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
+            (라이트 구매자는 차액{" "}
+            {krw(PREMIUM_BUNDLE_PRICE_KRW - SELF_REPORT_PRICE_KRW)}, 완전판
+            구매자는 차액{" "}
+            {krw(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW)})
+          </li>
+        ) : null}
         <li>구독, 자동 갱신 또는 추가 결제 없음</li>
       </ul>
-      <p>최종 결제 금액은 Stripe 결제 화면에서 다시 확인할 수 있습니다.</p>
+      {!KO_UNMEI_ENABLED ? (
+        <p>
+          프리미엄 코스와 “운명의 설계도”는 현재 한국어판에서 판매 및 신규 이용을
+          일시 중지하고 있습니다.
+        </p>
+      ) : null}
+      <p>
+        표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
+        화면에서 다시 확인할 수 있습니다.
+      </p>
 
       <h2>상품 내용</h2>
       <ul>
-        <li>자기 진단 결과의 잠긴 8개 섹션 전체 해제</li>
-        <li>16페이지 이상의 자기 분석 완전판 PDF 리포트</li>
-        <li>두 번째 친구부터의 친구 진단 결과 전체 해제</li>
         <li>
-          친구가 늘 때마다 내용을 업데이트해 여러 번 다운로드할 수 있는 친구 진단
-          완전판 PDF 리포트
+          라이트: 자기 진단 결과의 잠긴 8개 섹션 전체 해제, 16페이지 이상의
+          자기 분석 PDF, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번
+          다시 만들 수 있는 친구 분석 PDF
         </li>
-        <li>연애 파트너 궁합 분석</li>
+        <li>
+          완전판: 라이트의 모든 기능, 연애 파트너 궁합 분석
+        </li>
+        {KO_UNMEI_ENABLED ? (
+          <li>
+            프리미엄: 완전판의 모든 기능, 출생 정보와 성격 진단을 함께 읽는 한국어
+            운명의 설계도
+          </li>
+        ) : null}
       </ul>
       <p>
         웹 결과와 PDF는 구매 후에도 같은 결과 링크에서 반복해서 이용할 수 있습니다.
@@ -95,9 +137,9 @@ export default function KoreanCommercePage() {
 
       <h2>결제 방법</h2>
       <p>
-        Stripe Checkout에 표시되는 신용·체크카드와 Samsung Pay, Kakao Pay,
-        Naver Pay, PAYCO 등의 결제 수단을 이용할 수 있습니다. 실제로 사용할 수
-        있는 수단은 기기와 Stripe의 제공 상황에 따라 달라질 수 있습니다.
+        Stripe Checkout에서 구매 시점에 실제로 표시되는 신용·체크카드 및
+        간편결제 수단을 이용할 수 있습니다. 이용 가능한 수단은 기기, 브라우저와
+        Stripe의 제공 상황에 따라 달라질 수 있습니다.
       </p>
 
       <h2>결제 시기와 제공 시기</h2>
@@ -130,6 +172,11 @@ export default function KoreanCommercePage() {
           회사의 처리 일정에 따라 실제 반영까지 며칠이 걸릴 수 있습니다.
         </li>
         <li>
+          전액 환불이 완료되면 해당 결제로 부여된 유료 기능의 이용 권한도
+          종료됩니다. 다른 유효한 구매가 남아 있으면 그 구매 범위는 계속 이용할
+          수 있습니다.
+        </li>
+        <li>
           부정 결제, 제3자의 결제 수단 도용 또는 환불 제도의 명백한 악용이 의심되는
           경우에는 본인 확인과 사실 확인을 요청할 수 있습니다.
         </li>
@@ -157,7 +204,7 @@ export default function KoreanCommercePage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 7월 30일</p>
+      <p>최종 개정일: 2026년 8월 12일</p>
     </KoreanLegalDocument>
   );
 }

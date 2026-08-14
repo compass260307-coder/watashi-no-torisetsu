@@ -37,6 +37,7 @@ const CLIENT_EVENT_NAMES = new Set([
   "unmei_purchase_start",
   "unmei_reading_view",
   "paywall_viewed",
+  "paywall_plan_viewed",
   "paywall_scroll_clicked",
   "purchase_cta_clicked",
 ]);

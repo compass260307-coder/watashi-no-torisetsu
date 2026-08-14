@@ -58,6 +58,8 @@ interface MeStickyHeaderProps {
    * 指定時はバー右端に「完全版レポートを生成」を表示 (解除CTAとは排他運用を想定)。
    */
   reportHref?: string;
+  /** reportHref ボタンの表示文言。省略時は友達診断の従来文言。 */
+  reportLabel?: string;
   /**
    * 獲得ランディング (/share) 用: バー右端に「無料で性格診断をする」を表示 (2026-07-26)。
    * 課金CTA (showUnlockCta) / シェアボタンとは排他運用を想定。
@@ -111,6 +113,7 @@ export function MeStickyHeader({
   code,
   paywallTargetId,
   reportHref,
+  reportLabel,
   diagnosisCta,
   diagnosisCtaHref,
   diagnosisCtaLabel,
@@ -398,7 +401,8 @@ export function MeStickyHeader({
                   <path d="M12 18v-6" />
                   <path d="m9 15 3 3 3-3" />
                 </svg>
-                {isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成"}
+                {reportLabel ??
+                  (isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
               </a>
             )}
 

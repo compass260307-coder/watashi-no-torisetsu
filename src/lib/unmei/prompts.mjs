@@ -203,14 +203,27 @@ JSON オブジェクトのみを返す(前後に説明文・コードフェン�
 }
 sections は必ずこの4本・この順・この id/title。body に見出しは含めない。段落は空行で区切る。`;
 
-export function buildNatalSystemPrompt() {
-  return SYSTEM_PROMPT;
+const KOREAN_OUTPUT_INSTRUCTION = `
+
+# 한국어 출력 규칙 (이 규칙이 위의 일본어 출력 예시보다 우선합니다)
+- 모든 사용자용 문장을 자연스러운 한국어 존댓말로 작성합니다. 일본어 문장과 일본어 제목을 출력하지 않습니다.
+- 점성술 용어를 나열하지 말고, 한국 독자가 한 번에 이해할 수 있는 평이한 표현을 씁니다.
+- sections의 id와 순서는 그대로 유지하되 title은 반드시 다음과 같이 씁니다:
+  haichi="당신이 쌓아 온 것", kokoro="누군가와 함께 있을 때의 당신", chosen="앞으로 찾아올 전환점", grace="마지막으로 한 가지만"
+- hitokoto, subline, body도 모두 한국어로 작성합니다.
+- 글자 수 범위는 한국어 가독성을 위해 각 본문에서 약 700~1,000자로 조정할 수 있습니다.
+- 결과가 오락과 자기 이해를 위한 참고 정보이며 의학적·과학적 진단이 아님을 전제로 합니다.`;
+
+export function buildNatalSystemPrompt(locale = "ja") {
+  return locale === "ko"
+    ? `${SYSTEM_PROMPT}${KOREAN_OUTPUT_INSTRUCTION}`
+    : SYSTEM_PROMPT;
 }
 
 // ===== ユーザープロンプト (動的・plan + chart から組み立て) =====
 //   chart: エフェメリス計算結果 / scores: Big Five 0-10 / essence: 称号 / typeName: 32タイプ名
 //   timeUnknown: 出生時刻不明フラグ
-export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnknown, nowIso }) {
+export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnknown, nowIso, locale = "ja" }) {
   const plan = buildUnmeiPlan(scores);
 
   // 章別 chart_elements (この中からのみ選ばせる)
@@ -224,6 +237,7 @@ export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnk
   );
 
   return `以下のデータで、システムの指示どおり JSON のみで鑑定を書いてください。
+出力言語: ${locale === "ko" ? "韓国語（自然な敬語。日本語を出力しない）" : "日本語"}
 
 ## 内容レイヤー
 主要スコア(%表記): ${plan.pctLine}

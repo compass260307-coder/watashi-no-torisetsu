@@ -43,6 +43,8 @@ const PAYWALL_SOURCES = new Set([
   "aisho_scene",
   // 下部ナビのロック中「相性」タブ → 課金カードモーダル (2026-07-28)
   "nav_aisho_locked",
+  // 星読みの案内人で、未購入ユーザーが最初の相談を送信したとき。
+  "hoshiyomi_first_send",
   ...TAKO_PAYWALL_SOURCES,
 ]);
 

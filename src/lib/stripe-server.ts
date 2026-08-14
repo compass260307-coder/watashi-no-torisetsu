@@ -20,8 +20,8 @@ export function getStripe(): Stripe | null {
   if (!key) return null;
   if (!cachedStripe) {
     cachedStripe = new Stripe(key, {
-      // apiVersion を省略すると Stripe アカウントのダッシュボード設定値を使用。
-      // 個別ピン留めしたい場合はここで指定する。
+      // apiVersion を省略すると、インストール済み Stripe SDK の既定バージョンを使う。
+      // 互換性検証済みの別バージョンへ固定するときだけ明示する。
       typescript: true,
     });
   }

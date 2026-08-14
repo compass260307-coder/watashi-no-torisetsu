@@ -9,7 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasSelfReportAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 import {
@@ -142,7 +142,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
       );
     }
 
-    const paid = await hasFullAccess(user.id);
+    const paid = await hasSelfReportAccess(user.id);
     if (!paid) {
       return <LockedScreen token={token} isKo={isKo} />;
     }
@@ -187,7 +187,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
       style={reportStyle}
     >
       <div className={styles.screenToolbar}>
-        <p>{isKo ? "완전판 PDF 미리보기" : "完全版PDF プレビュー"}</p>
+        <p>{isKo ? "완전판 PDF 미리보기" : "自己分析PDF プレビュー"}</p>
         <ReportPrintButton locale={isKo ? "ko" : "ja"} />
       </div>
 

@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   // dev server が全ルートを 404 に落とすことがあるため明示する。
   outputFileTracingRoot: projectRoot,
 
+  // Codexのアプリ内ブラウザはローカル画面を127.0.0.1で開くため、
+  // localhostで起動したNext.js開発サーバーのクライアント処理を許可する。
+  allowedDevOrigins: ["127.0.0.1"],
+
   // /report/[token]/pdf・/tako-report/[token]/pdf の headless Chromium。
   // バンドルせず node_modules からそのまま読み込む (バイナリ同梱パッケージのため
   // bundler を通すと壊れる)。

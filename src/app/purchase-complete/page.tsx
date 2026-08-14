@@ -11,7 +11,7 @@ import { PurchaseCompleteView } from "@/components/PurchaseCompleteView";
 import TopHeader from "@/components/top/TopHeader";
 import {
   createMetaPurchaseClaimToken,
-  verifyPaidFullAccessCheckoutSession,
+  verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ function UnverifiedPurchasePage() {
 
 export default async function PurchaseCompletePage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const session = await verifyPaidFullAccessCheckoutSession(params.session_id);
+  const session = await verifyPaidSelfAccessCheckoutSession(params.session_id);
   if (!session) return <UnverifiedPurchasePage />;
   const claimToken = createMetaPurchaseClaimToken(session.id);
 
@@ -66,7 +66,16 @@ export default async function PurchaseCompletePage({ searchParams }: PageProps) 
         product={session.product}
         claimToken={claimToken}
       />
-      <PurchaseCompleteView isGuestPurchase={session.guest} />
+      <PurchaseCompleteView
+        isGuestPurchase={session.guest}
+        product={
+          session.product === "self_report"
+            ? "self_report"
+            : session.product === "premium_bundle"
+              ? "premium_bundle"
+              : "full_access"
+        }
+      />
     </>
   );
 }

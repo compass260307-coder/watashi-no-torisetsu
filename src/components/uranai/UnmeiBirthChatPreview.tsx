@@ -1,0 +1,21 @@
+"use client";
+
+import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
+
+// サーバーのプレビューページからイベント関数を渡さずに済むよう、
+// ローカル確認専用のクライアント境界を小さく切り出す。
+export default function UnmeiBirthChatPreview() {
+  return (
+    <>
+      <div className="bg-[#FFF6DF] px-4 py-2 text-center text-[11px] font-black tracking-[0.06em] text-[#8A5B17]">
+        LOCAL PREVIEW ・ 保存や決済は実行されません
+      </div>
+      <UnmeiBirthChat
+        onSaved={() => undefined}
+        mode="purchase"
+        ownerToken={null}
+        previewMode
+      />
+    </>
+  );
+}

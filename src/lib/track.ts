@@ -90,7 +90,8 @@ export function isPreviewMode(): boolean {
 //   unmei_reading_view           運命の設計図の鑑定表示
 //
 // ----- 課金ファネル (2026-07-13 追加) -----
-//   paywall_viewed               課金カードの表示到達 (metadata.page/variant, ownerToken)
+//   paywall_viewed               課金カードの表示到達 (metadata.page/variant/paywall_version, ownerToken)
+//   paywall_plan_viewed          3コースのうち中央表示されたコース (metadata.product/placement)
 //   paywall_scroll_clicked       課金カードへの誘導クリック (metadata.source/page)
 //   purchase_cta_clicked         購入CTAクリック=checkout要求 (metadata.page/source, ownerToken)
 //   checkout_session_created     Stripe Checkout 作成 ※サーバ発行 (metadata.source/guest)

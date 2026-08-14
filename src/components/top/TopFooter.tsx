@@ -36,6 +36,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "友達診断テスト", href: "/tako" },
       { label: "性格タイプ", href: "/types" },
       { label: "運命の設計図", href: "/unmei" },
+      { label: "占い師", href: "/hoshiyomi" },
     ],
   },
   {

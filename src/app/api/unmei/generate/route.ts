@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
 import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
+import { hasUnmeiAccess } from "@/lib/entitlements";
 
 async function loadWorker() {
   return await import("@/lib/unmei/generateWorker.mjs");
@@ -34,14 +35,18 @@ export async function POST(request: Request) {
   const userId = session.id;
 
   // 購入済みチェック: 未購入ユーザーが Claude 生成をキックできないようにする。
-  const { data: u } = await supabaseAdmin
-    .from("users")
-    .select("unmei")
-    .eq("id", userId)
-    .maybeSingle();
-  if (!u?.unmei) {
+  const [{ data: u }, purchased] = await Promise.all([
+    supabaseAdmin
+      .from("users")
+      .select("preferred_locale")
+      .eq("id", userId)
+      .maybeSingle(),
+    hasUnmeiAccess(userId),
+  ]);
+  if (!purchased) {
     return NextResponse.json({ error: "not purchased", state: "unpurchased" }, { status: 403 });
   }
+  const outputLocale = u?.preferred_locale === "ko" ? "ko" : "ja";
 
   // 手動リトライ(自動再生成の上限を超えて再試行)は body { force:true } で明示する。
   let force = false;
@@ -60,7 +65,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   // idempotency: 有効な鑑定が既にあれば再生成しない(キャッシュ規律)。
-  if (isReadingReady(existing)) {
+  const existingLocale =
+    (existing?.reading as { locale?: unknown } | null)?.locale === "ko"
+      ? "ko"
+      : "ja";
+  if (isReadingReady(existing) && existingLocale === outputLocale) {
     return NextResponse.json({ ok: true, state: "ready", skipped: true });
   }
 
@@ -80,7 +89,11 @@ export async function POST(request: Request) {
   after(async () => {
     try {
       const worker = await loadWorker();
-      await worker.runForUser(supabaseAdmin, userId, { ...promptInputs, force });
+      await worker.runForUser(supabaseAdmin, userId, {
+        ...promptInputs,
+        force,
+        locale: outputLocale,
+      });
     } catch (e) {
       // runForUser は内部 try/catch で failed を記録するが、想定外の throw もログに残す。
       // 記録漏れのままフリーズ/クラッシュした場合は staleロック(180s)経過 + クライアントの

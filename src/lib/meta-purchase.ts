@@ -4,7 +4,9 @@
 // の両方から参照するため、このモジュールは isomorphic に保つ (Node API を使わない)。
 
 export const META_PURCHASE_PRODUCTS = [
+  "self_report",
   "full_access",
+  "premium_bundle",
   "unmei",
   "unmei_upgrade",
 ] as const;
@@ -36,7 +38,19 @@ const META_PURCHASE_CONTENT: Record<
   MetaPurchaseProduct,
   { id: string; koId?: string; name: string }
 > = {
-  full_access: { id: "full_access_499", koId: "full_access_4900", name: "full_access" },
+  self_report: {
+    id: "self_report_199",
+    name: "自己診断・友達診断＋分析PDF",
+  },
+  full_access: {
+    id: "full_access_499",
+    koId: "full_access_4900",
+    name: "full_access",
+  },
+  premium_bundle: {
+    id: "premium_bundle_899",
+    name: "完全版＋運命の設計図",
+  },
   unmei: { id: "unmei_1980", name: "運命の設計図" },
   unmei_upgrade: { id: "unmei_1480", name: "運命の設計図" },
 };

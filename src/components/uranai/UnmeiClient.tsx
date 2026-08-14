@@ -12,7 +12,7 @@ type Props = {
   // 未指定 (null) は従来の購入済み入力フロー。
   purchase?: {
     ownerToken: string | null;
-    product: "unmei" | "unmei_upgrade";
+    product: "premium_bundle";
   } | null;
 };
 
@@ -142,7 +142,6 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
         waiting={state !== "no_birth"}
         mode={purchase ? "purchase" : "input"}
         ownerToken={purchase?.ownerToken ?? null}
-        product={purchase?.product ?? "unmei"}
       />
     );
   }

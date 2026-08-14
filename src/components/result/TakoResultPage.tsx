@@ -407,9 +407,8 @@ export async function TakoResultPage({
   // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
 
-  // ===== 解放判定 (2026-07-22: ¥499 完全版パッケージに一本化) =====
-  // 友達診断は自己診断と同じ ¥499 full_access に含まれる。hasTakoAccess は
-  // full_access 保有者と旧 ¥799 購入者の両方を true にする。
+  // ===== 解放判定 (2026-08-14: ¥199 お試しコースにも友達診断を追加) =====
+  // hasTakoAccess は self_report 以上の購入者と旧 ¥799 購入者を true にする。
   // プレビュー: &lock=1 でロック状態を確認できる (旧 &discount は廃止)。
   const takoUnlocked = previewMode
     ? sp.lock !== "1"
@@ -438,6 +437,12 @@ export async function TakoResultPage({
 
   // 決済着地の Meta Purchase 計測 (/me と同じ: 支払済み Session の購入者 = 本人のみ)。
   const paidCheckoutSession = await paidCheckoutSessionPromise;
+  const paidAccessProduct =
+    paidCheckoutSession?.product === "premium_bundle"
+      ? "premium_bundle"
+      : paidCheckoutSession?.product === "full_access"
+        ? "full_access"
+        : "self_report";
   const shouldTrackMetaPurchase =
     !previewMode && paidCheckoutSession?.userId === (data.user.id as string);
   const metaPurchaseClaimToken =
@@ -468,6 +473,7 @@ export async function TakoResultPage({
           ownerToken={token}
           returnTo="tako"
           locale={locale}
+          product={paidAccessProduct}
         />
       )}
       {/* /me と同じ常時表示バー付きヘッダー (シェア3ボタン + 未購入時は解除CTA)。
@@ -1065,8 +1071,8 @@ export async function TakoResultPage({
             ? KO_RESULT_TYPES[promoType].essence
             : data.friendCharacter?.essence ??
               (data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : "");
-        // 2026-07-22: ¥799 単体販売を廃止し ¥499 完全版パッケージに一本化。
-        // /me と同じ FullAccessPromoCard を使い、購入後は /tako に戻す (returnTo)。
+        // 2026-08-12: /me と同じ ¥199 / ¥499 / ¥899 の3コース比較へ統一。
+        // 既定は¥499。完全版・プレミアム購入後は /tako に戻す (returnTo)。
         // TakoLockedBlock の解除CTA (#tako-promo) のスクロール先を兼ねるため id を付与。
         const promoImage =
           sceneImageForGroup(promoGroup, "love") ??

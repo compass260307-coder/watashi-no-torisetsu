@@ -1,6 +1,6 @@
 "use client";
 
-// 決済直後 (/me/[token]?paid=1, /tako/[token]?paid=1) の webhook 反映待ちオーバーレイ。
+// 決済直後の各success URLで、webhook反映を待つオーバーレイ。
 //
 // 背景: Stripe 決済 → success_url (/{me|tako}/{token}?paid=1) に着地するが、plan='full' を
 //   付けるのは webhook で非同期。着地した瞬間はまだ未反映のことがあり、そのままだと
@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from "react";
 import type { ResultLocale } from "@/i18n/result";
+import type { AccessProduct } from "@/lib/access-products";
 
 const NAVY = "#2E2E5C";
 const POLL_INTERVAL_MS = 2000;
@@ -20,14 +21,18 @@ const MAX_TRIES = 20; // 約 40 秒
 
 // 反映後 (またはタイムアウト後の手動再読込) の戻し先 URL。
 //   me/tako: /{me|tako}/{token} (paid= を外した canonical URL)。
-//   aisho: token パスを持たないため、現URLから paid/session_id だけ外す
-//          (ペア ?a=&b= は維持 → 解錠済みのシーン本文がそのまま出る)。
+//   aisho/unmei: token パスを持たないため、現URLから paid/session_id だけ外す
+//          (aishoのペア ?a=&b= は維持 → 解錠済みの本文をそのまま出す)。
 function unlockedUrl(
-  returnTo: "me" | "tako" | "aisho",
+  returnTo: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi",
   ownerToken: string,
   locale: ResultLocale,
 ): string {
-  if (returnTo === "aisho") {
+  if (
+    returnTo === "aisho" ||
+    returnTo === "unmei" ||
+    returnTo === "hoshiyomi"
+  ) {
     const url = new URL(window.location.href);
     url.searchParams.delete("paid");
     url.searchParams.delete("session_id");
@@ -40,10 +45,12 @@ export function PaidUnlockWatcher({
   ownerToken,
   locale = "ja",
   returnTo = "me",
+  product = "full_access",
 }: {
   ownerToken: string;
   locale?: ResultLocale;
-  returnTo?: "me" | "tako" | "aisho";
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
+  product?: AccessProduct;
 }) {
   const [timedOut, setTimedOut] = useState(false);
 
@@ -65,8 +72,21 @@ export function PaidUnlockWatcher({
           { cache: "no-store" },
         );
         if (res.ok) {
-          const data = (await res.json()) as { full?: boolean };
-          if (data.full) {
+          const data = (await res.json()) as {
+            full?: boolean;
+            selfReport?: boolean;
+            premiumBundle?: boolean;
+            astrologer?: boolean;
+          };
+          const unlocked =
+            returnTo === "hoshiyomi"
+              ? data.astrologer
+              : product === "self_report"
+                ? data.selfReport
+                : product === "premium_bundle"
+                  ? data.premiumBundle
+                  : data.full;
+          if (unlocked) {
             reloadUnlocked();
             return;
           }
@@ -87,7 +107,7 @@ export function PaidUnlockWatcher({
       cancelled = true;
       window.clearTimeout(first);
     };
-  }, [locale, ownerToken, returnTo]);
+  }, [locale, ownerToken, product, returnTo]);
 
   return (
     <div
@@ -114,7 +134,14 @@ export function PaidUnlockWatcher({
             {locale === "ko" ? (
               <>잠금 해제를 반영하고 있어요.<br />완료되면 자동으로 열립니다.</>
             ) : (
-              <>全解放の反映まで、もう少しお待ちください。<br />自動でひらきます。</>
+              <>
+                {product === "self_report"
+                  ? "自己診断・友達診断の解放まで、もう少しお待ちください。"
+                  : product === "premium_bundle"
+                    ? "すべての機能とチャット30回分の解放まで、もう少しお待ちください。"
+                    : "運命の設計図とチャット5回分の解放まで、もう少しお待ちください。"}
+                <br />自動でひらきます。
+              </>
             )}
           </p>
         </>

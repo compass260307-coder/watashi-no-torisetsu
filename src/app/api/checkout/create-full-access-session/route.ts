@@ -1,4 +1,5 @@
-// 日本版・韓国版の買い切り「フルアクセス(全解放)」Stripe Checkout Session 作成。
+// 日本版 (¥199 / ¥499 / ¥899)・韓国版 (₩1,900 / ₩4,900 / ₩12,900) の
+// Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
 // POST /api/checkout/create-full-access-session
 //   - 認可: body.owner_token (秘密の capability URL のトークン) でその本人を解決。
@@ -7,26 +8,48 @@
 //     Cookie 必須だとスマホで 401 → 「うまく開けません」になり課金導線が死ぬ。
 //     owner_token は解放対象=そのトークン本人なので、支払いで解放されるのも本人の分だけ。
 //     (編集権限 isOwner は従来通り session のみ。ここは "支払って解放" のみで安全。)
-//   - 二重課金防止: 既に plan='full' なら 409 already_full (先日の race 対策と同じ思想)
-//   - 完了は webhook (checkout.session.completed / metadata.product='full_access') 側で
-//     plan='full' に更新。ここでは Checkout URL を返すだけ。
+//   - 二重課金防止: 商品ごとの entitlement を確認して 409 を返す。
+//   - 完了は webhook の metadata.product
+//     ('self_report' / 'full_access' / 'premium_bundle') で分岐する。
 //   - 戻り値: { url }
 //
 // 既存の create-session / create-perception-unlock-session とは別エンドポイント。
-// Price はロケール別の環境変数 (one-time)。金額はサーバ側の Price 固定で、
+// 金額はサーバ側の共通定数と Price/price_data で固定し、
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
+import type Stripe from "stripe";
 import {
   consumeRateLimit,
   isSafeOpaqueToken,
   readJsonObject,
 } from "@/lib/api-security";
 import { getSession } from "@/lib/session";
-import { hasFullAccess } from "@/lib/entitlements";
+import {
+  getAccessPurchaseEntitlements,
+  hasFullAccess,
+  hasPremiumBundleAccess,
+  hasSelfReportAccess,
+} from "@/lib/entitlements";
+import {
+  accessProductPrice,
+  EMPTY_ACCESS_ENTITLEMENTS,
+  FULL_ACCESS_LIST_PRICE_JPY,
+  FULL_ACCESS_PRICE_JPY,
+  FULL_ACCESS_PRICE_KRW,
+  isAccessProduct,
+  isThreeCoursePaywallVersion,
+  PREMIUM_BUNDLE_PRICE_JPY,
+  PREMIUM_BUNDLE_PRICE_KRW,
+  SELF_REPORT_PRICE_JPY,
+  SELF_REPORT_PRICE_KRW,
+  type AccessEntitlements,
+  type AccessProduct,
+} from "@/lib/access-products";
 import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   DIRECT_PAYWALL_SOURCE,
@@ -52,18 +75,18 @@ function getCheckoutBaseUrl(request: NextRequest): string {
 }
 
 // ===== 「買いたくなる」Checkout 表示の定数 =====
-// 実課金額 (saleAmount) はロケール別 Price ID の実額と一致していること。
+// 実課金額 (saleAmount) はサーバ固定の実売価格。
 // listAmount は値引き表示のアンカー (二重価格) で、結果カード側の表示と揃える。
 const CHECKOUT_PRICING = {
   ja: {
     currency: "jpy",
-    saleAmount: 499,
-    listAmount: 1299,
-    discountAmount: 800,
+    saleAmount: FULL_ACCESS_PRICE_JPY,
+    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
+    discountAmount: FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY,
   },
   ko: {
     currency: "krw",
-    saleAmount: 4900,
+    saleAmount: FULL_ACCESS_PRICE_KRW,
     listAmount: 12900,
     discountAmount: 8000,
   },
@@ -90,12 +113,12 @@ const CHECKOUT_COPY: Record<
   }
 > = {
   ja: {
-    couponId: "full-access-anchor-off800-jpy",
+    couponId: "full-access-anchor-off791-jpy",
     couponName: "リリース記念",
-    // 2026-07-23: 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージに一本化。
+    // 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージ。
     productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "自己診断結果の完全解放、16ページ以上の自己分析PDFレポート、友達から見たあなたの完全解放、何度でも作り直せる友達診断レポート、恋愛パートナー分析まで——ぜんぶ含んだ完全版パッケージ。買い切り。",
+      "自己診断とPDF、友達診断、恋愛パートナー相性診断に加え、『運命の設計図』と星読みの案内人とのチャット5回分を含みます。買い切り。",
     submitMessage:
       "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
@@ -109,6 +132,44 @@ const CHECKOUT_COPY: Record<
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
 };
+
+const SELF_REPORT_COPY = {
+  ja: {
+    productName: "ワタシのトリセツ お試しコース",
+    productDescription:
+      "自己診断結果のロックされた8セクションと2人目以降の友達診断結果をすべて解放し、自己分析PDF・友達診断分析PDFを利用できます。買い切り。",
+    submitMessage:
+      "一度きりの買い切りで、自己診断・友達診断の結果と分析PDFをずっと見返せます。30日間の返金保証つき。",
+  },
+  ko: {
+    productName: "나의 사용설명서 라이트 코스",
+    productDescription:
+      "자기 진단의 잠긴 8개 섹션과 두 번째 친구부터의 친구 진단 결과를 모두 해제하고 자기 분석 PDF와 친구 분석 PDF를 이용할 수 있어요. 1회 결제.",
+    submitMessage:
+      "한 번만 결제하면 자기 진단과 친구 진단 결과 및 분석 PDF를 계속 확인할 수 있어요. 30일 환불 보장.",
+  },
+} as const;
+
+const PREMIUM_BUNDLE_COPY = {
+  ja: {
+    productName: "ワタシのトリセツ プレミアムコース",
+    productDescription:
+      "完全版のすべてと『運命の設計図』に加え、性格診断と星読みをもとに案内人とチャットできる30回分を含みます。買い切り。",
+    submitMessage:
+      "一度きりの買い切りで、すべての診断結果・運命の設計図・チャット30回分を利用できます。30日間の返金保証つき。",
+  },
+  ko: {
+    productName: "나의 사용설명서 프리미엄 코스",
+    productDescription:
+      "자기 진단과 PDF, 친구 진단, 연애 궁합에 더해 출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도까지 모두 이용할 수 있어요. 1회 결제.",
+    submitMessage:
+      "한 번만 결제하면 모든 진단 결과와 운명의 설계도를 이용할 수 있어요. 30일 환불 보장.",
+  },
+} as const;
+
+type CheckoutSessionCreateParams = NonNullable<
+  Parameters<Stripe["checkout"]["sessions"]["create"]>[0]
+>;
 // Checkout 左の商品サムネ (現行キービジュアルの PNG・768x512)。
 // Stripe は JPEG/PNG/GIF 推奨なので webp ではなく PNG を使う。取得できる公開 https のみ許可。
 const PRODUCT_IMAGE =
@@ -176,8 +237,12 @@ async function priceChargesSale(
   try {
     const price = await stripe.prices.retrieve(priceId);
     return (
+      price.active &&
+      price.type === "one_time" &&
       price.unit_amount === pricing.saleAmount &&
-      price.currency === pricing.currency
+      price.currency === pricing.currency &&
+      (process.env.STRIPE_AUTOMATIC_TAX_ENABLED !== "true" ||
+        price.tax_behavior === "inclusive")
     );
   } catch {
     return false;
@@ -263,27 +328,88 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  if (body.ui_mode !== undefined && body.ui_mode !== "embedded") {
+    return NextResponse.json({ error: "Invalid ui mode" }, { status: 400 });
+  }
+  if (
+    body.payment_method !== undefined &&
+    body.payment_method !== "paypay"
+  ) {
+    return NextResponse.json(
+      { error: "Invalid payment method" },
+      { status: 400 },
+    );
+  }
+  // ui_mode:'embedded' は既存クライアントとの互換用。指定がなければカード・Link・
+  // PayPayなどをStripe-hosted Checkoutで扱う。
+  const paypayRedirect = body.payment_method === "paypay";
+  const embedded = body.ui_mode === "embedded" && !paypayRedirect;
   const checkoutLocale: CheckoutLocale = body.locale === "ko" ? "ko" : "ja";
+  if (body.product !== undefined && !isAccessProduct(body.product)) {
+    return NextResponse.json({ error: "Invalid product" }, { status: 400 });
+  }
+  // product 未指定は既存クライアント互換のため full_access。
+  // 不正値は¥499へフォールバックせず、誤課金防止で拒否する。
+  const requestedProduct: AccessProduct = body.product ?? "full_access";
+  const product = requestedProduct;
+  if (
+    checkoutLocale === "ko" &&
+    product === "premium_bundle" &&
+    !KO_UNMEI_ENABLED
+  ) {
+    return NextResponse.json(
+      { error: "product_unavailable", code: "product_unavailable" },
+      { status: 404 },
+    );
+  }
+  const paywallVersion =
+    body.paywall_version === undefined
+      ? "legacy"
+      : isThreeCoursePaywallVersion(body.paywall_version)
+        ? body.paywall_version
+        : null;
+  if (paywallVersion === null) {
+    return NextResponse.json(
+      { error: "Invalid paywall version" },
+      { status: 400 },
+    );
+  }
+  const paywallPlacement =
+    body.paywall_placement === undefined
+      ? "unknown"
+      : body.paywall_placement === "inline" ||
+          body.paywall_placement === "modal"
+        ? body.paywall_placement
+        : null;
+  if (paywallPlacement === null) {
+    return NextResponse.json(
+      { error: "Invalid paywall placement" },
+      { status: 400 },
+    );
+  }
   // 戻り先は allowlist 化 (任意 URL への open redirect を防ぐ)。既定 me。
-  const returnTo =
+  // すべてのコースで呼び出し元へ戻す。¥199にも友達診断を含むため、
+  // /tako から購入した場合はその場で解放結果を確認できる。
+  const requestedReturnTo =
     body.return_to === "tako"
       ? "tako"
       : body.return_to === "aisho"
         ? "aisho"
-        : "me";
-  const checkoutCopy = CHECKOUT_COPY[checkoutLocale];
+        : body.return_to === "hoshiyomi"
+          ? "hoshiyomi"
+          : body.return_to === "unmei"
+            ? "unmei"
+            : "me";
+  const returnTo = requestedReturnTo;
+  const checkoutCopy =
+    product === "self_report"
+      ? SELF_REPORT_COPY[checkoutLocale]
+      : product === "premium_bundle"
+        ? PREMIUM_BUNDLE_COPY[checkoutLocale]
+        : CHECKOUT_COPY[checkoutLocale];
   const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
-  const priceId = getFullAccessPriceId(checkoutLocale);
-  if (!priceId) {
-    const envName =
-      checkoutLocale === "ko"
-        ? "STRIPE_PRICE_FULL_ACCESS_KRW"
-        : "STRIPE_PRICE_FULL_ACCESS";
-    return NextResponse.json(
-      { error: `${envName} not configured` },
-      { status: 500 },
-    );
-  }
+  const priceId =
+    product === "full_access" ? getFullAccessPriceId(checkoutLocale) : null;
   const normalizedPaywallSource = normalizePaywallSource(body.paywall_source);
   const paywallSource =
     returnTo === "tako" && normalizedPaywallSource === DIRECT_PAYWALL_SOURCE
@@ -343,11 +469,72 @@ export async function POST(request: NextRequest) {
   //   userId=null がゲスト。買い手が判る場合のみ user_id/owner_token を使う。
   const userId: string | null = buyer?.id ?? null;
 
-  // ===== 二重課金防止 (本人が判るときのみ。ゲストは email 未確定なので webhook 側で冪等) =====
-  if (userId && (await hasFullAccess(userId))) {
+  // ===== 二重課金防止 + 差額計算 =====
+  // 本人が判る場合だけ現在の権限を並列取得する。クライアント表示は信用せず、
+  // Checkout直前のこの値だけで実売価格を決める。
+  const entitlements: AccessEntitlements = userId
+    ? await Promise.all([
+        hasSelfReportAccess(userId),
+        hasFullAccess(userId),
+        hasPremiumBundleAccess(userId),
+      ]).then(([selfReport, full, premiumBundle]) => ({
+        selfReport,
+        full,
+        premiumBundle,
+      }))
+    : EMPTY_ACCESS_ENTITLEMENTS;
+  const alreadyPurchased =
+    product === "self_report"
+      ? entitlements.selfReport
+      : product === "full_access"
+        ? entitlements.full
+        : entitlements.premiumBundle;
+  if (alreadyPurchased) {
+    const code =
+      product === "self_report"
+        ? "already_self_report"
+        : product === "full_access"
+          ? "already_full"
+          : "already_premium_bundle";
     return NextResponse.json(
-      { error: "already_full", code: "already_full" },
+      {
+        error: code,
+        code,
+      },
       { status: 409 },
+    );
+  }
+  const effectivePrice = accessProductPrice(
+    checkoutLocale,
+    product,
+    entitlements,
+  );
+  // 差額依存関係は users.plan ではなく、実際に残っている有効な購入履歴で記録する。
+  // 旧来の plan='full' ユーザーには価格上の優待を維持しつつ、存在しない決済へ
+  // premium_bundle を依存させない。
+  const purchaseEntitlements = userId
+    ? await getAccessPurchaseEntitlements(userId)
+    : EMPTY_ACCESS_ENTITLEMENTS;
+  const upgradeFrom = purchaseEntitlements.full
+    ? "full_access"
+    : purchaseEntitlements.selfReport
+      ? "self_report"
+      : "none";
+  const inlineFullUpgrade =
+    product === "full_access" &&
+    effectivePrice !== checkoutPricing.saleAmount;
+  // 日本版の新価格テストは inline price_data でサーバ固定する。
+  // 韓国版の通常購入だけは従来の通貨別 Price ID を継続する。
+  if (
+    product === "full_access" &&
+    checkoutLocale === "ko" &&
+    !inlineFullUpgrade &&
+    !priceId
+  ) {
+    const envName = "STRIPE_PRICE_FULL_ACCESS_KRW";
+    return NextResponse.json(
+      { error: `${envName} not configured` },
+      { status: 500 },
     );
   }
 
@@ -378,9 +565,13 @@ export async function POST(request: NextRequest) {
   const successPath =
     returnTo === "aisho"
       ? `${aishoPath}?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
-      : returnTo === "tako"
-        ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
-        : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
+      : returnTo === "hoshiyomi"
+        ? `/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
+        : returnTo === "unmei"
+          ? `${localePrefix}/unmei?${checkoutLocale === "ko" ? "paid=1" : "checkout=success"}&session_id={CHECKOUT_SESSION_ID}`
+          : returnTo === "tako"
+            ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
+            : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
   const successUrl = ownerToken
     ? `${checkoutBaseUrl}${successPath}`
     : `${checkoutBaseUrl}${localePrefix}/purchase-complete?session_id={CHECKOUT_SESSION_ID}`;
@@ -389,9 +580,13 @@ export async function POST(request: NextRequest) {
   const cancelPath =
     returnTo === "aisho"
       ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
-      : ownerToken
-        ? `${localePrefix}/${returnTo}/${ownerToken}`
-        : localePrefix || "/";
+      : returnTo === "hoshiyomi"
+        ? "/hoshiyomi"
+        : returnTo === "unmei"
+          ? `${localePrefix}/unmei`
+          : ownerToken
+            ? `${localePrefix}/${returnTo}/${ownerToken}`
+            : localePrefix || "/";
   const cancelUrl = `${checkoutBaseUrl}${cancelPath}`;
 
   // ログイン中は email を prefill。ゲストは Stripe が Checkout で email を収集する。
@@ -409,42 +604,131 @@ export async function POST(request: NextRequest) {
     name: string;
     description: string;
     images?: string[];
+    tax_code?: string;
   } = {
-    name: checkoutCopy.productName,
+    name:
+      upgradeFrom !== "none"
+        ? checkoutLocale === "ko"
+          ? `${checkoutCopy.productName} 업그레이드`
+          : `${checkoutCopy.productName}へのアップグレード`
+        : checkoutCopy.productName,
     description: checkoutCopy.productDescription,
     ...(PRODUCT_IMAGE ? { images: [PRODUCT_IMAGE] } : {}),
+    ...(process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES
+      ? { tax_code: process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES }
+      : {}),
   };
 
-  const [couponId, saleOk] = await Promise.all([
-    getCouponIdCached(stripe, checkoutLocale),
-    getSaleOkCached(stripe, priceId, checkoutLocale),
-  ]);
-  const useDiscount = !!couponId && saleOk;
+  let lineItems: NonNullable<CheckoutSessionCreateParams["line_items"]>;
+  let discounts: CheckoutSessionCreateParams["discounts"];
+  let chargedAmount: number;
 
-  // 値引き経路: price_data で LIST を出し、クーポンで DISCOUNT 引いて実額 SALE を課金。
-  //   商品名・説明・画像もここで付く (リッチ表示)。
-  // フォールバック: ダッシュボードの Price ID をそのまま使う (実課金額は常にダッシュボード源泉。
-  //   アンカー価格を誤課金しない)。この経路は商品表示もダッシュボード Product 依存。
-  const lineItems = useDiscount
-    ? [
-        {
-          price_data: {
-            currency: checkoutPricing.currency,
-            unit_amount: checkoutPricing.listAmount,
-            product_data: productData,
-          },
-          quantity: 1,
+  if (product === "self_report") {
+    // ライトはサーバー固定の inline price_data。完全版 Price IDへのフォールバックで
+    // 誤課金しないよう、自己診断商品では外部 Price IDを参照しない。
+    lineItems = [
+      {
+        price_data: {
+          currency: checkoutPricing.currency,
+          unit_amount: effectivePrice,
+          tax_behavior: "inclusive",
+          product_data: productData,
         },
-      ]
-    : [{ price: priceId, quantity: 1 }];
+        quantity: 1,
+      },
+    ];
+    chargedAmount = effectivePrice;
+  } else if (product === "premium_bundle" || inlineFullUpgrade) {
+    // ¥499への差額アップグレードと、¥899プレミアム (定価/差額) は
+    // サーバ計算済みのinline price_dataを使う。クライアントから金額は受け取らない。
+    lineItems = [
+      {
+        price_data: {
+          currency: checkoutPricing.currency,
+          unit_amount: effectivePrice,
+          tax_behavior: "inclusive",
+          product_data: productData,
+        },
+        quantity: 1,
+      },
+    ];
+    chargedAmount = effectivePrice;
+  } else if (checkoutLocale === "ja") {
+    // 日本版完全版は、クーポン解決時は通常価格−割引を Stripe に表示する。
+    // クーポンを使えない場合も、共通定数の ¥499 を inline で課金する。
+    const couponId = await getCouponIdCached(stripe, checkoutLocale);
+    const useDiscount = !!couponId;
+    lineItems = [
+      {
+        price_data: {
+          currency: checkoutPricing.currency,
+          unit_amount: useDiscount
+            ? checkoutPricing.listAmount
+            : checkoutPricing.saleAmount,
+          tax_behavior: "inclusive",
+          product_data: productData,
+        },
+        quantity: 1,
+      },
+    ];
+    discounts = useDiscount ? [{ coupon: couponId! }] : undefined;
+    chargedAmount = checkoutPricing.saleAmount;
+  } else {
+    const [couponId, saleOk] = await Promise.all([
+      getCouponIdCached(stripe, checkoutLocale),
+      getSaleOkCached(stripe, priceId!, checkoutLocale),
+    ]);
+    if (!saleOk) {
+      console.error(
+        "[checkout/create-full-access-session] price validation failed",
+        { locale: checkoutLocale, price_id: priceId },
+      );
+      return NextResponse.json(
+        {
+          error: "price_configuration_invalid",
+          code: "price_configuration_invalid",
+        },
+        { status: 503 },
+      );
+    }
+    const useDiscount = !!couponId;
+
+    // 韓国版は従来どおり、検証済みの値引き経路かPrice IDへフォールバックする。
+    lineItems = useDiscount
+      ? [
+          {
+            price_data: {
+              currency: checkoutPricing.currency,
+              unit_amount: checkoutPricing.listAmount,
+              tax_behavior: "inclusive",
+              product_data: productData,
+            },
+            quantity: 1,
+          },
+        ]
+      : [{ price: priceId!, quantity: 1 }];
+    discounts = useDiscount ? [{ coupon: couponId! }] : undefined;
+    chargedAmount = checkoutPricing.saleAmount;
+  }
 
   // ===== Stripe Session 作成 =====
   let stripeSession;
   try {
-    stripeSession = await stripe.checkout.sessions.create({
+    const automaticTaxEnabled =
+      process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true";
+    const sessionParams: CheckoutSessionCreateParams = {
       mode: "payment", // 買い切り (subscription ではない)
       line_items: lineItems,
-      ...(useDiscount ? { discounts: [{ coupon: couponId! }] } : {}),
+      // payment_method_types は固定せず、Stripe Dashboard で有効な決済手段を
+      // 通貨・国・端末に応じて動的表示する。韓国では現地カード、Kakao Pay、
+      // Naver Pay、Samsung Pay、PAYCO をDashboard側で有効化する。
+      ...(automaticTaxEnabled
+        ? {
+            automatic_tax: { enabled: true },
+            billing_address_collection: "required" as const,
+          }
+        : {}),
+      ...(discounts ? { discounts } : {}),
       ...(userId ? { client_reference_id: userId } : {}),
       ...(customerEmail ? { customer_email: customerEmail } : {}),
       // 支払い直前の安心コピー (買い切り・返金保証)。
@@ -453,22 +737,65 @@ export async function POST(request: NextRequest) {
           message: checkoutCopy.submitMessage,
         },
       },
-      // webhook は product='full_access' で分岐。user_id があればその行、無ければ (guest=1)
+      // webhook は商品キーで分岐。user_id があればその行、無ければ (guest=1)
       // Stripe 確定 email をキーに紐付ける (email or id・email 優先)。
       metadata: {
         user_id: userId ?? "",
         owner_token: ownerToken,
-        product: "full_access",
+        product,
+        upgrade_from: upgradeFrom,
+        course_price_minor: String(
+          checkoutLocale === "ko"
+            ? product === "self_report"
+              ? SELF_REPORT_PRICE_KRW
+              : product === "full_access"
+                ? FULL_ACCESS_PRICE_KRW
+                : PREMIUM_BUNDLE_PRICE_KRW
+            : product === "self_report"
+              ? SELF_REPORT_PRICE_JPY
+              : product === "full_access"
+                ? FULL_ACCESS_PRICE_JPY
+                : PREMIUM_BUNDLE_PRICE_JPY,
+        ),
+        course_price_jpy:
+          checkoutLocale === "ja"
+            ? String(
+                product === "self_report"
+                  ? SELF_REPORT_PRICE_JPY
+                  : product === "full_access"
+                    ? FULL_ACCESS_PRICE_JPY
+                    : PREMIUM_BUNDLE_PRICE_JPY,
+              )
+            : "",
+        tax_behavior: "inclusive",
+        automatic_tax: automaticTaxEnabled ? "1" : "0",
         guest: userId ? "0" : "1",
         email: customerEmail ?? "",
         paywall_source: paywallSource,
+        paywall_version: paywallVersion,
+        paywall_placement: paywallPlacement,
         return_to: returnTo,
         locale: checkoutLocale,
       },
-      success_url: successUrl,
-      cancel_url: cancelUrl,
       locale: checkoutLocale,
-    });
+      ...(embedded
+        ? {
+            ui_mode: "embedded_page" as const,
+            redirect_on_completion: "never" as const,
+          }
+        : {
+            success_url: successUrl,
+            cancel_url: cancelUrl,
+            ...(paypayRedirect
+              ? {
+                  payment_method_types: ["paypay"] as unknown as NonNullable<
+                    CheckoutSessionCreateParams["payment_method_types"]
+                  >,
+                }
+              : {}),
+          }),
+    };
+    stripeSession = await stripe.checkout.sessions.create(sessionParams);
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
     return NextResponse.json(
@@ -488,10 +815,19 @@ export async function POST(request: NextRequest) {
         guest: userId ? false : true,
         user_id: userId,
         stripe_session_id: stripeSession.id,
-        product: "full_access",
+        product,
+        upgrade_from: upgradeFrom,
+        charged_amount: chargedAmount,
         source: paywallSource,
+        paywall_version: paywallVersion,
+        placement: paywallPlacement,
         return_to: returnTo,
         locale: checkoutLocale,
+        payment_method: paypayRedirect
+          ? "paypay"
+          : embedded
+            ? "card_embedded"
+            : "redirect",
       },
     });
   } catch {
@@ -501,8 +837,11 @@ export async function POST(request: NextRequest) {
   // amount / currency は meta_initiate_checkout (GTM) 用の実売価格。
   // 実課金額の源泉はサーバ (ロケール別 Price) なので、クライアントに持たせない。
   return NextResponse.json({
-    url: stripeSession.url,
-    amount: checkoutPricing.saleAmount,
+    sessionId: stripeSession.id,
+    ...(embedded
+      ? { clientSecret: stripeSession.client_secret }
+      : { url: stripeSession.url }),
+    amount: chargedAmount,
     currency: checkoutPricing.currency.toUpperCase(),
   });
 }

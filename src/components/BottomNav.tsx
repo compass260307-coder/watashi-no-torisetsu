@@ -167,6 +167,26 @@ function NatalWheelIcon() {
   );
 }
 
+// 診断後に表示する「占い師」: 会話バブル + 星のきらめき。
+// 出生図を読むだけの「運命」と区別し、対話できることが小さいナビでも伝わる形にする。
+function AstrologerIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 5.5h10.5A3.5 3.5 0 0 1 19 9v4a3.5 3.5 0 0 1-3.5 3.5H10l-4.5 3v-3.35A3.5 3.5 0 0 1 2.5 13V9A3.5 3.5 0 0 1 5 5.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m10.75 7.75.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45Z"
+        fill="currentColor"
+      />
+      <path d="M17.5 2.5v2M16.5 3.5h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const isKorean = pathname.startsWith("/ko");
@@ -174,6 +194,9 @@ export function BottomNav() {
   const isTakoAttentionPreview =
     process.env.NODE_ENV === "development" &&
     pathname === "/dev/tako-attention-preview";
+  const isAstrologerPreview =
+    process.env.NODE_ENV === "development" &&
+    pathname === "/dev/hoshiyomi-preview";
   // トリセツ(2)=/me/[token]、友達診断(4)=/tako/[token] を localStorage の
   // owner_token から解決。無ければトリセツ=/diagnosis、友達診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState(() =>
@@ -196,7 +219,12 @@ export function BottomNav() {
   const [showMeAttention, setShowMeAttention] = useState(false);
   // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
   // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
-  const [hasFull, setHasFull] = useState(false);
+  const [fullAccessToken, setFullAccessToken] = useState<string | null>(null);
+  // 認証済み token と現在の ownerToken が一致するときだけ解放する。
+  // 別ユーザーへ切り替わる途中に前のユーザーの権限が一瞬見えることも防ぐ。
+  const hasFull = Boolean(
+    ownerToken && fullAccessToken === ownerToken,
+  );
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
   // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
   //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
@@ -309,24 +337,29 @@ export function BottomNav() {
   useEffect(() => {
     if (!ownerToken) return;
     let cancelled = false;
+    let cachedFull = false;
     try {
-      if (localStorage.getItem(FULL_TOKEN_KEY) === ownerToken) {
+      cachedFull = localStorage.getItem(FULL_TOKEN_KEY) === ownerToken;
+      if (cachedFull) {
+        // localStorage の購入キャッシュを React state へ同期する正当な外部状態同期。
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setHasFull(true);
-        return;
+        setFullAccessToken(ownerToken);
       }
     } catch {
       // localStorage 不可環境は API 確認にフォールバック
     }
+    // 相性の購入状態は永続キャッシュだけを信用せず、毎回サーバでも確認する。
     fetch(
       `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
     )
-      .then((r) => (r.ok ? r.json() : { full: false }))
+      .then((r) =>
+        r.ok ? r.json() : { full: false },
+      )
       .then((d: { full?: boolean }) => {
-        if (cancelled || !d?.full) return;
-        setHasFull(true);
+        if (cancelled) return;
+        if (d?.full) setFullAccessToken(ownerToken);
         try {
-          localStorage.setItem(FULL_TOKEN_KEY, ownerToken);
+          if (d?.full) localStorage.setItem(FULL_TOKEN_KEY, ownerToken);
         } catch {
           // noop
         }
@@ -451,10 +484,25 @@ export function BottomNav() {
               ? [
                   {
                     key: "unmei",
-                    label: "占い",
+                    label: "運命",
                     href: "/unmei",
                     active: pathname.startsWith("/unmei"),
                     Icon: NatalWheelIcon,
+                  },
+                ]
+              : []),
+            ...(ownerToken || isAstrologerPreview
+              ? [
+                  {
+                    key: "astrologer",
+                    label: "占い師",
+                    href: isAstrologerPreview
+                      ? "/dev/hoshiyomi-preview"
+                      : "/hoshiyomi",
+                    active:
+                      pathname.startsWith("/hoshiyomi") ||
+                      pathname === "/dev/hoshiyomi-preview",
+                    Icon: AstrologerIcon,
                   },
                 ]
               : []),
@@ -466,9 +514,11 @@ export function BottomNav() {
     [
       hasFull,
       hasToken,
+      isAstrologerPreview,
       isKorean,
       isKoreanResult,
       isTakoAttentionPreview,
+      ownerToken,
       pathname,
       takoUrl,
       torisetsuUrl,

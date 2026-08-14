@@ -11,7 +11,7 @@
 //
 // サーバコンポーネント。🔒ブロックの本文は未解放時サーバで解決すらされない
 // (part-two-resolve.ts、フェイルクローズ)。ぼかしはダミーであり本物の目隠しではない。
-// 解除カード (lockCard: 完全版) は /me が組んで渡す。
+// 解除カード (lockCard: 自己診断＋PDF) は /me が組んで渡す。
 
 import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
@@ -23,7 +23,7 @@ export const PART_TWO_LOCK_ID = "part2-lock";
 
 interface PartTwoSectionsProps {
   data: ResolvedPartTwo;
-  /** 未解放時に出す完全版の解除カード。解放済みなら不要。 */
+  /** 未解放時に出す自己診断＋PDFの解除カード。解放済みなら不要。 */
   lockCard?: React.ReactNode;
   /** true で🔒ブロック (嫌われやすい/関係別) を見出しごと出さない。
       /share の獲得モード用 (課金コンテンツは「無いもの」として扱う。2026-07-26)。 */
@@ -294,7 +294,7 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
             "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
           ) : (
             <>
-              完全版のレポートを入手して、
+              自己分析レポートを入手して、
               <br className="md:hidden" />
               周りの人がアナタに言えずにいることを知りましょう。
             </>
@@ -351,7 +351,7 @@ export function PartTwoSections({
             <div aria-hidden="true">
               <DummyCards rows={8} locale={locale} />
             </div>
-            {/* 完全版の解除カード。後続🔒ブロックのアンカー先。 */}
+            {/* 自己診断＋PDFの解除カード。後続🔒ブロックのアンカー先。 */}
             <div
               id={PART_TWO_LOCK_ID}
               className="absolute inset-0 flex items-center justify-center p-3"

@@ -1,11 +1,11 @@
 // 詳細レポートの PDF ダウンロード: GET /report/[token]/pdf
 //
-// 課金完了メールの「完全版PDFをダウンロード」ボタンの着地先。
+// 課金完了メールの「自己分析PDFをダウンロード」ボタンの着地先。
 // /report/[token]/print (PDF生成専用ページ) をサーバ側の headless Chromium で開き、
 // A4 PDF に変換して attachment で返す。印刷スタイル (print:hidden 等) はページ側に
 // 実装済みなので、ここでは描画と変換だけを行う。
 //
-// - 認可はページと同じ token + hasFullAccess。未課金・不明 token は本文を
+// - 認可はページと同じ token + hasSelfReportAccess。未課金・不明 token は本文を
 //   生成せず /me へ 303 (フェイルクローズ。ロック画面の PDF も作らない)。
 // - Chromium は Vercel では @sparticuz/chromium、ローカルではインストール済みの
 //   Chrome (channel: "chrome") を使う。
@@ -15,7 +15,7 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasSelfReportAccess } from "@/lib/entitlements";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
@@ -96,7 +96,7 @@ export async function GET(req: Request, ctx: RouteContext) {
         303,
       );
     }
-    if (!(await hasFullAccess(data.id))) {
+    if (!(await hasSelfReportAccess(data.id))) {
       return NextResponse.redirect(
         `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
         303,

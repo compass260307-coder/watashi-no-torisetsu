@@ -24,16 +24,36 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
+import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
+import {
+  FULL_ACCESS_DISCOUNT_PERCENT,
+  FULL_ACCESS_LIST_PRICE_JPY,
+  FULL_ACCESS_PRICE_JPY,
+  MULTI_COURSE_PAYWALL_PRODUCT,
+  SELF_REPORT_DISCOUNT_PERCENT,
+  SELF_REPORT_LIST_PRICE_JPY,
+  SELF_REPORT_PRICE_JPY,
+  SELF_REPORT_UNLOCK_LABEL,
+  THREE_COURSE_PAYWALL_VERSION,
+  type AccessProduct,
+} from "@/lib/access-products";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
-  ja: { list: "¥1,299", sale: "¥499", offPercent: 61 },
+  ja: {
+    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
+    sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
+    offPercent: FULL_ACCESS_DISCOUNT_PERCENT,
+  },
   ko: { list: "₩12,900", sale: "₩4,900", offPercent: 62 },
 } as const;
+
+const SELF_REPORT_PRICE_COPY = `¥${SELF_REPORT_PRICE_JPY}`;
+const SELF_REPORT_LIST_PRICE_COPY = `¥${SELF_REPORT_LIST_PRICE_JPY}`;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
 // すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる4項目に集約。
@@ -45,11 +65,6 @@ type UnlockItem = { title: string; desc: string };
 const U_SELF_UNLOCK: UnlockItem = {
   title: "自己診断結果の完全解放",
   desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
-};
-// 2026-07-28: 「1人目無料・2人目以降は完全版」モデルに合わせた文言。
-const U_FRIEND_UNLOCK: UnlockItem = {
-  title: "友達診断結果の完全解放",
-  desc: "2人目からの友達の結果シートもぜんぶ解放。友達から見たキャラ・恋愛傾向・相性まで、友達ごとに読める。",
 };
 const U_FRIEND_PDF: UnlockItem = {
   title: "何度でも作り直せる友達診断レポート",
@@ -70,9 +85,6 @@ const SELF_UNLOCKS: UnlockItem[] = [
     title: "ダウンロード可能な16ページ以上のあなたの電子書籍",
     desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
   },
-  U_FRIEND_UNLOCK,
-  U_FRIEND_PDF,
-  U_AISHO,
 ];
 
 // 友達診断ページ (/tako) 用。友達の解放を先頭に。
@@ -213,6 +225,7 @@ export function FullAccessPromoCard({
   // 解放項目の並び。"self"=自己診断ページ / "tako"=友達診断ページ (既定 self)。
   surface = "self",
   ctaSource,
+  products,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -220,13 +233,27 @@ export function FullAccessPromoCard({
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: ResultLocale;
-  returnTo?: "me" | "tako" | "aisho";
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   anchorId?: string;
   onClose?: () => void;
   surface?: "self" | "tako";
   ctaSource?: string;
+  products?: readonly AccessProduct[];
 }) {
   const isKorean = locale === "ko";
+  // 自己診断・友達診断・相性は日韓とも現行の3コース比較へ統一。
+  // 相性は完全版以上が必要なため、カルーセルの初期表示は完全版のままとする。
+  const isSelfReportProduct =
+    !isKorean && surface === "self" && variant === "self";
+  const usesPlanCarousel = variant === "self" || variant === "aisho";
+  const product = isSelfReportProduct ? "self_report" : "full_access";
+  const paywallProduct = usesPlanCarousel
+    ? MULTI_COURSE_PAYWALL_PRODUCT
+    : product;
+  const paywallVersion = usesPlanCarousel
+    ? THREE_COURSE_PAYWALL_VERSION
+    : "legacy";
+  const paywallPlacement = onClose ? "modal" : "inline";
   const unlocks = isKorean
     ? surface === "tako"
       ? KO_TAKO_UNLOCKS
@@ -252,7 +279,7 @@ export function FullAccessPromoCard({
     const el = cardRef.current;
     if (!el) return;
     const page = window.location.pathname.split("/")[1] || "top";
-    const dedupKey = `torisetsu_paywall_viewed_${page}`;
+    const dedupKey = `torisetsu_paywall_viewed_${page}_${paywallVersion}_${paywallPlacement}`;
     try {
       if (sessionStorage.getItem(dedupKey)) return;
     } catch {
@@ -262,7 +289,14 @@ export function FullAccessPromoCard({
       // 送信を先に、dedup フラグは後 (先にフラグを立てると送信失敗時に永久欠測)
       track("paywall_viewed", {
         ownerToken: ownerToken ?? null,
-        metadata: { page, variant },
+        metadata: {
+          page,
+          variant,
+          product: paywallProduct,
+          paywall_version: paywallVersion,
+          placement: paywallPlacement,
+          surface: surface ?? "self",
+        },
       });
       try {
         sessionStorage.setItem(dedupKey, "1");
@@ -286,7 +320,41 @@ export function FullAccessPromoCard({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [ownerToken, variant]);
+  }, [
+    ownerToken,
+    paywallPlacement,
+    paywallProduct,
+    paywallVersion,
+    surface,
+    variant,
+  ]);
+
+  // 自己診断・友達診断は、日韓それぞれの3コースを横スワイプで比較する。
+  if (usesPlanCarousel) {
+    return (
+      <div
+        ref={cardRef}
+        className={
+          onClose
+            ? "px-3 pb-6 pt-3 md:px-6 md:pb-10 md:pt-6"
+            : "pb-8 pt-2 md:pb-10 md:pt-4"
+        }
+      >
+        <SelfAccessPlanCarousel
+          ownerToken={ownerToken}
+          anchorId={anchorId}
+          onClose={onClose}
+          ctaSource={
+            ctaSource ?? (surface === "tako" ? "tako_promo_card" : undefined)
+          }
+          frameless={!onClose}
+          returnTo={returnTo ?? (surface === "tako" ? "tako" : "me")}
+          locale={locale}
+          products={products}
+        />
+      </div>
+    );
+  }
 
   return (
     <section
@@ -369,7 +437,11 @@ export function FullAccessPromoCard({
             >
               <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
             </svg>
-            {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+            {isKorean
+              ? "지금 잠금 해제"
+              : isSelfReportProduct
+                ? SELF_REPORT_UNLOCK_LABEL
+                : "今すぐロックを解除"}
           </span>
 
           {/* 見出し */}
@@ -379,6 +451,8 @@ export function FullAccessPromoCard({
           >
             {isKorean ? (
               <>내 성격 유형의<br />모든 결과를 해제</>
+            ) : isSelfReportProduct ? (
+              <>自己診断結果を<br />すべて解放</>
             ) : (
               <>あなたの性格タイプ<br />についてのすべてを解放</>
             )}
@@ -388,6 +462,8 @@ export function FullAccessPromoCard({
           <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
             {isKorean
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
+              : isSelfReportProduct
+                ? "ロックされた自己診断結果と、あなたのタイプを一冊にまとめた自己分析PDFを買い切りで利用できます。"
               : "あなたの詳細な性格タイプから、友達から見たあなたの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
           </p>
 
@@ -409,23 +485,45 @@ export function FullAccessPromoCard({
               hasImage ? "" : "justify-center"
             }`}
           >
-            <span
-              className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
-              style={{ backgroundColor: tone.accent }}
-            >
-              {isKorean
-                ? `출시 기념 ${price.offPercent}% 할인`
-                : `リリース記念 ${price.offPercent}%OFF`}
-            </span>
-            <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
-              {price.list}
-            </span>
-            <span
-              className="text-[36px] font-black leading-none"
-              style={{ color: tone.accent }}
-            >
-              {price.sale}
-            </span>
+            {isSelfReportProduct ? (
+              <>
+                <span
+                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
+                  style={{ backgroundColor: tone.accent }}
+                >
+                  リリース記念 {SELF_REPORT_DISCOUNT_PERCENT}%OFF
+                </span>
+                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                  {SELF_REPORT_LIST_PRICE_COPY}
+                </span>
+                <span
+                  className="text-[36px] font-black leading-none"
+                  style={{ color: tone.accent }}
+                >
+                  {SELF_REPORT_PRICE_COPY}
+                </span>
+              </>
+            ) : (
+              <>
+                <span
+                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
+                  style={{ backgroundColor: tone.accent }}
+                >
+                  {isKorean
+                    ? `출시 기념 ${price.offPercent}% 할인`
+                    : `リリース記念 ${price.offPercent}%OFF`}
+                </span>
+                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                  {price.list}
+                </span>
+                <span
+                  className="text-[36px] font-black leading-none"
+                  style={{ color: tone.accent }}
+                >
+                  {price.sale}
+                </span>
+              </>
+            )}
           </div>
 
           {/* CTA (金額はカード側に出したのでボタンからは外す) */}
@@ -436,8 +534,13 @@ export function FullAccessPromoCard({
               locale={locale}
               source={ctaSource ?? (surface === "tako" ? "tako_promo_card" : undefined)}
               returnTo={returnTo}
+              product={product}
             >
-              {isKorean ? "모든 잠금 해제" : "すべてのロックを解除"}
+              {isKorean
+                ? "모든 잠금 해제"
+                : isSelfReportProduct
+                  ? SELF_REPORT_UNLOCK_LABEL
+                  : "すべてのロックを解除"}
             </FullAccessCta>
           </div>
 

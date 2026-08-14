@@ -15,11 +15,21 @@ const NAVY = "#2E2E5C";
 
 type PurchaseCompleteViewProps = {
   isGuestPurchase?: boolean;
+  product?: "self_report" | "full_access" | "premium_bundle";
 };
 
 export function PurchaseCompleteView({
   isGuestPurchase = false,
+  product = "full_access",
 }: PurchaseCompleteViewProps) {
+  const reportName =
+    product === "self_report"
+      ? "自己分析レポート"
+      : product === "premium_bundle"
+        ? "プレミアムコース"
+        : "完全版レポート";
+  const includedChatCount =
+    product === "premium_bundle" ? 30 : product === "full_access" ? 5 : 0;
   return (
     <>
     {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
@@ -67,7 +77,7 @@ export function PurchaseCompleteView({
             <>
               購入に使ったメールアドレスに、
               <br />
-              あなたの<span style={{ color: NAVY }}>詳細レポート</span>
+              あなたの<span style={{ color: NAVY }}>{reportName}</span>
               をお届けしました。
             </>
           )}
@@ -83,7 +93,7 @@ export function PurchaseCompleteView({
               ログイン後に<span style={{ color: NAVY }}>無料の性格診断</span>
               へご案内します。
               <br />
-              診断が終わると、完全版レポートをメールでお届けします。
+              診断が終わると、{reportName}をメールでお届けします。
             </>
           ) : (
             <>
@@ -91,11 +101,35 @@ export function PurchaseCompleteView({
               <span style={{ color: NAVY }}>無料の性格診断</span>
               へご案内します。
               <br />
-              診断が終わると、完全版のレポートが開きます。
+              診断が終わると、{reportName}が開きます。
             </>
           )}
         </p>
       </div>
+
+      {includedChatCount > 0 ? (
+        <div className="mb-6 w-full max-w-[420px] rounded-2xl border border-[#DDDDF4] bg-white px-5 py-4 text-left">
+          <p className="text-[13px] font-black text-[#2E2E5C]">
+            購入後に使える新しいコンテンツ
+          </p>
+          <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
+            運命の設計図と、星読みの案内人とのチャット
+            {includedChatCount}回分が含まれています。ログイン後、下部メニューの
+            「占い師」から利用できます。
+          </p>
+        </div>
+      ) : null}
+
+      {product === "self_report" ? (
+        <div className="mb-6 w-full max-w-[420px] rounded-2xl border border-[#D7E9ED] bg-white px-5 py-4 text-left">
+          <p className="text-[13px] font-black text-[#2E2E5C]">
+            友達診断も利用できます
+          </p>
+          <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
+            2人目以降の友達診断結果と、何度でも作り直せる友達診断分析PDFも解放されます。
+          </p>
+        </div>
+      ) : null}
 
       {/* 購入直後にそのままログイン (magic link 発行)。届いたリンクから本人確認。 */}
       <LoginCard />

@@ -52,6 +52,19 @@ async function resolveBuyer(request: NextRequest, bodyToken: string): Promise<{ 
 }
 
 export async function POST(request: NextRequest) {
+  // 旧「運命の設計図」単体商品は販売終了。購入導線は
+  // create-full-access-session の premium_bundle に一本化した。
+  const legacyCheckoutRetired = true;
+  if (legacyCheckoutRetired) {
+    return NextResponse.json(
+      {
+        error: "legacy_checkout_retired",
+        code: "legacy_checkout_retired",
+        checkout: "/api/checkout/create-full-access-session",
+      },
+      { status: 410 },
+    );
+  }
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });

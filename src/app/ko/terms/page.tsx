@@ -6,6 +6,14 @@ import {
   SITE_URL,
   localizedAlternates,
 } from "@/lib/locale-seo";
+import {
+  FULL_ACCESS_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_KRW,
+  SELF_REPORT_PRICE_KRW,
+} from "@/lib/access-products";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
+
+const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
 export const metadata: Metadata = {
   title: { absolute: "이용약관 | 나의 사용설명서" },
@@ -32,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function KoreanTermsPage() {
   return (
-    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 7월 18일">
+    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 8월 12일">
       <p>
         이 이용약관(이하 “약관”)은 나의 사용설명서 운영팀(이하 “운영자”)이
         제공하는 “나의 사용설명서” 한국어 서비스(이하 “서비스”)의 이용 조건을
@@ -111,9 +119,23 @@ export default function KoreanTermsPage() {
       <h2>제6조 유료 서비스 및 결제</h2>
       <ol>
         <li>
-          한국어 완전판은 ₩4,900의 1회 결제로 제공되며, 구독이나 자동 갱신은
-          없습니다.
+          한국어 유료 서비스는 현재 라이트 {krw(SELF_REPORT_PRICE_KRW)}와
+          완전판 {krw(FULL_ACCESS_PRICE_KRW)}의 1회 결제로 제공되며,
+          구독이나 자동 갱신은 없습니다. 라이트 구매자가 완전판으로
+          변경할 때에는 이미 결제한 금액을 뺀 차액이 적용됩니다.
         </li>
+        {KO_UNMEI_ENABLED ? (
+          <li>
+            프리미엄 코스는 {krw(PREMIUM_BUNDLE_PRICE_KRW)}의 1회 결제로
+            제공되며, 이미 구매한 코스가 있으면 해당 결제 금액을 뺀
+            차액이 적용됩니다.
+          </li>
+        ) : (
+          <li>
+            프리미엄 코스와 “운명의 설계도”는 현재 한국어판에서 판매 및
+            신규 이용을 일시 중지하고 있습니다.
+          </li>
+        )}
         <li>
           유료 서비스의 구체적인 내용, 가격과 결제 수단은 구매 화면에 표시된
           내용을 따릅니다.
@@ -130,6 +152,10 @@ export default function KoreanTermsPage() {
         <li>
           본 조의 환불 보장은 관련 법령에 따른 청약철회, 계약 해제 또는 손해배상
           권리를 제한하지 않습니다.
+        </li>
+        <li>
+          전액 환불이 완료되면 해당 결제로 부여된 이용 권한은 종료됩니다. 별도의
+          유효한 구매가 남아 있는 경우에는 그 범위의 권한이 유지됩니다.
         </li>
       </ol>
 
@@ -221,6 +247,7 @@ export default function KoreanTermsPage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
+      <p>최종 개정일: 2026년 8월 12일</p>
     </KoreanLegalDocument>
   );
 }

@@ -40,7 +40,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasTakoAccess } from "@/lib/entitlements";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { type BigFiveScores } from "@/lib/perception-analysis";
 import { baseIdOf, nAxisOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
@@ -202,7 +202,7 @@ export default async function EvaluationResultPage({
     // /evaluate/result は個別ページと同じ本文 (perception詳細・owner_message全文) を出す
     // 経路。owner がここを開けば課金導線を回避できる抜け道 (paywall-leak ④) になるため、
     // 未課金 owner は本文をロードする前に自分のトリセツ (課金導線) へ離脱させる。フェイルクローズ。
-    if (!(await hasFullAccess(perception.target_user_id as string))) {
+    if (!(await hasTakoAccess(perception.target_user_id as string))) {
       const { data: ownerRow } = await supabaseAdmin
         .from("users")
         .select("owner_token")

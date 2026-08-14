@@ -20,7 +20,7 @@
 //     (INTERNAL_API_TOKEN 不要、HTTP 往復不要)
 //   - Webhook は 200 を素早く返す (Stripe のリトライ機構を発火させない)
 //     after() の AI 生成は最大 100 秒程度かかるため maxDuration を引き上げ
-//   - 自動返金は実装しない (MVP)、失敗時は Slack アラート + 手動対応
+//   - 差額購入の前提商品が全額返金された場合は、依存する上位購入も冪等に自動返金
 
 import crypto from "crypto";
 import { NextRequest, NextResponse, after } from "next/server";
@@ -40,6 +40,16 @@ import {
   isCoreKpiPaymentSchemaPending,
   isMissingCoreKpiColumn,
 } from "@/lib/core-kpis";
+import {
+  ensureHoshiyomiCreditsFromPurchase,
+  grantHoshiyomiCreditsToTarget,
+  isMissingHoshiyomiStore,
+  revokeHoshiyomiCredits,
+} from "@/lib/hoshiyomi/store";
+import {
+  validAccessPaymentRows,
+  type AccessPaymentRow,
+} from "@/lib/entitlements";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -216,6 +226,33 @@ async function persistLoginEmailIfEmpty(
   }
 }
 
+async function persistPurchaseLocale(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<void> {
+  if (session.metadata?.locale !== "ko") return;
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
+  try {
+    if (email) {
+      await supabaseAdmin
+        .from("users")
+        .update({ preferred_locale: "ko" })
+        .eq("email", email);
+    }
+    if (userId) {
+      await supabaseAdmin
+        .from("users")
+        .update({ preferred_locale: "ko" })
+        .eq("id", userId);
+    }
+  } catch (err) {
+    console.error("[webhook/stripe] preferred locale update failed", err);
+  }
+}
+
 async function resolveUserIdForSession(session: Stripe.Checkout.Session): Promise<string | null> {
   const metadataUserId = typeof session.metadata?.user_id === "string" && session.metadata.user_id.length > 0 ? session.metadata.user_id : null;
   if (metadataUserId) return metadataUserId;
@@ -373,6 +410,7 @@ async function grantFullAccessByEmailOrId(
 async function recordFullAccessPayment(
   session: Stripe.Checkout.Session,
   userId: string,
+  product: "full_access" | "premium_bundle" = "full_access",
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
     throw new Error(
@@ -385,9 +423,11 @@ async function recordFullAccessPayment(
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
   const paidAt = new Date().toISOString();
+  const paymentKind =
+    product === "premium_bundle" ? "premium_bundle" : "full_access";
   const paymentRecord = {
     user_id: userId,
-    payment_kind: "full_access" as const,
+    payment_kind: paymentKind,
     stripe_session_id: session.id,
     stripe_payment_intent_id: paymentIntentId,
     // Legacy column name. Values are minor units for the row's currency (JPY/KRW
@@ -399,7 +439,8 @@ async function recordFullAccessPayment(
     paid_at: paidAt,
     updated_at: paidAt,
     metadata: {
-      product: "full_access",
+      product,
+      upgrade_from: session.metadata?.upgrade_from ?? "none",
       source: normalizePaywallSource(session.metadata?.paywall_source),
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
     },
@@ -419,8 +460,150 @@ async function recordFullAccessPayment(
     return;
   }
   if (error) {
-    throw new Error(`[full_access] payment record failed: ${error.message}`);
+    throw new Error(`[${product}] payment record failed: ${error.message}`);
   }
+}
+
+// ¥199 自己診断＋PDFの権限源。plan='full' は付けず、この completed 決済だけを
+// hasSelfReportAccess() が読むため、友達診断・相性・アップグレード資格は解放されない。
+async function recordSelfReportPayment(
+  session: Stripe.Checkout.Session,
+  userId: string,
+): Promise<void> {
+  if (session.amount_total === null || !session.currency) {
+    throw new Error(
+      `[self_report] missing amount/currency for paid session ${session.id}`,
+    );
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+  const paidAt = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("payment_history").upsert(
+    {
+      user_id: userId,
+      payment_kind: "self_report",
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: paymentIntentId,
+      amount_jpy: session.amount_total,
+      amount_refunded_minor: 0,
+      currency: session.currency,
+      status: "completed",
+      paid_at: paidAt,
+      updated_at: paidAt,
+      metadata: {
+        product: "self_report",
+        source: normalizePaywallSource(session.metadata?.paywall_source),
+        locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      },
+    },
+    { onConflict: "stripe_session_id", ignoreDuplicates: true },
+  );
+  // self_report はこの行自体が権限源。制約未適用などで保存できない場合は必ず
+  // webhook を再試行させ、支払い済みなのにロックされた状態を確定させない。
+  if (error) {
+    throw new Error(`[self_report] payment record failed: ${error.message}`);
+  }
+}
+
+async function recordUnmeiPayment(
+  session: Stripe.Checkout.Session,
+  userId: string,
+  product: "unmei" | "unmei_upgrade",
+): Promise<void> {
+  if (session.amount_total === null || !session.currency) {
+    throw new Error(`[${product}] missing amount/currency for ${session.id}`);
+  }
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+  const nowIso = new Date().toISOString();
+  const { error } = await supabaseAdmin.from("payment_history").upsert(
+    {
+      user_id: userId,
+      payment_kind: product,
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: paymentIntentId,
+      amount_jpy: session.amount_total,
+      amount_refunded_minor: 0,
+      currency: session.currency,
+      status: "completed",
+      paid_at: nowIso,
+      updated_at: nowIso,
+      metadata: {
+        product,
+        locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      },
+    },
+    { onConflict: "stripe_session_id", ignoreDuplicates: true },
+  );
+  if (error) {
+    throw new Error(`[${product}] payment record failed: ${error.message}`);
+  }
+}
+
+// self_report の購入先ユーザーを解決する。既存ユーザーの plan は変更しない。
+// 完全ゲストは診断前プレースホルダーを plan='free' で作り、診断時に同じ行を更新する。
+async function resolveSelfReportUser(
+  session: Stripe.Checkout.Session,
+  userId: string | null,
+): Promise<string> {
+  const email =
+    normalizeEmail(session.customer_details?.email) ??
+    normalizeEmail(session.customer_email) ??
+    normalizeEmail(session.metadata?.email);
+
+  if (userId) {
+    if (email) {
+      await supabaseAdmin
+        .from("users")
+        .update({ email })
+        .eq("id", userId)
+        .is("email", null);
+    }
+    return userId;
+  }
+
+  if (!email) {
+    throw new Error(
+      `[self_report] no email and no user_id for session ${session.id}`,
+    );
+  }
+
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .order("diagnosis_completed_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (selectError) {
+    throw new Error(`[self_report] user lookup failed: ${selectError.message}`);
+  }
+  if (existing?.id) return existing.id as string;
+
+  const { data: created, error: createError } = await supabaseAdmin
+    .from("users")
+    .insert({
+      email,
+      plan: "free",
+      owner_token: guestToken(16),
+      invite_code: guestToken(8),
+      type_id: classifyType(PLACEHOLDER_SCORES),
+      scores: PLACEHOLDER_SCORES,
+    })
+    .select("id")
+    .single();
+  if (createError || !created?.id) {
+    throw new Error(
+      `[self_report] guest user create failed: ${createError?.message ?? "no id returned"}`,
+    );
+  }
+  return created.id as string;
 }
 
 // ---------- フルアクセス特典: 詳細レポートお届けメール ----------
@@ -497,6 +680,15 @@ async function sendDetailedReportEmailBestEffort(
       ownerToken: row.owner_token,
       ownerName: row.display_name,
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      product:
+        session.metadata?.product === "self_report"
+          ? "self_report"
+          : session.metadata?.product === "premium_bundle"
+            ? "premium_bundle"
+            : "full_access",
+      purchaseAmountJpy:
+        session.currency === "jpy" ? session.amount_total : null,
+      purchaseAmountMinor: session.amount_total,
     });
     console.log("[webhook/stripe] detailed report email sent");
   } catch (err) {
@@ -516,6 +708,12 @@ async function recordPurchaseCompletedEvent(
 ): Promise<void> {
   try {
     const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
+    const product =
+      session.metadata?.product === "self_report"
+        ? "self_report"
+        : session.metadata?.product === "premium_bundle"
+          ? "premium_bundle"
+          : "full_access";
     const { data: existing, error: selErr } = await supabaseAdmin
       .from("events")
       .select("id")
@@ -540,12 +738,24 @@ async function recordPurchaseCompletedEvent(
       metadata: {
         stripe_session_id: session.id,
         user_id: userId,
-        product: "full_access",
+        product,
         guest: session.metadata?.guest === "1",
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? null,
+        upgrade_from: session.metadata?.upgrade_from ?? "none",
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
         source: normalizePaywallSource(session.metadata?.paywall_source),
-        return_to: session.metadata?.return_to === "tako" ? "tako" : "me",
+        return_to:
+          product === "self_report"
+            ? "me"
+            : session.metadata?.return_to === "tako"
+              ? "tako"
+              : session.metadata?.return_to === "aisho"
+                ? "aisho"
+                : session.metadata?.return_to === "unmei"
+                  ? "unmei"
+                  : "me",
         locale,
       },
     });
@@ -619,6 +829,11 @@ async function handleCheckoutPaid(
     // guest 対応で email で紐付け。unmei フラグを立て、natal_readings プレースホルダを挿入。
     await grantUnmeiByEmailOrId(session, userId);
     const linkedUserId = userId ?? (await resolveUserIdForSession(session));
+    if (!linkedUserId) {
+      throw new Error(`[unmei] linked user missing for ${session.id}`);
+    }
+    await recordUnmeiPayment(session, linkedUserId, "unmei");
+    await persistPurchaseLocale(session, linkedUserId);
     await recordUnmeiPurchaseEventOnce(
       "unmei_purchase_complete",
       session,
@@ -627,9 +842,12 @@ async function handleCheckoutPaid(
     // AI 生成 (〜100秒超) は応答後に after() で実行する。同期 await だと maxDuration を
     // 超えて webhook 全体がタイムアウトし、Stripe が翌日まで再送し続けていた (2026-08-08)。
     // after() が失敗しても /unmei ページ側の /api/unmei/generate キックで回復できる。
-    if (linkedUserId) {
-      after(() => triggerUnmeiGeneration(linkedUserId));
-    }
+    after(() =>
+      triggerUnmeiGeneration(
+        linkedUserId,
+        session.metadata?.locale === "ko" ? "ko" : "ja",
+      ),
+    );
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
@@ -657,18 +875,85 @@ async function handleCheckoutPaid(
       return;
     }
     await grantUnmeiToUserId(userId);
+    await recordUnmeiPayment(session, userId, "unmei_upgrade");
+    await persistPurchaseLocale(session, userId);
     await recordUnmeiPurchaseEventOnce("unmei_upgrade_complete", session, userId);
     // 基本購入と同じく、AI 生成は応答後に回して webhook を即 200 で返す。
-    after(() => triggerUnmeiGeneration(userId));
+    after(() =>
+      triggerUnmeiGeneration(
+        userId,
+        session.metadata?.locale === "ko" ? "ko" : "ja",
+      ),
+    );
     await sendDetailedReportEmailBestEffort(session, userId);
+    return;
+  }
+
+  if (metadata.product === "premium_bundle") {
+    const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
+    await grantUnmeiByEmailOrId(session, paymentUserId);
+    await recordFullAccessPayment(session, paymentUserId, "premium_bundle");
+    if (session.metadata?.locale !== "ko") {
+      try {
+        await grantHoshiyomiCreditsToTarget({
+          userId: paymentUserId,
+          sourceKey: `stripe:${session.id}`,
+          targetTotal: 30,
+        });
+      } catch (error) {
+        if (!isMissingHoshiyomiStore(error)) throw error;
+        console.warn("[webhook/stripe] hoshiyomi migration pending", {
+          stripe_session_id: session.id,
+        });
+      }
+    }
+    await persistPurchaseLocale(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId);
+    after(() =>
+      triggerUnmeiGeneration(
+        paymentUserId,
+        session.metadata?.locale === "ko" ? "ko" : "ja",
+      ),
+    );
+    await sendDetailedReportEmailBestEffort(session, paymentUserId);
     return;
   }
 
   if (metadata.product === "full_access") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
+    if (session.metadata?.locale !== "ko") {
+      await grantUnmeiByEmailOrId(session, paymentUserId);
+    }
     await recordFullAccessPayment(session, paymentUserId);
+    if (session.metadata?.locale !== "ko") {
+      try {
+        await grantHoshiyomiCreditsToTarget({
+          userId: paymentUserId,
+          sourceKey: `stripe:${session.id}`,
+          targetTotal: 5,
+        });
+      } catch (error) {
+        if (!isMissingHoshiyomiStore(error)) throw error;
+        console.warn("[webhook/stripe] hoshiyomi migration pending", {
+          stripe_session_id: session.id,
+        });
+      }
+    }
+    await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
+    if (session.metadata?.locale !== "ko") {
+      after(() => triggerUnmeiGeneration(paymentUserId, "ja"));
+    }
     await sendDetailedReportEmailBestEffort(session, userId);
+    return;
+  }
+
+  if (metadata.product === "self_report") {
+    const paymentUserId = await resolveSelfReportUser(session, userId);
+    await recordSelfReportPayment(session, paymentUserId);
+    await persistPurchaseLocale(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await sendDetailedReportEmailBestEffort(session, paymentUserId);
     return;
   }
 
@@ -854,13 +1139,19 @@ async function grantUnmeiToUserId(userId: string): Promise<void> {
 //     ユーザーが /unmei で出生データを入力した時点で生成が走る。
 //   - 生成中の例外 (error / throw) → Slack 通知のみ。/unmei 側が pending を検知して
 //     再生成をトリガーし、60 秒でタイムアウト表示に切り替えるため無限ローディングにならない。
-async function triggerUnmeiGeneration(userId: string): Promise<void> {
+async function triggerUnmeiGeneration(
+  userId: string,
+  locale: "ja" | "ko" = "ja",
+): Promise<void> {
   try {
     // Big Five スコア + 32タイプ称号を解決してプロンプト入力に渡す。
     const { resolveUnmeiPromptInputs } = await import("@/lib/unmei/prompt-inputs");
     const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
 
-    const result = await runForUser(supabaseAdmin, userId, promptInputs);
+    const result = await runForUser(supabaseAdmin, userId, {
+      ...promptInputs,
+      locale,
+    });
     if (result && "skipped" in result) {
       // no_birth_profile(出生データ未入力) / chart_not_ready(エフェメリス未計算)
       // いずれも正常な待機状態。natal_readings は pending のまま。
@@ -1002,6 +1293,215 @@ async function handlePaymentFailed(
 // payment_kind では絞らない: tako_unlock / perception_unlock の返金も同じ
 // payment_intent_id で payment_history に記録される (以前は full_access 限定で、
 // それ以外の返金が 0 行更新 → throw → Stripe が最大 3 日再送し続ける毒イベントだった)。
+type RefundedPaymentRow = {
+  id: string;
+  user_id: string;
+  stripe_session_id: string;
+  payment_kind: string | null;
+  status: string;
+};
+
+type ActiveCoursePaymentRow = Omit<
+  AccessPaymentRow,
+  "metadata" | "payment_kind"
+> & {
+  payment_kind: AccessPaymentRow["payment_kind"] | "unmei" | "unmei_upgrade";
+  stripe_session_id: string;
+  stripe_payment_intent_id: string | null;
+  currency: string;
+  metadata: { upgrade_from?: unknown; locale?: unknown } | null;
+};
+
+async function relatedUserIdsForRefund(
+  payment: RefundedPaymentRow,
+): Promise<{ email: string | null; ids: string[] }> {
+  const { data: user, error: userError } = await supabaseAdmin
+    .from("users")
+    .select("email")
+    .eq("id", payment.user_id)
+    .maybeSingle();
+  if (userError) {
+    throw new Error(`[refund] user lookup failed: ${userError.message}`);
+  }
+  const email = normalizeEmail(user?.email);
+  if (!email) return { email: null, ids: [payment.user_id] };
+
+  const { data: related, error: relatedError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("email", email)
+    .limit(50);
+  if (relatedError) {
+    throw new Error(`[refund] related user lookup failed: ${relatedError.message}`);
+  }
+  const ids = (related ?? []).map((row) => row.id as string);
+  if (!ids.includes(payment.user_id)) ids.push(payment.user_id);
+  return { email, ids };
+}
+
+async function refundInvalidDependentPurchases(
+  cause: RefundedPaymentRow,
+  rows: ActiveCoursePaymentRow[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const stripe = getStripe();
+  if (!stripe) throw new Error("[refund] Stripe is not configured");
+
+  for (const row of rows) {
+    let paymentIntentId = row.stripe_payment_intent_id;
+    if (!paymentIntentId) {
+      const session = await stripe.checkout.sessions.retrieve(
+        row.stripe_session_id,
+      );
+      paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null);
+    }
+    if (!paymentIntentId) {
+      await sendSlackAlert("⚠️ 差額購入の連鎖返金にPaymentIntentがありません", {
+        cause_payment_id: cause.id,
+        dependent_payment_id: row.id,
+        stripe_session_id: row.stripe_session_id,
+      });
+      throw new Error(
+        `[refund] dependent payment intent missing: ${row.stripe_session_id}`,
+      );
+    }
+
+    await stripe.refunds.create(
+      { payment_intent: paymentIntentId },
+      { idempotencyKey: `dependent-refund:${cause.id}:${row.id}` },
+    );
+
+    if (
+      row.payment_kind === "full_access" ||
+      row.payment_kind === "premium_bundle"
+    ) {
+      try {
+        await revokeHoshiyomiCredits(`stripe:${row.stripe_session_id}`);
+      } catch (error) {
+        if (!isMissingHoshiyomiStore(error)) throw error;
+      }
+    }
+
+    await sendSlackAlert("ℹ️ 前提商品返金に伴う差額購入の自動返金", {
+      cause_payment_id: cause.id,
+      dependent_payment_id: row.id,
+      payment_kind: row.payment_kind,
+      stripe_session_id: row.stripe_session_id,
+    });
+  }
+}
+
+async function recomputeAccessAfterFullRefund(
+  payment: RefundedPaymentRow,
+): Promise<void> {
+  const accessKinds = [
+    "self_report",
+    "full_access",
+    "premium_bundle",
+    "unmei",
+    "unmei_upgrade",
+  ];
+  if (!payment.payment_kind || !accessKinds.includes(payment.payment_kind)) {
+    return;
+  }
+
+  const { email, ids: relatedIds } = await relatedUserIdsForRefund(payment);
+
+  const { data: remaining, error: remainingError } = await supabaseAdmin
+    .from("payment_history")
+    .select(
+      "id, user_id, stripe_session_id, stripe_payment_intent_id, payment_kind, currency, metadata, paid_at",
+    )
+    .in("user_id", relatedIds)
+    .eq("status", "completed")
+    .in("payment_kind", accessKinds)
+    .order("paid_at", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true });
+  if (remainingError) {
+    throw new Error(`[refund] remaining entitlement check failed: ${remainingError.message}`);
+  }
+  const remainingRows = (remaining ?? []) as ActiveCoursePaymentRow[];
+  const courseRows = remainingRows.filter(
+    (
+      row,
+    ): row is ActiveCoursePaymentRow & {
+      payment_kind: AccessPaymentRow["payment_kind"];
+    } =>
+      row.payment_kind === "self_report" ||
+      row.payment_kind === "full_access" ||
+      row.payment_kind === "premium_bundle",
+  );
+  const validCourseRows = validAccessPaymentRows(
+    courseRows,
+  ) as ActiveCoursePaymentRow[];
+  const validIds = new Set(validCourseRows.map((row) => row.id));
+  const refundedPrerequisite =
+    payment.payment_kind === "self_report"
+      ? "self_report"
+      : payment.payment_kind === "full_access"
+        ? "full_access"
+        : null;
+  const invalidDependents = courseRows.filter((row) => {
+    const prerequisite = row.metadata?.upgrade_from;
+    return (
+      refundedPrerequisite !== null &&
+      !validIds.has(row.id) &&
+      prerequisite === refundedPrerequisite
+    );
+  });
+  await refundInvalidDependentPurchases(payment, invalidDependents);
+
+  const legacyUnmeiRows = remainingRows.filter(
+    (row) =>
+      row.payment_kind === "unmei" || row.payment_kind === "unmei_upgrade",
+  );
+  const hasFull =
+    legacyUnmeiRows.length > 0 ||
+    validCourseRows.some(
+      (row) =>
+        row.payment_kind === "full_access" ||
+        row.payment_kind === "premium_bundle",
+    );
+  const hasUnmei = legacyUnmeiRows.length > 0 || validCourseRows.some(
+    (row) =>
+      row.payment_kind === "premium_bundle" ||
+      (row.payment_kind === "full_access" &&
+        (row.currency === "jpy" || row.metadata?.locale === "ja")),
+  );
+
+  const target = supabaseAdmin.from("users").update({
+    plan: hasFull ? "full" : "free",
+    unmei: hasUnmei,
+    ...(!hasFull ? { full_access_at: null } : {}),
+    ...(!hasUnmei ? { unmei_at: null } : {}),
+  });
+  const { error: updateError } = email
+    ? await target.eq("email", email)
+    : await target.eq("id", payment.user_id);
+  if (updateError) {
+    throw new Error(`[refund] entitlement revocation failed: ${updateError.message}`);
+  }
+
+  console.log("[webhook/stripe] access recomputed after refund", {
+    payment_id: payment.id,
+    payment_kind: payment.payment_kind,
+    related_users: relatedIds.length,
+    has_full: hasFull,
+    has_unmei: hasUnmei,
+    invalid_dependents_refunded: invalidDependents.length,
+  });
+
+  // 上位商品の返金後に下位の有効な購入が残る場合、その保証回数まで復元する。
+  try {
+    await ensureHoshiyomiCreditsFromPurchase(payment.user_id);
+  } catch (error) {
+    if (!isMissingHoshiyomiStore(error)) throw error;
+  }
+}
+
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
@@ -1020,7 +1520,7 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
       updated_at: nowIso,
     })
     .eq("stripe_payment_intent_id", paymentIntentId)
-    .select("id");
+    .select("id, user_id, stripe_session_id, payment_kind, status");
   if (isCoreKpiPaymentSchemaPending(error)) {
     console.warn(
       "[webhook/stripe] core KPI refund schema pending; refund fact will require replay after migration",
@@ -1031,7 +1531,27 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   if (error) {
     throw new Error(`[refund] refund update failed: ${error.message}`);
   }
-  if (data && data.length > 0) return;
+  if (data && data.length > 0) {
+    if (fullyRefunded) {
+      for (const row of data as RefundedPaymentRow[]) {
+        if (
+          row.payment_kind === "full_access" ||
+          row.payment_kind === "premium_bundle"
+        ) {
+          try {
+            await revokeHoshiyomiCredits(`stripe:${row.stripe_session_id}`);
+          } catch (error) {
+            if (!isMissingHoshiyomiStore(error)) throw error;
+            console.warn("[webhook/stripe] hoshiyomi migration pending on refund", {
+              stripe_session_id: row.stripe_session_id,
+            });
+          }
+        }
+        await recomputeAccessAfterFullRefund(row);
+      }
+    }
+    return;
+  }
 
   // 0 行更新 = payment_history に行が無い。原因は 2 通りで扱いを分ける:
   //   a) checkout webhook との順序逆転 (行がこれから書かれる) → throw で Stripe に再送させる

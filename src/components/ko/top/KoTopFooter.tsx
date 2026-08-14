@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 const COLUMNS = [
   {
@@ -31,6 +32,16 @@ const COLUMNS = [
         disabled: false,
         external: false,
       },
+      ...(KO_UNMEI_ENABLED
+        ? [
+            {
+              label: "운명의 설계도",
+              href: "/ko/unmei",
+              disabled: false,
+              external: false,
+            },
+          ]
+        : []),
     ],
   },
   {
