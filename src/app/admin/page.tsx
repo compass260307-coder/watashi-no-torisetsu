@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // 旧8タイプの日本語名 (フォールバック用)。現行はサーバが 32 タイプの称号を name で返す。
 const TYPE_LABELS: Record<string, string> = {
@@ -56,31 +56,6 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
   unknown: "不明",
 };
 
-// 招待の解剖 (tako_invite_ui_shown / friend_invite_clicked の metadata) → 日本語ラベル。
-const INVITE_SURFACE_LABELS: Record<string, string> = {
-  locked_gate: "ゲートのシェア行",
-  sticky_modal: "上部固定バーのモーダル",
-  send_sheet: "送信シート",
-  unknown: "不明",
-};
-const INVITE_SOURCE_LABELS: Record<string, string> = {
-  tako_locked_gate: "ゲートのシェア行",
-  tako_sticky_bar: "上部固定バー",
-  tako_send_sheet: "送信シート",
-  tako_unlocked: "/tako 解放後",
-  unknown: "不明",
-};
-const INVITE_CHANNEL_LABELS: Record<string, string> = {
-  line: "LINE",
-  kakao: "KakaoTalk",
-  x: "X",
-  native: "OSシェア",
-  copy: "リンクコピー",
-  facebook: "Facebook",
-  qr: "QR",
-  unknown: "不明",
-};
-
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
   self_report: "自己・友達診断＋PDF ¥199",
@@ -110,7 +85,6 @@ type Stats = {
       from: string | null;
       to: string | null;
       diagnosisUsers: number;
-      paidUsers: number;
       definition: string;
     };
     diagnosisTrend: {
@@ -154,6 +128,9 @@ type Stats = {
     };
     periodRevenue: {
       basis: string;
+      // 通貨をまたいだユニーク購入者数 (通貨バケット別 payers の合算は同一ユーザーを
+      // 二重計上するため、サーバ側で dedup した値を使う)。旧キャッシュ互換で optional。
+      uniquePayers?: number;
       currencies: {
         currency: string;
         grossRevenueMinor: number;
@@ -210,23 +187,6 @@ type Stats = {
       rateFromPrevious: number | null;
       rateFromLanding: number;
     }[];
-    attention: {
-      badgeShown: number;
-      badgeShowRate: number;
-      badgeClicked: number;
-      badgeClickRate: number;
-      takoReached: number;
-      takoReachRate: number;
-    };
-    inviteDetail: {
-      uiShownOwners: number;
-      uiSurfaces: { surface: string; owners: number }[];
-      clickOwners: number;
-      clickActions: number;
-      uiToClickRate: number;
-      channels: { channel: string; actions: number; owners: number }[];
-      sources: { source: string; actions: number; owners: number }[];
-    };
   };
   paywallFunnel: { label: string; count: number }[];
   coursePaywall: {
@@ -258,10 +218,8 @@ type Stats = {
       purchaseRate: number;
     }[];
   };
-  takoFunnel: { label: string; count: number }[];
   unmei: {
     funnel: { label: string; count: number }[];
-    chatFunnel: { label: string; count: number }[];
     purchases: {
       total: number;
       basic: number;
@@ -303,18 +261,10 @@ type Stats = {
     purchases: number;
     purchaseRate: number | null;
   }[];
-  purchaseCompleted: number;
   purchaseConversionRate: number;
-  recentEvents: {
-    event_name: string;
-    session_id: string | null;
-    created_at: string;
-    metadata: Record<string, unknown>;
-  }[];
   friendToDiagClicked: number;
   friendToDiagRate: number;
   typeDistribution: { typeId: string; name?: string; count: number }[];
-  paidUsers: number;
   revenueJpy: number;
   revenueByKind: {
     kind: string;
@@ -356,79 +306,66 @@ type Stats = {
   unknownGeneration: number;
   viral: {
     friendLandingViewed: number;
-    sharingUsersReached: number;
     avgLandingPerSharer: number;
     landingToStartRate: number;
     startToCompleteRate: number;
     friendToDiagClickedRate: number;
     childDiagCompleted: number;
-    parentDiagCompleted: number;
     avgChildPerParent: number;
     viralCoefficient: number;
   };
 };
 
-type Preset = "today" | "7d" | "30d" | "all" | "custom";
+type Preset = "today" | "yesterday" | "7d" | "30d" | "all" | "custom";
 
 const PRESETS: { key: Preset; label: string }[] = [
   { key: "today", label: "今日" },
-  { key: "7d", label: "7日" },
-  { key: "30d", label: "30日" },
+  { key: "yesterday", label: "昨日" },
+  { key: "7d", label: "過去7日" },
+  { key: "30d", label: "過去30日" },
   { key: "all", label: "全期間" },
-  { key: "custom", label: "カスタム" },
+  { key: "custom", label: "日付指定" },
 ];
 
 const ADMIN_NAV_ITEMS = [
   {
     href: "#overview",
     id: "overview",
-    label: "概要",
-    shortLabel: "概要",
+    label: "サマリー",
+    group: "メイン",
     path: "M4 13h5V4H4v9Zm0 7h5v-4H4v4Zm8 0h8v-9h-8v9Zm0-16v4h8V4h-8Z",
   },
   {
     href: "#revenue",
     id: "revenue",
-    label: "売上",
-    shortLabel: "売上",
+    label: "売上・購入",
+    group: "ビジネス",
     path: "M12 2v20m5-16H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H7",
-  },
-  {
-    href: "#unmei",
-    id: "unmei",
-    label: "運命",
-    shortLabel: "運命",
-    path: "M12 3.5 19.36 16.25H4.64L12 3.5Zm0 0v17m7.36-4.75L4.64 16.25M5 6l2 2m12-2-2 2",
   },
   {
     href: "#friend-funnel",
     id: "friend-funnel",
-    label: "友達診断",
-    shortLabel: "友達診断",
+    label: "友達・拡散",
+    group: "成長",
     path: "M4 5h16l-6 7v5l-4 2v-7L4 5Z",
   },
   {
-    href: "#growth",
-    id: "growth",
-    label: "拡散",
-    shortLabel: "拡散",
-    path: "m4 16 5-5 4 4 7-8m-6 0h6v6",
+    href: "#unmei",
+    id: "unmei",
+    label: "運命の設計図",
+    group: "商品",
+    path: "M12 3.5 19.36 16.25H4.64L12 3.5Zm0 0v17m7.36-4.75L4.64 16.25M5 6l2 2m12-2-2 2",
   },
   {
-    href: "#audience",
-    id: "audience",
-    label: "ユーザー",
-    shortLabel: "ユーザー",
-    path: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 10v-2a4 4 0 0 0-3-3.87m-1-7.26a4 4 0 0 1 0 7.75",
-  },
-  {
-    href: "#events",
-    id: "events",
-    label: "ログ",
-    shortLabel: "ログ",
-    path: "M4 4h16v16H4zM8 8h8M8 12h8M8 16h5",
+    href: "#acquisition",
+    id: "acquisition",
+    label: "流入・集客",
+    group: "成長",
+    path: "M4 12h12m-5-5 5 5-5 5m8-10v10",
   },
 ] as const;
+
+const ADMIN_NAV_GROUPS = ["メイン", "ビジネス", "商品", "成長"] as const;
 
 function toLocalDate(d: Date) {
   const y = d.getFullYear();
@@ -444,6 +381,9 @@ function getPresetRange(preset: Preset): { from: string; to: string } | null {
   let from: Date;
   if (preset === "today") {
     from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (preset === "yesterday") {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    to.setDate(to.getDate() - 1);
   } else if (preset === "7d") {
     from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
   } else {
@@ -452,7 +392,43 @@ function getPresetRange(preset: Preset): { from: string; to: string } | null {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-// 前期間比較のレンジ: 今日→昨日 / 7日→前の7日 / 30日→前の30日。
+function formatPeriodSummary(
+  preset: Preset,
+  customFrom: string,
+  customTo: string,
+): string {
+  if (preset === "all") return "初回計測から現在まで";
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat("ja-JP", {
+      month: "numeric",
+      day: "numeric",
+      weekday: "short",
+    }).format(date);
+
+  if (preset === "custom") {
+    if (!customFrom || !customTo) return "日付を選択してください";
+    const from = new Date(`${customFrom}T00:00:00`);
+    const to = new Date(`${customTo}T00:00:00`);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+      return "日付を選択してください";
+    }
+    return customFrom === customTo
+      ? formatDate(from)
+      : `${formatDate(from)} 〜 ${formatDate(to)}`;
+  }
+
+  const range = getPresetRange(preset);
+  if (!range) return "—";
+  const from = new Date(range.from);
+  const to = new Date(range.to);
+  return toLocalDate(from) === toLocalDate(to)
+    ? formatDate(from)
+    : `${formatDate(from)} 〜 ${formatDate(to)}`;
+}
+
+// 前期間比較のレンジ: 今日→昨日 / 昨日→一昨日 /
+// 7日→前の7日 / 30日→前の30日。
 // all/custom は比較なし (基準となる「直前の同じ長さ」が定義できないため)。
 function getPrevPresetRange(
   preset: Preset,
@@ -460,23 +436,31 @@ function getPrevPresetRange(
   const now = new Date();
   const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   let days: number;
+  let endOffsetDays: number;
   let label: string;
   if (preset === "today") {
     days = 1;
+    endOffsetDays = 1;
     label = "昨日";
+  } else if (preset === "yesterday") {
+    days = 1;
+    endOffsetDays = 2;
+    label = "一昨日";
   } else if (preset === "7d") {
     days = 7;
+    endOffsetDays = 7;
     label = "前の7日";
   } else if (preset === "30d") {
     days = 30;
+    endOffsetDays = 30;
     label = "前の30日";
   } else {
     return null;
   }
   const from = new Date(base);
-  from.setDate(from.getDate() - days * 2 + 1);
+  from.setDate(from.getDate() - endOffsetDays - days + 1);
   const to = new Date(base);
-  to.setDate(to.getDate() - days);
+  to.setDate(to.getDate() - endOffsetDays);
   to.setHours(23, 59, 59, 999);
   return { from: from.toISOString(), to: to.toISOString(), label };
 }
@@ -531,30 +515,29 @@ function countStep(
   );
 }
 
-function toneForRate(
-  rate: number | null,
-  goodAt: number,
-  cautionAt: number,
-): InsightTone {
-  if (rate === null) return "stone";
-  if (rate >= goodAt) return "emerald";
-  if (rate >= cautionAt) return "amber";
-  return "rose";
-}
-
 const ZERO_DECIMAL_CURRENCIES = new Set(["jpy", "krw"]);
+
+// Intl.NumberFormat は生成コストが高く、1レンダーで数十回呼ばれるためキャッシュする。
+const MONEY_FORMATTERS = new Map<string, Intl.NumberFormat>();
 
 function formatMoney(minor: number, currency: string): string {
   const normalized = currency.toLowerCase();
   const amount = ZERO_DECIMAL_CURRENCIES.has(normalized)
     ? minor
     : minor / 100;
+  const digits = Number.isInteger(amount) ? 0 : 1;
   try {
-    return new Intl.NumberFormat("ja-JP", {
-      style: "currency",
-      currency: normalized.toUpperCase(),
-      maximumFractionDigits: Number.isInteger(amount) ? 0 : 1,
-    }).format(amount);
+    const cacheKey = `${normalized}:${digits}`;
+    let formatter = MONEY_FORMATTERS.get(cacheKey);
+    if (!formatter) {
+      formatter = new Intl.NumberFormat("ja-JP", {
+        style: "currency",
+        currency: normalized.toUpperCase(),
+        maximumFractionDigits: digits,
+      });
+      MONEY_FORMATTERS.set(cacheKey, formatter);
+    }
+    return formatter.format(amount);
   } catch {
     return `${normalized.toUpperCase()} ${amount.toFixed(1)}`;
   }
@@ -599,8 +582,26 @@ function computeHeadlines(stats: Stats) {
   const paidRate = paidDenominator > 0 ? paidNumerator / paidDenominator : 0;
   const currencies = stats.coreKpis.periodRevenue.currencies;
   const purchases = currencies.reduce((sum, row) => sum + row.purchases, 0);
+  // 通貨バケット別 payers の合算は JPY と KRW の両方で買った人を二重計上する。
+  // サーバが返す通貨横断のユニーク数を優先し、無い場合 (旧キャッシュ) のみ合算で代用。
+  const payers =
+    stats.coreKpis.periodRevenue.uniquePayers ??
+    currencies.reduce((sum, row) => sum + row.payers, 0);
   const revenueLabel =
     currencies.length > 0 ? formatNetRevenue(currencies) : formatMoney(0, "jpy");
+  const refundLabel =
+    currencies.length > 0
+      ? currencies
+          .map((row) => formatMoney(row.refundedMinor, row.currency))
+          .join(" / ")
+      : formatMoney(0, "jpy");
+  const arpuCurrencies = stats.coreKpis.arpu.currencies;
+  const arpuLabel =
+    arpuCurrencies.length > 0
+      ? arpuCurrencies
+          .map((row) => formatMoney(row.arpuMinor, row.currency))
+          .join(" / ")
+      : formatMoney(0, "jpy");
   return {
     hasTrustedCoreDiagnosis,
     diagnosisUsers,
@@ -612,7 +613,11 @@ function computeHeadlines(stats: Stats) {
     paidRate,
     currencies,
     purchases,
+    payers,
     revenueLabel,
+    refundLabel,
+    arpuCurrencies,
+    arpuLabel,
   };
 }
 
@@ -637,244 +642,15 @@ const TREND_STYLES: Record<MetricTrend, { chip: string; arrow: string }> = {
   },
 };
 
-type InsightTone = "emerald" | "amber" | "rose" | "indigo" | "stone";
-
-const INSIGHT_TONES: Record<
-  InsightTone,
-  { border: string; badge: string; value: string; dot: string; hover: string }
-> = {
-  emerald: {
-    border: "border-emerald-200/70",
-    badge: "bg-emerald-950 text-emerald-50",
-    value: "text-emerald-800",
-    dot: "bg-emerald-300",
-    hover: "hover:border-emerald-300 hover:bg-emerald-50/40",
-  },
-  amber: {
-    border: "border-amber-200/80",
-    badge: "bg-amber-900 text-amber-50",
-    value: "text-amber-800",
-    dot: "bg-amber-300",
-    hover: "hover:border-amber-300 hover:bg-amber-50/40",
-  },
-  rose: {
-    border: "border-rose-200/80",
-    badge: "bg-rose-900 text-rose-50",
-    value: "text-rose-800",
-    dot: "bg-rose-300",
-    hover: "hover:border-rose-300 hover:bg-rose-50/40",
-  },
-  indigo: {
-    border: "border-indigo-200/80",
-    badge: "bg-indigo-950 text-indigo-50",
-    value: "text-indigo-800",
-    dot: "bg-indigo-300",
-    hover: "hover:border-indigo-300 hover:bg-indigo-50/40",
-  },
-  stone: {
-    border: "border-stone-200/90",
-    badge: "bg-stone-900 text-stone-50",
-    value: "text-stone-800",
-    dot: "bg-stone-300",
-    hover: "hover:border-stone-300 hover:bg-stone-50/80",
-  },
-};
-
-function AdminInsightCard({
-  label,
-  value,
-  detail,
-  tone,
-  href,
-  onClick,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: InsightTone;
-  href: string;
-  onClick: () => void;
-}) {
-  const colors = INSIGHT_TONES[tone];
-  return (
-    <a
-      href={href}
-      onClick={onClick}
-      className={`group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-lg border ${colors.border} bg-[#fffdf8] p-4 shadow-[0_18px_46px_-38px_rgba(25,23,20,0.55)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_58px_-42px_rgba(25,23,20,0.62)] ${colors.hover}`}
-    >
-      <span
-        aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-1 ${colors.dot}`}
-      />
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-[10px] font-black ${colors.badge}`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-55" />
-          {label}
-        </span>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="h-4 w-4 text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500"
-          aria-hidden="true"
-        >
-          <path
-            d="M7 17 17 7m0 0H9m8 0v8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-      <div>
-        <p className={`mt-6 text-3xl font-black leading-none tabular-nums ${colors.value}`}>
-          {value}
-        </p>
-        <p className="mt-2.5 text-[11px] font-semibold leading-relaxed text-stone-500">
-          {detail}
-        </p>
-      </div>
-    </a>
-  );
-}
-
-// 数値セル: 0 は薄く沈め、値がある所だけ目に入るようにする。
-function AttributionNum({ value, strong }: { value: number; strong?: boolean }) {
-  if (value === 0) {
-    return <span className="tabular-nums text-stone-300">0</span>;
-  }
-  return (
-    <span
-      className={`tabular-nums ${
-        strong ? "font-black text-emerald-600" : "font-bold text-stone-700"
-      }`}
-    >
-      {value}
-    </span>
-  );
-}
-
-// 3コース課金の導線別決済結果テーブル。
-function AttributionTable({
-  rows,
-}: {
-  rows: {
-    source: string;
-    scrollClicks: number;
-    purchaseCtaClicks: number;
-    stripeReached: number;
-    purchases: number;
-    purchaseRate: number | null;
-  }[];
-}) {
-  const maxClicks = Math.max(1, ...rows.map((s) => s.scrollClicks));
-  return (
-    <div className="overflow-x-auto rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-      <table className="w-full min-w-[760px] text-xs">
-        <thead className="bg-stone-950 text-stone-300">
-          <tr>
-            <th className="px-3 py-3 text-left font-black">場所</th>
-            <th className="px-3 py-3 text-right font-black">クリック</th>
-            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
-            <th className="px-3 py-3 text-right font-black">購入</th>
-            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
-            <th className="px-3 py-3 text-right font-black">Stripe</th>
-            <th className="px-2 py-3 text-center font-black text-stone-600">→</th>
-            <th className="px-3 py-3 text-right font-black">完了</th>
-            <th className="px-3 py-3 text-right font-black">率</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-stone-100/80">
-          {rows.map((s) => {
-            const label = PAYWALL_SOURCE_LABELS[s.source] ?? s.source;
-            const isLegacy = label.startsWith("旧");
-            return (
-              <tr
-                key={s.source}
-                className={`transition hover:bg-stone-50/90 ${
-                  s.purchases > 0 ? "bg-emerald-50/70" : ""
-                }`}
-              >
-                <td className="px-3 py-3" title={s.source}>
-                  <p
-                    className={`flex items-center gap-2 font-semibold ${
-                      isLegacy ? "text-stone-400" : "text-stone-700"
-                    }`}
-                  >
-                    {label}
-                    {s.purchases > 0 && (
-                      <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                        購入
-                      </span>
-                    )}
-                  </p>
-                  {/* 誘導クリック量のミニバー (最大行=100%) */}
-                  <span className="mt-2 block h-2 w-full max-w-[260px] overflow-hidden rounded-full bg-stone-200/70">
-                    <span
-                      className={`block h-full rounded-full bg-[linear-gradient(90deg,#0f766e,#14b8a6)] ${
-                        isLegacy ? "opacity-30" : ""
-                      }`}
-                      style={{
-                        width: `${Math.max(
-                          s.scrollClicks > 0 ? 2 : 0,
-                          (s.scrollClicks / maxClicks) * 100,
-                        )}%`,
-                      }}
-                    />
-                  </span>
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <AttributionNum value={s.scrollClicks} />
-                </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
-                  →
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <AttributionNum value={s.purchaseCtaClicks} />
-                </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
-                  →
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <AttributionNum value={s.stripeReached} />
-                </td>
-                <td aria-hidden="true" className="px-2 py-3 text-center text-stone-200">
-                  →
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <AttributionNum value={s.purchases} strong />
-                </td>
-                <td className="px-3 py-3 text-right">
-                  {s.purchaseRate === null ? (
-                    <span className="text-stone-300">—</span>
-                  ) : s.purchaseRate > 0 ? (
-                    <span className="rounded bg-stone-900 px-2 py-1 text-[11px] font-black tabular-nums text-white">
-                      {pct(s.purchaseRate)}
-                    </span>
-                  ) : (
-                    <span className="tabular-nums text-stone-300">0.0%</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function CoursePaywallTable({
   plans,
 }: {
   plans: Stats["coursePaywall"]["plans"];
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-stone-200/80 bg-[#fffdf8]">
+    <div className="overflow-x-auto rounded-xl border border-[#dfe5ef] bg-white">
       <table className="w-full min-w-[940px] text-xs">
-        <thead className="bg-stone-950 text-stone-300">
+        <thead className="bg-[#f8fafd] text-[#5f6368]">
           <tr>
             <th className="px-3 py-3 text-left font-black">コース</th>
             <th className="px-3 py-3 text-right font-black">表示</th>
@@ -945,25 +721,25 @@ const EXECUTIVE_METRIC_TONES: Record<
   { accent: string; badge: string; icon: string; value: string; line: string }
 > = {
   indigo: {
-    accent: "bg-indigo-500",
-    badge: "border-indigo-200 bg-indigo-50 text-indigo-800",
-    icon: "bg-indigo-950 text-indigo-100 ring-indigo-900/10",
-    value: "text-indigo-800",
-    line: "border-indigo-200/80",
+    accent: "bg-[#1a73e8]",
+    badge: "border-[#aecbfa] bg-[#e8f0fe] text-[#1967d2]",
+    icon: "bg-[#e8f0fe] text-[#1967d2] ring-[#aecbfa]",
+    value: "text-[#1967d2]",
+    line: "border-[#dfe5ef]",
   },
   emerald: {
-    accent: "bg-emerald-500",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    icon: "bg-emerald-950 text-emerald-100 ring-emerald-900/10",
-    value: "text-emerald-800",
-    line: "border-emerald-200/80",
+    accent: "bg-[#34a853]",
+    badge: "border-[#b7dfc2] bg-[#e6f4ea] text-[#137333]",
+    icon: "bg-[#e6f4ea] text-[#137333] ring-[#b7dfc2]",
+    value: "text-[#137333]",
+    line: "border-[#dfe5ef]",
   },
   cyan: {
-    accent: "bg-sky-500",
-    badge: "border-sky-200 bg-sky-50 text-sky-800",
-    icon: "bg-sky-950 text-sky-100 ring-sky-900/10",
-    value: "text-sky-800",
-    line: "border-sky-200/80",
+    accent: "bg-[#00acc1]",
+    badge: "border-[#b2ebf2] bg-[#e0f7fa] text-[#007b83]",
+    icon: "bg-[#e0f7fa] text-[#007b83] ring-[#b2ebf2]",
+    value: "text-[#007b83]",
+    line: "border-[#dfe5ef]",
   },
 };
 
@@ -991,31 +767,31 @@ function ExecutiveMetricCard({
 }) {
   const colors = EXECUTIVE_METRIC_TONES[tone];
   return (
-    <article className={`relative min-h-[218px] overflow-hidden rounded-lg border ${colors.line} bg-[#fffdf8] p-5 shadow-[0_20px_58px_-42px_rgba(25,23,20,0.62)] ring-1 ring-white/80 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_28px_68px_-46px_rgba(25,23,20,0.68)] sm:p-6`}>
+    <article className={`relative min-h-[202px] overflow-hidden rounded-2xl border ${colors.line} bg-white p-5 shadow-[0_1px_2px_rgba(60,64,67,0.08)] transition duration-200 hover:shadow-[0_2px_8px_rgba(60,64,67,0.13)] sm:p-6`}>
       <span
         aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-1.5 ${colors.accent}`}
+        className={`absolute inset-x-0 top-0 h-1 ${colors.accent}`}
       />
       <span
         aria-hidden="true"
-        className="absolute -right-3 top-4 text-[76px] font-black leading-none text-stone-900/[0.035]"
+        className="absolute -right-2 top-3 text-[72px] font-bold leading-none text-[#202124]/[0.025]"
       >
         {index}
       </span>
       <div className="relative flex items-start justify-between gap-4">
-        <span className={`inline-flex rounded border px-2.5 py-1 text-[10px] font-black tracking-normal ${colors.badge}`}>
+        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-normal ${colors.badge}`}>
           {badge}
         </span>
-        <span className={`flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-black ring-1 ${colors.icon}`}>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold ring-1 ${colors.icon}`}>
           {index}
         </span>
       </div>
-      <p className="relative mt-6 text-[12px] font-black tracking-normal text-stone-500">
+      <p className="relative mt-5 text-[12px] font-medium tracking-normal text-[#5f6368]">
         {label}
       </p>
       <div className="relative mt-2 flex min-w-0 items-end gap-2">
         <p
-          className={`min-w-0 font-black leading-none tracking-normal tabular-nums ${colors.value} ${
+          className={`min-w-0 font-semibold leading-none tracking-normal tabular-nums ${colors.value} ${
             compactValue
               ? "text-[34px] sm:text-4xl xl:text-[42px]"
               : "text-[44px] sm:text-5xl xl:text-[56px]"
@@ -1037,10 +813,127 @@ function ExecutiveMetricCard({
           {compare.label}
         </p>
       ) : null}
-      <p className="relative mt-4 border-t border-stone-100 pt-3 text-[11px] font-semibold leading-relaxed text-stone-500">
+      <p className="relative mt-4 border-t border-[#eef1f5] pt-3 text-[11px] font-medium leading-relaxed text-[#5f6368]">
         {detail}
       </p>
     </article>
+  );
+}
+
+function DiagnosisTrendChart({
+  points,
+}: {
+  points: Stats["coreKpis"]["diagnosisTrend"]["points"];
+}) {
+  const width = 1000;
+  const height = 260;
+  const left = 54;
+  const right = 18;
+  const top = 18;
+  const bottom = 42;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const maxValue = Math.max(...points.map((point) => point.count), 1);
+  const chartPoints = points.map((point, index) => {
+    const x =
+      left +
+      (points.length <= 1 ? plotWidth / 2 : (index / (points.length - 1)) * plotWidth);
+    const y = top + plotHeight - (point.count / maxValue) * plotHeight;
+    return { ...point, x, y };
+  });
+  const linePoints = chartPoints.map((point) => `${point.x},${point.y}`).join(" ");
+  const areaPoints = chartPoints.length
+    ? `${left},${top + plotHeight} ${linePoints} ${chartPoints.at(-1)!.x},${top + plotHeight}`
+    : "";
+  const labelIndexes = Array.from(
+    new Set(
+      Array.from({ length: Math.min(5, points.length) }, (_, index) =>
+        Math.round((index / Math.max(Math.min(5, points.length) - 1, 1)) * (points.length - 1)),
+      ),
+    ),
+  );
+
+  if (points.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-[#5f6368]">
+        この期間の推移データはまだありません
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-[260px] min-w-[680px] w-full"
+        role="img"
+        aria-label="自己診断完了人数の日別推移"
+      >
+        <defs>
+          <linearGradient id="admin-diagnosis-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a73e8" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#1a73e8" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+          const y = top + plotHeight - ratio * plotHeight;
+          return (
+            <g key={ratio}>
+              <line
+                x1={left}
+                x2={width - right}
+                y1={y}
+                y2={y}
+                stroke="#e6eaf0"
+                strokeWidth="1"
+              />
+              <text
+                x={left - 10}
+                y={y + 4}
+                textAnchor="end"
+                fill="#80868b"
+                fontSize="11"
+              >
+                {Math.round(maxValue * ratio).toLocaleString()}
+              </text>
+            </g>
+          );
+        })}
+        {chartPoints.length > 1 && (
+          <polygon points={areaPoints} fill="url(#admin-diagnosis-area)" />
+        )}
+        {chartPoints.length === 1 ? (
+          <circle cx={chartPoints[0].x} cy={chartPoints[0].y} r="5" fill="#1a73e8" />
+        ) : (
+          <polyline
+            points={linePoints}
+            fill="none"
+            stroke="#1a73e8"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {labelIndexes.map((index) => {
+          const point = chartPoints[index];
+          const date = new Date(`${point.date}T00:00:00`);
+          return (
+            <text
+              key={`${point.date}-${index}`}
+              x={point.x}
+              y={height - 12}
+              textAnchor={index === 0 ? "start" : index === points.length - 1 ? "end" : "middle"}
+              fill="#80868b"
+              fontSize="11"
+            >
+              {Number.isNaN(date.getTime())
+                ? point.date
+                : `${date.getMonth() + 1}/${date.getDate()}`}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -1056,17 +949,17 @@ function SectionHeader({
   side?: React.ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-col gap-3 border-b border-stone-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 border-b border-[#dfe5ef] pb-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-3xl">
-        <p className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-normal text-stone-500">
-          <span className="h-2 w-2 rounded-full bg-[#d7ff71] ring-4 ring-stone-950" aria-hidden="true" />
+        <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#1a73e8]">
+          <span className="h-2 w-2 rounded-full bg-[#1a73e8]" aria-hidden="true" />
           {eyebrow}
         </p>
-        <h2 className="text-[22px] font-black tracking-normal text-stone-950 sm:text-2xl">
+        <h2 className="text-[22px] font-medium tracking-normal text-[#202124] sm:text-2xl">
           {title}
         </h2>
         {description && (
-          <p className="mt-1.5 text-xs font-semibold leading-relaxed text-stone-500">
+          <p className="mt-1.5 text-xs font-normal leading-relaxed text-[#5f6368]">
             {description}
           </p>
         )}
@@ -1085,7 +978,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[0_18px_52px_-42px_rgba(25,23,20,0.6)] ring-1 ring-white/80 ${className}`}
+      className={`rounded-2xl border border-[#dfe5ef] bg-white shadow-[0_1px_2px_rgba(60,64,67,0.08)] ${className}`}
     >
       {children}
     </div>
@@ -1113,12 +1006,12 @@ function FunnelBar({
       <span className="truncate text-right text-[11px] font-black text-stone-700 sm:text-xs" title={label}>
         {label}
       </span>
-      <div className="relative h-9 overflow-hidden rounded-full bg-stone-200/70 ring-1 ring-inset ring-stone-300/50">
+      <div className="relative h-9 overflow-hidden rounded-full bg-[#edf2f7] ring-1 ring-inset ring-[#dfe5ef]">
         <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#0f766e,#12b3a6)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500"
+          className="h-full rounded-full bg-[linear-gradient(90deg,#1a73e8,#669df6)] transition-all duration-500"
           style={{ width: `${Math.max(width, 1)}%` }}
         />
-        <span className="absolute inset-y-1 right-1 flex min-w-10 items-center justify-center rounded-full bg-[#fffdf8]/92 px-2 text-xs font-black tabular-nums text-stone-950 shadow-sm">
+        <span className="absolute inset-y-1 right-1 flex min-w-10 items-center justify-center rounded-full bg-white/95 px-2 text-xs font-bold tabular-nums text-[#202124] shadow-sm">
           {count.toLocaleString()}
         </span>
       </div>
@@ -1210,7 +1103,7 @@ function ReachStepRow({
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200/80 bg-[#fffdf8] text-center shadow-sm">
+        <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-[#dfe5ef] bg-white text-center shadow-sm">
           <div className="border-r border-stone-200/70 px-2 py-2.5">
             <p className="text-base font-black tabular-nums text-stone-950">
               {count.toLocaleString()}
@@ -1257,7 +1150,7 @@ function ReachSummaryCard({
 }) {
   const colors = REACH_TONES[tone];
   return (
-    <div className={`relative overflow-hidden rounded-lg border ${colors.border} bg-[#fffdf8] p-4 shadow-[0_18px_44px_-38px_rgba(25,23,20,0.56)] ring-1 ring-white/80`}>
+    <div className={`relative overflow-hidden rounded-2xl border ${colors.border} bg-white p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)]`}>
       <span
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-1 ${colors.bar}`}
@@ -1279,90 +1172,6 @@ function ReachSummaryCard({
   );
 }
 
-function DistributionBar({
-  label,
-  count,
-  max,
-  color,
-}: {
-  label: string;
-  count: number;
-  max: number;
-  color?: string;
-}) {
-  const width = max > 0 ? (count / max) * 100 : 0;
-  return (
-    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-center gap-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
-      <span className="truncate text-right text-[11px] font-black text-stone-700 sm:text-xs" title={label}>
-        {label}
-      </span>
-      <div className="relative h-8 overflow-hidden rounded-full bg-stone-200/70 ring-1 ring-inset ring-stone-300/50">
-        <div
-          className={`h-full rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-500 ${color ?? "bg-[linear-gradient(90deg,#0369a1,#38bdf8)]"}`}
-          style={{ width: `${Math.max(width, 1)}%` }}
-        />
-        <span className="absolute inset-y-1 right-1 flex min-w-10 items-center justify-center rounded-full bg-[#fffdf8]/92 px-2 text-xs font-black tabular-nums text-stone-950 shadow-sm">
-          {count.toLocaleString()}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function QuestionReachChart({
-  title,
-  reach,
-  totalQuestions,
-}: {
-  title: string;
-  reach: Record<string, number>;
-  totalQuestions: number;
-}) {
-  const data = Array.from({ length: totalQuestions }, (_, i) => ({
-    index: i,
-    count: reach[String(i)] ?? 0,
-  }));
-  const max = Math.max(...data.map((d) => d.count), 1);
-
-  return (
-    <Panel className="p-5 sm:p-6">
-      <h3 className="mb-4 text-xs font-black uppercase tracking-normal text-stone-500">
-        {title}
-      </h3>
-      <div className="flex h-32 items-end gap-1 rounded-lg border border-stone-200/70 bg-white/55 px-3 pt-3">
-        {data.map((d) => {
-          const height = max > 0 ? (d.count / max) * 100 : 0;
-          return (
-            <div
-              key={d.index}
-              className="flex-1 flex flex-col items-center gap-1"
-            >
-              <span className="text-[10px] font-bold tabular-nums text-stone-500">
-                {d.count || ""}
-              </span>
-              <div className="relative w-full" style={{ height: "100px" }}>
-                <div
-                  className="absolute bottom-0 w-full rounded-t bg-[linear-gradient(180deg,#14b8a6,#0f766e)] transition-all duration-500"
-                  style={{ height: `${Math.max(height, 2)}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-medium text-stone-400">
-                Q{d.index + 1}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      {data.length > 1 && data[0].count > 0 && (
-        <p className="mt-3 text-right text-[11px] font-medium text-stone-400">
-          Q1→Q{totalQuestions} 到達率:{" "}
-          {pct(data[totalQuestions - 1].count / data[0].count)}
-        </p>
-      )}
-    </Panel>
-  );
-}
-
 export default function AdminPage() {
   const [inputKey, setInputKey] = useState("");
   const [adminKey, setAdminKey] = useState<string | null>(null);
@@ -1376,6 +1185,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const [preset, setPreset] = useState<Preset>("today");
@@ -1397,16 +1207,28 @@ export default function AdminPage() {
   });
 
   useEffect(() => {
+    // setTimeout(0) は react-hooks/set-state-in-effect (effect内の同期setState禁止)
+    // を満たすためのもの。直接呼びに変えないこと。
     const stored = sessionStorage.getItem("torisetsu_admin_key");
     if (!stored) return;
     const restoreTimer = window.setTimeout(() => setAdminKey(stored), 0);
     return () => window.clearTimeout(restoreTimer);
   }, []);
 
+  // 応答の後勝ち上書きを防ぐ (遅い全期間の応答が、後から押した今日の表示を潰す)。
+  // 最新のリクエスト番号だけが state を更新できる。
+  const fetchSeqRef = useRef(0);
+  // 「更新」ボタンで比較フェッチも強制再計算するためのトリガー。
+  const compareFreshRef = useRef(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
   const fetchStats = useCallback(
     // fresh=true は「更新」ボタン。サーバキャッシュを飛ばして最新を再集計する
-    // (通常の切替はキャッシュ利用: 現在を含む期間は5分・過去のみは24時間)。
+    // (通常の切替はキャッシュ利用: 現在を含む期間は5分・終端が48時間以内の過去
+    // 期間は1時間・それより古い期間は24時間)。
     async (key: string, p: Preset, cFrom: string, cTo: string, fresh = false) => {
+      const seq = ++fetchSeqRef.current;
+      const isLatest = () => seq === fetchSeqRef.current;
       setLoading(true);
       setError("");
       try {
@@ -1433,6 +1255,7 @@ export default function AdminPage() {
           headers: { "x-admin-key": key },
         });
         if (res.status === 401) {
+          if (!isLatest()) return;
           setError("パスワードが正しくありません");
           setAdminKey(null);
           sessionStorage.removeItem("torisetsu_admin_key");
@@ -1440,14 +1263,15 @@ export default function AdminPage() {
         }
         if (!res.ok) throw new Error();
         const nextStats = (await res.json()) as Stats;
+        if (!isLatest()) return;
         setStats(nextStats);
         setLastUpdatedAt(new Date().toISOString());
         setAdminKey(key);
         sessionStorage.setItem("torisetsu_admin_key", key);
       } catch {
-        setError("データの取得に失敗しました");
+        if (isLatest()) setError("データの取得に失敗しました");
       } finally {
-        setLoading(false);
+        if (isLatest()) setLoading(false);
       }
     },
     [],
@@ -1455,15 +1279,20 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!adminKey) return;
+    // カスタム日付は矢印キーで1ステップごとに change が発火するため、
+    // 350ms のデバウンスで集計APIの連打を防ぐ。プリセット切替は即時。
+    const delay = preset === "custom" ? 350 : 0;
     const fetchTimer = window.setTimeout(
       () => void fetchStats(adminKey, preset, customFrom, customTo),
-      0,
+      delay,
     );
     return () => window.clearTimeout(fetchTimer);
   }, [adminKey, preset, customFrom, customTo, fetchStats]);
 
   // 比較期間の統計を追加取得 (見出しカードの比較チップ用)。
   // 本体とは独立して取得し、失敗時はチップ非表示のみ (本体表示は影響なし)。
+  // refreshNonce: 「更新」ボタンで本体と一緒に再取得する (compareFreshRef が立って
+  // いればサーバキャッシュも飛ばす。過去期間は24hキャッシュされるため必須)。
   useEffect(() => {
     if (!adminKey) return;
     const range = resolveCompareRange(
@@ -1473,13 +1302,17 @@ export default function AdminPage() {
       compareTo,
     );
     let cancelled = false;
-    (async () => {
+    const run = async () => {
       if (!range) {
         if (!cancelled) setPrevStats(null);
         return;
       }
       try {
         const params = new URLSearchParams({ from: range.from, to: range.to });
+        if (compareFreshRef.current) {
+          compareFreshRef.current = false;
+          params.set("fresh", "1");
+        }
         const res = await fetch(`/api/admin/stats?${params.toString()}`, {
           headers: { "x-admin-key": adminKey },
         });
@@ -1496,11 +1329,15 @@ export default function AdminPage() {
       } catch {
         if (!cancelled) setPrevStats(null);
       }
-    })();
+    };
+    // カスタム比較日付も本体と同じ理由でデバウンスする。
+    const delay = comparePreset === "custom" ? 350 : 0;
+    const timer = window.setTimeout(() => void run(), delay);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
-  }, [adminKey, preset, comparePreset, compareFrom, compareTo]);
+  }, [adminKey, preset, comparePreset, compareFrom, compareTo, refreshNonce]);
 
   useEffect(() => {
     if (!stats) return;
@@ -1537,116 +1374,64 @@ export default function AdminPage() {
 
   if (!adminKey) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f1efe7] px-4 py-8 text-stone-950 sm:px-6">
-        <div className="grid w-full max-w-[980px] overflow-hidden rounded-lg border border-stone-200/80 bg-[#fffdf8] shadow-[0_34px_100px_-60px_rgba(25,23,20,0.72)] ring-1 ring-white/80 md:grid-cols-[1fr_0.92fr]">
-          <div className="hidden border-r border-white/[0.08] bg-[#10120f] p-9 text-white md:flex md:flex-col md:justify-between lg:p-11">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
-                </svg>
-              </span>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-normal text-[#d7ff71]">
-                  Admin Console
-                </p>
-                <p className="mt-0.5 text-base font-black tracking-normal">
-                  ワタシのトリセツ
-                </p>
-              </div>
-            </div>
-
-            <div className="my-14">
-              <span className="mb-5 inline-flex rounded border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-normal text-stone-300">
-                Private dashboard
-              </span>
-              <h1 className="text-4xl font-black leading-tight tracking-normal">
-                毎日の数字を、
-                <br className="hidden lg:block" />
-                すぐ見る。
-              </h1>
-              <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-stone-400">
-                主要数字を一覧で確認。
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {["Diagnosis", "Revenue", "Virality"].map((label) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-white/10 bg-white/[0.045] p-3"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                    {label}
-                  </p>
-                  <span className="mt-3 block h-1 rounded bg-[#d7ff71]" />
-                </div>
-              ))}
+      <div className="min-h-screen bg-[#f3f6fc] text-[#202124]">
+        <header className="flex h-[72px] items-center border-b border-[#dfe5ef] bg-white px-5 sm:px-8">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a73e8] text-white shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
+                <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
+              </svg>
+            </span>
+            <div>
+              <p className="text-sm font-medium text-[#202124]">ワタシのトリセツ</p>
+              <p className="text-[11px] text-[#5f6368]">管理コンソール</p>
             </div>
           </div>
+        </header>
 
-          <div className="bg-[#fffdf8] p-7 sm:p-10 lg:p-12">
-            <div className="mb-8 flex items-center gap-3 md:hidden">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71]">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                >
-                  <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
-                </svg>
-              </span>
+        <main className="mx-auto flex min-h-[calc(100vh-72px)] max-w-[1120px] items-center px-4 py-10 sm:px-6">
+          <div className="grid w-full overflow-hidden rounded-3xl border border-[#dfe5ef] bg-white shadow-[0_8px_28px_rgba(60,64,67,0.12)] md:grid-cols-[1.05fr_0.95fr]">
+            <div className="hidden bg-[#e8f0fe] p-10 md:flex md:flex-col md:justify-between lg:p-14">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-normal text-teal-700">
-                  Admin Console
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-[#1967d2]">
+                  <span className="h-2 w-2 rounded-full bg-[#34a853]" />
+                  Private dashboard
+                </span>
+                <h1 className="mt-8 text-4xl font-medium leading-tight text-[#202124] lg:text-[44px]">
+                  大事な数字が、
+                  <br />
+                  すぐわかる。
+                </h1>
+                <p className="mt-5 max-w-md text-sm leading-7 text-[#5f6368]">
+                  診断・売上・課金・友達診断の状況を、ひとつの画面で確認できます。
                 </p>
-                <p className="text-base font-black tracking-normal text-stone-950">
-                  ワタシのトリセツ
-                </p>
+              </div>
+              <div className="mt-12 grid grid-cols-3 gap-3">
+                {[
+                  ["診断", "#1a73e8"],
+                  ["売上", "#34a853"],
+                  ["拡散", "#f9ab00"],
+                ].map(([label, color]) => (
+                  <div key={label} className="rounded-2xl bg-white/75 p-4">
+                    <span className="block h-1 w-8 rounded-full" style={{ backgroundColor: color }} />
+                    <p className="mt-3 text-xs font-medium text-[#3c4043]">{label}</p>
+                  </div>
+                ))}
               </div>
             </div>
-            <form
-              onSubmit={handleLogin}
-              className="flex min-h-full flex-col justify-center"
-            >
-              <div className="mb-8">
-                <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                  >
-                    <rect x="5" y="10" width="14" height="10" rx="2" />
-                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                  </svg>
-                </span>
-                <p className="text-[10px] font-black uppercase tracking-normal text-teal-700">
-                  Secure access
-                </p>
-                <h2 className="mt-2 text-2xl font-black tracking-normal text-stone-950">
-                  管理画面へログイン
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-stone-500">
-                パスワードを入力してください。
-                </p>
-              </div>
-              <label
-                htmlFor="admin-password"
-                className="mb-2.5 block text-xs font-black text-stone-700"
-              >
+
+            <form onSubmit={handleLogin} className="flex flex-col justify-center p-7 sm:p-10 lg:p-14">
+              <span className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-[#e8f0fe] text-[#1967d2]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
+                  <rect x="5" y="10" width="14" height="10" rx="2" />
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </svg>
+              </span>
+              <h2 className="text-2xl font-medium text-[#202124]">管理画面へログイン</h2>
+              <p className="mt-2 text-sm leading-6 text-[#5f6368]">
+                管理パスワードを入力してください。
+              </p>
+              <label htmlFor="admin-password" className="mb-2 mt-8 text-xs font-medium text-[#3c4043]">
                 管理パスワード
               </label>
               <input
@@ -1657,44 +1442,74 @@ export default function AdminPage() {
                 placeholder="パスワードを入力"
                 autoComplete="current-password"
                 autoFocus
-                className="mb-3 w-full rounded-lg border border-stone-200 bg-stone-50 px-4 py-4 text-sm outline-none transition placeholder:text-stone-300 focus:border-teal-600 focus:bg-white focus:ring-4 focus:ring-teal-600/10"
+                className="w-full rounded-xl border border-[#bdc1c6] bg-white px-4 py-3.5 text-sm outline-none transition placeholder:text-[#9aa0a6] focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/15"
               />
               {error && (
-                <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600">
+                <p className="mt-3 rounded-xl bg-[#fce8e6] px-3 py-2.5 text-xs font-medium text-[#b3261e]">
                   {error}
                 </p>
               )}
               <button
                 type="submit"
                 disabled={loading || !inputKey.trim()}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-stone-950 py-4 text-sm font-black text-white shadow-[0_18px_34px_-24px_rgba(28,25,23,0.7)] transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[#1a73e8] py-3.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#1765cc] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {loading ? "確認中..." : "ログイン"}
                 {!loading && <span aria-hidden="true">→</span>}
               </button>
-              <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-normal text-stone-300">
-                Authorized personnel only
+              <p className="mt-6 text-center text-[11px] text-[#9aa0a6]">
+                管理者のみアクセスできます
               </p>
             </form>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   if (loading && !stats) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f3ec]">
-        <div className="rounded-lg border border-stone-200/80 bg-[#fffdf8] px-8 py-7 text-center shadow-[0_22px_70px_-48px_rgba(25,23,20,0.65)] ring-1 ring-white/80">
-          <span className="mx-auto mb-4 block h-9 w-9 animate-spin rounded-full border-[3px] border-stone-200 border-t-teal-600" />
-          <p className="text-sm font-bold text-stone-900">読み込み中</p>
-          <p className="mt-1 text-xs text-stone-500">少し時間がかかります</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f6fc]">
+        <div className="rounded-2xl border border-[#dfe5ef] bg-white px-8 py-7 text-center shadow-[0_4px_16px_rgba(60,64,67,0.12)]">
+          <span className="mx-auto mb-4 block h-9 w-9 animate-spin rounded-full border-[3px] border-[#dfe5ef] border-t-[#1a73e8]" />
+          <p className="text-sm font-medium text-[#202124]">データを読み込み中</p>
+          <p className="mt-1 text-xs text-[#5f6368]">集計に少し時間がかかる場合があります</p>
         </div>
       </div>
     );
   }
 
-  if (!stats) return null;
+  // 認証済みで stats が無い = 取得失敗 (非401)。以前は null を返して真っ白になり、
+  // エラー文もリトライ手段も無かった (Supabase 障害時に管理画面全体が沈黙する)。
+  if (!stats) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f6fc] px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-[#dfe5ef] bg-white px-8 py-7 text-center shadow-[0_4px_16px_rgba(60,64,67,0.12)]">
+          <p className="text-sm font-medium text-[#202124]">
+            {error || "データを取得できませんでした"}
+          </p>
+          <p className="mt-1 text-xs text-[#5f6368]">
+            時間をおいて再試行してください
+          </p>
+          <button
+            type="button"
+            onClick={() => void fetchStats(adminKey, preset, customFrom, customTo)}
+            disabled={loading}
+            className="mt-5 w-full rounded-full bg-[#1a73e8] py-3 text-sm font-medium text-white transition hover:bg-[#1765cc] disabled:opacity-50"
+          >
+            {loading ? "再試行中..." : "再試行"}
+          </button>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-3 w-full text-xs font-medium text-[#5f6368] hover:text-[#b3261e]"
+          >
+            ログアウト
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const ownerFriendFunnelMax = Math.max(
     ...stats.friendDiagnosisFunnel.ownerFunnel.map((f) => f.count),
@@ -1712,10 +1527,6 @@ export default function AdminPage() {
     ...(stats.unmei?.funnel ?? []).map((f) => f.count),
     1,
   );
-  const unmeiChatFunnelMax = Math.max(
-    ...(stats.unmei?.chatFunnel ?? []).map((f) => f.count),
-    1,
-  );
   const unmeiRevenueLabel =
     stats.unmei.revenue.currencies.length > 0
       ? formatNetRevenue(stats.unmei.revenue.currencies)
@@ -1725,22 +1536,9 @@ export default function AdminPage() {
   const unmeiReadingCount =
     stats.unmei.funnel.find((step) => step.label === "鑑定表示")?.count ?? 0;
   const fc = stats.friendCountDistribution;
-  const typeMax = Math.max(...stats.typeDistribution.map((t) => t.count), 1);
   const coreReady = stats.coreKpis.dataQuality.ready;
   const ownerFriendFunnel = stats.friendDiagnosisFunnel.ownerFunnel;
   const visitorFriendFunnel = stats.friendDiagnosisFunnel.friendFunnel;
-  const ownerTakoReached =
-    ownerFriendFunnel.find((step) => step.key === "tako") ??
-    ownerFriendFunnel[2];
-  const ownerFriendAnswered =
-    ownerFriendFunnel.find((step) => step.key === "friend_answer") ??
-    ownerFriendFunnel[ownerFriendFunnel.length - 1];
-  const visitorAnswered =
-    visitorFriendFunnel.find((step) => step.key === "answer") ??
-    visitorFriendFunnel[1];
-  const visitorSelfCompleted =
-    visitorFriendFunnel.find((step) => step.key === "self_complete") ??
-    visitorFriendFunnel[visitorFriendFunnel.length - 1];
 
   const downloadCsv = () => {
     const rows: string[][] = [];
@@ -1992,8 +1790,11 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
-  const selectedPeriodLabel =
-    PRESETS.find((item) => item.key === preset)?.label ?? "今日";
+  const selectedPeriodSummary = formatPeriodSummary(
+    preset,
+    customFrom,
+    customTo,
+  );
   const headlines = computeHeadlines(stats);
   const hasTrustedCoreDiagnosis = headlines.hasTrustedCoreDiagnosis;
   const headlineDiagnosisUsers = headlines.diagnosisUsers;
@@ -2004,7 +1805,28 @@ export default function AdminPage() {
   const headlinePaidDenominator = headlines.paidDenominator;
   const headlinePaidRate = headlines.paidRate;
   const periodRevenuePurchases = headlines.purchases;
+  const periodRevenuePayers = headlines.payers;
   const headlineRevenue = headlines.revenueLabel;
+  const headlineArpu = headlines.arpuLabel;
+  const headlineRefunds = headlines.refundLabel;
+  // 返金率は通貨をまたいで合算できない (JPY と KRW の minor 単位を 1:1 で足すと
+  // 率が壊れる。既知の罠)。通貨ごとに算出し、単一通貨ならそのまま、混在時は並記する。
+  // periodRevenue 由来なので全商品ベース (3コース限定ではない)。
+  const refundRateRows = headlines.currencies.filter(
+    (row) => row.grossRevenueMinor > 0,
+  );
+  const refundRateLabel =
+    refundRateRows.length === 0
+      ? null
+      : refundRateRows.length === 1
+        ? pct(refundRateRows[0].refundedMinor / refundRateRows[0].grossRevenueMinor)
+        : refundRateRows
+            .map(
+              (row) =>
+                `${row.currency.toUpperCase()} ${pct(row.refundedMinor / row.grossRevenueMinor)}`,
+            )
+            .join(" / ");
+  const hasRefunds = headlines.currencies.some((row) => row.refundedMinor > 0);
   const fullAccessCtaCount = countStep(
     stats.paywallFunnel ?? [],
     "購入CTA押下",
@@ -2028,71 +1850,6 @@ export default function AdminPage() {
     fullAccessPurchaseCount,
     fullAccessStripeCount,
   );
-  const unmeiStartCount = countStep(stats.unmei.funnel, "購入開始", 1);
-  const unmeiStripeCount = countStep(stats.unmei.funnel, "Stripe到達", 2);
-  const unmeiStripeRate = rateOrNull(unmeiStripeCount, unmeiStartCount);
-  const unmeiPurchaseRate = rateOrNull(unmeiPurchaseCount, unmeiLpCount);
-  const dashboardInsights = [
-    {
-      label: "データ",
-      value: coreReady ? "正常" : "要確認",
-      detail: coreReady
-        ? `決済照合 ${pct(stats.coreKpis.dataQuality.paymentUserMatchRate)}`
-        : `${stats.coreKpis.dataQuality.issues.length.toLocaleString()}件の確認事項`,
-      tone: coreReady ? "emerald" : "amber",
-      href: "#overview",
-      sectionId: "overview",
-    },
-    {
-      label: "売上",
-      value: headlineRevenue,
-      detail: `${periodRevenuePurchases.toLocaleString()}件の決済・返金後`,
-      tone: periodRevenuePurchases > 0 ? "emerald" : "stone",
-      href: "#revenue",
-      sectionId: "revenue",
-    },
-    {
-      label: "3コース",
-      value: nullablePct(fullAccessStripeRate),
-      detail: `購入CTA→Stripe / 完了率 ${nullablePct(fullAccessCompleteRate)}`,
-      tone: toneForRate(fullAccessStripeRate, 0.82, 0.58),
-      href: "#revenue",
-      sectionId: "revenue",
-    },
-    {
-      label: "運命",
-      value: nullablePct(unmeiPurchaseRate),
-      detail: `LP→決済完了 / Stripe到達 ${nullablePct(unmeiStripeRate)}`,
-      tone:
-        unmeiLpCount === 0
-          ? "stone"
-          : unmeiPurchaseCount > 0
-            ? "indigo"
-            : "amber",
-      href: "#unmei",
-      sectionId: "unmei",
-    },
-    {
-      label: "友達",
-      value: pctOrDash(headlineFriendRate, headlineFriendDenominator),
-      detail: `${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`,
-      tone: toneForRate(
-        headlineFriendDenominator > 0 ? headlineFriendRate : null,
-        0.22,
-        0.1,
-      ),
-      href: "#friend-funnel",
-      sectionId: "friend-funnel",
-    },
-  ] satisfies {
-    label: string;
-    value: string;
-    detail: string;
-    tone: InsightTone;
-    href: string;
-    sectionId: string;
-  }[];
-
   // ===== 前期間比較チップ (auto=直前の同期間 / custom=日付指定 / none=なし) =====
   const prevRangeInfo = resolveCompareRange(
     preset,
@@ -2143,6 +1900,41 @@ export default function AdminPage() {
         };
       })()
     : null;
+  const payerCompare = prevHeadlines
+    ? (() => {
+        const diff = periodRevenuePayers - prevHeadlines.payers;
+        return {
+          label: `${prevRangeInfo!.label} ${prevHeadlines.payers.toLocaleString()}人 (${diff > 0 ? "+" : ""}${diff.toLocaleString()})`,
+          trend: trendOf(diff),
+        };
+      })()
+    : null;
+  const arpuCompare = prevHeadlines
+    ? (() => {
+        const current = headlines.arpuCurrencies;
+        const previous = prevHeadlines.arpuCurrencies;
+        const comparable =
+          current.length <= 1 &&
+          previous.length <= 1 &&
+          (current.length === 0 ||
+            previous.length === 0 ||
+            current[0].currency === previous[0].currency);
+        if (!comparable) {
+          return {
+            label: `${prevRangeInfo!.label} ${prevHeadlines.arpuLabel}`,
+            trend: "flat" as MetricTrend,
+          };
+        }
+        const currency = current[0]?.currency ?? previous[0]?.currency ?? "jpy";
+        const currentMinor = current[0]?.arpuMinor ?? 0;
+        const previousMinor = previous[0]?.arpuMinor ?? 0;
+        const diff = currentMinor - previousMinor;
+        return {
+          label: `${prevRangeInfo!.label} ${formatMoney(previousMinor, currency)} (${diff > 0 ? "+" : diff < 0 ? "−" : "±"}${formatMoney(Math.abs(diff), currency)})`,
+          trend: trendOf(diff),
+        };
+      })()
+    : null;
   const paidRateCompare = prevHeadlines
     ? (() => {
         if (prevHeadlines.paidDenominator === 0) {
@@ -2174,509 +1966,593 @@ export default function AdminPage() {
         };
       })()
     : null;
+  const biggestPaywallDrop = (stats.paywallFunnel ?? []).reduce<{
+    from: string;
+    to: string;
+    lost: number;
+    lossRate: number;
+  } | null>((largest, step, index, funnel) => {
+    if (index === 0) return largest;
+    const previous = funnel[index - 1];
+    if (!previous || previous.count <= 0) return largest;
+    const lost = Math.max(previous.count - step.count, 0);
+    // 減少ゼロは「離脱箇所」ではない。候補にすると全段同数のとき
+    // 「0人（0.0%）減少」というアンバー誤警報が出る。
+    if (lost === 0) return largest;
+    const candidate = {
+      from: previous.label,
+      to: step.label,
+      lost,
+      lossRate: lost / previous.count,
+    };
+    return !largest || candidate.lost > largest.lost ? candidate : largest;
+  }, null);
+  const trackableAcquisitionSources = stats.acquisitionStats.sources.filter(
+    (source) => source.source !== stats.acquisitionStats.directLabel,
+  );
+  const topAcquisitionSource = (
+    trackableAcquisitionSources.length > 0
+      ? trackableAcquisitionSources
+      : stats.acquisitionStats.sources
+  ).reduce<
+    Stats["acquisitionStats"]["sources"][number] | null
+  >((top, source) => (!top || source.users > top.users ? source : top), null);
+  const decisionNotes = [
+    !coreReady
+      ? {
+          label: "データ確認",
+          detail: `KPIの確定に必要な確認事項が ${stats.coreKpis.dataQuality.issues.length.toLocaleString()}件あります。`,
+          href: "#overview",
+          tone: "amber" as const,
+        }
+      : {
+          label: "売上状況",
+          // 現期間の実額を常に出す。比較があれば括弧で併記 (?? で置き換えると
+          // 比較有効時に現期間の売上がどこにも表示されなくなる)。
+          detail: `${headlineRevenue}・購入者 ${periodRevenuePayers.toLocaleString()}人${revenueCompare ? `（${revenueCompare.label}）` : ""}`,
+          href: "#revenue",
+          tone: revenueCompare?.trend === "down" ? ("amber" as const) : ("blue" as const),
+        },
+    biggestPaywallDrop
+      ? {
+          label: "最大の離脱箇所",
+          detail: `${biggestPaywallDrop.from} → ${biggestPaywallDrop.to} で ${biggestPaywallDrop.lost.toLocaleString()}人（${pct(biggestPaywallDrop.lossRate)}）減少。`,
+          href: "#revenue",
+          tone: "amber" as const,
+        }
+      : {
+          label: "購入導線",
+          detail: `CTA→Stripe ${nullablePct(fullAccessStripeRate)}・Stripe→完了 ${nullablePct(fullAccessCompleteRate)}`,
+          href: "#revenue",
+          tone: "blue" as const,
+        },
+    {
+      label: "友達・拡散",
+      detail: `診断→友達回答 ${pctOrDash(headlineFriendRate, headlineFriendDenominator)}・拡散係数 ${!coreReady ? "要DB更新" : stats.coreKpis.viralCoefficient.denominator > 0 ? stats.coreKpis.viralCoefficient.value.toFixed(3) : "—"}`,
+      href: "#friend-funnel",
+      tone: friendRateCompare?.trend === "down" ? ("amber" as const) : ("green" as const),
+    },
+  ];
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#f1efe7] text-stone-950">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-stone-800 bg-[#10120f] text-white shadow-[18px_0_60px_-42px_rgba(0,0,0,0.85)] lg:flex">
-        <div className="flex h-[76px] items-center gap-3 border-b border-white/[0.08] px-5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#d7ff71] text-stone-950 ring-1 ring-white/10">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="h-5 w-5"
-              aria-hidden="true"
-            >
+    <div className="min-h-screen overflow-x-clip bg-[#f3f6fc] text-[#202124]">
+      <header className="sticky top-0 z-40 flex h-[72px] items-center gap-3 border-b border-[#dfe5ef] bg-white px-3 shadow-[0_1px_2px_rgba(60,64,67,0.06)] sm:px-5">
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen((open) => !open)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5f6368] transition hover:bg-[#f1f3f4] lg:hidden"
+          aria-label={mobileNavOpen ? "メニューを閉じる" : "メニューを開く"}
+          aria-expanded={mobileNavOpen}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="flex w-auto shrink-0 items-center gap-3 lg:w-[244px]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a73e8] text-white shadow-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5" aria-hidden="true">
               <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
             </svg>
           </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-normal text-[#d7ff71]">
-              Admin Console
-            </p>
-            <p className="mt-0.5 text-[15px] font-black tracking-normal">
-              ワタシのトリセツ
-            </p>
+          <div className="hidden sm:block">
+            <p className="text-sm font-medium text-[#202124]">ワタシのトリセツ</p>
+            <p className="text-[11px] text-[#5f6368]">管理コンソール</p>
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-6" aria-label="管理画面メニュー">
-          <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-normal text-stone-500">
-            Dashboard
-          </p>
-          <div className="space-y-1">
-          {ADMIN_NAV_ITEMS.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setActiveSection(item.id)}
-              className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold transition ${
-                activeSection === item.id
-                  ? "bg-[#d7ff71] text-stone-950 shadow-[0_12px_28px_-22px_rgba(215,255,113,0.8)]"
-                  : "text-stone-400 hover:bg-white/[0.06] hover:text-stone-100"
-              }`}
-              aria-current={activeSection === item.id ? "location" : undefined}
-            >
-              {activeSection === item.id && (
-                <span className="absolute -left-1 h-6 w-1 rounded bg-[#d7ff71]" />
-              )}
-              <span
-                className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
-                  activeSection === item.id
-                    ? "bg-stone-950 text-[#d7ff71]"
-                    : "bg-white/[0.06] text-stone-500 group-hover:text-stone-200"
+        <div className="mx-auto hidden h-12 max-w-[760px] flex-1 items-center gap-2 rounded-full bg-[#edf3fe] px-4 xl:flex">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 shrink-0 text-[#5f6368]" aria-hidden="true">
+            <path d="m21 21-4.35-4.35m2.35-5.15a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" strokeLinecap="round" />
+          </svg>
+          <span className="mr-2 text-xs text-[#5f6368]">表示期間</span>
+          <div className="flex min-w-0 items-center gap-1 overflow-x-auto py-1">
+            {PRESETS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setPreset(item.key)}
+                className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium transition ${
+                  preset === item.key
+                    ? "bg-[#1a73e8] text-white shadow-sm"
+                    : "text-[#3c4043] hover:bg-white/80"
                 }`}
               >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-[15px] w-[15px]"
-                aria-hidden="true"
-              >
-                <path d={item.path} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              </span>
-              {item.label}
-            </a>
-          ))}
+                {item.label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <p className="mb-3 mt-7 px-3 text-[10px] font-black uppercase tracking-normal text-stone-500">
-            Tools
-          </p>
-          <a
-            href="/admin/social"
-            className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold text-stone-400 transition hover:bg-white/[0.06] hover:text-stone-100"
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={downloadCsv}
+            aria-label="CSVを出力"
+            className="flex h-10 items-center gap-2 rounded-full px-3 text-xs font-medium text-[#5f6368] transition hover:bg-[#f1f3f4]"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.06] text-stone-500 group-hover:text-stone-200">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-[15px] w-[15px]"
-                aria-hidden="true"
-              >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
+              <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="hidden xl:inline">CSV出力</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              compareFreshRef.current = true;
+              setRefreshNonce((nonce) => nonce + 1);
+              void fetchStats(adminKey, preset, customFrom, customTo, true);
+            }}
+            disabled={loading}
+            aria-label={loading ? "更新中" : "最新データに更新"}
+            className="flex h-10 items-center gap-2 rounded-full bg-[#1a73e8] px-3.5 text-xs font-medium text-white shadow-sm transition hover:bg-[#1765cc] disabled:opacity-50"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true">
+              <path d="M20 11a8 8 0 1 0-2.34 5.66M20 11V5m0 6h-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="hidden sm:inline">{loading ? "更新中" : "更新"}</span>
+          </button>
+        </div>
+      </header>
+
+      {mobileNavOpen && (
+        <button
+          type="button"
+          aria-label="メニューを閉じる"
+          className="fixed inset-0 top-[72px] z-20 bg-black/20 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed bottom-0 left-0 top-[72px] z-30 flex w-[272px] flex-col border-r border-[#dfe5ef] bg-[#f8faff] transition-transform duration-200 lg:translate-x-0 ${
+          mobileNavOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-3">
+          <div className="rounded-2xl border border-[#bdc1c6] bg-white px-4 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#80868b]">プロパティ</p>
+            <div className="mt-1.5 flex items-center justify-between gap-3">
+              <span className="truncate text-xs font-medium text-[#3c4043]">watashi-torisetsu.com</span>
+              <span className="text-[#5f6368]" aria-hidden="true">⌄</span>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 pb-5" aria-label="管理画面メニュー">
+          {ADMIN_NAV_GROUPS.map((group) => (
+            <div key={group} className="mt-4 first:mt-1">
+              {group !== "メイン" && (
+                <p className="mb-1 px-4 text-[11px] font-medium text-[#80868b]">{group}</p>
+              )}
+              <div className="space-y-1">
+                {ADMIN_NAV_ITEMS.filter((item) => item.group === group).map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      setMobileNavOpen(false);
+                    }}
+                    className={`group flex items-center gap-3 rounded-full px-4 py-2.5 text-[13px] font-medium transition ${
+                      activeSection === item.id
+                        ? "bg-[#d3e3fd] text-[#0b57d0]"
+                        : "text-[#3c4043] hover:bg-[#edf2f7]"
+                    }`}
+                    aria-current={activeSection === item.id ? "location" : undefined}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px] shrink-0" aria-hidden="true">
+                      <path d={item.path} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-5 border-t border-[#dfe5ef] pt-4">
+            <a href="/admin/social" className="flex items-center gap-3 rounded-full px-4 py-2.5 text-[13px] font-medium text-[#3c4043] transition hover:bg-[#edf2f7]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
                 <path d="M4 7h16M4 12h10M4 17h16" strokeLinecap="round" />
               </svg>
-            </span>
-            SNSライブラリ
-          </a>
+              SNS素材ライブラリ
+            </a>
+          </div>
         </nav>
 
-        <div className="border-t border-white/[0.08] p-3">
-          <div className="rounded-lg border border-white/[0.09] bg-white/[0.05] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span
-                  className={`h-2 w-2 rounded-full ${
-                    coreReady
-                      ? "bg-emerald-400"
-                      : "bg-amber-400"
-                  }`}
-                />
-                <p className="text-[11px] font-bold text-stone-200">
-                  {coreReady ? "正常" : "DB更新"}
-                </p>
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                Status
+        <div className="border-t border-[#dfe5ef] p-3">
+          <div className="rounded-2xl bg-white p-3.5 shadow-[0_1px_2px_rgba(60,64,67,0.08)]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-xs font-medium text-[#3c4043]">
+                <span className={`h-2 w-2 rounded-full ${coreReady ? "bg-[#34a853]" : "bg-[#f9ab00]"}`} />
+                {coreReady ? "データ正常" : "DB更新が必要"}
+              </span>
+              <span className="text-[10px] tabular-nums text-[#80868b]">
+                {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
               </span>
             </div>
-            <p className="mt-3 border-t border-white/[0.08] pt-3 text-[10px] leading-relaxed text-stone-500">
-              更新 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
-            </p>
+            <button type="button" onClick={handleLogout} className="mt-3 w-full border-t border-[#eef1f5] pt-3 text-left text-xs font-medium text-[#5f6368] hover:text-[#b3261e]">
+              ログアウト
+            </button>
           </div>
         </div>
       </aside>
 
-      <div className="lg:pl-[264px]">
-        <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-[#fffdf8]/92 shadow-[0_16px_40px_-36px_rgba(25,23,20,0.55)] backdrop-blur">
-          <div className="flex min-h-[68px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-950 text-[#d7ff71] lg:hidden">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="h-4 w-4"
-                  aria-hidden="true"
-                >
-                  <path d="M5 19V9m7 10V5m7 14v-7" strokeLinecap="round" />
-                </svg>
-              </span>
-              <div>
-                <h1 className="text-[15px] font-black tracking-normal text-stone-950 sm:text-lg">
-                  ダッシュボード
-                </h1>
-                <p className="hidden text-[11px] font-medium text-stone-500 sm:block">
-                  Diagnosis · Revenue · Virality
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="hidden items-center gap-2 rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 py-2 text-[10px] font-bold text-stone-600 shadow-sm sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
-                <span className="hidden xl:inline">{selectedPeriodLabel}の</span>
-                <span className="font-black tabular-nums text-stone-950">
-                  診断 {headlineDiagnosisUsers.toLocaleString()}人
-                </span>
-              </span>
-              <a
-                href="/admin/social"
-                className="hidden h-10 items-center rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 md:inline-flex"
-              >
-                SNS素材
-              </a>
-              <button
-                onClick={downloadCsv}
-                aria-label="CSVを出力"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-stone-200/80 bg-[#fffdf8] px-3 text-xs font-bold text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 sm:px-3.5"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="h-4 w-4"
-                  aria-hidden="true"
-                >
-                  <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="hidden sm:inline">CSV</span>
-              </button>
-              <button
-                onClick={() => fetchStats(adminKey, preset, customFrom, customTo, true)}
-                disabled={loading}
-                aria-label={loading ? "更新中" : "更新"}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-stone-950 px-3 text-xs font-black text-white shadow-[0_12px_26px_-20px_rgba(28,25,23,0.7)] transition hover:bg-teal-700 disabled:opacity-50 sm:px-3.5"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-                  aria-hidden="true"
-                >
-                  <path d="M20 11a8 8 0 1 0-2.34 5.66M20 11V5m0 6h-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="hidden sm:inline">{loading ? "更新中" : "更新"}</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="hidden h-10 rounded-lg px-3 text-xs font-bold text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 xl:block"
-              >
-                ログアウト
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <nav
-          className="sticky top-[68px] z-10 flex gap-1 overflow-x-auto border-b border-stone-200/80 bg-[#f1efe7]/95 px-4 py-2 backdrop-blur lg:hidden"
-          aria-label="セクションメニュー"
-        >
-          {ADMIN_NAV_ITEMS.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              onClick={() => setActiveSection(item.id)}
-              aria-current={activeSection === item.id ? "location" : undefined}
-              className={`whitespace-nowrap rounded-lg px-3 py-2 text-[11px] font-bold transition ${
-                activeSection === item.id
-                  ? "bg-stone-950 text-white shadow-sm"
-                  : "text-stone-500 hover:bg-white hover:text-stone-800"
+      <div className="lg:pl-[272px]">
+        <nav className="sticky top-[72px] z-10 flex gap-1 overflow-x-auto border-b border-[#dfe5ef] bg-white/95 px-3 py-2 backdrop-blur xl:hidden" aria-label="表示期間">
+          {PRESETS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setPreset(item.key)}
+              className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium ${
+                preset === item.key ? "bg-[#d3e3fd] text-[#0b57d0]" : "text-[#5f6368]"
               }`}
             >
-              {item.shortLabel}
-            </a>
+              {item.label}
+            </button>
           ))}
         </nav>
 
-        <main className="mx-auto flex max-w-[1500px] flex-col gap-11 px-4 py-5 sm:px-6 sm:py-7 xl:px-8 xl:py-8">
-          <section id="overview" className="scroll-mt-36 lg:scroll-mt-28">
-            <div className="grid gap-4 xl:grid-cols-[0.9fr_1.85fr]">
-              <div className="relative overflow-hidden rounded-lg border border-stone-800 bg-[#10120f] p-6 text-white shadow-[0_28px_78px_-52px_rgba(0,0,0,0.85)] sm:p-7">
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-0 top-0 h-1.5 bg-[#d7ff71]"
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-normal text-stone-300">
-                    Executive pulse
-                  </span>
-                  <span className={`inline-flex items-center gap-2 rounded border px-3 py-1 text-[10px] font-black ${coreReady ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200" : "border-amber-300/20 bg-amber-300/10 text-amber-200"}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${coreReady ? "bg-emerald-300" : "bg-amber-300"}`} />
-                  {coreReady ? "確定" : "暫定"}
-                  </span>
-                </div>
-                <h2 className="mt-8 text-3xl font-black leading-tight tracking-normal text-white sm:text-4xl">
-                  {selectedPeriodLabel}の主要数字
-                </h2>
-                <p className="mt-3 text-sm font-semibold leading-7 text-stone-400">
-                  まず見る数字です。
-                </p>
-                <div className="mt-8 grid grid-cols-2 gap-2">
-                  <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-                    <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                      Period
-                    </p>
-                    <p className="mt-2 text-lg font-black text-[#d7ff71]">
-                      {selectedPeriodLabel}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-white/[0.045] p-4">
-                    <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                      Synced
-                    </p>
-                    <p className="mt-2 text-lg font-black tabular-nums text-white">
-                      {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                    </p>
-                  </div>
-                </div>
+        <main className="mx-auto flex max-w-[1360px] flex-col gap-12 px-4 py-6 sm:px-6 sm:py-8 xl:px-8 xl:py-10">
+          <section id="overview" className="scroll-mt-36 xl:scroll-mt-28">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-medium text-[#5f6368]">watashi-torisetsu.com</p>
+                <h1 className="mt-1 text-2xl font-medium text-[#202124] sm:text-[28px]">サマリー</h1>
               </div>
-
-              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-                <ExecutiveMetricCard
-                  index="01"
-                  label="診断"
-                  value={headlineDiagnosisUsers.toLocaleString()}
-                  unit="人"
-                  badge={selectedPeriodLabel}
-                  detail={hasTrustedCoreDiagnosis ? "完了ユーザー" : "完了セッション"}
-                  tone="indigo"
-                  compare={diagCompare}
-                />
-                <ExecutiveMetricCard
-                  index="02"
-                  label="売上"
-                  value={headlineRevenue}
-                  badge="純売上"
-                  detail={`決済 ${periodRevenuePurchases.toLocaleString()}件・返金後`}
-                  tone="emerald"
-                  compactValue
-                  compare={revenueCompare}
-                />
-                <ExecutiveMetricCard
-                  index="03"
-                  label="課金率"
-                  value={
-                    coreReady
-                      ? pctOrDash(headlinePaidRate, headlinePaidDenominator)
-                      : "要DB更新"
-                  }
-                  badge="診断→購入"
-                  detail={
-                    coreReady
-                      ? `${headlinePaidNumerator.toLocaleString()}人 / ${headlinePaidDenominator.toLocaleString()}人`
-                      : "payment_history の更新が必要です"
-                  }
-                  tone="emerald"
-                  compactValue={!coreReady}
-                  compare={coreReady ? paidRateCompare : null}
-                />
-                <ExecutiveMetricCard
-                  index="04"
-                  label="友達率"
-                  value={pctOrDash(
-                    headlineFriendRate,
-                    headlineFriendDenominator,
-                  )}
-                  badge="友達診断"
-                  detail={`${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`}
-                  tone="cyan"
-                  compare={friendRateCompare}
-                />
+              <div className="flex items-center gap-2 text-xs text-[#5f6368]">
+                <span className={`h-2 w-2 rounded-full ${coreReady ? "bg-[#34a853]" : "bg-[#f9ab00]"}`} />
+                {coreReady ? "集計データは正常です" : "一部の数値は暫定値です"}
+                <span className="text-[#9aa0a6]">・</span>
+                <span>更新 {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-2">
-              <div className="flex flex-col gap-3 rounded-lg border border-stone-200/80 bg-[#fffdf8] p-4 shadow-[0_18px_46px_-40px_rgba(25,23,20,0.55)] ring-1 ring-white/80 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                    Analysis window
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-stone-500">
-                    期間
-                  </p>
-                </div>
-                <div className="flex min-w-0 max-w-full overflow-x-auto rounded-lg border border-stone-200/80 bg-stone-100/80 p-1 shadow-inner">
-                  {PRESETS.map((p) => (
-                    <button
-                      key={p.key}
-                      onClick={() => setPreset(p.key)}
-                      className={`whitespace-nowrap rounded-md px-3.5 py-2 text-[11px] font-black transition sm:px-4 ${
-                        preset === p.key
-                          ? "bg-stone-950 text-white shadow-sm"
-                          : "text-stone-500 hover:bg-white hover:text-stone-900"
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                  {preset === "custom" && (
-                    <div className="flex items-center gap-2 sm:ml-2">
-                      <input
-                        type="date"
-                        value={customFrom}
-                        onChange={(e) => setCustomFrom(e.target.value)}
-                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
-                      />
-                      <span className="text-xs text-stone-400">〜</span>
-                      <input
-                        type="date"
-                        value={customTo}
-                        onChange={(e) => setCustomTo(e.target.value)}
-                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <ExecutiveMetricCard
+                index="01"
+                label="純売上"
+                value={headlineRevenue}
+                badge="返金反映後"
+                detail={`決済 ${periodRevenuePurchases.toLocaleString()}件・返金 ${headlineRefunds}`}
+                tone="emerald"
+                compactValue
+                compare={revenueCompare}
+              />
+              <ExecutiveMetricCard
+                index="02"
+                label="購入者"
+                value={periodRevenuePayers.toLocaleString()}
+                unit="人"
+                badge="ユニーク"
+                detail={`1人あたり ${(periodRevenuePayers > 0 ? periodRevenuePurchases / periodRevenuePayers : 0).toFixed(1)}件の決済`}
+                tone="indigo"
+                compare={payerCompare}
+              />
+              <ExecutiveMetricCard
+                index="03"
+                label="診断からの課金率"
+                value={coreReady ? pctOrDash(headlinePaidRate, headlinePaidDenominator) : "要DB更新"}
+                badge="診断 → 購入"
+                detail={coreReady ? `${headlinePaidNumerator.toLocaleString()}人 / ${headlinePaidDenominator.toLocaleString()}人` : "payment_history の更新が必要です"}
+                tone="emerald"
+                compactValue={!coreReady}
+                compare={coreReady ? paidRateCompare : null}
+              />
+              <ExecutiveMetricCard
+                index="04"
+                label="ARPU"
+                value={coreReady ? headlineArpu : "要DB更新"}
+                badge="診断者1人あたり"
+                detail={stats.coreKpis.arpu.basis}
+                tone="cyan"
+                compactValue
+                compare={coreReady ? arpuCompare : null}
+              />
+            </div>
 
-              <div className="flex flex-col gap-3 rounded-lg border border-stone-200/80 bg-[#fffdf8] p-4 shadow-[0_18px_46px_-40px_rgba(25,23,20,0.55)] ring-1 ring-white/80 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-normal text-stone-500">
-                    Compare with
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-stone-500">
-                    比較先
-                  </p>
+            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(19rem,0.75fr)]">
+              <Panel className="overflow-hidden">
+                <div className="flex flex-col gap-3 border-b border-[#eef1f5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-base font-medium text-[#202124]">自己診断完了の推移</h2>
+                    <p className="mt-1 text-xs text-[#5f6368]">1日ごとの完了ユーザー数（JST）</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium text-[#1a73e8]">
+                    <span className="h-0.5 w-5 rounded-full bg-[#1a73e8]" />
+                    自己診断完了
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex rounded-lg border border-stone-200/80 bg-stone-100/80 p-1 shadow-inner">
-                    {(
-                      [
-                        { key: "auto", label: "前期間" },
-                        { key: "custom", label: "指定" },
-                        { key: "none", label: "なし" },
-                      ] as const
-                    ).map((c) => (
+                <div className="px-3 pb-2 pt-4 sm:px-5">
+                  <DiagnosisTrendChart points={stats.coreKpis.diagnosisTrend.points} />
+                </div>
+              </Panel>
+
+              <Panel className="overflow-hidden">
+                <div className="border-b border-[#eef1f5] px-5 py-4">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#1a73e8]">Action center</p>
+                  <h2 className="mt-1 text-base font-medium text-[#202124]">今見るポイント</h2>
+                </div>
+                <div className="divide-y divide-[#eef1f5]">
+                  {decisionNotes.map((note) => (
+                    <a key={note.label} href={note.href} className="group flex gap-3 px-5 py-4 transition hover:bg-[#f8fbff]">
+                      <span
+                        className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                          note.tone === "amber"
+                            ? "bg-[#f9ab00]"
+                            : note.tone === "green"
+                              ? "bg-[#34a853]"
+                              : "bg-[#1a73e8]"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-[#202124]">{note.label}</p>
+                          <span className="text-[#9aa0a6] transition group-hover:translate-x-0.5 group-hover:text-[#1a73e8]" aria-hidden="true">›</span>
+                        </div>
+                        <p className="mt-1.5 text-[11px] leading-5 text-[#5f6368]">{note.detail}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </Panel>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <a href="#acquisition" className="rounded-2xl border border-[#dfe5ef] bg-white p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)] transition hover:border-[#a8c7fa]">
+                <p className="text-[11px] font-medium text-[#5f6368]">自己診断完了</p>
+                <p className="mt-2 text-2xl font-medium tabular-nums text-[#1967d2]">
+                  {headlineDiagnosisUsers.toLocaleString()}<span className="ml-1 text-sm">人</span>
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  {/* 集計基準 (確定ユーザー/完了セッション) は比較の有無に関わらず常に表示する。
+                      ?? で置き換えるとセッション数がユーザー数として読まれてしまう。 */}
+                  {[
+                    hasTrustedCoreDiagnosis ? "確定ユーザー" : "完了セッション",
+                    diagCompare?.label,
+                  ]
+                    .filter(Boolean)
+                    .join("・")}
+                </p>
+              </a>
+              <a href="#friend-funnel" className="rounded-2xl border border-[#dfe5ef] bg-white p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)] transition hover:border-[#a8c7fa]">
+                <p className="text-[11px] font-medium text-[#5f6368]">診断→友達回答</p>
+                <p className="mt-2 text-2xl font-medium tabular-nums text-[#007b83]">
+                  {pctOrDash(headlineFriendRate, headlineFriendDenominator)}
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  {[
+                    `${headlineFriendNumerator.toLocaleString()}人 / ${headlineFriendDenominator.toLocaleString()}人`,
+                    friendRateCompare?.label,
+                  ]
+                    .filter(Boolean)
+                    .join("・")}
+                </p>
+              </a>
+              <a href="#friend-funnel" className="rounded-2xl border border-[#dfe5ef] bg-white p-4 shadow-[0_1px_2px_rgba(60,64,67,0.08)] transition hover:border-[#a8c7fa]">
+                <p className="text-[11px] font-medium text-[#5f6368]">拡散係数</p>
+                <p className="mt-2 text-2xl font-medium tabular-nums text-[#137333]">
+                  {/* DB未更新時に「—」や0を出すと実測値と区別が付かない (2026-08-10 の教訓)。 */}
+                  {!coreReady
+                    ? "要DB更新"
+                    : stats.coreKpis.viralCoefficient.denominator > 0
+                      ? stats.coreKpis.viralCoefficient.value.toFixed(3)
+                      : "—"}
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  {coreReady
+                    ? `招待経由の新規診断 ${stats.coreKpis.viralCoefficient.children.toLocaleString()}人`
+                    : "DB更新後に確定します"}
+                </p>
+              </a>
+            </div>
+
+            <div
+              id="overview-filters"
+              className="mt-5 overflow-hidden rounded-2xl border border-[#dfe5ef] bg-white shadow-[0_1px_3px_rgba(60,64,67,0.1)]"
+            >
+              <div className="grid gap-4 border-b border-[#e6eaf0] p-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e8f0fe] text-[#1967d2]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M16 3v4M8 3v4M3 10h18" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-[#202124]">表示期間</p>
+                    <p className="mt-1 text-[11px] leading-4 text-[#5f6368]">
+                      {selectedPeriodSummary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-2">
+                    {PRESETS.map((item) => (
                       <button
-                        key={c.key}
-                        onClick={() => setComparePreset(c.key)}
-                        className={`whitespace-nowrap rounded-md px-3.5 py-2 text-[11px] font-black transition ${
-                          comparePreset === c.key
-                            ? "bg-stone-950 text-white shadow-sm"
-                            : "text-stone-500 hover:bg-white hover:text-stone-900"
+                        key={item.key}
+                        type="button"
+                        onClick={() => setPreset(item.key)}
+                        aria-pressed={preset === item.key}
+                        className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/25 ${
+                          preset === item.key
+                            ? "border-[#1a73e8] bg-[#e8f0fe] text-[#0b57d0]"
+                            : "border-[#dadce0] bg-white text-[#3c4043] hover:border-[#a8c7fa] hover:bg-[#f8fbff]"
                         }`}
                       >
-                        {c.label}
+                        {preset === item.key && (
+                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5" aria-hidden="true">
+                            <path d="m3 8 3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                        {item.label}
                       </button>
                     ))}
                   </div>
+
+                  {preset === "custom" && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-[#f8fafd] p-3">
+                      <label className="flex items-center gap-2 text-[11px] font-medium text-[#5f6368]">
+                        開始
+                        <input
+                          type="date"
+                          value={customFrom}
+                          onChange={(e) => setCustomFrom(e.target.value)}
+                          className="rounded-lg border border-[#bdc1c6] bg-white px-3 py-2 text-xs font-medium text-[#3c4043] outline-none focus:border-[#1a73e8]"
+                        />
+                      </label>
+                      <span className="text-xs text-[#80868b]">〜</span>
+                      <label className="flex items-center gap-2 text-[11px] font-medium text-[#5f6368]">
+                        終了
+                        <input
+                          type="date"
+                          value={customTo}
+                          onChange={(e) => setCustomTo(e.target.value)}
+                          className="rounded-lg border border-[#bdc1c6] bg-white px-3 py-2 text-xs font-medium text-[#3c4043] outline-none focus:border-[#1a73e8]"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-4 bg-[#f8fafd] p-5 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#5f6368] ring-1 ring-[#dfe5ef]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+                      <path d="M8 7h11m0 0-3-3m3 3-3 3M16 17H5m0 0 3-3m-3 3 3 3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-[#202124]">比較</p>
+                    <p className="mt-1 text-[11px] text-[#5f6368]">
+                      {comparePreset === "none"
+                        ? "比較しない"
+                        : comparePreset === "custom"
+                          ? "指定期間と比較"
+                          : (prevRangeInfo?.label ?? "比較期間なし")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { key: "auto", label: "直前の同期間" },
+                        { key: "custom", label: "日付を指定" },
+                        { key: "none", label: "比較なし" },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setComparePreset(item.key)}
+                        aria-pressed={comparePreset === item.key}
+                        className={`rounded-lg border px-3.5 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/25 ${
+                          comparePreset === item.key
+                            ? "border-[#1a73e8] bg-white text-[#0b57d0] shadow-sm"
+                            : "border-[#dadce0] bg-transparent text-[#5f6368] hover:bg-white"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+
                   {comparePreset === "custom" && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={compareFrom}
-                        onChange={(e) => setCompareFrom(e.target.value)}
-                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
-                      />
-                      <span className="text-xs text-stone-400">〜</span>
-                      <input
-                        type="date"
-                        value={compareTo}
-                        onChange={(e) => setCompareTo(e.target.value)}
-                        className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-800 outline-none focus:border-teal-600"
-                      />
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <label className="flex items-center gap-2 text-[11px] font-medium text-[#5f6368]">
+                        開始
+                        <input
+                          type="date"
+                          value={compareFrom}
+                          onChange={(e) => setCompareFrom(e.target.value)}
+                          className="rounded-lg border border-[#bdc1c6] bg-white px-3 py-2 text-xs font-medium text-[#3c4043] outline-none focus:border-[#1a73e8]"
+                        />
+                      </label>
+                      <span className="text-xs text-[#80868b]">〜</span>
+                      <label className="flex items-center gap-2 text-[11px] font-medium text-[#5f6368]">
+                        終了
+                        <input
+                          type="date"
+                          value={compareTo}
+                          onChange={(e) => setCompareTo(e.target.value)}
+                          className="rounded-lg border border-[#bdc1c6] bg-white px-3 py-2 text-xs font-medium text-[#3c4043] outline-none focus:border-[#1a73e8]"
+                        />
+                      </label>
                     </div>
                   )}
                   {comparePreset === "auto" && !prevRangeInfo && (
-                    <span className="text-[11px] font-medium text-stone-500">
-                      比較は期間指定で選択
-                    </span>
+                    <p className="mt-2 text-[11px] text-[#a15c00]">
+                      全期間・日付指定は「日付を指定」で比較期間を選んでください。
+                    </p>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              {dashboardInsights.map((insight) => (
-                <AdminInsightCard
-                  key={insight.label}
-                  label={insight.label}
-                  value={insight.value}
-                  detail={insight.detail}
-                  tone={insight.tone}
-                  href={insight.href}
-                  onClick={() => setActiveSection(insight.sectionId)}
-                />
-              ))}
-            </div>
           </section>
 
-          <section id="revenue" className="scroll-mt-36 lg:scroll-mt-28">
+          <section id="revenue" className="scroll-mt-36 xl:scroll-mt-28">
             <SectionHeader
-              eyebrow="Revenue"
-              title="売上"
-              description="購入までの流れと売上"
+              eyebrow="Business"
+              title="売上・購入"
+              description="売上の結果と、購入導線のどこで離脱しているかを確認します"
               side={
-                <div className="flex items-center gap-4 rounded-lg border border-amber-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
+                <div className="flex items-center gap-4 rounded-xl border border-[#b7dfc2] bg-[#e6f4ea] px-4 py-3">
                   <div>
-                    <p className="text-[10px] font-bold text-amber-700">純売上</p>
-                    <p className="text-lg font-black tabular-nums text-amber-900">
-                      {coreReady
-                        ? formatNetRevenue(stats.coreKpis.arpu.currencies)
-                        : "要DB更新"}
+                    <p className="text-[10px] font-medium text-[#137333]">選択期間の純売上</p>
+                    <p className="text-lg font-semibold tabular-nums text-[#0d652d]">
+                      {/* DB未更新時の ¥0 は「売上ゼロの日」と区別が付かないため明示する。 */}
+                      {coreReady ? headlineRevenue : "要DB更新"}
                     </p>
                   </div>
                 </div>
               }
             />
             <Panel className="p-5 sm:p-6">
-            {/* ===== 3コース課金カード (three_course_v1) ===== */}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="rounded bg-teal-700 px-3 py-1 text-[11px] font-black text-white">
-                3コース課金
-              </span>
-              <span className="text-[11px] font-medium text-stone-400">
-                ¥199 / ¥499 / ¥899
-              </span>
-              <span
-                className={`ml-auto rounded px-2.5 py-1 text-[11px] font-black ${
-                  stats.purchaseConversionRate > 0.2
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-stone-100 text-stone-500"
-                }`}
-              >
-                カード表示→決済 {pct(stats.purchaseConversionRate)}
-                （{stats.purchaseConversionRate > 0.2 ? "成功ライン達成" : "目標 20%超"}）
-              </span>
-            </div>
-            <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-                <p className="text-[10px] font-bold text-stone-400">カード閲覧者</p>
-                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
-                  {stats.coursePaywall.cardViewers.toLocaleString()}
-                </p>
+            <div className="mb-6 flex flex-col gap-4 border-b border-[#eef1f5] pb-5 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-[#202124]">3コースの購入ファネル</h3>
+                <p className="mt-1 text-[11px] text-[#5f6368]">お試し ¥199・完全版 ¥499・プレミアム ¥899</p>
               </div>
-              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-                <p className="text-[10px] font-bold text-stone-400">課金者</p>
-                <p className="mt-1 text-2xl font-black tabular-nums text-emerald-700">
-                  {stats.coursePaywall.purchasers.toLocaleString()}
-                </p>
-                <p className="mt-1 text-[10px] text-stone-400">
-                  新規 {stats.coursePaywall.newPurchases} / UP {stats.coursePaywall.upgrades}
-                </p>
-              </div>
-              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-                <p className="text-[10px] font-bold text-stone-400">実売上</p>
-                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
-                  {formatMoney(stats.coursePaywall.revenueJpy, "jpy")}
-                </p>
-              </div>
-              <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-4">
-                <p className="text-[10px] font-bold text-stone-400">閲覧者あたり売上</p>
-                <p className="mt-1 text-2xl font-black tabular-nums text-stone-900">
-                  {formatMoney(stats.coursePaywall.revenuePerViewerJpy, "jpy")}
-                </p>
-              </div>
+              <dl className="grid grid-cols-3 overflow-hidden rounded-xl border border-[#dfe5ef] bg-[#f8fafd]">
+                <div className="border-r border-[#dfe5ef] px-4 py-3 text-center">
+                  <dt className="text-[10px] text-[#80868b]">購入者</dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-[#202124]">{stats.coursePaywall.purchasers.toLocaleString()}<span className="ml-0.5 text-xs">人</span></dd>
+                </div>
+                <div className="border-r border-[#dfe5ef] px-4 py-3 text-center">
+                  <dt className="text-[10px] text-[#80868b]">閲覧→購入</dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-[#1967d2]">{pct(stats.purchaseConversionRate)}</dd>
+                </div>
+                <div className="px-4 py-3 text-center">
+                  <dt className="text-[10px] text-[#80868b]">返金率（全商品）</dt>
+                  <dd className={`mt-1 text-lg font-semibold tabular-nums ${hasRefunds ? "text-[#b3261e]" : "text-[#137333]"}`}>{refundRateLabel ?? "—"}</dd>
+                </div>
+              </dl>
             </div>
             <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
               <span className="w-28 text-right">ステップ</span>
@@ -2708,21 +2584,6 @@ export default function AdminPage() {
               </p>
               <CoursePaywallTable plans={stats.coursePaywall.plans} />
             </div>
-            {(stats.paywallAttribution ?? []).length > 0 && (
-              <div className="mt-6 border-t border-stone-100 pt-5">
-                <p className="mb-1 text-sm font-black text-stone-900">
-                  カード別
-                </p>
-                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
-                  最後に押したカード別の結果です。
-                </p>
-                <AttributionTable rows={stats.paywallAttribution} />
-                <p className="mt-3 text-[11px] text-stone-400">
-                  率 = 完了 ÷ クリック。
-                </p>
-              </div>
-            )}
-
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
             {(stats.revenueByKind ?? []).length > 0 && (
               <div className="mt-6 border-t border-stone-100 pt-5">
@@ -2883,7 +2744,7 @@ export default function AdminPage() {
             </Panel>
         </section>
 
-          <section id="unmei" className="scroll-mt-36 lg:scroll-mt-28">
+          <section id="unmei" className="scroll-mt-36 xl:scroll-mt-28">
             <SectionHeader
               eyebrow="Unmei"
               title="運命の設計図"
@@ -2933,7 +2794,7 @@ export default function AdminPage() {
                 tone="rose"
               />
             </div>
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div>
               <Panel className="p-5 sm:p-6">
                 <div className="mb-4 flex items-center gap-2">
                   <span className="rounded bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
@@ -2965,132 +2826,62 @@ export default function AdminPage() {
                   購入開始は専用イベントと既存の purchase_cta_clicked(page=unmei) を同一セッションで重複排除しています。
                 </p>
               </Panel>
-
-              <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-stone-800">
-                  運命ページの要点
-                </h3>
-                <dl className="mt-4 divide-y divide-stone-100">
-                  <div className="flex items-end justify-between gap-4 py-3 first:pt-0">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      Stripe到達率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-indigo-800">
-                      {pct(
-                        stats.unmei.funnel[1]?.count
-                          ? (stats.unmei.funnel[2]?.count ?? 0) /
-                              stats.unmei.funnel[1].count
-                          : 0,
-                      )}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      LP→購入率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-emerald-800">
-                      {pct(unmeiLpCount > 0 ? unmeiPurchaseCount / unmeiLpCount : 0)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      出生情報保存率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-teal-800">
-                      {pct(stats.unmei.birthForm.submitRate)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      バッジクリック率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-stone-950">
-                      {pct(stats.unmei.navBadge.clickRate)}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="mt-4 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
-                  表示 {stats.unmei.navBadge.shown.toLocaleString()} / クリック {stats.unmei.navBadge.clicked.toLocaleString()}
-                </div>
-              </Panel>
             </div>
-            <Panel className="mt-4 p-5 sm:p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="rounded bg-indigo-600 px-3 py-1 text-[11px] font-black text-white">
-                  チャット決済ファネル
-                </span>
-                <span className="text-[11px] font-medium text-stone-400">
-                  flag ON・chat_launch / chat_purchase / card_embedded で抽出
-                </span>
-              </div>
-              <div className="mb-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-normal text-stone-400">
-                <span className="w-28 text-right">ステップ</span>
-                <span className="flex-1">件数</span>
-                <span className="w-16 text-right">前段比</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {stats.unmei.chatFunnel.map((step, i) => (
-                  <FunnelBar
-                    key={step.label}
-                    label={step.label}
-                    count={step.count}
-                    max={unmeiChatFunnelMax}
-                    prevCount={
-                      i > 0 ? stats.unmei.chatFunnel[i - 1].count : undefined
-                    }
-                  />
-                ))}
-              </div>
-              <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
-                「設計図を作成する」→ チャットで出生入力 → 埋め込み決済 → 完了、の実フロー。決済フォーム到達は埋め込みセッション生成 (card_embedded)、決済完了はそのセッション由来の購入で計上。旧リダイレクト版は上のファネルに含まれます。
-              </p>
-            </Panel>
           </section>
 
         {/* 本人コホートと友達側を分けた友達診断ファネル */}
-          <section id="friend-funnel" className="scroll-mt-36 lg:scroll-mt-28">
+          <section id="friend-funnel" className="scroll-mt-36 xl:scroll-mt-28">
             <SectionHeader
-              eyebrow="Friend diagnosis"
-              title="友達診断"
-              description="到達人数と、最初の母数からここまで残った割合"
+              eyebrow="Growth"
+              title="友達・拡散"
+              description="診断から友達回答、新しい診断が生まれるまでの成長ループを確認します"
               side={
-                <div className="rounded-lg border border-rose-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
-                  <p className="text-[10px] font-bold text-rose-600">友達診断ページ到達</p>
-                  <p className="text-lg font-black tabular-nums text-rose-900">
-                    {pct(stats.friendDiagnosisFunnel.attention.takoReachRate)}
+                <div className="rounded-xl border border-[#b7dfc2] bg-[#e6f4ea] px-4 py-3">
+                  <p className="text-[10px] font-medium text-[#137333]">拡散係数</p>
+                  <p className="text-lg font-semibold tabular-nums text-[#0d652d]">
+                    {!coreReady
+                      ? "要DB更新"
+                      : stats.coreKpis.viralCoefficient.denominator > 0
+                        ? stats.coreKpis.viralCoefficient.value.toFixed(3)
+                        : "—"}
                   </p>
                 </div>
               }
             />
-            <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <ReachSummaryCard
-                label="本人が友達診断ページへ到達"
-                count={ownerTakoReached?.count ?? 0}
-                rate={ownerTakoReached?.rateFromDiagnosis ?? 0}
-                sub="自己診断完了者のうち、友達診断ページまで進んだ人数"
-                tone="rose"
-              />
-              <ReachSummaryCard
-                label="友達1人以上の回答完了"
-                count={ownerFriendAnswered?.count ?? 0}
-                rate={ownerFriendAnswered?.rateFromDiagnosis ?? 0}
-                sub="自己診断完了者のうち、友達回答まで届いた人数"
-                tone="emerald"
-              />
-              <ReachSummaryCard
-                label="友達が回答完了"
-                count={visitorAnswered?.count ?? 0}
-                rate={visitorAnswered?.rateFromLanding ?? 0}
-                sub="招待ページに来た友達のうち、回答を完了した人数"
-                tone="indigo"
-              />
-              <ReachSummaryCard
-                label="友達が自分の診断も完了"
-                count={visitorSelfCompleted?.count ?? 0}
-                rate={visitorSelfCompleted?.rateFromLanding ?? 0}
-                sub="招待ページに来た友達から、新しい自己診断へつながった人数"
-                tone="teal"
-              />
+            <div className="mb-4 grid gap-3 md:grid-cols-3">
+              <Panel className="p-4">
+                <p className="text-[11px] font-medium text-[#5f6368]">診断 → 友達回答</p>
+                {/* 概要カードと同じ headline 値を使う (コホート未確定時のイベントデータ
+                    フォールバック込み)。coreKpis を直接読むと同一画面で数値が食い違う。 */}
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-[#1967d2]">
+                  {pctOrDash(headlineFriendRate, headlineFriendDenominator)}
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  {headlineFriendNumerator.toLocaleString()}人 / {headlineFriendDenominator.toLocaleString()}人
+                </p>
+              </Panel>
+              <Panel className="p-4">
+                <p className="text-[11px] font-medium text-[#5f6368]">購入者 → 友達回答</p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-[#007b83]">
+                  {coreReady
+                    ? pctOrDash(stats.coreKpis.paidToFriend.rate, stats.coreKpis.paidToFriend.denominator)
+                    : "要DB更新"}
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  {coreReady
+                    ? `${stats.coreKpis.paidToFriend.numerator.toLocaleString()}人 / ${stats.coreKpis.paidToFriend.denominator.toLocaleString()}人`
+                    : "payment_history の更新が必要です"}
+                </p>
+              </Panel>
+              <Panel className="p-4">
+                <p className="text-[11px] font-medium text-[#5f6368]">招待から生まれた新規診断</p>
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-[#137333]">
+                  {stats.coreKpis.viralCoefficient.children.toLocaleString()}<span className="ml-1 text-sm">人</span>
+                </p>
+                <p className="mt-2 text-[11px] text-[#80868b]">
+                  共有者あたり到達 {stats.viral.avgLandingPerSharer.toFixed(1)}人
+                </p>
+              </Panel>
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               <Panel className="p-5 sm:p-6">
@@ -3136,114 +2927,33 @@ export default function AdminPage() {
                 </ol>
               </Panel>
             </div>
-            <div className="mt-4 grid gap-4 xl:grid-cols-2">
-              <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-stone-800">友達診断バッジ</h3>
-                <p className="mt-1 text-[11px] font-medium text-stone-500">
-                  診断完了者への下部ナビ赤バッジ。表示率・到達率の分母はコホートの診断完了数。
-                </p>
-                <dl className="mt-4 divide-y divide-stone-100">
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      バッジ表示率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-stone-950">
-                      {pct(stats.friendDiagnosisFunnel.attention.badgeShowRate)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      バッジクリック率
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-stone-950">
-                      {pct(stats.friendDiagnosisFunnel.attention.badgeClickRate)}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="mt-4 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
-                  表示 {stats.friendDiagnosisFunnel.attention.badgeShown.toLocaleString()} / クリック {stats.friendDiagnosisFunnel.attention.badgeClicked.toLocaleString()} / 友達診断ページ到達 {stats.friendDiagnosisFunnel.attention.takoReached.toLocaleString()}
-                </div>
-              </Panel>
-              <Panel className="p-5 sm:p-6">
-                <h3 className="text-sm font-black text-stone-800">招待の解剖</h3>
-                <p className="mt-1 text-[11px] font-medium text-stone-500">
-                  送信UIの露出から招待クリックまで。露出 (UI表示) の計測は 2026-08-04 開始。
-                </p>
-                <div className="mt-4 flex items-end justify-between gap-4 border-b border-stone-100 pb-3">
-                  <p className="text-[11px] font-bold text-stone-500">
-                    UI表示 → 招待クリック
-                  </p>
-                  <p className="text-2xl font-black tabular-nums text-stone-950">
-                    {pct(stats.friendDiagnosisFunnel.inviteDetail.uiToClickRate)}
-                  </p>
-                </div>
-                <div className="mt-3 rounded-lg bg-stone-50 px-3 py-3 text-[11px] font-medium leading-relaxed text-stone-500">
-                  UI表示 {stats.friendDiagnosisFunnel.inviteDetail.uiShownOwners.toLocaleString()}人 / クリック {stats.friendDiagnosisFunnel.inviteDetail.clickOwners.toLocaleString()}人 ({stats.friendDiagnosisFunnel.inviteDetail.clickActions.toLocaleString()}回)
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                      露出場所 (人)
-                    </p>
-                    <ul className="mt-2 flex flex-col gap-1.5">
-                      {stats.friendDiagnosisFunnel.inviteDetail.uiSurfaces.length === 0 && (
-                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
-                      )}
-                      {stats.friendDiagnosisFunnel.inviteDetail.uiSurfaces.map((row) => (
-                        <li key={row.surface} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
-                          <span>{INVITE_SURFACE_LABELS[row.surface] ?? row.surface}</span>
-                          <span className="tabular-nums font-bold text-stone-800">{row.owners.toLocaleString()}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                      チャネル (回)
-                    </p>
-                    <ul className="mt-2 flex flex-col gap-1.5">
-                      {stats.friendDiagnosisFunnel.inviteDetail.channels.length === 0 && (
-                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
-                      )}
-                      {stats.friendDiagnosisFunnel.inviteDetail.channels.map((row) => (
-                        <li key={row.channel} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
-                          <span>{INVITE_CHANNEL_LABELS[row.channel] ?? row.channel}</span>
-                          <span className="tabular-nums font-bold text-stone-800">{row.actions.toLocaleString()}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
-                      設置場所 (回)
-                    </p>
-                    <ul className="mt-2 flex flex-col gap-1.5">
-                      {stats.friendDiagnosisFunnel.inviteDetail.sources.length === 0 && (
-                        <li className="text-[11px] font-medium text-stone-400">まだデータなし</li>
-                      )}
-                      {stats.friendDiagnosisFunnel.inviteDetail.sources.map((row) => (
-                        <li key={row.source} className="flex items-center justify-between gap-2 text-[11px] font-medium text-stone-600">
-                          <span>{INVITE_SOURCE_LABELS[row.source] ?? row.source}</span>
-                          <span className="tabular-nums font-bold text-stone-800">{row.actions.toLocaleString()}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </Panel>
-            </div>
-            <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-[11px] font-medium leading-relaxed text-teal-800">
-              計測開始: {new Date(stats.friendDiagnosisFunnel.measurementStartedAt).toLocaleString("ja-JP")} / {stats.friendDiagnosisFunnel.cohortDefinition}
+            {/* 全期間表示だとサマリーの診断者数と桁が合わない理由 (計測開始日以降のみの
+                コホート) をここで示す。消すと「データ欠損？」に見える。 */}
+            <p className="mt-3 text-[11px] leading-relaxed text-stone-400">
+              計測開始: {stats.friendDiagnosisFunnel.measurementStartedAt} / {stats.friendDiagnosisFunnel.cohortDefinition}
             </p>
           </section>
 
         {/* 流入元別 (2026-08-04 集客フォーカス): first-touch utm_source/ref → users.acquisition_source。
             外部リンクに ?ref=tiktok 等を付けた流入がここに並ぶ。数字は「流入元別の診断完了者」。 */}
-          <section id="acquisition" className="scroll-mt-36 lg:scroll-mt-28">
+          <section id="acquisition" className="scroll-mt-36 xl:scroll-mt-28">
             <SectionHeader
               eyebrow="Acquisition"
-              title="流入元別"
-              description="どの媒体が診断完了まで連れてきたか (?ref= / ?utm_source= 付きリンクの first-touch)"
+              title="流入・集客"
+              description="新規診断を連れてきた媒体とキャンペーンを比較します"
+              side={
+                topAcquisitionSource ? (
+                  <div className="rounded-xl border border-[#c2d7f5] bg-[#e8f0fe] px-4 py-3">
+                    <p className="text-[10px] font-medium text-[#1967d2]">最多の流入元</p>
+                    <p className="mt-1 max-w-44 truncate text-sm font-semibold text-[#174ea6]">
+                      {topAcquisitionSource.source}
+                    </p>
+                    <p className="mt-0.5 text-[11px] tabular-nums text-[#3c4043]">
+                      {topAcquisitionSource.users.toLocaleString()}人・{pct(topAcquisitionSource.share)}
+                    </p>
+                  </div>
+                ) : null
+              }
             />
             {stats.acquisitionStats.sources.length === 0 ? (
               <Panel>
@@ -3301,360 +3011,34 @@ export default function AdminPage() {
                 )}
               </Panel>
             )}
-          </section>
-
-        {/* 課金ファネル (2026-07-13): ユーザーが課金導線のどこまで進んでいるか */}
-        {/* Campaign Stats */}
-        {stats.campaignStats.length > 0 && (
-          <section>
-            <SectionHeader
-              eyebrow="Acquisition"
-              title="キャンペーン別"
-              description="流入ごとの成果"
-            />
-            <Panel className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead className="bg-stone-50/90">
-                  <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
-                    <th className="px-4 py-3 font-medium">campaign</th>
-                    <th className="px-4 py-3 font-medium text-right">診断完了</th>
-                    <th className="px-4 py-3 font-medium text-right">友達回答</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.campaignStats.map((c) => (
-                    <tr key={c.campaign} className="border-b border-stone-100/70 transition last:border-0 hover:bg-stone-50">
-                      <td className="px-4 py-3">
-                        <span className="inline-block rounded bg-teal-50 px-2.5 py-1 text-xs font-mono font-bold text-teal-800">
-                          {c.campaign}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{c.completed}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{c.friendCompleted}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Panel>
-          </section>
-        )}
-
-        {/* Viral Metrics */}
-          <section id="growth" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Growth"
-              title="拡散"
-              description="共有から生まれた診断"
-              side={
-                <div className="rounded-lg border border-teal-100 bg-white px-4 py-3 shadow-[0_12px_30px_-26px_rgba(28,25,23,0.42)]">
-                  <p className="text-[10px] font-bold text-teal-700">拡散係数</p>
-                  <p className="text-lg font-black tabular-nums text-teal-900">
-                    {!coreReady
-                      ? "要DB更新"
-                      : stats.coreKpis.viralCoefficient.denominator > 0
-                      ? stats.coreKpis.viralCoefficient.value.toFixed(3)
-                      : "—"}
-                  </p>
+            {stats.campaignStats.length > 0 && (
+              <Panel className="mt-4 overflow-x-auto">
+                <div className="border-b border-[#eef1f5] px-4 py-3">
+                  <h3 className="text-sm font-medium text-[#202124]">キャンペーン成果</h3>
+                  <p className="mt-1 text-[11px] text-[#5f6368]">診断完了と友達回答までつながった件数</p>
                 </div>
-              }
-            />
-          <Panel className="p-5 sm:p-6">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
-              <div>
-                <h3 className="text-sm font-black text-stone-800">
-                  バイラル到達の流れ
-                </h3>
-                <p className="mt-1 text-[11px] font-medium text-stone-500">
-                  招待ページ到達を100%として、友達がどこまで進んだか。
-                </p>
-                <ol className="mt-5 flex flex-col gap-4">
-                  {visitorFriendFunnel.map((step, index) => (
-                    <ReachStepRow
-                      key={step.key}
-                      index={index}
-                      label={step.label}
-                      count={step.count}
-                      max={visitorFriendFunnelMax}
-                      rateFromBase={step.rateFromLanding}
-                      rateFromPrevious={step.rateFromPrevious}
-                      baseLabel="到達比"
-                      tone={index < 1 ? "indigo" : index < 3 ? "teal" : "emerald"}
-                    />
-                  ))}
-                </ol>
-              </div>
-              <div className="border-t border-stone-100 pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
-                <h3 className="text-sm font-black text-stone-800">
-                  拡散の要点
-                </h3>
-                <dl className="mt-4 divide-y divide-stone-100">
-                  <div className="flex items-end justify-between gap-4 py-3 first:pt-0">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      共有者あたり到達
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-stone-950">
-                      {stats.viral.avgLandingPerSharer.toFixed(1)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      回答後「自分も作る」
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-teal-800">
-                      {pct(stats.viral.friendToDiagClickedRate)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      子診断完了
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-emerald-800">
-                      {stats.viral.childDiagCompleted.toLocaleString()}
-                      <span className="ml-1 text-sm text-stone-500">人</span>
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      親あたり子診断
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-indigo-800">
-                      {stats.viral.avgChildPerParent.toFixed(1)}
-                    </dd>
-                  </div>
-                  <div className="flex items-end justify-between gap-4 py-3">
-                    <dt className="text-[11px] font-bold text-stone-500">
-                      拡散係数
-                    </dt>
-                    <dd className="text-2xl font-black tabular-nums text-stone-950">
-                      {!coreReady
-                        ? "要DB更新"
-                        : stats.coreKpis.viralCoefficient.denominator > 0
-                        ? stats.coreKpis.viralCoefficient.value.toFixed(3)
-                        : "—"}
-                    </dd>
-                  </div>
-                </dl>
-                <p className="mt-4 rounded-lg bg-stone-50 px-3 py-2 text-[11px] font-medium leading-relaxed text-stone-500">
-                  1.0超で自然増。0.5以上は良好。
-                </p>
-              </div>
-            </div>
-          </Panel>
-          {stats.viral.friendLandingViewed === 0 && stats.friendAnswerStarted > 0 && (
-            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
-              注意: 友達ページ到達が0件です。今後のアクセスから計測されます。
-            </p>
-          )}
-        </section>
-
-        {/* Generation Distribution */}
-        {stats.generationDistribution.length > 0 && (
-          <section>
-            <SectionHeader
-              eyebrow="Network"
-              title="世代分布"
-              description="何世代まで広がったか"
-            />
-            <Panel className="p-5 sm:p-6">
-              <div className="mb-5 flex items-end justify-center gap-3">
-                {(() => {
-                  const allCounts = [
-                    ...stats.generationDistribution.map((d) => d.count),
-                    stats.unknownGeneration,
-                  ];
-                  const max = Math.max(...allCounts, 1);
-                  return (
-                    <>
-                      {stats.generationDistribution.map((g) => {
-                        const height = (g.count / max) * 100;
-                        return (
-                          <div key={g.generation} className="flex flex-col items-center gap-1">
-                            <span className="text-sm font-black tabular-nums text-stone-800">{g.count}</span>
-                            <div className="relative w-14" style={{ height: "96px" }}>
-                              <div
-                                className="absolute bottom-0 w-full rounded-t-md transition-all duration-500"
-                                style={{
-                                  height: `${Math.max(height, 5)}%`,
-                                  backgroundColor: g.generation === 0 ? "#3b82f6" : g.generation === 1 ? "#8b5cf6" : g.generation === 2 ? "#ec4899" : "#f97316",
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs font-bold text-stone-500">
-                              {g.generation === 0 ? "Seed" : `第${g.generation}世代`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {stats.unknownGeneration > 0 && (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-sm font-black tabular-nums text-stone-400">{stats.unknownGeneration}</span>
-                          <div className="relative w-14" style={{ height: "96px" }}>
-                            <div
-                              className="absolute bottom-0 w-full rounded-t-md bg-stone-200"
-                              style={{ height: `${Math.max((stats.unknownGeneration / max) * 100, 5)}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-bold text-stone-400">不明</span>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-              <p className="border-t border-stone-100 pt-4 text-center text-[11px] text-stone-400">
-                Seed = 初回流入 / 第N世代 = 友達経由
-              </p>
-            </Panel>
+                <table className="w-full min-w-[560px] text-sm">
+                  <thead className="bg-[#f8fafd]">
+                    <tr className="border-b border-[#eef1f5] text-left text-xs text-[#5f6368]">
+                      <th className="px-4 py-3 font-medium">キャンペーン</th>
+                      <th className="px-4 py-3 text-right font-medium">診断完了</th>
+                      <th className="px-4 py-3 text-right font-medium">友達回答</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.campaignStats.map((campaign) => (
+                      <tr key={campaign.campaign} className="border-b border-[#eef1f5] last:border-0">
+                        <td className="px-4 py-3 font-mono text-xs font-medium text-[#1967d2]">{campaign.campaign}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{campaign.completed.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{campaign.friendCompleted.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Panel>
+            )}
           </section>
-        )}
 
-        {/* Friend Count Distribution */}
-          <section id="audience" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Audience"
-              title="友達回答数"
-              description="集まった回答数"
-            />
-            <Panel className="p-5 sm:p-6">
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.zero}</p>
-                <p className="mt-1 text-[11px] font-bold text-stone-500">0人</p>
-              </div>
-              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.one}</p>
-                <p className="mt-1 text-[11px] font-bold text-stone-500">1人</p>
-              </div>
-              <div className="rounded-lg border border-stone-100 bg-stone-50/80 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-stone-800">{fc.two}</p>
-                <p className="mt-1 text-[11px] font-bold text-stone-500">2人</p>
-              </div>
-              <div className="rounded-lg border border-teal-100 bg-teal-50 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-teal-800">{fc.threePlus}</p>
-                <p className="mt-1 text-[11px] font-bold text-teal-700">3人以上</p>
-              </div>
-              <div className="rounded-lg border border-amber-100 bg-amber-50 p-4 text-center">
-                <p className="text-2xl font-black tabular-nums text-amber-800">{fc.fivePlus}</p>
-                <p className="mt-1 text-[11px] font-bold text-amber-700">5人以上</p>
-              </div>
-            </div>
-            <p className="border-t border-stone-100 pt-4 text-right text-[11px] text-stone-400">
-              全体 {fc.total}人 / 1人以上 {fc.total - fc.zero}人
-              ({fc.total > 0 ? pct((fc.total - fc.zero) / fc.total) : "0.0%"})
-            </p>
-            </Panel>
-        </section>
-
-        {/* Type Distribution */}
-        <section>
-            <SectionHeader
-              eyebrow="Segments"
-              title="タイプ分布"
-              description="32タイプの内訳"
-            />
-            <Panel className="p-5 sm:p-6">
-            {stats.typeDistribution.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                {stats.typeDistribution.map((t) => (
-                  <DistributionBar
-                    key={t.typeId}
-                    label={t.name ?? TYPE_LABELS[t.typeId] ?? t.typeId}
-                    count={t.count}
-                    max={typeMax}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="py-4 text-center text-xs text-stone-400">
-                データがまだありません
-              </p>
-            )}
-            {stats.typeDistribution.length > 0 && (
-              <p className="mt-4 border-t border-stone-100 pt-4 text-right text-[11px] text-stone-400">
-                合計 {stats.typeDistribution.reduce((s, t) => s + t.count, 0)}人
-              </p>
-            )}
-            </Panel>
-        </section>
-
-        {/* Question Reach */}
-        <section>
-            <SectionHeader
-              eyebrow="Engagement"
-              title="質問到達"
-              description="どこで止まったか"
-            />
-          <div className="grid grid-cols-1 gap-4">
-            <QuestionReachChart
-              title="診断50問"
-              reach={stats.diagQuestionReach}
-              totalQuestions={50}
-            />
-          </div>
-        </section>
-
-
-        {/* Recent Events */}
-          <section id="events" className="scroll-mt-36 lg:scroll-mt-28">
-            <SectionHeader
-              eyebrow="Activity"
-              title="直近イベント"
-              description="最新50件"
-            />
-            <Panel className="overflow-x-auto">
-            <table className="w-full min-w-[840px] text-sm">
-              <thead className="bg-stone-50/90">
-                <tr className="border-b border-stone-100 text-left text-xs text-stone-500">
-                  <th className="px-4 py-3 font-medium">event_name</th>
-                  <th className="px-4 py-3 font-medium">created_at</th>
-                  <th className="px-4 py-3 font-medium">session_id</th>
-                  <th className="px-4 py-3 font-medium">metadata</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recentEvents.map((ev, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-stone-100/70 transition last:border-0 hover:bg-stone-50"
-                  >
-                    <td className="px-4 py-2.5">
-                      <span className="inline-block rounded-lg bg-stone-100 px-2.5 py-1 text-xs font-mono font-bold text-stone-700">
-                        {ev.event_name}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-xs tabular-nums text-stone-500">
-                      {new Date(ev.created_at).toLocaleString("ja-JP", {
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-stone-400">
-                      {ev.session_id?.slice(0, 8) ?? "—"}
-                    </td>
-                    <td className="max-w-[200px] truncate px-4 py-2.5 font-mono text-xs text-stone-400">
-                      {Object.keys(ev.metadata ?? {}).length > 0
-                        ? JSON.stringify(ev.metadata)
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-                {stats.recentEvents.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-8 text-center text-xs text-stone-400"
-                    >
-                      イベントがまだありません
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            </Panel>
-        </section>
         </main>
       </div>
     </div>

@@ -8,18 +8,29 @@ import { computeStats } from "@/lib/admin-stats";
 const METRICS_CACHE_TTL_SECONDS = 24 * 60 * 60;
 // 現在時刻を含む期間 (今日・全期間など) は数字が動き続けるので、24時間キャッシュすると
 // 管理画面が「更新されなくなった」ように見える (2026-08-10)。egress削減効果は保ちつつ
-// 5分で追従させる。過去だけの期間は結果が不変なので24時間のまま。
+// 5分で追従させる。
 const LIVE_RANGE_TTL_SECONDS = 5 * 60;
+// 「過去だけの期間は不変」は厳密には誤り: コホートKPI (課金率/ARPU) は診断日以降の
+// 決済・返金・友達回答を現在まで追跡するため、昨日などの直近期間は日付が終わった後も
+// 数値が動く。終端が48時間以内の期間は1時間で追従させ、それより古い期間のみ24時間。
+const RECENT_PAST_TTL_SECONDS = 60 * 60;
+const RECENT_PAST_WINDOW_MS = 48 * 60 * 60 * 1000;
 // 計測スキーマのv4と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
 const metricsCache = getCache({ namespace: "metrics-stats-v4" });
 
 type AdminStats = Awaited<ReturnType<typeof computeStats>>;
 
 // to が無い (全期間) / 現在以降 (今日・今週など) は「現在を含む期間」。
-function isLiveRange(to: string | null): boolean {
-  if (!to) return true;
+function rangeTtlSeconds(to: string | null): number {
+  if (!to) return LIVE_RANGE_TTL_SECONDS;
   const end = Date.parse(to);
-  return !Number.isFinite(end) || end >= Date.now();
+  if (!Number.isFinite(end) || end >= Date.now()) {
+    return LIVE_RANGE_TTL_SECONDS;
+  }
+  if (end >= Date.now() - RECENT_PAST_WINDOW_MS) {
+    return RECENT_PAST_TTL_SECONDS;
+  }
+  return METRICS_CACHE_TTL_SECONDS;
 }
 
 function statsCacheKey(from: string | null, to: string | null): string {
@@ -60,7 +71,7 @@ export async function getCachedStats(
 
   try {
     await metricsCache.set(key, stats, {
-      ttl: isLiveRange(to) ? LIVE_RANGE_TTL_SECONDS : METRICS_CACHE_TTL_SECONDS,
+      ttl: rangeTtlSeconds(to),
       tags: ["metrics-stats"],
       name: "metrics-stats-snapshot",
     });

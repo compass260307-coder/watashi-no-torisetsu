@@ -1564,6 +1564,9 @@ export async function computeStats(from: string | null, to: string | null) {
       payerIds: Set<string>;
     }
   >();
+  // 通貨をまたいだユニーク購入者数。バケット別 payers を合算すると
+  // JPY と KRW の両方で購入した同一ユーザーを二重計上するため、別途 dedup する。
+  const periodPayerIds = new Set<string>();
   for (const payment of verifiedPaymentFacts) {
     if (!inRange(payment.paidAt)) continue;
     const currency = payment.currency.toLowerCase();
@@ -1583,11 +1586,13 @@ export async function computeStats(from: string | null, to: string | null) {
     bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
     bucket.purchases++;
     bucket.payerIds.add(payment.userId);
+    periodPayerIds.add(payment.userId);
     periodRevenueBuckets.set(currency, bucket);
   }
 
   const periodRevenue = {
     basis: "選択期間中に支払いが確定した全商品の純売上 (返金控除後)",
+    uniquePayers: periodPayerIds.size,
     currencies: Array.from(periodRevenueBuckets.entries())
       .map(([currency, bucket]) => ({
         currency,
