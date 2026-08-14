@@ -893,19 +893,17 @@ async function handleCheckoutPaid(
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
     await grantUnmeiByEmailOrId(session, paymentUserId);
     await recordFullAccessPayment(session, paymentUserId, "premium_bundle");
-    if (session.metadata?.locale !== "ko") {
-      try {
-        await grantHoshiyomiCreditsToTarget({
-          userId: paymentUserId,
-          sourceKey: `stripe:${session.id}`,
-          targetTotal: 30,
-        });
-      } catch (error) {
-        if (!isMissingHoshiyomiStore(error)) throw error;
-        console.warn("[webhook/stripe] hoshiyomi migration pending", {
-          stripe_session_id: session.id,
-        });
-      }
+    try {
+      await grantHoshiyomiCreditsToTarget({
+        userId: paymentUserId,
+        sourceKey: `stripe:${session.id}`,
+        targetTotal: 30,
+      });
+    } catch (error) {
+      if (!isMissingHoshiyomiStore(error)) throw error;
+      console.warn("[webhook/stripe] hoshiyomi migration pending", {
+        stripe_session_id: session.id,
+      });
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
@@ -921,29 +919,28 @@ async function handleCheckoutPaid(
 
   if (metadata.product === "full_access") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
-    if (session.metadata?.locale !== "ko") {
-      await grantUnmeiByEmailOrId(session, paymentUserId);
-    }
+    await grantUnmeiByEmailOrId(session, paymentUserId);
     await recordFullAccessPayment(session, paymentUserId);
-    if (session.metadata?.locale !== "ko") {
-      try {
-        await grantHoshiyomiCreditsToTarget({
-          userId: paymentUserId,
-          sourceKey: `stripe:${session.id}`,
-          targetTotal: 5,
-        });
-      } catch (error) {
-        if (!isMissingHoshiyomiStore(error)) throw error;
-        console.warn("[webhook/stripe] hoshiyomi migration pending", {
-          stripe_session_id: session.id,
-        });
-      }
+    try {
+      await grantHoshiyomiCreditsToTarget({
+        userId: paymentUserId,
+        sourceKey: `stripe:${session.id}`,
+        targetTotal: 5,
+      });
+    } catch (error) {
+      if (!isMissingHoshiyomiStore(error)) throw error;
+      console.warn("[webhook/stripe] hoshiyomi migration pending", {
+        stripe_session_id: session.id,
+      });
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
-    if (session.metadata?.locale !== "ko") {
-      after(() => triggerUnmeiGeneration(paymentUserId, "ja"));
-    }
+    after(() =>
+      triggerUnmeiGeneration(
+        paymentUserId,
+        session.metadata?.locale === "ko" ? "ko" : "ja",
+      ),
+    );
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
@@ -1468,8 +1465,7 @@ async function recomputeAccessAfterFullRefund(
   const hasUnmei = legacyUnmeiRows.length > 0 || validCourseRows.some(
     (row) =>
       row.payment_kind === "premium_bundle" ||
-      (row.payment_kind === "full_access" &&
-        (row.currency === "jpy" || row.metadata?.locale === "ja")),
+      row.payment_kind === "full_access",
   );
 
   const target = supabaseAdmin.from("users").update({

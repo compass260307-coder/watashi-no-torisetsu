@@ -17,7 +17,11 @@ import {
 } from "react";
 import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
+import KoTopFooter from "@/components/ko/top/KoTopFooter";
+import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
+import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
+import type { ResultLocale } from "@/i18n/result";
 import type { AccessProduct } from "@/lib/access-products";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 
@@ -25,54 +29,6 @@ const CHAT_ACCESS_PRODUCTS: readonly AccessProduct[] = [
   "full_access",
   "premium_bundle",
 ];
-
-const HOSHIYOMI_FAQS = [
-  {
-    question: "星読みの案内人とは何ですか？",
-    answer:
-      "あなたの性格診断と、作成済みの場合は運命の設計図も参考にしながら、悩みや気持ちを整理するAIの対話相手です。未来を断定するのではなく、あなた自身が納得できる選び方を見つけるお手伝いをします。",
-  },
-  {
-    question: "どのコースで利用できますか？",
-    answer:
-      "完全版コース（¥499）には5回分、プレミアムコース（¥899）には30回分が含まれます。お試しコース（¥199）にはチャット利用分は含まれません。いずれも月額ではなく買い切りです。",
-  },
-  {
-    question: "運命の設計図をまだ作っていなくても話せますか？",
-    answer:
-      "はい。自己診断の結果をもとに会話できます。出生情報を登録して運命の設計図を作成すると、星読みの内容も踏まえた、よりあなたに合わせた対話になります。",
-  },
-  {
-    question: "チャット回数はどのように数えますか？",
-    answer:
-      "相談を送り、星読みの案内人から正常に返信が届いたときに1回として数えます。通信エラーなどで返信が完了しなかった場合は、利用回数を戻します。",
-  },
-  {
-    question: "利用回数を増やすことはできますか？",
-    answer:
-      "完全版コースからプレミアムコースへは、購入済み金額との差額でアップグレードでき、購入分は合計30回になります。30回を使い切った後の追加購入は、現在は対応していません。",
-  },
-  {
-    question: "過去の会話をもう一度見られますか？",
-    answer:
-      "はい。会話は自動で保存され、星読みの案内人ページからあとで開けます。ページには更新日の新しいものから最大12件を表示します。不要になった会話は削除できます。",
-  },
-  {
-    question: "会話をほかの人に見られることはありますか？",
-    answer:
-      "会話がほかの利用者へ公開されることはありません。回答生成と履歴保存のため、入力内容はサービスとAIモデル提供者で必要な範囲に限って処理されます。詳しくはプライバシーポリシーをご確認ください。",
-  },
-  {
-    question: "会話をダウンロードできますか？",
-    answer:
-      "現在、会話履歴のダウンロードや書き出しには対応していません。必要な内容は、お使いの端末で保存してください。",
-  },
-  {
-    question: "大切な判断を相談しても大丈夫ですか？",
-    answer:
-      "星読みはエンターテインメントであり、医療・法律・金融などの専門的な助言ではありません。重要な判断が必要な場合は、必ず専門家へご相談ください。",
-  },
-] as const;
 
 type ActiveConversation = {
   id: string;
@@ -89,6 +45,7 @@ type Props = {
   hasChatAccess?: boolean;
   ownerToken?: string;
   previewMode?: boolean;
+  locale?: ResultLocale;
 };
 
 export function HoshiyomiClient({
@@ -100,6 +57,7 @@ export function HoshiyomiClient({
   hasChatAccess = true,
   ownerToken,
   previewMode = false,
+  locale = "ja",
 }: Props) {
   const router = useRouter();
   const [remaining, setRemaining] = useState(initialRemaining);
@@ -126,9 +84,12 @@ export function HoshiyomiClient({
 
   const openNew = () => {
     setActive(null);
-    router.replace(previewMode ? "/dev/hoshiyomi-preview" : "/hoshiyomi", {
-      scroll: false,
-    });
+    router.replace(
+      previewMode
+        ? "/dev/hoshiyomi-preview"
+        : `${locale === "ko" ? "/ko" : ""}/hoshiyomi`,
+      { scroll: false },
+    );
   };
 
   if (active) {
@@ -140,6 +101,7 @@ export function HoshiyomiClient({
             conversation={active}
             remaining={remaining}
             totalCredits={totalCredits}
+            locale={locale}
             onRemainingChange={(delta) =>
               setRemaining((current) =>
                 Math.max(0, Math.min(totalCredits, current + delta)),
@@ -153,6 +115,7 @@ export function HoshiyomiClient({
             conversation={active}
             remaining={remaining}
             totalCredits={totalCredits}
+            locale={locale}
             onRemainingChange={(delta) =>
               setRemaining((current) =>
                 Math.max(0, Math.min(totalCredits, current + delta)),
@@ -167,7 +130,7 @@ export function HoshiyomiClient({
 
   return (
     <>
-      <TopHeader />
+      {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
       <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
         <HoshiyomiHome
           conversations={conversations}
@@ -176,16 +139,18 @@ export function HoshiyomiClient({
           persistenceReady={persistenceReady}
           hasChatAccess={hasChatAccess}
           previewMode={previewMode}
+          locale={locale}
           onStart={startConversation}
         />
       </main>
-      <TopFooter />
+      {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
       {paywallOpen ? (
         <PaywallOverlay
           ownerToken={ownerToken}
           returnTo="hoshiyomi"
           ctaSource="hoshiyomi_first_send"
           products={CHAT_ACCESS_PRODUCTS}
+          locale={locale}
           onClose={() => setPaywallOpen(false)}
         />
       ) : null}
@@ -200,6 +165,7 @@ function HoshiyomiHome({
   persistenceReady,
   hasChatAccess,
   previewMode,
+  locale,
   onStart,
 }: {
   conversations: HoshiyomiConversationSummary[];
@@ -208,8 +174,10 @@ function HoshiyomiHome({
   persistenceReady: boolean;
   hasChatAccess: boolean;
   previewMode: boolean;
+  locale: ResultLocale;
   onStart: (text: string) => void;
 }) {
+  const copy = HOSHIYOMI_COPY[locale];
   const router = useRouter();
   const [input, setInput] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -242,13 +210,13 @@ function HoshiyomiHome({
         <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#CFC9FF]/30 blur-3xl" />
         <div className="relative mx-auto max-w-[1040px]">
           <h1 className="text-[32px] font-black leading-[1.25] md:text-[48px]">
-            星読みの案内人と話す
+            {copy.title}
           </h1>
 
           <div className="mt-3 w-full md:mt-5">
             <Image
               src="/mascot/hoshiyomi-guide-study-transparent.png"
-              alt="星図を広げた机で案内する、星読みの案内人のフェルトうさぎ"
+              alt={copy.heroAlt}
               width={1672}
               height={941}
               priority
@@ -259,8 +227,7 @@ function HoshiyomiHome({
 
           <div className="max-w-[760px]">
             <p className="mt-6 max-w-[600px] text-[15px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:mt-7 md:text-[17px]">
-              性格診断とあなたの星読みを一緒に見ながら、いま気になっていることを整理します。
-              答えを決めつけず、あなた自身の選び方を見つけるための対話です。
+              {copy.description}
             </p>
 
             <form onSubmit={submit} className="mt-7">
@@ -272,14 +239,14 @@ function HoshiyomiHome({
                   disabled={!canCompose}
                   placeholder={
                     hasChatAccess && remaining === 0
-                      ? "チャット回数を使い切りました"
-                      : "今、何が気になっていますか？"
+                      ? copy.exhaustedPlaceholder
+                      : copy.inputPlaceholder
                   }
                   className="min-w-0 flex-1 bg-transparent px-3 py-3 text-[16px] font-medium outline-none placeholder:text-[#2E2E5C]/30 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  aria-label="会話を始める"
+                  aria-label={copy.startAria}
                   disabled={!input.trim() || !canCompose}
                   className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-[#5B5BEF] text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
                 >
@@ -292,13 +259,15 @@ function HoshiyomiHome({
               <HomeUsageMeter
                 remaining={remaining}
                 total={totalCredits}
+                locale={locale}
                 faqButtonRef={faqButtonRef}
                 onOpenFaq={() => setFaqOpen(true)}
               />
             ) : (
               <p className="mt-4 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/55 md:text-[13px]">
-                相談内容を送信すると、チャット付きコースを選べます。{" "}
+                {copy.purchaseHint}{" "}
                 <FaqTextButton
+                  locale={locale}
                   buttonRef={faqButtonRef}
                   onClick={() => setFaqOpen(true)}
                 />
@@ -306,7 +275,7 @@ function HoshiyomiHome({
             )}
             {!persistenceReady && (
               <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-[13px] font-bold text-amber-800">
-                会話の保存準備中です。データベース更新後に利用できます。
+                {copy.persistencePending}
               </p>
             )}
           </div>
@@ -317,14 +286,14 @@ function HoshiyomiHome({
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">HISTORY</p>
-            <h2 className="mt-1 text-[22px] font-black md:text-[26px]">これまでの会話</h2>
+            <h2 className="mt-1 text-[22px] font-black md:text-[26px]">{copy.historyTitle}</h2>
           </div>
         </div>
 
         {conversations.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-[#2E2E5C]/15 bg-white px-6 py-10 text-center">
             <p className="text-[15px] font-bold text-[#2E2E5C]/55">
-              まだ会話はありません。気になることから話してみましょう。
+              {copy.historyEmpty}
             </p>
           </div>
         ) : (
@@ -332,7 +301,7 @@ function HoshiyomiHome({
             {conversations.map((conversation) => {
               const href = previewMode
                 ? `/dev/hoshiyomi-preview?chat=${conversation.id}`
-                : `/hoshiyomi?chat=${conversation.id}`;
+                : `${locale === "ko" ? "/ko" : ""}/hoshiyomi?chat=${conversation.id}`;
               const messageCount = conversation.messages.filter(
                 (message) => message.role === "user",
               ).length;
@@ -346,17 +315,17 @@ function HoshiyomiHome({
                       {conversation.title}
                     </h3>
                     <p className="mt-3 text-[12px] font-bold text-[#2E2E5C]/40">
-                      {messageCount}件のメッセージ ・ {formatDate(conversation.updatedAt)}
+                      {copy.messageCount(messageCount)} ・ {formatDate(conversation.updatedAt, locale)}
                     </p>
                     <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-3.5 py-2 text-[12px] font-black text-white">
-                      会話を開く <SmallArrowIcon />
+                      {copy.openConversation} <SmallArrowIcon />
                     </span>
                   </Link>
                   <button
                     type="button"
                     onClick={() => void remove(conversation.id)}
                     disabled={previewMode || deletingId === conversation.id}
-                    aria-label="会話を削除"
+                    aria-label={copy.deleteAria}
                     className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E5C]/10 text-[#2E2E5C]/35 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-30"
                   >
                     <TrashIcon />
@@ -368,11 +337,12 @@ function HoshiyomiHome({
         )}
 
         <p className="mt-10 text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
-          星読みはエンターテインメントです。医療・法律・金融など重要な判断は専門家にご相談ください。
+          {copy.entertainmentNotice}
         </p>
       </section>
       {faqOpen ? (
         <HoshiyomiFaqModal
+          locale={locale}
           onClose={() => {
             setFaqOpen(false);
             window.requestAnimationFrame(() => faqButtonRef.current?.focus());
@@ -383,7 +353,14 @@ function HoshiyomiHome({
   );
 }
 
-function HoshiyomiFaqModal({ onClose }: { onClose: () => void }) {
+function HoshiyomiFaqModal({
+  locale,
+  onClose,
+}: {
+  locale: ResultLocale;
+  onClose: () => void;
+}) {
+  const copy = HOSHIYOMI_COPY[locale];
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -412,7 +389,7 @@ function HoshiyomiFaqModal({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="閉じる"
+          aria-label={copy.closeAria}
           className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E5C]/10 bg-white text-[#2E2E5C]/55 transition hover:bg-[#F5F5FA] hover:text-[#2E2E5C] md:right-5 md:top-5"
         >
           <CloseIcon />
@@ -422,11 +399,11 @@ function HoshiyomiFaqModal({ onClose }: { onClose: () => void }) {
           id="hoshiyomi-faq-title"
           className="pr-12 text-[28px] font-black leading-tight text-[#2E2E5C] md:text-[36px]"
         >
-          よくある質問
+          {copy.faqTitle}
         </h2>
 
         <div className="mt-5 border-t border-[#2E2E5C]/10 md:mt-6">
-          {HOSHIYOMI_FAQS.map((faq, index) => (
+          {copy.faqs.map((faq, index) => (
             <details
               key={faq.question}
               open={index === 0}
@@ -450,11 +427,11 @@ function HoshiyomiFaqModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="mt-5 text-center text-[11px] font-bold text-[#2E2E5C]/40">
-          解決しない場合は、
+          {copy.contactPrefix}
           <Link href="mailto:support@watashi-torisetsu.com" className="text-[#5B5BEF] underline underline-offset-2">
-            お問い合わせ
+            {copy.contactLabel}
           </Link>
-          ください。
+          {copy.contactSuffix}
         </p>
       </section>
     </div>,
@@ -466,12 +443,14 @@ function RealChatPanel({
   conversation,
   remaining,
   totalCredits,
+  locale,
   onRemainingChange,
   onBack,
 }: {
   conversation: ActiveConversation;
   remaining: number;
   totalCredits: number;
+  locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
 }) {
@@ -481,10 +460,10 @@ function RealChatPanel({
       new DefaultChatTransport({
         api: "/api/hoshiyomi/chat",
         prepareSendMessagesRequest({ id, messages }) {
-          return { body: { id, message: messages.at(-1) } };
+          return { body: { id, message: messages.at(-1), locale } };
         },
       }),
-    [],
+    [locale],
   );
   const rolledBackRef = useRef(false);
   const {
@@ -504,7 +483,10 @@ function RealChatPanel({
       }
     },
     onFinish: () => {
-      router.replace(`/hoshiyomi?chat=${conversation.id}`, { scroll: false });
+      router.replace(
+        `${locale === "ko" ? "/ko" : ""}/hoshiyomi?chat=${conversation.id}`,
+        { scroll: false },
+      );
       router.refresh();
     },
   });
@@ -539,6 +521,7 @@ function RealChatPanel({
     <ChatShell
       remaining={remaining}
       total={totalCredits}
+      locale={locale}
       onBack={onBack}
       messages={messages}
       viewportRef={viewportRef}
@@ -546,7 +529,7 @@ function RealChatPanel({
       setInput={setInput}
       onSend={send}
       isBusy={isBusy}
-      error={error ? "星をうまく読めませんでした。少し時間をおいて、もう一度お試しください。" : null}
+      error={error ? HOSHIYOMI_COPY[locale].responseError : null}
     />
   );
 }
@@ -555,12 +538,14 @@ function PreviewChatPanel({
   conversation,
   remaining,
   totalCredits,
+  locale,
   onRemainingChange,
   onBack,
 }: {
   conversation: ActiveConversation;
   remaining: number;
   totalCredits: number;
+  locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
 }) {
@@ -579,7 +564,7 @@ function PreviewChatPanel({
             parts: [
               {
                 type: "text",
-                text: "話してくれてありがとうございます。いま感じている迷いには、あなたが大切にしたいものが隠れていそうです。星読みと性格診断を手がかりに、もう少し一緒に整理してみましょう。\n\nその出来事の中で、いちばん心が動いたのはどんな瞬間でしたか？",
+                text: HOSHIYOMI_COPY[locale].previewResponse,
               },
             ],
           },
@@ -609,7 +594,7 @@ function PreviewChatPanel({
           parts: [
             {
               type: "text",
-              text: "話してくれてありがとうございます。いま感じている迷いには、あなたが大切にしたいものが隠れていそうです。星読みと性格診断を手がかりに、もう少し一緒に整理してみましょう。\n\nその出来事の中で、いちばん心が動いたのはどんな瞬間でしたか？",
+              text: HOSHIYOMI_COPY[locale].previewResponse,
             },
           ],
         },
@@ -622,6 +607,7 @@ function PreviewChatPanel({
     <ChatShell
       remaining={remaining}
       total={totalCredits}
+      locale={locale}
       onBack={onBack}
       messages={messages}
       viewportRef={viewportRef}
@@ -637,6 +623,7 @@ function PreviewChatPanel({
 function ChatShell({
   remaining,
   total,
+  locale,
   onBack,
   messages,
   viewportRef,
@@ -648,6 +635,7 @@ function ChatShell({
 }: {
   remaining: number;
   total: number;
+  locale: ResultLocale;
   onBack: () => void;
   messages: UIMessage[];
   viewportRef: React.RefObject<HTMLDivElement | null>;
@@ -657,6 +645,7 @@ function ChatShell({
   isBusy: boolean;
   error: string | null;
 }) {
+  const copy = HOSHIYOMI_COPY[locale];
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSend(input);
@@ -674,7 +663,7 @@ function ChatShell({
         <button
           type="button"
           onClick={onBack}
-          aria-label="会話一覧へ戻る"
+          aria-label={copy.backAria}
           className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-[#2E2E5C]/55 transition hover:bg-[#2E2E5C]/5"
         >
           <BackIcon />
@@ -683,13 +672,13 @@ function ChatShell({
           <Image src="/mascot/hoshiyomi-guide.png" alt="" fill sizes="48px" className="object-contain" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[16px] font-black md:text-[18px]">星読みの案内人</h1>
+          <h1 className="truncate text-[16px] font-black md:text-[18px]">{copy.guideName}</h1>
           <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold text-[#2E2E5C]/42">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> あなたの星と性格を見ながらお話しします
+            <span className="h-2 w-2 rounded-full bg-emerald-400" /> {copy.guideStatus}
           </p>
         </div>
         <div className="hidden w-32 md:block">
-          <UsageMeter remaining={remaining} total={total} compact />
+          <UsageMeter remaining={remaining} total={total} locale={locale} compact />
         </div>
       </header>
 
@@ -733,7 +722,7 @@ function ChatShell({
       <div className="border-t border-[#2E2E5C]/[0.07] bg-white px-4 pb-3 pt-3 md:px-6">
         <div className="mx-auto max-w-[720px]">
           <div className="mb-2 md:hidden">
-            <UsageMeter remaining={remaining} total={total} compact />
+            <UsageMeter remaining={remaining} total={total} locale={locale} compact />
           </div>
           <form onSubmit={submit} className="flex items-end gap-2 rounded-2xl border border-[#2E2E5C]/12 bg-[#FAFAFE] p-2 focus-within:border-[#5B5BEF]/45">
             <textarea
@@ -743,12 +732,12 @@ function ChatShell({
               rows={1}
               maxLength={1200}
               disabled={isBusy || remaining === 0}
-              placeholder={remaining > 0 ? "メッセージを入力…" : "チャット回数を使い切りました"}
+              placeholder={remaining > 0 ? copy.composerPlaceholder : copy.exhaustedPlaceholder}
               className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-[15px] leading-relaxed outline-none placeholder:text-[#2E2E5C]/30 disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              aria-label="送信"
+              aria-label={copy.sendAria}
               disabled={!input.trim() || isBusy || remaining === 0}
               className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-[#5B5BEF] text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
             >
@@ -756,7 +745,7 @@ function ChatShell({
             </button>
           </form>
           <p className="mt-2 text-center text-[10px] font-medium text-[#2E2E5C]/32">
-            星読みは未来を断定するものではなく、考えを整理するためのヒントです。
+            {copy.chatNotice}
           </p>
         </div>
       </div>
@@ -786,14 +775,17 @@ function GuideAvatar() {
 function HomeUsageMeter({
   remaining,
   total,
+  locale,
   faqButtonRef,
   onOpenFaq,
 }: {
   remaining: number;
   total: number;
+  locale: ResultLocale;
   faqButtonRef: RefObject<HTMLButtonElement | null>;
   onOpenFaq: () => void;
 }) {
+  const copy = HOSHIYOMI_COPY[locale];
   const safeRemaining = Math.max(0, Math.min(total, remaining));
   const used = Math.max(0, total - safeRemaining);
   const percent = total > 0 ? (used / total) * 100 : 0;
@@ -808,19 +800,21 @@ function HomeUsageMeter({
       </div>
       <p className="mt-2 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/55 md:text-[13px]">
         <span className="font-black text-[#2E2E5C]/80">
-          {used}/{total}
+          {copy.sentMessages(used, total)}
         </span>
-        件のメッセージを送信しました。{" "}
-        <FaqTextButton buttonRef={faqButtonRef} onClick={onOpenFaq} />
+        {" "}
+        <FaqTextButton locale={locale} buttonRef={faqButtonRef} onClick={onOpenFaq} />
       </p>
     </div>
   );
 }
 
 function FaqTextButton({
+  locale,
   buttonRef,
   onClick,
 }: {
+  locale: ResultLocale;
   buttonRef: RefObject<HTMLButtonElement | null>;
   onClick: () => void;
 }) {
@@ -831,12 +825,22 @@ function FaqTextButton({
       onClick={onClick}
       className="font-black text-[#5B5BEF] underline decoration-[#5B5BEF]/40 decoration-1 underline-offset-4 transition-colors hover:text-[#4545D8] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF]"
     >
-      質問はありますか？
+      {HOSHIYOMI_COPY[locale].faqButton}
     </button>
   );
 }
 
-function UsageMeter({ remaining, total, compact = false }: { remaining: number; total: number; compact?: boolean }) {
+function UsageMeter({
+  remaining,
+  total,
+  locale,
+  compact = false,
+}: {
+  remaining: number;
+  total: number;
+  locale: ResultLocale;
+  compact?: boolean;
+}) {
   const safeRemaining = Math.max(0, Math.min(total, remaining));
   const percent = total > 0 ? (safeRemaining / total) * 100 : 0;
   return (
@@ -845,15 +849,15 @@ function UsageMeter({ remaining, total, compact = false }: { remaining: number; 
         <div className="h-full rounded-full bg-gradient-to-r from-[#5B5BEF] to-[#9B73D5] transition-[width]" style={{ width: `${percent}%` }} />
       </div>
       <p className={`mt-1.5 font-bold text-[#2E2E5C]/45 ${compact ? "text-[10px]" : "text-[11px]"}`}>
-        チャット残り{safeRemaining}回（購入分 {total}回）
+        {HOSHIYOMI_COPY[locale].remainingMessages(safeRemaining, total)}
       </p>
     </div>
   );
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, locale: ResultLocale): string {
   try {
-    return new Intl.DateTimeFormat("ja-JP", {
+    return new Intl.DateTimeFormat(HOSHIYOMI_COPY[locale].dateLocale, {
       month: "numeric",
       day: "numeric",
       timeZone: "Asia/Tokyo",

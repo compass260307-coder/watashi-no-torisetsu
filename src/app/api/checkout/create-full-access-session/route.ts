@@ -49,7 +49,6 @@ import {
 import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
 import { getStripe, getFullAccessPriceId } from "@/lib/stripe-server";
 import { checkOrigin } from "@/lib/origin-check";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   DIRECT_PAYWALL_SOURCE,
@@ -127,7 +126,7 @@ const CHECKOUT_COPY: Record<
     couponName: "출시 기념",
     productName: "나의 사용설명서 완전판 패키지",
     productDescription:
-      "자기 진단 결과 전체 해제, 16페이지 이상의 자기 분석 PDF, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번 다시 만들 수 있는 친구 진단 PDF, 연애 파트너 궁합 분석까지 모두 포함한 완전판 패키지예요. 1회 결제.",
+      "자기 진단과 PDF, 친구 진단, 연애 궁합에 더해 한국어 운명의 설계도와 별자리 상담사 채팅 5회까지 포함한 완전판 패키지예요. 1회 결제.",
     submitMessage:
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
@@ -161,9 +160,9 @@ const PREMIUM_BUNDLE_COPY = {
   ko: {
     productName: "나의 사용설명서 프리미엄 코스",
     productDescription:
-      "자기 진단과 PDF, 친구 진단, 연애 궁합에 더해 출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도까지 모두 이용할 수 있어요. 1회 결제.",
+      "완전판의 모든 기능과 한국어 운명의 설계도에 더해, 성격 진단과 별자리 해석을 참고하는 상담사 채팅 30회를 이용할 수 있어요. 1회 결제.",
     submitMessage:
-      "한 번만 결제하면 모든 진단 결과와 운명의 설계도를 이용할 수 있어요. 30일 환불 보장.",
+      "한 번만 결제하면 모든 진단 결과, 운명의 설계도와 채팅 30회를 이용할 수 있어요. 30일 환불 보장.",
   },
 } as const;
 
@@ -352,16 +351,6 @@ export async function POST(request: NextRequest) {
   // 不正値は¥499へフォールバックせず、誤課金防止で拒否する。
   const requestedProduct: AccessProduct = body.product ?? "full_access";
   const product = requestedProduct;
-  if (
-    checkoutLocale === "ko" &&
-    product === "premium_bundle" &&
-    !KO_UNMEI_ENABLED
-  ) {
-    return NextResponse.json(
-      { error: "product_unavailable", code: "product_unavailable" },
-      { status: 404 },
-    );
-  }
   const paywallVersion =
     body.paywall_version === undefined
       ? "legacy"
@@ -566,7 +555,7 @@ export async function POST(request: NextRequest) {
     returnTo === "aisho"
       ? `${aishoPath}?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
       : returnTo === "hoshiyomi"
-        ? `/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
+        ? `${localePrefix}/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
         : returnTo === "unmei"
           ? `${localePrefix}/unmei?${checkoutLocale === "ko" ? "paid=1" : "checkout=success"}&session_id={CHECKOUT_SESSION_ID}`
           : returnTo === "tako"
@@ -581,7 +570,7 @@ export async function POST(request: NextRequest) {
     returnTo === "aisho"
       ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
       : returnTo === "hoshiyomi"
-        ? "/hoshiyomi"
+        ? `${localePrefix}/hoshiyomi`
         : returnTo === "unmei"
           ? `${localePrefix}/unmei`
           : ownerToken

@@ -410,7 +410,17 @@ export function BottomNav() {
     () =>
       isKorean
         ? [
-            { key: "home", label: "홈", href: "/ko", active: pathname === "/ko", Icon: HomeIcon },
+            ...(hasToken
+              ? []
+              : [
+                  {
+                    key: "home",
+                    label: "홈",
+                    href: "/ko?stay=1",
+                    active: pathname === "/ko",
+                    Icon: HomeIcon,
+                  },
+                ]),
             { key: "me", label: "사용설명서", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップで解放条件を伝える (ja と同じ挙動)。
             {
@@ -432,6 +442,24 @@ export function BottomNav() {
                 pathname.startsWith("/ko/preview"),
               Icon: GridIcon,
             },
+            ...(hasToken
+              ? [
+                  {
+                    key: "unmei",
+                    label: "운명",
+                    href: "/ko/unmei",
+                    active: pathname.startsWith("/ko/unmei"),
+                    Icon: NatalWheelIcon,
+                  },
+                  {
+                    key: "astrologer",
+                    label: "상담사",
+                    href: "/ko/hoshiyomi",
+                    active: pathname.startsWith("/ko/hoshiyomi"),
+                    Icon: AstrologerIcon,
+                  },
+                ]
+              : []),
             {
               key: "aisho",
               label: "궁합",

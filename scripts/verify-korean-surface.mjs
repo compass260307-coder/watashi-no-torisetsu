@@ -11,7 +11,7 @@ const koreanSourceDirs = [
 ];
 
 const japanesePathPattern =
-  /(?:href=|redirect\(|router\.push\()\{?["'`]\/(diagnosis|tako|login|types|about|articles|terms|privacy|legal|purchase-complete|result|share|friend|me|unmei|aisho)\b/g;
+  /(?:href=|redirect\(|router\.push\()\{?["'`]\/(diagnosis|tako|login|types|about|articles|terms|privacy|legal|purchase-complete|result|share|friend|me|unmei|hoshiyomi|aisho)\b/g;
 
 function walk(dir) {
   const absolute = path.join(ROOT, dir);
@@ -48,6 +48,35 @@ if (friendList.includes("href={`/tako/")) {
 }
 if (friendList.includes("メッセージあり") && !friendList.includes("메시지 있음")) {
   problems.push("src/components/result/FriendList.tsx: message badge lacks Korean copy");
+}
+
+const requiredKoreanFortuneFiles = [
+  "src/app/ko/unmei/page.tsx",
+  "src/app/ko/hoshiyomi/page.tsx",
+  "src/i18n/hoshiyomi.ts",
+];
+for (const file of requiredKoreanFortuneFiles) {
+  if (!fs.existsSync(path.join(ROOT, file))) {
+    problems.push(`${file}: required Korean fortune surface is missing`);
+  }
+}
+
+const localeSwitch = fs.readFileSync(
+  path.join(ROOT, "src/lib/locale-switch.ts"),
+  "utf8",
+);
+for (const route of ["/ko/unmei", "/ko/hoshiyomi"]) {
+  if (!localeSwitch.includes(route)) {
+    problems.push(`src/lib/locale-switch.ts: locale mapping lacks ${route}`);
+  }
+}
+
+const featureFlags = fs.readFileSync(
+  path.join(ROOT, "src/lib/feature-flags.ts"),
+  "utf8",
+);
+if (featureFlags.includes("KO_UNMEI_ENABLED")) {
+  problems.push("src/lib/feature-flags.ts: Korean destiny feature is still gated");
 }
 
 if (problems.length) {

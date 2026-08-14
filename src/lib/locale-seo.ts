@@ -54,6 +54,7 @@ export const INDEXABLE_LOCALIZED_ROUTES: readonly LocalizedRoutePair[] = [
   },
   { ja: "/types", ko: "/ko/types", priority: 0.8, changeFrequency: "weekly" },
   { ja: "/aisho", ko: "/ko/aisho", priority: 0.8, changeFrequency: "monthly" },
+  { ja: "/unmei", ko: "/ko/unmei", priority: 0.8, changeFrequency: "monthly" },
   {
     ja: "/articles",
     ko: "/ko/articles",

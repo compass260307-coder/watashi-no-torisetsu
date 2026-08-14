@@ -179,8 +179,8 @@ export async function hasFullAccess(
 
 /**
  * 運命の設計図まで利用できるか。
- * premium_bundle と既存 unmei / unmei_upgrade は、いずれも users.unmei=true を
- * 権限源にする。再診断で users 行が分かれた場合も同一 email の購入を引き継ぐ。
+ * 現行の full_access / premium_bundle と既存 unmei / unmei_upgrade を利用可にする。
+ * users.unmei を優先しつつ、再診断時は同一 email、旧韓国版購入者は購入履歴から復元する。
  */
 export async function hasUnmeiAccess(
   userId: string | null | undefined,
@@ -197,15 +197,20 @@ export async function hasUnmeiAccess(
 
   const email =
     typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
-  if (!email) return false;
+  if (email) {
+    const { data: rows } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .eq("unmei", true)
+      .limit(1);
+    if (rows && rows.length > 0) return true;
+  }
 
-  const { data: rows } = await supabaseAdmin
-    .from("users")
-    .select("id")
-    .eq("email", email)
-    .eq("unmei", true)
-    .limit(1);
-  return Boolean(rows && rows.length > 0);
+  // 現行の完全版・プレミアムはいずれも運命の設計図を含む。
+  // 旧韓国版では users.unmei を付与していなかったため、購入履歴も参照して
+  // 既存購入者を再購入画面へ戻さず、そのまま利用権を復元する。
+  return (await getAccessPurchaseEntitlements(userId)).full;
 }
 
 /**

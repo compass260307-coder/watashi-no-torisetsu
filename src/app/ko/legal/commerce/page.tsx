@@ -11,7 +11,6 @@ import {
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_KRW,
 } from "@/lib/access-products";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
@@ -46,7 +45,7 @@ export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
       title="판매 및 환불 안내"
-      lastUpdated="2026년 8월 12일"
+      lastUpdated="2026년 8월 14일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -86,23 +85,15 @@ export default function KoreanCommercePage() {
           완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트
           구매자는 차액 {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
         </li>
-        {KO_UNMEI_ENABLED ? (
-          <li>
-            프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
-            (라이트 구매자는 차액{" "}
-            {krw(PREMIUM_BUNDLE_PRICE_KRW - SELF_REPORT_PRICE_KRW)}, 완전판
-            구매자는 차액{" "}
-            {krw(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW)})
-          </li>
-        ) : null}
+        <li>
+          프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
+          (라이트 구매자는 차액{" "}
+          {krw(PREMIUM_BUNDLE_PRICE_KRW - SELF_REPORT_PRICE_KRW)}, 완전판
+          구매자는 차액{" "}
+          {krw(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW)})
+        </li>
         <li>구독, 자동 갱신 또는 추가 결제 없음</li>
       </ul>
-      {!KO_UNMEI_ENABLED ? (
-        <p>
-          프리미엄 코스와 “운명의 설계도”는 현재 한국어판에서 판매 및 신규 이용을
-          일시 중지하고 있습니다.
-        </p>
-      ) : null}
       <p>
         표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
         화면에서 다시 확인할 수 있습니다.
@@ -116,14 +107,12 @@ export default function KoreanCommercePage() {
           다시 만들 수 있는 친구 분석 PDF
         </li>
         <li>
-          완전판: 라이트의 모든 기능, 연애 파트너 궁합 분석
+          완전판: 라이트의 모든 기능, 연애 파트너 궁합 분석, 한국어 운명의
+          설계도, 별자리 상담사 채팅 5회
         </li>
-        {KO_UNMEI_ENABLED ? (
-          <li>
-            프리미엄: 완전판의 모든 기능, 출생 정보와 성격 진단을 함께 읽는 한국어
-            운명의 설계도
-          </li>
-        ) : null}
+        <li>
+          프리미엄: 완전판의 모든 기능, 별자리 상담사 채팅 총 30회
+        </li>
       </ul>
       <p>
         웹 결과와 PDF는 구매 후에도 같은 결과 링크에서 반복해서 이용할 수 있습니다.
@@ -204,7 +193,7 @@ export default function KoreanCommercePage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 8월 12일</p>
+      <p>최종 개정일: 2026년 8월 14일</p>
     </KoreanLegalDocument>
   );
 }

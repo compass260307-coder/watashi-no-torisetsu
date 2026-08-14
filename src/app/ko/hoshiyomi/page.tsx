@@ -6,16 +6,17 @@ import {
   ensureHoshiyomiCreditsFromPurchase,
   listHoshiyomiConversations,
 } from "@/lib/hoshiyomi/store";
+import { localizedAlternates } from "@/lib/locale-seo";
 import { getSession } from "@/lib/session";
 import { hasFullAccess } from "@/lib/entitlements";
-import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "星読みの案内人と話す",
-  description: "性格診断と星読み鑑定をもとに、星読みの案内人と対話できます。",
-  alternates: localizedAlternates("ja", "/hoshiyomi", "/ko/hoshiyomi"),
+  title: { absolute: "별자리 상담사와 대화하기 | 나의 사용설명서" },
+  description:
+    "성격 진단과 운명의 설계도를 함께 참고하는 AI 별자리 상담사와 한국어로 대화하며 고민과 감정을 정리해 보세요.",
+  alternates: localizedAlternates("ko", "/hoshiyomi", "/ko/hoshiyomi"),
   robots: { index: false, follow: false },
 };
 
@@ -26,21 +27,21 @@ type PageProps = {
   }>;
 };
 
-export default async function HoshiyomiPage({ searchParams }: PageProps) {
+export default async function KoreanHoshiyomiPage({ searchParams }: PageProps) {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/ko/login");
 
   const paramsPromise: Promise<{
     chat?: string | string[];
     paid?: string | string[];
-  }> =
-    searchParams ?? Promise.resolve({});
-  const [conversationResult, creditResult, fullAccess, params] = await Promise.all([
-    listHoshiyomiConversations(session.id),
-    ensureHoshiyomiCreditsFromPurchase(session.id),
-    hasFullAccess(session.id),
-    paramsPromise,
-  ]);
+  }> = searchParams ?? Promise.resolve({});
+  const [conversationResult, creditResult, fullAccess, params] =
+    await Promise.all([
+      listHoshiyomiConversations(session.id),
+      ensureHoshiyomiCreditsFromPurchase(session.id),
+      hasFullAccess(session.id),
+      paramsPromise,
+    ]);
   const hasChatAccess =
     fullAccess && creditResult.available && creditResult.data.total > 0;
   const selectedId = typeof params.chat === "string" ? params.chat : null;
@@ -53,6 +54,7 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
       {params.paid === "1" && !hasChatAccess && session.owner_token ? (
         <PaidUnlockWatcher
           ownerToken={session.owner_token}
+          locale="ko"
           returnTo="hoshiyomi"
         />
       ) : null}
@@ -65,6 +67,7 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
         persistenceReady={conversationResult.available && creditResult.available}
         hasChatAccess={hasChatAccess}
         ownerToken={session.owner_token ?? undefined}
+        locale="ko"
       />
     </>
   );

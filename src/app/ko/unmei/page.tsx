@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoUnmeiExperience, {
@@ -12,7 +11,6 @@ import { hasUnmeiAccess } from "@/lib/entitlements";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { isReadingReady } from "@/lib/unmei/reading";
 import { localizedAlternates } from "@/lib/locale-seo";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +28,6 @@ type PageProps = {
 };
 
 export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
-  if (!KO_UNMEI_ENABLED) notFound();
-
   const params = (await searchParams) ?? {};
   const paid = Array.isArray(params.paid) ? params.paid[0] : params.paid;
   const session = await getSession();
@@ -47,7 +43,7 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
             ownerToken={session.owner_token}
             locale="ko"
             returnTo="unmei"
-            product="premium_bundle"
+            product="full_access"
           />
         ) : null}
         <main className="bg-[#F7F7FC] px-4 py-14 sm:px-8">
@@ -98,7 +94,7 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
         </div>
 
         <p className="mx-auto mt-8 max-w-[680px] text-center text-xs leading-6 text-[#7F8294]">
-          운명의 설계도는 프리미엄 코스에 포함됩니다. 이미 라이트 또는 완전판을
+          운명의 설계도는 완전판과 프리미엄 코스에 포함됩니다. 이미 라이트 코스를
           구매했다면 결제 화면에서 구매 금액을 뺀 차액만 청구됩니다. 결과는 오락과
           자기 이해를 위한 참고 정보이며 전문적인 진단을 대신하지 않습니다.
         </p>

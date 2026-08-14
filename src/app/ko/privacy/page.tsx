@@ -6,7 +6,6 @@ import {
   SITE_URL,
   localizedAlternates,
 } from "@/lib/locale-seo";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 export const metadata: Metadata = {
   title: { absolute: "개인정보처리방침 | 나의 사용설명서" },
@@ -35,7 +34,7 @@ export default function KoreanPrivacyPage() {
   return (
     <KoreanLegalDocument
       title="개인정보처리방침"
-      lastUpdated="2026년 8월 12일"
+      lastUpdated="2026년 8월 14일"
     >
       <p>
         나의 사용설명서 운영팀(이하 “운영자”)은 “나의 사용설명서” 한국어
@@ -57,11 +56,10 @@ export default function KoreanPrivacyPage() {
         <li>자기 진단과 친구 평가의 답변</li>
         <li>닉네임 또는 표시 이름</li>
         <li>로그인 링크와 결과 복구를 위해 입력한 이메일 주소</li>
-        {KO_UNMEI_ENABLED ? (
-          <li>
-            운명의 설계도 이용 시 입력하는 생년월일, 출생 시간과 출생 지역
-          </li>
-        ) : null}
+        <li>
+          운명의 설계도 이용 시 입력하는 생년월일, 출생 시간과 출생 지역
+        </li>
+        <li>별자리 상담사에게 입력한 상담 내용과 저장된 대화 기록</li>
         <li>문의할 때 이용자가 제공한 내용</li>
       </ul>
 
@@ -86,11 +84,10 @@ export default function KoreanPrivacyPage() {
       <h2>3. 처리 목적</h2>
       <ol>
         <li>성격 진단 결과의 계산, 저장과 표시</li>
-        {KO_UNMEI_ENABLED ? (
-          <li>
-            출생 순간의 천체 배치 계산과 한국어 운명의 설계도 생성 및 표시
-          </li>
-        ) : null}
+        <li>
+          출생 순간의 천체 배치 계산과 한국어 운명의 설계도 생성 및 표시
+        </li>
+        <li>성격 진단과 운명의 설계도를 참고한 별자리 상담 대화 제공</li>
         <li>친구 평가와 공유 기능 제공</li>
         <li>로그인 링크 발송과 결과 복구</li>
         <li>유료 콘텐츠 제공, 결제 확인, 환불과 구매 이력 관리</li>
@@ -151,14 +148,13 @@ export default function KoreanPrivacyPage() {
             <td>Resend, Inc.</td>
             <td>로그인 링크와 서비스 이메일 발송</td>
           </tr>
-          {KO_UNMEI_ENABLED ? (
-            <tr>
-              <td>Anthropic PBC</td>
-              <td>
-                성격 진단값과 계산된 천체 배치를 바탕으로 운명의 설계도 문장 생성
-              </td>
-            </tr>
-          ) : null}
+          <tr>
+            <td>Anthropic PBC</td>
+            <td>
+              성격 진단값과 계산된 천체 배치를 바탕으로 운명의 설계도 문장 및
+              별자리 상담 답변 생성
+            </td>
+          </tr>
           <tr>
             <td>Google LLC</td>
             <td>태그 관리와 서비스 이용 통계 분석</td>
@@ -175,11 +171,8 @@ export default function KoreanPrivacyPage() {
         서비스 이용 과정에서 정보가 암호화된 네트워크를 통해 일본, 미국 또는
         싱가포르 등에 있는 위탁 사업자의 서버로 전송·보관될 수 있습니다. 이전되는
         정보는 이메일, 진단·이용 기록, 유입 경로, 접속 정보와 결제 처리에 필요한
-        정보
-        {KO_UNMEI_ENABLED
-          ? ", 운명의 설계도 생성에 필요한 출생 정보와 계산 결과"
-          : ""}
-        이며,
+        정보, 운명의 설계도 생성에 필요한 출생 정보와 계산 결과 및 별자리 상담
+        내용이며,
         이전 목적은 제6조의 위탁 업무 수행입니다. 정보는 각 처리 목적 달성 또는
         계약 종료 시까지 보유되며, 법령상 보존이 필요한 경우에는 해당 기간 동안
         보유될 수 있습니다.
@@ -265,7 +258,7 @@ export default function KoreanPrivacyPage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 8월 12일</p>
+      <p>최종 개정일: 2026년 8월 14일</p>
     </KoreanLegalDocument>
   );
 }

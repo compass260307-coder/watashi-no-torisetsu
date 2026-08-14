@@ -78,6 +78,7 @@ export async function POST(request: Request) {
   if (!body.ok) {
     return NextResponse.json({ error: body.error }, { status: body.status });
   }
+  const locale = body.value.locale === "ko" ? "ko" : "ja";
   const conversationId = body.value.id;
   if (!isSafeOpaqueToken(conversationId, 8, 64)) {
     return NextResponse.json({ error: "Invalid conversation id" }, { status: 400 });
@@ -92,7 +93,12 @@ export async function POST(request: Request) {
   const newMessage = checkedMessage.data[0];
   if (!userText(newMessage)) {
     return NextResponse.json(
-      { error: `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。` },
+      {
+        error:
+          locale === "ko"
+            ? `메시지는 ${MAX_MESSAGE_LENGTH}자 이내로 입력해 주세요.`
+            : `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。`,
+      },
       { status: 400 },
     );
   }
@@ -107,13 +113,16 @@ export async function POST(request: Request) {
   const messages = [...checkedStored.data.slice(-20), newMessage];
 
   // プロンプト構築中の例外で回数が消費されないよう、構築後に予約する。
-  const instructions = await buildHoshiyomiInstructions(session.id);
+  const instructions = await buildHoshiyomiInstructions(session.id, locale);
   const reservationId = createIdGenerator({ prefix: "credit", size: 16 })();
   const usage = await reserveHoshiyomiMessage(session.id, reservationId);
   if (!usage.allowed || !usage.ownerId) {
     return NextResponse.json(
       {
-        error: "チャットの利用回数を使い切りました。",
+        error:
+          locale === "ko"
+            ? "채팅 횟수를 모두 사용했어요."
+            : "チャットの利用回数を使い切りました。",
         code: "credits_exhausted",
         used: usage.used,
         remaining: usage.remaining,
@@ -169,7 +178,9 @@ export async function POST(request: Request) {
       onError: (error) => {
         streamFailed = true;
         console.error("[hoshiyomi] model stream failed", error);
-        return "うまく星を読めませんでした。少し時間をおいて、もう一度お話しください。";
+        return locale === "ko"
+          ? "별을 제대로 읽지 못했어요. 잠시 뒤 다시 이야기해 주세요."
+          : "うまく星を読めませんでした。少し時間をおいて、もう一度お話しください。";
       },
     }),
     consumeSseStream: consumeStream,

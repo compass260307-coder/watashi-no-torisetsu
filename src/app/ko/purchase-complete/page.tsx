@@ -8,7 +8,6 @@ import {
   verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { localizedAlternates } from "@/lib/locale-seo";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +65,7 @@ export default async function KoreanPurchaseCompletePage({
       : session.product === "premium_bundle"
         ? "프리미엄 코스"
         : "완전판 코스";
-  const isPremium = session.product === "premium_bundle";
+  const hasDestinyFeatures = session.product !== "self_report";
 
   return (
     <>
@@ -144,13 +143,21 @@ export default async function KoreanPurchaseCompletePage({
 
       <LoginCard locale="ko" />
 
-      {isPremium && !session.guest && KO_UNMEI_ENABLED ? (
-        <Link
-          href="/ko/unmei"
-          className="mt-5 w-full max-w-[420px] rounded-full bg-[#9A6A24] px-6 py-4 text-center text-sm font-black text-white"
-        >
-          운명의 설계도 만들기 →
-        </Link>
+      {hasDestinyFeatures && !session.guest ? (
+        <div className="mt-5 grid w-full max-w-[420px] gap-3">
+          <Link
+            href="/ko/unmei"
+            className="rounded-full bg-[#9A6A24] px-6 py-4 text-center text-sm font-black text-white"
+          >
+            운명의 설계도 만들기 →
+          </Link>
+          <Link
+            href="/ko/hoshiyomi"
+            className="rounded-full bg-[#5B5BEF] px-6 py-4 text-center text-sm font-black text-white"
+          >
+            별자리 상담사와 대화하기 →
+          </Link>
+        </div>
       ) : null}
 
       <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">

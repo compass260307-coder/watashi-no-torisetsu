@@ -38,8 +38,10 @@ const LOCALIZED_PATHS: Record<string, Record<SiteLocale, string>> = {
   "/ko/types": { ja: "/types", ko: "/ko/types" },
   "/articles": { ja: "/articles", ko: "/ko/articles" },
   "/ko/articles": { ja: "/articles", ko: "/ko/articles" },
-  "/unmei": { ja: "/unmei", ko: "/ko" },
-  "/ko/unmei": { ja: "/unmei", ko: "/ko" },
+  "/unmei": { ja: "/unmei", ko: "/ko/unmei" },
+  "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei" },
+  "/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
+  "/ko/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
 };
 
 function normalizePathname(pathname: string): string {

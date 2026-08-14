@@ -31,7 +31,6 @@ import {
 } from "@/lib/access-products";
 import { track } from "@/lib/track";
 import type { ResultLocale } from "@/i18n/result";
-import { KO_UNMEI_ENABLED } from "@/lib/feature-flags";
 
 type PlanDefinition = Readonly<{
   product: AccessProduct;
@@ -131,7 +130,7 @@ const KO_PLANS: readonly PlanDefinition[] = [
   },
   {
     product: "full_access",
-    eyebrow: "연애 궁합까지 즐기기",
+    eyebrow: "연애와 별자리 상담까지 즐기기",
     title: "완전판 코스",
     basePrice: FULL_ACCESS_PRICE_KRW,
     listPrice: FULL_ACCESS_LIST_PRICE_KRW,
@@ -146,6 +145,8 @@ const KO_PLANS: readonly PlanDefinition[] = [
       "두 번째 친구부터 친구 진단 결과 전체 해제",
       "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
       "연애 파트너 궁합 분석",
+      "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
+      "별자리 상담사와의 채팅 5회분",
     ],
   },
   {
@@ -158,20 +159,17 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 4,
+    inheritedItemCount: 6,
     items: [
       "자기 진단의 잠긴 결과 전체 해제",
       "16페이지 이상의 자기 분석 PDF",
       "친구 진단 결과와 친구 분석 PDF 전체 해제",
       "연애 파트너 궁합 분석",
       "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
+      "별자리 상담사와의 채팅 30회분",
     ],
   },
 ] as const;
-
-const ACTIVE_KO_PLANS = KO_UNMEI_ENABLED
-  ? KO_PLANS
-  : KO_PLANS.filter((plan) => plan.product !== "premium_bundle");
 
 function formatJpy(value: number): string {
   return `¥${value.toLocaleString("ja-JP")}`;
@@ -237,12 +235,6 @@ function PlanCard({
       }`}
       style={{ borderColor: plan.accent }}
     >
-      {plan.product === "full_access" ? (
-        <span className="absolute right-4 top-0 z-10 -translate-y-1/2 whitespace-nowrap rounded-full bg-[#5B5BEF] px-4 py-1 text-[10px] font-black tracking-[0.08em] text-white md:right-5 md:px-5 md:py-1.5 md:text-[11px]">
-          {locale === "ko" ? "추천" : "おすすめ"}
-        </span>
-      ) : null}
-
       <div
         className={
           plan.iconSrc
@@ -408,7 +400,7 @@ export function SelfAccessPlanCarousel({
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
 }) {
-  const allPlans = locale === "ko" ? ACTIVE_KO_PLANS : JA_PLANS;
+  const allPlans = locale === "ko" ? KO_PLANS : JA_PLANS;
   const plans = useMemo(
     () =>
       products

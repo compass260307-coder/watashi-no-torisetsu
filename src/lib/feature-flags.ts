@@ -12,16 +12,3 @@
 export function isThirtyTwoEnabled(): boolean {
   return process.env.NEXT_PUBLIC_THIRTYTWO_ENABLED === "true";
 }
-
-// 韓国語「運命の設計図」の公開フラグ。
-//
-// - ローカル `next dev`: 未設定なら確認しやすいよう公開
-// - Production / Preview build: 未設定なら非公開
-// - 再公開: Vercel に NEXT_PUBLIC_KO_UNMEI_ENABLED=true を設定して再デプロイ
-//
-// クライアントの料金UIとサーバーのページ・Checkoutで同じ値を使い、
-// ページだけ閉じたままプレミアム商品を販売する不整合を防ぐ。
-export const KO_UNMEI_ENABLED =
-  process.env.NEXT_PUBLIC_KO_UNMEI_ENABLED === "true" ||
-  (process.env.NEXT_PUBLIC_KO_UNMEI_ENABLED === undefined &&
-    process.env.NODE_ENV === "development");

@@ -299,7 +299,6 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     .select("id, user_id, stripe_session_id, payment_kind, metadata, paid_at")
     .in("user_id", userIds)
     .eq("status", "completed")
-    .eq("currency", "jpy")
     .in("payment_kind", ["full_access", "premium_bundle"])
     .order("paid_at", { ascending: true });
   if (error) {
