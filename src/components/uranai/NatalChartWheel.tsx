@@ -25,6 +25,8 @@ import {
   type MoonArc,
   type WheelLayout,
 } from "@/lib/unmei/chart-view";
+import type { ResultLocale } from "@/i18n/result";
+import { UNMEI_CHART_COPY } from "@/i18n/unmei";
 
 const WHITE = "#FFFFFF"; // 線・文字 (天体の点=黄は defs の uw-dot グラデで描く)
 
@@ -33,6 +35,7 @@ type Props = {
   timeUnknown: boolean;
   moonArc: MoonArc | null;
   essence?: string | null; // 中央に置く 32タイプ称号 (例: 寄添者)。無ければ非表示。
+  locale?: ResultLocale;
 };
 
 export default function NatalChartWheel({
@@ -40,8 +43,9 @@ export default function NatalChartWheel({
   timeUnknown,
   moonArc,
   essence = null,
+  locale = "ja",
 }: Props) {
-  const view = buildChartView(chart, { timeUnknown, moonArc });
+  const view = buildChartView(chart, { timeUnknown, moonArc, locale });
   if (!view) return null;
   const L = layoutWheel(view);
 
@@ -50,7 +54,7 @@ export default function NatalChartWheel({
     // ★背景グラデは section 側に敷き、SVG 背景は透明にする。こうすると SVG の矩形境界が
     //   消え、ドームがセクション全体で連続する (「明るい四角が浮く」= 2層の主因を解消)。
     <section
-      aria-label="出生図"
+      aria-label={UNMEI_CHART_COPY[locale].label}
       className="mt-8 py-12"
       style={{
         background:
@@ -91,6 +95,7 @@ export function WheelSvg({
 }) {
   const show = (l: Exclude<WheelLayer, "all">) => layer === "all" || layer === l;
   const idp = `uw-${layer}`; // defs id の衝突回避 (レイヤー3枚が同居するため)
+  const copy = UNMEI_CHART_COPY[view.locale];
 
   // 太陽・月だけのラベル位置 (軌道の少し外側・同じ角度)。時刻不明の月は弧の中央。
   const keyLabels: { key: string; label: string; x: number; y: number }[] =
@@ -107,7 +112,7 @@ export function WheelSvg({
       WHEEL.rDot + 17,
       (view.moonArc.startLon + delta / 2) % 360,
     );
-    keyLabels.push({ key: "moon", label: "月", x, y });
+    keyLabels.push({ key: "moon", label: copy.moon, x, y });
   }
   const a11y =
     layer === "all"
@@ -245,7 +250,7 @@ export function WheelSvg({
                 dominantBaseline="middle"
                 style={{ letterSpacing: "0.34em" }}
               >
-                あなたの星の称号
+                {copy.titleLabel}
               </text>
               <text
                 x={WHEEL.cx}
@@ -463,7 +468,7 @@ export function PlanetList({
       {/* 正確さの表明: 時刻不明で月が範囲になっていることの注記 (白) */}
       {view.timeUnknown && (
         <p className="mt-5 text-[12px] leading-relaxed text-white/70">
-          出生時刻が分かると、月の位置が一点に定まります。
+          {UNMEI_CHART_COPY[view.locale].timeUnknownNote}
         </p>
       )}
     </>

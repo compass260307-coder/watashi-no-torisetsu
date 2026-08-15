@@ -226,6 +226,8 @@ export function FullAccessPromoCard({
   surface = "self",
   ctaSource,
   products,
+  previewMode = false,
+  legacyPlanStyle = false,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -239,6 +241,10 @@ export function FullAccessPromoCard({
   surface?: "self" | "tako";
   ctaSource?: string;
   products?: readonly AccessProduct[];
+  /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
+  previewMode?: boolean;
+  /** 3コース化以前のコンパクトな単一課金カード表示。 */
+  legacyPlanStyle?: boolean;
 }) {
   const isKorean = locale === "ko";
   // 自己診断・友達診断・相性は日韓とも現行の3コース比較へ統一。
@@ -351,6 +357,8 @@ export function FullAccessPromoCard({
           returnTo={returnTo ?? (surface === "tako" ? "tako" : "me")}
           locale={locale}
           products={products}
+          previewMode={previewMode}
+          legacyStyle={legacyPlanStyle}
         />
       </div>
     );

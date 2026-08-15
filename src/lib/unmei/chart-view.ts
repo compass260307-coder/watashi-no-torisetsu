@@ -7,6 +7,8 @@
 //     範囲(moonArc)は呼び出し側がエフェメリスで算出して渡す(この層はエフェメリスに依存しない)。
 //   - SVG座標(layoutWheel)もここで算出し、React描画とテスト用SVGダンプで同じ計算を共有する。
 
+import type { ResultLocale } from "@/i18n/result";
+
 export const SIGN_ORDER = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
@@ -17,11 +19,20 @@ export const SIGN_JA: Record<string, string> = {
   Leo: "獅子座", Virgo: "乙女座", Libra: "天秤座", Scorpio: "蠍座",
   Sagittarius: "射手座", Capricorn: "山羊座", Aquarius: "水瓶座", Pisces: "魚座",
 };
+export const SIGN_KO: Record<string, string> = {
+  Aries: "양자리", Taurus: "황소자리", Gemini: "쌍둥이자리", Cancer: "게자리",
+  Leo: "사자자리", Virgo: "처녀자리", Libra: "천칭자리", Scorpio: "전갈자리",
+  Sagittarius: "사수자리", Capricorn: "염소자리", Aquarius: "물병자리", Pisces: "물고기자리",
+};
 
 // 図に載せる天体 = 古典7天体 + ASC/MC (ASC/MC は時刻既知時のみ chart に存在)。
 export const BODY_JA: Record<string, string> = {
   sun: "太陽", moon: "月", mercury: "水星", venus: "金星",
   mars: "火星", jupiter: "木星", saturn: "土星", asc: "上昇宮", mc: "天頂",
+};
+export const BODY_KO: Record<string, string> = {
+  sun: "태양", moon: "달", mercury: "수성", venus: "금성",
+  mars: "화성", jupiter: "목성", saturn: "토성", asc: "상승점", mc: "천정점",
 };
 const CLASSIC = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"] as const;
 
@@ -39,6 +50,7 @@ export type MoonArc = { startLon: number; endLon: number; start: Pos; end: Pos }
 export type WheelBody = { key: string; label: string; lon: number };
 export type Aspect = { fromLon: number; toLon: number };
 export type ChartView = {
+  locale: ResultLocale;
   timeUnknown: boolean;
   points: WheelBody[]; // 点で描く天体 (時刻不明時は月を含まない)
   moonArc: MoonArc | null; // 時刻不明時の月の範囲 (弧)
@@ -55,8 +67,13 @@ export function absLon(p: Pos): number {
 export function signJa(sign: string): string {
   return SIGN_JA[sign] ?? sign;
 }
-export function fmtPos(p: Pos): string {
-  return `${signJa(p.sign)}${p.degree.toFixed(1)}°`;
+export function signName(sign: string, locale: ResultLocale = "ja"): string {
+  return (locale === "ko" ? SIGN_KO : SIGN_JA)[sign] ?? sign;
+}
+export function fmtPos(p: Pos, locale: ResultLocale = "ja"): string {
+  return locale === "ko"
+    ? `${signName(p.sign, locale)} ${p.degree.toFixed(1)}°`
+    : `${signName(p.sign, locale)}${p.degree.toFixed(1)}°`;
 }
 
 // 主要アスペクト(角度)とオーブ。60°(セクスタイル)は本数を抑えるため ±4°、他は ±6°。
@@ -76,11 +93,17 @@ function separationDeg(a: number, b: number): number {
 // chart + (時刻不明時の) moonArc からビューモデルを組み立てる。
 export function buildChartView(
   chart: Chart | null | undefined,
-  opts: { timeUnknown?: boolean; moonArc?: MoonArc | null },
+  opts: {
+    timeUnknown?: boolean;
+    moonArc?: MoonArc | null;
+    locale?: ResultLocale;
+  },
 ): ChartView | null {
   if (!chart || !chart.planets || !chart.planets.sun) return null;
   const timeUnknown = opts.timeUnknown ?? chart.houses_available === false;
   const moonArc = timeUnknown ? opts.moonArc ?? null : null;
+  const locale = opts.locale ?? "ja";
+  const bodyLabels = locale === "ko" ? BODY_KO : BODY_JA;
   const planets = chart.planets;
   const points: WheelBody[] = [];
   const listItems: ChartView["listItems"] = [];
@@ -95,23 +118,31 @@ export function buildChartView(
         const e = moonArc.end;
         const text =
           s.sign === e.sign
-            ? `${signJa(s.sign)}${Math.floor(s.degree)}°〜${Math.floor(e.degree)}°のあいだ`
-            : `${signJa(s.sign)}${Math.floor(s.degree)}°〜${signJa(e.sign)}${Math.floor(e.degree)}°のあいだ`;
-        listItems.push({ key, label: BODY_JA[key], text });
+            ? locale === "ko"
+              ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${Math.floor(e.degree)}° 사이`
+              : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${Math.floor(e.degree)}°のあいだ`
+            : locale === "ko"
+              ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${signName(e.sign, locale)} ${Math.floor(e.degree)}° 사이`
+              : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${signName(e.sign, locale)}${Math.floor(e.degree)}°のあいだ`;
+        listItems.push({ key, label: bodyLabels[key], text });
       } else {
-        listItems.push({ key, label: BODY_JA[key], text: "時刻不明のため位置未確定" });
+        listItems.push({
+          key,
+          label: bodyLabels[key],
+          text: locale === "ko" ? "출생 시간을 몰라 위치 미확정" : "時刻不明のため位置未確定",
+        });
       }
       continue;
     }
-    points.push({ key, label: BODY_JA[key], lon: absLon(p) });
-    listItems.push({ key, label: BODY_JA[key], text: fmtPos(p) });
+    points.push({ key, label: bodyLabels[key], lon: absLon(p) });
+    listItems.push({ key, label: bodyLabels[key], text: fmtPos(p, locale) });
   }
   // ASC/MC (時刻既知時のみ)
   for (const key of ["asc", "mc"] as const) {
     const p = chart[key];
     if (p && p.sign) {
-      points.push({ key, label: BODY_JA[key], lon: absLon(p) });
-      listItems.push({ key, label: BODY_JA[key], text: fmtPos(p) });
+      points.push({ key, label: bodyLabels[key], lon: absLon(p) });
+      listItems.push({ key, label: bodyLabels[key], text: fmtPos(p, locale) });
     }
   }
 
@@ -134,8 +165,11 @@ export function buildChartView(
   }
 
   const ariaLabel =
-    "出生図。" + listItems.map((it) => `${it.label} ${it.text}`).join("、");
-  return { timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
+    (locale === "ko" ? "출생 차트. " : "出生図。") +
+    listItems
+      .map((it) => `${it.label} ${it.text}`)
+      .join(locale === "ko" ? ", " : "、");
+  return { locale, timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
 }
 
 // 決定的PRNG (mulberry32)。整数演算のみなので JSエンジン間でビット一致し、
@@ -271,7 +305,11 @@ export function layoutWheel(view: ChartView): WheelLayout {
     const [x2, y2] = polar(rOuter, i * 30);
     ticks.push({ x1, y1, x2, y2 });
     const [tx, ty] = polar(rSignText, i * 30 + 15);
-    signLabels.push({ x: tx, y: ty, text: SIGN_JA[SIGN_ORDER[i]] });
+    signLabels.push({
+      x: tx,
+      y: ty,
+      text: signName(SIGN_ORDER[i], view.locale),
+    });
   }
 
   // ラベル用マーカー = 点の天体 + (時刻不明の)月(弧の中央角度で配置)
@@ -281,7 +319,11 @@ export function layoutWheel(view: ChartView): WheelLayout {
   if (view.moonArc) {
     const { startLon, endLon } = view.moonArc;
     const delta = ((endLon - startLon) % 360 + 360) % 360;
-    markers.push({ key: "moon", label: "月", lon: (startLon + delta / 2) % 360 });
+    markers.push({
+      key: "moon",
+      label: view.locale === "ko" ? BODY_KO.moon : BODY_JA.moon,
+      lon: (startLon + delta / 2) % 360,
+    });
   }
 
   const adj = declump(markers, labelGapDeg);

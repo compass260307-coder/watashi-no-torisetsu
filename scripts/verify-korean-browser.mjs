@@ -19,7 +19,14 @@ const ROUTES = [
   "/ko/diagnosis",
   "/ko/tako",
   "/ko/aisho",
+  "/ko/unmei",
+  "/ko/hoshiyomi",
   "/ko/types",
+  "/ko/articles/tako-bunseki",
+  "/ko/tako/preview?previewLocked=1&fromPreview=1&friends=1",
+  "/ko/tako/preview/friend/preview-friend?previewType=sparkle-dolphin__N&fromPreview=1",
+  "/ko/evaluate/result/preview?previewType=sparkle-dolphin__N&fromPreview=1",
+  "/ko/me/preview?previewType=sparkle-dolphin__N&fromPreview=1",
   "/ko/preview/sparkle-dolphin__N",
 ];
 
@@ -93,6 +100,30 @@ try {
         "accept-language": "ko-KR,ko;q=0.9,ja;q=0.5,en;q=0.3",
       });
 
+      if (viewport.name === "mobile" && ["/ko", "/ko/types"].includes(route)) {
+        await page.evaluateOnNewDocument((fixtureRoute) => {
+          try {
+            const ownerKey = "torisetsu_owner_token";
+            const friendKey = "wt_tako_attention_pending_owner_v1";
+            const destinyKey = "wt_unmei_attention_pending_owner_v1";
+            const selfKey = "wt_me_attention_pending_v1";
+            for (const key of [ownerKey, friendKey, destinyKey, selfKey]) {
+              localStorage.removeItem(key);
+            }
+            if (fixtureRoute === "/ko") {
+              localStorage.setItem(selfKey, "1");
+            } else {
+              const token = "ko-browser-notification-fixture";
+              localStorage.setItem(ownerKey, token);
+              localStorage.setItem(friendKey, token);
+              localStorage.setItem(destinyKey, token);
+            }
+          } catch {
+            // The target origin may not be available on the initial blank document.
+          }
+        }, route);
+      }
+
       const url = `${BASE_URL}${route}`;
       const response = await page.goto(url, {
         waitUntil: "networkidle2",
@@ -113,6 +144,7 @@ try {
           ...document.querySelectorAll('a[href="/diagnosis"], a[href="/tako"]'),
         ].filter((a) => !a.textContent?.includes("日本語"));
         return {
+          pathname: window.location.pathname,
           lang: document.documentElement.lang,
           hasKoLangContainer: Boolean(document.querySelector('[lang="ko"]')),
           hasLoginCopy: bodyText.includes("로그인"),
@@ -122,10 +154,88 @@ try {
             text: a.textContent?.trim().slice(0, 80) ?? "",
           })),
           hasQrInviteCopy: bodyText.includes("친구 진단 초대 QR 코드"),
+          hasKoreanFriendProof:
+            bodyText.includes("1,458명 이상") &&
+            bodyText.includes("의 친구가 친구 진단에 답했어요"),
+          hasKoreanUnmeiPromo:
+            bodyText.includes("운명의 설계도") &&
+            Boolean(document.querySelector('a[href="/ko/unmei"]')),
+          notificationLabels: [
+            ...document.querySelectorAll('[data-notification-badge="true"]'),
+          ].map((badge) => badge.closest("a")?.textContent?.trim() ?? ""),
+          hasResetAction: [...document.querySelectorAll("header button")].some(
+            (button) => button.textContent?.includes("데이터 초기화"),
+          ),
+          hasLoginModalTrigger: [...document.querySelectorAll("header button")].some(
+            (button) => button.textContent?.trim() === "로그인",
+          ),
+          footerArticleHrefs: [
+            ...document.querySelectorAll('footer a[href^="/ko/articles/"]'),
+          ].map((anchor) => anchor.getAttribute("href")),
+          hasTakoFooterLink: Boolean(
+            document.querySelector('footer a[href="/ko/articles/tako-bunseki"]'),
+          ),
+          hasKoreanTakoArticle:
+            bodyText.includes(
+              "타인 분석은 어떻게 할까? 자기 분석만으로는 알 수 없는 ‘나’를 발견하는 법",
+            ) && bodyText.includes("타인 분석 방법 3단계"),
+          hasKoreanFriendIndividual:
+            bodyText.includes("관점 일치도") &&
+            bodyText.includes("친구들이 본 나로 돌아가기"),
+          hasKoreanEvaluationResult:
+            bodyText.includes("관점 일치도") &&
+            bodyText.includes("사용설명서로 돌아가기") &&
+            !bodyText.includes("친구들이 본 나로 돌아가기"),
+          footerSocialHrefs: [
+            ...document.querySelectorAll(
+              'footer a[href*="instagram.com"], footer a[href*="x.com/"], footer a[href*="tiktok.com"]',
+            ),
+          ].map((anchor) => anchor.getAttribute("href")),
           overflowX:
             document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       });
+
+      let hasKoreanLoginModal = false;
+      if (route === "/ko") {
+        if (viewport.name === "mobile") {
+          await page.click('button[aria-label="메뉴 열기"]');
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
+        const clickedLogin = await page.evaluate(() => {
+          const buttons = [...document.querySelectorAll("header button")];
+          const target = buttons.find((button) => {
+            const box = button.getBoundingClientRect();
+            return (
+              button.textContent?.trim() === "로그인" &&
+              box.width > 0 &&
+              box.height > 0
+            );
+          });
+          if (!target) return false;
+          target.click();
+          return true;
+        });
+        if (clickedLogin) {
+          try {
+            await page.waitForSelector('[role="dialog"][aria-label="로그인"]', {
+              timeout: 3000,
+            });
+            hasKoreanLoginModal = await page.evaluate(() => {
+              const dialog = document.querySelector(
+                '[role="dialog"][aria-label="로그인"]',
+              );
+              return Boolean(
+                dialog?.textContent?.includes("로그인 링크 받기") &&
+                  dialog?.textContent?.includes("이메일 주소"),
+              );
+            });
+            await page.keyboard.press("Escape");
+          } catch {
+            hasKoreanLoginModal = false;
+          }
+        }
+      }
 
       const routeLabel = `${viewport.name} ${route}`;
       results.push({
@@ -133,6 +243,7 @@ try {
         route,
         status,
         ...state,
+        hasKoreanLoginModal,
         rawJapaneseRouteHrefCount: state.rawJapaneseRouteHrefs.length,
         consoleErrorCount: consoleErrors.length,
         pageErrorCount: pageErrors.length,
@@ -151,7 +262,67 @@ try {
       if (route === "/ko" && !state.hasLoginCopy) {
         problems.push(`${routeLabel}: missing Korean login copy`);
       }
-      if (viewport.name === "mobile" && !state.hasKoreanBottomNav) {
+      if (route === "/ko" && !state.hasLoginModalTrigger) {
+        problems.push(`${routeLabel}: Korean login is not a modal trigger`);
+      }
+      if (route === "/ko" && !hasKoreanLoginModal) {
+        problems.push(`${routeLabel}: Korean login modal did not open`);
+      }
+      if (route === "/ko" && !state.hasResetAction) {
+        problems.push(`${routeLabel}: missing Korean data reset action`);
+      }
+      if (route === "/ko" && state.footerArticleHrefs.length < 4) {
+        problems.push(`${routeLabel}: missing direct Korean article links`);
+      }
+      if (route === "/ko" && !state.hasTakoFooterLink) {
+        problems.push(`${routeLabel}: missing direct Korean tako-bunseki footer link`);
+      }
+      if (
+        route === "/ko/articles/tako-bunseki" &&
+        !state.hasKoreanTakoArticle
+      ) {
+        problems.push(`${routeLabel}: Korean tako-bunseki article copy is missing`);
+      }
+      if (
+        route.startsWith("/ko/tako/preview/friend/") &&
+        (!state.hasKoreanFriendIndividual ||
+          state.pathname !== "/ko/tako/preview/friend/preview-friend")
+      ) {
+        problems.push(`${routeLabel}: Korean friend detail did not render on its dedicated route`);
+      }
+      if (
+        route.startsWith("/ko/evaluate/result/preview?") &&
+        (!state.hasKoreanEvaluationResult ||
+          state.pathname !== "/ko/evaluate/result/preview")
+      ) {
+        problems.push(
+          `${routeLabel}: Korean evaluation result did not render the evaluate variant on its dedicated route`,
+        );
+      }
+      if (route === "/ko" && state.footerSocialHrefs.length < 3) {
+        problems.push(`${routeLabel}: missing Korean social links`);
+      }
+      if (
+        viewport.name === "mobile" &&
+        route === "/ko" &&
+        !state.notificationLabels.some((label) => label.includes("사용설명서"))
+      ) {
+        problems.push(`${routeLabel}: missing Korean self-diagnosis notification badge`);
+      }
+      if (
+        viewport.name === "mobile" &&
+        route === "/ko/types" &&
+        !["친구 진단", "운명"].every((expected) =>
+          state.notificationLabels.some((label) => label.includes(expected)),
+        )
+      ) {
+        problems.push(`${routeLabel}: missing Korean friend/destiny notification badges`);
+      }
+      if (
+        viewport.name === "mobile" &&
+        !route.startsWith("/ko/evaluate/result/") &&
+        !state.hasKoreanBottomNav
+      ) {
         problems.push(`${routeLabel}: missing Korean bottom navigation`);
       }
       if (state.rawJapaneseRouteHrefs.length > 0) {
@@ -166,6 +337,18 @@ try {
         state.hasQrInviteCopy
       ) {
         problems.push(`${routeLabel}: self preview includes QR invite copy`);
+      }
+      if (
+        route.startsWith("/ko/tako/preview?") &&
+        !state.hasKoreanFriendProof
+      ) {
+        problems.push(`${routeLabel}: Korean friend-diagnosis proof band is missing`);
+      }
+      if (
+        route.startsWith("/ko/me/preview?") &&
+        !state.hasKoreanUnmeiPromo
+      ) {
+        problems.push(`${routeLabel}: Korean unmei promo is missing or links outside /ko`);
       }
       if (state.overflowX > 4) {
         problems.push(`${routeLabel}: horizontal overflow ${state.overflowX}px`);

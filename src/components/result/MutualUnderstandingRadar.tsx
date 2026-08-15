@@ -6,6 +6,7 @@
 // B 評価 polygon (logoBlue 22%) を後ろ、A 自己 polygon (vividPink 22%) を前面に重ねる。
 
 import type { DimensionGap } from "@/lib/perception-analysis";
+import type { ResultLocale } from "@/i18n/result";
 
 const SIZE = 280;
 const CENTER = SIZE / 2;
@@ -18,6 +19,7 @@ interface RadarProps {
   otherColor?: string;
   selfLabel: string;
   otherLabel: string;
+  locale?: ResultLocale;
 }
 
 function angleFor(i: number): number {
@@ -45,6 +47,7 @@ export function MutualUnderstandingRadar({
   otherColor = "#0094D8",
   selfLabel,
   otherLabel,
+  locale = "ja",
 }: RadarProps) {
   if (gaps.length !== 5) {
     // 5 次元固定の前提が崩れた場合は何も描画しない (本フェーズでは到達しない想定)
@@ -73,7 +76,11 @@ export function MutualUnderstandingRadar({
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         className="w-full max-w-[300px] h-auto"
         role="img"
-        aria-label={`${selfLabel} と ${otherLabel} の Big Five 5 次元レーダーチャート`}
+        aria-label={
+          locale === "ko"
+            ? `${selfLabel}과 ${otherLabel}의 Big Five 5개 축 레이더 차트`
+            : `${selfLabel} と ${otherLabel} の Big Five 5 次元レーダーチャート`
+        }
       >
         {/* グリッド (同心多角形 5 段) */}
         {gridRings.map((points, i) => (

@@ -27,7 +27,7 @@ export async function buildHoshiyomiInstructions(
       .select("reading")
       .eq("user_id", userId)
       .maybeSingle(),
-    resolveUnmeiPromptInputs(supabaseAdmin, userId),
+    resolveUnmeiPromptInputs(supabaseAdmin, userId, requestedLocale),
   ]);
 
   const reading = (readingRow?.reading ?? {}) as Reading;

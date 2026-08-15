@@ -15,6 +15,7 @@ import {
   thirtyTwoName,
 } from "@/lib/thirty-two-types";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 
 type Scores = Record<string, number>;
 
@@ -24,6 +25,12 @@ const GROUP_LABEL: Record<ThirtyTwoGroup, string> = {
   land: "陸",
   sea: "海",
   unknown: "未知",
+};
+const KO_GROUP_LABEL: Record<ThirtyTwoGroup, string> = {
+  sky: "하늘",
+  land: "육지",
+  sea: "바다",
+  unknown: "미지",
 };
 
 export type UnmeiIdentity = {
@@ -36,6 +43,7 @@ export type UnmeiIdentity = {
 export async function resolveUnmeiPromptInputs(
   supabaseAdmin: SupabaseClient,
   userId: string,
+  requestedLocale?: "ja" | "ko",
 ): Promise<{
   scores: Scores | null;
   essence: string | null;
@@ -45,7 +53,7 @@ export async function resolveUnmeiPromptInputs(
 }> {
   const { data } = await supabaseAdmin
     .from("users")
-    .select("scores")
+    .select("scores, preferred_locale")
     .eq("id", userId)
     .maybeSingle();
   const scores = (data?.scores as Scores | undefined) ?? null;
@@ -60,15 +68,19 @@ export async function resolveUnmeiPromptInputs(
   try {
     const id = classifyThirtyTwoType(scores);
     const group = thirtyTwoGroup(id);
+    const locale = requestedLocale ?? (data?.preferred_locale === "ko" ? "ko" : "ja");
+    const koCopy = locale === "ko" ? KO_RESULT_TYPES[id] : null;
+    const typeName = koCopy?.name ?? thirtyTwoName(id);
+    const essence = koCopy?.essence ?? thirtyTwoEssence(id);
     return {
       scores,
-      essence: thirtyTwoEssence(id),
-      typeName: thirtyTwoName(id),
+      essence,
+      typeName,
       animalSlug: thirtyTwoAnimalSlug(id),
       identity: {
-        typeName: thirtyTwoName(id),
-        catchphrase: thirtyTwoCatchphrase(id),
-        groupLabel: GROUP_LABEL[group],
+        typeName,
+        catchphrase: koCopy?.oneLiner ?? thirtyTwoCatchphrase(id),
+        groupLabel: locale === "ko" ? KO_GROUP_LABEL[group] : GROUP_LABEL[group],
         groupColor: thirtyTwoColor(id),
       },
     };

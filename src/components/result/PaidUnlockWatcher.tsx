@@ -79,7 +79,7 @@ export function PaidUnlockWatcher({
             astrologer?: boolean;
           };
           const unlocked =
-            returnTo === "hoshiyomi"
+            returnTo === "hoshiyomi" && product === "premium_bundle"
               ? data.astrologer
               : product === "self_report"
                 ? data.selfReport
@@ -136,10 +136,10 @@ export function PaidUnlockWatcher({
             ) : (
               <>
                 {product === "self_report"
-                  ? "自己診断・友達診断の解放まで、もう少しお待ちください。"
+                  ? "自己診断と自己分析PDFの解放まで、もう少しお待ちください。"
                   : product === "premium_bundle"
-                    ? "すべての機能とチャット30回分の解放まで、もう少しお待ちください。"
-                    : "運命の設計図とチャット5回分の解放まで、もう少しお待ちください。"}
+                    ? "すべての機能と専属占い師チャットの解放まで、もう少しお待ちください。"
+                    : "完全版機能の解放まで、もう少しお待ちください。"}
                 <br />自動でひらきます。
               </>
             )}

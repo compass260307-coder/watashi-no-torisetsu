@@ -807,7 +807,11 @@ export default function DiagnosisPageContent({
       </div>
     </div>
     {/* サイト共通フッター (直上のシェアバンドの波エッジが区切りになるため上端線は消す) */}
-    {isKorean ? <KoTopFooter /> : <TopFooter topBorder={false} />}
+    {isKorean ? (
+      <KoTopFooter topBorder={false} />
+    ) : (
+      <TopFooter topBorder={false} />
+    )}
     </>
   );
 }

@@ -6,6 +6,8 @@
 // 未回答の質問は呼び出し側でフィルタ済み (entries が空ならカード自体を出さない)。
 // 見出しにのみ友達名を表示 (フル表示・切り捨てなし)。Server Component。
 
+import type { ResultLocale } from "@/i18n/result";
+
 interface MessageEntry {
   label: string;
   value: string;
@@ -14,15 +16,19 @@ interface MessageEntry {
 export function PerceptionMessageCard({
   entries,
   perceiverName,
+  locale = "ja",
 }: {
   entries: MessageEntry[];
   perceiverName: string;
+  locale?: ResultLocale;
 }) {
   if (entries.length === 0) return null;
   return (
     <div className="bg-white rounded-3xl border-2 border-[#0094D8]/25 shadow-md p-6 mb-8">
       <p className="text-[#5B5BEF] font-bold text-sm mb-4 text-center">
-        {perceiverName}さんからのメッセージ
+        {locale === "ko"
+          ? `${perceiverName}님이 남긴 메시지`
+          : `${perceiverName}さんからのメッセージ`}
       </p>
       <ul className="flex flex-col gap-4">
         {entries.map((e) => (

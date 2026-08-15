@@ -1,8 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 function UserSearchIcon() {
   return (
@@ -65,34 +61,6 @@ function StepDots() {
 }
 
 export function KoreanTakoEntryPage() {
-  const router = useRouter();
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    let token: string | null = null;
-    try {
-      token = localStorage.getItem("torisetsu_owner_token");
-    } catch {
-      // Storage can be unavailable in strict in-app browser modes.
-    }
-
-    if (token) {
-      router.replace(`/ko/tako/${encodeURIComponent(token)}`);
-      return;
-    }
-
-    const timer = window.setTimeout(() => setChecking(false), 0);
-    return () => window.clearTimeout(timer);
-  }, [router]);
-
-  if (checking) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#FBF8F0]">
-        <p className="text-sm font-bold text-[#2A3A5C]/65">확인하는 중...</p>
-      </div>
-    );
-  }
-
   return (
     <main
       className="flex min-h-dvh flex-col items-center justify-center px-7 text-center"

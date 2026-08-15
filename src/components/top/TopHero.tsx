@@ -13,6 +13,7 @@
 // クライアントコンポーネントなのはメニュー(開閉)のみ。
 
 import Link from "next/link";
+import { trackTopCta } from "@/components/top/TopAnalytics";
 
 // H1・本文ともゴシック (Noto Sans JP)。H1 は 800(極太) で塊感を出す。
 const FONT_STACK =
@@ -89,6 +90,7 @@ export default function TopHero() {
         <div className="top-hero-cta-wrap">
           <Link
             href="/diagnosis"
+            onClick={() => trackTopCta("ja")}
             className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"
             style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
           >

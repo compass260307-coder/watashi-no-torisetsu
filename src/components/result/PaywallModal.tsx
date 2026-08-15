@@ -33,6 +33,10 @@ interface PaywallModalProps {
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
   products?: readonly AccessProduct[];
+  /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
+  previewMode?: boolean;
+  /** 3コース化以前のコンパクトな単一課金カード表示。 */
+  legacyPlanStyle?: boolean;
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。

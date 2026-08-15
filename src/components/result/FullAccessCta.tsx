@@ -35,7 +35,7 @@ export function FullAccessCta({
   // 決済できない → まず診断へ funnel (診断→トリセツ作成→課金 の橋渡し)。
   // 例: Safari シークレット/SPでCookie不在 かつ URL に owner_token が無い (/aisho) ケース。
   // /me・/tako は owner_token を渡すのでここには来ない (常に Stripe へ到達)。
-  unauthHref = "/diagnosis",
+  unauthHref,
   locale = "ja",
   source,
   returnTo,
@@ -47,6 +47,7 @@ export function FullAccessCta({
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
+  /** 未ログイン時の遷移先。省略時は locale に対応する診断ページ。 */
   unauthHref?: string;
   locale?: ResultLocale;
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
@@ -67,6 +68,8 @@ export function FullAccessCta({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
+  const resolvedUnauthHref =
+    unauthHref ?? (locale === "ko" ? "/ko/diagnosis" : "/diagnosis");
 
   async function handleClick() {
     if (loading) return;
@@ -121,9 +124,9 @@ export function FullAccessCta({
         window.location.reload();
         return;
       }
-      // 未ログイン → 決済不能。トップへ funnel (アカウント作成→課金の橋渡し)。
+      // 未ログイン → 決済不能。各言語の診断へ funnel (診断→トリセツ作成→課金)。
       if (res.status === 401) {
-        window.location.href = unauthHref;
+        window.location.href = resolvedUnauthHref;
         return;
       }
       if (!res.ok) {

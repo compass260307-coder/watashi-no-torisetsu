@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import KoUnmeiExperience, {
-  type KoUnmeiReading,
-} from "@/components/ko/unmei/KoUnmeiExperience";
-import { SelfAccessPlanCarousel } from "@/components/result/SelfAccessPlanCarousel";
-import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import KoUnmeiLanding from "@/components/ko/unmei/KoUnmeiLanding";
+import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
+import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
+import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
+import UnmeiClient from "@/components/uranai/UnmeiClient";
+import UnmeiGuestPurchaseComplete from "@/components/uranai/UnmeiGuestPurchaseComplete";
+import UnmeiReading from "@/components/uranai/UnmeiReading";
+import { UnmeiAttentionClear } from "@/components/uranai/UnmeiAttentionClear";
 import { getSession } from "@/lib/session";
-import { hasUnmeiAccess } from "@/lib/entitlements";
+import { hasFullAccess, hasUnmeiAccess } from "@/lib/entitlements";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { isReadingReady } from "@/lib/unmei/reading";
+import { isReadingLocaleValid, isReadingReady } from "@/lib/unmei/reading";
 import { localizedAlternates } from "@/lib/locale-seo";
-import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
+import { computeMoonDailyArc } from "@/lib/unmei/moon-arc";
+import {
+  resolveUnmeiPromptInputs,
+  type UnmeiIdentity,
+} from "@/lib/unmei/prompt-inputs";
+import type { Chart } from "@/lib/unmei/chart-view";
+import {
+  createMetaPurchaseClaimToken,
+  verifyPaidMetaPurchaseCheckoutSession,
+} from "@/lib/paid-checkout-session";
 
 export const dynamic = "force-dynamic";
 
@@ -27,85 +39,75 @@ type PageProps = {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
+type KoReading = {
+  locale?: string;
+  hitokoto?: string;
+  sections?: unknown[];
+};
+
+async function KoreanUnmeiMetaPurchase(params: {
+  [key: string]: string | string[] | undefined;
+}) {
+  if (params.checkout !== "success") return null;
+  const checkoutSession = await verifyPaidMetaPurchaseCheckoutSession(
+    params.session_id,
+  );
+  if (
+    !checkoutSession ||
+    (checkoutSession.product !== "unmei" &&
+      checkoutSession.product !== "unmei_upgrade" &&
+      checkoutSession.product !== "premium_bundle")
+  ) {
+    return null;
+  }
+  return (
+    <MetaPurchaseDataLayer
+      checkoutSessionId={checkoutSession.id}
+      product={checkoutSession.product}
+      claimToken={createMetaPurchaseClaimToken(checkoutSession.id)}
+    />
+  );
+}
+
 export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
   const params = (await searchParams) ?? {};
-  const paid = Array.isArray(params.paid) ? params.paid[0] : params.paid;
-  const session = await getSession();
+  const checkout = Array.isArray(params.checkout)
+    ? params.checkout[0]
+    : params.checkout;
+  const [metaPurchase, session] = await Promise.all([
+    KoreanUnmeiMetaPurchase(params),
+    getSession(),
+  ]);
   const userId = session?.id ?? null;
   const purchased = userId ? await hasUnmeiAccess(userId) : false;
 
   let content: React.ReactNode;
-  if (!purchased) {
+  if (checkout === "success") {
+    content = userId ? (
+      <UnmeiCheckoutConfirming locale="ko" />
+    ) : (
+      <UnmeiGuestPurchaseComplete locale="ko" />
+    );
+  } else if (!purchased) {
     content = (
-      <>
-        {paid === "1" && session?.owner_token ? (
-          <PaidUnlockWatcher
-            ownerToken={session.owner_token}
-            locale="ko"
-            returnTo="unmei"
-            product="full_access"
-          />
-        ) : null}
-        <main className="bg-[#F7F7FC] px-4 py-14 sm:px-8">
-        <UnmeiViewTracker
-          eventName="unmei_lp_view"
+      <UnmeiChatCheckoutGate
+        purchase={{
+          ownerToken: session?.owner_token ?? null,
+          product: "premium_bundle",
+        }}
+        locale="ko"
+      >
+        <KoUnmeiLanding
           ownerToken={session?.owner_token ?? null}
-          state="unpurchased"
-          product="premium_bundle"
+          hasFull={userId ? await hasFullAccess(userId) : false}
         />
-        <section className="mx-auto max-w-[850px] text-center">
-          <p className="text-sm font-black tracking-[0.18em] text-[#8B6426]">
-            PREMIUM
-          </p>
-          <h1 className="mt-4 text-4xl font-black leading-tight text-[#2E2E5C] sm:text-6xl">
-            운명의 설계도
-          </h1>
-          <p className="mx-auto mt-6 max-w-[680px] text-base font-medium leading-8 text-[#666980] sm:text-lg">
-            Big Five 성격 진단과 태어난 순간의 하늘을 함께 읽어, 당신이 쌓아 온
-            강점과 관계의 방식, 앞으로 움직일 타이밍을 한국어로 풀어냅니다.
-          </p>
-          <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
-            {[
-              "성격 진단과 별의 배치를 함께 해석",
-              "일·관계·전환점을 담은 4개 챕터",
-              "저장해 두고 언제든 다시 읽기",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-[#E0D4B9] bg-[#FFF8E8] p-5 font-bold leading-6 text-[#51452E]"
-              >
-                <span className="mr-2 text-[#9A6A24]">✦</span>
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="mx-auto mt-12 max-w-[1120px]">
-          <SelfAccessPlanCarousel
-            ownerToken={session?.owner_token ?? undefined}
-            anchorId="ko-unmei-plans"
-            ctaSource="ko_unmei_page"
-            frameless
-            returnTo="unmei"
-            locale="ko"
-            defaultProduct="premium_bundle"
-          />
-        </div>
-
-        <p className="mx-auto mt-8 max-w-[680px] text-center text-xs leading-6 text-[#7F8294]">
-          운명의 설계도는 완전판과 프리미엄 코스에 포함됩니다. 이미 라이트 코스를
-          구매했다면 결제 화면에서 구매 금액을 뺀 차액만 청구됩니다. 결과는 오락과
-          자기 이해를 위한 참고 정보이며 전문적인 진단을 대신하지 않습니다.
-        </p>
-        </main>
-      </>
+      </UnmeiChatCheckoutGate>
     );
   } else {
-    const [{ data: profile }, { data: row }] = await Promise.all([
+    const [{ data: profile }, { data: readingRow }] = await Promise.all([
       supabaseAdmin
         .from("birth_profiles")
-        .select("user_id")
+        .select("user_id, birth_date, time_unknown")
         .eq("user_id", userId!)
         .maybeSingle(),
       supabaseAdmin
@@ -114,22 +116,71 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
         .eq("user_id", userId!)
         .maybeSingle(),
     ]);
-    const reading = (row?.reading ?? null) as KoUnmeiReading | null;
-    const ready =
-      isReadingReady(row) &&
-      reading?.locale === "ko" &&
-      Array.isArray(reading.sections);
-    content = (
-      <KoUnmeiExperience
-        ownerToken={session!.owner_token ?? ""}
-        initialState={!profile ? "no_birth" : ready ? "ready" : "pending"}
-        initialReading={ready ? reading : null}
-      />
-    );
+
+    if (!profile) {
+      content = (
+        <UnmeiClient
+          initialState="no_birth"
+          locale="ko"
+          ownerToken={session?.owner_token ?? null}
+        />
+      );
+    } else {
+      const reading = (readingRow?.reading ?? null) as KoReading | null;
+      const ready =
+        isReadingReady(readingRow) &&
+        reading?.locale === "ko" &&
+        Array.isArray(reading.sections) &&
+        isReadingLocaleValid(reading, "ko");
+
+      if (!ready) {
+        content = (
+          <UnmeiClient
+            initialState="pending"
+            locale="ko"
+            ownerToken={session?.owner_token ?? null}
+          />
+        );
+      } else {
+        const [{ data: natal }, promptInputs] = await Promise.all([
+          supabaseAdmin
+            .from("natal_charts")
+            .select("chart")
+            .eq("user_id", userId!)
+            .maybeSingle(),
+          resolveUnmeiPromptInputs(supabaseAdmin, userId!, "ko"),
+        ]);
+        const chart = (natal?.chart ?? null) as Chart | null;
+        const timeUnknown = profile.time_unknown === true;
+        const moonArc =
+          chart && timeUnknown
+            ? computeMoonDailyArc(chart, profile.birth_date as string | null)
+            : null;
+
+        const essence = promptInputs.essence;
+        const animalSlug = promptInputs.animalSlug;
+        const identity: UnmeiIdentity | null = promptInputs.identity;
+
+        content = (
+          <UnmeiReading
+            reading={readingRow!.reading}
+            chart={chart}
+            timeUnknown={timeUnknown}
+            moonArc={moonArc}
+            essence={essence}
+            characterSlug={animalSlug}
+            identity={identity}
+            locale="ko"
+          />
+        );
+      }
+    }
   }
 
   return (
     <>
+      {metaPurchase}
+      <UnmeiAttentionClear />
       <KoTopHeader />
       {content}
       <KoTopFooter />

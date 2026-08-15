@@ -10,6 +10,7 @@ const ROUTES = [
   "/ko/types",
   "/ko/about",
   "/ko/articles",
+  "/ko/articles/tako-bunseki",
   "/ko/login",
   "/ko/legal/commerce",
   "/ko/privacy",
@@ -17,6 +18,7 @@ const ROUTES = [
   "/ko/purchase-complete",
   "/ko/result",
   "/ko/unmei",
+  "/ko/hoshiyomi",
   "/ko/preview/sparkle-dolphin__N",
 ];
 
@@ -27,12 +29,16 @@ const checks = {
   "/ko": [
     [/href="\/ko\/diagnosis"/, "top page links to Korean diagnosis"],
     [/href="\/ko\/tako"/, "top page links to Korean friend diagnosis"],
-    [/href="\/ko\/login"/, "top page exposes Korean login"],
+    [/aria-label="로그인"|>로그인</, "top page exposes Korean login modal"],
     [/documentElement\.lang=.*\/ko.*ko/, "top page sets document language for Korean routes"],
     [/<div lang="ko"/, "top page wraps content with lang=ko"],
   ],
   "/ko/login": [
     [/로그인 링크 받기|이메일 주소/, "login page renders Korean login copy"],
+  ],
+  "/ko/articles/tako-bunseki": [
+    [/타인 분석은 어떻게 할까/, "tako-bunseki article renders Korean title"],
+    [/타인 분석 방법 3단계/, "tako-bunseki article renders full Korean body"],
   ],
   "/ko/preview/sparkle-dolphin__N": [
     [/href="\/ko\/diagnosis"/, "locked preview keeps Korean diagnosis links"],

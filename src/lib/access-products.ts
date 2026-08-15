@@ -13,7 +13,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "three_course_v7_self_friend_access" as const;
+  "three_course_v9_self_report_only" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -21,15 +21,43 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v4_jpy_499_799_1290",
   "three_course_v5_jpy_199_499_899",
   "three_course_v6_unmei_chat_credits",
+  "three_course_v7_self_friend_access",
+  "three_course_v8_premium_destiny_only",
   THREE_COURSE_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
+
+// この値が付いた購入以降、「運命の設計図」と占い師チャットは
+// premium_bundle だけに含める。値が無い旧 full_access は購入時の権利を維持する。
+export const DESTINY_ACCESS_POLICY_PREMIUM_ONLY =
+  "premium_only_v1" as const;
+
+// この値が付いた購入以降、2人目以降の友達診断と友達診断PDFは
+// full_access 以上だけに含める。値が無い旧 self_report は購入時の権利を維持する。
+export const FRIEND_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 
 export type PaywallPlacement = "inline" | "modal";
 
 export type AccessProduct = (typeof ACCESS_PRODUCTS)[number];
 export type ThreeCoursePaywallVersion =
   (typeof THREE_COURSE_PAYWALL_VERSIONS)[number];
+
+export function purchaseIncludesDestinyFeatures(
+  product: AccessProduct,
+  policy: unknown,
+): boolean {
+  if (product === "premium_bundle") return true;
+  if (product !== "full_access") return false;
+  return policy !== DESTINY_ACCESS_POLICY_PREMIUM_ONLY;
+}
+
+export function purchaseIncludesFriendFeatures(
+  product: AccessProduct,
+  policy: unknown,
+): boolean {
+  if (product === "full_access" || product === "premium_bundle") return true;
+  return product === "self_report" && policy !== FRIEND_ACCESS_POLICY_FULL_ONLY;
+}
 
 export const SELF_REPORT_LIST_PRICE_JPY = 799;
 export const SELF_REPORT_PRICE_JPY = 199;

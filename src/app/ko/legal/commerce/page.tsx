@@ -78,12 +78,14 @@ export default function KoreanCommercePage() {
       <h2>상품명과 판매 가격</h2>
       <ul>
         <li>
-          라이트 코스: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단과
-          친구 진단 결과 및 분석 PDF 포함)
+          라이트 코스: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단
+          결과 및 자기 분석 PDF 포함)
         </li>
         <li>
-          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트
-          구매자는 차액 {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
+          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트의
+          모든 기능, 두 번째 친구부터의 친구 진단 결과, 친구 분석 PDF, 연애
+          파트너 궁합 분석 포함. 라이트 구매자는 차액{" "}
+          {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
         </li>
         <li>
           프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
@@ -103,15 +105,15 @@ export default function KoreanCommercePage() {
       <ul>
         <li>
           라이트: 자기 진단 결과의 잠긴 8개 섹션 전체 해제, 16페이지 이상의
-          자기 분석 PDF, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번
-          다시 만들 수 있는 친구 분석 PDF
+          자기 분석 PDF
         </li>
         <li>
-          완전판: 라이트의 모든 기능, 연애 파트너 궁합 분석, 한국어 운명의
-          설계도, 별자리 상담사 채팅 5회
+          완전판: 라이트의 모든 기능, 두 번째 친구부터의 친구 진단 결과 전체
+          해제, 여러 번 다시 만들 수 있는 친구 분석 PDF, 연애 파트너 궁합 분석
         </li>
         <li>
-          프리미엄: 완전판의 모든 기능, 별자리 상담사 채팅 총 30회
+          프리미엄: 완전판의 모든 기능, 한국어 운명의 설계도, 나만의 전담
+          점성술사 채팅 총 30회
         </li>
       </ul>
       <p>

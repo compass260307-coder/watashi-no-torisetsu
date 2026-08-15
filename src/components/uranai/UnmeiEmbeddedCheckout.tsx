@@ -5,14 +5,17 @@
 // 仕様がページごとにずれないようにする。
 
 import { SelfAccessPlanCarousel } from "@/components/result/SelfAccessPlanCarousel";
+import type { ResultLocale } from "@/i18n/result";
 
 export default function UnmeiHostedCheckoutCard({
   ownerToken,
   previewMode = false,
+  locale = "ja",
 }: {
   ownerToken: string | null;
   /** ローカルUI確認用。購入ボタンを押してもAPIや計測を呼ばない。 */
   previewMode?: boolean;
+  locale?: ResultLocale;
 }) {
   return (
     <SelfAccessPlanCarousel
@@ -23,6 +26,7 @@ export default function UnmeiHostedCheckoutCard({
       returnTo="unmei"
       defaultProduct="premium_bundle"
       previewMode={previewMode}
+      locale={locale}
     />
   );
 }

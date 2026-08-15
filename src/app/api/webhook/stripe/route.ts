@@ -50,6 +50,10 @@ import {
   validAccessPaymentRows,
   type AccessPaymentRow,
 } from "@/lib/entitlements";
+import {
+  purchaseIncludesDestinyFeatures,
+  purchaseIncludesFriendFeatures,
+} from "@/lib/access-products";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -441,6 +445,10 @@ async function recordFullAccessPayment(
     metadata: {
       product,
       upgrade_from: session.metadata?.upgrade_from ?? "none",
+      destiny_access_policy:
+        session.metadata?.destiny_access_policy ?? "legacy_included",
+      friend_access_policy:
+        session.metadata?.friend_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
     },
@@ -495,6 +503,8 @@ async function recordSelfReportPayment(
       updated_at: paidAt,
       metadata: {
         product: "self_report",
+        friend_access_policy:
+          session.metadata?.friend_access_policy ?? "legacy_included",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         locale: session.metadata?.locale === "ko" ? "ko" : "ja",
       },
@@ -686,6 +696,21 @@ async function sendDetailedReportEmailBestEffort(
           : session.metadata?.product === "premium_bundle"
             ? "premium_bundle"
             : "full_access",
+      destinyFeaturesIncluded:
+        session.metadata?.product === "premium_bundle" ||
+        (session.metadata?.product !== "self_report" &&
+          purchaseIncludesDestinyFeatures(
+            "full_access",
+            session.metadata?.destiny_access_policy,
+          )),
+      friendFeaturesIncluded: purchaseIncludesFriendFeatures(
+        session.metadata?.product === "premium_bundle"
+          ? "premium_bundle"
+          : session.metadata?.product === "self_report"
+            ? "self_report"
+            : "full_access",
+        session.metadata?.friend_access_policy,
+      ),
       purchaseAmountJpy:
         session.currency === "jpy" ? session.amount_total : null,
       purchaseAmountMinor: session.amount_total,
@@ -743,6 +768,10 @@ async function recordPurchaseCompletedEvent(
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? null,
         upgrade_from: session.metadata?.upgrade_from ?? "none",
+        destiny_access_policy:
+          session.metadata?.destiny_access_policy ?? "legacy_included",
+        friend_access_policy:
+          session.metadata?.friend_access_policy ?? "legacy_included",
         paywall_version: session.metadata?.paywall_version ?? "legacy",
         placement: session.metadata?.paywall_placement ?? "unknown",
         source: normalizePaywallSource(session.metadata?.paywall_source),
@@ -919,28 +948,38 @@ async function handleCheckoutPaid(
 
   if (metadata.product === "full_access") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
-    await grantUnmeiByEmailOrId(session, paymentUserId);
+    const includesDestinyFeatures = purchaseIncludesDestinyFeatures(
+      "full_access",
+      session.metadata?.destiny_access_policy,
+    );
+    if (includesDestinyFeatures) {
+      await grantUnmeiByEmailOrId(session, paymentUserId);
+    }
     await recordFullAccessPayment(session, paymentUserId);
-    try {
-      await grantHoshiyomiCreditsToTarget({
-        userId: paymentUserId,
-        sourceKey: `stripe:${session.id}`,
-        targetTotal: 5,
-      });
-    } catch (error) {
-      if (!isMissingHoshiyomiStore(error)) throw error;
-      console.warn("[webhook/stripe] hoshiyomi migration pending", {
-        stripe_session_id: session.id,
-      });
+    if (includesDestinyFeatures) {
+      try {
+        await grantHoshiyomiCreditsToTarget({
+          userId: paymentUserId,
+          sourceKey: `stripe:${session.id}`,
+          targetTotal: 5,
+        });
+      } catch (error) {
+        if (!isMissingHoshiyomiStore(error)) throw error;
+        console.warn("[webhook/stripe] hoshiyomi migration pending", {
+          stripe_session_id: session.id,
+        });
+      }
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
-    after(() =>
-      triggerUnmeiGeneration(
-        paymentUserId,
-        session.metadata?.locale === "ko" ? "ko" : "ja",
-      ),
-    );
+    if (includesDestinyFeatures) {
+      after(() =>
+        triggerUnmeiGeneration(
+          paymentUserId,
+          session.metadata?.locale === "ko" ? "ko" : "ja",
+        ),
+      );
+    }
     await sendDetailedReportEmailBestEffort(session, userId);
     return;
   }
@@ -1143,7 +1182,7 @@ async function triggerUnmeiGeneration(
   try {
     // Big Five スコア + 32タイプ称号を解決してプロンプト入力に渡す。
     const { resolveUnmeiPromptInputs } = await import("@/lib/unmei/prompt-inputs");
-    const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
+    const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId, locale);
 
     const result = await runForUser(supabaseAdmin, userId, {
       ...promptInputs,
@@ -1306,7 +1345,12 @@ type ActiveCoursePaymentRow = Omit<
   stripe_session_id: string;
   stripe_payment_intent_id: string | null;
   currency: string;
-  metadata: { upgrade_from?: unknown; locale?: unknown } | null;
+  metadata: {
+    upgrade_from?: unknown;
+    locale?: unknown;
+    destiny_access_policy?: unknown;
+    friend_access_policy?: unknown;
+  } | null;
 };
 
 async function relatedUserIdsForRefund(
@@ -1433,7 +1477,9 @@ async function recomputeAccessAfterFullRefund(
   );
   const validCourseRows = validAccessPaymentRows(
     courseRows,
-  ) as ActiveCoursePaymentRow[];
+  ) as (ActiveCoursePaymentRow & {
+    payment_kind: AccessPaymentRow["payment_kind"];
+  })[];
   const validIds = new Set(validCourseRows.map((row) => row.id));
   const refundedPrerequisite =
     payment.payment_kind === "self_report"
@@ -1464,8 +1510,10 @@ async function recomputeAccessAfterFullRefund(
     );
   const hasUnmei = legacyUnmeiRows.length > 0 || validCourseRows.some(
     (row) =>
-      row.payment_kind === "premium_bundle" ||
-      row.payment_kind === "full_access",
+      purchaseIncludesDestinyFeatures(
+        row.payment_kind,
+        row.metadata?.destiny_access_policy,
+      ),
   );
 
   const target = supabaseAdmin.from("users").update({

@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
+import {
+  isReadingLocaleValid,
+  isReadingReady,
+  readingGenState,
+} from "@/lib/unmei/reading";
 import { hasUnmeiAccess } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
@@ -54,7 +58,11 @@ export async function GET(request: Request) {
     (reading?.reading as { locale?: unknown } | null)?.locale === "ko"
       ? "ko"
       : "ja";
-  if (!isReadingReady(reading) || readingLocale !== requiredLocale) {
+  if (
+    !isReadingReady(reading) ||
+    readingLocale !== requiredLocale ||
+    !isReadingLocaleValid(reading?.reading, requiredLocale)
+  ) {
     // pending(生成中/未達) と failed(自動再生成の上限到達=手動リトライ待ち)を区別。
     const { state, attempts } = readingGenState(reading);
     return NextResponse.json({

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LoginModal } from "@/components/LoginModal";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import { localeSwitchPath } from "@/lib/locale-switch";
+import { resetLocalData } from "@/lib/reset-data";
 
 const NAVY = "#2E2E5C";
 
@@ -45,6 +47,8 @@ const NAVIGATION = [
 export default function KoTopHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [currentSearch, setCurrentSearch] = useState("");
   // 未診断なら친구 진단 테스트をロック表示にする (日本語版 TopHeader と同じ挙動)。
@@ -91,15 +95,16 @@ export default function KoTopHeader() {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      setConfirmReset(false);
     };
   }, [menuOpen]);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white">
-      <div className="flex w-full items-center gap-4 px-5 py-4 sm:px-8">
+      <div className="flex w-full items-center gap-4 px-8 py-4">
         <Link
           href="/ko"
-          className="whitespace-nowrap text-[18px] font-extrabold tracking-[-0.02em] xl:text-[21px]"
+          className="whitespace-nowrap text-[18px] font-bold tracking-[0.01em] xl:text-[21px]"
           style={{ color: NAVY }}
         >
           {KO_TOP_CONTENT.siteName}
@@ -110,14 +115,24 @@ export default function KoTopHeader() {
             item.disabled ? (
               <span
                 key={item.href}
-                className="whitespace-nowrap text-[16px] font-bold text-[#B4B4C4] xl:text-[19px]"
+                className="whitespace-nowrap text-[16px] font-bold text-[#B4B4C4] xl:text-[20px]"
                 aria-disabled="true"
               >
                 {item.label}
-                <span className="ml-1 text-[11px] xl:text-[12px]">
+                <span className="text-[11px] xl:text-[13px]">
                   ({KO_TOP_CONTENT.navigation.preparing})
                 </span>
               </span>
+            ) : item.href === "/ko/login" ? (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[20px]"
+                style={{ color: NAVY }}
+              >
+                {item.label}
+              </button>
             ) : item.label === KO_TOP_CONTENT.navigation.friend && !hasToken ? (
               // 未診断時はロック表示: 遷移せずポップオーバーで解放条件を伝える
               // (日本語版 TopHeader と同じ挙動。色もロック中タブと同じグレー)。
@@ -125,7 +140,7 @@ export default function KoTopHeader() {
                 key={item.href}
                 type="button"
                 onClick={() => setTakoLockOpen(true)}
-                className="flex items-center gap-1 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[19px]"
+                className="flex items-center gap-1 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[20px]"
                 style={{ color: "#9BA3B4" }}
               >
                 {item.label}
@@ -135,7 +150,7 @@ export default function KoTopHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[19px]"
+                className="whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[20px]"
                 style={{ color: NAVY }}
               >
                 {item.label}
@@ -149,7 +164,7 @@ export default function KoTopHeader() {
               aria-label="언어 변경"
               aria-expanded={languageOpen}
               onClick={() => setLanguageOpen((current) => !current)}
-              className="flex items-center gap-1.5 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[18px]"
+              className="flex items-center gap-1.5 whitespace-nowrap text-[16px] font-bold transition-colors hover:text-[#5B5BEF] xl:text-[19px]"
               style={{ color: NAVY }}
             >
               <KoreaFlagIcon />
@@ -165,16 +180,19 @@ export default function KoTopHeader() {
                   onClick={() => setLanguageOpen(false)}
                   aria-label="언어 메뉴 닫기"
                 />
-                <div className="absolute right-0 top-10 z-50 w-36 overflow-hidden rounded-xl border border-[#2E2E5C]/10 bg-white py-1 shadow-[0_8px_24px_rgba(42,58,92,0.16)]">
+                <div className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-xl border border-[#2E2E5C]/10 bg-white py-1 shadow-[0_8px_24px_rgba(42,58,92,0.16)]">
                   <div className="px-4 py-2.5 text-[15px] font-bold text-[#5B5BEF]">
                     한국어
                   </div>
                   <Link
                     href={japaneseHref}
-                    className="block px-4 py-2.5 text-[15px] font-medium text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
+                    className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
                   >
                     日本語
                   </Link>
+                  <div className="px-4 py-2.5 text-[15px] text-[#B4B4C4]">
+                    English（{KO_TOP_CONTENT.navigation.preparing}）
+                  </div>
                 </div>
               </>
             )}
@@ -206,7 +224,7 @@ export default function KoTopHeader() {
         <nav
           aria-label={KO_TOP_CONTENT.navigation.menu}
           aria-hidden={!menuOpen}
-          className={`pointer-events-auto absolute inset-y-0 right-0 flex w-[82%] max-w-[320px] flex-col bg-white shadow-[0_0_40px_rgba(42,58,92,0.2)] transition-transform duration-300 ease-out ${
+          className={`pointer-events-auto absolute inset-y-0 right-0 flex w-[78%] max-w-[320px] flex-col bg-white shadow-[0_0_40px_rgba(42,58,92,0.2)] transition-transform duration-300 ease-out ${
             menuOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
@@ -225,19 +243,33 @@ export default function KoTopHeader() {
             </button>
           </div>
 
-          <div className="flex flex-col px-6 py-3">
+          <div className="flex flex-col px-6 py-2">
             {navigation.map((item) =>
               item.disabled ? (
                 <span
                   key={item.href}
-                  className="py-3.5 text-[18px] font-bold text-[#B4B4C4]"
+                  className="py-3.5 text-[19px] font-bold text-[#B4B4C4]"
                   aria-disabled="true"
                 >
                   {item.label}
-                  <span className="ml-1 text-[12px]">
+                  <span className="text-[12px]">
                     ({KO_TOP_CONTENT.navigation.preparing})
                   </span>
                 </span>
+              ) : item.href === "/ko/login" ? (
+                <button
+                  key={item.href}
+                  type="button"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setLoginOpen(true);
+                  }}
+                  className="py-3.5 text-left text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  style={{ color: NAVY }}
+                >
+                  {item.label}
+                </button>
               ) : item.label === KO_TOP_CONTENT.navigation.friend &&
                 !hasToken ? (
                 // 未診断時はロック表示。ドロワーを閉じてからポップオーバーを出すと、
@@ -250,7 +282,7 @@ export default function KoTopHeader() {
                     setMenuOpen(false);
                     setTakoLockOpen(true);
                   }}
-                  className="flex w-full items-center gap-1.5 py-3.5 text-left text-[18px] font-bold"
+                  className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
                   style={{ color: "#9BA3B4" }}
                 >
                   {item.label}
@@ -262,7 +294,7 @@ export default function KoTopHeader() {
                   href={item.href}
                   tabIndex={menuOpen ? 0 : -1}
                   onClick={() => setMenuOpen(false)}
-                  className="py-3.5 text-[18px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  className="py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
                   style={{ color: NAVY }}
                 >
                   {item.label}
@@ -270,22 +302,71 @@ export default function KoTopHeader() {
               ),
             )}
 
+            <div
+              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold"
+              style={{ color: NAVY }}
+            >
+              <KoreaFlagIcon />
+              한국어
+            </div>
+            <Link
+              href={japaneseHref}
+              tabIndex={menuOpen ? 0 : -1}
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+              style={{ color: NAVY }}
+            >
+              <JapanFlagIcon />
+              日本語로 보기
+            </Link>
+
             <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
-              <div className="flex items-center gap-1.5 py-2 text-[16px] font-bold text-[#5B5BEF]">
-                <KoreaFlagIcon />
-                한국어
-              </div>
-              <Link
-                href={japaneseHref}
-                tabIndex={menuOpen ? 0 : -1}
-                className="block py-2 text-[16px] font-medium text-[#2E2E5C]"
-              >
-                日本語로 보기
-              </Link>
+              {!confirmReset ? (
+                <button
+                  type="button"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => setConfirmReset(true)}
+                  className="flex w-full items-center gap-1.5 py-2 text-left text-[15px] font-bold text-[#B4415C] transition-colors hover:text-[#8f2f45]"
+                >
+                  <ResetIcon />
+                  데이터 초기화
+                </button>
+              ) : (
+                <div className="rounded-xl bg-[#FBE9EC] p-3.5">
+                  <p className="break-keep text-[13px] font-bold leading-relaxed text-[#8f2f45]">
+                    진단 결과와 초대 링크가 이 기기에서 삭제되며 되돌릴 수 없어요.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      tabIndex={menuOpen ? 0 : -1}
+                      onClick={resetLocalData}
+                      className="flex-1 rounded-full bg-[#B4415C] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
+                    >
+                      초기화
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={menuOpen ? 0 : -1}
+                      onClick={() => setConfirmReset(false)}
+                      className="flex-1 rounded-full bg-white py-2.5 text-[14px] font-bold transition-colors hover:bg-[#f3f3f7]"
+                      style={{ color: NAVY }}
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </nav>
       </div>
+
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        locale="ko"
+      />
 
       {/* 未診断でロック中の친구 진단 테스트を押したときの吹き出し (BottomNav と共用)。
           画面下部・ボトムナビの친구 진단タブの真上に出る。 */}
@@ -309,6 +390,43 @@ function MenuLockIcon() {
         strokeWidth="2.6"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function ResetIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 12a8 8 0 1 1 2.3 5.6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M4 20v-4h4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function JapanFlagIcon() {
+  return (
+    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
+      <rect
+        x="0.5"
+        y="0.5"
+        width="21"
+        height="14"
+        rx="2"
+        fill="#FFFFFF"
+        stroke="#D4D4DE"
+      />
+      <circle cx="11" cy="7.5" r="4" fill="#BC002D" />
     </svg>
   );
 }

@@ -63,6 +63,7 @@ import {
   hasFullAccess,
   hasPremiumBundleAccess,
   hasSelfReportAccess,
+  hasUnmeiAccess,
 } from "@/lib/entitlements";
 import { hasPartTwoAccess } from "@/lib/friend-stairs";
 import { resolvePartTwo } from "@/lib/part-two-resolve";
@@ -114,6 +115,7 @@ import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 const SITE_URL =
   resolveSiteUrl();
+const PREMIUM_UPGRADE_PRODUCTS = ["premium_bundle"] as const;
 
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
@@ -327,12 +329,18 @@ async function MeResultPageContent({
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   // プレビュー (モック) は DB を引かない。/preview/[typeId] の静的生成をビルド時の
   // Supabase 接続に依存させないためでもある (課金状態は previewLock で表現済み)。
-  const [deepDivePaid, fullAccessPaid, premiumBundlePaid] = previewType
-    ? [false, false, false]
+  const [
+    deepDivePaid,
+    fullAccessPaid,
+    premiumBundlePaid,
+    destinyFeaturesPaid,
+  ] = previewType
+    ? [false, false, false, false]
     : await Promise.all([
         hasSelfReportAccess(user.id as string),
         hasFullAccess(user.id as string),
         hasPremiumBundleAccess(user.id as string),
+        hasUnmeiAccess(user.id as string),
       ]);
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
@@ -347,112 +355,154 @@ async function MeResultPageContent({
   //    2026-07-26 指示で撤去。代わりに課金後は 運命の設計図 (/unmei) への
   //    アップセルセクションを最下部に出す (16P のプレミアムキャリアキット風)。
   const showUnmeiPromo =
-    !isKorean &&
     !acquisition &&
-    !fullAccessPaid &&
+    !destinyFeaturesPaid &&
     (previewType ? !previewLocked : deepDivePaid);
   // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
   // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
   // 16P「プレミアムキャリアキット」参考: 柔らかいカード + 締まったタイポ +
-  // ストロークSVGアイコン (絵文字は安っぽいため不使用) + 控えめCTA。
+  // 色分けした六角形アイコン + 4つの特典を縦に読み進める構成 + 横長CTA。
   const unmeiPromoCard = !showUnmeiPromo ? null : (
-    <div className="rounded-[20px] border border-[#F0F1F8] bg-white px-6 py-10 shadow-[0_10px_40px_rgba(46,46,92,0.08)] md:px-12 md:py-12">
-      <div className="mb-8 text-center">
-        <span className="mb-3 inline-flex rounded-full bg-[#F4F4FE] px-3.5 py-1.5 text-[11px] font-black tracking-[0.12em] text-[#5B5BEF]">
-          あなた専用の鑑定書
-        </span>
-        <h2 className="mb-2.5 text-[21px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
-          生まれた瞬間の星から、運命を読み解こう
-        </h2>
-        <p className="text-[14px] font-bold leading-relaxed text-[#2E2E5C]/60">
-          性格診断のさらに先へ。出生図とAIがつくる
-          <Link
-            href="/unmei"
-            className="mx-0.5 font-black text-[#5B5BEF] underline underline-offset-2"
-          >
-            運命の設計図
-          </Link>
-          で深掘りしましょう
-        </p>
-      </div>
-      <ul className="mb-9 flex flex-col gap-5">
-        {[
-          {
-            // 出生図ホイール (下部ナビの運命タブと同モチーフ)
-            icon: (
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
-                <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
-                <circle cx="19.36" cy="16.25" r="1.5" fill="currentColor" />
-                <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
-              </svg>
-            ),
-            title: "あなただけの出生図ホイール",
-            body: "生年月日・出生時間・出生地から、生まれた瞬間の空を再現。太陽や月をはじめとした天体の配置を、あなただけの一枚の設計図として描きます",
-          },
-          {
-            // 鑑定文 (書類 + 本文行)
-            icon: (
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-                <path d="M14 2v5h5" />
-                <path d="M9 13h6M9 17h4" />
-              </svg>
-            ),
-            title: "4章立てのAI鑑定文",
-            body: "「あなたが積み上げてきたもの」「誰かといるときのあなた」「これから訪れる転換点」「最後にひとつだけ」の4章。占い用語の羅列ではなく、あなたに語りかける文章で、明日から試せる小さな一歩まで添えて読み解きます",
-          },
-          {
-            // 掛け合わせ (重なる2つの円)
-            icon: (
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="9" cy="12" r="5.8" />
-                <circle cx="15" cy="12" r="5.8" />
-              </svg>
-            ),
-            title: "性格診断との掛け合わせ",
-            body: "自己診断でわかった性格と星の素質を照らし合わせ、重なるところも少しのズレも含めて、あなたがこれまで選んできた姿勢に名前をつけます",
-          },
-          {
-            // 自分の原点 (コンパス)
-            icon: (
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" />
-                <path d="m15.5 8.5-2 5-5 2 2-5z" />
-              </svg>
-            ),
-            title: "いつでも戻ってこられる、自分の原点",
-            body: "生まれた瞬間の星の配置は、時間が経っても変わりません。迷ったときに何度でも読み返せる、あなただけの原点として手元に残ります",
-          },
-        ].map((f) => (
-          <li key={f.title} className="flex items-start gap-3.5">
-            <span
-              aria-hidden="true"
-              className="mt-0.5 flex w-9 flex-shrink-0 justify-center text-[#5B5BEF]"
+    <section
+      aria-label={isKorean ? "프리미엄 코스 혜택" : "プレミアムコースの特典"}
+    >
+      <div className="rounded-[23px] border border-[#F1DDAA] bg-white px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14">
+        <div className="mx-auto mb-10 max-w-[800px] text-center md:mb-12">
+          <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
+            {isKorean ? "프리미엄에서 잠금 해제" : "プレミアムで解放"}
+          </span>
+          <h2 className="mb-3 text-[24px] font-black leading-[1.35] text-[#2E2E5C] md:text-[36px]">
+            {isKorean
+              ? "태어난 순간의 별에서 운명을 읽어 보세요"
+              : "あなたの物語の続きを、すべて解放"}
+          </h2>
+          <p className="text-[14px] font-bold leading-[1.8] text-[#68677F] md:text-[18px]">
+            {isKorean ? (
+              <>
+                성격 진단에서 한 걸음 더. 출생 차트와 AI가 만드는
+                <Link
+                  href="/ko/unmei"
+                  className="mx-1 font-black text-[#9A6A24] underline decoration-2 underline-offset-4"
+                >
+                  운명의 설계도
+                </Link>
+                로 나를 더 깊이 알아보세요
+              </>
+            ) : (
+              "性格診断で分かったのは、いまのあなた。ここから先は、これまでの歩みと、これから訪れる転換点の話です。出生図と掛け合わせた、あなただけの1冊をつくりました。"
+            )}
+          </p>
+        </div>
+        <ul className="mx-auto mb-11 flex max-w-[820px] flex-col gap-7 md:mb-12 md:gap-8">
+          {[
+            {
+              iconBg: "#EAF5FF",
+              iconColor: "#397DB8",
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                  <path d="M14 2v5h5M9 13h6M9 17h4" />
+                </svg>
+              ),
+              title: isKorean
+                ? "네 장으로 이어지는 AI 감정서"
+                : "4章立てのAI鑑定文",
+              body: isKorean
+                ? "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장으로 풀고 바로 실천할 작은 한 걸음까지 담았어요."
+                : "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
+            },
+            {
+              iconBg: "#F1EEFF",
+              iconColor: "#6558D9",
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 5.5h14v10H9l-4 3v-13Z" />
+                  <path d="m12 7.5.7 1.45 1.6.23-1.15 1.12.27 1.58L12 11.13l-1.43.75.27-1.58-1.15-1.12 1.6-.23L12 7.5Z" />
+                </svg>
+              ),
+              title: isKorean
+                ? "나만의 전담 점성술사"
+                : "専属AI占い師に相談30回",
+              body: isKorean
+                ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
+                : "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
+            },
+            {
+              iconBg: "#EAF8F2",
+              iconColor: "#2F856E",
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.9" />
+                  <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                  <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
+                  <circle cx="19.36" cy="16.25" r="1.5" fill="currentColor" />
+                  <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
+                </svg>
+              ),
+              title: isKorean
+                ? "나만의 출생 차트 휠"
+                : "出生図ホイール",
+              body: isKorean
+                ? "생년월일·출생 시간·출생지를 바탕으로 태어난 순간의 하늘을 재현하고, 천체의 배치를 나만의 한 장의 설계도로 그려 드려요."
+                : "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
+            },
+            {
+              iconBg: "#FDECF3",
+              iconColor: "#C45D86",
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+                  <circle cx="9" cy="12" r="5.8" />
+                  <circle cx="15" cy="12" r="5.8" />
+                </svg>
+              ),
+              title: isKorean
+                ? "성격 진단과 별의 교차 해석"
+                : "性格診断 × 星の掛け合わせ",
+              body: isKorean
+                ? "Big Five 진단에서 발견한 성격과 별이 보여 주는 기질을 나란히 살펴, 겹치는 부분과 작은 차이까지 읽어 드려요."
+                : "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
+            },
+          ].map((feature) => (
+            <li
+              key={feature.title}
+              className="grid grid-cols-[58px_1fr] items-start gap-4 md:grid-cols-[72px_1fr] md:gap-6"
             >
-              {f.icon}
+              <span
+                aria-hidden="true"
+                className="flex h-[58px] w-[58px] items-center justify-center md:h-[68px] md:w-[68px]"
+                style={{
+                  clipPath:
+                    "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+                  backgroundColor: feature.iconBg,
+                  color: feature.iconColor,
+                }}
+              >
+                {feature.icon}
+              </span>
+              <div className="pt-0.5 md:pt-1">
+                <p className="text-[18px] font-black leading-[1.45] text-[#2E2E5C] md:text-[22px]">
+                  {feature.title}
+                </p>
+                <p className="mt-1.5 text-[14px] font-medium leading-[1.75] text-[#66657B] md:text-[16px]">
+                  {feature.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="text-center">
+          <PaywallScrollButton
+            source="unmei_promo_card"
+            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-black text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+          >
+            {isKorean ? "프리미엄 자세히 보기" : "プレミアムの詳細を見る"}
+            <span aria-hidden="true" className="text-xl font-medium">
+              →
             </span>
-            <div>
-              <p className="text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
-                {f.title}
-              </p>
-              <p className="mt-1 text-[15px] font-normal leading-relaxed text-[#2E2E5C]/65 md:text-[16px]">
-                {f.body}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <div className="text-center">
-        <Link
-          href="/unmei"
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-8 py-3.5 text-[14px] font-black text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_5px_14px_rgba(91,91,239,0.4)]"
-        >
-          詳細はこちら →
-        </Link>
+          </PaywallScrollButton>
+        </div>
       </div>
-    </div>
+    </section>
   );
   const resolvedDeepDiveSections = resolveDeepDiveSections(deepDiveTypeId, stored, {
     hasFullAccess: partTwoUnlocked,
@@ -660,11 +710,10 @@ async function MeResultPageContent({
           product={paidAccessProduct}
         />
       )}
-      {/* 友達診断の赤バッジ付与: 日本語 /me を表示した全員に1回
-          (2026-08-03 バイラル課題①対応で課金者限定→全員に再拡大)。 */}
-      {!previewType && !isKorean && <TakoAttentionOnResult ownerToken={token} />}
+      {/* 友達診断の赤バッジ付与: /me を表示した全員に言語を問わず1回。 */}
+      {!previewType && <TakoAttentionOnResult ownerToken={token} />}
       {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
-      {!previewType && !isKorean && fullAccessPaid && !premiumBundlePaid && (
+      {!previewType && fullAccessPaid && !premiumBundlePaid && (
         <UnmeiAttentionOnPaid ownerToken={token} />
       )}
 
@@ -685,15 +734,29 @@ async function MeResultPageContent({
       essence={dispEssence}
       code={dispCode}
       reportHref={
-        !acquisition &&
-        !publicPreview &&
-        (previewType ? partTwoUnlocked : deepDivePaid)
-          ? previewType
-            ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
-            : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
-          : undefined
+        showUnmeiPromo
+          ? isKorean
+            ? "/ko/unmei"
+            : "/unmei"
+          : !acquisition &&
+              !publicPreview &&
+              (previewType ? partTwoUnlocked : deepDivePaid)
+            ? previewType
+              ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
+              : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
+            : undefined
       }
-      reportLabel={isKorean ? undefined : "自己分析PDFをダウンロード"}
+      reportLabel={
+        showUnmeiPromo
+          ? isKorean
+            ? "결과 업그레이드"
+            : "結果をアップグレード"
+          : isKorean
+            ? undefined
+            : "自己分析PDFをダウンロード"
+      }
+      reportIcon={showUnmeiPromo ? "upgrade" : "download"}
+      reportOpensPaywall={showUnmeiPromo}
       locale={locale}
     >
       {isKorean ? <KoTopHeader /> : <TopHeader />}
@@ -1099,6 +1162,20 @@ async function MeResultPageContent({
           locale={locale}
         />
       </>
+    )}
+    {/* 解放後のプレミアム導線は、旧課金カードと同じモーダル内に
+        プレミアムコースだけを表示する。 */}
+    {showUnmeiPromo && (
+      <PaywallModal
+        ownerToken={token}
+        imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+        imageAlt={dispName}
+        group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+        locale={locale}
+        products={PREMIUM_UPGRADE_PRODUCTS}
+        previewMode={Boolean(previewType)}
+        legacyPlanStyle
+      />
     )}
     {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。
         獲得モード (/share) では訪問者に無関係なので出さない。 */}

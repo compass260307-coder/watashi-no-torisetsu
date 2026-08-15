@@ -43,6 +43,13 @@ import {
   perceivedManualContent,
   PERCEIVED_TIPS_KEY,
 } from "./perception-manual-content";
+import { KO_RESULT_TYPES } from "@/i18n/ko/result";
+import {
+  KO_PERCEIVED_BY_TYPE_32,
+  KO_SELF_RESULT_CONTENT_32,
+} from "@/i18n/ko/me-content-32";
+import type { ResultLocale } from "@/i18n/result";
+import { estimateCompatFromGaps } from "./tako-deepdive";
 
 export interface PerceptionViewInput {
   /** 本人 (評価対象者) の自己スコア。 */
@@ -57,6 +64,7 @@ export interface PerceptionViewInput {
   ownerToken: string | null;
   /** おまけ3問の自由回答。 */
   qualitative: Record<string, string> | null;
+  locale?: ResultLocale;
 }
 
 export interface PerceptionView {
@@ -93,70 +101,121 @@ export interface PerceptionView {
 
 export function buildPerceptionView(input: PerceptionViewInput): PerceptionView {
   const { selfScores, otherScores } = input;
-  const gaps = buildDimensionGaps(selfScores, otherScores);
+  const locale = input.locale ?? "ja";
+  const isKo = locale === "ko";
+  const koAxisLabels = {
+    O: "개방성",
+    C: "성실성",
+    E: "외향성",
+    A: "우호성",
+    N: "정서적 민감성",
+  } as const;
+  const gaps = buildDimensionGaps(selfScores, otherScores).map((gap) =>
+    isKo ? { ...gap, label: koAxisLabels[gap.key] } : gap,
+  );
   const mutual = calcMutualUnderstanding(gaps);
   const sortedGaps = topGaps(gaps, 5);
 
-  const displayName = (input.ownerDisplayName ?? "").trim() || "アナタ";
-  const perceiverFull = (input.perceiverName ?? "").trim() || "友達";
-  const myTrisetsuUrl = `/me/${input.ownerToken ?? ""}`;
+  const displayName =
+    (input.ownerDisplayName ?? "").trim() || (isKo ? "나" : "アナタ");
+  const perceiverFull =
+    (input.perceiverName ?? "").trim() || (isKo ? "친구" : "友達");
+  const myTrisetsuUrl = `${isKo ? "/ko" : ""}/me/${input.ownerToken ?? ""}`;
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  const flag32 = isThirtyTwoEnabled();
+  const flag32 = isKo || isThirtyTwoEnabled();
   const perceived32Id = classifyThirtyTwoType(otherScores);
+  const koType = KO_RESULT_TYPES[perceived32Id];
 
-  const perceivedTypeName = flag32
-    ? thirtyTwoName(perceived32Id)
-    : perceivedType16.name;
-  const dispEssence = flag32
-    ? thirtyTwoEssence(perceived32Id)
-    : perceivedType16.essence;
+  const perceivedTypeName = isKo
+    ? koType.name
+    : flag32
+      ? thirtyTwoName(perceived32Id)
+      : perceivedType16.name;
+  const dispEssence = isKo
+    ? koType.essence
+    : flag32
+      ? thirtyTwoEssence(perceived32Id)
+      : perceivedType16.essence;
   const dispImage = flag32
     ? thirtyTwoImagePath(perceived32Id)
     : characterImagePath(perceivedTypeId);
-  const dispDesc = flag32
-    ? thirtyTwoOneLiner(perceived32Id)
-    : perceivedType16.oneLiner;
+  const dispDesc = isKo
+    ? koType.oneLiner
+    : flag32
+      ? thirtyTwoOneLiner(perceived32Id)
+      : perceivedType16.oneLiner;
   const perceivedGroup: ThirtyTwoGroup = flag32
     ? thirtyTwoGroup(perceived32Id)
     : "unknown";
   const hero = heroColorsForGroup(perceivedGroup);
   const dispImageCut = preferCutImage(dispImage);
 
-  const [perceivedLookBody, perceivedTipsBody] = (
-    flag32
+  const perceivedManual = isKo
+    ? KO_SELF_RESULT_CONTENT_32[perceived32Id]?.[0]?.body ??
+      "친구의 눈에 비친 모습에는 스스로 미처 알아차리지 못한 장점이 담겨 있어요."
+    : flag32
       ? perceivedManualFor(perceived32Id)
-      : perceivedManualContent[perceivedTypeId]
-  ).split("\n\n");
+      : perceivedManualContent[perceivedTypeId];
+  const [perceivedLookBody, perceivedTipsBody] = perceivedManual.split("\n\n");
 
-  const foundContent = flag32
-    ? perceivedContentFor(perceived32Id)
-    : getPerceivedContent(perceivedTypeId);
+  const foundContent = isKo
+    ? KO_PERCEIVED_BY_TYPE_32[perceived32Id]
+    : flag32
+      ? perceivedContentFor(perceived32Id)
+      : getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
   const strengthParas = foundContent
-    ? weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
+    ? isKo
+      ? foundContent.strengths.slice(0, 3).map((item) => [
+          { text: `${item.title}. `, pink: true },
+          { text: item.body },
+        ])
+      : weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
     : [];
   const surpriseParas = foundContent
-    ? weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
+    ? isKo
+      ? foundContent.surprises.slice(0, 3).map((item) => [
+          { text: `${item.title}. `, pink: true },
+          { text: item.body },
+        ])
+      : weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
     : [];
 
   const maxGap = sortedGaps[0];
   const maxGapDir = gapDir3(maxGap.selfPercent, maxGap.otherPercent);
-  const relationFactBody = relationGapFact[maxGap.key][maxGapDir];
-  const relationGapBody = relationGapNote[maxGap.key][maxGapDir];
-  const relationTipBody = relationGapTip[maxGap.key][maxGapDir];
-  const relationTipKey = relationGapTipKey[maxGap.key][maxGapDir];
-  const tipsKey = flag32
-    ? perceivedTipsKeyFor(perceived32Id)
-    : PERCEIVED_TIPS_KEY[perceivedTypeId];
+  const koRelation = isKo
+    ? estimateCompatFromGaps(
+        selfScores,
+        otherScores,
+        perceiverFull === "친구" ? perceiverFull : `${perceiverFull}님`,
+        "ko",
+      )
+    : null;
+  const koRelationMiddle = koRelation?.summaryParas.slice(1, -1).join(" ") ?? "";
+  const relationFactBody = isKo
+    ? koRelation?.summaryParas[0] ?? "두 사람이 서로를 바라보는 방식에는 특별한 장점이 있어요."
+    : relationGapFact[maxGap.key][maxGapDir];
+  const relationGapBody = isKo
+    ? koRelationMiddle || "서로 다른 시선은 틀림이 아니라 새로운 모습을 발견할 기회예요."
+    : relationGapNote[maxGap.key][maxGapDir];
+  const relationTipBody = isKo
+    ? koRelation?.summaryParas.at(-1) ?? "차이를 편하게 이야기할수록 관계는 더 깊어질 수 있어요."
+    : relationGapTip[maxGap.key][maxGapDir];
+  const relationTipKey = isKo ? "" : relationGapTipKey[maxGap.key][maxGapDir];
+  const tipsKey = isKo
+    ? ""
+    : flag32
+      ? perceivedTipsKeyFor(perceived32Id)
+      : PERCEIVED_TIPS_KEY[perceivedTypeId];
 
   const q = input.qualitative;
   const qualEntries = (
     [
-      { label: "好きなところ", value: q?.favorite_point },
-      { label: "動物にたとえると", value: q?.animal },
-      { label: "印象的なシーン", value: q?.impression_scene },
+      { label: isKo ? "좋아하는 점" : "好きなところ", value: q?.favorite_point },
+      { label: isKo ? "동물로 비유하면" : "動物にたとえると", value: q?.animal },
+      { label: isKo ? "인상적인 장면" : "印象的なシーン", value: q?.impression_scene },
     ] as { label: string; value: string | undefined }[]
   ).filter(
     (e): e is { label: string; value: string } =>

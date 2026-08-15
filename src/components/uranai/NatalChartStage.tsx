@@ -31,13 +31,11 @@ import {
   type Chart,
   type MoonArc,
 } from "@/lib/unmei/chart-view";
+import type { ResultLocale } from "@/i18n/result";
+import { UNMEI_CHART_COPY } from "@/i18n/unmei";
 
 // 進行度に合わせて順に出す言葉 (中心 p と本文)。装飾ナレーションなので aria-hidden。
-const PHRASES: { center: number; text: string }[] = [
-  { center: 0.16, text: "これは、あなたが生まれた瞬間の空。" },
-  { center: 0.4, text: "同じ配置は、もう二度とめぐってこない。" },
-  { center: 0.64, text: "ここから、あなたの物語を読みはじめます。" },
-];
+const PHRASE_CENTERS = [0.16, 0.4, 0.64] as const;
 const PHRASE_HALF_WIDTH = 0.11; // 各言葉が見えている progress 幅 (中心±この値)
 
 // 背景のパララックス星層 (makeStarField = 整数演算PRNGで SSR/CSR ビット一致)
@@ -46,25 +44,12 @@ const NEAR_STARS = makeStarField(31, 42, 0.34, 0.4); // 手前: 少なく・大�
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
-// タップで出す各天体の一言。鑑定本文と同じ文体 (あなたに語りかける完結した文) で書く。
-// 体言止めの羅列は「安っぽい」ため禁止 (2026-08-05 指示)。
-const BODY_MEANING: Record<string, string> = {
-  sun: "何を大切にして生きるかを照らす、あなたの物語の中心です",
-  moon: "ひとりになったとき、心が帰っていく場所を示します",
-  mercury: "言葉の選び方、考えの巡らせ方。あなたの知性のかたちです",
-  venus: "何に心を動かされ、どんなふうに人を愛するかを示します",
-  mars: "一歩を踏み出すとき、あなたの背中を押す内側の火です",
-  jupiter: "あなたが自然と広がり、伸びていける方向を指しています",
-  saturn: "時間をかけて本物になっていくもの。あなたの成熟を見守る星です",
-  asc: "世界と出会う瞬間に、あなたが最初にまとう空気です",
-  mc: "長い道の先で、あなたがたどり着く空の頂きです",
-};
-
 type Props = {
   chart: Chart | null | undefined;
   timeUnknown: boolean;
   moonArc: MoonArc | null;
   essence?: string | null;
+  locale?: ResultLocale;
 };
 
 export default function NatalChartStage({
@@ -72,8 +57,10 @@ export default function NatalChartStage({
   timeUnknown,
   moonArc,
   essence = null,
+  locale = "ja",
 }: Props) {
-  const view = buildChartView(chart, { timeUnknown, moonArc });
+  const copy = UNMEI_CHART_COPY[locale];
+  const view = buildChartView(chart, { timeUnknown, moonArc, locale });
 
   const rootRef = useRef<HTMLElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
@@ -113,12 +100,12 @@ export default function NatalChartStage({
     if (nearRef.current)
       nearRef.current.style.transform = `translateY(${p * -92}px)`;
     // 言葉: 中心±幅の三角窓でフェード + わずかに上へ抜ける
-    PHRASES.forEach((ph, i) => {
+    PHRASE_CENTERS.forEach((center, i) => {
       const el = phraseRefs.current[i];
       if (!el) return;
-      const o = clamp(1 - Math.abs(p - ph.center) / PHRASE_HALF_WIDTH, 0, 1);
+      const o = clamp(1 - Math.abs(p - center) / PHRASE_HALF_WIDTH, 0, 1);
       el.style.opacity = String(o);
-      el.style.transform = `translateY(${(p - ph.center) * -40}px)`;
+      el.style.transform = `translateY(${(p - center) * -40}px)`;
     });
     if (listRef.current)
       listRef.current.style.opacity = String(clamp((p - 0.78) / 0.16, 0, 1));
@@ -196,7 +183,7 @@ export default function NatalChartStage({
       WHEEL.rDot,
       (view.moonArc.startLon + delta / 2) % 360,
     );
-    hits.push({ key: "moon", label: "月", x, y });
+    hits.push({ key: "moon", label: copy.moon, x, y });
   }
   const selectedHit = hits.find((h) => h.key === selectedKey) ?? null;
   const selectedPos =
@@ -211,12 +198,13 @@ export default function NatalChartStage({
           timeUnknown={timeUnknown}
           moonArc={moonArc}
           essence={essence}
+          locale={locale}
         />
       </div>
 
       <section
         ref={rootRef}
-        aria-label="出生図"
+        aria-label={copy.label}
         className="relative mt-8 motion-reduce:hidden"
         style={{ height: "260vh" }}
       >
@@ -262,16 +250,16 @@ export default function NatalChartStage({
             aria-hidden="true"
             className="relative mb-5 h-14 w-full max-w-[560px] px-8"
           >
-            {PHRASES.map((ph, i) => (
+            {copy.phrases.map((phrase, i) => (
               <p
-                key={ph.text}
+                key={phrase}
                 ref={(el) => {
                   phraseRefs.current[i] = el;
                 }}
                 className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-[17px] font-bold leading-relaxed text-white will-change-transform md:text-[20px]"
                 style={{ opacity: 0 }}
               >
-                {ph.text}
+                {phrase}
               </p>
             ))}
           </div>
@@ -347,7 +335,7 @@ export default function NatalChartStage({
                       fill="transparent"
                       role="button"
                       tabIndex={0}
-                      aria-label={`${h.label}の詳細を見る`}
+                      aria-label={copy.details(h.label)}
                       style={{ cursor: "pointer" }}
                       onClick={() =>
                         setSelectedKey((s) => (s === h.key ? null : h.key))
@@ -385,7 +373,7 @@ export default function NatalChartStage({
             >
               <path d="m6 9 6 6 6-6" />
             </svg>
-            スクロール
+            {copy.scroll}
           </div>
 
           <div
@@ -407,16 +395,18 @@ export default function NatalChartStage({
                     )}
                   </p>
                   <p className="mt-1 text-[12.5px] font-bold leading-relaxed text-white/80">
-                    {BODY_MEANING[selectedHit.key] ?? ""}
+                    {copy.meanings[
+                      selectedHit.key as keyof typeof copy.meanings
+                    ] ?? ""}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="text-[12px] font-bold text-white/60">
-                    あなたが生まれた瞬間の、天体の配置図
+                    {copy.arrangement}
                   </p>
                   <p className="mt-1 text-[12px] font-bold text-white/45">
-                    気になる星に、ふれてみてください
+                    {copy.touchHint}
                   </p>
                 </>
               )}

@@ -5,6 +5,10 @@
 // (ロジックが1箇所なら抜け道点検も1箇所で済む)。PR2 のサーバゲートはこの関数を通す。
 
 import { supabaseAdmin } from "./supabase-server";
+import {
+  purchaseIncludesDestinyFeatures,
+  purchaseIncludesFriendFeatures,
+} from "./access-products";
 
 export type AccessPaymentKind =
   | "self_report"
@@ -15,7 +19,11 @@ export type AccessPaymentRow = {
   id: string;
   user_id: string;
   payment_kind: AccessPaymentKind;
-  metadata: { upgrade_from?: unknown } | null;
+  metadata: {
+    upgrade_from?: unknown;
+    destiny_access_policy?: unknown;
+    friend_access_policy?: unknown;
+  } | null;
   paid_at?: string | null;
 };
 
@@ -76,9 +84,21 @@ async function completedAccessPaymentRows(
 
 export async function getAccessPurchaseEntitlements(
   userId: string | null | undefined,
-): Promise<{ selfReport: boolean; full: boolean; premiumBundle: boolean }> {
+): Promise<{
+  selfReport: boolean;
+  full: boolean;
+  premiumBundle: boolean;
+  destinyFeatures: boolean;
+  friendFeatures: boolean;
+}> {
   if (!userId) {
-    return { selfReport: false, full: false, premiumBundle: false };
+    return {
+      selfReport: false,
+      full: false,
+      premiumBundle: false,
+      destinyFeatures: false,
+      friendFeatures: false,
+    };
   }
   const { data: user, error } = await supabaseAdmin
     .from("users")
@@ -86,7 +106,13 @@ export async function getAccessPurchaseEntitlements(
     .eq("id", userId)
     .maybeSingle();
   if (error || !user) {
-    return { selfReport: false, full: false, premiumBundle: false };
+    return {
+      selfReport: false,
+      full: false,
+      premiumBundle: false,
+      destinyFeatures: false,
+      friendFeatures: false,
+    };
   }
 
   let userIds = [userId];
@@ -99,7 +125,13 @@ export async function getAccessPurchaseEntitlements(
       .eq("email", email)
       .limit(50);
     if (relatedError) {
-      return { selfReport: false, full: false, premiumBundle: false };
+      return {
+        selfReport: false,
+        full: false,
+        premiumBundle: false,
+        destinyFeatures: false,
+        friendFeatures: false,
+      };
     }
     userIds = (related ?? []).map((row) => row.id as string);
     if (!userIds.includes(userId)) userIds.push(userId);
@@ -107,7 +139,13 @@ export async function getAccessPurchaseEntitlements(
 
   const payments = await completedAccessPaymentRows(userIds);
   if (!payments) {
-    return { selfReport: false, full: false, premiumBundle: false };
+    return {
+      selfReport: false,
+      full: false,
+      premiumBundle: false,
+      destinyFeatures: false,
+      friendFeatures: false,
+    };
   }
   const valid = validAccessPaymentRows(payments);
   const premiumBundle = valid.some(
@@ -116,11 +154,25 @@ export async function getAccessPurchaseEntitlements(
   const full = premiumBundle || valid.some(
     (row) => row.payment_kind === "full_access",
   );
+  const destinyFeatures = valid.some((row) =>
+    purchaseIncludesDestinyFeatures(
+      row.payment_kind,
+      row.metadata?.destiny_access_policy,
+    ),
+  );
+  const friendFeatures = valid.some((row) =>
+    purchaseIncludesFriendFeatures(
+      row.payment_kind,
+      row.metadata?.friend_access_policy,
+    ),
+  );
   return {
     selfReport:
       full || valid.some((row) => row.payment_kind === "self_report"),
     full,
     premiumBundle,
+    destinyFeatures,
+    friendFeatures,
   };
 }
 
@@ -179,8 +231,8 @@ export async function hasFullAccess(
 
 /**
  * 運命の設計図まで利用できるか。
- * 現行の full_access / premium_bundle と既存 unmei / unmei_upgrade を利用可にする。
- * users.unmei を優先しつつ、再診断時は同一 email、旧韓国版購入者は購入履歴から復元する。
+ * 現行 premium_bundle と、旧 full_access / unmei / unmei_upgrade を利用可にする。
+ * users.unmei を優先しつつ、再診断時は同一 email、旧購入者は購入履歴から復元する。
  */
 export async function hasUnmeiAccess(
   userId: string | null | undefined,
@@ -207,17 +259,15 @@ export async function hasUnmeiAccess(
     if (rows && rows.length > 0) return true;
   }
 
-  // 現行の完全版・プレミアムはいずれも運命の設計図を含む。
-  // 旧韓国版では users.unmei を付与していなかったため、購入履歴も参照して
-  // 既存購入者を再購入画面へ戻さず、そのまま利用権を復元する。
-  return (await getAccessPurchaseEntitlements(userId)).full;
+  // 新仕様の完全版は対象外。プレミアム、または新仕様マーカーが無い旧完全版だけを
+  // 購入履歴から復元し、既存購入者の権利を維持する。
+  return (await getAccessPurchaseEntitlements(userId)).destinyFeatures;
 }
 
 /**
  * プレミアムコースの追加特典を利用できるか。
  *
- * ¥499完全版にも運命の設計図が含まれるため、
- * users.unmei ではなく premium_bundle の決済履歴で判定する。
+ * users.unmei には旧完全版購入者も含まれるため、premium_bundle の決済履歴で判定する。
  */
 export async function hasPremiumCourseAccess(
   userId: string | null | undefined,
@@ -252,7 +302,7 @@ export async function hasPremiumBundleAccess(
  * 自己診断のロック本文と自己分析PDFを利用できるか。
  *
  * - 既存の full_access 購入者は後方互換で利用可。
- * - ¥199 self_report 購入者は自己診断/PDFと友達診断を利用可。
+ * - ¥199 self_report 購入者は自己診断/PDFを利用可。
  * - ゲスト購入や再診断で users 行が分かれても、同じ email の購入を引き継ぐ。
  */
 export async function hasSelfReportAccess(
@@ -286,8 +336,9 @@ export async function hasSelfReportAccess(
 
 // =====================================================================
 // 友達診断 (/tako) の解放。
-//   2026-08-14: ¥199 self_report に友達診断を追加。self_report 以上の購入で
-//   2人目以降の結果シートと友達診断PDFも解放される。
+//   新規の ¥199 self_report は自己診断と自己分析PDFのみ。
+//   full_access 以上で2人目以降の結果シートと友達診断PDFを解放する。
+//   旧 self_report 購入者は購入時の権利を維持する。
 //   旧 'tako_unlock' (¥799 単体販売) は廃止。ただし過去の ¥799 購入者の権限は
 //   payment_history から引き続き読み取り、解放を維持する (下記 anyTakoUnlockPayment)。
 // =====================================================================
@@ -311,14 +362,17 @@ export async function hasTakoAccess(
 ): Promise<boolean> {
   if (!userId) return false;
 
-  // ⓪ お試しコース (¥199 self_report) 以上を持っていれば友達診断も解放。
-  // hasSelfReportAccess は full_access / premium_bundle と同一メールの購入も含む。
-  if (await hasSelfReportAccess(userId)) return true;
+  // ⓪ full_access / premium_bundle / 旧 plan='full' は友達診断を解放。
+  if (await hasFullAccess(userId)) return true;
 
-  // ① 旧 ¥799 単体購入者の権限維持: 自分の行での tako_unlock 購入
+  // ① 旧 ¥199 self_report 購入者は購入時の権利を維持する。
+  // 新仕様マーカー付き self_report は friendFeatures=false になる。
+  if ((await getAccessPurchaseEntitlements(userId)).friendFeatures) return true;
+
+  // ② 旧 ¥799 単体購入者の権限維持: 自分の行での tako_unlock 購入
   if (await anyTakoUnlockPayment([userId])) return true;
 
-  // ② email 紐付け: 同一 email の別 user 行での購入
+  // ③ email 紐付け: 同一 email の別 user 行での購入
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("email")

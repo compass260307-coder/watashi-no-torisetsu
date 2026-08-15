@@ -6,7 +6,6 @@ import {
   absoluteSiteUrl,
   INDEXABLE_LOCALIZED_ROUTES,
   localizedLanguages,
-  SITE_URL,
 } from "@/lib/locale-seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -109,12 +108,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // priority: トップと診断ページを最重要 (1.0) として明示し、規約系は下げる。
   return [
     ...localizedPages,
-    {
-      // 運命の設計図 (独立商品LP。ナビ/フッターから公開リンクされる集客ページ)
-      url: `${SITE_URL}/unmei`,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
     ...typePages,
     // 記事詳細。日本語・韓国語の同一スラッグを hreflang で相互に結ぶ。
     ...articlePages,

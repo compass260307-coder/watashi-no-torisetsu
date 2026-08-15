@@ -27,6 +27,8 @@ import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 import {
   hasPremiumBundleAccess,
   hasSelfReportAccess,
+  hasTakoAccess,
+  hasUnmeiAccess,
 } from "@/lib/entitlements";
 import type { AccessProduct } from "@/lib/access-products";
 import type { AnswerValue } from "@/lib/types";
@@ -245,11 +247,22 @@ export async function POST(request: NextRequest) {
         (preDiagnosisResult.data as PreDiagnosisUserRow | null) ?? null;
     }
     let postDiagnosisReportProduct: AccessProduct | null = null;
+    let postDiagnosisDestinyFeaturesIncluded = false;
+    let postDiagnosisFriendFeaturesIncluded = false;
     if (isUndiagnosedPlaceholderUser(preDiagnosisUser)) {
-      const [selfReportAccess, premiumBundleAccess] = await Promise.all([
-        hasSelfReportAccess(existing.id),
-        hasPremiumBundleAccess(existing.id),
-      ]);
+      const [
+        selfReportAccess,
+        premiumBundleAccess,
+        destinyFeaturesAccess,
+        friendFeaturesAccess,
+      ] = await Promise.all([
+          hasSelfReportAccess(existing.id),
+          hasPremiumBundleAccess(existing.id),
+          hasUnmeiAccess(existing.id),
+          hasTakoAccess(existing.id),
+        ]);
+      postDiagnosisDestinyFeaturesIncluded = destinyFeaturesAccess;
+      postDiagnosisFriendFeaturesIncluded = friendFeaturesAccess;
       postDiagnosisReportProduct =
         premiumBundleAccess
           ? "premium_bundle"
@@ -331,6 +344,8 @@ export async function POST(request: NextRequest) {
           ownerName: normalizedDisplayName ?? existing.display_name,
           locale,
           product: postDiagnosisReportProduct ?? "full_access",
+          destinyFeaturesIncluded: postDiagnosisDestinyFeaturesIncluded,
+          friendFeaturesIncluded: postDiagnosisFriendFeaturesIncluded,
         });
         console.log("[api/diagnosis] post-diagnosis detailed report email sent", {
           user_id: savedUser.id,

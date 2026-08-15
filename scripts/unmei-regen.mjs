@@ -29,8 +29,15 @@ if (!userId) {
 
 const sb = createClient(url, key, { auth: { persistSession: false } });
 
-console.log(`[regen] user=${userId} model=${process.env.CLAUDE_MODEL}`);
-const result = await runForUser(sb, userId);
+const { data: user } = await sb
+  .from("users")
+  .select("preferred_locale")
+  .eq("id", userId)
+  .maybeSingle();
+const locale = user?.preferred_locale === "ko" ? "ko" : "ja";
+
+console.log(`[regen] user=${userId} locale=${locale} model=${process.env.CLAUDE_MODEL}`);
+const result = await runForUser(sb, userId, { locale });
 console.log("[regen] runForUser ->", JSON.stringify(result));
 
 const { data } = await sb

@@ -22,12 +22,19 @@
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { PREFS } from "@/components/birth/BirthProfileForm";
 import UnmeiHostedCheckoutCard from "@/components/uranai/UnmeiEmbeddedCheckout";
+import type { ResultLocale } from "@/i18n/result";
+import {
+  KOREAN_BIRTH_REGIONS,
+  UNMEI_CHAT_COPY,
+  type BirthLocationOption,
+} from "@/i18n/unmei";
 import { track } from "@/lib/track";
 
 type Role = "guide" | "user";
@@ -42,7 +49,6 @@ type Step =
   | "payment"; // purchase モード: 出生情報保存後の決済ステップ
 type Editing = null | "date" | "time" | "place";
 
-const GUIDE_NAME = "星読みの案内人";
 const TYPE_DELAY_MS = 800;
 
 // 生年月日セレクトの範囲 (validate と同じ 120 年)
@@ -114,6 +120,7 @@ export default function UnmeiBirthChat({
   mode = "input",
   ownerToken = null,
   previewMode = false,
+  locale = "ja",
 }: {
   // input:    購入済みの出生情報入力 (保存→即 onSaved で生成)。従来。
   // purchase: 未購入。入力→保存→商品確認→Stripe Checkoutへ遷移。
@@ -123,7 +130,16 @@ export default function UnmeiBirthChat({
   ownerToken?: string | null;
   /** ローカル確認用。計測・出生情報保存・決済APIを呼ばずに全フローを再現する。 */
   previewMode?: boolean;
+  locale?: ResultLocale;
 }) {
+  const copy = UNMEI_CHAT_COPY[locale];
+  const locationOptions = useMemo<readonly BirthLocationOption[]>(
+    () =>
+      locale === "ko"
+        ? KOREAN_BIRTH_REGIONS
+        : PREFS.map((value) => ({ value, label: value })),
+    [locale],
+  );
   const [messages, setMessages] = useState<Msg[]>([]);
   const [typing, setTyping] = useState(false);
   const [step, setStep] = useState<Step>("boot");
@@ -158,7 +174,7 @@ export default function UnmeiBirthChat({
 
   // 案内人の発言を1バブルずつ遅延表示。最後のバブルの後に done を呼ぶ。
   const say = useCallback(
-    (texts: string[], done?: () => void) => {
+    (texts: readonly string[], done?: () => void) => {
       setTyping(true);
       texts.forEach((t, i) => {
         const id = window.setTimeout(() => {
@@ -189,16 +205,7 @@ export default function UnmeiBirthChat({
       });
     }
     // purchase モードは LP を経由せず直接来るため、最初に何をつくるかを一言添える。
-    const intro =
-      mode === "purchase"
-        ? [
-            "運命の設計図へようこそ。星の配置とあなたの性格から、あなただけの鑑定書をおつくりします。",
-            "まずは、あなたが生まれた日を教えてください。",
-          ]
-        : [
-            "ようこそ。ここからは、わたしがあなたの設計図づくりをお手伝いします。",
-            "まずは、あなたが生まれた日を教えてください。",
-          ];
+    const intro = mode === "purchase" ? copy.introPurchase : copy.introInput;
     say(intro, () => setStep("date"));
 
     // React Strict Mode は開発時に Effect の setup → cleanup → setup を行う。
@@ -209,7 +216,7 @@ export default function UnmeiBirthChat({
       timers.length = 0;
       bootedRef.current = false;
     };
-  }, [say, mode, previewMode]);
+  }, [say, mode, previewMode, copy]);
 
   // 新しい発言・入力UIの切り替わりでトーク面の末尾へスクロール (内部スクロール)
   useEffect(() => {
@@ -222,18 +229,18 @@ export default function UnmeiBirthChat({
   // 確認バブル (修正後もここに戻る)
   const goConfirm = useCallback(() => {
     const a = answersRef.current;
-    const timeLabel = a.timeUnknown ? "わからない（正午で計算）" : a.birthTime;
+    const timeLabel = a.timeUnknown ? copy.unknownTimeLabel : a.birthTime;
     const placeLabel = a.prefecture
       ? `${a.prefecture}${a.city ? ` ${a.city}` : ""}`
-      : "未入力";
+      : copy.unknownPlaceLabel;
     say(
       [
-        "それでは、この内容で設計図を描きます。",
-        `生年月日：${a.birthDateLabel}\n出生時刻：${timeLabel}\n出生地：${placeLabel}`,
+        copy.confirmLead,
+        `${copy.dateField}：${a.birthDateLabel}\n${copy.timeField}：${timeLabel}\n${copy.placeField}：${placeLabel}`,
       ],
       () => setStep("confirm"),
     );
-  }, [say]);
+  }, [say, copy]);
 
   // ---- 各ステップの回答ハンドラ ----
 
@@ -244,12 +251,12 @@ export default function UnmeiBirthChat({
     if (!y || !m || !d) return;
     const iso = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (new Date(iso) > new Date()) {
-      say(["未来の日付は選べないみたいです。もう一度教えてください。"]);
+      say([copy.futureDate]);
       return;
     }
     answersRef.current.birthDate = iso;
-    answersRef.current.birthDateLabel = `${y}年${m}月${d}日`;
-    push("user", `${y}年${m}月${d}日`);
+    answersRef.current.birthDateLabel = copy.formatDate(y, m, d);
+    push("user", copy.formatDate(y, m, d));
     setStep("boot");
     if (editing) {
       setEditing(null);
@@ -258,18 +265,18 @@ export default function UnmeiBirthChat({
     }
     say(
       [
-        "ありがとうございます。",
-        "次は、生まれた時刻を教えてください。母子手帳に載っていることが多いです。わからなくても大丈夫。",
+        copy.thanks,
+        ...copy.askTime,
       ],
       () => setStep("time"),
     );
-  }, [dYear, dMonth, dDay, editing, push, say, goConfirm]);
+  }, [dYear, dMonth, dDay, editing, push, say, goConfirm, copy]);
 
   const handleTimeSubmit = useCallback(
     (unknown: boolean) => {
       answersRef.current.timeUnknown = unknown;
       if (!unknown) answersRef.current.birthTime = dockTime;
-      push("user", unknown ? "時間はわからない" : dockTime);
+      push("user", unknown ? copy.unknownTimeAnswer : dockTime);
       setStep("boot");
       const next = () => {
         if (editing) {
@@ -277,18 +284,15 @@ export default function UnmeiBirthChat({
           goConfirm();
           return;
         }
-        say(
-          ["最後に、生まれた場所を教えてください。都道府県だけでも大丈夫です。"],
-          () => setStep("place"),
-        );
+        say([copy.askPlace], () => setStep("place"));
       };
       if (unknown) {
-        say(["わかりました。その場合は、お昼12時の空で読みますね。"], next);
+        say([copy.unknownTimeReply], next);
       } else {
         next();
       }
     },
-    [dockTime, editing, push, say, goConfirm],
+    [dockTime, editing, push, say, goConfirm, copy],
   );
 
   const handlePlaceSubmit = useCallback(
@@ -298,7 +302,7 @@ export default function UnmeiBirthChat({
       push(
         "user",
         skip
-          ? "スキップする"
+          ? copy.skipAnswer
           : `${dockPref}${dockCity.trim() ? ` ${dockCity.trim()}` : ""}`,
       );
       setStep("boot");
@@ -308,12 +312,12 @@ export default function UnmeiBirthChat({
         return;
       }
       if (skip) {
-        say(["わかりました。出生地は未入力のまま進めますね。"], goConfirm);
+        say([copy.skipReply], goConfirm);
       } else {
         goConfirm();
       }
     },
-    [dockPref, dockCity, editing, push, goConfirm, say],
+    [dockPref, dockCity, editing, push, goConfirm, say, copy],
   );
 
   // 確認画面の「◯◯を直す」
@@ -321,14 +325,10 @@ export default function UnmeiBirthChat({
     (target: Exclude<Editing, null>) => {
       setEditing(target);
       setStep("boot");
-      const q = {
-        date: "生まれた日を、もう一度教えてください。",
-        time: "生まれた時刻を、もう一度教えてください。",
-        place: "生まれた場所を、もう一度教えてください。",
-      }[target];
+      const q = copy.editQuestions[target];
       say([q], () => setStep(target));
     },
-    [say],
+    [say, copy],
   );
 
   const handleConfirm = useCallback(async () => {
@@ -338,8 +338,8 @@ export default function UnmeiBirthChat({
     if (previewMode) {
       say(
         [
-          "ありがとうございます。入力内容を確認できました。",
-          "本番ではここで出生情報を保存し、最後の商品確認へ進みます。",
+          copy.previewConfirmed,
+          copy.previewPayment,
         ],
         () => setStep("payment"),
       );
@@ -347,6 +347,17 @@ export default function UnmeiBirthChat({
     }
 
     try {
+      if (locale === "ko" && ownerToken) {
+        const preference = await fetch("/api/account/preferred-locale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ownerToken, locale }),
+        });
+        if (!preference.ok) throw new Error("locale preference failed");
+      }
+      const selectedLocation = locationOptions.find(
+        (item) => item.value === a.prefecture,
+      );
       const res = await fetch("/api/birth-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -356,13 +367,16 @@ export default function UnmeiBirthChat({
           time_unknown: a.timeUnknown,
           prefecture: a.prefecture || null,
           city: a.city || null,
+          latitude: selectedLocation?.latitude ?? null,
+          longitude: selectedLocation?.longitude ?? null,
+          place_unknown: !a.prefecture,
           analytics_page: "unmei",
         }),
       });
       const j = await res.json();
       if (!res.ok) {
         // 生のAPIエラー(英語)はユーザーに出さず、やさしい定型文にする
-        say(["うまく保存できませんでした。もう一度お試しください。"], () =>
+        say([copy.saveError], () =>
           setStep("confirm"),
         );
         void j;
@@ -374,6 +388,7 @@ export default function UnmeiBirthChat({
           has_place: !!a.prefecture,
           page: "unmei",
           ui: mode === "purchase" ? "chat_purchase" : "chat",
+          locale,
         },
       });
       if (mode === "purchase") {
@@ -382,20 +397,29 @@ export default function UnmeiBirthChat({
         // /unmei?checkout=success のチャット形式生成待ちへ戻る。
         say(
           [
-            "ありがとうございます。準備ができました。",
-            "最後に、お支払いへ進みます。決済が終わると、その場で星を読みはじめます。",
+            copy.paymentReady,
+            copy.paymentNext,
           ],
           () => setStep("payment"),
         );
         return;
       }
-      say(["受け取りました。それでは——星を読みはじめますね。"], onSaved);
+      say([copy.generationReady], onSaved);
     } catch {
-      say(["ネットワークエラーが起きました。もう一度試してみてください。"], () =>
+      say([copy.networkError], () =>
         setStep("confirm"),
       );
     }
-  }, [say, onSaved, mode, previewMode]);
+  }, [
+    say,
+    onSaved,
+    mode,
+    previewMode,
+    copy,
+    locale,
+    ownerToken,
+    locationOptions,
+  ]);
 
   // ---- 描画 ----
 
@@ -413,7 +437,7 @@ export default function UnmeiBirthChat({
 
   return (
     <main className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-5 md:px-8 md:pb-14 md:pt-8">
-      <h1 className="sr-only">あなたの設計図を描くために</h1>
+      <h1 className="sr-only">{copy.srTitle}</h1>
 
       {/* チャットウィンドウ (紺ヘッダー + トーク面の1枚パネル) */}
       <div className="flex h-[76dvh] min-h-[440px] flex-col overflow-hidden rounded-2xl border border-[#E9E9F2] bg-white shadow-[0_6px_24px_rgba(46,46,92,0.10)] md:h-[620px]">
@@ -428,10 +452,10 @@ export default function UnmeiBirthChat({
           />
           <div className="min-w-0">
             <p className="truncate text-[14px] font-black leading-tight text-white">
-              {GUIDE_NAME}
+              {copy.guideName}
             </p>
             <p className="text-[11px] font-bold leading-tight text-white/55">
-              運命の設計図
+              {copy.productName}
             </p>
           </div>
           {/* 右端の星 (ヘッダーの世界観装飾。読み上げ不要) */}
@@ -491,7 +515,7 @@ export default function UnmeiBirthChat({
                   className="h-8 w-8 flex-shrink-0 rounded-full border border-[#E9E9F2] bg-white"
                 />
                 <div className="rounded-2xl rounded-bl-[4px] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(46,46,92,0.06)]">
-                  <span className="flex gap-1.5" aria-label="入力中">
+                  <span className="flex gap-1.5" aria-label={copy.typing}>
                     {[0, 1, 2].map((d) => (
                       <span
                         key={d}
@@ -505,7 +529,7 @@ export default function UnmeiBirthChat({
             )}
             {waiting && (
               <p className="ml-10 text-[12px] font-bold leading-relaxed text-[#8A8AA3]">
-                あなたが生まれた瞬間の空を再現しています。1分ほどかかることがあります。
+                {copy.waiting}
               </p>
             )}
 
@@ -516,41 +540,41 @@ export default function UnmeiBirthChat({
                 <div className={cardCls}>
                   <div className="flex gap-2">
                     <select
-                      aria-label="年"
+                      aria-label={copy.year}
                       value={dYear}
                       onChange={(e) => setDYear(e.target.value)}
                       className={`${selectCls} flex-[1.35]`}
                     >
-                      <option value="">年</option>
+                      <option value="">{copy.year}</option>
                       {YEARS.map((y) => (
                         <option key={y} value={y}>
-                          {y}年
+                          {y}{copy.yearSuffix}
                         </option>
                       ))}
                     </select>
                     <select
-                      aria-label="月"
+                      aria-label={copy.month}
                       value={dMonth}
                       onChange={(e) => setDMonth(e.target.value)}
                       className={`${selectCls} flex-1`}
                     >
-                      <option value="">月</option>
+                      <option value="">{copy.month}</option>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                         <option key={m} value={m}>
-                          {m}月
+                          {m}{copy.monthSuffix}
                         </option>
                       ))}
                     </select>
                     <select
-                      aria-label="日"
+                      aria-label={copy.day}
                       value={dDay}
                       onChange={(e) => setDDay(e.target.value)}
                       className={`${selectCls} flex-1`}
                     >
-                      <option value="">日</option>
+                      <option value="">{copy.day}</option>
                       {Array.from({ length: maxDay }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>
-                          {d}日
+                          {d}{copy.daySuffix}
                         </option>
                       ))}
                     </select>
@@ -559,6 +583,7 @@ export default function UnmeiBirthChat({
                     <SendButton
                       onClick={handleDateSubmit}
                       disabled={!dYear || !dMonth || !dDay || Number(dDay) > maxDay}
+                      label={copy.send}
                     />
                   </div>
                 </div>
@@ -569,7 +594,7 @@ export default function UnmeiBirthChat({
               <>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Chip onClick={() => handleTimeSubmit(true)}>
-                    わからない（正午で計算）
+                    {copy.unknownTimeChip}
                   </Chip>
                 </div>
                 <div className="flex justify-end">
@@ -577,12 +602,15 @@ export default function UnmeiBirthChat({
                     <div className="flex items-center gap-2">
                       <input
                         type="time"
-                        aria-label="出生時刻"
+                        aria-label={copy.birthTimeAria}
                         value={dockTime}
                         onChange={(e) => setDockTime(e.target.value)}
                         className="min-w-0 flex-1 rounded-xl border border-[#D9D9EC] bg-[#F7F7FB] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C]"
                       />
-                      <SendButton onClick={() => handleTimeSubmit(false)} />
+                      <SendButton
+                        onClick={() => handleTimeSubmit(false)}
+                        label={copy.send}
+                      />
                     </div>
                   </div>
                 </div>
@@ -592,27 +620,29 @@ export default function UnmeiBirthChat({
             {interactive && step === "place" && (
               <>
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Chip onClick={() => handlePlaceSubmit(true)}>スキップする</Chip>
+                  <Chip onClick={() => handlePlaceSubmit(true)}>
+                    {copy.skipChip}
+                  </Chip>
                 </div>
                 <div className="flex justify-end">
                   <div className={cardCls}>
                     <select
-                      aria-label="都道府県"
+                      aria-label={copy.regionAria}
                       value={dockPref}
                       onChange={(e) => setDockPref(e.target.value)}
                       className={`${selectCls} w-full`}
                     >
-                      <option value="">都道府県を選択</option>
-                      {PREFS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
+                      <option value="">{copy.regionPlaceholder}</option>
+                      {locationOptions.map((location) => (
+                        <option key={location.value} value={location.value}>
+                          {location.label}
                         </option>
                       ))}
                     </select>
                     <div className="mt-2 flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder="市区町村（任意）"
+                        placeholder={copy.cityPlaceholder}
                         value={dockCity}
                         onChange={(e) => setDockCity(e.target.value)}
                         className="min-w-0 flex-1 rounded-xl border border-[#D9D9EC] bg-[#F7F7FB] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C]"
@@ -620,6 +650,7 @@ export default function UnmeiBirthChat({
                       <SendButton
                         onClick={() => handlePlaceSubmit(false)}
                         disabled={!dockPref}
+                        label={copy.send}
                       />
                     </div>
                   </div>
@@ -634,9 +665,9 @@ export default function UnmeiBirthChat({
                 <div className={cardCls}>
                   {step === "confirm" && (
                     <div className="mb-2.5 flex flex-wrap gap-2">
-                      <Chip onClick={() => handleEdit("date")}>生年月日を直す</Chip>
-                      <Chip onClick={() => handleEdit("time")}>出生時刻を直す</Chip>
-                      <Chip onClick={() => handleEdit("place")}>出生地を直す</Chip>
+                      <Chip onClick={() => handleEdit("date")}>{copy.editDate}</Chip>
+                      <Chip onClick={() => handleEdit("time")}>{copy.editTime}</Chip>
+                      <Chip onClick={() => handleEdit("place")}>{copy.editPlace}</Chip>
                     </div>
                   )}
                   <button
@@ -646,10 +677,10 @@ export default function UnmeiBirthChat({
                     className="w-full rounded-full bg-[#5B5BEF] py-3 font-bold text-white disabled:opacity-40"
                   >
                     {step === "submitting"
-                      ? "送信中…"
+                      ? copy.submitting
                       : mode === "purchase"
-                        ? "このまま進む"
-                        : "この内容で描いてもらう"}
+                        ? copy.purchaseContinue
+                        : copy.confirm}
                   </button>
                 </div>
               </div>
@@ -662,6 +693,7 @@ export default function UnmeiBirthChat({
                   <UnmeiHostedCheckoutCard
                     ownerToken={ownerToken}
                     previewMode={previewMode}
+                    locale={locale}
                   />
                 </div>
               </div>

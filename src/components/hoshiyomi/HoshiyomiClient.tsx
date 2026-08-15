@@ -22,13 +22,9 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
 import type { ResultLocale } from "@/i18n/result";
-import type { AccessProduct } from "@/lib/access-products";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 
-const CHAT_ACCESS_PRODUCTS: readonly AccessProduct[] = [
-  "full_access",
-  "premium_bundle",
-];
+const CHAT_ACCESS_PRODUCTS = ["premium_bundle"] as const;
 
 type ActiveConversation = {
   id: string;
@@ -150,6 +146,7 @@ export function HoshiyomiClient({
           returnTo="hoshiyomi"
           ctaSource="hoshiyomi_first_send"
           products={CHAT_ACCESS_PRODUCTS}
+          legacyPlanStyle
           locale={locale}
           onClose={() => setPaywallOpen(false)}
         />

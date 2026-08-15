@@ -5,6 +5,7 @@ import {
   validAccessPaymentRows,
   type AccessPaymentRow,
 } from "@/lib/entitlements";
+import { purchaseIncludesDestinyFeatures } from "@/lib/access-products";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export type HoshiyomiConversationSummary = {
@@ -309,6 +310,14 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     (payments ?? []) as (AccessPaymentRow & { stripe_session_id: string })[],
   ) as (AccessPaymentRow & { stripe_session_id: string })[];
   for (const payment of validPayments) {
+    if (
+      !purchaseIncludesDestinyFeatures(
+        payment.payment_kind,
+        payment.metadata?.destiny_access_policy,
+      )
+    ) {
+      continue;
+    }
     const kind = payment.payment_kind as string;
     await grantHoshiyomiCreditsToTarget({
       userId: payment.user_id as string,

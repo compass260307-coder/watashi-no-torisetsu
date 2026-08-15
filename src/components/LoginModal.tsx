@@ -8,13 +8,16 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { LoginCard } from "./LoginCard";
+import type { ResultLocale } from "@/i18n/result";
 
 export function LoginModal({
   open,
   onClose,
+  locale = "ja",
 }: {
   open: boolean;
   onClose: () => void;
+  locale?: ResultLocale;
 }) {
   // Esc で閉じる + 背面スクロールロック (open の間だけ)
   useEffect(() => {
@@ -40,7 +43,7 @@ export function LoginModal({
       className="fixed inset-0 z-[120] flex items-center justify-center px-5 py-10"
       role="dialog"
       aria-modal="true"
-      aria-label="ログイン"
+      aria-label={locale === "ko" ? "로그인" : "ログイン"}
     >
       {/* 暗幕: クリックで閉じる */}
       <div
@@ -50,7 +53,7 @@ export function LoginModal({
       />
       {/* カード本体 (暗幕より前面) */}
       <div className="relative z-10 w-full max-w-[440px]">
-        <LoginCard onClose={onClose} />
+        <LoginCard onClose={onClose} locale={locale} />
       </div>
     </div>,
     document.body,

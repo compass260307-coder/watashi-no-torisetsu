@@ -131,9 +131,7 @@ export function localeSwitchPath(
     const tokenPath = encodeURIComponent(friendIndividual.token);
     const perceptionPath = encodeURIComponent(friendIndividual.perceptionId);
     return finish(
-      targetLocale === "ko"
-        ? `/ko/tako/${tokenPath}#friend-${perceptionPath}`
-        : `/tako/${tokenPath}/friend/${perceptionPath}`,
+      `${targetLocale === "ko" ? "/ko" : ""}/tako/${tokenPath}/friend/${perceptionPath}`,
     );
   }
 

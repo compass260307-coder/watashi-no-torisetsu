@@ -45,6 +45,8 @@ const PAYWALL_SOURCES = new Set([
   "nav_aisho_locked",
   // 星読みの案内人で、未購入ユーザーが最初の相談を送信したとき。
   "hoshiyomi_first_send",
+  // 運命の設計図LPのヒーローCTAから開くプレミアム専用カード。
+  "unmei_hero",
   ...TAKO_PAYWALL_SOURCES,
 ]);
 

@@ -1,22 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { track } from "@/lib/track";
+import {
+  TopViewTracker,
+  trackTopCta,
+} from "@/components/top/TopAnalytics";
 
 export function KoTopViewTracker() {
-  const tracked = useRef(false);
-
-  useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
-    track("top_viewed", { metadata: { locale: "ko", page: "top" } });
-  }, []);
-
-  return null;
+  return <TopViewTracker locale="ko" />;
 }
 
 export function trackKoTopCta() {
-  track("top_cta_clicked", {
-    metadata: { locale: "ko", page: "top", destination: "diagnosis" },
-  });
+  trackTopCta("ko");
 }

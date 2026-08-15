@@ -7,6 +7,10 @@ import {
   isMetaPurchaseProduct,
   type MetaPurchaseProduct,
 } from "@/lib/meta-purchase";
+import {
+  purchaseIncludesDestinyFeatures,
+  purchaseIncludesFriendFeatures,
+} from "@/lib/access-products";
 
 export { isCheckoutSessionId };
 
@@ -18,6 +22,8 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   locale: "ja" | "ko";
   guest: boolean;
   product: MetaPurchaseProduct;
+  destinyFeaturesIncluded: boolean;
+  friendFeaturesIncluded: boolean;
 }>;
 
 function claimSecret(): string | null {
@@ -87,6 +93,24 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
       guest: session.metadata?.guest === "1",
       product,
+      destinyFeaturesIncluded:
+        product === "premium_bundle" ||
+        product === "unmei" ||
+        product === "unmei_upgrade" ||
+        (product === "full_access" &&
+          purchaseIncludesDestinyFeatures(
+            product,
+            session.metadata?.destiny_access_policy,
+          )),
+      friendFeaturesIncluded:
+        product === "self_report" ||
+        product === "full_access" ||
+        product === "premium_bundle"
+          ? purchaseIncludesFriendFeatures(
+              product,
+              session.metadata?.friend_access_policy,
+            )
+          : false,
     };
   } catch {
     // 無効・失効済み・別環境の Session ID は購入完了として扱わない。

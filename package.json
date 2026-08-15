@@ -11,10 +11,11 @@
     "build:local": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs",
+    "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs && node scripts/unmei-prompt-locale-test.mjs",
     "verify:ko:browser": "node scripts/verify-korean-browser.mjs",
     "verify:ko:prod": "node scripts/verify-korean-production.mjs",
-    "ephemeris:test": "node scripts/ephemeris-test.mjs"
+    "ephemeris:test": "node scripts/ephemeris-test.mjs",
+    "unmei:prompt:test": "node scripts/unmei-prompt-locale-test.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.67",

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
+import type { ResultLocale } from "@/i18n/result";
 
 type State = "no_birth" | "pending" | "timeout" | "ready";
 
@@ -14,7 +15,24 @@ type Props = {
     ownerToken: string | null;
     product: "premium_bundle";
   } | null;
+  locale?: ResultLocale;
+  ownerToken?: string | null;
 };
+
+const CLIENT_COPY = {
+  ja: {
+    title: "あなたの運命の設計図",
+    timeout: "鑑定の生成に時間がかかっています。少し時間をおいて、もう一度お試しください。",
+    retry: "再度試す",
+    pending: "鑑定を生成しています。しばらくお待ちください。",
+  },
+  ko: {
+    title: "나의 운명 설계도",
+    timeout: "설계도 생성에 시간이 걸리고 있어요. 잠시 후 다시 시도해 주세요.",
+    retry: "다시 시도하기",
+    pending: "태어난 순간의 하늘과 성격 진단을 함께 읽고 있어요. 잠시만 기다려 주세요.",
+  },
+} as const;
 
 // 生成完了までのタイムアウト (指示書④: 無限スピナー禁止・60秒で再試行案内)
 const TIMEOUT_MS = 60_000;
@@ -23,8 +41,15 @@ const POLL_INTERVAL_MS = 3_000;
 // (サーバ側の生成試行上限とは別の、クライアント発の再キック。上限超過はサーバが 'failed' で止める)
 const MAX_AUTO_RETRIES = 2;
 
-export default function UnmeiClient({ initialState, purchase = null }: Props) {
+export default function UnmeiClient({
+  initialState,
+  purchase = null,
+  locale = "ja",
+  ownerToken = null,
+}: Props) {
   const router = useRouter();
+  const copy = CLIENT_COPY[locale];
+  const purchaseOwnerToken = purchase?.ownerToken ?? null;
   const [state, setState] = useState<State>(initialState);
   // チャット経由で保存した直後は、生成待ちもチャット画面のまま見せる
   // (別画面のスピナーに切り替えず、会話の続きとして待たせる)。
@@ -43,6 +68,15 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
   // 生成をキック。force=true はサーバ側の自動再生成上限を超えた手動リトライ。
   const kickGeneration = useCallback(async (force = false) => {
     try {
+      const localeOwnerToken = purchaseOwnerToken ?? ownerToken;
+      if (locale === "ko" && localeOwnerToken) {
+        const preference = await fetch("/api/account/preferred-locale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ownerToken: localeOwnerToken, locale }),
+        });
+        if (!preference.ok) return;
+      }
       await fetch("/api/unmei/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,7 +85,7 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
     } catch {
       /* ポーリング側で回復可能なので握りつぶす */
     }
-  }, []);
+  }, [locale, ownerToken, purchaseOwnerToken]);
 
   // 60秒で MAX_AUTO_RETRIES まで自動再生成、尽きたら手動案内。
   const startPolling = useCallback(() => {
@@ -141,7 +175,8 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
         onSaved={handleSaved}
         waiting={state !== "no_birth"}
         mode={purchase ? "purchase" : "input"}
-        ownerToken={purchase?.ownerToken ?? null}
+        ownerToken={purchaseOwnerToken ?? ownerToken}
+        locale={locale}
       />
     );
   }
@@ -149,15 +184,15 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
   if (state === "timeout") {
     return (
       <main className="mx-auto max-w-[640px] px-6 py-12 text-center">
-        <h1 className="mb-4 text-2xl font-black">あなたの運命の設計図</h1>
+        <h1 className="mb-4 text-2xl font-black">{copy.title}</h1>
         <p className="mb-6 text-gray-700">
-          鑑定の生成に時間がかかっています。少し時間をおいて、もう一度お試しください。
+          {copy.timeout}
         </p>
         <button
           onClick={handleRetry}
           className="rounded-full bg-[#5B5BEF] px-6 py-3 font-bold text-white"
         >
-          再度試す
+          {copy.retry}
         </button>
       </main>
     );
@@ -166,8 +201,8 @@ export default function UnmeiClient({ initialState, purchase = null }: Props) {
   // pending / ready(refresh 待ち)
   return (
     <main className="mx-auto flex max-w-[640px] flex-col items-center px-6 py-16 text-center">
-      <h1 className="mb-4 text-2xl font-black">あなたの運命の設計図</h1>
-      <p className="mb-8 text-gray-700">鑑定を生成しています。しばらくお待ちください。</p>
+      <h1 className="mb-4 text-2xl font-black">{copy.title}</h1>
+      <p className="mb-8 text-gray-700">{copy.pending}</p>
       <div className="h-24 w-24 animate-spin rounded-full border-4 border-gray-200 border-t-[#5B5BEF]" />
     </main>
   );

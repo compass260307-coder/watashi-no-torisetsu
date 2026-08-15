@@ -1,6 +1,7 @@
 import { computeNatalChart } from "../ephemeris.mjs";
 import { callClaude } from "../claude.mjs";
 import { buildNatalSystemPrompt, buildNatalUserPrompt } from "./prompts.mjs";
+import { validateReadingLocale } from "./reading-validation.mjs";
 
 // 出生地未入力時のフォールバック緯度経度 (指示書②: 都道府県未入力なら東京で仮計算)。
 const TOKYO_LAT = 35.6895;
@@ -9,23 +10,45 @@ const SEOUL_LAT = 37.5665;
 const SEOUL_LNG = 126.978;
 
 // v2: 生成後スキャンで弾く推量表現 (これのみ。「してみてください」は正しい命令形なので弾かない)。
-const HEDGE_TERMS = [
-  "かもしれない",
-  "かもしれません",
-  "でしょう",
-  "だろう",
-  "と思われ",
-  "のかもしれ",
-  "ように見えるかも",
-];
+const HEDGE_TERMS = {
+  ja: [
+    "かもしれない",
+    "かもしれません",
+    "でしょう",
+    "だろう",
+    "と思われ",
+    "のかもしれ",
+    "ように見えるかも",
+  ],
+  ko: [
+    "일지도 모릅니다",
+    "일 수 있습니다",
+    "것 같습니다",
+    "듯합니다",
+    "듯 보입니다",
+    "것으로 보입니다",
+    "아마",
+    "추측됩니다",
+  ],
+};
 // reading (hitokoto + 各 section の subline/body) に推量表現が含まれるか。検出語を返す。
-function detectHedges(reading) {
+function detectHedges(reading, locale) {
   const parts = [reading?.hitokoto || ""];
   for (const s of reading?.sections || []) {
     parts.push(s?.subline || "", s?.body || "");
   }
   const text = parts.join("\n");
-  return HEDGE_TERMS.filter((t) => text.includes(t));
+  const terms = locale === "ko" ? HEDGE_TERMS.ko : HEDGE_TERMS.ja;
+  return terms.filter((t) => text.includes(t));
+}
+
+function repairInstruction(locale, problems) {
+  if (locale === "ko") {
+    return `\n\n이전 결과에 다음 문제가 있었습니다: ${problems.join(", ")}\n` +
+      "네 개 장의 id와 한국어 제목을 정확히 지키고, 사용자에게 보이는 모든 문장을 한자나 일본어 없이 자연스러운 한국어 존댓말로 다시 작성해 주세요. 추측 표현도 쓰지 마세요.";
+  }
+  return `\n\n前回の出力に次の問題がありました: ${problems.join(", ")}\n` +
+    "4章のidと日本語タイトルを正確に守り、推量表現を使わず、JSONだけを再出力してください。";
 }
 
 // 生成状態マシン用の定数 (reading.ts と一致させること)。
@@ -177,7 +200,11 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
     const locale = opts.locale === "ko" ? "ko" : "ja";
     const existingLocale = existing?.reading?.locale === "ko" ? "ko" : "ja";
     if (isReadingReady(existing) && existingLocale === locale) {
-      return { ok: true, cached: true };
+      const localeErrors = validateReadingLocale(existing.reading, locale);
+      if (localeErrors.length === 0) return { ok: true, cached: true };
+      console.warn(
+        `[generateWorker] cached ${locale} reading failed locale validation: ${localeErrors.join(" / ")}`,
+      );
     }
 
     const attempts =
@@ -246,21 +273,35 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       );
     let lastErr = null;
     let hedgedFallback = null; // 1回目が推量表現ありだが有効な reading (再生成が失敗したとき採用)
+    let retryProblems = [];
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const resp = await callClaude({
           system,
-          prompt: userPrompt,
+          prompt: attempt === 1 || retryProblems.length === 0
+            ? userPrompt
+            : `${userPrompt}${repairInstruction(locale, retryProblems)}`,
           model,
           maxTokens: 4500, // v2: 4章×550〜900字 + subline + hitokoto
           timeoutMs: 120_000,
         });
         const parsed = { ...parseReading(resp.text), locale };
-        const hedges = detectHedges(parsed);
+        const localeErrors = validateReadingLocale(parsed, locale);
+        if (localeErrors.length > 0) {
+          retryProblems = localeErrors;
+          lastErr = new Error(`reading locale validation failed: ${localeErrors.join(" / ")}`);
+          console.warn(
+            `[generateWorker] ${locale} locale validation failed (attempt ${attempt}): ${localeErrors.join(" / ")}`,
+          );
+          continue;
+        }
+
+        const hedges = detectHedges(parsed, locale);
         if (hedges.length > 0 && attempt < 2) {
           // 推量表現検出 → 1回だけ再生成。1回目は有効なので fallback に退避。
           console.warn(`[generateWorker] 推量表現を検出 (attempt ${attempt}): ${hedges.join("/")} → 再生成`);
           hedgedFallback = parsed;
+          retryProblems = hedges.map((term) => `hedging: ${term}`);
           continue;
         }
         if (hedges.length > 0) {

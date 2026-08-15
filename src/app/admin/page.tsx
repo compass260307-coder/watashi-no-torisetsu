@@ -58,7 +58,7 @@ const PAYWALL_SOURCE_LABELS: Record<string, string> = {
 
 // payment_history.payment_kind → 日本語ラベル (商品別の売上内訳)。
 const PAYMENT_KIND_LABELS: Record<string, string> = {
-  self_report: "自己・友達診断＋PDF ¥199",
+  self_report: "自己診断＋自己分析PDF ¥199",
   full_access: "完全版 ¥499",
   premium_bundle: "プレミアム ¥899",
   // unmei 系はセールで価格が変動するためラベルに金額を含めない (売上は実額で集計)

@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import {
+  FriendIndividualResultPage,
+  type FriendIndividualPageProps,
+} from "@/components/result/FriendIndividualResultPage";
 import { localizedAlternates } from "@/lib/locale-seo";
-
-type PageProps = {
-  params: Promise<{ token: string; perceptionId: string }>;
-};
 
 export async function generateMetadata({
   params,
-}: PageProps): Promise<Metadata> {
+}: Pick<FriendIndividualPageProps, "params">): Promise<Metadata> {
   const { token, perceptionId } = await params;
   const tokenPath = encodeURIComponent(token);
   const perceptionPath = encodeURIComponent(perceptionId);
   return {
-    title: "친구별 결과 | 나의 사용설명서",
+    title: "친구별 관점 일치 결과 | 나의 사용설명서",
     alternates: localizedAlternates(
       "ko",
       `/tako/${tokenPath}/friend/${perceptionPath}`,
@@ -23,11 +22,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function KoreanFriendIndividualRedirect({
-  params,
-}: PageProps) {
-  const { token, perceptionId } = await params;
-  redirect(
-    `/ko/tako/${encodeURIComponent(token)}#friend-${encodeURIComponent(perceptionId)}`,
-  );
+export default function KoreanFriendIndividualPage(
+  props: FriendIndividualPageProps,
+) {
+  return <FriendIndividualResultPage {...props} locale="ko" />;
 }

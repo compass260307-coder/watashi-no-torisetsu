@@ -13,17 +13,31 @@ const SIGN_JA = {
   Leo: "獅子座", Virgo: "乙女座", Libra: "天秤座", Scorpio: "蠍座",
   Sagittarius: "射手座", Capricorn: "山羊座", Aquarius: "水瓶座", Pisces: "魚座",
 };
+const SIGN_KO = {
+  Aries: "양자리", Taurus: "황소자리", Gemini: "쌍둥이자리", Cancer: "게자리",
+  Leo: "사자자리", Virgo: "처녀자리", Libra: "천칭자리", Scorpio: "전갈자리",
+  Sagittarius: "사수자리", Capricorn: "염소자리", Aquarius: "물병자리", Pisces: "물고기자리",
+};
 const SIGN_ORDER = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ];
 const FACTOR_JA = { O: "開放性", C: "誠実性", E: "外向性", A: "協調性", N: "情緒" };
+const FACTOR_KO = {
+  O: "개방성",
+  C: "성실성",
+  E: "외향성",
+  A: "우호성",
+  N: "정서적 민감성",
+};
 
 // ===== 内容/文体レイヤーの plan (スコア由来・純関数) =====
 // quadrant: A(協調性)と O(開放性)の高低から。O≥5→N/O<5→S、A≥5→F/A<5→T。
 // haichi主語: |score−5| 降順トップ。全因子の乖離<1.5 なら上位2因子の組み合わせを主語に(§3)。
 // %表記: score×10 (無料診断と同じ)。
-export function buildUnmeiPlan(scores) {
+export function buildUnmeiPlan(scores, locale = "ja") {
+  const isKo = locale === "ko";
+  const factorNames = isKo ? FACTOR_KO : FACTOR_JA;
   const s = scores || {};
   const val = (k) => (typeof s[k] === "number" ? s[k] : 5);
   const pct = (k) => Math.round(val(k) * 10);
@@ -32,23 +46,29 @@ export function buildUnmeiPlan(scores) {
     .map((k) => ({ k, dev: Math.abs(val(k) - 5) }))
     .sort((a, b) => b.dev - a.dev);
   const quadrant = (val("O") >= 5 ? "N" : "S") + (val("A") >= 5 ? "F" : "T");
-  const pctLine = dims.map((k) => `${FACTOR_JA[k]}${pct(k)}`).join(" / ");
+  const pctLine = dims.map((k) => `${factorNames[k]}${pct(k)}`).join(" / ");
   const allSmall = ranked.every((r) => r.dev < 1.5);
   const top = ranked[0];
   // 代表因子%(乖離最大)。chosen の subline はこれを使う (haichi と同じ因子)。
-  const topFactorPct = `${FACTOR_JA[top.k]}${pct(top.k)}`;
+  const topFactorPct = `${factorNames[top.k]}${pct(top.k)}`;
   let haichiSubject;
   let combination;
   if (allSmall) {
     combination = true;
     const [a, b] = ranked;
-    haichiSubject =
-      `${FACTOR_JA[a.k]}${pct(a.k)} と ${FACTOR_JA[b.k]}${pct(b.k)} の組み合わせ` +
-      `（全因子が中央付近のため単独主語だとバーナム化する。2因子の内面の緊張を主語にし、` +
-      `「あなたは〜なのに、〜でもある」の形で提示。この緊張を②のズレの起源に接続する）`;
+    haichiSubject = isKo
+      ? `${factorNames[a.k]}${pct(a.k)}와 ${factorNames[b.k]}${pct(b.k)}의 조합` +
+        `(모든 요인이 중앙에 가까우므로 한 요인만 주어로 삼으면 누구에게나 맞는 표현이 된다. ` +
+        `두 요인 사이의 내적 긴장을 주어로 삼아 "당신은 이러면서도 동시에 저렇다"는 구조로 제시하고, ` +
+        `이 긴장을 두 번째 단락에서 다룰 어긋남의 기원과 연결한다.)`
+      : `${factorNames[a.k]}${pct(a.k)} と ${factorNames[b.k]}${pct(b.k)} の組み合わせ` +
+        `（全因子が中央付近のため単独主語だとバーナム化する。2因子の内面の緊張を主語にし、` +
+        `「あなたは〜なのに、〜でもある」の形で提示。この緊張を②のズレの起源に接続する）`;
   } else {
     combination = false;
-    haichiSubject = `${FACTOR_JA[top.k]}${pct(top.k)}（乖離最大 |${val(top.k).toFixed(1)}−5.0|=${top.dev.toFixed(1)}）`;
+    haichiSubject = isKo
+      ? `${factorNames[top.k]}${pct(top.k)}(편차 최대 |${val(top.k).toFixed(1)}-5.0|=${top.dev.toFixed(1)})`
+      : `${factorNames[top.k]}${pct(top.k)}（乖離最大 |${val(top.k).toFixed(1)}−5.0|=${top.dev.toFixed(1)}）`;
   }
   return { quadrant, pctLine, haichiSubject, combination, topFactorPct };
 }
@@ -63,33 +83,40 @@ function sep(a, b) {
   return d > 180 ? 360 - d : d;
 }
 const ASPECTS = [
-  { n: "合", a: 0, orb: 6 },
-  { n: "セクスタイル", a: 60, orb: 4 },
-  { n: "スクエア", a: 90, orb: 6, tension: true },
-  { n: "トライン", a: 120, orb: 6 },
-  { n: "オポジション", a: 180, orb: 6, tension: true },
+  { ja: "合", ko: "합", a: 0, orb: 6 },
+  { ja: "セクスタイル", ko: "육각", a: 60, orb: 4 },
+  { ja: "スクエア", ko: "사각", a: 90, orb: 6, tension: true },
+  { ja: "トライン", ko: "삼각", a: 120, orb: 6 },
+  { ja: "オポジション", ko: "대립", a: 180, orb: 6, tension: true },
 ];
 const BODY_JA = {
   sun: "太陽", moon: "月", mercury: "水星", venus: "金星", mars: "火星",
   jupiter: "木星", saturn: "土星", uranus: "天王星", neptune: "海王星", pluto: "冥王星",
 };
+const BODY_KO = {
+  sun: "태양", moon: "달", mercury: "수성", venus: "금성", mars: "화성",
+  jupiter: "목성", saturn: "토성", uranus: "천왕성", neptune: "해왕성", pluto: "명왕성",
+};
 // 天体を「太陽: 牡牛座5.8°」形式に。時刻不明の月は星座のみ (正確度数を渡さない)。
-function fmtBody(ja, p, timeUnknown, isMoon) {
+function fmtBody(label, p, timeUnknown, isMoon, locale) {
   if (!p || !p.sign) return null;
-  const sign = SIGN_JA[p.sign] ?? p.sign;
-  if (isMoon && timeUnknown) return `${ja}: ${sign}`;
+  const signNames = locale === "ko" ? SIGN_KO : SIGN_JA;
+  const sign = signNames[p.sign] ?? p.sign;
+  if (isMoon && timeUnknown) return `${label}: ${sign}`;
   const deg = typeof p.degree === "number" ? `${p.degree.toFixed(1)}°` : "";
-  return `${ja}: ${sign}${deg}`.trim();
+  return `${label}: ${sign}${deg}`.trim();
 }
 // bodies: [{ja, pos}] からアスペクトを検出 ("太陽↔火星: スクエア(緊張)")。
-function aspectsAmong(bodies) {
+function aspectsAmong(bodies, locale) {
   const out = [];
   for (let i = 0; i < bodies.length; i++) {
     for (let j = i + 1; j < bodies.length; j++) {
       const s = sep(lonOf(bodies[i].pos), lonOf(bodies[j].pos));
       for (const asp of ASPECTS) {
         if (Math.abs(s - asp.a) <= asp.orb) {
-          out.push(`${bodies[i].ja}↔${bodies[j].ja}: ${asp.n}${asp.tension ? "(緊張)" : ""}`);
+          const aspectName = locale === "ko" ? asp.ko : asp.ja;
+          const tension = asp.tension ? (locale === "ko" ? "(긴장)" : "(緊張)") : "";
+          out.push(`${bodies[i].label}↔${bodies[j].label}: ${aspectName}${tension}`);
           break;
         }
       }
@@ -98,27 +125,29 @@ function aspectsAmong(bodies) {
   return out;
 }
 // 章別の天体キー配列を {ja,pos} に解決 (time_unknown で ASC/MC を除外)。
-function chapterBodies(chart, keys, timeUnknown) {
+function chapterBodies(chart, keys, timeUnknown, locale) {
+  const bodyNames = locale === "ko" ? BODY_KO : BODY_JA;
   const p = chart?.planets ?? {};
   const list = [];
   for (const key of keys) {
     if (key === "asc" || key === "mc") {
       if (timeUnknown) continue;
       const pos = chart?.[key];
-      if (pos?.sign) list.push({ key, ja: key === "asc" ? "ASC" : "MC", pos });
+      if (pos?.sign) list.push({ key, label: key === "asc" ? "ASC" : "MC", pos });
       continue;
     }
-    if (p[key]?.sign) list.push({ key, ja: BODY_JA[key], pos: p[key] });
+    if (p[key]?.sign) list.push({ key, label: bodyNames[key], pos: p[key] });
   }
   return list;
 }
-function elementsBlock(chart, keys, timeUnknown) {
-  const bodies = chapterBodies(chart, keys, timeUnknown);
+function elementsBlock(chart, keys, timeUnknown, locale) {
+  const bodies = chapterBodies(chart, keys, timeUnknown, locale);
   const lines = bodies
-    .map((b) => fmtBody(b.ja, b.pos, timeUnknown, b.key === "moon"))
+    .map((b) => fmtBody(b.label, b.pos, timeUnknown, b.key === "moon", locale))
     .filter(Boolean);
-  const asp = aspectsAmong(bodies).slice(0, 3);
-  return [...lines, ...(asp.length ? [`アスペクト: ${asp.join(" / ")}`] : [])].join("\n");
+  const asp = aspectsAmong(bodies, locale).slice(0, 3);
+  const aspectLabel = locale === "ko" ? "각 관계" : "アスペクト";
+  return [...lines, ...(asp.length ? [`${aspectLabel}: ${asp.join(" / ")}`] : [])].join("\n");
 }
 
 // ===== システムプロンプト (全章共通ルール・静的) =====
@@ -203,41 +232,145 @@ JSON オブジェクトのみを返す(前後に説明文・コードフェン�
 }
 sections は必ずこの4本・この順・この id/title。body に見出しは含めない。段落は空行で区切る。`;
 
-const KOREAN_OUTPUT_INSTRUCTION = `
+const KOREAN_SYSTEM_PROMPT = `당신은 "운명의 설계도"라는 별자리 콘텐츠의 개인 해석문을 쓰는 안내자입니다. 이 글은 오락과 자기 이해를 위한 읽을거리이며 과학적 진단이 아닙니다.
 
-# 한국어 출력 규칙 (이 규칙이 위의 일본어 출력 예시보다 우선합니다)
-- 모든 사용자용 문장을 자연스러운 한국어 존댓말로 작성합니다. 일본어 문장과 일본어 제목을 출력하지 않습니다.
-- 점성술 용어를 나열하지 말고, 한국 독자가 한 번에 이해할 수 있는 평이한 표현을 씁니다.
-- sections의 id와 순서는 그대로 유지하되 title은 반드시 다음과 같이 씁니다:
-  haichi="당신이 쌓아 온 것", kokoro="누군가와 함께 있을 때의 당신", chosen="앞으로 찾아올 전환점", grace="마지막으로 한 가지만"
-- hitokoto, subline, body도 모두 한국어로 작성합니다.
-- 글자 수 범위는 한국어 가독성을 위해 각 본문에서 약 700~1,000자로 조정할 수 있습니다.
-- 결과가 오락과 자기 이해를 위한 참고 정보이며 의학적·과학적 진단이 아님을 전제로 합니다.`;
+# 말하는 목소리
+- 별을 읽는 목소리는 출생 배치를 이야기하고, 전략을 제안하는 목소리는 그 특성을 어떻게 살리고 앞으로 어떻게 움직일지 이어서 말합니다. 두 화자의 이름을 반복해서 밝히지 말고 문장 흐름으로 자연스럽게 전환합니다.
+
+# 모든 장에 적용할 원칙
+- 성격 진단은 "이 사람이 어떤 사람인지"를 분명히 말하고, 별자리 해석은 "그 특성이 어디에서 왔는지"를 설명합니다.
+- 성격 점수와 별 배치가 같은 말을 되풀이하지 않습니다. 성격 진단만으로도, 별 배치만으로도 알 수 없는 긴장과 모순 또는 어긋남을 각 장에 반드시 하나씩 담습니다.
+- 자연스러운 한국어 존댓말로 쓰되 결론은 분명하게 단정합니다. "일지도 모릅니다", "것 같습니다", "듯합니다", "아마"처럼 판단을 흐리는 추측 표현은 쓰지 않습니다. 구체적인 행동을 권하는 "해 보세요"는 사용할 수 있습니다.
+- 입력으로 주어진 별 배치에 없는 천체나 관계를 새로 만들어 내지 않습니다.
+- 한국 독자가 한 번에 이해할 수 있도록 전문 용어를 일상적인 말로 풀어 씁니다.
+
+# 간결함
+- 각 관계나 별의 일반적인 뜻을 교과서처럼 설명하지 않습니다. 별의 뜻은 한 문장 이내로만 언급하고, 그 배치가 이 사람에게 어떻게 작용하는지를 중심으로 씁니다.
+- 이유를 길게 쌓기보다 결론을 먼저 말합니다. 두 번째 단락에서도 일반적인 별자리 설명 대신 두 천체의 관계가 이 사람의 어떤 면을 만들었는지 바로 말합니다.
+
+# 각 장의 구조
+- haichi, kokoro, chosen은 subline 다음에 ① 단정, ② 기원, ③ 행동 순서로 씁니다. chosen만 끝에 ④ 시기를 더합니다.
+- grace는 여운을 남기는 마무리만 쓰며 ①, ②, ③, ④ 구조와 행동 과제를 넣지 않습니다.
+- body 안에 별도 소제목을 넣지 않고 문단 사이는 빈 줄로 구분합니다.
+
+## subline
+- 형식은 "{성격 요인}{점수} × {별 요소 하나} ↔ {별 요소 둘}"입니다.
+- 성격 점수와 해당 장의 어긋남에 쓰는 천체 두 개를 모두 포함합니다. grace의 subline은 빈 문자열로 둡니다.
+- chosen의 대표 성격 요인은 haichi와 같은, 중앙값에서 가장 멀리 떨어진 요인을 씁니다.
+
+## ① 단정
+- 먼저 성격 진단을 근거로 해당 요인을 분명히 말합니다. 별 이야기로 시작하지 않습니다.
+- 입력의 성향 묶음에 맞는 말투를 사용합니다.
+
+## ② 기원
+- 천체를 최소 두 개 사용해 둘 사이의 관계를 설명합니다.
+- 긴장, 모순 또는 어긋남을 반드시 하나 넣습니다. 성격 진단에서 균형 잡힌 사람으로 보이는 면은 이 모순을 다루는 법을 익힌 결과로 연결할 수 있습니다.
+- 왜 그 배치를 골랐는지는 짧게만 말하고, ①의 내용을 다시 반복하거나 "별도 같은 말을 한다"고 쓰지 않습니다.
+
+## ③ 행동
+- 다음 날부터 실천할 수 있는 구체적인 행동 하나를 제안합니다. "자신을 믿으세요" 같은 일반적인 조언은 금지합니다.
+- 점수, 유형, 별 배치 중 하나 이상과 직접 연결하고 입력의 성향 묶음에 맞는 방식으로 제안합니다.
+
+# 성향 묶음별 말투
+- NT: 결론과 구조를 먼저 말하고, 행동이 효과적인 이유를 짧게 덧붙입니다. 구조, 원리, 결과, 설계 같은 어휘를 사용하고 감정어는 줄입니다.
+- ST: 결론부터 말하고 일상 장면, 수치, 순서가 드러나는 구체적인 절차를 제안합니다. 추상적인 설명은 줄입니다.
+- NF: 감정을 먼저 분명히 짚고, 의미와 이야기의 흐름으로 연결합니다. 행동은 감정을 알아차리는 구체적인 방식으로 제안합니다.
+- SF: 감정을 먼저 분명히 짚고, 생활 속 장면에서 바로 실행할 행동을 제안합니다. 추상적인 설명은 줄입니다.
+- 감정 중심 묶음에서도 단정의 강도는 낮추지 않습니다.
+
+# 장별 초점과 분량
+- haichi "당신이 차곡차곡 쌓아 온 것": 입력에서 지정한 대표 요인을 주어로 삼아 그 특성의 기원과 일 또는 창작에서 드러나는 재능을 씁니다. body는 약 700자에서 900자로 씁니다.
+- kokoro "누군가와 함께 있을 때의 당신": 우호성과 외향성을 주어로 삼아 사랑과 거리감의 기원을 씁니다. 성격 경향 자체를 다시 설명하지 않습니다. body는 약 700자에서 900자로 씁니다.
+- chosen "앞으로 찾아올 전환점": 전체 점수를 함께 보고 ①, ②, ③ 뒤에 ④ 시기를 씁니다. body는 약 850자에서 1100자로 씁니다.
+- grace "마지막으로 한 가지만": 행동이나 숙제 없이 따뜻한 여운만 남깁니다. body는 약 250자에서 400자로 씁니다.
+
+# chosen의 ④ 시기
+- 입력의 [chosen 시기 근거]에 반드시 근거하고, 거기에 없는 시기나 사건을 새로 만들지 않습니다.
+- 단정할 대상은 "언제 어떻게 움직일지"라는 행동 지침입니다. 특정 시기에 어떤 사건이 반드시 일어난다고 예언하지 않습니다.
+- 시기는 서기 연도와 계절을 함께 쓴 절대 표현으로 넓게 제시합니다. 정확한 날짜와 "올해", "내년" 같은 상대 표현은 쓰지 않습니다.
+- 목성 흐름은 확장과 순풍, 토성 흐름은 시험과 정착으로 다룹니다. 사각이나 대립 관계는 움직일 동기는 강하지만 지나치게 넓히지 않도록 주의하는 방향으로 풉니다.
+- 가까운 큰 흐름이 18개월 이상 남아 있어도 그전까지를 준비하고 기초를 다지는 시기로 긍정적으로 안내합니다.
+
+# 출생 시간 미확인
+- 출생 시간을 모를 때는 ASC, MC, 하우스, 달의 정확한 각도를 사용하지 않습니다. 두 번째 단락은 태양부터 토성까지의 별자리 배치만 사용하고 달도 별자리만 언급합니다. 시기 안내는 목성과 토성의 별자리 흐름을 사용합니다.
+
+# 금지 사항
+- 건강, 수명, 질병, 타인의 생사, 임신 가능 여부를 단정하지 않습니다.
+- 구체적인 투자 결정이나 금액을 지시하지 않습니다.
+- 한 천체만으로 기원을 설명하거나 성격 진단을 별자리 말로 되풀이하지 않습니다.
+- 어긋남과 약점은 결점이 아니라 아직 충분히 알지 못한 다른 면으로 다룹니다.
+- 입력에 없는 천체를 만들거나 추측 표현을 쓰지 않습니다.
+- 사용자에게 보이는 모든 문장은 한국어로만 작성합니다.
+
+# 출력 형식
+앞뒤 설명, 코드 블록, 주석 없이 JSON 객체 하나만 반환합니다.
+{
+  "hitokoto": "무료 미리보기에 쓸 한두 문장",
+  "sections": [
+    { "id": "haichi", "title": "당신이 차곡차곡 쌓아 온 것", "subline": "...", "body": "..." },
+    { "id": "kokoro", "title": "누군가와 함께 있을 때의 당신", "subline": "...", "body": "..." },
+    { "id": "chosen", "title": "앞으로 찾아올 전환점", "subline": "...", "body": "..." },
+    { "id": "grace", "title": "마지막으로 한 가지만", "subline": "", "body": "..." }
+  ]
+}
+sections는 반드시 위 네 개를 같은 순서와 같은 id 및 title로 반환합니다.`;
 
 export function buildNatalSystemPrompt(locale = "ja") {
-  return locale === "ko"
-    ? `${SYSTEM_PROMPT}${KOREAN_OUTPUT_INSTRUCTION}`
-    : SYSTEM_PROMPT;
+  return locale === "ko" ? KOREAN_SYSTEM_PROMPT : SYSTEM_PROMPT;
 }
 
 // ===== ユーザープロンプト (動的・plan + chart から組み立て) =====
 //   chart: エフェメリス計算結果 / scores: Big Five 0-10 / essence: 称号 / typeName: 32タイプ名
 //   timeUnknown: 出生時刻不明フラグ
 export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnknown, nowIso, locale = "ja" }) {
-  const plan = buildUnmeiPlan(scores);
+  const isKo = locale === "ko";
+  const plan = buildUnmeiPlan(scores, locale);
 
   // 章別 chart_elements (この中からのみ選ばせる)
-  const haichiEl = elementsBlock(chart, ["sun", "mercury", "venus", "mars", "saturn", "jupiter", "mc"], timeUnknown);
-  const kokoroEl = elementsBlock(chart, ["sun", "moon", "venus", "mars", "asc"], timeUnknown);
-  const chosenEl = elementsBlock(chart, ["sun", "moon", "jupiter", "saturn", "mc"], timeUnknown);
+  const haichiEl = elementsBlock(chart, ["sun", "mercury", "venus", "mars", "saturn", "jupiter", "mc"], timeUnknown, locale);
+  const kokoroEl = elementsBlock(chart, ["sun", "moon", "venus", "mars", "asc"], timeUnknown, locale);
+  const chosenEl = elementsBlock(chart, ["sun", "moon", "jupiter", "saturn", "mc"], timeUnknown, locale);
   // ④時期の根拠 = トランジット(生成日時点の木星・土星の運行)と本人の太陽/月の関係。
   //   生成日は nowIso (既定=現在)。鑑定は保存されるため、この時期は購入時点のスナップショット。
   const timingBasis = formatTransitBlock(
-    computeTransitTiming(chart, nowIso || new Date().toISOString()),
+    computeTransitTiming(chart, nowIso || new Date().toISOString(), locale),
+    locale,
   );
 
+  if (isKo) {
+    return `아래 데이터를 사용해 시스템 지시에 맞는 해석을 JSON으로만 작성해 주세요.
+출력 언어: 자연스러운 한국어 존댓말
+
+## 내용 자료
+주요 점수: ${plan.pctLine}
+haichi의 주어: ${plan.haichiSubject}
+32가지 유형: ${typeName ?? "(확인되지 않음)"} / 별칭: ${essence ?? "(확인되지 않음)"}
+출생 시간 미확인: ${timeUnknown === true ? "예" : "아니요"}
+
+사용할 수 있는 별 배치 요소는 아래뿐입니다.
+[haichi]
+${haichiEl || "(없음)"}
+[kokoro]
+${kokoroEl || "(없음)"}
+[chosen]
+${chosenEl || "(없음)"}
+[chosen 시기 근거]
+${timingBasis}
+
+## 문체 자료
+성향 묶음: ${plan.quadrant}
+
+## 각 장의 지시
+- haichi: 위의 "haichi의 주어"를 중심으로 특성의 기원과 재능, 일에서 드러나는 방식을 씁니다. subline 다음에 ①, ②, ③ 순서로 구성하고 body는 약 700자에서 900자로 씁니다. 일반적인 별자리 설명은 줄이고 이 사람에 대한 결론을 늘립니다.
+- kokoro: 우호성과 외향성을 중심으로 사랑과 거리감이 생긴 기원을 씁니다. 경향 자체를 다시 설명하지 않습니다. subline 다음에 ①, ②, ③ 순서로 구성하고 body는 약 700자에서 900자로 씁니다.
+- chosen: 전체 점수를 함께 봅니다. subline의 대표 요인에는 haichi와 같은 "${plan.topFactorPct}"를 사용합니다. 예시는 "${plan.topFactorPct} × {별 요소 하나} ↔ {별 요소 둘}"입니다. subline 다음에 ①, ②, ③, ④ 시기 순서로 구성합니다. ④는 반드시 위의 [chosen 시기 근거]를 따르고 서기 연도와 계절을 사용한 넓은 범위의 행동 지침으로 씁니다. "올해", "내년" 같은 상대 표현과 정확한 날짜는 쓰지 않습니다. body는 약 850자에서 1100자로 씁니다.
+- grace: 행동이나 숙제 없이 마무리의 여운만 남기고 subline은 빈 문자열로 둡니다. body는 약 250자에서 400자로 씁니다.
+
+JSON만 출력해 주세요.`;
+  }
+
   return `以下のデータで、システムの指示どおり JSON のみで鑑定を書いてください。
-出力言語: ${locale === "ko" ? "韓国語（自然な敬語。日本語を出力しない）" : "日本語"}
+出力言語: 日本語
 
 ## 内容レイヤー
 主要スコア(%表記): ${plan.pctLine}

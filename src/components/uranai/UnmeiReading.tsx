@@ -20,15 +20,8 @@ import { TypeConstellation } from "@/components/uranai/TypeConstellation";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
 import type { UnmeiIdentity } from "@/lib/unmei/prompt-inputs";
-
-// 表示タイトルの上書き (id→表示名)。プロンプト側の title も同文言だが、既存 readings にも
-// 即時反映させるため表示はこのマップを優先する (id 不変・再生成不要)。
-const UNMEI_TITLE: Record<string, string> = {
-  haichi: "あなたが積み上げてきたもの",
-  kokoro: "誰かといるときのあなた",
-  chosen: "これから訪れる転換点",
-  grace: "最後にひとつだけ",
-};
+import type { ResultLocale } from "@/i18n/result";
+import { UNMEI_READING_COPY } from "@/i18n/unmei";
 
 type UnmeiSection = { id?: string; title?: string; subline?: string; body?: string };
 type UnmeiReadingData = { hitokoto?: string; sections?: UnmeiSection[] };
@@ -42,6 +35,7 @@ export default function UnmeiReading({
   characterSlug = null,
   identity = null,
   trackView = true,
+  locale = "ja",
 }: {
   reading: unknown;
   chart?: Chart | null;
@@ -51,7 +45,9 @@ export default function UnmeiReading({
   characterSlug?: string | null; // 表紙のキャラクター星座アート選択 (例: "dolphin")
   identity?: UnmeiIdentity | null; // 表紙カードのキャラ名・キャッチ・グループ
   trackView?: boolean;
+  locale?: ResultLocale;
 }) {
+  const copy = UNMEI_READING_COPY[locale];
   const data = (reading ?? {}) as UnmeiReadingData;
   const hitokoto = typeof data.hitokoto === "string" ? data.hitokoto.trim() : "";
   const sections: UnmeiSection[] = Array.isArray(data.sections)
@@ -77,6 +73,7 @@ export default function UnmeiReading({
           timeUnknown={timeUnknown}
           moonArc={moonArc}
           essence={essence}
+          locale={locale}
         />
 
         {/* ===== 章への橋渡し: 星のアイデンティティカード (2026-08-06 全面刷新) =====
@@ -87,7 +84,7 @@ export default function UnmeiReading({
         <section className="relative flex min-h-[92svh] flex-col items-center justify-center px-6 py-16 text-center">
           <Reveal>
             <h1 className="text-[12px] font-black tracking-[0.34em] text-[#F5D66B]">
-              あなたの運命の設計図
+              {copy.title}
             </h1>
           </Reveal>
 
@@ -126,7 +123,7 @@ export default function UnmeiReading({
               {essence ? (
                 <>
                   <p className="mt-4 text-[12px] font-bold tracking-[0.2em] text-white/55">
-                    あなたは
+                    {copy.youAre}
                   </p>
                   <h2 className="mt-1.5 bg-gradient-to-b from-[#F9EBB0] via-[#EDD174] to-[#C9A63E] bg-clip-text text-[34px] font-black tracking-[0.14em] text-transparent md:text-[40px]">
                     {essence}
@@ -139,13 +136,15 @@ export default function UnmeiReading({
                         className="inline-block h-1.5 w-1.5 rounded-full"
                         style={{ background: identity.groupColor }}
                       />
-                      <span>{identity.groupLabel}のタイプ</span>
+                      <span>
+                        {identity.groupLabel}{copy.groupSuffix}
+                      </span>
                     </p>
                   )}
                 </>
               ) : (
                 <h2 className="mt-4 text-[22px] font-black tracking-[0.14em] text-[#F5D66B]">
-                  あなたの星座
+                  {copy.fallbackConstellation}
                 </h2>
               )}
             </div>
@@ -155,7 +154,9 @@ export default function UnmeiReading({
           {identity?.catchphrase && (
             <Reveal delay={380}>
               <p className="mx-auto mt-9 max-w-[540px] text-[19px] font-black leading-[1.9] text-white md:text-[22px]">
-                「{identity.catchphrase}」
+                {locale === "ko"
+                  ? `“${identity.catchphrase}”`
+                  : `「${identity.catchphrase}」`}
               </p>
             </Reveal>
           )}
@@ -193,7 +194,9 @@ export default function UnmeiReading({
                       {i + 1}
                     </span>
                     <h2 className="text-[26px] font-black leading-tight text-white md:text-[32px]">
-                      {UNMEI_TITLE[sec.id ?? ""] ?? sec.title}
+                      {copy.sectionTitles[
+                        sec.id as keyof typeof copy.sectionTitles
+                      ] ?? sec.title}
                     </h2>
                   </div>
 
@@ -227,9 +230,9 @@ export default function UnmeiReading({
               ✦
             </span>
             <p className="mx-auto mt-6 max-w-[560px] text-[18px] font-bold leading-[2] md:text-[20px]">
-              星は、答えではなく道しるべ。
+              {copy.ending[0]}
               <br />
-              迷ったときは、いつでもこの空に戻ってきてください。
+              {copy.ending[1]}
             </p>
           </Reveal>
         </section>

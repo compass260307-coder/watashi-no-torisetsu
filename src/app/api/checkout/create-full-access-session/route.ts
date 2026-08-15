@@ -33,7 +33,9 @@ import {
 } from "@/lib/entitlements";
 import {
   accessProductPrice,
+  DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
   EMPTY_ACCESS_ENTITLEMENTS,
+  FRIEND_ACCESS_POLICY_FULL_ONLY,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
@@ -117,7 +119,7 @@ const CHECKOUT_COPY: Record<
     // 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージ。
     productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "自己診断とPDF、友達診断、恋愛パートナー相性診断に加え、『運命の設計図』と星読みの案内人とのチャット5回分を含みます。買い切り。",
+      "自己診断とPDF、友達診断、恋愛パートナー相性診断を解放します。買い切り。",
     submitMessage:
       "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
@@ -126,7 +128,7 @@ const CHECKOUT_COPY: Record<
     couponName: "출시 기념",
     productName: "나의 사용설명서 완전판 패키지",
     productDescription:
-      "자기 진단과 PDF, 친구 진단, 연애 궁합에 더해 한국어 운명의 설계도와 별자리 상담사 채팅 5회까지 포함한 완전판 패키지예요. 1회 결제.",
+      "자기 진단과 PDF, 친구 진단, 연애 파트너 궁합 분석을 해제하는 완전판 패키지예요. 1회 결제.",
     submitMessage:
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
@@ -136,16 +138,16 @@ const SELF_REPORT_COPY = {
   ja: {
     productName: "ワタシのトリセツ お試しコース",
     productDescription:
-      "自己診断結果のロックされた8セクションと2人目以降の友達診断結果をすべて解放し、自己分析PDF・友達診断分析PDFを利用できます。買い切り。",
+      "自己診断結果のロックされた8セクションをすべて解放し、16ページ以上の自己分析PDFを利用できます。買い切り。",
     submitMessage:
-      "一度きりの買い切りで、自己診断・友達診断の結果と分析PDFをずっと見返せます。30日間の返金保証つき。",
+      "一度きりの買い切りで、自己診断結果と自己分析PDFをずっと見返せます。30日間の返金保証つき。",
   },
   ko: {
     productName: "나의 사용설명서 라이트 코스",
     productDescription:
-      "자기 진단의 잠긴 8개 섹션과 두 번째 친구부터의 친구 진단 결과를 모두 해제하고 자기 분석 PDF와 친구 분석 PDF를 이용할 수 있어요. 1회 결제.",
+      "자기 진단의 잠긴 8개 섹션을 모두 해제하고 16페이지 이상의 자기 분석 PDF를 이용할 수 있어요. 1회 결제.",
     submitMessage:
-      "한 번만 결제하면 자기 진단과 친구 진단 결과 및 분석 PDF를 계속 확인할 수 있어요. 30일 환불 보장.",
+      "한 번만 결제하면 자기 진단 결과와 자기 분석 PDF를 계속 확인할 수 있어요. 30일 환불 보장.",
   },
 } as const;
 
@@ -153,16 +155,16 @@ const PREMIUM_BUNDLE_COPY = {
   ja: {
     productName: "ワタシのトリセツ プレミアムコース",
     productDescription:
-      "完全版のすべてと『運命の設計図』に加え、性格診断と星読みをもとに案内人とチャットできる30回分を含みます。買い切り。",
+      "完全版のすべてと『運命の設計図』に加え、あなたの専属占い師とのチャット（30回分）を解放します。買い切り。",
     submitMessage:
-      "一度きりの買い切りで、すべての診断結果・運命の設計図・チャット30回分を利用できます。30日間の返金保証つき。",
+      "一度きりの買い切りで、すべての診断結果・運命の設計図・専属占い師とのチャットを利用できます。30日間の返金保証つき。",
   },
   ko: {
     productName: "나의 사용설명서 프리미엄 코스",
     productDescription:
-      "완전판의 모든 기능과 한국어 운명의 설계도에 더해, 성격 진단과 별자리 해석을 참고하는 상담사 채팅 30회를 이용할 수 있어요. 1회 결제.",
+      "완전판의 모든 기능과 한국어 운명의 설계도에 더해, 나만의 전담 점성술사와 채팅 30회를 이용할 수 있어요. 1회 결제.",
     submitMessage:
-      "한 번만 결제하면 모든 진단 결과, 운명의 설계도와 채팅 30회를 이용할 수 있어요. 30일 환불 보장.",
+      "한 번만 결제하면 모든 진단 결과, 운명의 설계도와 전담 점성술사 채팅을 이용할 수 있어요. 30일 환불 보장.",
   },
 } as const;
 
@@ -557,7 +559,7 @@ export async function POST(request: NextRequest) {
       : returnTo === "hoshiyomi"
         ? `${localePrefix}/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
         : returnTo === "unmei"
-          ? `${localePrefix}/unmei?${checkoutLocale === "ko" ? "paid=1" : "checkout=success"}&session_id={CHECKOUT_SESSION_ID}`
+          ? `${localePrefix}/unmei?checkout=success&session_id={CHECKOUT_SESSION_ID}`
           : returnTo === "tako"
             ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
             : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
@@ -732,6 +734,11 @@ export async function POST(request: NextRequest) {
         user_id: userId ?? "",
         owner_token: ownerToken,
         product,
+        // サーバ側で固定し、クライアント入力には依存させない。
+        // この印が無い旧 full_access セッションは従来特典を維持する。
+        destiny_access_policy: DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
+        // この印が無い旧 self_report セッションは従来の友達特典を維持する。
+        friend_access_policy: FRIEND_ACCESS_POLICY_FULL_ONLY,
         upgrade_from: upgradeFrom,
         course_price_minor: String(
           checkoutLocale === "ko"

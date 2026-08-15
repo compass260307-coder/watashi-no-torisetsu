@@ -5,6 +5,7 @@ import TopHeader from "@/components/top/TopHeader";
 import TopHero from "@/components/top/TopHero";
 import TopStats from "@/components/top/TopStats";
 import TopFooter from "@/components/top/TopFooter";
+import { TopViewTracker } from "@/components/top/TopAnalytics";
 // 診断済みユーザーを自分の結果ページへ自動誘導するための session 解決。
 import { getSession } from "@/lib/session";
 
@@ -111,6 +112,8 @@ export default async function Home({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
+      <TopViewTracker locale="ja" />
 
       <TopHeader />
       <TopHero />

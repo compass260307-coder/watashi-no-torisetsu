@@ -7,7 +7,6 @@ type PageProps = {
 
 export const metadata: Metadata = {
   title: "로그인 링크 오류 | 나의 사용설명서",
-  robots: { index: false, follow: false },
 };
 
 export default async function KoreanAuthErrorPage({

@@ -130,6 +130,7 @@ function LockBadge() {
 function AttentionBadge() {
   return (
     <span
+      data-notification-badge="true"
       aria-hidden="true"
       className="absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[12px] font-black leading-none text-white"
       style={{
@@ -252,7 +253,7 @@ export function BottomNav() {
           attentionPending = false;
         } else {
           attentionPending = Boolean(
-            token && pendingToken === token && !koreanPath && !navHidden,
+            token && pendingToken === token && !navHidden,
           );
           if (attentionPending && token) {
             const impressionKey = takoAttentionImpressionKey(token);
@@ -268,9 +269,10 @@ export function BottomNav() {
         const unmeiPendingToken = localStorage.getItem(
           UNMEI_ATTENTION_PENDING_KEY,
         );
-        if (!pathname.startsWith("/unmei")) {
+        const unmeiPath = `${koreanPath ? "/ko" : ""}/unmei`;
+        if (!pathname.startsWith(unmeiPath)) {
           unmeiPending = Boolean(
-            token && unmeiPendingToken === token && !koreanPath && !navHidden,
+            token && unmeiPendingToken === token && !navHidden,
           );
           if (unmeiPending && token) {
             const impressionKey = unmeiAttentionImpressionKey(token);
@@ -283,7 +285,7 @@ export function BottomNav() {
 
         // 「自己診断」誘いバッジ: 評価送信後ページ (MeAttentionOnGuide) が付与した
         // pending を未診断の間だけ表示する。診断済みになった / 目的地 (/diagnosis) に
-        // 到達したら役目を終えるので消す。表示は既存バッジと同じく ja のみ。
+        // 到達したら役目を終えるので消す。日本語・韓国語の両方で表示する。
         if (localStorage.getItem(ME_ATTENTION_PENDING_KEY) === "1") {
           if (
             token ||
@@ -292,7 +294,7 @@ export function BottomNav() {
           ) {
             localStorage.removeItem(ME_ATTENTION_PENDING_KEY);
           } else {
-            mePending = !koreanPath && !navHidden;
+            mePending = !navHidden;
           }
         }
       } catch {
@@ -685,7 +687,11 @@ export function BottomNav() {
               href={it.href}
               aria-current={it.active ? "page" : undefined}
               aria-label={
-                hasAttention ? `${it.label}（未確認のお知らせあり）` : undefined
+                hasAttention
+                  ? isKorean
+                    ? `${it.label} (확인하지 않은 알림 있음)`
+                    : `${it.label}（未確認のお知らせあり）`
+                  : undefined
               }
               onClick={handleAttentionClick}
               // touch-manipulation: モバイルのタップ遅延を排除。

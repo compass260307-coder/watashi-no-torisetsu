@@ -293,7 +293,18 @@ export function buildTakoReportSheets(
       manualParas[0] = `${viewer}から見た${manualParas[0]}`;
     }
     const reopenIdx = Math.max(0, Math.floor(manualParas.length / 2) - 1) + 1;
-    if (locale === "ja" && reopenIdx < manualParas.length) {
+    if (locale === "ko" && reopenIdx < manualParas.length) {
+      let t = manualParas[reopenIdx];
+      for (const conn of ["그리고, ", "그리고 ", "게다가 ", "또한 ", "더욱이 "]) {
+        if (t.startsWith(conn)) {
+          t = t.slice(conn.length);
+          break;
+        }
+      }
+      manualParas[reopenIdx] = t.startsWith("당신")
+        ? `${viewer}의 눈에 비친 ${t}`
+        : `${viewer}의 눈에는 ${t}`;
+    } else if (reopenIdx < manualParas.length) {
       let t = manualParas[reopenIdx];
       for (const conn of ["そして、", "そして", "しかも", "さらに"]) {
         if (t.startsWith(conn)) {

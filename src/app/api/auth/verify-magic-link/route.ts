@@ -158,8 +158,9 @@ export async function GET(request: NextRequest) {
   // (diagnosis_completed_at カラム追加前の実診断行を誤って診断へ送らないため)。
   const needsDiagnosis = isUndiagnosedPlaceholderUser(userRow);
   if (needsDiagnosis && userRow) {
-    // 運命の設計図の購入者は出生情報の入力が先 (/unmei が誘導する。日本語のみ)。
-    const dest = userRow.unmei ? "/unmei" : `${prefix}/diagnosis`;
+    // 運命の設計図の購入者は出生情報の入力が先。マジックリンクの言語を保ち、
+    // 韓国語リンクから日本語版 /unmei へ戻してしまわないようにする。
+    const dest = userRow.unmei ? `${prefix}/unmei` : `${prefix}/diagnosis`;
     return NextResponse.redirect(new URL(dest, request.nextUrl));
   }
 

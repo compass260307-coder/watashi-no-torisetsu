@@ -33,10 +33,9 @@ export function FriendIndividualGuide({
   const isKorean = locale === "ko";
   return (
     <>
-      {/* 未診断の訪問者に下部ナビ「自己診断」の赤バッジを付与 (ja のみ。
-          既存バッジ (tako/unmei) が ja 限定のため合わせる)。inviteCode も渡して
+      {/* 未診断の訪問者に下部ナビ「自己診断」の赤バッジを付与。inviteCode も渡して
           バッジ経由 (素の /diagnosis) の診断完了をバイラル帰属できるようにする。 */}
-      {!isKorean && <MeAttentionOnGuide inviteCode={inviteCode} />}
+      <MeAttentionOnGuide inviteCode={inviteCode} />
       {/* ヘッダー + 直下の「自己診断をする」CTAバー (/me・/share のシェアバーと同じ流儀
           2026-08-04 指示)。スクロールでヘッダーが隠れてもバーは残る (MeStickyHeader)。
           計測は friend_to_diagnosis_clicked source=sticky_bar — ページ末尾CTA (sent_bottom)・
@@ -97,13 +96,18 @@ export function FriendIndividualGuide({
             人数は無料診断の累計完了者数 — この画面の CTA は自己診断 (/diagnosis) への誘いなので、
             友達回答数ではなく自己診断の数を社会的証明に使う。
             上下 padding は帯からはみ出す浮遊アバターの逃げ。
-            文言が日本語固定のため ko では出さない (TakoLockedState と同じ扱い。KO対応は別作業)。
             人数の更新方法は ProofFacesBand のコメント参照。 */}
-        {!isKorean && (
-          <div className="mx-auto max-w-[1080px] pt-10 pb-6 md:pt-14 md:pb-8">
-            <ProofFacesBand />
-          </div>
-        )}
+        <div className="mx-auto max-w-[1080px] pt-10 pb-6 md:pt-14 md:pb-8">
+          <ProofFacesBand
+            lead={isKorean ? "지금까지" : undefined}
+            countSuffix={isKorean ? "명 이상" : undefined}
+            tail={
+              isKorean
+                ? "이 나의 사용설명서 진단을 완료했어요"
+                : undefined
+            }
+          />
+        </div>
 
         {/* ヒーロー下: 友達診断の案内ページ (tako ロック空状態) と同じ価値説明セクション。
             「こんなことが見えます」4項目グリッド + 進み方 3ステップ。 */}

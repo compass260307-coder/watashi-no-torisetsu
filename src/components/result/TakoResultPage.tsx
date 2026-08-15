@@ -407,8 +407,8 @@ export async function TakoResultPage({
   // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
 
-  // ===== 解放判定 (2026-08-14: ¥199 お試しコースにも友達診断を追加) =====
-  // hasTakoAccess は self_report 以上の購入者と旧 ¥799 購入者を true にする。
+  // ===== 解放判定 =====
+  // hasTakoAccess は full_access 以上、旧 self_report、旧 ¥799 購入者を true にする。
   // プレビュー: &lock=1 でロック状態を確認できる (旧 &discount は廃止)。
   const takoUnlocked = previewMode
     ? sp.lock !== "1"

@@ -7,14 +7,14 @@ import {
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasFullAccess, hasUnmeiAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
 import UnmeiPayPreview from "@/components/uranai/UnmeiPayPreview";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
-import { LoginCard } from "@/components/LoginCard";
 import { ProofFacesBand } from "@/components/ProofFacesBand";
+import UnmeiGuestPurchaseComplete from "@/components/uranai/UnmeiGuestPurchaseComplete";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import { isReadingReady } from "@/lib/unmei/reading";
@@ -147,12 +147,12 @@ function UnmeiTeaserLp({
             product="premium_bundle"
           />
         ) : null}
-        {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いインディゴにし、直下の
+        {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いプレミアムクリームにし、直下の
             「できること」カードが帯の境目に重なるようにする (2026-07-26 指示)。
             コンテナはフッター (TopFooter) と同じ「padding 外側 + 内側 max-w-[1080px]」。 */}
-        <div className="bg-[#F7F7FE] px-4 pb-10 pt-8 md:px-8 md:pb-14 md:pt-14">
+        <div className="bg-[#FFFBF2] px-4 pb-8 pt-6 md:px-8 md:pb-10 md:pt-10">
         <div className="mx-auto max-w-[1080px]">
-          <section className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
+          <section className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
             {/* ヒーロー画像 (フェルトジオラマ調・白背景。他ページの mascot と同じ流儀) */}
             <SmoothImage
               src="/mascot/unmei-hero.png"
@@ -161,21 +161,21 @@ function UnmeiTeaserLp({
               height={900}
               // mix-blend-multiply: 白背景PNGの白を帯色に溶かす (白い矩形の縁を消す)
               // SP はひと回り小さく + 左寄せでテキストと左端を揃える (16P 参考。2026-07-26 指示)
-              className="h-auto w-full max-w-[340px] mix-blend-multiply md:max-w-none"
+              className="h-auto w-full max-w-[320px] mix-blend-multiply md:max-w-[480px]"
               priority
             />
 
             {/* SP も 16P 同様に左寄せ (2026-07-26 指示) */}
             <div className="text-left">
               <h1 className="leading-tight">
-                <span className="block text-[30px] font-black text-[#2E2E5C] md:text-[40px]">
+                <span className="block text-[28px] font-black text-[#2E2E5C] md:text-[34px]">
                   あなただけの
                 </span>
-                <span className="mt-2 inline-block rounded-xl bg-[#5B5BEF] px-3.5 py-1 text-[36px] font-black text-white md:text-[48px]">
+                <span className="mt-1.5 inline-block rounded-xl bg-[#A36818] px-3 py-1 text-[34px] font-black text-white md:text-[42px]">
                   運命の設計図
                 </span>
               </h1>
-              <p className="mt-3 text-[16px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[18px]">
+              <p className="mt-3 text-[15px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[16px]">
                 星の配置×性格診断で、あなた専用の鑑定書をつくりましょう。
               </p>
               <UnmeiPriceCta
@@ -204,7 +204,7 @@ function UnmeiTeaserLp({
             className="block h-8 w-full md:h-12"
           >
             <path
-              fill="#F7F7FE"
+              fill="#FFFBF2"
               d="M0,0 H1440 V22 C1320,44 1180,6 1040,18 C900,30 800,46 660,32 C520,18 440,42 300,38 C160,34 70,8 0,26 Z"
             />
           </svg>
@@ -397,52 +397,6 @@ function UnmeiTeaserLp({
 // 鑑定は webhook が購入メールに紐付けて解放するため、同じメールでログインすれば
 // 出生情報の入力に進める。/purchase-complete (¥499 完全版のゲスト着地) と同じ流儀で
 // LoginCard をその場に置き、販売LPへ戻さない。
-function UnmeiGuestPurchaseComplete() {
-  return (
-    <main className="mx-auto flex max-w-[640px] flex-col items-center px-6 py-14 text-center">
-      <div
-        aria-hidden="true"
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-full text-white"
-        style={{ background: "#3FA96A" }}
-      >
-        <svg
-          width="26"
-          height="26"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-black text-[#2E2E5C]">
-        購入ありがとうございます！
-      </h1>
-      <p className="mt-3 mb-8 text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
-        あなたの鑑定は、購入に使ったメールアドレスに紐づいています。
-        <br />
-        同じメールアドレスでログインすると、出生情報の入力に進み、
-        <br className="hidden md:inline" />
-        <span className="text-[#2E2E5C]">運命の設計図</span>が作成されます。
-      </p>
-      <LoginCard />
-      <p className="mt-6 max-w-[420px] text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
-        30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて{" "}
-        <a
-          href="mailto:support@watashi-torisetsu.com"
-          className="underline underline-offset-2 text-[#2E2E5C]"
-        >
-          support@watashi-torisetsu.com
-        </a>{" "}
-        までご連絡ください。
-      </p>
-    </main>
-  );
-}
-
 // Stripe 決済着地 (?checkout=success&session_id=) の Meta Purchase 計測。
 // webhook 反映の速さで着地分岐 (確認中 / ゲスト完了 / 購入済み本文) が変わっても
 // 計測が漏れないよう、本文の分岐前に一度だけ検証してマウントする。
@@ -563,15 +517,7 @@ async function UnmeiPageBody(sp: {
   const userId: string | null = session ? session.id : null;
 
   // 未ログイン / 未購入: ティーザー + 購入導線
-  let unmeiFlag = false;
-  if (userId) {
-    const { data: u } = await supabaseAdmin
-      .from("users")
-      .select("unmei")
-      .eq("id", userId)
-      .maybeSingle();
-    unmeiFlag = !!u?.unmei;
-  }
+  const purchased = userId ? await hasUnmeiAccess(userId) : false;
 
   // Stripe-hosted Checkout から戻ったら、Webhook の反映速度にかかわらず
   // いったんチャット形式の購入完了・鑑定生成中メッセージで受け止める。
@@ -580,7 +526,7 @@ async function UnmeiPageBody(sp: {
     return userId ? <UnmeiCheckoutConfirming /> : <UnmeiGuestPurchaseComplete />;
   }
 
-  if (!unmeiFlag) {
+  if (!purchased) {
     const sessionHasFull = userId ? await hasFullAccess(userId) : false;
 
     // 購入導線は「入力→商品確認→Stripe-hosted Checkout→生成」に一本化する。
@@ -644,6 +590,7 @@ async function UnmeiPageBody(sp: {
   const { essence, animalSlug, identity } = await resolveUnmeiPromptInputs(
     supabaseAdmin,
     userId!,
+    "ja",
   );
 
   // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)

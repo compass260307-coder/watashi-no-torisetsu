@@ -60,6 +60,10 @@ interface MeStickyHeaderProps {
   reportHref?: string;
   /** reportHref ボタンの表示文言。省略時は友達診断の従来文言。 */
   reportLabel?: string;
+  /** reportHref ボタンのアイコン。アップグレード導線では上向き矢印を表示する。 */
+  reportIcon?: "download" | "upgrade";
+  /** true のときは遷移せず、その場で課金カードを開く。href はJS無効時の遷移先。 */
+  reportOpensPaywall?: boolean;
   /**
    * 獲得ランディング (/share) 用: バー右端に「無料で性格診断をする」を表示 (2026-07-26)。
    * 課金CTA (showUnlockCta) / シェアボタンとは排他運用を想定。
@@ -114,6 +118,8 @@ export function MeStickyHeader({
   paywallTargetId,
   reportHref,
   reportLabel,
+  reportIcon = "download",
+  reportOpensPaywall = false,
   diagnosisCta,
   diagnosisCtaHref,
   diagnosisCtaLabel,
@@ -383,24 +389,51 @@ export function MeStickyHeader({
             {reportHref && (
               <a
                 href={reportHref}
+                onClick={
+                  reportOpensPaywall
+                    ? (event) => {
+                        event.preventDefault();
+                        scrollToPaywall("unmei_upgrade_sticky");
+                      }
+                    : undefined
+                }
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
               >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-                  <path d="M14 2v5h5" />
-                  <path d="M12 18v-6" />
-                  <path d="m9 15 3 3 3-3" />
-                </svg>
+                {reportIcon === "upgrade" ? (
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 20V6" />
+                    <path d="m7 11 5-5 5 5" />
+                    <path d="M19 2v4M17 4h4" />
+                    <path d="M5 16v4M3 18h4" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                    <path d="M14 2v5h5" />
+                    <path d="M12 18v-6" />
+                    <path d="m9 15 3 3 3-3" />
+                  </svg>
+                )}
                 {reportLabel ??
                   (isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
               </a>

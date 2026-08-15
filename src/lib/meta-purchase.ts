@@ -40,7 +40,7 @@ const META_PURCHASE_CONTENT: Record<
 > = {
   self_report: {
     id: "self_report_199",
-    name: "自己診断・友達診断＋分析PDF",
+    name: "自己診断＋自己分析PDF",
   },
   full_access: {
     id: "full_access_499",
@@ -49,7 +49,7 @@ const META_PURCHASE_CONTENT: Record<
   },
   premium_bundle: {
     id: "premium_bundle_899",
-    name: "完全版＋運命の設計図",
+    name: "プレミアムコース",
   },
   unmei: { id: "unmei_1980", name: "運命の設計図" },
   unmei_upgrade: { id: "unmei_1480", name: "運命の設計図" },

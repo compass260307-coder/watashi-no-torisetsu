@@ -68,6 +68,8 @@ export default async function PurchaseCompletePage({ searchParams }: PageProps) 
       />
       <PurchaseCompleteView
         isGuestPurchase={session.guest}
+        destinyFeaturesIncluded={session.destinyFeaturesIncluded}
+        friendFeaturesIncluded={session.friendFeaturesIncluded}
         product={
           session.product === "self_report"
             ? "self_report"

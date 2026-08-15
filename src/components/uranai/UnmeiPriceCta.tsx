@@ -12,6 +12,13 @@
 
 import { useEffect, useState } from "react";
 import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
+import type { ResultLocale } from "@/i18n/result";
+import {
+  FULL_ACCESS_PRICE_KRW,
+  PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW,
+  PREMIUM_BUNDLE_LIST_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_KRW,
+} from "@/lib/access-products";
 
 const OWNER_TOKEN_KEY = "torisetsu_owner_token";
 const FULL_TOKEN_KEY = "torisetsu_full_token";
@@ -22,6 +29,7 @@ export default function UnmeiPriceCta({
   align = "start",
   variant = "full",
   launchChat = false,
+  locale = "ja",
 }: {
   /** ログイン済みならその owner_token (未ログインは null → localStorage を見る)。 */
   sessionOwnerToken: string | null;
@@ -36,13 +44,28 @@ export default function UnmeiPriceCta({
   variant?: "full" | "compact";
   /** true = リダイレクトせず全画面チャット決済を起動する (チャット決済フロー)。 */
   launchChat?: boolean;
+  locale?: ResultLocale;
 }) {
   // チャット起動モードでは「作成する」文言、従来のリダイレクトは「続ける」。
-  const ctaLabel = launchChat ? "設計図を作成する →" : "続ける →";
+  const ctaLabel =
+    locale === "ko"
+      ? launchChat
+        ? "운명의 설계도 만들기 →"
+        : "계속하기 →"
+      : launchChat
+        ? "設計図を作成する →"
+        : "続ける →";
   const [ownerToken, setOwnerToken] = useState<string | null>(
     sessionOwnerToken,
   );
   const [hasFull, setHasFull] = useState(sessionHasFull);
+  const koreanUpgradePrice = PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW;
+  const fullPrice =
+    locale === "ko" ? `₩${PREMIUM_BUNDLE_PRICE_KRW.toLocaleString("ko-KR")}` : "¥899";
+  const upgradePrice =
+    locale === "ko" ? `₩${koreanUpgradePrice.toLocaleString("ko-KR")}` : "¥400";
+  const listPrice =
+    locale === "ko" ? `₩${PREMIUM_BUNDLE_LIST_PRICE_KRW.toLocaleString("ko-KR")}` : "¥1,980";
 
   useEffect(() => {
     if (hasFull) return;
@@ -98,13 +121,17 @@ export default function UnmeiPriceCta({
       <>
         {!launchChat && (
           <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
-            料金はわずか {hasFull ? "¥400" : "¥899"} です。
+            {locale === "ko"
+              ? `요금은 ${hasFull ? upgradePrice : fullPrice}이에요.`
+              : `料金はわずか ${hasFull ? upgradePrice : fullPrice} です。`}
           </p>
         )}
         <div className="mt-6 flex justify-center">
           <UnmeiCheckoutButton
             ownerToken={ownerToken}
             launchChat={launchChat}
+            tone="premium"
+            locale={locale}
           >
             {ctaLabel}
           </UnmeiCheckoutButton>
@@ -115,39 +142,46 @@ export default function UnmeiPriceCta({
 
   return (
     <>
-      {/* チャット決済フロー (launchChat) は価格を後のチャット/決済で提示するため、LP では出さない */}
-      {!launchChat &&
-        (hasFull ? (
-          <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
-            <span className="mr-2.5 align-middle text-[20px] font-bold text-[#2E2E5C]/40 line-through md:text-[24px]">
-              ¥899
-            </span>
-            ¥400
-            {/* 割引率 = (899-400)/899 ≒ 55%。色はインディゴ系に統一 (赤は使わない) */}
-            <span className="ml-2.5 inline-block rounded-lg bg-[#F4F4FE] px-2.5 py-1 align-middle text-[14px] font-black text-[#5B5BEF] md:text-[15px]">
-              55%OFF
-            </span>
-            {/* SP は行が窮屈なため、折り返すときは語のまとまりごと次行へ落とす */}
-            <span className="ml-2.5 inline-block whitespace-nowrap align-middle text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
-              30日間の返金保証
-            </span>
+      {/* 価格は入力前から明示し、ヒーローからCTAまでプレミアムのゴールドで統一する。 */}
+      {hasFull ? (
+        <div className="mt-4">
+          <p className="text-[13px] font-bold text-[#2E2E5C]/45 line-through md:text-[14px]">
+            {locale === "ko" ? `정가 ${fullPrice}` : `通常 ${fullPrice}`}
           </p>
-        ) : (
-          <p className="mt-3 text-[34px] font-black text-[#2E2E5C] md:text-[40px]">
-            ¥899
-            <span className="ml-2.5 text-[14px] font-bold text-[#2E2E5C]/55 md:text-[15px]">
-              買い切り・30日間の返金保証
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#5B5BEF] md:text-[44px]">
+              {upgradePrice}
+            </p>
+            <span className="inline-flex rounded-full bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-black text-[#5B5BEF] md:text-[13px]">
+              {locale === "ko" ? "완전판 사용자 한정" : "完全版ユーザー限定"}
             </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <p className="text-[13px] font-bold text-[#2E2E5C]/45 line-through md:text-[14px]">
+            {locale === "ko" ? `정가 ${listPrice}` : `通常 ${listPrice}`}
           </p>
-        ))}
-      {/* 保証表記は価格行の「買い切り」横に移動 (2026-08-02 指示)。
-          (エンタメ表記は特商法/規約ページ側にあるため省略) */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
+              {fullPrice}
+            </p>
+            <span className="inline-flex rounded-full bg-[#FFF1CB] px-3 py-1.5 text-[12px] font-black text-[#9A6117] md:text-[13px]">
+              {locale === "ko"
+                ? `출시 기념 ${PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW}% 할인 (8/31까지)`
+                : "リリース記念 55%OFF（8/31まで）"}
+            </span>
+          </div>
+        </div>
+      )}
       <div
-        className={`${launchChat ? "mt-6" : "mt-3"} flex ${align === "start" ? "" : "md:justify-center"}`}
+        className={`mt-4 flex ${align === "start" ? "" : "md:justify-center"}`}
       >
         <UnmeiCheckoutButton
           ownerToken={ownerToken}
           launchChat={launchChat}
+          tone="premium"
+          locale={locale}
         >
           {ctaLabel}
         </UnmeiCheckoutButton>

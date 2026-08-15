@@ -2,7 +2,11 @@ import { NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getSession } from "@/lib/session";
 import { checkOrigin } from "@/lib/origin-check";
-import { isReadingReady, readingGenState } from "@/lib/unmei/reading";
+import {
+  isReadingLocaleValid,
+  isReadingReady,
+  readingGenState,
+} from "@/lib/unmei/reading";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
 import { hasUnmeiAccess } from "@/lib/entitlements";
 
@@ -69,7 +73,11 @@ export async function POST(request: Request) {
     (existing?.reading as { locale?: unknown } | null)?.locale === "ko"
       ? "ko"
       : "ja";
-  if (isReadingReady(existing) && existingLocale === outputLocale) {
+  if (
+    isReadingReady(existing) &&
+    existingLocale === outputLocale &&
+    isReadingLocaleValid(existing?.reading, outputLocale)
+  ) {
     return NextResponse.json({ ok: true, state: "ready", skipped: true });
   }
 
@@ -81,7 +89,11 @@ export async function POST(request: Request) {
   }
 
   // プロンプト入力 (Big Five スコア + 32タイプ称号) を同期解決してバックグラウンドに渡す。
-  const promptInputs = await resolveUnmeiPromptInputs(supabaseAdmin, userId);
+  const promptInputs = await resolveUnmeiPromptInputs(
+    supabaseAdmin,
+    userId,
+    outputLocale,
+  );
 
   // ===== 生成本体は応答後に実行 (after は maxDuration 内で走る) =====
   //   runForUser が自前でロック(model='generating')取得 → Claude → reading 書き込み、

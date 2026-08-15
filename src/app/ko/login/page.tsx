@@ -10,7 +10,6 @@ const NAVY = "#2E2E5C";
 export const metadata: Metadata = {
   title: { absolute: "로그인 | 나의 사용설명서" },
   alternates: localizedAlternates("ko", "/login", "/ko/login"),
-  robots: { index: false, follow: false },
 };
 
 // 日本語 /login と同じデザイン (2026-07-30 改良): サイト共通chrome +

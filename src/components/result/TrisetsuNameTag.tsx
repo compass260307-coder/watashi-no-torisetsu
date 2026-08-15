@@ -6,12 +6,19 @@
 // 花/ハートは指定 SVG をそのまま使用。
 // 相互理解度ページの「◯◯さんから見た」は呼び出し側で上に別行ラベルとして添える。
 
+import type { ResultLocale } from "@/i18n/result";
+
 interface TrisetsuNameTagProps {
   name: string;
   className?: string;
+  locale?: ResultLocale;
 }
 
-export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) {
+export function TrisetsuNameTag({
+  name,
+  className = "",
+  locale = "ja",
+}: TrisetsuNameTagProps) {
   return (
     // 花［テキスト］ハートを必ず横一列に: flex-nowrap + 中央寄せ。max-w-full でコンテナ幅に収める。
     <div
@@ -24,7 +31,7 @@ export function TrisetsuNameTag({ name, className = "" }: TrisetsuNameTagProps) 
         className="wtr-logo-text leading-none min-w-0"
         style={{ fontSize: "clamp(18px, 5.5vw, 30px)", whiteSpace: "nowrap" }}
       >
-        {name}のトリセツ
+        {locale === "ko" ? `${name}의 사용설명서` : `${name}のトリセツ`}
       </span>
       <HeartIcon />
     </div>

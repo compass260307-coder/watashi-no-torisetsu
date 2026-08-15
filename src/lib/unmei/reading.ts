@@ -7,7 +7,16 @@
 //   ※ generateWorker.mjs 側にも同じ規律をインライン実装(要一致)。
 
 // 自動再生成の上限 (generateWorker.MAX_GEN_ATTEMPTS と一致させること)。
+import { isReadingLocaleValid as validateReadingLocale } from "@/lib/unmei/reading-validation.mjs";
+
 export const MAX_GEN_ATTEMPTS = 3;
+
+export function isReadingLocaleValid(
+  reading: unknown,
+  locale: "ja" | "ko",
+): boolean {
+  return validateReadingLocale(reading, locale);
+}
 
 type ReadingRow = { model?: string | null; reading?: unknown } | null | undefined;
 

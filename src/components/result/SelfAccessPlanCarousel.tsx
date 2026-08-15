@@ -61,8 +61,6 @@ const JA_PLANS: readonly PlanDefinition[] = [
     items: [
       "自己診断結果のロックを8つ全て解放",
       "16ページ以上の自己分析PDF",
-      "２人目以降の友達診断結果もすべて解放",
-      "何度でも作り直せる友達診断分析PDF",
     ],
   },
   {
@@ -75,15 +73,13 @@ const JA_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 4,
+    inheritedItemCount: 2,
     items: [
       "自己診断結果のロックを8つ全て解放",
       "16ページ以上の自己分析PDF",
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
       "恋愛パートナー相性診断を開放",
-      "出生情報から仕事・恋愛・人生の転機を読む、あなた専用の運命の設計図",
-      "星読みの案内人とのチャット5回分",
     ],
   },
   {
@@ -96,15 +92,15 @@ const JA_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 6,
+    inheritedItemCount: 5,
     items: [
       "自己診断結果のロックを8つ全て解放",
       "16ページ以上の自己分析PDF",
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
       "恋愛パートナー相性診断を開放",
+      "あなたの専属占い師とのチャットを解放",
       "出生情報から仕事・恋愛・人生の転機を読む、あなた専用の運命の設計図",
-      "星読みの案内人とのチャット30回分",
     ],
   },
 ] as const;
@@ -124,8 +120,6 @@ const KO_PLANS: readonly PlanDefinition[] = [
     items: [
       "자기 진단의 잠긴 결과 전체 해제",
       "16페이지 이상의 자기 분석 PDF",
-      "두 번째 친구부터의 친구 진단 결과 전체 해제",
-      "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
     ],
   },
   {
@@ -138,15 +132,13 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 4,
+    inheritedItemCount: 2,
     items: [
       "자기 진단의 잠긴 결과 전체 해제",
       "16페이지 이상의 자기 분석 PDF",
       "두 번째 친구부터 친구 진단 결과 전체 해제",
       "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
       "연애 파트너 궁합 분석",
-      "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
-      "별자리 상담사와의 채팅 5회분",
     ],
   },
   {
@@ -159,14 +151,14 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 6,
+    inheritedItemCount: 4,
     items: [
       "자기 진단의 잠긴 결과 전체 해제",
       "16페이지 이상의 자기 분석 PDF",
       "친구 진단 결과와 친구 분석 PDF 전체 해제",
       "연애 파트너 궁합 분석",
+      "나만의 전담 점성술사와의 채팅 잠금 해제",
       "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
-      "별자리 상담사와의 채팅 30회분",
     ],
   },
 ] as const;
@@ -199,6 +191,212 @@ function baseCtaLabel(product: AccessProduct, locale: ResultLocale): string {
   if (product === "self_report") return "お試し版で開放";
   if (product === "full_access") return "完全版で開放";
   return "プレミアム版で開放";
+}
+
+const LEGACY_PREMIUM_FEATURES = {
+  ja: [
+    {
+      title: "4章立てのAI鑑定文",
+      desc: "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
+    },
+    {
+      title: "専属AI占い師に相談30回",
+      desc: "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
+    },
+    {
+      title: "出生図ホイール",
+      desc: "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
+    },
+    {
+      title: "性格診断 × 星の掛け合わせ",
+      desc: "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
+    },
+  ],
+  ko: [
+    {
+      title: "나만의 전담 점성술사",
+      desc: "성격 진단과 출생 차트를 이해한 점성술사에게 고민을 상담할 수 있어요.",
+    },
+    {
+      title: "네 장으로 이어지는 AI 감정서",
+      desc: "지금까지의 걸음부터 앞으로 찾아올 전환점까지 읽어 드려요.",
+    },
+    {
+      title: "나만의 출생 차트 휠",
+      desc: "태어난 순간의 천체 배치를 한 장의 설계도로 그려 드려요.",
+    },
+    {
+      title: "성격 진단과 별의 교차 해석",
+      desc: "성격과 별의 기질을 함께 살펴 나만의 모습을 깊이 이해해요.",
+    },
+  ],
+} as const;
+
+function LegacyPremiumCard({
+  plan,
+  entitlements,
+  ownerToken,
+  ctaSource,
+  returnTo,
+  locale,
+  previewMode,
+  anchorId,
+  onClose,
+}: {
+  plan: PlanDefinition;
+  entitlements: AccessEntitlements;
+  ownerToken?: string;
+  ctaSource?: string;
+  returnTo: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
+  locale: ResultLocale;
+  previewMode: boolean;
+  anchorId: string;
+  onClose?: () => void;
+}) {
+  const checkoutPrice = accessProductPrice(locale, plan.product, entitlements);
+  const isUpgrade = checkoutPrice !== plan.basePrice;
+  const features = LEGACY_PREMIUM_FEATURES[locale];
+
+  return (
+    <section
+      id={anchorId}
+      aria-labelledby={`${anchorId}-title`}
+      className="relative mx-auto w-full max-w-[1120px] overflow-hidden rounded-[26px] border border-[#E8D7A8] border-t-[4px] border-t-[#9A6A24] bg-[#FFF9EB] shadow-[0_14px_40px_rgba(46,46,92,0.12)] md:grid md:grid-cols-[40%_60%]"
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-8 -top-10 z-0 h-36 w-36 rotate-[12deg] bg-[#E8D19A]/75"
+        style={{ clipPath: "polygon(50% 0, 100% 25%, 82% 100%, 18% 82%, 0 25%)" }}
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-14 -left-10 z-0 h-36 w-36 rotate-[-18deg] bg-[#E8D19A]/65"
+        style={{ clipPath: "polygon(50% 0, 100% 25%, 82% 100%, 18% 82%, 0 25%)" }}
+      />
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={locale === "ko" ? "닫기" : "閉じる"}
+          className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.22)] transition hover:scale-105 active:scale-95 md:right-4 md:top-4 md:h-10 md:w-10"
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      ) : null}
+
+      <div className="relative z-10 flex min-h-[230px] items-center justify-center overflow-hidden bg-[#FFF9EB] px-4 pb-4 pt-8 md:min-h-[560px] md:px-3 md:py-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.58),rgba(255,249,235,0.08)_70%)]" />
+        <Image
+          src="/mascot/unmei-hero.png"
+          alt=""
+          aria-hidden="true"
+          width={1200}
+          height={900}
+          sizes="(max-width: 767px) 340px, 430px"
+          className="relative z-10 h-auto w-full max-w-[340px] mix-blend-multiply md:max-w-[430px]"
+        />
+      </div>
+
+      <div className="relative z-10 px-6 py-8 text-left sm:px-8 md:px-12 md:py-7">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F3E4BD] px-3 py-1.5 text-[12px] font-black text-[#80571E]">
+          <span aria-hidden="true">★</span>
+          {locale === "ko" ? "프리미엄에서 잠금 해제" : "プレミアムで解放"}
+        </span>
+        <h2
+          id={`${anchorId}-title`}
+          className="mt-3 max-w-[650px] text-[27px] font-black leading-[1.25] text-[#2E2E5C] sm:text-[31px] md:text-[36px]"
+        >
+          {locale === "ko"
+            ? "나만의 운명의 설계도를 모두 잠금 해제하세요"
+            : "あなたの物語の続きを、すべて解放"}
+        </h2>
+        <p className="mt-3 max-w-[650px] text-[13.5px] font-bold leading-[1.7] text-[#5F6072] md:text-[15px]">
+          {locale === "ko"
+            ? "출생 차트와 성격 진단을 함께 읽어, 지금까지의 걸음과 앞으로 찾아올 전환점을 하나의 이야기로 정리했어요."
+            : "性格診断で分かったのは、いまのあなた。ここから先は、これまでの歩みと、これから訪れる転換点の話です。出生図と掛け合わせた、あなただけの1冊をつくりました。"}
+        </p>
+
+        <ul className="mt-4 grid max-w-[670px] list-disc gap-1.5 pl-5 text-[13.5px] leading-[1.55] text-[#45475A] md:text-[14px]">
+          {features.map((feature) => (
+            <li key={feature.title}>
+              <span className="font-black text-[#2E2E5C]">{feature.title}</span>
+              <span>：{feature.desc}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-5">
+          {isUpgrade ? (
+            <p className="mb-1 text-[12px] font-black text-[#9A6A24]">
+              {locale === "ko"
+                ? "구매한 코스와의 차액만"
+                : "購入済みコースとの差額だけ"}
+            </p>
+          ) : plan.listPrice ? (
+            <p className="mb-1 text-[13px] font-bold text-[#A0A0B4] line-through">
+              {locale === "ko" ? "정가" : "通常"} {formatPrice(plan.listPrice, locale)}
+            </p>
+          ) : null}
+          <div className="flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
+            {isUpgrade ? (
+              <span className="pb-1 text-[14px] font-black text-[#9A6A24]">
+                {locale === "ko" ? "추가" : "追加"}
+              </span>
+            ) : null}
+            <span className="text-[42px] font-black leading-none text-[#9A6A24] md:text-[46px]">
+              {formatPrice(checkoutPrice, locale)}
+            </span>
+            {plan.badge ? (
+              <span className="mb-0.5 shrink-0 whitespace-nowrap rounded-full bg-[#FFF1CE] px-2.5 py-1 text-[10px] font-black text-[#9A6A24]">
+                {plan.badge}
+                {locale === "ja" ? "（8/31まで）" : null}
+              </span>
+            ) : null}
+          </div>
+          {isUpgrade ? (
+            <p className="mt-1.5 text-[11px] font-bold text-[#7F8294]">
+              {locale === "ko"
+                ? `코스 가격 ${formatPrice(plan.basePrice, locale)}에서 구매 금액을 차감`
+                : `コース価格 ${formatPrice(plan.basePrice, locale)} から購入済み分を差し引き`}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-2 max-w-[440px]">
+          <FullAccessCta
+            ownerToken={ownerToken}
+            locale={locale}
+            source={ctaSource}
+            returnTo={returnTo}
+            product="premium_bundle"
+            paywallVersion={THREE_COURSE_PAYWALL_VERSION}
+            placement={onClose ? "modal" : "inline"}
+            previewMode={previewMode}
+          >
+            {locale === "ko"
+              ? "결과를 프리미엄으로 업그레이드"
+              : "結果をプレミアムにアップグレード"}
+          </FullAccessCta>
+        </div>
+
+        <p className="mt-2 text-[12px] font-bold text-[#7D7E8E]">
+          {locale === "ko"
+            ? "한 번만 결제 · 30일 환불 보장"
+            : "買い切り・30日間の返金保証つき"}
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function PlanCard({
@@ -346,9 +544,6 @@ function PlanCard({
       <ul className="mt-4 flex flex-col gap-2 border-t border-[#E5E6ED] pt-4 text-left md:mt-5 md:flex-1 md:gap-3 md:pt-5">
         {plan.items.map((item, index) => {
           const inherited = index < plan.inheritedItemCount;
-          const isNewToPlan = plan.inheritedItemCount > 0 && !inherited;
-          const newItemColor =
-            plan.product === "full_access" ? "#5552B5" : plan.accent;
           return (
             <li
               key={item}
@@ -363,8 +558,7 @@ function PlanCard({
                 ✓
               </span>
               <span
-                className="text-[12px] font-bold leading-[1.45] md:text-[13px] md:leading-[1.55]"
-                style={{ color: isNewToPlan ? newItemColor : "#3F4358" }}
+                className="text-[12px] font-bold leading-[1.45] text-[#3F4358] md:text-[13px] md:leading-[1.55]"
               >
                 {item}
               </span>
@@ -387,6 +581,7 @@ export function SelfAccessPlanCarousel({
   defaultProduct = "full_access",
   products,
   previewMode = false,
+  legacyStyle = false,
 }: {
   ownerToken?: string;
   anchorId: string;
@@ -399,6 +594,8 @@ export function SelfAccessPlanCarousel({
   products?: readonly AccessProduct[];
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
+  /** 3コース化以前のコンパクトな単一課金カード表示。 */
+  legacyStyle?: boolean;
 }) {
   const allPlans = locale === "ko" ? KO_PLANS : JA_PLANS;
   const plans = useMemo(
@@ -547,6 +744,26 @@ export function SelfAccessPlanCarousel({
       | null;
     target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   };
+
+  if (legacyStyle) {
+    const premiumPlan = plans.find(
+      (plan) => plan.product === "premium_bundle",
+    );
+    if (!premiumPlan) return null;
+    return (
+      <LegacyPremiumCard
+        plan={premiumPlan}
+        entitlements={entitlements}
+        ownerToken={ownerToken}
+        ctaSource={ctaSource}
+        returnTo={returnTo}
+        locale={locale}
+        previewMode={previewMode}
+        anchorId={anchorId}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <section
