@@ -73,7 +73,9 @@ export const SELF_REPORT_PRICE_KRW = 1900;
 export const FULL_ACCESS_LIST_PRICE_KRW = 12900;
 export const FULL_ACCESS_PRICE_KRW = 4900;
 export const PREMIUM_BUNDLE_LIST_PRICE_KRW = 19800;
-export const PREMIUM_BUNDLE_PRICE_KRW = 12900;
+// 日本版 ¥899 と実質同水準に揃える (下位2コースと同じ「JPY×10」の桁パターン。
+// 55%OFF 表示も日本版と一致する)。旧価格は ₩12,900。
+export const PREMIUM_BUNDLE_PRICE_KRW = 8900;
 export const SELF_REPORT_DISCOUNT_PERCENT = Math.round(
   (1 - SELF_REPORT_PRICE_JPY / SELF_REPORT_LIST_PRICE_JPY) * 100,
 );

@@ -3,6 +3,11 @@
 // feat/top-page: 独立した白いヘッダーバー (16Personalities 型)。
 // 構造: ロゴ(左) | メニュー + ログイン + 言語切替(右寄せ)。PC は横並び、SP はハンバーガー。
 // 白背景・ダーク文字。下にキービジュアルのヒーローが続く。sticky で追従。
+//
+// 2026-08-15: 日本語版と韓国語版 (旧 KoTopHeader) を locale prop で統合。
+// 文言・リンク先だけ CONTENT で分岐し、挙動・DOM は完全共通にする。
+// DOM は旧 KoTopHeader 側の改良 (オーバーレイの button 化・ドロワーの
+// pointer-events ラッパー) を両ロケールに採用。
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -10,47 +15,127 @@ import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { resetLocalData } from "@/lib/reset-data";
-import { localeSwitchPath } from "@/lib/locale-switch";
+import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
+import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
 
+type NavItem = {
+  label: string;
+  href: string;
+  // 友達診断テスト: owner_token があれば /tako/[token] に解決、無ければロック表示
+  // (BottomNav の友達診断タブと同じ挙動)。
+  tako?: boolean;
+  // ログイン: 別ページ遷移ではなく、現在のページの上にモーダルで重ねる。
+  login?: boolean;
+  // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
+  disabled?: boolean;
+};
+
+type HeaderContent = {
+  siteName: string;
+  homeHref: string;
+  nav: NavItem[];
+  preparing: string;
+  englishPreparing: string;
+  currentLangLabel: string;
+  otherLangMenuLabel: string;
+  otherLangDrawerLabel: string;
+  ariaLangSwitch: string;
+  ariaLangMenuClose: string;
+  menuTitle: string;
+  ariaMenuOpen: string;
+  ariaMenuClose: string;
+  reset: { label: string; confirm: string; run: string; cancel: string };
+};
+
 // ナビ表記ルール: 機能名は「性格診断テスト / 友達診断テスト / 性格タイプ」で統一。
 // (旧表記: 相互理解度 → 友達診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
-// disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
-const NAV: { label: string; href: string; disabled?: boolean }[] = [
-  { label: "性格診断テスト", href: "/diagnosis" },
-  // 友達診断テストの href は実行時に上書き (BottomNav と同じ /tako/[token] 解決)。
-  { label: "友達診断テスト", href: "/tako" },
-  { label: "性格タイプ", href: "/types" },
-  { label: "運命の設計図", href: "/unmei" },
-  { label: "占い師", href: "/hoshiyomi" },
-  { label: "ログイン", href: "/login" },
-];
+const CONTENT: Record<SiteLocale, HeaderContent> = {
+  ja: {
+    siteName: "ワタシのトリセツ",
+    homeHref: "/",
+    nav: [
+      { label: "性格診断テスト", href: "/diagnosis" },
+      { label: "友達診断テスト", href: "/tako", tako: true },
+      { label: "性格タイプ", href: "/types" },
+      { label: "運命の設計図", href: "/unmei" },
+      { label: "占い師", href: "/hoshiyomi" },
+      { label: "ログイン", href: "/login", login: true },
+    ],
+    preparing: "（準備中）",
+    englishPreparing: "English（準備中）",
+    currentLangLabel: "日本語",
+    otherLangMenuLabel: "한국어",
+    otherLangDrawerLabel: "한국어로 보기",
+    ariaLangSwitch: "言語を切り替え",
+    ariaLangMenuClose: "言語メニューを閉じる",
+    menuTitle: "メニュー",
+    ariaMenuOpen: "メニューを開く",
+    ariaMenuClose: "メニューを閉じる",
+    reset: {
+      label: "データをリセット",
+      confirm:
+        "診断結果や招待リンクがこの端末から消えます。もとに戻せません。",
+      run: "リセットする",
+      cancel: "キャンセル",
+    },
+  },
+  ko: {
+    siteName: KO_TOP_CONTENT.siteName,
+    homeHref: "/ko",
+    nav: [
+      { label: KO_TOP_CONTENT.navigation.diagnosis, href: "/ko/diagnosis" },
+      { label: KO_TOP_CONTENT.navigation.friend, href: "/ko/tako", tako: true },
+      { label: KO_TOP_CONTENT.navigation.types, href: "/ko/types" },
+      { label: "운명의 설계도", href: "/ko/unmei" },
+      { label: "별자리 상담사", href: "/ko/hoshiyomi" },
+      { label: KO_TOP_CONTENT.navigation.login, href: "/ko/login", login: true },
+    ],
+    preparing: `(${KO_TOP_CONTENT.navigation.preparing})`,
+    englishPreparing: `English（${KO_TOP_CONTENT.navigation.preparing}）`,
+    currentLangLabel: "한국어",
+    otherLangMenuLabel: "日本語",
+    otherLangDrawerLabel: "日本語로 보기",
+    ariaLangSwitch: "언어 변경",
+    ariaLangMenuClose: "언어 메뉴 닫기",
+    menuTitle: KO_TOP_CONTENT.navigation.menu,
+    ariaMenuOpen: KO_TOP_CONTENT.navigation.menuOpen,
+    ariaMenuClose: KO_TOP_CONTENT.navigation.menuClose,
+    reset: {
+      label: "데이터 초기화",
+      confirm: "진단 결과와 초대 링크가 이 기기에서 삭제되며 되돌릴 수 없어요.",
+      run: "초기화",
+      cancel: "취소",
+    },
+  },
+};
 
-export default function TopHeader() {
+export default function TopHeader({
+  locale = "ja",
+}: {
+  locale?: SiteLocale;
+}) {
+  const isKo = locale === "ko";
+  const content = CONTENT[locale];
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
-  // ログインは別ページ遷移ではなく、現在のページの上にモーダルで重ねる。
   const [loginOpen, setLoginOpen] = useState(false);
   // データリセットは誤操作防止のためドロワー内で確認ステップを挟む。
   const [confirmReset, setConfirmReset] = useState(false);
-  const pathname = usePathname() ?? "/";
+  const pathname = usePathname() ?? content.homeHref;
   const [currentSearch, setCurrentSearch] = useState("");
-
-  // 友達診断テストの遷移先を BottomNav と同じルールで解決:
-  //   localStorage の owner_token があれば /tako/[token]、無ければロック表示
-  //   (遷移せず TakoLockPopover。BottomNav の友達診断タブと同じ挙動)。
-  //   クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
-  const [takoUrl, setTakoUrl] = useState("/tako");
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   // 初期値 true (=ロックなし): 診断済みユーザーに一瞬ロックが見えるのを避ける
   // (BottomNav と同じ判断。未診断側は hydration 後にロックが現れる)。
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
+
+  // クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
   useEffect(() => {
     let token: string | null = null;
     try {
@@ -59,17 +144,25 @@ export default function TopHeader() {
       // localStorage 不可環境: フォールバックのまま。
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTakoUrl(token ? `/tako/${token}` : "/tako");
     setOwnerToken(token);
     setHasToken(Boolean(token));
     setCurrentSearch(window.location.search);
   }, [pathname]);
 
-  const koreanHref = localeSwitchPath(
+  const otherLocaleHref = localeSwitchPath(
     pathname,
-    "ko",
+    isKo ? "ja" : "ko",
     ownerToken,
     currentSearch,
+  );
+
+  const nav = content.nav.map((n) =>
+    n.tako && ownerToken
+      ? {
+          ...n,
+          href: `${isKo ? "/ko" : ""}/tako/${encodeURIComponent(ownerToken)}`,
+        }
+      : n,
   );
 
   // ドロワーを開いている間は背景スクロールを固定 + Escape で閉じる。
@@ -89,10 +182,12 @@ export default function TopHeader() {
     };
   }, [open]);
 
+  // 日本語はページ側でフォントが確定しないため FONT_STACK を明示。
+  // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
+  const fontStyle = isKo ? undefined : { fontFamily: FONT_STACK };
 
-  const nav = NAV.map((n) =>
-    n.label === "友達診断テスト" ? { ...n, href: takoUrl } : n,
-  );
+  const currentFlag = isKo ? <KoreaFlagIcon /> : <JapanFlagIcon />;
+  const otherFlag = isKo ? <JapanFlagIcon /> : <KoreaFlagIcon />;
 
   // lg (1024px) では項目 6 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
@@ -100,18 +195,15 @@ export default function TopHeader() {
     "whitespace-nowrap text-[16px] xl:text-[20px] font-bold transition-colors hover:text-[#5B5BEF]";
 
   return (
-    <header
-      className="sticky top-0 z-50 w-full bg-white"
-      style={{ fontFamily: FONT_STACK }}
-    >
+    <header className="sticky top-0 z-50 w-full bg-white" style={fontStyle}>
       <div className="flex w-full items-center gap-4 px-8 py-4">
         {/* ロゴ (左) */}
         <Link
-          href="/"
+          href={content.homeHref}
           className="whitespace-nowrap text-[18px] xl:text-[21px] font-bold tracking-[0.01em]"
           style={{ color: NAVY }}
         >
-          ワタシのトリセツ
+          {content.siteName}
         </Link>
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
@@ -124,9 +216,11 @@ export default function TopHeader() {
                 aria-disabled="true"
               >
                 {n.label}
-                <span className="text-[11px] xl:text-[13px]">（準備中）</span>
+                <span className="text-[11px] xl:text-[13px]">
+                  {content.preparing}
+                </span>
               </span>
-            ) : n.href === "/login" ? (
+            ) : n.login ? (
               // ログインは遷移せずモーダルを開く
               <button
                 key={n.href}
@@ -137,7 +231,7 @@ export default function TopHeader() {
               >
                 {n.label}
               </button>
-            ) : n.label === "友達診断テスト" && !hasToken ? (
+            ) : n.tako && !hasToken ? (
               // 未診断時はロック表示: 遷移せずポップオーバーで解放条件を伝える
               // (BottomNav の友達診断タブと同じ挙動。色もロック中タブと同じグレー)。
               <button
@@ -162,47 +256,45 @@ export default function TopHeader() {
             ),
           )}
 
-          {/* 言語切替。韓国語トップを公開し、日本語/韓国語を相互に移動可能にする。 */}
+          {/* 言語切替。日本語/韓国語を相互に移動可能にする。 */}
           <div className="relative">
             <button
               type="button"
-              aria-label="言語を切り替え"
+              aria-label={content.ariaLangSwitch}
               aria-expanded={langOpen}
               onClick={() => setLangOpen((v) => !v)}
               className="flex items-center gap-1.5 whitespace-nowrap text-[16px] xl:text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
               style={{ color: NAVY }}
             >
-              <JapanFlagIcon />
-              日本語
+              {currentFlag}
+              {content.currentLangLabel}
               <CaretDown />
             </button>
 
             {langOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 cursor-default"
                   onClick={() => setLangOpen(false)}
-                  aria-hidden="true"
+                  aria-label={content.ariaLangMenuClose}
                 />
-                <div
-                  className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-xl border border-[#2E2E5C]/10 bg-white py-1 shadow-[0_8px_24px_rgba(42,58,92,0.16)]"
-                  style={{ fontFamily: FONT_STACK }}
-                >
+                <div className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-xl border border-[#2E2E5C]/10 bg-white py-1 shadow-[0_8px_24px_rgba(42,58,92,0.16)]">
                   <div
                     className="px-4 py-2.5 text-[15px] font-bold"
                     style={{ color: "#5B5BEF" }}
                   >
-                    日本語
+                    {content.currentLangLabel}
                   </div>
                   <Link
-                    href={koreanHref}
+                    href={otherLocaleHref}
                     onClick={() => setLangOpen(false)}
                     className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
                   >
-                    한국어
+                    {content.otherLangMenuLabel}
                   </Link>
                   <div className="px-4 py-2.5 text-[15px] text-[#B4B4C4]">
-                    English（準備中）
+                    {content.englishPreparing}
                   </div>
                 </div>
               </>
@@ -213,183 +305,190 @@ export default function TopHeader() {
         {/* SP: ハンバーガー (右) */}
         <button
           type="button"
-          aria-label="メニューを開く"
+          aria-label={content.ariaMenuOpen}
           aria-expanded={open}
           onClick={() => setOpen(true)}
           className="ml-auto flex h-10 w-10 items-center justify-center lg:hidden"
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
-              <line x1="4" y1="7" x2="20" y2="7" />
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="17" x2="20" y2="17" />
-            </g>
-          </svg>
+          <MenuIcon />
         </button>
       </div>
 
       {/* SP: 横からスライドインするドロワー (右→左)。
           アニメーションのため常時マウントし、transform / opacity で出し入れする。 */}
       {/* オーバーレイ (背景を暗くする) */}
-      <div
+      <button
+        type="button"
         className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 lg:hidden ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setOpen(false)}
-        aria-hidden="true"
+        aria-label={content.ariaMenuClose}
+        tabIndex={open ? 0 : -1}
       />
-      {/* ドロワー本体 */}
-      <nav
-        aria-label="メニュー"
-        aria-hidden={!open}
-        className={`fixed inset-y-0 right-0 z-50 flex w-[78%] max-w-[320px] flex-col bg-white shadow-[0_0_40px_rgba(42,58,92,0.2)] transition-transform duration-300 ease-out lg:hidden ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-        style={{ fontFamily: FONT_STACK }}
-      >
-        {/* ヘッダー: 閉じるボタン */}
-        <div className="flex items-center justify-between border-b border-[#2E2E5C]/10 px-6 py-4">
-          <span className="text-[16px] font-bold" style={{ color: NAVY }}>
-            メニュー
-          </span>
-          <button
-            type="button"
-            aria-label="メニューを閉じる"
-            onClick={() => setOpen(false)}
-            className="flex h-10 w-10 items-center justify-center"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="18" y1="6" x2="6" y2="18" />
-              </g>
-            </svg>
-          </button>
-        </div>
 
-        {/* リンク一覧 */}
-        <div className="flex flex-col px-6 py-2">
-          {nav.map((n) =>
-            n.disabled ? (
-              <span
-                key={n.href}
-                className="block py-3.5 text-[19px] font-bold text-[#B4B4C4]"
-                aria-disabled="true"
-              >
-                {n.label}
-                <span className="text-[12px]">（準備中）</span>
-              </span>
-            ) : n.href === "/login" ? (
-              // ログインは遷移せずモーダルを開く (SP はメニューを閉じてから)
-              <button
-                key={n.href}
-                type="button"
-                tabIndex={open ? 0 : -1}
-                onClick={() => {
-                  setOpen(false);
-                  setLoginOpen(true);
-                }}
-                className="block w-full py-3.5 text-left text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-                style={{ color: NAVY }}
-              >
-                {n.label}
-              </button>
-            ) : n.label === "友達診断テスト" && !hasToken ? (
-              // 未診断時はロック表示。ドロワーを閉じてからポップオーバーを出すと、
-              // 吹き出しの矢印がボトムナビのロック中「友達診断」タブを指して場所も伝わる。
-              <button
-                key={n.href}
-                type="button"
-                tabIndex={open ? 0 : -1}
-                onClick={() => {
-                  setOpen(false);
-                  setTakoLockOpen(true);
-                }}
-                className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
-                style={{ color: "#9BA3B4" }}
-              >
-                {n.label}
-                <MenuLockIcon />
-              </button>
-            ) : (
-              <Link
-                key={n.href}
-                href={n.href}
-                tabIndex={open ? 0 : -1}
-                onClick={() => setOpen(false)}
-                className="block py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-                style={{ color: NAVY }}
-              >
-                {n.label}
-              </Link>
-            ),
-          )}
-          {/* SP の言語切替 */}
-          <div className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold" style={{ color: NAVY }}>
-            <JapanFlagIcon />
-            日本語
+      {/* ドロワー本体。閉状態の translate-x-full が横スクロールを生まないよう
+          overflow-hidden のラッパーで包む (クリックはラッパーを素通しする)。 */}
+      <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden lg:hidden">
+        <nav
+          aria-label={content.menuTitle}
+          aria-hidden={!open}
+          className={`pointer-events-auto absolute inset-y-0 right-0 flex w-[78%] max-w-[320px] flex-col bg-white shadow-[0_0_40px_rgba(42,58,92,0.2)] transition-transform duration-300 ease-out ${
+            open ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          {/* ヘッダー: 閉じるボタン */}
+          <div className="flex items-center justify-between border-b border-[#2E2E5C]/10 px-6 py-4">
+            <span className="text-[16px] font-bold" style={{ color: NAVY }}>
+              {content.menuTitle}
+            </span>
+            <button
+              type="button"
+              aria-label={content.ariaMenuClose}
+              onClick={() => setOpen(false)}
+              tabIndex={open ? 0 : -1}
+              className="flex h-10 w-10 items-center justify-center"
+            >
+              <CloseIcon />
+            </button>
           </div>
-          <Link
-            href={koreanHref}
-            tabIndex={open ? 0 : -1}
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-            style={{ color: NAVY }}
-          >
-            <KoreaFlagIcon />
-            한국어로 보기
-          </Link>
 
-          {/* データをリセット (誤操作防止に確認ステップを挟む) */}
-          <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
-            {!confirmReset ? (
-              <button
-                type="button"
-                tabIndex={open ? 0 : -1}
-                onClick={() => setConfirmReset(true)}
-                className="flex w-full items-center gap-1.5 py-2 text-left text-[15px] font-bold text-[#B4415C] transition-colors hover:text-[#8f2f45]"
-              >
-                <ResetIcon />
-                データをリセット
-              </button>
-            ) : (
-              <div className="rounded-xl bg-[#FBE9EC] p-3.5">
-                <p className="text-[13px] font-bold leading-relaxed text-[#8f2f45]">
-                  診断結果や招待リンクがこの端末から消えます。もとに戻せません。
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    tabIndex={open ? 0 : -1}
-                    onClick={resetLocalData}
-                    className="flex-1 rounded-full bg-[#B4415C] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
-                  >
-                    リセットする
-                  </button>
-                  <button
-                    type="button"
-                    tabIndex={open ? 0 : -1}
-                    onClick={() => setConfirmReset(false)}
-                    className="flex-1 rounded-full bg-white py-2.5 text-[14px] font-bold transition-colors hover:bg-[#f3f3f7]"
-                    style={{ color: NAVY }}
-                  >
-                    キャンセル
-                  </button>
-                </div>
-              </div>
+          {/* リンク一覧 */}
+          <div className="flex flex-col px-6 py-2">
+            {nav.map((n) =>
+              n.disabled ? (
+                <span
+                  key={n.href}
+                  className="py-3.5 text-[19px] font-bold text-[#B4B4C4]"
+                  aria-disabled="true"
+                >
+                  {n.label}
+                  <span className="text-[12px]">{content.preparing}</span>
+                </span>
+              ) : n.login ? (
+                // ログインは遷移せずモーダルを開く (SP はメニューを閉じてから)
+                <button
+                  key={n.href}
+                  type="button"
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => {
+                    setOpen(false);
+                    setLoginOpen(true);
+                  }}
+                  className="w-full py-3.5 text-left text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  style={{ color: NAVY }}
+                >
+                  {n.label}
+                </button>
+              ) : n.tako && !hasToken ? (
+                // 未診断時はロック表示。ドロワーを閉じてからポップオーバーを出すと、
+                // 吹き出しの矢印がボトムナビのロック中「友達診断」タブを指して場所も伝わる。
+                <button
+                  key={n.href}
+                  type="button"
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => {
+                    setOpen(false);
+                    setTakoLockOpen(true);
+                  }}
+                  className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
+                  style={{ color: "#9BA3B4" }}
+                >
+                  {n.label}
+                  <MenuLockIcon />
+                </button>
+              ) : (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => setOpen(false)}
+                  className="py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                  style={{ color: NAVY }}
+                >
+                  {n.label}
+                </Link>
+              ),
             )}
+            {/* SP の言語切替 */}
+            <div
+              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold"
+              style={{ color: NAVY }}
+            >
+              {currentFlag}
+              {content.currentLangLabel}
+            </div>
+            <Link
+              href={otherLocaleHref}
+              tabIndex={open ? 0 : -1}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+              style={{ color: NAVY }}
+            >
+              {otherFlag}
+              {content.otherLangDrawerLabel}
+            </Link>
+
+            {/* データをリセット (誤操作防止に確認ステップを挟む) */}
+            <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
+              {!confirmReset ? (
+                <button
+                  type="button"
+                  tabIndex={open ? 0 : -1}
+                  onClick={() => setConfirmReset(true)}
+                  className="flex w-full items-center gap-1.5 py-2 text-left text-[15px] font-bold text-[#B4415C] transition-colors hover:text-[#8f2f45]"
+                >
+                  <ResetIcon />
+                  {content.reset.label}
+                </button>
+              ) : (
+                <div className="rounded-xl bg-[#FBE9EC] p-3.5">
+                  <p
+                    className={`text-[13px] font-bold leading-relaxed text-[#8f2f45] ${
+                      isKo ? "break-keep" : ""
+                    }`}
+                  >
+                    {content.reset.confirm}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      tabIndex={open ? 0 : -1}
+                      onClick={resetLocalData}
+                      className="flex-1 rounded-full bg-[#B4415C] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
+                    >
+                      {content.reset.run}
+                    </button>
+                    <button
+                      type="button"
+                      tabIndex={open ? 0 : -1}
+                      onClick={() => setConfirmReset(false)}
+                      className="flex-1 rounded-full bg-white py-2.5 text-[14px] font-bold transition-colors hover:bg-[#f3f3f7]"
+                      style={{ color: NAVY }}
+                    >
+                      {content.reset.cancel}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </div>
 
       {/* ログインモーダル (現在のページの上に重ねる) */}
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        locale={locale}
+      />
 
       {/* 未診断でロック中の友達診断テストを押したときの吹き出し (BottomNav と共用)。
           画面下部・ボトムナビの友達診断タブの真上に出る。 */}
       <TakoLockPopover
         isOpen={takoLockOpen}
         onClose={() => setTakoLockOpen(false)}
+        locale={locale}
       />
     </header>
   );
@@ -462,6 +561,29 @@ function CaretDown() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="7" x2="20" y2="7" />
+        <line x1="4" y1="12" x2="20" y2="12" />
+        <line x1="4" y1="17" x2="20" y2="17" />
+      </g>
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
+        <line x1="6" y1="6" x2="18" y2="18" />
+        <line x1="18" y1="6" x2="6" y2="18" />
+      </g>
     </svg>
   );
 }
