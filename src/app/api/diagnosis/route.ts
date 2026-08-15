@@ -358,6 +358,9 @@ export async function POST(request: NextRequest) {
       lineLinked: !!existing.line_user_id,
       sessionMode: "updated",
       locale,
+      // TikTok広告CV計測: 本人セッションのメール (再診断ユーザーのみ値あり)。
+      // クライアントで SHA-256 化して dataLayer に添付する (生値は送信しない)。
+      email: preDiagnosisUser?.email ?? null,
     });
   }
 
@@ -397,6 +400,8 @@ export async function POST(request: NextRequest) {
       lineLinked: false,
       sessionMode: "created",
       locale,
+      // 新規ユーザーはこの時点でメール未取得 (マジックリンク/購入時に入る)。
+      email: null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

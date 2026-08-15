@@ -54,6 +54,35 @@ if(!a.s&&!a.c){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=dec
 if(a.s&&!localStorage.getItem(SK))localStorage.setItem(SK,a.s);
 if(a.c&&!localStorage.getItem(CK))localStorage.setItem(CK,a.c);
 }catch(e){}})();`;
+// TikTok広告CV計測: ttclid + utm_* の着地時キャプチャ (last-touch)。
+// 上の first-touch (wt_acq_*) とは別系統・別キー (wt_ad_*)。ロジックは
+// src/lib/ad-attribution.ts と対 (読み出し側)。追跡パラメータを1つでも
+// 含む着地は「新しいクリック」とみなしセット全体を置き換える
+// (別キャンペーンの古い値が混ざり残らないように、無いキーは削除する)。
+const AD_CLICK_CAPTURE_SCRIPT = `(function(){try{
+var KEYS={ttclid:'wt_ad_ttclid',utm_source:'wt_ad_utm_source',utm_medium:'wt_ad_utm_medium',utm_campaign:'wt_ad_utm_campaign',utm_content:'wt_ad_utm_content'};
+var qp=new URLSearchParams(window.location.search);
+var hit=false;
+for(var k in KEYS){if(qp.get(k)){hit=true;break;}}
+if(!hit)return;
+for(var k in KEYS){var v=qp.get(k);if(v)localStorage.setItem(KEYS[k],v);else localStorage.removeItem(KEYS[k]);}
+}catch(e){}})();`;
+// 流入元リファラー補完: 外部サイトからの着地時に referrer のホスト名だけを
+// first-touch で保存する (wt_ref_host)。utm 無し流入 (検索・SNS内リンク等) の
+// acquisition_source フォールバックに使う (読み出し/ホスト→source 変換は
+// src/lib/acquisition.ts の resolveAcquisitionForSave)。
+// 自ドメインは保存しない。アプリ内 webview は referrer が空のことが多く、
+// その場合は従来どおり何も保存されない。
+const REFERRER_CAPTURE_SCRIPT = `(function(){try{
+var RK='wt_ref_host';
+if(localStorage.getItem(RK))return;
+var r=document.referrer;
+if(!r)return;
+var h=new URL(r).hostname;
+if(!h||h===window.location.hostname)return;
+if(/(^|\\.)watashi-torisetsu\\.com$/.test(h))return;
+localStorage.setItem(RK,h);
+}catch(e){}})();`;
 const DOCUMENT_LANGUAGE_SCRIPT = `(function(){try{
 document.documentElement.lang=window.location.pathname.indexOf('/ko')===0?'ko':'ja';
 }catch(e){}})();`;
@@ -191,6 +220,10 @@ export default function RootLayout({
         </noscript>
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
+        {/* TikTok広告CV計測: ttclid + utm_* の last-touch キャプチャ (wt_ad_*) */}
+        <script dangerouslySetInnerHTML={{ __html: AD_CLICK_CAPTURE_SCRIPT }} />
+        {/* 流入元リファラー補完: 外部 referrer ホストの first-touch キャプチャ (wt_ref_host) */}
+        <script dangerouslySetInnerHTML={{ __html: REFERRER_CAPTURE_SCRIPT }} />
         {children}
         {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
         <BottomNav />

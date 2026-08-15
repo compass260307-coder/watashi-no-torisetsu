@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
-import { readAcquisition } from "@/lib/acquisition";
+import { resolveAcquisitionForSave } from "@/lib/acquisition";
+import { hashEmailSha256, readAdAttribution } from "@/lib/ad-attribution";
 import {
   clearPendingSourceCode,
   readPendingSourceCode,
@@ -56,6 +57,10 @@ const DIAGNOSIS_COMPLETE_DATA_LAYER_STORAGE_PREFIX =
 type DiagnosisCompleteDataLayerEvent = {
   event: "diagnosis_complete";
   diagnosis_id?: string;
+  // TikTok広告CV計測 (Spark Ads): 着地時に保存した広告クリックIDと、
+  // SHA-256ハッシュ済みメール (生値は乗せない)。無ければキー自体を省略。
+  ttclid?: string;
+  email_sha256?: string;
 };
 
 type WindowWithDiagnosisDataLayer = Window & {
@@ -86,13 +91,17 @@ function rememberDiagnosisCompleteDataLayerSent(key: string): void {
   }
 }
 
-function pushDiagnosisCompleteDataLayer({
+async function pushDiagnosisCompleteDataLayer({
   dedupeId,
   diagnosisId,
+  email,
 }: {
   dedupeId: string;
   diagnosisId?: string;
-}): void {
+  // 本人セッションのメール (再診断ユーザーのみ /api/diagnosis が返す)。
+  // SHA-256 化してから dataLayer に乗せる。生値はここ止まり。
+  email?: string | null;
+}): Promise<void> {
   const key = diagnosisCompleteStorageKey(dedupeId);
   if (wasDiagnosisCompleteDataLayerSent(key)) return;
 
@@ -103,10 +112,22 @@ function pushDiagnosisCompleteDataLayer({
     // React Strict Mode や二重クリックの再入でも重複 push しないよう、
     // dataLayer より先に送信済みフラグを立てる。
     rememberDiagnosisCompleteDataLayerSent(key);
-    target.dataLayer.push({
+
+    // TikTok広告CV計測: 着地時 (app/layout.tsx) に保存した ttclid と、
+    // ハッシュ化メールを Lead イベントの突合キーとして添付する。
+    const { ttclid } = readAdAttribution();
+    const emailSha256 = email ? await hashEmailSha256(email) : null;
+
+    const payload: DiagnosisCompleteDataLayerEvent = {
       event: "diagnosis_complete",
       ...(diagnosisId ? { diagnosis_id: diagnosisId } : {}),
-    });
+      ...(ttclid ? { ttclid } : {}),
+      ...(emailSha256 ? { email_sha256: emailSha256 } : {}),
+    };
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[diagnosis_complete] dataLayer.push", payload);
+    }
+    target.dataLayer.push(payload);
   } catch {
     // GTM 側の失敗で診断完了 UX を止めない。
   }
@@ -472,9 +493,10 @@ export default function DiagnosisPageContent({
       return;
     }
 
-    // Day 12-C3: first-touch で保存した流入元 (媒体/キャンペーン) を読む。
+    // Day 12-C3: 流入元 (媒体/キャンペーン)。URL → first-touch (wt_acq_*) →
+    // 広告クリック last-touch (wt_ad_utm_*) の順にフォールバック解決する。
     // 新規ユーザー作成時のみ users に書かれる (API 側で creation 分岐のみ採用)。
-    const acq = readAcquisition();
+    const acq = resolveAcquisitionForSave(window.location.search);
 
     // バイラル帰属: URL の ?source= が最優先。無ければ評価送信後ページ等で
     // 保存した invite_code (下部ナビ赤バッジ経由・中断復帰はこちらに落ちる)。
@@ -524,10 +546,11 @@ export default function DiagnosisPageContent({
             sourceInviteCode: sourceInviteCode || null,
           },
         });
-        pushDiagnosisCompleteDataLayer({
+        await pushDiagnosisCompleteDataLayer({
           // ownerToken は診断ごとに新規発行されるため、同じ診断の重複防止にだけ使う。
           // 結果閲覧権限を持つ秘密トークンなので dataLayer には送らない。
           dedupeId: data.ownerToken,
+          email: data.email ?? null,
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
         // 帰属を使い切ったら消す (次回以降の無関係な診断を親に紐づけない)。
