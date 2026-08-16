@@ -413,8 +413,8 @@ function PlanCard({
       data-plan={plan.product}
       className={`relative flex min-h-[410px] w-[88%] shrink-0 snap-center flex-col rounded-[22px] border-2 bg-white p-4 sm:w-[80%] md:min-h-[640px] md:w-[350px] md:rounded-[26px] md:p-6 lg:min-w-0 lg:flex-1 lg:shrink lg:snap-none ${
         plan.product === "full_access"
-          ? "shadow-[0_12px_34px_rgba(91,91,239,0.20)] md:shadow-[0_18px_44px_rgba(91,91,239,0.22)]"
-          : "shadow-[0_10px_28px_rgba(46,46,92,0.09)] md:shadow-[0_14px_36px_rgba(46,46,92,0.10)]"
+          ? "shadow-[0_8px_18px_rgba(91,91,239,0.12)] md:shadow-[0_18px_44px_rgba(91,91,239,0.22)]"
+          : "shadow-[0_6px_16px_rgba(46,46,92,0.07)] md:shadow-[0_14px_36px_rgba(46,46,92,0.10)]"
       }`}
       style={{ borderColor: plan.accent }}
     >
