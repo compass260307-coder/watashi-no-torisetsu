@@ -222,7 +222,7 @@ function CheckItem({ title, desc, accent }: { title: string; desc: string; accen
         <span className="block text-[16px] font-black leading-snug text-[#2E2E5C]">
           {title}
         </span>
-        <span className="body-gothic block text-[14px] leading-[1.6] text-[#5A5A6E]">
+        <span className="body-gothic block text-[13px] leading-[1.6] text-[#5A5A6E]">
           {desc}
         </span>
       </span>
@@ -505,7 +505,7 @@ export function FullAccessPromoCard({
           </h2>
 
           {/* 続編訴求 */}
-          <p className="body-gothic mt-2 text-[14px] leading-[1.6] text-[#5A5A6E]">
+          <p className="body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E]">
             {isKorean
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
               : isSelfReportProduct
@@ -575,7 +575,7 @@ export function FullAccessPromoCard({
           {/* サブスク警戒の解消: 月額でないことを価格の直近で言う。
               デザインは解放項目の説明文 (CheckItem の desc) と同じトーンに揃える。 */}
           <p
-            className={`body-gothic mt-1.5 text-[14px] leading-[1.6] text-[#5A5A6E] ${
+            className={`body-gothic mt-1.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "" : "text-center"
             }`}
           >
@@ -602,7 +602,7 @@ export function FullAccessPromoCard({
 
           {/* 30日間の返金保証。SP は左下の折り紙装飾と被らないよう中央寄せ、md+ は左寄せ。 */}
           <p
-            className={`body-gothic mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-[1.6] text-[#5A5A6E] ${
+            className={`body-gothic mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "justify-center md:justify-start" : "justify-center"
             }`}
           >
