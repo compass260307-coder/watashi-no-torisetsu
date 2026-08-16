@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
@@ -781,6 +782,15 @@ export default function DiagnosisPageContent({
                     {copy.submitError}
                   </p>
                 )}
+                {locale === "ko" ? (
+                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                    결과 보기를 누르면 답변과 닉네임이 진단 결과 계산·저장에 사용됩니다. 자세한 내용은{" "}
+                    <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
+                      개인정보처리방침
+                    </Link>
+                    에서 확인할 수 있습니다.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>

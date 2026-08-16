@@ -1145,13 +1145,15 @@ async function MeResultPageContent({
     {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
     {!partTwoUnlocked && !acquisition && !publicPreview && (
       <>
-        <FullAccessPromoCard
-          ownerToken={token}
-          imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-          imageAlt={dispName}
-          group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
-          locale={locale}
-        />
+        <div className="-mt-12 md:-mt-16">
+          <FullAccessPromoCard
+            ownerToken={token}
+            imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+            imageAlt={dispName}
+            group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+            locale={locale}
+          />
+        </div>
         {/* ロックCTAはその場で商品カードを表示する。日本語のカードは¥199の
             self_report、韓国版は従来どおりfull_accessとして決済へ進む。 */}
         <PaywallModal

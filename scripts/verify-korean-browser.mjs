@@ -22,6 +22,9 @@ const ROUTES = [
   "/ko/unmei",
   "/ko/hoshiyomi",
   "/ko/types",
+  "/ko/privacy",
+  "/ko/terms",
+  "/ko/legal/commerce",
   "/ko/articles/tako-bunseki",
   "/ko/tako/preview?previewLocked=1&fromPreview=1&friends=1",
   "/ko/tako/preview/friend/preview-friend?previewType=sparkle-dolphin__N&fromPreview=1",
@@ -186,6 +189,25 @@ try {
             bodyText.includes("관점 일치도") &&
             bodyText.includes("사용설명서로 돌아가기") &&
             !bodyText.includes("친구들이 본 나로 돌아가기"),
+          hasKoreanPrivacyDetails:
+            bodyText.includes(
+              "개인정보처리자: 후타미 류노스케(나의 사용설명서 운영팀)",
+            ) &&
+            bodyText.includes("국외 이전") &&
+            bodyText.includes("Meta Platforms, Inc.") &&
+            bodyText.includes("처리정지"),
+          hasKoreanTermsDetails:
+            bodyText.includes("법정대리인의 동의 없이 체결한 유료 서비스 계약") &&
+            bodyText.includes("시행 30일 전") &&
+            bodyText.includes("운영자의 고의 또는 과실"),
+          hasKoreanCommerceDetails:
+            bodyText.includes("후타미 류노스케(나의 사용설명서 운영팀)") &&
+            bodyText.includes("3영업일 이내에 Stripe를 통한 환불 절차") &&
+            bodyText.includes("미성년자의 계약 취소"),
+          hasKoreanPurchaseLegalNotice:
+            bodyText.includes("구매 버튼을 누르면") &&
+            bodyText.includes("미성년자는 법정대리인의 동의를 받아야 하며") &&
+            Boolean(document.querySelector('a[href="/ko/legal/commerce"]')),
           footerSocialHrefs: [
             ...document.querySelectorAll(
               'footer a[href*="instagram.com"], footer a[href*="x.com/"], footer a[href*="tiktok.com"]',
@@ -237,12 +259,57 @@ try {
         }
       }
 
+      let hasKoreanPurchaseLegalNotice =
+        state.hasKoreanPurchaseLegalNotice;
+      if (
+        route.startsWith("/ko/me/preview?") &&
+        !hasKoreanPurchaseLegalNotice
+      ) {
+        const clickedUpgrade = await page.evaluate(() => {
+          const controls = [...document.querySelectorAll("a, button")];
+          const target = controls.find((control) => {
+            const box = control.getBoundingClientRect();
+            return (
+              control.textContent?.includes("결과 업그레이드") &&
+              box.width > 0 &&
+              box.height > 0
+            );
+          });
+          if (!target) return false;
+          target.click();
+          return true;
+        });
+        if (clickedUpgrade) {
+          try {
+            await page.waitForSelector('[role="dialog"][aria-label="잠금 해제"]', {
+              timeout: 3000,
+            });
+            hasKoreanPurchaseLegalNotice = await page.evaluate(() => {
+              const dialog = document.querySelector(
+                '[role="dialog"][aria-label="잠금 해제"]',
+              );
+              return Boolean(
+                dialog?.textContent?.includes("구매 버튼을 누르면") &&
+                  dialog?.textContent?.includes(
+                    "미성년자는 법정대리인의 동의를 받아야 하며",
+                  ) &&
+                  dialog.querySelector('a[href="/ko/legal/commerce"]'),
+              );
+            });
+            await page.keyboard.press("Escape");
+          } catch {
+            hasKoreanPurchaseLegalNotice = false;
+          }
+        }
+      }
+
       const routeLabel = `${viewport.name} ${route}`;
       results.push({
         viewport: viewport.name,
         route,
         status,
         ...state,
+        hasKoreanPurchaseLegalNotice,
         hasKoreanLoginModal,
         rawJapaneseRouteHrefCount: state.rawJapaneseRouteHrefs.length,
         consoleErrorCount: consoleErrors.length,
@@ -298,6 +365,24 @@ try {
         problems.push(
           `${routeLabel}: Korean evaluation result did not render the evaluate variant on its dedicated route`,
         );
+      }
+      if (route === "/ko/privacy" && !state.hasKoreanPrivacyDetails) {
+        problems.push(`${routeLabel}: Korean privacy disclosures are incomplete`);
+      }
+      if (route === "/ko/terms" && !state.hasKoreanTermsDetails) {
+        problems.push(`${routeLabel}: Korean terms disclosures are incomplete`);
+      }
+      if (
+        route === "/ko/legal/commerce" &&
+        !state.hasKoreanCommerceDetails
+      ) {
+        problems.push(`${routeLabel}: Korean commerce disclosures are incomplete`);
+      }
+      if (
+        route.startsWith("/ko/me/preview?") &&
+        !hasKoreanPurchaseLegalNotice
+      ) {
+        problems.push(`${routeLabel}: Korean purchase legal notice is missing`);
       }
       if (route === "/ko" && state.footerSocialHrefs.length < 3) {
         problems.push(`${routeLabel}: missing Korean social links`);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import { FullAccessCta } from "./FullAccessCta";
 import {
   accessProductPrice,
@@ -73,9 +74,10 @@ const JA_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 1,
+    inheritedItemCount: 2,
     items: [
-      "お試しコースのすべてに加え、次の機能を利用できます",
+      "自己診断結果のロックを8つ全て解放",
+      "16ページ以上の自己分析PDF",
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
       "恋愛パートナー相性診断を開放",
@@ -127,9 +129,10 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 1,
+    inheritedItemCount: 2,
     items: [
-      "라이트 코스의 모든 기능에 더해, 다음 기능을 이용할 수 있습니다",
+      "자기 진단의 잠긴 결과 전체 해제",
+      "16페이지 이상의 자기 분석 PDF",
       "두 번째 친구부터 친구 진단 결과 전체 해제",
       "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
       "연애 파트너 궁합 분석",
@@ -373,6 +376,9 @@ function LegacyPremiumCard({
             ? "한 번만 결제 · 30일 환불 보장"
             : "買い切り・30日間の返金保証つき"}
         </p>
+        {locale === "ko" ? (
+          <KoreanPurchaseLegalNotice className="mt-3 max-w-[560px] text-left" />
+        ) : null}
       </div>
     </section>
   );
@@ -405,7 +411,7 @@ function PlanCard({
     <article
       role="listitem"
       data-plan={plan.product}
-      className={`relative flex w-[88%] shrink-0 snap-center flex-col rounded-[22px] border-2 bg-white p-4 sm:w-[80%] md:min-h-[610px] md:w-[350px] md:rounded-[26px] md:p-6 lg:min-w-0 lg:flex-1 lg:shrink lg:snap-none ${
+      className={`relative flex min-h-[410px] w-[88%] shrink-0 snap-center flex-col rounded-[22px] border-2 bg-white p-4 sm:w-[80%] md:min-h-[640px] md:w-[350px] md:rounded-[26px] md:p-6 lg:min-w-0 lg:flex-1 lg:shrink lg:snap-none ${
         plan.product === "full_access"
           ? "shadow-[0_12px_34px_rgba(91,91,239,0.20)] md:shadow-[0_18px_44px_rgba(91,91,239,0.22)]"
           : "shadow-[0_10px_28px_rgba(46,46,92,0.09)] md:shadow-[0_14px_36px_rgba(46,46,92,0.10)]"
@@ -524,21 +530,21 @@ function PlanCard({
       <ul className="mt-4 flex flex-col gap-2 border-t border-[#E5E6ED] pt-4 text-left md:mt-5 md:flex-1 md:gap-3 md:pt-5">
         {plan.items.map((item, index) => {
           const inherited = index < plan.inheritedItemCount;
-          const courseIntroduction =
-            plan.product !== "self_report" && inherited;
-          const courseDifference =
-            plan.product !== "self_report" && !inherited;
+          const premiumIntroduction =
+            plan.product === "premium_bundle" && inherited;
+          const premiumDifference =
+            plan.product === "premium_bundle" && !inherited;
           return (
             <li
               key={item}
               data-inherited={inherited ? "true" : undefined}
               className={`flex items-start gap-2 md:gap-2.5 ${
-                courseIntroduction
+                premiumIntroduction
                   ? "border-b border-[#E5E6ED] pb-4 md:pb-5"
                   : ""
               }`}
             >
-              {courseIntroduction ? (
+              {premiumIntroduction ? (
                 <svg
                   aria-hidden="true"
                   className="mt-px h-5 w-5 shrink-0 md:mt-0.5"
@@ -561,9 +567,9 @@ function PlanCard({
               )}
               <span
                 className={`text-[12px] leading-[1.45] md:text-[13px] md:leading-[1.55] ${
-                  courseIntroduction
+                  premiumIntroduction
                     ? "font-black text-[#2E2E5C]"
-                    : courseDifference
+                    : premiumDifference
                     ? "font-black text-[#2E2E5C]"
                     : "font-bold text-[#3F4358]"
                 }`}
@@ -793,7 +799,9 @@ export function SelfAccessPlanCarousel({
     <section
       id={anchorId}
       aria-labelledby={`${anchorId}-title`}
-      className={`relative mx-auto w-full max-w-[1120px] scroll-mt-[80px] overflow-hidden py-4 md:py-8 ${
+      className={`relative mx-auto w-full max-w-[1120px] scroll-mt-[80px] overflow-hidden ${
+        onClose ? "pb-4 pt-4 md:pb-5 md:pt-8" : "py-4 md:py-8"
+      } ${
         frameless
           ? "bg-transparent"
           : "rounded-[28px] border border-[#DFE2F1] bg-[#F8F9FD] shadow-[0_18px_55px_rgba(46,46,92,0.18)]"
@@ -844,7 +852,11 @@ export function SelfAccessPlanCarousel({
         role="list"
         aria-label={locale === "ko" ? "요금제" : "料金プラン"}
         onScroll={handleScroll}
-        className={`mt-3 flex items-stretch snap-x snap-mandatory gap-3 overflow-x-auto px-[6%] pb-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-[10%] md:mt-6 md:gap-4 md:px-6 md:pb-5 md:pt-5 lg:overflow-visible lg:snap-none ${
+        className={`flex items-stretch snap-x snap-mandatory gap-3 overflow-x-auto px-[6%] pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-[10%] md:gap-4 md:px-6 md:pt-1.5 lg:overflow-visible lg:snap-none ${
+          onClose
+            ? "mt-2 pb-5 md:mt-3 md:pb-6"
+            : "mt-2 pb-4 md:mt-3 md:pb-5"
+        } ${
           plans.length < 3 ? "md:justify-center" : ""
         }`}
       >
@@ -863,26 +875,37 @@ export function SelfAccessPlanCarousel({
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-2 lg:hidden" aria-label={locale === "ko" ? "표시 중인 코스" : "表示中のコース"}>
-        {plans.map((plan, index) => (
-          <button
-            key={plan.product}
-            type="button"
-            onClick={() => scrollToPlan(index)}
-            aria-label={locale === "ko" ? `${plan.title} 보기` : `${plan.title}を表示`}
-            aria-current={activeIndex === index ? "true" : undefined}
-            className={`h-2.5 rounded-full transition-all ${
-              activeIndex === index ? "w-8 bg-[#5B5BEF]" : "w-2.5 bg-[#CDD0E1]"
-            }`}
-          />
-        ))}
-      </div>
+      <div
+        className={
+          frameless
+            ? "relative z-10 -mt-6 bg-gradient-to-b from-white/0 via-white/90 to-white pt-6"
+            : "relative z-10 -mt-4 bg-gradient-to-b from-[#F4F4FE]/0 via-[#F6F7FD]/90 to-[#F8F9FD] pt-4 md:-mt-5 md:pt-5"
+        }
+      >
+        <div className="flex items-center justify-center gap-2 lg:hidden" aria-label={locale === "ko" ? "표시 중인 코스" : "表示中のコース"}>
+          {plans.map((plan, index) => (
+            <button
+              key={plan.product}
+              type="button"
+              onClick={() => scrollToPlan(index)}
+              aria-label={locale === "ko" ? `${plan.title} 보기` : `${plan.title}を表示`}
+              aria-current={activeIndex === index ? "true" : undefined}
+              className={`h-2.5 rounded-full transition-all ${
+                activeIndex === index ? "w-8 bg-[#5B5BEF]" : "w-2.5 bg-[#CDD0E1]"
+              }`}
+            />
+          ))}
+        </div>
 
-      <p className="mt-2 px-6 text-center text-[10px] font-bold text-[#8B8FA2] md:mt-4 md:text-[11px]">
-        {locale === "ko"
-          ? "모두 1회 결제 · 30일 환불 보장"
-          : "すべて買い切り・30日間の返金保証つき"}
-      </p>
+        <p className="mt-1 px-6 text-center text-[10px] font-bold text-[#8B8FA2] md:mt-2 md:text-[11px]">
+          {locale === "ko"
+            ? "모두 1회 결제 · 30일 환불 보장"
+            : "すべて買い切り・30日間の返金保証つき"}
+        </p>
+        {locale === "ko" ? (
+          <KoreanPurchaseLegalNotice className="mx-auto mt-2 max-w-[760px] px-6 text-center" />
+        ) : null}
+      </div>
     </section>
   );
 }

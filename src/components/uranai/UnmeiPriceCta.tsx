@@ -11,6 +11,7 @@
 // 判定できない/失敗時は通常価格 ¥899 のまま (安全側)。
 
 import { useEffect, useState } from "react";
+import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
 import type { ResultLocale } from "@/i18n/result";
 import {
@@ -136,6 +137,9 @@ export default function UnmeiPriceCta({
             {ctaLabel}
           </UnmeiCheckoutButton>
         </div>
+        {locale === "ko" ? (
+          <KoreanPurchaseLegalNotice className="mx-auto mt-3 max-w-[620px] text-center" />
+        ) : null}
       </>
     );
   }
@@ -186,6 +190,11 @@ export default function UnmeiPriceCta({
           {ctaLabel}
         </UnmeiCheckoutButton>
       </div>
+      {locale === "ko" ? (
+        <KoreanPurchaseLegalNotice
+          className={`mt-3 max-w-[620px] ${align === "center" ? "mx-auto text-center" : "text-left"}`}
+        />
+      ) : null}
     </>
   );
 }

@@ -21,7 +21,7 @@
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
@@ -577,30 +577,11 @@ export function FullAccessPromoCard({
               : "買い切り／30日間の返金保証つき"}
           </p>
 
-          {isKorean && (
-            <p
-              className={`mt-2 text-[11px] leading-[1.7] text-[#7A7A92] ${
-                hasImage ? "text-center md:text-left" : "text-center"
-              }`}
-            >
-              결제 전 {" "}
-              <Link href="/ko/terms" className="underline underline-offset-2">
-                이용약관
-              </Link>
-              , {" "}
-              <Link href="/ko/privacy" className="underline underline-offset-2">
-                개인정보처리방침
-              </Link>
-              , {" "}
-              <Link
-                href="/ko/legal/commerce"
-                className="underline underline-offset-2"
-              >
-                판매 및 환불 안내
-              </Link>
-              를 확인해 주세요.
-            </p>
-          )}
+          {isKorean ? (
+            <KoreanPurchaseLegalNotice
+              className={`mt-2 ${hasImage ? "text-center md:text-left" : "text-center"}`}
+            />
+          ) : null}
         </div>
       </div>
     </section>

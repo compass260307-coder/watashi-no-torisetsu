@@ -18,6 +18,7 @@
 //   - 既存 components/FloatingCTABar (LP 用、別物)
 
 import { Suspense, use, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
 import {
@@ -628,6 +629,15 @@ function MessageScreen({
                 {submitting ? copy.submitting : copy.seeResult}
               </button>
             </div>
+            {locale === "ko" ? (
+              <p className="mx-auto mt-3 max-w-lg text-center text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                결과 보기를 누르면 답변, 이름과 선택적으로 입력한 메시지가 친구 결과 생성·저장에 사용됩니다. 자세한 내용은{" "}
+                <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
+                  개인정보처리방침
+                </Link>
+                에서 확인할 수 있습니다.
+              </p>
+            ) : null}
           </div>
         </main>
       </div>
