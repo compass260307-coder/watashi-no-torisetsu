@@ -600,7 +600,7 @@ export function FullAccessPromoCard({
                 ? "모든 잠금 해제"
                 : isSelfReportProduct
                   ? SELF_REPORT_UNLOCK_LABEL
-                  : "すべてのロックを解除"}
+                  : "すべての結果をアンロック →"}
             </FullAccessCta>
           </div>
 
