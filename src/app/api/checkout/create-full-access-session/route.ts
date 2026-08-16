@@ -114,7 +114,7 @@ const CHECKOUT_COPY: Record<
   }
 > = {
   ja: {
-    couponId: "full-access-anchor-off791-jpy",
+    couponId: "full-access-anchor-off400-jpy",
     couponName: "リリース記念",
     // 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージ。
     productName: "ワタシのトリセツ 完全版パッケージ",

@@ -15,6 +15,7 @@ const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 // 数値が動く。終端が48時間以内の期間は1時間で追従させ、それより古い期間のみ24時間。
 const RECENT_PAST_TTL_SECONDS = 60 * 60;
 const RECENT_PAST_WINDOW_MS = 48 * 60 * 60 * 1000;
+const LAST_GOOD_TTL_SECONDS = 7 * 24 * 60 * 60;
 // 計測スキーマのv4と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
 const metricsCache = getCache({ namespace: "metrics-stats-v4" });
 
@@ -49,6 +50,34 @@ function statsCacheKey(from: string | null, to: string | null): string {
     .digest("hex");
 }
 
+function lastGoodCacheKey(from: string | null, to: string | null): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        from,
+        to,
+        shape: "admin-stats-v4",
+        environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local",
+      }),
+    )
+    .digest("hex");
+}
+
+function isAdminStats(value: unknown): value is AdminStats {
+  if (!value || typeof value !== "object") return false;
+  const stats = value as Record<string, unknown>;
+  const unmei = stats.unmei as Record<string, unknown> | undefined;
+  const coreKpis = stats.coreKpis as Record<string, unknown> | undefined;
+  return (
+    typeof stats.diagnosisStarted === "number" &&
+    Array.isArray(stats.paywallFunnel) &&
+    !!unmei &&
+    Array.isArray(unmei.chatFunnel) &&
+    !!coreKpis &&
+    typeof coreKpis.dataQuality === "object"
+  );
+}
+
 export async function getCachedStats(
   from: string | null,
   to: string | null,
@@ -56,24 +85,49 @@ export async function getCachedStats(
   options: { forceFresh?: boolean } = {},
 ): Promise<AdminStats> {
   const key = statsCacheKey(from, to);
+  const lastGoodKey = lastGoodCacheKey(from, to);
 
   if (!options.forceFresh) {
     try {
       const cached = await metricsCache.get(key);
-      if (cached) return cached as AdminStats;
+      if (isAdminStats(cached)) return cached;
     } catch (error) {
       // ローカル実行などでRuntime Cacheが使えない場合も、集計自体は継続する。
       console.warn("[metrics-cache] get failed; computing directly", error);
     }
   }
 
-  const stats = await computeStats(from, to);
+  let stats: AdminStats;
+  try {
+    stats = await computeStats(from, to);
+  } catch (error) {
+    // 全期間集計がDBのstatement_timeoutに当たっても、直近の正常スナップショットが
+    // あれば管理画面と定期取得を全損させない。形状検査で旧コードのキャッシュ混入を防ぐ。
+    try {
+      const lastGood = await metricsCache.get(lastGoodKey);
+      if (isAdminStats(lastGood)) {
+        console.warn(
+          "[metrics-cache] compute failed; returning last good snapshot",
+          error,
+        );
+        return lastGood;
+      }
+    } catch (cacheError) {
+      console.warn("[metrics-cache] last good get failed", cacheError);
+    }
+    throw error;
+  }
 
   try {
     await metricsCache.set(key, stats, {
       ttl: rangeTtlSeconds(to),
       tags: ["metrics-stats"],
       name: "metrics-stats-snapshot",
+    });
+    await metricsCache.set(lastGoodKey, stats, {
+      ttl: LAST_GOOD_TTL_SECONDS,
+      tags: ["metrics-stats"],
+      name: "metrics-stats-last-good",
     });
   } catch (error) {
     console.warn("[metrics-cache] set failed; returning uncached result", error);

@@ -107,7 +107,7 @@ export default async function Home({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <main className="flex flex-1 flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -119,6 +119,6 @@ export default async function Home({
       <TopHero />
       <TopStats diagnosedCount={DIAGNOSED_COUNT} />
       <TopFooter />
-    </div>
+    </main>
   );
 }

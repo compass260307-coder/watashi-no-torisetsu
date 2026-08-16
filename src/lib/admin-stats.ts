@@ -36,6 +36,7 @@ import {
 } from "@/lib/access-products";
 
 const PAGE = 1000;
+const RETRY_PAGE = 250;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
 const QUESTION_COUNT_CONCURRENCY = 2;
 const DB_QUERY_CONCURRENCY = 2;
@@ -86,22 +87,41 @@ export async function computeStats(from: string | null, to: string | null) {
   ): Promise<T[]> {
     const out: T[] = [];
     let offset = 0;
+    let pageSize = PAGE;
     let cursor: { createdAt: string; id: string } | null = null;
     for (;;) {
-      let query = make();
-      if (make.pagination === "created_at-id" && cursor) {
-        query = query.or(
-          `created_at.gt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.gt.${cursor.id})`,
+      const runPage = (size: number) => {
+        let query = make();
+        if (make.pagination === "created_at-id" && cursor) {
+          query = query.or(
+            `created_at.gt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.gt.${cursor.id})`,
+          );
+        }
+        return withDbQuerySlot<{
+          data: T[] | null;
+          error: { code?: string; message?: string } | null;
+        }>(() =>
+          make.pagination === "created_at-id"
+            ? query.limit(size)
+            : query.range(offset, offset + size - 1),
         );
+      };
+
+      let result = await runPage(pageSize);
+      if (result.error?.code === "57014" && pageSize > RETRY_PAGE) {
+        // Supabase の statement_timeout は同じ全件集計でも、1ページの返却量を
+        // 小さくすると回避できる場合がある。失敗したページだけ縮小して再試行し、
+        // 件数・期間など集計の意味は変えない。
+        pageSize = RETRY_PAGE;
+        console.warn(
+          `[admin-stats] page timed out; retrying with ${RETRY_PAGE} rows`,
+        );
+        result = await runPage(pageSize);
       }
-      const { data, error } = await withDbQuerySlot<{
+      const { data, error } = result as {
         data: T[] | null;
         error: { code?: string; message?: string } | null;
-      }>(() =>
-        make.pagination === "created_at-id"
-          ? query.limit(PAGE)
-          : query.range(offset, offset + PAGE - 1),
-      );
+      };
       if (error) {
         const handled = onError?.(error) === true;
         if (handled) break;
@@ -111,7 +131,7 @@ export async function computeStats(from: string | null, to: string | null) {
       }
       if (!data || data.length === 0) break;
       out.push(...(data as T[]));
-      if (data.length < PAGE) break;
+      if (data.length < pageSize) break;
       if (make.pagination === "created_at-id") {
         const last = data[data.length - 1] as T & {
           created_at?: string;
@@ -124,7 +144,7 @@ export async function computeStats(from: string | null, to: string | null) {
         }
         cursor = { createdAt: last.created_at, id: last.id };
       } else {
-        offset += PAGE;
+        offset += pageSize;
       }
     }
     return out;

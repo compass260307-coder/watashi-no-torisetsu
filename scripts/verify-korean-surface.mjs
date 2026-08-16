@@ -161,10 +161,11 @@ if (!takoReportSheets.includes('if (locale === "ko" && reopenIdx < manualParas.l
   problems.push("src/lib/tako-report-sheets.ts: Korean report section reopening is missing");
 }
 
-const koreanHeader = fs.readFileSync(
-  path.join(ROOT, "src/components/ko/top/KoTopHeader.tsx"),
-  "utf8",
-);
+const koreanHeaderPath = "src/components/ko/top/KoTopHeader.tsx";
+const sharedHeaderPath = "src/components/top/TopHeader.tsx";
+const koreanHeader = [koreanHeaderPath, sharedHeaderPath]
+  .map((file) => fs.readFileSync(path.join(ROOT, file), "utf8"))
+  .join("\n");
 for (const required of [
   'import { LoginModal }',
   'locale="ko"',
@@ -172,14 +173,15 @@ for (const required of [
   "resetLocalData",
 ]) {
   if (!koreanHeader.includes(required)) {
-    problems.push(`src/components/ko/top/KoTopHeader.tsx: missing ${required}`);
+    problems.push(`effective Korean TopHeader: missing ${required}`);
   }
 }
 
-const koreanFooter = fs.readFileSync(
-  path.join(ROOT, "src/components/ko/top/KoTopFooter.tsx"),
-  "utf8",
-);
+const koreanFooterPath = "src/components/ko/top/KoTopFooter.tsx";
+const sharedFooterPath = "src/components/top/TopFooter.tsx";
+const koreanFooter = [koreanFooterPath, sharedFooterPath]
+  .map((file) => fs.readFileSync(path.join(ROOT, file), "utf8"))
+  .join("\n");
 for (const required of [
   "/ko/articles/ocean-shindan",
   "/ko/articles/tako-bunseki",
@@ -190,7 +192,7 @@ for (const required of [
   "https://www.tiktok.com/@torisetsu_app",
 ]) {
   if (!koreanFooter.includes(required)) {
-    problems.push(`src/components/ko/top/KoTopFooter.tsx: missing ${required}`);
+    problems.push(`effective Korean TopFooter: missing ${required}`);
   }
 }
 

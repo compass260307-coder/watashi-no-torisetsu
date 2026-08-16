@@ -147,6 +147,7 @@ export function HoshiyomiClient({
           ctaSource="hoshiyomi_first_send"
           products={CHAT_ACCESS_PRODUCTS}
           legacyPlanStyle
+          previewMode={previewMode}
           locale={locale}
           onClose={() => setPaywallOpen(false)}
         />

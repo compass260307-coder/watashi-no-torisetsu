@@ -59,9 +59,11 @@ export function purchaseIncludesFriendFeatures(
   return product === "self_report" && policy !== FRIEND_ACCESS_POLICY_FULL_ONLY;
 }
 
-export const SELF_REPORT_LIST_PRICE_JPY = 799;
+// 高いコースほど割引率が高くなるよう、日本版の通常価格を
+// ¥299 / ¥899 / ¥1,980（33% / 44% / 55%OFF）に揃える。
+export const SELF_REPORT_LIST_PRICE_JPY = 299;
 export const SELF_REPORT_PRICE_JPY = 199;
-export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
+export const FULL_ACCESS_LIST_PRICE_JPY = 899;
 export const FULL_ACCESS_PRICE_JPY = 499;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 899;

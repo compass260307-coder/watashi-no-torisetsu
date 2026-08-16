@@ -49,7 +49,7 @@ type PlanDefinition = Readonly<{
 const JA_PLANS: readonly PlanDefinition[] = [
   {
     product: "self_report",
-    eyebrow: "自分も友達関係も深く知る",
+    eyebrow: "まず自分を深く知る",
     title: "お試しコース",
     basePrice: SELF_REPORT_PRICE_JPY,
     listPrice: SELF_REPORT_LIST_PRICE_JPY,
@@ -65,7 +65,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
   },
   {
     product: "full_access",
-    eyebrow: "恋愛・占いまで楽しむ",
+    eyebrow: "友達・恋愛まで深く知る",
     title: "完全版コース",
     basePrice: FULL_ACCESS_PRICE_JPY,
     listPrice: FULL_ACCESS_LIST_PRICE_JPY,
@@ -73,10 +73,9 @@ const JA_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 2,
+    inheritedItemCount: 1,
     items: [
-      "自己診断結果のロックを8つ全て解放",
-      "16ページ以上の自己分析PDF",
+      "お試しコースのすべてに加え、次の機能を利用できます",
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
       "恋愛パートナー相性診断を開放",
@@ -92,13 +91,9 @@ const JA_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 5,
+    inheritedItemCount: 1,
     items: [
-      "自己診断結果のロックを8つ全て解放",
-      "16ページ以上の自己分析PDF",
-      "２人目以降の友達の診断を開放",
-      "何度でも作り直せる友達診断分析PDF",
-      "恋愛パートナー相性診断を開放",
+      "完全版コースのすべてに加え、次の機能を利用できます",
       "あなたの専属占い師とのチャットを解放",
       "出生情報から仕事・恋愛・人生の転機を読む、あなた専用の運命の設計図",
     ],
@@ -108,7 +103,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
 const KO_PLANS: readonly PlanDefinition[] = [
   {
     product: "self_report",
-    eyebrow: "나와 친구 관계를 깊이 이해하기",
+    eyebrow: "먼저 나 자신을 깊이 이해하기",
     title: "라이트 코스",
     basePrice: SELF_REPORT_PRICE_KRW,
     listPrice: SELF_REPORT_LIST_PRICE_KRW,
@@ -124,7 +119,7 @@ const KO_PLANS: readonly PlanDefinition[] = [
   },
   {
     product: "full_access",
-    eyebrow: "연애와 별자리 상담까지 즐기기",
+    eyebrow: "친구와 연애 관계까지 깊이 이해하기",
     title: "완전판 코스",
     basePrice: FULL_ACCESS_PRICE_KRW,
     listPrice: FULL_ACCESS_LIST_PRICE_KRW,
@@ -132,10 +127,9 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
-    inheritedItemCount: 2,
+    inheritedItemCount: 1,
     items: [
-      "자기 진단의 잠긴 결과 전체 해제",
-      "16페이지 이상의 자기 분석 PDF",
+      "라이트 코스의 모든 기능에 더해, 다음 기능을 이용할 수 있습니다",
       "두 번째 친구부터 친구 진단 결과 전체 해제",
       "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
       "연애 파트너 궁합 분석",
@@ -151,12 +145,9 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 4,
+    inheritedItemCount: 1,
     items: [
-      "자기 진단의 잠긴 결과 전체 해제",
-      "16페이지 이상의 자기 분석 PDF",
-      "친구 진단 결과와 친구 분석 PDF 전체 해제",
-      "연애 파트너 궁합 분석",
+      "완전판 코스의 모든 기능에 더해, 다음 기능을 이용할 수 있습니다",
       "나만의 전담 점성술사와의 채팅 잠금 해제",
       "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
     ],
@@ -348,11 +339,6 @@ function LegacyPremiumCard({
             </p>
           ) : null}
           <div className="flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
-            {isUpgrade ? (
-              <span className="pb-1 text-[14px] font-black text-[#9A6A24]">
-                {locale === "ko" ? "추가" : "追加"}
-              </span>
-            ) : null}
             <span className="text-[42px] font-black leading-none text-[#9A6A24] md:text-[46px]">
               {formatPrice(checkoutPrice, locale)}
             </span>
@@ -363,13 +349,6 @@ function LegacyPremiumCard({
               </span>
             ) : null}
           </div>
-          {isUpgrade ? (
-            <p className="mt-1.5 text-[11px] font-bold text-[#7F8294]">
-              {locale === "ko"
-                ? `코스 가격 ${formatPrice(plan.basePrice, locale)}에서 구매 금액을 차감`
-                : `コース価格 ${formatPrice(plan.basePrice, locale)} から購入済み分を差し引き`}
-            </p>
-          ) : null}
         </div>
 
         <div className="mt-2 max-w-[440px]">
@@ -426,7 +405,7 @@ function PlanCard({
     <article
       role="listitem"
       data-plan={plan.product}
-      className={`relative flex w-[88%] shrink-0 snap-center flex-col rounded-[22px] border-2 bg-white p-4 sm:w-[80%] md:min-h-[610px] md:w-[350px] md:rounded-[26px] md:p-6 ${
+      className={`relative flex w-[88%] shrink-0 snap-center flex-col rounded-[22px] border-2 bg-white p-4 sm:w-[80%] md:min-h-[610px] md:w-[350px] md:rounded-[26px] md:p-6 lg:min-w-0 lg:flex-1 lg:shrink lg:snap-none ${
         plan.product === "full_access"
           ? "shadow-[0_12px_34px_rgba(91,91,239,0.20)] md:shadow-[0_18px_44px_rgba(91,91,239,0.22)]"
           : "shadow-[0_10px_28px_rgba(46,46,92,0.09)] md:shadow-[0_14px_36px_rgba(46,46,92,0.10)]"
@@ -500,6 +479,7 @@ function PlanCard({
               style={{ backgroundColor: plan.soft, color: plan.accent }}
             >
               {plan.badge}
+              {locale === "ja" ? "（8/31まで）" : null}
             </span>
           ) : null}
         </div>
@@ -544,21 +524,49 @@ function PlanCard({
       <ul className="mt-4 flex flex-col gap-2 border-t border-[#E5E6ED] pt-4 text-left md:mt-5 md:flex-1 md:gap-3 md:pt-5">
         {plan.items.map((item, index) => {
           const inherited = index < plan.inheritedItemCount;
+          const courseIntroduction =
+            plan.product !== "self_report" && inherited;
+          const courseDifference =
+            plan.product !== "self_report" && !inherited;
           return (
             <li
               key={item}
               data-inherited={inherited ? "true" : undefined}
-              className="flex items-start gap-2 md:gap-2.5"
+              className={`flex items-start gap-2 md:gap-2.5 ${
+                courseIntroduction
+                  ? "border-b border-[#E5E6ED] pb-4 md:pb-5"
+                  : ""
+              }`}
             >
+              {courseIntroduction ? (
+                <svg
+                  aria-hidden="true"
+                  className="mt-px h-5 w-5 shrink-0 md:mt-0.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={plan.accent}
+                  strokeWidth="1.8"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 3c.8 4.2 2.8 6.2 7 7-4.2.8-6.2 2.8-7 7-.8-4.2-2.8-6.2-7-7 4.2-.8 6.2-2.8 7-7Z" />
+                </svg>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white md:mt-0.5 md:text-[12px]"
+                  style={{ backgroundColor: plan.accent }}
+                >
+                  ✓
+                </span>
+              )}
               <span
-                aria-hidden="true"
-                className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white md:mt-0.5 md:text-[12px]"
-                style={{ backgroundColor: plan.accent }}
-              >
-                ✓
-              </span>
-              <span
-                className="text-[12px] font-bold leading-[1.45] text-[#3F4358] md:text-[13px] md:leading-[1.55]"
+                className={`text-[12px] leading-[1.45] md:text-[13px] md:leading-[1.55] ${
+                  courseIntroduction
+                    ? "font-black text-[#2E2E5C]"
+                    : courseDifference
+                    ? "font-black text-[#2E2E5C]"
+                    : "font-bold text-[#3F4358]"
+                }`}
               >
                 {item}
               </span>
@@ -694,6 +702,22 @@ export function SelfAccessPlanCarousel({
   ]);
 
   useEffect(() => {
+    if (!previewMode) return;
+    const previewPurchase = new URLSearchParams(window.location.search).get(
+      "preview_purchase",
+    );
+    if (previewPurchase !== "full_access") return;
+    const timer = window.setTimeout(() => {
+      setEntitlements({
+        selfReport: true,
+        full: true,
+        premiumBundle: false,
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [previewMode]);
+
+  useEffect(() => {
     if (!ownerToken || previewMode) return;
     const controller = new AbortController();
     void fetch(
@@ -820,7 +844,7 @@ export function SelfAccessPlanCarousel({
         role="list"
         aria-label={locale === "ko" ? "요금제" : "料金プラン"}
         onScroll={handleScroll}
-        className={`mt-3 flex items-stretch snap-x snap-mandatory gap-3 overflow-x-auto px-[6%] pb-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-[10%] md:mt-6 md:gap-4 md:px-6 md:pb-5 md:pt-5 ${
+        className={`mt-3 flex items-stretch snap-x snap-mandatory gap-3 overflow-x-auto px-[6%] pb-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-[10%] md:mt-6 md:gap-4 md:px-6 md:pb-5 md:pt-5 lg:overflow-visible lg:snap-none ${
           plans.length < 3 ? "md:justify-center" : ""
         }`}
       >
@@ -839,7 +863,7 @@ export function SelfAccessPlanCarousel({
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-2" aria-label={locale === "ko" ? "표시 중인 코스" : "表示中のコース"}>
+      <div className="flex items-center justify-center gap-2 lg:hidden" aria-label={locale === "ko" ? "표시 중인 코스" : "表示中のコース"}>
         {plans.map((plan, index) => (
           <button
             key={plan.product}

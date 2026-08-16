@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
@@ -198,7 +199,6 @@ export default function RootLayout({
       <head>
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
         <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_MANAGER_SCRIPT }} />
       </head>
       <body
         className="min-h-dvh flex flex-col"
@@ -228,6 +228,9 @@ export default function RootLayout({
         {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
         <BottomNav />
         <GoogleAnalytics />
+        <Script id="google-tag-manager" strategy="afterInteractive">
+          {GOOGLE_TAG_MANAGER_SCRIPT}
+        </Script>
         <Suspense fallback={null}>
           <GoogleAnalyticsTracker />
         </Suspense>
