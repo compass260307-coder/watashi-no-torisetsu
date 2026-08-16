@@ -80,6 +80,7 @@ import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { classifyType } from "@/lib/diagnosis";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { PaywallModal } from "@/components/result/PaywallModal";
+import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
@@ -1288,6 +1289,12 @@ async function MeResultPageContent({
     {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。
         獲得モード (/share) では訪問者に無関係なので出さない。 */}
     {!acquisition && !publicPreview && <ResetDataLink locale={locale} />}
+    {/* 診断シェアバンド (診断ページ下部と同じ)。結果を読み終えた人に診断自体の
+        シェアを促す (2026-08-17 指示)。獲得モードはCTA一点集中のため出さない。
+        KO は方針どおり追加しない。 */}
+    {!isKorean && !acquisition && (
+      <DiagnosisShareBand locale="ja" source="me_share_band" />
+    )}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
         TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
     {isKorean ? <KoTopFooter /> : <TopFooter />}

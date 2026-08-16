@@ -24,9 +24,12 @@ const JAGGED_CLIP =
 export function DiagnosisShareBand({
   locale,
   diagnosedCount = DEFAULT_DIAGNOSED_COUNT,
+  // 設置面の識別用 (share_clicked の source)。/me 下部にも設置するため prop 化 (2026-08-17)。
+  source = "diagnosis_share_band",
 }: {
   locale: "ja" | "ko";
   diagnosedCount?: number;
+  source?: string;
 }) {
   const isKo = locale === "ko";
 
@@ -51,7 +54,7 @@ export function DiagnosisShareBand({
     channel: "line" | "kakao" | "x" | "facebook" | "copy" | "native",
   ) =>
     track("share_clicked", {
-      metadata: { channel, kind: "diagnosis", source: "diagnosis_share_band" },
+      metadata: { channel, kind: "diagnosis", source },
     });
 
   // 共有内容は診断ページの URL だけ (宣伝文は付けない。2026-08-01 指示)。
