@@ -566,9 +566,12 @@ export function FullAccessPromoCard({
                     </span>
                   </>
                 ) : null}
+                {/* ja の価格は MBTI 参考の落ち着いた濃紺 (見出しと同色)。KO はアクセント色を現状維持。 */}
                 <span
-                  className="text-[38px] font-black leading-none"
-                  style={{ color: tone.accent }}
+                  className={`text-[38px] font-black leading-none ${
+                    isKorean ? "" : "text-[#2E2E5C]"
+                  }`}
+                  style={isKorean ? { color: tone.accent } : undefined}
                 >
                   {price.sale}
                 </span>
