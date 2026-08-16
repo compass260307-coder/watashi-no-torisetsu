@@ -117,12 +117,12 @@ const TAKO_UNLOCKS: UnlockItem[] = [
   U_HOSHIYOMI,
 ];
 
-// 自己診断カードの並び (2026-08-16): 自己診断2項目 → AI占い師 → 友達診断(まとめ)。
+// 自己診断カードの並び (2026-08-17): 8セクション → 電子書籍 → 友達まとめ → AI占い師。
 // 相性(/aisho)は無料化したため課金カードの解放項目からは外す。
 const FULL_ACCESS_SELF_UNLOCKS: UnlockItem[] = [
   ...SELF_UNLOCKS,
-  U_HOSHIYOMI,
   U_FRIEND_SUMMARY,
+  U_HOSHIYOMI,
 ];
 
 const KO_SELF_UNLOCKS: UnlockItem[] = [
@@ -448,10 +448,10 @@ export function FullAccessPromoCard({
           className="pointer-events-none absolute -bottom-3 -left-3 z-10 h-14 w-14 rotate-[-12deg] drop-shadow-sm md:h-16 md:w-16"
         />
 
-        {/* 画像 (md+: 左カラム / モバイル: 上)。imageSrc があるときだけ。 */}
+        {/* 画像 (md+ の左カラムのみ)。モバイルはカードを縦に長くしないため非表示 (2026-08-17)。 */}
         {hasImage && (
           <div
-            className="flex items-center justify-center rounded-t-3xl px-6 pt-7 md:w-[40%] md:rounded-l-3xl md:rounded-tr-none md:px-6 md:py-8"
+            className="hidden items-center justify-center rounded-t-3xl px-6 pt-7 md:flex md:w-[40%] md:rounded-l-3xl md:rounded-tr-none md:px-6 md:py-8"
             style={{ backgroundColor: tone.panelBg }}
           >
             <SmoothImage
@@ -493,7 +493,7 @@ export function FullAccessPromoCard({
           {/* 見出し */}
           <h2
             id={`${anchorId}-title`}
-            className="mt-2.5 text-[29px] font-black leading-[1.3] text-[#2E2E5C] md:text-[34px]"
+            className="mt-2.5 text-[26px] font-black leading-[1.3] text-[#2E2E5C] md:text-[34px]"
           >
             {isKorean ? (
               <>내 성격 유형의<br />모든 결과를 해제</>
@@ -566,9 +566,12 @@ export function FullAccessPromoCard({
                     </span>
                   </>
                 ) : null}
+                {/* ja は見出しと同じ濃紺で大きく。KO はアクセント色を現状維持。 */}
                 <span
-                  className="text-[36px] font-black leading-none md:text-[42px]"
-                  style={{ color: tone.accent }}
+                  className={`text-[44px] font-black leading-none md:text-[50px] ${
+                    isKorean ? "" : "text-[#2E2E5C]"
+                  }`}
+                  style={isKorean ? { color: tone.accent } : undefined}
                 >
                   {price.sale}
                 </span>
