@@ -116,10 +116,11 @@ const CHECKOUT_COPY: Record<
   ja: {
     couponId: "full-access-anchor-off400-jpy",
     couponName: "リリース記念",
-    // 自己診断＋友達診断＋相性＋AI占い師を含む ¥499 完全版パッケージ。
+    // 自己診断＋友達診断＋AI占い師を含む ¥499 完全版パッケージ。
+    // (相性診断は 2026-08-17 に無料開放したため説明から除外)
     productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "自己診断とPDF、友達診断、恋愛パートナー相性診断、AI占い師とのチャット5回分を解放します。買い切り。",
+      "自己診断とPDF、友達診断、AI占い師とのチャット5回分を解放します。買い切り。",
     submitMessage:
       "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
@@ -645,24 +646,20 @@ export async function POST(request: NextRequest) {
     ];
     chargedAmount = effectivePrice;
   } else if (checkoutLocale === "ja") {
-    // 日本版完全版は、クーポン解決時は通常価格−割引を Stripe に表示する。
-    // クーポンを使えない場合も、共通定数の ¥499 を inline で課金する。
-    const couponId = await getCouponIdCached(stripe, checkoutLocale);
-    const useDiscount = !!couponId;
+    // 2026-08-17: カード側から割引表現(リリース記念/打消し価格)を撤去したのに合わせ、
+    // Checkout も「定価¥899−クーポン¥400」のアンカー表示をやめ、プレーンな ¥499 を
+    // inline で表示・課金する (実課金額は従来から ¥499 で変わらない)。
     lineItems = [
       {
         price_data: {
           currency: checkoutPricing.currency,
-          unit_amount: useDiscount
-            ? checkoutPricing.listAmount
-            : checkoutPricing.saleAmount,
+          unit_amount: checkoutPricing.saleAmount,
           tax_behavior: "inclusive",
           product_data: productData,
         },
         quantity: 1,
       },
     ];
-    discounts = useDiscount ? [{ coupon: couponId! }] : undefined;
     chargedAmount = checkoutPricing.saleAmount;
   } else {
     const [couponId, saleOk] = await Promise.all([
