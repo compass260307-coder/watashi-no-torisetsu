@@ -79,21 +79,26 @@ export function TakoLockPopover({ isOpen, onClose, locale = "ja" }: Props) {
   };
 
   return createPortal(
-    // ナビ (約58px) のすぐ上に固定。ナビ中央=友達診断タブへ下向きの三角で接続する。
+    // ナビ (約58px) のすぐ上に固定し、友達診断タブへ下向きの三角で接続する。
+    // タブ位置はナビと同じ「中央寄せ max-w-[480px] の5等分」を再現して合わせる:
+    //   ja = 2列目 (中心=左から30%) / ko = 3列目 (中央=50%、従来どおり)。
     <div
-      className="fixed inset-x-0 z-50 flex justify-center px-5 animate-modal-slide-up"
+      className="fixed inset-x-0 z-50 animate-modal-slide-up"
       style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
       role="dialog"
       aria-label={copy.ariaLabel}
     >
-      <div
-        ref={cardRef}
-        className="relative w-full max-w-[220px] rounded-[20px] bg-white px-5 pb-[18px] pt-5 text-center"
-        style={{
-          border: "1px solid rgba(46,46,92,0.10)",
-          boxShadow: "0 12px 32px rgba(46,46,92,0.18)",
-        }}
-      >
+      <div className="relative mx-auto w-full max-w-[480px]">
+        <div
+          ref={cardRef}
+          className="absolute bottom-0 w-full max-w-[220px] -translate-x-1/2 rounded-[20px] bg-white px-5 pb-[18px] pt-5 text-center"
+          style={{
+            // 狭幅でカード (220px) が左へはみ出さないよう max() で下限を確保。
+            left: locale === "ko" ? "50%" : "max(122px, 30%)",
+            border: "1px solid rgba(46,46,92,0.10)",
+            boxShadow: "0 12px 32px rgba(46,46,92,0.18)",
+          }}
+        >
         {/* 見出し (結果ページの font-black 見出しに合わせる) */}
         <h2 className="mb-1.5 break-keep text-[15px] font-black text-[#2E2E5C]">
           {copy.heading}
@@ -112,15 +117,16 @@ export function TakoLockPopover({ isOpen, onClose, locale = "ja" }: Props) {
           {copy.cta}
         </button>
 
-        {/* 下向き三角: 友達診断タブ (5列の中央) を指す */}
-        <span
-          aria-hidden="true"
-          className="absolute -bottom-[7px] left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 bg-white"
-          style={{
-            borderRight: "1px solid rgba(46,46,92,0.10)",
-            borderBottom: "1px solid rgba(46,46,92,0.10)",
-          }}
-        />
+          {/* 下向き三角: カード中心 (=友達診断タブの中心に位置合わせ済み) を指す */}
+          <span
+            aria-hidden="true"
+            className="absolute -bottom-[7px] left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 bg-white"
+            style={{
+              borderRight: "1px solid rgba(46,46,92,0.10)",
+              borderBottom: "1px solid rgba(46,46,92,0.10)",
+            }}
+          />
+        </div>
       </div>
     </div>,
     document.body,
