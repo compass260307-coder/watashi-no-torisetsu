@@ -634,7 +634,7 @@ export function FullAccessPromoCard({
             <span className="whitespace-nowrap">
               {isKorean
                 ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
-                : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上が信頼しています`}
+                : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
             </span>
           </p>
 
