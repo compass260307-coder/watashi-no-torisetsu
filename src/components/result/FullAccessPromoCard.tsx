@@ -621,10 +621,11 @@ export function FullAccessPromoCard({
               <path d="M9 12l2 2 4-4" />
             </svg>
             {/* 買い切りは価格直下 (③) へ移したので、ここは保証 + 実数の信頼行にする。
-                人数は /unmei 実績バンドと同じ実数スナップショット (lib/proof-stats)。 */}
+                人数は /unmei 実績バンドと同じ実数スナップショット (lib/proof-stats、診断完了者数)。
+                韓国語版は現状維持でよい (2026-08-17 オーナー指示: KO は今後追従修正しない)。 */}
             {isKorean
               ? `30일 환불 보장 · ${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
-              : `30日間の返金保証・${DIAGNOSIS_COUNT_SNAPSHOT}人以上が診断しています`}
+              : `30日間の返金保証・${DIAGNOSIS_COUNT_SNAPSHOT}人以上が信頼しています`}
           </p>
 
           {isKorean ? (
