@@ -505,7 +505,7 @@ export function FullAccessPromoCard({
           </h2>
 
           {/* 続編訴求 */}
-          <p className="mt-2 text-[15px] font-bold leading-[1.6] text-[#5A5A72]">
+          <p className="body-gothic mt-2 text-[14px] leading-[1.6] text-[#5A5A6E]">
             {isKorean
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
               : isSelfReportProduct
@@ -602,7 +602,7 @@ export function FullAccessPromoCard({
 
           {/* 30日間の返金保証。SP は左下の折り紙装飾と被らないよう中央寄せ、md+ は左寄せ。 */}
           <p
-            className={`mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] font-bold text-[#7A7A92] ${
+            className={`body-gothic mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "justify-center md:justify-start" : "justify-center"
             }`}
           >
