@@ -1125,56 +1125,83 @@ async function MeResultPageContent({
                   ))}
                 </div>
                 {/* 続きの注意点 (2段落目以降) のロック。本文はレンダリングすらしない
-                    (フェイルクローズ)。ぼかしダミーは可読で紛らわしかったため廃止し、
-                    シーン別の注意点と同じ「タイトルだけ見せて本文は隠す」方式にする
-                    (2026-08-17 指示)。行数は実際の残り段落数に追随する。 */}
+                    (フェイルクローズ)。⑤嫌われやすい性格と同じ見せ方: 対処法風タイトルの
+                    デコイカードを2カラムでぼかして敷き、中央に解除カードを重ねる
+                    (2026-08-17 指示)。デコイは全ユーザー共通で実本文とは無関係。 */}
                 {showCautionLock && (
-                  <div className="mt-2 px-1">
-                    <div className="rounded-2xl border border-[#E3E6F5] bg-white p-5 shadow-[0_8px_24px_rgba(46,46,92,0.10)]">
-                      <div className="space-y-3">
-                        {paragraphs.slice(1).map((_, i, rest) => (
-                          <div
-                            key={`caution-locked-${i}`}
-                            className="flex items-center gap-3 rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5"
+                  <div className="relative mt-2 px-1">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
+                    >
+                      {[
+                        {
+                          title: "抱え込みすぎの手放し方",
+                          body: "ぜんぶ自分で背負う前に、ひとつだけ人に預ける練習から始めます。",
+                        },
+                        {
+                          title: "「私がやらなきゃ」の見直し方",
+                          body: "役割を数えて、本当にアナタでないと困るものだけを残します。",
+                        },
+                        {
+                          title: "疲れる前のサインの見つけ方",
+                          body: "限界の少し手前に出る合図を、先に決めておくのがコツです。",
+                        },
+                        {
+                          title: "関係を壊さない断り方",
+                          body: "気まずくならずに「今日はむり」を伝える言い方があります。",
+                        },
+                        {
+                          title: "自分を後回しにしないコツ",
+                          body: "予定のいちばん最初に、自分の時間を入れてしまいます。",
+                        },
+                        {
+                          title: "優しさの配分の直し方",
+                          body: "近い人にこそ雑になりがちな、優しさの向きを整えます。",
+                        },
+                      ].map((decoy) => (
+                        <div
+                          key={decoy.title}
+                          className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
+                        >
+                          <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+                            {decoy.title}
+                          </p>
+                          <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+                            {decoy.body}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center px-4">
+                      <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
+                        <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
                           >
-                            <span
-                              aria-hidden="true"
-                              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-white"
-                            >
-                              <svg
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                              </svg>
-                            </span>
-                            <span className="text-[15px] font-black text-[#2E2E5C]">
-                              {i < rest.length - 1
-                                ? `注意点 その${i + 2}`
-                                : "そして、これら全部が意味すること"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-5 border-t border-[#E5E6ED] pt-5 text-center">
+                            <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                          </svg>
+                        </span>
                         <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
                           今すぐロックを解除
                         </p>
-                        <p className="mb-5 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-                          残りの注意点を解放して、
+                        <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                          残りの注意点と対処法を解放して、
                           <br className="md:hidden" />
                           アナタのトリセツを完成させましょう。
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"
-                          className="mx-auto flex w-full max-w-[380px] items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                          className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                         >
                           今すぐアクセス
                         </PaywallScrollButton>
