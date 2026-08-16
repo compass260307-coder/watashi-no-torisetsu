@@ -566,9 +566,8 @@ export function FullAccessPromoCard({
                     </span>
                   </>
                 ) : null}
-                {/* 価格サイズは見出し (text-[29px] md:text-[34px]) と揃える。 */}
                 <span
-                  className="text-[29px] font-black leading-none md:text-[34px]"
+                  className="text-[33px] font-black leading-none md:text-[38px]"
                   style={{ color: tone.accent }}
                 >
                   {price.sale}
