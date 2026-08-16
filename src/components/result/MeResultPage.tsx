@@ -1129,7 +1129,12 @@ async function MeResultPageContent({
                     デコイカードを2カラムでぼかして敷き、中央に解除カードを重ねる
                     (2026-08-17 指示)。デコイは全ユーザー共通で実本文とは無関係。 */}
                 {showCautionLock && (
-                  <div className="relative mt-2 px-1">
+                  <div className="mt-10 px-1">
+                    {/* 見出しはシーン別の注意点と同スタイル (ぼかしの外に置く)。 */}
+                    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+                      残りの注意点と対処法
+                    </h3>
+                    <div className="relative">
                     <div
                       aria-hidden="true"
                       className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
@@ -1206,6 +1211,7 @@ async function MeResultPageContent({
                           今すぐアクセス
                         </PaywallScrollButton>
                       </div>
+                    </div>
                     </div>
                   </div>
                 )}
