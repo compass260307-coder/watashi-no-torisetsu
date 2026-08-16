@@ -12,8 +12,8 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "星読みの案内人と話す",
-  description: "性格診断と星読み鑑定をもとに、星読みの案内人と対話できます。",
+  title: "AI占い師「Alice」と話す",
+  description: "性格診断と星読み鑑定をもとに、AI占い師「Alice」と対話できます。",
   alternates: localizedAlternates("ja", "/hoshiyomi", "/ko/hoshiyomi"),
   robots: { index: false, follow: false },
 };

@@ -53,6 +53,7 @@ const CONTENT: Record<SiteLocale, FooterContent> = {
           { label: "性格診断テスト", href: "/diagnosis" },
           { label: "友達診断テスト", href: "/tako", tako: true },
           { label: "性格タイプ", href: "/types" },
+          { label: "相性診断", href: "/aisho" },
           { label: "運命の設計図", href: "/unmei" },
           { label: "占い師", href: "/hoshiyomi" },
         ],
