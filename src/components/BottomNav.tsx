@@ -393,20 +393,8 @@ export function BottomNav() {
             },
           ]
         : [
-            // 診断完了後 (owner_token あり) は「トップ」を出さない (2026-07-22 指示)。
-            // 診断済みユーザーのナビは自分の結果・友達診断・タイプ・相性の4つに絞る。
-            ...(hasToken
-              ? []
-              : [
-                  {
-                    key: "home",
-                    label: "トップ",
-                    href: "/?stay=1",
-                    active: pathname === "/",
-                    Icon: HomeIcon,
-                  },
-                ]),
-            // ラベルは「トリセツ」から変更 (2026-08-04 指示。取説の意味が伝わりにくい)。
+            // 2026-08-17 指示: 診断前後を問わず常に同じ5タブ固定
+            // (自己診断・友達診断・タイプ・Alice・運命)。トップと相性はナビから外す。
             { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
@@ -428,37 +416,27 @@ export function BottomNav() {
                 pathname.startsWith("/preview"),
               Icon: GridIcon,
             },
-            // 運命の設計図 (独立商品)。タブ幅の都合でラベルは短縮。
-            // 診断前は出さない (診断前=トップあり5タブ / 診断後=トップが消え運命が出る5タブ。
-            // 常に5タブを維持する 2026-07-26 指示)。
-            ...(hasToken
-              ? [
-                  {
-                    key: "unmei",
-                    label: "運命",
-                    href: "/unmei",
-                    active: pathname.startsWith("/unmei"),
-                    Icon: NatalWheelIcon,
-                  },
-                ]
-              : []),
-            ...(ownerToken || isAstrologerPreview
-              ? [
-                  {
-                    key: "astrologer",
-                    label: "占い師",
-                    href: isAstrologerPreview
-                      ? "/dev/hoshiyomi-preview"
-                      : "/hoshiyomi",
-                    active:
-                      pathname.startsWith("/hoshiyomi") ||
-                      pathname === "/dev/hoshiyomi-preview",
-                    Icon: AstrologerIcon,
-                  },
-                ]
-              : []),
-            // 相性(/aisho)は 2026-08-16 に無料開放したためロックしない (誰でもタップで遷移)。
-            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
+            // AI占い師。ラベルは商品名の「Alice」(2026-08-17)。未診断でも表示し、
+            // アクセス可否はページ側 (/hoshiyomi) のガードに任せる。
+            {
+              key: "astrologer",
+              label: "Alice",
+              href: isAstrologerPreview
+                ? "/dev/hoshiyomi-preview"
+                : "/hoshiyomi",
+              active:
+                pathname.startsWith("/hoshiyomi") ||
+                pathname === "/dev/hoshiyomi-preview",
+              Icon: AstrologerIcon,
+            },
+            // 運命の設計図。未診断ゲストにも開放済みのため常時表示。
+            {
+              key: "unmei",
+              label: "運命",
+              href: "/unmei",
+              active: pathname.startsWith("/unmei"),
+              Icon: NatalWheelIcon,
+            },
           ],
     [
       hasToken,
@@ -466,7 +444,6 @@ export function BottomNav() {
       isKorean,
       isKoreanResult,
       isTakoAttentionPreview,
-      ownerToken,
       pathname,
       takoUrl,
       torisetsuUrl,
