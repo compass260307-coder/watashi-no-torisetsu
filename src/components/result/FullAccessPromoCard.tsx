@@ -575,7 +575,7 @@ export function FullAccessPromoCard({
           {/* サブスク警戒の解消: 月額でないことを価格の直近で言う。
               デザインは解放項目の説明文 (CheckItem の desc) と同じトーンに揃える。 */}
           <p
-            className={`body-gothic mt-1.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
+            className={`body-gothic mt-0.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "" : "text-center"
             }`}
           >
