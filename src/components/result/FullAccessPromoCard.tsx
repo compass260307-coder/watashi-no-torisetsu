@@ -579,7 +579,7 @@ export function FullAccessPromoCard({
               hasImage ? "" : "text-center"
             }`}
           >
-            {isKorean ? "월 구독이 아닌, 1회 결제" : "月額じゃない、1回だけの買い切り"}
+            {isKorean ? "월 구독이 아닌, 1회 결제" : "買い切り（お支払いは1回のみ）"}
           </p>
 
           {/* CTA (金額はカード側に出したのでボタンからは外す) */}
