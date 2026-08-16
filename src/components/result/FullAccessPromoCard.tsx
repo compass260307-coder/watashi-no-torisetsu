@@ -572,12 +572,12 @@ export function FullAccessPromoCard({
             )}
           </div>
 
-          {/* サブスク警戒の解消: 月額でないことを価格の直近で言い切る (2026-08-17)。 */}
+          {/* サブスク警戒の解消: 月額でないことを価格の直近で言う。
+              デザインは解放項目の説明文 (CheckItem の desc) と同じトーンに揃える。 */}
           <p
-            className={`mt-1.5 text-[12px] font-black ${
+            className={`body-gothic mt-1.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "" : "text-center"
             }`}
-            style={{ color: tone.accent }}
           >
             {isKorean ? "월 구독이 아닌, 1회 결제" : "月額じゃない、1回だけの買い切り"}
           </p>
