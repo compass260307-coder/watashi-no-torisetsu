@@ -92,7 +92,8 @@ const LOVE_SPLITS: Partial<Record<ThirtyTwoTypeId, [number, number]>> = {
   "smiley-panda__N": [1, 2],
   "caretaker-dog__R": [2, 1],
   "caretaker-dog__N": [1, 2],
-  "brisk-tiger__R": [2, 2],
+  // 2026-08-17: 橋渡し段落の挿入に伴い他タイプと同じ「無料3段落」へ統一。
+  "brisk-tiger__R": [2, 1],
   "brisk-tiger__N": [1, 2],
   "playful-raccoon__R": [2, 1],
   "playful-raccoon__N": [2, 1],
