@@ -150,6 +150,10 @@ export function HoshiyomiClient({
           products={CHAT_ACCESS_PRODUCTS}
           previewMode={previewMode}
           locale={locale}
+          // PC ではカードが画像つき2カラムになるようヒーローと同じ Alice 画像を渡す
+          // (SP はカード側の hidden md:flex で画像非表示のため影響なし)。
+          imageSrc="/mascot/hoshiyomi-guide-study-transparent.png"
+          imageAlt={locale === "ko" ? "별자리 상담사" : "AI占い師 Alice"}
           onClose={() => setPaywallOpen(false)}
         />
       ) : null}
