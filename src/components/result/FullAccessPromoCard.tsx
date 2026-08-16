@@ -567,7 +567,7 @@ export function FullAccessPromoCard({
                   </>
                 ) : null}
                 <span
-                  className="text-[33px] font-black leading-none md:text-[38px]"
+                  className="text-[36px] font-black leading-none md:text-[42px]"
                   style={{ color: tone.accent }}
                 >
                   {price.sale}
