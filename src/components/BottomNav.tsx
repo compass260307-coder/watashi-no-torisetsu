@@ -13,14 +13,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
   type ReactElement,
 } from "react";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
-import { PaywallOverlay } from "@/components/result/PaywallModal";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
@@ -211,21 +209,11 @@ export function BottomNav() {
   //   一方、未診断ユーザーには hydration 後にバッジが現れるが、こちらの方が違和感が小さい。
   const [hasToken, setHasToken] = useState(true);
   const [lockOpen, setLockOpen] = useState(false);
-  // 未購入時にロック中の相性タブを押したとき開く課金カードモーダル (2026-07-28)。
-  const [aishoPaywallOpen, setAishoPaywallOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
-  // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
-  // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
-  const [fullAccessToken, setFullAccessToken] = useState<string | null>(null);
-  // 認証済み token と現在の ownerToken が一致するときだけ解放する。
-  // 別ユーザーへ切り替わる途中に前のユーザーの権限が一瞬見えることも防ぐ。
-  const hasFull = Boolean(
-    ownerToken && fullAccessToken === ownerToken,
-  );
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
   // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
   //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
@@ -331,71 +319,6 @@ export function BottomNav() {
     };
   }, [navHidden, pathname]);
 
-  // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
-  //   - キャッシュ: 一度 full を確認した token を localStorage に記録し、以降は即解錠
-  //     (購入は取り消されない前提。token 一致でのみ有効なので別ユーザーには波及しない)。
-  //   - 未確認は full-access-status API で確認 (email 横断込みの hasFullAccess を集約)。
-  const FULL_TOKEN_KEY = "torisetsu_full_token";
-  useEffect(() => {
-    if (!ownerToken) return;
-    let cancelled = false;
-    let cachedFull = false;
-    try {
-      cachedFull = localStorage.getItem(FULL_TOKEN_KEY) === ownerToken;
-      if (cachedFull) {
-        // localStorage の購入キャッシュを React state へ同期する正当な外部状態同期。
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setFullAccessToken(ownerToken);
-      }
-    } catch {
-      // localStorage 不可環境は API 確認にフォールバック
-    }
-    // 相性の購入状態は永続キャッシュだけを信用せず、毎回サーバでも確認する。
-    fetch(
-      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
-    )
-      .then((r) =>
-        r.ok ? r.json() : { full: false },
-      )
-      .then((d: { full?: boolean }) => {
-        if (cancelled) return;
-        if (d?.full) setFullAccessToken(ownerToken);
-        try {
-          if (d?.full) localStorage.setItem(FULL_TOKEN_KEY, ownerToken);
-        } catch {
-          // noop
-        }
-      })
-      .catch(() => {
-        // 通信失敗時はロックのまま (安全側)
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerToken]);
-
-  // ページ遷移 (ブラウザバック含む) したら相性の課金モーダルは閉じる。
-  // BottomNav は常駐で再マウントされないため、明示的に畳む必要がある。
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAishoPaywallOpen(false);
-  }, [pathname]);
-
-  // ロック中の相性タブのタップ: 遷移せず課金カードをその場でポップアップ表示。
-  // 誘導クリックは既存ファネルと同じ paywall_scroll_clicked で計測する
-  // (source=nav_aisho_locked。購入まで到達すると Stripe metadata にも同 source が残る)。
-  const openAishoPaywall = useCallback(() => {
-    track("paywall_scroll_clicked", {
-      ...(ownerToken ? { ownerToken } : {}),
-      metadata: {
-        source: "nav_aisho_locked",
-        target: "nav_modal",
-        page: window.location.pathname.split("/")[1] || "top",
-      },
-    });
-    setAishoPaywallOpen(true);
-  }, [ownerToken]);
-  const closeAishoPaywall = useCallback(() => setAishoPaywallOpen(false), []);
 
   // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
   // ※ useMemo は hook なので early return より前に呼ぶ (rules-of-hooks 遵守)。
@@ -407,7 +330,6 @@ export function BottomNav() {
     Icon: () => ReactElement;
     locked?: boolean;
     disabled?: boolean;
-    paywalled?: boolean;
   }[] = useMemo(
     () =>
       isKorean
@@ -468,7 +390,6 @@ export function BottomNav() {
               href: "/ko/aisho",
               active: pathname.startsWith("/ko/aisho"),
               Icon: HeartPairIcon,
-              paywalled: !hasFull,
             },
           ]
         : [
@@ -536,13 +457,10 @@ export function BottomNav() {
                   },
                 ]
               : []),
-            // 相性は ¥499 完全版の一部 (2026-07-23)。未購入はロック表示のまま
-            // タップで課金カードをポップアップ (2026-07-28。旧: disabled で無反応)。
-            // 購入者 (hasFull) は解錠して /aisho へ遷移できる。
-            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon, paywalled: !hasFull },
+            // 相性(/aisho)は 2026-08-16 に無料開放したためロックしない (誰でもタップで遷移)。
+            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon },
           ],
     [
-      hasFull,
       hasToken,
       isAstrologerPreview,
       isKorean,
@@ -599,26 +517,6 @@ export function BottomNav() {
                 disabled
                 aria-label={`${it.label}${isKorean ? " (준비 중)" : " (準備中)"}`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
-                style={{ color: INACTIVE }}
-              >
-                <span className="relative">
-                  <Icon />
-                  <LockBadge />
-                </span>
-                <span className="text-[11px] font-bold leading-none">
-                  {it.label}
-                </span>
-              </button>
-            );
-          }
-          if (it.paywalled) {
-            // 未購入の相性タブ: ロック見た目のまま押せる。遷移せず課金カードを開く。
-            return (
-              <button
-                key={it.key}
-                type="button"
-                onClick={openAishoPaywall}
-                className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
                 style={{ color: INACTIVE }}
               >
                 <span className="relative">
@@ -724,21 +622,6 @@ export function BottomNav() {
         onClose={() => setLockOpen(false)}
         locale={isKorean ? "ko" : "ja"}
       />
-      {/* 未購入でロック中の相性タブから開く課金カード (/aisho の PaywallModal と同じ見た目)。
-          全ページ常駐の BottomNav 側で持つことで、どのページからでもその場で開ける。 */}
-      {aishoPaywallOpen && (
-        <PaywallOverlay
-          variant="aisho"
-          imageSrc="/characters/scenes/unknown_love.webp"
-          imageAlt={isKorean ? "궁합" : "相性"}
-          ownerToken={ownerToken ?? undefined}
-          ctaSource="nav_aisho_locked"
-          // 相性タブから買った人は相性 (/aisho) に戻す (2026-07-29)
-          returnTo="aisho"
-          locale={isKorean ? "ko" : "ja"}
-          onClose={closeAishoPaywall}
-        />
-      )}
     </nav>
   );
 }
