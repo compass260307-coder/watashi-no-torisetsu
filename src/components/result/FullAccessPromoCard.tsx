@@ -219,10 +219,10 @@ function CheckItem({ title, desc, accent }: { title: string; desc: string; accen
         </svg>
       </span>
       <span className="min-w-0">
-        <span className="block text-[15px] font-black leading-snug text-[#2E2E5C]">
+        <span className="block text-[16px] font-black leading-snug text-[#2E2E5C]">
           {title}
         </span>
-        <span className="body-gothic block text-[13px] leading-[1.6] text-[#5A5A6E]">
+        <span className="body-gothic block text-[14px] leading-[1.6] text-[#5A5A6E]">
           {desc}
         </span>
       </span>
@@ -472,7 +472,7 @@ export function FullAccessPromoCard({
           }
         >
           {/* バッジ (★ + 今すぐロックを解除) */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-black text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[14px] font-black text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]">
             <svg
               width="14"
               height="14"
@@ -493,7 +493,7 @@ export function FullAccessPromoCard({
           {/* 見出し */}
           <h2
             id={`${anchorId}-title`}
-            className="mt-2.5 text-[27px] font-black leading-[1.3] text-[#2E2E5C] md:text-[32px]"
+            className="mt-2.5 text-[29px] font-black leading-[1.3] text-[#2E2E5C] md:text-[34px]"
           >
             {isKorean ? (
               <>내 성격 유형의<br />모든 결과를 해제</>
@@ -505,7 +505,7 @@ export function FullAccessPromoCard({
           </h2>
 
           {/* 続編訴求 */}
-          <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
+          <p className="mt-2 text-[15px] font-bold leading-[1.6] text-[#5A5A72]">
             {isKorean
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
               : isSelfReportProduct
@@ -534,16 +534,16 @@ export function FullAccessPromoCard({
             {isSelfReportProduct ? (
               <>
                 <span
-                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
+                  className="rounded-md px-2 py-0.5 text-[13px] font-black text-white"
                   style={{ backgroundColor: tone.accent }}
                 >
                   リリース記念 {SELF_REPORT_DISCOUNT_PERCENT}%OFF
                 </span>
-                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                <span className="text-[17px] font-bold text-[#A0A0B4] line-through">
                   {SELF_REPORT_LIST_PRICE_COPY}
                 </span>
                 <span
-                  className="text-[36px] font-black leading-none"
+                  className="text-[38px] font-black leading-none"
                   style={{ color: tone.accent }}
                 >
                   {SELF_REPORT_PRICE_COPY}
@@ -552,18 +552,18 @@ export function FullAccessPromoCard({
             ) : (
               <>
                 <span
-                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
+                  className="rounded-md px-2 py-0.5 text-[13px] font-black text-white"
                   style={{ backgroundColor: tone.accent }}
                 >
                   {isKorean
                     ? `출시 기념 ${price.offPercent}% 할인`
                     : `リリース記念 ${price.offPercent}%OFF`}
                 </span>
-                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                <span className="text-[17px] font-bold text-[#A0A0B4] line-through">
                   {price.list}
                 </span>
                 <span
-                  className="text-[36px] font-black leading-none"
+                  className="text-[38px] font-black leading-none"
                   style={{ color: tone.accent }}
                 >
                   {price.sale}
@@ -575,7 +575,7 @@ export function FullAccessPromoCard({
           {/* サブスク警戒の解消: 月額でないことを価格の直近で言う。
               デザインは解放項目の説明文 (CheckItem の desc) と同じトーンに揃える。 */}
           <p
-            className={`body-gothic mt-1.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
+            className={`body-gothic mt-1.5 text-[14px] leading-[1.6] text-[#5A5A6E] ${
               hasImage ? "" : "text-center"
             }`}
           >
@@ -602,7 +602,7 @@ export function FullAccessPromoCard({
 
           {/* 30日間の返金保証。SP は左下の折り紙装飾と被らないよう中央寄せ、md+ は左寄せ。 */}
           <p
-            className={`mt-2.5 flex items-center gap-1.5 text-[12px] font-bold text-[#7A7A92] ${
+            className={`mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] font-bold text-[#7A7A92] ${
               hasImage ? "justify-center md:justify-start" : "justify-center"
             }`}
           >
@@ -622,10 +622,16 @@ export function FullAccessPromoCard({
             </svg>
             {/* 買い切りは価格直下 (③) へ移したので、ここは保証 + 実数の信頼行にする。
                 人数は /unmei 実績バンドと同じ実数スナップショット (lib/proof-stats、診断完了者数)。
-                韓国語版は現状維持でよい (2026-08-17 オーナー指示: KO は今後追従修正しない)。 */}
-            {isKorean
-              ? `30일 환불 보장 · ${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
-              : `30日間の返金保証・${DIAGNOSIS_COUNT_SNAPSHOT}人以上が信頼しています`}
+                韓国語版は現状維持でよい (2026-08-17 オーナー指示: KO は今後追従修正しない)。
+                保証と人数を nowrap セグメントに分け、狭幅では語の途中でなく区切りで折り返す。 */}
+            <span className="whitespace-nowrap">
+              {isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
+            </span>
+            <span className="whitespace-nowrap">
+              {isKorean
+                ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
+                : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上が信頼しています`}
+            </span>
           </p>
 
           {isKorean ? (
