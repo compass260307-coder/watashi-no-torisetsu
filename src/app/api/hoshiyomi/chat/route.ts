@@ -105,12 +105,24 @@ export async function POST(request: Request) {
 
   const storedMessages =
     (await loadHoshiyomiConversation(session.id, conversationId)) ?? [];
-  const checkedStored = await safeValidateUIMessages({ messages: storedMessages });
-  if (!checkedStored.success) {
-    console.error("[hoshiyomi] stored message validation failed", checkedStored.error);
-    return NextResponse.json({ error: "Conversation could not be loaded" }, { status: 500 });
+  let validatedStoredMessages: UIMessage[] = [];
+  if (storedMessages.length > 0) {
+    const checkedStored = await safeValidateUIMessages({
+      messages: storedMessages,
+    });
+    if (!checkedStored.success) {
+      console.error(
+        "[hoshiyomi] stored message validation failed",
+        checkedStored.error,
+      );
+      return NextResponse.json(
+        { error: "Conversation could not be loaded" },
+        { status: 500 },
+      );
+    }
+    validatedStoredMessages = checkedStored.data;
   }
-  const messages = [...checkedStored.data.slice(-20), newMessage];
+  const messages = [...validatedStoredMessages.slice(-20), newMessage];
 
   // プロンプト構築中の例外で回数が消費されないよう、構築後に予約する。
   const instructions = await buildHoshiyomiInstructions(session.id, locale);
