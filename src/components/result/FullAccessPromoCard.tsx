@@ -31,6 +31,7 @@ import {
   type PaywallCardMode,
 } from "@/lib/feature-flags";
 import { track } from "@/lib/track";
+import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
 import {
@@ -556,7 +557,7 @@ export function FullAccessPromoCard({
                 >
                   {isKorean
                     ? `출시 기념 ${price.offPercent}% 할인`
-                    : `リリース記念 ${price.offPercent}%OFF`}
+                    : `リリース記念 ${price.offPercent}%OFF（8/31まで）`}
                 </span>
                 <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
                   {price.list}
@@ -570,6 +571,16 @@ export function FullAccessPromoCard({
               </>
             )}
           </div>
+
+          {/* サブスク警戒の解消: 月額でないことを価格の直近で言い切る (2026-08-17)。 */}
+          <p
+            className={`mt-1.5 text-[12px] font-black ${
+              hasImage ? "" : "text-center"
+            }`}
+            style={{ color: tone.accent }}
+          >
+            {isKorean ? "월 구독이 아닌, 1회 결제" : "月額じゃない、1回だけの買い切り"}
+          </p>
 
           {/* CTA (金額はカード側に出したのでボタンからは外す) */}
           <div className="mt-4">
@@ -609,9 +620,11 @@ export function FullAccessPromoCard({
               <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
+            {/* 買い切りは価格直下 (③) へ移したので、ここは保証 + 実数の信頼行にする。
+                人数は /unmei 実績バンドと同じ実数スナップショット (lib/proof-stats)。 */}
             {isKorean
-              ? "한 번 결제 · 30일 환불 보장"
-              : "買い切り／30日間の返金保証つき"}
+              ? `30일 환불 보장 · ${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
+              : `30日間の返金保証・${DIAGNOSIS_COUNT_SNAPSHOT}人以上が診断しています`}
           </p>
 
           {isKorean ? (
