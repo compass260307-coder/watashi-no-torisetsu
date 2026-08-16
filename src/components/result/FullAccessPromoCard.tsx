@@ -557,7 +557,7 @@ export function FullAccessPromoCard({
                 >
                   {isKorean
                     ? `출시 기념 ${price.offPercent}% 할인`
-                    : `リリース記念 ${price.offPercent}%OFF（8/31まで）`}
+                    : `リリース記念 ${price.offPercent}%OFF`}
                 </span>
                 <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
                   {price.list}
