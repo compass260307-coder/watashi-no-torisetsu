@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { HoshiyomiClient } from "@/components/hoshiyomi/HoshiyomiClient";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import {
@@ -28,7 +27,22 @@ type PageProps = {
 
 export default async function HoshiyomiPage({ searchParams }: PageProps) {
   const session = await getSession();
-  if (!session) redirect("/login");
+
+  // 未ログイン (未診断ゲスト) でも Alice のページ自体は見せる (2026-08-17 指示)。
+  // チャットを送ろうとした時点で課金カードが開く (hasChatAccess=false)。
+  // 未ログインの購入CTAは FullAccessCta の unauthHref で診断 (/diagnosis) へ誘導される。
+  if (!session) {
+    return (
+      <HoshiyomiClient
+        conversations={[]}
+        selectedConversation={null}
+        initialRemaining={0}
+        totalCredits={0}
+        persistenceReady
+        hasChatAccess={false}
+      />
+    );
+  }
 
   const paramsPromise: Promise<{
     chat?: string | string[];
