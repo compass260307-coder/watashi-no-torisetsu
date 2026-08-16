@@ -1072,6 +1072,21 @@ async function MeResultPageContent({
         {sections[1] &&
           (() => {
             const paragraphs = sections[1].body.split("\n\n");
+            // 2026-08-17: ja は先頭1段落のみ無料 (無料範囲46%→30%圧縮の一環)。
+            //   1段落目は「〜ありませんか。」で終わるフック、2段落目は「それから、」
+            //   始まりの続き物なので、この境界で切ると自然なクリフハンガーになる。
+            //   KO は方針どおり現状維持 (全文表示)。解放済み (partTwoUnlocked) も全文。
+            //   獲得モード/公開プレビューは課金コンテンツを無いものとして扱う
+            //   (無料ぶんだけ表示しロックUIは出さない。⑤やシーン別と同じ扱い)。
+            const cautionAllVisible = isKorean || partTwoUnlocked;
+            const visibleParagraphs = cautionAllVisible
+              ? paragraphs
+              : paragraphs.slice(0, 1);
+            const showCautionLock =
+              !cautionAllVisible &&
+              paragraphs.length > 1 &&
+              !acquisition &&
+              !publicPreview;
             return (
               <section className="mt-16 mb-14">
                 <div className="mb-4 flex items-center gap-3">
@@ -1100,7 +1115,7 @@ async function MeResultPageContent({
                   />
                 )}
                 <div className="px-1 pb-1">
-                  {paragraphs.map((para, pIdx) => (
+                  {visibleParagraphs.map((para, pIdx) => (
                     <p
                       key={`caution-${pIdx}`}
                       className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
@@ -1109,6 +1124,63 @@ async function MeResultPageContent({
                     </p>
                   ))}
                 </div>
+                {/* 続きの注意点 (2段落目以降) のロック。本文はレンダリングすらしない
+                    (フェイルクローズ)。ぼかしは全ユーザー共通のダミー文で、上に⑤と同じ
+                    解除カードを重ねる。 */}
+                {showCautionLock && (
+                  <div className="relative mt-2 px-1">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none select-none space-y-4 blur-[4px]"
+                    >
+                      {[
+                        "それから、アナタのやさしさが向かう先について。ちかくにいる人ほど、その気づかいのかたちに甘えてしまいやすく、アナタ自身の疲れはあとまわしになりがちです。ちいさな違和感を飲み込んだまま数日すごしてしまうこと、ありませんか。",
+                        "もうひとつは、がんばりの配分について。ぜんぶにていねいに応えようとするほど、いちばん大事にしたい場面で力が残っていない、ということが起こります。アナタの丁寧さは長所ですが、使いどころを選んでいいものです。",
+                      ].map((decoy, i) => (
+                        <p
+                          key={`caution-decoy-${i}`}
+                          className="body-gothic text-[#1A1A1A]/80 font-normal text-[17px] leading-[1.4]"
+                        >
+                          {decoy}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center px-4">
+                      <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
+                        <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                          </svg>
+                        </span>
+                        <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
+                          今すぐロックを解除
+                        </p>
+                        <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                          残りの注意点を解放して、
+                          <br className="md:hidden" />
+                          アナタのトリセツを完成させましょう。
+                        </p>
+                        <PaywallScrollButton
+                          source="caution_lock_card"
+                          className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                        >
+                          今すぐアクセス
+                        </PaywallScrollButton>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* シーン別の注意点。解放済みは本文 (2026-07-15 投入)、未解放はロック
                     ティザー (本文はサーバで解決していない。フェイルクローズ)。 */}
                 {partTwo.sceneCautions ? (
