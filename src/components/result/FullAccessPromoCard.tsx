@@ -551,17 +551,21 @@ export function FullAccessPromoCard({
               </>
             ) : (
               <>
-                <span
-                  className="rounded-md px-2 py-0.5 text-[13px] font-black text-white"
-                  style={{ backgroundColor: tone.accent }}
-                >
-                  {isKorean
-                    ? `출시 기념 ${price.offPercent}% 할인`
-                    : `リリース記念 ${price.offPercent}%OFF`}
-                </span>
-                <span className="text-[17px] font-bold text-[#A0A0B4] line-through">
-                  {price.list}
-                </span>
+                {/* ja はリリース記念・割引表記を廃止し価格のみ (2026-08-17)。
+                    KO は現状維持 (バッジ + 打消し価格を残す)。 */}
+                {isKorean ? (
+                  <>
+                    <span
+                      className="rounded-md px-2 py-0.5 text-[13px] font-black text-white"
+                      style={{ backgroundColor: tone.accent }}
+                    >
+                      {`출시 기념 ${price.offPercent}% 할인`}
+                    </span>
+                    <span className="text-[17px] font-bold text-[#A0A0B4] line-through">
+                      {price.list}
+                    </span>
+                  </>
+                ) : null}
                 <span
                   className="text-[38px] font-black leading-none"
                   style={{ color: tone.accent }}
