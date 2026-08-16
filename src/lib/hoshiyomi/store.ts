@@ -5,7 +5,11 @@ import {
   validAccessPaymentRows,
   type AccessPaymentRow,
 } from "@/lib/entitlements";
-import { purchaseIncludesDestinyFeatures } from "@/lib/access-products";
+import {
+  HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
+  HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
+  purchaseIncludesHoshiyomiChat,
+} from "@/lib/access-products";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export type HoshiyomiConversationSummary = {
@@ -311,7 +315,7 @@ export async function ensureHoshiyomiCreditsFromPurchase(
   ) as (AccessPaymentRow & { stripe_session_id: string })[];
   for (const payment of validPayments) {
     if (
-      !purchaseIncludesDestinyFeatures(
+      !purchaseIncludesHoshiyomiChat(
         payment.payment_kind,
         payment.metadata?.destiny_access_policy,
       )
@@ -322,7 +326,10 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     await grantHoshiyomiCreditsToTarget({
       userId: payment.user_id as string,
       sourceKey: `stripe:${payment.stripe_session_id as string}`,
-      targetTotal: kind === "premium_bundle" ? 30 : 5,
+      targetTotal:
+        kind === "premium_bundle"
+          ? HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
+          : HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
     });
   }
 

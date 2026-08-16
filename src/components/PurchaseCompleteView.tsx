@@ -19,6 +19,7 @@ type PurchaseCompleteViewProps = {
   isGuestPurchase?: boolean;
   product?: "self_report" | "full_access" | "premium_bundle";
   destinyFeaturesIncluded?: boolean;
+  hoshiyomiChatIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
   locale?: ResultLocale;
 };
@@ -27,6 +28,7 @@ export function PurchaseCompleteView({
   isGuestPurchase = false,
   product = "full_access",
   destinyFeaturesIncluded,
+  hoshiyomiChatIncluded,
   friendFeaturesIncluded,
   locale = "ja",
 }: PurchaseCompleteViewProps) {
@@ -44,7 +46,10 @@ export function PurchaseCompleteView({
         : "完全版レポート";
   const hasDestinyFeatures =
     destinyFeaturesIncluded ?? product === "premium_bundle";
-  const includedChatCount = hasDestinyFeatures
+  // AI占い師チャットは設計図と独立 (¥499 完全版にも5回分が付く 2026-08-16)。
+  // 旧呼び出し元がフラグ未指定のときは従来どおり設計図と同じ扱いに倒す。
+  const hasHoshiyomiChat = hoshiyomiChatIncluded ?? hasDestinyFeatures;
+  const includedChatCount = hasHoshiyomiChat
     ? product === "premium_bundle"
       ? 30
       : 5
@@ -170,15 +175,29 @@ export function PurchaseCompleteView({
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo ? (
-              <>
-                운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회가
-                포함되어 있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
-                있습니다.
-              </>
-            ) : (
+              hasDestinyFeatures ? (
+                <>
+                  운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회가
+                  포함되어 있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
+                  있습니다.
+                </>
+              ) : (
+                <>
+                  나만의 전담 점성술사 채팅 {includedChatCount}회가 포함되어
+                  있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
+                  있습니다.
+                </>
+              )
+            ) : hasDestinyFeatures ? (
               <>
                 運命の設計図と、あなたの専属占い師とのチャット
                 {includedChatCount}回分が含まれています。ログイン後、下部メニューの
+                「占い師」から利用できます。
+              </>
+            ) : (
+              <>
+                あなたの専属AI占い師とのチャット{includedChatCount}
+                回分が含まれています。ログイン後、下部メニューの
                 「占い師」から利用できます。
               </>
             )}

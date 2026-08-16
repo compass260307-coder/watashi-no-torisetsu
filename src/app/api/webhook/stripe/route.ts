@@ -51,8 +51,11 @@ import {
   type AccessPaymentRow,
 } from "@/lib/entitlements";
 import {
+  HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
+  HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
+  purchaseIncludesHoshiyomiChat,
 } from "@/lib/access-products";
 
 function guestToken(bytes: number): string {
@@ -703,6 +706,13 @@ async function sendDetailedReportEmailBestEffort(
             "full_access",
             session.metadata?.destiny_access_policy,
           )),
+      hoshiyomiChatIncluded:
+        session.metadata?.product === "premium_bundle" ||
+        (session.metadata?.product !== "self_report" &&
+          purchaseIncludesHoshiyomiChat(
+            "full_access",
+            session.metadata?.destiny_access_policy,
+          )),
       friendFeaturesIncluded: purchaseIncludesFriendFeatures(
         session.metadata?.product === "premium_bundle"
           ? "premium_bundle"
@@ -926,7 +936,7 @@ async function handleCheckoutPaid(
       await grantHoshiyomiCreditsToTarget({
         userId: paymentUserId,
         sourceKey: `stripe:${session.id}`,
-        targetTotal: 30,
+        targetTotal: HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
       });
     } catch (error) {
       if (!isMissingHoshiyomiStore(error)) throw error;
@@ -952,16 +962,22 @@ async function handleCheckoutPaid(
       "full_access",
       session.metadata?.destiny_access_policy,
     );
+    // 設計図 (unmei) とAI占い師チャットは独立に判定する。
+    // v2 ポリシーの完全版は「設計図なし・チャット5回あり」。
+    const includesHoshiyomiChat = purchaseIncludesHoshiyomiChat(
+      "full_access",
+      session.metadata?.destiny_access_policy,
+    );
     if (includesDestinyFeatures) {
       await grantUnmeiByEmailOrId(session, paymentUserId);
     }
     await recordFullAccessPayment(session, paymentUserId);
-    if (includesDestinyFeatures) {
+    if (includesHoshiyomiChat) {
       try {
         await grantHoshiyomiCreditsToTarget({
           userId: paymentUserId,
           sourceKey: `stripe:${session.id}`,
-          targetTotal: 5,
+          targetTotal: HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
         });
       } catch (error) {
         if (!isMissingHoshiyomiStore(error)) throw error;

@@ -197,6 +197,7 @@ interface SendDetailedReportArgs {
   locale?: EmailLocale;
   product?: AccessProduct;
   destinyFeaturesIncluded?: boolean;
+  hoshiyomiChatIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
@@ -258,6 +259,7 @@ export async function sendDetailedReportEmail(
               greetingName,
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+              hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
             })
@@ -269,6 +271,7 @@ export async function sendDetailedReportEmail(
               greetingName,
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+              hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
               purchaseAmountJpy: args.purchaseAmountJpy,
@@ -283,6 +286,7 @@ export async function sendDetailedReportEmail(
               greetingName,
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+              hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             })
           : renderDetailedReportText({
@@ -293,6 +297,7 @@ export async function sendDetailedReportEmail(
               greetingName,
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+              hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             }),
     });
@@ -529,6 +534,7 @@ interface DetailedReportTemplateArgs {
   greetingName: string;
   product?: AccessProduct;
   destinyFeaturesIncluded?: boolean;
+  hoshiyomiChatIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
@@ -542,6 +548,8 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
   const hasUnmei = args.destinyFeaturesIncluded ?? isPremiumBundle;
+  // 占い師チャットは設計図と独立 (¥499 完全版にも付く)。未指定は旧来どおり設計図に追従。
+  const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "ワタシのトリセツ 自己分析レポート"
@@ -590,8 +598,11 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                             ? `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">あなた専用の運命の設計図</td>
-                        </tr>
-                        <tr>
+                        </tr>`
+                            : ""
+                        }${
+                          hasHoshiyomi
+                            ? `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">あなたの専属占い師とのチャット${isPremiumBundle ? "30" : "5"}回分</td>
                         </tr>`
@@ -656,7 +667,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                       <a class="cta-link" href="${args.unmeiUrl}" style="display:block;padding:15px 18px;background:#9A6A24;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">運命の設計図を作る&nbsp; &#8594;</a>
                     </td>
                   </tr>` : ""}
-                  ${hasUnmei && args.hoshiyomiUrl ? `<tr>
+                  ${hasHoshiyomi && args.hoshiyomiUrl ? `<tr>
                     <td align="center" style="padding:14px 0 0;">
                       <a class="cta-link" href="${args.hoshiyomiUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">あなたの専属占い師と話す&nbsp; &#8594;</a>
                     </td>
@@ -708,6 +719,8 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
   const hasUnmei = args.destinyFeaturesIncluded ?? isPremiumBundle;
+  // 占い師チャットは設計図と独立 (¥499 完全版にも付く)。未指定は旧来どおり設計図に追従。
+  const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "ワタシのトリセツ 自己分析レポート"
@@ -729,11 +742,9 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
         "・キャリア・成長の深掘り",
         "・友達ひとりずつの本音",
         "・シーン別の相性",
-        ...(hasUnmei
-          ? [
-              "・あなた専用の運命の設計図",
-              `・あなたの専属占い師とのチャット${isPremiumBundle ? 30 : 5}回分`,
-            ]
+        ...(hasUnmei ? ["・あなた専用の運命の設計図"] : []),
+        ...(hasHoshiyomi
+          ? [`・あなたの専属占い師とのチャット${isPremiumBundle ? 30 : 5}回分`]
           : []),
       ];
   const defaultPurchaseAmount = isSelfReport
@@ -759,7 +770,7 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     ...(hasUnmei && args.unmeiUrl
       ? ["", "■ 運命の設計図を作る", args.unmeiUrl]
       : []),
-    ...(hasUnmei && args.hoshiyomiUrl
+    ...(hasHoshiyomi && args.hoshiyomiUrl
       ? ["", "■ あなたの専属占い師と話す", args.hoshiyomiUrl]
       : []),
     "",
@@ -783,7 +794,8 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
   ].join("\n");
 }
 
-function renderDetailedReportHtmlKo(
+// export は /dev/email-preview 用
+export function renderDetailedReportHtmlKo(
   args: DetailedReportTemplateArgs,
 ): string {
   const greeting = args.greetingName
@@ -793,6 +805,7 @@ function renderDetailedReportHtmlKo(
   const isPremiumBundle = args.product === "premium_bundle";
   const hasDestinyFeatures =
     args.destinyFeaturesIncluded ?? isPremiumBundle;
+  const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "나의 사용설명서 라이트 코스"
@@ -808,7 +821,7 @@ function renderDetailedReportHtmlKo(
         : FULL_ACCESS_PRICE_KRW);
   const items = isSelfReport
     ? `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 PDF${hasFriendFeatures ? "<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 몇 번이든 다시 만들 수 있는 친구 분석 PDF" : ""}`
-    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도<br />✓ 나만의 전담 점성술사 채팅 ${isPremiumBundle ? "30" : "5"}회` : ""}`;
+    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도` : ""}${hasHoshiyomiChat ? `<br />✓ 나만의 전담 점성술사 채팅 ${isPremiumBundle ? "30" : "5"}회` : ""}`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -828,7 +841,7 @@ function renderDetailedReportHtmlKo(
         <p style="margin:0 0 14px;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">잠금 해제된 상세 결과 보기&nbsp; &#8594;</a></p>
         <p style="margin:0 0 18px;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">자기 분석 완전판 PDF 다운로드&nbsp; &#8594;</a></p>
         ${hasDestinyFeatures && args.unmeiUrl ? `<p style="margin:0 0 18px;"><a href="${args.unmeiUrl}" style="display:block;padding:15px 18px;background:#9A6A24;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">운명의 설계도 만들기&nbsp; &#8594;</a></p>` : ""}
-        ${hasDestinyFeatures && args.hoshiyomiUrl ? `<p style="margin:0 0 18px;"><a href="${args.hoshiyomiUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">나만의 전담 점성술사와 대화하기&nbsp; &#8594;</a></p>` : ""}
+        ${hasHoshiyomiChat && args.hoshiyomiUrl ? `<p style="margin:0 0 18px;"><a href="${args.hoshiyomiUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">나만의 전담 점성술사와 대화하기&nbsp; &#8594;</a></p>` : ""}
         <p style="margin:0 0 30px;font-size:15px;line-height:1.85;color:#5A5A6E;">상세 결과는 웹에서 확인하고, 완전판 리포트는 PDF로 저장하거나 인쇄할 수 있어요. 두 링크 모두 언제든 다시 이용할 수 있어요.</p>
         <div style="margin:0 0 30px;padding:26px 28px;background:#F3F2FF;border-radius:14px;">
           <h2 style="margin:0 0 12px;font-size:21px;font-weight:800;line-height:1.5;color:#2E2E5C;">구매 내용</h2>
@@ -861,6 +874,7 @@ function renderDetailedReportTextKo(
   const isPremiumBundle = args.product === "premium_bundle";
   const hasDestinyFeatures =
     args.destinyFeaturesIncluded ?? isPremiumBundle;
+  const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "나의 사용설명서 라이트 코스"
@@ -891,11 +905,9 @@ function renderDetailedReportTextKo(
         "・두 번째 친구부터의 친구 진단 결과 전체 해제",
         "・친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF",
         "・연애 파트너 궁합 분석",
-        ...(hasDestinyFeatures
-          ? [
-              "・한국어 운명의 설계도",
-              `・나만의 전담 점성술사 채팅 ${isPremiumBundle ? 30 : 5}회`,
-            ]
+        ...(hasDestinyFeatures ? ["・한국어 운명의 설계도"] : []),
+        ...(hasHoshiyomiChat
+          ? [`・나만의 전담 점성술사 채팅 ${isPremiumBundle ? 30 : 5}회`]
           : []),
       ];
   return [
@@ -912,7 +924,7 @@ function renderDetailedReportTextKo(
     ...(hasDestinyFeatures && args.unmeiUrl
       ? ["", "■ 운명의 설계도 만들기", args.unmeiUrl]
       : []),
-    ...(hasDestinyFeatures && args.hoshiyomiUrl
+    ...(hasHoshiyomiChat && args.hoshiyomiUrl
       ? ["", "■ 나만의 전담 점성술사와 대화하기", args.hoshiyomiUrl]
       : []),
     "",

@@ -13,7 +13,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "three_course_v9_self_report_only" as const;
+  "three_course_v10_full_hoshiyomi" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -23,14 +23,26 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v6_unmei_chat_credits",
   "three_course_v7_self_friend_access",
   "three_course_v8_premium_destiny_only",
+  "three_course_v9_self_report_only",
   THREE_COURSE_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
 
-// この値が付いた購入以降、「運命の設計図」と占い師チャットは
-// premium_bundle だけに含める。値が無い旧 full_access は購入時の権利を維持する。
+// この値が付いた購入以降、「運命の設計図」は premium_bundle だけに含める。
+// 値が無い旧 full_access は購入時の権利を維持する。
+// (占い師チャットは 2026-08-16 に全世代の完全版へ遡及付与したため、
+//  ポリシー印に関係なく purchaseIncludesHoshiyomiChat で判定する。)
 export const DESTINY_ACCESS_POLICY_PREMIUM_ONLY =
   "premium_only_v1" as const;
+
+// 2026-08-16: ¥499 完全版に AI占い師チャットを追加した世代の印。
+// 設計図の扱いは v1 と同じ (プレミアム限定)。どの商品内容で売れたかの監査用。
+export const DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL =
+  "premium_only_v2_hoshiyomi_full" as const;
+
+// AI占い師チャットの付与回数 (累計保証値)。webhook・復元・表示コピーで共有する。
+export const HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS = 5;
+export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE = 30;
 
 // この値が付いた購入以降、2人目以降の友達診断と友達診断PDFは
 // full_access 以上だけに含める。値が無い旧 self_report は購入時の権利を維持する。
@@ -48,7 +60,27 @@ export function purchaseIncludesDestinyFeatures(
 ): boolean {
   if (product === "premium_bundle") return true;
   if (product !== "full_access") return false;
-  return policy !== DESTINY_ACCESS_POLICY_PREMIUM_ONLY;
+  // マーカー無しの旧完全版だけが設計図つき。v1 / v2 はプレミアム限定。
+  return (
+    policy !== DESTINY_ACCESS_POLICY_PREMIUM_ONLY &&
+    policy !== DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL
+  );
+}
+
+/**
+ * AI占い師チャットが購入に含まれるか。設計図 (destiny) とは独立に判定する。
+ *
+ * 完全版はポリシー印を問わず全世代チャット対象 (5回)。v8〜v9 期の完全版は
+ * 印上チャット対象外だったが、/hoshiyomi の FAQ が「完全版=5回」と案内済み
+ * だったため、過去購入分にも遡及して含める (2026-08-16)。
+ * policy 引数は将来また世代分けが必要になったときのために受け取っておく。
+ */
+export function purchaseIncludesHoshiyomiChat(
+  product: AccessProduct,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _policy: unknown,
+): boolean {
+  return product === "premium_bundle" || product === "full_access";
 }
 
 export function purchaseIncludesFriendFeatures(

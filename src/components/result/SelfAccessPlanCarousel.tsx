@@ -80,7 +80,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
       "16ページ以上の自己分析PDF",
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
-      "恋愛パートナー相性診断を開放",
+      "AI占い師とのチャット相談（5回分）",
     ],
   },
   {
@@ -96,7 +96,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
     inheritedItemCount: 1,
     items: [
       "完全版コースのすべてに加え、次の機能を利用できます",
-      "あなたの専属占い師とのチャットを解放",
+      "AI占い師とのチャット相談が計30回分に増量",
       "出生情報から仕事・恋愛・人生の転機を読む、あなた専用の運命の設計図",
     ],
   },
@@ -135,7 +135,7 @@ const KO_PLANS: readonly PlanDefinition[] = [
       "16페이지 이상의 자기 분석 PDF",
       "두 번째 친구부터 친구 진단 결과 전체 해제",
       "몇 번이든 다시 만들 수 있는 친구 분석 PDF",
-      "연애 파트너 궁합 분석",
+      "AI 점성술사 채팅 상담 5회",
     ],
   },
   {
@@ -151,7 +151,7 @@ const KO_PLANS: readonly PlanDefinition[] = [
     inheritedItemCount: 1,
     items: [
       "완전판 코스의 모든 기능에 더해, 다음 기능을 이용할 수 있습니다",
-      "나만의 전담 점성술사와의 채팅 잠금 해제",
+      "AI 점성술사 채팅 상담이 총 30회로 확대",
       "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
     ],
   },
@@ -183,7 +183,7 @@ function baseCtaLabel(product: AccessProduct, locale: ResultLocale): string {
     return "프리미엄으로 잠금 해제";
   }
   if (product === "self_report") return "お試し版で開放";
-  if (product === "full_access") return "完全版で開放";
+  if (product === "full_access") return "完全版ですべてを開放";
   return "プレミアム版で開放";
 }
 

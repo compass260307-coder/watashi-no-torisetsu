@@ -24,7 +24,9 @@ import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
 import type { ResultLocale } from "@/i18n/result";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 
-const CHAT_ACCESS_PRODUCTS = ["premium_bundle"] as const;
+// チャットは完全版 (¥499・5回分) から含まれる (2026-08-16)。ロック時の課金カードは
+// 完全版を基準に出し、プレミアムは30回への増量として選べるようにする。
+const CHAT_ACCESS_PRODUCTS = ["full_access", "premium_bundle"] as const;
 
 type ActiveConversation = {
   id: string;
@@ -146,7 +148,6 @@ export function HoshiyomiClient({
           returnTo="hoshiyomi"
           ctaSource="hoshiyomi_first_send"
           products={CHAT_ACCESS_PRODUCTS}
-          legacyPlanStyle
           previewMode={previewMode}
           locale={locale}
           onClose={() => setPaywallOpen(false)}

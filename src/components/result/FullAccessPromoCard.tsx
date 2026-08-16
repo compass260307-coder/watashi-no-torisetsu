@@ -26,12 +26,14 @@ import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
+import {
+  paywallCardMode,
+  type PaywallCardMode,
+} from "@/lib/feature-flags";
 import { track } from "@/lib/track";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
 import {
-  FULL_ACCESS_DISCOUNT_PERCENT,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   MULTI_COURSE_PAYWALL_PRODUCT,
   SELF_REPORT_DISCOUNT_PERCENT,
@@ -42,12 +44,17 @@ import {
   type AccessProduct,
 } from "@/lib/access-products";
 
+const LEGACY_FULL_ACCESS_LIST_PRICE_JPY = 1_290;
+const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
+  (1 - FULL_ACCESS_PRICE_JPY / LEGACY_FULL_ACCESS_LIST_PRICE_JPY) * 100,
+);
+
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
   ja: {
-    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
+    list: `¥${LEGACY_FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
     sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
-    offPercent: FULL_ACCESS_DISCOUNT_PERCENT,
+    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
   ko: { list: "₩12,900", sale: "₩4,900", offPercent: 62 },
 } as const;
@@ -56,12 +63,12 @@ const SELF_REPORT_PRICE_COPY = `¥${SELF_REPORT_PRICE_JPY}`;
 const SELF_REPORT_LIST_PRICE_COPY = `¥${SELF_REPORT_LIST_PRICE_JPY}`;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
-// すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる4項目に集約。
+// すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる項目に集約。
 // 解放項目。設置ページで並びを変える (自己診断=自分の解放が先 / 友達診断=友達の解放が先)。
-// ⑤恋愛パートナー分析 (相性) は ¥499 完全版パッケージに含まれるので両方に載せる。
+// 相性(/aisho)は 2026-08-16 に無料開放したため、課金カードの解放項目には載せない。
 type UnlockItem = { title: string; desc: string };
 
-// 自己分析の電子書籍/PDF・自己/友達の解放・相性の共通パーツ (ページ間で文言を揃える)。
+// 自己分析の電子書籍/PDF・自己/友達の解放の共通パーツ (ページ間で文言を揃える)。
 const U_SELF_UNLOCK: UnlockItem = {
   title: "自己診断結果の完全解放",
   desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
@@ -70,9 +77,15 @@ const U_FRIEND_PDF: UnlockItem = {
   title: "何度でも作り直せる友達診断レポート",
   desc: "友達が増えるたびに更新できる、友達視点のレポートPDF。何度でもダウンロードOK。",
 };
-const U_AISHO: UnlockItem = {
-  title: "恋愛パートナー分析",
-  desc: "ふたりの性格がどのように合うかを確認できます。",
+// 友達診断をまとめて訴求する統合コピー。自己診断カードでは2つの友達項目を1つに集約する。
+const U_FRIEND_SUMMARY: UnlockItem = {
+  title: "友達の回答を集めて「他人から見たあなた」を完全解析",
+  desc: "一人ひとりの診断結果＋みんなの回答を集約した総合レポートを全解放。回答が増えるたびに何度でも更新できます。",
+};
+// AI占い師 (¥499 完全版に含む)。呼称は Alice。カードの目玉として訴求を強める。
+const U_HOSHIYOMI: UnlockItem = {
+  title: "あなた専属のAI占い師「Alice」",
+  desc: "あなたの診断結果をぜんぶ知っているAliceだから、話が早い。恋も友達も、深夜のモヤモヤも、いつでも相談できる。",
 };
 
 // 自己診断結果ページ (/me) 用。
@@ -100,7 +113,15 @@ const TAKO_UNLOCKS: UnlockItem[] = [
     title: "ダウンロード可能な自己分析完全版PDFレポート",
     desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
   },
-  U_AISHO,
+  U_HOSHIYOMI,
+];
+
+// 自己診断カードの並び (2026-08-16): 自己診断2項目 → AI占い師 → 友達診断(まとめ)。
+// 相性(/aisho)は無料化したため課金カードの解放項目からは外す。
+const FULL_ACCESS_SELF_UNLOCKS: UnlockItem[] = [
+  ...SELF_UNLOCKS,
+  U_HOSHIYOMI,
+  U_FRIEND_SUMMARY,
 ];
 
 const KO_SELF_UNLOCKS: UnlockItem[] = [
@@ -121,11 +142,13 @@ const KO_SELF_UNLOCKS: UnlockItem[] = [
     desc: "친구가 늘 때마다 내용이 업데이트되는 친구 시선 리포트예요. 횟수 제한 없이 다시 다운로드할 수 있어요.",
   },
   {
-    title: "연애 파트너 궁합 분석",
-    desc: "두 사람의 성격이 어떤 부분에서 잘 맞고, 관계를 어떻게 키우면 좋은지 확인할 수 있어요.",
+    title: "AI 점성술사 채팅 상담 5회",
+    desc: "내 진단 결과를 알고 있는 AI 점성술사에게 연애나 친구 고민을 언제든 상담할 수 있어요.",
   },
 ];
 
+// 相性(궁합)は無料開放したため解放項目から除外。インデックスは KO_SELF_UNLOCKS の
+// 現在の並び (0:8섹션 / 1:16PDF / 2:친구첫 / 3:친구PDF / 4:AI점성술사) に対応。
 const KO_TAKO_UNLOCKS: UnlockItem[] = [
   KO_SELF_UNLOCKS[2],
   KO_SELF_UNLOCKS[3],
@@ -228,6 +251,7 @@ export function FullAccessPromoCard({
   products,
   previewMode = false,
   legacyPlanStyle = false,
+  cardMode,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -245,13 +269,24 @@ export function FullAccessPromoCard({
   previewMode?: boolean;
   /** 3コース化以前のコンパクトな単一課金カード表示。 */
   legacyPlanStyle?: boolean;
+  /** 開発プレビュー用。未指定時は共通の課金カード設定を使う。 */
+  cardMode?: PaywallCardMode;
 }) {
   const isKorean = locale === "ko";
-  // 自己診断・友達診断・相性は日韓とも現行の3コース比較へ統一。
-  // 相性は完全版以上が必要なため、カルーセルの初期表示は完全版のままとする。
+  // 通常カードは feature flag 1か所で旧単一カードと松竹梅を切り替える。
+  // legacyPlanStyle はプレミアム専用の旧カードを表示する個別導線なので優先する。
+  const resolvedCardMode = cardMode ?? paywallCardMode();
+  const usesLegacyFullAccessCard =
+    !legacyPlanStyle && resolvedCardMode === "legacy";
   const isSelfReportProduct =
-    !isKorean && surface === "self" && variant === "self";
-  const usesPlanCarousel = variant === "self" || variant === "aisho";
+    !usesLegacyFullAccessCard &&
+    !isKorean &&
+    surface === "self" &&
+    variant === "self";
+  const usesPlanCarousel =
+    legacyPlanStyle ||
+    (resolvedCardMode === "three-course" &&
+      (variant === "self" || variant === "aisho"));
   const product = isSelfReportProduct ? "self_report" : "full_access";
   const paywallProduct = usesPlanCarousel
     ? MULTI_COURSE_PAYWALL_PRODUCT
@@ -266,7 +301,9 @@ export function FullAccessPromoCard({
       : KO_SELF_UNLOCKS
     : surface === "tako"
       ? TAKO_UNLOCKS
-      : SELF_UNLOCKS;
+      : product === "full_access"
+        ? FULL_ACCESS_SELF_UNLOCKS
+        : SELF_UNLOCKS;
   const price = PRICE_COPY[locale];
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
@@ -462,7 +499,7 @@ export function FullAccessPromoCard({
             ) : isSelfReportProduct ? (
               <>自己診断結果を<br />すべて解放</>
             ) : (
-              <>あなたの性格タイプ<br />についてのすべてを解放</>
+              <>あなたの物語は<br />まだ完結していません</>
             )}
           </h2>
 
@@ -472,7 +509,7 @@ export function FullAccessPromoCard({
               ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
               : isSelfReportProduct
                 ? "ロックされた自己診断結果と、あなたのタイプを一冊にまとめた自己分析PDFを買い切りで利用できます。"
-              : "あなたの詳細な性格タイプから、友達から見たあなたの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
+              : "無料で読めたのは、あなたのほんの入り口。ここから先は、恋愛やキャリアの深掘り、周りから見た印象、そして専属AI占い師「Alice」まで。鍵つきの続きが、ぜんぶ開きます。"}
           </p>
 
           {/* 解放される 4 項目 */}

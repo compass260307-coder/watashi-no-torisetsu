@@ -33,7 +33,7 @@ import {
 } from "@/lib/entitlements";
 import {
   accessProductPrice,
-  DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
+  DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
   EMPTY_ACCESS_ENTITLEMENTS,
   FRIEND_ACCESS_POLICY_FULL_ONLY,
   FULL_ACCESS_LIST_PRICE_JPY,
@@ -116,10 +116,10 @@ const CHECKOUT_COPY: Record<
   ja: {
     couponId: "full-access-anchor-off400-jpy",
     couponName: "リリース記念",
-    // 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージ。
+    // 自己診断＋友達診断＋相性＋AI占い師を含む ¥499 完全版パッケージ。
     productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "自己診断とPDF、友達診断、恋愛パートナー相性診断を解放します。買い切り。",
+      "自己診断とPDF、友達診断、恋愛パートナー相性診断、AI占い師とのチャット5回分を解放します。買い切り。",
     submitMessage:
       "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
@@ -128,7 +128,7 @@ const CHECKOUT_COPY: Record<
     couponName: "출시 기념",
     productName: "나의 사용설명서 완전판 패키지",
     productDescription:
-      "자기 진단과 PDF, 친구 진단, 연애 파트너 궁합 분석을 해제하는 완전판 패키지예요. 1회 결제.",
+      "자기 진단과 PDF, 친구 진단, 연애 파트너 궁합 분석, AI 점성술사 채팅 5회를 해제하는 완전판 패키지예요. 1회 결제.",
     submitMessage:
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
@@ -736,7 +736,8 @@ export async function POST(request: NextRequest) {
         product,
         // サーバ側で固定し、クライアント入力には依存させない。
         // この印が無い旧 full_access セッションは従来特典を維持する。
-        destiny_access_policy: DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
+        // v2: 設計図はプレミアム限定のまま、完全版に占い師チャット5回を含める。
+        destiny_access_policy: DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
         // この印が無い旧 self_report セッションは従来の友達特典を維持する。
         friend_access_policy: FRIEND_ACCESS_POLICY_FULL_ONLY,
         upgrade_from: upgradeFrom,

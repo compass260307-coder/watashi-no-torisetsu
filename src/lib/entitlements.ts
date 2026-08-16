@@ -8,6 +8,7 @@ import { supabaseAdmin } from "./supabase-server";
 import {
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
+  purchaseIncludesHoshiyomiChat,
 } from "./access-products";
 
 export type AccessPaymentKind =
@@ -89,6 +90,7 @@ export async function getAccessPurchaseEntitlements(
   full: boolean;
   premiumBundle: boolean;
   destinyFeatures: boolean;
+  hoshiyomiChat: boolean;
   friendFeatures: boolean;
 }> {
   if (!userId) {
@@ -97,6 +99,7 @@ export async function getAccessPurchaseEntitlements(
       full: false,
       premiumBundle: false,
       destinyFeatures: false,
+      hoshiyomiChat: false,
       friendFeatures: false,
     };
   }
@@ -111,6 +114,7 @@ export async function getAccessPurchaseEntitlements(
       full: false,
       premiumBundle: false,
       destinyFeatures: false,
+      hoshiyomiChat: false,
       friendFeatures: false,
     };
   }
@@ -130,6 +134,7 @@ export async function getAccessPurchaseEntitlements(
         full: false,
         premiumBundle: false,
         destinyFeatures: false,
+        hoshiyomiChat: false,
         friendFeatures: false,
       };
     }
@@ -144,6 +149,7 @@ export async function getAccessPurchaseEntitlements(
       full: false,
       premiumBundle: false,
       destinyFeatures: false,
+      hoshiyomiChat: false,
       friendFeatures: false,
     };
   }
@@ -160,6 +166,12 @@ export async function getAccessPurchaseEntitlements(
       row.metadata?.destiny_access_policy,
     ),
   );
+  const hoshiyomiChat = valid.some((row) =>
+    purchaseIncludesHoshiyomiChat(
+      row.payment_kind,
+      row.metadata?.destiny_access_policy,
+    ),
+  );
   const friendFeatures = valid.some((row) =>
     purchaseIncludesFriendFeatures(
       row.payment_kind,
@@ -172,6 +184,7 @@ export async function getAccessPurchaseEntitlements(
     full,
     premiumBundle,
     destinyFeatures,
+    hoshiyomiChat,
     friendFeatures,
   };
 }
@@ -296,6 +309,17 @@ export async function hasPremiumBundleAccess(
   userId: string | null | undefined,
 ): Promise<boolean> {
   return (await getAccessPurchaseEntitlements(userId)).premiumBundle;
+}
+
+/**
+ * AI占い師チャットが購入に含まれているか (メール文面などの表示判定用)。
+ * 実際のチャット利用可否は hoshiyomi クレジット残高が真実源で、
+ * 付与は webhook / ensureHoshiyomiCreditsFromPurchase が行う。
+ */
+export async function hasHoshiyomiChatPurchase(
+  userId: string | null | undefined,
+): Promise<boolean> {
+  return (await getAccessPurchaseEntitlements(userId)).hoshiyomiChat;
 }
 
 /**

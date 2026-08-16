@@ -90,7 +90,7 @@ export default function KoreanCommercePage() {
         <li>
           완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트의
           모든 기능, 두 번째 친구부터의 친구 진단 결과, 친구 분석 PDF, 연애
-          파트너 궁합 분석 포함. 라이트 구매자는 차액{" "}
+          파트너 궁합 분석, AI 점성술사 채팅 5회 포함. 라이트 구매자는 차액{" "}
           {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
         </li>
         <li>
@@ -115,7 +115,8 @@ export default function KoreanCommercePage() {
         </li>
         <li>
           완전판: 라이트의 모든 기능, 두 번째 친구부터의 친구 진단 결과 전체
-          해제, 여러 번 다시 만들 수 있는 친구 분석 PDF, 연애 파트너 궁합 분석
+          해제, 여러 번 다시 만들 수 있는 친구 분석 PDF, 연애 파트너 궁합 분석,
+          AI 점성술사 채팅 5회
         </li>
         <li>
           프리미엄: 완전판의 모든 기능, 한국어 운명의 설계도, 나만의 전담

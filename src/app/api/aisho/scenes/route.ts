@@ -1,22 +1,18 @@
-// PR4: 相性④「シーン別トリセツ」本文のサーバゲート。
+// 相性④「シーン別トリセツ」本文を返すサーバ route。
 //
 // GET /api/aisho/scenes?a=<32type>&b=<32type>
-//   - 認可: hasFullAccess(session.id)。匿名/未課金は locked=true (本文を一切返さない)。
-//   - plan='full' のみ scenes 本文を返す。
+//   - 2026-08-16: 相性診断はデフォルトで無料開放。認可ゲートを撤去し、全員へ
+//     locked=false で scenes 本文を返す。
 //
-// なぜサーバか: /aisho は完全静的・クライアントページで、従来 sceneLines() を
+// なぜサーバに残すか: /aisho は完全静的・クライアントページで、従来 sceneLines() を
 //   クライアント import して④本文を全部バンドルに載せていた (= View Source で漏れる)。
-//   本 route に④生成を移し、クライアントからの aisho-scene-copy import を撤去することで、
-//   ④本文はクライアントバンドルからも未課金応答からも消える (PR2-a と同じ fail-closed)。
+//   本 route に④生成を残すことで、④本文はクライアントバンドルには出さない。
+//   無料化後も生成をサーバ側に置く方針は据え置く。
 //
-// ①〜③ (バランス/いいところ/注意)・相性度・ランク・ヒーローは触らない。
-//   これらは /aisho 側で従来どおり compat() をクライアント計算し全員無料 (= バイラル核)。
+// ①〜③ (バランス/いいところ/注意)・相性度・ランク・ヒーローは従来どおり /aisho 側で
+//   compat() をクライアント計算し全員無料 (= バイラル核)。
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-import { hasFullAccess } from "@/lib/entitlements";
-import { isSafeOpaqueToken } from "@/lib/api-security";
-import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   allThirtyTwoTypeIds,
   type ThirtyTwoTypeId,
@@ -113,33 +109,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "invalid pair" }, { status: 400 });
   }
 
-  // 匿名可。未ログイン/未課金は本文を返さない (fail-closed)。
-  // 本人解決は session 優先、無ければ owner_token (推測不可の capability。
-  // checkout / full-access-status と同じ扱い)。SP で Cookie が消えていても
-  // 購入済み本人が /aisho に戻ったときシーン本文を読めるようにする (2026-07-29)。
-  const session = await getSession(request);
-  let userId: string | null = session?.id ?? null;
-  if (!userId) {
-    const rawToken = searchParams.get("owner_token");
-    if (isSafeOpaqueToken(rawToken)) {
-      const { data } = await supabaseAdmin
-        .from("users")
-        .select("id")
-        .eq("owner_token", rawToken)
-        .maybeSingle();
-      userId = (data?.id as string | null) ?? null;
-    }
-  }
-  const full = userId ? await hasFullAccess(userId) : false;
-  if (!full) {
-    // 未課金。ログイン中なら owner_token を返す → /aisho の課金CTAに渡して、
-    // SP で Cookie が消えても owner_token で本人解決できるようにする (401→トップ回避)。
-    return NextResponse.json(
-      { locked: true, ownerToken: session?.owner_token ?? null },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
+  // 相性診断は無料開放 (2026-08-16)。認可ゲートを撤去し全員へ本文を返す。
   const r = compat(a, b, locale);
   const scenes = sceneLines(a, b, locale).map((line) => ({
     key: line.key,

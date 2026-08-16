@@ -10,6 +10,7 @@ import {
 import {
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
+  purchaseIncludesHoshiyomiChat,
 } from "@/lib/access-products";
 
 export { isCheckoutSessionId };
@@ -23,6 +24,7 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   guest: boolean;
   product: MetaPurchaseProduct;
   destinyFeaturesIncluded: boolean;
+  hoshiyomiChatIncluded: boolean;
   friendFeaturesIncluded: boolean;
 }>;
 
@@ -99,6 +101,15 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
         product === "unmei_upgrade" ||
         (product === "full_access" &&
           purchaseIncludesDestinyFeatures(
+            product,
+            session.metadata?.destiny_access_policy,
+          )),
+      // チャットのクレジット付与があるのは premium_bundle と対象の full_access のみ
+      // (旧 unmei 単体商品は付与対象外)。
+      hoshiyomiChatIncluded:
+        product === "premium_bundle" ||
+        (product === "full_access" &&
+          purchaseIncludesHoshiyomiChat(
             product,
             session.metadata?.destiny_access_policy,
           )),

@@ -12,3 +12,20 @@
 export function isThirtyTwoEnabled(): boolean {
   return process.env.NEXT_PUBLIC_THIRTYTWO_ENABLED === "true";
 }
+
+export type PaywallCardMode = "legacy" | "three-course";
+
+/**
+ * 自己診断・友達診断・相性で表示する課金カード。
+ *
+ * - legacy（未設定時）: 3コース化以前の単一カード
+ * - three-course: お試し・完全版・プレミアムの松竹梅カード
+ *
+ * NEXT_PUBLIC_PAYWALL_CARD_MODE=three-course にして再ビルドすれば、
+ * コンポーネントを変更せず松竹梅へ戻せる。
+ */
+export function paywallCardMode(): PaywallCardMode {
+  return process.env.NEXT_PUBLIC_PAYWALL_CARD_MODE === "three-course"
+    ? "three-course"
+    : "legacy";
+}
