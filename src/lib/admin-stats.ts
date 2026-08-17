@@ -34,6 +34,7 @@ import {
   THREE_COURSE_PAYWALL_VERSION,
   type AccessProduct,
 } from "@/lib/access-products";
+import { paywallCardMode } from "@/lib/feature-flags";
 
 const PAGE = 1000;
 const RETRY_PAGE = 250;
@@ -1050,12 +1051,23 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
 
-  // ===== 現行3コース課金カード =====
-  // 旧¥199単一カードと混ぜず、カード表示・コース表示・CTA・Stripe・決済を
-  // paywall_version で一貫して接続する。Stripeテストセッションは全段の分子から除外。
-  const isThreeCourseMeta = (
+  // ===== 現在ユーザーに表示している課金カード =====
+  // feature flag と同じモードを正本にし、カード表示・CTA・Stripe・決済を
+  // paywall_version で一貫して接続する。開発プレビューとStripeテストは除外する。
+  const activePaywallVersion =
+    paywallCardMode() === "three-course"
+      ? THREE_COURSE_PAYWALL_VERSION
+      : "legacy";
+  const isActivePaywallMeta = (
     metadata: Record<string, unknown> | null,
-  ): boolean => metadata?.paywall_version === THREE_COURSE_PAYWALL_VERSION;
+  ): boolean => metadata?.paywall_version === activePaywallVersion;
+  const isMainResultPageMeta = (
+    metadata: Record<string, unknown> | null,
+  ): boolean => metadata?.page === "me" || metadata?.page === "tako";
+  const isMainResultReturnMeta = (
+    metadata: Record<string, unknown> | null,
+  ): boolean =>
+    metadata?.return_to === "me" || metadata?.return_to === "tako";
   const productFromMeta = (
     metadata: Record<string, unknown> | null,
   ): AccessProduct | null => {
@@ -1071,27 +1083,40 @@ export async function computeStats(from: string | null, to: string | null) {
   };
 
   const courseCardViewRows = paywallViewedRows.filter((row) =>
-    isThreeCourseMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
   );
   const coursePlanViewRows = paywallPlanViewedRows.filter((row) =>
-    isThreeCourseMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
   );
   const courseScrollRows = paywallScrollRows.filter((row) =>
-    isThreeCourseMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
+  );
+  // 解除導線はカードが表示される前に押す入口なので、カードのversionでは絞らない。
+  // 旧実装が表示モードを見ず3コース版として記録した期間も、実際の入口人数は復元できる。
+  const mainResultScrollRows = paywallScrollRows.filter((row) =>
+    isMainResultPageMeta(row.metadata),
   );
   const courseCtaRows = purchaseCtaRows.filter((row) =>
-    isThreeCourseMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
   );
   const courseCheckoutRows = checkoutCreatedRows.filter(
-    (row) => isThreeCourseMeta(row.metadata) && isLiveStripeRow(row),
+    (row) =>
+      isActivePaywallMeta(row.metadata) &&
+      isMainResultReturnMeta(row.metadata) &&
+      isLiveStripeRow(row),
   );
   const coursePurchaseRows = purchaseCompletedRows.filter(
-    (row) => isThreeCourseMeta(row.metadata) && isLiveStripeRow(row),
+    (row) =>
+      isActivePaywallMeta(row.metadata) &&
+      isMainResultReturnMeta(row.metadata) &&
+      isLiveStripeRow(row),
   );
 
   const courseCardViewers = toUniquePaywallAudience(courseCardViewRows);
   const coursePlanViewers = toUniquePaywallAudience(coursePlanViewRows);
-  const courseScrollClickers = toUniquePaywallAudience(courseScrollRows);
+  const mainResultScrollClickers = toUniquePaywallAudience(
+    mainResultScrollRows,
+  );
   const courseCtaClickers = toUniquePaywallAudience(courseCtaRows);
   const courseStripeReached = countUniqueStripeSessions(courseCheckoutRows);
   const coursePurchasers = countUniquePurchasers(coursePurchaseRows);
@@ -1908,17 +1933,18 @@ export async function computeStats(from: string | null, to: string | null) {
           .sort((a, b) => b.actions - a.actions),
       },
     },
-    // 3コース版の合計ファネル。旧単一カードとテスト決済は含めない。
+    // 現在表示中の課金カードの合計ファネル。別バージョン・開発プレビュー・
+    // テスト決済は含めない。解除導線クリックはカードへの流入操作なので別指標として保持する。
     paywallFunnel: [
       { label: "結果ページ表示", count: eligibleResultSessionIds.size },
       { label: "課金カード表示", count: courseCardViewers },
-      { label: "解除ボタン押下", count: courseScrollClickers },
+      { label: "解除ボタン押下", count: mainResultScrollClickers },
       { label: "購入CTA押下", count: courseCtaClickers },
       { label: "Stripe到達", count: courseStripeReached },
       { label: "決済完了", count: coursePurchasers },
     ],
     coursePaywall: {
-      version: THREE_COURSE_PAYWALL_VERSION,
+      version: activePaywallVersion,
       cardViewers: courseCardViewers,
       planViewers: coursePlanViewers,
       ctaClickers: courseCtaClickers,

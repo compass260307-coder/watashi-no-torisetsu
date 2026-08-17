@@ -1519,8 +1519,17 @@ export default function AdminPage() {
     ...stats.friendDiagnosisFunnel.friendFunnel.map((f) => f.count),
     1,
   );
+  // 「解除ボタン押下」はカード表示後の段階ではなく、モーダルを開く流入操作。
+  // 連続ファネルに混ぜると前段比が100%を超えるため、別指標として扱う。
+  const paywallUnlockClicks =
+    (stats.paywallFunnel ?? []).find(
+      (step) => step.label === "解除ボタン押下",
+    )?.count ?? 0;
+  const displayPaywallFunnel = (stats.paywallFunnel ?? []).filter(
+    (step) => step.label !== "解除ボタン押下",
+  );
   const paywallFunnelMax = Math.max(
-    ...(stats.paywallFunnel ?? []).map((f) => f.count),
+    ...displayPaywallFunnel.map((f) => f.count),
     1,
   );
   const unmeiFunnelMax = Math.max(
@@ -1966,7 +1975,7 @@ export default function AdminPage() {
         };
       })()
     : null;
-  const biggestPaywallDrop = (stats.paywallFunnel ?? []).reduce<{
+  const biggestPaywallDrop = displayPaywallFunnel.reduce<{
     from: string;
     to: string;
     lost: number;
@@ -2536,8 +2545,16 @@ export default function AdminPage() {
             <Panel className="p-5 sm:p-6">
             <div className="mb-6 flex flex-col gap-4 border-b border-[#eef1f5] pb-5 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <h3 className="text-sm font-medium text-[#202124]">3コースの購入ファネル</h3>
-                <p className="mt-1 text-[11px] text-[#5f6368]">お試し ¥199・完全版 ¥499・プレミアム ¥899</p>
+                <h3 className="text-sm font-medium text-[#202124]">
+                  {stats.coursePaywall.version === "legacy"
+                    ? "¥499課金カードの購入ファネル"
+                    : "3コースの購入ファネル"}
+                </h3>
+                <p className="mt-1 text-[11px] text-[#5f6368]">
+                  {stats.coursePaywall.version === "legacy"
+                    ? "完全版 ¥499"
+                    : "お試し ¥199・完全版 ¥499・プレミアム ¥899"}
+                </p>
               </div>
               <dl className="grid grid-cols-3 overflow-hidden rounded-xl border border-[#dfe5ef] bg-[#f8fafd]">
                 <div className="border-r border-[#dfe5ef] px-4 py-3 text-center">
@@ -2560,30 +2577,36 @@ export default function AdminPage() {
               <span className="w-16 text-right">前段比</span>
             </div>
             <div className="flex flex-col gap-2">
-              {(stats.paywallFunnel ?? []).map((step, i) => (
+              {displayPaywallFunnel.map((step, i) => (
                 <FunnelBar
                   key={step.label}
                   label={step.label}
                   count={step.count}
                   max={paywallFunnelMax}
                   prevCount={
-                    i > 0 ? stats.paywallFunnel[i - 1].count : undefined
+                    i > 0 ? displayPaywallFunnel[i - 1].count : undefined
                   }
                 />
               ))}
             </div>
             <p className="mt-4 border-t border-stone-100 pt-4 text-[11px] leading-relaxed text-stone-400">
-              3コース版だけを集計し、テスト決済（cs_test_）は除外しています。課金率はユニーク課金者 ÷ カード閲覧者です。
+              {stats.coursePaywall.version === "legacy"
+                ? "現在表示中の¥499単一カードだけを集計し、開発プレビューとテスト決済（cs_test_）は除外しています。"
+                : "現在表示中の3コース版だけを集計し、開発プレビューとテスト決済（cs_test_）は除外しています。"}
+              課金率はユニーク課金者 ÷ カード閲覧者です。解除導線クリックはカードへの流入操作のため、ファネル段階には含めていません（
+              {paywallUnlockClicks.toLocaleString()}人）。
             </p>
-            <div className="mt-6 border-t border-stone-100 pt-5">
-              <p className="mb-1 text-sm font-black text-stone-900">
-                コース別
-              </p>
-              <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
-                500ms以上中央表示されたコースを分母に、CTA・Stripe・決済を商品別に追跡します。
-              </p>
-              <CoursePaywallTable plans={stats.coursePaywall.plans} />
-            </div>
+            {stats.coursePaywall.version !== "legacy" && (
+              <div className="mt-6 border-t border-stone-100 pt-5">
+                <p className="mb-1 text-sm font-black text-stone-900">
+                  コース別
+                </p>
+                <p className="mb-4 text-[11px] leading-relaxed text-stone-400">
+                  500ms以上中央表示されたコースを分母に、CTA・Stripe・決済を商品別に追跡します。
+                </p>
+                <CoursePaywallTable plans={stats.coursePaywall.plans} />
+              </div>
+            )}
             {/* 商品別の売上内訳 (選択期間・全 payment_kind) */}
             {(stats.revenueByKind ?? []).length > 0 && (
               <div className="mt-6 border-t border-stone-100 pt-5">

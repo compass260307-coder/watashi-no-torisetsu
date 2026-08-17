@@ -20,6 +20,7 @@ import {
   MULTI_COURSE_PAYWALL_PRODUCT,
   THREE_COURSE_PAYWALL_VERSION,
 } from "@/lib/access-products";
+import { paywallCardMode } from "@/lib/feature-flags";
 
 const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
@@ -40,9 +41,9 @@ function currentPage(): string {
   return typeof window === "undefined" ? "" : window.location.pathname;
 }
 
-function isThreeCoursePage(): boolean {
+function supportsThreeCoursePaywall(): boolean {
   const page = currentPage();
-  // 日本語 /me・/tako だけが3コース。/ko 以下や /aisho は旧単一商品。
+  // 日本語 /me・/tako だけが3コース対応。/ko 以下や /aisho は旧単一商品。
   return (
     page === "/me" ||
     page.startsWith("/me/") ||
@@ -51,8 +52,14 @@ function isThreeCoursePage(): boolean {
   );
 }
 
+function usesThreeCoursePaywall(): boolean {
+  return (
+    supportsThreeCoursePaywall() && paywallCardMode() === "three-course"
+  );
+}
+
 function currentProduct(): "multi_course" | "full_access" {
-  return isThreeCoursePage()
+  return usesThreeCoursePaywall()
     ? MULTI_COURSE_PAYWALL_PRODUCT
     : "full_access";
 }
@@ -112,7 +119,7 @@ export function scrollToPaywall(
       target: targetId,
       page: window.location.pathname.split("/")[1] || "top",
       product: currentProduct(),
-      paywall_version: isThreeCoursePage()
+      paywall_version: usesThreeCoursePaywall()
         ? THREE_COURSE_PAYWALL_VERSION
         : "legacy",
     },
