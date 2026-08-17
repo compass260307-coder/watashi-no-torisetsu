@@ -24,6 +24,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
+import { PeekButton, type UnlockPeek } from "./PaywallPeek";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
 import { track } from "@/lib/track";
@@ -59,16 +60,127 @@ const SELF_REPORT_LIST_PRICE_COPY = `¥${SELF_REPORT_LIST_PRICE_JPY}`;
 // すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる4項目に集約。
 // 解放項目。設置ページで並びを変える (自己診断=自分の解放が先 / 友達診断=友達の解放が先)。
 // ⑤恋愛パートナー分析 (相性) は ¥499 完全版パッケージに含まれるので両方に載せる。
-type UnlockItem = { title: string; desc: string };
+type UnlockItem = { title: string; desc: string; peek?: UnlockPeek };
+
+// 覗き見 (?) ボタン用の実画面スクショ (public/paywall-peek/)。ローカルの実画面を
+// 撮影した固定サンプル (タイプ例: きらめきクラゲ)。寸法は実ファイルどおり。
+// KO 項目には付けない (ボタン非表示 = 従来表示のまま)。
+const PEEK_SECTIONS: UnlockPeek = {
+  img: "/paywall-peek/sections.webp",
+  alt: "解放される自己診断セクションの画面例",
+  width: 640,
+  height: 1067,
+  lead: "無料版で鍵がかかっていた「続き」が、結果ページでそのまま読めるようになります。",
+  points: [
+    "恋愛・キャリアの深掘りの続きを全解放",
+    "恋人が密かに我慢していることも読める",
+    "「もしもの時のアナタ」などシーン集つき",
+    "注意点の続きと、その対処法まで",
+  ],
+};
+const PEEK_EBOOK: UnlockPeek = {
+  img: "/paywall-peek/ebook-page.webp",
+  alt: "自己分析の電子書籍の紙面例",
+  width: 560,
+  height: 841,
+  // lead 無し・文言は 2026-08-17 オーナー指定 (3項目)。
+  points: [
+    "恋愛・友人関係・仕事まで、あなたを8章で徹底分析",
+    "「自分では気づかなかった自分」が5つのスコアで見える",
+    "購入後すぐに、あなた専用PDFとして受け取れます",
+  ],
+  // 書籍らしさを出す 2 枚重ね (奥=表紙 / 手前=読み方+傾向グラフの紙面)。
+  pages: [
+    {
+      img: "/paywall-peek/ebook-cover.webp",
+      alt: "電子書籍の表紙",
+      width: 560,
+      height: 841,
+    },
+    {
+      img: "/paywall-peek/ebook-page.webp",
+      alt: "自己分析の電子書籍の紙面例",
+      width: 560,
+      height: 841,
+    },
+  ],
+};
+const PEEK_FRIENDS: UnlockPeek = {
+  img: "/paywall-peek/friends-ch1.webp",
+  alt: "友達診断まとめレポートの紙面例",
+  width: 560,
+  height: 841,
+  // lead 無し・文言は 2026-08-17 オーナー指定 (3項目)。
+  points: [
+    "友達一人ひとりから見たあなたも、個別に読める",
+    "友達ごとの結果シートも、すべて確認できる",
+    "一人ひとりの見え方の違いまで、個別に読める",
+  ],
+  // 電子書籍と同じ2枚重ね (奥=友達からのメッセージ章 / 手前=第1章「みんなの目に映る
+  // あなたの全体像」)。表紙は電子書籍の表紙と絵柄が似て紛らわしいため使わない。
+  // 奥は友達の生メッセージカードが見える章 (2026-08-17 指示で表紙→友達章→ここに確定)。
+  pages: [
+    {
+      img: "/paywall-peek/friends-letters.webp",
+      alt: "友達診断まとめレポートの「友達からのメッセージ」章",
+      width: 560,
+      height: 841,
+    },
+    {
+      img: "/paywall-peek/friends-ch1.webp",
+      alt: "友達診断まとめレポート第1章「みんなの目に映るあなたの全体像」",
+      width: 560,
+      height: 841,
+    },
+  ],
+};
+const PEEK_ALICE: UnlockPeek = {
+  img: "/paywall-peek/alice-scene-1.webp",
+  alt: "AI占い師「Alice」とのチャットの様子",
+  width: 560,
+  height: 718,
+  // lead 無し・文言は 2026-08-17 オーナー指定 (4項目)。
+  points: [
+    "あなたの性格タイプを踏まえて、相談に寄り添ってくれる",
+    "恋愛・人間関係・進路まで、幅広いテーマに対応",
+    "言葉にしにくい悩みも、対話を通して整理できる",
+    "完全版なら、すぐにAliceとの対話を始められる",
+  ],
+  // 3枚とも全体が見える三角配置 (2026-08-18 指示): 奥左=チャット前の「Aliceと話す」
+  // 画面 (/hoshiyomi 実画面)・奥右=進路シーン・手前=恋愛シーン。
+  // チャットシーンは /dev/alice-peek-scenes (実チャットUIと同クラスの静的レプリカ) から撮影。
+  pages: [
+    {
+      img: "/paywall-peek/alice-scene-0.webp",
+      alt: "AI占い師「Alice」と話す画面",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/alice-scene-3.webp",
+      alt: "Aliceに進路の相談をしているチャットの様子",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/alice-scene-1.webp",
+      alt: "Aliceに恋愛相談をしているチャットの様子",
+      width: 560,
+      height: 718,
+    },
+  ],
+};
 
 // 自己分析の電子書籍/PDF・自己/友達の解放・相性の共通パーツ (ページ間で文言を揃える)。
 const U_SELF_UNLOCK: UnlockItem = {
   title: "自己診断結果の完全解放",
   desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
+  peek: PEEK_SECTIONS,
 };
 const U_FRIEND_PDF: UnlockItem = {
   title: "何度でも作り直せる友達診断レポート",
   desc: "友達が増えるたびに更新できる、友達視点のレポートPDF。何度でもダウンロードOK。",
+  peek: PEEK_FRIENDS,
 };
 const U_AISHO: UnlockItem = {
   title: "恋愛パートナー分析",
@@ -78,12 +190,14 @@ const U_AISHO: UnlockItem = {
 // 自己診断結果ページ (/me) 用。
 const SELF_UNLOCKS: UnlockItem[] = [
   {
+    // 覗き見(?)は付けない (2026-08-17 オーナー指示)。
     title: "あなたの結果のロックされた8つのセクションすべて",
     desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
   },
   {
-    title: "ダウンロード可能な16ページ以上のあなたの電子書籍",
+    title: "16ページ以上のあなたの電子書籍",
     desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
+    peek: PEEK_EBOOK,
   },
 ];
 
@@ -99,6 +213,7 @@ const TAKO_UNLOCKS: UnlockItem[] = [
   {
     title: "ダウンロード可能な自己分析完全版PDFレポート",
     desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
+    peek: PEEK_EBOOK,
   },
   U_AISHO,
 ];
@@ -173,7 +288,17 @@ function CornerDecor({
   );
 }
 
-function CheckItem({ title, desc, accent }: { title: string; desc: string; accent: string }) {
+function CheckItem({
+  title,
+  desc,
+  accent,
+  peek,
+}: {
+  title: string;
+  desc: string;
+  accent: string;
+  peek?: UnlockPeek;
+}) {
   return (
     <li className="flex items-start gap-3">
       <span
@@ -195,8 +320,12 @@ function CheckItem({ title, desc, accent }: { title: string; desc: string; accen
         </svg>
       </span>
       <span className="min-w-0">
-        <span className="block text-[15px] font-black leading-snug text-[#2E2E5C]">
-          {title}
+        {/* タイトル + 覗き見(?)。flex で ? をタイトルのすぐ横・縦中央に置く
+            (タイトルが2行に折り返しても ? は右横センターに留まる)。 */}
+        <span className="flex items-center gap-1.5 text-[16px] font-black leading-snug text-[#2E2E5C]">
+          {/* [text-wrap:pretty]: ? の分だけ幅が詰まっても「籍」等の1文字孤立行を作らない */}
+          <span className="min-w-0 [text-wrap:pretty]">{title}</span>
+          {peek && <PeekButton peek={peek} title={title} accent={accent} />}
         </span>
         <span className="body-gothic block text-[13px] leading-[1.6] text-[#5A5A6E]">
           {desc}
@@ -484,8 +613,14 @@ export function FullAccessPromoCard({
               hasImage ? "" : "mx-auto max-w-[320px]"
             }`}
           >
-            {unlocks.map(({ title, desc }) => (
-              <CheckItem key={title} title={title} desc={desc} accent={tone.accent} />
+            {unlocks.map(({ title, desc, peek }) => (
+              <CheckItem
+                key={title}
+                title={title}
+                desc={desc}
+                accent={tone.accent}
+                peek={peek}
+              />
             ))}
           </ul>
 
