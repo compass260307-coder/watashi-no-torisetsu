@@ -255,12 +255,12 @@ export function PeekButton({
         aria-haspopup="dialog"
         aria-label={`${title}の中身をチラ見せ`}
         onClick={() => setOpen(true)}
-        // 視覚 22px + padding でタップ領域を確保 (負マージンで見た目の間隔は保つ)。
-        // 配置は呼び出し側の flex (タイトルのすぐ横・縦中央) に任せる (2026-08-18 指示)。
-        className="-m-1 inline-flex flex-shrink-0 items-center justify-center p-1"
+        // タイトル文章の末尾にインラインで続ける (align-middle で文字の縦中央)。
+        // 2行に折り返しても最後の文字のすぐ後ろに来る (右端に浮かせない / 2026-08-18)。
+        // -my-1 で行の高さを崩さず、p-1 でタップ領域を確保。
+        className="-my-1 ml-1 inline-flex items-center justify-center p-1 align-middle"
       >
-        {/* 白地 + アクセント枠線の ? (塗りつぶし版はオーナー確認で不採用 2026-08-18)。
-            サイズ22pxとタイトル横のflex配置はそのまま維持。 */}
+        {/* 白地 + アクセント枠線の ? (塗りつぶし版はオーナー確認で不採用 2026-08-18)。 */}
         <span
           className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 bg-white text-[12px] font-black leading-none transition hover:scale-110 active:scale-95"
           style={{ borderColor: accent, color: accent }}

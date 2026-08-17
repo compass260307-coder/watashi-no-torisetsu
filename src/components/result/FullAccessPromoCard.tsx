@@ -346,11 +346,11 @@ function CheckItem({
         </svg>
       </span>
       <span className="min-w-0">
-        {/* タイトル + 覗き見(?)。flex で ? をタイトルのすぐ横・縦中央に置く
-            (タイトルが2行に折り返しても ? は右横センターに留まる)。 */}
-        <span className="flex items-center gap-1.5 text-[16px] font-black leading-snug text-[#2E2E5C]">
-          {/* [text-wrap:pretty]: ? の分だけ幅が詰まっても「籍」等の1文字孤立行を作らない */}
-          <span className="min-w-0 [text-wrap:pretty]">{title}</span>
+        {/* タイトル + 覗き見(?)。? は文章の末尾にインラインで続ける
+            (2行に折り返しても最後の文字のすぐ後ろに来る。右端に浮かせない)。
+            [text-wrap:pretty] で ? のぶん幅が詰まっても1文字孤立行を防ぐ。 */}
+        <span className="block text-[16px] font-black leading-snug text-[#2E2E5C] [text-wrap:pretty]">
+          {title}
           {peek && <PeekButton peek={peek} title={title} accent={accent} />}
         </span>
         <span className="body-gothic block text-[13px] leading-[1.6] text-[#5A5A6E]">
