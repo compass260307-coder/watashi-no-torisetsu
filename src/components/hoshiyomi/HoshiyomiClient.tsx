@@ -211,28 +211,30 @@ function HoshiyomiHome({
     <>
       <section className="relative overflow-hidden bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] px-5 pb-12 pt-8 md:px-8 md:pb-16 md:pt-12">
         <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#CFC9FF]/30 blur-3xl" />
-        <div className="relative mx-auto max-w-[1040px]">
-          <h1 className="text-[32px] font-black leading-[1.25] md:text-[48px]">
+        <div className="relative mx-auto max-w-[1040px] md:grid md:grid-cols-2 md:items-start md:gap-x-10 lg:gap-x-14">
+          <h1 className="text-[32px] font-black leading-[1.25] md:col-start-1 md:row-start-1 md:text-[48px]">
             {copy.title}
           </h1>
 
-          <div className="mt-3 w-full md:mt-5">
+          {/* 画像: SPはタイトル直下 (SP順 = タイトル→画像→サブタイトル→入力)。
+              PC(md+)は右カラム(col2)へ回し、左のテキスト3行ぶんの高さに対して縦中央寄せにする。 */}
+          <div className="mt-6 w-full md:col-start-2 md:row-start-1 md:row-span-3 md:mt-0 md:self-center">
             <Image
               src="/mascot/hoshiyomi-guide-study-transparent.png"
               alt={copy.heroAlt}
               width={1672}
               height={941}
               priority
-              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1100px) calc(100vw - 64px), 1040px"
+              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1100px) calc(50vw - 40px), 500px"
               className="h-auto w-full object-contain"
             />
           </div>
 
-          <div className="max-w-[760px]">
-            <p className="mt-6 max-w-[600px] text-[15px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:mt-7 md:text-[17px]">
-              {copy.description}
-            </p>
+          <p className="mt-4 max-w-[600px] text-[15px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:col-start-1 md:row-start-2 md:mt-5 md:text-[17px]">
+            {copy.description}
+          </p>
 
+          <div className="max-w-[760px] md:col-start-1 md:row-start-3">
             <form onSubmit={submit} className="mt-7">
               <div className="flex items-center gap-2 rounded-2xl border border-[#5B5BEF]/20 bg-white p-2 shadow-[0_12px_34px_rgba(46,46,92,0.10)] focus-within:border-[#5B5BEF]/50">
                 <input
