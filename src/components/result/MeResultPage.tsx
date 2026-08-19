@@ -745,7 +745,7 @@ async function MeResultPageContent({
           </div>
         </div>
         {/* SP=縦積み / PC=2カラム */}
-        <div className="md:flex md:items-stretch md:gap-6">
+        <div className="md:mb-10 md:flex md:items-stretch md:gap-6">
           {/* 左: 性格タイプ カード (PC は約35%幅) */}
           <div className="md:w-[35%] md:max-w-[360px] md:flex-shrink-0">
             <PersonalityTypeCard
