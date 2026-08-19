@@ -117,7 +117,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const sortedGaps = topGaps(gaps, 5);
 
   const displayName =
-    (input.ownerDisplayName ?? "").trim() || (isKo ? "나" : "アナタ");
+    (input.ownerDisplayName ?? "").trim() || (isKo ? "나" : "あなた");
   const perceiverFull =
     (input.perceiverName ?? "").trim() || (isKo ? "친구" : "友達");
   const myTrisetsuUrl = `${isKo ? "/ko" : ""}/me/${input.ownerToken ?? ""}`;

@@ -134,7 +134,7 @@ export function BigFiveDivergingBars({
   const resolvedPrimaryLabel =
     primaryLabel ?? (locale === "ko" ? "나" : "自分");
   const resolvedTitle =
-    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るアナタ");
+    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るあなた");
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* セクション見出し (16P 風: 丸囲み数字 + 大きめタイトル。number 未指定は絵文字バッジ)。

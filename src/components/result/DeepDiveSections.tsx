@@ -61,7 +61,7 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "好かれようとしすぎない",
-    body: "がんばって尽くさなくても、アナタの存在そのものに安心してくれる人はちゃんといる。",
+    body: "がんばって尽くさなくても、あなたの存在そのものに安心してくれる人はちゃんといる。",
   },
   {
     heading: "ほしいものを言葉にする",
@@ -69,11 +69,11 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "見返りを求める自分を責めない",
-    body: "返してほしいと思うのは自然なこと。それはアナタが本気で向き合っている証拠。",
+    body: "返してほしいと思うのは自然なこと。それはあなたが本気で向き合っている証拠。",
   },
   {
     heading: "相手の沈黙を怖がらない",
-    body: "連絡が少ない日があっても、それはアナタへの気持ちが減ったわけじゃない。",
+    body: "連絡が少ない日があっても、それはあなたへの気持ちが減ったわけじゃない。",
   },
 ];
 
@@ -83,11 +83,11 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
 const LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "「大丈夫だよ」の本当の意味",
-    body: "恋人の口グセの裏には、アナタに言えずに飲み込んだ気持ちが隠れていることがある。",
+    body: "恋人の口グセの裏には、あなたに言えずに飲み込んだ気持ちが隠れていることがある。",
   },
   {
     heading: "我慢が溜まりやすい場面",
-    body: "アナタのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
+    body: "あなたのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
   },
   {
     heading: "言われる前に気づきたいサイン",
@@ -108,7 +108,7 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "チームの舵取り役",
-    body: "前に立つか、支えるか。アナタの性格が活きるポジションには傾向がある。",
+    body: "前に立つか、支えるか。あなたの性格が活きるポジションには傾向がある。",
   },
   {
     heading: "深く潜る専門職",
@@ -116,19 +116,19 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "エネルギーを削る職場の共通点",
-    body: "アナタのやる気をじわじわ削る環境には、はっきりした共通点がある。",
+    body: "あなたのやる気をじわじわ削る環境には、はっきりした共通点がある。",
   },
 ];
 
 // 「職場の人間関係」ロック用デコイ (★本文ではない)。
 const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "アナタに合う距離感",
-    body: "近づきすぎず、離れすぎず。アナタが一番ラクでいられる距離には型がある。",
+    heading: "あなたに合う距離感",
+    body: "近づきすぎず、離れすぎず。あなたが一番ラクでいられる距離には型がある。",
   },
   {
     heading: "頼まれごとの線の引き方",
-    body: "断れずに抱え込む前に、アナタの性格に合った断り方を知っておきたい。",
+    body: "断れずに抱え込む前に、あなたの性格に合った断り方を知っておきたい。",
   },
   {
     heading: "合わない人との並走のコツ",
@@ -136,7 +136,7 @@ const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "周りが密かに助かっている部分",
-    body: "アナタが思っているより、チームはアナタのあの動きに支えられている。",
+    body: "あなたが思っているより、チームはあなたのあの動きに支えられている。",
   },
 ];
 
@@ -302,7 +302,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタの恋人が言えずにいる気持ちを知りましょう。
+        あなたの恋人が言えずにいる気持ちを知りましょう。
       </>
     ),
     source: "love_endure_card",
@@ -313,7 +313,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタに合った働き方と、避けたほうがいい職場を知りましょう。
+        あなたに合った働き方と、避けたほうがいい職場を知りましょう。
       </>
     ),
     source: "career_fit_card",
@@ -324,7 +324,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタに合った職場の人間関係のつくり方を知りましょう。
+        あなたに合った職場の人間関係のつくり方を知りましょう。
       </>
     ),
     source: "career_relations_card",
@@ -420,7 +420,7 @@ export function DeepDiveSections({
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* ===== 各カテゴリ = 独立した章 (②恋愛傾向 ③キャリア傾向 / 2026-07-22 指示の章順) =====
-          「アナタの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
+          「あなたの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
       {unlocked.map((sec, si) => (
         <div key={sec.key} className={si > 0 ? "mb-12 mt-16" : "mb-12"}>
           {/* 章見出し: ①⑤と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}

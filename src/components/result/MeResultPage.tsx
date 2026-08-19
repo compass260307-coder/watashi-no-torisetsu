@@ -859,7 +859,7 @@ async function MeResultPageContent({
                 ? acquisition
                   ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
                   : "만약의 순간에 나타나는 나"
-                : personalize("もしもの時のアナタ")}
+                : personalize("もしもの時のあなた")}
             </h2>
           </div>
           {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
@@ -954,7 +954,7 @@ async function MeResultPageContent({
                     <>
                       自己分析レポートを入手して、
                       <br className="md:hidden" />
-                      アナタが友達から誤解されやすいポイントを知りましょう。
+                      あなたが友達から誤解されやすいポイントを知りましょう。
                     </>
                   )}
                 </p>
@@ -1062,7 +1062,7 @@ async function MeResultPageContent({
                         },
                         {
                           title: "「私がやらなきゃ」の見直し方",
-                          body: "役割を数えて、本当にアナタでないと困るものだけを残します。",
+                          body: "役割を数えて、本当にあなたでないと困るものだけを残します。",
                         },
                         {
                           title: "疲れる前のサインの見つけ方",
@@ -1118,7 +1118,7 @@ async function MeResultPageContent({
                         <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
                           残りの注意点と対処法を解放して、
                           <br className="md:hidden" />
-                          アナタのトリセツを完成させましょう。
+                          あなたのトリセツを完成させましょう。
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"

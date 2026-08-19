@@ -278,7 +278,7 @@ export function buildTakoReportSheets(
           : "友達";
 
     // 本文: /tako シート (MinnaTypeProse) と同じ変換。
-    //   - 冒頭を「◯◯さんから見た + アナタ…」に
+    //   - 冒頭を「◯◯さんから見た + あなた…」に
     //   - 中間再開段落 (Web ではグラフ直後) も「◯◯さんから見た…」で仕切り直す
     const sections =
       locale === "ko"
@@ -289,7 +289,7 @@ export function buildTakoReportSheets(
     const manualParas = (manual?.body ?? "").split("\n\n").filter(Boolean);
     if (locale === "ko" && manualParas[0]?.startsWith("당신은")) {
       manualParas[0] = `${viewer}의 눈에 비친 당신은${manualParas[0].slice("당신은".length)}`;
-    } else if (manualParas[0]?.startsWith("アナタ")) {
+    } else if (manualParas[0]?.startsWith("あなた")) {
       manualParas[0] = `${viewer}から見た${manualParas[0]}`;
     }
     const reopenIdx = Math.max(0, Math.floor(manualParas.length / 2) - 1) + 1;
@@ -312,7 +312,7 @@ export function buildTakoReportSheets(
           break;
         }
       }
-      manualParas[reopenIdx] = t.startsWith("アナタ")
+      manualParas[reopenIdx] = t.startsWith("あなた")
         ? `${viewer}から見た${t}`
         : `${viewer}から見ると、${t}`;
     }
@@ -328,7 +328,7 @@ export function buildTakoReportSheets(
       .slice(0, 2);
     if (locale === "ko" && loveParas[0]?.startsWith("당신")) {
       loveParas[0] = `${viewer}의 눈에 비친 ${loveParas[0]}`;
-    } else if (loveParas[0]?.startsWith("アナタの恋は")) {
+    } else if (loveParas[0]?.startsWith("あなたの恋は")) {
       loveParas[0] = `${viewer}から見た${loveParas[0]}`;
     }
     const loveScene = resolveLoveScene(f.perceivedScores, locale);

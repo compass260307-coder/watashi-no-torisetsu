@@ -331,7 +331,7 @@ export async function TakoResultPage({
         ? "친구"
         : "友達";
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
-    // 「◯◯さんから見たアナタの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
+    // 「◯◯さんから見たあなたの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
     // 表示は先頭2段落 (具体的な長所の描写) だけ。3段落目以降の内省パート
     // (でも、じつは…/欠点じゃありません…) は抽象的で、下のモテポイントとも
     // 役割がかぶるため出さない (2026-07-20 指示)。
@@ -347,7 +347,7 @@ export async function TakoResultPage({
     if (loveScene) loveProse.push(loveScene);
     if (isKo && loveProse[0]?.startsWith("당신의 사랑은")) {
       loveProse[0] = `${koSubject(viewer)} 보는 ${loveProse[0]}`;
-    } else if (loveProse[0]?.startsWith("アナタの恋は")) {
+    } else if (loveProse[0]?.startsWith("あなたの恋は")) {
       loveProse[0] = `${viewer}から見た${loveProse[0]}`;
     }
     // ⑤「ぶっちゃけ嫌われてない…？」の危険信号: その友達が見た認識タイプ(32→16)の
@@ -643,7 +643,7 @@ export async function TakoResultPage({
                       }
                     />
 
-                    {/* 本文: 見出し・導入なしで「◯◯さんから見たアナタは〜」からいきなり始める
+                    {/* 本文: 見出し・導入なしで「◯◯さんから見たあなたは〜」からいきなり始める
                         (2026-07-18 指示。/me の本文と同じ見た目)。
                         本文中間 (挿絵の直後) に「①五つの性格傾向のギャップ」グラフを差し込む
                         (2026-07-19 指示。/me の「①五つの性格傾向」と同じ構図)。 */}
@@ -737,7 +737,7 @@ export async function TakoResultPage({
                                   className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                                 />
                               )}
-                              {/* メイン本文: 「◯◯さんから見たアナタの恋は、〜」(認識タイプの恋愛本文) */}
+                              {/* メイン本文: 「◯◯さんから見たあなたの恋は、〜」(認識タイプの恋愛本文) */}
                               {sh.loveProse.length > 0 && (
                                 <div className="mb-10">
                                   {sh.loveProse.map((para, i) => (
@@ -750,7 +750,7 @@ export async function TakoResultPage({
                                   ))}
                                 </div>
                               )}
-                              {/* 「アナタに沼る人」「損してるポイント」(FriendLoveSection) は
+                              {/* 「あなたに沼る人」「損してるポイント」(FriendLoveSection) は
                                   2026-07-28 削除指示で撤去 (コンポーネントと
                                   friend-love-content の resolver は残置)。 */}
                             </section>

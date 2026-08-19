@@ -258,7 +258,7 @@ function FriendContent({
           confidence: data.perception?.confidence,
         },
       });
-      // Day 12-Polish-F: 送信完了後は獲得エンジン (理解度 + アナタの目に映る owner
+      // Day 12-Polish-F: 送信完了後は獲得エンジン (理解度 + あなたの目に映る owner
       // + 自己診断 CTA) を返す遷移ページへ。詳細ギャップ/課金は owner 限定の
       // /evaluate/result 側に集約し、友達にはここでは出さない。
       // 待機ページは廃止。送信中表示のまま結果ページへ直接遷移する

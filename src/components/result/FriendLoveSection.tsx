@@ -1,6 +1,6 @@
 // 友達診断 /tako 結果ページ ②恋愛の課金ブロック。
 // 2026-07-24: 「隠れモテポイント/モテるためのヒント」を刷新し、
-//   ・「アナタに沼る人」 (沼るポイント3つ + 沼る瞬間のシーンカード)
+//   ・「あなたに沼る人」 (沼るポイント3つ + 沼る瞬間のシーンカード)
 //   ・「損してるポイント」 (伝わってない魅力2つ + 取り返すヒント各1行)
 // に置き換え (resolveNumaru / resolveLossPoints・friend-love-content.ts)。
 // 旧 resolveFriendLoveChecklist / resolveMoteHints は完全版PDFレポート側で継続使用。
@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import type { LossItem, NumaruContent } from "@/lib/friend-love-content";
 
 interface FriendLoveSectionProps {
-  /** 「アナタに沼る人」(resolveNumaru)。 */
+  /** 「あなたに沼る人」(resolveNumaru)。 */
   numa: NumaruContent | null;
   /** 「損してるポイント」(resolveLossPoints・2項目)。 */
   loss: LossItem[];
@@ -117,9 +117,9 @@ export function FriendLoveSection({
   if (!lockedBlocks && !numa && loss.length === 0) return null;
   return (
     <div>
-      {/* アナタに沼る人 */}
+      {/* あなたに沼る人 */}
       <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
-        {who}の回答でわかった、アナタに沼る人
+        {who}の回答でわかった、あなたに沼る人
       </h3>
       {lockedBlocks?.numa ??
         (numa && (
