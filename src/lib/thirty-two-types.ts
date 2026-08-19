@@ -126,6 +126,7 @@ export { animalSlugForType };
 // どのキーがフォールバックかは missingThirtyTwoContentKeys() で一覧できる。
 
 import { selfResultContent32 } from "./thirty-two-content/self-result-32";
+import { TYPE_SUMMARY_32 } from "./thirty-two-content/type-summary-32";
 import { perceivedByType32 } from "./thirty-two-content/perceived-by-type-32";
 import { manualByType32 } from "./thirty-two-content/manual-by-type-32";
 import {
@@ -210,9 +211,14 @@ export function thirtyTwoCatchphrase(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].catchphrase;
 }
 
-/** 32キャラの図鑑用説明文 (/zukan-internal カードの一言説明。事典風) */
+/** 32キャラの zukanDesc (性格を端的に説明する事典風の三人称説明。/zukan-internal カード用) */
 export function thirtyTwoZukanDesc(id: ThirtyTwoTypeId): string {
   return thirtyTwoCharacter[id].zukanDesc;
+}
+
+/** 32キャラの型サマリー (性格タイプカードの説明文。三人称・2文の事典風。zukanDesc より長い) */
+export function thirtyTwoSummary(id: ThirtyTwoTypeId): string {
+  return TYPE_SUMMARY_32[id];
 }
 
 /** 32キャラの画像パス (/characters/v3/<slug>.webp)。画像未配置でもパスだけ組める。 */

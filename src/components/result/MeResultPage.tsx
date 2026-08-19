@@ -43,17 +43,17 @@ import {
   classifyThirtyTwoType,
   selfContentFor,
   thirtyTwoName,
-  thirtyTwoAnimal,
   thirtyTwoEssence,
   thirtyTwoImagePath,
   thirtyTwoOneLiner,
+  thirtyTwoSummary,
   thirtyTwoGroup,
   baseIdOf,
   nAxisOf,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
-import { ResultHero } from "@/components/result/ResultHero";
-import { heroColorsForGroup } from "@/lib/hero-colors";
+import { PersonalityTypeCard } from "@/components/result/PersonalityTypeCard";
+import { PersonalityTraitsCard } from "@/components/result/PersonalityTraitsCard";
 import { preferCutImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
@@ -72,11 +72,9 @@ import {
   SceneCautionTeaser,
   SceneCautionList,
 } from "@/components/result/SceneCautionTeaser";
-import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 // 他己パート (他者評価/職業/みんなの目/他己フローティングCTA) と、
 // 自己×友達の「自己認知ギャップ」発散バー(①)は /tako/[token] へ移設。
 // ただし自己単体の発散バー(②「5つの軸で見るアナタ」)は自己ページの要素なので /me に残す。
-import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { classifyType } from "@/lib/diagnosis";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { PaywallModal } from "@/components/result/PaywallModal";
@@ -94,7 +92,6 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { ResetDataLink } from "@/components/ResetDataLink";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
-import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import type {
   BigFiveDimension,
   CModifier,
@@ -284,35 +281,8 @@ async function MeResultPageContent({
   const friendEvalCount = (perceptionRows ?? []).length;
 
   // ② 友達名・手紙・みんなの目 context は /tako へ移設 (owner-report-data.ts)。
-
-  // 友達評価の平均 (0-10)。各軸、数値がある行だけを母数に平均。0 件なら null。
-  const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =
-    (() => {
-      const rows = perceptionRows ?? [];
-      if (rows.length === 0) return null;
-      const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
-      const acc: Record<BigFiveDimension, { sum: number; n: number }> = {
-        E: { sum: 0, n: 0 },
-        A: { sum: 0, n: 0 },
-        O: { sum: 0, n: 0 },
-        C: { sum: 0, n: 0 },
-        N: { sum: 0, n: 0 },
-      };
-      for (const r of rows) {
-        const ps = (r.perceived_scores ?? {}) as Record<string, unknown>;
-        for (const d of dims) {
-          const v = ps[d];
-          if (typeof v === "number") {
-            acc[d].sum += v;
-            acc[d].n += 1;
-          }
-        }
-      }
-      const avg: Partial<Record<BigFiveDimension, number>> = {};
-      for (const d of dims) if (acc[d].n > 0) avg[d] = acc[d].sum / acc[d].n;
-      return avg;
-    })();
-
+  // ※ 友達評価平均 (friendAvgScores) は職業ゲージ専用だったが、新ヒーローカードで
+  //   職業表示を撤去したため算出も撤去 (2026-08-19)。
 
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
@@ -561,13 +531,6 @@ async function MeResultPageContent({
         }))
     : deepDiveSectionsRaw;
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
-  // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
-  //   キャラ画像は透過版 (characters/cut) を使うため、旧「画像の地色に一致させる」制約は撤廃。
-  //   白文字の称号・ラベルが立つ濃さにする。
-  // ヒーロー帯トーンは共通ヘルパで解決 (/tako と共有)。flag off(16) は unknown で解決。
-  const { heroBg, codeTint } = heroColorsForGroup(
-    flag32 ? thirtyTwoGroup(t32) : "unknown",
-  );
   const sectionsRaw = isKorean
     ? buildKoSelfSections(t32, stored)
     : flag32
@@ -599,19 +562,6 @@ async function MeResultPageContent({
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
   const dispImage = preferCutImage(v3Image);
-  // SP ヒーローの画像引き上げ量 (下の -mt-*)。既定は -mt-8 (32px) で OCEAN 行と詰めるが、
-  // 家など上端まで絵が詰まったキャラは称号/OCEAN に被るため、ビルド時に実測した
-  // 「上端の透過余白の割合」(cutTopMargin) が小さいキャラほど引き上げを弱める。
-  //   目安: SP の画像幅 ≈ 360px なので 割合 0.1 ≈ 36px の余白 = 32px 引き上げても安全。
-  const cutTopMargin: number | undefined = (
-    characterImages.cutTopMargin as Record<string, number>
-  )[path.basename(dispImage)];
-  const heroPullClass =
-    cutTopMargin === undefined || cutTopMargin >= 0.1
-      ? "-mt-8"
-      : cutTopMargin >= 0.05
-        ? "-mt-4"
-        : "mt-0";
   // 挿絵 (シーン別イラスト・16P の章間イラスト参考):
   //   public/characters/scenes/ に「置くだけで自動表示」(無ければ非表示)。
   //   variant: normal1 / normal2 (通常2種) ・ love (恋愛) ・ work (仕事) ・ school (学校)。
@@ -629,34 +579,34 @@ async function MeResultPageContent({
     }
     return null;
   };
+  // キャラのループ動画 (瞬き・手振り等)。public/characters/anim/<slug>.webm を置けば
+  // ヒーローが静止画の代わりに動画を再生する (無ければ静止画＋微アニメ)。
+  // scenes と同じ「置くだけで自動表示」運用 (manifest の anims 経由)。
+  const animFile = `${sceneSlug}.webm`;
+  const animSrc = (characterImages.anims as string[]).includes(animFile)
+    ? `/characters/anim/${animFile}`
+    : null;
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
   const dispDesc = isKorean
     ? KO_RESULT_TYPES[t32].oneLiner
     : flag32
       ? thirtyTwoOneLiner(t32)
       : sixteenType.oneLiner;
+  // 性格タイプカードの説明文 = 型サマリー (thirtyTwoSummary)。三人称・2文の事典風トーン
+  // (2026-08-19 オーナー指定。16personalities のプロフィール型説明に合わせた長さ・語り口)。
+  // KO は未整備のため oneLiner で代替。
+  const typeSummary = isKorean
+    ? KO_RESULT_TYPES[t32].oneLiner
+    : flag32
+      ? thirtyTwoSummary(t32)
+      : dispDesc;
   const inviteCode = ((user.invite_code as string | null) ?? "").trim();
   // 自己診断結果の固定バーは、友達評価の依頼ではなくキャラクター共有に専念する。
   // 共有先は per-owner のキャラOGが出る獲得ページ。
   const characterShareUrl = `${SITE_URL}${isKorean ? "/ko" : ""}/share/${inviteCode}`;
-  // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
-  // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
-  // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
-  // off は従来 16 タイプの動物。画像/型名/essence と動物名の不一致を解消。
-  const animalName = isKorean
-    ? KO_RESULT_TYPES[t32].animal
-    : flag32
-      ? thirtyTwoAnimal(t32)
-      : sixteenType.animal;
-  const job = computeJob(friendAvgScores, friendEvalCount);
-
-  // 職業表示の制御。
-  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
-  //   /me/[token] は推測不可のトークン限定URLで通常ユーザーが踏むことはなく実質露出しない。
-  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
-  const forceReveal = sp.revealDemo === "1";
-  const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヒーロー見出し (16P 参考): 小ラベル「あなたの性格タイプ:」+ 称号(essence)の大見出し。
+  // 動物＋職業システム (動物名/職業ゲージ) は新ヒーローカードでは表示しないため /me からは
+  // 撤去した。判定ロジック本体は lib/job・/tako 側に残存 (2026-08-19)。
+  // ヒーロー見出し (16P 参考): 小ラベル「性格タイプ」+ 称号(essence)の大見出し。
   // どちらも白文字 (色帯の上に乗せる 16P の構図)。SP=中央 / PC=左寄せ。
   // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
   // OCEAN コード行 (大文字小文字方式): 各軸の高低 (stored スコア ≥5 = 高) を文字の大小で表す。
@@ -763,68 +713,72 @@ async function MeResultPageContent({
       {isKorean ? <KoTopHeader /> : <TopHeader />}
     </MeStickyHeader>
     <main
-      className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
+      className="relative min-h-screen overflow-x-clip px-4 pb-6 pt-6 md:px-8 md:pb-10 md:pt-8"
       style={{ background: "#FFFFFF" }}
     >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== ヒーロー色面 (全幅 heroBg: 上部中央グロー + フェルトドット + 称号/OCEAN + 画像) =====
-            self-sizing 維持 (固定 height なし)。名前は上部中央グローの上 (画像より前面=隠れない)。
-            ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
-        {/* ヒーロー帯 (色帯+斜めクリップ+グロー+ドット+称号/OCEAN+キャラ) は ResultHero に共通化。
-            /me は 2カラム・本文幅1080 (既定)。/tako でも同コンポーネントを流用し世界観統一。 */}
-        <ResultHero
-          label={
-            acquisition
-              ? isKorean
-                ? `${acquisition.sharerName}님의 성격 유형:`
-                : `${acquisition.sharerName}さんの性格タイプ:`
-              : isKorean
-                ? KO_ME_COPY.heroLabel
-                : "あなたの性格タイプ:"
-          }
-          essence={dispEssence}
-          scores={stored}
-          heroBg={heroBg}
-          codeTint={codeTint}
-          imageSrc={dispImage}
-          alt={dispName}
-          name={dispName}
-          description={personalize(dispDesc)}
-          heroPullClass={heroPullClass}
-          // 獲得モードでは職業ゲージ (友達評価人数) は見せない (訪問者には無関係)。
-          jobSlot={
-            acquisition
-              ? undefined
-              : {
-                  animal: animalName,
-                  job: displayJob,
-                  friendCount: friendEvalCount,
-                  threshold: JOB_FRIEND_THRESHOLD,
-                }
-          }
-          locale={locale}
-        />
-        {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
-            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。 ===== */}
-        <div className="relative mx-[calc(50%-50vw)] w-screen bg-white pt-4 md:pt-2 pb-1">
-          <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#2B2A6B"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="opacity-60 animate-bounce"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+        {/* ===== プロフィール トップ (16P 参考・2026-08-19)。
+            SP=ページ見出し(小) + 縦積み (性格タイプ → 性格特性)。
+            PC(md+)=ページ見出し(大) + 2カラム (左:性格タイプ / 右:性格特性、上端揃え)。
+            旧・全幅カラー帯 (ResultHero) は廃止。/tako は共有のため据え置き。 ===== */}
+        {/* ページ見出し (SP/PC 共通・SP は小さめ + シェアはアイコンのみ) */}
+        <div className="mb-5 flex items-start justify-between gap-3 md:mb-6">
+          <div className="min-w-0">
+            {/* PersonalityTypeCard の型名 (h1) と重複させないため視覚見出し (p) にする */}
+            <p className="text-[24px] font-black leading-tight text-[#2E2E5C] md:text-[34px]">
+              {acquisition
+                ? isKorean
+                  ? `${acquisition.sharerName}님의 프로필`
+                  : `${acquisition.sharerName}さんのプロフィール`
+                : isKorean
+                  ? "나의 프로필"
+                  : "あなたのプロフィール"}
+            </p>
+            <p className="mt-1.5 text-[13px] font-medium leading-relaxed text-[#68677F] md:mt-2 md:text-[15px]">
+              {isKorean
+                ? "성격 테스트 결과로 나의 유형과 핵심 특성을 살펴보세요."
+                : "性格テストの結果から、あなたのタイプと中心的な特性を見てみましょう。"}
+            </p>
+          </div>
+        </div>
+        {/* SP=縦積み / PC=2カラム */}
+        <div className="md:flex md:items-stretch md:gap-6">
+          {/* 左: 性格タイプ カード (PC は約35%幅) */}
+          <div className="md:w-[35%] md:max-w-[360px] md:flex-shrink-0">
+            <PersonalityTypeCard
+              label={
+                acquisition
+                  ? isKorean
+                    ? `${acquisition.sharerName}님의 성격 유형`
+                    : `${acquisition.sharerName}さんの性格タイプ`
+                  : isKorean
+                    ? KO_ME_COPY.heroLabel
+                    : "性格タイプ"
+              }
+              essence={dispEssence}
+              code={dispCode}
+              imageSrc={dispImage}
+              animSrc={animSrc}
+              alt={dispName}
+              description={typeSummary}
+              group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+            />
+          </div>
+          {/* 右: 性格特性 カード (バー/％ 切替・?ヘルプ・受験日・シェア) */}
+          <div className="md:min-w-0 md:flex-1">
+            <PersonalityTraitsCard
+              scores={stored}
+              takenAt={
+                previewType
+                  ? null
+                  : (user.diagnosis_completed_at as string | null)
+              }
+              showShare={!acquisition && !publicPreview}
+              locale={locale}
+            />
           </div>
         </div>
 
@@ -835,9 +789,10 @@ async function MeResultPageContent({
             章見出し「{animal}のトリセツ」は撤去 (キャラ名はトップバー h1 へ移設)。
             キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
             aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
-        {/* ===== ① 基本特性 + 五つの性格傾向 =====
-            基本特性 (キャラ直下・見出しなし本文) → 挿絵 normal1 → ① 五つの性格傾向。
-            ※注意点 (旧②) は友達から見たアナタの後 (④) へ移設 (2026-07-14 指示)。 */}
+        {/* ===== ① 基本特性 (キャラ直下・見出しなし本文) =====
+            五つの性格傾向 (BigFiveDivergingBars) はヒーロー直下の PersonalityTraitsCard に
+            集約したため、章① は基本特性の地の文＋挿絵のみに簡素化 (2026-08-19)。
+            ※注意点 (旧②) は友達から見たアナタの後 (④) へ移設済み。 */}
         <section
           aria-label={isKorean ? KO_ME_COPY.selfAriaLabel : "自分が見た自分"}
           className="mb-10"
@@ -845,67 +800,27 @@ async function MeResultPageContent({
           {(() => {
             const paragraphs = sections[0] ? sections[0].body.split("\n\n") : [];
             const introImage = sceneImage("normal1");
-            // 挿絵 normal1 は本文の途中 (中間の段落の後) に差し込む (2026-07-14 指示)。
-            // 挿絵より後の段落は ① 五つの性格傾向 のグラフの下へ移動 (2026-07-14 指示)。
+            // 挿絵 normal1 は本文の中ほど (中間段落の後) に差し込む。
             const imageAfter = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
-            const beforeGraph = paragraphs.slice(0, imageAfter + 1);
-            const afterGraph = paragraphs.slice(imageAfter + 1);
             const paraClass =
               "body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0";
             return (
-              <>
-                {beforeGraph.length > 0 && (
-                  <section className="mb-14">
-                    {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
-                    <div className="px-1 pb-1">
-                      {beforeGraph.map((para, pIdx) => (
-                        <p key={`intro-${pIdx}`} className={paraClass}>
-                          {para}
-                        </p>
-                      ))}
-                      {introImage && (
-                        <SmoothImage
-                          src={introImage}
-                          alt=""
-                          width={960}
-                          height={640}
-                          className="mx-auto mt-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
-                        />
-                      )}
-                    </div>
-                  </section>
-                )}
-                {/* ① 五つの性格傾向 */}
-                <div className="mb-14 mt-4">
-                  <BigFiveDivergingBars
-                    scores={stored}
-                    title={isKorean ? KO_ME_COPY.bigFiveTitle : "五つの性格傾向"}
-                    number="1"
-                    locale={locale}
-                    // カード内下部の「シェア」ピル (16P のグラフカード下ボタン参考
-                    // 2026-07-28)。ヘッダーと同じシェアモーダルを開く
-                    // (source=bigfive_graph で計測)。獲得ランディングはモーダルが
-                    // 無いため出さない。
-                    footer={
-                      !acquisition && !publicPreview ? (
-                        <ShareModalOpenButton
-                          label={isKorean ? "공유" : "シェア"}
-                        />
-                      ) : undefined
-                    }
-                  />
-                  {/* 冒頭本文の続き (挿絵より後の段落) はグラフの下に表示 */}
-                  {afterGraph.length > 0 && (
-                    <div className="mt-8 px-1 pb-1">
-                      {afterGraph.map((para, pIdx) => (
-                        <p key={`intro-after-${pIdx}`} className={paraClass}>
-                          {para}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
+              <div className="px-1 pb-1">
+                {paragraphs.map((para, pIdx) => (
+                  <div key={`intro-${pIdx}`}>
+                    <p className={paraClass}>{para}</p>
+                    {introImage && pIdx === imageAfter && (
+                      <SmoothImage
+                        src={introImage}
+                        alt=""
+                        width={960}
+                        height={640}
+                        className="mx-auto my-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             );
           })()}
         </section>
