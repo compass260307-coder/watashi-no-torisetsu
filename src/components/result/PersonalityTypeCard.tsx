@@ -2,9 +2,9 @@
 // 16personalities の結果トップを参考にした無彩色ベースのカード:
 //   [性格タイプ ラベル] → [型名 (称号)] → [OCEAN コード] → [キャラを淡色帯に] → [短い説明]
 // ブランドの全幅カラー帯 (ResultHero) は /me では使わず、白基調のクリーンなカードに。
-// キャラは AnimatedCharacter (動画があれば再生・無ければ静止画＋微アニメ) で「動く」。
+// キャラは AnimatedCharacter (動画があれば再生・無ければ静止画のまま。動かさない)。
 //
-// server component (自身はインタラクションなし)。動く部分は AnimatedCharacter (client)。
+// server component (自身はインタラクションなし)。動画再生部は AnimatedCharacter (client)。
 
 import { AnimatedCharacter } from "./AnimatedCharacter";
 import { cardColorsForGroup } from "@/lib/hero-colors";

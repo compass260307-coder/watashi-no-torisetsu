@@ -281,27 +281,10 @@ input[type="reset"]:active {
   animation: star-twinkle 2.6s ease-in-out infinite;
 }
 
-/* 結果ヒーローのキャラを「生きている」ように見せる待機アニメ (AnimatedCharacter の
-   静止画フォールバック用)。足元 (下端中央) を軸にゆっくり上下＋わずかに左右へ揺れる。
-   キャラ別の webm 動画があるときは動画を再生し、無いときだけこの微アニメを使う。 */
-@keyframes character-idle {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-4px) rotate(-0.6deg); }
-  50% { transform: translateY(-7px) rotate(0deg); }
-  75% { transform: translateY(-4px) rotate(0.6deg); }
-}
-
-.animate-character-idle {
-  animation: character-idle 4.2s ease-in-out infinite;
-  transform-origin: 50% 92%;
-  will-change: transform;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-scroll-hint,
   .animate-face-float,
-  .animate-star-twinkle,
-  .animate-character-idle {
+  .animate-star-twinkle {
     animation: none;
   }
 }

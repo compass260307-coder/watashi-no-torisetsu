@@ -32,7 +32,7 @@ interface AxisMeta {
 // 表示順は OCEAN 軸順 (O→C→E→A→N)。各要素に title/left/right/color/dim(スコア参照) が
 // まとまっているため、配列の並べ替えだけで色・ラベル・スコアが完全連動する (対応ズレなし)。
 const AXES: readonly AxisMeta[] = [
-  { dim: "O", title: "開放性", left: "現実的", right: "探究的", color: "#E4AE3A" },
+  { dim: "O", title: "開放性", left: "保守的", right: "革新的", color: "#E4AE3A" },
   { dim: "C", title: "誠実性", left: "柔軟", right: "計画的", color: "#88619A" },
   { dim: "E", title: "外向性", left: "内向", right: "外向", color: "#4298B4" },
   { dim: "A", title: "協調性", left: "独立", right: "協調", color: "#33A474" },
