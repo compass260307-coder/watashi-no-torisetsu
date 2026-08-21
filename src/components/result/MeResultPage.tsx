@@ -1211,8 +1211,10 @@ async function MeResultPageContent({
       <DiagnosisShareBand locale="ja" source="me_share_band" />
     )}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
-        TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
-    {isKorean ? <KoTopFooter /> : <TopFooter />}
+        TopFooter 側ではなく余白で吸収されるため、そのまま置く。
+        /me は直上に波形のシェア帯があり、フッター上端の直線が二重線に見えるため
+        topBorder={false} で上端線を消す (他ページのフッターは据え置き)。 */}
+    {isKorean ? <KoTopFooter /> : <TopFooter topBorder={false} />}
     </>
   );
 }
