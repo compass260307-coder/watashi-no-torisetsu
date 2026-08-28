@@ -20,6 +20,7 @@ type PurchaseCompleteViewProps = {
   product?: "self_report" | "full_access" | "premium_bundle";
   destinyFeaturesIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
+  hoshiyomiChatCredits?: number;
   locale?: ResultLocale;
 };
 
@@ -28,6 +29,7 @@ export function PurchaseCompleteView({
   product = "full_access",
   destinyFeaturesIncluded,
   friendFeaturesIncluded,
+  hoshiyomiChatCredits,
   locale = "ja",
 }: PurchaseCompleteViewProps) {
   const isKo = locale === "ko";
@@ -44,11 +46,9 @@ export function PurchaseCompleteView({
         : "完全版レポート";
   const hasDestinyFeatures =
     destinyFeaturesIncluded ?? product === "premium_bundle";
-  const includedChatCount = hasDestinyFeatures
-    ? product === "premium_bundle"
-      ? 30
-      : 5
-    : 0;
+  const includedChatCount =
+    hoshiyomiChatCredits ??
+    (hasDestinyFeatures ? (product === "premium_bundle" ? 30 : 5) : 0);
   return (
     <>
     {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
@@ -171,13 +171,14 @@ export function PurchaseCompleteView({
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo ? (
               <>
-                운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회가
-                포함되어 있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
-                있습니다.
+                {hasDestinyFeatures ? "운명의 설계도와 " : ""}나만의 전담
+                점성술사 채팅 {includedChatCount}회가 포함되어 있어요. 로그인 후 하단
+                메뉴의 「점성술사」에서 이용할 수 있습니다.
               </>
             ) : (
               <>
-                運命の設計図と、あなたの専属占い師とのチャット
+                {hasDestinyFeatures ? "運命の設計図と、" : ""}
+                あなたの専属占い師 Alice とのチャット
                 {includedChatCount}回分が含まれています。ログイン後、下部メニューの
                 「占い師」から利用できます。
               </>

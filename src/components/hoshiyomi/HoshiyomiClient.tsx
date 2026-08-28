@@ -24,7 +24,8 @@ import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
 import type { ResultLocale } from "@/i18n/result";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 
-const CHAT_ACCESS_PRODUCTS = ["premium_bundle"] as const;
+const JA_CHAT_ACCESS_PRODUCTS = ["full_access", "premium_bundle"] as const;
+const PREMIUM_CHAT_ACCESS_PRODUCTS = ["premium_bundle"] as const;
 
 type ActiveConversation = {
   id: string;
@@ -39,6 +40,7 @@ type Props = {
   totalCredits: number;
   persistenceReady: boolean;
   hasChatAccess?: boolean;
+  canUpgradeToPremium?: boolean;
   ownerToken?: string;
   previewMode?: boolean;
   locale?: ResultLocale;
@@ -51,6 +53,7 @@ export function HoshiyomiClient({
   totalCredits,
   persistenceReady,
   hasChatAccess = true,
+  canUpgradeToPremium = false,
   ownerToken,
   previewMode = false,
   locale = "ja",
@@ -71,7 +74,10 @@ export function HoshiyomiClient({
       setPaywallOpen(true);
       return;
     }
-    if (remaining <= 0) return;
+    if (remaining <= 0) {
+      if (canUpgradeToPremium) setPaywallOpen(true);
+      return;
+    }
     if (previewMode) {
       setRemaining((current) => Math.max(0, current - 1));
     }
@@ -90,9 +96,10 @@ export function HoshiyomiClient({
 
   if (active) {
     return (
-      <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
-        {previewMode ? (
-          <PreviewChatPanel
+      <>
+        <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
+          {previewMode ? (
+            <PreviewChatPanel
             key={active.id}
             conversation={active}
             remaining={remaining}
@@ -104,9 +111,11 @@ export function HoshiyomiClient({
               )
             }
             onBack={openNew}
-          />
-        ) : (
-          <RealChatPanel
+            canUpgradeToPremium={canUpgradeToPremium}
+            onUpgradeRequest={() => setPaywallOpen(true)}
+            />
+          ) : (
+            <RealChatPanel
             key={active.id}
             conversation={active}
             remaining={remaining}
@@ -118,9 +127,25 @@ export function HoshiyomiClient({
               )
             }
             onBack={openNew}
+            canUpgradeToPremium={canUpgradeToPremium}
+            onUpgradeRequest={() => setPaywallOpen(true)}
+            />
+          )}
+        </main>
+        {paywallOpen ? (
+          <PaywallOverlay
+            ownerToken={ownerToken}
+            returnTo="hoshiyomi"
+            ctaSource="hoshiyomi_trial_exhausted"
+            products={PREMIUM_CHAT_ACCESS_PRODUCTS}
+            defaultProduct="premium_bundle"
+            legacyPlanStyle
+            previewMode={previewMode}
+            locale={locale}
+            onClose={() => setPaywallOpen(false)}
           />
-        )}
-      </main>
+        ) : null}
+      </>
     );
   }
 
@@ -134,9 +159,11 @@ export function HoshiyomiClient({
           totalCredits={totalCredits}
           persistenceReady={persistenceReady}
           hasChatAccess={hasChatAccess}
+          canUpgradeToPremium={canUpgradeToPremium}
           previewMode={previewMode}
           locale={locale}
           onStart={startConversation}
+          onUpgradeRequest={() => setPaywallOpen(true)}
         />
       </main>
       {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
@@ -145,7 +172,14 @@ export function HoshiyomiClient({
           ownerToken={ownerToken}
           returnTo="hoshiyomi"
           ctaSource="hoshiyomi_first_send"
-          products={CHAT_ACCESS_PRODUCTS}
+          products={
+            canUpgradeToPremium
+              ? PREMIUM_CHAT_ACCESS_PRODUCTS
+              : locale === "ja"
+                ? JA_CHAT_ACCESS_PRODUCTS
+                : PREMIUM_CHAT_ACCESS_PRODUCTS
+          }
+          defaultProduct="premium_bundle"
           legacyPlanStyle
           previewMode={previewMode}
           locale={locale}
@@ -162,18 +196,22 @@ function HoshiyomiHome({
   totalCredits,
   persistenceReady,
   hasChatAccess,
+  canUpgradeToPremium,
   previewMode,
   locale,
   onStart,
+  onUpgradeRequest,
 }: {
   conversations: HoshiyomiConversationSummary[];
   remaining: number;
   totalCredits: number;
   persistenceReady: boolean;
   hasChatAccess: boolean;
+  canUpgradeToPremium: boolean;
   previewMode: boolean;
   locale: ResultLocale;
   onStart: (text: string) => void;
+  onUpgradeRequest: () => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
   const router = useRouter();
@@ -254,13 +292,26 @@ function HoshiyomiHome({
             </form>
 
             {hasChatAccess ? (
-              <HomeUsageMeter
-                remaining={remaining}
-                total={totalCredits}
-                locale={locale}
-                faqButtonRef={faqButtonRef}
-                onOpenFaq={() => setFaqOpen(true)}
-              />
+              <>
+                <HomeUsageMeter
+                  remaining={remaining}
+                  total={totalCredits}
+                  locale={locale}
+                  faqButtonRef={faqButtonRef}
+                  onOpenFaq={() => setFaqOpen(true)}
+                />
+                {remaining === 0 && canUpgradeToPremium ? (
+                  <button
+                    type="button"
+                    onClick={onUpgradeRequest}
+                    className="mt-4 rounded-full bg-[#5B5BEF] px-5 py-3 text-[13px] font-black text-white shadow-sm transition active:scale-[0.98]"
+                  >
+                    {locale === "ko"
+                      ? "프리미엄으로 계속하기 (차액 ₩4,000)"
+                      : "Aliceと続きを話す（差額¥400）"}
+                  </button>
+                ) : null}
+              </>
             ) : (
               <p className="mt-4 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/55 md:text-[13px]">
                 {copy.purchaseHint}{" "}
@@ -444,6 +495,8 @@ function RealChatPanel({
   locale,
   onRemainingChange,
   onBack,
+  canUpgradeToPremium,
+  onUpgradeRequest,
 }: {
   conversation: ActiveConversation;
   remaining: number;
@@ -451,6 +504,8 @@ function RealChatPanel({
   locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
+  canUpgradeToPremium: boolean;
+  onUpgradeRequest: () => void;
 }) {
   const router = useRouter();
   const transport = useMemo(
@@ -528,6 +583,8 @@ function RealChatPanel({
       onSend={send}
       isBusy={isBusy}
       error={error ? HOSHIYOMI_COPY[locale].responseError : null}
+      canUpgradeToPremium={canUpgradeToPremium}
+      onUpgradeRequest={onUpgradeRequest}
     />
   );
 }
@@ -539,6 +596,8 @@ function PreviewChatPanel({
   locale,
   onRemainingChange,
   onBack,
+  canUpgradeToPremium,
+  onUpgradeRequest,
 }: {
   conversation: ActiveConversation;
   remaining: number;
@@ -546,6 +605,8 @@ function PreviewChatPanel({
   locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
+  canUpgradeToPremium: boolean;
+  onUpgradeRequest: () => void;
 }) {
   const [messages, setMessages] = useState<UIMessage[]>(() =>
     conversation.starter
@@ -614,6 +675,8 @@ function PreviewChatPanel({
       onSend={send}
       isBusy={busy}
       error={null}
+      canUpgradeToPremium={canUpgradeToPremium}
+      onUpgradeRequest={onUpgradeRequest}
     />
   );
 }
@@ -630,6 +693,8 @@ function ChatShell({
   onSend,
   isBusy,
   error,
+  canUpgradeToPremium,
+  onUpgradeRequest,
 }: {
   remaining: number;
   total: number;
@@ -642,6 +707,8 @@ function ChatShell({
   onSend: (value: string) => void;
   isBusy: boolean;
   error: string | null;
+  canUpgradeToPremium: boolean;
+  onUpgradeRequest: () => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
   const submit = (event: FormEvent) => {
@@ -742,6 +809,17 @@ function ChatShell({
               <ArrowIcon />
             </button>
           </form>
+          {remaining === 0 && canUpgradeToPremium ? (
+            <button
+              type="button"
+              onClick={onUpgradeRequest}
+              className="mt-3 w-full rounded-full bg-[#5B5BEF] px-5 py-3 text-[13px] font-black text-white transition active:scale-[0.99]"
+            >
+              {locale === "ko"
+                ? "프리미엄으로 계속하기 (차액 ₩4,000)"
+                : "Aliceと続きを話す（差額¥400）"}
+            </button>
+          ) : null}
           <p className="mt-2 text-center text-[10px] font-medium text-[#2E2E5C]/32">
             {copy.chatNotice}
           </p>

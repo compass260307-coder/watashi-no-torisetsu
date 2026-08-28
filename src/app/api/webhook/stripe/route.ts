@@ -51,6 +51,7 @@ import {
   type AccessPaymentRow,
 } from "@/lib/entitlements";
 import {
+  hoshiyomiChatCreditTarget,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
 } from "@/lib/access-products";
@@ -447,6 +448,8 @@ async function recordFullAccessPayment(
       upgrade_from: session.metadata?.upgrade_from ?? "none",
       destiny_access_policy:
         session.metadata?.destiny_access_policy ?? "legacy_included",
+      hoshiyomi_chat_policy:
+        session.metadata?.hoshiyomi_chat_policy ?? "legacy_unspecified",
       friend_access_policy:
         session.metadata?.friend_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
@@ -711,6 +714,15 @@ async function sendDetailedReportEmailBestEffort(
             : "full_access",
         session.metadata?.friend_access_policy,
       ),
+      hoshiyomiChatCredits: hoshiyomiChatCreditTarget(
+        session.metadata?.product === "premium_bundle"
+          ? "premium_bundle"
+          : session.metadata?.product === "self_report"
+            ? "self_report"
+            : "full_access",
+        session.metadata?.hoshiyomi_chat_policy,
+        session.metadata?.destiny_access_policy,
+      ),
       purchaseAmountJpy:
         session.currency === "jpy" ? session.amount_total : null,
       purchaseAmountMinor: session.amount_total,
@@ -956,12 +968,17 @@ async function handleCheckoutPaid(
       await grantUnmeiByEmailOrId(session, paymentUserId);
     }
     await recordFullAccessPayment(session, paymentUserId);
-    if (includesDestinyFeatures) {
+    const hoshiyomiChatCredits = hoshiyomiChatCreditTarget(
+      "full_access",
+      session.metadata?.hoshiyomi_chat_policy,
+      session.metadata?.destiny_access_policy,
+    );
+    if (hoshiyomiChatCredits > 0) {
       try {
         await grantHoshiyomiCreditsToTarget({
           userId: paymentUserId,
           sourceKey: `stripe:${session.id}`,
-          targetTotal: 5,
+          targetTotal: hoshiyomiChatCredits,
         });
       } catch (error) {
         if (!isMissingHoshiyomiStore(error)) throw error;
@@ -1349,6 +1366,7 @@ type ActiveCoursePaymentRow = Omit<
     upgrade_from?: unknown;
     locale?: unknown;
     destiny_access_policy?: unknown;
+    hoshiyomi_chat_policy?: unknown;
     friend_access_policy?: unknown;
   } | null;
 };

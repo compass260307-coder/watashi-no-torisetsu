@@ -36,6 +36,7 @@ import {
   DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
   EMPTY_ACCESS_ENTITLEMENTS,
   FRIEND_ACCESS_POLICY_FULL_ONLY,
+  HOSHIYOMI_CHAT_POLICY_PREMIUM_ONLY_FULL_TRIAL,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
@@ -119,7 +120,7 @@ const CHECKOUT_COPY: Record<
     // 自己診断＋友達診断＋相性を含む ¥499 完全版パッケージ。
     productName: "ワタシのトリセツ 完全版パッケージ",
     productDescription:
-      "自己診断とPDF、友達診断、恋愛パートナー相性診断を解放します。買い切り。",
+      "自己診断とPDF、友達診断、恋愛パートナー相性診断に加え、専属占い師 Alice を1回答体験できます。買い切り。",
     submitMessage:
       "一度きりの買い切りで、ずっと見返せます。30日間の返金保証つき。",
   },
@@ -737,6 +738,11 @@ export async function POST(request: NextRequest) {
         // サーバ側で固定し、クライアント入力には依存させない。
         // この印が無い旧 full_access セッションは従来特典を維持する。
         destiny_access_policy: DESTINY_ACCESS_POLICY_PREMIUM_ONLY,
+        // 日本版の完全版だけ、Aliceを1回答試せる。継続利用はプレミアム。
+        hoshiyomi_chat_policy:
+          checkoutLocale === "ja" && product === "full_access"
+            ? HOSHIYOMI_CHAT_POLICY_PREMIUM_ONLY_FULL_TRIAL
+            : "",
         // この印が無い旧 self_report セッションは従来の友達特典を維持する。
         friend_access_policy: FRIEND_ACCESS_POLICY_FULL_ONLY,
         upgrade_from: upgradeFrom,

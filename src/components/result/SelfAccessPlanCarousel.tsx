@@ -79,6 +79,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
       "２人目以降の友達の診断を開放",
       "何度でも作り直せる友達診断分析PDF",
       "恋愛パートナー相性診断を開放",
+      "あなたの専属占い師 Alice を1回答体験",
     ],
   },
   {
@@ -94,7 +95,7 @@ const JA_PLANS: readonly PlanDefinition[] = [
     inheritedItemCount: 1,
     items: [
       "完全版コースのすべてに加え、次の機能を利用できます",
-      "あなたの専属占い師とのチャットを解放",
+      "あなたの専属占い師 Alice とのチャット30回答",
       "出生情報から仕事・恋愛・人生の転機を読む、あなた専用の運命の設計図",
     ],
   },

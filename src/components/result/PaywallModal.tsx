@@ -33,6 +33,7 @@ interface PaywallModalProps {
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
   products?: readonly AccessProduct[];
+  defaultProduct?: AccessProduct;
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
   /** 3コース化以前のコンパクトな単一課金カード表示。 */

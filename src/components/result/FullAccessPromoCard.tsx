@@ -226,6 +226,7 @@ export function FullAccessPromoCard({
   surface = "self",
   ctaSource,
   products,
+  defaultProduct,
   previewMode = false,
   legacyPlanStyle = false,
 }: {
@@ -241,6 +242,7 @@ export function FullAccessPromoCard({
   surface?: "self" | "tako";
   ctaSource?: string;
   products?: readonly AccessProduct[];
+  defaultProduct?: AccessProduct;
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
   /** 3コース化以前のコンパクトな単一課金カード表示。 */
@@ -357,6 +359,7 @@ export function FullAccessPromoCard({
           returnTo={returnTo ?? (surface === "tako" ? "tako" : "me")}
           locale={locale}
           products={products}
+          defaultProduct={defaultProduct}
           previewMode={previewMode}
           legacyStyle={legacyPlanStyle}
         />

@@ -8,6 +8,7 @@ import {
   type MetaPurchaseProduct,
 } from "@/lib/meta-purchase";
 import {
+  hoshiyomiChatCreditTarget,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
 } from "@/lib/access-products";
@@ -24,6 +25,7 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   product: MetaPurchaseProduct;
   destinyFeaturesIncluded: boolean;
   friendFeaturesIncluded: boolean;
+  hoshiyomiChatCredits: number;
 }>;
 
 function claimSecret(): string | null {
@@ -111,6 +113,16 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
               session.metadata?.friend_access_policy,
             )
           : false,
+      hoshiyomiChatCredits:
+        product === "self_report" ||
+        product === "full_access" ||
+        product === "premium_bundle"
+          ? hoshiyomiChatCreditTarget(
+              product,
+              session.metadata?.hoshiyomi_chat_policy,
+              session.metadata?.destiny_access_policy,
+            )
+          : 0,
     };
   } catch {
     // 無効・失効済み・別環境の Session ID は購入完了として扱わない。

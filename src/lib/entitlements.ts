@@ -22,6 +22,7 @@ export type AccessPaymentRow = {
   metadata: {
     upgrade_from?: unknown;
     destiny_access_policy?: unknown;
+    hoshiyomi_chat_policy?: unknown;
     friend_access_policy?: unknown;
   } | null;
   paid_at?: string | null;
