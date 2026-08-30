@@ -30,6 +30,7 @@ import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
 import { pushLineMessages } from "@/lib/line";
 import { buildLinePlusCheckoutUrl } from "@/lib/line-plus";
+import { recordLineEvent } from "@/lib/line-events";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 import { runForUser } from "@/lib/unmei/generateWorker.mjs";
@@ -938,6 +939,19 @@ async function handleAlicePlusCheckoutPaid(
     }
   }
 
+  // Stripe再送で二重記録しないよう決定的ID (sessionId由来) で冪等化
+  await recordLineEvent({
+    eventName: "line_plus_subscribed",
+    id: purchaseEventId("line_plus_subscribed", session.id),
+    metadata: {
+      stripe_session_id: session.id,
+      stripe_subscription_id: subscriptionId,
+      user_id: userId,
+      line_user_id: lineUserId,
+      amount_total: session.amount_total ?? null,
+    },
+  });
+
   // push は best effort。失敗しても加入自体は成立している
   try {
     await pushLineMessages(lineUserId, [
@@ -971,6 +985,13 @@ async function syncLinePlusSubscription(
     return;
   }
 
+  // 解約系KPIの遷移検知用に直前の状態を読む (無ければ新規)
+  const { data: prev } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("status, cancel_at_period_end")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+
   // API 2025-03 (SDK v18+) で current_period_end は SubscriptionItem 側に移動した
   const periodEndEpoch = subscription.items?.data?.[0]?.current_period_end;
   const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
@@ -994,6 +1015,35 @@ async function syncLinePlusSubscription(
   // 失敗は 500 → Stripe 再送で回復させる (状態ズレを残さない)
   if (error) {
     throw new Error(`[alice_plus] subscription sync failed: ${error.message}`);
+  }
+
+  // 期間末解約の予約 (解約→再開→再解約は cancel_at が変わるので別イベントになる)
+  if (subscription.cancel_at_period_end && !prev?.cancel_at_period_end) {
+    await recordLineEvent({
+      eventName: "line_plus_cancel_scheduled",
+      id: purchaseEventId(
+        "line_plus_cancel_scheduled",
+        `${subscription.id}:${subscription.cancel_at ?? ""}`,
+      ),
+      metadata: {
+        stripe_subscription_id: subscription.id,
+        user_id: userId,
+        line_user_id: lineUserId,
+        cancel_at: subscription.cancel_at ?? null,
+      },
+    });
+  }
+  // サブスク終了 (期間満了 or 即時解約)
+  if (subscription.status === "canceled" && prev?.status !== "canceled") {
+    await recordLineEvent({
+      eventName: "line_plus_canceled",
+      id: purchaseEventId("line_plus_canceled", subscription.id),
+      metadata: {
+        stripe_subscription_id: subscription.id,
+        user_id: userId,
+        line_user_id: lineUserId,
+      },
+    });
   }
 }
 

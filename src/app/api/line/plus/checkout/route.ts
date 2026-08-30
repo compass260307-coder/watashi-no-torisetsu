@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimit } from "@/lib/api-security";
+import { recordLineEvent } from "@/lib/line-events";
 import {
   findManageableLinePlusSubscription,
   linePlusEnabled,
@@ -105,6 +106,14 @@ export async function GET(request: NextRequest) {
     if (!session.url) {
       throw new Error(`checkout session has no url: ${session.id}`);
     }
+    await recordLineEvent({
+      eventName: "line_plus_checkout_opened",
+      metadata: {
+        line_user_id: lineUserId,
+        user_id: account.user_id,
+        stripe_session_id: session.id,
+      },
+    });
     return NextResponse.redirect(session.url, 303);
   } catch (caught) {
     console.error("[line/plus/checkout] session create failed", {

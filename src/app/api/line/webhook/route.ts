@@ -32,6 +32,7 @@ import {
   linePlusDailyLimit,
   linePlusEnabled,
 } from "@/lib/line-plus";
+import { recordLineEvent } from "@/lib/line-events";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -174,6 +175,11 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
     });
   }
 
+  await recordLineEvent({
+    eventName: "line_follow",
+    metadata: { line_user_id: lineUserId, relink: Boolean(existing?.user_id) },
+  });
+
   if (event.replyToken) {
     const text = existing?.user_id ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE;
     await replyLineMessages(event.replyToken, [{ type: "text", text }]);
@@ -193,6 +199,10 @@ async function handleUnfollow(event: LineWebhookEvent): Promise<void> {
       message: error.message,
     });
   }
+  await recordLineEvent({
+    eventName: "line_unfollow",
+    metadata: { line_user_id: lineUserId },
+  });
 }
 
 async function handleMessage(event: LineWebhookEvent): Promise<void> {
@@ -222,6 +232,16 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
       { type: "text", text: PLACEHOLDER_UNLINKED_MESSAGE },
     ]);
     return;
+  }
+
+  // リッチメニューのボタン (メッセージ送信型) とキーワードの受け皿。
+  // 完全一致のみ拾い、通常の会話文をコマンド扱いしない
+  if (isText) {
+    const command = matchLineCommand(rawText);
+    if (command) {
+      await handleLineCommand(command, lineUserId, replyToken, account.user_id);
+      return;
+    }
   }
 
   if (!lineAliceChatEnabled()) {
@@ -307,6 +327,97 @@ async function handleAliceChat(
   }
 }
 
+type LineCommand = "plus" | "result" | "help";
+
+function matchLineCommand(text: string): LineCommand | null {
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
+  if (["プラン", "plus", "aliceplus", "アリスプラス"].includes(normalized)) {
+    return "plus";
+  }
+  if (["結果", "診断結果", "わたしの結果", "私の結果"].includes(normalized)) {
+    return "result";
+  }
+  if (["使い方", "ヘルプ", "help"].includes(normalized)) {
+    return "help";
+  }
+  return null;
+}
+
+async function handleLineCommand(
+  command: LineCommand,
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+): Promise<void> {
+  if (command === "plus") {
+    if (!linePlusEnabled()) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "Alice Plusは、いま準備を進めています。始まったら、ここでまっさきにお知らせしますね。",
+        },
+      ]);
+      return;
+    }
+    const isPlus = await hasActiveLinePlus(userId);
+    const url = buildLinePlusCheckoutUrl(lineUserId);
+    const text = isPlus
+      ? [
+          "Alice Plusをご利用中です。いつもありがとうございます。",
+          "プランの確認・お支払い方法の変更・解約はこちらからどうぞ。",
+          url,
+        ].join("\n")
+      : [
+          "Alice Plus (月480円) に入ると、1日の上限なしで好きなだけお話しできます。",
+          "いつでも解約できるので、気軽にお試しくださいね。",
+          url,
+        ].join("\n");
+    await replyLineMessages(replyToken, [{ type: "text", text }]);
+    return;
+  }
+
+  if (command === "help") {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "使い方はかんたん。ふだんの友達と同じように、そのまま話しかけてください。",
+          "今日あったこと、もやもやしていること、なんでも大丈夫です。",
+          "",
+          "・「結果」と送ると、あなたのトリセツをいつでも読み返せます",
+          `・無料では1日${lineFreeDailyLimit()}通までお話しできます`,
+          "・「プラン」と送ると、上限なしで話せるAlice Plus (月480円) の案内が届きます",
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
+  const { data: user } = await supabaseAdmin
+    .from("users")
+    .select("owner_token")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!user?.owner_token) {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "ごめんなさい、結果ページをうまく見つけられませんでした。少し時間をおいて試してみてください。",
+      },
+    ]);
+    return;
+  }
+  await replyLineMessages(replyToken, [
+    {
+      type: "text",
+      text: [
+        "あなたのトリセツは、ここからいつでも読み返せます。",
+        `${resolveSiteUrl()}/me/${user.owner_token}`,
+      ].join("\n"),
+    },
+  ]);
+}
+
 // 全角数字・空白・ハイフン混じりでもコードとして受け付ける
 function normalizeCodeCandidate(text: string): string {
   return text
@@ -365,10 +476,16 @@ async function handleLinkCode(
 
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("display_name")
+    .select("display_name, owner_token")
     .eq("id", consumed.user_id)
     .maybeSingle();
   const name = (user?.display_name ?? "").trim();
+
+  await recordLineEvent({
+    eventName: "line_link_completed",
+    metadata: { line_user_id: lineUserId, user_id: consumed.user_id },
+    ownerToken: user?.owner_token ?? null,
+  });
 
   await replyLineMessages(replyToken, [
     {
