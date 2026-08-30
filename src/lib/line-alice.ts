@@ -187,9 +187,12 @@ function buildInstructions(user: LineAliceUser): string {
   ].join("\n");
 }
 
-// アプリ版チャット (api/app/v1/chat) と同じ解決ロジック
+// 生成は callClaude (Claude API直) なので、gateway用の AI_MODEL_DIALOGUE ではなく
+// Claude API のモデルIDを使う。未設定時は callClaude と同じく例外にする
+// (webhook 側が catch して GENERATION_ERROR_MESSAGE を返す)。
 function dialogueModelId(): string {
-  const value = process.env.AI_MODEL_DIALOGUE?.trim();
-  if (value && /^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(value)) return value;
-  return "openai/gpt-5.6-terra";
+  const value =
+    process.env.LINE_ALICE_MODEL?.trim() || process.env.CLAUDE_MODEL?.trim();
+  if (!value) throw new Error("CLAUDE_MODEL not set");
+  return value;
 }
