@@ -1,0 +1,347 @@
+// Alice Plus (LINE) Phase 1: Messaging API webhook。
+//
+// 受けるイベント:
+//   follow   - 友だち追加 → line_accounts upsert + 挨拶/連携案内
+//   message  - 6桁の連携コードなら users と紐付け。連携済みユーザーのテキストは
+//              Alice 会話 (LINE_ALICE_CHAT_ENABLED=true のとき・無料枠は日次制限)。
+//              未連携・フラグOFF時は案内応答
+//   unfollow - ブロック → unfollowed_at 記録
+//
+// LINE Developers 側の設定: Webhook URL = <site>/api/line/webhook・Webhook ON・
+// 応答メッセージ OFF。検証リクエスト (events: []) にも 200 を返す。
+
+import { NextRequest, NextResponse } from "next/server";
+
+import {
+  hashLineLinkCode,
+  replyLineMessages,
+  verifyLineSignature,
+  type LineWebhookBody,
+  type LineWebhookEvent,
+} from "@/lib/line";
+import {
+  countTodayLineUserMessages,
+  generateLineAliceReply,
+  lineAliceChatEnabled,
+  lineFreeDailyLimit,
+  type LineAliceUser,
+} from "@/lib/line-alice";
+import { resolveSiteUrl } from "@/lib/site-url";
+import { supabaseAdmin } from "@/lib/supabase-server";
+
+export const runtime = "nodejs";
+// LINE の replyToken は受信から約1分有効。生成が長引いた場合も打ち切る
+export const maxDuration = 60;
+
+const WELCOME_MESSAGE = [
+  "はじめまして、Aliceです。",
+  "ここは、あなたの診断結果をもとに、毎日すこしずつ話せる場所になっていきます。",
+  "",
+  "診断が済んでいる人は、結果ページの「LINE連携」で出てくる6桁のコードを、このトークにそのまま送ってください。",
+  "",
+  "診断がまだの人は、こちらからどうぞ。",
+  resolveSiteUrl(),
+].join("\n");
+
+const WELCOME_BACK_MESSAGE = [
+  "おかえりなさい。Aliceです。",
+  "あなたのトリセツは、ちゃんと覚えていますよ。また、ここでお話ししましょう。",
+].join("\n");
+
+const LINK_INVALID_MESSAGE = [
+  "このコードは確認できませんでした。有効期限(10分)が切れているかもしれません。",
+  "結果ページの「LINE連携」からもう一度コードを発行して、送り直してみてくださいね。",
+].join("\n");
+
+const LINK_ERROR_MESSAGE =
+  "ごめんなさい、いま連携がうまくいきませんでした。少し時間をおいて、もう一度コードを送ってみてください。";
+
+const PLACEHOLDER_LINKED_MESSAGE = [
+  "メッセージありがとうございます。",
+  "あなたとゆっくりお話しできるように、いま準備を進めています。始まったら、ここでお知らせしますね。",
+].join("\n");
+
+const PLACEHOLDER_UNLINKED_MESSAGE = [
+  "メッセージありがとうございます。",
+  "診断結果と連携すると、あなたに合わせてお話しできるようになります。",
+  "結果ページの「LINE連携」から6桁のコードを発行して、このトークに送ってくださいね。",
+  "",
+  "診断がまだの人はこちらから。",
+  resolveSiteUrl(),
+].join("\n");
+
+const DAILY_LIMIT_MESSAGE = [
+  "今日お話しできる分は、ここまでみたいです。また明日、話の続きを聞かせてくださいね。",
+  "(もっとたっぷり話せるAlice Plusも、いま準備しています)",
+].join("\n");
+
+const NON_TEXT_MESSAGE =
+  "ごめんなさい、スタンプや画像はまだ読み取れなくて…。文字でお話ししてもらえるとうれしいです。";
+
+const GENERATION_ERROR_MESSAGE =
+  "ごめんなさい、いまうまく言葉にできませんでした。少し時間をおいて、もう一度話しかけてみてください。";
+
+export async function POST(request: NextRequest) {
+  if (!process.env.LINE_CHANNEL_SECRET) {
+    console.error("[line/webhook] LINE_CHANNEL_SECRET is not configured");
+    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  }
+
+  const rawBody = await request.text();
+  const signature = request.headers.get("x-line-signature");
+  if (!verifyLineSignature(rawBody, signature)) {
+    return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
+  }
+
+  let body: LineWebhookBody;
+  try {
+    body = JSON.parse(rawBody) as LineWebhookBody;
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  // 200 を返さないと LINE 側が同一イベントをリトライし続けるため、
+  // イベント単位で握りつぶして常に 200 を返す。
+  for (const event of body.events ?? []) {
+    try {
+      await handleEvent(event);
+    } catch (error) {
+      console.error("[line/webhook] event handling failed", {
+        type: event.type,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+async function handleEvent(event: LineWebhookEvent): Promise<void> {
+  switch (event.type) {
+    case "follow":
+      await handleFollow(event);
+      return;
+    case "unfollow":
+      await handleUnfollow(event);
+      return;
+    case "message":
+      await handleMessage(event);
+      return;
+    default:
+      return;
+  }
+}
+
+async function handleFollow(event: LineWebhookEvent): Promise<void> {
+  const lineUserId = event.source?.userId;
+  if (!lineUserId) return;
+  const nowIso = new Date().toISOString();
+
+  const { data: existing } = await supabaseAdmin
+    .from("line_accounts")
+    .select("user_id")
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+
+  const { error } = await supabaseAdmin.from("line_accounts").upsert(
+    { line_user_id: lineUserId, followed_at: nowIso, unfollowed_at: null },
+    { onConflict: "line_user_id" },
+  );
+  if (error) {
+    console.error("[line/webhook] follow upsert failed", {
+      message: error.message,
+    });
+  }
+
+  if (event.replyToken) {
+    const text = existing?.user_id ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE;
+    await replyLineMessages(event.replyToken, [{ type: "text", text }]);
+  }
+}
+
+async function handleUnfollow(event: LineWebhookEvent): Promise<void> {
+  const lineUserId = event.source?.userId;
+  if (!lineUserId) return;
+
+  const { error } = await supabaseAdmin.from("line_accounts").upsert(
+    { line_user_id: lineUserId, unfollowed_at: new Date().toISOString() },
+    { onConflict: "line_user_id" },
+  );
+  if (error) {
+    console.error("[line/webhook] unfollow upsert failed", {
+      message: error.message,
+    });
+  }
+}
+
+async function handleMessage(event: LineWebhookEvent): Promise<void> {
+  const lineUserId = event.source?.userId;
+  const replyToken = event.replyToken;
+  if (!lineUserId || !replyToken) return;
+
+  const isText = event.message?.type === "text";
+  const rawText = isText ? (event.message?.text ?? "").trim() : "";
+
+  if (isText) {
+    const normalized = normalizeCodeCandidate(rawText);
+    if (/^\d{6}$/.test(normalized)) {
+      await handleLinkCode(lineUserId, replyToken, normalized);
+      return;
+    }
+  }
+
+  const { data: account } = await supabaseAdmin
+    .from("line_accounts")
+    .select("user_id")
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+
+  if (!account?.user_id) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: PLACEHOLDER_UNLINKED_MESSAGE },
+    ]);
+    return;
+  }
+
+  if (!lineAliceChatEnabled()) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: PLACEHOLDER_LINKED_MESSAGE },
+    ]);
+    return;
+  }
+
+  if (!isText || !rawText) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: NON_TEXT_MESSAGE },
+    ]);
+    return;
+  }
+
+  await handleAliceChat(lineUserId, replyToken, account.user_id, rawText);
+}
+
+async function handleAliceChat(
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+  text: string,
+): Promise<void> {
+  const used = await countTodayLineUserMessages(lineUserId);
+  if (used >= lineFreeDailyLimit()) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: DAILY_LIMIT_MESSAGE },
+    ]);
+    return;
+  }
+
+  const { data: user, error } = await supabaseAdmin
+    .from("users")
+    .select("id, display_name, type_id, scores")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !user) {
+    console.error("[line/webhook] linked user lookup failed", {
+      message: error?.message ?? "not_found",
+    });
+    await replyLineMessages(replyToken, [
+      { type: "text", text: GENERATION_ERROR_MESSAGE },
+    ]);
+    return;
+  }
+
+  try {
+    const replyText = await generateLineAliceReply({
+      lineUserId,
+      user: {
+        id: user.id,
+        display_name: user.display_name ?? null,
+        type_id: user.type_id ?? null,
+        scores: (user.scores ?? null) as Record<string, number> | null,
+      } satisfies LineAliceUser,
+      text,
+    });
+    await replyLineMessages(replyToken, [{ type: "text", text: replyText }]);
+  } catch (caught) {
+    console.error("[line/webhook] alice reply failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+    await replyLineMessages(replyToken, [
+      { type: "text", text: GENERATION_ERROR_MESSAGE },
+    ]);
+  }
+}
+
+// 全角数字・空白・ハイフン混じりでもコードとして受け付ける
+function normalizeCodeCandidate(text: string): string {
+  return text
+    .replace(/[０-９]/g, (digit) =>
+      String.fromCharCode(digit.charCodeAt(0) - 0xfee0),
+    )
+    .replace(/[\s-]/g, "");
+}
+
+async function handleLinkCode(
+  lineUserId: string,
+  replyToken: string,
+  code: string,
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+
+  // 条件付き UPDATE で消費まで一撃 (二重送信・使い回しに対して原子的)
+  const { data: consumed, error } = await supabaseAdmin
+    .from("line_link_codes")
+    .update({ consumed_at: nowIso, consumed_by_line_user_id: lineUserId })
+    .eq("code_hash", hashLineLinkCode(code))
+    .is("consumed_at", null)
+    .gt("expires_at", nowIso)
+    .select("user_id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[line/webhook] link code consume failed", {
+      message: error.message,
+    });
+    await replyLineMessages(replyToken, [
+      { type: "text", text: LINK_ERROR_MESSAGE },
+    ]);
+    return;
+  }
+  if (!consumed) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: LINK_INVALID_MESSAGE },
+    ]);
+    return;
+  }
+
+  const { error: linkError } = await supabaseAdmin.from("line_accounts").upsert(
+    { line_user_id: lineUserId, user_id: consumed.user_id, linked_at: nowIso },
+    { onConflict: "line_user_id" },
+  );
+  if (linkError) {
+    console.error("[line/webhook] account link upsert failed", {
+      message: linkError.message,
+    });
+    await replyLineMessages(replyToken, [
+      { type: "text", text: LINK_ERROR_MESSAGE },
+    ]);
+    return;
+  }
+
+  const { data: user } = await supabaseAdmin
+    .from("users")
+    .select("display_name")
+    .eq("id", consumed.user_id)
+    .maybeSingle();
+  const name = (user?.display_name ?? "").trim();
+
+  await replyLineMessages(replyToken, [
+    {
+      type: "text",
+      text: [
+        `連携できました。${name ? `${name}さん` : "あなた"}のトリセツ、たしかに受け取りました。`,
+        "ここでお話しできる準備が整ったら、まっさきにお知らせしますね。",
+      ].join("\n"),
+    },
+  ]);
+}
+
