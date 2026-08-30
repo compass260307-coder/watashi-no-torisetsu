@@ -28,6 +28,8 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
+import { pushLineMessages } from "@/lib/line";
+import { buildLinePlusCheckoutUrl } from "@/lib/line-plus";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 import { runForUser } from "@/lib/unmei/generateWorker.mjs";
@@ -131,7 +133,20 @@ export async function POST(request: NextRequest) {
             `async payment succeeded but session is ${session.payment_status}: ${session.id}`,
           );
         }
+        // Alice Plus (LINE) 月額サブスク: 買い切り系の権利付与/payment_history とは別系統で、
+        // line_plus_subscriptions に Stripe の状態を写すだけ。
+        if (session.metadata?.product === "alice_plus") {
+          await handleAlicePlusCheckoutPaid(stripe, session);
+          break;
+        }
         await handleCheckoutPaid(session);
+        break;
+      }
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await syncLinePlusSubscription(subscription);
         break;
       }
       case "checkout.session.async_payment_failed": {
@@ -851,6 +866,137 @@ async function recordUnmeiPurchaseEventOnce(
 // ---------- 支払い確定済み Checkout Session の共通処理 ----------
 // checkout.session.completed (即時決済) と checkout.session.async_payment_succeeded
 // (遅延決済) のどちらからも、payment_status='paid' を確認した後だけ呼ぶ。
+// ===== Alice Plus (LINE) 月額サブスク =====
+
+const ALICE_PLUS_WELCOME_MESSAGE = (manageUrl: string): string =>
+  [
+    "Alice Plusへようこそ！これからは1日の上限を気にせず、好きなだけお話しできます。",
+    "今日あったことも、頭の中でぐるぐるしていることも、そのまま聞かせてくださいね。",
+    "",
+    "プランの確認・解約はこちらからいつでもどうぞ。",
+    manageUrl,
+  ].join("\n");
+
+/**
+ * サブスクの Checkout 完了。Stripe から最新の subscription を取り直して同期し、
+ * ようこそメッセージを push する。取り直しに失敗しても加入は確定しているので、
+ * 最低限の行を upsert して customer.subscription.* の後続イベントに補完を任せる。
+ */
+async function handleAlicePlusCheckoutPaid(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  const subscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id;
+  if (!userId || !lineUserId || !subscriptionId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  let synced = false;
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await syncLinePlusSubscription(subscription);
+    synced = true;
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus subscription retrieve failed", {
+      subscription_id: subscriptionId,
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+
+  if (!synced) {
+    const customerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : (session.customer?.id ?? null);
+    const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+      {
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: customerId,
+        user_id: userId,
+        line_user_id: lineUserId,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "stripe_subscription_id" },
+    );
+    // upsert まで失敗したら 500 で Stripe に再送させる (Plus 付与の取りこぼし防止)
+    if (error) {
+      throw new Error(`[alice_plus] subscription upsert failed: ${error.message}`);
+    }
+  }
+
+  // push は best effort。失敗しても加入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: ALICE_PLUS_WELCOME_MESSAGE(buildLinePlusCheckoutUrl(lineUserId)),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * customer.subscription.created/updated/deleted の同期。alice_plus 以外の
+ * サブスク (将来の別商品) はここでは扱わず黙って無視する。
+ */
+async function syncLinePlusSubscription(
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  const metadata = subscription.metadata ?? {};
+  if (metadata.product !== "alice_plus") return;
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    console.error(
+      `[webhook/stripe] alice_plus subscription without metadata (acknowledged): ${subscription.id}`,
+    );
+    return;
+  }
+
+  // API 2025-03 (SDK v18+) で current_period_end は SubscriptionItem 側に移動した
+  const periodEndEpoch = subscription.items?.data?.[0]?.current_period_end;
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: subscription.id,
+      stripe_customer_id:
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : (subscription.customer?.id ?? null),
+      user_id: userId,
+      line_user_id: lineUserId,
+      status: subscription.status,
+      current_period_end: periodEndEpoch
+        ? new Date(periodEndEpoch * 1000).toISOString()
+        : null,
+      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // 失敗は 500 → Stripe 再送で回復させる (状態ズレを残さない)
+  if (error) {
+    throw new Error(`[alice_plus] subscription sync failed: ${error.message}`);
+  }
+}
+
 async function handleCheckoutPaid(
   session: Stripe.Checkout.Session,
 ): Promise<void> {

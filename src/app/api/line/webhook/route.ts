@@ -26,6 +26,12 @@ import {
   lineFreeDailyLimit,
   type LineAliceUser,
 } from "@/lib/line-alice";
+import {
+  buildLinePlusCheckoutUrl,
+  hasActiveLinePlus,
+  linePlusDailyLimit,
+  linePlusEnabled,
+} from "@/lib/line-plus";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -73,6 +79,21 @@ const PLACEHOLDER_UNLINKED_MESSAGE = [
 const DAILY_LIMIT_MESSAGE = [
   "今日お話しできる分は、ここまでみたいです。また明日、話の続きを聞かせてくださいね。",
   "(もっとたっぷり話せるAlice Plusも、いま準備しています)",
+].join("\n");
+
+// Plus受付中の無料枠超過。案内リンクは本人のline_user_idで署名して毎回作る
+function dailyLimitMessageWithPlus(lineUserId: string): string {
+  return [
+    "今日お話しできる分は、ここまでみたいです。また明日、話の続きを聞かせてくださいね。",
+    "",
+    "もっとたっぷり話したいときは、Alice Plus (月480円・いつでも解約できます) をどうぞ。",
+    buildLinePlusCheckoutUrl(lineUserId),
+  ].join("\n");
+}
+
+const PLUS_DAILY_LIMIT_MESSAGE = [
+  "今日はたくさんお話しできて、うれしかったです。わたしも少しおやすみしますね。",
+  "また明日、続きを聞かせてください。",
 ].join("\n");
 
 const NON_TEXT_MESSAGE =
@@ -228,10 +249,25 @@ async function handleAliceChat(
 ): Promise<void> {
   const used = await countTodayLineUserMessages(lineUserId);
   if (used >= lineFreeDailyLimit()) {
-    await replyLineMessages(replyToken, [
-      { type: "text", text: DAILY_LIMIT_MESSAGE },
-    ]);
-    return;
+    // Plus加入者は無料枠を素通し。安全弁 (既定100通/日) だけ残す
+    const isPlus = await hasActiveLinePlus(userId);
+    if (!isPlus) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: linePlusEnabled()
+            ? dailyLimitMessageWithPlus(lineUserId)
+            : DAILY_LIMIT_MESSAGE,
+        },
+      ]);
+      return;
+    }
+    if (used >= linePlusDailyLimit()) {
+      await replyLineMessages(replyToken, [
+        { type: "text", text: PLUS_DAILY_LIMIT_MESSAGE },
+      ]);
+      return;
+    }
   }
 
   const { data: user, error } = await supabaseAdmin
