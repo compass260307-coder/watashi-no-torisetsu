@@ -29,6 +29,7 @@ import {
 } from "@/lib/line-alice";
 import {
   buildLinePlusCheckoutUrl,
+  buildLinePlusPageUrl,
   hasActiveLinePlus,
   linePlusDailyLimit,
   linePlusEnabled,
@@ -102,7 +103,7 @@ function dailyLimitMessageWithPlus(
     "💎 いますぐ続きを話したい人はこちら",
     "▶ Alice Plus(月480円・いつでも解約できます)",
     "　1日の上限なしのおしゃべり+恋愛運・友達運・勉強運の深掘り占い",
-    buildLinePlusCheckoutUrl(lineUserId),
+    buildLinePlusPageUrl(lineUserId),
     "",
     "🔮 無料のまま楽しみたい人はこちら",
     "▶「今日の占い」と送ってみてください",
@@ -469,7 +470,7 @@ async function handleThemeFortune(
           "💎 深掘り占いを試したい人はこちら",
           "▶ Alice Plus(月480円・いつでも解約できます)",
           "　あなたとの会話を覚えたうえで、恋愛運・友達運・勉強運を占います+おしゃべり上限なし",
-          buildLinePlusCheckoutUrl(lineUserId),
+          buildLinePlusPageUrl(lineUserId),
           "",
           "🔮 無料のまま楽しみたい人はこちら",
           "▶「今日の占い」は、これからも毎日無料で届けますね",
@@ -711,15 +712,15 @@ async function handleLineCommand(
       return;
     }
     const isPlus = await hasActiveLinePlus(userId);
-    const url = buildLinePlusCheckoutUrl(lineUserId);
     if (isPlus) {
+      // 管理 (確認・解約) は1タップでも早く着くよう直で Billing Portal 行き
       await replyLineMessages(replyToken, [
         {
           type: "text",
           text: [
             "Alice Plusをご利用中です。いつもありがとうございます。",
             "プランの確認・お支払い方法の変更・解約はこちらからどうぞ。",
-            url,
+            buildLinePlusCheckoutUrl(lineUserId),
           ].join("\n"),
         },
       ]);
@@ -736,7 +737,7 @@ async function handleLineCommand(
           "・恋愛運・友達運・勉強運の深掘り占い(あなたとの会話を覚えて占います)",
           "",
           "▶ はじめてみる(いつでも解約できます)",
-          url,
+          buildLinePlusPageUrl(lineUserId),
           "",
           "🔮 無料のままでも",
           `・1日${lineFreeDailyLimit()}通のおしゃべりと、毎日の「今日の占い」はずっと無料です`,

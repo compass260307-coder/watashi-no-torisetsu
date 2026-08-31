@@ -50,15 +50,28 @@ function signLinePlusToken(lineUserId: string, expiresAtMs: number): string {
     .digest("hex");
 }
 
-/** トークに送る購入/管理リンク。未加入→Checkout・加入済み→Billing Portal に着地する。 */
-export function buildLinePlusCheckoutUrl(lineUserId: string): string {
+function signedLinePlusParams(lineUserId: string): string {
   const expiresAtMs = Date.now() + TOKEN_TTL_MS;
   const params = new URLSearchParams({
     u: lineUserId,
     e: String(expiresAtMs),
     s: signLinePlusToken(lineUserId, expiresAtMs),
   });
-  return `${resolveSiteUrl()}/api/line/plus/checkout?${params.toString()}`;
+  return params.toString();
+}
+
+/** 決済アクションURL。未加入→Checkout・加入済み→Billing Portal に振り分ける。 */
+export function buildLinePlusCheckoutUrl(lineUserId: string): string {
+  return `${resolveSiteUrl()}/api/line/plus/checkout?${signedLinePlusParams(lineUserId)}`;
+}
+
+/**
+ * トークに送る案内リンク。直Stripeでなく紹介LP (/line/plus) に着地させ、
+ * 内容と解約方法を見せてから CTA で checkout API へ進ませる (2026-09-01 オーナー指示)。
+ * 加入済みの人への管理リンクは buildLinePlusCheckoutUrl を直接使ってよい。
+ */
+export function buildLinePlusPageUrl(lineUserId: string): string {
+  return `${resolveSiteUrl()}/line/plus?${signedLinePlusParams(lineUserId)}`;
 }
 
 export function verifyLinePlusToken(input: {
