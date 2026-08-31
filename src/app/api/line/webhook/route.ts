@@ -33,6 +33,7 @@ import {
   linePlusEnabled,
 } from "@/lib/line-plus";
 import { recordLineEvent } from "@/lib/line-events";
+import { getOrCreateDailyFortune } from "@/lib/line-fortune";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -327,7 +328,16 @@ async function handleAliceChat(
   }
 }
 
-type LineCommand = "plus" | "result" | "help";
+// リッチメニューのボタンはこのキーワードをそのままトークに送る
+// (「Aliceと話す」「今日の占い」「診断結果」「友達に招待」「Alice Plus」「お問合せ」)
+type LineCommand =
+  | "plus"
+  | "result"
+  | "help"
+  | "talk"
+  | "fortune"
+  | "invite"
+  | "contact";
 
 function matchLineCommand(text: string): LineCommand | null {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
@@ -340,7 +350,50 @@ function matchLineCommand(text: string): LineCommand | null {
   if (["使い方", "ヘルプ", "help"].includes(normalized)) {
     return "help";
   }
+  if (["aliceと話す", "アリスと話す"].includes(normalized)) {
+    return "talk";
+  }
+  if (["今日の占い", "占い", "うらない"].includes(normalized)) {
+    return "fortune";
+  }
+  if (["友達に招待", "招待", "友達診断"].includes(normalized)) {
+    return "invite";
+  }
+  if (["お問合せ", "お問い合わせ", "問い合わせ"].includes(normalized)) {
+    return "contact";
+  }
   return null;
+}
+
+// JSTの時間帯 (0-23時)
+function jstHour(now: Date = new Date()): number {
+  return new Date(now.getTime() + 9 * 60 * 60 * 1000).getUTCHours();
+}
+
+function talkStarterMessage(): string {
+  const hour = jstHour();
+  if (hour >= 5 && hour < 11) {
+    return [
+      "おはようございます!きてくれてうれしいな。",
+      "今日はどんな1日になりそうですか?予定のことでも、いまの気分でも、聞かせてください。",
+    ].join("\n");
+  }
+  if (hour >= 11 && hour < 17) {
+    return [
+      "こんにちは。ひと息つく時間ですか?",
+      "今日ここまでで、ちょっと気になったことや、誰かに言いたかったこと、ありませんか。",
+    ].join("\n");
+  }
+  if (hour >= 17 && hour < 23) {
+    return [
+      "おかえりなさい。今日はどんな1日でしたか?",
+      "楽しかったことでも、もやもやでも、どちらでも。ゆっくり聞きますよ。",
+    ].join("\n");
+  }
+  return [
+    "こんな時間まで、おつかれさまです。",
+    "眠れない夜は、頭の中にあることをそのまま吐き出しちゃうのもいいですよ。なんでもどうぞ。",
+  ].join("\n");
 }
 
 async function handleLineCommand(
@@ -349,6 +402,103 @@ async function handleLineCommand(
   replyToken: string,
   userId: string,
 ): Promise<void> {
+  await recordLineEvent({
+    eventName: "line_menu_command",
+    metadata: { command, line_user_id: lineUserId, user_id: userId },
+  });
+
+  if (command === "talk") {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: talkStarterMessage() },
+    ]);
+    return;
+  }
+
+  if (command === "contact") {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "お問い合わせは、こちらのメールで受け付けています。",
+          "support@watashi-torisetsu.com",
+          "",
+          "不具合の報告も、サービスへの要望も、どんなことでも大丈夫です。ぜんぶ運営が読んでいます。",
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
+  if (command === "fortune") {
+    const { data: user, error } = await supabaseAdmin
+      .from("users")
+      .select("id, display_name, type_id, scores")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !user) {
+      await replyLineMessages(replyToken, [
+        { type: "text", text: GENERATION_ERROR_MESSAGE },
+      ]);
+      return;
+    }
+    try {
+      const fortune = await getOrCreateDailyFortune({
+        lineUserId,
+        user: {
+          id: user.id,
+          display_name: user.display_name ?? null,
+          type_id: user.type_id ?? null,
+          scores: (user.scores ?? null) as Record<string, number> | null,
+        },
+      });
+      await replyLineMessages(replyToken, [
+        { type: "text", text: `🔮 今日の占い\n\n${fortune}` },
+      ]);
+    } catch (caught) {
+      console.error("[line/webhook] fortune failed", {
+        message: caught instanceof Error ? caught.message : String(caught),
+      });
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "ごめんなさい、星がうまく読めませんでした…。少し時間をおいて、もう一度試してみてください。",
+        },
+      ]);
+    }
+    return;
+  }
+
+  if (command === "invite") {
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("invite_code")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!user?.invite_code) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "ごめんなさい、招待リンクをうまく用意できませんでした。少し時間をおいて試してみてください。",
+        },
+      ]);
+      return;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "友達診断は、友達に何問か答えてもらうと「まわりから見えているあなた」がわかるやつです。",
+          "この招待リンクを、そのまま友達に送ってみてください。",
+          "",
+          `${resolveSiteUrl()}/friend/${user.invite_code}`,
+          "",
+          "回答が集まったら、わたしと一緒に見てみましょうね。",
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
   if (command === "plus") {
     if (!linePlusEnabled()) {
       await replyLineMessages(replyToken, [
@@ -384,15 +534,19 @@ async function handleLineCommand(
           "使い方はかんたん。ふだんの友達と同じように、そのまま話しかけてください。",
           "今日あったこと、もやもやしていること、なんでも大丈夫です。",
           "",
-          "・「結果」と送ると、あなたのトリセツをいつでも読み返せます",
-          `・無料では1日${lineFreeDailyLimit()}通までお話しできます`,
-          "・「プラン」と送ると、上限なしで話せるAlice Plus (月480円) の案内が届きます",
+          "下のメニューからは、こんなこともできます。",
+          "・今日の占い — あなたに合わせた今日のひとこと (1日1回)",
+          "・診断結果 — 自己診断と友達診断をいつでも読み返す",
+          "・友達に招待 — 友達診断のリンクをそのまま転送",
+          "",
+          `無料では1日${lineFreeDailyLimit()}通までお話しできます。上限なしで話したい人には Alice Plus (月480円) もありますよ。`,
         ].join("\n"),
       },
     ]);
     return;
   }
 
+  // result: 自己診断と友達診断をまとめて返す
   const { data: user } = await supabaseAdmin
     .from("users")
     .select("owner_token")
@@ -407,12 +561,20 @@ async function handleLineCommand(
     ]);
     return;
   }
+  const site = resolveSiteUrl();
   await replyLineMessages(replyToken, [
     {
       type: "text",
       text: [
-        "あなたのトリセツは、ここからいつでも読み返せます。",
-        `${resolveSiteUrl()}/me/${user.owner_token}`,
+        "あなたの結果は、ここからいつでも読み返せます。",
+        "",
+        "📖 自己診断 (あなたのトリセツ)",
+        `${site}/me/${user.owner_token}`,
+        "",
+        "👀 友達診断 (まわりから見えているあなた)",
+        `${site}/tako/${user.owner_token}`,
+        "",
+        "友達の回答をもっと集めたいときは、メニューの「友達に招待」からどうぞ。",
       ].join("\n"),
     },
   ]);

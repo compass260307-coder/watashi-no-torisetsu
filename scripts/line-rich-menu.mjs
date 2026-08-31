@@ -35,29 +35,43 @@ async function api(base, path, options = {}) {
 }
 
 const MENU = {
-  size: { width: 2500, height: 843 },
+  size: { width: 2500, height: 1686 },
   // selected=false: トークを主役にしてメニューは畳んでおく (バーに chatBarText 表示)
   selected: false,
   name: `${MENU_NAME_PREFIX}-${new Date().toISOString().slice(0, 10)}`,
   chatBarText: "メニュー",
+  // 2段×3列。ボタンはテキスト送信型で、応答は webhook の matchLineCommand が返す
   areas: [
     {
       bounds: { x: 0, y: 0, width: 833, height: 843 },
-      action: { type: "message", text: "診断結果" },
+      action: { type: "message", text: "Aliceと話す" },
     },
     {
       bounds: { x: 833, y: 0, width: 833, height: 843 },
-      action: { type: "message", text: "使い方" },
+      action: { type: "message", text: "今日の占い" },
     },
     {
       bounds: { x: 1666, y: 0, width: 834, height: 843 },
+      action: { type: "message", text: "診断結果" },
+    },
+    {
+      bounds: { x: 0, y: 843, width: 833, height: 843 },
+      action: { type: "message", text: "友達に招待" },
+    },
+    {
+      bounds: { x: 833, y: 843, width: 833, height: 843 },
       action: { type: "message", text: "Alice Plus" },
+    },
+    {
+      bounds: { x: 1666, y: 843, width: 834, height: 843 },
+      action: { type: "message", text: "お問合せ" },
     },
   ],
 };
 
 const { readFile } = await import("node:fs/promises");
 const image = await readFile(imagePath);
+const imageContentType = /\.jpe?g$/i.test(imagePath) ? "image/jpeg" : "image/png";
 
 // 1) 作成
 const { richMenuId } = await api("https://api.line.me", "/v2/bot/richmenu", {
@@ -70,7 +84,7 @@ console.log("created:", richMenuId);
 // 2) 画像アップロード (api-data ホスト)
 await api("https://api-data.line.me", `/v2/bot/richmenu/${richMenuId}/content`, {
   method: "POST",
-  headers: { ...headers, "Content-Type": "image/png" },
+  headers: { ...headers, "Content-Type": imageContentType },
   body: image,
 });
 console.log("image uploaded");
