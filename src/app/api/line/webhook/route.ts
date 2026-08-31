@@ -227,6 +227,16 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
     }
   }
 
+  // リッチメニューのボタン (メッセージ送信型) とキーワードの受け皿。
+  // 完全一致のみ拾い、通常の会話文をコマンド扱いしない
+  const command = isText ? matchLineCommand(rawText) : null;
+
+  // お問合せ・使い方は未連携 (診断前) の友だちにも答える
+  if (command === "contact" || command === "help") {
+    await handleLineCommand(command, lineUserId, replyToken, null);
+    return;
+  }
+
   const { data: account } = await supabaseAdmin
     .from("line_accounts")
     .select("user_id")
@@ -240,14 +250,11 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
     return;
   }
 
-  // リッチメニューのボタン (メッセージ送信型) とキーワードの受け皿。
-  // 完全一致のみ拾い、通常の会話文をコマンド扱いしない
+  if (command) {
+    await handleLineCommand(command, lineUserId, replyToken, account.user_id);
+    return;
+  }
   if (isText) {
-    const command = matchLineCommand(rawText);
-    if (command) {
-      await handleLineCommand(command, lineUserId, replyToken, account.user_id);
-      return;
-    }
     const theme = matchFortuneTheme(rawText);
     if (theme) {
       await handleThemeFortune(
@@ -501,7 +508,8 @@ async function handleLineCommand(
   command: LineCommand,
   lineUserId: string,
   replyToken: string,
-  userId: string,
+  // contact / help / talk は未連携 (null) でも応答する
+  userId: string | null,
 ): Promise<void> {
   await recordLineEvent({
     eventName: "line_menu_command",
@@ -529,6 +537,29 @@ async function handleLineCommand(
     ]);
     return;
   }
+
+  if (command === "help") {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "使い方はかんたん。ふだんの友達と同じように、そのまま話しかけてください。",
+          "今日あったこと、もやもやしていること、なんでも大丈夫です。",
+          "",
+          "下のメニューからは、こんなこともできます。",
+          "・今日の占い — あなたに合わせた今日のひとこと (1日1回)",
+          "・診断結果 — 自己診断と友達診断をいつでも読み返す",
+          "・友達に招待 — 友達診断のリンクをそのまま転送",
+          "",
+          `無料では1日${lineFreeDailyLimit()}通までお話しできます。上限なしで話したい人には Alice Plus (月480円) もありますよ。`,
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
+  // ここから下は連携済み前提 (呼び出し側で保証)。型ガードとして早期return
+  if (!userId) return;
 
   if (command === "fortune") {
     const { data: user, error } = await supabaseAdmin
@@ -636,26 +667,6 @@ async function handleLineCommand(
           url,
         ].join("\n");
     await replyLineMessages(replyToken, [{ type: "text", text }]);
-    return;
-  }
-
-  if (command === "help") {
-    await replyLineMessages(replyToken, [
-      {
-        type: "text",
-        text: [
-          "使い方はかんたん。ふだんの友達と同じように、そのまま話しかけてください。",
-          "今日あったこと、もやもやしていること、なんでも大丈夫です。",
-          "",
-          "下のメニューからは、こんなこともできます。",
-          "・今日の占い — あなたに合わせた今日のひとこと (1日1回)",
-          "・診断結果 — 自己診断と友達診断をいつでも読み返す",
-          "・友達に招待 — 友達診断のリンクをそのまま転送",
-          "",
-          `無料では1日${lineFreeDailyLimit()}通までお話しできます。上限なしで話したい人には Alice Plus (月480円) もありますよ。`,
-        ].join("\n"),
-      },
-    ]);
     return;
   }
 
