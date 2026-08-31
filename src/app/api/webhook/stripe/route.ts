@@ -1045,6 +1045,24 @@ async function syncLinePlusSubscription(
         line_user_id: lineUserId,
       },
     });
+    // 無料に戻った人へのお別れ+おかえり導線 (best effort)
+    try {
+      await pushLineMessages(lineUserId, [
+        {
+          type: "text",
+          text: [
+            "Alice Plusのご利用、ありがとうございました。",
+            "これからも1日3通の無料枠と今日の占いで、変わらずお話しできますからね。",
+            "また上限なしで話したくなったら、いつでも「プラン」って送ってください。",
+          ].join("\n"),
+          quickReply: quickReplies("今日の占い", "プラン"),
+        },
+      ]);
+    } catch (caught) {
+      console.error("[webhook/stripe] alice_plus farewell push failed", {
+        message: caught instanceof Error ? caught.message : String(caught),
+      });
+    }
   }
 }
 
