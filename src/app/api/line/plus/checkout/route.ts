@@ -100,6 +100,13 @@ export async function GET(request: NextRequest) {
       // customer.subscription.* イベント側でも同期できるよう subscription にも刻む
       subscription_data: { metadata },
       locale: "ja",
+      // 決済画面の支払いボタン上に出る安心文言 (サブスク不安の低減)
+      custom_text: {
+        submit: {
+          message:
+            "いつでも解約できます。解約後も、期間の終わりまでは使えます。解約はLINEトークで「プラン」と送るといつでもできます。",
+        },
+      },
       success_url: `${resolveSiteUrl()}/line/plus/complete?status=success`,
       cancel_url: `${resolveSiteUrl()}/line/plus/complete?status=cancelled`,
     });
