@@ -33,7 +33,12 @@ import {
   linePlusEnabled,
 } from "@/lib/line-plus";
 import { recordLineEvent } from "@/lib/line-events";
-import { getOrCreateDailyFortune } from "@/lib/line-fortune";
+import {
+  FORTUNE_THEMES,
+  generateThemeFortune,
+  getOrCreateDailyFortune,
+  type FortuneTheme,
+} from "@/lib/line-fortune";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -88,7 +93,7 @@ function dailyLimitMessageWithPlus(lineUserId: string): string {
   return [
     "今日お話しできる分は、ここまでみたいです。また明日、話の続きを聞かせてくださいね。",
     "",
-    "もっとたっぷり話したいときは、Alice Plus (月480円・いつでも解約できます) をどうぞ。",
+    "もっとたっぷり話したいときは、Alice Plus (月480円・いつでも解約できます) をどうぞ。上限なしのおしゃべりと、恋愛運・友達運・勉強運の深掘り占いが使えるようになりますよ。",
     buildLinePlusCheckoutUrl(lineUserId),
   ].join("\n");
 }
@@ -243,6 +248,17 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
       await handleLineCommand(command, lineUserId, replyToken, account.user_id);
       return;
     }
+    const theme = matchFortuneTheme(rawText);
+    if (theme) {
+      await handleThemeFortune(
+        theme,
+        lineUserId,
+        replyToken,
+        account.user_id,
+        rawText,
+      );
+      return;
+    }
   }
 
   if (!lineAliceChatEnabled()) {
@@ -365,6 +381,91 @@ function matchLineCommand(text: string): LineCommand | null {
   return null;
 }
 
+// テーマ別深掘り占い (Plus特典) のキーワード。完全一致のみ
+function matchFortuneTheme(text: string): FortuneTheme | null {
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
+  if (["恋愛運", "恋愛"].includes(normalized)) return "love";
+  if (["友達運", "友情運", "人間関係運"].includes(normalized)) return "friend";
+  if (["勉強運", "学業運", "仕事運"].includes(normalized)) return "study";
+  return null;
+}
+
+async function handleThemeFortune(
+  theme: FortuneTheme,
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+  requestText: string,
+): Promise<void> {
+  const isPlus = await hasActiveLinePlus(userId);
+  await recordLineEvent({
+    eventName: "line_fortune_theme",
+    metadata: { theme, plus: isPlus, line_user_id: lineUserId, user_id: userId },
+  });
+
+  if (!isPlus) {
+    if (!linePlusEnabled()) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "テーマ別の深掘り占いは、いま準備を進めています。始まったら、ここでお知らせしますね。",
+        },
+      ]);
+      return;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          `${FORTUNE_THEMES[theme].label}、気になりますよね。テーマ別の深掘り占いは、Alice Plus (月480円) の特典なんです。`,
+          "Plusに入ると、1日の上限なしのおしゃべりに加えて、恋愛運・友達運・勉強運を深く見られるようになります。あなたとの会話を覚えたうえで占うので、ただの占いとはちょっと違いますよ。",
+          "",
+          buildLinePlusCheckoutUrl(lineUserId),
+          "",
+          "今日のひとこと占いは、これからも毎日無料で届けますね。",
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
+  const { data: user, error } = await supabaseAdmin
+    .from("users")
+    .select("id, display_name, type_id, scores")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error || !user) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: GENERATION_ERROR_MESSAGE },
+    ]);
+    return;
+  }
+  try {
+    const fortune = await generateThemeFortune({
+      lineUserId,
+      user: {
+        id: user.id,
+        display_name: user.display_name ?? null,
+        type_id: user.type_id ?? null,
+        scores: (user.scores ?? null) as Record<string, number> | null,
+      },
+      theme,
+      requestText,
+    });
+    await replyLineMessages(replyToken, [{ type: "text", text: fortune }]);
+  } catch (caught) {
+    console.error("[line/webhook] theme fortune failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "ごめんなさい、星がうまく読めませんでした…。少し時間をおいて、もう一度試してみてください。",
+      },
+    ]);
+  }
+}
+
 // JSTの時間帯 (0-23時)
 function jstHour(now: Date = new Date()): number {
   return new Date(now.getTime() + 9 * 60 * 60 * 1000).getUTCHours();
@@ -452,7 +553,16 @@ async function handleLineCommand(
         },
       });
       await replyLineMessages(replyToken, [
-        { type: "text", text: `🔮 今日の占い\n\n${fortune}` },
+        {
+          type: "text",
+          text: [
+            "🔮 今日の占い",
+            "",
+            fortune,
+            "",
+            "恋愛運・友達運・勉強運は、「恋愛運」みたいに送ってくれたら深く見ますね。",
+          ].join("\n"),
+        },
       ]);
     } catch (caught) {
       console.error("[line/webhook] fortune failed", {
@@ -518,7 +628,10 @@ async function handleLineCommand(
           url,
         ].join("\n")
       : [
-          "Alice Plus (月480円) に入ると、1日の上限なしで好きなだけお話しできます。",
+          "Alice Plus (月480円) に入ると、こんなことができます。",
+          "・1日の上限なしで、好きなだけお話し",
+          "・恋愛運・友達運・勉強運の深掘り占い (あなたとの会話を覚えて占います)",
+          "",
           "いつでも解約できるので、気軽にお試しくださいね。",
           url,
         ].join("\n");

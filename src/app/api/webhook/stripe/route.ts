@@ -872,7 +872,7 @@ async function recordUnmeiPurchaseEventOnce(
 const ALICE_PLUS_WELCOME_MESSAGE = (manageUrl: string): string =>
   [
     "Alice Plusへようこそ！これからは1日の上限を気にせず、好きなだけお話しできます。",
-    "今日あったことも、頭の中でぐるぐるしていることも、そのまま聞かせてくださいね。",
+    "恋愛運・友達運・勉強運の深掘り占いも解放されました。さっそく「恋愛運」って送ってみてくださいね。",
     "",
     "プランの確認・解約はこちらからいつでもどうぞ。",
     manageUrl,

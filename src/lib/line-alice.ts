@@ -116,7 +116,7 @@ function buildConversationPrompt(
   return lines.join("\n");
 }
 
-async function loadRecentHistory(
+export async function loadRecentHistory(
   lineUserId: string,
 ): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
   const { data, error } = await supabaseAdmin
@@ -138,7 +138,7 @@ async function loadRecentHistory(
     .filter((row) => row.content.length > 0);
 }
 
-async function persistExchange(input: {
+export async function persistExchange(input: {
   lineUserId: string;
   userId: string;
   userText: string;
