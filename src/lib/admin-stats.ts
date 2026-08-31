@@ -577,6 +577,108 @@ export async function computeStats(from: string | null, to: string | null) {
     new Set(rows.map((e) => e.session_id).filter(Boolean)).size;
   const rate = (n: number, d: number) => (d > 0 ? n / d : 0);
 
+  // ===== LINE / Alice Plus (2026-09-01) =====
+  // 件数だけ欲しいので fetchAll ではなく head+count で取る (1000行制限の影響なし)。
+  // LINE機能は ja 限定のため、ko ビューではスナップショットを 0 にする
+  // (期間イベントは recordLineEvent が locale=ja で書くため applyLocale で自然に 0 になる)。
+  const ALICE_PLUS_PRICE_JPY = 480;
+  // 失敗しても 0 に倒して stats 全体を巻き込まない (adminが新セクション起因で
+  // 全損しないことを最優先にする)
+  const countExact = async (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    build: () => any,
+    label: string,
+  ): Promise<number> => {
+    try {
+      const { count, error } = await withDbQuerySlot<{
+        count: number | null;
+        error: { message?: string } | null;
+      }>(() => build());
+      if (error) {
+        console.error(`[admin-stats] ${label} count failed`, error.message);
+        return 0;
+      }
+      return count ?? 0;
+    } catch (caught) {
+      console.error(`[admin-stats] ${label} count threw`, {
+        message: caught instanceof Error ? caught.message : String(caught),
+      });
+      return 0;
+    }
+  };
+  const lineEventCount = (eventName: string) =>
+    countExact(
+      () =>
+        applyLocale(
+          applyRange(
+            supabaseAdmin
+              .from("events")
+              .select("id", { count: "exact", head: true })
+              .eq("event_name", eventName),
+          ),
+        ),
+      `events:${eventName}`,
+    );
+  const [
+    lineFriends,
+    lineLinked,
+    linePlusActive,
+    linePlusCancelScheduled,
+    lineFollowCount,
+    lineLinkCompletedCount,
+    linePlusCheckoutOpenedCount,
+    linePlusSubscribedCount,
+    linePlusCanceledCount,
+  ] = await Promise.all([
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_accounts")
+              .select("line_user_id", { count: "exact", head: true })
+              .is("unfollowed_at", null),
+          "line_accounts:friends",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_accounts")
+              .select("line_user_id", { count: "exact", head: true })
+              .is("unfollowed_at", null)
+              .not("user_id", "is", null),
+          "line_accounts:linked",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_plus_subscriptions")
+              .select("id", { count: "exact", head: true })
+              .in("status", ["active", "trialing"]),
+          "line_plus:active",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_plus_subscriptions")
+              .select("id", { count: "exact", head: true })
+              .in("status", ["active", "trialing"])
+              .eq("cancel_at_period_end", true),
+          "line_plus:cancel_scheduled",
+        ),
+    lineEventCount("line_follow"),
+    lineEventCount("line_link_completed"),
+    lineEventCount("line_plus_checkout_opened"),
+    lineEventCount("line_plus_subscribed"),
+    lineEventCount("line_plus_canceled"),
+  ]);
+
   // 課金カードは owner_token が取れる場合は本人単位、取れない場合だけセッション単位。
   // 同じ本人がページ再訪・別タブ表示しても分母を水増ししない。
   const toUniquePaywallAudience = (rows: PaywallEventRow[]): number => {
@@ -2005,6 +2107,20 @@ export async function computeStats(from: string | null, to: string | null) {
         clicked: unmeiBadgeClicked,
         clickRate: rate(unmeiBadgeClicked, unmeiBadgeShown),
       },
+    },
+    // LINE基盤 + Alice Plus (月額サブスク)。snapshot系 (friends/linked/加入者/MRR) は
+    // 現在値・イベント系 (follows〜canceled) は選択期間内の件数
+    linePlus: {
+      friends: lineFriends,
+      linked: lineLinked,
+      activeSubscribers: linePlusActive,
+      cancelScheduled: linePlusCancelScheduled,
+      mrrJpy: linePlusActive * ALICE_PLUS_PRICE_JPY,
+      follows: lineFollowCount,
+      linkCompleted: lineLinkCompletedCount,
+      checkoutOpened: linePlusCheckoutOpenedCount,
+      subscribed: linePlusSubscribedCount,
+      canceled: linePlusCanceledCount,
     },
     paywallSources,
     paywallAttribution: courseAttribution,
