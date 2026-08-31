@@ -19,6 +19,7 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
 import type { ResultLocale } from "@/i18n/result";
@@ -286,6 +287,13 @@ function HoshiyomiHome({
           </div>
         </div>
       </section>
+
+      {/* LINE連携 (Alice Plus)。サイト側の導線はここのみ (2026-08-31 オーナー指示)。ja限定 */}
+      {locale === "ja" && !previewMode && (
+        <div className="mx-auto max-w-[1040px] px-5 pt-10 md:px-8 md:pt-14">
+          <LineAliceLinkCard />
+        </div>
+      )}
 
       <section className="mx-auto max-w-[1040px] px-5 py-10 md:px-8 md:py-14">
         <div className="flex items-end justify-between gap-4">

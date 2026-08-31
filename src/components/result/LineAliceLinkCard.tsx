@@ -1,7 +1,7 @@
 "use client";
 
-// Alice Plus (LINE) 公開: LINE 連携導線カード。設置場所は /alice のみ (2026-08-31
-// オーナー指示で /me からは撤去)。/alice の青系カードデザインに合わせている。
+// Alice Plus (LINE) 公開: LINE 連携導線カード。設置場所は /hoshiyomi のホームのみ
+// (2026-08-31 オーナー指示。/me → /alice を経て確定)。星読みのインディゴ系に合わせる。
 //
 // ①友だち追加 → ②連携コード発行 (POST /api/line/link-code・要ログインセッション)
 // → ③トークに6桁送信、の3ステップ。連携完了の計測は webhook 側の
@@ -19,7 +19,7 @@ type IssueState =
 
 function errorMessage(errorCode: string | undefined, httpStatus: number): string {
   if (httpStatus === 401 || errorCode === "login_required") {
-    return "この結果を作ったスマホ・ブラウザで開くと発行できます。";
+    return "診断した時のスマホ・ブラウザで開くと発行できます。診断がまだの人は、先に無料診断からどうぞ。";
   }
   if (httpStatus === 409 || errorCode === "diagnosis_required") {
     return "先にWeb診断を完了すると発行できます。";
@@ -56,29 +56,34 @@ export default function LineAliceLinkCard() {
   };
 
   return (
-    <section className="rounded-[28px] border border-[#DDE5FF] bg-white p-8 shadow-[0_18px_60px_rgba(53,104,244,0.10)]">
-      <h2 className="text-xl font-black text-[#17336F]">LINEでAliceと話す</h2>
-      <p className="mt-3 text-sm leading-7 text-[#596786]">
+    <section className="rounded-2xl border border-[#5B5BEF]/15 bg-white p-6 shadow-[0_12px_34px_rgba(46,46,92,0.08)] md:p-8">
+      <p className="text-[11px] font-black tracking-[0.14em] text-[#06C755]">
+        LINE
+      </p>
+      <h2 className="mt-1 text-[20px] font-black text-[#2E2E5C] md:text-[24px]">
+        LINEでもAliceと話せます
+      </h2>
+      <p className="mt-3 text-[14px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:text-[15px]">
         診断結果を知っているAliceと、LINEでいつでもおしゃべり。今日の占いも毎日引けます。1日3通まで無料です。
       </p>
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-5 flex flex-col gap-3 md:max-w-[420px]">
         <a
           href={LINE_ADD_FRIEND_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-[#06C755] px-6 text-base font-black text-white shadow-[0_6px_0_#049b42]"
+          className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#06C755] px-6 text-[15px] font-black text-white transition-transform active:scale-95"
         >
           ① Aliceを友だち追加
         </a>
         {issue.status === "issued" ? (
-          <div className="rounded-2xl border border-[#DDE5FF] bg-[#F7F9FF] px-5 py-4 text-center">
-            <p className="text-xs font-black text-[#596786]">
+          <div className="rounded-xl border border-[#5B5BEF]/15 bg-[#F3F0FF] px-5 py-4 text-center">
+            <p className="text-[11px] font-black text-[#2E2E5C]/55">
               ② 連携コード (10分間有効)
             </p>
-            <p className="my-1 text-[34px] font-black tracking-[0.3em] text-[#17336F]">
+            <p className="my-1 text-[32px] font-black tracking-[0.3em] text-[#2E2E5C]">
               {issue.code}
             </p>
-            <p className="text-xs leading-6 text-[#596786]">
+            <p className="text-[12px] font-medium leading-relaxed text-[#2E2E5C]/65">
               ③ Aliceとのトークに、この6桁をそのまま送ると連携完了です。
             </p>
           </div>
@@ -87,13 +92,15 @@ export default function LineAliceLinkCard() {
             type="button"
             onClick={issueCode}
             disabled={issue.status === "loading"}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-[#3568F4] px-6 text-base font-black text-white shadow-[0_6px_0_#244BC0] disabled:opacity-60"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#5B5BEF] px-6 text-[15px] font-black text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {issue.status === "loading" ? "発行中…" : "② 連携コードを発行する"}
           </button>
         )}
         {issue.status === "error" && (
-          <p className="text-sm leading-6 text-[#C2410C]">{issue.message}</p>
+          <p className="text-[13px] font-bold leading-relaxed text-[#C2410C]">
+            {issue.message}
+          </p>
         )}
       </div>
     </section>
