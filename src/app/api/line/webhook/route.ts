@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   hashLineLinkCode,
+  quickReplies,
   replyLineMessages,
   verifyLineSignature,
   type LineWebhookBody,
@@ -187,8 +188,16 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
   });
 
   if (event.replyToken) {
-    const text = existing?.user_id ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE;
-    await replyLineMessages(event.replyToken, [{ type: "text", text }]);
+    const linked = Boolean(existing?.user_id);
+    await replyLineMessages(event.replyToken, [
+      {
+        type: "text",
+        text: linked ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE,
+        quickReply: linked
+          ? quickReplies("今日の占い", "診断結果")
+          : quickReplies("使い方"),
+      },
+    ]);
   }
 }
 
@@ -459,7 +468,19 @@ async function handleThemeFortune(
       theme,
       requestText,
     });
-    await replyLineMessages(replyToken, [{ type: "text", text: fortune }]);
+    // 他の2テーマをチップで提案 (回遊)
+    const otherThemes = (
+      Object.keys(FORTUNE_THEMES) as FortuneTheme[]
+    ).filter((key) => key !== theme);
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: fortune,
+        quickReply: quickReplies(
+          ...otherThemes.map((key) => FORTUNE_THEMES[key].label),
+        ),
+      },
+    ]);
   } catch (caught) {
     console.error("[line/webhook] theme fortune failed", {
       message: caught instanceof Error ? caught.message : String(caught),
@@ -553,6 +574,7 @@ async function handleLineCommand(
           "",
           `無料では1日${lineFreeDailyLimit()}通までお話しできます。上限なしで話したい人には Alice Plus (月480円) もありますよ。`,
         ].join("\n"),
+        quickReply: quickReplies("今日の占い", "診断結果", "プラン"),
       },
     ]);
     return;
@@ -591,8 +613,9 @@ async function handleLineCommand(
             "",
             fortune,
             "",
-            "恋愛運・友達運・勉強運は、「恋愛運」みたいに送ってくれたら深く見ますね。",
+            "気になるテーマは、下のボタンから深く見られますよ。",
           ].join("\n"),
+          quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
         },
       ]);
     } catch (caught) {
@@ -782,6 +805,9 @@ async function handleLinkCode(
           ? "これで、あなたに合わせてお話しできます。さっそく、今日あったことでも聞かせてくださいね。"
           : "ここでお話しできる準備が整ったら、まっさきにお知らせしますね。",
       ].join("\n"),
+      ...(lineAliceChatEnabled()
+        ? { quickReply: quickReplies("今日の占い", "診断結果") }
+        : {}),
     },
   ]);
 }

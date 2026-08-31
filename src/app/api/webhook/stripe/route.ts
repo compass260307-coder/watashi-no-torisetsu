@@ -28,7 +28,7 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
-import { pushLineMessages } from "@/lib/line";
+import { pushLineMessages, quickReplies } from "@/lib/line";
 import { buildLinePlusCheckoutUrl } from "@/lib/line-plus";
 import { recordLineEvent } from "@/lib/line-events";
 import { sendDetailedReportEmail } from "@/lib/email";
@@ -958,6 +958,7 @@ async function handleAlicePlusCheckoutPaid(
       {
         type: "text",
         text: ALICE_PLUS_WELCOME_MESSAGE(buildLinePlusCheckoutUrl(lineUserId)),
+        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
       },
     ]);
   } catch (caught) {

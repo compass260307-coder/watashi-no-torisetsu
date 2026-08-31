@@ -9,13 +9,33 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const LINE_API_BASE = "https://api.line.me";
 
+// クイックリプライ: 応答の下に出るタップチップ。次に送る言葉を提案して
+// 「何を打てばいいか分からない」を減らす。labelは20文字まで (LINE仕様)
+export interface LineQuickReply {
+  items: Array<{
+    type: "action";
+    action: { type: "message"; label: string; text: string };
+  }>;
+}
+
 export interface LineTextMessage {
   type: "text";
   text: string;
+  quickReply?: LineQuickReply;
 }
 
 // Phase 2以降で Flex Message 等を足す拡張点
 export type LineOutgoingMessage = LineTextMessage;
+
+/** ラベル=送信テキストのクイックリプライを組み立てる。 */
+export function quickReplies(...labels: string[]): LineQuickReply {
+  return {
+    items: labels.map((label) => ({
+      type: "action" as const,
+      action: { type: "message" as const, label, text: label },
+    })),
+  };
+}
 
 export interface LineWebhookEvent {
   type: string;
