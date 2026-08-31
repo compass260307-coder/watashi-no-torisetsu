@@ -89,13 +89,26 @@ const DAILY_LIMIT_MESSAGE = [
   "(もっとたっぷり話せるAlice Plusも、いま準備しています)",
 ].join("\n");
 
-// Plus受付中の無料枠超過。案内リンクは本人のline_user_idで署名して毎回作る
-function dailyLimitMessageWithPlus(lineUserId: string): string {
+// Plus受付中の無料枠超過。案内リンクは本人のline_user_idで署名して毎回作る。
+// 構成はオーナー指定の参考例に合わせる: 共感→安心→有料/無料の2択→どちらでも味方
+function dailyLimitMessageWithPlus(
+  lineUserId: string,
+  name: string | null,
+): string {
   return [
-    "今日お話しできる分は、ここまでみたいです。また明日、話の続きを聞かせてくださいね。",
+    `ごめんなさい${name ? `、${name}さん` : ""}。今日の無料でお話しできる分(${lineFreeDailyLimit()}通)を使い切っちゃいました😢`,
+    "でも安心してくださいね。明日になれば、また続きをお話しできますよ。",
     "",
-    "もっとたっぷり話したいときは、Alice Plus (月480円・いつでも解約できます) をどうぞ。上限なしのおしゃべりと、恋愛運・友達運・勉強運の深掘り占いが使えるようになりますよ。",
+    "💎 いますぐ続きを話したい人はこちら",
+    "▶ Alice Plus(月480円・いつでも解約できます)",
+    "　1日の上限なしのおしゃべり+恋愛運・友達運・勉強運の深掘り占い",
     buildLinePlusCheckoutUrl(lineUserId),
+    "",
+    "🔮 無料のまま楽しみたい人はこちら",
+    "▶「今日の占い」と送ってみてください",
+    "　毎日1回の占いは、ずっと無料です",
+    "",
+    "どちらを選んでも、わたしが最後までちゃんと聞きますからね🌙",
   ].join("\n");
 }
 
@@ -305,14 +318,26 @@ async function handleAliceChat(
     // Plus加入者は無料枠を素通し。安全弁 (既定100通/日) だけ残す
     const isPlus = await hasActiveLinePlus(userId);
     if (!isPlus) {
-      await replyLineMessages(replyToken, [
-        {
-          type: "text",
-          text: linePlusEnabled()
-            ? dailyLimitMessageWithPlus(lineUserId)
-            : DAILY_LIMIT_MESSAGE,
-        },
-      ]);
+      if (linePlusEnabled()) {
+        // 名前呼びのための1クエリ。上限に当たったときしか走らない
+        const { data: limited } = await supabaseAdmin
+          .from("users")
+          .select("display_name")
+          .eq("id", userId)
+          .maybeSingle();
+        const name = (limited?.display_name ?? "").trim() || null;
+        await replyLineMessages(replyToken, [
+          {
+            type: "text",
+            text: dailyLimitMessageWithPlus(lineUserId, name),
+            quickReply: quickReplies("今日の占い"),
+          },
+        ]);
+      } else {
+        await replyLineMessages(replyToken, [
+          { type: "text", text: DAILY_LIMIT_MESSAGE },
+        ]);
+      }
       return;
     }
     if (used >= linePlusDailyLimit()) {
@@ -429,17 +454,29 @@ async function handleThemeFortune(
       ]);
       return;
     }
+    const { data: viewer } = await supabaseAdmin
+      .from("users")
+      .select("display_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const name = (viewer?.display_name ?? "").trim();
     await replyLineMessages(replyToken, [
       {
         type: "text",
         text: [
-          `${FORTUNE_THEMES[theme].label}、気になりますよね。テーマ別の深掘り占いは、Alice Plus (月480円) の特典なんです。`,
-          "Plusに入ると、1日の上限なしのおしゃべりに加えて、恋愛運・友達運・勉強運を深く見られるようになります。あなたとの会話を覚えたうえで占うので、ただの占いとはちょっと違いますよ。",
+          `${name ? `${name}さん、` : ""}${FORTUNE_THEMES[theme].label}が気になるんですね…!テーマ別の深掘り占いは、Alice Plusの特典なんです。`,
           "",
+          "💎 深掘り占いを試したい人はこちら",
+          "▶ Alice Plus(月480円・いつでも解約できます)",
+          "　あなたとの会話を覚えたうえで、恋愛運・友達運・勉強運を占います+おしゃべり上限なし",
           buildLinePlusCheckoutUrl(lineUserId),
           "",
-          "今日のひとこと占いは、これからも毎日無料で届けますね。",
+          "🔮 無料のまま楽しみたい人はこちら",
+          "▶「今日の占い」は、これからも毎日無料で届けますね",
+          "",
+          "急がなくて大丈夫。気になったときが、いいタイミングですよ🌙",
         ].join("\n"),
+        quickReply: quickReplies("今日の占い"),
       },
     ]);
     return;
@@ -675,21 +712,40 @@ async function handleLineCommand(
     }
     const isPlus = await hasActiveLinePlus(userId);
     const url = buildLinePlusCheckoutUrl(lineUserId);
-    const text = isPlus
-      ? [
-          "Alice Plusをご利用中です。いつもありがとうございます。",
-          "プランの確認・お支払い方法の変更・解約はこちらからどうぞ。",
-          url,
-        ].join("\n")
-      : [
-          "Alice Plus (月480円) に入ると、こんなことができます。",
-          "・1日の上限なしで、好きなだけお話し",
-          "・恋愛運・友達運・勉強運の深掘り占い (あなたとの会話を覚えて占います)",
+    if (isPlus) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "Alice Plusをご利用中です。いつもありがとうございます。",
+            "プランの確認・お支払い方法の変更・解約はこちらからどうぞ。",
+            url,
+          ].join("\n"),
+        },
+      ]);
+      return;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "Alice Plusのご案内ですね。",
           "",
-          "いつでも解約できるので、気軽にお試しくださいね。",
+          "💎 Plus(月480円)でできること",
+          "・1日の上限なしで、好きなだけおしゃべり",
+          "・恋愛運・友達運・勉強運の深掘り占い(あなたとの会話を覚えて占います)",
+          "",
+          "▶ はじめてみる(いつでも解約できます)",
           url,
-        ].join("\n");
-    await replyLineMessages(replyToken, [{ type: "text", text }]);
+          "",
+          "🔮 無料のままでも",
+          `・1日${lineFreeDailyLimit()}通のおしゃべりと、毎日の「今日の占い」はずっと無料です`,
+          "",
+          "どちらでも、わたしはあなたの味方ですからね🌙",
+        ].join("\n"),
+        quickReply: quickReplies("今日の占い"),
+      },
+    ]);
     return;
   }
 
