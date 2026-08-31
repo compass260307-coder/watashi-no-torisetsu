@@ -103,38 +103,45 @@ export default async function LinePlusPage({
   return (
     <main className="min-h-dvh bg-[#F4F1FB] pb-32">
       {/* 星空ヒーロー: LINEプロフィール背景と同じ夜空Aliceの原画 */}
-      <section className="relative h-[470px] overflow-hidden">
-        <Image
-          src="/line/alice-plus-hero.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[70%_center]"
-          priority
-        />
-        {/* 上下スクリム: 文字の可読性と、下の白カードへの溶け込み */}
+      <section className="relative">
+        <div className="relative h-[470px] overflow-hidden">
+          <Image
+            src="/line/alice-plus-hero.webp"
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover object-[70%_center]"
+            priority
+          />
+          {/* 上下スクリム: 文字の可読性確保。最下端は完全に#2A2158へ落として下のバンドと継ぎ目なく繋ぐ */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-b from-[#241A4F]/55 via-transparent to-[#2A2158]"
+          />
+          <p className="absolute inset-x-0 top-10 text-center text-[12px] font-black tracking-[0.28em] text-[#FFD97A] drop-shadow-[0_1px_8px_rgba(20,10,50,0.8)]">
+            ALICE PLUS
+          </p>
+          <div className="absolute inset-x-0 bottom-0 px-5 pb-14 text-center">
+            <h1 className="text-[26px] font-black leading-snug text-white drop-shadow-[0_2px_12px_rgba(20,10,50,0.7)]">
+              Aliceと、もっと
+              <br />
+              たっぷり話しませんか
+            </h1>
+            <p className="mx-auto mt-4 inline-block rounded-full border border-white/30 bg-[#241A4F]/45 px-5 py-2 text-[13px] font-bold text-white backdrop-blur-sm">
+              月480円・いつでも解約できます
+            </p>
+          </div>
+        </div>
+        {/* 夜空→ページ背景への溶け込みバンド (ブチ切れ防止) */}
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-[#241A4F]/55 via-transparent to-[#241A4F]/95"
+          className="h-24 bg-gradient-to-b from-[#2A2158] via-[#8578C4] to-[#F4F1FB]"
         />
-        <p className="absolute inset-x-0 top-10 text-center text-[12px] font-black tracking-[0.28em] text-[#FFD97A] drop-shadow-[0_1px_8px_rgba(20,10,50,0.8)]">
-          ALICE PLUS
-        </p>
-        <div className="absolute inset-x-0 bottom-0 px-5 pb-24 text-center">
-          <h1 className="text-[26px] font-black leading-snug text-white drop-shadow-[0_2px_12px_rgba(20,10,50,0.7)]">
-            Aliceと、もっと
-            <br />
-            たっぷり話しませんか
-          </h1>
-          <p className="mx-auto mt-4 inline-block rounded-full border border-white/30 bg-[#241A4F]/45 px-5 py-2 text-[13px] font-bold text-white backdrop-blur-sm">
-            月480円・いつでも解約できます
-          </p>
-        </div>
       </section>
 
       <div className="mx-auto w-full max-w-md px-5">
         {/* 深掘り占いの会話プレビュー */}
-        <section className="-mt-14 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_18px_44px_rgba(36,26,79,0.16)]">
+        <section className="-mt-16 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_18px_44px_rgba(36,26,79,0.16)]">
           <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">
             💎 深掘り占いは、こんな感じ
           </p>
