@@ -26,29 +26,6 @@ export const metadata: Metadata = {
 
 const LINE_TALK_URL = "https://line.me/R/ti/p/%40867domoo";
 
-// 星空ヒーローの星。ランダムだとhydrationがズレるので決め打ち配置
-const STARS: Array<{ top: string; left: string; size: number; opacity: number }> = [
-  { top: "6%", left: "10%", size: 3, opacity: 0.8 },
-  { top: "12%", left: "82%", size: 4, opacity: 0.9 },
-  { top: "18%", left: "28%", size: 2, opacity: 0.5 },
-  { top: "9%", left: "55%", size: 2, opacity: 0.6 },
-  { top: "24%", left: "68%", size: 3, opacity: 0.7 },
-  { top: "30%", left: "14%", size: 2, opacity: 0.6 },
-  { top: "38%", left: "88%", size: 3, opacity: 0.8 },
-  { top: "44%", left: "6%", size: 2, opacity: 0.5 },
-  { top: "52%", left: "78%", size: 2, opacity: 0.6 },
-  { top: "58%", left: "22%", size: 3, opacity: 0.7 },
-  { top: "68%", left: "90%", size: 2, opacity: 0.5 },
-  { top: "72%", left: "12%", size: 2, opacity: 0.6 },
-];
-
-const SPARKLES: Array<{ top: string; left: string; size: string; opacity: number }> = [
-  { top: "10%", left: "20%", size: "text-[14px]", opacity: 0.9 },
-  { top: "20%", left: "86%", size: "text-[11px]", opacity: 0.7 },
-  { top: "48%", left: "8%", size: "text-[12px]", opacity: 0.7 },
-  { top: "40%", left: "72%", size: "text-[10px]", opacity: 0.6 },
-];
-
 // LINEのURLプレビュー取得 (line-poker等) をLP閲覧として数えない
 function isPreviewBot(userAgent: string): boolean {
   return /bot|facebookexternalhit|line-poker|crawler|spider|preview/i.test(
@@ -125,58 +102,34 @@ export default async function LinePlusPage({
 
   return (
     <main className="min-h-dvh bg-[#F4F1FB] pb-32">
-      {/* 星空ヒーロー (リッチメニューと同じ世界観) */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#241A4F] via-[#38296E] to-[#4C3A8C] px-5 pb-24 pt-12 text-center">
-        {STARS.map((star, index) => (
-          <span
-            key={`star-${index}`}
-            aria-hidden
-            className="absolute rounded-full bg-white"
-            style={{
-              top: star.top,
-              left: star.left,
-              width: star.size,
-              height: star.size,
-              opacity: star.opacity,
-            }}
-          />
-        ))}
-        {SPARKLES.map((sparkle, index) => (
-          <span
-            key={`sparkle-${index}`}
-            aria-hidden
-            className={`absolute ${sparkle.size} text-[#FFD97A]`}
-            style={{ top: sparkle.top, left: sparkle.left, opacity: sparkle.opacity }}
-          >
-            ✦
-          </span>
-        ))}
-
-        <p className="relative text-[12px] font-black tracking-[0.28em] text-[#FFD97A]">
+      {/* 星空ヒーロー: LINEプロフィール背景と同じ夜空Aliceの原画 */}
+      <section className="relative h-[470px] overflow-hidden">
+        <Image
+          src="/line/alice-plus-hero.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-[70%_center]"
+          priority
+        />
+        {/* 上下スクリム: 文字の可読性と、下の白カードへの溶け込み */}
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-b from-[#241A4F]/55 via-transparent to-[#241A4F]/95"
+        />
+        <p className="absolute inset-x-0 top-10 text-center text-[12px] font-black tracking-[0.28em] text-[#FFD97A] drop-shadow-[0_1px_8px_rgba(20,10,50,0.8)]">
           ALICE PLUS
         </p>
-        <div className="relative mx-auto mt-5 h-44 w-44">
-          <div
-            aria-hidden
-            className="absolute inset-0 rounded-full bg-[#FFD97A]/25 blur-2xl"
-          />
-          <Image
-            src="/mascot/hoshiyomi-alice-angel-transparent.png"
-            alt=""
-            fill
-            sizes="176px"
-            className="relative object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-            priority
-          />
+        <div className="absolute inset-x-0 bottom-0 px-5 pb-24 text-center">
+          <h1 className="text-[26px] font-black leading-snug text-white drop-shadow-[0_2px_12px_rgba(20,10,50,0.7)]">
+            Aliceと、もっと
+            <br />
+            たっぷり話しませんか
+          </h1>
+          <p className="mx-auto mt-4 inline-block rounded-full border border-white/30 bg-[#241A4F]/45 px-5 py-2 text-[13px] font-bold text-white backdrop-blur-sm">
+            月480円・いつでも解約できます
+          </p>
         </div>
-        <h1 className="relative mt-6 text-[26px] font-black leading-snug text-white">
-          Aliceと、もっと
-          <br />
-          たっぷり話しませんか
-        </h1>
-        <p className="relative mx-auto mt-4 inline-block rounded-full border border-white/25 bg-white/10 px-5 py-2 text-[13px] font-bold text-white">
-          月480円・いつでも解約できます
-        </p>
       </section>
 
       <div className="mx-auto w-full max-w-md px-5">
