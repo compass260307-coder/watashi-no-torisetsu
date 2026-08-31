@@ -110,7 +110,6 @@ import {
   verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
-import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 
 const SITE_URL =
   resolveSiteUrl();
@@ -1147,10 +1146,6 @@ async function MeResultPageContent({
               </section>
             );
           })()}
-
-        {/* ===== LINE連携導線 (Alice Plus公開・2026-08-31)。本人のみ・jaのみ。
-            LINEレイヤーは無料リテンションの柱なので、課金前後どちらでも出す。 ===== */}
-        {!isKorean && isOwnedResult && <LineAliceLinkCard />}
 
         {/* ===== 獲得CTA (/share 経由 + 公開タイプ別LP): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
         {(acquisition || publicPreview) && (
