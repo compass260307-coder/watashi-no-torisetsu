@@ -995,6 +995,11 @@ async function syncLinePlusSubscription(
 
   // API 2025-03 (SDK v18+) で current_period_end は SubscriptionItem 側に移動した
   const periodEndEpoch = subscription.items?.data?.[0]?.current_period_end;
+  // 期間末解約の予約。新しいAPIバージョン (2026-03 dahlia 系) では Portal 解約が
+  // cancel_at_period_end でなく cancel_at (解約予定日時) で表現されるため両方を見る。
+  // 実測: 2026-09-02 の課金実機テストで cancel_at_period_end=false のまま届いた
+  const cancelScheduled =
+    Boolean(subscription.cancel_at_period_end) || subscription.cancel_at != null;
   const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
     {
       stripe_subscription_id: subscription.id,
@@ -1008,7 +1013,7 @@ async function syncLinePlusSubscription(
       current_period_end: periodEndEpoch
         ? new Date(periodEndEpoch * 1000).toISOString()
         : null,
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      cancel_at_period_end: cancelScheduled,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "stripe_subscription_id" },
@@ -1019,7 +1024,7 @@ async function syncLinePlusSubscription(
   }
 
   // 期間末解約の予約 (解約→再開→再解約は cancel_at が変わるので別イベントになる)
-  if (subscription.cancel_at_period_end && !prev?.cancel_at_period_end) {
+  if (cancelScheduled && !prev?.cancel_at_period_end) {
     await recordLineEvent({
       eventName: "line_plus_cancel_scheduled",
       id: purchaseEventId(
