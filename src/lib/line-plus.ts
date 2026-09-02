@@ -74,6 +74,14 @@ export function buildLinePlusPageUrl(lineUserId: string): string {
   return `${resolveSiteUrl()}/line/plus?${signedLinePlusParams(lineUserId)}`;
 }
 
+/**
+ * ミッションページ (/line/missions) の署名付きリンク。トークン形式はPlus LPと共用
+ * (意味は「このLINEユーザー本人」の証明であってプラン購入専用ではないため)。
+ */
+export function buildLineMissionsPageUrl(lineUserId: string): string {
+  return `${resolveSiteUrl()}/line/missions?${signedLinePlusParams(lineUserId)}`;
+}
+
 export function verifyLinePlusToken(input: {
   lineUserId: string;
   expiresAtMs: number;

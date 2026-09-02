@@ -30,6 +30,7 @@ import {
   type LineAliceUser,
 } from "@/lib/line-alice";
 import {
+  buildLineMissionsPageUrl,
   buildLinePlusCheckoutUrl,
   buildLinePlusPageUrl,
   hasActiveLinePlus,
@@ -39,7 +40,6 @@ import {
 import {
   deterministicLineEventId,
   getLineEventOnce,
-  hasLineEventOnce,
   recordLineEvent,
   recordLineEventOnce,
 } from "@/lib/line-events";
@@ -516,20 +516,37 @@ async function handleThemeFortune(
     metadata: { theme, plus: isPlus, line_user_id: lineUserId, user_id: userId },
   });
 
-  // ミッション報酬: 友達回答が1件以上ある無料ユーザーは、深掘り占いを1回だけ無料開放。
-  // recordLineEventOnce (決定的ID挿入) が請求ロックを兼ねるので二重配布はない
+  // ミッション報酬: 友達回答1/3/5人の各節目で深掘り占いを1回ずつ無料開放。
+  // recordLineEventOnce (決定的ID挿入) が請求ロックを兼ねるので二重配布はない。
+  // 節目キーは /line/missions ページの表示ロジックと対で保つこと
   let giftClaimed = false;
+  let giftKey: string | null = null;
   if (!isPlus) {
     const { count } = await supabaseAdmin
       .from("friend_answers")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
-    if ((count ?? 0) >= 1) {
+    const answers = count ?? 0;
+    for (const tier of [
+      { min: 1, key: userId },
+      { min: 3, key: `${userId}:m3` },
+      { min: 5, key: `${userId}:m5` },
+    ]) {
+      if (answers < tier.min) break;
       giftClaimed = await recordLineEventOnce({
         eventName: "line_mission_reward",
-        key: userId,
-        metadata: { user_id: userId, line_user_id: lineUserId, theme },
+        key: tier.key,
+        metadata: {
+          user_id: userId,
+          line_user_id: lineUserId,
+          theme,
+          tier: tier.min,
+        },
       });
+      if (giftClaimed) {
+        giftKey = tier.key;
+        break;
+      }
     }
   }
 
@@ -616,11 +633,11 @@ async function handleThemeFortune(
       message: caught instanceof Error ? caught.message : String(caught),
     });
     // プレゼントを消費したのに占いが出せなかったら、ロックを返して再挑戦できるようにする
-    if (giftClaimed) {
+    if (giftClaimed && giftKey) {
       await supabaseAdmin
         .from("events")
         .delete()
-        .eq("id", deterministicLineEventId("line_mission_reward", userId));
+        .eq("id", deterministicLineEventId("line_mission_reward", giftKey));
     }
     await replyLineMessages(replyToken, [
       {
@@ -782,63 +799,15 @@ async function handleLineCommand(
   }
 
   if (command === "mission") {
-    const { data: user } = await supabaseAdmin
-      .from("users")
-      .select("invite_code")
-      .eq("id", userId)
-      .maybeSingle();
-    const { count } = await supabaseAdmin
-      .from("friend_answers")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId);
-    const answers = count ?? 0;
-    const rewardUsed = await hasLineEventOnce("line_mission_reward", userId);
-    const inviteUrl = user?.invite_code
-      ? `${resolveSiteUrl()}/friend/${user.invite_code}`
-      : resolveSiteUrl();
-
-    if (rewardUsed) {
-      await replyLineMessages(replyToken, [
-        {
-          type: "text",
-          text: [
-            "🎯 ミッション: クリア済みです🎉",
-            "次のミッションは、いま準備しています。始まったらここでお知らせしますね。",
-            "",
-            "友達の回答は何人分でも集められますよ。招待リンクはこちら。",
-            inviteUrl,
-          ].join("\n"),
-          quickReply: quickReplies("今日の占い", "診断結果"),
-        },
-      ]);
-      return;
-    }
-    if (answers >= 1) {
-      await replyLineMessages(replyToken, [
-        {
-          type: "text",
-          text: [
-            "🎯 ミッション達成!すごい、友達の回答が届いていますよ🎉",
-            "お祝いに、Alice Plus特典の深掘り占いを1回プレゼントします🎁",
-            "",
-            "下のボタンから、好きなテーマを選んでくださいね。",
-          ].join("\n"),
-          quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
-        },
-      ]);
-      return;
-    }
+    // 詳細はミッションページ (進捗バー+共有ボタン) に集約。メニューは直接URIで開くので
+    // ここに来るのはキーワード・メニューFlex経由のみ
     await replyLineMessages(replyToken, [
       {
         type: "text",
         text: [
-          "🎯 ミッション: 友達診断に友達を1人招待しよう!",
-          "友達の回答が届いたら、お祝いにAlice Plus特典の深掘り占い(恋愛運・友達運・勉強運)を1回プレゼント🎁",
-          "",
-          "この招待リンクを、そのまま友達に送ってみてください。",
-          inviteUrl,
-          "",
-          "回答が届いたら、もう一度「ミッション」って送ってくださいね。",
+          "🎯 ミッションの進み具合は、このページで見られますよ。",
+          "友達の回答を集めると、節目ごとに深掘り占いをプレゼントしています🎁",
+          buildLineMissionsPageUrl(lineUserId),
         ].join("\n"),
       },
     ]);

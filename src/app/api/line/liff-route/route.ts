@@ -12,7 +12,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimit } from "@/lib/api-security";
 import { recordLineEvent } from "@/lib/line-events";
-import { buildLinePlusPageUrl } from "@/lib/line-plus";
+import {
+  buildLineMissionsPageUrl,
+  buildLinePlusPageUrl,
+} from "@/lib/line-plus";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -31,7 +34,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
   const accessToken = body.accessToken ?? "";
-  const dest = body.dest === "plus" ? "plus" : "me";
+  const dest =
+    body.dest === "plus" || body.dest === "missions" ? body.dest : "me";
   if (!accessToken) {
     return NextResponse.json({ error: "missing_token" }, { status: 400 });
   }
@@ -86,6 +90,8 @@ export async function POST(request: NextRequest) {
   let url: string;
   if (dest === "plus") {
     url = buildLinePlusPageUrl(lineUserId);
+  } else if (dest === "missions") {
+    url = buildLineMissionsPageUrl(lineUserId);
   } else {
     const { data: user } = await supabaseAdmin
       .from("users")

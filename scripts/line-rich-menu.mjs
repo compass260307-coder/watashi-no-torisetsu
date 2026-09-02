@@ -69,7 +69,7 @@ const MENU = {
     },
     {
       bounds: { x: 625, y: 1180, width: 625, height: 506 },
-      action: { type: "message", text: "ミッション" },
+      action: { type: "uri", uri: `https://liff.line.me/${LIFF_ID}?dest=missions` },
     },
     {
       bounds: { x: 1250, y: 1180, width: 625, height: 506 },
