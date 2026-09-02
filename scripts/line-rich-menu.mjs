@@ -16,6 +16,14 @@ if (!TOKEN) {
 
 const MENU_NAME_PREFIX = "alice-main-menu";
 
+// 「自分のタイプ」「Alice Plus」はLIFF経由でその場でサイトを開く (2026-09-02)。
+// LIFFがタップした本人を特定し、/liff → /api/line/liff-route が本人のURLへ流す
+const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+if (!LIFF_ID) {
+  console.error("NEXT_PUBLIC_LINE_LIFF_ID is not set");
+  process.exit(1);
+}
+
 const imagePath = process.argv[2];
 if (!imagePath) {
   console.error("usage: node scripts/line-rich-menu.mjs <image.png>");
@@ -45,7 +53,7 @@ const MENU = {
   areas: [
     {
       bounds: { x: 0, y: 540, width: 833, height: 640 },
-      action: { type: "message", text: "自分のタイプ" },
+      action: { type: "uri", uri: `https://liff.line.me/${LIFF_ID}?dest=me` },
     },
     {
       bounds: { x: 833, y: 540, width: 833, height: 640 },
@@ -57,7 +65,7 @@ const MENU = {
     },
     {
       bounds: { x: 0, y: 1180, width: 625, height: 506 },
-      action: { type: "message", text: "Alice Plus" },
+      action: { type: "uri", uri: `https://liff.line.me/${LIFF_ID}?dest=plus` },
     },
     {
       bounds: { x: 625, y: 1180, width: 625, height: 506 },
