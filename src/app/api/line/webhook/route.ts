@@ -1129,19 +1129,40 @@ function menuLiffUrl(dest: string): string | null {
   return liffId ? `https://liff.line.me/${liffId}?dest=${dest}` : null;
 }
 
-// ラベルは絵文字つき表示・送信されるのは素のキーワード
+// Flex標準ボタンはラベルを太字にできないため、タップ可能な角丸ボックス+
+// 太字テキストでセルを自作する (色・太さ・角丸を自由に制御できる)
+function menuCell(
+  label: string,
+  action: Record<string, unknown>,
+  options: { primary?: boolean } = {},
+): Record<string, unknown> {
+  return {
+    type: "box",
+    layout: "vertical",
+    backgroundColor: options.primary ? "#5B5BEF" : "#EDEAFB",
+    cornerRadius: "10px",
+    paddingTop: "12px",
+    paddingBottom: "12px",
+    flex: 1,
+    action,
+    contents: [
+      {
+        type: "text",
+        text: label,
+        weight: "bold",
+        size: "sm",
+        color: options.primary ? "#FFFFFF" : "#2E2E5C",
+        align: "center",
+      },
+    ],
+  };
+}
+
 function menuMsgButton(
   label: string,
   keyword: string,
 ): Record<string, unknown> {
-  return {
-    type: "button",
-    style: "secondary",
-    color: "#EDEAFB",
-    height: "sm",
-    flex: 1,
-    action: { type: "message", label, text: keyword },
-  };
+  return menuCell(label, { type: "message", label, text: keyword });
 }
 
 // ページ系はその場でサイトを開く (LIFF未設定時はキーワード送信にフォールバック)
@@ -1152,14 +1173,7 @@ function menuPageButton(
 ): Record<string, unknown> {
   const uri = menuLiffUrl(dest);
   if (!uri) return menuMsgButton(label, fallbackKeyword);
-  return {
-    type: "button",
-    style: "secondary",
-    color: "#EDEAFB",
-    height: "sm",
-    flex: 1,
-    action: { type: "uri", label, uri },
-  };
+  return menuCell(label, { type: "uri", label, uri });
 }
 
 function menuRow(
@@ -1210,18 +1224,13 @@ function buildMenuFlexMessage(): LineFlexMessage {
         layout: "vertical",
         paddingAll: "16px",
         contents: [
-          menuRow({
-            type: "button",
-            style: "primary",
-            color: "#5B5BEF",
-            height: "sm",
-            flex: 1,
-            action: {
-              type: "message",
-              label: "Aliceと話す",
-              text: "Aliceと話す",
-            },
-          }),
+          menuRow(
+            menuCell(
+              "Aliceと話す",
+              { type: "message", label: "Aliceと話す", text: "Aliceと話す" },
+              { primary: true },
+            ),
+          ),
           menuRow(
             menuMsgButton("今日の占い", "今日の占い"),
             menuMsgButton("タロット", "タロット占い"),
