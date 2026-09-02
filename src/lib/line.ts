@@ -24,8 +24,16 @@ export interface LineTextMessage {
   quickReply?: LineQuickReply;
 }
 
-// Phase 2以降で Flex Message 等を足す拡張点
-export type LineOutgoingMessage = LineTextMessage;
+// Flex Message。contents は LINE の Flex コンテナJSON (bubble/carousel) をそのまま渡す。
+// 構造が深いため型はゆるく保ち、組み立て側 (webhook route) が仕様に責任を持つ
+export interface LineFlexMessage {
+  type: "flex";
+  altText: string;
+  contents: Record<string, unknown>;
+  quickReply?: LineQuickReply;
+}
+
+export type LineOutgoingMessage = LineTextMessage | LineFlexMessage;
 
 /** ラベル=送信テキストのクイックリプライを組み立てる。 */
 export function quickReplies(...labels: string[]): LineQuickReply {

@@ -40,31 +40,36 @@ const MENU = {
   selected: false,
   name: `${MENU_NAME_PREFIX}-${new Date().toISOString().slice(0, 10)}`,
   chatBarText: "メニュー",
-  // 2段×3列。ボタンはテキスト送信型で、応答は webhook の matchLineCommand が返す
+  // v3 (2026-09-02): ブランド帯(非タップ) + 上段3(大カード) + 下段4(小カード)。
+  // ボタンはテキスト送信型で、応答は webhook の matchLineCommand が返す
   areas: [
     {
-      bounds: { x: 0, y: 0, width: 833, height: 843 },
-      action: { type: "message", text: "Aliceと話す" },
+      bounds: { x: 0, y: 540, width: 833, height: 640 },
+      action: { type: "message", text: "自分のタイプ" },
     },
     {
-      bounds: { x: 833, y: 0, width: 833, height: 843 },
-      action: { type: "message", text: "今日の占い" },
+      bounds: { x: 833, y: 540, width: 833, height: 640 },
+      action: { type: "message", text: "占いで遊ぶ" },
     },
     {
-      bounds: { x: 1666, y: 0, width: 834, height: 843 },
-      action: { type: "message", text: "診断結果" },
+      bounds: { x: 1666, y: 540, width: 834, height: 640 },
+      action: { type: "message", text: "使い方" },
     },
     {
-      bounds: { x: 0, y: 843, width: 833, height: 843 },
-      action: { type: "message", text: "友達に招待" },
-    },
-    {
-      bounds: { x: 833, y: 843, width: 833, height: 843 },
+      bounds: { x: 0, y: 1180, width: 625, height: 506 },
       action: { type: "message", text: "Alice Plus" },
     },
     {
-      bounds: { x: 1666, y: 843, width: 834, height: 843 },
-      action: { type: "message", text: "お問合せ" },
+      bounds: { x: 625, y: 1180, width: 625, height: 506 },
+      action: { type: "message", text: "ミッション" },
+    },
+    {
+      bounds: { x: 1250, y: 1180, width: 625, height: 506 },
+      action: { type: "message", text: "メニュー" },
+    },
+    {
+      bounds: { x: 1875, y: 1180, width: 625, height: 506 },
+      action: { type: "message", text: "お問い合わせ" },
     },
   ],
 };

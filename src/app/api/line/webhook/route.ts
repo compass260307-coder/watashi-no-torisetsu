@@ -17,6 +17,7 @@ import {
   quickReplies,
   replyLineMessages,
   verifyLineSignature,
+  type LineFlexMessage,
   type LineWebhookBody,
   type LineWebhookEvent,
 } from "@/lib/line";
@@ -34,7 +35,12 @@ import {
   linePlusDailyLimit,
   linePlusEnabled,
 } from "@/lib/line-plus";
-import { recordLineEvent } from "@/lib/line-events";
+import {
+  deterministicLineEventId,
+  hasLineEventOnce,
+  recordLineEvent,
+  recordLineEventOnce,
+} from "@/lib/line-events";
 import {
   FORTUNE_THEMES,
   generateThemeFortune,
@@ -254,8 +260,8 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
   // 完全一致のみ拾い、通常の会話文をコマンド扱いしない
   const command = isText ? matchLineCommand(rawText) : null;
 
-  // お問合せ・使い方は未連携 (診断前) の友だちにも答える
-  if (command === "contact" || command === "help") {
+  // お問合せ・使い方・メニューは未連携 (診断前) の友だちにも答える
+  if (command === "contact" || command === "help" || command === "menu") {
     await handleLineCommand(command, lineUserId, replyToken, null);
     return;
   }
@@ -386,8 +392,9 @@ async function handleAliceChat(
   }
 }
 
-// リッチメニューのボタンはこのキーワードをそのままトークに送る
-// (「Aliceと話す」「今日の占い」「診断結果」「友達に招待」「Alice Plus」「お問合せ」)
+// リッチメニューv3のボタンはこのキーワードをそのままトークに送る
+// (上段:「自分のタイプ」「占いで遊ぶ」「使い方」/ 下段:「Alice Plus」「ミッション」「メニュー」「お問い合わせ」)
+// 旧メニューのキーワードも互換のため残す
 type LineCommand =
   | "plus"
   | "result"
@@ -395,14 +402,27 @@ type LineCommand =
   | "talk"
   | "fortune"
   | "invite"
-  | "contact";
+  | "contact"
+  | "mission"
+  | "menu";
 
 function matchLineCommand(text: string): LineCommand | null {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
   if (["プラン", "plus", "aliceplus", "アリスプラス"].includes(normalized)) {
     return "plus";
   }
-  if (["結果", "診断結果", "わたしの結果", "私の結果"].includes(normalized)) {
+  if (
+    [
+      "自分のタイプ",
+      "わたしのタイプ",
+      "私のタイプ",
+      "タイプ",
+      "結果",
+      "診断結果",
+      "わたしの結果",
+      "私の結果",
+    ].includes(normalized)
+  ) {
     return "result";
   }
   if (["使い方", "ヘルプ", "help"].includes(normalized)) {
@@ -411,7 +431,7 @@ function matchLineCommand(text: string): LineCommand | null {
   if (["aliceと話す", "アリスと話す"].includes(normalized)) {
     return "talk";
   }
-  if (["今日の占い", "占い", "うらない"].includes(normalized)) {
+  if (["占いで遊ぶ", "今日の占い", "占い", "うらない"].includes(normalized)) {
     return "fortune";
   }
   if (["友達に招待", "招待", "友達診断"].includes(normalized)) {
@@ -419,6 +439,12 @@ function matchLineCommand(text: string): LineCommand | null {
   }
   if (["お問合せ", "お問い合わせ", "問い合わせ"].includes(normalized)) {
     return "contact";
+  }
+  if (["ミッション", "mission"].includes(normalized)) {
+    return "mission";
+  }
+  if (["メニュー", "めにゅー", "menu", "すべての機能"].includes(normalized)) {
+    return "menu";
   }
   return null;
 }
@@ -445,7 +471,24 @@ async function handleThemeFortune(
     metadata: { theme, plus: isPlus, line_user_id: lineUserId, user_id: userId },
   });
 
+  // ミッション報酬: 友達回答が1件以上ある無料ユーザーは、深掘り占いを1回だけ無料開放。
+  // recordLineEventOnce (決定的ID挿入) が請求ロックを兼ねるので二重配布はない
+  let giftClaimed = false;
   if (!isPlus) {
+    const { count } = await supabaseAdmin
+      .from("friend_answers")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if ((count ?? 0) >= 1) {
+      giftClaimed = await recordLineEventOnce({
+        eventName: "line_mission_reward",
+        key: userId,
+        metadata: { user_id: userId, line_user_id: lineUserId, theme },
+      });
+    }
+  }
+
+  if (!isPlus && !giftClaimed) {
     if (!linePlusEnabled()) {
       await replyLineMessages(replyToken, [
         {
@@ -513,7 +556,9 @@ async function handleThemeFortune(
     await replyLineMessages(replyToken, [
       {
         type: "text",
-        text: fortune,
+        text: giftClaimed
+          ? `🎁 ミッション達成のプレゼント占いです!\n\n${fortune}`
+          : fortune,
         quickReply: quickReplies(
           ...otherThemes.map((key) => FORTUNE_THEMES[key].label),
         ),
@@ -523,6 +568,13 @@ async function handleThemeFortune(
     console.error("[line/webhook] theme fortune failed", {
       message: caught instanceof Error ? caught.message : String(caught),
     });
+    // プレゼントを消費したのに占いが出せなかったら、ロックを返して再挑戦できるようにする
+    if (giftClaimed) {
+      await supabaseAdmin
+        .from("events")
+        .delete()
+        .eq("id", deterministicLineEventId("line_mission_reward", userId));
+    }
     await replyLineMessages(replyToken, [
       {
         type: "text",
@@ -579,6 +631,11 @@ async function handleLineCommand(
     await replyLineMessages(replyToken, [
       { type: "text", text: talkStarterMessage() },
     ]);
+    return;
+  }
+
+  if (command === "menu") {
+    await replyLineMessages(replyToken, [buildMenuFlexMessage()]);
     return;
   }
 
@@ -667,6 +724,70 @@ async function handleLineCommand(
         },
       ]);
     }
+    return;
+  }
+
+  if (command === "mission") {
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("invite_code")
+      .eq("id", userId)
+      .maybeSingle();
+    const { count } = await supabaseAdmin
+      .from("friend_answers")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+    const answers = count ?? 0;
+    const rewardUsed = await hasLineEventOnce("line_mission_reward", userId);
+    const inviteUrl = user?.invite_code
+      ? `${resolveSiteUrl()}/friend/${user.invite_code}`
+      : resolveSiteUrl();
+
+    if (rewardUsed) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "🎯 ミッション: クリア済みです🎉",
+            "次のミッションは、いま準備しています。始まったらここでお知らせしますね。",
+            "",
+            "友達の回答は何人分でも集められますよ。招待リンクはこちら。",
+            inviteUrl,
+          ].join("\n"),
+          quickReply: quickReplies("今日の占い", "診断結果"),
+        },
+      ]);
+      return;
+    }
+    if (answers >= 1) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "🎯 ミッション達成!すごい、友達の回答が届いていますよ🎉",
+            "お祝いに、Alice Plus特典の深掘り占いを1回プレゼントします🎁",
+            "",
+            "下のボタンから、好きなテーマを選んでくださいね。",
+          ].join("\n"),
+          quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+        },
+      ]);
+      return;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "🎯 ミッション: 友達診断に友達を1人招待しよう!",
+          "友達の回答が届いたら、お祝いにAlice Plus特典の深掘り占い(恋愛運・友達運・勉強運)を1回プレゼント🎁",
+          "",
+          "この招待リンクを、そのまま友達に送ってみてください。",
+          inviteUrl,
+          "",
+          "回答が届いたら、もう一度「ミッション」って送ってくださいね。",
+        ].join("\n"),
+      },
+    ]);
     return;
   }
 
@@ -782,6 +903,73 @@ async function handleLineCommand(
       ].join("\n"),
     },
   ]);
+}
+
+// 「メニュー」= 全機能一覧のFlexページ。物理ボタンを増やさず、新機能はまずここに足す
+// (よく押されるようになったらリッチメニュー本体へ昇格させる運用・2026-09-02 オーナー方針)
+function menuSection(
+  label: string,
+  items: string[],
+): Array<Record<string, unknown>> {
+  return [
+    {
+      type: "text",
+      text: label,
+      size: "xs",
+      weight: "bold",
+      color: "#5B5BEF",
+      margin: "xl",
+    },
+    ...items.map((item) => ({
+      type: "button",
+      height: "sm",
+      style: "secondary",
+      color: "#F3F0FF",
+      margin: "sm",
+      action: { type: "message", label: item, text: item },
+    })),
+  ];
+}
+
+function buildMenuFlexMessage(): LineFlexMessage {
+  return {
+    type: "flex",
+    altText: "メニュー | できること一覧",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "20px",
+        contents: [
+          {
+            type: "text",
+            text: "メニュー",
+            weight: "bold",
+            size: "lg",
+            color: "#2E2E5C",
+          },
+          {
+            type: "text",
+            text: "やりたいことを、タップしてくださいね",
+            size: "xs",
+            color: "#9494B8",
+            margin: "sm",
+          },
+          ...menuSection("🔮 うらなう", [
+            "今日の占い",
+            "恋愛運",
+            "友達運",
+            "勉強運",
+          ]),
+          ...menuSection("💬 はなす", ["Aliceと話す"]),
+          ...menuSection("📖 じぶんを知る", ["診断結果"]),
+          ...menuSection("👥 ひろげる", ["友達に招待", "ミッション"]),
+          ...menuSection("⚙️ その他", ["使い方", "プラン", "お問い合わせ"]),
+        ],
+      },
+    },
+  };
 }
 
 // 全角数字・空白・ハイフン混じりでもコードとして受け付ける
