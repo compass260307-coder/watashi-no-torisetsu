@@ -714,7 +714,6 @@ async function handleLineCommand(
           "📖 自分のタイプ — 診断結果を見返す",
           "🎯 ミッション — 友達を招待してプレゼント",
           "",
-          `無料では1日${lineFreeDailyLimit()}通までお話しできます。`,
           "もっと遊びたい人は、Alice Plusも試してみてくださいね。",
         ].join("\n"),
         quickReply: quickReplies("今日の占い", "ミッション", "プラン"),
