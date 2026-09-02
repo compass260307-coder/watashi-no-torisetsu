@@ -1120,30 +1120,58 @@ async function handleTarotPick(
   ]);
 }
 
-// 「メニュー」= 全機能一覧のFlexページ。物理ボタンを増やさず、新機能はまずここに足す
-// (よく押されるようになったらリッチメニュー本体へ昇格させる運用・2026-09-02 オーナー方針)
-function menuSection(
+// 「メニュー」= 全機能一覧のFlex。物理ボタンを増やさず、新機能はまずここに足す
+// (よく押されるようになったらリッチメニュー本体へ昇格させる運用・2026-09-02 オーナー方針)。
+// 2列グリッドで縦を詰め、ページ系(タイプ/ミッション/プラン)はLIFF直リンク混載。
+
+function menuLiffUrl(dest: string): string | null {
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+  return liffId ? `https://liff.line.me/${liffId}?dest=${dest}` : null;
+}
+
+// ラベルは絵文字つき表示・送信されるのは素のキーワード
+function menuMsgButton(
   label: string,
-  items: string[],
-): Array<Record<string, unknown>> {
-  return [
-    {
-      type: "text",
-      text: label,
-      size: "xs",
-      weight: "bold",
-      color: "#5B5BEF",
-      margin: "xl",
-    },
-    ...items.map((item) => ({
-      type: "button",
-      height: "sm",
-      style: "secondary",
-      color: "#F3F0FF",
-      margin: "sm",
-      action: { type: "message", label: item, text: item },
-    })),
-  ];
+  keyword: string,
+): Record<string, unknown> {
+  return {
+    type: "button",
+    style: "secondary",
+    color: "#EDEAFB",
+    height: "sm",
+    flex: 1,
+    action: { type: "message", label, text: keyword },
+  };
+}
+
+// ページ系はその場でサイトを開く (LIFF未設定時はキーワード送信にフォールバック)
+function menuPageButton(
+  label: string,
+  dest: string,
+  fallbackKeyword: string,
+): Record<string, unknown> {
+  const uri = menuLiffUrl(dest);
+  if (!uri) return menuMsgButton(label, fallbackKeyword);
+  return {
+    type: "button",
+    style: "secondary",
+    color: "#EDEAFB",
+    height: "sm",
+    flex: 1,
+    action: { type: "uri", label, uri },
+  };
+}
+
+function menuRow(
+  ...buttons: Array<Record<string, unknown>>
+): Record<string, unknown> {
+  return {
+    type: "box",
+    layout: "horizontal",
+    spacing: "sm",
+    margin: "sm",
+    contents: buttons,
+  };
 }
 
 function buildMenuFlexMessage(): LineFlexMessage {
@@ -1152,36 +1180,68 @@ function buildMenuFlexMessage(): LineFlexMessage {
     altText: "メニュー | できること一覧",
     contents: {
       type: "bubble",
-      body: {
+      header: {
         type: "box",
         layout: "vertical",
-        paddingAll: "20px",
+        backgroundColor: "#241A4F",
+        paddingAll: "16px",
         contents: [
           {
             type: "text",
-            text: "メニュー",
+            text: "✦ MENU ✦",
+            size: "xxs",
             weight: "bold",
-            size: "lg",
-            color: "#2E2E5C",
+            color: "#FFD97A",
+            align: "center",
           },
           {
             type: "text",
-            text: "やりたいことを、タップしてくださいね",
-            size: "xs",
-            color: "#9494B8",
-            margin: "sm",
+            text: "🌙 メニュー",
+            size: "lg",
+            weight: "bold",
+            color: "#FFFFFF",
+            align: "center",
+            margin: "xs",
           },
-          ...menuSection("🔮 うらなう", [
-            "今日の占い",
-            "タロット占い",
-            "恋愛運",
-            "友達運",
-            "勉強運",
-          ]),
-          ...menuSection("💬 はなす", ["Aliceと話す"]),
-          ...menuSection("📖 じぶんを知る", ["診断結果"]),
-          ...menuSection("👥 ひろげる", ["友達に招待", "ミッション"]),
-          ...menuSection("⚙️ その他", ["使い方", "プラン", "お問い合わせ"]),
+        ],
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "16px",
+        contents: [
+          menuRow({
+            type: "button",
+            style: "primary",
+            color: "#5B5BEF",
+            height: "sm",
+            flex: 1,
+            action: {
+              type: "message",
+              label: "💬 Aliceと話す",
+              text: "Aliceと話す",
+            },
+          }),
+          menuRow(
+            menuMsgButton("🔮 今日の占い", "今日の占い"),
+            menuMsgButton("🃏 タロット", "タロット占い"),
+          ),
+          menuRow(
+            menuMsgButton("💘 恋愛運", "恋愛運"),
+            menuMsgButton("👥 友達運", "友達運"),
+          ),
+          menuRow(
+            menuMsgButton("📚 勉強運", "勉強運"),
+            menuPageButton("📖 診断結果", "me", "診断結果"),
+          ),
+          menuRow(
+            menuPageButton("🎯 ミッション", "missions", "ミッション"),
+            menuPageButton("💎 プラン", "plus", "プラン"),
+          ),
+          menuRow(
+            menuMsgButton("❓ 使い方", "使い方"),
+            menuMsgButton("✉️ 問い合わせ", "お問い合わせ"),
+          ),
         ],
       },
     },
