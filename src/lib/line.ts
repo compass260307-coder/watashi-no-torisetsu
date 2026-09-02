@@ -122,6 +122,18 @@ async function callLineApi(path: string, body: unknown): Promise<boolean> {
   return true;
 }
 
+/**
+ * AI生成などの待ち時間に「・・・」のローディング吹き出しを出す (1対1トーク限定)。
+ * 返信を送ると自動で消える。失敗しても本流は止めない (callLineApi がログだけ残す)。
+ * loadingSeconds は 5〜60 の5の倍数。
+ */
+export async function startLineLoadingAnimation(
+  chatId: string,
+  loadingSeconds = 30,
+): Promise<void> {
+  await callLineApi("/v2/bot/chat/loading/start", { chatId, loadingSeconds });
+}
+
 /** replyToken は受信から約1分・1回のみ有効。webhook 処理中に即時使う。 */
 export async function replyLineMessages(
   replyToken: string,

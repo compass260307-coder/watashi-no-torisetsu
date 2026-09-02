@@ -16,6 +16,7 @@ import {
   hashLineLinkCode,
   quickReplies,
   replyLineMessages,
+  startLineLoadingAnimation,
   verifyLineSignature,
   type LineFlexMessage,
   type LineWebhookBody,
@@ -370,6 +371,8 @@ async function handleAliceChat(
     return;
   }
 
+  // 生成待ちの「・・・」表示 (返信到着で自動的に消える)
+  await startLineLoadingAnimation(lineUserId);
   try {
     const replyText = await generateLineAliceReply({
       lineUserId,
@@ -537,6 +540,8 @@ async function handleThemeFortune(
     ]);
     return;
   }
+  // 生成待ちの「・・・」表示 (返信到着で自動的に消える)
+  await startLineLoadingAnimation(lineUserId);
   try {
     const fortune = await generateThemeFortune({
       lineUserId,
@@ -690,6 +695,8 @@ async function handleLineCommand(
       ]);
       return;
     }
+    // 初回生成は数秒かかるので「・・・」表示 (キャッシュ時は一瞬で消える)
+    await startLineLoadingAnimation(lineUserId);
     try {
       const fortune = await getOrCreateDailyFortune({
         lineUserId,
