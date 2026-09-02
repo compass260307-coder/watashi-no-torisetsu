@@ -38,6 +38,7 @@ import {
 } from "@/lib/line-plus";
 import {
   deterministicLineEventId,
+  getLineEventOnce,
   hasLineEventOnce,
   recordLineEvent,
   recordLineEventOnce,
@@ -50,8 +51,10 @@ import {
 } from "@/lib/line-fortune";
 import {
   LINE_TAROT_CARDS,
-  drawLineTarotCardOfDay,
+  dealLineTarotArrangement,
   formatLineTarotReading,
+  jstTarotDateKey,
+  type LineTarotCard,
 } from "@/lib/line-tarot";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -114,7 +117,7 @@ function dailyLimitMessageWithPlus(
     "",
     "💎 いますぐ続きを話したい人はこちら",
     "▶ Alice Plus(月480円・いつでも解約できます)",
-    "　1日の上限なしのおしゃべり+恋愛運・友達運・勉強運の深掘り占い",
+    "　1日の上限なしのおしゃべり+深掘り占い(恋愛・友達・勉強)+タロット占い",
     buildLinePlusPageUrl(lineUserId),
     "",
     "🔮 無料のまま楽しみたい人はこちら",
@@ -182,9 +185,39 @@ async function handleEvent(event: LineWebhookEvent): Promise<void> {
     case "message":
       await handleMessage(event);
       return;
+    case "postback":
+      await handlePostback(event);
+      return;
     default:
       return;
   }
+}
+
+// Flexボタン (タロットのカード選択) の postback。data 形式: "tarot:pick:<0-2>"
+async function handlePostback(event: LineWebhookEvent): Promise<void> {
+  const lineUserId = event.source?.userId;
+  const replyToken = event.replyToken;
+  if (!lineUserId || !replyToken) return;
+  const match = /^tarot:pick:([0-2])$/.exec(event.postback?.data ?? "");
+  if (!match) return;
+
+  const { data: account } = await supabaseAdmin
+    .from("line_accounts")
+    .select("user_id")
+    .eq("line_user_id", lineUserId)
+    .maybeSingle();
+  if (!account?.user_id) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: PLACEHOLDER_UNLINKED_MESSAGE },
+    ]);
+    return;
+  }
+  await handleTarotPick(
+    lineUserId,
+    replyToken,
+    account.user_id,
+    Number(match[1]),
+  );
 }
 
 async function handleFollow(event: LineWebhookEvent): Promise<void> {
@@ -524,7 +557,7 @@ async function handleThemeFortune(
           "",
           "💎 深掘り占いを試したい人はこちら",
           "▶ Alice Plus(月480円・いつでも解約できます)",
-          "　あなたとの会話を覚えたうえで、恋愛運・友達運・勉強運を占います+おしゃべり上限なし",
+          "　あなたとの会話を覚えたうえで、恋愛運・友達運・勉強運を占います+タロット+おしゃべり上限なし",
           buildLinePlusPageUrl(lineUserId),
           "",
           "🔮 無料のまま楽しみたい人はこちら",
@@ -744,22 +777,7 @@ async function handleLineCommand(
   }
 
   if (command === "tarot") {
-    // 今日の1枚 (スクリプト読み・コストゼロ・無料枠非消費)。1日固定の決定的ドロー
-    const card = drawLineTarotCardOfDay(userId);
-    const info = LINE_TAROT_CARDS[card];
-    const imageUrl = `${resolveSiteUrl()}${info.image}`;
-    await replyLineMessages(replyToken, [
-      {
-        type: "image",
-        originalContentUrl: imageUrl,
-        previewImageUrl: imageUrl,
-      },
-      {
-        type: "text",
-        text: formatLineTarotReading(card),
-        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
-      },
-    ]);
+    await handleTarotCommand(lineUserId, replyToken, userId);
     return;
   }
 
@@ -892,6 +910,7 @@ async function handleLineCommand(
           "💎 Plus(月480円)でできること",
           "・1日の上限なしで、好きなだけおしゃべり",
           "・恋愛運・友達運・勉強運の深掘り占い(あなたとの会話を覚えて占います)",
+          "・タロット占い(3枚から直感で今日の1枚を引く)",
           "",
           "▶ はじめてみる(いつでも解約できます)",
           buildLinePlusPageUrl(lineUserId),
@@ -937,6 +956,197 @@ async function handleLineCommand(
         "",
         "友達の回答をもっと集めたいときは、メニューの「友達に招待」からどうぞ。",
       ].join("\n"),
+    },
+  ]);
+}
+
+// ============ タロット占い (Alice Plus限定・インタラクティブ1枚引き) ============
+//
+// 「タロット占い」→ 裏向き3枚のFlexピッカー → postback で選んだ位置のカードを公開。
+// 並びは userId+JST日付で決定的 (dealLineTarotArrangement)・最初に選んだ1枚を
+// recordLineEventOnce でロック = その日はどう選び直しても同じカード (儀式性を守る)。
+// スクリプト読みなのでAIコストゼロ・無料枠非消費。
+
+const TAROT_DRAW_EVENT = "line_tarot_draw";
+
+function tarotLockKey(userId: string): string {
+  return `${userId}:${jstTarotDateKey()}`;
+}
+
+function isTarotCard(value: unknown): value is LineTarotCard {
+  return typeof value === "string" && value in LINE_TAROT_CARDS;
+}
+
+function buildTarotPickerMessage(): LineFlexMessage {
+  const backUrl = `${resolveSiteUrl()}/tarot/line/back.jpg`;
+  return {
+    type: "flex",
+    altText: "タロット占い | 気になる1枚を選んでください",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "20px",
+        backgroundColor: "#241A4F",
+        contents: [
+          {
+            type: "text",
+            text: "🃏 今日の1枚",
+            weight: "bold",
+            size: "md",
+            color: "#FFD97A",
+            align: "center",
+          },
+          {
+            type: "text",
+            text: "聞きたいことを心に浮かべて、気になるカードを1枚選んでください",
+            wrap: true,
+            size: "xs",
+            color: "#FFFFFFCC",
+            align: "center",
+            margin: "md",
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            spacing: "md",
+            margin: "lg",
+            contents: [0, 1, 2].map((pos) => ({
+              type: "image",
+              url: backUrl,
+              aspectRatio: "2:3",
+              aspectMode: "cover",
+              size: "full",
+              flex: 1,
+              action: {
+                type: "postback",
+                data: `tarot:pick:${pos}`,
+                displayText: "この1枚にする",
+              },
+            })),
+          },
+        ],
+      },
+    },
+  };
+}
+
+async function replyTarotUpsell(
+  lineUserId: string,
+  replyToken: string,
+): Promise<void> {
+  if (!linePlusEnabled()) {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "タロット占いは、いま準備を進めています。始まったら、ここでお知らせしますね。",
+      },
+    ]);
+    return;
+  }
+  await replyLineMessages(replyToken, [
+    {
+      type: "text",
+      text: [
+        "🃏 タロット占いは、Alice Plusの特典なんです。裏向きの3枚から、あなたの直感で今日の1枚を選ぶ占いですよ。",
+        "",
+        "💎 引いてみたい人はこちら",
+        "▶ Alice Plus(月480円・いつでも解約できます)",
+        "　タロット占い+恋愛運・友達運・勉強運の深掘り占い+上限なしのおしゃべり",
+        buildLinePlusPageUrl(lineUserId),
+        "",
+        "🔮 無料のまま楽しみたい人はこちら",
+        "▶「今日の占い」は、これからも毎日無料で届けますね",
+        "",
+        "急がなくて大丈夫。気になったときが、いいタイミングですよ🌙",
+      ].join("\n"),
+      quickReply: quickReplies("今日の占い"),
+    },
+  ]);
+}
+
+async function handleTarotCommand(
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+): Promise<void> {
+  const isPlus = await hasActiveLinePlus(userId);
+  if (!isPlus) {
+    await replyTarotUpsell(lineUserId, replyToken);
+    return;
+  }
+  const drawn = await getLineEventOnce(TAROT_DRAW_EVENT, tarotLockKey(userId));
+  if (isTarotCard(drawn?.card)) {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "今日の1枚は、もう引いていますよ🃏",
+          "",
+          formatLineTarotReading(drawn.card),
+        ].join("\n"),
+        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+    return;
+  }
+  await replyLineMessages(replyToken, [buildTarotPickerMessage()]);
+}
+
+async function handleTarotPick(
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+  pos: number,
+): Promise<void> {
+  const isPlus = await hasActiveLinePlus(userId);
+  if (!isPlus) {
+    // 解約後に古いピッカーを触ったケースなど
+    await replyTarotUpsell(lineUserId, replyToken);
+    return;
+  }
+  const arrangement = dealLineTarotArrangement(userId);
+  let card = arrangement[pos] ?? arrangement[0];
+  const claimed = await recordLineEventOnce({
+    eventName: TAROT_DRAW_EVENT,
+    key: tarotLockKey(userId),
+    metadata: {
+      user_id: userId,
+      line_user_id: lineUserId,
+      card,
+      pos,
+      date: jstTarotDateKey(),
+    },
+  });
+  if (!claimed) {
+    // 今日はもう引いている: ロック済みのカードを読み直して同じ結果を返す
+    const drawn = await getLineEventOnce(TAROT_DRAW_EVENT, tarotLockKey(userId));
+    if (isTarotCard(drawn?.card)) card = drawn.card;
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "今日の1枚は、最初に選んだこのカードですよ🃏",
+          "",
+          formatLineTarotReading(card),
+        ].join("\n"),
+        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+    return;
+  }
+  const imageUrl = `${resolveSiteUrl()}${LINE_TAROT_CARDS[card].image}`;
+  await replyLineMessages(replyToken, [
+    {
+      type: "image",
+      originalContentUrl: imageUrl,
+      previewImageUrl: imageUrl,
+    },
+    {
+      type: "text",
+      text: formatLineTarotReading(card),
+      quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
     },
   ]);
 }

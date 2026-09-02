@@ -85,20 +85,33 @@ export const LINE_TAROT_CARDS: Record<
   },
 };
 
-/** JSTの日付文字列 (YYYY-MM-DD)。 */
-function jstDateKey(now: Date = new Date()): string {
+/** JSTの日付文字列 (YYYY-MM-DD)。引きロックのキーにも使う。 */
+export function jstTarotDateKey(now: Date = new Date()): string {
   return new Date(now.getTime() + 9 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 }
 
-/** 今日の1枚。userId+JST日付から決定的に選ぶのでDB不要で1日固定。 */
-export function drawLineTarotCardOfDay(userId: string): LineTarotCard {
-  const keys = Object.keys(LINE_TAROT_CARDS) as LineTarotCard[];
+const PERMUTATIONS: ReadonlyArray<readonly LineTarotCard[]> = [
+  ["moon", "star", "sun"],
+  ["moon", "sun", "star"],
+  ["star", "moon", "sun"],
+  ["star", "sun", "moon"],
+  ["sun", "moon", "star"],
+  ["sun", "star", "moon"],
+];
+
+/**
+ * 今日の3枚の並び (裏向きの左・中・右)。userId+JST日付から決定的に決まるので、
+ * どの位置を選んでも「その日その位置のカード」は変わらない (選び直しの再抽選不可)。
+ */
+export function dealLineTarotArrangement(
+  userId: string,
+): readonly LineTarotCard[] {
   const digest = createHash("sha256")
-    .update(`line-tarot\0${userId}\0${jstDateKey()}`)
+    .update(`line-tarot-deal\0${userId}\0${jstTarotDateKey()}`)
     .digest();
-  return keys[digest[0] % keys.length];
+  return PERMUTATIONS[digest[0] % PERMUTATIONS.length];
 }
 
 /** トークに送る読み札テキスト。 */

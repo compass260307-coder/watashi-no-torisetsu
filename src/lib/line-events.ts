@@ -54,6 +54,26 @@ export async function recordLineEventOnce(input: {
   return false;
 }
 
+/** recordLineEventOnce で記録した行の metadata を読む (未記録・エラー時は null)。 */
+export async function getLineEventOnce(
+  eventName: string,
+  key: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabaseAdmin
+    .from("events")
+    .select("metadata")
+    .eq("id", deterministicLineEventId(eventName, key))
+    .maybeSingle();
+  if (error) {
+    console.error("[line-events] once metadata lookup failed", {
+      eventName,
+      message: error.message,
+    });
+    return null;
+  }
+  return (data?.metadata ?? null) as Record<string, unknown> | null;
+}
+
 /** recordLineEventOnce で記録済みかどうか (請求せず状態だけ見る)。エラー時は false。 */
 export async function hasLineEventOnce(
   eventName: string,

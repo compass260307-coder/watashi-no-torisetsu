@@ -179,6 +179,7 @@ export default async function LinePlusPage({
               { label: "おしゃべり", free: `1日${freeLimit}通`, plus: "上限なし" },
               { label: "今日の占い", free: "毎日1回", plus: "毎日1回" },
               { label: "深掘り占い", free: "−", plus: "◯" },
+              { label: "タロット占い", free: "−", plus: "◯" },
             ].map((row) => (
               <div
                 key={row.label}

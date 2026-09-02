@@ -69,6 +69,10 @@ export interface LineWebhookEvent {
     type: string;
     text?: string;
   };
+  // タロットのカード選択など、Flexボタンの postback アクション
+  postback?: {
+    data?: string;
+  };
 }
 
 export interface LineWebhookBody {

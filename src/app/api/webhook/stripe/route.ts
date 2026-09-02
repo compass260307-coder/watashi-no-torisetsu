@@ -872,7 +872,7 @@ async function recordUnmeiPurchaseEventOnce(
 const ALICE_PLUS_WELCOME_MESSAGE = (manageUrl: string): string =>
   [
     "Alice Plusへようこそ！これからは1日の上限を気にせず、好きなだけお話しできます。",
-    "恋愛運・友達運・勉強運の深掘り占いも解放されました。さっそく「恋愛運」って送ってみてくださいね。",
+    "深掘り占い(恋愛運・友達運・勉強運)とタロット占いも解放されました。さっそく「タロット占い」って送ってみてくださいね。",
     "",
     "プランの確認・解約はこちらからいつでもどうぞ。",
     manageUrl,
@@ -958,7 +958,7 @@ async function handleAlicePlusCheckoutPaid(
       {
         type: "text",
         text: ALICE_PLUS_WELCOME_MESSAGE(buildLinePlusCheckoutUrl(lineUserId)),
-        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
       },
     ]);
   } catch (caught) {
