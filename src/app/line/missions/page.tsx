@@ -330,9 +330,6 @@ function MissionsView({
                 <p className="absolute bottom-2.5 left-4 text-[10px] font-black tracking-[0.22em] text-[#FFD97A]">
                   SPECIAL
                 </p>
-                <span className="absolute right-3 top-3 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-black text-[#2E2E5C]/60">
-                  月480円
-                </span>
               </div>
               <div className="p-5 pt-4">
                 <p className="text-[16px] font-black leading-snug text-[#2E2E5C]">
