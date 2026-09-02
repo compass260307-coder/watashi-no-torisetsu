@@ -317,11 +317,11 @@ function MissionsView({
             <div className="overflow-hidden rounded-2xl border border-[#5B5BEF]/10 bg-white shadow-[0_18px_38px_rgba(36,26,79,0.22)]">
               <div className="relative h-[104px]">
                 <Image
-                  src="/line/alice-plus-hero.webp"
+                  src="/line/plus-promo.webp"
                   alt=""
                   fill
                   sizes="448px"
-                  className="object-cover object-[80%_30%]"
+                  className="object-cover object-[center_38%]"
                 />
                 <div
                   aria-hidden
