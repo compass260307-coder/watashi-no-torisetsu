@@ -790,7 +790,6 @@ async function handleLineCommand(
           "",
           "もっと遊びたい人は、Alice Plusも試してみてくださいね。",
         ].join("\n"),
-        quickReply: quickReplies("今日の占い", "ミッション", "プラン"),
       },
     ]);
     return;
