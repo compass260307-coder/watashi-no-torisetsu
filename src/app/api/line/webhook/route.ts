@@ -48,6 +48,11 @@ import {
   getOrCreateDailyFortune,
   type FortuneTheme,
 } from "@/lib/line-fortune";
+import {
+  LINE_TAROT_CARDS,
+  drawLineTarotCardOfDay,
+  formatLineTarotReading,
+} from "@/lib/line-tarot";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -407,7 +412,8 @@ type LineCommand =
   | "invite"
   | "contact"
   | "mission"
-  | "menu";
+  | "menu"
+  | "tarot";
 
 function matchLineCommand(text: string): LineCommand | null {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
@@ -448,6 +454,9 @@ function matchLineCommand(text: string): LineCommand | null {
   }
   if (["メニュー", "めにゅー", "menu", "すべての機能"].includes(normalized)) {
     return "menu";
+  }
+  if (["タロット占い", "タロット", "たろっと"].includes(normalized)) {
+    return "tarot";
   }
   return null;
 }
@@ -715,9 +724,9 @@ async function handleLineCommand(
             "",
             fortune,
             "",
-            "気になるテーマは、下のボタンから深く見られますよ。",
+            "気になるテーマは、下のボタンから深く見られますよ。タロットも引けます🃏",
           ].join("\n"),
-          quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+          quickReply: quickReplies("恋愛運", "友達運", "勉強運", "タロット占い"),
         },
       ]);
     } catch (caught) {
@@ -731,6 +740,26 @@ async function handleLineCommand(
         },
       ]);
     }
+    return;
+  }
+
+  if (command === "tarot") {
+    // 今日の1枚 (スクリプト読み・コストゼロ・無料枠非消費)。1日固定の決定的ドロー
+    const card = drawLineTarotCardOfDay(userId);
+    const info = LINE_TAROT_CARDS[card];
+    const imageUrl = `${resolveSiteUrl()}${info.image}`;
+    await replyLineMessages(replyToken, [
+      {
+        type: "image",
+        originalContentUrl: imageUrl,
+        previewImageUrl: imageUrl,
+      },
+      {
+        type: "text",
+        text: formatLineTarotReading(card),
+        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+      },
+    ]);
     return;
   }
 
@@ -965,6 +994,7 @@ function buildMenuFlexMessage(): LineFlexMessage {
           },
           ...menuSection("🔮 うらなう", [
             "今日の占い",
+            "タロット占い",
             "恋愛運",
             "友達運",
             "勉強運",

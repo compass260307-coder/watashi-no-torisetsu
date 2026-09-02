@@ -33,7 +33,18 @@ export interface LineFlexMessage {
   quickReply?: LineQuickReply;
 }
 
-export type LineOutgoingMessage = LineTextMessage | LineFlexMessage;
+// 画像メッセージ。URLはHTTPS必須・JPEG/PNGのみ (webp不可)・本体10MB/プレビュー1MBまで
+export interface LineImageMessage {
+  type: "image";
+  originalContentUrl: string;
+  previewImageUrl: string;
+  quickReply?: LineQuickReply;
+}
+
+export type LineOutgoingMessage =
+  | LineTextMessage
+  | LineFlexMessage
+  | LineImageMessage;
 
 /** ラベル=送信テキストのクイックリプライを組み立てる。 */
 export function quickReplies(...labels: string[]): LineQuickReply {
