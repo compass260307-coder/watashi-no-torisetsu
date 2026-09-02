@@ -40,9 +40,11 @@ import {
 import {
   deterministicLineEventId,
   getLineEventOnce,
+  hasLineEventOnce,
   recordLineEvent,
   recordLineEventOnce,
 } from "@/lib/line-events";
+import { fortuneStreak, hasTalkedToAlice } from "@/lib/line-missions";
 import {
   FORTUNE_THEMES,
   generateThemeFortune,
@@ -546,6 +548,61 @@ async function handleThemeFortune(
       if (giftClaimed) {
         giftKey = tier.key;
         break;
+      }
+    }
+    // SNS共有ミッション (回答数と独立した節目)。共有済みのSNSごとに1回ずつ配布。
+    // ネットワークidはページの SNS_MISSIONS・共有API (?n=) と対で保つこと
+    for (const network of ["x", "fb", "th"]) {
+      if (giftClaimed) break;
+      const shared = await hasLineEventOnce(
+        "line_mission_sns_shared",
+        `${userId}:${network}`,
+      );
+      if (!shared) continue;
+      giftClaimed = await recordLineEventOnce({
+        eventName: "line_mission_reward",
+        key: `${userId}:${network}`,
+        metadata: {
+          user_id: userId,
+          line_user_id: lineUserId,
+          theme,
+          tier: network,
+        },
+      });
+      if (giftClaimed) {
+        giftKey = `${userId}:${network}`;
+      }
+    }
+    // リテンションミッション (Aliceと話す/占い3日連続)。
+    // 達成判定は line-missions.ts・キーはページの表示ロジックと対で保つこと
+    if (!giftClaimed && (await hasTalkedToAlice(lineUserId))) {
+      giftClaimed = await recordLineEventOnce({
+        eventName: "line_mission_reward",
+        key: `${userId}:talk`,
+        metadata: {
+          user_id: userId,
+          line_user_id: lineUserId,
+          theme,
+          tier: "talk",
+        },
+      });
+      if (giftClaimed) {
+        giftKey = `${userId}:talk`;
+      }
+    }
+    if (!giftClaimed && (await fortuneStreak(lineUserId)).best >= 3) {
+      giftClaimed = await recordLineEventOnce({
+        eventName: "line_mission_reward",
+        key: `${userId}:streak3`,
+        metadata: {
+          user_id: userId,
+          line_user_id: lineUserId,
+          theme,
+          tier: "streak3",
+        },
+      });
+      if (giftClaimed) {
+        giftKey = `${userId}:streak3`;
       }
     }
   }
