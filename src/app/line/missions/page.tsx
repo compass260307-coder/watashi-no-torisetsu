@@ -11,7 +11,11 @@ import { headers } from "next/headers";
 
 import { hasLineEventOnce, recordLineEvent } from "@/lib/line-events";
 import { fortuneStreak, hasTalkedToAlice } from "@/lib/line-missions";
-import { verifyLinePlusToken } from "@/lib/line-plus";
+import {
+  buildLinePlusPageUrl,
+  hasActiveLinePlus,
+  verifyLinePlusToken,
+} from "@/lib/line-plus";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -67,6 +71,9 @@ type RetentionState = {
   streak: { days: number; achieved: boolean; claimed: boolean };
 };
 
+// Alice Plus訴求カード (加入済みなら非表示)
+type PlusPromoState = { isMember: boolean; href: string };
+
 function isPreviewBot(userAgent: string): boolean {
   return /bot|facebookexternalhit|line-poker|crawler|spider|preview/i.test(
     userAgent,
@@ -108,9 +115,10 @@ export default async function LineMissionsPage({
     talk?: string;
     streak?: string;
     days?: string;
+    plus?: string;
   }>;
 }) {
-  const { u, e, s, preview, claimed, x, fb, th, talk, streak, days } =
+  const { u, e, s, preview, claimed, x, fb, th, talk, streak, days, plus } =
     await searchParams;
   const lineUserId = u ?? "";
   const expiresAtMs = Number(e);
@@ -140,6 +148,7 @@ export default async function LineMissionsPage({
             claimed: streakState >= 2,
           },
         }}
+        plus={{ isMember: plus === "1", href: "#" }}
       />
     );
   }
@@ -180,8 +189,15 @@ export default async function LineMissionsPage({
       .eq("user_id", userId),
   ]);
   const answers = count ?? 0;
-  const [claims, snsFlags, talkDone, talkClaimed, streakInfo, streakClaimed] =
-    await Promise.all([
+  const [
+    claims,
+    snsFlags,
+    talkDone,
+    talkClaimed,
+    streakInfo,
+    streakClaimed,
+    isPlusMember,
+  ] = await Promise.all([
       Promise.all(
         MISSION_TIERS.map((tier) =>
           hasLineEventOnce("line_mission_reward", `${userId}${tier.keySuffix}`),
@@ -197,6 +213,7 @@ export default async function LineMissionsPage({
       hasLineEventOnce("line_mission_reward", `${userId}:talk`),
       fortuneStreak(lineUserId),
       hasLineEventOnce("line_mission_reward", `${userId}:streak3`),
+      hasActiveLinePlus(userId),
     ]);
 
   const userAgent = (await headers()).get("user-agent") ?? "";
@@ -231,6 +248,10 @@ export default async function LineMissionsPage({
           claimed: streakClaimed,
         },
       }}
+      plus={{
+        isMember: isPlusMember,
+        href: buildLinePlusPageUrl(lineUserId),
+      }}
     />
   );
 }
@@ -241,12 +262,14 @@ function MissionsView({
   inviteUrl,
   sns,
   retention,
+  plus,
 }: {
   answers: number;
   claims: boolean[];
   inviteUrl: string;
   sns: SnsMissionState[];
   retention: RetentionState;
+  plus: PlusPromoState;
 }) {
   const shareText = `友達診断、答えてもらえたらうれしいな🙏\n${inviteUrl}`;
   const shareUrl = `https://line.me/R/share?text=${encodeURIComponent(shareText)}`;
@@ -281,6 +304,58 @@ function MissionsView({
 
       {/* セクション間はカード影用のpb-6が既に効くので狭めに */}
       <div className="mx-auto w-full max-w-md space-y-1 px-5 pt-5">
+        {/* Alice Plus訴求 (加入済みは非表示)。ミッションカードと同じ帯+ボタン構成 */}
+        {!plus.isMember && (
+          <section className="space-y-3 pb-6">
+            <h2 className="flex items-center gap-2 px-1 text-[16px] font-black text-[#2E2E5C]">
+              <span
+                aria-hidden
+                className="inline-block h-2 w-2 rotate-45 bg-[#FFD97A]"
+              />
+              Alice Plusに加入しよう!
+            </h2>
+            <div className="overflow-hidden rounded-2xl border border-[#5B5BEF]/10 bg-white shadow-[0_18px_38px_rgba(36,26,79,0.22)]">
+              <div className="relative h-[104px]">
+                <Image
+                  src="/line/alice-plus-hero.webp"
+                  alt=""
+                  fill
+                  sizes="448px"
+                  className="object-cover object-[80%_30%]"
+                />
+                <div
+                  aria-hidden
+                  className="absolute inset-0 bg-gradient-to-t from-[#241A4F]/70 via-transparent to-[#241A4F]/25"
+                />
+                <p className="absolute bottom-2.5 left-4 text-[10px] font-black tracking-[0.22em] text-[#FFD97A]">
+                  SPECIAL
+                </p>
+                <span className="absolute right-3 top-3 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-black text-[#2E2E5C]/60">
+                  月480円
+                </span>
+              </div>
+              <div className="p-5 pt-4">
+                <p className="text-[16px] font-black leading-snug text-[#2E2E5C]">
+                  Alice Plusに加入する
+                </p>
+                <p className="mt-2 flex items-center gap-1.5 text-[12px] font-bold text-[#5B5BEF]">
+                  <span
+                    aria-hidden
+                    className="inline-block h-1.5 w-1.5 rotate-45 bg-[#FFD97A]"
+                  />
+                  深掘り占い・タロット・おしゃべり 使い放題
+                </p>
+                <a
+                  href={plus.href}
+                  className="mt-4 block w-full rounded-xl bg-[#5B5BEF] py-3 text-center text-[13px] font-black text-white transition-transform active:scale-95"
+                >
+                  Alice Plusをみてみる
+                </a>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 px-1 text-[16px] font-black text-[#2E2E5C]">
             <span
