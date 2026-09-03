@@ -8,14 +8,18 @@
 // 加入済みの人には CTA を「プランを確認・解約する」(Billing Portal行き) に切り替える。
 
 import type { Metadata } from "next";
-import Image from "next/image";
 import { headers } from "next/headers";
 
 import { lineFreeDailyLimit } from "@/lib/line-alice";
+import PlusPlanChooser from "@/components/line/PlusPlanChooser";
 import { recordLineEvent } from "@/lib/line-events";
 import {
+  findActiveWeekPass,
   findManageableLinePlusSubscription,
+  hasLifetimeLinePlus,
   linePlusEnabled,
+  linePlusLifetimePriceConfigured,
+  linePlusWeekPriceConfigured,
   verifyLinePlusToken,
 } from "@/lib/line-plus";
 
@@ -56,12 +60,23 @@ function FallbackCard({ title, body }: { title: string; body: string }) {
 export default async function LinePlusPage({
   searchParams,
 }: {
-  searchParams: Promise<{ u?: string; e?: string; s?: string }>;
+  searchParams: Promise<{
+    u?: string;
+    e?: string;
+    s?: string;
+    preview?: string;
+  }>;
 }) {
-  const { u, e, s } = await searchParams;
+  const { u, e, s, preview } = await searchParams;
   const lineUserId = u ?? "";
   const expiresAtMs = Number(e);
   const signature = s ?? "";
+
+  // 開発時のみ: ?preview=1 (未加入) / ?preview=member (加入中) / ?preview=week
+  // (1週間パス利用中) / ?preview=lifetime (無期限プラン利用中) で
+  // トークン・DB不要の見た目確認 (/line/missions と同じ流儀)
+  const isDevPreview =
+    process.env.NODE_ENV === "development" && preview !== undefined;
 
   if (!linePlusEnabled()) {
     return (
@@ -71,7 +86,10 @@ export default async function LinePlusPage({
       />
     );
   }
-  if (!verifyLinePlusToken({ lineUserId, expiresAtMs, signature })) {
+  if (
+    !isDevPreview &&
+    !verifyLinePlusToken({ lineUserId, expiresAtMs, signature })
+  ) {
     return (
       <FallbackCard
         title="リンクの有効期限が切れています"
@@ -80,92 +98,71 @@ export default async function LinePlusPage({
     );
   }
 
-  const isManageable = Boolean(
-    await findManageableLinePlusSubscription(lineUserId),
-  );
+  const isManageable = isDevPreview
+    ? preview === "member"
+    : Boolean(await findManageableLinePlusSubscription(lineUserId));
 
-  const userAgent = (await headers()).get("user-agent") ?? "";
-  if (!isPreviewBot(userAgent)) {
-    await recordLineEvent({
-      eventName: "line_plus_lp_viewed",
-      metadata: { line_user_id: lineUserId, manageable: isManageable },
-    });
+  if (!isDevPreview) {
+    const userAgent = (await headers()).get("user-agent") ?? "";
+    if (!isPreviewBot(userAgent)) {
+      await recordLineEvent({
+        eventName: "line_plus_lp_viewed",
+        metadata: { line_user_id: lineUserId, manageable: isManageable },
+      });
+    }
   }
 
   // 検証済みのパラメータをそのまま運ぶ。checkout API 側でもう一度検証される
-  const checkoutUrl = `/api/line/plus/checkout?${new URLSearchParams({
+  const tokenQuery = new URLSearchParams({
     u: lineUserId,
     e: String(expiresAtMs),
     s: signature,
-  }).toString()}`;
+  }).toString();
+  const checkoutUrl = isDevPreview ? "#" : `/api/line/plus/checkout?${tokenQuery}`;
+  const weekCheckoutUrl = isDevPreview
+    ? "#"
+    : `/api/line/plus/checkout?plan=week&${tokenQuery}`;
+  const lifetimeCheckoutUrl = isDevPreview
+    ? "#"
+    : `/api/line/plus/checkout?plan=lifetime&${tokenQuery}`;
+  // 買い切りプラン: Price未設定なら売り場ごと隠す (プレビューでは常に表示)
+  const weekAvailable = isDevPreview || linePlusWeekPriceConfigured();
+  const lifetimeAvailable = isDevPreview || linePlusLifetimePriceConfigured();
+  const hasLifetime = isDevPreview
+    ? preview === "lifetime"
+    : await hasLifetimeLinePlus(lineUserId);
+  const weekPass = isDevPreview
+    ? preview === "week"
+      ? { expiresAt: "2026-09-09T00:00:00.000Z" } // プレビュー用の固定日付
+      : null
+    : await findActiveWeekPass(lineUserId);
+  const weekPassUntil = weekPass
+    ? new Date(
+        new Date(weekPass.expiresAt).getTime() + 9 * 3_600_000,
+      ).toISOString()
+    : null;
+  const weekPassLabel = weekPassUntil
+    ? `${Number(weekPassUntil.slice(5, 7))}月${Number(weekPassUntil.slice(8, 10))}日`
+    : null;
   const freeLimit = lineFreeDailyLimit();
 
   return (
     <main className="min-h-dvh bg-[#F4F1FB] pb-32">
-      {/* 星空ヒーロー: LINEプロフィール背景と同じ夜空Aliceの原画 */}
-      <section className="relative h-[470px] overflow-hidden">
-        <Image
-          src="/line/alice-plus-hero.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[70%_center]"
-          priority
-        />
-        {/* 上下スクリム: 文字の可読性と、下の白カードへの溶け込み */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-b from-[#241A4F]/55 via-transparent to-[#241A4F]/95"
-        />
-        <p className="absolute inset-x-0 top-10 text-center text-[12px] font-black tracking-[0.28em] text-[#FFD97A] drop-shadow-[0_1px_8px_rgba(20,10,50,0.8)]">
-          ALICE PLUS
-        </p>
-        <div className="absolute inset-x-0 bottom-0 px-5 pb-24 text-center">
-          <h1 className="text-[26px] font-black leading-snug text-white drop-shadow-[0_2px_12px_rgba(20,10,50,0.7)]">
-            Aliceと、もっと
-            <br />
-            たっぷり話しませんか
+      <div className="mx-auto w-full max-w-md px-5 pt-2">
+        {/* タイトルロックアップ: グラデ文字+金のひし形飾り */}
+        <div className="flex flex-col items-center pt-5">
+          <h1 className="bg-gradient-to-r from-[#5B5BEF] via-[#7C5BEF] to-[#9B5BEF] bg-clip-text text-[24px] font-black tracking-[0.04em] text-transparent">
+            Alice Plus
           </h1>
-          <p className="mx-auto mt-4 inline-block rounded-full border border-white/30 bg-[#241A4F]/45 px-5 py-2 text-[13px] font-bold text-white backdrop-blur-sm">
-            月480円・いつでも解約できます
-          </p>
-        </div>
-      </section>
-
-      <div className="mx-auto w-full max-w-md px-5">
-        {/* 深掘り占いの会話プレビュー */}
-        <section className="-mt-14 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_18px_44px_rgba(36,26,79,0.16)]">
-          <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">
-            💎 深掘り占いは、こんな感じ
-          </p>
-          <div className="mt-4 space-y-3 rounded-2xl bg-[#EDEAFB] p-4">
-            <div className="flex justify-end">
-              <p className="rounded-2xl rounded-tr-md bg-[#9BE87C] px-4 py-2.5 text-[14px] font-bold text-[#1C3A1C]">
-                恋愛運
-              </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <div className="relative mt-1 h-8 w-8 flex-none overflow-hidden rounded-full bg-white">
-                <Image
-                  src="/mascot/hoshiyomi-alice-avatar-transparent.png"
-                  alt=""
-                  fill
-                  sizes="32px"
-                  className="object-contain"
-                />
-              </div>
-              <p className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-[13px] font-medium leading-relaxed text-[#2E2E5C]">
-                このあいだ話してくれた「既読のあと、返信を待っちゃう夜」のこと、覚えていますよ。今週のあなたの恋愛運は…🔮
-              </p>
-            </div>
+          <div aria-hidden className="mt-1.5 flex items-center gap-2">
+            <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#E8B93E]" />
+            <span className="h-1.5 w-1.5 rotate-45 bg-[#FFD97A]" />
+            <span className="h-px w-10 bg-gradient-to-l from-transparent to-[#E8B93E]" />
           </div>
-          <p className="mt-3 text-[12px] font-medium leading-relaxed text-[#2E2E5C]/55">
-            恋愛運・友達運・勉強運の3テーマ。あなたの診断結果と、ふだんの会話を覚えたうえで占うので、ただの占いとはちょっと違います。
-          </p>
-        </section>
+        </div>
 
         {/* 無料 vs Plus 比較表 */}
-        <section className="mt-5 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_12px_34px_rgba(36,26,79,0.08)]">
+        <section className="mt-6 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_12px_34px_rgba(36,26,79,0.08)]">
           <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">
             無料とPLUSのちがい
           </p>
@@ -200,8 +197,24 @@ export default async function LinePlusPage({
           </p>
         </section>
 
+        {/* プランをえらぶ: サブスク/買い切りの2グループ+ラジオ選択 (ラブ教授UI参考)。
+            下部固定CTAは選択中プランに追従するためコンポーネント側が持つ */}
+        {!hasLifetime && !isManageable && (
+          <PlusPlanChooser
+            monthlyUrl={checkoutUrl}
+            weekUrl={weekCheckoutUrl}
+            lifetimeUrl={lifetimeCheckoutUrl}
+            weekAvailable={weekAvailable}
+            lifetimeAvailable={lifetimeAvailable}
+            weekPassLabel={weekPassLabel}
+          />
+        )}
+
         {/* 安心情報 */}
         <ul className="mt-6 space-y-2 px-1 text-[12px] font-medium leading-relaxed text-[#2E2E5C]/60">
+          <li>
+            ・初回加入なら最初の1週間は無料。無料期間中に解約すれば、料金はかかりません
+          </li>
           <li>・いつでも解約できます。解約後も、期間の終わりまでは使えます</li>
           <li>・お支払いはStripeの安全な決済画面で行われます</li>
           <li>
@@ -217,9 +230,23 @@ export default async function LinePlusPage({
       </div>
 
       {/* 固定CTA */}
+      {/* 加入済み系の固定CTA。未加入者のCTAは PlusPlanChooser 側 (選択追従) */}
+      {(hasLifetime || isManageable) && (
       <div className="fixed inset-x-0 bottom-0 border-t border-[#5B5BEF]/10 bg-white/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
         <div className="mx-auto w-full max-w-md">
-          {isManageable ? (
+          {hasLifetime ? (
+            <>
+              <p className="mb-2 text-center text-[12px] font-bold text-[#2E2E5C]/60">
+                無期限プランをご利用中です。ずっと一緒にいられますね🌙
+              </p>
+              <a
+                href={LINE_TALK_URL}
+                className="block w-full rounded-xl bg-[#06C755] py-3.5 text-center text-[15px] font-black text-white transition-transform active:scale-95"
+              >
+                Aliceと話しにいく
+              </a>
+            </>
+          ) : (
             <>
               <p className="mb-2 text-center text-[12px] font-bold text-[#2E2E5C]/60">
                 Alice Plusをご利用中です。いつもありがとうございます。
@@ -231,16 +258,10 @@ export default async function LinePlusPage({
                 プランを確認・解約する
               </a>
             </>
-          ) : (
-            <a
-              href={checkoutUrl}
-              className="block w-full rounded-xl bg-gradient-to-r from-[#5B5BEF] to-[#7C5BEF] py-4 text-center text-[15px] font-black text-white shadow-[0_10px_26px_rgba(91,91,239,0.35)] transition-transform active:scale-95"
-            >
-              Alice Plusをはじめる
-            </a>
           )}
         </div>
       </div>
+      )}
     </main>
   );
 }

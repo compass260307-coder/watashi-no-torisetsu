@@ -140,6 +140,16 @@ export async function POST(request: NextRequest) {
           await handleAlicePlusCheckoutPaid(stripe, session);
           break;
         }
+        // Alice Plus 1週間パス (買い切り¥480): week_pass 行 (期限=購入から7日) を書く
+        if (session.metadata?.product === "alice_plus_week") {
+          await handleAlicePlusWeekCheckoutPaid(session);
+          break;
+        }
+        // Alice Plus 無期限プラン (買い切り¥9,800): lifetime 行 (期限なし) を書く
+        if (session.metadata?.product === "alice_plus_lifetime") {
+          await handleAlicePlusLifetimeCheckoutPaid(session);
+          break;
+        }
         await handleCheckoutPaid(session);
         break;
       }
@@ -963,6 +973,165 @@ async function handleAlicePlusCheckoutPaid(
     ]);
   } catch (caught) {
     console.error("[webhook/stripe] alice_plus welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * Alice Plus 1週間パス (買い切り¥480) の権利付与。
+ * サブスクではないので Stripe 同期はなく、line_plus_subscriptions に
+ * status='week_pass' + current_period_end (購入から7日) の行を書くだけ。
+ * 判定は hasActiveLinePlus が期限つきで見る。期限切れ後の後始末は不要。
+ */
+async function handleAlicePlusWeekCheckoutPaid(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus_week missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_week: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: `week-${session.id}`,
+      stripe_customer_id: customerId,
+      user_id: userId,
+      line_user_id: lineUserId,
+      status: "week_pass",
+      current_period_end: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      cancel_at_period_end: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // upsert 失敗は 500 で Stripe に再送させる (権利付与の取りこぼし防止)
+  if (error) {
+    throw new Error(`[alice_plus_week] upsert failed: ${error.message}`);
+  }
+
+  await recordLineEvent({
+    eventName: "line_plus_week_purchased",
+    id: purchaseEventId("line_plus_week_purchased", session.id),
+    metadata: {
+      stripe_session_id: session.id,
+      user_id: userId,
+      line_user_id: lineUserId,
+      amount_total: session.amount_total ?? null,
+    },
+  });
+
+  // push は best effort。失敗しても購入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          "1週間パスへようこそ🎉 今日から7日間、Plusのぜんぶが使えます。",
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・上限なしのおしゃべり",
+          "",
+          "自動更新はないので、期限が来たらそのまま無料プランに戻ります。安心してたっぷり遊んでくださいね🌙",
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_week welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * Alice Plus 無期限プラン (買い切り¥9,800) の権利付与。
+ * status='lifetime' の行を書くだけ (期限なし・ACTIVE_STATUSES に含まれるので
+ * hasActiveLinePlus がそのまま通す)。ポータル管理対象外なので解約系の同期もない。
+ */
+async function handleAlicePlusLifetimeCheckoutPaid(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus_lifetime missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_lifetime: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: `lifetime-${session.id}`,
+      stripe_customer_id: customerId,
+      user_id: userId,
+      line_user_id: lineUserId,
+      status: "lifetime",
+      current_period_end: null,
+      cancel_at_period_end: false,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // upsert 失敗は 500 で Stripe に再送させる (権利付与の取りこぼし防止)
+  if (error) {
+    throw new Error(`[alice_plus_lifetime] upsert failed: ${error.message}`);
+  }
+
+  await recordLineEvent({
+    eventName: "line_plus_lifetime_purchased",
+    id: purchaseEventId("line_plus_lifetime_purchased", session.id),
+    metadata: {
+      stripe_session_id: session.id,
+      user_id: userId,
+      line_user_id: lineUserId,
+      amount_total: session.amount_total ?? null,
+    },
+  });
+
+  // push は best effort。失敗しても購入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          "無期限プランへようこそ🎉 今日からずっと、Plusのぜんぶが使えます。",
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・上限なしのおしゃべり",
+          "",
+          "もう期限も更新もありません。これからずっと、あなたのそばにいますね🌙",
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_lifetime welcome push failed", {
       message: caught instanceof Error ? caught.message : String(caught),
     });
   }

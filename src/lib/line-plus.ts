@@ -19,7 +19,9 @@ const DEFAULT_PLUS_DAILY = 100;
 
 // past_due も含める: 支払い失敗中の人は「解約」ではなくポータルでカード更新してほしい
 const MANAGEABLE_STATUSES = ["active", "trialing", "past_due"];
-const ACTIVE_STATUSES = ["active", "trialing"];
+// lifetime = 買い切り¥9,800の無期限プラン (Stripeサブスクではない合成行・期限なし)。
+// ポータルで管理するものが無いので MANAGEABLE には入れない
+const ACTIVE_STATUSES = ["active", "trialing", "lifetime"];
 
 export function linePlusEnabled(): boolean {
   return (
@@ -115,7 +117,77 @@ export async function hasActiveLinePlus(userId: string): Promise<boolean> {
     });
     return false;
   }
+  if ((data ?? []).length > 0) return true;
+
+  // 1週間パス (買い切り¥480)。Stripeサブスクではないので status='week_pass' +
+  // current_period_end (購入から7日) の期限チェックだけで判定する
+  const { data: pass, error: passError } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "week_pass")
+    .gt("current_period_end", new Date().toISOString())
+    .limit(1);
+  if (passError) {
+    console.error("[line-plus] week pass lookup failed", {
+      message: passError.message,
+    });
+    return false;
+  }
+  return (pass ?? []).length > 0;
+}
+
+/** 有効な1週間パス (買い切り)。LPの表示分岐用。 */
+export async function findActiveWeekPass(
+  lineUserId: string,
+): Promise<{ expiresAt: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("current_period_end")
+    .eq("line_user_id", lineUserId)
+    .eq("status", "week_pass")
+    .gt("current_period_end", new Date().toISOString())
+    .order("current_period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("[line-plus] week pass lookup failed", {
+      message: error.message,
+    });
+    return null;
+  }
+  return data?.current_period_end
+    ? { expiresAt: data.current_period_end }
+    : null;
+}
+
+/** 1週間パスが販売可能か (Stripe Price が env に設定されているか)。 */
+export function linePlusWeekPriceConfigured(): boolean {
+  return Boolean(process.env.STRIPE_PRICE_ALICE_PLUS_WEEK);
+}
+
+/** 無期限プラン (買い切り¥9,800) を持っているか。LPの表示分岐用。 */
+export async function hasLifetimeLinePlus(
+  lineUserId: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("id")
+    .eq("line_user_id", lineUserId)
+    .eq("status", "lifetime")
+    .limit(1);
+  if (error) {
+    console.error("[line-plus] lifetime lookup failed", {
+      message: error.message,
+    });
+    return false;
+  }
   return (data ?? []).length > 0;
+}
+
+/** 無期限プランが販売可能か (Stripe Price が env に設定されているか)。 */
+export function linePlusLifetimePriceConfigured(): boolean {
+  return Boolean(process.env.STRIPE_PRICE_ALICE_PLUS_LIFETIME);
 }
 
 /** このLINEアカウントがポータルで管理すべきサブスクリプション (未加入なら null)。 */
