@@ -431,7 +431,7 @@ export function DeepDiveSections({
             >
               {baseNumber + si}
             </span>
-            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+            <h2 className="text-[30px] font-bold leading-tight text-[#2E2E5C] md:text-[36px]">
               {sec.tab}
             </h2>
           </div>

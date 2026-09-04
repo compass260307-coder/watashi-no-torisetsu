@@ -308,7 +308,7 @@ function LegacyPremiumCard({
         </span>
         <h2
           id={`${anchorId}-title`}
-          className="mt-3 max-w-[650px] text-[27px] font-black leading-[1.25] text-[#2E2E5C] sm:text-[31px] md:text-[36px]"
+          className="mt-3 max-w-[650px] text-[27px] font-bold leading-[1.25] text-[#2E2E5C] sm:text-[31px] md:text-[36px]"
         >
           {locale === "ko"
             ? "나만의 운명의 설계도를 모두 잠금 해제하세요"
@@ -323,7 +323,7 @@ function LegacyPremiumCard({
         <ul className="mt-4 grid max-w-[670px] list-disc gap-1.5 pl-5 text-[13.5px] leading-[1.55] text-[#45475A] md:text-[14px]">
           {features.map((feature) => (
             <li key={feature.title}>
-              <span className="font-black text-[#2E2E5C]">{feature.title}</span>
+              <span className="font-bold text-[#2E2E5C]">{feature.title}</span>
               <span>：{feature.desc}</span>
             </li>
           ))}
@@ -337,12 +337,12 @@ function LegacyPremiumCard({
                 : "購入済みコースとの差額だけ"}
             </p>
           ) : plan.listPrice ? (
-            <p className="mb-1 text-[13px] font-bold text-[#A0A0B4] line-through">
+            <p className="mb-1 text-[13px] font-bold tabular-nums text-[#A0A0B4] line-through">
               {locale === "ko" ? "정가" : "通常"} {formatPrice(plan.listPrice, locale)}
             </p>
           ) : null}
           <div className="flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
-            <span className="text-[42px] font-black leading-none text-[#9A6A24] md:text-[46px]">
+            <span className="text-[42px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#9A6A24] md:text-[46px]">
               {formatPrice(checkoutPrice, locale)}
             </span>
             {plan.badge ? (
@@ -459,7 +459,7 @@ function PlanCard({
             {locale === "ko" ? "구매한 코스와의 차액만 결제" : "購入済みコースとの差額だけ"}
           </p>
         ) : plan.listPrice ? (
-          <p className="text-[12px] font-bold text-[#9A9DB0] line-through md:text-[13px]">
+          <p className="text-[12px] font-bold tabular-nums text-[#9A9DB0] line-through md:text-[13px]">
             {locale === "ko" ? "정가" : "通常"} {formatPrice(plan.listPrice, locale)}
           </p>
         ) : (
@@ -474,7 +474,7 @@ function PlanCard({
             </span>
           ) : null}
           <span
-            className="text-[36px] font-black leading-none tabular-nums md:text-[38px]"
+            className="text-[36px] font-bold leading-none tabular-nums tracking-[-0.02em] md:text-[38px]"
             style={{ color: plan.accent }}
           >
             {formatPrice(checkoutPrice, locale)}

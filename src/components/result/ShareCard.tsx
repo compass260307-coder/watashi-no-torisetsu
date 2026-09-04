@@ -78,7 +78,10 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(
               whiteSpace: "nowrap",
             }}
           >
-            {ownerName}のトリセツ
+            {/* 動的な名前はシステム丸ゴ (.wtr-logo-name)。固定「のトリセツ」だけ
+                M PLUS サブセットで描く (フォント配信削減 2026-09-04)。 */}
+            <span className="wtr-logo-name">{ownerName}</span>
+            のトリセツ
           </span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

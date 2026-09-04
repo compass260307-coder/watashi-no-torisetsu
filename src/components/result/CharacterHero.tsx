@@ -131,7 +131,7 @@ export function CharacterHero({
           {eyebrow && (
             <p className="text-[#2E2E5C]/70 font-bold text-xs mb-1">{eyebrow}</p>
           )}
-          <h1 className="font-black text-3xl text-[#2E2E5C] leading-tight mb-3">
+          <h1 className="font-bold text-3xl text-[#2E2E5C] leading-tight mb-3">
             {essence}
           </h1>
         </div>

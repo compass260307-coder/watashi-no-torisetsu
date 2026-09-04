@@ -690,7 +690,7 @@ export default function DiagnosisPageContent({
               {/* ニックネーム (必須) */}
               <label
                 htmlFor="diagnosis-nickname"
-                className="block text-[22px] font-extrabold text-[#2E2E5C]"
+                className="block text-[22px] font-bold text-[#2E2E5C]"
               >
                 {copy.nicknameLabel}
               </label>
@@ -735,7 +735,7 @@ export default function DiagnosisPageContent({
 
               {/* ジェンダー (任意) */}
               <fieldset className="mt-8">
-                <legend className="text-[22px] font-extrabold text-[#2E2E5C]">
+                <legend className="text-[22px] font-bold text-[#2E2E5C]">
                   {copy.genderLabel}
                 </legend>
                 <div className="mt-3 flex flex-col gap-1">
@@ -853,7 +853,7 @@ function ResumeChoiceModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="resume-title"
-          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
+          className="text-lg font-bold text-center text-[#2E2E5C] mb-3"
         >
           {copy.title}
         </h2>
@@ -911,7 +911,7 @@ function RediagnoseConfirmModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="rediagnose-title"
-          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
+          className="text-lg font-bold text-center text-[#2E2E5C] mb-3"
         >
           {copy.title}
         </h2>

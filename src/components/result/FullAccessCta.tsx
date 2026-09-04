@@ -195,7 +195,7 @@ export function FullAccessCta({
         className={`flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] disabled:pointer-events-none disabled:opacity-60 ${
           compact
             ? "h-[38px] py-0 text-[14px] font-bold"
-            : "py-3.5 text-base font-black"
+            : "py-3.5 text-base font-bold"
         }`}
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}

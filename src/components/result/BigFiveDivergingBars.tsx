@@ -156,7 +156,7 @@ export function BigFiveDivergingBars({
               {emoji}
             </span>
           )}
-          <h2 className="text-[#2E2E5C] font-black text-[30px] md:text-[36px] leading-tight">
+          <h2 className="text-[#2E2E5C] font-bold text-[30px] md:text-[36px] leading-tight">
             {resolvedTitle}
           </h2>
         </div>

@@ -153,7 +153,8 @@ export default function UnmeiPriceCta({
             {locale === "ko" ? `정가 ${fullPrice}` : `通常 ${fullPrice}`}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#5B5BEF] md:text-[44px]">
+            {/* 価格は Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
+            <p className="text-[40px] font-bold tabular-nums leading-none tracking-[-0.03em] text-[#5B5BEF] md:text-[44px]">
               {upgradePrice}
             </p>
             <span className="inline-flex rounded-full bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-black text-[#5B5BEF] md:text-[13px]">
@@ -167,7 +168,7 @@ export default function UnmeiPriceCta({
             {locale === "ko" ? `정가 ${listPrice}` : `通常 ${listPrice}`}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
+            <p className="text-[40px] font-bold tabular-nums leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
               {fullPrice}
             </p>
             <span className="inline-flex rounded-full bg-[#FFF1CB] px-3 py-1.5 text-[12px] font-black text-[#9A6117] md:text-[13px]">

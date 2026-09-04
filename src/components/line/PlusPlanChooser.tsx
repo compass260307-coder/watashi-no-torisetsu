@@ -72,7 +72,8 @@ export default function PlusPlanChooser({
         <span className="flex-1">
           <span className="text-[14px] font-black text-[#2E2E5C]">
             {title}
-            <span className="ml-1.5">{price}</span>
+            {/* 価格は Noto Sans JP 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
+            <span className="ml-1.5 font-bold tabular-nums">{price}</span>
           </span>
         </span>
         <span className="flex flex-none flex-col items-end gap-1">

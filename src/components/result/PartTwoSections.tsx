@@ -35,7 +35,7 @@ interface PartTwoSectionsProps {
 
 function SectionHeading({ title }: { title: string }) {
   return (
-    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">{title}</h3>
+    <h3 className="mb-3 text-[20px] font-bold text-[#2E2E5C]">{title}</h3>
   );
 }
 

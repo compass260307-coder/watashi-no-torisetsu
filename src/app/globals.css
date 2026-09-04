@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 :root {
+  /* 本文ゴシック。Noto Sans JP は Google Fonts 直接配信 (layout.tsx の <link>) で読み、
+     Vercel からは配信しない (Edge Requests 課金対策 2026-09-04)。next/font は使用禁止
+     (セルフホスト化で 1 訪問 ≈ 140 woff2 / 1.9MB の課金に戻るため)。ウェイトは 400/700 のみ。
+     フォールバック: 未ロード時や未対応グリフはヒラギノ角ゴ → Meiryo。
+     この変数は 20+ 箇所の font-family が参照しており、未定義にすると var() を含む
+     宣言ごと無効になるため、変数名は維持して中身で切り替える。
+     末尾に汎用 sans-serif を置かないのは意図的: ko ページ等では参照側が
+     'Apple SD Gothic Neo' などを後ろに続けており、ここで generic を挟むと
+     そこへ到達しなくなるため (generic は各参照側の末尾にある)。 */
+  --font-noto-sans: "Noto Sans JP", "Noto Sans", "Hiragino Kaku Gothic ProN",
+    "Hiragino Sans", Meiryo;
   /* feat/top-page: Sora ブランドカラー (トップヒーローのアクセント) */
   --sora-blue: #5b5bef;
   --sora-blue-dark: #4a4ad9;
@@ -23,6 +34,15 @@
      (軸ごとに変えると虹色化し、無関係な軸どうしが同色で関連して見えるため)。 */
   --axis-tint-left: #e1f5ee; /* 極薄 teal = 左極側 */
   --axis-tint-right: #fbeaf0; /* 極薄 pink = 右極側 */
+}
+
+/* /ko では日本語 webfont (Noto Sans JP) の woff2 を 1 本も引かせない。
+   <head> の DOCUMENT_LANGUAGE_SCRIPT が初回描画前に html[lang] を ko へ確定させるため、
+   この上書きが最初から効く (ko 本文は ko/layout の Noto Sans KR (next/font) が担う)。
+   参照側 (ko articles 等) は末尾に 'Apple SD Gothic Neo' 等を続けているため、
+   ここは韓国語向けシステムスタックのみで良い (generic は参照側の末尾にある)。 */
+html[lang="ko"] {
+  --font-noto-sans: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic";
 }
 
 /* ダーク追従 (将来ダークテーマ有効時に備えトークンで対応)。
@@ -403,7 +423,9 @@ input[type="reset"]:active {
    PC (640px〜): 従来の clamp / 固定値。 */
 .top-hero-h1 {
   color: #ffffff;
-  font-weight: 800;
+  /* Noto Sans JP は 400/700 のみ配信のため、見出しは 700 を明示 (2026-09-04)。
+     ko は Noto Sans KR に 800 の実フェイスがあるため下の上書きで従来どおり。 */
+  font-weight: 700;
   font-size: clamp(24px, 7.5vw, 34px);
   line-height: 1.5;
   letter-spacing: -0.01em;
@@ -411,10 +433,19 @@ input[type="reset"]:active {
 
 .top-hero-sub {
   color: #ffffff;
-  font-weight: 500;
+  /* 本文コピーは 400 (500 は JP では 400 描画になるため明示)。ko は下で従来値。 */
+  font-weight: 400;
   font-size: clamp(14px, 4.3vw, 19px);
   line-height: 1.9;
   margin-top: clamp(12px, 4vw, 20px);
+}
+
+/* ko の LP ヒーローは Noto Sans KR の実フェイス (800/500) を従来どおり使う。 */
+html[lang="ko"] .top-hero-h1 {
+  font-weight: 800;
+}
+html[lang="ko"] .top-hero-sub {
+  font-weight: 500;
 }
 
 .top-hero-cta-wrap {
@@ -569,13 +600,14 @@ input[type="reset"]:active {
 
 /* 結果ヒーロー/保存カードの見出しタイポ (確定デザイン watashi-torisetsu-result-card-design.html
    の .wtr-name / .wtr-sub を流用)。deepPurple 文字 + 白フチ + 黄ドロップ。
-   ※ docs/design HTML 入手後、text-shadow の数値はそこに合わせて差し替え可。 */
+   ※ docs/design HTML 入手後、text-shadow の数値はそこに合わせて差し替え可。
+   フォント: 中身が動的文字 (typeName/essence) のみのため M PLUS webfont は使わず
+   システム丸ゴ (フォント配信削減 2026-09-04)。 */
 .wtr-name,
 .wtr-sub {
   color: #3a2d6b;
   font-weight: 800;
-  font-family: var(--font-m-plus-rounded), "Hiragino Maru Gothic ProN",
-    "Hiragino Sans", Meiryo, sans-serif;
+  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   /* 白フチ (4 方向) + 黄ドロップ */
   text-shadow:
     -2px -2px 0 #fff,
@@ -653,6 +685,13 @@ input[type="reset"]:active {
     0 0 8px rgba(255, 255, 255, 0.85),
     /* ごく薄い影で立体感 */
     0 3px 4px rgba(58, 45, 107, 0.18);
+}
+
+/* .wtr-logo-text 内の動的文字 (ユーザー名など) 用。M PLUS サブセット (固定文字のみ) に
+   無い文字が名前の途中で混ざると 1 文字ずつ別フォントに落ちて字面がバラつくため、
+   動的部分はまとめてシステム丸ゴに固定する (色/白フチは親から継承)。 */
+.wtr-logo-name {
+  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
 }
 
 .stagger-1 { animation-delay: 0.1s; }

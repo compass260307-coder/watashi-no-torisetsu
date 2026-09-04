@@ -342,7 +342,7 @@ async function MeResultPageContent({
           <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
             {isKorean ? "프리미엄에서 잠금 해제" : "プレミアムで解放"}
           </span>
-          <h2 className="mb-3 text-[24px] font-black leading-[1.35] text-[#2E2E5C] md:text-[36px]">
+          <h2 className="mb-3 text-[24px] font-bold leading-[1.35] text-[#2E2E5C] md:text-[36px]">
             {isKorean
               ? "태어난 순간의 별에서 운명을 읽어 보세요"
               : "あなたの物語の続きを、すべて解放"}
@@ -451,10 +451,10 @@ async function MeResultPageContent({
                 {feature.icon}
               </span>
               <div className="pt-0.5 md:pt-1">
-                <p className="text-[18px] font-black leading-[1.45] text-[#2E2E5C] md:text-[22px]">
+                <p className="text-[18px] font-bold leading-[1.45] text-[#2E2E5C] md:text-[22px]">
                   {feature.title}
                 </p>
-                <p className="mt-1.5 text-[14px] font-medium leading-[1.75] text-[#66657B] md:text-[16px]">
+                <p className="mt-1.5 text-[14px] leading-[1.75] text-[#66657B] md:text-[16px]">
                   {feature.body}
                 </p>
               </div>
@@ -464,7 +464,7 @@ async function MeResultPageContent({
         <div className="text-center">
           <PaywallScrollButton
             source="unmei_promo_card"
-            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-black text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
           >
             {isKorean ? "프리미엄 자세히 보기" : "プレミアムの詳細を見る"}
             <span aria-hidden="true" className="text-xl font-medium">
@@ -1152,7 +1152,7 @@ async function MeResultPageContent({
           <div className="mt-16 mb-12 text-center">
             <Link
               href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
-              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
               {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
             </Link>

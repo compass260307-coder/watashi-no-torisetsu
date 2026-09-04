@@ -116,9 +116,10 @@ export function ResultHero({
             <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
               {label}
             </p>
-            {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。 */}
+            {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。
+                weight は Noto Sans JP の実配信ウェイト (400/700) に合わせ 700 (2026-09-04)。 */}
             <h1
-              className="whitespace-nowrap font-extrabold leading-[1.04] text-white"
+              className="whitespace-nowrap font-bold leading-[1.04] text-white"
               style={{
                 fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
               }}

@@ -624,7 +624,7 @@ export function FullAccessPromoCard({
           {/* 見出し */}
           <h2
             id={`${anchorId}-title`}
-            className="mt-2.5 text-[26px] font-black leading-[1.3] text-[#2E2E5C] md:text-[34px]"
+            className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
           >
             {isKorean ? (
               <>내 성격 유형의<br />모든 결과를 해제</>
@@ -668,6 +668,7 @@ export function FullAccessPromoCard({
               hasImage ? "" : "justify-center"
             }`}
           >
+            {/* 価格タグは Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
             {isSelfReportProduct ? (
               <>
                 <span
@@ -680,7 +681,7 @@ export function FullAccessPromoCard({
                   {SELF_REPORT_LIST_PRICE_COPY}
                 </span>
                 <span
-                  className="text-[38px] font-black leading-none"
+                  className="text-[38px] font-bold tabular-nums tracking-[-0.02em] leading-none"
                   style={{ color: tone.accent }}
                 >
                   {SELF_REPORT_PRICE_COPY}
@@ -705,7 +706,7 @@ export function FullAccessPromoCard({
                 ) : null}
                 {/* ja は見出しと同じ濃紺で大きく。KO はアクセント色を現状維持。 */}
                 <span
-                  className={`text-[44px] font-black leading-none md:text-[50px] ${
+                  className={`text-[44px] font-bold tabular-nums tracking-[-0.02em] leading-none md:text-[50px] ${
                     isKorean ? "" : "text-[#2E2E5C]"
                   }`}
                   style={isKorean ? { color: tone.accent } : undefined}

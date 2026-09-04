@@ -446,7 +446,9 @@
   border-left: 3px solid var(--card-accent);
   padding: 3px 0 3px 15px;
   color: #49514c;
-  font-family: var(--font-m-plus-rounded), sans-serif;
+  /* M PLUS はロゴ用固定文字サブセットのみになったため (2026-09-04)、
+     任意文字のここはシステム丸ゴへ (混植防止)。 */
+  font-family: "Hiragino Maru Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.75;
