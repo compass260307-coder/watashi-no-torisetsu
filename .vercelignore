@@ -3,8 +3,22 @@
 /.next/
 /tmp/
 /.agents/
+/.claude/
+/.codex_tmp/
+/apps/
+/docs/
+/supabase/.temp/
+# private は原則デプロイしない。課金済みユーザーへ Function から配信する
+# タイプ別PDFだけ、Next.jsの outputFileTracingIncludes と同じ範囲で許可する。
+/private/**
+!/private/
+!/private/self-report-stories/
+!/private/self-report-stories/*-vertical-story.pdf
+**/__pycache__/
 /.vercel/
 /.env*
+/shot-typecard.mjs
+/tsconfig.tsbuildinfo
 /scripts/create_mbti_reel.py
 /env-secrets.zip
 /characters_32/

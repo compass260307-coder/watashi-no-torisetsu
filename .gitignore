@@ -59,6 +59,8 @@ public/characters/v3/characters/
 /outputs/
 /tmp/
 /.agents/
+/.codex_tmp/
+/supabase/.temp/
 /public/logo-hero.psd
 /scripts/create_mbti_reel.py
 
