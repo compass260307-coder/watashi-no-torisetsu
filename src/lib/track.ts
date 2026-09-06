@@ -104,9 +104,9 @@ export function isPreviewMode(): boolean {
 // 旧実装はイベントごとに /api/event へ POST しており、1イベント = 1 Function 起動 +
 // 1 Edge Request + Observability Events 数件が課金されていた (特に
 // diagnosis_question_answered は診断1回で50発火)。
-// → クライアントでバッファリングし、Supabase REST へ anon key で直接まとめて insert する。
-//   Vercel を一切経由しない。検証は events テーブルの RLS ポリシー
-//   (supabase/migrations/2026-07-20-events-client-insert.sql) がサーバ側の代わりを担う。
+// → クライアントでバッファリングし、Supabase RPC へ anon key で直接まとめて送る。
+//   Vercel を一切経由しない。バッチ上限・入力検証・IP/セッション単位の制限は
+//   ingest_client_events RPC が担い、anon から events テーブルへの直接 INSERT は許可しない。
 // env 未設定環境 (万一) では旧 /api/event へ1件ずつフォールバックする。
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -128,9 +128,16 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let unloadFlushHooked = false;
 let directSupabaseUnavailable = false;
 
+function shouldUseLegacyFallback(status: number): boolean {
+  // RPC 未適用 (404) や Supabase 障害 (5xx) のときだけ保険経路を使う。
+  // 入力拒否・認証拒否・レート制限は意図した破棄なので、
+  // /api/event へ逆流させない。
+  return status === 404 || status >= 500;
+}
+
 function sendToSupabase(rows: EventRow[]) {
-  const body = JSON.stringify(rows);
-  fetch(`${SUPABASE_URL}/rest/v1/events`, {
+  const body = JSON.stringify({ p_events: rows });
+  fetch(`${SUPABASE_URL}/rest/v1/rpc/ingest_client_events`, {
     method: "POST",
     // keepalive: ページ離脱 (pagehide/visibilitychange) 中でもリクエストを生かす。
     // sendBeacon はヘッダー付与不可で PostgREST の JSON insert と相性が悪いため、
@@ -140,15 +147,11 @@ function sendToSupabase(rows: EventRow[]) {
       "Content-Type": "application/json",
       apikey: SUPABASE_ANON_KEY!,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Prefer: "return=minimal",
     },
     body,
   })
     .then((res) => {
-      // RLS ポリシー未適用 (migration 2026-07-20-events-client-insert.sql 前) や
-      // 検証拒否の場合、旧 /api/event へフォールバックして計測全断を防ぐ。
-      // 本番 DB は PR-FIX-1 lockdown 済みで anon insert はポリシー適用まで 403 になる。
-      if (!res.ok) {
+      if (!res.ok && shouldUseLegacyFallback(res.status)) {
         directSupabaseUnavailable = true;
         rows.forEach(sendToLegacyApi);
       }
