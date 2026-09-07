@@ -10,8 +10,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ReportPrintButton } from "@/components/report/ReportPrintButton";
+import { ReportCover } from "@/components/report/ReportCover";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasTakoAccess } from "@/lib/entitlements";
+import { friendReportStoryImagePath } from "@/lib/report-story-images";
 import {
   loadOwnerReportData,
   type OwnerReportData,
@@ -581,51 +583,42 @@ export default async function TakoReportPrintPage({
       </div>
 
       <article className={styles.reportDocument}>
-        <header className={styles.cover}>
-          <div className={styles.coverOrbOne} aria-hidden="true" />
-          <div className={styles.coverOrbTwo} aria-hidden="true" />
-          <p className={styles.coverBrand}>
-            {isKo ? "나의 사용설명서" : "WATASHI NO TORISETSU"}
-          </p>
-          <p className={styles.coverLabel}>SOCIAL MIRROR PROFILE</p>
-
-          <div className={styles.coverVisual}>
-            <Image
-              src={overview.imageSrc}
-              alt={overview.charName}
-              width={900}
-              height={900}
-              className={styles.coverImage}
-              priority
-            />
-          </div>
-
-          <div className={styles.coverCopy}>
-            <p className={styles.coverEssence}>{overview.charName}</p>
-            <h1 className={styles.coverTitle}>{overview.essence}</h1>
-            <p className={styles.coverSubtitle}>
-              {isKo ? "친구들의 눈에 비친 나의 프로필" : "友達の目に映る、あなたのプロフィール"}
-            </p>
-            <p className={styles.coverQuote}>
-              {isKo
-                ? `혼자서는 보지 못한 매력을 ${overview.friendCount}명의 친구 시선으로 읽어 내는 한 권.`
-                : `自分では見えない魅力を、${overview.friendCount}人の友達の視点から読み解く一冊。`}
-            </p>
-          </div>
-
-          <div className={styles.coverFooter}>
-            <span>
-              {isKo
-                ? ownerName
-                  ? `${ownerName}님의 리포트`
-                  : "나의 리포트"
-                : ownerName
-                  ? `${ownerName}さんのレポート`
-                  : "あなたのレポート"}
-            </span>
-            <span>SOCIAL MIRROR REPORT</span>
-          </div>
-        </header>
+        <ReportCover
+          locale={locale}
+          profileLabel="SOCIAL MIRROR PROFILE"
+          imageSrc={overview.imageSrc}
+          imageAlt={overview.charName}
+          characterName={overview.charName}
+          title={overview.essence}
+          coverTitle={isKo ? "친구들이 본 나" : "みんなから見た"}
+          storyTitle={
+            isKo
+              ? `${overview.essence}의 이야기`
+              : `${overview.essence}のストーリー`
+          }
+          storyImageSrc={
+            friendReportStoryImagePath(overview.imageSrc) ?? undefined
+          }
+          subtitle={
+            isKo ? "친구들의 눈에 비친 나의 프로필" : "友達の目に映る、あなたのプロフィール"
+          }
+          quote={
+            isKo
+              ? `혼자서는 보지 못한 매력을 ${overview.friendCount}명의 친구 시선으로 읽어 내는 한 권.`
+              : `自分では見えない魅力を、${overview.friendCount}人の友達の視点から読み解く一冊。`
+          }
+          readerLabel={
+            isKo
+              ? ownerName
+                ? `${ownerName}님의 리포트`
+                : "나의 리포트"
+              : ownerName
+                ? `${ownerName}さんのレポート`
+                : "あなたのレポート"
+          }
+          reportLabel="SOCIAL MIRROR REPORT"
+          fullBleed
+        />
 
         <section className={styles.overviewPage}>
           <p className={styles.pageEyebrow}>ABOUT THIS REPORT</p>

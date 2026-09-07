@@ -1,18 +1,23 @@
-// 相性④「シーン別トリセツ」本文を返すサーバ route。
+// 相性診断全体の表示権限と、解放後の「シーン別トリセツ」本文を返すサーバゲート。
 //
 // GET /api/aisho/scenes?a=<32type>&b=<32type>
-//   - 2026-08-16: 相性診断はデフォルトで無料開放。認可ゲートを撤去し、全員へ
-//     locked=false で scenes 本文を返す。
+//   - 認可: 現行の完全版、プレミアム権限、または購入時に相性込みだった旧権利を持つ本人だけ
+//     scenes 本文を返す。
+//   - 匿名・未課金は locked=true とし、本文を一切返さない。
 //
 // なぜサーバに残すか: /aisho は完全静的・クライアントページで、従来 sceneLines() を
 //   クライアント import して④本文を全部バンドルに載せていた (= View Source で漏れる)。
 //   本 route に④生成を残すことで、④本文はクライアントバンドルには出さない。
-//   無料化後も生成をサーバ側に置く方針は据え置く。
+//   本文をクライアントバンドルや未課金応答へ載せないため、生成はサーバ側に置く。
 //
-// ①〜③ (バランス/いいところ/注意)・相性度・ランク・ヒーローは従来どおり /aisho 側で
-//   compat() をクライアント計算し全員無料 (= バイラル核)。
+// /aisho 側は locked=false を確認したときだけ、相性ランク・総評・バランス・いいところ・
+//   シーン別・注意点を含む結果全体を表示する。
 
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
+import { hasAishoAccess } from "@/lib/entitlements";
+import { isSafeOpaqueToken } from "@/lib/api-security";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   allThirtyTwoTypeIds,
   type ThirtyTwoTypeId,
@@ -109,7 +114,31 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "invalid pair" }, { status: 400 });
   }
 
-  // 相性診断は無料開放 (2026-08-16)。認可ゲートを撤去し全員へ本文を返す。
+  // session を優先し、Cookie が無いSPでは owner_token で本人を解決する。
+  // hasAishoAccess は購入時の相性診断ポリシーに基づいて判定する。
+  // 匿名・未課金は fail-closed で本文を返さない。
+  const session = await getSession(request);
+  let userId: string | null = session?.id ?? null;
+  if (!userId) {
+    const rawToken = searchParams.get("owner_token");
+    if (isSafeOpaqueToken(rawToken)) {
+      const { data } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("owner_token", rawToken)
+        .maybeSingle();
+      userId = (data?.id as string | null) ?? null;
+    }
+  }
+
+  const unlocked = userId ? await hasAishoAccess(userId) : false;
+  if (!unlocked) {
+    return NextResponse.json(
+      { locked: true, ownerToken: session?.owner_token ?? null },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   const r = compat(a, b, locale);
   const scenes = sceneLines(a, b, locale).map((line) => ({
     key: line.key,

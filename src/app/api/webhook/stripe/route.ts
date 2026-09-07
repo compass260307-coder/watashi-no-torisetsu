@@ -53,10 +53,10 @@ import {
 } from "@/lib/entitlements";
 import {
   hoshiyomiChatCreditTarget,
-  HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
+  purchaseIncludesTarotFeatures,
 } from "@/lib/access-products";
 import {
   deliverServerPurchaseConversions,
@@ -278,7 +278,10 @@ export async function POST(request: NextRequest) {
       }
       case "charge.refunded": {
         const charge = event.data.object as Stripe.Charge;
-        await handleChargeRefunded(charge);
+        await handleChargeRefunded(
+          charge,
+          new Date(event.created * 1000).toISOString(),
+        );
         break;
       }
       default:
@@ -549,6 +552,7 @@ async function grantFullAccessByEmailOrId(
 async function recordFullAccessPayment(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
   product: "full_access" | "premium_bundle" = "full_access",
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
@@ -561,7 +565,6 @@ async function recordFullAccessPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const paidAt = new Date().toISOString();
   const paymentKind =
     product === "premium_bundle" ? "premium_bundle" : "full_access";
   const paymentRecord = {
@@ -584,12 +587,15 @@ async function recordFullAccessPayment(
         session.metadata?.destiny_access_policy ?? "legacy_included",
       hoshiyomi_chat_policy:
         session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
-      tarot_access_policy:
-        session.metadata?.tarot_access_policy ?? "legacy_not_included",
       friend_access_policy:
         session.metadata?.friend_access_policy ?? "legacy_included",
+      aisho_access_policy:
+        session.metadata?.aisho_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      paywall_version: session.metadata?.paywall_version ?? "legacy",
+      placement: session.metadata?.paywall_placement ?? "unknown",
+      return_to: session.metadata?.return_to ?? "me",
     },
   };
 
@@ -600,22 +606,21 @@ async function recordFullAccessPayment(
       ignoreDuplicates: true,
     });
   if (isCoreKpiPaymentSchemaPending(error)) {
-    console.warn(
-      "[webhook/stripe] core KPI payment schema pending; purchase event remains the temporary fallback",
-      { stripe_session_id: session.id },
+    throw new Error(
+      `[${product}] payment schema is not ready for ${session.id}: ${error?.message ?? "unknown schema error"}`,
     );
-    return;
   }
   if (error) {
     throw new Error(`[${product}] payment record failed: ${error.message}`);
   }
 }
 
-// ¥199 自己診断＋PDFの権限源。plan='full' は付けず、この completed 決済だけを
-// hasSelfReportAccess() が読むため、友達診断・相性・アップグレード資格は解放されない。
+// 学生向けライトの権限源。plan='full' は付けず、この completed 決済と
+// metadata の商品ポリシーから自己診断・PDF・友達機能を解放する。
 async function recordSelfReportPayment(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
     throw new Error(
@@ -627,7 +632,6 @@ async function recordSelfReportPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const paidAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("payment_history").upsert(
     {
       user_id: userId,
@@ -644,8 +648,15 @@ async function recordSelfReportPayment(
         product: "self_report",
         friend_access_policy:
           session.metadata?.friend_access_policy ?? "legacy_included",
+        aisho_access_policy:
+          session.metadata?.aisho_access_policy ?? "legacy_included",
+        hoshiyomi_chat_policy:
+          session.metadata?.hoshiyomi_chat_policy ?? "none",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        return_to: session.metadata?.return_to ?? "me",
       },
     },
     { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -661,6 +672,7 @@ async function recordUnmeiPayment(
   session: Stripe.Checkout.Session,
   userId: string,
   product: "unmei" | "unmei_upgrade",
+  paidAt: string,
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
     throw new Error(`[${product}] missing amount/currency for ${session.id}`);
@@ -669,7 +681,6 @@ async function recordUnmeiPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const nowIso = new Date().toISOString();
   const { error } = await supabaseAdmin.from("payment_history").upsert(
     {
       user_id: userId,
@@ -680,11 +691,15 @@ async function recordUnmeiPayment(
       amount_refunded_minor: 0,
       currency: session.currency,
       status: "completed",
-      paid_at: nowIso,
-      updated_at: nowIso,
+      paid_at: paidAt,
+      updated_at: paidAt,
       metadata: {
         product,
         locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        source: normalizePaywallSource(session.metadata?.paywall_source),
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        return_to: session.metadata?.return_to ?? "unmei",
       },
     },
     { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -841,13 +856,30 @@ async function sendDetailedReportEmailBestEffort(
           purchaseIncludesDestinyFeatures(
             "full_access",
             session.metadata?.destiny_access_policy,
+            session.metadata?.locale,
           )),
       hoshiyomiChatIncluded:
         session.metadata?.product === "premium_bundle" ||
         (session.metadata?.product !== "self_report" &&
           purchaseIncludesHoshiyomiChat(
             "full_access",
-            session.metadata?.destiny_access_policy,
+            session.metadata?.hoshiyomi_chat_policy,
+          )),
+      hoshiyomiChatCredits:
+        session.metadata?.product === "self_report"
+          ? 0
+          : hoshiyomiChatCreditTarget(
+              session.metadata?.product === "premium_bundle"
+                ? "premium_bundle"
+                : "full_access",
+              session.metadata?.hoshiyomi_chat_policy,
+            ),
+      tarotFeaturesIncluded:
+        session.metadata?.product === "premium_bundle" ||
+        (session.metadata?.product === "full_access" &&
+          purchaseIncludesTarotFeatures(
+            "full_access",
+            session.metadata?.tarot_access_policy,
           )),
       friendFeaturesIncluded: purchaseIncludesFriendFeatures(
         session.metadata?.product === "premium_bundle"
@@ -904,35 +936,33 @@ async function recordLineEventOnFirstDelivery(input: {
 
 // 課金ファネル計測: 決済完了イベントを events に記録。
 // Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
-// 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
+// 計測失敗は throw してStripeに再送させ、権限だけ付いて計測が欠ける状態を残さない。
 async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
-  try {
-    const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
-    const product =
-      session.metadata?.product === "self_report"
-        ? "self_report"
-        : session.metadata?.product === "premium_bundle"
-          ? "premium_bundle"
-          : "full_access";
-    const { data: existing, error: selErr } = await supabaseAdmin
-      .from("events")
-      .select("id")
-      .eq("event_name", "purchase_completed")
-      .eq("metadata->>stripe_session_id", session.id)
-      .limit(1);
-    // SELECT 失敗時は重複の有無が判定できない。挿入すると再送時に二重計上の恐れが
-    // あるためスキップ (集計側も stripe_session_id ユニークで数えるので、稀な取りこぼしは
-    // paidUsers (users.plan) 側で補足できる)。
-    if (selErr) {
-      console.error("[webhook] purchase_completed dedup check failed:", selErr);
-      return;
-    }
-    if (existing && existing.length > 0) return;
-    await supabaseAdmin.from("events").insert({
+  const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
+  const product =
+    session.metadata?.product ??
+    session.metadata?.payment_kind ??
+    "unknown";
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("events")
+    .select("id")
+    .eq("event_name", "purchase_completed")
+    .eq("metadata->>stripe_session_id", session.id)
+    .limit(1);
+  if (selectError) {
+    throw new Error(
+      `[webhook] purchase_completed dedup check failed: ${selectError.message}`,
+    );
+  }
+  if (existing && existing.length > 0) return;
+  const { error: insertError } = await supabaseAdmin.from("events").insert({
+      id: purchaseEventId("purchase_completed", session.id),
       event_name: "purchase_completed",
+      created_at: paidAt,
       owner_token:
         typeof session.metadata?.owner_token === "string"
           ? session.metadata.owner_token || null
@@ -948,26 +978,32 @@ async function recordPurchaseCompletedEvent(
         upgrade_from: session.metadata?.upgrade_from ?? "none",
         destiny_access_policy:
           session.metadata?.destiny_access_policy ?? "legacy_included",
+        hoshiyomi_chat_policy:
+          session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
         friend_access_policy:
           session.metadata?.friend_access_policy ?? "legacy_included",
+        aisho_access_policy:
+          session.metadata?.aisho_access_policy ?? "legacy_included",
         paywall_version: session.metadata?.paywall_version ?? "legacy",
         placement: session.metadata?.paywall_placement ?? "unknown",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         return_to:
-          product === "self_report"
-            ? "me"
-            : session.metadata?.return_to === "tako"
-              ? "tako"
-              : session.metadata?.return_to === "aisho"
-                ? "aisho"
-                : session.metadata?.return_to === "unmei"
-                  ? "unmei"
+          session.metadata?.return_to === "tako"
+            ? "tako"
+            : session.metadata?.return_to === "aisho"
+              ? "aisho"
+              : session.metadata?.return_to === "unmei"
+                ? "unmei"
+                : session.metadata?.return_to === "hoshiyomi"
+                  ? "hoshiyomi"
                   : "me",
         locale,
       },
     });
-  } catch (err) {
-    console.error("[webhook] purchase_completed event insert failed:", err);
+  if (insertError && insertError.code !== "23505") {
+    throw new Error(
+      `[webhook] purchase_completed event insert failed: ${insertError.message}`,
+    );
   }
 }
 
@@ -979,27 +1015,29 @@ async function recordUnmeiPurchaseEventOnce(
   eventName: "unmei_purchase_complete" | "unmei_upgrade_complete",
   session: Stripe.Checkout.Session,
   userId: string | null,
+  paidAt: string,
 ): Promise<void> {
-  try {
-    const { data: existing, error: selErr } = await supabaseAdmin
+  const { data: existing, error: selectError } = await supabaseAdmin
       .from("events")
       .select("id")
       .eq("event_name", eventName)
       .eq("metadata->>stripe_session_id", session.id)
       .limit(1);
-    // SELECT 失敗時は重複の有無が判定できないため挿入しない (recordPurchaseCompletedEvent と同方針)。
-    if (selErr) {
-      console.error(`[webhook] ${eventName} dedup check failed:`, selErr);
-      return;
-    }
-    if (existing && existing.length > 0) return;
-    const ownerToken =
+  if (selectError) {
+    throw new Error(
+      `[webhook] ${eventName} dedup check failed: ${selectError.message}`,
+    );
+  }
+  if (existing && existing.length > 0) return;
+  const ownerToken =
       typeof session.metadata?.owner_token === "string" &&
       session.metadata.owner_token
         ? session.metadata.owner_token
         : null;
-    await supabaseAdmin.from("events").insert({
+  const { error: insertError } = await supabaseAdmin.from("events").insert({
+      id: purchaseEventId(eventName, session.id),
       event_name: eventName,
+      created_at: paidAt,
       owner_token: ownerToken,
       metadata: {
         stripe_session_id: session.id,
@@ -1009,10 +1047,13 @@ async function recordUnmeiPurchaseEventOnce(
           eventName === "unmei_purchase_complete" ? "unmei" : "unmei_upgrade",
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? "jpy",
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        source: normalizePaywallSource(session.metadata?.paywall_source),
       },
     });
-  } catch (e) {
-    console.error(`[webhook] ${eventName} insert failed:`, e);
+  if (insertError && insertError.code !== "23505") {
+    throw new Error(`[webhook] ${eventName} insert failed: ${insertError.message}`);
   }
 }
 
@@ -1602,12 +1643,13 @@ async function handleCheckoutPaid(
     if (!linkedUserId) {
       throw new Error(`[unmei] linked user missing for ${session.id}`);
     }
-    await recordUnmeiPayment(session, linkedUserId, "unmei");
+    await recordUnmeiPayment(session, linkedUserId, "unmei", paidAt);
     await persistPurchaseLocale(session, linkedUserId);
     await recordUnmeiPurchaseEventOnce(
       "unmei_purchase_complete",
       session,
       linkedUserId,
+      paidAt,
     );
     await queueServerPurchaseConversions({
       session,
@@ -1651,9 +1693,14 @@ async function handleCheckoutPaid(
       return;
     }
     await grantUnmeiToUserId(userId);
-    await recordUnmeiPayment(session, userId, "unmei_upgrade");
+    await recordUnmeiPayment(session, userId, "unmei_upgrade", paidAt);
     await persistPurchaseLocale(session, userId);
-    await recordUnmeiPurchaseEventOnce("unmei_upgrade_complete", session, userId);
+    await recordUnmeiPurchaseEventOnce(
+      "unmei_upgrade_complete",
+      session,
+      userId,
+      paidAt,
+    );
     await queueServerPurchaseConversions({
       session,
       userId,
@@ -1674,12 +1721,20 @@ async function handleCheckoutPaid(
   if (metadata.product === "premium_bundle") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
     await grantUnmeiByEmailOrId(session, paymentUserId);
-    await recordFullAccessPayment(session, paymentUserId, "premium_bundle");
+    await recordFullAccessPayment(
+      session,
+      paymentUserId,
+      paidAt,
+      "premium_bundle",
+    );
     try {
       await grantHoshiyomiCreditsToTarget({
         userId: paymentUserId,
         sourceKey: `stripe:${session.id}`,
-        targetTotal: HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
+        targetTotal: hoshiyomiChatCreditTarget(
+          "premium_bundle",
+          session.metadata?.hoshiyomi_chat_policy,
+        ),
       });
     } catch (error) {
       if (!isMissingHoshiyomiStore(error)) throw error;
@@ -1688,7 +1743,7 @@ async function handleCheckoutPaid(
       });
     }
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
     await queueServerPurchaseConversions({
       session,
       userId: paymentUserId,
@@ -1710,9 +1765,11 @@ async function handleCheckoutPaid(
     const includesDestinyFeatures = purchaseIncludesDestinyFeatures(
       "full_access",
       session.metadata?.destiny_access_policy,
+      session.metadata?.locale,
     );
     // 設計図 (unmei) とAI占い師チャットは独立に判定する。
-    // v2 ポリシーの完全版は「設計図なし・チャット5回あり」。
+    // 現行の日本版完全版は「設計図あり・Alice 30回答」。旧購入は記録済みの
+    // policy に従い、購入時に約束した権利を維持する。
     const includesHoshiyomiChat = purchaseIncludesHoshiyomiChat(
       "full_access",
       session.metadata?.hoshiyomi_chat_policy,
@@ -1724,7 +1781,7 @@ async function handleCheckoutPaid(
     if (includesDestinyFeatures) {
       await grantUnmeiByEmailOrId(session, paymentUserId);
     }
-    await recordFullAccessPayment(session, paymentUserId);
+    await recordFullAccessPayment(session, paymentUserId, paidAt);
     if (includesHoshiyomiChat) {
       try {
         await grantHoshiyomiCreditsToTarget({
@@ -1740,7 +1797,7 @@ async function handleCheckoutPaid(
       }
     }
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
     await queueServerPurchaseConversions({
       session,
       userId: paymentUserId,
@@ -1761,9 +1818,9 @@ async function handleCheckoutPaid(
 
   if (metadata.product === "self_report") {
     const paymentUserId = await resolveSelfReportUser(session, userId);
-    await recordSelfReportPayment(session, paymentUserId);
+    await recordSelfReportPayment(session, paymentUserId, paidAt);
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
     await queueServerPurchaseConversions({
       session,
       userId: paymentUserId,
@@ -1789,7 +1846,8 @@ async function handleCheckoutPaid(
   // 'tako_unlock' = 友達診断の隠しコンテンツ解放 (¥799 / 割引 ¥300, 2026-07-21 改定)
   // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
   if (metadata.payment_kind === "perception_unlock") {
-    await handlePerceptionUnlockCompleted(session, userId, metadata);
+    await handlePerceptionUnlockCompleted(session, userId, metadata, paidAt);
+    await recordPurchaseCompletedEvent(session, userId, paidAt);
     await queueServerPurchaseConversions({
       session,
       userId,
@@ -1799,7 +1857,8 @@ async function handleCheckoutPaid(
     return;
   }
   if (metadata.payment_kind === "tako_unlock") {
-    await handleTakoUnlockCompleted(session, userId);
+    await handleTakoUnlockCompleted(session, userId, paidAt);
+    await recordPurchaseCompletedEvent(session, userId, paidAt);
     await queueServerPurchaseConversions({
       session,
       userId,
@@ -1818,6 +1877,7 @@ async function handleCheckoutPaid(
 async function handleTakoUnlockCompleted(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -1835,10 +1895,13 @@ async function handleTakoUnlockCompleted(
         amount_jpy: session.amount_total ?? 799,
         currency: session.currency ?? "jpy",
         status: "completed" as const,
-        paid_at: new Date().toISOString(),
+        paid_at: paidAt,
         metadata: {
           payment_kind: "tako_unlock",
           discounted: session.metadata?.discounted ?? "0",
+          paywall_version: session.metadata?.paywall_version ?? "legacy",
+          placement: session.metadata?.paywall_placement ?? "unknown",
+          source: normalizePaywallSource(session.metadata?.paywall_source),
         },
       },
       { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -2044,6 +2107,7 @@ async function handlePerceptionUnlockCompleted(
   session: Stripe.Checkout.Session,
   userId: string,
   metadata: Record<string, string>,
+  paidAt: string,
 ): Promise<void> {
   const perceptionId = metadata.perception_id;
   if (!perceptionId) {
@@ -2066,10 +2130,13 @@ async function handlePerceptionUnlockCompleted(
     amount_jpy: session.amount_total ?? 500,
     currency: session.currency ?? "jpy",
     status: "completed" as const,
-    paid_at: new Date().toISOString(),
+    paid_at: paidAt,
     metadata: {
       perception_id: perceptionId,
       payment_kind: "perception_unlock",
+      paywall_version: session.metadata?.paywall_version ?? "legacy",
+      placement: session.metadata?.paywall_placement ?? "unknown",
+      source: normalizePaywallSource(session.metadata?.paywall_source),
     },
   };
 
@@ -2142,7 +2209,9 @@ type ActiveCoursePaymentRow = Omit<
     upgrade_from?: unknown;
     locale?: unknown;
     destiny_access_policy?: unknown;
+    hoshiyomi_chat_policy?: unknown;
     friend_access_policy?: unknown;
+    aisho_access_policy?: unknown;
   } | null;
 };
 
@@ -2306,6 +2375,7 @@ async function recomputeAccessAfterFullRefund(
       purchaseIncludesDestinyFeatures(
         row.payment_kind,
         row.metadata?.destiny_access_policy,
+        row.metadata?.locale,
       ),
   );
 
@@ -2339,7 +2409,88 @@ async function recomputeAccessAfterFullRefund(
   }
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+/**
+ * Stripeの新APIでChargeからInvoiceへの直接参照がないため、Invoice Paymentを
+ * PaymentIntent IDで逆引きする。返金自体でサブスク権利は剥奪せず、
+ * customer.subscription.* の状態を権利の正本にする。
+ */
+async function acknowledgeAlicePlusSubscriptionRefund(input: {
+  charge: Stripe.Charge;
+  paymentIntentId: string;
+  refundedAt: string;
+}): Promise<boolean> {
+  const stripe = getStripe();
+  if (!stripe) {
+    throw new Error("[alice_plus] Stripe unavailable during refund lookup");
+  }
+
+  const invoicePayments = await stripe.invoicePayments.list({
+    payment: {
+      type: "payment_intent",
+      payment_intent: input.paymentIntentId,
+    },
+    expand: ["data.invoice"],
+    limit: 1,
+  });
+  const invoiceRef = invoicePayments.data[0]?.invoice;
+  if (!invoiceRef) return false;
+
+  const resolvedInvoice =
+    typeof invoiceRef === "string"
+      ? await stripe.invoices.retrieve(invoiceRef)
+      : invoiceRef;
+  if (!("parent" in resolvedInvoice)) return false;
+
+  const subscriptionRef =
+    resolvedInvoice.parent?.subscription_details?.subscription;
+  const subscriptionId =
+    typeof subscriptionRef === "string"
+      ? subscriptionRef
+      : (subscriptionRef?.id ?? null);
+  if (!subscriptionId) return false;
+
+  const { data: plusSubscription, error } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("user_id, line_user_id, plan_key, status")
+    .eq("stripe_subscription_id", subscriptionId)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    throw new Error(
+      `[alice_plus] subscription refund lookup failed: ${error.message}`,
+    );
+  }
+  // subscription.createdより返金が先着した場合はfalseで返し、
+  // 呼び出し元から500にしてStripe再送で回復する。
+  if (!plusSubscription) return false;
+
+  const fullyRefunded = input.charge.amount_refunded >= input.charge.amount;
+  const eventName = fullyRefunded
+    ? "line_plus_subscription_charge_refunded"
+    : "line_plus_subscription_charge_partially_refunded";
+  await recordLineEvent({
+    eventName,
+    id: purchaseEventId(
+      eventName,
+      `${input.charge.id}:${input.charge.amount_refunded}`,
+    ),
+    metadata: {
+      plan_id: plusSubscription.plan_key,
+      subscription_status: plusSubscription.status,
+      amount: input.charge.amount,
+      amount_refunded: input.charge.amount_refunded,
+      currency: input.charge.currency,
+      fully_refunded: fullyRefunded,
+      refunded_at: input.refundedAt,
+    },
+  });
+  return true;
+}
+
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  refundedAt: string,
+): Promise<void> {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
@@ -2347,23 +2498,110 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   if (!paymentIntentId) return;
 
   const fullyRefunded = charge.amount_refunded >= charge.amount;
-  const nowIso = new Date().toISOString();
+
+  // Alice Plusの期間パスと旧無期限プランは一般商品のpayment_historyではなく、
+  // line_plus_subscriptionsの行を権利源にしている。
+  const { data: plusOneTime, error: plusOneTimeLookupError } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("user_id, line_user_id, plan_key")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .in("plan_key", ["day", "week", "month_pass", "lifetime"])
+    .limit(1)
+    .maybeSingle();
+  if (plusOneTimeLookupError) {
+    throw new Error(
+      `[alice_plus] one-time refund lookup failed: ${plusOneTimeLookupError.message}`,
+    );
+  }
+
+  // 新規販売終了済みの無期限プランも、全額返金時には既存権利を確実に外す。
+  if (plusOneTime?.plan_key === "lifetime") {
+    if (fullyRefunded) {
+      const { error: lifetimeRefundError } = await supabaseAdmin
+        .from("line_plus_subscriptions")
+        .update({ status: "refunded", updated_at: refundedAt })
+        .eq("stripe_payment_intent_id", paymentIntentId);
+      if (lifetimeRefundError) {
+        throw new Error(
+          `[alice_plus_lifetime] refund revoke failed: ${lifetimeRefundError.message}`,
+        );
+      }
+    }
+
+    const eventName = fullyRefunded
+      ? "line_plus_lifetime_refunded"
+      : "line_plus_lifetime_partially_refunded";
+    await recordLineEvent({
+      eventName,
+      id: purchaseEventId(
+        eventName,
+        `${charge.id}:${charge.amount_refunded}`,
+      ),
+      metadata: {
+        amount: charge.amount,
+        amount_refunded: charge.amount_refunded,
+        fully_refunded: fullyRefunded,
+      },
+    });
+    return;
+  }
+
+  if (plusOneTime) {
+    if (fullyRefunded) {
+      const { data: revoked, error: revokeError } = await supabaseAdmin.rpc(
+        "revoke_line_plus_time_pass",
+        {
+          p_stripe_payment_intent_id: paymentIntentId,
+          p_refunded_at: refundedAt,
+        },
+      );
+      if (revokeError) {
+        throw new Error(
+          `[alice_plus_pass] refund revoke failed: ${revokeError.message}`,
+        );
+      }
+      const result = Array.isArray(revoked) ? revoked[0] : revoked;
+      if (result?.was_found !== true) {
+        throw new Error(
+          "[alice_plus_pass] refund row disappeared",
+        );
+      }
+    }
+
+    await recordLineEvent({
+      eventName: fullyRefunded
+        ? "line_plus_pass_refunded"
+        : "line_plus_pass_partially_refunded",
+      id: purchaseEventId(
+        fullyRefunded
+          ? "line_plus_pass_refunded"
+          : "line_plus_pass_partially_refunded",
+        `${charge.id}:${charge.amount_refunded}`,
+      ),
+      metadata: {
+        plan_id: plusOneTime.plan_key,
+        amount: charge.amount,
+        amount_refunded: charge.amount_refunded,
+        fully_refunded: fullyRefunded,
+      },
+    });
+    return;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("payment_history")
     .update({
       amount_refunded_minor: charge.amount_refunded,
       status: fullyRefunded ? "refunded" : "completed",
-      refunded_at: charge.amount_refunded > 0 ? nowIso : null,
-      updated_at: nowIso,
+      refunded_at: charge.amount_refunded > 0 ? refundedAt : null,
+      updated_at: refundedAt,
     })
     .eq("stripe_payment_intent_id", paymentIntentId)
     .select("id, user_id, stripe_session_id, payment_kind, status");
   if (isCoreKpiPaymentSchemaPending(error)) {
-    console.warn(
-      "[webhook/stripe] core KPI refund schema pending; refund fact will require replay after migration",
-      { payment_intent_id: paymentIntentId },
+    throw new Error(
+      `[refund] payment schema is not ready for ${paymentIntentId}: ${error?.message ?? "unknown schema error"}`,
     );
-    return;
   }
   if (error) {
     throw new Error(`[refund] refund update failed: ${error.message}`);
@@ -2390,45 +2628,18 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     return;
   }
 
-  // 0 行更新 = payment_history に行が無い。原因は 2 通りで扱いを分ける:
-  //   a) checkout webhook との順序逆転 (行がこれから書かれる) → throw で Stripe に再送させる
-  //   b) unmei / unmei_upgrade: 設計上 payment_history に行を書かない経路 → 再送しても
-  //      永遠に解消しない毒イベント。200 で受領し Slack 通知で手動対応に回す。
-  // 判別のため Checkout Session を payment_intent から引いて product を見る。
-  let product: string | null = null;
-  const stripe = getStripe();
-  if (stripe) {
-    try {
-      const sessions = await stripe.checkout.sessions.list({
-        payment_intent: paymentIntentId,
-        limit: 1,
-      });
-      product = sessions.data[0]?.metadata?.product ?? null;
-    } catch (err) {
-      console.error(
-        "[webhook/stripe] refund: session lookup failed (will retry):",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
-  }
-
-  if (product === "unmei" || product === "unmei_upgrade") {
-    console.warn("[webhook/stripe] refund for unrecorded product (acknowledged)", {
-      payment_intent_id: paymentIntentId,
-      product,
-      amount_refunded: charge.amount_refunded,
-    });
-    await sendSlackAlert("⚠️ 返金受領: payment_history 非記録の商品 (要・手動対応)", {
-      payment_intent_id: paymentIntentId,
-      product,
-      amount_refunded: charge.amount_refunded,
-      fully_refunded: fullyRefunded ? "yes" : "no",
-    });
+  if (
+    await acknowledgeAlicePlusSubscriptionRefund({
+      charge,
+      paymentIntentId,
+      refundedAt,
+    })
+  ) {
     return;
   }
 
-  // Webhook delivery order is not guaranteed. A retry after the checkout event
-  // has been persisted is safer than silently losing the refund.
+  // 全商品を payment_history に保存するため、0行はcheckout webhookとの順序逆転か
+  // 保存障害。受領済みにせず、購入行が入った後のStripe再送で返金を確実に反映する。
   throw new Error(
     `[refund] refund arrived before payment record: ${paymentIntentId}`,
   );

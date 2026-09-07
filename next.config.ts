@@ -21,7 +21,10 @@ const nextConfig: NextConfig = {
   // 本番で「input directory .../bin does not exist」で落ちる (2026-07-21 実測。
   // turbopack ビルドで顕在化)。PDF ルートには明示的にバイナリ一式を同梱する。
   outputFileTracingIncludes: {
-    "/report/[token]/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/report/[token]/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+      "./private/self-report-stories/*-vertical-story.pdf",
+    ],
     "/tako-report/[token]/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
   },
   turbopack: {

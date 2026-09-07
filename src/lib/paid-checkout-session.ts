@@ -8,9 +8,11 @@ import {
   type MetaPurchaseProduct,
 } from "@/lib/meta-purchase";
 import {
+  hoshiyomiChatCreditTarget,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
+  purchaseIncludesTarotFeatures,
 } from "@/lib/access-products";
 
 export { isCheckoutSessionId };
@@ -25,6 +27,8 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   product: MetaPurchaseProduct;
   destinyFeaturesIncluded: boolean;
   hoshiyomiChatIncluded: boolean;
+  hoshiyomiChatCredits: number;
+  tarotFeaturesIncluded: boolean;
   friendFeaturesIncluded: boolean;
 }>;
 
@@ -103,6 +107,7 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
           purchaseIncludesDestinyFeatures(
             product,
             session.metadata?.destiny_access_policy,
+            session.metadata?.locale,
           )),
       // チャットのクレジット付与があるのは premium_bundle と対象の full_access のみ
       // (旧 unmei 単体商品は付与対象外)。
@@ -111,7 +116,21 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
         (product === "full_access" &&
           purchaseIncludesHoshiyomiChat(
             product,
-            session.metadata?.destiny_access_policy,
+            session.metadata?.hoshiyomi_chat_policy,
+          )),
+      hoshiyomiChatCredits:
+        product === "premium_bundle" || product === "full_access"
+          ? hoshiyomiChatCreditTarget(
+              product,
+              session.metadata?.hoshiyomi_chat_policy,
+            )
+          : 0,
+      tarotFeaturesIncluded:
+        product === "premium_bundle" ||
+        (product === "full_access" &&
+          purchaseIncludesTarotFeatures(
+            product,
+            session.metadata?.tarot_access_policy,
           )),
       friendFeaturesIncluded:
         product === "self_report" ||

@@ -1,11 +1,12 @@
 // PR1: entitlement 判定 (課金ロックの唯一の真実源)。
 //
-// ¥499 買い切りの全解放と、¥199 自己診断＋PDF商品の権限を分離する。
+// 完全版と、学生向けライト商品の権限を分離する。
 // 課金判定は各所で .eq('plan','full') とベタ書きせず、必ず hasFullAccess() に集約する
 // (ロジックが1箇所なら抜け道点検も1箇所で済む)。PR2 のサーバゲートはこの関数を通す。
 
 import { supabaseAdmin } from "./supabase-server";
 import {
+  purchaseIncludesAishoFeatures,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
@@ -23,10 +24,12 @@ export type AccessPaymentRow = {
   payment_kind: AccessPaymentKind;
   metadata: {
     upgrade_from?: unknown;
+    locale?: unknown;
     destiny_access_policy?: unknown;
     hoshiyomi_chat_policy?: unknown;
     tarot_access_policy?: unknown;
     friend_access_policy?: unknown;
+    aisho_access_policy?: unknown;
   } | null;
   paid_at?: string | null;
 };
@@ -96,6 +99,7 @@ export async function getAccessPurchaseEntitlements(
   hoshiyomiChat: boolean;
   tarotFeatures: boolean;
   friendFeatures: boolean;
+  aishoFeatures: boolean;
 }> {
   if (!userId) {
     return {
@@ -106,6 +110,7 @@ export async function getAccessPurchaseEntitlements(
       hoshiyomiChat: false,
       tarotFeatures: false,
       friendFeatures: false,
+      aishoFeatures: false,
     };
   }
   const { data: user, error } = await supabaseAdmin
@@ -122,6 +127,7 @@ export async function getAccessPurchaseEntitlements(
       hoshiyomiChat: false,
       tarotFeatures: false,
       friendFeatures: false,
+      aishoFeatures: false,
     };
   }
 
@@ -143,6 +149,7 @@ export async function getAccessPurchaseEntitlements(
         hoshiyomiChat: false,
         tarotFeatures: false,
         friendFeatures: false,
+        aishoFeatures: false,
       };
     }
     userIds = (related ?? []).map((row) => row.id as string);
@@ -159,6 +166,7 @@ export async function getAccessPurchaseEntitlements(
       hoshiyomiChat: false,
       tarotFeatures: false,
       friendFeatures: false,
+      aishoFeatures: false,
     };
   }
   const valid = validAccessPaymentRows(payments);
@@ -171,6 +179,13 @@ export async function getAccessPurchaseEntitlements(
   const destinyFeatures = valid.some((row) =>
     purchaseIncludesDestinyFeatures(
       row.payment_kind,
+      row.metadata?.destiny_access_policy,
+      row.metadata?.locale,
+    ),
+  );
+  const hoshiyomiChat = valid.some((row) =>
+    purchaseIncludesHoshiyomiChat(
+      row.payment_kind,
       row.metadata?.hoshiyomi_chat_policy,
     ),
   );
@@ -180,16 +195,16 @@ export async function getAccessPurchaseEntitlements(
       row.metadata?.tarot_access_policy,
     ),
   );
-  const hoshiyomiChat = valid.some((row) =>
-    purchaseIncludesHoshiyomiChat(
-      row.payment_kind,
-      row.metadata?.destiny_access_policy,
-    ),
-  );
   const friendFeatures = valid.some((row) =>
     purchaseIncludesFriendFeatures(
       row.payment_kind,
       row.metadata?.friend_access_policy,
+    ),
+  );
+  const aishoFeatures = valid.some((row) =>
+    purchaseIncludesAishoFeatures(
+      row.payment_kind,
+      row.metadata?.aisho_access_policy,
     ),
   );
   return {
@@ -201,6 +216,7 @@ export async function getAccessPurchaseEntitlements(
     hoshiyomiChat,
     tarotFeatures,
     friendFeatures,
+    aishoFeatures,
   };
 }
 
@@ -259,7 +275,8 @@ export async function hasFullAccess(
 
 /**
  * 運命の設計図まで利用できるか。
- * 現行 premium_bundle と、旧 full_access / unmei / unmei_upgrade を利用可にする。
+ * premium_bundle と、設計図込みで販売した旧 full_access、旧 unmei / unmei_upgrade
+ * を利用可にする。
  * users.unmei を優先しつつ、再診断時は同一 email、旧購入者は購入履歴から復元する。
  */
 export async function hasUnmeiAccess(
@@ -269,12 +286,11 @@ export async function hasUnmeiAccess(
 
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("unmei, email")
+    .select("unmei, email, plan")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return false;
   if (data.unmei === true) return true;
-
   const email =
     typeof data.email === "string" ? data.email.trim().toLowerCase() : "";
   if (email) {
@@ -287,9 +303,12 @@ export async function hasUnmeiAccess(
     if (rows && rows.length > 0) return true;
   }
 
-  // 新仕様の完全版は対象外。プレミアム、または新仕様マーカーが無い旧完全版だけを
-  // 購入履歴から復元し、既存購入者の権利を維持する。
-  return (await getAccessPurchaseEntitlements(userId)).destinyFeatures;
+  const entitlements = await getAccessPurchaseEntitlements(userId);
+  if (entitlements.destinyFeatures) return true;
+  // 決済履歴がある完全版は、その購入時のpolicyを優先する。
+  // payment_history導入前の旧plan='full'だけ後方互換で残す。
+  if (entitlements.full) return false;
+  return data.plan === "full";
 }
 
 /**
@@ -319,7 +338,7 @@ async function anyCompletedPayment(
   return (count ?? 0) > 0;
 }
 
-/** ¥899プレミアム商品そのものの購入済み判定。 */
+/** プレミアム商品そのものの購入済み判定。 */
 export async function hasPremiumBundleAccess(
   userId: string | null | undefined,
 ): Promise<boolean> {
@@ -337,7 +356,7 @@ export async function hasHoshiyomiChatPurchase(
   return (await getAccessPurchaseEntitlements(userId)).hoshiyomiChat;
 }
 
-/** 明示的にタロットを含む完全版、またはプレミアムの購入済み判定。 */
+/** 現行の完全版または全部入りに含まれるタロット権限。 */
 export async function hasTarotAccess(
   userId: string | null | undefined,
 ): Promise<boolean> {
@@ -348,7 +367,7 @@ export async function hasTarotAccess(
  * 自己診断のロック本文と自己分析PDFを利用できるか。
  *
  * - 既存の full_access 購入者は後方互換で利用可。
- * - ¥199 self_report 購入者は自己診断/PDFを利用可。
+ * - self_report 購入者は自己診断/PDFを利用可。
  * - ゲスト購入や再診断で users 行が分かれても、同じ email の購入を引き継ぐ。
  */
 export async function hasSelfReportAccess(
@@ -379,12 +398,28 @@ export async function hasSelfReportAccess(
   return anyCompletedPayment(relatedIds, "self_report");
 }
 
+/**
+ * 相性診断を利用できるか。
+ * 現行日本版は完全版以上、韓国版と一部の旧販売世代はプレミアム限定。
+ * 旧購入は購入時に案内した権利を維持する。
+ */
+export async function hasAishoAccess(
+  userId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId) return false;
+  const entitlements = await getAccessPurchaseEntitlements(userId);
+  if (entitlements.aishoFeatures) return true;
+  // completed の現行 full_access がある場合はポリシー判定を優先する。
+  if (entitlements.full) return false;
+  // payment_history 導入前の plan='full' 購入者は旧権利として維持する。
+  return hasFullAccess(userId);
+}
+
 
 // =====================================================================
 // 友達診断 (/tako) の解放。
-//   新規の ¥199 self_report は自己診断と自己分析PDFのみ。
-//   full_access 以上で2人目以降の結果シートと友達診断PDFを解放する。
-//   旧 self_report 購入者は購入時の権利を維持する。
+//   日本版の学生向けライトは2人目以降の結果シートと友達診断PDFも解放する。
+//   full_access 以上も友達機能を解放し、旧 self_report は購入時の権利を維持する。
 //   旧 'tako_unlock' (¥799 単体販売) は廃止。ただし過去の ¥799 購入者の権限は
 //   payment_history から引き続き読み取り、解放を維持する (下記 anyTakoUnlockPayment)。
 // =====================================================================
@@ -411,8 +446,7 @@ export async function hasTakoAccess(
   // ⓪ full_access / premium_bundle / 旧 plan='full' は友達診断を解放。
   if (await hasFullAccess(userId)) return true;
 
-  // ① 旧 ¥199 self_report 購入者は購入時の権利を維持する。
-  // 新仕様マーカー付き self_report は friendFeatures=false になる。
+  // ① self_report は購入世代のポリシーに応じて友達機能を解放する。
   if ((await getAccessPurchaseEntitlements(userId)).friendFeatures) return true;
 
   // ② 旧 ¥799 単体購入者の権限維持: 自分の行での tako_unlock 購入

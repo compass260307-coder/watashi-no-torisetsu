@@ -70,6 +70,8 @@ export default async function PurchaseCompletePage({ searchParams }: PageProps) 
         isGuestPurchase={session.guest}
         destinyFeaturesIncluded={session.destinyFeaturesIncluded}
         hoshiyomiChatIncluded={session.hoshiyomiChatIncluded}
+        hoshiyomiChatCredits={session.hoshiyomiChatCredits}
+        tarotFeaturesIncluded={session.tarotFeaturesIncluded}
         friendFeaturesIncluded={session.friendFeaturesIncluded}
         product={
           session.product === "self_report"

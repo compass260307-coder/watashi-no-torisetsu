@@ -79,7 +79,9 @@ export function PaidUnlockWatcher({
             astrologer?: boolean;
           };
           const unlocked =
-            returnTo === "hoshiyomi" && product === "premium_bundle"
+            returnTo === "aisho"
+              ? data.selfReport
+              : returnTo === "hoshiyomi" && product === "premium_bundle"
               ? data.astrologer
               : product === "self_report"
                 ? data.selfReport

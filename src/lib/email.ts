@@ -198,6 +198,8 @@ interface SendDetailedReportArgs {
   product?: AccessProduct;
   destinyFeaturesIncluded?: boolean;
   hoshiyomiChatIncluded?: boolean;
+  hoshiyomiChatCredits?: number;
+  tarotFeaturesIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
@@ -207,8 +209,8 @@ interface SendDetailedReportArgs {
  * 詳細レポートお届けメール (フルアクセス購入特典)。
  *
  * Stripe Webhook (checkout.session.completed / product=full_access) から送信。
- * 自己診断とPDFに加え、プレミアムと旧完全版には
- * 運命の設計図・専属占い師への導線も同封する。
+ * 自己診断とPDFに加え、購入世代に応じて
+ * 運命の設計図・専属占い師・タロットの案内も同封する。
  *   - 「解放された自己診断結果を見る」= /me/[ownerToken] または /ko/me/[ownerToken]
  *   - 「完全版 PDF をダウンロード」= /report/[ownerToken]/pdf
  * どちらも token ベースの永続 URL。ゲスト決済 (診断前) でも診断完了後に
@@ -239,9 +241,9 @@ export async function sendDetailedReportEmail(
           ? `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
           : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
       : product === "self_report"
-        ? `【${SITE_NAME}】自己分析レポートをお届けします`
+        ? `【${SITE_NAME}】学生向けプランを解放しました`
         : product === "premium_bundle"
-          ? `【${SITE_NAME}】プレミアムコースを解放しました`
+          ? `【${SITE_NAME}】全部入りを解放しました`
           : `【${SITE_NAME}】完全版レポートをお届けします`;
 
   try {
@@ -260,6 +262,8 @@ export async function sendDetailedReportEmail(
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
               hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+              hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+              tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
             })
@@ -272,6 +276,8 @@ export async function sendDetailedReportEmail(
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
               hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+              hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+              tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
               purchaseAmountJpy: args.purchaseAmountJpy,
@@ -287,6 +293,8 @@ export async function sendDetailedReportEmail(
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
               hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+              hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+              tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             })
           : renderDetailedReportText({
@@ -298,6 +306,8 @@ export async function sendDetailedReportEmail(
               product,
               destinyFeaturesIncluded: args.destinyFeaturesIncluded,
               hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+              hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+              tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             }),
     });
@@ -535,6 +545,8 @@ interface DetailedReportTemplateArgs {
   product?: AccessProduct;
   destinyFeaturesIncluded?: boolean;
   hoshiyomiChatIncluded?: boolean;
+  hoshiyomiChatCredits?: number;
+  tarotFeaturesIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
@@ -548,13 +560,16 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
   const hasUnmei = args.destinyFeaturesIncluded ?? isPremiumBundle;
-  // 占い師チャットは設計図と独立 (¥499 完全版にも付く)。未指定は旧来どおり設計図に追従。
+  // 占い師チャットは設計図と独立 (完全版にも付く)。未指定は旧来どおり設計図に追従。
   const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
+  const hoshiyomiChatCredits =
+    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+  const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
-    ? "ワタシのトリセツ 自己分析レポート"
+    ? "ワタシのトリセツ 学生向けプラン"
     : isPremiumBundle
-      ? "ワタシのトリセツ プレミアムコース"
+      ? "ワタシのトリセツ 全部入り"
       : "ワタシのトリセツ 性格レポート完全版";
   const pdfLabel = isSelfReport ? "自己分析PDF" : "完全版PDF";
   const defaultPurchaseAmount = isSelfReport
@@ -568,7 +583,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   const purchaseItems = isSelfReport
     ? `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
-                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">自己診断結果のロックされた8セクションをすべて解放</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">自己診断結果のロックされた9セクションをすべて解放</td>
                         </tr>
                         <tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
@@ -604,7 +619,14 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                           hasHoshiyomi
                             ? `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
-                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">あなたの専属占い師とのチャット${isPremiumBundle ? "30" : "5"}回分</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">あなたの専属占い師とのチャット${hoshiyomiChatCredits}回分</td>
+                        </tr>`
+                            : ""
+                        }${
+                          hasTarot
+                            ? `<tr>
+                          <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
+                          <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">Aliceのタロット占い3種類をすべて解放</td>
                         </tr>`
                             : ""
                         }`;
@@ -719,17 +741,20 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
   const hasUnmei = args.destinyFeaturesIncluded ?? isPremiumBundle;
-  // 占い師チャットは設計図と独立 (¥499 完全版にも付く)。未指定は旧来どおり設計図に追従。
+  // 占い師チャットは設計図と独立 (完全版にも付く)。未指定は旧来どおり設計図に追従。
   const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
+  const hoshiyomiChatCredits =
+    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+  const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
-    ? "ワタシのトリセツ 自己分析レポート"
+    ? "ワタシのトリセツ 学生向けプラン"
     : isPremiumBundle
-      ? "ワタシのトリセツ プレミアムコース"
+      ? "ワタシのトリセツ 全部入り"
       : "ワタシのトリセツ 性格レポート完全版";
   const purchaseItems = isSelfReport
     ? [
-        "・自己診断結果のロックされた8セクションをすべて解放",
+        "・自己診断結果のロックされた9セクションをすべて解放",
         "・16ページ以上の自己分析PDF",
         ...(hasFriendFeatures
           ? [
@@ -744,8 +769,9 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
         "・シーン別の相性",
         ...(hasUnmei ? ["・あなた専用の運命の設計図"] : []),
         ...(hasHoshiyomi
-          ? [`・あなたの専属占い師とのチャット${isPremiumBundle ? 30 : 5}回分`]
+          ? [`・あなたの専属占い師とのチャット${hoshiyomiChatCredits}回分`]
           : []),
+        ...(hasTarot ? ["・Aliceのタロット占い3種類をすべて解放"] : []),
       ];
   const defaultPurchaseAmount = isSelfReport
     ? SELF_REPORT_PRICE_JPY
@@ -806,6 +832,8 @@ export function renderDetailedReportHtmlKo(
   const hasDestinyFeatures =
     args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
+  const hoshiyomiChatCredits =
+    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "나의 사용설명서 라이트 코스"
@@ -821,7 +849,7 @@ export function renderDetailedReportHtmlKo(
         : FULL_ACCESS_PRICE_KRW);
   const items = isSelfReport
     ? `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 PDF${hasFriendFeatures ? "<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 몇 번이든 다시 만들 수 있는 친구 분석 PDF" : ""}`
-    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도` : ""}${hasHoshiyomiChat ? `<br />✓ 나만의 전담 점성술사 채팅 ${isPremiumBundle ? "30" : "5"}회` : ""}`;
+    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도` : ""}${hasHoshiyomiChat ? `<br />✓ 나만의 전담 점성술사 채팅 ${hoshiyomiChatCredits}회` : ""}`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -875,6 +903,8 @@ function renderDetailedReportTextKo(
   const hasDestinyFeatures =
     args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
+  const hoshiyomiChatCredits =
+    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
     ? "나의 사용설명서 라이트 코스"
@@ -907,7 +937,7 @@ function renderDetailedReportTextKo(
         "・연애 파트너 궁합 분석",
         ...(hasDestinyFeatures ? ["・한국어 운명의 설계도"] : []),
         ...(hasHoshiyomiChat
-          ? [`・나만의 전담 점성술사 채팅 ${isPremiumBundle ? 30 : 5}회`]
+          ? [`・나만의 전담 점성술사 채팅 ${hoshiyomiChatCredits}회`]
           : []),
       ];
   return [

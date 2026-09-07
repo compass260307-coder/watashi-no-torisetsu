@@ -437,7 +437,8 @@ const SCENE_RING: Record<SceneKey, string> = {
   clash: "#9377CC",
 };
 
-// ④シーン別のサーバゲート応答。locked=true は本文なし (未課金/匿名)。
+// 相性診断全体のサーバゲート応答。locked=true は結果を表示しない (未課金/匿名)。
+// unlocked 時だけ、シーン別本文も同じ応答に含める。
 type ScenesResponse = {
   locked: boolean;
   scenes?: { key: SceneKey; label: string; text: string }[];
@@ -445,7 +446,73 @@ type ScenesResponse = {
   ownerToken?: string | null;
 };
 
-function CompatDetail({
+function AishoResultLock({ locale }: { locale: ResultLocale }) {
+  const isKorean = locale === "ko";
+  const lockedSections = isKorean
+    ? ["궁합 등급", "두 사람의 균형", "두 사람의 좋은 점", "상황별 궁합", "주의할 점"]
+    : ["相性ランク", "ふたりのバランス", "ふたりのいいところ", "シーン別の相性", "ここだけ注意"];
+
+  return (
+    <section className="py-10 md:py-16" aria-labelledby="aisho-result-lock-title">
+      <div className="mx-auto max-w-[680px] rounded-3xl border-2 border-[#F3D6E2] bg-white px-5 py-8 text-center shadow-[0_12px_36px_rgba(46,46,92,0.10)] md:px-10 md:py-11">
+        <span
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-white shadow-[0_8px_20px_rgba(209,78,134,0.24)]"
+          style={{ background: "#D14E86" }}
+          aria-hidden="true"
+        >
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="4" y="10" width="16" height="11" rx="2.5" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+        </span>
+        <h1
+          id="aisho-result-lock-title"
+          className="mt-5 text-[24px] font-black leading-tight md:text-[30px]"
+          style={{ color: NAVY }}
+        >
+          {isKorean ? "궁합 진단 결과가 잠겨 있어요" : "相性診断の結果はロック中です"}
+        </h1>
+        <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-bold leading-[1.75] text-[#6A6A7C] md:text-[16px]">
+          {isKorean
+            ? "완전판 코스에서 두 사람의 궁합 결과 전체를 확인할 수 있어요."
+            : "全部入り・買い切りで、ふたりの相性診断の結果をすべて読むことができます。"}
+        </p>
+        <ul className="mx-auto mt-6 grid max-w-[520px] grid-cols-2 gap-2.5 text-left md:gap-3">
+          {lockedSections.map((label) => (
+            <li
+              key={label}
+              className="flex min-h-12 items-center gap-2 rounded-2xl bg-[#FAF2F6] px-3 py-2.5 text-[12px] font-black text-[#4A4A68] md:text-[14px]"
+            >
+              <span className="shrink-0 text-[#D14E86]" aria-hidden="true">
+                🔒
+              </span>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          onClick={() => scrollToPaywall("aisho_result")}
+          className="mx-auto mt-7 inline-flex items-center justify-center rounded-full px-10 py-3.5 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] md:text-[16px]"
+          style={{ background: NAVY }}
+        >
+          {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AishoResultGate({
   a,
   b,
   onGateChange,
@@ -454,34 +521,27 @@ function CompatDetail({
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
   locale: ResultLocale;
-  // 課金状態と本人 owner_token を親 (AishoInner) へ通知 (最下部カードの出し分け + CTA伝搬)。
   onGateChange?: (gate: {
     locked: boolean | null;
     ownerToken: string | null;
   }) => void;
 }) {
-  const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
-  const isKorean = locale === "ko";
-  // ④シーン別本文はサーバゲート経由でのみ取得 (未課金/匿名は locked=本文なし)。
-  // ①〜③・ランクはこの fetch に依存せず即時表示 (バイラル核は無傷)。
-  // ペアkeyで保持し、a/b 変更時は key 不一致で sceneData が自動的に null(=読込中)に戻る
-  // (effect 内 setState を避けるため、リセットは派生値で表現する)。
   const pairKey = `${a}__${b}`;
-  const [sceneState, setSceneState] = useState<{
+  const [gateState, setGateState] = useState<{
     key: string;
     resp: ScenesResponse;
   } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    // SP で Cookie(session) が消えていても購入済み本人を解決できるよう、端末保存の
-    // owner_token も渡す (checkout と同じ capability 扱い。無ければ従来どおり session のみ)。
     let tokenQuery = "";
     try {
-      const t = localStorage.getItem("torisetsu_owner_token");
-      if (t) tokenQuery = `&owner_token=${encodeURIComponent(t)}`;
+      const token = localStorage.getItem("torisetsu_owner_token");
+      if (token) tokenQuery = `&owner_token=${encodeURIComponent(token)}`;
     } catch {
-      // localStorage 不可環境は session のみで判定
+      // localStorage 不可環境は session のみで判定する。
     }
+
     fetch(
       `/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&locale=${locale}${tokenQuery}`,
     )
@@ -491,26 +551,53 @@ function CompatDetail({
           : ({ locked: true } as ScenesResponse),
       )
       .then((resp) => {
-        if (!cancelled) setSceneState({ key: pairKey, resp });
+        if (!cancelled) setGateState({ key: pairKey, resp });
       })
       .catch(() => {
-        if (!cancelled) setSceneState({ key: pairKey, resp: { locked: true } });
+        if (!cancelled) setGateState({ key: pairKey, resp: { locked: true } });
       });
+
     return () => {
       cancelled = true;
     };
   }, [a, b, locale, pairKey]);
-  // 現在のペアに対応する応答だけ採用 (古いペアの応答・読込中は null)。
-  const sceneData: ScenesResponse | null =
-    sceneState?.key === pairKey ? sceneState.resp : null;
-  const sceneUnlocked = sceneData?.locked === false;
-  // 課金状態 (locked) と本人 owner_token を親 (AishoInner) へ通知。
-  //   → 最下部の課金カードの出し分け + 課金CTAへの owner_token 伝搬 (SPのCookie不在対策) に使う。
-  const sceneLocked = sceneData?.locked ?? null;
-  const sceneOwnerToken = sceneData?.ownerToken ?? null;
+
+  const gateData = gateState?.key === pairKey ? gateState.resp : null;
+  const locked = gateData?.locked ?? null;
+  const ownerToken = gateData?.ownerToken ?? null;
   useEffect(() => {
-    onGateChange?.({ locked: sceneLocked, ownerToken: sceneOwnerToken });
-  }, [sceneLocked, sceneOwnerToken, onGateChange]);
+    onGateChange?.({ locked, ownerToken });
+  }, [locked, ownerToken, onGateChange]);
+
+  if (!gateData) {
+    return (
+      <div className="flex min-h-[360px] items-center justify-center" role="status">
+        <p className="text-sm font-bold" style={{ color: INACTIVE }}>
+          {locale === "ko" ? "결과를 확인하고 있어요…" : "結果を確認中…"}
+        </p>
+      </div>
+    );
+  }
+
+  if (gateData.locked) return <AishoResultLock locale={locale} />;
+
+  return <ResultBlock a={a} b={b} sceneData={gateData} locale={locale} />;
+}
+
+function CompatDetail({
+  a,
+  b,
+  sceneData,
+  locale,
+}: {
+  a: ThirtyTwoTypeId;
+  b: ThirtyTwoTypeId;
+  locale: ResultLocale;
+  sceneData: ScenesResponse;
+}) {
+  const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
+  const isKorean = locale === "ko";
+  const sceneUnlocked = sceneData?.locked === false;
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
     sceneData?.scenes?.forEach((s) => m.set(s.key, s.text));
@@ -768,16 +855,13 @@ function CompatDetail({
 function ResultBlock({
   a,
   b,
-  onGateChange,
+  sceneData,
   locale,
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
   locale: ResultLocale;
-  onGateChange?: (gate: {
-    locked: boolean | null;
-    ownerToken: string | null;
-  }) => void;
+  sceneData: ScenesResponse;
 }) {
   const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
   const isKorean = locale === "ko";
@@ -849,7 +933,7 @@ function ResultBlock({
       <CompatDetail
         a={a}
         b={b}
-        onGateChange={onGateChange}
+        sceneData={sceneData}
         locale={locale}
       />
     </section>
@@ -1167,7 +1251,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
             {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
                 足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
             <div ref={resultRef} className="scroll-mt-[72px]">
-              <ResultBlock
+              <AishoResultGate
                 a={slotA}
                 b={slotB}
                 onGateChange={setAishoGate}
@@ -1266,8 +1350,8 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
     {/* PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
         /aisho は匿名(セッション無し)なので、未ログインの購入クリックは
         FullAccessCta 既定で 401→トップへ funnel (アカウント作成→課金の橋渡し)。
-        相性①〜④は従来どおり無料・ここではゲートしない。
-        ※ カードは結果表示 (resultShown) かつ 未課金確定 (sceneData.locked===true) のときだけ出す。
+        相性診断の結果全体は全部入りで解放する。
+        ※ カードは結果表示 (resultShown) かつ 未課金確定 (aishoGate.locked===true) のときだけ出す。
         選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
     {/* 決済直後 (?paid=1) だが webhook 反映がまだでロック表示のとき、「決済処理中…」を
         出して反映を待つ (/me・/tako の PaidUnlockWatcher と同じ。反映後は paid= を外して再読込)。 */}
@@ -1291,7 +1375,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
           returnTo="aisho"
           locale={locale}
         />
-        {/* 相性ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
+        {/* 相性ロックの「今すぐアクセス」は、下部の3コースカードへ誘導する。 */}
         <PaywallModal
           variant="aisho"
           imageSrc="/characters/scenes/unknown_love.webp"
