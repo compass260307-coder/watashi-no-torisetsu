@@ -554,11 +554,11 @@ begin
      or p_plan_key is null
      or p_plan_key not in ('day', 'week', 'month_pass')
      or p_access_days is null
-     or p_access_days <> case p_plan_key
+     or p_access_days <> (case p_plan_key
        when 'day' then 1
        when 'week' then 7
        when 'month_pass' then 30
-     end
+     end)
      or p_stripe_checkout_session_id is null
      or char_length(p_stripe_checkout_session_id) < 8
      or p_stripe_payment_intent_id is null
