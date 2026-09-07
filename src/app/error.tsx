@@ -19,7 +19,7 @@ export default function Error({
     <main className="min-h-dvh flex flex-col items-center justify-center px-5 py-10 bg-gradient-to-b from-pink-50 to-white">
       <div className="text-center max-w-md">
         <SmoothImage
-          src="/mascot/analyzing-penguin.png"
+          src="/types/penguin-base.png"
           alt=""
           width={144}
           height={144}
