@@ -65,13 +65,12 @@ DB カラム:
 - `friend_perceptions.perceiver_line_user_id` (nullable)
 - `integrated_trisetsu.line_user_id` (nullable)
 
-クエリ箇所 (主要 13 ファイル):
+クエリ箇所 (主要 12 ファイル):
 - `src/app/api/webhook/line/route.ts` (follow/unfollow/postback)
 - `src/app/api/webhook/stripe/route.ts` (114, 209 行)
 - `src/app/api/zukan-mine/route.ts` (5 箇所)
 - `src/app/api/checkout/create-session/route.ts` (5 箇所)
 - `src/app/api/integrated-trisetsu/route.ts` (4 箇所)
-- `src/app/api/admin/*` (2 ファイル)
 - `src/app/api/settings/notifications/route.ts` (4 箇所)
 
 **移行方針**: `line_user_id` を WHERE 句で使うクエリは `user_id` (= session 解決後の users.id) ベースに置換。`line_user_id` カラム自体は Phase 2 用に温存。

@@ -16,8 +16,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: ["Twitterbot", "facebookexternalhit"],
         allow: "/",
         disallow: [
-          "/admin",
-          "/admin/",
           "/api/",
           "/me/",
           "/result/",
@@ -38,8 +36,6 @@ export default function robots(): MetadataRoute.Robots {
         // ページ側の noindex で通常の検索結果からのみ除外する。
         allow: "/",
         disallow: [
-          "/admin",
-          "/admin/",
           "/api/",
           // Day 9 永続アクセス点 (token は推測不可だが念のためインデックス除外)
           "/me/",

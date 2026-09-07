@@ -6,7 +6,7 @@
 
 ## エグゼクティブサマリー
 
-12 章 (75+ 確認項目) の監査の結果、合計 50 件の問題を発見しました (Critical 2 / High 9 / Medium 21 / Low 10 / Info 8)。
+12 章 (75+ 確認項目) の監査の結果、合計 48 件の問題を発見しました (Critical 2 / High 8 / Medium 21 / Low 10 / Info 7)。
 
 最大の懸念は **Supabase の RLS ポリシーが事実上ノーガード** であること、および **`/api/line-resolve` で他人の owner_token を取得できる** ことです。これら 2 件の Critical を放置するとリリース直後に「他人のトリセツを覗き見できる」「全ユーザーの診断データが匿名で改竄できる」状態になり、サービスの根幹である「友達と一緒に作る、自分の取扱説明書」という信頼コンセプトが破壊されます。
 
@@ -26,7 +26,7 @@
 - 攻撃の難度が低く、実害が大きい (なりすまし、データ漏洩、データ改竄)
 
 **Conditional Go への切替条件**:
-- 必須対応リスト (下記) の Critical 2 件 + High 8 件 を全て解消
+- 必須対応リスト (下記) の Critical 2 件 + High 7 件 を全て解消
 - Chapter 12 のリリース実機チェックを完了
 
 ## 必須対応リスト (リリース前に絶対対応)
@@ -43,13 +43,12 @@
    - LIFF ID トークンを Authorization: Bearer で受け取り、サーバ側で `https://api.line.me/v2/profile` 検証
    - または短期的には endpoint 廃止 + share / torisetsu/redirect ページの「自分の owner_token 解決」フローを別実装
 
-### High (8 件)
+### High (7 件)
 
 3. **[Ch2 High]** `/api/friend-info?code=...` から owner_token を返すのをやめる (友達画面の "覗き見" モーダル仕様変更とセット)
 4. **[Ch2 High]** `/api/user` PATCH の認可を ownerToken 必須に。inviteCode 単体での display_name 書換禁止
 5. **[Ch2 High]** `/api/line-register` に LIFF ID トークン検証を追加
 6. **[Ch2 High]** `generateCode()` を `Math.random()` から `crypto.randomBytes()` ベースに変更 (`src/app/api/diagnosis/route.ts`)
-7. **[Ch1 High]** `ADMIN_KEY` を 32 文字以上のランダム値に変更し Vercel 本番に再投入 (`torisetsu2026` のような推測しやすい値を排除)
 8. **[Ch4 High]** `/api/friend-answer` の friend_count race condition 対策 (last_notified_friend_count カラムの atomic update など)
 9. **[Ch8 High]** `src/app/error.tsx`, `src/app/not-found.tsx`, `src/app/global-error.tsx` を追加 (日本語マスコット付きエラー UI)
 10. **[Ch9 High]** CSRF 対策 (Origin ヘッダー検証ヘルパー) を `/api/{diagnosis,event,friend-answer,line-register,user}` に追加
@@ -71,15 +70,14 @@
 
 ### Low 優先 (改善余地)
 
-21. **[Ch5 Low]** `as any` (admin/stats) のジェネリック化 + 不要 disable directive 削除
+21. **[Ch5 Low]** `as any` (`metrics-stats.ts`) のジェネリック化 + 不要 disable directive 削除
 22. **[Ch6 Low]** /report で recharts を next/dynamic 化
 23. **[Ch8 Low]** LIFF 初期化失敗時の自動 retry
 24. **[Ch10 Low]** `public/ogp.png` (旧) 削除
-25. **[Ch2 Low Info]** `/api/admin/*` の ADMIN_KEY 比較を `crypto.timingSafeEqual` 化
 
 ## ユーザー実施項目 (Chapter 12)
 
-Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhook / メール / GA / Search Console / OGP プレビュー / 管理画面動作 / 旧ドメイン処理など 11 セクション) は本ドキュメント末尾参照。リリース前後の運用者タスクとして必ず順次実施すること。
+Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhook / メール / GA / Search Console / OGP プレビュー / 旧ドメイン処理など) は本ドキュメント末尾参照。リリース前後の運用者タスクとして必ず順次実施すること。
 
 ---
 
@@ -87,16 +85,16 @@ Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhoo
 
 ### 監査サマリー
 - 確認項目数: 8
-- 発見問題数: 4
-- 重要度内訳: Critical 0 / High 1 / Medium 2 / Low 0 / Info 1
+- 発見問題数: 3
+- 重要度内訳: Critical 0 / High 0 / Medium 2 / Low 0 / Info 1
 
 ### 発見事項
 
 #### 🟠 [High] Supabase クライアントが anon key 単一構成 (service_role 未使用)
 - ファイル: `src/lib/supabase.ts`
-- 内容: アプリ全体で唯一の Supabase クライアントが `NEXT_PUBLIC_SUPABASE_ANON_KEY` を使って `createClient` している。`SUPABASE_SERVICE_ROLE_KEY` は環境変数にも存在せず、サーバ側 API ルート (line-register, friend-answer, admin/* など) もすべて anon key で書き込み・更新を行う。これは Chapter 3 の RLS ポリシー (anyone can insert/update/select) と組み合わさって、**ブラウザ JS から Supabase REST API を直叩きすれば誰でも全テーブルに書ける** 状態を意味する。
+- 内容: アプリ全体で唯一の Supabase クライアントが `NEXT_PUBLIC_SUPABASE_ANON_KEY` を使って `createClient` している。`SUPABASE_SERVICE_ROLE_KEY` は環境変数にも存在せず、サーバ側 API ルートもすべて anon key で書き込み・更新を行う。これは Chapter 3 の RLS ポリシー (anyone can insert/update/select) と組み合わさって、**ブラウザ JS から Supabase REST API を直叩きすれば誰でも全テーブルに書ける** 状態を意味する。
 - リスク: 本番でクライアント JS を読めば anon key が露出 (ビルド成果物にハードコード)、攻撃者は `events` 改ざん / 任意 `users` insert / `display_name` 上書き / `line_users` レコード追加 / `friend_answers` 大量投入 等が可能。RLS で守られていないので API ルート経由でなくとも実行できる。
-- 推奨修正: (a) RLS ポリシーを最低限「insert は誰でも、select/update は service_role のみ」に絞る (b) サーバ用に `SUPABASE_SERVICE_ROLE_KEY` を追加し、`/api/*` 配下の route.ts 用に `lib/supabase-server.ts` を新設、admin / write 系ルートはこれを使う。
+- 推奨修正: (a) RLS ポリシーを最低限「insert は誰でも、select/update は service_role のみ」に絞る (b) サーバ用に `SUPABASE_SERVICE_ROLE_KEY` を追加し、`/api/*` 配下の route.ts 用に `lib/supabase-server.ts` を新設、write 系ルートはこれを使う。
 
 #### 🟡 [Medium] `.env.local` がリポジトリと同じディレクトリに平文で実在
 - ファイル: `/Users/wakan/Desktop/watashi-no-torisetsu/.env.local`
@@ -110,24 +108,23 @@ Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhoo
 - リスク: LINE 通知のボタン体験劣化。LIFF shareTargetPicker が起動せず、Web 友達招待ページにジャンプ。
 - 推奨修正: Vercel Production / Preview の env に `NEXT_PUBLIC_LIFF_ID_SHARE` を必ず投入。Chapter 12 のチェックリストに含める。
 
-#### ℹ️ [Info] `NEXT_PUBLIC_GA_MEASUREMENT_ID` / `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` / `NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT` / `ADMIN_KEY` (本番値) も `.env.local` に未記載
+#### ℹ️ [Info] `NEXT_PUBLIC_GA_MEASUREMENT_ID` / `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` / `NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT` も `.env.local` に未記載
 - ファイル: `.env.local`
-- 内容: ローカル `.env.local` には Supabase / LINE 基本キー + `NEXT_PUBLIC_LIFF_ID` + `ADMIN_KEY=torisetsu2026` のみ。GA や検索コンソール検証コード、torisetsu redirect LIFF ID は Vercel 側に設定されている前提。本番設定は Chapter 12 で必ず確認すること。
-- リスク: GA / Search Console 連携漏れ、`ADMIN_KEY` が `torisetsu2026` のような推測しやすい値のまま本番投入されると `/admin` パネル + admin API 全てが侵害される。
-- 推奨修正: ADMIN_KEY を 32 文字以上のランダム文字列に変更し Vercel に投入。`.env.local` のサンプル値はあくまで開発専用と明記。
+- 内容: ローカル `.env.local` には Supabase / LINE 基本キー + `NEXT_PUBLIC_LIFF_ID` のみ。GA や検索コンソール検証コード、torisetsu redirect LIFF ID は Vercel 側に設定されている前提。本番設定は Chapter 12 で必ず確認すること。
+- リスク: GA / Search Console 連携漏れ。
 
 ### 安心ポイント
 - `.gitignore` に `.env*` が正しく含まれており、`git ls-files | grep .env` 結果は空 → コミット履歴にシークレット混入なし。
 - `next.config.ts` は完全に空、`env:` ブロックでクライアント露出させていない。
-- `process.env` 参照箇所を全列挙したが、`NEXT_PUBLIC_` プレフィックスが付いている変数 (SITE_URL / GA_MEASUREMENT_ID / GOOGLE_SITE_VERIFICATION / LIFF_ID / LIFF_ID_SHARE / LIFF_ID_TORISETSU_REDIRECT / DEVELOPER_NAME) はすべて公開しても問題ないもの。シークレット (LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN / ADMIN_KEY) は `NEXT_PUBLIC_` プレフィックスなし。
+- `process.env` 参照箇所を全列挙したが、`NEXT_PUBLIC_` プレフィックスが付いている変数 (SITE_URL / GA_MEASUREMENT_ID / GOOGLE_SITE_VERIFICATION / LIFF_ID / LIFF_ID_SHARE / LIFF_ID_TORISETSU_REDIRECT / DEVELOPER_NAME) はすべて公開しても問題ないもの。シークレット (LINE_CHANNEL_SECRET / LINE_CHANNEL_ACCESS_TOKEN) は `NEXT_PUBLIC_` プレフィックスなし。
 - ハードコードされたトークン / API key / secret は `src/` 配下にゼロ (grep 確認済)。
 
 ## Chapter 2: API ルートのセキュリティ
 
 ### 監査サマリー
 - 確認項目数: 12
-- 発見問題数: 8
-- 重要度内訳: Critical 1 / High 4 / Medium 2 / Low 0 / Info 1
+- 発見問題数: 7
+- 重要度内訳: Critical 1 / High 4 / Medium 2 / Low 0 / Info 0
 
 ### 発見事項
 
@@ -178,15 +175,8 @@ Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhoo
 - リスク: events / users テーブルへの大量レコード作成 → Supabase 容量・帯域消費 + 統計汚染。
 - 推奨修正: リリース後 1 週間以内に Vercel Edge Middleware か Upstash Redis ベースで `/api/diagnosis`, `/api/friend-answer`, `/api/event`, `/api/line-register` に IP/sessionId 単位の rate limit を入れる。
 
-#### ℹ️ [Info] `/api/admin/*` の ADMIN_KEY 検証は機械的に正しいが timing-safe 比較ではない
-- ファイル: `src/app/api/admin/{simulate-follow,stats,test-line-notify,welcome-status}/route.ts`, `src/app/api/report/route.ts:147`
-- 内容: `key !== adminKey` の通常比較を使用。理論上はタイミング攻撃で文字単位の推測が可能だが、Node.js + V8 + ネットワーク遅延の前では現実的脅威ではない。本番 ADMIN_KEY を 32 文字以上のランダム値にすれば実害ゼロ。
-- 推奨修正: `crypto.timingSafeEqual` を使えば理想的だが、優先度は低い。
-
 ### 安心ポイント
 - LINE Webhook 署名検証 (`verifySignature` in `src/app/api/webhook/line/route.ts:21-32`) は `crypto.timingSafeEqual` を使用、長さチェック付き。HMAC-SHA256 + Base64 比較で LINE 公式仕様通り。
-- `/api/admin/*` は全エンドポイントで `x-admin-key` ヘッダ検証あり。
-- `/api/report` の `?dev=true&adminKey=...` 認可も同じ ADMIN_KEY ロジックで守られている。
 - エラーレスポンスは `{error: string}` の形式で、スタックトレースを露出しない (`error.message` は Supabase 由来の場合に若干露出するが Critical ではない)。
 - `/api/friend-info` は `display_name` と `owner_token` を返すが、これは intentional (友達ページでオーナー名表示と LIFF 共有用)。invite_code は URL でもう公開されているので追加情報なし。**ただし owner_token を返すのは line-resolve と同様の問題で、invite_code 単独で owner_token が漏れる**: 上記 line-resolve の Critical と同根の問題。— **追加 High 候補**:
 
@@ -227,15 +217,15 @@ Chapter 12 のリリース実機チェック (環境変数 / DNS / LIFF / Webhoo
 - 推奨修正: (a) `users` テーブルに `last_notified_friend_count` カラムを追加し UPDATE … SET last_notified = N WHERE last_notified < N の条件付き更新成功時のみ通知する (atomic) (b) または PostgreSQL の関数で SELECT … FOR UPDATE を使う (c) 最低限、count が 1/2/3 のいずれかであることをチェックして 4+ は silent skip する既存ロジックを残しつつ、二重通知抑止のフラグを line_users 側に持つ。
 - 重要度: 通知二重化はユーザー視認の不具合だが、致命的ではない。MVP リリース時はリスク受容して後追い改善でも可。
 
-#### 🟡 [Medium] N+1 クエリ — `/api/admin/stats` で複数 select を `Promise.all` 並列化しているが users 全件 + friend_answers 全件をフルスキャン
-- ファイル: `src/app/api/admin/stats/route.ts:39-129`
+#### 🟡 [Medium] N+1 クエリ — `/api/metrics` の集計で users 全件 + friend_answers 全件をフルスキャン
+- ファイル: `src/lib/metrics-stats.ts`
 - 内容: 並列ながら 15 個の select を発行し、users / friend_answers は範囲フィルタはあるものの全件取得 → JS で集計。リリース直後 100 ユーザー程度なら問題ないが、スケールすると重くなる。
-- リスク: 管理画面の応答遅延、Supabase row read コスト増。
+- リスク: `/api/metrics` の応答遅延、Supabase row read コスト増。
 - 推奨修正: いずれ集計を SQL view / Postgres function に寄せる。MVP では問題なし。
 
 #### 🟡 [Medium] 外部キー制約は十分だが index 不足の可能性
 - ファイル: `supabase/schema.sql`
-- 内容: index は `users.invite_code`, `users.owner_token`, `friend_answers.user_id`, `events.event_name`, `events.created_at`, `line_users.{owner_token,line_user_id,welcome_sent_at}`, `feature_optins.{line_user_id,feature}` と十分。ただし `users.source_user_id` (Chapter 4 zukan で descendants 検索に使う) と `events.session_id` / `events.owner_token` には index がなく、users が増えると zukan API と admin/stats が遅くなる。
+- 内容: index は `users.invite_code`, `users.owner_token`, `friend_answers.user_id`, `events.event_name`, `events.created_at`, `line_users.{owner_token,line_user_id,welcome_sent_at}`, `feature_optins.{line_user_id,feature}` と十分。ただし `users.source_user_id` (Chapter 4 zukan で descendants 検索に使う) と `events.session_id` / `events.owner_token` には index がなく、users が増えると zukan API と metrics 集計が遅くなる。
 - 推奨修正: リリース後、トラフィックを見ながら必要に応じて `create index if not exists ... on users(source_user_id);` `create index if not exists ... on events(session_id);` などを追加。
 
 #### ℹ️ [Info] テストデータ検出 SQL クエリ案
@@ -344,7 +334,6 @@ GROUP BY 1 ORDER BY 1 DESC;
 #### 検証ポイント
 - `/report/[ownerToken]` → `/api/report?token=...` で取得
 - friend_count < 3 (REPORT_FRIEND_THRESHOLD) の場合は通常画面では JS 側で段階制限する想定
-- dev モード (`?dev=true&adminKey=...`) で friend_count をダミーで埋めてプレビュー可能 (admin 機能)
 
 #### 🟢 [Low] /report/[token] のクライアント側 friend_count 不足時の見せ方は `lib/report-data.ts` 内のロジック依存だが、API はフルデータを返している
 - ファイル: `src/app/api/report/route.ts:194-201`
@@ -369,8 +358,8 @@ GROUP BY 1 ORDER BY 1 DESC;
 ### 発見事項
 
 #### 🟡 [Medium] ESLint で 11 errors / 1 warning が検出される
-- ファイル: 複数 (admin/page.tsx, line-register/page.tsx, result/[ownerToken]/page.tsx, result/page.tsx, friend/[inviteCode]/page.tsx, friend/page.tsx, share/page.tsx, components/TypeIntroModal.tsx, api/admin/stats/route.ts)
-- 内容: 次のルールでエラー: `react-hooks/set-state-in-effect` (effect 内で setState を直接呼んでいる、新しい React 19 推奨パターン違反) と `react-hooks/preserve-manual-memoization` (手動 useCallback 依存配列が React Compiler の推論と一致しない)。1 warning は `@typescript-eslint/no-explicit-any` の `as any` 1 箇所 (admin/stats/route.ts:17)。
+- ファイル: 複数 (line-register/page.tsx, result/[ownerToken]/page.tsx, result/page.tsx, friend/[inviteCode]/page.tsx, friend/page.tsx, share/page.tsx, components/TypeIntroModal.tsx)
+- 内容: 次のルールでエラー: `react-hooks/set-state-in-effect` (effect 内で setState を直接呼んでいる、新しい React 19 推奨パターン違反) と `react-hooks/preserve-manual-memoization` (手動 useCallback 依存配列が React Compiler の推論と一致しない)。1 warning は `@typescript-eslint/no-explicit-any` の `as any` 1 箇所。
 - リスク: 機能上は動くが、React 19 + React Compiler の最適化が一部スキップされる、cascading render の可能性。
 - 推奨修正: リリース直前ではないが、リリース後 1 週間以内に修正推奨。`useEffect` 内 `setStatus("missing-liff")` 等の同期 setState は条件付き render で代替する。
 
@@ -384,7 +373,7 @@ GROUP BY 1 ORDER BY 1 DESC;
 - 内容: コードベースは比較的整理されている。
 
 #### 🟢 [Low] `: any` / `as any` / `@ts-ignore` / `@ts-expect-error` は 1 箇所のみ
-- ファイル: `src/app/api/admin/stats/route.ts:17`
+- ファイル: `src/lib/metrics-stats.ts`
 - 内容: `let q = query as any;` を `applyRange` の汎用ヘルパー内で使用。コメントで `eslint-disable-next-line` を付けているが、実は不要な disable で warning が出ている。
 - 推奨修正: `Generic` 型で書き直すか、unused disable を削除。
 
@@ -446,11 +435,6 @@ GROUP BY 1 ORDER BY 1 DESC;
 - 内容: `env(safe-area-inset-*)` の参照ゼロ。`min-h-dvh flex flex-col` で全画面高さは取れているが、iPhone X 系の home indicator が下部 button (例: 診断 CTA, share button) と重なる懸念。Footer は `mt-20` で十分マージンがあるが、固定ヘッダ (`/diagnosis`, `/friend/[code]` の sticky top-0) や fixed-bottom UI (ない) はあまり影響しない。診断ページの「← 戻る」ヘッダが iOS Safari URL バー領域と重なる可能性低。
 - リスク: 軽微。home indicator が footer と重なる可能性、iPhone 14/15 の dynamic island は問題なし。
 - 推奨修正: layout.tsx の body に `paddingBottom: env(safe-area-inset-bottom)` を加えると安全。優先度低。
-
-#### 🟢 [Low] iOS auto-zoom 防止: 管理画面の input が `text-sm` (14px) で 16px 未満
-- ファイル: `src/app/admin/page.tsx:442-449` ほか admin 内 input 計 5 箇所
-- 内容: iOS Safari は input の font-size が 16px 未満だと focus 時に自動 zoom する。/admin は管理者専用 + デスクトップ前提なので体験上の問題は小さい。ユーザー向けページ (LP / diagnosis / friend) には input が一切ないので影響無し。
-- 推奨修正: 必要に応じ admin の input に `text-base` (16px) 化。優先度極低。
 
 #### 🟢 [Low] 横画面 (landscape) 挙動の明示的ハンドリングなし
 - 内容: `max-w-lg mx-auto` パターンが多用され、横画面でも中央寄せで読みやすい。問題なし。
@@ -577,7 +561,7 @@ GROUP BY 1 ORDER BY 1 DESC;
 ### 安心ポイント
 - 全公開ページに canonical URL 設定あり (LP / about / diagnosis / terms / privacy)。
 - `metadataBase` を `BASE_URL = https://www.watashi-torisetsu.com` で設定 → 相対 URL が正しく絶対化される。
-- robots.txt の Disallow リスト (`/admin`, `/api/`, `/result/`, `/report/`, `/friend/`, `/zukan/`, `/share`, `/line-register`, `/torisetsu/`) は個人情報ページを過不足なくカバー。
+- robots.txt の Disallow リスト (`/api/`, `/result/`, `/report/`, `/friend/`, `/zukan/`, `/share`, `/line-register`, `/torisetsu/`) は個人情報ページを過不足なくカバー。
 - 個人情報ページの layout.tsx 全部に `robots: { index: false, follow: false }` メタが設定済 (二重保険)。
 - JSON-LD: LP に `WebApplication` schema、/about に `FAQPage` schema 設定済。
 - LP の `<title>` テンプレ: `default: "ワタシのトリセツ｜友達と作る、自分の取扱説明書"` + `template: "%s｜ワタシのトリセツ"` → 各ページに自動で接尾。
@@ -606,7 +590,7 @@ GROUP BY 1 ORDER BY 1 DESC;
 
 #### 🟢 [Low] localStorage 利用とプラポリ記載の整合
 - ファイル: `src/lib/track.ts`, `src/app/diagnosis/page.tsx`, `src/app/result/[ownerToken]/page.tsx`
-- 内容: localStorage に保存するキー: `torisetsu_session` (sessionId), `torisetsu_result`, `torisetsu_invite_code`, `torisetsu_owner_token`, `torisetsu_result_viewed`, `torisetsu_admin_key`, `torisetsu_preview`。プラポリ第 7 条で「Cookie および類似の技術 (Local Storage 等)」「ユーザーの識別」「利便性向上のための設定保存」と書かれており妥当な記載範囲。
+- 内容: localStorage に保存するキー: `torisetsu_session` (sessionId), `torisetsu_result`, `torisetsu_invite_code`, `torisetsu_owner_token`, `torisetsu_result_viewed`, `torisetsu_preview`。プラポリ第 7 条で「Cookie および類似の技術 (Local Storage 等)」「ユーザーの識別」「利便性向上のための設定保存」と書かれており妥当な記載範囲。
 - リスク: なし。
 - 推奨修正: 不要。
 
@@ -646,7 +630,6 @@ GROUP BY 1 ORDER BY 1 DESC;
 - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - [ ] `LINE_CHANNEL_SECRET`
 - [ ] `LINE_CHANNEL_ACCESS_TOKEN`
-- [ ] `ADMIN_KEY` (32 文字以上のランダム値に変更されているか — Chapter 1 High)
 - [ ] `NEXT_PUBLIC_LIFF_ID` (line-register 用)
 - [ ] `NEXT_PUBLIC_LIFF_ID_SHARE` (share 用)
 - [ ] `NEXT_PUBLIC_LIFF_ID_TORISETSU_REDIRECT` (リッチメニュー redirect 用)
@@ -729,17 +712,9 @@ GROUP BY 1 ORDER BY 1 DESC;
   - friend_perception_shown
   - friend_question_answered / diagnosis_question_answered
 
-### 12.10 管理画面
-
-- [ ] `/admin` にアクセス → ADMIN_KEY (Vercel に設定した値) で認証成功
-- [ ] /admin の stats が正常表示 (期間切替・タイプ分布・campaign stats など)
-- [ ] /admin の welcome 再送ツールが正常動作
-- [ ] /admin の simulate-follow ツールが正常動作
-
-### 12.11 セキュリティ最終確認
+### 12.10 セキュリティ最終確認
 
 - [ ] Chapter 2/3 で指摘した Critical (line-resolve, RLS) は **必ず** リリース前に対応完了
 - [ ] Chapter 8 で指摘した error.tsx / not-found.tsx を追加
-- [ ] /api/admin/* に管理者以外がアクセスして 401 が返ることを実機確認
 - [ ] /api/webhook/line に署名なし POST → 401 確認
 - [ ] /api/webhook/line に不正署名 POST → 401 確認

@@ -1,8 +1,7 @@
 // スプレッドシート連携用の「主要な数値」エンドポイント (読み取り専用・集計のみ)。
 // Google Apps Script の時間トリガーから GET し、1 行ずつ追記していく想定。
 //
-// 認証: Authorization: Bearer <METRICS_KEY>。ADMIN_KEY とは別トークンにして、
-//        シートに置くトークンが管理画面 (/admin) を開けないようにする。
+// 認証: Authorization: Bearer <METRICS_KEY>。シートに置く専用トークンとして扱う。
 // 期間: ?from= / ?to= (ISO) 任意。未指定は全期間 (= 現時点の累計スナップショット)。
 // 形式: 既定 JSON (Apps Script 向け)。?format=csv で metric,value の2列CSV (IMPORTDATA 向け)。
 

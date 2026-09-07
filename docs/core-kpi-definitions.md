@@ -1,7 +1,6 @@
 # 経営KPIの定義と運用
 
-管理画面 `/admin`、CSV出力、`/api/metrics` はすべて
-`src/lib/core-kpis.ts` の同じ集計結果を利用する。
+`/api/metrics` は `src/lib/core-kpis.ts` の集計結果を利用する。
 
 ## 期間の意味
 
@@ -29,7 +28,7 @@ ARPUはJPY/KRWなど通貨別に算出し、異なる通貨は合算しない。
 1. Supabaseへ `supabase/migrations/2026-07-20-core-kpi-facts.sql` を適用
 2. Stripe webhookの送信イベントに `charge.refunded` を追加
 3. アプリをデプロイ
-4. `/api/metrics` の `coreKpiReady` が `1`、管理画面の「要DB更新」が消えたことを確認
+4. `/api/metrics` の `coreKpiReady` が `1` であることを確認
 5. `paymentUserMatchRate` を確認し、100%未満なら未紐付けの旧ゲスト決済を監査
 
 マイグレーション未適用時は、新KPIを誤って0として見せず「要DB更新」と表示する。既存のイベント参考指標は継続表示する。

@@ -1057,7 +1057,7 @@ async function handleCheckoutCompleted(session) {
 
 | ケース | MVP（v1）対応 | Phase 2 対応 |
 |---|---|---|
-| 1. 決済成功 + AI 生成失敗 | `integrated_trisetsu.status = 'failed'` を記録 / Admin に Slack 通知 / **手動で再実行 or 返金判断** | 自動リトライ（1 回まで）+ 失敗時自動返金 |
+| 1. 決済成功 + AI 生成失敗 | `integrated_trisetsu.status = 'failed'` を記録 / 運営者に Slack 通知 / **手動で再実行 or 返金判断** | 自動リトライ（1 回まで）+ 失敗時自動返金 |
 | 2. 決済失敗 | Stripe 標準のエラー表示、再試行 UI | 同左 |
 | 3. 重複決済（同 session 二重受信） | UNIQUE 制約 + ON CONFLICT IGNORE で吸収 | 同左 |
 | 4. 決済成功 + Webhook 受信失敗 | Stripe ダッシュボードから手動再送 + `payment_history` 確認スクリプト | 定期 polling で Stripe → DB 整合性チェック自動化 |
@@ -2156,18 +2156,6 @@ SELECT * FROM line_messages_sent
 WHERE send_result != 'success'
   AND sent_at > NOW() - INTERVAL '24 hours';
 ```
-
-### Admin Dashboard 拡張
-
-```
-既存 /api/admin/dashboard に追加:
-- payment_history 集計
-- 利益率
-- リピート購入率
-- PDF ダウンロード率
-```
-
----
 
 # Part 14: まとめ
 

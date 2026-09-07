@@ -3,7 +3,7 @@
 // 結果ページ (/me) の表示計測。サーバーコンポーネントからは track() (client 専用) を
 // 呼べないため、マウント時に一度だけ発火する薄いクライアント境界として切り出す。
 //
-// 発火するイベント (いずれも ownerToken 付き → admin/stats は owner_token 単位で集計):
+// 発火するイベント (いずれも ownerToken 付き → 計測処理は owner_token 単位で集計):
 //   result_viewed        セッション内で当該 token 初表示 (metadata.friendCount)
 //   result_revisited     セッション内で 2 回目以降の表示
 //   three_friends_unlocked  friendCount >= 3 に到達した token を 1 回だけ (localStorage で永続 dedup)

@@ -20,7 +20,7 @@ CC でやっていた `/tako/[token]` ロック画面改修は **本番公開ま
 - **`next build` は ESLint を走らせない** (Next 16)。lint は `npx eslint` を別途。現在 8 error /
   7 warning あるが**全て差分外の既存ファイル**でビルド/デプロイは止まらない (別タスク化推奨):
   `TypeIntroModal.tsx:21` / `UnlockConfirming.tsx:31` (set-state-in-effect) /
-  `admin-stats.ts:12` (no-explicit-any) / `EvaluationChapters.tsx:262`・`diagnosis.ts:206` (未使用, warning)。
+  `metrics-stats.ts:12` (no-explicit-any) / `EvaluationChapters.tsx:262`・`diagnosis.ts:206` (未使用, warning)。
 - **`src/generated/character-images.json` は自動生成物**。手編集しない (`prebuild` で再生成)。
 - 32キャラ画像はコードが `/characters/v3/<slug>.png` を直接参照。`v3/characters/`(重複展開) と
   `v3/characters.zip`(29MB配布書庫) は未参照 → `.gitignore` 済み。

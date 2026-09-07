@@ -5,13 +5,12 @@ import { createHash } from "node:crypto";
 
 import {
   computeStats,
-  type AdminStatsLocale,
-} from "@/lib/admin-stats";
+  type MetricsStatsLocale,
+} from "@/lib/metrics-stats";
 
 const METRICS_CACHE_TTL_SECONDS = 24 * 60 * 60;
 // 現在時刻を含む期間 (今日・全期間など) は数字が動き続けるので、24時間キャッシュすると
-// 管理画面が「更新されなくなった」ように見える (2026-08-10)。egress削減効果は保ちつつ
-// 5分で追従させる。
+// 定期取得で古い値が長時間続かないよう、egress削減効果は保ちつつ5分で追従させる。
 const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 // 「過去だけの期間は不変」は厳密には誤り: コホートKPI (課金率/ARPU) は診断日以降の
 // 決済・返金・友達回答を現在まで追跡するため、昨日などの直近期間は日付が終わった後も
@@ -22,7 +21,7 @@ const LAST_GOOD_TTL_SECONDS = 7 * 24 * 60 * 60;
 // 計測スキーマのv8と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
 const metricsCache = getCache({ namespace: "metrics-stats-v8" });
 
-type AdminStats = Awaited<ReturnType<typeof computeStats>>;
+type MetricsStats = Awaited<ReturnType<typeof computeStats>>;
 
 // to が無い (全期間) / 現在以降 (今日・今週など) は「現在を含む期間」。
 function rangeTtlSeconds(to: string | null): number {
@@ -40,7 +39,7 @@ function rangeTtlSeconds(to: string | null): number {
 function statsCacheKey(
   from: string | null,
   to: string | null,
-  locale?: AdminStatsLocale,
+  locale?: MetricsStatsLocale,
 ): string {
   return createHash("sha256")
     .update(
@@ -49,8 +48,7 @@ function statsCacheKey(
         to,
         locale: locale ?? "all",
         // 集計結果の形状はコードと共に変わる。別デプロイが書いたエントリを読むと
-        // 形状不一致で管理画面がクラッシュするため (2026-08-10 障害: chatFunnel 無しの
-        // 旧形状が配信され unmei.chatFunnel.map で全損)、キーをデプロイ単位に分ける。
+        // 形状不一致で取得処理が失敗しないよう、キーをデプロイ単位に分ける。
         // preview / production 間の混線も同時に防ぐ。
         deployment: process.env.VERCEL_DEPLOYMENT_ID ?? "local",
       }),
@@ -61,7 +59,7 @@ function statsCacheKey(
 function lastGoodCacheKey(
   from: string | null,
   to: string | null,
-  locale?: AdminStatsLocale,
+  locale?: MetricsStatsLocale,
 ): string {
   return createHash("sha256")
     .update(
@@ -69,6 +67,8 @@ function lastGoodCacheKey(
         from,
         to,
         locale: locale ?? "all",
+        // 既存デプロイの最終正常スナップショットを引き継ぐ互換キー。
+        // 値を変えると新デプロイ初回の集計失敗時にフォールバックできなくなる。
         shape: "admin-stats-v8",
         environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local",
       }),
@@ -76,7 +76,7 @@ function lastGoodCacheKey(
     .digest("hex");
 }
 
-function isAdminStats(value: unknown): value is AdminStats {
+function isMetricsStats(value: unknown): value is MetricsStats {
   if (!value || typeof value !== "object") return false;
   const stats = value as Record<string, unknown>;
   const unmei = stats.unmei as Record<string, unknown> | undefined;
@@ -106,31 +106,28 @@ function isAdminStats(value: unknown): value is AdminStats {
 export async function getCachedStats(
   from: string | null,
   to: string | null,
-  // forceFresh: 管理画面の「更新」ボタン用。キャッシュを読まず再計算して上書きする。
-  options: { forceFresh?: boolean; locale?: AdminStatsLocale } = {},
-): Promise<AdminStats> {
+  options: { locale?: MetricsStatsLocale } = {},
+): Promise<MetricsStats> {
   const key = statsCacheKey(from, to, options.locale);
   const lastGoodKey = lastGoodCacheKey(from, to, options.locale);
 
-  if (!options.forceFresh) {
-    try {
-      const cached = await metricsCache.get(key);
-      if (isAdminStats(cached)) return cached;
-    } catch (error) {
-      // ローカル実行などでRuntime Cacheが使えない場合も、集計自体は継続する。
-      console.warn("[metrics-cache] get failed; computing directly", error);
-    }
+  try {
+    const cached = await metricsCache.get(key);
+    if (isMetricsStats(cached)) return cached;
+  } catch (error) {
+    // ローカル実行などでRuntime Cacheが使えない場合も、集計自体は継続する。
+    console.warn("[metrics-cache] get failed; computing directly", error);
   }
 
-  let stats: AdminStats;
+  let stats: MetricsStats;
   try {
     stats = await computeStats(from, to, { locale: options.locale });
   } catch (error) {
     // 全期間集計がDBのstatement_timeoutに当たっても、直近の正常スナップショットが
-    // あれば管理画面と定期取得を全損させない。形状検査で旧コードのキャッシュ混入を防ぐ。
+    // あれば定期取得を全損させない。形状検査で旧コードのキャッシュ混入を防ぐ。
     try {
       const lastGood = await metricsCache.get(lastGoodKey);
-      if (isAdminStats(lastGood)) {
+      if (isMetricsStats(lastGood)) {
         console.warn(
           "[metrics-cache] compute failed; returning last good snapshot",
           error,

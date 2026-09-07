@@ -66,7 +66,7 @@ export function isPreviewMode(): boolean {
 
 // ===== 計測イベントの正規名カタログ (single source of truth) =====
 // CLAUDE.md の KPI 規約名に統一する。新規イベントを足すときはまずここに追記し、
-// admin/stats/route.ts の集計名と必ず一致させること。旧名は stats 側で暫定併合中。
+// metrics-stats.ts の集計名と必ず一致させること。旧名は集計側で暫定併合中。
 //
 //   top_viewed                  トップページ表示 (metadata.locale/page)
 //   top_cta_clicked             トップ→診断 CTA (metadata.locale/destination)

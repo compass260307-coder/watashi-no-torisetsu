@@ -7,7 +7,7 @@
 
 | 印 | 意味 |
 | --- | --- |
-| 🔒 | 認証必須（Cookie セッション `wn_session` / owner 確認 / admin-key / 署名検証のいずれか） |
+| 🔒 | 認証必須（Cookie セッション `wn_session` / owner 確認 / 署名検証のいずれか） |
 | 💳 | 課金が絡むページ・処理（Stripe Checkout） |
 | 🤖 | Claude（Anthropic）API を呼ぶ処理 |
 | 🟢 | 認証なしで誰でもアクセス可（URL/トークンを知っていれば閲覧可） |
@@ -68,10 +68,6 @@ flowchart TD
         authError["/auth/error<br/>認証エラー"]
     end
 
-    subgraph ADMIN["管理 🔒"]
-        admin["/admin<br/>ダッシュボード（admin-key）<br/>layout: /admin/layout.tsx"]
-    end
-
     root --> diagnosis
     root --> me
     root --> about & terms & privacy & commerce
@@ -96,7 +92,7 @@ flowchart TD
     classDef auth fill:#ffe9cc,stroke:#e6892f;
     classDef pay fill:#ffd6e0,stroke:#d6336c;
     classDef ai fill:#e0d6ff,stroke:#6f42c1;
-    class me,evalResult,friendEval,zukanMine,settings,admin,intNew auth;
+    class me,evalResult,friendEval,zukanMine,settings,intNew auth;
     class intNew,checkoutSuccess,commerce pay;
     class intId,intNew ai;
 ```
@@ -129,7 +125,6 @@ flowchart TD
 | `/me`, `/settings` | ルート | 🔒 | 設定（通知/削除/ヘルプ） |
 | `/login` | ルート | 🟢 | マジックリンク発行 |
 | `/auth/error` | ルート | 🟢 | 認証エラー表示 |
-| `/admin` | `app/admin/layout.tsx` | 🔒 | 管理ダッシュボード（admin-key） |
 | `/poc/32type`, `/zukan-internal` | ルート | 🟢 | 社内/PoC用 |
 
 **APIルート（`route.ts`）— 別枠**
@@ -141,7 +136,7 @@ flowchart TD
 | `/api/friend-info` | — | checkOrigin | Supabase |
 | `/api/friend-answer` | POST | checkOrigin | Supabase + LINE |
 | `/api/friend-answer/v2` | POST | checkOrigin | Supabase + LINE + Resend |
-| `/api/report` | — | owner_token / sample / adminKey | Supabase |
+| `/api/report` | — | owner_token / sample | Supabase |
 | `/api/event` | POST | checkOrigin | Supabase |
 | `/api/user` | PATCH | checkOrigin + ownerToken | Supabase |
 | `/api/zukan` | — | owner_token | Supabase |
@@ -160,7 +155,6 @@ flowchart TD
 | `/api/settings/notifications` | — | 410 Gone（Phase2凍結） | — |
 | `/api/session/clear` | POST | checkOrigin | Supabase |
 | `/api/cron/remind-friend-eval` | — | 🔒 Cron Bearer | Supabase + LINE |
-| `/api/admin/dashboard` `/stats` `/simulate-follow` `/test-line-notify` `/welcome-status` | — | 🔒 x-admin-key | Supabase (+ LINE) |
 
 ---
 
@@ -278,7 +272,6 @@ flowchart LR
         aPdf["/api/integrated-trisetsu/[id]/pdf 🔒"]
         aMagic["/api/auth/*"]
         aCron["/api/cron/remind-friend-eval 🔒"]
-        aAdmin["/api/admin/*  🔒"]
     end
 
     subgraph LIB["共通ロジック（src/lib）"]
@@ -330,8 +323,6 @@ flowchart LR
     aMagic --> RESEND
     aCron --> libLine
     aCron --> SUPA
-    aAdmin --> SUPA
-    aAdmin --> libLine
 
     %% lib -> ext
     libAnthropic --> CLAUDE
@@ -348,10 +339,10 @@ flowchart LR
 
 | 外部サービス | 主用途 | 呼び出し元（確認済み） |
 | --- | --- | --- |
-| **Supabase**（service_role） | DB全般（users / friend_answers / friend_perceptions / integrated_trisetsu / events / magic_links / line_users 等）。認可後に admin 権限で操作 | ほぼ全 API ルート（`lib/supabase-server.ts` の `supabaseAdmin`） |
+| **Supabase**（service_role） | DB全般（users / friend_answers / friend_perceptions / integrated_trisetsu / events / magic_links / line_users 等）。認可後に service_role 権限で操作 | ほぼ全 API ルート（`lib/supabase-server.ts` の `supabaseAdmin`） |
 | **Claude / Anthropic** 🤖 | 真のトリセツ7章を生成（Opus、max_tokens 16000、parse失敗時リトライ） | `lib/anthropic-client.ts` ← `integrated-trisetsu-generator.ts` ← ①`/api/webhook/stripe`（本番）②`/api/integrated-trisetsu` POST（dev/preview） |
 | **Stripe** 💳 | Checkout Session 作成（真のトリセツ・友達評価アンロック）+ Webhook 署名検証・決済確定 | `/api/checkout/*`, `/api/webhook/stripe`（`lib/stripe-server.ts`） |
-| **LINE Messaging API** | Push / Flex 通知（welcome / 友達評価到着 / 決済受領 / 統合完成 / リマインド）。feature flag `LINE_NOTIFICATIONS_ENABLED` 制御 | `/api/friend-answer*`, `/api/webhook/*`, `/api/cron/*`, `/api/admin/*`（`lib/line-notify.ts` / `line-flex.ts`） |
+| **LINE Messaging API** | Push / Flex 通知（welcome / 友達評価到着 / 決済受領 / 統合完成 / リマインド）。feature flag `LINE_NOTIFICATIONS_ENABLED` 制御 | `/api/friend-answer*`, `/api/webhook/*`, `/api/cron/*`（`lib/line-notify.ts` / `line-flex.ts`） |
 | **LINE Verify API** | LIFF id_token 検証（複数チャンネルID順次照会） | `lib/liff-verify.ts` ← PDF ダウンロード等（主要導線は Cookie セッションへ移行済み） |
 | **Resend** | メール送信（マジックリンク / 友達評価到着 / 統合完成通知） | `/api/auth/*`, `/api/friend-answer/v2`, `/api/webhook/stripe` |
 | **Slack** | 運営者向けエラー / 統計アラート | `/api/webhook/stripe`, generator 失敗時 |

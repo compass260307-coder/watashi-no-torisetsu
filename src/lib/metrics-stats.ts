@@ -1,5 +1,4 @@
-// 計測集計の単一実装。/api/admin/stats (管理画面) と /api/metrics (スプレッドシート連携) の
-// 両方がこの関数を使う。集計ロジックを二重管理しないための共有点。
+// /api/metrics（スプレッドシート連携）が使う計測集計の実装。
 //
 // from/to は ISO 文字列 (events.created_at / users.created_at 等)。null なら全期間。
 //
@@ -56,10 +55,10 @@ const SELF_RESULT_SHARE_FUNNEL_MEASUREMENT_STARTED_AT =
 const SELF_RESULT_SHARE_FUNNEL_VERSION = "share_v3";
 const ALICE_FUNNEL_MEASUREMENT_STARTED_AT = "2026-08-18";
 
-export type AdminStatsLocale = "ja" | "ko";
+export type MetricsStatsLocale = "ja" | "ko";
 
 type ComputeStatsOptions = {
-  locale?: AdminStatsLocale;
+  locale?: MetricsStatsLocale;
 };
 
 // Fluid Compute では同一インスタンスで複数リクエストが並行実行されるため、集計ごとの
@@ -148,7 +147,7 @@ export async function computeStats(
         // 件数・期間など集計の意味は変えない。
         pageSize = RETRY_PAGE;
         console.warn(
-          `[admin-stats] ${make.debugLabel ?? "query"} page timed out; retrying with ${RETRY_PAGE} rows`,
+          `[metrics-stats] ${make.debugLabel ?? "query"} page timed out; retrying with ${RETRY_PAGE} rows`,
         );
         result = await runPage(pageSize);
       }
@@ -160,7 +159,7 @@ export async function computeStats(
         const handled = onError?.(error) === true;
         if (handled) break;
         throw new Error(
-          `[admin-stats] fetchAll(${make.debugLabel ?? "query"}): ${error.code ?? "unknown"} ${error.message ?? "query failed"}`,
+          `[metrics-stats] fetchAll(${make.debugLabel ?? "query"}): ${error.code ?? "unknown"} ${error.message ?? "query failed"}`,
         );
       }
       if (!data || data.length === 0) break;
@@ -176,7 +175,7 @@ export async function computeStats(
         };
         if (!last.created_at || !last.id) {
           throw new Error(
-            "[admin-stats] keyset page is missing created_at or id",
+            "[metrics-stats] keyset page is missing created_at or id",
           );
         }
         cursor = { createdAt: last.created_at, id: last.id };
@@ -302,8 +301,8 @@ export async function computeStats(
     return ids.size + noId;
   };
 
-  // 質問到達: DB 内で一度だけ GROUP BY する。migration 未適用のデプロイ順序でも
-  // 管理画面を止めないよう、RPC が無い間だけ従来の count クエリへフォールバックする。
+  // 質問到達: DB 内で一度だけ GROUP BY する。RPC 名は適用済みスキーマとの
+  // 互換性維持のため旧名を使い、未適用環境では従来の count クエリへフォールバックする。
   const questionReachCounts = async (): Promise<Record<number, number>> => {
     const { data: aggregateRows, error: aggregateError } =
       await withDbQuerySlot(() =>
@@ -334,7 +333,7 @@ export async function computeStats(
       return reach;
     }
     console.warn(
-      `[admin-stats] question reach aggregate unavailable; using compatibility counts: ${aggregateError.code ?? "unknown"} ${aggregateError.message}`,
+      `[metrics-stats] question reach aggregate unavailable; using compatibility counts: ${aggregateError.code ?? "unknown"} ${aggregateError.message}`,
     );
 
     const counts: Array<readonly [number, number]> = [];
@@ -363,11 +362,10 @@ export async function computeStats(
               ),
             );
             if (error) {
-              // 設問到達は補助チャート。count の statement timeout で管理画面全体を
-              // 500 にしない (2026-08-10 の全損障害。旧実装は失敗を握りつぶしていた)。
-              // 失敗した設問は「データ無し」としてチャートから欠けるだけに留める。
+              // 設問到達は補助指標。count の statement timeout で集計全体を
+              // 500 にしない。失敗した設問は「データ無し」として欠けるだけに留める。
               console.error(
-                `[admin-stats] question reach ${index + 1} failed (skipping): ${error.code ?? "unknown"} ${error.message}`,
+                `[metrics-stats] question reach ${index + 1} failed (skipping): ${error.code ?? "unknown"} ${error.message}`,
               );
               return null;
             }
@@ -497,7 +495,7 @@ export async function computeStats(
       source_user_id: string | null;
       acquisition_source: string | null;
       acquisition_campaign: string | null;
-      acquisition_locale: AdminStatsLocale;
+      acquisition_locale: MetricsStatsLocale;
     }>(() =>
       applyRange(
         applyLocale(
@@ -759,12 +757,11 @@ export async function computeStats(
   // 件数だけ欲しいので fetchAll ではなく head+count で取る (1000行制限の影響なし)。
   // LINE機能は ja 限定のため、ko ビューではスナップショットを 0 にする
   // (期間イベントは recordLineEvent が locale=ja で書くため applyLocale で自然に 0 になる)。
-  // 管理統計は商品実装へ依存させない。現在の月額・年額を月次換算して
+  // 計測集計は商品実装へ依存させない。現在の月額・年額を月次換算して
   // MRRスナップショットを算出する。
   const ALICE_PLUS_MONTHLY_MRR_JPY = 480;
   const ALICE_PLUS_ANNUAL_MRR_JPY = 4_800 / 12;
-  // 失敗しても 0 に倒して stats 全体を巻き込まない (adminが新セクション起因で
-  // 全損しないことを最優先にする)
+  // 失敗しても 0 に倒し、新しい指標が原因で stats 全体を巻き込まない。
   const countExact = async (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     build: () => any,
@@ -776,12 +773,12 @@ export async function computeStats(
         error: { message?: string } | null;
       }>(() => build());
       if (error) {
-        console.error(`[admin-stats] ${label} count failed`, error.message);
+        console.error(`[metrics-stats] ${label} count failed`, error.message);
         return 0;
       }
       return count ?? 0;
     } catch (caught) {
-      console.error(`[admin-stats] ${label} count threw`, {
+      console.error(`[metrics-stats] ${label} count threw`, {
         message: caught instanceof Error ? caught.message : String(caught),
       });
       return 0;
@@ -2346,14 +2343,14 @@ export async function computeStats(
       .in("status", ["pending", "processing", "failed"]),
   );
   if (outboxError) {
-    // Keep admin/metrics available during the migration-before-deploy window.
+    // Keep metrics available during the migration-before-deploy window.
     if (outboxError.code !== "42P01" && outboxError.code !== "PGRST205") {
       throw new Error(
-        `[admin-stats] purchase conversion outbox lookup failed: ${outboxError.message}`,
+        `[metrics-stats] purchase conversion outbox lookup failed: ${outboxError.message}`,
       );
     }
     console.warn(
-      "[admin-stats] purchase conversion outbox migration is not applied yet",
+      "[metrics-stats] purchase conversion outbox migration is not applied yet",
     );
   } else {
     purchaseConversionOutboxRows = (outboxData ?? []) as typeof purchaseConversionOutboxRows;

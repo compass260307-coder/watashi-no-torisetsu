@@ -1,7 +1,7 @@
 // 「データをリセット」で消すストレージキー (診断フロー関連) を一元管理する。
 // SP ハンバーガーメニュー (TopHeader) と 自己診断結果ページ (/me) の両方から使う。
-// 対象外: torisetsu_admin_key (管理者用) / wt_acq_* (first-touch 流入元。リセットで
-// 診断をやり直しても「最初にどこから来たか」は変えない)。
+// 対象外: wt_acq_* (first-touch 流入元。リセットで診断をやり直しても
+// 「最初にどこから来たか」は変えない)。
 export const RESET_KEYS = [
   "torisetsu_owner_token",
   "torisetsu_result",

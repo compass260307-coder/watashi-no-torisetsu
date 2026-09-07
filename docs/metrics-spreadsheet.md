@@ -23,7 +23,7 @@ Authorization: Bearer <SHEETS_METRICS_KEY>
 - 各APIは `(timestamp, id)` のカーソル以降だけを読み取る
 - メールアドレス、Stripe ID、生のトークン、元のDB IDは返さない
 - 同一ユーザー/セッションを数えるためのIDは復元不能な `ref_...` 形式
-- 管理画面の重い全集計を呼ばないため、DB読み取り量は基本的に新規行数に比例する
+- 重い全集計を呼ばないため、DB読み取り量は基本的に新規行数に比例する
 
 Apps Script は `scripts/google-sheets-diagnosis-sync.gs` を使う。
 スプレッドシートの「拡張機能 > Apps Script」へ貼り付け、次の順に1回ずつ実行する。
@@ -71,10 +71,10 @@ Supabase events/users → /api/metrics (集計・主要数値だけ返す)
 Google Apps Script (時間トリガー) → シートに1行追記
 ```
 
-- 集計ロジックは `src/lib/admin-stats.ts`（管理画面 `/admin` と共有・二重管理なし）
+- 集計ロジックは `src/lib/metrics-stats.ts`
 - エンドポイント: `src/app/api/metrics/route.ts`
 - 認証は `Authorization: Bearer <METRICS_KEY>` ヘッダーと env `METRICS_KEY` の照合。URLにはキーを含めない
-- `METRICS_KEY` は `ADMIN_KEY` とは別トークン（シートに置くキーで /admin は開けない）
+- `METRICS_KEY` はスプレッドシート連携専用トークン
 
 ## セットアップ
 
@@ -178,7 +178,7 @@ Apps Script エディタで関数 `createDailyTrigger` を一度実行（初回�
 ## 列を増やしたいとき
 
 `src/app/api/metrics/route.ts` の `metrics` オブジェクトに1行足すだけ。
-`computeStats()` が返す値ならなんでも露出できる（`src/lib/admin-stats.ts` の return を参照）。
+`computeStats()` が返す値ならなんでも露出できる（`src/lib/metrics-stats.ts` の return を参照）。
 
 ---
 

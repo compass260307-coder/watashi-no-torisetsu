@@ -76,8 +76,6 @@ const HIDE_ON_PREFIXES = [
   "/ko/evaluate/result/",
   "/share/",
   "/ko/share/",
-  "/admin",
-  "/ko/admin",
   "/report/", // 自己診断PDF生成専用ページ
   "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
   "/line/", // LINE内ブラウザ専用ページ (Plus LP/決済着地)。固定CTAと衝突するためナビ非表示
