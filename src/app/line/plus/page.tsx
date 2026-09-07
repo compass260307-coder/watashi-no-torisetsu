@@ -1,39 +1,83 @@
 // Alice Plus (LINE) 紹介LP。トークの案内リンクの着地点。
-//
-// 直Stripeだと「いきなりカード入力画面」になるため、特典・価格・解約方法を
-// 見せてから CTA で /api/line/plus/checkout へ進ませる (2026-09-01 オーナー指示)。
-// 世界観はLINEリッチメニューと同じ「フェルト×星空パープル」に合わせる
-// (ユーザーはリッチメニューを見た直後にこのページへ来る)。
-// LINE内ブラウザで開かれる前提のモバイルファースト1枚もの。
-// 加入済みの人には CTA を「プランを確認・解約する」(Billing Portal行き) に切り替える。
+// LINE内ブラウザ前提のモバイルファーストLP。プランの価値と課金条件を
+// 理解してから /api/line/plus/checkout へ進める構成にする。
 
 import type { Metadata } from "next";
+import Image from "next/image";
 import { headers } from "next/headers";
+import { after } from "next/server";
 
-import { lineFreeDailyLimit } from "@/lib/line-alice";
+import LinePlusStory from "@/components/line/LinePlusStory";
+import motionStyles from "@/components/line/LinePlusMotion.module.css";
+import PlusMotionController from "@/components/line/PlusMotionController";
 import PlusPlanChooser from "@/components/line/PlusPlanChooser";
+import { lineFreeDailyLimit } from "@/lib/line-alice";
 import { recordLineEvent } from "@/lib/line-events";
 import {
   findActiveLinePlusPass,
   findManageableLinePlusSubscription,
   hasLifetimeLinePlus,
+  hasLinePlusHistory,
   linePlusEnabled,
   linePlusPlanPriceConfigured,
   verifyLinePlusToken,
 } from "@/lib/line-plus";
 import {
-  LINE_PLUS_PLAN_IDS,
+  LINE_PLUS_PLANS,
+  type LinePlusPassPlanId,
   type LinePlusPlanId,
 } from "@/lib/line-plus-products";
 
 export const metadata: Metadata = {
-  title: "Alice Plus | ワタシのトリセツ",
+  title: "Alice Plus",
+  description:
+    "Aliceとのおしゃべりをもっと自由に。深掘り占いとタロットも楽しめるLINE限定プランです。",
   robots: { index: false, follow: false },
 };
 
 const LINE_TALK_URL = "https://line.me/R/ti/p/%40867domoo";
+const DEV_PREVIEW_PASS_EXPIRES_AT = new Date(
+  Date.now() + 36 * 60 * 60 * 1000,
+).toISOString();
 
-// LINEのURLプレビュー取得 (line-poker等) をLP閲覧として数えない
+type IconProps = { className?: string };
+
+function SparkleIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <path
+        d="m12 2 1.55 5.1a5 5 0 0 0 3.35 3.35L22 12l-5.1 1.55a5 5 0 0 0-3.35 3.35L12 22l-1.55-5.1a5 5 0 0 0-3.35-3.35L2 12l5.1-1.55a5 5 0 0 0 3.35-3.35L12 2Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+    >
+      <path
+        d="m4 10.2 3.5 3.5L16 5.8"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// LINEのURLプレビュー取得 (line-poker等) をLP閲覧として数えない。
 function isPreviewBot(userAgent: string): boolean {
   return /bot|facebookexternalhit|line-poker|crawler|spider|preview/i.test(
     userAgent,
@@ -42,16 +86,19 @@ function isPreviewBot(userAgent: string): boolean {
 
 function FallbackCard({ title, body }: { title: string; body: string }) {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#faf7f2] px-6">
-      <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-xs font-semibold tracking-widest text-stone-400">
+    <main className="flex min-h-dvh items-center justify-center bg-[#F6F3FB] px-6">
+      <div className="w-full max-w-sm rounded-[28px] border border-[#DDD7EE] bg-white p-8 text-center shadow-[0_18px_50px_rgba(38,24,78,0.12)]">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEEAFB] text-[#6558D9]">
+          <SparkleIcon className="h-6 w-6" />
+        </div>
+        <p className="mt-5 text-[11px] font-bold tracking-[0.18em] text-[#7C70D9]">
           ALICE PLUS
         </p>
-        <h1 className="mt-3 text-lg font-bold text-stone-800">{title}</h1>
-        <p className="mt-4 text-sm leading-relaxed text-stone-600">{body}</p>
+        <h1 className="mt-3 text-xl font-bold text-[#27213F]">{title}</h1>
+        <p className="mt-4 text-sm leading-7 text-[#69627D]">{body}</p>
         <a
           href={LINE_TALK_URL}
-          className="mt-8 block w-full rounded-full bg-[#06C755] px-6 py-3 text-sm font-bold text-white"
+          className="mt-8 block w-full rounded-2xl bg-[#06C755] px-6 py-4 text-sm font-bold text-white shadow-[0_8px_20px_rgba(6,199,85,0.22)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#AEEAC8] motion-reduce:transition-none motion-reduce:active:scale-100"
         >
           LINEに戻る
         </a>
@@ -75,20 +122,16 @@ export default async function LinePlusPage({
   const expiresAtMs = Number(e);
   const signature = s ?? "";
 
-  // 開発時のみ: ?preview=1 (未加入) / ?preview=member (加入中) / ?preview=week
-  // (1週間パス利用中) / ?preview=lifetime (無期限プラン利用中) で
-  // トークン・DB不要の見た目確認 (/line/missions と同じ流儀)
+  // 開発時のみ: ?preview=1 (初回・未加入) / ?preview=returning (再加入) /
+  // ?preview=member (加入中) / ?preview=past_due (支払い要確認) /
+  // ?preview=day|week|month_pass (期間パス利用中) / ?preview=lifetime (旧無期限利用中)。
   const isDevPreview =
     process.env.NODE_ENV === "development" && preview !== undefined;
+  const previewPassPlanId: LinePlusPassPlanId | null =
+    preview === "day" || preview === "week" || preview === "month_pass"
+      ? preview
+      : null;
 
-  if (!linePlusEnabled()) {
-    return (
-      <FallbackCard
-        title="ただいま準備中です"
-        body="Alice Plusの受付は、いま少しだけお休みしています。始まったらトークでお知らせしますね。"
-      />
-    );
-  }
   if (
     !isDevPreview &&
     !verifyLinePlusToken({ lineUserId, expiresAtMs, signature })
@@ -101,170 +144,366 @@ export default async function LinePlusPage({
     );
   }
 
-  const isManageable = isDevPreview
-    ? preview === "member"
-    : Boolean(await findManageableLinePlusSubscription(lineUserId));
+  const [manageableSubscription, hasLifetime, activePass, hasHistory] =
+    isDevPreview
+      ? [
+          preview === "member" || preview === "past_due"
+            ? {
+                stripeCustomerId: "preview",
+                status: preview === "past_due" ? "past_due" : "active",
+              }
+            : null,
+          preview === "lifetime",
+          previewPassPlanId
+            ? {
+                expiresAt: DEV_PREVIEW_PASS_EXPIRES_AT,
+                planId: previewPassPlanId,
+              }
+            : null,
+          preview === "returning" ||
+            preview === "member" ||
+            preview === "past_due" ||
+            preview === "lifetime",
+        ]
+      : await Promise.all([
+          findManageableLinePlusSubscription(lineUserId),
+          hasLifetimeLinePlus(lineUserId),
+          findActiveLinePlusPass(lineUserId),
+          hasLinePlusHistory(lineUserId),
+        ]);
+  const isManageable = Boolean(manageableSubscription);
+  const isPastDue = manageableSubscription?.status === "past_due";
+  const trialEligible = !hasHistory;
+  const hasExistingAccess = isManageable || hasLifetime || Boolean(activePass);
+  const salesEnabled = isDevPreview || linePlusEnabled();
+
+  // 販売を止めても、既存会員の管理・期間パスの期限確認・旧無期限権利は閉じない。
+  if (!salesEnabled && !hasExistingAccess) {
+    return (
+      <FallbackCard
+        title="ただいま準備中です"
+        body="Alice Plusの受付は、いま少しだけお休みしています。始まったらトークでお知らせしますね。"
+      />
+    );
+  }
 
   if (!isDevPreview) {
     const userAgent = (await headers()).get("user-agent") ?? "";
     if (!isPreviewBot(userAgent)) {
-      await recordLineEvent({
-        eventName: "line_plus_lp_viewed",
-        metadata: { line_user_id: lineUserId, manageable: isManageable },
+      after(async () => {
+        await recordLineEvent({
+          eventName: "line_plus_lp_viewed",
+          metadata: {
+            line_user_id: lineUserId,
+            manageable: isManageable,
+            trial_eligible: trialEligible,
+          },
+        });
       });
     }
   }
 
-  // 検証済みのパラメータをそのまま運ぶ。checkout API 側でもう一度検証される
+  // 検証済みのパラメータをそのまま運ぶ。checkout API側でも再検証する。
   const tokenQuery = new URLSearchParams({
     u: lineUserId,
     e: String(expiresAtMs),
     s: signature,
   }).toString();
-  const checkoutUrls = Object.fromEntries(
-    LINE_PLUS_PLAN_IDS.map((planId) => [
-      planId,
-      isDevPreview
-        ? "#"
-        : `/api/line/plus/checkout?plan=${planId}&${tokenQuery}`,
-    ]),
-  ) as Record<LinePlusPlanId, string>;
-  const availability = Object.fromEntries(
-    LINE_PLUS_PLAN_IDS.map((planId) => [
-      planId,
-      isDevPreview || linePlusPlanPriceConfigured(planId),
-    ]),
-  ) as Record<LinePlusPlanId, boolean>;
-  const hasLifetime = isDevPreview
-    ? preview === "lifetime"
-    : await hasLifetimeLinePlus(lineUserId);
-  const activePass = isDevPreview
-    ? preview === "week"
-      ? { expiresAt: "2026-09-09T00:00:00.000Z", planId: "week" as const }
-      : null
-    : await findActiveLinePlusPass(lineUserId);
-  const activePassUntil = activePass
-    ? new Date(
-        new Date(activePass.expiresAt).getTime() + 9 * 3_600_000,
-      ).toISOString()
-    : null;
-  const activePassLabel = activePassUntil
-    ? `${Number(activePassUntil.slice(5, 7))}月${Number(activePassUntil.slice(8, 10))}日`
+  const planUrl = (planId: LinePlusPlanId) =>
+    isDevPreview
+      ? "#plans"
+      : `/api/line/plus/checkout?plan=${planId}&${tokenQuery}`;
+  const checkoutUrls: Partial<Record<LinePlusPlanId, string>> = {
+    monthly: planUrl("monthly"),
+    annual: planUrl("annual"),
+    day: planUrl("day"),
+    week: planUrl("week"),
+    month_pass: planUrl("month_pass"),
+  };
+  const availability: Record<LinePlusPlanId, boolean> = {
+    monthly:
+      !activePass &&
+      (isDevPreview ||
+        (salesEnabled && linePlusPlanPriceConfigured("monthly"))),
+    annual:
+      !activePass &&
+      (isDevPreview || (salesEnabled && linePlusPlanPriceConfigured("annual"))),
+    day: isDevPreview || (salesEnabled && linePlusPlanPriceConfigured("day")),
+    week: isDevPreview || (salesEnabled && linePlusPlanPriceConfigured("week")),
+    month_pass:
+      isDevPreview ||
+      (salesEnabled && linePlusPlanPriceConfigured("month_pass")),
+  };
+  const checkoutUrl = checkoutUrls.monthly as string;
+  const activePassLabel = activePass
+    ? new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(activePass.expiresAt))
     : null;
   const freeLimit = lineFreeDailyLimit();
+  const isMember = hasLifetime || isManageable;
+  const hasActiveAccess = isMember || Boolean(activePass);
+  const heroCtaHref = isPastDue
+    ? checkoutUrl
+    : hasActiveAccess
+      ? LINE_TALK_URL
+      : "#plans";
+  const heroCtaLabel = isPastDue
+    ? "お支払い方法を確認する"
+    : hasActiveAccess
+      ? "Aliceと話しにいく"
+      : trialEligible
+        ? "Alice Plusを試す"
+        : "月額Plusをはじめる";
+  const heroCtaNote = isPastDue
+    ? "Stripeのお支払い管理画面へ移動します"
+    : hasActiveAccess
+      ? "いつものLINEトークへ移動します"
+      : trialEligible
+        ? null
+        : "価格は税込。お申し込み前に請求内容を確認できます。";
 
   return (
-    <main className="min-h-dvh bg-[#F4F1FB] pb-32">
-      <div className="mx-auto w-full max-w-md px-5 pt-2">
-        {/* タイトルロックアップ: グラデ文字+金のひし形飾り */}
-        <div className="flex flex-col items-center pt-5">
-          <h1 className="bg-gradient-to-r from-[#5B5BEF] via-[#7C5BEF] to-[#9B5BEF] bg-clip-text text-[24px] font-black tracking-[0.04em] text-transparent">
-            Alice Plus
-          </h1>
-          <div aria-hidden className="mt-1.5 flex items-center gap-2">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#E8B93E]" />
-            <span className="h-1.5 w-1.5 rotate-45 bg-[#FFD97A]" />
-            <span className="h-px w-10 bg-gradient-to-l from-transparent to-[#E8B93E]" />
+    <main
+      id="alice-plus-page"
+      data-plus-page
+      data-plus-sticky="hidden"
+      className="min-h-dvh overflow-x-clip bg-[#F6F3FB] pb-8 text-[#302847]"
+    >
+      <PlusMotionController />
+      <div className="mx-auto w-full max-w-[480px] bg-[#F6F3FB] sm:my-5 sm:rounded-[38px] sm:shadow-[0_28px_90px_rgba(37,24,78,0.18)]">
+        <section
+          id="plus-hero"
+          data-plus-hero
+          className={`${motionStyles.hero} relative isolate grid overflow-hidden bg-[#17102F] text-white sm:rounded-t-[38px]`}
+        >
+          <div
+            className={`${motionStyles.heroMedia} relative col-start-1 row-start-1`}
+          >
+            <Image
+              src="/line/alice-plus-hero-v2.webp"
+              alt="星空に浮かぶ会話バブルと本、タロットカード"
+              fill
+              preload
+              sizes="(max-width: 520px) 100vw, 480px"
+              className={`${motionStyles.heroImage} object-cover`}
+            />
+            <div className={motionStyles.heroGlow} />
+            <span
+              aria-hidden="true"
+              className={`${motionStyles.star} ${motionStyles.starOne}`}
+            />
+            <span
+              aria-hidden="true"
+              className={`${motionStyles.star} ${motionStyles.starTwo}`}
+            />
+            <span
+              aria-hidden="true"
+              className={`${motionStyles.star} ${motionStyles.starThree}`}
+            />
+            <p className="absolute top-5 left-5 z-[3] inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#100923]/65 px-3.5 py-2 text-[11px] font-bold tracking-[0.12em] text-white shadow-[0_8px_24px_rgba(5,2,18,0.2)] backdrop-blur-md">
+              <span aria-hidden="true" className="text-[#F4D36F]">
+                ✦
+              </span>
+              Alice Plus
+            </p>
           </div>
-        </div>
 
-        {/* 無料 vs Plus 比較表 */}
-        <section className="mt-6 rounded-3xl border border-[#5B5BEF]/10 bg-white p-6 shadow-[0_12px_34px_rgba(36,26,79,0.08)]">
-          <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">
-            無料とPLUSのちがい
-          </p>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-[#5B5BEF]/10">
-            <div className="grid grid-cols-[1.4fr_1fr_1fr] items-center bg-[#F4F1FB] text-center text-[12px] font-black text-[#2E2E5C]/60">
-              <p className="py-3 pl-4 text-left">できること</p>
-              <p className="py-3">無料</p>
-              <p className="bg-[#5B5BEF] py-3 text-white">Plus</p>
-            </div>
-            {[
-              { label: "おしゃべり", free: `1日${freeLimit}通`, plus: "上限なし" },
-              { label: "今日の占い", free: "毎日1回", plus: "毎日1回" },
-              { label: "深掘り占い", free: "−", plus: "◯" },
-              { label: "タロット占い", free: "−", plus: "◯" },
-            ].map((row) => (
+          <div
+            className={`${motionStyles.heroCopy} relative z-[3] col-start-1 row-start-1 self-end px-6 pb-7`}
+          >
+            <h1
+              className={`${motionStyles.heroHeadline} font-bold leading-[1.42] tracking-[-0.035em] text-white`}
+            >
+              <span className="sr-only">
+                話したいこと、途中で終わらせなくていい。
+              </span>
+              <span aria-hidden="true">
+                話したい夜を、
+                <span className={motionStyles.headlineCarousel}>
+                  <span className={motionStyles.headlinePhrase}>
+                    途中で終わらせない。
+                  </span>
+                  <span className={motionStyles.headlinePhrase}>
+                    もっと深く見つめる。
+                  </span>
+                  <span className={motionStyles.headlinePhrase}>
+                    Aliceと自由に話せる。
+                  </span>
+                </span>
+              </span>
+            </h1>
+            {hasActiveAccess && (
               <div
-                key={row.label}
-                className="grid grid-cols-[1.4fr_1fr_1fr] items-center border-t border-[#5B5BEF]/10 text-center text-[13px]"
+                className={`${motionStyles.glassCard} mt-5 rounded-2xl border border-[#F0D77D]/25 bg-white/[0.09] px-4 py-3.5 backdrop-blur-md`}
               >
-                <p className="py-3.5 pl-4 text-left font-bold text-[#2E2E5C]">
-                  {row.label}
+                <p className="flex items-center gap-2 text-[11px] font-bold text-[#FFE18C]">
+                  <CheckIcon className="h-4 w-4" />
+                  {isPastDue
+                    ? "お支払い方法の確認が必要です"
+                    : hasLifetime
+                      ? "販売終了済みの無期限プランをご利用中"
+                      : activePass && activePassLabel
+                        ? `${LINE_PLUS_PLANS[activePass.planId].label}を${activePassLabel}まで利用中`
+                        : "Alice Plusをご利用中"}
                 </p>
-                <p className="py-3.5 font-medium text-[#2E2E5C]/55">{row.free}</p>
-                <p className="bg-[#5B5BEF]/[0.06] py-3.5 font-black text-[#5B5BEF]">
-                  {row.plus}
+                <p className="mt-1.5 text-[11px] leading-5 text-white/65">
+                  {isPastDue
+                    ? "プラン管理画面から、お支払い方法をご確認ください。"
+                    : "Plusの機能をすべてお使いいただけます。"}
                 </p>
               </div>
-            ))}
+            )}
+
+            <a
+              href={heroCtaHref}
+              className={`${motionStyles.primaryCta} mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-[15px] font-bold transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/55 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                hasActiveAccess && !isPastDue
+                  ? "bg-[#06C755] text-white shadow-[0_12px_28px_rgba(6,199,85,0.22)]"
+                  : "bg-gradient-to-r from-[#F2CB62] to-[#FFE7A1] text-[#4A3500] shadow-[0_12px_28px_rgba(232,185,62,0.25)]"
+              }`}
+            >
+              <span className="relative z-10">{heroCtaLabel}</span>
+              {!hasActiveAccess && (
+                <span aria-hidden="true" className="relative z-10">
+                  ↓
+                </span>
+              )}
+            </a>
+            {heroCtaNote && (
+              <p className="mt-3 text-center text-[10px] leading-5 text-white/60">
+                {heroCtaNote}
+              </p>
+            )}
           </div>
-          <p className="mt-3 text-[12px] font-medium leading-relaxed text-[#2E2E5C]/55">
-            夜中の長話も、もやもやの吐き出しも、上限を気にせずどうぞ。無料の分は、これからもずっと無料です。
-          </p>
         </section>
 
-        {/* プランをえらぶ: サブスク/買い切りの2グループ+ラジオ選択 (ラブ教授UI参考)。
-            下部固定CTAは選択中プランに追従するためコンポーネント側が持つ */}
-        {!hasLifetime && !isManageable && (
+        <LinePlusStory freeLimit={freeLimit} />
+
+        {!isMember ? (
           <PlusPlanChooser
             checkoutUrls={checkoutUrls}
             availability={availability}
-            activePassLabel={activePassLabel}
+            activePass={
+              activePass && activePassLabel
+                ? {
+                    planId: activePass.planId,
+                    untilLabel: activePassLabel,
+                  }
+                : null
+            }
+            trialEligible={trialEligible}
           />
+        ) : (
+          <section
+            id="membership"
+            data-plus-sticky-stop
+            data-plus-reveal="scale"
+            className={`${motionStyles.revealScale} ${motionStyles.membershipSection} scroll-mt-5 px-5 py-12`}
+          >
+            <div className="overflow-hidden rounded-[28px] bg-gradient-to-br from-[#5C4FC6] via-[#7160D6] to-[#9275DE] p-[1px] shadow-[0_18px_40px_rgba(80,63,170,0.22)]">
+              <div className="rounded-[27px] bg-[#211844] px-6 py-7 text-center text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-bold text-[#F3D779]">
+                  <CheckIcon className="h-3.5 w-3.5" />
+                  {isPastDue
+                    ? "お支払い方法の確認が必要"
+                    : hasLifetime
+                      ? "旧・無期限プラン利用中"
+                      : "ALICE PLUS 利用中"}
+                </span>
+                <h2 className="mt-5 text-[23px] font-bold">
+                  {isPastDue
+                    ? "お支払い情報をご確認ください。"
+                    : "これからも、ゆっくり話しましょう。"}
+                </h2>
+                <p className="mt-3 text-[13px] leading-6 text-white/65">
+                  {isPastDue
+                    ? "プランを続けるには、お支払い管理画面から決済方法をご確認ください。"
+                    : hasLifetime
+                      ? "無期限プランをご利用中です。追加のお支払いはありません。"
+                      : "Alice Plusのサブスクリプションをご利用中です。プランの確認や解約は、下のボタンからいつでも行えます。"}
+                </p>
+                {!isPastDue && (
+                  <a
+                    href={LINE_TALK_URL}
+                    className="mt-6 block rounded-2xl bg-[#06C755] px-5 py-4 text-[14px] font-bold text-white shadow-[0_10px_24px_rgba(6,199,85,0.22)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/55 motion-reduce:transition-none motion-reduce:active:scale-100"
+                  >
+                    Aliceと話しにいく
+                  </a>
+                )}
+                {!hasLifetime && (
+                  <a
+                    href={checkoutUrl}
+                    className={`${isPastDue ? "mt-6 bg-white text-[#4F438F]" : "mt-3 border border-white/20 text-white/85"} block rounded-2xl px-5 py-3.5 text-[13px] font-bold transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/55 motion-reduce:transition-none motion-reduce:active:scale-100`}
+                  >
+                    {isPastDue
+                      ? "お支払い方法を確認する"
+                      : "プランを確認・解約する"}
+                  </a>
+                )}
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* 安心情報 */}
-        <ul className="mt-6 space-y-2 px-1 text-[12px] font-medium leading-relaxed text-[#2E2E5C]/60">
-          <li>
-            ・初回加入なら最初の1週間は無料。無料期間中に解約すれば、料金はかかりません
-          </li>
-          <li>・いつでも解約できます。解約後も、期間の終わりまでは使えます</li>
-          <li>・お支払いはStripeの安全な決済画面で行われます</li>
-          <li>
-            ・
+        <footer
+          data-plus-sticky-stop
+          className="bg-[#211844] px-5 py-4 text-white sm:rounded-b-[38px]"
+        >
+          <nav
+            aria-label="法的情報"
+            className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-[11px] text-white/60"
+          >
+            <a
+              href="/terms"
+              className="rounded-sm px-1 py-2 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            >
+              利用規約
+            </a>
             <a
               href="/legal/commerce"
-              className="font-bold text-[#5B5BEF] underline underline-offset-2"
+              className="rounded-sm px-1 py-2 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               特定商取引法に基づく表記
             </a>
-          </li>
-        </ul>
+            <a
+              href="/privacy"
+              className="rounded-sm px-1 py-2 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            >
+              プライバシーポリシー
+            </a>
+          </nav>
+        </footer>
       </div>
 
-      {/* 固定CTA */}
-      {/* 加入済み系の固定CTA。未加入者のCTAは PlusPlanChooser 側 (選択追従) */}
-      {(hasLifetime || isManageable) && (
-      <div className="fixed inset-x-0 bottom-0 border-t border-[#5B5BEF]/10 bg-white/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
-        <div className="mx-auto w-full max-w-md">
-          {hasLifetime ? (
-            <>
-              <p className="mb-2 text-center text-[12px] font-bold text-[#2E2E5C]/60">
-                無期限プランをご利用中です。ずっと一緒にいられますね🌙
-              </p>
+      {isMember && (
+        <div
+          className={`${motionStyles.stickyCta} fixed inset-x-0 bottom-0 z-40 border-t border-[#DDD7EE] bg-white/95 px-5 pb-[calc(env(safe-area-inset-bottom)+10px)] pt-3 shadow-[0_-10px_30px_rgba(38,24,78,0.1)] backdrop-blur-xl`}
+        >
+          <div className="mx-auto w-full max-w-[440px]">
+            {hasLifetime ? (
               <a
                 href={LINE_TALK_URL}
-                className="block w-full rounded-xl bg-[#06C755] py-3.5 text-center text-[15px] font-black text-white transition-transform active:scale-95"
+                className="block w-full rounded-2xl bg-[#06C755] py-4 text-center text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(6,199,85,0.22)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#AEEAC8] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 Aliceと話しにいく
               </a>
-            </>
-          ) : (
-            <>
-              <p className="mb-2 text-center text-[12px] font-bold text-[#2E2E5C]/60">
-                Alice Plusをご利用中です。いつもありがとうございます。
-              </p>
+            ) : (
               <a
-                href={checkoutUrls.monthly}
-                className="block w-full rounded-xl border-2 border-[#5B5BEF] py-3.5 text-center text-[15px] font-black text-[#5B5BEF] transition-transform active:scale-95"
+                href={checkoutUrl}
+                className="block w-full rounded-2xl border-2 border-[#6558D9] py-3.5 text-center text-[14px] font-bold text-[#5C50C6] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#BEB4F4] motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                プランを確認・解約する
+                {isPastDue
+                  ? "お支払い方法を確認する"
+                  : "プランを確認・解約する"}
               </a>
-            </>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       )}
     </main>
   );
