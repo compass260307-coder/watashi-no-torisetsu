@@ -80,13 +80,18 @@ for (const f of cut) {
   }
 }
 
+const anims = [
+  ...listDir("characters/anim", ".webm"),
+  ...listDir("characters/anim", ".mp4"),
+].sort();
+
 const manifest = {
   cut,
   scenes: listDir("characters/scenes"),
   // キャラ別のループ動画 (瞬き・手振り等の「動くキャラ」)。
-  // public/characters/anim/<slug>.webm を置くだけで、結果ヒーローが静止画の代わりに
-  // ループ再生する (無いキャラは静止画＋微アニメにフォールバック)。scenes と同じ運用。
-  anims: listDir("characters/anim", ".webm"),
+  // public/characters/anim/<slug>.<webm|mp4> を置くだけで、結果ヒーローが静止画の代わりに
+  // ループ再生する (無いキャラは静止画にフォールバック)。scenes と同じ運用。
+  anims,
   // 顔ズーム版 (16P の顔アバター風・/aisho のキャラカード用)。
   // public/characters/face/<slug>.webp を置くだけで次のビルドから自動使用。
   face: listDir("characters/face"),
