@@ -136,7 +136,7 @@ const dateKeysBetween = (fromKey: string, toKey: string) => {
  * Period semantics are cohort based:
  * - diagnosis-based KPIs select users whose first diagnosis is in the period and
  *   follow their later payments/friend answers through the present.
- * - paid→friend selects users whose first full-access payment is in the period and
+ * - paid→friend selects users whose first verified payment is in the period and
  *   follows friend answers through the present.
  */
 export function computeCoreKpis({
@@ -351,7 +351,7 @@ export function computeCoreKpis({
       diagnosisUsers: diagnosisCohort.length,
       paidUsers: paidCohort.length,
       definition:
-        "users.diagnosis_completed_at が選択期間内のユニークユーザーを確定診断人数とし、フルアクセス決済済み状態とその後の行動まで現在時点で追跡",
+        "users.diagnosis_completed_at が選択期間内のユニークユーザーを確定診断人数とし、全商品の確定決済済み状態とその後の行動まで現在時点で追跡",
     },
     diagnosisTrend: {
       granularity: "day" as const,

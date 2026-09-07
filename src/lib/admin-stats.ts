@@ -30,20 +30,37 @@ import {
 import { TAKO_PAYWALL_SOURCES } from "@/lib/paywall-source";
 import {
   ACCESS_PRODUCTS,
-  FULL_ACCESS_PRICE_JPY,
   THREE_COURSE_PAYWALL_VERSION,
   type AccessProduct,
 } from "@/lib/access-products";
-import { paywallCardMode } from "@/lib/feature-flags";
+import { isMissingHoshiyomiStore } from "@/lib/hoshiyomi/store";
 
 const PAGE = 1000;
-const RETRY_PAGE = 250;
+// 複数列を返す高頻度イベントは250行でもSupabaseのstatement_timeoutに届く。
+// 初回だけ1000行で試し、タイムアウトしたクエリだけ100行へ縮小する。
+const RETRY_PAGE = 100;
 const TOTAL_QUESTIONS = 50; // 診断の設問数 (10問 × 5ページ)
 const QUESTION_COUNT_CONCURRENCY = 2;
+// 高頻度イベントを無制限に並行取得するとstatement_timeoutに達する一方、
+// 直列では全期間が300秒を超える。2本に制限して安定性と実行時間を両立する。
 const DB_QUERY_CONCURRENCY = 2;
 // /tako 到達を owner_token + invite_code 付きでページ本体から計測し始める時刻。
 // これ以前を分母に混ぜると「到達していたがイベントが無い人」が離脱扱いになるため除外する。
-const FRIEND_FUNNEL_MEASUREMENT_STARTED_AT = "2026-07-18T04:15:00.000Z";
+const FRIEND_JOURNEY_EVENTS_STARTED_AT = "2026-07-18T04:15:00.000Z";
+// 初回回答の発火点修正を含む、友達診断ファネル v2 の開始。
+const FRIEND_FUNNEL_MEASUREMENT_STARTED_AT = "2026-08-22T03:54:21.000Z";
+// シェア選択UIの表示漏れと、前段を通らない下流イベントを数えていた
+// 問題を修正した自己結果シェアファネル v3 の開始。修正前データは混ぜない。
+const SELF_RESULT_SHARE_FUNNEL_MEASUREMENT_STARTED_AT =
+  "2026-08-22T12:15:31.000Z";
+const SELF_RESULT_SHARE_FUNNEL_VERSION = "share_v3";
+const ALICE_FUNNEL_MEASUREMENT_STARTED_AT = "2026-08-18";
+
+export type AdminStatsLocale = "ja" | "ko";
+
+type ComputeStatsOptions = {
+  locale?: AdminStatsLocale;
+};
 
 // Fluid Compute では同一インスタンスで複数リクエストが並行実行されるため、集計ごとの
 // Promise.all だけでなくモジュール全体でDB同時実行数を抑える。大量のページング/countが
@@ -64,7 +81,13 @@ async function withDbQuerySlot<T>(query: () => PromiseLike<T>): Promise<T> {
   }
 }
 
-export async function computeStats(from: string | null, to: string | null) {
+export async function computeStats(
+  from: string | null,
+  to: string | null,
+  options: ComputeStatsOptions = {},
+) {
+  const statsLocale = options.locale;
+
   function applyRange<T>(query: T, column = "created_at"): T {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q = query as any;
@@ -73,11 +96,21 @@ export async function computeStats(from: string | null, to: string | null) {
     return q as T;
   }
 
+  function applyLocale<T>(query: T, column = "locale"): T {
+    if (!statsLocale) return query;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (query as any).eq(column, statsLocale) as T;
+  }
+
   type PageQueryFactory = (() => {
     // Supabase query builders carry table-specific generics.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
-  }) & { pagination?: "created_at-id" };
+  }) & {
+    pagination?: "created_at-id";
+    debugLabel?: string;
+    rowFilter?: (row: unknown) => boolean;
+  };
 
   // Supabase は既定で 1000 行しか返さないため、ページングして全行を読む。
   // make() は「毎回新しいクエリ」を返すファクトリ (builder は使い回せない)。
@@ -115,7 +148,7 @@ export async function computeStats(from: string | null, to: string | null) {
         // 件数・期間など集計の意味は変えない。
         pageSize = RETRY_PAGE;
         console.warn(
-          `[admin-stats] page timed out; retrying with ${RETRY_PAGE} rows`,
+          `[admin-stats] ${make.debugLabel ?? "query"} page timed out; retrying with ${RETRY_PAGE} rows`,
         );
         result = await runPage(pageSize);
       }
@@ -127,11 +160,14 @@ export async function computeStats(from: string | null, to: string | null) {
         const handled = onError?.(error) === true;
         if (handled) break;
         throw new Error(
-          `[admin-stats] fetchAll: ${error.code ?? "unknown"} ${error.message ?? "query failed"}`,
+          `[admin-stats] fetchAll(${make.debugLabel ?? "query"}): ${error.code ?? "unknown"} ${error.message ?? "query failed"}`,
         );
       }
       if (!data || data.length === 0) break;
-      out.push(...(data as T[]));
+      const pageRows = make.rowFilter
+        ? (data as T[]).filter((row) => make.rowFilter?.(row) === true)
+        : (data as T[]);
+      out.push(...pageRows);
       if (data.length < pageSize) break;
       if (make.pagination === "created_at-id") {
         const last = data[data.length - 1] as T & {
@@ -159,18 +195,27 @@ export async function computeStats(from: string | null, to: string | null) {
         ...cols.split(",").map((column) => column.trim()),
         "created_at",
         "id",
+        "locale",
       ]),
     ).join(", ");
-    const make = (() =>
-      applyRange(
-        supabaseAdmin
-          .from("events")
-          .select(selectCols)
-          .in("event_name", names)
+    const make = (() => {
+      let query = supabaseAdmin.from("events").select(selectCols);
+      query =
+        names.length === 1
+          ? query.eq("event_name", names[0])
+          : query.in("event_name", names);
+      return applyRange(
+        query
           .order("created_at", { ascending: true })
           .order("id", { ascending: true }),
-      )) as PageQueryFactory;
+      );
+    }) as PageQueryFactory;
     make.pagination = "created_at-id";
+    make.debugLabel = `events:${names.join(",")}`;
+    if (statsLocale) {
+      make.rowFilter = (row) =>
+        (row as { locale?: string }).locale === statsLocale;
+    }
     return make;
   };
 
@@ -182,6 +227,7 @@ export async function computeStats(from: string | null, to: string | null) {
         ...cols.split(",").map((column) => column.trim()),
         "created_at",
         "id",
+        "locale",
       ]),
     ).join(", ");
     const make = (() => {
@@ -189,18 +235,23 @@ export async function computeStats(from: string | null, to: string | null) {
         .from("events")
         .select(selectCols)
         .in("event_name", names)
-        .gte("created_at", FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
+        .gte("created_at", FRIEND_JOURNEY_EVENTS_STARTED_AT)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
       if (
         from &&
-        Date.parse(from) > Date.parse(FRIEND_FUNNEL_MEASUREMENT_STARTED_AT)
+        Date.parse(from) > Date.parse(FRIEND_JOURNEY_EVENTS_STARTED_AT)
       ) {
         query = query.gte("created_at", from);
       }
       return query;
     }) as PageQueryFactory;
     make.pagination = "created_at-id";
+    make.debugLabel = `journey:${names.join(",")}`;
+    if (statsLocale) {
+      make.rowFilter = (row) =>
+        (row as { locale?: string }).locale === statsLocale;
+    }
     return make;
   };
 
@@ -208,6 +259,7 @@ export async function computeStats(from: string | null, to: string | null) {
     owner_token: string | null;
     metadata: Record<string, unknown> | null;
   };
+  type PurchaseDeliveryRow = StripeEventRow & { event_name: string };
   type PaymentHistoryRow = {
     user_id: string;
     stripe_session_id: string;
@@ -218,6 +270,7 @@ export async function computeStats(from: string | null, to: string | null) {
     paid_at: string | null;
     created_at: string;
     payment_kind: string | null;
+    metadata: Record<string, unknown> | null;
   };
   type KpiPaymentEventRow = {
     event_name: string;
@@ -249,8 +302,41 @@ export async function computeStats(from: string | null, to: string | null) {
     return ids.size + noId;
   };
 
-  // 質問到達: 5万行超を運ばず、questionId ごとの count クエリを並列で投げる
+  // 質問到達: DB 内で一度だけ GROUP BY する。migration 未適用のデプロイ順序でも
+  // 管理画面を止めないよう、RPC が無い間だけ従来の count クエリへフォールバックする。
   const questionReachCounts = async (): Promise<Record<number, number>> => {
+    const { data: aggregateRows, error: aggregateError } =
+      await withDbQuerySlot(() =>
+        supabaseAdmin.rpc("admin_question_reach", {
+          p_from: from,
+          p_to: to,
+          p_locale: statsLocale ?? null,
+        }),
+      );
+    if (!aggregateError) {
+      const reach: Record<number, number> = {};
+      for (const row of (aggregateRows ?? []) as Array<{
+        question_id: number | string;
+        event_count: number | string;
+      }>) {
+        const questionId = Number(row.question_id);
+        const count = Number(row.event_count);
+        if (
+          Number.isInteger(questionId) &&
+          questionId >= 1 &&
+          questionId <= TOTAL_QUESTIONS &&
+          Number.isFinite(count) &&
+          count > 0
+        ) {
+          reach[questionId - 1] = count;
+        }
+      }
+      return reach;
+    }
+    console.warn(
+      `[admin-stats] question reach aggregate unavailable; using compatibility counts: ${aggregateError.code ?? "unknown"} ${aggregateError.message}`,
+    );
+
     const counts: Array<readonly [number, number]> = [];
     // 50 本を一度に投げると、アクセス集中時に同じ events テーブルの count が
     // Supabase の statement_timeout を使い切る。少数ずつ実行してDB負荷を平準化する。
@@ -267,11 +353,13 @@ export async function computeStats(from: string | null, to: string | null) {
             const index = start + offset;
             const { count, error } = await withDbQuerySlot(() =>
               applyRange(
-                supabaseAdmin
-                  .from("events")
-                  .select("id", { count: "exact", head: true })
-                  .eq("event_name", "diagnosis_question_answered")
-                  .eq("metadata->>questionId", String(index + 1)),
+                applyLocale(
+                  supabaseAdmin
+                    .from("events")
+                    .select("id", { count: "exact", head: true })
+                    .eq("event_name", "diagnosis_question_answered")
+                    .eq("metadata->>questionId", String(index + 1)),
+                ),
               ),
             );
             if (error) {
@@ -308,6 +396,9 @@ export async function computeStats(from: string | null, to: string | null) {
   type PaywallEventRow = EventMetaSessionRow & {
     owner_token: string | null;
   };
+  type AliceEventRow = EventMetaSessionRow & {
+    event_name: string;
+  };
 
   const coreSchemaIssues: string[] = [];
   const recordCoreSchemaIssue = (error: {
@@ -337,16 +428,15 @@ export async function computeStats(from: string | null, to: string | null) {
     paywallScrollRows,
     purchaseCtaRows,
     users,
-    perceptions,
-    paidUserRows,
-    recentRes,
+    rawPerceptions,
     diagQuestionReach,
     checkoutCreatedRows,
     purchaseCompletedRows,
+    purchaseDeliveryRows,
     friendJourneyRows,
     identityRows,
     coreUserRows,
-    paymentHistoryRows,
+    rawPaymentHistoryRows,
     kpiPaymentEventRows,
     unmeiLpRows,
     unmeiPurchaseStartRows,
@@ -357,6 +447,10 @@ export async function computeStats(from: string | null, to: string | null) {
     birthFormSkipRows,
     unmeiBadgeShownRows,
     unmeiBadgeClickedRows,
+    aliceEventRows,
+    rawAliceConversationRows,
+    rawAliceReservationRows,
+    rawAliceCreditRows,
   ] = await Promise.all([
     fetchAll<SessionRow>(evRows(["diagnosis_started"])),
     fetchAll<SessionRow>(evRows(["diagnosis_completed"])),
@@ -403,15 +497,19 @@ export async function computeStats(from: string | null, to: string | null) {
       source_user_id: string | null;
       acquisition_source: string | null;
       acquisition_campaign: string | null;
+      acquisition_locale: AdminStatsLocale;
     }>(() =>
       applyRange(
-        supabaseAdmin
-          .from("users")
-          .select(
-            "id, scores, campaign, generation, source_user_id, acquisition_source, acquisition_campaign",
-          )
-          .order("created_at", { ascending: true })
-          .order("id", { ascending: true }),
+        applyLocale(
+          supabaseAdmin
+            .from("users")
+            .select(
+              "id, scores, campaign, generation, source_user_id, acquisition_source, acquisition_campaign, acquisition_locale",
+            )
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true }),
+          "acquisition_locale",
+        ),
       ),
     ),
     // 友達回答の実データ (/me のゲートと同じ friend_perceptions を正とする)。
@@ -424,32 +522,26 @@ export async function computeStats(from: string | null, to: string | null) {
         .order("created_at", { ascending: true })
         .order("id", { ascending: true }),
     ),
-    // 課金ユーザー: webhook は同一 email の全 users 行を full にするため、行数で数えると
-    // 再診断ユーザーの購入が多重計上される。email (無ければ id) でユニーク化する。
-    // 期間は full_access_at (購入時刻)。ページングも必須 (1000行上限)。
-    fetchAll<{ id: string; email: string | null; full_access_at: string | null }>(
-      () =>
-        supabaseAdmin
-          .from("users")
-          .select("id, email, full_access_at")
-          .eq("plan", "full")
-          .order("id", { ascending: true }),
-    ),
-    withDbQuerySlot(() =>
-      applyRange(
-        supabaseAdmin
-          .from("events")
-          .select("event_name, session_id, created_at, metadata")
-          .order("created_at", { ascending: false })
-          .limit(50),
-      ),
-    ),
     questionReachCounts(),
     fetchAll<StripeEventRow>(
       evRows(["checkout_session_created"], "owner_token, metadata"),
     ),
     fetchAll<StripeEventRow>(
       evRows(["purchase_completed"], "owner_token, metadata"),
+    ),
+    fetchAll<PurchaseDeliveryRow>(
+      () =>
+        applyLocale(
+          supabaseAdmin
+            .from("events")
+            .select("event_name, owner_token, metadata")
+            .in("event_name", [
+              "meta_purchase_claimed",
+              "browser_tiktok_purchase_pushed",
+              "server_purchase_conversion_sent",
+            ])
+            .order("id", { ascending: true }),
+      ),
     ),
     fetchAll<{
       event_name: string;
@@ -462,6 +554,7 @@ export async function computeStats(from: string | null, to: string | null) {
       journeyRows(
         [
           "result_viewed",
+          "diagnosis_started",
           "diagnosis_completed",
           "tako_viewed",
           "tako_nav_badge_shown",
@@ -471,10 +564,15 @@ export async function computeStats(from: string | null, to: string | null) {
           "friend_share_clicked",
           "friend_link_copied",
           "friend_landing_viewed",
+          "friend_answer_started",
           "friend_answer_completed",
           "friend_v2_completed",
           "friend_to_diagnosis_clicked",
           "friend_v2_self_cta_clicked",
+          "share_ui_shown",
+          "share_clicked",
+          "share_landing_viewed",
+          "share_to_diagnosis_clicked",
         ],
         "event_name, session_id, invite_code, owner_token, metadata, created_at",
       ),
@@ -486,11 +584,14 @@ export async function computeStats(from: string | null, to: string | null) {
       source_user_id: string | null;
       created_at: string;
     }>(() =>
-      supabaseAdmin
-        .from("users")
-        .select("id, owner_token, invite_code, source_user_id, created_at")
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true }),
+      applyLocale(
+        supabaseAdmin
+          .from("users")
+          .select("id, owner_token, invite_code, source_user_id, created_at")
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
+        "acquisition_locale",
+      ),
     ),
     fetchAll<{
       id: string;
@@ -499,12 +600,15 @@ export async function computeStats(from: string | null, to: string | null) {
       source_user_id: string | null;
     }>(
       () =>
-        supabaseAdmin
-          .from("users")
-          .select(
-            "id, diagnosis_completed_at, full_access_at, source_user_id",
-          )
-          .order("id", { ascending: true }),
+        applyLocale(
+          supabaseAdmin
+            .from("users")
+            .select(
+              "id, diagnosis_completed_at, full_access_at, source_user_id",
+            )
+            .order("id", { ascending: true }),
+          "acquisition_locale",
+        ),
       recordCoreSchemaIssue,
     ),
     fetchAll<PaymentHistoryRow>(
@@ -512,23 +616,25 @@ export async function computeStats(from: string | null, to: string | null) {
         supabaseAdmin
           .from("payment_history")
           .select(
-            "user_id, stripe_session_id, amount_jpy, amount_refunded_minor, currency, status, paid_at, created_at, payment_kind",
+            "user_id, stripe_session_id, amount_jpy, amount_refunded_minor, currency, status, paid_at, created_at, payment_kind, metadata",
           )
           // 全 payment_kind を取得する (2026-07-22: 課金分析強化)。
           // full_access 以外 (tako_unlock 等) も総売上・商品別内訳に含める。
-          // コホートKPI (ARPU/課金転換) は従来どおり full_access のみで計算する。
+          // コホートKPI (ARPU/課金転換) も同じ全商品ファクトを使う。
           .in("status", ["completed", "refunded"])
           .order("created_at", { ascending: true })
           .order("stripe_session_id", { ascending: true }),
       recordCoreSchemaIssue,
     ),
     fetchAll<KpiPaymentEventRow>(() =>
-      supabaseAdmin
-        .from("events")
-        .select("event_name, owner_token, metadata, created_at")
-        .in("event_name", ["checkout_session_created", "purchase_completed"])
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true }),
+      applyLocale(
+        supabaseAdmin
+          .from("events")
+          .select("event_name, owner_token, metadata, created_at")
+          .in("event_name", ["checkout_session_created", "purchase_completed"])
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
+      ),
     ),
     fetchAll<{
       session_id: string | null;
@@ -550,15 +656,17 @@ export async function computeStats(from: string | null, to: string | null) {
     // 決済日が Stripe とズレる (2026-08-09 に「今日の売上」がズレた原因)。
     // 期間判定は重複排除後の最初の行 (=実決済時刻) で行う。
     fetchAll<UnmeiPurchaseEventRow>(() =>
-      supabaseAdmin
-        .from("events")
-        .select("event_name, owner_token, metadata, created_at")
-        .in("event_name", [
-          "unmei_purchase_complete",
-          "unmei_upgrade_complete",
-        ])
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true }),
+      applyLocale(
+        supabaseAdmin
+          .from("events")
+          .select("event_name, owner_token, metadata, created_at")
+          .in("event_name", [
+            "unmei_purchase_complete",
+            "unmei_upgrade_complete",
+          ])
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true }),
+      ),
     ),
     fetchAll<EventMetaSessionRow>(
       evRows(["birth_form_view"], "session_id, metadata"),
@@ -571,7 +679,77 @@ export async function computeStats(from: string | null, to: string | null) {
     ),
     fetchAll<SessionRow>(evRows(["unmei_nav_badge_shown"])),
     fetchAll<SessionRow>(evRows(["unmei_nav_badge_clicked"])),
+    fetchAll<AliceEventRow>(
+      evRows(
+        [
+          "hoshiyomi_page_viewed",
+          "hoshiyomi_paywall_opened",
+          "hoshiyomi_message_sent",
+          "hoshiyomi_response_completed",
+          "hoshiyomi_response_failed",
+        ],
+        "event_name, session_id, metadata",
+      ),
+    ),
+    fetchAll<{ id: string; user_id: string; created_at: string }>(
+      () =>
+        applyRange(
+          supabaseAdmin
+            .from("hoshiyomi_conversations")
+            .select("id, user_id, created_at")
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true }),
+        ),
+      (error) => isMissingHoshiyomiStore(error),
+    ),
+    fetchAll<{
+      id: string;
+      user_id: string;
+      status: "reserved" | "committed" | "released";
+      created_at: string;
+    }>(
+      () =>
+        applyRange(
+          supabaseAdmin
+            .from("hoshiyomi_credit_reservations")
+            .select("id, user_id, status, created_at")
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true }),
+        ),
+      (error) => isMissingHoshiyomiStore(error),
+    ),
+    fetchAll<{
+      user_id: string;
+      credits_total: number;
+      credits_remaining: number;
+    }>(
+      () =>
+        supabaseAdmin
+          .from("hoshiyomi_credit_balances")
+          .select("user_id, credits_total, credits_remaining")
+          .order("user_id", { ascending: true }),
+      (error) => isMissingHoshiyomiStore(error),
+    ),
   ]);
+
+  // friend_perceptions と payment_history はロケール列を持たないため、
+  // acquisition_locale で絞った users を正本にして関連行だけを残す。
+  const localeUserIds = new Set(identityRows.map((row) => row.id));
+  const perceptions = statsLocale
+    ? rawPerceptions.filter((row) => localeUserIds.has(row.target_user_id))
+    : rawPerceptions;
+  const paymentHistoryRows = statsLocale
+    ? rawPaymentHistoryRows.filter((row) => localeUserIds.has(row.user_id))
+    : rawPaymentHistoryRows;
+  const aliceConversationRows = statsLocale
+    ? rawAliceConversationRows.filter((row) => localeUserIds.has(row.user_id))
+    : rawAliceConversationRows;
+  const aliceReservationRows = statsLocale
+    ? rawAliceReservationRows.filter((row) => localeUserIds.has(row.user_id))
+    : rawAliceReservationRows;
+  const aliceCreditRows = statsLocale
+    ? rawAliceCreditRows.filter((row) => localeUserIds.has(row.user_id))
+    : rawAliceCreditRows;
 
   const toUnique = (rows: SessionRow[]) =>
     new Set(rows.map((e) => e.session_id).filter(Boolean)).size;
@@ -581,7 +759,10 @@ export async function computeStats(from: string | null, to: string | null) {
   // 件数だけ欲しいので fetchAll ではなく head+count で取る (1000行制限の影響なし)。
   // LINE機能は ja 限定のため、ko ビューではスナップショットを 0 にする
   // (期間イベントは recordLineEvent が locale=ja で書くため applyLocale で自然に 0 になる)。
-  const ALICE_PLUS_PRICE_JPY = 480;
+  // 管理統計は商品実装へ依存させない。現在の月額・年額を月次換算して
+  // MRRスナップショットを算出する。
+  const ALICE_PLUS_MONTHLY_MRR_JPY = 480;
+  const ALICE_PLUS_ANNUAL_MRR_JPY = 4_800 / 12;
   // 失敗しても 0 に倒して stats 全体を巻き込まない (adminが新セクション起因で
   // 全損しないことを最優先にする)
   const countExact = async (
@@ -623,12 +804,20 @@ export async function computeStats(from: string | null, to: string | null) {
     lineFriends,
     lineLinked,
     linePlusActive,
+    linePlusMonthlyActive,
+    linePlusAnnualActive,
+    linePlusTrialing,
     linePlusCancelScheduled,
     lineFollowCount,
     lineLinkCompletedCount,
     linePlusCheckoutOpenedCount,
     linePlusSubscribedCount,
     linePlusCanceledCount,
+    lineAliceCardViewedCount,
+    lineAliceAddFriendClickedCount,
+    lineAliceLinkCodeRequestedCount,
+    lineAliceLinkCodeIssuedCount,
+    lineAliceLinkCodeFailedCount,
   ] = await Promise.all([
     statsLocale === "ko"
       ? Promise.resolve(0)
@@ -668,6 +857,38 @@ export async function computeStats(from: string | null, to: string | null) {
             supabaseAdmin
               .from("line_plus_subscriptions")
               .select("id", { count: "exact", head: true })
+              .eq("status", "active")
+              .eq("plan_key", "monthly"),
+          "line_plus:monthly_active",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_plus_subscriptions")
+              .select("id", { count: "exact", head: true })
+              .eq("status", "active")
+              .eq("plan_key", "annual"),
+          "line_plus:annual_active",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_plus_subscriptions")
+              .select("id", { count: "exact", head: true })
+              .eq("status", "trialing"),
+          "line_plus:trialing",
+        ),
+    statsLocale === "ko"
+      ? Promise.resolve(0)
+      : countExact(
+          () =>
+            supabaseAdmin
+              .from("line_plus_subscriptions")
+              .select("id", { count: "exact", head: true })
               .in("status", ["active", "trialing"])
               .eq("cancel_at_period_end", true),
           "line_plus:cancel_scheduled",
@@ -677,15 +898,60 @@ export async function computeStats(from: string | null, to: string | null) {
     lineEventCount("line_plus_checkout_opened"),
     lineEventCount("line_plus_subscribed"),
     lineEventCount("line_plus_canceled"),
+    lineEventCount("line_alice_card_viewed"),
+    lineEventCount("line_alice_add_friend_clicked"),
+    lineEventCount("line_alice_link_code_requested"),
+    lineEventCount("line_alice_link_code_issued"),
+    lineEventCount("line_alice_link_code_failed"),
   ]);
 
-  // 課金カードは owner_token が取れる場合は本人単位、取れない場合だけセッション単位。
-  // 同じ本人がページ再訪・別タブ表示しても分母を水増ししない。
-  const toUniquePaywallAudience = (rows: PaywallEventRow[]): number => {
+  const aliceEvents = (eventName: string) =>
+    aliceEventRows.filter((row) => row.event_name === eventName);
+  const alicePageRows = aliceEvents("hoshiyomi_page_viewed");
+  const aliceUnlockedPageRows = alicePageRows.filter(
+    (row) => row.metadata?.access_state === "unlocked",
+  );
+  const aliceLockedPageRows = alicePageRows.filter(
+    (row) => row.metadata?.access_state === "locked",
+  );
+  const alicePaywallRows = aliceEvents("hoshiyomi_paywall_opened");
+  const aliceMessageRows = aliceEvents("hoshiyomi_message_sent");
+  const aliceResponseRows = aliceEvents("hoshiyomi_response_completed");
+  const aliceFailureRows = aliceEvents("hoshiyomi_response_failed");
+  const alicePageViews = toUnique(alicePageRows);
+  const aliceAccessViewers = toUnique(aliceUnlockedPageRows);
+  const aliceLockedViewers = toUnique(aliceLockedPageRows);
+  const alicePaywallOpeners = toUnique(alicePaywallRows);
+  const aliceMessageSenders = toUnique(aliceMessageRows);
+  const aliceResponseViewers = toUnique(aliceResponseRows);
+  const aliceFailureViewers = toUnique(aliceFailureRows);
+  const aliceCommittedRows = aliceReservationRows.filter(
+    (row) => row.status === "committed",
+  );
+  const aliceReleasedRows = aliceReservationRows.filter(
+    (row) => row.status === "released",
+  );
+  const aliceSettledMessages =
+    aliceCommittedRows.length + aliceReleasedRows.length;
+  const aliceActiveUsers = new Set(
+    aliceCommittedRows.map((row) => row.user_id),
+  ).size;
+  const aliceCreditTotals = aliceCreditRows.reduce(
+    (totals, row) => ({
+      total: totals.total + Number(row.credits_total ?? 0),
+      remaining: totals.remaining + Number(row.credits_remaining ?? 0),
+    }),
+    { total: 0, remaining: 0 },
+  );
+
+  // 購入ファネルのブラウザ段階は「ユニークセッション」で統一する。
+  // 古い行など session_id が無い場合だけ owner_token をフォールバックに使い、
+  // 行そのものを欠落させない。
+  const toUniquePaywallSessions = (rows: PaywallEventRow[]): number => {
     const keys = new Set<string>();
     for (const row of rows) {
-      if (row.owner_token) keys.add(`owner:${row.owner_token}`);
-      else if (row.session_id) keys.add(`session:${row.session_id}`);
+      if (row.session_id) keys.add(`session:${row.session_id}`);
+      else if (row.owner_token) keys.add(`owner:${row.owner_token}`);
     }
     return keys.size;
   };
@@ -705,7 +971,10 @@ export async function computeStats(from: string | null, to: string | null) {
     return keys.size;
   };
 
-  const sumUniqueJpyPurchases = (rows: StripeEventRow[]): number => {
+  const sumUniqueCurrencyPurchases = (
+    rows: StripeEventRow[],
+    targetCurrency: string,
+  ): number => {
     const seen = new Set<string>();
     let total = 0;
     for (const row of rows) {
@@ -716,7 +985,8 @@ export async function computeStats(from: string | null, to: string | null) {
       const currency = row.metadata?.currency;
       const amount = row.metadata?.amount_total;
       if (
-        (currency === "jpy" || currency === "JPY") &&
+        typeof currency === "string" &&
+        currency.toLowerCase() === targetCurrency.toLowerCase() &&
         typeof amount === "number" &&
         Number.isFinite(amount)
       ) {
@@ -767,8 +1037,11 @@ export async function computeStats(from: string | null, to: string | null) {
     { ownerToken: string; resultViewedAt: number }
   >();
   for (const row of friendJourneyRows) {
+    const funnelVersion = row.metadata?.funnelVersion;
     if (
       row.event_name !== "result_viewed" ||
+      (funnelVersion !== "share_v2" &&
+        funnelVersion !== SELF_RESULT_SHARE_FUNNEL_VERSION) ||
       !row.owner_token ||
       !row.session_id ||
       !journeyInCohortRange(row.created_at)
@@ -795,11 +1068,37 @@ export async function computeStats(from: string | null, to: string | null) {
   }
   const cohortOwners = new Set(cohortStartedAt.keys());
 
+  // v3 の result_viewed がある本人だけを、修正後の自己結果シェア
+  // コホートとする。友達診断ファネルはv2とv3を連続して数える。
+  const selfShareCohortStartedAt = new Map<string, number>();
+  for (const row of friendJourneyRows) {
+    if (
+      row.event_name !== "result_viewed" ||
+      row.metadata?.funnelVersion !== SELF_RESULT_SHARE_FUNNEL_VERSION ||
+      !row.owner_token ||
+      !row.session_id ||
+      !journeyInCohortRange(row.created_at)
+    ) {
+      continue;
+    }
+    const time = Date.parse(row.created_at);
+    if (
+      time < Date.parse(SELF_RESULT_SHARE_FUNNEL_MEASUREMENT_STARTED_AT)
+    ) {
+      continue;
+    }
+    const completedAt = diagnosisCohortSessions.get(row.session_id);
+    if (completedAt === undefined || completedAt > time) continue;
+    const previous = selfShareCohortStartedAt.get(row.owner_token);
+    if (previous === undefined || time < previous) {
+      selfShareCohortStartedAt.set(row.owner_token, time);
+    }
+  }
+  const selfShareCohortOwners = new Set(selfShareCohortStartedAt.keys());
+
   const inviteToOwner = new Map<string, string>();
-  const ownerToUserId = new Map<string, string>();
   for (const row of identityRows) {
     if (!row.owner_token) continue;
-    ownerToUserId.set(row.owner_token, row.id);
     if (row.invite_code) inviteToOwner.set(row.invite_code, row.owner_token);
   }
 
@@ -842,8 +1141,11 @@ export async function computeStats(from: string | null, to: string | null) {
   const badgeShownOwners = new Set<string>();
   const badgeClickedOwners = new Set<string>();
   const friendLandingSessions = new Set<string>();
+  const friendAnswerStartedSessions = new Set<string>();
   const friendAnswerSessions = new Set<string>();
   const friendToDiagnosisSessions = new Set<string>();
+  const friendToDiagnosisClickedAt = new Map<string, number>();
+  const friendDiagnosisCompletedSessions = new Set<string>();
 
   // 招待の解剖 (2026-08-04 計測開始): 送信UI露出 (surface別) と招待クリックの
   // channel/source 別内訳。招待未実行を「UIまで到達していない」/「見たのに送らない」に分解する。
@@ -910,6 +1212,9 @@ export async function computeStats(from: string | null, to: string | null) {
       inviteActionOwners.add(owner); // QRなどクリックを伴わない招待も、到達実績で補完する。
       if (row.session_id) friendLandingSessions.add(row.session_id);
     }
+    if (row.event_name === "friend_answer_started" && row.session_id) {
+      friendAnswerStartedSessions.add(row.session_id);
+    }
     if (
       row.event_name === "friend_answer_completed" ||
       row.event_name === "friend_v2_completed"
@@ -923,25 +1228,199 @@ export async function computeStats(from: string | null, to: string | null) {
       row.event_name === "friend_to_diagnosis_clicked" ||
       row.event_name === "friend_v2_self_cta_clicked"
     ) {
-      if (row.session_id) friendToDiagnosisSessions.add(row.session_id);
+      if (row.session_id) {
+        friendToDiagnosisSessions.add(row.session_id);
+        const clickedAt = Date.parse(row.created_at);
+        const previous = friendToDiagnosisClickedAt.get(row.session_id);
+        if (previous === undefined || clickedAt < previous) {
+          friendToDiagnosisClickedAt.set(row.session_id, clickedAt);
+        }
+      }
     }
   }
 
-  // 子診断はイベントではなく users.source_user_id を正とし、コホートの親に紐づく人数を数える。
-  const cohortOwnerByUserId = new Map<string, string>();
-  for (const owner of cohortOwners) {
-    const userId = ownerToUserId.get(owner);
-    if (userId) cohortOwnerByUserId.set(userId, owner);
-  }
-  let cohortChildDiagnosisCompleted = 0;
-  for (const row of identityRows) {
-    if (!row.source_user_id) continue;
-    const owner = cohortOwnerByUserId.get(row.source_user_id);
-    if (!owner) continue;
-    if (Date.parse(row.created_at) >= (cohortStartedAt.get(owner) ?? Infinity)) {
-      cohortChildDiagnosisCompleted++;
+  // 自己診断完了時の owner_token は、招待した本人ではなく新しく診断した友達本人を指す。
+  // ownerForJourney() に通すと、その直後の result_viewed を友達本人のコホート開始として
+  // 完了イベントが「開始前」に落とされるため、CTA 時点で招待元コホートへ帰属済みの
+  // session_id を正本にして後続完了を判定する。
+  for (const row of friendJourneyRows) {
+    if (row.event_name !== "diagnosis_completed" || !row.session_id) continue;
+    const clickedAt = friendToDiagnosisClickedAt.get(row.session_id);
+    if (
+      clickedAt !== undefined &&
+      Date.parse(row.created_at) >= clickedAt
+    ) {
+      friendDiagnosisCompletedSessions.add(row.session_id);
     }
   }
+
+  // --- 自己結果シェアファネル ---
+  // /share 到達以降は共有者と別セッションになるため、invite_code で共有者へ戻し、
+  // 診断ページ以降は同じ訪問者 session_id を引き継いで共有者へ帰属させる。
+  // 各段階は「前段を時系列で通過した人」に限定する。これにより、
+  // UI表示よりシェア操作が多い、CTA 0人の後に診断開始がいる、などの
+  // 直列ファネルとして成立しない数値を出さない。
+  const shareSessionToOwner = new Map<string, string>();
+  const attributedShareRows: Array<{
+    row: JourneyRow;
+    owner: string;
+    sessionOwner: string | null;
+    time: number;
+  }> = [];
+
+  for (const row of friendJourneyRows) {
+    const directOwner =
+      row.owner_token && selfShareCohortOwners.has(row.owner_token)
+        ? row.owner_token
+        : null;
+    const inviteOwner = row.invite_code
+      ? inviteToOwner.get(row.invite_code) ?? null
+      : null;
+    if (
+      row.session_id &&
+      inviteOwner &&
+      selfShareCohortOwners.has(inviteOwner) &&
+      (row.event_name === "share_landing_viewed" ||
+        row.event_name === "share_to_diagnosis_clicked")
+    ) {
+      // 時系列順に更新し、同じブラウザが別の共有URLを後で開いた場合も、
+      // それ以前の診断イベントを後の共有者へ誤帰属させない。
+      shareSessionToOwner.set(row.session_id, inviteOwner);
+    }
+    const sessionOwner = row.session_id
+      ? shareSessionToOwner.get(row.session_id) ?? null
+      : null;
+    const owner = directOwner ?? inviteOwner ?? sessionOwner;
+    if (
+      !owner ||
+      !selfShareCohortOwners.has(owner) ||
+      Date.parse(row.created_at) <
+        (selfShareCohortStartedAt.get(owner) ?? Infinity)
+    ) {
+      continue;
+    }
+    attributedShareRows.push({
+      row,
+      owner,
+      sessionOwner,
+      time: Date.parse(row.created_at),
+    });
+  }
+
+  const setEarliest = (map: Map<string, number>, key: string, time: number) => {
+    const previous = map.get(key);
+    if (previous === undefined || time < previous) map.set(key, time);
+  };
+  const shareUiAtByOwner = new Map<string, number>();
+  for (const { row, owner, time } of attributedShareRows) {
+    if (row.event_name === "share_ui_shown") {
+      setEarliest(shareUiAtByOwner, owner, time);
+    }
+  }
+
+  const shareActionAtByOwner = new Map<string, number>();
+  for (const { row, owner, time } of attributedShareRows) {
+    if (
+      row.event_name === "share_clicked" &&
+      row.metadata?.kind === "character" &&
+      (shareUiAtByOwner.get(owner) ?? Infinity) <= time
+    ) {
+      setEarliest(shareActionAtByOwner, owner, time);
+    }
+  }
+
+  type ShareSessionStage = { owner: string; time: number };
+  const setEarliestStage = (
+    map: Map<string, ShareSessionStage>,
+    key: string,
+    owner: string,
+    time: number,
+  ) => {
+    const previous = map.get(key);
+    if (!previous || time < previous.time) map.set(key, { owner, time });
+  };
+  const shareJourneyKey = (sessionId: string, owner: string) =>
+    `${sessionId}\u0000${owner}`;
+
+  const shareLandingAtByJourney = new Map<string, ShareSessionStage>();
+  for (const { row, owner, time } of attributedShareRows) {
+    const actionAt = shareActionAtByOwner.get(owner);
+    if (
+      row.event_name === "share_landing_viewed" &&
+      row.session_id &&
+      actionAt !== undefined &&
+      actionAt <= time
+    ) {
+      setEarliestStage(
+        shareLandingAtByJourney,
+        shareJourneyKey(row.session_id, owner),
+        owner,
+        time,
+      );
+    }
+  }
+
+  const shareDiagnosisCtaAtByJourney = new Map<string, ShareSessionStage>();
+  for (const { row, owner, time } of attributedShareRows) {
+    if (row.event_name !== "share_to_diagnosis_clicked" || !row.session_id) {
+      continue;
+    }
+    const key = shareJourneyKey(row.session_id, owner);
+    const landing = shareLandingAtByJourney.get(key);
+    if (landing && landing.time <= time) {
+      setEarliestStage(shareDiagnosisCtaAtByJourney, key, owner, time);
+    }
+  }
+
+  const shareDiagnosisStartedAtByJourney = new Map<string, ShareSessionStage>();
+  for (const { row, owner, sessionOwner, time } of attributedShareRows) {
+    if (
+      row.event_name !== "diagnosis_started" ||
+      !row.session_id ||
+      sessionOwner !== owner
+    ) {
+      continue;
+    }
+    const key = shareJourneyKey(row.session_id, owner);
+    const cta = shareDiagnosisCtaAtByJourney.get(key);
+    if (cta && cta.time <= time) {
+      setEarliestStage(shareDiagnosisStartedAtByJourney, key, owner, time);
+    }
+  }
+
+  const shareDiagnosisCompletedAtByJourney = new Map<
+    string,
+    ShareSessionStage
+  >();
+  for (const { row, owner, sessionOwner, time } of attributedShareRows) {
+    if (
+      row.event_name !== "diagnosis_completed" ||
+      !row.session_id ||
+      sessionOwner !== owner
+    ) {
+      continue;
+    }
+    const key = shareJourneyKey(row.session_id, owner);
+    const started = shareDiagnosisStartedAtByJourney.get(key);
+    if (started && started.time <= time) {
+      setEarliestStage(shareDiagnosisCompletedAtByJourney, key, owner, time);
+    }
+  }
+
+  const ownersFromStages = (stages: Map<string, ShareSessionStage>) =>
+    new Set(Array.from(stages.values(), (stage) => stage.owner));
+  const shareUiOwners = new Set(shareUiAtByOwner.keys());
+  const shareActionOwners = new Set(shareActionAtByOwner.keys());
+  const shareLandingOwners = ownersFromStages(shareLandingAtByJourney);
+  const shareDiagnosisCtaOwners = ownersFromStages(
+    shareDiagnosisCtaAtByJourney,
+  );
+  const shareDiagnosisStartedOwners = ownersFromStages(
+    shareDiagnosisStartedAtByJourney,
+  );
+  const shareDiagnosisCompletedOwners = ownersFromStages(
+    shareDiagnosisCompletedAtByJourney,
+  );
 
   // result_revisited: result_viewed も持つセッションのみ数える
   const viewedSessions = new Set(
@@ -1128,48 +1607,39 @@ export async function computeStats(from: string | null, to: string | null) {
   const viralCoefficient =
     diagnosisCompleted > 0 ? childDiagCompleted / diagnosisCompleted : 0;
 
-  // --- 課金 ---
-  // webhook (grantFullAccessByEmailOrId) は同一 email の全 users 行を full にするため、
-  // 「人」= email (無ければ行id) でユニーク化する。購入時刻はその人の最古の full_access_at。
-  // 期間判定は Date.parse の数値比較 ('+00:00' と 'Z' の表記差で文字列比較が壊れるため)。
-  const paidPersons = new Map<string, string | null>(); // personKey -> earliest full_access_at
-  for (const r of paidUserRows) {
-    const key = (r.email ?? "").trim().toLowerCase() || `id:${r.id}`;
-    const prev = paidPersons.get(key);
-    const at = r.full_access_at;
-    if (prev === undefined) {
-      paidPersons.set(key, at);
-    } else if (at && (!prev || Date.parse(at) < Date.parse(prev))) {
-      paidPersons.set(key, at);
-    }
-  }
-  let paidUsers = 0;
-  for (const at of paidPersons.values()) {
-    if (!from && !to) {
-      paidUsers++; // 全期間は full_access_at 無し (旧データ) も計上
-    } else if (at && inRange(at)) {
-      paidUsers++;
-    }
-  }
-  const revenueJpy = paidUsers * FULL_ACCESS_PRICE_JPY;
-
   // ===== 現在ユーザーに表示している課金カード =====
-  // feature flag と同じモードを正本にし、カード表示・CTA・Stripe・決済を
-  // paywall_version で一貫して接続する。開発プレビューとStripeテストは除外する。
-  const activePaywallVersion =
-    paywallCardMode() === "three-course"
-      ? THREE_COURSE_PAYWALL_VERSION
-      : "legacy";
+  // カードの見た目とは分けて、現行オファー固有の paywall_version で
+  // 表示・CTA・Stripe・決済を一貫して接続する。開発プレビューは除外する。
+  const activePaywallVersion = THREE_COURSE_PAYWALL_VERSION;
   const isActivePaywallMeta = (
     metadata: Record<string, unknown> | null,
   ): boolean => metadata?.paywall_version === activePaywallVersion;
-  const isMainResultPageMeta = (
+  const isCoursePaywallPageMeta = (
     metadata: Record<string, unknown> | null,
-  ): boolean => metadata?.page === "me" || metadata?.page === "tako";
-  const isMainResultReturnMeta = (
+  ): boolean => {
+    const isResultPage =
+      metadata?.page === "me" ||
+      metadata?.page === "tako" ||
+      metadata?.page === "result";
+    return (
+      isResultPage ||
+      metadata?.page === "aisho" ||
+      metadata?.page === "unmei" ||
+      metadata?.page === "hoshiyomi"
+    );
+  };
+  const isCoursePaywallReturnMeta = (
     metadata: Record<string, unknown> | null,
-  ): boolean =>
-    metadata?.return_to === "me" || metadata?.return_to === "tako";
+  ): boolean => {
+    const isResultReturn =
+      metadata?.return_to === "me" || metadata?.return_to === "tako";
+    return (
+      isResultReturn ||
+      metadata?.return_to === "aisho" ||
+      metadata?.return_to === "unmei" ||
+      metadata?.return_to === "hoshiyomi"
+    );
+  };
   const productFromMeta = (
     metadata: Record<string, unknown> | null,
   ): AccessProduct | null => {
@@ -1185,41 +1655,34 @@ export async function computeStats(from: string | null, to: string | null) {
   };
 
   const courseCardViewRows = paywallViewedRows.filter((row) =>
-    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isCoursePaywallPageMeta(row.metadata),
   );
   const coursePlanViewRows = paywallPlanViewedRows.filter((row) =>
-    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isCoursePaywallPageMeta(row.metadata),
   );
   const courseScrollRows = paywallScrollRows.filter((row) =>
-    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
-  );
-  // 解除導線はカードが表示される前に押す入口なので、カードのversionでは絞らない。
-  // 旧実装が表示モードを見ず3コース版として記録した期間も、実際の入口人数は復元できる。
-  const mainResultScrollRows = paywallScrollRows.filter((row) =>
-    isMainResultPageMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isCoursePaywallPageMeta(row.metadata),
   );
   const courseCtaRows = purchaseCtaRows.filter((row) =>
-    isActivePaywallMeta(row.metadata) && isMainResultPageMeta(row.metadata),
+    isActivePaywallMeta(row.metadata) && isCoursePaywallPageMeta(row.metadata),
   );
   const courseCheckoutRows = checkoutCreatedRows.filter(
     (row) =>
       isActivePaywallMeta(row.metadata) &&
-      isMainResultReturnMeta(row.metadata) &&
+      isCoursePaywallReturnMeta(row.metadata) &&
       isLiveStripeRow(row),
   );
   const coursePurchaseRows = purchaseCompletedRows.filter(
     (row) =>
       isActivePaywallMeta(row.metadata) &&
-      isMainResultReturnMeta(row.metadata) &&
+      isCoursePaywallReturnMeta(row.metadata) &&
       isLiveStripeRow(row),
   );
 
-  const courseCardViewers = toUniquePaywallAudience(courseCardViewRows);
-  const coursePlanViewers = toUniquePaywallAudience(coursePlanViewRows);
-  const mainResultScrollClickers = toUniquePaywallAudience(
-    mainResultScrollRows,
-  );
-  const courseCtaClickers = toUniquePaywallAudience(courseCtaRows);
+  const courseCardViewers = toUniquePaywallSessions(courseCardViewRows);
+  const coursePlanViewers = toUniquePaywallSessions(coursePlanViewRows);
+  const courseScrollClickers = toUniquePaywallSessions(courseScrollRows);
+  const courseCtaClickers = toUniquePaywallSessions(courseCtaRows);
   const courseStripeReached = countUniqueStripeSessions(courseCheckoutRows);
   const coursePurchasers = countUniquePurchasers(coursePurchaseRows);
   const courseTransactions = countUniqueStripeSessions(coursePurchaseRows);
@@ -1229,26 +1692,24 @@ export async function computeStats(from: string | null, to: string | null) {
   const courseUpgrades = countUniqueStripeSessions(
     coursePurchaseRows.filter((row) => isUpgradeMeta(row.metadata)),
   );
-  const courseRevenueJpy = sumUniqueJpyPurchases(coursePurchaseRows);
-
-  const eligibleResultSessionIds = new Set<string>();
-  for (const row of viewedSessionRows) {
-    if (row.session_id) eligibleResultSessionIds.add(row.session_id);
-  }
-  for (const row of friendJourneyRows) {
-    if (
-      row.event_name === "tako_viewed" &&
-      row.session_id &&
-      inRange(row.created_at)
-    ) {
-      eligibleResultSessionIds.add(row.session_id);
-    }
-  }
+  const courseRevenueCurrency = statsLocale === "ko" ? "krw" : "jpy";
+  const courseRevenueMinor = sumUniqueCurrencyPurchases(
+    coursePurchaseRows,
+    courseRevenueCurrency,
+  );
+  const courseRevenueJpy = sumUniqueCurrencyPurchases(coursePurchaseRows, "jpy");
 
   const coursePlans = ACCESS_PRODUCTS.map((product) => {
-    const planViews = coursePlanViewRows.filter(
-      (row) => productFromMeta(row.metadata) === product,
-    );
+    // 旧カードデザインは paywall_plan_viewed を送らないため、商品別の
+    // paywall_viewed も表示分母へ含める。セッション単位の集計で重複は除かれる。
+    const planViews = [
+      ...courseCardViewRows.filter(
+        (row) => productFromMeta(row.metadata) === product,
+      ),
+      ...coursePlanViewRows.filter(
+        (row) => productFromMeta(row.metadata) === product,
+      ),
+    ];
     const ctaClicks = courseCtaRows.filter(
       (row) => productFromMeta(row.metadata) === product,
     );
@@ -1258,8 +1719,8 @@ export async function computeStats(from: string | null, to: string | null) {
     const purchases = coursePurchaseRows.filter(
       (row) => productFromMeta(row.metadata) === product,
     );
-    const viewers = toUniquePaywallAudience(planViews);
-    const ctaClickers = toUniquePaywallAudience(ctaClicks);
+    const viewers = toUniquePaywallSessions(planViews);
+    const ctaClickers = toUniquePaywallSessions(ctaClicks);
     const stripeReached = countUniqueStripeSessions(checkouts);
     const purchasers = countUniquePurchasers(purchases);
     const transactions = countUniqueStripeSessions(purchases);
@@ -1269,7 +1730,11 @@ export async function computeStats(from: string | null, to: string | null) {
     const upgrades = countUniqueStripeSessions(
       purchases.filter((row) => isUpgradeMeta(row.metadata)),
     );
-    const revenueJpy = sumUniqueJpyPurchases(purchases);
+    const revenueMinor = sumUniqueCurrencyPurchases(
+      purchases,
+      courseRevenueCurrency,
+    );
+    const revenueJpy = sumUniqueCurrencyPurchases(purchases, "jpy");
     return {
       product,
       viewers,
@@ -1279,6 +1744,8 @@ export async function computeStats(from: string | null, to: string | null) {
       transactions,
       newPurchases,
       upgrades,
+      currency: courseRevenueCurrency,
+      revenueMinor,
       revenueJpy,
       ctaRate: rate(ctaClickers, viewers),
       stripeRate: rate(stripeReached, ctaClickers),
@@ -1288,8 +1755,8 @@ export async function computeStats(from: string | null, to: string | null) {
   });
 
   // ===== 商品別課金ファネル =====
-  //   自己診断ページは ¥199 self_report。友達診断・相性・韓国版は
-  //   従来の full_access を維持する。¥199テストの転換率に¥499決済を混ぜないため、
+  //   自己診断ページは self_report。友達診断・相性・韓国版は
+  //   従来の full_access を維持する。ライトの転換率に完全版決済を混ぜないため、
   //   新イベントは metadata.product で厳密に分ける。
   // 判定:
   //   - paywall_viewed: metadata.page==='tako' (新カード) または variant==='tako' (旧カード互換)。
@@ -1306,8 +1773,21 @@ export async function computeStats(from: string | null, to: string | null) {
     m?.product === "unmei" ||
     m?.product === "unmei_upgrade" ||
     m?.page === "unmei" ||
+    m?.surface === "unmei" ||
     m?.return_to === "unmei" ||
-    m?.source === "unmei_page";
+    (typeof m?.source === "string" &&
+      [
+        "unmei_page",
+        "unmei_hero",
+        "unmei_birth_chat",
+        "nav_locked_unmei",
+      ].includes(m.source));
+  const isAliceMeta = (m: Record<string, unknown> | null): boolean =>
+    m?.page === "hoshiyomi" ||
+    m?.surface === "hoshiyomi" ||
+    m?.return_to === "hoshiyomi" ||
+    (typeof m?.source === "string" &&
+      ["hoshiyomi_first_send", "nav_locked_hoshiyomi"].includes(m.source));
   const isSelfReportMeta = (m: Record<string, unknown> | null): boolean =>
     m?.product === "self_report";
 
@@ -1328,7 +1808,7 @@ export async function computeStats(from: string | null, to: string | null) {
   const checkoutTakoRows = checkoutCreatedRows.filter((r) =>
     isTakoMeta(r.metadata),
   );
-  // ¥199決済完了は self_report だけを集計する。
+  // ライト決済完了は self_report だけを集計する。
   const purchaseFullRows = purchaseCompletedRows.filter(
     (r) => isSelfReportMeta(r.metadata),
   );
@@ -1356,6 +1836,9 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiCheckoutRows = checkoutCreatedRows.filter((r) =>
     isUnmeiMeta(r.metadata),
   );
+  const unmeiCurrentPurchaseRows = purchaseCompletedRows.filter(
+    (r) => isUnmeiMeta(r.metadata) && isLiveStripeRow(r),
+  );
   // webhook 再送の重複行を除去し、決済ごとに最初の行 (=実決済時刻) だけ残す。
   // 行は created_at 昇順で取得済み。ファネル・売上とも期間判定はこの実決済時刻で行い、
   // Stripe ダッシュボードの計上日と一致させる。
@@ -1379,10 +1862,27 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiLpViewed = toUnique(unmeiLpRows);
   const unmeiPurchaseStarted = toUnique(unmeiPurchaseIntentRows);
   const unmeiCheckoutCreated = countUniqueStripeSessions(unmeiCheckoutRows);
-  const unmeiPurchases = countUniqueStripeSessions(unmeiPurchaseRowsInRange);
+  const unmeiCurrentPurchases = countUniqueStripeSessions(
+    unmeiCurrentPurchaseRows,
+  );
+  const unmeiLegacyPurchases = countUniqueStripeSessions(
+    unmeiPurchaseRowsInRange,
+  );
+  const unmeiAttributedPurchaseRows: StripeEventRow[] = [
+    ...unmeiPurchaseRowsInRange,
+    ...unmeiCurrentPurchaseRows,
+  ];
+  const unmeiPurchases = countUniqueStripeSessions(
+    unmeiAttributedPurchaseRows,
+  );
   const unmeiBasePurchases = countUniqueStripeSessions(unmeiBasePurchaseRows);
   const unmeiUpgradePurchases = countUniqueStripeSessions(
     unmeiUpgradePurchaseRows,
+  );
+  const unmeiPremiumPurchases = countUniqueStripeSessions(
+    unmeiCurrentPurchaseRows.filter(
+      (r) => r.metadata?.product === "premium_bundle",
+    ),
   );
   const unmeiReadingViewed = toUnique(unmeiReadingRows);
   const birthFormViewed = toUnique(
@@ -1397,9 +1897,10 @@ export async function computeStats(from: string | null, to: string | null) {
   const unmeiBadgeShown = toUnique(unmeiBadgeShownRows);
   const unmeiBadgeClicked = toUnique(unmeiBadgeClickedRows);
 
-  // 運命の設計図: チャット決済フロー専用ファネル (ui/payment_method で抽出・旧リダイレクト版と分離)。
+  // 運命の設計図: チャット決済フロー専用ファネル。
+  // 旧埋め込み決済は payment_method、新しいStripe-hosted Checkoutは source で抽出する。
   // 段階順はチャット実態 (LP→作成CTA→出生入力→保存→決済フォーム→完了)。
-  // ⑤決済フォーム到達は checkout_session_created(payment_method=card_embedded)=埋め込みフォーム生成で代替。
+  // ⑤決済フォーム到達は checkout_session_created で数える。
   const unmeiChatLaunched = toUnique(
     purchaseCtaRows.filter((r) => r.metadata?.ui === "chat_launch"),
   );
@@ -1410,25 +1911,94 @@ export async function computeStats(from: string | null, to: string | null) {
     birthFormSubmitRows.filter((r) => r.metadata?.ui === "chat_purchase"),
   );
   const unmeiChatCheckoutRows = unmeiCheckoutRows.filter(
-    (r) => r.metadata?.payment_method === "card_embedded",
+    (r) =>
+      r.metadata?.payment_method === "card_embedded" ||
+      r.metadata?.source === "unmei_birth_chat",
   );
   const unmeiChatCheckoutReached = countUniqueStripeSessions(
     unmeiChatCheckoutRows,
   );
-  // チャット決済で作られた Stripe セッション (card_embedded=埋め込み / paypay=PayPay直行) の
-  // stripe_session_id を集め、その ID で完了した購入のみをチャット発の決済完了として数える。
+  // 旧チャットの埋め込み/PayPayと、新しい出生情報チャットのStripe Session IDを集め、
+  // そのIDで完了した購入だけをチャット発の決済完了として数える。
   const unmeiChatCheckoutSessionIds = new Set<string>();
   for (const r of unmeiCheckoutRows) {
     const pm = r.metadata?.payment_method;
-    if (pm !== "card_embedded" && pm !== "paypay") continue;
+    const source = r.metadata?.source;
+    if (
+      pm !== "card_embedded" &&
+      pm !== "paypay" &&
+      source !== "unmei_birth_chat"
+    ) {
+      continue;
+    }
     const sid = r.metadata?.stripe_session_id;
     if (typeof sid === "string") unmeiChatCheckoutSessionIds.add(sid);
   }
-  const unmeiChatPurchaseRows = unmeiPurchaseRowsInRange.filter((r) => {
+  const unmeiChatPurchaseRows = unmeiAttributedPurchaseRows.filter((r) => {
     const sid = r.metadata?.stripe_session_id;
     return typeof sid === "string" && unmeiChatCheckoutSessionIds.has(sid);
   });
   const unmeiChatPurchases = countUniqueStripeSessions(unmeiChatPurchaseRows);
+
+  // 下部ナビのロック → コース選択は、設計図LPの出生情報チャットとは別導線。
+  // surface/source/return_to をつないで、入口から決済完了までを独立して表示する。
+  const unmeiNavOpenRows = paywallScrollRows.filter(
+    (r) => r.metadata?.source === "nav_locked_unmei",
+  );
+  const unmeiNavPlanRows = paywallPlanViewedRows.filter(
+    (r) =>
+      isActivePaywallMeta(r.metadata) &&
+      r.metadata?.surface === "unmei" &&
+      r.metadata?.source === "nav_locked_unmei",
+  );
+  const unmeiNavCtaRows = purchaseCtaRows.filter(
+    (r) => r.metadata?.source === "nav_locked_unmei",
+  );
+  const unmeiNavCheckoutRows = checkoutCreatedRows.filter(
+    (r) =>
+      isActivePaywallMeta(r.metadata) &&
+      r.metadata?.return_to === "unmei" &&
+      isLiveStripeRow(r),
+  );
+  const unmeiNavPurchaseRows = purchaseCompletedRows.filter(
+    (r) =>
+      isActivePaywallMeta(r.metadata) &&
+      r.metadata?.return_to === "unmei" &&
+      isLiveStripeRow(r),
+  );
+  const unmeiNavOpened = toUniquePaywallSessions(unmeiNavOpenRows);
+  const unmeiNavCardViewers = toUniquePaywallSessions(unmeiNavPlanRows);
+  const unmeiNavCtaClickers = toUniquePaywallSessions(unmeiNavCtaRows);
+  const unmeiNavStripeReached = countUniqueStripeSessions(
+    unmeiNavCheckoutRows,
+  );
+  const unmeiNavPurchases = countUniqueStripeSessions(unmeiNavPurchaseRows);
+
+  // Aliceは「会話利用」と「購入導線」を分離して計測する。下部ナビのロックと、
+  // Aliceページで初回送信したときのカードを同じ surface=hoshiyomi で束ねる。
+  const alicePlanRows = paywallPlanViewedRows.filter(
+    (r) => isActivePaywallMeta(r.metadata) && isAliceMeta(r.metadata),
+  );
+  const aliceCtaRows = purchaseCtaRows.filter(
+    (r) => isActivePaywallMeta(r.metadata) && isAliceMeta(r.metadata),
+  );
+  const aliceCheckoutRows = checkoutCreatedRows.filter(
+    (r) =>
+      isActivePaywallMeta(r.metadata) &&
+      isAliceMeta(r.metadata) &&
+      isLiveStripeRow(r),
+  );
+  const alicePurchaseRows = purchaseCompletedRows.filter(
+    (r) =>
+      isActivePaywallMeta(r.metadata) &&
+      isAliceMeta(r.metadata) &&
+      isLiveStripeRow(r),
+  );
+  const aliceCardViewers = toUniquePaywallSessions(alicePlanRows);
+  const aliceCtaClickers = toUniquePaywallSessions(aliceCtaRows);
+  const aliceStripeReached = countUniqueStripeSessions(aliceCheckoutRows);
+  const alicePurchasers = countUniquePurchasers(alicePurchaseRows);
+  const alicePurchases = countUniqueStripeSessions(alicePurchaseRows);
 
   // 誘導クリックの source 内訳 (どのボタンが課金カードへ誘導しているか)
   const sourceCounts = new Map<string, number>();
@@ -1575,8 +2145,8 @@ export async function computeStats(from: string | null, to: string | null) {
     });
   }
 
-  // kind 付きの全商品決済ファクト。総売上・商品別内訳・日別推移の源泉。
-  // コホートKPI (computeCoreKpis) へは full_access のみを渡す (従来と同義)。
+  // kind 付きの全商品決済ファクト。総売上・商品別内訳・日別推移・
+  // コホートKPIの共通源泉。商品を限定せず「何らかの有償購入」を課金として扱う。
   // ローカル開発が本番 Supabase + テスト Stripe の構成で動くため、テストモード決済
   // (cs_test_) が本番 DB に混入している (2026-08-09 実測: 計¥8,860)。Stripe の
   // ライブ売上には存在しないため、売上ファクトから除外する。
@@ -1698,7 +2268,7 @@ export async function computeStats(from: string | null, to: string | null) {
     });
   }
 
-  // 選択期間中に確定したフルアクセス決済の実売上。
+  // 選択期間中に確定した全商品決済の実売上。
   // ARPU は「選択期間に診断した人が、その後いくら購入したか」というコホート指標だが、
   // ダッシュボード最上段の課金額は「選択期間中に実際に入金された額」を表示する。
   const periodRevenueBuckets = new Map<
@@ -1751,43 +2321,186 @@ export async function computeStats(from: string | null, to: string | null) {
       }))
       .sort((a, b) => a.currency.localeCompare(b.currency)),
   };
+  const periodPurchaseTransactions = periodRevenue.currencies.reduce(
+    (total, row) => total + row.purchases,
+    0,
+  );
+  const paidUsers = periodRevenue.uniquePayers;
+  const revenueJpy =
+    periodRevenue.currencies.find((row) => row.currency === "jpy")
+      ?.netRevenueMinor ?? 0;
 
-  const unmeiRevenueBuckets = new Map<
-    string,
-    {
-      purchases: number;
-      netRevenueMinor: number;
+  const periodPaymentSessionIds = new Set(
+    verifiedPaymentFacts
+      .filter((payment) => inRange(payment.paidAt))
+      .map((payment) => payment.stripeSessionId),
+  );
+  let purchaseConversionOutboxRows: Array<{
+    stripe_session_id: string;
+    status: "pending" | "processing" | "sent" | "failed";
+  }> = [];
+  const { data: outboxData, error: outboxError } = await withDbQuerySlot(() =>
+    supabaseAdmin
+      .from("purchase_conversion_outbox")
+      .select("stripe_session_id, status")
+      .in("status", ["pending", "processing", "failed"]),
+  );
+  if (outboxError) {
+    // Keep admin/metrics available during the migration-before-deploy window.
+    if (outboxError.code !== "42P01" && outboxError.code !== "PGRST205") {
+      throw new Error(
+        `[admin-stats] purchase conversion outbox lookup failed: ${outboxError.message}`,
+      );
     }
-  >();
-  for (const payment of verifiedPaymentFacts) {
-    if (
-      !inRange(payment.paidAt) ||
-      (payment.kind !== "unmei" && payment.kind !== "unmei_upgrade")
-    ) {
-      continue;
-    }
-    const currency = payment.currency.toLowerCase();
-    const bucket = unmeiRevenueBuckets.get(currency) ?? {
-      purchases: 0,
-      netRevenueMinor: 0,
-    };
-    const refundedMinor = Math.min(
-      Math.max(payment.refundedAmountMinor, 0),
-      payment.amountMinor,
+    console.warn(
+      "[admin-stats] purchase conversion outbox migration is not applied yet",
     );
-    bucket.purchases++;
-    bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
-    unmeiRevenueBuckets.set(currency, bucket);
+  } else {
+    purchaseConversionOutboxRows = (outboxData ?? []) as typeof purchaseConversionOutboxRows;
   }
-  const unmeiRevenue = {
-    currencies: Array.from(unmeiRevenueBuckets.entries())
-      .map(([currency, bucket]) => ({
-        currency,
-        purchases: bucket.purchases,
-        netRevenueMinor: bucket.netRevenueMinor,
-      }))
-      .sort((a, b) => a.currency.localeCompare(b.currency)),
+  const periodPurchaseEventSessionIds = new Set<string>();
+  for (const row of [
+    ...kpiPaymentEventRows.filter(
+      (event) => event.event_name === "purchase_completed",
+    ),
+    ...unmeiPurchaseFacts,
+  ]) {
+    const sid = row.metadata?.stripe_session_id;
+    if (typeof sid === "string" && sid && !isTestStripeSession(sid)) {
+      periodPurchaseEventSessionIds.add(sid);
+    }
+  }
+  const trackedPaymentSessions = Array.from(periodPaymentSessionIds).filter(
+    (sid) => periodPurchaseEventSessionIds.has(sid),
+  ).length;
+  const deliverySessions = (provider: "browser" | "meta" | "tiktok") => {
+    const ids = new Set<string>();
+    for (const row of purchaseDeliveryRows) {
+      const sid = row.metadata?.stripe_session_id;
+      const rowProvider = row.metadata?.provider;
+      const matches =
+        provider === "browser"
+          ? row.event_name === "meta_purchase_claimed"
+          : rowProvider === provider;
+      if (
+        matches &&
+        typeof sid === "string" &&
+        periodPaymentSessionIds.has(sid)
+      ) {
+        ids.add(sid);
+      }
+    }
+    return ids.size;
   };
+  const metaConfigValues = [
+    process.env.META_PIXEL_ID,
+    process.env.META_CONVERSIONS_API_TOKEN,
+    process.env.META_GRAPH_API_VERSION,
+  ];
+  const tiktokConfigValues = [
+    process.env.TIKTOK_PIXEL_CODE,
+    process.env.TIKTOK_EVENTS_API_TOKEN,
+  ];
+  const purchaseTracking = {
+    verifiedPayments: periodPaymentSessionIds.size,
+    purchaseEvents: trackedPaymentSessions,
+    missingPurchaseEvents: Math.max(
+      0,
+      periodPaymentSessionIds.size - trackedPaymentSessions,
+    ),
+    browserMetaPushed: deliverySessions("browser"),
+    browserTikTokPushed: new Set(
+      purchaseDeliveryRows
+        .filter(
+          (row) =>
+            row.event_name === "browser_tiktok_purchase_pushed" &&
+            typeof row.metadata?.stripe_session_id === "string" &&
+            periodPaymentSessionIds.has(row.metadata.stripe_session_id),
+        )
+        .map((row) => row.metadata?.stripe_session_id as string),
+    ).size,
+    serverMetaSent: deliverySessions("meta"),
+    serverTikTokSent: deliverySessions("tiktok"),
+    serverQueuePending: purchaseConversionOutboxRows.filter(
+      (row) =>
+        periodPaymentSessionIds.has(row.stripe_session_id) &&
+        (row.status === "pending" || row.status === "processing"),
+    ).length,
+    serverQueueFailed: purchaseConversionOutboxRows.filter(
+      (row) =>
+        periodPaymentSessionIds.has(row.stripe_session_id) &&
+        row.status === "failed",
+    ).length,
+    metaServerConfigured: metaConfigValues.every((value) => !!value?.trim()),
+    tiktokServerConfigured: tiktokConfigValues.every(
+      (value) => !!value?.trim(),
+    ),
+  };
+
+  const paymentMetadataBySession = new Map(
+    paymentHistoryRows.map((row) => [
+      row.stripe_session_id,
+      row.metadata,
+    ] as const),
+  );
+  const stripeSessionIds = (rows: StripeEventRow[]): Set<string> =>
+    new Set(
+      rows
+        .map((row) => row.metadata?.stripe_session_id)
+        .filter((sid): sid is string => typeof sid === "string" && !!sid),
+    );
+  const unmeiAttributedSessionIds = stripeSessionIds(
+    unmeiAttributedPurchaseRows,
+  );
+  const aliceAttributedSessionIds = stripeSessionIds(alicePurchaseRows);
+
+  const attributedRevenue = (
+    matches: (payment: (typeof verifiedPaymentFacts)[number]) => boolean,
+  ) => {
+    const buckets = new Map<
+      string,
+      { purchases: number; netRevenueMinor: number }
+    >();
+    for (const payment of verifiedPaymentFacts) {
+      if (!inRange(payment.paidAt) || !matches(payment)) continue;
+      const currency = payment.currency.toLowerCase();
+      const bucket = buckets.get(currency) ?? {
+        purchases: 0,
+        netRevenueMinor: 0,
+      };
+      const refundedMinor = Math.min(
+        Math.max(payment.refundedAmountMinor, 0),
+        payment.amountMinor,
+      );
+      bucket.purchases++;
+      bucket.netRevenueMinor += payment.amountMinor - refundedMinor;
+      buckets.set(currency, bucket);
+    }
+    return {
+      currencies: Array.from(buckets.entries())
+        .map(([currency, bucket]) => ({
+          currency,
+          purchases: bucket.purchases,
+          netRevenueMinor: bucket.netRevenueMinor,
+        }))
+        .sort((a, b) => a.currency.localeCompare(b.currency)),
+    };
+  };
+
+  // 旧「運命」商品に加え、現行の運命チャット／ナビロックから購入された
+  // 3コース決済も、return_to/source を根拠に運命導線売上へ含める。
+  const unmeiRevenue = attributedRevenue(
+    (payment) =>
+      payment.kind === "unmei" ||
+      payment.kind === "unmei_upgrade" ||
+      unmeiAttributedSessionIds.has(payment.stripeSessionId) ||
+      isUnmeiMeta(paymentMetadataBySession.get(payment.stripeSessionId) ?? null),
+  );
+  const aliceRevenue = attributedRevenue(
+    (payment) =>
+      aliceAttributedSessionIds.has(payment.stripeSessionId) ||
+      isAliceMeta(paymentMetadataBySession.get(payment.stripeSessionId) ?? null),
+  );
 
   // ===== 商品別の売上内訳 (選択期間・kind × 通貨) =====
   const kindBuckets = new Map<
@@ -1894,8 +2607,7 @@ export async function computeStats(from: string | null, to: string | null) {
       targetUserId: row.target_user_id,
       createdAt: row.created_at,
     })),
-    // コホートKPI (ARPU/課金転換) は従来定義のまま full_access のみで計算する。
-    payments: verifiedPaymentFacts.filter((p) => p.kind === "full_access"),
+    payments: verifiedPaymentFacts,
     from,
     to,
     unmatchedPaymentCount,
@@ -1911,26 +2623,26 @@ export async function computeStats(from: string | null, to: string | null) {
   };
 
   const ownerFunnelCounts = [
-    diagnosisCohortSessions.size,
     cohortOwners.size,
     takoReachedOwners.size,
+    inviteUiOwners.size,
     inviteActionOwners.size,
     friendReachedOwners.size,
     friendAnsweredOwners.size,
   ];
   const ownerFunnelLabels = [
-    "友達導線の計測対象",
     "結果ページ到達",
     "友達診断ページ到達",
+    "招待UI表示",
     "招待実行（友達到達で補完）",
     "友達がページ到達",
     "友達が1人以上回答完了",
   ];
   const ownerFunnel = ownerFunnelCounts.map((count, index) => ({
     key: [
-      "diagnosis",
       "result",
       "tako",
+      "invite_ui",
       "invite",
       "friend_landing",
       "friend_answer",
@@ -1944,23 +2656,60 @@ export async function computeStats(from: string | null, to: string | null) {
 
   const friendFunnelCounts = [
     friendLandingSessions.size,
+    friendAnswerStartedSessions.size,
     friendAnswerSessions.size,
     friendToDiagnosisSessions.size,
-    cohortChildDiagnosisCompleted,
+    friendDiagnosisCompletedSessions.size,
   ];
   const friendFunnelLabels = [
     "友達が招待ページ到達",
+    "友達が最初の設問に回答",
     "友達が回答完了",
     "友達が「自分も診断」をクリック",
     "友達が自己診断完了",
   ];
   const friendFunnel = friendFunnelCounts.map((count, index) => ({
-    key: ["landing", "answer", "self_cta", "self_complete"][index],
+    key: ["landing", "answer_start", "answer", "self_cta", "self_complete"][index],
     label: friendFunnelLabels[index],
     count,
     rateFromPrevious:
       index === 0 ? null : rate(count, friendFunnelCounts[index - 1]),
     rateFromLanding: rate(count, friendFunnelCounts[0]),
+  }));
+
+  const selfResultShareCounts = [
+    selfShareCohortOwners.size,
+    shareUiOwners.size,
+    shareActionOwners.size,
+    shareLandingOwners.size,
+    shareDiagnosisCtaOwners.size,
+    shareDiagnosisStartedOwners.size,
+    shareDiagnosisCompletedOwners.size,
+  ];
+  const selfResultShareLabels = [
+    "結果ページ到達",
+    "シェアUI表示",
+    "シェア操作",
+    "シェア結果ページ到達",
+    "自己診断CTAクリック",
+    "自己診断開始",
+    "自己診断完了",
+  ];
+  const selfResultShareFunnel = selfResultShareCounts.map((count, index) => ({
+    key: [
+      "result",
+      "share_ui",
+      "share_action",
+      "share_landing",
+      "diagnosis_cta",
+      "diagnosis_start",
+      "diagnosis_complete",
+    ][index],
+    label: selfResultShareLabels[index],
+    count,
+    rateFromPrevious:
+      index === 0 ? null : rate(count, selfResultShareCounts[index - 1]),
+    rateFromResult: rate(count, selfResultShareCounts[0]),
   }));
 
   return {
@@ -1989,8 +2738,9 @@ export async function computeStats(from: string | null, to: string | null) {
     ],
     friendDiagnosisFunnel: {
       measurementStartedAt: FRIEND_FUNNEL_MEASUREMENT_STARTED_AT,
+      diagnosisCompleted: diagnosisCohortSessions.size,
       cohortDefinition:
-        "友達導線の計測開始後、選択期間内に自己診断完了イベントを送信したセッションだけを、その後の行動まで追跡する参考ファネル",
+        "share_v2/v3 の結果表示が選択期間内にあり、同一セッションで自己診断完了も確認できた本人を起点に、その後の友達招待と診断完了までを追跡する",
       ownerFunnel,
       friendFunnel,
       attention: {
@@ -2035,12 +2785,18 @@ export async function computeStats(from: string | null, to: string | null) {
           .sort((a, b) => b.actions - a.actions),
       },
     },
-    // 現在表示中の課金カードの合計ファネル。別バージョン・開発プレビュー・
-    // テスト決済は含めない。解除導線クリックはカードへの流入操作なので別指標として保持する。
+    selfResultShareFunnel: {
+      measurementStartedAt: SELF_RESULT_SHARE_FUNNEL_MEASUREMENT_STARTED_AT,
+      cohortDefinition:
+        "share_v3 の結果表示がある本人を起点に、各段を時系列で通過した共有者だけを invite_code と訪問者 session_id で追跡する",
+      steps: selfResultShareFunnel,
+    },
+    // 現在表示中の課金カードの合計ファネル。自己・友達・相性・運命・Aliceの
+    // 全導線を含み、別バージョン・開発プレビュー・テスト決済は含めない。
+    // 全ページ共通の入口はカード表示なので、そこを分母に揃える。
     paywallFunnel: [
-      { label: "結果ページ表示", count: eligibleResultSessionIds.size },
       { label: "課金カード表示", count: courseCardViewers },
-      { label: "解除ボタン押下", count: mainResultScrollClickers },
+      { label: "解除ボタン押下", count: courseScrollClickers },
       { label: "購入CTA押下", count: courseCtaClickers },
       { label: "Stripe到達", count: courseStripeReached },
       { label: "決済完了", count: coursePurchasers },
@@ -2055,12 +2811,14 @@ export async function computeStats(from: string | null, to: string | null) {
       transactions: courseTransactions,
       newPurchases: courseNewPurchases,
       upgrades: courseUpgrades,
+      currency: courseRevenueCurrency,
+      revenueMinor: courseRevenueMinor,
       revenueJpy: courseRevenueJpy,
       revenuePerViewerJpy: rate(courseRevenueJpy, courseCardViewers),
       purchaseRate: rate(coursePurchasers, courseCardViewers),
       plans: coursePlans,
     },
-    // 課金ファネル (友達診断ページ発の ¥499 完全版)。Stripe到達は 2026-07-22 に計測追加。
+    // 課金ファネル (友達診断ページ発の完全版)。Stripe到達は 2026-07-22 に計測追加。
     // 決済完了は tako 系 source / return_to 付きの full_access 決済を数える。
     takoFunnel: [
       { label: "/tako 表示", count: takoPageViewed },
@@ -2090,8 +2848,18 @@ export async function computeStats(from: string | null, to: string | null) {
         { label: "決済フォーム到達", count: unmeiChatCheckoutReached },
         { label: "決済完了", count: unmeiChatPurchases },
       ],
+      navigationFunnel: [
+        { label: "ロックタップ", count: unmeiNavOpened },
+        { label: "コースカード表示", count: unmeiNavCardViewers },
+        { label: "購入CTA押下", count: unmeiNavCtaClickers },
+        { label: "Stripe到達", count: unmeiNavStripeReached },
+        { label: "決済完了", count: unmeiNavPurchases },
+      ],
       purchases: {
         total: unmeiPurchases,
+        current: unmeiCurrentPurchases,
+        premium: unmeiPremiumPurchases,
+        legacy: unmeiLegacyPurchases,
         basic: unmeiBasePurchases,
         upgrade: unmeiUpgradePurchases,
       },
@@ -2108,31 +2876,94 @@ export async function computeStats(from: string | null, to: string | null) {
         clickRate: rate(unmeiBadgeClicked, unmeiBadgeShown),
       },
     },
-    // LINE基盤 + Alice Plus (月額サブスク)。snapshot系 (friends/linked/加入者/MRR) は
+    alice: {
+      measurementStartedAt: ALICE_FUNNEL_MEASUREMENT_STARTED_AT,
+      purchaseFunnel: [
+        { label: "コースカード表示", count: aliceCardViewers },
+        { label: "購入CTA押下", count: aliceCtaClickers },
+        { label: "Stripe到達", count: aliceStripeReached },
+        { label: "決済完了", count: alicePurchases },
+      ],
+      funnel: [
+        { label: "Aliceページ表示", count: alicePageViews },
+        { label: "チャット解放済みで表示", count: aliceAccessViewers },
+        { label: "メッセージ送信", count: aliceMessageSenders },
+        { label: "Aliceの応答表示", count: aliceResponseViewers },
+      ],
+      pageViews: alicePageViews,
+      accessViewers: aliceAccessViewers,
+      lockedViewers: aliceLockedViewers,
+      paywallOpeners: alicePaywallOpeners,
+      cardViewers: aliceCardViewers,
+      ctaClickers: aliceCtaClickers,
+      stripeReached: aliceStripeReached,
+      purchasers: alicePurchasers,
+      purchases: alicePurchases,
+      revenue: aliceRevenue,
+      messageSenders: aliceMessageSenders,
+      messageActions: aliceMessageRows.length,
+      responseViewers: aliceResponseViewers,
+      responseFailureViewers: aliceFailureViewers,
+      pageToSendRate: rate(aliceMessageSenders, alicePageViews),
+      accessToSendRate: rate(aliceMessageSenders, aliceAccessViewers),
+      paywallOpenRate: rate(alicePaywallOpeners, aliceLockedViewers),
+      activeUsers: aliceActiveUsers,
+      conversationsStarted: aliceConversationRows.length,
+      responsesCompleted: aliceCommittedRows.length,
+      responsesFailed: aliceReleasedRows.length,
+      responseSuccessRate: rate(
+        aliceCommittedRows.length,
+        aliceSettledMessages,
+      ),
+      credits: {
+        holders: aliceCreditRows.length,
+        total: aliceCreditTotals.total,
+        remaining: aliceCreditTotals.remaining,
+        used: Math.max(
+          0,
+          aliceCreditTotals.total - aliceCreditTotals.remaining,
+        ),
+      },
+    },
+    // LINE基盤 + Alice Plus。snapshot系 (friends/linked/加入者/MRR) は
     // 現在値・イベント系 (follows〜canceled) は選択期間内の件数
     linePlus: {
       friends: lineFriends,
       linked: lineLinked,
       activeSubscribers: linePlusActive,
+      monthlySubscribers: linePlusMonthlyActive,
+      annualSubscribers: linePlusAnnualActive,
+      trialingSubscribers: linePlusTrialing,
       cancelScheduled: linePlusCancelScheduled,
-      mrrJpy: linePlusActive * ALICE_PLUS_PRICE_JPY,
+      mrrJpy:
+        linePlusMonthlyActive * ALICE_PLUS_MONTHLY_MRR_JPY +
+        linePlusAnnualActive * ALICE_PLUS_ANNUAL_MRR_JPY,
       follows: lineFollowCount,
       linkCompleted: lineLinkCompletedCount,
       checkoutOpened: linePlusCheckoutOpenedCount,
       subscribed: linePlusSubscribedCount,
       canceled: linePlusCanceledCount,
+      cardViewed: lineAliceCardViewedCount,
+      addFriendClicked: lineAliceAddFriendClickedCount,
+      linkCodeRequested: lineAliceLinkCodeRequestedCount,
+      linkCodeIssued: lineAliceLinkCodeIssuedCount,
+      linkCodeFailed: lineAliceLinkCodeFailedCount,
     },
     paywallSources,
     paywallAttribution: courseAttribution,
     legacyPaywallAttribution: paywallAttribution,
     takoAttribution,
-    purchaseCompleted: coursePurchasers,
-    purchaseConversionRate: rate(coursePurchasers, courseCardViewers),
+    // 汎用の課金指標は payment_history 正本の全商品。現行3コースだけの評価は
+    // coursePurchase* / coursePaywall に明示して、旧商品や運命の設計図と混ぜない。
+    purchaseCompleted: periodPurchaseTransactions,
+    purchaseConversionRate: computedCoreKpis.diagnosisToPaid.rate,
+    coursePurchaseCompleted: courseTransactions,
+    coursePurchaseConversionRate: rate(coursePurchasers, courseCardViewers),
     paidUsers,
     revenueJpy,
     revenueByKind,
     revenueDaily,
-    recentEvents: recentRes.data ?? [],
+    purchaseTracking,
     friendToDiagClicked,
     friendToDiagRate: rate(friendToDiagClicked, friendAnswerCompleted),
     typeDistribution,

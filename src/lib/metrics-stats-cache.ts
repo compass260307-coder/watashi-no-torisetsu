@@ -3,7 +3,10 @@ import "server-only";
 import { getCache } from "@vercel/functions";
 import { createHash } from "node:crypto";
 
-import { computeStats } from "@/lib/admin-stats";
+import {
+  computeStats,
+  type AdminStatsLocale,
+} from "@/lib/admin-stats";
 
 const METRICS_CACHE_TTL_SECONDS = 24 * 60 * 60;
 // 現在時刻を含む期間 (今日・全期間など) は数字が動き続けるので、24時間キャッシュすると
@@ -16,8 +19,8 @@ const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 const RECENT_PAST_TTL_SECONDS = 60 * 60;
 const RECENT_PAST_WINDOW_MS = 48 * 60 * 60 * 1000;
 const LAST_GOOD_TTL_SECONDS = 7 * 24 * 60 * 60;
-// 計測スキーマのv4と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
-const metricsCache = getCache({ namespace: "metrics-stats-v4" });
+// 計測スキーマのv8と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
+const metricsCache = getCache({ namespace: "metrics-stats-v8" });
 
 type AdminStats = Awaited<ReturnType<typeof computeStats>>;
 
@@ -34,12 +37,17 @@ function rangeTtlSeconds(to: string | null): number {
   return METRICS_CACHE_TTL_SECONDS;
 }
 
-function statsCacheKey(from: string | null, to: string | null): string {
+function statsCacheKey(
+  from: string | null,
+  to: string | null,
+  locale?: AdminStatsLocale,
+): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
         from,
         to,
+        locale: locale ?? "all",
         // 集計結果の形状はコードと共に変わる。別デプロイが書いたエントリを読むと
         // 形状不一致で管理画面がクラッシュするため (2026-08-10 障害: chatFunnel 無しの
         // 旧形状が配信され unmei.chatFunnel.map で全損)、キーをデプロイ単位に分ける。
@@ -50,13 +58,18 @@ function statsCacheKey(from: string | null, to: string | null): string {
     .digest("hex");
 }
 
-function lastGoodCacheKey(from: string | null, to: string | null): string {
+function lastGoodCacheKey(
+  from: string | null,
+  to: string | null,
+  locale?: AdminStatsLocale,
+): string {
   return createHash("sha256")
     .update(
       JSON.stringify({
         from,
         to,
-        shape: "admin-stats-v4",
+        locale: locale ?? "all",
+        shape: "admin-stats-v8",
         environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local",
       }),
     )
@@ -67,12 +80,24 @@ function isAdminStats(value: unknown): value is AdminStats {
   if (!value || typeof value !== "object") return false;
   const stats = value as Record<string, unknown>;
   const unmei = stats.unmei as Record<string, unknown> | undefined;
+  const alice = stats.alice as Record<string, unknown> | undefined;
+  const selfResultShareFunnel = stats.selfResultShareFunnel as
+    | Record<string, unknown>
+    | undefined;
   const coreKpis = stats.coreKpis as Record<string, unknown> | undefined;
   return (
     typeof stats.diagnosisStarted === "number" &&
     Array.isArray(stats.paywallFunnel) &&
     !!unmei &&
     Array.isArray(unmei.chatFunnel) &&
+    Array.isArray(unmei.navigationFunnel) &&
+    !!alice &&
+    Array.isArray(alice.funnel) &&
+    Array.isArray(alice.purchaseFunnel) &&
+    typeof alice.purchases === "number" &&
+    typeof alice.responsesCompleted === "number" &&
+    !!selfResultShareFunnel &&
+    Array.isArray(selfResultShareFunnel.steps) &&
     !!coreKpis &&
     typeof coreKpis.dataQuality === "object"
   );
@@ -82,10 +107,10 @@ export async function getCachedStats(
   from: string | null,
   to: string | null,
   // forceFresh: 管理画面の「更新」ボタン用。キャッシュを読まず再計算して上書きする。
-  options: { forceFresh?: boolean } = {},
+  options: { forceFresh?: boolean; locale?: AdminStatsLocale } = {},
 ): Promise<AdminStats> {
-  const key = statsCacheKey(from, to);
-  const lastGoodKey = lastGoodCacheKey(from, to);
+  const key = statsCacheKey(from, to, options.locale);
+  const lastGoodKey = lastGoodCacheKey(from, to, options.locale);
 
   if (!options.forceFresh) {
     try {
@@ -99,7 +124,7 @@ export async function getCachedStats(
 
   let stats: AdminStats;
   try {
-    stats = await computeStats(from, to);
+    stats = await computeStats(from, to, { locale: options.locale });
   } catch (error) {
     // 全期間集計がDBのstatement_timeoutに当たっても、直近の正常スナップショットが
     // あれば管理画面と定期取得を全損させない。形状検査で旧コードのキャッシュ混入を防ぐ。
