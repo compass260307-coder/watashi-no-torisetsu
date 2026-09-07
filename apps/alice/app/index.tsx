@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppScreen } from '@/components/ui/AppScreen';
@@ -9,14 +9,20 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { palette, radius, spacing } from '@/constants/theme';
 import { getPublicConfig } from '@/lib/config';
 import { validateTransferCode } from '@/lib/transfer-api';
+import { useBootstrap } from '@/providers/BootstrapProvider';
 
 export default function TransferScreen() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: bootstrap, isLoading: isBootstrapLoading } = useBootstrap();
   const { apiBaseUrl, reviewLoginEnabled } = getPublicConfig();
   const hasApiConfig = Boolean(apiBaseUrl);
   const normalizedCode = normalizeCode(code);
+
+  useEffect(() => {
+    if (!isBootstrapLoading && bootstrap) router.replace('/(tabs)');
+  }, [bootstrap, isBootstrapLoading]);
 
   function openWebTransfer() {
     if (apiBaseUrl) void Linking.openURL(`${apiBaseUrl}/alice`);

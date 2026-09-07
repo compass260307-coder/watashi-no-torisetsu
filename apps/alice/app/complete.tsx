@@ -20,9 +20,9 @@ export default function TransferCompleteScreen() {
           <Text style={styles.body}>
             Webで診断したあなたの情報を、安全にAliceへ引き継ぎました。
           </Text>
-          <Text style={styles.note}>毎日の機能は、準備ができ次第ここから利用できます。</Text>
+          <Text style={styles.note}>今日の記録や対話は、アプリのホームから利用できます。</Text>
         </View>
-        <PrimaryButton label="最初の画面へ戻る" onPress={() => router.replace('/')} />
+        <PrimaryButton label="Aliceをはじめる" onPress={() => router.replace('/(tabs)')} />
       </SurfaceCard>
     </AppScreen>
   );

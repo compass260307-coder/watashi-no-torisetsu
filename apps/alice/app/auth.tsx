@@ -10,12 +10,14 @@ import { palette, radius, spacing } from '@/constants/theme';
 import { getPublicConfig } from '@/lib/config';
 import { getSupabaseClient } from '@/lib/supabase';
 import { consumeTransfer } from '@/lib/transfer-api';
+import { useBootstrap } from '@/providers/BootstrapProvider';
 import { useGuide } from '@/providers/GuideProvider';
 
 type EmailStep = 'email' | 'otp';
 
 export default function AuthScreen() {
   const { guide } = useGuide();
+  const { refresh } = useBootstrap();
   const { ticket, review } = useLocalSearchParams<{ ticket?: string; review?: string }>();
   const isReviewLogin = review === '1' && getPublicConfig().reviewLoginEnabled;
   const [emailStep, setEmailStep] = useState<EmailStep>('email');
@@ -119,7 +121,8 @@ export default function AuthScreen() {
       });
       if (authError) throw authError;
       if (!data.session) throw new Error('ログイン情報を確認できませんでした。');
-      router.replace('/complete' as Href);
+      const bootstrap = await refresh(data.session.access_token);
+      router.replace((bootstrap ? '/(tabs)' : '/complete') as Href);
     } catch (caught) {
       setError(errorMessage(caught));
     } finally {
@@ -130,6 +133,7 @@ export default function AuthScreen() {
   async function finishTransfer(accessToken: string) {
     if (!ticket) throw new Error('引き継ぎ情報の有効期限が切れました。最初からやり直してください。');
     await consumeTransfer(ticket, accessToken, guide);
+    await refresh(accessToken);
     router.replace('/complete' as Href);
   }
 
