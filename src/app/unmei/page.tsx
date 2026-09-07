@@ -80,6 +80,10 @@ const PREVIEW_CHART: Chart = {
   asc: { sign: "Scorpio", degree: 12.0 },
   mc: { sign: "Leo", degree: 22.0 },
   houses_available: true,
+  // 詳細データ表 (逆行/ハウスカスプ) は datetime_utc + location から描画時再計算するため、
+  // プレビューでも列が埋まるようサンプルの出生日時・地点を持たせる (dev preview のみ)。
+  datetime_utc: "1995-08-07T20:30:00.000Z",
+  location: { latitude: 35.69, longitude: 139.69 },
 };
 
 // よくある質問 (16P 参考のアコーディオン。native <details> なので JS 不要)。

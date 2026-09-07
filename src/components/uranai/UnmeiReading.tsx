@@ -17,6 +17,7 @@ import NatalChartStage from "@/components/uranai/NatalChartStage";
 import { Reveal } from "@/components/uranai/Reveal";
 import { StarBackdrop } from "@/components/uranai/StarBackdrop";
 import { TypeConstellation } from "@/components/uranai/TypeConstellation";
+import UnmeiChartDetails from "@/components/uranai/UnmeiChartDetails";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
 import type { UnmeiIdentity } from "@/lib/unmei/prompt-inputs";
@@ -170,6 +171,10 @@ export default function UnmeiReading({
             </Reveal>
           )}
         </section>
+
+        {/* ===== 出生図データ: 天体図(=全体像)→表(=詳細)→鑑定文(=物語) の橋渡し。
+            日本語専用の表記なので、韓国語ページには混在させない。 ===== */}
+        {locale === "ja" ? <UnmeiChartDetails chart={chart} /> : null}
 
         {/* ===== 4章: スクロールに合わせて段落が浮かび上がる ===== */}
         {sections.map((sec, i) => {
