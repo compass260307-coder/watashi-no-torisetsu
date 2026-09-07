@@ -9,6 +9,7 @@
 // - 友達が増えるたびに内容が変わるためキャッシュしない (毎回生成)。
 
 import { NextResponse } from "next/server";
+import { PDFDocument } from "pdf-lib";
 import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasTakoAccess } from "@/lib/entitlements";
@@ -23,6 +24,45 @@ interface RouteContext {
 // @sparticuz/chromium と同バージョンの pack tar (フォールバックDL用)。
 const CHROMIUM_PACK_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar";
+
+const REPORT_BODY_WIDTH_MM = 174;
+const A4_WIDTH_MM = 210;
+
+async function expandFirstPageToFullBleed(pdfBytes: Uint8Array) {
+  const source = await PDFDocument.load(pdfBytes);
+  const pageCount = source.getPageCount();
+  if (pageCount === 0) return pdfBytes;
+
+  const output = await PDFDocument.create();
+  const cover = source.getPage(0);
+  const { width, height } = cover.getSize();
+  const printScale = REPORT_BODY_WIDTH_MM / A4_WIDTH_MM;
+  const croppedWidth = width * printScale;
+  const croppedHeight = height * printScale;
+  const embeddedCover = await output.embedPage(cover, {
+    left: 0,
+    bottom: height - croppedHeight,
+    right: croppedWidth,
+    top: height,
+  });
+  const fullBleedCover = output.addPage([width, height]);
+  fullBleedCover.drawPage(embeddedCover, {
+    x: 0,
+    y: 0,
+    width,
+    height,
+  });
+
+  if (pageCount > 1) {
+    const remainingPages = await output.copyPages(
+      source,
+      Array.from({ length: pageCount - 1 }, (_, index) => index + 1),
+    );
+    for (const page of remainingPages) output.addPage(page);
+  }
+
+  return output.save();
+}
 
 async function launchBrowser() {
   // Vercel (Linux serverless) では @sparticuz/chromium のバイナリを使う。
@@ -123,8 +163,9 @@ export async function GET(req: Request, ctx: RouteContext) {
       printBackground: true,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
+    const fullBleedPdf = await expandFirstPageToFullBleed(pdf);
 
-    return new NextResponse(Buffer.from(pdf), {
+    return new NextResponse(Buffer.from(fullBleedPdf), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition":

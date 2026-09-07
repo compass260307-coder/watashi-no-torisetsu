@@ -32,7 +32,7 @@ interface AxisMeta {
 // 表示順は OCEAN 軸順 (O→C→E→A→N)。各要素に title/left/right/color/dim(スコア参照) が
 // まとまっているため、配列の並べ替えだけで色・ラベル・スコアが完全連動する (対応ズレなし)。
 const AXES: readonly AxisMeta[] = [
-  { dim: "O", title: "開放性", left: "現実的", right: "探究的", color: "#E4AE3A" },
+  { dim: "O", title: "開放性", left: "保守的", right: "革新的", color: "#E4AE3A" },
   { dim: "C", title: "誠実性", left: "柔軟", right: "計画的", color: "#88619A" },
   { dim: "E", title: "外向性", left: "内向", right: "外向", color: "#4298B4" },
   { dim: "A", title: "協調性", left: "独立", right: "協調", color: "#33A474" },
@@ -134,7 +134,7 @@ export function BigFiveDivergingBars({
   const resolvedPrimaryLabel =
     primaryLabel ?? (locale === "ko" ? "나" : "自分");
   const resolvedTitle =
-    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るアナタ");
+    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るあなた");
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* セクション見出し (16P 風: 丸囲み数字 + 大きめタイトル。number 未指定は絵文字バッジ)。
@@ -156,7 +156,7 @@ export function BigFiveDivergingBars({
               {emoji}
             </span>
           )}
-          <h2 className="text-[#2E2E5C] font-black text-[30px] md:text-[36px] leading-tight">
+          <h2 className="text-[#2E2E5C] font-bold text-[30px] md:text-[36px] leading-tight">
             {resolvedTitle}
           </h2>
         </div>
@@ -290,7 +290,8 @@ export function BigFiveDivergingBars({
         {/* カード下部の footer 帯 (16P のグラフカード下ボタン行)。
             区切り線でバー群と分け、カード枠の内側に載せる。 */}
         {footer && (
-          <div className="border-t border-[#E9E9F2] pt-5">{footer}</div>
+          // space-y-6 の 24px は広すぎるため !mt-4 で上書きして詰める (2026-08-26)
+          <div className="border-t border-[#E9E9F2] !mt-4 pt-4">{footer}</div>
         )}
       </div>
     </section>

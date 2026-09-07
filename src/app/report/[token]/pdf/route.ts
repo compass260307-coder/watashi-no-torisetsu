@@ -1,9 +1,9 @@
-// 詳細レポートの PDF ダウンロード: GET /report/[token]/pdf
+// 自己診断レポートの PDF ダウンロード: GET /report/[token]/pdf
 //
 // 課金完了メールの「自己分析PDFをダウンロード」ボタンの着地先。
-// /report/[token]/print (PDF生成専用ページ) をサーバ側の headless Chromium で開き、
-// A4 PDF に変換して attachment で返す。印刷スタイル (print:hidden 等) はページ側に
-// 実装済みなので、ここでは描画と変換だけを行う。
+// 日本語版は診断結果の32キャラに対応する16ページの縦書き小説を返す。
+// 韓国語版も同じ「表紙1ページ + タイプ別ストーリー15ページ」の配布単位で、
+// /report/[token]/print を headless Chromium から PDF 化する。
 //
 // - 認可はページと同じ token + hasSelfReportAccess。未課金・不明 token は本文を
 //   生成せず /me へ 303 (フェイルクローズ。ロック画面の PDF も作らない)。
@@ -12,6 +12,8 @@
 // - 生成に数秒かかるため maxDuration を明示。タイプ別に内容が固定なので
 //   将来重くなったらタイプ単位のキャッシュを検討。
 
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -19,8 +21,17 @@ import { hasSelfReportAccess } from "@/lib/entitlements";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoCharacterSlug,
+  thirtyTwoEssence,
+  thirtyTwoTypes,
+  type ThirtyTwoTypeId,
+} from "@/lib/thirty-two-types";
+import type { BigFiveDimension } from "@/lib/types";
 
 export const maxDuration = 60;
+export const runtime = "nodejs";
 
 interface RouteContext {
   params: Promise<{ token: string }>;
@@ -29,6 +40,35 @@ interface RouteContext {
 // @sparticuz/chromium と同バージョンの pack tar (フォールバックDL用)。
 const CHROMIUM_PACK_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v149.0.0/chromium-v149.0.0-pack.x64.tar";
+
+function isThirtyTwoTypeId(value: string): value is ThirtyTwoTypeId {
+  return Object.hasOwn(thirtyTwoTypes, value);
+}
+
+async function loadJapaneseStoryPdf(typeId: ThirtyTwoTypeId) {
+  const slug = thirtyTwoCharacterSlug(typeId);
+  const path = join(
+    process.cwd(),
+    "private",
+    "self-report-stories",
+    `${slug}-vertical-story.pdf`,
+  );
+  return readFile(path);
+}
+
+function storyPdfResponse(typeId: ThirtyTwoTypeId, pdf: Buffer) {
+  const japaneseFilename = `ワタシのトリセツ・${thirtyTwoEssence(typeId)}のストーリー.pdf`;
+  return new NextResponse(new Uint8Array(pdf), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition":
+        'attachment; filename="watashi-no-torisetsu-story.pdf"; ' +
+        `filename*=UTF-8''${encodeURIComponent(japaneseFilename)}`,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
 
 async function launchBrowser() {
   // Vercel (Linux serverless) では @sparticuz/chromium のバイナリを使う。
@@ -67,8 +107,8 @@ export async function GET(req: Request, ctx: RouteContext) {
   // PDF生成専用ページのモック描画を PDF 化する =====
   const rawPreview = requestUrl.searchParams.get("previewType") ?? "";
   const isPreview =
-    process.env.NODE_ENV !== "production" &&
-    /^[a-z-]+__[NR]$/.test(rawPreview);
+    process.env.NODE_ENV !== "production" && isThirtyTwoTypeId(rawPreview);
+  let reportType: ThirtyTwoTypeId | null = isPreview ? rawPreview : null;
   const printParams = new URLSearchParams();
   if (isPreview) printParams.set("previewType", rawPreview);
   if (isKo) printParams.set("locale", "ko");
@@ -99,6 +139,27 @@ export async function GET(req: Request, ctx: RouteContext) {
     if (!(await hasSelfReportAccess(data.id))) {
       return NextResponse.redirect(
         `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
+        303,
+      );
+    }
+
+    reportType = classifyThirtyTwoType(
+      (data.scores ?? {}) as Partial<Record<BigFiveDimension, number>>,
+    );
+  }
+
+  // ===== 日本語版: 診断キャラ別の縦書き小説をそのまま配信 =====
+  if (!isKo && reportType) {
+    try {
+      const pdf = await loadJapaneseStoryPdf(reportType);
+      return storyPdfResponse(reportType, pdf);
+    } catch (err) {
+      console.error("[/report/pdf] story pdf read failed:", {
+        reportType,
+        err,
+      });
+      return NextResponse.redirect(
+        `${resolveSiteUrl()}/me/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -139,6 +200,9 @@ export async function GET(req: Request, ctx: RouteContext) {
       format: "A4",
       preferCSSPageSize: true,
       printBackground: true,
+      // 韓国版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの最終要素後に
+      // 生成する空白ページは配布物へ含めない。
+      pageRanges: isKo ? "1-16" : undefined,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
 
@@ -147,8 +211,8 @@ export async function GET(req: Request, ctx: RouteContext) {
         "Content-Type": "application/pdf",
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
         "Content-Disposition":
-          `attachment; filename="${isKo ? "my-personality-report-ko.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 자기 분석 완전판 리포트.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
+          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });

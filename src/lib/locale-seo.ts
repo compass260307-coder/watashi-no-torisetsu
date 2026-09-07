@@ -2,12 +2,19 @@ import type { Metadata, MetadataRoute } from "next";
 
 export const SITE_URL = "https://www.watashi-torisetsu.com";
 export const JA_SITE_NAME = "ワタシのトリセツ";
-export const KO_SITE_NAME = "나의 사용설명서";
-export const KO_DEFAULT_TITLE =
-  "친구와 만드는 무료 성격 진단 테스트 | 나의 사용설명서";
+export const KO_BRAND_NAME = "앨리스 진단";
+export const KO_SERVICE_NAME = "나의 사용설명서";
+export const KO_CHARACTER_NAME = "Alice";
+export const KO_SITE_NAME = KO_BRAND_NAME;
+export const KO_DEFAULT_TITLE = `${KO_BRAND_NAME} | ${KO_SERVICE_NAME}`;
 export const KO_DEFAULT_DESCRIPTION =
-  "Big Five 이론을 바탕으로 한 무료 성격 진단 테스트예요. 50문항으로 32가지 캐릭터 유형 중 나와 닮은 유형을 찾고, 친구의 답변으로 나도 몰랐던 모습을 발견해 보세요.";
+  "앨리스 진단은 Alice가 안내하는 성격 진단이에요. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나의 사용설명서’를 만들어 보세요.";
 export const KO_SEO_KEYWORDS: string[] = [
+  "앨리스 진단",
+  "앨리스 테스트",
+  "Alice 진단",
+  "Alice 테스트",
+  "Alice",
   "나의 사용설명서",
   "무료 성격 진단",
   "무료 성격 테스트",
@@ -25,10 +32,10 @@ export const KO_SEO_KEYWORDS: string[] = [
   "대학생 성격 테스트",
 ];
 export const KO_DEFAULT_OG_IMAGE = {
-  url: "/characters/keyvisual.webp",
-  width: 1536,
-  height: 1024,
-  alt: "나의 사용설명서 성격 진단 캐릭터",
+  url: "/ogp-v5.jpg",
+  width: 1200,
+  height: 630,
+  alt: "앨리스 진단 - Alice가 안내하는 나의 사용설명서 성격 테스트",
 };
 
 export type LocalizedSeoLocale = "ja" | "ko";

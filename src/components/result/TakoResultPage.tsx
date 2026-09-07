@@ -2,9 +2,8 @@
 //   owner_token でアクセス (自己 /me/[token] と対)。
 //   /me から切り出した「友達が見た自分」パートを集約:
 //     友達平均キャラ / 自己認知ギャップバー / みんなの目(B-1) / 他者評価 / 招待。
-//   友達の回答が 3人 (REPORT_FRIEND_THRESHOLD) 未満なら TakoLockedState (ロック空状態)。
+//   友達の回答が0人なら招待だけの空状態、1人以上なら友達ごとの結果を表示。
 
-import { cookies } from "next/headers";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { notFound } from "next/navigation";
 import {
@@ -27,9 +26,9 @@ import {
 } from "@/components/result/MinnaTypeProse";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
+import { TakoFaq } from "@/components/result/TakoFaq";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
-import { TakoLockedState } from "@/components/result/TakoLockedState";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { JohariWindow } from "@/components/result/JohariWindow";
@@ -74,6 +73,39 @@ import { sixteenTypes } from "@/lib/sixteen-types";
 
 const SITE_URL =
   resolveSiteUrl();
+
+// 友達が回答直後に見る理解度ページと同じ結果画像。
+// 実スコアに最も近い画像を選び、本人側でも同じ見え方に揃える。
+const UNDERSTANDING_RESULTS = [
+  {
+    score: 32,
+    image: "/result/understanding/understanding-32-transparent.webp",
+  },
+  {
+    score: 54,
+    image: "/result/understanding/understanding-54-transparent.webp",
+  },
+  {
+    score: 82,
+    image: "/result/understanding/understanding-82-transparent.webp",
+  },
+  {
+    score: 99,
+    image: "/result/understanding/understanding-99-transparent.webp",
+  },
+  {
+    score: 100,
+    image: "/result/understanding/understanding-100-gold-transparent.webp",
+  },
+] as const;
+
+function understandingResultFor(score: number) {
+  return UNDERSTANDING_RESULTS.reduce((nearest, candidate) =>
+    Math.abs(candidate.score - score) < Math.abs(nearest.score - score)
+      ? candidate
+      : nearest,
+  );
+}
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -221,25 +253,6 @@ function mockLockedTakoData(
   };
 }
 
-// 再訪リビール(②)の既読 cookie (tako_ls = {"s":scope,"n":lastSeen})。
-// サーバで読んで「旧状態」を初期HTMLにレンダリングすることで、SSRフラッシュ(最終値の
-// 一瞬露出)を原理的に無くす。スコープ不一致(別レポート)は安全側で null (誤発火させない)。
-function readLastSeenCookie(raw: string | undefined, scope: string): number | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(decodeURIComponent(raw)) as {
-      s?: unknown;
-      n?: unknown;
-    };
-    if (parsed.s !== scope) return null;
-    const n =
-      typeof parsed.n === "number" ? parsed.n : Number.parseInt(String(parsed.n), 10);
-    return Number.isFinite(n) ? n : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function TakoResultPage({
   params,
   searchParams,
@@ -248,7 +261,6 @@ export async function TakoResultPage({
   const { token } = await params;
   const sp = await searchParams;
   const isKo = locale === "ko";
-  const localePrefix = isKo ? "/ko" : "";
 
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
   const previewAllowed =
@@ -260,8 +272,7 @@ export async function TakoResultPage({
       ? (rawPreview as ThirtyTwoTypeId)
       : null;
 
-  // ?previewLocked=1 (任意 &friends=N): 解放前 (ロック空状態) のモック。dev / fromPreview=1 のみ。
-  // 友達 friends 人 (0..threshold-1) の未達データを組み立て、TakoLockedState を描画させる。
+  // ?previewLocked=1: 回答0人の空状態モック。dev / fromPreview=1 のみ。
   const previewLocked = previewAllowed && sp.previewLocked === "1";
 
   // 決済着地 (?paid=1&session_id=) の Meta Purchase 計測候補。/me と同じ流儀で、
@@ -272,7 +283,11 @@ export async function TakoResultPage({
       : Promise.resolve(null);
 
   const data = previewType
-    ? mockTakoData(previewType)
+    ? mockTakoData(
+        previewType,
+        locale,
+        typeof sp.friends === "string" ? Number(sp.friends) : undefined,
+      )
     : previewLocked
       ? mockLockedTakoData(
           typeof sp.friends === "string" ? Number(sp.friends) : 0,
@@ -331,7 +346,7 @@ export async function TakoResultPage({
         ? "친구"
         : "友達";
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
-    // 「◯◯さんから見たアナタの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
+    // 「◯◯さんから見たあなたの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
     // 表示は先頭2段落 (具体的な長所の描写) だけ。3段落目以降の内省パート
     // (でも、じつは…/欠点じゃありません…) は抽象的で、下のモテポイントとも
     // 役割がかぶるため出さない (2026-07-20 指示)。
@@ -347,7 +362,7 @@ export async function TakoResultPage({
     if (loveScene) loveProse.push(loveScene);
     if (isKo && loveProse[0]?.startsWith("당신의 사랑은")) {
       loveProse[0] = `${koSubject(viewer)} 보는 ${loveProse[0]}`;
-    } else if (loveProse[0]?.startsWith("アナタの恋は")) {
+    } else if (loveProse[0]?.startsWith("あなたの恋は")) {
       loveProse[0] = `${viewer}から見た${loveProse[0]}`;
     }
     // ⑤「ぶっちゃけ嫌われてない…？」の危険信号: その友達が見た認識タイプ(32→16)の
@@ -387,6 +402,7 @@ export async function TakoResultPage({
       essence,
       imageSrc,
       hero: sheetHero,
+      mutual: f.mutual,
       deep: sheetDeep,
       love: sheetLove,
       loveProse,
@@ -402,13 +418,10 @@ export async function TakoResultPage({
     };
   });
 
-  // ===== 再訪リビール(②) の SSR 初期値 =====
-  // 既読 (last_seen) を preview は &lastSeen= から、本番は cookie から読む。
-  // pending (server > last_seen) なら「旧状態」を初期表示にして、演出前に最終値を見せない。
   const previewMode = Boolean(previewType || previewLocked);
 
   // ===== 解放判定 =====
-  // hasTakoAccess は full_access 以上、旧 self_report、旧 ¥799 購入者を true にする。
+  // 友達診断は hasTakoAccess で判定する。
   // プレビュー: &lock=1 でロック状態を確認できる (旧 &discount は廃止)。
   const takoUnlocked = previewMode
     ? sp.lock !== "1"
@@ -416,24 +429,8 @@ export async function TakoResultPage({
   // ロック中フラグ (未購入)。ロックカードはセクション別の文言で都度生成する。
   // 2026-07-28: 「1人目無料」モデル。最初に回答した友達 (friends は created_at 昇順
   // なので先頭) のシートは未購入でも全セクション公開し、価値のデモにする。
-  // 2人目以降のシートだけ ¥499 ゲート (シート別の sheetLocked をパネル内で使う)。
+  // 2人目以降のシートだけ完全版ゲート (シート別の sheetLocked をパネル内で使う)。
   const takoLocked = !takoUnlocked;
-  const storageScope = data.user.owner_token ?? token;
-  const serverAnswered = Math.min(data.friends.length, data.threshold);
-  const lastSeen: number | null = previewLocked
-    ? typeof sp.lastSeen === "string"
-      ? Number(sp.lastSeen)
-      : null
-    : previewMode
-      ? null
-      : readLastSeenCookie((await cookies()).get("tako_ls")?.value, storageScope);
-  const revealPending =
-    lastSeen != null &&
-    serverAnswered < data.threshold &&
-    serverAnswered - lastSeen > 0;
-  const ssrInitialAnswered = revealPending
-    ? Math.max(0, Math.min(data.threshold, lastSeen as number))
-    : serverAnswered;
 
   // 決済着地の Meta Purchase 計測 (/me と同じ: 支払済み Session の購入者 = 本人のみ)。
   const paidCheckoutSession = await paidCheckoutSessionPromise;
@@ -449,6 +446,58 @@ export async function TakoResultPage({
     shouldTrackMetaPurchase && paidCheckoutSession
       ? createMetaPurchaseClaimToken(paidCheckoutSession.id)
       : null;
+
+  // 未購入で「回答0人」または「2人目以降の結果あり」のときに使う共通課金カード。
+  // 回答1人の無料体験中は従来どおり表示しない。
+  const takoPromo = !takoLocked || data.friends.length === 1 ? null : (() => {
+    const promoType = data.friendCharacter?.type32 ?? data.ownerType32;
+    const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
+    const promoAlt =
+      isKo && promoType
+        ? KO_RESULT_TYPES[promoType].essence
+        : data.friendCharacter?.essence ??
+          (data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : "");
+    const promoImage =
+      sceneImageForGroup(promoGroup, "love") ??
+      sceneImageForGroup(promoGroup, "normal1") ??
+      data.friendCharacter?.imageSrc ??
+      (data.ownerType32
+        ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+        : undefined);
+
+    return (
+      <>
+        <div id="tako-promo" className="scroll-mt-16">
+          <FullAccessPromoCard
+            surface="tako"
+            ownerToken={token}
+            returnTo="tako"
+            products={["full_access", "premium_bundle"]}
+            imageSrc={promoImage}
+            reportCharacterImageSrc={
+              promoType ? thirtyTwoImagePath(promoType) : undefined
+            }
+            imageAlt={promoAlt}
+            group={promoGroup}
+            locale={locale}
+          />
+        </div>
+        <PaywallModal
+          surface="tako"
+          ownerToken={token}
+          returnTo="tako"
+          products={["full_access", "premium_bundle"]}
+          imageSrc={promoImage}
+          reportCharacterImageSrc={
+            promoType ? thirtyTwoImagePath(promoType) : undefined
+          }
+          imageAlt={promoAlt}
+          group={promoGroup}
+          locale={locale}
+        />
+      </>
+    );
+  })();
 
   return (
     <>
@@ -482,10 +531,10 @@ export async function TakoResultPage({
           (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
         showUnlockCta={takoLocked && data.friends.length > 1}
-        // シェアは「結果のキャラ共有」ではなく「友達にもっと診断してもらう」招待
-        // (2026-07-28 指示)。URL は /friend/[inviteCode]・文言/計測は招待パネル
-        // (LockedInviteShare) と同じ friend_invite_clicked に揃える。
-        shareUrl={inviteUrl}
+        unlockCtaLabel={isKo ? undefined : "結果をアップグレード"}
+        // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
+        // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
+        shareUrl={data.friends.length > 0 ? inviteUrl : undefined}
         shareKind="invite"
         ownerToken={token}
         inviteCode={data.inviteCode}
@@ -507,7 +556,9 @@ export async function TakoResultPage({
         {isKo ? <KoTopHeader /> : <TopHeader />}
       </MeStickyHeader>
       <main
-        className="relative min-h-dvh overflow-x-clip px-4 pb-8 md:px-8"
+        className={`relative overflow-x-clip px-4 md:px-8 ${
+          data.friends.length === 0 ? "pb-0" : "min-h-dvh pb-8"
+        }`}
         style={{ background: "#FFFFFF" }}
       >
         <div className="relative z-10">
@@ -515,31 +566,27 @@ export async function TakoResultPage({
           !data.minnaContext ||
           !data.friendCharacter ||
           !takoHero ? (
-            /* ===== ロック空状態 (友達3人未満)。本文幅は /me・フッターと統一 (1080)。 ===== */
-            <div className="mx-auto max-w-[1080px] pt-6">
-              <TakoLockedState
-                answered={data.friends.map((f) => ({
-                  perceptionId: f.perceptionId,
-                  name: f.name,
-                  imageSrc: f.perceivedImageSrc,
-                  perceivedType32: f.perceivedType32,
-                  friendOwnType32: f.friendOwnType32,
-                }))}
-                pendingCount={data.pendingFriendCount}
-                threshold={data.threshold}
-                inviteUrl={inviteUrl}
-                storageScope={storageScope}
-                ssrInitialAnswered={ssrInitialAnswered}
-                previewMode={previewMode}
-                previewShareMode={
-                  previewMode && typeof sp.share === "string"
-                    ? sp.share
-                    : undefined
+            /* ===== 回答0人: 招待タブ + 淡いグレーの空状態。結果の予告・ぼかしは出さない。 ===== */
+            <div className="mx-auto max-w-[1080px]">
+              <TakoFriendTabs
+                tabs={[]}
+                panels={[]}
+                invitePanel={
+                  <LockedInviteShare
+                    inviteUrl={inviteUrl}
+                    trackSource="tako_empty"
+                    ownerToken={token}
+                    inviteCode={data.inviteCode}
+                    compact
+                    deferQr
+                    locale={locale}
+                    qrImageSrc={
+                      data.ownerType32
+                        ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+                        : null
+                    }
+                  />
                 }
-                ownerType32={data.ownerType32}
-                ownerToken={token}
-                inviteCode={data.inviteCode}
-                selfDiagnoseUrl={`${SITE_URL}${localePrefix}/diagnosis?source=${encodeURIComponent(data.inviteCode)}`}
                 locale={locale}
               />
             </div>
@@ -547,7 +594,7 @@ export async function TakoResultPage({
             /* ===== 解除後: 他己コンテンツ (自己診断と同じ世界観)。本文幅は /me・フッターと統一 (1080)。 ===== */
             <div className="mx-auto max-w-[1080px]">
               {/* 友達タブ + 友達1人ごとの結果シート (1人完結モデル)。
-                  ヒーロー/本文(見出しなし)/①ギャップ/②恋愛傾向 をその友達のスコアで描画。 */}
+                  ヒーロー/①理解度/本文/②ギャップ/③恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
                 tabs={friendSheets.map((sh, i) => ({
                   perceptionId: sh.key,
@@ -560,31 +607,21 @@ export async function TakoResultPage({
                   locked: takoLocked && i > 0,
                 }))}
                 invitePanel={
-                  /* ＋タブの吹き出し: さらに友達に診断してもらう招待 (2026-07-20 追加)。
-                     QR + X/LINE/リンクのシェアは LockedInviteShare (compact) を流用。 */
-                  <div>
-                    <h2 className="mb-1 text-center text-[16px] font-black leading-[1.4] text-[#2E2E5C]">
-                      {isKo ? "다른 친구에게도 물어봐요" : "もっと友達に聞いてみよう"}
-                    </h2>
-                    <p className="mb-4 text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
-                      {isKo
-                        ? "답해 준 친구 수만큼 결과 시트가 늘어나요"
-                        : "答えてくれた友達のぶんだけ、結果シートが増えていくよ"}
-                    </p>
-                    <LockedInviteShare
-                      inviteUrl={inviteUrl}
-                      trackSource="tako_unlocked"
-                      ownerToken={token}
-                      inviteCode={data.inviteCode}
-                      compact
-                      locale={locale}
-                      qrImageSrc={
-                        data.ownerType32
-                          ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
-                          : null
-                      }
-                    />
-                  </div>
+                  /* ＋タブの招待カード。SNS・リンクを主役にし、QRは任意展開する。 */
+                  <LockedInviteShare
+                    inviteUrl={inviteUrl}
+                    trackSource="tako_unlocked"
+                    ownerToken={token}
+                    inviteCode={data.inviteCode}
+                    compact
+                    deferQr
+                    locale={locale}
+                    qrImageSrc={
+                      data.ownerType32
+                        ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+                        : null
+                    }
+                  />
                 }
                 locale={locale}
                 panels={friendSheets.map((sh, shIdx) => {
@@ -643,17 +680,76 @@ export async function TakoResultPage({
                       }
                     />
 
-                    {/* 本文: 見出し・導入なしで「◯◯さんから見たアナタは〜」からいきなり始める
+                    {/* ① 理解度。友達の回答直後ページと同じ画像を、キャラの直後に置く。 */}
+                    <section className="mb-6 mt-10">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                        >
+                          1
+                        </span>
+                        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                          {isKo
+                            ? `${koWith(sh.viewer)}의 이해도`
+                            : `${sh.viewer}の理解度`}
+                        </h2>
+                      </div>
+                      <div
+                        className="relative overflow-hidden rounded-3xl"
+                        style={{
+                          background:
+                            "linear-gradient(105deg, #FAD3E3 0%, #F8C9DC 100%)",
+                        }}
+                      >
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-x-0 top-0 h-[160px]"
+                          style={{
+                            background:
+                              "radial-gradient(ellipse at top center, rgba(255,255,255,0.28) 0%, transparent 60%)",
+                          }}
+                        />
+                        <div className="relative flex flex-col items-center px-4 pb-8 pt-3 md:px-6 md:pb-9 md:pt-5">
+                          {(() => {
+                            const result = understandingResultFor(sh.mutual);
+                            return (
+                              <>
+                                <SmoothImage
+                                  src={result.image}
+                                  alt={
+                                    isKo
+                                      ? `이해도 ${result.score}%`
+                                      : `理解度 ${result.score}%`
+                                  }
+                                  width={1448}
+                                  height={1086}
+                                  unoptimized
+                                  className="h-auto w-full max-w-[640px] object-contain"
+                                />
+                                <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
+                                  {isKo
+                                    ? `이해도는 ${result.score}%. ${sh.viewer}의 답변과 자기 진단의 차이로 계산했어요`
+                                    : `理解度は${result.score}%。${sh.viewer}の回答と自己診断のギャップから算出したよ`}
+                                </p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 本文: 見出し・導入なしで「◯◯さんから見たあなたは〜」からいきなり始める
                         (2026-07-18 指示。/me の本文と同じ見た目)。
-                        本文中間 (挿絵の直後) に「①五つの性格傾向のギャップ」グラフを差し込む
+                        本文中間 (挿絵の直後) に「②五つの性格傾向のギャップ」グラフを差し込む
                         (2026-07-19 指示。/me の「①五つの性格傾向」と同じ構図)。 */}
-                    <section className="mb-14 mt-10">
+                    <section className="mb-14">
                       <MinnaTypeProse
                         type32={sh.type32}
                         viewer={sh.viewer}
                         locale={locale}
                         midSlot={
-                          /* ①五つの性格傾向のギャップ (2026-07-20 指示で旧③をここへ統合):
+                          /* ②五つの性格傾向のギャップ (2026-07-20 指示で旧③をここへ統合):
                              見出し → 一番のギャップカード → グラフ → 解説文 の順。
                              カードをグラフより上に置くため、見出しは BigFiveDivergingBars 内蔵
                              (hideHeading) ではなくここで描画する。 */
@@ -663,7 +759,7 @@ export async function TakoResultPage({
                                 aria-hidden="true"
                                 className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                               >
-                                1
+                                2
                               </span>
                               <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                                 {isKo
@@ -710,17 +806,17 @@ export async function TakoResultPage({
                           </>
                         }
                         afterBodySlot={
-                          /* ② その友達から見た恋愛傾向 (本文の締めとクセの間。2026-07-19 指示)。
+                          /* ③ その友達から見た恋愛傾向 (本文の締めとクセの間。2026-07-19 指示)。
                              見出し直下に /me と同じ恋愛シーン挿絵 (love) を表示。 */
                           sh.love ? (
                             <section>
-                              {/* 見出し (丸数字②・2026-07-20 指示で復活) */}
+                              {/* 見出し (丸数字③)。 */}
                               <div className="mb-4 flex items-center gap-3">
                                 <span
                                   aria-hidden="true"
                                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                                 >
-                                  2
+                                  3
                                 </span>
                                 <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                                   {isKo
@@ -737,7 +833,7 @@ export async function TakoResultPage({
                                   className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                                 />
                               )}
-                              {/* メイン本文: 「◯◯さんから見たアナタの恋は、〜」(認識タイプの恋愛本文) */}
+                              {/* メイン本文: 「◯◯さんから見たあなたの恋は、〜」(認識タイプの恋愛本文) */}
                               {sh.loveProse.length > 0 && (
                                 <div className="mb-10">
                                   {sh.loveProse.map((para, i) => (
@@ -750,7 +846,7 @@ export async function TakoResultPage({
                                   ))}
                                 </div>
                               )}
-                              {/* 「アナタに沼る人」「損してるポイント」(FriendLoveSection) は
+                              {/* 「あなたに沼る人」「損してるポイント」(FriendLoveSection) は
                                   2026-07-28 削除指示で撤去 (コンポーネントと
                                   friend-love-content の resolver は残置)。 */}
                             </section>
@@ -769,7 +865,7 @@ export async function TakoResultPage({
                           aria-hidden="true"
                           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                         >
-                          3
+                          4
                         </span>
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {isKo
@@ -1014,7 +1110,7 @@ export async function TakoResultPage({
                       })()}
                     </section>
 
-                    {/* ④ 2人がつくるジョハリの窓 (2026-07-23 追加)。
+                    {/* ⑤ 2人がつくるジョハリの窓 (2026-07-23 追加)。
                         自己診断 × この友達の回答を4つの窓に仕分け。盲点の窓のみ課金ゲート。 */}
                     <section className="mb-14">
                       <div className="mb-4 flex items-center gap-3">
@@ -1022,7 +1118,7 @@ export async function TakoResultPage({
                           aria-hidden="true"
                           className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
                         >
-                          4
+                          5
                         </span>
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {isKo
@@ -1057,57 +1153,13 @@ export async function TakoResultPage({
         )}
         </div>
       </main>
-      {/* 最下部の課金案内カード (tako_unlock 未購入のとき常設)。
-          ロックカードの CTA (#tako-promo) のスクロール先。
-          解放後(友達≥1人)だけでなく、未解放(友達0人=TakoLockedState)の
-          最下部にも表示する (2026-07-23 指示)。 */}
-      {takoLocked && (() => {
-        // 解放後は友達平均キャラの色/画像。未解放(友達0人)は友達キャラが無いので
-        // 本人の32型でフォールバックする (QR中央と同じ本人の顔・グループ色)。
-        const promoType = data.friendCharacter?.type32 ?? data.ownerType32;
-        const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
-        const promoAlt =
-          isKo && promoType
-            ? KO_RESULT_TYPES[promoType].essence
-            : data.friendCharacter?.essence ??
-              (data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : "");
-        // 2026-08-12: /me と同じ ¥199 / ¥499 / ¥899 の3コース比較へ統一。
-        // 既定は¥499。完全版・プレミアム購入後は /tako に戻す (returnTo)。
-        // TakoLockedBlock の解除CTA (#tako-promo) のスクロール先を兼ねるため id を付与。
-        const promoImage =
-          sceneImageForGroup(promoGroup, "love") ??
-          sceneImageForGroup(promoGroup, "normal1") ??
-          data.friendCharacter?.imageSrc ??
-          (data.ownerType32
-            ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
-            : undefined);
-        return (
-          <>
-            <div id="tako-promo" className="scroll-mt-16">
-              <FullAccessPromoCard
-                surface="tako"
-                ownerToken={token}
-                returnTo="tako"
-                imageSrc={promoImage}
-                imageAlt={promoAlt}
-                group={promoGroup}
-                locale={locale}
-              />
-            </div>
-            {/* ロックの「今すぐアクセス」等はこのモーダルをその場で開く (2026-07-22)。 */}
-            <PaywallModal
-              surface="tako"
-              ownerToken={token}
-              returnTo="tako"
-              imageSrc={promoImage}
-              imageAlt={promoAlt}
-              group={promoGroup}
-              locale={locale}
-            />
-          </>
-        );
-      })()}
+      {/* 2人目以降の結果がある未購入ユーザー向けの最下部課金カード。 */}
+      {data.friends.length > 1 ? takoPromo : null}
       {/* 招待バンド (もっと友達に聞くと〜 + QR) は 2026-07-20 指示で一旦削除。 */}
+      {/* FAQ は招待前の疑問解消用。1人でも回答が付いたら出さない (2026-08-26 指示)。 */}
+      {data.friends.length === 0 && <TakoFaq locale={locale} />}
+      {/* 回答0人の未購入ユーザーには、FAQの直後・フッターの直前で課金カードを案内する。 */}
+      {data.friends.length === 0 ? takoPromo : null}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       {isKo ? <KoTopFooter /> : <TopFooter />}
     </>

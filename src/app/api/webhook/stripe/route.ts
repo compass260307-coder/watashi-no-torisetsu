@@ -7,6 +7,7 @@
 //       checkout.session.completed   即時決済が paid のときだけ購入特典を解放
 //       checkout.session.async_payment_succeeded 遅延決済の支払い確定後に購入特典を解放
 //       checkout.session.async_payment_failed    遅延決済の失敗ログ + Slack アラート
+//       checkout.session.expired     未完了Checkoutの再利用状態を解放
 //       payment_intent.payment_failed 失敗ログ + Slack アラート (DB 更新なし)
 //
 // Idempotency (二重 Webhook 着信耐性):
@@ -54,7 +55,28 @@ import {
   hoshiyomiChatCreditTarget,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
+  purchaseIncludesHoshiyomiChat,
+  purchaseIncludesTarotFeatures,
 } from "@/lib/access-products";
+import {
+  deliverServerPurchaseConversions,
+  enqueueServerPurchaseConversions,
+  type ServerPurchaseConversionInput,
+} from "@/lib/server-purchase-conversions";
+import { pushLineMessages, quickReplies } from "@/lib/line";
+import { lineFreeDailyLimit } from "@/lib/line-alice";
+import {
+  buildLinePlusCheckoutUrl,
+  hasActiveLinePlus,
+  linePlusPlanPriceId,
+} from "@/lib/line-plus";
+import {
+  isLinePlusPassPlan,
+  isLinePlusSubscriptionPlan,
+  LINE_PLUS_PLANS,
+  type LinePlusSubscriptionPlanId,
+} from "@/lib/line-plus-products";
+import { recordLineEvent } from "@/lib/line-events";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -63,6 +85,49 @@ function guestToken(bytes: number): string {
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
 export const maxDuration = 150;
+
+async function queueServerPurchaseConversions(
+  input: ServerPurchaseConversionInput,
+): Promise<void> {
+  // This required, idempotent queue write completes the replay-safe webhook
+  // sequence before Stripe receives 200. Provider I/O runs after the response
+  // and may fail without delaying access grants or purchase emails.
+  await enqueueServerPurchaseConversions(input);
+  after(async () => {
+    const result = await deliverServerPurchaseConversions(input);
+    if (result.failed > 0) {
+      console.warn("[webhook/stripe] purchase conversion queued for retry", {
+        stripe_session_id: input.session.id,
+        failed: result.failed,
+      });
+    }
+  });
+}
+
+function isManagedAlicePlusCheckout(
+  session: Stripe.Checkout.Session,
+): boolean {
+  return (
+    session.metadata?.product === "alice_plus" ||
+    session.metadata?.product === "alice_plus_pass"
+  );
+}
+
+/** 確定・失効したSessionを二重課金ガードの進行中attemptから外す。 */
+async function clearAlicePlusCheckoutAttempt(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  if (!isManagedAlicePlusCheckout(session)) return;
+  const { error } = await supabaseAdmin.rpc(
+    "clear_line_plus_checkout_attempt",
+    { p_checkout_session_id: session.id },
+  );
+  if (error) {
+    throw new Error(
+      `[alice_plus] checkout attempt cleanup failed: ${error.message}`,
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   // ===== Stripe 環境チェック =====
@@ -109,7 +174,28 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const isAlicePlusSubscription =
+          session.metadata?.product === "alice_plus" &&
+          session.mode === "subscription";
+        const isMonthlyTrialCheckout =
+          isAlicePlusSubscription &&
+          (session.metadata?.plan_id === undefined ||
+            session.metadata.plan_id === "monthly") &&
+          session.payment_status === "no_payment_required";
+
         if (session.payment_status !== "paid") {
+          // 初回月額の7日無料は正常に no_payment_required で完了する。
+          // customer.subscription.createdだけに任せると歓迎pushと加入KPIが欠けるため、
+          // Checkout Session側でも処理する (いずれのupsertも冪等)。
+          if (
+            event.type === "checkout.session.completed" &&
+            isMonthlyTrialCheckout
+          ) {
+            await handleAlicePlusCheckoutPaid(stripe, session);
+            await clearAlicePlusCheckoutAttempt(session);
+            break;
+          }
+
           // completed は「Checkout 入力完了」であり、遅延決済ではまだ未払いの場合がある。
           // この時点では権限・購入イベント・メールを一切発行せず、
           // async_payment_succeeded が届くまで待つ。
@@ -129,12 +215,60 @@ export async function POST(request: NextRequest) {
             `async payment succeeded but session is ${session.payment_status}: ${session.id}`,
           );
         }
-        await handleCheckoutPaid(session);
+        // Alice Plus (LINE) 月額サブスク: 買い切り系の権利付与/payment_history とは別系統で、
+        // line_plus_subscriptions に Stripe の状態を写すだけ。
+        if (isAlicePlusSubscription) {
+          await handleAlicePlusCheckoutPaid(stripe, session);
+          await clearAlicePlusCheckoutAttempt(session);
+          break;
+        }
+        // Alice Plus期間パス: time_pass行を書き、既存期限があれば加算する。
+        if (session.metadata?.product === "alice_plus_pass") {
+          await handleAlicePlusPassCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
+          await clearAlicePlusCheckoutAttempt(session);
+          break;
+        }
+        // 旧Alice Plus 1週間パス (¥480) の未配信Webhook互換。新規販売はしない。
+        if (session.metadata?.product === "alice_plus_week") {
+          await handleAlicePlusWeekCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
+          break;
+        }
+        // 旧Alice Plus 無期限プランの未配信Webhook互換。新規販売はしない。
+        if (session.metadata?.product === "alice_plus_lifetime") {
+          await handleAlicePlusLifetimeCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
+          break;
+        }
+        await handleCheckoutPaid(
+          session,
+          new Date(event.created * 1000).toISOString(),
+        );
+        break;
+      }
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await syncLinePlusSubscription(subscription);
         break;
       }
       case "checkout.session.async_payment_failed": {
         const session = event.data.object as Stripe.Checkout.Session;
         await handleCheckoutAsyncPaymentFailed(session);
+        await clearAlicePlusCheckoutAttempt(session);
+        break;
+      }
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await clearAlicePlusCheckoutAttempt(session);
         break;
       }
       case "payment_intent.payment_failed": {
@@ -144,7 +278,10 @@ export async function POST(request: NextRequest) {
       }
       case "charge.refunded": {
         const charge = event.data.object as Stripe.Charge;
-        await handleChargeRefunded(charge);
+        await handleChargeRefunded(
+          charge,
+          new Date(event.created * 1000).toISOString(),
+        );
         break;
       }
       default:
@@ -415,6 +552,7 @@ async function grantFullAccessByEmailOrId(
 async function recordFullAccessPayment(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
   product: "full_access" | "premium_bundle" = "full_access",
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
@@ -427,7 +565,6 @@ async function recordFullAccessPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const paidAt = new Date().toISOString();
   const paymentKind =
     product === "premium_bundle" ? "premium_bundle" : "full_access";
   const paymentRecord = {
@@ -449,11 +586,16 @@ async function recordFullAccessPayment(
       destiny_access_policy:
         session.metadata?.destiny_access_policy ?? "legacy_included",
       hoshiyomi_chat_policy:
-        session.metadata?.hoshiyomi_chat_policy ?? "legacy_unspecified",
+        session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
       friend_access_policy:
         session.metadata?.friend_access_policy ?? "legacy_included",
+      aisho_access_policy:
+        session.metadata?.aisho_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
       locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      paywall_version: session.metadata?.paywall_version ?? "legacy",
+      placement: session.metadata?.paywall_placement ?? "unknown",
+      return_to: session.metadata?.return_to ?? "me",
     },
   };
 
@@ -464,22 +606,21 @@ async function recordFullAccessPayment(
       ignoreDuplicates: true,
     });
   if (isCoreKpiPaymentSchemaPending(error)) {
-    console.warn(
-      "[webhook/stripe] core KPI payment schema pending; purchase event remains the temporary fallback",
-      { stripe_session_id: session.id },
+    throw new Error(
+      `[${product}] payment schema is not ready for ${session.id}: ${error?.message ?? "unknown schema error"}`,
     );
-    return;
   }
   if (error) {
     throw new Error(`[${product}] payment record failed: ${error.message}`);
   }
 }
 
-// ¥199 自己診断＋PDFの権限源。plan='full' は付けず、この completed 決済だけを
-// hasSelfReportAccess() が読むため、友達診断・相性・アップグレード資格は解放されない。
+// 学生向けライトの権限源。plan='full' は付けず、この completed 決済と
+// metadata の商品ポリシーから自己診断・PDF・友達機能を解放する。
 async function recordSelfReportPayment(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
     throw new Error(
@@ -491,7 +632,6 @@ async function recordSelfReportPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const paidAt = new Date().toISOString();
   const { error } = await supabaseAdmin.from("payment_history").upsert(
     {
       user_id: userId,
@@ -508,8 +648,15 @@ async function recordSelfReportPayment(
         product: "self_report",
         friend_access_policy:
           session.metadata?.friend_access_policy ?? "legacy_included",
+        aisho_access_policy:
+          session.metadata?.aisho_access_policy ?? "legacy_included",
+        hoshiyomi_chat_policy:
+          session.metadata?.hoshiyomi_chat_policy ?? "none",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        return_to: session.metadata?.return_to ?? "me",
       },
     },
     { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -525,6 +672,7 @@ async function recordUnmeiPayment(
   session: Stripe.Checkout.Session,
   userId: string,
   product: "unmei" | "unmei_upgrade",
+  paidAt: string,
 ): Promise<void> {
   if (session.amount_total === null || !session.currency) {
     throw new Error(`[${product}] missing amount/currency for ${session.id}`);
@@ -533,7 +681,6 @@ async function recordUnmeiPayment(
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
-  const nowIso = new Date().toISOString();
   const { error } = await supabaseAdmin.from("payment_history").upsert(
     {
       user_id: userId,
@@ -544,11 +691,15 @@ async function recordUnmeiPayment(
       amount_refunded_minor: 0,
       currency: session.currency,
       status: "completed",
-      paid_at: nowIso,
-      updated_at: nowIso,
+      paid_at: paidAt,
+      updated_at: paidAt,
       metadata: {
         product,
         locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        source: normalizePaywallSource(session.metadata?.paywall_source),
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        return_to: session.metadata?.return_to ?? "unmei",
       },
     },
     { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -705,6 +856,30 @@ async function sendDetailedReportEmailBestEffort(
           purchaseIncludesDestinyFeatures(
             "full_access",
             session.metadata?.destiny_access_policy,
+            session.metadata?.locale,
+          )),
+      hoshiyomiChatIncluded:
+        session.metadata?.product === "premium_bundle" ||
+        (session.metadata?.product !== "self_report" &&
+          purchaseIncludesHoshiyomiChat(
+            "full_access",
+            session.metadata?.hoshiyomi_chat_policy,
+          )),
+      hoshiyomiChatCredits:
+        session.metadata?.product === "self_report"
+          ? 0
+          : hoshiyomiChatCreditTarget(
+              session.metadata?.product === "premium_bundle"
+                ? "premium_bundle"
+                : "full_access",
+              session.metadata?.hoshiyomi_chat_policy,
+            ),
+      tarotFeaturesIncluded:
+        session.metadata?.product === "premium_bundle" ||
+        (session.metadata?.product === "full_access" &&
+          purchaseIncludesTarotFeatures(
+            "full_access",
+            session.metadata?.tarot_access_policy,
           )),
       friendFeaturesIncluded: purchaseIncludesFriendFeatures(
         session.metadata?.product === "premium_bundle"
@@ -713,15 +888,6 @@ async function sendDetailedReportEmailBestEffort(
             ? "self_report"
             : "full_access",
         session.metadata?.friend_access_policy,
-      ),
-      hoshiyomiChatCredits: hoshiyomiChatCreditTarget(
-        session.metadata?.product === "premium_bundle"
-          ? "premium_bundle"
-          : session.metadata?.product === "self_report"
-            ? "self_report"
-            : "full_access",
-        session.metadata?.hoshiyomi_chat_policy,
-        session.metadata?.destiny_access_policy,
       ),
       purchaseAmountJpy:
         session.currency === "jpy" ? session.amount_total : null,
@@ -736,37 +902,67 @@ async function sendDetailedReportEmailBestEffort(
   }
 }
 
-// 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
+function purchaseEventId(eventName: string, checkoutSessionId: string): string {
+  const hex = crypto
+    .createHash("sha256")
+    .update(`stripe_webhook_event\0${eventName}\0${checkoutSessionId}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** 歓迎pushの前に決定的IDを確保し、Stripe再送での二重通知を防ぐ。 */
+async function recordLineEventOnFirstDelivery(input: {
+  eventName: string;
+  id: string;
+  metadata: Record<string, unknown>;
+}): Promise<boolean> {
+  const { error } = await supabaseAdmin.from("events").insert({
+    id: input.id,
+    event_name: input.eventName,
+    owner_token: null,
+    locale: "ja",
+    metadata: input.metadata,
+  });
+  if (!error) return true;
+  if (error.code !== "23505") {
+    console.error("[webhook/stripe] line event insert failed", {
+      event_name: input.eventName,
+      message: error.message,
+    });
+  }
+  return false;
+}
+
+// 課金ファネル計測: 決済完了イベントを events に記録。
 // Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
-// 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
+// 計測失敗は throw してStripeに再送させ、権限だけ付いて計測が欠ける状態を残さない。
 async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
-  try {
-    const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
-    const product =
-      session.metadata?.product === "self_report"
-        ? "self_report"
-        : session.metadata?.product === "premium_bundle"
-          ? "premium_bundle"
-          : "full_access";
-    const { data: existing, error: selErr } = await supabaseAdmin
-      .from("events")
-      .select("id")
-      .eq("event_name", "purchase_completed")
-      .eq("metadata->>stripe_session_id", session.id)
-      .limit(1);
-    // SELECT 失敗時は重複の有無が判定できない。挿入すると再送時に二重計上の恐れが
-    // あるためスキップ (集計側も stripe_session_id ユニークで数えるので、稀な取りこぼしは
-    // paidUsers (users.plan) 側で補足できる)。
-    if (selErr) {
-      console.error("[webhook] purchase_completed dedup check failed:", selErr);
-      return;
-    }
-    if (existing && existing.length > 0) return;
-    await supabaseAdmin.from("events").insert({
+  const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
+  const product =
+    session.metadata?.product ??
+    session.metadata?.payment_kind ??
+    "unknown";
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("events")
+    .select("id")
+    .eq("event_name", "purchase_completed")
+    .eq("metadata->>stripe_session_id", session.id)
+    .limit(1);
+  if (selectError) {
+    throw new Error(
+      `[webhook] purchase_completed dedup check failed: ${selectError.message}`,
+    );
+  }
+  if (existing && existing.length > 0) return;
+  const { error: insertError } = await supabaseAdmin.from("events").insert({
+      id: purchaseEventId("purchase_completed", session.id),
       event_name: "purchase_completed",
+      created_at: paidAt,
       owner_token:
         typeof session.metadata?.owner_token === "string"
           ? session.metadata.owner_token || null
@@ -782,26 +978,32 @@ async function recordPurchaseCompletedEvent(
         upgrade_from: session.metadata?.upgrade_from ?? "none",
         destiny_access_policy:
           session.metadata?.destiny_access_policy ?? "legacy_included",
+        hoshiyomi_chat_policy:
+          session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
         friend_access_policy:
           session.metadata?.friend_access_policy ?? "legacy_included",
+        aisho_access_policy:
+          session.metadata?.aisho_access_policy ?? "legacy_included",
         paywall_version: session.metadata?.paywall_version ?? "legacy",
         placement: session.metadata?.paywall_placement ?? "unknown",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         return_to:
-          product === "self_report"
-            ? "me"
-            : session.metadata?.return_to === "tako"
-              ? "tako"
-              : session.metadata?.return_to === "aisho"
-                ? "aisho"
-                : session.metadata?.return_to === "unmei"
-                  ? "unmei"
+          session.metadata?.return_to === "tako"
+            ? "tako"
+            : session.metadata?.return_to === "aisho"
+              ? "aisho"
+              : session.metadata?.return_to === "unmei"
+                ? "unmei"
+                : session.metadata?.return_to === "hoshiyomi"
+                  ? "hoshiyomi"
                   : "me",
         locale,
       },
     });
-  } catch (err) {
-    console.error("[webhook] purchase_completed event insert failed:", err);
+  if (insertError && insertError.code !== "23505") {
+    throw new Error(
+      `[webhook] purchase_completed event insert failed: ${insertError.message}`,
+    );
   }
 }
 
@@ -813,27 +1015,29 @@ async function recordUnmeiPurchaseEventOnce(
   eventName: "unmei_purchase_complete" | "unmei_upgrade_complete",
   session: Stripe.Checkout.Session,
   userId: string | null,
+  paidAt: string,
 ): Promise<void> {
-  try {
-    const { data: existing, error: selErr } = await supabaseAdmin
+  const { data: existing, error: selectError } = await supabaseAdmin
       .from("events")
       .select("id")
       .eq("event_name", eventName)
       .eq("metadata->>stripe_session_id", session.id)
       .limit(1);
-    // SELECT 失敗時は重複の有無が判定できないため挿入しない (recordPurchaseCompletedEvent と同方針)。
-    if (selErr) {
-      console.error(`[webhook] ${eventName} dedup check failed:`, selErr);
-      return;
-    }
-    if (existing && existing.length > 0) return;
-    const ownerToken =
+  if (selectError) {
+    throw new Error(
+      `[webhook] ${eventName} dedup check failed: ${selectError.message}`,
+    );
+  }
+  if (existing && existing.length > 0) return;
+  const ownerToken =
       typeof session.metadata?.owner_token === "string" &&
       session.metadata.owner_token
         ? session.metadata.owner_token
         : null;
-    await supabaseAdmin.from("events").insert({
+  const { error: insertError } = await supabaseAdmin.from("events").insert({
+      id: purchaseEventId(eventName, session.id),
       event_name: eventName,
+      created_at: paidAt,
       owner_token: ownerToken,
       metadata: {
         stripe_session_id: session.id,
@@ -843,18 +1047,584 @@ async function recordUnmeiPurchaseEventOnce(
           eventName === "unmei_purchase_complete" ? "unmei" : "unmei_upgrade",
         amount_total: session.amount_total ?? null,
         currency: session.currency ?? "jpy",
+        paywall_version: session.metadata?.paywall_version ?? "legacy",
+        placement: session.metadata?.paywall_placement ?? "unknown",
+        source: normalizePaywallSource(session.metadata?.paywall_source),
       },
     });
-  } catch (e) {
-    console.error(`[webhook] ${eventName} insert failed:`, e);
+  if (insertError && insertError.code !== "23505") {
+    throw new Error(`[webhook] ${eventName} insert failed: ${insertError.message}`);
   }
 }
 
 // ---------- 支払い確定済み Checkout Session の共通処理 ----------
 // checkout.session.completed (即時決済) と checkout.session.async_payment_succeeded
 // (遅延決済) のどちらからも、payment_status='paid' を確認した後だけ呼ぶ。
+// ===== Alice Plus (LINE) 月額サブスク =====
+
+const ALICE_PLUS_WELCOME_MESSAGE = (
+  manageUrl: string,
+  planId: LinePlusSubscriptionPlanId,
+): string =>
+  [
+    `${LINE_PLUS_PLANS[planId].label}へようこそ！これからは無料枠を超えて、たっぷりお話しできます。`,
+    "深掘り占い(恋愛運・友達運・勉強運)とタロット占いも解放されました。さっそく「タロット占い」って送ってみてくださいね。",
+    "",
+    "プランの確認・解約はこちらからいつでもどうぞ。",
+    manageUrl,
+  ].join("\n");
+
+function resolveSubscriptionPlanId(input: {
+  metadataPlanId: unknown;
+  stripePriceId: string | null;
+}): LinePlusSubscriptionPlanId | null {
+  // Portalで月額↔年額を変更してもsubscription metadataは古いままの
+  // ことがある。現在のSubscriptionItemのPriceを最優先にする。
+  if (
+    input.stripePriceId &&
+    input.stripePriceId === linePlusPlanPriceId("annual")
+  ) {
+    return "annual";
+  }
+  if (
+    input.stripePriceId &&
+    input.stripePriceId === linePlusPlanPriceId("monthly")
+  ) {
+    return "monthly";
+  }
+  // Priceが取得できた場合、intervalやmetadataだけで未知の商品を受け入れない。
+  if (input.stripePriceId) return null;
+  if (isLinePlusSubscriptionPlan(input.metadataPlanId)) {
+    return input.metadataPlanId;
+  }
+  return null;
+}
+
+/**
+ * サブスクの Checkout 完了。Stripe から最新の subscription を取り直して同期し、
+ * ようこそメッセージを push する。取り直しに失敗しても加入は確定しているので、
+ * 最低限の行を upsert して customer.subscription.* の後続イベントに補完を任せる。
+ */
+async function handleAlicePlusCheckoutPaid(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  const subscriptionId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id;
+  if (!userId || !lineUserId || !subscriptionId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  const metadataPriceId = metadata.stripe_price_id || null;
+  // annual導入前のCheckout Sessionはplan_idを持たないが、当時はmonthlyのみ。
+  const resolvedPlanId = resolveSubscriptionPlanId({
+    metadataPlanId: metadata.plan_id,
+    stripePriceId: metadataPriceId,
+  });
+  if (metadataPriceId && !resolvedPlanId) {
+    throw new Error("[alice_plus] unsupported Checkout Price");
+  }
+  const planId = resolvedPlanId ?? "monthly";
+
+  let synced = false;
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await syncLinePlusSubscription(subscription, {
+      checkoutSessionId: session.id,
+    });
+    synced = true;
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus subscription retrieve failed", {
+      subscription_id: subscriptionId,
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+
+  if (!synced) {
+    const customerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : (session.customer?.id ?? null);
+    const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+      {
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: customerId,
+        user_id: userId,
+        line_user_id: lineUserId,
+        plan_key: planId,
+        stripe_price_id: metadataPriceId,
+        stripe_checkout_session_id: session.id,
+        status:
+          session.payment_status === "no_payment_required"
+            ? "trialing"
+            : "active",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "stripe_subscription_id" },
+    );
+    // upsert まで失敗したら 500 で Stripe に再送させる (Plus 付与の取りこぼし防止)
+    if (error) {
+      throw new Error(`[alice_plus] subscription upsert failed: ${error.message}`);
+    }
+  }
+
+  // Stripe再送で二重記録しないよう決定的ID (sessionId由来) で冪等化
+  const shouldSendWelcome = await recordLineEventOnFirstDelivery({
+    eventName: "line_plus_subscribed",
+    id: purchaseEventId("line_plus_subscribed", session.id),
+    metadata: {
+      amount_total: session.amount_total ?? null,
+      currency: session.currency ?? "jpy",
+      plan_id: planId,
+    },
+  });
+
+  if (!shouldSendWelcome) return;
+
+  // push は best effort。失敗しても加入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: ALICE_PLUS_WELCOME_MESSAGE(
+          buildLinePlusCheckoutUrl(lineUserId),
+          planId,
+        ),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * Alice Plus期間パスの権利付与。Stripe再送はCheckout Session IDで冪等化し、
+ * 別の購入が並行した場合もDBの行ロック内で利用期限を加算する。
+ */
+async function handleAlicePlusPassCheckoutPaid(
+  session: Stripe.Checkout.Session,
+  paidAt: string,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+  const planId = isLinePlusPassPlan(metadata.plan_id)
+    ? metadata.plan_id
+    : null;
+  const plan = planId ? LINE_PLUS_PLANS[planId] : null;
+  const accessDays = Number(metadata.access_days);
+  const priceId = metadata.stripe_price_id;
+  const expectedPriceId = planId ? linePlusPlanPriceId(planId) : null;
+
+  if (
+    !userId ||
+    !lineUserId ||
+    !paymentIntentId ||
+    !planId ||
+    !plan ||
+    !priceId ||
+    !expectedPriceId ||
+    priceId !== expectedPriceId ||
+    accessDays !== plan.accessDays ||
+    session.amount_total !== plan.priceYen ||
+    session.currency?.toLowerCase() !== "jpy"
+  ) {
+    // メタデータ欠落は再送しても回復しないため、手動救済用の通知を残して受領する。
+    console.error(
+      `[webhook/stripe] alice_plus_pass invalid metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_pass: metadata不整合で受領のみ", {
+      session_id: session.id,
+      plan_id: metadata.plan_id ?? "missing",
+      access_days: metadata.access_days ?? "missing",
+      amount_total: session.amount_total ?? "missing",
+      currency: session.currency ?? "missing",
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { data, error } = await supabaseAdmin.rpc("grant_line_plus_time_pass", {
+    p_user_id: userId,
+    p_line_user_id: lineUserId,
+    p_stripe_customer_id: customerId,
+    p_stripe_checkout_session_id: session.id,
+    p_stripe_payment_intent_id: paymentIntentId,
+    p_plan_key: planId,
+    p_stripe_price_id: priceId,
+    p_access_days: accessDays,
+    p_purchased_at: paidAt,
+  });
+  if (error) {
+    throw new Error(`[alice_plus_pass] grant failed: ${error.message}`);
+  }
+
+  const grant = Array.isArray(data) ? data[0] : data;
+  const wasGranted = grant?.was_granted === true;
+  const expiresAt =
+    typeof grant?.expires_at === "string" ? grant.expires_at : null;
+
+  await recordLineEvent({
+    eventName: "line_plus_pass_purchased",
+    id: purchaseEventId("line_plus_pass_purchased", session.id),
+    metadata: {
+      plan_id: planId,
+      access_days: accessDays,
+      expires_at: expiresAt,
+      amount_total: session.amount_total ?? null,
+      currency: session.currency ?? "jpy",
+    },
+  });
+
+  // RPCが既存セッションを返したStripe再送で、歓迎通知を重複させない。
+  if (!wasGranted) return;
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          `${plan.label}へようこそ🎉 Plusのぜんぶが使えます。`,
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・無料枠を超えてたっぷりおしゃべり",
+          "",
+          `自動更新はありません。${expiresAt ? `利用期限は${new Date(expiresAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}までです。` : ""}`,
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_pass welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * 旧Alice Plus 1週間パス (買い切り¥480) の権利付与。
+ * サブスクではないので Stripe 同期はなく、line_plus_subscriptions に
+ * status='week_pass' + current_period_end (購入から7日) の行を書くだけ。
+ * 判定は hasActiveLinePlus が期限つきで見る。期限切れ後の後始末は不要。
+ */
+async function handleAlicePlusWeekCheckoutPaid(
+  session: Stripe.Checkout.Session,
+  paidAt: string,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus_week missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_week: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: `week-${session.id}`,
+      stripe_customer_id: customerId,
+      user_id: userId,
+      line_user_id: lineUserId,
+      plan_key: "week",
+      stripe_price_id: process.env.STRIPE_PRICE_ALICE_PLUS_WEEK ?? null,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null),
+      access_days: 7,
+      purchased_at: paidAt,
+      status: "week_pass",
+      current_period_end: new Date(
+        new Date(paidAt).getTime() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      cancel_at_period_end: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // upsert 失敗は 500 で Stripe に再送させる (権利付与の取りこぼし防止)
+  if (error) {
+    throw new Error(`[alice_plus_week] upsert failed: ${error.message}`);
+  }
+
+  await recordLineEvent({
+    eventName: "line_plus_week_purchased",
+    id: purchaseEventId("line_plus_week_purchased", session.id),
+    metadata: {
+      stripe_session_id: session.id,
+      user_id: userId,
+      line_user_id: lineUserId,
+      amount_total: session.amount_total ?? null,
+    },
+  });
+
+  // push は best effort。失敗しても購入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          "1週間パスへようこそ🎉 今日から7日間、Plusのぜんぶが使えます。",
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・無料枠を超えてたっぷりおしゃべり",
+          "",
+          "自動更新はないので、期限が来たらそのまま無料プランに戻ります。安心してたっぷり遊んでくださいね🌙",
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_week welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * Alice Plus 無期限プラン (買い切り¥9,800) の権利付与。
+ * status='lifetime' の行を書くだけ (期限なし・ACTIVE_STATUSES に含まれるので
+ * hasActiveLinePlus がそのまま通す)。ポータル管理対象外なので解約系の同期もない。
+ */
+async function handleAlicePlusLifetimeCheckoutPaid(
+  session: Stripe.Checkout.Session,
+  paidAt: string,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    // リトライしても直らない毒。200 で受領し Slack で手動対応に回す。
+    console.error(
+      `[webhook/stripe] alice_plus_lifetime missing metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_lifetime: metadata不足で受領のみ", {
+      session_id: session.id,
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: `lifetime-${session.id}`,
+      stripe_customer_id: customerId,
+      user_id: userId,
+      line_user_id: lineUserId,
+      plan_key: "lifetime",
+      stripe_price_id: process.env.STRIPE_PRICE_ALICE_PLUS_LIFETIME ?? null,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null),
+      purchased_at: paidAt,
+      status: "lifetime",
+      current_period_end: null,
+      cancel_at_period_end: false,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // upsert 失敗は 500 で Stripe に再送させる (権利付与の取りこぼし防止)
+  if (error) {
+    throw new Error(`[alice_plus_lifetime] upsert failed: ${error.message}`);
+  }
+
+  await recordLineEvent({
+    eventName: "line_plus_lifetime_purchased",
+    id: purchaseEventId("line_plus_lifetime_purchased", session.id),
+    metadata: {
+      stripe_session_id: session.id,
+      user_id: userId,
+      line_user_id: lineUserId,
+      amount_total: session.amount_total ?? null,
+    },
+  });
+
+  // push は best effort。失敗しても購入自体は成立している
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          "無期限プランへようこそ🎉 今日からずっと、Plusのぜんぶが使えます。",
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・無料枠を超えてたっぷりおしゃべり",
+          "",
+          "もう期限も更新もありません。これからずっと、あなたのそばにいますね🌙",
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_lifetime welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * customer.subscription.created/updated/deleted の同期。alice_plus 以外の
+ * サブスク (将来の別商品) はここでは扱わず黙って無視する。
+ */
+async function syncLinePlusSubscription(
+  subscription: Stripe.Subscription,
+  context?: { checkoutSessionId?: string },
+): Promise<void> {
+  const metadata = subscription.metadata ?? {};
+  if (metadata.product !== "alice_plus") return;
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  if (!userId || !lineUserId) {
+    console.error(
+      `[webhook/stripe] alice_plus subscription without metadata (acknowledged): ${subscription.id}`,
+    );
+    return;
+  }
+
+  // 解約系KPIの遷移検知用に直前の状態を読む (無ければ新規)
+  const { data: prev } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("status, cancel_at_period_end")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+
+  // API 2025-03 (SDK v18+) で current_period_end は SubscriptionItem 側に移動した
+  const firstItem = subscription.items?.data?.[0];
+  const periodEndEpoch = firstItem?.current_period_end;
+  const stripePriceId = firstItem?.price?.id ?? metadata.stripe_price_id ?? null;
+  const planId = resolveSubscriptionPlanId({
+    metadataPlanId: metadata.plan_id,
+    stripePriceId,
+  });
+  if (!planId) {
+    throw new Error(
+      "[alice_plus] unsupported subscription price",
+    );
+  }
+  // 期間末解約の予約。新しいAPIバージョン (2026-03 dahlia 系) では Portal 解約が
+  // cancel_at_period_end でなく cancel_at (解約予定日時) で表現されるため両方を見る。
+  // 実測: 2026-09-02 の課金実機テストで cancel_at_period_end=false のまま届いた
+  const cancelScheduled =
+    Boolean(subscription.cancel_at_period_end) || subscription.cancel_at != null;
+  const { error } = await supabaseAdmin.from("line_plus_subscriptions").upsert(
+    {
+      stripe_subscription_id: subscription.id,
+      stripe_customer_id:
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : (subscription.customer?.id ?? null),
+      user_id: userId,
+      line_user_id: lineUserId,
+      plan_key: planId,
+      stripe_price_id: stripePriceId,
+      ...(context?.checkoutSessionId
+        ? { stripe_checkout_session_id: context.checkoutSessionId }
+        : {}),
+      status: subscription.status,
+      current_period_end: periodEndEpoch
+        ? new Date(periodEndEpoch * 1000).toISOString()
+        : null,
+      cancel_at_period_end: cancelScheduled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
+  // 失敗は 500 → Stripe 再送で回復させる (状態ズレを残さない)
+  if (error) {
+    throw new Error(`[alice_plus] subscription sync failed: ${error.message}`);
+  }
+
+  // 期間末解約の予約 (解約→再開→再解約は cancel_at が変わるので別イベントになる)
+  if (cancelScheduled && !prev?.cancel_at_period_end) {
+    await recordLineEvent({
+      eventName: "line_plus_cancel_scheduled",
+      id: purchaseEventId(
+        "line_plus_cancel_scheduled",
+        `${subscription.id}:${subscription.cancel_at ?? ""}`,
+      ),
+      metadata: {
+        plan_id: planId,
+        cancel_at: subscription.cancel_at ?? null,
+      },
+    });
+  }
+  // サブスク終了 (期間満了 or 即時解約)
+  if (subscription.status === "canceled" && prev?.status !== "canceled") {
+    await recordLineEvent({
+      eventName: "line_plus_canceled",
+      id: purchaseEventId("line_plus_canceled", subscription.id),
+      metadata: {
+        plan_id: planId,
+      },
+    });
+    // 無料に戻った人へのお別れ+おかえり導線 (best effort)
+    try {
+      const hasOtherPlusAccess = await hasActiveLinePlus(userId);
+      await pushLineMessages(lineUserId, [
+        {
+          type: "text",
+          text: hasOtherPlusAccess
+            ? [
+                "Alice Plusのサブスクが終了しました。",
+                "ほかの有効なPlus利用期間が残っているため、その期限までは引き続きPlusを使えます。",
+              ].join("\n")
+            : [
+                "Alice Plusのご利用、ありがとうございました。",
+                `これからも1日${lineFreeDailyLimit()}通の無料枠と今日の占いで、変わらずお話しできますからね。`,
+                "また無料枠を気にせずたっぷり話したくなったら、いつでも「プラン」って送ってください。",
+              ].join("\n"),
+          quickReply: quickReplies("今日の占い", "プラン"),
+        },
+      ]);
+    } catch (caught) {
+      console.error("[webhook/stripe] alice_plus farewell push failed", {
+        message: caught instanceof Error ? caught.message : String(caught),
+      });
+    }
+  }
+}
+
 async function handleCheckoutPaid(
   session: Stripe.Checkout.Session,
+  paidAt: string,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
   // guest 決済では user_id が空。"" は null 扱いにする。
@@ -873,13 +1643,20 @@ async function handleCheckoutPaid(
     if (!linkedUserId) {
       throw new Error(`[unmei] linked user missing for ${session.id}`);
     }
-    await recordUnmeiPayment(session, linkedUserId, "unmei");
+    await recordUnmeiPayment(session, linkedUserId, "unmei", paidAt);
     await persistPurchaseLocale(session, linkedUserId);
     await recordUnmeiPurchaseEventOnce(
       "unmei_purchase_complete",
       session,
       linkedUserId,
+      paidAt,
     );
+    await queueServerPurchaseConversions({
+      session,
+      userId: linkedUserId,
+      product: "unmei",
+      paidAt,
+    });
     // AI 生成 (〜100秒超) は応答後に after() で実行する。同期 await だと maxDuration を
     // 超えて webhook 全体がタイムアウトし、Stripe が翌日まで再送し続けていた (2026-08-08)。
     // after() が失敗しても /unmei ページ側の /api/unmei/generate キックで回復できる。
@@ -916,9 +1693,20 @@ async function handleCheckoutPaid(
       return;
     }
     await grantUnmeiToUserId(userId);
-    await recordUnmeiPayment(session, userId, "unmei_upgrade");
+    await recordUnmeiPayment(session, userId, "unmei_upgrade", paidAt);
     await persistPurchaseLocale(session, userId);
-    await recordUnmeiPurchaseEventOnce("unmei_upgrade_complete", session, userId);
+    await recordUnmeiPurchaseEventOnce(
+      "unmei_upgrade_complete",
+      session,
+      userId,
+      paidAt,
+    );
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "unmei_upgrade",
+      paidAt,
+    });
     // 基本購入と同じく、AI 生成は応答後に回して webhook を即 200 で返す。
     after(() =>
       triggerUnmeiGeneration(
@@ -933,12 +1721,20 @@ async function handleCheckoutPaid(
   if (metadata.product === "premium_bundle") {
     const paymentUserId = await grantFullAccessByEmailOrId(session, userId);
     await grantUnmeiByEmailOrId(session, paymentUserId);
-    await recordFullAccessPayment(session, paymentUserId, "premium_bundle");
+    await recordFullAccessPayment(
+      session,
+      paymentUserId,
+      paidAt,
+      "premium_bundle",
+    );
     try {
       await grantHoshiyomiCreditsToTarget({
         userId: paymentUserId,
         sourceKey: `stripe:${session.id}`,
-        targetTotal: 30,
+        targetTotal: hoshiyomiChatCreditTarget(
+          "premium_bundle",
+          session.metadata?.hoshiyomi_chat_policy,
+        ),
       });
     } catch (error) {
       if (!isMissingHoshiyomiStore(error)) throw error;
@@ -947,7 +1743,13 @@ async function handleCheckoutPaid(
       });
     }
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "premium_bundle",
+      paidAt,
+    });
     after(() =>
       triggerUnmeiGeneration(
         paymentUserId,
@@ -963,17 +1765,24 @@ async function handleCheckoutPaid(
     const includesDestinyFeatures = purchaseIncludesDestinyFeatures(
       "full_access",
       session.metadata?.destiny_access_policy,
+      session.metadata?.locale,
+    );
+    // 設計図 (unmei) とAI占い師チャットは独立に判定する。
+    // 現行の日本版完全版は「設計図あり・Alice 30回答」。旧購入は記録済みの
+    // policy に従い、購入時に約束した権利を維持する。
+    const includesHoshiyomiChat = purchaseIncludesHoshiyomiChat(
+      "full_access",
+      session.metadata?.hoshiyomi_chat_policy,
+    );
+    const hoshiyomiChatCredits = hoshiyomiChatCreditTarget(
+      "full_access",
+      session.metadata?.hoshiyomi_chat_policy,
     );
     if (includesDestinyFeatures) {
       await grantUnmeiByEmailOrId(session, paymentUserId);
     }
-    await recordFullAccessPayment(session, paymentUserId);
-    const hoshiyomiChatCredits = hoshiyomiChatCreditTarget(
-      "full_access",
-      session.metadata?.hoshiyomi_chat_policy,
-      session.metadata?.destiny_access_policy,
-    );
-    if (hoshiyomiChatCredits > 0) {
+    await recordFullAccessPayment(session, paymentUserId, paidAt);
+    if (includesHoshiyomiChat) {
       try {
         await grantHoshiyomiCreditsToTarget({
           userId: paymentUserId,
@@ -988,7 +1797,13 @@ async function handleCheckoutPaid(
       }
     }
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "full_access",
+      paidAt,
+    });
     if (includesDestinyFeatures) {
       after(() =>
         triggerUnmeiGeneration(
@@ -1003,9 +1818,15 @@ async function handleCheckoutPaid(
 
   if (metadata.product === "self_report") {
     const paymentUserId = await resolveSelfReportUser(session, userId);
-    await recordSelfReportPayment(session, paymentUserId);
+    await recordSelfReportPayment(session, paymentUserId, paidAt);
     await persistPurchaseLocale(session, paymentUserId);
-    await recordPurchaseCompletedEvent(session, paymentUserId);
+    await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "self_report",
+      paidAt,
+    });
     await sendDetailedReportEmailBestEffort(session, paymentUserId);
     return;
   }
@@ -1025,11 +1846,25 @@ async function handleCheckoutPaid(
   // 'tako_unlock' = 友達診断の隠しコンテンツ解放 (¥799 / 割引 ¥300, 2026-07-21 改定)
   // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
   if (metadata.payment_kind === "perception_unlock") {
-    await handlePerceptionUnlockCompleted(session, userId, metadata);
+    await handlePerceptionUnlockCompleted(session, userId, metadata, paidAt);
+    await recordPurchaseCompletedEvent(session, userId, paidAt);
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "perception_unlock",
+      paidAt,
+    });
     return;
   }
   if (metadata.payment_kind === "tako_unlock") {
-    await handleTakoUnlockCompleted(session, userId);
+    await handleTakoUnlockCompleted(session, userId, paidAt);
+    await recordPurchaseCompletedEvent(session, userId, paidAt);
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "tako_unlock",
+      paidAt,
+    });
     return;
   }
 }
@@ -1042,6 +1877,7 @@ async function handleCheckoutPaid(
 async function handleTakoUnlockCompleted(
   session: Stripe.Checkout.Session,
   userId: string,
+  paidAt: string,
 ): Promise<void> {
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -1059,10 +1895,13 @@ async function handleTakoUnlockCompleted(
         amount_jpy: session.amount_total ?? 799,
         currency: session.currency ?? "jpy",
         status: "completed" as const,
-        paid_at: new Date().toISOString(),
+        paid_at: paidAt,
         metadata: {
           payment_kind: "tako_unlock",
           discounted: session.metadata?.discounted ?? "0",
+          paywall_version: session.metadata?.paywall_version ?? "legacy",
+          placement: session.metadata?.paywall_placement ?? "unknown",
+          source: normalizePaywallSource(session.metadata?.paywall_source),
         },
       },
       { onConflict: "stripe_session_id", ignoreDuplicates: true },
@@ -1268,6 +2107,7 @@ async function handlePerceptionUnlockCompleted(
   session: Stripe.Checkout.Session,
   userId: string,
   metadata: Record<string, string>,
+  paidAt: string,
 ): Promise<void> {
   const perceptionId = metadata.perception_id;
   if (!perceptionId) {
@@ -1290,10 +2130,13 @@ async function handlePerceptionUnlockCompleted(
     amount_jpy: session.amount_total ?? 500,
     currency: session.currency ?? "jpy",
     status: "completed" as const,
-    paid_at: new Date().toISOString(),
+    paid_at: paidAt,
     metadata: {
       perception_id: perceptionId,
       payment_kind: "perception_unlock",
+      paywall_version: session.metadata?.paywall_version ?? "legacy",
+      placement: session.metadata?.paywall_placement ?? "unknown",
+      source: normalizePaywallSource(session.metadata?.paywall_source),
     },
   };
 
@@ -1368,6 +2211,7 @@ type ActiveCoursePaymentRow = Omit<
     destiny_access_policy?: unknown;
     hoshiyomi_chat_policy?: unknown;
     friend_access_policy?: unknown;
+    aisho_access_policy?: unknown;
   } | null;
 };
 
@@ -1531,6 +2375,7 @@ async function recomputeAccessAfterFullRefund(
       purchaseIncludesDestinyFeatures(
         row.payment_kind,
         row.metadata?.destiny_access_policy,
+        row.metadata?.locale,
       ),
   );
 
@@ -1564,7 +2409,88 @@ async function recomputeAccessAfterFullRefund(
   }
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+/**
+ * Stripeの新APIでChargeからInvoiceへの直接参照がないため、Invoice Paymentを
+ * PaymentIntent IDで逆引きする。返金自体でサブスク権利は剥奪せず、
+ * customer.subscription.* の状態を権利の正本にする。
+ */
+async function acknowledgeAlicePlusSubscriptionRefund(input: {
+  charge: Stripe.Charge;
+  paymentIntentId: string;
+  refundedAt: string;
+}): Promise<boolean> {
+  const stripe = getStripe();
+  if (!stripe) {
+    throw new Error("[alice_plus] Stripe unavailable during refund lookup");
+  }
+
+  const invoicePayments = await stripe.invoicePayments.list({
+    payment: {
+      type: "payment_intent",
+      payment_intent: input.paymentIntentId,
+    },
+    expand: ["data.invoice"],
+    limit: 1,
+  });
+  const invoiceRef = invoicePayments.data[0]?.invoice;
+  if (!invoiceRef) return false;
+
+  const resolvedInvoice =
+    typeof invoiceRef === "string"
+      ? await stripe.invoices.retrieve(invoiceRef)
+      : invoiceRef;
+  if (!("parent" in resolvedInvoice)) return false;
+
+  const subscriptionRef =
+    resolvedInvoice.parent?.subscription_details?.subscription;
+  const subscriptionId =
+    typeof subscriptionRef === "string"
+      ? subscriptionRef
+      : (subscriptionRef?.id ?? null);
+  if (!subscriptionId) return false;
+
+  const { data: plusSubscription, error } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("user_id, line_user_id, plan_key, status")
+    .eq("stripe_subscription_id", subscriptionId)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    throw new Error(
+      `[alice_plus] subscription refund lookup failed: ${error.message}`,
+    );
+  }
+  // subscription.createdより返金が先着した場合はfalseで返し、
+  // 呼び出し元から500にしてStripe再送で回復する。
+  if (!plusSubscription) return false;
+
+  const fullyRefunded = input.charge.amount_refunded >= input.charge.amount;
+  const eventName = fullyRefunded
+    ? "line_plus_subscription_charge_refunded"
+    : "line_plus_subscription_charge_partially_refunded";
+  await recordLineEvent({
+    eventName,
+    id: purchaseEventId(
+      eventName,
+      `${input.charge.id}:${input.charge.amount_refunded}`,
+    ),
+    metadata: {
+      plan_id: plusSubscription.plan_key,
+      subscription_status: plusSubscription.status,
+      amount: input.charge.amount,
+      amount_refunded: input.charge.amount_refunded,
+      currency: input.charge.currency,
+      fully_refunded: fullyRefunded,
+      refunded_at: input.refundedAt,
+    },
+  });
+  return true;
+}
+
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  refundedAt: string,
+): Promise<void> {
   const paymentIntentId =
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
@@ -1572,23 +2498,110 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   if (!paymentIntentId) return;
 
   const fullyRefunded = charge.amount_refunded >= charge.amount;
-  const nowIso = new Date().toISOString();
+
+  // Alice Plusの期間パスと旧無期限プランは一般商品のpayment_historyではなく、
+  // line_plus_subscriptionsの行を権利源にしている。
+  const { data: plusOneTime, error: plusOneTimeLookupError } = await supabaseAdmin
+    .from("line_plus_subscriptions")
+    .select("user_id, line_user_id, plan_key")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .in("plan_key", ["day", "week", "month_pass", "lifetime"])
+    .limit(1)
+    .maybeSingle();
+  if (plusOneTimeLookupError) {
+    throw new Error(
+      `[alice_plus] one-time refund lookup failed: ${plusOneTimeLookupError.message}`,
+    );
+  }
+
+  // 新規販売終了済みの無期限プランも、全額返金時には既存権利を確実に外す。
+  if (plusOneTime?.plan_key === "lifetime") {
+    if (fullyRefunded) {
+      const { error: lifetimeRefundError } = await supabaseAdmin
+        .from("line_plus_subscriptions")
+        .update({ status: "refunded", updated_at: refundedAt })
+        .eq("stripe_payment_intent_id", paymentIntentId);
+      if (lifetimeRefundError) {
+        throw new Error(
+          `[alice_plus_lifetime] refund revoke failed: ${lifetimeRefundError.message}`,
+        );
+      }
+    }
+
+    const eventName = fullyRefunded
+      ? "line_plus_lifetime_refunded"
+      : "line_plus_lifetime_partially_refunded";
+    await recordLineEvent({
+      eventName,
+      id: purchaseEventId(
+        eventName,
+        `${charge.id}:${charge.amount_refunded}`,
+      ),
+      metadata: {
+        amount: charge.amount,
+        amount_refunded: charge.amount_refunded,
+        fully_refunded: fullyRefunded,
+      },
+    });
+    return;
+  }
+
+  if (plusOneTime) {
+    if (fullyRefunded) {
+      const { data: revoked, error: revokeError } = await supabaseAdmin.rpc(
+        "revoke_line_plus_time_pass",
+        {
+          p_stripe_payment_intent_id: paymentIntentId,
+          p_refunded_at: refundedAt,
+        },
+      );
+      if (revokeError) {
+        throw new Error(
+          `[alice_plus_pass] refund revoke failed: ${revokeError.message}`,
+        );
+      }
+      const result = Array.isArray(revoked) ? revoked[0] : revoked;
+      if (result?.was_found !== true) {
+        throw new Error(
+          "[alice_plus_pass] refund row disappeared",
+        );
+      }
+    }
+
+    await recordLineEvent({
+      eventName: fullyRefunded
+        ? "line_plus_pass_refunded"
+        : "line_plus_pass_partially_refunded",
+      id: purchaseEventId(
+        fullyRefunded
+          ? "line_plus_pass_refunded"
+          : "line_plus_pass_partially_refunded",
+        `${charge.id}:${charge.amount_refunded}`,
+      ),
+      metadata: {
+        plan_id: plusOneTime.plan_key,
+        amount: charge.amount,
+        amount_refunded: charge.amount_refunded,
+        fully_refunded: fullyRefunded,
+      },
+    });
+    return;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("payment_history")
     .update({
       amount_refunded_minor: charge.amount_refunded,
       status: fullyRefunded ? "refunded" : "completed",
-      refunded_at: charge.amount_refunded > 0 ? nowIso : null,
-      updated_at: nowIso,
+      refunded_at: charge.amount_refunded > 0 ? refundedAt : null,
+      updated_at: refundedAt,
     })
     .eq("stripe_payment_intent_id", paymentIntentId)
     .select("id, user_id, stripe_session_id, payment_kind, status");
   if (isCoreKpiPaymentSchemaPending(error)) {
-    console.warn(
-      "[webhook/stripe] core KPI refund schema pending; refund fact will require replay after migration",
-      { payment_intent_id: paymentIntentId },
+    throw new Error(
+      `[refund] payment schema is not ready for ${paymentIntentId}: ${error?.message ?? "unknown schema error"}`,
     );
-    return;
   }
   if (error) {
     throw new Error(`[refund] refund update failed: ${error.message}`);
@@ -1615,45 +2628,18 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     return;
   }
 
-  // 0 行更新 = payment_history に行が無い。原因は 2 通りで扱いを分ける:
-  //   a) checkout webhook との順序逆転 (行がこれから書かれる) → throw で Stripe に再送させる
-  //   b) unmei / unmei_upgrade: 設計上 payment_history に行を書かない経路 → 再送しても
-  //      永遠に解消しない毒イベント。200 で受領し Slack 通知で手動対応に回す。
-  // 判別のため Checkout Session を payment_intent から引いて product を見る。
-  let product: string | null = null;
-  const stripe = getStripe();
-  if (stripe) {
-    try {
-      const sessions = await stripe.checkout.sessions.list({
-        payment_intent: paymentIntentId,
-        limit: 1,
-      });
-      product = sessions.data[0]?.metadata?.product ?? null;
-    } catch (err) {
-      console.error(
-        "[webhook/stripe] refund: session lookup failed (will retry):",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
-  }
-
-  if (product === "unmei" || product === "unmei_upgrade") {
-    console.warn("[webhook/stripe] refund for unrecorded product (acknowledged)", {
-      payment_intent_id: paymentIntentId,
-      product,
-      amount_refunded: charge.amount_refunded,
-    });
-    await sendSlackAlert("⚠️ 返金受領: payment_history 非記録の商品 (要・手動対応)", {
-      payment_intent_id: paymentIntentId,
-      product,
-      amount_refunded: charge.amount_refunded,
-      fully_refunded: fullyRefunded ? "yes" : "no",
-    });
+  if (
+    await acknowledgeAlicePlusSubscriptionRefund({
+      charge,
+      paymentIntentId,
+      refundedAt,
+    })
+  ) {
     return;
   }
 
-  // Webhook delivery order is not guaranteed. A retry after the checkout event
-  // has been persisted is safer than silently losing the refund.
+  // 全商品を payment_history に保存するため、0行はcheckout webhookとの順序逆転か
+  // 保存障害。受領済みにせず、購入行が入った後のStripe再送で返金を確実に反映する。
   throw new Error(
     `[refund] refund arrived before payment record: ${paymentIntentId}`,
   );

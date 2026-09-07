@@ -61,7 +61,7 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "好かれようとしすぎない",
-    body: "がんばって尽くさなくても、アナタの存在そのものに安心してくれる人はちゃんといる。",
+    body: "がんばって尽くさなくても、あなたの存在そのものに安心してくれる人はちゃんといる。",
   },
   {
     heading: "ほしいものを言葉にする",
@@ -69,11 +69,11 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "見返りを求める自分を責めない",
-    body: "返してほしいと思うのは自然なこと。それはアナタが本気で向き合っている証拠。",
+    body: "返してほしいと思うのは自然なこと。それはあなたが本気で向き合っている証拠。",
   },
   {
     heading: "相手の沈黙を怖がらない",
-    body: "連絡が少ない日があっても、それはアナタへの気持ちが減ったわけじゃない。",
+    body: "連絡が少ない日があっても、それはあなたへの気持ちが減ったわけじゃない。",
   },
 ];
 
@@ -83,11 +83,11 @@ const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
 const LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "「大丈夫だよ」の本当の意味",
-    body: "恋人の口グセの裏には、アナタに言えずに飲み込んだ気持ちが隠れていることがある。",
+    body: "恋人の口グセの裏には、あなたに言えずに飲み込んだ気持ちが隠れていることがある。",
   },
   {
     heading: "我慢が溜まりやすい場面",
-    body: "アナタのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
+    body: "あなたのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
   },
   {
     heading: "言われる前に気づきたいサイン",
@@ -108,7 +108,7 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "チームの舵取り役",
-    body: "前に立つか、支えるか。アナタの性格が活きるポジションには傾向がある。",
+    body: "前に立つか、支えるか。あなたの性格が活きるポジションには傾向がある。",
   },
   {
     heading: "深く潜る専門職",
@@ -116,19 +116,19 @@ const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "エネルギーを削る職場の共通点",
-    body: "アナタのやる気をじわじわ削る環境には、はっきりした共通点がある。",
+    body: "あなたのやる気をじわじわ削る環境には、はっきりした共通点がある。",
   },
 ];
 
 // 「職場の人間関係」ロック用デコイ (★本文ではない)。
 const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "アナタに合う距離感",
-    body: "近づきすぎず、離れすぎず。アナタが一番ラクでいられる距離には型がある。",
+    heading: "あなたに合う距離感",
+    body: "近づきすぎず、離れすぎず。あなたが一番ラクでいられる距離には型がある。",
   },
   {
     heading: "頼まれごとの線の引き方",
-    body: "断れずに抱え込む前に、アナタの性格に合った断り方を知っておきたい。",
+    body: "断れずに抱え込む前に、あなたの性格に合った断り方を知っておきたい。",
   },
   {
     heading: "合わない人との並走のコツ",
@@ -136,7 +136,7 @@ const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
   {
     heading: "周りが密かに助かっている部分",
-    body: "アナタが思っているより、チームはアナタのあの動きに支えられている。",
+    body: "あなたが思っているより、チームはあなたのあの動きに支えられている。",
   },
 ];
 
@@ -255,21 +255,22 @@ function LockedBlock({
           </div>
         ))}
       </div>
-      {/* 中央の解除カード (横長になりすぎないよう幅を絞り、縦の余白を厚めに) */}
+      {/* 中央の解除カード。スマホは参考UIに合わせて画面幅の約8割・低めの高さにし、
+          md+ は従来サイズを維持する。 */}
       <div className="absolute inset-0 flex items-center justify-center p-3">
-        <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
-          <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+        <div className="result-themed-lock-card relative w-[84%] max-w-[320px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-4 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:w-full md:max-w-[420px] md:px-6 md:pb-9 md:pt-10">
+          <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
             <LockGlyph size={14} />
           </span>
-          <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
+          <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
             {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
-          <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+          <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
             {cardCopy}
           </p>
           <PaywallScrollButton
             source={source}
-            className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+            className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
           >
             {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
@@ -302,7 +303,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタの恋人が言えずにいる気持ちを知りましょう。
+        あなたの恋人が言えずにいる気持ちを知りましょう。
       </>
     ),
     source: "love_endure_card",
@@ -313,7 +314,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタに合った働き方と、避けたほうがいい職場を知りましょう。
+        あなたに合った働き方と、避けたほうがいい職場を知りましょう。
       </>
     ),
     source: "career_fit_card",
@@ -324,7 +325,7 @@ const LOCKED_BLOCK_CONFIG: Record<
       <>
         自己分析レポートを入手して、
         <br className="md:hidden" />
-        アナタに合った職場の人間関係のつくり方を知りましょう。
+        あなたに合った職場の人間関係のつくり方を知りましょう。
       </>
     ),
     source: "career_relations_card",
@@ -420,7 +421,7 @@ export function DeepDiveSections({
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* ===== 各カテゴリ = 独立した章 (②恋愛傾向 ③キャリア傾向 / 2026-07-22 指示の章順) =====
-          「アナタの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
+          「あなたの深掘り」の親見出しは廃止し、カテゴリ名を章 h2 (丸囲み数字) に昇格。 */}
       {unlocked.map((sec, si) => (
         <div key={sec.key} className={si > 0 ? "mb-12 mt-16" : "mb-12"}>
           {/* 章見出し: ①⑤と同じ 16P 風 (丸囲み数字 + 大きめタイトル) */}
@@ -431,7 +432,7 @@ export function DeepDiveSections({
             >
               {baseNumber + si}
             </span>
-            <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+            <h2 className="text-[30px] font-bold leading-tight text-[#2E2E5C] md:text-[36px]">
               {sec.tab}
             </h2>
           </div>
@@ -518,8 +519,8 @@ export function DeepDiveSections({
           </div>
 
           {/* 解除カード (上辺アクセント線 + 鍵バッジ) */}
-          <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-            <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+          <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+            <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -539,7 +540,7 @@ export function DeepDiveSections({
             {/* 挙動は他の解除カードと同一 (最下部の課金カードへスムーススクロール+パルス) */}
             <PaywallScrollButton
               source="deepdive_card"
-              className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
               {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>

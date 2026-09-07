@@ -35,6 +35,8 @@ interface TakoAnsweredDetailProps {
   friend: AnsweredDetailFriend | null;
   /** 本人の32型 (/aisho?a=)。無いと Path1 は出せない。 */
   ownerType32: ThirtyTwoTypeId | null;
+  /** 相性診断権限（新規購入ではプレミアム）を持つときだけ Path1 を表示する。 */
+  aishoUnlocked: boolean;
   /** Path2: 診断に誘う (③ TakoSendSheet を相性文脈で開く)。 */
   onInviteToDiagnose: () => void;
   locale?: ResultLocale;
@@ -45,6 +47,7 @@ export function TakoAnsweredDetail({
   onClose,
   friend,
   ownerType32,
+  aishoUnlocked,
   onInviteToDiagnose,
   locale = "ja",
 }: TakoAnsweredDetailProps) {
@@ -69,7 +72,8 @@ export function TakoAnsweredDetail({
   if (!open || !friend) return null;
 
   // Path1 = 友達本人の型 と 本人の型 が両方あるときだけ (= 相性が実際に出せる)。
-  const canCompat = Boolean(friend.friendOwnType32 && ownerType32);
+  const hasPairTypes = Boolean(friend.friendOwnType32 && ownerType32);
+  const canCompat = aishoUnlocked && hasPairTypes;
   const aishoHref = canCompat
     ? `${isKo ? "/ko" : ""}/aisho?a=${ownerType32}&b=${friend.friendOwnType32}`
     : "";
@@ -182,7 +186,7 @@ export function TakoAnsweredDetail({
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </a>
-          ) : (
+          ) : hasPairTypes ? null : (
             /* Path2 (本命): 未診断 → 診断に誘う。相性が出せるとは言わない。 */
             <>
               <div className="mb-4 rounded-2xl bg-[#F4F4FE] px-5 py-4">
@@ -196,9 +200,13 @@ export function TakoAnsweredDetail({
                     : `でもあなたはまだ${friend.name}さんを知らない。`}
                 </p>
                 <p className="mt-1.5 text-[12.5px] font-bold" style={{ color: INACTIVE }}>
-                  {isKo
-                    ? `${friend.name}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
-                    : `${friend.name}さんが診断すると、2人の相性も見られるようになるよ`}
+                  {aishoUnlocked
+                    ? isKo
+                      ? `${friend.name}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
+                      : `${friend.name}さんが診断すると、2人の相性も見られるようになるよ`
+                    : isKo
+                      ? `${friend.name}님의 사용설명서도 만들 수 있어요`
+                      : `${friend.name}さん自身のトリセツも作れるようになるよ`}
                 </p>
               </div>
               <button

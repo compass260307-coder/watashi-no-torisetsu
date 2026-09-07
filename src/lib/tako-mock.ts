@@ -28,10 +28,12 @@ import type { ResultLocale } from "@/i18n/result";
 const SITE_URL = resolveSiteUrl();
 
 // ?previewType=<32タイプID> 指定時のモック解除後データ (dev / fromPreview=1 のみ)。実DBは介さない。
-// /me のプレビュー機構と同型。実 compute 関数を流用して現実的な描画にする。
+// /me のプレビュー機構と同型。friendCount で回答者1〜3人の状態を切り替えられる。
+// 実 compute 関数を流用して現実的な描画にする。
 export function mockTakoData(
   previewType: ThirtyTwoTypeId,
   locale: ResultLocale = "ja",
+  friendCount = 3,
 ): OwnerReportData {
   const isKo = locale === "ko";
   const code = sixteenTypes[baseIdOf(previewType)].code;
@@ -43,13 +45,20 @@ export function mockTakoData(
     A: hi("A"),
     N: nAxisOf(previewType) === "N" ? 8 : 2,
   };
-  // 友達3人: 本人スコアを少しずらして「自己認知ギャップ」が見えるように。
+  // 既定は友達3人。本人スコアを少しずらして「自己認知ギャップ」が見えるように。
   const shifts: Record<string, number>[] = [
     { E: 2, O: -2 },
     { E: 1, A: 1 },
     // E+4: 自己が低E(2)のタイプで 2→6 (60%) になり、④ジョハリの盲点の窓を再現できる。
     { E: 4, N: -2 },
   ];
+  const previewFriendCount = Math.max(
+    1,
+    Math.min(
+      shifts.length,
+      Number.isFinite(friendCount) ? Math.floor(friendCount) : shifts.length,
+    ),
+  );
   const clamp = (v: number) => Math.max(0, Math.min(10, v));
   const mockOwnTypes: (ThirtyTwoTypeId | null)[] = [
     "whim-fox__N" as ThirtyTwoTypeId,
@@ -66,7 +75,7 @@ export function mockTakoData(
         "いつも冷静で頼れる。周りをよく見てるよね。",
         "自分の考えをちゃんと持ってて素敵だと思う！",
       ];
-  const friends = shifts.map((s, i) => ({
+  const friends = shifts.slice(0, previewFriendCount).map((s, i) => ({
     name: friendNames[i],
     perceivedScores: Object.fromEntries(
       (["O", "C", "E", "A", "N"] as const).map((k) => [
@@ -97,10 +106,9 @@ export function mockTakoData(
     friendEvalCount: friends.length,
     friendAvgScores,
     friendNames: friends.map((f) => f.name),
-    friendMessages: [
-      { name: friendNames[0], message: friendMessages[0] },
-      { name: friendNames[1], message: friendMessages[1] },
-    ],
+    friendMessages: friendMessages
+      .slice(0, friends.length)
+      .map((message, i) => ({ name: friendNames[i], message })),
     friends: friends
       .map((f, i) => {
         const message =

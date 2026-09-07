@@ -2,7 +2,7 @@
 // 評価者完了ページ (/evaluate/result) と本人向け個別ページ (/tako/[token]/friend/[perceptionId])
 // で共有。派生データは buildPerceptionView() (lib/perception-view.ts) で作って渡す。
 // 差分はフラグで出し分け:
-//   - variant "evaluate": ①相互理解度+本文 → ②ギャップ → ◇メッセージ(小) → ③見つけたアナタ → ④関係
+//   - variant "evaluate": ①相互理解度+本文 → ②ギャップ → ◇メッセージ(小) → ③見つけたあなた → ④関係
 //   - variant "individual": ①相互理解度+位置づけ+本文 → ②ギャップ → ③贈りもの(主役級) → ④関係
 // スコア/タイプ/ギャップ計算・本文プローズは不変 (見た目と構成の出し分けのみ)。
 //
@@ -93,7 +93,7 @@ interface PerceptionResultBodyProps {
   rankNote?: string;
   /** 個別ページ: その友達のひとことメッセージ (owner_message)。主役級に表示。 */
   ownerMessage?: string;
-  /** 本人の二人称 ("アナタ" / "あなた")。個別ページは「あなた」。 */
+  /** 本人の二人称 ("あなた" / "あなた")。個別ページは「あなた」。 */
   youWord?: string;
   /** 末尾に差し込むノード (フッター戻りリンク等・ページ側で用意)。 */
   footer?: ReactNode;
@@ -121,7 +121,7 @@ export function PerceptionResultBody({
     : `${p}さん`;
   const koPersonSubject = p === "친구" ? "친구가" : `${p}님이`;
   const koPersonWith = p === "친구" ? "친구와" : `${p}님과`;
-  const resolvedYouWord = youWord ?? (isKo ? "나" : "アナタ");
+  const resolvedYouWord = youWord ?? (isKo ? "나" : "あなた");
   const trimmedOwnerMessage = (ownerMessage ?? "").trim();
   const koGapDetails = isKo
     ? new Map(
@@ -390,12 +390,12 @@ export function PerceptionResultBody({
         />
       )}
 
-      {/* ===== ③ 見つけたアナタ (評価者ページのみ) ===== */}
+      {/* ===== ③ 見つけたあなた (評価者ページのみ) ===== */}
       {!isIndividual && view.hasFound && (
         <section className={sectionCls}>
           <SectionHead
             num={3}
-            title={isKo ? `${koPersonSubject} 발견한 나` : `${personLabel}が見つけたアナタ`}
+            title={isKo ? `${koPersonSubject} 발견한 나` : `${personLabel}が見つけたあなた`}
             large={L}
           />
           <PerceptionFoundProse

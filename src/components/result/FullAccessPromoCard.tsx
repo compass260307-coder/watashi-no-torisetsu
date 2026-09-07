@@ -6,11 +6,13 @@
 // 目的: 旧導線は「キャリア」しか訴求できておらず「友達の個人結果も解放される」ことが
 //   伝わらなかった。MBTI 式に「解放される中身を項目で見せて価値を可視化」する。
 //
-// 解放される項目 (見出し+説明。UNLOCKS 定数で管理)。2026-07-22 更新 (¥499 完全版一本化):
+// 解放される項目 (見出し+説明。UNLOCKS 定数で管理)。完全版一本化:
 //   - 自己診断結果の完全解放
 //   - 16ページ以上の自己分析完全版PDFレポート
 //   - 友達診断結果の完全解放
 //   - 何度もダウンロードできる友達分析完全版PDFレポート
+//   - Aliceによる占い機能 (運命の設計図・タロット3種類)
+//   - 専属占い師 Aliceとのチャット
 //
 // id="fullaccess-promo": ページ内のロック要素からの scrollToPaywall() のスクロール先
 //   (着地パルスも同 id を対象にするため必ず維持)。
@@ -21,177 +23,114 @@
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { PeekButton, type UnlockPeek } from "./PaywallPeek";
+import {
+  PEEK_AISHO,
+  PEEK_ALICE,
+  PEEK_ALICE_FORTUNE,
+  PEEK_EBOOK,
+  PEEK_FRIENDS,
+  PEEK_UNMEI,
+} from "./paywall-peek-content";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
-import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
+import {
+  cardColorsForGroup,
+  heroColorsForGroup,
+  resultActionColorsForGroup,
+} from "@/lib/hero-colors";
+import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
 import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
+import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
+import {
+  friendReportPeekImagePath,
+  selfReportPeekImagePath,
+  selfReportStoryPreviewPagePath,
+} from "@/lib/report-story-images";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
 import {
-  FULL_ACCESS_DISCOUNT_PERCENT,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
-  MULTI_COURSE_PAYWALL_PRODUCT,
-  SELF_REPORT_DISCOUNT_PERCENT,
-  SELF_REPORT_LIST_PRICE_JPY,
+  FULL_ACCESS_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
+  SELF_REPORT_PRICE_KRW,
   SELF_REPORT_UNLOCK_LABEL,
+  SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
   THREE_COURSE_PAYWALL_VERSION,
+  type AccessEntitlements,
   type AccessProduct,
 } from "@/lib/access-products";
+
+const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
+  (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) *
+    100,
+);
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
   ja: {
     list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
     sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
-    offPercent: FULL_ACCESS_DISCOUNT_PERCENT,
+    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
-  ko: { list: "₩12,900", sale: "₩4,900", offPercent: 62 },
+  ko: {
+    list: "₩12,900",
+    sale: `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`,
+    offPercent: 62,
+  },
 } as const;
 
-const SELF_REPORT_PRICE_COPY = `¥${SELF_REPORT_PRICE_JPY}`;
-const SELF_REPORT_LIST_PRICE_COPY = `¥${SELF_REPORT_LIST_PRICE_JPY}`;
+const SELF_REPORT_PRICE_COPY = {
+  ja: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
+  ko: `₩${SELF_REPORT_PRICE_KRW.toLocaleString("ko-KR")}`,
+} as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
-// すべて含む ¥499 完全版パッケージに一本化。パッと価値が伝わる4項目に集約。
+// すべて含む完全版パッケージに一本化。パッと価値が伝わる項目に集約。
 // 解放項目。設置ページで並びを変える (自己診断=自分の解放が先 / 友達診断=友達の解放が先)。
-// ⑤恋愛パートナー分析 (相性) は ¥499 完全版パッケージに含まれるので両方に載せる。
 type UnlockItem = { title: string; desc: string; peek?: UnlockPeek };
 
-// 覗き見 (?) ボタン用の実画面スクショ (public/paywall-peek/)。ローカルの実画面を
-// 撮影した固定サンプル (タイプ例: きらめきクラゲ)。寸法は実ファイルどおり。
-// KO 項目には付けない (ボタン非表示 = 従来表示のまま)。
-const PEEK_SECTIONS: UnlockPeek = {
-  img: "/paywall-peek/sections.webp",
-  alt: "解放される自己診断セクションの画面例",
-  width: 640,
-  height: 1067,
-  lead: "無料版で鍵がかかっていた「続き」が、結果ページでそのまま読めるようになります。",
-  points: [
-    "恋愛・キャリアの深掘りの続きを全解放",
-    "恋人が密かに我慢していることも読める",
-    "「もしもの時のアナタ」などシーン集つき",
-    "注意点の続きと、その対処法まで",
-  ],
+// 自己分析の電子書籍/PDF・自己/友達の解放の共通パーツ (ページ間で文言を揃える)。
+const U_FRIEND_RESULTS: UnlockItem = {
+  title: "2人目以降の友達診断結果をすべて解放",
+  desc: "友達から見たキャラ・性格のギャップ・恋愛傾向・相性まで、友達ごとの結果シートをすべて読めます。",
 };
-const PEEK_EBOOK: UnlockPeek = {
-  img: "/paywall-peek/ebook-page.webp",
-  alt: "自己分析の電子書籍の紙面例",
-  width: 560,
-  height: 841,
-  // lead 無し・文言は 2026-08-17 オーナー指定 (3項目)。
-  points: [
-    "恋愛・友人関係・仕事まで、あなたを8章で徹底分析",
-    "「自分では気づかなかった自分」が5つのスコアで見える",
-    "購入後すぐに、あなた専用PDFとして受け取れます",
-  ],
-  // 書籍らしさを出す 2 枚重ね (奥=表紙 / 手前=読み方+傾向グラフの紙面)。
-  pages: [
-    {
-      img: "/paywall-peek/ebook-cover.webp",
-      alt: "電子書籍の表紙",
-      width: 560,
-      height: 841,
-    },
-    {
-      img: "/paywall-peek/ebook-page.webp",
-      alt: "自己分析の電子書籍の紙面例",
-      width: 560,
-      height: 841,
-    },
-  ],
-};
-const PEEK_FRIENDS: UnlockPeek = {
-  img: "/paywall-peek/friends-ch1.webp",
-  alt: "友達診断まとめレポートの紙面例",
-  width: 560,
-  height: 841,
-  // lead 無し・文言は 2026-08-17 オーナー指定 (3項目)。
-  points: [
-    "友達一人ひとりから見たあなたも、個別に読める",
-    "友達ごとの結果シートも、すべて確認できる",
-    "一人ひとりの見え方の違いまで、個別に読める",
-  ],
-  // 電子書籍と同じ2枚重ね (奥=友達からのメッセージ章 / 手前=第1章「みんなの目に映る
-  // あなたの全体像」)。表紙は電子書籍の表紙と絵柄が似て紛らわしいため使わない。
-  // 奥は友達の生メッセージカードが見える章 (2026-08-17 指示で表紙→友達章→ここに確定)。
-  pages: [
-    {
-      img: "/paywall-peek/friends-letters.webp",
-      alt: "友達診断まとめレポートの「友達からのメッセージ」章",
-      width: 560,
-      height: 841,
-    },
-    {
-      img: "/paywall-peek/friends-ch1.webp",
-      alt: "友達診断まとめレポート第1章「みんなの目に映るあなたの全体像」",
-      width: 560,
-      height: 841,
-    },
-  ],
-};
-const PEEK_ALICE: UnlockPeek = {
-  img: "/paywall-peek/alice-scene-1.webp",
-  alt: "AI占い師「Alice」とのチャットの様子",
-  width: 560,
-  height: 718,
-  // lead 無し・文言は 2026-08-17 オーナー指定 (4項目)。
-  points: [
-    "あなたの性格タイプを踏まえて、相談に寄り添ってくれる",
-    "恋愛・人間関係・進路まで、幅広いテーマに対応",
-    "言葉にしにくい悩みも、対話を通して整理できる",
-    "完全版なら、すぐにAliceとの対話を始められる",
-  ],
-  // 3枚とも全体が見える三角配置 (2026-08-18 指示): 奥左=チャット前の「Aliceと話す」
-  // 画面 (/hoshiyomi 実画面)・奥右=進路シーン・手前=恋愛シーン。
-  // チャットシーンは /dev/alice-peek-scenes (実チャットUIと同クラスの静的レプリカ) から撮影。
-  pages: [
-    {
-      img: "/paywall-peek/alice-scene-0.webp",
-      alt: "AI占い師「Alice」と話す画面",
-      width: 560,
-      height: 718,
-    },
-    {
-      img: "/paywall-peek/alice-scene-3.webp",
-      alt: "Aliceに進路の相談をしているチャットの様子",
-      width: 560,
-      height: 718,
-    },
-    {
-      img: "/paywall-peek/alice-scene-1.webp",
-      alt: "Aliceに恋愛相談をしているチャットの様子",
-      width: 560,
-      height: 718,
-    },
-  ],
-};
-
-// 自己分析の電子書籍/PDF・自己/友達の解放・相性の共通パーツ (ページ間で文言を揃える)。
-const U_SELF_UNLOCK: UnlockItem = {
-  title: "自己診断結果の完全解放",
-  desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
-  peek: PEEK_SECTIONS,
-};
-const U_FRIEND_PDF: UnlockItem = {
-  title: "何度でも作り直せる友達診断レポート",
-  desc: "友達が増えるたびに更新できる、友達視点のレポートPDF。何度でもダウンロードOK。",
+const U_FRIEND_REPORT: UnlockItem = {
+  title: "何度でも作り直せる他己分析PDF",
+  desc: "みんなの回答を集約した総合レポート。回答が増えるたびに何度でも更新できます。",
   peek: PEEK_FRIENDS,
 };
-const U_AISHO: UnlockItem = {
-  title: "恋愛パートナー分析",
-  desc: "ふたりの性格がどのように合うかを確認できます。",
+// 完全版に含むAliceの占い機能。運命の設計図とタロットを1項目にまとめる。
+const U_ALICE_FORTUNE: UnlockItem = {
+  title: "Aliceによる占い機能をすべて解放",
+  desc: "あなた専用の「運命の設計図」と、今日の1枚・3枚引き・YES / NOのタロットをすべて楽しめます。",
+  peek: PEEK_ALICE_FORTUNE,
 };
-
+// 運命タブから開いたカードでは、設計図そのものを主役にして先頭へ置く。
+const U_UNMEI: UnlockItem = {
+  title: "あなた専用「運命の設計図」",
+  desc: "性格診断と出生図を掛け合わせた4章仕立てのAI鑑定。今日の1枚・3枚引き・YES / NOのタロットも楽しめます。",
+  peek: PEEK_UNMEI,
+};
+const U_ALICE: UnlockItem = {
+  title: "あなたの専属占い師「Alice」とのチャット",
+  desc: "あなたの性格と星を理解したAliceに、悩みや迷いを相談できます。",
+  peek: PEEK_ALICE,
+};
+const U_AISHO: UnlockItem = {
+  title: "相性診断機能をすべて解放",
+  desc: "気になる相手との相性を、恋愛・友情・仕事・すれ違いなどの場面別に詳しく読めます。",
+  peek: PEEK_AISHO,
+};
 // 自己診断結果ページ (/me) 用。
 const SELF_UNLOCKS: UnlockItem[] = [
   {
     // 覗き見(?)は付けない (2026-08-17 オーナー指示)。
-    title: "あなたの結果のロックされた8つのセクションすべて",
+    title: "あなたの結果のロック中の9セクションをすべて解放",
     desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、鍵つきの続きがぜんぶ読める。",
   },
   {
@@ -201,52 +140,119 @@ const SELF_UNLOCKS: UnlockItem[] = [
   },
 ];
 
-// 友達診断ページ (/tako) 用。友達の解放を先頭に。
-const TAKO_UNLOCKS: UnlockItem[] = [
-  {
-    // 1人目は無料で読めるため「2人目から」を明示 (2026-07-28 モデル変更)。
-    title: "2人目からの友達の結果シートを全解放",
-    desc: "友達から見たキャラ・性格のギャップ・恋愛傾向・相性まで、友達ごとの結果シートがぜんぶ読める。",
-  },
-  U_FRIEND_PDF,
-  U_SELF_UNLOCK,
-  {
-    title: "ダウンロード可能な自己分析完全版PDFレポート",
-    desc: "あなたのタイプを一冊にまとめてメールでお届け。保存・印刷でき、いつでも見返せます。",
-    peek: PEEK_EBOOK,
-  },
+// 日本語完全版カードの並び。設置ページに関連する項目を先頭へ置く。
+const FULL_ACCESS_SELF_UNLOCKS: UnlockItem[] = [
+  SELF_UNLOCKS[0],
+  SELF_UNLOCKS[1],
+  U_ALICE,
+  U_ALICE_FORTUNE,
   U_AISHO,
+  U_FRIEND_RESULTS,
+  U_FRIEND_REPORT,
+];
+const FULL_ACCESS_TAKO_UNLOCKS: UnlockItem[] = [
+  U_FRIEND_RESULTS,
+  U_FRIEND_REPORT,
+  U_ALICE,
+  U_ALICE_FORTUNE,
+  U_AISHO,
+  SELF_UNLOCKS[0],
+  SELF_UNLOCKS[1],
+];
+
+const STUDENT_LITE_UNLOCKS: UnlockItem[] = [
+  SELF_UNLOCKS[0],
+  U_FRIEND_RESULTS,
+  U_FRIEND_REPORT,
+  SELF_UNLOCKS[1],
+];
+const STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
+  U_FRIEND_RESULTS,
+  U_FRIEND_REPORT,
+  SELF_UNLOCKS[0],
+  SELF_UNLOCKS[1],
 ];
 
 const KO_SELF_UNLOCKS: UnlockItem[] = [
   {
-    title: "내 결과의 잠긴 8개 섹션 전체 해제",
+    title: "내 결과의 잠긴 9개 섹션 전체 해제",
     desc: "연애와 커리어 심층 분석부터 주변에서 보는 인상, 만약의 순간에 드러나는 모습까지 잠긴 내용을 모두 읽을 수 있어요.",
   },
   {
-    title: "다운로드 가능한 16페이지 이상의 자기 분석 PDF",
-    desc: "내 유형을 한 권에 정리한 완전판 리포트예요. 저장하거나 인쇄하고 언제든 다시 확인할 수 있어요.",
+    title: "16페이지 이상의 나만의 전자책",
+    desc: "나의 유형을 한 권으로 정리해 이메일로 보내 드려요. 저장하거나 인쇄하고 언제든 다시 확인할 수 있어요.",
   },
   {
-    title: "두 번째 친구부터의 친구 진단 결과 전체 해제",
+    title: "당신의 전담 점성술사 ‘Alice’와 채팅",
+    desc: "내 성격과 별을 이해한 Alice에게 고민이나 망설임을 상담할 수 있어요.",
+    peek: PEEK_ALICE,
+  },
+  {
+    title: "Alice의 운세 기능 전체 해제",
+    desc: "나만의 ‘운명의 설계도’와 오늘의 한 장·세 장 뽑기·YES / NO 타로를 모두 이용할 수 있어요.",
+    peek: PEEK_ALICE_FORTUNE,
+  },
+  {
+    title: "궁합 진단 기능 전체 해제",
+    desc: "궁금한 상대와의 궁합을 연애·우정·일·엇갈림 등 상황별로 자세히 읽을 수 있어요.",
+    peek: PEEK_AISHO,
+  },
+  {
+    title: "두 번째 친구부터 친구 진단 결과 전체 해제",
     desc: "친구가 보는 캐릭터, 성격 차이, 연애 성향과 궁합까지 친구별 결과 시트를 모두 읽을 수 있어요.",
   },
   {
-    title: "여러 번 다시 만들 수 있는 친구 진단 PDF",
-    desc: "친구가 늘 때마다 내용이 업데이트되는 친구 시선 리포트예요. 횟수 제한 없이 다시 다운로드할 수 있어요.",
-  },
-  {
-    title: "연애 파트너 궁합 분석",
-    desc: "두 사람의 성격이 어떤 부분에서 잘 맞고, 관계를 어떻게 키우면 좋은지 확인할 수 있어요.",
+    title: "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
+    desc: "모두의 답변을 한데 모은 종합 리포트예요. 답변이 늘 때마다 몇 번이든 업데이트할 수 있어요.",
   },
 ];
 
 const KO_TAKO_UNLOCKS: UnlockItem[] = [
+  KO_SELF_UNLOCKS[5],
+  KO_SELF_UNLOCKS[6],
   KO_SELF_UNLOCKS[2],
   KO_SELF_UNLOCKS[3],
+  KO_SELF_UNLOCKS[4],
   KO_SELF_UNLOCKS[0],
   KO_SELF_UNLOCKS[1],
-  KO_SELF_UNLOCKS[4],
+];
+
+const KO_STUDENT_LITE_UNLOCKS: UnlockItem[] = [
+  KO_SELF_UNLOCKS[0],
+  KO_SELF_UNLOCKS[5],
+  KO_SELF_UNLOCKS[6],
+  KO_SELF_UNLOCKS[1],
+];
+const KO_STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
+  KO_SELF_UNLOCKS[5],
+  KO_SELF_UNLOCKS[6],
+  KO_SELF_UNLOCKS[0],
+  KO_SELF_UNLOCKS[1],
+];
+
+const KO_UNMEI: UnlockItem = {
+  title: "나만의 ‘운명의 설계도’",
+  desc: "성격 진단과 출생도를 함께 읽는 4장 구성의 AI 감정이에요. 오늘의 한 장·세 장 뽑기·YES / NO 타로도 즐길 수 있어요.",
+  peek: PEEK_UNMEI,
+};
+
+function promoteUnlockItem(
+  items: UnlockItem[],
+  target: UnlockItem,
+  replacement = target,
+): UnlockItem[] {
+  const targetIndex = items.indexOf(target);
+  if (targetIndex < 0) return items;
+  return [
+    replacement,
+    ...items.slice(0, targetIndex),
+    ...items.slice(targetIndex + 1),
+  ];
+}
+
+// 現行日本版では、相性診断も ¥499 の完全版で解放する。
+const AISHO_PRODUCTS: readonly AccessProduct[] = [
+  "full_access",
 ];
 
 // 相性ページ (variant="aisho") 用のピンク基調トーン。グループ色ではなく固定。
@@ -257,6 +263,16 @@ const PINK_TONE = {
   border: "#F6D2E2",
   panelBg: "#FBE1EC",
   mid: "#EF93BC",
+};
+
+// お試しコースの専用トーン。自己分析レポートのイラストにある
+// ネイビー・青緑・生成りを拾い、相性カードのピンクとは分ける。
+const STUDENT_LITE_TONE = {
+  accent: "#3A8995",
+  softBg: "#F8F4E9",
+  border: "#BDDDE0",
+  panelBg: "#E8F4F2",
+  mid: "#79B7BF",
 };
 
 // カード隅の折り紙風ダイヤ装飾 (グループ色の3トーンで折り目の陰影)。
@@ -300,16 +316,16 @@ function CheckItem({
   peek?: UnlockPeek;
 }) {
   return (
-    <li className="flex items-start gap-3">
+    <li className="flex items-start gap-2.5">
       <span
         aria-hidden="true"
-        className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-white"
+        className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-white"
         style={{ backgroundColor: accent }}
       >
         <svg
           viewBox="0 0 24 24"
-          width="14"
-          height="14"
+          width="12"
+          height="12"
           fill="none"
           stroke="currentColor"
           strokeWidth="3"
@@ -323,11 +339,11 @@ function CheckItem({
         {/* タイトル + 覗き見(?)。? は文章の末尾にインラインで続ける
             (2行に折り返しても最後の文字のすぐ後ろに来る。右端に浮かせない)。
             [text-wrap:pretty] で ? のぶん幅が詰まっても1文字孤立行を防ぐ。 */}
-        <span className="block text-[16px] font-black leading-snug text-[#2E2E5C] [text-wrap:pretty]">
+        <span className="block text-[14px] font-black leading-snug text-[#2E2E5C] [text-wrap:pretty]">
           {title}
           {peek && <PeekButton peek={peek} title={title} accent={accent} />}
         </span>
-        <span className="body-gothic block text-[13px] leading-[1.6] text-[#5A5A6E]">
+        <span className="body-gothic block text-[12px] leading-[1.6] text-[#5A5A6E]">
           {desc}
         </span>
       </span>
@@ -338,6 +354,7 @@ function CheckItem({
 export function FullAccessPromoCard({
   ownerToken,
   imageSrc,
+  reportCharacterImageSrc,
   imageAlt = "",
   group = "unknown",
   // ページ別の配色のみ切替 (コピー・項目・レイアウトは共通)。
@@ -355,12 +372,21 @@ export function FullAccessPromoCard({
   surface = "self",
   ctaSource,
   products,
-  defaultProduct,
   previewMode = false,
+  previewJapaneseThreeCourse = false,
+  previewEntitlements,
   legacyPlanStyle = false,
+  cardMode,
+  standaloneProduct,
+  defaultProduct,
+  heading,
+  noShadow = false,
+  benefitsBeforePrice = false,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
+  /** キャラ別PDF表紙の解決に使う元キャラ画像。カード装飾の imageSrc とは分けて渡す。 */
+  reportCharacterImageSrc?: string | null;
   imageAlt?: string;
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
@@ -371,41 +397,197 @@ export function FullAccessPromoCard({
   surface?: "self" | "tako";
   ctaSource?: string;
   products?: readonly AccessProduct[];
-  defaultProduct?: AccessProduct;
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
-  /** 3コース化以前のコンパクトな単一課金カード表示。 */
+  /** ローカルプレビューでだけ、日本版の旧松竹梅を3コースで表示する。 */
+  previewJapaneseThreeCourse?: boolean;
+  /** ローカルプレビューでだけ、購入済み権利を模擬して差額表示を確認する。 */
+  previewEntitlements?: AccessEntitlements;
+  /** 運命の設計図ページ用のコンパクトな単一課金カード表示。 */
   legacyPlanStyle?: boolean;
+  /** 開発プレビュー用。未指定時は共通の課金カード設定を使う。 */
+  cardMode?: PaywallCardMode;
+  /** 単一カードとして特定の商品を表示する。学生ライトのモーダル導線で使用。 */
+  standaloneProduct?: "self_report";
+  /** 3コース比較で最初に中央表示するコース。 */
+  defaultProduct?: AccessProduct;
+  /** 3コース比較の導線別見出し。 */
+  heading?: string;
+  /** ページ背景と自然につなげたいインライン表示ではカード影を付けない。 */
+  noShadow?: boolean;
+  /** 自己診断結果ページ末尾では、解放内容を価格・購入導線より先に見せる。 */
+  benefitsBeforePrice?: boolean;
 }) {
   const isKorean = locale === "ko";
-  // 自己診断・友達診断・相性は日韓とも現行の3コース比較へ統一。
-  // 相性は完全版以上が必要なため、カルーセルの初期表示は完全版のままとする。
+  const isStandaloneSelfReport = standaloneProduct === "self_report";
+  // 通常カードは feature flag 1か所で旧単一カードと松竹梅を切り替える。
+  // legacyPlanStyle は設計図ページ専用の単一カードを表示する個別導線なので優先する。
+  const resolvedCardMode = cardMode ?? paywallCardMode();
+  const usesLegacyFullAccessCard =
+    !isStandaloneSelfReport &&
+    !legacyPlanStyle &&
+    resolvedCardMode === "legacy";
   const isSelfReportProduct =
-    !isKorean && surface === "self" && variant === "self";
-  const usesPlanCarousel = variant === "self" || variant === "aisho";
+    isStandaloneSelfReport ||
+    (!usesLegacyFullAccessCard &&
+      surface === "self" &&
+      variant === "self");
+  const usesPlanCarousel =
+    !isStandaloneSelfReport &&
+    (legacyPlanStyle ||
+      variant === "aisho" ||
+      (resolvedCardMode === "three-course" &&
+        (variant === "self" || variant === "aisho")));
   const product = isSelfReportProduct ? "self_report" : "full_access";
   const paywallProduct = usesPlanCarousel
-    ? MULTI_COURSE_PAYWALL_PRODUCT
+    ? SINGLE_ALL_ACCESS_PAYWALL_PRODUCT
     : product;
-  const paywallVersion = usesPlanCarousel
-    ? THREE_COURSE_PAYWALL_VERSION
-    : "legacy";
+  const paywallVersion =
+    usesPlanCarousel || isStandaloneSelfReport || usesLegacyFullAccessCard
+      ? THREE_COURSE_PAYWALL_VERSION
+      : "legacy";
   const paywallPlacement = onClose ? "modal" : "inline";
-  const unlocks = isKorean
-    ? surface === "tako"
-      ? KO_TAKO_UNLOCKS
-      : KO_SELF_UNLOCKS
-    : surface === "tako"
-      ? TAKO_UNLOCKS
-      : SELF_UNLOCKS;
+  const baseUnlocks = isKorean
+    ? product === "self_report"
+      ? surface === "tako"
+        ? KO_STUDENT_LITE_TAKO_UNLOCKS
+        : KO_STUDENT_LITE_UNLOCKS
+      : surface === "tako"
+        ? KO_TAKO_UNLOCKS
+        : KO_SELF_UNLOCKS
+    : product === "self_report"
+      ? surface === "tako"
+        ? STUDENT_LITE_TAKO_UNLOCKS
+        : STUDENT_LITE_UNLOCKS
+      : surface === "tako"
+        ? FULL_ACCESS_TAKO_UNLOCKS
+        : FULL_ACCESS_SELF_UNLOCKS;
+  const contextualUnlocks =
+    returnTo === "hoshiyomi"
+      ? promoteUnlockItem(
+          baseUnlocks,
+          isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
+        )
+      : returnTo === "unmei"
+        ? promoteUnlockItem(
+            baseUnlocks,
+            isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
+            isKorean ? KO_UNMEI : U_UNMEI,
+          )
+        : baseUnlocks;
+  const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
+  const characterFriendCover = friendReportPeekImagePath(reportCharacterSource);
+  const characterSelfCover = selfReportPeekImagePath(reportCharacterSource);
+  const characterSelfStoryPage =
+    selfReportStoryPreviewPagePath(reportCharacterSource);
+  const characterEbookPeek: UnlockPeek | null = characterSelfCover
+    ? {
+        ...PEEK_EBOOK,
+        pages: PEEK_EBOOK.pages?.map((page, index) => {
+          if (index === 0 && characterSelfStoryPage) {
+            return {
+              ...page,
+              img: characterSelfStoryPage,
+              alt: `${imageAlt || "あなた"}を主人公にした短編小説の本文`,
+              width: 560,
+              height: 792,
+            };
+          }
+          if (index === 1) {
+            return {
+              ...page,
+              img: characterSelfCover,
+              alt: `${imageAlt || "あなた"}の短編ストーリー表紙`,
+              width: 560,
+              height: 841,
+            };
+          }
+          return page;
+        }),
+      }
+    : null;
+  const characterFriendsPeek: UnlockPeek | null = characterFriendCover
+    ? {
+        ...PEEK_FRIENDS,
+        pages: PEEK_FRIENDS.pages?.map((page, index) =>
+          index === 1
+            ? {
+                ...page,
+                img: characterFriendCover,
+                alt: `${imageAlt || "あなた"}の友達診断まとめレポート表紙`,
+                width: 560,
+                height: 841,
+              }
+            : page,
+        ),
+      }
+    : null;
+  const unlocks = contextualUnlocks.map((item) => {
+    if (characterEbookPeek && item.peek === PEEK_EBOOK) {
+      return { ...item, peek: characterEbookPeek };
+    }
+    if (characterFriendsPeek && item.peek === PEEK_FRIENDS) {
+      return { ...item, peek: characterFriendsPeek };
+    }
+    return item;
+  });
   const price = PRICE_COPY[locale];
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
   const groupTone = cardColorsForGroup(group);
-  const tone = variant === "aisho" ? PINK_TONE : groupTone;
-  const midTone =
-    variant === "aisho" ? PINK_TONE.mid : heroColorsForGroup(group).heroBg;
+  const actionTone = resultActionColorsForGroup(group);
+  const tone = isStandaloneSelfReport
+    ? STUDENT_LITE_TONE
+    : variant === "aisho"
+      ? PINK_TONE
+      : groupTone;
+  const midTone = isStandaloneSelfReport
+    ? STUDENT_LITE_TONE.mid
+    : variant === "aisho"
+      ? PINK_TONE.mid
+      : heroColorsForGroup(group).heroBg;
   const hasImage = !!imageSrc;
+  // 学生向けリンクは現行の完全版カードから外す。学生向け商品設定は維持する。
+  const showFullAccessLink = isStandaloneSelfReport && !!onClose;
+  const courseSwitchLabel = showFullAccessLink
+    ? isKorean
+      ? "완전판 보기"
+      : "完全版はこちら"
+    : null;
+  const unlockBenefitsPanel = (
+    <div
+      className={
+        benefitsBeforePrice
+          ? "mt-6 text-left"
+          : "mt-6 rounded-[20px] bg-white px-4 py-5 text-left shadow-[0_8px_24px_rgba(46,46,92,0.06)] md:px-6 md:py-6"
+      }
+    >
+      {benefitsBeforePrice ? null : (
+        <h3 className="text-[16px] font-bold leading-snug text-[#2E2E5C]">
+          {isKorean
+            ? "업그레이드로 이용할 수 있는 항목"
+            : "アップグレードで手に入るもの"}
+        </h3>
+      )}
+      <ul
+        className={`${benefitsBeforePrice ? "" : "mt-4"} grid gap-2.5 text-left`}
+      >
+        {unlocks.map(({ title, desc, peek }) => (
+          <CheckItem
+            key={title}
+            title={title}
+            desc={desc}
+            accent={tone.accent}
+            peek={peek}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+
+  function handleCourseSwitch() {
+    onClose?.();
+  }
 
   // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る。
   // dedup はページ単位で sessionStorage (タブ内1回)。
@@ -413,9 +595,10 @@ export function FullAccessPromoCard({
   // 50% が同時に画面へ入らず「見たのに未計測」になるため低めにする (2026-07-13)。
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if (previewMode) return;
     const el = cardRef.current;
     if (!el) return;
-    const page = window.location.pathname.split("/")[1] || "top";
+    const page = trackingPageFromPathname(window.location.pathname);
     const dedupKey = `torisetsu_paywall_viewed_${page}_${paywallVersion}_${paywallPlacement}`;
     try {
       if (sessionStorage.getItem(dedupKey)) return;
@@ -462,11 +645,12 @@ export function FullAccessPromoCard({
     paywallPlacement,
     paywallProduct,
     paywallVersion,
+    previewMode,
     surface,
     variant,
   ]);
 
-  // 自己診断・友達診断は、日韓それぞれの3コースを横スワイプで比較する。
+  // 日本版・韓国版とも3コースを横スワイプで比較する。
   if (usesPlanCarousel) {
     return (
       <div
@@ -487,10 +671,16 @@ export function FullAccessPromoCard({
           frameless={!onClose}
           returnTo={returnTo ?? (surface === "tako" ? "tako" : "me")}
           locale={locale}
-          products={products}
-          defaultProduct={defaultProduct}
+          products={
+            products ?? (variant === "aisho" ? AISHO_PRODUCTS : undefined)
+          }
           previewMode={previewMode}
+          previewJapaneseThreeCourse={previewJapaneseThreeCourse}
+          previewEntitlements={previewEntitlements}
           legacyStyle={legacyPlanStyle}
+          defaultProduct={defaultProduct}
+          heading={heading}
+          ebookPeek={characterEbookPeek ?? PEEK_EBOOK}
         />
       </div>
     );
@@ -501,19 +691,19 @@ export function FullAccessPromoCard({
       aria-labelledby={`${anchorId}-title`}
       className="px-4 pt-6 pb-10 md:px-8"
     >
-      <div
-        id={anchorId}
-        ref={cardRef}
-        className={`relative mx-auto w-full scroll-mt-[80px] rounded-3xl border-2 shadow-[0_16px_48px_rgba(46,46,92,0.12)] ${
-          hasImage
-            ? "max-w-[1080px] md:flex md:items-stretch"
-            : "max-w-[460px]"
-        }`}
-        style={{ backgroundColor: tone.softBg, borderColor: tone.border }}
-      >
-        {/* 右上・左下の折り紙風装飾 (カード角に半分被せて外へ)。
-            モーダル時 (onClose あり) は右上の装飾を出さず、×だけを角に乗せる。 */}
-        {!onClose && (
+        <div
+          id={anchorId}
+          ref={cardRef}
+          className={`relative mx-auto w-full scroll-mt-[80px] rounded-3xl border-2 ${
+            noShadow ? "shadow-none" : "shadow-[0_16px_48px_rgba(46,46,92,0.12)]"
+          } ${
+            hasImage
+              ? "max-w-[1080px] md:flex md:items-stretch"
+              : "max-w-[460px]"
+          }`}
+          style={{ backgroundColor: tone.softBg, borderColor: tone.border }}
+        >
+          {!onClose && (
           <CornerDecor
             dark={tone.accent}
             mid={midTone}
@@ -521,226 +711,228 @@ export function FullAccessPromoCard({
             mirror
             className="pointer-events-none absolute -right-3 -top-3 z-10 h-14 w-14 rotate-[12deg] drop-shadow-sm md:h-16 md:w-16"
           />
-        )}
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={isKorean ? "닫기" : "閉じる"}
-            className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
-            style={{ backgroundColor: tone.accent }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        )}
-        <CornerDecor
-          dark={tone.accent}
-          mid={midTone}
-          light={tone.border}
-          className="pointer-events-none absolute -bottom-3 -left-3 z-10 h-14 w-14 rotate-[-12deg] drop-shadow-sm md:h-16 md:w-16"
-        />
-
-        {/* 画像 (md+: 左カラム / モバイル: 上)。imageSrc があるときだけ。 */}
-        {hasImage && (
-          <div
-            className="flex items-center justify-center rounded-t-3xl px-6 pt-7 md:w-[40%] md:rounded-l-3xl md:rounded-tr-none md:px-6 md:py-8"
-            style={{ backgroundColor: tone.panelBg }}
-          >
-            <SmoothImage
-              src={imageSrc!}
-              alt={imageAlt}
-              width={640}
-              height={640}
-              className="h-auto w-full max-w-[280px] md:max-w-[340px]"
-            />
-          </div>
-        )}
-
-        <div
-          className={
-            hasImage
-              ? "px-6 py-6 text-left md:flex-1 md:px-9 md:py-6"
-              : "px-6 py-6 text-center"
-          }
-        >
-          {/* バッジ (★ + 今すぐロックを解除) */}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-black text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              style={{ color: tone.accent }}
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={isKorean ? "닫기" : "閉じる"}
+              className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
+              style={{ backgroundColor: tone.accent }}
             >
-              <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
-            </svg>
-            {isKorean
-              ? "지금 잠금 해제"
-              : isSelfReportProduct
-                ? SELF_REPORT_UNLOCK_LABEL
-                : "今すぐロックを解除"}
-          </span>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.8"
+                strokeLinecap="round"
+              >
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          )}
+          <CornerDecor
+            dark={tone.accent}
+            mid={midTone}
+            light={tone.border}
+            className="pointer-events-none absolute -bottom-3 -left-3 z-10 h-14 w-14 rotate-[-12deg] drop-shadow-sm md:h-16 md:w-16"
+          />
 
-          {/* 見出し */}
-          <h2
-            id={`${anchorId}-title`}
-            className="mt-2.5 text-[27px] font-black leading-[1.3] text-[#2E2E5C] md:text-[32px]"
-          >
-            {isKorean ? (
-              <>내 성격 유형의<br />모든 결과를 해제</>
-            ) : isSelfReportProduct ? (
-              <>自己診断結果を<br />すべて解放</>
-            ) : (
-              <>あなたの性格タイプ<br />についてのすべてを解放</>
-            )}
-          </h2>
-
-          {/* 続編訴求 */}
-          <p className="mt-2 text-[13.5px] font-bold leading-[1.6] text-[#5A5A72]">
-            {isKorean
-              ? "내 성격 유형의 상세한 해석부터 친구가 보는 인상까지, 스스로 몰랐던 매력과 본질을 하나의 패키지에 담았어요."
-              : isSelfReportProduct
-                ? "ロックされた自己診断結果と、あなたのタイプを一冊にまとめた自己分析PDFを買い切りで利用できます。"
-              : "あなたの詳細な性格タイプから、友達から見たあなたの印象まで、自分では気づけなかった魅力や本質を1つのパッケージにまとめました。"}
-          </p>
-
-          {/* 解放される 4 項目 */}
-          <ul
-            className={`mt-4 grid gap-2.5 text-left ${
-              hasImage ? "" : "mx-auto max-w-[320px]"
-            }`}
-          >
-            {unlocks.map(({ title, desc, peek }) => (
-              <CheckItem
-                key={title}
-                title={title}
-                desc={desc}
-                accent={tone.accent}
-                peek={peek}
+          {/* 画像 (md+ の左カラムのみ)。モバイルはカードを縦に長くしないため非表示 (2026-08-17)。 */}
+          {hasImage && (
+            <div
+              className="hidden items-center justify-center rounded-t-3xl px-6 pt-7 md:flex md:w-[40%] md:rounded-l-3xl md:rounded-tr-none md:px-6 md:py-8"
+              style={{ backgroundColor: tone.panelBg }}
+            >
+              <SmoothImage
+                src={imageSrc!}
+                alt={imageAlt}
+                width={640}
+                height={640}
+                className="h-auto w-full max-w-[280px] md:max-w-[340px]"
               />
-            ))}
-          </ul>
+            </div>
+          )}
 
-          {/* ロケール別価格の値引き表記。
-              値引き理由を「リリース記念」として明示 (安すぎ感の解消 / 2026-07-14 指示)。 */}
           <div
-            className={`mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
-              hasImage ? "" : "justify-center"
-            }`}
+            className={
+              hasImage
+                ? "px-6 py-6 text-left md:flex-1 md:px-9 md:py-6"
+                : "px-6 py-6 text-center"
+            }
           >
-            {isSelfReportProduct ? (
-              <>
-                <span
-                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
-                  style={{ backgroundColor: tone.accent }}
-                >
-                  リリース記念 {SELF_REPORT_DISCOUNT_PERCENT}%OFF
+            {/* バッジ (★ + 今すぐロックを解除) */}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[14px] font-black text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                style={{ color: tone.accent }}
+              >
+                <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
+              </svg>
+              {isSelfReportProduct
+                ? isKorean
+                  ? "학생 플랜"
+                  : "学生向けプラン"
+                : isKorean
+                  ? "지금 잠금 해제"
+                  : "今すぐロックを解除"}
+            </span>
+
+            {/* 見出し */}
+            <h2
+              id={`${anchorId}-title`}
+              className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
+            >
+              {isSelfReportProduct ? (
+                <>
+                  {isKorean ? "자기 진단을" : "自己診断を"}
+                  <br />
+                  {isKorean ? "더 깊이" : "もっと深く"}
+                </>
+              ) : isKorean ? (
+                <>
+                  당신의 이야기는
+                  <br />
+                  아직 끝나지 않았어요
+                </>
+              ) : (
+                <>
+                  あなたの物語は
+                  <br />
+                  まだ完結していません
+                </>
+              )}
+            </h2>
+
+            {/* 続編訴求 */}
+            <p className="body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E]">
+              {isSelfReportProduct
+                ? isKorean
+                  ? "자기 진단과 친구 진단, 16페이지 이상의 전용 전자책을 1회 결제로 이용할 수 있어요."
+                  : "自己診断と友達診断、16ページ以上の専用電子書籍を買い切りで利用できます。"
+                : isKorean
+                  ? "무료 리포트를 읽었다면 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상과 Alice의 운세·타로·상담까지 모두 열립니다."
+                  : "無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。"}
+            </p>
+
+            {benefitsBeforePrice ? unlockBenefitsPanel : null}
+
+            {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
+            <div
+              className={`${benefitsBeforePrice ? "mt-6" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+                hasImage ? "" : "justify-center"
+              }`}
+            >
+              {/* 価格タグは Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
+              {isSelfReportProduct ? (
+                <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
+                  {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
-                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
-                  {SELF_REPORT_LIST_PRICE_COPY}
-                </span>
-                <span
-                  className="text-[36px] font-black leading-none"
-                  style={{ color: tone.accent }}
-                >
-                  {SELF_REPORT_PRICE_COPY}
-                </span>
-              </>
-            ) : (
-              <>
-                <span
-                  className="rounded-md px-2 py-0.5 text-[12px] font-black text-white"
-                  style={{ backgroundColor: tone.accent }}
-                >
-                  {isKorean
-                    ? `출시 기념 ${price.offPercent}% 할인`
-                    : `リリース記念 ${price.offPercent}%OFF`}
-                </span>
-                <span className="text-[16px] font-bold text-[#A0A0B4] line-through">
-                  {price.list}
-                </span>
-                <span
-                  className="text-[36px] font-black leading-none"
-                  style={{ color: tone.accent }}
-                >
+              ) : (
+                <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {price.sale}
                 </span>
-              </>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* CTA (金額はカード側に出したのでボタンからは外す) */}
-          <div className="mt-4">
-            <FullAccessCta
-              ownerToken={ownerToken}
-              unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
-              locale={locale}
-              source={ctaSource ?? (surface === "tako" ? "tako_promo_card" : undefined)}
-              returnTo={returnTo}
-              product={product}
+            <p
+              className={`body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E] ${
+                hasImage ? "" : "text-center"
+              }`}
             >
               {isKorean
-                ? "모든 잠금 해제"
-                : isSelfReportProduct
-                  ? SELF_REPORT_UNLOCK_LABEL
-                  : "すべてのロックを解除"}
-            </FullAccessCta>
-          </div>
+                ? "월 구독이 아닌, 1회 결제"
+                : "買い切り（お支払いは1回のみ）"}
+            </p>
 
-          {/* 30日間の返金保証。SP は左下の折り紙装飾と被らないよう中央寄せ、md+ は左寄せ。 */}
-          <p
-            className={`mt-2.5 flex items-center gap-1.5 text-[12px] font-bold text-[#7A7A92] ${
-              hasImage ? "justify-center md:justify-start" : "justify-center"
-            }`}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
-              <path d="M9 12l2 2 4-4" />
-            </svg>
-            {isKorean
-              ? "한 번 결제 · 30일 환불 보장"
-              : "買い切り／30日間の返金保証つき"}
-          </p>
+            <div className="mt-4">
+              <FullAccessCta
+                ownerToken={ownerToken}
+                unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                locale={locale}
+                source={
+                  ctaSource ??
+                  (surface === "tako" ? "tako_promo_card" : undefined)
+                }
+                returnTo={returnTo}
+                product={product}
+                paywallVersion={
+                  paywallVersion === THREE_COURSE_PAYWALL_VERSION
+                    ? THREE_COURSE_PAYWALL_VERSION
+                    : undefined
+                }
+                placement={paywallPlacement}
+                previewMode={previewMode}
+                accentColor={actionTone.accent}
+                shadowColor={actionTone.shadow}
+              >
+                {isSelfReportProduct
+                  ? isKorean
+                    ? "학생 플랜으로 해제 →"
+                    : SELF_REPORT_UNLOCK_LABEL
+                  : isKorean
+                    ? "모든 결과 잠금 해제 →"
+                    : "全ての結果をアンロック →"}
+              </FullAccessCta>
+            </div>
 
-          {isKorean && (
             <p
-              className={`mt-2 text-[11px] leading-[1.7] text-[#7A7A92] ${
+              className={`body-gothic mt-2.5 text-[13px] leading-[1.6] text-[#5A5A6E] ${
                 hasImage ? "text-center md:text-left" : "text-center"
               }`}
             >
-              결제 전 {" "}
-              <Link href="/ko/terms" className="underline underline-offset-2">
-                이용약관
-              </Link>
-              , {" "}
-              <Link href="/ko/privacy" className="underline underline-offset-2">
-                개인정보처리방침
-              </Link>
-              , {" "}
-              <Link
-                href="/ko/legal/commerce"
-                className="underline underline-offset-2"
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="mr-1.5 inline-block align-[-2px]"
               >
-                판매 및 환불 안내
-              </Link>
-              를 확인해 주세요.
+                <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+              <span>
+                {isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
+              </span>
+              <span>
+                {isKorean
+                  ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
+                  : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
+              </span>
+              {courseSwitchLabel ? (
+                <>
+                  <span>・</span>
+                  <button
+                    type="button"
+                    onClick={handleCourseSwitch}
+                    className="inline underline decoration-current decoration-1 underline-offset-[3px] transition hover:text-[#2E2E5C] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF]"
+                  >
+                    {courseSwitchLabel} <span aria-hidden="true">→</span>
+                  </button>
+                </>
+              ) : null}
             </p>
-          )}
+
+            {isKorean ? (
+              <KoreanPurchaseLegalNotice
+                className={`mt-2 ${hasImage ? "text-center md:text-left" : "text-center"}`}
+              />
+            ) : null}
+
+            {benefitsBeforePrice ? null : unlockBenefitsPanel}
+          </div>
         </div>
-      </div>
     </section>
   );
 }

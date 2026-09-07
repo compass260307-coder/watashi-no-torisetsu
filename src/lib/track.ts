@@ -1,3 +1,8 @@
+import type {
+  LineAliceClientEventName,
+  LineAliceTrackingMetadata,
+} from "@/lib/line-alice-analytics";
+
 let sessionId: string | null = null;
 
 // セッションID (2026-07-13 改修):
@@ -76,18 +81,33 @@ export function isPreviewMode(): boolean {
 //   friend_to_diagnosis_invite_clicked 本人が回答済みの友達へ自己診断を案内
 //   friend_invite_clicked        自分の結果から友達を招待  (旧 share_clicked kind:friend_invite)
 //   share_clicked                拡散シェア (metadata.kind: character | brag)
-//   result_viewed                結果(/me)の初回表示 (metadata.friendCount, ownerToken)
+//   share_ui_shown               自己結果のシェアモーダル表示
+//   share_landing_viewed         自己結果シェアの /share/[code] 到達
+//   share_to_diagnosis_clicked   /share/[code] → 自己診断 CTA
+//   result_viewed                結果(/me)の初回表示 (metadata.friendCount/funnelVersion, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
 //   three_friends_unlocked       友達3人達成 (ownerToken)
 //   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
 //   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
-//   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate=ゲートのシェア行が視界に入った / sticky_modal=上部固定バーの招待モーダルを開いた / send_sheet=送信シートを開いた)
+//   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate / sticky_modal / tako_unlocked / send_sheet)
 //   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
 //   unmei_nav_badge_clicked      未確認バッジ付き「運命」タップ (ownerToken)
 //   unmei_lp_view                運命の設計図LP表示 (metadata.product)
 //   unmei_purchase_start         運命の設計図の購入開始 (metadata.product)
 //   unmei_reading_view           運命の設計図の鑑定表示
+//   unmei_checkout_step_view      埋め込み決済ステップ表示
+//   unmei_purchase_complete_embedded 埋め込み決済完了
+//   hoshiyomi_page_viewed         Aliceページ表示 (metadata.access_state/surface)
+//   hoshiyomi_paywall_opened      Aliceの未解放送信で購入カードを開いた
+//   hoshiyomi_message_sent        Aliceへのメッセージ送信
+//   hoshiyomi_response_completed  Aliceの応答表示完了
+//   hoshiyomi_response_failed     Aliceの応答失敗
+//   line_alice_card_viewed         LINE導線カード表示 (metadata.source/variant)
+//   line_alice_add_friend_clicked  LINE友だち追加CTAクリック
+//   line_alice_link_code_requested 連携コード発行開始
+//   line_alice_link_code_issued    連携コード発行成功
+//   line_alice_link_code_failed    連携コード発行失敗
 //
 // ----- 課金ファネル (2026-07-13 追加) -----
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant/paywall_version, ownerToken)
@@ -104,9 +124,9 @@ export function isPreviewMode(): boolean {
 // 旧実装はイベントごとに /api/event へ POST しており、1イベント = 1 Function 起動 +
 // 1 Edge Request + Observability Events 数件が課金されていた (特に
 // diagnosis_question_answered は診断1回で50発火)。
-// → クライアントでバッファリングし、Supabase REST へ anon key で直接まとめて insert する。
-//   Vercel を一切経由しない。検証は events テーブルの RLS ポリシー
-//   (supabase/migrations/2026-07-20-events-client-insert.sql) がサーバ側の代わりを担う。
+// → クライアントでバッファリングし、Supabase RPC へ anon key で直接まとめて送る。
+//   Vercel を一切経由しない。バッチ上限・入力検証・IP/セッション単位の制限は
+//   ingest_client_events RPC が担い、anon から events テーブルへの直接 INSERT は許可しない。
 // env 未設定環境 (万一) では旧 /api/event へ1件ずつフォールバックする。
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -128,9 +148,16 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let unloadFlushHooked = false;
 let directSupabaseUnavailable = false;
 
+function shouldUseLegacyFallback(status: number): boolean {
+  // RPC 未適用 (404) や Supabase 障害 (5xx) のときだけ保険経路を使う。
+  // 入力拒否・認証拒否・レート制限は意図した破棄なので、
+  // /api/event へ逆流させない。
+  return status === 404 || status >= 500;
+}
+
 function sendToSupabase(rows: EventRow[]) {
-  const body = JSON.stringify(rows);
-  fetch(`${SUPABASE_URL}/rest/v1/events`, {
+  const body = JSON.stringify({ p_events: rows });
+  fetch(`${SUPABASE_URL}/rest/v1/rpc/ingest_client_events`, {
     method: "POST",
     // keepalive: ページ離脱 (pagehide/visibilitychange) 中でもリクエストを生かす。
     // sendBeacon はヘッダー付与不可で PostgREST の JSON insert と相性が悪いため、
@@ -140,15 +167,11 @@ function sendToSupabase(rows: EventRow[]) {
       "Content-Type": "application/json",
       apikey: SUPABASE_ANON_KEY!,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Prefer: "return=minimal",
     },
     body,
   })
     .then((res) => {
-      // RLS ポリシー未適用 (migration 2026-07-20-events-client-insert.sql 前) や
-      // 検証拒否の場合、旧 /api/event へフォールバックして計測全断を防ぐ。
-      // 本番 DB は PR-FIX-1 lockdown 済みで anon insert はポリシー適用まで 403 になる。
-      if (!res.ok) {
+      if (!res.ok && shouldUseLegacyFallback(res.status)) {
         directSupabaseUnavailable = true;
         rows.forEach(sendToLegacyApi);
       }
@@ -266,4 +289,11 @@ export function track(
   } catch {
     // tracking never blocks UX
   }
+}
+
+export function trackLineAliceEvent(
+  eventName: LineAliceClientEventName,
+  metadata: LineAliceTrackingMetadata,
+): void {
+  track(eventName, { metadata });
 }

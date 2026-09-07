@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           </li>
           <li>LINE 連携時の LINE ユーザー識別子</li>
           <li>
-            「星読みの案内人」に送信するメッセージ、AIからの応答および会話履歴
+            AI占い師「Alice」に送信するメッセージ、AIからの応答および会話履歴
           </li>
         </ul>
 
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
             「運命の設計図」における出生図（ホロスコープ）の計算および鑑定文の生成
           </li>
           <li>
-            「星読みの案内人」におけるAI応答の生成、会話履歴の保存、利用回数の管理および安全性・不正利用の確認
+            AI占い師「Alice」におけるAI応答の生成、会話履歴の保存、利用回数の管理および安全性・不正利用の確認
           </li>
           <li>
             ログイン用リンク（マジックリンク）の送付、および購入・診断結果へのアクセスの復元
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
             <tr>
               <td>Anthropic, PBC</td>
               <td>米国</td>
-              <td>「星読みの案内人」等におけるAI応答および鑑定文の生成</td>
+              <td>AI占い師「Alice」等におけるAI応答および鑑定文の生成</td>
             </tr>
             <tr>
               <td>Supabase Pte. Ltd.</td>

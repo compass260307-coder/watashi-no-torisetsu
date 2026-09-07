@@ -42,6 +42,8 @@ const LOCALIZED_PATHS: Record<string, Record<SiteLocale, string>> = {
   "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei" },
   "/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
   "/ko/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
+  "/tarot": { ja: "/tarot", ko: "/ko/tarot" },
+  "/ko/tarot": { ja: "/tarot", ko: "/ko/tarot" },
 };
 
 function normalizePathname(pathname: string): string {
@@ -81,6 +83,11 @@ function previewTypeId(pathname: string): string | null {
 
 function articleSlug(pathname: string): string | null {
   const match = pathname.match(/^\/(?:ko\/)?articles\/([a-z0-9-]+)\/?$/);
+  return match?.[1] ?? null;
+}
+
+function tarotMode(pathname: string): string | null {
+  const match = pathname.match(/^\/(?:ko\/)?tarot\/(one|three|yes-no)\/?$/);
   return match?.[1] ?? null;
 }
 
@@ -160,6 +167,13 @@ export function localeSwitchPath(
   if (localizedArticleSlug) {
     return finish(
       `${targetLocale === "ko" ? "/ko" : ""}/articles/${encodeURIComponent(localizedArticleSlug)}`,
+    );
+  }
+
+  const localizedTarotMode = tarotMode(normalizedPathname);
+  if (localizedTarotMode) {
+    return finish(
+      `${targetLocale === "ko" ? "/ko" : ""}/tarot/${localizedTarotMode}`,
     );
   }
 

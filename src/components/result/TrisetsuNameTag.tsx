@@ -31,7 +31,18 @@ export function TrisetsuNameTag({
         className="wtr-logo-text leading-none min-w-0"
         style={{ fontSize: "clamp(18px, 5.5vw, 30px)", whiteSpace: "nowrap" }}
       >
-        {locale === "ko" ? `${name}의 사용설명서` : `${name}のトリセツ`}
+        {/* 動的な名前は .wtr-logo-name でシステム丸ゴに固定 (M PLUS サブセットは
+            固定文字「のトリセツ」のみ)。ko は元々 M PLUS にハングルが無く全文
+            フォールバック描画だったため従来と同じ見た目のまま。 */}
+        {locale === "ko" ? (
+          <>
+            <span className="wtr-logo-name">{name}</span>의 사용설명서
+          </>
+        ) : (
+          <>
+            <span className="wtr-logo-name">{name}</span>のトリセツ
+          </>
+        )}
       </span>
       <HeartIcon />
     </div>

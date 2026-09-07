@@ -12,6 +12,7 @@
 //   もう一度タップでトグル。招待吹き出しとは同時に開かない。
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -229,7 +230,6 @@ export function TakoFriendTabs({
     stopAutoRotate();
     if (!inviteOpen) {
       setMsgOpenIdx(null);
-      anchorTo(plusRef.current);
     }
     setInviteOpen((v) => !v);
   };
@@ -267,6 +267,39 @@ export function TakoFriendTabs({
       document.removeEventListener("pointerdown", handleOutside);
     };
   }, [anyBubbleOpen]);
+
+  // 招待カードを開いている間は背面をスクロールさせない。スマホではカードの
+  // 表示領域を確保するため、サイトヘッダーと下部ナビも一時的に隠す。
+  useEffect(() => {
+    if (!inviteOpen) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const previousPaddingBottom = body.style.paddingBottom;
+    const mobileChrome = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "[data-result-sticky-header], [data-bottom-nav]",
+      ),
+    );
+    const previousDisplays = mobileChrome.map((element) =>
+      element.style.getPropertyValue("display"),
+    );
+
+    body.style.overflow = "hidden";
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      body.style.paddingBottom = "0px";
+      mobileChrome.forEach((element) => {
+        element.style.display = "none";
+      });
+    }
+
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.style.paddingBottom = previousPaddingBottom;
+      mobileChrome.forEach((element, index) => {
+        element.style.display = previousDisplays[index];
+      });
+    };
+  }, [inviteOpen]);
 
   const msgTab = msgOpenIdx !== null ? tabs[msgOpenIdx] : null;
 
@@ -366,6 +399,36 @@ export function TakoFriendTabs({
               </button>
             );
           })}
+          {/* 友達がここへ増えていくことを示す、次の1人ぶんの空き枠。 */}
+          {invitePanel && (
+            <div
+              aria-hidden="true"
+              className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
+            >
+              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-[#D1D4E2] bg-[#FCFCFE]">
+                <svg
+                  width="27"
+                  height="27"
+                  viewBox="0 0 25 25"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle cx="9" cy="8" r="3.5" fill="#D1D3DF" />
+                  <path
+                    d="M2.75 19.5c0-3.7 2.8-6.2 6.25-6.2s6.25 2.5 6.25 6.2"
+                    fill="#D8DAE4"
+                  />
+                  <circle cx="17.25" cy="9.25" r="2.75" fill="#DFE0E8" />
+                  <path
+                    d="M14.1 14.2c.9-.7 2-1.05 3.15-1.05 2.85 0 5 2.05 5 5.15v1.2h-5.4c-.15-2.15-1.1-4-2.75-5.3Z"
+                    fill="#E5E6EC"
+                  />
+                </svg>
+              </span>
+              <span className="h-[17px]" />
+            </div>
+          )}
+
           {/* ＋: 招待の吹き出しを開閉 */}
           {invitePanel && (
             <button
@@ -373,7 +436,7 @@ export function TakoFriendTabs({
               aria-expanded={inviteOpen}
               aria-label={isKo ? "친구 초대" : "友達を招待"}
               onClick={toggleInvite}
-              className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
+              className="flex w-14 flex-shrink-0 flex-col items-center gap-1 focus:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[#5B5BEF] focus-visible:ring-offset-2"
             >
               {/* 友達アバターと同サイズの円。開いている間は紫塗り + ＋が ✕ に回転。 */}
               <span
@@ -414,22 +477,18 @@ export function TakoFriendTabs({
           {unlockCta && <div className="flex-shrink-0 py-3">{unlockCta}</div>}
         </div>
 
-        {/* ── 吹き出し (対象アバター直下・矢印つき小カード)。招待 or メッセージのどちらか ── */}
-        {(inviteOpen || (msgTab && msgOpenIdx !== null)) && (
+        {/* ── 友達からのひとこと吹き出し (対象アバター直下・矢印つき) ── */}
+        {msgTab && msgOpenIdx !== null && (
           <div
             // key: 表示対象が変わるたびに再マウントして「ぽわん」を再生する
             // (同一要素の中身差し替えだと CSS アニメが再発火しない)。
-            key={inviteOpen ? "invite" : `msg-${msgOpenIdx}`}
+            key={`msg-${msgOpenIdx}`}
             ref={bubbleRef}
             role="dialog"
             aria-label={
-              inviteOpen
-                ? isKo
-                  ? "친구 초대"
-                  : "友達を招待"
-                : isKo
-                  ? `${msgTab?.name}님의 메시지`
-                  : `${msgTab?.name}からのメッセージ`
+              isKo
+                ? `${msgTab.name}님의 메시지`
+                : `${msgTab.name}からのメッセージ`
             }
             className="animate-bubble-pop absolute inset-x-0 top-full z-30"
             // 膨らむ起点 = 矢印 (対象アバターの中央直下)。キャラがしゃべった感を出す。
@@ -464,36 +523,151 @@ export function TakoFriendTabs({
                 };
               })()}
             >
-              {inviteOpen ? (
-                invitePanel
-              ) : (
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black text-[#5B5BEF]">
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
-                    </svg>
-                    {isKo
-                      ? `${msgTab?.name}님이 남긴 한마디`
-                      : `${msgTab?.name}からのひとこと`}
-                  </p>
-                  <p className="body-gothic whitespace-pre-wrap text-[15px] font-normal leading-[1.7] text-[#1A1A1A]">
-                    {msgTab?.message}
-                  </p>
-                </div>
-              )}
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black text-[#5B5BEF]">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+                  </svg>
+                  {isKo
+                    ? `${msgTab.name}님이 남긴 한마디`
+                    : `${msgTab.name}からのひとこと`}
+                </p>
+                <p className="body-gothic whitespace-pre-wrap text-[15px] font-normal leading-[1.7] text-[#1A1A1A]">
+                  {msgTab.message}
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── 選択中の友達の結果シート ── */}
-      {panels[idx]}
+      {/* ── 招待カード。SNS・リンクを主役にし、QRはカード内で任意展開する。 ── */}
+      {inviteOpen && invitePanel ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/40 px-3 py-2 backdrop-blur-[2px] md:px-6 md:py-8"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setInviteOpen(false);
+          }}
+        >
+          <div
+            ref={bubbleRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tako-invite-dialog-title"
+            className="animate-bubble-pop relative max-h-[calc(100dvh-1rem)] w-full max-w-[640px] overflow-y-auto rounded-[24px] border border-[#DEDFEC] bg-white shadow-[0_24px_70px_rgba(34,34,70,0.28)] md:max-h-[calc(100dvh-4rem)] md:rounded-[28px]"
+            style={{ transformOrigin: "center" }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div aria-hidden="true" className="h-1.5 bg-[#5B5BEF]" />
+            <button
+              type="button"
+              onClick={() => setInviteOpen(false)}
+              aria-label={isKo ? "초대 카드 닫기" : "招待カードを閉じる"}
+              autoFocus
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#DADBE5] bg-white text-[#8A8A9E] outline-none transition hover:bg-[#F5F5FA] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-5 md:top-5"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+
+            <div className="px-5 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8">
+              <div className="flex items-center gap-4 pr-10 md:gap-7 md:pr-12">
+                <div className="min-w-0 flex-1">
+                  <h2
+                    id="tako-invite-dialog-title"
+                    className="text-[26px] font-black leading-[1.25] text-[#2E2E5C] md:text-[34px]"
+                  >
+                    {tabs.length === 0
+                      ? isKo
+                        ? "친구를 초대해요"
+                        : "友達を招待しよう"
+                      : isKo
+                        ? "친구를 더 초대해요"
+                        : "もっと友達を招待しよう"}
+                  </h2>
+                  <p className="mt-2 text-[13px] font-bold leading-[1.7] text-[#73738A] md:text-[14px]">
+                    {tabs.length === 0
+                      ? isKo
+                        ? "한 명이 답하면 친구가 보는 나의 결과가 열려요."
+                        : "1人が回答すると「友達から見たあなた」の結果が表示されます。"
+                      : isKo
+                        ? "답변이 도착할 때마다 친구별 결과 시트가 늘어나요."
+                        : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}
+                  </p>
+                </div>
+                <Image
+                  src="/empty-states/tako-friends-waiting-felt.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={1402}
+                  height={1122}
+                  sizes="(min-width: 768px) 150px, 96px"
+                  className="h-auto w-24 shrink-0 select-none md:w-[150px]"
+                />
+              </div>
+
+              <div className="mt-6 border-t border-[#E8E8F1] pt-5 md:mt-7 md:pt-6">
+                {invitePanel}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── 0人の空状態 / 選択中の友達の結果シート ── */}
+      {tabs.length === 0 ? (
+        <section className="-mx-4 flex min-h-[calc(100dvh-230px)] flex-col items-center justify-center bg-[#F7F7FA] px-4 pb-28 pt-14 text-center md:mx-0 md:min-h-[560px] md:pb-20 md:pt-16">
+          <Image
+            src="/empty-states/tako-friends-waiting-felt.png"
+            alt=""
+            aria-hidden="true"
+            width={1402}
+            height={1122}
+            sizes="(min-width: 768px) 144px, 132px"
+            className="h-auto w-[132px] select-none md:w-[144px]"
+          />
+
+          <h1 className="mt-7 text-[22px] font-black leading-[1.5] text-[#2E2E5C] md:text-[26px]">
+            {isKo
+              ? "아직 친구의 답변이 없어요"
+              : "まだ友達からの回答はありません"}
+          </h1>
+          <p className="mt-2 max-w-[360px] text-[14px] font-bold leading-[1.9] text-[#8A8AA3] md:text-[15px]">
+            {isKo
+              ? "친구 한 명이 답하면 여기에 ‘친구가 보는 나’의 결과가 표시돼요."
+              : "何人かを招待して、結果を比較してみましょう！"}
+          </p>
+          <button
+            type="button"
+            onClick={toggleInvite}
+            aria-expanded={inviteOpen}
+            className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-[#5B5BEF] px-7 py-3.5 text-[16px] font-black text-white shadow-[0_10px_24px_rgba(91,91,239,0.24)] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BEF] focus-visible:ring-offset-2 active:scale-[0.98]"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {isKo ? "친구에게 진단 부탁하기" : "友達を招待する"}
+          </button>
+        </section>
+      ) : (
+        panels[idx]
+      )}
     </div>
   );
 }

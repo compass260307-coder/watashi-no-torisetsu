@@ -1,23 +1,22 @@
 // /friend/[inviteCode] (友達評価の着地ページ) のメタデータ。
 //
-// OGP はキャラ別 (2026-07-15): invite_code からオーナーの32タイプを逆引きし、
-// og-characters/{slug}.jpg (1200x630・32枚) を出す。/share/[code] と同じ方式。
-// シェアバー (X/LINE/QR) のリンク先はここなので、投稿カードに本人のキャラが出る。
-// 逆引き失敗時 (無効コード・preview 等) は汎用 ogp-v5.jpg にフォールバック。
+// OGP は invite_code からオーナーの32タイプを逆引きし、
+// 友達回答依頼用の og-friend/{slug}.jpg (1200x630・32枚) を出す。
+// 回答を誘導しないよう、カードのタイトルにはタイプ名を出さない。
 
 import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
-  thirtyTwoEssence,
   thirtyTwoImagePath,
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 const SITE_URL = resolveSiteUrl();
-const FALLBACK_DESCRIPTION = "友達から見たあなたを30問で教えてもらう診断";
+const FALLBACK_DESCRIPTION =
+  "あなたから見たわたしを、30問で教えてもらう友達診断";
 
 function buildMetadata(opts: {
   inviteCode: string;
@@ -72,7 +71,7 @@ export async function generateMetadata({
     url: `${SITE_URL}/friend/${encodeURIComponent(inviteCode)}`,
   });
 
-  // invite_code → オーナーの称号/キャラ slug (/share/[code] と同じ逆引き)。
+  // invite_code → オーナーのキャラ slug を逆引きする。
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("display_name, scores")
@@ -87,23 +86,23 @@ export async function generateMetadata({
     Record<BigFiveDimension, number>
   >;
   const t32 = classifyThirtyTwoType(scores);
-  const essence = thirtyTwoEssence(t32);
   const slug = thirtyTwoImagePath(t32)
     .split("/")
     .pop()!
     .replace(/\.\w+$/, "");
   const name = ((data.display_name as string | null) ?? "").trim();
+  const title = name
+    ? `あなたから見た${name}さんを教えて！`
+    : "あなたから見たわたしを教えて！";
 
   return buildMetadata({
     inviteCode,
-    title: name
-      ? `${name}さんは【${essence}】でした`
-      : `私は【${essence}】でした`,
+    title,
     description: name
       ? `あなたから見た${name}さんを、30問でこっそり教えて👀`
       : FALLBACK_DESCRIPTION,
-    imageUrl: `${SITE_URL}/og-characters/${slug}.jpg`,
-    imageAlt: essence,
+    imageUrl: `${SITE_URL}/og-friend/${slug}.jpg?v=20260825`,
+    imageAlt: title,
     url: `${SITE_URL}/friend/${encodeURIComponent(inviteCode)}`,
   });
 }

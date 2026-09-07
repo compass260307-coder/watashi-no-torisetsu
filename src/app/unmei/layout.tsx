@@ -11,9 +11,13 @@ export default function UnmeiLayout({ children }: { children: ReactNode }) {
     <>
       {/* 下部ナビ「運命」の赤バッジ解除 (どの状態でも到達 = 確認済み扱い) */}
       <UnmeiAttentionClear />
-      <TopHeader />
+      <div className="unmei-site-header">
+        <TopHeader />
+      </div>
       {children}
-      <TopFooter />
+      <div className="unmei-site-footer">
+        <TopFooter />
+      </div>
     </>
   );
 }

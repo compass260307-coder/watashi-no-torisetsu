@@ -54,7 +54,6 @@ export default async function HoshiyomiPreviewPage({ searchParams }: PreviewProp
   return (
     <HoshiyomiClient
       key={selectedId ?? "home"}
-      conversations={SAMPLE_CONVERSATIONS}
       selectedConversation={
         selectedId
           ? SAMPLE_CONVERSATIONS.find((item) => item.id === selectedId) ?? null
@@ -63,8 +62,8 @@ export default async function HoshiyomiPreviewPage({ searchParams }: PreviewProp
       initialRemaining={locked || trialExhausted ? 0 : 22}
       totalCredits={trialExhausted ? 1 : locked ? 0 : 30}
       persistenceReady
-      hasChatAccess={trialExhausted || !locked}
-      canUpgradeToPremium={locked || trialExhausted}
+      hasChatAccess={!locked}
+      canUpgradeToPremium={trialExhausted}
       previewMode
     />
   );

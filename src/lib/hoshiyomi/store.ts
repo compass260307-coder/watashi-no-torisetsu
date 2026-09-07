@@ -5,7 +5,10 @@ import {
   validAccessPaymentRows,
   type AccessPaymentRow,
 } from "@/lib/entitlements";
-import { hoshiyomiChatCreditTarget } from "@/lib/access-products";
+import {
+  hoshiyomiChatCreditTarget,
+  purchaseIncludesHoshiyomiChat,
+} from "@/lib/access-products";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export type HoshiyomiConversationSummary = {
@@ -259,7 +262,7 @@ export async function grantHoshiyomiCredits(args: {
 /**
  * その購入後に保証すべき累計回数まで不足分だけ付与する。
  * upgrade_from の自己申告には依存せず、実際の累計残高を基準にするため、
- * 完全版の5回が未付与だったユーザーでもプレミアム購入後は必ず30回になる。
+ * 下位コースの保証回数が未付与でも、プレミアム購入後は必ず30回になる。
  */
 export async function grantHoshiyomiCreditsToTarget(args: {
   userId: string;
@@ -310,16 +313,21 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     (payments ?? []) as (AccessPaymentRow & { stripe_session_id: string })[],
   ) as (AccessPaymentRow & { stripe_session_id: string })[];
   for (const payment of validPayments) {
-    const targetTotal = hoshiyomiChatCreditTarget(
-      payment.payment_kind,
-      payment.metadata?.hoshiyomi_chat_policy,
-      payment.metadata?.destiny_access_policy,
-    );
-    if (targetTotal === 0) continue;
+    if (
+      !purchaseIncludesHoshiyomiChat(
+        payment.payment_kind,
+        payment.metadata?.hoshiyomi_chat_policy,
+      )
+    ) {
+      continue;
+    }
     await grantHoshiyomiCreditsToTarget({
       userId: payment.user_id as string,
       sourceKey: `stripe:${payment.stripe_session_id as string}`,
-      targetTotal,
+      targetTotal: hoshiyomiChatCreditTarget(
+        payment.payment_kind,
+        payment.metadata?.hoshiyomi_chat_policy,
+      ),
     });
   }
 

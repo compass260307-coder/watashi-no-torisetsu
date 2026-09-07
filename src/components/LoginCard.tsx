@@ -7,6 +7,7 @@
 //   - onClose を渡すとカード右上に × (モーダル用) を表示する。
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ResultLocale } from "@/i18n/result";
 
 const FONT_STACK =
@@ -187,6 +188,16 @@ export function LoginCard({
                 />
               </div>
             </div>
+
+            {locale === "ko" ? (
+              <p className="-mt-1 text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                이메일 주소는 로그인 링크 발송과 결과 복구를 위해 처리됩니다. 자세한 내용은{" "}
+                <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
+                  개인정보처리방침
+                </Link>
+                에서 확인할 수 있습니다.
+              </p>
+            ) : null}
 
             <button
               type="submit"

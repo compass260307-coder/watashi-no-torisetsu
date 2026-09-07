@@ -24,9 +24,12 @@ import { createSession, getSession } from "@/lib/session";
 import { isMissingCoreKpiColumn } from "@/lib/core-kpis";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
+import { ensureHoshiyomiCreditsFromPurchase } from "@/lib/hoshiyomi/store";
 import {
+  hasHoshiyomiChatPurchase,
   hasPremiumBundleAccess,
   hasSelfReportAccess,
+  hasTarotAccess,
   hasTakoAccess,
   hasUnmeiAccess,
 } from "@/lib/entitlements";
@@ -166,7 +169,7 @@ export async function POST(request: NextRequest) {
 
   // Phase 1.5-α Day 12-Polish-B: 基本情報ステップで取得したニックネームを users.display_name に保存。
   // クライアント側で trim 済の想定だが、念のため API でも空白除去 + 20 文字制限。
-  // 空文字 / 未指定は null (UI 上「アナタ」フォールバック)。
+  // 空文字 / 未指定は null (UI 上「あなた」フォールバック)。
   const normalizedDisplayName = normalizeOptionalText(body.displayName, 20);
 
   // Phase 2F: scores jsonb に v2 拡張フィールドをマージ
@@ -248,20 +251,32 @@ export async function POST(request: NextRequest) {
     }
     let postDiagnosisReportProduct: AccessProduct | null = null;
     let postDiagnosisDestinyFeaturesIncluded = false;
+    let postDiagnosisHoshiyomiChatIncluded = false;
+    let postDiagnosisHoshiyomiChatCredits = 0;
+    let postDiagnosisTarotFeaturesIncluded = false;
     let postDiagnosisFriendFeaturesIncluded = false;
     if (isUndiagnosedPlaceholderUser(preDiagnosisUser)) {
       const [
         selfReportAccess,
         premiumBundleAccess,
         destinyFeaturesAccess,
+        hoshiyomiChatAccess,
+        hoshiyomiCredits,
+        tarotFeaturesAccess,
         friendFeaturesAccess,
       ] = await Promise.all([
           hasSelfReportAccess(existing.id),
           hasPremiumBundleAccess(existing.id),
           hasUnmeiAccess(existing.id),
+          hasHoshiyomiChatPurchase(existing.id),
+          ensureHoshiyomiCreditsFromPurchase(existing.id),
+          hasTarotAccess(existing.id),
           hasTakoAccess(existing.id),
         ]);
       postDiagnosisDestinyFeaturesIncluded = destinyFeaturesAccess;
+      postDiagnosisHoshiyomiChatIncluded = hoshiyomiChatAccess;
+      postDiagnosisHoshiyomiChatCredits = hoshiyomiCredits.data.total;
+      postDiagnosisTarotFeaturesIncluded = tarotFeaturesAccess;
       postDiagnosisFriendFeaturesIncluded = friendFeaturesAccess;
       postDiagnosisReportProduct =
         premiumBundleAccess
@@ -345,6 +360,9 @@ export async function POST(request: NextRequest) {
           locale,
           product: postDiagnosisReportProduct ?? "full_access",
           destinyFeaturesIncluded: postDiagnosisDestinyFeaturesIncluded,
+          hoshiyomiChatIncluded: postDiagnosisHoshiyomiChatIncluded,
+          hoshiyomiChatCredits: postDiagnosisHoshiyomiChatCredits,
+          tarotFeaturesIncluded: postDiagnosisTarotFeaturesIncluded,
           friendFeaturesIncluded: postDiagnosisFriendFeaturesIncluded,
         });
         console.log("[api/diagnosis] post-diagnosis detailed report email sent", {

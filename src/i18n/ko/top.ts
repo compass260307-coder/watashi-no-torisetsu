@@ -1,5 +1,5 @@
 export const KO_TOP_CONTENT = {
-  siteName: "나의 사용설명서",
+  siteName: "앨리스 진단",
   navigation: {
     diagnosis: "성격 진단 테스트",
     friend: "친구 진단 테스트",
@@ -11,9 +11,11 @@ export const KO_TOP_CONTENT = {
     preparing: "준비 중",
   },
   hero: {
+    brand: "앨리스 진단",
     title: "“친구 눈에는 내가 이렇게 보였구나”",
-    description:
-      "단 10분이면, 친구들이 보는 ‘진짜 나’를 놀랄 만큼 솔직하게 알 수 있어요.",
+    description: "Alice와 함께 만드는 나만의 사용설명서",
+    brandDescription:
+      "앨리스 테스트(Alice 진단·Alice 테스트)로 내 성격을 알아보고, 친구가 바라본 모습까지 더해 보세요.",
     cta: "무료로 진단 시작하기 →",
   },
   stats: [

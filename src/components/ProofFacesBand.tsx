@@ -2,9 +2,9 @@
 // /unmei LP で作った実績ストリップの中身を共有化したもの (2026-08-02、/tako 待機ページにも
 // 設置するため)。アニメーションは globals.css の face-float / star-twinkle。
 //
-// 人数は admin統計の実数スナップショット (2026-08-02時点)。増える一方なので「以上」表記は
-// 常に正だが、定期的に最新値へ更新する (デフォルト値とこのコメントを直すだけでよい):
-//   - 既定 (/unmei ほか): 無料診断の累計完了者数 9,756人
+// 人数は admin統計の実数スナップショット。増える一方なので「以上」表記は常に正だが、
+// 定期的に最新値へ更新する (lib/proof-stats.ts の定数を直すだけでよい):
+//   - 既定 (/unmei ほか): 無料診断の累計完了者数 DIAGNOSIS_COUNT_SNAPSHOT
 //   - /tako 待機ページ: 友達診断の回答完了者数 1,458人 (呼び出し側で props 指定)
 //
 // 顔は ChatGPT生成の「実在しない人物」の笑顔ポートレート (public/proof-faces。
@@ -13,6 +13,7 @@
 // 削除 (2026-08-02)。再度必要になったら人数テキスト <p> 末尾に text-[10px] で戻す。
 
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 
 // 位置・サイズ・角度・アニメ遅延は固定値 (Math.random だと SSR と hydration がズレる)。
 // 男女が交互になる並び。SP (バンド幅 ~358px) でも中央テキストと重ならない配置にする。
@@ -55,7 +56,7 @@ const SPARKLES: {
 export function ProofFacesBand({
   className = "",
   lead = "これまでに",
-  count = "9,756",
+  count = DIAGNOSIS_COUNT_SNAPSHOT,
   countSuffix = "人以上",
   tail = "が自分のトリセツを診断しています",
 }: {

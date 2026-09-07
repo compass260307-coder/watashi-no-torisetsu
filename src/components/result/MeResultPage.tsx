@@ -22,6 +22,7 @@
 
 import path from "node:path";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { resolveSiteUrl } from "@/lib/site-url";
 // 画像の存在チェックはビルド時生成のマニフェストで行う (scripts/generate-image-manifest.mjs)。
 // ランタイム fs.existsSync だとトレーサーが public/ 全体を Function に同梱して
@@ -53,8 +54,11 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { ResultHero } from "@/components/result/ResultHero";
-import { heroColorsForGroup } from "@/lib/hero-colors";
-import { preferCutImage } from "@/lib/character-image";
+import {
+  heroColorsForGroup,
+  resultActionColorsForGroup,
+} from "@/lib/hero-colors";
+import { preferCutImage, preferFaceImage } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
@@ -79,7 +83,12 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { classifyType } from "@/lib/diagnosis";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { MeUnmeiChatLauncher } from "@/components/result/MeUnmeiChatLauncher";
 import { PaywallModal } from "@/components/result/PaywallModal";
+import {
+  DiagnosisShareBand,
+  JAGGED_CLIP_TOP,
+} from "@/components/diagnosis/DiagnosisShareBand";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
@@ -91,9 +100,9 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
-import { ResetDataLink } from "@/components/ResetDataLink";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
+import { ShareDiagnosisLink } from "@/components/share/ShareDiagnosisLink";
 import type {
   BigFiveDimension,
   CModifier,
@@ -115,8 +124,6 @@ import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 const SITE_URL =
   resolveSiteUrl();
-const PREMIUM_UPGRADE_PRODUCTS = ["premium_bundle"] as const;
-
 type StoredScores = Partial<Record<BigFiveDimension, number>> & {
   fullCode?: string;
   cModifier?: CModifier;
@@ -136,6 +143,7 @@ interface PageProps {
 export interface ShareLandingInfo {
   sharerName: string;
   typeId: ThirtyTwoTypeId;
+  inviteCode: string;
 }
 
 // Phase 1.5-α Day 12-Polish: 自己診断本文は 16 タイプ別実本文 (lib/self-result-content.ts)
@@ -312,7 +320,6 @@ async function MeResultPageContent({
       return avg;
     })();
 
-
   // ===== 5. ラベル + Big Five 導出 =====
   const stored = (user.scores ?? {}) as StoredScores;
   // 深掘り (TYPE_DEEP_DIVE) 用の 8 タイプ ID。user.scores から決定論的に導出
@@ -325,7 +332,7 @@ async function MeResultPageContent({
     N: stored.N ?? 5,
   });
   // 深掘り本文のゲート (三層モデル 第二部)。本文はここ (サーバ) で解決し、許可された
-  // ぶんだけ props で渡す。解放条件 = ¥199 self_report または既存 full_access。
+  // ぶんだけ props で渡す。解放条件 = self_report または既存 full_access。
   // 未解放ならキャリア/成長は body=null で返り、クライアントバンドルにも本文が乗らない。
   // プレビュー (モック) は DB を引かない。/preview/[typeId] の静的生成をビルド時の
   // Supabase 接続に依存させないためでもある (課金状態は previewLock で表現済み)。
@@ -353,46 +360,49 @@ async function MeResultPageContent({
       : hasPartTwoAccess(deepDivePaid, friendEvalCount);
   // ※ 課金後の /tako 誘導ティーザー (FriendLoveTeaser/FriendTruthTeaser) は
   //    2026-07-26 指示で撤去。代わりに課金後は 運命の設計図 (/unmei) への
-  //    アップセルセクションを最下部に出す (16P のプレミアムキャリアキット風)。
+  //    運命の設計図を含むコースへのアップグレードセクションを最下部に出す。
   const showUnmeiPromo =
     !acquisition &&
     !destinyFeaturesPaid &&
     (previewType ? !previewLocked : deepDivePaid);
+  const unmeiPurchaseProduct = fullAccessPaid
+    ? "premium_bundle"
+    : "full_access";
   // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
   // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
   // 16P「プレミアムキャリアキット」参考: 柔らかいカード + 締まったタイポ +
-  // 色分けした六角形アイコン + 4つの特典を縦に読み進める構成 + 横長CTA。
+  // 色分けした六角形アイコン + 特典を縦に読み進める構成 + 横長CTA。
   const unmeiPromoCard = !showUnmeiPromo ? null : (
     <section
-      aria-label={isKorean ? "프리미엄 코스 혜택" : "プレミアムコースの特典"}
+      aria-label={
+        isKorean
+          ? fullAccessPaid
+            ? "프리미엄 코스 혜택"
+            : "완전판 코스 혜택"
+          : fullAccessPaid
+            ? "全部入りの特典"
+            : "完全版の特典"
+      }
     >
-      <div className="rounded-[23px] border border-[#F1DDAA] bg-white px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14">
-        <div className="mx-auto mb-10 max-w-[800px] text-center md:mb-12">
+      <div className="animate-premium-glow rounded-[23px] border border-[#F1DDAA] bg-white px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14">
+        <div className="mx-auto mb-8 max-w-[800px] text-center md:mb-10">
           <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
-            {isKorean ? "프리미엄에서 잠금 해제" : "プレミアムで解放"}
-          </span>
-          <h2 className="mb-3 text-[24px] font-black leading-[1.35] text-[#2E2E5C] md:text-[36px]">
             {isKorean
-              ? "태어난 순간의 별에서 운명을 읽어 보세요"
-              : "あなたの物語の続きを、すべて解放"}
+              ? fullAccessPaid
+                ? "프리미엄에서 잠금 해제"
+                : "완전판에서 잠금 해제"
+              : fullAccessPaid
+                ? "全部入りで解放"
+                : "完全版で解放"}
+          </span>
+          <h2 className="mb-3 text-[24px] font-bold leading-[1.35] text-[#2E2E5C] md:text-[36px]">
+            {isKorean
+              ? "질문에 답하고, 운명의 설계도를 완성해 보세요"
+              : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
-          <p className="text-[14px] font-bold leading-[1.8] text-[#68677F] md:text-[18px]">
-            {isKorean ? (
-              <>
-                성격 진단에서 한 걸음 더. 출생 차트와 AI가 만드는
-                <Link
-                  href="/ko/unmei"
-                  className="mx-1 font-black text-[#9A6A24] underline decoration-2 underline-offset-4"
-                >
-                  운명의 설계도
-                </Link>
-                로 나를 더 깊이 알아보세요
-              </>
-            ) : (
-              "性格診断で分かったのは、いまのあなた。ここから先は、これまでの歩みと、これから訪れる転換点の話です。出生図と掛け合わせた、あなただけの1冊をつくりました。"
-            )}
-          </p>
         </div>
+        {/* Alice の吹き出しは 2026-08-26 撤去。同文は CTA で開くチャットの冒頭挨拶
+            (ME_UNMEI_CHAT_INTRO_JA) として送られる。 */}
         <ul className="mx-auto mb-11 flex max-w-[820px] flex-col gap-7 md:mb-12 md:gap-8">
           {[
             {
@@ -424,7 +434,9 @@ async function MeResultPageContent({
                 ? "나만의 전담 점성술사"
                 : "専属AI占い師に相談30回",
               body: isKorean
-                ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
+                ? fullAccessPaid
+                  ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
+                  : "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 완전판에는 채팅 30회가 포함됩니다."
                 : "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
             },
             {
@@ -462,6 +474,19 @@ async function MeResultPageContent({
                 ? "Big Five 진단에서 발견한 성격과 별이 보여 주는 기질을 나란히 살펴, 겹치는 부분과 작은 차이까지 읽어 드려요."
                 : "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
             },
+            {
+              iconBg: "#FFF3D9",
+              iconColor: "#9A6A24",
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20.5C7 17 3.5 13.7 3.5 9.9c0-2.7 2-4.7 4.6-4.7 1.6 0 3 .8 3.9 2.1.9-1.3 2.3-2.1 3.9-2.1 2.6 0 4.6 2 4.6 4.7 0 3.8-3.5 7.1-8.5 10.6Z" />
+                </svg>
+              ),
+              title: isKorean ? "궁합 진단 기능 잠금 해제" : "相性診断機能を解放",
+              body: isKorean
+                ? "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 관계까지 읽어 드려요."
+                : "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
+            },
           ].map((feature) => (
             <li
               key={feature.title}
@@ -480,10 +505,10 @@ async function MeResultPageContent({
                 {feature.icon}
               </span>
               <div className="pt-0.5 md:pt-1">
-                <p className="text-[18px] font-black leading-[1.45] text-[#2E2E5C] md:text-[22px]">
+                <p className="text-[18px] font-bold leading-[1.45] text-[#2E2E5C] md:text-[22px]">
                   {feature.title}
                 </p>
-                <p className="mt-1.5 text-[14px] font-medium leading-[1.75] text-[#66657B] md:text-[16px]">
+                <p className="mt-1.5 text-[14px] leading-[1.75] text-[#66657B] md:text-[16px]">
                   {feature.body}
                 </p>
               </div>
@@ -491,15 +516,18 @@ async function MeResultPageContent({
           ))}
         </ul>
         <div className="text-center">
-          <PaywallScrollButton
-            source="unmei_promo_card"
-            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-black text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+          <MeUnmeiChatLauncher
+            ownerToken={previewType ? null : token}
+            locale={locale}
+            product={unmeiPurchaseProduct}
+            previewMode={Boolean(previewType)}
+            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
           >
-            {isKorean ? "프리미엄 자세히 보기" : "プレミアムの詳細を見る"}
+            {isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
             <span aria-hidden="true" className="text-xl font-medium">
               →
             </span>
-          </PaywallScrollButton>
+          </MeUnmeiChatLauncher>
         </div>
       </div>
     </section>
@@ -515,7 +543,7 @@ async function MeResultPageContent({
   const sixteenTypeId = classifySixteenType(stored);
   const sixteenType = sixteenTypes[sixteenTypeId];
   // 解釈B: フラグ on で本文・型名・essence・画像を32化。off=従来16 (完全に従来表示)。
-  const flag32 = isKorean || previewType ? true : isThirtyTwoEnabled();
+  const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
   // 第二部本文 (強み/あれっ?/取扱い方/ギャップ予告)。未解放時は本文なし (フェイルクローズ)。
   const partTwoRaw = isKorean
@@ -561,12 +589,19 @@ async function MeResultPageContent({
     : deepDiveSectionsRaw;
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
-  //   キャラ画像は透過版 (characters/cut) を使うため、旧「画像の地色に一致させる」制約は撤廃。
-  //   白文字の称号・ラベルが立つ濃さにする。
-  // ヒーロー帯トーンは共通ヘルパで解決 (/tako と共有)。flag off(16) は unknown で解決。
-  const { heroBg, codeTint } = heroColorsForGroup(
-    flag32 ? thirtyTwoGroup(t32) : "unknown",
-  );
+  // キャラ画像は透過版を使い、白文字の称号・ラベルが立つ濃さにする。
+  const resultGroup = flag32 ? thirtyTwoGroup(t32) : "unknown";
+  const { heroBg, codeTint } = heroColorsForGroup(resultGroup);
+  const resultActionTone = resultActionColorsForGroup(resultGroup);
+  const resultActionButtonStyle = {
+    backgroundColor: resultActionTone.accent,
+    boxShadow: `0 4px 0 ${resultActionTone.shadow}`,
+  };
+  const resultThemeStyle = {
+    background: "#F9F9FC",
+    "--result-action-color": resultActionTone.accent,
+    "--result-action-shadow": resultActionTone.shadow,
+  } as CSSProperties;
   const sectionsRaw = isKorean
     ? buildKoSelfSections(t32, stored)
     : flag32
@@ -598,10 +633,8 @@ async function MeResultPageContent({
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
   const dispImage = preferCutImage(v3Image);
-  // SP ヒーローの画像引き上げ量 (下の -mt-*)。既定は -mt-8 (32px) で OCEAN 行と詰めるが、
-  // 家など上端まで絵が詰まったキャラは称号/OCEAN に被るため、ビルド時に実測した
-  // 「上端の透過余白の割合」(cutTopMargin) が小さいキャラほど引き上げを弱める。
-  //   目安: SP の画像幅 ≈ 360px なので 割合 0.1 ≈ 36px の余白 = 32px 引き上げても安全。
+  // SP ヒーローの画像引き上げ量。画像上端の透過余白が小さいキャラは、
+  // 称号や OCEAN コードに重ならないよう引き上げを弱める。
   const cutTopMargin: number | undefined = (
     characterImages.cutTopMargin as Record<string, number>
   )[path.basename(dispImage)];
@@ -617,6 +650,13 @@ async function MeResultPageContent({
   //   解決順: キャラ別 <slug>_<variant>.png → グループ共通 <group>_<variant>.png
   //   (例 jellyfish_N_love.png → sea_love.png)
   const sceneSlug = path.basename(v3Image).replace(/\.\w+$/, "");
+  // キャラ別のループ動画。透過 WebM を優先し、Kling の標準出力 MP4 にも対応する。
+  // public/characters/anim/<slug>.<webm|mp4> を置いて prebuild を実行すると自動反映される。
+  const animFiles = characterImages.anims as string[];
+  const animFile = [`${sceneSlug}.webm`, `${sceneSlug}.mp4`].find((file) =>
+    animFiles.includes(file),
+  );
+  const animSrc = animFile ? `/characters/anim/${animFile}` : null;
   const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
     const candidates = [
@@ -638,10 +678,11 @@ async function MeResultPageContent({
   // 自己診断結果の固定バーは、友達評価の依頼ではなくキャラクター共有に専念する。
   // 共有先は per-owner のキャラOGが出る獲得ページ。
   const characterShareUrl = `${SITE_URL}${isKorean ? "/ko" : ""}/share/${inviteCode}`;
+  const acquisitionDiagnosisHref = acquisition
+    ? `${isKorean ? "/ko" : ""}/diagnosis?source=${encodeURIComponent(acquisition.inviteCode)}`
+    : undefined;
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
   // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
-  // 動物名は表示キャラに合わせる: flag32 on は 32キャラの素の動物 (例 ユニコーン)、
-  // off は従来 16 タイプの動物。画像/型名/essence と動物名の不一致を解消。
   const animalName = isKorean
     ? KO_RESULT_TYPES[t32].animal
     : flag32
@@ -649,13 +690,10 @@ async function MeResultPageContent({
       : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
-  // 職業表示の制御。
-  // - forceReveal (デモ): ?revealDemo=1 が付いたときだけ、職業を仮(記者)で差し込む。
-  //   /me/[token] は推測不可のトークン限定URLで通常ユーザーが踏むことはなく実質露出しない。
-  //   職業決定ロジック (computeJob) は不変、デモは「表示用の job」を差し替えるだけ。
+  // ?revealDemo=1 のときだけ、職業を仮の「記者」で差し込む開発用表示。
   const forceReveal = sp.revealDemo === "1";
   const displayJob = job ?? (forceReveal ? JOBS.reporter : null);
-  // ヒーロー見出し (16P 参考): 小ラベル「あなたの性格タイプ:」+ 称号(essence)の大見出し。
+  // ヒーロー見出し: 小ラベル「あなたの性格タイプ:」+ 称号(essence)の大見出し。
   // どちらも白文字 (色帯の上に乗せる 16P の構図)。SP=中央 / PC=左寄せ。
   // ※ name/animal データは温存 (job 表示等で参照)。表示からのみ除外。
   // OCEAN コード行 (大文字小文字方式): 各軸の高低 (stored スコア ≥5 = 高) を文字の大小で表す。
@@ -686,6 +724,9 @@ async function MeResultPageContent({
     shouldTrackMetaPurchase && paidCheckoutSession
       ? createMetaPurchaseClaimToken(paidCheckoutSession.id)
       : null;
+  // /share と公開プレビューは /me の表示コンポーネントを再利用するが、本人結果ではない。
+  // result_viewed や本人向けバッジを疑似 token (`share-*`) で発火させない。
+  const isOwnedResult = !previewType && !acquisition && !publicPreview;
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -703,7 +744,7 @@ async function MeResultPageContent({
         )}
       {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中…」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
-      {!previewType && sp.paid === "1" && waitingForPaidAccess && (
+      {isOwnedResult && sp.paid === "1" && waitingForPaidAccess && (
         <PaidUnlockWatcher
           ownerToken={token}
           locale={locale}
@@ -711,15 +752,15 @@ async function MeResultPageContent({
         />
       )}
       {/* 友達診断の赤バッジ付与: /me を表示した全員に言語を問わず1回。 */}
-      {!previewType && <TakoAttentionOnResult ownerToken={token} />}
+      {isOwnedResult && <TakoAttentionOnResult ownerToken={token} />}
       {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
-      {!previewType && fullAccessPaid && !premiumBundlePaid && (
+      {isOwnedResult && fullAccessPaid && !premiumBundlePaid && (
         <UnmeiAttentionOnPaid ownerToken={token} />
       )}
 
       {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
           プレビュー (?previewType) はモック描画なので計測しない。 */}
-      {!previewType && (
+      {isOwnedResult && (
         <>
           <PreferredLocaleSync ownerToken={token} locale={locale} />
           <ResultViewTracker ownerToken={token} friendCount={friendEvalCount} />
@@ -730,7 +771,27 @@ async function MeResultPageContent({
     <MeStickyHeader
       showUnlockCta={acquisition || publicPreview ? false : !partTwoUnlocked}
       shareUrl={acquisition || publicPreview ? undefined : characterShareUrl}
+      friendShareUrl={
+        (isOwnedResult ||
+          (process.env.NODE_ENV === "development" && previewType !== null)) &&
+        inviteCode
+          ? `${SITE_URL}${isKorean ? "/ko" : ""}/friend/${encodeURIComponent(inviteCode)}`
+          : undefined
+      }
+      friendDiagnosisHref={
+        (isOwnedResult ||
+          (process.env.NODE_ENV === "development" && previewType !== null))
+          ? `${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`
+          : undefined
+      }
+      ownerToken={acquisition || publicPreview ? undefined : token}
+      inviteCode={acquisition?.inviteCode ?? (publicPreview ? undefined : inviteCode)}
+      qrImageSrc={isOwnedResult ? preferFaceImage(v3Image) : null}
       diagnosisCta={Boolean(acquisition) || publicPreview}
+      diagnosisCtaHref={acquisitionDiagnosisHref}
+      diagnosisCtaTrackSource={acquisition ? "sticky_bar" : undefined}
+      diagnosisCtaEvent="share_to_diagnosis_clicked"
+      previewMode={previewType !== null}
       essence={dispEssence}
       code={dispCode}
       reportHref={
@@ -752,28 +813,59 @@ async function MeResultPageContent({
             ? "결과 업그레이드"
             : "結果をアップグレード"
           : isKorean
-            ? undefined
+            ? "자기 분석 PDF 다운로드"
             : "自己分析PDFをダウンロード"
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
+      circleTone={showUnmeiPromo ? "gold" : undefined}
+      group={resultGroup}
+      reportCta={
+        showUnmeiPromo ? (
+          <MeUnmeiChatLauncher
+            ownerToken={previewType ? null : token}
+            locale={locale}
+            product={unmeiPurchaseProduct}
+            previewMode={Boolean(previewType)}
+            source="unmei_upgrade_sticky"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white transition-transform hover:translate-y-0.5 active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
+            style={resultActionButtonStyle}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 20V6" />
+              <path d="m7 11 5-5 5 5" />
+              <path d="M19 2v4M17 4h4" />
+              <path d="M5 16v4M3 18h4" />
+            </svg>
+            {isKorean ? "결과 업그레이드" : "結果をアップグレード"}
+          </MeUnmeiChatLauncher>
+        ) : undefined
+      }
       locale={locale}
     >
       {isKorean ? <KoTopHeader /> : <TopHeader />}
     </MeStickyHeader>
-    <main
-      className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10"
-      style={{ background: "#FFFFFF" }}
-    >
-      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の白。
+    {/* 本文〜末尾CTA/課金カードまでを薄グレー1枚で面にする (16P 参考・2026-08-26)。
+        main 単体に塗ると main 外の課金カード/末尾CTAの帯だけ白く抜けて継ぎ目が
+        出るため、ラッパーで包んで塗る。 */}
+    <div style={resultThemeStyle}>
+    <main className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10">
+      {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の
+          薄グレー #F9F9FC (16P 参考・2026-08-26。白カード類が浮き上がる)。
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
           overflow-x-clip はヒーロー画像のフルブリード (w-screen) の横はみ出し抑止用。 */}
       <div className="relative z-10 max-w-[1080px] mx-auto">
-        {/* ===== ヒーロー色面 (全幅 heroBg: 上部中央グロー + フェルトドット + 称号/OCEAN + 画像) =====
-            self-sizing 維持 (固定 height なし)。名前は上部中央グローの上 (画像より前面=隠れない)。
-            ドットは中間ティントで上半分・主に PC 側余白に展開。画像は melt-into-bg のまま中央 max-600。 */}
-        {/* ヒーロー帯 (色帯+斜めクリップ+グロー+ドット+称号/OCEAN+キャラ) は ResultHero に共通化。
-            /me は 2カラム・本文幅1080 (既定)。/tako でも同コンポーネントを流用し世界観統一。 */}
+        {/* 全幅カラー帯の旧ヒーロー。称号/OCEAN/キャラクターを一つの面にまとめる。 */}
         <ResultHero
           label={
             acquisition
@@ -789,11 +881,11 @@ async function MeResultPageContent({
           heroBg={heroBg}
           codeTint={codeTint}
           imageSrc={dispImage}
+          animSrc={animSrc}
           alt={dispName}
           name={dispName}
           description={personalize(dispDesc)}
           heroPullClass={heroPullClass}
-          // 獲得モードでは職業ゲージ (友達評価人数) は見せない (訪問者には無関係)。
           jobSlot={
             acquisition
               ? undefined
@@ -806,10 +898,10 @@ async function MeResultPageContent({
           }
           locale={locale}
         />
-        {/* ===== 本文の肩: ヒーロー帯は斜めカットで白へ繋がる (16P 参考、角丸の肩は廃止)。
-            スクロール誘導は ↓ (chevron) のみ。直下に取説本文がそのまま覗く (見出しは置かない)。 ===== */}
-        <div className="relative mx-[calc(50%-50vw)] w-screen bg-white pt-4 md:pt-2 pb-1">
-          <div className="mx-auto max-w-[1080px] px-4 md:px-8 flex flex-col items-center text-center">
+        {/* 斜めに切れたヒーローから本文へつなぐスクロール誘導。背景は塗らず、
+            ページの薄グレー (ラッパー) をそのまま見せる (2026-08-26)。 */}
+        <div className="relative mx-[calc(50%-50vw)] w-screen pb-1 pt-4 md:pt-2">
+          <div className="mx-auto flex max-w-[1080px] flex-col items-center px-4 text-center md:px-8">
             <svg
               width="22"
               height="22"
@@ -820,7 +912,7 @@ async function MeResultPageContent({
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden="true"
-              className="opacity-60 animate-bounce"
+              className="animate-bounce opacity-60"
             >
               <path d="M6 9l6 6 6-6" />
             </svg>
@@ -835,8 +927,7 @@ async function MeResultPageContent({
             キャラ画像の直後、各パートのキャッチー小見出し (heading) から本文が直接始まる。
             aria-labelledby は最初のパート見出し (id=chapter-self) を参照する。 */}
         {/* ===== ① 基本特性 + 五つの性格傾向 =====
-            基本特性 (キャラ直下・見出しなし本文) → 挿絵 normal1 → ① 五つの性格傾向。
-            ※注意点 (旧②) は友達から見たアナタの後 (④) へ移設 (2026-07-14 指示)。 */}
+            基本特性 → 挿絵 → 五つの性格傾向 → 基本特性の続き、の旧構成。 */}
         <section
           aria-label={isKorean ? KO_ME_COPY.selfAriaLabel : "自分が見た自分"}
           className="mb-10"
@@ -844,8 +935,6 @@ async function MeResultPageContent({
           {(() => {
             const paragraphs = sections[0] ? sections[0].body.split("\n\n") : [];
             const introImage = sceneImage("normal1");
-            // 挿絵 normal1 は本文の途中 (中間の段落の後) に差し込む (2026-07-14 指示)。
-            // 挿絵より後の段落は ① 五つの性格傾向 のグラフの下へ移動 (2026-07-14 指示)。
             const imageAfter = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
             const beforeGraph = paragraphs.slice(0, imageAfter + 1);
             const afterGraph = paragraphs.slice(imageAfter + 1);
@@ -855,7 +944,6 @@ async function MeResultPageContent({
               <>
                 {beforeGraph.length > 0 && (
                   <section className="mb-14">
-                    {/* 白い囲み(カード)を外し地の文に。左右 padding は維持。 */}
                     <div className="px-1 pb-1">
                       {beforeGraph.map((para, pIdx) => (
                         <p key={`intro-${pIdx}`} className={paraClass}>
@@ -874,26 +962,45 @@ async function MeResultPageContent({
                     </div>
                   </section>
                 )}
-                {/* ① 五つの性格傾向 */}
                 <div className="mb-14 mt-4">
                   <BigFiveDivergingBars
                     scores={stored}
                     title={isKorean ? KO_ME_COPY.bigFiveTitle : "五つの性格傾向"}
                     number="1"
                     locale={locale}
-                    // カード内下部の「シェア」ピル (16P のグラフカード下ボタン参考
-                    // 2026-07-28)。ヘッダーと同じシェアモーダルを開く
-                    // (source=bigfive_graph で計測)。獲得ランディングはモーダルが
-                    // 無いため出さない。
                     footer={
                       !acquisition && !publicPreview ? (
-                        <ShareModalOpenButton
-                          label={isKorean ? "공유" : "シェア"}
-                        />
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          <ShareModalOpenButton
+                            label={isKorean ? "공유" : "シェア"}
+                            iconOnly
+                          />
+                          {/* 友達診断への導線ピル。本人閲覧時のみ。 */}
+                          {(isOwnedResult ||
+                            (process.env.NODE_ENV === "development" &&
+                              previewType !== null)) && (
+                              <Link
+                                href={`${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`}
+                                className="inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
+                              >
+                                <svg
+                                  width="17"
+                                  height="17"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  aria-hidden="true"
+                                >
+                                  <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
+                                  <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                                {isKorean ? "친구 답변과 비교하기" : "友達と答え合わせ"}
+                              </Link>
+                          )}
+                        </div>
                       ) : undefined
                     }
                   />
-                  {/* 冒頭本文の続き (挿絵より後の段落) はグラフの下に表示 */}
                   {afterGraph.length > 0 && (
                     <div className="mt-8 px-1 pb-1">
                       {afterGraph.map((para, pIdx) => (
@@ -943,7 +1050,7 @@ async function MeResultPageContent({
                 ? acquisition
                   ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
                   : "만약의 순간에 나타나는 나"
-                : personalize("もしもの時のアナタ")}
+                : personalize("もしもの時のあなた")}
             </h2>
           </div>
           {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
@@ -1011,8 +1118,8 @@ async function MeResultPageContent({
             // 獲得モードはロックUI自体を出さない (hideLocked) ためカードも組まない。
             const lockCard =
               partTwoUnlocked || acquisition || publicPreview ? undefined : (
-              <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
-                <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+              <div className="result-themed-lock-card relative w-[84%] max-w-[320px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-4 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:w-full md:max-w-[420px] md:px-6 md:pb-9 md:pt-10">
+                <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
                   <svg
                     width="14"
                     height="14"
@@ -1028,23 +1135,23 @@ async function MeResultPageContent({
                     <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                   </svg>
                 </span>
-                <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
+                <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
                   {isKorean ? KO_ME_COPY.unlockNow : "今すぐロックを解除"}
                 </p>
-                <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+                <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
                   {isKorean ? (
                     KO_ME_COPY.friendLockDescription
                   ) : (
                     <>
                       自己分析レポートを入手して、
                       <br className="md:hidden" />
-                      アナタが友達から誤解されやすいポイントを知りましょう。
+                      あなたが友達から誤解されやすいポイントを知りましょう。
                     </>
                   )}
                 </p>
                 <PaywallScrollButton
                   source="friend_dislike_card"
-                  className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                  className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                 >
                   {isKorean ? KO_ME_COPY.accessNow : "今すぐアクセス"}
                 </PaywallScrollButton>
@@ -1072,6 +1179,20 @@ async function MeResultPageContent({
         {sections[1] &&
           (() => {
             const paragraphs = sections[1].body.split("\n\n");
+            // 未解放時は先頭1段落のみ無料。日本版・韓国版で同じ境界にする。
+            //   1段落目は「〜ありませんか。」で終わるフック、2段落目は「それから、」
+            //   始まりの続き物なので、この境界で切ると自然なクリフハンガーになる。
+            //   獲得モード/公開プレビューは課金コンテンツを無いものとして扱う
+            //   (無料ぶんだけ表示しロックUIは出さない。⑤やシーン別と同じ扱い)。
+            const cautionAllVisible = partTwoUnlocked;
+            const visibleParagraphs = cautionAllVisible
+              ? paragraphs
+              : paragraphs.slice(0, 1);
+            const showCautionLock =
+              !cautionAllVisible &&
+              paragraphs.length > 1 &&
+              !acquisition &&
+              !publicPreview;
             return (
               <section className="mt-16 mb-14">
                 <div className="mb-4 flex items-center gap-3">
@@ -1100,7 +1221,7 @@ async function MeResultPageContent({
                   />
                 )}
                 <div className="px-1 pb-1">
-                  {paragraphs.map((para, pIdx) => (
+                  {visibleParagraphs.map((para, pIdx) => (
                     <p
                       key={`caution-${pIdx}`}
                       className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
@@ -1121,68 +1242,245 @@ async function MeResultPageContent({
                   // (課金コンテンツは無いものとして扱う)
                   <SceneCautionTeaser locale={locale} />
                 )}
+                {/* 続きの注意点 (2段落目以降) のロック。本文はレンダリングすらしない
+                    (フェイルクローズ)。⑤嫌われやすい性格と同じ見せ方: 枠なしの
+                    デコイ本文をスマホ1カラム・PC2カラムでぼかして敷き、中央に解除カードを
+                    重ねる。デコイは全ユーザー共通で実本文とは無関係。 */}
+                {showCautionLock && (
+                  <div className="mt-10 px-1">
+                    {/* 見出しはシーン別の注意点と同スタイル (ぼかしの外に置く)。 */}
+                    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+                      {isKorean ? "남은 주의점과 대처법" : "残りの注意点と対処法"}
+                    </h3>
+                    <div className="relative">
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
+                    >
+                      {(isKorean
+                        ? [
+                            { title: "혼자 너무 많이 떠안지 않는 법", body: "전부 혼자 짊어지기 전에 한 가지만 다른 사람에게 맡기는 연습부터 시작해요." },
+                            { title: "‘내가 해야 해’를 다시 보는 법", body: "맡은 역할을 세어 보고 정말 나 아니면 안 되는 일만 남겨요." },
+                            { title: "지치기 전 신호를 찾는 법", body: "한계에 닿기 조금 전에 나타나는 신호를 미리 정해 두는 것이 요령이에요." },
+                            { title: "관계를 해치지 않고 거절하는 법", body: "어색해지지 않게 ‘오늘은 어려워요’라고 전하는 방법이 있어요." },
+                            { title: "나를 뒤로 미루지 않는 요령", body: "일정의 맨 앞에 나를 위한 시간을 먼저 넣어 두세요." },
+                            { title: "다정함을 나누는 방향 바로잡기", body: "가까운 사람에게 오히려 소홀해지기 쉬운 다정함의 방향을 정돈해요." },
+                          ]
+                        : [
+                            { title: "抱え込みすぎの手放し方", body: "ぜんぶ自分で背負う前に、ひとつだけ人に預ける練習から始めます。" },
+                            { title: "「私がやらなきゃ」の見直し方", body: "役割を数えて、本当にあなたでないと困るものだけを残します。" },
+                            { title: "疲れる前のサインの見つけ方", body: "限界の少し手前に出る合図を、先に決めておくのがコツです。" },
+                            { title: "関係を壊さない断り方", body: "気まずくならずに「今日はむり」を伝える言い方があります。" },
+                            { title: "自分を後回しにしないコツ", body: "予定のいちばん最初に、自分の時間を入れてしまいます。" },
+                            { title: "優しさの配分の直し方", body: "近い人にこそ雑になりがちな、優しさの向きを整えます。" },
+                          ]
+                      ).map((decoy) => (
+                        <div key={decoy.title}>
+                          <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
+                            {decoy.title}
+                          </p>
+                          <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
+                            {decoy.body}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center px-4">
+                      <div className="result-themed-lock-card relative w-[84%] max-w-[320px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-4 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:w-full md:max-w-[420px] md:px-6 md:pb-9 md:pt-10">
+                        <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                          </svg>
+                        </span>
+                        <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
+                          {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+                        </p>
+                        <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
+                          {isKorean ? "남은 주의점과 대처법을 열어" : "残りの注意点と対処法を解放して、"}
+                          <br className="md:hidden" />
+                          {isKorean ? "나의 사용설명서를 완성해 보세요." : "あなたのトリセツを完成させましょう。"}
+                        </p>
+                        <PaywallScrollButton
+                          source="caution_lock_card"
+                          className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
+                        >
+                          {isKorean ? "지금 확인하기" : "今すぐアクセス"}
+                        </PaywallScrollButton>
+                      </div>
+                    </div>
+                    </div>
+                  </div>
+                )}
               </section>
             );
           })()}
 
+        {/* ===== 友達診断への導線。⑥注意点の直後・課金カードの手前に置く。 ===== */}
+        {partTwoUnlocked &&
+          (isOwnedResult ||
+            (process.env.NODE_ENV === "development" && previewType !== null)) && (
+            <section className="mt-16 mb-14">
+              <h2 className="mb-3 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[26px]">
+                {isKorean ? "친구 진단" : "友達診断"}
+              </h2>
+              <p className="body-gothic mb-5 text-[15px] leading-[1.8] text-[#1A1A1A] md:text-[16px]">
+                {isKorean
+                  ? "친구나 가족에게 답을 받아 ‘주변이 바라본 나’와의 차이를 비교해 보세요."
+                  : "友だちや家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
+              </p>
+              <Link
+                href={`${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+                style={resultActionButtonStyle}
+              >
+                {isKorean ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                <span aria-hidden="true">→</span>
+              </Link>
+            </section>
+          )}
+
         {/* ===== 獲得CTA (/share 経由 + 公開タイプ別LP): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
-        {(acquisition || publicPreview) && (
+        {acquisition && acquisitionDiagnosisHref ? (
+          <div className="mt-16 mb-12 text-center">
+            <ShareDiagnosisLink
+              href={acquisitionDiagnosisHref}
+              inviteCode={acquisition.inviteCode}
+              source="share_bottom"
+              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              style={resultActionButtonStyle}
+            >
+              {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+            </ShareDiagnosisLink>
+          </div>
+        ) : publicPreview ? (
           <div className="mt-16 mb-12 text-center">
             <Link
               href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
-              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              style={resultActionButtonStyle}
             >
               {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
             </Link>
           </div>
-        )}
+        ) : null}
 
         {/* ページ末尾のリンク類 (トップに戻る / ログイン / Visitor CTA) は撤去。
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* 自己診断＋PDFの¥199課金カード。第二部が未解放のときのみ表示する。 */}
+    {/* 学生向けライト課金カード。第二部が未解放のときのみ表示する。 */}
     {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
     {!partTwoUnlocked && !acquisition && !publicPreview && (
       <>
-        <FullAccessPromoCard
-          ownerToken={token}
-          imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-          imageAlt={dispName}
-          group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
-          locale={locale}
-        />
-        {/* ロックCTAはその場で商品カードを表示する。日本語のカードは¥199の
-            self_report、韓国版は従来どおりfull_accessとして決済へ進む。 */}
+        {/* 課金カード面は白帯 (上端ギザ)。解放後の末尾CTA帯と同じ見せ方で、
+            グレー本文から白で切り替える (2026-08-26 指示)。 */}
+        <div
+          className="-mt-12 pt-8 [&>section]:pb-4 md:-mt-16 md:pt-10"
+          style={{ background: "#FFFFFF", clipPath: JAGGED_CLIP_TOP }}
+        >
+          <FullAccessPromoCard
+            ownerToken={token}
+            imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+            reportCharacterImageSrc={v3Image}
+            imageAlt={dispName}
+            group={resultGroup}
+            locale={locale}
+            noShadow
+            benefitsBeforePrice
+          />
+        </div>
+        {/* ロックCTAはその場で松竹梅の商品カードを表示する。 */}
         <PaywallModal
           ownerToken={token}
           imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
+          reportCharacterImageSrc={v3Image}
           imageAlt={dispName}
-          group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+          group={resultGroup}
           locale={locale}
         />
       </>
     )}
-    {/* 解放後のプレミアム導線は、旧課金カードと同じモーダル内に
-        プレミアムコースだけを表示する。 */}
+    {/* 結果を読み終えた人向けの末尾CTA帯 (シェア帯直上)。16P の「テストを再度受ける」
+        帯参考 (2026-08-26 指示): ギザギザ縁のグレー帯にフル幅ボタンを縦積みする。
+        主 (金) = Alice チャット起動・副 (白枠) = 再診断。 */}
     {showUnmeiPromo && (
-      <PaywallModal
-        ownerToken={token}
-        imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
-        imageAlt={dispName}
-        group={flag32 ? thirtyTwoGroup(t32) : "unknown"}
+      // 下余白なし: 直下の波形シェア帯と密着させる (隙間があると切れ目が
+      // 二重に見える・2026-08-26 指摘)。
+      <div>
+        <div
+          className="w-full px-5 pb-10 pt-10"
+          style={{ background: "#FFFFFF", clipPath: JAGGED_CLIP_TOP }}
+        >
+          <div className="mx-auto flex w-full max-w-[560px] flex-col gap-3">
+            <MeUnmeiChatLauncher
+              ownerToken={previewType ? null : token}
+              locale={locale}
+              product={unmeiPurchaseProduct}
+              previewMode={Boolean(previewType)}
+              source="me_bottom_cta"
+              className="flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-[15px] font-black text-white transition-transform hover:translate-y-0.5 md:text-[16px]"
+              style={resultActionButtonStyle}
+            >
+              {isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
+              <span aria-hidden="true" className="text-lg font-medium">
+                →
+              </span>
+            </MeUnmeiChatLauncher>
+            {(isOwnedResult ||
+              (process.env.NODE_ENV === "development" &&
+                previewType !== null)) && (
+              <Link
+                href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[#D6D9E6] bg-white px-6 py-3.5 text-[15px] font-black text-[#2E2E5C] transition-colors hover:bg-[#FDFDFE] md:text-[16px]"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                  <path d="M21 3v6h-6" />
+                </svg>
+                {isKorean ? "메인 테스트 다시 받기" : "メインテストを再度受ける"}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </div>
+    {/* データをリセット導線はヘッダーの SP メニュー内のみ (2026-08-26 にフッター直上の
+        重複リンクを撤去)。 */}
+    {/* 診断シェアバンド。獲得モードはCTA一点集中のため出さない。 */}
+    {!acquisition && (
+      <DiagnosisShareBand
         locale={locale}
-        products={PREMIUM_UPGRADE_PRODUCTS}
-        previewMode={Boolean(previewType)}
-        legacyPlanStyle
+        source="me_share_band"
+        group={resultGroup}
       />
     )}
-    {/* データをリセット導線 (フッター直上)。SP メニュー内と同じ動線をここにも置く。
-        獲得モード (/share) では訪問者に無関係なので出さない。 */}
-    {!acquisition && !publicPreview && <ResetDataLink locale={locale} />}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
-        TopFooter 側ではなく余白で吸収されるため、そのまま置く */}
-    {isKorean ? <KoTopFooter /> : <TopFooter />}
+        TopFooter 側ではなく余白で吸収されるため、そのまま置く。
+        /me は直上に波形のシェア帯があり、フッター上端の直線が二重線に見えるため
+        topBorder={false} で上端線を消す (他ページのフッターは据え置き)。 */}
+    {isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} />}
     </>
   );
 }

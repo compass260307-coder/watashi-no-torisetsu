@@ -221,13 +221,14 @@ export function TakoShareGate({
 
   const handleNativeShare = async () => {
     if (!qrInviteUrl) return;
-    fireShare("native");
     try {
       if (navigator.share) {
         await navigator.share({
           text: shareText,
-          url: withRef(qrInviteUrl, "share"),
+          url: withRef(qrInviteUrl, "native"),
         });
+        // Web Share は完了後だけ記録し、キャンセルを招待操作に数えない。
+        fireShare("native");
       } else {
         await handleCopy(); // Web Share 非対応環境はコピーにフォールバック
       }

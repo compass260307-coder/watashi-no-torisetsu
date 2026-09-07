@@ -117,14 +117,14 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const sortedGaps = topGaps(gaps, 5);
 
   const displayName =
-    (input.ownerDisplayName ?? "").trim() || (isKo ? "나" : "アナタ");
+    (input.ownerDisplayName ?? "").trim() || (isKo ? "나" : "あなた");
   const perceiverFull =
     (input.perceiverName ?? "").trim() || (isKo ? "친구" : "友達");
   const myTrisetsuUrl = `${isKo ? "/ko" : ""}/me/${input.ownerToken ?? ""}`;
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  const flag32 = isKo || isThirtyTwoEnabled();
+  const flag32 = isThirtyTwoEnabled();
   const perceived32Id = classifyThirtyTwoType(otherScores);
   const koType = KO_RESULT_TYPES[perceived32Id];
 

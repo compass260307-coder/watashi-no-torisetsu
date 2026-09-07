@@ -12,14 +12,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
   type ReactElement,
 } from "react";
-import { TakoLockPopover } from "@/components/TakoLockPopover";
+import {
+  TakoLockPopover,
+  type DiagnosisLockTarget,
+} from "@/components/TakoLockPopover";
+import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
@@ -34,7 +38,19 @@ import {
   ME_ATTENTION_GRANTED_EVENT,
   ME_ATTENTION_PENDING_KEY,
 } from "@/lib/me-attention";
+import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
+import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
 import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
+import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
+
+const UNMEI_COURSE_PRODUCTS = ["premium_bundle"] as const;
+const ALICE_COURSE_PRODUCTS = ["full_access", "premium_bundle"] as const;
+const TAROT_COURSE_PRODUCTS = ["full_access"] as const;
+const UNMEI_PAYWALL_HASH = "#unlock-unmei";
+const TAROT_PAYWALL_HASH = "#unlock-tarot";
+
+type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot";
 
 // アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
 const ACTIVE = "#2A3A5C";
@@ -61,18 +77,12 @@ const HIDE_ON_PREFIXES = [
   "/share/",
   "/ko/share/",
   "/admin",
+  "/ko/admin",
   "/report/", // 自己診断PDF生成専用ページ
   "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
+  "/line/", // LINE内ブラウザ専用ページ (Plus LP/決済着地)。固定CTAと衝突するためナビ非表示
+  "/liff", // LIFF入口 (即リダイレクトのつなぎページ)。サイトchromeは出さない
 ];
-
-function HomeIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 11.5 12 4l8 7.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M6 10.5V19h12v-8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function ClipboardIcon() {
   return (
@@ -80,20 +90,6 @@ function ClipboardIcon() {
       <rect x="5" y="4" width="14" height="17" rx="2.5" stroke="currentColor" strokeWidth="2" />
       <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       <path d="M8.5 11h7M8.5 15h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// 相性 (/aisho): 2つ重なるハート。他アイコンと同じ viewBox・stroke 流儀。
-//   フルサイズのハートパスを 0.55 倍に縮小し左右に少し重ねて配置 (strokeWidth は
-//   縮小分を戻して視覚上 2px 相当に)。多色にしない。
-const HEART_PATH =
-  "M12 20.3l-1.45-1.32C5.4 14.24 2 11.16 2 7.38 2 4.3 4.42 2 7.5 2c1.74 0 3.41.81 4.5 2.09C13.09 2.81 14.76 2 16.5 2 19.58 2 22 4.3 22 7.38c0 3.78-3.4 6.86-8.55 11.61L12 20.3z";
-function HeartPairIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d={HEART_PATH} transform="translate(-0.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
-      <path d={HEART_PATH} transform="translate(8.5 4) scale(0.55)" stroke="currentColor" strokeWidth="3.6" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -143,13 +139,14 @@ function AttentionBadge() {
   );
 }
 
-function GridIcon() {
+// タロット占い: 重なったカードと中央の星。タイプ一覧のグリッドと区別しつつ、
+// ほかのタブと同じ32px・単色ストロークで揃える。
+function TarotCardsIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="4" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
-      <rect x="13" y="4" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
-      <rect x="4" y="13" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
-      <rect x="13" y="13" width="7" height="7" rx="1.6" stroke="currentColor" strokeWidth="2" />
+      <rect x="4.5" y="5" width="11.5" height="15.5" rx="2.2" transform="rotate(-7 4.5 5)" stroke="currentColor" strokeWidth="1.8" />
+      <rect x="8" y="3.5" width="11.5" height="16.5" rx="2.2" fill="white" stroke="currentColor" strokeWidth="2" />
+      <path d="m13.75 8 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" fill="currentColor" />
     </svg>
   );
 }
@@ -198,6 +195,12 @@ export function BottomNav() {
   const isAstrologerPreview =
     process.env.NODE_ENV === "development" &&
     pathname === "/dev/hoshiyomi-preview";
+  const isPaidNavigationPreview =
+    process.env.NODE_ENV === "development" &&
+    pathname === "/tarot/dev-preview";
+  const isCoursePaywallPreview =
+    process.env.NODE_ENV === "development" &&
+    pathname === "/dev/bottom-nav-paywall-preview";
   // トリセツ(2)=/me/[token]、友達診断(4)=/tako/[token] を localStorage の
   // owner_token から解決。無ければトリセツ=/diagnosis、友達診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState(() =>
@@ -210,23 +213,23 @@ export function BottomNav() {
   //   初期値 true (=ロックなし) にすると診断済みユーザーに一瞬ロックが見えるのを避けられる
   //   一方、未診断ユーザーには hydration 後にバッジが現れるが、こちらの方が違和感が小さい。
   const [hasToken, setHasToken] = useState(true);
-  const [lockOpen, setLockOpen] = useState(false);
-  // 未購入時にロック中の相性タブを押したとき開く課金カードモーダル (2026-07-28)。
-  const [aishoPaywallOpen, setAishoPaywallOpen] = useState(false);
+  const [diagnosisLockTarget, setDiagnosisLockTarget] =
+    useState<DiagnosisLockTarget | null>(null);
+  const [courseLockTarget, setCourseLockTarget] =
+    useState<CourseLockTarget | null>(null);
+  const [coursePaywallSource, setCoursePaywallSource] = useState<string | null>(
+    null,
+  );
+  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
-  // ¥499 完全版の購入者か。相性タブの解錠に使う (未購入はロック)。
-  // full-access-status API で owner_token から判定し、確認できたらキャッシュ。
-  const [fullAccessToken, setFullAccessToken] = useState<string | null>(null);
-  // 認証済み token と現在の ownerToken が一致するときだけ解放する。
-  // 別ユーザーへ切り替わる途中に前のユーザーの権限が一瞬見えることも防ぐ。
-  const hasFull = Boolean(
-    ownerToken && fullAccessToken === ownerToken,
-  );
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
+  // 常設ナビは全ページで表示されるため、リンク先を自動取得すると1表示あたりの
+  // Edge Requestsが大きく増える。遷移自体はNext Linkのまま、取得はタップ時に行う。
+  const navigationPrefetch = false;
   // ★ステール対策 (バグ①): BottomNav はルートレイアウト常駐で再マウントされないため、
   //   診断完了→/me のクライアント遷移で token が保存されても初回読みのままだと
   //   古い誘導URLに固定される。usePathname() を依存に入れ「遷移のたびに再読込」して
@@ -331,71 +334,64 @@ export function BottomNav() {
     };
   }, [navHidden, pathname]);
 
-  // ¥499 完全版の購入判定 (相性タブの解錠用)。owner_token 単位で1回だけ確認する。
-  //   - キャッシュ: 一度 full を確認した token を localStorage に記録し、以降は即解錠
-  //     (購入は取り消されない前提。token 一致でのみ有効なので別ユーザーには波及しない)。
-  //   - 未確認は full-access-status API で確認 (email 横断込みの hasFullAccess を集約)。
-  const FULL_TOKEN_KEY = "torisetsu_full_token";
+  // 有料コースのサーバーガードから戻ったときも、ナビの鍵をタップした
+  // ときと同じ課金カードを開く。再読み込みで開き続けないよう hash は即座に除去。
   useEffect(() => {
-    if (!ownerToken) return;
-    let cancelled = false;
-    let cachedFull = false;
-    try {
-      cachedFull = localStorage.getItem(FULL_TOKEN_KEY) === ownerToken;
-      if (cachedFull) {
-        // localStorage の購入キャッシュを React state へ同期する正当な外部状態同期。
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setFullAccessToken(ownerToken);
-      }
-    } catch {
-      // localStorage 不可環境は API 確認にフォールバック
-    }
-    // 相性の購入状態は永続キャッシュだけを信用せず、毎回サーバでも確認する。
-    fetch(
-      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
-    )
-      .then((r) =>
-        r.ok ? r.json() : { full: false },
-      )
-      .then((d: { full?: boolean }) => {
-        if (cancelled) return;
-        if (d?.full) setFullAccessToken(ownerToken);
-        try {
-          if (d?.full) localStorage.setItem(FULL_TOKEN_KEY, ownerToken);
-        } catch {
-          // noop
-        }
-      })
-      .catch(() => {
-        // 通信失敗時はロックのまま (安全側)
-      });
-    return () => {
-      cancelled = true;
+    const openGuardedCoursePaywall = () => {
+      const target: CourseLockTarget | null =
+        window.location.hash === UNMEI_PAYWALL_HASH
+          ? "unmei"
+          : window.location.hash === TAROT_PAYWALL_HASH
+            ? "tarot"
+            : null;
+      if (!target) return;
+      setDiagnosisLockTarget(null);
+      setCoursePaywallSource(DIRECT_PAYWALL_SOURCE);
+      setCourseLockTarget(target);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
     };
-  }, [ownerToken]);
 
-  // ページ遷移 (ブラウザバック含む) したら相性の課金モーダルは閉じる。
-  // BottomNav は常駐で再マウントされないため、明示的に畳む必要がある。
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAishoPaywallOpen(false);
+    openGuardedCoursePaywall();
+    window.addEventListener("hashchange", openGuardedCoursePaywall);
+    return () =>
+      window.removeEventListener("hashchange", openGuardedCoursePaywall);
   }, [pathname]);
 
-  // ロック中の相性タブのタップ: 遷移せず課金カードをその場でポップアップ表示。
-  // 誘導クリックは既存ファネルと同じ paywall_scroll_clicked で計測する
-  // (source=nav_aisho_locked。購入まで到達すると Stripe metadata にも同 source が残る)。
-  const openAishoPaywall = useCallback(() => {
-    track("paywall_scroll_clicked", {
-      ...(ownerToken ? { ownerToken } : {}),
-      metadata: {
-        source: "nav_aisho_locked",
-        target: "nav_modal",
-        page: window.location.pathname.split("/")[1] || "top",
-      },
-    });
-    setAishoPaywallOpen(true);
-  }, [ownerToken]);
-  const closeAishoPaywall = useCallback(() => setAishoPaywallOpen(false), []);
+  // Footer と同じリクエストを共有し、同一ページ内の重複通信を避ける。
+  const resolvedCourseAccess = useCourseNavigationAccess(
+    navHidden || isCoursePaywallPreview ? null : ownerToken,
+  );
+  // 権限が未確定の間は安全側のロック表示に固定する。
+  // 未購入ユーザーに Alice・運命が一瞬だけ解放済みで見えるフラッシュを防ぐ。
+  const hasUnmeiNavigationAccess =
+    !isCoursePaywallPreview &&
+    (isPaidNavigationPreview || (resolvedCourseAccess?.unmei ?? false));
+  const hasAliceNavigationAccess =
+    !isCoursePaywallPreview &&
+    (isPaidNavigationPreview || (resolvedCourseAccess?.astrologer ?? false));
+  // タロットは常時表示し、権限のない間は鍵付きにする。
+  const hasTarotNavigationAccess =
+    isPaidNavigationPreview || (resolvedCourseAccess?.tarot ?? false);
+
+  const handleCoursePaywallExitAttempt = () => {
+    if (lineExitOpen) return;
+    if (courseLockTarget && !isKorean && !isCoursePaywallPreview) {
+      setLineExitOpen(true);
+      return;
+    }
+    setCourseLockTarget(null);
+    setCoursePaywallSource(null);
+  };
+
+  const closeLineExitFlow = () => {
+    setLineExitOpen(false);
+    setCourseLockTarget(null);
+    setCoursePaywallSource(null);
+  };
 
   // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
   // ※ useMemo は hook なので early return より前に呼ぶ (rules-of-hooks 遵守)。
@@ -407,85 +403,60 @@ export function BottomNav() {
     Icon: () => ReactElement;
     locked?: boolean;
     disabled?: boolean;
-    paywalled?: boolean;
   }[] = useMemo(
     () =>
       isKorean
         ? [
-            ...(hasToken
-              ? []
-              : [
-                  {
-                    key: "home",
-                    label: "홈",
-                    href: "/ko?stay=1",
-                    active: pathname === "/ko",
-                    Icon: HomeIcon,
-                  },
-                ]),
-            { key: "me", label: "사용설명서", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
-            // 未診断時はロック表示: 遷移せずポップアップで解放条件を伝える (ja と同じ挙動)。
+            // 日本版と同じ5タブ構成。表示文言と遷移先だけ韓国向けにする。
+            { key: "me", label: "자기 진단", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
             {
               key: "friend",
               label: "친구 진단",
-              href: takoUrl,
+              href: isTakoAttentionPreview
+                ? "/ko/tako/preview?previewLocked=1&friends=0"
+                : takoUrl,
               active:
                 pathname.startsWith("/ko/friend") ||
                 pathname.startsWith("/ko/tako"),
               Icon: UsersIcon,
-              locked: !hasToken,
+              locked:
+                !hasToken &&
+                !isTakoAttentionPreview &&
+                !isPaidNavigationPreview,
             },
             {
-              key: "type",
-              label: "유형",
-              href: "/ko/types",
-              active:
-                pathname.startsWith("/ko/types") ||
-                pathname.startsWith("/ko/preview"),
-              Icon: GridIcon,
+              key: "astrologer",
+              label: "Alice",
+              href: "/ko/hoshiyomi",
+              active: pathname.startsWith("/ko/hoshiyomi"),
+              Icon: AstrologerIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasAliceNavigationAccess,
             },
-            ...(hasToken
-              ? [
-                  {
-                    key: "unmei",
-                    label: "운명",
-                    href: "/ko/unmei",
-                    active: pathname.startsWith("/ko/unmei"),
-                    Icon: NatalWheelIcon,
-                  },
-                  {
-                    key: "astrologer",
-                    label: "상담사",
-                    href: "/ko/hoshiyomi",
-                    active: pathname.startsWith("/ko/hoshiyomi"),
-                    Icon: AstrologerIcon,
-                  },
-                ]
-              : []),
             {
-              key: "aisho",
-              label: "궁합",
-              href: "/ko/aisho",
-              active: pathname.startsWith("/ko/aisho"),
-              Icon: HeartPairIcon,
-              paywalled: !hasFull,
+              key: "unmei",
+              label: "운명",
+              href: "/ko/unmei",
+              active: pathname.startsWith("/ko/unmei"),
+              Icon: NatalWheelIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasUnmeiNavigationAccess,
+            },
+            {
+              key: "tarot",
+              label: "타로",
+              href: "/ko/tarot",
+              active: pathname.startsWith("/ko/tarot"),
+              Icon: TarotCardsIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasTarotNavigationAccess,
             },
           ]
         : [
-            // 診断完了後 (owner_token あり) は「トップ」を出さない (2026-07-22 指示)。
-            // 診断済みユーザーのナビは自分の結果・友達診断・タイプ・相性の4つに絞る。
-            ...(hasToken
-              ? []
-              : [
-                  {
-                    key: "home",
-                    label: "トップ",
-                    href: "/?stay=1",
-                    active: pathname === "/",
-                    Icon: HomeIcon,
-                  },
-                ]),
-            // ラベルは「トリセツ」から変更 (2026-08-04 指示。取説の意味が伝わりにくい)。
+            // タロットは未購入時も鍵付きで表示する。
             { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
@@ -496,59 +467,60 @@ export function BottomNav() {
                 : takoUrl,
               active: pathname.startsWith("/tako"),
               Icon: UsersIcon,
-              locked: !hasToken && !isTakoAttentionPreview,
+              locked:
+                !hasToken &&
+                !isTakoAttentionPreview &&
+                !isPaidNavigationPreview,
+            },
+            // AI占い師。未診断または購入権限が無い時は鍵を出し、
+            // 運命の設計図と同じくタップで診断案内 / 課金カードを開く。
+            {
+              key: "astrologer",
+              label: "Alice",
+              href: isAstrologerPreview
+                ? "/dev/hoshiyomi-preview"
+                : "/hoshiyomi",
+              active:
+                pathname.startsWith("/hoshiyomi") ||
+                pathname === "/dev/hoshiyomi-preview",
+              Icon: AstrologerIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasAliceNavigationAccess,
+            },
+            // 運命の設計図。未購入は鍵を出し、タップで課金カードを開く。
+            // URL直打ちはページ側のサーバーガードが同じモーダルへ戻す。
+            {
+              key: "unmei",
+              label: "運命",
+              href: "/unmei",
+              active: pathname.startsWith("/unmei"),
+              Icon: NatalWheelIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasUnmeiNavigationAccess,
             },
             {
-              key: "type",
-              label: "タイプ",
-              href: "/types",
-              active:
-                pathname.startsWith("/types") ||
-                pathname.startsWith("/preview"),
-              Icon: GridIcon,
+              key: "tarot",
+              label: "タロット",
+              href: isPaidNavigationPreview ? "/tarot/dev-preview" : "/tarot",
+              active: pathname.startsWith("/tarot"),
+              Icon: TarotCardsIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasTarotNavigationAccess,
             },
-            // 運命の設計図 (独立商品)。タブ幅の都合でラベルは短縮。
-            // 診断前は出さない (診断前=トップあり5タブ / 診断後=トップが消え運命が出る5タブ。
-            // 常に5タブを維持する 2026-07-26 指示)。
-            ...(hasToken
-              ? [
-                  {
-                    key: "unmei",
-                    label: "運命",
-                    href: "/unmei",
-                    active: pathname.startsWith("/unmei"),
-                    Icon: NatalWheelIcon,
-                  },
-                ]
-              : []),
-            ...(ownerToken || isAstrologerPreview
-              ? [
-                  {
-                    key: "astrologer",
-                    label: "占い師",
-                    href: isAstrologerPreview
-                      ? "/dev/hoshiyomi-preview"
-                      : "/hoshiyomi",
-                    active:
-                      pathname.startsWith("/hoshiyomi") ||
-                      pathname === "/dev/hoshiyomi-preview",
-                    Icon: AstrologerIcon,
-                  },
-                ]
-              : []),
-            // 相性は ¥499 完全版の一部 (2026-07-23)。未購入はロック表示のまま
-            // タップで課金カードをポップアップ (2026-07-28。旧: disabled で無反応)。
-            // 購入者 (hasFull) は解錠して /aisho へ遷移できる。
-            { key: "aisho", label: "相性", href: "/aisho", active: pathname.startsWith("/aisho"), Icon: HeartPairIcon, paywalled: !hasFull },
           ],
     [
-      hasFull,
       hasToken,
+      hasAliceNavigationAccess,
+      hasTarotNavigationAccess,
+      hasUnmeiNavigationAccess,
       isAstrologerPreview,
+      isPaidNavigationPreview,
       isKorean,
       isKoreanResult,
       isTakoAttentionPreview,
-      ownerToken,
       pathname,
       takoUrl,
       torisetsuUrl,
@@ -562,6 +534,7 @@ export function BottomNav() {
 
   return (
     <nav
+      data-bottom-nav
       aria-label={isKorean ? "전역 내비게이션" : "グローバルナビゲーション"}
       className="fixed inset-x-0 bottom-0 z-40 bg-white print:hidden"
       style={{
@@ -574,7 +547,7 @@ export function BottomNav() {
       }}
     >
       {/* スマホでは全幅を均等5分割 (左右の死に余白を作らない 2026-07-26 指示)。
-          PC はアプリ風に max-w-[480px] で中央寄せ。列数は項目数に追随 (通常は常に5)。 */}
+          PC はアプリ風に max-w-[480px] で中央寄せ。 */}
       <div
         className={`mx-auto grid max-w-[480px] ${
           items.length === 4
@@ -611,32 +584,74 @@ export function BottomNav() {
               </button>
             );
           }
-          if (it.paywalled) {
-            // 未購入の相性タブ: ロック見た目のまま押せる。遷移せず課金カードを開く。
-            return (
-              <button
-                key={it.key}
-                type="button"
-                onClick={openAishoPaywall}
-                className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
-                style={{ color: INACTIVE }}
-              >
-                <span className="relative">
-                  <Icon />
-                  <LockBadge />
-                </span>
-                <span className="text-[11px] font-bold leading-none">
-                  {it.label}
-                </span>
-              </button>
-            );
-          }
           if (it.locked) {
+            const diagnosisTarget: DiagnosisLockTarget =
+              it.key === "unmei"
+                ? "unmei"
+                : it.key === "astrologer"
+                  ? "astrologer"
+                  : "friend";
+            const courseTarget =
+              it.key === "unmei"
+                ? "unmei"
+                : it.key === "tarot"
+                  ? "tarot"
+                : it.key === "astrologer"
+                  ? "hoshiyomi"
+                  : null;
             return (
               <button
                 key={it.key}
                 type="button"
-                onClick={() => setLockOpen(true)}
+                aria-label={`${it.label}${isKorean ? " (잠김)" : "（ロック中）"}`}
+                onClick={() => {
+                  if (
+                    courseTarget === "unmei" ||
+                    courseTarget === "tarot"
+                  ) {
+                    const source = `nav_locked_${courseTarget}`;
+                    if (!isCoursePaywallPreview) {
+                      track("paywall_scroll_clicked", {
+                        ownerToken,
+                        metadata: {
+                          source,
+                          page: trackingPageFromPathname(pathname),
+                          surface: courseTarget,
+                          destination: courseTarget,
+                          paywall_version: THREE_COURSE_PAYWALL_VERSION,
+                        },
+                      });
+                    }
+                    setDiagnosisLockTarget(null);
+                    setCoursePaywallSource(source);
+                    setCourseLockTarget(courseTarget);
+                  } else if (!hasToken && !isCoursePaywallPreview) {
+                    setCourseLockTarget(null);
+                    setCoursePaywallSource(null);
+                    setDiagnosisLockTarget(diagnosisTarget);
+                  } else if (courseTarget) {
+                    const source = `nav_locked_${courseTarget}`;
+                    if (!isCoursePaywallPreview) {
+                      track("paywall_scroll_clicked", {
+                        ownerToken,
+                        metadata: {
+                          source,
+                          page: trackingPageFromPathname(pathname),
+                          surface: courseTarget,
+                          destination: courseTarget,
+                          paywall_version: THREE_COURSE_PAYWALL_VERSION,
+                        },
+                      });
+                    }
+                    setDiagnosisLockTarget(null);
+                    setCoursePaywallSource(source);
+                    setCourseLockTarget(courseTarget);
+                  } else {
+                    setCourseLockTarget(null);
+                    setCoursePaywallSource(null);
+                    setDiagnosisLockTarget("friend");
+                  }
+                }}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
                 style={{ color: INACTIVE }}
               >
@@ -685,6 +700,7 @@ export function BottomNav() {
             <Link
               key={it.key}
               href={it.href}
+              prefetch={navigationPrefetch}
               aria-current={it.active ? "page" : undefined}
               aria-label={
                 hasAttention
@@ -720,25 +736,101 @@ export function BottomNav() {
         })}
       </div>
       <TakoLockPopover
-        isOpen={lockOpen}
-        onClose={() => setLockOpen(false)}
+        isOpen={diagnosisLockTarget !== null}
+        onClose={() => setDiagnosisLockTarget(null)}
         locale={isKorean ? "ko" : "ja"}
+        target={diagnosisLockTarget ?? "friend"}
       />
-      {/* 未購入でロック中の相性タブから開く課金カード (/aisho の PaywallModal と同じ見た目)。
-          全ページ常駐の BottomNav 側で持つことで、どのページからでもその場で開ける。 */}
-      {aishoPaywallOpen && (
+      {courseLockTarget ? (
         <PaywallOverlay
-          variant="aisho"
-          imageSrc="/characters/scenes/unknown_love.webp"
-          imageAlt={isKorean ? "궁합" : "相性"}
           ownerToken={ownerToken ?? undefined}
-          ctaSource="nav_aisho_locked"
-          // 相性タブから買った人は相性 (/aisho) に戻す (2026-07-29)
-          returnTo="aisho"
           locale={isKorean ? "ko" : "ja"}
-          onClose={closeAishoPaywall}
+          returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
+          ctaSource={
+            coursePaywallSource ?? `nav_locked_${courseLockTarget}`
+          }
+          products={
+            courseLockTarget === "hoshiyomi"
+              ? ALICE_COURSE_PRODUCTS
+              : courseLockTarget === "tarot"
+                ? TAROT_COURSE_PRODUCTS
+                : UNMEI_COURSE_PRODUCTS
+          }
+          defaultProduct={
+            courseLockTarget === "unmei" ? "premium_bundle" : "full_access"
+          }
+          heading={
+            courseLockTarget === "hoshiyomi"
+              ? isKorean
+                ? undefined
+                : "Aliceを試す・本格相談を選ぶ"
+              : undefined
+          }
+          previewMode={isCoursePaywallPreview}
+          scrollLocked={lineExitOpen}
+          onClose={handleCoursePaywallExitAttempt}
         />
-      )}
+      ) : null}
+      {lineExitOpen ? (
+        <BottomNavLineExitModal
+          ownerToken={ownerToken ?? undefined}
+          onClose={closeLineExitFlow}
+          variant={
+            courseLockTarget === "unmei" || courseLockTarget === "tarot"
+              ? "fortune"
+              : "conversation"
+          }
+        />
+      ) : null}
     </nav>
+  );
+}
+
+function BottomNavLineExitModal({
+  ownerToken,
+  onClose,
+  variant,
+}: {
+  ownerToken?: string;
+  onClose: () => void;
+  variant: "conversation" | "fortune";
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={
+        variant === "fortune"
+          ? "LINEでAliceに占ってもらう"
+          : "LINEでもAliceと話す"
+      }
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#2E2E5C]/35 px-3 py-5 backdrop-blur-[2px] md:py-8"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[1120px] px-3 pb-6 pt-10 md:px-6 md:pb-10"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <LineAliceLinkCard
+          ownerToken={ownerToken}
+          trackingSource={
+            variant === "fortune"
+              ? "bottom_nav_unmei_paywall_exit"
+              : "bottom_nav_alice_paywall_exit"
+          }
+          onClose={onClose}
+          variant={variant}
+        />
+      </div>
+    </div>,
+    document.body,
   );
 }

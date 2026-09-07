@@ -4,6 +4,7 @@ import {
   sanitizeFlatMetadata,
 } from "@/lib/api-security";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { LINE_ALICE_CLIENT_EVENT_NAMES } from "@/lib/line-alice-analytics";
 import { checkOrigin } from "@/lib/origin-check";
 import { NextResponse } from "next/server";
 
@@ -23,6 +24,9 @@ const CLIENT_EVENT_NAMES = new Set([
   "friend_to_diagnosis_invite_clicked",
   "friend_invite_clicked",
   "share_clicked",
+  "share_ui_shown",
+  "share_landing_viewed",
+  "share_to_diagnosis_clicked",
   "result_viewed",
   "result_revisited",
   "three_friends_unlocked",
@@ -36,6 +40,20 @@ const CLIENT_EVENT_NAMES = new Set([
   "unmei_lp_view",
   "unmei_purchase_start",
   "unmei_reading_view",
+  "unmei_checkout_step_view",
+  "unmei_purchase_complete_embedded",
+  "uranai_interstitial_view",
+  "uranai_interstitial_close",
+  "uranai_interstitial_cta",
+  "birth_form_view",
+  "birth_form_submit",
+  "birth_form_skip",
+  "hoshiyomi_page_viewed",
+  "hoshiyomi_paywall_opened",
+  "hoshiyomi_message_sent",
+  "hoshiyomi_response_completed",
+  "hoshiyomi_response_failed",
+  ...LINE_ALICE_CLIENT_EVENT_NAMES,
   "paywall_viewed",
   "paywall_plan_viewed",
   "paywall_scroll_clicked",

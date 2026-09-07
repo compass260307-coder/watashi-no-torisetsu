@@ -3,7 +3,7 @@
 // POST /api/checkout/create-unmei-session
 //   - body: { product: 'unmei' | 'unmei_upgrade' }
 //   - 価格はサーバ側の環境変数で固定。クライアントから金額を渡さない。
-//   - unmei_upgrade は ¥499 購入済み (hasFullAccess) の本人だけが作成可能。
+//   - unmei_upgrade は完全版購入済み (hasFullAccess) の本人だけが作成可能。
 //   - 完了は webhook (checkout.session.completed / metadata.product) 側で entitlement 付与 + 鑑定生成。
 
 import { NextRequest, NextResponse } from "next/server";

@@ -1,11 +1,11 @@
 "use client";
 
 // 運命の設計図 (/unmei) の出生情報入力をチャット形式で行う (2026-08-05 指示)。
-// 星読みの案内人 (フクロウ / mascot/unmei-guide.webp) が1問ずつ聞いていく。
+// 天使Aliceが1問ずつ聞いていく。
 //
 // 方針:
-//   - チャットアプリの1画面に見える構成 (2026-08-05 参考画像):
-//     紺のヘッダーバー (アバター+名前) / 淡色トーク面 (内部スクロール)。
+//   - Aliceとの対話 (/hoshiyomi) と同じチャットデザイン:
+//     白いヘッダー (天使Aliceのアバター+名前) / 淡色トーク面 (内部スクロール)。
 //   - 入力UIは下部の常設コンポーザーではなく「会話内のユーザー側カード」として出す
 //     (2026-08-05 指示)。質問への回答がそのまま吹き出しになる流れに揃える。
 //   - 「わからない」「スキップ」「◯◯を直す」は入力カード直上のクイックリプライ
@@ -13,7 +13,9 @@
 //   - 質問は出生情報に必要な3つだけ (生年月日[必須] / 出生時刻[わからない可] /
 //     出生地[スキップ可])。送信前に確認バブルを挟み、各項目を修正できる
 //     (誤入力のまま生成が最悪ケースのため)。
-//   - 演出のタイピング待ちは 1 バブル 800ms。案内人が考えて返している間をつくる。
+//   - 演出のタイピング待ちは 1 バブル 1.2秒。案内人が考えて返している間をつくる。
+//     最後の設計図準備は5秒待ってから、制作メッセージを3.5秒間隔で届ける。
+//     仕立て終わった後も2.5秒の余韻を置いてから、完成案内と決済フォームへ進む。
 //   - API (/api/birth-profile) と計測 (birth_form_view / birth_form_submit) は
 //     既存フォームと同一。metadata.ui="chat" だけ足してファネル比較できるようにする。
 //   - 保存後は親 (UnmeiClient) が waiting=true を渡してくる間、「星を読んでいます」
@@ -28,7 +30,7 @@ import React, {
 } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { PREFS } from "@/components/birth/BirthProfileForm";
-import UnmeiHostedCheckoutCard from "@/components/uranai/UnmeiEmbeddedCheckout";
+import UnmeiEmbeddedCheckout from "@/components/uranai/UnmeiEmbeddedCheckout";
 import type { ResultLocale } from "@/i18n/result";
 import {
   KOREAN_BIRTH_REGIONS,
@@ -49,7 +51,10 @@ type Step =
   | "payment"; // purchase モード: 出生情報保存後の決済ステップ
 type Editing = null | "date" | "time" | "place";
 
-const TYPE_DELAY_MS = 800;
+const TYPE_DELAY_MS = 1_200;
+const FINAL_PREPARATION_DELAY_MS = 5_000;
+const FINAL_PREPARATION_INTERVAL_MS = 3_500;
+const PURCHASE_READY_DELAY_MS = 2_500;
 
 // 生年月日セレクトの範囲 (validate と同じ 120 年)
 const THIS_YEAR = new Date().getFullYear();
@@ -59,7 +64,7 @@ function daysInMonth(y: number, m: number): number {
   return new Date(y, m, 0).getDate();
 }
 
-// 入力カード右下の丸い送信ボタン (チャットアプリの流儀)
+// Aliceチャットと同じ角丸の送信ボタン。
 function SendButton({
   onClick,
   disabled,
@@ -75,7 +80,7 @@ function SendButton({
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-white transition-opacity disabled:opacity-30"
+      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#5B5BEF] text-white transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
     >
       <svg
         width="18"
@@ -107,10 +112,27 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-[#5B5BEF]/35 bg-white px-3.5 py-1.5 text-[13px] font-bold text-[#5B5BEF]"
+      className="rounded-full border border-[#5B5BEF]/25 bg-white px-3.5 py-1.5 text-[13px] font-bold text-[#5B5BEF] shadow-sm transition hover:border-[#5B5BEF]/45 hover:bg-[#F7F5FF]"
     >
       {children}
     </button>
+  );
+}
+
+function GuideAvatar({ large = false }: { large?: boolean }) {
+  const size = large ? 48 : 36;
+  return (
+    <div
+      className={`${large ? "h-12 w-12" : "h-9 w-9"} relative flex-none overflow-hidden rounded-full bg-[#F0EDFF] ${large ? "ring-2 ring-white shadow-sm" : ""}`}
+    >
+      <SmoothImage
+        src="/mascot/hoshiyomi-alice-avatar-transparent.png"
+        alt=""
+        width={size}
+        height={size}
+        className="h-full w-full object-contain"
+      />
+    </div>
   );
 }
 
@@ -119,8 +141,11 @@ export default function UnmeiBirthChat({
   waiting = false,
   mode = "input",
   ownerToken = null,
+  purchaseProduct = "premium_bundle",
   previewMode = false,
   locale = "ja",
+  hideHeaderStars = false,
+  intro = null,
 }: {
   // input:    購入済みの出生情報入力 (保存→即 onSaved で生成)。従来。
   // purchase: 未購入。入力→保存→商品確認→Stripe Checkoutへ遷移。
@@ -128,9 +153,15 @@ export default function UnmeiBirthChat({
   waiting?: boolean;
   mode?: "input" | "purchase";
   ownerToken?: string | null;
+  purchaseProduct?: "full_access" | "premium_bundle";
   /** ローカル確認用。計測・出生情報保存・決済APIを呼ばずに全フローを再現する。 */
   previewMode?: boolean;
   locale?: ResultLocale;
+  /** /me モーダルではヘッダー右端に✕を重ねるため、装飾の✦を出さない。 */
+  hideHeaderStars?: boolean;
+  /** 冒頭挨拶の差し替え (/me はプロモカードの吹き出しを引き継ぐ)。
+   *  未指定は introInput / introPurchase。 */
+  intro?: readonly string[] | null;
 }) {
   const copy = UNMEI_CHAT_COPY[locale];
   const locationOptions = useMemo<readonly BirthLocationOption[]>(
@@ -166,6 +197,18 @@ export default function UnmeiBirthChat({
   const idRef = useRef(0);
   const timersRef = useRef<number[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const paymentRef = useRef<HTMLDivElement>(null);
+
+  // チャット本体が表示されている間だけ /unmei の共通ヘッダー・フッターを隠す。
+  // 起動経路 (LP / 購入済み / devプレビュー) に依存させず、チャット自身を表示判定にする。
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.unmeiChatOpen = "true";
+
+    return () => {
+      delete root.dataset.unmeiChatOpen;
+    };
+  }, []);
 
   const push = useCallback((role: Role, text: string) => {
     idRef.current += 1;
@@ -174,7 +217,12 @@ export default function UnmeiBirthChat({
 
   // 案内人の発言を1バブルずつ遅延表示。最後のバブルの後に done を呼ぶ。
   const say = useCallback(
-    (texts: readonly string[], done?: () => void) => {
+    (
+      texts: readonly string[],
+      done?: () => void,
+      initialDelayMs = TYPE_DELAY_MS,
+      intervalMs = TYPE_DELAY_MS,
+    ) => {
       setTyping(true);
       texts.forEach((t, i) => {
         const id = window.setTimeout(() => {
@@ -183,12 +231,28 @@ export default function UnmeiBirthChat({
             setTyping(false);
             done?.();
           }
-        }, TYPE_DELAY_MS * (i + 1));
+        }, initialDelayMs + intervalMs * i);
         timersRef.current.push(id);
       });
     },
     [push],
   );
+
+  // 制作中の3メッセージだけはゆったり見せ、その後の購入案内は通常テンポへ戻す。
+  const showPurchaseReady = useCallback(() => {
+    say(
+      copy.preparing,
+      () => {
+        say(
+          [copy.paymentReady, copy.paymentNext],
+          () => setStep("payment"),
+          PURCHASE_READY_DELAY_MS,
+        );
+      },
+      FINAL_PREPARATION_DELAY_MS,
+      FINAL_PREPARATION_INTERVAL_MS,
+    );
+  }, [copy, say]);
 
   // 初回: 挨拶 → 生年月日へ (view 計測は既存フォームと同イベント)
   const bootedRef = useRef(false);
@@ -205,8 +269,9 @@ export default function UnmeiBirthChat({
       });
     }
     // purchase モードは LP を経由せず直接来るため、最初に何をつくるかを一言添える。
-    const intro = mode === "purchase" ? copy.introPurchase : copy.introInput;
-    say(intro, () => setStep("date"));
+    const introTexts =
+      intro ?? (mode === "purchase" ? copy.introPurchase : copy.introInput);
+    say(introTexts, () => setStep("date"));
 
     // React Strict Mode は開発時に Effect の setup → cleanup → setup を行う。
     // cleanup でタイマーを止めるだけだと bootedRef=true が残り、2回目の setup で
@@ -216,13 +281,24 @@ export default function UnmeiBirthChat({
       timers.length = 0;
       bootedRef.current = false;
     };
-  }, [say, mode, previewMode, copy]);
+  }, [say, mode, previewMode, copy, intro]);
 
   // 新しい発言・入力UIの切り替わりでトーク面の末尾へスクロール (内部スクロール)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (step === "payment" && paymentRef.current) {
+      const paymentTop =
+        paymentRef.current.getBoundingClientRect().top -
+        el.getBoundingClientRect().top +
+        el.scrollTop;
+      el.scrollTo({
+        top: Math.max(0, paymentTop - 12),
+        behavior: reduce ? "auto" : "smooth",
+      });
+      return;
+    }
     el.scrollTo({ top: el.scrollHeight, behavior: reduce ? "auto" : "smooth" });
   }, [messages, typing, step, waiting]);
 
@@ -336,13 +412,7 @@ export default function UnmeiBirthChat({
     setStep("submitting");
 
     if (previewMode) {
-      say(
-        [
-          copy.previewConfirmed,
-          copy.previewPayment,
-        ],
-        () => setStep("payment"),
-      );
+      showPurchaseReady();
       return;
     }
 
@@ -392,16 +462,19 @@ export default function UnmeiBirthChat({
         },
       });
       if (mode === "purchase") {
-        // 未購入: 保存できたので、次は商品カードと購入CTAを表示する。
-        // CTAからStripe-hosted Checkoutへ同一タブ遷移し、完了後は
-        // /unmei?checkout=success のチャット形式生成待ちへ戻る。
-        say(
-          [
-            copy.paymentReady,
-            copy.paymentNext,
-          ],
-          () => setStep("payment"),
-        );
+        // 未購入: 保存できたので、同じチャット内にStripe決済フォームを表示する。
+        // 決済完了後も画面遷移せず、会話の続きとして設計図生成へ進む。
+        track("unmei_checkout_step_view", {
+          ownerToken,
+          metadata: {
+            page: "unmei",
+            product: purchaseProduct,
+            source: "unmei_birth_chat",
+            ui: "chat_embedded",
+            locale,
+          },
+        });
+        showPurchaseReady();
         return;
       }
       say([copy.generationReady], onSaved);
@@ -416,10 +489,18 @@ export default function UnmeiBirthChat({
     mode,
     previewMode,
     copy,
+    showPurchaseReady,
     locale,
     ownerToken,
+    purchaseProduct,
     locationOptions,
   ]);
+
+  // チャット内決済完了 → 同じ会話のまま生成待ちへつなぐ。
+  const handlePaymentComplete = useCallback(() => {
+    setStep("boot");
+    say([copy.generationReady], onSaved);
+  }, [copy, onSaved, say]);
 
   // ---- 描画 ----
 
@@ -430,72 +511,61 @@ export default function UnmeiBirthChat({
   const interactive = !waiting && !typing;
 
   const selectCls =
-    "min-w-0 rounded-xl border border-[#D9D9EC] bg-[#F7F7FB] px-2 py-2.5 text-[15px] font-bold text-[#2E2E5C]";
+    "min-w-0 rounded-xl border border-[#2E2E5C]/12 bg-[#FAFAFE] px-2 py-2.5 text-[15px] font-bold text-[#2E2E5C] outline-none focus:border-[#5B5BEF]/45";
   // 会話内のユーザー側入力カード (回答がそのまま吹き出しになるイメージで右寄せ)
   const cardCls =
-    "w-full max-w-[320px] rounded-2xl rounded-br-[4px] border border-[#E9E9F2] bg-white p-3 shadow-[0_1px_2px_rgba(46,46,92,0.06)]";
+    "w-full max-w-[86%] rounded-[22px] rounded-br-md border border-[#2E2E5C]/[0.07] bg-white p-3 shadow-sm md:max-w-[76%]";
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-5 md:px-8 md:pb-14 md:pt-8">
+    <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
       <h1 className="sr-only">{copy.srTitle}</h1>
 
-      {/* チャットウィンドウ (紺ヘッダー + トーク面の1枚パネル) */}
-      <div className="flex h-[76dvh] min-h-[440px] flex-col overflow-hidden rounded-2xl border border-[#E9E9F2] bg-white shadow-[0_6px_24px_rgba(46,46,92,0.10)] md:h-[620px]">
-        {/* ヘッダーバー */}
-        <div className="flex items-center gap-3 bg-[#2E2E5C] px-4 py-3">
-          <SmoothImage
-            src="/mascot/unmei-guide.webp"
-            alt=""
-            width={40}
-            height={40}
-            className="h-10 w-10 flex-shrink-0 rounded-full ring-2 ring-white/25"
-          />
+      {/* Aliceとの対話と同じ、白いヘッダー + 淡色トーク面のチャットシェル。 */}
+      <div className="mx-auto flex h-[calc(100dvh-56px)] min-h-[440px] max-w-[920px] flex-col bg-white shadow-[0_0_40px_rgba(46,46,92,0.06)]">
+        <header className="flex items-center gap-3 border-b border-[#2E2E5C]/[0.07] bg-white px-4 py-3 md:px-6">
+          <GuideAvatar large />
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-black leading-tight text-white">
+            <p className="truncate text-[16px] font-black md:text-[18px]">
               {copy.guideName}
             </p>
-            <p className="text-[11px] font-bold leading-tight text-white/55">
-              {copy.productName}
+            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-bold text-[#2E2E5C]/42">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" /> {copy.productName}
             </p>
           </div>
-          {/* 右端の星 (ヘッダーの世界観装飾。読み上げ不要) */}
-          <span
-            aria-hidden="true"
-            className="ml-auto text-[16px] leading-none text-[#F5D66B]"
-          >
-            ✦<span className="ml-1 text-[10px] align-top text-[#F5D66B]/60">✦</span>
-          </span>
-        </div>
+          {/* /me モーダルでは右上の閉じるボタンと重ならないよう非表示。 */}
+          {!hideHeaderStars && (
+            <span
+              aria-hidden="true"
+              className="ml-auto text-[16px] leading-none text-[#B17B24]"
+            >
+              ✦<span className="ml-1 text-[10px] align-top text-[#B17B24]/55">✦</span>
+            </span>
+          )}
+        </header>
 
         {/* トーク面 (内部スクロール)。入力カードも会話の一部としてここに出す */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#F3F3FB] px-3 py-4">
-          <div className="flex flex-col gap-2.5">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#FAFAFE] px-4 py-6 md:px-8 md:py-8">
+          <div className="mx-auto max-w-[720px] space-y-5">
             {messages.map((m, i) => {
               const isGuide = m.role === "guide";
               const firstOfGroup = i === 0 || messages[i - 1].role !== m.role;
               return (
                 <div
                   key={m.id}
-                  className={`flex items-end gap-2 ${isGuide ? "" : "justify-end"}`}
+                  className={`flex items-end gap-2.5 ${isGuide ? "" : "justify-end"}`}
                 >
                   {isGuide ? (
                     firstOfGroup ? (
-                      <SmoothImage
-                        src="/mascot/unmei-guide.webp"
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="h-8 w-8 flex-shrink-0 rounded-full border border-[#E9E9F2] bg-white"
-                      />
+                      <GuideAvatar />
                     ) : (
-                      <div aria-hidden="true" className="w-8 flex-shrink-0" />
+                      <div aria-hidden="true" className="w-9 flex-shrink-0" />
                     )
                   ) : null}
                   <p
                     className={
                       isGuide
-                        ? "max-w-[80%] whitespace-pre-line rounded-2xl rounded-bl-[4px] bg-white px-4 py-2.5 text-[15px] font-bold leading-relaxed text-[#2E2E5C] shadow-[0_1px_2px_rgba(46,46,92,0.06)]"
-                        : "max-w-[80%] whitespace-pre-line rounded-2xl rounded-br-[4px] bg-[#5B5BEF] px-4 py-2.5 text-[15px] font-bold leading-relaxed text-white shadow-[0_1px_2px_rgba(46,46,92,0.10)]"
+                        ? "max-w-[86%] whitespace-pre-line rounded-[22px] rounded-bl-md bg-white px-4 py-3 text-[14px] font-medium leading-[1.8] text-[#2E2E5C]/80 shadow-sm ring-1 ring-[#2E2E5C]/[0.05] md:max-w-[76%] md:px-5 md:py-4 md:text-[15px]"
+                        : "max-w-[86%] whitespace-pre-line rounded-[22px] rounded-br-md bg-[#5B5BEF] px-4 py-3 text-[14px] font-medium leading-[1.75] text-white md:max-w-[76%] md:text-[15px]"
                     }
                   >
                     {m.text}
@@ -506,20 +576,14 @@ export default function UnmeiBirthChat({
 
             {/* タイピング中 / 生成待ちのインジケーター */}
             {(typing || waiting) && (
-              <div className="flex items-end gap-2">
-                <SmoothImage
-                  src="/mascot/unmei-guide.webp"
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 flex-shrink-0 rounded-full border border-[#E9E9F2] bg-white"
-                />
-                <div className="rounded-2xl rounded-bl-[4px] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(46,46,92,0.06)]">
-                  <span className="flex gap-1.5" aria-label={copy.typing}>
+              <div className="flex items-end gap-2.5">
+                <GuideAvatar />
+                <div className="flex items-center gap-1 rounded-[20px] rounded-bl-md bg-white px-4 py-4 shadow-sm ring-1 ring-[#2E2E5C]/[0.05]">
+                  <span className="flex gap-1" aria-label={copy.typing}>
                     {[0, 1, 2].map((d) => (
                       <span
                         key={d}
-                        className="h-2 w-2 animate-bounce rounded-full bg-[#5B5BEF]/50"
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#5B5BEF]/45"
                         style={{ animationDelay: `${d * 0.15}s` }}
                       />
                     ))}
@@ -528,7 +592,7 @@ export default function UnmeiBirthChat({
               </div>
             )}
             {waiting && (
-              <p className="ml-10 text-[12px] font-bold leading-relaxed text-[#8A8AA3]">
+              <p className="ml-[46px] text-[12px] font-medium leading-relaxed text-[#2E2E5C]/45">
                 {copy.waiting}
               </p>
             )}
@@ -605,7 +669,7 @@ export default function UnmeiBirthChat({
                         aria-label={copy.birthTimeAria}
                         value={dockTime}
                         onChange={(e) => setDockTime(e.target.value)}
-                        className="min-w-0 flex-1 rounded-xl border border-[#D9D9EC] bg-[#F7F7FB] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C]"
+                        className="min-w-0 flex-1 rounded-xl border border-[#2E2E5C]/12 bg-[#FAFAFE] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C] outline-none focus:border-[#5B5BEF]/45"
                       />
                       <SendButton
                         onClick={() => handleTimeSubmit(false)}
@@ -645,7 +709,7 @@ export default function UnmeiBirthChat({
                         placeholder={copy.cityPlaceholder}
                         value={dockCity}
                         onChange={(e) => setDockCity(e.target.value)}
-                        className="min-w-0 flex-1 rounded-xl border border-[#D9D9EC] bg-[#F7F7FB] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C]"
+                        className="min-w-0 flex-1 rounded-xl border border-[#2E2E5C]/12 bg-[#FAFAFE] px-3 py-2.5 text-[15px] font-bold text-[#2E2E5C] outline-none placeholder:text-[#2E2E5C]/30 focus:border-[#5B5BEF]/45"
                       />
                       <SendButton
                         onClick={() => handlePlaceSubmit(false)}
@@ -674,7 +738,7 @@ export default function UnmeiBirthChat({
                     type="button"
                     onClick={handleConfirm}
                     disabled={step === "submitting"}
-                    className="w-full rounded-full bg-[#5B5BEF] py-3 font-bold text-white disabled:opacity-40"
+                    className="w-full rounded-xl bg-[#5B5BEF] py-3 font-bold text-white transition active:scale-[0.99] disabled:opacity-40"
                   >
                     {step === "submitting"
                       ? copy.submitting
@@ -686,12 +750,14 @@ export default function UnmeiBirthChat({
               </div>
             )}
 
-            {/* purchase モード: 商品カード → Stripe-hosted Checkout */}
+            {/* purchase モード: Stripe Embedded Checkoutをチャット内に表示 */}
             {interactive && step === "payment" && (
-              <div className="w-full">
+              <div ref={paymentRef} className="w-full">
                 <div className="w-full">
-                  <UnmeiHostedCheckoutCard
+                  <UnmeiEmbeddedCheckout
                     ownerToken={ownerToken}
+                    product={purchaseProduct}
+                    onComplete={handlePaymentComplete}
                     previewMode={previewMode}
                     locale={locale}
                   />

@@ -496,6 +496,213 @@
   text-align: center;
 }
 
+.koStoryPage {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 297mm;
+  overflow: hidden;
+  padding: 12mm 12mm 16mm;
+  background: #f8f6ef;
+  break-inside: avoid;
+  isolation: isolate;
+}
+
+.koStoryFrame {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  min-height: 254mm;
+  padding: 10mm 12mm 15mm;
+  border-radius: 9mm;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4mm 18mm rgba(36, 38, 53, 0.08);
+}
+
+.koStoryArt {
+  z-index: 0;
+  object-fit: contain;
+  object-position: left bottom;
+  opacity: 0.12;
+  transform: scale(1.08);
+}
+
+.koStoryPortraitArt {
+  object-position: right 72%;
+  opacity: 0.14;
+  transform: scale(0.92);
+}
+
+.koStoryNight {
+  background: #061827;
+}
+
+.koStoryNight .koStoryFrame {
+  border: 0.3mm solid rgba(190, 226, 236, 0.12);
+  background: rgba(5, 23, 36, 0.86);
+  box-shadow: none;
+}
+
+.koStoryNight .koStoryHeader h2,
+.koStoryNight .koStoryAtom h3 {
+  color: #f6f2e8;
+}
+
+.koStoryNight .koStoryAtom p,
+.koStoryNight .koStoryAtom blockquote {
+  color: rgba(246, 242, 232, 0.9);
+}
+
+.koStoryNight .koStoryFooter {
+  border-color: rgba(224, 237, 241, 0.24);
+  color: rgba(224, 237, 241, 0.64);
+}
+
+.koStoryAqua {
+  background: #e8f6f3;
+}
+
+.koStoryPaper {
+  background: #f8f6ee;
+}
+
+.koStoryGold {
+  background: #f5edc6;
+}
+
+.koStoryDusk {
+  background: #33223f;
+}
+
+.koStoryDusk .koStoryFrame,
+.koStoryStorm .koStoryFrame {
+  background: rgba(255, 255, 255, 0.91);
+}
+
+.koStoryStorm {
+  background: #102c3f;
+}
+
+.koStoryDawn {
+  background: #fff1df;
+}
+
+.koStoryHeader {
+  margin-bottom: 9mm;
+}
+
+.koStoryHeader p {
+  margin: 0;
+  color: var(--report-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.koStoryHeader h2 {
+  margin: 3mm 0 4mm;
+  color: #302c3a;
+  font-size: 29px;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+}
+
+.koStoryHeader > span {
+  display: block;
+  width: 18mm;
+  height: 1.2mm;
+  border-radius: 999px;
+  background: var(--report-accent);
+}
+
+.koStoryBody {
+  display: grid;
+  gap: 7mm;
+}
+
+.koStoryAtom {
+  break-inside: avoid;
+}
+
+.koStoryAtom h3 {
+  margin: 0 0 2.5mm;
+  color: #393443;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.koStoryAtom p,
+.koStoryAtom blockquote {
+  margin: 0;
+  color: #403b48;
+  font-size: 13.5px;
+  line-height: 1.95;
+  text-align: justify;
+}
+
+.koStoryAtom blockquote {
+  padding: 5mm 7mm;
+  border-top: 1px solid var(--report-accent);
+  border-bottom: 1px solid var(--report-accent);
+  color: #4b4558;
+  font-size: 15px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.koStoryFooter {
+  position: absolute;
+  right: 15mm;
+  bottom: 7mm;
+  left: 15mm;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 3mm;
+  border-top: 1px solid #ddd8e2;
+  color: #777181;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.koStoryPageDense .koStoryBody {
+  gap: 5mm;
+}
+
+.koStoryPageDense .koStoryAtom h3 {
+  margin-bottom: 1.8mm;
+  font-size: 14.5px;
+}
+
+.koStoryPageDense .koStoryAtom p,
+.koStoryPageDense .koStoryAtom blockquote {
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.koStoryPageExtraDense .koStoryHeader {
+  margin-bottom: 6mm;
+}
+
+.koStoryPageExtraDense .koStoryBody {
+  gap: 3.5mm;
+}
+
+.koStoryPageExtraDense .koStoryAtom h3 {
+  margin-bottom: 1.4mm;
+  font-size: 13.5px;
+}
+
+.koStoryPageExtraDense .koStoryAtom p,
+.koStoryPageExtraDense .koStoryAtom blockquote {
+  font-size: 10.8px;
+  line-height: 1.62;
+}
+
+.koStoryPageExtraDense .koStoryAtom blockquote {
+  padding-top: 3mm;
+  padding-bottom: 3mm;
+}
+
 .endPage h2 {
   margin: 5mm 0 7mm;
   font-size: 28px;
@@ -534,34 +741,12 @@
 @media print {
   @page {
     size: A4;
-    margin: 17mm 18mm 20mm;
-
-    @top-right {
-      content: "PERSONALITY REPORT";
-      color: #8d8795;
-      font-family: sans-serif;
-      font-size: 7.5pt;
-      letter-spacing: 0.14em;
-    }
-
-    @bottom-left {
-      content: "WATASHI NO TORISETSU";
-      color: #8d8795;
-      font-family: sans-serif;
-      font-size: 7.5pt;
-      letter-spacing: 0.12em;
-    }
-
-    @bottom-right {
-      content: counter(page);
-      color: #6f6879;
-      font-family: sans-serif;
-      font-size: 8pt;
-    }
+    margin: 0;
   }
 
   @page :first {
     margin: 0;
+    background: #10182d;
 
     @top-right {
       content: none;
@@ -590,7 +775,7 @@
   }
 
   .reportDocument {
-    width: auto;
+    width: 210mm;
     overflow: visible;
     box-shadow: none;
   }
@@ -603,9 +788,18 @@
   .overviewPage,
   .chapter,
   .endPage {
-    min-height: auto;
-    padding: 0;
+    min-height: 297mm;
+    padding: 20mm 19mm 22mm;
     break-before: page;
+  }
+
+  .koStoryPage {
+    position: relative;
+    width: 210mm;
+    height: 297mm;
+    min-height: 297mm;
+    padding: 12mm 12mm 16mm;
+    overflow: hidden;
   }
 
   .flowChapter {
@@ -651,9 +845,14 @@
 
   .overviewPage,
   .chapter,
-  .endPage {
+  .endPage,
+  .koStoryPage {
     min-height: auto;
     padding: 48px 24px 64px;
+  }
+
+  .koStoryPage {
+    padding-bottom: 80px;
   }
 
   .contents ol {

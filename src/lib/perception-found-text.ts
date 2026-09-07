@@ -1,4 +1,4 @@
-// Day 12 ③④改修: ③「◯◯さんが見つけたアナタ」の文章生成。
+// Day 12 ③④改修: ③「◯◯さんが見つけたあなた」の文章生成。
 //
 // PERCEIVED_BY_TYPE (mutual-result-content.ts) の強み/あれっ? 各 3 項目を、
 // 「各項目 = 独立した段落」として組み立てる (③リライト: 織り込み方式は廃止)。
@@ -148,12 +148,12 @@ export const SOFT_WORD: Record<string, string> = {
 // 文末は型ごとに散らし、body / closer と単調にかぶらないようにしてある。
 const STRENGTH_SCENES: Record<SixteenTypeId, [string, string, string]> = {
   "sparkle-dolphin": [
-    "グループが何となく黙り込んだ時、最初に「じゃあこうしよっか」と口火を切るのは、いつもアナタだった。",
+    "グループが何となく黙り込んだ時、最初に「じゃあこうしよっか」と口火を切るのは、いつもあなただった。",
     "予定がばらけそうな場面で、さっと全体を見て段取りを整え直す——その手際に何度も助けられてきた。",
     "「それ知らない、教えて」と目を輝かせて飛び込んでいく姿が、強く印象に残っている。",
   ],
   "ambition-lion": [
-    "まだ誰も口にしていない「こうなったらいいよね」を、最初に言葉にするのはいつもアナタだった。",
+    "まだ誰も口にしていない「こうなったらいいよね」を、最初に言葉にするのはいつもあなただった。",
     "やると決めた瞬間にもう体が動き出している——その勢いに、気づけば引っぱられていることが多い。",
     "言いにくいことも、まっすぐ自分の言葉で口にする場面を、そばで何度も見てきた。",
   ],
@@ -188,7 +188,7 @@ const STRENGTH_SCENES: Record<SixteenTypeId, [string, string, string]> = {
     "周りがざわついても、自分のペースをすっと崩さずにいる姿を、何度も見てきた。",
   ],
   "caretaker-dog": [
-    "誰かが困った顔をした瞬間、頼まれるより先に「どうしたの」ともう動き出しているのがアナタだった。",
+    "誰かが困った顔をした瞬間、頼まれるより先に「どうしたの」ともう動き出しているのがあなただった。",
     "髪を切った、元気がない——そんな小さな変化に、まっさきに気づいて声をかけてくれる。",
     "ばらばらになりかけた予定や持ち物を、いつのまにかきちんと整理して、最後まで回してまとめてくれていた。",
   ],
@@ -224,7 +224,7 @@ const STRENGTH_SCENES: Record<SixteenTypeId, [string, string, string]> = {
   ],
   "brisk-tiger": [
     "あれこれ言う前に、もう必要なことを片づけ始めている——その手の速さに何度も助けられてきた。",
-    "全員が顔を見合わせて止まった場面で、まっさきに動いて流れを作り直すのがアナタだった。",
+    "全員が顔を見合わせて止まった場面で、まっさきに動いて流れを作り直すのがあなただった。",
     "迷って時間だけが過ぎる場面で、「じゃあこれで」とスパッと決めてくれる瞬間に救われてきた。",
   ],
 };
@@ -269,19 +269,19 @@ function nameFreeDesc(body: string): string {
     .replace(/\{B\}さん/g, "友達"); // 文中に残った場合の安全網
 }
 
-// 評価者視点 (/evaluate/sent): {B}さん(=評価者)→「アナタ」、アナタ(=対象者)→targetName。
+// 評価者視点 (/evaluate/sent): {B}さん(=評価者)→「あなた」、あなた(=対象者)→targetName。
 // 衝突回避にセンチネルで退避してから置換する。
 const EVAL_PH = "__WTR_TARGET__";
 function evaluatorDesc(body: string, targetName: string): string {
   return body
-    .split("アナタ")
+    .split("あなた")
     .join(EVAL_PH) // 対象者 → 退避
     .split("{B}さん")
-    .join("アナタ") // 評価者 → 閲覧者
+    .join("あなた") // 評価者 → 閲覧者
     .split("この相手")
-    .join("アナタ")
+    .join("あなた")
     .split("相手")
-    .join("アナタ")
+    .join("あなた")
     .split(EVAL_PH)
     .join(targetName); // 退避した対象者 → 名前
 }
@@ -296,7 +296,7 @@ export function weaveFound(
   kind: "strengths" | "surprises",
   seed: number,
   typeId?: SixteenTypeId,
-  // 指定時は評価者視点 (/evaluate/sent)。対象者名で「アナタ↔相手」を反転する。
+  // 指定時は評価者視点 (/evaluate/sent)。対象者名で「あなた↔相手」を反転する。
   evaluatorTargetName?: string,
 ): FoundParagraph[] {
   const closers = kind === "strengths" ? STRENGTH_CLOSERS : SURPRISE_CLOSERS;
@@ -310,7 +310,7 @@ export function weaveFound(
     const closer = closers[(seed + i * 2) % closers.length];
     const sceneRaw = scenes?.[i] ?? "";
     // 評価者視点では本文・具体描写・締め文すべてに視点反転を適用
-    // (scene/closer にも「アナタ」(=対象者) が含まれるため。{B}さん は無いので副作用なし)。
+    // (scene/closer にも「あなた」(=対象者) が含まれるため。{B}さん は無いので副作用なし)。
     const desc = evaluatorTargetName
       ? evaluatorDesc(it.body, evaluatorTargetName)
       : nameFreeDesc(it.body);

@@ -32,43 +32,60 @@ export function isCheckoutSessionId(value: unknown): value is string {
   );
 }
 
-// content_ids / content_name (Meta Purchase の商品識別)。
-// ID は「商品キー_実売価格」で固定する (full_access は日本 ¥499 / 韓国 ₩4,900)。
+// content_ids / content_name (広告 Purchase の商品識別)。
+// 金額は差額購入や旧価格もあるため、利用可能なら実決済の通貨・minor amountを使う。
 const META_PURCHASE_CONTENT: Record<
   MetaPurchaseProduct,
-  { id: string; koId?: string; name: string }
+  { fallbackId: string; koFallbackId?: string; name: string }
 > = {
   self_report: {
-    id: "self_report_199",
-    name: "自己診断＋自己分析PDF",
+    fallbackId: "self_report_jpy_299",
+    koFallbackId: "self_report_krw_1900",
+    name: "学生向けライトコース",
   },
   full_access: {
-    id: "full_access_499",
-    koId: "full_access_4900",
-    name: "full_access",
+    fallbackId: "full_access_jpy_499",
+    koFallbackId: "full_access_krw_4900",
+    name: "完全版コース",
   },
   premium_bundle: {
-    id: "premium_bundle_899",
-    name: "プレミアムコース",
+    fallbackId: "premium_bundle_jpy_1299",
+    name: "全部入り・買い切り",
   },
-  unmei: { id: "unmei_1980", name: "運命の設計図" },
-  unmei_upgrade: { id: "unmei_1480", name: "運命の設計図" },
+  unmei: { fallbackId: "unmei_jpy_1980", name: "運命の設計図" },
+  unmei_upgrade: {
+    fallbackId: "unmei_upgrade_jpy_1480",
+    name: "運命の設計図",
+  },
 };
 
 export function metaPurchaseContent(
   product: MetaPurchaseProduct,
   locale: "ja" | "ko",
+  amountMinor?: number | null,
+  currency?: string | null,
 ): { contentIds: string[]; contentName: string } {
   const entry = META_PURCHASE_CONTENT[product];
-  const id = locale === "ko" && entry.koId ? entry.koId : entry.id;
+  const normalizedCurrency = currency?.trim().toLowerCase();
+  const hasActualPrice =
+    Number.isSafeInteger(amountMinor) &&
+    (amountMinor ?? -1) >= 0 &&
+    !!normalizedCurrency &&
+    /^[a-z]{3}$/.test(normalizedCurrency);
+  const id = hasActualPrice
+    ? `${product}_${normalizedCurrency}_${amountMinor}`
+    : locale === "ko" && entry.koFallbackId
+      ? entry.koFallbackId
+      : entry.fallbackId;
   return { contentIds: [id], contentName: entry.name };
 }
 
 // ブラウザ側の送信済み抑止キー (localStorage)。
 // v1 (商品なし) から、商品ごとに分けた v2 へ移行。旧 v1 キーは残るが、
-// 送信済みかは DB の一意クレームが正なので再クレーム時に shouldPush:false となり
-// 二重 push は起きない (v2 キーが改めて書かれる)。
+// 同じブラウザからの再送を抑止する。端末・タブをまたぐ重複は Stripe Session IDを
+// 広告側 event_id に使って重複排除する。
 const STORAGE_PREFIX = "wt_meta_purchase_sent_v2:";
+const TIKTOK_STORAGE_PREFIX = "wt_tiktok_purchase_sent_v1:";
 
 export function metaPurchaseStorageKey(
   product: MetaPurchaseProduct,
@@ -77,16 +94,28 @@ export function metaPurchaseStorageKey(
   return `${STORAGE_PREFIX}${product}:${checkoutSessionId}`;
 }
 
+export function tiktokPurchaseStorageKey(
+  product: MetaPurchaseProduct,
+  checkoutSessionId: string,
+): string {
+  return `${TIKTOK_STORAGE_PREFIX}${product}:${checkoutSessionId}`;
+}
+
 // どの商品でも送信済みなら true (クライアント専用。localStorage 不可環境は false)。
 // 静的ページの着地 (/aisho) で claim token 取得の API を無駄打ちしないための事前判定。
 export function wasAnyMetaPurchaseSent(checkoutSessionId: string): boolean {
   try {
-    return META_PURCHASE_PRODUCTS.some(
-      (product) =>
+    return META_PURCHASE_PRODUCTS.some((product) => {
+      const metaSent =
         localStorage.getItem(
           metaPurchaseStorageKey(product, checkoutSessionId),
-        ) === "1",
-    );
+        ) === "1";
+      const tiktokSent =
+        localStorage.getItem(
+          tiktokPurchaseStorageKey(product, checkoutSessionId),
+        ) === "1";
+      return metaSent && tiktokSent;
+    });
   } catch {
     return false;
   }

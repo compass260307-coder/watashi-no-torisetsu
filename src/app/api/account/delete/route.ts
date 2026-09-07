@@ -5,6 +5,8 @@
 //   - session.user.id 1 件のみを削除対象とする (Web ファーストは 1 user = 1 row)
 //   - CASCADE: friend_answers / friend_perceptions (target) / integrated_trisetsu
 //     / line_users が users 削除で連鎖削除される
+//   - 評価者として作成した friend_perceptions は users 削除前に明示削除する
+//     (perceiver_user_id は ON DELETE SET NULL のため、CASCADE だけでは残る)
 //   - users.line_user_id が設定済なら notification_preferences / feature_optins
 //     を line_user_id で個別削除 (FK 無しのため明示)
 //   - events は owner_token で個別削除 (FK 無し)
@@ -104,12 +106,60 @@ export async function POST(request: NextRequest) {
     deletionCounts.events = 0;
   }
 
-  // d. users (致命扱い、失敗時 500)
+  // d. 評価者として作成した friend_perceptions。
+  //    users 削除後は perceiver_user_id が NULL になって特定できなくなるため、
+  //    先に物理削除する。古い LINE 紐付け行も linkedLineUserId で回収する。
+  let authoredPerceptionCount = 0;
+  {
+    const { error, count } = await supabaseAdmin
+      .from("friend_perceptions")
+      .delete({ count: "exact" })
+      .eq("perceiver_user_id", userId);
+    if (error) {
+      console.error(
+        "[account/delete] authored friend_perceptions (FATAL) error:",
+        error,
+      );
+      return NextResponse.json(
+        {
+          error: "authored friend perceptions delete failed",
+          deletionCounts,
+          message:
+            "部分的に削除されました。同じ操作を再実行すると残りも削除されます。",
+        },
+        { status: 500 },
+      );
+    }
+    authoredPerceptionCount += count ?? 0;
+  }
+  if (linkedLineUserId) {
+    const { error, count } = await supabaseAdmin
+      .from("friend_perceptions")
+      .delete({ count: "exact" })
+      .eq("perceiver_line_user_id", linkedLineUserId);
+    if (error) {
+      console.error(
+        "[account/delete] LINE-authored friend_perceptions (FATAL) error:",
+        error,
+      );
+      return NextResponse.json(
+        {
+          error: "LINE-authored friend perceptions delete failed",
+          deletionCounts,
+          message:
+            "部分的に削除されました。同じ操作を再実行すると残りも削除されます。",
+        },
+        { status: 500 },
+      );
+    }
+    authoredPerceptionCount += count ?? 0;
+  }
+  deletionCounts.friend_perceptions_authored = authoredPerceptionCount;
+
+  // e. users (致命扱い、失敗時 500)
   //    CASCADE で friend_answers / friend_perceptions (target) /
   //    integrated_trisetsu / line_users / magic_links が連鎖削除される。
-  //    friend_perceptions.perceiver_user_id は ON DELETE SET NULL のため、
-  //    削除対象ユーザーが評価した側として持つ既存 perception は perceiver_user_id
-  //    だけ NULL になって残る。
+  //    評価者として作成した perception は直前で削除済み。
   {
     const { error, count } = await supabaseAdmin
       .from("users")

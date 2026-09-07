@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
@@ -689,7 +690,7 @@ export default function DiagnosisPageContent({
               {/* ニックネーム (必須) */}
               <label
                 htmlFor="diagnosis-nickname"
-                className="block text-[22px] font-extrabold text-[#2E2E5C]"
+                className="block text-[22px] font-bold text-[#2E2E5C]"
               >
                 {copy.nicknameLabel}
               </label>
@@ -734,7 +735,7 @@ export default function DiagnosisPageContent({
 
               {/* ジェンダー (任意) */}
               <fieldset className="mt-8">
-                <legend className="text-[22px] font-extrabold text-[#2E2E5C]">
+                <legend className="text-[22px] font-bold text-[#2E2E5C]">
                   {copy.genderLabel}
                 </legend>
                 <div className="mt-3 flex flex-col gap-1">
@@ -781,6 +782,15 @@ export default function DiagnosisPageContent({
                     {copy.submitError}
                   </p>
                 )}
+                {locale === "ko" ? (
+                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                    결과 보기를 누르면 답변과 닉네임이 진단 결과 계산·저장에 사용됩니다. 자세한 내용은{" "}
+                    <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
+                      개인정보처리방침
+                    </Link>
+                    에서 확인할 수 있습니다.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -843,7 +853,7 @@ function ResumeChoiceModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="resume-title"
-          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
+          className="text-lg font-bold text-center text-[#2E2E5C] mb-3"
         >
           {copy.title}
         </h2>
@@ -901,7 +911,7 @@ function RediagnoseConfirmModal({
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-modal-slide-up">
         <h2
           id="rediagnose-title"
-          className="text-lg font-extrabold text-center text-[#2E2E5C] mb-3"
+          className="text-lg font-bold text-center text-[#2E2E5C] mb-3"
         >
           {copy.title}
         </h2>

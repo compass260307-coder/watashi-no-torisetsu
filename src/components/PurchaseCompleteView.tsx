@@ -19,8 +19,10 @@ type PurchaseCompleteViewProps = {
   isGuestPurchase?: boolean;
   product?: "self_report" | "full_access" | "premium_bundle";
   destinyFeaturesIncluded?: boolean;
-  friendFeaturesIncluded?: boolean;
+  hoshiyomiChatIncluded?: boolean;
   hoshiyomiChatCredits?: number;
+  tarotFeaturesIncluded?: boolean;
+  friendFeaturesIncluded?: boolean;
   locale?: ResultLocale;
 };
 
@@ -28,8 +30,10 @@ export function PurchaseCompleteView({
   isGuestPurchase = false,
   product = "full_access",
   destinyFeaturesIncluded,
-  friendFeaturesIncluded,
+  hoshiyomiChatIncluded,
   hoshiyomiChatCredits,
+  tarotFeaturesIncluded,
+  friendFeaturesIncluded,
   locale = "ja",
 }: PurchaseCompleteViewProps) {
   const isKo = locale === "ko";
@@ -40,15 +44,21 @@ export function PurchaseCompleteView({
         ? "프리미엄 코스"
         : "완전판 리포트"
     : product === "self_report"
-      ? "自己分析レポート"
+      ? "学生向けプラン"
       : product === "premium_bundle"
-        ? "プレミアムコース"
+        ? "全部入り"
         : "完全版レポート";
   const hasDestinyFeatures =
     destinyFeaturesIncluded ?? product === "premium_bundle";
-  const includedChatCount =
-    hoshiyomiChatCredits ??
-    (hasDestinyFeatures ? (product === "premium_bundle" ? 30 : 5) : 0);
+  // AI占い師チャットは設計図と独立。現行の日本版完全版と
+  // プレミアムは30回、旧完全版は購入時の回数を維持する。
+  // 旧呼び出し元がフラグ未指定のときは従来どおり設計図と同じ扱いに倒す。
+  const hasHoshiyomiChat = hoshiyomiChatIncluded ?? hasDestinyFeatures;
+  const includedChatCount = hasHoshiyomiChat
+    ? (hoshiyomiChatCredits ?? (product === "premium_bundle" ? 30 : 5))
+    : 0;
+  const hasTarotFeatures =
+    tarotFeaturesIncluded ?? product === "premium_bundle";
   return (
     <>
     {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
@@ -170,16 +180,30 @@ export function PurchaseCompleteView({
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo ? (
+              hasDestinyFeatures ? (
+                <>
+                  운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회가
+                  포함되어 있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
+                  있습니다.
+                </>
+              ) : (
+                <>
+                  나만의 전담 점성술사 채팅 {includedChatCount}회가 포함되어
+                  있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
+                  있습니다.
+                </>
+              )
+            ) : hasDestinyFeatures ? (
               <>
-                {hasDestinyFeatures ? "운명의 설계도와 " : ""}나만의 전담
-                점성술사 채팅 {includedChatCount}회가 포함되어 있어요. 로그인 후 하단
-                메뉴의 「점성술사」에서 이용할 수 있습니다.
+                運命の設計図、あなたの専属占い師とのチャット
+                {includedChatCount}回分
+                {hasTarotFeatures ? "、3種類のタロット占い" : ""}
+                が含まれています。ログイン後、下部メニューの「占い師」から利用できます。
               </>
             ) : (
               <>
-                {hasDestinyFeatures ? "運命の設計図と、" : ""}
-                あなたの専属占い師 Alice とのチャット
-                {includedChatCount}回分が含まれています。ログイン後、下部メニューの
+                あなたの専属AI占い師とのチャット{includedChatCount}
+                回分が含まれています。ログイン後、下部メニューの
                 「占い師」から利用できます。
               </>
             )}
@@ -190,12 +214,14 @@ export function PurchaseCompleteView({
       {product === "self_report" && friendFeaturesIncluded ? (
         <div className="mb-6 w-full max-w-[420px] rounded-2xl border border-[#D7E9ED] bg-white px-5 py-4 text-left">
           <p className="text-[13px] font-black text-[#2E2E5C]">
-            {isKo ? "친구 진단도 이용할 수 있어요" : "友達診断も利用できます"}
+            {isKo
+              ? "친구 진단도 이용할 수 있어요"
+              : "友達診断も利用できます"}
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo
-              ? "두 번째 친구부터의 진단 결과와 여러 번 다시 만들 수 있는 친구 진단 분석 PDF도 열립니다."
-              : "2人目以降の友達診断結果と、何度でも作り直せる友達診断分析PDFも解放されます。"}
+              ? "두 번째 친구부터의 진단 결과와 여러 번 다시 만들 수 있는 친구 진단 분석 PDF가 열립니다."
+              : "2人目以降の友達診断結果と、何度でも作り直せる他己分析PDFが解放されます。"}
           </p>
         </div>
       ) : null}

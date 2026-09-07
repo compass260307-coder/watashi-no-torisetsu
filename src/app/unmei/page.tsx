@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import {
   createMetaPurchaseClaimToken,
@@ -7,7 +8,7 @@ import {
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
-import { hasFullAccess, hasUnmeiAccess } from "@/lib/entitlements";
+import { hasUnmeiAccess } from "@/lib/entitlements";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
@@ -126,7 +127,7 @@ const UNMEI_FAQS: { q: string; a: React.ReactNode }[] = [
 
 // 未購入ティーザー (16P プレミアムキャリアキット風の商品LP / 2026-07-26 指示)。
 // PC: 左=出生図イメージ / 右=商品名・説明・価格・CTA。SP: 縦積み。
-// 価格: 通常 ¥899 / 完全版 (¥499) 保有者は ¥400 (unmei_upgrade)。
+// 日本版は現行の完全版、韓国版と運命権限のない旧完全版はプレミアムに含む。
 // hasFull はログイン済みならサーバ判定、未ログインは UnmeiPriceCta が localStorage の
 // owner_token から判定する (決済APIが最終検証するため表示用の判定でよい)。
 function UnmeiTeaserLp({
@@ -134,13 +135,17 @@ function UnmeiTeaserLp({
   hasFull,
   trackView = true,
   launchChat = false,
+  previewMode = false,
 }: {
   ownerToken: string | null;
   hasFull: boolean;
   trackView?: boolean;
   /** true = 購入CTAでリダイレクトせず全画面チャット決済を起動する。 */
   launchChat?: boolean;
+  /** devプレビューでは計測・保存・決済を実行しない。 */
+  previewMode?: boolean;
 }) {
+  const purchaseProduct = hasFull ? "premium_bundle" : "full_access";
   return (
       <main className="overflow-x-clip bg-white">
         {trackView ? (
@@ -148,7 +153,7 @@ function UnmeiTeaserLp({
             eventName="unmei_lp_view"
             ownerToken={ownerToken}
             state={hasFull ? "upgrade_eligible" : "standard"}
-            product="premium_bundle"
+            product={purchaseProduct}
           />
         ) : null}
         {/* うっすら色帯 (16P 参考): ヒーロー背景をごく淡いプレミアムクリームにし、直下の
@@ -157,15 +162,14 @@ function UnmeiTeaserLp({
         <div className="bg-[#FFFBF2] px-4 pb-8 pt-6 md:px-8 md:pb-10 md:pt-10">
         <div className="mx-auto max-w-[1080px]">
           <section className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
-            {/* ヒーロー画像 (フェルトジオラマ調・白背景。他ページの mascot と同じ流儀) */}
+            {/* ヒーロー画像 (Aliceを主役にしたフェルトジオラマ調・背景透過) */}
             <SmoothImage
-              src="/mascot/unmei-hero.png"
-              alt="天球儀と星図を囲む、星読みの装いをしたフェルトの動物たち"
-              width={1200}
-              height={900}
-              // mix-blend-multiply: 白背景PNGの白を帯色に溶かす (白い矩形の縁を消す)
+              src="/mascot/unmei-hero-alice-transparent.png"
+              alt="天使Aliceを中心に、天球儀と星図を囲むフェルトの仲間たち"
+              width={1448}
+              height={1086}
               // SP はひと回り小さく + 左寄せでテキストと左端を揃える (16P 参考。2026-07-26 指示)
-              className="h-auto w-full max-w-[320px] mix-blend-multiply md:max-w-[480px]"
+              className="h-auto w-full max-w-[320px] md:max-w-[480px]"
               priority
             />
 
@@ -186,6 +190,7 @@ function UnmeiTeaserLp({
                 sessionOwnerToken={ownerToken}
                 sessionHasFull={hasFull}
                 launchChat={launchChat}
+                previewMode={previewMode}
               />
             </div>
           </section>
@@ -399,7 +404,7 @@ function UnmeiTeaserLp({
 
 // ゲスト購入 (未ログインで ?checkout=success 着地) の完了画面。
 // 鑑定は webhook が購入メールに紐付けて解放するため、同じメールでログインすれば
-// 出生情報の入力に進める。/purchase-complete (¥499 完全版のゲスト着地) と同じ流儀で
+// 出生情報の入力に進める。/purchase-complete (完全版のゲスト着地) と同じ流儀で
 // LoginCard をその場に置き、販売LPへ戻さない。
 // Stripe 決済着地 (?checkout=success&session_id=) の Meta Purchase 計測。
 // webhook 反映の速さで着地分岐 (確認中 / ゲスト完了 / 購入済み本文) が変わっても
@@ -413,7 +418,8 @@ async function UnmeiMetaPurchase(sp: {
     !session ||
     (session.product !== "unmei" &&
       session.product !== "unmei_upgrade" &&
-      session.product !== "premium_bundle")
+      session.product !== "premium_bundle" &&
+      session.product !== "full_access")
   ) {
     return null;
   }
@@ -458,7 +464,8 @@ async function UnmeiPageBody(sp: {
     return (
       <UnmeiClient
         initialState="no_birth"
-        purchase={{ ownerToken: null, product: "premium_bundle" }}
+        purchase={{ ownerToken: null, product: "full_access" }}
+        previewMode
       />
     );
   }
@@ -492,12 +499,13 @@ async function UnmeiPageBody(sp: {
     );
   }
   if (preview === "teaser" || preview === "teaser_full") {
-    // 未購入LPの確認用 (dev限定): ?preview=teaser (通常 ¥899) / teaser_full (¥400 表示)
+    // 未購入LPの確認用 (dev限定): ?preview=teaser / teaser_full
     return (
       <UnmeiTeaserLp
         ownerToken={null}
         hasFull={preview === "teaser_full"}
         trackView={false}
+        previewMode
       />
     );
   }
@@ -505,13 +513,15 @@ async function UnmeiPageBody(sp: {
     // チャット決済フローの確認用 (dev限定): LP → 「設計図を作成する →」で全画面チャット起動。
     return (
       <UnmeiChatCheckoutGate
-        purchase={{ ownerToken: null, product: "premium_bundle" }}
+        purchase={{ ownerToken: null, product: "full_access" }}
+        previewMode
       >
         <UnmeiTeaserLp
           ownerToken={null}
           hasFull={false}
           trackView={false}
           launchChat
+          previewMode
         />
       </UnmeiChatCheckoutGate>
     );
@@ -520,7 +530,8 @@ async function UnmeiPageBody(sp: {
   const session = await getSession();
   const userId: string | null = session ? session.id : null;
 
-  // 未ログイン / 未購入: ティーザー + 購入導線
+  // 未ログイン / 未購入は本文を返さない。URL直打ちや旧リンク経由も
+  // 結果ページ（未診断はトップ）へ戻し、BottomNav の課金モーダルを開く。
   const purchased = userId ? await hasUnmeiAccess(userId) : false;
 
   // Stripe-hosted Checkout から戻ったら、Webhook の反映速度にかかわらず
@@ -531,26 +542,10 @@ async function UnmeiPageBody(sp: {
   }
 
   if (!purchased) {
-    const sessionHasFull = userId ? await hasFullAccess(userId) : false;
-
-    // 購入導線は「入力→商品確認→Stripe-hosted Checkout→生成」に一本化する。
-    // 未セッション (未診断) も同じチャットに乗せる (2026-08-10): 出生情報の保存時に
-    // /api/birth-profile が匿名ユーザー+セッションを発行するので、以降の決済・生成・
-    // 鑑定表示はセッション有りと同じ経路で進む。
-    return (
-      <UnmeiChatCheckoutGate
-        purchase={{
-          ownerToken: session?.owner_token ?? null,
-          product: "premium_bundle",
-        }}
-      >
-        <UnmeiTeaserLp
-          ownerToken={session?.owner_token ?? null}
-          hasFull={sessionHasFull}
-          launchChat
-        />
-      </UnmeiChatCheckoutGate>
-    );
+    const returnPath = session?.owner_token
+      ? `/me/${encodeURIComponent(session.owner_token)}`
+      : "/";
+    redirect(`${returnPath}#unlock-unmei`);
   }
 
   // 購入済み: 出生データの有無で分岐 (出生図ホイール用に birth_date / time_unknown も取得)

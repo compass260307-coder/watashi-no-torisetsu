@@ -75,13 +75,18 @@ export async function GET(request: NextRequest) {
     totalUsers: s.totalUsers,
     avgChildPerParent: round(s.viral.avgChildPerParent),
     viralCoefficient: round(s.viral.viralCoefficient),
-    // 3コース課金ファネル。旧カードとStripeテスト決済を除外した current 指標。
+    // 汎用課金指標は payment_history の全商品確定決済。現行3コースだけの
+    // 評価値は coursePaywall* として明示し、旧カードや別商品と混ぜない。
     paywallViewed: s.paywallFunnel[1]?.count ?? 0,
     paywallScrollClicked: s.paywallFunnel[2]?.count ?? 0,
     purchaseCtaClicked: s.paywallFunnel[3]?.count ?? 0,
     checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
     purchaseCompleted: s.purchaseCompleted,
     purchaseConversionRate: round(s.purchaseConversionRate),
+    coursePaywallPurchaseCompleted: s.coursePurchaseCompleted,
+    coursePaywallPurchaseConversionRate: round(
+      s.coursePurchaseConversionRate,
+    ),
     coursePaywallPlanViewed: s.coursePaywall.planViewers,
     coursePaywallNewPurchases: s.coursePaywall.newPurchases,
     coursePaywallUpgrades: s.coursePaywall.upgrades,
@@ -109,15 +114,15 @@ export async function GET(request: NextRequest) {
         ?.purchasers ?? 0,
     paidUsers: s.paidUsers,
     revenueJpy: s.revenueJpy,
-    // 友達診断コホートファネル（2026-07-18 計測開始）
+    // 友達診断コホートファネル v2（2026-08-22 計測開始）
     friendFunnelMeasurementStartedAt:
       s.friendDiagnosisFunnel.measurementStartedAt,
     friendFunnelDiagnosisCompleted:
-      s.friendDiagnosisFunnel.ownerFunnel[0]?.count ?? 0,
+      s.friendDiagnosisFunnel.diagnosisCompleted,
     friendFunnelResultReached:
-      s.friendDiagnosisFunnel.ownerFunnel[1]?.count ?? 0,
+      s.friendDiagnosisFunnel.ownerFunnel[0]?.count ?? 0,
     friendFunnelTakoReached:
-      s.friendDiagnosisFunnel.ownerFunnel[2]?.count ?? 0,
+      s.friendDiagnosisFunnel.ownerFunnel[1]?.count ?? 0,
     friendFunnelTakoReachRate: round(
       s.friendDiagnosisFunnel.attention.takoReachRate,
     ),
@@ -130,11 +135,11 @@ export async function GET(request: NextRequest) {
     friendFunnelFriendLandingSessions:
       s.friendDiagnosisFunnel.friendFunnel[0]?.count ?? 0,
     friendFunnelFriendAnswerSessions:
-      s.friendDiagnosisFunnel.friendFunnel[1]?.count ?? 0,
-    friendFunnelSelfDiagnosisClicks:
       s.friendDiagnosisFunnel.friendFunnel[2]?.count ?? 0,
-    friendFunnelChildDiagnosisCompleted:
+    friendFunnelSelfDiagnosisClicks:
       s.friendDiagnosisFunnel.friendFunnel[3]?.count ?? 0,
+    friendFunnelChildDiagnosisCompleted:
+      s.friendDiagnosisFunnel.friendFunnel[4]?.count ?? 0,
     takoBadgeShown: s.friendDiagnosisFunnel.attention.badgeShown,
     takoBadgeClicked: s.friendDiagnosisFunnel.attention.badgeClicked,
     takoBadgeClickRate: round(
@@ -171,6 +176,60 @@ export async function GET(request: NextRequest) {
     unmeiChatBirthSubmitted: s.unmei.chatFunnel[3]?.count ?? 0,
     unmeiChatCheckoutReached: s.unmei.chatFunnel[4]?.count ?? 0,
     unmeiChatPurchases: s.unmei.chatFunnel[5]?.count ?? 0,
+    // シェア導線ファネル v2 (2026-08-22 追加。末尾に足す = 既存シートの列順を壊さない)
+    friendFunnelInviteUiShown:
+      s.friendDiagnosisFunnel.ownerFunnel[2]?.count ?? 0,
+    friendFunnelFriendAnswerStartedSessions:
+      s.friendDiagnosisFunnel.friendFunnel[1]?.count ?? 0,
+    selfResultShareMeasurementStartedAt:
+      s.selfResultShareFunnel.measurementStartedAt,
+    selfResultShareResultReached:
+      s.selfResultShareFunnel.steps[0]?.count ?? 0,
+    selfResultShareUiShown:
+      s.selfResultShareFunnel.steps[1]?.count ?? 0,
+    selfResultShareActions:
+      s.selfResultShareFunnel.steps[2]?.count ?? 0,
+    selfResultShareLandingReached:
+      s.selfResultShareFunnel.steps[3]?.count ?? 0,
+    selfResultShareDiagnosisCtaClicks:
+      s.selfResultShareFunnel.steps[4]?.count ?? 0,
+    selfResultShareDiagnosisStarted:
+      s.selfResultShareFunnel.steps[5]?.count ?? 0,
+    selfResultShareDiagnosisCompleted:
+      s.selfResultShareFunnel.steps[6]?.count ?? 0,
+    // 課金計測の健全性（末尾追加。既存シートの列順を壊さない）
+    verifiedPaymentFacts: s.purchaseTracking.verifiedPayments,
+    purchaseEventFacts: s.purchaseTracking.purchaseEvents,
+    missingPurchaseEventFacts: s.purchaseTracking.missingPurchaseEvents,
+    browserMetaPurchasePushed: s.purchaseTracking.browserMetaPushed,
+    browserTikTokPurchasePushed: s.purchaseTracking.browserTikTokPushed,
+    serverMetaPurchaseSent: s.purchaseTracking.serverMetaSent,
+    serverTikTokPurchaseSent: s.purchaseTracking.serverTikTokSent,
+    serverPurchaseQueuePending: s.purchaseTracking.serverQueuePending,
+    serverPurchaseQueueFailed: s.purchaseTracking.serverQueueFailed,
+    metaServerTrackingConfigured: s.purchaseTracking.metaServerConfigured
+      ? 1
+      : 0,
+    tiktokServerTrackingConfigured: s.purchaseTracking.tiktokServerConfigured
+      ? 1
+      : 0,
+    // 運命・Aliceの現行導線（末尾追加。既存シートの列順を壊さない）
+    unmeiCurrentCoursePurchases: s.unmei.purchases.current,
+    unmeiPremiumPurchases: s.unmei.purchases.premium,
+    unmeiLegacyPurchases: s.unmei.purchases.legacy,
+    unmeiNavLockedOpened: s.unmei.navigationFunnel[0]?.count ?? 0,
+    unmeiNavCourseCardViewed: s.unmei.navigationFunnel[1]?.count ?? 0,
+    unmeiNavPurchaseCtaClicked: s.unmei.navigationFunnel[2]?.count ?? 0,
+    unmeiNavStripeReached: s.unmei.navigationFunnel[3]?.count ?? 0,
+    unmeiNavPurchases: s.unmei.navigationFunnel[4]?.count ?? 0,
+    aliceCourseCardViewed: s.alice.cardViewers,
+    alicePurchaseCtaClicked: s.alice.ctaClickers,
+    aliceStripeReached: s.alice.stripeReached,
+    alicePurchasers: s.alice.purchasers,
+    alicePurchases: s.alice.purchases,
+    aliceRevenueJpy:
+      s.alice.revenue.currencies.find((row) => row.currency === "jpy")
+        ?.netRevenueMinor ?? 0,
   };
 
   const format = request.nextUrl.searchParams.get("format");

@@ -1,24 +1,31 @@
 "use client";
 
-// /unmei 未購入LPの価格表示 + 購入CTA (2026-07-26 指示)。
-// 完全版 (¥499 full_access) 保有者にはプレミアムへの差額 ¥400 を出し分ける。
+// /unmei 未購入LPの購入CTA (従来導線では価格も表示)。
+// 日本版・韓国版とも、未購入者には現行の完全版を販売する。
+// 運命の設計図を含まない旧完全版保有者にはプレミアムへの差額を出し分ける。
 // 価格の権威は統一Checkout APIであり、ここでの判定は表示用。
 //
 // 判定は BottomNav と同じ流儀:
 //   - ログイン session の owner_token か localStorage の torisetsu_owner_token
 //   - full 確認済み token は torisetsu_full_token にキャッシュ (即時反映)
 //   - 未確認は /api/checkout/full-access-status で確認
-// 判定できない/失敗時は通常価格 ¥899 のまま (安全側)。
+// 判定できない/失敗時は日本版の現行完全版価格のまま (安全側)。
 
 import { useEffect, useState } from "react";
+import {
+  CheckoutCancelledModal,
+  useCheckoutCancelledProduct,
+} from "@/components/checkout/CheckoutCancelledNotice";
+import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
 import type { ResultLocale } from "@/i18n/result";
 import {
+  FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
-  PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW,
-  PREMIUM_BUNDLE_LIST_PRICE_KRW,
+  PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
 } from "@/lib/access-products";
+import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
 const OWNER_TOKEN_KEY = "torisetsu_owner_token";
 const FULL_TOKEN_KEY = "torisetsu_full_token";
@@ -30,6 +37,7 @@ export default function UnmeiPriceCta({
   variant = "full",
   launchChat = false,
   locale = "ja",
+  previewMode = false,
 }: {
   /** ログイン済みならその owner_token (未ログインは null → localStorage を見る)。 */
   sessionOwnerToken: string | null;
@@ -45,6 +53,8 @@ export default function UnmeiPriceCta({
   /** true = リダイレクトせず全画面チャット決済を起動する (チャット決済フロー)。 */
   launchChat?: boolean;
   locale?: ResultLocale;
+  /** devプレビューでは計測・決済APIを実行しない。 */
+  previewMode?: boolean;
 }) {
   // チャット起動モードでは「作成する」文言、従来のリダイレクトは「続ける」。
   const ctaLabel =
@@ -59,13 +69,17 @@ export default function UnmeiPriceCta({
     sessionOwnerToken,
   );
   const [hasFull, setHasFull] = useState(sessionHasFull);
-  const koreanUpgradePrice = PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW;
-  const fullPrice =
-    locale === "ko" ? `₩${PREMIUM_BUNDLE_PRICE_KRW.toLocaleString("ko-KR")}` : "¥899";
+  const cancelledProduct = useCheckoutCancelledProduct();
+  const purchaseProduct = hasFull ? "premium_bundle" : "full_access";
+  const standardPrice =
+    locale === "ko"
+      ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`
+      : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`;
   const upgradePrice =
-    locale === "ko" ? `₩${koreanUpgradePrice.toLocaleString("ko-KR")}` : "¥400";
-  const listPrice =
-    locale === "ko" ? `₩${PREMIUM_BUNDLE_LIST_PRICE_KRW.toLocaleString("ko-KR")}` : "¥1,980";
+    locale === "ko"
+      ? `₩${(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW).toLocaleString("ko-KR")}`
+      : `¥${(PREMIUM_BUNDLE_PRICE_JPY - FULL_ACCESS_PRICE_JPY).toLocaleString("ja-JP")}`;
+  const showUpgradePrice = hasFull;
 
   useEffect(() => {
     if (hasFull) return;
@@ -94,11 +108,8 @@ export default function UnmeiPriceCta({
     ownerTokenTimer = window.setTimeout(() => {
       if (!cancelled) setOwnerToken(resolvedToken);
     }, 0);
-    fetch(
-      `/api/checkout/full-access-status?owner_token=${encodeURIComponent(resolvedToken)}`,
-    )
-      .then((r) => (r.ok ? r.json() : { full: false }))
-      .then((d: { full?: boolean }) => {
+    void requestFullAccessStatus(resolvedToken)
+      .then((d) => {
         if (cancelled || !d?.full) return;
         setHasFull(true);
         try {
@@ -122,70 +133,102 @@ export default function UnmeiPriceCta({
         {!launchChat && (
           <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
             {locale === "ko"
-              ? `요금은 ${hasFull ? upgradePrice : fullPrice}이에요.`
-              : `料金はわずか ${hasFull ? upgradePrice : fullPrice} です。`}
+              ? `요금은 ${showUpgradePrice ? upgradePrice : standardPrice}이에요.`
+              : `料金はわずか ${showUpgradePrice ? upgradePrice : standardPrice} です。`}
           </p>
         )}
         <div className="mt-6 flex justify-center">
           <UnmeiCheckoutButton
             ownerToken={ownerToken}
+            product={purchaseProduct}
             launchChat={launchChat}
             tone="premium"
             locale={locale}
+            previewMode={previewMode}
           >
             {ctaLabel}
           </UnmeiCheckoutButton>
         </div>
+        {locale === "ko" ? (
+          <KoreanPurchaseLegalNotice className="mx-auto mt-3 max-w-[620px] text-center" />
+        ) : null}
       </>
     );
   }
 
   return (
-    <>
-      {/* 価格は入力前から明示し、ヒーローからCTAまでプレミアムのゴールドで統一する。 */}
-      {hasFull ? (
+    <div id="unmei-purchase">
+      {cancelledProduct === purchaseProduct && !launchChat ? (
+        <CheckoutCancelledModal
+          locale={locale}
+          courseName={
+            locale === "ko"
+              ? purchaseProduct === "full_access"
+                ? "완전판 코스"
+                : "프리미엄 코스"
+              : purchaseProduct === "full_access"
+                ? "完全版"
+                : "全部入り・買い切り"
+          }
+          imageSrc="/pricing/premium-destiny-felt-transparent.png"
+          retryAction={
+            <UnmeiCheckoutButton
+              ownerToken={ownerToken}
+              product={purchaseProduct}
+              tone="premium"
+              locale={locale}
+              previewMode={previewMode}
+            >
+              {locale === "ko"
+                ? "같은 코스로 다시 결제하기"
+                : "同じコースでもう一度決済する"}
+            </UnmeiCheckoutButton>
+          }
+        />
+      ) : null}
+      {!launchChat && (showUpgradePrice ? (
         <div className="mt-4">
-          <p className="text-[13px] font-bold text-[#2E2E5C]/45 line-through md:text-[14px]">
-            {locale === "ko" ? `정가 ${fullPrice}` : `通常 ${fullPrice}`}
+          <p className="text-[13px] font-bold text-[#2E2E5C]/55 md:text-[14px]">
+            {locale === "ko" ? "완전판 코스 구매 완료" : "完全版コース購入済み"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#5B5BEF] md:text-[44px]">
+            {/* 価格は Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
+            <p className="text-[40px] font-bold tabular-nums leading-none tracking-[-0.03em] text-[#5B5BEF] md:text-[44px]">
               {upgradePrice}
             </p>
             <span className="inline-flex rounded-full bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-black text-[#5B5BEF] md:text-[13px]">
-              {locale === "ko" ? "완전판 사용자 한정" : "完全版ユーザー限定"}
+              {locale === "ko" ? "완전판 사용자 한정" : "差額でアップグレード"}
             </span>
           </div>
         </div>
       ) : (
         <div className="mt-4">
-          <p className="text-[13px] font-bold text-[#2E2E5C]/45 line-through md:text-[14px]">
-            {locale === "ko" ? `정가 ${listPrice}` : `通常 ${listPrice}`}
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="text-[40px] font-black leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
-              {fullPrice}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-[40px] font-bold tabular-nums leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
+              {standardPrice}
             </p>
-            <span className="inline-flex rounded-full bg-[#FFF1CB] px-3 py-1.5 text-[12px] font-black text-[#9A6117] md:text-[13px]">
-              {locale === "ko"
-                ? `출시 기념 ${PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW}% 할인 (8/31까지)`
-                : "リリース記念 55%OFF（8/31まで）"}
-            </span>
           </div>
         </div>
-      )}
+      ))}
       <div
         className={`mt-4 flex ${align === "start" ? "" : "md:justify-center"}`}
       >
         <UnmeiCheckoutButton
           ownerToken={ownerToken}
+          product={purchaseProduct}
           launchChat={launchChat}
           tone="premium"
           locale={locale}
+          previewMode={previewMode}
         >
           {ctaLabel}
         </UnmeiCheckoutButton>
       </div>
-    </>
+      {locale === "ko" ? (
+        <KoreanPurchaseLegalNotice
+          className={`mt-3 max-w-[620px] ${align === "center" ? "mx-auto text-center" : "text-left"}`}
+        />
+      ) : null}
+    </div>
   );
 }

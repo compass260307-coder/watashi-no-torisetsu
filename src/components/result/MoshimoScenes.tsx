@@ -1,4 +1,4 @@
-// ⑥「もしもの時のアナタ」の本体表示 (/me 結果ページ / 2026-07-22)。
+// ⑥「もしもの時のあなた」の本体表示 (/me 結果ページ / 2026-07-22)。
 //
 // - 無料シーン (不審者/集合写真): シーン名 + 反応本文をそのまま表示 (シェアの燃料)。
 // - 課金シーン (テスト前/終電): 未解放時は鍵円 + 解除カードのティザー
@@ -85,7 +85,7 @@ export function MoshimoScenes({
           するため 2026-07-22 にチップ型へ変更)。色はシーン別カラー。
           flex-wrap だと行ごとの個数が揃わず (4+3+1 等) 乱れて見えるため、
           等幅グリッド (SP 2列 / md+ 4列) で整列させる。ラベルは全幅で
-          「のアナタ」を省いた短縮名に統一し、セル内の収まりを揃える。 */}
+          「のあなた」を省いた短縮名に統一し、セル内の収まりを揃える。 */}
       {locked.length > 0 && (
         <div className="mt-8 rounded-2xl border border-[#ECEDF6] bg-white px-4 py-8 shadow-[0_6px_20px_rgba(46,46,92,0.09)] md:px-10 md:py-10">
           {/* チップの枠色はシーン別カラーだと雑多に見えるため、解除カードと同じ
@@ -107,8 +107,8 @@ export function MoshimoScenes({
             ))}
           </div>
 
-          <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-            <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+          <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+            <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -121,11 +121,11 @@ export function MoshimoScenes({
               <br className="md:hidden" />
               {isKorean
                 ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."
-                : "もしもの時のアナタをぜんぶ見てみましょう。"}
+                : "もしもの時のあなたをぜんぶ見てみましょう。"}
             </p>
             <PaywallScrollButton
               source="moshimo_card"
-              className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
               {isKorean ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>

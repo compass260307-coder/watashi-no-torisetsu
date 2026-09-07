@@ -4,7 +4,6 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId, type UIMessage } from "ai";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import {
   useEffect,
@@ -19,13 +18,16 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import { useCheckoutCancelledProduct } from "@/components/checkout/CheckoutCancelledNotice";
+import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
 import type { ResultLocale } from "@/i18n/result";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
+import { track } from "@/lib/track";
 
-const JA_CHAT_ACCESS_PRODUCTS = ["full_access", "premium_bundle"] as const;
-const PREMIUM_CHAT_ACCESS_PRODUCTS = ["premium_bundle"] as const;
+// 両言語とも現行の完全版で30回答を解放する。旧完全版は購入世代の回数を維持する。
+const CHAT_ACCESS_PRODUCTS = ["full_access", "premium_bundle"] as const;
 
 type ActiveConversation = {
   id: string;
@@ -34,7 +36,6 @@ type ActiveConversation = {
 };
 
 type Props = {
-  conversations: HoshiyomiConversationSummary[];
   selectedConversation: HoshiyomiConversationSummary | null;
   initialRemaining: number;
   totalCredits: number;
@@ -47,7 +48,6 @@ type Props = {
 };
 
 export function HoshiyomiClient({
-  conversations,
   selectedConversation,
   initialRemaining,
   totalCredits,
@@ -58,24 +58,57 @@ export function HoshiyomiClient({
   previewMode = false,
   locale = "ja",
 }: Props) {
-  const router = useRouter();
+  const cancelledProduct = useCheckoutCancelledProduct();
   const [remaining, setRemaining] = useState(initialRemaining);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [active, setActive] = useState<ActiveConversation | null>(() =>
     selectedConversation
       ? { id: selectedConversation.id, messages: selectedConversation.messages }
       : null,
   );
+  const pageViewTrackedRef = useRef(false);
+
+  useEffect(() => {
+    if (previewMode || pageViewTrackedRef.current) return;
+    pageViewTrackedRef.current = true;
+    track("hoshiyomi_page_viewed", {
+      metadata: {
+        access_state: hasChatAccess ? "unlocked" : "locked",
+        surface: selectedConversation ? "conversation" : "home",
+      },
+    });
+  }, [hasChatAccess, previewMode, selectedConversation]);
+
+  useEffect(() => {
+    if (
+      previewMode ||
+      (cancelledProduct !== "full_access" &&
+        cancelledProduct !== "premium_bundle")
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => setPaywallOpen(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [cancelledProduct, hasChatAccess, previewMode]);
 
   const startConversation = (text: string) => {
     const prompt = text.trim();
     if (!prompt || !persistenceReady) return;
     if (!hasChatAccess) {
+      track("hoshiyomi_paywall_opened", {
+        metadata: { source: "first_send" },
+      });
       setPaywallOpen(true);
       return;
     }
     if (remaining <= 0) {
-      if (canUpgradeToPremium) setPaywallOpen(true);
+      if (canUpgradeToPremium) {
+        track("hoshiyomi_paywall_opened", {
+          metadata: { source: "trial_exhausted" },
+        });
+        setPaywallOpen(true);
+      }
       return;
     }
     if (previewMode) {
@@ -86,20 +119,34 @@ export function HoshiyomiClient({
 
   const openNew = () => {
     setActive(null);
-    router.replace(
+    window.history.replaceState(
+      null,
+      "",
       previewMode
         ? "/dev/hoshiyomi-preview"
         : `${locale === "ko" ? "/ko" : ""}/hoshiyomi`,
-      { scroll: false },
     );
+  };
+
+  const handlePaywallExitAttempt = () => {
+    if (lineExitOpen) return;
+    if (locale === "ja" && !previewMode) {
+      setLineExitOpen(true);
+      return;
+    }
+    setPaywallOpen(false);
+  };
+
+  const closeLineExitFlow = () => {
+    setLineExitOpen(false);
+    setPaywallOpen(false);
   };
 
   if (active) {
     return (
-      <>
-        <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
-          {previewMode ? (
-            <PreviewChatPanel
+      <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
+        {previewMode ? (
+          <PreviewChatPanel
             key={active.id}
             conversation={active}
             remaining={remaining}
@@ -111,59 +158,40 @@ export function HoshiyomiClient({
               )
             }
             onBack={openNew}
-            canUpgradeToPremium={canUpgradeToPremium}
-            onUpgradeRequest={() => setPaywallOpen(true)}
-            />
-          ) : (
-            <RealChatPanel
-            key={active.id}
-            conversation={active}
-            remaining={remaining}
-            totalCredits={totalCredits}
-            locale={locale}
-            onRemainingChange={(delta) =>
-              setRemaining((current) =>
-                Math.max(0, Math.min(totalCredits, current + delta)),
-              )
-            }
-            onBack={openNew}
-            canUpgradeToPremium={canUpgradeToPremium}
-            onUpgradeRequest={() => setPaywallOpen(true)}
-            />
-          )}
-        </main>
-        {paywallOpen ? (
-          <PaywallOverlay
-            ownerToken={ownerToken}
-            returnTo="hoshiyomi"
-            ctaSource="hoshiyomi_trial_exhausted"
-            products={PREMIUM_CHAT_ACCESS_PRODUCTS}
-            defaultProduct="premium_bundle"
-            legacyPlanStyle
-            previewMode={previewMode}
-            locale={locale}
-            onClose={() => setPaywallOpen(false)}
           />
-        ) : null}
-      </>
+        ) : (
+          <RealChatPanel
+            key={active.id}
+            conversation={active}
+            remaining={remaining}
+            totalCredits={totalCredits}
+            locale={locale}
+            onRemainingChange={(delta) =>
+              setRemaining((current) =>
+                Math.max(0, Math.min(totalCredits, current + delta)),
+              )
+            }
+            onBack={openNew}
+          />
+        )}
+      </main>
     );
   }
 
   return (
     <>
       {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
-      <main className="min-h-[calc(100dvh-56px)] bg-[#F7F7FC] text-[#2E2E5C]">
+      <main className="bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] text-[#2E2E5C]">
         <HoshiyomiHome
-          conversations={conversations}
           remaining={remaining}
           totalCredits={totalCredits}
           persistenceReady={persistenceReady}
           hasChatAccess={hasChatAccess}
           canUpgradeToPremium={canUpgradeToPremium}
+          ownerToken={ownerToken}
           previewMode={previewMode}
           locale={locale}
           onStart={startConversation}
-          onUpgradeRequest={() => setPaywallOpen(true)}
         />
       </main>
       {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
@@ -174,16 +202,33 @@ export function HoshiyomiClient({
           ctaSource="hoshiyomi_first_send"
           products={
             canUpgradeToPremium
-              ? PREMIUM_CHAT_ACCESS_PRODUCTS
-              : locale === "ja"
-                ? JA_CHAT_ACCESS_PRODUCTS
-                : PREMIUM_CHAT_ACCESS_PRODUCTS
+              ? (["premium_bundle"] as const)
+              : CHAT_ACCESS_PRODUCTS
           }
-          defaultProduct="premium_bundle"
-          legacyPlanStyle
+          defaultProduct={
+            canUpgradeToPremium ? "premium_bundle" : "full_access"
+          }
+          heading={
+            locale === "ja"
+              ? canUpgradeToPremium
+                ? "Aliceとの続きを解放する"
+                : "Aliceを試す・本格相談を選ぶ"
+              : undefined
+          }
           previewMode={previewMode}
           locale={locale}
-          onClose={() => setPaywallOpen(false)}
+          // PC ではカードが画像つき2カラムになるようヒーローと同じ Alice 画像を渡す
+          // (SP はカード側の hidden md:flex で画像非表示のため影響なし)。
+          imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
+          imageAlt={locale === "ko" ? "별자리 상담사" : "AI占い師 Alice"}
+          scrollLocked={lineExitOpen}
+          onClose={handlePaywallExitAttempt}
+        />
+      ) : null}
+      {lineExitOpen ? (
+        <HoshiyomiLineExitModal
+          ownerToken={ownerToken}
+          onClose={closeLineExitFlow}
         />
       ) : null}
     </>
@@ -191,81 +236,67 @@ export function HoshiyomiClient({
 }
 
 function HoshiyomiHome({
-  conversations,
   remaining,
   totalCredits,
   persistenceReady,
   hasChatAccess,
   canUpgradeToPremium,
+  ownerToken,
   previewMode,
   locale,
   onStart,
-  onUpgradeRequest,
 }: {
-  conversations: HoshiyomiConversationSummary[];
   remaining: number;
   totalCredits: number;
   persistenceReady: boolean;
   hasChatAccess: boolean;
   canUpgradeToPremium: boolean;
+  ownerToken?: string;
   previewMode: boolean;
   locale: ResultLocale;
   onStart: (text: string) => void;
-  onUpgradeRequest: () => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
-  const router = useRouter();
   const [input, setInput] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [faqOpen, setFaqOpen] = useState(false);
   const faqButtonRef = useRef<HTMLButtonElement>(null);
   const canCompose =
-    persistenceReady && (!hasChatAccess || remaining > 0);
+    persistenceReady &&
+    (!hasChatAccess || remaining > 0 || canUpgradeToPremium);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!input.trim()) return;
     onStart(input);
   };
 
-  const remove = async (id: string) => {
-    if (previewMode) return;
-    setDeletingId(id);
-    try {
-      const response = await fetch(`/api/hoshiyomi/conversations/${id}`, {
-        method: "DELETE",
-      });
-      if (response.ok) router.refresh();
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   return (
     <>
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] px-5 pb-12 pt-8 md:px-8 md:pb-16 md:pt-12">
+      <section className="relative overflow-hidden px-5 pb-8 pt-8 md:px-8 md:pb-8 md:pt-12">
         <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#CFC9FF]/30 blur-3xl" />
-        <div className="relative mx-auto max-w-[1040px]">
-          <h1 className="text-[32px] font-black leading-[1.25] md:text-[48px]">
+        <div className="relative mx-auto max-w-[1040px] md:grid md:grid-cols-2 md:items-start md:gap-x-10 lg:gap-x-14">
+          <h1 className="text-[32px] font-black leading-[1.25] md:col-start-1 md:row-start-1 md:text-[48px]">
             {copy.title}
           </h1>
 
-          <div className="mt-3 w-full md:mt-5">
+          {/* 画像: SPはタイトル直下 (SP順 = タイトル→画像→サブタイトル→入力)。
+              PC(md+)は右カラム(col2)へ回し、左のテキスト3行ぶんの高さに対して縦中央寄せにする。 */}
+          <div className="mt-6 w-full md:col-start-2 md:row-start-1 md:row-span-3 md:mt-0 md:self-center">
             <Image
-              src="/mascot/hoshiyomi-guide-study-transparent.png"
+              src="/mascot/hoshiyomi-alice-writing-transparent.png"
               alt={copy.heroAlt}
-              width={1672}
-              height={941}
+              width={1638}
+              height={960}
               priority
-              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1100px) calc(100vw - 64px), 1040px"
+              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1100px) calc(50vw - 40px), 500px"
               className="h-auto w-full object-contain"
             />
           </div>
 
-          <div className="max-w-[760px]">
-            <p className="mt-6 max-w-[600px] text-[15px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:mt-7 md:text-[17px]">
-              {copy.description}
-            </p>
+          <p className="mt-4 max-w-[600px] text-[15px] font-medium leading-[1.9] text-[#2E2E5C]/65 md:col-start-1 md:row-start-2 md:mt-5 md:text-[17px]">
+            {copy.description}
+          </p>
 
+          <div className="max-w-[760px] md:col-start-1 md:row-start-3">
             <form onSubmit={submit} className="mt-7">
               <div className="flex items-center gap-2 rounded-2xl border border-[#5B5BEF]/20 bg-white p-2 shadow-[0_12px_34px_rgba(46,46,92,0.10)] focus-within:border-[#5B5BEF]/50">
                 <input
@@ -274,7 +305,11 @@ function HoshiyomiHome({
                   maxLength={1200}
                   disabled={!canCompose}
                   placeholder={
-                    hasChatAccess && remaining === 0
+                    canUpgradeToPremium && remaining === 0
+                      ? locale === "ko"
+                        ? copy.exhaustedPlaceholder
+                        : "Aliceとの続きを相談する"
+                      : hasChatAccess && remaining === 0
                       ? copy.exhaustedPlaceholder
                       : copy.inputPlaceholder
                   }
@@ -292,26 +327,13 @@ function HoshiyomiHome({
             </form>
 
             {hasChatAccess ? (
-              <>
-                <HomeUsageMeter
-                  remaining={remaining}
-                  total={totalCredits}
-                  locale={locale}
-                  faqButtonRef={faqButtonRef}
-                  onOpenFaq={() => setFaqOpen(true)}
-                />
-                {remaining === 0 && canUpgradeToPremium ? (
-                  <button
-                    type="button"
-                    onClick={onUpgradeRequest}
-                    className="mt-4 rounded-full bg-[#5B5BEF] px-5 py-3 text-[13px] font-black text-white shadow-sm transition active:scale-[0.98]"
-                  >
-                    {locale === "ko"
-                      ? "프리미엄으로 계속하기 (차액 ₩4,000)"
-                      : "Aliceと続きを話す（差額¥400）"}
-                  </button>
-                ) : null}
-              </>
+              <HomeUsageMeter
+                remaining={remaining}
+                total={totalCredits}
+                locale={locale}
+                faqButtonRef={faqButtonRef}
+                onOpenFaq={() => setFaqOpen(true)}
+              />
             ) : (
               <p className="mt-4 text-[12px] font-bold leading-relaxed text-[#2E2E5C]/55 md:text-[13px]">
                 {copy.purchaseHint}{" "}
@@ -331,59 +353,14 @@ function HoshiyomiHome({
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1040px] px-5 py-10 md:px-8 md:py-14">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">HISTORY</p>
-            <h2 className="mt-1 text-[22px] font-black md:text-[26px]">{copy.historyTitle}</h2>
-          </div>
-        </div>
-
-        {conversations.length === 0 ? (
-          <div className="mt-5 rounded-2xl border border-dashed border-[#2E2E5C]/15 bg-white px-6 py-10 text-center">
-            <p className="text-[15px] font-bold text-[#2E2E5C]/55">
-              {copy.historyEmpty}
-            </p>
-          </div>
-        ) : (
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {conversations.map((conversation) => {
-              const href = previewMode
-                ? `/dev/hoshiyomi-preview?chat=${conversation.id}`
-                : `${locale === "ko" ? "/ko" : ""}/hoshiyomi?chat=${conversation.id}`;
-              const messageCount = conversation.messages.filter(
-                (message) => message.role === "user",
-              ).length;
-              return (
-                <article
-                  key={conversation.id}
-                  className="group relative rounded-2xl border border-[#2E2E5C]/[0.07] bg-white p-5 shadow-[0_8px_24px_rgba(46,46,92,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(46,46,92,0.09)]"
-                >
-                  <Link href={href} className="block pr-10">
-                    <h3 className="line-clamp-2 text-[17px] font-black leading-snug">
-                      {conversation.title}
-                    </h3>
-                    <p className="mt-3 text-[12px] font-bold text-[#2E2E5C]/40">
-                      {copy.messageCount(messageCount)} ・ {formatDate(conversation.updatedAt, locale)}
-                    </p>
-                    <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-3.5 py-2 text-[12px] font-black text-white">
-                      {copy.openConversation} <SmallArrowIcon />
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => void remove(conversation.id)}
-                    disabled={previewMode || deletingId === conversation.id}
-                    aria-label={copy.deleteAria}
-                    className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E5C]/10 text-[#2E2E5C]/35 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-30"
-                  >
-                    <TrashIcon />
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        )}
+      <section className="mx-auto max-w-[1040px] px-5 pb-10 pt-4 md:px-8 md:pb-14 md:pt-6">
+        {/* LINE連携 (Alice Plus)。ja限定 */}
+        {locale === "ja" && !previewMode ? (
+          <LineAliceLinkCard
+            ownerToken={ownerToken}
+            trackingSource="hoshiyomi_home"
+          />
+        ) : null}
 
         <p className="mt-10 text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
           {copy.entertainmentNotice}
@@ -488,6 +465,44 @@ function HoshiyomiFaqModal({
   );
 }
 
+function HoshiyomiLineExitModal({
+  ownerToken,
+  onClose,
+}: {
+  ownerToken?: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="LINEでもAliceと話す"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#2E2E5C]/35 px-3 py-5 backdrop-blur-[2px] md:py-8"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-[1120px] px-3 pb-6 pt-10 md:px-6 md:pb-10"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <LineAliceLinkCard
+          ownerToken={ownerToken}
+          trackingSource="hoshiyomi_paywall_exit"
+          onClose={onClose}
+        />
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function RealChatPanel({
   conversation,
   remaining,
@@ -495,8 +510,6 @@ function RealChatPanel({
   locale,
   onRemainingChange,
   onBack,
-  canUpgradeToPremium,
-  onUpgradeRequest,
 }: {
   conversation: ActiveConversation;
   remaining: number;
@@ -504,10 +517,7 @@ function RealChatPanel({
   locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
-  canUpgradeToPremium: boolean;
-  onUpgradeRequest: () => void;
 }) {
-  const router = useRouter();
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -530,17 +540,25 @@ function RealChatPanel({
     messages: conversation.messages,
     transport,
     onError: () => {
+      track("hoshiyomi_response_failed");
       if (!rolledBackRef.current) {
         rolledBackRef.current = true;
         onRemainingChange(1);
       }
     },
-    onFinish: () => {
-      router.replace(
+    onFinish: ({ isAbort, isDisconnect, isError }) => {
+      if (isAbort || isDisconnect || isError) {
+        if (!rolledBackRef.current) track("hoshiyomi_response_failed");
+        return;
+      }
+      track("hoshiyomi_response_completed");
+      // 会話本文と残回数はuseChat/local stateに反映済み。URLだけを同期し、
+      // 動的ページのRSC再取得を毎メッセージ発生させない。
+      window.history.replaceState(
+        null,
+        "",
         `${locale === "ko" ? "/ko" : ""}/hoshiyomi?chat=${conversation.id}`,
-        { scroll: false },
       );
-      router.refresh();
     },
   });
   const [input, setInput] = useState("");
@@ -553,6 +571,13 @@ function RealChatPanel({
     rolledBackRef.current = false;
     clearError();
     onRemainingChange(-1);
+    track("hoshiyomi_message_sent", {
+      metadata: {
+        conversation_state: messages.some((message) => message.role === "user")
+          ? "continuing"
+          : "first_message",
+      },
+    });
     void sendMessage({ text: value });
     setInput("");
   };
@@ -583,8 +608,6 @@ function RealChatPanel({
       onSend={send}
       isBusy={isBusy}
       error={error ? HOSHIYOMI_COPY[locale].responseError : null}
-      canUpgradeToPremium={canUpgradeToPremium}
-      onUpgradeRequest={onUpgradeRequest}
     />
   );
 }
@@ -596,8 +619,6 @@ function PreviewChatPanel({
   locale,
   onRemainingChange,
   onBack,
-  canUpgradeToPremium,
-  onUpgradeRequest,
 }: {
   conversation: ActiveConversation;
   remaining: number;
@@ -605,8 +626,6 @@ function PreviewChatPanel({
   locale: ResultLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
-  canUpgradeToPremium: boolean;
-  onUpgradeRequest: () => void;
 }) {
   const [messages, setMessages] = useState<UIMessage[]>(() =>
     conversation.starter
@@ -675,8 +694,6 @@ function PreviewChatPanel({
       onSend={send}
       isBusy={busy}
       error={null}
-      canUpgradeToPremium={canUpgradeToPremium}
-      onUpgradeRequest={onUpgradeRequest}
     />
   );
 }
@@ -693,8 +710,6 @@ function ChatShell({
   onSend,
   isBusy,
   error,
-  canUpgradeToPremium,
-  onUpgradeRequest,
 }: {
   remaining: number;
   total: number;
@@ -707,8 +722,6 @@ function ChatShell({
   onSend: (value: string) => void;
   isBusy: boolean;
   error: string | null;
-  canUpgradeToPremium: boolean;
-  onUpgradeRequest: () => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
   const submit = (event: FormEvent) => {
@@ -734,7 +747,7 @@ function ChatShell({
           <BackIcon />
         </button>
         <div className="relative h-12 w-12 flex-none overflow-hidden rounded-full bg-[#F0EDFF] ring-2 ring-white shadow-sm">
-          <Image src="/mascot/hoshiyomi-guide.png" alt="" fill sizes="48px" className="object-contain" />
+          <Image src="/mascot/hoshiyomi-alice-avatar-transparent.png" alt="" fill sizes="48px" className="object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[16px] font-black md:text-[18px]">{copy.guideName}</h1>
@@ -809,17 +822,6 @@ function ChatShell({
               <ArrowIcon />
             </button>
           </form>
-          {remaining === 0 && canUpgradeToPremium ? (
-            <button
-              type="button"
-              onClick={onUpgradeRequest}
-              className="mt-3 w-full rounded-full bg-[#5B5BEF] px-5 py-3 text-[13px] font-black text-white transition active:scale-[0.99]"
-            >
-              {locale === "ko"
-                ? "프리미엄으로 계속하기 (차액 ₩4,000)"
-                : "Aliceと続きを話す（差額¥400）"}
-            </button>
-          ) : null}
           <p className="mt-2 text-center text-[10px] font-medium text-[#2E2E5C]/32">
             {copy.chatNotice}
           </p>
@@ -843,7 +845,7 @@ function AssistantMessage({ children }: { children: React.ReactNode }) {
 function GuideAvatar() {
   return (
     <div className="relative h-9 w-9 flex-none overflow-hidden rounded-full bg-[#F0EDFF]">
-      <Image src="/mascot/hoshiyomi-guide.png" alt="" fill sizes="36px" className="object-contain" />
+      <Image src="/mascot/hoshiyomi-alice-avatar-transparent.png" alt="" fill sizes="36px" className="object-contain" />
     </div>
   );
 }
@@ -931,30 +933,10 @@ function UsageMeter({
   );
 }
 
-function formatDate(value: string, locale: ResultLocale): string {
-  try {
-    return new Intl.DateTimeFormat(HOSHIYOMI_COPY[locale].dateLocale, {
-      month: "numeric",
-      day: "numeric",
-      timeZone: "Asia/Tokyo",
-    }).format(new Date(value));
-  } catch {
-    return "";
-  }
-}
-
 function ArrowIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function SmallArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 12h12M13 7l5 5-5 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -971,14 +953,6 @@ function BackIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="m15 5-7 7 7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { M_PLUS_Rounded_1c, Noto_Sans_JP } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
@@ -14,26 +14,32 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','${GOOGLE_TAG_MANAGER_ID}');`;
 
-const mPlusRounded = M_PLUS_Rounded_1c({
-  subsets: ["latin"],
-  // 丸ゴはロゴ用レタリングのみ: .wtr-name/.wtr-sub=800 / .wtr-logo-text=900。
-  // 本文は Noto Sans に統一済みのため他ウェイトは読み込まない
-  // (日本語フォントは 1 ウェイト ≈ 125 個の @font-face になり CSS が肥大するため)。
-  weight: ["800", "900"],
+// 丸ゴは「〜のトリセツ」ロゴレタリング (.wtr-logo-text) の固定文字だけに限定し、
+// 必要8文字 (ワタシのトリセツ) のみの自前サブセット woff2 (約2KB) をセルフホストする。
+// 価格表示は Noto Sans JP/KR の 700 (一時 M PLUS 化したが丸すぎるため撤回 2026-09-04)。
+// 旧: next/font/google で 2 ウェイト読み込み → 日本語フォントは 1 ウェイト ≈ 125 分割
+// woff2 になり、Vercel Edge Requests 課金の主因だったため (2026-09-04)。
+// 動的文字 (ユーザー名/タイプ名) はシステム丸ゴ (.wtr-logo-name / globals.css 参照)。
+// ライセンス: SIL OFL 1.1 (同ディレクトリ OFL-MPLUSRounded1c.txt / name テーブルにも保持)。
+const mPlusRounded = localFont({
+  src: "./fonts/mplus-rounded-1c-black-logo.woff2",
+  weight: "900",
   display: "swap",
   variable: "--font-m-plus-rounded",
+  // サブセット外の文字は CSS 側のフォールバック (Hiragino Maru 等) に確実に流す。
+  // 自動メトリクス調整フォントを挟むと挙動が読みにくくなるため無効化。
+  adjustFontFallback: false,
 });
 
-// サイト全体のゴシック (--font-noto-sans)。body 既定 + .body-gothic も共用。
-// H1=極太ゴシック(Noto Sans JP 800)、本文=ゴシック(Noto Sans JP 400/500/700)。
-// ※ 以前は結果ページ本文用に 400/500 の別インスタンス (--font-noto-sans-jp) が
-//   あったが、同一ファミリーで @font-face が丸ごと重複していたため統合した。
-const notoSansTop = Noto_Sans_JP({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
-  display: "swap",
-  variable: "--font-noto-sans",
-});
+// 本文ゴシック (--font-noto-sans) は Noto Sans JP を「Google Fonts 直接配信」
+// (16Personalities 日本語版と同方式) で読む (2026-09-04)。
+//   - <head> の preconnect ×2 + <link rel="stylesheet"> で読み込む (下の GOOGLE_FONTS_CSS_URL)
+//   - next/font/google は使わない (セルフホスト化されると Vercel Edge Requests 課金に戻るため)
+//   - ウェイトは 400/700 のみ。woff2 は fonts.gstatic.com から配信され Vercel 側課金ゼロ
+//   - フォールバックはヒラギノ/Meiryo (globals.css の :root 定義)
+//   - /ko では html[lang="ko"] の変数上書きで JP woff2 を引かせない (globals.css 参照)
+const GOOGLE_FONTS_CSS_URL =
+  "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans:wght@400;600&display=swap";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -194,11 +200,21 @@ export default function RootLayout({
     <html
       lang="ja"
       suppressHydrationWarning
-      className={`${mPlusRounded.variable} ${notoSansTop.variable}`}
+      className={mPlusRounded.variable}
     >
       <head>
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
         <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
+        {/* Noto Sans JP: Google Fonts 直接配信 (@import ではなく link / preconnect 必須)。
+            DOCUMENT_LANGUAGE_SCRIPT が html[lang] を先に確定させるので、/ko では
+            globals.css の変数上書きにより JP woff2 は要求されない。 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="stylesheet" href={GOOGLE_FONTS_CSS_URL} />
       </head>
       <body
         className="min-h-dvh flex flex-col"

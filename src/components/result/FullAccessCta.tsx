@@ -1,6 +1,6 @@
 "use client";
 
-// 日本版・韓国版の3コースで共用する課金導線ボタン。
+// 日本版・韓国版の商品カードで共用する課金導線ボタン。
 // クリックで /api/checkout/create-full-access-session を叩き、返ってきた Stripe Checkout
 // URL へ遷移する。金額・price はサーバ側 (Price 固定) で決まり、ここからは一切渡さない。
 //
@@ -8,11 +8,13 @@
 // ローディング / エラー表示を持つ (CLAUDE.md: エラー・ローディング・空状態を用意)。
 // 既に full の場合 (409 already_full) はページを再読込して本文表示へ戻す。
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
 import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
+import { readAdAttribution } from "@/lib/ad-attribution";
 import type { ResultLocale } from "@/i18n/result";
 import {
   FULL_ACCESS_PRICE_JPY,
@@ -26,8 +28,23 @@ import {
   type PaywallPlacement,
 } from "@/lib/access-products";
 
+function readCookie(name: string): string | null {
+  const prefix = `${name}=`;
+  const value = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function FullAccessCta({
-  children = "¥499で全部よむ",
+  children = "全部入りを解放する",
   // ページの owner_token (= 解放対象の本人)。Cookie 不在のスマホでも課金できるよう
   // サーバに本人解決の手がかりとして渡す。省略時は Cookie(session) fallback。
   ownerToken,
@@ -44,6 +61,8 @@ export function FullAccessCta({
   placement,
   compact = false,
   previewMode = false,
+  accentColor,
+  shadowColor,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -54,9 +73,9 @@ export function FullAccessCta({
   source?: string;
   /** 購入後の着地。診断・相性・運命の設計図の購入元へ戻す (既定は /me/[token])。 */
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
-  /** self_report=¥199 / full_access=¥499 / premium_bundle=¥899全部入り。 */
+  /** 日本版: self_report=学生向け¥299 / full_access=完全版¥499。premium_bundleは専用面の上位商品。 */
   product?: AccessProduct;
-  /** 3コース比較テストの識別子。未指定は旧単一カード。 */
+  /** 商品比較テストの識別子。未指定は旧単一カード。 */
   paywallVersion?: typeof THREE_COURSE_PAYWALL_VERSION;
   /** 同じカードの常設表示とモーダル表示を分ける。 */
   placement?: PaywallPlacement;
@@ -64,12 +83,22 @@ export function FullAccessCta({
   compact?: boolean;
   /** ローカルUI確認用。CTAを押しても計測・Checkoutを実行しない。 */
   previewMode?: boolean;
+  /** 結果グループに合わせたCTA色。未指定時は従来のネイビー。 */
+  accentColor?: string;
+  /** CTA下辺の立体影。accentColor と組で指定する。 */
+  shadowColor?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
   const resolvedUnauthHref =
     unauthHref ?? (locale === "ko" ? "/ko/diagnosis" : "/diagnosis");
+  const themedButtonStyle: CSSProperties | undefined = accentColor
+    ? {
+        backgroundColor: accentColor,
+        boxShadow: `0 4px 0 ${shadowColor ?? accentColor}`,
+      }
+    : undefined;
 
   async function handleClick() {
     if (loading) return;
@@ -82,12 +111,16 @@ export function FullAccessCta({
     const paywallSource = source
       ? normalizePaywallSource(source)
       : getLastPaywallSource();
+    const { ttclid } = readAdAttribution();
+    const ttp = readCookie("_ttp");
+    const fbp = readCookie("_fbp");
+    const fbc = readCookie("_fbc");
     // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
     // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
     track("purchase_cta_clicked", {
       ownerToken: ownerToken ?? null,
       metadata: {
-        page: window.location.pathname.split("/")[1] || "top",
+        page: trackingPageFromPathname(window.location.pathname),
         source: paywallSource,
         locale,
         product,
@@ -115,12 +148,26 @@ export function FullAccessCta({
           paywall_source: paywallSource,
           locale,
           product,
+          ...(ttclid ? { ttclid } : {}),
+          ...(ttp ? { ttp } : {}),
+          ...(fbp ? { fbp } : {}),
+          ...(fbc ? { fbc } : {}),
           ...(paywallVersion ? { paywall_version: paywallVersion } : {}),
           ...(placement ? { paywall_placement: placement } : {}),
         }),
       });
-      // 既に課金済み → 本文が見られる状態なので再読込。
+      // 旧カードならクエリ付きでキャッシュを避けて現行カードへ復帰する。
+      // 既に課金済みなら通常の再読込で本文表示へ戻す。
       if (res.status === 409) {
+        const conflict = (await res.json().catch(() => null)) as {
+          code?: unknown;
+        } | null;
+        if (conflict?.code === "stale_paywall") {
+          const refreshUrl = new URL(window.location.href);
+          refreshUrl.searchParams.set("paywall_refresh", String(Date.now()));
+          window.location.replace(refreshUrl.toString());
+          return;
+        }
         window.location.reload();
         return;
       }
@@ -192,10 +239,11 @@ export function FullAccessCta({
         type="button"
         onClick={handleClick}
         disabled={loading}
+        style={themedButtonStyle}
         className={`flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] disabled:pointer-events-none disabled:opacity-60 ${
           compact
             ? "h-[38px] py-0 text-[14px] font-bold"
-            : "py-3.5 text-base font-black"
+            : "py-3.5 text-base font-bold"
         }`}
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}

@@ -14,7 +14,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Local worktrees and generated audit artifacts are not application source.
     ".claude/**",
+    ".codex_tmp/**",
+    "apps/alice/**",
+    "output/**",
     "outputs/**",
+    "tmp/**",
+    "supabase/.temp/**",
   ]),
 ]);
 

@@ -1,7 +1,7 @@
-// 第二部「友達から見たアナタ」表示層 (三層モデル)。
+// 第二部「友達から見たあなた」表示層 (三層モデル)。
 //
 // 構成 (2026-07-12 確定・ロック状態でも同じ並び):
-//   1. 友達から見たアナタの武器      … 無料 (未解放でも本物を公開)
+//   1. 友達から見たあなたの武器      … 無料 (未解放でも本物を公開)
 //   2. 友達から嫌われやすい性格      … 🔒 (未解放はぼかし + 解除カード)
 //   3. 友達から好かれやすい性格      … 無料 (未解放でも本物を公開)
 //   4. 関係別の見られ方 (友達/恋人/家族/上司) … 🔒 (未解放は 16P 風の鍵付き円 + 解除カード)
@@ -16,6 +16,7 @@
 import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { RelationLockGrid } from "@/components/result/RelationLockGrid";
 import type { ResultLocale } from "@/i18n/result";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
@@ -35,7 +36,7 @@ interface PartTwoSectionsProps {
 
 function SectionHeading({ title }: { title: string }) {
   return (
-    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">{title}</h3>
+    <h3 className="mb-3 text-[20px] font-bold text-[#2E2E5C]">{title}</h3>
   );
 }
 
@@ -117,18 +118,18 @@ function WarnList({ items }: { items: ContentItem[] }) {
 // ⚠ これはダミー (全ユーザー共通のデコイ)。本物の本文はサーバで解決すらしていないので、
 //   ぼかしを外されても漏れるのはこの文だけ (フェイルクローズは維持)。
 const DECOY_ITEMS: ContentItem[] = [
-  { title: "実は頑固なところ", body: "友達には、一度こうと決めたら曲げないアナタが、たまに見えている。" },
-  { title: "連絡が遅くなりがち", body: "友達は、返事を後回しにするアナタに、少しだけやきもきしている。" },
+  { title: "実は頑固なところ", body: "友達には、一度こうと決めたら曲げないあなたが、たまに見えている。" },
+  { title: "連絡が遅くなりがち", body: "友達は、返事を後回しにするあなたに、少しだけやきもきしている。" },
   { title: "本音を出さない瞬間", body: "友達には、笑って流しているけど本音が見えない時がある、と映っている。" },
-  { title: "気分にムラがある", body: "友達は、日によってテンションが違うアナタに気づいている。" },
-  { title: "抱え込みやすい", body: "友達には、限界まで一人で頑張ってしまうアナタが心配に見えている。" },
-  { title: "詰めが甘い時", body: "友達は、最後の最後で力が抜けるアナタを知っている。" },
+  { title: "気分にムラがある", body: "友達は、日によってテンションが違うあなたに気づいている。" },
+  { title: "抱え込みやすい", body: "友達には、限界まで一人で頑張ってしまうあなたが心配に見えている。" },
+  { title: "詰めが甘い時", body: "友達は、最後の最後で力が抜けるあなたを知っている。" },
   { title: "距離の取り方", body: "友達には、急に壁を作るように見える瞬間がある、と映っている。" },
-  { title: "頼るのが苦手", body: "友達は、助けを求めないアナタに「言ってよ」と思っている。" },
-  { title: "こだわりが強い", body: "友達には、細かい部分を譲らないアナタが見えている。" },
+  { title: "頼るのが苦手", body: "友達は、助けを求めないあなたに「言ってよ」と思っている。" },
+  { title: "こだわりが強い", body: "友達には、細かい部分を譲らないあなたが見えている。" },
   { title: "熱しやすく冷めやすい", body: "友達は、夢中になる速さと飽きる速さの両方を知っている。" },
-  { title: "空気を読みすぎる", body: "友達には、周りに合わせて疲れているアナタが見えている。" },
-  { title: "負けず嫌いな一面", body: "友達は、さりげなく張り合ってくるアナタを面白がっている。" },
+  { title: "空気を読みすぎる", body: "友達には、周りに合わせて疲れているあなたが見えている。" },
+  { title: "負けず嫌いな一面", body: "友達は、さりげなく張り合ってくるあなたを面白がっている。" },
 ];
 
 const KO_DECOY_ITEMS: ContentItem[] = [
@@ -151,20 +152,17 @@ function DummyCards({ rows, locale }: { rows: number; locale: ResultLocale }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
+      className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
     >
       {/* rows がデコイ数を超えたら循環して埋める (ぼかし面を必要なだけ長く敷ける) */}
       {Array.from({ length: rows }, (_, i) => {
         const it = decoyItems[i % decoyItems.length];
         return (
-          <div
-            key={i}
-            className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
-          >
-            <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+          <div key={i}>
+            <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
               {it.title}
             </p>
-            <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+            <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
               {it.body}
             </p>
           </div>
@@ -264,26 +262,12 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
     locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
-      {/* 鍵付きの円 (SP 2列 / md 3列。2026-07-15 に 4関係 → 6関係へ増量) */}
-      <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3">
-        {relationLockItems.map((item) => (
-          <div key={item.label} className="flex flex-col items-center gap-2.5">
-            <span
-              className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
-              style={{ borderColor: item.color }}
-            >
-              <LockGlyph size={30} />
-            </span>
-            <span className="text-[13px] font-black text-[#2E2E5C]">
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* 鍵付きの円 (SP 2列 / md 3列。友達・恋人・家族・上司の4関係) */}
+      <RelationLockGrid id="relation-lock-rings" items={relationLockItems} />
 
       {/* 解除カード (上辺にアクセント線 + 鍵バッジ)。PC は 16P の比率に合わせ広め */}
-      <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-        <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+      <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+        <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
           <LockGlyph size={14} />
         </span>
         <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -296,14 +280,14 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
             <>
               自己分析レポートを入手して、
               <br className="md:hidden" />
-              周りの人がアナタに言えずにいることを知りましょう。
+              周りの人があなたに言えずにいることを知りましょう。
             </>
           )}
         </p>
         {/* 最下部の課金カードへスムーススクロール+パルス。 */}
         <PaywallScrollButton
           source="relations_card"
-          className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+          className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
           {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
         </PaywallScrollButton>

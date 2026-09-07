@@ -1,7 +1,7 @@
 // /tako 友達別シートの本文 = その友達が見たキャラ(32タイプ)の自己診断本文を他己視点に再構成。
 //   selfContentFor の 取扱説明書(0)/取扱注意ポイント(1) の2セクションを流用。
 //   2026-07-18: セクション見出し・導入文を廃止し、/me と同じく本文からいきなり始める。
-//   冒頭の「アナタは、/アナタの根っこにあるのは、」に「◯◯さんから見た」を前置して
+//   冒頭の「あなたは、/あなたの根っこにあるのは、」に「◯◯さんから見た」を前置して
 //   友達視点へ変換 (32タイプすべてこの2パターンで始まることを確認済み)。
 //   2026-07-19: /me と同じシーン挿絵 (normal1=本文中間 / normal2=クセ見出し直下) を追加。
 //   タイポグラフィは /me 本文プローズ (body-gothic 17px) と統一。
@@ -65,12 +65,12 @@ export function MinnaTypeProse({
   if (sections.length === 0) return null;
   const who = viewer ?? (isKo ? "친구" : "友達");
 
-  // 取扱説明書: 冒頭を「◯◯さんから見たアナタは、〜」へ変換し、友達視点の締めを添える。
+  // 取扱説明書: 冒頭を「◯◯さんから見たあなたは、〜」へ変換し、友達視点の締めを添える。
   const [manual] = sections;
   const manualParas = manual.body.split("\n\n");
   if (isKo && manualParas[0]?.startsWith("당신")) {
     manualParas[0] = `${who}이 보는 ${manualParas[0]}`;
-  } else if (manualParas[0]?.startsWith("アナタ")) {
+  } else if (manualParas[0]?.startsWith("あなた")) {
     manualParas[0] = `${who}から見た${manualParas[0]}`;
   }
 
@@ -79,7 +79,7 @@ export function MinnaTypeProse({
   const imageAfter = Math.max(0, Math.floor(manualParas.length / 2) - 1);
 
   // グラフ (midSlot) の直後で本文を再開する段落は、接続詞 (そして/しかも 等) を落として
-  // 「◯◯さんから見たアナタは〜」で仕切り直す (2026-07-20 指示)。
+  // 「◯◯さんから見たあなたは〜」で仕切り直す (2026-07-20 指示)。
   const reopenIdx = imageAfter + 1;
   if (viewer && reopenIdx < manualParas.length) {
     let t = manualParas[reopenIdx];
@@ -97,8 +97,8 @@ export function MinnaTypeProse({
         ? `${who}이 보는 ${t}`
         : `${who}이 보기에는 ${t}`;
     } else {
-      manualParas[reopenIdx] = t.startsWith("アナタは")
-        ? `${who}から見たアナタは${t.slice("アナタは".length)}`
+      manualParas[reopenIdx] = t.startsWith("あなたは")
+        ? `${who}から見たあなたは${t.slice("あなたは".length)}`
         : `${who}から見ると、${t}`;
     }
   }

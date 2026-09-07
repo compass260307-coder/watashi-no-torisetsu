@@ -7,6 +7,26 @@
 import characterImages from "@/generated/character-images.json";
 import type { ThirtyTwoGroup } from "./thirty-two-content/character-32";
 
+/**
+ * キャラ画像と同じスラッグのループ動画 URL を返す。
+ * 例: /characters/cut/dolphin_R.webp → /characters/anim/dolphin_R.webm
+ * 動画が未配置なら null。WebM を優先し、MP4 にもフォールバックする。
+ */
+export function characterAnimationForImage(imagePath: string): string | null {
+  const pathWithoutQuery = imagePath.split(/[?#]/, 1)[0];
+  const fileName = pathWithoutQuery.slice(pathWithoutQuery.lastIndexOf("/") + 1);
+  const extensionIndex = fileName.lastIndexOf(".");
+  if (extensionIndex <= 0) return null;
+
+  const slug = fileName.slice(0, extensionIndex);
+  const anims = characterImages.anims as string[];
+  const animFile = [`${slug}.webm`, `${slug}.mp4`].find((candidate) =>
+    anims.includes(candidate),
+  );
+
+  return animFile ? `/characters/anim/${animFile}` : null;
+}
+
 /** v3 原画パスを受け取り、透過版があれば /characters/cut のパスを、無ければ引数のまま返す。 */
 export function preferCutImage(v3Path: string): string {
   const base = v3Path.slice(v3Path.lastIndexOf("/") + 1);

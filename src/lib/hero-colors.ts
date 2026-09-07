@@ -48,3 +48,55 @@ export function cardColorsForGroup(group: ThirtyTwoGroup): {
 } {
   return CARD_TONE[group];
 }
+
+// 結果ページの主要CTA・シェア導線用トーン。
+// ヒーロー帯より一段濃くし、白文字でも読みやすいコントラストを確保する。
+const RESULT_ACTION_TONE: Record<
+  ThirtyTwoGroup,
+  {
+    accent: string;
+    hover: string;
+    shadow: string;
+    softBg: string;
+    border: string;
+  }
+> = {
+  sea: {
+    accent: "#26798B",
+    hover: "#206B7A",
+    shadow: "#184F5B",
+    softBg: "#EAF7FA",
+    border: "#B8E2EA",
+  },
+  sky: {
+    accent: "#856B16",
+    hover: "#715A11",
+    shadow: "#554308",
+    softBg: "#FBF6E4",
+    border: "#E8D99D",
+  },
+  land: {
+    accent: "#4B8137",
+    hover: "#3E6E2D",
+    shadow: "#2D5321",
+    softBg: "#EEF7E9",
+    border: "#C4E1B7",
+  },
+  unknown: {
+    accent: "#7658AF",
+    hover: "#654A9B",
+    shadow: "#4C3778",
+    softBg: "#F3EFFB",
+    border: "#D8C9EE",
+  },
+};
+
+export function resultActionColorsForGroup(group: ThirtyTwoGroup): {
+  accent: string;
+  hover: string;
+  shadow: string;
+  softBg: string;
+  border: string;
+} {
+  return RESULT_ACTION_TONE[group];
+}

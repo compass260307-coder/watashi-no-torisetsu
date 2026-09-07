@@ -15,7 +15,7 @@ import {
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
 export const metadata: Metadata = {
-  title: { absolute: "판매 및 환불 안내 | 나의 사용설명서" },
+  title: { absolute: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서" },
   description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
   alternates: localizedAlternates(
     "ko",
@@ -28,13 +28,13 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${SITE_URL}/ko/legal/commerce`,
     siteName: KO_SITE_NAME,
-    title: "판매 및 환불 안내 | 나의 사용설명서",
+    title: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서",
     description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "판매 및 환불 안내 | 나의 사용설명서",
+    title: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서",
     description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
     images: [KO_DEFAULT_OG_IMAGE.url],
   },
@@ -44,8 +44,8 @@ export const metadata: Metadata = {
 export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
-      title="판매 및 환불 안내"
-      lastUpdated="2026년 8월 14일"
+      title="사업자 정보 및 판매·환불 조건"
+      lastUpdated="2026년 9월 1일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -61,10 +61,16 @@ export default function KoreanCommercePage() {
       <h2>사업장 소재 국가</h2>
       <p>일본</p>
 
-      <h2>사업장 주소 및 전화번호</h2>
+      <h2>사업장 주소</h2>
       <p>
-        구체적인 주소와 전화번호는 요청이 있으면 지체 없이 안내합니다. 구매 전
-        확인이 필요한 경우 아래 이메일로 연락해 주세요.
+        요청이 있으면 지체 없이 안내합니다. 구매 전에 확인하려면 아래 이메일로
+        연락해 주세요.
+      </p>
+
+      <h2>전화번호</h2>
+      <p>
+        요청이 있으면 지체 없이 안내합니다. 구매 전에 확인하려면 아래 이메일로
+        연락해 주세요.
       </p>
 
       <h2>문의</h2>
@@ -78,21 +84,20 @@ export default function KoreanCommercePage() {
       <h2>상품명과 판매 가격</h2>
       <ul>
         <li>
-          라이트 코스: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단
-          결과 및 자기 분석 PDF 포함)
+          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
+          잠긴 9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구
+          진단 결과, 여러 번 다시 만들 수 있는 친구 분석 PDF, 궁합 진단, 한국어
+          운명의 설계도, AI 점성술사 Alice 채팅 30회, 타로 3종 포함)
         </li>
         <li>
-          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트의
-          모든 기능, 두 번째 친구부터의 친구 진단 결과, 친구 분석 PDF, 연애
-          파트너 궁합 분석 포함. 라이트 구매자는 차액{" "}
-          {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
+          학생 플랜: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단의 잠긴
+          9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구 진단
+          결과, 여러 번 다시 만들 수 있는 친구 분석 PDF 포함. 궁합 진단, 운명의
+          설계도, AI 점성술사 Alice, 타로는 포함하지 않음)
         </li>
         <li>
           프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
-          (라이트 구매자는 차액{" "}
-          {krw(PREMIUM_BUNDLE_PRICE_KRW - SELF_REPORT_PRICE_KRW)}, 완전판
-          구매자는 차액{" "}
-          {krw(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW)})
+          (기존 구매의 업그레이드 호환용. 현재 완전판 코스와 동일한 내용 포함)
         </li>
         <li>구독, 자동 갱신 또는 추가 결제 없음</li>
       </ul>
@@ -100,20 +105,25 @@ export default function KoreanCommercePage() {
         표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
         화면에서 다시 확인할 수 있습니다.
       </p>
+      <p>
+        과거 대상 상품을 이미 구매한 경우에는 기존 결제 금액을 반영한 차액으로
+        상위 상품을 제공할 수 있습니다. 실제 판매 가격은 구매 화면에 표시됩니다.
+      </p>
 
       <h2>상품 내용</h2>
       <ul>
         <li>
-          라이트: 자기 진단 결과의 잠긴 8개 섹션 전체 해제, 16페이지 이상의
-          자기 분석 PDF
+          학생 플랜: 자기 진단 결과의 잠긴 9개 섹션 전체 해제, 16페이지 이상의
+          전용 전자책, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번 다시
+          만들 수 있는 친구 분석 PDF
         </li>
         <li>
-          완전판: 라이트의 모든 기능, 두 번째 친구부터의 친구 진단 결과 전체
-          해제, 여러 번 다시 만들 수 있는 친구 분석 PDF, 연애 파트너 궁합 분석
+          완전판: 학생 플랜의 모든 기능, 궁합 진단, 한국어 운명의 설계도, AI
+          점성술사 Alice 채팅 30회, 타로 3종
         </li>
         <li>
-          프리미엄: 완전판의 모든 기능, 한국어 운명의 설계도, 나만의 전담
-          점성술사 채팅 총 30회
+          프리미엄: 기존 구매의 업그레이드 호환용으로 제공되며, 현재 완전판과
+          동일한 기능
         </li>
       </ul>
       <p>
@@ -145,6 +155,10 @@ export default function KoreanCommercePage() {
           사용한 이메일 주소로 발송됩니다. 친구 진단 PDF는 친구 진단 결과
           페이지에서 다운로드할 수 있습니다.
         </li>
+        <li>
+          구매 확인 이메일에는 상품명, 결제 금액, 제공 시기, 판매자 연락처와
+          환불 방법을 함께 안내합니다.
+        </li>
       </ol>
 
       <h2>청약철회, 취소 및 30일 환불 보장</h2>
@@ -154,13 +168,14 @@ export default function KoreanCommercePage() {
           있습니다.
         </li>
         <li>
-          support@watashi-torisetsu.com으로 결제에 사용한 이메일 주소와 환불 요청
-          사실을 보내 주세요.
+          support@watashi-torisetsu.com으로 결제에 사용한 이메일 주소, 결제일,
+          상품명과 환불 요청 사실을 보내 주세요. 환불 사유는 선택 사항입니다.
         </li>
         <li>환불 보장은 동일한 결제 건당 1회 적용됩니다.</li>
         <li>
-          환불은 원칙적으로 Stripe를 통해 원래 결제 수단으로 처리됩니다. 결제
-          회사의 처리 일정에 따라 실제 반영까지 며칠이 걸릴 수 있습니다.
+          유효한 환불 요청을 확인한 날부터 3영업일 이내에 Stripe를 통한 환불
+          절차를 시작합니다. 원래 결제 수단에 실제 반영되는 시점은 카드사 또는
+          결제 회사의 처리 일정에 따라 더 늦어질 수 있습니다.
         </li>
         <li>
           전액 환불이 완료되면 해당 결제로 부여된 유료 기능의 이용 권한도
@@ -179,7 +194,19 @@ export default function KoreanCommercePage() {
           이 환불 보장은 관련 법령에 따른 청약철회, 계약 해제, 하자에 대한 권리나
           손해배상 청구를 제한하지 않습니다.
         </li>
+        <li>
+          환급이 법정 기한보다 지연되는 경우에는 관련 법령에 따른 지연배상금이
+          적용될 수 있습니다.
+        </li>
       </ol>
+
+      <h2>미성년자의 계약 취소</h2>
+      <p>
+        미성년자는 구매 전에 법정대리인의 동의를 받아야 합니다. 동의 없이 체결한
+        계약은 미성년자 본인 또는 법정대리인이 관련 법령에 따라 취소할 수
+        있습니다. 다만, 법정대리인이 처분을 허락한 재산의 범위에서 이루어진 구매
+        등 법령상 취소할 수 없는 경우는 제외합니다.
+      </p>
 
       <h2>이용 환경</h2>
       <p>
@@ -192,10 +219,21 @@ export default function KoreanCommercePage() {
         거래 또는 환불과 관련한 불만은 먼저 문의 이메일로 접수해 주세요. 관련
         법령에 따른 소비자 분쟁 해결 절차를 이용할 권리는 제한되지 않습니다.
       </p>
+      <p>
+        한국 소비자는 1372 소비자상담센터({" "}
+        <a href="https://www.ccn.go.kr" target="_blank" rel="noopener noreferrer">
+          ccn.go.kr
+        </a>
+        ) 또는 한국소비자원({" "}
+        <a href="https://www.kca.go.kr" target="_blank" rel="noopener noreferrer">
+          kca.go.kr
+        </a>
+        )에 상담과 피해 구제를 요청할 수 있습니다.
+      </p>
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 8월 14일</p>
+      <p>최종 개정일: 2026년 9월 1일</p>
     </KoreanLegalDocument>
   );
 }

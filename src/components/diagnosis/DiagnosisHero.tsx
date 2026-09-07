@@ -32,7 +32,7 @@ export function DiagnosisHero({
       <div className="mx-auto flex max-w-[1080px] flex-col items-center gap-4 md:flex-row md:items-center md:gap-10">
         <div className="w-full md:flex-1">
           <h1
-            className="text-center text-[34px] font-black leading-[1.35] md:text-left md:text-[52px]"
+            className="text-center text-[34px] font-bold leading-[1.35] md:text-left md:text-[52px]"
             style={{ color: NAVY }}
           >
             {title}

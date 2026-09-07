@@ -11,6 +11,8 @@ import {
   hoshiyomiChatCreditTarget,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
+  purchaseIncludesHoshiyomiChat,
+  purchaseIncludesTarotFeatures,
 } from "@/lib/access-products";
 
 export { isCheckoutSessionId };
@@ -24,8 +26,10 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   guest: boolean;
   product: MetaPurchaseProduct;
   destinyFeaturesIncluded: boolean;
-  friendFeaturesIncluded: boolean;
+  hoshiyomiChatIncluded: boolean;
   hoshiyomiChatCredits: number;
+  tarotFeaturesIncluded: boolean;
+  friendFeaturesIncluded: boolean;
 }>;
 
 function claimSecret(): string | null {
@@ -103,6 +107,30 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
           purchaseIncludesDestinyFeatures(
             product,
             session.metadata?.destiny_access_policy,
+            session.metadata?.locale,
+          )),
+      // チャットのクレジット付与があるのは premium_bundle と対象の full_access のみ
+      // (旧 unmei 単体商品は付与対象外)。
+      hoshiyomiChatIncluded:
+        product === "premium_bundle" ||
+        (product === "full_access" &&
+          purchaseIncludesHoshiyomiChat(
+            product,
+            session.metadata?.hoshiyomi_chat_policy,
+          )),
+      hoshiyomiChatCredits:
+        product === "premium_bundle" || product === "full_access"
+          ? hoshiyomiChatCreditTarget(
+              product,
+              session.metadata?.hoshiyomi_chat_policy,
+            )
+          : 0,
+      tarotFeaturesIncluded:
+        product === "premium_bundle" ||
+        (product === "full_access" &&
+          purchaseIncludesTarotFeatures(
+            product,
+            session.metadata?.tarot_access_policy,
           )),
       friendFeaturesIncluded:
         product === "self_report" ||
@@ -113,16 +141,6 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
               session.metadata?.friend_access_policy,
             )
           : false,
-      hoshiyomiChatCredits:
-        product === "self_report" ||
-        product === "full_access" ||
-        product === "premium_bundle"
-          ? hoshiyomiChatCreditTarget(
-              product,
-              session.metadata?.hoshiyomi_chat_policy,
-              session.metadata?.destiny_access_policy,
-            )
-          : 0,
     };
   } catch {
     // 無効・失効済み・別環境の Session ID は購入完了として扱わない。

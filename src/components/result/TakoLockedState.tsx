@@ -90,6 +90,8 @@ interface TakoLockedStateProps {
   previewMode?: boolean;
   /** ④ 相性ループ Path1 の /aisho?a= に使う本人の32型。無ければ Path1 は出ない。 */
   ownerType32: ThirtyTwoTypeId | null;
+  /** 相性診断権限（新規購入ではプレミアム）を持つときだけ導線を表示する。 */
+  aishoUnlocked: boolean;
   /** ④ Path2: 友達を自己診断へ誘う導線先 (診断LP=サイトルート)。 */
   selfDiagnoseUrl: string;
   ownerToken: string;
@@ -107,6 +109,7 @@ export function TakoLockedState({
   previewMode = false,
   previewShareMode,
   ownerType32,
+  aishoUnlocked,
   selfDiagnoseUrl,
   ownerToken,
   inviteCode,
@@ -149,8 +152,12 @@ export function TakoLockedState({
 
   const diagnoseText = (name: string) =>
     isKo
-      ? `나를 봐 줘서 고마워! 이번에는 ${name}님의 사용설명서도 만들어 봐. 두 사람의 궁합도 볼 수 있어.`
-      : `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`;
+      ? aishoUnlocked
+        ? `나를 봐 줘서 고마워! 이번에는 ${name}님의 사용설명서도 만들어 봐. 두 사람의 궁합도 볼 수 있어.`
+        : `나를 봐 줘서 고마워! 이번에는 ${name}님의 사용설명서도 만들어 봐.`
+      : aishoUnlocked
+        ? `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。2人の相性も見れるよ`
+        : `わたしのこと見てくれてありがとう！今度は${name}のトリセツも作ってみて。`;
 
   return (
     <div>
@@ -274,6 +281,7 @@ export function TakoLockedState({
             : null
         }
         ownerType32={ownerType32}
+        aishoUnlocked={aishoUnlocked}
         onInviteToDiagnose={() => {
           // Path2: 詳細を閉じ、③シートを「診断に誘う」文脈で開く。
           const name = detailFriend?.name ?? (isKo ? "친구" : "友達");
@@ -300,9 +308,13 @@ export function TakoLockedState({
         }
         subtitle={
           sendMode?.kind === "diagnose"
-            ? isKo
-              ? `${sendMode.friendName}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
-              : `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+            ? aishoUnlocked
+              ? isKo
+                ? `${sendMode.friendName}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
+                : `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+              : isKo
+                ? `${sendMode.friendName}님의 사용설명서도 만들 수 있어요`
+                : `${sendMode.friendName}さん自身のトリセツも作れるようになるよ`
             : undefined
         }
         shareText={

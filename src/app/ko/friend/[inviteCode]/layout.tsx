@@ -3,7 +3,6 @@ import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
-  thirtyTwoImagePath,
 } from "@/lib/thirty-two-types";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { BigFiveDimension } from "@/lib/types";
@@ -85,10 +84,6 @@ export async function generateMetadata({
   >;
   const type32 = classifyThirtyTwoType(scores);
   const copy = KO_RESULT_TYPES[type32];
-  const slug = thirtyTwoImagePath(type32)
-    .split("/")
-    .pop()!
-    .replace(/\.\w+$/, "");
   const name = ((data.display_name as string | null) ?? "").trim();
 
   return metadataForInvite({
@@ -99,8 +94,8 @@ export async function generateMetadata({
     description: name
       ? `친구의 눈에 비친 ${name}님의 모습을 30개 질문으로 알려 주세요.`
       : FALLBACK_DESCRIPTION,
-    imageUrl: `${SITE_URL}/og-characters/${slug}.jpg`,
-    imageAlt: copy.name,
+    imageUrl: `${SITE_URL}${KO_DEFAULT_OG_IMAGE.url}`,
+    imageAlt: KO_DEFAULT_OG_IMAGE.alt,
   });
 }
 

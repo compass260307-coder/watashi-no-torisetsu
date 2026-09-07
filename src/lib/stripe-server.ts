@@ -40,7 +40,7 @@ export function getPremiumPriceId(): string | null {
 }
 
 // フルアクセス (買い切り) のロケール別 Price ID。
-// 日本版 ¥499 は STRIPE_PRICE_FULL_ACCESS、韓国版 ₩4,900 は
+// 日本版の完全版は STRIPE_PRICE_FULL_ACCESS、韓国版 ₩4,900 は
 // STRIPE_PRICE_FULL_ACCESS_KRW に分離し、通貨の取り違えを防ぐ。
 export function getFullAccessPriceId(locale: "ja" | "ko" = "ja"): string | null {
   return locale === "ko"

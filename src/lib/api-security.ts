@@ -121,6 +121,14 @@ export async function consumeRateLimit(
   options: RateLimitOptions,
 ): Promise<RateLimitResult> {
   const rawIdentifier = options.identifier ?? clientAddress(request);
+  return consumeIdentifierRateLimit(rawIdentifier, options);
+}
+
+/** Webhookで検証済みの外部IDなど、明示的な識別子に対する共有レート制限。 */
+export async function consumeIdentifierRateLimit(
+  rawIdentifier: string,
+  options: Omit<RateLimitOptions, "identifier">,
+): Promise<RateLimitResult> {
   const identifierHash = hmac(`${options.scope}\0${rawIdentifier}`);
 
   const { data, error } = await supabaseAdmin.rpc("consume_api_rate_limit", {

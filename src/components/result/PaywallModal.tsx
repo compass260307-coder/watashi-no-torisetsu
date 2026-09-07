@@ -15,7 +15,7 @@
 // のほか、下部ナビのロック相性タブなど「タップでその場で開きたい」呼び出し元が
 // open/onClose を自前管理して直接使えるようにした。
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FullAccessPromoCard } from "./FullAccessPromoCard";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
@@ -26,6 +26,8 @@ import type { ResultLocale } from "@/i18n/result";
 interface PaywallModalProps {
   ownerToken?: string;
   imageSrc?: string | null;
+  /** キャラ別PDF表紙を選ぶための元キャラ画像。 */
+  reportCharacterImageSrc?: string | null;
   imageAlt?: string;
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
@@ -33,11 +35,14 @@ interface PaywallModalProps {
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
   products?: readonly AccessProduct[];
-  defaultProduct?: AccessProduct;
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
   /** 3コース化以前のコンパクトな単一課金カード表示。 */
   legacyPlanStyle?: boolean;
+  /** 3コース比較で最初に表示するコース。 */
+  defaultProduct?: AccessProduct;
+  /** モーダルを開いた導線に合わせた見出し。 */
+  heading?: string;
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。
@@ -46,8 +51,16 @@ interface PaywallModalProps {
 export function PaywallOverlay({
   onClose,
   ctaSource,
+  scrollLocked = false,
   ...cardProps
-}: PaywallModalProps & { onClose: () => void; ctaSource?: string }) {
+}: PaywallModalProps & {
+  onClose: () => void;
+  ctaSource?: string;
+  scrollLocked?: boolean;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+
   // 開いている間は背面スクロールをロック + Esc で閉じる。
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -64,6 +77,31 @@ export function PaywallOverlay({
 
   const isKorean = cardProps.locale === "ko";
 
+  const updateScrollToTopVisibility = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const maxScroll = Math.max(
+      0,
+      container.scrollHeight - container.clientHeight,
+    );
+    const distanceFromBottom = maxScroll - container.scrollTop;
+    const nextVisible = maxScroll > 300 && distanceFromBottom <= 64;
+    setShowScrollToTop((current) =>
+      current === nextVisible ? current : nextVisible,
+    );
+  };
+
+  const scrollModalToTop = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    container.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  };
+
   return createPortal(
     <div
       role="dialog"
@@ -76,8 +114,12 @@ export function PaywallOverlay({
       {/* 箱: 高さ上限つき + 内部スクロール。中身(カード)がはみ出す分だけ箱内で
           スクロールする (背景全体はスクロールしない)。×はカード右上に内蔵。 */}
       <div
-        className="relative max-h-[calc(100dvh-2.5rem)] w-full max-w-[1120px] overflow-y-auto overscroll-contain rounded-3xl md:max-h-[calc(100dvh-4rem)]"
+        ref={scrollContainerRef}
+        className={`relative max-h-[calc(100dvh-2.5rem)] w-full max-w-[1120px] overscroll-contain rounded-3xl md:max-h-[calc(100dvh-4rem)] ${
+          scrollLocked ? "overflow-hidden" : "overflow-y-auto"
+        }`}
         onClick={(e) => e.stopPropagation()}
+        onScroll={updateScrollToTopVisibility}
       >
         <FullAccessPromoCard
           {...cardProps}
@@ -86,6 +128,37 @@ export function PaywallOverlay({
           onClose={onClose}
         />
       </div>
+      <button
+        type="button"
+        aria-label={isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
+        aria-hidden={!showScrollToTop}
+        tabIndex={showScrollToTop ? 0 : -1}
+        onClick={(event) => {
+          event.stopPropagation();
+          scrollModalToTop();
+        }}
+        className={`fixed left-1/2 z-[110] flex h-11 -translate-x-1/2 items-center gap-1 rounded-full bg-[#2A3A5C] px-3 text-[12px] font-black text-white shadow-[0_7px_20px_rgba(42,58,92,0.3)] transition duration-200 touch-manipulation active:scale-95 print:hidden md:hidden ${
+          showScrollToTop
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-2 opacity-0"
+        }`}
+        style={{ top: "calc(72px + env(safe-area-inset-top))" }}
+      >
+        <svg
+          aria-hidden="true"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m6 15 6-6 6 6" />
+        </svg>
+        <span>{isKorean ? "맨 위로" : "上へ"}</span>
+      </button>
     </div>,
     document.body,
   );

@@ -1,5 +1,5 @@
 // キャラシェア着地ページ /share/{invite_code}・/ko/share/{invite_code}。
-//   - per-owner OG: そのオーナーの称号キャラOGカードを og:image に出す。
+//   - OG画像はシェア主の32タイプに対応するキャラ別画像を使用する。
 //   - 2026-07-26 刷新: 薄い1枚カードをやめ、シェア主タイプの結果ページ (モック) を
 //     課金導線なしでまるごと見せる (MeResultPage 獲得モード)。CTA は
 //     「無料で性格診断をする」(/diagnosis) に統一。
@@ -18,13 +18,14 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   baseIdOf,
   classifyThirtyTwoType,
+  thirtyTwoCharacterSlug,
   thirtyTwoEssence,
-  thirtyTwoImagePath,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
 import { localizedAlternates } from "@/lib/locale-seo";
+import { ShareLandingTracker } from "@/components/share/ShareLandingTracker";
 
 const SITE_URL = resolveSiteUrl();
 const NAVY = "#2A3A5C";
@@ -32,11 +33,10 @@ const NAVY = "#2A3A5C";
 interface ShareData {
   name: string;
   essence: string;
-  slug: string;
   t32: ThirtyTwoTypeId;
 }
 
-// invite_code → display_name + scores → 32タイプの称号/slug に解決。無ければ null。
+// invite_code → display_name + scores → 32タイプの称号に解決。無ければ null。
 async function loadShareData(
   code: string,
   locale: ResultLocale,
@@ -53,15 +53,10 @@ async function loadShareData(
   const t32 = classifyThirtyTwoType(scores);
   const essence =
     locale === "ko" ? KO_RESULT_TYPES[t32].essence : thirtyTwoEssence(t32);
-  // thirtyTwoImagePath = /characters/v3/{slug}.webp → slug を取り出し og-characters/{slug}.jpg に。
-  const slug = thirtyTwoImagePath(t32)
-    .split("/")
-    .pop()!
-    .replace(/\.\w+$/, "");
   const name =
     ((data.display_name as string | null) ?? "").trim() ||
     (locale === "ko" ? "어떤 사람" : "ある人");
-  return { name, essence, slug, t32 };
+  return { name, essence, t32 };
 }
 
 export async function generateCharacterShareMetadata({
@@ -95,7 +90,8 @@ export async function generateCharacterShareMetadata({
   const title = isKorean
     ? `${d.name}님은 【${d.essence}】 유형이었어요`
     : `${d.name}さんは【${d.essence}】でした`;
-  const ogImage = `${SITE_URL}/og-characters/${d.slug}.jpg`;
+  const characterSlug = thirtyTwoCharacterSlug(d.t32);
+  const ogImage = `${SITE_URL}/og-characters/${characterSlug}.jpg?v=20260825`;
   return {
     title: { absolute: `${title}｜${siteName}` },
     description,
@@ -110,7 +106,14 @@ export async function generateCharacterShareMetadata({
       siteName,
       type: "website",
       locale: isKorean ? "ko_KR" : "ja_JP",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: d.essence }],
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: `${d.essence}｜${siteName}`,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -153,6 +156,7 @@ export default async function CharacterShareLandingPage({
               (typeof sp.name === "string" && sp.name) ||
               (isKorean ? "미리보기" : "プレビュー"),
             typeId: raw as ThirtyTwoTypeId,
+            inviteCode: code,
           }}
         />
       );
@@ -200,12 +204,16 @@ export default async function CharacterShareLandingPage({
   }
 
   // シェア主タイプの結果ページ (モック/課金導線なし/診断CTA) をまるごと見せる。
+  const channel = typeof sp.ref === "string" ? sp.ref.slice(0, 50) : undefined;
   return (
-    <MeResultPage
-      params={Promise.resolve({ token: `share-${code}` })}
-      searchParams={Promise.resolve({})}
-      locale={locale}
-      share={{ sharerName: d.name, typeId: d.t32 }}
-    />
+    <>
+      <ShareLandingTracker inviteCode={code} channel={channel} />
+      <MeResultPage
+        params={Promise.resolve({ token: `share-${code}` })}
+        searchParams={Promise.resolve({})}
+        locale={locale}
+        share={{ sharerName: d.name, typeId: d.t32, inviteCode: code }}
+      />
+    </>
   );
 }

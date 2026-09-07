@@ -8,6 +8,7 @@ import { CharacterHero } from "./CharacterHero";
 import type { CharacterHeroJobSlot } from "./CharacterHero";
 import type { BigFiveDimension } from "@/lib/types";
 import type { ResultLocale } from "@/i18n/result";
+import { characterAnimationForImage } from "@/lib/character-image";
 
 interface ResultHeroProps {
   /** 称号の上の小ラベル (例「あなたの性格タイプ:」) */
@@ -24,6 +25,11 @@ interface ResultHeroProps {
   dotColor?: string;
   /** キャラ画像 */
   imageSrc: string;
+  /**
+   * キャラのループ動画。undefined なら imageSrc と同名の動画を自動検出し、
+   * null なら静止画を維持する。再生失敗時は imageSrc を表示する。
+   */
+  animSrc?: string | null;
   alt: string;
   /** CharacterHero 内部で使う名前 (動物名)。表示はされない (essence が主役)。 */
   name: string;
@@ -58,6 +64,7 @@ export function ResultHero({
   codeTint,
   dotColor = "rgba(255,255,255,0.55)",
   imageSrc,
+  animSrc,
   alt,
   name,
   description,
@@ -70,6 +77,8 @@ export function ResultHero({
 }: ResultHeroProps) {
   const isHigh = (k: BigFiveDimension) =>
     (typeof scores[k] === "number" ? (scores[k] as number) : 5) >= 5;
+  const resolvedAnimSrc =
+    animSrc === undefined ? characterAnimationForImage(imageSrc) : animSrc;
 
   return (
     <div
@@ -116,9 +125,10 @@ export function ResultHero({
             <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
               {label}
             </p>
-            {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。 */}
+            {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。
+                weight は Noto Sans JP の実配信ウェイト (400/700) に合わせ 700 (2026-09-04)。 */}
             <h1
-              className="whitespace-nowrap font-extrabold leading-[1.04] text-white"
+              className="whitespace-nowrap font-bold leading-[1.04] text-white"
               style={{
                 fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
               }}
@@ -158,6 +168,7 @@ export function ResultHero({
         >
           <CharacterHero
             imageSrc={imageSrc}
+            animSrc={resolvedAnimSrc}
             alt={alt}
             essence={essence}
             name={name}

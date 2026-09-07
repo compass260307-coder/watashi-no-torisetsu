@@ -13,21 +13,29 @@ export const SHARE_OPEN_EVENT = "torisetsu:open-share";
 export function ShareModalOpenButton({
   source = "bigfive_graph",
   label = "シェア",
+  iconOnly = false,
 }: {
   /** 計測用の設置場所ID (share_clicked の metadata.source)。 */
   source?: string;
   label?: string;
+  /** true でラベルを出さず丸アイコンボタンにする (SP のヘッダー等・省スペース)。 */
+  iconOnly?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-haspopup="dialog"
+      aria-label={iconOnly ? label : undefined}
       onClick={() =>
         window.dispatchEvent(
           new CustomEvent(SHARE_OPEN_EVENT, { detail: { source } }),
         )
       }
-      className="inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
+      className={
+        iconOnly
+          ? "inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[#E3E6F5] bg-white text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
+          : "inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
+      }
     >
       {/* iOS 風シェアグリフ (MeStickyHeader と同じ) */}
       <svg
@@ -45,7 +53,7 @@ export function ShareModalOpenButton({
         <path d="m8 7 4-4 4 4" />
         <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
       </svg>
-      {label}
+      {!iconOnly && label}
     </button>
   );
 }

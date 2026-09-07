@@ -257,12 +257,12 @@ export function PeekButton({
         onClick={() => setOpen(true)}
         // タイトル文章の末尾にインラインで続ける (align-middle で文字の縦中央)。
         // 2行に折り返しても最後の文字のすぐ後ろに来る (右端に浮かせない / 2026-08-18)。
-        // -my-1 で行の高さを崩さず、p-1 でタップ領域を確保。
-        className="-my-1 ml-1 inline-flex items-center justify-center p-1 align-middle"
+        // 負のマージンで行の高さを崩さず、外側の余白でタップ領域を確保。
+        className="relative -top-px -my-0.5 ml-0.5 inline-flex items-center justify-center p-0.5 align-middle"
       >
         {/* 白地 + アクセント枠線の ? (塗りつぶし版はオーナー確認で不採用 2026-08-18)。 */}
         <span
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 bg-white text-[12px] font-black leading-none transition hover:scale-110 active:scale-95"
+          className="flex h-4 w-4 items-center justify-center rounded-full border bg-white text-[9px] font-black leading-none transition hover:scale-110 active:scale-95"
           style={{ borderColor: accent, color: accent }}
         >
           ?

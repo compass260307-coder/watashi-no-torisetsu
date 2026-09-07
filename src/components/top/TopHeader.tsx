@@ -13,9 +13,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
+import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
+import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 import { resetLocalData } from "@/lib/reset-data";
 import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
+import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
+import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
+import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 
 const FONT_STACK =
@@ -33,6 +39,8 @@ type NavItem = {
   login?: boolean;
   // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
   disabled?: boolean;
+  // Alice: 購入権限がある場合だけリンク化し、それ以外は鍵付き課金導線にする。
+  course?: "astrologer";
 };
 
 type HeaderContent = {
@@ -63,8 +71,9 @@ const CONTENT: Record<SiteLocale, HeaderContent> = {
       { label: "性格診断テスト", href: "/diagnosis" },
       { label: "友達診断テスト", href: "/tako", tako: true },
       { label: "性格タイプ", href: "/types" },
-      { label: "運命の設計図", href: "/unmei" },
-      { label: "占い師", href: "/hoshiyomi" },
+      { label: "相性診断", href: "/aisho" },
+      { label: "Alice", href: "/hoshiyomi", course: "astrologer" },
+      { label: "タロット", href: "/tarot" },
       { label: "ログイン", href: "/login", login: true },
     ],
     preparing: "（準備中）",
@@ -92,8 +101,13 @@ const CONTENT: Record<SiteLocale, HeaderContent> = {
       { label: KO_TOP_CONTENT.navigation.diagnosis, href: "/ko/diagnosis" },
       { label: KO_TOP_CONTENT.navigation.friend, href: "/ko/tako", tako: true },
       { label: KO_TOP_CONTENT.navigation.types, href: "/ko/types" },
-      { label: "운명의 설계도", href: "/ko/unmei" },
-      { label: "별자리 상담사", href: "/ko/hoshiyomi" },
+      { label: "궁합 진단", href: "/ko/aisho" },
+      {
+        label: "Alice",
+        href: "/ko/hoshiyomi",
+        course: "astrologer",
+      },
+      { label: "타로", href: "/ko/tarot" },
       { label: KO_TOP_CONTENT.navigation.login, href: "/ko/login", login: true },
     ],
     preparing: `(${KO_TOP_CONTENT.navigation.preparing})`,
@@ -134,6 +148,26 @@ export default function TopHeader({
   // (BottomNav と同じ判断。未診断側は hydration 後にロックが現れる)。
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
+  const [alicePaywallOpen, setAlicePaywallOpen] = useState(false);
+  const [desktopNavVisible, setDesktopNavVisible] = useState(false);
+
+  // 相性診断の権限APIは、実際に導線を見せる直前まで呼ばない。
+  // SPはドロワーを開いた時、PCは常時表示ナビの確定後に有1回だけ確認する。
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const updateDesktopNavVisibility = () => {
+      setDesktopNavVisible(mediaQuery.matches);
+    };
+    updateDesktopNavVisibility();
+    mediaQuery.addEventListener("change", updateDesktopNavVisibility);
+    return () =>
+      mediaQuery.removeEventListener("change", updateDesktopNavVisibility);
+  }, []);
+
+  const hasAishoNavigationAccess = useAishoNavigationAccess(
+    pathname,
+    open || desktopNavVisible,
+  );
 
   // クライアント遷移で token が変わっても追従するよう pathname を依存に入れる。
   useEffect(() => {
@@ -156,14 +190,37 @@ export default function TopHeader({
     currentSearch,
   );
 
-  const nav = content.nav.map((n) =>
-    n.tako && ownerToken
-      ? {
-          ...n,
-          href: `${isKo ? "/ko" : ""}/tako/${encodeURIComponent(ownerToken)}`,
-        }
-      : n,
-  );
+  // 未確認・未購入は安全側のロック表示。購入済みと確認できた場合だけリンクを解放する。
+  const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
+
+  const openAlicePaywall = () => {
+    const source = "nav_locked_hoshiyomi";
+    track("paywall_scroll_clicked", {
+      ownerToken,
+      metadata: {
+        source,
+        page: trackingPageFromPathname(pathname),
+        surface: "hoshiyomi",
+        destination: "hoshiyomi",
+        paywall_version: THREE_COURSE_PAYWALL_VERSION,
+      },
+    });
+    setAlicePaywallOpen(true);
+  };
+
+  const nav = content.nav
+    .filter(
+      (item) =>
+        !item.href.startsWith("/aisho") || hasAishoNavigationAccess,
+    )
+    .map((n) =>
+      n.tako && ownerToken
+        ? {
+            ...n,
+            href: `${isKo ? "/ko" : ""}/tako/${encodeURIComponent(ownerToken)}`,
+          }
+        : n,
+    );
 
   // ドロワーを開いている間は背景スクロールを固定 + Escape で閉じる。
   useEffect(() => {
@@ -189,10 +246,13 @@ export default function TopHeader({
   const currentFlag = isKo ? <KoreaFlagIcon /> : <JapanFlagIcon />;
   const otherFlag = isKo ? <JapanFlagIcon /> : <KoreaFlagIcon />;
 
-  // lg (1024px) では項目 6 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
+  // lg (1024px) では項目 7 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
   const navLinkClass =
     "whitespace-nowrap text-[16px] xl:text-[20px] font-bold transition-colors hover:text-[#5B5BEF]";
+  // 常設ナビのリンク先はクリック時に取得し、ページ表示だけで発生する
+  // RSC prefetchの増幅を避ける。
+  const navigationPrefetch = false;
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white" style={fontStyle}>
@@ -200,6 +260,7 @@ export default function TopHeader({
         {/* ロゴ (左) */}
         <Link
           href={content.homeHref}
+          prefetch={navigationPrefetch}
           className="whitespace-nowrap text-[18px] xl:text-[21px] font-bold tracking-[0.01em]"
           style={{ color: NAVY }}
         >
@@ -244,10 +305,24 @@ export default function TopHeader({
                 {n.label}
                 <MenuLockIcon />
               </button>
+            ) : n.course === "astrologer" &&
+              !(resolvedCourseAccess?.astrologer ?? false) ? (
+              <button
+                key={n.href}
+                type="button"
+                aria-label={`${n.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                onClick={openAlicePaywall}
+                className={`${navLinkClass} flex items-center gap-1`}
+                style={{ color: "#9BA3B4" }}
+              >
+                {n.label}
+                <MenuLockIcon />
+              </button>
             ) : (
               <Link
                 key={n.href}
                 href={n.href}
+                prefetch={navigationPrefetch}
                 className={navLinkClass}
                 style={{ color: NAVY }}
               >
@@ -288,6 +363,7 @@ export default function TopHeader({
                   </div>
                   <Link
                     href={otherLocaleHref}
+                    prefetch={navigationPrefetch}
                     onClick={() => setLangOpen(false)}
                     className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
                   >
@@ -397,10 +473,28 @@ export default function TopHeader({
                   {n.label}
                   <MenuLockIcon />
                 </button>
+              ) : n.course === "astrologer" &&
+                !(resolvedCourseAccess?.astrologer ?? false) ? (
+                <button
+                  key={n.href}
+                  type="button"
+                  tabIndex={open ? 0 : -1}
+                  aria-label={`${n.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                  onClick={() => {
+                    setOpen(false);
+                    openAlicePaywall();
+                  }}
+                  className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
+                  style={{ color: "#9BA3B4" }}
+                >
+                  {n.label}
+                  <MenuLockIcon />
+                </button>
               ) : (
                 <Link
                   key={n.href}
                   href={n.href}
+                  prefetch={navigationPrefetch}
                   tabIndex={open ? 0 : -1}
                   onClick={() => setOpen(false)}
                   className="py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
@@ -420,6 +514,7 @@ export default function TopHeader({
             </div>
             <Link
               href={otherLocaleHref}
+              prefetch={navigationPrefetch}
               tabIndex={open ? 0 : -1}
               onClick={() => setOpen(false)}
               className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
@@ -490,6 +585,19 @@ export default function TopHeader({
         onClose={() => setTakoLockOpen(false)}
         locale={locale}
       />
+
+      {alicePaywallOpen ? (
+        <PaywallOverlay
+          ownerToken={ownerToken ?? undefined}
+          locale={locale}
+          returnTo="hoshiyomi"
+          ctaSource="nav_locked_hoshiyomi"
+          products={["full_access", "premium_bundle"]}
+          defaultProduct="full_access"
+          heading={isKo ? undefined : "Aliceを試す・本格相談を選ぶ"}
+          onClose={() => setAlicePaywallOpen(false)}
+        />
+      ) : null}
     </header>
   );
 }

@@ -790,7 +790,7 @@
 
   @page :first {
     margin: 0;
-    background: var(--cover-background);
+    background: #10182d;
 
     @top-right {
       content: none;
@@ -820,6 +820,7 @@
 
   .reportDocument {
     width: 174mm;
+    margin: 0;
     overflow: visible;
     box-shadow: none;
   }

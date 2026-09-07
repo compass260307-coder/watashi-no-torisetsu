@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import KoUnmeiLanding from "@/components/ko/unmei/KoUnmeiLanding";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
-import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
 import UnmeiCheckoutConfirming from "@/components/uranai/UnmeiCheckoutConfirming";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiGuestPurchaseComplete from "@/components/uranai/UnmeiGuestPurchaseComplete";
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import { UnmeiAttentionClear } from "@/components/uranai/UnmeiAttentionClear";
 import { getSession } from "@/lib/session";
-import { hasFullAccess, hasUnmeiAccess } from "@/lib/entitlements";
+import { hasUnmeiAccess } from "@/lib/entitlements";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { isReadingLocaleValid, isReadingReady } from "@/lib/unmei/reading";
 import { localizedAlternates } from "@/lib/locale-seo";
@@ -56,7 +55,8 @@ async function KoreanUnmeiMetaPurchase(params: {
     !checkoutSession ||
     (checkoutSession.product !== "unmei" &&
       checkoutSession.product !== "unmei_upgrade" &&
-      checkoutSession.product !== "premium_bundle")
+      checkoutSession.product !== "premium_bundle" &&
+      checkoutSession.product !== "full_access")
   ) {
     return null;
   }
@@ -89,20 +89,10 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
       <UnmeiGuestPurchaseComplete locale="ko" />
     );
   } else if (!purchased) {
-    content = (
-      <UnmeiChatCheckoutGate
-        purchase={{
-          ownerToken: session?.owner_token ?? null,
-          product: "premium_bundle",
-        }}
-        locale="ko"
-      >
-        <KoUnmeiLanding
-          ownerToken={session?.owner_token ?? null}
-          hasFull={userId ? await hasFullAccess(userId) : false}
-        />
-      </UnmeiChatCheckoutGate>
-    );
+    const returnPath = session?.owner_token
+      ? `/ko/me/${encodeURIComponent(session.owner_token)}`
+      : "/ko";
+    redirect(`${returnPath}#unlock-unmei`);
   } else {
     const [{ data: profile }, { data: readingRow }] = await Promise.all([
       supabaseAdmin
@@ -181,9 +171,13 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
     <>
       {metaPurchase}
       <UnmeiAttentionClear />
-      <KoTopHeader />
+      <div className="unmei-site-header">
+        <KoTopHeader />
+      </div>
       {content}
-      <KoTopFooter />
+      <div className="unmei-site-footer">
+        <KoTopFooter />
+      </div>
     </>
   );
 }

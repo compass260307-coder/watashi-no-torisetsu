@@ -13,6 +13,8 @@ type Phase = "confirming" | "generating" | "failed" | "timeout";
 
 const POLL_INTERVAL_MS = 2_000;
 const TIMEOUT_MS = 3 * 60_000;
+// 生成が速い場合も「設計図を作っている」体験が一瞬で消えないようにする。
+const MIN_CREATION_DISPLAY_MS = 6_000;
 
 export default function UnmeiCheckoutConfirming({
   preview = false,
@@ -28,6 +30,7 @@ export default function UnmeiCheckoutConfirming({
   useEffect(() => {
     if (preview) return;
 
+    const displayStartedAt = Date.now();
     const deadline = Date.now() + TIMEOUT_MS;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +57,15 @@ export default function UnmeiCheckoutConfirming({
           if (cancelled) return;
 
           if (data.state === "ready") {
-            router.replace(locale === "ko" ? "/ko/unmei" : "/unmei");
+            const remainingDisplayTime = Math.max(
+              0,
+              MIN_CREATION_DISPLAY_MS - (Date.now() - displayStartedAt),
+            );
+            timer = setTimeout(() => {
+              if (!cancelled) {
+                router.replace(locale === "ko" ? "/ko/unmei" : "/unmei");
+              }
+            }, remainingDisplayTime);
             return;
           }
           if (data.state === "no_birth") {
@@ -115,10 +126,10 @@ export default function UnmeiCheckoutConfirming({
           />
           <div className="min-w-0">
             <p className="truncate text-[14px] font-black leading-tight text-white">
-              {isKo ? "별자리 안내자" : "星読みの案内人"}
+              {isKo ? "별자리 안내자" : "Alice"}
             </p>
             <p className="text-[11px] font-bold leading-tight text-white/55">
-              {isKo ? "운명의 설계도" : "運命の設計図"}
+              {isKo ? "운명의 설계도" : "あなたの専属占い師"}
             </p>
           </div>
           <span aria-hidden="true" className="ml-auto text-[16px] leading-none text-[#F5D66B]">

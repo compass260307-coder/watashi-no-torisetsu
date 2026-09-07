@@ -19,7 +19,11 @@ const ROUTES = [
   "/ko/result",
   "/ko/unmei",
   "/ko/hoshiyomi",
+  "/ko/tarot",
+  "/ko/tarot/one",
   "/ko/preview/sparkle-dolphin__N",
+  "/robots.txt",
+  "/sitemap.xml",
 ];
 
 const unpaidMeToken = process.env.KO_VERIFY_UNPAID_ME_TOKEN?.trim();
@@ -27,11 +31,73 @@ if (unpaidMeToken) ROUTES.push(`/ko/me/${encodeURIComponent(unpaidMeToken)}`);
 
 const checks = {
   "/ko": [
+    [
+      /<title>앨리스 진단 \| 나의 사용설명서<\/title>/,
+      "brand-first title",
+    ],
+    [
+      /<meta name="description" content="앨리스 진단은 Alice가 안내하는 성격 진단이에요\. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나의 사용설명서’를 만들어 보세요\."\/?>/,
+      "Alice diagnosis description metadata",
+    ],
+    [
+      /<link(?=[^>]*rel="canonical")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com\/ko")[^>]*>/,
+      "self-referencing canonical",
+    ],
+    [
+      /<link(?=[^>]*rel="alternate")(?=[^>]*hrefLang="ko-KR")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com\/ko")[^>]*>/,
+      "ko-KR hreflang",
+    ],
+    [
+      /<link(?=[^>]*rel="alternate")(?=[^>]*hrefLang="ja-JP")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com")[^>]*>/,
+      "ja-JP hreflang",
+    ],
+    [
+      /<h1[^>]*>앨리스 진단<\/h1>/,
+      "visible Alice diagnosis H1",
+    ],
+    [
+      /앨리스 테스트\(Alice 진단·Alice 테스트\)/,
+      "visible Korean and Latin Alice query variants",
+    ],
+    [
+      /<meta(?=[^>]*property="og:title")(?=[^>]*content="앨리스 진단 \| 나의 사용설명서")[^>]*>/,
+      "Alice diagnosis Open Graph title",
+    ],
+    [
+      /<meta(?=[^>]*property="og:site_name")(?=[^>]*content="앨리스 진단")[^>]*>/,
+      "Alice diagnosis Open Graph site name",
+    ],
+    [
+      /"@type":"Brand"[^<]*"name":"앨리스 진단"/,
+      "Alice diagnosis structured-data brand",
+    ],
     [/href="\/ko\/diagnosis"/, "top page links to Korean diagnosis"],
     [/href="\/ko\/tako"/, "top page links to Korean friend diagnosis"],
     [/aria-label="로그인"|>로그인</, "top page exposes Korean login modal"],
     [/documentElement\.lang=.*\/ko.*ko/, "top page sets document language for Korean routes"],
     [/<div lang="ko"/, "top page wraps content with lang=ko"],
+  ],
+  "/robots.txt": [
+    [/User-Agent: \*/i, "default crawler rule"],
+    [/Allow: \//, "site crawl allowance"],
+    [
+      /Sitemap: https:\/\/www\.watashi-torisetsu\.com\/sitemap\.xml/,
+      "sitemap declaration",
+    ],
+  ],
+  "/sitemap.xml": [
+    [
+      /<loc>https:\/\/www\.watashi-torisetsu\.com\/ko<\/loc>/,
+      "Korean home URL",
+    ],
+    [
+      /<xhtml:link(?=[^>]*hreflang="ko-KR")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com\/ko")[^>]*\/>/,
+      "Korean home ko-KR alternate",
+    ],
+    [
+      /<xhtml:link(?=[^>]*hreflang="ja-JP")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com")[^>]*\/>/,
+      "Korean home ja-JP alternate",
+    ],
   ],
   "/ko/login": [
     [/로그인 링크 받기|이메일 주소/, "login page renders Korean login copy"],
@@ -54,8 +120,12 @@ if (unpaidMeToken) {
 
 const forbidden = {
   "/ko": [
+    [/<meta name="robots" content="[^"]*noindex/i, "top page must remain indexable"],
     [/href="\/diagnosis"/, "top page must not link to Japanese diagnosis"],
     [/href="\/tako"/, "top page must not link to Japanese friend diagnosis"],
+  ],
+  "/robots.txt": [
+    [/^Disallow:\s*\/ko\s*$/im, "Korean home must not be blocked"],
   ],
   "/ko/preview/sparkle-dolphin__N": [
     [/친구 진단 초대 QR 코드|QRCodeSVG|qrcode\.react/, "self result preview must not include QR invite UI"],
@@ -88,6 +158,10 @@ for (const route of ROUTES) {
   try {
     const { status, text } = await fetchText(route);
     results.push({ route, status, bytes: text.length });
+    if (route === "/ko" && status !== 200) {
+      problems.push(`/ko: expected a direct 200 response, got ${status}`);
+      continue;
+    }
     if (status < 200 || status >= 400) {
       problems.push(`${route}: expected 2xx/3xx, got ${status}`);
       continue;
