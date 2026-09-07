@@ -134,6 +134,7 @@ export default function TypesGalleryPage({
           <div className="mt-6">
             <Link
               href={diagnosisHref}
+              prefetch={false}
               className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
             >
               {cta}
@@ -180,7 +181,7 @@ export default function TypesGalleryPage({
                   }}
                 >
                   <div className="grid grid-cols-1 gap-y-14 sm:grid-cols-2 sm:gap-x-2 sm:gap-y-14 md:gap-x-6 lg:grid-cols-4">
-                    {ids.map((id) => {
+                    {ids.map((id, typeIndex) => {
                       const essence = isKo
                         ? KO_RESULT_TYPES[id].essence
                         : thirtyTwoEssence(id);
@@ -198,6 +199,7 @@ export default function TypesGalleryPage({
                         >
                           <Link
                             href={`${previewPrefix}/${id}`}
+                            prefetch={false}
                             aria-label={resultAriaLabel}
                             className="w-full transition-transform duration-150 hover:scale-[1.03] active:scale-[0.98]"
                           >
@@ -207,7 +209,11 @@ export default function TypesGalleryPage({
                               width={512}
                               height={512}
                               placeholderColor="transparent"
-                              loading="eager"
+                              loading={
+                                groupIndex === 0 && typeIndex < 4
+                                  ? "eager"
+                                  : "lazy"
+                              }
                               className="mx-auto h-auto w-full max-w-[420px] sm:max-w-none"
                             />
                           </Link>
@@ -251,6 +257,7 @@ export default function TypesGalleryPage({
                     <div className="mt-16 text-center md:mt-24">
                       <Link
                         href={diagnosisHref}
+                        prefetch={false}
                         className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
                       >
                         {cta}
@@ -266,6 +273,7 @@ export default function TypesGalleryPage({
         <section className="py-16 text-center md:py-24">
           <Link
             href={diagnosisHref}
+            prefetch={false}
             className="sora-cta inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5"
           >
             {cta}

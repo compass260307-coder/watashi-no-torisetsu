@@ -45,7 +45,7 @@ export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
       title="사업자 정보 및 판매·환불 조건"
-      lastUpdated="2026년 8월 16일"
+      lastUpdated="2026년 9월 1일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -84,21 +84,20 @@ export default function KoreanCommercePage() {
       <h2>상품명과 판매 가격</h2>
       <ul>
         <li>
-          라이트 코스: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단
-          결과 및 자기 분석 PDF 포함)
+          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
+          잠긴 9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구
+          진단 결과, 여러 번 다시 만들 수 있는 친구 분석 PDF, 궁합 진단, 한국어
+          운명의 설계도, AI 점성술사 Alice 채팅 30회, 타로 3종 포함)
         </li>
         <li>
-          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (라이트의
-          모든 기능, 두 번째 친구부터의 친구 진단 결과, 친구 분석 PDF, 연애
-          파트너 궁합 분석, AI 점성술사 채팅 5회 포함. 라이트 구매자는 차액{" "}
-          {krw(FULL_ACCESS_PRICE_KRW - SELF_REPORT_PRICE_KRW)})
+          학생 플랜: {krw(SELF_REPORT_PRICE_KRW)} · 1회 결제 (자기 진단의 잠긴
+          9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구 진단
+          결과, 여러 번 다시 만들 수 있는 친구 분석 PDF 포함. 궁합 진단, 운명의
+          설계도, AI 점성술사 Alice, 타로는 포함하지 않음)
         </li>
         <li>
           프리미엄 코스: {krw(PREMIUM_BUNDLE_PRICE_KRW)} · 1회 결제
-          (라이트 구매자는 차액{" "}
-          {krw(PREMIUM_BUNDLE_PRICE_KRW - SELF_REPORT_PRICE_KRW)}, 완전판
-          구매자는 차액{" "}
-          {krw(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW)})
+          (기존 구매의 업그레이드 호환용. 현재 완전판 코스와 동일한 내용 포함)
         </li>
         <li>구독, 자동 갱신 또는 추가 결제 없음</li>
       </ul>
@@ -106,21 +105,25 @@ export default function KoreanCommercePage() {
         표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
         화면에서 다시 확인할 수 있습니다.
       </p>
+      <p>
+        과거 대상 상품을 이미 구매한 경우에는 기존 결제 금액을 반영한 차액으로
+        상위 상품을 제공할 수 있습니다. 실제 판매 가격은 구매 화면에 표시됩니다.
+      </p>
 
       <h2>상품 내용</h2>
       <ul>
         <li>
-          라이트: 자기 진단 결과의 잠긴 8개 섹션 전체 해제, 16페이지 이상의
-          자기 분석 PDF
+          학생 플랜: 자기 진단 결과의 잠긴 9개 섹션 전체 해제, 16페이지 이상의
+          전용 전자책, 두 번째 친구부터의 친구 진단 결과 전체 해제, 여러 번 다시
+          만들 수 있는 친구 분석 PDF
         </li>
         <li>
-          완전판: 라이트의 모든 기능, 두 번째 친구부터의 친구 진단 결과 전체
-          해제, 여러 번 다시 만들 수 있는 친구 분석 PDF, 연애 파트너 궁합 분석,
-          AI 점성술사 채팅 5회
+          완전판: 학생 플랜의 모든 기능, 궁합 진단, 한국어 운명의 설계도, AI
+          점성술사 Alice 채팅 30회, 타로 3종
         </li>
         <li>
-          프리미엄: 완전판의 모든 기능, 한국어 운명의 설계도, 나만의 전담
-          점성술사 채팅 총 30회
+          프리미엄: 기존 구매의 업그레이드 호환용으로 제공되며, 현재 완전판과
+          동일한 기능
         </li>
       </ul>
       <p>
@@ -230,7 +233,7 @@ export default function KoreanCommercePage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 8월 16일</p>
+      <p>최종 개정일: 2026년 9월 1일</p>
     </KoreanLegalDocument>
   );
 }

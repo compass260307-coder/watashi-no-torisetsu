@@ -105,9 +105,14 @@ export default function KoreanAboutPage() {
             className="mt-6 break-keep text-[15px] leading-[2] md:text-[16px]"
             style={{ color: `${NAVY}B3` }}
           >
-            나의 사용설명서는 자기 진단과 친구의 평가를 함께 살펴보며 만드는
-            ‘나만의 사용설명서’예요. 친구의 답변이 모일수록 미처 몰랐던 내 모습이
-            조금씩 선명해져요.
+            <Link
+              href="/ko"
+              className="font-bold underline decoration-current/40 underline-offset-4"
+            >
+              앨리스 진단
+            </Link>
+            {"의 서비스 ‘나의 사용설명서’는 자기 진단과 친구의 평가를 함께 살펴보며 만드는 나만의 사용설명서예요. "}
+            친구의 답변이 모일수록 미처 몰랐던 내 모습이 조금씩 선명해져요.
           </p>
         </section>
 

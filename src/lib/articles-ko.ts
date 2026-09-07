@@ -1,4 +1,4 @@
-import type { Article } from "@/lib/articles";
+import { getRelatedArticles, type Article } from "@/lib/articles";
 
 export const KO_ARTICLE_CATEGORIES = [
   "기초 지식",
@@ -734,4 +734,11 @@ export const KO_ARTICLES: KoArticle[] = [
 
 export function getKoArticle(slug: string): KoArticle | undefined {
   return KO_ARTICLES.find((article) => article.slug === slug);
+}
+
+/** 日本版と同じ順序で、韓国語版の関連記事を返す。 */
+export function getKoRelatedArticles(slug: string): KoArticle[] {
+  return getRelatedArticles(slug)
+    .map((article) => getKoArticle(article.slug))
+    .filter((article): article is KoArticle => Boolean(article));
 }

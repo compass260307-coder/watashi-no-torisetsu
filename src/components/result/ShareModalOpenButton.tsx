@@ -33,7 +33,7 @@ export function ShareModalOpenButton({
       }
       className={
         iconOnly
-          ? "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3E6F5] bg-white text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
+          ? "inline-flex h-[46px] w-[46px] items-center justify-center rounded-full border border-[#E3E6F5] bg-white text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
           : "inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
       }
     >

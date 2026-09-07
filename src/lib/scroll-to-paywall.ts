@@ -12,15 +12,12 @@
 // 呼び出し元は source を必ず渡すこと (未指定は "unknown" で記録)。
 
 import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
 import {
   DIRECT_PAYWALL_SOURCE,
   normalizePaywallSource,
 } from "@/lib/paywall-source";
-import {
-  MULTI_COURSE_PAYWALL_PRODUCT,
-  THREE_COURSE_PAYWALL_VERSION,
-} from "@/lib/access-products";
-import { paywallCardMode } from "@/lib/feature-flags";
+import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 
 const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
@@ -41,26 +38,34 @@ function currentPage(): string {
   return typeof window === "undefined" ? "" : window.location.pathname;
 }
 
-function supportsThreeCoursePaywall(): boolean {
+function supportsCurrentJapaneseOffer(): boolean {
   const page = currentPage();
-  // 日本語 /me・/tako だけが3コース対応。/ko 以下や /aisho は旧単一商品。
+  // 日本語の現行課金面は、カードデザインに関係なく同じバージョンで計測する。
+  // 韓国語面は既存の課金構成を維持するため対象外。
+  if (page === "/ko" || page.startsWith("/ko/")) return false;
   return (
     page === "/me" ||
     page.startsWith("/me/") ||
     page === "/tako" ||
-    page.startsWith("/tako/")
+    page.startsWith("/tako/") ||
+    page === "/aisho" ||
+    page.startsWith("/aisho/") ||
+    page === "/unmei" ||
+    page.startsWith("/unmei/") ||
+    page === "/hoshiyomi" ||
+    page.startsWith("/hoshiyomi/")
   );
 }
 
-function usesThreeCoursePaywall(): boolean {
-  return (
-    supportsThreeCoursePaywall() && paywallCardMode() === "three-course"
-  );
-}
-
-function currentProduct(): "multi_course" | "full_access" {
-  return usesThreeCoursePaywall()
-    ? MULTI_COURSE_PAYWALL_PRODUCT
+function currentProduct(): "full_access" | "premium_bundle" {
+  const page = currentPage();
+  return page === "/aisho" ||
+    page.startsWith("/aisho/") ||
+    page === "/unmei" ||
+    page.startsWith("/unmei/") ||
+    page === "/hoshiyomi" ||
+    page.startsWith("/hoshiyomi/")
+    ? "premium_bundle"
     : "full_access";
 }
 
@@ -100,10 +105,8 @@ export function getLastPaywallSource(): string {
 }
 
 // ロック要素の「今すぐアクセス」等を押したときの共通ハンドラ。
-// 2026-07-22: 最下部カードへのスクロールから「その場でモーダル表示」に変更。
-//   - PaywallModal がページに存在する場合: カスタムイベントで開き、スクロールしない。
-//   - モーダルが無いページ (フォールバック): 従来どおり targetId へスクロール+パルス。
-// 計測 (paywall_scroll_clicked) と最終タッチ導線の記憶は挙動に関わらず共通で行う。
+// PaywallModal がページにあればその場でモーダル表示し、無ければ最下部の常設カードへ
+// スムーズスクロールする。計測と最終タッチ導線の記憶はどちらの挙動でも共通。
 export const PAYWALL_OPEN_EVENT = "torisetsu:open-paywall";
 
 export function scrollToPaywall(
@@ -117,16 +120,16 @@ export function scrollToPaywall(
     metadata: {
       source: normalizedSource,
       target: targetId,
-      page: window.location.pathname.split("/")[1] || "top",
+      page: trackingPageFromPathname(window.location.pathname),
       product: currentProduct(),
-      paywall_version: usesThreeCoursePaywall()
+      paywall_version: supportsCurrentJapaneseOffer()
         ? THREE_COURSE_PAYWALL_VERSION
         : "legacy",
     },
   });
 
-  // モーダルを開く要求を発火。PaywallModal が拾ったら preventDefault し、
-  // dispatchEvent は false を返す (= スクロールへフォールバックしない)。
+  // モーダルを開く要求を発火。PaywallModal が拾った場合は preventDefault され、
+  // dispatchEvent が false を返すためスクロールのフォールバックへ進まない。
   const openEvent = new CustomEvent(PAYWALL_OPEN_EVENT, {
     detail: { source: normalizedSource },
     cancelable: true,
@@ -134,7 +137,7 @@ export function scrollToPaywall(
   const notHandled = window.dispatchEvent(openEvent);
   if (!notHandled) return;
 
-  // フォールバック: モーダルが無いページは従来のスクロール+パルス。
+  // モーダルが設置されていないページだけ、常設カードへスクロールする。
   const el = document.getElementById(targetId);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });

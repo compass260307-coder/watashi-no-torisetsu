@@ -6,9 +6,11 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import {
   getKoArticle,
+  getKoRelatedArticles,
   KO_ARTICLES,
 } from "@/lib/articles-ko";
 import {
+  KO_DEFAULT_OG_IMAGE,
   KO_SITE_NAME,
   localizedAlternates,
   SITE_URL as BASE_URL,
@@ -39,7 +41,7 @@ export async function generateMetadata({
 
   const japanesePath = `/articles/${article.slug}`;
   const koreanPath = `/ko/articles/${article.slug}`;
-  const image = { url: article.image, alt: article.imageAlt };
+  const image = KO_DEFAULT_OG_IMAGE;
 
   return {
     title: { absolute: `${article.title} | 나의 사용설명서` },
@@ -61,7 +63,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: `${article.title} | 나의 사용설명서`,
       description: article.description,
-      images: [article.image],
+      images: [KO_DEFAULT_OG_IMAGE.url],
     },
     robots: { index: true, follow: true },
   };
@@ -75,6 +77,7 @@ export default async function KoreanArticlePage({
   if (!article) notFound();
 
   const url = `${BASE_URL}/ko/articles/${article.slug}`;
+  const related = getKoRelatedArticles(article.slug);
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -139,7 +142,7 @@ export default async function KoreanArticlePage({
             style={{ color: `${NAVY}80` }}
           >
             <Link href="/ko" className="hover:underline">
-              홈
+              앨리스 진단
             </Link>
             <span aria-hidden className="mx-1.5">
               /
@@ -151,10 +154,7 @@ export default async function KoreanArticlePage({
 
           <article>
             <header className="pt-6">
-              <p
-                className="text-[12px] font-bold"
-                style={{ color: SORA }}
-              >
+              <p className="text-[12px] font-bold" style={{ color: SORA }}>
                 {article.category}
               </p>
               <h1
@@ -274,6 +274,17 @@ export default async function KoreanArticlePage({
               함께 읽어 보세요
             </h2>
             <ul className="mt-4 flex flex-col gap-2.5">
+              {related.map((relatedArticle) => (
+                <li key={relatedArticle.slug}>
+                  <Link
+                    href={`/ko/articles/${relatedArticle.slug}`}
+                    className="text-[14px] font-bold underline underline-offset-4"
+                    style={{ color: SORA }}
+                  >
+                    {relatedArticle.listTitle} →
+                  </Link>
+                </li>
+              ))}
               <li>
                 <Link
                   href="/ko/types"

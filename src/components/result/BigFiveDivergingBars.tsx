@@ -290,7 +290,8 @@ export function BigFiveDivergingBars({
         {/* カード下部の footer 帯 (16P のグラフカード下ボタン行)。
             区切り線でバー群と分け、カード枠の内側に載せる。 */}
         {footer && (
-          <div className="border-t border-[#E9E9F2] pt-5">{footer}</div>
+          // space-y-6 の 24px は広すぎるため !mt-4 で上書きして詰める (2026-08-26)
+          <div className="border-t border-[#E9E9F2] !mt-4 pt-4">{footer}</div>
         )}
       </div>
     </section>

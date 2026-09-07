@@ -15,19 +15,17 @@ export default function KoResultPageClient() {
     }
 
     router.replace(
-      ownerToken
-        ? `/ko/me/${encodeURIComponent(ownerToken)}`
-        : "/ko/diagnosis",
+      ownerToken ? `/ko/me/${encodeURIComponent(ownerToken)}` : "/ko/diagnosis",
     );
   }, [router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center grid-bg">
       <div
-        className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#2E2E5C]/20 border-t-[#2E2E5C]"
+        className="w-10 h-10 rounded-full border-[3px] border-[#2E2E5C]/20 border-t-[#2E2E5C] animate-spin"
         role="status"
         aria-label="결과 불러오는 중"
       />
-    </main>
+    </div>
   );
 }

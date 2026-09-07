@@ -1,10 +1,8 @@
 // 友達の評価送信後の遷移ページ (獲得エンジン)。
 //
-// 役割変更 (2026-07-09): 相互理解の中身表示 (①相互理解度/②ギャップ/③強み/④関係) を撤去し、
-// 案内ページ (FriendIndividualGuide) に差し替え。
-// 理由: 本人の個別ページ (/tako/.../friend/...) を将来 ¥課金でロックする際、評価者ページで
-// 同じ相互理解の中身が無料で見えると課金の抜け道になるため (memory: paywall-leak-checklist)。
-// 評価者には「診断してくれてありがとう / あなたも診断してみない?」の案内を出し、新規診断へ送客する。
+// 評価者には、本人の自己評価と今回の回答を比べた「理解度」と
+// 「五つの性格傾向」だけを返す。②以降の詳細は本人側に限定し、
+// 回答者自身の無料診断CTAを表示する。
 //
 // バイラル計測は維持 (8月に検証する K の材料):
 //   - 診断CTAに ?source=<owner invite_code> を付与 → source_user_id / generation ツリーが埋まる
@@ -17,6 +15,11 @@ import type { Metadata } from "next";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide";
 import { localizedAlternates } from "@/lib/locale-seo";
+import {
+  buildDimensionGaps,
+  calcMutualUnderstanding,
+  type BigFiveScores,
+} from "@/lib/perception-analysis";
 
 interface PageProps {
   params: Promise<{ perceptionId: string }>;
@@ -45,7 +48,7 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   // 招待元コードが無ければ素の /diagnosis にフォールバック。
   const { data: perception } = await supabaseAdmin
     .from("friend_perceptions")
-    .select("target_user_id")
+    .select("target_user_id, perceived_scores")
     .eq("id", perceptionId)
     .maybeSingle();
   if (!perception) {
@@ -53,10 +56,16 @@ export default async function EvaluationSentPage({ params }: PageProps) {
   }
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("invite_code")
+    .select("invite_code, display_name, scores")
     .eq("id", perception.target_user_id)
     .maybeSingle();
   const inviteCode = ((user?.invite_code as string | null) ?? "").trim();
+  const targetName = ((user?.display_name as string | null) ?? "").trim();
+  const selfScores = (user?.scores ?? {}) as BigFiveScores;
+  const perceivedScores = (perception.perceived_scores ?? {}) as BigFiveScores;
+  const understandingScore = calcMutualUnderstanding(
+    buildDimensionGaps(selfScores, perceivedScores),
+  );
   const diagnoseHref = inviteCode
     ? `/diagnosis?source=${encodeURIComponent(inviteCode)}`
     : "/diagnosis";
@@ -66,6 +75,10 @@ export default async function EvaluationSentPage({ params }: PageProps) {
       diagnoseHref={diagnoseHref}
       diagnoseTrackSource="sent_bottom"
       inviteCode={inviteCode || undefined}
+      targetName={targetName || undefined}
+      understandingScore={understandingScore}
+      selfScores={selfScores}
+      perceivedScores={perceivedScores}
     />
   );
 }

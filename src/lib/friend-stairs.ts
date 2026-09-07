@@ -15,12 +15,13 @@ export const STAIR_COMPLETE = 1; // /tako 側の結果表示の土台が完成�
 
 /**
  * 第二部 (見られ方の予測＋深掘りキャリア/成長/相性) が開いているか。
- * 課金 (¥499=full) のみ。純関数 (DB を引かない)。
+ * 課金 (完全版=full) のみ。純関数 (DB を引かない)。
  * hasFullAccess (entitlements.ts) の結果と friend_perceptions 件数を渡す。
  */
 export function hasPartTwoAccess(
   paid: boolean,
-  _friendCount: number,
+  friendCount: number,
 ): boolean {
+  void friendCount;
   return paid;
 }

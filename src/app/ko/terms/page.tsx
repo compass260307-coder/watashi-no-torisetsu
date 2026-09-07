@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 
 export default function KoreanTermsPage() {
   return (
-    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 8월 16일">
+    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 9월 1일">
       <p>
         이 이용약관(이하 “약관”)은 나의 사용설명서 운영팀(이하 “운영자”)이
         제공하는 “나의 사용설명서” 한국어 서비스(이하 “서비스”)의 이용 조건을
@@ -127,15 +127,20 @@ export default function KoreanTermsPage() {
       <h2>제6조 유료 서비스 및 결제</h2>
       <ol>
         <li>
-          한국어 유료 서비스는 라이트 {krw(SELF_REPORT_PRICE_KRW)}, 완전판{" "}
+          한국어 유료 서비스는 학생 플랜 {krw(SELF_REPORT_PRICE_KRW)}, 완전판{" "}
           {krw(FULL_ACCESS_PRICE_KRW)}, 프리미엄{" "}
           {krw(PREMIUM_BUNDLE_PRICE_KRW)}의 1회 결제로 제공되며 구독이나 자동
           갱신은 없습니다.
         </li>
         <li>
-          상위 코스로 변경할 때에는 이미 구매한 코스의 결제 금액을 뺀 차액이
-          적용됩니다. 운명의 설계도와 나만의 전담 점성술사 채팅 30회는
-          프리미엄에만 포함됩니다.
+          현재 완전판에는 학생 플랜의 모든 기능과 궁합 진단, 한국어 운명의
+          설계도, 나만의 전담 AI 점성술사 Alice 채팅 30회, 타로 3종이
+          포함됩니다. 프리미엄은 기존 구매의 업그레이드 호환용이며 현재 완전판과
+          동일한 내용을 제공합니다.
+        </li>
+        <li>
+          상위 코스로 변경할 때에는 이미 구매한 코스의 결제 금액을 반영한 차액이
+          적용될 수 있습니다.
         </li>
         <li>
           유료 서비스의 구체적인 내용, 가격과 결제 수단은 구매 화면에 표시된
@@ -254,7 +259,7 @@ export default function KoreanTermsPage() {
 
       <hr />
       <p>시행일: 2026년 7월 18일</p>
-      <p>최종 개정일: 2026년 8월 16일</p>
+      <p>최종 개정일: 2026년 9월 1일</p>
     </KoreanLegalDocument>
   );
 }

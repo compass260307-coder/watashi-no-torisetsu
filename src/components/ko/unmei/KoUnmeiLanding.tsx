@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: "구매한 뒤에는 무엇을 하면 되나요?",
-    a: "생년월일·출생 시간·출생지를 입력하면 보통 1~2분 안에 설계도가 완성돼요. 출생 시간을 몰라도 만들 수 있고, 완성한 결과는 언제든 다시 읽을 수 있습니다.",
+    a: "생년월일·출생 시간·출생지를 입력하면 약 1분 안에 설계도가 완성돼요. 출생 시간을 몰라도 만들 수 있고, 완성한 결과는 언제든 다시 읽을 수 있습니다.",
   },
   {
     q: "미래를 정확히 맞히는 점인가요?",
@@ -95,39 +95,41 @@ export default function KoUnmeiLanding({
         eventName="unmei_lp_view"
         ownerToken={ownerToken}
         state={hasFull ? "upgrade_eligible" : "standard"}
-        product="premium_bundle"
+        product={hasFull ? "premium_bundle" : "full_access"}
       />
 
-      <div className="bg-[#FFFBF2] px-4 pb-10 pt-8 md:px-8 md:pb-14 md:pt-14">
-        <section className="mx-auto grid max-w-[1080px] items-center gap-8 md:grid-cols-2 md:gap-12">
-          <SmoothImage
-            src="/mascot/unmei-hero.png"
-            alt="천구의와 별자리를 함께 살펴보는 펠트 동물들"
-            width={1200}
-            height={900}
-            className="h-auto w-full max-w-[340px] mix-blend-multiply md:max-w-none"
-            priority
-          />
-          <div className="text-left">
-            <h1 className="leading-tight">
-              <span className="block text-[30px] font-black text-[#2E2E5C] md:text-[40px]">
-                오직 나를 위한
-              </span>
-              <span className="mt-2 inline-block rounded-xl bg-[#A36818] px-3.5 py-1 text-[36px] font-black text-white md:text-[48px]">
-                운명의 설계도
-              </span>
-            </h1>
-            <p className="mt-3 text-[16px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[18px]">
-              별의 배치와 Big Five 성격 진단을 함께 읽어, 나만의 감정서를 만들어 보세요.
-            </p>
-            <UnmeiPriceCta
-              sessionOwnerToken={ownerToken}
-              sessionHasFull={hasFull}
-              launchChat
-              locale="ko"
+      <div className="bg-[#FFFBF2] px-4 pb-8 pt-6 md:px-8 md:pb-10 md:pt-10">
+        <div className="mx-auto max-w-[1080px]">
+          <section className="grid items-center gap-6 md:grid-cols-2 md:gap-10">
+            <SmoothImage
+              src="/mascot/unmei-hero-alice-transparent.png"
+              alt="천사 Alice를 중심으로 천구의와 별자리를 함께 살펴보는 펠트 친구들"
+              width={1448}
+              height={1086}
+              className="h-auto w-full max-w-[320px] md:max-w-[480px]"
+              priority
             />
-          </div>
-        </section>
+            <div className="text-left">
+              <h1 className="leading-tight">
+                <span className="block text-[28px] font-black text-[#2E2E5C] md:text-[34px]">
+                  오직 나를 위한
+                </span>
+                <span className="mt-1.5 inline-block rounded-xl bg-[#A36818] px-3 py-1 text-[34px] font-black text-white md:text-[42px]">
+                  운명의 설계도
+                </span>
+              </h1>
+              <p className="mt-3 text-[15px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[16px]">
+                별의 배치와 Big Five 성격 진단을 함께 읽어, 나만의 감정서를 만들어 보세요.
+              </p>
+              <UnmeiPriceCta
+                sessionOwnerToken={ownerToken}
+                sessionHasFull={hasFull}
+                launchChat
+                locale="ko"
+              />
+            </div>
+          </section>
+        </div>
       </div>
 
       <div className="bg-white">
@@ -171,10 +173,10 @@ export default function KoUnmeiLanding({
                       POINT 0{index + 1}
                     </span>
                   </div>
-                  <h3 className="mt-3.5 text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
+                  <p className="mt-3.5 text-[17px] font-black leading-snug text-[#2E2E5C] md:text-[18px]">
                     {feature.title}
-                  </h3>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-[#2E2E5C]/70 md:text-[15px]">
+                  </p>
+                  <p className="mt-1.5 text-[14px] font-normal leading-relaxed text-[#2E2E5C]/70 md:text-[15px]">
                     {feature.body}
                   </p>
                 </li>
@@ -200,7 +202,7 @@ export default function KoUnmeiLanding({
                     {faq.q === "환불할 수 있나요?" ? (
                       <>
                         {" "}
-                        <Link href="/ko/legal/commerce" className="font-bold text-[#5B5BEF] underline underline-offset-2">
+                        <Link href="/ko/legal/commerce" className="mx-0.5 font-bold text-[#5B5BEF] underline underline-offset-2">
                           자세히 보기
                         </Link>
                       </>
@@ -214,28 +216,29 @@ export default function KoUnmeiLanding({
       </div>
 
       <div className="mt-10 px-4 pb-14 md:mt-12 md:px-8 md:pb-16">
-        <section className="mx-auto max-w-[1080px] pb-4 text-center">
-          <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#F4F4FE] text-[#5B5BEF]">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20.5 9A9 9 0 0 0 5.6 5.6L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M3.5 15a9 9 0 0 0 14.9 3.4L21 16" />
-              <path d="M21 21v-5h-5" />
-              <path d="M8.5 9.5h7M9.2 12h5.6M10 14.5h4" />
-            </svg>
-          </span>
-          <h2 className="mt-5 text-[22px] font-black text-[#2E2E5C] md:text-[26px]">
-            부담 없이, 30일 전액 환불 보장
-          </h2>
-          <p className="mx-auto mt-2.5 max-w-[640px] text-[14px] font-bold leading-relaxed text-[#2E2E5C]/65 md:text-[15px]">
-            상품이 만족스럽지 않다면 결제일로부터 30일 이내에
-            {" "}
-            <a href="mailto:support@watashi-torisetsu.com" className="text-[#5B5BEF] underline underline-offset-2">
-              support@watashi-torisetsu.com
-            </a>
-            으로 연락해 주세요. 구매 금액 전액을 환불해 드립니다.
-          </p>
-        </section>
+        <div className="mx-auto max-w-[1080px]">
+          <section className="pb-4 text-center">
+            <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#F4F4FE] text-[#5B5BEF]">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20.5 9A9 9 0 0 0 5.6 5.6L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3.5 15a9 9 0 0 0 14.9 3.4L21 16" />
+                <path d="M21 21v-5h-5" />
+                <path d="M8.5 9.5h7M9.2 12h5.6M10 14.5h4" />
+              </svg>
+            </span>
+            <h2 className="mt-5 text-[22px] font-black text-[#2E2E5C] md:text-[26px]">
+              부담 없이, 30일 전액 환불 보장
+            </h2>
+            <p className="mx-auto mt-2.5 max-w-[640px] text-[14px] font-bold leading-relaxed text-[#2E2E5C]/65 md:text-[15px]">
+              상품이 만족스럽지 않다면 결제일로부터 30일 이내에{" "}
+              <a href="mailto:support@watashi-torisetsu.com" className="mx-0.5 text-[#5B5BEF] underline underline-offset-2">
+                support@watashi-torisetsu.com
+              </a>
+              으로 연락해 주세요. 구매 금액 전액을 환불해 드립니다.
+            </p>
+          </section>
+        </div>
       </div>
     </main>
   );

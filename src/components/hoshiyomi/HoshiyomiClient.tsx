@@ -188,6 +188,7 @@ export function HoshiyomiClient({
           persistenceReady={persistenceReady}
           hasChatAccess={hasChatAccess}
           canUpgradeToPremium={canUpgradeToPremium}
+          ownerToken={ownerToken}
           previewMode={previewMode}
           locale={locale}
           onStart={startConversation}
@@ -204,17 +205,31 @@ export function HoshiyomiClient({
               ? (["premium_bundle"] as const)
               : CHAT_ACCESS_PRODUCTS
           }
+          defaultProduct={
+            canUpgradeToPremium ? "premium_bundle" : "full_access"
+          }
+          heading={
+            locale === "ja"
+              ? canUpgradeToPremium
+                ? "Aliceとの続きを解放する"
+                : "Aliceを試す・本格相談を選ぶ"
+              : undefined
+          }
           previewMode={previewMode}
           locale={locale}
           // PC ではカードが画像つき2カラムになるようヒーローと同じ Alice 画像を渡す
           // (SP はカード側の hidden md:flex で画像非表示のため影響なし)。
           imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
           imageAlt={locale === "ko" ? "별자리 상담사" : "AI占い師 Alice"}
+          scrollLocked={lineExitOpen}
           onClose={handlePaywallExitAttempt}
         />
       ) : null}
       {lineExitOpen ? (
-        <HoshiyomiLineExitModal onClose={closeLineExitFlow} />
+        <HoshiyomiLineExitModal
+          ownerToken={ownerToken}
+          onClose={closeLineExitFlow}
+        />
       ) : null}
     </>
   );
@@ -226,6 +241,7 @@ function HoshiyomiHome({
   persistenceReady,
   hasChatAccess,
   canUpgradeToPremium,
+  ownerToken,
   previewMode,
   locale,
   onStart,
@@ -235,6 +251,7 @@ function HoshiyomiHome({
   persistenceReady: boolean;
   hasChatAccess: boolean;
   canUpgradeToPremium: boolean;
+  ownerToken?: string;
   previewMode: boolean;
   locale: ResultLocale;
   onStart: (text: string) => void;
@@ -339,7 +356,10 @@ function HoshiyomiHome({
       <section className="mx-auto max-w-[1040px] px-5 pb-10 pt-4 md:px-8 md:pb-14 md:pt-6">
         {/* LINE連携 (Alice Plus)。ja限定 */}
         {locale === "ja" && !previewMode ? (
-          <LineAliceLinkCard trackingSource="hoshiyomi_home" />
+          <LineAliceLinkCard
+            ownerToken={ownerToken}
+            trackingSource="hoshiyomi_home"
+          />
         ) : null}
 
         <p className="mt-10 text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
@@ -445,7 +465,13 @@ function HoshiyomiFaqModal({
   );
 }
 
-function HoshiyomiLineExitModal({ onClose }: { onClose: () => void }) {
+function HoshiyomiLineExitModal({
+  ownerToken,
+  onClose,
+}: {
+  ownerToken?: string;
+  onClose: () => void;
+}) {
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -466,7 +492,11 @@ function HoshiyomiLineExitModal({ onClose }: { onClose: () => void }) {
         className="relative w-full max-w-[1120px] px-3 pb-6 pt-10 md:px-6 md:pb-10"
         onClick={(event) => event.stopPropagation()}
       >
-        <LineAliceLinkCard trackingSource="hoshiyomi_paywall_exit" />
+        <LineAliceLinkCard
+          ownerToken={ownerToken}
+          trackingSource="hoshiyomi_paywall_exit"
+          onClose={onClose}
+        />
       </div>
     </div>,
     document.body,

@@ -123,6 +123,7 @@ export function ArticleGrid({
           <li key={a.slug} className="h-full">
             <Link
               href={`${locale === "ko" ? "/ko" : ""}/articles/${a.slug}`}
+              prefetch={false}
               className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(46,46,92,0.10)] transition-shadow hover:shadow-[0_4px_20px_rgba(46,46,92,0.18)]"
             >
               {/* 上部イラスト (フェルト調シーン)。淡い背景で切り抜き感をなくす */}

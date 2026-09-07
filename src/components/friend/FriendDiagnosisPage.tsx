@@ -71,6 +71,31 @@ interface OwnerInfo {
   thirtyTwoTypeId: ThirtyTwoTypeId | null;
 }
 
+const EMPTY_OWNER_INFO: OwnerInfo = {
+  displayName: null,
+  typeName: null,
+  typeSubtitle: null,
+  fullCode: null,
+  modifierLabel: null,
+  sixteenTypeId: null,
+  thirtyTwoTypeId: null,
+};
+
+const PREVIEW_OWNER_INFO: Record<ResultLocale, OwnerInfo> = {
+  ja: {
+    ...EMPTY_OWNER_INFO,
+    displayName: "みさき",
+    sixteenTypeId: "sparkle-dolphin",
+    thirtyTwoTypeId: "sparkle-dolphin__N",
+  },
+  ko: {
+    ...EMPTY_OWNER_INFO,
+    displayName: "지우",
+    sixteenTypeId: "sparkle-dolphin",
+    thirtyTwoTypeId: "sparkle-dolphin__N",
+  },
+};
+
 // 1人で完結する友達診断 (2026-07-18): 30 問 = 10 問 × 3 ページ。
 const SCALE_PAGES: FriendQuestionV2[][] = [
   FRIEND_QUESTIONS_V2_PAGE_1,
@@ -107,24 +132,38 @@ export default function FriendDiagnosisPage({
   );
 }
 
+/** ローカル専用ルートから、本番DB・計測を使わず同じ招待ページを表示する。 */
+export function FriendDiagnosisPreview({
+  locale = "ja",
+}: {
+  locale?: ResultLocale;
+}) {
+  return (
+    <FriendContent
+      inviteCode="DEVPREVIEW"
+      locale={locale}
+      previewMode
+      previewOwner={PREVIEW_OWNER_INFO[locale]}
+    />
+  );
+}
+
 function FriendContent({
   inviteCode,
   locale,
+  previewMode = false,
+  previewOwner,
 }: {
   inviteCode: string;
   locale: ResultLocale;
+  previewMode?: boolean;
+  previewOwner?: OwnerInfo;
 }) {
   const router = useRouter();
   const copy = FRIEND_COPY[locale];
-  const [owner, setOwner] = useState<OwnerInfo>({
-    displayName: null,
-    typeName: null,
-    typeSubtitle: null,
-    fullCode: null,
-    modifierLabel: null,
-    sixteenTypeId: null,
-    thirtyTwoTypeId: null,
-  });
+  const [owner, setOwner] = useState<OwnerInfo>(
+    () => previewOwner ?? EMPTY_OWNER_INFO,
+  );
   // 導線改善: intro (owner トリセツ全文) を廃止し、踏んだ瞬間から質問 (scale) 直行。
   // owner のトリセツ相当は送信完了後の /evaluate/sent で「ご褒美」+自己診断CTAとして表示。
   const [phase, setPhase] = useState<Phase>("scale");
@@ -142,15 +181,17 @@ function FriendContent({
   // させないため、判明した時点で回答フェーズに入れず無効リンク画面を出す。
   const [inviteInvalid, setInviteInvalid] = useState(false);
   const trackedLanding = useRef(false);
+  const inviteValidated = useRef(false);
+  const firstAnswerQuestionId = useRef<number | null>(null);
+  const trackedAnswerStart = useRef(false);
 
   // ===== 初期化: invite_code から owner 情報取得 =====
   useEffect(() => {
-    if (!trackedLanding.current) {
-      trackedLanding.current = true;
-      track("friend_landing_viewed", { inviteCode });
-      // intro 廃止に伴い、評価開始 = マウント時 (質問直行) に発火へ移設。
-      track("friend_answer_started", { inviteCode });
+    if (previewMode) {
+      inviteValidated.current = true;
+      return;
     }
+
     fetch(`/api/friend-info?code=${encodeURIComponent(inviteCode)}`)
       .then((res) => {
         if (res.status === 404) {
@@ -163,6 +204,22 @@ function FriendContent({
       })
       .then((data) => {
         if (!data) return;
+        inviteValidated.current = true;
+        if (!trackedLanding.current) {
+          trackedLanding.current = true;
+          track("friend_landing_viewed", { inviteCode });
+        }
+        // API確認より先に最初の回答が行われた場合も、検証完了後に開始イベントを補完する。
+        if (
+          firstAnswerQuestionId.current !== null &&
+          !trackedAnswerStart.current
+        ) {
+          trackedAnswerStart.current = true;
+          track("friend_answer_started", {
+            inviteCode,
+            metadata: { questionId: firstAnswerQuestionId.current },
+          });
+        }
         setOwner({
           displayName: data.displayName ?? null,
           typeName: data.typeName ?? null,
@@ -175,7 +232,7 @@ function FriendContent({
         });
       })
       .catch(() => {});
-  }, [inviteCode]);
+  }, [inviteCode, previewMode]);
 
   // 「次へ」等でステップ (ページ / フェーズ) が変わったら、必ず最上部へ。
   //   setState と同フレームで window.scrollTo すると、まだ差し替わっていない旧ページ上で
@@ -194,6 +251,20 @@ function FriendContent({
 
   // ===== ハンドラ =====
   const handleScaleAnswer = (questionId: number, value: AnswerValue) => {
+    if (firstAnswerQuestionId.current === null) {
+      firstAnswerQuestionId.current = questionId;
+    }
+    if (
+      !previewMode &&
+      inviteValidated.current &&
+      !trackedAnswerStart.current
+    ) {
+      trackedAnswerStart.current = true;
+      track("friend_answer_started", {
+        inviteCode,
+        metadata: { questionId },
+      });
+    }
     setScaleAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
@@ -211,7 +282,9 @@ function FriendContent({
     } else {
       // おまけ choice 3 問は 2026-07-20 に廃止。30問完了後はメッセージ入力へ直行。
       setPhase("message");
-      track("friend_answer_scale_completed", { inviteCode });
+      if (!previewMode) {
+        track("friend_answer_scale_completed", { inviteCode });
+      }
     }
   };
 
@@ -226,6 +299,15 @@ function FriendContent({
     if (isSubmitting) return; // 二重送信ガード
     setIsSubmitting(true);
     setSubmitError(null);
+
+    // ローカルUI確認では回答を保存せず、既存の完了結果プレビューへ接続する。
+    if (previewMode) {
+      router.push(
+        `/dev/evaluate-sent-preview${locale === "ko" ? "?locale=ko" : ""}`,
+      );
+      return;
+    }
+
     try {
       const res = await fetch("/api/friend-answer/v2", {
         method: "POST",
@@ -249,6 +331,19 @@ function FriendContent({
         setIsSubmitting(false);
         setPhase("error");
         return;
+      }
+      // friend-info が一時エラーでも回答保存に成功した場合は、有効な招待だったことが
+      // 確定する。この時点で不足している到達・初回回答イベントを順序どおり補完する。
+      if (!trackedLanding.current) {
+        trackedLanding.current = true;
+        track("friend_landing_viewed", { inviteCode });
+      }
+      if (!trackedAnswerStart.current) {
+        trackedAnswerStart.current = true;
+        track("friend_answer_started", {
+          inviteCode,
+          metadata: { questionId: firstAnswerQuestionId.current },
+        });
       }
       track("friend_answer_completed", {
         inviteCode,

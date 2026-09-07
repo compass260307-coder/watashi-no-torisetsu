@@ -93,6 +93,7 @@ export function FriendList({
               {hasFullAccess ? (
                 <Link
                   href={`${prefix}/tako/${token}/friend/${f.perceptionId}`}
+                  prefetch={false}
                   className={cardClass}
                 >
                   {inner}

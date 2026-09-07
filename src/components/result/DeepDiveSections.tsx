@@ -255,21 +255,22 @@ function LockedBlock({
           </div>
         ))}
       </div>
-      {/* 中央の解除カード (横長になりすぎないよう幅を絞り、縦の余白を厚めに) */}
+      {/* 中央の解除カード。スマホは参考UIに合わせて画面幅の約8割・低めの高さにし、
+          md+ は従来サイズを維持する。 */}
       <div className="absolute inset-0 flex items-center justify-center p-3">
-        <div className="relative w-full max-w-[380px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-6 pb-9 pt-10 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:max-w-[420px]">
-          <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+        <div className="result-themed-lock-card relative w-[84%] max-w-[320px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-4 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:w-full md:max-w-[420px] md:px-6 md:pb-9 md:pt-10">
+          <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
             <LockGlyph size={14} />
           </span>
-          <p className="mb-2 text-[19px] font-black text-[#2E2E5C]">
+          <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
             {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
-          <p className="mb-6 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
+          <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
             {cardCopy}
           </p>
           <PaywallScrollButton
             source={source}
-            className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+            className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
           >
             {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
@@ -518,8 +519,8 @@ export function DeepDiveSections({
           </div>
 
           {/* 解除カード (上辺アクセント線 + 鍵バッジ) */}
-          <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-            <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+          <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+            <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -539,7 +540,7 @@ export function DeepDiveSections({
             {/* 挙動は他の解除カードと同一 (最下部の課金カードへスムーススクロール+パルス) */}
             <PaywallScrollButton
               source="deepdive_card"
-              className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+              className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
               {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>

@@ -10,6 +10,7 @@
 
 import type { CSSProperties } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { AnimatedCharacter } from "./AnimatedCharacter";
 import type { Job } from "@/lib/job";
 import type { ResultLocale } from "@/i18n/result";
 
@@ -24,6 +25,7 @@ export interface CharacterHeroJobSlot {
 
 interface CharacterHeroProps {
   imageSrc: string;
+  animSrc?: string | null;
   alt: string;
   essence: string; // 小・上 (例: 気まぐれロマンチスト)
   name: string; // 大・下 (例: きらめきウサギ)
@@ -68,6 +70,7 @@ const BLEND_MASK =
 
 export function CharacterHero({
   imageSrc,
+  animSrc,
   alt,
   essence,
   description,
@@ -112,15 +115,28 @@ export function CharacterHero({
               : undefined
           }
         >
-          <SmoothImage
-            src={imageSrc}
-            alt={alt}
-            width={960}
-            height={960}
-            priority
-            sizes={imageSizes}
-            className={`w-full h-full ${imageFitClassName}`}
-          />
+          {animSrc ? (
+            <AnimatedCharacter
+              imageSrc={imageSrc}
+              animSrc={animSrc}
+              alt={alt}
+              width={960}
+              height={960}
+              priority
+              sizes={imageSizes}
+              className={imageFitClassName}
+            />
+          ) : (
+            <SmoothImage
+              src={imageSrc}
+              alt={alt}
+              width={960}
+              height={960}
+              priority
+              sizes={imageSizes}
+              className={`w-full h-full ${imageFitClassName}`}
+            />
+          )}
         </div>
         {/* 職業バッジ (アバター右下のアイコン) は撤去。職業テキスト/ロジックは不変。 */}
       </div>

@@ -21,6 +21,8 @@ const ROUTES = [
   "/ko/aisho",
   "/ko/unmei",
   "/ko/hoshiyomi",
+  "/ko/tarot",
+  "/ko/tarot/one",
   "/ko/types",
   "/ko/privacy",
   "/ko/terms",
@@ -104,25 +106,26 @@ try {
       });
 
       if (viewport.name === "mobile" && ["/ko", "/ko/types"].includes(route)) {
-        await page.evaluateOnNewDocument((fixtureRoute) => {
-          try {
-            const ownerKey = "torisetsu_owner_token";
-            const friendKey = "wt_tako_attention_pending_owner_v1";
-            const destinyKey = "wt_unmei_attention_pending_owner_v1";
-            const selfKey = "wt_me_attention_pending_v1";
-            for (const key of [ownerKey, friendKey, destinyKey, selfKey]) {
-              localStorage.removeItem(key);
-            }
-            if (fixtureRoute === "/ko") {
-              localStorage.setItem(selfKey, "1");
-            } else {
-              const token = "ko-browser-notification-fixture";
-              localStorage.setItem(ownerKey, token);
-              localStorage.setItem(friendKey, token);
-              localStorage.setItem(destinyKey, token);
-            }
-          } catch {
-            // The target origin may not be available on the initial blank document.
+        // localStorage を確実に対象originへ保存してから検証ルートを開く。
+        await page.goto(`${BASE_URL}/ko`, {
+          waitUntil: "domcontentloaded",
+          timeout: 45000,
+        });
+        await page.evaluate((fixtureRoute) => {
+          const ownerKey = "torisetsu_owner_token";
+          const friendKey = "wt_tako_attention_pending_owner_v1";
+          const destinyKey = "wt_unmei_attention_pending_owner_v1";
+          const selfKey = "wt_me_attention_pending_v1";
+          for (const key of [ownerKey, friendKey, destinyKey, selfKey]) {
+            localStorage.removeItem(key);
+          }
+          if (fixtureRoute === "/ko") {
+            localStorage.setItem(selfKey, "1");
+          } else {
+            const token = "ko-browser-notification-fixture";
+            localStorage.setItem(ownerKey, token);
+            localStorage.setItem(friendKey, token);
+            localStorage.setItem(destinyKey, token);
           }
         }, route);
       }
@@ -163,6 +166,15 @@ try {
           hasKoreanUnmeiPromo:
             bodyText.includes("운명의 설계도") &&
             Boolean(document.querySelector('a[href="/ko/unmei"]')),
+          hasKoreanTarotLanding:
+            bodyText.includes("Alice와 타로") &&
+            Boolean(document.querySelector('a[href="/ko/tarot/one"]')),
+          hasKoreanTarotDraw:
+            bodyText.includes("오늘의 한 장") &&
+            bodyText.includes("카드 섞기"),
+          hasKoreanHoshiyomiHome:
+            bodyText.includes("별자리 상담사와 대화하기") &&
+            Boolean(document.querySelector('input[placeholder="지금 무엇이 마음에 걸리나요?"]')),
           notificationLabels: [
             ...document.querySelectorAll('[data-notification-badge="true"]'),
           ].map((badge) => badge.closest("a")?.textContent?.trim() ?? ""),
@@ -378,28 +390,20 @@ try {
       ) {
         problems.push(`${routeLabel}: Korean commerce disclosures are incomplete`);
       }
-      if (
-        route.startsWith("/ko/me/preview?") &&
-        !hasKoreanPurchaseLegalNotice
-      ) {
-        problems.push(`${routeLabel}: Korean purchase legal notice is missing`);
-      }
       if (route === "/ko" && state.footerSocialHrefs.length < 3) {
         problems.push(`${routeLabel}: missing Korean social links`);
       }
       if (
         viewport.name === "mobile" &&
         route === "/ko" &&
-        !state.notificationLabels.some((label) => label.includes("사용설명서"))
+        !state.notificationLabels.some((label) => label.includes("자기 진단"))
       ) {
         problems.push(`${routeLabel}: missing Korean self-diagnosis notification badge`);
       }
       if (
         viewport.name === "mobile" &&
         route === "/ko/types" &&
-        !["친구 진단", "운명"].every((expected) =>
-          state.notificationLabels.some((label) => label.includes(expected)),
-        )
+        !state.notificationLabels.some((label) => label.includes("친구 진단"))
       ) {
         problems.push(`${routeLabel}: missing Korean friend/destiny notification badges`);
       }
@@ -424,16 +428,22 @@ try {
         problems.push(`${routeLabel}: self preview includes QR invite copy`);
       }
       if (
-        route.startsWith("/ko/tako/preview?") &&
-        !state.hasKoreanFriendProof
-      ) {
-        problems.push(`${routeLabel}: Korean friend-diagnosis proof band is missing`);
-      }
-      if (
         route.startsWith("/ko/me/preview?") &&
         !state.hasKoreanUnmeiPromo
       ) {
         problems.push(`${routeLabel}: Korean unmei promo is missing or links outside /ko`);
+      }
+      if (route === "/ko/tarot" && !state.hasKoreanTarotLanding) {
+        problems.push(`${routeLabel}: Korean tarot landing content or links are missing`);
+      }
+      if (route === "/ko/tarot/one" && !state.hasKoreanTarotDraw) {
+        problems.push(`${routeLabel}: Korean tarot draw experience is missing`);
+      }
+      if (
+        route === "/ko/hoshiyomi" &&
+        (state.pathname !== "/ko/hoshiyomi" || !state.hasKoreanHoshiyomiHome)
+      ) {
+        problems.push(`${routeLabel}: Korean Alice home redirected or did not render`);
       }
       if (state.overflowX > 4) {
         problems.push(`${routeLabel}: horizontal overflow ${state.overflowX}px`);

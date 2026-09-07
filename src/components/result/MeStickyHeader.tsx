@@ -11,12 +11,20 @@
 // ScrollHideHeader は children ごと -100% 平行移動するためバーも消えてしまう。
 // ここではヘッダー実高を測り、隠すときは -headerHeight だけ動かす (バーは残る)。
 //
-// シェアは大きめの丸ボタン1個に集約 (2026-07-26 指示、16P のシェアアイコン参考)。
-// 押すとモーダル (結果をシェアしよう: LINE(ko は KakaoTalk) / X / リンクコピー) を開く。
+// /me のシェアは上部バーの丸ボタン1個に集約し、押すとシェアカードを開く。
+// その隣に、本人の友達診断ページへ移動する丸アイコンを表示する。
+// /tako の招待モードも、従来どおり丸ボタンからモーダルを開く。
 // モーダルは createPortal で body 直下に出す。ヘッダーは隠れるとき transform を
 // 持つため、この中で fixed を使うと基準がヘッダーになり画面全体を覆えない。
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
@@ -26,6 +34,8 @@ import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk } from "@/lib/kakao-share";
 import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
 import type { ResultLocale } from "@/i18n/result";
+import { resultActionColorsForGroup } from "@/lib/hero-colors";
+import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
 interface MeStickyHeaderProps {
   /** ヘッダー本体 (TopHeader)。 */
@@ -33,8 +43,15 @@ interface MeStickyHeaderProps {
   /** 「すべての結果のロックを解除」CTA を出すか (第二部が未解放のときのみ true)。
       false でもシェアボタンのバー自体は shareUrl があれば表示する。 */
   showUnlockCta: boolean;
+  /** 解除CTAの文言差し替え (/tako は「結果をアップグレード」・2026-08-26)。
+      指定時はアイコンも錠前から上向き矢印 (アップグレード) に切り替える。 */
+  unlockCtaLabel?: string;
   /** 共有 URL。character=/share/[inviteCode]、invite=/friend/[inviteCode]。 */
   shareUrl?: string;
+  /** 友達診断への招待 URL。指定時は共有ポップアップに2つ目の選択肢を表示する。 */
+  friendShareUrl?: string;
+  /** 本人の友達診断ページ (/tako/[token]) への遷移先。指定時は上部バーに導線を出す。 */
+  friendDiagnosisHref?: string;
   /**
    * シェアボタンの種別 (2026-07-28)。
    *   - "character" (既定): 自分の結果 (キャラ) をシェアする従来モード (/me)。
@@ -64,6 +81,14 @@ interface MeStickyHeaderProps {
   reportIcon?: "download" | "upgrade";
   /** true のときは遷移せず、その場で課金カードを開く。href はJS無効時の遷移先。 */
   reportOpensPaywall?: boolean;
+  /** reportHref ボタンの差し替えノード。指定時は <a> の代わりにそのまま描画する
+   *  (/me のアップグレード導線は Alice チャットをモーダルで開く・2026-08-26)。 */
+  reportCta?: React.ReactNode;
+  /** バーの丸ボタン (シェア/友達診断) の配色。/me の完全版課金後はアップグレード
+   *  ピルがゴールドになるため "gold" で隣のトーンを揃える (2026-08-26)。既定 indigo。 */
+  circleTone?: "indigo" | "gold";
+  /** 結果グループ。指定時は circleTone より優先してCTA・丸ボタンをタイプ色にする。 */
+  group?: ThirtyTwoGroup;
   /**
    * 獲得ランディング (/share) 用: バー右端に「無料で性格診断をする」を表示 (2026-07-26)。
    * 課金CTA (showUnlockCta) / シェアボタンとは排他運用を想定。
@@ -77,10 +102,19 @@ interface MeStickyHeaderProps {
   /** 診断CTAの文言差し替え (既定: 無料で性格診断をする)。 */
   diagnosisCtaLabel?: string;
   /**
-   * 指定時のみ診断CTAクリックを friend_to_diagnosis_clicked で計測 (評価者ページ用。
-   * inviteCode prop と組で使う)。未指定 (/share) は従来どおり計測なし。
+   * 指定時のみ診断CTAクリックを計測する。評価者ページは
+   * friend_to_diagnosis_clicked、結果シェア着地は share_to_diagnosis_clicked を使う。
+   * inviteCode prop と組で指定する。
    */
   diagnosisCtaTrackSource?: string;
+  /** 診断CTAのイベント名。結果シェア着地では専用イベントへ切り替える。 */
+  diagnosisCtaEvent?:
+    | "friend_to_diagnosis_clicked"
+    | "share_to_diagnosis_clicked";
+  /** true のとき、固定バー内側の最大幅を外してCTAを画面右端へ寄せる。既定は true。 */
+  fullWidthBar?: boolean;
+  /** ローカル確認用。シェアUIの計測イベントを送信しない。 */
+  previewMode?: boolean;
   locale?: ResultLocale;
 }
 
@@ -105,10 +139,73 @@ function ShareGlyph({ size = 20 }: { size?: number }) {
   );
 }
 
+// 下部バー「友達診断」と同じ人物2人のアイコン。上部バー用にだけ縮小する。
+function FriendDiagnosisGlyph({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CopyGlyph({ copied }: { copied: boolean }) {
+  return copied ? (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12l4 4L19 6" />
+    </svg>
+  ) : (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="9" width="12" height="12" rx="2.5" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 export function MeStickyHeader({
   children,
   showUnlockCta,
+  unlockCtaLabel,
   shareUrl,
+  friendShareUrl,
+  friendDiagnosisHref,
   shareKind = "character",
   ownerToken,
   inviteCode,
@@ -120,21 +217,33 @@ export function MeStickyHeader({
   reportLabel,
   reportIcon = "download",
   reportOpensPaywall = false,
+  reportCta,
+  circleTone = "indigo",
+  group,
   diagnosisCta,
   diagnosisCtaHref,
   diagnosisCtaLabel,
   diagnosisCtaTrackSource,
+  diagnosisCtaEvent = "friend_to_diagnosis_clicked",
+  fullWidthBar = true,
+  previewMode = false,
   locale = "ja",
 }: MeStickyHeaderProps) {
   // バー自体は CTA (未解放) か シェアボタン (shareUrl) のどちらかがあれば出す。
   const showBar =
     showUnlockCta ||
     Boolean(shareUrl) ||
+    Boolean(friendDiagnosisHref) ||
     Boolean(reportHref) ||
     Boolean(diagnosisCta);
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [sharePickerOpen, setSharePickerOpen] = useState(false);
+  const [pickerCopiedKind, setPickerCopiedKind] =
+    useState<"character" | "invite" | null>(null);
+  const [activeShareKind, setActiveShareKind] =
+    useState<"character" | "invite">(shareKind);
   // モーダルを開いた設置場所 (share_clicked の metadata.source)。
   // ヘッダーのボタン=sticky_bar / 本文中の ShareModalOpenButton=イベントの detail.source。
   const [shareSource, setShareSource] = useState("sticky_bar");
@@ -175,56 +284,118 @@ export function MeStickyHeader({
       setShareSource(
         typeof detail?.source === "string" ? detail.source : "sticky_bar",
       );
-      setShareOpen(true);
+      if (friendShareUrl && shareKind === "character") {
+        setActiveShareKind("character");
+        setSharePickerOpen(true);
+      } else {
+        setActiveShareKind(shareKind);
+        setShareOpen(true);
+      }
     };
     window.addEventListener(SHARE_OPEN_EVENT, handler);
     return () => window.removeEventListener(SHARE_OPEN_EVENT, handler);
-  }, [shareUrl]);
+  }, [friendShareUrl, shareKind, shareUrl]);
 
   // モーダルは Escape でも閉じられるように。
   useEffect(() => {
-    if (!shareOpen) return;
+    if (!shareOpen && !sharePickerOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShareOpen(false);
+      if (e.key === "Escape") {
+        setShareOpen(false);
+        setSharePickerOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [shareOpen]);
+  }, [shareOpen, sharePickerOpen]);
 
-  const isInvite = shareKind === "invite";
+  const defaultIsInvite = shareKind === "invite";
+  const isInvite = activeShareKind === "invite";
   const isKo = locale === "ko";
+  const actionTone = group ? resultActionColorsForGroup(group) : null;
+  const circleButtonStyle: CSSProperties | undefined = actionTone
+    ? {
+        borderColor: actionTone.border,
+        color: actionTone.accent,
+        boxShadow: `0 2px 8px color-mix(in srgb, ${actionTone.accent} 16%, transparent)`,
+      }
+    : undefined;
+  const primaryButtonStyle: CSSProperties | undefined = actionTone
+    ? {
+        backgroundColor: actionTone.accent,
+        boxShadow: `0 2px 0 ${actionTone.shadow}`,
+      }
+    : undefined;
+  // バーの丸ボタン共通クラス。gold はプレミアムカードのCTA (#9A6A24) と同系色。
+  const circleButtonClass =
+    actionTone
+      ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-white transition-all hover:brightness-[0.98] active:scale-95 sm:h-11 sm:w-11"
+      : circleTone === "gold"
+      ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#9A6A24]/35 bg-white text-[#9A6A24] shadow-[0_2px_8px_rgba(154,106,36,0.10)] transition-all hover:border-[#9A6A24]/60 hover:bg-[#FFF6DF] active:scale-95 sm:h-11 sm:w-11"
+      : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] shadow-[0_2px_8px_rgba(91,91,239,0.10)] transition-all hover:border-[#5B5BEF]/60 hover:bg-[#F4F4FE] active:scale-95 sm:h-11 sm:w-11";
+  // /tako は従来どおり shareUrl 自体が招待 URL。/me の友達ボタンだけ
+  // friendShareUrl を優先し、キャラクター共有と同じモーダルを安全に再利用する。
+  const activeShareUrl = isInvite ? (friendShareUrl ?? shareUrl) : shareUrl;
 
-  // 招待モーダルの露出計測 (2026-08-04)。ピル/丸ボタン/本文シェアピルのどの経路で
-  // 開いても、open 遷移の1箇所で拾う (開くたび1回。招待モードのみ)。
+  // シェアUIの露出計測。/me は最初の共有先選択UI、/tako は個別の
+  // 共有モーダルを開いた時点で拾う。旧実装は shareOpen だけを見ていたため、
+  // /me の主導線で share_ui_shown が漏れ、操作数が表示数を超えていた。
   useEffect(() => {
-    if (!shareOpen || !isInvite) return;
-    track("tako_invite_ui_shown", {
+    if (previewMode) return;
+    if (sharePickerOpen) {
+      track("share_ui_shown", {
+        ownerToken,
+        inviteCode,
+        metadata: { kind: "character", source: shareSource },
+      });
+      return;
+    }
+    if (!shareOpen) return;
+    if (isInvite) {
+      track("tako_invite_ui_shown", {
+        ownerToken,
+        inviteCode,
+        metadata: { surface: "sticky_modal" },
+      });
+      return;
+    }
+    track("share_ui_shown", {
       ownerToken,
       inviteCode,
-      metadata: { surface: "sticky_modal" },
+      metadata: { kind: "character", source: shareSource },
     });
-  }, [shareOpen, isInvite, ownerToken, inviteCode]);
+  }, [
+    shareOpen,
+    sharePickerOpen,
+    isInvite,
+    ownerToken,
+    inviteCode,
+    previewMode,
+    shareSource,
+  ]);
 
   // キャラクター共有文言。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
   // 友達診断への回答依頼は含めず、純粋なキャラ共有として扱う。
   // invite モード (/tako) は LockedInviteShare と同じ招待文言に切り替える。
   const title = code ? `${essence ?? ""}（${code}）` : (essence ?? "");
-  const shareText = isInvite
-    ? locale === "ko"
+  const inviteShareText =
+    locale === "ko"
       ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
-      : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ"
-    : locale === "ko"
+      : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
+  const characterShareText =
+    locale === "ko"
       ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
-  const xUrl = shareUrl
-    ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(shareUrl, "x"))}`
+  const shareText = isInvite ? inviteShareText : characterShareText;
+  const xUrl = activeShareUrl
+    ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(activeShareUrl, "x"))}`
     : undefined;
-  const lineUrl = shareUrl && !isKo
-    ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(shareUrl, "line")}`)}`
+  const lineUrl = activeShareUrl && !isKo
+    ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(activeShareUrl, "line")}`)}`
     : undefined;
   // Facebook は sharer.php (テキストは付与不可・URL のみ)。
-  const fbUrl = shareUrl
-    ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(shareUrl, "facebook"))}`
+  const fbUrl = activeShareUrl
+    ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(activeShareUrl, "facebook"))}`
     : undefined;
 
   // 「その他」= OS のシェアシート (Web Share API)。Instagram 等の個別対応が
@@ -238,25 +409,41 @@ export function MeStickyHeader({
 
   // invite モードは招待ファネルの friend_invite_clicked (LockedInviteShare と同じ
   // イベント・source だけ設置場所で分ける)。character は従来の share_clicked。
+  const fireShareForKind = (
+    kind: "character" | "invite",
+    channel: "copy" | "x" | "line" | "kakao" | "facebook" | "native",
+    sourceOverride?: string,
+  ) => {
+    if (previewMode) return;
+    if (kind === "invite") {
+      track("friend_invite_clicked", {
+        ownerToken,
+        inviteCode,
+        metadata: { channel, source: "tako_sticky_bar" },
+      });
+      return;
+    }
+    track("share_clicked", {
+      ownerToken,
+      inviteCode,
+      metadata: {
+        channel,
+        kind: "character",
+        source: sourceOverride ?? shareSource,
+      },
+    });
+  };
+
   const fireShare = (
     channel: "copy" | "x" | "line" | "kakao" | "facebook" | "native",
-  ) =>
-    isInvite
-      ? track("friend_invite_clicked", {
-          ownerToken,
-          inviteCode,
-          metadata: { channel, source: "tako_sticky_bar" },
-        })
-      : track("share_clicked", {
-          metadata: { channel, kind: "character", source: shareSource },
-        });
+  ) => fireShareForKind(activeShareKind, channel);
 
   const handleNativeShare = async () => {
-    if (!shareUrl) return;
+    if (!activeShareUrl) return;
     try {
       await navigator.share({
         text: shareText,
-        url: withRef(shareUrl, "native"),
+        url: withRef(activeShareUrl, "native"),
       });
       // 共有先を選んで完了した時のみ計測 (キャンセルは reject され catch へ)。
       fireShare("native");
@@ -265,7 +452,7 @@ export function MeStickyHeader({
     }
   };
 
-  const copyShareValue = async (value: string) => {
+  const writeClipboard = async (value: string) => {
     let succeeded = false;
     try {
       await navigator.clipboard.writeText(value);
@@ -284,6 +471,11 @@ export function MeStickyHeader({
         textarea.remove();
       }
     }
+    return succeeded;
+  };
+
+  const copyShareValue = async (value: string) => {
+    const succeeded = await writeClipboard(value);
     if (!succeeded) return false;
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
@@ -291,8 +483,8 @@ export function MeStickyHeader({
   };
 
   const handleKakaoShare = async () => {
-    if (!shareUrl) return;
-    const url = withRef(shareUrl, "kakao");
+    if (!activeShareUrl) return;
+    const url = withRef(activeShareUrl, "kakao");
     const result = await shareToKakaoTalk({
       text: shareText,
       url,
@@ -302,16 +494,30 @@ export function MeStickyHeader({
   };
 
   const handleCopy = async () => {
-    if (!shareUrl) return;
+    if (!activeShareUrl) return;
     // コピーは文章を付けずリンクだけ (2026-07-28 指示。invite/character 共通形式。
     // 共有文 shareText は LINE/KakaoTalk/X/その他 のシェア側でのみ使う)。
-    const succeeded = await copyShareValue(withRef(shareUrl, "copy"));
+    const succeeded = await copyShareValue(withRef(activeShareUrl, "copy"));
     if (!succeeded) return;
     fireShare("copy");
   };
 
+  const handlePickerCopy = async (
+    kind: "character" | "invite",
+    url: string,
+  ) => {
+    const succeeded = await writeClipboard(withRef(url, "copy"));
+    if (!succeeded) return;
+    setPickerCopiedKind(kind);
+    window.setTimeout(
+      () => setPickerCopiedKind((current) => (current === kind ? null : current)),
+      1600,
+    );
+    fireShareForKind(kind, "copy");
+  };
+
   return (
-    <div className="sticky top-0 z-50">
+    <div data-result-sticky-header className="sticky top-0 z-50">
       <div
         className="transition-transform duration-300"
         // 表示中は transform を持たせない (undefined)。translateY(0) でも transform が
@@ -328,81 +534,75 @@ export function MeStickyHeader({
         <div ref={headerRef}>{children}</div>
 
         {showBar && (
-          <div className="relative flex items-center justify-end gap-2 border-b border-[#E9E9F2] bg-white px-4 py-2 md:px-8">
-            {/* シェアボタン (1個に集約・大きめ)。キャラクター共有 URL があるときのみ */}
-            {shareUrl && (
-              <button
-                type="button"
-                aria-label={
-                  isInvite
-                    ? isKo
-                      ? "친구에게 진단 부탁하기"
-                      : "友達に診断してもらう"
-                    : isKo
-                      ? "결과 공유"
-                      : "結果をシェア"
-                }
-                aria-haspopup="dialog"
-                onClick={() => {
-                  setShareSource("sticky_bar");
-                  setShareOpen(true);
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
-              >
-                <ShareGlyph size={20} />
-              </button>
-            )}
-
-            {/* invite モード (/tako ロック中) の明示CTAピル: シェア丸ボタンと同じ招待
-                モーダルを開く (2026-08-03 指示。「ロックを解除」ピルと同スタイル)。
-                他のピル (レポート/解除CTA) が出る画面では二重にしない。 */}
-            {isInvite && !reportHref && !showUnlockCta && (
-              <button
-                type="button"
-                aria-haspopup="dialog"
-                onClick={() => {
-                  setShareSource("sticky_bar");
-                  setShareOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-bold text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+          <div className="relative border-y border-[#E6E7F1] bg-white/95 px-3 py-1.5 shadow-[0_4px_16px_rgba(46,46,92,0.08)] backdrop-blur-md sm:px-4 md:px-6 md:py-2">
+            <div
+              className={`flex w-full min-w-0 items-stretch justify-end gap-1.5 sm:gap-2 ${
+                fullWidthBar ? "" : "mx-auto max-w-[720px]"
+              }`}
+            >
+              {/* シェア先は上部に並べず、丸ボタンからシェアカードへ集約する。 */}
+              {shareUrl && (
+                <button
+                  type="button"
+                  aria-label={
+                    defaultIsInvite
+                      ? isKo
+                        ? "친구에게 진단 부탁하기"
+                        : "友達に診断してもらう"
+                      : isKo
+                        ? "결과 공유"
+                        : "結果をシェア"
+                  }
+                  aria-haspopup="dialog"
+                  aria-expanded={sharePickerOpen || shareOpen}
+                  onClick={() => {
+                    setShareSource("sticky_bar");
+                    if (friendShareUrl && !defaultIsInvite) {
+                      setActiveShareKind("character");
+                      setSharePickerOpen(true);
+                    } else {
+                      setActiveShareKind(shareKind);
+                      setShareOpen(true);
+                    }
+                  }}
+                  className={circleButtonClass}
+                  style={circleButtonStyle}
                 >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                {isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
-              </button>
-            )}
+                  <ShareGlyph size={20} />
+                </button>
+              )}
 
-            {reportHref && (
-              <a
-                href={reportHref}
-                onClick={
-                  reportOpensPaywall
-                    ? (event) => {
-                        event.preventDefault();
-                        scrollToPaywall("unmei_upgrade_sticky");
-                      }
-                    : undefined
-                }
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-bold text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
-              >
-                {reportIcon === "upgrade" ? (
+              {friendDiagnosisHref && (
+                <Link
+                  href={friendDiagnosisHref}
+                  aria-label={
+                    isKo ? "친구 진단 페이지로 이동" : "友達診断ページへ移動"
+                  }
+                  className={circleButtonClass}
+                  style={circleButtonStyle}
+                >
+                  <FriendDiagnosisGlyph />
+                </Link>
+              )}
+
+              {/* invite モード (/tako ロック中) の明示CTAピル: シェア丸ボタンと同じ招待
+                  モーダルを開く (2026-08-03 指示。「ロックを解除」ピルと同スタイル)。
+                  他のピル (レポート/解除CTA) が出る画面では二重にしない。 */}
+              {defaultIsInvite && !reportHref && !showUnlockCta && (
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    setShareSource("sticky_bar");
+                    setActiveShareKind("invite");
+                    setShareOpen(true);
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
+                  style={primaryButtonStyle}
+                >
                   <svg
-                    width="13"
-                    height="13"
+                    width="15"
+                    height="15"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -411,15 +611,100 @@ export function MeStickyHeader({
                     strokeLinejoin="round"
                     aria-hidden="true"
                   >
-                    <path d="M12 20V6" />
-                    <path d="m7 11 5-5 5 5" />
-                    <path d="M19 2v4M17 4h4" />
-                    <path d="M5 16v4M3 18h4" />
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                ) : (
+                  {isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                </button>
+              )}
+
+              {reportCta ?? (reportHref && (
+                <a
+                  href={reportHref}
+                  onClick={
+                    reportOpensPaywall
+                      ? (event) => {
+                          event.preventDefault();
+                          scrollToPaywall("unmei_upgrade_sticky");
+                        }
+                      : undefined
+                  }
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
+                  style={primaryButtonStyle}
+                >
+                  {reportIcon === "upgrade" ? (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 20V6" />
+                      <path d="m7 11 5-5 5 5" />
+                      <path d="M19 2v4M17 4h4" />
+                      <path d="M5 16v4M3 18h4" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                      <path d="M14 2v5h5" />
+                      <path d="M12 18v-6" />
+                      <path d="m9 15 3 3 3-3" />
+                    </svg>
+                  )}
+                  {reportLabel ??
+                    (isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
+                </a>
+              ))}
+
+              {diagnosisCta && (
+                <a
+                  href={diagnosisCtaHref ?? (isKo ? "/ko/diagnosis" : "/diagnosis")}
+                  data-share-diagnosis-tracked={
+                    diagnosisCtaTrackSource &&
+                    diagnosisCtaEvent === "share_to_diagnosis_clicked"
+                      ? "true"
+                      : undefined
+                  }
+                  onClick={
+                    diagnosisCtaTrackSource
+                      ? () =>
+                          track(diagnosisCtaEvent, {
+                            inviteCode,
+                            metadata: {
+                              kind:
+                                diagnosisCtaEvent === "share_to_diagnosis_clicked"
+                                  ? "character"
+                                  : undefined,
+                              source: diagnosisCtaTrackSource,
+                            },
+                          })
+                      : undefined
+                  }
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
+                  style={primaryButtonStyle}
+                >
+                  {/* クリップボード (下部ナビ「自己診断」タブと同モチーフ)。 */}
                   <svg
-                    width="13"
-                    height="13"
+                    width="15"
+                    height="15"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -428,83 +713,323 @@ export function MeStickyHeader({
                     strokeLinejoin="round"
                     aria-hidden="true"
                   >
-                    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-                    <path d="M14 2v5h5" />
-                    <path d="M12 18v-6" />
-                    <path d="m9 15 3 3 3-3" />
+                    <rect x="5" y="4" width="14" height="17" rx="2.5" />
+                    <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+                    <path d="M8.5 11h7M8.5 15h5" />
                   </svg>
-                )}
-                {reportLabel ??
-                  (isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
-              </a>
-            )}
+                  {diagnosisCtaLabel ??
+                    (isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
+                </a>
+              )}
 
-            {diagnosisCta && (
-              <a
-                href={diagnosisCtaHref ?? (isKo ? "/ko/diagnosis" : "/diagnosis")}
-                onClick={
-                  diagnosisCtaTrackSource
-                    ? () =>
-                        track("friend_to_diagnosis_clicked", {
-                          inviteCode,
-                          metadata: { source: diagnosisCtaTrackSource },
-                        })
-                    : undefined
-                }
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-bold text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
-              >
-                {/* クリップボード (下部ナビ「自己診断」タブと同モチーフ・他ピルと同じ 13px stroke 流儀) */}
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+              {showUnlockCta && (
+                <button
+                  type="button"
+                  aria-label={
+                    unlockCtaLabel ??
+                    (isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
+                  }
+                  onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
+                  className="relative inline-flex min-h-10 w-[190px] min-w-[150px] shrink items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
+                  style={primaryButtonStyle}
                 >
-                  <rect x="5" y="4" width="14" height="17" rx="2.5" />
-                  <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
-                  <path d="M8.5 11h7M8.5 15h5" />
-                </svg>
-                {diagnosisCtaLabel ??
-                  (isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
-              </a>
-            )}
+                  {unlockCtaLabel ? (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="absolute left-4 sm:left-5"
+                    >
+                      <path d="M12 20V6" />
+                      <path d="m7 11 5-5 5 5" />
+                      <path d="M19 2v4M17 4h4" />
+                      <path d="M5 16v4M3 18h4" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="absolute left-4 sm:left-5"
+                    >
+                      <rect x="4" y="10" width="16" height="11" rx="2.5" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  )}
+                  {unlockCtaLabel ??
+                    (isKo ? (
+                      "모든 결과 잠금 해제"
+                    ) : (
+                      <>
+                        <span className="sm:hidden">
+                          すべての結果の
+                          <br />
+                          ロックを解除
+                        </span>
+                        <span className="hidden sm:inline">
+                          すべての結果のロックを解除
+                        </span>
+                      </>
+                    ))}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
-            {showUnlockCta && (
+      {/* /me は共有先が2種類あるため、参考UIと同じく最初に2つを並べて見せる。
+          各行の右端ボタンは、その行のURLを直接クリップボードへコピーする。 */}
+      {sharePickerOpen &&
+        shareUrl &&
+        friendShareUrl &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={isKo ? "공유할 내용 선택" : "共有する内容を選ぶ"}
+            className="fixed inset-0 z-[80] flex items-center justify-center px-4"
+          >
+            <button
+              type="button"
+              aria-label={isKo ? "닫기" : "閉じる"}
+              onClick={() => setSharePickerOpen(false)}
+              className="absolute inset-0 cursor-default bg-[#2E2E5C]/45"
+            />
+            <div className="relative max-h-[calc(100dvh-32px)] w-full max-w-[560px] overflow-y-auto rounded-2xl bg-white px-5 pb-7 pt-6 shadow-[0_18px_50px_rgba(46,46,92,0.3)] md:px-7 md:pb-8">
               <button
                 type="button"
-                onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-2 text-[12px] font-black text-white shadow-[0_3px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] md:text-[13px]"
+                aria-label={isKo ? "닫기" : "閉じる"}
+                onClick={() => setSharePickerOpen(false)}
+                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-[#2E2E5C]/45 transition-colors hover:bg-[#F4F4FE] hover:text-[#2E2E5C]"
               >
                 <svg
-                  width="13"
-                  height="13"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.4"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                   aria-hidden="true"
                 >
-                  <rect x="4" y="10" width="16" height="11" rx="2.5" />
-                  <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                  <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
-                {isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除"}
               </button>
-            )}
-          </div>
+
+              <h2 className="pr-8 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[24px]">
+                {isKo ? "무엇을 공유할까요?" : "結果をシェアしよう"}
+              </h2>
+
+              {/* SNS アイコンは、スコアを含まない「性格タイプ」を直接共有する。 */}
+              <div className="mt-5 flex items-start gap-6">
+                {isKo ? (
+                  <button
+                    type="button"
+                    aria-label="카카오톡으로 공유"
+                    onClick={handleKakaoShare}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-[#3C1E1E] transition-transform hover:scale-105"
+                      style={{ background: "#FEE500" }}
+                    >
+                      <KakaoTalkGlyph className="h-6 w-6" />
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      카카오톡
+                    </span>
+                  </button>
+                ) : (
+                  <a
+                    href={lineUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => fireShare("line")}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06C755] text-white transition-transform hover:scale-105">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 3C6.5 3 2 6.6 2 11.1c0 4 3.5 7.4 8.3 8-.1.4-.5 1.8-.6 2.1 0 0-.1.4.2.6.3.2.6 0 .6 0 .8-.5 4.4-2.9 5.9-4.2 3.3-1.2 5.6-3.7 5.6-6.5C22 6.6 17.5 3 12 3z" />
+                      </svg>
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      LINE
+                    </span>
+                  </a>
+                )}
+                <a
+                  href={xUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => fireShare("x")}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-white transition-transform hover:scale-105">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644z" />
+                    </svg>
+                  </span>
+                  <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                    X
+                  </span>
+                </a>
+                <a
+                  href={fbUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => fireShare("facebook")}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1877F2] text-white transition-transform hover:scale-105">
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M13.5 21v-7h2.4l.45-3H13.5V9.1c0-.87.28-1.6 1.66-1.6h1.34V4.85c-.3-.04-1.3-.13-2.44-.13-2.4 0-4.06 1.47-4.06 4.17V11H7.6v3h2.4v7h3.5z" />
+                    </svg>
+                  </span>
+                  <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                    Facebook
+                  </span>
+                </a>
+                {canNativeShare && (
+                  <button
+                    type="button"
+                    onClick={handleNativeShare}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EDEEFC] text-[#5B5BEF] transition-transform hover:scale-105">
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <circle cx="5" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <circle cx="19" cy="12" r="2" />
+                      </svg>
+                    </span>
+                    <span className="text-[11px] font-bold text-[#2E2E5C]/70">
+                      {isKo ? "기타" : "その他"}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-[16px] font-black text-[#2E2E5C] md:text-[18px]">
+                  {isKo ? "나의 성격 유형" : "あなたの性格タイプ"}
+                </h3>
+                <p className="mt-1 text-[12px] font-bold leading-relaxed text-[#77778F] md:text-[13px]">
+                  {isKo
+                    ? "성격 점수는 포함되지 않아요. SNS 공유에 추천해요."
+                    : "性格スコアは含まれません。SNSでのシェアにおすすめです。"}
+                </p>
+                <div className="mt-3 flex items-center gap-3 rounded-xl border-2 border-[#5B5BEF]/45 bg-[#FAFAFF] px-3 py-2.5 md:px-4">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80 md:text-[14px]">
+                    {shareUrl}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={
+                      pickerCopiedKind === "character"
+                        ? isKo
+                          ? "성격 유형 링크를 복사했어요"
+                          : "性格タイプのリンクをコピーしました"
+                        : isKo
+                          ? "성격 유형 링크 복사"
+                          : "性格タイプのリンクをコピー"
+                    }
+                    onClick={() => handlePickerCopy("character", shareUrl)}
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
+                  >
+                    <CopyGlyph copied={pickerCopiedKind === "character"} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-[16px] font-black text-[#2E2E5C] md:text-[18px]">
+                  {isKo ? "친구 진단 부탁하기" : "友達診断をお願いする"}
+                </h3>
+                <p className="mt-1 text-[12px] font-bold leading-relaxed text-[#77778F] md:text-[13px]">
+                  {isKo
+                    ? "친구나 가족에게 나에 대한 인상을 답해 달라고 부탁하는 링크예요."
+                    : "友達や家族に、あなたの印象を答えてもらうための招待リンクです。"}
+                </p>
+                <div className="mt-3 flex items-center gap-3 rounded-xl border-2 border-[#DADDEA] bg-white px-3 py-2.5 md:px-4">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80 md:text-[14px]">
+                    {friendShareUrl}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={
+                      pickerCopiedKind === "invite"
+                        ? isKo
+                          ? "친구 진단 링크를 복사했어요"
+                          : "友達診断リンクをコピーしました"
+                        : isKo
+                          ? "친구 진단 링크 복사"
+                          : "友達診断リンクをコピー"
+                    }
+                    onClick={() => handlePickerCopy("invite", friendShareUrl)}
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
+                  >
+                    <CopyGlyph copied={pickerCopiedKind === "invite"} />
+                  </button>
+                </div>
+              </div>
+              <span className="sr-only" role="status" aria-live="polite">
+                {pickerCopiedKind === "character"
+                  ? isKo
+                    ? "성격 유형 링크를 복사했어요"
+                    : "性格タイプのリンクをコピーしました"
+                  : pickerCopiedKind === "invite"
+                    ? isKo
+                      ? "친구 진단 링크를 복사했어요"
+                      : "友達診断リンクをコピーしました"
+                    : ""}
+              </span>
+            </div>
+          </div>,
+          document.body,
         )}
-      </div>
 
       {/* ===== シェアモーダル (16P の「結果を共有しましょう」参考) =====
           body 直下へポータル (ヘッダーの transform に fixed が閉じ込められるのを回避)。 */}
       {shareOpen &&
-        shareUrl &&
+        activeShareUrl &&
         typeof document !== "undefined" &&
         createPortal(
           <div
@@ -696,7 +1221,7 @@ export function MeStickyHeader({
               </p>
               <div className="flex items-center gap-2 rounded-xl border border-[#E3E6F5] bg-[#FAFAFF] px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80">
-                  {shareUrl}
+                  {activeShareUrl}
                 </span>
                 <button
                   type="button"
@@ -775,7 +1300,7 @@ export function MeStickyHeader({
                   >
                     <div className="relative">
                       <QRCodeSVG
-                        value={withRef(shareUrl, "qr")}
+                        value={withRef(activeShareUrl, "qr")}
                         size={248}
                         className="h-auto w-full"
                         bgColor="#FFFFFF"

@@ -86,7 +86,10 @@ export function KoreanTakoEntryPage() {
         먼저 자기 진단이 필요해요.
       </p>
       <p className="mb-6 text-[12.5px] leading-[1.9] text-[#6B6858]">
-        나의 사용설명서가 완성되면
+        <Link href="/ko" className="font-bold underline underline-offset-4">
+          나의 사용설명서
+        </Link>
+        {"가 완성되면"}
         <br />
         친구에게 진단을 부탁할 수 있어요.
       </p>

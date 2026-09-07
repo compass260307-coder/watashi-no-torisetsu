@@ -39,9 +39,9 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: [
       {
-        url: "/mascot/diagnosis-hero.png",
-        width: 1448,
-        height: 1086,
+        url: "/ogp-v5.jpg",
+        width: 1200,
+        height: 630,
         alt: "나의 사용설명서 무료 성격 진단",
       },
     ],
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/mascot/diagnosis-hero.png"],
+    images: ["/ogp-v5.jpg"],
   },
   robots: { index: true, follow: true },
 };

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import type { SiteLocale } from "@/lib/locale-switch";
+import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
+import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
@@ -30,6 +32,7 @@ type FooterLink = {
   newTab?: boolean;
   disabled?: boolean;
   tako?: boolean;
+  course?: "astrologer" | "unmei" | "tarot";
   children?: { label: string; href: string }[];
 };
 
@@ -54,8 +57,17 @@ const CONTENT: Record<SiteLocale, FooterContent> = {
           { label: "友達診断テスト", href: "/tako", tako: true },
           { label: "性格タイプ", href: "/types" },
           { label: "相性診断", href: "/aisho" },
-          { label: "運命の設計図", href: "/unmei" },
-          { label: "占い師", href: "/hoshiyomi" },
+          {
+            label: "Alice",
+            href: "/hoshiyomi",
+            course: "astrologer",
+          },
+          {
+            label: "運命の設計図",
+            href: "/unmei",
+            course: "unmei",
+          },
+          { label: "タロット占い", href: "/tarot", course: "tarot" },
         ],
       },
       {
@@ -128,13 +140,24 @@ const CONTENT: Record<SiteLocale, FooterContent> = {
             tako: true,
           },
           { label: KO_TOP_CONTENT.navigation.types, href: "/ko/types" },
-          { label: "운명의 설계도", href: "/ko/unmei" },
-          { label: "별자리 상담사", href: "/ko/hoshiyomi" },
+          { label: "궁합 진단", href: "/ko/aisho" },
+          {
+            label: "Alice",
+            href: "/ko/hoshiyomi",
+            course: "astrologer",
+          },
+          {
+            label: "운명의 설계도",
+            href: "/ko/unmei",
+            course: "unmei",
+          },
+          { label: "타로", href: "/ko/tarot", course: "tarot" },
         ],
       },
       {
         title: KO_TOP_CONTENT.footer.serviceTitle,
         links: [
+          { label: KO_TOP_CONTENT.siteName, href: "/ko" },
           { label: KO_TOP_CONTENT.footer.about, href: "/ko/about" },
           {
             label: KO_TOP_CONTENT.footer.articles,
@@ -191,6 +214,7 @@ const SOCIALS: {
   label: Record<SiteLocale, string>;
   href: string;
   icon: React.ReactNode;
+  badgeLabel?: Record<SiteLocale, string>;
 }[] = [
   {
     label: { ja: "Instagram", ko: "Instagram" },
@@ -222,8 +246,9 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "LINE", ko: "LINE" },
-    href: "#",
+    label: { ja: "公式LINE", ko: "LINE 공식 계정" },
+    href: "https://line.me/R/ti/p/%40867domoo",
+    badgeLabel: { ja: "公式LINE", ko: "공식 LINE" },
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -258,6 +283,38 @@ export default function TopFooter({
   // (BottomNav/TopHeader と同じ判断)。
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
+  const [ownerToken, setOwnerToken] = useState<string | null>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
+  const [accessCheckEnabled, setAccessCheckEnabled] = useState(false);
+
+  // フッターが画面に近づいたときだけ相性診断の表示権限を確認する。
+  // Headerと同じin-flight Promiseを共有するため、両方が必要になっても通信は1回。
+  useEffect(() => {
+    const footer = footerRef.current;
+    if (!footer) return;
+    if (!("IntersectionObserver" in window)) {
+      const timeout = setTimeout(() => {
+        setAccessCheckEnabled(true);
+      }, 0);
+      return () => clearTimeout(timeout);
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setAccessCheckEnabled(true);
+        observer.disconnect();
+      },
+      { rootMargin: "200px 0px" },
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
+  }, []);
+
+  const hasAishoNavigationAccess = useAishoNavigationAccess(
+    pathname,
+    accessCheckEnabled,
+  );
   useEffect(() => {
     let token: string | null = null;
     try {
@@ -272,16 +329,29 @@ export default function TopFooter({
         : content.takoBaseHref,
     );
     setHasToken(Boolean(token));
+    setOwnerToken(token);
   }, [pathname, content.takoBaseHref]);
+
+  // Alice・運命・タロットは購入権限が確定するまでロック表示に倒す。
+  // BottomNav と同じリクエストを共有し、購入済みの場合だけ通常リンクへ戻す。
+  const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
 
   const columns = content.columns.map((col) => ({
     ...col,
-    links: col.links.map((l) => (l.tako ? { ...l, href: takoUrl } : l)),
+    links: col.links
+      .filter(
+        (link) =>
+          !link.href.startsWith("/aisho") || hasAishoNavigationAccess,
+      )
+      .map((l) => (l.tako ? { ...l, href: takoUrl } : l)),
   }));
 
   // MBTI(16Personalities) 風: リンクは色つき(ミュートした Sora ブルー)。
   const linkClass =
     "text-[18px] text-[#6E72C8] transition-colors hover:text-[#5B5BEF] w-fit";
+  // フッターはリンク数が多いため、表示されたリンク先を一括で先読みしない。
+  // クリック時のNext Link遷移は維持する。
+  const navigationPrefetch = false;
 
   // 日本語はページ側でフォントが確定しないため FONT_STACK を明示。
   // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
@@ -289,6 +359,7 @@ export default function TopFooter({
 
   return (
     <footer
+      ref={footerRef}
       className={`w-full bg-white px-8 py-20 ${
         topBorder ? "border-t border-[#E9E9F2]" : ""
       }`}
@@ -304,8 +375,12 @@ export default function TopFooter({
               <p className="mb-1 text-[18px] font-bold text-[#2E2E5C]">
                 {col.title}
               </p>
-              {col.links.map((l) =>
-                l.disabled ? (
+              {col.links.map((l) => {
+                const courseLocked = Boolean(
+                  l.course && !(resolvedCourseAccess?.[l.course] ?? false),
+                );
+
+                return l.disabled ? (
                   <span
                     key={l.label}
                     className="w-fit text-[18px] text-[#B4B4C4]"
@@ -329,6 +404,18 @@ export default function TopFooter({
                     {l.label}
                     <MenuLockIcon />
                   </button>
+                ) : courseLocked ? (
+                  <Link
+                    key={l.label}
+                    href={l.href}
+                    prefetch={navigationPrefetch}
+                    aria-label={`${l.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                    className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
+                    style={{ color: "#9BA3B4" }}
+                  >
+                    {l.label}
+                    <MenuLockIcon />
+                  </Link>
                 ) : l.external ? (
                   <a
                     key={l.label}
@@ -343,7 +430,11 @@ export default function TopFooter({
                 ) : l.children ? (
                   // 入れ子リンク: 親リンクの下に一段小さく・薄く並べる (左罫線で階層を示す)。
                   <div key={l.label} className="flex flex-col gap-2">
-                    <Link href={l.href} className={linkClass}>
+                    <Link
+                      href={l.href}
+                      prefetch={navigationPrefetch}
+                      className={linkClass}
+                    >
                       {l.label}
                     </Link>
                     <div className="ml-1 flex flex-col gap-2 border-l border-[#E9E9F2] pl-3">
@@ -351,6 +442,7 @@ export default function TopFooter({
                         <Link
                           key={c.label}
                           href={c.href}
+                          prefetch={navigationPrefetch}
                           // 14px + 短縮ラベル: モバイル2カラム時 (実効幅 ~118px) でも
                           // 1行に収まるサイズ。15px だと8文字ラベルが折り返す。
                           className="w-fit text-[14px] text-[#8A8AA3] transition-colors hover:text-[#5B5BEF]"
@@ -361,11 +453,16 @@ export default function TopFooter({
                     </div>
                   </div>
                 ) : (
-                  <Link key={l.label} href={l.href} className={linkClass}>
+                  <Link
+                    key={l.label}
+                    href={l.href}
+                    prefetch={navigationPrefetch}
+                    className={linkClass}
+                  >
                     {l.label}
                   </Link>
-                ),
-              )}
+                );
+              })}
             </nav>
           ))}
         </div>
@@ -388,6 +485,7 @@ export default function TopFooter({
                   <Link
                     key={l.label}
                     href={l.href}
+                    prefetch={navigationPrefetch}
                     className="text-[13px] text-[#8A8AA3] underline-offset-2 transition-colors hover:text-[#5B5BEF] hover:underline"
                   >
                     {l.label}
@@ -409,9 +507,14 @@ export default function TopFooter({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label[locale]}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2E2E5C]/15 text-[#5A5A7A] transition-colors hover:border-[#5B5BEF] hover:text-[#5B5BEF]"
+                className={
+                  s.badgeLabel
+                    ? "flex h-10 items-center justify-center gap-2 rounded-full border border-[#2E2E5C]/15 bg-white px-4 text-[14px] font-bold text-[#5A5A7A] transition-colors hover:border-[#5B5BEF] hover:text-[#5B5BEF]"
+                    : "flex h-10 w-10 items-center justify-center rounded-full border border-[#2E2E5C]/15 text-[#5A5A7A] transition-colors hover:border-[#5B5BEF] hover:text-[#5B5BEF]"
+                }
               >
                 {s.icon}
+                {s.badgeLabel ? <span>{s.badgeLabel[locale]}</span> : null}
               </a>
             ))}
           </div>

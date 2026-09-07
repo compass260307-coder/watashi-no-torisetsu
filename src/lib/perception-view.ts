@@ -124,7 +124,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
-  const flag32 = isKo || isThirtyTwoEnabled();
+  const flag32 = isThirtyTwoEnabled();
   const perceived32Id = classifyThirtyTwoType(otherScores);
   const koType = KO_RESULT_TYPES[perceived32Id];
 

@@ -4,5 +4,5 @@
 // 使用箇所: ProofFacesBand (/unmei・/tako待機ページの実績バンド) /
 //           FullAccessPromoCard (課金カードの信頼行)。
 
-/** 無料診断の累計完了者数 (2026-08-02 時点の実測)。 */
-export const DIAGNOSIS_COUNT_SNAPSHOT = "9,756";
+/** 無料診断の累計完了者数 (2026-09-04 時点の実測)。 */
+export const DIAGNOSIS_COUNT_SNAPSHOT = "43,862";

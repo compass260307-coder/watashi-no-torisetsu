@@ -12,6 +12,7 @@
      そこへ到達しなくなるため (generic は各参照側の末尾にある)。 */
   --font-noto-sans: "Noto Sans JP", "Noto Sans", "Hiragino Kaku Gothic ProN",
     "Hiragino Sans", Meiryo;
+
   /* feat/top-page: Sora ブランドカラー (トップヒーローのアクセント) */
   --sora-blue: #5b5bef;
   --sora-blue-dark: #4a4ad9;
@@ -43,6 +44,49 @@
    ここは韓国語向けシステムスタックのみで良い (generic は参照側の末尾にある)。 */
 html[lang="ko"] {
   --font-noto-sans: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic";
+}
+
+/* 自己診断結果ページの課金導線。ページ側で分類別の色トークンを渡し、
+   深掘り・もしも・注意点など共用コンポーネントのCTAも一括で揃える。 */
+.result-themed-cta {
+  background-color: var(--result-action-color, #5b5bef) !important;
+  box-shadow: 0 4px 0 var(--result-action-shadow, #3d3dc4) !important;
+}
+
+.result-themed-cta:hover {
+  box-shadow: 0 2px 0 var(--result-action-shadow, #3d3dc4) !important;
+}
+
+.result-themed-cta:active {
+  box-shadow: 0 0 0 var(--result-action-shadow, #3d3dc4) !important;
+}
+
+.result-themed-lock-card {
+  border-top-color: var(--result-action-color, #5b5bef) !important;
+}
+
+.result-themed-lock-badge {
+  background-color: var(--result-action-color, #5b5bef) !important;
+}
+
+/* 結果ヒーローの透過アニメーションを端末別に切り替える。
+   iOS系ブラウザでは動画のalphaが無視されることがあるため、タッチ端末はanimated WebPを使う。 */
+.character-mobile-animation {
+  display: none;
+}
+
+.character-desktop-animation {
+  display: block;
+}
+
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .character-mobile-animation {
+    display: block;
+  }
+
+  .character-desktop-animation {
+    display: none;
+  }
 }
 
 /* ダーク追従 (将来ダークテーマ有効時に備えトークンで対応)。
@@ -306,6 +350,37 @@ input[type="reset"]:active {
   .animate-face-float,
   .animate-star-twinkle {
     animation: none;
+  }
+}
+
+/* /me プレミアムアップセルカードの金色グロー。既存の環境影は維持したまま、
+   ボーダー色 (#F1DDAA) 系の金色のにじみだけをゆっくり呼吸させる。 */
+@keyframes premium-glow {
+  0%, 100% {
+    box-shadow:
+      0 8px 24px rgba(46, 46, 92, 0.055),
+      0 0 18px rgba(228, 178, 86, 0.4),
+      0 0 48px rgba(228, 178, 86, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 8px 24px rgba(46, 46, 92, 0.055),
+      0 0 30px rgba(228, 178, 86, 0.75),
+      0 0 84px rgba(228, 178, 86, 0.42);
+  }
+}
+
+.animate-premium-glow {
+  animation: premium-glow 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-premium-glow {
+    animation: none;
+    box-shadow:
+      0 8px 24px rgba(46, 46, 92, 0.055),
+      0 0 24px rgba(228, 178, 86, 0.55),
+      0 0 64px rgba(228, 178, 86, 0.3);
   }
 }
 
@@ -650,6 +725,31 @@ html[lang="ko"] .top-hero-sub {
     "Noto Sans JP", sans-serif;
 }
 
+/* 関係別ロック円。表示領域に入ると色線が時計回りに1周し、完成後は静止する。 */
+.relation-lock-ring-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.relation-lock-ring-path.is-drawing {
+  animation: relation-lock-ring-draw 1.35s cubic-bezier(0.22, 1, 0.36, 1)
+    forwards;
+}
+
+@keyframes relation-lock-ring-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relation-lock-ring-path,
+  .relation-lock-ring-path.is-drawing {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 /* 日本語の説明文を読みやすく折り返す: 行長を均等化 (balance) + 文節で改行 (auto-phrase)。
    「者。」だけが行末に1文字落ちるのを防ぐ。auto-phrase 非対応ブラウザは通常折返しにフォールバック。 */
 .balance-jp {
@@ -852,4 +952,9 @@ html[lang="ko"] .top-hero-sub {
   .animate-gate-slot-breathe {
     animation: none;
   }
+}
+/* 運命の設計図のチャット中は、会話面に集中できるよう共通ヘッダー・フッターを隠す。 */
+html[data-unmei-chat-open="true"] .unmei-site-header,
+html[data-unmei-chat-open="true"] .unmei-site-footer {
+  display: none;
 }

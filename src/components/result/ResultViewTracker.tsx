@@ -35,7 +35,10 @@ export function ResultViewTracker({
         track("result_revisited", { ownerToken });
       } else {
         sessionStorage.setItem(viewedKey, "1");
-        track("result_viewed", { ownerToken, metadata: { friendCount } });
+        track("result_viewed", {
+          ownerToken,
+          metadata: { friendCount, funnelVersion: "share_v3" },
+        });
       }
 
       if (friendCount >= 3) {

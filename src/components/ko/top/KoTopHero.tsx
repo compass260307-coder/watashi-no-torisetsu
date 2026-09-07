@@ -28,11 +28,17 @@ export default function KoTopHero() {
         />
 
         <div className="absolute inset-x-0 top-[14%] z-10 mx-auto w-full max-w-[1160px] px-6 text-center sm:top-[22%] lg:px-0">
-          <h1 className="top-hero-h1 break-keep">
-            {KO_TOP_CONTENT.hero.title}
+          <h1 className="mb-2 text-[13px] font-bold text-white sm:mb-3 sm:text-[16px]">
+            {KO_TOP_CONTENT.hero.brand}
           </h1>
+          <p className="top-hero-h1 break-keep" role="heading" aria-level={2}>
+            {KO_TOP_CONTENT.hero.title}
+          </p>
           <p className="top-hero-sub mx-auto max-w-[720px] break-keep">
             {KO_TOP_CONTENT.hero.description}
+          </p>
+          <p className="mx-auto mt-2 max-w-[680px] break-keep text-[12px] leading-[1.75] text-white/90 sm:mt-3 sm:text-[15px]">
+            {KO_TOP_CONTENT.hero.brandDescription}
           </p>
           <div className="top-hero-cta-wrap">
             <KoTopCta />

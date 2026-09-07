@@ -16,6 +16,7 @@
 import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { RelationLockGrid } from "@/components/result/RelationLockGrid";
 import type { ResultLocale } from "@/i18n/result";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
@@ -151,20 +152,17 @@ function DummyCards({ rows, locale }: { rows: number; locale: ResultLocale }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none grid select-none grid-cols-2 content-start gap-3 blur-[4px]"
+      className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
     >
       {/* rows がデコイ数を超えたら循環して埋める (ぼかし面を必要なだけ長く敷ける) */}
       {Array.from({ length: rows }, (_, i) => {
         const it = decoyItems[i % decoyItems.length];
         return (
-          <div
-            key={i}
-            className="rounded-xl border border-[#D9DCF5] bg-[#F7F7FE] px-4 py-3.5 opacity-80"
-          >
-            <p className="mb-1 text-[15px] font-black text-[#2E2E5C]">
+          <div key={i}>
+            <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
               {it.title}
             </p>
-            <p className="body-gothic text-[14px] leading-[1.55] text-[#1A1A1A]">
+            <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
               {it.body}
             </p>
           </div>
@@ -264,26 +262,12 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
     locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
-      {/* 鍵付きの円 (SP 2列 / md 3列。2026-07-15 に 4関係 → 6関係へ増量) */}
-      <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3">
-        {relationLockItems.map((item) => (
-          <div key={item.label} className="flex flex-col items-center gap-2.5">
-            <span
-              className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
-              style={{ borderColor: item.color }}
-            >
-              <LockGlyph size={30} />
-            </span>
-            <span className="text-[13px] font-black text-[#2E2E5C]">
-              {item.label}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* 鍵付きの円 (SP 2列 / md 3列。友達・恋人・家族・上司の4関係) */}
+      <RelationLockGrid id="relation-lock-rings" items={relationLockItems} />
 
       {/* 解除カード (上辺にアクセント線 + 鍵バッジ)。PC は 16P の比率に合わせ広め */}
-      <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-        <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+      <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+        <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
           <LockGlyph size={14} />
         </span>
         <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -303,7 +287,7 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
         {/* 最下部の課金カードへスムーススクロール+パルス。 */}
         <PaywallScrollButton
           source="relations_card"
-          className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+          className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
           {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
         </PaywallScrollButton>

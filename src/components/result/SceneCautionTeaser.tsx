@@ -8,6 +8,7 @@
 // サーバコンポーネント (状態なし)。CTA は PaywallScrollButton (client) に委譲。
 
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { RelationLockGrid } from "@/components/result/RelationLockGrid";
 import { SCENE_CAUTION_ID } from "@/lib/scroll-to-paywall";
 import type { SceneCaution } from "@/lib/part-two-resolve";
 import type { ResultLocale } from "@/i18n/result";
@@ -60,7 +61,7 @@ export function SceneCautionList({
   const colorOf = (scene: string) =>
     sceneItems.find((it) => it.label === scene)?.color ?? "#2E2E5C";
   return (
-    <div className="mt-10">
+    <div className="mt-6">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
         {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
@@ -107,7 +108,7 @@ export function SceneCautionTeaser({
 }) {
   const sceneItems = locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
   return (
-    <div className="mt-10">
+    <div className="mt-6">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
         {locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
@@ -115,26 +116,12 @@ export function SceneCautionTeaser({
         id={SCENE_CAUTION_ID}
         className="rounded-2xl border border-[#ECEDF6] bg-white px-4 py-8 shadow-[0_6px_20px_rgba(46,46,92,0.09)] md:px-10 md:py-10"
       >
-        {/* 鍵付きの円 (SP 2列 / md 4列) */}
-        <div className="mb-8 grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-4">
-          {sceneItems.map((item) => (
-            <div key={item.label} className="flex flex-col items-center gap-2.5">
-              <span
-                className="flex h-[108px] w-[108px] items-center justify-center rounded-full border-4 bg-white text-[#B9BCCF]"
-                style={{ borderColor: item.color }}
-              >
-                <LockGlyph size={30} />
-              </span>
-              <span className="text-[13px] font-black text-[#2E2E5C]">
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
+        {/* 鍵付きの円 (SP 2列 / md 4列)。画面内に入ると色線を一度だけ描く。 */}
+        <RelationLockGrid items={sceneItems} desktopColumns={4} />
 
         {/* 解除カード (上辺アクセント線 + 鍵バッジ) */}
-        <div className="relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
-          <span className="absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
+        <div className="result-themed-lock-card relative mx-auto max-w-[480px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] px-5 pb-6 pt-7 text-center md:max-w-[640px]">
+          <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">
             <LockGlyph size={14} />
           </span>
           <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
@@ -153,7 +140,7 @@ export function SceneCautionTeaser({
           </p>
           <PaywallScrollButton
             source="scene_caution_card"
-            className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
+            className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
             {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
