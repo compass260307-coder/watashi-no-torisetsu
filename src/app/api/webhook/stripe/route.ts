@@ -52,7 +52,7 @@ import {
   type AccessPaymentRow,
 } from "@/lib/entitlements";
 import {
-  HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
+  hoshiyomiChatCreditTarget,
   HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
@@ -582,6 +582,10 @@ async function recordFullAccessPayment(
       upgrade_from: session.metadata?.upgrade_from ?? "none",
       destiny_access_policy:
         session.metadata?.destiny_access_policy ?? "legacy_included",
+      hoshiyomi_chat_policy:
+        session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
+      tarot_access_policy:
+        session.metadata?.tarot_access_policy ?? "legacy_not_included",
       friend_access_policy:
         session.metadata?.friend_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
@@ -1711,7 +1715,11 @@ async function handleCheckoutPaid(
     // v2 ポリシーの完全版は「設計図なし・チャット5回あり」。
     const includesHoshiyomiChat = purchaseIncludesHoshiyomiChat(
       "full_access",
-      session.metadata?.destiny_access_policy,
+      session.metadata?.hoshiyomi_chat_policy,
+    );
+    const hoshiyomiChatCredits = hoshiyomiChatCreditTarget(
+      "full_access",
+      session.metadata?.hoshiyomi_chat_policy,
     );
     if (includesDestinyFeatures) {
       await grantUnmeiByEmailOrId(session, paymentUserId);
@@ -1722,7 +1730,7 @@ async function handleCheckoutPaid(
         await grantHoshiyomiCreditsToTarget({
           userId: paymentUserId,
           sourceKey: `stripe:${session.id}`,
-          targetTotal: HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
+          targetTotal: hoshiyomiChatCredits,
         });
       } catch (error) {
         if (!isMissingHoshiyomiStore(error)) throw error;

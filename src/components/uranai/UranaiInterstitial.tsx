@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { PREMIUM_BUNDLE_PRICE_JPY } from "@/lib/access-products";
 import { track } from "@/lib/track";
 
 type Props = {
@@ -244,7 +245,10 @@ export default function UranaiInterstitial({
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <p className="text-lg font-bold">
-                運命の設計図 <span className="tabular-nums">¥899</span>
+                全部入り・買い切り{" "}
+                <span className="tabular-nums">
+                  ¥{PREMIUM_BUNDLE_PRICE_JPY.toLocaleString("ja-JP")}
+                </span>
               </p>
             </div>
             <div>

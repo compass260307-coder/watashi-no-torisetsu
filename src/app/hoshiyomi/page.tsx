@@ -6,7 +6,11 @@ import {
   listHoshiyomiConversations,
 } from "@/lib/hoshiyomi/store";
 import { getSession } from "@/lib/session";
-import { hasFullAccess } from "@/lib/entitlements";
+import {
+  hasFullAccess,
+  hasPremiumBundleAccess,
+} from "@/lib/entitlements";
+import { HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE } from "@/lib/access-products";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +38,6 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
   if (!session) {
     return (
       <HoshiyomiClient
-        conversations={[]}
         selectedConversation={null}
         initialRemaining={0}
         totalCredits={0}
@@ -49,10 +52,11 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
     paid?: string | string[];
   }> =
     searchParams ?? Promise.resolve({});
-  const [conversationResult, creditResult, fullAccess, params] = await Promise.all([
+  const [conversationResult, creditResult, fullAccess, premiumAccess, params] = await Promise.all([
     listHoshiyomiConversations(session.id),
     ensureHoshiyomiCreditsFromPurchase(session.id),
     hasFullAccess(session.id),
+    hasPremiumBundleAccess(session.id),
     paramsPromise,
   ]);
   const hasChatAccess =
@@ -72,12 +76,16 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
       ) : null}
       <HoshiyomiClient
         key={selectedConversation?.id ?? "home"}
-        conversations={conversationResult.data}
         selectedConversation={selectedConversation}
         initialRemaining={creditResult.data.remaining}
         totalCredits={creditResult.data.total}
         persistenceReady={conversationResult.available && creditResult.available}
         hasChatAccess={hasChatAccess}
+        canUpgradeToPremium={
+          fullAccess &&
+          !premiumAccess &&
+          creditResult.data.total < HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
+        }
         ownerToken={session.owner_token ?? undefined}
       />
     </>

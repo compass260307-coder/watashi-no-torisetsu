@@ -9,6 +9,7 @@ import {
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
+  purchaseIncludesTarotFeatures,
 } from "./access-products";
 
 export type AccessPaymentKind =
@@ -23,6 +24,8 @@ export type AccessPaymentRow = {
   metadata: {
     upgrade_from?: unknown;
     destiny_access_policy?: unknown;
+    hoshiyomi_chat_policy?: unknown;
+    tarot_access_policy?: unknown;
     friend_access_policy?: unknown;
   } | null;
   paid_at?: string | null;
@@ -91,6 +94,7 @@ export async function getAccessPurchaseEntitlements(
   premiumBundle: boolean;
   destinyFeatures: boolean;
   hoshiyomiChat: boolean;
+  tarotFeatures: boolean;
   friendFeatures: boolean;
 }> {
   if (!userId) {
@@ -100,6 +104,7 @@ export async function getAccessPurchaseEntitlements(
       premiumBundle: false,
       destinyFeatures: false,
       hoshiyomiChat: false,
+      tarotFeatures: false,
       friendFeatures: false,
     };
   }
@@ -115,6 +120,7 @@ export async function getAccessPurchaseEntitlements(
       premiumBundle: false,
       destinyFeatures: false,
       hoshiyomiChat: false,
+      tarotFeatures: false,
       friendFeatures: false,
     };
   }
@@ -135,6 +141,7 @@ export async function getAccessPurchaseEntitlements(
         premiumBundle: false,
         destinyFeatures: false,
         hoshiyomiChat: false,
+        tarotFeatures: false,
         friendFeatures: false,
       };
     }
@@ -150,6 +157,7 @@ export async function getAccessPurchaseEntitlements(
       premiumBundle: false,
       destinyFeatures: false,
       hoshiyomiChat: false,
+      tarotFeatures: false,
       friendFeatures: false,
     };
   }
@@ -163,7 +171,13 @@ export async function getAccessPurchaseEntitlements(
   const destinyFeatures = valid.some((row) =>
     purchaseIncludesDestinyFeatures(
       row.payment_kind,
-      row.metadata?.destiny_access_policy,
+      row.metadata?.hoshiyomi_chat_policy,
+    ),
+  );
+  const tarotFeatures = valid.some((row) =>
+    purchaseIncludesTarotFeatures(
+      row.payment_kind,
+      row.metadata?.tarot_access_policy,
     ),
   );
   const hoshiyomiChat = valid.some((row) =>
@@ -185,6 +199,7 @@ export async function getAccessPurchaseEntitlements(
     premiumBundle,
     destinyFeatures,
     hoshiyomiChat,
+    tarotFeatures,
     friendFeatures,
   };
 }
@@ -320,6 +335,13 @@ export async function hasHoshiyomiChatPurchase(
   userId: string | null | undefined,
 ): Promise<boolean> {
   return (await getAccessPurchaseEntitlements(userId)).hoshiyomiChat;
+}
+
+/** 明示的にタロットを含む完全版、またはプレミアムの購入済み判定。 */
+export async function hasTarotAccess(
+  userId: string | null | undefined,
+): Promise<boolean> {
+  return (await getAccessPurchaseEntitlements(userId)).tarotFeatures;
 }
 
 /**

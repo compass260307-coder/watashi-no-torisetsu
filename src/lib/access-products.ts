@@ -43,6 +43,12 @@ export const DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL =
 // AI占い師チャットの付与回数 (累計保証値)。webhook・復元・表示コピーで共有する。
 export const HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS = 5;
 export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE = 30;
+export const HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED =
+  "full_all_included_v2" as const;
+
+// タロットは、この販売世代の完全版とプレミアムにだけ含める。
+// 古い完全版を商品定義の変更だけで遡及解放しないため、明示的な印を使う。
+export const TAROT_ACCESS_POLICY_FULL_INCLUDED = "full_included_v1" as const;
 
 // この値が付いた購入以降、2人目以降の友達診断と友達診断PDFは
 // full_access 以上だけに含める。値が無い旧 self_report は購入時の権利を維持する。
@@ -81,6 +87,31 @@ export function purchaseIncludesHoshiyomiChat(
   _policy: unknown,
 ): boolean {
   return product === "premium_bundle" || product === "full_access";
+}
+
+/** 購入世代ごとに保証するAliceの累計回答数。 */
+export function hoshiyomiChatCreditTarget(
+  product: AccessProduct,
+  policy: unknown,
+): number {
+  if (product === "premium_bundle") {
+    return HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE;
+  }
+  if (product !== "full_access") return 0;
+  return policy === HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED
+    ? HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
+    : HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS;
+}
+
+export function purchaseIncludesTarotFeatures(
+  product: AccessProduct,
+  policy: unknown,
+): boolean {
+  if (product === "premium_bundle") return true;
+  return (
+    product === "full_access" &&
+    policy === TAROT_ACCESS_POLICY_FULL_INCLUDED
+  );
 }
 
 export function purchaseIncludesFriendFeatures(

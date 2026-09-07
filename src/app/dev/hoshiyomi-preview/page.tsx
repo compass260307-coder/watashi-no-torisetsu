@@ -52,7 +52,6 @@ export default async function HoshiyomiPreviewPage({ searchParams }: PreviewProp
   return (
     <HoshiyomiClient
       key={selectedId ?? "home"}
-      conversations={SAMPLE_CONVERSATIONS}
       selectedConversation={
         selectedId
           ? SAMPLE_CONVERSATIONS.find((item) => item.id === selectedId) ?? null

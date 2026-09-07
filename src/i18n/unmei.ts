@@ -51,6 +51,7 @@ type ChatCopy = {
   previewConfirmed: string;
   previewPayment: string;
   saveError: string;
+  preparing: readonly string[];
   paymentReady: string;
   paymentNext: string;
   generationReady: string;
@@ -79,52 +80,68 @@ type ChatCopy = {
   formatDate: (year: number, month: number, day: number) => string;
 };
 
+// /me の設計図プロモカードから起動するチャットの冒頭挨拶 (挨拶2つ + 最初の
+// 質問への橋渡し)。カード側の吹き出し表示は 2026-08-26 に撤去し、チャットだけで送る。
+// /unmei 直行のチャット決済は未診断ゲストも通るため差し替えず、従来の
+// introPurchase を使う。韓国語チャットも従来のまま。
+export const ME_UNMEI_CHAT_INTRO_JA: readonly string[] = [
+  "はじめまして、あなた専属の占い師のAliceだよ。ここまでの診断結果は、もう読ませてもらったよ。",
+  "あと3つ——生まれた日・時間・場所を教えてくれたら、出生図と診断結果を掛け合わせた「あなたの運命の設計図」を完成させられるよ。",
+  "まずは、あなたがこの世界に生まれた日から教えてね。",
+];
+
 export const UNMEI_CHAT_COPY: Record<ResultLocale, ChatCopy> = {
   ja: {
-    guideName: "星読みの案内人",
-    productName: "運命の設計図",
-    srTitle: "あなたの設計図を描くために",
+    guideName: "Alice",
+    productName: "あなたの専属占い師",
+    srTitle: "あなただけの運命の設計図を仕立てるために",
     introInput: [
-      "ご購入ありがとうございます。",
-      "これから、あなただけの運命の設計図を一緒につくっていきましょう。",
-      "まずは、生まれた日のことから教えてください。",
+      "ご購入ありがとう！",
+      "これから、生まれた瞬間の星とあなたの個性を重ねて、世界にひとつだけの「運命の設計図」を仕立てていくよ。",
+      "まずは、あなたがこの世界に生まれた日を教えてね。",
     ],
     introPurchase: [
-      "運命の設計図へようこそ。星の配置とあなたの性格から、あなただけの鑑定書をおつくりします。",
-      "まずは、あなたが生まれた日を教えてください。",
+      "待ってたよ。",
+      "これから、生まれた瞬間の星とあなたの個性を重ねて、世界にひとつだけの「運命の設計図」を仕立てていくよ。",
+      "まずは、あなたがこの世界に生まれた日を教えてね。",
     ],
-    futureDate: "未来の日付は選べないみたいです。もう一度教えてください。",
-    thanks: "ありがとうございます。",
+    futureDate: "未来の日付は選べないみたい。もう一度教えてね。",
+    thanks: "ありがとう。",
     askTime: [
-      "次は、生まれた時刻を教えてください。",
-      "母子手帳に載っていることが多いです。",
-      "わからなくても大丈夫。",
+      "次に、生まれた時刻を教えてね。",
+      "星の位置を、より細やかに読み解くための大切な手がかりなんだ。",
+      "母子手帳などで確認できるよ。わからなくても大丈夫。",
     ],
     unknownTimeAnswer: "時間はわからない",
-    askPlace: "最後に、生まれた場所を教えてください。都道府県だけでも大丈夫です。",
-    unknownTimeReply: "わかりました。その場合は、お昼12時の空で読みますね。",
+    askPlace: "最後に、生まれた場所を教えてね。あなたが最初に見上げた空を再現するよ。都道府県だけでも大丈夫。",
+    unknownTimeReply: "大丈夫だよ。その場合は、正午の空を手がかりに読み解くね。",
     skipAnswer: "スキップする",
-    skipReply: "わかりました。出生地は未入力のまま進めますね。",
+    skipReply: "大丈夫だよ。出生地は未入力のまま、わかる範囲で丁寧に読み解くね。",
     editQuestions: {
-      date: "生まれた日を、もう一度教えてください。",
-      time: "生まれた時刻を、もう一度教えてください。",
-      place: "生まれた場所を、もう一度教えてください。",
+      date: "生まれた日を、もう一度教えてね。",
+      time: "生まれた時刻を、もう一度教えてね。",
+      place: "生まれた場所を、もう一度教えてね。",
     },
-    confirmLead: "それでは、この内容で設計図を描きます。",
+    confirmLead: "設計図を描くための、3つの星の鍵が揃ったよ。",
     dateField: "生年月日",
     timeField: "出生時刻",
     placeField: "出生地",
     unknownTimeLabel: "わからない（正午で計算）",
     unknownPlaceLabel: "未入力",
-    previewConfirmed: "ありがとうございます。入力内容を確認できました。",
+    previewConfirmed: "ありがとう。入力内容を確認できたよ。",
     previewPayment: "本番ではここで出生情報を保存し、最後の商品確認へ進みます。",
-    saveError: "うまく保存できませんでした。もう一度お試しください。",
-    paymentReady: "ありがとうございます。準備ができました。",
-    paymentNext: "最後に、お支払いへ進みます。決済が終わると、その場で星を読みはじめます。",
-    generationReady: "受け取りました。それでは——星を読みはじめますね。",
-    networkError: "ネットワークエラーが起きました。もう一度試してみてください。",
-    typing: "入力中",
-    waiting: "あなたが生まれた瞬間の空を再現しています。1分ほどかかることがあります。",
+    saveError: "うまく保存できなかったみたい。もう一度試してみてね。",
+    preparing: [
+      "生まれた瞬間の空を再現しているよ…",
+      "星の配置と、あなたの個性を重ね合わせて…",
+      "あなただけの物語を、ひとつの設計図に仕立てているところ…",
+    ],
+    paymentReady: "あなたの運命の設計図を届ける準備が整ったよ",
+    paymentNext: "この先で、あなたの星が語る物語をぜんぶ受け取れるよ。",
+    generationReady: "星の鍵を受け取ったよ。それじゃあ、あなただけの設計図を仕立てていくね。",
+    networkError: "ネットワークエラーが起きたみたい。もう一度試してみてね。",
+    typing: "星を読み解き中",
+    waiting: "生まれた瞬間の空と、あなたの個性を重ね合わせているよ。もう少しだけ待っていてね。",
     year: "年",
     month: "月",
     day: "日",
@@ -140,14 +157,14 @@ export const UNMEI_CHAT_COPY: Record<ResultLocale, ChatCopy> = {
     editDate: "生年月日を直す",
     editTime: "出生時刻を直す",
     editPlace: "出生地を直す",
-    submitting: "送信中…",
-    purchaseContinue: "このまま進む",
-    confirm: "この内容で描いてもらう",
+    submitting: "星の鍵を受け取り中…",
+    purchaseContinue: "この内容で設計図を仕立てる",
+    confirm: "この内容で設計図を仕立てる",
     send: "送信",
     formatDate: (year, month, day) => `${year}年${month}月${day}日`,
   },
   ko: {
-    guideName: "별자리 안내자",
+    guideName: "Alice",
     productName: "운명의 설계도",
     srTitle: "나만의 설계도를 그리기 위한 출생 정보",
     introInput: [
@@ -182,6 +199,11 @@ export const UNMEI_CHAT_COPY: Record<ResultLocale, ChatCopy> = {
     previewConfirmed: "고마워요. 입력 내용을 확인했어요.",
     previewPayment: "실제 화면에서는 출생 정보를 저장한 뒤 마지막 상품 확인으로 이동해요.",
     saveError: "정보를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+    preparing: [
+      "태어난 순간의 하늘을 재현하고 있어요…",
+      "별의 배치와 당신의 개성을 겹쳐 보고 있어요…",
+      "당신만의 이야기를 하나의 설계도로 완성하고 있어요…",
+    ],
     paymentReady: "고마워요. 준비가 끝났어요.",
     paymentNext: "마지막으로 결제를 진행해 주세요. 결제가 끝나면 바로 별을 읽기 시작해요.",
     generationReady: "잘 받았어요. 이제 별을 읽기 시작할게요.",

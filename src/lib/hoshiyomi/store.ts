@@ -6,8 +6,7 @@ import {
   type AccessPaymentRow,
 } from "@/lib/entitlements";
 import {
-  HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
-  HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE,
+  hoshiyomiChatCreditTarget,
   purchaseIncludesHoshiyomiChat,
 } from "@/lib/access-products";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -263,7 +262,7 @@ export async function grantHoshiyomiCredits(args: {
 /**
  * その購入後に保証すべき累計回数まで不足分だけ付与する。
  * upgrade_from の自己申告には依存せず、実際の累計残高を基準にするため、
- * 完全版の5回が未付与だったユーザーでもプレミアム購入後は必ず30回になる。
+ * 下位コースの保証回数が未付与でも、プレミアム購入後は必ず30回になる。
  */
 export async function grantHoshiyomiCreditsToTarget(args: {
   userId: string;
@@ -317,19 +316,18 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     if (
       !purchaseIncludesHoshiyomiChat(
         payment.payment_kind,
-        payment.metadata?.destiny_access_policy,
+        payment.metadata?.hoshiyomi_chat_policy,
       )
     ) {
       continue;
     }
-    const kind = payment.payment_kind as string;
     await grantHoshiyomiCreditsToTarget({
       userId: payment.user_id as string,
       sourceKey: `stripe:${payment.stripe_session_id as string}`,
-      targetTotal:
-        kind === "premium_bundle"
-          ? HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
-          : HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS,
+      targetTotal: hoshiyomiChatCreditTarget(
+        payment.payment_kind,
+        payment.metadata?.hoshiyomi_chat_policy,
+      ),
     });
   }
 

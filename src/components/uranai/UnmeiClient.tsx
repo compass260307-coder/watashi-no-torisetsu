@@ -13,10 +13,19 @@ type Props = {
   // 未指定 (null) は従来の購入済み入力フロー。
   purchase?: {
     ownerToken: string | null;
-    product: "premium_bundle";
+    product: "full_access" | "premium_bundle";
   } | null;
   locale?: ResultLocale;
   ownerToken?: string | null;
+  /** devプレビューでは保存・計測・決済を実行しない。 */
+  previewMode?: boolean;
+  /** 生成完了時の挙動の差し替え。/unmei 以外 (例: /me のオーバーレイ) に埋め込む場合、
+   *  router.refresh() では鑑定表示に切り替わらないため、遷移をここで指定する。 */
+  onReady?: () => void;
+  /** /me モーダルではヘッダー右端に✕を重ねるため、装飾の✦を出さない。 */
+  hideHeaderStars?: boolean;
+  /** チャット冒頭挨拶の差し替え (/me はプロモカードの吹き出しを引き継ぐ)。 */
+  intro?: readonly string[] | null;
 };
 
 const CLIENT_COPY = {
@@ -46,6 +55,10 @@ export default function UnmeiClient({
   purchase = null,
   locale = "ja",
   ownerToken = null,
+  previewMode = false,
+  onReady,
+  hideHeaderStars = false,
+  intro = null,
 }: Props) {
   const router = useRouter();
   const copy = CLIENT_COPY[locale];
@@ -99,7 +112,8 @@ export default function UnmeiClient({
           if (j?.state === "ready") {
             stopPolling();
             setState("ready");
-            router.refresh(); // サーバコンポーネントを再描画して鑑定を表示
+            if (onReady) onReady();
+            else router.refresh(); // サーバコンポーネントを再描画して鑑定を表示
             return;
           }
           if (j?.state === "no_birth") {
@@ -129,7 +143,7 @@ export default function UnmeiClient({
         }
       }
     }, POLL_INTERVAL_MS);
-  }, [router, stopPolling, kickGeneration]);
+  }, [router, stopPolling, kickGeneration, onReady]);
 
   const startPending = useCallback(() => {
     setState("pending");
@@ -176,7 +190,11 @@ export default function UnmeiClient({
         waiting={state !== "no_birth"}
         mode={purchase ? "purchase" : "input"}
         ownerToken={purchaseOwnerToken ?? ownerToken}
+        purchaseProduct={purchase?.product}
         locale={locale}
+        previewMode={previewMode}
+        hideHeaderStars={hideHeaderStars}
+        intro={intro}
       />
     );
   }

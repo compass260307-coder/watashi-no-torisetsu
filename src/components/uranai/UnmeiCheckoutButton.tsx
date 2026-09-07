@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ResultLocale } from "@/i18n/result";
+import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 import { track } from "@/lib/track";
 
 const BUTTON_COPY = {
@@ -23,12 +24,15 @@ const BUTTON_COPY = {
 
 export default function UnmeiCheckoutButton({
   ownerToken,
+  product = "premium_bundle",
   children,
   launchChat = false,
   tone = "indigo",
   locale = "ja",
+  previewMode = false,
 }: {
   ownerToken?: string | null;
+  product?: "full_access" | "premium_bundle";
   children?: React.ReactNode;
   /**
    * true = Stripe リダイレクトの代わりに CustomEvent("unmei-chat-launch") を発火し、
@@ -39,6 +43,8 @@ export default function UnmeiCheckoutButton({
   /** premium は運命の設計図LPのゴールド、indigo は既存画面用。 */
   tone?: "indigo" | "premium";
   locale?: ResultLocale;
+  /** devプレビューでは計測・決済APIを実行しない。 */
+  previewMode?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,21 +53,32 @@ export default function UnmeiCheckoutButton({
   async function handleClick() {
     if (loading) return;
 
-    const metadata = { page: "unmei", product: "premium_bundle", locale };
+    const metadata = {
+      page: "unmei",
+      product,
+      locale,
+      source: "unmei_page",
+      paywall_version: THREE_COURSE_PAYWALL_VERSION,
+      placement: "inline",
+    };
 
     // チャット起動モード: 遷移せず親ゲートへ合図するだけ (即時)。
     if (launchChat) {
-      track("purchase_cta_clicked", {
-        ownerToken: ownerToken ?? null,
-        metadata: { ...metadata, ui: "chat_launch" },
-      });
+      if (!previewMode) {
+        track("purchase_cta_clicked", {
+          ownerToken: ownerToken ?? null,
+          metadata: { ...metadata, ui: "chat_launch" },
+        });
+      }
       window.dispatchEvent(
         new CustomEvent("unmei-chat-launch", {
-          detail: { ownerToken: ownerToken ?? null },
+          detail: { ownerToken: ownerToken ?? null, product },
         }),
       );
       return;
     }
+
+    if (previewMode) return;
 
     setLoading(true);
     setError(null);
@@ -81,11 +98,11 @@ export default function UnmeiCheckoutButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           owner_token: ownerToken ?? undefined,
-          product: "premium_bundle",
+          product,
           return_to: "unmei",
           locale,
           paywall_source: "unmei_page",
-          paywall_version: "three_course_v6_unmei_chat_credits",
+          paywall_version: THREE_COURSE_PAYWALL_VERSION,
           paywall_placement: "inline",
         }),
       });

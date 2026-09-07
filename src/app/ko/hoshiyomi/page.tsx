@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { HoshiyomiClient } from "@/components/hoshiyomi/HoshiyomiClient";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import {
@@ -8,7 +7,11 @@ import {
 } from "@/lib/hoshiyomi/store";
 import { localizedAlternates } from "@/lib/locale-seo";
 import { getSession } from "@/lib/session";
-import { hasFullAccess } from "@/lib/entitlements";
+import {
+  hasFullAccess,
+  hasPremiumBundleAccess,
+} from "@/lib/entitlements";
+import { HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE } from "@/lib/access-products";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +32,32 @@ type PageProps = {
 
 export default async function KoreanHoshiyomiPage({ searchParams }: PageProps) {
   const session = await getSession();
-  if (!session) redirect("/ko/login");
+
+  // 日本版と同じく、未ログインでも Alice のページ自体は閲覧できる。
+  // 送信時に共通の課金カードを開き、購入前の体験をログインで遮断しない。
+  if (!session) {
+    return (
+      <HoshiyomiClient
+        selectedConversation={null}
+        initialRemaining={0}
+        totalCredits={0}
+        persistenceReady
+        hasChatAccess={false}
+        locale="ko"
+      />
+    );
+  }
 
   const paramsPromise: Promise<{
     chat?: string | string[];
     paid?: string | string[];
   }> = searchParams ?? Promise.resolve({});
-  const [conversationResult, creditResult, fullAccess, params] =
+  const [conversationResult, creditResult, fullAccess, premiumAccess, params] =
     await Promise.all([
       listHoshiyomiConversations(session.id),
       ensureHoshiyomiCreditsFromPurchase(session.id),
       hasFullAccess(session.id),
+      hasPremiumBundleAccess(session.id),
       paramsPromise,
     ]);
   const hasChatAccess =
@@ -60,12 +78,16 @@ export default async function KoreanHoshiyomiPage({ searchParams }: PageProps) {
       ) : null}
       <HoshiyomiClient
         key={selectedConversation?.id ?? "home"}
-        conversations={conversationResult.data}
         selectedConversation={selectedConversation}
         initialRemaining={creditResult.data.remaining}
         totalCredits={creditResult.data.total}
         persistenceReady={conversationResult.available && creditResult.available}
         hasChatAccess={hasChatAccess}
+        canUpgradeToPremium={
+          fullAccess &&
+          !premiumAccess &&
+          creditResult.data.total < HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
+        }
         ownerToken={session.owner_token ?? undefined}
         locale="ko"
       />

@@ -36,6 +36,7 @@ import {
   DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
   EMPTY_ACCESS_ENTITLEMENTS,
   FRIEND_ACCESS_POLICY_FULL_ONLY,
+  HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
@@ -45,6 +46,7 @@ import {
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
+  TAROT_ACCESS_POLICY_FULL_INCLUDED,
   type AccessEntitlements,
   type AccessProduct,
 } from "@/lib/access-products";
@@ -735,6 +737,18 @@ export async function POST(request: NextRequest) {
         // この印が無い旧 full_access セッションは従来特典を維持する。
         // v2: 設計図はプレミアム限定のまま、完全版に占い師チャット5回を含める。
         destiny_access_policy: DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
+        hoshiyomi_chat_policy:
+          product === "full_access"
+            ? HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED
+            : product === "premium_bundle"
+              ? "premium_thirty"
+              : "none",
+        tarot_access_policy:
+          product === "full_access"
+            ? TAROT_ACCESS_POLICY_FULL_INCLUDED
+            : product === "premium_bundle"
+              ? "premium_included"
+              : "none",
         // この印が無い旧 self_report セッションは従来の友達特典を維持する。
         friend_access_policy: FRIEND_ACCESS_POLICY_FULL_ONLY,
         upgrade_from: upgradeFrom,
