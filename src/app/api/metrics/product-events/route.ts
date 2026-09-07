@@ -8,6 +8,7 @@ import {
   metricsExportReference,
   metricsPrivateHeaders,
 } from "@/lib/metrics-access";
+import { LINE_ALICE_FUNNEL_EVENT_NAMES } from "@/lib/line-alice-analytics";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,6 +43,7 @@ const PRODUCT_EVENT_NAMES = [
   "purchase_cta_clicked",
   "checkout_session_created",
   "purchase_completed",
+  ...LINE_ALICE_FUNNEL_EVENT_NAMES,
 ] as const;
 
 const UNMEI_EVENT_NAMES = new Set([
@@ -62,6 +64,7 @@ const ALICE_EVENT_NAMES = new Set([
   "hoshiyomi_message_sent",
   "hoshiyomi_response_completed",
   "hoshiyomi_response_failed",
+  ...LINE_ALICE_FUNNEL_EVENT_NAMES,
 ]);
 
 const columns = [

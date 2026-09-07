@@ -1,3 +1,8 @@
+import type {
+  LineAliceClientEventName,
+  LineAliceTrackingMetadata,
+} from "@/lib/line-alice-analytics";
+
 let sessionId: string | null = null;
 
 // セッションID (2026-07-13 改修):
@@ -88,6 +93,11 @@ export function isPreviewMode(): boolean {
 //   unmei_lp_view                運命の設計図LP表示 (metadata.product)
 //   unmei_purchase_start         運命の設計図の購入開始 (metadata.product)
 //   unmei_reading_view           運命の設計図の鑑定表示
+//   line_alice_card_viewed         LINE導線カード表示 (metadata.source/variant)
+//   line_alice_add_friend_clicked  LINE友だち追加CTAクリック
+//   line_alice_link_code_requested 連携コード発行開始
+//   line_alice_link_code_issued    連携コード発行成功
+//   line_alice_link_code_failed    連携コード発行失敗
 //
 // ----- 課金ファネル (2026-07-13 追加) -----
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant/paywall_version, ownerToken)
@@ -269,4 +279,11 @@ export function track(
   } catch {
     // tracking never blocks UX
   }
+}
+
+export function trackLineAliceEvent(
+  eventName: LineAliceClientEventName,
+  metadata: LineAliceTrackingMetadata,
+): void {
+  track(eventName, { metadata });
 }

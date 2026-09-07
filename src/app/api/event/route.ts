@@ -4,6 +4,7 @@ import {
   sanitizeFlatMetadata,
 } from "@/lib/api-security";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { LINE_ALICE_CLIENT_EVENT_NAMES } from "@/lib/line-alice-analytics";
 import { checkOrigin } from "@/lib/origin-check";
 import { NextResponse } from "next/server";
 
@@ -36,6 +37,7 @@ const CLIENT_EVENT_NAMES = new Set([
   "unmei_lp_view",
   "unmei_purchase_start",
   "unmei_reading_view",
+  ...LINE_ALICE_CLIENT_EVENT_NAMES,
   "paywall_viewed",
   "paywall_plan_viewed",
   "paywall_scroll_clicked",

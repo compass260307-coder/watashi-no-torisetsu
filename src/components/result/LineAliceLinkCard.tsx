@@ -2,7 +2,9 @@
 
 // LINE連携導線。LIFFを主経路、6桁コードを手入力フォールバックとして扱う。
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { LineAliceTrackingSource } from "@/lib/line-alice-analytics";
+import { trackLineAliceEvent } from "@/lib/track";
 
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
 const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID ?? "";
@@ -26,13 +28,58 @@ function errorMessage(errorCode: string | undefined, httpStatus: number): string
   return "うまく発行できませんでした。少し時間をおいてもう一度どうぞ。";
 }
 
-export default function LineAliceLinkCard() {
+export type { LineAliceTrackingSource } from "@/lib/line-alice-analytics";
+
+export default function LineAliceLinkCard({
+  trackingSource = "hoshiyomi_home",
+  variant = "conversation",
+}: {
+  trackingSource?: LineAliceTrackingSource;
+  variant?: "conversation" | "fortune";
+} = {}) {
   const [mainIssue, setMainIssue] = useState<IssueState>({ status: "idle" });
   const [manualIssue, setManualIssue] = useState<IssueState>({ status: "idle" });
+  const cardRef = useRef<HTMLElement | null>(null);
+  const viewTrackedRef = useRef(false);
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || viewTrackedRef.current) return;
+
+    const recordView = () => {
+      if (viewTrackedRef.current) return;
+      viewTrackedRef.current = true;
+      trackLineAliceEvent("line_alice_card_viewed", {
+        source: trackingSource,
+        variant,
+      });
+    };
+
+    if (!("IntersectionObserver" in window)) {
+      recordView();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || entry.intersectionRatio < 0.35) return;
+        recordView();
+        observer.disconnect();
+      },
+      { threshold: [0.35] },
+    );
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, [trackingSource, variant]);
 
   const issueCode = async (kind: "liff" | "manual") => {
     const setIssue = kind === "liff" ? setMainIssue : setManualIssue;
     setIssue({ status: "loading" });
+    trackLineAliceEvent("line_alice_link_code_requested", {
+      source: trackingSource,
+      variant,
+      kind,
+    });
     try {
       const res = await fetch("/api/line/link-code", {
         method: "POST",
@@ -52,14 +99,38 @@ export default function LineAliceLinkCard() {
           ? !/^[A-Za-z0-9_-]{32}$/.test(body.code)
           : !/^\d{6}$/.test(body.code))
       ) {
+        trackLineAliceEvent("line_alice_link_code_failed", {
+          source: trackingSource,
+          variant,
+          kind,
+          http_status: res.status,
+          error_code: body.error ?? "invalid_response",
+        });
         setIssue({ status: "error", message: errorMessage(body.error, res.status) });
         return;
       }
+      trackLineAliceEvent("line_alice_link_code_issued", {
+        source: trackingSource,
+        variant,
+        kind,
+      });
       if (kind === "liff") {
         if (!LIFF_ID) {
+          trackLineAliceEvent("line_alice_link_code_failed", {
+            source: trackingSource,
+            variant,
+            kind,
+            http_status: 0,
+            error_code: "liff_not_configured",
+          });
           setIssue({ status: "error", message: "LINE連携は現在準備中です。" });
           return;
         }
+        trackLineAliceEvent("line_alice_add_friend_clicked", {
+          source: trackingSource,
+          variant,
+          flow: "liff",
+        });
         window.location.assign(
           `https://liff.line.me/${encodeURIComponent(LIFF_ID)}?code=${encodeURIComponent(body.code)}`,
         );
@@ -67,6 +138,13 @@ export default function LineAliceLinkCard() {
       }
       setIssue({ status: "issued", code: body.code, kind: "manual" });
     } catch {
+      trackLineAliceEvent("line_alice_link_code_failed", {
+        source: trackingSource,
+        variant,
+        kind,
+        http_status: 0,
+        error_code: "network_error",
+      });
       setIssue({
         status: "error",
         message: "通信がうまくいきませんでした。電波の良いところでもう一度どうぞ。",
@@ -75,7 +153,10 @@ export default function LineAliceLinkCard() {
   };
 
   return (
-    <section className="rounded-2xl border border-[#5B5BEF]/15 bg-white p-6 shadow-[0_12px_34px_rgba(46,46,92,0.08)] md:p-8">
+    <section
+      ref={cardRef}
+      className="rounded-2xl border border-[#5B5BEF]/15 bg-white p-6 shadow-[0_12px_34px_rgba(46,46,92,0.08)] md:p-8"
+    >
       <p className="text-[11px] font-black tracking-[0.14em] text-[#06C755]">
         LINE
       </p>
@@ -114,6 +195,13 @@ export default function LineAliceLinkCard() {
               href={LINE_ADD_FRIEND_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() =>
+                trackLineAliceEvent("line_alice_add_friend_clicked", {
+                  source: trackingSource,
+                  variant,
+                  flow: "manual",
+                })
+              }
               className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#06C755] px-5 text-[13px] font-black text-white"
             >
               Aliceを友だち追加
