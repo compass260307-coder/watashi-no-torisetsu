@@ -10,7 +10,13 @@ import Image from "next/image";
 import { headers } from "next/headers";
 
 import { hasLineEventOnce, recordLineEvent } from "@/lib/line-events";
-import { fortuneStreak, hasTalkedToAlice } from "@/lib/line-missions";
+import {
+  fortuneStreak,
+  hasTalkedToAlice,
+  LINE_FRIEND_MISSION_TIERS,
+  LINE_SOCIAL_MISSION_NETWORKS,
+  type LineSocialMissionNetwork,
+} from "@/lib/line-missions";
 import {
   buildLinePlusPageUrl,
   hasActiveLinePlus,
@@ -28,40 +34,43 @@ const LINE_TALK_URL = "https://line.me/R/ti/p/%40867domoo";
 // トークを開いて「今日の占い」を入力済みにするリンク (送信は本人がタップ)
 const LINE_FORTUNE_MESSAGE_URL = `https://line.me/R/oaMessage/%40867domoo/?${encodeURIComponent("今日の占い")}`;
 
-// 報酬キーは webhook (handleThemeFortune) の受取ロジックと対で保つこと
-const MISSION_TIERS = [
-  { min: 1, keySuffix: "", title: "友達1人の回答を集める" },
-  { min: 3, keySuffix: ":m3", title: "友達3人の回答を集める" },
-  { min: 5, keySuffix: ":m5", title: "友達5人の回答を集める" },
-] as const;
-
-// SNS共有ミッション。idは共有API (?n=) とwebhookの節目キー (:x等) と対で保つこと
-const SNS_MISSIONS = [
+const SNS_MISSION_DETAILS: Record<
+  LineSocialMissionNetwork,
   {
-    id: "x",
+    missionNo: string;
+    title: string;
+    buttonClass: string;
+    art: string;
+    pos: string;
+  }
+> = {
+  x: {
     missionNo: "04",
     title: "Xでシェアする",
     buttonClass: "bg-black",
     art: "/line/mission-04.webp",
     pos: "object-[center_45%]",
   },
-  {
-    id: "fb",
+  fb: {
     missionNo: "05",
     title: "Facebookでシェアする",
     buttonClass: "bg-[#1877F2]",
     art: "/line/mission-05.webp",
     pos: "object-[center_55%]",
   },
-  {
-    id: "th",
+  th: {
     missionNo: "06",
     title: "Threadsでシェアする",
     buttonClass: "bg-black",
     art: "/line/mission-06.webp",
     pos: "object-[center_48%]",
   },
-] as const;
+};
+
+const SNS_MISSIONS = LINE_SOCIAL_MISSION_NETWORKS.map((id) => ({
+  id,
+  ...SNS_MISSION_DETAILS[id],
+}));
 
 type SnsMissionState = { shared: boolean; claimed: boolean; href: string };
 
@@ -134,7 +143,7 @@ export default async function LineMissionsPage({
     return (
       <MissionsView
         answers={Number(preview) || 0}
-        claims={MISSION_TIERS.map((_, i) => i < claimedCount)}
+        claims={LINE_FRIEND_MISSION_TIERS.map((_, i) => i < claimedCount)}
         inviteUrl={`${resolveSiteUrl()}/friend/PREVIEW`}
         sns={SNS_MISSIONS.map((m) => {
           const state = Number(snsParams[m.id]) || 0;
@@ -199,7 +208,7 @@ export default async function LineMissionsPage({
     isPlusMember,
   ] = await Promise.all([
       Promise.all(
-        MISSION_TIERS.map((tier) =>
+        LINE_FRIEND_MISSION_TIERS.map((tier) =>
           hasLineEventOnce("line_mission_reward", `${userId}${tier.keySuffix}`),
         ),
       ),
@@ -340,13 +349,13 @@ function MissionsView({
                     aria-hidden
                     className="inline-block h-1.5 w-1.5 rotate-45 bg-[#FFD97A]"
                   />
-                  深掘り占い・タロット・おしゃべり 使い放題
+                  深掘り占い・タロット・無料枠を超えておしゃべり
                 </p>
                 <a
                   href={plus.href}
                   className="mt-4 block w-full rounded-xl bg-[#5B5BEF] py-3 text-center text-[13px] font-black text-white transition-transform active:scale-95"
                 >
-                  Alice Plusをみてみる
+                  月額Plusなどプランを見る
                 </a>
               </div>
             </div>
@@ -365,7 +374,7 @@ function MissionsView({
             上部はミッションごとの専用アート帯 (ChatGPT生成・回答=夜空の手紙:
             01=1通が届く → 02=3通が集まる → 03=Aliceが5通抱えて待つ) */}
         <div className="-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-6 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {MISSION_TIERS.map((tier, index) => {
+          {LINE_FRIEND_MISSION_TIERS.map((tier, index) => {
             const achieved = answers >= tier.min;
             const claimed = claims[index];
             const progress = Math.min(answers / tier.min, 1) * 100;

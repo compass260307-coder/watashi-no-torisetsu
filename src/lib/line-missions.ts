@@ -4,6 +4,16 @@
 
 import { supabaseAdmin } from "@/lib/supabase-server";
 
+export const LINE_FRIEND_MISSION_TIERS = [
+  { min: 1, keySuffix: "", title: "友達1人の回答を集める" },
+  { min: 3, keySuffix: ":m3", title: "友達3人の回答を集める" },
+  { min: 5, keySuffix: ":m5", title: "友達5人の回答を集める" },
+] as const;
+
+export const LINE_SOCIAL_MISSION_NETWORKS = ["x", "fb", "th"] as const;
+export type LineSocialMissionNetwork =
+  (typeof LINE_SOCIAL_MISSION_NETWORKS)[number];
+
 // Aliceに話しかけたことがあるか (role='user' の会話行が1件でもあれば達成)。
 // キーワード応答 (「ミッション」等) は line_chat_messages に残らないので、
 // 実際の会話かテーマ占いだけが達成になる。

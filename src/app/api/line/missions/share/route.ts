@@ -4,11 +4,15 @@
 // 各SNSの投稿画面へ302で送る。タップ=達成の性善説方式
 // (投稿の実検証は各SNSのAPI無しでは不可能なため)。
 // 報酬の受け取りは webhook (handleThemeFortune) の :x/:fb/:th キーが担う。
-// 対応SNSを増やす時はページの SNS_MISSIONS と webhook の SNS_NETWORKS も対で更新すること。
+// 対応SNSは line-missions.ts の共通定義から参照する。
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { recordLineEventOnce } from "@/lib/line-events";
+import {
+  LINE_SOCIAL_MISSION_NETWORKS,
+  type LineSocialMissionNetwork,
+} from "@/lib/line-missions";
 import { verifyLinePlusToken } from "@/lib/line-plus";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -28,6 +32,12 @@ const NETWORKS = {
     `https://www.threads.net/intent/post?text=${encodeURIComponent(`${text}\n${url}`)}`,
 } as const;
 
+function isSocialMissionNetwork(
+  value: string,
+): value is LineSocialMissionNetwork {
+  return LINE_SOCIAL_MISSION_NETWORKS.some((network) => network === value);
+}
+
 function isPreviewBot(userAgent: string): boolean {
   return /bot|facebookexternalhit|line-poker|crawler|spider|preview/i.test(
     userAgent,
@@ -41,7 +51,7 @@ export async function GET(request: NextRequest) {
   const signature = params.get("s") ?? "";
   const network = params.get("n") ?? "";
 
-  if (!(network in NETWORKS)) {
+  if (!isSocialMissionNetwork(network)) {
     return NextResponse.json({ error: "unknown_network" }, { status: 400 });
   }
   if (!verifyLinePlusToken({ lineUserId, expiresAtMs, signature })) {
@@ -76,6 +86,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const buildUrl = NETWORKS[network as keyof typeof NETWORKS];
+  const buildUrl = NETWORKS[network];
   return NextResponse.redirect(buildUrl(SHARE_TEXT, inviteUrl), 302);
 }

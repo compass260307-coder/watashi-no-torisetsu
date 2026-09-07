@@ -53,7 +53,12 @@ import {
   recordLineEvent,
   recordLineEventOnce,
 } from "@/lib/line-events";
-import { fortuneStreak, hasTalkedToAlice } from "@/lib/line-missions";
+import {
+  fortuneStreak,
+  hasTalkedToAlice,
+  LINE_FRIEND_MISSION_TIERS,
+  LINE_SOCIAL_MISSION_NETWORKS,
+} from "@/lib/line-missions";
 import {
   FORTUNE_THEMES,
   generateThemeFortune,
@@ -541,15 +546,12 @@ async function handleThemeFortune(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId);
     const answers = count ?? 0;
-    for (const tier of [
-      { min: 1, key: userId },
-      { min: 3, key: `${userId}:m3` },
-      { min: 5, key: `${userId}:m5` },
-    ]) {
+    for (const tier of LINE_FRIEND_MISSION_TIERS) {
       if (answers < tier.min) break;
+      const key = `${userId}${tier.keySuffix}`;
       giftClaimed = await recordLineEventOnce({
         eventName: "line_mission_reward",
-        key: tier.key,
+        key,
         metadata: {
           user_id: userId,
           line_user_id: lineUserId,
@@ -558,13 +560,12 @@ async function handleThemeFortune(
         },
       });
       if (giftClaimed) {
-        giftKey = tier.key;
+        giftKey = key;
         break;
       }
     }
     // SNS共有ミッション (回答数と独立した節目)。共有済みのSNSごとに1回ずつ配布。
-    // ネットワークidはページの SNS_MISSIONS・共有API (?n=) と対で保つこと
-    for (const network of ["x", "fb", "th"]) {
+    for (const network of LINE_SOCIAL_MISSION_NETWORKS) {
       if (giftClaimed) break;
       const shared = await hasLineEventOnce(
         "line_mission_sns_shared",
