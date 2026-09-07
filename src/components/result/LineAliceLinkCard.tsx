@@ -1,20 +1,16 @@
 "use client";
 
-// Alice Plus (LINE) 公開: LINE 連携導線カード。設置場所は /hoshiyomi のホームのみ
-// (2026-08-31 オーナー指示。/me → /alice を経て確定)。星読みのインディゴ系に合わせる。
-//
-// ①友だち追加 → ②連携コード発行 (POST /api/line/link-code・要ログインセッション)
-// → ③トークに6桁送信、の3ステップ。連携完了の計測は webhook 側の
-// line_link_completed が担うので、ここでは発行の成否だけを扱う。
+// LINE連携導線。LIFFを主経路、6桁コードを手入力フォールバックとして扱う。
 
 import { useState } from "react";
 
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
+const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID ?? "";
 
 type IssueState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "issued"; code: string }
+  | { status: "issued"; code: string; kind: "manual" }
   | { status: "error"; message: string };
 
 function errorMessage(errorCode: string | undefined, httpStatus: number): string {
@@ -31,22 +27,45 @@ function errorMessage(errorCode: string | undefined, httpStatus: number): string
 }
 
 export default function LineAliceLinkCard() {
-  const [issue, setIssue] = useState<IssueState>({ status: "idle" });
+  const [mainIssue, setMainIssue] = useState<IssueState>({ status: "idle" });
+  const [manualIssue, setManualIssue] = useState<IssueState>({ status: "idle" });
 
-  const issueCode = async () => {
-    if (issue.status === "loading") return;
+  const issueCode = async (kind: "liff" | "manual") => {
+    const setIssue = kind === "liff" ? setMainIssue : setManualIssue;
     setIssue({ status: "loading" });
     try {
-      const res = await fetch("/api/line/link-code", { method: "POST" });
+      const res = await fetch("/api/line/link-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind }),
+      });
       const body = (await res.json().catch(() => ({}))) as {
         code?: string;
+        kind?: "liff" | "manual";
         error?: string;
       };
-      if (!res.ok || !body.code) {
+      if (
+        !res.ok ||
+        body.kind !== kind ||
+        typeof body.code !== "string" ||
+        (kind === "liff"
+          ? !/^[A-Za-z0-9_-]{32}$/.test(body.code)
+          : !/^\d{6}$/.test(body.code))
+      ) {
         setIssue({ status: "error", message: errorMessage(body.error, res.status) });
         return;
       }
-      setIssue({ status: "issued", code: body.code });
+      if (kind === "liff") {
+        if (!LIFF_ID) {
+          setIssue({ status: "error", message: "LINE連携は現在準備中です。" });
+          return;
+        }
+        window.location.assign(
+          `https://liff.line.me/${encodeURIComponent(LIFF_ID)}?code=${encodeURIComponent(body.code)}`,
+        );
+        return;
+      }
+      setIssue({ status: "issued", code: body.code, kind: "manual" });
     } catch {
       setIssue({
         status: "error",
@@ -67,39 +86,52 @@ export default function LineAliceLinkCard() {
         診断結果を知っているAliceと、LINEでいつでもおしゃべり。今日の占いも毎日引けます。1日3通まで無料です。
       </p>
       <div className="mt-5 flex flex-col gap-3 md:max-w-[420px]">
-        <a
-          href={LINE_ADD_FRIEND_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => void issueCode("liff")}
+          disabled={mainIssue.status === "loading"}
           className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#06C755] px-6 text-[15px] font-black text-white transition-transform active:scale-95"
         >
-          ① Aliceを友だち追加
-        </a>
-        {issue.status === "issued" ? (
+          {mainIssue.status === "loading" ? "LINEを開いています…" : "LINEで連携する"}
+        </button>
+        {mainIssue.status === "error" ? (
+          <p className="text-[13px] font-bold leading-relaxed text-[#C2410C]">
+            {mainIssue.message}
+          </p>
+        ) : null}
+        {manualIssue.status === "issued" ? (
           <div className="rounded-xl border border-[#5B5BEF]/15 bg-[#F3F0FF] px-5 py-4 text-center">
             <p className="text-[11px] font-black text-[#2E2E5C]/55">
-              ② 連携コード (10分間有効)
+              連携コード (10分間有効)
             </p>
             <p className="my-1 text-[32px] font-black tracking-[0.3em] text-[#2E2E5C]">
-              {issue.code}
+              {manualIssue.code}
             </p>
             <p className="text-[12px] font-medium leading-relaxed text-[#2E2E5C]/65">
-              ③ Aliceとのトークに、この6桁をそのまま送ると連携完了です。
+              Aliceとのトークに、この6桁をそのまま送ると連携完了です。
             </p>
+            <a
+              href={LINE_ADD_FRIEND_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-[#06C755] px-5 text-[13px] font-black text-white"
+            >
+              Aliceを友だち追加
+            </a>
           </div>
         ) : (
           <button
             type="button"
-            onClick={issueCode}
-            disabled={issue.status === "loading"}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#5B5BEF] px-6 text-[15px] font-black text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => void issueCode("manual")}
+            disabled={manualIssue.status === "loading"}
+            className="text-[12px] font-bold text-[#5B5BEF] underline underline-offset-4 disabled:opacity-50"
           >
-            {issue.status === "loading" ? "発行中…" : "② 連携コードを発行する"}
+            {manualIssue.status === "loading" ? "発行中…" : "うまくいかない場合は6桁コードで連携"}
           </button>
         )}
-        {issue.status === "error" && (
+        {manualIssue.status === "error" && (
           <p className="text-[13px] font-bold leading-relaxed text-[#C2410C]">
-            {issue.message}
+            {manualIssue.message}
           </p>
         )}
       </div>

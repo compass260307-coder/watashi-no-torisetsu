@@ -12,8 +12,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { consumeIdentifierRateLimit } from "@/lib/api-security";
+
 import {
-  hashLineLinkCode,
   quickReplies,
   replyLineMessages,
   startLineLoadingAnimation,
@@ -22,6 +23,10 @@ import {
   type LineWebhookBody,
   type LineWebhookEvent,
 } from "@/lib/line";
+import {
+  consumeLineLinkCode,
+  lineLinkSuccessMessage,
+} from "@/lib/line-linking";
 import {
   countTodayLineUserMessages,
   generateLineAliceReply,
@@ -1327,74 +1332,77 @@ async function handleLinkCode(
   replyToken: string,
   code: string,
 ): Promise<void> {
-  const nowIso = new Date().toISOString();
+  const rateLimit = await consumeIdentifierRateLimit(lineUserId, {
+    scope: "line-manual-link-attempt",
+    limit: 8,
+    windowSeconds: 60 * 60,
+  });
+  if (!rateLimit.allowed) {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "連携コードの確認回数が多いため、しばらく時間をおいてからお試しください。",
+      },
+    ]);
+    return;
+  }
 
-  // 条件付き UPDATE で消費まで一撃 (二重送信・使い回しに対して原子的)
-  const { data: consumed, error } = await supabaseAdmin
-    .from("line_link_codes")
-    .update({ consumed_at: nowIso, consumed_by_line_user_id: lineUserId })
-    .eq("code_hash", hashLineLinkCode(code))
-    .is("consumed_at", null)
-    .gt("expires_at", nowIso)
-    .select("user_id")
-    .maybeSingle();
+  // 手入力コードの送信自体を切替への明示的同意として扱う。
+  // DB関数内で競合判定・履歴保存・upsert・コード消費を原子的に行う。
+  const result = await consumeLineLinkCode({
+    code,
+    kind: "manual",
+    lineUserId,
+    force: true,
+    source: "manual",
+  });
 
-  if (error) {
-    console.error("[line/webhook] link code consume failed", {
-      message: error.message,
-    });
+  if (result.status === "error") {
     await replyLineMessages(replyToken, [
       { type: "text", text: LINK_ERROR_MESSAGE },
     ]);
     return;
   }
-  if (!consumed) {
+  if (
+    result.status === "not_found" ||
+    result.status === "expired" ||
+    result.status === "used"
+  ) {
     await replyLineMessages(replyToken, [
       { type: "text", text: LINK_INVALID_MESSAGE },
     ]);
     return;
   }
-
-  const { error: linkError } = await supabaseAdmin.from("line_accounts").upsert(
-    { line_user_id: lineUserId, user_id: consumed.user_id, linked_at: nowIso },
-    { onConflict: "line_user_id" },
-  );
-  if (linkError) {
-    console.error("[line/webhook] account link upsert failed", {
-      message: linkError.message,
-    });
+  if (!result.user) {
     await replyLineMessages(replyToken, [
       { type: "text", text: LINK_ERROR_MESSAGE },
     ]);
     return;
   }
 
-  const { data: user } = await supabaseAdmin
-    .from("users")
-    .select("display_name, owner_token")
-    .eq("id", consumed.user_id)
-    .maybeSingle();
-  const name = (user?.display_name ?? "").trim();
+  if (result.status === "linked") {
+    await recordLineEvent({
+      eventName: "line_link_completed",
+      metadata: {
+        kind: "manual",
+        switched: result.switched,
+      },
+      ownerToken: result.user.ownerToken,
+    });
+  }
 
-  await recordLineEvent({
-    eventName: "line_link_completed",
-    metadata: { line_user_id: lineUserId, user_id: consumed.user_id },
-    ownerToken: user?.owner_token ?? null,
-  });
-
+  const chatEnabled = lineAliceChatEnabled();
   await replyLineMessages(replyToken, [
     {
       type: "text",
-      text: [
-        `連携できました。${name ? `${name}さん` : "あなた"}のトリセツ、たしかに受け取りました。`,
-        lineAliceChatEnabled()
-          ? "これで、あなたに合わせてお話しできます。さっそく、今日あったことでも聞かせてくださいね。"
-          : "ここでお話しできる準備が整ったら、まっさきにお知らせしますね。",
-      ].join("\n"),
-      ...(lineAliceChatEnabled()
+      text: lineLinkSuccessMessage({
+        displayName: result.user.displayName,
+        switched: result.switched,
+        chatEnabled,
+      }),
+      ...(chatEnabled
         ? { quickReply: quickReplies("今日の占い", "診断結果") }
         : {}),
     },
   ]);
 }
-
