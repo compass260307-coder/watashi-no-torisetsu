@@ -38,10 +38,14 @@ import {
   buildLineMissionsPageUrl,
   buildLinePlusCheckoutUrl,
   buildLinePlusPageUrl,
+  findActiveLinePlusPass,
+  findManageableLinePlusSubscription,
   hasActiveLinePlus,
+  hasLifetimeLinePlus,
   linePlusDailyLimit,
   linePlusEnabled,
 } from "@/lib/line-plus";
+import { LINE_PLUS_PLANS } from "@/lib/line-plus-products";
 import {
   deterministicLineEventId,
   getLineEventOnce,
@@ -123,8 +127,8 @@ function dailyLimitMessageWithPlus(
     "でも安心してくださいね。明日になれば、また続きをお話しできますよ。",
     "",
     "💎 いますぐ続きを話したい人はこちら",
-    "▶ Alice Plus(初回1週間無料・その後 月480円)",
-    "　1日の上限なしのおしゃべり+深掘り占い(恋愛・友達・勉強)+タロット占い",
+    `▶ Alice Plus(月${LINE_PLUS_PLANS.monthly.priceYen.toLocaleString("ja-JP")}円・初回登録のみ1週間無料)`,
+    "　無料枠を超えてたっぷりおしゃべり+深掘り占い(恋愛・友達・勉強)+タロット占い",
     buildLinePlusPageUrl(lineUserId),
     "",
     "🔮 無料のまま楽しみたい人はこちら",
@@ -139,6 +143,9 @@ const PLUS_DAILY_LIMIT_MESSAGE = [
   "今日はたくさんお話しできて、うれしかったです。わたしも少しおやすみしますね。",
   "また明日、続きを聞かせてください。",
 ].join("\n");
+
+const LINE_PLUS_MONTHLY_PRICE_LABEL =
+  LINE_PLUS_PLANS.monthly.priceYen.toLocaleString("ja-JP");
 
 const NON_TEXT_MESSAGE =
   "ごめんなさい、スタンプや画像はまだ読み取れなくて…。文字でお話ししてもらえるとうれしいです。";
@@ -907,18 +914,13 @@ async function handleLineCommand(
   }
 
   if (command === "plus") {
-    if (!linePlusEnabled()) {
-      await replyLineMessages(replyToken, [
-        {
-          type: "text",
-          text: "Alice Plusは、いま準備を進めています。始まったら、ここでまっさきにお知らせしますね。",
-        },
-      ]);
-      return;
-    }
-    const isPlus = await hasActiveLinePlus(userId);
-    if (isPlus) {
-      // 管理 (確認・解約) は1タップでも早く着くよう直で Billing Portal 行き
+    const [subscription, activePass, hasLifetime] = await Promise.all([
+      findManageableLinePlusSubscription(lineUserId),
+      findActiveLinePlusPass(lineUserId),
+      hasLifetimeLinePlus(lineUserId),
+    ]);
+    if (subscription) {
+      // サブスクの管理は1タップでも早く着くよう直でBilling Portalへ。
       await replyLineMessages(replyToken, [
         {
           type: "text",
@@ -931,18 +933,44 @@ async function handleLineCommand(
       ]);
       return;
     }
+    if (activePass || hasLifetime) {
+      // 期間パスと旧無期限プランには管理対象のサブスクがないため、
+      // Checkoutへ直送せず利用状況を表示できるLPへ戻す。
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "Alice Plusをご利用中です。いつもありがとうございます。",
+            activePass
+              ? "期間パスの利用状況確認や、利用期間の追加はこちらからどうぞ。月額・年額はパス終了後にお申し込みいただけます。"
+              : "販売終了済みの無期限プランが有効です。追加のお支払いはありません。",
+            buildLinePlusPageUrl(lineUserId),
+          ].join("\n"),
+        },
+      ]);
+      return;
+    }
+    if (!linePlusEnabled()) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "Alice Plusは、いま準備を進めています。始まったら、ここでまっさきにお知らせしますね。",
+        },
+      ]);
+      return;
+    }
     await replyLineMessages(replyToken, [
       {
         type: "text",
         text: [
           "Alice Plusのご案内ですね。",
           "",
-          "💎 Plus(初回1週間無料・その後 月480円)でできること",
-          "・1日の上限なしで、好きなだけおしゃべり",
+          `💎 Plus(月${LINE_PLUS_MONTHLY_PRICE_LABEL}円・初回登録のみ1週間無料)でできること`,
+          "・無料の1日分を超えて、たっぷりおしゃべり",
           "・恋愛運・友達運・勉強運の深掘り占い(あなたとの会話を覚えて占います)",
           "・タロット占い(3枚から直感で今日の1枚を引く)",
           "",
-          "▶ 1週間無料ではじめてみる(いつでも解約できます)",
+          "▶ 月額Plusを見る(いつでも解約できます)",
           buildLinePlusPageUrl(lineUserId),
           "",
           "🔮 無料のままでも",

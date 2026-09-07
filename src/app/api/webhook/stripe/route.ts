@@ -7,6 +7,7 @@
 //       checkout.session.completed   即時決済が paid のときだけ購入特典を解放
 //       checkout.session.async_payment_succeeded 遅延決済の支払い確定後に購入特典を解放
 //       checkout.session.async_payment_failed    遅延決済の失敗ログ + Slack アラート
+//       checkout.session.expired     未完了Checkoutの再利用状態を解放
 //       payment_intent.payment_failed 失敗ログ + Slack アラート (DB 更新なし)
 //
 // Idempotency (二重 Webhook 着信耐性):
@@ -28,9 +29,6 @@ import type Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe-server";
 import { sendSlackAlert } from "@/lib/slack-alert";
-import { pushLineMessages, quickReplies } from "@/lib/line";
-import { buildLinePlusCheckoutUrl } from "@/lib/line-plus";
-import { recordLineEvent } from "@/lib/line-events";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { classifyType } from "@/lib/diagnosis";
 import { runForUser } from "@/lib/unmei/generateWorker.mjs";
@@ -65,6 +63,20 @@ import {
   enqueueServerPurchaseConversions,
   type ServerPurchaseConversionInput,
 } from "@/lib/server-purchase-conversions";
+import { pushLineMessages, quickReplies } from "@/lib/line";
+import { lineFreeDailyLimit } from "@/lib/line-alice";
+import {
+  buildLinePlusCheckoutUrl,
+  hasActiveLinePlus,
+  linePlusPlanPriceId,
+} from "@/lib/line-plus";
+import {
+  isLinePlusPassPlan,
+  isLinePlusSubscriptionPlan,
+  LINE_PLUS_PLANS,
+  type LinePlusSubscriptionPlanId,
+} from "@/lib/line-plus-products";
+import { recordLineEvent } from "@/lib/line-events";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -90,6 +102,31 @@ async function queueServerPurchaseConversions(
       });
     }
   });
+}
+
+function isManagedAlicePlusCheckout(
+  session: Stripe.Checkout.Session,
+): boolean {
+  return (
+    session.metadata?.product === "alice_plus" ||
+    session.metadata?.product === "alice_plus_pass"
+  );
+}
+
+/** 確定・失効したSessionを二重課金ガードの進行中attemptから外す。 */
+async function clearAlicePlusCheckoutAttempt(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  if (!isManagedAlicePlusCheckout(session)) return;
+  const { error } = await supabaseAdmin.rpc(
+    "clear_line_plus_checkout_attempt",
+    { p_checkout_session_id: session.id },
+  );
+  if (error) {
+    throw new Error(
+      `[alice_plus] checkout attempt cleanup failed: ${error.message}`,
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -137,7 +174,28 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed":
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const isAlicePlusSubscription =
+          session.metadata?.product === "alice_plus" &&
+          session.mode === "subscription";
+        const isMonthlyTrialCheckout =
+          isAlicePlusSubscription &&
+          (session.metadata?.plan_id === undefined ||
+            session.metadata.plan_id === "monthly") &&
+          session.payment_status === "no_payment_required";
+
         if (session.payment_status !== "paid") {
+          // 初回月額の7日無料は正常に no_payment_required で完了する。
+          // customer.subscription.createdだけに任せると歓迎pushと加入KPIが欠けるため、
+          // Checkout Session側でも処理する (いずれのupsertも冪等)。
+          if (
+            event.type === "checkout.session.completed" &&
+            isMonthlyTrialCheckout
+          ) {
+            await handleAlicePlusCheckoutPaid(stripe, session);
+            await clearAlicePlusCheckoutAttempt(session);
+            break;
+          }
+
           // completed は「Checkout 入力完了」であり、遅延決済ではまだ未払いの場合がある。
           // この時点では権限・購入イベント・メールを一切発行せず、
           // async_payment_succeeded が届くまで待つ。
@@ -159,18 +217,34 @@ export async function POST(request: NextRequest) {
         }
         // Alice Plus (LINE) 月額サブスク: 買い切り系の権利付与/payment_history とは別系統で、
         // line_plus_subscriptions に Stripe の状態を写すだけ。
-        if (session.metadata?.product === "alice_plus") {
+        if (isAlicePlusSubscription) {
           await handleAlicePlusCheckoutPaid(stripe, session);
+          await clearAlicePlusCheckoutAttempt(session);
           break;
         }
-        // Alice Plus 1週間パス (買い切り¥480): week_pass 行 (期限=購入から7日) を書く
+        // Alice Plus期間パス: time_pass行を書き、既存期限があれば加算する。
+        if (session.metadata?.product === "alice_plus_pass") {
+          await handleAlicePlusPassCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
+          await clearAlicePlusCheckoutAttempt(session);
+          break;
+        }
+        // 旧Alice Plus 1週間パス (¥480) の未配信Webhook互換。新規販売はしない。
         if (session.metadata?.product === "alice_plus_week") {
-          await handleAlicePlusWeekCheckoutPaid(session);
+          await handleAlicePlusWeekCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
           break;
         }
-        // Alice Plus 無期限プラン (買い切り¥9,800): lifetime 行 (期限なし) を書く
+        // 旧Alice Plus 無期限プランの未配信Webhook互換。新規販売はしない。
         if (session.metadata?.product === "alice_plus_lifetime") {
-          await handleAlicePlusLifetimeCheckoutPaid(session);
+          await handleAlicePlusLifetimeCheckoutPaid(
+            session,
+            new Date(event.created * 1000).toISOString(),
+          );
           break;
         }
         await handleCheckoutPaid(
@@ -189,6 +263,12 @@ export async function POST(request: NextRequest) {
       case "checkout.session.async_payment_failed": {
         const session = event.data.object as Stripe.Checkout.Session;
         await handleCheckoutAsyncPaymentFailed(session);
+        await clearAlicePlusCheckoutAttempt(session);
+        break;
+      }
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await clearAlicePlusCheckoutAttempt(session);
         break;
       }
       case "payment_intent.payment_failed": {
@@ -795,7 +875,30 @@ function purchaseEventId(eventName: string, checkoutSessionId: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-// 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
+/** 歓迎pushの前に決定的IDを確保し、Stripe再送での二重通知を防ぐ。 */
+async function recordLineEventOnFirstDelivery(input: {
+  eventName: string;
+  id: string;
+  metadata: Record<string, unknown>;
+}): Promise<boolean> {
+  const { error } = await supabaseAdmin.from("events").insert({
+    id: input.id,
+    event_name: input.eventName,
+    owner_token: null,
+    locale: "ja",
+    metadata: input.metadata,
+  });
+  if (!error) return true;
+  if (error.code !== "23505") {
+    console.error("[webhook/stripe] line event insert failed", {
+      event_name: input.eventName,
+      message: error.message,
+    });
+  }
+  return false;
+}
+
+// 課金ファネル計測: 決済完了イベントを events に記録。
 // Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
 // 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
 async function recordPurchaseCompletedEvent(
@@ -914,14 +1017,43 @@ async function recordUnmeiPurchaseEventOnce(
 // (遅延決済) のどちらからも、payment_status='paid' を確認した後だけ呼ぶ。
 // ===== Alice Plus (LINE) 月額サブスク =====
 
-const ALICE_PLUS_WELCOME_MESSAGE = (manageUrl: string): string =>
+const ALICE_PLUS_WELCOME_MESSAGE = (
+  manageUrl: string,
+  planId: LinePlusSubscriptionPlanId,
+): string =>
   [
-    "Alice Plusへようこそ！これからは1日の上限を気にせず、好きなだけお話しできます。",
+    `${LINE_PLUS_PLANS[planId].label}へようこそ！これからは無料枠を超えて、たっぷりお話しできます。`,
     "深掘り占い(恋愛運・友達運・勉強運)とタロット占いも解放されました。さっそく「タロット占い」って送ってみてくださいね。",
     "",
     "プランの確認・解約はこちらからいつでもどうぞ。",
     manageUrl,
   ].join("\n");
+
+function resolveSubscriptionPlanId(input: {
+  metadataPlanId: unknown;
+  stripePriceId: string | null;
+}): LinePlusSubscriptionPlanId | null {
+  // Portalで月額↔年額を変更してもsubscription metadataは古いままの
+  // ことがある。現在のSubscriptionItemのPriceを最優先にする。
+  if (
+    input.stripePriceId &&
+    input.stripePriceId === linePlusPlanPriceId("annual")
+  ) {
+    return "annual";
+  }
+  if (
+    input.stripePriceId &&
+    input.stripePriceId === linePlusPlanPriceId("monthly")
+  ) {
+    return "monthly";
+  }
+  // Priceが取得できた場合、intervalやmetadataだけで未知の商品を受け入れない。
+  if (input.stripePriceId) return null;
+  if (isLinePlusSubscriptionPlan(input.metadataPlanId)) {
+    return input.metadataPlanId;
+  }
+  return null;
+}
 
 /**
  * サブスクの Checkout 完了。Stripe から最新の subscription を取り直して同期し、
@@ -950,10 +1082,23 @@ async function handleAlicePlusCheckoutPaid(
     return;
   }
 
+  const metadataPriceId = metadata.stripe_price_id || null;
+  // annual導入前のCheckout Sessionはplan_idを持たないが、当時はmonthlyのみ。
+  const resolvedPlanId = resolveSubscriptionPlanId({
+    metadataPlanId: metadata.plan_id,
+    stripePriceId: metadataPriceId,
+  });
+  if (metadataPriceId && !resolvedPlanId) {
+    throw new Error("[alice_plus] unsupported Checkout Price");
+  }
+  const planId = resolvedPlanId ?? "monthly";
+
   let synced = false;
   try {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    await syncLinePlusSubscription(subscription);
+    await syncLinePlusSubscription(subscription, {
+      checkoutSessionId: session.id,
+    });
     synced = true;
   } catch (caught) {
     console.error("[webhook/stripe] alice_plus subscription retrieve failed", {
@@ -973,7 +1118,13 @@ async function handleAlicePlusCheckoutPaid(
         stripe_customer_id: customerId,
         user_id: userId,
         line_user_id: lineUserId,
-        status: "active",
+        plan_key: planId,
+        stripe_price_id: metadataPriceId,
+        stripe_checkout_session_id: session.id,
+        status:
+          session.payment_status === "no_payment_required"
+            ? "trialing"
+            : "active",
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" },
@@ -985,24 +1136,27 @@ async function handleAlicePlusCheckoutPaid(
   }
 
   // Stripe再送で二重記録しないよう決定的ID (sessionId由来) で冪等化
-  await recordLineEvent({
+  const shouldSendWelcome = await recordLineEventOnFirstDelivery({
     eventName: "line_plus_subscribed",
     id: purchaseEventId("line_plus_subscribed", session.id),
     metadata: {
-      stripe_session_id: session.id,
-      stripe_subscription_id: subscriptionId,
-      user_id: userId,
-      line_user_id: lineUserId,
       amount_total: session.amount_total ?? null,
+      currency: session.currency ?? "jpy",
+      plan_id: planId,
     },
   });
+
+  if (!shouldSendWelcome) return;
 
   // push は best effort。失敗しても加入自体は成立している
   try {
     await pushLineMessages(lineUserId, [
       {
         type: "text",
-        text: ALICE_PLUS_WELCOME_MESSAGE(buildLinePlusCheckoutUrl(lineUserId)),
+        text: ALICE_PLUS_WELCOME_MESSAGE(
+          buildLinePlusCheckoutUrl(lineUserId),
+          planId,
+        ),
         quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
       },
     ]);
@@ -1014,13 +1168,124 @@ async function handleAlicePlusCheckoutPaid(
 }
 
 /**
- * Alice Plus 1週間パス (買い切り¥480) の権利付与。
+ * Alice Plus期間パスの権利付与。Stripe再送はCheckout Session IDで冪等化し、
+ * 別の購入が並行した場合もDBの行ロック内で利用期限を加算する。
+ */
+async function handleAlicePlusPassCheckoutPaid(
+  session: Stripe.Checkout.Session,
+  paidAt: string,
+): Promise<void> {
+  const metadata = session.metadata ?? {};
+  const userId = metadata.user_id;
+  const lineUserId = metadata.line_user_id;
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+  const planId = isLinePlusPassPlan(metadata.plan_id)
+    ? metadata.plan_id
+    : null;
+  const plan = planId ? LINE_PLUS_PLANS[planId] : null;
+  const accessDays = Number(metadata.access_days);
+  const priceId = metadata.stripe_price_id;
+  const expectedPriceId = planId ? linePlusPlanPriceId(planId) : null;
+
+  if (
+    !userId ||
+    !lineUserId ||
+    !paymentIntentId ||
+    !planId ||
+    !plan ||
+    !priceId ||
+    !expectedPriceId ||
+    priceId !== expectedPriceId ||
+    accessDays !== plan.accessDays ||
+    session.amount_total !== plan.priceYen ||
+    session.currency?.toLowerCase() !== "jpy"
+  ) {
+    // メタデータ欠落は再送しても回復しないため、手動救済用の通知を残して受領する。
+    console.error(
+      `[webhook/stripe] alice_plus_pass invalid metadata (acknowledged): ${session.id}`,
+    );
+    await sendSlackAlert("⚠️ alice_plus_pass: metadata不整合で受領のみ", {
+      session_id: session.id,
+      plan_id: metadata.plan_id ?? "missing",
+      access_days: metadata.access_days ?? "missing",
+      amount_total: session.amount_total ?? "missing",
+      currency: session.currency ?? "missing",
+    });
+    return;
+  }
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+  const { data, error } = await supabaseAdmin.rpc("grant_line_plus_time_pass", {
+    p_user_id: userId,
+    p_line_user_id: lineUserId,
+    p_stripe_customer_id: customerId,
+    p_stripe_checkout_session_id: session.id,
+    p_stripe_payment_intent_id: paymentIntentId,
+    p_plan_key: planId,
+    p_stripe_price_id: priceId,
+    p_access_days: accessDays,
+    p_purchased_at: paidAt,
+  });
+  if (error) {
+    throw new Error(`[alice_plus_pass] grant failed: ${error.message}`);
+  }
+
+  const grant = Array.isArray(data) ? data[0] : data;
+  const wasGranted = grant?.was_granted === true;
+  const expiresAt =
+    typeof grant?.expires_at === "string" ? grant.expires_at : null;
+
+  await recordLineEvent({
+    eventName: "line_plus_pass_purchased",
+    id: purchaseEventId("line_plus_pass_purchased", session.id),
+    metadata: {
+      plan_id: planId,
+      access_days: accessDays,
+      expires_at: expiresAt,
+      amount_total: session.amount_total ?? null,
+      currency: session.currency ?? "jpy",
+    },
+  });
+
+  // RPCが既存セッションを返したStripe再送で、歓迎通知を重複させない。
+  if (!wasGranted) return;
+  try {
+    await pushLineMessages(lineUserId, [
+      {
+        type: "text",
+        text: [
+          `${plan.label}へようこそ🎉 Plusのぜんぶが使えます。`,
+          "・恋愛運・友達運・勉強運の深掘り占い",
+          "・タロット占い",
+          "・無料枠を超えてたっぷりおしゃべり",
+          "",
+          `自動更新はありません。${expiresAt ? `利用期限は${new Date(expiresAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}までです。` : ""}`,
+        ].join("\n"),
+        quickReply: quickReplies("タロット占い", "恋愛運", "友達運", "勉強運"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[webhook/stripe] alice_plus_pass welcome push failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+  }
+}
+
+/**
+ * 旧Alice Plus 1週間パス (買い切り¥480) の権利付与。
  * サブスクではないので Stripe 同期はなく、line_plus_subscriptions に
  * status='week_pass' + current_period_end (購入から7日) の行を書くだけ。
  * 判定は hasActiveLinePlus が期限つきで見る。期限切れ後の後始末は不要。
  */
 async function handleAlicePlusWeekCheckoutPaid(
   session: Stripe.Checkout.Session,
+  paidAt: string,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
   const userId = metadata.user_id;
@@ -1046,9 +1311,18 @@ async function handleAlicePlusWeekCheckoutPaid(
       stripe_customer_id: customerId,
       user_id: userId,
       line_user_id: lineUserId,
+      plan_key: "week",
+      stripe_price_id: process.env.STRIPE_PRICE_ALICE_PLUS_WEEK ?? null,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null),
+      access_days: 7,
+      purchased_at: paidAt,
       status: "week_pass",
       current_period_end: new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
+        new Date(paidAt).getTime() + 7 * 24 * 60 * 60 * 1000,
       ).toISOString(),
       cancel_at_period_end: true,
       updated_at: new Date().toISOString(),
@@ -1080,7 +1354,7 @@ async function handleAlicePlusWeekCheckoutPaid(
           "1週間パスへようこそ🎉 今日から7日間、Plusのぜんぶが使えます。",
           "・恋愛運・友達運・勉強運の深掘り占い",
           "・タロット占い",
-          "・上限なしのおしゃべり",
+          "・無料枠を超えてたっぷりおしゃべり",
           "",
           "自動更新はないので、期限が来たらそのまま無料プランに戻ります。安心してたっぷり遊んでくださいね🌙",
         ].join("\n"),
@@ -1101,6 +1375,7 @@ async function handleAlicePlusWeekCheckoutPaid(
  */
 async function handleAlicePlusLifetimeCheckoutPaid(
   session: Stripe.Checkout.Session,
+  paidAt: string,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
   const userId = metadata.user_id;
@@ -1126,6 +1401,14 @@ async function handleAlicePlusLifetimeCheckoutPaid(
       stripe_customer_id: customerId,
       user_id: userId,
       line_user_id: lineUserId,
+      plan_key: "lifetime",
+      stripe_price_id: process.env.STRIPE_PRICE_ALICE_PLUS_LIFETIME ?? null,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null),
+      purchased_at: paidAt,
       status: "lifetime",
       current_period_end: null,
       cancel_at_period_end: false,
@@ -1158,7 +1441,7 @@ async function handleAlicePlusLifetimeCheckoutPaid(
           "無期限プランへようこそ🎉 今日からずっと、Plusのぜんぶが使えます。",
           "・恋愛運・友達運・勉強運の深掘り占い",
           "・タロット占い",
-          "・上限なしのおしゃべり",
+          "・無料枠を超えてたっぷりおしゃべり",
           "",
           "もう期限も更新もありません。これからずっと、あなたのそばにいますね🌙",
         ].join("\n"),
@@ -1178,6 +1461,7 @@ async function handleAlicePlusLifetimeCheckoutPaid(
  */
 async function syncLinePlusSubscription(
   subscription: Stripe.Subscription,
+  context?: { checkoutSessionId?: string },
 ): Promise<void> {
   const metadata = subscription.metadata ?? {};
   if (metadata.product !== "alice_plus") return;
@@ -1198,7 +1482,18 @@ async function syncLinePlusSubscription(
     .maybeSingle();
 
   // API 2025-03 (SDK v18+) で current_period_end は SubscriptionItem 側に移動した
-  const periodEndEpoch = subscription.items?.data?.[0]?.current_period_end;
+  const firstItem = subscription.items?.data?.[0];
+  const periodEndEpoch = firstItem?.current_period_end;
+  const stripePriceId = firstItem?.price?.id ?? metadata.stripe_price_id ?? null;
+  const planId = resolveSubscriptionPlanId({
+    metadataPlanId: metadata.plan_id,
+    stripePriceId,
+  });
+  if (!planId) {
+    throw new Error(
+      "[alice_plus] unsupported subscription price",
+    );
+  }
   // 期間末解約の予約。新しいAPIバージョン (2026-03 dahlia 系) では Portal 解約が
   // cancel_at_period_end でなく cancel_at (解約予定日時) で表現されるため両方を見る。
   // 実測: 2026-09-02 の課金実機テストで cancel_at_period_end=false のまま届いた
@@ -1213,6 +1508,11 @@ async function syncLinePlusSubscription(
           : (subscription.customer?.id ?? null),
       user_id: userId,
       line_user_id: lineUserId,
+      plan_key: planId,
+      stripe_price_id: stripePriceId,
+      ...(context?.checkoutSessionId
+        ? { stripe_checkout_session_id: context.checkoutSessionId }
+        : {}),
       status: subscription.status,
       current_period_end: periodEndEpoch
         ? new Date(periodEndEpoch * 1000).toISOString()
@@ -1236,9 +1536,7 @@ async function syncLinePlusSubscription(
         `${subscription.id}:${subscription.cancel_at ?? ""}`,
       ),
       metadata: {
-        stripe_subscription_id: subscription.id,
-        user_id: userId,
-        line_user_id: lineUserId,
+        plan_id: planId,
         cancel_at: subscription.cancel_at ?? null,
       },
     });
@@ -1249,21 +1547,25 @@ async function syncLinePlusSubscription(
       eventName: "line_plus_canceled",
       id: purchaseEventId("line_plus_canceled", subscription.id),
       metadata: {
-        stripe_subscription_id: subscription.id,
-        user_id: userId,
-        line_user_id: lineUserId,
+        plan_id: planId,
       },
     });
     // 無料に戻った人へのお別れ+おかえり導線 (best effort)
     try {
+      const hasOtherPlusAccess = await hasActiveLinePlus(userId);
       await pushLineMessages(lineUserId, [
         {
           type: "text",
-          text: [
-            "Alice Plusのご利用、ありがとうございました。",
-            "これからも1日3通の無料枠と今日の占いで、変わらずお話しできますからね。",
-            "また上限なしで話したくなったら、いつでも「プラン」って送ってください。",
-          ].join("\n"),
+          text: hasOtherPlusAccess
+            ? [
+                "Alice Plusのサブスクが終了しました。",
+                "ほかの有効なPlus利用期間が残っているため、その期限までは引き続きPlusを使えます。",
+              ].join("\n")
+            : [
+                "Alice Plusのご利用、ありがとうございました。",
+                `これからも1日${lineFreeDailyLimit()}通の無料枠と今日の占いで、変わらずお話しできますからね。`,
+                "また無料枠を気にせずたっぷり話したくなったら、いつでも「プラン」って送ってください。",
+              ].join("\n"),
           quickReply: quickReplies("今日の占い", "プラン"),
         },
       ]);

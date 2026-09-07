@@ -14,8 +14,8 @@ const LINE_TALK_URL = "https://line.me/R/ti/p/%40867domoo";
 
 const COPY: Record<string, { title: string; body: string }> = {
   success: {
-    title: "Alice Plusへようこそ",
-    body: "登録ありがとうございます。LINEのトークに戻ると、Aliceからメッセージが届きます。今日からは上限を気にせずお話しできます。",
+    title: "お申し込みを受け付けました",
+    body: "ありがとうございます。決済または無料体験の確認ができ次第、AliceからLINEにメッセージが届きます。反映まで少し時間がかかる場合があります。",
   },
   cancelled: {
     title: "手続きは行われませんでした",
@@ -23,7 +23,11 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   portal_return: {
     title: "お手続きありがとうございました",
-    body: "プランの変更内容はすぐに反映されます。LINEのトークに戻ってお話しの続きをどうぞ。",
+    body: "プランの変更内容はStripeでの手続きに沿って反映されます。LINEのトークに戻ってお話しの続きをどうぞ。",
+  },
+  processing: {
+    title: "お申し込みを確認しています",
+    body: "二重のお支払いを防ぐため、先に始まったお手続きを確認しています。少し待ってから、LINEのトークに届いている同じ案内リンクをもう一度開いてください。",
   },
   invalid: {
     title: "リンクを確認できませんでした",

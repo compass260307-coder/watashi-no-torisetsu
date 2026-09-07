@@ -14,14 +14,17 @@ import { lineFreeDailyLimit } from "@/lib/line-alice";
 import PlusPlanChooser from "@/components/line/PlusPlanChooser";
 import { recordLineEvent } from "@/lib/line-events";
 import {
-  findActiveWeekPass,
+  findActiveLinePlusPass,
   findManageableLinePlusSubscription,
   hasLifetimeLinePlus,
   linePlusEnabled,
-  linePlusLifetimePriceConfigured,
-  linePlusWeekPriceConfigured,
+  linePlusPlanPriceConfigured,
   verifyLinePlusToken,
 } from "@/lib/line-plus";
+import {
+  LINE_PLUS_PLAN_IDS,
+  type LinePlusPlanId,
+} from "@/lib/line-plus-products";
 
 export const metadata: Metadata = {
   title: "Alice Plus | ワタシのトリセツ",
@@ -118,31 +121,35 @@ export default async function LinePlusPage({
     e: String(expiresAtMs),
     s: signature,
   }).toString();
-  const checkoutUrl = isDevPreview ? "#" : `/api/line/plus/checkout?${tokenQuery}`;
-  const weekCheckoutUrl = isDevPreview
-    ? "#"
-    : `/api/line/plus/checkout?plan=week&${tokenQuery}`;
-  const lifetimeCheckoutUrl = isDevPreview
-    ? "#"
-    : `/api/line/plus/checkout?plan=lifetime&${tokenQuery}`;
-  // 買い切りプラン: Price未設定なら売り場ごと隠す (プレビューでは常に表示)
-  const weekAvailable = isDevPreview || linePlusWeekPriceConfigured();
-  const lifetimeAvailable = isDevPreview || linePlusLifetimePriceConfigured();
+  const checkoutUrls = Object.fromEntries(
+    LINE_PLUS_PLAN_IDS.map((planId) => [
+      planId,
+      isDevPreview
+        ? "#"
+        : `/api/line/plus/checkout?plan=${planId}&${tokenQuery}`,
+    ]),
+  ) as Record<LinePlusPlanId, string>;
+  const availability = Object.fromEntries(
+    LINE_PLUS_PLAN_IDS.map((planId) => [
+      planId,
+      isDevPreview || linePlusPlanPriceConfigured(planId),
+    ]),
+  ) as Record<LinePlusPlanId, boolean>;
   const hasLifetime = isDevPreview
     ? preview === "lifetime"
     : await hasLifetimeLinePlus(lineUserId);
-  const weekPass = isDevPreview
+  const activePass = isDevPreview
     ? preview === "week"
-      ? { expiresAt: "2026-09-09T00:00:00.000Z" } // プレビュー用の固定日付
+      ? { expiresAt: "2026-09-09T00:00:00.000Z", planId: "week" as const }
       : null
-    : await findActiveWeekPass(lineUserId);
-  const weekPassUntil = weekPass
+    : await findActiveLinePlusPass(lineUserId);
+  const activePassUntil = activePass
     ? new Date(
-        new Date(weekPass.expiresAt).getTime() + 9 * 3_600_000,
+        new Date(activePass.expiresAt).getTime() + 9 * 3_600_000,
       ).toISOString()
     : null;
-  const weekPassLabel = weekPassUntil
-    ? `${Number(weekPassUntil.slice(5, 7))}月${Number(weekPassUntil.slice(8, 10))}日`
+  const activePassLabel = activePassUntil
+    ? `${Number(activePassUntil.slice(5, 7))}月${Number(activePassUntil.slice(8, 10))}日`
     : null;
   const freeLimit = lineFreeDailyLimit();
 
@@ -201,12 +208,9 @@ export default async function LinePlusPage({
             下部固定CTAは選択中プランに追従するためコンポーネント側が持つ */}
         {!hasLifetime && !isManageable && (
           <PlusPlanChooser
-            monthlyUrl={checkoutUrl}
-            weekUrl={weekCheckoutUrl}
-            lifetimeUrl={lifetimeCheckoutUrl}
-            weekAvailable={weekAvailable}
-            lifetimeAvailable={lifetimeAvailable}
-            weekPassLabel={weekPassLabel}
+            checkoutUrls={checkoutUrls}
+            availability={availability}
+            activePassLabel={activePassLabel}
           />
         )}
 
@@ -252,7 +256,7 @@ export default async function LinePlusPage({
                 Alice Plusをご利用中です。いつもありがとうございます。
               </p>
               <a
-                href={checkoutUrl}
+                href={checkoutUrls.monthly}
                 className="block w-full rounded-xl border-2 border-[#5B5BEF] py-3.5 text-center text-[15px] font-black text-[#5B5BEF] transition-transform active:scale-95"
               >
                 プランを確認・解約する

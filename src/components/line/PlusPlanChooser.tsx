@@ -6,8 +6,13 @@
 // LP本体はサーバーコンポーネントのため、選択状態が要るこの塊だけ切り出している。
 
 import { useState } from "react";
+import {
+  LINE_PLUS_PLANS,
+  type LinePlusPlanId,
+} from "@/lib/line-plus-products";
 
-type PlanId = "monthly" | "week" | "lifetime";
+const SUBSCRIPTION_IDS = ["monthly", "annual"] as const;
+const PASS_IDS = ["day", "week", "month_pass"] as const;
 
 function RadioCircle({ selected }: { selected: boolean }) {
   return (
@@ -25,31 +30,23 @@ function RadioCircle({ selected }: { selected: boolean }) {
 }
 
 export default function PlusPlanChooser({
-  monthlyUrl,
-  weekUrl,
-  lifetimeUrl,
-  weekAvailable,
-  lifetimeAvailable,
-  weekPassLabel,
+  checkoutUrls,
+  availability,
+  activePassLabel,
 }: {
-  monthlyUrl: string;
-  weekUrl: string;
-  lifetimeUrl: string;
-  weekAvailable: boolean;
-  lifetimeAvailable: boolean;
-  // 1週間パス利用中なら「◯月◯日」の期限ラベル (週パス行を「利用中」に固定する)
-  weekPassLabel: string | null;
+  checkoutUrls: Record<LinePlusPlanId, string>;
+  availability: Record<LinePlusPlanId, boolean>;
+  activePassLabel: string | null;
 }) {
-  const [selected, setSelected] = useState<PlanId>("monthly");
-
-  const ctaHref: Record<PlanId, string> = {
-    monthly: monthlyUrl,
-    week: weekUrl,
-    lifetime: lifetimeUrl,
-  };
+  const preferredOrder = activePassLabel
+    ? ([...PASS_IDS, ...SUBSCRIPTION_IDS] as LinePlusPlanId[])
+    : ([...SUBSCRIPTION_IDS, ...PASS_IDS] as LinePlusPlanId[]);
+  const firstAvailable =
+    preferredOrder.find((id) => availability[id]) ?? "monthly";
+  const [selected, setSelected] = useState<LinePlusPlanId>(firstAvailable);
 
   const row = (
-    id: PlanId,
+    id: LinePlusPlanId,
     title: string,
     price: string,
     pills: { text: string; tone: "gold" | "indigo" }[],
@@ -110,10 +107,10 @@ export default function PlusPlanChooser({
           />
           プランをえらぶ
         </h2>
-        {weekPassLabel && (
+        {activePassLabel && (
           <p className="rounded-xl bg-[#FFF6DE] px-4 py-3 text-[12px] font-bold leading-relaxed text-[#5C4300]">
-            🎫 1週間パスを利用中です({weekPassLabel}
-            まで)。月額プランに移ると、そのまま途切れずに続きます。
+            🎫 期間パスを利用中です({activePassLabel}まで)。利用期間中は新しい
+            サブスクのお申し込みを受け付けません。
           </p>
         )}
         <div className="space-y-5 rounded-3xl border border-[#5B5BEF]/10 bg-white p-5 shadow-[0_12px_34px_rgba(36,26,79,0.08)]">
@@ -124,12 +121,23 @@ export default function PlusPlanChooser({
                 (自動更新あり)
               </span>
             </p>
-            {row("monthly", "1ヶ月", "¥480/月", [
-              { text: "★オススメ", tone: "gold" },
-              { text: "初回1週間無料", tone: "indigo" },
-            ])}
+            {SUBSCRIPTION_IDS.filter((id) => availability[id]).map((id) => {
+              const plan = LINE_PLUS_PLANS[id];
+              return row(
+                id,
+                plan.label,
+                `¥${plan.priceYen.toLocaleString("ja-JP")}/${id === "annual" ? "年" : "月"}`,
+                id === "monthly"
+                  ? [
+                      { text: "★オススメ", tone: "gold" },
+                      { text: "初回1週間無料", tone: "indigo" },
+                    ]
+                  : [{ text: "年払い", tone: "indigo" }],
+                activePassLabel ? "パス利用中" : undefined,
+              );
+            })}
           </div>
-          {(weekAvailable || lifetimeAvailable) && (
+          {PASS_IDS.some((id) => availability[id]) && (
             <div className="space-y-2.5">
               <p className="text-[12px] font-black text-[#5B5BEF]">
                 💠 買い切りプラン
@@ -137,18 +145,15 @@ export default function PlusPlanChooser({
                   (自動更新なし)
                 </span>
               </p>
-              {weekAvailable &&
-                row(
-                  "week",
-                  "1週間",
-                  "¥480",
-                  [{ text: "おためしに", tone: "indigo" }],
-                  weekPassLabel ? "利用中" : undefined,
-                )}
-              {lifetimeAvailable &&
-                row("lifetime", "無期限", "¥9,800", [
-                  { text: "ずっと使える", tone: "gold" },
-                ])}
+              {PASS_IDS.filter((id) => availability[id]).map((id) => {
+                const plan = LINE_PLUS_PLANS[id];
+                return row(
+                  id,
+                  plan.label,
+                  `¥${plan.priceYen.toLocaleString("ja-JP")}`,
+                  [{ text: "自動更新なし", tone: "indigo" }],
+                );
+              })}
             </div>
           )}
         </div>
@@ -158,12 +163,8 @@ export default function PlusPlanChooser({
       <div className="fixed inset-x-0 bottom-0 border-t border-[#5B5BEF]/10 bg-white/95 px-5 pb-[calc(env(safe-area-inset-bottom)+12px)] pt-3 backdrop-blur">
         <div className="mx-auto w-full max-w-md">
           <a
-            href={ctaHref[selected]}
-            className={`block w-full rounded-xl py-4 text-center text-[15px] font-black transition-transform active:scale-95 ${
-              selected === "lifetime"
-                ? "bg-gradient-to-r from-[#E8B93E] to-[#FFD97A] text-[#5C4300] shadow-[0_10px_26px_rgba(232,185,62,0.4)]"
-                : "bg-gradient-to-r from-[#5B5BEF] to-[#7C5BEF] text-white shadow-[0_10px_26px_rgba(91,91,239,0.35)]"
-            }`}
+            href={checkoutUrls[selected]}
+            className="block w-full rounded-xl bg-gradient-to-r from-[#5B5BEF] to-[#7C5BEF] py-4 text-center text-[15px] font-black text-white shadow-[0_10px_26px_rgba(91,91,239,0.35)] transition-transform active:scale-95"
           >
             プランを選んで相談を続ける
           </a>
