@@ -81,18 +81,28 @@ export function isPreviewMode(): boolean {
 //   friend_to_diagnosis_invite_clicked 本人が回答済みの友達へ自己診断を案内
 //   friend_invite_clicked        自分の結果から友達を招待  (旧 share_clicked kind:friend_invite)
 //   share_clicked                拡散シェア (metadata.kind: character | brag)
-//   result_viewed                結果(/me)の初回表示 (metadata.friendCount, ownerToken)
+//   share_ui_shown               自己結果のシェアモーダル表示
+//   share_landing_viewed         自己結果シェアの /share/[code] 到達
+//   share_to_diagnosis_clicked   /share/[code] → 自己診断 CTA
+//   result_viewed                結果(/me)の初回表示 (metadata.friendCount/funnelVersion, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
 //   three_friends_unlocked       友達3人達成 (ownerToken)
 //   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
 //   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
-//   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate=ゲートのシェア行が視界に入った / sticky_modal=上部固定バーの招待モーダルを開いた / send_sheet=送信シートを開いた)
+//   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate / sticky_modal / tako_unlocked / send_sheet)
 //   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
 //   unmei_nav_badge_clicked      未確認バッジ付き「運命」タップ (ownerToken)
 //   unmei_lp_view                運命の設計図LP表示 (metadata.product)
 //   unmei_purchase_start         運命の設計図の購入開始 (metadata.product)
 //   unmei_reading_view           運命の設計図の鑑定表示
+//   unmei_checkout_step_view      埋め込み決済ステップ表示
+//   unmei_purchase_complete_embedded 埋め込み決済完了
+//   hoshiyomi_page_viewed         Aliceページ表示 (metadata.access_state/surface)
+//   hoshiyomi_paywall_opened      Aliceの未解放送信で購入カードを開いた
+//   hoshiyomi_message_sent        Aliceへのメッセージ送信
+//   hoshiyomi_response_completed  Aliceの応答表示完了
+//   hoshiyomi_response_failed     Aliceの応答失敗
 //   line_alice_card_viewed         LINE導線カード表示 (metadata.source/variant)
 //   line_alice_add_friend_clicked  LINE友だち追加CTAクリック
 //   line_alice_link_code_requested 連携コード発行開始
