@@ -9,6 +9,8 @@
     "build": "next build",
     "prebuild:local": "node scripts/generate-image-manifest.mjs",
     "build:local": "next build --webpack",
+    "generate:ios-alpha": "node scripts/generate-ios-alpha-videos.mjs",
+    "generate:mobile-alpha": "node scripts/generate-mobile-alpha-webp.mjs",
     "start": "next start",
     "lint": "eslint",
     "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs && node scripts/unmei-prompt-locale-test.mjs",
