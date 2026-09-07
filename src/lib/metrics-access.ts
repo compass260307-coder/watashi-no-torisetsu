@@ -44,6 +44,42 @@ export function authorizeMetricsRequest(request: Request): MetricsAccessResult {
 }
 
 /**
+ * Google Sheets 同期は専用キーを優先する。旧metrics API用のキーも互換用に
+ * 受け付けるが、参照IDのHMACは常に専用キーを使い、行の結合を安定させる。
+ */
+export function authorizeSheetsMetricsRequest(
+  request: Request,
+): MetricsAccessResult {
+  const sheetsExpected = process.env.SHEETS_METRICS_KEY?.trim();
+  const metricsExpected = process.env.METRICS_KEY?.trim();
+  const exportSecret = sheetsExpected || metricsExpected;
+  if (!exportSecret) {
+    return {
+      ok: false,
+      error: "SHEETS_METRICS_KEY or METRICS_KEY is not configured",
+      status: 500,
+    };
+  }
+
+  const authorization = request.headers.get("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  const provided = match?.[1]?.trim();
+  const authorized =
+    Boolean(
+      provided && sheetsExpected && secretsMatch(provided, sheetsExpected),
+    ) ||
+    Boolean(
+      provided && metricsExpected && secretsMatch(provided, metricsExpected),
+    );
+
+  if (!authorized) {
+    return { ok: false, error: "Unauthorized", status: 401 };
+  }
+
+  return { ok: true, exportSecret };
+}
+
+/**
  * スプレッドシート上で同一人物・同一セッションを集計できる一方、
  * 元のDB IDやセッショントークンは復元できない安定した参照IDに変換する。
  */
@@ -58,4 +94,3 @@ export function metricsExportReference(
     .digest("hex")
     .slice(0, 24)}`;
 }
-
