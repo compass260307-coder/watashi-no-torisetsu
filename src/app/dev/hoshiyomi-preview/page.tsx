@@ -39,6 +39,7 @@ type PreviewProps = {
   searchParams?: Promise<{
     chat?: string | string[];
     locked?: string | string[];
+    trial_exhausted?: string | string[];
   }>;
 };
 
@@ -49,6 +50,7 @@ export default async function HoshiyomiPreviewPage({ searchParams }: PreviewProp
   const params = searchParams ? await searchParams : {};
   const selectedId = typeof params.chat === "string" ? params.chat : null;
   const locked = params.locked === "1";
+  const trialExhausted = params.trial_exhausted === "1";
   return (
     <HoshiyomiClient
       key={selectedId ?? "home"}
@@ -57,10 +59,11 @@ export default async function HoshiyomiPreviewPage({ searchParams }: PreviewProp
           ? SAMPLE_CONVERSATIONS.find((item) => item.id === selectedId) ?? null
           : null
       }
-      initialRemaining={locked ? 0 : 22}
-      totalCredits={locked ? 0 : 30}
+      initialRemaining={locked || trialExhausted ? 0 : 22}
+      totalCredits={trialExhausted ? 1 : locked ? 0 : 30}
       persistenceReady
       hasChatAccess={!locked}
+      canUpgradeToPremium={trialExhausted}
       previewMode
     />
   );

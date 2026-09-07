@@ -5,6 +5,7 @@ import {
   paywallCardMode,
   type PaywallCardMode,
 } from "@/lib/feature-flags";
+import type { AccessEntitlements } from "@/lib/access-products";
 import type { ResultLocale } from "@/i18n/result";
 
 // /me や /tako の診断をやり直さず、課金カードのコピーだけを確認するローカル専用プレビュー。
@@ -12,6 +13,13 @@ import type { ResultLocale } from "@/i18n/result";
 // 切り替えて、本番に出る全パターンのコピーを1ページで見比べられる。
 
 type Surface = "self" | "tako" | "aisho";
+type PreviewPurchase = "none" | "self_report" | "full_access";
+
+const PREVIEW_ENTITLEMENTS: Record<PreviewPurchase, AccessEntitlements> = {
+  none: { selfReport: false, full: false, premiumBundle: false },
+  self_report: { selfReport: true, full: false, premiumBundle: false },
+  full_access: { selfReport: true, full: true, premiumBundle: false },
+};
 
 const SURFACE_LABEL: Record<Surface, string> = {
   self: "自己診断(/me)",
@@ -65,6 +73,7 @@ export default async function SelfReportPreviewPage({
     mode?: string | string[];
     locale?: string | string[];
     surface?: string | string[];
+    preview_purchase?: string | string[];
   }>;
 }) {
   // UI確認専用。本番デプロイではページ自体を公開しない。
@@ -89,17 +98,28 @@ export default async function SelfReportPreviewPage({
       : "self";
   const surfaceProps = SURFACE_PROPS[surface];
 
+  const requestedPurchase = pickOne(params.preview_purchase);
+  const previewPurchase: PreviewPurchase =
+    requestedPurchase === "self_report" || requestedPurchase === "full_access"
+      ? requestedPurchase
+      : "none";
+
   // 現在の選択を保ったまま1軸だけ差し替えたリンクを作る。
   const buildHref = (patch: {
     mode?: PaywallCardMode;
     locale?: ResultLocale;
     surface?: Surface;
+    previewPurchase?: PreviewPurchase;
   }) => {
     const next = new URLSearchParams({
       mode: patch.mode ?? cardMode,
       locale: patch.locale ?? locale,
       surface: patch.surface ?? surface,
     });
+    const nextPurchase = patch.previewPurchase ?? previewPurchase;
+    if (nextPurchase !== "none") {
+      next.set("preview_purchase", nextPurchase);
+    }
     return `/dev/self-report-preview?${next.toString()}`;
   };
 
@@ -110,7 +130,13 @@ export default async function SelfReportPreviewPage({
           LOCAL PREVIEW
         </p>
         <h1 className="mt-2 text-[22px] font-black text-[#2A3A5C]">
-          {isThreeCourse ? "松竹梅カードの確認" : "旧課金カードの確認"}
+          {isThreeCourse
+            ? locale === "ja"
+              ? "比較用・プランカードの確認"
+              : "現行3コースカードの確認"
+            : locale === "ja"
+              ? "現行・旧カードデザインの確認"
+              : "旧課金カードの確認"}
         </h1>
         <p className="mt-3 text-[13px] font-bold leading-[1.8] text-[#7A8498]">
           実際の課金カードと同じコピー・レイアウトです。
@@ -125,13 +151,13 @@ export default async function SelfReportPreviewPage({
           >
             <span className="text-[11px] font-black text-[#9AA1B4]">モード</span>
             <TabLink href={buildHref({ mode: "legacy" })} active={!isThreeCourse}>
-              旧カード
+              旧カード（現行）
             </TabLink>
             <TabLink
               href={buildHref({ mode: "three-course" })}
               active={isThreeCourse}
             >
-              松竹梅
+              プランカード
             </TabLink>
           </nav>
 
@@ -163,6 +189,35 @@ export default async function SelfReportPreviewPage({
               </TabLink>
             ))}
           </nav>
+
+          {isThreeCourse ? (
+            <nav
+              aria-label="購入状態切り替え"
+              className="flex flex-wrap items-center justify-center gap-2"
+            >
+              <span className="text-[11px] font-black text-[#9AA1B4]">
+                購入状態
+              </span>
+              <TabLink
+                href={buildHref({ previewPurchase: "none" })}
+                active={previewPurchase === "none"}
+              >
+                未購入
+              </TabLink>
+              <TabLink
+                href={buildHref({ previewPurchase: "self_report" })}
+                active={previewPurchase === "self_report"}
+              >
+                お試し購入済み
+              </TabLink>
+              <TabLink
+                href={buildHref({ previewPurchase: "full_access" })}
+                active={previewPurchase === "full_access"}
+              >
+                完全版購入済み
+              </TabLink>
+            </nav>
+          ) : null}
         </div>
       </div>
 
@@ -174,9 +229,13 @@ export default async function SelfReportPreviewPage({
         surface={surfaceProps.surface}
         variant={surfaceProps.variant}
         returnTo={surfaceProps.returnTo}
+        products={
+          surface === "tako" ? ["full_access", "premium_bundle"] : undefined
+        }
         ctaSource="dev_self_report_preview"
         cardMode={cardMode}
         previewMode
+        previewEntitlements={PREVIEW_ENTITLEMENTS[previewPurchase]}
       />
     </main>
   );
