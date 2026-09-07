@@ -3,5 +3,11 @@
     "src/app/api/hoshiyomi/chat/route.ts": {
       "supportsCancellation": true
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/purchase-conversions",
+      "schedule": "0 * * * *"
+    }
+  ]
 }

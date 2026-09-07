@@ -60,6 +60,11 @@ import {
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
 } from "@/lib/access-products";
+import {
+  deliverServerPurchaseConversions,
+  enqueueServerPurchaseConversions,
+  type ServerPurchaseConversionInput,
+} from "@/lib/server-purchase-conversions";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -68,6 +73,24 @@ function guestToken(bytes: number): string {
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
 export const maxDuration = 150;
+
+async function queueServerPurchaseConversions(
+  input: ServerPurchaseConversionInput,
+): Promise<void> {
+  // This required, idempotent queue write completes the replay-safe webhook
+  // sequence before Stripe receives 200. Provider I/O runs after the response
+  // and may fail without delaying access grants or purchase emails.
+  await enqueueServerPurchaseConversions(input);
+  after(async () => {
+    const result = await deliverServerPurchaseConversions(input);
+    if (result.failed > 0) {
+      console.warn("[webhook/stripe] purchase conversion queued for retry", {
+        stripe_session_id: input.session.id,
+        failed: result.failed,
+      });
+    }
+  });
+}
 
 export async function POST(request: NextRequest) {
   // ===== Stripe 環境チェック =====
@@ -150,7 +173,10 @@ export async function POST(request: NextRequest) {
           await handleAlicePlusLifetimeCheckoutPaid(session);
           break;
         }
-        await handleCheckoutPaid(session);
+        await handleCheckoutPaid(
+          session,
+          new Date(event.created * 1000).toISOString(),
+        );
         break;
       }
       case "customer.subscription.created":
@@ -760,6 +786,15 @@ async function sendDetailedReportEmailBestEffort(
   }
 }
 
+function purchaseEventId(eventName: string, checkoutSessionId: string): string {
+  const hex = crypto
+    .createHash("sha256")
+    .update(`stripe_webhook_event\0${eventName}\0${checkoutSessionId}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 // 課金ファネル計測: 決済完了イベントを events に記録 (サーバ発行・session_id 無し)。
 // Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
 // 計測失敗で webhook を落とさない (grant は完了済み。エラーは握りつぶす)。
@@ -1242,6 +1277,7 @@ async function syncLinePlusSubscription(
 
 async function handleCheckoutPaid(
   session: Stripe.Checkout.Session,
+  paidAt: string,
 ): Promise<void> {
   const metadata = session.metadata ?? {};
   // guest 決済では user_id が空。"" は null 扱いにする。
@@ -1267,6 +1303,12 @@ async function handleCheckoutPaid(
       session,
       linkedUserId,
     );
+    await queueServerPurchaseConversions({
+      session,
+      userId: linkedUserId,
+      product: "unmei",
+      paidAt,
+    });
     // AI 生成 (〜100秒超) は応答後に after() で実行する。同期 await だと maxDuration を
     // 超えて webhook 全体がタイムアウトし、Stripe が翌日まで再送し続けていた (2026-08-08)。
     // after() が失敗しても /unmei ページ側の /api/unmei/generate キックで回復できる。
@@ -1306,6 +1348,12 @@ async function handleCheckoutPaid(
     await recordUnmeiPayment(session, userId, "unmei_upgrade");
     await persistPurchaseLocale(session, userId);
     await recordUnmeiPurchaseEventOnce("unmei_upgrade_complete", session, userId);
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "unmei_upgrade",
+      paidAt,
+    });
     // 基本購入と同じく、AI 生成は応答後に回して webhook を即 200 で返す。
     after(() =>
       triggerUnmeiGeneration(
@@ -1335,6 +1383,12 @@ async function handleCheckoutPaid(
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "premium_bundle",
+      paidAt,
+    });
     after(() =>
       triggerUnmeiGeneration(
         paymentUserId,
@@ -1377,6 +1431,12 @@ async function handleCheckoutPaid(
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "full_access",
+      paidAt,
+    });
     if (includesDestinyFeatures) {
       after(() =>
         triggerUnmeiGeneration(
@@ -1394,6 +1454,12 @@ async function handleCheckoutPaid(
     await recordSelfReportPayment(session, paymentUserId);
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId);
+    await queueServerPurchaseConversions({
+      session,
+      userId: paymentUserId,
+      product: "self_report",
+      paidAt,
+    });
     await sendDetailedReportEmailBestEffort(session, paymentUserId);
     return;
   }
@@ -1414,10 +1480,22 @@ async function handleCheckoutPaid(
   // それ以外 (NULL / 'integrated_trisetsu') = 既存「真のトリセツ」フロー (本 PR で変更なし)
   if (metadata.payment_kind === "perception_unlock") {
     await handlePerceptionUnlockCompleted(session, userId, metadata);
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "perception_unlock",
+      paidAt,
+    });
     return;
   }
   if (metadata.payment_kind === "tako_unlock") {
     await handleTakoUnlockCompleted(session, userId);
+    await queueServerPurchaseConversions({
+      session,
+      userId,
+      product: "tako_unlock",
+      paidAt,
+    });
     return;
   }
 }
