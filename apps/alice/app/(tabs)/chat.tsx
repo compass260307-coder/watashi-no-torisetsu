@@ -1,5 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { randomUUID } from 'expo-crypto';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,8 +25,9 @@ import { useGuide } from '@/providers/GuideProvider';
 import type { ChatMessage } from '@/types/app';
 
 export default function ChatScreen() {
+  const params = useLocalSearchParams<{ prefill?: string | string[] }>();
   const { guide } = useGuide();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(() => safePrefill(params.prefill));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -293,6 +295,11 @@ function errorMessage(error: unknown) {
     return '対話を続けるにはPlusへの登録が必要です。';
   }
   return error instanceof Error ? error.message : 'メッセージを送信できませんでした。';
+}
+
+function safePrefill(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return (raw ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, 1_000);
 }
 
 async function waitForTerminalMessage(

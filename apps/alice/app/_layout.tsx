@@ -32,6 +32,7 @@ export default function RootLayout() {
             <Stack.Screen name="complete" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="daily" />
+            <Stack.Screen name="tarot/[mode]" />
           </Stack>
         </ThemeProvider>
       </BootstrapProvider>

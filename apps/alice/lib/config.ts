@@ -3,6 +3,9 @@ export type PublicConfig = {
   supabaseUrl: string | null;
   supabaseAnonKey: string | null;
   reviewLoginEnabled: boolean;
+  journalPrototypeEnabled: boolean;
+  profilePrototypeEnabled: boolean;
+  tarotPrototypeEnabled: boolean;
 };
 
 export function getPublicConfig(): PublicConfig {
@@ -11,6 +14,12 @@ export function getPublicConfig(): PublicConfig {
     supabaseUrl: nonEmpty(process.env.EXPO_PUBLIC_SUPABASE_URL),
     supabaseAnonKey: nonEmpty(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
     reviewLoginEnabled: process.env.EXPO_PUBLIC_REVIEW_LOGIN_ENABLED === 'true',
+    journalPrototypeEnabled:
+      process.env.EXPO_PUBLIC_ALICE_JOURNAL_PROTOTYPE_ENABLED === 'true',
+    profilePrototypeEnabled:
+      process.env.EXPO_PUBLIC_ALICE_PROFILE_PROTOTYPE_ENABLED === 'true',
+    tarotPrototypeEnabled:
+      process.env.EXPO_PUBLIC_ALICE_TAROT_PROTOTYPE_ENABLED === 'true',
   };
 }
 
