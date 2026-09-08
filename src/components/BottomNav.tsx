@@ -11,7 +11,7 @@
 //     localStorage torisetsu_owner_token から /me/[token] を解決 (無ければ /diagnosis)。
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import {
   useEffect,
@@ -185,7 +185,15 @@ function AstrologerIcon() {
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
-  const isKorean = pathname.startsWith("/ko");
+  const searchParams = useSearchParams();
+  // 言語切替つきのローカルプレビューは /dev 配下なので、pathname だけでは
+  // 韓国語表示を判定できない。実ページは従来どおり /ko を正とし、開発時だけ
+  // locale=ko を補助情報として使う。
+  const isKorean =
+    pathname.startsWith("/ko") ||
+    (process.env.NODE_ENV === "development" &&
+      pathname.startsWith("/dev/") &&
+      searchParams.get("locale") === "ko");
   const isKoreanResult = pathname.startsWith("/ko/me/");
   const isTakoAttentionPreview =
     process.env.NODE_ENV === "development" &&
@@ -236,7 +244,7 @@ export function BottomNav() {
   //   は外部ストレージ→state 同期の正当なケース)。
   useEffect(() => {
     const evaluate = () => {
-      const koreanPath = pathname.startsWith("/ko");
+      const koreanPath = isKorean;
       let token: string | null = null;
       let attentionPending = false;
       let unmeiPending = false;
@@ -330,7 +338,7 @@ export function BottomNav() {
       window.removeEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
       window.removeEventListener(ME_ATTENTION_GRANTED_EVENT, evaluate);
     };
-  }, [navHidden, pathname]);
+  }, [isKorean, navHidden, pathname]);
 
   // 有料コースのサーバーガードから戻ったときも、ナビの鍵をタップした
   // ときと同じ課金カードを開く。再読み込みで開き続けないよう hash は即座に除去。
@@ -425,8 +433,12 @@ export function BottomNav() {
             {
               key: "astrologer",
               label: "Alice",
-              href: "/ko/hoshiyomi",
-              active: pathname.startsWith("/ko/hoshiyomi"),
+              href: isAstrologerPreview
+                ? "/dev/hoshiyomi-preview?locale=ko"
+                : "/ko/hoshiyomi",
+              active:
+                pathname.startsWith("/ko/hoshiyomi") ||
+                pathname === "/dev/hoshiyomi-preview",
               Icon: AstrologerIcon,
               locked:
                 (!hasToken && !isPaidNavigationPreview) ||

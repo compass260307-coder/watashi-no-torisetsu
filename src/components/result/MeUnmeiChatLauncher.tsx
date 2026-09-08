@@ -10,7 +10,10 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import type { ResultLocale } from "@/i18n/result";
-import { ME_UNMEI_CHAT_INTRO_JA } from "@/i18n/unmei";
+import {
+  ME_UNMEI_CHAT_INTRO_JA,
+  ME_UNMEI_CHAT_INTRO_KO,
+} from "@/i18n/unmei";
 import { track } from "@/lib/track";
 
 const LAUNCHER_COPY = {
@@ -21,7 +24,7 @@ const LAUNCHER_COPY = {
 export function MeUnmeiChatLauncher({
   ownerToken,
   locale = "ja",
-  product = locale === "ja" ? "full_access" : "premium_bundle",
+  product = "full_access",
   previewMode = false,
   source = "unmei_promo_card",
   className,
@@ -114,7 +117,11 @@ export function MeUnmeiChatLauncher({
                   purchase={{ ownerToken, product }}
                   locale={locale}
                   previewMode={previewMode}
-                  intro={locale === "ja" ? ME_UNMEI_CHAT_INTRO_JA : undefined}
+                  intro={
+                    locale === "ko"
+                      ? ME_UNMEI_CHAT_INTRO_KO
+                      : ME_UNMEI_CHAT_INTRO_JA
+                  }
                   hideHeaderStars
                   onReady={() =>
                     router.push(locale === "ko" ? "/ko/unmei" : "/unmei")

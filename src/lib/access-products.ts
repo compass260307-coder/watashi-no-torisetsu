@@ -87,15 +87,17 @@ export const HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED =
 export const HOSHIYOMI_CHAT_CREDITS_FULL_TRIAL = 1;
 // AI占い師チャットの付与回数 (累計保証値)。webhook・復元・表示コピーで共有する。
 export const HOSHIYOMI_CHAT_CREDITS_FULL_ACCESS = 5;
-export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE = 30;
+export const HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS = 30;
+export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE =
+  HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
 
 // タロットは現行の日本版完全版と premium_bundle に含める。
 // 学生向けと旧販売世代を誤って解放しないよう、購入時metadataへ明示する。
 export const TAROT_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 export const TAROT_ACCESS_POLICY_FULL_INCLUDED = "full_included_v1" as const;
 
-// 友達機能を含まない self_report 世代（および現行韓国版）の印。
-// 値が無い旧 self_report は購入時の権利を維持する。
+// 友達機能を含まない旧 self_report 世代の印。
+// 現行の日韓学生プランは友達機能を含む。値が無い旧購入は購入時の権利を維持する。
 export const FRIEND_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 
 // 2026-08-21: 日本版の学生向けライトには、Alice以外の完全版機能を含める。

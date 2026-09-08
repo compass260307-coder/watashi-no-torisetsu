@@ -120,6 +120,28 @@ if (!bottomNav.includes('data-notification-badge="true"')) {
     "src/components/BottomNav.tsx: notification badge lacks browser QA marker",
   );
 }
+for (const required of [
+  "useSearchParams",
+  'pathname.startsWith("/dev/")',
+  'searchParams.get("locale") === "ko"',
+  "const koreanPath = isKorean",
+]) {
+  if (!bottomNav.includes(required)) {
+    problems.push(
+      `src/components/BottomNav.tsx: localized development paywall navigation lacks ${required}`,
+    );
+  }
+}
+
+const rootLayout = fs.readFileSync(
+  path.join(ROOT, "src/app/layout.tsx"),
+  "utf8",
+);
+if (!/<Suspense fallback=\{null\}>\s*<BottomNav \/>\s*<\/Suspense>/s.test(rootLayout)) {
+  problems.push(
+    "src/app/layout.tsx: BottomNav search params are not isolated by Suspense",
+  );
+}
 
 const takoLockPopover = fs.readFileSync(
   path.join(ROOT, "src/components/TakoLockPopover.tsx"),
@@ -613,6 +635,18 @@ const fullAccessPromoCard = fs.readFileSync(
   path.join(ROOT, "src/components/result/FullAccessPromoCard.tsx"),
   "utf8",
 );
+for (const required of [
+  "KO_PEEK_EBOOK",
+  "KO_PEEK_FRIENDS",
+  "KO_PEEK_ALICE_FORTUNE",
+  "locale={locale}",
+]) {
+  if (!fullAccessPromoCard.includes(required)) {
+    problems.push(
+      `src/components/result/FullAccessPromoCard.tsx: Korean paywall preview lacks ${required}`,
+    );
+  }
+}
 for (const forbidden of [
   "!isKorean && resolvedCardMode",
   "isKorean || legacyPlanStyle",
@@ -622,6 +656,35 @@ for (const forbidden of [
     problems.push(
       `src/components/result/FullAccessPromoCard.tsx: Korean offer still diverges via ${forbidden}`,
     );
+  }
+}
+
+const paywallPeekContent = fs.readFileSync(
+  path.join(ROOT, "src/components/result/paywall-peek-content.ts"),
+  "utf8",
+);
+for (const asset of [
+  "ko-self-story-page-jellyfish_N-2026.webp",
+  "ko-self-cover-jellyfish_N-2026.webp",
+  "ko-friends-ch1-jellyfish_N-2026.webp",
+  "ko-friends-cover-jellyfish_N-2026.webp",
+  "ko-alice-scene-0.webp",
+  "ko-alice-scene-1.webp",
+  "ko-alice-scene-3.webp",
+  "ko-aisho-result-summary-screen-2026.webp",
+  "ko-aisho-result-balance-screen-2026.webp",
+  "ko-unmei-scene-0.webp",
+  "ko-unmei-scene-1.webp",
+  "ko-unmei-scene-2.webp",
+  "ko-tarot-reading-result.webp",
+]) {
+  if (!paywallPeekContent.includes(`/paywall-peek/${asset}`)) {
+    problems.push(
+      `src/components/result/paywall-peek-content.ts: Korean paywall preview lacks ${asset}`,
+    );
+  }
+  if (!fs.existsSync(path.join(ROOT, "public/paywall-peek", asset))) {
+    problems.push(`public/paywall-peek/${asset}: localized preview asset is missing`);
   }
 }
 
@@ -689,6 +752,12 @@ const requiredKoreanFortuneFiles = [
 for (const file of requiredKoreanFortuneFiles) {
   if (!fs.existsSync(path.join(ROOT, file))) {
     problems.push(`${file}: required Korean fortune surface is missing`);
+  }
+}
+
+for (const file of ["src/app/ko/tako/[token]/loading.tsx"]) {
+  if (!fs.existsSync(path.join(ROOT, file))) {
+    problems.push(`${file}: Japanese-parity Korean surface is missing`);
   }
 }
 
@@ -812,6 +881,74 @@ for (const required of [
       `src/components/uranai/UnmeiPriceCta.tsx: shared destiny offer lacks ${required}`,
     );
   }
+}
+
+const unmeiReading = fs.readFileSync(
+  path.join(ROOT, "src/components/uranai/UnmeiReading.tsx"),
+  "utf8",
+);
+if (
+  !unmeiReading.includes("<UnmeiChartDetails chart={chart} locale={locale} />")
+) {
+  problems.push(
+    "src/components/uranai/UnmeiReading.tsx: Korean chart details are not enabled",
+  );
+}
+if (unmeiReading.includes('locale === "ja" ? <UnmeiChartDetails')) {
+  problems.push(
+    "src/components/uranai/UnmeiReading.tsx: chart details remain Japanese-only",
+  );
+}
+
+for (const required of [
+  "koreanPlanItemPeek(item)",
+  "KO_PEEK_EBOOK",
+  "KO_PEEK_FRIENDS",
+  "KO_PEEK_ALICE",
+  "KO_PEEK_AISHO",
+  "KO_PEEK_UNMEI",
+  "locale={locale}",
+]) {
+  if (!selfAccessPlanCarousel.includes(required)) {
+    problems.push(
+      `src/components/result/SelfAccessPlanCarousel.tsx: Korean paywall preview lacks ${required}`,
+    );
+  }
+}
+if (
+  selfAccessPlanCarousel.includes(
+    'locale === "ja"\n              ? japanesePlanItemPeek',
+  )
+) {
+  problems.push(
+    "src/components/result/SelfAccessPlanCarousel.tsx: paywall preview remains Japanese-only",
+  );
+}
+
+const unmeiChartDetails = fs.readFileSync(
+  path.join(ROOT, "src/components/uranai/UnmeiChartDetails.tsx"),
+  "utf8",
+);
+for (const required of [
+  "나의 출생 차트 데이터",
+  "하우스 커스프",
+  "KO_SIGN_NAMES",
+]) {
+  if (!unmeiChartDetails.includes(required)) {
+    problems.push(
+      `src/components/uranai/UnmeiChartDetails.tsx: Korean chart copy lacks ${required}`,
+    );
+  }
+}
+
+const meUnmeiLauncher = fs.readFileSync(
+  path.join(ROOT, "src/components/result/MeUnmeiChatLauncher.tsx"),
+  "utf8",
+);
+if (!meUnmeiLauncher.includes("ME_UNMEI_CHAT_INTRO_KO")) {
+  problems.push(
+    "src/components/result/MeUnmeiChatLauncher.tsx: Korean result flow lacks the dedicated chat introduction",
+  );
 }
 if (unmeiPriceCta.includes('locale === "ja" && !hasFull')) {
   problems.push(

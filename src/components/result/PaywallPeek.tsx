@@ -6,12 +6,13 @@
 // 不安を減らすのが目的 (コピーだけでは中身が想像できない、の解消)。
 //
 // 画像は public/paywall-peek/*.webp (ローカルの実画面を撮影した固定サンプル)。
-// 課金判定・計測・Checkout には一切触れない純UI。KO 項目には peek を渡さない
-// (ボタン自体が出ない) ので KO 表示は従来どおり。
+// 課金判定・計測・Checkout には一切触れない純UI。表示文言と読み上げラベルは
+// 呼び出し元の locale に合わせる。
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import type { ResultLocale } from "@/i18n/result";
 
 // 解放項目1つぶんのチラ見せ素材。width/height は実ファイルの寸法 (CLS 防止)。
 // lead/points は 16P の「例」同様、画像だけでなく「何が手に入るか」を言葉でも
@@ -33,11 +34,13 @@ function PeekOverlay({
   peek,
   title,
   accent,
+  locale,
   onClose,
 }: {
   peek: UnlockPeek;
   title: string;
   accent: string;
+  locale: ResultLocale;
   onClose: () => void;
 }) {
   // 開いている間は背面スクロールをロック。PaywallOverlay (モーダル内カード) の上に
@@ -64,7 +67,7 @@ function PeekOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${title}の例`}
+      aria-label={locale === "ko" ? `${title} 미리보기` : `${title}の例`}
       // PaywallOverlay (z-100) の中の項目からも開けるよう、その上の z-120。
       className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/55 px-4 py-6 backdrop-blur-sm"
       onClick={(e) => {
@@ -83,7 +86,7 @@ function PeekOverlay({
         <button
           type="button"
           onClick={onClose}
-          aria-label="閉じる"
+          aria-label={locale === "ko" ? "닫기" : "閉じる"}
           className="absolute -right-2 -top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent }}
         >
@@ -241,10 +244,12 @@ export function PeekButton({
   peek,
   title,
   accent,
+  locale = "ja",
 }: {
   peek: UnlockPeek;
   title: string;
   accent: string;
+  locale?: ResultLocale;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -253,7 +258,11 @@ export function PeekButton({
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={`${title}の中身をチラ見せ`}
+        aria-label={
+          locale === "ko"
+            ? `${title} 내용 미리보기`
+            : `${title}の中身をチラ見せ`
+        }
         onClick={() => setOpen(true)}
         // タイトル文章の末尾にインラインで続ける (align-middle で文字の縦中央)。
         // 2行に折り返しても最後の文字のすぐ後ろに来る (右端に浮かせない / 2026-08-18)。
@@ -273,6 +282,7 @@ export function PeekButton({
           peek={peek}
           title={title}
           accent={accent}
+          locale={locale}
           onClose={() => setOpen(false)}
         />
       )}

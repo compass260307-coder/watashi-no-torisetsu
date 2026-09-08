@@ -9,6 +9,7 @@ import { LoginCard } from "@/components/LoginCard";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import TopHeader from "@/components/top/TopHeader";
 import type { ResultLocale } from "@/i18n/result";
+import { HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS } from "@/lib/access-products";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -39,7 +40,7 @@ export function PurchaseCompleteView({
   const isKo = locale === "ko";
   const reportName = isKo
     ? product === "self_report"
-      ? "자기 분석 리포트"
+      ? "학생 플랜"
       : product === "premium_bundle"
         ? "프리미엄 코스"
         : "완전판 리포트"
@@ -48,6 +49,8 @@ export function PurchaseCompleteView({
       : product === "premium_bundle"
         ? "全部入り"
         : "完全版レポート";
+  const reportObjectParticle = isKo && product === "self_report" ? "을" : "를";
+  const reportSubjectParticle = isKo && product === "self_report" ? "이" : "가";
   const hasDestinyFeatures =
     destinyFeaturesIncluded ?? product === "premium_bundle";
   // AI占い師チャットは設計図と独立。現行の日本版完全版と
@@ -55,7 +58,7 @@ export function PurchaseCompleteView({
   // 旧呼び出し元がフラグ未指定のときは従来どおり設計図と同じ扱いに倒す。
   const hasHoshiyomiChat = hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const includedChatCount = hasHoshiyomiChat
-    ? (hoshiyomiChatCredits ?? (product === "premium_bundle" ? 30 : 5))
+    ? (hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS)
     : 0;
   const hasTarotFeatures =
     tarotFeaturesIncluded ?? product === "premium_bundle";
@@ -115,7 +118,8 @@ export function PurchaseCompleteView({
               <>
                 결제에 사용한 이메일 주소로
                 <br />
-                나의 <span style={{ color: NAVY }}>{reportName}</span>를 보내 드렸어요.
+                나의 <span style={{ color: NAVY }}>{reportName}</span>
+                {reportObjectParticle} 보내 드렸어요.
               </>
             ) : (
               <>
@@ -139,7 +143,7 @@ export function PurchaseCompleteView({
                 로그인 후 <span style={{ color: NAVY }}>무료 성격 진단</span>으로
                 안내해 드려요.
                 <br />
-                진단이 끝나면 {reportName}를 이메일로 보내 드립니다.
+                진단이 끝나면 {reportName}{reportObjectParticle} 이메일로 보내 드립니다.
               </>
             ) : (
               <>
@@ -156,7 +160,7 @@ export function PurchaseCompleteView({
                 <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해
                 드려요.
                 <br />
-                진단이 끝나면 {reportName}가 열립니다.
+                진단이 끝나면 {reportName}{reportSubjectParticle} 열립니다.
               </>
             ) : (
               <>
@@ -182,9 +186,9 @@ export function PurchaseCompleteView({
             {isKo ? (
               hasDestinyFeatures ? (
                 <>
-                  운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회가
-                  포함되어 있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
-                  있습니다.
+                  운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회
+                  {hasTarotFeatures ? ", 타로 세 종류" : ""}가 포함되어 있어요. 로그인 후
+                  하단 메뉴의 「점성술사」에서 이용할 수 있습니다.
                 </>
               ) : (
                 <>

@@ -15,6 +15,11 @@ import {
   PEEK_EBOOK,
   PEEK_FRIENDS,
   PEEK_UNMEI,
+  KO_PEEK_AISHO,
+  KO_PEEK_ALICE,
+  KO_PEEK_EBOOK,
+  KO_PEEK_FRIENDS,
+  KO_PEEK_UNMEI,
 } from "./paywall-peek-content";
 import {
   accessProductPrice,
@@ -166,6 +171,19 @@ function japanesePlanItemPeek(
   return undefined;
 }
 
+function koreanPlanItemPeek(item: string): UnlockPeek | undefined {
+  if (item.includes("Alice") || item.includes("점성술사 채팅")) {
+    return KO_PEEK_ALICE;
+  }
+  if (item.includes("궁합")) return KO_PEEK_AISHO;
+  if (item.includes("운명의 설계도")) return KO_PEEK_UNMEI;
+  if (item.includes("전자책")) return KO_PEEK_EBOOK;
+  if (item.includes("친구 진단") || item.includes("타인 분석 PDF")) {
+    return KO_PEEK_FRIENDS;
+  }
+  return undefined;
+}
+
 const KO_PLANS: readonly PlanDefinition[] = [
   {
     product: "self_report",
@@ -203,13 +221,8 @@ const KO_PLANS: readonly PlanDefinition[] = [
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",
-    inheritedItemCount: 1,
-    items: [
-      "완전판 코스의 모든 기능에 더해, 다음 기능을 이용할 수 있습니다",
-      "AI 점성술사 채팅 상담이 총 30회로 확대",
-      "출생 정보와 성격 진단을 함께 읽는 한국어 운명의 설계도",
-      KO_AISHO_ITEM,
-    ],
+    inheritedItemCount: 0,
+    items: ["완전판 코스의 모든 기능"],
   },
 ] as const;
 
@@ -276,12 +289,12 @@ const LEGACY_PREMIUM_FEATURES = {
   ],
   ko: [
     {
-      title: "나만의 전담 점성술사",
-      desc: "성격 진단과 출생 차트를 이해한 점성술사에게 고민을 상담할 수 있어요.",
-    },
-    {
       title: "네 장으로 이어지는 AI 감정서",
       desc: "지금까지의 걸음부터 앞으로 찾아올 전환점까지 읽어 드려요.",
+    },
+    {
+      title: "전담 AI 점성술사와 상담 30회",
+      desc: "성격 진단과 출생 차트를 이해한 점성술사에게 고민을 상담할 수 있어요.",
     },
     {
       title: "나만의 출생 차트 휠",
@@ -290,6 +303,10 @@ const LEGACY_PREMIUM_FEATURES = {
     {
       title: "성격 진단과 별의 교차 해석",
       desc: "성격과 별의 기질을 함께 살펴 나만의 모습을 깊이 이해해요.",
+    },
+    {
+      title: "궁합 진단 기능 해제",
+      desc: "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 해석까지 읽을 수 있어요.",
     },
   ],
 } as const;
@@ -493,19 +510,7 @@ function PlanCard({
   const upgradeDiscountPercent = isUpgrade
     ? Math.round((1 - checkoutPrice / upgradeReferencePrice) * 100)
     : null;
-  const upgradeIncludedCourse =
-    locale === "ja" &&
-    isUpgrade &&
-    entitlements.selfReport &&
-    plan.product === "full_access"
-      ? {
-          label: "お試しコースの内容をすべて含む",
-          itemCount: JA_PLANS[0].items.length,
-        }
-      : null;
-  const visibleItems = upgradeIncludedCourse
-    ? plan.items.slice(upgradeIncludedCourse.itemCount)
-    : plan.items;
+  const visibleItems = plan.items;
 
   return (
     <article
@@ -689,32 +694,12 @@ function PlanCard({
           purchased ? "opacity-60" : ""
         }`}
       >
-        {upgradeIncludedCourse ? (
-          <li className="flex items-start gap-2 border-b border-[#E5E6ED] pb-4 md:gap-2.5 md:pb-5">
-            <svg
-              aria-hidden="true"
-              className="mt-px h-5 w-5 shrink-0 md:mt-0.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={plan.accent}
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            >
-              <path d="M12 3c.8 4.2 2.8 6.2 7 7-4.2.8-6.2 2.8-7 7-.8-4.2-2.8-6.2-7-7 4.2-.8 6.2-2.8 7-7Z" />
-            </svg>
-            <span className="text-[13px] font-black leading-[1.45] text-[#2E2E5C] md:leading-[1.55]">
-              {upgradeIncludedCourse.label}
-            </span>
-          </li>
-        ) : null}
         {visibleItems.map((item, index) => {
-          const originalIndex =
-            index + (upgradeIncludedCourse?.itemCount ?? 0);
-          const inherited = originalIndex < plan.inheritedItemCount;
+          const inherited = index < plan.inheritedItemCount;
           const peek =
-            locale === "ja"
-              ? japanesePlanItemPeek(item, ebookPeek)
-              : undefined;
+            locale === "ko"
+              ? koreanPlanItemPeek(item)
+              : japanesePlanItemPeek(item, ebookPeek);
           const premiumIntroduction =
             plan.product === "premium_bundle" && inherited;
           const premiumDifference =
@@ -761,7 +746,12 @@ function PlanCard({
               >
                 {item}
                 {peek ? (
-                  <PeekButton peek={peek} title={item} accent={plan.accent} />
+                  <PeekButton
+                    peek={peek}
+                    title={item}
+                    accent={plan.accent}
+                    locale={locale}
+                  />
                 ) : null}
               </span>
             </li>

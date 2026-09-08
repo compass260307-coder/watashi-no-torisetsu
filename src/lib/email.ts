@@ -11,6 +11,7 @@ import { Resend } from "resend";
 import {
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
@@ -236,7 +237,7 @@ export async function sendDetailedReportEmail(
   const subject =
     locale === "ko"
       ? product === "self_report"
-        ? `【${KO_SITE_NAME}】자기 분석 리포트를 보내 드립니다`
+        ? `【${KO_SITE_NAME}】학생 플랜이 열렸어요`
         : product === "premium_bundle"
           ? `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
           : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
@@ -563,7 +564,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
   // 占い師チャットは設計図と独立 (完全版にも付く)。未指定は旧来どおり設計図に追従。
   const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
   const hoshiyomiChatCredits =
-    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
@@ -744,7 +745,7 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
   // 占い師チャットは設計図と独立 (完全版にも付く)。未指定は旧来どおり設計図に追従。
   const hasHoshiyomi = args.hoshiyomiChatIncluded ?? hasUnmei;
   const hoshiyomiChatCredits =
-    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
@@ -833,10 +834,11 @@ export function renderDetailedReportHtmlKo(
     args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hoshiyomiChatCredits =
-    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
-    ? "나의 사용설명서 라이트 코스"
+    ? "나의 사용설명서 학생 플랜"
     : isPremiumBundle
       ? "나의 사용설명서 프리미엄 코스"
       : "나의 사용설명서 완전판 코스";
@@ -848,8 +850,8 @@ export function renderDetailedReportHtmlKo(
         ? PREMIUM_BUNDLE_PRICE_KRW
         : FULL_ACCESS_PRICE_KRW);
   const items = isSelfReport
-    ? `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 PDF${hasFriendFeatures ? "<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 몇 번이든 다시 만들 수 있는 친구 분석 PDF" : ""}`
-    : `✓ 자기 진단 결과의 잠긴 8개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도` : ""}${hasHoshiyomiChat ? `<br />✓ 나만의 전담 점성술사 채팅 ${hoshiyomiChatCredits}회` : ""}`;
+    ? `✓ 자기 진단 결과의 잠긴 9개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 PDF${hasFriendFeatures ? "<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 몇 번이든 다시 만들 수 있는 친구 분석 PDF" : ""}`
+    : `✓ 자기 진단 결과의 잠긴 9개 섹션 전체 해제<br />✓ 16페이지 이상의 자기 분석 완전판 PDF<br />✓ 두 번째 친구부터의 친구 진단 결과 전체 해제<br />✓ 친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF<br />✓ 연애 파트너 궁합 분석${hasDestinyFeatures ? `<br />✓ 한국어 운명의 설계도` : ""}${hasHoshiyomiChat ? `<br />✓ 나만의 전담 점성술사 채팅 ${hoshiyomiChatCredits}회` : ""}${hasTarot ? "<br />✓ Alice의 타로 세 종류 모두 해제" : ""}`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -904,10 +906,11 @@ function renderDetailedReportTextKo(
     args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hoshiyomiChatCredits =
-    args.hoshiyomiChatCredits ?? (isPremiumBundle ? 30 : 5);
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
-    ? "나의 사용설명서 라이트 코스"
+    ? "나의 사용설명서 학생 플랜"
     : isPremiumBundle
       ? "나의 사용설명서 프리미엄 코스"
       : "나의 사용설명서 완전판 코스";
@@ -920,7 +923,7 @@ function renderDetailedReportTextKo(
         : FULL_ACCESS_PRICE_KRW);
   const items = isSelfReport
     ? [
-        "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
+        "・자기 진단 결과의 잠긴 9개 섹션 전체 해제",
         "・16페이지 이상의 자기 분석 PDF",
         ...(hasFriendFeatures
           ? [
@@ -930,7 +933,7 @@ function renderDetailedReportTextKo(
           : []),
       ]
     : [
-        "・자기 진단 결과의 잠긴 8개 섹션 전체 해제",
+        "・자기 진단 결과의 잠긴 9개 섹션 전체 해제",
         "・16페이지 이상의 자기 분석 완전판 PDF",
         "・두 번째 친구부터의 친구 진단 결과 전체 해제",
         "・친구가 늘 때마다 다시 만들 수 있는 친구 진단 PDF",
@@ -939,6 +942,7 @@ function renderDetailedReportTextKo(
         ...(hasHoshiyomiChat
           ? [`・나만의 전담 점성술사 채팅 ${hoshiyomiChatCredits}회`]
           : []),
+        ...(hasTarot ? ["・Alice의 타로 세 종류 모두 해제"] : []),
       ];
   return [
     greeting,

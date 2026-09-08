@@ -9,7 +9,7 @@ import { isAccessProduct, type AccessProduct } from "@/lib/access-products";
  * 本番では内容を返さず、メール送信や実ユーザーデータにも触れない。
  *
  * ?product=self_report|full_access|premium_bundle / &locale=ko で切替。
- * destiny / chat / friend の既定値は現行の販売内容 (日本版完全版=設計図・チャットあり)。
+ * destiny / chat / tarot / friend の既定値は現行の販売内容。
  * &destiny=1 &chat=0 のように明示指定で上書きできる (旧世代購入者向け文面の確認用)。
  */
 export async function GET(request: Request) {
@@ -37,19 +37,19 @@ export async function GET(request: Request) {
     meUrl: `${origin}${localePrefix}/me/${token}?previewType=earnest-elephant__N`,
     unmeiUrl: `${origin}${localePrefix}/unmei`,
     hoshiyomiUrl: `${origin}${localePrefix}/hoshiyomi`,
-    greetingName: "わかん",
+    greetingName: locale === "ko" ? "와칸" : "わかん",
     product,
     destinyFeaturesIncluded: flag(
       "destiny",
-      product === "premium_bundle" ||
-        (locale === "ja" && product === "full_access"),
+      product !== "self_report",
     ),
     hoshiyomiChatIncluded: flag("chat", product !== "self_report"),
+    hoshiyomiChatCredits: product === "self_report" ? 0 : 30,
     tarotFeaturesIncluded: flag(
       "tarot",
-      locale === "ja" && product !== "self_report",
+      product !== "self_report",
     ),
-    friendFeaturesIncluded: flag("friend", product !== "self_report"),
+    friendFeaturesIncluded: flag("friend", true),
   };
 
   return new Response(

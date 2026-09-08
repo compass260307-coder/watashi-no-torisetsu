@@ -34,6 +34,12 @@ import {
   PEEK_EBOOK,
   PEEK_FRIENDS,
   PEEK_UNMEI,
+  KO_PEEK_AISHO,
+  KO_PEEK_ALICE,
+  KO_PEEK_ALICE_FORTUNE,
+  KO_PEEK_EBOOK,
+  KO_PEEK_FRIENDS,
+  KO_PEEK_UNMEI,
 } from "./paywall-peek-content";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 import {
@@ -181,21 +187,22 @@ const KO_SELF_UNLOCKS: UnlockItem[] = [
   {
     title: "16페이지 이상의 나만의 전자책",
     desc: "나의 유형을 한 권으로 정리해 이메일로 보내 드려요. 저장하거나 인쇄하고 언제든 다시 확인할 수 있어요.",
+    peek: KO_PEEK_EBOOK,
   },
   {
     title: "당신의 전담 점성술사 ‘Alice’와 채팅",
     desc: "내 성격과 별을 이해한 Alice에게 고민이나 망설임을 상담할 수 있어요.",
-    peek: PEEK_ALICE,
+    peek: KO_PEEK_ALICE,
   },
   {
     title: "Alice의 운세 기능 전체 해제",
     desc: "나만의 ‘운명의 설계도’와 오늘의 한 장·세 장 뽑기·YES / NO 타로를 모두 이용할 수 있어요.",
-    peek: PEEK_ALICE_FORTUNE,
+    peek: KO_PEEK_ALICE_FORTUNE,
   },
   {
     title: "궁합 진단 기능 전체 해제",
     desc: "궁금한 상대와의 궁합을 연애·우정·일·엇갈림 등 상황별로 자세히 읽을 수 있어요.",
-    peek: PEEK_AISHO,
+    peek: KO_PEEK_AISHO,
   },
   {
     title: "두 번째 친구부터 친구 진단 결과 전체 해제",
@@ -204,6 +211,7 @@ const KO_SELF_UNLOCKS: UnlockItem[] = [
   {
     title: "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
     desc: "모두의 답변을 한데 모은 종합 리포트예요. 답변이 늘 때마다 몇 번이든 업데이트할 수 있어요.",
+    peek: KO_PEEK_FRIENDS,
   },
 ];
 
@@ -233,7 +241,7 @@ const KO_STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
 const KO_UNMEI: UnlockItem = {
   title: "나만의 ‘운명의 설계도’",
   desc: "성격 진단과 출생도를 함께 읽는 4장 구성의 AI 감정이에요. 오늘의 한 장·세 장 뽑기·YES / NO 타로도 즐길 수 있어요.",
-  peek: PEEK_UNMEI,
+  peek: KO_PEEK_UNMEI,
 };
 
 function promoteUnlockItem(
@@ -309,11 +317,13 @@ function CheckItem({
   desc,
   accent,
   peek,
+  locale,
 }: {
   title: string;
   desc: string;
   accent: string;
   peek?: UnlockPeek;
+  locale: ResultLocale;
 }) {
   return (
     <li className="flex items-start gap-2.5">
@@ -341,7 +351,14 @@ function CheckItem({
             [text-wrap:pretty] で ? のぶん幅が詰まっても1文字孤立行を防ぐ。 */}
         <span className="block text-[14px] font-black leading-snug text-[#2E2E5C] [text-wrap:pretty]">
           {title}
-          {peek && <PeekButton peek={peek} title={title} accent={accent} />}
+          {peek && (
+            <PeekButton
+              peek={peek}
+              title={title}
+              accent={accent}
+              locale={locale}
+            />
+          )}
         </span>
         <span className="body-gothic block text-[12px] leading-[1.6] text-[#5A5A6E]">
           {desc}
@@ -523,11 +540,25 @@ export function FullAccessPromoCard({
       }
     : null;
   const unlocks = contextualUnlocks.map((item) => {
-    if (characterEbookPeek && item.peek === PEEK_EBOOK) {
-      return { ...item, peek: characterEbookPeek };
+    if (
+      characterEbookPeek &&
+      (item.peek === PEEK_EBOOK || item.peek === KO_PEEK_EBOOK)
+    ) {
+      return {
+        ...item,
+        peek: isKorean
+          ? KO_PEEK_EBOOK
+          : characterEbookPeek,
+      };
     }
-    if (characterFriendsPeek && item.peek === PEEK_FRIENDS) {
-      return { ...item, peek: characterFriendsPeek };
+    if (
+      characterFriendsPeek &&
+      (item.peek === PEEK_FRIENDS || item.peek === KO_PEEK_FRIENDS)
+    ) {
+      return {
+        ...item,
+        peek: isKorean ? KO_PEEK_FRIENDS : characterFriendsPeek,
+      };
     }
     return item;
   });
@@ -579,6 +610,7 @@ export function FullAccessPromoCard({
             desc={desc}
             accent={tone.accent}
             peek={peek}
+            locale={locale}
           />
         ))}
       </ul>

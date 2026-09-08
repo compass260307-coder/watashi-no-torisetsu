@@ -51,7 +51,7 @@ export default async function PurchaseCompletePreviewPage({
           : defaultCredits
       }
       tarotFeaturesIncluded={flag(params.tarot, product !== "self_report")}
-      friendFeaturesIncluded={flag(params.friend, product !== "self_report")}
+      friendFeaturesIncluded={flag(params.friend, true)}
     />
   );
 }

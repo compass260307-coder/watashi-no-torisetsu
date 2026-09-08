@@ -123,7 +123,7 @@ export function HoshiyomiClient({
       null,
       "",
       previewMode
-        ? "/dev/hoshiyomi-preview"
+        ? `/dev/hoshiyomi-preview${locale === "ko" ? "?locale=ko" : ""}`
         : `${locale === "ko" ? "/ko" : ""}/hoshiyomi`,
     );
   };

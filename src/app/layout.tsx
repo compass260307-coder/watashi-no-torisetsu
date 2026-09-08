@@ -242,7 +242,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: REFERRER_CAPTURE_SCRIPT }} />
         {children}
         {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
-        <BottomNav />
+        <Suspense fallback={null}>
+          <BottomNav />
+        </Suspense>
         <GoogleAnalytics />
         <Script id="google-tag-manager" strategy="afterInteractive">
           {GOOGLE_TAG_MANAGER_SCRIPT}

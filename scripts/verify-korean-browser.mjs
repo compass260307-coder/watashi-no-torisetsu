@@ -433,10 +433,20 @@ try {
       ) {
         problems.push(`${routeLabel}: Korean unmei promo is missing or links outside /ko`);
       }
-      if (route === "/ko/tarot" && !state.hasKoreanTarotLanding) {
+      const hasGuardedTarotPaywall =
+        state.pathname === "/ko" && hasKoreanPurchaseLegalNotice;
+      if (
+        route === "/ko/tarot" &&
+        !state.hasKoreanTarotLanding &&
+        !hasGuardedTarotPaywall
+      ) {
         problems.push(`${routeLabel}: Korean tarot landing content or links are missing`);
       }
-      if (route === "/ko/tarot/one" && !state.hasKoreanTarotDraw) {
+      if (
+        route === "/ko/tarot/one" &&
+        !state.hasKoreanTarotDraw &&
+        !hasGuardedTarotPaywall
+      ) {
         problems.push(`${routeLabel}: Korean tarot draw experience is missing`);
       }
       if (

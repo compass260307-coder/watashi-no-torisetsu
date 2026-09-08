@@ -172,9 +172,8 @@ export default function UnmeiReading({
           )}
         </section>
 
-        {/* ===== 出生図データ: 天体図(=全体像)→表(=詳細)→鑑定文(=物語) の橋渡し。
-            日本語専用の表記なので、韓国語ページには混在させない。 ===== */}
-        {locale === "ja" ? <UnmeiChartDetails chart={chart} /> : null}
+        {/* ===== 出生図データ: 天体図(=全体像)→表(=詳細)→鑑定文(=物語) の橋渡し。 ===== */}
+        <UnmeiChartDetails chart={chart} locale={locale} />
 
         {/* ===== 4章: スクロールに合わせて段落が浮かび上がる ===== */}
         {sections.map((sec, i) => {

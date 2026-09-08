@@ -36,26 +36,34 @@ export function isCheckoutSessionId(value: unknown): value is string {
 // 金額は差額購入や旧価格もあるため、利用可能なら実決済の通貨・minor amountを使う。
 const META_PURCHASE_CONTENT: Record<
   MetaPurchaseProduct,
-  { fallbackId: string; koFallbackId?: string; name: string }
+  {
+    fallbackId: string;
+    koFallbackId?: string;
+    name: Readonly<Record<"ja" | "ko", string>>;
+  }
 > = {
   self_report: {
     fallbackId: "self_report_jpy_299",
     koFallbackId: "self_report_krw_1900",
-    name: "学生向けライトコース",
+    name: { ja: "学生向けプラン", ko: "학생 플랜" },
   },
   full_access: {
     fallbackId: "full_access_jpy_499",
     koFallbackId: "full_access_krw_4900",
-    name: "完全版コース",
+    name: { ja: "完全版コース", ko: "완전판 코스" },
   },
   premium_bundle: {
     fallbackId: "premium_bundle_jpy_1299",
-    name: "全部入り・買い切り",
+    koFallbackId: "premium_bundle_krw_8900",
+    name: { ja: "全部入り・買い切り", ko: "프리미엄 코스" },
   },
-  unmei: { fallbackId: "unmei_jpy_1980", name: "運命の設計図" },
+  unmei: {
+    fallbackId: "unmei_jpy_1980",
+    name: { ja: "運命の設計図", ko: "운명의 설계도" },
+  },
   unmei_upgrade: {
     fallbackId: "unmei_upgrade_jpy_1480",
-    name: "運命の設計図",
+    name: { ja: "運命の設計図", ko: "운명의 설계도" },
   },
 };
 
@@ -77,7 +85,7 @@ export function metaPurchaseContent(
     : locale === "ko" && entry.koFallbackId
       ? entry.koFallbackId
       : entry.fallbackId;
-  return { contentIds: [id], contentName: entry.name };
+  return { contentIds: [id], contentName: entry.name[locale] };
 }
 
 // ブラウザ側の送信済み抑止キー (localStorage)。
