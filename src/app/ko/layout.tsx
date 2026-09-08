@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import { DocumentLanguage } from "@/components/DocumentLanguage";
+import { KakaoSdkLoader } from "@/components/KakaoSdkLoader";
 import {
   KO_DEFAULT_DESCRIPTION,
   KO_DEFAULT_OG_IMAGE,
@@ -61,6 +62,7 @@ export default function KoreanLayout({
   return (
     <div lang="ko" className={`${notoSansKR.className} flex min-h-dvh flex-1 flex-col`}>
       <DocumentLanguage lang="ko" />
+      <KakaoSdkLoader />
       {children}
     </div>
   );
