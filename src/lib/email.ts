@@ -22,6 +22,7 @@ import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
 const KO_SITE_NAME = "나의 사용설명서";
+const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
 const SITE_URL =
   resolveSiteUrl();
 type EmailLocale = "ja" | "ko";
@@ -567,6 +568,19 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
+  const showLineInvitation = !isSelfReport;
+  const heroImageUrl = `${SITE_URL}${
+    isPremiumBundle
+      ? "/mascot/unmei-hero.png"
+      : isSelfReport
+        ? "/checkout-fullaccess.png"
+        : "/mascot/hoshiyomi-alice-writing-transparent.png"
+  }`;
+  const heroImageAlt = isSelfReport
+    ? "自己分析レポート"
+    : isPremiumBundle
+      ? "全部入りレポート"
+      : "占いをするAlice";
   const reportName = isSelfReport
     ? "ワタシのトリセツ 学生向けプラン"
     : isPremiumBundle
@@ -663,7 +677,7 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                   ワタシのトリセツ
                 </p>
                 <p style="margin:0 0 36px;text-align:center;">
-                  <img src="${SITE_URL}/checkout-fullaccess.png" width="360" alt="完全版レポート" style="display:inline-block;width:360px;max-width:100%;height:auto;border:0;border-radius:14px;" />
+                  <img src="${heroImageUrl}" width="420" alt="${heroImageAlt}" style="display:inline-block;width:420px;max-width:100%;height:auto;border:0;border-radius:14px;" />
                 </p>
 
                 <p style="margin:0 0 20px;font-size:15px;line-height:1.8;color:#2E2E5C;">
@@ -671,10 +685,19 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                 </p>
                 <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">
                   ご購入ありがとうございます。<br />
-                  「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。
+                  「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。${showLineInvitation ? " また、LINEでAliceとのおしゃべりや毎日の占いを楽しめる「Alice Plus」も体験できます。" : ""}
                 </p>
 
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;">
+                ${showLineInvitation ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;background:#F0FBF4;border:1px solid #CDEFD9;border-radius:14px;">
+                  <tr>
+                    <td style="padding:26px 24px;text-align:center;">
+                      <h2 style="margin:0 0 20px;font-size:20px;font-weight:800;line-height:1.55;color:#2E2E5C;">LINEでAlice Plusを体験しよう</h2>
+                      <a class="cta-link" href="${LINE_ADD_FRIEND_URL}" style="display:block;padding:15px 18px;background:#06C755;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #04933F;">LINEでAlice Plusを体験する&nbsp; &#8594;</a>
+                    </td>
+                  </tr>
+                </table>` : ""}
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 32px;">
                   <tr>
                     <td align="center" style="padding:0 0 14px;">
                       <a class="cta-link" href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #4A4AD9;">解放された自己診断結果を見る&nbsp; &#8594;</a>
@@ -685,16 +708,6 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                       <a class="cta-link" href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #1B1B3E;">${pdfLabel}をダウンロード&nbsp; &#8594;</a>
                     </td>
                   </tr>
-                  ${hasUnmei && args.unmeiUrl ? `<tr>
-                    <td align="center" style="padding:14px 0 0;">
-                      <a class="cta-link" href="${args.unmeiUrl}" style="display:block;padding:15px 18px;background:#9A6A24;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">運命の設計図を作る&nbsp; &#8594;</a>
-                    </td>
-                  </tr>` : ""}
-                  ${hasHoshiyomi && args.hoshiyomiUrl ? `<tr>
-                    <td align="center" style="padding:14px 0 0;">
-                      <a class="cta-link" href="${args.hoshiyomiUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">あなたの専属占い師と話す&nbsp; &#8594;</a>
-                    </td>
-                  </tr>` : ""}
                 </table>
 
                 <p style="margin:0 0 32px;font-size:15px;line-height:1.85;color:#5A5A6E;">
@@ -748,6 +761,7 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
+  const showLineInvitation = !isSelfReport;
   const reportName = isSelfReport
     ? "ワタシのトリセツ 学生向けプラン"
     : isPremiumBundle
@@ -787,19 +801,22 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     "",
     "ご購入ありがとうございます。",
     `「${reportName}」のご用意ができました。`,
-    "購入いただいた内容は、下のリンクからいつでもご覧いただけます。",
+    `購入いただいた内容は、下のリンクからいつでもご覧いただけます。${showLineInvitation ? " また、LINEでAliceとのおしゃべりや毎日の占いを楽しめる「Alice Plus」も体験できます。" : ""}`,
+    ...(showLineInvitation
+      ? [
+          "",
+          "【LINEでAlice Plusを体験しよう】",
+          "",
+          "■ LINEでAlice Plusを体験する",
+          LINE_ADD_FRIEND_URL,
+        ]
+      : []),
     "",
     "■ 解放された自己診断結果を見る",
     args.meUrl,
     "",
     `■ ${isSelfReport ? "自己分析PDF" : "完全版PDF"}をダウンロード`,
     args.pdfUrl,
-    ...(hasUnmei && args.unmeiUrl
-      ? ["", "■ 運命の設計図を作る", args.unmeiUrl]
-      : []),
-    ...(hasHoshiyomi && args.hoshiyomiUrl
-      ? ["", "■ あなたの専属占い師と話す", args.hoshiyomiUrl]
-      : []),
     "",
     `自己診断結果はサイト上で確認でき、${isSelfReport ? "自己分析レポート" : "完全版レポート"}はPDFで保存・印刷できます。`,
     "どちらのリンクも、いつでも繰り返しご利用いただけます。",
@@ -837,6 +854,18 @@ export function renderDetailedReportHtmlKo(
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
+  const heroImageUrl = `${SITE_URL}${
+    isPremiumBundle
+      ? "/mascot/unmei-hero.png"
+      : isSelfReport
+        ? "/checkout-fullaccess.png"
+        : "/mascot/hoshiyomi-alice-writing-transparent.png"
+  }`;
+  const heroImageAlt = isSelfReport
+    ? "자기 분석 리포트"
+    : isPremiumBundle
+      ? "프리미엄 리포트"
+      : "점을 보는 Alice";
   const reportName = isSelfReport
     ? "나의 사용설명서 학생 플랜"
     : isPremiumBundle
@@ -865,7 +894,7 @@ export function renderDetailedReportHtmlKo(
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background:#F3F3F7;"><tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:620px;background:#FFFFFF;border:1px solid #E4E4F0;border-radius:18px;overflow:hidden;"><tr><td style="padding:48px 46px 44px;">
         <p style="margin:0 0 22px;text-align:center;font-size:15px;font-weight:800;line-height:1.6;letter-spacing:0.08em;color:#2E2E5C;">${KO_SITE_NAME}</p>
-        <p style="margin:0 0 36px;text-align:center;"><img src="${SITE_URL}/checkout-fullaccess.png" width="360" alt="완전판 리포트" style="display:inline-block;width:360px;max-width:100%;height:auto;border:0;border-radius:14px;" /></p>
+        <p style="margin:0 0 36px;text-align:center;"><img src="${heroImageUrl}" width="420" alt="${heroImageAlt}" style="display:inline-block;width:420px;max-width:100%;height:auto;border:0;border-radius:14px;" /></p>
         <p style="margin:0 0 20px;font-size:15px;line-height:1.8;color:#2E2E5C;">${greeting}</p>
         <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">구매해 주셔서 감사합니다.<br />‘${reportName}’가 준비되었어요. 아래 버튼에서 언제든 다시 확인할 수 있어요.</p>
         <p style="margin:0 0 14px;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;">잠금 해제된 상세 결과 보기&nbsp; &#8594;</a></p>
