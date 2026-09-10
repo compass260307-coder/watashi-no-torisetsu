@@ -45,7 +45,6 @@ import {
   linePlusDailyLimit,
   linePlusEnabled,
 } from "@/lib/line-plus";
-import { LINE_PLUS_PLANS } from "@/lib/line-plus-products";
 import {
   deterministicLineEventId,
   getLineEventOnce,
@@ -122,25 +121,17 @@ const DAILY_LIMIT_MESSAGE = [
 ].join("\n");
 
 // Plus受付中の無料枠超過。案内リンクは本人のline_user_idで署名して毎回作る。
-// 構成はオーナー指定の参考例に合わせる: 共感→安心→有料/無料の2択→どちらでも味方
 function dailyLimitMessageWithPlus(
   lineUserId: string,
-  name: string | null,
 ): string {
   return [
-    `ごめんなさい${name ? `、${name}さん` : ""}。今日の無料でお話しできる分(${lineFreeDailyLimit()}通)を使い切っちゃいました😢`,
-    "でも安心してくださいね。明日になれば、また続きをお話しできますよ。",
+    `今日の無料でお話しできる${lineFreeDailyLimit()}通を使い切りました🌙`,
+    "明日になれば、また話せます。",
     "",
-    "💎 いますぐ続きを話したい人はこちら",
-    `▶ Alice Plus(月${LINE_PLUS_PLANS.monthly.priceYen.toLocaleString("ja-JP")}円・初回登録のみ1週間無料)`,
-    "　無料枠を超えてたっぷりおしゃべり+深掘り占い(恋愛・友達・勉強)+タロット占い",
+    "続きを話すなら、Alice Plusへ。",
+    "",
+    "▶ Alice Plusはこちら",
     buildLinePlusPageUrl(lineUserId),
-    "",
-    "🔮 無料のまま楽しみたい人はこちら",
-    "▶「今日の占い」と送ってみてください",
-    "　毎日1回の占いは、ずっと無料です",
-    "",
-    "どちらを選んでも、わたしが最後までちゃんと聞きますからね🌙",
   ].join("\n");
 }
 
@@ -148,9 +139,6 @@ const PLUS_DAILY_LIMIT_MESSAGE = [
   "今日はたくさんお話しできて、うれしかったです。わたしも少しおやすみしますね。",
   "また明日、続きを聞かせてください。",
 ].join("\n");
-
-const LINE_PLUS_MONTHLY_PRICE_LABEL =
-  LINE_PLUS_PLANS.monthly.priceYen.toLocaleString("ja-JP");
 
 const NON_TEXT_MESSAGE =
   "ごめんなさい、スタンプや画像はまだ読み取れなくて…。文字でお話ししてもらえるとうれしいです。";
@@ -384,18 +372,10 @@ async function handleAliceChat(
     const isPlus = await hasActiveLinePlus(userId);
     if (!isPlus) {
       if (linePlusEnabled()) {
-        // 名前呼びのための1クエリ。上限に当たったときしか走らない
-        const { data: limited } = await supabaseAdmin
-          .from("users")
-          .select("display_name")
-          .eq("id", userId)
-          .maybeSingle();
-        const name = (limited?.display_name ?? "").trim() || null;
         await replyLineMessages(replyToken, [
           {
             type: "text",
-            text: dailyLimitMessageWithPlus(lineUserId, name),
-            quickReply: quickReplies("今日の占い"),
+            text: dailyLimitMessageWithPlus(lineUserId),
           },
         ]);
       } else {
@@ -630,29 +610,15 @@ async function handleThemeFortune(
       ]);
       return;
     }
-    const { data: viewer } = await supabaseAdmin
-      .from("users")
-      .select("display_name")
-      .eq("id", userId)
-      .maybeSingle();
-    const name = (viewer?.display_name ?? "").trim();
     await replyLineMessages(replyToken, [
       {
         type: "text",
         text: [
-          `${name ? `${name}さん、` : ""}${FORTUNE_THEMES[theme].label}が気になるんですね…!テーマ別の深掘り占いは、Alice Plusの特典なんです。`,
+          `「${FORTUNE_THEMES[theme].label}」の深掘り占いは、Alice Plusで楽しめます🔮`,
           "",
-          "💎 深掘り占いを試したい人はこちら",
-          `▶ Alice Plus(月${LINE_PLUS_MONTHLY_PRICE_LABEL}円・初回登録のみ1週間無料)`,
-          "　診断結果や最近の会話をふまえて、恋愛運・友達運・勉強運を占います+タロット+無料枠を超えてたっぷりおしゃべり",
+          "▶ Alice Plusはこちら",
           buildLinePlusPageUrl(lineUserId),
-          "",
-          "🔮 無料のまま楽しみたい人はこちら",
-          "▶「今日の占い」は、これからも毎日無料で届けますね",
-          "",
-          "急がなくて大丈夫。気になったときが、いいタイミングですよ🌙",
         ].join("\n"),
-        quickReply: quickReplies("今日の占い"),
       },
     ]);
     return;
@@ -964,22 +930,15 @@ async function handleLineCommand(
       {
         type: "text",
         text: [
-          "Alice Plusのご案内ですね。",
+          "Alice Plusでもっと楽しめること✨",
           "",
-          `💎 Plus(月${LINE_PLUS_MONTHLY_PRICE_LABEL}円・初回登録のみ1週間無料)でできること`,
-          "・無料の1日分を超えて、たっぷりおしゃべり",
-          "・恋愛運・友達運・勉強運の深掘り占い(あなたとの会話を覚えて占います)",
-          "・タロット占い(3枚から直感で今日の1枚を引く)",
+          "Aliceとたっぷり話せる💬",
+          "恋愛・友達・勉強の深掘り占い🔮",
+          "3枚から選ぶタロット占い🃏",
           "",
-          "▶ 月額Plusを見る(いつでも解約できます)",
+          "▶ Alice Plusはこちら",
           buildLinePlusPageUrl(lineUserId),
-          "",
-          "🔮 無料のままでも",
-          `・1日${lineFreeDailyLimit()}通のおしゃべりと、毎日の「今日の占い」はずっと無料です`,
-          "",
-          "どちらでも、わたしはあなたの味方ですからね🌙",
         ].join("\n"),
-        quickReply: quickReplies("今日の占い"),
       },
     ]);
     return;
@@ -1108,19 +1067,11 @@ async function replyTarotUpsell(
     {
       type: "text",
       text: [
-        "🃏 タロット占いは、Alice Plusの特典なんです。裏向きの3枚から、あなたの直感で今日の1枚を選ぶ占いですよ。",
+        "3枚から選ぶタロット占いは、Alice Plusで楽しめます🃏",
         "",
-        "💎 引いてみたい人はこちら",
-        `▶ Alice Plus(月${LINE_PLUS_MONTHLY_PRICE_LABEL}円・初回登録のみ1週間無料)`,
-        "　タロット占い+恋愛運・友達運・勉強運の深掘り占い+無料枠を超えてたっぷりおしゃべり",
+        "▶ Alice Plusはこちら",
         buildLinePlusPageUrl(lineUserId),
-        "",
-        "🔮 無料のまま楽しみたい人はこちら",
-        "▶「今日の占い」は、これからも毎日無料で届けますね",
-        "",
-        "急がなくて大丈夫。気になったときが、いいタイミングですよ🌙",
       ].join("\n"),
-      quickReply: quickReplies("今日の占い"),
     },
   ]);
 }
