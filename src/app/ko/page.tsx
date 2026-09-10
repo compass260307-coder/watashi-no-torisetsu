@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopHero from "@/components/ko/top/KoTopHero";
@@ -15,14 +15,13 @@ import {
   KO_SERVICE_NAME,
   KO_SITE_NAME,
 } from "@/lib/locale-seo";
-import { getSession } from "@/lib/session";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_URL = `${BASE_URL}/ko`;
 const TITLE = KO_DEFAULT_TITLE;
 const DESCRIPTION = KO_DEFAULT_DESCRIPTION;
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -145,22 +144,10 @@ const jsonLd = {
   ],
 };
 
-export default async function KoreanHomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ stay?: string }>;
-}) {
-  const { stay } = await searchParams;
-
-  if (stay !== "1") {
-    const session = await getSession();
-    if (session?.owner_token) {
-      redirect(`/ko/me/${encodeURIComponent(session.owner_token)}`);
-    }
-  }
-
+export default function KoreanHomePage() {
   return (
     <main className="flex flex-1 flex-col">
+      <HomeSessionRedirect localePrefix="/ko" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

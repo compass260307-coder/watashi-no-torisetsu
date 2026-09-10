@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 // feat/top-page: トップを「診断をはじめる」一点に絞った 1 画面ヒーローに刷新。
 import TopHeader from "@/components/top/TopHeader";
 import TopHero from "@/components/top/TopHero";
 import TopStats from "@/components/top/TopStats";
 import TopFooter from "@/components/top/TopFooter";
 import { TopViewTracker } from "@/components/top/TopAnalytics";
-// 診断済みユーザーを自分の結果ページへ自動誘導するための session 解決。
-import { getSession } from "@/lib/session";
+import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -15,10 +13,8 @@ const BASE_URL = "https://www.watashi-torisetsu.com";
 // 後で Supabase の実カウント (例: diagnosis_completed のユニーク数) に差し替える前提。
 const DIAGNOSED_COUNT = 1_000_000;
 
-// wn_session cookie を参照して出し分けるため、LP は動的レンダリングにする。
-// (cookie 不在の新規訪問者・bot は getSession 内で DB を引かず即 null を返すので、
-//  従来どおり LP がそのまま描画される。)
-export const dynamic = "force-dynamic";
+// LP本体は静的配信し、診断済みユーザーの転送だけをクライアントへ分離する。
+export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   alternates: {
@@ -87,27 +83,10 @@ const jsonLd = {
   ],
 };
 
-export default async function Home({
-  searchParams,
-}: {
-  // ?stay=1 のときは自動リダイレクトせず LP を表示する (診断済みユーザーが
-  // トップを見たい / 再診断したいときの逃げ道。/me 等の「トップ」リンクが付与する)。
-  searchParams: Promise<{ stay?: string }>;
-}) {
-  const { stay } = await searchParams;
-
-  // 診断済み (wn_session cookie → users 行に owner_token) なら自分の結果へ。
-  // stay=1・cookie 不在・owner_token 不在 はいずれも従来どおり LP を表示。
-  if (stay !== "1") {
-    const session = await getSession();
-    if (session?.owner_token) {
-      // 注: redirect() は内部で例外を投げるため try/catch で囲まない。
-      redirect(`/me/${session.owner_token}`);
-    }
-  }
-
+export default function Home() {
   return (
     <main className="flex flex-1 flex-col">
+      <HomeSessionRedirect />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

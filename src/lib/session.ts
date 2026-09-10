@@ -18,9 +18,13 @@ import type { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 
 import { isMissingCoreKpiColumn } from "./core-kpis";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MARKER_COOKIE_NAME,
+} from "./session-constants";
 import { supabaseAdmin } from "./supabase-server";
 
-export const SESSION_COOKIE_NAME = "wn_session";
+export { SESSION_COOKIE_NAME } from "./session-constants";
 const TOKEN_LENGTH = 32; // nanoid 32 文字 = 192 bit エントロピー
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
@@ -77,6 +81,19 @@ function buildCookieOptions(): {
     sameSite: "lax",
     path: "/",
     maxAge: ONE_YEAR_SECONDS,
+  };
+}
+
+function buildSessionMarkerCookieOptions(): {
+  httpOnly: false;
+  secure: boolean;
+  sameSite: "lax";
+  path: "/";
+  maxAge: number;
+} {
+  return {
+    ...buildCookieOptions(),
+    httpOnly: false,
   };
 }
 
@@ -242,6 +259,11 @@ export async function createSession(
 
   const c = await cookies();
   c.set(SESSION_COOKIE_NAME, token, buildCookieOptions());
+  c.set(
+    SESSION_MARKER_COOKIE_NAME,
+    "1",
+    buildSessionMarkerCookieOptions(),
+  );
 
   return { user: createdUser, token };
 }
@@ -267,6 +289,11 @@ export async function rotateSession(userId: string): Promise<string> {
 
   const c = await cookies();
   c.set(SESSION_COOKIE_NAME, token, buildCookieOptions());
+  c.set(
+    SESSION_MARKER_COOKIE_NAME,
+    "1",
+    buildSessionMarkerCookieOptions(),
+  );
 
   return token;
 }
@@ -288,4 +315,5 @@ export async function destroySession(userId: string): Promise<void> {
 
   const c = await cookies();
   c.delete(SESSION_COOKIE_NAME);
+  c.delete(SESSION_MARKER_COOKIE_NAME);
 }
