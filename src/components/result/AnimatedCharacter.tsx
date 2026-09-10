@@ -17,17 +17,32 @@
 //   - 静止画は動かさない (待機アニメ廃止)。動画自体はユーザー設定に関わらず再生するが、
 //     内容は穏やかな待機モーション前提。
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 
-// iOS の動画キャッシュは同じ URL の差し替えを保持することがあるため、
-// HEVC+alpha を再生成したときだけ更新するキャッシュキーを付ける。
-const IOS_ALPHA_ASSET_VERSION = "20260821-2";
+// 同じファイル名で動画を再生成したときはこの値を更新し、長期ブラウザキャッシュを
+// 安全に切り替える。WebM と HEVC+alpha MOV は同時生成なので同じ世代にする。
+const DESKTOP_ALPHA_ASSET_VERSION = "20260909-2";
 const MOBILE_ALPHA_ASSET_VERSION = "20260827-1";
 const MOBILE_POINTER_QUERY =
   "(max-width: 767px), (hover: none) and (pointer: coarse)";
-const DESKTOP_POINTER_QUERY =
-  "(min-width: 768px) and (hover: hover) and (pointer: fine)";
+
+type AnimationTarget = "mobile" | "desktop" | "pending";
+
+function subscribeToAnimationTarget(onStoreChange: () => void): () => void {
+  const mediaQuery = window.matchMedia(MOBILE_POINTER_QUERY);
+  mediaQuery.addEventListener("change", onStoreChange);
+  return () => mediaQuery.removeEventListener("change", onStoreChange);
+}
+
+function getAnimationTarget(): AnimationTarget {
+  return window.matchMedia(MOBILE_POINTER_QUERY).matches ? "mobile" : "desktop";
+}
+
+function getServerAnimationTarget(): AnimationTarget {
+  // SSR と初回 hydration は静止画に揃え、端末判定前の動画取得を防ぐ。
+  return "pending";
+}
 
 export function AnimatedCharacter({
   imageSrc,
@@ -51,6 +66,11 @@ export function AnimatedCharacter({
   priority?: boolean;
 }) {
   const [mobileAnimationFailed, setMobileAnimationFailed] = useState(false);
+  const animationTarget = useSyncExternalStore(
+    subscribeToAnimationTarget,
+    getAnimationTarget,
+    getServerAnimationTarget,
+  );
   const mobileAnimSrc = animSrc?.toLowerCase().endsWith(".webm")
     ? `${animSrc.replace("/characters/anim/", "/characters/anim-mobile/").replace(/\.webm$/i, ".webp")}?v=${MOBILE_ALPHA_ASSET_VERSION}`
     : null;
@@ -58,68 +78,64 @@ export function AnimatedCharacter({
   const videoType = animSrc?.toLowerCase().endsWith(".mp4")
     ? "video/mp4"
     : "video/webm";
+  const desktopAnimSrc = animSrc
+    ? `${animSrc}?v=${DESKTOP_ALPHA_ASSET_VERSION}`
+    : null;
   const hevcAlphaSrc = animSrc?.toLowerCase().endsWith(".webm")
-    ? `${animSrc.replace(/\.webm$/i, ".mov")}?v=${IOS_ALPHA_ASSET_VERSION}`
+    ? `${animSrc.replace(/\.webm$/i, ".mov")}?v=${DESKTOP_ALPHA_ASSET_VERSION}`
     : null;
 
-  if (useAnimation) {
+  if (useAnimation && animationTarget === "mobile") {
     return (
-      <>
-        <picture
-          className="character-mobile-animation h-full w-full"
-          data-character-animation="mobile-webp"
-        >
-          {mobileAnimSrc && !mobileAnimationFailed && (
-            <source
-              media={MOBILE_POINTER_QUERY}
-              srcSet={mobileAnimSrc}
-              type="image/webp"
-            />
-          )}
-          <SmoothImage
-            src={imageSrc}
-            alt={alt}
-            width={width}
-            height={height}
-            priority={priority}
-            sizes={sizes}
-            unoptimized
-            onError={() => setMobileAnimationFailed(true)}
-            className={`h-full w-full object-contain ${className}`.trim()}
-          />
-        </picture>
-
-        <video
-          data-character-animation="desktop-video"
-          className={`character-desktop-animation h-full w-full object-contain ${className}`.trim()}
-          // poster で静止画を敷き、動画デコード前/失敗時も絵が出る。
-          poster={imageSrc}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          aria-label={alt}
-        >
-          {hevcAlphaSrc && (
-            <source
-              media={DESKTOP_POINTER_QUERY}
-              src={hevcAlphaSrc}
-              type={'video/quicktime; codecs="hvc1"'}
-            />
-          )}
-          <source
-            media={DESKTOP_POINTER_QUERY}
-            src={animSrc!}
-            type={videoType}
-          />
-          {alt}
-        </video>
-      </>
+      <picture
+        className="character-mobile-animation h-full w-full"
+        data-character-animation="mobile-webp"
+      >
+        {mobileAnimSrc && !mobileAnimationFailed && (
+          <source srcSet={mobileAnimSrc} type="image/webp" />
+        )}
+        <SmoothImage
+          src={imageSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          sizes={sizes}
+          unoptimized
+          onError={() => setMobileAnimationFailed(true)}
+          className={`h-full w-full object-contain ${className}`.trim()}
+        />
+      </picture>
     );
   }
 
-  // 静止画表示。キャラは動かさない (待機アニメは無し)。
+  if (useAnimation && animationTarget === "desktop") {
+    return (
+      <video
+        data-character-animation="desktop-video"
+        className={`character-desktop-animation h-full w-full object-contain ${className}`.trim()}
+        // poster で静止画を敷き、動画デコード前/失敗時も絵が出る。
+        poster={imageSrc}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        aria-label={alt}
+      >
+        {hevcAlphaSrc && (
+          <source
+            src={hevcAlphaSrc}
+            type={'video/quicktime; codecs="hvc1"'}
+          />
+        )}
+        <source src={desktopAnimSrc!} type={videoType} />
+        {alt}
+      </video>
+    );
+  }
+
+  // 動画なし、または端末判定前の SSR/hydration は静止画だけを表示する。
   return (
     <div className="h-full w-full" data-character-animation="static-image">
       <SmoothImage

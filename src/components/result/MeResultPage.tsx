@@ -58,7 +58,7 @@ import {
   heroColorsForGroup,
   resultActionColorsForGroup,
 } from "@/lib/hero-colors";
-import { preferCutImage, preferFaceImage } from "@/lib/character-image";
+import { preferCutImage, preferFaceImage, versionCharacterAssetPath } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
@@ -664,7 +664,7 @@ async function MeResultPageContent({
       ...(sceneGroup ? [`${sceneGroup}_${variant}.webp`] : []),
     ];
     for (const name of candidates) {
-      if (characterImages.scenes.includes(name)) return `/characters/scenes/${name}`;
+      if (characterImages.scenes.includes(name)) return versionCharacterAssetPath(`/characters/scenes/${name}`);
     }
     return null;
   };

@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { GENERATED_CHARACTER_ASSET_VERSION } from "./src/lib/asset-versions";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
+const immutableAssetCacheControl = "public, max-age=31536000, immutable";
+
+const immutableAssetHeaders = [
+  {
+    key: "Cache-Control",
+    value: immutableAssetCacheControl,
+  },
+];
 
 const nextConfig: NextConfig = {
   // /Users/wakan/package-lock.json を誤って workspace root と判定すると、
@@ -12,6 +21,18 @@ const nextConfig: NextConfig = {
   // Codexのアプリ内ブラウザはローカル画面を127.0.0.1で開くため、
   // localhostで起動したNext.js開発サーバーのクライアント処理を許可する。
   allowedDevOrigins: ["127.0.0.1"],
+
+  images: {
+    localPatterns: [
+      // 既存のローカル画像はクエリなしで許可する。
+      { pathname: "/**", search: "" },
+      // 生成済みキャラ素材だけ、共有世代と一致する ?v= URL を許可する。
+      {
+        pathname: "/characters/**",
+        search: `?v=${GENERATED_CHARACTER_ASSET_VERSION}`,
+      },
+    ],
+  },
 
   // /report/[token]/pdf・/tako-report/[token]/pdf の headless Chromium。
   // バンドルせず node_modules からそのまま読み込む (バイナリ同梱パッケージのため
@@ -29,6 +50,28 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: projectRoot,
+  },
+
+  async headers() {
+    return [
+      // v3 など、URL 自体に世代番号を持つキャラ画像。差し替え時は新しい
+      // ディレクトリへ切り替えるため、ブラウザへ1年間保存しても更新を妨げない。
+      {
+        source: "/characters/v:assetVersion(\\d+)/:path*",
+        headers: immutableAssetHeaders,
+      },
+      // ファイル名を維持して再生成するアセットは、?v= が付いたURLだけを対象にする。
+      // バージョンなしURLは Next.js の max-age=0 のまま残し、古い素材の固定化を防ぐ。
+      ...[
+        "/characters/:path*",
+        "/og-characters/:path*",
+        "/og-friend/:path*",
+      ].map((source) => ({
+        source,
+        has: [{ type: "query" as const, key: "v" }],
+        headers: immutableAssetHeaders,
+      })),
+    ];
   },
 
   async redirects() {

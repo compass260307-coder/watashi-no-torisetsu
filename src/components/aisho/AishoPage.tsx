@@ -43,6 +43,7 @@ import { PaywallModal } from "@/components/result/PaywallModal";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { ResultLocale } from "@/i18n/result";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
 const NAVY = "#2E2E5C";
@@ -59,7 +60,9 @@ const HERO_TEXT = NAVY;
 function heroImagePath(id: ThirtyTwoTypeId): string {
   const v3 = thirtyTwoImagePath(id);
   const file = v3.split("/").pop() ?? "";
-  return characterImages.cut.includes(file) ? `/characters/cut/${file}` : v3;
+  return characterImages.cut.includes(file)
+    ? versionCharacterAssetPath(`/characters/cut/${file}`)
+    : v3;
 }
 
 // 相性ランク画像 (S/A/B/C)。public/aisho/ranks/<rank>.png があれば使い、
@@ -76,7 +79,10 @@ function faceImagePath(id: ThirtyTwoTypeId): { src: string; isFace: boolean } {
   const file = v3.split("/").pop() ?? "";
   // 空配列だと JSON から never[] に推論されるため string[] に明示キャスト
   return (characterImages.face as string[]).includes(file)
-    ? { src: `/characters/face/${file}`, isFace: true }
+    ? {
+        src: versionCharacterAssetPath(`/characters/face/${file}`),
+        isFace: true,
+      }
     : { src: v3, isFace: false };
 }
 
@@ -1366,7 +1372,9 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
       <>
         <FullAccessPromoCard
           variant="aisho"
-          imageSrc="/characters/scenes/unknown_love.webp"
+          imageSrc={versionCharacterAssetPath(
+            "/characters/scenes/unknown_love.webp",
+          )}
           imageAlt={isKorean ? "궁합" : "相性"}
           // owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
           // session (aishoGate) 優先・無ければ端末保存の token。渡せたときは購入後に
@@ -1378,7 +1386,9 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
         {/* 相性ロックの「今すぐアクセス」は、下部の3コースカードへ誘導する。 */}
         <PaywallModal
           variant="aisho"
-          imageSrc="/characters/scenes/unknown_love.webp"
+          imageSrc={versionCharacterAssetPath(
+            "/characters/scenes/unknown_love.webp",
+          )}
           imageAlt={isKorean ? "궁합" : "相性"}
           ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
           returnTo="aisho"
