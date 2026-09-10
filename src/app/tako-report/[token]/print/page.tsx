@@ -29,6 +29,7 @@ import {
 import { baseIdOf, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { cardColorsForGroup, heroColorsForGroup } from "@/lib/hero-colors";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 import type { BigFiveDimension } from "@/lib/types";
 import styles from "./page.module.css";
 
@@ -237,9 +238,15 @@ function FriendChapter({
   selfScores: Partial<Record<BigFiveDimension, number>>;
   isKo: boolean;
 }) {
-  const normalScene = `/characters/scenes/${sheet.group}_normal1.webp`;
-  const loveScene = `/characters/scenes/${sheet.group}_love.webp`;
-  const relationScene = `/characters/scenes/${sheet.group}_normal2.webp`;
+  const normalScene = versionCharacterAssetPath(
+    `/characters/scenes/${sheet.group}_normal1.webp`,
+  );
+  const loveScene = versionCharacterAssetPath(
+    `/characters/scenes/${sheet.group}_love.webp`,
+  );
+  const relationScene = versionCharacterAssetPath(
+    `/characters/scenes/${sheet.group}_normal2.webp`,
+  );
 
   return (
     <section className={`${styles.chapter} ${styles.friendChapter}`}>
@@ -403,7 +410,9 @@ function OverviewChapter({
   overview: TakoReportOverview;
   isKo: boolean;
 }) {
-  const scenePath = `/characters/scenes/${overview.group}_normal1.webp`;
+  const scenePath = versionCharacterAssetPath(
+    `/characters/scenes/${overview.group}_normal1.webp`,
+  );
 
   return (
     <section className={styles.chapter}>

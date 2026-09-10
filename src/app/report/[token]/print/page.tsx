@@ -33,6 +33,7 @@ import { buildKoDetailedReport } from "@/i18n/ko/detailed-report";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { ReportPrintButton } from "@/components/report/ReportPrintButton";
 import { ReportCover } from "@/components/report/ReportCover";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 import styles from "./page.module.css";
 
 export async function generateMetadata({
@@ -387,7 +388,9 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
     heroColorsForGroup(group);
   const { panelBg: coverSoft } = cardColorsForGroup(group);
   const imagePath = thirtyTwoImagePath(t32);
-  const cutImagePath = imagePath.replace("/characters/v3/", "/characters/cut/");
+  const cutImagePath = versionCharacterAssetPath(
+    imagePath.replace("/characters/v3/", "/characters/cut/"),
+  );
   const greeting = (displayName ?? "").trim();
   const reportStyle = {
     "--report-accent": color,
@@ -506,7 +509,9 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
         {report.chapters.map((chapter, index) => {
           const scene = CHAPTER_SCENES[index];
           const scenePath = scene
-            ? `/characters/scenes/${group}_${scene}.webp`
+            ? versionCharacterAssetPath(
+                `/characters/scenes/${group}_${scene}.webp`,
+              )
             : null;
 
           return (
@@ -623,7 +628,9 @@ function KoreanStoryPages({
         const artPath =
           art === "portrait"
             ? characterImagePath
-            : `/characters/scenes/${characterGroup}_${art}.webp`;
+            : versionCharacterAssetPath(
+                `/characters/scenes/${characterGroup}_${art}.webp`,
+              );
 
         return (
           <section

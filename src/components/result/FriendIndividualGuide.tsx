@@ -10,6 +10,7 @@ import TopHeader from "@/components/top/TopHeader";
 import { KO_ABOUT_FAQ } from "@/i18n/ko/about";
 import type { ResultLocale } from "@/i18n/result";
 import { faqItems } from "@/lib/faq-data";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 import type { BigFiveScores } from "@/lib/perception-analysis";
 import { FriendGapSection } from "./FriendGapSection";
 import { GuideDiagnoseButton } from "./GuideDiagnoseButton";
@@ -162,7 +163,9 @@ export function FriendIndividualGuide({
               <span className="absolute inset-x-0 bottom-0 h-[92px] bg-[#386F82] [clip-path:polygon(7%_18%,40%_0,91%_18%,100%_62%,63%_100%,17%_82%,0_38%)] md:h-[108px]" />
               <span className="absolute bottom-[19px] right-[10px] h-[58px] w-[72px] bg-[#2D829B] [clip-path:polygon(18%_0,100%_25%,82%_100%,0_72%)] md:bottom-[22px] md:right-[12px] md:h-[68px] md:w-[84px]" />
               <Image
-                src="/characters/face/angel_N.webp"
+                src={versionCharacterAssetPath(
+                  "/characters/face/angel_N.webp",
+                )}
                 alt=""
                 width={512}
                 height={512}

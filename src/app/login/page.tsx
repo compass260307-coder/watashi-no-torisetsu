@@ -17,6 +17,7 @@ import { SmoothImage } from "@/components/ui/SmoothImage";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { localizedAlternates } from "@/lib/locale-seo";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -38,7 +39,7 @@ export default function LoginPage() {
       >
         {/* おかえり感の挿絵 (おうちの前で出迎える犬)。装飾なので alt は空。 */}
         <SmoothImage
-          src="/characters/cut/dog_R.webp"
+          src={versionCharacterAssetPath("/characters/cut/dog_R.webp")}
           alt=""
           width={480}
           height={480}

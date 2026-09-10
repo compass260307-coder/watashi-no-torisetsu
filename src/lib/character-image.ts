@@ -6,6 +6,18 @@
 
 import characterImages from "@/generated/character-images.json";
 import type { ThirtyTwoGroup } from "./thirty-two-content/character-32";
+import { GENERATED_CHARACTER_ASSET_VERSION } from "./asset-versions";
+
+/** 生成済みキャラ素材へキャッシュ更新用のバージョンを付ける。 */
+export function versionCharacterAssetPath(assetPath: string): string {
+  if (/[?&]v=/.test(assetPath)) return assetPath;
+
+  const hashIndex = assetPath.indexOf("#");
+  const pathAndQuery = hashIndex >= 0 ? assetPath.slice(0, hashIndex) : assetPath;
+  const hash = hashIndex >= 0 ? assetPath.slice(hashIndex) : "";
+  const separator = pathAndQuery.includes("?") ? "&" : "?";
+  return `${pathAndQuery}${separator}v=${GENERATED_CHARACTER_ASSET_VERSION}${hash}`;
+}
 
 /**
  * キャラ画像と同じスラッグのループ動画 URL を返す。
@@ -29,9 +41,10 @@ export function characterAnimationForImage(imagePath: string): string | null {
 
 /** v3 原画パスを受け取り、透過版があれば /characters/cut のパスを、無ければ引数のまま返す。 */
 export function preferCutImage(v3Path: string): string {
-  const base = v3Path.slice(v3Path.lastIndexOf("/") + 1);
+  const pathWithoutQuery = v3Path.split(/[?#]/, 1)[0];
+  const base = pathWithoutQuery.slice(pathWithoutQuery.lastIndexOf("/") + 1);
   return (characterImages.cut as string[]).includes(base)
-    ? `/characters/cut/${base}`
+    ? versionCharacterAssetPath(`/characters/cut/${base}`)
     : v3Path;
 }
 
@@ -40,9 +53,10 @@ export function preferCutImage(v3Path: string): string {
  * そちらを、無ければ引数のまま返す。/aisho のサムネと同じアセットを参照する共有版。
  */
 export function preferFaceImage(v3Path: string): string {
-  const base = v3Path.slice(v3Path.lastIndexOf("/") + 1);
+  const pathWithoutQuery = v3Path.split(/[?#]/, 1)[0];
+  const base = pathWithoutQuery.slice(pathWithoutQuery.lastIndexOf("/") + 1);
   return (characterImages.face as string[]).includes(base)
-    ? `/characters/face/${base}`
+    ? versionCharacterAssetPath(`/characters/face/${base}`)
     : v3Path;
 }
 
@@ -58,6 +72,6 @@ export function sceneImageForGroup(
 ): string | null {
   const name = `${group}_${variant}.webp`;
   return (characterImages.scenes as string[]).includes(name)
-    ? `/characters/scenes/${name}`
+    ? versionCharacterAssetPath(`/characters/scenes/${name}`)
     : null;
 }

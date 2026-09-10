@@ -17,6 +17,7 @@ import {
 } from "@/lib/thirty-two-types";
 import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
 import type { ResultLocale } from "@/i18n/result";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 const PARA_CLASS =
   "body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0";
@@ -35,7 +36,7 @@ export function sceneImageFor(
   const candidates = [`${slug}_${variant}.webp`, `${group}_${variant}.webp`];
   for (const name of candidates) {
     if (characterImages.scenes.includes(name)) {
-      return `/characters/scenes/${name}`;
+      return versionCharacterAssetPath(`/characters/scenes/${name}`);
     }
   }
   return null;

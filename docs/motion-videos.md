@@ -217,8 +217,8 @@ Subtle idle animation. The felt skeleton gently breathes, swaying slightly up an
   2. Apple Vision (`/tmp/vision/removebg_batch`) で全フレームの背景除去
      — 色抜きと違い淡色部が抜けず、Kling のウォーターマークも背景ごと消える
   3. アルファ付きで 2 形式にエンコード:
-     - `<slug>.webm` VP9+alpha (`-c:v libvpx-vp9 -pix_fmt yuva420p -crf 34`)
-     - `<slug>.mov` HEVC+alpha (`-c:v hevc_videotoolbox -allow_sw 1 -alpha_quality 0.75 -tag:v hvc1`) … Safari/iOS 用
+    - `<slug>.webm` VP9+alpha（配信用は 600px・18fps・`-crf 38 -b:v 0`）
+    - `<slug>.mov` HEVC+alpha（配信用は 600px・18fps・900kbps・`-alpha_quality 0.75 -tag:v hvc1`）… Safari/macOS 用
   4. `public/characters/motion/` に配置 → **置くだけで /types に自動反映**
      (ページがビルド時にディレクトリを走査するため、コード変更は不要)
 - 透過するため、生成物の背景色ズレはもう問題にならない。ただし背景が

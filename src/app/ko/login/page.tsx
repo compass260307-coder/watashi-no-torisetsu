@@ -4,6 +4,7 @@ import { SmoothImage } from "@/components/ui/SmoothImage";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { localizedAlternates } from "@/lib/locale-seo";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 const NAVY = "#2E2E5C";
 
@@ -21,7 +22,7 @@ export default function KoreanLoginPage() {
       <KoTopHeader />
       <main className="flex flex-1 flex-col items-center bg-[#F1F1F7] px-5 pb-16 pt-8 md:pt-12">
         <SmoothImage
-          src="/characters/cut/dog_R.webp"
+          src={versionCharacterAssetPath("/characters/cut/dog_R.webp")}
           alt=""
           width={480}
           height={480}

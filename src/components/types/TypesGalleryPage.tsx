@@ -23,6 +23,7 @@ import {
 } from "@/lib/thirty-two-types";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { sixteenTypes } from "@/lib/sixteen-types";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 type TypesLocale = "ja" | "ko";
 
@@ -52,7 +53,7 @@ function slugOf(id: ThirtyTwoTypeId): string {
 function displayImagePath(id: ThirtyTwoTypeId): string {
   const file = `${slugOf(id)}.webp`;
   return cutFiles.has(file)
-    ? `/characters/cut/${file}`
+    ? versionCharacterAssetPath(`/characters/cut/${file}`)
     : thirtyTwoImagePath(id);
 }
 
