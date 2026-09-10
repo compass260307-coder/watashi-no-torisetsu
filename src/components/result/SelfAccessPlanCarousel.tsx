@@ -28,7 +28,6 @@ import {
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
-  SELF_REPORT_LIST_PRICE_JPY,
   SELF_REPORT_PRICE_JPY,
   FULL_ACCESS_DISCOUNT_PERCENT_KRW,
   FULL_ACCESS_LIST_PRICE_KRW,
@@ -74,13 +73,13 @@ const JA_LIGHT_ACCESS_ITEMS = [
   "16ページ以上の専用の電子書籍",
   "２人目以降の友達診断の結果",
   "何度でも作り直せる他己分析PDF",
+  JA_AISHO_ITEM,
 ] as const;
 const JA_FULL_ACCESS_ITEMS = [
   ...JA_LIGHT_ACCESS_ITEMS,
   JA_DESTINY_ITEM,
   "占い師『Alice』とのチャット30回",
   JA_TAROT_ITEM,
-  JA_AISHO_ITEM,
 ] as const;
 const KO_LIGHT_ACCESS_ITEMS = [
   "자기 진단 결과의 잠금 9개 전체 해제",
@@ -110,11 +109,6 @@ const JA_PLANS: readonly PlanDefinition[] = [
     eyebrow: "学生の方へ",
     title: "学生向けプラン",
     basePrice: SELF_REPORT_PRICE_JPY,
-    listPrice: SELF_REPORT_LIST_PRICE_JPY,
-    badge: japaneseThreeCourseReleaseBadge(
-      SELF_REPORT_PRICE_JPY,
-      SELF_REPORT_LIST_PRICE_JPY,
-    ),
     iconSrc: "/pricing/self-report-felt-transparent.png",
     accent: "#4F92A7",
     soft: "#EAF6F8",
@@ -1217,12 +1211,12 @@ export function SelfAccessPlanCarousel({
                 <p className="text-[13px] font-black text-[#345E6B]">
                   {locale === "ko"
                     ? `자기 진단과 친구 진단을 1회 결제 ${formatPrice(SELF_REPORT_PRICE_KRW, locale)}에`
-                    : "自己診断＋友達診断を、買い切り¥299で"}
+                    : `自己診断＋友達診断を、買い切り${formatPrice(SELF_REPORT_PRICE_JPY, locale)}で`}
                 </p>
                 <p className="mt-1 text-[11px] font-bold leading-relaxed text-[#667A80]">
                   {locale === "ko"
                     ? "전용 전자책과 타인 분석 PDF가 포함돼요. 궁합 진단·운명의 설계도·Alice는 포함되지 않아요."
-                    : "専用電子書籍と他己分析PDFを含みます。相性診断・運命の設計図・Aliceは含まれません。"}
+                    : "専用電子書籍と他己分析PDF、相性診断を含みます。運命の設計図・Aliceは含まれません。"}
                 </p>
               </div>
               {cancelledStudentPlan ? (

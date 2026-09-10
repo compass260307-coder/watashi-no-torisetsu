@@ -43,12 +43,12 @@ const META_PURCHASE_CONTENT: Record<
   }
 > = {
   self_report: {
-    fallbackId: "self_report_jpy_299",
+    fallbackId: "self_report_jpy_499",
     koFallbackId: "self_report_krw_1900",
     name: { ja: "学生向けプラン", ko: "학생 플랜" },
   },
   full_access: {
-    fallbackId: "full_access_jpy_499",
+    fallbackId: "full_access_jpy_899",
     koFallbackId: "full_access_krw_4900",
     name: { ja: "完全版コース", ko: "완전판 코스" },
   },

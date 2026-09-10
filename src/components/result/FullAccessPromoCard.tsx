@@ -22,7 +22,7 @@
 //   - imageSrc: あるとき横並び (md+) の MBTI レイアウト。無いとき中央 1 カラム。
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
@@ -59,6 +59,7 @@ import {
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { ResultLocale } from "@/i18n/result";
 import {
+  accessProductPrice,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
@@ -70,6 +71,7 @@ import {
   type AccessEntitlements,
   type AccessProduct,
 } from "@/lib/access-products";
+import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
 const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
   (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) *
@@ -140,7 +142,7 @@ const SELF_UNLOCKS: UnlockItem[] = [
     desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、診断結果の続きをすべて読めます。",
   },
   {
-    title: "6ページ以上のあなただけの電子書籍",
+    title: "16ページ以上のあなただけの電子書籍",
     desc: "あなたの性格や特徴を一冊にまとめてお届け。保存・印刷できるので、いつでも読み返せます。",
     peek: PEEK_EBOOK,
   },
@@ -168,15 +170,17 @@ const FULL_ACCESS_TAKO_UNLOCKS: UnlockItem[] = [
 
 const STUDENT_LITE_UNLOCKS: UnlockItem[] = [
   SELF_UNLOCKS[0],
+  SELF_UNLOCKS[1],
   U_FRIEND_RESULTS,
   U_FRIEND_REPORT,
-  SELF_UNLOCKS[1],
+  U_AISHO,
 ];
 const STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
   U_FRIEND_RESULTS,
   U_FRIEND_REPORT,
   SELF_UNLOCKS[0],
   SELF_UNLOCKS[1],
+  U_AISHO,
 ];
 
 const KO_SELF_UNLOCKS: UnlockItem[] = [
@@ -258,7 +262,7 @@ function promoteUnlockItem(
   ];
 }
 
-// 現行日本版では、相性診断も ¥499 の完全版で解放する。
+// 現行日本版では、相性診断も ¥899 の完全版で解放する。
 const AISHO_PRODUCTS: readonly AccessProduct[] = [
   "full_access",
 ];
@@ -277,6 +281,7 @@ const PINK_TONE = {
 // ネイビー・青緑・生成りを拾い、相性カードのピンクとは分ける。
 const STUDENT_LITE_TONE = {
   accent: "#3A8995",
+  shadow: "#286672",
   softBg: "#F8F4E9",
   border: "#BDDDE0",
   panelBg: "#E8F4F2",
@@ -436,7 +441,10 @@ export function FullAccessPromoCard({
   benefitsBeforePrice?: boolean;
 }) {
   const isKorean = locale === "ko";
-  const isStandaloneSelfReport = standaloneProduct === "self_report";
+  const [selectedStandaloneProduct, setSelectedStandaloneProduct] = useState<
+    "self_report" | null
+  >(() => standaloneProduct ?? null);
+  const isStandaloneSelfReport = selectedStandaloneProduct === "self_report";
   // 通常カードは feature flag 1か所で旧単一カードと松竹梅を切り替える。
   // legacyPlanStyle は設計図ページ専用の単一カードを表示する個別導線なので優先する。
   const resolvedCardMode = cardMode ?? paywallCardMode();
@@ -464,6 +472,24 @@ export function FullAccessPromoCard({
       ? THREE_COURSE_PAYWALL_VERSION
       : "legacy";
   const paywallPlacement = onClose ? "modal" : "inline";
+  const [entitlements, setEntitlements] = useState<AccessEntitlements>({
+    selfReport: false,
+    full: false,
+    premiumBundle: false,
+  });
+  const displayedEntitlements = previewMode
+    ? (previewEntitlements ?? entitlements)
+    : entitlements;
+  const isStudentUpgrade =
+    usesLegacyFullAccessCard &&
+    !isKorean &&
+    displayedEntitlements.selfReport &&
+    !displayedEntitlements.full;
+  const upgradePrice = accessProductPrice(
+    locale,
+    "full_access",
+    displayedEntitlements,
+  );
   const baseUnlocks = isKorean
     ? product === "self_report"
       ? surface === "tako"
@@ -577,14 +603,24 @@ export function FullAccessPromoCard({
     : variant === "aisho"
       ? PINK_TONE.mid
       : heroColorsForGroup(group).heroBg;
-  const hasImage = !!imageSrc;
-  // 学生向けリンクは現行の完全版カードから外す。学生向け商品設定は維持する。
-  const showFullAccessLink = isStandaloneSelfReport && !!onClose;
-  const courseSwitchLabel = showFullAccessLink
+  const cardImageSrc = isStandaloneSelfReport
+    ? "/pricing/self-report-felt-transparent.png"
+    : imageSrc;
+  const cardImageAlt = isStandaloneSelfReport
+    ? isKorean
+      ? "자기 진단과 친구 진단 전용 리포트"
+      : "自己診断と友達診断の専用電子書籍"
+    : imageAlt;
+  const hasImage = !!cardImageSrc;
+  // 現行の日本語完全版カードから学生向けプランへ切り替えられるようにする。
+  // 学生向けカードからは同じ位置で完全版へ戻せる。
+  const courseSwitchLabel = isStandaloneSelfReport
     ? isKorean
       ? "완전판 보기"
       : "完全版はこちら"
-    : null;
+    : usesLegacyFullAccessCard && !isKorean && !isStudentUpgrade
+      ? "学生の方はこちら"
+      : null;
   const unlockBenefitsPanel = (
     <div
       className={
@@ -618,8 +654,26 @@ export function FullAccessPromoCard({
   );
 
   function handleCourseSwitch() {
-    onClose?.();
+    setSelectedStandaloneProduct(
+      isStandaloneSelfReport ? null : "self_report",
+    );
   }
+
+  useEffect(() => {
+    if (!ownerToken || previewMode || !usesLegacyFullAccessCard) return;
+    let cancelled = false;
+    void requestFullAccessStatus(ownerToken).then((data) => {
+      if (cancelled || !data) return;
+      setEntitlements({
+        selfReport: data.selfReport === true,
+        full: data.full === true,
+        premiumBundle: data.premiumBundle === true,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerToken, previewMode, usesLegacyFullAccessCard]);
 
   // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る。
   // dedup はページ単位で sessionStorage (タブ内1回)。
@@ -779,8 +833,8 @@ export function FullAccessPromoCard({
               style={{ backgroundColor: tone.panelBg }}
             >
               <SmoothImage
-                src={imageSrc!}
-                alt={imageAlt}
+                src={cardImageSrc!}
+                alt={cardImageAlt}
                 width={640}
                 height={640}
                 className="h-auto w-full max-w-[280px] md:max-w-[340px]"
@@ -822,11 +876,19 @@ export function FullAccessPromoCard({
               className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
             >
               {isSelfReportProduct ? (
-                <>
-                  {isKorean ? "자기 진단을" : "自己診断を"}
-                  <br />
-                  {isKorean ? "더 깊이" : "もっと深く"}
-                </>
+                isKorean ? (
+                  <>
+                    자기 진단을
+                    <br />
+                    더 깊이
+                  </>
+                ) : (
+                  <>
+                    あなたの物語は
+                    <br />
+                    まだ完結していません
+                  </>
+                )
               ) : isKorean ? (
                 <>
                   당신의 이야기는
@@ -847,7 +909,7 @@ export function FullAccessPromoCard({
               {isSelfReportProduct
                 ? isKorean
                   ? "자기 진단과 친구 진단, 16페이지 이상의 전용 전자책을 1회 결제로 이용할 수 있어요."
-                  : "自己診断と友達診断、16ページ以上の専用電子書籍を買い切りで利用できます。"
+                  : "診断結果の続き・友達から見たあなた・あなただけの電子書籍まで、すべて買い切りで楽しめます。"
                 : isKorean
                   ? "무료 리포트를 읽었다면 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상과 Alice의 운세·타로·상담까지 모두 열립니다."
                   : "無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。"}
@@ -862,7 +924,16 @@ export function FullAccessPromoCard({
               }`}
             >
               {/* 価格タグは Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
-              {isSelfReportProduct ? (
+              {isStudentUpgrade ? (
+                <>
+                  <span className="text-[15px] font-black text-[#2E2E5C] md:text-[17px]">
+                    差額
+                  </span>
+                  <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
+                    ¥{upgradePrice.toLocaleString("ja-JP")}
+                  </span>
+                </>
+              ) : isSelfReportProduct ? (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
@@ -889,8 +960,10 @@ export function FullAccessPromoCard({
                 unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
                 locale={locale}
                 source={
-                  ctaSource ??
-                  (surface === "tako" ? "tako_promo_card" : undefined)
+                  isStandaloneSelfReport
+                    ? "student_offer_link"
+                    : ctaSource ??
+                      (surface === "tako" ? "tako_promo_card" : undefined)
                 }
                 returnTo={returnTo}
                 product={product}
@@ -901,8 +974,16 @@ export function FullAccessPromoCard({
                 }
                 placement={paywallPlacement}
                 previewMode={previewMode}
-                accentColor={actionTone.accent}
-                shadowColor={actionTone.shadow}
+                accentColor={
+                  isStandaloneSelfReport
+                    ? STUDENT_LITE_TONE.accent
+                    : actionTone.accent
+                }
+                shadowColor={
+                  isStandaloneSelfReport
+                    ? STUDENT_LITE_TONE.shadow
+                    : actionTone.shadow
+                }
               >
                 {isSelfReportProduct
                   ? isKorean

@@ -1,4 +1,4 @@
-// 日本版 (完全版 ¥499 / 学生向け ¥299)・
+// 日本版 (完全版 ¥899 / 学生向け ¥499)・
 // 韓国版 (完全版 ₩4,900 / 学生向け ₩1,900) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
@@ -35,6 +35,7 @@ import {
 import {
   accessProductPrice,
   AISHO_ACCESS_POLICY_FULL_INCLUDED,
+  AISHO_ACCESS_POLICY_LITE_INCLUDED,
   AISHO_ACCESS_POLICY_PREMIUM_ONLY,
   DESTINY_ACCESS_POLICY_FULL_INCLUDED,
   DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
@@ -238,9 +239,9 @@ const SELF_REPORT_COPY = {
   ja: {
     productName: "ワタシのトリセツ 学生向けプラン",
     productDescription:
-      "学生向け。自己診断のロック9セクションと16ページ以上の専用電子書籍、友達診断・他己分析PDFを利用できます。買い切り。相性診断・運命の設計図・Alice・タロットは含まれません。",
+      "学生向け。自己診断のロック9セクションと16ページ以上の専用電子書籍、友達診断・他己分析PDF・相性診断を利用できます。買い切り。運命の設計図・Alice・タロットは含まれません。",
     submitMessage:
-      "一度きりの買い切りで、自己診断・友達診断と専用PDFをずっと見返せます。30日間の返金保証つき。",
+      "一度きりの買い切りで、自己診断・友達診断・相性診断と専用PDFをずっと見返せます。30日間の返金保証つき。",
   },
   ko: {
     productName: "나의 사용설명서 학생 플랜",
@@ -846,9 +847,12 @@ export async function POST(request: NextRequest) {
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
-  const japaneseCourseCouponId = isStandardJapaneseCoursePurchase
-    ? await getJapaneseCourseCouponIdCached(stripe, product)
-    : null;
+  const japaneseCourseCouponId =
+    isStandardJapaneseCoursePurchase &&
+    JA_COURSE_CHECKOUT_PRICING[product].listAmount >
+      JA_COURSE_CHECKOUT_PRICING[product].saleAmount
+      ? await getJapaneseCourseCouponIdCached(stripe, product)
+      : null;
 
   if (isStandardJapaneseCoursePurchase && japaneseCourseCouponId) {
     const pricing = JA_COURSE_CHECKOUT_PRICING[product];
@@ -1015,11 +1019,15 @@ export async function POST(request: NextRequest) {
             : TAROT_ACCESS_POLICY_FULL_ONLY,
         // 学生向けも友達診断を含む。
         friend_access_policy: FRIEND_ACCESS_POLICY_LITE_INCLUDED,
-        // 現行の完全版には相性診断を含める。
+        // 現行の完全版と日本語版学生向けプランには相性診断を含める。
         aisho_access_policy:
           product === "full_access"
             ? AISHO_ACCESS_POLICY_FULL_INCLUDED
-            : AISHO_ACCESS_POLICY_PREMIUM_ONLY,
+            : product === "self_report" &&
+                checkoutLocale === "ja" &&
+                usesCurrentOffer
+              ? AISHO_ACCESS_POLICY_LITE_INCLUDED
+              : AISHO_ACCESS_POLICY_PREMIUM_ONLY,
         upgrade_from: upgradeFrom,
         course_price_minor: String(coursePrice),
         course_price_jpy:
