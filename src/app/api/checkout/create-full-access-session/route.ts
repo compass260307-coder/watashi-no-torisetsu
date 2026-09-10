@@ -1,4 +1,4 @@
-// 日本版 (完全版 ¥899 / 学生向け ¥499)・
+// 日本版 (完全版 ¥499 の単一プラン)・
 // 韓国版 (完全版 ₩4,900 / 学生向け ₩1,900) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
@@ -545,9 +545,9 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
-  // 日本版・韓国版のメイン課金カードは「完全版」と「学生向け」。premium_bundle は
-  // 旧購入からのアップグレード互換用として許可リストに残す。
-  if (!isCurrentJapaneseAccessProduct(product)) {
+  // 日本版は完全版へ一本化。韓国版の学生プランと、旧購入の権利は維持する。
+  // premium_bundle は日本版の旧購入からのアップグレード互換用として許可する。
+  if (checkoutLocale === "ja" && !isCurrentJapaneseAccessProduct(product)) {
     return NextResponse.json(
       {
         error: "product_not_offered",

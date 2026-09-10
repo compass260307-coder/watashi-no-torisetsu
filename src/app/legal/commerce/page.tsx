@@ -3,7 +3,6 @@ import LegalDocument from "@/components/LegalDocument";
 import {
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
-  SELF_REPORT_PRICE_JPY,
 } from "@/lib/access-products";
 import { LINE_PLUS_PLANS } from "@/lib/line-plus-products";
 import { localizedAlternates } from "@/lib/locale-seo";
@@ -69,10 +68,6 @@ export default function CommercePage() {
             円（税込・買い切り。自己診断のロックされた9セクション、16ページ以上の専用電子書籍、2人目以降の友達診断結果、何度でも更新できる他己分析PDF、相性診断、運命の設計図、AI占い師「Alice」とのチャット相談30回分、3種類のタロット占いを含む）
           </li>
           <li>
-            学生向けプラン: {SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}
-            円（税込・買い切り。自己診断のロックされた9セクション、16ページ以上の専用電子書籍、2人目以降の友達診断結果、何度でも更新できる他己分析PDFを含む。相性診断、運命の設計図、AI占い師「Alice」、タロット占いは含まない）
-          </li>
-          <li>
             全部入り・買い切り: {PREMIUM_BUNDLE_PRICE_JPY.toLocaleString("ja-JP")}
             円（税込。旧購入からのアップグレード互換用。現在の完全版と同等の内容を含む）
           </li>
@@ -113,8 +108,8 @@ export default function CommercePage() {
           過去の対象商品を購入済みの場合、上位商品は購入済み金額を考慮した差額で提供することがあります。実際の販売価格は購入手続き画面に表示します。
         </p>
         <p>
-          学生向けプランおよび全部入りのリリース記念価格は、2026 年 11 月 30 日
-          23:59 までです。完全版は通常価格として販売します。
+          全部入りのリリース記念価格は、2026 年 11 月 30 日 23:59
+          までです。完全版は通常価格として販売します。
         </p>
         <p>
           そのほか、各購入手続き画面において表示する金額が販売価格となります。

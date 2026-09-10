@@ -262,7 +262,7 @@ function promoteUnlockItem(
   ];
 }
 
-// 現行日本版では、相性診断も ¥899 の完全版で解放する。
+// 現行日本版では、相性診断も ¥499 の完全版で解放する。
 const AISHO_PRODUCTS: readonly AccessProduct[] = [
   "full_access",
 ];
@@ -480,11 +480,8 @@ export function FullAccessPromoCard({
   const displayedEntitlements = previewMode
     ? (previewEntitlements ?? entitlements)
     : entitlements;
-  const isStudentUpgrade =
-    usesLegacyFullAccessCard &&
-    !isKorean &&
-    displayedEntitlements.selfReport &&
-    !displayedEntitlements.full;
+  // 日本版の学生向け差額販売は終了。韓国版へ日本円の差額表示を流用しない。
+  const isStudentUpgrade = false;
   const upgradePrice = accessProductPrice(
     locale,
     "full_access",
@@ -612,15 +609,12 @@ export function FullAccessPromoCard({
       : "自己診断と友達診断の専用電子書籍"
     : imageAlt;
   const hasImage = !!cardImageSrc;
-  // 現行の日本語完全版カードから学生向けプランへ切り替えられるようにする。
-  // 学生向けカードからは同じ位置で完全版へ戻せる。
+  // 日本版の新規販売は完全版のみ。韓国版と開発用の旧カード互換は残す。
   const courseSwitchLabel = isStandaloneSelfReport
     ? isKorean
       ? "완전판 보기"
       : "完全版はこちら"
-    : usesLegacyFullAccessCard && !isKorean && !isStudentUpgrade
-      ? "学生の方はこちら"
-      : null;
+    : null;
   const unlockBenefitsPanel = (
     <div
       className={

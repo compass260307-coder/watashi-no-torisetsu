@@ -929,7 +929,14 @@ export function SelfAccessPlanCarousel({
   ]);
 
   useEffect(() => {
-    if (!studentPlanOpen || previewMode || !isSingleOffer) return;
+    if (
+      locale !== "ko" ||
+      !studentPlanOpen ||
+      previewMode ||
+      !isSingleOffer
+    ) {
+      return;
+    }
     const page = trackingPageFromPathname(window.location.pathname);
     const product = "self_report";
     const dedupKey = `torisetsu_paywall_plan_viewed_${THREE_COURSE_PAYWALL_VERSION}_${page}_${placement}_${product}`;
@@ -957,6 +964,7 @@ export function SelfAccessPlanCarousel({
     }
   }, [
     isSingleOffer,
+    locale,
     ownerToken,
     placement,
     previewMode,
@@ -1190,7 +1198,7 @@ export function SelfAccessPlanCarousel({
         ))}
       </div>
 
-      {isSingleOffer && returnTo === "me" ? (
+      {isSingleOffer && returnTo === "me" && locale === "ko" ? (
         <div className="relative z-10 mx-auto -mt-1 max-w-[520px] px-4 pb-4 text-center md:px-6">
           <button
             type="button"

@@ -7,15 +7,14 @@ export const ACCESS_PRODUCTS = [
   "premium_bundle",
 ] as const;
 
-// 2026-08-31 に日本版・韓国版を旧カードデザインの2オファーへ変更。
-// 主商品は「完全版 ¥899（自己・友達・相性・運命の設計図・Alice 30回答・タロット）」、
-// 学生向けは「¥499（自己診断・友達診断・相性診断）」として販売する。
+// 日本版は完全版 ¥499（自己・友達・相性・運命の設計図・Alice 30回答・タロット）
+// の単一オファー。韓国版の既存コース構成と、過去購入の権利互換は維持する。
 // 商品構成テストの識別子。過去バージョンは履歴の解釈と権利互換用に残すが、
 // 新規Checkoutは現行バージョン以外を受理しない。
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v34_full_899_student_499_aisho_included" as const;
+  "legacy_card_v35_ja_full_499_single" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -49,17 +48,17 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v31_full_499_aisho_destiny_alice30_tarot_student_299",
   "legacy_card_v32_full_899_aisho_destiny_alice30_tarot_student_299",
   "legacy_card_v33_full_899_aisho_destiny_alice30_tarot_student_499",
+  "legacy_card_v34_full_899_student_499_aisho_included",
   THREE_COURSE_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
 export const SINGLE_ALL_ACCESS_PAYWALL_PRODUCT =
   "single_all_access" as const;
 
-// 日本版でCheckoutを作成できる商品。メイン課金カードでは full_access と
-// self_report を販売する。premium_bundle は旧購入からのアップグレード互換用に残す。
+// 日本版でCheckoutを作成できる商品。新規販売は full_access のみ。
+// premium_bundle は旧購入からのアップグレード互換用に残す。
 export const CURRENT_JA_ACCESS_PRODUCTS = [
   "full_access",
-  "self_report",
   "premium_bundle",
 ] as const satisfies readonly AccessProduct[];
 
@@ -213,13 +212,12 @@ export function purchaseIncludesAishoFeatures(
   return policy !== AISHO_ACCESS_POLICY_PREMIUM_ONLY;
 }
 
-// 日本版の現行価格。主商品は相性診断も含む完全版 ¥899、
-// 学生向けは自己診断＋友達診断＋相性診断 ¥499。
-// 全部入りは旧購入からのアップグレード互換用に価格定義を維持する。
+// 日本版の現行価格。新規販売は相性診断も含む完全版 ¥499 のみ。
+// self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
 export const FULL_ACCESS_LIST_PRICE_JPY = 1299;
-export const FULL_ACCESS_PRICE_JPY = 899;
+export const FULL_ACCESS_PRICE_JPY = 499;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 完全版からプレミアムへの差額。既存購入からのアップグレードにも使う。
@@ -268,8 +266,8 @@ export const EMPTY_ACCESS_ENTITLEMENTS: AccessEntitlements = {
 };
 
 /**
- * 日本版のサーバ確定価格。メイン課金カードは学生向け / 完全版の2商品。
- * premium_bundle は相性・運命など専用面の上位商品として差額計算を維持する。
+ * 日本版のサーバ確定価格。新規販売は完全版のみ。
+ * self_report / premium_bundle は過去購入との互換用に計算を維持する。
  * クライアント表示にも使うが、Stripeへ渡す金額は必ずCheckout側で再計算する。
  */
 export function accessProductPriceJpy(
@@ -278,9 +276,8 @@ export function accessProductPriceJpy(
 ): number {
   if (product === "self_report") return SELF_REPORT_PRICE_JPY;
   if (product === "full_access") {
-    return entitlements.selfReport
-      ? FULL_ACCESS_PRICE_JPY - SELF_REPORT_PRICE_JPY
-      : FULL_ACCESS_PRICE_JPY;
+    // 廃止した self_report からの新規差額販売は行わない。完全版は常に現行価格。
+    return FULL_ACCESS_PRICE_JPY;
   }
   if (entitlements.full) {
     return PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY;
