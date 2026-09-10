@@ -239,7 +239,7 @@ const SELF_REPORT_COPY = {
   ja: {
     productName: "ワタシのトリセツ 学生向けプラン",
     productDescription:
-      "学生向け。自己診断のロック9セクションと16ページ以上の専用電子書籍、友達診断・他己分析PDF・相性診断を利用できます。買い切り。運命の設計図・Alice・タロットは含まれません。",
+      "自己診断・友達診断・専用PDF・相性診断を、すべて買い切りで楽しめます。",
     submitMessage:
       "一度きりの買い切りで、自己診断・友達診断・相性診断と専用PDFをずっと見返せます。30日間の返金保証つき。",
   },
@@ -272,16 +272,16 @@ const PREMIUM_BUNDLE_COPY = {
 type CheckoutSessionCreateParams = NonNullable<
   Parameters<Stripe["checkout"]["sessions"]["create"]>[0]
 >;
-// Checkout 左の商品サムネ。完全版はAliceページ、プレミアムは運命の設計図ページと
-// 同じキービジュアルを使い、学生向けは従来画像を維持する。
+// Checkout 左の商品サムネ。日本語の現行学生プランは完全版と同じ見せ方に揃え、
+// 完全版はAliceページ、プレミアムは運命の設計図ページと同じキービジュアルを使う。
 // Stripe は JPEG/PNG/GIF 推奨なので webp ではなく PNG を使う。取得できる公開 https のみ許可。
 function checkoutProductImage(
-  _locale: CheckoutLocale,
+  locale: CheckoutLocale,
   product: AccessProduct,
 ): string | null {
   if (!BASE_URL.startsWith("https://")) return null;
   const path =
-    product === "full_access"
+    product === "full_access" || (locale === "ja" && product === "self_report")
       ? "/mascot/hoshiyomi-alice-writing-transparent.png"
       : product === "premium_bundle"
         ? "/mascot/unmei-hero.png"
@@ -599,7 +599,13 @@ export async function POST(request: NextRequest) {
   const returnTo = requestedReturnTo;
   const checkoutCopy =
     product === "self_report"
-      ? SELF_REPORT_COPY[checkoutLocale]
+      ? checkoutLocale === "ja" && usesCurrentOffer
+        ? {
+            ...CURRENT_FULL_ACCESS_COPY.ja,
+            productName: SELF_REPORT_COPY.ja.productName,
+            productDescription: SELF_REPORT_COPY.ja.productDescription,
+          }
+        : SELF_REPORT_COPY[checkoutLocale]
         : product === "premium_bundle"
           ? PREMIUM_BUNDLE_COPY[checkoutLocale]
           : usesCurrentOffer
