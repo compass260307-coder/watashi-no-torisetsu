@@ -7,11 +7,9 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { after } from "next/server";
 
-import LinePlusStory from "@/components/line/LinePlusStory";
 import motionStyles from "@/components/line/LinePlusMotion.module.css";
 import PlusMotionController from "@/components/line/PlusMotionController";
 import PlusPlanChooser from "@/components/line/PlusPlanChooser";
-import { lineFreeDailyLimit } from "@/lib/line-alice";
 import { recordLineEvent } from "@/lib/line-events";
 import {
   findActiveLinePlusPass,
@@ -244,28 +242,8 @@ export default async function LinePlusPage({
         minute: "2-digit",
       }).format(new Date(activePass.expiresAt))
     : null;
-  const freeLimit = lineFreeDailyLimit();
   const isMember = hasLifetime || isManageable;
   const hasActiveAccess = isMember || Boolean(activePass);
-  const heroCtaHref = isPastDue
-    ? checkoutUrl
-    : hasActiveAccess
-      ? LINE_TALK_URL
-      : "#plans";
-  const heroCtaLabel = isPastDue
-    ? "お支払い方法を確認する"
-    : hasActiveAccess
-      ? "Aliceと話しにいく"
-      : trialEligible
-        ? "Alice Plusを試す"
-        : "月額Plusをはじめる";
-  const heroCtaNote = isPastDue
-    ? "Stripeのお支払い管理画面へ移動します"
-    : hasActiveAccess
-      ? "いつものLINEトークへ移動します"
-      : trialEligible
-        ? null
-        : "価格は税込。お申し込み前に請求内容を確認できます。";
 
   return (
     <main
@@ -275,7 +253,7 @@ export default async function LinePlusPage({
       className="min-h-dvh overflow-x-clip bg-[#F6F3FB] pb-8 text-[#302847]"
     >
       <PlusMotionController />
-      <div className="mx-auto w-full max-w-[480px] bg-[#F6F3FB] sm:my-5 sm:rounded-[38px] sm:shadow-[0_28px_90px_rgba(37,24,78,0.18)]">
+      <div className="mx-auto w-full max-w-[480px] bg-[#211844] sm:my-5 sm:rounded-[38px] sm:shadow-[0_28px_90px_rgba(37,24,78,0.18)]">
         <section
           id="plus-hero"
           data-plus-hero
@@ -316,27 +294,6 @@ export default async function LinePlusPage({
           <div
             className={`${motionStyles.heroCopy} relative z-[3] col-start-1 row-start-1 self-end px-6 pb-7`}
           >
-            <h1
-              className={`${motionStyles.heroHeadline} font-bold leading-[1.42] tracking-[-0.035em] text-white`}
-            >
-              <span className="sr-only">
-                話したいこと、途中で終わらせなくていい。
-              </span>
-              <span aria-hidden="true">
-                話したい夜を、
-                <span className={motionStyles.headlineCarousel}>
-                  <span className={motionStyles.headlinePhrase}>
-                    途中で終わらせない。
-                  </span>
-                  <span className={motionStyles.headlinePhrase}>
-                    もっと深く見つめる。
-                  </span>
-                  <span className={motionStyles.headlinePhrase}>
-                    Aliceと自由に話せる。
-                  </span>
-                </span>
-              </span>
-            </h1>
             {hasActiveAccess && (
               <div
                 className={`${motionStyles.glassCard} mt-5 rounded-2xl border border-[#F0D77D]/25 bg-white/[0.09] px-4 py-3.5 backdrop-blur-md`}
@@ -359,30 +316,8 @@ export default async function LinePlusPage({
               </div>
             )}
 
-            <a
-              href={heroCtaHref}
-              className={`${motionStyles.primaryCta} mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-[15px] font-bold transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/55 motion-reduce:transition-none motion-reduce:active:scale-100 ${
-                hasActiveAccess && !isPastDue
-                  ? "bg-[#06C755] text-white shadow-[0_12px_28px_rgba(6,199,85,0.22)]"
-                  : "bg-gradient-to-r from-[#F2CB62] to-[#FFE7A1] text-[#4A3500] shadow-[0_12px_28px_rgba(232,185,62,0.25)]"
-              }`}
-            >
-              <span className="relative z-10">{heroCtaLabel}</span>
-              {!hasActiveAccess && (
-                <span aria-hidden="true" className="relative z-10">
-                  ↓
-                </span>
-              )}
-            </a>
-            {heroCtaNote && (
-              <p className="mt-3 text-center text-[10px] leading-5 text-white/60">
-                {heroCtaNote}
-              </p>
-            )}
           </div>
         </section>
-
-        <LinePlusStory freeLimit={freeLimit} />
 
         {!isMember ? (
           <PlusPlanChooser
