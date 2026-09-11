@@ -816,6 +816,7 @@ export async function computeStats(
     lineAliceLinkCodeRequestedCount,
     lineAliceLinkCodeIssuedCount,
     lineAliceLinkCodeFailedCount,
+    lineAliceStarterClickedCount,
     lineLiffProgressRows,
   ] = await Promise.all([
     statsLocale === "ko"
@@ -902,6 +903,7 @@ export async function computeStats(
     lineEventCount("line_alice_link_code_requested"),
     lineEventCount("line_alice_link_code_issued"),
     lineEventCount("line_alice_link_code_failed"),
+    lineEventCount("line_alice_starter_clicked"),
     fetchAll<{
       metadata: Record<string, unknown> | null;
       created_at: string;
@@ -2984,6 +2986,7 @@ export async function computeStats(
       linkCodeRequested: lineAliceLinkCodeRequestedCount,
       linkCodeIssued: lineAliceLinkCodeIssuedCount,
       linkCodeFailed: lineAliceLinkCodeFailedCount,
+      starterClicked: lineAliceStarterClickedCount,
       liff: {
         opened: lineLiffStageCount("unknown", "opened"),
         sdkLoaded: lineLiffStageCount("unknown", "sdk_loaded"),

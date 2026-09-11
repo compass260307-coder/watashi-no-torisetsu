@@ -171,6 +171,7 @@ export async function GET(request: NextRequest) {
     lineLiffFailures: s.linePlus.liff.failures
       .map((row) => `${row.errorCode}:${row.count}`)
       .join(" | "),
+    lineAliceStarterClicked: s.linePlus.starterClicked,
     unmeiBadgeShown: s.unmei.navBadge.shown,
     unmeiBadgeClicked: s.unmei.navBadge.clicked,
     unmeiBadgeClickRate: round(s.unmei.navBadge.clickRate),

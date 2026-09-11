@@ -56,6 +56,32 @@ export function quickReplies(...labels: string[]): LineQuickReply {
   };
 }
 
+export const LINE_ALICE_CONVERSATION_STARTERS = [
+  { key: "future", label: "将来について相談したい" },
+  { key: "friends", label: "友達について相談したい" },
+  { key: "love", label: "恋愛について相談したい" },
+] as const;
+
+export type LineAliceConversationStarterKey =
+  (typeof LINE_ALICE_CONVERSATION_STARTERS)[number]["key"];
+
+/** 連携直後に、入力せずAliceとの会話を始められる質問候補。 */
+export function aliceConversationStarterQuickReplies(): LineQuickReply {
+  return quickReplies(
+    ...LINE_ALICE_CONVERSATION_STARTERS.map((starter) => starter.label),
+  );
+}
+
+export function matchAliceConversationStarter(
+  text: string,
+): LineAliceConversationStarterKey | null {
+  return (
+    LINE_ALICE_CONVERSATION_STARTERS.find(
+      (starter) => starter.label === text.trim(),
+    )?.key ?? null
+  );
+}
+
 export interface LineWebhookEvent {
   type: string;
   timestamp?: number;
