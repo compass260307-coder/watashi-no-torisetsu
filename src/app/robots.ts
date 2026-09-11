@@ -26,6 +26,8 @@ export default function robots(): MetadataRoute.Robots {
           // ため日本語版と同様ここでは Disallow しない)
           "/ko/me/",
           "/ko/result/",
+          "/en/me/",
+          "/en/result/",
         ],
       },
       {
@@ -49,6 +51,8 @@ export default function robots(): MetadataRoute.Robots {
           "/ko/me/",
           "/ko/result/",
           "/ko/friend/",
+          "/en/me/",
+          "/en/result/",
         ],
       },
     ],

@@ -39,7 +39,7 @@ const mPlusRounded = localFont({
 //   - フォールバックはヒラギノ/Meiryo (globals.css の :root 定義)
 //   - /ko では html[lang="ko"] の変数上書きで JP woff2 を引かせない (globals.css 参照)
 const GOOGLE_FONTS_CSS_URL =
-  "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans:wght@400;600&display=swap";
+  "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans:wght@400;600;700;800&display=swap";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -91,7 +91,7 @@ if(/(^|\\.)watashi-torisetsu\\.com$/.test(h))return;
 localStorage.setItem(RK,h);
 }catch(e){}})();`;
 const DOCUMENT_LANGUAGE_SCRIPT = `(function(){try{
-document.documentElement.lang=window.location.pathname.indexOf('/ko')===0?'ko':'ja';
+var p=window.location.pathname;document.documentElement.lang=p.indexOf('/ko')===0?'ko':p.indexOf('/en')===0?'en':'ja';
 }catch(e){}})();`;
 // 16Personalities の SERP を参考に、キーワード直球タイトル + 会話調ベネフィット
 // の説明文へ (2026-07-13)。サイト名は WebSite JSON-LD で別途表示されるため、

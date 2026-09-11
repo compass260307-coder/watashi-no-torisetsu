@@ -28,12 +28,13 @@ const SIGN_KO = {
   Leo: "사자자리", Virgo: "처녀자리", Libra: "천칭자리", Scorpio: "전갈자리",
   Sagittarius: "사수자리", Capricorn: "염소자리", Aquarius: "물병자리", Pisces: "물고기자리",
 };
+const SIGN_EN = Object.fromEntries(SIGN_ORDER.map((sign) => [sign, sign]));
 const ASPECTS = [
-  { ja: "合", ko: "합", a: 0 },
-  { ja: "セクスタイル", ko: "육각", a: 60 },
-  { ja: "スクエア", ko: "사각", a: 90, hard: true },
-  { ja: "トライン", ko: "삼각", a: 120 },
-  { ja: "オポジション", ko: "대립", a: 180, hard: true },
+  { ja: "合", ko: "합", en: "conjunction", a: 0 },
+  { ja: "セクスタイル", ko: "육각", en: "sextile", a: 60 },
+  { ja: "スクエア", ko: "사각", en: "square", a: 90, hard: true },
+  { ja: "トライン", ko: "삼각", en: "trine", a: 120 },
+  { ja: "オポジション", ko: "대립", en: "opposition", a: 180, hard: true },
 ];
 const HORIZON_MONTHS = 30;
 const STEP_DAYS = 15;
@@ -54,6 +55,10 @@ function seasonLabel(date, locale) {
     const s = m <= 2 ? "겨울" : m <= 5 ? "봄" : m <= 8 ? "여름" : m <= 11 ? "가을" : "겨울";
     return `${y}년 ${s}`;
   }
+  if (locale === "en") {
+    const s = m <= 2 ? "winter" : m <= 5 ? "spring" : m <= 8 ? "summer" : m <= 11 ? "autumn" : "winter";
+    return `${s} ${y}`;
+  }
   const s = m <= 2 ? "冬" : m <= 5 ? "春" : m <= 8 ? "夏" : m <= 11 ? "秋" : "冬";
   return `${y}年の${s}`;
 }
@@ -66,6 +71,10 @@ function natureOf(planetKey, hard, locale) {
     if (planetKey === "jupiter") return hard ? "확장(지나친 확대 주의)" : "확장과 순풍";
     return hard ? "시험과 정착" : "꾸준한 구축";
   }
+  if (locale === "en") {
+    if (planetKey === "jupiter") return hard ? "expansion (avoid overextending)" : "expansion and momentum";
+    return hard ? "testing and commitment" : "steady construction";
+  }
   if (planetKey === "jupiter") return hard ? "拡大(広げすぎ注意)" : "拡大・追い風";
   return hard ? "試練・定着" : "着実な構築";
 }
@@ -73,13 +82,14 @@ function natureOf(planetKey, hard, locale) {
 // 本人の出生図(natalChart) と 生成日(nowIso) から時期のファクトを返す。
 export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
   const isKo = locale === "ko";
-  const signs = isKo ? SIGN_KO : SIGN_JA;
+  const isEn = locale === "en";
+  const signs = isKo ? SIGN_KO : isEn ? SIGN_EN : SIGN_JA;
   const planetLabels = isKo
     ? { jupiter: "목성", saturn: "토성" }
-    : { jupiter: "木星", saturn: "土星" };
+    : isEn ? { jupiter: "Jupiter", saturn: "Saturn" } : { jupiter: "木星", saturn: "土星" };
   const targetLabels = isKo
     ? { sun: "태양", moon: "달" }
-    : { sun: "太陽", moon: "月" };
+    : isEn ? { sun: "Sun", moon: "Moon" } : { sun: "太陽", moon: "月" };
   const sun = natalChart?.planets?.sun;
   const moon = natalChart?.planets?.moon;
   if (!sun?.sign || !moon?.sign) return null;
@@ -118,10 +128,10 @@ export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
         planet: planetLabel, nature: natureOf(planetKey, false, locale), monthsAway: 0,
         desc: isKo
           ? `${planetLabel}이 당신의 ${hitTarget.label} 별자리(${signs[cur0.sign]})를 지나고 있음`
-          : `${planetLabel}があなたの${hitTarget.label}星座(${signs[cur0.sign]})を通過中`,
+          : isEn ? `${planetLabel} is moving through your ${hitTarget.label} sign (${signs[cur0.sign]})` : `${planetLabel}があなたの${hitTarget.label}星座(${signs[cur0.sign]})を通過中`,
         whenLabel: isKo
           ? `지금부터 ${seasonLabel(exit, locale)}까지`
-          : `今〜${seasonLabel(exit, locale)}`,
+          : isEn ? `now through ${seasonLabel(exit, locale)}` : `今〜${seasonLabel(exit, locale)}`,
       });
     }
     // (2) イングレス / (3) アスペクト を前方スキャン (各 planet×target×種別で最初の1回)
@@ -141,10 +151,10 @@ export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
               planet: planetLabel, nature: natureOf(planetKey, false, locale), monthsAway: monthsBetween(start, samples[i].date),
               desc: isKo
                 ? `${planetLabel}이 당신의 ${t.label} 별자리(${signs[t.sign]})에 들어감`
-                : `${planetLabel}があなたの${t.label}星座(${signs[t.sign]})に入る`,
+                : isEn ? `${planetLabel} enters your ${t.label} sign (${signs[t.sign]})` : `${planetLabel}があなたの${t.label}星座(${signs[t.sign]})に入る`,
               whenLabel: isKo
                 ? `${seasonLabel(samples[i].date, locale)} 무렵`
-                : `${seasonLabel(samples[i].date, locale)}ごろ`,
+                : isEn ? `around ${seasonLabel(samples[i].date, locale)}` : `${seasonLabel(samples[i].date, locale)}ごろ`,
             });
           }
         }
@@ -160,10 +170,10 @@ export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
               planet: planetLabel, nature: natureOf(planetKey, asp.hard, locale), monthsAway: monthsBetween(start, samples[i].date),
               desc: isKo
                 ? `${planetLabel}이 당신의 ${t.label}과 ${asp.ko}(${asp.a}°)을 이룸`
-                : `${planetLabel}があなたの${t.label}に${asp.ja}(${asp.a}°)を結ぶ`,
+                : isEn ? `${planetLabel} forms a ${asp.en} (${asp.a}°) with your ${t.label}` : `${planetLabel}があなたの${t.label}に${asp.ja}(${asp.a}°)を結ぶ`,
               whenLabel: isKo
                 ? `${seasonLabel(samples[i].date, locale)} 무렵`
-                : `${seasonLabel(samples[i].date, locale)}ごろ`,
+                : isEn ? `around ${seasonLabel(samples[i].date, locale)}` : `${seasonLabel(samples[i].date, locale)}ごろ`,
             });
           }
         }
@@ -185,15 +195,15 @@ export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
   if (!nearest) {
     framing = isKo
       ? `앞으로 30개월 동안 큰 전환의 신호는 약하다. 다음에 목성이 당신의 태양 별자리로 돌아오는 때는 약 ${jupToSun}년 뒤다. 지금은 준비하고 기초를 다지는 시기다.`
-      : `今後30ヶ月に大きな転機は薄い。次に木星があなたの太陽星座に巡るのは約${jupToSun}年後。今は仕込み(基礎固め)の時期。`;
+      : isEn ? `No major transition is close in the next 30 months. Jupiter returns to your Sun sign in roughly ${jupToSun} years; use this period to prepare and strengthen the foundation.` : `今後30ヶ月に大きな転機は薄い。次に木星があなたの太陽星座に巡るのは約${jupToSun}年後。今は仕込み(基礎固め)の時期。`;
   } else if (nearest.monthsAway >= 18) {
     framing = isKo
       ? `가까운 큰 흐름은 ${nearest.whenLabel}이다. 그때까지는 준비하고 기초를 다지는 시기로 활용한다.`
-      : `近い大きな波は${nearest.whenLabel}。それまでは仕込み(準備・基礎固め)の時期として使う。`;
+      : isEn ? `The nearest major movement is ${nearest.whenLabel}. Use the time before it to prepare and strengthen the foundation.` : `近い大きな波は${nearest.whenLabel}。それまでは仕込み(準備・基礎固め)の時期として使う。`;
   } else {
     framing = isKo
       ? `가장 가까운 전환 시기는 ${nearest.whenLabel}이다.`
-      : `直近の転機は${nearest.whenLabel}。`;
+      : isEn ? `The nearest turning-point window is ${nearest.whenLabel}.` : `直近の転機は${nearest.whenLabel}。`;
   }
 
   return {
@@ -210,24 +220,25 @@ export function computeTransitTiming(natalChart, nowIso, locale = "ja") {
 // プロンプトに差し込む日本語ブロックを組み立てる。
 export function formatTransitBlock(t, locale = "ja") {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   if (!t) {
     return isKo
       ? "(현재 행성 흐름을 계산할 수 없어 넓은 범위의 일반적인 시기 안내만 사용함)"
-      : "(トランジット計算不可のため、幅を持たせた一般的な時期指示にとどめる)";
+      : isEn ? "(Transit timing could not be calculated; use only broad timing guidance.)" : "(トランジット計算不可のため、幅を持たせた一般的な時期指示にとどめる)";
   }
   const lines = [
-    isKo ? `생성일: ${t.asOf}` : `生成日: ${t.asOf}`,
+    isKo ? `생성일: ${t.asOf}` : isEn ? `Generated on: ${t.asOf}` : `生成日: ${t.asOf}`,
     isKo
       ? `현재 흐름: 목성=${t.transitJupSign} / 토성=${t.transitSatSign}`
-      : `現在の運行: 木星=${t.transitJupSign} / 土星=${t.transitSatSign}`,
+      : isEn ? `Current transits: Jupiter=${t.transitJupSign} / Saturn=${t.transitSatSign}` : `現在の運行: 木星=${t.transitJupSign} / 土星=${t.transitSatSign}`,
     isKo
       ? `출생 배치: 태양=${t.natalSunSign} / 달=${t.natalMoonSign}`
-      : `本人: 太陽=${t.natalSunSign} / 月=${t.natalMoonSign}`,
-    isKo ? "가까운 전환 시기(가까운 순서):" : "近い転機(近い順):",
+      : isEn ? `Natal placements: Sun=${t.natalSunSign} / Moon=${t.natalMoonSign}` : `本人: 太陽=${t.natalSunSign} / 月=${t.natalMoonSign}`,
+    isKo ? "가까운 전환 시기(가까운 순서):" : isEn ? "Nearby transition windows:" : "近い転機(近い順):",
     ...t.events.map((e) => isKo
       ? `- [${e.nature}] ${e.desc} (${e.whenLabel})`
-      : `- 【${e.nature}】${e.desc}（${e.whenLabel}）`),
-    isKo ? `해석 기준: ${t.framing}` : `枠づけ: ${t.framing}`,
+      : isEn ? `- [${e.nature}] ${e.desc} (${e.whenLabel})` : `- 【${e.nature}】${e.desc}（${e.whenLabel}）`),
+    isKo ? `해석 기준: ${t.framing}` : isEn ? `Interpretive frame: ${t.framing}` : `枠づけ: ${t.framing}`,
   ];
   return lines.join("\n");
 }

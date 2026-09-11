@@ -4,7 +4,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "친구가 보는 나",
-  alternates: localizedAlternates("ko", "/tako", "/ko/tako"),
+  alternates: localizedAlternates("ko", "/tako", "/ko/tako", "/en/tako"),
   robots: { index: false, follow: false },
 };
 

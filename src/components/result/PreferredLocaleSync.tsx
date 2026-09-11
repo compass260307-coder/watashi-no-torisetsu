@@ -10,7 +10,7 @@ export function PreferredLocaleSync({
   locale,
 }: {
   ownerToken: string;
-  locale: ResultLocale;
+  locale: ResultLocale | "en";
 }) {
   useEffect(() => {
     const preference = `${ownerToken}:${locale}`;

@@ -7,6 +7,7 @@ import {
 } from "@/lib/feature-flags";
 import type { AccessEntitlements } from "@/lib/access-products";
 import type { ResultLocale } from "@/i18n/result";
+import { versionCharacterAssetPath } from "@/lib/character-image";
 
 // /me や /tako の診断をやり直さず、課金カードのコピーだけを確認するローカル専用プレビュー。
 // カードモード（旧カード/松竹梅）・言語（日本語/韓国語）・面（自己/友達/相性）をURLで
@@ -190,7 +191,7 @@ export default async function SelfReportPreviewPage({
             ))}
           </nav>
 
-          {isThreeCourse ? (
+          {locale === "ja" ? (
             <nav
               aria-label="購入状態切り替え"
               className="flex flex-wrap items-center justify-center gap-2"
@@ -208,7 +209,7 @@ export default async function SelfReportPreviewPage({
                 href={buildHref({ previewPurchase: "self_report" })}
                 active={previewPurchase === "self_report"}
               >
-                お試し購入済み
+                学生プラン購入済み
               </TabLink>
               <TabLink
                 href={buildHref({ previewPurchase: "full_access" })}
@@ -222,7 +223,9 @@ export default async function SelfReportPreviewPage({
       </div>
 
       <FullAccessPromoCard
-        imageSrc="/characters/scenes/unknown_work.webp"
+        imageSrc={versionCharacterAssetPath(
+          "/characters/scenes/unknown_work.webp",
+        )}
         imageAlt="自己分析レポートのイメージ"
         group="unknown"
         locale={locale}

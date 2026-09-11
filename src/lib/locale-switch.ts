@@ -1,49 +1,106 @@
 export type SiteLocale = "ja" | "ko";
+export type SwitchLocale = SiteLocale | "en";
 
-const LOCALIZED_PATHS: Record<string, Record<SiteLocale, string>> = {
-  "/": { ja: "/", ko: "/ko" },
-  "/ko": { ja: "/", ko: "/ko" },
-  "/about": { ja: "/about", ko: "/ko/about" },
-  "/ko/about": { ja: "/about", ko: "/ko/about" },
-  "/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis" },
-  "/ko/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis" },
-  "/terms": { ja: "/terms", ko: "/ko/terms" },
-  "/ko/terms": { ja: "/terms", ko: "/ko/terms" },
-  "/privacy": { ja: "/privacy", ko: "/ko/privacy" },
-  "/ko/privacy": { ja: "/privacy", ko: "/ko/privacy" },
-  "/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce" },
-  "/ko/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce" },
-  "/login": { ja: "/login", ko: "/ko/login" },
-  "/ko/login": { ja: "/login", ko: "/ko/login" },
-  "/login/confirm": { ja: "/login/confirm", ko: "/ko/login/confirm" },
-  "/ko/login/confirm": { ja: "/login/confirm", ko: "/ko/login/confirm" },
-  "/auth/error": { ja: "/auth/error", ko: "/ko/auth/error" },
-  "/ko/auth/error": { ja: "/auth/error", ko: "/ko/auth/error" },
-  "/result": { ja: "/result", ko: "/ko/result" },
-  "/ko/result": { ja: "/result", ko: "/ko/result" },
+const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
+  "/": { ja: "/", ko: "/ko", en: "/en" },
+  "/ko": { ja: "/", ko: "/ko", en: "/en" },
+  "/en": { ja: "/", ko: "/ko", en: "/en" },
+  "/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
+  "/ko/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
+  "/en/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
+  "/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis", en: "/en/diagnosis" },
+  "/ko/diagnosis": {
+    ja: "/diagnosis",
+    ko: "/ko/diagnosis",
+    en: "/en/diagnosis",
+  },
+  "/en/diagnosis": {
+    ja: "/diagnosis",
+    ko: "/ko/diagnosis",
+    en: "/en/diagnosis",
+  },
+  "/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
+  "/ko/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
+  "/en/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
+  "/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
+  "/ko/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
+  "/en/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
+  "/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
+  "/ko/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
+  "/en/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
+  "/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
+  "/ko/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
+  "/en/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
+  "/login/confirm": {
+    ja: "/login/confirm",
+    ko: "/ko/login/confirm",
+    en: "/en/login/confirm",
+  },
+  "/ko/login/confirm": {
+    ja: "/login/confirm",
+    ko: "/ko/login/confirm",
+    en: "/en/login/confirm",
+  },
+  "/en/login/confirm": {
+    ja: "/login/confirm",
+    ko: "/ko/login/confirm",
+    en: "/en/login/confirm",
+  },
+  "/auth/error": {
+    ja: "/auth/error",
+    ko: "/ko/auth/error",
+    en: "/en/auth/error",
+  },
+  "/ko/auth/error": {
+    ja: "/auth/error",
+    ko: "/ko/auth/error",
+    en: "/en/auth/error",
+  },
+  "/en/auth/error": {
+    ja: "/auth/error",
+    ko: "/ko/auth/error",
+    en: "/en/auth/error",
+  },
+  "/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
+  "/ko/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
+  "/en/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
   "/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
+    en: "/en/purchase-complete",
   },
   "/ko/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
+    en: "/en/purchase-complete",
   },
-  "/tako": { ja: "/tako", ko: "/ko/tako" },
-  "/ko/friend": { ja: "/tako", ko: "/ko/tako" },
-  "/ko/tako": { ja: "/tako", ko: "/ko/tako" },
-  "/aisho": { ja: "/aisho", ko: "/ko/aisho" },
-  "/ko/aisho": { ja: "/aisho", ko: "/ko/aisho" },
-  "/types": { ja: "/types", ko: "/ko/types" },
-  "/ko/types": { ja: "/types", ko: "/ko/types" },
+  "/en/purchase-complete": {
+    ja: "/purchase-complete",
+    ko: "/ko/purchase-complete",
+    en: "/en/purchase-complete",
+  },
+  "/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
+  "/ko/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
+  "/en/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
+  "/ko/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
+  "/en/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
+  "/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
+  "/ko/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
+  "/en/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
+  "/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
+  "/ko/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
+  "/en/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
   "/articles": { ja: "/articles", ko: "/ko/articles" },
   "/ko/articles": { ja: "/articles", ko: "/ko/articles" },
-  "/unmei": { ja: "/unmei", ko: "/ko/unmei" },
-  "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei" },
-  "/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
-  "/ko/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi" },
-  "/tarot": { ja: "/tarot", ko: "/ko/tarot" },
-  "/ko/tarot": { ja: "/tarot", ko: "/ko/tarot" },
+  "/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
+  "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
+  "/en/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
+  "/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
+  "/ko/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
+  "/en/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
+  "/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
+  "/ko/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
+  "/en/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
 };
 
 function normalizePathname(pathname: string): string {
@@ -61,23 +118,31 @@ function appendSearch(path: string, currentSearch: string): string {
   return `${path.slice(0, hashIndex)}${search}${path.slice(hashIndex)}`;
 }
 
+function localePrefix(locale: SwitchLocale): string {
+  return locale === "ja" ? "" : `/${locale}`;
+}
+
 function resultToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?me\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en)\/)?me\/([A-Za-z0-9_-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
 function takoToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?tako\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en)\/)?tako\/([A-Za-z0-9_-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
 function shareCode(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?share\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en)\/)?share\/([A-Za-z0-9_-]+)\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
 function previewTypeId(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?preview\/([a-z-]+__[NR])\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en)\/)?preview\/([a-z-]+__[NR])\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
@@ -87,7 +152,7 @@ function articleSlug(pathname: string): string | null {
 }
 
 function tarotMode(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?tarot\/(one|three|yes-no)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en)\/)?tarot\/(one|three|yes-no)\/?$/);
   return match?.[1] ?? null;
 }
 
@@ -97,10 +162,10 @@ function dynamicRouteValue(
 ): string | null {
   const pattern =
     route === "friend"
-      ? /^\/(?:ko\/)?friend\/([A-Za-z0-9_-]+)\/?$/
+      ? /^\/(?:(?:ko|en)\/)?friend\/([A-Za-z0-9_-]+)\/?$/
       : route === "evaluate/sent"
-        ? /^\/(?:ko\/)?evaluate\/sent\/([A-Za-z0-9_-]+)\/?$/
-        : /^\/(?:ko\/)?evaluate\/result\/([A-Za-z0-9_-]+)\/?$/;
+        ? /^\/(?:(?:ko|en)\/)?evaluate\/sent\/([A-Za-z0-9_-]+)\/?$/
+        : /^\/(?:(?:ko|en)\/)?evaluate\/result\/([A-Za-z0-9_-]+)\/?$/;
   return pathname.match(pattern)?.[1] ?? null;
 }
 
@@ -108,7 +173,7 @@ function friendIndividualRoute(
   pathname: string,
 ): { token: string; perceptionId: string } | null {
   const match = pathname.match(
-    /^\/(?:ko\/)?tako\/([A-Za-z0-9_-]+)\/friend\/([A-Za-z0-9_-]+)\/?$/,
+    /^\/(?:(?:ko|en)\/)?tako\/([A-Za-z0-9_-]+)\/friend\/([A-Za-z0-9_-]+)\/?$/,
   );
   if (!match) return null;
   return { token: match[1], perceptionId: match[2] };
@@ -120,7 +185,7 @@ function friendIndividualRoute(
  */
 export function localeSwitchPath(
   pathname: string,
-  targetLocale: SiteLocale,
+  targetLocale: SwitchLocale,
   storedOwnerToken: string | null = null,
   currentSearch = "",
 ): string {
@@ -129,7 +194,7 @@ export function localeSwitchPath(
   const token = resultToken(normalizedPathname);
   if (token) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
+      `${localePrefix(targetLocale)}/me/${encodeURIComponent(token)}`,
     );
   }
 
@@ -137,6 +202,9 @@ export function localeSwitchPath(
   if (friendIndividual) {
     const tokenPath = encodeURIComponent(friendIndividual.token);
     const perceptionPath = encodeURIComponent(friendIndividual.perceptionId);
+    if (targetLocale === "en") {
+      return finish(`/en/tako/${tokenPath}/friend/${perceptionPath}`);
+    }
     return finish(
       `${targetLocale === "ko" ? "/ko" : ""}/tako/${tokenPath}/friend/${perceptionPath}`,
     );
@@ -145,49 +213,48 @@ export function localeSwitchPath(
   const friendResultToken = takoToken(normalizedPathname);
   if (friendResultToken) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/tako/${encodeURIComponent(friendResultToken)}`,
+      `${localePrefix(targetLocale)}/tako/${encodeURIComponent(friendResultToken)}`,
     );
   }
 
   const characterShareCode = shareCode(normalizedPathname);
   if (characterShareCode) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/share/${encodeURIComponent(characterShareCode)}`,
+      `${localePrefix(targetLocale)}/share/${encodeURIComponent(characterShareCode)}`,
     );
   }
 
   const previewId = previewTypeId(normalizedPathname);
   if (previewId) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/preview/${encodeURIComponent(previewId)}`,
+      `${localePrefix(targetLocale)}/preview/${encodeURIComponent(previewId)}`,
     );
   }
 
   const localizedArticleSlug = articleSlug(normalizedPathname);
   if (localizedArticleSlug) {
+    if (targetLocale === "en") return finish("/en");
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/articles/${encodeURIComponent(localizedArticleSlug)}`,
+      `${localePrefix(targetLocale)}/articles/${encodeURIComponent(localizedArticleSlug)}`,
     );
   }
 
   const localizedTarotMode = tarotMode(normalizedPathname);
   if (localizedTarotMode) {
-    return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/tarot/${localizedTarotMode}`,
-    );
+    return finish(`${localePrefix(targetLocale)}/tarot/${localizedTarotMode}`);
   }
 
   const inviteCode = dynamicRouteValue(normalizedPathname, "friend");
   if (inviteCode) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/friend/${encodeURIComponent(inviteCode)}`,
+      `${localePrefix(targetLocale)}/friend/${encodeURIComponent(inviteCode)}`,
     );
   }
 
   const perceptionId = dynamicRouteValue(normalizedPathname, "evaluate/sent");
   if (perceptionId) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/evaluate/sent/${encodeURIComponent(perceptionId)}`,
+      `${localePrefix(targetLocale)}/evaluate/sent/${encodeURIComponent(perceptionId)}`,
     );
   }
 
@@ -197,7 +264,7 @@ export function localeSwitchPath(
   );
   if (resultPerceptionId) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/evaluate/result/${encodeURIComponent(resultPerceptionId)}`,
+      `${localePrefix(targetLocale)}/evaluate/result/${encodeURIComponent(resultPerceptionId)}`,
     );
   }
 
@@ -205,18 +272,22 @@ export function localeSwitchPath(
   if (
     localized &&
     normalizedPathname !== "/" &&
-    normalizedPathname !== "/ko"
+    normalizedPathname !== "/ko" &&
+    normalizedPathname !== "/en"
   ) {
-    return finish(localized[targetLocale]);
+    return finish(
+      localized[targetLocale] ??
+        (targetLocale === "en" ? "/en" : (localized[targetLocale] ?? "/")),
+    );
   }
 
   if (storedOwnerToken && /^[A-Za-z0-9_-]{8,128}$/.test(storedOwnerToken)) {
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/me/${encodeURIComponent(storedOwnerToken)}`,
+      `${localePrefix(targetLocale)}/me/${encodeURIComponent(storedOwnerToken)}`,
     );
   }
 
   return finish(
-    localized?.[targetLocale] ?? (targetLocale === "ko" ? "/ko" : "/"),
+    localized?.[targetLocale] ?? (localePrefix(targetLocale) || "/"),
   );
 }

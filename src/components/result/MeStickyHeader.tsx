@@ -33,7 +33,7 @@ import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk } from "@/lib/kakao-share";
 import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 
@@ -115,7 +115,7 @@ interface MeStickyHeaderProps {
   fullWidthBar?: boolean;
   /** ローカル確認用。シェアUIの計測イベントを送信しない。 */
   previewMode?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 // iOS 風のシェアグリフ (トレイ + 上矢印。16P のシェアボタン参考)。
@@ -312,6 +312,98 @@ export function MeStickyHeader({
   const defaultIsInvite = shareKind === "invite";
   const isInvite = activeShareKind === "invite";
   const isKo = locale === "ko";
+  const isEn = locale === "en";
+  const shareCopy = isEn
+    ? {
+        pickerLabel: "Choose what to share",
+        close: "Close",
+        pickerTitle: "Share your result",
+        more: "More",
+        personalityTitle: "Your personality type",
+        personalityDescription:
+          "Personality scores are not included. Recommended for sharing on social media.",
+        personalityCopy: "Copy personality type link",
+        personalityCopied: "Personality type link copied",
+        friendTitle: "Ask friends to take the friend test",
+        friendDescription:
+          "Share this invitation link with friends and family so they can tell you how they see you.",
+        friendCopy: "Copy friend test link",
+        friendCopied: "Friend test link copied",
+        resultTitle: "Share your result",
+        inviteTitle: "Ask a friend to take the test",
+        inviteDescription:
+          "Each friend who answers adds another result sheet.",
+        inviteLink: "Invitation link",
+        characterLink: "Character link",
+        copied: "Copied",
+        inviteLinkCopy: "Copy invitation link",
+        inviteLinkCopied: "Invitation link copied",
+        characterLinkCopy: "Copy character link",
+        characterLinkCopied: "Character link copied",
+        qrCode: "QR code",
+        qrCodeLabel: "Friend test invitation QR code",
+        qrCodeDescription: "Ask your friend to scan it with their phone",
+      }
+    : isKo
+      ? {
+          pickerLabel: "공유할 내용 선택",
+          close: "닫기",
+          pickerTitle: "무엇을 공유할까요?",
+          more: "기타",
+          personalityTitle: "나의 성격 유형",
+          personalityDescription:
+            "성격 점수는 포함되지 않아요. SNS 공유에 추천해요.",
+          personalityCopy: "성격 유형 링크 복사",
+          personalityCopied: "성격 유형 링크를 복사했어요",
+          friendTitle: "친구 진단 부탁하기",
+          friendDescription:
+            "친구나 가족에게 나에 대한 인상을 답해 달라고 부탁하는 링크예요.",
+          friendCopy: "친구 진단 링크 복사",
+          friendCopied: "친구 진단 링크를 복사했어요",
+          resultTitle: "결과를 공유해요",
+          inviteTitle: "친구에게 진단을 부탁해요",
+          inviteDescription: "답해 준 친구 수만큼 결과 시트가 늘어나요",
+          inviteLink: "초대 링크",
+          characterLink: "캐릭터 링크",
+          copied: "복사했어요",
+          inviteLinkCopy: "초대 링크 복사",
+          inviteLinkCopied: "초대 링크를 복사했어요",
+          characterLinkCopy: "캐릭터 링크 복사",
+          characterLinkCopied: "캐릭터 링크를 복사했어요",
+          qrCode: "QR 코드",
+          qrCodeLabel: "친구 진단 초대 QR 코드",
+          qrCodeDescription: "친구의 스마트폰으로 스캔해 주세요",
+        }
+      : {
+          pickerLabel: "共有する内容を選ぶ",
+          close: "閉じる",
+          pickerTitle: "結果をシェアしよう",
+          more: "その他",
+          personalityTitle: "あなたの性格タイプ",
+          personalityDescription:
+            "性格スコアは含まれません。SNSでのシェアにおすすめです。",
+          personalityCopy: "性格タイプのリンクをコピー",
+          personalityCopied: "性格タイプのリンクをコピーしました",
+          friendTitle: "友達診断をお願いする",
+          friendDescription:
+            "友達や家族に、あなたの印象を答えてもらうための招待リンクです。",
+          friendCopy: "友達診断リンクをコピー",
+          friendCopied: "友達診断リンクをコピーしました",
+          resultTitle: "結果をシェアしよう",
+          inviteTitle: "友達に診断してもらおう",
+          inviteDescription:
+            "答えてくれた友達のぶんだけ、結果シートが増えていくよ",
+          inviteLink: "招待リンク",
+          characterLink: "キャラクターのリンク",
+          copied: "コピーしました",
+          inviteLinkCopy: "招待リンクをコピー",
+          inviteLinkCopied: "招待リンクをコピーしました",
+          characterLinkCopy: "キャラクターのリンクをコピー",
+          characterLinkCopied: "キャラクターのリンクをコピーしました",
+          qrCode: "QRコード",
+          qrCodeLabel: "友達診断への招待QRコード",
+          qrCodeDescription: "友達のスマホでスキャンしてもらってね",
+        };
   const actionTone = group ? resultActionColorsForGroup(group) : null;
   const circleButtonStyle: CSSProperties | undefined = actionTone
     ? {
@@ -377,13 +469,17 @@ export function MeStickyHeader({
   // キャラクター共有文言。称号 + Big Five コード (例: 寄添者（OCeAN）) を差し込む。
   // 友達診断への回答依頼は含めず、純粋なキャラ共有として扱う。
   // invite モード (/tako) は LockedInviteShare と同じ招待文言に切り替える。
-  const title = code ? `${essence ?? ""}（${code}）` : (essence ?? "");
+  const title = code ? `${essence ?? ""} (${code})` : (essence ?? "");
   const inviteShareText =
-    locale === "ko"
+    isEn
+      ? "Tell me how you see me! You can answer the friend-perspective test in Alice Diagnosis."
+      : locale === "ko"
       ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
       : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
   const characterShareText =
-    locale === "ko"
+    isEn
+      ? `Alice Diagnosis says I’m “${title}”!\nSee my character 👇`
+      : locale === "ko"
       ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
   const shareText = isInvite ? inviteShareText : characterShareText;
@@ -548,10 +644,14 @@ export function MeStickyHeader({
                     defaultIsInvite
                       ? isKo
                         ? "친구에게 진단 부탁하기"
-                        : "友達に診断してもらう"
+                        : isEn
+                          ? "Invite a friend"
+                          : "友達に診断してもらう"
                       : isKo
                         ? "결과 공유"
-                        : "結果をシェア"
+                        : isEn
+                          ? "Share result"
+                          : "結果をシェア"
                   }
                   aria-haspopup="dialog"
                   aria-expanded={sharePickerOpen || shareOpen}
@@ -576,7 +676,7 @@ export function MeStickyHeader({
                 <Link
                   href={friendDiagnosisHref}
                   aria-label={
-                    isKo ? "친구 진단 페이지로 이동" : "友達診断ページへ移動"
+                    isEn ? "Open friend perspective" : isKo ? "친구 진단 페이지로 이동" : "友達診断ページへ移動"
                   }
                   className={circleButtonClass}
                   style={circleButtonStyle}
@@ -616,7 +716,7 @@ export function MeStickyHeader({
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  {isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                  {isEn ? "Invite a friend" : isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
                 </button>
               )}
 
@@ -670,13 +770,13 @@ export function MeStickyHeader({
                     </svg>
                   )}
                   {reportLabel ??
-                    (isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
+                    (isEn ? "Download complete report" : isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
                 </a>
               ))}
 
               {diagnosisCta && (
                 <a
-                  href={diagnosisCtaHref ?? (isKo ? "/ko/diagnosis" : "/diagnosis")}
+                  href={diagnosisCtaHref ?? (isEn ? "/en/diagnosis" : isKo ? "/ko/diagnosis" : "/diagnosis")}
                   data-share-diagnosis-tracked={
                     diagnosisCtaTrackSource &&
                     diagnosisCtaEvent === "share_to_diagnosis_clicked"
@@ -718,7 +818,7 @@ export function MeStickyHeader({
                     <path d="M8.5 11h7M8.5 15h5" />
                   </svg>
                   {diagnosisCtaLabel ??
-                    (isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
+                    (isEn ? "Take the free test" : isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
                 </a>
               )}
 
@@ -727,7 +827,7 @@ export function MeStickyHeader({
                   type="button"
                   aria-label={
                     unlockCtaLabel ??
-                    (isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
+                    (isEn ? "Unlock all results" : isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
                   }
                   onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
                   className="relative inline-flex min-h-10 w-[190px] min-w-[150px] shrink items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
@@ -769,7 +869,9 @@ export function MeStickyHeader({
                     </svg>
                   )}
                   {unlockCtaLabel ??
-                    (isKo ? (
+                    (isEn ? (
+                      "Unlock all results"
+                    ) : isKo ? (
                       "모든 결과 잠금 해제"
                     ) : (
                       <>
@@ -800,19 +902,19 @@ export function MeStickyHeader({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={isKo ? "공유할 내용 선택" : "共有する内容を選ぶ"}
+            aria-label={shareCopy.pickerLabel}
             className="fixed inset-0 z-[80] flex items-center justify-center px-4"
           >
             <button
               type="button"
-              aria-label={isKo ? "닫기" : "閉じる"}
+              aria-label={shareCopy.close}
               onClick={() => setSharePickerOpen(false)}
               className="absolute inset-0 cursor-default bg-[#2E2E5C]/45"
             />
             <div className="relative max-h-[calc(100dvh-32px)] w-full max-w-[560px] overflow-y-auto rounded-2xl bg-white px-5 pb-7 pt-6 shadow-[0_18px_50px_rgba(46,46,92,0.3)] md:px-7 md:pb-8">
               <button
                 type="button"
-                aria-label={isKo ? "닫기" : "閉じる"}
+                aria-label={shareCopy.close}
                 onClick={() => setSharePickerOpen(false)}
                 className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-[#2E2E5C]/45 transition-colors hover:bg-[#F4F4FE] hover:text-[#2E2E5C]"
               >
@@ -831,7 +933,7 @@ export function MeStickyHeader({
               </button>
 
               <h2 className="pr-8 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[24px]">
-                {isKo ? "무엇을 공유할까요?" : "結果をシェアしよう"}
+                {shareCopy.pickerTitle}
               </h2>
 
               {/* SNS アイコンは、スコアを含まない「性格タイプ」を直接共有する。 */}
@@ -941,7 +1043,7 @@ export function MeStickyHeader({
                       </svg>
                     </span>
                     <span className="text-[11px] font-bold text-[#2E2E5C]/70">
-                      {isKo ? "기타" : "その他"}
+                      {shareCopy.more}
                     </span>
                   </button>
                 )}
@@ -949,12 +1051,10 @@ export function MeStickyHeader({
 
               <div className="mt-6">
                 <h3 className="text-[16px] font-black text-[#2E2E5C] md:text-[18px]">
-                  {isKo ? "나의 성격 유형" : "あなたの性格タイプ"}
+                  {shareCopy.personalityTitle}
                 </h3>
                 <p className="mt-1 text-[12px] font-bold leading-relaxed text-[#77778F] md:text-[13px]">
-                  {isKo
-                    ? "성격 점수는 포함되지 않아요. SNS 공유에 추천해요."
-                    : "性格スコアは含まれません。SNSでのシェアにおすすめです。"}
+                  {shareCopy.personalityDescription}
                 </p>
                 <div className="mt-3 flex items-center gap-3 rounded-xl border-2 border-[#5B5BEF]/45 bg-[#FAFAFF] px-3 py-2.5 md:px-4">
                   <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80 md:text-[14px]">
@@ -964,12 +1064,8 @@ export function MeStickyHeader({
                     type="button"
                     aria-label={
                       pickerCopiedKind === "character"
-                        ? isKo
-                          ? "성격 유형 링크를 복사했어요"
-                          : "性格タイプのリンクをコピーしました"
-                        : isKo
-                          ? "성격 유형 링크 복사"
-                          : "性格タイプのリンクをコピー"
+                        ? shareCopy.personalityCopied
+                        : shareCopy.personalityCopy
                     }
                     onClick={() => handlePickerCopy("character", shareUrl)}
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
@@ -981,12 +1077,10 @@ export function MeStickyHeader({
 
               <div className="mt-6">
                 <h3 className="text-[16px] font-black text-[#2E2E5C] md:text-[18px]">
-                  {isKo ? "친구 진단 부탁하기" : "友達診断をお願いする"}
+                  {shareCopy.friendTitle}
                 </h3>
                 <p className="mt-1 text-[12px] font-bold leading-relaxed text-[#77778F] md:text-[13px]">
-                  {isKo
-                    ? "친구나 가족에게 나에 대한 인상을 답해 달라고 부탁하는 링크예요."
-                    : "友達や家族に、あなたの印象を答えてもらうための招待リンクです。"}
+                  {shareCopy.friendDescription}
                 </p>
                 <div className="mt-3 flex items-center gap-3 rounded-xl border-2 border-[#DADDEA] bg-white px-3 py-2.5 md:px-4">
                   <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80 md:text-[14px]">
@@ -996,12 +1090,8 @@ export function MeStickyHeader({
                     type="button"
                     aria-label={
                       pickerCopiedKind === "invite"
-                        ? isKo
-                          ? "친구 진단 링크를 복사했어요"
-                          : "友達診断リンクをコピーしました"
-                        : isKo
-                          ? "친구 진단 링크 복사"
-                          : "友達診断リンクをコピー"
+                        ? shareCopy.friendCopied
+                        : shareCopy.friendCopy
                     }
                     onClick={() => handlePickerCopy("invite", friendShareUrl)}
                     className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#5B5BEF]/35 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
@@ -1012,13 +1102,9 @@ export function MeStickyHeader({
               </div>
               <span className="sr-only" role="status" aria-live="polite">
                 {pickerCopiedKind === "character"
-                  ? isKo
-                    ? "성격 유형 링크를 복사했어요"
-                    : "性格タイプのリンクをコピーしました"
+                  ? shareCopy.personalityCopied
                   : pickerCopiedKind === "invite"
-                    ? isKo
-                      ? "친구 진단 링크를 복사했어요"
-                      : "友達診断リンクをコピーしました"
+                    ? shareCopy.friendCopied
                     : ""}
               </span>
             </div>
@@ -1035,21 +1121,13 @@ export function MeStickyHeader({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={
-              isInvite
-                ? isKo
-                  ? "친구에게 진단을 부탁해요"
-                  : "友達に診断してもらおう"
-                : isKo
-                  ? "결과를 공유해요"
-                  : "結果をシェアしよう"
-            }
+            aria-label={isInvite ? shareCopy.inviteTitle : shareCopy.resultTitle}
             className="fixed inset-0 z-[80] flex items-center justify-center px-6"
           >
             {/* 背景 (クリックで閉じる) */}
             <button
               type="button"
-              aria-label={isKo ? "닫기" : "閉じる"}
+              aria-label={shareCopy.close}
               onClick={() => setShareOpen(false)}
               className="absolute inset-0 cursor-default bg-[#2E2E5C]/45"
             />
@@ -1057,7 +1135,7 @@ export function MeStickyHeader({
               {/* 閉じる × */}
               <button
                 type="button"
-                aria-label={isKo ? "닫기" : "閉じる"}
+                aria-label={shareCopy.close}
                 onClick={() => setShareOpen(false)}
                 className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-[#2E2E5C]/45 transition-colors hover:bg-[#F4F4FE] hover:text-[#2E2E5C]"
               >
@@ -1076,19 +1154,11 @@ export function MeStickyHeader({
               </button>
 
               <p className="mb-5 text-[18px] font-black text-[#2E2E5C]">
-                {isInvite
-                  ? isKo
-                    ? "친구에게 진단을 부탁해요"
-                    : "友達に診断してもらおう"
-                  : isKo
-                    ? "결과를 공유해요"
-                    : "結果をシェアしよう"}
+                {isInvite ? shareCopy.inviteTitle : shareCopy.resultTitle}
               </p>
               {isInvite && (
                 <p className="-mt-3 mb-5 text-[12.5px] font-bold leading-[1.7] text-[#8A8AA3]">
-                  {isKo
-                    ? "답해 준 친구 수만큼 결과 시트가 늘어나요"
-                    : "答えてくれた友達のぶんだけ、結果シートが増えていくよ"}
+                  {shareCopy.inviteDescription}
                 </p>
               )}
 
@@ -1203,7 +1273,7 @@ export function MeStickyHeader({
                       </svg>
                     </span>
                     <span className="text-[11px] font-bold text-[#2E2E5C]/70">
-                      {isKo ? "기타" : "その他"}
+                      {shareCopy.more}
                     </span>
                   </button>
                 )}
@@ -1211,13 +1281,7 @@ export function MeStickyHeader({
 
               {/* リンクコピー (URL 表示 + コピー。コピー内容は共有文つき) */}
               <p className="mb-1.5 text-[12px] font-bold text-[#2E2E5C]/60">
-                {isInvite
-                  ? isKo
-                    ? "초대 링크"
-                    : "招待リンク"
-                  : isKo
-                    ? "캐릭터 링크"
-                    : "キャラクターのリンク"}
+                {isInvite ? shareCopy.inviteLink : shareCopy.characterLink}
               </p>
               <div className="flex items-center gap-2 rounded-xl border border-[#E3E6F5] bg-[#FAFAFF] px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#2E2E5C]/80">
@@ -1227,12 +1291,10 @@ export function MeStickyHeader({
                   type="button"
                   aria-label={
                     copied
-                      ? isKo ? "복사했어요" : "コピーしました"
+                      ? shareCopy.copied
                       : isInvite
-                        ? isKo
-                          ? "초대 링크 복사"
-                          : "招待リンクをコピー"
-                        : isKo ? "캐릭터 링크 복사" : "キャラクターのリンクをコピー"
+                        ? shareCopy.inviteLinkCopy
+                        : shareCopy.characterLinkCopy
                   }
                   onClick={handleCopy}
                   className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-[#5B5BEF]/30 bg-white text-[#5B5BEF] transition-colors hover:bg-[#F4F4FE]"
@@ -1272,12 +1334,8 @@ export function MeStickyHeader({
               <span className="sr-only" role="status" aria-live="polite">
                 {copied
                   ? isInvite
-                    ? isKo
-                      ? "초대 링크를 복사했어요"
-                      : "招待リンクをコピーしました"
-                    : isKo
-                      ? "캐릭터 링크를 복사했어요"
-                      : "キャラクターのリンクをコピーしました"
+                    ? shareCopy.inviteLinkCopied
+                    : shareCopy.characterLinkCopied
                   : ""}
               </span>
 
@@ -1287,16 +1345,12 @@ export function MeStickyHeader({
               {isInvite && (
                 <div className="mt-4">
                   <p className="mb-1.5 text-[12px] font-bold text-[#2E2E5C]/60">
-                    {isKo ? "QR 코드" : "QRコード"}
+                    {shareCopy.qrCode}
                   </p>
                   <div
                     className="w-full rounded-2xl border border-[#E3E6F5] bg-white p-4"
                     role="img"
-                    aria-label={
-                      isKo
-                        ? "친구 진단 초대 QR 코드"
-                        : "友達診断への招待QRコード"
-                    }
+                    aria-label={shareCopy.qrCodeLabel}
                   >
                     <div className="relative">
                       <QRCodeSVG
@@ -1322,9 +1376,7 @@ export function MeStickyHeader({
                     </div>
                   </div>
                   <p className="mt-2 text-center text-[12px] font-bold text-[#2E2E5C]/50">
-                    {isKo
-                      ? "친구의 스마트폰으로 스캔해 주세요"
-                      : "友達のスマホでスキャンしてもらってね"}
+                    {shareCopy.qrCodeDescription}
                   </p>
                 </div>
               )}

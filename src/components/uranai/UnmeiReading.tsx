@@ -21,7 +21,7 @@ import UnmeiChartDetails from "@/components/uranai/UnmeiChartDetails";
 import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 import type { Chart, MoonArc } from "@/lib/unmei/chart-view";
 import type { UnmeiIdentity } from "@/lib/unmei/prompt-inputs";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { UNMEI_READING_COPY } from "@/i18n/unmei";
 
 type UnmeiSection = { id?: string; title?: string; subline?: string; body?: string };
@@ -46,7 +46,7 @@ export default function UnmeiReading({
   characterSlug?: string | null; // 表紙のキャラクター星座アート選択 (例: "dolphin")
   identity?: UnmeiIdentity | null; // 表紙カードのキャラ名・キャッチ・グループ
   trackView?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const copy = UNMEI_READING_COPY[locale];
   const data = (reading ?? {}) as UnmeiReadingData;
@@ -155,9 +155,9 @@ export default function UnmeiReading({
           {identity?.catchphrase && (
             <Reveal delay={380}>
               <p className="mx-auto mt-9 max-w-[540px] text-[19px] font-black leading-[1.9] text-white md:text-[22px]">
-                {locale === "ko"
-                  ? `“${identity.catchphrase}”`
-                  : `「${identity.catchphrase}」`}
+                {locale === "ja"
+                  ? `「${identity.catchphrase}」`
+                  : `“${identity.catchphrase}”`}
               </p>
             </Reveal>
           )}

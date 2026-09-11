@@ -74,9 +74,13 @@ const HIDE_ON_PREFIXES = [
   "/evaluate/result/",
   "/ko/friend/",
   "/ko/evaluate/result/",
+  "/en/friend/",
+  "/en/evaluate/result/",
   "/share/",
   "/ko/share/",
+  "/en/share/",
   "/report/", // 自己診断PDF生成専用ページ
+  "/en/report/",
   "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
   "/line/", // LINE内ブラウザ専用ページ (Plus LP/決済着地)。固定CTAと衝突するためナビ非表示
   "/liff", // LIFF入口 (即リダイレクトのつなぎページ)。サイトchromeは出さない
@@ -194,7 +198,10 @@ export function BottomNav() {
     (process.env.NODE_ENV === "development" &&
       pathname.startsWith("/dev/") &&
       searchParams.get("locale") === "ko");
+  const isEnglish = pathname === "/en" || pathname.startsWith("/en/");
+  const localePrefix = isKorean ? "/ko" : isEnglish ? "/en" : "";
   const isKoreanResult = pathname.startsWith("/ko/me/");
+  const isEnglishResult = pathname.startsWith("/en/me/");
   const isTakoAttentionPreview =
     process.env.NODE_ENV === "development" &&
     pathname === "/dev/tako-attention-preview";
@@ -210,10 +217,10 @@ export function BottomNav() {
   // トリセツ(2)=/me/[token]、友達診断(4)=/tako/[token] を localStorage の
   // owner_token から解決。無ければトリセツ=/diagnosis、友達診断=/tako (未診断ガード)。
   const [torisetsuUrl, setTorisetsuUrl] = useState(() =>
-    isKorean ? "/ko/diagnosis" : "/diagnosis",
+    `${localePrefix}/diagnosis`,
   );
   const [takoUrl, setTakoUrl] = useState(() =>
-    isKorean ? "/ko/tako" : "/tako",
+    `${localePrefix}/tako`,
   );
   // 未診断 (token 無し) なら友達診断タブをロック表示にし、タップでポップアップを出す。
   //   初期値 true (=ロックなし) にすると診断済みユーザーに一瞬ロックが見えるのを避けられる
@@ -244,7 +251,6 @@ export function BottomNav() {
   //   は外部ストレージ→state 同期の正当なケース)。
   useEffect(() => {
     const evaluate = () => {
-      const koreanPath = isKorean;
       let token: string | null = null;
       let attentionPending = false;
       let unmeiPending = false;
@@ -253,7 +259,7 @@ export function BottomNav() {
         token = localStorage.getItem("torisetsu_owner_token");
         const pendingToken = localStorage.getItem(TAKO_ATTENTION_PENDING_KEY);
         const ownerTakoPath = token
-          ? `${koreanPath ? "/ko" : ""}/tako/${token}`
+          ? `${localePrefix}/tako/${token}`
           : null;
 
         if (token && pathname === ownerTakoPath) {
@@ -278,7 +284,7 @@ export function BottomNav() {
         const unmeiPendingToken = localStorage.getItem(
           UNMEI_ATTENTION_PENDING_KEY,
         );
-        const unmeiPath = `${koreanPath ? "/ko" : ""}/unmei`;
+        const unmeiPath = `${localePrefix}/unmei`;
         if (!pathname.startsWith(unmeiPath)) {
           unmeiPending = Boolean(
             token && unmeiPendingToken === token && !navHidden,
@@ -299,7 +305,8 @@ export function BottomNav() {
           if (
             token ||
             pathname.startsWith("/diagnosis") ||
-            pathname.startsWith("/ko/diagnosis")
+            pathname.startsWith("/ko/diagnosis") ||
+            pathname.startsWith("/en/diagnosis")
           ) {
             localStorage.removeItem(ME_ATTENTION_PENDING_KEY);
           } else {
@@ -311,15 +318,13 @@ export function BottomNav() {
       }
       setTorisetsuUrl(
         token
-          ? `${koreanPath ? "/ko" : ""}/me/${token}`
-          : `${koreanPath ? "/ko" : ""}/diagnosis`,
+          ? `${localePrefix}/me/${token}`
+          : `${localePrefix}/diagnosis`,
       );
       setTakoUrl(
         token
-          ? `${koreanPath ? "/ko" : ""}/tako/${token}`
-          : koreanPath
-            ? "/ko/tako"
-            : "/tako",
+          ? `${localePrefix}/tako/${token}`
+          : `${localePrefix}/tako`,
       );
       setHasToken(Boolean(token));
       setOwnerToken(token);
@@ -338,7 +343,7 @@ export function BottomNav() {
       window.removeEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
       window.removeEventListener(ME_ATTENTION_GRANTED_EVENT, evaluate);
     };
-  }, [isKorean, navHidden, pathname]);
+  }, [localePrefix, navHidden, pathname]);
 
   // 有料コースのサーバーガードから戻ったときも、ナビの鍵をタップした
   // ときと同じ課金カードを開く。再読み込みで開き続けないよう hash は即座に除去。
@@ -385,7 +390,12 @@ export function BottomNav() {
 
   const handleCoursePaywallExitAttempt = () => {
     if (lineExitOpen) return;
-    if (courseLockTarget && !isKorean && !isCoursePaywallPreview) {
+    if (
+      courseLockTarget &&
+      !isKorean &&
+      !isEnglish &&
+      !isCoursePaywallPreview
+    ) {
       setLineExitOpen(true);
       return;
     }
@@ -465,7 +475,66 @@ export function BottomNav() {
                 !hasTarotNavigationAccess,
             },
           ]
-        : [
+        : isEnglish
+          ? [
+              {
+                key: "me",
+                label: "My result",
+                href: torisetsuUrl,
+                active: isEnglishResult,
+                Icon: ClipboardIcon,
+              },
+              {
+                key: "friend",
+                label: "Friends",
+                href: isTakoAttentionPreview
+                  ? "/en/tako/preview?previewLocked=1&friends=0"
+                  : takoUrl,
+                active:
+                  pathname.startsWith("/en/friend") ||
+                  pathname.startsWith("/en/tako"),
+                Icon: UsersIcon,
+                locked:
+                  !hasToken &&
+                  !isTakoAttentionPreview &&
+                  !isPaidNavigationPreview,
+              },
+              {
+                key: "astrologer",
+                label: "Alice",
+                href: isAstrologerPreview
+                  ? "/dev/hoshiyomi-preview?locale=en"
+                  : "/en/hoshiyomi",
+                active:
+                  pathname.startsWith("/en/hoshiyomi") ||
+                  pathname === "/dev/hoshiyomi-preview",
+                Icon: AstrologerIcon,
+                locked:
+                  (!hasToken && !isPaidNavigationPreview) ||
+                  !hasAliceNavigationAccess,
+              },
+              {
+                key: "unmei",
+                label: "Destiny",
+                href: "/en/unmei",
+                active: pathname.startsWith("/en/unmei"),
+                Icon: NatalWheelIcon,
+                locked:
+                  (!hasToken && !isPaidNavigationPreview) ||
+                  !hasUnmeiNavigationAccess,
+              },
+              {
+                key: "tarot",
+                label: "Tarot",
+                href: "/en/tarot",
+                active: pathname.startsWith("/en/tarot"),
+                Icon: TarotCardsIcon,
+                locked:
+                  (!hasToken && !isPaidNavigationPreview) ||
+                  !hasTarotNavigationAccess,
+              },
+            ]
+          : [
             // タロットは未購入時も鍵付きで表示する。
             { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
@@ -528,6 +597,8 @@ export function BottomNav() {
       hasUnmeiNavigationAccess,
       isAstrologerPreview,
       isPaidNavigationPreview,
+      isEnglish,
+      isEnglishResult,
       isKorean,
       isKoreanResult,
       isTakoAttentionPreview,
@@ -545,7 +616,13 @@ export function BottomNav() {
   return (
     <nav
       data-bottom-nav
-      aria-label={isKorean ? "전역 내비게이션" : "グローバルナビゲーション"}
+      aria-label={
+        isKorean
+          ? "전역 내비게이션"
+          : isEnglish
+            ? "Global navigation"
+            : "グローバルナビゲーション"
+      }
       className="fixed inset-x-0 bottom-0 z-40 bg-white print:hidden"
       style={{
         borderTop: "0.5px solid rgba(42,58,92,0.14)",
@@ -580,7 +657,13 @@ export function BottomNav() {
                 key={it.key}
                 type="button"
                 disabled
-                aria-label={`${it.label}${isKorean ? " (준비 중)" : " (準備中)"}`}
+                aria-label={`${it.label}${
+                  isKorean
+                    ? " (준비 중)"
+                    : isEnglish
+                      ? " (Coming soon)"
+                      : " (準備中)"
+                }`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
                 style={{ color: INACTIVE }}
               >
@@ -613,7 +696,13 @@ export function BottomNav() {
               <button
                 key={it.key}
                 type="button"
-                aria-label={`${it.label}${isKorean ? " (잠김)" : "（ロック中）"}`}
+                aria-label={`${it.label}${
+                  isKorean
+                    ? " (잠김)"
+                    : isEnglish
+                      ? " (Locked)"
+                      : "（ロック中）"
+                }`}
                 onClick={() => {
                   if (
                     courseTarget === "unmei" ||
@@ -716,7 +805,9 @@ export function BottomNav() {
                 hasAttention
                   ? isKorean
                     ? `${it.label} (확인하지 않은 알림 있음)`
-                    : `${it.label}（未確認のお知らせあり）`
+                    : isEnglish
+                      ? `${it.label} (New notification)`
+                      : `${it.label}（未確認のお知らせあり）`
                   : undefined
               }
               onClick={handleAttentionClick}
@@ -748,13 +839,13 @@ export function BottomNav() {
       <TakoLockPopover
         isOpen={diagnosisLockTarget !== null}
         onClose={() => setDiagnosisLockTarget(null)}
-        locale={isKorean ? "ko" : "ja"}
+        locale={isKorean ? "ko" : isEnglish ? "en" : "ja"}
         target={diagnosisLockTarget ?? "friend"}
       />
       {courseLockTarget ? (
         <PaywallOverlay
           ownerToken={ownerToken ?? undefined}
-          locale={isKorean ? "ko" : "ja"}
+          locale={isKorean ? "ko" : isEnglish ? "en" : "ja"}
           returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
           ctaSource={
             coursePaywallSource ?? `nav_locked_${courseLockTarget}`
@@ -773,7 +864,9 @@ export function BottomNav() {
             courseLockTarget === "hoshiyomi"
               ? isKorean
                 ? undefined
-                : "Aliceを試す・本格相談を選ぶ"
+                : isEnglish
+                  ? "Try Alice or unlock the complete experience"
+                  : "Aliceを試す・本格相談を選ぶ"
               : undefined
           }
           previewMode={isCoursePaywallPreview}

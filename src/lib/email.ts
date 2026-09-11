@@ -9,6 +9,7 @@
 
 import { Resend } from "resend";
 import {
+  EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS,
@@ -22,10 +23,10 @@ import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
 const KO_SITE_NAME = "나의 사용설명서";
+const EN_SITE_NAME = "Alice Diagnosis";
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
-const SITE_URL =
-  resolveSiteUrl();
-type EmailLocale = "ja" | "ko";
+const SITE_URL = resolveSiteUrl();
+type EmailLocale = "ja" | "ko" | "en";
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -62,7 +63,8 @@ export async function sendMagicLinkEmail(
   args: SendMagicLinkArgs,
 ): Promise<void> {
   const locale = args.locale ?? "ja";
-  const siteName = locale === "ko" ? KO_SITE_NAME : SITE_NAME;
+  const siteName =
+    locale === "ko" ? KO_SITE_NAME : locale === "en" ? EN_SITE_NAME : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
@@ -74,7 +76,9 @@ export async function sendMagicLinkEmail(
       subject:
         locale === "ko"
           ? `${KO_SITE_NAME} - 로그인 링크`
-          : `${SITE_NAME} - ログインリンク`,
+          : locale === "en"
+            ? `${EN_SITE_NAME} – Your sign-in link`
+            : `${SITE_NAME} - ログインリンク`,
       html: renderHtml(args.magicLinkUrl, locale),
       text: renderText(args.magicLinkUrl, locale),
     });
@@ -93,6 +97,7 @@ interface SendFriendPerceptionArgs {
   ownerToken: string;
   perceptionType: string;
   perceptionModifierLabel?: string | null;
+  locale?: "ja" | "ko" | "en";
 }
 
 /**
@@ -105,33 +110,57 @@ interface SendFriendPerceptionArgs {
 export async function sendFriendPerceptionEmail(
   args: SendFriendPerceptionArgs,
 ): Promise<void> {
+  const locale = args.locale ?? "ja";
+  const siteName = locale === "en" ? EN_SITE_NAME : SITE_NAME;
   const resend = getResendClient();
-  const from = getFromAddress();
+  const from = getFromAddress(siteName);
   if (!resend || !from) return;
 
-  const ownerDisplay = (args.ownerName ?? "").trim() || "あなた";
-  const meUrl = `${SITE_URL}/me/${encodeURIComponent(args.ownerToken)}`;
-  const subject = `${args.perceiverName}さんから新しい印象が届きました`;
+  const ownerDisplay =
+    (args.ownerName ?? "").trim() || (locale === "en" ? "you" : "あなた");
+  const meUrl = `${SITE_URL}${locale === "en" ? "/en/tako" : "/me"}/${encodeURIComponent(args.ownerToken)}`;
+  const subject =
+    locale === "en"
+      ? `${args.perceiverName} shared a new perspective on you`
+      : `${args.perceiverName}さんから新しい印象が届きました`;
 
   try {
     const result = await resend.emails.send({
       from,
       to: args.to,
       subject,
-      html: renderFriendPerceptionHtml({
-        meUrl,
-        perceiverName: args.perceiverName,
-        ownerDisplay,
-        perceptionType: args.perceptionType,
-        perceptionModifierLabel: args.perceptionModifierLabel ?? null,
-      }),
-      text: renderFriendPerceptionText({
-        meUrl,
-        perceiverName: args.perceiverName,
-        ownerDisplay,
-        perceptionType: args.perceptionType,
-        perceptionModifierLabel: args.perceptionModifierLabel ?? null,
-      }),
+      html:
+        locale === "en"
+          ? renderFriendPerceptionHtmlEn({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            })
+          : renderFriendPerceptionHtml({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            }),
+      text:
+        locale === "en"
+          ? renderFriendPerceptionTextEn({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            })
+          : renderFriendPerceptionText({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            }),
     });
     if (result.error) {
       console.error(
@@ -154,7 +183,7 @@ interface SendTrisetsuCompleteArgs {
 /**
  * 統合トリセツ生成完了メール。
  *
-* 永続 URL は /me/[ownerToken] (Day 9 で旧 /result/[ownerToken] から統一)。
+ * 永続 URL は /me/[ownerToken] (Day 9 で旧 /result/[ownerToken] から統一)。
  * 送信失敗時は console.error で記録、void で握りつぶし (Webhook を壊さない)。
  */
 export async function sendTrisetsuCompleteEmail(
@@ -185,7 +214,10 @@ export async function sendTrisetsuCompleteEmail(
       }),
     });
     if (result.error) {
-      console.error("[email] sendTrisetsuCompleteEmail Resend error:", result.error);
+      console.error(
+        "[email] sendTrisetsuCompleteEmail Resend error:",
+        result.error,
+      );
     }
   } catch (err) {
     console.error("[email] sendTrisetsuCompleteEmail exception:", err);
@@ -224,17 +256,22 @@ export async function sendDetailedReportEmail(
 ): Promise<void> {
   const locale = args.locale ?? "ja";
   const product = args.product ?? "full_access";
-  const siteName = locale === "ko" ? KO_SITE_NAME : SITE_NAME;
+  const siteName =
+    locale === "ko" ? KO_SITE_NAME : locale === "en" ? EN_SITE_NAME : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
 
   const greetingName = (args.ownerName ?? "").trim();
   const token = encodeURIComponent(args.ownerToken);
-  const meUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/me/${token}`;
-  const pdfUrl = `${SITE_URL}/report/${token}/pdf${locale === "ko" ? "?locale=ko" : ""}`;
-  const unmeiUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/unmei`;
-  const hoshiyomiUrl = `${SITE_URL}${locale === "ko" ? "/ko" : ""}/hoshiyomi`;
+  const prefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
+  const meUrl = `${SITE_URL}${prefix}/me/${token}`;
+  const pdfUrl =
+    locale === "en"
+      ? `${SITE_URL}/en/report/${token}/pdf`
+      : `${SITE_URL}/report/${token}/pdf${locale === "ko" ? "?locale=ko" : ""}`;
+  const unmeiUrl = `${SITE_URL}${prefix}/unmei`;
+  const hoshiyomiUrl = `${SITE_URL}${prefix}/hoshiyomi`;
   const subject =
     locale === "ko"
       ? product === "self_report"
@@ -242,7 +279,9 @@ export async function sendDetailedReportEmail(
         : product === "premium_bundle"
           ? `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
           : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
-      : product === "self_report"
+      : locale === "en"
+        ? `Your ${EN_SITE_NAME} Complete Edition is ready`
+        : product === "self_report"
         ? `【${SITE_NAME}】学生向けプランを解放しました`
         : product === "premium_bundle"
           ? `【${SITE_NAME}】全部入りを解放しました`
@@ -269,7 +308,22 @@ export async function sendDetailedReportEmail(
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
             })
-          : renderDetailedReportHtml({
+          : locale === "en"
+            ? renderDetailedReportHtmlEn({
+                pdfUrl,
+                meUrl,
+                unmeiUrl,
+                hoshiyomiUrl,
+                greetingName,
+                product,
+                destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+                hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+                hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+                tarotFeaturesIncluded: args.tarotFeaturesIncluded,
+                friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchaseAmountMinor: args.purchaseAmountMinor,
+              })
+            : renderDetailedReportHtml({
               pdfUrl,
               meUrl,
               unmeiUrl,
@@ -299,7 +353,22 @@ export async function sendDetailedReportEmail(
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             })
-          : renderDetailedReportText({
+          : locale === "en"
+            ? renderDetailedReportTextEn({
+                pdfUrl,
+                meUrl,
+                unmeiUrl,
+                hoshiyomiUrl,
+                greetingName,
+                product,
+                destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+                hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+                hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+                tarotFeaturesIncluded: args.tarotFeaturesIncluded,
+                friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchaseAmountMinor: args.purchaseAmountMinor,
+              })
+            : renderDetailedReportText({
               pdfUrl,
               meUrl,
               unmeiUrl,
@@ -314,7 +383,10 @@ export async function sendDetailedReportEmail(
             }),
     });
     if (result.error) {
-      console.error("[email] sendDetailedReportEmail Resend error:", result.error);
+      console.error(
+        "[email] sendDetailedReportEmail Resend error:",
+        result.error,
+      );
     }
   } catch (err) {
     console.error("[email] sendDetailedReportEmail exception:", err);
@@ -327,6 +399,7 @@ export async function sendDetailedReportEmail(
 
 function renderHtml(url: string, locale: EmailLocale): string {
   if (locale === "ko") return renderMagicLinkHtmlKo(url);
+  if (locale === "en") return renderMagicLinkHtmlEn(url);
   // インライン CSS のみ (Gmail / iOS Mail / Outlook の互換性確保)。
   // serif フォント指定で和の質感、十分な余白で読みやすさ。
   return `<!DOCTYPE html>
@@ -394,6 +467,22 @@ function renderText(url: string, locale: EmailLocale): string {
       KO_SITE_NAME,
     ].join("\n");
   }
+  if (locale === "en") {
+    return [
+      `${EN_SITE_NAME} – Your sign-in link`,
+      "",
+      `Open the link below to access your ${EN_SITE_NAME} data.`,
+      "",
+      url,
+      "",
+      "This link expires in one hour and can only be used once.",
+      "",
+      "If you did not request this email, you can safely ignore it.",
+      "",
+      "--",
+      EN_SITE_NAME,
+    ].join("\n");
+  }
   return [
     `${SITE_NAME} - ログインリンク`,
     "",
@@ -409,6 +498,29 @@ function renderText(url: string, locale: EmailLocale): string {
     `--`,
     SITE_NAME,
   ].join("\n");
+}
+
+function renderMagicLinkHtmlEn(url: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${EN_SITE_NAME} – Your sign-in link</title></head>
+  <body style="margin:0;padding:0;background:#F8F8FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2E2E5C;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8F8FC;padding:40px 16px;"><tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E3E6F5;border-radius:16px;padding:40px 32px;"><tr><td>
+        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE DIAGNOSIS</p>
+        <h1 style="margin:0 0 24px;font-size:24px;font-weight:800;line-height:1.4;text-align:center;color:#2E2E5C;">Your sign-in link is ready</h1>
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#51516E;">Use the button below to access your personality results and saved data.</p>
+        <p style="margin:0 0 30px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 34px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Sign in</a></p>
+        <p style="margin:0 0 18px;font-size:13px;line-height:1.75;color:#727287;">This link expires in <strong>one hour</strong> and can only be used once.</p>
+        <p style="margin:0 0 10px;font-size:13px;line-height:1.75;color:#727287;">If the button does not work, copy and paste this URL into your browser:</p>
+        <p style="margin:0 0 28px;font-size:12px;line-height:1.65;color:#8A8AA3;word-break:break-all;">${url}</p>
+        <hr style="border:none;border-top:1px solid #E3E6F5;margin:28px 0;" />
+        <p style="margin:0;font-size:12px;line-height:1.75;color:#8A8AA3;">If you did not request this email, you can safely ignore it.</p>
+      </td></tr></table>
+      <p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${EN_SITE_NAME}</p>
+    </td></tr></table>
+  </body>
+</html>`;
 }
 
 function renderMagicLinkHtmlKo(url: string): string {
@@ -555,7 +667,9 @@ interface DetailedReportTemplateArgs {
 }
 
 // export はテンプレプレビュー (scripts/preview-report-email.ts) 用
-export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): string {
+export function renderDetailedReportHtml(
+  args: DetailedReportTemplateArgs,
+): string {
   const greeting = args.greetingName
     ? `${escapeHtml(args.greetingName)}さん、こんにちは。`
     : "こんにちは。";
@@ -604,14 +718,18 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">16ページ以上の自己分析PDF</td>
                         </tr>
-                        ${hasFriendFeatures ? `<tr>
+                        ${
+                          hasFriendFeatures
+                            ? `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">2人目以降の友達診断結果もすべて解放</td>
                         </tr>
                         <tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">何度でも作り直せる友達診断分析PDF</td>
-                        </tr>` : ""}`
+                        </tr>`
+                            : ""
+                        }`
     : `<tr>
                           <td valign="top" style="width:22px;padding:3px 0 9px;color:#5B5BEF;font-size:15px;font-weight:800;">&#10003;</td>
                           <td style="padding:0 0 9px;font-size:15px;line-height:1.75;color:#5A5A6E;">キャリア・成長の深掘り</td>
@@ -688,14 +806,18 @@ export function renderDetailedReportHtml(args: DetailedReportTemplateArgs): stri
                   「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。${showLineInvitation ? " また、LINEでAliceとのおしゃべりや毎日の占いを楽しめる「Alice Plus」も体験できます。" : ""}
                 </p>
 
-                ${showLineInvitation ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;background:#F0FBF4;border:1px solid #CDEFD9;border-radius:14px;">
+                ${
+                  showLineInvitation
+                    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;background:#F0FBF4;border:1px solid #CDEFD9;border-radius:14px;">
                   <tr>
                     <td style="padding:26px 24px;text-align:center;">
                       <h2 style="margin:0 0 20px;font-size:20px;font-weight:800;line-height:1.55;color:#2E2E5C;">LINEでAlice Plusを体験しよう</h2>
                       <a class="cta-link" href="${LINE_ADD_FRIEND_URL}" style="display:block;padding:15px 18px;background:#06C755;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #04933F;">LINEでAlice Plusを体験する&nbsp; &#8594;</a>
                     </td>
                   </tr>
-                </table>` : ""}
+                </table>`
+                    : ""
+                }
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 32px;">
                   <tr>
@@ -847,8 +969,7 @@ export function renderDetailedReportHtmlKo(
     : "안녕하세요.";
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
-  const hasDestinyFeatures =
-    args.destinyFeaturesIncluded ?? isPremiumBundle;
+  const hasDestinyFeatures = args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hoshiyomiChatCredits =
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
@@ -923,16 +1044,13 @@ export function renderDetailedReportHtmlKo(
 </html>`;
 }
 
-function renderDetailedReportTextKo(
-  args: DetailedReportTemplateArgs,
-): string {
+function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
   const greeting = args.greetingName
     ? `${args.greetingName}님, 안녕하세요.`
     : "안녕하세요.";
   const isSelfReport = args.product === "self_report";
   const isPremiumBundle = args.product === "premium_bundle";
-  const hasDestinyFeatures =
-    args.destinyFeaturesIncluded ?? isPremiumBundle;
+  const hasDestinyFeatures = args.destinyFeaturesIncluded ?? isPremiumBundle;
   const hasHoshiyomiChat = args.hoshiyomiChatIncluded ?? hasDestinyFeatures;
   const hoshiyomiChatCredits =
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
@@ -1020,6 +1138,91 @@ function renderDetailedReportTextKo(
   ].join("\n");
 }
 
+function renderDetailedReportHtmlEn(
+  args: DetailedReportTemplateArgs,
+): string {
+  const name = args.greetingName
+    ? `Hi ${escapeHtml(args.greetingName)},`
+    : "Hi,";
+  const credits =
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const price = args.purchaseAmountMinor ?? EN_FULL_ACCESS_PRICE_USD_CENTS;
+  const features = [
+    "Your complete personality report",
+    "A downloadable personal PDF",
+    "Friend perspectives and compatibility insights",
+    ...(args.destinyFeaturesIncluded ? ["Your personal Destiny Blueprint"] : []),
+    ...(args.hoshiyomiChatIncluded
+      ? [`${credits} answers from your personal AI astrologer Alice`]
+      : []),
+    ...(args.tarotFeaturesIncluded ? ["All three Alice tarot readings"] : []),
+  ];
+  const featureRows = features
+    .map(
+      (feature) =>
+        `<li style="margin:0 0 10px;line-height:1.65;color:#51516E;">${escapeHtml(feature)}</li>`,
+    )
+    .join("");
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Your Complete Edition is ready</title></head>
+<body style="margin:0;padding:0;background:#F3F3F7;font-family:Arial,sans-serif;color:#2E2E5C;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:32px 16px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background:#FFFFFF;border:1px solid #E4E4F0;border-radius:18px;"><tr><td style="padding:44px 38px;">
+<p style="margin:0 0 26px;text-align:center;font-size:13px;font-weight:800;letter-spacing:.14em;color:#5B5BEF;">ALICE DIAGNOSIS</p>
+<h1 style="margin:0 0 24px;font-size:30px;line-height:1.3;text-align:center;">Your Complete Edition is ready</h1>
+<p style="margin:0 0 14px;font-size:16px;line-height:1.8;">${name}</p>
+<p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Thank you for your purchase. Your one-time payment has unlocked the full experience.</p>
+<p style="margin:0 0 14px;text-align:center;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Open my Complete Edition</a></p>
+<p style="margin:0 0 30px;text-align:center;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Download my PDF</a></p>
+<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Purchase details</h2><p style="margin:0 0 16px;color:#51516E;">Complete Edition · $${(price / 100).toFixed(2)} · tax included · one-time purchase</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
+<p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#77778D;">If you purchased before finishing the personality test, complete it first and then reopen these links.</p>
+<p style="margin:0;font-size:14px;line-height:1.75;color:#51516E;">For help with access, your PDF, or a refund, contact <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;">support@watashi-torisetsu.com</a>.</p>
+</td></tr></table><p style="margin:20px 0 0;font-size:12px;color:#8A8AA3;">&copy; ${EN_SITE_NAME}</p>
+</td></tr></table></body></html>`;
+}
+
+function renderDetailedReportTextEn(
+  args: DetailedReportTemplateArgs,
+): string {
+  const credits =
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const price = args.purchaseAmountMinor ?? EN_FULL_ACCESS_PRICE_USD_CENTS;
+  const features = [
+    "Complete personality report",
+    "Downloadable personal PDF",
+    "Friend perspectives and compatibility insights",
+    ...(args.destinyFeaturesIncluded ? ["Personal Destiny Blueprint"] : []),
+    ...(args.hoshiyomiChatIncluded
+      ? [`${credits} answers from your personal AI astrologer Alice`]
+      : []),
+    ...(args.tarotFeaturesIncluded ? ["All three Alice tarot readings"] : []),
+  ];
+  return [
+    args.greetingName ? `Hi ${args.greetingName},` : "Hi,",
+    "",
+    "Thank you for your purchase. Your Complete Edition is ready.",
+    "",
+    "Open your Complete Edition:",
+    args.meUrl,
+    "",
+    "Download your PDF:",
+    args.pdfUrl,
+    ...(args.destinyFeaturesIncluded && args.unmeiUrl
+      ? ["", "Create your Destiny Blueprint:", args.unmeiUrl]
+      : []),
+    ...(args.hoshiyomiChatIncluded && args.hoshiyomiUrl
+      ? ["", "Talk with Alice:", args.hoshiyomiUrl]
+      : []),
+    "",
+    `Complete Edition · $${(price / 100).toFixed(2)} · tax included · one-time purchase`,
+    ...features.map((feature) => `- ${feature}`),
+    "",
+    "For help with access, your PDF, or a refund, contact support@watashi-torisetsu.com.",
+    "",
+    "Alice Diagnosis team",
+  ].join("\n");
+}
+
 // =========================================================================
 // 友達評価到着通知メールのテンプレ
 // =========================================================================
@@ -1030,6 +1233,41 @@ interface FriendPerceptionTemplateArgs {
   ownerDisplay: string;
   perceptionType: string;
   perceptionModifierLabel: string | null;
+}
+
+function renderFriendPerceptionHtmlEn(
+  args: FriendPerceptionTemplateArgs,
+): string {
+  const perceiverName = escapeHtml(args.perceiverName);
+  const ownerDisplay = escapeHtml(args.ownerDisplay);
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>A new friend perspective arrived</title></head>
+<body style="margin:0;padding:0;background:#F8F7FF;font-family:Arial,sans-serif;color:#2E2E5C;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E5E3F7;border-radius:18px;padding:40px 32px;"><tr><td>
+      <p style="margin:0 0 18px;font-size:11px;font-weight:700;letter-spacing:.18em;color:#5B5BEF;text-align:center;">ALICE DIAGNOSIS</p>
+      <h1 style="margin:0 0 22px;font-size:25px;line-height:1.35;text-align:center;">A new perspective arrived</h1>
+      <p style="margin:0 0 28px;font-size:16px;line-height:1.7;">${perceiverName} has shared how they see ${ownerDisplay}. Open your private report to compare their perspective with your self-view.</p>
+      <p style="margin:0 0 28px;text-align:center;"><a href="${args.meUrl}" style="display:inline-block;padding:14px 32px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">View friend perspective</a></p>
+      <p style="margin:0;font-size:12px;line-height:1.6;color:#77778D;word-break:break-all;">${args.meUrl}</p>
+    </td></tr></table><p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${EN_SITE_NAME}</p>
+  </td></tr></table>
+</body></html>`;
+}
+
+function renderFriendPerceptionTextEn(
+  args: FriendPerceptionTemplateArgs,
+): string {
+  return [
+    `${args.perceiverName} shared a new perspective on you`,
+    "",
+    `${args.perceiverName} has shared how they see ${args.ownerDisplay}.`,
+    "Open your private report to compare their perspective with your self-view:",
+    args.meUrl,
+    "",
+    "--",
+    EN_SITE_NAME,
+  ].join("\n");
 }
 
 function renderFriendPerceptionHtml(

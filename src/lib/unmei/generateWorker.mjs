@@ -30,6 +30,7 @@ const HEDGE_TERMS = {
     "아마",
     "추측됩니다",
   ],
+  en: ["might", "maybe", "perhaps", "possibly", "probably"],
 };
 // reading (hitokoto + 各 section の subline/body) に推量表現が含まれるか。検出語を返す。
 function detectHedges(reading, locale) {
@@ -38,7 +39,7 @@ function detectHedges(reading, locale) {
     parts.push(s?.subline || "", s?.body || "");
   }
   const text = parts.join("\n");
-  const terms = locale === "ko" ? HEDGE_TERMS.ko : HEDGE_TERMS.ja;
+  const terms = locale === "ko" ? HEDGE_TERMS.ko : locale === "en" ? HEDGE_TERMS.en : HEDGE_TERMS.ja;
   return terms.filter((t) => text.includes(t));
 }
 
@@ -46,6 +47,10 @@ function repairInstruction(locale, problems) {
   if (locale === "ko") {
     return `\n\n이전 결과에 다음 문제가 있었습니다: ${problems.join(", ")}\n` +
       "네 개 장의 id와 한국어 제목을 정확히 지키고, 사용자에게 보이는 모든 문장을 한자나 일본어 없이 자연스러운 한국어 존댓말로 다시 작성해 주세요. 추측 표현도 쓰지 마세요.";
+  }
+  if (locale === "en") {
+    return `\n\nThe previous result had these problems: ${problems.join(", ")}\n` +
+      "Rewrite it as JSON only, keep the four required English section titles and ids exactly, and remove uncertain language.";
   }
   return `\n\n前回の出力に次の問題がありました: ${problems.join(", ")}\n` +
     "4章のidと日本語タイトルを正確に守り、推量表現を使わず、JSONだけを再出力してください。";
@@ -197,8 +202,8 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       .maybeSingle();
 
     // 3a. 有効な鑑定が既にあれば再生成しない(キャッシュ規律・API再呼び出し禁止)
-    const locale = opts.locale === "ko" ? "ko" : "ja";
-    const existingLocale = existing?.reading?.locale === "ko" ? "ko" : "ja";
+    const locale = opts.locale === "ko" ? "ko" : opts.locale === "en" ? "en" : "ja";
+    const existingLocale = existing?.reading?.locale === "ko" ? "ko" : existing?.reading?.locale === "en" ? "en" : "ja";
     if (isReadingReady(existing) && existingLocale === locale) {
       const localeErrors = validateReadingLocale(existing.reading, locale);
       if (localeErrors.length === 0) return { ok: true, cached: true };

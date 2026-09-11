@@ -64,7 +64,7 @@ import {
   type ServerPurchaseConversionInput,
 } from "@/lib/server-purchase-conversions";
 import { pushLineMessages, quickReplies } from "@/lib/line";
-import { lineFreeDailyLimit } from "@/lib/line-alice";
+import { lineFreeTotalLimit } from "@/lib/line-alice";
 import {
   buildLinePlusCheckoutUrl,
   hasActiveLinePlus,
@@ -80,6 +80,16 @@ import { recordLineEvent } from "@/lib/line-events";
 
 function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
+}
+
+type PurchaseLocale = "ja" | "ko" | "en";
+
+function purchaseLocale(session: Stripe.Checkout.Session): PurchaseLocale {
+  return session.metadata?.locale === "ko"
+    ? "ko"
+    : session.metadata?.locale === "en"
+      ? "en"
+      : "ja";
 }
 
 export const runtime = "nodejs";
@@ -372,7 +382,8 @@ async function persistPurchaseLocale(
   session: Stripe.Checkout.Session,
   userId: string | null,
 ): Promise<void> {
-  if (session.metadata?.locale !== "ko") return;
+  const locale = purchaseLocale(session);
+  if (locale === "ja") return;
   const email =
     normalizeEmail(session.customer_details?.email) ??
     normalizeEmail(session.customer_email) ??
@@ -381,13 +392,13 @@ async function persistPurchaseLocale(
     if (email) {
       await supabaseAdmin
         .from("users")
-        .update({ preferred_locale: "ko" })
+        .update({ preferred_locale: locale })
         .eq("email", email);
     }
     if (userId) {
       await supabaseAdmin
         .from("users")
-        .update({ preferred_locale: "ko" })
+        .update({ preferred_locale: locale })
         .eq("id", userId);
     }
   } catch (err) {
@@ -592,7 +603,7 @@ async function recordFullAccessPayment(
       aisho_access_policy:
         session.metadata?.aisho_access_policy ?? "legacy_included",
       source: normalizePaywallSource(session.metadata?.paywall_source),
-      locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      locale: purchaseLocale(session),
       paywall_version: session.metadata?.paywall_version ?? "legacy",
       placement: session.metadata?.paywall_placement ?? "unknown",
       return_to: session.metadata?.return_to ?? "me",
@@ -653,7 +664,7 @@ async function recordSelfReportPayment(
         hoshiyomi_chat_policy:
           session.metadata?.hoshiyomi_chat_policy ?? "none",
         source: normalizePaywallSource(session.metadata?.paywall_source),
-        locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        locale: purchaseLocale(session),
         paywall_version: session.metadata?.paywall_version ?? "legacy",
         placement: session.metadata?.paywall_placement ?? "unknown",
         return_to: session.metadata?.return_to ?? "me",
@@ -695,7 +706,7 @@ async function recordUnmeiPayment(
       updated_at: paidAt,
       metadata: {
         product,
-        locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+        locale: purchaseLocale(session),
         source: normalizePaywallSource(session.metadata?.paywall_source),
         paywall_version: session.metadata?.paywall_version ?? "legacy",
         placement: session.metadata?.paywall_placement ?? "unknown",
@@ -833,7 +844,7 @@ async function sendDetailedReportEmailBestEffort(
         "[webhook/stripe] detailed report email deferred until diagnosis",
         {
           session_id: session.id,
-          locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+          locale: purchaseLocale(session),
         },
       );
       return;
@@ -843,7 +854,7 @@ async function sendDetailedReportEmailBestEffort(
       to,
       ownerToken: row.owner_token,
       ownerName: row.display_name,
-      locale: session.metadata?.locale === "ko" ? "ko" : "ja",
+      locale: purchaseLocale(session),
       product:
         session.metadata?.product === "self_report"
           ? "self_report"
@@ -942,7 +953,7 @@ async function recordPurchaseCompletedEvent(
   userId: string,
   paidAt: string,
 ): Promise<void> {
-  const locale = session.metadata?.locale === "ko" ? "ko" : "ja";
+  const locale = purchaseLocale(session);
   const product =
     session.metadata?.product ??
     session.metadata?.payment_kind ??
@@ -1608,7 +1619,7 @@ async function syncLinePlusSubscription(
               ].join("\n")
             : [
                 "Alice Plusのご利用、ありがとうございました。",
-                `これからも1日${lineFreeDailyLimit()}通の無料枠と今日の占いで、変わらずお話しできますからね。`,
+                `無料のおしゃべりは全期間で${lineFreeTotalLimit()}通まで。「今日の占い」は、これからも毎日楽しめますからね。`,
                 "また無料枠を気にせずたっぷり話したくなったら、いつでも「プラン」って送ってください。",
               ].join("\n"),
           quickReply: quickReplies("今日の占い", "プラン"),
@@ -1663,7 +1674,7 @@ async function handleCheckoutPaid(
     after(() =>
       triggerUnmeiGeneration(
         linkedUserId,
-        session.metadata?.locale === "ko" ? "ko" : "ja",
+        purchaseLocale(session),
       ),
     );
     await sendDetailedReportEmailBestEffort(session, userId);
@@ -1711,7 +1722,7 @@ async function handleCheckoutPaid(
     after(() =>
       triggerUnmeiGeneration(
         userId,
-        session.metadata?.locale === "ko" ? "ko" : "ja",
+        purchaseLocale(session),
       ),
     );
     await sendDetailedReportEmailBestEffort(session, userId);
@@ -1753,7 +1764,7 @@ async function handleCheckoutPaid(
     after(() =>
       triggerUnmeiGeneration(
         paymentUserId,
-        session.metadata?.locale === "ko" ? "ko" : "ja",
+        purchaseLocale(session),
       ),
     );
     await sendDetailedReportEmailBestEffort(session, paymentUserId);
@@ -1808,7 +1819,7 @@ async function handleCheckoutPaid(
       after(() =>
         triggerUnmeiGeneration(
           paymentUserId,
-          session.metadata?.locale === "ko" ? "ko" : "ja",
+          purchaseLocale(session),
         ),
       );
     }
@@ -2033,7 +2044,7 @@ async function grantUnmeiToUserId(userId: string): Promise<void> {
 //     再生成をトリガーし、60 秒でタイムアウト表示に切り替えるため無限ローディングにならない。
 async function triggerUnmeiGeneration(
   userId: string,
-  locale: "ja" | "ko" = "ja",
+  locale: PurchaseLocale = "ja",
 ): Promise<void> {
   try {
     // Big Five スコア + 32タイプ称号を解決してプロンプト入力に渡す。

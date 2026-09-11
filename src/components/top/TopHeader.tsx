@@ -48,10 +48,13 @@ type HeaderContent = {
   homeHref: string;
   nav: NavItem[];
   preparing: string;
-  englishPreparing: string;
   currentLangLabel: string;
-  otherLangMenuLabel: string;
-  otherLangDrawerLabel: string;
+  languageOptions: {
+    locale: SiteLocale | "en";
+    menuLabel: string;
+    drawerLabel: string;
+    flag: "ja" | "ko" | "en";
+  }[];
   ariaLangSwitch: string;
   ariaLangMenuClose: string;
   menuTitle: string;
@@ -60,10 +63,12 @@ type HeaderContent = {
   reset: { label: string; confirm: string; run: string; cancel: string };
 };
 
+type TopLocale = SiteLocale | "en";
+
 // ナビ表記ルール: 機能名は「性格診断テスト / 友達診断テスト / 性格タイプ」で統一。
 // (旧表記: 相互理解度 → 友達診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
-const CONTENT: Record<SiteLocale, HeaderContent> = {
+const CONTENT: Record<TopLocale, HeaderContent> = {
   ja: {
     siteName: "ワタシのトリセツ",
     homeHref: "/",
@@ -77,10 +82,11 @@ const CONTENT: Record<SiteLocale, HeaderContent> = {
       { label: "ログイン", href: "/login", login: true },
     ],
     preparing: "（準備中）",
-    englishPreparing: "English（準備中）",
     currentLangLabel: "日本語",
-    otherLangMenuLabel: "한국어",
-    otherLangDrawerLabel: "한국어로 보기",
+    languageOptions: [
+      { locale: "ko", menuLabel: "한국어", drawerLabel: "한국어로 보기", flag: "ko" },
+      { locale: "en", menuLabel: "English", drawerLabel: "View in English", flag: "en" },
+    ],
     ariaLangSwitch: "言語を切り替え",
     ariaLangMenuClose: "言語メニューを閉じる",
     menuTitle: "メニュー",
@@ -111,10 +117,11 @@ const CONTENT: Record<SiteLocale, HeaderContent> = {
       { label: KO_TOP_CONTENT.navigation.login, href: "/ko/login", login: true },
     ],
     preparing: `(${KO_TOP_CONTENT.navigation.preparing})`,
-    englishPreparing: `English（${KO_TOP_CONTENT.navigation.preparing}）`,
     currentLangLabel: "한국어",
-    otherLangMenuLabel: "日本語",
-    otherLangDrawerLabel: "日本語로 보기",
+    languageOptions: [
+      { locale: "ja", menuLabel: "日本語", drawerLabel: "日本語로 보기", flag: "ja" },
+      { locale: "en", menuLabel: "English", drawerLabel: "View in English", flag: "en" },
+    ],
     ariaLangSwitch: "언어 변경",
     ariaLangMenuClose: "언어 메뉴 닫기",
     menuTitle: KO_TOP_CONTENT.navigation.menu,
@@ -127,14 +134,45 @@ const CONTENT: Record<SiteLocale, HeaderContent> = {
       cancel: "취소",
     },
   },
+  en: {
+    siteName: "Alice Diagnosis",
+    homeHref: "/en",
+    nav: [
+      { label: "Personality test", href: "/en/diagnosis" },
+      { label: "Friend test", href: "/en/tako", tako: true },
+      { label: "Personality types", href: "/en/types" },
+      { label: "Compatibility", href: "/en/aisho" },
+      { label: "Alice", href: "/en/hoshiyomi", course: "astrologer" },
+      { label: "Tarot", href: "/en/tarot" },
+      { label: "Sign in", href: "/en/login", login: true },
+    ],
+    preparing: " (Coming soon)",
+    currentLangLabel: "English",
+    languageOptions: [
+      { locale: "ja", menuLabel: "日本語", drawerLabel: "日本語で見る", flag: "ja" },
+      { locale: "ko", menuLabel: "한국어", drawerLabel: "한국어로 보기", flag: "ko" },
+    ],
+    ariaLangSwitch: "Change language",
+    ariaLangMenuClose: "Close language menu",
+    menuTitle: "Menu",
+    ariaMenuOpen: "Open menu",
+    ariaMenuClose: "Close menu",
+    reset: {
+      label: "Reset local data",
+      confirm: "Your test results and invitation links will be removed from this device. This cannot be undone.",
+      run: "Reset",
+      cancel: "Cancel",
+    },
+  },
 };
 
 export default function TopHeader({
   locale = "ja",
 }: {
-  locale?: SiteLocale;
+  locale?: TopLocale;
 }) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const content = CONTENT[locale];
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -183,12 +221,10 @@ export default function TopHeader({
     setCurrentSearch(window.location.search);
   }, [pathname]);
 
-  const otherLocaleHref = localeSwitchPath(
-    pathname,
-    isKo ? "ja" : "ko",
-    ownerToken,
-    currentSearch,
-  );
+  const languageOptions = content.languageOptions.map((option) => ({
+    ...option,
+    href: localeSwitchPath(pathname, option.locale, ownerToken, currentSearch),
+  }));
 
   // 未確認・未購入は安全側のロック表示。購入済みと確認できた場合だけリンクを解放する。
   const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
@@ -211,13 +247,13 @@ export default function TopHeader({
   const nav = content.nav
     .filter(
       (item) =>
-        !item.href.startsWith("/aisho") || hasAishoNavigationAccess,
+        !item.href.includes("/aisho") || hasAishoNavigationAccess,
     )
     .map((n) =>
       n.tako && ownerToken
         ? {
             ...n,
-            href: `${isKo ? "/ko" : ""}/tako/${encodeURIComponent(ownerToken)}`,
+            href: `${isKo ? "/ko" : isEn ? "/en" : ""}/tako/${encodeURIComponent(ownerToken)}`,
           }
         : n,
     );
@@ -243,8 +279,9 @@ export default function TopHeader({
   // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
   const fontStyle = isKo ? undefined : { fontFamily: FONT_STACK };
 
-  const currentFlag = isKo ? <KoreaFlagIcon /> : <JapanFlagIcon />;
-  const otherFlag = isKo ? <JapanFlagIcon /> : <KoreaFlagIcon />;
+  const flagIcon = (flag: "ja" | "ko" | "en") =>
+    flag === "ja" ? <JapanFlagIcon /> : flag === "ko" ? <KoreaFlagIcon /> : <span aria-hidden="true">🌐</span>;
+  const currentFlag = flagIcon(locale);
 
   // lg (1024px) では項目 7 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
@@ -268,7 +305,11 @@ export default function TopHeader({
         </Link>
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
-        <div className="ml-auto hidden items-center gap-5 xl:gap-8 lg:flex">
+        <div
+          className={`ml-auto hidden items-center gap-5 lg:flex ${
+            isEn ? "xl:gap-6" : "xl:gap-8"
+          }`}
+        >
           {nav.map((n) =>
             n.disabled ? (
               <span
@@ -310,7 +351,9 @@ export default function TopHeader({
               <button
                 key={n.href}
                 type="button"
-                aria-label={`${n.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                aria-label={`${n.label}${
+                  isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                }`}
                 onClick={openAlicePaywall}
                 className={`${navLinkClass} flex items-center gap-1`}
                 style={{ color: "#9BA3B4" }}
@@ -361,17 +404,17 @@ export default function TopHeader({
                   >
                     {content.currentLangLabel}
                   </div>
-                  <Link
-                    href={otherLocaleHref}
-                    prefetch={navigationPrefetch}
-                    onClick={() => setLangOpen(false)}
-                    className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
-                  >
-                    {content.otherLangMenuLabel}
-                  </Link>
-                  <div className="px-4 py-2.5 text-[15px] text-[#B4B4C4]">
-                    {content.englishPreparing}
-                  </div>
+                  {languageOptions.map((option) => (
+                    <Link
+                      key={option.locale}
+                      href={option.href}
+                      prefetch={navigationPrefetch}
+                      onClick={() => setLangOpen(false)}
+                      className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
+                    >
+                      {option.menuLabel}
+                    </Link>
+                  ))}
                 </div>
               </>
             )}
@@ -479,7 +522,9 @@ export default function TopHeader({
                   key={n.href}
                   type="button"
                   tabIndex={open ? 0 : -1}
-                  aria-label={`${n.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                  aria-label={`${n.label}${
+                    isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                  }`}
                   onClick={() => {
                     setOpen(false);
                     openAlicePaywall();
@@ -512,17 +557,20 @@ export default function TopHeader({
               {currentFlag}
               {content.currentLangLabel}
             </div>
-            <Link
-              href={otherLocaleHref}
-              prefetch={navigationPrefetch}
-              tabIndex={open ? 0 : -1}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-              style={{ color: NAVY }}
-            >
-              {otherFlag}
-              {content.otherLangDrawerLabel}
-            </Link>
+            {languageOptions.map((option) => (
+              <Link
+                key={option.locale}
+                href={option.href}
+                prefetch={navigationPrefetch}
+                tabIndex={open ? 0 : -1}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+                style={{ color: NAVY }}
+              >
+                {flagIcon(option.flag)}
+                {option.drawerLabel}
+              </Link>
+            ))}
 
             {/* データをリセット (誤操作防止に確認ステップを挟む) */}
             <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
@@ -594,7 +642,13 @@ export default function TopHeader({
           ctaSource="nav_locked_hoshiyomi"
           products={["full_access", "premium_bundle"]}
           defaultProduct="full_access"
-          heading={isKo ? undefined : "Aliceを試す・本格相談を選ぶ"}
+          heading={
+            isKo
+              ? undefined
+              : isEn
+                ? "Try Alice or unlock the complete experience"
+                : "Aliceを試す・本格相談を選ぶ"
+          }
           onClose={() => setAlicePaywallOpen(false)}
         />
       ) : null}

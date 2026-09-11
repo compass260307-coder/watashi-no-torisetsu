@@ -9,12 +9,12 @@ import { getSession } from "@/lib/session";
  * 未購入は自分の結果ページ（未診断はトップ）へ戻し、
  * BottomNav にタロット用の課金モーダルを開かせる。
  */
-export async function requireTarotAccess(locale: "ja" | "ko") {
+export async function requireTarotAccess(locale: "ja" | "ko" | "en") {
   const session = await getSession();
   const purchased = session?.id ? await hasTarotAccess(session.id) : false;
   if (purchased) return;
 
-  const localePrefix = locale === "ko" ? "/ko" : "";
+  const localePrefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
   const returnPath = session?.owner_token
     ? `${localePrefix}/me/${encodeURIComponent(session.owner_token)}`
     : localePrefix || "/";

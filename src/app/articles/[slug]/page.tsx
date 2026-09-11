@@ -42,11 +42,12 @@ export async function generateMetadata({
       "ja",
       `/articles/${article.slug}`,
       `/ko/articles/${article.slug}`,
+      `/en/articles/${article.slug}`,
     ),
     openGraph: {
       type: "article",
       locale: "ja_JP",
-      alternateLocale: ["ko_KR"],
+      alternateLocale: ["ko_KR", "en_US"],
       siteName: "ワタシのトリセツ",
       title: `${article.title}｜ワタシのトリセツ`,
       description: article.description,

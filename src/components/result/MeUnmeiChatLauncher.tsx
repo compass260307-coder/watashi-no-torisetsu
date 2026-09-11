@@ -9,8 +9,9 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
+  ME_UNMEI_CHAT_INTRO_EN,
   ME_UNMEI_CHAT_INTRO_JA,
   ME_UNMEI_CHAT_INTRO_KO,
 } from "@/i18n/unmei";
@@ -19,6 +20,7 @@ import { track } from "@/lib/track";
 const LAUNCHER_COPY = {
   ja: { close: "チャットを閉じる" },
   ko: { close: "채팅 닫기" },
+  en: { close: "Close chat" },
 } as const;
 
 export function MeUnmeiChatLauncher({
@@ -32,7 +34,7 @@ export function MeUnmeiChatLauncher({
   children,
 }: {
   ownerToken: string | null;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   product?: "full_access" | "premium_bundle";
   /** ?previewType プレビューでは保存・計測・決済を実行しない。 */
   previewMode?: boolean;
@@ -118,13 +120,21 @@ export function MeUnmeiChatLauncher({
                   locale={locale}
                   previewMode={previewMode}
                   intro={
-                    locale === "ko"
+                    locale === "en"
+                      ? ME_UNMEI_CHAT_INTRO_EN
+                      : locale === "ko"
                       ? ME_UNMEI_CHAT_INTRO_KO
                       : ME_UNMEI_CHAT_INTRO_JA
                   }
                   hideHeaderStars
                   onReady={() =>
-                    router.push(locale === "ko" ? "/ko/unmei" : "/unmei")
+                    router.push(
+                      locale === "en"
+                        ? "/en/unmei"
+                        : locale === "ko"
+                          ? "/ko/unmei"
+                          : "/unmei",
+                    )
                   }
                 />
               </div>

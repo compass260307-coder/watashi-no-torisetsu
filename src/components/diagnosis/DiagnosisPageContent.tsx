@@ -28,6 +28,8 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
+import EnSiteHeader from "@/components/en/EnSiteHeader";
+import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 
 // feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
@@ -153,6 +155,7 @@ export default function DiagnosisPageContent({
   const activeQuestions = settings.questions;
   const copy = settings.copy;
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   // 質問セットのバージョン。言語別保存キーと組み合わせ、日本語回答と混ざらないようにする。
   const questionSetVersion = `q${activeQuestions.length}-1`;
   const [campaign, setCampaign] = useState<string | null>(null);
@@ -563,7 +566,9 @@ export default function DiagnosisPageContent({
         router.push(
           isKorean
             ? `/ko/me/${encodeURIComponent(data.ownerToken)}`
-            : `/result/${data.ownerToken}`,
+            : isEnglish
+              ? `/en/me/${encodeURIComponent(data.ownerToken)}`
+              : `/result/${data.ownerToken}`,
         );
         return;
       }
@@ -585,7 +590,7 @@ export default function DiagnosisPageContent({
       <DiagnosisAnalyzingLoader
         messages={copy.analyzing.messages}
         steps={copy.analyzing.steps}
-        fontFamily={isKorean ? "inherit" : undefined}
+        fontFamily={isKorean || isEnglish ? "inherit" : undefined}
       />
     );
   }
@@ -610,12 +615,12 @@ export default function DiagnosisPageContent({
     <>
     {/* サイト共通ヘッダー (16P 風スクロール連動) */}
     <ScrollHideHeader>
-      {isKorean ? <KoTopHeader /> : <TopHeader />}
+      {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader />}
     </ScrollHideHeader>
     <div
       // 下端はシェアバンドが受けるので pb は付けない (バンド〜フッター間の白帯を作らない)。
       className="flex flex-col flex-1 min-h-screen bg-white"
-      style={{ fontFamily: isKorean ? "inherit" : FONT_STACK }}
+      style={{ fontFamily: isKorean || isEnglish ? "inherit" : FONT_STACK }}
     >
       {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
       <InAppBrowserModal copy={copy.inAppBrowser} />
@@ -790,6 +795,10 @@ export default function DiagnosisPageContent({
                     </Link>
                     에서 확인할 수 있습니다.
                   </p>
+                ) : locale === "en" ? (
+                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                    By viewing your result, you agree that your answers and nickname may be used to calculate and save your personality result.
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -812,13 +821,17 @@ export default function DiagnosisPageContent({
         )}
       </main>
       {/* フッター直上の 16P 風シェアバンド (実績数 + SNS ボタン) */}
-      <div className="mt-10">
-        <DiagnosisShareBand locale={locale} />
-      </div>
+      {locale !== "en" ? (
+        <div className="mt-10">
+          <DiagnosisShareBand locale={locale} />
+        </div>
+      ) : null}
     </div>
     {/* サイト共通フッター (直上のシェアバンドの波エッジが区切りになるため上端線は消す) */}
     {isKorean ? (
       <KoTopFooter topBorder={false} />
+    ) : isEnglish ? (
+      <EnSiteFooter topBorder={false} />
     ) : (
       <TopFooter topBorder={false} />
     )}

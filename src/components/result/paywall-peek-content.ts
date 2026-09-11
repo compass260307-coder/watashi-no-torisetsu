@@ -179,6 +179,99 @@ export const PEEK_ALICE_FORTUNE: UnlockPeek = {
   ],
 };
 
+export const EN_PEEK_EBOOK: UnlockPeek = {
+  ...PEEK_EBOOK,
+  alt: "A sample page from your personality story",
+  points: [
+    "A 16+ page short story starring your personality type",
+    "See your traits reflected in a story you can read at your own pace",
+    "Receive your personal PDF immediately after purchase",
+  ],
+  pages: PEEK_EBOOK.pages?.map((page, index) => ({
+    ...page,
+    alt: index === 0 ? "A page from your personality story" : "The cover of your personal ebook",
+  })),
+};
+
+export const EN_PEEK_FRIENDS: UnlockPeek = {
+  ...PEEK_FRIENDS,
+  alt: "A sample page from the friend-analysis report",
+  points: [
+    "Read how each friend sees you",
+    "Unlock every individual friend result",
+    "See where different people perceive you differently",
+  ],
+  pages: PEEK_FRIENDS.pages?.map((page, index) => ({
+    ...page,
+    alt: index === 0 ? "A page from the friend-analysis report" : "The friend-analysis report cover",
+  })),
+};
+
+export const EN_PEEK_ALICE: UnlockPeek = {
+  ...PEEK_ALICE,
+  alt: "A conversation with Alice, your AI astrologer",
+  points: [
+    "Alice responds with your personality type in mind",
+    "Talk through love, relationships, work, and life choices",
+    "Use conversation to organize feelings that are hard to explain",
+    "Start talking with Alice as soon as the Complete Edition is unlocked",
+  ],
+  pages: PEEK_ALICE.pages?.map((page, index) => ({
+    ...page,
+    alt: ["Talking with Alice", "Asking Alice about your path", "Asking Alice about love"][index] ?? "Talking with Alice",
+  })),
+};
+
+export const EN_PEEK_AISHO: UnlockPeek = {
+  ...PEEK_AISHO,
+  alt: "A sample compatibility result",
+  points: [
+    "See your compatibility grade and score",
+    "Compare empathy, emotions, values, daily rhythm, and social balance",
+    "Understand what works naturally and where to take care",
+    "Read detailed guidance for love, friendship, work, and misunderstandings",
+  ],
+  pages: PEEK_AISHO.pages?.map((page, index) => ({
+    ...page,
+    alt: index === 0 ? "The five compatibility dimensions" : "A compatibility grade and summary",
+  })),
+};
+
+export const EN_PEEK_UNMEI: UnlockPeek = {
+  ...PEEK_UNMEI,
+  alt: "A sample Destiny Blueprint reading",
+  points: [
+    "Create your birth chart from your date, time, and place of birth",
+    "Combine your personality result and birth chart in a four-chapter AI reading",
+    "Explore how you relate to people and the turning points ahead",
+    "Return to your completed Destiny Blueprint whenever you like",
+  ],
+  pages: PEEK_UNMEI.pages?.map((page, index) => ({
+    ...page,
+    alt: ["Your birth-chart wheel", "Your personal Destiny Blueprint reading", "A reading of your future turning points"][index] ?? "Your Destiny Blueprint",
+  })),
+};
+
+export const EN_PEEK_ALICE_FORTUNE: UnlockPeek = {
+  ...EN_PEEK_UNMEI,
+  alt: "Destiny Blueprint and Alice Tarot previews",
+  points: [
+    "Create your personal birth-chart wheel",
+    "Receive a four-chapter reading combining personality and astrology",
+    "Use one-card, three-card, and YES / NO tarot readings",
+    "Return to your Destiny Blueprint and tarot whenever you like",
+  ],
+  pages: [
+    ...(EN_PEEK_UNMEI.pages?.slice(0, 2) ?? []),
+    {
+      img: "/paywall-peek/tarot-reading-result.jpg",
+      alt: "Alice interpreting a three-card tarot reading",
+      width: 390,
+      height: 600,
+    },
+  ],
+};
+
 export const KO_PEEK_EBOOK: UnlockPeek = {
   img: "/paywall-peek/ko-self-story-page-jellyfish_N-2026.webp",
   alt: "한국어로 작성된 성격 유형 전용 스토리 본문",

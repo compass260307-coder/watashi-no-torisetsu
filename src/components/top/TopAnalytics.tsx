@@ -4,7 +4,9 @@ import { useEffect, useRef } from "react";
 import type { ResultLocale } from "@/i18n/result";
 import { track } from "@/lib/track";
 
-export function TopViewTracker({ locale }: { locale: ResultLocale }) {
+type TopLocale = ResultLocale | "en";
+
+export function TopViewTracker({ locale }: { locale: TopLocale }) {
   const tracked = useRef(false);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export function TopViewTracker({ locale }: { locale: ResultLocale }) {
   return null;
 }
 
-export function trackTopCta(locale: ResultLocale) {
+export function trackTopCta(locale: TopLocale) {
   track("top_cta_clicked", {
     metadata: { locale, page: "top", destination: "diagnosis" },
   });

@@ -23,8 +23,11 @@ import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 export const runtime = "nodejs";
 
-function localeOf(request: NextRequest): "ja" | "ko" {
-  return request.nextUrl.searchParams.get("locale") === "ko" ? "ko" : "ja";
+type AuthLocale = "ja" | "ko" | "en";
+
+function localeOf(request: NextRequest): AuthLocale {
+  const locale = request.nextUrl.searchParams.get("locale");
+  return locale === "ko" ? "ko" : locale === "en" ? "en" : "ja";
 }
 
 function errorRedirect(request: NextRequest, reason: string): NextResponse {
@@ -32,7 +35,7 @@ function errorRedirect(request: NextRequest, reason: string): NextResponse {
   // 値に依存せず安全。Vercel / localhost / preview 全環境で動く。
   const locale = localeOf(request);
   const url = new URL(
-    locale === "ko" ? "/ko/auth/error" : "/auth/error",
+    locale === "ja" ? "/auth/error" : `/${locale}/auth/error`,
     request.nextUrl,
   );
   url.searchParams.set("reason", reason);
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
 
   if (conflict && !confirmed) {
     const url = new URL(
-      locale === "ko" ? "/ko/login/confirm" : "/login/confirm",
+      locale === "ja" ? "/login/confirm" : `/${locale}/login/confirm`,
       request.nextUrl,
     );
     url.searchParams.set("token", token);
@@ -130,6 +133,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // The link itself is the user's most recent explicit language choice. Keep
+  // follow-up pages and notifications in that language after device switching.
+  const { error: localeUpdErr } = await supabaseAdmin
+    .from("users")
+    .update({ preferred_locale: locale })
+    .eq("id", userId);
+  if (localeUpdErr) {
+    console.warn(
+      "[auth/verify-magic-link] preferred_locale update warning:",
+      localeUpdErr.message,
+    );
+  }
+
   // ===== session 再発行 + Cookie set =====
   try {
     await rotateSession(userId);
@@ -147,7 +163,7 @@ export async function GET(request: NextRequest) {
     .eq("id", userId)
     .maybeSingle();
   const ownerToken = (userRow?.owner_token as string | null) ?? null;
-  const prefix = locale === "ko" ? "/ko" : "";
+  const prefix = locale === "ja" ? "" : `/${locale}`;
 
   // ゲスト購入のプレースホルダー行 (webhook が email 紐付けのために新規作成する行。
   // scores は中央値固定・diagnosis_completed_at 無し) を /me に飛ばすと、

@@ -19,7 +19,12 @@ import { trackTopCta } from "@/components/top/TopAnalytics";
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
-export default function TopHero() {
+export default function TopHero({
+  locale = "ja",
+}: {
+  locale?: "ja" | "en";
+}) {
+  const isEnglish = locale === "en";
   return (
     <>
       {/* SEO/CWV: ヒーロー背景 (= LCP 要素) を先読みして描画を早める。
@@ -73,7 +78,9 @@ export default function TopHero() {
             サイズ/余白は .top-hero-h1 (SP は vw 比例 = ヒーロー高さ 178vw と相似で
             どの幅でも構図が崩れない / 640px〜 は従来の clamp)。 */}
         <h1 className="top-hero-h1">
-          「友達には、こんなワタシが見えてたんだ」
+          {isEnglish
+            ? "“So this is how my friends see me.”"
+            : "「友達には、こんなワタシが見えてたんだ」"}
         </h1>
 
         {/* サブ: 500 / lh 1.9 / 白。16Personalities の
@@ -81,21 +88,31 @@ export default function TopHero() {
             (「不気味」はブランドトーンに合わせ「怖いくらい正直」に変換)。
             PC は読点で改行、SP は自然折返し。 */}
         <p className="top-hero-sub mx-auto max-w-[720px]">
-          友達から見えている『ほんとうのワタシ』を、
-          <br className="hidden sm:inline" />
-          怖いくらい正直に知ることができます。
+          {isEnglish ? (
+            <>
+              See the real you through your friends&rsquo; eyes,
+              <br className="hidden sm:inline" />
+              with startling honesty.
+            </>
+          ) : (
+            <>
+              友達から見えている『ほんとうのワタシ』を、
+              <br className="hidden sm:inline" />
+              怖いくらい正直に知ることができます。
+            </>
+          )}
         </p>
 
         {/* CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去 */}
         <div className="top-hero-cta-wrap">
           <Link
-            href="/diagnosis"
+            href={isEnglish ? "/en/diagnosis" : "/diagnosis"}
             prefetch={false}
-            onClick={() => trackTopCta("ja")}
+            onClick={() => trackTopCta(locale)}
             className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"
             style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
           >
-            無料で診断をはじめる →
+            {isEnglish ? "Start the free test →" : "無料で診断をはじめる →"}
           </Link>
         </div>
       </div>

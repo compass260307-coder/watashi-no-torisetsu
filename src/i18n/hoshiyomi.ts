@@ -1,6 +1,7 @@
 import type { ResultLocale } from "@/i18n/result";
 
 type HoshiyomiFaq = Readonly<{ question: string; answer: string }>;
+export type HoshiyomiLocale = ResultLocale | "en";
 
 type HoshiyomiCopy = Readonly<{
   faqs: readonly HoshiyomiFaq[];
@@ -207,7 +208,87 @@ const KO_COPY: HoshiyomiCopy = {
   dateLocale: "ko-KR",
 };
 
-export const HOSHIYOMI_COPY: Record<ResultLocale, HoshiyomiCopy> = {
+const EN_COPY: HoshiyomiCopy = {
+  faqs: [
+    {
+      question: "What is Alice?",
+      answer:
+        "Alice is an AI conversation partner who uses your personality test and, when available, your Destiny Blueprint to help you sort through choices and feelings.",
+    },
+    {
+      question: "Which purchase includes Alice?",
+      answer:
+        "The Complete Edition includes 30 replies from Alice for a one-time payment of $3.49. It is not a subscription.",
+    },
+    {
+      question: "Can I talk with Alice before creating my Destiny Blueprint?",
+      answer:
+        "Yes. Alice can begin with your personality result. Creating your Destiny Blueprint later gives Alice more personal context.",
+    },
+    {
+      question: "How are replies counted?",
+      answer:
+        "One reply is counted after Alice responds successfully. If a network or generation error prevents a reply, the credit is restored.",
+    },
+    {
+      question: "Can other people see my conversations?",
+      answer:
+        "Your conversations are not public. Your input is processed only as needed to generate and save replies, as described in the Privacy Policy.",
+    },
+    {
+      question: "Can I download a conversation?",
+      answer:
+        "Conversation export is not currently available. Please save anything important on your own device.",
+    },
+    {
+      question: "Can Alice help with important decisions?",
+      answer:
+        "Alice is for entertainment and reflection, not medical, legal, or financial advice. Please consult a qualified professional for important decisions.",
+    },
+  ],
+  title: "Talk with Alice",
+  heroAlt: "Alice, the AI astrologer, writing in a starry notebook at her desk",
+  description:
+    "Your personality and birth chart are more than labels—they can become a guide for the choices ahead. Talk with warm, insightful Alice and find an answer that feels true to you.",
+  exhaustedPlaceholder: "You have used all of your replies",
+  inputPlaceholder: "What is on your mind?",
+  startAria: "Start a conversation",
+  purchaseHint:
+    "Send your question to open the Complete Edition purchase screen.",
+  persistencePending:
+    "Conversation storage is being prepared. Please try again shortly.",
+  historyTitle: "Past conversations",
+  historyEmpty: "No conversations yet. Start with whatever is on your mind.",
+  messageCount: (count) => `${count} messages`,
+  openConversation: "Open conversation",
+  deleteAria: "Delete conversation",
+  entertainmentNotice:
+    "Alice is for entertainment and reflection. Consult a professional for important medical, legal, or financial decisions.",
+  faqTitle: "Frequently asked questions",
+  closeAria: "Close",
+  contactPrefix: "Still need help? ",
+  contactLabel: "Contact us",
+  contactSuffix: ".",
+  responseError:
+    "Alice could not complete that reply. Please wait a moment and try again.",
+  previewResponse:
+    "Thank you for sharing that. There may be something important hidden inside this uncertainty. Let’s use your personality and birth chart as clues and sort through it together.\n\nWhich moment in this situation affected you most?",
+  backAria: "Back to conversations",
+  guideName: "Alice",
+  guideStatus: "Looking at your personality and stars with you",
+  composerPlaceholder: "Type a message…",
+  sendAria: "Send",
+  chatNotice:
+    "Alice does not predict the future with certainty; her replies are prompts for reflection.",
+  sentMessages: (used, total) => `${used}/${total} messages sent.`,
+  faqButton: "Questions?",
+  remainingMessages: (remaining, total) =>
+    `${remaining} of ${total} replies remaining`,
+  dateLocale: "en-US",
+};
+
+export const HOSHIYOMI_COPY: Record<HoshiyomiLocale, HoshiyomiCopy> = {
   ja: JA_COPY,
   ko: KO_COPY,
+  en: EN_COPY,
 };

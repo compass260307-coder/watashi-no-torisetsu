@@ -40,6 +40,12 @@ import {
   KO_PEEK_EBOOK,
   KO_PEEK_FRIENDS,
   KO_PEEK_UNMEI,
+  EN_PEEK_AISHO,
+  EN_PEEK_ALICE,
+  EN_PEEK_ALICE_FORTUNE,
+  EN_PEEK_EBOOK,
+  EN_PEEK_FRIENDS,
+  EN_PEEK_UNMEI,
 } from "./paywall-peek-content";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 import {
@@ -57,12 +63,12 @@ import {
   selfReportStoryPreviewPagePath,
 } from "@/lib/report-story-images";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale, ResultLocale } from "@/i18n/result";
 import {
   accessProductPrice,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  EN_FULL_ACCESS_PRICE_USD_CENTS,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
   SELF_REPORT_UNLOCK_LABEL,
@@ -73,28 +79,27 @@ import {
 } from "@/lib/access-products";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
-const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
-  (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) *
-    100,
-);
-
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
   ja: {
-    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
     sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
-    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
   ko: {
     list: "₩12,900",
     sale: `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`,
     offPercent: 62,
   },
+  en: {
+    list: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
+    sale: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
+    offPercent: 0,
+  },
 } as const;
 
 const SELF_REPORT_PRICE_COPY = {
   ja: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
   ko: `₩${SELF_REPORT_PRICE_KRW.toLocaleString("ko-KR")}`,
+  en: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
 } as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
@@ -248,6 +253,58 @@ const KO_UNMEI: UnlockItem = {
   peek: KO_PEEK_UNMEI,
 };
 
+const EN_SELF_UNLOCKS: UnlockItem[] = [
+  {
+    title: "Unlock all 9 locked sections of your result",
+    desc: "Read every remaining section, from deeper love and career insights to how others see you and how you respond in real-life situations.",
+  },
+  {
+    title: "Your personal ebook with 16+ pages",
+    desc: "Receive your personality and defining traits in a book made for you. Save it, print it, and revisit it whenever you like.",
+    peek: EN_PEEK_EBOOK,
+  },
+  {
+    title: "Chat with Alice, your personal astrologer",
+    desc: "Alice understands your personality and birth chart, and helps you think through love, work, relationships, and whatever is on your mind.",
+    peek: EN_PEEK_ALICE,
+  },
+  {
+    title: "Unlock every Alice reading",
+    desc: "Get your personal Destiny Blueprint plus one-card, three-card, and YES / NO tarot readings.",
+    peek: EN_PEEK_ALICE_FORTUNE,
+  },
+  {
+    title: "Unlock the complete compatibility reading",
+    desc: "Explore compatibility in love, friendship, and work, including the points where the two of you are most likely to misunderstand each other.",
+    peek: EN_PEEK_AISHO,
+  },
+  {
+    title: "Unlock every friend diagnosis after the first",
+    desc: "Read each friend's full result sheet, including the character they see, personality gaps, love tendencies, and compatibility.",
+  },
+  {
+    title: "Update your friends' perspective report anytime",
+    desc: "Turn everyone's answers into one complete PDF, then regenerate it whenever more friends respond.",
+    peek: EN_PEEK_FRIENDS,
+  },
+];
+
+const EN_TAKO_UNLOCKS: UnlockItem[] = [
+  EN_SELF_UNLOCKS[5],
+  EN_SELF_UNLOCKS[6],
+  EN_SELF_UNLOCKS[2],
+  EN_SELF_UNLOCKS[3],
+  EN_SELF_UNLOCKS[4],
+  EN_SELF_UNLOCKS[0],
+  EN_SELF_UNLOCKS[1],
+];
+
+const EN_UNMEI: UnlockItem = {
+  title: "Your personal Destiny Blueprint",
+  desc: "A four-chapter AI reading that combines your personality profile and birth chart, plus one-card, three-card, and YES / NO tarot.",
+  peek: EN_PEEK_UNMEI,
+};
+
 function promoteUnlockItem(
   items: UnlockItem[],
   target: UnlockItem,
@@ -328,7 +385,7 @@ function CheckItem({
   desc: string;
   accent: string;
   peek?: UnlockPeek;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   return (
     <li className="flex items-start gap-2.5">
@@ -412,7 +469,7 @@ export function FullAccessPromoCard({
   imageAlt?: string;
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   anchorId?: string;
   onClose?: () => void;
@@ -441,6 +498,8 @@ export function FullAccessPromoCard({
   benefitsBeforePrice?: boolean;
 }) {
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
+  const planLocale: ResultLocale = isEnglish ? "ja" : locale;
   const [selectedStandaloneProduct, setSelectedStandaloneProduct] = useState<
     "self_report" | null
   >(() => standaloneProduct ?? null);
@@ -487,7 +546,11 @@ export function FullAccessPromoCard({
     "full_access",
     displayedEntitlements,
   );
-  const baseUnlocks = isKorean
+  const baseUnlocks = isEnglish
+    ? surface === "tako"
+      ? EN_TAKO_UNLOCKS
+      : EN_SELF_UNLOCKS
+    : isKorean
     ? product === "self_report"
       ? surface === "tako"
         ? KO_STUDENT_LITE_TAKO_UNLOCKS
@@ -506,13 +569,13 @@ export function FullAccessPromoCard({
     returnTo === "hoshiyomi"
       ? promoteUnlockItem(
           baseUnlocks,
-          isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
+          isEnglish ? EN_SELF_UNLOCKS[2] : isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
         )
       : returnTo === "unmei"
         ? promoteUnlockItem(
             baseUnlocks,
-            isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
-            isKorean ? KO_UNMEI : U_UNMEI,
+            isEnglish ? EN_SELF_UNLOCKS[3] : isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
+            isEnglish ? EN_UNMEI : isKorean ? KO_UNMEI : U_UNMEI,
           )
         : baseUnlocks;
   const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
@@ -520,15 +583,19 @@ export function FullAccessPromoCard({
   const characterSelfCover = selfReportPeekImagePath(reportCharacterSource);
   const characterSelfStoryPage =
     selfReportStoryPreviewPagePath(reportCharacterSource);
+  const ebookPeek = isEnglish ? EN_PEEK_EBOOK : PEEK_EBOOK;
+  const friendsPeek = isEnglish ? EN_PEEK_FRIENDS : PEEK_FRIENDS;
   const characterEbookPeek: UnlockPeek | null = characterSelfCover
     ? {
-        ...PEEK_EBOOK,
-        pages: PEEK_EBOOK.pages?.map((page, index) => {
+        ...ebookPeek,
+        pages: ebookPeek.pages?.map((page, index) => {
           if (index === 0 && characterSelfStoryPage) {
             return {
               ...page,
               img: characterSelfStoryPage,
-              alt: `${imageAlt || "あなた"}を主人公にした短編小説の本文`,
+              alt: isEnglish
+                ? `A story page starring ${imageAlt || "your character"}`
+                : `${imageAlt || "あなた"}を主人公にした短編小説の本文`,
               width: 560,
               height: 792,
             };
@@ -537,7 +604,9 @@ export function FullAccessPromoCard({
             return {
               ...page,
               img: characterSelfCover,
-              alt: `${imageAlt || "あなた"}の短編ストーリー表紙`,
+              alt: isEnglish
+                ? `The story cover for ${imageAlt || "your character"}`
+                : `${imageAlt || "あなた"}の短編ストーリー表紙`,
               width: 560,
               height: 841,
             };
@@ -548,13 +617,15 @@ export function FullAccessPromoCard({
     : null;
   const characterFriendsPeek: UnlockPeek | null = characterFriendCover
     ? {
-        ...PEEK_FRIENDS,
-        pages: PEEK_FRIENDS.pages?.map((page, index) =>
+        ...friendsPeek,
+        pages: friendsPeek.pages?.map((page, index) =>
           index === 1
             ? {
                 ...page,
                 img: characterFriendCover,
-                alt: `${imageAlt || "あなた"}の友達診断まとめレポート表紙`,
+                alt: isEnglish
+                  ? `The friends' perspective report cover for ${imageAlt || "your character"}`
+                  : `${imageAlt || "あなた"}の友達診断まとめレポート表紙`,
                 width: 560,
                 height: 841,
               }
@@ -565,18 +636,20 @@ export function FullAccessPromoCard({
   const unlocks = contextualUnlocks.map((item) => {
     if (
       characterEbookPeek &&
-      (item.peek === PEEK_EBOOK || item.peek === KO_PEEK_EBOOK)
+      (item.peek === PEEK_EBOOK ||
+        item.peek === KO_PEEK_EBOOK ||
+        item.peek === EN_PEEK_EBOOK)
     ) {
       return {
         ...item,
-        peek: isKorean
-          ? KO_PEEK_EBOOK
-          : characterEbookPeek,
+        peek: isKorean ? KO_PEEK_EBOOK : characterEbookPeek,
       };
     }
     if (
       characterFriendsPeek &&
-      (item.peek === PEEK_FRIENDS || item.peek === KO_PEEK_FRIENDS)
+      (item.peek === PEEK_FRIENDS ||
+        item.peek === KO_PEEK_FRIENDS ||
+        item.peek === EN_PEEK_FRIENDS)
     ) {
       return {
         ...item,
@@ -604,14 +677,18 @@ export function FullAccessPromoCard({
     ? "/pricing/self-report-felt-transparent.png"
     : imageSrc;
   const cardImageAlt = isStandaloneSelfReport
-    ? isKorean
+    ? isEnglish
+      ? "A dedicated ebook for your self and friend diagnoses"
+      : isKorean
       ? "자기 진단과 친구 진단 전용 리포트"
       : "自己診断と友達診断の専用電子書籍"
     : imageAlt;
   const hasImage = !!cardImageSrc;
   // 日本版の新規販売は完全版のみ。韓国版と開発用の旧カード互換は残す。
   const courseSwitchLabel = isStandaloneSelfReport
-    ? isKorean
+    ? isEnglish
+      ? "See the complete version"
+      : isKorean
       ? "완전판 보기"
       : "完全版はこちら"
     : null;
@@ -625,7 +702,9 @@ export function FullAccessPromoCard({
     >
       {benefitsBeforePrice ? null : (
         <h3 className="text-[16px] font-bold leading-snug text-[#2E2E5C]">
-          {isKorean
+          {isEnglish
+            ? "What you’ll unlock"
+            : isKorean
             ? "업그레이드로 이용할 수 있는 항목"
             : "アップグレードで手に入るもの"}
         </h3>
@@ -750,7 +829,7 @@ export function FullAccessPromoCard({
           }
           frameless={!onClose}
           returnTo={returnTo ?? (surface === "tako" ? "tako" : "me")}
-          locale={locale}
+          locale={planLocale}
           products={
             products ?? (variant === "aisho" ? AISHO_PRODUCTS : undefined)
           }
@@ -760,7 +839,7 @@ export function FullAccessPromoCard({
           legacyStyle={legacyPlanStyle}
           defaultProduct={defaultProduct}
           heading={heading}
-          ebookPeek={characterEbookPeek ?? PEEK_EBOOK}
+          ebookPeek={characterEbookPeek ?? ebookPeek}
         />
       </div>
     );
@@ -796,7 +875,7 @@ export function FullAccessPromoCard({
             <button
               type="button"
               onClick={onClose}
-              aria-label={isKorean ? "닫기" : "閉じる"}
+              aria-label={isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
               className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
               style={{ backgroundColor: tone.accent }}
             >
@@ -856,10 +935,14 @@ export function FullAccessPromoCard({
                 <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
               </svg>
               {isSelfReportProduct
-                ? isKorean
+                ? isEnglish
+                  ? "Complete version"
+                  : isKorean
                   ? "학생 플랜"
                   : "学生向けプラン"
-                : isKorean
+                : isEnglish
+                  ? "Unlock now"
+                  : isKorean
                   ? "지금 잠금 해제"
                   : "今すぐロックを解除"}
             </span>
@@ -870,7 +953,13 @@ export function FullAccessPromoCard({
               className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
             >
               {isSelfReportProduct ? (
-                isKorean ? (
+                isEnglish ? (
+                  <>
+                    Your story isn’t
+                    <br />
+                    finished yet
+                  </>
+                ) : isKorean ? (
                   <>
                     자기 진단을
                     <br />
@@ -883,6 +972,12 @@ export function FullAccessPromoCard({
                     まだ完結していません
                   </>
                 )
+              ) : isEnglish ? (
+                <>
+                  Your story isn’t
+                  <br />
+                  finished yet
+                </>
               ) : isKorean ? (
                 <>
                   당신의 이야기는
@@ -901,10 +996,14 @@ export function FullAccessPromoCard({
             {/* 続編訴求 */}
             <p className="body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E]">
               {isSelfReportProduct
-                ? isKorean
+                ? isEnglish
+                  ? "Unlock the rest of your diagnosis, your friends’ perspective, and your personal ebook with one payment."
+                  : isKorean
                   ? "자기 진단과 친구 진단, 16페이지 이상의 전용 전자책을 1회 결제로 이용할 수 있어요."
                   : "診断結果の続き・友達から見たあなた・あなただけの電子書籍まで、すべて買い切りで楽しめます。"
-                : isKorean
+                : isEnglish
+                  ? "You’ve read the free report. Now go one step deeper into love, work, relationships, how friends see you, and Alice’s astrology, tarot, and guidance."
+                  : isKorean
                   ? "무료 리포트를 읽었다면 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상과 Alice의 운세·타로·상담까지 모두 열립니다."
                   : "無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。"}
             </p>
@@ -913,7 +1012,7 @@ export function FullAccessPromoCard({
 
             {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
             <div
-              className={`${benefitsBeforePrice ? "mt-6" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+              className={`${benefitsBeforePrice ? "mt-6" : locale === "ja" && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
                 hasImage ? "" : "justify-center"
               }`}
             >
@@ -943,7 +1042,9 @@ export function FullAccessPromoCard({
                 hasImage ? "" : "text-center"
               }`}
             >
-              {isKorean
+              {isEnglish
+                ? "One-time payment — no subscription"
+                : isKorean
                 ? "월 구독이 아닌, 1회 결제"
                 : "買い切り（お支払いは1回のみ）"}
             </p>
@@ -951,7 +1052,7 @@ export function FullAccessPromoCard({
             <div className="mt-4">
               <FullAccessCta
                 ownerToken={ownerToken}
-                unauthHref={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                unauthHref={isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
                 locale={locale}
                 source={
                   isStandaloneSelfReport
@@ -980,10 +1081,14 @@ export function FullAccessPromoCard({
                 }
               >
                 {isSelfReportProduct
-                  ? isKorean
+                  ? isEnglish
+                    ? "Unlock the complete version →"
+                    : isKorean
                     ? "학생 플랜으로 해제 →"
                     : SELF_REPORT_UNLOCK_LABEL
-                  : isKorean
+                  : isEnglish
+                    ? "Unlock all results →"
+                    : isKorean
                     ? "모든 결과 잠금 해제 →"
                     : "全ての結果をアンロック →"}
               </FullAccessCta>
@@ -1010,10 +1115,12 @@ export function FullAccessPromoCard({
                 <path d="M9 12l2 2 4-4" />
               </svg>
               <span>
-                {isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
+                {isEnglish ? "30-day money-back guarantee ·" : isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
               </span>
               <span>
-                {isKorean
+                {isEnglish
+                  ? `Trusted by ${DIAGNOSIS_COUNT_SNAPSHOT}+ people`
+                  : isKorean
                   ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
                   : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
               </span>

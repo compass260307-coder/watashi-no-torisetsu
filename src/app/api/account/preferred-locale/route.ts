@@ -25,7 +25,10 @@ export async function POST(request: Request) {
 
   const ownerToken = parsed.value.ownerToken;
   const locale = parsed.value.locale;
-  if (!isSafeOpaqueToken(ownerToken) || (locale !== "ja" && locale !== "ko")) {
+  if (
+    !isSafeOpaqueToken(ownerToken) ||
+    (locale !== "ja" && locale !== "ko" && locale !== "en")
+  ) {
     return NextResponse.json({ error: "Invalid locale preference" }, { status: 400 });
   }
 

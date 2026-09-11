@@ -17,7 +17,7 @@ import type { ResolvedPartTwo, RelationView } from "@/lib/part-two-resolve";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { RelationLockGrid } from "@/components/result/RelationLockGrid";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
 export const PART_TWO_LOCK_ID = "part2-lock";
@@ -31,7 +31,7 @@ interface PartTwoSectionsProps {
   hideLocked?: boolean;
   /** 獲得モード用: 見出しの「あなた」をこの名前 (◯◯さん) に置換する。 */
   subjectName?: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 function SectionHeading({ title }: { title: string }) {
@@ -147,8 +147,17 @@ const KO_DECOY_ITEMS: ContentItem[] = [
   { title: "은근한 승부욕", body: "티 나지 않게 경쟁하는 당신의 모습을 친구는 재미있게 바라볼 때가 있어요." },
 ];
 
-function DummyCards({ rows, locale }: { rows: number; locale: ResultLocale }) {
-  const decoyItems = locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
+const EN_DECOY_ITEMS: ContentItem[] = [
+  { title: "A stubborn streak", body: "Friends sometimes notice how firmly you hold your ground once your mind is made up." },
+  { title: "Slow replies", body: "People close to you may wonder what is happening when a reply keeps getting postponed." },
+  { title: "Keeping the real feeling inside", body: "A smile can make it hard for others to tell what you actually need." },
+  { title: "Changing energy", body: "Close friends notice the difference between your high-energy and quiet days." },
+  { title: "Taking on too much", body: "People may worry when you try to carry the whole load by yourself." },
+  { title: "Difficulty asking for help", body: "Friends may wish you had told them sooner that you needed support." },
+];
+
+function DummyCards({ rows, locale }: { rows: number; locale: AppResultLocale }) {
+  const decoyItems = locale === "en" ? EN_DECOY_ITEMS : locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
   return (
     <div
       aria-hidden="true"
@@ -180,10 +189,14 @@ function RelationList({
   locale,
 }: {
   relations: RelationView[];
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   const relationLockItems =
-    locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
+    locale === "en"
+      ? EN_RELATION_LOCK_ITEMS
+      : locale === "ko"
+        ? KO_RELATION_LOCK_ITEMS
+        : RELATION_LOCK_ITEMS;
   const colorOf = (relation: string) =>
     relationLockItems.find((it) => it.label === relation)?.color ??
     "#2E2E5C";
@@ -257,9 +270,16 @@ const KO_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "상사·선배에게", color: "#F2C14E" },
 ];
 
-function RelationsLocked({ locale }: { locale: ResultLocale }) {
+const EN_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
+  { label: "Friends", color: "#56BFE8" },
+  { label: "Partner", color: "#F48BAE" },
+  { label: "Family", color: "#4CAF7D" },
+  { label: "Colleagues", color: "#F2C14E" },
+];
+
+function RelationsLocked({ locale }: { locale: AppResultLocale }) {
   const relationLockItems =
-    locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
+    locale === "en" ? EN_RELATION_LOCK_ITEMS : locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
       {/* 鍵付きの円 (SP 2列 / md 3列。友達・恋人・家族・上司の4関係) */}
@@ -271,10 +291,12 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
           <LockGlyph size={14} />
         </span>
         <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-          {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
+          {locale === "en" ? "Unlock now" : locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
         </p>
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-          {locale === "ko" ? (
+          {locale === "en" ? (
+            "Unlock the Complete Edition to see what people in each part of your life may find hard to say."
+          ) : locale === "ko" ? (
             "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
           ) : (
             <>
@@ -289,7 +311,7 @@ function RelationsLocked({ locale }: { locale: ResultLocale }) {
           source="relations_card"
           className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
-          {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+          {locale === "en" ? "See the complete result" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
         </PaywallScrollButton>
       </div>
     </div>
@@ -304,12 +326,13 @@ export function PartTwoSections({
   locale = "ja",
 }: PartTwoSectionsProps) {
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   return (
     <div>
       {/* ブロック順は 好かれやすい → 嫌われやすい → 武器 → 関係別 (2026-07-14 指示)。 */}
       {/* ── 1. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
       <div className="mb-10">
-        <SectionHeading title={isKorean ? "호감을 얻기 쉬운 성격" : "好かれやすい性格"} />
+        <SectionHeading title={isEnglish ? "What people naturally like about you" : isKorean ? "호감을 얻기 쉬운 성격" : "好かれやすい性格"} />
         <div className="px-1">
           {data.likable.map((para, i) => (
             <p
@@ -325,7 +348,7 @@ export function PartTwoSections({
       {/* ── 2. 嫌われやすい性格 (🔒)。hideLocked (獲得モード) では見出しごと出さない ── */}
       {!(hideLocked && !data.dislikable) && (
       <div className="mb-10">
-        <SectionHeading title={isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
+        <SectionHeading title={isEnglish ? "What people may misunderstand" : isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
         {data.dislikable ? (
           <WarnList items={data.dislikable} />
         ) : (
@@ -352,7 +375,11 @@ export function PartTwoSections({
         <div className="mb-10">
           <SectionHeading
             title={
-              isKorean
+              isEnglish
+                ? subjectName
+                  ? `${subjectName}’s quietly powerful strengths`
+                  : "Your quietly powerful strengths"
+                : isKorean
                 ? subjectName
                   ? `부러운 ${subjectName}님만의 무기`
                   : "부러운 나만의 무기"
@@ -370,7 +397,9 @@ export function PartTwoSections({
       <div className="mb-10">
         <SectionHeading
           title={
-            isKorean
+            isEnglish
+              ? "What people around you may find hard to say"
+              : isKorean
               ? "주변 사람들이 나에게 말하지 못한 것"
               : "周りの人が、あなたに言えずにいること"
           }

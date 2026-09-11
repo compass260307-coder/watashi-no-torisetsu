@@ -11,6 +11,12 @@ export const READING_TITLES = {
     chosen: "앞으로 찾아올 전환점",
     grace: "마지막으로 한 가지만",
   },
+  en: {
+    haichi: "What you have built",
+    kokoro: "Who you are with others",
+    chosen: "The turning point ahead",
+    grace: "One last thing",
+  },
 };
 
 const SECTION_IDS = ["haichi", "kokoro", "chosen", "grace"];
@@ -27,7 +33,7 @@ function visibleText(reading) {
 }
 
 export function validateReadingLocale(reading, locale = "ja") {
-  const normalizedLocale = locale === "ko" ? "ko" : "ja";
+  const normalizedLocale = locale === "ko" ? "ko" : locale === "en" ? "en" : "ja";
   const errors = [];
 
   if (!reading || typeof reading !== "object") return ["reading must be an object"];
@@ -63,6 +69,9 @@ export function validateReadingLocale(reading, locale = "ja") {
 
   if (normalizedLocale === "ko" && JAPANESE_OR_HAN_SCRIPT.test(visibleText(reading))) {
     errors.push("Korean reading contains Japanese or Han script");
+  }
+  if (normalizedLocale === "en" && JAPANESE_OR_HAN_SCRIPT.test(visibleText(reading))) {
+    errors.push("English reading contains Japanese or Han script");
   }
 
   return errors;

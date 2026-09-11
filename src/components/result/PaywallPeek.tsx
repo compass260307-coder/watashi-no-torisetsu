@@ -12,7 +12,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // 解放項目1つぶんのチラ見せ素材。width/height は実ファイルの寸法 (CLS 防止)。
 // lead/points は 16P の「例」同様、画像だけでなく「何が手に入るか」を言葉でも
@@ -40,7 +40,7 @@ function PeekOverlay({
   peek: UnlockPeek;
   title: string;
   accent: string;
-  locale: ResultLocale;
+  locale: AppResultLocale;
   onClose: () => void;
 }) {
   // 開いている間は背面スクロールをロック。PaywallOverlay (モーダル内カード) の上に
@@ -67,7 +67,13 @@ function PeekOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={locale === "ko" ? `${title} 미리보기` : `${title}の例`}
+      aria-label={
+        locale === "en"
+          ? `${title} preview`
+          : locale === "ko"
+            ? `${title} 미리보기`
+            : `${title}の例`
+      }
       // PaywallOverlay (z-100) の中の項目からも開けるよう、その上の z-120。
       className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/55 px-4 py-6 backdrop-blur-sm"
       onClick={(e) => {
@@ -86,7 +92,7 @@ function PeekOverlay({
         <button
           type="button"
           onClick={onClose}
-          aria-label={locale === "ko" ? "닫기" : "閉じる"}
+          aria-label={locale === "en" ? "Close" : locale === "ko" ? "닫기" : "閉じる"}
           className="absolute -right-2 -top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent }}
         >
@@ -249,7 +255,7 @@ export function PeekButton({
   peek: UnlockPeek;
   title: string;
   accent: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -259,9 +265,11 @@ export function PeekButton({
         type="button"
         aria-haspopup="dialog"
         aria-label={
-          locale === "ko"
-            ? `${title} 내용 미리보기`
-            : `${title}の中身をチラ見せ`
+          locale === "en"
+            ? `Preview ${title}`
+            : locale === "ko"
+              ? `${title} 내용 미리보기`
+              : `${title}の中身をチラ見せ`
         }
         onClick={() => setOpen(true)}
         // タイトル文章の末尾にインラインで続ける (align-middle で文字の縦中央)。

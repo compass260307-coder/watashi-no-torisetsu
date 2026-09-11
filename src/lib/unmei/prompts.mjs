@@ -22,6 +22,7 @@ const SIGN_ORDER = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 ];
+const SIGN_EN = Object.fromEntries(SIGN_ORDER.map((sign) => [sign, sign]));
 const FACTOR_JA = { O: "開放性", C: "誠実性", E: "外向性", A: "協調性", N: "情緒" };
 const FACTOR_KO = {
   O: "개방성",
@@ -30,6 +31,13 @@ const FACTOR_KO = {
   A: "우호성",
   N: "정서적 민감성",
 };
+const FACTOR_EN = {
+  O: "Openness",
+  C: "Conscientiousness",
+  E: "Extraversion",
+  A: "Agreeableness",
+  N: "Emotional sensitivity",
+};
 
 // ===== 内容/文体レイヤーの plan (スコア由来・純関数) =====
 // quadrant: A(協調性)と O(開放性)の高低から。O≥5→N/O<5→S、A≥5→F/A<5→T。
@@ -37,7 +45,8 @@ const FACTOR_KO = {
 // %表記: score×10 (無料診断と同じ)。
 export function buildUnmeiPlan(scores, locale = "ja") {
   const isKo = locale === "ko";
-  const factorNames = isKo ? FACTOR_KO : FACTOR_JA;
+  const isEn = locale === "en";
+  const factorNames = isKo ? FACTOR_KO : isEn ? FACTOR_EN : FACTOR_JA;
   const s = scores || {};
   const val = (k) => (typeof s[k] === "number" ? s[k] : 5);
   const pct = (k) => Math.round(val(k) * 10);
@@ -61,6 +70,8 @@ export function buildUnmeiPlan(scores, locale = "ja") {
         `(모든 요인이 중앙에 가까우므로 한 요인만 주어로 삼으면 누구에게나 맞는 표현이 된다. ` +
         `두 요인 사이의 내적 긴장을 주어로 삼아 "당신은 이러면서도 동시에 저렇다"는 구조로 제시하고, ` +
         `이 긴장을 두 번째 단락에서 다룰 어긋남의 기원과 연결한다.)`
+      : isEn
+        ? `the combination of ${factorNames[a.k]} ${pct(a.k)} and ${factorNames[b.k]} ${pct(b.k)} (all factors sit near the midpoint, so use the tension between these two factors as the subject)`
       : `${factorNames[a.k]}${pct(a.k)} と ${factorNames[b.k]}${pct(b.k)} の組み合わせ` +
         `（全因子が中央付近のため単独主語だとバーナム化する。2因子の内面の緊張を主語にし、` +
         `「あなたは〜なのに、〜でもある」の形で提示。この緊張を②のズレの起源に接続する）`;
@@ -68,7 +79,9 @@ export function buildUnmeiPlan(scores, locale = "ja") {
     combination = false;
     haichiSubject = isKo
       ? `${factorNames[top.k]}${pct(top.k)}(편차 최대 |${val(top.k).toFixed(1)}-5.0|=${top.dev.toFixed(1)})`
-      : `${factorNames[top.k]}${pct(top.k)}（乖離最大 |${val(top.k).toFixed(1)}−5.0|=${top.dev.toFixed(1)}）`;
+      : isEn
+        ? `${factorNames[top.k]} ${pct(top.k)} (largest deviation from midpoint: ${top.dev.toFixed(1)})`
+        : `${factorNames[top.k]}${pct(top.k)}（乖離最大 |${val(top.k).toFixed(1)}−5.0|=${top.dev.toFixed(1)}）`;
   }
   return { quadrant, pctLine, haichiSubject, combination, topFactorPct };
 }
@@ -83,11 +96,11 @@ function sep(a, b) {
   return d > 180 ? 360 - d : d;
 }
 const ASPECTS = [
-  { ja: "合", ko: "합", a: 0, orb: 6 },
-  { ja: "セクスタイル", ko: "육각", a: 60, orb: 4 },
-  { ja: "スクエア", ko: "사각", a: 90, orb: 6, tension: true },
-  { ja: "トライン", ko: "삼각", a: 120, orb: 6 },
-  { ja: "オポジション", ko: "대립", a: 180, orb: 6, tension: true },
+  { ja: "合", ko: "합", en: "conjunction", a: 0, orb: 6 },
+  { ja: "セクスタイル", ko: "육각", en: "sextile", a: 60, orb: 4 },
+  { ja: "スクエア", ko: "사각", en: "square", a: 90, orb: 6, tension: true },
+  { ja: "トライン", ko: "삼각", en: "trine", a: 120, orb: 6 },
+  { ja: "オポジション", ko: "대립", en: "opposition", a: 180, orb: 6, tension: true },
 ];
 const BODY_JA = {
   sun: "太陽", moon: "月", mercury: "水星", venus: "金星", mars: "火星",
@@ -97,10 +110,14 @@ const BODY_KO = {
   sun: "태양", moon: "달", mercury: "수성", venus: "금성", mars: "화성",
   jupiter: "목성", saturn: "토성", uranus: "천왕성", neptune: "해왕성", pluto: "명왕성",
 };
+const BODY_EN = {
+  sun: "Sun", moon: "Moon", mercury: "Mercury", venus: "Venus", mars: "Mars",
+  jupiter: "Jupiter", saturn: "Saturn", uranus: "Uranus", neptune: "Neptune", pluto: "Pluto",
+};
 // 天体を「太陽: 牡牛座5.8°」形式に。時刻不明の月は星座のみ (正確度数を渡さない)。
 function fmtBody(label, p, timeUnknown, isMoon, locale) {
   if (!p || !p.sign) return null;
-  const signNames = locale === "ko" ? SIGN_KO : SIGN_JA;
+  const signNames = locale === "ko" ? SIGN_KO : locale === "en" ? SIGN_EN : SIGN_JA;
   const sign = signNames[p.sign] ?? p.sign;
   if (isMoon && timeUnknown) return `${label}: ${sign}`;
   const deg = typeof p.degree === "number" ? `${p.degree.toFixed(1)}°` : "";
@@ -114,8 +131,8 @@ function aspectsAmong(bodies, locale) {
       const s = sep(lonOf(bodies[i].pos), lonOf(bodies[j].pos));
       for (const asp of ASPECTS) {
         if (Math.abs(s - asp.a) <= asp.orb) {
-          const aspectName = locale === "ko" ? asp.ko : asp.ja;
-          const tension = asp.tension ? (locale === "ko" ? "(긴장)" : "(緊張)") : "";
+          const aspectName = locale === "ko" ? asp.ko : locale === "en" ? asp.en : asp.ja;
+          const tension = asp.tension ? (locale === "ko" ? "(긴장)" : locale === "en" ? " (tension)" : "(緊張)") : "";
           out.push(`${bodies[i].label}↔${bodies[j].label}: ${aspectName}${tension}`);
           break;
         }
@@ -126,7 +143,7 @@ function aspectsAmong(bodies, locale) {
 }
 // 章別の天体キー配列を {ja,pos} に解決 (time_unknown で ASC/MC を除外)。
 function chapterBodies(chart, keys, timeUnknown, locale) {
-  const bodyNames = locale === "ko" ? BODY_KO : BODY_JA;
+  const bodyNames = locale === "ko" ? BODY_KO : locale === "en" ? BODY_EN : BODY_JA;
   const p = chart?.planets ?? {};
   const list = [];
   for (const key of keys) {
@@ -146,7 +163,7 @@ function elementsBlock(chart, keys, timeUnknown, locale) {
     .map((b) => fmtBody(b.label, b.pos, timeUnknown, b.key === "moon", locale))
     .filter(Boolean);
   const asp = aspectsAmong(bodies, locale).slice(0, 3);
-  const aspectLabel = locale === "ko" ? "각 관계" : "アスペクト";
+  const aspectLabel = locale === "ko" ? "각 관계" : locale === "en" ? "Aspects" : "アスペクト";
   return [...lines, ...(asp.length ? [`${aspectLabel}: ${asp.join(" / ")}`] : [])].join("\n");
 }
 
@@ -315,8 +332,46 @@ const KOREAN_SYSTEM_PROMPT = `당신은 "운명의 설계도"라는 별자리 �
 }
 sections는 반드시 위 네 개를 같은 순서와 같은 id 및 title로 반환합니다.`;
 
+const ENGLISH_SYSTEM_PROMPT = `You write the personalized "Destiny Blueprint" for Alice Diagnosis. It is an entertainment and self-reflection reading, not a scientific diagnosis.
+
+# Core method
+- Personality data states what the person is like. Astrology explores where inner tensions and patterns come from.
+- Never merely repeat the personality result in astrological language. Every main chapter must reveal one useful tension, contrast, or contradiction that neither source would show alone.
+- Use only the chart elements supplied in the user prompt. Never invent a planet, sign, aspect, house, or date.
+- Write confident, natural English without claiming certainty about external events or fate.
+- Translate technical symbolism into ordinary language. Lead with the conclusion and keep textbook explanations to a minimum.
+
+# Chapter structure
+- haichi, kokoro, and chosen each contain: a clear personality-based conclusion; an origin story using at least two supplied chart elements and one tension; and one specific, practical action.
+- chosen also includes timing grounded only in the supplied transit basis. Use an absolute year and broad season, never an exact date or a guaranteed prediction.
+- grace is a short, warm closing without homework.
+- Each subline combines one personality factor and percentage with two chart elements. grace has an empty subline.
+
+# Safety
+- Do not make claims about health, lifespan, pregnancy, another person's life or death, or specific financial decisions.
+- Do not replace medical, legal, financial, or emergency professionals.
+- Frame the reading as reflection and preserve the user's agency.
+- All user-visible text must be English.
+
+# Output
+Return one JSON object only, with no code fence or commentary:
+{
+  "hitokoto": "one or two sentence preview",
+  "sections": [
+    { "id": "haichi", "title": "What you have built", "subline": "...", "body": "..." },
+    { "id": "kokoro", "title": "Who you are with others", "subline": "...", "body": "..." },
+    { "id": "chosen", "title": "The turning point ahead", "subline": "...", "body": "..." },
+    { "id": "grace", "title": "One last thing", "subline": "", "body": "..." }
+  ]
+}
+Return exactly these four sections, in this order, with the exact ids and titles.`;
+
 export function buildNatalSystemPrompt(locale = "ja") {
-  return locale === "ko" ? KOREAN_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  return locale === "ko"
+    ? KOREAN_SYSTEM_PROMPT
+    : locale === "en"
+      ? ENGLISH_SYSTEM_PROMPT
+      : SYSTEM_PROMPT;
 }
 
 // ===== ユーザープロンプト (動的・plan + chart から組み立て) =====
@@ -324,6 +379,7 @@ export function buildNatalSystemPrompt(locale = "ja") {
 //   timeUnknown: 出生時刻不明フラグ
 export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnknown, nowIso, locale = "ja" }) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const plan = buildUnmeiPlan(scores, locale);
 
   // 章別 chart_elements (この中からのみ選ばせる)
@@ -367,6 +423,31 @@ ${timingBasis}
 - grace: 행동이나 숙제 없이 마무리의 여운만 남기고 subline은 빈 문자열로 둡니다. body는 약 250자에서 400자로 씁니다.
 
 JSON만 출력해 주세요.`;
+  }
+
+  if (isEn) {
+    return `Using only the data below, write the reading specified by the system instructions and return JSON only.
+Output language: natural English
+
+## Personal data
+Big Five scores: ${plan.pctLine}
+Subject for haichi: ${plan.haichiSubject}
+32-type profile: ${typeName ?? "(unavailable)"} / essence: ${essence ?? "(unavailable)"}
+Birth time unknown: ${timeUnknown === true ? "yes" : "no"}
+
+The following are the only chart elements you may use:
+[haichi]
+${haichiEl || "(none)"}
+[kokoro]
+${kokoroEl || "(none)"}
+[chosen]
+${chosenEl || "(none)"}
+[chosen timing basis]
+${timingBasis}
+
+Personality quadrant: ${plan.quadrant}
+
+Write haichi and kokoro in roughly 300–450 words each. Write chosen in roughly 400–550 words and ground its broad seasonal timing in the supplied basis. Write grace in roughly 100–180 words. In chosen's subline, use the same leading factor as haichi: ${plan.topFactorPct}. Keep explanations personal and concrete, not textbook-like. Return JSON only.`;
   }
 
   return `以下のデータで、システムの指示どおり JSON のみで鑑定を書いてください。

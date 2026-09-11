@@ -121,9 +121,9 @@ export async function POST(request: NextRequest) {
   }
   const body = parsedBody.value;
   const locale = body.locale ?? "ja";
-  if (locale !== "ja" && locale !== "ko") {
+  if (locale !== "ja" && locale !== "ko" && locale !== "en") {
     return NextResponse.json(
-      { error: "locale must be ja or ko" },
+      { error: "locale must be ja, ko, or en" },
       { status: 400 },
     );
   }
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
       scores: typeof persistedScores;
       invite_code: string;
       owner_token: string;
-      preferred_locale: "ja" | "ko";
+      preferred_locale: "ja" | "ko" | "en";
       diagnosis_completed_at?: string;
       display_name?: string;
     } = {
@@ -351,7 +351,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (postDiagnosisReportEmail) {
+    // English paid-report email copy is not launched yet. Do not send a
+    // Japanese/Korean report to an English user by accident.
+    if (postDiagnosisReportEmail && locale !== "en") {
       try {
         await sendDetailedReportEmail({
           to: postDiagnosisReportEmail,

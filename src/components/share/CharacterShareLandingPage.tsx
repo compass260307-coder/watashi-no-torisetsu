@@ -11,6 +11,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import MeResultPage from "@/components/result/MeResultPage";
+import { EN_RESULT_TYPES } from "@/i18n/en/result";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { ResultLocale } from "@/i18n/result";
 import { resolveSiteUrl } from "@/lib/site-url";
@@ -29,6 +30,7 @@ import { ShareLandingTracker } from "@/components/share/ShareLandingTracker";
 
 const SITE_URL = resolveSiteUrl();
 const NAVY = "#2A3A5C";
+type CharacterShareLocale = ResultLocale | "en";
 
 interface ShareData {
   name: string;
@@ -39,7 +41,7 @@ interface ShareData {
 // invite_code → display_name + scores → 32タイプの称号に解決。無ければ null。
 async function loadShareData(
   code: string,
-  locale: ResultLocale,
+  locale: CharacterShareLocale,
 ): Promise<ShareData | null> {
   const { data } = await supabaseAdmin
     .from("users")
@@ -52,10 +54,14 @@ async function loadShareData(
   >;
   const t32 = classifyThirtyTwoType(scores);
   const essence =
-    locale === "ko" ? KO_RESULT_TYPES[t32].essence : thirtyTwoEssence(t32);
+    locale === "ko"
+      ? KO_RESULT_TYPES[t32].essence
+      : locale === "en"
+        ? EN_RESULT_TYPES[t32].essence
+        : thirtyTwoEssence(t32);
   const name =
     ((data.display_name as string | null) ?? "").trim() ||
-    (locale === "ko" ? "어떤 사람" : "ある人");
+    (locale === "ko" ? "어떤 사람" : locale === "en" ? "Someone" : "ある人");
   return { name, essence, t32 };
 }
 
@@ -64,21 +70,29 @@ export async function generateCharacterShareMetadata({
   locale,
 }: {
   params: Promise<{ code: string }>;
-  locale: ResultLocale;
+  locale: CharacterShareLocale;
 }): Promise<Metadata> {
   const { code } = await params;
   const d = await loadShareData(code, locale);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const codePath = encodeURIComponent(code);
   const alternates = localizedAlternates(
     locale,
     `/share/${codePath}`,
     `/ko/share/${codePath}`,
+    `/en/share/${codePath}`,
   );
-  const siteName = isKorean ? "나의 사용설명서" : "ワタシのトリセツ";
+  const siteName = isKorean
+    ? "나의 사용설명서"
+    : isEnglish
+      ? "Alice Diagnosis"
+      : "ワタシのトリセツ";
   const description = isKorean
     ? "나는 어떤 유형일까요? 무료로 약 3분 만에 진단할 수 있어요."
-    : "あなたは何タイプ？無料・約3分で診断できるよ";
+    : isEnglish
+      ? "What is your personality type? Take the free test in about three minutes."
+      : "あなたは何タイプ？無料・約3分で診断できるよ";
   if (!d) {
     return {
       title: { absolute: siteName },
@@ -89,7 +103,9 @@ export async function generateCharacterShareMetadata({
   }
   const title = isKorean
     ? `${d.name}님은 【${d.essence}】 유형이었어요`
-    : `${d.name}さんは【${d.essence}】でした`;
+    : isEnglish
+      ? `${d.name} is the ${d.essence} type`
+      : `${d.name}さんは【${d.essence}】でした`;
   const characterSlug = thirtyTwoCharacterSlug(d.t32);
   const ogImage = `${SITE_URL}/og-characters/${characterSlug}.jpg?v=20260825`;
   return {
@@ -102,10 +118,10 @@ export async function generateCharacterShareMetadata({
     openGraph: {
       title,
       description,
-      url: `${SITE_URL}${isKorean ? "/ko" : ""}/share/${codePath}`,
+      url: `${SITE_URL}${locale === "ja" ? "" : `/${locale}`}/share/${codePath}`,
       siteName,
       type: "website",
-      locale: isKorean ? "ko_KR" : "ja_JP",
+      locale: isKorean ? "ko_KR" : isEnglish ? "en_US" : "ja_JP",
       images: [
         {
           url: ogImage,
@@ -131,11 +147,12 @@ export default async function CharacterShareLandingPage({
 }: {
   params: Promise<{ code: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-  locale: ResultLocale;
+  locale: CharacterShareLocale;
 }) {
   const { code } = await params;
   const d = await loadShareData(code, locale);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
 
   // 開発用モック: DB に code が無くても ?previewType=<32タイプID> で獲得モードを
   // 確認できる。本番では無効。
@@ -154,7 +171,7 @@ export default async function CharacterShareLandingPage({
           share={{
             sharerName:
               (typeof sp.name === "string" && sp.name) ||
-              (isKorean ? "미리보기" : "プレビュー"),
+              (isEnglish ? "Preview" : isKorean ? "미리보기" : "プレビュー"),
             typeId: raw as ThirtyTwoTypeId,
             inviteCode: code,
           }}
@@ -174,12 +191,18 @@ export default async function CharacterShareLandingPage({
           className="font-black text-xs tracking-[0.3em] mb-4"
           style={{ color: NAVY, opacity: 0.6 }}
         >
-          {isKorean ? "나의 사용설명서" : "ワタシのトリセツ"}
+          {isKorean
+            ? "나의 사용설명서"
+            : isEnglish
+              ? "ALICE DIAGNOSIS"
+              : "ワタシのトリセツ"}
         </p>
         <h1 className="font-black text-2xl" style={{ color: NAVY }}>
           {isKorean
             ? "나만의 사용설명서를 만들 수 있어요"
-            : "あなたのトリセツ、作れます"}
+            : isEnglish
+              ? "Take the Alice Diagnosis"
+              : "あなたのトリセツ、作れます"}
         </h1>
         <p
           className="mt-3 text-sm font-bold"
@@ -187,17 +210,33 @@ export default async function CharacterShareLandingPage({
         >
           {isKorean
             ? "나는 어떤 유형일까요? 무료로 진단해 보세요"
-            : "あなたは何タイプ？無料で診断できるよ"}
+            : isEnglish
+              ? "Discover your personality type with the free test."
+              : "あなたは何タイプ？無料で診断できるよ"}
         </p>
         <Link
-          href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+          href={
+            isKorean
+              ? "/ko/diagnosis"
+              : isEnglish
+                ? "/en/diagnosis"
+                : "/diagnosis"
+          }
           className="mt-8 inline-flex items-center gap-2 rounded-full px-8 py-4 text-white font-black text-base shadow-sm active:scale-95 transition-transform"
           style={{ background: NAVY }}
         >
-          {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+          {isKorean
+            ? "무료 성격 진단 시작하기 →"
+            : isEnglish
+              ? "Take the free personality test →"
+              : "無料で性格診断をする →"}
         </Link>
         <p className="mt-3 text-xs" style={{ color: NAVY, opacity: 0.5 }}>
-          {isKorean ? "가입 없이 · 무료 · 약 3분" : "登録不要・無料・約3分"}
+          {isKorean
+            ? "가입 없이 · 무료 · 약 3분"
+            : isEnglish
+              ? "No account · Free · About 3 minutes"
+              : "登録不要・無料・約3分"}
         </p>
       </main>
     );

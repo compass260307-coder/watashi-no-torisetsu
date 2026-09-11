@@ -1,3 +1,5 @@
+import { SESSION_MARKER_COOKIE_NAME } from "./session-constants";
+
 // 「データをリセット」で消すストレージキー (診断フロー関連) を一元管理する。
 // SP ハンバーガーメニュー (TopHeader) と 自己診断結果ページ (/me) の両方から使う。
 // 対象外: wt_acq_* (first-touch 流入元。リセットで診断をやり直しても
@@ -38,5 +40,7 @@ export function resetLocalData() {
   } catch {
     // sessionStorage 不可環境: 何もしない。
   }
+  // HttpOnly session は残しても、自動復元マーカーを消せばトップに留まれる。
+  document.cookie = `${SESSION_MARKER_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
   window.location.href = "/";
 }

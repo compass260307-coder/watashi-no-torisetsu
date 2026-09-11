@@ -58,7 +58,11 @@ import {
   heroColorsForGroup,
   resultActionColorsForGroup,
 } from "@/lib/hero-colors";
-import { preferCutImage, preferFaceImage, versionCharacterAssetPath } from "@/lib/character-image";
+import {
+  preferCutImage,
+  preferFaceImage,
+  versionCharacterAssetPath,
+} from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
@@ -100,6 +104,8 @@ import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
+import EnSiteHeader from "@/components/en/EnSiteHeader";
+import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import { ShareDiagnosisLink } from "@/components/share/ShareDiagnosisLink";
@@ -108,7 +114,7 @@ import type {
   CModifier,
   NModifier,
 } from "@/lib/types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
   buildKoDeepDiveSections,
   buildKoPartTwo,
@@ -116,6 +122,13 @@ import {
   KO_ME_COPY,
 } from "@/i18n/ko/me";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
+import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import {
+  buildEnDeepDiveSections,
+  buildEnMoshimoScenes,
+  buildEnPartTwo,
+  buildEnSelfSections,
+} from "@/i18n/en/me";
 import {
   createMetaPurchaseClaimToken,
   verifyPaidSelfAccessCheckoutSession,
@@ -160,7 +173,7 @@ type MeUserRow = {
 };
 
 export default function MeResultPage(
-  props: PageProps & { locale?: ResultLocale; share?: ShareLandingInfo },
+  props: PageProps & { locale?: AppResultLocale; share?: ShareLandingInfo },
 ) {
   return <MeResultPageContent {...props} />;
 }
@@ -170,10 +183,12 @@ async function MeResultPageContent({
   searchParams,
   locale = "ja",
   share,
-}: PageProps & { locale?: ResultLocale; share?: ShareLandingInfo }) {
+}: PageProps & { locale?: AppResultLocale; share?: ShareLandingInfo }) {
   const { token } = await params;
   const sp = await searchParams;
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
+  const localePrefix = isEnglish ? "/en" : isKorean ? "/ko" : "";
   // 獲得モード (/share 経由)。previewType と同じモック描画だが、課金導線を出さない。
   const acquisition = share ?? null;
   // 獲得モードでは二人称 (あなた/アナタ) をシェア主の名前に置換する。読むのは訪問者で、
@@ -248,7 +263,7 @@ async function MeResultPageContent({
       id: "preview",
       type_id: classifyType(previewScores!),
       scores: previewScores!,
-      display_name: isKorean ? "미리보기" : "プレビュー",
+      display_name: isEnglish ? "Preview" : isKorean ? "미리보기" : "プレビュー",
       invite_code: "preview",
       diagnosis_completed_at: new Date(0).toISOString(),
     };
@@ -270,7 +285,7 @@ async function MeResultPageContent({
   }
   if (!previewType && isUndiagnosedPlaceholderUser(user)) {
     const current = await getSession();
-    const prefix = isKorean ? "/ko" : "";
+    const prefix = localePrefix;
     redirect(
       current?.id === user.id ? `${prefix}/diagnosis` : `${prefix}/login`,
     );
@@ -375,7 +390,11 @@ async function MeResultPageContent({
   const unmeiPromoCard = !showUnmeiPromo ? null : (
     <section
       aria-label={
-        isKorean
+        isEnglish
+          ? fullAccessPaid
+            ? "Everything plan benefits"
+            : "Complete version benefits"
+          : isKorean
           ? fullAccessPaid
             ? "프리미엄 코스 혜택"
             : "완전판 코스 혜택"
@@ -387,7 +406,11 @@ async function MeResultPageContent({
       <div className="animate-premium-glow rounded-[23px] border border-[#F1DDAA] bg-white px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14">
         <div className="mx-auto mb-8 max-w-[800px] text-center md:mb-10">
           <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
-            {isKorean
+            {isEnglish
+              ? fullAccessPaid
+                ? "Unlocked with Everything"
+                : "Unlocked with the Complete Version"
+              : isKorean
               ? fullAccessPaid
                 ? "프리미엄에서 잠금 해제"
                 : "완전판에서 잠금 해제"
@@ -396,7 +419,9 @@ async function MeResultPageContent({
                 : "完全版で解放"}
           </span>
           <h2 className="mb-3 text-[24px] font-bold leading-[1.35] text-[#2E2E5C] md:text-[36px]">
-            {isKorean
+            {isEnglish
+              ? "Answer Alice’s questions to complete your Destiny Blueprint"
+              : isKorean
               ? "질문에 답하고, 운명의 설계도를 완성해 보세요"
               : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
@@ -414,10 +439,14 @@ async function MeResultPageContent({
                   <path d="M14 2v5h5M9 13h6M9 17h4" />
                 </svg>
               ),
-              title: isKorean
+              title: isEnglish
+                ? "A four-chapter AI reading"
+                : isKorean
                 ? "네 장으로 이어지는 AI 감정서"
                 : "4章立てのAI鑑定文",
-              body: isKorean
+              body: isEnglish
+                ? "From the strengths you’ve built to the turning points ahead, your story is interpreted from beginning to end, with one practical next step."
+                : isKorean
                 ? "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장으로 풀고 바로 실천할 작은 한 걸음까지 담았어요."
                 : "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
             },
@@ -430,10 +459,14 @@ async function MeResultPageContent({
                   <path d="m12 7.5.7 1.45 1.6.23-1.15 1.12.27 1.58L12 11.13l-1.43.75.27-1.58-1.15-1.12 1.6-.23L12 7.5Z" />
                 </svg>
               ),
-              title: isKorean
+              title: isEnglish
+                ? "Your personal astrologer — 30 chats"
+                : isKorean
                 ? "나만의 전담 점성술사"
                 : "専属AI占い師に相談30回",
-              body: isKorean
+              body: isEnglish
+                ? "Because Alice already understands your personality and birth chart, you can get straight to the heart of love, work, relationships, and difficult choices."
+                : isKorean
                 ? fullAccessPaid
                   ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
                   : "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 완전판에는 채팅 30회가 포함됩니다."
@@ -451,10 +484,14 @@ async function MeResultPageContent({
                   <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
                 </svg>
               ),
-              title: isKorean
+              title: isEnglish
+                ? "Your personal birth-chart wheel"
+                : isKorean
                 ? "나만의 출생 차트 휠"
                 : "出生図ホイール",
-              body: isKorean
+              body: isEnglish
+                ? "Recreate the sky at the moment you were born from your date, time, and place of birth, then see the planetary pattern in one personal chart."
+                : isKorean
                 ? "생년월일·출생 시간·출생지를 바탕으로 태어난 순간의 하늘을 재현하고, 천체의 배치를 나만의 한 장의 설계도로 그려 드려요."
                 : "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
             },
@@ -467,10 +504,14 @@ async function MeResultPageContent({
                   <circle cx="15" cy="12" r="5.8" />
                 </svg>
               ),
-              title: isKorean
+              title: isEnglish
+                ? "Personality diagnosis × astrology"
+                : isKorean
                 ? "성격 진단과 별의 교차 해석"
                 : "性格診断 × 星の掛け合わせ",
-              body: isKorean
+              body: isEnglish
+                ? "Compare the personality found in your Big Five diagnosis with the temperament shown by your birth chart, including where they reinforce—or challenge—each other."
+                : isKorean
                 ? "Big Five 진단에서 발견한 성격과 별이 보여 주는 기질을 나란히 살펴, 겹치는 부분과 작은 차이까지 읽어 드려요."
                 : "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
             },
@@ -482,8 +523,14 @@ async function MeResultPageContent({
                   <path d="M12 20.5C7 17 3.5 13.7 3.5 9.9c0-2.7 2-4.7 4.6-4.7 1.6 0 3 .8 3.9 2.1.9-1.3 2.3-2.1 3.9-2.1 2.6 0 4.6 2 4.6 4.7 0 3.8-3.5 7.1-8.5 10.6Z" />
                 </svg>
               ),
-              title: isKorean ? "궁합 진단 기능 잠금 해제" : "相性診断機能を解放",
-              body: isKorean
+              title: isEnglish
+                ? "Unlock compatibility readings"
+                : isKorean
+                  ? "궁합 진단 기능 잠금 해제"
+                  : "相性診断機能を解放",
+              body: isEnglish
+                ? "See your compatibility from S to C, then explore how the relationship works in love, friendship, work, and moments of misunderstanding."
+                : isKorean
                 ? "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 관계까지 읽어 드려요."
                 : "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
             },
@@ -523,7 +570,7 @@ async function MeResultPageContent({
             previewMode={Boolean(previewType)}
             className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
           >
-            {isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
+            {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
             <span aria-hidden="true" className="text-xl font-medium">
               →
             </span>
@@ -546,11 +593,16 @@ async function MeResultPageContent({
   const flag32 = previewType ? true : isThirtyTwoEnabled();
   const t32 = classifyThirtyTwoType(stored);
   // 第二部本文 (強み/あれっ?/取扱い方/ギャップ予告)。未解放時は本文なし (フェイルクローズ)。
-  const partTwoRaw = isKorean
-    ? buildKoPartTwo(t32, stored, partTwoUnlocked)
-    : resolvePartTwo(t32, sixteenTypeId, stored, {
-        unlocked: partTwoUnlocked,
-      });
+  const partTwoRaw = isEnglish
+    ? buildEnPartTwo(t32, stored, partTwoUnlocked)
+    : isKorean
+      ? buildKoPartTwo(t32, stored, partTwoUnlocked)
+      : resolvePartTwo(t32, sixteenTypeId, stored, {
+          unlocked: partTwoUnlocked,
+        });
+  const moshimoScenes = isEnglish
+    ? buildEnMoshimoScenes(stored, partTwoUnlocked)
+    : buildMoshimoScenes(stored, partTwoUnlocked, isKorean ? "ko" : "ja");
   // 獲得モード: 本文の二人称をシェア主の名前へ (🔒系は null のままなので触らない)。
   const partTwo = acquisition
     ? {
@@ -564,9 +616,11 @@ async function MeResultPageContent({
           })) ?? null,
       }
     : partTwoRaw;
-  const deepDiveSectionsRaw = isKorean
-    ? buildKoDeepDiveSections(t32, stored, partTwoUnlocked)
-    : resolvedDeepDiveSections;
+  const deepDiveSectionsRaw = isEnglish
+    ? buildEnDeepDiveSections(t32, stored, partTwoUnlocked)
+    : isKorean
+      ? buildKoDeepDiveSections(t32, stored, partTwoUnlocked)
+      : resolvedDeepDiveSections;
   // 獲得モードはロック要素をサーバ側で除去する。DeepDiveSections は client component の
   // ため、props に残すと見出しが RSC ペイロードに載ってしまう (本文は "" だが痕跡も消す)。
   // あわせて本文/見出しの二人称もシェア主の名前へ置換する。
@@ -602,11 +656,13 @@ async function MeResultPageContent({
     "--result-action-color": resultActionTone.accent,
     "--result-action-shadow": resultActionTone.shadow,
   } as CSSProperties;
-  const sectionsRaw = isKorean
-    ? buildKoSelfSections(t32, stored)
-    : flag32
-      ? selfContentFor(t32)
-      : selfResultContent[sixteenTypeId];
+  const sectionsRaw = isEnglish
+    ? buildEnSelfSections(t32, stored)
+    : isKorean
+      ? buildKoSelfSections(t32, stored)
+      : flag32
+        ? selfContentFor(t32)
+        : selfResultContent[sixteenTypeId];
   // 獲得モード: ①基本特性/⑥注意点の本文もシェア主の名前へ。
   const sections = acquisition
     ? sectionsRaw.map((s) => ({
@@ -616,16 +672,20 @@ async function MeResultPageContent({
         body: personalize(s.body),
       }))
     : sectionsRaw;
-  const dispName = isKorean
-    ? KO_RESULT_TYPES[t32].name
-    : flag32
-      ? thirtyTwoName(t32)
-      : sixteenType.name;
-  const dispEssence = isKorean
-    ? KO_RESULT_TYPES[t32].essence
-    : flag32
-      ? thirtyTwoEssence(t32)
-      : sixteenType.essence;
+  const dispName = isEnglish
+    ? EN_RESULT_TYPES[t32].name
+    : isKorean
+      ? KO_RESULT_TYPES[t32].name
+      : flag32
+        ? thirtyTwoName(t32)
+        : sixteenType.name;
+  const dispEssence = isEnglish
+    ? EN_RESULT_TYPES[t32].essence
+    : isKorean
+      ? KO_RESULT_TYPES[t32].essence
+      : flag32
+        ? thirtyTwoEssence(t32)
+        : sixteenType.essence;
   // キャラ画像: /types と同じく背景除去済みの透過版 (characters/cut) を優先。
   //   v3 原画の地色は帯色と微妙にズレて四角い縁が見えるため、透過版なら帯に完全に馴染む。
   //   透過版が無いタイプのみ v3 にフォールバック。
@@ -637,7 +697,7 @@ async function MeResultPageContent({
   // 称号や OCEAN コードに重ならないよう引き上げを弱める。
   const cutTopMargin: number | undefined = (
     characterImages.cutTopMargin as Record<string, number>
-  )[path.basename(dispImage)];
+  )[path.basename(dispImage.split(/[?#]/, 1)[0])];
   const heroPullClass =
     cutTopMargin === undefined || cutTopMargin >= 0.1
       ? "-mt-8"
@@ -664,30 +724,36 @@ async function MeResultPageContent({
       ...(sceneGroup ? [`${sceneGroup}_${variant}.webp`] : []),
     ];
     for (const name of candidates) {
-      if (characterImages.scenes.includes(name)) return versionCharacterAssetPath(`/characters/scenes/${name}`);
+      if (characterImages.scenes.includes(name)) {
+        return versionCharacterAssetPath(`/characters/scenes/${name}`);
+      }
     }
     return null;
   };
   // 説明文(oneLiner): on=32キャラ一文 / off=従来16。
-  const dispDesc = isKorean
-    ? KO_RESULT_TYPES[t32].oneLiner
-    : flag32
-      ? thirtyTwoOneLiner(t32)
-      : sixteenType.oneLiner;
+  const dispDesc = isEnglish
+    ? EN_RESULT_TYPES[t32].oneLiner
+    : isKorean
+      ? KO_RESULT_TYPES[t32].oneLiner
+      : flag32
+        ? thirtyTwoOneLiner(t32)
+        : sixteenType.oneLiner;
   const inviteCode = ((user.invite_code as string | null) ?? "").trim();
   // 自己診断結果の固定バーは、友達評価の依頼ではなくキャラクター共有に専念する。
   // 共有先は per-owner のキャラOGが出る獲得ページ。
-  const characterShareUrl = `${SITE_URL}${isKorean ? "/ko" : ""}/share/${inviteCode}`;
+  const characterShareUrl = `${SITE_URL}${localePrefix}/share/${inviteCode}`;
   const acquisitionDiagnosisHref = acquisition
-    ? `${isKorean ? "/ko" : ""}/diagnosis?source=${encodeURIComponent(acquisition.inviteCode)}`
+    ? `${localePrefix}/diagnosis?source=${encodeURIComponent(acquisition.inviteCode)}`
     : undefined;
   // 動物＋職業システム: 動物は 16 タイプの bare 動物名、職業は他者評価平均から決定
   // (友達 JOB_FRIEND_THRESHOLD 人未満は null = 未定)。
-  const animalName = isKorean
-    ? KO_RESULT_TYPES[t32].animal
-    : flag32
-      ? thirtyTwoAnimal(t32)
-      : sixteenType.animal;
+  const animalName = isEnglish
+    ? EN_RESULT_TYPES[t32].animal
+    : isKorean
+      ? KO_RESULT_TYPES[t32].animal
+      : flag32
+        ? thirtyTwoAnimal(t32)
+        : sixteenType.animal;
   const job = computeJob(friendAvgScores, friendEvalCount);
 
   // ?revealDemo=1 のときだけ、職業を仮の「記者」で差し込む開発用表示。
@@ -775,13 +841,13 @@ async function MeResultPageContent({
         (isOwnedResult ||
           (process.env.NODE_ENV === "development" && previewType !== null)) &&
         inviteCode
-          ? `${SITE_URL}${isKorean ? "/ko" : ""}/friend/${encodeURIComponent(inviteCode)}`
+          ? `${SITE_URL}${localePrefix}/friend/${encodeURIComponent(inviteCode)}`
           : undefined
       }
       friendDiagnosisHref={
         (isOwnedResult ||
           (process.env.NODE_ENV === "development" && previewType !== null))
-          ? `${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`
+          ? `${localePrefix}/tako/${encodeURIComponent(token)}`
           : undefined
       }
       ownerToken={acquisition || publicPreview ? undefined : token}
@@ -796,25 +862,35 @@ async function MeResultPageContent({
       code={dispCode}
       reportHref={
         showUnmeiPromo
-          ? isKorean
-            ? "/ko/unmei"
-            : "/unmei"
+          ? isEnglish
+            ? "/en/unmei"
+            : isKorean
+              ? "/ko/unmei"
+              : "/unmei"
           : !acquisition &&
               !publicPreview &&
               (previewType ? partTwoUnlocked : deepDivePaid)
-            ? previewType
-              ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
-              : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
+            ? isEnglish
+              ? previewType
+                ? undefined
+                : `/en/report/${encodeURIComponent(token)}/pdf`
+              : previewType
+                ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
+                : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
             : undefined
       }
       reportLabel={
         showUnmeiPromo
-          ? isKorean
-            ? "결과 업그레이드"
-            : "結果をアップグレード"
-          : isKorean
-            ? "자기 분석 PDF 다운로드"
-            : "自己分析PDFをダウンロード"
+          ? isEnglish
+            ? "Upgrade my result"
+            : isKorean
+              ? "결과 업그레이드"
+              : "結果をアップグレード"
+          : isEnglish
+            ? "Download my PDF"
+            : isKorean
+              ? "자기 분석 PDF 다운로드"
+              : "自己分析PDFをダウンロード"
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
@@ -847,13 +923,17 @@ async function MeResultPageContent({
               <path d="M19 2v4M17 4h4" />
               <path d="M5 16v4M3 18h4" />
             </svg>
-            {isKorean ? "결과 업그레이드" : "結果をアップグレード"}
+            {isEnglish
+              ? "Upgrade my result"
+              : isKorean
+                ? "결과 업그레이드"
+                : "結果をアップグレード"}
           </MeUnmeiChatLauncher>
         ) : undefined
       }
       locale={locale}
     >
-      {isKorean ? <KoTopHeader /> : <TopHeader />}
+      {isEnglish ? <EnSiteHeader /> : isKorean ? <KoTopHeader /> : <TopHeader />}
     </MeStickyHeader>
     {/* 本文〜末尾CTA/課金カードまでを薄グレー1枚で面にする (16P 参考・2026-08-26)。
         main 単体に塗ると main 外の課金カード/末尾CTAの帯だけ白く抜けて継ぎ目が
@@ -869,12 +949,16 @@ async function MeResultPageContent({
         <ResultHero
           label={
             acquisition
-              ? isKorean
-                ? `${acquisition.sharerName}님의 성격 유형:`
-                : `${acquisition.sharerName}さんの性格タイプ:`
-              : isKorean
-                ? KO_ME_COPY.heroLabel
-                : "あなたの性格タイプ:"
+              ? isEnglish
+                ? `${acquisition.sharerName}’s personality type:`
+                : isKorean
+                  ? `${acquisition.sharerName}님의 성격 유형:`
+                  : `${acquisition.sharerName}さんの性格タイプ:`
+              : isEnglish
+                ? "Your personality type:"
+                : isKorean
+                  ? KO_ME_COPY.heroLabel
+                  : "あなたの性格タイプ:"
           }
           essence={dispEssence}
           scores={stored}
@@ -929,7 +1013,7 @@ async function MeResultPageContent({
         {/* ===== ① 基本特性 + 五つの性格傾向 =====
             基本特性 → 挿絵 → 五つの性格傾向 → 基本特性の続き、の旧構成。 */}
         <section
-          aria-label={isKorean ? KO_ME_COPY.selfAriaLabel : "自分が見た自分"}
+          aria-label={isEnglish ? "How you see yourself" : isKorean ? KO_ME_COPY.selfAriaLabel : "自分が見た自分"}
           className="mb-10"
         >
           {(() => {
@@ -965,14 +1049,20 @@ async function MeResultPageContent({
                 <div className="mb-14 mt-4">
                   <BigFiveDivergingBars
                     scores={stored}
-                    title={isKorean ? KO_ME_COPY.bigFiveTitle : "五つの性格傾向"}
+                    title={
+                      isEnglish
+                        ? "Your personality across five dimensions"
+                        : isKorean
+                          ? KO_ME_COPY.bigFiveTitle
+                          : "五つの性格傾向"
+                    }
                     number="1"
                     locale={locale}
                     footer={
                       !acquisition && !publicPreview ? (
                         <div className="flex flex-wrap items-center justify-end gap-3">
                           <ShareModalOpenButton
-                            label={isKorean ? "공유" : "シェア"}
+                            label={isEnglish ? "Share" : isKorean ? "공유" : "シェア"}
                             iconOnly
                           />
                           {/* 友達診断への導線ピル。本人閲覧時のみ。 */}
@@ -980,7 +1070,7 @@ async function MeResultPageContent({
                             (process.env.NODE_ENV === "development" &&
                               previewType !== null)) && (
                               <Link
-                                href={`${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`}
+                                href={`${localePrefix}/tako/${encodeURIComponent(token)}`}
                                 className="inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
                               >
                                 <svg
@@ -994,7 +1084,11 @@ async function MeResultPageContent({
                                   <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                   <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                 </svg>
-                                {isKorean ? "친구 답변과 비교하기" : "友達と答え合わせ"}
+                                {isEnglish
+                                  ? "Compare with your friends"
+                                  : isKorean
+                                    ? "친구 답변과 비교하기"
+                                    : "友達と答え合わせ"}
                               </Link>
                           )}
                         </div>
@@ -1046,11 +1140,15 @@ async function MeResultPageContent({
               4
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-              {isKorean
+              {isEnglish
                 ? acquisition
-                  ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
-                  : "만약의 순간에 나타나는 나"
-                : personalize("もしもの時のあなた")}
+                  ? `${acquisition.sharerName} in everyday moments`
+                  : "You in everyday moments"
+                : isKorean
+                  ? acquisition
+                    ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
+                    : "만약의 순간에 나타나는 나"
+                  : personalize("もしもの時のあなた")}
             </h2>
           </div>
           {/* 章の挿絵 (グループ別のフェルトイラスト。sceneImage("moshimo") が
@@ -1069,7 +1167,7 @@ async function MeResultPageContent({
             // 公開プレビューも同様に無料シーンのみ (解除カードの課金CTAを出さない)。
             scenes={
               acquisition
-                ? buildMoshimoScenes(stored, false, locale)
+                ? moshimoScenes
                     .filter((s) => !s.locked)
                     .map((s) => ({
                       ...s,
@@ -1077,10 +1175,8 @@ async function MeResultPageContent({
                       body: personalize(s.body),
                     }))
                 : publicPreview
-                  ? buildMoshimoScenes(stored, false, locale).filter(
-                      (s) => !s.locked,
-                    )
-                  : buildMoshimoScenes(stored, partTwoUnlocked, locale)
+                  ? moshimoScenes.filter((s) => !s.locked)
+                  : moshimoScenes
             }
             locale={locale}
           />
@@ -1099,11 +1195,15 @@ async function MeResultPageContent({
               5
             </span>
             <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-              {isKorean
+              {isEnglish
                 ? acquisition
-                  ? `친구가 보는 ${acquisition.sharerName}님`
-                  : KO_ME_COPY.friendSectionTitle
-                : personalize("友達から見たあなた")}
+                  ? `${acquisition.sharerName} through their friends’ eyes`
+                  : "You through your friends’ eyes"
+                : isKorean
+                  ? acquisition
+                    ? `친구가 보는 ${acquisition.sharerName}님`
+                    : KO_ME_COPY.friendSectionTitle
+                  : personalize("友達から見たあなた")}
             </h2>
           </div>
 
@@ -1136,10 +1236,12 @@ async function MeResultPageContent({
                   </svg>
                 </span>
                 <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                  {isKorean ? KO_ME_COPY.unlockNow : "今すぐロックを解除"}
+                  {isEnglish ? "Unlock now" : isKorean ? KO_ME_COPY.unlockNow : "今すぐロックを解除"}
                 </p>
                 <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
-                  {isKorean ? (
+                  {isEnglish ? (
+                    <>Unlock the Complete Edition to see what your friends may misunderstand about you.</>
+                  ) : isKorean ? (
                     KO_ME_COPY.friendLockDescription
                   ) : (
                     <>
@@ -1153,7 +1255,7 @@ async function MeResultPageContent({
                   source="friend_dislike_card"
                   className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                 >
-                  {isKorean ? KO_ME_COPY.accessNow : "今すぐアクセス"}
+                  {isEnglish ? "See the complete result" : isKorean ? KO_ME_COPY.accessNow : "今すぐアクセス"}
                 </PaywallScrollButton>
               </div>
             );
@@ -1203,11 +1305,15 @@ async function MeResultPageContent({
                     6
                   </span>
                   <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-                    {isKorean
+                    {isEnglish
                       ? acquisition
-                        ? `${acquisition.sharerName}님의 주의해서 다룰 점`
-                        : KO_ME_COPY.cautionTitle
-                      : personalize("あなたの注意点")}
+                        ? `How to handle ${acquisition.sharerName} with care`
+                        : "Handle with care"
+                      : isKorean
+                        ? acquisition
+                          ? `${acquisition.sharerName}님의 주의해서 다룰 점`
+                          : KO_ME_COPY.cautionTitle
+                        : personalize("あなたの注意点")}
                   </h2>
                 </div>
                 {/* 挿絵 normal2: タイトル直下 (本文の前) に表示 */}
@@ -1250,14 +1356,23 @@ async function MeResultPageContent({
                   <div className="mt-10 px-1">
                     {/* 見出しはシーン別の注意点と同スタイル (ぼかしの外に置く)。 */}
                     <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-                      {isKorean ? "남은 주의점과 대처법" : "残りの注意点と対処法"}
+                      {isEnglish ? "More patterns and practical guidance" : isKorean ? "남은 주의점과 대처법" : "残りの注意点と対処法"}
                     </h3>
                     <div className="relative">
                     <div
                       aria-hidden="true"
                       className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
                     >
-                      {(isKorean
+                      {(isEnglish
+                        ? [
+                            { title: "When you take on too much", body: "Notice the first signal that your capacity is running low." },
+                            { title: "When your standards become pressure", body: "Separate what truly matters from what only feels urgent." },
+                            { title: "When you need to say no", body: "A clear boundary can protect a relationship better than silent resentment." },
+                            { title: "When you need support", body: "Ask for one specific kind of help before the situation becomes heavy." },
+                            { title: "When you put yourself last", body: "Reserve time for recovery before the rest of the calendar fills it." },
+                            { title: "When care loses its balance", body: "Give your closest relationships the same attention you offer everyone else." },
+                          ]
+                        : isKorean
                         ? [
                             { title: "혼자 너무 많이 떠안지 않는 법", body: "전부 혼자 짊어지기 전에 한 가지만 다른 사람에게 맡기는 연습부터 시작해요." },
                             { title: "‘내가 해야 해’를 다시 보는 법", body: "맡은 역할을 세어 보고 정말 나 아니면 안 되는 일만 남겨요." },
@@ -1304,18 +1419,18 @@ async function MeResultPageContent({
                           </svg>
                         </span>
                         <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                          {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+                          {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
                         </p>
                         <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
-                          {isKorean ? "남은 주의점과 대처법을 열어" : "残りの注意点と対処法を解放して、"}
+                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : "残りの注意点と対処法を解放して、"}
                           <br className="md:hidden" />
-                          {isKorean ? "나의 사용설명서를 완성해 보세요." : "あなたのトリセツを完成させましょう。"}
+                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : "あなたのトリセツを完成させましょう。"}
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"
                           className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                         >
-                          {isKorean ? "지금 확인하기" : "今すぐアクセス"}
+                          {isEnglish ? "See the complete result" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
                         </PaywallScrollButton>
                       </div>
                     </div>
@@ -1332,19 +1447,21 @@ async function MeResultPageContent({
             (process.env.NODE_ENV === "development" && previewType !== null)) && (
             <section className="mt-16 mb-14">
               <h2 className="mb-3 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[26px]">
-                {isKorean ? "친구 진단" : "友達診断"}
+                {isEnglish ? "Friend perspective" : isKorean ? "친구 진단" : "友達診断"}
               </h2>
               <p className="body-gothic mb-5 text-[15px] leading-[1.8] text-[#1A1A1A] md:text-[16px]">
-                {isKorean
+                {isEnglish
+                  ? "Invite friends or family, then compare how they see you with how you see yourself."
+                  : isKorean
                   ? "친구나 가족에게 답을 받아 ‘주변이 바라본 나’와의 차이를 비교해 보세요."
                   : "友だちや家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
               </p>
               <Link
-                href={`${isKorean ? "/ko" : ""}/tako/${encodeURIComponent(token)}`}
+                href={`${localePrefix}/tako/${encodeURIComponent(token)}`}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                 style={resultActionButtonStyle}
               >
-                {isKorean ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                {isEnglish ? "Invite a friend" : isKorean ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
                 <span aria-hidden="true">→</span>
               </Link>
             </section>
@@ -1360,17 +1477,17 @@ async function MeResultPageContent({
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
               style={resultActionButtonStyle}
             >
-              {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
             </ShareDiagnosisLink>
           </div>
         ) : publicPreview ? (
           <div className="mt-16 mb-12 text-center">
             <Link
-              href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+              href={`${localePrefix}/diagnosis`}
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
               style={resultActionButtonStyle}
             >
-              {isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
             </Link>
           </div>
         ) : null}
@@ -1396,6 +1513,7 @@ async function MeResultPageContent({
             imageAlt={dispName}
             group={resultGroup}
             locale={locale}
+            cardMode={isEnglish ? "legacy" : undefined}
             noShadow
             benefitsBeforePrice
           />
@@ -1408,6 +1526,7 @@ async function MeResultPageContent({
           imageAlt={dispName}
           group={resultGroup}
           locale={locale}
+          cardMode={isEnglish ? "legacy" : undefined}
         />
       </>
     )}
@@ -1432,7 +1551,7 @@ async function MeResultPageContent({
               className="flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-[15px] font-black text-white transition-transform hover:translate-y-0.5 md:text-[16px]"
               style={resultActionButtonStyle}
             >
-              {isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
+              {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
               <span aria-hidden="true" className="text-lg font-medium">
                 →
               </span>
@@ -1441,7 +1560,7 @@ async function MeResultPageContent({
               (process.env.NODE_ENV === "development" &&
                 previewType !== null)) && (
               <Link
-                href={isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                href={isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
                 className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[#D6D9E6] bg-white px-6 py-3.5 text-[15px] font-black text-[#2E2E5C] transition-colors hover:bg-[#FDFDFE] md:text-[16px]"
               >
                 <svg
@@ -1458,7 +1577,7 @@ async function MeResultPageContent({
                   <path d="M21 12a9 9 0 1 1-2.64-6.36" />
                   <path d="M21 3v6h-6" />
                 </svg>
-                {isKorean ? "메인 테스트 다시 받기" : "メインテストを再度受ける"}
+                {isEnglish ? "Retake the main test" : isKorean ? "메인 테스트 다시 받기" : "メインテストを再度受ける"}
               </Link>
             )}
           </div>
@@ -1480,7 +1599,7 @@ async function MeResultPageContent({
         TopFooter 側ではなく余白で吸収されるため、そのまま置く。
         /me は直上に波形のシェア帯があり、フッター上端の直線が二重線に見えるため
         topBorder={false} で上端線を消す (他ページのフッターは据え置き)。 */}
-    {isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} />}
+    {isEnglish ? <EnSiteFooter /> : isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} />}
     </>
   );
 }

@@ -33,6 +33,7 @@ export async function generateMetadata({
   const type = KO_RESULT_TYPES[id];
   const japaneseUrl = `${BASE_URL}/preview/${typeId}`;
   const koreanUrl = `${BASE_URL}/ko/preview/${typeId}`;
+  const englishUrl = `${BASE_URL}/en/preview/${typeId}`;
   const imageUrl = KO_DEFAULT_OG_IMAGE.url;
 
   return {
@@ -43,6 +44,7 @@ export async function generateMetadata({
       languages: {
         "ja-JP": japaneseUrl,
         "ko-KR": koreanUrl,
+        "en-US": englishUrl,
         "x-default": japaneseUrl,
       },
     },

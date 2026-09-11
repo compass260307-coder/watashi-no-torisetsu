@@ -1,5 +1,5 @@
-// 日本版 (完全版 ¥499 の単一プラン)・
-// 韓国版 (完全版 ₩4,900 / 学生向け ₩1,900) の
+// 日本版 (完全版 ¥899 の単一プラン)・韓国版 (完全版 ₩4,900 / 学生向け ₩1,900)・
+// 英語版 (完全版 $3.49 の単一プラン) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
 // POST /api/checkout/create-full-access-session
@@ -40,8 +40,9 @@ import {
   DESTINY_ACCESS_POLICY_FULL_INCLUDED,
   DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
   EMPTY_ACCESS_ENTITLEMENTS,
+  EN_FULL_ACCESS_PRICE_USD_CENTS,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   isAccessProduct,
@@ -69,7 +70,7 @@ import {
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
-type CheckoutLocale = "ja" | "ko";
+type CheckoutLocale = "ja" | "ko" | "en";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -143,8 +144,8 @@ const CHECKOUT_PRICING = {
   ja: {
     currency: "jpy",
     saleAmount: FULL_ACCESS_PRICE_JPY,
-    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
-    discountAmount: FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY,
+    listAmount: FULL_ACCESS_PRICE_JPY,
+    discountAmount: 0,
   },
   ko: {
     currency: "krw",
@@ -152,10 +153,16 @@ const CHECKOUT_PRICING = {
     listAmount: 12900,
     discountAmount: 8000,
   },
+  en: {
+    currency: "usd",
+    saleAmount: EN_FULL_ACCESS_PRICE_USD_CENTS,
+    listAmount: EN_FULL_ACCESS_PRICE_USD_CENTS,
+    discountAmount: 0,
+  },
 } as const satisfies Record<
   CheckoutLocale,
   {
-    currency: "jpy" | "krw";
+    currency: "jpy" | "krw" | "usd";
     saleAmount: number;
     listAmount: number;
     discountAmount: number;
@@ -171,9 +178,9 @@ const JA_COURSE_CHECKOUT_PRICING = {
     couponId: `wt-release-self-report-off${SELF_REPORT_LIST_PRICE_JPY - SELF_REPORT_PRICE_JPY}-jpy`,
   },
   full_access: {
-    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
+    listAmount: FULL_ACCESS_PRICE_JPY,
     saleAmount: FULL_ACCESS_PRICE_JPY,
-    couponId: `wt-release-full-access-off${FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY}-jpy`,
+    couponId: "wt-full-access-no-discount-jpy",
   },
   premium_bundle: {
     listAmount: PREMIUM_BUNDLE_LIST_PRICE_JPY,
@@ -217,6 +224,15 @@ const CHECKOUT_COPY: Record<
     submitMessage:
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
+  en: {
+    couponId: "full-access-en-no-discount-usd",
+    couponName: "Complete Edition",
+    productName: "Alice Diagnosis — Complete Edition",
+    productDescription:
+      "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings with one payment.",
+    submitMessage:
+      "One-time purchase. Keep access to every Complete Edition feature for $3.49, tax included.",
+  },
 };
 
 const CURRENT_FULL_ACCESS_COPY = {
@@ -232,6 +248,13 @@ const CURRENT_FULL_ACCESS_COPY = {
       "자기 진단·친구 진단·전용 PDF·궁합 진단과 함께 운명의 설계도, 전담 점성술사 Alice와의 채팅 30회, 타로 세 종류를 모두 해제합니다.",
     submitMessage:
       "한 번만 결제하면 궁합 진단·운명의 설계도·Alice와의 채팅 30회·타로를 포함한 완전판을 이용할 수 있어요. 30일 환불 보장.",
+  },
+  en: {
+    productName: "Alice Diagnosis — Complete Edition",
+    productDescription:
+      "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings.",
+    submitMessage:
+      "One-time purchase. Keep access to every Complete Edition feature for $3.49, tax included.",
   },
 } as const;
 
@@ -250,6 +273,11 @@ const SELF_REPORT_COPY = {
     submitMessage:
       "한 번만 결제하면 자기 진단·친구 진단과 전용 PDF를 계속 확인할 수 있어요. 30일 환불 보장.",
   },
+  en: {
+    productName: "Unavailable English plan",
+    productDescription: "This plan is not offered in English.",
+    submitMessage: null,
+  },
 } as const;
 
 const PREMIUM_BUNDLE_COPY = {
@@ -266,6 +294,11 @@ const PREMIUM_BUNDLE_COPY = {
       "완전판의 모든 기능과 궁합 진단, 한국어 운명의 설계도에 더해, 나만의 전담 점성술사와 채팅 30회를 이용할 수 있어요. 1회 결제.",
     submitMessage:
       "한 번만 결제하면 궁합 진단을 포함한 모든 진단 결과, 운명의 설계도와 전담 점성술사 채팅을 이용할 수 있어요. 30일 환불 보장.",
+  },
+  en: {
+    productName: "Unavailable English plan",
+    productDescription: "This plan is not offered in English.",
+    submitMessage: null,
   },
 } as const;
 
@@ -513,7 +546,8 @@ export async function POST(request: NextRequest) {
   // PayPayなどをStripe-hosted Checkoutで扱う。
   const paypayRedirect = body.payment_method === "paypay";
   const embedded = body.ui_mode === "embedded" && !paypayRedirect;
-  const checkoutLocale: CheckoutLocale = body.locale === "ko" ? "ko" : "ja";
+  const checkoutLocale: CheckoutLocale =
+    body.locale === "ko" ? "ko" : body.locale === "en" ? "en" : "ja";
   if (body.product !== undefined && !isAccessProduct(body.product)) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
@@ -521,6 +555,12 @@ export async function POST(request: NextRequest) {
   // 不正値は完全版へフォールバックせず、誤課金防止で拒否する。
   const requestedProduct: AccessProduct = body.product ?? "full_access";
   const product: AccessProduct = requestedProduct;
+  if (checkoutLocale === "en" && product !== "full_access") {
+    return NextResponse.json(
+      { error: "product_not_offered", code: "product_not_offered" },
+      { status: 400 },
+    );
+  }
   const ttclid = normalizeAttributionId(body.ttclid);
   const ttp = normalizeAttributionId(body.ttp);
   const fbp = normalizeAttributionId(body.fbp);
@@ -534,13 +574,17 @@ export async function POST(request: NextRequest) {
   // 現行オファー以外を販売しない。公開前のHTML/JSを開いたままのタブや
   // CDN・アプリ内ブラウザの旧画面から、廃止済み価格のCheckoutが作られるのを防ぐ。
   // 409 は既存クライアントも再読込として扱うため、安全に現行カードへ復帰できる。
-  if (body.paywall_version !== THREE_COURSE_PAYWALL_VERSION) {
+  const currentPaywallVersion =
+    checkoutLocale === "en"
+      ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
+      : THREE_COURSE_PAYWALL_VERSION;
+  if (body.paywall_version !== currentPaywallVersion) {
     return NextResponse.json(
       {
         error: "stale_paywall",
         code: "stale_paywall",
         refresh_required: true,
-        current_paywall_version: THREE_COURSE_PAYWALL_VERSION,
+        current_paywall_version: currentPaywallVersion,
       },
       { status: 409 },
     );
@@ -569,7 +613,8 @@ export async function POST(request: NextRequest) {
     );
   }
   const usesCurrentOffer =
-    paywallVersion === THREE_COURSE_PAYWALL_VERSION;
+    paywallVersion === THREE_COURSE_PAYWALL_VERSION ||
+    paywallVersion === EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
   const paywallPlacement =
     body.paywall_placement === undefined
       ? "unknown"
@@ -595,7 +640,9 @@ export async function POST(request: NextRequest) {
           ? "hoshiyomi"
           : body.return_to === "unmei"
             ? "unmei"
-            : "me";
+            : body.return_to === "tarot"
+              ? "tarot"
+              : "me";
   const returnTo = requestedReturnTo;
   const checkoutCopy =
     product === "self_report"
@@ -613,7 +660,9 @@ export async function POST(request: NextRequest) {
             : CHECKOUT_COPY[checkoutLocale];
   const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
   const priceId =
-    product === "full_access" ? getFullAccessPriceId(checkoutLocale) : null;
+    product === "full_access" && checkoutLocale !== "en"
+      ? getFullAccessPriceId(checkoutLocale)
+      : null;
   const normalizedPaywallSource = normalizePaywallSource(body.paywall_source);
   const paywallSource =
     returnTo === "tako" && normalizedPaywallSource === DIRECT_PAYWALL_SOURCE
@@ -755,7 +804,8 @@ export async function POST(request: NextRequest) {
   //     (2026-07-22 完全版一本化: 友達診断ロックからの購入者は元の /tako に戻す)。
   //   ゲスト → 「購入完了 → 登録メールでログイン」ページ。
   const ownerToken = (buyer?.owner_token ?? "").trim();
-  const localePrefix = checkoutLocale === "ko" ? "/ko" : "";
+  const localePrefix =
+    checkoutLocale === "ko" ? "/ko" : checkoutLocale === "en" ? "/en" : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
   const aishoPath = `${localePrefix}/aisho`;
   // /aisho からの購入 (return_to='aisho') は、閲覧中のペア (?a=&b=) ごと /aisho に戻す。
@@ -780,6 +830,8 @@ export async function POST(request: NextRequest) {
         ? `${localePrefix}/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
         : returnTo === "unmei"
           ? `${localePrefix}/unmei?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+          : returnTo === "tarot"
+            ? `${localePrefix}/tarot?paid=1&session_id={CHECKOUT_SESSION_ID}`
           : returnTo === "tako"
             ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
             : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
@@ -795,6 +847,8 @@ export async function POST(request: NextRequest) {
         ? `${localePrefix}/hoshiyomi`
         : returnTo === "unmei"
           ? `${localePrefix}/unmei`
+          : returnTo === "tarot"
+            ? `${localePrefix}/tarot`
           : ownerToken
             ? `${localePrefix}/${returnTo}/${ownerToken}`
             : localePrefix || "/";
@@ -807,6 +861,8 @@ export async function POST(request: NextRequest) {
       ? "#fullaccess-promo"
       : returnTo === "unmei"
         ? "#unmei-purchase"
+        : returnTo === "tarot"
+          ? "#fullaccess-promo"
         : "";
   const cancelPath = `${cancelBasePath}${cancelBasePath.includes("?") ? "&" : "?"}${cancelParams.toString()}${cancelAnchor}`;
   const cancelUrl = `${checkoutBaseUrl}${cancelPath}`;
@@ -835,7 +891,9 @@ export async function POST(request: NextRequest) {
       upgradeFrom !== "none"
         ? checkoutLocale === "ko"
           ? `${checkoutCopy.productName} 업그레이드`
-          : `${checkoutCopy.productName}へのアップグレード`
+          : checkoutLocale === "en"
+            ? `${checkoutCopy.productName} upgrade`
+            : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
     description: checkoutCopy.productDescription,
     ...(productImage ? { images: [productImage] } : {}),
@@ -906,7 +964,7 @@ export async function POST(request: NextRequest) {
       },
     ];
     chargedAmount = effectivePrice;
-  } else if (checkoutLocale === "ja") {
+  } else if (checkoutLocale !== "ko") {
     // 日本版の完全版は、paywall_versionごとにサーバ確定した実売価格を
     // inlineで表示・課金する。旧カードを開いたままの利用者にも表示額を守る。
     lineItems = [
@@ -1128,7 +1186,10 @@ export async function POST(request: NextRequest) {
     ...(embedded
       ? { clientSecret: stripeSession.client_secret }
       : { url: stripeSession.url }),
-    amount: chargedAmount,
+    amount:
+      checkoutPricing.currency === "usd"
+        ? chargedAmount / 100
+        : chargedAmount,
     currency: checkoutPricing.currency.toUpperCase(),
   });
 }

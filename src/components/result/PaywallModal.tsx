@@ -21,7 +21,8 @@ import { FullAccessPromoCard } from "./FullAccessPromoCard";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
 import type { AccessProduct } from "@/lib/access-products";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
+import type { PaywallCardMode } from "@/lib/feature-flags";
 
 interface PaywallModalProps {
   ownerToken?: string;
@@ -31,7 +32,7 @@ interface PaywallModalProps {
   imageAlt?: string;
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
   products?: readonly AccessProduct[];
@@ -43,6 +44,7 @@ interface PaywallModalProps {
   defaultProduct?: AccessProduct;
   /** モーダルを開いた導線に合わせた見出し。 */
   heading?: string;
+  cardMode?: PaywallCardMode;
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。
@@ -76,6 +78,7 @@ export function PaywallOverlay({
   }, [onClose]);
 
   const isKorean = cardProps.locale === "ko";
+  const isEnglish = cardProps.locale === "en";
 
   const updateScrollToTopVisibility = () => {
     const container = scrollContainerRef.current;
@@ -106,7 +109,7 @@ export function PaywallOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={isKorean ? "잠금 해제" : "ロック解除"}
+      aria-label={isEnglish ? "Unlock results" : isKorean ? "잠금 해제" : "ロック解除"}
       // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
       onClick={onClose}
@@ -130,7 +133,7 @@ export function PaywallOverlay({
       </div>
       <button
         type="button"
-        aria-label={isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
+        aria-label={isEnglish ? "Back to the top of this dialog" : isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
         aria-hidden={!showScrollToTop}
         tabIndex={showScrollToTop ? 0 : -1}
         onClick={(event) => {
@@ -157,7 +160,7 @@ export function PaywallOverlay({
         >
           <path d="m6 15 6-6 6 6" />
         </svg>
-        <span>{isKorean ? "맨 위로" : "上へ"}</span>
+        <span>{isEnglish ? "Top" : isKorean ? "맨 위로" : "上へ"}</span>
       </button>
     </div>,
     document.body,

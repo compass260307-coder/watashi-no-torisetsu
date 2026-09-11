@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 type State = "no_birth" | "pending" | "timeout" | "ready";
 
@@ -15,7 +15,7 @@ type Props = {
     ownerToken: string | null;
     product: "full_access" | "premium_bundle";
   } | null;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   ownerToken?: string | null;
   /** devプレビューでは保存・計測・決済を実行しない。 */
   previewMode?: boolean;
@@ -40,6 +40,12 @@ const CLIENT_COPY = {
     timeout: "설계도 생성에 시간이 걸리고 있어요. 잠시 후 다시 시도해 주세요.",
     retry: "다시 시도하기",
     pending: "태어난 순간의 하늘과 성격 진단을 함께 읽고 있어요. 잠시만 기다려 주세요.",
+  },
+  en: {
+    title: "Your Destiny Blueprint",
+    timeout: "Your reading is taking longer than expected. Please wait a moment and try again.",
+    retry: "Try again",
+    pending: "I’m combining your personality with the sky at your birth. Please wait a moment.",
   },
 } as const;
 
@@ -82,7 +88,7 @@ export default function UnmeiClient({
   const kickGeneration = useCallback(async (force = false) => {
     try {
       const localeOwnerToken = purchaseOwnerToken ?? ownerToken;
-      if (locale === "ko" && localeOwnerToken) {
+      if (locale !== "ja" && localeOwnerToken) {
         const preference = await fetch("/api/account/preferred-locale", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -93,7 +99,7 @@ export default function UnmeiClient({
       await fetch("/api/unmei/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({ force, locale }),
       });
     } catch {
       /* ポーリング側で回復可能なので握りつぶす */
@@ -106,7 +112,9 @@ export default function UnmeiClient({
     deadlineRef.current = Date.now() + TIMEOUT_MS;
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch("/api/unmei/status", { cache: "no-store" });
+        const res = await fetch(`/api/unmei/status?locale=${locale}`, {
+          cache: "no-store",
+        });
         if (res.ok) {
           const j = await res.json();
           if (j?.state === "ready") {
@@ -143,7 +151,7 @@ export default function UnmeiClient({
         }
       }
     }, POLL_INTERVAL_MS);
-  }, [router, stopPolling, kickGeneration, onReady]);
+  }, [locale, router, stopPolling, kickGeneration, onReady]);
 
   const startPending = useCallback(() => {
     setState("pending");

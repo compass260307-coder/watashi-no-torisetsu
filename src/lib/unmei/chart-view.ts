@@ -7,7 +7,7 @@
 //     範囲(moonArc)は呼び出し側がエフェメリスで算出して渡す(この層はエフェメリスに依存しない)。
 //   - SVG座標(layoutWheel)もここで算出し、React描画とテスト用SVGダンプで同じ計算を共有する。
 
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 export const SIGN_ORDER = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -24,6 +24,9 @@ export const SIGN_KO: Record<string, string> = {
   Leo: "사자자리", Virgo: "처녀자리", Libra: "천칭자리", Scorpio: "전갈자리",
   Sagittarius: "사수자리", Capricorn: "염소자리", Aquarius: "물병자리", Pisces: "물고기자리",
 };
+export const SIGN_EN: Record<string, string> = Object.fromEntries(
+  SIGN_ORDER.map((sign) => [sign, sign]),
+);
 
 // 図に載せる天体 = 古典7天体 + ASC/MC (ASC/MC は時刻既知時のみ chart に存在)。
 export const BODY_JA: Record<string, string> = {
@@ -33,6 +36,10 @@ export const BODY_JA: Record<string, string> = {
 export const BODY_KO: Record<string, string> = {
   sun: "태양", moon: "달", mercury: "수성", venus: "금성",
   mars: "화성", jupiter: "목성", saturn: "토성", asc: "상승점", mc: "천정점",
+};
+export const BODY_EN: Record<string, string> = {
+  sun: "Sun", moon: "Moon", mercury: "Mercury", venus: "Venus",
+  mars: "Mars", jupiter: "Jupiter", saturn: "Saturn", asc: "Ascendant", mc: "Midheaven",
 };
 const CLASSIC = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"] as const;
 
@@ -50,7 +57,7 @@ export type MoonArc = { startLon: number; endLon: number; start: Pos; end: Pos }
 export type WheelBody = { key: string; label: string; lon: number };
 export type Aspect = { fromLon: number; toLon: number };
 export type ChartView = {
-  locale: ResultLocale;
+  locale: AppResultLocale;
   timeUnknown: boolean;
   points: WheelBody[]; // 点で描く天体 (時刻不明時は月を含まない)
   moonArc: MoonArc | null; // 時刻不明時の月の範囲 (弧)
@@ -67,11 +74,12 @@ export function absLon(p: Pos): number {
 export function signJa(sign: string): string {
   return SIGN_JA[sign] ?? sign;
 }
-export function signName(sign: string, locale: ResultLocale = "ja"): string {
-  return (locale === "ko" ? SIGN_KO : SIGN_JA)[sign] ?? sign;
+export function signName(sign: string, locale: AppResultLocale = "ja"): string {
+  const signs = locale === "en" ? SIGN_EN : locale === "ko" ? SIGN_KO : SIGN_JA;
+  return signs[sign] ?? sign;
 }
-export function fmtPos(p: Pos, locale: ResultLocale = "ja"): string {
-  return locale === "ko"
+export function fmtPos(p: Pos, locale: AppResultLocale = "ja"): string {
+  return locale !== "ja"
     ? `${signName(p.sign, locale)} ${p.degree.toFixed(1)}°`
     : `${signName(p.sign, locale)}${p.degree.toFixed(1)}°`;
 }
@@ -96,14 +104,14 @@ export function buildChartView(
   opts: {
     timeUnknown?: boolean;
     moonArc?: MoonArc | null;
-    locale?: ResultLocale;
+    locale?: AppResultLocale;
   },
 ): ChartView | null {
   if (!chart || !chart.planets || !chart.planets.sun) return null;
   const timeUnknown = opts.timeUnknown ?? chart.houses_available === false;
   const moonArc = timeUnknown ? opts.moonArc ?? null : null;
   const locale = opts.locale ?? "ja";
-  const bodyLabels = locale === "ko" ? BODY_KO : BODY_JA;
+  const bodyLabels = locale === "en" ? BODY_EN : locale === "ko" ? BODY_KO : BODY_JA;
   const planets = chart.planets;
   const points: WheelBody[] = [];
   const listItems: ChartView["listItems"] = [];
@@ -118,10 +126,14 @@ export function buildChartView(
         const e = moonArc.end;
         const text =
           s.sign === e.sign
-            ? locale === "ko"
+            ? locale === "en"
+              ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${Math.floor(e.degree)}°`
+              : locale === "ko"
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${Math.floor(e.degree)}° 사이`
               : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${Math.floor(e.degree)}°のあいだ`
-            : locale === "ko"
+            : locale === "en"
+              ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${signName(e.sign, locale)} ${Math.floor(e.degree)}°`
+              : locale === "ko"
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${signName(e.sign, locale)} ${Math.floor(e.degree)}° 사이`
               : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${signName(e.sign, locale)}${Math.floor(e.degree)}°のあいだ`;
         listItems.push({ key, label: bodyLabels[key], text });
@@ -129,7 +141,12 @@ export function buildChartView(
         listItems.push({
           key,
           label: bodyLabels[key],
-          text: locale === "ko" ? "출생 시간을 몰라 위치 미확정" : "時刻不明のため位置未確定",
+          text:
+            locale === "en"
+              ? "Position unavailable because birth time is unknown"
+              : locale === "ko"
+                ? "출생 시간을 몰라 위치 미확정"
+                : "時刻不明のため位置未確定",
         });
       }
       continue;
@@ -165,10 +182,10 @@ export function buildChartView(
   }
 
   const ariaLabel =
-    (locale === "ko" ? "출생 차트. " : "出生図。") +
+    (locale === "en" ? "Birth chart. " : locale === "ko" ? "출생 차트. " : "出生図。") +
     listItems
       .map((it) => `${it.label} ${it.text}`)
-      .join(locale === "ko" ? ", " : "、");
+      .join(locale === "ja" ? "、" : ", ");
   return { locale, timeUnknown, points, moonArc, aspects, listItems, ariaLabel };
 }
 

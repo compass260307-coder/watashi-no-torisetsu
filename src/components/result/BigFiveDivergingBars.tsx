@@ -12,7 +12,8 @@
 
 import type { ReactNode } from "react";
 import type { BigFiveDimension } from "@/lib/types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
+import { EN_RESULT_AXES } from "@/i18n/en/result";
 
 interface AxisMeta {
   dim: BigFiveDimension;
@@ -67,12 +68,18 @@ function leanLabel(
   value: number,
   left: string,
   right: string,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ): string {
   const d = value - 50;
   const ad = Math.abs(d);
-  if (ad <= 7) return locale === "ko" ? "가운데에 가까움" : "ほぼ中央";
+  if (ad <= 7)
+    return locale === "en"
+      ? "Near the middle"
+      : locale === "ko"
+        ? "가운데에 가까움"
+        : "ほぼ中央";
   const pole = d > 0 ? right : left;
+  if (locale === "en") return ad <= 20 ? `Leaning ${pole.toLowerCase()}` : pole;
   if (locale === "ko") {
     return ad <= 20 ? `조금 ${pole}` : `${pole} 성향`;
   }
@@ -110,7 +117,7 @@ interface BigFiveDivergingBarsProps {
    */
   footer?: ReactNode;
   className?: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 export function BigFiveDivergingBars({
@@ -128,13 +135,13 @@ export function BigFiveDivergingBars({
   locale = "ja",
 }: BigFiveDivergingBarsProps) {
   const hasFriend = !!friendScores;
-  const axes = locale === "ko" ? KO_AXES : AXES;
+  const axes = locale === "en" ? EN_RESULT_AXES : locale === "ko" ? KO_AXES : AXES;
   const resolvedFriendLabel =
-    friendLabel ?? (locale === "ko" ? "친구 평균" : "友達の平均");
+    friendLabel ?? (locale === "en" ? "Friends’ average" : locale === "ko" ? "친구 평균" : "友達の平均");
   const resolvedPrimaryLabel =
-    primaryLabel ?? (locale === "ko" ? "나" : "自分");
+    primaryLabel ?? (locale === "en" ? "You" : locale === "ko" ? "나" : "自分");
   const resolvedTitle =
-    title ?? (locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るあなた");
+    title ?? (locale === "en" ? "Your personality across five dimensions" : locale === "ko" ? "5가지 축으로 보는 나" : "5つの軸で見るあなた");
   return (
     <section className={`mb-8 ${className}`.trim()}>
       {/* セクション見出し (16P 風: 丸囲み数字 + 大きめタイトル。number 未指定は絵文字バッジ)。

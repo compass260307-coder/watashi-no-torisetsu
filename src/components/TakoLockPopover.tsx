@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 
 export type DiagnosisLockTarget = "friend" | "astrologer" | "unmei";
 
-// ja/ko の文言セット。ko は既存の /ko/tako ガードページの言い回し
+// ja/ko/en の文言セット。ko は既存の /ko/tako ガードページの言い回し
 // (자기 진단 / 자기 진단 시작하기) に合わせる。
 const COPY = {
   ja: {
@@ -58,6 +58,26 @@ const COPY = {
       bodyLine2: "설계도 코스를 선택할 수 있어요",
     },
   },
+  en: {
+    friend: {
+      ariaLabel: "Friend test locked",
+      heading: "The friend test is still locked",
+      bodyLine1: "Complete your personality test",
+      bodyLine2: "to invite friends to describe you.",
+    },
+    astrologer: {
+      ariaLabel: "Alice locked",
+      heading: "Alice is still locked",
+      bodyLine1: "Complete your personality test",
+      bodyLine2: "to unlock the Complete Edition.",
+    },
+    unmei: {
+      ariaLabel: "Destiny Blueprint locked",
+      heading: "Destiny Blueprint is still locked",
+      bodyLine1: "Complete your personality test",
+      bodyLine2: "to unlock the Complete Edition.",
+    },
+  },
 } as const;
 
 const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
@@ -69,7 +89,7 @@ const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  locale?: "ja" | "ko";
+  locale?: "ja" | "ko" | "en";
   target?: DiagnosisLockTarget;
 }
 
@@ -114,7 +134,13 @@ export function TakoLockPopover({
 
   const handleStart = () => {
     onClose();
-    router.push(locale === "ko" ? "/ko/diagnosis" : "/diagnosis");
+    router.push(
+      locale === "ko"
+        ? "/ko/diagnosis"
+        : locale === "en"
+          ? "/en/diagnosis"
+          : "/diagnosis",
+    );
   };
 
   return createPortal(
@@ -154,7 +180,11 @@ export function TakoLockPopover({
             onClick={handleStart}
             className="block w-full rounded-full bg-[#2E2E5C] py-2.5 text-[13.5px] font-bold text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            {locale === "ko" ? "자기 진단 시작하기" : "テストを受ける"}
+            {locale === "ko"
+              ? "자기 진단 시작하기"
+              : locale === "en"
+                ? "Take the test"
+                : "テストを受ける"}
           </button>
 
           {/* 下向き三角: カード中心 (=対象タブの中心に位置合わせ済み) を指す */}

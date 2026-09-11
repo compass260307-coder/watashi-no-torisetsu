@@ -19,7 +19,7 @@ import type {
   ResolvedDeepDiveSection,
 } from "@/lib/deep-dive-resolve";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // ※「みんなの目」(他己) は /tako/[token] へ移設。ここは自己深掘りのみ。
 
@@ -140,6 +140,35 @@ const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
+const EN_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Letting care feel effortless", body: "Closeness can deepen even when you are not trying to earn it." },
+  { heading: "Saying what you need", body: "Clear wishes give the other person a real chance to care for you well." },
+  { heading: "Making room for silence", body: "A quiet day does not automatically mean the relationship has changed." },
+  { heading: "Keeping generosity mutual", body: "Wanting care in return is part of a healthy relationship, not a failure of kindness." },
+  { heading: "Trusting what is consistent", body: "Small repeated actions can say more than one dramatic reassurance." },
+];
+
+const EN_LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "What “I’m fine” may be holding", body: "A partner can stay quiet because the relationship matters, not because nothing is wrong." },
+  { heading: "Where patience starts to wear thin", body: "The moments that create unspoken strain often follow a recognizable pattern." },
+  { heading: "The signal worth noticing early", body: "A small change in tone can reveal a need before it turns into distance." },
+  { heading: "One question that restores trust", body: "A gentle check-in can turn private frustration into something you solve together." },
+];
+
+const EN_CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Building something from zero", body: "Some personalities thrive when there is no fixed answer and judgment has room to work." },
+  { heading: "Your best role on a team", body: "Leading from the front and strengthening from behind require different kinds of energy." },
+  { heading: "Depth or variety", body: "The right balance between specialization and range changes how sustainable work feels." },
+  { heading: "The environment that drains you", body: "Workplaces that slowly reduce your motivation tend to share a few clear traits." },
+];
+
+const EN_CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "The distance that suits you", body: "Your best working relationships are neither closer nor colder than you can sustain." },
+  { heading: "Drawing a line around requests", body: "The right wording helps you protect capacity without damaging trust." },
+  { heading: "Working beside a difficult person", body: "A deliberate distance can reduce friction without requiring false closeness." },
+  { heading: "What the team quietly relies on", body: "An ordinary habit of yours may already be supporting everyone around you." },
+];
+
 const KO_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "애쓰지 않고 곁에 있는 날",
@@ -234,7 +263,7 @@ function LockedBlock({
   decoyItems: { heading: string; body: string }[];
   cardCopy: ReactNode;
   source: string;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl">
@@ -263,7 +292,11 @@ function LockedBlock({
             <LockGlyph size={14} />
           </span>
           <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-            {locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
+            {locale === "en"
+              ? "Unlock now"
+              : locale === "ko"
+                ? "지금 잠금 해제"
+                : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
             {cardCopy}
@@ -272,7 +305,11 @@ function LockedBlock({
             source={source}
             className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
           >
-            {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+            {locale === "en"
+              ? "See the complete result"
+              : locale === "ko"
+                ? "지금 확인하기"
+                : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>
@@ -328,6 +365,29 @@ const LOCKED_BLOCK_CONFIG: Record<
         あなたに合った職場の人間関係のつくり方を知りましょう。
       </>
     ),
+    source: "career_relations_card",
+  },
+};
+
+const EN_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
+  "A manual for someone who falls for you": {
+    decoyItems: EN_LOVE_DECOY_ITEMS,
+    cardCopy: <>Unlock the Complete Edition to learn how someone can love you well.</>,
+    source: "love_payoff_card",
+  },
+  "What your partner may be quietly putting up with": {
+    decoyItems: EN_LOVE_ENDURE_DECOY_ITEMS,
+    cardCopy: <>Unlock the Complete Edition to see what a partner may find difficult to say.</>,
+    source: "love_endure_card",
+  },
+  "Work styles that fit you — and workplaces to avoid": {
+    decoyItems: EN_CAREER_FIT_DECOY_ITEMS,
+    cardCopy: <>Unlock the Complete Edition to find the work styles and environments that fit you.</>,
+    source: "career_fit_card",
+  },
+  "Relationships at work": {
+    decoyItems: EN_CAREER_RELATIONS_DECOY_ITEMS,
+    cardCopy: <>Unlock the Complete Edition to understand your healthiest way of working with people.</>,
     source: "career_relations_card",
   },
 };
@@ -391,7 +451,7 @@ interface DeepDiveSectionsProps {
   /** true でロック要素 (未解放カテゴリのパネル / 恋愛の locked ブロック) を丸ごと出さない。
       /share の獲得モード用 (課金コンテンツは「無いもの」として扱う。2026-07-26)。 */
   hideLocked?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 export function DeepDiveSections({
@@ -412,11 +472,17 @@ export function DeepDiveSections({
 
   const baseNumber = parseInt(number, 10);
   const lockedBlockConfig =
-    locale === "ko" ? KO_LOCKED_BLOCK_CONFIG : LOCKED_BLOCK_CONFIG;
+    locale === "en"
+      ? EN_LOCKED_BLOCK_CONFIG
+      : locale === "ko"
+        ? KO_LOCKED_BLOCK_CONFIG
+        : LOCKED_BLOCK_CONFIG;
   const fallbackLockedHeading =
-    locale === "ko"
-      ? "나를 좋아하게 된 사람이 읽는 사용설명서"
-      : "あなたを好きになった人が読むトリセツ";
+    locale === "en"
+      ? "A manual for someone who falls for you"
+      : locale === "ko"
+        ? "나를 좋아하게 된 사람이 읽는 사용설명서"
+        : "あなたを好きになった人が読むトリセツ";
 
   return (
     <section className={`mb-8 ${className}`.trim()}>

@@ -38,7 +38,7 @@ export const KO_DEFAULT_OG_IMAGE = {
   alt: "앨리스 진단 - Alice가 안내하는 나의 사용설명서 성격 테스트",
 };
 
-export type LocalizedSeoLocale = "ja" | "ko";
+export type LocalizedSeoLocale = "ja" | "ko" | "en";
 type SitemapChangeFrequency = NonNullable<
   MetadataRoute.Sitemap[number]["changeFrequency"]
 >;
@@ -46,38 +46,49 @@ type SitemapChangeFrequency = NonNullable<
 export type LocalizedRoutePair = {
   ja: string;
   ko: string;
+  en?: string;
   priority?: number;
   changeFrequency?: SitemapChangeFrequency;
 };
 
 export const INDEXABLE_LOCALIZED_ROUTES: readonly LocalizedRoutePair[] = [
-  { ja: "/", ko: "/ko", priority: 1, changeFrequency: "weekly" },
-  { ja: "/about", ko: "/ko/about", priority: 0.8, changeFrequency: "monthly" },
+  { ja: "/", ko: "/ko", en: "/en", priority: 1, changeFrequency: "weekly" },
+  { ja: "/about", ko: "/ko/about", en: "/en/about", priority: 0.8, changeFrequency: "monthly" },
   {
     ja: "/diagnosis",
     ko: "/ko/diagnosis",
+    en: "/en/diagnosis",
     priority: 1,
     changeFrequency: "weekly",
   },
-  { ja: "/types", ko: "/ko/types", priority: 0.8, changeFrequency: "weekly" },
-  { ja: "/aisho", ko: "/ko/aisho", priority: 0.8, changeFrequency: "monthly" },
-  { ja: "/unmei", ko: "/ko/unmei", priority: 0.8, changeFrequency: "monthly" },
+  {
+    ja: "/types",
+    ko: "/ko/types",
+    en: "/en/types",
+    priority: 0.8,
+    changeFrequency: "weekly",
+  },
+  { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho", priority: 0.8, changeFrequency: "monthly" },
+  { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei", priority: 0.8, changeFrequency: "monthly" },
   {
     ja: "/articles",
     ko: "/ko/articles",
+    en: "/en/articles",
     priority: 0.7,
     changeFrequency: "weekly",
   },
-  { ja: "/terms", ko: "/ko/terms", priority: 0.3, changeFrequency: "yearly" },
+  { ja: "/terms", ko: "/ko/terms", en: "/en/terms", priority: 0.3, changeFrequency: "yearly" },
   {
     ja: "/privacy",
     ko: "/ko/privacy",
+    en: "/en/privacy",
     priority: 0.3,
     changeFrequency: "yearly",
   },
   {
     ja: "/legal/commerce",
     ko: "/ko/legal/commerce",
+    en: "/en/legal/commerce",
     priority: 0.3,
     changeFrequency: "yearly",
   },
@@ -87,10 +98,15 @@ export function absoluteSiteUrl(path: string): string {
   return path === "/" ? SITE_URL : `${SITE_URL}${path}`;
 }
 
-export function localizedLanguages(jaPath: string, koPath: string) {
+export function localizedLanguages(
+  jaPath: string,
+  koPath: string,
+  enPath?: string,
+) {
   return {
     "ja-JP": absoluteSiteUrl(jaPath),
     "ko-KR": absoluteSiteUrl(koPath),
+    ...(enPath ? { "en-US": absoluteSiteUrl(enPath) } : {}),
     "x-default": absoluteSiteUrl(jaPath),
   };
 }
@@ -99,9 +115,11 @@ export function localizedAlternates(
   locale: LocalizedSeoLocale,
   jaPath: string,
   koPath: string,
+  enPath?: string,
 ): NonNullable<Metadata["alternates"]> {
   return {
-    canonical: locale === "ko" ? koPath : jaPath,
-    languages: localizedLanguages(jaPath, koPath),
+    canonical:
+      locale === "ko" ? koPath : locale === "en" && enPath ? enPath : jaPath,
+    languages: localizedLanguages(jaPath, koPath, enPath),
   };
 }

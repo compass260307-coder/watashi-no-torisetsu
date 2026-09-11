@@ -46,7 +46,7 @@ function messageText(message: UIMessage): string {
 
 function conversationPrompt(
   messages: UIMessage[],
-  locale: "ja" | "ko",
+  locale: "ja" | "ko" | "en",
 ): string {
   const transcript = messages
     .map((message) => {
@@ -54,9 +54,13 @@ function conversationPrompt(
         message.role === "user"
           ? locale === "ko"
             ? "이용자"
+            : locale === "en"
+              ? "User"
             : "利用者"
           : locale === "ko"
             ? "별자리 상담사"
+            : locale === "en"
+              ? "Alice"
             : "星読み相談員";
       return `${speaker}: ${messageText(message)}`;
     })
@@ -65,7 +69,9 @@ function conversationPrompt(
 
   return locale === "ko"
     ? `아래 대화의 마지막 이용자 메시지에 자연스러운 한국어 존댓말로 답해 주세요. 답변 본문만 작성해 주세요.\n\n${transcript}`
-    : `以下の会話の最後の利用者メッセージに、自然な日本語で回答してください。回答本文だけを書いてください。\n\n${transcript}`;
+    : locale === "en"
+      ? `Reply to the final user message below in warm, natural English. Write only the response body.\n\n${transcript}`
+      : `以下の会話の最後の利用者メッセージに、自然な日本語で回答してください。回答本文だけを書いてください。\n\n${transcript}`;
 }
 
 export async function POST(request: Request) {
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
   if (!body.ok) {
     return NextResponse.json({ error: body.error }, { status: body.status });
   }
-  const locale = body.value.locale === "ko" ? "ko" : "ja";
+  const locale = body.value.locale === "ko" ? "ko" : body.value.locale === "en" ? "en" : "ja";
   const conversationId = body.value.id;
   if (!isSafeOpaqueToken(conversationId, 8, 64)) {
     return NextResponse.json({ error: "Invalid conversation id" }, { status: 400 });
@@ -127,7 +133,9 @@ export async function POST(request: Request) {
         error:
           locale === "ko"
             ? `메시지는 ${MAX_MESSAGE_LENGTH}자 이내로 입력해 주세요.`
-            : `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。`,
+            : locale === "en"
+              ? `Keep your message within ${MAX_MESSAGE_LENGTH} characters.`
+              : `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。`,
       },
       { status: 400 },
     );
@@ -164,7 +172,9 @@ export async function POST(request: Request) {
         error:
           locale === "ko"
             ? "채팅 횟수를 모두 사용했어요."
-            : "チャットの利用回数を使い切りました。",
+            : locale === "en"
+              ? "You've used all of your Alice answers."
+              : "チャットの利用回数を使い切りました。",
         code: "credits_exhausted",
         used: usage.used,
         remaining: usage.remaining,
@@ -213,7 +223,9 @@ export async function POST(request: Request) {
       console.error("[hoshiyomi] direct model generation failed", error);
       return locale === "ko"
         ? "별을 제대로 읽지 못했어요. 잠시 뒤 다시 이야기해 주세요."
-        : "うまく星を読めませんでした。少し時間をおいて、もう一度お話しください。";
+        : locale === "en"
+          ? "I couldn't read the stars clearly just now. Please try again in a moment."
+          : "うまく星を読めませんでした。少し時間をおいて、もう一度お話しください。";
     },
   });
 

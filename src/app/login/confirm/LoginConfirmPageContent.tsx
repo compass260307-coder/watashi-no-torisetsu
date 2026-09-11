@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { ConfirmSwitchView } from "./ConfirmSwitchView";
 
-type LoginConfirmLocale = "ja" | "ko";
+type LoginConfirmLocale = "ja" | "ko" | "en";
 
 export type LoginConfirmSearchParams = {
   [key: string]: string | string[] | undefined;
@@ -30,7 +30,8 @@ export async function LoginConfirmPageContent({
 }) {
   const sp = await searchParams;
   const locale: LoginConfirmLocale =
-    localeOverride ?? (sp.locale === "ko" ? "ko" : "ja");
+    localeOverride ??
+    (sp.locale === "ko" ? "ko" : sp.locale === "en" ? "en" : "ja");
   const token = typeof sp.token === "string" ? sp.token : "";
   if (!token) notFound();
 
@@ -56,15 +57,15 @@ export async function LoginConfirmPageContent({
   const aOwnerToken = current?.owner_token ?? null;
   const aName =
     (current?.display_name ?? "").trim() ||
-    (locale === "ko" ? "회원" : "あなた");
-  const localePrefix = locale === "ko" ? "/ko" : "";
+    (locale === "ko" ? "회원" : locale === "en" ? "you" : "あなた");
+  const localePrefix = locale === "ja" ? "" : `/${locale}`;
   const recoveryUrl = aOwnerToken
     ? `${resolveSiteUrl()}${localePrefix}/me/${aOwnerToken}`
     : null;
 
   const continueHref = `/api/auth/verify-magic-link?token=${encodeURIComponent(
     token,
-  )}&confirm=1${locale === "ko" ? "&locale=ko" : ""}`;
+  )}&confirm=1${locale === "ja" ? "" : `&locale=${locale}`}`;
   // キャンセルは「いまのデータのまま」= A の /me に戻す (無ければトップ)。
   const cancelHref = aOwnerToken
     ? `${localePrefix}/me/${aOwnerToken}`
@@ -88,18 +89,28 @@ export async function LoginConfirmPageContent({
 
 function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
   const ko = locale === "ko";
+  const en = locale === "en";
   return (
     <main className="min-h-dvh bg-white px-4 py-12">
       <div className="mx-auto max-w-[420px] text-center">
         <h1 className="text-[#2E2E5C] font-black text-2xl leading-tight mb-3">
-          {ko ? "링크가 만료되었어요" : "リンクが失効しました"}
+          {ko
+            ? "링크가 만료되었어요"
+            : en
+              ? "This link has expired"
+              : "リンクが失効しました"}
         </h1>
         <p className="text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-8">
           {ko ? (
             <>
               로그인 링크가 만료되었거나 이미 사용되었어요.
+              <br />새 링크를 다시 받아 주세요.
+            </>
+          ) : en ? (
+            <>
+              This sign-in link has expired or has already been used.
               <br />
-              새 링크를 다시 받아 주세요.
+              Request a new link to continue.
             </>
           ) : (
             <>
@@ -110,10 +121,14 @@ function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
           )}
         </p>
         <Link
-          href={ko ? "/ko/login" : "/login"}
+          href={ko ? "/ko/login" : en ? "/en/login" : "/login"}
           className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-8 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-none transition-all"
         >
-          {ko ? "로그인 링크 다시 받기" : "ログインをやり直す"}
+          {ko
+            ? "로그인 링크 다시 받기"
+            : en
+              ? "Get a new sign-in link"
+              : "ログインをやり直す"}
         </Link>
       </div>
     </main>

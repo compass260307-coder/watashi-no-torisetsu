@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type AuthErrorLocale = "ja" | "ko";
+type AuthErrorLocale = "ja" | "ko" | "en";
 
 interface ReasonContent {
   heading: string;
@@ -78,6 +78,33 @@ const KO_FALLBACK: ReasonContent = {
   primaryAction: { label: "로그인 링크 다시 받기", href: "/ko/login" },
 };
 
+const EN_REASON_CONTENT: Record<string, ReasonContent> = {
+  missing_token: {
+    heading: "This link is incomplete",
+    description:
+      "Part of the link may be missing or may not have copied correctly. Open the original link from your email and try again.",
+    primaryAction: { label: "Get a new sign-in link", href: "/en/login" },
+  },
+  invalid_or_expired: {
+    heading: "This link cannot be used",
+    description:
+      "The link has expired or has already been used. Sign-in links are valid for one hour and can only be used once.",
+    primaryAction: { label: "Get a new sign-in link", href: "/en/login" },
+  },
+  server_error: {
+    heading: "Something went wrong",
+    description:
+      "This may be a temporary problem. Try again in a moment, or request a new sign-in link if the issue continues.",
+    primaryAction: { label: "Get a new sign-in link", href: "/en/login" },
+  },
+};
+
+const EN_FALLBACK: ReasonContent = {
+  heading: "We could not verify this link",
+  description: "Request a new sign-in link and try again.",
+  primaryAction: { label: "Get a new sign-in link", href: "/en/login" },
+};
+
 export function AuthErrorContent({
   reason,
   locale = "ja",
@@ -86,16 +113,25 @@ export function AuthErrorContent({
   locale?: AuthErrorLocale;
 }) {
   const isKorean = locale === "ko";
-  const contentMap = isKorean ? KO_REASON_CONTENT : REASON_CONTENT;
+  const isEnglish = locale === "en";
+  const contentMap = isKorean
+    ? KO_REASON_CONTENT
+    : isEnglish
+      ? EN_REASON_CONTENT
+      : REASON_CONTENT;
   const content: ReasonContent =
     (reason ? contentMap[reason] : undefined) ??
-    (isKorean ? KO_FALLBACK : FALLBACK);
+    (isKorean ? KO_FALLBACK : isEnglish ? EN_FALLBACK : FALLBACK);
 
   return (
     <main className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
       <header className="text-center mb-8 animate-fade-in-up">
         <p className="text-[10px] font-bold tracking-wider text-muted mb-3">
-          {isKorean ? "로그인 링크 오류" : "AUTH ERROR"}
+          {isKorean
+            ? "로그인 링크 오류"
+            : isEnglish
+              ? "SIGN-IN LINK ERROR"
+              : "AUTH ERROR"}
         </p>
         <h1 className="text-2xl font-extrabold leading-tight">
           {content.heading}
@@ -118,10 +154,14 @@ export function AuthErrorContent({
       )}
 
       <Link
-        href={isKorean ? "/ko" : "/"}
+        href={isKorean ? "/ko" : isEnglish ? "/en" : "/"}
         className="text-xs text-muted/70 underline hover:text-foreground text-center mt-8"
       >
-        {isKorean ? "홈으로 돌아가기" : "トップに戻る"}
+        {isKorean
+          ? "홈으로 돌아가기"
+          : isEnglish
+            ? "Back to home"
+            : "トップに戻る"}
       </Link>
     </main>
   );

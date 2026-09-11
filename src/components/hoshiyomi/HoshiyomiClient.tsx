@@ -18,11 +18,14 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import EnPaywallOverlay from "@/components/en/EnPaywallOverlay";
 import { useCheckoutCancelledProduct } from "@/components/checkout/CheckoutCancelledNotice";
 import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
-import { HOSHIYOMI_COPY } from "@/i18n/hoshiyomi";
-import type { ResultLocale } from "@/i18n/result";
+import {
+  HOSHIYOMI_COPY,
+  type HoshiyomiLocale,
+} from "@/i18n/hoshiyomi";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 import { track } from "@/lib/track";
 
@@ -44,7 +47,7 @@ type Props = {
   canUpgradeToPremium?: boolean;
   ownerToken?: string;
   previewMode?: boolean;
-  locale?: ResultLocale;
+  locale?: HoshiyomiLocale;
 };
 
 export function HoshiyomiClient({
@@ -124,7 +127,7 @@ export function HoshiyomiClient({
       "",
       previewMode
         ? `/dev/hoshiyomi-preview${locale === "ko" ? "?locale=ko" : ""}`
-        : `${locale === "ko" ? "/ko" : ""}/hoshiyomi`,
+        : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/hoshiyomi`,
     );
   };
 
@@ -180,7 +183,11 @@ export function HoshiyomiClient({
 
   return (
     <>
-      {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
+      {locale === "ko" ? (
+        <KoTopHeader />
+      ) : (
+        <TopHeader locale={locale === "en" ? "en" : "ja"} />
+      )}
       <main className="bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] text-[#2E2E5C]">
         <HoshiyomiHome
           remaining={remaining}
@@ -194,8 +201,20 @@ export function HoshiyomiClient({
           onStart={startConversation}
         />
       </main>
-      {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
-      {paywallOpen ? (
+      {locale === "ko" ? (
+        <KoTopFooter />
+      ) : (
+        <TopFooter locale={locale === "en" ? "en" : "ja"} />
+      )}
+      {paywallOpen && locale === "en" ? (
+        <EnPaywallOverlay
+          ownerToken={ownerToken ?? ""}
+          returnTo="hoshiyomi"
+          imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
+          imageAlt="AI astrologer Alice"
+          onClose={() => setPaywallOpen(false)}
+        />
+      ) : paywallOpen ? (
         <PaywallOverlay
           ownerToken={ownerToken}
           returnTo="hoshiyomi"
@@ -216,7 +235,7 @@ export function HoshiyomiClient({
               : undefined
           }
           previewMode={previewMode}
-          locale={locale}
+          locale={locale === "ko" ? "ko" : "ja"}
           // PC ではカードが画像つき2カラムになるようヒーローと同じ Alice 画像を渡す
           // (SP はカード側の hidden md:flex で画像非表示のため影響なし)。
           imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
@@ -253,7 +272,7 @@ function HoshiyomiHome({
   canUpgradeToPremium: boolean;
   ownerToken?: string;
   previewMode: boolean;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   onStart: (text: string) => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
@@ -383,7 +402,7 @@ function HoshiyomiFaqModal({
   locale,
   onClose,
 }: {
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   onClose: () => void;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
@@ -514,7 +533,7 @@ function RealChatPanel({
   conversation: ActiveConversation;
   remaining: number;
   totalCredits: number;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
 }) {
@@ -557,7 +576,7 @@ function RealChatPanel({
       window.history.replaceState(
         null,
         "",
-        `${locale === "ko" ? "/ko" : ""}/hoshiyomi?chat=${conversation.id}`,
+        `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/hoshiyomi?chat=${conversation.id}`,
       );
     },
   });
@@ -623,7 +642,7 @@ function PreviewChatPanel({
   conversation: ActiveConversation;
   remaining: number;
   totalCredits: number;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   onRemainingChange: (delta: number) => void;
   onBack: () => void;
 }) {
@@ -713,7 +732,7 @@ function ChatShell({
 }: {
   remaining: number;
   total: number;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   onBack: () => void;
   messages: UIMessage[];
   viewportRef: React.RefObject<HTMLDivElement | null>;
@@ -859,7 +878,7 @@ function HomeUsageMeter({
 }: {
   remaining: number;
   total: number;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   faqButtonRef: RefObject<HTMLButtonElement | null>;
   onOpenFaq: () => void;
 }) {
@@ -892,7 +911,7 @@ function FaqTextButton({
   buttonRef,
   onClick,
 }: {
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   buttonRef: RefObject<HTMLButtonElement | null>;
   onClick: () => void;
 }) {
@@ -916,7 +935,7 @@ function UsageMeter({
 }: {
   remaining: number;
   total: number;
-  locale: ResultLocale;
+  locale: HoshiyomiLocale;
   compact?: boolean;
 }) {
   const safeRemaining = Math.max(0, Math.min(total, remaining));

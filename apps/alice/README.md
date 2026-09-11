@@ -37,8 +37,8 @@ Next.js側には機能ごとの環境変数を設定します。
 
 - `ALICE_TRANSFER_CODE_SECRET`: コード／claim ticketのHMAC専用secret。未設定時は既存のサーバー秘密鍵へfallback
 - `ALICE_DAILY_ENABLED`: daily APIとbootstrap導線を有効化
-- `ALICE_CHAT_ENABLED`: entitlement確認付きの対話APIを有効化
-- `AI_MODEL_DIALOGUE`: AI Gatewayの`provider/model`。未設定時はサーバー既定値を使用
+
+アプリ版の対話機能は提供終了扱いです。`POST /api/app/v1/chat` は常に `410 Gone` を返し、Vercel AI Gatewayへ接続しません。
 
 `EXPO_PUBLIC_`で始まる値はアプリへ同梱されます。service role key、AI API key、`ALICE_TRANSFER_CODE_SECRET`はNext.js側だけに設定してください。
 

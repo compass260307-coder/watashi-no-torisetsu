@@ -17,7 +17,7 @@ export function LoginModal({
 }: {
   open: boolean;
   onClose: () => void;
-  locale?: ResultLocale;
+  locale?: ResultLocale | "en";
 }) {
   // Esc で閉じる + 背面スクロールロック (open の間だけ)
   useEffect(() => {
@@ -43,7 +43,9 @@ export function LoginModal({
       className="fixed inset-0 z-[120] flex items-center justify-center px-5 py-10"
       role="dialog"
       aria-modal="true"
-      aria-label={locale === "ko" ? "로그인" : "ログイン"}
+      aria-label={
+        locale === "ko" ? "로그인" : locale === "en" ? "Sign in" : "ログイン"
+      }
     >
       {/* 暗幕: クリックで閉じる */}
       <div

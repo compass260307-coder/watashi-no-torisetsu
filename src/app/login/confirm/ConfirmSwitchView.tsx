@@ -27,47 +27,79 @@ export function ConfirmSwitchView({
   cancelHref: string;
   /** 現 Cookie(A) が B と別 user_id か (= 切替警告を出すか)。 */
   isConflict: boolean;
-  locale?: ResultLocale;
+  locale?: ResultLocale | "en";
 }) {
   const ko = locale === "ko";
+  const en = locale === "en";
   return (
     <main className="min-h-dvh bg-white px-4 py-12">
       <div className="mx-auto max-w-[420px]">
         {/* 注意アイコン (ネイビー丸 + 三角) */}
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#2E2E5C]">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg
+            width="30"
+            height="30"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
             <path
               d="M12 3.5 21 20H3L12 3.5z"
               stroke="#fff"
               strokeWidth="2"
               strokeLinejoin="round"
             />
-            <path d="M12 10v4" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M12 10v4"
+              stroke="#fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
             <circle cx="12" cy="16.6" r="1.1" fill="#fff" />
           </svg>
         </div>
 
         <h1 className="text-center text-[#2E2E5C] font-black text-2xl leading-tight mb-3">
-          {ko ? "로그인하기 전에" : "ログインの前に"}
+          {ko
+            ? "로그인하기 전에"
+            : en
+              ? "Before you sign in"
+              : "ログインの前に"}
           <br />
-          {ko ? "확인해 주세요" : "確認してください"}
+          {ko ? "확인해 주세요" : en ? "please confirm" : "確認してください"}
         </h1>
 
         {isConflict ? (
           <p className="text-center text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-6">
-            {ko ? "이 기기에는 " : "このデバイスには "}
+            {ko
+              ? "이 기기에는 "
+              : en
+                ? "This device currently has data for "
+                : "このデバイスには "}
             <span className="text-[#2E2E5C] font-black">{aName}</span>{" "}
-            {ko ? "님의 진단 데이터가 있어요." : "の診断データがあります。"}
+            {ko
+              ? "님의 진단 데이터가 있어요."
+              : en
+                ? "."
+                : "の診断データがあります。"}
             <br />
-            <span className="text-[#2E2E5C] font-black">{maskedEmail}</span>{" "}
+            <span className="text-[#2E2E5C] font-black">
+              {maskedEmail}
+            </span>{" "}
             {ko
               ? "주소로 로그인하면 해당 계정의 데이터로 전환돼요."
-              : "でログインすると、表示がそのアカウントに切り替わります。"}
+              : en
+                ? "will switch this device to the data linked to that account."
+                : "でログインすると、表示がそのアカウントに切り替わります。"}
           </p>
         ) : (
           <p className="text-center text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-6">
             <span className="text-[#2E2E5C] font-black">{maskedEmail}</span>{" "}
-            {ko ? "주소로 로그인해요." : "でログインします。"}
+            {ko
+              ? "주소로 로그인해요."
+              : en
+                ? "will be used to sign in."
+                : "でログインします。"}
           </p>
         )}
 
@@ -78,16 +110,24 @@ export function ConfirmSwitchView({
               <p className="text-[#2E2E5C] font-black text-sm mb-2">
                 {ko
                   ? `현재 ‘${aName}’님의 데이터는 이 주소로 다시 돌아올 수 있어요. `
-                  : `いまの「${aName}」のデータは、このURLから後で戻れます。`}
+                  : en
+                    ? `You can return to ${aName}’s current data with this recovery link. `
+                    : `いまの「${aName}」のデータは、このURLから後で戻れます。`}
                 <span className="text-[#5B5BEF]">
-                  {ko ? "꼭 저장해 주세요." : "必ず保存してください。"}
+                  {ko
+                    ? "꼭 저장해 주세요."
+                    : en
+                      ? "Save it before continuing."
+                      : "必ず保存してください。"}
                 </span>
               </p>
               <RecoveryUrlBox url={recoveryUrl} locale={locale} />
               <p className="text-[#2E2E5C]/55 font-bold text-xs mt-2 leading-relaxed">
                 {ko
                   ? `※ 이 주소를 저장하지 않으면 전환한 뒤 ‘${aName}’님의 데이터로 돌아오지 못할 수 있어요.`
-                  : `※ このURLを控えないと、切り替え後に「${aName}」のデータへ戻れなくなる場合があります。`}
+                  : en
+                    ? `If you do not save this link, you may not be able to return to ${aName}’s data after switching accounts.`
+                    : `※ このURLを控えないと、切り替え後に「${aName}」のデータへ戻れなくなる場合があります。`}
               </p>
             </div>
           ) : (
@@ -95,7 +135,9 @@ export function ConfirmSwitchView({
               <p className="text-[#2E2E5C] font-black text-sm leading-relaxed">
                 {ko
                   ? "이 기기의 데이터로 돌아오는 주소를 찾지 못했어요. 계정을 전환하면 현재 데이터로 돌아오지 못할 수 있어요."
-                  : "このデバイスのデータには復帰URLが見つかりませんでした。切り替えると、いまのデータへ戻れなくなる可能性があります。"}
+                  : en
+                    ? "We could not find a recovery link for the data on this device. If you switch accounts, you may not be able to return to it."
+                    : "このデバイスのデータには復帰URLが見つかりませんでした。切り替えると、いまのデータへ戻れなくなる可能性があります。"}
               </p>
             </div>
           ))}
@@ -105,13 +147,21 @@ export function ConfirmSwitchView({
           href={continueHref}
           className="flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-none transition-all"
         >
-          {ko ? "이대로 로그인 계속하기" : "このままログインを続ける"}
+          {ko
+            ? "이대로 로그인 계속하기"
+            : en
+              ? "Continue and switch accounts"
+              : "このままログインを続ける"}
         </a>
         <Link
           href={cancelHref}
           className="mt-3 flex w-full items-center justify-center rounded-full bg-white px-6 py-3.5 text-base font-black text-[#2E2E5C] border-2 border-[#2E2E5C] shadow-[0_4px_0_#2E2E5C] hover:translate-y-0.5 hover:shadow-[0_2px_0_#2E2E5C] active:translate-y-1 active:shadow-none transition-all"
         >
-          {ko ? "취소하고 현재 데이터 유지하기" : "キャンセル（いまのデータのまま）"}
+          {ko
+            ? "취소하고 현재 데이터 유지하기"
+            : en
+              ? "Cancel and keep current data"
+              : "キャンセル（いまのデータのまま）"}
         </Link>
       </div>
     </main>

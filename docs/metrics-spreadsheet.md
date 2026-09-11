@@ -10,16 +10,15 @@
 GET /api/metrics/diagnoses?after=<ISO>&after_id=<UUID>&limit=500
 GET /api/metrics/sales?after=<ISO>&after_id=<UUID>&limit=500
 GET /api/metrics/share-events?after=<ISO>&after_id=<UUID>&limit=500
-GET /api/metrics/product-events?after=<ISO>&after_id=<UUID>&limit=500
+GET /api/metrics/line-follow-events?after=<ISO>&after_id=<UUID>&limit=500
 Authorization: Bearer <SHEETS_METRICS_KEY>
 ```
 
 - `diagnoses_raw`: 保存成功済みの確定診断を1人1行で追記
 - `sales_raw`: 実決済を1決済1行。売上、返金額、純売上を保持し、返金時は同じ行を更新
 - `share_events_raw`: 自己結果シェアと友達招待の主要イベントを1イベント1行で追記
-- `product_events_raw`: Alice・運命の設計図の主要導線イベントを1イベント1行で追記
-  - `journey` は `alice` / `unmei`。日別ファネルは `date_jst`, `event_name`, `session_ref` を基準に集計する
-  - 生のユーザーID、owner token、Stripe session IDは出さず、`ref_...` 形式へ匿名化する
+- `line_follow_raw`: LINEの `line_follow` だけを1イベント1行で追記。イベントIDとLINE userIdは匿名参照IDに変換
+- `product_events_raw`: 自動同期を停止中。既存行は保持し、15分トリガーでは追記しない
 - 各APIは `(timestamp, id)` のカーソル以降だけを読み取る
 - メールアドレス、Stripe ID、生のトークン、元のDB IDは返さない
 - 同一ユーザー/セッションを数えるためのIDは復元不能な `ref_...` 形式

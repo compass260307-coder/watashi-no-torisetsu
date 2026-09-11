@@ -41,13 +41,14 @@ export const metadata: Metadata = {
     languages: {
       "ja-JP": BASE_URL,
       "ko-KR": KO_URL,
+      "en-US": `${BASE_URL}/en`,
       "x-default": BASE_URL,
     },
   },
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    alternateLocale: ["ja_JP"],
+    alternateLocale: ["ja_JP", "en_US"],
     url: KO_URL,
     siteName: KO_SITE_NAME,
     title: TITLE,

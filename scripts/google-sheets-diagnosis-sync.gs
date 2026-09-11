@@ -90,7 +90,31 @@ const RAW_SYNC_JOBS = {
     recentReferenceWindow: 5000,
     mode: "append",
   },
+  lineFollowEvents: {
+    apiPath: "line-follow-events",
+    sheetName: "line_follow_raw",
+    headers: [
+      "created_at",
+      "date_jst",
+      "hour_jst",
+      "event_ref",
+      "event_name",
+      "line_user_ref",
+      "relink",
+    ],
+    referenceColumn: 4,
+    cursorAtProperty: "LINE_FOLLOW_CURSOR_AT",
+    cursorIdProperty: "LINE_FOLLOW_CURSOR_ID",
+    initialLookbackDays: 30,
+    pageSize: 500,
+    maxPagesPerRun: 10,
+    recentReferenceWindow: 5000,
+    mode: "append",
+    // Web側のデプロイ前は空振りとして扱い、既存同期を止めない。
+    ignoreNotFound: true,
+  },
   productEvents: {
+    enabled: false,
     apiPath: "product-events",
     sheetName: "product_events_raw",
     headers: [
@@ -329,7 +353,7 @@ function syncJob_(job) {
   }
 }
 
-// この1関数を15分ごとに実行し、4種類の生データを同期する。
+// この1関数を15分ごとに実行し、有効な生データだけを同期する。
 function syncMetricsRaw() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
@@ -338,8 +362,10 @@ function syncMetricsRaw() {
     SpreadsheetApp.getActiveSpreadsheet().setSpreadsheetTimeZone("Asia/Tokyo");
     const errors = [];
     Object.keys(RAW_SYNC_JOBS).forEach(function (key) {
+      const job = RAW_SYNC_JOBS[key];
+      if (job.enabled === false) return;
       try {
-        syncJob_(RAW_SYNC_JOBS[key]);
+        syncJob_(job);
       } catch (error) {
         errors.push(key + ": " + error.message);
       }
@@ -351,7 +377,7 @@ function syncMetricsRaw() {
   }
 }
 
-// 旧手順から実行しても、現在の4種類同期を行う。
+// 旧手順から実行しても、現在有効な同期を行う。
 function syncDiagnoses() {
   syncMetricsRaw();
 }

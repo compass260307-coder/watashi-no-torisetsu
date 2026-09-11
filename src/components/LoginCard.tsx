@@ -10,6 +10,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ResultLocale } from "@/i18n/result";
 
+type LoginLocale = ResultLocale | "en";
+
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
@@ -22,7 +24,8 @@ const LOGIN_COPY = {
   ja: {
     close: "閉じる",
     heading: "ログインリンクをリクエスト",
-    description: "ログインリンクをお送りしますので、\nメールアドレスを入力してください。",
+    description:
+      "ログインリンクをお送りしますので、\nメールアドレスを入力してください。",
     emailLabel: "メールアドレス",
     submitting: "送信中...",
     submit: "リンクを送る",
@@ -30,7 +33,8 @@ const LOGIN_COPY = {
     networkError: "通信エラー",
     sentHeading: "メールをご確認ください",
     sentBody: "宛にログインリンクをお送りしました。",
-    sentHelp: "1 時間以内にリンクをクリックしてください。\n届かない場合は迷惑メールフォルダもご確認ください。",
+    sentHelp:
+      "1 時間以内にリンクをクリックしてください。\n届かない場合は迷惑メールフォルダもご確認ください。",
     reset: "別のメールアドレスで送り直す",
   },
   ko: {
@@ -44,8 +48,24 @@ const LOGIN_COPY = {
     networkError: "통신 오류가 발생했어요",
     sentHeading: "이메일을 확인해 주세요",
     sentBody: "주소로 로그인 링크를 보내 드렸어요.",
-    sentHelp: "1시간 안에 링크를 눌러 주세요.\n메일이 보이지 않으면 스팸 메일함도 확인해 주세요.",
+    sentHelp:
+      "1시간 안에 링크를 눌러 주세요.\n메일이 보이지 않으면 스팸 메일함도 확인해 주세요.",
     reset: "다른 이메일 주소로 다시 받기",
+  },
+  en: {
+    close: "Close",
+    heading: "Get a sign-in link",
+    description: "Enter your email and we’ll send you a secure sign-in link.",
+    emailLabel: "Email address",
+    submitting: "Sending...",
+    submit: "Send sign-in link",
+    sendError: "We couldn’t send the link",
+    networkError: "A network error occurred",
+    sentHeading: "Check your email",
+    sentBody: "We sent a sign-in link to this address.",
+    sentHelp:
+      "Open the link within 1 hour.\nIf you don’t see it, check your spam folder.",
+    reset: "Use a different email address",
   },
 } as const;
 
@@ -54,7 +74,7 @@ export function LoginCard({
   locale = "ja",
 }: {
   onClose?: () => void;
-  locale?: ResultLocale;
+  locale?: LoginLocale;
 }) {
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<Phase>("input");
@@ -115,7 +135,13 @@ export function LoginCard({
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[#2E2E5C]/5"
           style={{ color: `${NAVY}99` }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
             <path
               d="M6 6l12 12M18 6L6 18"
               stroke="currentColor"
@@ -191,11 +217,20 @@ export function LoginCard({
 
             {locale === "ko" ? (
               <p className="-mt-1 text-[11px] leading-[1.7] text-[#2E2E5C]/55">
-                이메일 주소는 로그인 링크 발송과 결과 복구를 위해 처리됩니다. 자세한 내용은{" "}
-                <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
+                이메일 주소는 로그인 링크 발송과 결과 복구를 위해 처리됩니다.
+                자세한 내용은{" "}
+                <Link
+                  href="/ko/privacy"
+                  className="font-bold underline underline-offset-2"
+                >
                   개인정보처리방침
                 </Link>
                 에서 확인할 수 있습니다.
+              </p>
+            ) : locale === "en" ? (
+              <p className="-mt-1 text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                We use your email to send the sign-in link and restore your
+                results.
               </p>
             ) : null}
 
@@ -227,7 +262,7 @@ function SentScreen({
 }: {
   email: string;
   onReset: () => void;
-  locale: ResultLocale;
+  locale: LoginLocale;
 }) {
   const copy = LOGIN_COPY[locale];
   return (
@@ -238,7 +273,10 @@ function SentScreen({
       >
         {copy.sentHeading}
       </h2>
-      <p className="mt-4 text-[15px] leading-[1.9]" style={{ color: `${NAVY}CC` }}>
+      <p
+        className="mt-4 text-[15px] leading-[1.9]"
+        style={{ color: `${NAVY}CC` }}
+      >
         <span className="break-all font-bold">{email}</span>
         <br />
         {copy.sentBody}
@@ -269,7 +307,13 @@ function SentScreen({
 // 封筒アイコン (入力欄の左内側)。currentColor で文字色に追従。
 function MailIcon() {
   return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <rect
         x="3"
         y="5"

@@ -22,6 +22,7 @@ export const metadata: Metadata = {
     languages: {
       "ja-JP": BASE_URL,
       "ko-KR": `${BASE_URL}/ko`,
+      "en-US": `${BASE_URL}/en`,
       "x-default": BASE_URL,
     },
   },

@@ -8,7 +8,7 @@ import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 import { getStripeClient } from "@/lib/stripe-client";
 import { track } from "@/lib/track";
@@ -40,9 +40,22 @@ const CHECKOUT_COPY = {
     paypayError: "PayPay를 불러오지 못했어요. 다시 시도해 주세요.",
     or: "또는",
   },
+  en: {
+    error: "We couldn’t open the payment form.",
+    retry: "Try again",
+    preview: "Payment form preview",
+    email: "Email address",
+    card: "Card information",
+    pay: "Pay securely",
+    guarantee: "One-time payment · 30-day money-back guarantee",
+    paypay: "Pay with PayPay",
+    paypayLoading: "Opening PayPay…",
+    paypayError: "We couldn’t open PayPay. Please try again.",
+    or: "or",
+  },
 } as const;
 
-function PreviewCheckout({ locale }: { locale: ResultLocale }) {
+function PreviewCheckout({ locale }: { locale: AppResultLocale }) {
   const copy = CHECKOUT_COPY[locale];
 
   return (
@@ -89,7 +102,7 @@ export default function UnmeiEmbeddedCheckout({
   product: "full_access" | "premium_bundle";
   onComplete: () => void;
   previewMode?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const copy = CHECKOUT_COPY[locale];
   const stripePromise = getStripeClient();

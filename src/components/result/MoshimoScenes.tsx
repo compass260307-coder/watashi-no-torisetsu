@@ -7,7 +7,7 @@
 //
 // サーバコンポーネント (状態なし)。CTA は PaywallScrollButton (client) に委譲。
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import type { MoshimoScene } from "@/lib/moshimo-resolve";
 
 // 鍵アイコン (SceneCautionTeaser / DeepDiveSections と同一形状)。
@@ -54,7 +54,7 @@ export function MoshimoScenes({
   locale = "ja",
 }: {
   scenes: MoshimoScene[];
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const isKorean = locale === "ko";
   const open = scenes.filter((s) => !s.locked);
@@ -112,14 +112,18 @@ export function MoshimoScenes({
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+              {locale === "en" ? "Unlock now" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-              {isKorean
+              {locale === "en"
+                ? "Unlock the Complete Edition to see how you respond in every moment."
+                : isKorean
                 ? "완전판 리포트를 열고,"
                 : "自己分析レポートを入手して、"}
               <br className="md:hidden" />
-              {isKorean
+              {locale === "en"
+                ? null
+                : isKorean
                 ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."
                 : "もしもの時のあなたをぜんぶ見てみましょう。"}
             </p>
@@ -127,7 +131,7 @@ export function MoshimoScenes({
               source="moshimo_card"
               className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              {isKorean ? "지금 확인하기" : "今すぐアクセス"}
+              {locale === "en" ? "See the complete result" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>
           </div>
         </div>

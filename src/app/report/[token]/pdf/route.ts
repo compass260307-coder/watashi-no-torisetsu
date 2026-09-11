@@ -102,6 +102,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const { token } = await ctx.params;
   const requestUrl = new URL(req.url);
   const isKo = requestUrl.searchParams.get("locale") === "ko";
+  const isEn = requestUrl.searchParams.get("locale") === "en";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
@@ -112,6 +113,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const printParams = new URLSearchParams();
   if (isPreview) printParams.set("previewType", rawPreview);
   if (isKo) printParams.set("locale", "ko");
+  if (isEn) printParams.set("locale", "en");
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未課金にはロック画面 PDF すら作らない) =====
@@ -136,9 +138,12 @@ export async function GET(req: Request, ctx: RouteContext) {
         303,
       );
     }
-    if (!(await hasSelfReportAccess(data.id))) {
+    const canDownload = isEn
+      ? await (await import("@/lib/entitlements")).hasFullAccess(data.id)
+      : await hasSelfReportAccess(data.id);
+    if (!canDownload) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/me/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -149,7 +154,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   }
 
   // ===== 日本語版: 診断キャラ別の縦書き小説をそのまま配信 =====
-  if (!isKo && reportType) {
+  if (!isKo && !isEn && reportType) {
     try {
       const pdf = await loadJapaneseStoryPdf(reportType);
       return storyPdfResponse(reportType, pdf);
@@ -172,7 +177,9 @@ export async function GET(req: Request, ctx: RouteContext) {
   const origin = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : new URL(req.url).origin;
-  const pageUrl = `${origin}/report/${encodeURIComponent(token)}/print${printQuery}`;
+  const pageUrl = isEn
+    ? `${origin}/en/report/${encodeURIComponent(token)}/print${printQuery}`
+    : `${origin}/report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
@@ -211,8 +218,8 @@ export async function GET(req: Request, ctx: RouteContext) {
         "Content-Type": "application/pdf",
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
         "Content-Disposition":
-          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
+          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Diagnosis Complete Edition.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });
@@ -220,7 +227,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     console.error("[/report/pdf] pdf generation failed:", err);
     // 生成失敗時は解放済みの自己診断結果へ案内する。
     return NextResponse.redirect(
-      `${resolveSiteUrl()}${isKo ? "/ko" : ""}/me/${encodeURIComponent(token)}`,
+      `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/me/${encodeURIComponent(token)}`,
       303,
     );
   } finally {

@@ -7,14 +7,16 @@ export const ACCESS_PRODUCTS = [
   "premium_bundle",
 ] as const;
 
-// 日本版は完全版 ¥499（自己・友達・相性・運命の設計図・Alice 30回答・タロット）
+// 日本版は完全版 ¥899（自己・友達・相性・運命の設計図・Alice 30回答・タロット）
 // の単一オファー。韓国版の既存コース構成と、過去購入の権利互換は維持する。
 // 商品構成テストの識別子。過去バージョンは履歴の解釈と権利互換用に残すが、
 // 新規Checkoutは現行バージョン以外を受理しない。
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v35_ja_full_499_single" as const;
+  "legacy_card_v36_ja_full_899_single_no_discount" as const;
+export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
+  "en_single_full_access_v1_jpy_499" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -49,7 +51,9 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v32_full_899_aisho_destiny_alice30_tarot_student_299",
   "legacy_card_v33_full_899_aisho_destiny_alice30_tarot_student_499",
   "legacy_card_v34_full_899_student_499_aisho_included",
+  "legacy_card_v35_ja_full_499_single",
   THREE_COURSE_PAYWALL_VERSION,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
 export const SINGLE_ALL_ACCESS_PAYWALL_PRODUCT =
@@ -212,12 +216,12 @@ export function purchaseIncludesAishoFeatures(
   return policy !== AISHO_ACCESS_POLICY_PREMIUM_ONLY;
 }
 
-// 日本版の現行価格。新規販売は相性診断も含む完全版 ¥499 のみ。
+// 日本版の現行価格。新規販売は相性診断も含む完全版 ¥899 のみ。
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
-export const FULL_ACCESS_LIST_PRICE_JPY = 1299;
-export const FULL_ACCESS_PRICE_JPY = 499;
+export const FULL_ACCESS_LIST_PRICE_JPY = 899;
+export const FULL_ACCESS_PRICE_JPY = 899;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 完全版からプレミアムへの差額。既存購入からのアップグレードにも使う。
@@ -233,6 +237,10 @@ export const FULL_ACCESS_PRICE_KRW = 4900;
 export const PREMIUM_BUNDLE_LIST_PRICE_KRW = 19800;
 // 韓国版プレミアムの現行価格。旧価格は ₩12,900。
 export const PREMIUM_BUNDLE_PRICE_KRW = 8900;
+// 英語版は完全版のみを、日本版のリリース価格 ¥499 に近い $3.49 で販売する。
+// 学生向け・プレミアムは英語版では提供せず、Checkout API 側でも拒否する。
+// Stripe の USD 金額は最小通貨単位（cent）で保持する。
+export const EN_FULL_ACCESS_PRICE_USD_CENTS = 349;
 export const SELF_REPORT_DISCOUNT_PERCENT = Math.round(
   (1 - SELF_REPORT_PRICE_JPY / SELF_REPORT_LIST_PRICE_JPY) * 100,
 );
@@ -309,10 +317,11 @@ export function accessProductPriceKrw(
 }
 
 export function accessProductPrice(
-  locale: "ja" | "ko",
+  locale: "ja" | "ko" | "en",
   product: AccessProduct,
   entitlements: AccessEntitlements,
 ): number {
+  if (locale === "en") return EN_FULL_ACCESS_PRICE_USD_CENTS;
   return locale === "ko"
     ? accessProductPriceKrw(product, entitlements)
     : accessProductPriceJpy(product, entitlements);

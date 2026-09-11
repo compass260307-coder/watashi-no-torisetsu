@@ -43,6 +43,7 @@ export async function generateMetadata({
   const essence = thirtyTwoEssence(id);
   const japaneseUrl = `${BASE_URL}/preview/${typeId}`;
   const koreanUrl = `${BASE_URL}/ko/preview/${typeId}`;
+  const englishUrl = `${BASE_URL}/en/preview/${typeId}`;
   return {
     title: essence,
     description: thirtyTwoZukanDesc(id),
@@ -51,6 +52,7 @@ export async function generateMetadata({
       languages: {
         "ja-JP": japaneseUrl,
         "ko-KR": koreanUrl,
+        "en-US": englishUrl,
         "x-default": japaneseUrl,
       },
     },

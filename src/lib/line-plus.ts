@@ -244,7 +244,7 @@ export async function findActiveWeekPass(
   return pass ? { expiresAt: pass.expiresAt } : null;
 }
 
-/** @deprecated 旧LP互換。新7日パス (¥380) の設定を返す。 */
+/** @deprecated 旧LP互換。7日パスの設定を返す。 */
 export function linePlusWeekPriceConfigured(): boolean {
   return linePlusPlanPriceConfigured("week");
 }

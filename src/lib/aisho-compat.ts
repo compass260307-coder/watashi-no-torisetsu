@@ -102,13 +102,51 @@ function axisCopyKo(key: AxisKey, x: Axes, y: Axes): string {
   }
 }
 
+function axisCopyEn(key: AxisKey, x: Axes, y: Axes): string {
+  const a = x[key];
+  const b = y[key];
+  switch (key) {
+    case "A": {
+      const state = pairState(a, b);
+      return state === "both"
+        ? "You both tend to notice the other person's feelings before pushing your own position. That mutual care makes small conflicts easier to soften, but honest needs still deserve to be spoken aloud."
+        : state === "one"
+          ? "One person's warmth often keeps this relationship moving smoothly. Make appreciation visible so that the more accommodating person does not quietly carry all of the emotional work."
+          : "Your directness can be refreshing, but a correct point may still land sharply on a difficult day. A brief sign of care before the solution can change the whole conversation."
+    }
+    case "N": {
+      const state = pairState(a, b);
+      return state === "both"
+        ? "You are both sensitive to shifts in mood and may amplify each other's uncertainty. Naming a worry early keeps imagination from turning a small silence into a larger story."
+        : state === "one"
+          ? "When one person feels emotionally unsettled, the other can offer useful steadiness. The relationship works best when calm support does not become dismissal of the more sensitive person's experience."
+          : "You both recover from emotional turbulence relatively quickly and can return to problem-solving. Remember that moving on efficiently is not always the same as fully hearing each other."
+    }
+    case "O":
+      return a === b
+        ? "You are drawn to a similar kind of world, so ideas, culture, and conversation can feel naturally shared. Familiarity is a strength as long as you still invite each other into something new."
+        : "Your different perspectives can introduce each of you to experiences you would not have chosen alone. Curiosity turns the contrast into expansion instead of a debate about which worldview is correct.";
+    case "C":
+      return a === b
+        ? "Your sense of pace and planning is similar, which reduces everyday friction. Shared habits make coordination easy, though unspoken assumptions still need an occasional check-in."
+        : "One of you is more planful while the other moves through momentum. Agreeing on deadlines and non-negotiables first lets flexibility and structure support each other.";
+    case "E":
+      if (a !== b)
+        return "This is a complementary social rhythm: one person opens the room while the other deepens the exchange. Respecting different recovery needs makes the contrast genuinely useful.";
+      return a
+        ? "You both gain energy through activity and can create an exciting, spontaneous relationship. Leave enough quiet space for plans and feelings that need more than momentum."
+        : "You both value quiet and can feel comfortable without filling every silence. Make invitations and affection explicit enough that mutual reserve does not look like distance.";
+  }
+}
+
 function axisCopy(
   key: AxisKey,
   x: Axes,
   y: Axes,
-  locale: ResultLocale,
+  locale: ResultLocale | "en",
 ): string {
   if (locale === "ko") return axisCopyKo(key, x, y);
+  if (locale === "en") return axisCopyEn(key, x, y);
   const a = x[key];
   const b = y[key];
   switch (key) {
@@ -146,22 +184,22 @@ function axisCopy(
 }
 
 // サマリー (%帯)
-function summaryFor(percent: number, locale: ResultLocale): string {
+function summaryFor(percent: number, locale: ResultLocale | "en"): string {
   if (percent >= 90)
-    return locale === "ko" ? "운명처럼 잘 맞는 사이" : "運命級の相性";
+    return locale === "ko" ? "운명처럼 잘 맞는 사이" : locale === "en" ? "An exceptional natural match" : "運命級の相性";
   if (percent >= 75)
-    return locale === "ko" ? "상당히 잘 맞는 사이" : "かなりの好相性";
+    return locale === "ko" ? "상당히 잘 맞는 사이" : locale === "en" ? "A strongly compatible pair" : "かなりの好相性";
   if (percent >= 60)
     return locale === "ko"
       ? "균형이 좋은 두 사람"
-      : "バランスのいいふたり";
+      : locale === "en" ? "A well-balanced connection" : "バランスのいいふたり";
   if (percent >= 45)
     return locale === "ko"
       ? "맞춰 갈수록 빛나는 두 사람"
-      : "歩み寄りで輝くふたり";
+      : locale === "en" ? "A connection that grows through adjustment" : "歩み寄りで輝くふたり";
   return locale === "ko"
     ? "어려움만큼 배움도 큰 사이"
-    : "試練は多いが、学びも大きい";
+    : locale === "en" ? "More challenging, with real room to learn" : "試練は多いが、学びも大きい";
 }
 
 // 相性ランク S/A/B/C (表示% 40〜95 を4段階に)。
@@ -191,7 +229,7 @@ const AXIS_ORDER: AxisKey[] = ["A", "N", "O", "C", "E"];
 export function compat(
   aId: ThirtyTwoTypeId,
   bId: ThirtyTwoTypeId,
-  locale: ResultLocale = "ja",
+  locale: ResultLocale | "en" = "ja",
 ): CompatResult {
   const x = parseAxes(thirtyTwoType(aId).code);
   const y = parseAxes(thirtyTwoType(bId).code);

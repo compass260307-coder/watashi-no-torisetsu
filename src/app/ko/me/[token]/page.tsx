@@ -20,6 +20,7 @@ export async function generateMetadata({
       "ko",
       `/me/${tokenPath}`,
       `/ko/me/${tokenPath}`,
+      `/en/me/${tokenPath}`,
     ),
     robots: { index: false, follow: false },
   };

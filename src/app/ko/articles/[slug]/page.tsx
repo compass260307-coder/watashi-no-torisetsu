@@ -41,16 +41,17 @@ export async function generateMetadata({
 
   const japanesePath = `/articles/${article.slug}`;
   const koreanPath = `/ko/articles/${article.slug}`;
+  const englishPath = `/en/articles/${article.slug}`;
   const image = KO_DEFAULT_OG_IMAGE;
 
   return {
     title: { absolute: `${article.title} | 나의 사용설명서` },
     description: article.description,
-    alternates: localizedAlternates("ko", japanesePath, koreanPath),
+    alternates: localizedAlternates("ko", japanesePath, koreanPath, englishPath),
     openGraph: {
       type: "article",
       locale: "ko_KR",
-      alternateLocale: ["ja_JP"],
+      alternateLocale: ["ja_JP", "en_US"],
       siteName: KO_SITE_NAME,
       title: `${article.title} | 나의 사용설명서`,
       description: article.description,

@@ -46,7 +46,9 @@ type FooterContent = {
   takoBaseHref: string;
 };
 
-const CONTENT: Record<SiteLocale, FooterContent> = {
+type TopLocale = SiteLocale | "en";
+
+const CONTENT: Record<TopLocale, FooterContent> = {
   ja: {
     // 3 カラム (診断 / サービス / サポート)。規約系は最下段 (コピーライト横) に移動。
     columns: [
@@ -205,19 +207,78 @@ const CONTENT: Record<SiteLocale, FooterContent> = {
     preparing: "(준비 중)",
     takoBaseHref: "/ko/tako",
   },
+  en: {
+    columns: [
+      {
+        title: "Tests",
+        links: [
+          { label: "Personality test", href: "/en/diagnosis" },
+          { label: "Friend test", href: "/en/tako", tako: true },
+          { label: "Personality types", href: "/en/types" },
+          { label: "Compatibility", href: "/en/aisho" },
+          { label: "Alice", href: "/en/hoshiyomi", course: "astrologer" },
+          { label: "Destiny Blueprint", href: "/en/unmei", course: "unmei" },
+          { label: "Alice Tarot", href: "/en/tarot", course: "tarot" },
+        ],
+      },
+      {
+        title: "Services",
+        links: [
+          { label: "About this service", href: "/en/about" },
+          {
+            label: "Articles",
+            href: "/en/articles",
+            children: [
+              { label: "What is the OCEAN model?", href: "/en/articles/ocean-shindan" },
+              { label: "How to ask for feedback", href: "/en/articles/tako-bunseki" },
+              { label: "Your personality guide", href: "/en/articles/torisetsu-tsukurikata" },
+              { label: "OCEAN vs. 16 types", href: "/en/articles/sixteen-types-vs-ocean" },
+            ],
+          },
+          {
+            label: "Company",
+            href: "https://sora-team.com",
+            external: true,
+            newTab: true,
+          },
+        ],
+      },
+      {
+        title: "Support",
+        links: [
+          {
+            label: "Contact us",
+            href: "mailto:support@watashi-torisetsu.com",
+            external: true,
+          },
+        ],
+      },
+    ],
+    legalLinks: [
+      { label: "Terms", href: "/en/terms" },
+      { label: "Privacy Policy", href: "/en/privacy" },
+      { label: "Sales & Refund Policy", href: "/en/legal/commerce" },
+    ],
+    legalAriaLabel: "Legal information",
+    copyright: "Alice Diagnosis",
+    disclaimer:
+      "Alice Diagnosis is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
+    preparing: " (Coming soon)",
+    takoBaseHref: "/en/tako",
+  },
 };
 
 // SNS 公式アカウント。href が "#" (未開設) のものは描画時に除外される。
 // 開設したら href を実 URL に差し替えるだけで表示される。
 // label は aria-label のみに使うため locale 別 (X は日本語版のみ旧称を併記)。
 const SOCIALS: {
-  label: Record<SiteLocale, string>;
+  label: Record<TopLocale, string>;
   href: string;
   icon: React.ReactNode;
-  badgeLabel?: Record<SiteLocale, string>;
+  badgeLabel?: Record<TopLocale, string>;
 }[] = [
   {
-    label: { ja: "Instagram", ko: "Instagram" },
+    label: { ja: "Instagram", ko: "Instagram", en: "Instagram" },
     href: "https://www.instagram.com/torisetsu_app",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -228,7 +289,7 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "X (旧Twitter)", ko: "X" },
+    label: { ja: "X (旧Twitter)", ko: "X", en: "X" },
     href: "https://x.com/torisetsu_app",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -237,7 +298,7 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "TikTok", ko: "TikTok" },
+    label: { ja: "TikTok", ko: "TikTok", en: "TikTok" },
     href: "https://www.tiktok.com/@torisetsu_app",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -246,9 +307,9 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "公式LINE", ko: "LINE 공식 계정" },
+    label: { ja: "公式LINE", ko: "LINE 공식 계정", en: "Official LINE account" },
     href: "https://line.me/R/ti/p/%40867domoo",
-    badgeLabel: { ja: "公式LINE", ko: "공식 LINE" },
+    badgeLabel: { ja: "公式LINE", ko: "공식 LINE", en: "Official LINE" },
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -269,9 +330,10 @@ export default function TopFooter({
   locale = "ja",
 }: {
   topBorder?: boolean;
-  locale?: SiteLocale;
+  locale?: TopLocale;
 }) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const content = CONTENT[locale];
   const pathname = usePathname() ?? (isKo ? "/ko" : "/");
 
@@ -341,7 +403,7 @@ export default function TopFooter({
     links: col.links
       .filter(
         (link) =>
-          !link.href.startsWith("/aisho") || hasAishoNavigationAccess,
+          !link.href.includes("/aisho") || hasAishoNavigationAccess,
       )
       .map((l) => (l.tako ? { ...l, href: takoUrl } : l)),
   }));
@@ -409,7 +471,9 @@ export default function TopFooter({
                     key={l.label}
                     href={l.href}
                     prefetch={navigationPrefetch}
-                    aria-label={`${l.label}${isKo ? " (잠김)" : "（ロック中）"}`}
+                    aria-label={`${l.label}${
+                      isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                    }`}
                     className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
                     style={{ color: "#9BA3B4" }}
                   >

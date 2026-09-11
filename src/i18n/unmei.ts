@@ -1,4 +1,4 @@
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 export type BirthLocationOption = {
   value: string;
@@ -96,7 +96,13 @@ export const ME_UNMEI_CHAT_INTRO_KO: readonly string[] = [
   "먼저 당신이 이 세상에 태어난 날짜부터 알려 주세요.",
 ];
 
-export const UNMEI_CHAT_COPY: Record<ResultLocale, ChatCopy> = {
+export const ME_UNMEI_CHAT_INTRO_EN: readonly string[] = [
+  "Hi, I’m Alice, your personal astrologer. I’ve already read your personality results.",
+  "Tell me three more things—when and where you were born—and I can combine your birth chart with your diagnosis to complete your Destiny Blueprint.",
+  "Let’s begin with the day you came into the world.",
+];
+
+export const UNMEI_CHAT_COPY: Record<AppResultLocale, ChatCopy> = {
   ja: {
     guideName: "Alice",
     productName: "あなたの専属占い師",
@@ -237,6 +243,83 @@ export const UNMEI_CHAT_COPY: Record<ResultLocale, ChatCopy> = {
     send: "보내기",
     formatDate: (year, month, day) => `${year}년 ${month}월 ${day}일`,
   },
+  en: {
+    guideName: "Alice",
+    productName: "Your personal astrologer",
+    srTitle: "Birth details for your personal Destiny Blueprint",
+    introInput: [
+      "Thank you for your purchase!",
+      "I’ll combine the sky at the moment you were born with your personality to create a Destiny Blueprint made only for you.",
+      "First, tell me the day you came into the world.",
+    ],
+    introPurchase: [
+      "I’ve been waiting for you.",
+      "I’ll combine the sky at the moment you were born with your personality to create a Destiny Blueprint made only for you.",
+      "First, tell me the day you came into the world.",
+    ],
+    futureDate: "That date is in the future. Please choose your birth date again.",
+    thanks: "Thank you.",
+    askTime: [
+      "Next, what time were you born?",
+      "It helps me read the position of the stars more precisely. You may find it in your birth records, but it’s fine if you don’t know.",
+    ],
+    unknownTimeAnswer: "I don’t know my birth time",
+    askPlace: "Finally, where were you born? This helps me recreate the first sky you saw. You can skip this if you’re unsure.",
+    unknownTimeReply: "That’s okay. I’ll use the sky at noon as a careful reference.",
+    skipAnswer: "Skip",
+    skipReply: "That’s okay. I’ll create your reading carefully with the information we have.",
+    editQuestions: {
+      date: "Tell me your birth date again.",
+      time: "Tell me your birth time again.",
+      place: "Tell me your birthplace again.",
+    },
+    confirmLead: "We now have the three keys I need for your blueprint.",
+    dateField: "Date of birth",
+    timeField: "Time of birth",
+    placeField: "Place of birth",
+    unknownTimeLabel: "Unknown (calculated at noon)",
+    unknownPlaceLabel: "Not provided",
+    previewConfirmed: "Thank you. I’ve checked your details.",
+    previewPayment: "In the live flow, your birth details are saved here before the final purchase confirmation.",
+    saveError: "I couldn’t save your details. Please try again.",
+    preparing: [
+      "Recreating the sky at the moment you were born…",
+      "Layering the stars over your personality…",
+      "Turning your story into a blueprint made only for you…",
+    ],
+    paymentReady: "Everything is ready for your Destiny Blueprint",
+    paymentNext: "Complete the purchase below, and I’ll begin reading your stars right away.",
+    generationReady: "I have your three keys. Now I’ll begin creating your personal blueprint.",
+    networkError: "There was a network error. Please try again.",
+    typing: "Reading the stars",
+    waiting: "I’m combining the sky at your birth with your personality. This may take about a minute.",
+    year: "Year",
+    month: "Month",
+    day: "Day",
+    yearSuffix: "",
+    monthSuffix: "",
+    daySuffix: "",
+    birthTimeAria: "Time of birth",
+    unknownTimeChip: "I don’t know my birth time",
+    regionAria: "Birth region",
+    regionPlaceholder: "Select a region",
+    cityPlaceholder: "City (optional)",
+    skipChip: "Skip",
+    editDate: "Edit date",
+    editTime: "Edit time",
+    editPlace: "Edit place",
+    submitting: "Saving your details…",
+    purchaseContinue: "Continue with these details",
+    confirm: "Create my blueprint",
+    send: "Send",
+    formatDate: (year, month, day) =>
+      new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(Date.UTC(year, month - 1, day))),
+  },
 };
 
 export const UNMEI_READING_COPY = {
@@ -266,7 +349,23 @@ export const UNMEI_READING_COPY = {
       grace: "마지막으로 한 가지만",
     },
   },
-} as const satisfies Record<ResultLocale, unknown>;
+  en: {
+    title: "Your Destiny Blueprint",
+    youAre: "You are",
+    groupSuffix: " type",
+    fallbackConstellation: "Your constellation",
+    ending: [
+      "The stars are not an answer, but a guide.",
+      "Whenever you feel lost, you can return to this sky.",
+    ],
+    sectionTitles: {
+      haichi: "What you have built",
+      kokoro: "Who you are with others",
+      chosen: "The turning point ahead",
+      grace: "One last thing",
+    },
+  },
+} as const satisfies Record<AppResultLocale, unknown>;
 
 export const UNMEI_CHART_COPY = {
   ja: {
@@ -319,6 +418,32 @@ export const UNMEI_CHART_COPY = {
       saturn: "시간을 들여 진짜 내 것이 되는 힘과 성숙의 과정을 지켜봐요",
       asc: "세상과 처음 만날 때 자연스럽게 드러나는 당신의 분위기예요",
       mc: "긴 여정 끝에 당신이 향하게 될 하늘의 꼭대기를 보여 줘요",
+    },
+  },
+  en: {
+    label: "Birth chart",
+    titleLabel: "Your title in the stars",
+    moon: "Moon",
+    details: (label: string) => `View details for ${label}`,
+    scroll: "Scroll",
+    arrangement: "The planets at the moment you were born",
+    touchHint: "Select a star to learn more",
+    timeUnknownNote: "Knowing your birth time pinpoints the Moon’s position.",
+    phrases: [
+      "This is the sky at the moment you were born.",
+      "This exact arrangement will never return.",
+      "Your story begins here.",
+    ],
+    meanings: {
+      sun: "The center of your story, illuminating what matters most to you",
+      moon: "Where your heart returns when you are alone",
+      mercury: "How you choose words, think, and make sense of the world",
+      venus: "What moves your heart and how you express love",
+      mars: "The inner fire that moves you to take the first step",
+      jupiter: "The direction in which you naturally expand and grow",
+      saturn: "What becomes truly yours through time, patience, and maturity",
+      asc: "The atmosphere you wear when you first meet the world",
+      mc: "The highest point in the sky toward which your longer path leads",
     },
   },
 } as const;

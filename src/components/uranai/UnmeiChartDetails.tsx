@@ -6,7 +6,7 @@
 
 import { computeChartDetails } from "@/lib/unmei/chart-details.mjs";
 import type { Chart } from "@/lib/unmei/chart-view";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 const GOLD = "#EDCF62";
 
@@ -21,9 +21,10 @@ type Details = {
   dominant: string | null; maxCount: number; houseCusps: Cusp[] | null;
 };
 
-const ELEMENT_LABELS: Record<ResultLocale, Record<string, string>> = {
+const ELEMENT_LABELS: Record<AppResultLocale, Record<string, string>> = {
   ja: { fire: "火", earth: "地", air: "風", water: "水" },
   ko: { fire: "불", earth: "흙", air: "바람", water: "물" },
+  en: { fire: "Fire", earth: "Earth", air: "Air", water: "Water" },
 };
 const ELEMENT_ORDER = ["fire", "earth", "air", "water"] as const;
 
@@ -57,6 +58,36 @@ const KO_SIGN_NAMES: Record<string, string> = {
   魚座: "물고기자리",
 };
 
+const EN_PLANET_NAMES: Record<string, string> = {
+  太陽: "Sun",
+  月: "Moon",
+  水星: "Mercury",
+  金星: "Venus",
+  火星: "Mars",
+  木星: "Jupiter",
+  土星: "Saturn",
+  天王星: "Uranus",
+  海王星: "Neptune",
+  冥王星: "Pluto",
+  上昇宮: "Ascendant",
+  天頂: "Midheaven",
+};
+
+const EN_SIGN_NAMES: Record<string, string> = {
+  牡羊座: "Aries",
+  牡牛座: "Taurus",
+  双子座: "Gemini",
+  蟹座: "Cancer",
+  獅子座: "Leo",
+  乙女座: "Virgo",
+  天秤座: "Libra",
+  蠍座: "Scorpio",
+  射手座: "Sagittarius",
+  山羊座: "Capricorn",
+  水瓶座: "Aquarius",
+  魚座: "Pisces",
+};
+
 const COPY = {
   ja: {
     aria: "あなたの出生図データ",
@@ -88,17 +119,40 @@ const COPY = {
     houseNumber: (house: number) => `${house}하우스`,
     noHouses: "출생 시간을 입력하면 확인할 수 있어요.",
   },
+  en: {
+    aria: "Your birth-chart data",
+    title: "Your birth-chart data",
+    planets: "Planets",
+    planet: "Planet",
+    sign: "Sign",
+    degree: "Degree",
+    house: "House",
+    legend: (timeUnknown: boolean) =>
+      `R = retrograde / House = the house containing the planet${timeUnknown ? " (hidden because birth time is unknown)" : ""}`,
+    elements: "Elements (Fire · Earth · Air · Water)",
+    cusps: "House cusps",
+    houseNumber: (house: number) => `House ${house}`,
+    noHouses: "Enter your birth time to see your houses.",
+  },
 } as const;
 
-function localizedName(value: string, locale: ResultLocale) {
-  return locale === "ko" ? (KO_PLANET_NAMES[value] ?? value) : value;
+function localizedName(value: string, locale: AppResultLocale) {
+  return locale === "en"
+    ? (EN_PLANET_NAMES[value] ?? value)
+    : locale === "ko"
+      ? (KO_PLANET_NAMES[value] ?? value)
+      : value;
 }
 
-function localizedSign(value: string, locale: ResultLocale) {
-  return locale === "ko" ? (KO_SIGN_NAMES[value] ?? value) : value;
+function localizedSign(value: string, locale: AppResultLocale) {
+  return locale === "en"
+    ? (EN_SIGN_NAMES[value] ?? value)
+    : locale === "ko"
+      ? (KO_SIGN_NAMES[value] ?? value)
+      : value;
 }
 
-function PlanetRow({ r, locale }: { r: Row; locale: ResultLocale }) {
+function PlanetRow({ r, locale }: { r: Row; locale: AppResultLocale }) {
   return (
     <tr className="border-t border-white/10">
       <td className="whitespace-nowrap py-1.5 pr-2">
@@ -131,7 +185,7 @@ export default function UnmeiChartDetails({
   locale = "ja",
 }: {
   chart?: Chart | null;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   if (!chart) return null;
   const details = computeChartDetails(chart) as Details | null;
@@ -210,17 +264,21 @@ export default function UnmeiChartDetails({
           </div>
           {tops.length > 0 && (
             <p className="mt-2 text-[12px] text-white/70">
-              {locale === "ko"
-                ? "가장 강한 원소는 "
-                : tops.length === 1
-                  ? "いちばん強いのは"
-                  : "強いのは"}
+              {locale === "en"
+                ? tops.length === 1
+                  ? "Your strongest element is "
+                  : "Your strongest elements are "
+                : locale === "ko"
+                  ? "가장 강한 원소는 "
+                  : tops.length === 1
+                    ? "いちばん強いのは"
+                    : "強いのは"}
               <span className="mx-0.5 font-bold" style={{ color: GOLD }}>
                 {tops
                   .map((e) => elementLabels[e])
-                  .join(locale === "ko" ? "·" : "・")}
+                  .join(locale === "ja" ? "・" : " · ")}
               </span>
-              {locale === "ko" ? "의 성질이에요." : "の性質です。"}
+              {locale === "en" ? "." : locale === "ko" ? "의 성질이에요." : "の性質です。"}
             </p>
           )}
 

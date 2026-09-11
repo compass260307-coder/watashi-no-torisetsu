@@ -17,15 +17,16 @@ import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import { readAdAttribution } from "@/lib/ad-attribution";
 import type { ResultLocale } from "@/i18n/result";
 import {
+  EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
-  THREE_COURSE_PAYWALL_VERSION,
   type AccessProduct,
   type PaywallPlacement,
+  type ThreeCoursePaywallVersion,
 } from "@/lib/access-products";
 
 function readCookie(name: string): string | null {
@@ -68,15 +69,15 @@ export function FullAccessCta({
   ownerToken?: string;
   /** 未ログイン時の遷移先。省略時は locale に対応する診断ページ。 */
   unauthHref?: string;
-  locale?: ResultLocale;
+  locale?: ResultLocale | "en";
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
   source?: string;
   /** 購入後の着地。診断・相性・運命の設計図の購入元へ戻す (既定は /me/[token])。 */
-  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
-  /** 日本版の新規販売は full_access=完全版¥499。その他は過去購入・他言語との互換用。 */
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
+  /** 日本版の新規販売は full_access=完全版¥899。その他は過去購入・他言語との互換用。 */
   product?: AccessProduct;
   /** 商品比較テストの識別子。未指定は旧単一カード。 */
-  paywallVersion?: typeof THREE_COURSE_PAYWALL_VERSION;
+  paywallVersion?: ThreeCoursePaywallVersion;
   /** 同じカードの常設表示とモーダル表示を分ける。 */
   placement?: PaywallPlacement;
   /** 比較カード内では38px固定のコンパクトな高さにする。 */
@@ -92,7 +93,12 @@ export function FullAccessCta({
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
   const resolvedUnauthHref =
-    unauthHref ?? (locale === "ko" ? "/ko/diagnosis" : "/diagnosis");
+    unauthHref ??
+    (locale === "ko"
+      ? "/ko/diagnosis"
+      : locale === "en"
+        ? "/en/diagnosis"
+        : "/diagnosis");
   const themedButtonStyle: CSSProperties | undefined = accentColor
     ? {
         backgroundColor: accentColor,
@@ -180,7 +186,9 @@ export function FullAccessCta({
         setError(
           locale === "ko"
             ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
-            : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+            : locale === "en"
+              ? "We couldn't open checkout. Please try again in a moment."
+              : "うまく開けませんでした。少し待ってからもう一度お試しください。",
         );
         setLoading(false);
         return;
@@ -207,27 +215,35 @@ export function FullAccessCta({
                     : PREMIUM_BUNDLE_PRICE_JPY
                 : locale === "ko"
                   ? FULL_ACCESS_PRICE_KRW
-                  : FULL_ACCESS_PRICE_JPY,
+                  : locale === "en"
+                    ? EN_FULL_ACCESS_PRICE_USD_CENTS / 100
+                    : FULL_ACCESS_PRICE_JPY,
           currency:
             typeof data.currency === "string"
               ? data.currency
               : locale === "ko"
                 ? "KRW"
-                : "JPY",
+                : locale === "en"
+                  ? "USD"
+                  : "JPY",
         });
         return;
       }
       setError(
         locale === "ko"
           ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
-          : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+          : locale === "en"
+            ? "We couldn't open checkout. Please try again in a moment."
+            : "うまく開けませんでした。少し待ってからもう一度お試しください。",
       );
       setLoading(false);
     } catch {
       setError(
         locale === "ko"
           ? "통신에 실패했어요. 연결 상태가 좋은 곳에서 다시 시도해 주세요."
-          : "通信に失敗しました。電波のいい場所でもう一度お試しください。",
+          : locale === "en"
+            ? "Connection failed. Check your connection and try again."
+            : "通信に失敗しました。電波のいい場所でもう一度お試しください。",
       );
       setLoading(false);
     }
@@ -248,9 +264,9 @@ export function FullAccessCta({
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
-          ? locale === "ko" ? "열고 있어요…" : "ひらいています…"
+          ? locale === "ko" ? "열고 있어요…" : locale === "en" ? "Opening…" : "ひらいています…"
           : error
-            ? locale === "ko" ? "다시 시도하기 →" : "もう一度ためす →"
+            ? locale === "ko" ? "다시 시도하기 →" : locale === "en" ? "Try again →" : "もう一度ためす →"
             : children}
       </button>
       {error && (

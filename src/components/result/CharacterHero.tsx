@@ -12,7 +12,7 @@ import type { CSSProperties } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { AnimatedCharacter } from "./AnimatedCharacter";
 import type { Job } from "@/lib/job";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // 動物＋職業システム用スロット (/me のみ渡す)。
 // job が決まれば「{職業}{動物}」+ アバター右下バッジ。未定なら「？{動物}」+ 判明ゲージ。
@@ -61,7 +61,7 @@ interface CharacterHeroProps {
   // imageBlend 時のマスク style を上書き (未指定なら既定の radial BLEND_MASK)。
   // /me は四辺だけ細く溶かす矩形マスク (linear×2 を mask-composite:intersect) を渡す。
   imageBlendStyle?: CSSProperties;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 // 縁フェード用マスク: 中心 80% は不透過 (キャラ本体)、外周〜角を透過 (背景の余白を溶かす)。

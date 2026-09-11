@@ -196,7 +196,7 @@ export default function LinePlusStory({ freeLimit }: LinePlusStoryProps) {
               </div>
               {index === 0 ? (
                 <p className={styles.limitNote}>
-                  {`無料プランは1日${safeFreeLimit}通まで。Plusなら、無料枠を超えてたっぷり話せます。`}
+                  {`無料プランは全期間で${safeFreeLimit}通まで。Plusなら、無料枠を超えてたっぷり話せます。`}
                 </p>
               ) : null}
             </li>

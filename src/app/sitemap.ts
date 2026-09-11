@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { allThirtyTwoTypeIds } from "@/lib/thirty-two-types";
 import { ARTICLES } from "@/lib/articles";
+import { EN_ARTICLES } from "@/lib/articles-en";
 import { KO_ARTICLES } from "@/lib/articles-ko";
 import {
   absoluteSiteUrl,
@@ -19,10 +20,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ).flatMap((id) => {
     const japanesePath = `/preview/${id}`;
     const koreanPath = `/ko/preview/${id}`;
+    const englishPath = `/en/preview/${id}`;
     const japaneseUrl = absoluteSiteUrl(japanesePath);
     const koreanUrl = absoluteSiteUrl(koreanPath);
+    const englishUrl = absoluteSiteUrl(englishPath);
     const alternates = {
-      languages: localizedLanguages(japanesePath, koreanPath),
+      languages: localizedLanguages(japanesePath, koreanPath, englishPath),
     };
     return [
       {
@@ -37,13 +40,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: 0.6,
         alternates,
       },
+      {
+        url: englishUrl,
+        changeFrequency: "monthly",
+        priority: 0.6,
+        alternates,
+      },
     ];
   });
 
   const localizedPages: MetadataRoute.Sitemap =
     INDEXABLE_LOCALIZED_ROUTES.flatMap((route) => {
       const alternates = {
-        languages: localizedLanguages(route.ja, route.ko),
+        languages: localizedLanguages(route.ja, route.ko, route.en),
       };
       return [
         {
@@ -58,20 +67,32 @@ export default function sitemap(): MetadataRoute.Sitemap {
           changeFrequency: route.changeFrequency,
           alternates,
         },
+        ...(route.en
+          ? [{
+              url: absoluteSiteUrl(route.en),
+              priority: route.priority,
+              changeFrequency: route.changeFrequency,
+              alternates,
+            }]
+          : []),
       ];
     });
 
   const koreanArticlesBySlug = new Map(
     KO_ARTICLES.map((article) => [article.slug, article]),
   );
+  const englishArticlesBySlug = new Map(
+    EN_ARTICLES.map((article) => [article.slug, article]),
+  );
   const articlePages: MetadataRoute.Sitemap = ARTICLES.flatMap((article) => {
     const japanesePath = `/articles/${article.slug}`;
     const koreanArticle = koreanArticlesBySlug.get(article.slug);
+    const englishArticle = englishArticlesBySlug.get(article.slug);
 
     // KO版が無い記事 (日本語のみ) は hreflang alternates を付けず日本語単独で登録する。
     // 以前は return [] で sitemap から丸ごと除外していたため、JAのみの新規記事が
     // インデックス対象から漏れていた (/articles からはリンク済みでクロールは可能だった)。
-    if (!koreanArticle) {
+    if (!koreanArticle || !englishArticle) {
       return [
         {
           url: absoluteSiteUrl(japanesePath),
@@ -83,8 +104,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }
 
     const koreanPath = `/ko/articles/${article.slug}`;
+    const englishPath = `/en/articles/${article.slug}`;
     const alternates = {
-      languages: localizedLanguages(japanesePath, koreanPath),
+      languages: localizedLanguages(japanesePath, koreanPath, englishPath),
     };
 
     return [
@@ -102,6 +124,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
         priority: 0.7,
         alternates,
       },
+      {
+        url: absoluteSiteUrl(englishPath),
+        lastModified: englishArticle.updated ?? englishArticle.published,
+        changeFrequency: "monthly",
+        priority: 0.7,
+        alternates,
+      },
     ];
   });
 
@@ -109,7 +138,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     ...localizedPages,
     ...typePages,
-    // 記事詳細。日本語・韓国語の同一スラッグを hreflang で相互に結ぶ。
+    // 記事詳細。日本語・韓国語・英語の同一スラッグを hreflang で相互に結ぶ。
     ...articlePages,
   ];
 }

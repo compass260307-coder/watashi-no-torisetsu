@@ -6,17 +6,38 @@
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
-export default function TopStats({ diagnosedCount }: { diagnosedCount: number }) {
+export default function TopStats({
+  diagnosedCount,
+  locale = "ja",
+}: {
+  diagnosedCount: number;
+  locale?: "ja" | "en";
+}) {
+  const isEnglish = locale === "en";
   // 数字ごとに異なるアクセント色 (16P 風。felt 世界観に合わせたパステル寄り)。
   const stats = [
-    { num: "5万+", label: "本日の診断回数", color: "#5B5BEF" },
     {
-      num: `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`,
-      label: "診断した人",
+      num: isEnglish ? "50K+" : "5万+",
+      label: isEnglish ? "tests taken today" : "本日の診断回数",
+      color: "#5B5BEF",
+    },
+    {
+      num: isEnglish
+        ? `${(diagnosedCount / 1_000_000).toLocaleString("en-US")}M+`
+        : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`,
+      label: isEnglish ? "people tested" : "診断した人",
       color: "#E86AA6",
     },
-    { num: "2万+", label: "友達のことを診断した人数", color: "#3FAE8C" },
-    { num: "89%", label: "正確性の評価", color: "#E0A544" },
+    {
+      num: isEnglish ? "20K+" : "2万+",
+      label: isEnglish ? "friend evaluations" : "友達のことを診断した人数",
+      color: "#3FAE8C",
+    },
+    {
+      num: "89%",
+      label: isEnglish ? "accuracy rating" : "正確性の評価",
+      color: "#E0A544",
+    },
   ];
 
   return (
@@ -25,7 +46,9 @@ export default function TopStats({ diagnosedCount }: { diagnosedCount: number })
       style={{ fontFamily: FONT_STACK }}
     >
       {/* SEO/a11y: セクション見出し (視覚上は非表示、アウトライン構造のみ提供) */}
-      <h2 className="sr-only">診断実績</h2>
+      <h2 className="sr-only">
+        {isEnglish ? "Test statistics" : "診断実績"}
+      </h2>
       {/* 端から端まで均等な 4 分割 (SP は 2×2)。max-width は付けず全幅で振り分ける。 */}
       <div className="mx-auto grid max-w-[1680px] grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4">
         {stats.map((s) => (
@@ -41,7 +64,7 @@ export default function TopStats({ diagnosedCount }: { diagnosedCount: number })
             >
               {s.num}
             </div>
-            <div className="mt-3 text-[17px] leading-snug text-[#8A8AA3]">
+            <div className="mt-3 flex min-h-[44px] items-start justify-center text-[17px] leading-snug text-[#8A8AA3]">
               {s.label}
             </div>
           </div>

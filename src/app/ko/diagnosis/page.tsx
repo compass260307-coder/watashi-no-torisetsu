@@ -26,13 +26,14 @@ export const metadata: Metadata = {
     languages: {
       "ja-JP": `${BASE_URL}/diagnosis`,
       "ko-KR": KO_DIAGNOSIS_URL,
+      "en-US": `${BASE_URL}/en/diagnosis`,
       "x-default": `${BASE_URL}/diagnosis`,
     },
   },
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    alternateLocale: ["ja_JP"],
+    alternateLocale: ["ja_JP", "en_US"],
     url: KO_DIAGNOSIS_URL,
     siteName: KO_SITE_NAME,
     title: TITLE,

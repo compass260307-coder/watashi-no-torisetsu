@@ -50,16 +50,24 @@ export async function POST(request: Request) {
   if (!purchased) {
     return NextResponse.json({ error: "not purchased", state: "unpurchased" }, { status: 403 });
   }
-  const outputLocale = u?.preferred_locale === "ko" ? "ko" : "ja";
-
   // 手動リトライ(自動再生成の上限を超えて再試行)は body { force:true } で明示する。
   let force = false;
+  let requestedLocale: "ja" | "ko" | "en" | null = null;
   try {
     const body = await request.json();
     force = body?.force === true;
+    requestedLocale =
+      body?.locale === "ko" ? "ko" : body?.locale === "en" ? "en" : body?.locale === "ja" ? "ja" : null;
   } catch {
     /* body 無しは force=false */
   }
+  const outputLocale =
+    requestedLocale ??
+    (u?.preferred_locale === "ko"
+      ? "ko"
+      : u?.preferred_locale === "en"
+        ? "en"
+        : "ja");
 
   // 既存の生成状態を読む (idempotency + 終端 failed の同期短絡に使う)。
   const { data: existing } = await supabaseAdmin
@@ -72,6 +80,8 @@ export async function POST(request: Request) {
   const existingLocale =
     (existing?.reading as { locale?: unknown } | null)?.locale === "ko"
       ? "ko"
+      : (existing?.reading as { locale?: unknown } | null)?.locale === "en"
+        ? "en"
       : "ja";
   if (
     isReadingReady(existing) &&

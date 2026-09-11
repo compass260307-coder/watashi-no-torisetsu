@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCALES = ["ja", "ko"] as const;
+export const SUPPORTED_LOCALES = ["ja", "ko", "en"] as const;
 
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -7,6 +7,7 @@ export const DEFAULT_LOCALE: Locale = "ja";
 export const LOCALE_LABELS: Record<Locale, string> = {
   ja: "日本語",
   ko: "한국어",
+  en: "English",
 };
 
 export function localePath(locale: Locale, pathname = "/"): string {

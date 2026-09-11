@@ -25,7 +25,7 @@ import {
   type MoonArc,
   type WheelLayout,
 } from "@/lib/unmei/chart-view";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { UNMEI_CHART_COPY } from "@/i18n/unmei";
 
 const WHITE = "#FFFFFF"; // 線・文字 (天体の点=黄は defs の uw-dot グラデで描く)
@@ -35,7 +35,7 @@ type Props = {
   timeUnknown: boolean;
   moonArc: MoonArc | null;
   essence?: string | null; // 中央に置く 32タイプ称号 (例: 寄添者)。無ければ非表示。
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 };
 
 export default function NatalChartWheel({

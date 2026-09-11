@@ -53,10 +53,13 @@ export async function GET(request: Request) {
     .eq("user_id", userId)
     .maybeSingle();
 
-  const requiredLocale = u?.preferred_locale === "ko" ? "ko" : "ja";
+  const requestedLocale = new URL(request.url).searchParams.get("locale");
+  const requiredLocale = requestedLocale === "ko" ? "ko" : requestedLocale === "en" ? "en" : u?.preferred_locale === "ko" ? "ko" : u?.preferred_locale === "en" ? "en" : "ja";
   const readingLocale =
     (reading?.reading as { locale?: unknown } | null)?.locale === "ko"
       ? "ko"
+      : (reading?.reading as { locale?: unknown } | null)?.locale === "en"
+        ? "en"
       : "ja";
   if (
     !isReadingReady(reading) ||

@@ -39,37 +39,37 @@ const META_PURCHASE_CONTENT: Record<
   {
     fallbackId: string;
     koFallbackId?: string;
-    name: Readonly<Record<"ja" | "ko", string>>;
+    name: Readonly<Record<"ja" | "ko" | "en", string>>;
   }
 > = {
   self_report: {
     fallbackId: "self_report_jpy_499",
     koFallbackId: "self_report_krw_1900",
-    name: { ja: "学生向けプラン", ko: "학생 플랜" },
+    name: { ja: "学生向けプラン", ko: "학생 플랜", en: "Unavailable English plan" },
   },
   full_access: {
     fallbackId: "full_access_jpy_899",
     koFallbackId: "full_access_krw_4900",
-    name: { ja: "完全版コース", ko: "완전판 코스" },
+    name: { ja: "完全版コース", ko: "완전판 코스", en: "Complete Edition" },
   },
   premium_bundle: {
     fallbackId: "premium_bundle_jpy_1299",
     koFallbackId: "premium_bundle_krw_8900",
-    name: { ja: "全部入り・買い切り", ko: "프리미엄 코스" },
+    name: { ja: "全部入り・買い切り", ko: "프리미엄 코스", en: "Unavailable English plan" },
   },
   unmei: {
     fallbackId: "unmei_jpy_1980",
-    name: { ja: "運命の設計図", ko: "운명의 설계도" },
+    name: { ja: "運命の設計図", ko: "운명의 설계도", en: "Destiny Blueprint" },
   },
   unmei_upgrade: {
     fallbackId: "unmei_upgrade_jpy_1480",
-    name: { ja: "運命の設計図", ko: "운명의 설계도" },
+    name: { ja: "運命の設計図", ko: "운명의 설계도", en: "Destiny Blueprint" },
   },
 };
 
 export function metaPurchaseContent(
   product: MetaPurchaseProduct,
-  locale: "ja" | "ko",
+  locale: "ja" | "ko" | "en",
   amountMinor?: number | null,
   currency?: string | null,
 ): { contentIds: string[]; contentName: string } {

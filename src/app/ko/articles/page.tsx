@@ -31,11 +31,11 @@ export const metadata: Metadata = {
     "성격심리학",
     "자기 이해 칼럼",
   ],
-  alternates: localizedAlternates("ko", "/articles", "/ko/articles"),
+  alternates: localizedAlternates("ko", "/articles", "/ko/articles", "/en/articles"),
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    alternateLocale: ["ja_JP"],
+    alternateLocale: ["ja_JP", "en_US"],
     url: `${SITE_URL}/ko/articles`,
     siteName: KO_SITE_NAME,
     title: "글·칼럼 | 나의 사용설명서",

@@ -11,7 +11,7 @@ export function RecoveryUrlBox({
   locale = "ja",
 }: {
   url: string;
-  locale?: ResultLocale;
+  locale?: ResultLocale | "en";
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -36,8 +36,16 @@ export function RecoveryUrlBox({
         className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-5 py-3 text-sm font-black text-white shadow-[0_3px_0_#3d3dc4] hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:translate-y-1 active:shadow-none transition-all"
       >
         {copied
-          ? locale === "ko" ? "복사했어요 ✓" : "コピーしました ✓"
-          : locale === "ko" ? "이 주소를 복사해 저장하기" : "このURLをコピーして保存"}
+          ? locale === "ko"
+            ? "복사했어요 ✓"
+            : locale === "en"
+              ? "Copied ✓"
+              : "コピーしました ✓"
+          : locale === "ko"
+            ? "이 주소를 복사해 저장하기"
+            : locale === "en"
+              ? "Copy and save this recovery link"
+              : "このURLをコピーして保存"}
       </button>
     </div>
   );

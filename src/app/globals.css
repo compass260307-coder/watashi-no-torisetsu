@@ -46,6 +46,12 @@ html[lang="ko"] {
   --font-noto-sans: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic";
 }
 
+/* English routes use the Latin Noto Sans family already loaded by the root
+   layout and must not request Japanese glyph subsets. */
+html[lang="en"] {
+  --font-noto-sans: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI";
+}
+
 /* 自己診断結果ページの課金導線。ページ側で分類別の色トークンを渡し、
    深掘り・もしも・注意点など共用コンポーネントのCTAも一括で揃える。 */
 .result-themed-cta {

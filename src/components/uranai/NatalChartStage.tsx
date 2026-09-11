@@ -31,7 +31,7 @@ import {
   type Chart,
   type MoonArc,
 } from "@/lib/unmei/chart-view";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { UNMEI_CHART_COPY } from "@/i18n/unmei";
 
 // 進行度に合わせて順に出す言葉 (中心 p と本文)。装飾ナレーションなので aria-hidden。
@@ -49,7 +49,7 @@ type Props = {
   timeUnknown: boolean;
   moonArc: MoonArc | null;
   essence?: string | null;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 };
 
 export default function NatalChartStage({

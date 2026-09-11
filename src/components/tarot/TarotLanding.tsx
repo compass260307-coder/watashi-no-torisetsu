@@ -65,6 +65,14 @@ const KO_TAROT_FAQS = [
   },
 ] as const satisfies readonly TarotFaq[];
 
+const EN_TAROT_FAQS = [
+  { question: "When should I use a tarot reading?", answer: "Use it when you feel undecided or want to hear your own intuition more clearly. The cards are prompts for reflection, not a fixed prediction." },
+  { question: "Which reading should I choose?", answer: "Choose Card of the Day for today's focus, Three-Card Reading for a developing situation, and YES / NO for a specific decision." },
+  { question: "Can I draw more than once?", answer: "Yes. Still, it is usually more useful to sit with the first draw before trying again for a different answer." },
+  { question: "What if a result feels negative?", answer: "No card guarantees a bad future. Read it as a signal about what deserves care and what you can still change." },
+  { question: "Can I discuss my result with Alice?", answer: "Yes. Use the Talk with Alice button after your reading to explore the card and your situation in more depth." },
+] as const satisfies readonly TarotFaq[];
+
 const LANDING_COPY = {
   ja: {
     title: "Aliceとタロット占い",
@@ -87,6 +95,17 @@ const LANDING_COPY = {
     draw: "카드 뽑기",
     openSuffix: " 열기",
     faqs: KO_TAROT_FAQS,
+  },
+  en: {
+    title: "Tarot with Alice",
+    lead: "Tarot is not here to lock in your future. With Alice, use the cards to notice what matters now and choose your next step in your own way.",
+    heroAlt: "Alice reading tarot cards at a table",
+    choose: "What would you like to ask today?",
+    disclaimer: "Tarot does not determine the future. Use it as a reflective prompt for understanding your feelings and choices.",
+    faqTitle: "Frequently asked questions",
+    draw: "Draw cards",
+    openSuffix: " reading",
+    faqs: EN_TAROT_FAQS,
   },
 } as const;
 
@@ -206,7 +225,7 @@ function ModeCard({ mode, locale }: { mode: TarotMode; locale: TarotLocale }) {
 
   return (
     <Link
-      href={`${locale === "ko" ? "/ko" : ""}/tarot/${mode}`}
+      href={`${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/${mode}`}
       aria-label={`${content.title}${copy.openSuffix}`}
       className={`group relative min-h-[228px] overflow-hidden rounded-[28px] border bg-gradient-to-br p-6 shadow-[0_12px_32px_rgba(46,46,92,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(46,46,92,0.13)] ${accent.border} ${accent.gradient}`}
     >

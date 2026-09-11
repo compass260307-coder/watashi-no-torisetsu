@@ -7,7 +7,7 @@
 import { CharacterHero } from "./CharacterHero";
 import type { CharacterHeroJobSlot } from "./CharacterHero";
 import type { BigFiveDimension } from "@/lib/types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { characterAnimationForImage } from "@/lib/character-image";
 
 interface ResultHeroProps {
@@ -43,7 +43,7 @@ interface ResultHeroProps {
   contentMaxWidthClass?: string;
   /** true で md 以上 2カラム (/me)、false で常に縦積み中央 (/tako)。既定 true。 */
   twoColumn?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 const OCEAN: readonly BigFiveDimension[] = ["O", "C", "E", "A", "N"];

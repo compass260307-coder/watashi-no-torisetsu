@@ -24,21 +24,23 @@ const MAX_TRIES = 20; // 約 40 秒
 //   aisho/unmei: token パスを持たないため、現URLから paid/session_id だけ外す
 //          (aishoのペア ?a=&b= は維持 → 解錠済みの本文をそのまま出す)。
 function unlockedUrl(
-  returnTo: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi",
+  returnTo: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot",
   ownerToken: string,
-  locale: ResultLocale,
+  locale: ResultLocale | "en",
 ): string {
   if (
     returnTo === "aisho" ||
     returnTo === "unmei" ||
-    returnTo === "hoshiyomi"
+    returnTo === "hoshiyomi" ||
+    returnTo === "tarot"
   ) {
     const url = new URL(window.location.href);
     url.searchParams.delete("paid");
     url.searchParams.delete("session_id");
     return url.toString();
   }
-  return `${locale === "ko" ? "/ko" : ""}/${returnTo}/${ownerToken}`;
+  const prefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
+  return `${prefix}/${returnTo}/${ownerToken}`;
 }
 
 export function PaidUnlockWatcher({
@@ -48,8 +50,8 @@ export function PaidUnlockWatcher({
   product = "full_access",
 }: {
   ownerToken: string;
-  locale?: ResultLocale;
-  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
+  locale?: ResultLocale | "en";
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
   product?: AccessProduct;
 }) {
   const [timedOut, setTimedOut] = useState(false);
@@ -80,7 +82,7 @@ export function PaidUnlockWatcher({
           };
           const unlocked =
             returnTo === "aisho"
-              ? data.selfReport
+              ? data.full
               : returnTo === "hoshiyomi" && product === "premium_bundle"
               ? data.astrologer
               : product === "self_report"
@@ -130,11 +132,17 @@ export function PaidUnlockWatcher({
             className="text-[17px] font-black leading-[1.6]"
             style={{ color: NAVY }}
           >
-            {locale === "ko" ? "결제를 반영하고 있어요…" : "決済処理中です…"}
+            {locale === "ko"
+              ? "결제를 반영하고 있어요…"
+              : locale === "en"
+                ? "Finalizing your purchase…"
+                : "決済処理中です…"}
           </p>
           <p className="mt-1.5 text-[13px] font-bold leading-[1.7] text-[#8A8AA3]">
             {locale === "ko" ? (
               <>잠금 해제를 반영하고 있어요.<br />완료되면 자동으로 열립니다.</>
+            ) : locale === "en" ? (
+              <>We’re unlocking your Complete Edition.<br />This page will open automatically.</>
             ) : (
               <>
                 {product === "self_report"
@@ -153,12 +161,18 @@ export function PaidUnlockWatcher({
             className="text-[17px] font-black leading-[1.6]"
             style={{ color: NAVY }}
           >
-            {locale === "ko" ? "반영에 조금 시간이 걸리고 있어요" : "反映に少し時間がかかっています"}
+            {locale === "ko"
+              ? "반영에 조금 시간이 걸리고 있어요"
+              : locale === "en"
+                ? "This is taking a little longer than usual"
+                : "反映に少し時間がかかっています"}
           </p>
           <p className="mt-1.5 text-[13px] font-bold leading-[1.7] text-[#8A8AA3]">
             {locale === "ko"
               ? "결제는 완료됐어요. 몇 분 뒤 다시 확인해 주세요."
-              : "決済は完了しています。数分後にもう一度お試しください。"}
+              : locale === "en"
+                ? "Your payment is complete. Please check again in a few minutes."
+                : "決済は完了しています。数分後にもう一度お試しください。"}
           </p>
           <button
             type="button"
@@ -168,7 +182,7 @@ export function PaidUnlockWatcher({
             className="mt-6 inline-flex items-center justify-center rounded-full px-8 py-3 text-[15px] font-black text-white"
             style={{ background: NAVY }}
           >
-            {locale === "ko" ? "새로고침" : "再読み込み"}
+            {locale === "ko" ? "새로고침" : locale === "en" ? "Refresh" : "再読み込み"}
           </button>
         </>
       )}

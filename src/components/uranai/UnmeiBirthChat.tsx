@@ -31,7 +31,7 @@ import React, {
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { PREFS } from "@/components/birth/BirthProfileForm";
 import UnmeiEmbeddedCheckout from "@/components/uranai/UnmeiEmbeddedCheckout";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
   KOREAN_BIRTH_REGIONS,
   UNMEI_CHAT_COPY,
@@ -59,6 +59,15 @@ const PURCHASE_READY_DELAY_MS = 2_500;
 // 生年月日セレクトの範囲 (validate と同じ 120 年)
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 120 }, (_, i) => THIS_YEAR - i);
+const EN_JAPAN_REGION_LABELS = [
+  "Hokkaido", "Aomori", "Iwate", "Miyagi", "Akita", "Yamagata", "Fukushima",
+  "Ibaraki", "Tochigi", "Gunma", "Saitama", "Chiba", "Tokyo", "Kanagawa",
+  "Niigata", "Toyama", "Ishikawa", "Fukui", "Yamanashi", "Nagano", "Gifu",
+  "Shizuoka", "Aichi", "Mie", "Shiga", "Kyoto", "Osaka", "Hyogo", "Nara",
+  "Wakayama", "Tottori", "Shimane", "Okayama", "Hiroshima", "Yamaguchi",
+  "Tokushima", "Kagawa", "Ehime", "Kochi", "Fukuoka", "Saga", "Nagasaki",
+  "Kumamoto", "Oita", "Miyazaki", "Kagoshima", "Okinawa",
+] as const;
 
 function daysInMonth(y: number, m: number): number {
   return new Date(y, m, 0).getDate();
@@ -156,7 +165,7 @@ export default function UnmeiBirthChat({
   purchaseProduct?: "full_access" | "premium_bundle";
   /** ローカル確認用。計測・出生情報保存・決済APIを呼ばずに全フローを再現する。 */
   previewMode?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   /** /me モーダルではヘッダー右端に✕を重ねるため、装飾の✦を出さない。 */
   hideHeaderStars?: boolean;
   /** 冒頭挨拶の差し替え (/me はプロモカードの吹き出しを引き継ぐ)。
@@ -168,7 +177,13 @@ export default function UnmeiBirthChat({
     () =>
       locale === "ko"
         ? KOREAN_BIRTH_REGIONS
-        : PREFS.map((value) => ({ value, label: value })),
+        : PREFS.map((value, index) => ({
+            value,
+            label:
+              locale === "en"
+                ? (EN_JAPAN_REGION_LABELS[index] ?? value)
+                : value,
+          })),
     [locale],
   );
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -192,6 +207,7 @@ export default function UnmeiBirthChat({
     timeUnknown: false,
     prefecture: "",
     city: "",
+    birthPlaceLabel: "",
   });
 
   const idRef = useRef(0);
@@ -307,7 +323,7 @@ export default function UnmeiBirthChat({
     const a = answersRef.current;
     const timeLabel = a.timeUnknown ? copy.unknownTimeLabel : a.birthTime;
     const placeLabel = a.prefecture
-      ? `${a.prefecture}${a.city ? ` ${a.city}` : ""}`
+      ? `${a.birthPlaceLabel || a.prefecture}${a.city ? ` ${a.city}` : ""}`
       : copy.unknownPlaceLabel;
     say(
       [
@@ -375,11 +391,15 @@ export default function UnmeiBirthChat({
     (skip: boolean) => {
       answersRef.current.prefecture = skip ? "" : dockPref;
       answersRef.current.city = skip ? "" : dockCity.trim();
+      answersRef.current.birthPlaceLabel = skip
+        ? ""
+        : (locationOptions.find((item) => item.value === dockPref)?.label ??
+          dockPref);
       push(
         "user",
         skip
           ? copy.skipAnswer
-          : `${dockPref}${dockCity.trim() ? ` ${dockCity.trim()}` : ""}`,
+          : `${answersRef.current.birthPlaceLabel}${dockCity.trim() ? ` ${dockCity.trim()}` : ""}`,
       );
       setStep("boot");
       if (editing) {
@@ -393,7 +413,7 @@ export default function UnmeiBirthChat({
         goConfirm();
       }
     },
-    [dockPref, dockCity, editing, push, goConfirm, say, copy],
+    [dockPref, dockCity, editing, push, goConfirm, say, copy, locationOptions],
   );
 
   // 確認画面の「◯◯を直す」
@@ -417,7 +437,7 @@ export default function UnmeiBirthChat({
     }
 
     try {
-      if (locale === "ko" && ownerToken) {
+      if (locale !== "ja" && ownerToken) {
         const preference = await fetch("/api/account/preferred-locale", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

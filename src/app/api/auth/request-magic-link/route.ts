@@ -30,8 +30,7 @@ import { sendMagicLinkEmail } from "@/lib/email";
 export const runtime = "nodejs";
 
 // .env.local で NEXT_PUBLIC_SITE_URL="" の空文字を弾くため || を使用 (?? は不可)
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 // nanoid デフォルト URL-safe alphabet で 40 文字 = 240 bit エントロピー
 const generateMagicLinkToken = customAlphabet(
@@ -85,13 +84,11 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
-  const locale = body.locale === "ko" ? "ko" : "ja";
+  const locale =
+    body.locale === "ko" ? "ko" : body.locale === "en" ? "en" : "ja";
 
   if (!isValidEmail(body.email)) {
-    return NextResponse.json(
-      { error: "Invalid email" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
   const email = body.email.trim().toLowerCase();
 
@@ -152,7 +149,7 @@ export async function POST(request: NextRequest) {
   // ===== メール送信 (失敗時もレスポンスは 200、enumeration 対策) =====
   const magicLinkUrl = new URL("/api/auth/verify-magic-link", SITE_URL);
   magicLinkUrl.searchParams.set("token", token);
-  if (locale === "ko") magicLinkUrl.searchParams.set("locale", "ko");
+  if (locale !== "ja") magicLinkUrl.searchParams.set("locale", locale);
   try {
     await sendMagicLinkEmail({
       to: email,

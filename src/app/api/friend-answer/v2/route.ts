@@ -142,6 +142,8 @@ export async function POST(request: NextRequest) {
     : null;
   const rawScale = body.scaleAnswers;
   const rawChoice = body.choiceAnswers;
+  const submissionLocale =
+    body.locale === "ko" || body.locale === "en" ? body.locale : "ja";
   const rawName =
     typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
   if (rawName.length > 40 || /[\u0000-\u001F\u007F]/.test(rawName)) {
@@ -150,7 +152,14 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const perceiverName = rawName.length > 0 ? rawName : "友達";
+  const perceiverName =
+    rawName.length > 0
+      ? rawName
+      : submissionLocale === "en"
+        ? "A friend"
+        : submissionLocale === "ko"
+          ? "친구"
+          : "友達";
   // ③ 本人へのメッセージ (任意・最大200字)。プレーンテキストとして保存し、
   //    表示時は React が自動エスケープ (XSS 対策)。空なら null。
   const ownerMessage =
@@ -275,6 +284,7 @@ export async function POST(request: NextRequest) {
       perceiverName,
       message: ownerMessage,
       pdfConsent,
+      locale: submissionLocale,
     }),
   );
 
@@ -284,6 +294,7 @@ export async function POST(request: NextRequest) {
     user_id: owner.id,
     answers: {
       v: 2,
+      locale: submissionLocale,
       scale: scaleAnswers,
       choice: choiceAnswers,
     },
@@ -456,6 +467,7 @@ export async function POST(request: NextRequest) {
               ownerToken,
               perceptionType: perceivedTypeName,
               perceptionModifierLabel: perceivedModifierLabel,
+              locale: submissionLocale,
             });
           } catch (err) {
             console.error(
@@ -463,7 +475,7 @@ export async function POST(request: NextRequest) {
               err,
             );
           }
-        } else {
+        } else if (!ownerEmail) {
           console.log(
             "[friend-answer/v2] owner has no email; skipping mail notify",
           );

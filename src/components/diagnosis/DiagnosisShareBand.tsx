@@ -42,7 +42,7 @@ export function DiagnosisShareBand({
   flatTop = false,
   group,
 }: {
-  locale: "ja" | "ko";
+  locale: "ja" | "ko" | "en";
   diagnosedCount?: number;
   source?: string;
   background?: string;
@@ -52,6 +52,7 @@ export function DiagnosisShareBand({
   group?: ThirtyTwoGroup;
 }) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const actionTone = group ? resultActionColorsForGroup(group) : null;
   const themedCircleStyle = actionTone
     ? {
@@ -67,15 +68,17 @@ export function DiagnosisShareBand({
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setShareUrl(
-      `${window.location.origin}${isKo ? "/ko/diagnosis" : "/diagnosis"}`,
+      `${window.location.origin}${isEn ? "/en/diagnosis" : isKo ? "/ko/diagnosis" : "/diagnosis"}`,
     );
     setCanNativeShare(typeof navigator !== "undefined" && !!navigator.share);
-  }, [isKo]);
+  }, [isEn, isKo]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const countText = isKo
-    ? `${(diagnosedCount / 10000).toLocaleString("ko-KR")}만+`
-    : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`;
+  const countText = isEn
+    ? `${diagnosedCount.toLocaleString("en-US")}+ results`
+    : isKo
+      ? `${(diagnosedCount / 10000).toLocaleString("ko-KR")}만+`
+      : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`;
 
   const fireShare = (
     channel:
@@ -103,7 +106,7 @@ export function DiagnosisShareBand({
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(shareUrl, "facebook"))}`
     : undefined;
   const pinterestUrl = shareUrl
-    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL("/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
+    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL(isEn ? "/characters/keyvisual.webp" : "/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isEn ? "Alice Diagnosis | Free personality test" : isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
     : undefined;
 
   const handleNativeShare = async () => {
@@ -167,7 +170,7 @@ export function DiagnosisShareBand({
 
   return (
     <section
-      aria-label={isKo ? "진단 테스트 공유" : "診断テストをシェア"}
+      aria-label={isEn ? "Share the personality test" : isKo ? "진단 테스트 공유" : "診断テストをシェア"}
       className={`w-full px-4 ${compact ? "pb-8 pt-7" : "pb-10 pt-12"}`}
       style={{ background, clipPath: flatTop ? undefined : JAGGED_CLIP }}
     >
@@ -192,7 +195,7 @@ export function DiagnosisShareBand({
               href={lineUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="LINEでシェア"
+              aria-label={isEn ? "Share on LINE" : "LINEでシェア"}
               onClick={() => fireShare("line")}
               className={`${circle} border-[#06C755]/55 text-[#06C755]`}
               style={themedCircleStyle}
@@ -206,7 +209,7 @@ export function DiagnosisShareBand({
             href={xUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={isKo ? "X로 공유" : "Xでシェア"}
+            aria-label={isEn ? "Share on X" : isKo ? "X로 공유" : "Xでシェア"}
             onClick={() => fireShare("x")}
             className={`${circle} border-black/45 text-black`}
             style={themedCircleStyle}
@@ -219,7 +222,7 @@ export function DiagnosisShareBand({
             href={fbUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={isKo ? "Facebook으로 공유" : "Facebookでシェア"}
+            aria-label={isEn ? "Share on Facebook" : isKo ? "Facebook으로 공유" : "Facebookでシェア"}
             onClick={() => fireShare("facebook")}
             className={`${circle} border-[#1877F2]/50 text-[#1877F2]`}
             style={themedCircleStyle}
@@ -232,7 +235,7 @@ export function DiagnosisShareBand({
             href={pinterestUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={isKo ? "Pinterest에 저장" : "Pinterestに保存"}
+            aria-label={isEn ? "Save to Pinterest" : isKo ? "Pinterest에 저장" : "Pinterestに保存"}
             onClick={() => fireShare("pinterest")}
             className={`${circle} border-[#E60023]/50 text-[#E60023]`}
             style={themedCircleStyle}
@@ -245,7 +248,7 @@ export function DiagnosisShareBand({
               白地 + 枠線 + 影で立たせる (薄ラベンダーは帯に溶けて見えにくかった)。 */}
           <button
             type="button"
-            aria-label={isKo ? "링크 복사" : "リンクをコピー"}
+            aria-label={isEn ? "Copy link" : isKo ? "링크 복사" : "リンクをコピー"}
             onClick={handleCopy}
             className={`${circle} border-[#B8BDCB] text-[#8B91A3]`}
             style={
@@ -269,7 +272,7 @@ export function DiagnosisShareBand({
           {canNativeShare && (
             <button
               type="button"
-              aria-label={isKo ? "기타 방법으로 공유" : "その他の方法でシェア"}
+              aria-label={isEn ? "Share another way" : isKo ? "기타 방법으로 공유" : "その他の方法でシェア"}
               onClick={handleNativeShare}
               className={`${circle} border-[#B8BDCB] text-[#8B91A3]`}
               style={
@@ -294,7 +297,7 @@ export function DiagnosisShareBand({
             copied ? "opacity-100" : "opacity-0"
           }`}
         >
-          {isKo ? "링크를 복사했어요 ✓" : "リンクをコピーしました ✓"}
+          {isEn ? "Link copied ✓" : isKo ? "링크를 복사했어요 ✓" : "リンクをコピーしました ✓"}
         </p>
       </div>
     </section>

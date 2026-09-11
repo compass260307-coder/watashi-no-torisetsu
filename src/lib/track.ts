@@ -136,7 +136,7 @@ type EventRow = {
   session_id: string | null;
   invite_code: string | null;
   owner_token: string | null;
-  locale: "ja" | "ko";
+  locale: "ja" | "ko" | "en";
   metadata: Record<string, unknown>;
 };
 
@@ -245,9 +245,11 @@ export function track(
 ) {
   if (isPreviewMode()) return;
 
-  const locale =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/ko")
-      ? "ko"
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+  const locale = pathname.startsWith("/ko")
+    ? "ko"
+    : pathname.startsWith("/en")
+      ? "en"
       : "ja";
   const localizedMetadata = {
     ...(params?.metadata ?? {}),
