@@ -158,6 +158,19 @@ export async function GET(request: NextRequest) {
     unmeiBirthFormSubmitted: s.unmei.birthForm.submitted,
     unmeiBirthFormSubmitRate: round(s.unmei.birthForm.submitRate),
     unmeiReadingViewed: s.unmei.funnel[6]?.count ?? 0,
+    // LINE LIFF連携ファネル（2026-09-11 計測開始）
+    lineLiffOpened: s.linePlus.liff.opened,
+    lineLiffSdkLoaded: s.linePlus.liff.sdkLoaded,
+    lineLiffInitialized: s.linePlus.liff.initialized,
+    lineLiffAuthenticated: s.linePlus.liff.authenticated,
+    lineLiffLoginStarted: s.linePlus.liff.loginStarted,
+    lineLiffLinkRequested: s.linePlus.liff.linkRequested,
+    lineLiffLinkConflict: s.linePlus.liff.linkConflict,
+    lineLiffLinkCompleted: s.linePlus.liff.linkCompleted,
+    lineLiffRetryClicked: s.linePlus.liff.retryClicked,
+    lineLiffFailures: s.linePlus.liff.failures
+      .map((row) => `${row.errorCode}:${row.count}`)
+      .join(" | "),
     unmeiBadgeShown: s.unmei.navBadge.shown,
     unmeiBadgeClicked: s.unmei.navBadge.clicked,
     unmeiBadgeClickRate: round(s.unmei.navBadge.clickRate),
