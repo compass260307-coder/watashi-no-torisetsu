@@ -24,7 +24,6 @@ import {
 import {
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
@@ -120,11 +119,6 @@ const JA_PLANS: readonly PlanDefinition[] = [
     eyebrow: "自己・友達・占いまで",
     title: "完全版コース",
     basePrice: FULL_ACCESS_PRICE_JPY,
-    listPrice: FULL_ACCESS_LIST_PRICE_JPY,
-    badge: japaneseThreeCourseReleaseBadge(
-      FULL_ACCESS_PRICE_JPY,
-      FULL_ACCESS_LIST_PRICE_JPY,
-    ),
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
