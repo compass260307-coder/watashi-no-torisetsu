@@ -977,25 +977,6 @@ export async function POST(request: NextRequest) {
         },
         quantity: 1,
       },
-      // Stripeは割引なしの単一商品を商品紹介レイアウトで表示するため、
-      // ¥499時に使っていた折りたたみ式の購入明細が表示されない。
-      // 現行の日本語完全版だけ、実際の権利である買い切りアクセスを0円明細として
-      // 添え、課金額や割引表示を変えずに購入内容を「詳細を見る」で確認できる形にする。
-      ...(isStandardJapaneseCoursePurchase && product === "full_access"
-        ? [
-            {
-              price_data: {
-                currency: "jpy" as const,
-                unit_amount: 0,
-                tax_behavior: "inclusive" as const,
-                product_data: {
-                  name: "完全版の買い切りアクセス（追加料金なし）",
-                },
-              },
-              quantity: 1,
-            },
-          ]
-        : []),
     ];
     chargedAmount = effectivePrice;
   } else {
