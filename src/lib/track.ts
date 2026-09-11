@@ -296,6 +296,7 @@ export function track(
 export function trackLineAliceEvent(
   eventName: LineAliceClientEventName,
   metadata: LineAliceTrackingMetadata,
+  ownerToken?: string,
 ): void {
-  track(eventName, { metadata });
+  track(eventName, { ownerToken, metadata });
 }
