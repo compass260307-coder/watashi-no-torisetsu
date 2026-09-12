@@ -7,7 +7,9 @@ function upgradeAcquisitionMediumSheets() {
   const sharedName = "_KR診断共有";
   const oldFormula = '=ARRAYFORMULA(IFERROR(IMPORTRANGE("' + jpId + '","\'_KR共有データ\'!A1:H10000"),\'_作成時点データ\'!A1:H1307))';
   // 控えは8列なので、空欄2列を明示的に連結。過去のmediumを推定しない。
-  const newFormula = '=ARRAYFORMULA(IFERROR(IMPORTRANGE("' + jpId + '","\'' + sharedName + '\'!A1:J10000"),HSTACK(\'_作成時点データ\'!A1:H1307,VSTACK({"acq_medium","acq_channel"},MAKEARRAY(1306,2,LAMBDA(r,c,""))))))';
+  // 共有タブのグリッドは10,000行。A:J参照で同じ容量・1本のimportを維持する。
+  // 実ファイルではA1:J10000がImport Range internal errorとなり、こちらで検証済み。
+  const newFormula = '=ARRAYFORMULA(IFERROR(IMPORTRANGE("https://docs.google.com/spreadsheets/d/' + jpId + '","\'' + sharedName + '\'!A:J"),HSTACK(\'_作成時点データ\'!A1:H1307,VSTACK({"acq_medium","acq_channel"},MAKEARRAY(1306,2,LAMBDA(r,c,""))))))';
   const sharedFormula = '={diagnoses_raw!A1:J1;IFNA(FILTER(diagnoses_raw!A2:J,diagnoses_raw!F2:F="ko"),MAKEARRAY(1,10,LAMBDA(r,c,"")))}';
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) throw new Error("同期中です。完了後に再実行してください");

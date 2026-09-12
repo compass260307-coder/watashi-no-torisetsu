@@ -76,7 +76,7 @@ A:H (`completed_at,date_jst,hour_jst,diagnosis_ref,type_id,locale,acq_source,acq
 
 友達診断・売上のIMPORTRANGE、固定バックアップ、JP集計参照は変更不要。JP/KR日報の診断数はB（日付）・F（locale）、媒体集計はG、売上は別rawのL/C/M/I/Sを参照しており、末尾追加の影響を受けないことを実ファイルの式で確認した。
 
-KR参照の既存上限10,000行は維持する（ヘッダー込み）。超える場合は共有タブ・KRグリッド・IMPORTRANGE範囲を一緒に拡張する。移行関数は通常同期へ登録しない。
+共有タブ・KRグリッドの既存上限10,000行は維持する（ヘッダー込み）。IMPORTRANGEは共有タブの `A:J` を1本で参照する。上限を超える前に両方のグリッドを拡張する。移行関数は通常同期へ登録しない。
 
 ## リリース順と互換性
 
@@ -117,4 +117,9 @@ KR参照の既存上限10,000行は維持する（ヘッダー込み）。超え
 - 変更前10:08の定期同期では shareEvents / lineFollowEvents に `Service timed out: Spreadsheets` が発生していた。診断列変更と別の既存事象として記録。
 - 10:23:40の既存トリガーでJP rawへ検証6件が同期され、I/Jと参照IDの一致を確認。行103478/103507/103509/103510/103512/103532。追加の臨時同期は行っていない。
 - 同じ通常実行はshareEvents / lineFollowEventsのSheetsアクセスエラーで全体として失敗扱いだが、diagnoses / salesのエラーはなく、診断データは追記済み。
-- 10:30時点でKRのIMPORTRANGEが既存控えへフォールバックしているため、KRへの3件の読み戻し・検証データ後片付けは調査継続中。次の反映記録で結果を追記する。
+- KRの `A1:J10000` 参照でGoogleの `Import Range internal error.` を実測。同じ共有タブをフルURL＋`A:J`で参照し、グリッド上限10,000行とIMPORTRANGE1本を維持したまま解消した。最終式は移行helperと一致。KR rawの4237〜4239行で広告(cpc)、不明(medium空・campaignあり)、自然流入(organic_social)とJP側参照IDの一致を確認。
+- 検証用6件は対象ID・campaign・sourceを再照合し、バックアップ後にDBから削除、JP rawの該当6行の値だけを消去（行位置・書式を維持）。JP共有タブとKR rawでも除去・後続実データの継続を確認。検証用の一時タブとライブApps Scriptの一度限りの移行関数は除去済み。
+- 日報実装はmainの `2d36589b` へコミット済み。後続の決済タスクの `6e556b3e` / `dpl_8Knv5LSCQK7QfJwPiY1TfMPKvSko` は日報実装を保持。本タスクの最終追記は移行helper・検証コード・本書だけで、Webの追加デプロイは不要。
+- 本番の取得→保存→既存同期→KR参照まで検証完了。日報表示は未追加。既存のshareEvents / lineFollowEventsのSheets側エラーは残存しており、本タスクではジョブ設定を変更していない。
+
+Googleの参照関数は元ファイルの計算完了を待ち、サービス側の更新遅延・内部エラーは別途起こり得る。今回の接続設定タブにも旧参照の内部エラーを確認したが、権限追加は行っていない。[Google公式のIMPORTRANGE説明](https://support.google.com/docs/answer/3093340?hl=en)。
