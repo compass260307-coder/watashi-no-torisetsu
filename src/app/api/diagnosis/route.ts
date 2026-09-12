@@ -41,6 +41,9 @@ export const runtime = "nodejs";
 const DIAGNOSIS_QUESTION_COUNT = 50;
 
 type PreDiagnosisUserRow = {
+  acquisition_source?: string | null;
+  acquisition_campaign?: string | null;
+  acquisition_medium?: string | null;
   plan: string | null;
   email: string | null;
   scores: unknown;
@@ -148,6 +151,7 @@ export async function POST(request: NextRequest) {
   } = result;
 
   const campaign = normalizeOptionalText(body.campaign, 100);
+  const acquisitionMedium = normalizeOptionalText(body.acquisitionMedium, 100);
   const acquisitionSource = normalizeOptionalText(body.acquisitionSource, 100);
   const acquisitionCampaign = normalizeOptionalText(
     body.acquisitionCampaign,
@@ -212,7 +216,7 @@ export async function POST(request: NextRequest) {
     let preDiagnosisUser: PreDiagnosisUserRow | null = null;
     const preDiagnosisResult = await supabaseAdmin
       .from("users")
-      .select("plan, email, scores, diagnosis_completed_at")
+      .select("plan, email, scores, diagnosis_completed_at, acquisition_source, acquisition_campaign, acquisition_medium")
       .eq("id", existing.id)
       .maybeSingle();
     if (
@@ -301,6 +305,10 @@ export async function POST(request: NextRequest) {
       preferred_locale: "ja" | "ko" | "en";
       diagnosis_completed_at?: string;
       display_name?: string;
+      acquisition_source?: string | null;
+      acquisition_campaign?: string | null;
+      acquisition_medium?: string | null;
+      acquisition_locale?: "ja" | "ko" | "en";
     } = {
       type_id: typeId,
       scores: persistedScores,
@@ -311,6 +319,16 @@ export async function POST(request: NextRequest) {
       diagnosis_completed_at:
         existing.diagnosis_completed_at ?? diagnosisCompletedAt,
     };
+    // 購入先行などで作成した未診断ユーザーの初回完了も対象。
+    // 既存の帰属がある場合は一組を維持し、再診断では一切補完しない。
+    if (isUndiagnosedPlaceholderUser(preDiagnosisUser) &&
+        !preDiagnosisUser?.acquisition_source && !preDiagnosisUser?.acquisition_campaign &&
+        !preDiagnosisUser?.acquisition_medium) {
+      updatePayload.acquisition_source = acquisitionSource;
+      updatePayload.acquisition_campaign = acquisitionCampaign;
+      updatePayload.acquisition_medium = acquisitionMedium;
+      updatePayload.acquisition_locale = locale;
+    }
     if (normalizedDisplayName !== null) {
       updatePayload.display_name = normalizedDisplayName;
     }
@@ -416,6 +434,7 @@ export async function POST(request: NextRequest) {
       // source_user_id / generation (招待ツリー) とは別系統で独立。
       acquisition_source: acquisitionSource,
       acquisition_campaign: acquisitionCampaign,
+      acquisition_medium: acquisitionMedium,
       acquisition_locale: locale,
       preferred_locale: locale,
       diagnosis_completed_at: diagnosisCompletedAt,

@@ -19,7 +19,11 @@ const RAW_SYNC_JOBS = {
       "locale",
       "acq_source",
       "acq_campaign",
+      "acq_medium",
+      "acq_channel",
     ],
+    // 旧8列APIにも対応。Apps Scriptを先に更新してからWebを配布する。
+    legacyHeaderCount: 8,
     referenceColumn: 4,
     cursorAtProperty: "DIAGNOSIS_CURSOR_AT",
     cursorIdProperty: "DIAGNOSIS_CURSOR_ID",
@@ -178,6 +182,7 @@ function rawSheet_(job) {
 
   if (sheet.getLastRow() === 0) {
     ensureRows_(sheet, 1);
+    ensureColumns_(sheet, job.headers.length);
     sheet.getRange(1, 1, 1, job.headers.length).setValues([job.headers]);
     sheet.setFrozenRows(1);
     sheet
@@ -186,14 +191,32 @@ function rawSheet_(job) {
       .setBackground("#f3f0ff");
   } else {
     const currentHeaders = sheet
-      .getRange(1, 1, 1, job.headers.length)
+      .getRange(1, 1, 1, Math.min(sheet.getMaxColumns(), job.headers.length))
       .getDisplayValues()[0];
     if (JSON.stringify(currentHeaders) !== JSON.stringify(job.headers)) {
-      throw new Error(job.sheetName + " の列定義がAPIと一致しません");
+      const legacyCount = job.legacyHeaderCount;
+      const isLegacy = legacyCount &&
+        JSON.stringify(currentHeaders.slice(0, legacyCount)) === JSON.stringify(job.headers.slice(0, legacyCount)) &&
+        currentHeaders.slice(legacyCount).every(function (value) { return value === ""; });
+      if (!isLegacy) throw new Error(job.sheetName + " の列定義がAPIと一致しません");
+      // 列挿入ではなく末尾拡張。既存列・過去行・カーソルは動かさない。
+      // 無題の既存データがあれば上書きせず停止する。
+      const existingExtraColumns = Math.min(sheet.getMaxColumns(), job.headers.length) - legacyCount;
+      if (existingExtraColumns > 0 && !sheet.getRange(1, legacyCount + 1, Math.max(1, sheet.getLastRow()), existingExtraColumns).isBlank()) {
+        throw new Error(job.sheetName + " の追加列に既存データがあります");
+      }
+      ensureColumns_(sheet, job.headers.length);
+      sheet.getRange(1, legacyCount + 1, 1, job.headers.length - legacyCount)
+        .setValues([job.headers.slice(legacyCount)]);
     }
   }
 
   return sheet;
+}
+
+function ensureColumns_(sheet, requiredColumns) {
+  const shortage = requiredColumns - sheet.getMaxColumns();
+  if (shortage > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), shortage);
 }
 
 function ensureRows_(sheet, requiredLastRow) {
@@ -269,7 +292,12 @@ function fetchPage_(job, cursorAt, cursorId) {
 
   const payload = JSON.parse(response.getContentText());
   if (JSON.stringify(payload.columns) !== JSON.stringify(job.headers)) {
-    throw new Error(job.sheetName + " の列定義がAPIと一致しません");
+    const isLegacy = job.legacyHeaderCount && JSON.stringify(payload.columns) ===
+      JSON.stringify(job.headers.slice(0, job.legacyHeaderCount));
+    if (!isLegacy) throw new Error(job.sheetName + " の列定義がAPIと一致しません");
+    payload.rows = (payload.rows || []).map(function (row) {
+      return Object.assign({}, row, { acq_medium: "", acq_channel: "不明" });
+    });
   }
   return payload;
 }
