@@ -14,7 +14,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v38_ja_full_699_single_no_discount" as const;
+  "legacy_card_v39_ja_full_699_release_1290_list" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "en_single_full_access_v1_jpy_499" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
@@ -54,6 +54,7 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v35_ja_full_499_single",
   "legacy_card_v36_ja_full_899_single_no_discount",
   "legacy_card_v37_ja_full_499_single_no_discount",
+  "legacy_card_v38_ja_full_699_single_no_discount",
   THREE_COURSE_PAYWALL_VERSION,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ] as const;
@@ -222,7 +223,7 @@ export function purchaseIncludesAishoFeatures(
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
-export const FULL_ACCESS_LIST_PRICE_JPY = 699;
+export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
 export const FULL_ACCESS_PRICE_JPY = 699;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;

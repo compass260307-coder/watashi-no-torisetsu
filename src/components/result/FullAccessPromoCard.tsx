@@ -66,6 +66,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { AppResultLocale, ResultLocale } from "@/i18n/result";
 import {
   accessProductPrice,
+  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
@@ -79,10 +80,16 @@ import {
 } from "@/lib/access-products";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
+const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
+  (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) * 100,
+);
+
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
   ja: {
+    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
     sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
+    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
   ko: {
     list: "₩12,900",
@@ -1030,6 +1037,29 @@ export function FullAccessPromoCard({
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
+              ) : locale === "ja" ? (
+                <div
+                  className={`flex flex-col gap-2 md:flex-row md:items-baseline md:gap-2.5 ${
+                    hasImage ? "items-start" : "items-center"
+                  }`}
+                >
+                  <span className="inline-flex items-baseline gap-2.5 whitespace-nowrap">
+                    <span className="sr-only">通常価格</span>
+                    <s className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                      {price.list}
+                    </s>
+                    <span className="text-[36px] font-black leading-none text-black">
+                      <span className="sr-only">割引価格</span>
+                      {price.sale}
+                    </span>
+                  </span>
+                  <span
+                    className="rounded-md px-2 py-0.5 text-[12px] font-black text-white md:order-first"
+                    style={{ backgroundColor: actionTone.accent }}
+                  >
+                    リリース記念 {price.offPercent}%OFF
+                  </span>
+                </div>
               ) : (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {price.sale}
