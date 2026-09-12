@@ -43,6 +43,7 @@ import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
+  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   isAccessProduct,
@@ -178,9 +179,9 @@ const JA_COURSE_CHECKOUT_PRICING = {
     couponId: `wt-release-self-report-off${SELF_REPORT_LIST_PRICE_JPY - SELF_REPORT_PRICE_JPY}-jpy`,
   },
   full_access: {
-    listAmount: FULL_ACCESS_PRICE_JPY,
+    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
     saleAmount: FULL_ACCESS_PRICE_JPY,
-    couponId: "wt-full-access-no-discount-jpy",
+    couponId: `wt-release-full-access-off${FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY}-jpy`,
   },
   premium_bundle: {
     listAmount: PREMIUM_BUNDLE_LIST_PRICE_JPY,
