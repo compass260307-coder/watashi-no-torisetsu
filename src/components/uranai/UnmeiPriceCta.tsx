@@ -22,7 +22,7 @@ import type { ResultLocale } from "@/i18n/result";
 import {
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
-  PREMIUM_BUNDLE_PRICE_JPY,
+  PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
 } from "@/lib/access-products";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
@@ -78,7 +78,7 @@ export default function UnmeiPriceCta({
   const upgradePrice =
     locale === "ko"
       ? `₩${(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW).toLocaleString("ko-KR")}`
-      : `¥${(PREMIUM_BUNDLE_PRICE_JPY - FULL_ACCESS_PRICE_JPY).toLocaleString("ja-JP")}`;
+      : `¥${PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}`;
   const showUpgradePrice = hasFull;
 
   useEffect(() => {
