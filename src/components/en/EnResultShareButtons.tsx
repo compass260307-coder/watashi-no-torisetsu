@@ -26,7 +26,7 @@ export default function EnResultShareButtons({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${typeName} | Alice Diagnosis`,
+          title: `${typeName} | Alice Test`,
           text,
           url: shareUrl,
         });

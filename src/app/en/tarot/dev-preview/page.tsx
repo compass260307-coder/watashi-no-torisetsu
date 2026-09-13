@@ -5,7 +5,7 @@ import EnSiteHeader from "@/components/en/EnSiteHeader";
 import TarotLanding from "@/components/tarot/TarotLanding";
 
 export const metadata: Metadata = {
-  title: { absolute: "Alice Tarot Preview | Alice Diagnosis" },
+  title: { absolute: "Alice Tarot Preview | Alice Test" },
   robots: { index: false, follow: false },
 };
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import EnTakoEntryPage from "@/components/en/EnTakoEntryPage";
 
-const TITLE = "Friend perspective | Alice Diagnosis";
+const TITLE = "Friend perspective | Alice Test";
 const DESCRIPTION = "Compare your self-view with how your friends see you.";
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     locale: "en_US",
-    siteName: "Alice Diagnosis",
+    siteName: "Alice Test",
     images: ["/characters/keyvisual.webp"],
   },
   twitter: {

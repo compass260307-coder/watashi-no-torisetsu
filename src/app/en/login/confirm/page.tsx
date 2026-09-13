@@ -7,7 +7,7 @@ import {
 type PageProps = { searchParams: Promise<LoginConfirmSearchParams> };
 
 export const metadata: Metadata = {
-  title: { absolute: "Confirm sign-in | Alice Diagnosis" },
+  title: { absolute: "Confirm sign-in | Alice Test" },
   robots: { index: false, follow: false },
 };
 

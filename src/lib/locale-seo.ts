@@ -2,6 +2,60 @@ import type { Metadata, MetadataRoute } from "next";
 
 export const SITE_URL = "https://www.watashi-torisetsu.com";
 export const JA_SITE_NAME = "ワタシのトリセツ";
+export const EN_BRAND_NAME = "Alice Test";
+export const EN_DEFAULT_TITLE = `${EN_BRAND_NAME} – Free Big Five Personality Test`;
+export const EN_DEFAULT_DESCRIPTION =
+  "Take the free 50-question Alice Test, discover your Big Five personality type, and compare how you see yourself with feedback from friends.";
+export const EN_SEO_KEYWORDS: string[] = [
+  "Alice Test",
+  "Alice personality test",
+  "Alice Big Five test",
+  "free personality test",
+  "Big Five personality test",
+  "OCEAN personality test",
+  "32 personality types",
+  "personality test with friends",
+  "friend personality test",
+  "self discovery",
+];
+export const EN_DEFAULT_OG_IMAGE = {
+  url: "/characters/keyvisual.webp",
+  width: 1536,
+  height: 1024,
+  alt: "Alice Test Big Five personality characters",
+};
+export const EN_HOME_FAQS = [
+  {
+    question: "What is the Alice Test?",
+    answer:
+      "Alice Test is a 50-question personality test based on the Big Five, also called the OCEAN model. It turns your five trait scores into one of 32 memorable character types.",
+  },
+  {
+    question: "Is the Alice Test free?",
+    answer:
+      "Yes. You can take the core personality test and receive your result for free. Optional paid content may be offered separately.",
+  },
+  {
+    question: "Is the Alice Test an MBTI test?",
+    answer:
+      "No. MBTI-style tests use preference categories, while Alice Test measures the continuous Big Five traits: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.",
+  },
+  {
+    question: "How long does the Alice Test take?",
+    answer:
+      "Most people can answer the 50 questions in about three minutes. There are no right or wrong answers.",
+  },
+  {
+    question: "How does friend feedback work?",
+    answer:
+      "After completing your test, you can invite people who know you to answer a shorter set of questions. Their perspective helps you compare your self-image with how others experience you.",
+  },
+  {
+    question: "Is this a medical or psychological diagnosis?",
+    answer:
+      "No. Alice Test is designed for entertainment and self-reflection. It does not diagnose a medical or mental-health condition and is not a substitute for professional advice.",
+  },
+] as const;
 export const KO_BRAND_NAME = "앨리스 진단";
 export const KO_SERVICE_NAME = "나의 사용설명서";
 export const KO_CHARACTER_NAME = "Alice";

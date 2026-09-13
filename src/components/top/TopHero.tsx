@@ -79,7 +79,7 @@ export default function TopHero({
             どの幅でも構図が崩れない / 640px〜 は従来の clamp)。 */}
         <h1 className="top-hero-h1">
           {isEnglish
-            ? "“So this is how my friends see me.”"
+            ? "Free Big Five Personality Test"
             : "「友達には、こんなワタシが見えてたんだ」"}
         </h1>
 
@@ -90,9 +90,9 @@ export default function TopHero({
         <p className="top-hero-sub mx-auto max-w-[720px]">
           {isEnglish ? (
             <>
-              See the real you through your friends&rsquo; eyes,
+              Discover how you see yourself—and how your friends see you—
               <br className="hidden sm:inline" />
-              with startling honesty.
+              with the Alice Test.
             </>
           ) : (
             <>
@@ -112,7 +112,7 @@ export default function TopHero({
             className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"
             style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
           >
-            {isEnglish ? "Start the free test →" : "無料で診断をはじめる →"}
+            {isEnglish ? "Take the Alice Test →" : "無料で診断をはじめる →"}
           </Link>
         </div>
       </div>

@@ -86,7 +86,7 @@ export async function generateCharacterShareMetadata({
   const siteName = isKorean
     ? "나의 사용설명서"
     : isEnglish
-      ? "Alice Diagnosis"
+      ? "Alice Test"
       : "ワタシのトリセツ";
   const description = isKorean
     ? "나는 어떤 유형일까요? 무료로 약 3분 만에 진단할 수 있어요."
@@ -194,14 +194,14 @@ export default async function CharacterShareLandingPage({
           {isKorean
             ? "나의 사용설명서"
             : isEnglish
-              ? "ALICE DIAGNOSIS"
+              ? "ALICE TEST"
               : "ワタシのトリセツ"}
         </p>
         <h1 className="font-black text-2xl" style={{ color: NAVY }}>
           {isKorean
             ? "나만의 사용설명서를 만들 수 있어요"
             : isEnglish
-              ? "Take the Alice Diagnosis"
+              ? "Take the Alice Test"
               : "あなたのトリセツ、作れます"}
         </h1>
         <p

@@ -23,7 +23,7 @@ import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
 const KO_SITE_NAME = "나의 사용설명서";
-const EN_SITE_NAME = "Alice Diagnosis";
+const EN_SITE_NAME = "Alice Test";
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
 const SITE_URL = resolveSiteUrl();
 type EmailLocale = "ja" | "ko" | "en";
@@ -507,7 +507,7 @@ function renderMagicLinkHtmlEn(url: string): string {
   <body style="margin:0;padding:0;background:#F8F8FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2E2E5C;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8F8FC;padding:40px 16px;"><tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E3E6F5;border-radius:16px;padding:40px 32px;"><tr><td>
-        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE DIAGNOSIS</p>
+        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE TEST</p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:800;line-height:1.4;text-align:center;color:#2E2E5C;">Your sign-in link is ready</h1>
         <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#51516E;">Use the button below to access your personality results and saved data.</p>
         <p style="margin:0 0 30px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 34px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Sign in</a></p>
@@ -1168,7 +1168,7 @@ function renderDetailedReportHtmlEn(
 <body style="margin:0;padding:0;background:#F3F3F7;font-family:Arial,sans-serif;color:#2E2E5C;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:32px 16px;"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background:#FFFFFF;border:1px solid #E4E4F0;border-radius:18px;"><tr><td style="padding:44px 38px;">
-<p style="margin:0 0 26px;text-align:center;font-size:13px;font-weight:800;letter-spacing:.14em;color:#5B5BEF;">ALICE DIAGNOSIS</p>
+<p style="margin:0 0 26px;text-align:center;font-size:13px;font-weight:800;letter-spacing:.14em;color:#5B5BEF;">ALICE TEST</p>
 <h1 style="margin:0 0 24px;font-size:30px;line-height:1.3;text-align:center;">Your Complete Edition is ready</h1>
 <p style="margin:0 0 14px;font-size:16px;line-height:1.8;">${name}</p>
 <p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Thank you for your purchase. Your one-time payment has unlocked the full experience.</p>
@@ -1219,7 +1219,7 @@ function renderDetailedReportTextEn(
     "",
     "For help with access, your PDF, or a refund, contact support@watashi-torisetsu.com.",
     "",
-    "Alice Diagnosis team",
+    "Alice Test team",
   ].join("\n");
 }
 
@@ -1245,7 +1245,7 @@ function renderFriendPerceptionHtmlEn(
 <body style="margin:0;padding:0;background:#F8F7FF;font-family:Arial,sans-serif;color:#2E2E5C;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;"><tr><td align="center">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E5E3F7;border-radius:18px;padding:40px 32px;"><tr><td>
-      <p style="margin:0 0 18px;font-size:11px;font-weight:700;letter-spacing:.18em;color:#5B5BEF;text-align:center;">ALICE DIAGNOSIS</p>
+      <p style="margin:0 0 18px;font-size:11px;font-weight:700;letter-spacing:.18em;color:#5B5BEF;text-align:center;">ALICE TEST</p>
       <h1 style="margin:0 0 22px;font-size:25px;line-height:1.35;text-align:center;">A new perspective arrived</h1>
       <p style="margin:0 0 28px;font-size:16px;line-height:1.7;">${perceiverName} has shared how they see ${ownerDisplay}. Open your private report to compare their perspective with your self-view.</p>
       <p style="margin:0 0 28px;text-align:center;"><a href="${args.meUrl}" style="display:inline-block;padding:14px 32px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">View friend perspective</a></p>

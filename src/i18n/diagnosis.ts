@@ -341,7 +341,7 @@ const EN_QUESTIONS: Question[] = [
 const EN_COPY: DiagnosisCopy = {
   heroTitle: "Free Personality Test",
   heroSubtitle: "Discover your type through the OCEAN (Big Five) model",
-  heroImageAlt: "Characters from Alice Diagnosis",
+  heroImageAlt: "Characters from Alice Test",
   nicknameLabel: "Nickname",
   nicknameHelper: "This name will appear on your results page.",
   genderLabel: "Gender (optional)",
@@ -406,7 +406,7 @@ const EN_COPY: DiagnosisCopy = {
       "Finding the type that fits you best...",
       "Narrowing down 32 personality types...",
       "Discovering your distinctive strengths...",
-      "Preparing your Alice Diagnosis result...",
+      "Preparing your Alice Test result...",
       "Adding the finishing touches...",
       "Your result is almost ready...",
     ],

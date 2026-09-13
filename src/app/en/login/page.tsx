@@ -7,7 +7,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
 export const metadata: Metadata = {
-  title: { absolute: "Sign in | Alice Diagnosis" },
+  title: { absolute: "Sign in | Alice Test" },
   alternates: localizedAlternates("en", "/login", "/ko/login", "/en/login"),
   robots: { index: false, follow: false },
 };

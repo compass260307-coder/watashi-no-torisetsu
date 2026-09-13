@@ -2,7 +2,7 @@ import type { BigFiveDimension } from "@/lib/types";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 export const EN_RESULT_COPY = {
-  metadataTitle: "My Personality Result | Alice Diagnosis",
+  metadataTitle: "My Personality Result | Alice Test",
   metadataDescription:
     "Your free Big Five personality result, explained through one of 32 character types.",
   heroLabel: "My personality type is",

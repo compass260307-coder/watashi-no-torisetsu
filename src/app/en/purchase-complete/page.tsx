@@ -13,7 +13,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "Purchase complete | Alice Diagnosis" },
+  title: { absolute: "Purchase complete | Alice Test" },
   alternates: localizedAlternates(
     "en",
     "/purchase-complete",

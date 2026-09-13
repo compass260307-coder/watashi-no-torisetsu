@@ -219,7 +219,7 @@ export async function GET(req: Request, ctx: RouteContext) {
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
         "Content-Disposition":
           `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Diagnosis Complete Edition.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Test Complete Edition.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });
