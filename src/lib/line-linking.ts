@@ -176,7 +176,7 @@ export function lineLinkSuccessMessage(input: {
   return [
     firstLine,
     input.chatEnabled
-      ? "これで、あなたに合わせてお話しできます。さっそく、今日あったことでも聞かせてくださいね。"
+      ? "これで、あなたに合わせてお話しできます。下の質問から、気になるものを選んでみてくださいね。"
       : "ここでお話しできる準備が整ったら、まっさきにお知らせしますね。",
   ].join("\n");
 }

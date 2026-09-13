@@ -6,8 +6,9 @@
 // 取得ルール:
 //   - source   : utm_source を優先、なければ ref
 //   - campaign : utm_campaign を優先、なければ camp
-//   - first-touch: 一度 localStorage に入った値は上書きしない。
-//   - 保存キー: wt_acq_source / wt_acq_campaign。
+//   - medium   : utm_medium の実測値のみ。欠損は推定しない。
+//   - first-touch: source/campaign/mediumを一組として固定。
+//   - 保存キー: wt_acq_source / wt_acq_campaign / wt_acq_medium。
 //
 // 注: 実際の「着地時キャプチャ」は app/layout.tsx 先頭のインラインスクリプトで
 //     同期的に行う (描画最上流 / モーダル・リダイレクトより前)。本モジュールは
@@ -19,10 +20,14 @@ import { readAdAttribution } from "@/lib/ad-attribution";
 
 export const ACQ_SOURCE_KEY = "wt_acq_source";
 export const ACQ_CAMPAIGN_KEY = "wt_acq_campaign";
+export const ACQ_MEDIUM_KEY = "wt_acq_medium";
+export const ACQ_TOUCH_KEY = "wt_acq_touch_v2";
+export const ACQ_SESSION_KEY = "wt_acq_session_v2";
 
 export interface Acquisition {
   source: string | null;
   campaign: string | null;
+  medium?: string | null;
 }
 
 /** utm_source 優先 / なければ ref、utm_campaign 優先 / なければ camp。 */
@@ -30,6 +35,7 @@ export function pickAcquisition(params: URLSearchParams): Acquisition {
   return {
     source: params.get("utm_source") || params.get("ref"),
     campaign: params.get("utm_campaign") || params.get("camp"),
+    medium: params.get("utm_medium"),
   };
 }
 
@@ -41,7 +47,7 @@ export function pickAcquisition(params: URLSearchParams): Acquisition {
 export function parseAcquisitionFromSearch(search: string): Acquisition {
   const params = new URLSearchParams(search);
   const direct = pickAcquisition(params);
-  if (direct.source || direct.campaign) return direct;
+  if (direct.source || direct.campaign || direct.medium) return direct;
 
   const state = params.get("liff.state") || params.get("state");
   if (!state) return direct;
@@ -57,29 +63,32 @@ export function parseAcquisitionFromSearch(search: string): Acquisition {
   }
 }
 
-/** first-touch 保存: 既に値があるキーは上書きしない。 */
+/** first-touch は欠損も含む一組として固定。旧保存値に後日のmediumを継ぎ足さない。 */
 export function saveFirstTouchAcquisition(acq: Acquisition): void {
   try {
-    if (acq.source && !localStorage.getItem(ACQ_SOURCE_KEY)) {
-      localStorage.setItem(ACQ_SOURCE_KEY, acq.source);
-    }
-    if (acq.campaign && !localStorage.getItem(ACQ_CAMPAIGN_KEY)) {
-      localStorage.setItem(ACQ_CAMPAIGN_KEY, acq.campaign);
-    }
+    if (localStorage.getItem(ACQ_TOUCH_KEY) ||
+        localStorage.getItem(ACQ_SOURCE_KEY) || localStorage.getItem(ACQ_CAMPAIGN_KEY)) return;
+    if (!acq.source && !acq.campaign && !acq.medium) return;
+    // markerを先に書く。途中失敗でも異なる着地の値を継ぎ足さない。
+    localStorage.setItem(ACQ_TOUCH_KEY, "1");
+    if (acq.source) localStorage.setItem(ACQ_SOURCE_KEY, acq.source);
+    if (acq.campaign) localStorage.setItem(ACQ_CAMPAIGN_KEY, acq.campaign);
+    if (acq.medium) localStorage.setItem(ACQ_MEDIUM_KEY, acq.medium);
   } catch {
-    // localStorage 不可 (プライベートモード / SSR) は無視
+    // 保存不可の場合も診断を継続する。
   }
 }
 
-/** localStorage に保存済みの first-touch 値を読む (insert 時に使用)。 */
+/** localStorage に保存済みの first-touch 値を読む。 */
 export function readAcquisition(): Acquisition {
   try {
     return {
       source: localStorage.getItem(ACQ_SOURCE_KEY),
       campaign: localStorage.getItem(ACQ_CAMPAIGN_KEY),
+      medium: localStorage.getItem(ACQ_TOUCH_KEY) ? localStorage.getItem(ACQ_MEDIUM_KEY) : null,
     };
   } catch {
-    return { source: null, campaign: null };
+    return { source: null, campaign: null, medium: null };
   }
 }
 
@@ -88,32 +97,46 @@ export function readAcquisition(): Acquisition {
  * TikTok広告等で utm がURL遷移で失われ「直接/不明」になるのを減らすため、
  * 広告クリック時に保存した last-touch 値 (wt_ad_utm_*) までフォールバックする。
  *
- * 優先順 (層ごと採用: 値のある最初の層から source/campaign をセットで取る。
+ * 優先順 (層ごと採用: 値のある最初の層から source/campaign/medium をセットで取る。
  * 項目別に混ぜると「instagram × 広告キャンペーン名」のような別流入の
  * 組み合わせが集計に混入するため):
  *   ① 現在URLのクエリ (utm_source/ref・utm_campaign/camp。liff.state 退避も見る)
- *   ② first-touch 保存値 (wt_acq_* = 従来の読み出し先)
- *      → 従来値が付くレコードは①②で決まり、結果が変わらない (集計互換)
- *   ③ 広告クリック last-touch 保存値 (wt_ad_utm_source / wt_ad_utm_campaign)
- *   ④ ttclid 推定: 広告クリックID (wt_ad_ttclid) があれば source='tiktok'。
+ *   ② 同じタブで保存した着地URLの組 (sessionStorage。①の遷移後も維持)
+ *   ③ first-touch 保存値 (wt_acq_* = 従来の読み出し先)
+ *      → 旧保存値は維持し、欠けたmediumを別の流入から補完しない。
+ *   ④ 広告クリック last-touch 保存値 (wt_ad_utm_source / wt_ad_utm_campaign)
+ *   ⑤ ttclid 推定: 広告クリックID (wt_ad_ttclid) があれば source='tiktok'。
  *      utm 未設定の広告でも有料クリックと確定できるため、リファラーより優先。
  *      ttclid の値自体は Supabase に保存しない (TikTok送信専用)。
- *   ⑤ リファラー補完: 着地時に保存した外部 referrer ホスト (wt_ref_host) を
+ *   ⑥ リファラー補完: 着地時に保存した外部 referrer ホスト (wt_ref_host) を
  *      source 名に変換 (google / tiktok / instagram 等。未知ホストは素のホスト名)。
- * ⑤まで無ければ null (= 従来どおり「直接/不明」扱い)。
- * ④⑤は campaign を付けない (どのキャンペーンかは特定できないため null)。
+ * ⑥まで無ければ null (= 従来どおり「直接/不明」扱い)。
+ * ⑤⑥は mediumを推定せず、campaign を付けない (どのキャンペーンかは特定できないため null)。
  */
 export function resolveAcquisitionForSave(search: string): Acquisition {
   const fromUrl = parseAcquisitionFromSearch(search);
-  if (fromUrl.source || fromUrl.campaign) return fromUrl;
-  const firstTouch = readAcquisition();
-  if (firstTouch.source || firstTouch.campaign) return firstTouch;
-  const ad = readAdAttribution();
-  if (ad.utmSource || ad.utmCampaign) {
-    return { source: ad.utmSource, campaign: ad.utmCampaign };
+  if (fromUrl.source || fromUrl.campaign || fromUrl.medium) {
+    try { sessionStorage.setItem(ACQ_SESSION_KEY, JSON.stringify(fromUrl)); } catch { /* 保存不可 */ }
+    saveFirstTouchAcquisition(fromUrl);
+    return fromUrl;
   }
-  if (ad.ttclid) return { source: "tiktok", campaign: null };
-  return { source: sourceFromReferrerHost(readReferrerHost()), campaign: null };
+  // 着地URLの優先権を同じタブの遷移・リロードでも保持する。
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(ACQ_SESSION_KEY) || "null");
+    if (saved && [saved.source, saved.campaign, saved.medium].every(
+      (value) => value == null || typeof value === "string",
+    ) && (saved.source || saved.campaign || saved.medium)) {
+      return { source: saved.source ?? null, campaign: saved.campaign ?? null, medium: saved.medium ?? null };
+    }
+  } catch { /* 保存不可・破損時は既存のfallbackへ */ }
+  const firstTouch = readAcquisition();
+  if (firstTouch.source || firstTouch.campaign || firstTouch.medium) return firstTouch;
+  const ad = readAdAttribution();
+  if (ad.utmSource || ad.utmCampaign || ad.utmMedium) {
+    return { source: ad.utmSource, campaign: ad.utmCampaign, medium: ad.utmMedium };
+  }
+  if (ad.ttclid) return { source: "tiktok", campaign: null, medium: null };
+  return { source: sourceFromReferrerHost(readReferrerHost()), campaign: null, medium: null };
 }
 
 // ---- リファラー補完 (2026-08-15) ----
@@ -171,5 +194,6 @@ export function encodeAcquisitionState(acq: Acquisition): string {
   const p = new URLSearchParams();
   if (acq.source) p.set("utm_source", acq.source);
   if (acq.campaign) p.set("utm_campaign", acq.campaign);
+  if (acq.medium) p.set("utm_medium", acq.medium);
   return p.toString();
 }

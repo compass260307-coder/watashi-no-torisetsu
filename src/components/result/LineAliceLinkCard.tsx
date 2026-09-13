@@ -4,6 +4,7 @@
 // 手入力用6桁コードは「うまくいかない場合」のフォールバックにだけ表示する。
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { LineAliceTrackingSource } from "@/lib/line-alice-analytics";
 import { trackLineAliceEvent } from "@/lib/track";
@@ -18,12 +19,12 @@ type LinkStatus = "checking" | "linked" | "unlinked";
 type MainState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; errorCode?: string };
 type ManualState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "issued"; value: IssuedCode }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; errorCode?: string };
 
 export type { LineAliceTrackingSource } from "@/lib/line-alice-analytics";
 
@@ -34,10 +35,31 @@ function errorMessage(errorCode: string | undefined, httpStatus: number): string
   if (httpStatus === 409 || errorCode === "diagnosis_required") {
     return "先にWeb診断を完了すると発行できます。";
   }
+  if (errorCode === "invalid_owner_token") {
+    return "診断結果を確認できませんでした。無料診断からもう一度お試しください。";
+  }
   if (httpStatus === 429 || errorCode === "rate_limited") {
     return "発行回数が多いようです。1時間ほどおいてもう一度どうぞ。";
   }
   return "うまく発行できませんでした。少し時間をおいてもう一度どうぞ。";
+}
+
+function needsDiagnosis(errorCode: string | undefined): boolean {
+  return (
+    errorCode === "login_required" ||
+    errorCode === "diagnosis_required" ||
+    errorCode === "invalid_owner_token"
+  );
+}
+
+class LineLinkRequestError extends Error {
+  constructor(
+    message: string,
+    readonly errorCode?: string,
+  ) {
+    super(message);
+    this.name = "LineLinkRequestError";
+  }
 }
 
 function cacheKey(ownerToken: string | undefined, kind: CodeKind): string {
@@ -104,7 +126,12 @@ export default function LineAliceLinkCard({
     let cancelled = false;
     const checkLinked = async () => {
       try {
-        const response = await fetch("/api/line/link-code", { cache: "no-store" });
+        const query = ownerToken
+          ? `?owner_token=${encodeURIComponent(ownerToken)}`
+          : "";
+        const response = await fetch(`/api/line/link-code${query}`, {
+          cache: "no-store",
+        });
         const body = (await response.json().catch(() => ({}))) as {
           linked?: boolean;
         };
@@ -117,7 +144,7 @@ export default function LineAliceLinkCard({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ownerToken]);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -126,10 +153,14 @@ export default function LineAliceLinkCard({
     const recordView = () => {
       if (viewTrackedRef.current) return;
       viewTrackedRef.current = true;
-      trackLineAliceEvent("line_alice_card_viewed", {
-        source: trackingSource,
-        variant,
-      });
+      trackLineAliceEvent(
+        "line_alice_card_viewed",
+        {
+          source: trackingSource,
+          variant,
+        },
+        ownerToken,
+      );
     };
 
     if (!("IntersectionObserver" in window)) {
@@ -147,34 +178,45 @@ export default function LineAliceLinkCard({
     );
     observer.observe(card);
     return () => observer.disconnect();
-  }, [trackingSource, variant]);
+  }, [ownerToken, trackingSource, variant]);
 
   const issueCode = async (kind: CodeKind): Promise<IssuedCode> => {
     const cached = readCachedCode(ownerToken, kind);
     if (cached) return cached;
 
-    trackLineAliceEvent("line_alice_link_code_requested", {
-      source: trackingSource,
-      variant,
-      kind,
-    });
+    trackLineAliceEvent(
+      "line_alice_link_code_requested",
+      {
+        source: trackingSource,
+        variant,
+        kind,
+      },
+      ownerToken,
+    );
     let response: Response;
     let body: { code?: string; expires_at?: string; kind?: CodeKind; error?: string };
     try {
       response = await fetch("/api/line/link-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind }),
+        body: JSON.stringify({
+          kind,
+          ...(ownerToken ? { owner_token: ownerToken } : {}),
+        }),
       });
       body = (await response.json().catch(() => ({}))) as typeof body;
     } catch {
-      trackLineAliceEvent("line_alice_link_code_failed", {
-        source: trackingSource,
-        variant,
-        kind,
-        http_status: 0,
-        error_code: "network_error",
-      });
+      trackLineAliceEvent(
+        "line_alice_link_code_failed",
+        {
+          source: trackingSource,
+          variant,
+          kind,
+          http_status: 0,
+          error_code: "network_error",
+        },
+        ownerToken,
+      );
       throw new Error("通信がうまくいきませんでした。電波の良いところでもう一度どうぞ。");
     }
 
@@ -184,22 +226,33 @@ export default function LineAliceLinkCard({
       kind: body.kind,
     };
     if (!response.ok || !isValidIssuedCode(candidate, kind)) {
-      trackLineAliceEvent("line_alice_link_code_failed", {
-        source: trackingSource,
-        variant,
-        kind,
-        http_status: response.status,
-        error_code: body.error ?? "unknown",
-      });
-      throw new Error(errorMessage(body.error, response.status));
+      trackLineAliceEvent(
+        "line_alice_link_code_failed",
+        {
+          source: trackingSource,
+          variant,
+          kind,
+          http_status: response.status,
+          error_code: body.error ?? "unknown",
+        },
+        ownerToken,
+      );
+      throw new LineLinkRequestError(
+        errorMessage(body.error, response.status),
+        body.error,
+      );
     }
 
     writeCachedCode(ownerToken, candidate);
-    trackLineAliceEvent("line_alice_link_code_issued", {
-      source: trackingSource,
-      variant,
-      kind,
-    });
+    trackLineAliceEvent(
+      "line_alice_link_code_issued",
+      {
+        source: trackingSource,
+        variant,
+        kind,
+      },
+      ownerToken,
+    );
     return candidate;
   };
 
@@ -214,6 +267,8 @@ export default function LineAliceLinkCard({
       setManual({
         status: "error",
         message: error instanceof Error ? error.message : errorMessage(undefined, 0),
+        errorCode:
+          error instanceof LineLinkRequestError ? error.errorCode : undefined,
       });
     }
   };
@@ -223,30 +278,41 @@ export default function LineAliceLinkCard({
     setMain({ status: "loading" });
     try {
       if (!LIFF_ID) {
-        trackLineAliceEvent("line_alice_link_code_failed", {
-          source: trackingSource,
-          variant,
-          kind: "liff",
-          http_status: 0,
-          error_code: "liff_not_configured",
-        });
+        trackLineAliceEvent(
+          "line_alice_link_code_failed",
+          {
+            source: trackingSource,
+            variant,
+            kind: "liff",
+            http_status: 0,
+            error_code: "liff_not_configured",
+          },
+          ownerToken,
+        );
         throw new Error("LINE連携は現在準備中です。");
       }
       const issued = await issueCode("liff");
-      trackLineAliceEvent("line_alice_add_friend_clicked", {
-        source: trackingSource,
-        variant,
-        flow: "liff",
-      });
+      trackLineAliceEvent(
+        "line_alice_add_friend_clicked",
+        {
+          source: trackingSource,
+          variant,
+          flow: "liff",
+        },
+        ownerToken,
+      );
       window.location.assign(
         `https://liff.line.me/${encodeURIComponent(LIFF_ID)}?code=${encodeURIComponent(issued.code)}`,
       );
     } catch (error) {
+      const errorCode =
+        error instanceof LineLinkRequestError ? error.errorCode : undefined;
       setMain({
         status: "error",
         message: error instanceof Error ? error.message : errorMessage(undefined, 0),
+        errorCode,
       });
-      await showFallback();
+      if (!needsDiagnosis(errorCode)) await showFallback();
     }
   };
 
@@ -353,9 +419,17 @@ export default function LineAliceLinkCard({
                   : "LINEでAliceと話す"}
             </button>
             {main.status === "error" ? (
-              <p className="mt-4 rounded-xl bg-white/90 px-4 py-3 text-[13px] font-bold leading-relaxed text-[#B33A12]">
-                {main.message}
-              </p>
+              <div className="mt-4 rounded-xl bg-white/90 px-4 py-3 text-center text-[13px] font-bold leading-relaxed text-[#B33A12]">
+                <p>{main.message}</p>
+                {needsDiagnosis(main.errorCode) ? (
+                  <Link
+                    href="/diagnosis"
+                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full bg-[#5B5BEF] px-5 text-[12px] font-black text-white"
+                  >
+                    無料診断からはじめる
+                  </Link>
+                ) : null}
+              </div>
             ) : null}
 
             <button
@@ -398,13 +472,22 @@ export default function LineAliceLinkCard({
                     <p className="text-[12px] font-bold leading-relaxed text-[#B33A12]">
                       {manual.message}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => void showFallback()}
-                      className="mt-3 text-[12px] font-black text-[#5B5BEF] underline"
-                    >
-                      もう一度発行する
-                    </button>
+                    {needsDiagnosis(manual.errorCode) ? (
+                      <Link
+                        href="/diagnosis"
+                        className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full bg-[#5B5BEF] px-5 text-[12px] font-black text-white"
+                      >
+                        無料診断からはじめる
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void showFallback()}
+                        className="mt-3 text-[12px] font-black text-[#5B5BEF] underline"
+                      >
+                        もう一度発行する
+                      </button>
+                    )}
                   </div>
                 )}
                 <p className="mt-4 text-[12px] font-medium leading-relaxed text-[#2E2E5C]/65">
@@ -415,11 +498,15 @@ export default function LineAliceLinkCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() =>
-                    trackLineAliceEvent("line_alice_add_friend_clicked", {
-                      source: trackingSource,
-                      variant,
-                      flow: "manual",
-                    })
+                    trackLineAliceEvent(
+                      "line_alice_add_friend_clicked",
+                      {
+                        source: trackingSource,
+                        variant,
+                        flow: "manual",
+                      },
+                      ownerToken,
+                    )
                   }
                   className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#06C755] px-6 text-[14px] font-black text-white"
                 >

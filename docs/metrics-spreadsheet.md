@@ -371,3 +371,8 @@ function buildDashboard() {
 
 `buildDashboard` を1回実行すれば `dashboard` タブができる。中身は数式なので、以後は
 `syncRawData`を手動実行して生データが更新されるたびに自動で最新化される。
+
+
+## 診断流入mediumの追加（2026-09-12、反映待ち）
+
+`diagnoses_raw`の既存A:Hを維持し、I=`acq_medium`、J=`acq_channel`を追加する。分類・過去データ・JP→KR参照範囲・DB/Apps Script/Webの反映順は [診断流入medium連携仕様](acquisition-medium-daily-report.md) を参照。

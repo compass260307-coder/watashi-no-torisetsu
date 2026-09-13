@@ -56,6 +56,7 @@ const SELF_RESULT_SHARE_FUNNEL_VERSION = "share_v3";
 const ALICE_FUNNEL_MEASUREMENT_STARTED_AT = "2026-08-18";
 
 export type MetricsStatsLocale = "ja" | "ko";
+type LiffFlowMetric = "link" | "route" | "unknown";
 
 type ComputeStatsOptions = {
   locale?: MetricsStatsLocale;
@@ -815,6 +816,8 @@ export async function computeStats(
     lineAliceLinkCodeRequestedCount,
     lineAliceLinkCodeIssuedCount,
     lineAliceLinkCodeFailedCount,
+    lineAliceStarterClickedCount,
+    lineLiffProgressRows,
   ] = await Promise.all([
     statsLocale === "ko"
       ? Promise.resolve(0)
@@ -900,7 +903,45 @@ export async function computeStats(
     lineEventCount("line_alice_link_code_requested"),
     lineEventCount("line_alice_link_code_issued"),
     lineEventCount("line_alice_link_code_failed"),
+    lineEventCount("line_alice_starter_clicked"),
+    fetchAll<{
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+      id: string;
+      locale: string;
+    }>(evRows(["line_liff_progress"], "metadata")),
   ]);
+
+  const lineLiffAttemptsByStage = new Map<string, Set<string>>();
+  const lineLiffFailuresByCode = new Map<string, Set<string>>();
+  for (const row of lineLiffProgressRows) {
+    const stage = row.metadata?.stage;
+    const flow = row.metadata?.flow;
+    const attemptId = row.metadata?.attempt_id;
+    if (
+      typeof stage !== "string" ||
+      typeof flow !== "string" ||
+      typeof attemptId !== "string"
+    ) {
+      continue;
+    }
+    const key = `${flow}:${stage}`;
+    const attempts = lineLiffAttemptsByStage.get(key) ?? new Set<string>();
+    attempts.add(attemptId);
+    lineLiffAttemptsByStage.set(key, attempts);
+
+    if (stage === "failed" && typeof row.metadata?.error_code === "string") {
+      const failures =
+        lineLiffFailuresByCode.get(row.metadata.error_code) ?? new Set<string>();
+      failures.add(attemptId);
+      lineLiffFailuresByCode.set(row.metadata.error_code, failures);
+    }
+  }
+  const lineLiffStageCount = (flow: LiffFlowMetric, stage: string) =>
+    lineLiffAttemptsByStage.get(`${flow}:${stage}`)?.size ?? 0;
+  const lineLiffFailureReasons = Array.from(lineLiffFailuresByCode.entries())
+    .map(([errorCode, attempts]) => ({ errorCode, count: attempts.size }))
+    .sort((a, b) => b.count - a.count || a.errorCode.localeCompare(b.errorCode));
 
   const aliceEvents = (eventName: string) =>
     aliceEventRows.filter((row) => row.event_name === eventName);
@@ -2945,6 +2986,21 @@ export async function computeStats(
       linkCodeRequested: lineAliceLinkCodeRequestedCount,
       linkCodeIssued: lineAliceLinkCodeIssuedCount,
       linkCodeFailed: lineAliceLinkCodeFailedCount,
+      starterClicked: lineAliceStarterClickedCount,
+      liff: {
+        opened: lineLiffStageCount("unknown", "opened"),
+        sdkLoaded: lineLiffStageCount("unknown", "sdk_loaded"),
+        initialized: lineLiffStageCount("unknown", "initialized"),
+        authenticated: lineLiffStageCount("unknown", "authenticated"),
+        loginStarted: lineLiffStageCount("unknown", "login_started"),
+        linkRequested: lineLiffStageCount("link", "link_requested"),
+        linkConflict: lineLiffStageCount("link", "link_conflict"),
+        linkCompleted: lineLiffStageCount("link", "link_completed"),
+        retryClicked:
+          lineLiffStageCount("link", "retry_clicked") +
+          lineLiffStageCount("route", "retry_clicked"),
+        failures: lineLiffFailureReasons,
+      },
     },
     paywallSources,
     paywallAttribution: courseAttribution,

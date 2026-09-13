@@ -15,6 +15,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { consumeIdentifierRateLimit } from "@/lib/api-security";
 
 import {
+  aliceConversationStarterQuickReplies,
+  matchAliceConversationStarter,
   quickReplies,
   replyLineMessages,
   startLineLoadingAnimation,
@@ -258,7 +260,9 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
         type: "text",
         text: linked ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE,
         quickReply: linked
-          ? quickReplies("今日の占い", "診断結果")
+          ? lineAliceChatEnabled()
+            ? aliceConversationStarterQuickReplies()
+            : quickReplies("今日の占い", "診断結果")
           : quickReplies("使い方"),
       },
     ]);
@@ -353,6 +357,17 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
       { type: "text", text: NON_TEXT_MESSAGE },
     ]);
     return;
+  }
+
+  const conversationStarter = matchAliceConversationStarter(rawText);
+  if (conversationStarter) {
+    await recordLineEvent({
+      eventName: "line_alice_starter_clicked",
+      metadata: {
+        starter: conversationStarter,
+        user_id: account.user_id,
+      },
+    });
   }
 
   await handleAliceChat(lineUserId, replyToken, account.user_id, rawText);
@@ -1380,7 +1395,7 @@ async function handleLinkCode(
         chatEnabled,
       }),
       ...(chatEnabled
-        ? { quickReply: quickReplies("今日の占い", "診断結果") }
+        ? { quickReply: aliceConversationStarterQuickReplies() }
         : {}),
     },
   ]);

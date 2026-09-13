@@ -4,7 +4,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
-import { quickReplies, pushLineMessages } from "@/lib/line";
+import {
+  aliceConversationStarterQuickReplies,
+  pushLineMessages,
+} from "@/lib/line";
 import { lineAliceChatEnabled } from "@/lib/line-alice";
 import { recordLineEvent } from "@/lib/line-events";
 import {
@@ -203,7 +206,7 @@ export async function POST(request: NextRequest) {
           chatEnabled,
         }),
         ...(chatEnabled
-          ? { quickReply: quickReplies("今日の占い", "診断結果") }
+          ? { quickReply: aliceConversationStarterQuickReplies() }
           : {}),
       },
     ]);

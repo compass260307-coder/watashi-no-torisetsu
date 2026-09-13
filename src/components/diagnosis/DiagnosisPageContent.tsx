@@ -530,6 +530,7 @@ export default function DiagnosisPageContent({
           // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch)
           acquisitionSource: acq.source || undefined,
           acquisitionCampaign: acq.campaign || undefined,
+          acquisitionMedium: acq.medium || undefined,
           // 韓国版のイベント/保存導線を識別。DBの専用locale列は移行適用後に接続する。
           locale,
         }),

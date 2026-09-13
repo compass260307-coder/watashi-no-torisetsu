@@ -48,7 +48,7 @@ const META_PURCHASE_CONTENT: Record<
     name: { ja: "学生向けプラン", ko: "학생 플랜", en: "Unavailable English plan" },
   },
   full_access: {
-    fallbackId: "full_access_jpy_899",
+    fallbackId: "full_access_jpy_499",
     koFallbackId: "full_access_krw_4900",
     name: { ja: "完全版コース", ko: "완전판 코스", en: "Complete Edition" },
   },

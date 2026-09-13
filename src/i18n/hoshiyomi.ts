@@ -1,4 +1,5 @@
 import type { ResultLocale } from "@/i18n/result";
+import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
 
 type HoshiyomiFaq = Readonly<{ question: string; answer: string }>;
 export type HoshiyomiLocale = ResultLocale | "en";
@@ -48,7 +49,7 @@ const JA_COPY: HoshiyomiCopy = {
     {
       question: "どのコースで利用できますか？",
       answer:
-        "完全版（¥499）で、Aliceとのチャットを30回利用できます。月額ではありません。",
+        `完全版（¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}）で、Aliceとのチャットを30回利用できます。月額ではありません。`,
     },
     {
       question: "運命の設計図をまだ作っていなくても話せますか？",
