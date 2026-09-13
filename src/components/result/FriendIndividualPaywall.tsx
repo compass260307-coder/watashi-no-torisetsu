@@ -12,6 +12,7 @@
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { FRIEND_INDIVIDUAL_PAYWALL_SOURCE } from "@/lib/paywall-source";
+import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
 import { FullAccessCta } from "./FullAccessCta";
 
 export function FriendIndividualPaywall({
@@ -78,7 +79,7 @@ export function FriendIndividualPaywall({
 
           <div className="mt-8 rounded-3xl bg-[#F7F7FB] px-5 py-6 text-left">
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              🔓 一度きりの ¥899 で、
+              🔓 一度きりの ¥{FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")} で、
               <br />
               ぜんぶ読めるようになります。
             </p>

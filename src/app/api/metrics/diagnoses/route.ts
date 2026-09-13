@@ -1,3 +1,4 @@
+import { classifyAcquisitionMedium } from "@/lib/acquisition-channel";
 // Google Sheets 向けの確定診断差分エンドポイント。
 //
 // 大量の events や全 users を再集計せず、差分同期に必要な行だけを返す。
@@ -31,6 +32,8 @@ const columns = [
   "locale",
   "acq_source",
   "acq_campaign",
+  "acq_medium",
+  "acq_channel",
 ] as const;
 
 type DiagnosisFact = {
@@ -40,6 +43,7 @@ type DiagnosisFact = {
   acquisition_locale: string | null;
   acquisition_source: string | null;
   acquisition_campaign: string | null;
+  acquisition_medium: string | null;
   campaign: string | null;
 };
 
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest) {
   let query = supabaseAdmin
     .from("users")
     .select(
-      "id, diagnosis_completed_at, type_id, acquisition_locale, acquisition_source, acquisition_campaign, campaign",
+      "id, diagnosis_completed_at, type_id, acquisition_locale, acquisition_source, acquisition_campaign, acquisition_medium, campaign",
     )
     .not("diagnosis_completed_at", "is", null)
     .order("diagnosis_completed_at", { ascending: true })
@@ -143,6 +147,8 @@ export async function GET(request: NextRequest) {
         locale: fact.acquisition_locale ?? "",
         acq_source: fact.acquisition_source ?? "",
         acq_campaign: fact.acquisition_campaign ?? fact.campaign ?? "",
+        acq_medium: fact.acquisition_medium ?? "",
+        acq_channel: classifyAcquisitionMedium(fact.acquisition_medium),
       },
     ];
   });

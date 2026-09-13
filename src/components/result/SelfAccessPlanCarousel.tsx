@@ -24,7 +24,6 @@ import {
 import {
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
@@ -95,14 +94,6 @@ const KO_FULL_ACCESS_ITEMS = [
   KO_AISHO_ITEM,
 ] as const;
 
-function japaneseThreeCourseReleaseBadge(
-  price: number,
-  listPrice: number,
-): string {
-  const discountPercent = Math.round((1 - price / listPrice) * 100);
-  return `リリース記念 ${discountPercent}%OFF`;
-}
-
 const JA_PLANS: readonly PlanDefinition[] = [
   {
     product: "self_report",
@@ -120,11 +111,6 @@ const JA_PLANS: readonly PlanDefinition[] = [
     eyebrow: "自己・友達・占いまで",
     title: "完全版コース",
     basePrice: FULL_ACCESS_PRICE_JPY,
-    listPrice: FULL_ACCESS_LIST_PRICE_JPY,
-    badge: japaneseThreeCourseReleaseBadge(
-      FULL_ACCESS_PRICE_JPY,
-      FULL_ACCESS_LIST_PRICE_JPY,
-    ),
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
@@ -137,10 +123,6 @@ const JA_PLANS: readonly PlanDefinition[] = [
     title: "全部入り・買い切り",
     basePrice: PREMIUM_BUNDLE_PRICE_JPY,
     listPrice: PREMIUM_BUNDLE_LIST_PRICE_JPY,
-    badge: japaneseThreeCourseReleaseBadge(
-      PREMIUM_BUNDLE_PRICE_JPY,
-      PREMIUM_BUNDLE_LIST_PRICE_JPY,
-    ),
     iconSrc: "/pricing/premium-destiny-felt-transparent.png",
     accent: "#9A6A24",
     soft: "#FFF6DF",

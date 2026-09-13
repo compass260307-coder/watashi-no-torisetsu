@@ -1,4 +1,4 @@
-// 日本版 (完全版 ¥899 の単一プラン)・韓国版 (完全版 ₩4,900 / 学生向け ₩1,900)・
+// 日本版 (完全版 ¥499 の単一プラン)・韓国版 (完全版 ₩4,900 / 学生向け ₩1,900)・
 // 英語版 (完全版 $3.49 の単一プラン) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
@@ -43,6 +43,7 @@ import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
+  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   isAccessProduct,
@@ -178,9 +179,9 @@ const JA_COURSE_CHECKOUT_PRICING = {
     couponId: `wt-release-self-report-off${SELF_REPORT_LIST_PRICE_JPY - SELF_REPORT_PRICE_JPY}-jpy`,
   },
   full_access: {
-    listAmount: FULL_ACCESS_PRICE_JPY,
+    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
     saleAmount: FULL_ACCESS_PRICE_JPY,
-    couponId: "wt-full-access-no-discount-jpy",
+    couponId: `wt-release-full-access-off${FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY}-jpy`,
   },
   premium_bundle: {
     listAmount: PREMIUM_BUNDLE_LIST_PRICE_JPY,
@@ -237,7 +238,7 @@ const CHECKOUT_COPY: Record<
 
 const CURRENT_FULL_ACCESS_COPY = {
   ja: {
-    productName: "ワタシのトリセツ 完全版",
+    productName: "ワタシのトリセツ 完全版開放",
     productDescription:
       "自己診断・友達診断・専用PDF・相性診断に加え、運命の設計図、あなたの専属AI占い師「Alice」とのチャット、3種類のタロット占いをすべてを買い切りで楽しめます。",
     submitMessage: null,

@@ -66,6 +66,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { AppResultLocale, ResultLocale } from "@/i18n/result";
 import {
   accessProductPrice,
+  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
@@ -79,10 +80,16 @@ import {
 } from "@/lib/access-products";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
+const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
+  (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) * 100,
+);
+
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
 const PRICE_COPY = {
   ja: {
+    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
     sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
+    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
   ko: {
     list: "₩12,900",
@@ -1029,6 +1036,11 @@ export function FullAccessPromoCard({
               ) : isSelfReportProduct ? (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
+                </span>
+              ) : locale === "ja" ? (
+                <span className="text-[36px] font-black leading-none text-black">
+                  <span className="sr-only">価格</span>
+                  {price.sale}
                 </span>
               ) : (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">

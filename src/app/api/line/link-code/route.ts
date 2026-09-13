@@ -4,7 +4,11 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
+import {
+  consumeRateLimit,
+  isSafeOpaqueToken,
+  readJsonObject,
+} from "@/lib/api-security";
 import { hashLineLinkCode } from "@/lib/line";
 import { checkOrigin } from "@/lib/origin-check";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
@@ -29,16 +33,43 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
-export async function GET(request: NextRequest) {
+async function resolveLineLinkUser(
+  request: NextRequest,
+  ownerToken: unknown,
+): Promise<{ id: string } | null | "invalid_owner_token"> {
+  // /me や BottomNav は、Cookie が消えた端末でも本人だけが知る結果URLの
+  // owner_token を保持している。決済・相性導線と同じ capability として使い、
+  // LINE連携だけが session Cookie 不在で止まらないようにする。
+  if (ownerToken !== undefined && ownerToken !== null && ownerToken !== "") {
+    if (!isSafeOpaqueToken(ownerToken)) return "invalid_owner_token";
+    const { data } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("owner_token", ownerToken)
+      .maybeSingle();
+    if (data) return { id: data.id as string };
+  }
+
   const session = await getSession(request);
-  if (!session) {
+  return session ? { id: session.id } : null;
+}
+
+export async function GET(request: NextRequest) {
+  const user = await resolveLineLinkUser(
+    request,
+    request.nextUrl.searchParams.get("owner_token"),
+  );
+  if (user === "invalid_owner_token") {
+    return json({ error: "invalid_owner_token", linked: false }, 400);
+  }
+  if (!user) {
     return json({ error: "login_required", linked: false }, 401);
   }
 
   const { data, error } = await supabaseAdmin
     .from("line_accounts")
     .select("id")
-    .eq("user_id", session.id)
+    .eq("user_id", user.id)
     .not("linked_at", "is", null)
     .limit(1)
     .maybeSingle();
@@ -57,12 +88,8 @@ export async function POST(request: NextRequest) {
     return json({ error: "forbidden_origin" }, 403);
   }
 
-  const session = await getSession(request);
-  if (!session) {
-    return json({ error: "login_required" }, 401);
-  }
-
   let kind: CodeKind = "manual";
+  let ownerToken: unknown;
   if (request.body) {
     const parsed = await readJsonObject(request, 1024);
     if (!parsed.ok) {
@@ -74,12 +101,21 @@ export async function POST(request: NextRequest) {
       }
       kind = parsed.value.kind;
     }
+    ownerToken = parsed.value.owner_token;
+  }
+
+  const user = await resolveLineLinkUser(request, ownerToken);
+  if (user === "invalid_owner_token") {
+    return json({ error: "invalid_owner_token" }, 400);
+  }
+  if (!user) {
+    return json({ error: "login_required" }, 401);
   }
 
   const { data: diagnosis, error: diagnosisError } = await supabaseAdmin
     .from("users")
     .select("scores, diagnosis_completed_at")
-    .eq("id", session.id)
+    .eq("id", user.id)
     .maybeSingle();
   if (diagnosisError || !diagnosis) {
     return json({ error: "diagnosis_lookup_failed" }, 503);
@@ -95,7 +131,7 @@ export async function POST(request: NextRequest) {
   const { data: activeCode, error: activeLookupError } = await supabaseAdmin
     .from("line_link_codes")
     .select("id")
-    .eq("user_id", session.id)
+    .eq("user_id", user.id)
     .eq("kind", kind)
     .is("consumed_at", null)
     .gt("expires_at", nowIso)
@@ -112,7 +148,7 @@ export async function POST(request: NextRequest) {
   if (!activeCode) {
     const rateLimit = await consumeRateLimit(request, {
       scope: `line-link-code-issue-user-${kind}`,
-      identifier: session.id,
+      identifier: user.id,
       limit: 5,
       windowSeconds: 60 * 60,
     });
@@ -126,7 +162,7 @@ export async function POST(request: NextRequest) {
   const { error: invalidateError } = await supabaseAdmin
     .from("line_link_codes")
     .delete()
-    .eq("user_id", session.id)
+    .eq("user_id", user.id)
     .eq("kind", kind)
     .is("consumed_at", null);
   if (invalidateError) {
@@ -147,7 +183,7 @@ export async function POST(request: NextRequest) {
     const code = createCode(kind);
     const { error } = await supabaseAdmin.from("line_link_codes").insert({
       code_hash: hashLineLinkCode(code),
-      user_id: session.id,
+      user_id: user.id,
       expires_at: expiresAt,
       kind,
     });

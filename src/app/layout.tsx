@@ -49,17 +49,24 @@ const BASE_URL = "https://www.watashi-torisetsu.com";
 // 同期実行するためインライン化が必要)。
 //   - source   : utm_source 優先 / なければ ref
 //   - campaign : utm_campaign 優先 / なければ camp
-//   - first-touch: 既に値があれば上書きしない
+//   - medium: utm_medium。first-touchは欠損も含む一組で固定
+//   - 着地URLの組はsessionStorageにも保存し、同じタブの遷移・再読込で維持
 //   - LIFF はクエリを落とすので liff.state / state に退避された元クエリも見る
 // ⚠️ source_user_id / generation (招待ツリー) とは無関係。
 const ACQUISITION_CAPTURE_SCRIPT = `(function(){try{
-var SK='wt_acq_source',CK='wt_acq_campaign';
-function pick(p){return{s:p.get('utm_source')||p.get('ref'),c:p.get('utm_campaign')||p.get('camp')};}
+var SK='wt_acq_source',CK='wt_acq_campaign',MK='wt_acq_medium',TK='wt_acq_touch_v2',SS='wt_acq_session_v2';
+function pick(p){return{source:p.get('utm_source')||p.get('ref'),campaign:p.get('utm_campaign')||p.get('camp'),medium:p.get('utm_medium')};}
 var qp=new URLSearchParams(window.location.search);
 var a=pick(qp);
-if(!a.s&&!a.c){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=decodeURIComponent(st);var i=d.indexOf('?');var ip=new URLSearchParams(i>=0?d.slice(i+1):d);a=pick(ip);}catch(e){}}}
-if(a.s&&!localStorage.getItem(SK))localStorage.setItem(SK,a.s);
-if(a.c&&!localStorage.getItem(CK))localStorage.setItem(CK,a.c);
+if(!a.source&&!a.campaign&&!a.medium){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=decodeURIComponent(st);var i=d.indexOf('?');a=pick(new URLSearchParams(i>=0?d.slice(i+1):d));}catch(e){}}}
+if(!a.source&&!a.campaign&&!a.medium)return;
+try{sessionStorage.setItem(SS,JSON.stringify(a));}catch(e){}
+if(!localStorage.getItem(TK)&&!localStorage.getItem(SK)&&!localStorage.getItem(CK)){
+localStorage.setItem(TK,'1');
+if(a.source)localStorage.setItem(SK,a.source);
+if(a.campaign)localStorage.setItem(CK,a.campaign);
+if(a.medium)localStorage.setItem(MK,a.medium);
+}
 }catch(e){}})();`;
 // TikTok広告CV計測: ttclid + utm_* の着地時キャプチャ (last-touch)。
 // 上の first-touch (wt_acq_*) とは別系統・別キー (wt_ad_*)。ロジックは
