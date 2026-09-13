@@ -399,8 +399,8 @@ export function TakoFriendTabs({
               </button>
             );
           })}
-          {/* 友達がここへ増えていくことを示す、次の1人ぶんの空き枠。 */}
-          {invitePanel && (
+          {/* 回答0人のときだけ、最初の友達が入る空き枠を見せる。 */}
+          {invitePanel && tabs.length === 0 && (
             <div
               aria-hidden="true"
               className="flex w-14 flex-shrink-0 flex-col items-center gap-1"
