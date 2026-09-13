@@ -78,16 +78,64 @@ const SITE_URL =
 // 実スコアに最も近い画像を選び、本人側でも同じ見え方に揃える。
 const UNDERSTANDING_RESULTS = [
   {
+    score: 0,
+    image: "/result/understanding/understanding-0-transparent.webp",
+  },
+  {
+    score: 8,
+    image: "/result/understanding/understanding-8-transparent.webp",
+  },
+  {
+    score: 16,
+    image: "/result/understanding/understanding-16-transparent.webp",
+  },
+  {
+    score: 24,
+    image: "/result/understanding/understanding-24-transparent.webp",
+  },
+  {
     score: 32,
     image: "/result/understanding/understanding-32-transparent.webp",
+  },
+  {
+    score: 41,
+    image: "/result/understanding/understanding-41-transparent.webp",
+  },
+  {
+    score: 48,
+    image: "/result/understanding/understanding-48-transparent.webp",
   },
   {
     score: 54,
     image: "/result/understanding/understanding-54-transparent.webp",
   },
   {
+    score: 60,
+    image: "/result/understanding/understanding-60-transparent.webp",
+  },
+  {
+    score: 65,
+    image: "/result/understanding/understanding-65-transparent.webp",
+  },
+  {
+    score: 73,
+    image: "/result/understanding/understanding-73-transparent.webp",
+  },
+  {
     score: 82,
     image: "/result/understanding/understanding-82-transparent.webp",
+  },
+  {
+    score: 89,
+    image: "/result/understanding/understanding-89-transparent.webp",
+  },
+  {
+    score: 96,
+    image: "/result/understanding/understanding-96-transparent.webp",
+  },
+  {
+    score: 98,
+    image: "/result/understanding/understanding-98-transparent.webp",
   },
   {
     score: 99,

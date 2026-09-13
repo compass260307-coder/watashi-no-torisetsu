@@ -14,7 +14,9 @@ interface PageProps {
   }>;
 }
 
-const PREVIEW_SCORES = [32, 54, 82, 99, 100] as const;
+const PREVIEW_SCORES = [
+  0, 8, 16, 24, 32, 41, 48, 54, 60, 65, 73, 82, 89, 96, 98, 99, 100,
+] as const;
 const PREVIEW_SELF_SCORES = { O: 5.7, C: 5.7, E: 5.7, A: 5.7, N: 5.7 };
 const PREVIEW_PERCEIVED_SCORES = { O: 3.6, C: 7.5, E: 4.2, A: 7.2, N: 4.7 };
 
