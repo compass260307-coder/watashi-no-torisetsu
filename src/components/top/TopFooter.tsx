@@ -260,9 +260,9 @@ const CONTENT: Record<TopLocale, FooterContent> = {
       { label: "Sales & Refund Policy", href: "/en/legal/commerce" },
     ],
     legalAriaLabel: "Legal information",
-    copyright: "Alice Diagnosis",
+    copyright: "Alice Test",
     disclaimer:
-      "Alice Diagnosis is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
+      "Alice Test is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
     preparing: " (Coming soon)",
     takoBaseHref: "/en/tako",
   },

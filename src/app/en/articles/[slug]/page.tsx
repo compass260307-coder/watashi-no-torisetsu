@@ -39,15 +39,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "article",
       locale: "en_US",
       alternateLocale: ["ja_JP", "ko_KR"],
-      siteName: "Alice Diagnosis",
-      title: `${article.title} | Alice Diagnosis`,
+      siteName: "Alice Test",
+      title: `${article.title} | Alice Test`,
       description: article.description,
       url: `${SITE_URL}/en/articles/${article.slug}`,
       images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${article.title} | Alice Diagnosis`,
+      title: `${article.title} | Alice Test`,
       description: article.description,
       images: ["/characters/keyvisual.webp"],
     },
@@ -88,7 +88,7 @@ export default async function EnglishArticlePage({ params }: Props) {
       {
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
-        name: "Alice Diagnosis",
+        name: "Alice Test",
         url: SITE_URL,
       },
     ],
@@ -173,7 +173,7 @@ export default async function EnglishArticlePage({ params }: Props) {
                 </li>
               ))}
               <li><Link href="/en/types" className="text-[14px] font-bold underline underline-offset-4" style={{ color: SORA }}>Browse all 32 personality types →</Link></li>
-              <li><Link href="/en/about" className="text-[14px] font-bold underline underline-offset-4" style={{ color: SORA }}>How Alice Diagnosis works →</Link></li>
+              <li><Link href="/en/about" className="text-[14px] font-bold underline underline-offset-4" style={{ color: SORA }}>How Alice Test works →</Link></li>
             </ul>
           </nav>
         </div>

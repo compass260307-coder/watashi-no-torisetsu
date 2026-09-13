@@ -6,7 +6,7 @@ type PageProps = {
 };
 
 export const metadata: Metadata = {
-  title: { absolute: "Sign-in link error | Alice Diagnosis" },
+  title: { absolute: "Sign-in link error | Alice Test" },
   robots: { index: false, follow: false },
 };
 

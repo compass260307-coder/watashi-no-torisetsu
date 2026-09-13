@@ -332,7 +332,7 @@ const KOREAN_SYSTEM_PROMPT = `당신은 "운명의 설계도"라는 별자리 �
 }
 sections는 반드시 위 네 개를 같은 순서와 같은 id 및 title로 반환합니다.`;
 
-const ENGLISH_SYSTEM_PROMPT = `You write the personalized "Destiny Blueprint" for Alice Diagnosis. It is an entertainment and self-reflection reading, not a scientific diagnosis.
+const ENGLISH_SYSTEM_PROMPT = `You write the personalized "Destiny Blueprint" for Alice Test. It is an entertainment and self-reflection reading, not a scientific diagnosis.
 
 # Core method
 - Personality data states what the person is like. Astrology explores where inner tensions and patterns come from.

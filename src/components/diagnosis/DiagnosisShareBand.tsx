@@ -106,7 +106,7 @@ export function DiagnosisShareBand({
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(shareUrl, "facebook"))}`
     : undefined;
   const pinterestUrl = shareUrl
-    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL(isEn ? "/characters/keyvisual.webp" : "/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isEn ? "Alice Diagnosis | Free personality test" : isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
+    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL(isEn ? "/characters/keyvisual.webp" : "/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isEn ? "Alice Test | Free Big Five personality test" : isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
     : undefined;
 
   const handleNativeShare = async () => {

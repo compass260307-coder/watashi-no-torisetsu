@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import EnFriendDiagnosisPage from "@/components/en/EnFriendDiagnosisPage";
 
-const TITLE = "Describe a friend | Alice Diagnosis";
+const TITLE = "Describe a friend | Alice Test";
 const DESCRIPTION =
   "Share how you see your friend in 30 quick personality questions.";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     title: TITLE,
     description: DESCRIPTION,
     locale: "en_US",
-    siteName: "Alice Diagnosis",
+    siteName: "Alice Test",
     images: ["/characters/keyvisual.webp"],
   },
   twitter: {

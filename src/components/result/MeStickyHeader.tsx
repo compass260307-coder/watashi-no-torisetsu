@@ -472,13 +472,13 @@ export function MeStickyHeader({
   const title = code ? `${essence ?? ""} (${code})` : (essence ?? "");
   const inviteShareText =
     isEn
-      ? "Tell me how you see me! You can answer the friend-perspective test in Alice Diagnosis."
+      ? "Tell me how you see me! You can answer the friend-perspective test in Alice Test."
       : locale === "ko"
       ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
       : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
   const characterShareText =
     isEn
-      ? `Alice Diagnosis says I’m “${title}”!\nSee my character 👇`
+      ? `Alice Test says I’m “${title}”!\nSee my character 👇`
       : locale === "ko"
       ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;

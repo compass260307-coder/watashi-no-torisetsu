@@ -227,7 +227,7 @@ const CHECKOUT_COPY: Record<
   en: {
     couponId: "full-access-en-no-discount-usd",
     couponName: "Complete Edition",
-    productName: "Alice Diagnosis — Complete Edition",
+    productName: "Alice Test — Complete Edition",
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings with one payment.",
     submitMessage:
@@ -250,7 +250,7 @@ const CURRENT_FULL_ACCESS_COPY = {
       "한 번만 결제하면 궁합 진단·운명의 설계도·Alice와의 채팅 30회·타로를 포함한 완전판을 이용할 수 있어요. 30일 환불 보장.",
   },
   en: {
-    productName: "Alice Diagnosis — Complete Edition",
+    productName: "Alice Test — Complete Edition",
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings.",
     submitMessage:

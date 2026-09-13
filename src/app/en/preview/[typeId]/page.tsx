@@ -34,12 +34,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       locale: "en_US",
       alternateLocale: ["ja_JP", "ko_KR"],
       url: `${SITE_URL}${englishPath}`,
-      title: `${type.name} | Alice Diagnosis`,
+      title: `${type.name} | Alice Test`,
       description: type.oneLiner,
-      siteName: "Alice Diagnosis",
+      siteName: "Alice Test",
       images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024, alt: `${type.name} personality type` }],
     },
-    twitter: { card: "summary_large_image", title: `${type.name} | Alice Diagnosis`, description: type.oneLiner, images: ["/characters/keyvisual.webp"] },
+    twitter: { card: "summary_large_image", title: `${type.name} | Alice Test`, description: type.oneLiner, images: ["/characters/keyvisual.webp"] },
     robots: { index: true, follow: true },
   };
 }

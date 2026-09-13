@@ -88,7 +88,7 @@ export const EN_ARTICLES: EnArticle[] = [
     category: "Foundations",
     published: "2026-07-21",
     image: "/mascot/diagnosis-hero.png",
-    imageAlt: "Alice Diagnosis characters taking a personality test",
+    imageAlt: "Alice Test characters taking a personality test",
     lead: [
       "The OCEAN personality test is based on the Big Five, one of the most widely researched frameworks in personality psychology. It describes personality as a pattern across five continuous dimensions.",
       "This guide explains the five traits, the difference between dimensions and personality types, and why feedback from other people can add something a self-report cannot show on its own.",
@@ -117,7 +117,7 @@ export const EN_ARTICLES: EnArticle[] = [
         paragraphs: [
           "A 16-type test combines several either-or preferences into a memorable category. That makes results easy to discuss and share with friends.",
           "OCEAN keeps the underlying scores continuous. Someone near the center of a dimension can be described as such instead of being pushed to one side of a boundary.",
-          "Alice Diagnosis measures the five OCEAN dimensions, then turns the pattern into one of 32 characters. The scores preserve nuance while the character makes the result easier to remember and use.",
+          "Alice Test measures the five OCEAN dimensions, then turns the pattern into one of 32 characters. The scores preserve nuance while the character makes the result easier to remember and use.",
         ],
       },
       {
@@ -132,7 +132,7 @@ export const EN_ARTICLES: EnArticle[] = [
         paragraphs: [
           "Other people observe your behavior from a different angle. A habit that feels ordinary to you may be the exact quality they rely on most.",
           "Differences between self-ratings and friend ratings are not necessarily errors. They can show how intention, behavior, and impact diverge across situations.",
-          "That is why Alice Diagnosis combines your own answers with optional friend feedback: not to decide who is right, but to make the picture wider.",
+          "That is why Alice Test combines your own answers with optional friend feedback: not to decide who is right, but to make the picture wider.",
         ],
       },
     ],
@@ -154,7 +154,7 @@ export const EN_ARTICLES: EnArticle[] = [
       { heading: "The biggest difference: boxes or gradients", paragraphs: ["A type system draws boundaries and gives the resulting combination a name. It creates a clear identity that is easy to recognize.", "OCEAN measures five separate gradients. It can show that two people with the same broad pattern still differ meaningfully in degree."] },
       { heading: "The strengths and limits of 16 types", paragraphs: ["A type is memorable, social, and easy to turn into a shared language. It can prompt useful reflection quickly.", "Its boundary can also exaggerate small score differences. People close to the middle may receive different labels even when their answers are very similar."] },
       { heading: "The strengths and limits of OCEAN", paragraphs: ["Continuous scores preserve nuance and are well suited to research, comparison, and tracking gradual differences.", "Numbers alone can feel abstract. A technically precise graph may be harder to remember or discuss than a well-designed character or story."] },
-      { heading: "You can combine accuracy with enjoyment", paragraphs: ["Alice Diagnosis begins with OCEAN scores and uses a 32-character system to make the pattern approachable. The character summarizes the result; it does not replace the five scores beneath it.", "Use the character to start a conversation, then return to the dimensions when you want a more precise explanation of a strength, tension, or relationship."] },
+      { heading: "You can combine accuracy with enjoyment", paragraphs: ["Alice Test begins with OCEAN scores and uses a 32-character system to make the pattern approachable. The character summarizes the result; it does not replace the five scores beneath it.", "Use the character to start a conversation, then return to the dimensions when you want a more precise explanation of a strength, tension, or relationship."] },
     ],
   },
   factorArticle({
@@ -318,7 +318,7 @@ export const EN_ARTICLES: EnArticle[] = [
         { term: "3. Look for patterns", body: "Prioritize repeated observations and concrete examples over one surprising comment." },
       ] },
       { heading: "Anonymous and choice-based questions reduce awkwardness", paragraphs: ["People answer more honestly when they are not forced to compose a criticism or attach their name to every observation.", "Choice-based questions create a shared structure, while an optional message leaves room for nuance and kindness." ] },
-      { heading: "Try friend feedback in Alice Diagnosis", paragraphs: ["Complete your own OCEAN test, share your invitation link, and compare your self-view with the patterns in your friends’ answers.", "Use the result as the beginning of a conversation. A good insight should make understanding easier, not make anyone feel reduced to a label." ] },
+      { heading: "Try friend feedback in Alice Test", paragraphs: ["Complete your own OCEAN test, share your invitation link, and compare your self-view with the patterns in your friends’ answers.", "Use the result as the beginning of a conversation. A good insight should make understanding easier, not make anyone feel reduced to a label." ] },
     ],
   },
 ];

@@ -4,7 +4,7 @@ import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import { localizedAlternates } from "@/lib/locale-seo";
 
-const DESCRIPTION = "Learn how Alice Diagnosis combines a Big Five personality test with friend perspectives to help you see yourself more clearly.";
+const DESCRIPTION = "Learn how Alice Test combines a Big Five personality test with friend perspectives to help you see yourself more clearly.";
 
 export const metadata: Metadata = {
   title: "About",
@@ -29,7 +29,7 @@ export default function EnglishAboutPage() {
           <p className="text-sm font-black uppercase tracking-[0.14em] text-[#5B5BEF]">About the service</p>
           <h1 className="mt-4 max-w-[760px] text-[38px] font-black leading-tight sm:text-[54px]">Sometimes your friends notice parts of you that you cannot see yourself.</h1>
           <p className="mt-7 max-w-[720px] text-[17px] font-semibold leading-[1.9] text-[#66667D]">
-            Alice Diagnosis combines your own answers with perspectives from people who know you. The result is not a label or a clinical diagnosis—it is a friendly way to reflect, compare, and start better conversations.
+            Alice Test combines your own answers with perspectives from people who know you. The result is not a label or a clinical diagnosis—it is a friendly way to reflect, compare, and start better conversations.
           </p>
         </section>
 
@@ -69,7 +69,7 @@ export default function EnglishAboutPage() {
 
         <section className="mt-20">
           <h2 className="text-[28px] font-black">Questions or support</h2>
-          <p className="mt-4 text-base leading-[1.9] text-[#66667D]">The Service is operated from Japan by Ryunosuke Futami and the Alice Diagnosis Operations Team. Email <a className="font-bold underline underline-offset-2" href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>.</p>
+          <p className="mt-4 text-base leading-[1.9] text-[#66667D]">The Service is operated from Japan by Ryunosuke Futami and the Alice Test Operations Team. Email <a className="font-bold underline underline-offset-2" href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>.</p>
         </section>
       </main>
       <EnSiteFooter />

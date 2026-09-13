@@ -5,7 +5,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms governing the English version of Alice Diagnosis.",
+  description: "Terms governing the English version of Alice Test.",
   alternates: localizedAlternates("en", "/terms", "/ko/terms", "/en/terms"),
   robots: { index: true, follow: true },
 };
@@ -14,7 +14,7 @@ export default function EnglishTermsPage() {
   return (
     <EnLegalDocument title="Terms of Service" lastUpdated="September 10, 2026">
       <p>
-        These Terms of Service (“Terms”) govern the English version of Alice Diagnosis (“Service”), provided by Ryunosuke Futami / the Alice Diagnosis Operations Team (“Operator”). By using the Service, you agree to these Terms.
+        These Terms of Service (“Terms”) govern the English version of Alice Test (“Service”), provided by Ryunosuke Futami / the Alice Test Operations Team (“Operator”). By using the Service, you agree to these Terms.
       </p>
 
       <h2>1. Scope</h2>
@@ -107,7 +107,7 @@ export default function EnglishTermsPage() {
 
       <h2>14. Contact</h2>
       <ul>
-        <li>Operator: Ryunosuke Futami (Alice Diagnosis Operations Team)</li>
+        <li>Operator: Ryunosuke Futami (Alice Test Operations Team)</li>
         <li>Country of operation: Japan</li>
         <li>Email: <a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a></li>
       </ul>

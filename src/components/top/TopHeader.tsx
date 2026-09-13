@@ -135,7 +135,7 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     },
   },
   en: {
-    siteName: "Alice Diagnosis",
+    siteName: "Alice Test",
     homeHref: "/en",
     nav: [
       { label: "Personality test", href: "/en/diagnosis" },
