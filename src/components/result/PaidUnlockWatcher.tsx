@@ -79,9 +79,12 @@ export function PaidUnlockWatcher({
             selfReport?: boolean;
             premiumBundle?: boolean;
             astrologer?: boolean;
+            tarot?: boolean;
           };
           const unlocked =
-            returnTo === "aisho"
+            returnTo === "tarot"
+              ? data.tarot
+              : returnTo === "aisho"
               ? data.full
               : returnTo === "hoshiyomi" && product === "premium_bundle"
               ? data.astrologer
