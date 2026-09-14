@@ -30,6 +30,7 @@ export type AccessPaymentRow = {
     tarot_access_policy?: unknown;
     friend_access_policy?: unknown;
     aisho_access_policy?: unknown;
+    paywall_version?: unknown;
   } | null;
   paid_at?: string | null;
 };
@@ -193,6 +194,7 @@ export async function getAccessPurchaseEntitlements(
     purchaseIncludesTarotFeatures(
       row.payment_kind,
       row.metadata?.tarot_access_policy,
+      row.metadata?.paywall_version,
     ),
   );
   const friendFeatures = valid.some((row) =>

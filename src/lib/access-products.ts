@@ -106,6 +106,25 @@ export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE =
 export const TAROT_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 export const TAROT_ACCESS_POLICY_FULL_INCLUDED = "full_included_v1" as const;
 
+// 2026-09-07〜09-14 の Webhook は Checkout の tarot_access_policy を
+// payment_history.metadata へ転記できていなかった。該当期間に販売した完全版だけを
+// 明示的に列挙し、既存購入者の権利をコード反映だけで復元する。
+// 旧販売世代を広く解放しないよう、正規表現やバージョン番号の範囲判定は使わない。
+const FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS = new Set<string>([
+  "legacy_card_v30_full_499_destiny_alice30_tarot_student_299",
+  "legacy_card_v31_full_499_aisho_destiny_alice30_tarot_student_299",
+  "legacy_card_v32_full_899_aisho_destiny_alice30_tarot_student_299",
+  "legacy_card_v33_full_899_aisho_destiny_alice30_tarot_student_499",
+  "legacy_card_v34_full_899_student_499_aisho_included",
+  "legacy_card_v35_ja_full_499_single",
+  "legacy_card_v36_ja_full_899_single_no_discount",
+  "legacy_card_v37_ja_full_499_single_no_discount",
+  "legacy_card_v38_ja_full_699_single_no_discount",
+  "legacy_card_v39_ja_full_699_release_1290_list",
+  THREE_COURSE_PAYWALL_VERSION,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+]);
+
 // 友達機能を含まない旧 self_report 世代の印。
 // 現行の日韓学生プランは友達機能を含む。値が無い旧購入は購入時の権利を維持する。
 export const FRIEND_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
@@ -190,11 +209,17 @@ export function hoshiyomiChatCreditTarget(
 export function purchaseIncludesTarotFeatures(
   product: AccessProduct,
   policy: unknown,
+  paywallVersion?: unknown,
 ): boolean {
   if (product === "premium_bundle") return true;
+  if (product !== "full_access") return false;
+  if (policy === TAROT_ACCESS_POLICY_FULL_INCLUDED) return true;
+  // 明示的な非対象ポリシーは販売世代より優先する。復元するのは、Webhook の
+  // 転記漏れで policy 自体が存在しない既知の完全版購入だけ。
+  if (policy !== undefined && policy !== null) return false;
   return (
-    product === "full_access" &&
-    policy === TAROT_ACCESS_POLICY_FULL_INCLUDED
+    typeof paywallVersion === "string" &&
+    FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS.has(paywallVersion)
   );
 }
 
