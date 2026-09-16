@@ -9,7 +9,7 @@
 // DOM は旧 KoTopHeader 側の改良 (オーバーレイの button 化・ドロワーの
 // pointer-events ラッパー) を両ロケールに採用。
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
@@ -51,10 +51,10 @@ type HeaderContent = {
   currentLangLabel: string;
   languageOptions: {
     locale: SiteLocale | "en";
-    menuLabel: string;
-    drawerLabel: string;
-    flag: "ja" | "ko" | "en";
+    localLabel: string;
+    nativeLabel: string;
   }[];
+  languageModalTitle: string;
   ariaLangSwitch: string;
   ariaLangMenuClose: string;
   menuTitle: string;
@@ -84,9 +84,10 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     preparing: "（準備中）",
     currentLangLabel: "日本語",
     languageOptions: [
-      { locale: "ko", menuLabel: "한국어", drawerLabel: "한국어로 보기", flag: "ko" },
-      { locale: "en", menuLabel: "English", drawerLabel: "View in English", flag: "en" },
+      { locale: "en", localLabel: "英語", nativeLabel: "English" },
+      { locale: "ko", localLabel: "韓国語", nativeLabel: "한국어" },
     ],
+    languageModalTitle: "言語",
     ariaLangSwitch: "言語を切り替え",
     ariaLangMenuClose: "言語メニューを閉じる",
     menuTitle: "メニュー",
@@ -119,9 +120,10 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     preparing: `(${KO_TOP_CONTENT.navigation.preparing})`,
     currentLangLabel: "한국어",
     languageOptions: [
-      { locale: "ja", menuLabel: "日本語", drawerLabel: "日本語로 보기", flag: "ja" },
-      { locale: "en", menuLabel: "English", drawerLabel: "View in English", flag: "en" },
+      { locale: "ja", localLabel: "일본어", nativeLabel: "日本語" },
+      { locale: "en", localLabel: "영어", nativeLabel: "English" },
     ],
+    languageModalTitle: "언어",
     ariaLangSwitch: "언어 변경",
     ariaLangMenuClose: "언어 메뉴 닫기",
     menuTitle: KO_TOP_CONTENT.navigation.menu,
@@ -149,9 +151,10 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     preparing: " (Coming soon)",
     currentLangLabel: "English",
     languageOptions: [
-      { locale: "ja", menuLabel: "日本語", drawerLabel: "日本語で見る", flag: "ja" },
-      { locale: "ko", menuLabel: "한국어", drawerLabel: "한국어로 보기", flag: "ko" },
+      { locale: "ja", localLabel: "Japanese", nativeLabel: "日本語" },
+      { locale: "ko", localLabel: "Korean", nativeLabel: "한국어" },
     ],
+    languageModalTitle: "Language",
     ariaLangSwitch: "Change language",
     ariaLangMenuClose: "Close language menu",
     menuTitle: "Menu",
@@ -176,6 +179,8 @@ export default function TopHeader({
   const content = CONTENT[locale];
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const languageDialogRef = useRef<HTMLDialogElement>(null);
+  const languageTitleId = useId();
   const [loginOpen, setLoginOpen] = useState(false);
   // データリセットは誤操作防止のためドロワー内で確認ステップを挟む。
   const [confirmReset, setConfirmReset] = useState(false);
@@ -221,10 +226,23 @@ export default function TopHeader({
     setCurrentSearch(window.location.search);
   }, [pathname]);
 
-  const languageOptions = content.languageOptions.map((option) => ({
-    ...option,
-    href: localeSwitchPath(pathname, option.locale, ownerToken, currentSearch),
-  }));
+  const nativeLanguageNames: Record<TopLocale, string> = {
+    ja: "日本語",
+    ko: "한국어",
+    en: "English",
+  };
+  const languageOptions = [
+    {
+      locale,
+      localLabel: content.currentLangLabel,
+      nativeLabel: nativeLanguageNames[locale],
+      href: localeSwitchPath(pathname, locale, ownerToken, currentSearch),
+    },
+    ...content.languageOptions.map((option) => ({
+      ...option,
+      href: localeSwitchPath(pathname, option.locale, ownerToken, currentSearch),
+    })),
+  ];
 
   // 未確認・未購入は安全側のロック表示。購入済みと確認できた場合だけリンクを解放する。
   const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
@@ -275,6 +293,24 @@ export default function TopHeader({
     };
   }, [open]);
 
+  // 16Personalities と同様、言語一覧をページ中央のモーダルとして表示する。
+  // dialog 要素により背景を inert にし、Escape とフォーカス移動はブラウザ標準に委ねる。
+  useEffect(() => {
+    const dialog = languageDialogRef.current;
+    if (!dialog) return;
+
+    if (langOpen && !dialog.open) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      dialog.showModal();
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    } else if (!langOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [langOpen]);
+
   // 日本語はページ側でフォントが確定しないため FONT_STACK を明示。
   // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
   const fontStyle = isKo ? undefined : { fontFamily: FONT_STACK };
@@ -293,7 +329,7 @@ export default function TopHeader({
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white" style={fontStyle}>
-      <div className="flex w-full items-center gap-4 px-8 py-4">
+      <div className="flex w-full items-center gap-4 px-4 py-4 sm:px-8">
         {/* ロゴ (左) */}
         <Link
           href={content.homeHref}
@@ -374,63 +410,43 @@ export default function TopHeader({
             ),
           )}
 
-          {/* 言語切替。日本語/韓国語を相互に移動可能にする。 */}
-          <div className="relative">
-            <button
-              type="button"
-              aria-label={content.ariaLangSwitch}
-              aria-expanded={langOpen}
-              onClick={() => setLangOpen((v) => !v)}
-              className="flex items-center gap-1.5 whitespace-nowrap text-[16px] xl:text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-              style={{ color: NAVY }}
-            >
-              {currentFlag}
-              {content.currentLangLabel}
-              <CaretDown />
-            </button>
-
-            {langOpen && (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={() => setLangOpen(false)}
-                  aria-label={content.ariaLangMenuClose}
-                />
-                <div className="absolute right-0 top-10 z-50 w-40 overflow-hidden rounded-xl border border-[#2E2E5C]/10 bg-white py-1 shadow-[0_8px_24px_rgba(42,58,92,0.16)]">
-                  <div
-                    className="px-4 py-2.5 text-[15px] font-bold"
-                    style={{ color: "#5B5BEF" }}
-                  >
-                    {content.currentLangLabel}
-                  </div>
-                  {languageOptions.map((option) => (
-                    <Link
-                      key={option.locale}
-                      href={option.href}
-                      prefetch={navigationPrefetch}
-                      onClick={() => setLangOpen(false)}
-                      className="block px-4 py-2.5 text-[15px] text-[#2E2E5C] transition-colors hover:bg-[#F5F5FF]"
-                    >
-                      {option.menuLabel}
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {/* 言語切替。クリックすると中央の言語モーダルを開く。 */}
+          <button
+            type="button"
+            aria-label={content.ariaLangSwitch}
+            aria-haspopup="dialog"
+            aria-expanded={langOpen}
+            onClick={() => setLangOpen(true)}
+            className="flex items-center gap-1.5 whitespace-nowrap text-[16px] xl:text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
+            style={{ color: NAVY }}
+          >
+            {currentFlag}
+            {content.currentLangLabel}
+          </button>
         </div>
 
-        {/* SP: ハンバーガー (右) */}
-        <button
-          type="button"
-          aria-label={content.ariaMenuOpen}
-          aria-expanded={open}
-          onClick={() => setOpen(true)}
-          className="ml-auto flex h-10 w-10 items-center justify-center lg:hidden"
-        >
-          <MenuIcon />
-        </button>
+        {/* SP: 言語選択をハンバーガーメニューから独立させる。 */}
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <button
+            type="button"
+            aria-label={`${content.ariaLangSwitch}: ${content.currentLangLabel}`}
+            aria-haspopup="dialog"
+            aria-expanded={langOpen}
+            onClick={() => setLangOpen(true)}
+            className="flex h-10 min-w-10 items-center justify-center rounded-full transition-colors hover:bg-[#F1F2F6]"
+          >
+            {currentFlag}
+          </button>
+          <button
+            type="button"
+            aria-label={content.ariaMenuOpen}
+            aria-expanded={open}
+            onClick={() => setOpen(true)}
+            className="flex h-10 w-10 items-center justify-center"
+          >
+            <MenuIcon />
+          </button>
+        </div>
       </div>
 
       {/* SP: 横からスライドインするドロワー (右→左)。
@@ -549,29 +565,6 @@ export default function TopHeader({
                 </Link>
               ),
             )}
-            {/* SP の言語切替 */}
-            <div
-              className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold"
-              style={{ color: NAVY }}
-            >
-              {currentFlag}
-              {content.currentLangLabel}
-            </div>
-            {languageOptions.map((option) => (
-              <Link
-                key={option.locale}
-                href={option.href}
-                prefetch={navigationPrefetch}
-                tabIndex={open ? 0 : -1}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-1.5 py-3.5 text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-                style={{ color: NAVY }}
-              >
-                {flagIcon(option.flag)}
-                {option.drawerLabel}
-              </Link>
-            ))}
-
             {/* データをリセット (誤操作防止に確認ステップを挟む) */}
             <div className="mt-2 border-t border-[#2E2E5C]/10 pt-3">
               {!confirmReset ? (
@@ -618,6 +611,82 @@ export default function TopHeader({
           </div>
         </nav>
       </div>
+
+      {/* PC / SP 共通の言語選択モーダル。 */}
+      <dialog
+        ref={languageDialogRef}
+        aria-labelledby={languageTitleId}
+        onCancel={(event) => {
+          event.preventDefault();
+          setLangOpen(false);
+        }}
+        onClose={() => setLangOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setLangOpen(false);
+        }}
+        className="m-auto max-h-[min(720px,calc(100dvh-32px))] w-[min(640px,calc(100vw-32px))] overflow-hidden rounded-xl bg-transparent p-0 text-left shadow-[0_24px_80px_rgba(20,30,50,0.3)] backdrop:bg-[#273247]/45 backdrop:backdrop-blur-[1px]"
+        style={fontStyle}
+      >
+        <div className="overflow-hidden rounded-xl bg-white">
+          <div className="flex items-center justify-between border-b border-[#E7E8ED] px-6 py-5 sm:px-10 sm:py-7">
+            <h2
+              id={languageTitleId}
+              className="text-[26px] font-extrabold tracking-[-0.02em] sm:text-[32px]"
+              style={{ color: NAVY }}
+            >
+              {content.languageModalTitle}
+            </h2>
+            <button
+              type="button"
+              aria-label={content.ariaLangMenuClose}
+              onClick={() => setLangOpen(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9DCE4] text-[#7D8493] transition-colors hover:border-[#BFC3CE] hover:bg-[#F4F5F7] hover:text-[#34394A]"
+            >
+              <CloseIcon size={18} color="currentColor" />
+            </button>
+          </div>
+
+          <div className="max-h-[min(590px,calc(100dvh-130px))] overflow-y-auto py-2 sm:py-3">
+            {languageOptions.map((option) =>
+              option.locale === locale ? (
+                <div
+                  key={option.locale}
+                  aria-current="true"
+                  className="bg-[#F2F3F5] px-6 py-4 sm:px-10 sm:py-5"
+                >
+                  <span>
+                    <span className="block text-[18px] font-extrabold leading-tight text-[#34394A] sm:text-[20px]">
+                      {option.localLabel}
+                    </span>
+                    <span className="mt-1 block text-[15px] leading-tight text-[#717887] sm:text-[16px]">
+                      {option.nativeLabel}
+                    </span>
+                  </span>
+                </div>
+              ) : (
+                <Link
+                  key={option.locale}
+                  href={option.href}
+                  prefetch={navigationPrefetch}
+                  hrefLang={option.locale}
+                  lang={option.locale}
+                  onClick={() => setLangOpen(false)}
+                  className="block px-6 py-4 transition-colors hover:bg-[#F7F7F9] focus-visible:bg-[#F7F7F9] focus-visible:outline-none sm:px-10 sm:py-5"
+                >
+                  <span>
+                    <span className="block text-[18px] font-extrabold leading-tight text-[#34394A] sm:text-[20px]">
+                      {option.localLabel}
+                    </span>
+                    <span className="mt-1 block text-[15px] leading-tight text-[#717887] sm:text-[16px]">
+                      {option.nativeLabel}
+                    </span>
+                  </span>
+                </Link>
+              ),
+            )}
+          </div>
+        </div>
+      </dialog>
 
       {/* ログインモーダル (現在のページの上に重ねる) */}
       <LoginModal
@@ -713,20 +782,6 @@ function ResetIcon() {
   );
 }
 
-function CaretDown() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function MenuIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -739,10 +794,10 @@ function MenuIcon() {
   );
 }
 
-function CloseIcon() {
+function CloseIcon({ size = 24, color = NAVY }: { size?: number; color?: string }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g stroke={color} strokeWidth="2" strokeLinecap="round">
         <line x1="6" y1="6" x2="18" y2="18" />
         <line x1="18" y1="6" x2="6" y2="18" />
       </g>
