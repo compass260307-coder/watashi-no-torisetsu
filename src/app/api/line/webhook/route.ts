@@ -15,7 +15,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { consumeIdentifierRateLimit } from "@/lib/api-security";
 
 import {
-  aliceConversationStarterQuickReplies,
   matchAliceConversationStarter,
   quickReplies,
   replyLineMessages,
@@ -38,6 +37,7 @@ import {
   type LineAliceUser,
 } from "@/lib/line-alice";
 import {
+  buildLineLoveFootprintsPageUrl,
   buildLineMissionsPageUrl,
   buildLinePlusCheckoutUrl,
   buildLinePlusPageUrl,
@@ -64,9 +64,20 @@ import {
 import {
   FORTUNE_THEMES,
   generateThemeFortune,
-  getOrCreateDailyFortune,
+  getOrCreateDailyLoveFortune,
   type FortuneTheme,
 } from "@/lib/line-fortune";
+import {
+  createResultFromLineAishoSession,
+  deleteLineAishoSession,
+  formatLineAishoBirthDate,
+  loadLineAishoSession,
+  normalizeLineAishoBirthDate,
+  parseLineAishoRelationship,
+  startLineAishoSession,
+  updateLineAishoSession,
+  type LineAishoSession,
+} from "@/lib/line-aisho-session";
 import {
   LINE_TAROT_CARDS,
   dealLineTarotArrangement,
@@ -260,9 +271,7 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
         type: "text",
         text: linked ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE,
         quickReply: linked
-          ? lineAliceChatEnabled()
-            ? aliceConversationStarterQuickReplies()
-            : quickReplies("今日の占い", "診断結果")
+          ? quickReplies("今日の恋模様", "Aliceに恋愛相談")
           : quickReplies("使い方"),
       },
     ]);
@@ -328,7 +337,23 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
   }
 
   if (command) {
+    // 別メニューへ移ったら、途中の出生情報を残さず相性占いを終了する。
+    if (command !== "aisho") {
+      await deleteLineAishoSession(lineUserId);
+    }
     await handleLineCommand(command, lineUserId, replyToken, account.user_id);
+    return;
+  }
+  if (
+    isText &&
+    rawText &&
+    (await handleAishoSessionMessage(
+      lineUserId,
+      replyToken,
+      account.user_id,
+      rawText,
+    ))
+  ) {
     return;
   }
   if (isText) {
@@ -446,8 +471,365 @@ async function handleAliceChat(
   }
 }
 
-// リッチメニューv3のボタンはこのキーワードをそのままトークに送る
-// (上段:「自分のタイプ」「占いで遊ぶ」「使い方」/ 下段:「Alice Plus」「ミッション」「メニュー」「お問い合わせ」)
+// ============ ふたりの相性占い (Alice Plus限定・全編チャット) ============
+//
+// 呼び名 → 関係 → 相手の生年月日 → 本人の生年月日 → 確認、と一問ずつ聞く。
+// 複数のwebhookにまたがる途中入力だけline_aisho_sessionsへ30分保持し、鑑定後は即削除する。
+
+const AISHO_RELATIONSHIP_REPLIES = [
+  "片思い",
+  "恋人",
+  "夫婦・長い交際",
+  "復縁",
+  "その他",
+] as const;
+
+const AISHO_ERROR_MESSAGE =
+  "ごめんね、いま相性を読み取れなかったみたい。少し時間をおいて、もう一度「相性占い」と送ってみてね。";
+
+async function handleAishoCommand(
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+): Promise<void> {
+  const isPlus = await hasActiveLinePlus(userId);
+  if (!isPlus) {
+    if (!linePlusEnabled()) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "ふたりの相性占いは、いま準備を進めています。始まったら、ここでお知らせするね。",
+        },
+      ]);
+      return;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "ふたりの命式から恋の相性を読み解く「相性占い」は、Alice Plusで楽しめます♡",
+          "",
+          "▶ Alice Plusはこちら",
+          buildLinePlusPageUrl(lineUserId),
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
+
+  const started = await startLineAishoSession({ lineUserId, userId });
+  if (!started) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: AISHO_ERROR_MESSAGE },
+    ]);
+    return;
+  }
+  await recordLineEvent({
+    eventName: "line_aisho_started",
+    metadata: { line_user_id: lineUserId, user_id: userId },
+  });
+  await replyLineMessages(replyToken, [
+    {
+      type: "text",
+      text: [
+        "相性を見たい人がいるんだね。",
+        "まず、その人のことをなんて呼べばいい？",
+        "",
+        "途中でやめたくなったら「やめる」と送ってね。",
+      ].join("\n"),
+    },
+  ]);
+}
+
+async function updateAishoOrReplyError(
+  session: LineAishoSession,
+  step: LineAishoSession["step"],
+  data: LineAishoSession["data"],
+  replyToken: string,
+): Promise<boolean> {
+  const updated = await updateLineAishoSession(session, step, data);
+  if (!updated) {
+    await replyLineMessages(replyToken, [
+      { type: "text", text: AISHO_ERROR_MESSAGE },
+    ]);
+  }
+  return updated;
+}
+
+async function handleAishoSessionMessage(
+  lineUserId: string,
+  replyToken: string,
+  userId: string,
+  text: string,
+): Promise<boolean> {
+  const session = await loadLineAishoSession(lineUserId);
+  if (!session) return false;
+  if (session.userId !== userId) {
+    await deleteLineAishoSession(lineUserId);
+    return false;
+  }
+
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
+  if (["やめる", "中止", "キャンセル", "cancel"].includes(normalized)) {
+    await deleteLineAishoSession(lineUserId);
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "うん、ここでやめておくね。また気になったら、いつでも「相性占い」と送ってね🌙",
+      },
+    ]);
+    return true;
+  }
+
+  if (session.step === "partner_name") {
+    const partnerName = text.trim();
+    if (!partnerName || partnerName.length > 20 || /[\r\n]/.test(partnerName)) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "その人の呼び名を、20文字以内でひとつだけ教えてね。",
+        },
+      ]);
+      return true;
+    }
+    const data = { ...session.data, partnerName };
+    if (!(await updateAishoOrReplyError(session, "relationship", data, replyToken))) {
+      return true;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          `${partnerName}のことだね。`,
+          "今のふたりにいちばん近いものを選んでね。",
+        ].join("\n"),
+        quickReply: quickReplies(...AISHO_RELATIONSHIP_REPLIES),
+      },
+    ]);
+    return true;
+  }
+
+  if (session.step === "relationship") {
+    const relationship = parseLineAishoRelationship(text);
+    if (!relationship) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: "今のふたりにいちばん近いものを選んでね。",
+          quickReply: quickReplies(...AISHO_RELATIONSHIP_REPLIES),
+        },
+      ]);
+      return true;
+    }
+    const data = { ...session.data, relationship };
+    if (
+      !(await updateAishoOrReplyError(
+        session,
+        "partner_birth_date",
+        data,
+        replyToken,
+      ))
+    ) {
+      return true;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "ありがとう。",
+          `次に、${data.partnerName ?? "その人"}の生年月日を教えて。`,
+          "例：2000年1月1日",
+        ].join("\n"),
+      },
+    ]);
+    return true;
+  }
+
+  if (session.step === "partner_birth_date") {
+    const partnerBirthDate = normalizeLineAishoBirthDate(text);
+    if (!partnerBirthDate) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "生年月日をうまく読み取れなかったみたい。",
+            "「2000年1月1日」のように送ってみてね。",
+          ].join("\n"),
+        },
+      ]);
+      return true;
+    }
+    const data = { ...session.data, partnerBirthDate };
+    if (!(await updateAishoOrReplyError(session, "you_birth_date", data, replyToken))) {
+      return true;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          `${data.partnerName ?? "その人"}は${formatLineAishoBirthDate(partnerBirthDate)}だね。`,
+          "今度は、あなたの生年月日を教えて。",
+          "例：1999年12月24日",
+        ].join("\n"),
+      },
+    ]);
+    return true;
+  }
+
+  if (session.step === "you_birth_date") {
+    const youBirthDate = normalizeLineAishoBirthDate(text);
+    if (!youBirthDate) {
+      await replyLineMessages(replyToken, [
+        {
+          type: "text",
+          text: [
+            "生年月日をうまく読み取れなかったみたい。",
+            "「1999年12月24日」のように送ってみてね。",
+          ].join("\n"),
+        },
+      ]);
+      return true;
+    }
+    const data = { ...session.data, youBirthDate };
+    if (!(await updateAishoOrReplyError(session, "confirm", data, replyToken))) {
+      return true;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "最後に確認させてね。",
+          "",
+          `あなた：${formatLineAishoBirthDate(youBirthDate)}`,
+          `${data.partnerName ?? "お相手"}：${formatLineAishoBirthDate(data.partnerBirthDate!)}`,
+          "",
+          "これで合ってる？",
+        ].join("\n"),
+        quickReply: quickReplies("合ってる", "入力し直す"),
+      },
+    ]);
+    return true;
+  }
+
+  if (["入力し直す", "やり直す", "違う"].includes(normalized)) {
+    const data = {
+      partnerName: session.data.partnerName,
+      relationship: session.data.relationship,
+    };
+    if (
+      !(await updateAishoOrReplyError(
+        session,
+        "partner_birth_date",
+        data,
+        replyToken,
+      ))
+    ) {
+      return true;
+    }
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: `わかった。まず、${data.partnerName ?? "お相手"}の生年月日をもう一度教えてね。`,
+      },
+    ]);
+    return true;
+  }
+  if (!["合ってる", "はい", "ok", "これで占う"].includes(normalized)) {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: "生年月日が合っていたら「合ってる」、直したいときは「入力し直す」を選んでね。",
+        quickReply: quickReplies("合ってる", "入力し直す"),
+      },
+    ]);
+    return true;
+  }
+
+  const { data: user, error } = await supabaseAdmin
+    .from("users")
+    .select("display_name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[line-aisho] user lookup failed", { message: error.message });
+  }
+  try {
+    const result = createResultFromLineAishoSession({
+      session,
+      youName: user?.display_name?.trim() || "あなた",
+    });
+    // 鑑定結果を組み立てた時点で出生情報を削除。分析イベントにも保存しない。
+    await deleteLineAishoSession(lineUserId);
+    await recordLineEvent({
+      eventName: "line_aisho_generated",
+      metadata: {
+        line_user_id: lineUserId,
+        user_id: userId,
+        relationship: session.data.relationship,
+        score: result.score,
+        surface: "chat",
+      },
+    });
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "ふたりの命式を見てみたよ…🌙",
+          "",
+          `♡ ふたりの相性は ${result.score}%`,
+          `「${result.title}」`,
+          "",
+          result.lead,
+          "",
+          `${result.charts.you.name}：日主 ${result.charts.you.dayMaster}`,
+          `${result.charts.partner.name}：日主 ${result.charts.partner.dayMaster}`,
+        ].join("\n"),
+      },
+      {
+        type: "text",
+        text: ["♡ 惹かれ合う理由", "", result.sections.attraction].join("\n"),
+      },
+      {
+        type: "text",
+        text: [
+          "△ すれ違いやすいところ",
+          "",
+          result.sections.friction,
+        ].join("\n"),
+      },
+      {
+        type: "text",
+        text: [
+          "✦ ふたりに合う伝え方",
+          "",
+          result.sections.communication,
+        ].join("\n"),
+      },
+      {
+        type: "text",
+        text: [
+          "→ 今のふたりの一歩",
+          "",
+          result.sections.nextStep,
+          "",
+          "この結果を見て気になったことがあったら、そのまま聞かせてね。",
+          "※四柱推命をもとにしたエンタメ鑑定です。相手の気持ちや未来を断定するものではありません。",
+        ].join("\n"),
+        quickReply: quickReplies("Aliceに恋愛相談", "別の人を占う"),
+      },
+    ]);
+  } catch (caught) {
+    console.error("[line-aisho] generation failed", {
+      message: caught instanceof Error ? caught.message : String(caught),
+    });
+    await replyLineMessages(replyToken, [
+      { type: "text", text: AISHO_ERROR_MESSAGE },
+    ]);
+  }
+  return true;
+}
+
+// リッチメニューのメッセージ型ボタンは、このキーワードをそのままトークに送る。
 // 旧メニューのキーワードも互換のため残す
 type LineCommand =
   | "plus"
@@ -459,7 +841,9 @@ type LineCommand =
   | "contact"
   | "mission"
   | "menu"
-  | "tarot";
+  | "tarot"
+  | "aisho"
+  | "footprints";
 
 function matchLineCommand(text: string): LineCommand | null {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
@@ -483,10 +867,28 @@ function matchLineCommand(text: string): LineCommand | null {
   if (["使い方", "ヘルプ", "help"].includes(normalized)) {
     return "help";
   }
-  if (["aliceと話す", "アリスと話す"].includes(normalized)) {
+  if (
+    [
+      "aliceに恋愛相談",
+      "アリスに恋愛相談",
+      "恋愛相談",
+      "恋の相談",
+      "aliceと話す",
+      "アリスと話す",
+    ].includes(normalized)
+  ) {
     return "talk";
   }
-  if (["占いで遊ぶ", "今日の占い", "占い", "うらない"].includes(normalized)) {
+  if (
+    [
+      "今日の恋模様",
+      "恋模様",
+      "占いで遊ぶ",
+      "今日の占い",
+      "占い",
+      "うらない",
+    ].includes(normalized)
+  ) {
     return "fortune";
   }
   if (["友達に招待", "招待", "友達診断"].includes(normalized)) {
@@ -501,8 +903,27 @@ function matchLineCommand(text: string): LineCommand | null {
   if (["メニュー", "めにゅー", "menu", "すべての機能"].includes(normalized)) {
     return "menu";
   }
-  if (["タロット占い", "タロット", "たろっと"].includes(normalized)) {
+  if (
+    ["恋のタロット", "タロット占い", "タロット", "たろっと"].includes(
+      normalized,
+    )
+  ) {
     return "tarot";
+  }
+  if (
+    [
+      "相性占い",
+      "ふたりの相性占い",
+      "相性",
+      "あいしょう占い",
+      "もう一度占う",
+      "別の人を占う",
+    ].includes(normalized)
+  ) {
+    return "aisho";
+  }
+  if (["恋の足あと", "恋の足跡", "恋愛の足あと", "恋愛の足跡"].includes(normalized)) {
+    return "footprints";
   }
   return null;
 }
@@ -698,37 +1119,6 @@ async function handleThemeFortune(
   }
 }
 
-// JSTの時間帯 (0-23時)
-function jstHour(now: Date = new Date()): number {
-  return new Date(now.getTime() + 9 * 60 * 60 * 1000).getUTCHours();
-}
-
-function talkStarterMessage(): string {
-  const hour = jstHour();
-  if (hour >= 5 && hour < 11) {
-    return [
-      "おはようございます!きてくれてうれしいな。",
-      "今日はどんな1日になりそうですか?予定のことでも、いまの気分でも、聞かせてください。",
-    ].join("\n");
-  }
-  if (hour >= 11 && hour < 17) {
-    return [
-      "こんにちは。ひと息つく時間ですか?",
-      "今日ここまでで、ちょっと気になったことや、誰かに言いたかったこと、ありませんか。",
-    ].join("\n");
-  }
-  if (hour >= 17 && hour < 23) {
-    return [
-      "おかえりなさい。今日はどんな1日でしたか?",
-      "楽しかったことでも、もやもやでも、どちらでも。ゆっくり聞きますよ。",
-    ].join("\n");
-  }
-  return [
-    "こんな時間まで、おつかれさまです。",
-    "眠れない夜は、頭の中にあることをそのまま吐き出しちゃうのもいいですよ。なんでもどうぞ。",
-  ].join("\n");
-}
-
 async function handleLineCommand(
   command: LineCommand,
   lineUserId: string,
@@ -743,13 +1133,25 @@ async function handleLineCommand(
 
   if (command === "talk") {
     await replyLineMessages(replyToken, [
-      { type: "text", text: talkStarterMessage() },
+      {
+        type: "text",
+        text: [
+          "どうしたの？",
+          "どんな恋のことで、心が揺れてるの？",
+          "うまくまとまってなくても大丈夫。ゆっくり聞かせて🌙",
+        ].join("\n"),
+      },
     ]);
     return;
   }
 
   if (command === "menu") {
-    await replyLineMessages(replyToken, [buildMenuFlexMessage()]);
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: `メニューはこちらから開けます。\n${menuLiffUrl("menu") ?? `${resolveSiteUrl()}/line/menu`}`,
+      },
+    ]);
     return;
   }
 
@@ -777,7 +1179,8 @@ async function handleLineCommand(
           "今日あったことでも、もやもやでも、なんでもどうぞ🌙",
           "",
           "下のメニューからは:",
-          "🔮 占いで遊ぶ — 今日の占い・タロット",
+          "💗 今日の恋模様 — 1日1回の恋の流れ",
+          "💕 相性占い — 生年月日からふたりの相性を見る",
           "📖 自分のタイプ — 診断結果を見返す",
           "🎯 ミッション — 友達を招待してプレゼント",
           "",
@@ -790,6 +1193,24 @@ async function handleLineCommand(
 
   // ここから下は連携済み前提 (呼び出し側で保証)。型ガードとして早期return
   if (!userId) return;
+
+  if (command === "aisho") {
+    await handleAishoCommand(lineUserId, replyToken, userId);
+    return;
+  }
+
+  if (command === "footprints") {
+    await replyLineMessages(replyToken, [
+      {
+        type: "text",
+        text: [
+          "うれしかった日も、迷った夜も。恋の足あとに、そっと残しておけるよ。",
+          buildLineLoveFootprintsPageUrl(lineUserId),
+        ].join("\n"),
+      },
+    ]);
+    return;
+  }
 
   if (command === "fortune") {
     const { data: user, error } = await supabaseAdmin
@@ -806,7 +1227,7 @@ async function handleLineCommand(
     // 初回生成は数秒かかるので「・・・」表示 (キャッシュ時は一瞬で消える)
     await startLineLoadingAnimation(lineUserId);
     try {
-      const fortune = await getOrCreateDailyFortune({
+      const fortune = await getOrCreateDailyLoveFortune({
         lineUserId,
         user: {
           id: user.id,
@@ -819,13 +1240,13 @@ async function handleLineCommand(
         {
           type: "text",
           text: [
-            "🔮 今日の占い",
+            "💗 今日の恋模様",
             "",
             fortune,
             "",
-            "気になるテーマは、下のボタンから深く見られますよ。タロットも引けます🃏",
+            "心に浮かんだ人や言葉があったら、そのまま聞かせてね。",
           ].join("\n"),
-          quickReply: quickReplies("恋愛運", "友達運", "勉強運", "タロット占い"),
+          quickReply: quickReplies("Aliceに恋愛相談", "恋のタロット"),
         },
       ]);
     } catch (caught) {
@@ -835,7 +1256,7 @@ async function handleLineCommand(
       await replyLineMessages(replyToken, [
         {
           type: "text",
-          text: "ごめんなさい、星がうまく読めませんでした…。少し時間をおいて、もう一度試してみてください。",
+          text: "ごめんなさい、今日は恋の空模様がうまく見えなかったみたい…。少し時間をおいて、もう一度会いにきてね。",
         },
       ]);
     }
@@ -947,8 +1368,8 @@ async function handleLineCommand(
           "Alice Plusでもっと楽しめること✨",
           "",
           "Aliceとたっぷり話せる💬",
-          "恋愛・友達・勉強の深掘り占い🔮",
-          "3枚から選ぶタロット占い🃏",
+          "四柱推命で見る、ふたりの相性占い💕",
+          "3枚から選ぶ恋のタロット🃏",
           "",
           "▶ Alice Plusはこちら",
           buildLinePlusPageUrl(lineUserId),
@@ -992,9 +1413,9 @@ async function handleLineCommand(
   ]);
 }
 
-// ============ タロット占い (Alice Plus限定・インタラクティブ1枚引き) ============
+// ============ 恋のタロット (Alice Plus限定・インタラクティブ1枚引き) ============
 //
-// 「タロット占い」→ 裏向き3枚のFlexピッカー → postback で選んだ位置のカードを公開。
+// 「恋のタロット」→ 裏向き3枚のFlexピッカー → postback で選んだ位置のカードを公開。
 // 並びは userId+JST日付で決定的 (dealLineTarotArrangement)・最初に選んだ1枚を
 // recordLineEventOnce でロック = その日はどう選び直しても同じカード (儀式性を守る)。
 // スクリプト読みなのでAIコストゼロ・無料枠非消費。
@@ -1013,7 +1434,7 @@ function buildTarotPickerMessage(): LineFlexMessage {
   const backUrl = `${resolveSiteUrl()}/tarot/line/back.jpg`;
   return {
     type: "flex",
-    altText: "タロット占い | 気になる1枚を選んでください",
+    altText: "恋のタロット | 心惹かれる1枚を選んでください",
     contents: {
       type: "bubble",
       body: {
@@ -1024,7 +1445,7 @@ function buildTarotPickerMessage(): LineFlexMessage {
         contents: [
           {
             type: "text",
-            text: "🃏 今日の1枚",
+            text: "🃏 恋のタロット",
             weight: "bold",
             size: "md",
             color: "#FFD97A",
@@ -1032,7 +1453,7 @@ function buildTarotPickerMessage(): LineFlexMessage {
           },
           {
             type: "text",
-            text: "聞きたいことを心に浮かべて、気になるカードを1枚選んでください",
+            text: "いま気になっている恋を心に浮かべて、惹かれるカードを1枚選んでね",
             wrap: true,
             size: "xs",
             color: "#FFFFFFCC",
@@ -1072,7 +1493,7 @@ async function replyTarotUpsell(
     await replyLineMessages(replyToken, [
       {
         type: "text",
-        text: "タロット占いは、いま準備を進めています。始まったら、ここでお知らせしますね。",
+        text: "恋のタロットは、いま準備を進めています。始まったら、ここでお知らせしますね。",
       },
     ]);
     return;
@@ -1081,7 +1502,7 @@ async function replyTarotUpsell(
     {
       type: "text",
       text: [
-        "3枚から選ぶタロット占いは、Alice Plusで楽しめます🃏",
+        "心惹かれる1枚を選ぶ「恋のタロット」は、Alice Plusで楽しめます🃏",
         "",
         "▶ Alice Plusはこちら",
         buildLinePlusPageUrl(lineUserId),
@@ -1106,11 +1527,11 @@ async function handleTarotCommand(
       {
         type: "text",
         text: [
-          "今日の1枚は、もう引いていますよ🃏",
+          "今日の恋のカードは、もう引いていますよ🃏",
           "",
           formatLineTarotReading(drawn.card),
         ].join("\n"),
-        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+        quickReply: quickReplies("Aliceに恋愛相談", "今日の恋模様"),
       },
     ]);
     return;
@@ -1151,11 +1572,11 @@ async function handleTarotPick(
       {
         type: "text",
         text: [
-          "今日の1枚は、最初に選んだこのカードですよ🃏",
+          "今日の恋のカードは、最初に選んだこの1枚ですよ🃏",
           "",
           formatLineTarotReading(card),
         ].join("\n"),
-        quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+        quickReply: quickReplies("Aliceに恋愛相談", "今日の恋模様"),
       },
     ]);
     return;
@@ -1170,146 +1591,16 @@ async function handleTarotPick(
     {
       type: "text",
       text: formatLineTarotReading(card),
-      quickReply: quickReplies("恋愛運", "友達運", "勉強運"),
+      quickReply: quickReplies("Aliceに恋愛相談", "今日の恋模様"),
     },
   ]);
 }
 
-// 「メニュー」= 全機能一覧のFlex。物理ボタンを増やさず、新機能はまずここに足す
-// (よく押されるようになったらリッチメニュー本体へ昇格させる運用・2026-09-02 オーナー方針)。
-// 2列グリッドで縦を詰め、ページ系(タイプ/ミッション/プラン)はLIFF直リンク混載。
+// トークで「メニュー」と送られた場合の、メニューページへの案内リンク。
 
 function menuLiffUrl(dest: string): string | null {
   const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
   return liffId ? `https://liff.line.me/${liffId}?dest=${dest}` : null;
-}
-
-// Flex標準ボタンはラベルを太字にできないため、タップ可能な角丸ボックス+
-// 太字テキストでセルを自作する (色・太さ・角丸を自由に制御できる)
-function menuCell(
-  label: string,
-  action: Record<string, unknown>,
-  options: { primary?: boolean } = {},
-): Record<string, unknown> {
-  return {
-    type: "box",
-    layout: "vertical",
-    backgroundColor: options.primary ? "#5B5BEF" : "#EDEAFB",
-    cornerRadius: "10px",
-    paddingTop: "12px",
-    paddingBottom: "12px",
-    flex: 1,
-    action,
-    contents: [
-      {
-        type: "text",
-        text: label,
-        weight: "bold",
-        size: "sm",
-        color: options.primary ? "#FFFFFF" : "#2E2E5C",
-        align: "center",
-      },
-    ],
-  };
-}
-
-function menuMsgButton(
-  label: string,
-  keyword: string,
-): Record<string, unknown> {
-  return menuCell(label, { type: "message", label, text: keyword });
-}
-
-// ページ系はその場でサイトを開く (LIFF未設定時はキーワード送信にフォールバック)
-function menuPageButton(
-  label: string,
-  dest: string,
-  fallbackKeyword: string,
-): Record<string, unknown> {
-  const uri = menuLiffUrl(dest);
-  if (!uri) return menuMsgButton(label, fallbackKeyword);
-  return menuCell(label, { type: "uri", label, uri });
-}
-
-function menuRow(
-  ...buttons: Array<Record<string, unknown>>
-): Record<string, unknown> {
-  return {
-    type: "box",
-    layout: "horizontal",
-    spacing: "sm",
-    margin: "sm",
-    contents: buttons,
-  };
-}
-
-function buildMenuFlexMessage(): LineFlexMessage {
-  return {
-    type: "flex",
-    altText: "メニュー | できること一覧",
-    contents: {
-      type: "bubble",
-      header: {
-        type: "box",
-        layout: "vertical",
-        backgroundColor: "#241A4F",
-        paddingAll: "16px",
-        contents: [
-          {
-            type: "text",
-            text: "✦ MENU ✦",
-            size: "xxs",
-            weight: "bold",
-            color: "#FFD97A",
-            align: "center",
-          },
-          {
-            type: "text",
-            text: "メニュー",
-            size: "lg",
-            weight: "bold",
-            color: "#FFFFFF",
-            align: "center",
-            margin: "xs",
-          },
-        ],
-      },
-      body: {
-        type: "box",
-        layout: "vertical",
-        paddingAll: "16px",
-        contents: [
-          menuRow(
-            menuCell(
-              "Aliceと話す",
-              { type: "message", label: "Aliceと話す", text: "Aliceと話す" },
-              { primary: true },
-            ),
-          ),
-          menuRow(
-            menuMsgButton("今日の占い", "今日の占い"),
-            menuMsgButton("タロット", "タロット占い"),
-          ),
-          menuRow(
-            menuMsgButton("恋愛運", "恋愛運"),
-            menuMsgButton("友達運", "友達運"),
-          ),
-          menuRow(
-            menuMsgButton("勉強運", "勉強運"),
-            menuPageButton("診断結果", "me", "診断結果"),
-          ),
-          menuRow(
-            menuPageButton("ミッション", "missions", "ミッション"),
-            menuPageButton("プラン", "plus", "プラン"),
-          ),
-          menuRow(
-            menuMsgButton("使い方", "使い方"),
-            menuMsgButton("お問い合わせ", "お問い合わせ"),
-          ),
-        ],
-      },
-    },
-  };
 }
 
 // 全角数字・空白・ハイフン混じりでもコードとして受け付ける
@@ -1395,7 +1686,7 @@ async function handleLinkCode(
         chatEnabled,
       }),
       ...(chatEnabled
-        ? { quickReply: aliceConversationStarterQuickReplies() }
+        ? { quickReply: quickReplies("今日の恋模様", "Aliceに恋愛相談") }
         : {}),
     },
   ]);

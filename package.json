@@ -31,6 +31,7 @@
     "ai": "^7.0.64",
     "circular-natal-horoscope-js": "^1.1.0",
     "html-to-image": "^1.11.13",
+    "lunar-javascript": "^1.7.7",
     "nanoid": "^5.1.11",
     "next": "^16.2.6",
     "pdf-lib": "^1.17.1",

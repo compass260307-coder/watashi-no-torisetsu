@@ -4,6 +4,8 @@
 // dest:
 //   me   - 自分の結果ページ (/me/<owner_token>)
 //   plus - Alice Plus 紹介LP (署名付き /line/plus)
+//   menu - 全機能一覧 (/line/menu、未連携でも閲覧可能)
+//   love-footprints - 恋の足あと (/line/love-footprints)
 //
 // 検証はLINE公式の2段階: ①/oauth2/v2.1/verify でトークンが自分のLoginチャネル発行か
 // 確認 → ②/v2/profile で userId を取得。env: LINE_LOGIN_CHANNEL_ID
@@ -13,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { consumeRateLimit } from "@/lib/api-security";
 import { recordLineEvent } from "@/lib/line-events";
 import {
+  buildLineLoveFootprintsPageUrl,
   buildLineMissionsPageUrl,
   buildLinePlusPageUrl,
 } from "@/lib/line-plus";
@@ -35,7 +38,12 @@ export async function POST(request: NextRequest) {
   }
   const accessToken = body.accessToken ?? "";
   const dest =
-    body.dest === "plus" || body.dest === "missions" ? body.dest : "me";
+    body.dest === "plus" ||
+    body.dest === "missions" ||
+    body.dest === "menu" ||
+    body.dest === "love-footprints"
+      ? body.dest
+      : "me";
   if (!accessToken) {
     return NextResponse.json({ error: "missing_token" }, { status: 400 });
   }
@@ -78,6 +86,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
+  if (dest === "menu") {
+    await recordLineEvent({
+      eventName: "line_liff_route",
+      metadata: { dest, line_user_id: lineUserId },
+    });
+    return NextResponse.json({ url: `${resolveSiteUrl()}/line/menu` });
+  }
+
   const { data: account } = await supabaseAdmin
     .from("line_accounts")
     .select("user_id")
@@ -92,6 +108,8 @@ export async function POST(request: NextRequest) {
     url = buildLinePlusPageUrl(lineUserId);
   } else if (dest === "missions") {
     url = buildLineMissionsPageUrl(lineUserId);
+  } else if (dest === "love-footprints") {
+    url = buildLineLoveFootprintsPageUrl(lineUserId);
   } else {
     const { data: user } = await supabaseAdmin
       .from("users")

@@ -1,73 +1,64 @@
-// Alice Plus (LINE) Phase 4: リッチメニュー作成・画像アップロード・既定設定。
+// Alice恋愛特化リッチメニューの作成・画像アップロード・既定設定。
 //
 // 使い方:
-//   node --env-file=.env.local scripts/line-rich-menu.mjs [image.png]
+//   node scripts/line-rich-menu.mjs --validate-only
+//   node --env-file=.env.local scripts/line-rich-menu.mjs --keep-old
 //
-// ブランド帯 (非タップ) + 上段3セル + 下段4セル。画像内の表示順と
-// areas の順序は richmenu-config.json と scripts/line-rich-menu-image.py に揃える。
-// 画像は 2500x1686 PNG (生成は scripts/line-rich-menu-image.py)。
-// 再実行すると新しいメニューを作って既定を差し替え、古い alice-main-menu-* を削除する。
+// 上段3セル + 下段4セル。「Alice Plus」は既存のLIFF経由申込ページ
+// (?dest=plus)、「ミッション」は既存のミッションページを開く。画像内の表示順とareasの順序は
+// richmenu-config.json / scripts/line-rich-menu-image.py に揃える。
 
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const VALIDATE_ONLY = process.argv[2] === "--validate-only";
-const imageArgument = process.argv[VALIDATE_ONLY ? 3 : 2];
+const PROJECT_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
+const args = process.argv.slice(2);
+const validateOnly = args.includes("--validate-only");
+const keepOld = args.includes("--keep-old");
+const imageOptionIndex = args.indexOf("--image");
+const imageArgument =
+  imageOptionIndex >= 0 ? args[imageOptionIndex + 1] : undefined;
 const imagePath = imageArgument
   ? path.resolve(imageArgument)
-  : path.join(PROJECT_ROOT, "public/line/alice-rich-menu.png");
+  : path.join(PROJECT_ROOT, "public/line/alice-rich-menu-love-v5.jpg");
 const configPath = path.join(PROJECT_ROOT, "richmenu-config.json");
 
-const TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-if (!VALIDATE_ONLY && !TOKEN) {
+const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+if (!validateOnly && !token) {
   console.error("LINE_CHANNEL_ACCESS_TOKEN is not set");
   process.exit(1);
 }
 
-// 「自分のタイプ」「Alice Plus」はLIFF経由でその場でサイトを開く (2026-09-02)。
-// LIFFがタップした本人を特定し、/liff → /api/line/liff-route が本人のURLへ流す
-const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-if (!VALIDATE_ONLY && !LIFF_ID) {
+const template = JSON.parse(await readFile(configPath, "utf8"));
+const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+if (!validateOnly && !liffId) {
   console.error("NEXT_PUBLIC_LINE_LIFF_ID is not set");
   process.exit(1);
 }
-const liffIdForMenu = LIFF_ID ?? "validate-only";
+const resolvedLiffId = liffId ?? "validate-only";
 
-const menuTemplate = JSON.parse(await readFile(configPath, "utf8"));
-const MENU_NAME_PREFIX = menuTemplate.name;
-if (typeof MENU_NAME_PREFIX !== "string" || !MENU_NAME_PREFIX) {
+if (typeof template.name !== "string" || !template.name) {
   throw new Error("richmenu-config.json must contain a non-empty name");
 }
-const MENU = {
-  ...menuTemplate,
-  name: `${MENU_NAME_PREFIX}-${new Date().toISOString().slice(0, 10)}`,
-  areas: menuTemplate.areas.map((area) => ({
+const menuNamePrefix = template.name;
+const menu = {
+  ...template,
+  name: `${menuNamePrefix}-${new Date().toISOString().slice(0, 10)}`,
+  areas: template.areas.map((area) => ({
     ...area,
     action:
       area.action.type === "uri"
         ? {
             ...area.action,
-            uri: area.action.uri.replace("{{LIFF_ID}}", liffIdForMenu),
+            uri: area.action.uri.replace("{{LIFF_ID}}", resolvedLiffId),
           }
         : area.action,
   })),
 };
-
-const headers = { Authorization: `Bearer ${TOKEN}` };
-const json = { ...headers, "Content-Type": "application/json" };
-
-async function api(base, path, options = {}) {
-  const res = await fetch(`${base}${path}`, options);
-  const body = await res.text();
-  if (!res.ok) {
-    throw new Error(`${options.method ?? "GET"} ${path} -> ${res.status}: ${body}`);
-  }
-  return body ? JSON.parse(body) : {};
-}
-
-const image = await readFile(imagePath);
 
 function inspectImage(buffer) {
   const isPng =
@@ -85,15 +76,25 @@ function inspectImage(buffer) {
   const isJpeg = buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8;
   if (isJpeg) {
     const startOfFrameMarkers = new Set([
-      0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7,
-      0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+      0xc0,
+      0xc1,
+      0xc2,
+      0xc3,
+      0xc5,
+      0xc6,
+      0xc7,
+      0xc9,
+      0xca,
+      0xcb,
+      0xcd,
+      0xce,
+      0xcf,
     ]);
     let offset = 2;
 
     while (offset < buffer.length) {
       while (offset < buffer.length && buffer[offset] === 0xff) offset += 1;
       if (offset >= buffer.length) break;
-
       const marker = buffer[offset];
       offset += 1;
       if (marker === 0xd9 || marker === 0xda) break;
@@ -117,7 +118,7 @@ function inspectImage(buffer) {
   throw new Error("rich menu image must be PNG or JPEG");
 }
 
-function validateMenu(menu, imageInfo, imageBytes) {
+function validateMenu(imageInfo, imageBytes) {
   if (imageBytes > 1_000_000) {
     throw new Error(
       `rich menu image is ${imageBytes} bytes; LINE limit is 1000000 bytes`,
@@ -142,16 +143,22 @@ function validateMenu(menu, imageInfo, imageBytes) {
     { x: 1875, y: 1180, width: 625, height: 506 },
   ];
   const expectedActions = [
-    { type: "uri", uri: `https://liff.line.me/${liffIdForMenu}?dest=me` },
-    { type: "message", text: "占いで遊ぶ" },
-    { type: "message", text: "使い方" },
-    { type: "uri", uri: `https://liff.line.me/${liffIdForMenu}?dest=plus` },
+    { type: "message", text: "Aliceに恋愛相談" },
+    { type: "message", text: "今日の恋模様" },
+    { type: "message", text: "恋のタロット" },
     {
       type: "uri",
-      uri: `https://liff.line.me/${liffIdForMenu}?dest=missions`,
+      uri: `https://liff.line.me/${resolvedLiffId}?dest=plus`,
     },
-    { type: "message", text: "メニュー" },
-    { type: "message", text: "お問い合わせ" },
+    { type: "message", text: "相性占い" },
+    {
+      type: "uri",
+      uri: `https://liff.line.me/${resolvedLiffId}?dest=love-footprints`,
+    },
+    {
+      type: "uri",
+      uri: `https://liff.line.me/${resolvedLiffId}?dest=missions`,
+    },
   ];
   if (menu.areas.length !== expectedAreaBounds.length) {
     throw new Error(
@@ -167,7 +174,7 @@ function validateMenu(menu, imageInfo, imageBytes) {
       Number.isInteger(width) &&
       Number.isInteger(height) &&
       x >= 0 &&
-      y >= 540 &&
+      y >= 0 &&
       width > 0 &&
       height > 0 &&
       x + width <= menu.size.width &&
@@ -181,9 +188,7 @@ function validateMenu(menu, imageInfo, imageBytes) {
       width !== expected.width ||
       height !== expected.height
     ) {
-      throw new Error(
-        `rich menu area ${index} no longer matches scripts/line-rich-menu-image.py`,
-      );
+      throw new Error(`rich menu area ${index} does not match the image layout`);
     }
     if (JSON.stringify(area.action) !== JSON.stringify(expectedActions[index])) {
       throw new Error(`unexpected rich menu action at index ${index}`);
@@ -191,50 +196,75 @@ function validateMenu(menu, imageInfo, imageBytes) {
   }
 }
 
+const image = await readFile(imagePath);
 const imageInfo = inspectImage(image);
-validateMenu(MENU, imageInfo, image.length);
+validateMenu(imageInfo, image.length);
 const imageContentType =
   imageInfo.format === "jpeg" ? "image/jpeg" : "image/png";
 console.log(
-  `validated: ${imageInfo.width}x${imageInfo.height} ${imageInfo.format.toUpperCase()}, ${image.length} bytes, ${MENU.areas.length} areas`,
+  `validated: ${imageInfo.width}x${imageInfo.height} ${imageInfo.format.toUpperCase()}, ${image.length} bytes, ${menu.areas.length} areas`,
 );
+if (validateOnly) process.exit(0);
 
-if (VALIDATE_ONLY) process.exit(0);
+const headers = { Authorization: `Bearer ${token}` };
+const jsonHeaders = { ...headers, "Content-Type": "application/json" };
 
-// 1) 作成
+async function api(base, apiPath, options = {}) {
+  const response = await fetch(`${base}${apiPath}`, options);
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(
+      `${options.method ?? "GET"} ${apiPath} -> ${response.status}: ${body}`,
+    );
+  }
+  return body ? JSON.parse(body) : {};
+}
+
 const { richMenuId } = await api("https://api.line.me", "/v2/bot/richmenu", {
   method: "POST",
-  headers: json,
-  body: JSON.stringify(MENU),
+  headers: jsonHeaders,
+  body: JSON.stringify(menu),
 });
 console.log("created:", richMenuId);
 
-// 2) 画像アップロード (api-data ホスト)
-await api("https://api-data.line.me", `/v2/bot/richmenu/${richMenuId}/content`, {
-  method: "POST",
-  headers: { ...headers, "Content-Type": imageContentType },
-  body: image,
-});
+await api(
+  "https://api-data.line.me",
+  `/v2/bot/richmenu/${richMenuId}/content`,
+  {
+    method: "POST",
+    headers: { ...headers, "Content-Type": imageContentType },
+    body: image,
+  },
+);
 console.log("image uploaded");
 
-// 3) 全ユーザーの既定に設定
 await api("https://api.line.me", `/v2/bot/user/all/richmenu/${richMenuId}`, {
   method: "POST",
   headers,
 });
 console.log("set as default");
 
-// 4) 古い alice-main-menu-* を掃除
-const { richmenus } = await api("https://api.line.me", "/v2/bot/richmenu/list", {
-  headers,
-});
-for (const menu of richmenus ?? []) {
-  if (menu.richMenuId !== richMenuId && menu.name.startsWith(MENU_NAME_PREFIX)) {
-    await api("https://api.line.me", `/v2/bot/richmenu/${menu.richMenuId}`, {
-      method: "DELETE",
-      headers,
-    });
-    console.log("deleted old:", menu.richMenuId, menu.name);
+if (!keepOld) {
+  const { richmenus } = await api("https://api.line.me", "/v2/bot/richmenu/list", {
+    headers,
+  });
+  for (const existingMenu of richmenus ?? []) {
+    if (
+      existingMenu.richMenuId !== richMenuId &&
+      existingMenu.name.startsWith(menuNamePrefix)
+    ) {
+      await api(
+        "https://api.line.me",
+        `/v2/bot/richmenu/${existingMenu.richMenuId}`,
+        { method: "DELETE", headers },
+      );
+      console.log(
+        "deleted old:",
+        existingMenu.richMenuId,
+        existingMenu.name,
+      );
+    }
   }
 }
+
 console.log("done");
