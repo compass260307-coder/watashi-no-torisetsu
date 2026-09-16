@@ -4,23 +4,20 @@
     "height": 1686
   },
   "selected": false,
-  "name": "alice-main-menu",
+  "name": "alice-love-menu",
   "chatBarText": "メニュー",
   "areas": [
     {
       "bounds": { "x": 0, "y": 540, "width": 833, "height": 640 },
-      "action": {
-        "type": "uri",
-        "uri": "https://liff.line.me/{{LIFF_ID}}?dest=me"
-      }
+      "action": { "type": "message", "text": "Aliceに恋愛相談" }
     },
     {
       "bounds": { "x": 833, "y": 540, "width": 833, "height": 640 },
-      "action": { "type": "message", "text": "占いで遊ぶ" }
+      "action": { "type": "message", "text": "今日の恋模様" }
     },
     {
       "bounds": { "x": 1666, "y": 540, "width": 834, "height": 640 },
-      "action": { "type": "message", "text": "使い方" }
+      "action": { "type": "message", "text": "恋のタロット" }
     },
     {
       "bounds": { "x": 0, "y": 1180, "width": 625, "height": 506 },
@@ -31,18 +28,21 @@
     },
     {
       "bounds": { "x": 625, "y": 1180, "width": 625, "height": 506 },
+      "action": { "type": "message", "text": "相性占い" }
+    },
+    {
+      "bounds": { "x": 1250, "y": 1180, "width": 625, "height": 506 },
+      "action": {
+        "type": "uri",
+        "uri": "https://liff.line.me/{{LIFF_ID}}?dest=love-footprints"
+      }
+    },
+    {
+      "bounds": { "x": 1875, "y": 1180, "width": 625, "height": 506 },
       "action": {
         "type": "uri",
         "uri": "https://liff.line.me/{{LIFF_ID}}?dest=missions"
       }
-    },
-    {
-      "bounds": { "x": 1250, "y": 1180, "width": 625, "height": 506 },
-      "action": { "type": "message", "text": "メニュー" }
-    },
-    {
-      "bounds": { "x": 1875, "y": 1180, "width": 625, "height": 506 },
-      "action": { "type": "message", "text": "お問い合わせ" }
     }
   ]
 }

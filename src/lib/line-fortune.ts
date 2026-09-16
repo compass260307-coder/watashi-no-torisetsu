@@ -1,6 +1,6 @@
-// Alice Plus (LINE) Phase 4: 今日の占い (リッチメニュー) とテーマ別深掘り占い (Plus特典)。
+// Alice Plus (LINE) Phase 4: 今日の恋模様 (リッチメニュー) とテーマ別深掘り占い (Plus特典)。
 //
-// 今日の占い: Big Five × 日付で Alice が今日のひとことを占う。JST 1日1回だけ生成し、
+// 今日の恋模様: Big Five × 日付で Alice が今日の恋の流れを占う。JST 1日1回だけ生成し、
 // 同日中の再タップは line_daily_fortunes のキャッシュを返す。生成時は line_chat_messages
 // にも assistant 発言として残し、占いの続きをそのまま会話できるようにする
 // (user 行は書かないので無料枠は消費しない)。
@@ -51,7 +51,7 @@ function dialogueModel(): string {
   return value;
 }
 
-export async function getOrCreateDailyFortune(input: {
+export async function getOrCreateDailyLoveFortune(input: {
   lineUserId: string;
   user: LineAliceUser;
 }): Promise<string> {
@@ -68,7 +68,7 @@ export async function getOrCreateDailyFortune(input: {
   const model = dialogueModel();
   const result = await callClaude({
     system: buildDailyInstructions(input.user),
-    prompt: `今日の日付: ${fortuneDate}\nこの人の今日の占いを書いてください。`,
+    prompt: `今日の日付: ${fortuneDate}\nこの人の「今日の恋模様」を書いてください。`,
     model,
     maxTokens: MAX_OUTPUT_TOKENS,
     temperature: 0.9,
@@ -102,7 +102,7 @@ export async function getOrCreateDailyFortune(input: {
 
   // 占いを会話履歴に残す (assistant のみ = 無料枠は消費しない)。
   // 生成できた1回だけ書くので、キャッシュ再タップで履歴は増えない
-  await persistAssistantOnly(input.lineUserId, input.user.id, `今日の占い: ${text}`);
+  await persistAssistantOnly(input.lineUserId, input.user.id, `今日の恋模様: ${text}`);
   return text;
 }
 
@@ -184,18 +184,26 @@ function personaLines(user: LineAliceUser): string[] {
 
 function buildDailyInstructions(user: LineAliceUser): string {
   return [
-    "あなたはAlice。このユーザー専属の占い師です。診断結果を深く理解したうえで、その人にしか当てはまらない「今日の占い」をLINEトークで届けてください。",
+    "あなたはAlice。このユーザー専属の恋愛占い師です。診断結果を深く理解したうえで、その人にしか当てはまらない「今日の恋模様」をLINEトークで届けてください。",
     "占いはエンタメとして扱い、診断は未来を決める材料ではなく、その人らしい心の動きや選び方を読み解く手がかりとして使ってください。",
     "",
     "書き方のルール:",
-    "- 全体で4〜5文。箇条書き・見出し・Markdownは使わない。絵文字は1〜2個まで",
+    "- 次の5行だけを、この順番で書く。Markdownや前置きは使わない",
+    "  恋の流れ: 端的な状態と、上向きなら↗・穏やかなら→・慎重なら↘のいずれか",
+    "  今日は: 今日起こりやすい心の動きや状況を、具体的な1文で",
+    "  おすすめ: 連絡・会話・出会いなど、今日取りやすい行動を具体的な1文で",
+    "  気をつけること: 今日避けたい考え方や行動を具体的な1文で",
+    "  今日の恋の一歩: すぐ実行できる小さな行動を1つだけ",
     "- 個人プロフィールから今日の流れに最も関係する性格傾向を1つだけ選ぶ。タイプ名・数値・アルファベット・診断文の引用は出さない",
-    "- 「あなたは周りを優先する傾向があるから、今日は自分の本音を後回しにしやすいかも」のように、性格傾向と今日の流れのつながりを本人に分かる言葉で明示する",
+    "- 「あなたは相手を優先する傾向があるから、今日は自分の本音を後回しにしやすいかも」のように、性格傾向と今日の恋の流れを本人に分かる言葉でつなぐ",
     "- 強みだけで褒めて終わらず、その強みゆえに迷いやすい点もやさしく読み解く。ただし断定せず「かもしれません」「今日は〜しやすそう」のように余白を残す",
-    "- 最後の1文は、その人の傾向に合う「今日のラッキーアクション」をひとつ、具体的で小さな行動として提案する",
+    "- 好きな人や恋人がいるとは限らない。片思い・交際中・復縁・出会いなどの状況や、本人・相手の性別を勝手に決めつけない",
+    "- 恋愛状況が分からない場合は、「気になる人がいるなら」「恋人がいるなら」のような条件付きの言い方にする",
+    "- 相手の気持ちや未来を事実のように断定しない。出会いを求めていない人にも無理なく受け取れる内容にする",
     "- 名前は自然に必要な場合だけ1回まで使う。専属感を出すために毎回名前から始めない",
     "- 断定・脅し・不安を煽る表現は使わない。医療・金銭・受験などの重大な判断には触れない",
-    "- 同じ言い回しを毎日繰り返さないよう、日付から連想を広げて変化をつける",
+    "- 抽象的な比喩だけで終わらせず、読んだ人が今日何をすればよいか分かる内容にする",
+    "- 同じ言い回しや行動を毎日繰り返さないよう、日付から連想を広げて変化をつける",
     "",
     ...personaLines(user),
   ].join("\n");

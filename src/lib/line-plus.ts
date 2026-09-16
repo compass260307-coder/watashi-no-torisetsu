@@ -144,6 +144,11 @@ export function buildLineMissionsPageUrl(lineUserId: string): string {
   return `${resolveSiteUrl()}/line/missions?${signedLinePlusParams(lineUserId)}`;
 }
 
+/** Alice Plus「恋の足あと」ページの本人確認済みリンク。 */
+export function buildLineLoveFootprintsPageUrl(lineUserId: string): string {
+  return `${resolveSiteUrl()}/line/love-footprints?${signedLinePlusParams(lineUserId)}`;
+}
+
 export function verifyLinePlusToken(input: {
   lineUserId: string;
   expiresAtMs: number;
