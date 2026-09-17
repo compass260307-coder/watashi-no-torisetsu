@@ -562,9 +562,13 @@ export default function TopFooter({
             </p>
           </div>
 
-          {/* SNS 公式アカウント (未開設 = href "#" は非表示) */}
+          {/* SNS 公式アカウント。英語版では国内向けの公式LINEを表示しない。 */}
           <div className="flex items-center gap-3">
-            {SOCIALS.filter((s) => s.href !== "#").map((s) => (
+            {SOCIALS.filter(
+              (social) =>
+                social.href !== "#" &&
+                !(isEn && social.href.startsWith("https://line.me/")),
+            ).map((s) => (
               <a
                 key={s.label.ja}
                 href={s.href}
