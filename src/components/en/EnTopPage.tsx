@@ -3,6 +3,7 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import TopHero from "@/components/top/TopHero";
 import TopStats from "@/components/top/TopStats";
+import EnSeoContent from "@/components/en/EnSeoContent";
 
 const DIAGNOSED_COUNT = 1_000_000;
 
@@ -13,6 +14,7 @@ export default function EnTopPage() {
       <TopHeader locale="en" />
       <TopHero locale="en" />
       <TopStats diagnosedCount={DIAGNOSED_COUNT} locale="en" />
+      <EnSeoContent />
       <TopFooter locale="en" />
     </main>
   );

@@ -40,6 +40,16 @@ const COPY = {
     primaryLabel: "Your view",
     selfLabelTail: "’s self-view",
   },
+  id: {
+    titleLead: "Cara kamu melihat ",
+    titleTail: "",
+    gapLead: "Perbedaan terbesar ada pada ",
+    selfLead: " menilai dirinya ",
+    answerLead: "sementara penilaianmu ",
+    answerTail: ".",
+    primaryLabel: "Pandanganmu",
+    selfLabelTail: " menurut dirinya",
+  },
 } as const;
 
 interface FriendGapSectionProps {
@@ -112,7 +122,7 @@ export function FriendGapSection({
   locale = "ja",
 }: FriendGapSectionProps) {
   const copy = COPY[locale];
-  if (locale === "en") {
+  if (locale === "en" || locale === "id") {
     return (
       <section className="mx-auto max-w-[1080px] pb-8 pt-12 md:pb-12 md:pt-16">
         <div className="mb-5 md:mb-7">
@@ -123,13 +133,14 @@ export function FriendGapSection({
           </h2>
         </div>
         <section
-          aria-label="Five personality dimensions"
+          aria-label={locale === "id" ? "Lima dimensi kepribadian" : "Five personality dimensions"}
           className="rounded-[22px] bg-[#F4F4FE] px-5 py-6 md:rounded-[28px] md:px-8 md:py-8"
         >
           <EnFriendComparison
             selfScores={selfScores}
             friendScores={perceivedScores}
-            friendLabel="Your view"
+            friendLabel={locale === "id" ? "Pandanganmu" : "Your view"}
+            locale={locale}
           />
         </section>
       </section>

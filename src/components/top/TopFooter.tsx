@@ -46,7 +46,7 @@ type FooterContent = {
   takoBaseHref: string;
 };
 
-type TopLocale = SiteLocale | "en";
+type TopLocale = SiteLocale | "en" | "id";
 
 const CONTENT: Record<TopLocale, FooterContent> = {
   ja: {
@@ -260,11 +260,51 @@ const CONTENT: Record<TopLocale, FooterContent> = {
       { label: "Sales & Refund Policy", href: "/en/legal/commerce" },
     ],
     legalAriaLabel: "Legal information",
-    copyright: "Alice Test",
+    copyright: "Alice Personalities",
     disclaimer:
-      "Alice Test is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
+      "Alice Personalities is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
     preparing: " (Coming soon)",
     takoBaseHref: "/en/tako",
+  },
+  id: {
+    columns: [
+      {
+        title: "Tes",
+        links: [
+          { label: "Tes kepribadian", href: "/id/diagnosis" },
+          { label: "Tes dari teman", href: "/id/tako", tako: true },
+          { label: "Tipe kepribadian", href: "/id/types" },
+          { label: "Kecocokan", href: "/id/aisho" },
+          { label: "Alice", href: "/id/hoshiyomi", course: "astrologer" },
+          { label: "Peta Takdir", href: "/id/unmei", course: "unmei" },
+          { label: "Tarot Alice", href: "/id/tarot", course: "tarot" },
+        ],
+      },
+      {
+        title: "Layanan",
+        links: [
+          { label: "Tentang layanan", href: "/id/about" },
+          { label: "Artikel", href: "/id/articles" },
+          { label: "Perusahaan", href: "https://sora-team.com", external: true, newTab: true },
+        ],
+      },
+      {
+        title: "Dukungan",
+        links: [
+          { label: "Hubungi kami", href: "mailto:support@watashi-torisetsu.com", external: true },
+        ],
+      },
+    ],
+    legalLinks: [
+      { label: "Ketentuan", href: "/id/terms" },
+      { label: "Kebijakan Privasi", href: "/id/privacy" },
+      { label: "Informasi Penjualan & Pengembalian Dana", href: "/id/legal/commerce" },
+    ],
+    legalAriaLabel: "Informasi hukum",
+    copyright: "Alice Test",
+    disclaimer: "Alice Test adalah pengalaman kepribadian berdasarkan model Big Five dan penilaian teman. Hasilnya ditujukan untuk refleksi diri, bukan diagnosis medis atau psikologis.",
+    preparing: " (Segera hadir)",
+    takoBaseHref: "/id/tako",
   },
 };
 
@@ -278,7 +318,7 @@ const SOCIALS: {
   badgeLabel?: Record<TopLocale, string>;
 }[] = [
   {
-    label: { ja: "Instagram", ko: "Instagram", en: "Instagram" },
+    label: { ja: "Instagram", ko: "Instagram", en: "Instagram", id: "Instagram" },
     href: "https://www.instagram.com/torisetsu_app",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -289,7 +329,7 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "X (旧Twitter)", ko: "X", en: "X" },
+    label: { ja: "X (旧Twitter)", ko: "X", en: "X", id: "X" },
     href: "https://x.com/torisetsu_app",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -298,7 +338,7 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "TikTok", ko: "TikTok", en: "TikTok" },
+    label: { ja: "TikTok", ko: "TikTok", en: "TikTok", id: "TikTok" },
     href: "https://www.tiktok.com/@torisetsu_app",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -307,9 +347,9 @@ const SOCIALS: {
     ),
   },
   {
-    label: { ja: "公式LINE", ko: "LINE 공식 계정", en: "Official LINE account" },
+    label: { ja: "公式LINE", ko: "LINE 공식 계정", en: "Official LINE account", id: "Akun resmi LINE" },
     href: "https://line.me/R/ti/p/%40867domoo",
-    badgeLabel: { ja: "公式LINE", ko: "공식 LINE", en: "Official LINE" },
+    badgeLabel: { ja: "公式LINE", ko: "공식 LINE", en: "Official LINE", id: "LINE Resmi" },
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -334,8 +374,9 @@ export default function TopFooter({
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const content = CONTENT[locale];
-  const pathname = usePathname() ?? (isKo ? "/ko" : "/");
+  const pathname = usePathname() ?? (isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : "/");
 
   // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
   //   localStorage の owner_token があれば /tako/[token]、無ければロック表示
@@ -472,7 +513,7 @@ export default function TopFooter({
                     href={l.href}
                     prefetch={navigationPrefetch}
                     aria-label={`${l.label}${
-                      isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                      isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
                     }`}
                     className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
                     style={{ color: "#9BA3B4" }}

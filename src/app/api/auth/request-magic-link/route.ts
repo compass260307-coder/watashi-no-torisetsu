@@ -85,7 +85,13 @@ export async function POST(request: NextRequest) {
   }
   const body = parsedBody.value;
   const locale =
-    body.locale === "ko" ? "ko" : body.locale === "en" ? "en" : "ja";
+    body.locale === "ko"
+      ? "ko"
+      : body.locale === "en"
+        ? "en"
+        : body.locale === "id"
+          ? "id"
+          : "ja";
 
   if (!isValidEmail(body.email)) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });

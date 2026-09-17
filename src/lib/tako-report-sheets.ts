@@ -35,13 +35,15 @@ import {
 import { LOVE_BY_TYPE_32 } from "./love-by-type-32";
 import { buildDimensionGaps } from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { buildKoSelfSections } from "@/i18n/ko/me";
+import { buildIdSelfSections } from "@/i18n/id/me";
 import {
   KO_LOVE_BY_TYPE_32,
   KO_PERCEIVED_BY_TYPE_32,
 } from "@/i18n/ko/me-content-32";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
 
 const REPORT_AXIS_ORDER: readonly BigFiveDimension[] = ["O", "C", "E", "A", "N"];
 
@@ -104,6 +106,45 @@ const KO_REPORT_AXIS_COPY: typeof REPORT_AXIS_COPY = {
   },
 };
 
+const ID_REPORT_AXIS_COPY: typeof REPORT_AXIS_COPY = {
+  O: { label: "Keterbukaan pada pengalaman baru", low: "Menghargai yang sudah dikenal", high: "Menikmati dunia baru" },
+  C: { label: "Cara menjalankan sesuatu", low: "Fleksibel mengikuti keadaan", high: "Terencana dan konsisten" },
+  E: { label: "Arah energi", low: "Pulih lewat waktu sendiri", high: "Bersemangat bersama orang lain" },
+  A: { label: "Cara berhubungan dengan orang", low: "Mengutamakan kejujuran dan logika", high: "Mengutamakan harmoni dan kepedulian" },
+  N: { label: "Kepekaan terhadap rangsangan", low: "Menerima dengan tenang", high: "Peka terhadap perubahan kecil" },
+};
+
+function buildIdLoveItems(
+  scores: Partial<Record<BigFiveDimension, number>>,
+  mode: "strength" | "hint",
+): MoteCheckItem[] {
+  const ranked = REPORT_AXIS_ORDER.map((key) => ({
+    key,
+    score: key === "N" ? 10 - (scores[key] ?? 5) : (scores[key] ?? 5),
+  })).sort((a, b) =>
+    mode === "strength" ? b.score - a.score : a.score - b.score,
+  );
+  return ranked.slice(0, mode === "strength" ? 5 : 3).flatMap(({ key }) => {
+    const axis = ID_REPORT_AXIS_COPY[key];
+    if (mode === "strength") {
+      return [{
+        title: axis.label,
+        body: `${axis.high} membuat kehadiran Anda terasa menarik dan mudah diingat dalam hubungan dekat.`,
+      }];
+    }
+    return [
+      {
+        title: `Tunjukkan sisi ${axis.label.toLowerCase()} Anda`,
+        body: `Bagikan satu contoh konkret agar sisi ini lebih mudah dipahami tanpa perlu menebak.`,
+      },
+      {
+        title: `Beri ruang untuk ${axis.label.toLowerCase()}`,
+        body: `Langkah kecil yang konsisten dapat membuat sisi ini terasa lebih alami dalam hubungan.`,
+      },
+    ];
+  });
+}
+
 export type TakoReportOverviewAxis = {
   key: BigFiveDimension;
   label: string;
@@ -134,7 +175,7 @@ export type TakoReportOverview = {
 
 function replaceCollectiveViewer(
   text: string,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ): string {
   if (locale === "ko") {
     return text
@@ -142,6 +183,13 @@ function replaceCollectiveViewer(
       .replaceAll("{B}님", "친구")
       .replaceAll("【B】", "친구들")
       .replaceAll("{B}", "친구들");
+  }
+  if (locale === "id") {
+    return text
+      .replaceAll("【B】さん", "teman-teman")
+      .replaceAll("{B}さん", "teman-teman")
+      .replaceAll("【B】", "teman-teman")
+      .replaceAll("{B}", "teman-teman");
   }
   return text
     .replaceAll("【B】さん", "友達")
@@ -156,7 +204,7 @@ function replaceCollectiveViewer(
  */
 export function buildTakoReportOverview(
   data: OwnerReportData,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): TakoReportOverview | null {
   const friendScores = data.friendAvgScores;
   if (!friendScores || data.friends.length === 0) return null;
@@ -177,7 +225,11 @@ export function buildTakoReportOverview(
     const friendRange =
       values.length > 1 ? Math.max(...values) - Math.min(...values) : 0;
     const copy =
-      locale === "ko" ? KO_REPORT_AXIS_COPY[key] : REPORT_AXIS_COPY[key];
+      locale === "ko"
+        ? KO_REPORT_AXIS_COPY[key]
+        : locale === "id"
+          ? ID_REPORT_AXIS_COPY[key]
+          : REPORT_AXIS_COPY[key];
     return {
       key,
       label: copy.label,
@@ -195,14 +247,31 @@ export function buildTakoReportOverview(
   const perceived =
     locale === "ko"
       ? KO_PERCEIVED_BY_TYPE_32[type32]
+      : locale === "id"
+        ? null
       : perceivedContentFor(type32);
   const koType = locale === "ko" ? KO_RESULT_TYPES[type32] : null;
+  const idType = locale === "id" ? ID_RESULT_TYPES[type32] : null;
+  const idStrengths = [...axes]
+    .sort((a, b) => Math.abs(b.friendPercent - 50) - Math.abs(a.friendPercent - 50))
+    .slice(0, 4)
+    .map((axis) => ({
+      title: axis.label,
+      body: `Teman-teman melihat sisi ini pada tingkat ${axis.friendPercent}%. ${axis.friendLeaning} menjadi salah satu kekuatan yang paling mudah mereka kenali dalam diri Anda.`,
+    }));
+  const idSurprises = [...axes]
+    .sort((a, b) => b.diffPoints - a.diffPoints)
+    .slice(0, 4)
+    .map((axis) => ({
+      title: axis.label,
+      body: `Ada selisih ${axis.diffPoints} poin antara penilaian diri dan pandangan teman. Perbedaan ini bukan benar atau salah, melainkan petunjuk tentang sisi Anda yang terlihat berbeda dari luar.`,
+    }));
 
   return {
     type32,
     group: thirtyTwoGroup(type32),
-    essence: koType?.essence ?? thirtyTwoEssence(type32),
-    charName: koType?.name ?? thirtyTwoName(type32),
+    essence: koType?.essence ?? idType?.essence ?? thirtyTwoEssence(type32),
+    charName: koType?.name ?? idType?.name ?? thirtyTwoName(type32),
     imageSrc: preferCutImage(thirtyTwoImagePath(type32)),
     friendCount: data.friends.length,
     agreement: deep.agreement,
@@ -211,16 +280,26 @@ export function buildTakoReportOverview(
         ? buildKoSelfSections(type32, friendScores)[0].body
             .split("\n\n")
             .filter(Boolean)
+        : locale === "id"
+          ? buildIdSelfSections(type32, friendScores)[0].body
+              .split("\n\n")
+              .filter(Boolean)
         : perceivedManualFor(type32).split("\n\n").filter(Boolean),
     gapParas: buildMinnaProse(deep, undefined, locale),
-    strengths: (perceived?.strengths ?? []).slice(0, 4).map((item) => ({
-      title: item.title,
-      body: replaceCollectiveViewer(item.body, locale),
-    })),
-    surprises: (perceived?.surprises ?? []).slice(0, 4).map((item) => ({
-      title: item.title,
-      body: replaceCollectiveViewer(item.body, locale),
-    })),
+    strengths:
+      locale === "id"
+        ? idStrengths
+        : (perceived?.strengths ?? []).slice(0, 4).map((item) => ({
+            title: item.title,
+            body: replaceCollectiveViewer(item.body, locale),
+          })),
+    surprises:
+      locale === "id"
+        ? idSurprises
+        : (perceived?.surprises ?? []).slice(0, 4).map((item) => ({
+            title: item.title,
+            body: replaceCollectiveViewer(item.body, locale),
+          })),
     axes,
     biggestGap,
     mostSharedAxis: hasSeveralViewers ? byRange[0] : null,
@@ -262,7 +341,7 @@ export type TakoReportSheet = {
 /** OwnerReportData から友達1人ごとのレポート章データを組み立てる。 */
 export function buildTakoReportSheets(
   data: OwnerReportData,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): TakoReportSheet[] {
   return data.friends.map((f) => {
     const type32 =
@@ -273,6 +352,10 @@ export function buildTakoReportSheets(
         ? rawName && rawName !== "ともだち"
           ? `${rawName}님`
           : "친구"
+        : locale === "id"
+          ? rawName && rawName !== "ともだち" && rawName !== "Teman"
+            ? rawName
+            : "Teman"
         : rawName && rawName !== "ともだち"
           ? `${rawName}さん`
           : "友達";
@@ -283,12 +366,16 @@ export function buildTakoReportSheets(
     const sections =
       locale === "ko"
         ? buildKoSelfSections(type32, f.perceivedScores).slice(0, 2)
+        : locale === "id"
+          ? buildIdSelfSections(type32, f.perceivedScores).slice(0, 2)
         : selfContentFor(type32).slice(0, 2);
     const manual = sections[0];
     const kuse = sections[1];
     const manualParas = (manual?.body ?? "").split("\n\n").filter(Boolean);
     if (locale === "ko" && manualParas[0]?.startsWith("당신은")) {
       manualParas[0] = `${viewer}의 눈에 비친 당신은${manualParas[0].slice("당신은".length)}`;
+    } else if (locale === "id" && manualParas[0]) {
+      manualParas[0] = `Menurut ${viewer}, ${manualParas[0].charAt(0).toLowerCase()}${manualParas[0].slice(1)}`;
     } else if (manualParas[0]?.startsWith("あなた")) {
       manualParas[0] = `${viewer}から見た${manualParas[0]}`;
     }
@@ -304,6 +391,8 @@ export function buildTakoReportSheets(
       manualParas[reopenIdx] = t.startsWith("당신")
         ? `${viewer}의 눈에 비친 ${t}`
         : `${viewer}의 눈에는 ${t}`;
+    } else if (locale === "id" && reopenIdx < manualParas.length) {
+      manualParas[reopenIdx] = `Dari sudut pandang ${viewer}, ${manualParas[reopenIdx].charAt(0).toLowerCase()}${manualParas[reopenIdx].slice(1)}`;
     } else if (reopenIdx < manualParas.length) {
       let t = manualParas[reopenIdx];
       for (const conn of ["そして、", "そして", "しかも", "さらに"]) {
@@ -321,6 +410,8 @@ export function buildTakoReportSheets(
     const loveBody =
       locale === "ko"
         ? KO_LOVE_BY_TYPE_32[type32]?.body
+        : locale === "id"
+          ? `Menurut ${viewer}, gaya cinta Anda mencerminkan sosok ${ID_RESULT_TYPES[type32].essence.toLowerCase()}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nDaya tarik Anda terasa paling kuat ketika kepedulian ditunjukkan secara alami dan kebutuhan pribadi disampaikan dengan jujur.`
         : LOVE_BY_TYPE_32[type32]?.body;
     const loveParas = (loveBody ?? "")
       .split("\n\n")
@@ -333,19 +424,35 @@ export function buildTakoReportSheets(
     }
     const loveScene = resolveLoveScene(f.perceivedScores, locale);
     if (loveScene) loveParas.push(loveScene);
+    const localizedMessage =
+      locale === "id"
+        ? ({
+            "いつも冷静で頼れる。周りをよく見てるよね。":
+              "Kamu selalu tenang dan dapat diandalkan. Kamu benar-benar memperhatikan keadaan sekitar.",
+            "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜":
+              "Kamu selalu tenang dan dapat diandalkan. Setiap bertemu denganmu, aku merasa lebih tenang.",
+            "自分の考えをちゃんと持ってて素敵だと思う！":
+              "Aku suka karena kamu memiliki pendirian yang jelas!",
+          } as Record<string, string>)[f.message.trim()] ?? f.message.trim()
+        : f.message.trim();
 
     return {
-      name: rawName || (locale === "ko" ? "친구" : "ともだち"),
+      name:
+        rawName || (locale === "ko" ? "친구" : locale === "id" ? "Teman" : "ともだち"),
       viewer,
       type32,
       group: thirtyTwoGroup(type32),
       essence:
         locale === "ko"
           ? KO_RESULT_TYPES[type32].essence
+          : locale === "id"
+            ? ID_RESULT_TYPES[type32].essence
           : thirtyTwoEssence(type32),
       charName:
         locale === "ko"
           ? KO_RESULT_TYPES[type32].name
+          : locale === "id"
+            ? ID_RESULT_TYPES[type32].name
           : thirtyTwoName(type32),
       imageSrc:
         f.perceivedImageSrc ?? preferCutImage(thirtyTwoImagePath(type32)),
@@ -355,15 +462,27 @@ export function buildTakoReportSheets(
       kuseParas: (kuse?.body ?? "").split("\n\n").filter(Boolean),
       deep: buildDeepDive(data.selfScores, f.perceivedScores, locale),
       loveParas,
-      loveChecks: resolveFriendLoveChecklist(f.perceivedScores, locale),
-      loveHints: resolveMoteHints(f.perceivedScores, locale),
+      loveChecks:
+        locale === "id"
+          ? buildIdLoveItems(f.perceivedScores, "strength")
+          : resolveFriendLoveChecklist(
+              f.perceivedScores,
+              locale === "ko" ? "ko" : "ja",
+            ),
+      loveHints:
+        locale === "id"
+          ? buildIdLoveItems(f.perceivedScores, "hint")
+          : resolveMoteHints(
+              f.perceivedScores,
+              locale === "ko" ? "ko" : "ja",
+            ),
       compat: estimateCompatFromGaps(
         data.selfScores,
         f.perceivedScores,
         viewer,
         locale,
       ),
-      message: f.message.trim(),
+      message: localizedMessage,
     };
   });
 }

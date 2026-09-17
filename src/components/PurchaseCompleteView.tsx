@@ -40,7 +40,10 @@ export function PurchaseCompleteView({
 }: PurchaseCompleteViewProps) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
-  const reportName = isEn
+  const isId = locale === "id";
+  const reportName = isId
+    ? "Edisi Lengkap"
+    : isEn
     ? product === "self_report"
       ? "Student Plan"
       : product === "premium_bundle"
@@ -73,7 +76,7 @@ export function PurchaseCompleteView({
   return (
     <>
     {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
-    {isKo ? <KoTopHeader /> : isEn ? <EnSiteHeader /> : <TopHeader />}
+    {isKo ? <KoTopHeader /> : isEn ? <EnSiteHeader /> : <TopHeader locale={isId ? "id" : "ja"} />}
     <main
       className="flex flex-1 flex-col items-center justify-center px-5 py-14"
       style={{ fontFamily: FONT_STACK, backgroundColor: "#F1F1F7" }}
@@ -103,6 +106,8 @@ export function PurchaseCompleteView({
         >
           {isKo
             ? "구매해 주셔서 감사합니다!"
+            : isId
+              ? "Terima kasih atas pembelianmu!"
             : isEn
               ? "Thank you for your purchase!"
               : "購入ありがとうございます！"}
@@ -112,7 +117,13 @@ export function PurchaseCompleteView({
           style={{ color: "#8A8AA3" }}
         >
           {isGuestPurchase ? (
-            isEn ? (
+            isId ? (
+              <>
+                Masuk dengan email yang digunakan saat pembayaran
+                <br />
+                untuk memulihkan pembelianmu.
+              </>
+            ) : isEn ? (
               <>
                 Sign in with the email used at checkout
                 <br />
@@ -132,7 +143,13 @@ export function PurchaseCompleteView({
               </>
             )
           ) : (
-            isEn ? (
+            isId ? (
+              <>
+                Kami mengirim <span style={{ color: NAVY }}>{reportName}</span>
+                <br />
+                ke email yang digunakan saat pembayaran.
+              </>
+            ) : isEn ? (
               <>
                 We sent your <span style={{ color: NAVY }}>{reportName}</span>
                 <br />
@@ -162,7 +179,13 @@ export function PurchaseCompleteView({
           style={{ color: "#8A8AA3" }}
         >
           {isGuestPurchase ? (
-            isEn ? (
+            isId ? (
+              <>
+                Setelah masuk, kamu akan diarahkan ke <span style={{ color: NAVY }}>tes kepribadian gratis</span>.
+                <br />
+                Selesaikan tes untuk menerima {reportName} melalui email.
+              </>
+            ) : isEn ? (
               <>
                 After sign-in, we’ll take you to the <span style={{ color: NAVY }}>free personality test</span>.
                 <br />
@@ -184,7 +207,13 @@ export function PurchaseCompleteView({
               </>
             )
           ) : (
-            isEn ? (
+            isId ? (
+              <>
+                Jika belum mengikuti tes, setelah masuk kamu akan diarahkan ke <span style={{ color: NAVY }}>tes gratis</span>.
+                <br />
+                {reportName} akan terbuka setelah selesai.
+              </>
+            ) : isEn ? (
               <>
                 If you have not taken the personality test, sign-in will take you to the <span style={{ color: NAVY }}>free test</span>.
                 <br />
@@ -216,12 +245,20 @@ export function PurchaseCompleteView({
           <p className="text-[13px] font-black text-[#2E2E5C]">
             {isKo
               ? "구매 후 이용할 수 있는 새로운 콘텐츠"
+              : isId
+                ? "Pengalaman baru yang termasuk dalam pembelianmu"
               : isEn
                 ? "New experiences included with your purchase"
                 : "購入後に使える新しいコンテンツ"}
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
-            {isEn ? (
+            {isId ? (
+              hasDestinyFeatures ? (
+                <>Peta Takdirmu, {includedChatCount} jawaban chat Alice{hasTarotFeatures ? ", dan ketiga pembacaan tarot" : ""} sudah termasuk. Buka melalui navigasi setelah masuk.</>
+              ) : (
+                <>{includedChatCount} jawaban chat Alice sudah termasuk. Buka Alice melalui navigasi setelah masuk.</>
+              )
+            ) : isEn ? (
               hasDestinyFeatures ? (
                 <>
                   Your Destiny Blueprint, {includedChatCount} Alice chat answers
@@ -290,6 +327,8 @@ export function PurchaseCompleteView({
       <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
         {isKo
           ? "30일 환불 보장이 포함되어 있어요. 환불을 원하시면 결제에 사용한 이메일 주소와 함께 "
+          : isId
+            ? "Garansi uang kembali 30 hari sudah termasuk. Untuk meminta pengembalian dana, hubungi kami dari email yang digunakan saat pembayaran: "
           : isEn
             ? "A 30-day refund guarantee is included. To request a refund, contact us from the email used at checkout: "
             : "30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて "}
@@ -300,23 +339,23 @@ export function PurchaseCompleteView({
         >
           support@watashi-torisetsu.com
         </a>
-        {isKo ? "으로 연락해 주세요 (" : isEn ? " (" : " までご連絡ください（"}
+        {isKo ? "으로 연락해 주세요 (" : isId || isEn ? " (" : " までご連絡ください（"}
         <Link
-          href={isKo ? "/ko/legal/commerce" : isEn ? "/en/legal/commerce" : "/legal/commerce"}
+          href={isKo ? "/ko/legal/commerce" : isId ? "/id/legal/commerce" : isEn ? "/en/legal/commerce" : "/legal/commerce"}
           className="underline underline-offset-2"
           style={{ color: NAVY }}
         >
-          {isKo ? "환불 조건" : isEn ? "refund terms" : "返金条件"}
+          {isKo ? "환불 조건" : isId ? "ketentuan pengembalian dana" : isEn ? "refund terms" : "返金条件"}
         </Link>
-        {isKo ? ")." : isEn ? ")." : "）。"}
+        {isKo ? ")." : isId || isEn ? ")." : "）。"}
       </p>
 
       <Link
-        href={isKo ? "/ko" : isEn ? "/en" : "/"}
+        href={isKo ? "/ko" : isId ? "/id" : isEn ? "/en" : "/"}
         className="mt-6 text-center text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
         style={{ color: `${NAVY}80` }}
       >
-        {isKo ? "홈으로 돌아가기" : isEn ? "Back to home" : "トップに戻る"}
+        {isKo ? "홈으로 돌아가기" : isId ? "Kembali ke beranda" : isEn ? "Back to home" : "トップに戻る"}
       </Link>
     </main>
     </>

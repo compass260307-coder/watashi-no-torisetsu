@@ -13,7 +13,7 @@ export const MAX_GEN_ATTEMPTS = 3;
 
 export function isReadingLocaleValid(
   reading: unknown,
-  locale: "ja" | "ko" | "en",
+  locale: "ja" | "ko" | "en" | "id",
 ): boolean {
   return validateReadingLocale(reading, locale);
 }

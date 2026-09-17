@@ -2,7 +2,7 @@ import type { ResultLocale } from "@/i18n/result";
 import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
 
 type HoshiyomiFaq = Readonly<{ question: string; answer: string }>;
-export type HoshiyomiLocale = ResultLocale | "en";
+export type HoshiyomiLocale = ResultLocale | "en" | "id";
 
 type HoshiyomiCopy = Readonly<{
   faqs: readonly HoshiyomiFaq[];
@@ -234,7 +234,7 @@ const EN_COPY: HoshiyomiCopy = {
     {
       question: "Can I get more replies?",
       answer:
-        "If an earlier Complete Edition purchase included fewer than 30 replies, upgrading to the all-in-one edition brings the total to 30. Additional replies cannot currently be purchased after all 30 have been used.",
+        "If an earlier Complete Edition purchase included fewer than 30 replies, upgrading to the current Complete Edition brings the total to 30. Additional replies cannot currently be purchased after all 30 have been used.",
     },
     {
       question: "Can I view past conversations again?",
@@ -260,7 +260,7 @@ const EN_COPY: HoshiyomiCopy = {
   title: "Talk with Alice",
   heroAlt: "Alice, the AI astrologer, writing in a starry notebook at her desk",
   description:
-    "Your personality and birth chart are more than labels—they can become a guide for the choices ahead. Talk with warm, insightful Alice and find an answer that feels true to you.",
+    "Your personality and birth chart are more than labels—they can become a guide for the choices ahead. Talk with Alice, your warm and insightful guide, and find an answer that feels true to you.",
   exhaustedPlaceholder: "You have used all of your replies",
   inputPlaceholder: "What is on your mind?",
   startAria: "Start a conversation",
@@ -286,7 +286,7 @@ const EN_COPY: HoshiyomiCopy = {
     "Thank you for sharing that. There may be something important hidden inside this uncertainty. Let’s use your personality and birth chart as clues and sort through it together.\n\nWhich moment in this situation affected you most?",
   backAria: "Back to conversations",
   guideName: "Alice",
-  guideStatus: "Looking at your personality and stars with you",
+  guideStatus: "Reflecting on your personality and birth chart with you",
   composerPlaceholder: "Type a message…",
   sendAria: "Send",
   chatNotice:
@@ -298,8 +298,81 @@ const EN_COPY: HoshiyomiCopy = {
   dateLocale: "en-US",
 };
 
+const ID_COPY: HoshiyomiCopy = {
+  faqs: [
+    {
+      question: "Apa itu Alice?",
+      answer: "Alice adalah teman bicara AI yang menggunakan hasil tes kepribadian dan, jika tersedia, Peta Takdirmu untuk membantu menata pilihan dan perasaan.",
+    },
+    {
+      question: "Pembelian mana yang menyertakan Alice?",
+      answer: `Edisi Lengkap menyertakan 30 jawaban dari Alice dengan pembayaran satu kali ¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}. Ini bukan langganan.`,
+    },
+    {
+      question: "Bisakah saya berbicara dengan Alice sebelum membuat Peta Takdir?",
+      answer: "Bisa. Alice dapat memulai dari hasil kepribadianmu. Peta Takdir yang dibuat kemudian akan memberikan konteks pribadi tambahan.",
+    },
+    {
+      question: "Bagaimana jawaban dihitung?",
+      answer: "Satu jawaban dihitung setelah Alice berhasil membalas. Jika gangguan jaringan atau pembuatan jawaban gagal, kuota akan dikembalikan.",
+    },
+    {
+      question: "Bisakah saya mendapatkan lebih banyak jawaban?",
+      answer: "Jika pembelian Edisi Lengkap sebelumnya menyertakan kurang dari 30 jawaban, peningkatan ke edisi saat ini akan menjadikannya 30. Tambahan jawaban setelah semua kuota habis belum tersedia.",
+    },
+    {
+      question: "Bisakah saya melihat kembali percakapan lama?",
+      answer: "Bisa. Percakapan disimpan otomatis dan dapat dibuka kembali dari halaman Alice. Hingga 12 percakapan ditampilkan dari yang terbaru dan dapat dihapus jika tidak diperlukan.",
+    },
+    {
+      question: "Bisakah orang lain melihat percakapan saya?",
+      answer: "Percakapanmu tidak dipublikasikan. Masukanmu hanya diproses untuk membuat dan menyimpan jawaban sebagaimana dijelaskan dalam Kebijakan Privasi.",
+    },
+    {
+      question: "Bisakah percakapan diunduh?",
+      answer: "Ekspor percakapan belum tersedia. Simpan bagian penting di perangkatmu sendiri.",
+    },
+    {
+      question: "Bisakah Alice membantu keputusan penting?",
+      answer: "Alice ditujukan untuk hiburan dan refleksi, bukan nasihat medis, hukum, atau keuangan. Mintalah bantuan profesional yang berkualifikasi untuk keputusan penting.",
+    },
+  ],
+  title: "Bicara dengan Alice",
+  heroAlt: "Alice, astrolog AI, menulis di buku catatan berbintang di mejanya",
+  description: "Kepribadian dan peta kelahiranmu dapat menjadi penunjuk jalan bagi pilihan ke depan. Bicaralah dengan Alice dan temukan jawaban yang terasa tepat untukmu.",
+  exhaustedPlaceholder: "Kamu sudah menggunakan semua jawaban",
+  inputPlaceholder: "Apa yang sedang kamu pikirkan?",
+  startAria: "Mulai percakapan",
+  purchaseHint: "Kirim pertanyaanmu untuk membuka layar pembelian Edisi Lengkap.",
+  persistencePending: "Penyimpanan percakapan sedang disiapkan. Coba lagi sebentar lagi.",
+  historyTitle: "Percakapan sebelumnya",
+  historyEmpty: "Belum ada percakapan. Mulailah dari hal yang sedang kamu pikirkan.",
+  messageCount: (count) => `${count} pesan`,
+  openConversation: "Buka percakapan",
+  deleteAria: "Hapus percakapan",
+  entertainmentNotice: "Alice ditujukan untuk hiburan dan refleksi. Konsultasikan keputusan medis, hukum, atau keuangan penting dengan profesional.",
+  faqTitle: "Pertanyaan yang sering diajukan",
+  closeAria: "Tutup",
+  contactPrefix: "Masih perlu bantuan? ",
+  contactLabel: "Hubungi kami",
+  contactSuffix: ".",
+  responseError: "Alice tidak dapat menyelesaikan jawaban. Tunggu sebentar lalu coba lagi.",
+  previewResponse: "Terima kasih sudah bercerita. Mungkin ada sesuatu yang penting di balik keraguan ini. Mari gunakan kepribadian dan peta kelahiranmu sebagai petunjuk untuk menatanya bersama.\n\nMomen mana dalam situasi ini yang paling memengaruhimu?",
+  backAria: "Kembali ke daftar percakapan",
+  guideName: "Alice",
+  guideStatus: "Menemanimu merefleksikan kepribadian dan peta kelahiran",
+  composerPlaceholder: "Ketik pesan…",
+  sendAria: "Kirim",
+  chatNotice: "Alice tidak memastikan masa depan; jawabannya adalah bahan untuk refleksi.",
+  sentMessages: (used, total) => `${used}/${total} pesan terkirim.`,
+  faqButton: "Ada pertanyaan?",
+  remainingMessages: (remaining, total) => `${remaining} dari ${total} jawaban tersisa`,
+  dateLocale: "id-ID",
+};
+
 export const HOSHIYOMI_COPY: Record<HoshiyomiLocale, HoshiyomiCopy> = {
   ja: JA_COPY,
   ko: KO_COPY,
   en: EN_COPY,
+  id: ID_COPY,
 };

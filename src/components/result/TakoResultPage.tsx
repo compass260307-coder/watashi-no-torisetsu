@@ -51,7 +51,8 @@ import {
   KO_PERCEIVED_BY_TYPE_32,
 } from "@/i18n/ko/me-content-32";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
-import type { ResultLocale } from "@/i18n/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
+import type { AppResultLocale } from "@/i18n/result";
 import type { ContentItem } from "@/lib/mutual-result-content";
 import {
   classifyThirtyTwoType,
@@ -248,6 +249,7 @@ function mockLockedTakoData(
   friends: number,
   pending: number,
   diag: number,
+  locale: AppResultLocale,
 ): OwnerReportData {
   const threshold = REPORT_FRIEND_THRESHOLD;
   const count = Math.max(0, Math.min(threshold - 1, Math.floor(friends || 0)));
@@ -258,7 +260,16 @@ function mockLockedTakoData(
     const isDiagnosed = i < diagCount;
     return {
       perceptionId: `preview-${i}`,
-      name: m.name,
+      name:
+        locale === "id"
+          ? i === 0
+            ? "Ayu"
+            : "Raka"
+          : locale === "ko"
+            ? i === 0
+              ? "유이"
+              : "소라"
+            : m.name,
       perceivedScores: {},
       mutual: 0,
       hasMessage: false,
@@ -280,7 +291,8 @@ function mockLockedTakoData(
       id: "preview",
       type_id: null,
       scores: {},
-      display_name: "プレビュー",
+      display_name:
+        locale === "id" ? "Pratinjau" : locale === "ko" ? "미리보기" : "プレビュー",
       invite_code: "preview",
       owner_token: "preview",
     },
@@ -305,10 +317,11 @@ export async function TakoResultPage({
   params,
   searchParams,
   locale = "ja",
-}: PageProps & { locale?: ResultLocale }) {
+}: PageProps & { locale?: AppResultLocale }) {
   const { token } = await params;
   const sp = await searchParams;
   const isKo = locale === "ko";
+  const isId = locale === "id";
 
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
   const previewAllowed =
@@ -341,6 +354,7 @@ export async function TakoResultPage({
           typeof sp.friends === "string" ? Number(sp.friends) : 0,
           typeof sp.pending === "string" ? Number(sp.pending) : 0,
           typeof sp.diag === "string" ? Number(sp.diag) : 0,
+          locale,
         )
       : await loadOwnerReportData(token);
   if (!data) {
@@ -348,7 +362,9 @@ export async function TakoResultPage({
   }
   const inviteUrl = isKo
     ? `${SITE_URL}/ko/friend/${encodeURIComponent(data.inviteCode)}`
-    : data.inviteUrl;
+    : isId
+      ? `${SITE_URL}/id/friend/${encodeURIComponent(data.inviteCode)}`
+      : data.inviteUrl;
 
   // 解除後ヒーロー用: 友達平均キャラのグループから帯トーンを解決 (/me と共通)。
   const takoHero = data.friendCharacter
@@ -363,6 +379,8 @@ export async function TakoResultPage({
       f.perceivedType32 ?? classifyThirtyTwoType(f.perceivedScores);
     const essence = isKo
       ? KO_RESULT_TYPES[type32].essence
+      : isId
+        ? ID_RESULT_TYPES[type32].essence
       : thirtyTwoEssence(type32);
     const imageSrc =
       f.perceivedImageSrc ?? preferCutImage(thirtyTwoImagePath(type32));
@@ -385,12 +403,20 @@ export async function TakoResultPage({
         } as Record<string, string>)[sourceName] ?? sourceName
       : sourceName;
     const hasRealName =
-      rawName && rawName !== "ともだち" && rawName !== "친구";
+      rawName &&
+      rawName !== "ともだち" &&
+      rawName !== "친구" &&
+      rawName !== "Teman" &&
+      rawName !== "Seorang teman";
     const viewer = hasRealName
-      ? isKo
+      ? isId
+        ? rawName
+        : isKo
         ? `${rawName}님`
         : `${rawName}さん`
-      : isKo
+      : isId
+        ? "Teman"
+        : isKo
         ? "친구"
         : "友達";
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
@@ -400,6 +426,10 @@ export async function TakoResultPage({
     // 役割がかぶるため出さない (2026-07-20 指示)。
     const loveContent = isKo
       ? KO_LOVE_BY_TYPE_32[type32]
+      : isId
+        ? {
+            body: `Menurut ${viewer}, gaya cinta Anda membawa ciri khas ${ID_RESULT_TYPES[type32].essence.toLowerCase()}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nDaya tarik Anda terasa paling kuat ketika Anda menunjukkan kepedulian dengan cara yang alami dan tetap berbicara jujur tentang kebutuhan sendiri.`,
+          }
       : LOVE_BY_TYPE_32[type32];
     const loveProse = (loveContent?.body ?? "")
       .split("\n\n")
@@ -419,6 +449,8 @@ export async function TakoResultPage({
     //   本文の {B}さん プレースホルダは、この友達の表示名 (viewer) に解決する。
     const perceived = isKo
       ? KO_PERCEIVED_BY_TYPE_32[type32]
+      : isId
+        ? null
       : perceivedContentFor(type32);
     const message = isKo
       ? ({
@@ -429,7 +461,13 @@ export async function TakoResultPage({
           "自分の考えをちゃんと持ってて素敵だと思う！":
             "자기 생각이 분명한 점이 정말 멋지다고 생각해!",
         } as Record<string, string>)[f.message] ?? f.message
-      : f.message;
+      : isId
+        ? ({
+            "いつも冷静で頼れる。周りをよく見てるよね。": "Kamu selalu tenang dan bisa diandalkan. Kamu sangat peka pada keadaan sekitar.",
+            "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜": "Kamu selalu tenang dan bisa diandalkan. Bertemu denganmu membuatku merasa lebih tenang.",
+            "自分の考えをちゃんと持ってて素敵だと思う！": "Aku suka karena kamu memiliki pendirian yang jelas!",
+          } as Record<string, string>)[f.message] ?? f.message
+        : f.message;
     const concernItems: ContentItem[] = perceived
       ? perceived.surprises.map((it, i) => ({
           title: it.title,
@@ -442,7 +480,7 @@ export async function TakoResultPage({
       : [];
     return {
       key: f.perceptionId,
-      tabName: rawName || (isKo ? "친구" : "ともだち"),
+      tabName: rawName || (isId ? "Teman" : isKo ? "친구" : "ともだち"),
       faceSrc,
       message,
       viewer,
@@ -503,6 +541,8 @@ export async function TakoResultPage({
     const promoAlt =
       isKo && promoType
         ? KO_RESULT_TYPES[promoType].essence
+        : isId && promoType
+          ? ID_RESULT_TYPES[promoType].essence
         : data.friendCharacter?.essence ??
           (data.ownerType32 ? thirtyTwoEssence(data.ownerType32) : "");
     const promoImage =
@@ -579,7 +619,7 @@ export async function TakoResultPage({
           (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
         showUnlockCta={takoLocked && data.friends.length > 1}
-        unlockCtaLabel={isKo ? undefined : "結果をアップグレード"}
+        unlockCtaLabel={isId ? "Tingkatkan hasil" : isKo ? undefined : "結果をアップグレード"}
         // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
         // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
         shareUrl={data.friends.length > 0 ? inviteUrl : undefined}
@@ -595,13 +635,13 @@ export async function TakoResultPage({
         reportHref={
           takoUnlocked && data.friends.length > 0
             ? previewMode && previewType
-              ? `/tako-report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKo ? "&locale=ko" : ""}`
-              : `/tako-report/${encodeURIComponent(token)}/pdf${isKo ? "?locale=ko" : ""}`
+              ? `${isId ? "/id" : ""}/tako-report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKo ? "&locale=ko" : isId ? "&locale=id" : ""}`
+              : `${isId ? "/id" : ""}/tako-report/${encodeURIComponent(token)}/pdf${isKo ? "?locale=ko" : isId ? "?locale=id" : ""}`
             : undefined
         }
         locale={locale}
       >
-        {isKo ? <KoTopHeader /> : <TopHeader />}
+        {isKo ? <KoTopHeader /> : <TopHeader locale={isId ? "id" : "ja"} />}
       </MeStickyHeader>
       <main
         className={`relative overflow-x-clip px-4 md:px-8 ${
@@ -686,11 +726,15 @@ export async function TakoResultPage({
                           <h2 className="mb-2 text-center text-[24px] font-black leading-tight text-[#2E2E5C] md:text-[30px]">
                             {isKo
                               ? `${koSubject(sh.viewer)} 보는 나는…?`
+                              : isId
+                                ? `Bagaimana ${sh.viewer} melihat Anda?`
                               : `${sh.viewer}から見たあなたは…？`}
                           </h2>
                           <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
                             {isKo
                               ? `${sh.viewer}의 답변은 이미 도착했어요. 두 번째 친구부터의 결과 시트는 완전판에서 모두 열려요.`
+                              : isId
+                                ? `Jawaban ${sh.viewer} sudah tiba. Hasil dari teman kedua dan seterusnya terbuka dalam Edisi Lengkap.`
                               : `${sh.viewer}の回答はもう届いてるよ。2人目からの結果シートは、完全版でぜんぶ開くよ。`}
                           </p>
                           <TakoLockedBlock
@@ -698,6 +742,8 @@ export async function TakoResultPage({
                             description={
                               isKo
                                 ? `완전판에서는 ${koSubject(sh.viewer)} 보는 내 캐릭터, 성격 차이, 연애 성향, 궁합까지 결과 시트 전체를 읽을 수 있어요.`
+                                : isId
+                                  ? `Dalam Edisi Lengkap, baca seluruh hasil menurut ${sh.viewer}: karakter Anda, perbedaan kepribadian, kecenderungan cinta, dan kecocokan.`
                                 : `完全版で、${sh.viewer}から見たあなたのキャラ・性格のギャップ・恋愛傾向・相性まで、この結果シートをまるごと読めます。`
                             }
                             locale={locale}
@@ -713,6 +759,8 @@ export async function TakoResultPage({
                       label={
                         isKo
                           ? `${koSubject(sh.viewer)} 보는 나는:`
+                          : isId
+                            ? `Anda menurut ${sh.viewer}:`
                           : `${sh.viewer}から見たあなた:`
                       }
                       essence={sh.essence}
@@ -724,6 +772,8 @@ export async function TakoResultPage({
                       name={
                         isKo
                           ? KO_RESULT_TYPES[sh.type32].name
+                          : isId
+                            ? ID_RESULT_TYPES[sh.type32].name
                           : thirtyTwoName(sh.type32)
                       }
                     />
@@ -740,6 +790,8 @@ export async function TakoResultPage({
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {isKo
                             ? `${koWith(sh.viewer)}의 이해도`
+                            : isId
+                              ? `Seberapa baik ${sh.viewer} memahami Anda`
                             : `${sh.viewer}の理解度`}
                         </h2>
                       </div>
@@ -768,6 +820,8 @@ export async function TakoResultPage({
                                   alt={
                                     isKo
                                       ? `이해도 ${result.score}%`
+                                      : isId
+                                        ? `Tingkat pemahaman ${result.score}%`
                                       : `理解度 ${result.score}%`
                                   }
                                   width={1448}
@@ -778,6 +832,8 @@ export async function TakoResultPage({
                                 <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
                                   {isKo
                                     ? `이해도는 ${result.score}%. ${sh.viewer}의 답변과 자기 진단의 차이로 계산했어요`
+                                    : isId
+                                      ? `Tingkat pemahaman ${result.score}%, dihitung dari perbedaan antara jawaban ${sh.viewer} dan penilaian diri Anda.`
                                     : `理解度は${result.score}%。${sh.viewer}の回答と自己診断のギャップから算出したよ`}
                                 </p>
                               </>
@@ -812,6 +868,8 @@ export async function TakoResultPage({
                               <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                                 {isKo
                                   ? "5가지 성격 경향의 차이"
+                                  : isId
+                                    ? "Perbedaan dalam lima kecenderungan kepribadian"
                                   : "五つの性格傾向のギャップ"}
                               </h2>
                             </div>
@@ -821,21 +879,27 @@ export async function TakoResultPage({
                                 <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
                                   {isKo
                                     ? `가장 큰 차이는 ${sh.deep.gap.label}. 나는 `
+                                    : isId
+                                      ? `Perbedaan terbesar ada pada ${sh.deep.gap.label}. Menurut Anda `
                                     : `一番のギャップは${sh.deep.gap.label}。自分では`}
                                   <span className="text-[#5B5BEF]">
                                     {sh.deep.gap.selfPercent <= 10
                                       ? isKo
                                         ? "거의 0"
+                                        : isId
+                                          ? "hampir nol"
                                         : "ほぼゼロ"
                                       : `${sh.deep.gap.selfPercent}%`}
                                   </span>
                                   {isKo
                                     ? `로 느끼지만 ${koTopic(sh.viewer)} `
+                                    : isId
+                                      ? `, sedangkan ${sh.viewer} merasakannya sebesar `
                                     : `、でも${sh.viewer}は`}
                                   <span className="text-[#5B5BEF]">
                                     {sh.deep.gap.otherPercent}%
                                   </span>
-                                  {isKo ? "로 느끼고 있어요." : "感じてる。"}
+                                  {isKo ? "로 느끼고 있어요." : isId ? "." : "感じてる。"}
                                 </p>
                               </div>
                             )}
@@ -845,9 +909,11 @@ export async function TakoResultPage({
                               primaryLabel={
                                 isKo
                                   ? `${sh.viewer}의 시선`
+                                  : isId
+                                    ? `Pandangan ${sh.viewer}`
                                   : `${sh.viewer}の目`
                               }
-                              friendLabel={isKo ? "자기 진단" : "自分の診断"}
+                              friendLabel={isKo ? "자기 진단" : isId ? "Penilaian diri" : "自分の診断"}
                               hideHeading
                               locale={locale}
                             />
@@ -869,6 +935,8 @@ export async function TakoResultPage({
                                 <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                                   {isKo
                                     ? `${koSubject(sh.viewer)} 보는 연애 성향`
+                                    : isId
+                                      ? `Kecenderungan cinta Anda menurut ${sh.viewer}`
                                     : `${sh.viewer}から見た恋愛傾向`}
                                 </h2>
                               </div>
@@ -918,6 +986,8 @@ export async function TakoResultPage({
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {isKo
                             ? `${koWith(sh.viewer)}의 궁합`
+                            : isId
+                              ? `Kecocokan dengan ${sh.viewer}`
                             : `${sh.viewer}との相性`}
                         </h2>
                       </div>
@@ -930,6 +1000,8 @@ export async function TakoResultPage({
                             <p className="body-gothic text-[17px] font-normal leading-[1.4] text-[#1A1A1A]">
                               {isKo
                                 ? `${koWith(sh.viewer)}의 궁합을 지금은 계산할 수 없어요.`
+                                : isId
+                                  ? `Kecocokan dengan ${sh.viewer} belum dapat dihitung saat ini.`
                                 : `${sh.viewer}との相性は、いま計算できなかったよ。`}
                             </p>
                           );
@@ -966,6 +1038,8 @@ export async function TakoResultPage({
                                     alt={
                                       isKo
                                         ? `궁합 등급 ${c.rank}`
+                                        : isId
+                                          ? `Peringkat kecocokan ${c.rank}`
                                         : `相性ランク ${c.rank}`
                                     }
                                     width={512}
@@ -984,6 +1058,8 @@ export async function TakoResultPage({
                                 <p className="mt-3 text-[12px] font-bold text-white">
                                   {isKo
                                     ? `궁합은 ${c.percent}%. ${sh.viewer}의 답변과 자기 진단의 차이로 추정했어요`
+                                    : isId
+                                      ? `Kecocokan ${c.percent}%, diperkirakan dari perbedaan antara jawaban ${sh.viewer} dan penilaian diri Anda.`
                                     : `相性度は${c.percent}%。${sh.viewer}の回答と自己診断のギャップから推定したよ`}
                                 </p>
                               </div>
@@ -1010,6 +1086,8 @@ export async function TakoResultPage({
                                 <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
                                   {isKo
                                     ? `솔직히, ${koSubject(sh.viewer)} 나를 싫어하는 건 아닐까…?`
+                                    : isId
+                                      ? `Sejujurnya, apakah ${sh.viewer} tidak menyukai saya?`
                                     : `ぶっちゃけ、${sh.viewer}に嫌われていない…？`}
                                 </h3>
 
@@ -1019,6 +1097,8 @@ export async function TakoResultPage({
                                     description={
                                       isKo
                                         ? `완전판에서 ${koSubject(sh.viewer)} 느끼는 신호와 관계가 꼬이기 전에 주의할 점을 읽을 수 있어요.`
+                                        : isId
+                                          ? `Dalam Edisi Lengkap, lihat sinyal yang dirasakan ${sh.viewer} dan hal yang perlu diperhatikan sebelum muncul salah paham.`
                                         : `完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`
                                     }
                                     locale={locale}
@@ -1030,11 +1110,15 @@ export async function TakoResultPage({
                                       <p className="mb-2 text-[18px] font-black leading-[1.5] text-[#2E2E5C] md:text-[20px]">
                                         {isKo
                                           ? "답: 아마 괜찮아요."
+                                          : isId
+                                            ? "Jawabannya: kemungkinan besar tidak apa-apa."
                                           : "答え：たぶん、大丈夫。"}
                                       </p>
                                       <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
                                         {isKo
                                           ? `${koTopic(sh.viewer)} 모든 질문에 시간을 내어 답해 줬어요. 아무 관심 없는 사람에게는 그렇게까지 하지 않으니까요.`
+                                          : isId
+                                            ? `${sh.viewer} meluangkan waktu untuk menjawab semua pertanyaan. Orang biasanya tidak melakukan itu untuk seseorang yang sama sekali tidak mereka pedulikan.`
                                           : `だって${sh.viewer}、わざわざ全部の質問に答えてくれた。どうでもいい相手には、そんな時間かけないから。`}
                                       </p>
                                     </div>
@@ -1042,6 +1126,8 @@ export async function TakoResultPage({
                                     <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
                                       {isKo
                                         ? `다만 이런 순간에는 ${koSubject(sh.viewer)} 조용히 거리감을 느낄 수도 있어요.`
+                                        : isId
+                                          ? `Namun, pada momen seperti ini, ${sh.viewer} mungkin diam-diam merasakan sedikit jarak.`
                                         : `ただ——こういう瞬間だけ、${sh.viewer}は静かに「あれ?」と距離を感じてるかも。`}
                                     </p>
 
@@ -1057,6 +1143,8 @@ export async function TakoResultPage({
                               <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
                                 {isKo
                                   ? "관계를 깊게 하는 힌트와 피해야 할 함정"
+                                  : isId
+                                    ? "Petunjuk untuk memperdalam hubungan dan jebakan yang perlu dihindari"
                                   : "関係を深めるヒント・壊すワナ"}
                               </h3>
                               {sheetLocked ? (
@@ -1065,6 +1153,8 @@ export async function TakoResultPage({
                                   description={
                                     isKo
                                       ? `완전판에서 ${koWith(sh.viewer)} 더 가까워지는 방법과 피하고 싶은 오해 포인트를 모두 읽을 수 있어요.`
+                                      : isId
+                                        ? `Dalam Edisi Lengkap, lihat cara menjadi lebih dekat dengan ${sh.viewer} dan pola salah paham yang perlu dihindari.`
                                       : `完全版で、${sh.viewer}ともっと仲良くなるコツと、避けたいすれ違いポイントの両方が読めます。`
                                   }
                                   locale={locale}
@@ -1171,12 +1261,16 @@ export async function TakoResultPage({
                         <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
                           {isKo
                             ? "두 사람이 만드는 조해리의 창"
+                            : isId
+                              ? "Jendela Johari yang kalian bentuk bersama"
                             : "2人がつくるジョハリの窓"}
                         </h2>
                       </div>
                       <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
                         {isKo
                           ? `나의 자기 진단과 ${sh.viewer}의 답변을 겹쳐 네 개의 창으로 나눴어요.`
+                          : isId
+                            ? `Kami menggabungkan penilaian diri Anda dan jawaban ${sh.viewer}, lalu membaginya menjadi empat area.`
                           : `あなたの自己診断と${sh.viewer}の回答を重ねて、4つの窓に仕分けたよ。`}
                       </p>
                       <JohariWindow
@@ -1209,7 +1303,7 @@ export async function TakoResultPage({
       {/* 回答0人の未購入ユーザーには、FAQの直後・フッターの直前で課金カードを案内する。 */}
       {data.friends.length === 0 ? takoPromo : null}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
-      {isKo ? <KoTopFooter /> : <TopFooter />}
+      {isKo ? <KoTopFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
     </>
   );
 }

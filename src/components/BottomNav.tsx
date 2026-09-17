@@ -76,13 +76,18 @@ const HIDE_ON_PREFIXES = [
   "/ko/evaluate/result/",
   "/en/friend/",
   "/en/evaluate/result/",
+  "/id/friend/",
+  "/id/evaluate/result/",
   "/share/",
   "/ko/share/",
   "/en/share/",
+  "/id/share/",
   "/report/", // 自己診断PDF生成専用ページ
   "/en/report/",
+  "/id/report/",
   "/tako-report/", // PDF生成専用ページ (印刷にナビを写さない)
   "/en/tako-report/",
+  "/id/tako-report/",
   "/line/", // LINE内ブラウザ専用ページ (Plus LP/決済着地)。固定CTAと衝突するためナビ非表示
   "/liff", // LIFF入口 (即リダイレクトのつなぎページ)。サイトchromeは出さない
 ];
@@ -200,9 +205,17 @@ export function BottomNav() {
       pathname.startsWith("/dev/") &&
       searchParams.get("locale") === "ko");
   const isEnglish = pathname === "/en" || pathname.startsWith("/en/");
-  const localePrefix = isKorean ? "/ko" : isEnglish ? "/en" : "";
+  const isIndonesian = pathname === "/id" || pathname.startsWith("/id/");
+  const localePrefix = isKorean
+    ? "/ko"
+    : isEnglish
+      ? "/en"
+      : isIndonesian
+        ? "/id"
+        : "";
   const isKoreanResult = pathname.startsWith("/ko/me/");
   const isEnglishResult = pathname.startsWith("/en/me/");
+  const isIndonesianResult = pathname.startsWith("/id/me/");
   const isTakoAttentionPreview =
     process.env.NODE_ENV === "development" &&
     pathname === "/dev/tako-attention-preview";
@@ -308,6 +321,7 @@ export function BottomNav() {
             pathname.startsWith("/diagnosis") ||
             pathname.startsWith("/ko/diagnosis") ||
             pathname.startsWith("/en/diagnosis")
+            || pathname.startsWith("/id/diagnosis")
           ) {
             localStorage.removeItem(ME_ATTENTION_PENDING_KEY);
           } else {
@@ -395,6 +409,7 @@ export function BottomNav() {
       courseLockTarget &&
       !isKorean &&
       !isEnglish &&
+      !isIndonesian &&
       !isCoursePaywallPreview
     ) {
       setLineExitOpen(true);
@@ -535,7 +550,57 @@ export function BottomNav() {
                   !hasTarotNavigationAccess,
               },
             ]
-          : [
+          : isIndonesian
+            ? [
+                {
+                  key: "me",
+                  label: "Hasil saya",
+                  href: torisetsuUrl,
+                  active: isIndonesianResult,
+                  Icon: ClipboardIcon,
+                },
+                {
+                  key: "friend",
+                  label: "Teman",
+                  href: takoUrl,
+                  active:
+                    pathname.startsWith("/id/friend") ||
+                    pathname.startsWith("/id/tako"),
+                  Icon: UsersIcon,
+                  locked: !hasToken && !isPaidNavigationPreview,
+                },
+                {
+                  key: "astrologer",
+                  label: "Alice",
+                  href: "/id/hoshiyomi",
+                  active: pathname.startsWith("/id/hoshiyomi"),
+                  Icon: AstrologerIcon,
+                  locked:
+                    (!hasToken && !isPaidNavigationPreview) ||
+                    !hasAliceNavigationAccess,
+                },
+                {
+                  key: "unmei",
+                  label: "Takdir",
+                  href: "/id/unmei",
+                  active: pathname.startsWith("/id/unmei"),
+                  Icon: NatalWheelIcon,
+                  locked:
+                    (!hasToken && !isPaidNavigationPreview) ||
+                    !hasUnmeiNavigationAccess,
+                },
+                {
+                  key: "tarot",
+                  label: "Tarot",
+                  href: "/id/tarot",
+                  active: pathname.startsWith("/id/tarot"),
+                  Icon: TarotCardsIcon,
+                  locked:
+                    (!hasToken && !isPaidNavigationPreview) ||
+                    !hasTarotNavigationAccess,
+                },
+              ]
+            : [
             // タロットは未購入時も鍵付きで表示する。
             { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
@@ -600,6 +665,8 @@ export function BottomNav() {
       isPaidNavigationPreview,
       isEnglish,
       isEnglishResult,
+      isIndonesian,
+      isIndonesianResult,
       isKorean,
       isKoreanResult,
       isTakoAttentionPreview,
@@ -622,6 +689,8 @@ export function BottomNav() {
           ? "전역 내비게이션"
           : isEnglish
             ? "Global navigation"
+            : isIndonesian
+              ? "Navigasi utama"
             : "グローバルナビゲーション"
       }
       className="fixed inset-x-0 bottom-0 z-40 bg-white print:hidden"
@@ -663,6 +732,8 @@ export function BottomNav() {
                     ? " (준비 중)"
                     : isEnglish
                       ? " (Coming soon)"
+                      : isIndonesian
+                        ? " (Segera hadir)"
                       : " (準備中)"
                 }`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
@@ -702,6 +773,8 @@ export function BottomNav() {
                     ? " (잠김)"
                     : isEnglish
                       ? " (Locked)"
+                      : isIndonesian
+                        ? " (Terkunci)"
                       : "（ロック中）"
                 }`}
                 onClick={() => {
@@ -808,6 +881,8 @@ export function BottomNav() {
                     ? `${it.label} (확인하지 않은 알림 있음)`
                     : isEnglish
                       ? `${it.label} (New notification)`
+                      : isIndonesian
+                        ? `${it.label} (Ada pemberitahuan baru)`
                       : `${it.label}（未確認のお知らせあり）`
                   : undefined
               }
@@ -840,13 +915,13 @@ export function BottomNav() {
       <TakoLockPopover
         isOpen={diagnosisLockTarget !== null}
         onClose={() => setDiagnosisLockTarget(null)}
-        locale={isKorean ? "ko" : isEnglish ? "en" : "ja"}
+        locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
         target={diagnosisLockTarget ?? "friend"}
       />
       {courseLockTarget ? (
         <PaywallOverlay
           ownerToken={ownerToken ?? undefined}
-          locale={isKorean ? "ko" : isEnglish ? "en" : "ja"}
+          locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
           returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
           ctaSource={
             coursePaywallSource ?? `nav_locked_${courseLockTarget}`
@@ -867,6 +942,8 @@ export function BottomNav() {
                 ? undefined
                 : isEnglish
                   ? "Try Alice or unlock the complete experience"
+                  : isIndonesian
+                    ? "Coba Alice atau buka pengalaman lengkap"
                   : "Aliceを試す・本格相談を選ぶ"
               : undefined
           }

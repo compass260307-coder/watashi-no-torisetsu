@@ -9,6 +9,7 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import {
   KO_TYPES_COPY,
@@ -28,7 +29,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
-type TypesLocale = "ja" | "ko" | "en";
+type TypesLocale = "ja" | "ko" | "en" | "id";
 
 interface TypesGalleryPageProps {
   locale: TypesLocale;
@@ -100,12 +101,19 @@ const EN_GROUPS: typeof JA_GROUPS = [
   { key: "sky", name: "Sky group", giant: "Sky" },
   { key: "unknown", name: "Beyond group", giant: "Beyond" },
 ];
+const ID_GROUPS: typeof JA_GROUPS = [
+  { key: "sea", name: "Kelompok laut", giant: "Laut" },
+  { key: "land", name: "Kelompok darat", giant: "Darat" },
+  { key: "sky", name: "Kelompok langit", giant: "Langit" },
+  { key: "unknown", name: "Kelompok luar batas", giant: "Luar" },
+];
 
 export default function TypesGalleryPage({
   locale,
 }: TypesGalleryPageProps) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const groups = isKo
     ? (Object.entries(KO_TYPES_COPY.groups) as [
         ThirtyTwoGroup,
@@ -113,7 +121,9 @@ export default function TypesGalleryPage({
       ][]).map(([key, value]) => ({ key, ...value }))
     : isEn
       ? EN_GROUPS
-      : JA_GROUPS;
+      : isId
+        ? ID_GROUPS
+        : JA_GROUPS;
   const byGroup = new Map<ThirtyTwoGroup, ThirtyTwoTypeId[]>();
 
   for (const id of allThirtyTwoTypeIds()) {
@@ -125,21 +135,29 @@ export default function TypesGalleryPage({
     ? KO_TYPES_COPY.title
     : isEn
       ? "Personality Types"
+      : isId
+        ? "Tipe Kepribadian"
       : "性格タイプ";
   const cta = isKo
     ? KO_TYPES_COPY.cta
     : isEn
       ? "Take the free test →"
+      : isId
+        ? "Ikuti tes gratis →"
       : "テストを受ける →";
   const diagnosisHref = isKo
     ? "/ko/diagnosis"
     : isEn
       ? "/en/diagnosis"
+      : isId
+        ? "/id/diagnosis"
       : "/diagnosis";
   const previewPrefix = isKo
     ? "/ko/preview"
     : isEn
       ? "/en/preview"
+      : isId
+        ? "/id/preview"
       : "/preview";
 
   return (
@@ -147,7 +165,7 @@ export default function TypesGalleryPage({
       className="flex flex-1 flex-col bg-white"
       style={locale === "ja" ? { fontFamily: FONT_STACK } : undefined}
     >
-      {isKo ? <KoTopHeader /> : isEn ? <EnSiteHeader /> : <TopHeader />}
+      {isKo ? <KoTopHeader /> : isEn ? <EnSiteHeader /> : <TopHeader locale={isId ? "id" : "ja"} />}
 
       <main className="w-full pb-0">
         <header className="mx-auto max-w-[1160px] px-6 pt-12 text-center md:pt-16">
@@ -216,16 +234,22 @@ export default function TypesGalleryPage({
                         ? KO_RESULT_TYPES[id].essence
                         : isEn
                           ? EN_RESULT_TYPES[id].essence
+                          : isId
+                            ? ID_RESULT_TYPES[id].essence
                           : thirtyTwoEssence(id);
                       const description = isKo
                         ? KO_TYPE_ZUKAN_DESCRIPTIONS[id]
                         : isEn
                           ? EN_RESULT_TYPES[id].oneLiner
+                          : isId
+                            ? ID_RESULT_TYPES[id].oneLiner
                           : thirtyTwoZukanDesc(id);
                       const resultAriaLabel = isKo
                         ? KO_TYPES_COPY.resultAriaLabel(essence)
                         : isEn
                           ? `View the ${essence} result page`
+                          : isId
+                            ? `Lihat halaman hasil ${essence}`
                           : `${essence}の結果ページを見る`;
 
                       return (
@@ -317,7 +341,7 @@ export default function TypesGalleryPage({
         </section>
       </main>
 
-      {isKo ? <KoTopFooter /> : isEn ? <EnSiteFooter /> : <TopFooter />}
+      {isKo ? <KoTopFooter /> : isEn ? <EnSiteFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
     </div>
   );
 }

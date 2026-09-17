@@ -378,8 +378,8 @@ export default async function EnglishReportPrintPage({
             This report brings together your five personality dimensions and the
             character pattern they form: <strong>{type.name}</strong>. No
             tendency is inherently good or bad. Use the parts that feel true
-            today to understand your choices and find a comfortable distance in
-            your relationships.
+            today to understand your choices and find a level of closeness that
+            feels right in your relationships.
           </p>
           <div className={styles.profileStatement}>
             <p>The core of the {type.essence} pattern</p>

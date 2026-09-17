@@ -86,7 +86,7 @@ function valueInMajorUnit(amountMinor: number, currency: string): number {
 }
 
 function sourceUrl(session: Stripe.Checkout.Session): string {
-  const localePrefix = session.metadata?.locale === "ko" ? "/ko" : session.metadata?.locale === "en" ? "/en" : "";
+  const localePrefix = session.metadata?.locale === "ko" ? "/ko" : session.metadata?.locale === "en" ? "/en" : session.metadata?.locale === "id" ? "/id" : "";
   const path =
     session.metadata?.return_to === "tako"
       ? "/tako"
@@ -102,7 +102,7 @@ function sourceUrl(session: Stripe.Checkout.Session): string {
 
 function productContent(
   product: string,
-  locale: "ja" | "ko" | "en",
+  locale: "ja" | "ko" | "en" | "id",
   amountMinor: number,
   currency: string,
 ) {
@@ -156,7 +156,7 @@ async function recordDelivery(
   const { error } = await supabaseAdmin.from("events").insert({
     id: deterministicEventId(provider, session.id),
     event_name: "server_purchase_conversion_sent",
-    locale: session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : "ja",
+    locale: session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : session.metadata?.locale === "id" ? "id" : "ja",
     metadata: {
       provider,
       stripe_session_id: session.id,
@@ -184,7 +184,7 @@ async function sendMeta(
     throw new Error(`[purchase-conversion] missing amount for ${session.id}`);
   }
   const currency = session.currency.toLowerCase();
-  const locale = session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : "ja";
+  const locale = session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : session.metadata?.locale === "id" ? "id" : "ja";
   const content = productContent(
     product,
     locale,
@@ -243,7 +243,7 @@ async function sendTikTok(
     throw new Error(`[purchase-conversion] missing amount for ${session.id}`);
   }
   const currency = session.currency.toLowerCase();
-  const locale = session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : "ja";
+  const locale = session.metadata?.locale === "ko" ? "ko" : session.metadata?.locale === "en" ? "en" : session.metadata?.locale === "id" ? "id" : "ja";
   const content = productContent(
     product,
     locale,

@@ -23,7 +23,7 @@ const FRIEND_HASH_PREFIX = "friend-";
 // タブ表示用: 自由入力の名前が長いときの折返し崩れを防ぐ (表示のみ切り詰め)。
 function tabLabel(name: string, locale: AppResultLocale): string {
   const trimmed =
-    name.trim() || (locale === "en" ? "Friend" : locale === "ko" ? "친구" : "ともだち");
+    name.trim() || (locale === "en" ? "Friend" : locale === "ko" ? "친구" : locale === "id" ? "Teman" : "ともだち");
   return trimmed.length > 6 ? `${trimmed.slice(0, 6)}…` : trimmed;
 }
 
@@ -76,6 +76,7 @@ export function TakoFriendTabs({
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const [idx, setIdx] = useState(0);
   const [inviteOpen, setInviteOpen] = useState(false);
   // メッセージ吹き出し: 開いているタブ index (null = 閉)。
@@ -312,7 +313,7 @@ export function TakoFriendTabs({
         <div className="-mx-4 flex items-center gap-2 px-4 md:mx-0 md:px-0">
           <div
             role="tablist"
-            aria-label={isEn ? "Friend results" : isKo ? "친구별 결과" : "友達ごとの結果"}
+            aria-label={isEn ? "Friend results" : isKo ? "친구별 결과" : isId ? "Hasil per teman" : "友達ごとの結果"}
             className="scrollbar-none flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-2 pt-6"
           >
           {tabs.map((tab, i) => {
@@ -350,7 +351,7 @@ export function TakoFriendTabs({
                     />
                   ) : (
                     <span className="text-[18px] font-black" style={{ color: NAVY }}>
-                      {(tab.name.trim() || (isEn ? "F" : isKo ? "친" : "と")).slice(0, 1)}
+                      {(tab.name.trim() || (isEn ? "F" : isKo ? "친" : isId ? "T" : "と")).slice(0, 1)}
                     </span>
                   )}
                 </span>
@@ -436,7 +437,7 @@ export function TakoFriendTabs({
             <button
               ref={plusRef}
               aria-expanded={inviteOpen}
-              aria-label={isEn ? "Invite a friend" : isKo ? "친구 초대" : "友達を招待"}
+              aria-label={isEn ? "Invite a friend" : isKo ? "친구 초대" : isId ? "Undang teman" : "友達を招待"}
               onClick={toggleInvite}
               className="flex w-14 flex-shrink-0 flex-col items-center gap-1 focus:outline-none focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[#5B5BEF] focus-visible:ring-offset-2"
             >
@@ -469,7 +470,7 @@ export function TakoFriendTabs({
                 className="text-[11px] font-black"
                 style={{ color: inviteOpen ? INDIGO : "rgba(46,46,92,0.65)" }}
               >
-                {isEn ? "Invite" : isKo ? "초대" : "招待"}
+                {isEn ? "Invite" : isKo ? "초대" : isId ? "Undang" : "招待"}
               </span>
             </button>
           )}
@@ -492,7 +493,9 @@ export function TakoFriendTabs({
                 ? `Message from ${msgTab.name}`
                 : isKo
                 ? `${msgTab.name}님의 메시지`
-                : `${msgTab.name}からのメッセージ`
+                : isId
+                  ? `Pesan dari ${msgTab.name}`
+                  : `${msgTab.name}からのメッセージ`
             }
             className="animate-bubble-pop absolute inset-x-0 top-full z-30"
             // 膨らむ起点 = 矢印 (対象アバターの中央直下)。キャラがしゃべった感を出す。
@@ -542,7 +545,9 @@ export function TakoFriendTabs({
                     ? `A note from ${msgTab.name}`
                     : isKo
                     ? `${msgTab.name}님이 남긴 한마디`
-                    : `${msgTab.name}からのひとこと`}
+                    : isId
+                      ? `Pesan dari ${msgTab.name}`
+                      : `${msgTab.name}からのひとこと`}
                 </p>
                 <p className="body-gothic whitespace-pre-wrap text-[15px] font-normal leading-[1.7] text-[#1A1A1A]">
                   {msgTab.message}
@@ -574,7 +579,7 @@ export function TakoFriendTabs({
             <button
               type="button"
               onClick={() => setInviteOpen(false)}
-              aria-label={isEn ? "Close invitation" : isKo ? "초대 카드 닫기" : "招待カードを閉じる"}
+              aria-label={isEn ? "Close invitation" : isKo ? "초대 카드 닫기" : isId ? "Tutup undangan" : "招待カードを閉じる"}
               autoFocus
               className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#DADBE5] bg-white text-[#8A8A9E] outline-none transition hover:bg-[#F5F5FA] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-5 md:top-5"
             >
@@ -595,12 +600,16 @@ export function TakoFriendTabs({
                         ? "Invite a friend"
                         : isKo
                         ? "친구를 초대해요"
-                        : "友達を招待しよう"
+                        : isId
+                          ? "Undang teman pertama Anda"
+                          : "友達を招待しよう"
                       : isEn
                         ? "Invite another friend"
                         : isKo
                         ? "친구를 더 초대해요"
-                        : "もっと友達を招待しよう"}
+                        : isId
+                          ? "Undang lebih banyak teman"
+                          : "もっと友達を招待しよう"}
                   </h2>
                   <p className="mt-2 text-[13px] font-bold leading-[1.7] text-[#73738A] md:text-[14px]">
                     {tabs.length === 0
@@ -608,12 +617,16 @@ export function TakoFriendTabs({
                         ? "One response unlocks the first result showing how a friend sees you."
                         : isKo
                         ? "한 명이 답하면 친구가 보는 나의 결과가 열려요."
-                        : "1人が回答すると「友達から見たあなた」の結果が表示されます。"
+                        : isId
+                          ? "Setelah satu teman menjawab, hasil tentang cara mereka melihat Anda akan muncul."
+                          : "1人が回答すると「友達から見たあなた」の結果が表示されます。"
                       : isEn
                         ? "Each new response adds another friend result."
                         : isKo
                         ? "답변이 도착할 때마다 친구별 결과 시트가 늘어나요."
-                        : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}
+                        : isId
+                          ? "Setiap jawaban baru menambahkan satu lembar hasil teman."
+                          : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}
                   </p>
                 </div>
                 <Image
@@ -653,14 +666,18 @@ export function TakoFriendTabs({
               ? "No friend responses yet"
               : isKo
               ? "아직 친구의 답변이 없어요"
-              : "まだ友達からの回答はありません"}
+              : isId
+                ? "Belum ada jawaban dari teman"
+                : "まだ友達からの回答はありません"}
           </h1>
           <p className="mt-2 max-w-[360px] text-[14px] font-bold leading-[1.9] text-[#8A8AA3] md:text-[15px]">
             {isEn
               ? "Invite a few friends and compare how they see you."
               : isKo
               ? "친구 한 명이 답하면 여기에 ‘친구가 보는 나’의 결과가 표시돼요."
-              : "何人かを招待して、結果を比較してみましょう！"}
+              : isId
+                ? "Undang beberapa teman lalu bandingkan sudut pandang mereka."
+                : "何人かを招待して、結果を比較してみましょう！"}
           </p>
           <button
             type="button"
@@ -680,7 +697,7 @@ export function TakoFriendTabs({
             >
               <path d="M12 5v14M5 12h14" />
             </svg>
-            {isEn ? "Invite a friend" : isKo ? "친구에게 진단 부탁하기" : "友達を招待する"}
+            {isEn ? "Invite a friend" : isKo ? "친구에게 진단 부탁하기" : isId ? "Undang teman" : "友達を招待する"}
           </button>
         </section>
       ) : (

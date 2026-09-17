@@ -23,11 +23,17 @@ import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 
 export const runtime = "nodejs";
 
-type AuthLocale = "ja" | "ko" | "en";
+type AuthLocale = "ja" | "ko" | "en" | "id";
 
 function localeOf(request: NextRequest): AuthLocale {
   const locale = request.nextUrl.searchParams.get("locale");
-  return locale === "ko" ? "ko" : locale === "en" ? "en" : "ja";
+  return locale === "ko"
+    ? "ko"
+    : locale === "en"
+      ? "en"
+      : locale === "id"
+        ? "id"
+        : "ja";
 }
 
 function errorRedirect(request: NextRequest, reason: string): NextResponse {

@@ -78,6 +78,26 @@ const COPY = {
       bodyLine2: "to unlock the Complete Edition.",
     },
   },
+  id: {
+    friend: {
+      ariaLabel: "Tes teman terkunci",
+      heading: "Tes teman masih terkunci",
+      bodyLine1: "Selesaikan tes kepribadianmu",
+      bodyLine2: "untuk mengundang teman menilaimu.",
+    },
+    astrologer: {
+      ariaLabel: "Alice terkunci",
+      heading: "Alice masih terkunci",
+      bodyLine1: "Selesaikan tes kepribadianmu",
+      bodyLine2: "untuk membuka Edisi Lengkap.",
+    },
+    unmei: {
+      ariaLabel: "Peta Takdir terkunci",
+      heading: "Peta Takdir masih terkunci",
+      bodyLine1: "Selesaikan tes kepribadianmu",
+      bodyLine2: "untuk membuka Edisi Lengkap.",
+    },
+  },
 } as const;
 
 const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
@@ -89,7 +109,7 @@ const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  locale?: "ja" | "ko" | "en";
+  locale?: "ja" | "ko" | "en" | "id";
   target?: DiagnosisLockTarget;
 }
 
@@ -139,6 +159,8 @@ export function TakoLockPopover({
         ? "/ko/diagnosis"
         : locale === "en"
           ? "/en/diagnosis"
+          : locale === "id"
+            ? "/id/diagnosis"
           : "/diagnosis",
     );
   };

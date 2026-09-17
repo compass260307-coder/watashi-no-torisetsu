@@ -115,7 +115,7 @@ export async function POST(request: Request) {
   if (typeof eventName !== "string" || !CLIENT_EVENT_NAMES.has(eventName)) {
     return NextResponse.json({ error: "Invalid eventName" }, { status: 400 });
   }
-  if (locale !== "ja" && locale !== "ko" && locale !== "en") {
+  if (locale !== "ja" && locale !== "ko" && locale !== "en" && locale !== "id") {
     return NextResponse.json({ error: "Invalid locale" }, { status: 400 });
   }
 

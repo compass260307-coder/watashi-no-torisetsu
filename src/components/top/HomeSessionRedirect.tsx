@@ -27,7 +27,7 @@ function resultPath(localePrefix: string, ownerToken: string): string {
 export default function HomeSessionRedirect({
   localePrefix = "",
 }: {
-  localePrefix?: "" | "/ko" | "/en";
+  localePrefix?: "" | "/ko" | "/en" | "/id";
 }) {
   useEffect(() => {
     // 診断済みユーザーがトップを明示的に見たい場合の既存挙動を維持する。

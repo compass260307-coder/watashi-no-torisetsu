@@ -55,6 +55,13 @@ const EN_SCENE_ITEMS: { label: string; color: string }[] = [
   { label: "With family", color: "#F2C14E" },
 ];
 
+const ID_SCENE_ITEMS: { label: string; color: string }[] = [
+  { label: "Bersama teman", color: "#56BFE8" },
+  { label: "Bersama pasangan", color: "#F48BAE" },
+  { label: "Dalam karier", color: "#4CAF7D" },
+  { label: "Bersama keluarga", color: "#F2C14E" },
+];
+
 // 解放済みの実表示。武器/関係別と同じ組版 (枠なし2カラム・太字タイトル + 字下げ本文)。
 // アイコンは「注意点」なので警告三角。色はティザーの鍵円と同じシーン別カラー。
 export function SceneCautionList({
@@ -64,13 +71,13 @@ export function SceneCautionList({
   items: SceneCaution[];
   locale?: AppResultLocale;
 }) {
-  const sceneItems = locale === "en" ? EN_SCENE_ITEMS : locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
+  const sceneItems = locale === "en" ? EN_SCENE_ITEMS : locale === "id" ? ID_SCENE_ITEMS : locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
   const colorOf = (scene: string) =>
     sceneItems.find((it) => it.label === scene)?.color ?? "#2E2E5C";
   return (
     <div className="mt-6">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-        {locale === "en" ? "Handle with care in different situations" : locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
+        {locale === "en" ? "Handle with care in different situations" : locale === "id" ? "Hal yang perlu diperhatikan dalam berbagai situasi" : locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
       <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
         {items.map((it) => (
@@ -113,11 +120,11 @@ export function SceneCautionTeaser({
 }: {
   locale?: AppResultLocale;
 }) {
-  const sceneItems = locale === "en" ? EN_SCENE_ITEMS : locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
+  const sceneItems = locale === "en" ? EN_SCENE_ITEMS : locale === "id" ? ID_SCENE_ITEMS : locale === "ko" ? KO_SCENE_ITEMS : SCENE_ITEMS;
   return (
     <div className="mt-6">
       <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-        {locale === "en" ? "Handle with care in different situations" : locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
+        {locale === "en" ? "Handle with care in different situations" : locale === "id" ? "Hal yang perlu diperhatikan dalam berbagai situasi" : locale === "ko" ? "상황별 주의점" : "シーン別の注意点"}
       </h3>
       <div
         id={SCENE_CAUTION_ID}
@@ -132,11 +139,13 @@ export function SceneCautionTeaser({
             <LockGlyph size={14} />
           </span>
           <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-            {locale === "en" ? "Unlock now" : locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
+            {locale === "en" ? "Unlock now" : locale === "id" ? "Buka sekarang" : locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
             {locale === "en" ? (
               "Unlock the Complete Edition to see the situations where you may need extra care."
+            ) : locale === "id" ? (
+              "Buka Edisi Lengkap untuk melihat situasi yang mungkin membutuhkan perhatian ekstra."
             ) : locale === "ko" ? (
               "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
             ) : (
@@ -151,7 +160,7 @@ export function SceneCautionTeaser({
             source="scene_caution_card"
             className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            {locale === "en" ? "See the complete result" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+            {locale === "en" ? "See the complete result" : locale === "id" ? "Lihat hasil lengkap" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>

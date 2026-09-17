@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import MeResultPage from "@/components/result/MeResultPage";
 import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { ResultLocale } from "@/i18n/result";
 import { resolveSiteUrl } from "@/lib/site-url";
@@ -30,7 +31,7 @@ import { ShareLandingTracker } from "@/components/share/ShareLandingTracker";
 
 const SITE_URL = resolveSiteUrl();
 const NAVY = "#2A3A5C";
-type CharacterShareLocale = ResultLocale | "en";
+type CharacterShareLocale = ResultLocale | "en" | "id";
 
 interface ShareData {
   name: string;
@@ -58,10 +59,12 @@ async function loadShareData(
       ? KO_RESULT_TYPES[t32].essence
       : locale === "en"
         ? EN_RESULT_TYPES[t32].essence
+        : locale === "id"
+          ? ID_RESULT_TYPES[t32].essence
         : thirtyTwoEssence(t32);
   const name =
     ((data.display_name as string | null) ?? "").trim() ||
-    (locale === "ko" ? "어떤 사람" : locale === "en" ? "Someone" : "ある人");
+    (locale === "ko" ? "어떤 사람" : locale === "en" ? "Someone" : locale === "id" ? "Seseorang" : "ある人");
   return { name, essence, t32 };
 }
 
@@ -76,6 +79,7 @@ export async function generateCharacterShareMetadata({
   const d = await loadShareData(code, locale);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const codePath = encodeURIComponent(code);
   const alternates = localizedAlternates(
     locale,
@@ -85,11 +89,15 @@ export async function generateCharacterShareMetadata({
   );
   const siteName = isKorean
     ? "나의 사용설명서"
-    : isEnglish
+    : isIndonesian
       ? "Alice Test"
+    : isEnglish
+      ? "Alice Personalities"
       : "ワタシのトリセツ";
   const description = isKorean
     ? "나는 어떤 유형일까요? 무료로 약 3분 만에 진단할 수 있어요."
+    : isIndonesian
+      ? "Apa tipe kepribadianmu? Ikuti tes gratis dalam sekitar tiga menit."
     : isEnglish
       ? "What is your personality type? Take the free test in about three minutes."
       : "あなたは何タイプ？無料・約3分で診断できるよ";
@@ -103,6 +111,8 @@ export async function generateCharacterShareMetadata({
   }
   const title = isKorean
     ? `${d.name}님은 【${d.essence}】 유형이었어요`
+    : isIndonesian
+      ? `${d.name} adalah tipe ${d.essence}`
     : isEnglish
       ? `${d.name} is the ${d.essence} type`
       : `${d.name}さんは【${d.essence}】でした`;
@@ -121,7 +131,7 @@ export async function generateCharacterShareMetadata({
       url: `${SITE_URL}${locale === "ja" ? "" : `/${locale}`}/share/${codePath}`,
       siteName,
       type: "website",
-      locale: isKorean ? "ko_KR" : isEnglish ? "en_US" : "ja_JP",
+      locale: isKorean ? "ko_KR" : isIndonesian ? "id_ID" : isEnglish ? "en_US" : "ja_JP",
       images: [
         {
           url: ogImage,
@@ -153,6 +163,7 @@ export default async function CharacterShareLandingPage({
   const d = await loadShareData(code, locale);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
 
   // 開発用モック: DB に code が無くても ?previewType=<32タイプID> で獲得モードを
   // 確認できる。本番では無効。
@@ -171,7 +182,7 @@ export default async function CharacterShareLandingPage({
           share={{
             sharerName:
               (typeof sp.name === "string" && sp.name) ||
-              (isEnglish ? "Preview" : isKorean ? "미리보기" : "プレビュー"),
+              (isIndonesian ? "Pratinjau" : isEnglish ? "Preview" : isKorean ? "미리보기" : "プレビュー"),
             typeId: raw as ThirtyTwoTypeId,
             inviteCode: code,
           }}
@@ -193,6 +204,8 @@ export default async function CharacterShareLandingPage({
         >
           {isKorean
             ? "나의 사용설명서"
+            : isIndonesian
+              ? "ALICE TEST"
             : isEnglish
               ? "ALICE TEST"
               : "ワタシのトリセツ"}
@@ -200,8 +213,10 @@ export default async function CharacterShareLandingPage({
         <h1 className="font-black text-2xl" style={{ color: NAVY }}>
           {isKorean
             ? "나만의 사용설명서를 만들 수 있어요"
+            : isIndonesian
+              ? "Temukan kepribadianmu"
             : isEnglish
-              ? "Take the Alice Test"
+              ? "Take the Alice Personalities test"
               : "あなたのトリセツ、作れます"}
         </h1>
         <p
@@ -210,6 +225,8 @@ export default async function CharacterShareLandingPage({
         >
           {isKorean
             ? "나는 어떤 유형일까요? 무료로 진단해 보세요"
+            : isIndonesian
+              ? "Apa tipemu? Temukan lewat tes gratis."
             : isEnglish
               ? "Discover your personality type with the free test."
               : "あなたは何タイプ？無料で診断できるよ"}
@@ -218,6 +235,8 @@ export default async function CharacterShareLandingPage({
           href={
             isKorean
               ? "/ko/diagnosis"
+              : isIndonesian
+                ? "/id/diagnosis"
               : isEnglish
                 ? "/en/diagnosis"
                 : "/diagnosis"
@@ -227,6 +246,8 @@ export default async function CharacterShareLandingPage({
         >
           {isKorean
             ? "무료 성격 진단 시작하기 →"
+            : isIndonesian
+              ? "Ikuti tes kepribadian gratis →"
             : isEnglish
               ? "Take the free personality test →"
               : "無料で性格診断をする →"}
@@ -234,6 +255,8 @@ export default async function CharacterShareLandingPage({
         <p className="mt-3 text-xs" style={{ color: NAVY, opacity: 0.5 }}>
           {isKorean
             ? "가입 없이 · 무료 · 약 3분"
+            : isIndonesian
+              ? "Tanpa akun · Gratis · Sekitar 3 menit"
             : isEnglish
               ? "No account · Free · About 3 minutes"
               : "登録不要・無料・約3分"}

@@ -35,7 +35,7 @@ const COPY = {
     fallbackName: "친구",
   },
   en: {
-    scoreTitleLead: "How closely you understand ",
+    scoreTitleLead: "How closely your perspective matches ",
     scoreTitleTail: "",
     ctaTitle: "Next, discover your own personality.",
     ctaBody:
@@ -43,7 +43,39 @@ const COPY = {
     cta: "Take my free personality test",
     fallbackName: "your friend",
   },
+  id: {
+    scoreTitleLead: "Seberapa dekat pandanganmu dengan ",
+    scoreTitleTail: "",
+    ctaTitle: "Selanjutnya, kenali kepribadianmu sendiri.",
+    ctaBody:
+      "Ikuti tes kepribadian gratis untuk memahami sifat, kekuatan, dan alasan di balik pola perilakumu sehari-hari.",
+    cta: "Ikuti tes kepribadianku gratis",
+    fallbackName: "temanmu",
+  },
 } as const;
+
+const ID_GUIDE_FAQS = [
+  {
+    question: "Apakah tes kepribadian ini gratis?",
+    answer: "Ya. Kamu dapat menjawab semua pertanyaan dan melihat hasil dasar secara gratis.",
+  },
+  {
+    question: "Berapa lama waktu yang dibutuhkan?",
+    answer: "Biasanya sekitar lima menit. Pilih jawaban yang paling dekat dengan dirimu saat ini.",
+  },
+  {
+    question: "Apakah hasilnya bisa berubah?",
+    answer: "Bisa. Kepribadian memiliki pola yang cukup stabil, tetapi pengalaman dan lingkungan dapat memengaruhi jawabanmu.",
+  },
+  {
+    question: "Bagaimana hasilnya dihitung?",
+    answer: "Jawabanmu dirangkum ke dalam lima dimensi kepribadian, lalu dipetakan ke salah satu dari 32 tipe karakter.",
+  },
+  {
+    question: "Apakah data saya aman?",
+    answer: "Kami hanya menggunakan data yang diperlukan untuk menyimpan dan menampilkan hasil sesuai kebijakan privasi.",
+  },
+] as const;
 
 const UNDERSTANDING_RESULTS = [
   {
@@ -145,19 +177,22 @@ export function FriendIndividualGuide({
 }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const copy = COPY[locale];
   const score = Math.max(0, Math.min(100, Math.round(understandingScore)));
   const understandingResult = getUnderstandingResult(score);
   const normalizedTargetName = (targetName ?? "").trim();
   const targetLabel = normalizedTargetName
-    ? isEnglish
+    ? isEnglish || isIndonesian
       ? normalizedTargetName
       : isKorean
         ? `${normalizedTargetName}님`
         : `${normalizedTargetName}さん`
     : copy.fallbackName;
-  const qnaItems = isEnglish
-    ? EN_HOME_FAQS.filter((_, index) => index !== 2).slice(0, 5)
+  const qnaItems = isIndonesian
+    ? ID_GUIDE_FAQS
+    : isEnglish
+      ? EN_HOME_FAQS.filter((_, index) => index !== 2).slice(0, 5)
     : (isKorean ? KO_ABOUT_FAQ : faqItems).filter(
         (_, index) =>
           index === 0 || index === 3 || index === 4 || index === 5 || index === 6,
@@ -173,6 +208,8 @@ export function FriendIndividualGuide({
         diagnosisCtaLabel={
           isEnglish
             ? "Take my personality test"
+            : isIndonesian
+              ? "Ikuti tes kepribadianku"
             : isKorean
               ? "내 성격도 진단하기"
               : "自己診断をする"
@@ -266,6 +303,8 @@ export function FriendIndividualGuide({
             <h2 className="text-[27px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
               {isEnglish
                 ? "Frequently asked questions"
+                : isIndonesian
+                  ? "Pertanyaan yang sering diajukan"
                 : isKorean
                   ? "자주 묻는 질문"
                   : "よくある質問"}

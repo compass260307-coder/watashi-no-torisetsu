@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MeResultPage from "@/components/result/MeResultPage";
 import { EN_RESULT_TYPES } from "@/i18n/en/result";
-import { SITE_URL } from "@/lib/locale-seo";
+import { EN_BRAND_NAME, SITE_URL } from "@/lib/locale-seo";
 import { allThirtyTwoTypeIds, type ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 type Props = { params: Promise<{ typeId: string }> };
@@ -34,12 +34,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       locale: "en_US",
       alternateLocale: ["ja_JP", "ko_KR"],
       url: `${SITE_URL}${englishPath}`,
-      title: `${type.name} | Alice Test`,
+      title: `${type.name} | ${EN_BRAND_NAME}`,
       description: type.oneLiner,
-      siteName: "Alice Test",
+      siteName: EN_BRAND_NAME,
       images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024, alt: `${type.name} personality type` }],
     },
-    twitter: { card: "summary_large_image", title: `${type.name} | Alice Test`, description: type.oneLiner, images: ["/characters/keyvisual.webp"] },
+    twitter: { card: "summary_large_image", title: `${type.name} | ${EN_BRAND_NAME}`, description: type.oneLiner, images: ["/characters/keyvisual.webp"] },
     robots: { index: true, follow: true },
   };
 }

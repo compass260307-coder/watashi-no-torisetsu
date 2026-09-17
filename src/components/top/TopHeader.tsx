@@ -17,7 +17,7 @@ import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 import { resetLocalData } from "@/lib/reset-data";
-import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
+import { localeSwitchPath, type SiteLocale, type SwitchLocale } from "@/lib/locale-switch";
 import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import { track } from "@/lib/track";
@@ -50,7 +50,7 @@ type HeaderContent = {
   preparing: string;
   currentLangLabel: string;
   languageOptions: {
-    locale: SiteLocale | "en";
+    locale: SwitchLocale;
     localLabel: string;
     nativeLabel: string;
   }[];
@@ -63,7 +63,7 @@ type HeaderContent = {
   reset: { label: string; confirm: string; run: string; cancel: string };
 };
 
-type TopLocale = SiteLocale | "en";
+type TopLocale = SiteLocale | "en" | "id";
 
 // ナビ表記ルール: 機能名は「性格診断テスト / 友達診断テスト / 性格タイプ」で統一。
 // (旧表記: 相互理解度 → 友達診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
@@ -86,6 +86,7 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     languageOptions: [
       { locale: "en", localLabel: "英語", nativeLabel: "English" },
       { locale: "ko", localLabel: "韓国語", nativeLabel: "한국어" },
+      { locale: "id", localLabel: "インドネシア語", nativeLabel: "Bahasa Indonesia" },
     ],
     languageModalTitle: "言語",
     ariaLangSwitch: "言語を切り替え",
@@ -122,6 +123,7 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     languageOptions: [
       { locale: "ja", localLabel: "일본어", nativeLabel: "日本語" },
       { locale: "en", localLabel: "영어", nativeLabel: "English" },
+      { locale: "id", localLabel: "인도네시아어", nativeLabel: "Bahasa Indonesia" },
     ],
     languageModalTitle: "언어",
     ariaLangSwitch: "언어 변경",
@@ -137,7 +139,7 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     },
   },
   en: {
-    siteName: "Alice Test",
+    siteName: "Alice Personalities",
     homeHref: "/en",
     nav: [
       { label: "Personality test", href: "/en/diagnosis" },
@@ -153,6 +155,7 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
     languageOptions: [
       { locale: "ja", localLabel: "Japanese", nativeLabel: "日本語" },
       { locale: "ko", localLabel: "Korean", nativeLabel: "한국어" },
+      { locale: "id", localLabel: "Indonesian", nativeLabel: "Bahasa Indonesia" },
     ],
     languageModalTitle: "Language",
     ariaLangSwitch: "Change language",
@@ -167,6 +170,38 @@ const CONTENT: Record<TopLocale, HeaderContent> = {
       cancel: "Cancel",
     },
   },
+  id: {
+    siteName: "Alice Test",
+    homeHref: "/id",
+    nav: [
+      { label: "Tes kepribadian", href: "/id/diagnosis" },
+      { label: "Tes dari teman", href: "/id/tako", tako: true },
+      { label: "Tipe kepribadian", href: "/id/types" },
+      { label: "Kecocokan", href: "/id/aisho" },
+      { label: "Alice", href: "/id/hoshiyomi", course: "astrologer" },
+      { label: "Tarot", href: "/id/tarot" },
+      { label: "Masuk", href: "/id/login", login: true },
+    ],
+    preparing: " (Segera hadir)",
+    currentLangLabel: "Bahasa Indonesia",
+    languageOptions: [
+      { locale: "ja", localLabel: "Bahasa Jepang", nativeLabel: "日本語" },
+      { locale: "en", localLabel: "Bahasa Inggris", nativeLabel: "English" },
+      { locale: "ko", localLabel: "Bahasa Korea", nativeLabel: "한국어" },
+    ],
+    languageModalTitle: "Bahasa",
+    ariaLangSwitch: "Ganti bahasa",
+    ariaLangMenuClose: "Tutup menu bahasa",
+    menuTitle: "Menu",
+    ariaMenuOpen: "Buka menu",
+    ariaMenuClose: "Tutup menu",
+    reset: {
+      label: "Reset data lokal",
+      confirm: "Hasil tes dan tautan undangan akan dihapus dari perangkat ini. Tindakan ini tidak dapat dibatalkan.",
+      run: "Reset",
+      cancel: "Batal",
+    },
+  },
 };
 
 export default function TopHeader({
@@ -176,6 +211,7 @@ export default function TopHeader({
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const content = CONTENT[locale];
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -230,6 +266,7 @@ export default function TopHeader({
     ja: "日本語",
     ko: "한국어",
     en: "English",
+    id: "Bahasa Indonesia",
   };
   const languageOptions = [
     {
@@ -271,7 +308,7 @@ export default function TopHeader({
       n.tako && ownerToken
         ? {
             ...n,
-            href: `${isKo ? "/ko" : isEn ? "/en" : ""}/tako/${encodeURIComponent(ownerToken)}`,
+            href: `${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/tako/${encodeURIComponent(ownerToken)}`,
           }
         : n,
     );
@@ -315,7 +352,7 @@ export default function TopHeader({
   // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
   const fontStyle = isKo ? undefined : { fontFamily: FONT_STACK };
 
-  const flagIcon = (flag: "ja" | "ko" | "en") =>
+  const flagIcon = (flag: TopLocale) =>
     flag === "ja" ? <JapanFlagIcon /> : flag === "ko" ? <KoreaFlagIcon /> : <span aria-hidden="true">🌐</span>;
   const currentFlag = flagIcon(locale);
 
@@ -384,7 +421,7 @@ export default function TopHeader({
                 key={n.href}
                 type="button"
                 aria-label={`${n.label}${
-                  isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                  isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
                 }`}
                 onClick={openAlicePaywall}
                 className={`${navLinkClass} flex items-center gap-1`}
@@ -535,7 +572,7 @@ export default function TopHeader({
                   type="button"
                   tabIndex={open ? 0 : -1}
                   aria-label={`${n.label}${
-                    isKo ? " (잠김)" : isEn ? " (Locked)" : "（ロック中）"
+                    isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
                   }`}
                   onClick={() => {
                     setOpen(false);

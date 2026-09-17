@@ -23,10 +23,11 @@ import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
 const KO_SITE_NAME = "나의 사용설명서";
-const EN_SITE_NAME = "Alice Test";
+const EN_SITE_NAME = "Alice Personalities";
+const ID_SITE_NAME = "Alice Personalities";
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
 const SITE_URL = resolveSiteUrl();
-type EmailLocale = "ja" | "ko" | "en";
+type EmailLocale = "ja" | "ko" | "en" | "id";
 
 function getResendClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -64,7 +65,13 @@ export async function sendMagicLinkEmail(
 ): Promise<void> {
   const locale = args.locale ?? "ja";
   const siteName =
-    locale === "ko" ? KO_SITE_NAME : locale === "en" ? EN_SITE_NAME : SITE_NAME;
+    locale === "ko"
+      ? KO_SITE_NAME
+      : locale === "en"
+        ? EN_SITE_NAME
+        : locale === "id"
+          ? ID_SITE_NAME
+          : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
@@ -78,6 +85,8 @@ export async function sendMagicLinkEmail(
           ? `${KO_SITE_NAME} - 로그인 링크`
           : locale === "en"
             ? `${EN_SITE_NAME} – Your sign-in link`
+            : locale === "id"
+              ? `${ID_SITE_NAME} – Tautan masuk Anda`
             : `${SITE_NAME} - ログインリンク`,
       html: renderHtml(args.magicLinkUrl, locale),
       text: renderText(args.magicLinkUrl, locale),
@@ -97,7 +106,7 @@ interface SendFriendPerceptionArgs {
   ownerToken: string;
   perceptionType: string;
   perceptionModifierLabel?: string | null;
-  locale?: "ja" | "ko" | "en";
+  locale?: EmailLocale;
 }
 
 /**
@@ -111,17 +120,19 @@ export async function sendFriendPerceptionEmail(
   args: SendFriendPerceptionArgs,
 ): Promise<void> {
   const locale = args.locale ?? "ja";
-  const siteName = locale === "en" ? EN_SITE_NAME : SITE_NAME;
+  const siteName = locale === "en" || locale === "id" ? EN_SITE_NAME : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
 
   const ownerDisplay =
-    (args.ownerName ?? "").trim() || (locale === "en" ? "you" : "あなた");
-  const meUrl = `${SITE_URL}${locale === "en" ? "/en/tako" : "/me"}/${encodeURIComponent(args.ownerToken)}`;
+    (args.ownerName ?? "").trim() || (locale === "en" ? "you" : locale === "id" ? "Anda" : "あなた");
+  const meUrl = `${SITE_URL}${locale === "en" ? "/en/tako" : locale === "id" ? "/id/tako" : "/me"}/${encodeURIComponent(args.ownerToken)}`;
   const subject =
     locale === "en"
       ? `${args.perceiverName} shared a new perspective on you`
+      : locale === "id"
+        ? `${args.perceiverName} membagikan sudut pandang baru tentang Anda`
       : `${args.perceiverName}さんから新しい印象が届きました`;
 
   try {
@@ -130,7 +141,15 @@ export async function sendFriendPerceptionEmail(
       to: args.to,
       subject,
       html:
-        locale === "en"
+        locale === "id"
+          ? renderFriendPerceptionHtmlId({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            })
+          : locale === "en"
           ? renderFriendPerceptionHtmlEn({
               meUrl,
               perceiverName: args.perceiverName,
@@ -146,7 +165,15 @@ export async function sendFriendPerceptionEmail(
               perceptionModifierLabel: args.perceptionModifierLabel ?? null,
             }),
       text:
-        locale === "en"
+        locale === "id"
+          ? renderFriendPerceptionTextId({
+              meUrl,
+              perceiverName: args.perceiverName,
+              ownerDisplay,
+              perceptionType: args.perceptionType,
+              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+            })
+          : locale === "en"
           ? renderFriendPerceptionTextEn({
               meUrl,
               perceiverName: args.perceiverName,
@@ -257,18 +284,31 @@ export async function sendDetailedReportEmail(
   const locale = args.locale ?? "ja";
   const product = args.product ?? "full_access";
   const siteName =
-    locale === "ko" ? KO_SITE_NAME : locale === "en" ? EN_SITE_NAME : SITE_NAME;
+    locale === "ko"
+      ? KO_SITE_NAME
+      : locale === "en"
+        ? EN_SITE_NAME
+        : locale === "id"
+          ? ID_SITE_NAME
+          : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
 
   const greetingName = (args.ownerName ?? "").trim();
   const token = encodeURIComponent(args.ownerToken);
-  const prefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
+  const prefix =
+    locale === "ko"
+      ? "/ko"
+      : locale === "en"
+        ? "/en"
+        : locale === "id"
+          ? "/id"
+          : "";
   const meUrl = `${SITE_URL}${prefix}/me/${token}`;
   const pdfUrl =
-    locale === "en"
-      ? `${SITE_URL}/en/report/${token}/pdf`
+    locale === "en" || locale === "id"
+      ? `${SITE_URL}${prefix}/report/${token}/pdf`
       : `${SITE_URL}/report/${token}/pdf${locale === "ko" ? "?locale=ko" : ""}`;
   const unmeiUrl = `${SITE_URL}${prefix}/unmei`;
   const hoshiyomiUrl = `${SITE_URL}${prefix}/hoshiyomi`;
@@ -281,6 +321,8 @@ export async function sendDetailedReportEmail(
           : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
       : locale === "en"
         ? `Your ${EN_SITE_NAME} Complete Edition is ready`
+        : locale === "id"
+          ? `Edisi Lengkap ${ID_SITE_NAME} Anda sudah siap`
         : product === "self_report"
         ? `【${SITE_NAME}】学生向けプランを解放しました`
         : product === "premium_bundle"
@@ -308,6 +350,21 @@ export async function sendDetailedReportEmail(
               friendFeaturesIncluded: args.friendFeaturesIncluded,
               purchaseAmountMinor: args.purchaseAmountMinor,
             })
+          : locale === "id"
+            ? renderDetailedReportHtmlId({
+                pdfUrl,
+                meUrl,
+                unmeiUrl,
+                hoshiyomiUrl,
+                greetingName,
+                product,
+                destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+                hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+                hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+                tarotFeaturesIncluded: args.tarotFeaturesIncluded,
+                friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchaseAmountMinor: args.purchaseAmountMinor,
+              })
           : locale === "en"
             ? renderDetailedReportHtmlEn({
                 pdfUrl,
@@ -353,6 +410,21 @@ export async function sendDetailedReportEmail(
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
             })
+          : locale === "id"
+            ? renderDetailedReportTextId({
+                pdfUrl,
+                meUrl,
+                unmeiUrl,
+                hoshiyomiUrl,
+                greetingName,
+                product,
+                destinyFeaturesIncluded: args.destinyFeaturesIncluded,
+                hoshiyomiChatIncluded: args.hoshiyomiChatIncluded,
+                hoshiyomiChatCredits: args.hoshiyomiChatCredits,
+                tarotFeaturesIncluded: args.tarotFeaturesIncluded,
+                friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchaseAmountMinor: args.purchaseAmountMinor,
+              })
           : locale === "en"
             ? renderDetailedReportTextEn({
                 pdfUrl,
@@ -400,6 +472,7 @@ export async function sendDetailedReportEmail(
 function renderHtml(url: string, locale: EmailLocale): string {
   if (locale === "ko") return renderMagicLinkHtmlKo(url);
   if (locale === "en") return renderMagicLinkHtmlEn(url);
+  if (locale === "id") return renderMagicLinkHtmlId(url);
   // インライン CSS のみ (Gmail / iOS Mail / Outlook の互換性確保)。
   // serif フォント指定で和の質感、十分な余白で読みやすさ。
   return `<!DOCTYPE html>
@@ -483,6 +556,22 @@ function renderText(url: string, locale: EmailLocale): string {
       EN_SITE_NAME,
     ].join("\n");
   }
+  if (locale === "id") {
+    return [
+      `${ID_SITE_NAME} – Tautan masuk Anda`,
+      "",
+      `Buka tautan di bawah untuk mengakses data ${ID_SITE_NAME} Anda.`,
+      "",
+      url,
+      "",
+      "Tautan ini kedaluwarsa dalam satu jam dan hanya dapat digunakan satu kali.",
+      "",
+      "Jika Anda tidak meminta email ini, Anda dapat mengabaikannya.",
+      "",
+      "--",
+      ID_SITE_NAME,
+    ].join("\n");
+  }
   return [
     `${SITE_NAME} - ログインリンク`,
     "",
@@ -518,6 +607,29 @@ function renderMagicLinkHtmlEn(url: string): string {
         <p style="margin:0;font-size:12px;line-height:1.75;color:#8A8AA3;">If you did not request this email, you can safely ignore it.</p>
       </td></tr></table>
       <p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${EN_SITE_NAME}</p>
+    </td></tr></table>
+  </body>
+</html>`;
+}
+
+function renderMagicLinkHtmlId(url: string): string {
+  return `<!DOCTYPE html>
+<html lang="id">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${ID_SITE_NAME} – Tautan masuk Anda</title></head>
+  <body style="margin:0;padding:0;background:#F8F8FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2E2E5C;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8F8FC;padding:40px 16px;"><tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E3E6F5;border-radius:16px;padding:40px 32px;"><tr><td>
+        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE PERSONALITIES</p>
+        <h1 style="margin:0 0 24px;font-size:24px;font-weight:800;line-height:1.4;text-align:center;color:#2E2E5C;">Tautan masuk Anda sudah siap</h1>
+        <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#51516E;">Gunakan tombol di bawah untuk mengakses hasil kepribadian dan data tersimpan Anda.</p>
+        <p style="margin:0 0 30px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 34px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Masuk</a></p>
+        <p style="margin:0 0 18px;font-size:13px;line-height:1.75;color:#727287;">Tautan ini kedaluwarsa dalam <strong>satu jam</strong> dan hanya dapat digunakan sekali.</p>
+        <p style="margin:0 0 10px;font-size:13px;line-height:1.75;color:#727287;">Jika tombol tidak berfungsi, salin URL berikut ke browser:</p>
+        <p style="margin:0 0 28px;font-size:12px;line-height:1.65;color:#8A8AA3;word-break:break-all;">${url}</p>
+        <hr style="border:none;border-top:1px solid #E3E6F5;margin:28px 0;" />
+        <p style="margin:0;font-size:12px;line-height:1.75;color:#8A8AA3;">Jika Anda tidak meminta email ini, Anda dapat mengabaikannya.</p>
+      </td></tr></table>
+      <p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${ID_SITE_NAME}</p>
     </td></tr></table>
   </body>
 </html>`;
@@ -1138,6 +1250,83 @@ function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
   ].join("\n");
 }
 
+function renderDetailedReportHtmlId(
+  args: DetailedReportTemplateArgs,
+): string {
+  const name = args.greetingName
+    ? `Halo ${escapeHtml(args.greetingName)},`
+    : "Halo,";
+  const credits =
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const price = args.purchaseAmountMinor ?? FULL_ACCESS_PRICE_JPY;
+  const features = [
+    "Laporan kepribadian lengkap Anda",
+    "PDF pribadi yang dapat diunduh",
+    "Sudut pandang teman dan analisis kecocokan",
+    ...(args.destinyFeaturesIncluded ? ["Peta Takdir pribadi Anda"] : []),
+    ...(args.hoshiyomiChatIncluded
+      ? [`${credits} jawaban dari astrolog AI pribadi Alice`]
+      : []),
+    ...(args.tarotFeaturesIncluded ? ["Tiga jenis pembacaan tarot Alice"] : []),
+  ];
+  const featureRows = features
+    .map(
+      (feature) =>
+        `<li style="margin:0 0 10px;line-height:1.65;color:#51516E;">${escapeHtml(feature)}</li>`,
+    )
+    .join("");
+  return `<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Edisi Lengkap Anda sudah siap</title></head>
+<body style="margin:0;padding:0;background:#F3F3F7;font-family:Arial,sans-serif;color:#2E2E5C;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:32px 16px;"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;background:#FFFFFF;border:1px solid #E4E4F0;border-radius:18px;"><tr><td style="padding:44px 38px;">
+<p style="margin:0 0 26px;text-align:center;font-size:13px;font-weight:800;letter-spacing:.14em;color:#5B5BEF;">ALICE PERSONALITIES</p>
+<h1 style="margin:0 0 24px;font-size:30px;line-height:1.3;text-align:center;">Edisi Lengkap Anda sudah siap</h1>
+<p style="margin:0 0 14px;font-size:16px;line-height:1.8;">${name}</p>
+<p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Terima kasih atas pembelian Anda. Satu kali pembayaran telah membuka seluruh pengalaman.</p>
+<p style="margin:0 0 14px;text-align:center;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Buka Edisi Lengkap saya</a></p>
+<p style="margin:0 0 30px;text-align:center;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Unduh PDF saya</a></p>
+<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Rincian pembelian</h2><p style="margin:0 0 16px;color:#51516E;">Edisi Lengkap · ¥${price.toLocaleString("ja-JP")} · termasuk pajak · satu kali pembayaran</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
+<p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#77778D;">Jika Anda membeli sebelum menyelesaikan tes, selesaikan tes terlebih dahulu lalu buka kembali tautan ini.</p>
+<p style="margin:0;font-size:14px;line-height:1.75;color:#51516E;">Untuk bantuan akses, PDF, atau pengembalian dana, hubungi <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;">support@watashi-torisetsu.com</a>.</p>
+</td></tr></table><p style="margin:20px 0 0;font-size:12px;color:#8A8AA3;">&copy; ${ID_SITE_NAME}</p>
+</td></tr></table></body></html>`;
+}
+
+function renderDetailedReportTextId(
+  args: DetailedReportTemplateArgs,
+): string {
+  const credits =
+    args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
+  const price = args.purchaseAmountMinor ?? FULL_ACCESS_PRICE_JPY;
+  return [
+    args.greetingName ? `Halo ${args.greetingName},` : "Halo,",
+    "",
+    "Terima kasih atas pembelian Anda. Edisi Lengkap Anda sudah siap.",
+    "",
+    "Buka Edisi Lengkap Anda:",
+    args.meUrl,
+    "",
+    "Unduh PDF Anda:",
+    args.pdfUrl,
+    ...(args.destinyFeaturesIncluded && args.unmeiUrl
+      ? ["", "Buat Peta Takdir Anda:", args.unmeiUrl]
+      : []),
+    ...(args.hoshiyomiChatIncluded && args.hoshiyomiUrl
+      ? ["", `Ajukan hingga ${credits} pertanyaan kepada Alice:`, args.hoshiyomiUrl]
+      : []),
+    "",
+    `Edisi Lengkap · ¥${price.toLocaleString("ja-JP")} · termasuk pajak · satu kali pembayaran`,
+    "- Laporan kepribadian lengkap dan PDF pribadi",
+    "- Sudut pandang teman dan analisis kecocokan",
+    "- Peta Takdir, Alice, dan tiga jenis pembacaan tarot",
+    "",
+    "Untuk bantuan akses, PDF, atau pengembalian dana, hubungi support@watashi-torisetsu.com.",
+    "",
+    "Tim Alice Personalities",
+  ].join("\n");
+}
+
 function renderDetailedReportHtmlEn(
   args: DetailedReportTemplateArgs,
 ): string {
@@ -1219,7 +1408,7 @@ function renderDetailedReportTextEn(
     "",
     "For help with access, your PDF, or a refund, contact support@watashi-torisetsu.com.",
     "",
-    "Alice Test team",
+    "Alice Personalities team",
   ].join("\n");
 }
 
@@ -1267,6 +1456,43 @@ function renderFriendPerceptionTextEn(
     "",
     "--",
     EN_SITE_NAME,
+  ].join("\n");
+}
+
+function renderFriendPerceptionHtmlId(
+  args: FriendPerceptionTemplateArgs,
+): string {
+  const perceiverName = escapeHtml(args.perceiverName);
+  const ownerDisplay = escapeHtml(args.ownerDisplay);
+  const perceptionType = escapeHtml(args.perceptionType);
+  return `<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Sudut pandang baru dari teman</title></head>
+<body style="margin:0;padding:0;background:#F8F7FF;font-family:Arial,sans-serif;color:#2E2E5C;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:40px 16px;"><tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E5E3F7;border-radius:18px;padding:40px 32px;"><tr><td>
+      <p style="margin:0 0 18px;font-size:11px;font-weight:700;letter-spacing:.18em;color:#5B5BEF;text-align:center;">ALICE PERSONALITIES</p>
+      <h1 style="margin:0 0 22px;font-size:25px;line-height:1.35;text-align:center;">Sudut pandang baru telah tiba</h1>
+      <p style="margin:0 0 20px;font-size:16px;line-height:1.7;">${perceiverName} telah membagikan cara mereka melihat ${ownerDisplay}. Bandingkan sudut pandang mereka dengan penilaian diri Anda.</p>
+      <div style="margin:0 0 28px;padding:18px;background:#F3F2FF;border-radius:12px;text-align:center;"><p style="margin:0 0 5px;font-size:11px;color:#77778D;">TIPE MENURUT TEMAN</p><strong style="font-size:17px;">${perceptionType}</strong></div>
+      <p style="margin:0 0 28px;text-align:center;"><a href="${args.meUrl}" style="display:inline-block;padding:14px 32px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Lihat sudut pandang teman</a></p>
+      <p style="margin:0;font-size:12px;line-height:1.6;color:#77778D;word-break:break-all;">${args.meUrl}</p>
+    </td></tr></table><p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${ID_SITE_NAME}</p>
+  </td></tr></table>
+</body></html>`;
+}
+
+function renderFriendPerceptionTextId(args: FriendPerceptionTemplateArgs): string {
+  return [
+    `${args.perceiverName} membagikan sudut pandang baru tentang Anda`,
+    "",
+    `${args.perceiverName} telah membagikan cara mereka melihat ${args.ownerDisplay}.`,
+    `Tipe menurut teman: ${args.perceptionType}`,
+    "",
+    "Buka laporan pribadi Anda untuk membandingkannya dengan penilaian diri:",
+    args.meUrl,
+    "",
+    "--",
+    ID_SITE_NAME,
   ].join("\n");
 }
 

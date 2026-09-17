@@ -359,7 +359,7 @@ export function accessProductPriceKrw(
 }
 
 export function accessProductPrice(
-  locale: "ja" | "ko" | "en",
+  locale: "ja" | "ko" | "en" | "id",
   product: AccessProduct,
   entitlements: AccessEntitlements,
 ): number {

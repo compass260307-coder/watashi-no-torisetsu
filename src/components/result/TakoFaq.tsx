@@ -117,12 +117,55 @@ const TAKO_FAQS: Record<AppResultLocale, readonly TakoFaqItem[]> = {
         "Yes. Use the Invite tab at the top whenever you want. A new result is added each time another friend responds.",
     },
   ],
+  id: [
+    {
+      question: "Apa itu tes dari teman?",
+      answer:
+        "Tes ini membandingkan penilaian dirimu dengan cara teman melihatmu. Setiap teman yang menjawab memiliki lembar hasil tersendiri berisi tipe kepribadian yang mereka lihat dan perbedaannya dari penilaianmu sendiri.",
+    },
+    {
+      question: "Berapa jawaban yang diperlukan untuk melihat hasil?",
+      answer:
+        "Satu jawaban lengkap akan membuka hasil teman pertama. Undang lebih banyak teman untuk menambahkan hasil individual dan membandingkan sudut pandang mereka.",
+    },
+    {
+      question: "Apakah teman bisa menjawab tanpa mengikuti tes kepribadian?",
+      answer:
+        "Bisa. Siapa pun yang memiliki tautan undanganmu dapat menjawab tanpa membuat akun atau menyelesaikan tes kepribadian mereka sendiri.",
+    },
+    {
+      question: "Apa yang dilihat teman setelah menjawab?",
+      answer:
+        "Mereka melihat tingkat kecocokan jawabannya dengan penilaian dirimu dan ringkasan lima dimensi kepribadian. Hasil detail pribadimu tidak dibagikan secara otomatis.",
+    },
+    {
+      question: "Bisakah saya melihat siapa yang menjawab?",
+      answer:
+        "Nama panggilan yang dimasukkan teman akan tampil pada hasil mereka. Kamu juga dapat membaca pesan opsional yang mereka tinggalkan.",
+    },
+    {
+      question: "Apakah jawaban dan pesan teman dipublikasikan?",
+      answer:
+        "Tidak. Jawaban dan pesan hanya muncul dalam hasil teman pribadimu dan tidak diposting otomatis di halaman publik.",
+    },
+    {
+      question: "Bisakah saya mengundang teman lain nanti?",
+      answer:
+        "Bisa. Gunakan tab Undang kapan saja. Hasil baru akan ditambahkan setiap kali teman lain selesai menjawab.",
+    },
+  ],
 };
 
 export function TakoFaq({ locale = "ja" }: { locale?: AppResultLocale }) {
   const items = TAKO_FAQS[locale];
   const title =
-    locale === "en" ? "Frequently asked questions" : locale === "ko" ? "자주 묻는 질문" : "よくある質問";
+    locale === "en"
+      ? "Frequently asked questions"
+      : locale === "id"
+        ? "Pertanyaan yang sering diajukan"
+        : locale === "ko"
+          ? "자주 묻는 질문"
+          : "よくある質問";
 
   return (
     <section

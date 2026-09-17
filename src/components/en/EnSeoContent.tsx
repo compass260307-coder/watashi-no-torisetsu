@@ -41,21 +41,21 @@ export default function EnSeoContent() {
   return (
     <div className="bg-[#F7F6FF] text-[#2E2E5C]">
       <section
-        aria-labelledby="alice-test-introduction"
+        aria-labelledby="alice-personalities-introduction"
         className="mx-auto max-w-[1120px] px-6 py-20 sm:px-8 sm:py-28"
       >
         <div className="max-w-[780px]">
           <p className="text-sm font-black uppercase tracking-[0.14em] text-[#5B5BEF]">
-            What is the Alice Test?
+            Alice Personalities
           </p>
           <h2
-            id="alice-test-introduction"
+            id="alice-personalities-introduction"
             className="mt-4 text-[34px] font-black leading-tight sm:text-[48px]"
           >
             A Big Five personality test with a second point of view
           </h2>
           <p className="mt-6 text-[17px] font-semibold leading-[1.9] text-[#66667D]">
-            Alice Test is a free, 50-question personality test based on the
+            Alice Personalities is a free, 50-question personality test based on the
             Big Five, also known as the OCEAN model. It measures five traits,
             matches your pattern with one of 32 characters, and lets you
             compare your answers with feedback from friends.
@@ -66,7 +66,7 @@ export default function EnSeoContent() {
               prefetch={false}
               className="rounded-full bg-[#5B5BEF] px-7 py-3.5 font-black text-white transition-transform hover:translate-y-px"
             >
-              Take the free Alice Test →
+              Take the free Alice Personalities test →
             </Link>
             <Link
               href="/en/about"
@@ -141,17 +141,17 @@ export default function EnSeoContent() {
       </section>
 
       <section
-        aria-labelledby="alice-test-faq"
+        aria-labelledby="alice-personalities-faq"
         className="mx-auto max-w-[900px] px-6 py-20 sm:px-8 sm:py-28"
       >
         <p className="text-center text-sm font-black uppercase tracking-[0.14em] text-[#5B5BEF]">
           Frequently asked questions
         </p>
         <h2
-          id="alice-test-faq"
+          id="alice-personalities-faq"
           className="mt-3 text-center text-[32px] font-black leading-tight sm:text-[42px]"
         >
-          Questions about the Alice Test
+          Questions about Alice Personalities
         </h2>
         <div className="mt-10 space-y-3">
           {EN_HOME_FAQS.map((faq) => (
@@ -179,7 +179,7 @@ export default function EnSeoContent() {
 
         <div className="mt-14 rounded-[30px] bg-[#2E2E5C] px-7 py-10 text-center text-white sm:px-12">
           <h2 className="text-[28px] font-black sm:text-[34px]">
-            Ready to meet your personality character?
+            Ready to discover your personality type?
           </h2>
           <p className="mx-auto mt-3 max-w-[620px] text-[15px] font-semibold leading-relaxed text-white/75">
             Answer 50 questions, discover your Big Five profile, and invite

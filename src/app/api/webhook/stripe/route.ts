@@ -82,13 +82,15 @@ function guestToken(bytes: number): string {
   return crypto.randomBytes(bytes).toString("base64url");
 }
 
-type PurchaseLocale = "ja" | "ko" | "en";
+type PurchaseLocale = "ja" | "ko" | "en" | "id";
 
 function purchaseLocale(session: Stripe.Checkout.Session): PurchaseLocale {
   return session.metadata?.locale === "ko"
     ? "ko"
     : session.metadata?.locale === "en"
       ? "en"
+      : session.metadata?.locale === "id"
+        ? "id"
       : "ja";
 }
 

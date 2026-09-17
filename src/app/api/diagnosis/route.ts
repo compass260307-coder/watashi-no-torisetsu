@@ -124,9 +124,9 @@ export async function POST(request: NextRequest) {
   }
   const body = parsedBody.value;
   const locale = body.locale ?? "ja";
-  if (locale !== "ja" && locale !== "ko" && locale !== "en") {
+  if (locale !== "ja" && locale !== "ko" && locale !== "en" && locale !== "id") {
     return NextResponse.json(
-      { error: "locale must be ja, ko, or en" },
+      { error: "locale must be ja, ko, en, or id" },
       { status: 400 },
     );
   }
@@ -302,13 +302,13 @@ export async function POST(request: NextRequest) {
       scores: typeof persistedScores;
       invite_code: string;
       owner_token: string;
-      preferred_locale: "ja" | "ko" | "en";
+      preferred_locale: "ja" | "ko" | "en" | "id";
       diagnosis_completed_at?: string;
       display_name?: string;
       acquisition_source?: string | null;
       acquisition_campaign?: string | null;
       acquisition_medium?: string | null;
-      acquisition_locale?: "ja" | "ko" | "en";
+      acquisition_locale?: "ja" | "ko" | "en" | "id";
     } = {
       type_id: typeId,
       scores: persistedScores,
@@ -369,8 +369,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // English paid-report email copy is not launched yet. Do not send a
-    // Japanese/Korean report to an English user by accident.
+    // English paid-report email copy is not launched yet. Indonesian has a
+    // dedicated template and follows the same post-diagnosis delivery path
+    // as Japanese and Korean.
     if (postDiagnosisReportEmail && locale !== "en") {
       try {
         await sendDetailedReportEmail({

@@ -136,7 +136,7 @@ type EventRow = {
   session_id: string | null;
   invite_code: string | null;
   owner_token: string | null;
-  locale: "ja" | "ko" | "en";
+  locale: "ja" | "ko" | "en" | "id";
   metadata: Record<string, unknown>;
 };
 
@@ -250,7 +250,9 @@ export function track(
     ? "ko"
     : pathname.startsWith("/en")
       ? "en"
-      : "ja";
+      : pathname.startsWith("/id")
+        ? "id"
+        : "ja";
   const localizedMetadata = {
     ...(params?.metadata ?? {}),
     locale,

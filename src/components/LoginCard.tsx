@@ -10,7 +10,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ResultLocale } from "@/i18n/result";
 
-type LoginLocale = ResultLocale | "en";
+type LoginLocale = ResultLocale | "en" | "id";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -67,6 +67,20 @@ const LOGIN_COPY = {
     sentHelp:
       "Open the link within 1 hour.\nIf you don’t see it, check your spam folder.",
     reset: "Use a different email address",
+  },
+  id: {
+    close: "Tutup",
+    heading: "Dapatkan tautan masuk",
+    description: "Masukkan email Anda dan kami akan mengirim tautan masuk yang aman.\nTanpa kata sandi.",
+    emailLabel: "Alamat email",
+    submitting: "Mengirim...",
+    submit: "Kirim tautan masuk",
+    sendError: "Tautan tidak dapat dikirim",
+    networkError: "Terjadi gangguan jaringan",
+    sentHeading: "Periksa email Anda",
+    sentBody: "Kami telah mengirim tautan masuk ke alamat ini.",
+    sentHelp: "Buka tautan dalam 1 jam.\nJika tidak terlihat, periksa folder spam.",
+    reset: "Gunakan alamat email lain",
   },
 } as const;
 

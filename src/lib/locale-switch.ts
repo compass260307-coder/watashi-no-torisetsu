@@ -1,23 +1,32 @@
 export type SiteLocale = "ja" | "ko";
-export type SwitchLocale = SiteLocale | "en";
+export type SwitchLocale = SiteLocale | "en" | "id";
 
 const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
-  "/": { ja: "/", ko: "/ko", en: "/en" },
-  "/ko": { ja: "/", ko: "/ko", en: "/en" },
-  "/en": { ja: "/", ko: "/ko", en: "/en" },
+  "/": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
+  "/ko": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
+  "/en": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
+  "/id": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
   "/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
   "/ko/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
   "/en/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
-  "/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis", en: "/en/diagnosis" },
+  "/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis", en: "/en/diagnosis", id: "/id/diagnosis" },
   "/ko/diagnosis": {
     ja: "/diagnosis",
     ko: "/ko/diagnosis",
     en: "/en/diagnosis",
+    id: "/id/diagnosis",
   },
   "/en/diagnosis": {
     ja: "/diagnosis",
     ko: "/ko/diagnosis",
     en: "/en/diagnosis",
+    id: "/id/diagnosis",
+  },
+  "/id/diagnosis": {
+    ja: "/diagnosis",
+    ko: "/ko/diagnosis",
+    en: "/en/diagnosis",
+    id: "/id/diagnosis",
   },
   "/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
   "/ko/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
@@ -61,9 +70,10 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
     ko: "/ko/auth/error",
     en: "/en/auth/error",
   },
-  "/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
-  "/ko/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
-  "/en/result": { ja: "/result", ko: "/ko/result", en: "/en/result" },
+  "/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
+  "/ko/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
+  "/en/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
+  "/id/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
   "/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
@@ -87,9 +97,10 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
   "/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
   "/ko/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
   "/en/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
-  "/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
-  "/ko/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
-  "/en/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
+  "/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
+  "/ko/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
+  "/en/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
+  "/id/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
   "/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
   "/ko/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
   "/en/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
@@ -124,36 +135,36 @@ function localePrefix(locale: SwitchLocale): string {
 }
 
 function resultToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en)\/)?me\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?me\/([A-Za-z0-9_-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
 function takoToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en)\/)?tako\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?tako\/([A-Za-z0-9_-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
 function shareCode(pathname: string): string | null {
   const match = pathname.match(
-    /^\/(?:(?:ko|en)\/)?share\/([A-Za-z0-9_-]+)\/?$/,
+    /^\/(?:(?:ko|en|id)\/)?share\/([A-Za-z0-9_-]+)\/?$/,
   );
   return match?.[1] ?? null;
 }
 
 function previewTypeId(pathname: string): string | null {
   const match = pathname.match(
-    /^\/(?:(?:ko|en)\/)?preview\/([a-z-]+__[NR])\/?$/,
+    /^\/(?:(?:ko|en|id)\/)?preview\/([a-z-]+__[NR])\/?$/,
   );
   return match?.[1] ?? null;
 }
 
 function articleSlug(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en)\/)?articles\/([a-z0-9-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?articles\/([a-z0-9-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
 function tarotMode(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en)\/)?tarot\/(one|three|yes-no)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?tarot\/(one|three|yes-no)\/?$/);
   return match?.[1] ?? null;
 }
 
@@ -163,10 +174,10 @@ function dynamicRouteValue(
 ): string | null {
   const pattern =
     route === "friend"
-      ? /^\/(?:(?:ko|en)\/)?friend\/([A-Za-z0-9_-]+)\/?$/
+      ? /^\/(?:(?:ko|en|id)\/)?friend\/([A-Za-z0-9_-]+)\/?$/
       : route === "evaluate/sent"
-        ? /^\/(?:(?:ko|en)\/)?evaluate\/sent\/([A-Za-z0-9_-]+)\/?$/
-        : /^\/(?:(?:ko|en)\/)?evaluate\/result\/([A-Za-z0-9_-]+)\/?$/;
+        ? /^\/(?:(?:ko|en|id)\/)?evaluate\/sent\/([A-Za-z0-9_-]+)\/?$/
+        : /^\/(?:(?:ko|en|id)\/)?evaluate\/result\/([A-Za-z0-9_-]+)\/?$/;
   return pathname.match(pattern)?.[1] ?? null;
 }
 
@@ -174,7 +185,7 @@ function friendIndividualRoute(
   pathname: string,
 ): { token: string; perceptionId: string } | null {
   const match = pathname.match(
-    /^\/(?:(?:ko|en)\/)?tako\/([A-Za-z0-9_-]+)\/friend\/([A-Za-z0-9_-]+)\/?$/,
+    /^\/(?:(?:ko|en|id)\/)?tako\/([A-Za-z0-9_-]+)\/friend\/([A-Za-z0-9_-]+)\/?$/,
   );
   if (!match) return null;
   return { token: match[1], perceptionId: match[2] };
@@ -277,7 +288,7 @@ export function localeSwitchPath(
   ) {
     return finish(
       localized[targetLocale] ??
-        (targetLocale === "en" ? "/en" : (localized[targetLocale] ?? "/")),
+        (targetLocale === "en" ? "/en" : targetLocale === "id" ? "/id" : (localized[targetLocale] ?? "/")),
     );
   }
 

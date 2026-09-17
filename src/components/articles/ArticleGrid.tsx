@@ -32,10 +32,16 @@ export function ArticleGrid({
   articles: ArticleCard[];
   /** 表示順のカテゴリー一覧 (記事が1本以上あるものだけ渡す) */
   categories: string[];
-  locale?: "ja" | "ko" | "en";
+  locale?: "ja" | "ko" | "en" | "id";
 }) {
   const labels =
-    locale === "en"
+    locale === "id"
+      ? {
+          all: "Semua",
+          category: "Kategori:",
+          read: "Baca artikel →",
+        }
+      : locale === "en"
       ? {
           all: "All",
           category: "Category:",
@@ -128,7 +134,7 @@ export function ArticleGrid({
         {visible.map((a) => (
           <li key={a.slug} className="h-full">
             <Link
-              href={`${locale === "en" ? "/en" : locale === "ko" ? "/ko" : ""}/articles/${a.slug}`}
+              href={`${locale === "en" ? "/en" : locale === "ko" ? "/ko" : locale === "id" ? "/id" : ""}/articles/${a.slug}`}
               prefetch={false}
               className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(46,46,92,0.10)] transition-shadow hover:shadow-[0_4px_20px_rgba(46,46,92,0.18)]"
             >

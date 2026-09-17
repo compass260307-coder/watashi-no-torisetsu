@@ -25,6 +25,7 @@ const ELEMENT_LABELS: Record<AppResultLocale, Record<string, string>> = {
   ja: { fire: "火", earth: "地", air: "風", water: "水" },
   ko: { fire: "불", earth: "흙", air: "바람", water: "물" },
   en: { fire: "Fire", earth: "Earth", air: "Air", water: "Water" },
+  id: { fire: "Api", earth: "Tanah", air: "Udara", water: "Air" },
 };
 const ELEMENT_ORDER = ["fire", "earth", "air", "water"] as const;
 
@@ -88,6 +89,36 @@ const EN_SIGN_NAMES: Record<string, string> = {
   魚座: "Pisces",
 };
 
+const ID_PLANET_NAMES: Record<string, string> = {
+  太陽: "Matahari",
+  月: "Bulan",
+  水星: "Merkurius",
+  金星: "Venus",
+  火星: "Mars",
+  木星: "Jupiter",
+  土星: "Saturnus",
+  天王星: "Uranus",
+  海王星: "Neptunus",
+  冥王星: "Pluto",
+  上昇宮: "Asenden",
+  天頂: "Medium Coeli",
+};
+
+const ID_SIGN_NAMES: Record<string, string> = {
+  牡羊座: "Aries",
+  牡牛座: "Taurus",
+  双子座: "Gemini",
+  蟹座: "Cancer",
+  獅子座: "Leo",
+  乙女座: "Virgo",
+  天秤座: "Libra",
+  蠍座: "Scorpio",
+  射手座: "Sagittarius",
+  山羊座: "Capricorn",
+  水瓶座: "Aquarius",
+  魚座: "Pisces",
+};
+
 const COPY = {
   ja: {
     aria: "あなたの出生図データ",
@@ -134,10 +165,27 @@ const COPY = {
     houseNumber: (house: number) => `House ${house}`,
     noHouses: "Enter your birth time to see your houses.",
   },
+  id: {
+    aria: "Data peta kelahiranmu",
+    title: "Data peta kelahiranmu",
+    planets: "Planet",
+    planet: "Planet",
+    sign: "Zodiak",
+    degree: "Derajat",
+    house: "Rumah",
+    legend: (timeUnknown: boolean) =>
+      `R = retrograde / Rumah = rumah yang ditempati planet${timeUnknown ? " (disembunyikan karena waktu lahir tidak diketahui)" : ""}`,
+    elements: "Elemen (Api · Tanah · Udara · Air)",
+    cusps: "Puncak rumah",
+    houseNumber: (house: number) => `Rumah ${house}`,
+    noHouses: "Masukkan waktu lahirmu untuk melihat rumah astrologi.",
+  },
 } as const;
 
 function localizedName(value: string, locale: AppResultLocale) {
-  return locale === "en"
+  return locale === "id"
+    ? (ID_PLANET_NAMES[value] ?? value)
+    : locale === "en"
     ? (EN_PLANET_NAMES[value] ?? value)
     : locale === "ko"
       ? (KO_PLANET_NAMES[value] ?? value)
@@ -145,7 +193,9 @@ function localizedName(value: string, locale: AppResultLocale) {
 }
 
 function localizedSign(value: string, locale: AppResultLocale) {
-  return locale === "en"
+  return locale === "id"
+    ? (ID_SIGN_NAMES[value] ?? value)
+    : locale === "en"
     ? (EN_SIGN_NAMES[value] ?? value)
     : locale === "ko"
       ? (KO_SIGN_NAMES[value] ?? value)

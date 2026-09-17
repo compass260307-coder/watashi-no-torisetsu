@@ -12,7 +12,7 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 
-type AboutLocale = "ja" | "en";
+type AboutLocale = "ja" | "en" | "id";
 
 type AboutCopy = {
   hero: readonly [string, string];
@@ -58,15 +58,27 @@ const GALLERY_IMAGES = [
 ] as const;
 
 const EN_FAQ: readonly FaqItem[] = [
-  { question: "What is Alice Test?", answer: "Alice Test combines your own Big Five answers with feedback from friends so you can understand both your self-image and how other people experience you." },
+  { question: "What is Alice Personalities?", answer: "Alice Personalities combines your own Big Five answers with feedback from friends so you can understand both your self-image and how other people experience you." },
   { question: "What is the Big Five personality model?", answer: "The Big Five describes personality through openness, conscientiousness, extraversion, agreeableness, and emotional sensitivity. It is also called the OCEAN model." },
-  { question: "How is this different from a 16-type test?", answer: "Alice Test uses the research-based Big Five, describes results through 32 character types, and adds anonymous feedback from friends." },
+  { question: "How is this different from a 16-type test?", answer: "Alice Personalities uses the research-based Big Five, describes results through 32 character types, and adds anonymous feedback from friends." },
   { question: "Can I use it for free?", answer: "The personality test and basic result are free. Optional paid features unlock the complete report and additional experiences." },
   { question: "Do I need an account?", answer: "You can take the personality test without creating an account. Email sign-in lets you restore your results and purchases on another device." },
   { question: "How long does the test take?", answer: "The 50-question personality test takes about three minutes when you answer by instinct." },
   { question: "Can other people see my result?", answer: "Your result is private unless you choose to share its private link. Friends who answer do not automatically receive access to your report." },
   { question: "How many friends should I invite?", answer: "One completed response is enough to begin comparing perspectives. More responses provide a broader picture." },
-  { question: "Who is Alice Test for?", answer: "It is for anyone who wants clearer language for self-reflection, relationships, career conversations, or feedback from friends." },
+  { question: "Who is Alice Personalities for?", answer: "It is for anyone who wants clearer language for self-reflection, relationships, career conversations, or feedback from friends." },
+];
+
+const ID_FAQ: readonly FaqItem[] = [
+  { question: "Apa itu Alice Test?", answer: "Alice Test menggabungkan jawaban Big Five Anda dengan penilaian teman agar Anda dapat memahami citra diri dan cara orang lain melihat Anda." },
+  { question: "Apa itu model kepribadian Big Five?", answer: "Big Five menggambarkan kepribadian melalui keterbukaan, ketelitian, ekstraversi, keramahan, dan kepekaan emosional. Model ini juga disebut OCEAN." },
+  { question: "Apa bedanya dengan tes 16 tipe?", answer: "Alice Test menggunakan Big Five yang berbasis riset, menampilkan 32 tipe karakter, dan menambahkan penilaian anonim dari teman." },
+  { question: "Apakah bisa digunakan gratis?", answer: "Tes kepribadian dan hasil dasar tersedia gratis. Edisi lengkap dan pengalaman tambahan dapat dibuka dengan satu kali pembelian." },
+  { question: "Apakah saya perlu membuat akun?", answer: "Anda dapat mengikuti tes tanpa akun. Masuk melalui email memungkinkan hasil dan pembelian dipulihkan di perangkat lain." },
+  { question: "Berapa lama tesnya?", answer: "Tes berisi 50 pertanyaan dan biasanya selesai dalam sekitar tiga menit." },
+  { question: "Apakah orang lain dapat melihat hasil saya?", answer: "Hasil Anda bersifat pribadi kecuali Anda membagikan tautannya. Teman yang menjawab tidak otomatis dapat melihat laporan Anda." },
+  { question: "Berapa banyak teman yang perlu diundang?", answer: "Satu jawaban sudah cukup untuk mulai membandingkan sudut pandang. Semakin banyak jawaban, semakin luas gambaran yang diperoleh." },
+  { question: "Untuk siapa Alice Test dibuat?", answer: "Untuk siapa saja yang ingin memahami diri, hubungan, karier, dan penilaian teman dengan bahasa yang lebih jelas." },
 ];
 
 const COPY: Record<AboutLocale, AboutCopy> = {
@@ -110,17 +122,17 @@ const COPY: Record<AboutLocale, AboutCopy> = {
   },
   en: {
     hero: ["You may know yourself,", "but you cannot see every side."],
-    heroBody: "Alice Test combines your own answers with feedback from friends to build a personal guide to you. Each friend’s perspective brings another part of that guide into focus.",
+    heroBody: "Alice Personalities combines your own answers with feedback from friends to build a personal guide to you. Each friend’s perspective brings another part of that guide into focus.",
     whyTitle: "Why we made it",
     why: [
       "There are many personality tests, but most can only reflect the version of you that answers the questions. Even completely honest answers begin with what you already know about yourself.",
       "Your friends notice another side: the habits you overlook, the way people rely on you, and how your presence changes a room. Psychology describes this as a blind spot, and it can hold some of the most useful parts of self-understanding.",
-      "That is why Alice Test does not stop with your own answers. Your guide grows as friends respond, while staying light enough to compare and discuss together.",
+      "That is why Alice Personalities does not stop with your own answers. Your guide grows as friends respond while remaining easy to compare and discuss together.",
     ],
     mechanismTitle: "The idea is simple",
     mechanismIntro: "Place your self-assessment beside feedback from friends and the gaps reveal parts of you that are difficult to see alone.",
-    selfLabel: "Self-assessment", selfValue: "The me I already know",
-    friendLabel: "Friend feedback", friendValue: "The me my friends can see",
+    selfLabel: "Self-assessment", selfValue: "The side of me I already know",
+    friendLabel: "Friend feedback", friendValue: "The side of me my friends can see",
     gapTitle: "The gap = a side of me I had not seen",
     gapBody: "That becomes one of the most useful pages in your personal guide.",
     stepsTitle: "How it works",
@@ -129,7 +141,7 @@ const COPY: Record<AboutLocale, AboutCopy> = {
       { num: "2", title: "Invite friends to describe you", body: "Send a private invitation link. Friends can answer anonymously from their own point of view." },
       { num: "3", title: "See yourself from both sides", body: "Compare your self-image with your friends’ impressions as your personal guide grows." },
     ],
-    scienceTitle: "The science behind it — Big Five",
+    scienceTitle: "The science behind it: the Big Five",
     science: [
       "The test is based on the Big Five, a widely used personality framework covering openness, conscientiousness, extraversion, agreeableness, and emotional sensitivity. The initials form the name OCEAN.",
       "Combinations across those five dimensions become 32 character types in four groups: Sea, Land, Sky, and Beyond. Friends answer along the same dimensions, so the two perspectives can be compared directly.",
@@ -139,12 +151,50 @@ const COPY: Record<AboutLocale, AboutCopy> = {
     gallery: ["Friendly Penguin", "Cool Hawk", "Cheerful Panda", "Grounded Bear", "Shimmering Jellyfish", "Independent Shark", "Thoughtful Angel", "Steadfast Dragon"].map((name, index) => ({ name, src: GALLERY_IMAGES[index] })),
     allTypes: "Explore all 32 personality types →",
     valuesTitle: "What matters to us",
-    values: ["Friend feedback is anonymous; individual answers are not identified", "You choose who to invite and never connect with strangers", "We do not serve advertisements", "Your data is used to provide and improve your self-reflection experience"],
+    values: ["Friend feedback is anonymous; individual answers are not identified", "You choose who to invite and never connect with strangers", "We do not show ads in the service", "Your data is used to provide and improve your self-reflection experience"],
     faqTitle: "Frequently asked questions", faq: EN_FAQ,
     operatorTitle: "Who operates the service",
     operatorBody: "We use Big Five psychology to help people discover parts of themselves that are difficult to see alone.",
-    operatorName: "Alice Test Operations",
+    operatorName: "Alice Personalities Operations",
     ctaLead: "Start with the version of you that you already know.", cta: "Take the free test →",
+  },
+  id: {
+    hero: ["Tentang diri sendiri,", "sering kali justru kita yang paling tidak tahu."],
+    heroBody: "Alice Test menggabungkan tes diri dan penilaian teman untuk membuat panduan pribadi tentang diri Anda. Setiap jawaban teman membuat panduan itu semakin lengkap.",
+    whyTitle: "Mengapa kami membuatnya",
+    why: [
+      "Ada banyak tes kepribadian, tetapi kebanyakan hanya memotret diri yang menjawab pertanyaan. Bahkan jawaban yang sangat jujur tetap berangkat dari sisi diri yang sudah Anda ketahui.",
+      "Teman melihat sisi lain: kebiasaan yang tidak Anda sadari, cara orang mengandalkan Anda, dan bagaimana kehadiran Anda mengubah suasana. Dalam psikologi, sisi ini dikenal sebagai titik buta dan sering menyimpan bagian paling menarik dari pemahaman diri.",
+      "Karena itu Alice Test tidak berhenti pada jawaban Anda sendiri. Panduan Anda berkembang seiring teman memberi penilaian, tetap ringan untuk dibaca dan dibicarakan bersama.",
+    ],
+    mechanismTitle: "Caranya sederhana",
+    mechanismIntro: "Letakkan penilaian diri di samping penilaian teman. Perbedaannya akan memperlihatkan sisi yang sulit Anda lihat sendiri.",
+    selfLabel: "Penilaian diri", selfValue: "Diri yang saya kenal",
+    friendLabel: "Penilaian teman", friendValue: "Diri yang dilihat teman",
+    gapTitle: "Perbedaan = sisi diri yang belum saya kenal",
+    gapBody: "Bagian inilah yang menjadi halaman paling menarik dalam panduan pribadi Anda.",
+    stepsTitle: "Cara menggunakannya",
+    steps: [
+      { num: "1", title: "Ikuti tes kepribadian", body: "Jawab 50 pertanyaan Big Five dalam sekitar tiga menit dan temukan karakter Anda dari 32 tipe." },
+      { num: "2", title: "Minta teman menilai Anda", body: "Kirim tautan undangan pribadi. Teman dapat menjawab secara anonim dari sudut pandang mereka." },
+      { num: "3", title: "Lihat diri dari dua sisi", body: "Bandingkan citra diri dengan kesan teman sambil melengkapi panduan pribadi Anda." },
+    ],
+    scienceTitle: "Dasar ilmiah — Big Five",
+    science: [
+      "Tes ini didasarkan pada Big Five, kerangka kepribadian yang luas digunakan dalam psikologi: keterbukaan, ketelitian, ekstraversi, keramahan, dan kepekaan emosional. Huruf awal kelimanya membentuk nama OCEAN.",
+      "Kombinasi lima dimensi tersebut ditampilkan sebagai 32 karakter dalam empat kelompok: Laut, Darat, Langit, dan Misteri. Teman menjawab pada dimensi yang sama sehingga kedua sudut pandang dapat dibandingkan langsung.",
+    ],
+    typesTitle: "Kenali 32 tipe",
+    typesIntro: "Tipe mana yang paling mirip dengan Anda? Hasil tes ditampilkan sebagai satu dari 32 karakter yang khas.",
+    gallery: ["Penguin Ramah", "Elang Tenang", "Panda Ceria", "Beruang Teguh", "Ubur-ubur Berkilau", "Hiu Mandiri", "Malaikat Penuh Perhatian", "Naga Teguh"].map((name, index) => ({ name, src: GALLERY_IMAGES[index] })),
+    allTypes: "Lihat semua 32 tipe kepribadian →",
+    valuesTitle: "Hal yang penting bagi kami",
+    values: ["Penilaian teman bersifat anonim; jawaban individual tidak ditampilkan", "Anda memilih sendiri siapa yang diundang dan tidak akan terhubung dengan orang asing", "Kami tidak menampilkan iklan di dalam layanan", "Data digunakan untuk menyediakan dan meningkatkan pengalaman refleksi diri Anda"],
+    faqTitle: "Pertanyaan umum", faq: ID_FAQ,
+    operatorTitle: "Tentang pengelola",
+    operatorBody: "Kami menggunakan psikologi Big Five untuk membantu orang menemukan sisi diri yang sulit dilihat sendirian.",
+    operatorName: "Tim Operasional Alice Test",
+    ctaLead: "Mulai dari sisi diri yang sudah Anda kenal.", cta: "Ikuti tes gratis →",
   },
 };
 
@@ -155,6 +205,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export default function AboutPageContent({ locale }: { locale: AboutLocale }) {
   const copy = COPY[locale];
   const isEnglish = locale === "en";
+  const prefix = locale === "ja" ? "" : `/${locale}`;
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -164,7 +215,7 @@ export default function AboutPageContent({ locale }: { locale: AboutLocale }) {
   return (
     <div className="flex flex-1 flex-col bg-white" style={isEnglish ? undefined : { fontFamily: FONT_STACK }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      {isEnglish ? <EnSiteHeader /> : <TopHeader />}
+      {isEnglish ? <EnSiteHeader /> : <TopHeader locale={locale} />}
       <main className="mx-auto w-full max-w-[1080px] flex-1 px-4 pb-20 md:px-8">
         <section className="pt-16 md:pt-24">
           <h1 className="font-bold" style={{ color: NAVY, fontSize: "clamp(32px, 5.5vw, 48px)", lineHeight: 1.45 }}>
@@ -231,7 +282,7 @@ export default function AboutPageContent({ locale }: { locale: AboutLocale }) {
               </div>
             ))}
           </div>
-          <div className="mt-6 text-center"><Link href={isEnglish ? "/en/types" : "/types"} className="text-[14px] font-bold underline underline-offset-4" style={{ color: SORA }}>{copy.allTypes}</Link></div>
+          <div className="mt-6 text-center"><Link href={`${prefix}/types`} className="text-[14px] font-bold underline underline-offset-4" style={{ color: SORA }}>{copy.allTypes}</Link></div>
         </section>
 
         <section className="mt-20">
@@ -250,10 +301,10 @@ export default function AboutPageContent({ locale }: { locale: AboutLocale }) {
 
         <section className="mt-20 text-center">
           <p className="text-[18px] font-bold leading-snug md:text-[20px]" style={{ color: NAVY }}>{copy.ctaLead}</p>
-          <Link href={isEnglish ? "/en/diagnosis" : "/diagnosis"} className="sora-cta mt-6 inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5">{copy.cta}</Link>
+          <Link href={`${prefix}/diagnosis`} className="sora-cta mt-6 inline-block rounded-full px-14 py-4 text-center text-[20px] font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5">{copy.cta}</Link>
         </section>
       </main>
-      {isEnglish ? <EnSiteFooter /> : <TopFooter />}
+      {isEnglish ? <EnSiteFooter /> : <TopFooter locale={locale} />}
     </div>
   );
 }

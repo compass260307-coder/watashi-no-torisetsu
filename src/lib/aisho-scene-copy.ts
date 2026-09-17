@@ -191,6 +191,41 @@ const CLASH_EN: Record<string, string> = {
   both_diff: "Sensitivity and different values can make conflict last. Agreeing in advance to pause before continuing a difficult conversation creates safety.",
 };
 
+const LOVE_ID: Record<string, string> = {
+  both_none: "Kalian sama-sama penuh perhatian dan stabil secara emosional. Dukungan terasa alami, tenang, dan dapat diandalkan.",
+  both_one: "Kehangatan kalian kuat, dan pihak yang lebih tenang dapat membantu pasangannya kembali seimbang tanpa memperbesar masalah.",
+  both_both: "Kalian sangat peduli dan sama-sama merasakan emosi dengan dalam. Membicarakan ketidakpastian sejak awal mencegah kecemasan saling membesar.",
+  one_none: "Salah satu sering menunjukkan perhatian, sementara yang lain menerimanya dengan tenang. Ucapan terima kasih menjaga keseimbangan ini tetap sehat.",
+  one_one: "Kehangatan dan kestabilan salah satu pihak dapat melembutkan gejolak emosi pihak lain. Bergantian menerima dukungan akan memperdalam kepercayaan.",
+  one_both: "Beban merawat hubungan mudah terkumpul pada satu orang ketika kalian sama-sama sensitif. Percakapan kecil dan jujur mencegah kecemasan menumpuk.",
+  none_none: "Kalian sama-sama terus terang dan stabil secara emosional. Kedekatan yang mandiri dan tidak rumit terasa sangat nyaman.",
+  none_one: "Kalian dapat berbicara dengan bebas. Pada hari yang berat, ketenangan dan penguatan akan lebih membantu daripada langsung memberi solusi.",
+  none_both: "Keterusterangan bertemu dengan kepekaan. Memilih kata dengan hati-hati membuat kejujuran menjadi kekuatan, bukan sumber luka yang tidak disengaja.",
+};
+
+const FRIEND_ID: Record<string, string> = {
+  match_diff: "Minat kalian serupa, sementara peran sosial kalian berbeda secara alami. Persahabatan ini bekerja baik dalam kelompok maupun saat berdua.",
+  match_match: "Minat dan energi kalian menyala pada hal yang sama, sehingga mudah bersantai, membuat rencana, dan mencoba sesuatu yang baru bersama.",
+  diff_diff: "Nilai dan gaya sosial yang berbeda dapat memperluas dunia kalian dengan memperkenalkan tempat serta gagasan yang tidak akan ditemui sendirian.",
+  diff_match: "Energi kalian selaras meskipun minatnya berbeda. Satu hobi bersama dapat dengan cepat mengubah hubungan yang nyaman menjadi persahabatan dekat.",
+};
+
+const WORK_ID: Record<string, string> = {
+  match_diff: "Cara kalian menyusun rencana serupa, sementara peran ke luar dan ke dalam saling melengkapi. Kalian mudah mempercayai bagian kerja masing-masing.",
+  match_match: "Kecepatan dan energi kalian selaras, sehingga diskusi cepat berubah menjadi tindakan. Sudut pandang dari luar membantu menangkap titik buta yang sama.",
+  diff_diff: "Seorang perencana dan seorang penggerak cepat dapat saling frustrasi sampai perannya jelas. Setelah itu, perbedaan menjadi pembagian kekuatan yang sangat efektif.",
+  diff_match: "Suasana kerja terasa mudah walau ritmenya berbeda. Menyepakati tahapan sejak awal menjaga kerja sama tetap menyenangkan dan cepat.",
+};
+
+const CLASH_ID: Record<string, string> = {
+  none_match: "Kalian tetap tenang dan berbagi nilai dasar yang sama. Perbedaan pendapat biasanya cepat kembali menjadi upaya mencari solusi.",
+  none_diff: "Pendapat kalian mungkin berbeda, tetapi kestabilan emosi membantu melihat perbedaan sebagai sesuatu untuk dipahami, bukan dikalahkan.",
+  one_match: "Saat salah satu pihak sedang emosional, nilai yang sama tetap memberi jalan untuk kembali. Tunggu sampai suasana tenang sebelum mencari solusi.",
+  one_diff: "Perbedaan nilai dan gejolak emosi salah satu pihak dapat saling kusut. Jeda singkat sering membuat perdamaian jauh lebih mudah.",
+  both_match: "Kalian sama-sama sensitif tetapi memiliki dasar yang sama. Menunda pesan panjang sampai esok hari dapat memperlihatkan kembali titik temu kalian.",
+  both_diff: "Kepekaan dan nilai yang berbeda dapat membuat konflik bertahan lama. Kesepakatan untuk berhenti sejenak sebelum melanjutkan percakapan sulit akan menciptakan rasa aman.",
+};
+
 // 4シーン分のコピーを引く。主役2軸の状態キーで辞書直引き。
 export function sceneLines(
   aId: ThirtyTwoTypeId,
@@ -203,30 +238,31 @@ export function sceneLines(
   const eq = (k: AxisKey) => bi(x[k], y[k]);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
-  const love = isKorean ? LOVE_KO : isEnglish ? LOVE_EN : LOVE;
-  const friend = isKorean ? FRIEND_KO : isEnglish ? FRIEND_EN : FRIEND;
-  const work = isKorean ? WORK_KO : isEnglish ? WORK_EN : WORK;
-  const clash = isKorean ? CLASH_KO : isEnglish ? CLASH_EN : CLASH;
+  const isIndonesian = locale === "id";
+  const love = isKorean ? LOVE_KO : isEnglish ? LOVE_EN : isIndonesian ? LOVE_ID : LOVE;
+  const friend = isKorean ? FRIEND_KO : isEnglish ? FRIEND_EN : isIndonesian ? FRIEND_ID : FRIEND;
+  const work = isKorean ? WORK_KO : isEnglish ? WORK_EN : isIndonesian ? WORK_ID : WORK;
+  const clash = isKorean ? CLASH_KO : isEnglish ? CLASH_EN : isIndonesian ? CLASH_ID : CLASH;
 
   return [
     {
       key: "love",
-      label: isKorean ? "연애에서는" : isEnglish ? "In love" : "恋愛では",
+      label: isKorean ? "연애에서는" : isEnglish ? "In love" : isIndonesian ? "Dalam cinta" : "恋愛では",
       text: love[`${st("A")}_${st("N")}`],
     },
     {
       key: "friend",
-      label: isKorean ? "우정에서는" : isEnglish ? "As friends" : "友情では",
+      label: isKorean ? "우정에서는" : isEnglish ? "As friends" : isIndonesian ? "Sebagai teman" : "友情では",
       text: friend[`${eq("O")}_${eq("E")}`],
     },
     {
       key: "work",
-      label: isKorean ? "함께 일하면" : isEnglish ? "At work" : "一緒に働くと",
+      label: isKorean ? "함께 일하면" : isEnglish ? "At work" : isIndonesian ? "Saat bekerja bersama" : "一緒に働くと",
       text: work[`${eq("C")}_${eq("E")}`],
     },
     {
       key: "clash",
-      label: isKorean ? "엇갈릴 때" : isEnglish ? "When you clash" : "すれ違うとき",
+      label: isKorean ? "엇갈릴 때" : isEnglish ? "When you clash" : isIndonesian ? "Saat terjadi benturan" : "すれ違うとき",
       text: clash[`${st("N")}_${eq("O")}`],
     },
   ];

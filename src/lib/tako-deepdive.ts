@@ -13,7 +13,7 @@ import {
   type BigFiveScores,
 } from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // ② 一言テンプレート用の軸名 (発散バーの AXES.title と同一)。
 const WARM_AXIS_LABEL: Record<BigFiveDimension, string> = {
@@ -30,6 +30,13 @@ const KO_AXIS_LABEL: Record<BigFiveDimension, string> = {
   E: "외향성",
   A: "우호성",
   N: "정서적 민감성",
+};
+const ID_AXIS_LABEL: Record<BigFiveDimension, string> = {
+  O: "Keterbukaan",
+  C: "Ketelitian",
+  E: "Ekstroversi",
+  A: "Keramahan",
+  N: "Kepekaan emosional",
 };
 
 export type DeepDiveGap = {
@@ -57,7 +64,7 @@ export type DeepDiveData = {
 export function buildDeepDive(
   selfScores: BigFiveScores,
   friendAvgScores: BigFiveScores | null,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): DeepDiveData | null {
   if (!friendAvgScores) return null;
 
@@ -67,7 +74,7 @@ export function buildDeepDive(
   const agreement = calcMutualUnderstanding(gaps);
 
   const toWarm = (g: (typeof gaps)[number]): DeepDiveGap => ({
-    label: locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key],
+    label: locale === "id" ? ID_AXIS_LABEL[g.key] : locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key],
     selfPercent: g.selfPercent,
     otherPercent: g.otherPercent,
   });
@@ -117,7 +124,7 @@ export function hiddenStrengthSentence(gap: DeepDiveGap): string {
 export function buildMinnaProse(
   deep: DeepDiveData,
   viewer?: string,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): string[] {
   const { gap, hiddenStrength, agreement } = deep;
   const diff = gap.otherPercent - gap.selfPercent;
@@ -148,6 +155,22 @@ export function buildMinnaProse(
         ? `${who}과 보는 관점의 일치도는 ${agreement}%예요. 지금의 나다움이 주변에도 자연스럽게 전달되고 있어요.`
         : `${who}과 보는 관점의 일치도는 ${agreement}%예요. 차이는 틀림이 아니라 내가 미처 몰랐던 모습을 친구가 발견했다는 뜻이에요.`,
     );
+    return paras;
+  }
+  if (locale === "id") {
+    const who = viewer ?? "teman Anda";
+    const paras: string[] = [];
+    if (diff >= 8) {
+      paras.push(`Di mata ${who}, sisi “${gap.label}” Anda terlihat lebih kuat daripada yang Anda sadari. Hal yang terasa biasa bagi Anda justru diterima sebagai kekuatan yang jelas.`);
+    } else if (diff <= -8) {
+      paras.push(`Anda merasa sisi “${gap.label}” cukup menonjol, tetapi ${who} melihat versi Anda yang lebih santai dan alami. Ketenangan itu dapat membuat orang lebih mudah mendekat.`);
+    } else {
+      paras.push(`Cara Anda dan ${who} melihat “${gap.label}” hampir sama. Citra diri dan kesan dari luar bertemu dengan cukup jelas.`);
+    }
+    if (hiddenStrength) paras.push(`Selain itu, “${hiddenStrength.label}” yang jarang Anda sadari juga terlihat jelas bagi ${who}.`);
+    paras.push(agreement >= 70
+      ? `Kesesuaian sudut pandang kalian adalah ${agreement}%. Diri Anda yang alami sudah tersampaikan dengan baik.`
+      : `Kesesuaian sudut pandang kalian adalah ${agreement}%. Perbedaan ini bukan kesalahan, melainkan sisi diri yang ditemukan teman Anda.`);
     return paras;
   }
 
@@ -727,7 +750,7 @@ export function estimateCompatFromGaps(
   selfScores: BigFiveScores,
   perceivedScores: BigFiveScores,
   viewer: string,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): EstimatedCompat | null {
   const gaps = buildDimensionGaps(selfScores, perceivedScores);
   if (gaps.length === 0) return null;
@@ -746,7 +769,21 @@ export function estimateCompatFromGaps(
     (x, y) => GRAPH_ORDER.indexOf(x.key) - GRAPH_ORDER.indexOf(y.key),
   );
   const axes: EstimatedAxisInsight[] = ordered.map((g) => {
-    const label = locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key];
+    const label = locale === "id" ? ID_AXIS_LABEL[g.key] : locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key];
+    if (locale === "id") {
+      const state: EstimatedAxisInsight["state"] = g.diffPoints <= 10 ? "match" : g.diffPoints <= 25 ? "close" : "gap";
+      const direction = g.otherPercent > g.selfPercent ? "lebih kuat" : "lebih lembut";
+      return {
+        key: g.key,
+        label,
+        state,
+        selfPercent: g.selfPercent,
+        otherPercent: g.otherPercent,
+        body: state === "match"
+          ? `Dalam ${label.toLowerCase()}, Anda dan ${viewer} melihat pola yang hampir sama.`
+          : `${viewer} melihat sisi ${label.toLowerCase()} Anda ${direction} daripada penilaian diri Anda.`,
+      };
+    }
     const copySet =
       locale === "ko"
         ? KO_AXIS_INSIGHT_COPY[g.key]
@@ -768,6 +805,27 @@ export function estimateCompatFromGaps(
       body: body.replaceAll("{name}", viewer),
     };
   });
+
+  if (locale === "id") {
+    const aligned = axes.filter((axis) => axis.state === "match");
+    const different = axes.filter((axis) => axis.state !== "match");
+    const summaryParas = [
+      percent >= 70
+        ? `Kecocokan Anda dengan ${viewer} terasa kuat karena banyak sisi diri terbaca dengan cara yang serupa.`
+        : `Hubungan Anda dengan ${viewer} membawa sudut pandang yang berbeda dan dapat membantu kalian saling memahami lebih dalam.`,
+      ...axes.slice(0, 4).map((axis) => axis.body),
+      `Perkiraan kecocokan ${percent}% ini adalah awal percakapan, bukan penilaian akhir atas hubungan kalian.`,
+    ];
+    const kotsu = [...different, ...aligned].slice(0, 5).map((axis) => ({
+      title: `Bicarakan ${axis.label.toLowerCase()}`,
+      body: `Gunakan contoh nyata saat membahas perbedaan dalam ${axis.label.toLowerCase()}, lalu tanyakan kebutuhan masing-masing tanpa menyalahkan.`,
+    }));
+    const wana = [...different, ...aligned].slice(0, 5).map((axis) => ({
+      title: `Jangan menebak dari ${axis.label.toLowerCase()}`,
+      body: `Jangan menganggap satu kebiasaan mewakili seluruh niat ${viewer}. Periksa pemahaman sebelum menarik kesimpulan.`,
+    }));
+    return { percent, stars, rank, summaryParas, axes, kotsu, wana };
+  }
 
   // ===== 5軸の解説を自然な読み物に組む =====
   // 一致した軸 (差が小さい順) → ズレた軸 (差が大きい順) の順で、接続詞をつけて流す。

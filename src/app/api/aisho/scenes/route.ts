@@ -66,6 +66,12 @@ function sceneVerdict(
           : lo
             ? "연애에서는 엇갈림을 조심해야 해요. "
             : "연애에서는 천천히 맞춰 가면 더 깊어져요. ";
+      if (locale === "id")
+        return hi
+          ? "Dalam cinta, pasangan ini sangat cocok. "
+          : lo
+            ? "Dalam cinta, kesalahpahaman kecil perlu ditangani dengan hati-hati. "
+            : "Dalam cinta, kesabaran membantu hubungan menjadi lebih dalam. ";
       return hi
         ? "恋愛では、かなり相性がいい。"
         : lo
@@ -84,6 +90,12 @@ function sceneVerdict(
           : lo
             ? "우정에서는 서로의 다름을 즐기는 게 핵심이에요. "
             : "친구로서는 좋은 거리를 지킬 수 있어요. ";
+      if (locale === "id")
+        return hi
+          ? "Sebagai teman, kalian cocok secara alami. "
+          : lo
+            ? "Dalam persahabatan, menikmati perbedaan adalah kuncinya. "
+            : "Sebagai teman, kalian dapat menemukan jarak yang nyaman. ";
       return hi
         ? "友達としては、最高のふたり。"
         : lo
@@ -102,6 +114,12 @@ function sceneVerdict(
           : lo
             ? "일할 때는 역할 분담이 핵심이에요. "
             : "함께 움직이면 좋은 팀이 돼요. ";
+      if (locale === "id")
+        return hi
+          ? "Bekerja bersama dapat terasa sangat lancar. "
+          : lo
+            ? "Dalam pekerjaan, pembagian peran yang jelas sangat penting. "
+            : "Dengan bekerja bersama, kalian dapat menjadi tim yang kuat. ";
       return hi
         ? "一緒に動くと、めっちゃ捗る。"
         : lo
@@ -120,6 +138,12 @@ function sceneVerdict(
           : lo
             ? "한번 엇갈리면 조금 길어지기 쉬워요. "
             : "엇갈려도 제대로 다시 돌아올 수 있어요. ";
+      if (locale === "id")
+        return hi
+          ? "Kalian dapat pulih dengan cepat setelah benturan. "
+          : lo
+            ? "Benturan mungkin membutuhkan waktu lebih lama untuk diselesaikan. "
+            : "Meski terjadi benturan, kalian dapat menemukan jalan kembali. ";
       return hi
         ? "すれ違っても、すぐ立て直せる。"
         : lo
@@ -134,7 +158,13 @@ export async function GET(request: NextRequest) {
   const b = searchParams.get("b");
   const localeParam = searchParams.get("locale");
   const locale: AppResultLocale =
-    localeParam === "ko" ? "ko" : localeParam === "en" ? "en" : "ja";
+    localeParam === "ko"
+      ? "ko"
+      : localeParam === "en"
+        ? "en"
+        : localeParam === "id"
+          ? "id"
+          : "ja";
   if (!isValid(a) || !isValid(b) || a === b) {
     return NextResponse.json({ error: "invalid pair" }, { status: 400 });
   }

@@ -30,6 +30,13 @@ const BUTTON_COPY = {
     openError: "We couldn’t open checkout. Please wait a moment and try again.",
     networkError: "The connection failed. Please check your network and try again.",
   },
+  id: {
+    defaultLabel: "Lihat Peta Takdirku",
+    loading: "Membuka…",
+    retry: "Coba lagi →",
+    openError: "Halaman pembayaran tidak dapat dibuka. Tunggu sebentar lalu coba lagi.",
+    networkError: "Koneksi gagal. Periksa jaringan lalu coba lagi.",
+  },
 } as const;
 
 export default function UnmeiCheckoutButton({

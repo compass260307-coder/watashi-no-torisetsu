@@ -54,12 +54,14 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   const requestedLocale = new URL(request.url).searchParams.get("locale");
-  const requiredLocale = requestedLocale === "ko" ? "ko" : requestedLocale === "en" ? "en" : u?.preferred_locale === "ko" ? "ko" : u?.preferred_locale === "en" ? "en" : "ja";
+  const requiredLocale = requestedLocale === "ko" ? "ko" : requestedLocale === "en" ? "en" : requestedLocale === "id" ? "id" : u?.preferred_locale === "ko" ? "ko" : u?.preferred_locale === "en" ? "en" : u?.preferred_locale === "id" ? "id" : "ja";
   const readingLocale =
     (reading?.reading as { locale?: unknown } | null)?.locale === "ko"
       ? "ko"
       : (reading?.reading as { locale?: unknown } | null)?.locale === "en"
         ? "en"
+        : (reading?.reading as { locale?: unknown } | null)?.locale === "id"
+          ? "id"
       : "ja";
   if (
     !isReadingReady(reading) ||

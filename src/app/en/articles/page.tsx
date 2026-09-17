@@ -3,7 +3,7 @@ import { ArticleGrid } from "@/components/articles/ArticleGrid";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import { EN_ARTICLES, EN_ARTICLE_CATEGORIES } from "@/lib/articles-en";
-import { localizedAlternates, SITE_URL } from "@/lib/locale-seo";
+import { EN_BRAND_NAME, localizedAlternates, SITE_URL } from "@/lib/locale-seo";
 
 const NAVY = "#2E2E5C";
 
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     alternateLocale: ["ja_JP", "ko_KR"],
     url: `${SITE_URL}/en/articles`,
-    siteName: "Alice Test",
-    title: "Articles | Alice Test",
+    siteName: EN_BRAND_NAME,
+    title: `Articles | ${EN_BRAND_NAME}`,
     description: "Clear guides to personality, self-understanding, and relationships.",
     images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024 }],
   },

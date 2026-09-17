@@ -23,7 +23,7 @@ import { preferCutImage } from "./character-image";
 import { sixteenTypes } from "./sixteen-types";
 import { resolveSiteUrl } from "./site-url";
 import type { BigFiveDimension } from "./types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 const SITE_URL = resolveSiteUrl();
 
@@ -32,11 +32,12 @@ const SITE_URL = resolveSiteUrl();
 // 実 compute 関数を流用して現実的な描画にする。
 export function mockTakoData(
   previewType: ThirtyTwoTypeId,
-  locale: ResultLocale | "en" = "ja",
+  locale: AppResultLocale = "ja",
   friendCount = 3,
 ): OwnerReportData {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const code = sixteenTypes[baseIdOf(previewType)].code;
   const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
   const selfScores = {
@@ -68,6 +69,8 @@ export function mockTakoData(
   ];
   const friendNames = isKo
     ? ["지유", "서아", "하린"]
+    : isId
+      ? ["Ayu", "Dimas", "Rani"]
     : isEn
       ? ["Alex", "Mia", "Jamie"]
       : ["ゆい", "そら", "はる"];
@@ -76,6 +79,11 @@ export function mockTakoData(
         "늘 차분하고 믿음직해요. 주변을 정말 잘 보고 있죠.",
         "자기 생각을 분명히 가지고 있는 점이 멋지다고 생각해요!",
       ]
+    : isId
+      ? [
+          "Kamu selalu tenang dan bisa diandalkan. Kamu juga sangat peka pada keadaan sekitar.",
+          "Aku suka karena kamu punya pendirian yang jelas!",
+        ]
     : isEn
       ? [
           "You are always calm and dependable. You notice what is happening around you.",

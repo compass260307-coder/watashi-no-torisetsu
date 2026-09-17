@@ -15,7 +15,9 @@ export default async function AuthErrorPage({
   return (
     <AuthErrorContent
       reason={reason}
-      locale={locale === "ko" ? "ko" : "ja"}
+      locale={
+        locale === "ko" || locale === "en" || locale === "id" ? locale : "ja"
+      }
     />
   );
 }

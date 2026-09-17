@@ -66,6 +66,8 @@ export default function UnmeiCheckoutConfirming({
                 router.replace(
                   locale === "en"
                     ? "/en/unmei"
+                    : locale === "id"
+                      ? "/id/unmei"
                     : locale === "ko"
                       ? "/ko/unmei"
                       : "/unmei",
@@ -79,6 +81,8 @@ export default function UnmeiCheckoutConfirming({
             router.replace(
               locale === "en"
                 ? "/en/unmei"
+                : locale === "id"
+                  ? "/id/unmei"
                 : locale === "ko"
                   ? "/ko/unmei"
                   : "/unmei",
@@ -119,8 +123,11 @@ export default function UnmeiCheckoutConfirming({
 
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const waitingCopy = isEn
     ? "Your purchase is complete. I’m creating your Destiny Blueprint now."
+    : isId
+      ? "Pembayaranmu berhasil. Aku sedang membuat Peta Takdirmu sekarang."
     : isKo
       ? "결제가 완료됐어요. 설계도를 만들고 있어요."
       : "購入が完了しました。鑑定書を作成しています。";
@@ -130,6 +137,8 @@ export default function UnmeiCheckoutConfirming({
       <h1 className="sr-only">
         {isEn
           ? "Creating your Destiny Blueprint"
+          : isId
+            ? "Sedang membuat Peta Takdirmu"
           : isKo
             ? "운명의 설계도를 만들고 있어요"
             : "運命の設計図を作成しています"}
@@ -150,6 +159,8 @@ export default function UnmeiCheckoutConfirming({
             <p className="text-[11px] font-bold leading-tight text-white/55">
               {isEn
                 ? "Your personal astrologer"
+                : isId
+                  ? "Astrolog pribadimu"
                 : isKo
                   ? "운명의 설계도"
                   : "あなたの専属占い師"}
@@ -174,6 +185,8 @@ export default function UnmeiCheckoutConfirming({
                 <>
                   {isEn
                     ? "The reading stopped while it was being created."
+                    : isId
+                      ? "Proses pembuatan pembacaanmu terhenti."
                     : isKo
                     ? "설계도를 만드는 중에 작업이 멈췄어요."
                     : "鑑定書の作成が途中で止まってしまいました。"}
@@ -185,13 +198,15 @@ export default function UnmeiCheckoutConfirming({
                     }}
                     className="mt-3 block rounded-full bg-[#5B5BEF] px-5 py-2.5 text-[13px] font-black text-white"
                   >
-                    {isEn ? "Create it again" : isKo ? "다시 만들기" : "もう一度作成する"}
+                    {isEn ? "Create it again" : isId ? "Buat lagi" : isKo ? "다시 만들기" : "もう一度作成する"}
                   </button>
                 </>
               ) : phase === "timeout" ? (
                 <>
                   {isEn
                     ? "Your Blueprint is taking a little longer. You can close this page and return after it is ready."
+                    : isId
+                      ? "Peta Takdirmu membutuhkan sedikit waktu. Kamu boleh menutup halaman ini dan kembali setelah selesai."
                     : isKo
                     ? "설계도를 만드는 데 시간이 조금 걸리고 있어요. 화면을 닫아도 완성된 뒤 다시 확인할 수 있어요."
                     : "鑑定書の作成に少し時間がかかっています。画面を閉じても、完成後にまた確認できます。"}
@@ -205,6 +220,8 @@ export default function UnmeiCheckoutConfirming({
                   >
                     {isEn
                       ? "Check progress again"
+                      : isId
+                        ? "Periksa progres lagi"
                       : isKo
                         ? "진행 상황 다시 확인하기"
                         : "作成状況をもう一度確認する"}
@@ -215,7 +232,7 @@ export default function UnmeiCheckoutConfirming({
                   {waitingCopy}
                   <span
                     className="mt-2 flex items-center gap-1"
-                    aria-label={isEn ? "Creating" : isKo ? "만드는 중" : "作成中"}
+                    aria-label={isEn ? "Creating" : isId ? "Sedang membuat" : isKo ? "만드는 중" : "作成中"}
                   >
                     {[0, 1, 2].map((index) => (
                       <span

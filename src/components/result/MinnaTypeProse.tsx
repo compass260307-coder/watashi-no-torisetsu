@@ -16,7 +16,8 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
-import type { ResultLocale } from "@/i18n/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
 const PARA_CLASS =
@@ -56,20 +57,36 @@ export function MinnaTypeProse({
   midSlot?: ReactNode;
   /** 本文の締めの後・「クセ」見出しの前に差し込むブロック (例: ②恋愛傾向)。 */
   afterBodySlot?: ReactNode;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const isKo = locale === "ko";
+  const isId = locale === "id";
   // 取扱説明書 + 取扱注意ポイント の2セクションだけ使う (相性は他己文脈から外す)。
-  const sections = (
-    isKo ? (KO_SELF_RESULT_CONTENT_32[type32] ?? []) : selfContentFor(type32)
-  ).slice(0, 2);
+  const sections = isId
+    ? [
+        {
+          title: "Panduan diri Anda",
+          heading: "Cara Anda terlihat dari luar",
+          body: `Menurut teman, Anda adalah ${ID_RESULT_TYPES[type32].name}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nHal-hal yang terasa biasa bagi Anda sering kali justru menjadi kekuatan yang paling diingat orang lain.`,
+        },
+        {
+          title: "Hal yang perlu diperhatikan",
+          heading: "Kebiasaan yang terlihat oleh teman",
+          body: "Karena teman melihat Anda dari sudut yang berbeda, selisih kecil bukan berarti ada yang salah. Ini adalah petunjuk tentang sisi diri yang belum Anda sadari sepenuhnya.",
+        },
+      ]
+    : (
+        isKo ? (KO_SELF_RESULT_CONTENT_32[type32] ?? []) : selfContentFor(type32)
+      ).slice(0, 2);
   if (sections.length === 0) return null;
-  const who = viewer ?? (isKo ? "친구" : "友達");
+  const who = viewer ?? (isId ? "Teman" : isKo ? "친구" : "友達");
 
   // 取扱説明書: 冒頭を「◯◯さんから見たあなたは、〜」へ変換し、友達視点の締めを添える。
   const [manual] = sections;
   const manualParas = manual.body.split("\n\n");
-  if (isKo && manualParas[0]?.startsWith("당신")) {
+  if (isId) {
+    manualParas[0] = `${who} melihat Anda sebagai seseorang yang ${manualParas[0]?.replace(/^Menurut teman, Anda adalah\s*/i, "") ?? ""}`;
+  } else if (isKo && manualParas[0]?.startsWith("당신")) {
     manualParas[0] = `${who}이 보는 ${manualParas[0]}`;
   } else if (manualParas[0]?.startsWith("あなた")) {
     manualParas[0] = `${who}から見た${manualParas[0]}`;
@@ -84,7 +101,9 @@ export function MinnaTypeProse({
   const reopenIdx = imageAfter + 1;
   if (viewer && reopenIdx < manualParas.length) {
     let t = manualParas[reopenIdx];
-    const connectors = isKo
+    const connectors = isId
+      ? ["Selain itu, ", "Selain itu", "Dan ", "Dan"]
+      : isKo
       ? ["그리고 ", "그리고", "게다가 ", "게다가", "더욱이 "]
       : ["そして、", "そして", "しかも", "さらに"];
     for (const conn of connectors) {
@@ -93,7 +112,9 @@ export function MinnaTypeProse({
         break;
       }
     }
-    if (isKo) {
+    if (isId) {
+      manualParas[reopenIdx] = `${who} juga melihat bahwa ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+    } else if (isKo) {
       manualParas[reopenIdx] = t.startsWith("당신")
         ? `${who}이 보는 ${t}`
         : `${who}이 보기에는 ${t}`;

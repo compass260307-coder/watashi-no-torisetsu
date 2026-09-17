@@ -35,7 +35,7 @@ import styles from "@/app/tako-report/[token]/print/page.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Friend Analysis PDF | Alice Test",
+  title: "Friend Analysis PDF | Alice Personalities",
   robots: { index: false, follow: false },
 };
 
@@ -212,7 +212,7 @@ function guidance(
       body: "Invite your friend to describe something they noticed rather than asking them to defend a score. Their example may reveal a strength you take for granted.",
     },
     {
-      title: "Keep the view open",
+      title: "Stay open to change",
       body: "Return to this conversation after a new experience. Both your self-view and a friend's view can change as your relationship grows.",
     },
   );
@@ -320,7 +320,7 @@ function FriendChapter({
       </figure>
 
       <div className={styles.sectionBlock}>
-        <h3>How you look through this friend&apos;s eyes</h3>
+        <h3>How this friend sees you</h3>
         <Paragraphs paragraphs={paras(self[0].body)} />
       </div>
 

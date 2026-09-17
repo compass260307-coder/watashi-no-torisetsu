@@ -97,6 +97,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const requestUrl = new URL(req.url);
   const isKo = requestUrl.searchParams.get("locale") === "ko";
   const isEn = requestUrl.searchParams.get("locale") === "en";
+  const isId = requestUrl.searchParams.get("locale") === "id";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
@@ -108,6 +109,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   if (isPreview) printParams.set("previewType", rawPreview);
   if (isKo) printParams.set("locale", "ko");
   if (isEn) printParams.set("locale", "en");
+  if (isId) printParams.set("locale", "id");
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未購入にはロック画面 PDF すら作らない) =====
@@ -125,7 +127,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     }
     if (!(await hasTakoAccess(data.id))) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/tako/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/tako/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -137,6 +139,8 @@ export async function GET(req: Request, ctx: RouteContext) {
     : new URL(req.url).origin;
   const pageUrl = isEn
     ? `${origin}/en/tako-report/${encodeURIComponent(token)}/print${printQuery}`
+    : isId
+      ? `${origin}/id/tako-report/${encodeURIComponent(token)}/print${printQuery}`
     : `${origin}/tako-report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
@@ -161,9 +165,9 @@ export async function GET(req: Request, ctx: RouteContext) {
         timeout(15_000),
       ]);
     });
-    const englishReportRendered = isEn
+    const englishReportRendered = isEn || isId
       ? await page.evaluate(() =>
-          Boolean(document.querySelector("main[lang='en'] article")),
+          Boolean(document.querySelector("main[lang='en'] article, main[lang='id']")),
         )
       : true;
     if (!englishReportRendered) {
@@ -181,8 +185,8 @@ export async function GET(req: Request, ctx: RouteContext) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition":
-          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Test Friend Analysis.pdf" : "友達診断 完全版レポート.pdf")}`,
+          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : isId ? "analisis-kepribadian-teman.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
         "Cache-Control": "no-store",
       },
     });

@@ -17,7 +17,7 @@ export function LoginModal({
 }: {
   open: boolean;
   onClose: () => void;
-  locale?: ResultLocale | "en";
+  locale?: ResultLocale | "en" | "id";
 }) {
   // Esc で閉じる + 背面スクロールロック (open の間だけ)
   useEffect(() => {
@@ -44,7 +44,7 @@ export function LoginModal({
       role="dialog"
       aria-modal="true"
       aria-label={
-        locale === "ko" ? "로그인" : locale === "en" ? "Sign in" : "ログイン"
+        locale === "ko" ? "로그인" : locale === "en" ? "Sign in" : locale === "id" ? "Masuk" : "ログイン"
       }
     >
       {/* 暗幕: クリックで閉じる */}

@@ -50,6 +50,8 @@ import {
 } from "@/i18n/ko/me-content-32";
 import { buildEnSelfSections } from "@/i18n/en/me";
 import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
+import { buildIdSelfSections } from "@/i18n/id/me";
+import { ID_RESULT_AXES, ID_RESULT_TYPES } from "@/i18n/id/result";
 import type { AppResultLocale } from "@/i18n/result";
 import { estimateCompatFromGaps } from "./tako-deepdive";
 
@@ -106,6 +108,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const locale = input.locale ?? "ja";
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const koAxisLabels = {
     O: "개방성",
     C: "성실성",
@@ -116,9 +119,14 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const enAxisLabels = Object.fromEntries(
     EN_RESULT_AXES.map((axis) => [axis.dim, axis.title]),
   ) as Record<(typeof EN_RESULT_AXES)[number]["dim"], string>;
+  const idAxisLabels = Object.fromEntries(
+    ID_RESULT_AXES.map((axis) => [axis.dim, axis.title]),
+  ) as Record<(typeof ID_RESULT_AXES)[number]["dim"], string>;
   const gaps = buildDimensionGaps(selfScores, otherScores).map((gap) =>
     isEn
       ? { ...gap, label: enAxisLabels[gap.key] }
+      : isId
+        ? { ...gap, label: idAxisLabels[gap.key] }
       : isKo
         ? { ...gap, label: koAxisLabels[gap.key] }
         : gap,
@@ -128,11 +136,11 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
 
   const displayName =
     (input.ownerDisplayName ?? "").trim() ||
-    (isEn ? "you" : isKo ? "나" : "あなた");
+    (isEn ? "you" : isId ? "Anda" : isKo ? "나" : "あなた");
   const perceiverFull =
     (input.perceiverName ?? "").trim() ||
-    (isEn ? "A friend" : isKo ? "친구" : "友達");
-  const myTrisetsuUrl = `${isEn ? "/en" : isKo ? "/ko" : ""}/me/${input.ownerToken ?? ""}`;
+    (isEn ? "A friend" : isId ? "Seorang teman" : isKo ? "친구" : "友達");
+  const myTrisetsuUrl = `${isEn ? "/en" : isId ? "/id" : isKo ? "/ko" : ""}/me/${input.ownerToken ?? ""}`;
 
   const perceivedTypeId = classifySixteenType(otherScores);
   const perceivedType16 = sixteenTypes[perceivedTypeId];
@@ -140,9 +148,12 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const perceived32Id = classifyThirtyTwoType(otherScores);
   const koType = KO_RESULT_TYPES[perceived32Id];
   const enType = EN_RESULT_TYPES[perceived32Id];
+  const idType = ID_RESULT_TYPES[perceived32Id];
 
   const perceivedTypeName = isEn
     ? enType.name
+    : isId
+      ? idType.name
     : isKo
       ? koType.name
       : flag32
@@ -150,6 +161,8 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
         : perceivedType16.name;
   const dispEssence = isEn
     ? enType.essence
+    : isId
+      ? idType.essence
     : isKo
       ? koType.essence
       : flag32
@@ -160,6 +173,8 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
     : characterImagePath(perceivedTypeId);
   const dispDesc = isEn
     ? enType.oneLiner
+    : isId
+      ? idType.oneLiner
     : isKo
       ? koType.oneLiner
       : flag32
@@ -174,6 +189,9 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const perceivedManual = isEn
     ? buildEnSelfSections(perceived32Id, otherScores)[0]?.body ??
       "Your friend may notice strengths and patterns that are difficult to see from the inside."
+    : isId
+      ? buildIdSelfSections(perceived32Id, otherScores)[0]?.body ??
+        "Teman Anda mungkin melihat kekuatan dan pola yang sulit disadari dari dalam."
     : isKo
       ? KO_SELF_RESULT_CONTENT_32[perceived32Id]?.[0]?.body ??
         "친구의 눈에 비친 모습에는 스스로 미처 알아차리지 못한 장점이 담겨 있어요."
@@ -184,11 +202,24 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
 
   const foundContent = isKo
     ? KO_PERCEIVED_BY_TYPE_32[perceived32Id]
+    : isId
+      ? null
     : flag32
       ? perceivedContentFor(perceived32Id)
       : getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
-  const strengthParas = foundContent
+  const idAxesByStrength = [...ID_RESULT_AXES]
+    .sort((a, b) => (otherScores[b.dim] ?? 5) - (otherScores[a.dim] ?? 5))
+    .slice(0, 3);
+  const idAxesBySurprise = [...ID_RESULT_AXES]
+    .sort((a, b) => Math.abs((otherScores[b.dim] ?? 5) - 5) - Math.abs((otherScores[a.dim] ?? 5) - 5))
+    .slice(0, 3);
+  const strengthParas: FoundParagraph[] = isId
+    ? idAxesByStrength.map((axis) => [
+        { text: `${axis.title}. `, pink: true },
+        { text: (otherScores[axis.dim] ?? 5) >= 5 ? axis.highStrength : axis.lowStrength },
+      ])
+    : foundContent
     ? isKo
       ? foundContent.strengths.slice(0, 3).map((item) => [
           { text: `${item.title}. `, pink: true },
@@ -196,7 +227,12 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
         ])
       : weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
     : [];
-  const surpriseParas = foundContent
+  const surpriseParas: FoundParagraph[] = isId
+    ? idAxesBySurprise.map((axis) => [
+        { text: `Sisi ${axis.title.toLowerCase()}. `, pink: true },
+        { text: (otherScores[axis.dim] ?? 5) >= 5 ? axis.highGrowth : axis.lowGrowth },
+      ])
+    : foundContent
     ? isKo
       ? foundContent.surprises.slice(0, 3).map((item) => [
           { text: `${item.title}. `, pink: true },
@@ -215,24 +251,39 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
         "ko",
       )
     : null;
+  const idRelation = isId
+    ? estimateCompatFromGaps(
+        selfScores,
+        otherScores,
+        perceiverFull,
+        "id",
+      )
+    : null;
   const koRelationMiddle = koRelation?.summaryParas.slice(1, -1).join(" ") ?? "";
+  const idRelationMiddle = idRelation?.summaryParas.slice(1, -1).join(" ") ?? "";
   const relationFactBody = isEn
     ? `Your self-view and ${perceiverFull}'s perspective overlap in meaningful ways. The shared ground can make honest conversations feel easier.`
+    : isId
+      ? idRelation?.summaryParas[0] ?? "Cara kalian saling melihat memiliki kekuatan yang khas."
     : isKo
       ? koRelation?.summaryParas[0] ?? "두 사람이 서로를 바라보는 방식에는 특별한 장점이 있어요."
       : relationGapFact[maxGap.key][maxGapDir];
   const relationGapBody = isEn
     ? `The clearest difference is ${maxGap.label.toLowerCase()}: you rated yourself at ${maxGap.selfPercent}%, while ${perceiverFull} rated you at ${maxGap.otherPercent}%. This is a difference in perspective, not a verdict.`
+    : isId
+      ? idRelationMiddle || "Perbedaan sudut pandang adalah kesempatan untuk menemukan sisi baru, bukan tanda bahwa salah satu pihak keliru."
     : isKo
       ? koRelationMiddle || "서로 다른 시선은 틀림이 아니라 새로운 모습을 발견할 기회예요."
       : relationGapNote[maxGap.key][maxGapDir];
   const relationTipBody = isEn
     ? "Compare one concrete situation at a time. Specific examples make it easier to understand what each person noticed and why."
+    : isId
+      ? idRelation?.summaryParas.at(-1) ?? "Bicarakan satu situasi nyata pada satu waktu agar kalian lebih mudah memahami apa yang diperhatikan masing-masing."
     : isKo
       ? koRelation?.summaryParas.at(-1) ?? "차이를 편하게 이야기할수록 관계는 더 깊어질 수 있어요."
       : relationGapTip[maxGap.key][maxGapDir];
-  const relationTipKey = isEn || isKo ? "" : relationGapTipKey[maxGap.key][maxGapDir];
-  const tipsKey = isEn || isKo
+  const relationTipKey = isEn || isId || isKo ? "" : relationGapTipKey[maxGap.key][maxGapDir];
+  const tipsKey = isEn || isId || isKo
     ? ""
     : flag32
       ? perceivedTipsKeyFor(perceived32Id)
@@ -241,9 +292,9 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const q = input.qualitative;
   const qualEntries = (
     [
-      { label: isEn ? "What they appreciate" : isKo ? "좋아하는 점" : "好きなところ", value: q?.favorite_point },
-      { label: isEn ? "If you were an animal" : isKo ? "동물로 비유하면" : "動物にたとえると", value: q?.animal },
-      { label: isEn ? "A memorable moment" : isKo ? "인상적인 장면" : "印象的なシーン", value: q?.impression_scene },
+      { label: isEn ? "What they appreciate" : isId ? "Hal yang mereka sukai" : isKo ? "좋아하는 점" : "好きなところ", value: q?.favorite_point },
+      { label: isEn ? "If you were an animal" : isId ? "Jika kamu seekor hewan" : isKo ? "동물로 비유하면" : "動物にたとえると", value: q?.animal },
+      { label: isEn ? "A memorable moment" : isId ? "Momen yang berkesan" : isKo ? "인상적인 장면" : "印象的なシーン", value: q?.impression_scene },
     ] as { label: string; value: string | undefined }[]
   ).filter(
     (e): e is { label: string; value: string } =>
@@ -268,7 +319,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
     perceivedTipsBody,
     strengthParas,
     surpriseParas,
-    hasFound: !!foundContent,
+    hasFound: isId || !!foundContent,
     relationFactBody,
     relationGapBody,
     relationTipBody,

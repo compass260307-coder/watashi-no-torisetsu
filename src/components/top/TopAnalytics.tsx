@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type { ResultLocale } from "@/i18n/result";
 import { track } from "@/lib/track";
 
-type TopLocale = ResultLocale | "en";
+type TopLocale = ResultLocale | "en" | "id";
 
 export function TopViewTracker({ locale }: { locale: TopLocale }) {
   const tracked = useRef(false);

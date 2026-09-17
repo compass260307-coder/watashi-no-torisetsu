@@ -124,7 +124,7 @@ for (const required of [
   "useSearchParams",
   'pathname.startsWith("/dev/")',
   'searchParams.get("locale") === "ko"',
-  "const koreanPath = isKorean",
+  "const localePrefix = isKorean",
 ]) {
   if (!bottomNav.includes(required)) {
     problems.push(
@@ -243,7 +243,10 @@ if (fullAccessCta.includes('unauthHref = "/diagnosis"')) {
   );
 }
 if (
-  !fullAccessCta.includes('locale === "ko" ? "/ko/diagnosis" : "/diagnosis"')
+  !fullAccessCta.includes('locale === "ko"') ||
+  !fullAccessCta.includes('locale === "id"') ||
+  !fullAccessCta.includes('"/ko/diagnosis"') ||
+  !fullAccessCta.includes('"/id/diagnosis"')
 ) {
   problems.push(
     "src/components/result/FullAccessCta.tsx: locale-aware unauthenticated fallback is missing",
@@ -738,7 +741,10 @@ const japaneseTopHero = fs.readFileSync(
   path.join(ROOT, "src/components/top/TopHero.tsx"),
   "utf8",
 );
-if (!japaneseTopHero.includes('onClick={() => trackTopCta("ja")}')) {
+if (
+  !japaneseTopHero.includes('onClick={() => trackTopCta("ja")}') &&
+  !japaneseTopHero.includes('onClick={() => trackTopCta(locale)}')
+) {
   problems.push(
     "src/components/top/TopHero.tsx: Japanese top_cta_clicked tracking is missing",
   );
@@ -873,7 +879,7 @@ const unmeiPriceCta = fs.readFileSync(
   "utf8",
 );
 for (const required of [
-  'const purchaseProduct = hasFull ? "premium_bundle" : "full_access"',
+  'supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access"',
   'FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")',
 ]) {
   if (!unmeiPriceCta.includes(required)) {
@@ -996,7 +1002,7 @@ const selfReportPdf = fs.readFileSync(
 );
 for (const required of [
   "나의 사용설명서 성격 스토리.pdf",
-  'pageRanges: isKo ? "1-16" : undefined',
+  'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
 ]) {
   if (!selfReportPdf.includes(required)) {
     problems.push(

@@ -29,7 +29,7 @@ export default function EnEvaluationSentPage({
               Answers sent
             </p>
             <h1 className="mt-3 text-3xl font-black text-[#2E2E5C] sm:text-4xl">
-              Here’s how closely you see {name}
+              Here’s how closely your view matches {name}’s self-image
             </h1>
             <p className="mx-auto mt-4 max-w-xl leading-relaxed text-[#68687D]">
               Your answers are now part of their private friend-perspective

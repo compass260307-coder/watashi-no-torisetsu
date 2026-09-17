@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { ConfirmSwitchView } from "./ConfirmSwitchView";
 
-type LoginConfirmLocale = "ja" | "ko" | "en";
+type LoginConfirmLocale = "ja" | "ko" | "en" | "id";
 
 export type LoginConfirmSearchParams = {
   [key: string]: string | string[] | undefined;
@@ -31,7 +31,7 @@ export async function LoginConfirmPageContent({
   const sp = await searchParams;
   const locale: LoginConfirmLocale =
     localeOverride ??
-    (sp.locale === "ko" ? "ko" : sp.locale === "en" ? "en" : "ja");
+    (sp.locale === "ko" ? "ko" : sp.locale === "en" ? "en" : sp.locale === "id" ? "id" : "ja");
   const token = typeof sp.token === "string" ? sp.token : "";
   if (!token) notFound();
 
@@ -57,7 +57,7 @@ export async function LoginConfirmPageContent({
   const aOwnerToken = current?.owner_token ?? null;
   const aName =
     (current?.display_name ?? "").trim() ||
-    (locale === "ko" ? "회원" : locale === "en" ? "you" : "あなた");
+    (locale === "ko" ? "회원" : locale === "en" ? "you" : locale === "id" ? "Anda" : "あなた");
   const localePrefix = locale === "ja" ? "" : `/${locale}`;
   const recoveryUrl = aOwnerToken
     ? `${resolveSiteUrl()}${localePrefix}/me/${aOwnerToken}`
@@ -90,6 +90,7 @@ export async function LoginConfirmPageContent({
 function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
   const ko = locale === "ko";
   const en = locale === "en";
+  const id = locale === "id";
   return (
     <main className="min-h-dvh bg-white px-4 py-12">
       <div className="mx-auto max-w-[420px] text-center">
@@ -98,6 +99,8 @@ function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
             ? "링크가 만료되었어요"
             : en
               ? "This link has expired"
+              : id
+                ? "Tautan ini sudah kedaluwarsa"
               : "リンクが失効しました"}
         </h1>
         <p className="text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-8">
@@ -112,6 +115,11 @@ function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
               <br />
               Request a new link to continue.
             </>
+          ) : id ? (
+            <>
+              Tautan masuk ini sudah kedaluwarsa atau telah digunakan.
+              <br />Minta tautan baru untuk melanjutkan.
+            </>
           ) : (
             <>
               ログインリンクは1時間で失効、または既に使用されています。
@@ -121,13 +129,15 @@ function ExpiredNotice({ locale }: { locale: LoginConfirmLocale }) {
           )}
         </p>
         <Link
-          href={ko ? "/ko/login" : en ? "/en/login" : "/login"}
+          href={ko ? "/ko/login" : en ? "/en/login" : id ? "/id/login" : "/login"}
           className="inline-flex items-center justify-center rounded-full bg-[#2E2E5C] px-8 py-3.5 text-base font-black text-white shadow-[0_4px_0_#1b1b3e] hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-none transition-all"
         >
           {ko
             ? "로그인 링크 다시 받기"
             : en
               ? "Get a new sign-in link"
+              : id
+                ? "Dapatkan tautan masuk baru"
               : "ログインをやり直す"}
         </Link>
       </div>

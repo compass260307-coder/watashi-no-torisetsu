@@ -115,6 +115,42 @@ export const FRIEND_COPY = {
       1: "Strongly disagree",
     } satisfies Record<AnswerValue, string>,
   },
+  id: {
+    loading: "Memuat...",
+    friend: "teman Anda",
+    testTitle: "Tes kepribadian teman",
+    heroSubtitle: "Model kepribadian OCEAN (Big Five)",
+    heroAlt: "Tes kepribadian teman",
+    nicknamePrompt: "Siapa nama panggilan Anda?",
+    questionAria: (id: number) => `Pertanyaan ${id}`,
+    finishQuestions: "Satu hal terakhir →",
+    next: "Berikutnya",
+    back: "Kembali",
+    nicknameRequired: "Masukkan nama panggilan untuk melanjutkan",
+    invalidTitle: "Undangan ini sudah tidak tersedia",
+    invalidDescription: "Tautan mungkin tidak lengkap atau orang yang mengundang Anda tidak ditemukan. Mintalah teman Anda mengirim tautan undangan baru.",
+    invalidCta: "Ikuti tes kepribadian saya",
+    submitErrorTitle: "Jawaban belum terkirim",
+    submitErrorBody: "Tunggu sebentar lalu coba lagi.",
+    retry: "Coba lagi",
+    messageTitle: "Terakhir, tinggalkan pesan (opsional)",
+    messageAria: "Pesan opsional untuk teman Anda",
+    messagePlaceholder: "Tuliskan hal yang ingin Anda sampaikan",
+    submitting: "Mengirim...",
+    seeResult: "Lihat hasil →",
+    unknownError: "Terjadi kesalahan. Silakan coba lagi.",
+    scaleLeft: "Sangat setuju",
+    scaleRight: "Sangat tidak setuju",
+    scaleOptions: {
+      7: "Sangat setuju",
+      6: "Setuju",
+      5: "Agak setuju",
+      4: "Netral",
+      3: "Agak tidak setuju",
+      2: "Tidak setuju",
+      1: "Sangat tidak setuju",
+    } satisfies Record<AnswerValue, string>,
+  },
 } as const;
 
 const KO_FRIEND_QUESTIONS = [
@@ -150,6 +186,39 @@ const KO_FRIEND_QUESTIONS = [
   "{name}님은 감정을 겉으로 잘 드러내지 않는 사람처럼 보인다",
 ] as const;
 
+const ID_FRIEND_QUESTIONS = [
+  "{name} aktif menyampaikan pendapat dalam kelompok",
+  "{name} cenderung segera bertindak saat mendapat ide",
+  "{name} biasanya membuat rencana sebelum bergerak",
+  "{name} memiliki pendirian kuat dan kadang sulit mengalah",
+  "Perubahan perasaan {name} mudah terlihat dari ekspresi atau sikapnya",
+  "{name} tampak pandai memahami perasaan orang lain",
+  "{name} kadang mengejutkan orang dengan ide yang unik",
+  "{name} mudah memulai percakapan dengan orang yang baru dikenal",
+  "{name} kadang menunda rencana karena terlalu fokus pada hal di depan mata",
+  "{name} tampak memikirkan segala sesuatu dengan hati-hati",
+  "{name} lebih sering mendengarkan daripada berbicara lebih dulu",
+  "Suasana biasanya terasa lebih nyaman saat bersama {name}",
+  "{name} berani mencoba tempat atau kegiatan yang belum dikenal",
+  "{name} tekun berusaha setelah menetapkan tujuan",
+  "{name} cenderung memilih tempat dan kegiatan yang sudah dikenal",
+  "{name} sering menyadari ketika seseorang kesulitan lalu menyapa lebih dulu",
+  "{name} melihat persoalan dari sudut pandang yang praktis",
+  "{name} tampak tenang dan emosinya relatif stabil",
+  "{name} memperhatikan suasana kelompok sebelum bertindak",
+  "{name} menerima cerita orang lain dengan ramah",
+  "{name} tampak sangat bertekad menyelesaikan apa yang sudah dimulai",
+  "{name} cukup mudah khawatir dan cepat menyadari risiko",
+  "{name} tetap tenang dalam situasi yang menegangkan",
+  "{name} tidak mudah terbawa emosi orang lain dan mampu menjaga ketenangan",
+  "{name} teliti dalam mengatur jadwal dan merapikan sesuatu",
+  "{name} cenderung mengutamakan penilaiannya sendiri daripada pendapat kelompok",
+  "{name} menikmati gagasan abstrak dan imajinasi",
+  "{name} lebih mementingkan menikmati saat ini daripada mencapai target",
+  "Berbicara dengan {name} membuat suasana hati saya lebih cerah",
+  "{name} tampak tidak banyak menunjukkan perasaan di luar",
+] as const;
+
 export function friendQuestionText(
   locale: AppResultLocale,
   question: FriendQuestionV2,
@@ -160,7 +229,9 @@ export function friendQuestionText(
       ? (KO_FRIEND_QUESTIONS[question.id - 1] ?? question.text)
       : locale === "en"
         ? (EN_FRIEND_QUESTIONS[question.id - 1] ?? question.text)
-      : question.text;
+        : locale === "id"
+          ? (ID_FRIEND_QUESTIONS[question.id - 1] ?? question.text)
+          : question.text;
   if (locale === "ko" && inviteeName === FRIEND_COPY.ko.friend) {
     return template
       .replaceAll("{name}님은", "초대한 친구는")
