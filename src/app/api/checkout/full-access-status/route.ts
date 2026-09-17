@@ -14,11 +14,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
+  getAccessPurchaseEntitlements,
   hasFullAccess,
-  hasPremiumBundleAccess,
   hasSelfReportAccess,
   hasTakoAccess,
-  hasTarotAccess,
   hasUnmeiAccess,
 } from "@/lib/entitlements";
 import { ensureHoshiyomiCreditsFromPurchase } from "@/lib/hoshiyomi/store";
@@ -64,19 +63,40 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const [full, selfReport, friend, premiumBundle, credits, unmei, tarot] =
+  const userId = data.id as string;
+  const fullPromise = hasFullAccess(userId);
+  // premiumBundle と tarot は同じ購入履歴から判定するため、一度だけ取得する。
+  const purchasesPromise = getAccessPurchaseEntitlements(userId);
+  // plan の反映前でも completed の完全版購入があれば、従来どおりクレジットを復元する。
+  // 未購入者だけ復元を省略し、full の購入者は他の権限チェックと並行して進める。
+  const creditsPromise = fullPromise.then(async (full) => {
+    if (full) return ensureHoshiyomiCreditsFromPurchase(userId);
+    const purchases = await purchasesPromise;
+    return purchases.full ? ensureHoshiyomiCreditsFromPurchase(userId) : null;
+  });
+  const [full, selfReport, friend, purchases, credits, unmei] =
     await Promise.all([
-      hasFullAccess(data.id as string),
-      hasSelfReportAccess(data.id as string),
-      hasTakoAccess(data.id as string),
-      hasPremiumBundleAccess(data.id as string),
-      ensureHoshiyomiCreditsFromPurchase(data.id as string),
-      hasUnmeiAccess(data.id as string),
-      hasTarotAccess(data.id as string),
+      fullPromise,
+      hasSelfReportAccess(userId),
+      hasTakoAccess(userId),
+      purchasesPromise,
+      creditsPromise,
+      hasUnmeiAccess(userId),
     ]);
-  const astrologer = full && credits.available && credits.data.total > 0;
+  // チャットの利用可否は full が前提。未購入者には残高の掃除・購入履歴からの
+  // クレジット復元を行わず、決済直後の full 判定は従来どおり最新値を読む。
+  const astrologer =
+    full && credits?.available === true && credits.data.total > 0;
   return NextResponse.json(
-    { full, selfReport, friend, premiumBundle, astrologer, unmei, tarot },
+    {
+      full,
+      selfReport,
+      friend,
+      premiumBundle: purchases.premiumBundle,
+      astrologer,
+      unmei,
+      tarot: purchases.tarotFeatures,
+    },
     noStore,
   );
 }

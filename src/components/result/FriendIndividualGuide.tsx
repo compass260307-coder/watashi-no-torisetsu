@@ -3,13 +3,12 @@
 // 理解度 → 五つの性格傾向 → 自己診断CTA の順で案内する。
 
 import Image from "next/image";
-import KoTopFooter from "@/components/ko/top/KoTopFooter";
-import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import { KO_ABOUT_FAQ } from "@/i18n/ko/about";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { faqItems } from "@/lib/faq-data";
+import { EN_HOME_FAQS } from "@/lib/locale-seo";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 import type { BigFiveScores } from "@/lib/perception-analysis";
 import { FriendGapSection } from "./FriendGapSection";
@@ -34,6 +33,15 @@ const COPY = {
     ctaBody: "32가지 캐릭터 유형으로 성격과 강점을 알아볼 수 있어요.",
     cta: "무료로 나도 진단하기",
     fallbackName: "친구",
+  },
+  en: {
+    scoreTitleLead: "How closely you understand ",
+    scoreTitleTail: "",
+    ctaTitle: "Next, discover your own personality.",
+    ctaBody:
+      "Take the free personality test to understand your traits, strengths, and the reasons behind your everyday patterns.",
+    cta: "Take my free personality test",
+    fallbackName: "your friend",
   },
 } as const;
 
@@ -133,22 +141,27 @@ export function FriendIndividualGuide({
   targetName?: string;
   selfScores?: BigFiveScores;
   perceivedScores?: BigFiveScores;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const copy = COPY[locale];
   const score = Math.max(0, Math.min(100, Math.round(understandingScore)));
   const understandingResult = getUnderstandingResult(score);
   const normalizedTargetName = (targetName ?? "").trim();
   const targetLabel = normalizedTargetName
-    ? isKorean
-      ? `${normalizedTargetName}님`
-      : `${normalizedTargetName}さん`
+    ? isEnglish
+      ? normalizedTargetName
+      : isKorean
+        ? `${normalizedTargetName}님`
+        : `${normalizedTargetName}さん`
     : copy.fallbackName;
-  const qnaItems = (isKorean ? KO_ABOUT_FAQ : faqItems).filter(
-    (_, index) =>
-      index === 0 || index === 3 || index === 4 || index === 5 || index === 6,
-  );
+  const qnaItems = isEnglish
+    ? EN_HOME_FAQS.filter((_, index) => index !== 2).slice(0, 5)
+    : (isKorean ? KO_ABOUT_FAQ : faqItems).filter(
+        (_, index) =>
+          index === 0 || index === 3 || index === 4 || index === 5 || index === 6,
+      );
   return (
     <>
       <MeAttentionOnGuide inviteCode={inviteCode} />
@@ -157,14 +170,20 @@ export function FriendIndividualGuide({
         diagnosisCta
         fullWidthBar
         diagnosisCtaHref={diagnoseHref}
-        diagnosisCtaLabel={isKorean ? "내 성격도 진단하기" : "自己診断をする"}
+        diagnosisCtaLabel={
+          isEnglish
+            ? "Take my personality test"
+            : isKorean
+              ? "내 성격도 진단하기"
+              : "自己診断をする"
+        }
         diagnosisCtaTrackSource={
           diagnoseTrackSource ? "sticky_bar" : undefined
         }
         inviteCode={inviteCode}
         locale={locale}
       >
-        {isKorean ? <KoTopHeader /> : <TopHeader />}
+        <TopHeader locale={locale} />
       </MeStickyHeader>
 
       <main className="overflow-x-clip bg-white px-4 pb-10 md:px-8 md:pb-12">
@@ -245,7 +264,11 @@ export function FriendIndividualGuide({
         <section className="mx-auto max-w-[1180px] pt-16 md:pt-24">
           <div className="grid gap-6 md:grid-cols-[minmax(220px,0.55fr)_minmax(0,1.45fr)] md:gap-12 lg:gap-20">
             <h2 className="text-[27px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
-              {isKorean ? "자주 묻는 질문" : "よくある質問"}
+              {isEnglish
+                ? "Frequently asked questions"
+                : isKorean
+                  ? "자주 묻는 질문"
+                  : "よくある質問"}
             </h2>
             <div className="border-t border-[#E5E7EF]">
               {qnaItems.map((item) => (
@@ -273,7 +296,7 @@ export function FriendIndividualGuide({
 
       </main>
 
-      {isKorean ? <KoTopFooter /> : <TopFooter />}
+      <TopFooter locale={locale} />
     </>
   );
 }

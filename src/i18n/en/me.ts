@@ -495,8 +495,7 @@ export function buildEnPartTwo(
   const paired = pairedInsights(scores);
   return {
     likable: [
-      profile.connection,
-      paired.social,
+      `${profile.connection} ${paired.social}`,
       agreeableness.strength,
       extraversion.strength,
       profile.temperamentStrength,

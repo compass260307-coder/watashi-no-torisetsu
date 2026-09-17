@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { ResultLocale } from "@/i18n/result";
-import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
+import type { AppResultLocale } from "@/i18n/result";
+import {
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+  THREE_COURSE_PAYWALL_VERSION,
+} from "@/lib/access-products";
 import { track } from "@/lib/track";
 
 const BUTTON_COPY = {
@@ -19,6 +22,13 @@ const BUTTON_COPY = {
     retry: "다시 시도하기 →",
     openError: "결제 화면을 열지 못했어요. 잠시 후 다시 시도해 주세요.",
     networkError: "통신에 실패했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.",
+  },
+  en: {
+    defaultLabel: "View my Destiny Blueprint",
+    loading: "Opening…",
+    retry: "Try again →",
+    openError: "We couldn’t open checkout. Please wait a moment and try again.",
+    networkError: "The connection failed. Please check your network and try again.",
   },
 } as const;
 
@@ -42,7 +52,7 @@ export default function UnmeiCheckoutButton({
   launchChat?: boolean;
   /** premium は運命の設計図LPのゴールド、indigo は既存画面用。 */
   tone?: "indigo" | "premium";
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   /** devプレビューでは計測・決済APIを実行しない。 */
   previewMode?: boolean;
 }) {
@@ -53,12 +63,17 @@ export default function UnmeiCheckoutButton({
   async function handleClick() {
     if (loading) return;
 
+    const paywallVersion =
+      locale === "en"
+        ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
+        : THREE_COURSE_PAYWALL_VERSION;
+
     const metadata = {
       page: "unmei",
       product,
       locale,
       source: "unmei_page",
-      paywall_version: THREE_COURSE_PAYWALL_VERSION,
+      paywall_version: paywallVersion,
       placement: "inline",
     };
 
@@ -102,7 +117,7 @@ export default function UnmeiCheckoutButton({
           return_to: "unmei",
           locale,
           paywall_source: "unmei_page",
-          paywall_version: THREE_COURSE_PAYWALL_VERSION,
+          paywall_version: paywallVersion,
           paywall_placement: "inline",
         }),
       });

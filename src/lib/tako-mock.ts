@@ -32,10 +32,11 @@ const SITE_URL = resolveSiteUrl();
 // 実 compute 関数を流用して現実的な描画にする。
 export function mockTakoData(
   previewType: ThirtyTwoTypeId,
-  locale: ResultLocale = "ja",
+  locale: ResultLocale | "en" = "ja",
   friendCount = 3,
 ): OwnerReportData {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const code = sixteenTypes[baseIdOf(previewType)].code;
   const hi = (ax: string) => (code.includes(`${ax}＋`) ? 8 : 2);
   const selfScores = {
@@ -65,13 +66,22 @@ export function mockTakoData(
     "quiet-owl__N" as ThirtyTwoTypeId,
     null, // 3人目 = 未診断 (④相性のティザー状態を確認できるように)
   ];
-  const friendNames = isKo ? ["지유", "서아", "하린"] : ["ゆい", "そら", "はる"];
+  const friendNames = isKo
+    ? ["지유", "서아", "하린"]
+    : isEn
+      ? ["Alex", "Mia", "Jamie"]
+      : ["ゆい", "そら", "はる"];
   const friendMessages = isKo
     ? [
         "늘 차분하고 믿음직해요. 주변을 정말 잘 보고 있죠.",
         "자기 생각을 분명히 가지고 있는 점이 멋지다고 생각해요!",
       ]
-    : [
+    : isEn
+      ? [
+          "You are always calm and dependable. You notice what is happening around you.",
+          "I admire how clearly you hold onto your own point of view.",
+        ]
+      : [
         "いつも冷静で頼れる。周りをよく見てるよね。",
         "自分の考えをちゃんと持ってて素敵だと思う！",
       ];
@@ -98,7 +108,7 @@ export function mockTakoData(
       id: "preview",
       type_id: null,
       scores: selfScores,
-      display_name: isKo ? "미리보기" : "プレビュー",
+      display_name: isKo ? "미리보기" : isEn ? "Preview" : "プレビュー",
       invite_code: "preview",
       owner_token: "preview",
     },
@@ -115,11 +125,15 @@ export function mockTakoData(
           i === 0
             ? isKo
               ? "늘 차분하고 믿음직해요. 주변을 정말 잘 보고 있죠. 만날 때마다 마음이 편해져요."
-              : "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜"
+              : isEn
+                ? "You are always calm and dependable. You notice what is happening around you, and I feel at ease whenever we meet."
+                : "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜"
             : i === 1
               ? isKo
                 ? "자기 생각을 분명히 가지고 있는 점이 멋지다고 생각해요!"
-                : "自分の考えをちゃんと持ってて素敵だと思う！"
+                : isEn
+                  ? "I admire how clearly you hold onto your own point of view."
+                  : "自分の考えをちゃんと持ってて素敵だと思う！"
               : "";
         return {
           perceptionId: `preview-${i}`,
@@ -137,12 +151,11 @@ export function mockTakoData(
           perceiverUserId: mockOwnTypes[i] ? `preview-user-${i}` : null,
           friendOwnType32: mockOwnTypes[i],
         };
-      })
-      .sort((a, b) => b.mutual - a.mutual),
+      }),
     minnaContext: computeMinnaNoMeContext({ selfScores, friends }),
     pendingFriendCount: 0,
     inviteCode: "preview",
-    inviteUrl: `${SITE_URL}${isKo ? "/ko" : ""}/friend/preview`,
+    inviteUrl: `${SITE_URL}${isKo ? "/ko" : isEn ? "/en" : ""}/friend/preview`,
     threshold: REPORT_FRIEND_THRESHOLD,
     unlocked: true,
     friendCharacter: {

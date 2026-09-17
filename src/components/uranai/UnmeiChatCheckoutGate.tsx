@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 type Props = {
   purchase: {
@@ -14,7 +14,7 @@ type Props = {
     product: "full_access" | "premium_bundle";
   };
   children: React.ReactNode;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   /** devプレビューでは保存・計測・決済を実行しない。 */
   previewMode?: boolean;
 };

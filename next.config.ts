@@ -54,6 +54,13 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      // ブラウザがページ遷移のたびにサイトアイコンを再検証しないよう、長期保存する。
+      // favicon / apple-icon は Next.js が更新ごとのクエリ付きURLを HTML に出力する。
+      // /icon.png を差し替える場合は、ファイル名と参照先も同時に更新すること。
+      ...["/favicon.ico", "/apple-icon.png", "/icon.png"].map((source) => ({
+        source,
+        headers: immutableAssetHeaders,
+      })),
       // v3 など、URL 自体に世代番号を持つキャラ画像。差し替え時は新しい
       // ディレクトリへ切り替えるため、ブラウザへ1年間保存しても更新を妨げない。
       {

@@ -138,9 +138,7 @@ export async function GET(req: Request, ctx: RouteContext) {
         303,
       );
     }
-    const canDownload = isEn
-      ? await (await import("@/lib/entitlements")).hasFullAccess(data.id)
-      : await hasSelfReportAccess(data.id);
+    const canDownload = await hasSelfReportAccess(data.id);
     if (!canDownload) {
       return NextResponse.redirect(
         `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/me/${encodeURIComponent(token)}`,
@@ -209,7 +207,7 @@ export async function GET(req: Request, ctx: RouteContext) {
       printBackground: true,
       // 韓国版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの最終要素後に
       // 生成する空白ページは配布物へ含めない。
-      pageRanges: isKo ? "1-16" : undefined,
+      pageRanges: isKo || isEn ? "1-16" : undefined,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
 

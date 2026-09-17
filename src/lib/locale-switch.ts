@@ -90,8 +90,9 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
   "/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
   "/ko/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
   "/en/types": { ja: "/types", ko: "/ko/types", en: "/en/types" },
-  "/articles": { ja: "/articles", ko: "/ko/articles" },
-  "/ko/articles": { ja: "/articles", ko: "/ko/articles" },
+  "/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
+  "/ko/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
+  "/en/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
   "/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
   "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
   "/en/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
@@ -147,7 +148,7 @@ function previewTypeId(pathname: string): string | null {
 }
 
 function articleSlug(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:ko\/)?articles\/([a-z0-9-]+)\/?$/);
+  const match = pathname.match(/^\/(?:(?:ko|en)\/)?articles\/([a-z0-9-]+)\/?$/);
   return match?.[1] ?? null;
 }
 
@@ -233,7 +234,6 @@ export function localeSwitchPath(
 
   const localizedArticleSlug = articleSlug(normalizedPathname);
   if (localizedArticleSlug) {
-    if (targetLocale === "en") return finish("/en");
     return finish(
       `${localePrefix(targetLocale)}/articles/${encodeURIComponent(localizedArticleSlug)}`,
     );

@@ -219,7 +219,7 @@ const EN_COPY: HoshiyomiCopy = {
     {
       question: "Which purchase includes Alice?",
       answer:
-        "The Complete Edition includes 30 replies from Alice for a one-time payment of $3.49. It is not a subscription.",
+        "The Complete Edition includes 30 replies from Alice for a one-time payment of $4.99. It is not a subscription.",
     },
     {
       question: "Can I talk with Alice before creating my Destiny Blueprint?",
@@ -230,6 +230,16 @@ const EN_COPY: HoshiyomiCopy = {
       question: "How are replies counted?",
       answer:
         "One reply is counted after Alice responds successfully. If a network or generation error prevents a reply, the credit is restored.",
+    },
+    {
+      question: "Can I get more replies?",
+      answer:
+        "If an earlier Complete Edition purchase included fewer than 30 replies, upgrading to the all-in-one edition brings the total to 30. Additional replies cannot currently be purchased after all 30 have been used.",
+    },
+    {
+      question: "Can I view past conversations again?",
+      answer:
+        "Yes. Conversations are saved automatically and can be reopened from the Alice page. Up to 12 conversations are shown, newest first, and conversations you no longer need can be deleted.",
     },
     {
       question: "Can other people see my conversations?",

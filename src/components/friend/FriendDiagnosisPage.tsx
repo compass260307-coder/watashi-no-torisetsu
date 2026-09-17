@@ -31,8 +31,6 @@ import { LikertScale } from "@/components/diagnosis/LikertScale";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
-import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import {
   StickyCtaFooter,
@@ -46,7 +44,7 @@ const soraPrimary =
 import type { SixteenTypeId } from "@/lib/sixteen-types";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { FRIEND_COPY, friendQuestionText } from "@/i18n/friend";
 
 // =========================================================================
@@ -81,7 +79,7 @@ const EMPTY_OWNER_INFO: OwnerInfo = {
   thirtyTwoTypeId: null,
 };
 
-const PREVIEW_OWNER_INFO: Record<ResultLocale, OwnerInfo> = {
+const PREVIEW_OWNER_INFO: Record<AppResultLocale, OwnerInfo> = {
   ja: {
     ...EMPTY_OWNER_INFO,
     displayName: "みさき",
@@ -91,6 +89,12 @@ const PREVIEW_OWNER_INFO: Record<ResultLocale, OwnerInfo> = {
   ko: {
     ...EMPTY_OWNER_INFO,
     displayName: "지우",
+    sixteenTypeId: "sparkle-dolphin",
+    thirtyTwoTypeId: "sparkle-dolphin__N",
+  },
+  en: {
+    ...EMPTY_OWNER_INFO,
+    displayName: "Alex",
     sixteenTypeId: "sparkle-dolphin",
     thirtyTwoTypeId: "sparkle-dolphin__N",
   },
@@ -115,7 +119,7 @@ export default function FriendDiagnosisPage({
   locale = "ja",
 }: {
   params: Promise<{ inviteCode: string }>;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const { inviteCode } = use(params);
   const copy = FRIEND_COPY[locale];
@@ -136,7 +140,7 @@ export default function FriendDiagnosisPage({
 export function FriendDiagnosisPreview({
   locale = "ja",
 }: {
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   return (
     <FriendContent
@@ -155,7 +159,7 @@ function FriendContent({
   previewOwner,
 }: {
   inviteCode: string;
-  locale: ResultLocale;
+  locale: AppResultLocale;
   previewMode?: boolean;
   previewOwner?: OwnerInfo;
 }) {
@@ -303,7 +307,7 @@ function FriendContent({
     // ローカルUI確認では回答を保存せず、既存の完了結果プレビューへ接続する。
     if (previewMode) {
       router.push(
-        `/dev/evaluate-sent-preview${locale === "ko" ? "?locale=ko" : ""}`,
+        `/dev/evaluate-sent-preview${locale === "ja" ? "" : `?locale=${locale}`}`,
       );
       return;
     }
@@ -317,6 +321,7 @@ function FriendContent({
           scaleAnswers,
           perceiverName,
           message,
+          locale,
           // consent 画面を廃止したため、常に false (有料レポートへの名前付き掲載はしない)。
           pdfConsent: false,
         }),
@@ -359,7 +364,7 @@ function FriendContent({
       // 待機ページは廃止。送信中表示のまま結果ページへ直接遷移する
       // (遷移するので isSubmitting は false に戻さない = 二重送信も防ぐ)。
       router.push(
-        `${locale === "ko" ? "/ko" : ""}/evaluate/sent/${data.friendPerceptionId}`,
+        `${locale === "ja" ? "" : `/${locale}`}/evaluate/sent/${data.friendPerceptionId}`,
       );
     } catch (err) {
       setSubmitError(
@@ -442,7 +447,7 @@ function ScaleScreen({
   isPageComplete,
 }: {
   page: number;
-  locale: ResultLocale;
+  locale: AppResultLocale;
   totalPages: number;
   questions: FriendQuestionV2[];
   subjectLabel: string;
@@ -491,7 +496,7 @@ function ScaleScreen({
     <>
       {/* サイト共通ヘッダー (16P 風スクロール連動) */}
       <ScrollHideHeader>
-        {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
+        <TopHeader locale={locale} />
       </ScrollHideHeader>
       <div className="flex flex-col flex-1 min-h-screen pb-12 bg-white">
         {/* 自己診断の page 0 と同様、最上部にヒーロー (見出しは友達診断向けに差し替え)。
@@ -587,7 +592,7 @@ function ScaleScreen({
         </main>
       </div>
       {/* サイト共通フッター */}
-      {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
+      <TopFooter locale={locale} />
     </>
   );
 }
@@ -597,12 +602,12 @@ function ScaleScreen({
 // 回答させてから失敗させない。再試行しても解消しないため、リトライは出さず
 // 自己診断への導線だけ置く。
 // =========================================================================
-function InvalidInviteScreen({ locale }: { locale: ResultLocale }) {
+function InvalidInviteScreen({ locale }: { locale: AppResultLocale }) {
   const copy = FRIEND_COPY[locale];
   return (
     <>
       <ScrollHideHeader>
-        {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
+        <TopHeader locale={locale} />
       </ScrollHideHeader>
       <div className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 pb-32">
         <p className="mb-4 text-base font-black text-[#2E2E5C]">
@@ -613,14 +618,14 @@ function InvalidInviteScreen({ locale }: { locale: ResultLocale }) {
         </p>
         <StickyCtaFooter>
           <a
-            href={locale === "ko" ? "/ko/diagnosis" : "/diagnosis"}
+            href={`${locale === "ja" ? "" : `/${locale}`}/diagnosis`}
             className={ctaPrimary}
           >
             {copy.invalidCta}
           </a>
         </StickyCtaFooter>
       </div>
-      {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
+      <TopFooter locale={locale} />
     </>
   );
 }
@@ -635,7 +640,7 @@ function ErrorScreen({
 }: {
   message: string;
   onRetry: () => void;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   const copy = FRIEND_COPY[locale];
   return (
@@ -673,13 +678,13 @@ function MessageScreen({
   onMessageChange: (v: string) => void;
   onSubmit: () => void;
   submitting: boolean;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   const copy = FRIEND_COPY[locale];
   return (
     <>
       <ScrollHideHeader>
-        {locale === "ko" ? <KoTopHeader /> : <TopHeader />}
+        <TopHeader locale={locale} />
       </ScrollHideHeader>
       {/* min-h-screen / flex-1 を外し、内容の高さに合わせてフッターを近づける
           (CTA とフッターの間の余白を詰める)。 */}
@@ -736,7 +741,7 @@ function MessageScreen({
           </div>
         </main>
       </div>
-      {locale === "ko" ? <KoTopFooter /> : <TopFooter />}
+      <TopFooter locale={locale} />
     </>
   );
 }

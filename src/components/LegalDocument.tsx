@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import EnSiteFooter from "@/components/en/EnSiteFooter";
+import EnSiteHeader from "@/components/en/EnSiteHeader";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 
@@ -7,20 +9,25 @@ type Props = {
   title: string;
   lastUpdated: string;
   children: ReactNode;
+  locale?: "ja" | "en";
 };
 
 // 法務ページ (利用規約 / プライバシー / 特商法) 共通レイアウト。
 // ヘッダー・フッターはサイト共通の TopHeader / TopFooter に統一する。
-export default function LegalDocument({ title, lastUpdated, children }: Props) {
+export default function LegalDocument({ title, lastUpdated, children, locale = "ja" }: Props) {
+  const isEnglish = locale === "en";
+
   return (
     <>
-    <TopHeader />
+    {isEnglish ? <EnSiteHeader /> : <TopHeader />}
     <main className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-5 pt-14 pb-4">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
           {title}
         </h1>
-        <p className="text-sm text-gray-500 mt-4">最終更新日: {lastUpdated}</p>
+        <p className="text-sm text-gray-500 mt-4">
+          {isEnglish ? "Last updated" : "最終更新日"}: {lastUpdated}
+        </p>
       </div>
 
       <article className="max-w-3xl mx-auto px-5 py-8">
@@ -29,16 +36,16 @@ export default function LegalDocument({ title, lastUpdated, children }: Props) {
 
       <div className="max-w-3xl mx-auto px-5 pb-12 border-t border-gray-200 pt-6 mt-4">
         <div className="flex gap-6 text-sm">
-          <Link href="/" className="text-[#4298B4] hover:underline">
-            トップに戻る
+          <Link href={isEnglish ? "/en" : "/"} className="text-[#4298B4] hover:underline">
+            {isEnglish ? "Back to home" : "トップに戻る"}
           </Link>
-          <Link href="/about" className="text-gray-500 hover:underline">
-            サービスについて
+          <Link href={isEnglish ? "/en/about" : "/about"} className="text-gray-500 hover:underline">
+            {isEnglish ? "About the service" : "サービスについて"}
           </Link>
         </div>
       </div>
     </main>
-    <TopFooter />
+    {isEnglish ? <EnSiteFooter /> : <TopFooter />}
     </>
   );
 }

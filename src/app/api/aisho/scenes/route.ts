@@ -24,7 +24,7 @@ import {
 } from "@/lib/thirty-two-types";
 import { compat, type AxisKey } from "@/lib/aisho-compat";
 import { sceneLines, type SceneKey } from "@/lib/aisho-scene-copy";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +46,7 @@ const SCENE_AXES: Record<SceneKey, [AxisKey, AxisKey]> = {
 function sceneVerdict(
   key: SceneKey,
   s: Record<AxisKey, number>,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ): string {
   const [x, y] = SCENE_AXES[key];
   const v = (s[x] + s[y]) / 2;
@@ -54,6 +54,12 @@ function sceneVerdict(
   const lo = v < 0.5;
   switch (key) {
     case "love":
+      if (locale === "en")
+        return hi
+          ? "This pair is especially strong in love. "
+          : lo
+            ? "In love, small misunderstandings need care. "
+            : "In love, patience helps the connection deepen. ";
       if (locale === "ko")
         return hi
           ? "연애에서는 꽤 잘 맞아요. "
@@ -66,6 +72,12 @@ function sceneVerdict(
           ? "恋愛は、すれ違いに気をつけたい。"
           : "恋愛は、丁寧にいけば深まる。";
     case "friend":
+      if (locale === "en")
+        return hi
+          ? "As friends, this pair fits naturally. "
+          : lo
+            ? "In friendship, enjoying your differences is the key. "
+            : "As friends, you can find a comfortable distance. ";
       if (locale === "ko")
         return hi
           ? "친구로서는 최고의 두 사람이에요. "
@@ -78,6 +90,12 @@ function sceneVerdict(
           ? "友情は、違いを面白がれるかがカギ。"
           : "友達としては、いい距離感。";
     case "work":
+      if (locale === "en")
+        return hi
+          ? "Working together can feel remarkably smooth. "
+          : lo
+            ? "At work, clear roles make the difference. "
+            : "Working together can make you a strong team. ";
       if (locale === "ko")
         return hi
           ? "함께 움직이면 일이 정말 잘 풀려요. "
@@ -90,6 +108,12 @@ function sceneVerdict(
           ? "作業は、役割分担がカギ。"
           : "一緒に動けば、いいコンビ。";
     case "clash":
+      if (locale === "en")
+        return hi
+          ? "You can recover quickly after a clash. "
+          : lo
+            ? "A clash may take longer to resolve. "
+            : "Even after a clash, you can find your way back. ";
       if (locale === "ko")
         return hi
           ? "엇갈려도 금방 다시 균형을 찾아요. "
@@ -108,11 +132,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const a = searchParams.get("a");
   const b = searchParams.get("b");
-  const locale: ResultLocale =
-    searchParams.get("locale") === "ko" ? "ko" : "ja";
+  const localeParam = searchParams.get("locale");
+  const locale: AppResultLocale =
+    localeParam === "ko" ? "ko" : localeParam === "en" ? "en" : "ja";
   if (!isValid(a) || !isValid(b) || a === b) {
     return NextResponse.json({ error: "invalid pair" }, { status: 400 });
   }
+
+  const previewMode =
+    process.env.NODE_ENV !== "production" && searchParams.get("preview") === "1";
 
   // session を優先し、Cookie が無いSPでは owner_token で本人を解決する。
   // hasAishoAccess は購入時の相性診断ポリシーに基づいて判定する。
@@ -131,7 +159,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const unlocked = userId ? await hasAishoAccess(userId) : false;
+  const unlocked = previewMode || (userId ? await hasAishoAccess(userId) : false);
   if (!unlocked) {
     return NextResponse.json(
       { locked: true, ownerToken: session?.owner_token ?? null },

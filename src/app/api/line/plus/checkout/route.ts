@@ -544,6 +544,7 @@ export async function GET(request: NextRequest) {
       client_reference_id: userId,
       metadata,
       locale: "ja",
+      branding_settings: { display_name: "ワタシのトリセツ" },
       expires_at: expiresAt,
       success_url: `${resolveSiteUrl()}/line/plus/complete?status=success`,
       cancel_url: `${resolveSiteUrl()}/line/plus/complete?status=cancelled`,

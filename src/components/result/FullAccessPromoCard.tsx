@@ -63,9 +63,11 @@ import {
   selfReportStoryPreviewPagePath,
 } from "@/lib/report-story-images";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import type { AppResultLocale, ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
   accessProductPrice,
+  EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
@@ -97,9 +99,14 @@ const PRICE_COPY = {
     offPercent: 62,
   },
   en: {
-    list: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
+    list: `$${(EN_FULL_ACCESS_LIST_PRICE_USD_CENTS / 100).toFixed(2)}`,
     sale: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
-    offPercent: 0,
+    offPercent: Math.round(
+      (1 -
+        EN_FULL_ACCESS_PRICE_USD_CENTS /
+          EN_FULL_ACCESS_LIST_PRICE_USD_CENTS) *
+        100,
+    ),
   },
 } as const;
 
@@ -477,7 +484,7 @@ export function FullAccessPromoCard({
   group?: ThirtyTwoGroup;
   variant?: "self" | "aisho";
   locale?: AppResultLocale;
-  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
+  returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
   anchorId?: string;
   onClose?: () => void;
   surface?: "self" | "tako";
@@ -506,7 +513,7 @@ export function FullAccessPromoCard({
 }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
-  const planLocale: ResultLocale = isEnglish ? "ja" : locale;
+  const planLocale: AppResultLocale = locale;
   const [selectedStandaloneProduct, setSelectedStandaloneProduct] = useState<
     "self_report" | null
   >(() => standaloneProduct ?? null);
@@ -533,8 +540,9 @@ export function FullAccessPromoCard({
   const paywallProduct = usesPlanCarousel
     ? SINGLE_ALL_ACCESS_PAYWALL_PRODUCT
     : product;
-  const paywallVersion =
-    usesPlanCarousel || isStandaloneSelfReport || usesLegacyFullAccessCard
+  const paywallVersion = isEnglish
+    ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
+    : usesPlanCarousel || isStandaloneSelfReport || usesLegacyFullAccessCard
       ? THREE_COURSE_PAYWALL_VERSION
       : "legacy";
   const paywallPlacement = onClose ? "modal" : "inline";
@@ -592,7 +600,11 @@ export function FullAccessPromoCard({
     selfReportStoryPreviewPagePath(reportCharacterSource);
   const ebookPeek = isEnglish ? EN_PEEK_EBOOK : PEEK_EBOOK;
   const friendsPeek = isEnglish ? EN_PEEK_FRIENDS : PEEK_FRIENDS;
-  const characterEbookPeek: UnlockPeek | null = characterSelfCover
+  // English previews use dedicated localized artwork. The per-character report
+  // assets are Japanese PDFs, so substituting them here leaks Japanese text
+  // into the English paywall modal.
+  const characterEbookPeek: UnlockPeek | null =
+    !isEnglish && characterSelfCover
     ? {
         ...ebookPeek,
         pages: ebookPeek.pages?.map((page, index) => {
@@ -622,7 +634,8 @@ export function FullAccessPromoCard({
         }),
       }
     : null;
-  const characterFriendsPeek: UnlockPeek | null = characterFriendCover
+  const characterFriendsPeek: UnlockPeek | null =
+    !isEnglish && characterFriendCover
     ? {
         ...friendsPeek,
         pages: friendsPeek.pages?.map((page, index) =>
@@ -1019,7 +1032,7 @@ export function FullAccessPromoCard({
 
             {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
             <div
-              className={`${benefitsBeforePrice ? "mt-6" : locale === "ja" && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isEnglish) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
                 hasImage ? "" : "justify-center"
               }`}
             >
@@ -1037,9 +1050,9 @@ export function FullAccessPromoCard({
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
-              ) : locale === "ja" ? (
+              ) : locale === "ja" || isEnglish ? (
                 <span className="text-[36px] font-black leading-none text-black">
-                  <span className="sr-only">価格</span>
+                  <span className="sr-only">{isEnglish ? "Price" : "価格"}</span>
                   {price.sale}
                 </span>
               ) : (
@@ -1075,9 +1088,11 @@ export function FullAccessPromoCard({
                 returnTo={returnTo}
                 product={product}
                 paywallVersion={
-                  paywallVersion === THREE_COURSE_PAYWALL_VERSION
-                    ? THREE_COURSE_PAYWALL_VERSION
-                    : undefined
+                  isEnglish
+                    ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
+                    : paywallVersion === THREE_COURSE_PAYWALL_VERSION
+                      ? THREE_COURSE_PAYWALL_VERSION
+                      : undefined
                 }
                 placement={paywallPlacement}
                 previewMode={previewMode}

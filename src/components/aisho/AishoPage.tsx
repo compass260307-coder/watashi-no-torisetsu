@@ -34,6 +34,8 @@ import { compat, type AxisKey, type CompatRank } from "@/lib/aisho-compat";
 import type { SceneKey } from "@/lib/aisho-scene-copy";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import characterImages from "@/generated/character-images.json";
+import EnSiteFooter from "@/components/en/EnSiteFooter";
+import EnSiteHeader from "@/components/en/EnSiteHeader";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
@@ -42,7 +44,8 @@ import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
-import type { ResultLocale } from "@/i18n/result";
+import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
 // 結果ページ (/me) と同じブランドネイビーに統一 (旧 #2A3A5C)。
@@ -126,20 +129,26 @@ function sectionId(key: ThirtyTwoGroup): string {
   return `aisho-group-${key}`;
 }
 
-function typeEssence(id: ThirtyTwoTypeId, locale: ResultLocale): string {
+function typeEssence(id: ThirtyTwoTypeId, locale: AppResultLocale): string {
   return locale === "ko"
     ? KO_RESULT_TYPES[id].essence
+    : locale === "en"
+      ? EN_RESULT_TYPES[id].essence
     : thirtyTwoEssence(id);
 }
 
-function groupLabel(key: ThirtyTwoGroup, locale: ResultLocale): string {
-  const labels: Record<ThirtyTwoGroup, { ja: string; ko: string }> = {
-    sea: { ja: "海", ko: "바다" },
-    land: { ja: "陸", ko: "대지" },
-    sky: { ja: "空", ko: "하늘" },
-    unknown: { ja: "未知", ko: "미지" },
+function groupLabel(key: ThirtyTwoGroup, locale: AppResultLocale): string {
+  const labels: Record<ThirtyTwoGroup, Record<AppResultLocale, string>> = {
+    sea: { ja: "海", ko: "바다", en: "Sea" },
+    land: { ja: "陸", ko: "대지", en: "Land" },
+    sky: { ja: "空", ko: "하늘", en: "Sky" },
+    unknown: { ja: "未知", ko: "미지", en: "Beyond" },
   };
   return labels[key][locale];
+}
+
+function aishoText(locale: AppResultLocale, ja: string, ko: string, en: string): string {
+  return locale === "ko" ? ko : locale === "en" ? en : ja;
 }
 
 // ---- インラインSVG (依存ライブラリ不使用) --------------------------------
@@ -218,7 +227,7 @@ function Slot({
   id: ThirtyTwoTypeId | null;
   label: string;
   onClear: () => void;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   // 空/選択済みで高さが変わると選択のたびにレイアウトが揺れるため、両状態とも固定高。
   // 一覧カードと同じ文法: 白カードの上端から顔ズーム版キャラの頭をはみ出させ、
@@ -233,7 +242,7 @@ function Slot({
         >
           <span className="text-2xl md:text-3xl leading-none">＋</span>
           <span className="text-xs md:text-sm font-bold">
-            {locale === "ko" ? "눌러서 선택" : "タップで選ぶ"}
+            {aishoText(locale, "タップで選ぶ", "눌러서 선택", "Tap to choose")}
           </span>
         </div>
         <p
@@ -258,7 +267,9 @@ function Slot({
           aria-label={
             locale === "ko"
               ? `${typeEssence(id, locale)} 선택 해제`
-              : `${typeEssence(id, locale)}を外す`
+              : locale === "en"
+                ? `Remove ${typeEssence(id, locale)}`
+                : `${typeEssence(id, locale)}を外す`
           }
           className="absolute top-1.5 right-1.5 z-10 rounded-full p-1 text-white"
           style={{ background: NAVY }}
@@ -371,50 +382,44 @@ function SectionHeading({ n, title }: { n: number; title: string }) {
 // 発散ではなく左→右のフィルにする。軸色は /me と対応させて統一感を出す。
 const AXIS_META_VIEW: {
   key: AxisKey;
-  label: Record<ResultLocale, string>;
+  label: Record<AppResultLocale, string>;
   color: string;
 }[] = [
-  { key: "A", label: { ja: "思いやり", ko: "배려" }, color: "#33A474" },
+  { key: "A", label: { ja: "思いやり", ko: "배려", en: "Consideration" }, color: "#33A474" },
   {
     key: "N",
-    label: { ja: "情緒の安定", ko: "정서적 안정" },
+    label: { ja: "情緒の安定", ko: "정서적 안정", en: "Emotional balance" },
     color: "#F25E62",
   },
-  { key: "O", label: { ja: "価値観", ko: "가치관" }, color: "#E4AE3A" },
+  { key: "O", label: { ja: "価値観", ko: "가치관", en: "Values" }, color: "#E4AE3A" },
   {
     key: "C",
-    label: { ja: "生活リズム", ko: "생활 리듬" },
+    label: { ja: "生活リズム", ko: "생활 리듬", en: "Daily rhythm" },
     color: "#88619A",
   },
   {
     key: "E",
-    label: { ja: "社交バランス", ko: "사교 균형" },
+    label: { ja: "社交バランス", ko: "사교 균형", en: "Social balance" },
     color: "#4298B4",
   },
 ];
 
 // スコア(0..1)→ 判定ラベル。ネガティブに寄せず、低い側も「補い合い」と前向きに。
-function matchLabel(v: number, locale: ResultLocale): string {
+function matchLabel(v: number, locale: AppResultLocale): string {
   const p = v * 100;
-  if (p >= 85) return locale === "ko" ? "찰떡" : "ぴったり";
-  if (p >= 65) return locale === "ko" ? "잘 맞음" : "かみ合う";
-  if (p >= 45) return locale === "ko" ? "무난함" : "まあまあ";
-  return locale === "ko" ? "서로 보완" : "補い合い";
+  if (p >= 85) return aishoText(locale, "ぴったり", "찰떡", "Excellent match");
+  if (p >= 65) return aishoText(locale, "かみ合う", "잘 맞음", "Works well");
+  if (p >= 45) return aishoText(locale, "まあまあ", "무난함", "Balanced");
+  return aishoText(locale, "補い合い", "서로 보완", "Complementary");
 }
 
 // 相性度(%)→ 総評リードの言い回し。「〇〇と〇〇の相性は{これ}」と続く。
-function percentLead(p: number, locale: ResultLocale): string {
-  if (p >= 90)
-    return locale === "ko" ? "의심할 여지 없이 좋아요" : "文句なしにいい";
-  if (p >= 75) return locale === "ko" ? "꽤 좋아요" : "かなりいい";
-  if (p >= 60) return locale === "ko" ? "제법 좋아요" : "なかなかいい";
-  if (p >= 45)
-    return locale === "ko"
-      ? "서로 맞춰 갈수록 훨씬 좋아져요"
-      : "歩み寄り次第でぐっと良くなる";
-  return locale === "ko"
-    ? "쉽지는 않지만 그만큼 배울 점이 많아요"
-    : "一筋縄ではいかないぶん、学びが大きい";
+function percentLead(p: number, locale: AppResultLocale): string {
+  if (p >= 90) return aishoText(locale, "文句なしにいい", "의심할 여지 없이 좋아요", "exceptionally strong");
+  if (p >= 75) return aishoText(locale, "かなりいい", "꽤 좋아요", "very strong");
+  if (p >= 60) return aishoText(locale, "なかなかいい", "제법 좋아요", "naturally compatible");
+  if (p >= 45) return aishoText(locale, "歩み寄り次第でぐっと良くなる", "서로 맞춰 갈수록 훨씬 좋아져요", "stronger with mutual adjustment");
+  return aishoText(locale, "一筋縄ではいかないぶん、学びが大きい", "쉽지는 않지만 그만큼 배울 점이 많아요", "challenging, with plenty to learn");
 }
 
 // ★PR4: SCENE_AXES / sceneVerdict はサーバ (/api/aisho/scenes) へ移設。
@@ -424,14 +429,14 @@ function percentLead(p: number, locale: ResultLocale): string {
 // 見出しで見せ、本文だけゲートする (見出しは無料・本文だけ課金)。
 const SCENE_ORDER: {
   key: SceneKey;
-  label: Record<ResultLocale, string>;
+  label: Record<AppResultLocale, string>;
 }[] = [
-  { key: "love", label: { ja: "恋愛では", ko: "연애에서는" } },
-  { key: "friend", label: { ja: "友情では", ko: "우정에서는" } },
-  { key: "work", label: { ja: "一緒に働くと", ko: "함께 일하면" } },
+  { key: "love", label: { ja: "恋愛では", ko: "연애에서는", en: "In love" } },
+  { key: "friend", label: { ja: "友情では", ko: "우정에서는", en: "As friends" } },
+  { key: "work", label: { ja: "一緒に働くと", ko: "함께 일하면", en: "At work" } },
   {
     key: "clash",
-    label: { ja: "すれ違うとき", ko: "엇갈릴 때" },
+    label: { ja: "すれ違うとき", ko: "엇갈릴 때", en: "When you clash" },
   },
 ];
 
@@ -452,10 +457,13 @@ type ScenesResponse = {
   ownerToken?: string | null;
 };
 
-function AishoResultLock({ locale }: { locale: ResultLocale }) {
+function AishoResultLock({ locale }: { locale: AppResultLocale }) {
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const lockedSections = isKorean
     ? ["궁합 등급", "두 사람의 균형", "두 사람의 좋은 점", "상황별 궁합", "주의할 점"]
+    : isEnglish
+      ? ["Compatibility rank", "Your balance", "What works well", "Four situations", "What needs care"]
     : ["相性ランク", "ふたりのバランス", "ふたりのいいところ", "シーン別の相性", "ここだけ注意"];
 
   return (
@@ -485,12 +493,14 @@ function AishoResultLock({ locale }: { locale: ResultLocale }) {
           className="mt-5 text-[24px] font-black leading-tight md:text-[30px]"
           style={{ color: NAVY }}
         >
-          {isKorean ? "궁합 진단 결과가 잠겨 있어요" : "相性診断の結果はロック中です"}
+          {isKorean ? "궁합 진단 결과가 잠겨 있어요" : isEnglish ? "Your compatibility result is locked" : "相性診断の結果はロック中です"}
         </h1>
         <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-bold leading-[1.75] text-[#6A6A7C] md:text-[16px]">
           {isKorean
             ? "완전판 코스에서 두 사람의 궁합 결과 전체를 확인할 수 있어요."
-            : "全部入り・買い切りで、ふたりの相性診断の結果をすべて読むことができます。"}
+            : isEnglish
+              ? "The Complete Edition unlocks the full compatibility result for this pair."
+              : "全部入り・買い切りで、ふたりの相性診断の結果をすべて読むことができます。"}
         </p>
         <ul className="mx-auto mt-6 grid max-w-[520px] grid-cols-2 gap-2.5 text-left md:gap-3">
           {lockedSections.map((label) => (
@@ -511,7 +521,7 @@ function AishoResultLock({ locale }: { locale: ResultLocale }) {
           className="mx-auto mt-7 inline-flex items-center justify-center rounded-full px-10 py-3.5 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] md:text-[16px]"
           style={{ background: NAVY }}
         >
-          {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+          {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : "今すぐロックを解除"}
         </button>
       </div>
     </section>
@@ -523,10 +533,12 @@ function AishoResultGate({
   b,
   onGateChange,
   locale,
+  previewMode = false,
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
-  locale: ResultLocale;
+  locale: AppResultLocale;
+  previewMode?: boolean;
   onGateChange?: (gate: {
     locked: boolean | null;
     ownerToken: string | null;
@@ -549,7 +561,7 @@ function AishoResultGate({
     }
 
     fetch(
-      `/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&locale=${locale}${tokenQuery}`,
+      `/api/aisho/scenes?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&locale=${locale}${tokenQuery}${previewMode ? "&preview=1" : ""}`,
     )
       .then((res) =>
         res.ok
@@ -566,7 +578,7 @@ function AishoResultGate({
     return () => {
       cancelled = true;
     };
-  }, [a, b, locale, pairKey]);
+  }, [a, b, locale, pairKey, previewMode]);
 
   const gateData = gateState?.key === pairKey ? gateState.resp : null;
   const locked = gateData?.locked ?? null;
@@ -579,7 +591,7 @@ function AishoResultGate({
     return (
       <div className="flex min-h-[360px] items-center justify-center" role="status">
         <p className="text-sm font-bold" style={{ color: INACTIVE }}>
-          {locale === "ko" ? "결과를 확인하고 있어요…" : "結果を確認中…"}
+          {aishoText(locale, "結果を確認中…", "결과를 확인하고 있어요…", "Checking your result…")}
         </p>
       </div>
     );
@@ -598,11 +610,12 @@ function CompatDetail({
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
-  locale: ResultLocale;
+  locale: AppResultLocale;
   sceneData: ScenesResponse;
 }) {
   const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const sceneUnlocked = sceneData?.locked === false;
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
@@ -623,12 +636,16 @@ function CompatDetail({
           始まる長めの文章にする。 */}
       <div>
         <p className={PROSE}>
-          {isKorean
+          {isEnglish
+            ? `The connection between “${nameA}” and “${nameB}” is ${percentLead(r.percent, locale)}. Their compatibility score is ${r.percent}%, making them ${r.summary.toLowerCase()}. The number reflects several concrete reasons this relationship can keep growing.`
+            : isKorean
             ? `「${nameA}」와 「${nameB}」의 궁합은 ${percentLead(r.percent, locale)}. 궁합도는 ${r.percent}%, 한마디로 ${r.summary}인 두 사람이에요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
             : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
         </p>
         <p className={`${PROSE} mt-4`}>
-          {isKorean
+          {isEnglish
+            ? "Together, they can often feel natural without forcing themselves to match. The five views below—consideration, emotional balance, values, daily rhythm, and social balance—show where that ease comes from and where a little care helps."
+            : isKorean
             ? "그래서 함께 있을 때 있는 그대로 편안하고, 억지로 맞추지 않아도 좋은 시간이 이어지기 쉬워요. 물론 오래 사이좋게 지내려면 작은 요령도 필요해요. 이제 배려, 정서, 가치관, 생활 리듬, 사교 균형의 다섯 관점에서 두 사람의 궁합을 조금 더 자세히 살펴볼게요."
             : "だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
         </p>
@@ -638,7 +655,7 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={1}
-          title={isKorean ? "두 사람의 균형" : "ふたりのバランス"}
+          title={isKorean ? "두 사람의 균형" : isEnglish ? "Your balance" : "ふたりのバランス"}
         />
         <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
           {AXIS_META_VIEW.map(({ key, label: labels, color }) => {
@@ -689,8 +706,8 @@ function CompatDetail({
                   className="mt-1.5 flex justify-between text-[12px] font-bold leading-tight"
                   style={{ color: `${NAVY}8C` }}
                 >
-                  <span>{isKorean ? "서로 보완" : "補い合う"}</span>
-                  <span>{isKorean ? "찰떡" : "ぴったり"}</span>
+                  <span>{isKorean ? "서로 보완" : isEnglish ? "Complementary" : "補い合う"}</span>
+                  <span>{isKorean ? "찰떡" : isEnglish ? "Excellent match" : "ぴったり"}</span>
                 </div>
               </div>
             );
@@ -702,10 +719,12 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={2}
-          title={isKorean ? "두 사람의 좋은 점" : "ふたりのいいところ"}
+          title={isKorean ? "두 사람의 좋은 점" : isEnglish ? "What works well" : "ふたりのいいところ"}
         />
         <p className={PROSE}>
-          {isKorean
+          {isEnglish
+            ? `There are clear reasons these two can feel comfortable together. ${r.goods[0]}`
+            : isKorean
             ? `두 사람이 함께 있을 때 편안한 데에는 분명한 이유가 있어요. ${r.goods[0]}`
             : `このふたりがいっしょにいて心地いいのには、ちゃんと理由があるよ。${r.goods[0]}`}
         </p>
@@ -720,7 +739,7 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={3}
-          title={isKorean ? "상황별 궁합" : "シーン別の相性"}
+          title={isKorean ? "상황별 궁합" : isEnglish ? "Compatibility in four situations" : "シーン別の相性"}
         />
         {sceneUnlocked ? (
           /* ===== 課金済: 各場面の本文 ===== */
@@ -811,13 +830,15 @@ function CompatDetail({
                     className="text-[21px] font-black md:text-[24px]"
                     style={{ color: NAVY }}
                   >
-                    {isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+                    {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : "今すぐロックを解除"}
                   </p>
                   {/* PC は1行 (whitespace-nowrap)、SP は2行に自然折り返し。 */}
                   <p className="mx-auto mt-2 max-w-[300px] text-[13px] font-bold leading-relaxed text-[#6A6A7C] md:max-w-none md:whitespace-nowrap md:text-[14px]">
                     {isKorean
                       ? "모든 결과를 열고 연애·우정·일·엇갈림, 네 가지 상황 속 두 사람의 궁합을 확인해 보세요."
-                      : "全解放して、恋愛・友情・仕事・すれ違い──4場面ぶんのふたりの相性を読もう。"}
+                      : isEnglish
+                        ? "Unlock the full result to explore love, friendship, work, and moments of conflict."
+                        : "全解放して、恋愛・友情・仕事・すれ違い──4場面ぶんのふたりの相性を読もう。"}
                   </p>
                   <button
                     type="button"
@@ -825,7 +846,7 @@ function CompatDetail({
                     className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
                     style={{ background: NAVY }}
                   >
-                    {isKorean ? "지금 확인하기" : "今すぐアクセス"}
+                    {isKorean ? "지금 확인하기" : isEnglish ? "View full access" : "今すぐアクセス"}
                   </button>
                 </div>
               </>
@@ -838,15 +859,19 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={4}
-          title={isKorean ? "이것만은 주의" : "ここだけ注意"}
+          title={isKorean ? "이것만은 주의" : isEnglish ? "What needs care" : "ここだけ注意"}
         />
         <p className={PROSE}>
-          {isKorean
+          {isEnglish
+            ? `Even a strong match needs care to stay comfortable over time. Close pairs can become so relaxed that they miss small misunderstandings. ${r.caution}`
+            : isKorean
             ? `아무리 궁합이 좋아도 오래 편안하게 지내기 위한 요령은 있어요. 오히려 가까운 두 사람일수록 거리낌이 없어져 작은 엇갈림을 놓치기 쉬워요. ${r.caution}`
             : `どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
         </p>
         <p className={`${PROSE} mt-3`}>
-          {isKorean
+          {isEnglish
+            ? "Do not store discomfort until it becomes resentment. Naming a small concern early makes it easier to understand each other before it grows. Expecting the other person to notice without being told can slowly create distance; a few honest words usually protect what already works well."
+            : isKorean
             ? "중요한 건 참고 쌓아 두지 않는 거예요. 불편함이 작을 때 “나는 이렇게 느꼈어”라고 가볍게 말해 두면 크게 꼬이기 전에 자연스럽게 풀려요. 반대로 “말하지 않아도 알아줬으면 좋겠어”가 계속되면 아무리 좋은 궁합도 조금씩 어긋날 수 있어요. 이것만 기억해도 두 사람의 장점은 훨씬 자연스럽게 드러날 거예요."
             : "大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
         </p>
@@ -866,11 +891,12 @@ function ResultBlock({
 }: {
   a: ThirtyTwoTypeId;
   b: ThirtyTwoTypeId;
-  locale: ResultLocale;
+  locale: AppResultLocale;
   sceneData: ScenesResponse;
 }) {
   const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const [band0, band1] = HERO_BAND;
   // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
   const dotColor = "rgba(214,120,158,0.35)";
@@ -904,7 +930,7 @@ function ResultBlock({
             ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
         <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-6 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-8 md:text-left">
           <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
-            {isKorean ? "두 사람의 궁합" : "ふたりの相性"}
+            {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : "ふたりの相性"}
           </p>
           <div className="mt-4 md:mt-0 md:shrink-0">
             {/* 透過 PNG (装飾) は unoptimized で直接配信する。
@@ -915,7 +941,9 @@ function ResultBlock({
                 alt={
                   isKorean
                     ? `궁합 등급 ${r.rank}`
-                    : `相性ランク ${r.rank}`
+                    : isEnglish
+                      ? `Compatibility rank ${r.rank}`
+                      : `相性ランク ${r.rank}`
                 }
                 width={512}
                 height={512}
@@ -955,7 +983,7 @@ function TypeGrid({
 }: {
   onPick: (id: ThirtyTwoTypeId) => void;
   selected: Set<string>;
-  locale: ResultLocale;
+  locale: AppResultLocale;
 }) {
   const grouped = useMemo(
     () =>
@@ -977,7 +1005,7 @@ function TypeGrid({
             key={g.key}
             id={sectionId(g.key)}
             aria-label={
-              locale === "ko" ? `${label} 그룹` : `${label}グループ`
+              locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : `${label}グループ`
             }
             className="relative mx-[calc(50%-50vw)] w-screen"
             style={{ backgroundColor: BAND_COLOR[g.key] }}
@@ -995,7 +1023,7 @@ function TypeGrid({
                 className="font-black text-[28px] md:text-[36px] leading-none mb-4 md:mb-5"
                 style={{ color: DARK_COLOR[g.key] }}
               >
-                {locale === "ko" ? `${label} 그룹` : `${label}グループ`}
+                {locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : `${label}グループ`}
               </h2>
               {/* 行間 (gap-y) は頭のはみ出し (約16px) が上のカードに触れない広さにする */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4 md:gap-x-4 md:gap-y-7">
@@ -1082,9 +1110,12 @@ function TypeGrid({
 
 // ---- 本体 -----------------------------------------------------------------
 
-function AishoInner({ locale }: { locale: ResultLocale }) {
+function AishoInner({ locale }: { locale: AppResultLocale }) {
   const searchParams = useSearchParams();
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
+  const previewMode =
+    process.env.NODE_ENV !== "production" && searchParams.get("preview") === "1";
   // ④シーンのサーバゲート結果 (CompatDetail から通知)。
   //   locked: true=未課金 / false=課金済 / null=読込中 → 課金カードの出し分け。
   //   ownerToken: ログイン中なら本人トークン → 課金CTAに渡す (SPのCookie不在でも401→トップを回避)。
@@ -1198,7 +1229,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
 
   return (
     <>
-    {isKorean ? <KoTopHeader /> : <TopHeader />}
+    {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader />}
     <main className="min-h-screen overflow-x-clip bg-white">
       {/* コンテンツ幅は自己診断結果 (/me) と同じ max-w-[1080px] に揃える。
           結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
@@ -1248,7 +1279,9 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
             >
               {isKorean
                 ? "두 사람의 궁합을 분석하고 있어요…"
-                : "ふたりの相性を診断中…"}
+                : isEnglish
+                  ? "Reading this pair’s compatibility…"
+                  : "ふたりの相性を診断中…"}
             </p>
           </div>
         ) : resultShown ? (
@@ -1262,6 +1295,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
                 b={slotB}
                 onGateChange={setAishoGate}
                 locale={locale}
+                previewMode={previewMode}
               />
             </div>
           </>
@@ -1282,6 +1316,14 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
                       <br />
                       궁합을 알아봐요.
                     </>
+                  ) : isEnglish ? (
+                    <>
+                      Choose two types and
+                      <br className="md:hidden" />
+                      explore their
+                      <br className="hidden md:block" />
+                      compatibility.
+                    </>
                   ) : (
                     <>
                       気になるあの子との
@@ -1298,7 +1340,9 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
                 >
                   {isKorean
                     ? "캐릭터 두 개만 고르면 돼요 · 내 진단 결과가 없어도 괜찮아요"
-                    : "2キャラを選ぶだけ・自分の診断がなくてもOK"}
+                    : isEnglish
+                      ? "Choose any two characters · No personal result required"
+                      : "2キャラを選ぶだけ・自分の診断がなくてもOK"}
                 </p>
               </div>
               <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
@@ -1311,7 +1355,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
             <div className="mx-auto flex max-w-[560px] md:max-w-[860px] items-stretch gap-3 md:gap-8">
               <Slot
                 id={slotA}
-                label={isKorean ? "첫 번째" : "1人目"}
+                label={isKorean ? "첫 번째" : isEnglish ? "First person" : "1人目"}
                 onClear={clearA}
                 locale={locale}
               />
@@ -1325,7 +1369,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
               </span>
               <Slot
                 id={slotB}
-                label={isKorean ? "두 번째" : "2人目"}
+                label={isKorean ? "두 번째" : isEnglish ? "Second person" : "2人目"}
                 onClear={clearB}
                 locale={locale}
               />
@@ -1343,7 +1387,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
                   opacity: bothFilled ? 1 : 0.35,
                 }}
               >
-                {isKorean ? "궁합 알아보기" : "相性を診断する"}
+                {isKorean ? "궁합 알아보기" : isEnglish ? "See compatibility" : "相性を診断する"}
               </button>
             </div>
 
@@ -1375,7 +1419,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
           imageSrc={versionCharacterAssetPath(
             "/characters/scenes/unknown_love.webp",
           )}
-          imageAlt={isKorean ? "궁합" : "相性"}
+          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : "相性"}
           // owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
           // session (aishoGate) 優先・無ければ端末保存の token。渡せたときは購入後に
           // /aisho へ直接戻れる (returnTo)。どちらも無いゲストは /purchase-complete 着地。
@@ -1389,7 +1433,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
           imageSrc={versionCharacterAssetPath(
             "/characters/scenes/unknown_love.webp",
           )}
-          imageAlt={isKorean ? "궁합" : "相性"}
+          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : "相性"}
           ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
           returnTo="aisho"
           locale={locale}
@@ -1398,7 +1442,7 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
     )}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
-    {isKorean ? <KoTopFooter /> : <TopFooter />}
+    {isKorean ? <KoTopFooter /> : isEnglish ? <EnSiteFooter /> : <TopFooter />}
     </>
   );
 }
@@ -1406,14 +1450,14 @@ function AishoInner({ locale }: { locale: ResultLocale }) {
 export default function AishoPage({
   locale = "ja",
 }: {
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   return (
     <Suspense
       fallback={
         <main className="min-h-screen bg-white flex items-center justify-center">
           <p className="text-sm font-bold" style={{ color: INACTIVE }}>
-            {locale === "ko" ? "불러오는 중…" : "読み込み中…"}
+            {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…")}
           </p>
         </main>
       }

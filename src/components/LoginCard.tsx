@@ -55,7 +55,8 @@ const LOGIN_COPY = {
   en: {
     close: "Close",
     heading: "Get a sign-in link",
-    description: "Enter your email and we’ll send you a secure sign-in link.",
+    description:
+      "Enter your email and we’ll send you a secure sign-in link.\nNo password needed.",
     emailLabel: "Email address",
     submitting: "Sending...",
     submit: "Send sign-in link",
@@ -226,11 +227,6 @@ export function LoginCard({
                   개인정보처리방침
                 </Link>
                 에서 확인할 수 있습니다.
-              </p>
-            ) : locale === "en" ? (
-              <p className="-mt-1 text-[11px] leading-[1.7] text-[#2E2E5C]/55">
-                We use your email to send the sign-in link and restore your
-                results.
               </p>
             ) : null}
 

@@ -251,9 +251,11 @@ const SELECTABLE_CARDS = [
 export default function TarotDrawExperience({
   mode,
   locale = "ja",
+  previewMode = false,
 }: {
   mode: TarotMode;
   locale?: TarotLocale;
+  previewMode?: boolean;
 }) {
   const config = tarotModes(locale)[mode];
   const copy = DRAW_COPY[locale];
@@ -299,7 +301,11 @@ export default function TarotDrawExperience({
       <div className="mx-auto max-w-[900px]">
         <div className="flex items-center justify-between">
           <Link
-            href={`${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot`}
+            href={
+              previewMode
+                ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/dev-preview`
+                : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot`
+            }
             aria-label={copy.back}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[#2E2E5C]/8 bg-white text-[#2E2E5C] shadow-sm transition hover:bg-[#F0EDFF]"
           >
@@ -576,7 +582,9 @@ function YesNoResult({ card, question, locale }: { card: CardName; question: str
   const info = (locale === "ko" ? KO_CARD_INFO : locale === "en" ? EN_CARD_INFO : CARD_INFO)[card];
   return (
     <div>
-      <p className="mx-auto mb-5 max-w-[520px] text-center text-[12px] font-bold leading-relaxed text-[#2E2E5C]/45">「{question}」</p>
+      <p className="mx-auto mb-5 max-w-[520px] text-center text-[12px] font-bold leading-relaxed text-[#2E2E5C]/45">
+        {locale === "en" ? `“${question}”` : `「${question}」`}
+      </p>
       <div className="mx-auto flex max-w-[430px] items-center justify-center gap-6 rounded-[22px] bg-[#F8F7FD] p-4 md:gap-9 md:p-5">
         <Image src={CARD_ART[card]} alt={copy.cardAlt(info.title)} width={1024} height={1536} className="h-auto w-[105px] rounded-[9px] shadow-md md:w-[125px]" />
         <div className="text-center">

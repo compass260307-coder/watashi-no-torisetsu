@@ -4,7 +4,7 @@ import { selfReportStoryImagePath } from "@/lib/report-story-images";
 import styles from "./ReportCover.module.css";
 
 interface ReportCoverProps {
-  locale: "ja" | "ko";
+  locale: "ja" | "ko" | "en";
   profileLabel: string;
   imageSrc: string;
   imageAlt: string;
@@ -32,12 +32,23 @@ export function ReportCover({
   fullBleed = false,
 }: ReportCoverProps) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const integratedStorySrc =
     storyImageSrc ?? selfReportStoryImagePath(imageSrc) ?? undefined;
   const displayedCoverTitle =
-    coverTitle ?? (isKo ? "나의 사용설명서" : "ワタシのトリセツ");
+    coverTitle ??
+    (isKo
+      ? "나의 사용설명서"
+      : isEn
+        ? "My Personality Manual"
+        : "ワタシのトリセツ");
   const displayedStoryTitle =
-    storyTitle ?? (isKo ? `${title}의 이야기` : `${title}のストーリー`);
+    storyTitle ??
+    (isKo
+      ? `${title}의 이야기`
+      : isEn
+        ? `The Story of ${title}`
+        : `${title}のストーリー`);
 
   return (
     <header

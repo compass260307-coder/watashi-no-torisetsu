@@ -6,9 +6,10 @@
 
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import EnSiteHeader from "@/components/en/EnSiteHeader";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import TopHeader from "@/components/top/TopHeader";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS } from "@/lib/access-products";
 
 const FONT_STACK =
@@ -24,7 +25,7 @@ type PurchaseCompleteViewProps = {
   hoshiyomiChatCredits?: number;
   tarotFeaturesIncluded?: boolean;
   friendFeaturesIncluded?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 };
 
 export function PurchaseCompleteView({
@@ -38,7 +39,14 @@ export function PurchaseCompleteView({
   locale = "ja",
 }: PurchaseCompleteViewProps) {
   const isKo = locale === "ko";
-  const reportName = isKo
+  const isEn = locale === "en";
+  const reportName = isEn
+    ? product === "self_report"
+      ? "Student Plan"
+      : product === "premium_bundle"
+        ? "Complete Edition"
+        : "Complete Report"
+    : isKo
     ? product === "self_report"
       ? "학생 플랜"
       : product === "premium_bundle"
@@ -65,7 +73,7 @@ export function PurchaseCompleteView({
   return (
     <>
     {/* サイト共通ヘッダー (/login の改良と揃える 2026-07-30 指示) */}
-    {isKo ? <KoTopHeader /> : <TopHeader />}
+    {isKo ? <KoTopHeader /> : isEn ? <EnSiteHeader /> : <TopHeader />}
     <main
       className="flex flex-1 flex-col items-center justify-center px-5 py-14"
       style={{ fontFamily: FONT_STACK, backgroundColor: "#F1F1F7" }}
@@ -93,14 +101,24 @@ export function PurchaseCompleteView({
           className="text-[22px] font-black leading-[1.4]"
           style={{ color: NAVY }}
         >
-          {isKo ? "구매해 주셔서 감사합니다!" : "購入ありがとうございます！"}
+          {isKo
+            ? "구매해 주셔서 감사합니다!"
+            : isEn
+              ? "Thank you for your purchase!"
+              : "購入ありがとうございます！"}
         </h1>
         <p
           className="mt-3 text-[13px] font-bold leading-[1.8]"
           style={{ color: "#8A8AA3" }}
         >
           {isGuestPurchase ? (
-            isKo ? (
+            isEn ? (
+              <>
+                Sign in with the email used at checkout
+                <br />
+                to restore your purchase.
+              </>
+            ) : isKo ? (
               <>
                 결제에 사용한 이메일 주소로
                 <br />
@@ -114,7 +132,13 @@ export function PurchaseCompleteView({
               </>
             )
           ) : (
-            isKo ? (
+            isEn ? (
+              <>
+                We sent your <span style={{ color: NAVY }}>{reportName}</span>
+                <br />
+                to the email used at checkout.
+              </>
+            ) : isKo ? (
               <>
                 결제에 사용한 이메일 주소로
                 <br />
@@ -138,7 +162,13 @@ export function PurchaseCompleteView({
           style={{ color: "#8A8AA3" }}
         >
           {isGuestPurchase ? (
-            isKo ? (
+            isEn ? (
+              <>
+                After sign-in, we’ll take you to the <span style={{ color: NAVY }}>free personality test</span>.
+                <br />
+                Finish it to receive your {reportName} by email.
+              </>
+            ) : isKo ? (
               <>
                 로그인 후 <span style={{ color: NAVY }}>무료 성격 진단</span>으로
                 안내해 드려요.
@@ -154,7 +184,13 @@ export function PurchaseCompleteView({
               </>
             )
           ) : (
-            isKo ? (
+            isEn ? (
+              <>
+                If you have not taken the personality test, sign-in will take you to the <span style={{ color: NAVY }}>free test</span>.
+                <br />
+                Your {reportName} opens when you finish.
+              </>
+            ) : isKo ? (
               <>
                 아직 성격 진단을 하지 않았다면, 로그인 후 그대로
                 <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해
@@ -180,10 +216,23 @@ export function PurchaseCompleteView({
           <p className="text-[13px] font-black text-[#2E2E5C]">
             {isKo
               ? "구매 후 이용할 수 있는 새로운 콘텐츠"
-              : "購入後に使える新しいコンテンツ"}
+              : isEn
+                ? "New experiences included with your purchase"
+                : "購入後に使える新しいコンテンツ"}
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
-            {isKo ? (
+            {isEn ? (
+              hasDestinyFeatures ? (
+                <>
+                  Your Destiny Blueprint, {includedChatCount} Alice chat answers
+                  {hasTarotFeatures ? ", and all three tarot readings" : ""} are included. Open them from the navigation after signing in.
+                </>
+              ) : (
+                <>
+                  {includedChatCount} Alice chat answers are included. Open Alice from the navigation after signing in.
+                </>
+              )
+            ) : isKo ? (
               hasDestinyFeatures ? (
                 <>
                   운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회
@@ -220,12 +269,16 @@ export function PurchaseCompleteView({
           <p className="text-[13px] font-black text-[#2E2E5C]">
             {isKo
               ? "친구 진단도 이용할 수 있어요"
-              : "友達診断も利用できます"}
+              : isEn
+                ? "Friend insights are included"
+                : "友達診断も利用できます"}
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo
               ? "두 번째 친구부터의 진단 결과와 여러 번 다시 만들 수 있는 친구 진단 분석 PDF가 열립니다."
-              : "2人目以降の友達診断結果と、何度でも作り直せる他己分析PDFが解放されます。"}
+              : isEn
+                ? "Unlock every friend result and an updated friend-analysis PDF whenever new responses arrive."
+                : "2人目以降の友達診断結果と、何度でも作り直せる他己分析PDFが解放されます。"}
           </p>
         </div>
       ) : null}
@@ -237,7 +290,9 @@ export function PurchaseCompleteView({
       <p className="mt-6 max-w-[420px] text-center text-[12px] font-bold leading-[1.7] text-[#8A8AA3]">
         {isKo
           ? "30일 환불 보장이 포함되어 있어요. 환불을 원하시면 결제에 사용한 이메일 주소와 함께 "
-          : "30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて "}
+          : isEn
+            ? "A 30-day refund guarantee is included. To request a refund, contact us from the email used at checkout: "
+            : "30日間の返金保証つき。返金をご希望の場合は、購入に使ったメールアドレスを添えて "}
         <a
           href="mailto:support@watashi-torisetsu.com"
           className="underline underline-offset-2"
@@ -245,23 +300,23 @@ export function PurchaseCompleteView({
         >
           support@watashi-torisetsu.com
         </a>
-        {isKo ? "으로 연락해 주세요 (" : " までご連絡ください（"}
+        {isKo ? "으로 연락해 주세요 (" : isEn ? " (" : " までご連絡ください（"}
         <Link
-          href={isKo ? "/ko/legal/commerce" : "/legal/commerce"}
+          href={isKo ? "/ko/legal/commerce" : isEn ? "/en/legal/commerce" : "/legal/commerce"}
           className="underline underline-offset-2"
           style={{ color: NAVY }}
         >
-          {isKo ? "환불 조건" : "返金条件"}
+          {isKo ? "환불 조건" : isEn ? "refund terms" : "返金条件"}
         </Link>
-        {isKo ? ")." : "）。"}
+        {isKo ? ")." : isEn ? ")." : "）。"}
       </p>
 
       <Link
-        href={isKo ? "/ko" : "/"}
+        href={isKo ? "/ko" : isEn ? "/en" : "/"}
         className="mt-6 text-center text-[12px] underline underline-offset-2 transition-colors hover:opacity-70"
         style={{ color: `${NAVY}80` }}
       >
-        {isKo ? "홈으로 돌아가기" : "トップに戻る"}
+        {isKo ? "홈으로 돌아가기" : isEn ? "Back to home" : "トップに戻る"}
       </Link>
     </main>
     </>

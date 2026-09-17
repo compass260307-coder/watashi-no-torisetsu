@@ -38,6 +38,7 @@ import {
   type BirthLocationOption,
 } from "@/i18n/unmei";
 import { track } from "@/lib/track";
+import { US_BIRTH_REGIONS } from "@/lib/unmei/us-birth-regions";
 
 type Role = "guide" | "user";
 type Msg = { id: number; role: Role; text: string };
@@ -59,16 +60,6 @@ const PURCHASE_READY_DELAY_MS = 2_500;
 // 生年月日セレクトの範囲 (validate と同じ 120 年)
 const THIS_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 120 }, (_, i) => THIS_YEAR - i);
-const EN_JAPAN_REGION_LABELS = [
-  "Hokkaido", "Aomori", "Iwate", "Miyagi", "Akita", "Yamagata", "Fukushima",
-  "Ibaraki", "Tochigi", "Gunma", "Saitama", "Chiba", "Tokyo", "Kanagawa",
-  "Niigata", "Toyama", "Ishikawa", "Fukui", "Yamanashi", "Nagano", "Gifu",
-  "Shizuoka", "Aichi", "Mie", "Shiga", "Kyoto", "Osaka", "Hyogo", "Nara",
-  "Wakayama", "Tottori", "Shimane", "Okayama", "Hiroshima", "Yamaguchi",
-  "Tokushima", "Kagawa", "Ehime", "Kochi", "Fukuoka", "Saga", "Nagasaki",
-  "Kumamoto", "Oita", "Miyazaki", "Kagoshima", "Okinawa",
-] as const;
-
 function daysInMonth(y: number, m: number): number {
   return new Date(y, m, 0).getDate();
 }
@@ -177,13 +168,9 @@ export default function UnmeiBirthChat({
     () =>
       locale === "ko"
         ? KOREAN_BIRTH_REGIONS
-        : PREFS.map((value, index) => ({
-            value,
-            label:
-              locale === "en"
-                ? (EN_JAPAN_REGION_LABELS[index] ?? value)
-                : value,
-          })),
+        : locale === "en"
+          ? US_BIRTH_REGIONS
+          : PREFS.map((value) => ({ value, label: value })),
     [locale],
   );
   const [messages, setMessages] = useState<Msg[]>([]);

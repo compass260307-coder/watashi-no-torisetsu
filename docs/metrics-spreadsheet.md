@@ -37,7 +37,31 @@ Apps Script は `scripts/google-sheets-diagnosis-sync.gs` を使う。
 3. `createQuarterHourlyTrigger` を実行し、15分トリガーを登録
 
 初回は診断=直近2日、売上=過去分全般、シェア=直近30日を取得する。
-シェアの初回分は数が多いため、15分トリガー数回に分けて自動的に追い付く。
+通常のシェア同期は大きな日報のタイムアウトを避けるため100件/実行に制限する。
+遅延分が100件/15分を超える場合は、以下の高速追記を有効化して追い付く。
+
+### 友達診断の共有イベントを高速で追記する
+
+`scripts/google-sheets-diagnosis-sync.gs` の `SHARE_REST_ENABLED` 切替は初期状態で無効。
+無効時は既存の `SpreadsheetApp` 追記を100件/実行で続ける。高速モードは
+Google Sheets APIの `spreadsheets.batchUpdate` で1ページ999件、最大10ページを
+同じ15分トリガー内に追記する。成功したページだけカーソルを保存し、
+HTTPエラーや応答が不明な失敗ではそのページのカーソルを進めない。
+
+有効化前に日報のコピーを作り、現行Apps Scriptのコード・権限・カーソルと
+リポジトリ版との差分を照合する。コンテナに紐づいた既存のスクリプトで
+`appsscript.json` に `https://www.googleapis.com/auth/drive.file` を追加し、
+他の必要なOAuthスコープを残す。現行マニフェストと
+`scripts/google-sheets-diagnosis-sync-appsscript.json` を照合する。
+Googleの再承認後、`syncShareRestOnce` を
+1回手動実行して
+追記行・日本時間の日付・カーソルを確認する。成功してから
+スクリプト プロパティ `SHARE_REST_ENABLED=1` を設定する。
+トリガーは既存の15分同期1本を維持し、別の取得トリガーを作らない。
+
+`drive.file` はスクリプトが使用するファイルへの編集権限で、
+Google Sheets APIが要求するOAuthスコープの1つである。
+権限追加と再承認は実行アカウントの明示的な許可を得てから行う。
 
 昨日の時間別診断数は、ピボットテーブルでフィルタを `date_jst`、
 行を `hour_jst`、値を `diagnosis_ref` の COUNTA にすれば確認できる。

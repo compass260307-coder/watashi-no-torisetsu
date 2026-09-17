@@ -18,7 +18,6 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import EnPaywallOverlay from "@/components/en/EnPaywallOverlay";
 import { useCheckoutCancelledProduct } from "@/components/checkout/CheckoutCancelledNotice";
 import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
@@ -206,15 +205,7 @@ export function HoshiyomiClient({
       ) : (
         <TopFooter locale={locale === "en" ? "en" : "ja"} />
       )}
-      {paywallOpen && locale === "en" ? (
-        <EnPaywallOverlay
-          ownerToken={ownerToken ?? ""}
-          returnTo="hoshiyomi"
-          imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
-          imageAlt="AI astrologer Alice"
-          onClose={() => setPaywallOpen(false)}
-        />
-      ) : paywallOpen ? (
+      {paywallOpen ? (
         <PaywallOverlay
           ownerToken={ownerToken}
           returnTo="hoshiyomi"
@@ -228,18 +219,28 @@ export function HoshiyomiClient({
             canUpgradeToPremium ? "premium_bundle" : "full_access"
           }
           heading={
-            locale === "ja"
+            locale === "en"
+              ? canUpgradeToPremium
+                ? "Unlock the rest of your conversation with Alice"
+                : "Choose how to talk with Alice"
+              : locale === "ja"
               ? canUpgradeToPremium
                 ? "Aliceとの続きを解放する"
                 : "Aliceを試す・本格相談を選ぶ"
               : undefined
           }
           previewMode={previewMode}
-          locale={locale === "ko" ? "ko" : "ja"}
+          locale={locale}
           // PC ではカードが画像つき2カラムになるようヒーローと同じ Alice 画像を渡す
           // (SP はカード側の hidden md:flex で画像非表示のため影響なし)。
           imageSrc="/mascot/hoshiyomi-alice-writing-transparent.png"
-          imageAlt={locale === "ko" ? "별자리 상담사" : "AI占い師 Alice"}
+          imageAlt={
+            locale === "en"
+              ? "AI astrologer Alice"
+              : locale === "ko"
+                ? "별자리 상담사"
+                : "AI占い師 Alice"
+          }
           scrollLocked={lineExitOpen}
           onClose={handlePaywallExitAttempt}
         />
@@ -325,9 +326,11 @@ function HoshiyomiHome({
                   disabled={!canCompose}
                   placeholder={
                     canUpgradeToPremium && remaining === 0
-                      ? locale === "ko"
-                        ? copy.exhaustedPlaceholder
-                        : "Aliceとの続きを相談する"
+                      ? locale === "en"
+                        ? "Continue your conversation with Alice"
+                        : locale === "ko"
+                          ? copy.exhaustedPlaceholder
+                          : "Aliceとの続きを相談する"
                       : hasChatAccess && remaining === 0
                       ? copy.exhaustedPlaceholder
                       : copy.inputPlaceholder

@@ -15,8 +15,12 @@ export const ACCESS_PRODUCTS = [
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
   "legacy_card_v40_ja_full_499_release_1290_list" as const;
-export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
+export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1 =
   "en_single_full_access_v1_jpy_499" as const;
+export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
+  "en_single_full_access_v2_usd_499" as const;
+export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
+  "en_single_full_access_v3_usd_499_release_1290_list" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -56,7 +60,10 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v37_ja_full_499_single_no_discount",
   "legacy_card_v38_ja_full_699_single_no_discount",
   "legacy_card_v39_ja_full_699_release_1290_list",
+  "legacy_card_v40_ja_full_499_single_no_discount",
   THREE_COURSE_PAYWALL_VERSION,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
@@ -105,6 +112,28 @@ export const HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE =
 // 学生向けと旧販売世代を誤って解放しないよう、購入時metadataへ明示する。
 export const TAROT_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 export const TAROT_ACCESS_POLICY_FULL_INCLUDED = "full_included_v1" as const;
+
+// 2026-09-07〜09-14 の Webhook は Checkout の tarot_access_policy を
+// payment_history.metadata へ転記できていなかった。該当期間に販売した完全版だけを
+// 明示的に列挙し、既存購入者の権利をコード反映だけで復元する。
+// 旧販売世代を広く解放しないよう、正規表現やバージョン番号の範囲判定は使わない。
+const FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS = new Set<string>([
+  "legacy_card_v30_full_499_destiny_alice30_tarot_student_299",
+  "legacy_card_v31_full_499_aisho_destiny_alice30_tarot_student_299",
+  "legacy_card_v32_full_899_aisho_destiny_alice30_tarot_student_299",
+  "legacy_card_v33_full_899_aisho_destiny_alice30_tarot_student_499",
+  "legacy_card_v34_full_899_student_499_aisho_included",
+  "legacy_card_v35_ja_full_499_single",
+  "legacy_card_v36_ja_full_899_single_no_discount",
+  "legacy_card_v37_ja_full_499_single_no_discount",
+  "legacy_card_v38_ja_full_699_single_no_discount",
+  "legacy_card_v39_ja_full_699_release_1290_list",
+  "legacy_card_v40_ja_full_499_single_no_discount",
+  THREE_COURSE_PAYWALL_VERSION,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
+  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+]);
 
 // 友達機能を含まない旧 self_report 世代の印。
 // 現行の日韓学生プランは友達機能を含む。値が無い旧購入は購入時の権利を維持する。
@@ -190,11 +219,17 @@ export function hoshiyomiChatCreditTarget(
 export function purchaseIncludesTarotFeatures(
   product: AccessProduct,
   policy: unknown,
+  paywallVersion?: unknown,
 ): boolean {
   if (product === "premium_bundle") return true;
+  if (product !== "full_access") return false;
+  if (policy === TAROT_ACCESS_POLICY_FULL_INCLUDED) return true;
+  // 明示的な非対象ポリシーは販売世代より優先する。復元するのは、Webhook の
+  // 転記漏れで policy 自体が存在しない既知の完全版購入だけ。
+  if (policy !== undefined && policy !== null) return false;
   return (
-    product === "full_access" &&
-    policy === TAROT_ACCESS_POLICY_FULL_INCLUDED
+    typeof paywallVersion === "string" &&
+    FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS.has(paywallVersion)
   );
 }
 
@@ -224,6 +259,8 @@ export function purchaseIncludesAishoFeatures(
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
+// 完全版は通常価格 ¥1,290 から「リリース記念」¥791引きを表示し、
+// 実際の請求額は固定カタログどおり ¥499 とする。
 export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
 export const FULL_ACCESS_PRICE_JPY = 499;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
@@ -240,10 +277,12 @@ export const FULL_ACCESS_PRICE_KRW = 4900;
 export const PREMIUM_BUNDLE_LIST_PRICE_KRW = 19800;
 // 韓国版プレミアムの現行価格。旧価格は ₩12,900。
 export const PREMIUM_BUNDLE_PRICE_KRW = 8900;
-// 英語版は完全版のみを、日本版のリリース価格 ¥499 に近い $3.49 で販売する。
+// 英語版は完全版のみを、通常価格 $12.90 から Release offer $7.91引き、
+// 米国向け $4.99 で販売する。
 // 学生向け・プレミアムは英語版では提供せず、Checkout API 側でも拒否する。
 // Stripe の USD 金額は最小通貨単位（cent）で保持する。
-export const EN_FULL_ACCESS_PRICE_USD_CENTS = 349;
+export const EN_FULL_ACCESS_LIST_PRICE_USD_CENTS = 1290;
+export const EN_FULL_ACCESS_PRICE_USD_CENTS = 499;
 export const SELF_REPORT_DISCOUNT_PERCENT = Math.round(
   (1 - SELF_REPORT_PRICE_JPY / SELF_REPORT_LIST_PRICE_JPY) * 100,
 );

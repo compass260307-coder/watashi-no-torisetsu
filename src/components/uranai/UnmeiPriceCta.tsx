@@ -18,8 +18,9 @@ import {
 } from "@/components/checkout/CheckoutCancelledNotice";
 import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
+  EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
@@ -52,13 +53,17 @@ export default function UnmeiPriceCta({
   variant?: "full" | "compact";
   /** true = リダイレクトせず全画面チャット決済を起動する (チャット決済フロー)。 */
   launchChat?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   /** devプレビューでは計測・決済APIを実行しない。 */
   previewMode?: boolean;
 }) {
   // チャット起動モードでは「作成する」文言、従来のリダイレクトは「続ける」。
   const ctaLabel =
-    locale === "ko"
+    locale === "en"
+      ? launchChat
+        ? "Create my Destiny Blueprint →"
+        : "Continue →"
+      : locale === "ko"
       ? launchChat
         ? "운명의 설계도 만들기 →"
         : "계속하기 →"
@@ -70,16 +75,24 @@ export default function UnmeiPriceCta({
   );
   const [hasFull, setHasFull] = useState(sessionHasFull);
   const cancelledProduct = useCheckoutCancelledProduct();
-  const purchaseProduct = hasFull ? "premium_bundle" : "full_access";
+  // The English catalog sells only Complete Edition. Legacy premium upgrades remain
+  // available for Japanese/Korean entitlement compatibility only.
+  const supportsLegacyUpgrade = locale !== "en";
+  const purchaseProduct =
+    supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access";
   const standardPrice =
-    locale === "ko"
+    locale === "en"
+      ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`
+      : locale === "ko"
       ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`
       : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`;
   const upgradePrice =
-    locale === "ko"
+    locale === "en"
+      ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`
+      : locale === "ko"
       ? `₩${(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW).toLocaleString("ko-KR")}`
       : `¥${PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}`;
-  const showUpgradePrice = hasFull;
+  const showUpgradePrice = supportsLegacyUpgrade && hasFull;
 
   useEffect(() => {
     if (hasFull) return;
@@ -132,7 +145,9 @@ export default function UnmeiPriceCta({
       <>
         {!launchChat && (
           <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
-            {locale === "ko"
+            {locale === "en"
+              ? `Only ${showUpgradePrice ? upgradePrice : standardPrice}.`
+              : locale === "ko"
               ? `요금은 ${showUpgradePrice ? upgradePrice : standardPrice}이에요.`
               : `料金はわずか ${showUpgradePrice ? upgradePrice : standardPrice} です。`}
           </p>
@@ -162,7 +177,9 @@ export default function UnmeiPriceCta({
         <CheckoutCancelledModal
           locale={locale}
           courseName={
-            locale === "ko"
+            locale === "en"
+              ? "Complete Edition"
+              : locale === "ko"
               ? purchaseProduct === "full_access"
                 ? "완전판 코스"
                 : "프리미엄 코스"
@@ -179,7 +196,9 @@ export default function UnmeiPriceCta({
               locale={locale}
               previewMode={previewMode}
             >
-              {locale === "ko"
+              {locale === "en"
+                ? "Try checkout again"
+                : locale === "ko"
                 ? "같은 코스로 다시 결제하기"
                 : "同じコースでもう一度決済する"}
             </UnmeiCheckoutButton>
@@ -189,7 +208,9 @@ export default function UnmeiPriceCta({
       {!launchChat && (showUpgradePrice ? (
         <div className="mt-4">
           <p className="text-[13px] font-bold text-[#2E2E5C]/55 md:text-[14px]">
-            {locale === "ko" ? "완전판 코스 구매 완료" : "完全版コース購入済み"}
+            {locale === "ko"
+              ? "완전판 코스 구매 완료"
+              : "完全版コース購入済み"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
             {/* 価格は Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
@@ -197,7 +218,9 @@ export default function UnmeiPriceCta({
               {upgradePrice}
             </p>
             <span className="inline-flex rounded-full bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-black text-[#5B5BEF] md:text-[13px]">
-              {locale === "ko" ? "완전판 사용자 한정" : "差額でアップグレード"}
+              {locale === "ko"
+                ? "완전판 사용자 한정"
+                : "差額でアップグレード"}
             </span>
           </div>
         </div>

@@ -37,6 +37,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Project operations
 
+- [Business constitution / 現行の事業方針](docs/BUSINESS_CONSTITUTION.md)
+- [Frozen commerce catalog / 固定中の商品・価格](docs/COMMERCE_CATALOG.md)
 - [LINE × 診断結果：1タップ連携](docs/LINE_LIFF_LINKING.md)
 - Formal workspace: `/Volumes/WATASHI-SSD/WATASHI_WORKSPACE/projects/watashi-no-torisetsu`
 - [Workspace backup and release policy](docs/WORKSPACE_RELEASE_POLICY.md)

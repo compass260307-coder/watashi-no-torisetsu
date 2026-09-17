@@ -1,4 +1,5 @@
-import type { ResultLocale } from "@/i18n/result";
+import EnFriendComparison from "@/components/en/EnFriendComparison";
+import type { AppResultLocale, ResultLocale } from "@/i18n/result";
 import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
 import type { BigFiveScores } from "@/lib/perception-analysis";
 import { buildDeepDive } from "@/lib/tako-deepdive";
@@ -29,13 +30,23 @@ const COPY = {
     primaryLabel: "당신의 시선",
     selfLabelTail: "의 자기 진단",
   },
+  en: {
+    titleLead: "How you see ",
+    titleTail: "",
+    gapLead: "The largest difference is in ",
+    selfLead: " rated themselves at ",
+    answerLead: "while your view is ",
+    answerTail: ".",
+    primaryLabel: "Your view",
+    selfLabelTail: "’s self-view",
+  },
 } as const;
 
 interface FriendGapSectionProps {
   selfScores: BigFiveScores;
   perceivedScores: BigFiveScores;
   targetLabel: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 function buildPerceivedProse(
@@ -101,6 +112,29 @@ export function FriendGapSection({
   locale = "ja",
 }: FriendGapSectionProps) {
   const copy = COPY[locale];
+  if (locale === "en") {
+    return (
+      <section className="mx-auto max-w-[1080px] pb-8 pt-12 md:pb-12 md:pt-16">
+        <div className="mb-5 md:mb-7">
+          <h2 className="text-[24px] font-black leading-[1.3] tracking-[-0.02em] text-[#2E2E5C] md:text-[36px]">
+            {copy.titleLead}
+            {targetLabel}
+            {copy.titleTail}
+          </h2>
+        </div>
+        <section
+          aria-label="Five personality dimensions"
+          className="rounded-[22px] bg-[#F4F4FE] px-5 py-6 md:rounded-[28px] md:px-8 md:py-8"
+        >
+          <EnFriendComparison
+            selfScores={selfScores}
+            friendScores={perceivedScores}
+            friendLabel="Your view"
+          />
+        </section>
+      </section>
+    );
+  }
   const deep = buildDeepDive(selfScores, perceivedScores, locale);
   const perceivedProse = buildPerceivedProse(
     perceivedScores,

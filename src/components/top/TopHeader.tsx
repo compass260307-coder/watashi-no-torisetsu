@@ -341,11 +341,7 @@ export default function TopHeader({
         </Link>
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
-        <div
-          className={`ml-auto hidden items-center gap-5 lg:flex ${
-            isEn ? "xl:gap-6" : "xl:gap-8"
-          }`}
-        >
+        <div className="ml-auto hidden items-center gap-5 lg:flex xl:gap-8">
           {nav.map((n) =>
             n.disabled ? (
               <span

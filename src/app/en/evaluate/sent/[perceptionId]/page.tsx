@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import EnEvaluationSentPage from "@/components/en/EnEvaluationSentPage";
+import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
@@ -37,11 +37,13 @@ export default async function EnglishEvaluationSentRoute({
   );
   const inviteCode = ((user?.invite_code as string | null) ?? "").trim();
   return (
-    <EnEvaluationSentPage
+    <FriendIndividualGuide
       targetName={((user?.display_name as string | null) ?? "").trim()}
-      understanding={understanding}
+      understandingScore={understanding}
       selfScores={selfScores}
-      friendScores={friendScores}
+      perceivedScores={friendScores}
+      inviteCode={inviteCode || undefined}
+      locale="en"
       diagnoseHref={
         inviteCode
           ? `/en/diagnosis?source=${encodeURIComponent(inviteCode)}`

@@ -89,9 +89,11 @@ const RAW_SYNC_JOBS = {
     cursorAtProperty: "SHARE_CURSOR_AT",
     cursorIdProperty: "SHARE_CURSOR_ID",
     initialLookbackDays: 30,
-    pageSize: 500,
-    maxPagesPerRun: 10,
-    recentReferenceWindow: 5000,
+    // 大きな日報への500行一括書き込みはSpreadsheetAppでタイムアウトする。
+    // 連続setValuesもタイムアウトするため、1実行につき1ページに抑える。
+    pageSize: 100,
+    maxPagesPerRun: 1,
+    recentReferenceWindow: 1000,
     mode: "append",
   },
   lineFollowEvents: {
@@ -110,9 +112,9 @@ const RAW_SYNC_JOBS = {
     cursorAtProperty: "LINE_FOLLOW_CURSOR_AT",
     cursorIdProperty: "LINE_FOLLOW_CURSOR_ID",
     initialLookbackDays: 30,
-    pageSize: 500,
-    maxPagesPerRun: 10,
-    recentReferenceWindow: 5000,
+    pageSize: 50,
+    maxPagesPerRun: 1,
+    recentReferenceWindow: 500,
     mode: "append",
     // Web側のデプロイ前は空振りとして扱い、既存同期を止めない。
     ignoreNotFound: true,
@@ -266,14 +268,14 @@ function rowValues_(row, headers) {
   });
 }
 
-function fetchPage_(job, cursorAt, cursorId) {
+function fetchPage_(job, cursorAt, cursorId, pageSize) {
   let url =
     RAW_SYNC_BASE_URL +
     job.apiPath +
     "?after=" +
     encodeURIComponent(cursorAt) +
     "&limit=" +
-    job.pageSize;
+    (pageSize || job.pageSize);
   if (cursorId) url += "&after_id=" + encodeURIComponent(cursorId);
 
   const response = metricsAuthorizedFetch_(url);
@@ -309,7 +311,7 @@ function saveCursor_(properties, job, cursor) {
   });
 }
 
-function appendRows_(sheet, job, rows, knownReferences) {
+function appendRows_(sheet, job, rows, knownReferences, restContext) {
   const values = [];
   rows.forEach(function (row) {
     const reference = row[job.headers[job.referenceColumn - 1]];
@@ -319,11 +321,109 @@ function appendRows_(sheet, job, rows, knownReferences) {
   });
   if (values.length === 0) return;
 
+  if (restContext) {
+    appendRowsViaSheetsApi_(sheet, job, restContext.nextRow, values);
+    restContext.nextRow += values.length;
+    return;
+  }
+
   const firstRow = sheet.getLastRow() + 1;
+  if (job.apiPath === "share-events") console.log("share: ensure rows");
   ensureRows_(sheet, firstRow + values.length - 1);
+  if (job.apiPath === "share-events") console.log("share: set values");
   sheet
     .getRange(firstRow, 1, values.length, job.headers.length)
     .setValues(values);
+  if (job.apiPath === "share-events") console.log("share: values saved");
+}
+
+// 大きな日報のSpreadsheetApp.setValuesは再計算でタイムアウトするため、
+// 専用のOAuth権限を承認したときだけSheets APIでまとめて追記する。
+// 応答が不明な失敗ではカーソルを進めず、次回の参照ID重複確認で再試行する。
+function appendRowsViaSheetsApi_(sheet, job, firstRow, values) {
+  const spreadsheet = sheet.getParent();
+  const lastRow = firstRow + values.length - 1;
+  const requests = [];
+  if (lastRow > sheet.getMaxRows()) {
+    requests.push({
+      updateSheetProperties: {
+        properties: {
+          sheetId: sheet.getSheetId(),
+          gridProperties: { rowCount: lastRow + 1000 },
+        },
+        fields: "gridProperties.rowCount",
+      },
+    });
+  }
+  requests.push({
+    updateCells: {
+      start: {
+        sheetId: sheet.getSheetId(),
+        rowIndex: firstRow - 1,
+        columnIndex: 0,
+      },
+      rows: values.map(function (row) {
+        return {
+          values: row.map(function (value, index) {
+            if (index === 1 && /^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+              const parts = String(value).split("-").map(Number);
+              const serial =
+                Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000 +
+                25569;
+              return { userEnteredValue: { numberValue: serial } };
+            }
+            if (value == null || value === "") return {};
+            if (typeof value === "number") {
+              return { userEnteredValue: { numberValue: value } };
+            }
+            if (typeof value === "boolean") {
+              return { userEnteredValue: { boolValue: value } };
+            }
+            return { userEnteredValue: { stringValue: String(value) } };
+          }),
+        };
+      }),
+      fields: "userEnteredValue",
+    },
+  });
+  requests.push({
+    repeatCell: {
+      range: {
+        sheetId: sheet.getSheetId(),
+        startRowIndex: firstRow - 1,
+        endRowIndex: lastRow,
+        startColumnIndex: 1,
+        endColumnIndex: 2,
+      },
+      cell: {
+        userEnteredFormat: {
+          numberFormat: { type: "DATE", pattern: "yyyy-mm-dd" },
+        },
+      },
+      fields: "userEnteredFormat.numberFormat",
+    },
+  });
+  const response = UrlFetchApp.fetch(
+    "https://sheets.googleapis.com/v4/spreadsheets/" +
+      spreadsheet.getId() +
+      ":batchUpdate",
+    {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+      payload: JSON.stringify({ requests: requests }),
+      muteHttpExceptions: true,
+    },
+  );
+  if (response.getResponseCode() !== 200) {
+    // OAuthトークン、レスポンス本文、匿名参照IDをログに出さない。
+    throw new Error(
+      job.sheetName +
+        " Sheets API write failed (HTTP " +
+        response.getResponseCode() +
+        ")",
+    );
+  }
 }
 
 function upsertRows_(sheet, job, rows, rowsByReference) {
@@ -352,24 +452,43 @@ function upsertRows_(sheet, job, rows, rowsByReference) {
 }
 
 // 前回カーソル以降だけを取得し、1ページずつ一括追記または更新する。
-function syncJob_(job) {
+function syncJob_(job, options) {
   const properties = PropertiesService.getScriptProperties();
+  if (job.apiPath === "share-events") console.log("share: open sheet");
   const sheet = rawSheet_(job);
+  if (job.apiPath === "share-events") console.log("share: sheet open");
+  const shareRestEnabled =
+    job.apiPath === "share-events" &&
+    ((options && options.shareRest === true) ||
+      properties.getProperty("SHARE_REST_ENABLED") === "1");
+  const restContext = shareRestEnabled
+    ? { nextRow: sheet.getLastRow() + 1 }
+    : null;
+  const pageSize = shareRestEnabled ? 999 : job.pageSize;
+  const maxPagesPerRun =
+    options && options.maxPagesPerRun
+      ? options.maxPagesPerRun
+      : shareRestEnabled
+        ? 10
+        : job.maxPagesPerRun;
   const references =
     job.mode === "upsert"
       ? allReferenceRows_(sheet, job)
       : recentReferences_(sheet, job);
+  if (job.apiPath === "share-events") console.log("share: references read");
   let cursorAt =
     properties.getProperty(job.cursorAtProperty) || initialCursor_(job);
   let cursorId = properties.getProperty(job.cursorIdProperty) || "";
 
-  for (let pageIndex = 0; pageIndex < job.maxPagesPerRun; pageIndex++) {
-    const payload = fetchPage_(job, cursorAt, cursorId);
+  for (let pageIndex = 0; pageIndex < maxPagesPerRun; pageIndex++) {
+    if (job.apiPath === "share-events") console.log("share: fetch page");
+    const payload = fetchPage_(job, cursorAt, cursorId, pageSize);
+    if (job.apiPath === "share-events") console.log("share: page fetched");
     const rows = payload.rows || [];
     if (job.mode === "upsert") {
       upsertRows_(sheet, job, rows, references);
     } else {
-      appendRows_(sheet, job, rows, references);
+      appendRows_(sheet, job, rows, references, restContext);
     }
 
     if (!payload.nextCursor) break;
@@ -381,15 +500,39 @@ function syncJob_(job) {
   }
 }
 
+// OAuth再承認後、定期同期の高速モードを有効にする前に1ページだけ検証する。
+// 既存の同期ロックとカーソルを共有し、新しいトリガーは作らない。
+function syncShareRestOnce() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) throw new Error("別の同期が実行中です");
+  try {
+    syncJob_(RAW_SYNC_JOBS.shareEvents, {
+      shareRest: true,
+      maxPagesPerRun: 1,
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // この1関数を15分ごとに実行し、有効な生データだけを同期する。
 function syncMetricsRaw() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
 
   try {
-    SpreadsheetApp.getActiveSpreadsheet().setSpreadsheetTimeZone("Asia/Tokyo");
+    // 日報のタイムゾーンはAsia/Tokyoに設定済み。毎回の再設定は巨大な
+    // スプレッドシート全体の処理を起こし、同期開始前にタイムアウトする。
     const errors = [];
-    Object.keys(RAW_SYNC_JOBS).forEach(function (key) {
+    const jobKeys = Object.keys(RAW_SYNC_JOBS);
+    const shareIndex = jobKeys.indexOf("shareEvents");
+    const lineIndex = jobKeys.indexOf("lineFollowEvents");
+    // 重いシェア書き込み後にLINEジョブがSheetsタイムアウトするのを避ける。
+    if (shareIndex >= 0 && lineIndex > shareIndex) {
+      jobKeys.splice(lineIndex, 1);
+      jobKeys.splice(shareIndex, 0, "lineFollowEvents");
+    }
+    jobKeys.forEach(function (key) {
       const job = RAW_SYNC_JOBS[key];
       if (job.enabled === false) return;
       try {

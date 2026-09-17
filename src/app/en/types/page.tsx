@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import EnTypesGallery from "@/components/en/EnTypesGallery";
+import TypesGalleryPage from "@/components/types/TypesGalleryPage";
 
 export const metadata: Metadata = {
   title: "32 Personality Types",
@@ -7,4 +7,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/en/types", languages: { "ja-JP": "/types", "ko-KR": "/ko/types", "en-US": "/en/types", "x-default": "/types" } },
 };
 
-export default function EnglishTypesPage() { return <EnTypesGallery />; }
+export default function EnglishTypesPage() {
+  return <TypesGalleryPage locale="en" />;
+}

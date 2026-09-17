@@ -5,20 +5,27 @@
 // モバイル前提なので hover ではなく click トグル + フォーカスアウトで閉じる。
 
 import { useState } from "react";
+import type { AppResultLocale } from "@/i18n/result";
 
 export function JohariHelpTip({
   text,
   locale = "ja",
 }: {
   text: string;
-  locale?: "ja" | "ko";
+  locale?: AppResultLocale;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <span className="relative inline-flex">
       <button
         type="button"
-        aria-label={locale === "ko" ? "이 창에 대한 설명" : "この窓の説明"}
+        aria-label={
+          locale === "en"
+            ? "About this window"
+            : locale === "ko"
+              ? "이 창에 대한 설명"
+              : "この窓の説明"
+        }
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setOpen(false)}

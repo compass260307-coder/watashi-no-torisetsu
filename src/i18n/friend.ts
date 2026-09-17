@@ -1,4 +1,5 @@
-import type { ResultLocale } from "@/i18n/result";
+import { EN_FRIEND_QUESTIONS } from "@/i18n/en/friend";
+import type { AppResultLocale } from "@/i18n/result";
 import type { AnswerValue } from "@/lib/types";
 import type { FriendQuestionV2 } from "@/lib/friend-questions-v2";
 
@@ -77,6 +78,43 @@ export const FRIEND_COPY = {
       1: "전혀 그렇지 않다",
     } satisfies Record<AnswerValue, string>,
   },
+  en: {
+    loading: "Loading...",
+    friend: "your friend",
+    testTitle: "Friend personality test",
+    heroSubtitle: "OCEAN (Big Five) personality model",
+    heroAlt: "Friend personality test",
+    nicknamePrompt: "What should we call you?",
+    questionAria: (id: number) => `Question ${id}`,
+    finishQuestions: "One last thing →",
+    next: "Next",
+    back: "Back",
+    nicknameRequired: "Enter your nickname to continue",
+    invalidTitle: "This invitation is no longer available",
+    invalidDescription:
+      "The link may be incomplete, or the person who invited you could not be found. Ask your friend to send you a new invitation link.",
+    invalidCta: "Take my personality test",
+    submitErrorTitle: "Your answers weren’t sent",
+    submitErrorBody: "Please wait a moment and try again.",
+    retry: "Try again",
+    messageTitle: "One last thing: leave them a note (optional)",
+    messageAria: "Optional note for your friend",
+    messagePlaceholder: "Write anything you would like them to know",
+    submitting: "Sending...",
+    seeResult: "See the result →",
+    unknownError: "Something went wrong. Please try again.",
+    scaleLeft: "Strongly agree",
+    scaleRight: "Strongly disagree",
+    scaleOptions: {
+      7: "Strongly agree",
+      6: "Agree",
+      5: "Somewhat agree",
+      4: "Neither agree nor disagree",
+      3: "Somewhat disagree",
+      2: "Disagree",
+      1: "Strongly disagree",
+    } satisfies Record<AnswerValue, string>,
+  },
 } as const;
 
 const KO_FRIEND_QUESTIONS = [
@@ -113,13 +151,15 @@ const KO_FRIEND_QUESTIONS = [
 ] as const;
 
 export function friendQuestionText(
-  locale: ResultLocale,
+  locale: AppResultLocale,
   question: FriendQuestionV2,
   inviteeName: string,
 ): string {
   const template =
     locale === "ko"
       ? (KO_FRIEND_QUESTIONS[question.id - 1] ?? question.text)
+      : locale === "en"
+        ? (EN_FRIEND_QUESTIONS[question.id - 1] ?? question.text)
       : question.text;
   if (locale === "ko" && inviteeName === FRIEND_COPY.ko.friend) {
     return template

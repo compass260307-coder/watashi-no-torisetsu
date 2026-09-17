@@ -1,5 +1,5 @@
 import { LoginCard } from "@/components/LoginCard";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 const COPY = {
   ja: {
@@ -23,12 +23,22 @@ const COPY = {
       "30일 환불 보장이 포함되어 있어요. 환불을 원하시면 결제에 사용한 이메일 주소와 함께",
     refundAfter: "으로 연락해 주세요.",
   },
+  en: {
+    title: "Thank you for your purchase!",
+    bodyBefore: "Your reading is linked to the email address used for your purchase.",
+    bodyAfter: "Sign in with the same email address to enter your birth details and create your",
+    product: "Destiny Blueprint",
+    productSuffix: ".",
+    refundBefore:
+      "Your purchase includes a 30-day money-back guarantee. To request a refund, email us from the address used for your purchase at",
+    refundAfter: ".",
+  },
 } as const;
 
 export default function UnmeiGuestPurchaseComplete({
   locale = "ja",
 }: {
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const copy = COPY[locale];
 

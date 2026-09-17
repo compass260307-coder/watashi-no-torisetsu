@@ -6,7 +6,7 @@
 // B 評価 polygon (logoBlue 22%) を後ろ、A 自己 polygon (vividPink 22%) を前面に重ねる。
 
 import type { DimensionGap } from "@/lib/perception-analysis";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 const SIZE = 280;
 const CENTER = SIZE / 2;
@@ -19,7 +19,7 @@ interface RadarProps {
   otherColor?: string;
   selfLabel: string;
   otherLabel: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 function angleFor(i: number): number {
@@ -77,7 +77,9 @@ export function MutualUnderstandingRadar({
         className="w-full max-w-[300px] h-auto"
         role="img"
         aria-label={
-          locale === "ko"
+          locale === "en"
+            ? `Big Five radar chart comparing ${selfLabel} and ${otherLabel}`
+            : locale === "ko"
             ? `${selfLabel}과 ${otherLabel}의 Big Five 5개 축 레이더 차트`
             : `${selfLabel} と ${otherLabel} の Big Five 5 次元レーダーチャート`
         }

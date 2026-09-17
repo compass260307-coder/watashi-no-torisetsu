@@ -180,81 +180,155 @@ export const PEEK_ALICE_FORTUNE: UnlockPeek = {
 };
 
 export const EN_PEEK_EBOOK: UnlockPeek = {
-  ...PEEK_EBOOK,
+  img: "/paywall-peek/en-actual-ebook-page.webp",
   alt: "A sample page from your personality story",
+  width: 560,
+  height: 792,
   points: [
     "A 16+ page short story starring your personality type",
     "See your traits reflected in a story you can read at your own pace",
     "Receive your personal PDF immediately after purchase",
   ],
-  pages: PEEK_EBOOK.pages?.map((page, index) => ({
-    ...page,
-    alt: index === 0 ? "A page from your personality story" : "The cover of your personal ebook",
-  })),
+  pages: [
+    {
+      img: "/paywall-peek/en-actual-ebook-page.webp",
+      alt: "A page from your personality story",
+      width: 560,
+      height: 792,
+    },
+    {
+      img: "/paywall-peek/en-actual-ebook-cover.webp",
+      alt: "The cover of your personal ebook",
+      width: 560,
+      height: 841,
+    },
+  ],
 };
 
 export const EN_PEEK_FRIENDS: UnlockPeek = {
-  ...PEEK_FRIENDS,
+  img: "/paywall-peek/en-actual-friends-summary.webp",
   alt: "A sample page from the friend-analysis report",
+  width: 560,
+  height: 718,
   points: [
     "Read how each friend sees you",
     "Unlock every individual friend result",
     "See where different people perceive you differently",
   ],
-  pages: PEEK_FRIENDS.pages?.map((page, index) => ({
-    ...page,
-    alt: index === 0 ? "A page from the friend-analysis report" : "The friend-analysis report cover",
-  })),
+  pages: [
+    {
+      img: "/paywall-peek/en-actual-friends-summary.webp",
+      alt: "A page from the friend-analysis report",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/en-actual-friends-cover.webp",
+      alt: "The friend-analysis report cover",
+      width: 560,
+      height: 718,
+    },
+  ],
 };
 
 export const EN_PEEK_ALICE: UnlockPeek = {
-  ...PEEK_ALICE,
+  img: "/paywall-peek/en-actual-alice-chat-1.webp",
   alt: "A conversation with Alice, your AI astrologer",
+  width: 560,
+  height: 718,
   points: [
     "Alice responds with your personality type in mind",
     "Talk through love, relationships, work, and life choices",
     "Use conversation to organize feelings that are hard to explain",
     "Start talking with Alice as soon as the Complete Edition is unlocked",
   ],
-  pages: PEEK_ALICE.pages?.map((page, index) => ({
-    ...page,
-    alt: ["Talking with Alice", "Asking Alice about your path", "Asking Alice about love"][index] ?? "Talking with Alice",
-  })),
+  pages: [
+    {
+      img: "/paywall-peek/en-actual-alice-chat-1.webp",
+      alt: "Talking with Alice",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/en-actual-alice-chat-2.webp",
+      alt: "Asking Alice about your path",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/en-actual-alice-chat-3.webp",
+      alt: "Asking Alice about love",
+      width: 560,
+      height: 718,
+    },
+  ],
 };
 
 export const EN_PEEK_AISHO: UnlockPeek = {
-  ...PEEK_AISHO,
+  img: "/paywall-peek/en-actual-aisho-summary.webp",
   alt: "A sample compatibility result",
+  width: 560,
+  height: 718,
   points: [
     "See your compatibility grade and score",
     "Compare empathy, emotions, values, daily rhythm, and social balance",
     "Understand what works naturally and where to take care",
     "Read detailed guidance for love, friendship, work, and misunderstandings",
   ],
-  pages: PEEK_AISHO.pages?.map((page, index) => ({
-    ...page,
-    alt: index === 0 ? "The five compatibility dimensions" : "A compatibility grade and summary",
-  })),
+  pages: [
+    {
+      img: "/paywall-peek/en-actual-aisho-balance.webp",
+      alt: "The five compatibility dimensions",
+      width: 560,
+      height: 718,
+    },
+    {
+      img: "/paywall-peek/en-actual-aisho-summary.webp",
+      alt: "A compatibility grade and summary",
+      width: 560,
+      height: 718,
+    },
+  ],
 };
 
 export const EN_PEEK_UNMEI: UnlockPeek = {
-  ...PEEK_UNMEI,
+  img: "/paywall-peek/en-actual-unmei-reading.webp",
   alt: "A sample Destiny Blueprint reading",
+  width: 390,
+  height: 500,
   points: [
     "Create your birth chart from your date, time, and place of birth",
     "Combine your personality result and birth chart in a four-chapter AI reading",
     "Explore how you relate to people and the turning points ahead",
     "Return to your completed Destiny Blueprint whenever you like",
   ],
-  pages: PEEK_UNMEI.pages?.map((page, index) => ({
-    ...page,
-    alt: ["Your birth-chart wheel", "Your personal Destiny Blueprint reading", "A reading of your future turning points"][index] ?? "Your Destiny Blueprint",
-  })),
+  pages: [
+    {
+      img: "/paywall-peek/en-actual-unmei-chart.webp",
+      alt: "Your birth-chart wheel",
+      width: 390,
+      height: 500,
+    },
+    {
+      img: "/paywall-peek/en-actual-unmei-reading.webp",
+      alt: "Your personal Destiny Blueprint reading",
+      width: 390,
+      height: 500,
+    },
+    {
+      img: "/paywall-peek/en-actual-unmei-turning.webp",
+      alt: "A reading of your future turning points",
+      width: 390,
+      height: 500,
+    },
+  ],
 };
 
 export const EN_PEEK_ALICE_FORTUNE: UnlockPeek = {
-  ...EN_PEEK_UNMEI,
+  img: "/paywall-peek/en-actual-tarot-result.webp",
   alt: "Destiny Blueprint and Alice Tarot previews",
+  width: 390,
+  height: 600,
   points: [
     "Create your personal birth-chart wheel",
     "Receive a four-chapter reading combining personality and astrology",
@@ -264,7 +338,7 @@ export const EN_PEEK_ALICE_FORTUNE: UnlockPeek = {
   pages: [
     ...(EN_PEEK_UNMEI.pages?.slice(0, 2) ?? []),
     {
-      img: "/paywall-peek/tarot-reading-result.jpg",
+      img: "/paywall-peek/en-actual-tarot-result.webp",
       alt: "Alice interpreting a three-card tarot reading",
       width: 390,
       height: 600,

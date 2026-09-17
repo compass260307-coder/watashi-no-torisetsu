@@ -25,11 +25,34 @@ export const metadata: Metadata = {
 type PageProps = {
   searchParams?: Promise<{
     chat?: string | string[];
+    locked?: string | string[];
     paid?: string | string[];
+    preview?: string | string[];
+    trial_exhausted?: string | string[];
   }>;
 };
 
 export default async function HoshiyomiPage({ searchParams }: PageProps) {
+  const query = (await searchParams) ?? {};
+  const previewMode =
+    process.env.NODE_ENV === "development" && query.preview === "1";
+  const previewLocked = previewMode && query.locked === "1";
+  const previewTrialExhausted =
+    previewMode && query.trial_exhausted === "1";
+  if (previewMode) {
+    return (
+      <HoshiyomiClient
+        selectedConversation={null}
+        initialRemaining={previewLocked || previewTrialExhausted ? 0 : 22}
+        totalCredits={previewTrialExhausted ? 1 : previewLocked ? 0 : 30}
+        persistenceReady
+        hasChatAccess={!previewLocked}
+        canUpgradeToPremium={previewTrialExhausted}
+        previewMode
+      />
+    );
+  }
+
   const session = await getSession();
 
   // 未ログイン (未診断ゲスト) でも Alice のページ自体は見せる (2026-08-17 指示)。
@@ -50,8 +73,7 @@ export default async function HoshiyomiPage({ searchParams }: PageProps) {
   const paramsPromise: Promise<{
     chat?: string | string[];
     paid?: string | string[];
-  }> =
-    searchParams ?? Promise.resolve({});
+  }> = Promise.resolve(query);
   const [conversationResult, creditResult, fullAccess, premiumAccess, params] = await Promise.all([
     listHoshiyomiConversations(session.id),
     ensureHoshiyomiCreditsFromPurchase(session.id),

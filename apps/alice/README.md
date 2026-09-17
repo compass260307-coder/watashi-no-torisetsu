@@ -1,6 +1,10 @@
 # Alice mobile app
 
-既存の「ワタシのトリセツ」Web診断を入口にする、React Native + Expoアプリです。システム仕様はリポジトリ直下の `docs/alice-app-system-design-v3.1.md` だけを正本とし、UI実装は `docs/alice-app-ui/color-system-v1.md` のカラールールに従います。
+状態: 技術資産として保守中。新規プロダクト開発は休止。
+
+現在の事業方針では、Webが無料集客・招待・初回課金、LINE上のAlice Plusが日本の継続課金、アプリが将来の世界共通コミュニティを担います。事業判断は [`docs/BUSINESS_CONSTITUTION.md`](../../docs/BUSINESS_CONSTITUTION.md) を正本とします。
+
+このディレクトリは、既存の「ワタシのトリセツ」Web診断を入口にするReact Native + Expoアプリとして実装したPhase 1〜3の基盤を保持しています。既存コードの技術仕様は `docs/alice-app-system-design-v3.1.md`、UIは `docs/alice-app-ui/color-system-v1.md` を参照します。ただし、旧サブスクリプションアプリ案を現行ロードマップとして扱いません。
 
 ## Setup
 
@@ -25,13 +29,25 @@ AI API key、Supabase service role key、RevenueCat secretは絶対にExpoへ設
 
 ## 実装状況
 
-Phase 1〜3の基盤を実装しています。migrationは番号順に適用し、対応するNext.js APIを同時に公開します。
+旧計画のPhase 1〜3の基盤を実装済みです。migrationは番号順に管理し、既存環境を保守する場合は対応するNext.js APIとの整合を維持します。
 
 - Phase 1: Web `/alice`、移管コードAPI、Supabase Auth、診断snapshot移管
 - Phase 2: 個人単位の7日cycle、daily start／complete、10問回答、途中保存
 - Phase 3: bootstrap、subscription entitlement、利用枠管理、会話履歴、Node.js SSE対話
 
 journal、profile、tarotはUI検証用prototypeです。固定サンプルを含み、上記の公開環境フラグは本番既定値をすべて`false`にします。正式機能や保存済みユーザーデータとして扱いません。
+
+## 再開条件
+
+新規機能、RevenueCat接続、ストア申請へ進む前に、次を決定します。
+
+1. 世界共通コミュニティの対象ユーザーと、ユーザー同士がつながる目的。
+2. Web診断・友達招待・Alice Plusからアプリへ移る必然性。
+3. コア体験、北極星指標、継続率、安全性指標。
+4. Web買い切り・Alice Plus・アプリ間の商品と権利の関係。
+5. 既存のdaily、journal、chat、tarot実装の再利用・廃止範囲。
+
+これらをコミュニティPRDとして承認するまで、アプリは保守対象に限定します。
 
 Next.js側には機能ごとの環境変数を設定します。
 

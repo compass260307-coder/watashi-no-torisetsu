@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SmoothImage } from "@/components/ui/SmoothImage";
@@ -17,12 +18,27 @@ const COPY = {
     cta: "홈으로 돌아가기",
     homeHref: "/ko",
   },
+  en: {
+    title: "Page not found",
+    description: "The URL may be incorrect, or the page may have moved.",
+    cta: "Back to home",
+    homeHref: "/en",
+  },
 } as const;
 
 export function LocalizedNotFound() {
   const pathname = usePathname();
-  const locale = pathname === "/ko" || pathname.startsWith("/ko/") ? "ko" : "ja";
+  const locale =
+    pathname === "/en" || pathname.startsWith("/en/")
+      ? "en"
+      : pathname === "/ko" || pathname.startsWith("/ko/")
+        ? "ko"
+        : "ja";
   const copy = COPY[locale];
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   return (
     <main
