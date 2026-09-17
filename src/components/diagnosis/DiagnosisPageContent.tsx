@@ -831,7 +831,7 @@ export default function DiagnosisPageContent({
         )}
       </main>
       {/* フッター直上の 16P 風シェアバンド (実績数 + SNS ボタン) */}
-      {locale === "ja" || locale === "ko" ? (
+      {locale !== "en" ? (
         <div className="mt-10">
           <DiagnosisShareBand locale={locale} />
         </div>

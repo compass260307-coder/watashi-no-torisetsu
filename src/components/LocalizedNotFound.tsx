@@ -24,6 +24,12 @@ const COPY = {
     cta: "Back to home",
     homeHref: "/en",
   },
+  id: {
+    title: "Halaman tidak ditemukan",
+    description: "URL mungkin salah atau halaman telah dipindahkan.",
+    cta: "Kembali ke beranda",
+    homeHref: "/id",
+  },
 } as const;
 
 export function LocalizedNotFound() {
@@ -33,7 +39,9 @@ export function LocalizedNotFound() {
       ? "en"
       : pathname === "/ko" || pathname.startsWith("/ko/")
         ? "ko"
-        : "ja";
+        : pathname === "/id" || pathname.startsWith("/id/")
+          ? "id"
+          : "ja";
   const copy = COPY[locale];
 
   useEffect(() => {

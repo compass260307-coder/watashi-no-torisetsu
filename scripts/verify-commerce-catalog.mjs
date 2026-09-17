@@ -19,6 +19,12 @@ const friendPaywall = read(
   "src/components/result/FriendIndividualPaywall.tsx",
 );
 const commercePage = read("src/app/legal/commerce/page.tsx");
+const indonesianCommercePage = read(
+  "src/app/id/legal/commerce/page.tsx",
+);
+const indonesianPlans = read(
+  "src/components/result/SelfAccessPlanCarousel.tsx",
+);
 const metaPurchase = read("src/lib/meta-purchase.ts");
 
 const contractChecks = [
@@ -85,6 +91,30 @@ const contractChecks = [
     ),
   },
   {
+    label: "Indonesian Stripe Checkout uses JPY",
+    valid: checkoutRoute.includes(
+      'id: {\n    currency: "jpy",',
+    ),
+  },
+  {
+    label: "Indonesian Stripe Checkout uses the frozen JPY 1,290 reference price",
+    valid: checkoutRoute.includes(
+      'id: {\n    currency: "jpy",\n    saleAmount: FULL_ACCESS_PRICE_JPY,\n    listAmount: FULL_ACCESS_LIST_PRICE_JPY,',
+    ),
+  },
+  {
+    label: "Indonesian Stripe Checkout derives the JPY 499 discount from shared constants",
+    valid: checkoutRoute.includes(
+      'id: {\n    currency: "jpy",\n    saleAmount: FULL_ACCESS_PRICE_JPY,\n    listAmount: FULL_ACCESS_LIST_PRICE_JPY,\n    discountAmount: FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY,',
+    ),
+  },
+  {
+    label: "Indonesian public offer uses the shared JPY price constants",
+    valid:
+      indonesianPlans.includes("basePrice: FULL_ACCESS_PRICE_JPY,") &&
+      indonesianPlans.includes("listPrice: FULL_ACCESS_LIST_PRICE_JPY,"),
+  },
+  {
     label: "Friend paywall renders the shared price constant",
     valid: friendPaywall.includes(
       'FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")',
@@ -93,6 +123,12 @@ const contractChecks = [
   {
     label: "Commerce disclosure renders the shared price constant",
     valid: commercePage.includes("FULL_ACCESS_PRICE_JPY.toLocaleString"),
+  },
+  {
+    label: "Indonesian commerce disclosure renders the shared price constant",
+    valid: indonesianCommercePage.includes(
+      'FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")',
+    ),
   },
   {
     label: "Purchase analytics fallback identifies the JPY 499 product",
@@ -112,5 +148,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese and Indonesian full access are JPY 499 from JPY 1,290; English full access is USD 4.99 from USD 12.90.`,
 );

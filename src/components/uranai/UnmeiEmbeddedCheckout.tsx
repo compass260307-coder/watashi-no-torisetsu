@@ -218,8 +218,9 @@ export default function UnmeiEmbeddedCheckout({
     onComplete();
   }, [locale, onComplete, ownerToken, product]);
 
+  const supportsPayPay = locale === "ja" || locale === "id";
   const paypayButton =
-    locale === "ja" ? (
+    supportsPayPay ? (
       <div className="mt-2.5">
         <button
           type="button"
@@ -260,7 +261,7 @@ export default function UnmeiEmbeddedCheckout({
   return (
     <div className="w-full">
       {paypayButton}
-      {locale === "ja" ? (
+      {supportsPayPay ? (
         <div className="my-3 flex items-center gap-3">
           <span className="h-px flex-1 bg-[#E9E9F2]" />
           <span className="text-[12px] font-bold text-[#9A9AB5]">{copy.or}</span>

@@ -38,6 +38,7 @@ import {
   type BirthLocationOption,
 } from "@/i18n/unmei";
 import { track } from "@/lib/track";
+import { INDONESIAN_BIRTH_REGIONS } from "@/lib/unmei/id-birth-regions";
 import { US_BIRTH_REGIONS } from "@/lib/unmei/us-birth-regions";
 
 type Role = "guide" | "user";
@@ -170,6 +171,8 @@ export default function UnmeiBirthChat({
         ? KOREAN_BIRTH_REGIONS
         : locale === "en"
           ? US_BIRTH_REGIONS
+          : locale === "id"
+            ? INDONESIAN_BIRTH_REGIONS
           : PREFS.map((value) => ({ value, label: value })),
     [locale],
   );
