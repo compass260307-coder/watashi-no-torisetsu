@@ -57,6 +57,12 @@ if ((idMe.match(/\bgated:\s*(?:true|false)/g) ?? []).length !== 12) {
   failures.push("what-if parity: Indonesian must define 12 scenarios");
 }
 
+const idBirthRegions = read("src/lib/unmei/id-birth-regions.ts");
+const idBirthRegionCount = (idBirthRegions.match(/\{ value:/g) ?? []).length;
+if (idBirthRegionCount !== 38) {
+  failures.push(`birth-region parity: expected 38 Indonesian provinces, found ${idBirthRegionCount}`);
+}
+
 const diagnosisRoute = read("src/app/api/diagnosis/route.ts");
 if (/postDiagnosisReportEmail\s*&&\s*locale !== "en"\s*&&\s*locale !== "id"/.test(diagnosisRoute)) {
   failures.push("email parity: Indonesian detailed-report delivery is disabled");
@@ -72,10 +78,15 @@ const criticalChecks = [
   ["compatibility details", "src/lib/aisho-compat.ts", 'if (locale === "id") return axisCopyId'],
   ["compatibility scenes", "src/lib/aisho-scene-copy.ts", 'const LOVE_ID'],
   ["compatibility API", "src/app/api/aisho/scenes/route.ts", 'localeParam === "id"'],
+  ["diagnosis share band", "src/components/diagnosis/DiagnosisPageContent.tsx", 'locale !== "en"'],
   ["result share controls", "src/components/diagnosis/DiagnosisShareBand.tsx", 'isId ? "Bagikan di LINE"'],
   ["result sharing", "src/components/result/MeStickyHeader.tsx", 'const isId = locale === "id"'],
   ["destiny confirmation", "src/components/uranai/UnmeiCheckoutConfirming.tsx", 'locale === "id"'],
+  ["destiny PayPay", "src/components/uranai/UnmeiEmbeddedCheckout.tsx", 'locale === "ja" || locale === "id"'],
+  ["destiny birth regions", "src/components/uranai/UnmeiBirthChat.tsx", 'INDONESIAN_BIRTH_REGIONS'],
+  ["destiny chart labels", "src/lib/unmei/chart-view.ts", 'locale === "id" ? BODY_ID : BODY_JA'],
   ["metadata isolation", "src/app/id/layout.tsx", 'title: { absolute: TITLE'],
+  ["not-found fallback", "src/components/LocalizedNotFound.tsx", 'homeHref: "/id"'],
 ];
 for (const [label, file, marker] of criticalChecks) {
   if (!read(file).includes(marker)) failures.push(`${label}: missing Indonesian branch in ${file}`);
@@ -102,4 +113,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Indonesian parity verified: ${japaneseRoutes.size} routes, 50 questions, 32 types, ${jaArticleSlugs.size} articles, 12 what-if scenarios, localized email/PDF/checkout flows.`);
+console.log(`Indonesian parity verified: ${japaneseRoutes.size} routes, 50 questions, 32 types, ${jaArticleSlugs.size} articles, 12 what-if scenarios, 38 birth regions, localized email/PDF/checkout flows.`);

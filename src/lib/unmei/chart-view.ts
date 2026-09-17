@@ -27,6 +27,9 @@ export const SIGN_KO: Record<string, string> = {
 export const SIGN_EN: Record<string, string> = Object.fromEntries(
   SIGN_ORDER.map((sign) => [sign, sign]),
 );
+export const SIGN_ID: Record<string, string> = Object.fromEntries(
+  SIGN_ORDER.map((sign) => [sign, sign]),
+);
 
 // 図に載せる天体 = 古典7天体 + ASC/MC (ASC/MC は時刻既知時のみ chart に存在)。
 export const BODY_JA: Record<string, string> = {
@@ -40,6 +43,10 @@ export const BODY_KO: Record<string, string> = {
 export const BODY_EN: Record<string, string> = {
   sun: "Sun", moon: "Moon", mercury: "Mercury", venus: "Venus",
   mars: "Mars", jupiter: "Jupiter", saturn: "Saturn", asc: "Ascendant", mc: "Midheaven",
+};
+export const BODY_ID: Record<string, string> = {
+  sun: "Matahari", moon: "Bulan", mercury: "Merkurius", venus: "Venus",
+  mars: "Mars", jupiter: "Jupiter", saturn: "Saturnus", asc: "Asenden", mc: "Medium Coeli",
 };
 const CLASSIC = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn"] as const;
 
@@ -75,7 +82,7 @@ export function signJa(sign: string): string {
   return SIGN_JA[sign] ?? sign;
 }
 export function signName(sign: string, locale: AppResultLocale = "ja"): string {
-  const signs = locale === "en" ? SIGN_EN : locale === "ko" ? SIGN_KO : SIGN_JA;
+  const signs = locale === "en" ? SIGN_EN : locale === "ko" ? SIGN_KO : locale === "id" ? SIGN_ID : SIGN_JA;
   return signs[sign] ?? sign;
 }
 export function fmtPos(p: Pos, locale: AppResultLocale = "ja"): string {
@@ -111,7 +118,7 @@ export function buildChartView(
   const timeUnknown = opts.timeUnknown ?? chart.houses_available === false;
   const moonArc = timeUnknown ? opts.moonArc ?? null : null;
   const locale = opts.locale ?? "ja";
-  const bodyLabels = locale === "en" ? BODY_EN : locale === "ko" ? BODY_KO : BODY_JA;
+  const bodyLabels = locale === "en" ? BODY_EN : locale === "ko" ? BODY_KO : locale === "id" ? BODY_ID : BODY_JA;
   const planets = chart.planets;
   const points: WheelBody[] = [];
   const listItems: ChartView["listItems"] = [];
@@ -130,11 +137,15 @@ export function buildChartView(
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${Math.floor(e.degree)}°`
               : locale === "ko"
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${Math.floor(e.degree)}° 사이`
+              : locale === "id"
+                ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${Math.floor(e.degree)}°`
               : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${Math.floor(e.degree)}°のあいだ`
             : locale === "en"
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${signName(e.sign, locale)} ${Math.floor(e.degree)}°`
               : locale === "ko"
               ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°~${signName(e.sign, locale)} ${Math.floor(e.degree)}° 사이`
+              : locale === "id"
+                ? `${signName(s.sign, locale)} ${Math.floor(s.degree)}°–${signName(e.sign, locale)} ${Math.floor(e.degree)}°`
               : `${signName(s.sign, locale)}${Math.floor(s.degree)}°〜${signName(e.sign, locale)}${Math.floor(e.degree)}°のあいだ`;
         listItems.push({ key, label: bodyLabels[key], text });
       } else {
@@ -146,6 +157,8 @@ export function buildChartView(
               ? "Position unavailable because birth time is unknown"
               : locale === "ko"
                 ? "출생 시간을 몰라 위치 미확정"
+                : locale === "id"
+                  ? "Posisi tidak dapat ditentukan karena waktu lahir tidak diketahui"
                 : "時刻不明のため位置未確定",
         });
       }
@@ -182,7 +195,7 @@ export function buildChartView(
   }
 
   const ariaLabel =
-    (locale === "en" ? "Birth chart. " : locale === "ko" ? "출생 차트. " : "出生図。") +
+    (locale === "en" ? "Birth chart. " : locale === "ko" ? "출생 차트. " : locale === "id" ? "Peta kelahiran. " : "出生図。") +
     listItems
       .map((it) => `${it.label} ${it.text}`)
       .join(locale === "ja" ? "、" : ", ");
@@ -338,7 +351,7 @@ export function layoutWheel(view: ChartView): WheelLayout {
     const delta = ((endLon - startLon) % 360 + 360) % 360;
     markers.push({
       key: "moon",
-      label: view.locale === "ko" ? BODY_KO.moon : BODY_JA.moon,
+      label: view.locale === "ko" ? BODY_KO.moon : view.locale === "en" ? BODY_EN.moon : view.locale === "id" ? BODY_ID.moon : BODY_JA.moon,
       lon: (startLon + delta / 2) % 360,
     });
   }

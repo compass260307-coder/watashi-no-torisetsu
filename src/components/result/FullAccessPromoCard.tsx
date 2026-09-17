@@ -1115,7 +1115,7 @@ export function FullAccessPromoCard({
 
             {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
             <div
-              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isEnglish) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
                 hasImage ? "" : "justify-center"
               }`}
             >
