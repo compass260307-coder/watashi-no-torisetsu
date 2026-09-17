@@ -23,10 +23,16 @@ import { sceneImageForGroup } from "@/lib/character-image";
 import { gapDetail, gapDir3 } from "@/lib/perception-gap-detail";
 import type { PerceptionView } from "@/lib/perception-view";
 import type { BigFiveScores } from "@/lib/perception-analysis";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { estimateCompatFromGaps } from "@/lib/tako-deepdive";
 
-function mutualLabel(pct: number, locale: ResultLocale): string {
+function mutualLabel(pct: number, locale: AppResultLocale): string {
+  if (locale === "en") {
+    if (pct >= 80) return "You are highly in sync and understand each other well.";
+    if (pct >= 60) return "You understand each other in many important ways.";
+    if (pct >= 40) return "There are still new sides of each other to discover.";
+    return "The larger gaps may reveal several unexpected sides of you.";
+  }
   if (locale === "ko") {
     if (pct >= 80) return "호흡이 아주 잘 맞아요. 서로를 깊이 이해하고 있어요.";
     if (pct >= 60) return "서로를 꽤 잘 이해하고 있는 관계예요.";
@@ -97,7 +103,7 @@ interface PerceptionResultBodyProps {
   youWord?: string;
   /** 末尾に差し込むノード (フッター戻りリンク等・ページ側で用意)。 */
   footer?: ReactNode;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 export function PerceptionResultBody({
@@ -113,15 +119,18 @@ export function PerceptionResultBody({
 }: PerceptionResultBodyProps) {
   const isIndividual = variant === "individual";
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const p = view.perceiverFull;
-  const personLabel = isKo
-    ? p === "친구"
-      ? p
-      : `${p}님`
-    : `${p}さん`;
+  const personLabel = isEn
+    ? p
+    : isKo
+      ? p === "친구"
+        ? p
+        : `${p}님`
+      : `${p}さん`;
   const koPersonSubject = p === "친구" ? "친구가" : `${p}님이`;
   const koPersonWith = p === "친구" ? "친구와" : `${p}님과`;
-  const resolvedYouWord = youWord ?? (isKo ? "나" : "あなた");
+  const resolvedYouWord = youWord ?? (isEn ? "you" : isKo ? "나" : "あなた");
   const trimmedOwnerMessage = (ownerMessage ?? "").trim();
   const koGapDetails = isKo
     ? new Map(
@@ -162,7 +171,13 @@ export function PerceptionResultBody({
         <TrisetsuNameTag name={view.displayName} locale={locale} />
       </div>
       <ResultHero
-        label={isKo ? `${koPersonSubject} 본 모습` : `${personLabel}から見た`}
+        label={
+          isEn
+            ? `Seen by ${personLabel}`
+            : isKo
+              ? `${koPersonSubject} 본 모습`
+              : `${personLabel}から見た`
+        }
         essence={view.dispEssence}
         scores={otherScores}
         heroBg={view.heroBg}
@@ -182,9 +197,11 @@ export function PerceptionResultBody({
         <SectionHead
           num={1}
           title={
-            isKo
-              ? `${koPersonSubject} 본 ${resolvedYouWord}`
-              : `${personLabel}から見た${resolvedYouWord}`
+            isEn
+              ? `How ${personLabel} sees ${resolvedYouWord}`
+              : isKo
+                ? `${koPersonSubject} 본 ${resolvedYouWord}`
+                : `${personLabel}から見た${resolvedYouWord}`
           }
           large={L}
         />
@@ -195,7 +212,7 @@ export function PerceptionResultBody({
                 L ? "text-base" : "text-sm"
               }`}
             >
-              {isKo ? "관점 일치도" : "相互理解度"}
+              {isEn ? "Understanding" : isKo ? "관점 일치도" : "相互理解度"}
             </p>
             <p
               className={`text-[#2E2E5C] font-black leading-none ${
@@ -211,9 +228,11 @@ export function PerceptionResultBody({
               }`}
               role="progressbar"
               aria-label={
-                isKo
-                  ? `관점 일치도 ${view.mutual}%`
-                  : `相互理解度 ${view.mutual}%`
+                isEn
+                  ? `Understanding ${view.mutual}%`
+                  : isKo
+                    ? `관점 일치도 ${view.mutual}%`
+                    : `相互理解度 ${view.mutual}%`
               }
               aria-valuemin={0}
               aria-valuemax={100}
@@ -271,21 +290,33 @@ export function PerceptionResultBody({
       <section className={sectionCls}>
         <SectionHead
           num={2}
-          title={isKo ? `${koPersonWith}의 차이` : `${personLabel}とのギャップ`}
+          title={
+            isEn
+              ? `Differences with ${personLabel}`
+              : isKo
+                ? `${koPersonWith}의 차이`
+                : `${personLabel}とのギャップ`
+          }
           large={L}
         />
         <div className={panelCls}>
           <MutualUnderstandingRadar
             gaps={view.gaps}
-            selfLabel={isKo ? `${view.displayName} 본인` : `${view.displayName}自身`}
-            otherLabel={isKo ? "친구의 시선" : "友達から"}
+            selfLabel={
+              isEn
+                ? `${view.displayName}'s self-view`
+                : isKo
+                  ? `${view.displayName} 본인`
+                  : `${view.displayName}自身`
+            }
+            otherLabel={isEn ? `${personLabel}'s view` : isKo ? "친구의 시선" : "友達から"}
             locale={locale}
           />
           <div className="mt-2">
             <BigFiveDivergingBars
               scores={selfScores}
               friendScores={otherScores}
-              friendLabel={isKo ? "친구의 시선" : "友達から"}
+              friendLabel={isEn ? `${personLabel}'s view` : isKo ? "친구의 시선" : "友達から"}
               hideHeading
               bareCard={L}
               locale={locale}
@@ -294,7 +325,9 @@ export function PerceptionResultBody({
           {view.sortedGaps.map((g, idx) => {
             const dir = gapDir3(g.selfPercent, g.otherPercent);
             const d = gapDetail[g.key][dir];
-            const detail = isKo
+            const detail = isEn
+              ? `${personLabel} rated ${g.label.toLowerCase()} at ${g.otherPercent}%, while ${view.displayName}'s self-view was ${g.selfPercent}%. The ${g.diffPoints}-point gap shows where the two perspectives differ most clearly.`
+              : isKo
               ? koGapDetails?.get(g.key) ??
                 "두 사람이 서로를 보는 방식에는 조금 다른 점이 있어요."
               : idx < 2
@@ -313,7 +346,7 @@ export function PerceptionResultBody({
                         L ? "text-sm" : "text-xs"
                       }`}
                     >
-                      {isKo ? "그 밖의 3개" : "そのほかの3つ"}
+                      {isEn ? "The other three" : isKo ? "그 밖의 3개" : "そのほかの3つ"}
                     </p>
                   </div>
                 )}
@@ -337,7 +370,7 @@ export function PerceptionResultBody({
                       L ? "text-sm" : "text-xs"
                     }`}
                   >
-                    {isKo ? "차이" : "差"} {g.diffPoints}pt
+                    {isEn ? "Gap" : isKo ? "차이" : "差"} {g.diffPoints}pt
                   </span>
                 </div>
                 <p className={bodyCls}>{detail}</p>
@@ -354,7 +387,13 @@ export function PerceptionResultBody({
           <section className={sectionCls}>
             <SectionHead
               num={3}
-              title={isKo ? `${koPersonSubject} 준 선물` : `${personLabel}からの贈りもの`}
+              title={
+                isEn
+                  ? `A gift from ${personLabel}`
+                  : isKo
+                    ? `${koPersonSubject} 준 선물`
+                    : `${personLabel}からの贈りもの`
+              }
               large={L}
             />
             <div className="flex flex-col gap-4">
@@ -364,7 +403,7 @@ export function PerceptionResultBody({
                     {trimmedOwnerMessage}
                   </blockquote>
                   <figcaption className="text-[#2E2E5C]/60 text-base font-bold mt-3 text-right">
-                    {isKo ? `— ${personLabel}` : `— ${p} より`}
+                    {isEn ? `— ${personLabel}` : isKo ? `— ${personLabel}` : `— ${p} より`}
                   </figcaption>
                 </figure>
               )}
@@ -395,7 +434,13 @@ export function PerceptionResultBody({
         <section className={sectionCls}>
           <SectionHead
             num={3}
-            title={isKo ? `${koPersonSubject} 발견한 나` : `${personLabel}が見つけたあなた`}
+            title={
+              isEn
+                ? `What ${personLabel} noticed in you`
+                : isKo
+                  ? `${koPersonSubject} 발견한 나`
+                  : `${personLabel}が見つけたあなた`
+            }
             large={L}
           />
           <PerceptionFoundProse
@@ -412,7 +457,11 @@ export function PerceptionResultBody({
       {/* 本文プローズのみのセクションなので機能カード枠 (CARD) は付けず、見出し直下に
           本文を流す。相互理解度①・レーダー②・贈りもの③ の機能的な囲みは残す。 */}
       <section className={sectionCls}>
-        <SectionHead num={4} title={isKo ? "두 사람의 관계" : "ふたりの関係"} large={L} />
+        <SectionHead
+          num={4}
+          title={isEn ? "Your relationship" : isKo ? "두 사람의 관계" : "ふたりの関係"}
+          large={L}
+        />
         <div>
           <p className={`${bodyCls} ${L ? "mb-5" : "mb-4"}`}>
             {view.relationFactBody}

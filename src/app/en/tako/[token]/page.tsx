@@ -8,9 +8,12 @@ export const metadata: Metadata = {
 
 export default async function EnglishTakoResultRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ paid?: string | string[] }>;
 }) {
   const { token } = await params;
-  return <EnTakoResultPage token={token} />;
+  const query = await searchParams;
+  return <EnTakoResultPage token={token} paid={query.paid === "1"} />;
 }

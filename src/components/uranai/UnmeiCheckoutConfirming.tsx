@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 type Phase = "confirming" | "generating" | "failed" | "timeout";
 
@@ -21,7 +21,7 @@ export default function UnmeiCheckoutConfirming({
   locale = "ja",
 }: {
   preview?: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>(preview ? "generating" : "confirming");
@@ -63,14 +63,26 @@ export default function UnmeiCheckoutConfirming({
             );
             timer = setTimeout(() => {
               if (!cancelled) {
-                router.replace(locale === "ko" ? "/ko/unmei" : "/unmei");
+                router.replace(
+                  locale === "en"
+                    ? "/en/unmei"
+                    : locale === "ko"
+                      ? "/ko/unmei"
+                      : "/unmei",
+                );
               }
             }, remainingDisplayTime);
             return;
           }
           if (data.state === "no_birth") {
             // 通常は決済前に保存済み。万一未保存なら入力画面へ安全に戻す。
-            router.replace(locale === "ko" ? "/ko/unmei" : "/unmei");
+            router.replace(
+              locale === "en"
+                ? "/en/unmei"
+                : locale === "ko"
+                  ? "/ko/unmei"
+                  : "/unmei",
+            );
             return;
           }
           if (data.state === "failed") {
@@ -106,14 +118,21 @@ export default function UnmeiCheckoutConfirming({
   }, [locale, preview, retryKey, router]);
 
   const isKo = locale === "ko";
-  const waitingCopy = isKo
-    ? "결제가 완료됐어요. 설계도를 만들고 있어요."
-    : "購入が完了しました。鑑定書を作成しています。";
+  const isEn = locale === "en";
+  const waitingCopy = isEn
+    ? "Your purchase is complete. I’m creating your Destiny Blueprint now."
+    : isKo
+      ? "결제가 완료됐어요. 설계도를 만들고 있어요."
+      : "購入が完了しました。鑑定書を作成しています。";
 
   return (
     <main className="mx-auto w-full max-w-[1080px] px-4 pb-10 pt-5 md:px-8 md:pb-14 md:pt-8">
       <h1 className="sr-only">
-        {isKo ? "운명의 설계도를 만들고 있어요" : "運命の設計図を作成しています"}
+        {isEn
+          ? "Creating your Destiny Blueprint"
+          : isKo
+            ? "운명의 설계도를 만들고 있어요"
+            : "運命の設計図を作成しています"}
       </h1>
       <div className="flex h-[76dvh] min-h-[440px] flex-col overflow-hidden rounded-2xl border border-[#E9E9F2] bg-white shadow-[0_6px_24px_rgba(46,46,92,0.10)] md:h-[620px]">
         <div className="flex items-center gap-3 bg-[#2E2E5C] px-4 py-3">
@@ -129,7 +148,11 @@ export default function UnmeiCheckoutConfirming({
               {isKo ? "별자리 안내자" : "Alice"}
             </p>
             <p className="text-[11px] font-bold leading-tight text-white/55">
-              {isKo ? "운명의 설계도" : "あなたの専属占い師"}
+              {isEn
+                ? "Your personal astrologer"
+                : isKo
+                  ? "운명의 설계도"
+                  : "あなたの専属占い師"}
             </p>
           </div>
           <span aria-hidden="true" className="ml-auto text-[16px] leading-none text-[#F5D66B]">
@@ -149,7 +172,9 @@ export default function UnmeiCheckoutConfirming({
             <div className="max-w-[78%] rounded-2xl rounded-bl-[4px] bg-white px-4 py-3 text-[14px] font-bold leading-relaxed text-[#2E2E5C] shadow-[0_1px_2px_rgba(46,46,92,0.06)]">
               {phase === "failed" ? (
                 <>
-                  {isKo
+                  {isEn
+                    ? "The reading stopped while it was being created."
+                    : isKo
                     ? "설계도를 만드는 중에 작업이 멈췄어요."
                     : "鑑定書の作成が途中で止まってしまいました。"}
                   <button
@@ -160,12 +185,14 @@ export default function UnmeiCheckoutConfirming({
                     }}
                     className="mt-3 block rounded-full bg-[#5B5BEF] px-5 py-2.5 text-[13px] font-black text-white"
                   >
-                    {isKo ? "다시 만들기" : "もう一度作成する"}
+                    {isEn ? "Create it again" : isKo ? "다시 만들기" : "もう一度作成する"}
                   </button>
                 </>
               ) : phase === "timeout" ? (
                 <>
-                  {isKo
+                  {isEn
+                    ? "Your Blueprint is taking a little longer. You can close this page and return after it is ready."
+                    : isKo
                     ? "설계도를 만드는 데 시간이 조금 걸리고 있어요. 화면을 닫아도 완성된 뒤 다시 확인할 수 있어요."
                     : "鑑定書の作成に少し時間がかかっています。画面を閉じても、完成後にまた確認できます。"}
                   <button
@@ -176,7 +203,11 @@ export default function UnmeiCheckoutConfirming({
                     }}
                     className="mt-3 block rounded-full bg-[#5B5BEF] px-5 py-2.5 text-[13px] font-black text-white"
                   >
-                    {isKo ? "진행 상황 다시 확인하기" : "作成状況をもう一度確認する"}
+                    {isEn
+                      ? "Check progress again"
+                      : isKo
+                        ? "진행 상황 다시 확인하기"
+                        : "作成状況をもう一度確認する"}
                   </button>
                 </>
               ) : (
@@ -184,7 +215,7 @@ export default function UnmeiCheckoutConfirming({
                   {waitingCopy}
                   <span
                     className="mt-2 flex items-center gap-1"
-                    aria-label={isKo ? "만드는 중" : "作成中"}
+                    aria-label={isEn ? "Creating" : isKo ? "만드는 중" : "作成中"}
                   >
                     {[0, 1, 2].map((index) => (
                       <span

@@ -13,7 +13,7 @@
 //   A/N (3値): 両＋=both / 片＋=one / 両−=none  (2タイプの当該boolの合計 count∈{2,1,0})
 //   O/C/E (2値): 一致=match / 不一致=diff
 
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { thirtyTwoType, type ThirtyTwoTypeId } from "./thirty-two-types";
 import { parseAxes, type AxisKey } from "./aisho-compat";
 
@@ -156,41 +156,77 @@ const CLASH_KO: Record<string, string> = {
     "감정이 쉽게 흔들리는 두 사람이 서로 다른 가치관으로 부딪히면 오래가기 쉬워요. 그래서 평소에 “싸우면 하루 뒤에 이야기하기”를 규칙으로 정해 두는 게 효과적이에요. 규칙 하나만 있어도 안심되는 정도가 달라져요.",
 };
 
+const LOVE_EN: Record<string, string> = {
+  both_none: "You are both considerate and emotionally steady, creating a relationship where support feels natural and dependable.",
+  both_one: "Kindness is abundant, and the steadier person can help the other regain balance without turning every difficult day into a crisis.",
+  both_both: "You care deeply and feel things strongly. Naming uncertainty early keeps two sensitive imaginations from amplifying the same worry.",
+  one_none: "One person often leads with care while the other receives it calmly. Frequent appreciation keeps that balance healthy.",
+  one_one: "One person’s warmth and steadiness can soften the other’s emotional swings. Taking turns being supported deepens trust.",
+  one_both: "Care can fall too heavily on one person while both are sensitive. Small, honest check-ins prevent anxiety from piling up.",
+  none_none: "You are both direct and emotionally steady, so an independent and uncomplicated closeness can feel especially comfortable.",
+  none_one: "You can speak freely with each other. On a difficult day, reassurance will help more than immediately offering a solution.",
+  none_both: "Directness meets sensitivity here. Choosing words with care lets honesty become a strength instead of a source of accidental hurt.",
+};
+
+const FRIEND_EN: Record<string, string> = {
+  match_diff: "You share interests while naturally taking different social roles, which makes the friendship work well both in groups and one to one.",
+  match_match: "Your interests and energy rise in similar places, making it easy to relax, agree on plans, and try something new together.",
+  diff_diff: "Different values and social styles can broaden both of your worlds by introducing places and ideas neither would reach alone.",
+  diff_match: "Your energy matches even when your interests differ. One shared hobby can quickly turn an easy connection into a close friendship.",
+};
+
+const WORK_EN: Record<string, string> = {
+  match_diff: "You approach plans similarly while taking complementary outward and inward roles, making it easy to trust each other’s part of the work.",
+  match_match: "Your pace and energy align, so discussion can turn into action quickly. An outside perspective helps catch the blind spots you share.",
+  diff_diff: "A planner and a fast mover can frustrate each other until the roles are clear; then the contrast becomes a powerful division of strengths.",
+  diff_match: "The atmosphere is easy even when your work rhythms differ. Agreeing on milestones at the start keeps the collaboration enjoyable and fast.",
+};
+
+const CLASH_EN: Record<string, string> = {
+  none_match: "You stay calm and share core values, so disagreements usually return to practical problem-solving without lasting emotional fallout.",
+  none_diff: "Your opinions may differ, but emotional steadiness helps you treat those differences as something to understand rather than defeat.",
+  one_match: "When one person is upset, shared values still provide a route back. Wait for the emotion to settle before trying to solve the issue.",
+  one_diff: "Different values and one person’s emotional swing can tangle together. A short pause often makes reconciliation much easier.",
+  both_match: "You are both sensitive but share the same foundation. Sleeping on an intense message can reveal how much common ground is still there.",
+  both_diff: "Sensitivity and different values can make conflict last. Agreeing in advance to pause before continuing a difficult conversation creates safety.",
+};
+
 // 4シーン分のコピーを引く。主役2軸の状態キーで辞書直引き。
 export function sceneLines(
   aId: ThirtyTwoTypeId,
   bId: ThirtyTwoTypeId,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): SceneLine[] {
   const x = parseAxes(thirtyTwoType(aId).code);
   const y = parseAxes(thirtyTwoType(bId).code);
   const st = (k: AxisKey) => tri(x[k], y[k]);
   const eq = (k: AxisKey) => bi(x[k], y[k]);
   const isKorean = locale === "ko";
-  const love = isKorean ? LOVE_KO : LOVE;
-  const friend = isKorean ? FRIEND_KO : FRIEND;
-  const work = isKorean ? WORK_KO : WORK;
-  const clash = isKorean ? CLASH_KO : CLASH;
+  const isEnglish = locale === "en";
+  const love = isKorean ? LOVE_KO : isEnglish ? LOVE_EN : LOVE;
+  const friend = isKorean ? FRIEND_KO : isEnglish ? FRIEND_EN : FRIEND;
+  const work = isKorean ? WORK_KO : isEnglish ? WORK_EN : WORK;
+  const clash = isKorean ? CLASH_KO : isEnglish ? CLASH_EN : CLASH;
 
   return [
     {
       key: "love",
-      label: isKorean ? "연애에서는" : "恋愛では",
+      label: isKorean ? "연애에서는" : isEnglish ? "In love" : "恋愛では",
       text: love[`${st("A")}_${st("N")}`],
     },
     {
       key: "friend",
-      label: isKorean ? "우정에서는" : "友情では",
+      label: isKorean ? "우정에서는" : isEnglish ? "As friends" : "友情では",
       text: friend[`${eq("O")}_${eq("E")}`],
     },
     {
       key: "work",
-      label: isKorean ? "함께 일하면" : "一緒に働くと",
+      label: isKorean ? "함께 일하면" : isEnglish ? "At work" : "一緒に働くと",
       text: work[`${eq("C")}_${eq("E")}`],
     },
     {
       key: "clash",
-      label: isKorean ? "엇갈릴 때" : "すれ違うとき",
+      label: isKorean ? "엇갈릴 때" : isEnglish ? "When you clash" : "すれ違うとき",
       text: clash[`${st("N")}_${eq("O")}`],
     },
   ];

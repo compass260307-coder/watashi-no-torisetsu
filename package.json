@@ -15,6 +15,7 @@
     "lint": "eslint",
     "verify:commerce": "node scripts/verify-commerce-catalog.mjs",
     "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs && node scripts/unmei-prompt-locale-test.mjs",
+    "verify:tarot": "node --experimental-strip-types scripts/tarot-entitlement-regression-test.mjs",
     "verify:ko:browser": "node scripts/verify-korean-browser.mjs",
     "verify:ko:prod": "node scripts/verify-korean-production.mjs",
     "ephemeris:test": "node scripts/ephemeris-test.mjs",

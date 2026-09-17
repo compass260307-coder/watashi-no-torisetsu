@@ -14,7 +14,7 @@ import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk } from "@/lib/kakao-share";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
@@ -35,12 +35,13 @@ interface LockedInviteShareProps {
    * 同じ見せ方。level="H" (30%欠損許容) に対し約34%幅の被覆で運用実績あり。
    */
   qrImageSrc?: string | null;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
-const SHARE_TEXT: Record<ResultLocale, string> = {
+const SHARE_TEXT: Record<AppResultLocale, string> = {
   ja: "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ",
   ko: "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단 테스트에 참여할 수 있어.",
+  en: "How do you see me? Answer 30 quick questions and compare your view with mine.",
 };
 
 export function LockedInviteShare({
@@ -58,6 +59,7 @@ export function LockedInviteShare({
   const rootRef = useRef<HTMLDivElement>(null);
   const uiShownFired = useRef(false);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
   const shareText = SHARE_TEXT[locale];
 
   // 解除後の「＋」タブはクリックだけでなく、招待UIが実際に見えたかも計測する。
@@ -141,7 +143,7 @@ export function LockedInviteShare({
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({
-          title: isKorean ? "친구 진단 초대" : "友達診断に招待",
+          title: isEnglish ? "Friend test invitation" : isKorean ? "친구 진단 초대" : "友達診断に招待",
           text: shareText,
           url,
         });
@@ -199,7 +201,7 @@ export function LockedInviteShare({
       }
     >
       <p className="text-[13px] font-black text-[#2E2E5C]">
-        {isKorean ? "초대 링크 보내기" : "招待リンクを送る"}
+        {isEnglish ? "Send the invitation" : isKorean ? "초대 링크 보내기" : "招待リンクを送る"}
       </p>
 
       {/* SNSを主導線にする。大きな丸アイコン + ラベルで、共有先を一目で選べる。 */}
@@ -271,18 +273,18 @@ export function LockedInviteShare({
               <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
             </svg>
           </span>
-          {isKorean ? "기타" : "その他"}
+          {isEnglish ? "More" : isKorean ? "기타" : "その他"}
         </button>
       </div>
 
       {/* URL全体をコピーできるフィールド。長いURLは一行で省略する。 */}
       <p className="mt-5 text-[12px] font-black text-[#2E2E5C]/65">
-        {isKorean ? "초대 링크" : "招待リンク"}
+        {isEnglish ? "Invitation link" : isKorean ? "초대 링크" : "招待リンク"}
       </p>
       <button
         type="button"
         onClick={handleCopy}
-        aria-label={isKorean ? "초대 링크 복사" : "招待リンクをコピー"}
+        aria-label={isEnglish ? "Copy invitation link" : isKorean ? "초대 링크 복사" : "招待リンクをコピー"}
         className="mt-2 flex w-full items-center gap-3 rounded-xl border border-[#DADBE8] bg-white px-4 py-3.5 text-left shadow-[0_3px_12px_rgba(46,46,92,0.06)] outline-none transition hover:border-[#5B5BEF]/45 focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/40"
       >
         <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#5A5A72] md:text-[14px]">
@@ -302,7 +304,7 @@ export function LockedInviteShare({
         </span>
       </button>
       <p aria-live="polite" className="mt-1.5 min-h-5 text-[11px] font-bold text-[#5B5BEF]">
-        {copied ? (isKorean ? "링크를 복사했어요" : "リンクをコピーしました") : ""}
+        {copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : "リンクをコピーしました") : ""}
       </p>
 
       {/* QRは補助導線。ユーザーが選んだ時だけ展開する。 */}
@@ -321,10 +323,14 @@ export function LockedInviteShare({
               <path d="M15 15h2v2h-2zM19 15h2v6h-6v-2M15 19h2" />
             </svg>
             {qrOpen
-              ? isKorean
+              ? isEnglish
+                ? "Hide QR code"
+                : isKorean
                 ? "QR 코드 닫기"
                 : "QRコードを閉じる"
-              : isKorean
+              : isEnglish
+                ? "Show QR code"
+                : isKorean
                 ? "QR 코드 표시"
                 : "QRコードを表示"}
             <svg viewBox="0 0 20 20" className={`h-4 w-4 transition-transform ${qrOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -335,11 +341,13 @@ export function LockedInviteShare({
             <div
               className="mt-3"
               role="img"
-              aria-label={isKorean ? "친구 진단 초대 QR 코드" : "友達評価ページへの招待QRコード"}
+              aria-label={isEnglish ? "Friend test invitation QR code" : isKorean ? "친구 진단 초대 QR 코드" : "友達評価ページへの招待QRコード"}
             >
               {qrPanel}
               <p className="mt-2.5 text-center text-[12px] font-bold text-[#2E2E5C]/50">
-                {isKorean
+                {isEnglish
+                  ? "Ask a nearby friend to scan this code"
+                  : isKorean
                   ? "친구의 스마트폰으로 QR 코드를 스캔해 주세요"
                   : "近くにいる友達に読み取ってもらおう"}
               </p>
@@ -347,7 +355,7 @@ export function LockedInviteShare({
           ) : null}
         </div>
       ) : (
-        <div className="mt-4" role="img" aria-label={isKorean ? "친구 진단 초대 QR 코드" : "友達評価ページへの招待QRコード"}>
+        <div className="mt-4" role="img" aria-label={isEnglish ? "Friend test invitation QR code" : isKorean ? "친구 진단 초대 QR 코드" : "友達評価ページへの招待QRコード"}>
           {qrPanel}
         </div>
       )}

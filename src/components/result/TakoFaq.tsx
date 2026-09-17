@@ -1,11 +1,11 @@
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 type TakoFaqItem = Readonly<{
   question: string;
   answer: string;
 }>;
 
-const TAKO_FAQS: Record<ResultLocale, readonly TakoFaqItem[]> = {
+const TAKO_FAQS: Record<AppResultLocale, readonly TakoFaqItem[]> = {
   ja: [
     {
       question: "友達診断とは何ですか？",
@@ -80,11 +80,49 @@ const TAKO_FAQS: Record<ResultLocale, readonly TakoFaqItem[]> = {
         "네. 결과 위쪽의 ‘＋ 초대’에서 언제든지 추가할 수 있어요. 답변이 도착할 때마다 그 친구의 결과 시트가 늘어나요.",
     },
   ],
+  en: [
+    {
+      question: "What is the friend test?",
+      answer:
+        "It compares your self-assessment with how a friend sees you. Each friend who responds gets a separate result showing the personality type they see and where their view differs from yours.",
+    },
+    {
+      question: "How many responses do I need?",
+      answer:
+        "One completed response unlocks the first friend result. Inviting more friends adds more individual results so you can compare different perspectives.",
+    },
+    {
+      question: "Can friends respond without taking the personality test?",
+      answer:
+        "Yes. Anyone with your invitation link can respond without creating an account or completing their own personality test.",
+    },
+    {
+      question: "What does a friend see after responding?",
+      answer:
+        "They see how well their answers match your self-assessment and a summary of the five personality dimensions. Your private detailed friend results are not automatically shared with them.",
+    },
+    {
+      question: "Can I see who responded?",
+      answer:
+        "The nickname each friend enters appears on their result. You can also read their optional message when they leave one.",
+    },
+    {
+      question: "Are responses and messages public?",
+      answer:
+        "No. Responses and messages appear in your private friend results and are not automatically posted on a public page.",
+    },
+    {
+      question: "Can I invite more friends later?",
+      answer:
+        "Yes. Use the Invite tab at the top whenever you want. A new result is added each time another friend responds.",
+    },
+  ],
 };
 
-export function TakoFaq({ locale = "ja" }: { locale?: ResultLocale }) {
+export function TakoFaq({ locale = "ja" }: { locale?: AppResultLocale }) {
   const items = TAKO_FAQS[locale];
-  const title = locale === "ko" ? "자주 묻는 질문" : "よくある質問";
+  const title =
+    locale === "en" ? "Frequently asked questions" : locale === "ko" ? "자주 묻는 질문" : "よくある質問";
 
   return (
     <section

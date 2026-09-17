@@ -4,9 +4,7 @@ import TarotDrawExperience from "@/components/tarot/TarotDrawExperience";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { EN_TAROT_MODES, isTarotMode, TAROT_MODE_IDS } from "@/components/tarot/tarot-data";
-import { hasTarotAccess } from "@/lib/entitlements";
-import { getSession } from "@/lib/session";
-import { redirect } from "next/navigation";
+import { requireTarotAccess } from "@/lib/tarot/access";
 
 type Props = { params: Promise<{ mode: string }> };
 
@@ -23,8 +21,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EnglishTarotModePage({ params }: Props) {
   const { mode } = await params;
   if (!isTarotMode(mode)) notFound();
-  const session = await getSession();
-  const purchased = session?.id ? await hasTarotAccess(session.id) : false;
-  if (!purchased) redirect("/en/tarot");
+  await requireTarotAccess("en");
   return <><EnSiteHeader /><TarotDrawExperience mode={mode} locale="en" /><EnSiteFooter /></>;
 }

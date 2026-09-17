@@ -121,7 +121,7 @@ export type OwnerReportData = {
   friendAvgScores: Partial<Record<BigFiveDimension, number>> | null;
   friendNames: string[];
   friendMessages: { name: string; message: string }[];
-  /** 評価してくれた全員 (メッセージ有無問わず・相互理解度の高い順)。友達一覧に使う。 */
+  /** 評価してくれた全員 (メッセージ有無問わず・回答日時の古い順)。先頭の無料結果を固定する。 */
   friends: FriendSummary[];
   minnaContext: MinnaNoMeContext | null;
   /**
@@ -172,7 +172,8 @@ export async function loadOwnerReportData(
       "id, perceived_scores, perceiver_name, perceiver_user_id, perceived_type_id, perceived_modifier_n_r, qualitative_data, created_at",
     )
     .eq("target_user_id", user.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
   const rows = perceptionRows ?? [];
   const friendEvalCount = rows.length;
 
@@ -233,7 +234,8 @@ export async function loadOwnerReportData(
     }
   }
 
-  // 友達一覧 (評価者全員・メッセージ有無問わず)。相互理解度の高い順。
+  // 友達一覧 (評価者全員・メッセージ有無問わず)。回答日時の古い順。
+  // 「1人目無料」を言語に関係なく同じ友達に適用するため、理解度順に並べ替えない。
   const friends: FriendSummary[] = rows
     .map((r) => {
       const perceivedScores = (r.perceived_scores ?? {}) as Partial<
@@ -263,8 +265,7 @@ export async function loadOwnerReportData(
           return pid ? friendOwnTypeById.get(pid) ?? null : null;
         })(),
       };
-    })
-    .sort((a, b) => b.mutual - a.mutual);
+    });
 
   // 友達平均 (0-10)。数値のある軸だけ母数に平均。0件 or 全欠損なら null。
   const friendAvgScores: Partial<Record<BigFiveDimension, number>> | null =

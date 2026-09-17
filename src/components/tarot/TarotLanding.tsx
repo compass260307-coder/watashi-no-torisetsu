@@ -111,8 +111,10 @@ const LANDING_COPY = {
 
 export default function TarotLanding({
   locale = "ja",
+  previewMode = false,
 }: {
   locale?: TarotLocale;
+  previewMode?: boolean;
 }) {
   const copy = LANDING_COPY[locale];
   return (
@@ -150,7 +152,12 @@ export default function TarotLanding({
 
         <div className="grid gap-4 md:grid-cols-3 md:gap-5">
           {TAROT_MODE_IDS.map((mode) => (
-            <ModeCard key={mode} mode={mode} locale={locale} />
+            <ModeCard
+              key={mode}
+              mode={mode}
+              locale={locale}
+              previewMode={previewMode}
+            />
           ))}
         </div>
 
@@ -189,7 +196,15 @@ export default function TarotLanding({
   );
 }
 
-function ModeCard({ mode, locale }: { mode: TarotMode; locale: TarotLocale }) {
+function ModeCard({
+  mode,
+  locale,
+  previewMode,
+}: {
+  mode: TarotMode;
+  locale: TarotLocale;
+  previewMode: boolean;
+}) {
   const content = tarotModes(locale)[mode];
   const copy = LANDING_COPY[locale];
   const accents = {
@@ -225,7 +240,11 @@ function ModeCard({ mode, locale }: { mode: TarotMode; locale: TarotLocale }) {
 
   return (
     <Link
-      href={`${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/${mode}`}
+      href={
+        previewMode
+          ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/dev-preview?mode=${mode}`
+          : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/${mode}`
+      }
       aria-label={`${content.title}${copy.openSuffix}`}
       className={`group relative min-h-[228px] overflow-hidden rounded-[28px] border bg-gradient-to-br p-6 shadow-[0_12px_32px_rgba(46,46,92,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(46,46,92,0.13)] ${accent.border} ${accent.gradient}`}
     >

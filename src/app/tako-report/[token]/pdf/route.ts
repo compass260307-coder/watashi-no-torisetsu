@@ -96,6 +96,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const { token } = await ctx.params;
   const requestUrl = new URL(req.url);
   const isKo = requestUrl.searchParams.get("locale") === "ko";
+  const isEn = requestUrl.searchParams.get("locale") === "en";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
@@ -106,6 +107,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const printParams = new URLSearchParams();
   if (isPreview) printParams.set("previewType", rawPreview);
   if (isKo) printParams.set("locale", "ko");
+  if (isEn) printParams.set("locale", "en");
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未購入にはロック画面 PDF すら作らない) =====
@@ -123,7 +125,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     }
     if (!(await hasTakoAccess(data.id))) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}${isKo ? "/ko" : ""}/tako/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/tako/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -133,7 +135,9 @@ export async function GET(req: Request, ctx: RouteContext) {
   const origin = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : new URL(req.url).origin;
-  const pageUrl = `${origin}/tako-report/${encodeURIComponent(token)}/print${printQuery}`;
+  const pageUrl = isEn
+    ? `${origin}/en/tako-report/${encodeURIComponent(token)}/print${printQuery}`
+    : `${origin}/tako-report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
@@ -157,6 +161,14 @@ export async function GET(req: Request, ctx: RouteContext) {
         timeout(15_000),
       ]);
     });
+    const englishReportRendered = isEn
+      ? await page.evaluate(() =>
+          Boolean(document.querySelector("main[lang='en'] article")),
+        )
+      : true;
+    if (!englishReportRendered) {
+      throw new Error("English friend analysis report did not render");
+    }
     const pdf = await page.pdf({
       format: "A4",
       preferCSSPageSize: true,
@@ -169,8 +181,8 @@ export async function GET(req: Request, ctx: RouteContext) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition":
-          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : "友達診断 完全版レポート.pdf")}`,
+          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Test Friend Analysis.pdf" : "友達診断 完全版レポート.pdf")}`,
         "Cache-Control": "no-store",
       },
     });

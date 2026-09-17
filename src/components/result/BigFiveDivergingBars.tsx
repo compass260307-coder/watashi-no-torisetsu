@@ -215,9 +215,9 @@ export function BigFiveDivergingBars({
           return (
             <div key={axis.dim}>
               {/* スクリーンリーダー用の要約 (色だけに意味を持たせない) */}
-              <span className="sr-only">{`${axis.title}：${lean} ${value}%${
+              <span className="sr-only">{`${axis.title}${locale === "en" ? ": " : "："}${lean} ${value}%${
                 friendValue !== null
-                  ? `${locale === "ko" ? ", " : "、"}${resolvedFriendLabel} ${friendValue}%`
+                  ? `${locale === "en" || locale === "ko" ? ", " : "、"}${resolvedFriendLabel} ${friendValue}%`
                   : ""
               }`}</span>
 

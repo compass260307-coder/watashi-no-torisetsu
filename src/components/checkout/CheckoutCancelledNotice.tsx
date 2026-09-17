@@ -14,7 +14,7 @@ import {
   isAccessProduct,
   type AccessProduct,
 } from "@/lib/access-products";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 export function useCheckoutCancelledProduct(): AccessProduct | null {
   const [product, setProduct] = useState<AccessProduct | null>(null);
@@ -43,18 +43,25 @@ export function CheckoutCancelledNotice({
   imageSrc,
   className = "",
 }: {
-  locale: ResultLocale;
+  locale: AppResultLocale;
   courseName: string;
   retryAction: ReactNode;
   imageSrc?: string;
   className?: string;
 }) {
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
 
   return (
     <div
       role="region"
-      aria-label={isKorean ? "결제 취소 안내" : "決済キャンセルのご案内"}
+      aria-label={
+        isEnglish
+          ? "Payment cancellation notice"
+          : isKorean
+            ? "결제 취소 안내"
+            : "決済キャンセルのご案内"
+      }
       className={`mx-auto flex w-full max-w-[720px] flex-col justify-center rounded-[24px] border border-[#D9D8F3] bg-[#F3F2FF] px-6 py-6 text-left shadow-[0_8px_24px_rgba(46,46,92,0.08)] ${imageSrc ? "min-h-[355px]" : ""} ${className}`}
     >
       {imageSrc ? (
@@ -76,12 +83,18 @@ export function CheckoutCancelledNotice({
         className={imageSrc ? "text-center" : undefined}
       >
         <p className="text-[16px] font-black text-[#2E2E5C]">
-          {isKorean ? "결제가 취소되었어요" : "決済はキャンセルされました"}
+          {isEnglish
+            ? "Your payment was cancelled"
+            : isKorean
+              ? "결제가 취소되었어요"
+              : "決済はキャンセルされました"}
         </p>
         <p className="mx-auto mt-2 max-w-[310px] text-[12px] font-bold leading-[1.75] text-[#65657B] md:text-[13px]">
-          {isKorean
-            ? `요금은 청구되지 않았어요. ${courseName}을(를) 선택한 상태로 돌아왔어요.`
-            : `料金は発生していません。${courseName}を選択した状態に戻しました。`}
+          {isEnglish
+            ? `You were not charged. We restored your selection of ${courseName}.`
+            : isKorean
+              ? `요금은 청구되지 않았어요. ${courseName}을(를) 선택한 상태로 돌아왔어요.`
+              : `料金は発生していません。${courseName}を選択した状態に戻しました。`}
         </p>
       </div>
       <div className="mt-5">{retryAction}</div>
@@ -106,7 +119,7 @@ export function CheckoutCancelledModal({
   retryAction,
   imageSrc,
 }: {
-  locale: ResultLocale;
+  locale: AppResultLocale;
   courseName: string;
   retryAction: ReactNode;
   imageSrc?: string;
@@ -115,6 +128,7 @@ export function CheckoutCancelledModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isKorean = locale === "ko";
+  const isEnglish = locale === "en";
 
   const dismiss = useCallback(() => {
     clearCheckoutCancelledParams();
@@ -170,7 +184,13 @@ export function CheckoutCancelledModal({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={isKorean ? "결제 취소 안내" : "決済キャンセルのご案内"}
+        aria-label={
+          isEnglish
+            ? "Payment cancellation notice"
+            : isKorean
+              ? "결제 취소 안내"
+              : "決済キャンセルのご案内"
+        }
         className="relative w-full max-w-[380px]"
       >
         <CheckoutCancelledNotice
@@ -184,7 +204,7 @@ export function CheckoutCancelledModal({
           ref={closeButtonRef}
           type="button"
           onClick={dismiss}
-          aria-label={isKorean ? "닫기" : "閉じる"}
+          aria-label={isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
           className="absolute -right-1 -top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#2E2E5C] shadow-[0_5px_18px_rgba(23,23,43,0.22)] transition hover:scale-105 active:scale-95"
         >
           <svg

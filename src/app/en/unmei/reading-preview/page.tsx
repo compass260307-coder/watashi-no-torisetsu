@@ -46,6 +46,8 @@ const PREVIEW_CHART: Chart = {
   asc: { sign: "Scorpio", degree: 12 },
   mc: { sign: "Leo", degree: 22 },
   houses_available: true,
+  datetime_utc: "1995-08-07T20:30:00.000Z",
+  location: { latitude: 35.69, longitude: 139.69 },
 };
 
 export const metadata: Metadata = {
@@ -63,10 +65,10 @@ export default function EnglishUnmeiReadingPreviewPage() {
         reading={PREVIEW_READING}
         chart={PREVIEW_CHART}
         essence="Companion"
-        characterSlug="dolphin"
+        characterSlug="jellyfish"
         identity={{
-          typeName: "Sparkling Dolphin",
-          catchphrase: "You meet people with warmth and move with them toward new horizons.",
+          typeName: "Sparkling Jellyfish",
+          catchphrase: "You stay close to people’s hearts while learning about the world.",
           groupLabel: "Ocean",
           groupColor: "#8EC5E8",
         }}

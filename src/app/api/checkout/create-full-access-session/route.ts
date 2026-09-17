@@ -1,5 +1,5 @@
 // 日本版 (完全版 ¥499 の単一プラン)・韓国版 (完全版 ₩4,900 / 学生向け ₩1,900)・
-// 英語版 (完全版 $3.49 の単一プラン) の
+// 英語版 (完全版 $4.99 の単一プラン) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
 // POST /api/checkout/create-full-access-session
@@ -40,6 +40,7 @@ import {
   DESTINY_ACCESS_POLICY_FULL_INCLUDED,
   DESTINY_ACCESS_POLICY_PREMIUM_ONLY_HOSHIYOMI_FULL,
   EMPTY_ACCESS_ENTITLEMENTS,
+  EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
@@ -157,8 +158,9 @@ const CHECKOUT_PRICING = {
   en: {
     currency: "usd",
     saleAmount: EN_FULL_ACCESS_PRICE_USD_CENTS,
-    listAmount: EN_FULL_ACCESS_PRICE_USD_CENTS,
-    discountAmount: 0,
+    listAmount: EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
+    discountAmount:
+      EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS,
   },
 } as const satisfies Record<
   CheckoutLocale,
@@ -170,7 +172,7 @@ const CHECKOUT_PRICING = {
   }
 >;
 
-// 日本版の現行オファーは、Stripe Checkoutでもカードと同じ二重価格を見せる。
+// 日本版の現行オファーは、Stripe Checkoutでも結果カードと同じ二重価格を見せる。
 // 元値からの固定額クーポンを自動適用し、最終請求額を実売価格に一致させる。
 const JA_COURSE_CHECKOUT_PRICING = {
   self_report: {
@@ -226,13 +228,13 @@ const CHECKOUT_COPY: Record<
       "한 번만 결제하면 계속 확인할 수 있어요. 30일 환불 보장. 결제 전 사이트의 이용약관 및 판매·환불 안내를 확인해 주세요.",
   },
   en: {
-    couponId: "full-access-en-no-discount-usd",
-    couponName: "Complete Edition",
+    couponId: `wt-release-full-access-off${EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS}-usd`,
+    couponName: "Release offer",
     productName: "Alice Test — Complete Edition",
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings with one payment.",
     submitMessage:
-      "One-time purchase. Keep access to every Complete Edition feature for $3.49, tax included.",
+      "One-time purchase. Keep access to every Complete Edition feature for $4.99, tax included.",
   },
 };
 
@@ -255,7 +257,7 @@ const CURRENT_FULL_ACCESS_COPY = {
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings.",
     submitMessage:
-      "One-time purchase. Keep access to every Complete Edition feature for $3.49, tax included.",
+      "One-time purchase. Keep access to every Complete Edition feature for $4.99, tax included.",
   },
 } as const;
 
@@ -878,6 +880,8 @@ export async function POST(request: NextRequest) {
   // 安全設計:
   //   - 日本版3コースはサーバ定数の元値 + 固定額クーポンを使い、解決失敗時は
   //     実売価格の price_data へフォールバックする。
+  //   - 英語版完全版も同じ構造で $12.90 − $7.91 = $4.99 を表示し、
+  //     クーポン解決失敗時は $4.99 の直接課金へフォールバックする。
   //   - 韓国版完全版は Price ID の実額検証とクーポン解決の両方が成功した場合だけ
   //     二重価格を表示する。
   // どの経路でもクーポン失敗によって元値を誤請求しない。
@@ -918,6 +922,17 @@ export async function POST(request: NextRequest) {
       JA_COURSE_CHECKOUT_PRICING[product].saleAmount
       ? await getJapaneseCourseCouponIdCached(stripe, product)
       : null;
+  const isStandardEnglishFullAccessPurchase =
+    checkoutLocale === "en" &&
+    product === "full_access" &&
+    usesCurrentOffer &&
+    upgradeFrom === "none" &&
+    effectivePrice === coursePrice;
+  const englishFullAccessCouponId =
+    isStandardEnglishFullAccessPurchase &&
+    checkoutPricing.listAmount > checkoutPricing.saleAmount
+      ? await getCouponIdCached(stripe, "en")
+      : null;
 
   if (isStandardJapaneseCoursePurchase && japaneseCourseCouponId) {
     const pricing = JA_COURSE_CHECKOUT_PRICING[product];
@@ -933,6 +948,23 @@ export async function POST(request: NextRequest) {
       },
     ];
     discounts = [{ coupon: japaneseCourseCouponId }];
+    chargedAmount = effectivePrice;
+  } else if (
+    isStandardEnglishFullAccessPurchase &&
+    englishFullAccessCouponId
+  ) {
+    lineItems = [
+      {
+        price_data: {
+          currency: "usd",
+          unit_amount: checkoutPricing.listAmount,
+          tax_behavior: "inclusive",
+          product_data: productData,
+        },
+        quantity: 1,
+      },
+    ];
+    discounts = [{ coupon: englishFullAccessCouponId }];
     chargedAmount = effectivePrice;
   } else if (product === "self_report") {
     // ライトはサーバー固定の inline price_data。完全版 Price IDへのフォールバックで
@@ -1042,6 +1074,13 @@ export async function POST(request: NextRequest) {
       ...(BASE_URL.startsWith("https://")
         ? {
             branding_settings: {
+              // Stripeアカウント共通の公開名に依存せず、各言語の店舗名を表示する。
+              // 英語版は従来どおりアカウント既定の店舗名を維持する。
+              ...(checkoutLocale === "ja"
+                ? { display_name: "ワタシのトリセツ" }
+                : checkoutLocale === "ko"
+                  ? { display_name: "ALICE 진단" }
+                  : {}),
               icon: {
                 type: "url" as const,
                 url: `${BASE_URL}/icon.png`,

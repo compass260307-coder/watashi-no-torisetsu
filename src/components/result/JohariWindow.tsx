@@ -20,12 +20,60 @@ import {
 import type { BigFiveDimension } from "@/lib/types";
 import { JohariHelpTip } from "./JohariHelpTip";
 import { PaywallScrollButton } from "./PaywallScrollButton";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 // 強い盲点/秘密のギャップしきい値 (パーセントポイント)。
 const GAP = 15;
 // 各窓のコンテンツ数。
 const PER_WINDOW = 4;
+
+const EN_TRAITS: Record<
+  BigFiveDimension,
+  { high: string; low: string; unknown: string }
+> = {
+  O: { high: "Curious explorer", low: "Thoughtful realist", unknown: "A new world to discover" },
+  C: { high: "Quietly dependable", low: "Naturally flexible", unknown: "Your inner organizer" },
+  E: { high: "Energy giver", low: "Attentive listener", unknown: "Your full-volume self" },
+  A: { high: "Instinctively caring", low: "Strong inner compass", unknown: "Letting yourself lean on others" },
+  N: { high: "Emotionally perceptive", low: "Reassuringly steady", unknown: "Putting feelings into words" },
+};
+
+function enTitle(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+) {
+  const trait = EN_TRAITS[key];
+  if (window === "unknown") return trait.unknown;
+  if (window === "blind") return high ? `Unnoticed ${trait.high.toLowerCase()}` : `Hidden ${trait.low.toLowerCase()}`;
+  if (window === "secret") return high ? `Private ${trait.high.toLowerCase()}` : `Private ${trait.low.toLowerCase()}`;
+  return high ? trait.high : trait.low;
+}
+
+function enBody(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+  viewer: string,
+) {
+  const trait = window === "unknown" ? EN_TRAITS[key].unknown : high ? EN_TRAITS[key].high : EN_TRAITS[key].low;
+  if (window === "open") {
+    return `You and ${viewer} both recognize this side of you: ${trait.toLowerCase()}. It is a quality you can rely on because it appears consistently from both points of view.`;
+  }
+  if (window === "blind") {
+    return `${viewer}'s answers reveal your ${trait.toLowerCase()} side more clearly than your own answers do. What feels ordinary to you may already stand out as one of your strengths.`;
+  }
+  if (window === "secret") {
+    return `You know this ${trait.toLowerCase()} side of yourself, but ${viewer} may not see all of it yet. Sharing it in a comfortable moment could deepen the relationship.`;
+  }
+  return `This is a possibility neither of you has fully met yet: ${trait.toLowerCase()}. A new situation may give it room to appear naturally.`;
+}
+
+const EN_BLIND_DECOY: Item[] = (["O", "C", "A", "N"] as BigFiveDimension[]).map((key) => ({
+  key,
+  title: EN_TRAITS[key].high,
+  body: "A quality that may already be visible to other people, even when it feels ordinary to you.",
+}));
 
 // タイトル語 (高側/低側とも「愛されるクセ」トーン)。
 const WORDS: Record<BigFiveDimension, { high: string; low: string }> = {
@@ -273,12 +321,14 @@ function windowsFrom(
   self: BigFiveScores,
   friend: BigFiveScores,
   viewer: string,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ) {
   const fill = (t: string) => t.replace(/\{v\}/g, viewer);
   const gaps = buildDimensionGaps(self, friend);
 
-  if (locale === "ko") {
+  if (locale === "en" || locale === "ko") {
+    const translatedTitle = locale === "en" ? enTitle : koTitle;
+    const translatedBody = locale === "en" ? enBody : koBody;
     const open = [...gaps]
       .sort(
         (a, b) =>
@@ -290,8 +340,8 @@ function windowsFrom(
         const high = (g.selfPercent + g.otherPercent) / 2 >= 50;
         return {
           key: g.key,
-          title: koTitle(g.key, high, "open"),
-          body: koBody(g.key, high, "open", viewer),
+          title: translatedTitle(g.key, high, "open"),
+          body: translatedBody(g.key, high, "open", viewer),
         };
       });
 
@@ -306,8 +356,8 @@ function windowsFrom(
           const high = score(g) >= 50;
           return {
             key: g.key,
-            title: koTitle(g.key, high, kind),
-            body: koBody(g.key, high, kind, viewer),
+            title: translatedTitle(g.key, high, kind),
+            body: translatedBody(g.key, high, kind, viewer),
           };
         });
 
@@ -323,8 +373,8 @@ function windowsFrom(
       .slice(0, PER_WINDOW)
       .map((g) => ({
         key: g.key,
-        title: koTitle(g.key, false, "unknown"),
-        body: koBody(g.key, false, "unknown", viewer),
+        title: translatedTitle(g.key, false, "unknown"),
+        body: translatedBody(g.key, false, "unknown", viewer),
       }));
 
     return { open, blind, secret, unknown };
@@ -434,7 +484,7 @@ function WindowCard({
   /** 窓名の隣の ? で見せる説明文。 */
   help: string;
   children: React.ReactNode;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const frame =
     tone === "indigo"
@@ -538,16 +588,17 @@ export function JohariWindow({
   viewer: string;
   /** tako 未解放 (盲点の窓をぼかす)。 */
   locked: boolean;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }) {
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const { open, blind, secret, unknown } = windowsFrom(
     selfScores,
     friendScores,
     viewer,
     locale,
   );
-  const blindDecoy = isKo ? KO_BLIND_DECOY : BLIND_DECOY;
+  const blindDecoy = isEn ? EN_BLIND_DECOY : isKo ? KO_BLIND_DECOY : BLIND_DECOY;
 
   return (
     <div>
@@ -555,9 +606,11 @@ export function JohariWindow({
         {/* 開放の窓 */}
         <WindowCard
           tone="green"
-          name={isKo ? "열린 창" : "開放の窓"}
+          name={isEn ? "Open area" : isKo ? "열린 창" : "開放の窓"}
           help={
-            isKo
+            isEn
+              ? `The parts of you that both you and ${viewer} recognize. These are qualities your answers describe in a similar way.`
+              : isKo
               ? "나와 친구가 모두 알고 있는 모습이에요. 두 사람의 답변이 비슷하게 나타난 장점이에요."
               : "自分もその友達も「そうだよね」と認めてる、公認のあなた。ふたりの回答が一致した持ち味だよ。"
           }
@@ -569,9 +622,11 @@ export function JohariWindow({
         {/* 盲点の窓 (課金ゲート) */}
         <WindowCard
           tone="indigo"
-          name={isKo ? "보이지 않는 창" : "盲点の窓"}
+          name={isEn ? "Blind area" : isKo ? "보이지 않는 창" : "盲点の窓"}
           help={
-            isKo
+            isEn
+              ? `The parts that ${viewer} can see more clearly than you do. These qualities stand out more strongly in your friend's answers.`
+              : isKo
               ? "나는 아직 모르지만 친구에게는 보이는 모습이에요. 친구의 답변에서 더 선명하게 나타난 장점이에요."
               : "自分では気づいてないけど、友達には見えてるあなた。友達の回答にだけ強く出た持ち味だよ。"
           }
@@ -606,10 +661,12 @@ export function JohariWindow({
                     </svg>
                   </span>
                   <p className="mb-1 text-[13px] font-black text-[#2E2E5C] md:text-[15px]">
-                    {isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
+                    {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
                   </p>
                   <p className="mb-3 text-[10px] font-bold leading-[1.7] text-[#8A8AA3] md:text-[12px]">
-                    {isKo
+                    {isEn
+                      ? `See the side of you that only ${viewer} can describe.`
+                      : isKo
                       ? `${viewer}만 알고 있는 내 모습을 확인할 수 있어요.`
                       : `${viewer}だけが知ってるあなたが読めるよ。`}
                   </p>
@@ -618,7 +675,7 @@ export function JohariWindow({
                     targetId="tako-promo"
                     className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[11px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:py-3 md:text-[13px]"
                   >
-                    {isKo ? "지금 확인하기" : "今すぐアクセス"}
+                    {isEn ? "View now" : isKo ? "지금 확인하기" : "今すぐアクセス"}
                   </PaywallScrollButton>
                 </div>
               </div>
@@ -631,9 +688,11 @@ export function JohariWindow({
         {/* 秘密の窓 */}
         <WindowCard
           tone="navy"
-          name={isKo ? "숨겨진 창" : "秘密の窓"}
+          name={isEn ? "Hidden area" : isKo ? "숨겨진 창" : "秘密の窓"}
           help={
-            isKo
+            isEn
+              ? `The parts you know about yourself that ${viewer} may not have seen yet. These qualities appear more strongly in your own answers.`
+              : isKo
               ? "나는 알고 있지만 친구에게는 아직 보여 주지 않은 모습이에요. 내 답변에서 더 선명하게 나타났어요."
               : "自分は知ってるけど、友達にはまだ見せてないあなた。自分の回答にだけ強く出た持ち味だよ。"
           }
@@ -645,9 +704,11 @@ export function JohariWindow({
         {/* 未知の窓 */}
         <WindowCard
           tone="gray"
-          name={isKo ? "미지의 창" : "未知の窓"}
+          name={isEn ? "Unknown area" : isKo ? "미지의 창" : "未知の窓"}
           help={
-            isKo
+            isEn
+              ? "Possibilities that neither of you has fully seen yet. New experiences may bring these qualities forward."
+              : isKo
               ? "나도 친구도 아직 충분히 만나지 못한 모습이에요. 앞으로 열릴 수 있는 가능성이에요."
               : "自分も友達もまだ知らない、これから開いていくあなた。診断にはまだ映らない伸びしろだよ。"
           }

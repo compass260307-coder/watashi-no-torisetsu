@@ -1,175 +1,636 @@
-import Image from "next/image";
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import EnFriendComparison from "@/components/en/EnFriendComparison";
-import EnFriendInviteShare from "@/components/en/EnFriendInviteShare";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
+import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import { LockedInviteShare } from "@/components/result/LockedInviteShare";
+import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
+import { JohariWindow } from "@/components/result/JohariWindow";
+import { MeStickyHeader } from "@/components/result/MeStickyHeader";
+import { sceneImageFor } from "@/components/result/MinnaTypeProse";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import { PaywallModal } from "@/components/result/PaywallModal";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
+import { ResultHero } from "@/components/result/ResultHero";
 import { ResultViewTracker } from "@/components/result/ResultViewTracker";
-import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import { TakoFaq } from "@/components/result/TakoFaq";
+import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
+import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
+import { SmoothImage } from "@/components/ui/SmoothImage";
+import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
+import {
+  buildEnDeepDiveSections,
+  buildEnPartTwo,
+  buildEnSelfSections,
+} from "@/i18n/en/me";
+import { preferCutImage, preferFaceImage } from "@/lib/character-image";
+import { hasTakoAccess } from "@/lib/entitlements";
+import { enFriendInsights } from "@/lib/en-friend-insights";
+import { heroColorsForGroup } from "@/lib/hero-colors";
 import { loadOwnerReportData } from "@/lib/owner-report-data";
+import { buildDimensionGaps } from "@/lib/perception-analysis";
 import { resolveSiteUrl } from "@/lib/site-url";
+import {
+  classifyThirtyTwoType,
+  thirtyTwoGroup,
+  thirtyTwoImagePath,
+} from "@/lib/thirty-two-types";
 
-export default async function EnTakoResultPage({ token }: { token: string }) {
+const UNDERSTANDING_RESULTS = [
+  { score: 0, image: "/result/understanding/understanding-0-transparent.webp" },
+  { score: 8, image: "/result/understanding/understanding-8-transparent.webp" },
+  { score: 16, image: "/result/understanding/understanding-16-transparent.webp" },
+  { score: 24, image: "/result/understanding/understanding-24-transparent.webp" },
+  { score: 32, image: "/result/understanding/understanding-32-transparent.webp" },
+  { score: 41, image: "/result/understanding/understanding-41-transparent.webp" },
+  { score: 48, image: "/result/understanding/understanding-48-transparent.webp" },
+  { score: 54, image: "/result/understanding/understanding-54-transparent.webp" },
+  { score: 60, image: "/result/understanding/understanding-60-transparent.webp" },
+  { score: 65, image: "/result/understanding/understanding-65-transparent.webp" },
+  { score: 73, image: "/result/understanding/understanding-73-transparent.webp" },
+  { score: 82, image: "/result/understanding/understanding-82-transparent.webp" },
+  { score: 89, image: "/result/understanding/understanding-89-transparent.webp" },
+  { score: 96, image: "/result/understanding/understanding-96-transparent.webp" },
+  { score: 98, image: "/result/understanding/understanding-98-transparent.webp" },
+  { score: 99, image: "/result/understanding/understanding-99-transparent.webp" },
+  { score: 100, image: "/result/understanding/understanding-100-gold-transparent.webp" },
+] as const;
+
+function understandingResultFor(score: number) {
+  return UNDERSTANDING_RESULTS.reduce((nearest, candidate) =>
+    Math.abs(candidate.score - score) < Math.abs(nearest.score - score)
+      ? candidate
+      : nearest,
+  );
+}
+
+function NumberedSection({
+  number,
+  title,
+  children,
+  className = "mb-14",
+}: {
+  number: number;
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={className}>
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+        >
+          {number}
+        </span>
+        <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+          {title}
+        </h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function GuidanceList({
+  items,
+  warning = false,
+}: {
+  items: { title: string; body: string }[];
+  warning?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+      {items.map((item) => (
+        <div key={`${item.title}-${item.body}`}>
+          <p className="mb-1 flex items-center gap-2 text-[15px] font-black text-[#2E2E5C]">
+            <span
+              aria-hidden="true"
+              className={
+                warning
+                  ? "flex h-5 w-5 flex-shrink-0 items-center justify-center text-[#F2C14E]"
+                  : "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#4CAF7D] text-[#4CAF7D]"
+              }
+            >
+              {warning ? (
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              ) : (
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              )}
+            </span>
+            {item.title}
+          </p>
+          <p className="body-gothic pl-7 text-[14px] leading-[1.6] text-[#1A1A1A]">
+            {item.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default async function EnTakoResultPage({
+  token,
+  paid = false,
+}: {
+  token: string;
+  paid?: boolean;
+}) {
   const data = await loadOwnerReportData(token);
   if (!data) notFound();
-  const displayName = data.user.display_name?.trim() || "You";
+
+  const purchased = await hasTakoAccess(data.user.id);
   const inviteUrl = `${resolveSiteUrl()}/en/friend/${encodeURIComponent(data.inviteCode)}`;
-  const friendDisplayName = (name: string) =>
-    name === "ともだち" ? "A friend" : name;
+  const qrImageSrc = data.ownerType32
+    ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
+    : null;
+  const hasLockedResults = !purchased && data.friends.length > 1;
+  const promoType = data.friends[0]?.perceivedType32 ?? data.ownerType32;
+  const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
+  const promoImage = promoType
+    ? sceneImageFor(promoType, "love") ??
+      sceneImageFor(promoType, "normal1") ??
+      preferCutImage(thirtyTwoImagePath(promoType))
+    : undefined;
+  const promoAlt = promoType ? EN_RESULT_TYPES[promoType].essence : "";
+  const friendName = (name: string) =>
+    name.trim() && name !== "ともだち" ? name.trim() : "A friend";
+
+  const invitePanel = (
+    <LockedInviteShare
+      inviteUrl={inviteUrl}
+      trackSource={data.friends.length === 0 ? "tako_empty" : "tako_unlocked"}
+      ownerToken={token}
+      inviteCode={data.inviteCode}
+      compact
+      deferQr
+      locale="en"
+      qrImageSrc={qrImageSrc}
+    />
+  );
+
+  const tabs = data.friends.map((friend, index) => ({
+    perceptionId: friend.perceptionId,
+    name: friendName(friend.name),
+    imageSrc: preferFaceImage(
+      thirtyTwoImagePath(
+        friend.perceivedType32 ?? classifyThirtyTwoType(friend.perceivedScores),
+      ),
+    ),
+    message: friend.message,
+    locked: !purchased && index > 0,
+  }));
+
+  const panels = data.friends.map((friend, index) => {
+    const viewer = friendName(friend.name);
+    if (!purchased && index > 0) {
+      return (
+        <div key={friend.perceptionId}>
+        <section className="mb-14 mt-10">
+          <h2 className="mb-2 text-center text-[24px] font-black leading-tight text-[#2E2E5C] md:text-[30px]">
+            How {viewer} sees you
+          </h2>
+          <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
+            {viewer}&apos;s answers have arrived. The Complete Edition unlocks every result from your second friend onward.
+          </p>
+          <TakoLockedBlock
+            source="tako_sheet_lock"
+            description={`The Complete Edition unlocks the character ${viewer} sees, your personality gaps, relationship style, compatibility, and the rest of this result sheet.`}
+            locale="en"
+          />
+        </section>
+        </div>
+      );
+    }
+
+    const type32 =
+      friend.perceivedType32 ?? classifyThirtyTwoType(friend.perceivedScores);
+    const type = EN_RESULT_TYPES[type32];
+    const hero = heroColorsForGroup(thirtyTwoGroup(type32));
+    const result = understandingResultFor(friend.mutual);
+    const insights = enFriendInsights(data.selfScores, friend);
+    const gaps = buildDimensionGaps(data.selfScores, friend.perceivedScores);
+    const largestGap = [...gaps].sort((a, b) => b.diffPoints - a.diffPoints)[0];
+    const largestGapAxis = EN_RESULT_AXES.find(
+      (axis) => axis.dim === largestGap?.key,
+    );
+    const smallestGap = [...gaps].sort(
+      (a, b) => a.diffPoints - b.diffPoints,
+    )[0];
+    const smallestGapAxis = EN_RESULT_AXES.find(
+      (axis) => axis.dim === smallestGap?.key,
+    );
+    const selfSections = buildEnSelfSections(type32, friend.perceivedScores);
+    const narrativeParas = (selfSections[0]?.body ?? type.oneLiner)
+      .split("\n\n")
+      .filter(Boolean);
+    const loveSection = buildEnDeepDiveSections(
+      type32,
+      friend.perceivedScores,
+      true,
+    ).find((section) => section.key === "love");
+    const loveParas = (loveSection?.blocks ?? [])
+      .flatMap((block) => block.body.split("\n\n"))
+      .filter(Boolean)
+      .slice(0, 3);
+    const partTwo = buildEnPartTwo(type32, friend.perceivedScores, true);
+    const concernItems = (partTwo.dislikable ?? []).slice(0, 6);
+    const deepen = [
+      ...(partTwo.weapons ?? []),
+      ...(partTwo.relations ?? []).map((item) => ({
+        title: item.relation,
+        body: item.body,
+      })),
+    ].slice(0, 8);
+    const avoid = [
+      ...(partTwo.sceneCautions ?? []).map((item) => ({
+        title: item.scene,
+        body: item.body,
+      })),
+      ...(partTwo.relations ?? []).map((item) => ({
+        title: `${item.relation}: avoid assumptions`,
+        body: `Check expectations directly instead of assuming you both read the situation the same way. ${item.body}`,
+      })),
+    ].slice(0, 8);
+    const compatibilityPercent = Math.max(
+      40,
+      Math.min(95, Math.round(40 + friend.mutual * 0.55)),
+    );
+    const compatibilityRank =
+      compatibilityPercent >= 85
+        ? "S"
+        : compatibilityPercent >= 70
+          ? "A"
+          : compatibilityPercent >= 55
+            ? "B"
+            : "C";
+    const introImage = sceneImageFor(type32, "normal1");
+    const loveImage = sceneImageFor(type32, "love");
+    const compatibilityParas = [
+      insights.compatibility,
+      largestGap && largestGapAxis
+        ? `The greatest difference is in ${largestGapAxis.title.toLowerCase()}. That contrast can create misunderstandings, but it can also help each of you notice something the other naturally misses.`
+        : null,
+      smallestGap && smallestGapAxis
+        ? `Your clearest shared ground is ${smallestGapAxis.title.toLowerCase()}. Because your answers are close here, this part of the relationship is likely to feel easier to understand without much explanation.`
+        : null,
+      `Compatibility is not a verdict on the relationship. It shows where you and ${viewer} can rely on shared instincts and where a direct conversation will help most.`,
+    ].filter((paragraph): paragraph is string => Boolean(paragraph));
+
+    return (
+      <div key={friend.perceptionId}>
+        <ResultHero
+          label={`How ${viewer} sees you:`}
+          essence={type.essence}
+          scores={friend.perceivedScores}
+          heroBg={hero.heroBg}
+          codeTint={hero.codeTint}
+          imageSrc={
+            friend.perceivedImageSrc ??
+            preferCutImage(thirtyTwoImagePath(type32))
+          }
+          alt={type.essence}
+          name={type.name}
+          locale="en"
+        />
+
+        <NumberedSection
+          number={1}
+          title={`How well ${viewer} understands you`}
+          className="mb-6 mt-10"
+        >
+          <div
+            className="relative overflow-hidden rounded-3xl"
+            style={{
+              background: "linear-gradient(105deg, #FAD3E3 0%, #F8C9DC 100%)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[160px]"
+              style={{
+                background:
+                  "radial-gradient(ellipse at top center, rgba(255,255,255,0.28) 0%, transparent 60%)",
+              }}
+            />
+            <div className="relative flex flex-col items-center px-4 pb-8 pt-3 md:px-6 md:pb-9 md:pt-5">
+              <SmoothImage
+                src={result.image}
+                alt={`${result.score}% understanding`}
+                width={1448}
+                height={1086}
+                unoptimized
+                className="h-auto w-full max-w-[640px] object-contain"
+              />
+              <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
+                Understanding is {result.score}%, calculated from the gap between {viewer}&apos;s answers and your self-assessment.
+              </p>
+            </div>
+          </div>
+        </NumberedSection>
+
+        <section className="mb-14">
+          <div className="flex flex-col gap-10">
+            <div>
+              {narrativeParas.slice(0, 2).map((paragraph, paragraphIndex) => (
+                <p
+                  key={`${friend.perceptionId}-intro-${paragraphIndex}`}
+                  className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+                >
+                  {paragraphIndex === 0
+                    ? `Through ${viewer}'s eyes, ${paragraph.charAt(0).toLowerCase()}${paragraph.slice(1)}`
+                    : paragraph}
+                </p>
+              ))}
+              {introImage ? (
+                <SmoothImage
+                  src={introImage}
+                  alt=""
+                  width={960}
+                  height={640}
+                  className="mx-auto my-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
+                />
+              ) : null}
+
+              <div className="my-10">
+                <div className="mb-4 flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                  >
+                    2
+                  </span>
+                  <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                    Gaps across five personality traits
+                  </h2>
+                </div>
+                {largestGap && largestGapAxis ? (
+                  <div className="mb-4 rounded-3xl bg-[#F4F4FE] px-6 py-7">
+                    <p className="text-[#2E2E5C] font-black text-[22px] leading-[1.35] md:text-[26px]">
+                      The biggest gap is {largestGapAxis.title.toLowerCase()}. You rated yourself at{" "}
+                      <span className="text-[#5B5BEF]">{largestGap.selfPercent}%</span>, while {viewer} saw{" "}
+                      <span className="text-[#5B5BEF]">{largestGap.otherPercent}%</span>.
+                    </p>
+                  </div>
+                ) : null}
+                <BigFiveDivergingBars
+                  scores={friend.perceivedScores}
+                  friendScores={data.selfScores}
+                  primaryLabel={`${viewer}'s view`}
+                  friendLabel="Self-assessment"
+                  hideHeading
+                  locale="en"
+                />
+              </div>
+
+              {narrativeParas.slice(2).map((paragraph, paragraphIndex) => (
+                <p
+                  key={`${friend.perceptionId}-outro-${paragraphIndex}`}
+                  className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+                >
+                  {paragraphIndex === 0
+                    ? `${insights.axis} ${paragraph}`
+                    : paragraph}
+                </p>
+              ))}
+            </div>
+
+            <section>
+              <div className="mb-4 flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#2E2E5C] text-lg font-black text-[#2E2E5C]"
+                >
+                  3
+                </span>
+                <h2 className="text-[30px] font-black leading-tight text-[#2E2E5C] md:text-[36px]">
+                  Your relationship style through {viewer}&apos;s eyes
+                </h2>
+              </div>
+              {loveImage ? (
+                <SmoothImage
+                  src={loveImage}
+                  alt=""
+                  width={960}
+                  height={640}
+                  className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
+                />
+              ) : null}
+              <div className="mb-10">
+                {(loveParas.length > 0 ? loveParas : [insights.love]).map(
+                  (paragraph, paragraphIndex) => (
+                    <p
+                      key={`${friend.perceptionId}-love-${paragraphIndex}`}
+                      className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+                    >
+                      {paragraphIndex === 0
+                        ? `Through ${viewer}'s eyes, ${paragraph.charAt(0).toLowerCase()}${paragraph.slice(1)}`
+                        : paragraph}
+                    </p>
+                  ),
+                )}
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <NumberedSection number={4} title={`Your compatibility with ${viewer}`}>
+          <div className="flex flex-col gap-10">
+          <div
+            className="relative overflow-hidden rounded-3xl"
+            style={{
+              background: "linear-gradient(105deg, #FAD3E3 0%, #F8C9DC 100%)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[160px]"
+              style={{
+                background:
+                  "radial-gradient(ellipse at top center, rgba(255,255,255,0.28) 0%, transparent 60%)",
+              }}
+            />
+            <div className="relative flex flex-col items-center px-4 pt-7 pb-6 text-center">
+              <SmoothImage
+                src={`/aisho/ranks/${compatibilityRank}.webp`}
+                alt={`Compatibility rank ${compatibilityRank}`}
+                width={512}
+                height={512}
+                unoptimized
+                className="mt-3 w-full max-w-[560px] object-contain md:max-w-[640px]"
+              />
+              <p className="mt-3 text-[12px] font-bold text-white">
+                Compatibility is {compatibilityPercent}%, estimated from the gap between {viewer}&apos;s answers and your self-assessment.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            {compatibilityParas.map((paragraph, paragraphIndex) => (
+              <p
+                key={`${friend.perceptionId}-compatibility-${paragraphIndex}`}
+                className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+              >
+                {paragraph}
+              </p>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+              Could {viewer} secretly dislike me?
+            </h3>
+            <div className="mb-6 rounded-3xl bg-[#F4F4FE] px-6 py-6">
+              <p className="mb-2 text-[18px] font-black leading-[1.5] text-[#2E2E5C] md:text-[20px]">
+                Probably not.
+              </p>
+              <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
+                {viewer} took the time to answer every question about you. People rarely do that for someone they feel nothing about. The differences here are conversation clues, not rejection.
+              </p>
+            </div>
+            <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
+              Still, there may be moments when {viewer} quietly feels a little distance. These are the patterns most worth noticing.
+            </p>
+            <GuidanceList items={concernItems} warning />
+          </div>
+
+          <div>
+            <h3 className="mb-5 text-[22px] font-black leading-snug text-[#2E2E5C] md:text-[26px]">
+              How to deepen the relationship—and what to avoid
+            </h3>
+            <div className="flex flex-col gap-8">
+              <div>
+                <GuidanceList items={deepen} />
+              </div>
+              <div>
+                <GuidanceList items={avoid} warning />
+              </div>
+            </div>
+          </div>
+          </div>
+        </NumberedSection>
+
+        <NumberedSection number={5} title="The Johari Window you create together">
+          <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
+            Your self-assessment and {viewer}&apos;s answers are combined into four windows: what you both see, what only your friend sees, what you keep private, and what neither of you has discovered yet.
+          </p>
+          <JohariWindow
+            selfScores={data.selfScores}
+            friendScores={friend.perceivedScores}
+            viewer={viewer}
+            locked={false}
+            locale="en"
+          />
+        </NumberedSection>
+      </div>
+    );
+  });
+
+  const takoPromo = purchased || data.friends.length === 1 ? null : (
+    <>
+      <div id="tako-promo" className="scroll-mt-16">
+        <FullAccessPromoCard
+          surface="tako"
+          ownerToken={token}
+          returnTo="tako"
+          products={["full_access", "premium_bundle"]}
+          imageSrc={promoImage}
+          reportCharacterImageSrc={
+            promoType ? thirtyTwoImagePath(promoType) : undefined
+          }
+          imageAlt={promoAlt}
+          group={promoGroup}
+          locale="en"
+        />
+      </div>
+      <PaywallModal
+        surface="tako"
+        ownerToken={token}
+        returnTo="tako"
+        products={["full_access", "premium_bundle"]}
+        imageSrc={promoImage}
+        reportCharacterImageSrc={
+          promoType ? thirtyTwoImagePath(promoType) : undefined
+        }
+        imageAlt={promoAlt}
+        group={promoGroup}
+        locale="en"
+      />
+    </>
+  );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F8F7FF]">
+    <div className="min-h-dvh bg-white">
       <PreferredLocaleSync ownerToken={token} locale="en" />
-      <ResultViewTracker
+      <ResultViewTracker ownerToken={token} friendCount={data.friendEvalCount} />
+      {paid && !purchased ? (
+        <PaidUnlockWatcher ownerToken={token} locale="en" returnTo="tako" />
+      ) : null}
+      <MeStickyHeader
+        showUnlockCta={hasLockedResults}
+        unlockCtaLabel="Upgrade results"
+        shareUrl={data.friends.length > 0 ? inviteUrl : undefined}
+        shareKind="invite"
         ownerToken={token}
-        friendCount={data.friendEvalCount}
-      />
-      <EnSiteHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-12 sm:py-16">
-        <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-[#5B5BEF]">
-          Friend perspective
-        </p>
-        <div className="mt-3 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-4xl font-black text-[#2E2E5C] sm:text-5xl">
-              How friends see {displayName}
-            </h1>
-            <p className="mt-3 text-[#68687D]">
-              {data.friendEvalCount === 0
-                ? "Invite friends to reveal a new side of yourself."
-                : `${data.friendEvalCount} ${data.friendEvalCount === 1 ? "friend has" : "friends have"} shared a perspective.`}
-            </p>
+        inviteCode={data.inviteCode}
+        qrImageSrc={qrImageSrc}
+        paywallTargetId="tako-promo"
+        reportHref={
+          purchased && data.friends.length > 0
+            ? `/en/tako-report/${encodeURIComponent(token)}/pdf`
+            : undefined
+        }
+        reportLabel="Download complete report"
+        locale="en"
+      >
+        <EnSiteHeader />
+      </MeStickyHeader>
+
+      <main
+        className={`relative overflow-x-clip px-4 md:px-8 ${
+          data.friends.length === 0 ? "pb-0" : "min-h-dvh pb-8"
+        }`}
+        style={{ background: "#FFFFFF" }}
+      >
+        <div className="relative z-10">
+          <div className="mx-auto max-w-[1080px]">
+            <TakoFriendTabs
+              tabs={tabs}
+              panels={panels}
+              invitePanel={invitePanel}
+              locale="en"
+            />
           </div>
-          <EnFriendInviteShare
-            inviteUrl={inviteUrl}
-            inviteCode={data.inviteCode}
-          />
-        </div>
-
-        {data.friendAvgScores ? (
-          <section className="mt-10 rounded-[28px] bg-white p-6 shadow-[0_16px_40px_rgba(46,46,92,0.08)] sm:p-9">
-            <div className="mb-8">
-              <h2 className="text-2xl font-black text-[#2E2E5C]">
-                Self-view vs. your friends’ average
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-[#68687D]">
-                Differences are not good or bad—they show which parts of you are
-                more visible to other people.
-              </p>
-            </div>
-            <EnFriendComparison
-              selfScores={data.selfScores}
-              friendScores={data.friendAvgScores}
-              friendLabel="Friends’ view"
-            />
-          </section>
-        ) : (
-          <section className="mt-10 rounded-[28px] border border-dashed border-[#5B5BEF]/35 bg-white p-10 text-center">
-            <p className="text-5xl">🪞</p>
-            <h2 className="mt-5 text-2xl font-black text-[#2E2E5C]">
-              Your comparison will appear here
-            </h2>
-            <p className="mx-auto mt-3 max-w-lg leading-relaxed text-[#68687D]">
-              One completed response is enough to start seeing how your
-              self-image compares with a friend’s view.
-            </p>
-            <div className="mt-7 flex justify-center">
-              <EnFriendInviteShare
-                inviteUrl={inviteUrl}
-                inviteCode={data.inviteCode}
-              />
-            </div>
-          </section>
-        )}
-
-        {data.friendCharacter ? (
-          <section className="mt-6 flex flex-col items-center gap-5 rounded-[28px] bg-[#2E2E5C] p-7 text-center text-white sm:flex-row sm:text-left">
-            <Image
-              src={data.friendCharacter.imageSrc}
-              alt=""
-              width={128}
-              height={128}
-              className="h-28 w-28 shrink-0 object-contain"
-            />
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#DAD8FF]">
-                Your friends’ combined impression
-              </p>
-              <h2 className="mt-2 text-2xl font-black">
-                {EN_RESULT_TYPES[data.friendCharacter.type32].name}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-white/75">
-                {EN_RESULT_TYPES[data.friendCharacter.type32].oneLiner}
-              </p>
-            </div>
-          </section>
-        ) : null}
-
-        {data.friends.length > 0 ? (
-          <section className="mt-12">
-            <h2 className="text-2xl font-black text-[#2E2E5C]">
-              Individual perspectives
-            </h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {data.friends.map((friend) => {
-                const name = friendDisplayName(friend.name);
-                return (
-                  <Link
-                    key={friend.perceptionId}
-                    href={`/en/tako/${encodeURIComponent(token)}/friend/${encodeURIComponent(friend.perceptionId)}`}
-                    className="flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    {friend.perceivedImageSrc ? (
-                      <Image
-                        src={friend.perceivedImageSrc}
-                        alt=""
-                        width={64}
-                        height={64}
-                        className="h-16 w-16 object-contain"
-                      />
-                    ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAE9FF] text-xl font-black text-[#5B5BEF]">
-                        {name.slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-extrabold text-[#2E2E5C]">
-                        {name}
-                      </p>
-                      {friend.perceivedType32 ? (
-                        <p className="mt-0.5 truncate text-xs text-[#77778D]">
-                          {EN_RESULT_TYPES[friend.perceivedType32].name}
-                        </p>
-                      ) : null}
-                      <p className="mt-1 text-sm font-bold text-[#5B5BEF]">
-                        {friend.mutual}% in sync
-                      </p>
-                      {friend.message ? (
-                        <p className="mt-1 truncate text-sm text-[#77778D]">
-                          “{friend.message}”
-                        </p>
-                      ) : null}
-                    </div>
-                    <span aria-hidden="true" className="text-xl text-[#9A9AAF]">
-                      ›
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-        <div className="mt-12 text-center">
-          <Link
-            href={`/en/me/${encodeURIComponent(token)}`}
-            className="font-bold text-[#5B5BEF] underline underline-offset-4"
-          >
-            Back to my personality report
-          </Link>
         </div>
       </main>
+
+      {data.friends.length === 0 ? <TakoFaq locale="en" /> : null}
+      {takoPromo}
       <EnSiteFooter />
     </div>
   );

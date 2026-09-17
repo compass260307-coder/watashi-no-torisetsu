@@ -6,12 +6,12 @@
 // 花/ハートは指定 SVG をそのまま使用。
 // 相互理解度ページの「◯◯さんから見た」は呼び出し側で上に別行ラベルとして添える。
 
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 
 interface TrisetsuNameTagProps {
   name: string;
   className?: string;
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
 }
 
 export function TrisetsuNameTag({
@@ -34,7 +34,11 @@ export function TrisetsuNameTag({
         {/* 動的な名前は .wtr-logo-name でシステム丸ゴに固定 (M PLUS サブセットは
             固定文字「のトリセツ」のみ)。ko は元々 M PLUS にハングルが無く全文
             フォールバック描画だったため従来と同じ見た目のまま。 */}
-        {locale === "ko" ? (
+        {locale === "en" ? (
+          <>
+            <span className="wtr-logo-name">{name}</span>’s profile
+          </>
+        ) : locale === "ko" ? (
           <>
             <span className="wtr-logo-name">{name}</span>의 사용설명서
           </>

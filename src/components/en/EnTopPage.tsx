@@ -1,4 +1,3 @@
-import EnSeoContent from "@/components/en/EnSeoContent";
 import { TopViewTracker } from "@/components/top/TopAnalytics";
 import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
@@ -14,7 +13,6 @@ export default function EnTopPage() {
       <TopHeader locale="en" />
       <TopHero locale="en" />
       <TopStats diagnosedCount={DIAGNOSED_COUNT} locale="en" />
-      <EnSeoContent />
       <TopFooter locale="en" />
     </main>
   );

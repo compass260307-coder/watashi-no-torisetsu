@@ -1,13 +1,15 @@
 # Alice アプリ システム設計 v3.1
 
-更新日: 2026-08-28
-状態: 正本（v1・v2・v3の設計書を置き換える v3 確定仕様 + AI 原価・審査 account・実装順の追補）
+更新日: 2026-09-13
+状態: 既存実装の技術資料（アプリ事業ロードマップとしては休止）
 
-> このファイルをAliceアプリ設計の唯一の正本とする。旧版やUI検討履歴は実装判断に使用しない。2026-09-07時点でPhase 1〜3の基盤を実装済み。journal・profile・tarot画面は固定サンプルを含むprototypeであり、公開環境フラグの本番初期値はOFFとする。
+> このファイルは、2026-09-07時点でPhase 1〜3まで実装したAliceアプリ基盤の技術的な正本として保持する。ただし、事業上のアプリの役割は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を優先し、現在は「将来の世界共通コミュニティ」と位置づける。本文中のサブスクリプションアプリ構想、RevenueCat課金、Phase 4以降は承認済みロードマップではない。journal・profile・tarot画面は固定サンプルを含むprototypeであり、公開環境フラグの本番初期値はOFFとする。
 
 ## 1. 設計方針
 
-Alice アプリは、既存 Web の診断資産を入口にし、毎日の自己理解、日記、対話、占いを継続する subscription アプリとする。
+この設計は、既存Webの診断資産を入口に、毎日の自己理解、日記、対話、占いを継続するサブスクリプションアプリとして検討・実装した時点の技術構成を記録する。
+
+現行の事業方針では、日本の継続課金はLINE上のAlice Plusを中心に置き、アプリは将来の世界共通コミュニティを担う。したがって、以下の構成は既存技術資産の保守・評価に使用し、コミュニティのPRDと成功指標が承認されるまで新規フェーズを進めない。
 
 - Web: 集客、50 問診断、買い切り商品、引き継ぎコード発行
 - Expo: 画面、端末認証、RLS 付き CRUD、RevenueCat SDK
@@ -1167,9 +1169,17 @@ RevenueCat は Phase 3 で server 側の sandbox / webhook に着手し、Phase 
 
 公開要件を早期に潰したい場合は、RevenueCat と最小削除フローを Phase 1 に置く「公開準備先行」も可能である。ただし推奨は上記の TestFlight 先行案とする。Phase 2 までは server の internal tester entitlement で開放し、看板体験と scoring を先に検証する。RevenueCat と削除フローは一般公開前には必ず完了し、外部 TestFlight や store review の範囲に応じて前倒しする。
 
-## 16. 確定した事業・獲得方針
+## 16. 現行事業方針との整合
 
-### 16.1 Web users と accounts
+事業判断は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を正本とする。
+
+- Web: 無料診断、SNS・招待ループによる拡散、¥499買い切りによる初回課金。
+- LINE: 日本におけるAliceとの継続関係とAlice Plusによる継続課金。
+- アプリ: 将来の世界共通コミュニティ。ユーザー同士のつながりとネットワーク効果を担う。
+
+現在のアプリコードとデータ設計は技術資産として保持するが、旧サブスクリプション案の公開、RevenueCat接続、ストア申請を自動的な次工程とはしない。再開前に、コミュニティとしての対象ユーザー、コア体験、Web・LINEとの接続、成功指標、収益上の役割を決定する。
+
+### 16.1 既存実装のidentity前提
 
 - `accounts : Web users = 1 : N`
 - transfer code は `users` 1 行ごと
@@ -1177,23 +1187,31 @@ RevenueCat は Phase 3 で server 側の sandbox / webhook に着手し、Phase 
 - email による自動統合はしない
 - 将来 `person_id` を導入できる link 構造を維持する
 
-### 16.2 Web 買い切り
+### 16.2 Web買い切りとの関係
 
 - 「運命の設計図」は Web 限定
-- app entitlement、trial、価格には影響させない
-- 購入前後に「Web 限定」「Alice Plus は別契約」を明示する
-- 将来優遇する場合は、trial 日数が異なる別 product + Web 購入者向け RevenueCat offering を第一候補にする
+- 現行ではapp entitlement、trial、価格へ影響させない。
+- Web買い切りと日本のAlice Plusの役割差を、購入前後で明示する。
+- 将来アプリで課金を扱う場合は、コミュニティPRDと収益設計の承認後に商品体系を再設計する。旧RevenueCat案をそのまま採用しない。
 
-### 16.3 他己診断
+### 16.3 他己診断との関係
 
 - MVP は Web ユーザーの受け皿とし、snapshot の集計だけを app へコピーする
 - API 型は base snapshot + nullable live summary の二層にする
 - 将来は app から招待し、友達は Web で回答する hybrid loop を優先する
 - friend 回答者に app account 作成を強制しない
 
-## 17. 実装ゲート・実データで確定する項目
+## 17. 再開ゲート・実データで確定する項目
 
-以下は仕様漏れではなく、指定した実装ゲートまたは Phase 2 / 3 の計測後に確定する項目である。
+アプリの新規開発を再開する前に、次を先に決定する。
+
+1. コミュニティで誰と誰が、何を目的につながるのか。
+2. Web診断、友達招待、LINE上のAlice Plusから、アプリへ移る必然性は何か。
+3. コミュニティの北極星指標、継続率、安全性指標は何か。
+4. アプリの収益上の役割と、Web買い切り・Alice Plusとの権利関係をどうするか。
+5. 既存のdaily、journal、chat、tarot実装のうち、何を再利用・廃止するか。
+
+以下は、旧サブスクリプション案を再利用する場合に実データで確定する項目である。
 
 1. boundary distance の表示方法
 2. Tier A / B / C の具体的 model

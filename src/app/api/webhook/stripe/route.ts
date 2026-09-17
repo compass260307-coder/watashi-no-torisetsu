@@ -598,6 +598,8 @@ async function recordFullAccessPayment(
         session.metadata?.destiny_access_policy ?? "legacy_included",
       hoshiyomi_chat_policy:
         session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
+      tarot_access_policy:
+        session.metadata?.tarot_access_policy ?? "legacy_not_included",
       friend_access_policy:
         session.metadata?.friend_access_policy ?? "legacy_included",
       aisho_access_policy:
@@ -991,6 +993,8 @@ async function recordPurchaseCompletedEvent(
           session.metadata?.destiny_access_policy ?? "legacy_included",
         hoshiyomi_chat_policy:
           session.metadata?.hoshiyomi_chat_policy ?? "legacy_full_five",
+        tarot_access_policy:
+          session.metadata?.tarot_access_policy ?? "legacy_not_included",
         friend_access_policy:
           session.metadata?.friend_access_policy ?? "legacy_included",
         aisho_access_policy:
@@ -1005,9 +1009,11 @@ async function recordPurchaseCompletedEvent(
               ? "aisho"
               : session.metadata?.return_to === "unmei"
                 ? "unmei"
-                : session.metadata?.return_to === "hoshiyomi"
+              : session.metadata?.return_to === "hoshiyomi"
                   ? "hoshiyomi"
-                  : "me",
+                  : session.metadata?.return_to === "tarot"
+                    ? "tarot"
+                    : "me",
         locale,
       },
     });

@@ -1,16 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import TopHeader from "@/components/top/TopHeader";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
   buildDimensionGaps,
   calcMutualUnderstanding,
   type BigFiveScores,
 } from "@/lib/perception-analysis";
 import { buildPerceptionView } from "@/lib/perception-view";
+import { hasTakoAccess } from "@/lib/entitlements";
 import { sixteenTypes } from "@/lib/sixteen-types";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
@@ -19,6 +19,7 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { PerceptionResultBody } from "./PerceptionResultBody";
+import { FriendIndividualPaywall } from "./FriendIndividualPaywall";
 
 export interface FriendIndividualPageProps {
   params: Promise<{ token: string; perceptionId: string }>;
@@ -37,8 +38,16 @@ function rankNote(
   rank: number,
   total: number,
   mutual: number,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ): string {
+  if (locale === "en") {
+    if (total <= 1) return "For now, this is one especially valuable perspective.";
+    if (rank === 1) return `The closest match among ${total} friend perspectives.`;
+    if (rank === total && mutual < 60) {
+      return `The most unexpected perspective among ${total} friends.`;
+    }
+    return `The ${rank}${rank === 2 ? "nd" : rank === 3 ? "rd" : "th"}-closest match among ${total} friend perspectives.`;
+  }
   if (locale === "ko") {
     if (total <= 1) return "지금은 단 한 명뿐인 소중한 시선이에요.";
     if (rank === 1) return `${total}명 중 가장 서로를 잘 이해하는 친구예요.`;
@@ -61,14 +70,15 @@ export async function FriendIndividualResultPage({
   locale = "ja",
   variant = "individual",
 }: FriendIndividualPageProps & {
-  locale?: ResultLocale;
+  locale?: AppResultLocale;
   variant?: "evaluate" | "individual";
 }) {
   const { token, perceptionId } = await params;
   const sp = await searchParams;
   const isKo = locale === "ko";
+  const isEn = locale === "en";
   const isIndividual = variant === "individual";
-  const localePrefix = isKo ? "/ko" : "";
+  const localePrefix = isEn ? "/en" : isKo ? "/ko" : "";
   const takoHref = `${localePrefix}/tako/${encodeURIComponent(token)}`;
 
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
@@ -108,22 +118,30 @@ export async function FriendIndividualResultPage({
       A: clamp(otherScores.A! - 2),
       N: otherScores.N,
     };
-    perceiverName = isKo ? "태킨" : "たっきん";
-    ownerDisplayName = isKo ? "유와 인도" : "ゆうわインド";
-    qualitative = isKo
+    perceiverName = isEn ? "Alex" : isKo ? "태킨" : "たっきん";
+    ownerDisplayName = isEn ? "Taylor" : isKo ? "유와 인도" : "ゆうわインド";
+    qualitative = isEn
       ? {
+          favorite_point: "You stay calm and make people feel supported.",
+          animal: "Owl",
+          impression_scene: "You stayed composed when everyone else felt rushed.",
+        }
+      : isKo
+        ? {
           favorite_point: "항상 침착하고 믿음직한 점",
           animal: "부엉이",
           impression_scene: "모두가 당황했을 때 혼자 침착했던 순간",
         }
-      : {
-          favorite_point: "いつも落ち着いてて頼れるところ",
-          animal: "ふくろう",
-          impression_scene: "みんなが慌ててる時に一人だけ冷静だった",
-        };
-    ownerMessage = isKo
-      ? "진단 끝났어! 항상 고마워. 다음에 또 밥 먹으러 가자~"
-      : "評価おわったよ！いつも助かってます。またごはん行こ〜";
+        : {
+            favorite_point: "いつも落ち着いてて頼れるところ",
+            animal: "ふくろう",
+            impression_scene: "みんなが慌ててる時に一人だけ冷静だった",
+          };
+    ownerMessage = isEn
+      ? "I finished the test. Thanks for always being there for me!"
+      : isKo
+        ? "진단 끝났어! 항상 고마워. 다음에 또 밥 먹으러 가자~"
+        : "評価おわったよ！いつも助かってます。またごはん行こ〜";
     rank = 1;
     total = 3;
   } else {
@@ -136,6 +154,32 @@ export async function FriendIndividualResultPage({
 
     selfScores = (user.scores ?? {}) as BigFiveScores;
     ownerDisplayName = (user.display_name as string | null) ?? null;
+
+    // 個別URLも一覧の「1人目無料」判定に合わせる。後続の診断本文は認可後に取得する。
+    const { data: metadata } = await supabaseAdmin
+      .from("friend_perceptions")
+      .select("id, target_user_id, perceiver_name")
+      .eq("id", perceptionId)
+      .maybeSingle();
+    if (!metadata || metadata.target_user_id !== (user.id as string)) notFound();
+    if (isIndividual) {
+      const { data: firstResponse } = await supabaseAdmin
+        .from("friend_perceptions")
+        .select("id")
+        .eq("target_user_id", user.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (firstResponse?.id !== perceptionId && !(await hasTakoAccess(user.id as string))) {
+        const { data: freeMessage } = await supabaseAdmin
+          .from("friend_perceptions")
+          .select("owner_message")
+          .eq("id", perceptionId)
+          .maybeSingle();
+        return <FriendIndividualPaywall perceiverName={metadata.perceiver_name as string | null} ownerMessage={(freeMessage?.owner_message as string | null) ?? null} ownerToken={token} locale={locale} />;
+      }
+    }
 
     const { data: perceptionRow } = await supabaseAdmin
       .from("friend_perceptions")
@@ -205,7 +249,7 @@ export async function FriendIndividualResultPage({
     <>
       {isIndividual ? (
         <ScrollHideHeader>
-          {isKo ? <KoTopHeader /> : <TopHeader />}
+          <TopHeader locale={locale} />
         </ScrollHideHeader>
       ) : null}
       <main
@@ -222,14 +266,21 @@ export async function FriendIndividualResultPage({
               href={takoHref}
               className="mb-2 inline-flex items-center gap-1 text-sm font-bold text-[#2A3A5C]/70 transition-colors hover:text-[#2A3A5C]"
             >
-              {isKo ? "← 친구들이 본 나로 돌아가기" : "← みんなから見た自分に戻る"}
+              {isEn
+                ? "← All friend perspectives"
+                : isKo
+                  ? "← 친구들이 본 나로 돌아가기"
+                  : "← みんなから見た自分に戻る"}
             </Link>
           ) : (
             <div className="mb-5 flex items-center justify-between">
-              <Link href={isKo ? "/ko" : "/"} aria-label={isKo ? "홈으로" : "トップへ"}>
+              <Link
+                href={isEn ? "/en" : isKo ? "/ko" : "/"}
+                aria-label={isEn ? "Home" : isKo ? "홈으로" : "トップへ"}
+              >
                 <Image
                   src="/logo.png"
-                  alt={isKo ? "나의 사용설명서" : "ワタシのトリセツ"}
+                  alt={isEn ? "Alice Test" : isKo ? "나의 사용설명서" : "ワタシのトリセツ"}
                   width={280}
                   height={80}
                   priority
@@ -256,12 +307,16 @@ export async function FriendIndividualResultPage({
                   className="text-sm font-bold text-[#2E2E5C]/60 underline transition-colors hover:text-[#5B5BEF]"
                 >
                   {isIndividual
-                    ? isKo
-                      ? "친구들이 본 나로 돌아가기"
-                      : "みんなから見た自分に戻る"
-                    : isKo
-                      ? `${view.displayName}의 사용설명서로 돌아가기`
-                      : `${view.displayName}のトリセツに戻る`}
+                    ? isEn
+                      ? "All friend perspectives"
+                      : isKo
+                        ? "친구들이 본 나로 돌아가기"
+                        : "みんなから見た自分に戻る"
+                    : isEn
+                      ? `Back to ${view.displayName}'s profile`
+                      : isKo
+                        ? `${view.displayName}의 사용설명서로 돌아가기`
+                        : `${view.displayName}のトリセツに戻る`}
                 </Link>
               </div>
             }
