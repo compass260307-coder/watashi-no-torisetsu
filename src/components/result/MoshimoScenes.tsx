@@ -57,6 +57,7 @@ export function MoshimoScenes({
   locale?: AppResultLocale;
 }) {
   const isKorean = locale === "ko";
+  const isIndonesian = locale === "id";
   const open = scenes.filter((s) => !s.locked);
   const locked = scenes.filter((s) => s.locked);
   return (
@@ -112,16 +113,20 @@ export function MoshimoScenes({
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              {locale === "en" ? "Unlock now" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+              {locale === "en" ? "Unlock now" : isIndonesian ? "Buka sekarang" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
               {locale === "en"
                 ? "Unlock the Complete Edition to see how you respond in every moment."
+                : isIndonesian
+                ? "Buka Edisi Lengkap untuk melihat responsmu dalam setiap situasi."
                 : isKorean
                 ? "완전판 리포트를 열고,"
                 : "自己分析レポートを入手して、"}
               <br className="md:hidden" />
               {locale === "en"
+                ? null
+                : isIndonesian
                 ? null
                 : isKorean
                 ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."
@@ -131,7 +136,7 @@ export function MoshimoScenes({
               source="moshimo_card"
               className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              {locale === "en" ? "See the complete result" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
+              {locale === "en" ? "See the complete result" : isIndonesian ? "Lihat hasil lengkap" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>
           </div>
         </div>

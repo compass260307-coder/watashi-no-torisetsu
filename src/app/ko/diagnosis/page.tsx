@@ -27,6 +27,7 @@ export const metadata: Metadata = {
       "ja-JP": `${BASE_URL}/diagnosis`,
       "ko-KR": KO_DIAGNOSIS_URL,
       "en-US": `${BASE_URL}/en/diagnosis`,
+      "id-ID": `${BASE_URL}/id/diagnosis`,
       "x-default": `${BASE_URL}/diagnosis`,
     },
   },

@@ -22,6 +22,8 @@ export function JohariHelpTip({
         aria-label={
           locale === "en"
             ? "About this window"
+            : locale === "id"
+              ? "Tentang bagian ini"
             : locale === "ko"
               ? "이 창에 대한 설명"
               : "この窓の説明"

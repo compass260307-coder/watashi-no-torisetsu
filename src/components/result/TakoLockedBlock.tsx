@@ -33,6 +33,14 @@ const EN_DECOY_ITEMS = [
   { title: "Steady acceptance", body: "Your calm response helps other people feel safe." },
   { title: "A wider world", body: "You keep finding new ideas, activities, and things to talk about." },
 ] as const;
+const ID_DECOY_ITEMS = [
+  { title: "Dukungan yang penuh perhatian", body: "Orang lain menyadari bantuan kecil yang Anda berikan." },
+  { title: "Suasana yang lebih cerah", body: "Kehadiran Anda membuat waktu bersama terasa berkesan." },
+  { title: "Dapat diandalkan", body: "Menepati ucapan membangun kepercayaan." },
+  { title: "Kompas batin yang jelas", body: "Pendirian Anda terasa menenangkan bagi orang lain." },
+  { title: "Penerimaan yang stabil", body: "Ketenangan Anda membantu orang merasa aman." },
+  { title: "Dunia yang lebih luas", body: "Anda terus menemukan gagasan dan pengalaman baru." },
+] as const;
 
 export function TakoLockedBlock({
   description,
@@ -48,10 +56,13 @@ export function TakoLockedBlock({
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const decoyItems = isEn
     ? EN_DECOY_ITEMS
     : isKo
       ? KO_DECOY_ITEMS
+      : isId
+        ? ID_DECOY_ITEMS
       : DECOY_ITEMS;
 
   return (
@@ -94,7 +105,7 @@ export function TakoLockedBlock({
             </svg>
           </span>
           <p className="mb-2 text-[16px] font-black text-[#2E2E5C]">
-            {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
+            {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : isId ? "Buka sekarang" : "今すぐロックを解除"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
             {description}
@@ -105,7 +116,7 @@ export function TakoLockedBlock({
             targetId="tako-promo"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            {isEn ? "View complete results" : isKo ? "지금 확인하기" : "今すぐアクセス"}
+            {isEn ? "View complete results" : isKo ? "지금 확인하기" : isId ? "Lihat hasil lengkap" : "今すぐアクセス"}
           </PaywallScrollButton>
         </div>
       </div>

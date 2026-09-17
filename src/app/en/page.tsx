@@ -11,7 +11,11 @@ import {
 } from "@/lib/locale-seo";
 
 const URL = `${SITE_URL}/en`;
-const ALTERNATE_NAMES = ["Alice Personality Test", "Alice Big Five Test"];
+const ALTERNATE_NAMES = [
+  "Alice Personality Test",
+  "Alice Big Five Test",
+  "Alice Test",
+];
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -78,10 +82,10 @@ const jsonLd = {
     {
       "@type": "Organization",
       "@id": `${URL}#organization`,
-      name: "Alice Test Operations Team",
+      name: "Alice Personalities Operations Team",
       url: URL,
       brand: { "@id": `${URL}#brand` },
-      logo: `${SITE_URL}/logo.webp`,
+      logo: `${SITE_URL}/icon.png`,
     },
   ],
 };
@@ -89,7 +93,7 @@ const jsonLd = {
 export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: { absolute: EN_DEFAULT_TITLE }, description: EN_DEFAULT_DESCRIPTION,
-  alternates: { canonical: "/en", languages: { "ja-JP": "/", "ko-KR": "/ko", "en-US": "/en", "x-default": "/" } },
+  alternates: { canonical: "/en", languages: { "ja-JP": "/", "ko-KR": "/ko", "en-US": "/en", "id-ID": "/id", "x-default": "/" } },
   openGraph: { type: "website", locale: "en_US", alternateLocale: ["ja_JP", "ko_KR"], url: URL, siteName: EN_BRAND_NAME, title: EN_DEFAULT_TITLE, description: EN_DEFAULT_DESCRIPTION, images: [EN_DEFAULT_OG_IMAGE] },
   twitter: { card: "summary_large_image", title: EN_DEFAULT_TITLE, description: EN_DEFAULT_DESCRIPTION, images: ["/characters/keyvisual.webp"] },
 };

@@ -45,6 +45,7 @@ import { PaywallModal } from "@/components/result/PaywallModal";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
 import type { AppResultLocale } from "@/i18n/result";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
@@ -134,21 +135,23 @@ function typeEssence(id: ThirtyTwoTypeId, locale: AppResultLocale): string {
     ? KO_RESULT_TYPES[id].essence
     : locale === "en"
       ? EN_RESULT_TYPES[id].essence
+      : locale === "id"
+        ? ID_RESULT_TYPES[id].essence
     : thirtyTwoEssence(id);
 }
 
 function groupLabel(key: ThirtyTwoGroup, locale: AppResultLocale): string {
   const labels: Record<ThirtyTwoGroup, Record<AppResultLocale, string>> = {
-    sea: { ja: "海", ko: "바다", en: "Sea" },
-    land: { ja: "陸", ko: "대지", en: "Land" },
-    sky: { ja: "空", ko: "하늘", en: "Sky" },
-    unknown: { ja: "未知", ko: "미지", en: "Beyond" },
+    sea: { ja: "海", ko: "바다", en: "Sea", id: "Laut" },
+    land: { ja: "陸", ko: "대지", en: "Land", id: "Darat" },
+    sky: { ja: "空", ko: "하늘", en: "Sky", id: "Langit" },
+    unknown: { ja: "未知", ko: "미지", en: "Beyond", id: "Misteri" },
   };
   return labels[key][locale];
 }
 
-function aishoText(locale: AppResultLocale, ja: string, ko: string, en: string): string {
-  return locale === "ko" ? ko : locale === "en" ? en : ja;
+function aishoText(locale: AppResultLocale, ja: string, ko: string, en: string, id = en): string {
+  return locale === "ko" ? ko : locale === "en" ? en : locale === "id" ? id : ja;
 }
 
 // ---- インラインSVG (依存ライブラリ不使用) --------------------------------
@@ -242,7 +245,7 @@ function Slot({
         >
           <span className="text-2xl md:text-3xl leading-none">＋</span>
           <span className="text-xs md:text-sm font-bold">
-            {aishoText(locale, "タップで選ぶ", "눌러서 선택", "Tap to choose")}
+            {aishoText(locale, "タップで選ぶ", "눌러서 선택", "Tap to choose", "Ketuk untuk memilih")}
           </span>
         </div>
         <p
@@ -385,21 +388,21 @@ const AXIS_META_VIEW: {
   label: Record<AppResultLocale, string>;
   color: string;
 }[] = [
-  { key: "A", label: { ja: "思いやり", ko: "배려", en: "Consideration" }, color: "#33A474" },
+  { key: "A", label: { ja: "思いやり", ko: "배려", en: "Consideration", id: "Kepedulian" }, color: "#33A474" },
   {
     key: "N",
-    label: { ja: "情緒の安定", ko: "정서적 안정", en: "Emotional balance" },
+    label: { ja: "情緒の安定", ko: "정서적 안정", en: "Emotional balance", id: "Keseimbangan emosi" },
     color: "#F25E62",
   },
-  { key: "O", label: { ja: "価値観", ko: "가치관", en: "Values" }, color: "#E4AE3A" },
+  { key: "O", label: { ja: "価値観", ko: "가치관", en: "Values", id: "Nilai" }, color: "#E4AE3A" },
   {
     key: "C",
-    label: { ja: "生活リズム", ko: "생활 리듬", en: "Daily rhythm" },
+    label: { ja: "生活リズム", ko: "생활 리듬", en: "Daily rhythm", id: "Ritme harian" },
     color: "#88619A",
   },
   {
     key: "E",
-    label: { ja: "社交バランス", ko: "사교 균형", en: "Social balance" },
+    label: { ja: "社交バランス", ko: "사교 균형", en: "Social balance", id: "Keseimbangan sosial" },
     color: "#4298B4",
   },
 ];
@@ -407,19 +410,19 @@ const AXIS_META_VIEW: {
 // スコア(0..1)→ 判定ラベル。ネガティブに寄せず、低い側も「補い合い」と前向きに。
 function matchLabel(v: number, locale: AppResultLocale): string {
   const p = v * 100;
-  if (p >= 85) return aishoText(locale, "ぴったり", "찰떡", "Excellent match");
-  if (p >= 65) return aishoText(locale, "かみ合う", "잘 맞음", "Works well");
-  if (p >= 45) return aishoText(locale, "まあまあ", "무난함", "Balanced");
-  return aishoText(locale, "補い合い", "서로 보완", "Complementary");
+  if (p >= 85) return aishoText(locale, "ぴったり", "찰떡", "Excellent match", "Sangat cocok");
+  if (p >= 65) return aishoText(locale, "かみ合う", "잘 맞음", "Works well", "Cocok");
+  if (p >= 45) return aishoText(locale, "まあまあ", "무난함", "Balanced", "Seimbang");
+  return aishoText(locale, "補い合い", "서로 보완", "Complementary", "Saling melengkapi");
 }
 
 // 相性度(%)→ 総評リードの言い回し。「〇〇と〇〇の相性は{これ}」と続く。
 function percentLead(p: number, locale: AppResultLocale): string {
-  if (p >= 90) return aishoText(locale, "文句なしにいい", "의심할 여지 없이 좋아요", "exceptionally strong");
-  if (p >= 75) return aishoText(locale, "かなりいい", "꽤 좋아요", "very strong");
-  if (p >= 60) return aishoText(locale, "なかなかいい", "제법 좋아요", "naturally compatible");
-  if (p >= 45) return aishoText(locale, "歩み寄り次第でぐっと良くなる", "서로 맞춰 갈수록 훨씬 좋아져요", "stronger with mutual adjustment");
-  return aishoText(locale, "一筋縄ではいかないぶん、学びが大きい", "쉽지는 않지만 그만큼 배울 점이 많아요", "challenging, with plenty to learn");
+  if (p >= 90) return aishoText(locale, "文句なしにいい", "의심할 여지 없이 좋아요", "exceptionally strong", "sangat kuat");
+  if (p >= 75) return aishoText(locale, "かなりいい", "꽤 좋아요", "very strong", "kuat");
+  if (p >= 60) return aishoText(locale, "なかなかいい", "제법 좋아요", "naturally compatible", "cocok secara alami");
+  if (p >= 45) return aishoText(locale, "歩み寄り次第でぐっと良くなる", "서로 맞춰 갈수록 훨씬 좋아져요", "stronger with mutual adjustment", "semakin kuat dengan penyesuaian bersama");
+  return aishoText(locale, "一筋縄ではいかないぶん、学びが大きい", "쉽지는 않지만 그만큼 배울 점이 많아요", "challenging, with plenty to learn", "menantang, tetapi memberi banyak pelajaran");
 }
 
 // ★PR4: SCENE_AXES / sceneVerdict はサーバ (/api/aisho/scenes) へ移設。
@@ -431,12 +434,12 @@ const SCENE_ORDER: {
   key: SceneKey;
   label: Record<AppResultLocale, string>;
 }[] = [
-  { key: "love", label: { ja: "恋愛では", ko: "연애에서는", en: "In love" } },
-  { key: "friend", label: { ja: "友情では", ko: "우정에서는", en: "As friends" } },
-  { key: "work", label: { ja: "一緒に働くと", ko: "함께 일하면", en: "At work" } },
+  { key: "love", label: { ja: "恋愛では", ko: "연애에서는", en: "In love", id: "Dalam cinta" } },
+  { key: "friend", label: { ja: "友情では", ko: "우정에서는", en: "As friends", id: "Sebagai teman" } },
+  { key: "work", label: { ja: "一緒に働くと", ko: "함께 일하면", en: "At work", id: "Di tempat kerja" } },
   {
     key: "clash",
-    label: { ja: "すれ違うとき", ko: "엇갈릴 때", en: "When you clash" },
+    label: { ja: "すれ違うとき", ko: "엇갈릴 때", en: "When you clash", id: "Saat berselisih" },
   },
 ];
 
@@ -460,10 +463,13 @@ type ScenesResponse = {
 function AishoResultLock({ locale }: { locale: AppResultLocale }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const lockedSections = isKorean
     ? ["궁합 등급", "두 사람의 균형", "두 사람의 좋은 점", "상황별 궁합", "주의할 점"]
     : isEnglish
-      ? ["Compatibility rank", "Your balance", "What works well", "Four situations", "What needs care"]
+      ? ["Compatibility rank", "How you balance each other", "What works well", "Four situations", "What needs care"]
+      : isIndonesian
+        ? ["Peringkat kecocokan", "Keseimbangan berdua", "Hal yang berjalan baik", "Empat situasi", "Hal yang perlu dijaga"]
     : ["相性ランク", "ふたりのバランス", "ふたりのいいところ", "シーン別の相性", "ここだけ注意"];
 
   return (
@@ -493,13 +499,15 @@ function AishoResultLock({ locale }: { locale: AppResultLocale }) {
           className="mt-5 text-[24px] font-black leading-tight md:text-[30px]"
           style={{ color: NAVY }}
         >
-          {isKorean ? "궁합 진단 결과가 잠겨 있어요" : isEnglish ? "Your compatibility result is locked" : "相性診断の結果はロック中です"}
+          {isKorean ? "궁합 진단 결과가 잠겨 있어요" : isEnglish ? "Your compatibility result is locked" : isIndonesian ? "Hasil kecocokan Anda terkunci" : "相性診断の結果はロック中です"}
         </h1>
         <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-bold leading-[1.75] text-[#6A6A7C] md:text-[16px]">
           {isKorean
             ? "완전판 코스에서 두 사람의 궁합 결과 전체를 확인할 수 있어요."
             : isEnglish
               ? "The Complete Edition unlocks the full compatibility result for this pair."
+              : isIndonesian
+                ? "Edisi Lengkap membuka seluruh hasil kecocokan pasangan ini."
               : "全部入り・買い切りで、ふたりの相性診断の結果をすべて読むことができます。"}
         </p>
         <ul className="mx-auto mt-6 grid max-w-[520px] grid-cols-2 gap-2.5 text-left md:gap-3">
@@ -521,7 +529,7 @@ function AishoResultLock({ locale }: { locale: AppResultLocale }) {
           className="mx-auto mt-7 inline-flex items-center justify-center rounded-full px-10 py-3.5 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] md:text-[16px]"
           style={{ background: NAVY }}
         >
-          {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : "今すぐロックを解除"}
+          {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
         </button>
       </div>
     </section>
@@ -591,7 +599,7 @@ function AishoResultGate({
     return (
       <div className="flex min-h-[360px] items-center justify-center" role="status">
         <p className="text-sm font-bold" style={{ color: INACTIVE }}>
-          {aishoText(locale, "結果を確認中…", "결과를 확인하고 있어요…", "Checking your result…")}
+          {aishoText(locale, "結果を確認中…", "결과를 확인하고 있어요…", "Checking your result…", "Memeriksa hasilmu…")}
         </p>
       </div>
     );
@@ -616,6 +624,7 @@ function CompatDetail({
   const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const sceneUnlocked = sceneData?.locked === false;
   const sceneByKey = useMemo(() => {
     const m = new Map<SceneKey, string>();
@@ -640,14 +649,18 @@ function CompatDetail({
             ? `The connection between “${nameA}” and “${nameB}” is ${percentLead(r.percent, locale)}. Their compatibility score is ${r.percent}%, making them ${r.summary.toLowerCase()}. The number reflects several concrete reasons this relationship can keep growing.`
             : isKorean
             ? `「${nameA}」와 「${nameB}」의 궁합은 ${percentLead(r.percent, locale)}. 궁합도는 ${r.percent}%, 한마디로 ${r.summary}인 두 사람이에요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
-            : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
+            : isIndonesian
+              ? `Hubungan antara “${nameA}” dan “${nameB}” ${percentLead(r.percent, locale)}. Skor kecocokannya ${r.percent}%: ${r.summary.toLowerCase()}. Angka ini mencerminkan alasan nyata mengapa hubungan mereka dapat terus berkembang.`
+              : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
         </p>
         <p className={`${PROSE} mt-4`}>
           {isEnglish
             ? "Together, they can often feel natural without forcing themselves to match. The five views below—consideration, emotional balance, values, daily rhythm, and social balance—show where that ease comes from and where a little care helps."
             : isKorean
             ? "그래서 함께 있을 때 있는 그대로 편안하고, 억지로 맞추지 않아도 좋은 시간이 이어지기 쉬워요. 물론 오래 사이좋게 지내려면 작은 요령도 필요해요. 이제 배려, 정서, 가치관, 생활 리듬, 사교 균형의 다섯 관점에서 두 사람의 궁합을 조금 더 자세히 살펴볼게요."
-            : "だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
+            : isIndonesian
+              ? "Bersama-sama, keduanya dapat merasa alami tanpa memaksa diri untuk selalu sama. Lima sudut pandang berikut menunjukkan sumber kenyamanan itu sekaligus bagian yang membutuhkan sedikit perhatian."
+              : "だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
         </p>
       </div>
 
@@ -655,7 +668,7 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={1}
-          title={isKorean ? "두 사람의 균형" : isEnglish ? "Your balance" : "ふたりのバランス"}
+          title={isKorean ? "두 사람의 균형" : isEnglish ? "How you balance each other" : isIndonesian ? "Keseimbangan kalian" : "ふたりのバランス"}
         />
         <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
           {AXIS_META_VIEW.map(({ key, label: labels, color }) => {
@@ -706,8 +719,8 @@ function CompatDetail({
                   className="mt-1.5 flex justify-between text-[12px] font-bold leading-tight"
                   style={{ color: `${NAVY}8C` }}
                 >
-                  <span>{isKorean ? "서로 보완" : isEnglish ? "Complementary" : "補い合う"}</span>
-                  <span>{isKorean ? "찰떡" : isEnglish ? "Excellent match" : "ぴったり"}</span>
+                  <span>{isKorean ? "서로 보완" : isEnglish ? "Complementary" : isIndonesian ? "Saling melengkapi" : "補い合う"}</span>
+                  <span>{isKorean ? "찰떡" : isEnglish ? "Excellent match" : isIndonesian ? "Sangat cocok" : "ぴったり"}</span>
                 </div>
               </div>
             );
@@ -846,7 +859,7 @@ function CompatDetail({
                     className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
                     style={{ background: NAVY }}
                   >
-                    {isKorean ? "지금 확인하기" : isEnglish ? "View full access" : "今すぐアクセス"}
+                    {isKorean ? "지금 확인하기" : isEnglish ? "View the full result" : "今すぐアクセス"}
                   </button>
                 </div>
               </>
@@ -1005,7 +1018,7 @@ function TypeGrid({
             key={g.key}
             id={sectionId(g.key)}
             aria-label={
-              locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : `${label}グループ`
+              locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : locale === "id" ? `Kelompok ${label}` : `${label}グループ`
             }
             className="relative mx-[calc(50%-50vw)] w-screen"
             style={{ backgroundColor: BAND_COLOR[g.key] }}
@@ -1023,7 +1036,7 @@ function TypeGrid({
                 className="font-black text-[28px] md:text-[36px] leading-none mb-4 md:mb-5"
                 style={{ color: DARK_COLOR[g.key] }}
               >
-                {locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : `${label}グループ`}
+                {locale === "ko" ? `${label} 그룹` : locale === "en" ? `${label} group` : locale === "id" ? `Kelompok ${label}` : `${label}グループ`}
               </h2>
               {/* 行間 (gap-y) は頭のはみ出し (約16px) が上のカードに触れない広さにする */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4 md:gap-x-4 md:gap-y-7">
@@ -1114,6 +1127,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
   const searchParams = useSearchParams();
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const previewMode =
     process.env.NODE_ENV !== "production" && searchParams.get("preview") === "1";
   // ④シーンのサーバゲート結果 (CompatDetail から通知)。
@@ -1229,7 +1243,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
 
   return (
     <>
-    {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader />}
+    {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader locale={isIndonesian ? "id" : "ja"} />}
     <main className="min-h-screen overflow-x-clip bg-white">
       {/* コンテンツ幅は自己診断結果 (/me) と同じ max-w-[1080px] に揃える。
           結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
@@ -1281,7 +1295,9 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                 ? "두 사람의 궁합을 분석하고 있어요…"
                 : isEnglish
                   ? "Reading this pair’s compatibility…"
-                  : "ふたりの相性を診断中…"}
+                  : isIndonesian
+                    ? "Membaca kecocokan pasangan ini…"
+                    : "ふたりの相性を診断中…"}
             </p>
           </div>
         ) : resultShown ? (
@@ -1324,6 +1340,11 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                       <br className="hidden md:block" />
                       compatibility.
                     </>
+                  ) : isIndonesian ? (
+                    <>
+                      Pilih dua tipe dan lihat
+                      <br />kecocokan mereka.
+                    </>
                   ) : (
                     <>
                       気になるあの子との
@@ -1342,7 +1363,9 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                     ? "캐릭터 두 개만 고르면 돼요 · 내 진단 결과가 없어도 괜찮아요"
                     : isEnglish
                       ? "Choose any two characters · No personal result required"
-                      : "2キャラを選ぶだけ・自分の診断がなくてもOK"}
+                      : isIndonesian
+                        ? "Pilih dua karakter · Tidak perlu hasil tes pribadi"
+                        : "2キャラを選ぶだけ・自分の診断がなくてもOK"}
                 </p>
               </div>
               <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
@@ -1355,7 +1378,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
             <div className="mx-auto flex max-w-[560px] md:max-w-[860px] items-stretch gap-3 md:gap-8">
               <Slot
                 id={slotA}
-                label={isKorean ? "첫 번째" : isEnglish ? "First person" : "1人目"}
+                label={isKorean ? "첫 번째" : isEnglish ? "First person" : isIndonesian ? "Orang pertama" : "1人目"}
                 onClear={clearA}
                 locale={locale}
               />
@@ -1369,7 +1392,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
               </span>
               <Slot
                 id={slotB}
-                label={isKorean ? "두 번째" : isEnglish ? "Second person" : "2人目"}
+                label={isKorean ? "두 번째" : isEnglish ? "Second person" : isIndonesian ? "Orang kedua" : "2人目"}
                 onClear={clearB}
                 locale={locale}
               />
@@ -1387,7 +1410,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                   opacity: bothFilled ? 1 : 0.35,
                 }}
               >
-                {isKorean ? "궁합 알아보기" : isEnglish ? "See compatibility" : "相性を診断する"}
+                {isKorean ? "궁합 알아보기" : isEnglish ? "See compatibility" : isIndonesian ? "Lihat kecocokan" : "相性を診断する"}
               </button>
             </div>
 
@@ -1419,7 +1442,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
           imageSrc={versionCharacterAssetPath(
             "/characters/scenes/unknown_love.webp",
           )}
-          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : "相性"}
+          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : isIndonesian ? "Kecocokan" : "相性"}
           // owner_token を渡す → SPでCookieが消えても本人解決でき、401→トップを回避。
           // session (aishoGate) 優先・無ければ端末保存の token。渡せたときは購入後に
           // /aisho へ直接戻れる (returnTo)。どちらも無いゲストは /purchase-complete 着地。
@@ -1433,7 +1456,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
           imageSrc={versionCharacterAssetPath(
             "/characters/scenes/unknown_love.webp",
           )}
-          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : "相性"}
+          imageAlt={isKorean ? "궁합" : isEnglish ? "Compatibility" : isIndonesian ? "Kecocokan" : "相性"}
           ownerToken={aishoGate.ownerToken ?? storedToken ?? undefined}
           returnTo="aisho"
           locale={locale}
@@ -1442,7 +1465,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     )}
     {/* フッターは常時表示 (選択モード・結果表示とも)。
         幅は TopFooter 内部で自己診断結果 (/me) と同じ max-w-[1080px] に統一済み。 */}
-    {isKorean ? <KoTopFooter /> : isEnglish ? <EnSiteFooter /> : <TopFooter />}
+    {isKorean ? <KoTopFooter /> : isEnglish ? <EnSiteFooter /> : <TopFooter locale={isIndonesian ? "id" : "ja"} />}
     </>
   );
 }
@@ -1457,7 +1480,7 @@ export default function AishoPage({
       fallback={
         <main className="min-h-screen bg-white flex items-center justify-center">
           <p className="text-sm font-bold" style={{ color: INACTIVE }}>
-            {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…")}
+            {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…", "Memuat…")}
           </p>
         </main>
       }

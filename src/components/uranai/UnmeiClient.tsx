@@ -47,6 +47,12 @@ const CLIENT_COPY = {
     retry: "Try again",
     pending: "I’m combining your personality with the sky at your birth. Please wait a moment.",
   },
+  id: {
+    title: "Peta Takdirmu",
+    timeout: "Pembacaanmu memerlukan waktu lebih lama dari perkiraan. Tunggu sebentar lalu coba lagi.",
+    retry: "Coba lagi",
+    pending: "Aku sedang menggabungkan kepribadianmu dengan langit saat kamu lahir. Tunggu sebentar.",
+  },
 } as const;
 
 // 生成完了までのタイムアウト (指示書④: 無限スピナー禁止・60秒で再試行案内)

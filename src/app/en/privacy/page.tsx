@@ -4,7 +4,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How the English version of Alice Test handles personal information.",
+  description: "How the English version of Alice Personalities handles personal information.",
   alternates: localizedAlternates("en", "/privacy", "/ko/privacy", "/en/privacy"),
   robots: { index: true, follow: true },
 };
@@ -13,12 +13,12 @@ export default function EnglishPrivacyPage() {
   return (
     <EnLegalDocument title="Privacy Policy" lastUpdated="September 10, 2026">
       <p>
-        Ryunosuke Futami / the Alice Test Operations Team (“Operator”) handles personal information used in the English version of Alice Test (“Service”) as described below.
+        Ryunosuke Futami / the Alice Personalities Operations Team (“Operator”) handles personal information used in the English version of Alice Personalities (“Service”) as described below.
       </p>
 
       <h2>1. Data controller and contact</h2>
       <ul>
-        <li>Controller: Ryunosuke Futami (Alice Test Operations Team)</li>
+        <li>Controller: Ryunosuke Futami (Alice Personalities Operations Team)</li>
         <li>Country of operation: Japan</li>
         <li>Privacy contact: <a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a></li>
       </ul>

@@ -30,6 +30,8 @@ import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
+import IdSiteHeader from "@/components/id/IdSiteHeader";
+import IdSiteFooter from "@/components/id/IdSiteFooter";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 
 // feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
@@ -156,6 +158,7 @@ export default function DiagnosisPageContent({
   const copy = settings.copy;
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   // 質問セットのバージョン。言語別保存キーと組み合わせ、日本語回答と混ざらないようにする。
   const questionSetVersion = `q${activeQuestions.length}-1`;
   const [campaign, setCampaign] = useState<string | null>(null);
@@ -569,7 +572,9 @@ export default function DiagnosisPageContent({
             ? `/ko/me/${encodeURIComponent(data.ownerToken)}`
             : isEnglish
               ? `/en/me/${encodeURIComponent(data.ownerToken)}`
-              : `/result/${data.ownerToken}`,
+              : isIndonesian
+                ? `/id/me/${encodeURIComponent(data.ownerToken)}`
+                : `/result/${data.ownerToken}`,
         );
         return;
       }
@@ -591,7 +596,7 @@ export default function DiagnosisPageContent({
       <DiagnosisAnalyzingLoader
         messages={copy.analyzing.messages}
         steps={copy.analyzing.steps}
-        fontFamily={isKorean || isEnglish ? "inherit" : undefined}
+        fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
       />
     );
   }
@@ -616,12 +621,12 @@ export default function DiagnosisPageContent({
     <>
     {/* サイト共通ヘッダー (16P 風スクロール連動) */}
     <ScrollHideHeader>
-      {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader />}
+      {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : isIndonesian ? <IdSiteHeader /> : <TopHeader />}
     </ScrollHideHeader>
     <div
       // 下端はシェアバンドが受けるので pb は付けない (バンド〜フッター間の白帯を作らない)。
       className="flex flex-col flex-1 min-h-screen bg-white"
-      style={{ fontFamily: isKorean || isEnglish ? "inherit" : FONT_STACK }}
+      style={{ fontFamily: isKorean || isEnglish || isIndonesian ? "inherit" : FONT_STACK }}
     >
       {/* SNS アプリ内ブラウザ (WebView) 対策: 検出時のみ Safari/Chrome 推奨モーダル */}
       <InAppBrowserModal copy={copy.inAppBrowser} />
@@ -800,6 +805,10 @@ export default function DiagnosisPageContent({
                   <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
                     By viewing your result, you agree that your answers and nickname may be used to calculate and save your personality result.
                   </p>
+                ) : locale === "id" ? (
+                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
+                    Dengan melihat hasil, Anda menyetujui penggunaan jawaban dan nama panggilan untuk menghitung serta menyimpan hasil kepribadian Anda.
+                  </p>
                 ) : null}
               </div>
             </div>
@@ -822,7 +831,7 @@ export default function DiagnosisPageContent({
         )}
       </main>
       {/* フッター直上の 16P 風シェアバンド (実績数 + SNS ボタン) */}
-      {locale !== "en" ? (
+      {locale === "ja" || locale === "ko" ? (
         <div className="mt-10">
           <DiagnosisShareBand locale={locale} />
         </div>
@@ -833,6 +842,8 @@ export default function DiagnosisPageContent({
       <KoTopFooter topBorder={false} />
     ) : isEnglish ? (
       <EnSiteFooter topBorder={false} />
+    ) : isIndonesian ? (
+      <IdSiteFooter />
     ) : (
       <TopFooter topBorder={false} />
     )}

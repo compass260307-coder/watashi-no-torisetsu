@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Destiny Blueprint",
   description:
-    "A personal English reading that combines your Big Five personality result with the sky at the moment you were born.",
+    "A personalized reading that combines your Big Five personality profile with the sky at the moment you were born.",
   alternates: localizedAlternates("en", "/unmei", "/ko/unmei", "/en/unmei"),
 };
 

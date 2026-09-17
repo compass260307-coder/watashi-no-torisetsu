@@ -40,6 +40,12 @@ function rankNote(
   mutual: number,
   locale: AppResultLocale,
 ): string {
+  if (locale === "id") {
+    if (total <= 1) return "Untuk saat ini, ini adalah satu sudut pandang yang sangat berharga.";
+    if (rank === 1) return `Pandangan yang paling cocok di antara ${total} teman.`;
+    if (rank === total && mutual < 60) return `Sudut pandang yang paling tidak terduga di antara ${total} teman.`;
+    return `Kecocokan pandangan tertinggi ke-${rank} di antara ${total} teman.`;
+  }
   if (locale === "en") {
     if (total <= 1) return "For now, this is one especially valuable perspective.";
     if (rank === 1) return `The closest match among ${total} friend perspectives.`;
@@ -77,8 +83,9 @@ export async function FriendIndividualResultPage({
   const sp = await searchParams;
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const isIndividual = variant === "individual";
-  const localePrefix = isEn ? "/en" : isKo ? "/ko" : "";
+  const localePrefix = isId ? "/id" : isEn ? "/en" : isKo ? "/ko" : "";
   const takoHref = `${localePrefix}/tako/${encodeURIComponent(token)}`;
 
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
@@ -118,14 +125,20 @@ export async function FriendIndividualResultPage({
       A: clamp(otherScores.A! - 2),
       N: otherScores.N,
     };
-    perceiverName = isEn ? "Alex" : isKo ? "태킨" : "たっきん";
-    ownerDisplayName = isEn ? "Taylor" : isKo ? "유와 인도" : "ゆうわインド";
+    perceiverName = isEn ? "Alex" : isId ? "Ayu" : isKo ? "태킨" : "たっきん";
+    ownerDisplayName = isEn ? "Taylor" : isId ? "Raka" : isKo ? "유와 인도" : "ゆうわインド";
     qualitative = isEn
       ? {
           favorite_point: "You stay calm and make people feel supported.",
           animal: "Owl",
           impression_scene: "You stayed composed when everyone else felt rushed.",
         }
+      : isId
+        ? {
+            favorite_point: "Kamu selalu tenang dan membuat orang lain merasa didukung.",
+            animal: "Burung hantu",
+            impression_scene: "Saat semua orang panik, kamu tetap tenang dan membantu.",
+          }
       : isKo
         ? {
           favorite_point: "항상 침착하고 믿음직한 점",
@@ -139,6 +152,8 @@ export async function FriendIndividualResultPage({
           };
     ownerMessage = isEn
       ? "I finished the test. Thanks for always being there for me!"
+      : isId
+        ? "Aku sudah selesai mengisinya. Terima kasih selalu ada untukku!"
       : isKo
         ? "진단 끝났어! 항상 고마워. 다음에 또 밥 먹으러 가자~"
         : "評価おわったよ！いつも助かってます。またごはん行こ〜";
@@ -268,6 +283,8 @@ export async function FriendIndividualResultPage({
             >
               {isEn
                 ? "← All friend perspectives"
+                : isId
+                  ? "← Kembali ke semua pandangan teman"
                 : isKo
                   ? "← 친구들이 본 나로 돌아가기"
                   : "← みんなから見た自分に戻る"}
@@ -275,12 +292,12 @@ export async function FriendIndividualResultPage({
           ) : (
             <div className="mb-5 flex items-center justify-between">
               <Link
-                href={isEn ? "/en" : isKo ? "/ko" : "/"}
-                aria-label={isEn ? "Home" : isKo ? "홈으로" : "トップへ"}
+                href={localePrefix || "/"}
+                aria-label={isEn ? "Home" : isId ? "Beranda" : isKo ? "홈으로" : "トップへ"}
               >
                 <Image
                   src="/logo.png"
-                  alt={isEn ? "Alice Test" : isKo ? "나의 사용설명서" : "ワタシのトリセツ"}
+                  alt={isEn ? "Alice Personalities" : isId ? "Panduan Kepribadian Saya" : isKo ? "나의 사용설명서" : "ワタシのトリセツ"}
                   width={280}
                   height={80}
                   priority
@@ -309,11 +326,15 @@ export async function FriendIndividualResultPage({
                   {isIndividual
                     ? isEn
                       ? "All friend perspectives"
+                      : isId
+                        ? "Kembali ke semua pandangan teman"
                       : isKo
                         ? "친구들이 본 나로 돌아가기"
                         : "みんなから見た自分に戻る"
                     : isEn
                       ? `Back to ${view.displayName}'s profile`
+                      : isId
+                        ? `Kembali ke profil ${view.displayName}`
                       : isKo
                         ? `${view.displayName}의 사용설명서로 돌아가기`
                         : `${view.displayName}のトリセツに戻る`}

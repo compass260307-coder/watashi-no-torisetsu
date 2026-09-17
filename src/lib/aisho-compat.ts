@@ -7,7 +7,7 @@
 //
 // 実データで確認済みの文字コード: ＋ = U+FF0B (高=true) / − = U+2212 (低=false)。
 
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import { thirtyTwoType, type ThirtyTwoTypeId } from "./thirty-two-types";
 
 const PLUS = "＋"; // U+FF0B = 高
@@ -139,14 +139,53 @@ function axisCopyEn(key: AxisKey, x: Axes, y: Axes): string {
   }
 }
 
+function axisCopyId(key: AxisKey, x: Axes, y: Axes): string {
+  const a = x[key];
+  const b = y[key];
+  switch (key) {
+    case "A": {
+      const state = pairState(a, b);
+      return state === "both"
+        ? "Kalian sama-sama peka terhadap perasaan satu sama lain. Kepedulian ini membantu meredakan konflik kecil, tetapi kebutuhan yang jujur tetap perlu diucapkan."
+        : state === "one"
+          ? "Kehangatan salah satu pihak sering menjaga hubungan tetap lancar. Tunjukkan penghargaan agar orang yang lebih banyak mengalah tidak memikul seluruh beban emosi sendirian."
+          : "Keterusterangan kalian terasa menyegarkan, tetapi ucapan yang benar pun bisa terasa tajam pada hari yang berat. Sedikit empati sebelum memberi solusi dapat mengubah seluruh percakapan.";
+    }
+    case "N": {
+      const state = pairState(a, b);
+      return state === "both"
+        ? "Kalian sama-sama peka terhadap perubahan suasana dan dapat saling memperbesar rasa tidak pasti. Mengungkapkan kekhawatiran lebih awal mencegah keheningan kecil berubah menjadi cerita yang lebih besar."
+        : state === "one"
+          ? "Saat salah satu pihak sedang goyah, pihak lain dapat memberi ketenangan yang dibutuhkan. Dukungan bekerja paling baik ketika ketenangan tidak mengabaikan pengalaman orang yang lebih sensitif."
+          : "Kalian berdua relatif cepat pulih dari gejolak emosi dan kembali mencari solusi. Tetap ingat bahwa bergerak maju dengan cepat belum tentu berarti sudah saling mendengarkan sepenuhnya.";
+    }
+    case "O":
+      return a === b
+        ? "Kalian tertarik pada dunia yang serupa, sehingga gagasan dan percakapan terasa mudah dibagikan. Kesamaan ini menjadi kekuatan selama kalian tetap saling mengajak mencoba hal baru."
+        : "Sudut pandang yang berbeda dapat memperkenalkan pengalaman yang tidak akan dipilih sendirian. Rasa ingin tahu mengubah perbedaan menjadi perluasan dunia, bukan perdebatan tentang siapa yang benar.";
+    case "C":
+      return a === b
+        ? "Ritme dan cara kalian merencanakan cukup mirip sehingga koordinasi sehari-hari terasa ringan. Sesekali periksa asumsi yang tidak terucap agar kesamaan tetap menjadi kekuatan."
+        : "Salah satu lebih terencana, sementara yang lain bergerak mengikuti momentum. Menyepakati tenggat dan hal yang tidak bisa ditawar sejak awal membuat struktur dan fleksibilitas saling mendukung.";
+    case "E":
+      if (a !== b) {
+        return "Ritme sosial kalian saling melengkapi: satu orang membuka suasana, sementara yang lain memperdalam percakapan. Menghormati kebutuhan pemulihan yang berbeda membuat perpaduan ini benar-benar bermanfaat.";
+      }
+      return a
+        ? "Kalian sama-sama mendapat energi dari aktivitas dan dapat menciptakan hubungan yang spontan serta seru. Sisakan ruang tenang untuk rencana dan perasaan yang membutuhkan lebih dari sekadar momentum."
+        : "Kalian sama-sama menghargai ketenangan dan nyaman tanpa harus mengisi setiap jeda. Nyatakan ajakan dan kasih sayang dengan cukup jelas agar sikap pendiam tidak terlihat seperti jarak.";
+  }
+}
+
 function axisCopy(
   key: AxisKey,
   x: Axes,
   y: Axes,
-  locale: ResultLocale | "en",
+  locale: AppResultLocale,
 ): string {
   if (locale === "ko") return axisCopyKo(key, x, y);
   if (locale === "en") return axisCopyEn(key, x, y);
+  if (locale === "id") return axisCopyId(key, x, y);
   const a = x[key];
   const b = y[key];
   switch (key) {
@@ -184,22 +223,22 @@ function axisCopy(
 }
 
 // サマリー (%帯)
-function summaryFor(percent: number, locale: ResultLocale | "en"): string {
+function summaryFor(percent: number, locale: AppResultLocale): string {
   if (percent >= 90)
-    return locale === "ko" ? "운명처럼 잘 맞는 사이" : locale === "en" ? "An exceptional natural match" : "運命級の相性";
+    return locale === "ko" ? "운명처럼 잘 맞는 사이" : locale === "en" ? "An exceptional natural match" : locale === "id" ? "Kecocokan alami yang istimewa" : "運命級の相性";
   if (percent >= 75)
-    return locale === "ko" ? "상당히 잘 맞는 사이" : locale === "en" ? "A strongly compatible pair" : "かなりの好相性";
+    return locale === "ko" ? "상당히 잘 맞는 사이" : locale === "en" ? "A strongly compatible pair" : locale === "id" ? "Pasangan yang sangat cocok" : "かなりの好相性";
   if (percent >= 60)
     return locale === "ko"
       ? "균형이 좋은 두 사람"
-      : locale === "en" ? "A well-balanced connection" : "バランスのいいふたり";
+      : locale === "en" ? "A well-balanced connection" : locale === "id" ? "Hubungan yang seimbang" : "バランスのいいふたり";
   if (percent >= 45)
     return locale === "ko"
       ? "맞춰 갈수록 빛나는 두 사람"
-      : locale === "en" ? "A connection that grows through adjustment" : "歩み寄りで輝くふたり";
+      : locale === "en" ? "A connection that grows through adjustment" : locale === "id" ? "Hubungan yang tumbuh melalui penyesuaian" : "歩み寄りで輝くふたり";
   return locale === "ko"
     ? "어려움만큼 배움도 큰 사이"
-    : locale === "en" ? "More challenging, with real room to learn" : "試練は多いが、学びも大きい";
+    : locale === "en" ? "More challenging, with real room to learn" : locale === "id" ? "Menantang, tetapi memberi banyak ruang untuk belajar" : "試練は多いが、学びも大きい";
 }
 
 // 相性ランク S/A/B/C (表示% 40〜95 を4段階に)。
@@ -229,7 +268,7 @@ const AXIS_ORDER: AxisKey[] = ["A", "N", "O", "C", "E"];
 export function compat(
   aId: ThirtyTwoTypeId,
   bId: ThirtyTwoTypeId,
-  locale: ResultLocale | "en" = "ja",
+  locale: AppResultLocale = "ja",
 ): CompatResult {
   const x = parseAxes(thirtyTwoType(aId).code);
   const y = parseAxes(thirtyTwoType(bId).code);

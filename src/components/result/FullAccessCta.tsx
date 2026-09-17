@@ -15,7 +15,7 @@ import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import { readAdAttribution } from "@/lib/ad-attribution";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
@@ -69,7 +69,7 @@ export function FullAccessCta({
   ownerToken?: string;
   /** 未ログイン時の遷移先。省略時は locale に対応する診断ページ。 */
   unauthHref?: string;
-  locale?: ResultLocale | "en";
+  locale?: AppResultLocale;
   /** この購入CTA専用の導線ID。未指定時は同一ページ内の最終タッチを使う。 */
   source?: string;
   /** 購入後の着地。診断・相性・運命の設計図の購入元へ戻す (既定は /me/[token])。 */
@@ -98,6 +98,8 @@ export function FullAccessCta({
       ? "/ko/diagnosis"
       : locale === "en"
         ? "/en/diagnosis"
+        : locale === "id"
+          ? "/id/diagnosis"
         : "/diagnosis");
   const themedButtonStyle: CSSProperties | undefined = accentColor
     ? {
@@ -188,6 +190,8 @@ export function FullAccessCta({
             ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
             : locale === "en"
               ? "We couldn't open checkout. Please try again in a moment."
+              : locale === "id"
+                ? "Halaman pembayaran tidak dapat dibuka. Coba lagi sebentar lagi."
               : "うまく開けませんでした。少し待ってからもう一度お試しください。",
         );
         setLoading(false);
@@ -234,6 +238,8 @@ export function FullAccessCta({
           ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
           : locale === "en"
             ? "We couldn't open checkout. Please try again in a moment."
+            : locale === "id"
+              ? "Halaman pembayaran tidak dapat dibuka. Coba lagi sebentar lagi."
             : "うまく開けませんでした。少し待ってからもう一度お試しください。",
       );
       setLoading(false);
@@ -243,6 +249,8 @@ export function FullAccessCta({
           ? "통신에 실패했어요. 연결 상태가 좋은 곳에서 다시 시도해 주세요."
           : locale === "en"
             ? "Connection failed. Check your connection and try again."
+            : locale === "id"
+              ? "Koneksi gagal. Periksa koneksi lalu coba lagi."
             : "通信に失敗しました。電波のいい場所でもう一度お試しください。",
       );
       setLoading(false);
@@ -264,9 +272,9 @@ export function FullAccessCta({
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
-          ? locale === "ko" ? "열고 있어요…" : locale === "en" ? "Opening…" : "ひらいています…"
+          ? locale === "ko" ? "열고 있어요…" : locale === "en" ? "Opening…" : locale === "id" ? "Membuka…" : "ひらいています…"
           : error
-            ? locale === "ko" ? "다시 시도하기 →" : locale === "en" ? "Try again →" : "もう一度ためす →"
+            ? locale === "ko" ? "다시 시도하기 →" : locale === "en" ? "Try again →" : locale === "id" ? "Coba lagi →" : "もう一度ためす →"
             : children}
       </button>
       {error && (
@@ -276,6 +284,8 @@ export function FullAccessCta({
           <span className="text-[#8A8AA3]">
             {locale === "ko"
               ? "위 버튼으로 다시 시도해 주세요."
+              : locale === "id"
+                ? "Coba lagi dengan tombol di atas."
               : "上のボタンでもう一度お試しください。"}
           </span>
         </p>

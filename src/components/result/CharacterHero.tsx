@@ -159,6 +159,8 @@ export function CharacterHero({
           <p className="text-[#5B5BEF] font-black text-[10px] tracking-[0.2em] mb-1.5">
             {locale === "ko"
               ? `친구 ${remaining}명만 더 참여하면 역할을 알 수 있어요`
+              : locale === "id"
+                ? `${remaining} teman lagi untuk mengetahui peranmu`
               : `あと ${remaining} 人で職業が判明`}
           </p>
           <div
@@ -170,6 +172,8 @@ export function CharacterHero({
             aria-label={
               locale === "ko"
                 ? `친구 평가 ${jobSlot.friendCount} / ${jobSlot.threshold}명`
+                : locale === "id"
+                  ? `Penilaian teman ${jobSlot.friendCount} / ${jobSlot.threshold}`
                 : `友達評価 ${jobSlot.friendCount} / ${jobSlot.threshold} 人`
             }
           >

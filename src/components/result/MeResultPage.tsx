@@ -129,6 +129,13 @@ import {
   buildEnPartTwo,
   buildEnSelfSections,
 } from "@/i18n/en/me";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
+import {
+  buildIdDeepDiveSections,
+  buildIdMoshimoScenes,
+  buildIdPartTwo,
+  buildIdSelfSections,
+} from "@/i18n/id/me";
 import {
   createMetaPurchaseClaimToken,
   verifyPaidSelfAccessCheckoutSession,
@@ -188,7 +195,8 @@ async function MeResultPageContent({
   const sp = await searchParams;
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
-  const localePrefix = isEnglish ? "/en" : isKorean ? "/ko" : "";
+  const isIndonesian = locale === "id";
+  const localePrefix = isEnglish ? "/en" : isKorean ? "/ko" : isIndonesian ? "/id" : "";
   // 獲得モード (/share 経由)。previewType と同じモック描画だが、課金導線を出さない。
   const acquisition = share ?? null;
   // 獲得モードでは二人称 (あなた/アナタ) をシェア主の名前に置換する。読むのは訪問者で、
@@ -198,6 +206,8 @@ async function MeResultPageContent({
     acquisition
       ? isKorean
         ? text.replaceAll("당신", `${acquisition.sharerName}님`)
+        : isIndonesian
+          ? text.replaceAll("Anda", acquisition.sharerName)
         : text
             .replaceAll("アナタ", `${acquisition.sharerName}さん`)
             .replaceAll("あなた", `${acquisition.sharerName}さん`)
@@ -263,7 +273,7 @@ async function MeResultPageContent({
       id: "preview",
       type_id: classifyType(previewScores!),
       scores: previewScores!,
-      display_name: isEnglish ? "Preview" : isKorean ? "미리보기" : "プレビュー",
+      display_name: isEnglish ? "Preview" : isKorean ? "미리보기" : isIndonesian ? "Pratinjau" : "プレビュー",
       invite_code: "preview",
       diagnosis_completed_at: new Date(0).toISOString(),
     };
@@ -393,11 +403,13 @@ async function MeResultPageContent({
         isEnglish
           ? fullAccessPaid
             ? "Everything plan benefits"
-            : "Complete version benefits"
+            : "Complete Edition benefits"
           : isKorean
           ? fullAccessPaid
             ? "프리미엄 코스 혜택"
             : "완전판 코스 혜택"
+          : isIndonesian
+            ? "Manfaat Edisi Lengkap"
           : fullAccessPaid
             ? "全部入りの特典"
             : "完全版の特典"
@@ -409,11 +421,13 @@ async function MeResultPageContent({
             {isEnglish
               ? fullAccessPaid
                 ? "Unlocked with Everything"
-                : "Unlocked with the Complete Version"
+                : "Unlocked with the Complete Edition"
               : isKorean
               ? fullAccessPaid
                 ? "프리미엄에서 잠금 해제"
                 : "완전판에서 잠금 해제"
+              : isIndonesian
+                ? "Terbuka dengan Edisi Lengkap"
               : fullAccessPaid
                 ? "全部入りで解放"
                 : "完全版で解放"}
@@ -423,7 +437,9 @@ async function MeResultPageContent({
               ? "Answer Alice’s questions to complete your Destiny Blueprint"
               : isKorean
               ? "질문에 답하고, 운명의 설계도를 완성해 보세요"
-              : "Aliceの質問に答えて、運命の設計図を完成させよう"}
+              : isIndonesian
+                ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
+                : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
         </div>
         {/* Alice の吹き出しは 2026-08-26 撤去。同文は CTA で開くチャットの冒頭挨拶
@@ -443,12 +459,16 @@ async function MeResultPageContent({
                 ? "A four-chapter AI reading"
                 : isKorean
                 ? "네 장으로 이어지는 AI 감정서"
-                : "4章立てのAI鑑定文",
+                : isIndonesian
+                  ? "Pembacaan AI dalam empat bab"
+                  : "4章立てのAI鑑定文",
               body: isEnglish
                 ? "From the strengths you’ve built to the turning points ahead, your story is interpreted from beginning to end, with one practical next step."
                 : isKorean
                 ? "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장으로 풀고 바로 실천할 작은 한 걸음까지 담았어요."
-                : "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
+                : isIndonesian
+                  ? "Dari kekuatan yang Anda bangun hingga titik balik di masa depan, kisah Anda dibaca secara utuh dengan langkah praktis berikutnya."
+                  : "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
             },
             {
               iconBg: "#F1EEFF",
@@ -463,14 +483,18 @@ async function MeResultPageContent({
                 ? "Your personal astrologer — 30 chats"
                 : isKorean
                 ? "나만의 전담 점성술사"
-                : "専属AI占い師に相談30回",
+                : isIndonesian
+                  ? "30 percakapan dengan astrolog pribadi Anda"
+                  : "専属AI占い師に相談30回",
               body: isEnglish
                 ? "Because Alice already understands your personality and birth chart, you can get straight to the heart of love, work, relationships, and difficult choices."
                 : isKorean
                 ? fullAccessPaid
                   ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
                   : "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 완전판에는 채팅 30회가 포함됩니다."
-                : "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
+                : isIndonesian
+                  ? "Alice memahami kepribadian dan peta kelahiran Anda, sehingga pembahasan cinta, pekerjaan, hubungan, dan pilihan sulit dapat langsung menyentuh inti."
+                  : "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
             },
             {
               iconBg: "#EAF8F2",
@@ -488,12 +512,16 @@ async function MeResultPageContent({
                 ? "Your personal birth-chart wheel"
                 : isKorean
                 ? "나만의 출생 차트 휠"
-                : "出生図ホイール",
+                : isIndonesian
+                  ? "Roda peta kelahiran pribadi"
+                  : "出生図ホイール",
               body: isEnglish
                 ? "Recreate the sky at the moment you were born from your date, time, and place of birth, then see the planetary pattern in one personal chart."
                 : isKorean
                 ? "생년월일·출생 시간·출생지를 바탕으로 태어난 순간의 하늘을 재현하고, 천체의 배치를 나만의 한 장의 설계도로 그려 드려요."
-                : "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
+                : isIndonesian
+                  ? "Buat kembali langit saat Anda lahir dari tanggal, waktu, dan tempat lahir dalam satu peta pribadi."
+                  : "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
             },
             {
               iconBg: "#FDECF3",
@@ -505,15 +533,19 @@ async function MeResultPageContent({
                 </svg>
               ),
               title: isEnglish
-                ? "Personality diagnosis × astrology"
+                ? "Personality profile × astrology"
                 : isKorean
                 ? "성격 진단과 별의 교차 해석"
-                : "性格診断 × 星の掛け合わせ",
+                : isIndonesian
+                  ? "Profil kepribadian × astrologi"
+                  : "性格診断 × 星の掛け合わせ",
               body: isEnglish
-                ? "Compare the personality found in your Big Five diagnosis with the temperament shown by your birth chart, including where they reinforce—or challenge—each other."
+                ? "Compare your Big Five personality profile with the temperament reflected in your birth chart, including where they reinforce—or challenge—each other."
                 : isKorean
                 ? "Big Five 진단에서 발견한 성격과 별이 보여 주는 기질을 나란히 살펴, 겹치는 부분과 작은 차이까지 읽어 드려요."
-                : "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
+                : isIndonesian
+                  ? "Bandingkan profil Big Five dengan temperamen dalam peta kelahiran, termasuk bagian yang saling menguatkan atau menantang."
+                  : "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
             },
             {
               iconBg: "#FFF3D9",
@@ -527,12 +559,16 @@ async function MeResultPageContent({
                 ? "Unlock compatibility readings"
                 : isKorean
                   ? "궁합 진단 기능 잠금 해제"
-                  : "相性診断機能を解放",
+                  : isIndonesian
+                    ? "Buka pembacaan kecocokan"
+                    : "相性診断機能を解放",
               body: isEnglish
                 ? "See your compatibility from S to C, then explore how the relationship works in love, friendship, work, and moments of misunderstanding."
                 : isKorean
                 ? "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 관계까지 읽어 드려요."
-                : "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
+                : isIndonesian
+                  ? "Lihat kecocokan dari peringkat S hingga C untuk cinta, persahabatan, pekerjaan, dan momen salah paham."
+                  : "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
             },
           ].map((feature) => (
             <li
@@ -570,7 +606,7 @@ async function MeResultPageContent({
             previewMode={Boolean(previewType)}
             className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
           >
-            {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
+            {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : isIndonesian ? "Jawab pertanyaan Alice" : "Aliceの質問に答える"}
             <span aria-hidden="true" className="text-xl font-medium">
               →
             </span>
@@ -597,11 +633,15 @@ async function MeResultPageContent({
     ? buildEnPartTwo(t32, stored, partTwoUnlocked)
     : isKorean
       ? buildKoPartTwo(t32, stored, partTwoUnlocked)
+      : isIndonesian
+        ? buildIdPartTwo(t32, stored, partTwoUnlocked)
       : resolvePartTwo(t32, sixteenTypeId, stored, {
           unlocked: partTwoUnlocked,
         });
   const moshimoScenes = isEnglish
     ? buildEnMoshimoScenes(stored, partTwoUnlocked)
+    : isIndonesian
+      ? buildIdMoshimoScenes(stored, partTwoUnlocked)
     : buildMoshimoScenes(stored, partTwoUnlocked, isKorean ? "ko" : "ja");
   // 獲得モード: 本文の二人称をシェア主の名前へ (🔒系は null のままなので触らない)。
   const partTwo = acquisition
@@ -620,6 +660,8 @@ async function MeResultPageContent({
     ? buildEnDeepDiveSections(t32, stored, partTwoUnlocked)
     : isKorean
       ? buildKoDeepDiveSections(t32, stored, partTwoUnlocked)
+      : isIndonesian
+        ? buildIdDeepDiveSections(t32, stored, partTwoUnlocked)
       : resolvedDeepDiveSections;
   // 獲得モードはロック要素をサーバ側で除去する。DeepDiveSections は client component の
   // ため、props に残すと見出しが RSC ペイロードに載ってしまう (本文は "" だが痕跡も消す)。
@@ -660,6 +702,8 @@ async function MeResultPageContent({
     ? buildEnSelfSections(t32, stored)
     : isKorean
       ? buildKoSelfSections(t32, stored)
+      : isIndonesian
+        ? buildIdSelfSections(t32, stored)
       : flag32
         ? selfContentFor(t32)
         : selfResultContent[sixteenTypeId];
@@ -676,6 +720,8 @@ async function MeResultPageContent({
     ? EN_RESULT_TYPES[t32].name
     : isKorean
       ? KO_RESULT_TYPES[t32].name
+      : isIndonesian
+        ? ID_RESULT_TYPES[t32].name
       : flag32
         ? thirtyTwoName(t32)
         : sixteenType.name;
@@ -683,6 +729,8 @@ async function MeResultPageContent({
     ? EN_RESULT_TYPES[t32].essence
     : isKorean
       ? KO_RESULT_TYPES[t32].essence
+      : isIndonesian
+        ? ID_RESULT_TYPES[t32].essence
       : flag32
         ? thirtyTwoEssence(t32)
         : sixteenType.essence;
@@ -735,6 +783,8 @@ async function MeResultPageContent({
     ? EN_RESULT_TYPES[t32].oneLiner
     : isKorean
       ? KO_RESULT_TYPES[t32].oneLiner
+      : isIndonesian
+        ? ID_RESULT_TYPES[t32].oneLiner
       : flag32
         ? thirtyTwoOneLiner(t32)
         : sixteenType.oneLiner;
@@ -751,6 +801,8 @@ async function MeResultPageContent({
     ? EN_RESULT_TYPES[t32].animal
     : isKorean
       ? KO_RESULT_TYPES[t32].animal
+      : isIndonesian
+        ? ID_RESULT_TYPES[t32].animal
       : flag32
         ? thirtyTwoAnimal(t32)
         : sixteenType.animal;
@@ -866,6 +918,8 @@ async function MeResultPageContent({
             ? "/en/unmei"
             : isKorean
               ? "/ko/unmei"
+              : isIndonesian
+                ? "/id/unmei"
               : "/unmei"
           : !acquisition &&
               !publicPreview &&
@@ -874,6 +928,10 @@ async function MeResultPageContent({
               ? previewType
                 ? undefined
                 : `/en/report/${encodeURIComponent(token)}/pdf`
+              : isIndonesian
+                ? previewType
+                  ? undefined
+                  : `/id/report/${encodeURIComponent(token)}/pdf`
               : previewType
                 ? `/report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKorean ? "&locale=ko" : ""}`
                 : `/report/${encodeURIComponent(token)}/pdf${isKorean ? "?locale=ko" : ""}`
@@ -885,11 +943,15 @@ async function MeResultPageContent({
             ? "Upgrade my result"
             : isKorean
               ? "결과 업그레이드"
+              : isIndonesian
+                ? "Tingkatkan hasil saya"
               : "結果をアップグレード"
           : isEnglish
             ? "Download my PDF"
             : isKorean
               ? "자기 분석 PDF 다운로드"
+              : isIndonesian
+                ? "Unduh PDF analisis diri"
               : "自己分析PDFをダウンロード"
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
@@ -927,13 +989,15 @@ async function MeResultPageContent({
               ? "Upgrade my result"
               : isKorean
                 ? "결과 업그레이드"
+                : isIndonesian
+                  ? "Tingkatkan hasil saya"
                 : "結果をアップグレード"}
           </MeUnmeiChatLauncher>
         ) : undefined
       }
       locale={locale}
     >
-      {isEnglish ? <EnSiteHeader /> : isKorean ? <KoTopHeader /> : <TopHeader />}
+    {isEnglish ? <EnSiteHeader /> : isKorean ? <KoTopHeader /> : <TopHeader locale={isIndonesian ? "id" : "ja"} />}
     </MeStickyHeader>
     {/* 本文〜末尾CTA/課金カードまでを薄グレー1枚で面にする (16P 参考・2026-08-26)。
         main 単体に塗ると main 外の課金カード/末尾CTAの帯だけ白く抜けて継ぎ目が
@@ -953,11 +1017,15 @@ async function MeResultPageContent({
                 ? `${acquisition.sharerName}’s personality type:`
                 : isKorean
                   ? `${acquisition.sharerName}님의 성격 유형:`
+                  : isIndonesian
+                    ? `Tipe kepribadian ${acquisition.sharerName}:`
                   : `${acquisition.sharerName}さんの性格タイプ:`
               : isEnglish
                 ? "Your personality type:"
                 : isKorean
                   ? KO_ME_COPY.heroLabel
+                  : isIndonesian
+                    ? "Tipe kepribadian Anda:"
                   : "あなたの性格タイプ:"
           }
           essence={dispEssence}
@@ -1013,7 +1081,7 @@ async function MeResultPageContent({
         {/* ===== ① 基本特性 + 五つの性格傾向 =====
             基本特性 → 挿絵 → 五つの性格傾向 → 基本特性の続き、の旧構成。 */}
         <section
-          aria-label={isEnglish ? "How you see yourself" : isKorean ? KO_ME_COPY.selfAriaLabel : "自分が見た自分"}
+          aria-label={isEnglish ? "How you see yourself" : isKorean ? KO_ME_COPY.selfAriaLabel : isIndonesian ? "Cara Anda melihat diri sendiri" : "自分が見た自分"}
           className="mb-10"
         >
           {(() => {
@@ -1054,6 +1122,8 @@ async function MeResultPageContent({
                         ? "Your personality across five dimensions"
                         : isKorean
                           ? KO_ME_COPY.bigFiveTitle
+                          : isIndonesian
+                            ? "Kepribadian Anda dalam lima dimensi"
                           : "五つの性格傾向"
                     }
                     number="1"
@@ -1062,7 +1132,7 @@ async function MeResultPageContent({
                       !acquisition && !publicPreview ? (
                         <div className="flex flex-wrap items-center justify-end gap-3">
                           <ShareModalOpenButton
-                            label={isEnglish ? "Share" : isKorean ? "공유" : "シェア"}
+                            label={isEnglish ? "Share" : isKorean ? "공유" : isIndonesian ? "Bagikan" : "シェア"}
                             iconOnly
                           />
                           {/* 友達診断への導線ピル。本人閲覧時のみ。 */}
@@ -1088,6 +1158,8 @@ async function MeResultPageContent({
                                   ? "Compare with your friends"
                                   : isKorean
                                     ? "친구 답변과 비교하기"
+                                    : isIndonesian
+                                      ? "Bandingkan dengan teman"
                                     : "友達と答え合わせ"}
                               </Link>
                           )}
@@ -1144,10 +1216,14 @@ async function MeResultPageContent({
                 ? acquisition
                   ? `${acquisition.sharerName} in everyday moments`
                   : "You in everyday moments"
-                : isKorean
-                  ? acquisition
-                    ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
-                    : "만약의 순간에 나타나는 나"
+                  : isKorean
+                    ? acquisition
+                      ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
+                      : "만약의 순간에 나타나는 나"
+                    : isIndonesian
+                      ? acquisition
+                        ? `${acquisition.sharerName} dalam berbagai situasi`
+                        : "Diri Anda dalam berbagai situasi"
                   : personalize("もしもの時のあなた")}
             </h2>
           </div>
@@ -1199,10 +1275,14 @@ async function MeResultPageContent({
                 ? acquisition
                   ? `${acquisition.sharerName} through their friends’ eyes`
                   : "You through your friends’ eyes"
-                : isKorean
-                  ? acquisition
-                    ? `친구가 보는 ${acquisition.sharerName}님`
-                    : KO_ME_COPY.friendSectionTitle
+                  : isKorean
+                    ? acquisition
+                      ? `친구가 보는 ${acquisition.sharerName}님`
+                      : KO_ME_COPY.friendSectionTitle
+                    : isIndonesian
+                      ? acquisition
+                        ? `${acquisition.sharerName} dari sudut pandang teman`
+                        : "Anda dari sudut pandang teman"
                   : personalize("友達から見たあなた")}
             </h2>
           </div>
@@ -1236,13 +1316,15 @@ async function MeResultPageContent({
                   </svg>
                 </span>
                 <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                  {isEnglish ? "Unlock now" : isKorean ? KO_ME_COPY.unlockNow : "今すぐロックを解除"}
+                  {isEnglish ? "Unlock now" : isKorean ? KO_ME_COPY.unlockNow : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
                 </p>
                 <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
                   {isEnglish ? (
                     <>Unlock the Complete Edition to see what your friends may misunderstand about you.</>
                   ) : isKorean ? (
                     KO_ME_COPY.friendLockDescription
+                  ) : isIndonesian ? (
+                    <>Buka Edisi Lengkap untuk melihat bagian diri yang mungkin disalahpahami oleh teman.</>
                   ) : (
                     <>
                       自己分析レポートを入手して、
@@ -1255,7 +1337,7 @@ async function MeResultPageContent({
                   source="friend_dislike_card"
                   className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                 >
-                  {isEnglish ? "See the complete result" : isKorean ? KO_ME_COPY.accessNow : "今すぐアクセス"}
+                  {isEnglish ? "See the complete result" : isKorean ? KO_ME_COPY.accessNow : isIndonesian ? "Lihat hasil lengkap" : "今すぐアクセス"}
                 </PaywallScrollButton>
               </div>
             );
@@ -1313,6 +1395,10 @@ async function MeResultPageContent({
                         ? acquisition
                           ? `${acquisition.sharerName}님의 주의해서 다룰 점`
                           : KO_ME_COPY.cautionTitle
+                        : isIndonesian
+                          ? acquisition
+                            ? `Hal yang perlu diperhatikan tentang ${acquisition.sharerName}`
+                            : "Hal yang perlu Anda perhatikan"
                         : personalize("あなたの注意点")}
                   </h2>
                 </div>
@@ -1356,7 +1442,7 @@ async function MeResultPageContent({
                   <div className="mt-10 px-1">
                     {/* 見出しはシーン別の注意点と同スタイル (ぼかしの外に置く)。 */}
                     <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
-                      {isEnglish ? "More patterns and practical guidance" : isKorean ? "남은 주의점과 대처법" : "残りの注意点と対処法"}
+                      {isEnglish ? "More patterns and practical guidance" : isKorean ? "남은 주의점과 대처법" : isIndonesian ? "Pola lain dan panduan praktis" : "残りの注意点と対処法"}
                     </h3>
                     <div className="relative">
                     <div
@@ -1380,6 +1466,15 @@ async function MeResultPageContent({
                             { title: "관계를 해치지 않고 거절하는 법", body: "어색해지지 않게 ‘오늘은 어려워요’라고 전하는 방법이 있어요." },
                             { title: "나를 뒤로 미루지 않는 요령", body: "일정의 맨 앞에 나를 위한 시간을 먼저 넣어 두세요." },
                             { title: "다정함을 나누는 방향 바로잡기", body: "가까운 사람에게 오히려 소홀해지기 쉬운 다정함의 방향을 정돈해요." },
+                          ]
+                        : isIndonesian
+                        ? [
+                            { title: "Saat Anda mengambil terlalu banyak tanggung jawab", body: "Kenali tanda pertama bahwa kapasitas Anda mulai menipis." },
+                            { title: "Saat standar berubah menjadi tekanan", body: "Pisahkan hal yang benar-benar penting dari yang hanya terasa mendesak." },
+                            { title: "Saat Anda perlu berkata tidak", body: "Batas yang jelas dapat melindungi hubungan lebih baik daripada rasa kesal yang dipendam." },
+                            { title: "Saat Anda membutuhkan dukungan", body: "Mintalah satu bentuk bantuan yang spesifik sebelum keadaan terasa terlalu berat." },
+                            { title: "Saat Anda selalu menaruh diri terakhir", body: "Sisihkan waktu untuk pulih sebelum kalender kembali penuh." },
+                            { title: "Saat perhatian kehilangan keseimbangan", body: "Berikan hubungan terdekat perhatian yang sama seperti yang Anda berikan kepada orang lain." },
                           ]
                         : [
                             { title: "抱え込みすぎの手放し方", body: "ぜんぶ自分で背負う前に、ひとつだけ人に預ける練習から始めます。" },
@@ -1419,18 +1514,18 @@ async function MeResultPageContent({
                           </svg>
                         </span>
                         <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                          {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+                          {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
                         </p>
                         <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
-                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : "残りの注意点と対処法を解放して、"}
+                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : isIndonesian ? "Buka panduan lainnya " : "残りの注意点と対処法を解放して、"}
                           <br className="md:hidden" />
-                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : "あなたのトリセツを完成させましょう。"}
+                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : isIndonesian ? "dan lengkapi panduan pribadi Anda." : "あなたのトリセツを完成させましょう。"}
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"
                           className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                         >
-                          {isEnglish ? "See the complete result" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
+                          {isEnglish ? "See the complete result" : isKorean ? "지금 확인하기" : isIndonesian ? "Lihat hasil lengkap" : "今すぐアクセス"}
                         </PaywallScrollButton>
                       </div>
                     </div>
@@ -1447,13 +1542,15 @@ async function MeResultPageContent({
             (process.env.NODE_ENV === "development" && previewType !== null)) && (
             <section className="mt-16 mb-14">
               <h2 className="mb-3 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[26px]">
-                {isEnglish ? "Friend perspective" : isKorean ? "친구 진단" : "友達診断"}
+                {isEnglish ? "Friend perspective" : isKorean ? "친구 진단" : isIndonesian ? "Penilaian teman" : "友達診断"}
               </h2>
               <p className="body-gothic mb-5 text-[15px] leading-[1.8] text-[#1A1A1A] md:text-[16px]">
                 {isEnglish
                   ? "Invite friends or family, then compare how they see you with how you see yourself."
                   : isKorean
                   ? "친구나 가족에게 답을 받아 ‘주변이 바라본 나’와의 차이를 비교해 보세요."
+                  : isIndonesian
+                  ? "Undang teman atau keluarga, lalu bandingkan cara mereka melihat Anda dengan cara Anda melihat diri sendiri."
                   : "友だちや家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
               </p>
               <Link
@@ -1461,7 +1558,7 @@ async function MeResultPageContent({
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                 style={resultActionButtonStyle}
               >
-                {isEnglish ? "Invite a friend" : isKorean ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                {isEnglish ? "Invite a friend" : isKorean ? "친구에게 진단 부탁하기" : isIndonesian ? "Undang teman" : "友達に診断してもらう"}
                 <span aria-hidden="true">→</span>
               </Link>
             </section>
@@ -1477,7 +1574,7 @@ async function MeResultPageContent({
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
               style={resultActionButtonStyle}
             >
-              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : isIndonesian ? "Ikuti tes gratis →" : "無料で性格診断をする →"}
             </ShareDiagnosisLink>
           </div>
         ) : publicPreview ? (
@@ -1487,7 +1584,7 @@ async function MeResultPageContent({
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
               style={resultActionButtonStyle}
             >
-              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : "無料で性格診断をする →"}
+              {isEnglish ? "Take the free test →" : isKorean ? "무료 성격 진단 시작하기 →" : isIndonesian ? "Ikuti tes gratis →" : "無料で性格診断をする →"}
             </Link>
           </div>
         ) : null}
@@ -1551,7 +1648,7 @@ async function MeResultPageContent({
               className="flex w-full items-center justify-center gap-2.5 rounded-full px-6 py-3.5 text-[15px] font-black text-white transition-transform hover:translate-y-0.5 md:text-[16px]"
               style={resultActionButtonStyle}
             >
-              {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える"}
+              {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : isIndonesian ? "Jawab pertanyaan Alice" : "Aliceの質問に答える"}
               <span aria-hidden="true" className="text-lg font-medium">
                 →
               </span>
@@ -1560,7 +1657,7 @@ async function MeResultPageContent({
               (process.env.NODE_ENV === "development" &&
                 previewType !== null)) && (
               <Link
-                href={isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                href={isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : isIndonesian ? "/id/diagnosis" : "/diagnosis"}
                 className="flex w-full items-center justify-center gap-2.5 rounded-full border border-[#D6D9E6] bg-white px-6 py-3.5 text-[15px] font-black text-[#2E2E5C] transition-colors hover:bg-[#FDFDFE] md:text-[16px]"
               >
                 <svg
@@ -1577,7 +1674,7 @@ async function MeResultPageContent({
                   <path d="M21 12a9 9 0 1 1-2.64-6.36" />
                   <path d="M21 3v6h-6" />
                 </svg>
-                {isEnglish ? "Retake the main test" : isKorean ? "메인 테스트 다시 받기" : "メインテストを再度受ける"}
+                {isEnglish ? "Retake the main test" : isKorean ? "메인 테스트 다시 받기" : isIndonesian ? "Ulangi tes utama" : "メインテストを再度受ける"}
               </Link>
             )}
           </div>
@@ -1599,7 +1696,7 @@ async function MeResultPageContent({
         TopFooter 側ではなく余白で吸収されるため、そのまま置く。
         /me は直上に波形のシェア帯があり、フッター上端の直線が二重線に見えるため
         topBorder={false} で上端線を消す (他ページのフッターは据え置き)。 */}
-    {isEnglish ? <EnSiteFooter /> : isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} />}
+    {isEnglish ? <EnSiteFooter /> : isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} locale={isIndonesian ? "id" : "ja"} />}
     </>
   );
 }

@@ -7,7 +7,7 @@ import UnmeiViewTracker from "@/components/uranai/UnmeiViewTracker";
 const FEATURES = [
   {
     title: "A birth-chart wheel made only for you",
-    body: "We recreate the sky at the moment you were born from your birth date, time, and place, then draw the planets into your own personal blueprint.",
+    body: "We recreate the sky at the moment you were born from your birth date, time, and place, then map the planets into a blueprint created just for you.",
     bg: "#E7DCFB",
     dark: "#6C4EB8",
     icon: (
@@ -34,8 +34,8 @@ const FEATURES = [
     ),
   },
   {
-    title: "Personality × stars, viewed together",
-    body: "We compare the personality found in your Big Five result with your natural tendencies in the stars, including where they align and where they differ.",
+    title: "Your personality and birth chart, read together",
+    body: "We compare your Big Five personality profile with the tendencies reflected in your birth chart, including where they align and where they differ.",
     bg: "#D8F2C0",
     dark: "#3F7A2E",
     icon: (
@@ -62,7 +62,7 @@ const FEATURES = [
 const FAQS = [
   {
     q: "What can the Destiny Blueprint help me understand?",
-    a: "It reads the qualities you have developed, how you relate to people, and the turning points ahead from the sky at your birth. Combined with your personality result, it gives you another way to understand yourself.",
+    a: "It explores the qualities you have developed, how you relate to people, and the turning points ahead through your birth chart. Combined with your personality result, it gives you another way to understand yourself.",
   },
   {
     q: "Can I read it without knowing astrology?",
@@ -70,7 +70,7 @@ const FAQS = [
   },
   {
     q: "What do I do after purchasing?",
-    a: "Enter your birth date, birth time, and birth place. Your reading is usually created in about a minute, and you can still create it if you do not know your exact birth time.",
+    a: "Enter your birth date, birth time, and birthplace. Your reading is usually created in about a minute, and you can still create it if you do not know your exact birth time.",
   },
   {
     q: "Does it predict my future?",
@@ -151,7 +151,7 @@ export default function EnUnmeiLanding({
           <ProofFacesBand
             lead="More than"
             countSuffix=" people"
-            tail="have completed their Alice Test"
+            tail="have completed their Alice Personalities test"
           />
         </div>
       </div>

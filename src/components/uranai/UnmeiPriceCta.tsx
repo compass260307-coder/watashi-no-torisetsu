@@ -63,6 +63,10 @@ export default function UnmeiPriceCta({
       ? launchChat
         ? "Create my Destiny Blueprint →"
         : "Continue →"
+      : locale === "id"
+      ? launchChat
+        ? "Buat Peta Takdirku →"
+        : "Lanjutkan →"
       : locale === "ko"
       ? launchChat
         ? "운명의 설계도 만들기 →"
@@ -77,7 +81,7 @@ export default function UnmeiPriceCta({
   const cancelledProduct = useCheckoutCancelledProduct();
   // The English catalog sells only Complete Edition. Legacy premium upgrades remain
   // available for Japanese/Korean entitlement compatibility only.
-  const supportsLegacyUpgrade = locale !== "en";
+  const supportsLegacyUpgrade = locale === "ja" || locale === "ko";
   const purchaseProduct =
     supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access";
   const standardPrice =
@@ -147,6 +151,8 @@ export default function UnmeiPriceCta({
           <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
             {locale === "en"
               ? `Only ${showUpgradePrice ? upgradePrice : standardPrice}.`
+              : locale === "id"
+              ? `Hanya ${showUpgradePrice ? upgradePrice : standardPrice}.`
               : locale === "ko"
               ? `요금은 ${showUpgradePrice ? upgradePrice : standardPrice}이에요.`
               : `料金はわずか ${showUpgradePrice ? upgradePrice : standardPrice} です。`}
@@ -179,6 +185,8 @@ export default function UnmeiPriceCta({
           courseName={
             locale === "en"
               ? "Complete Edition"
+              : locale === "id"
+              ? "Edisi Lengkap"
               : locale === "ko"
               ? purchaseProduct === "full_access"
                 ? "완전판 코스"
@@ -198,6 +206,8 @@ export default function UnmeiPriceCta({
             >
               {locale === "en"
                 ? "Try checkout again"
+                : locale === "id"
+                ? "Coba pembayaran lagi"
                 : locale === "ko"
                 ? "같은 코스로 다시 결제하기"
                 : "同じコースでもう一度決済する"}

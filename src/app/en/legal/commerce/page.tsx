@@ -13,10 +13,10 @@ export const metadata: Metadata = {
 export default function EnglishCommercePage() {
   return (
     <EnLegalDocument title="Sales & Refund Policy" lastUpdated="September 10, 2026">
-      <p>This page provides seller and transaction information for paid content in the English version of Alice Test.</p>
+      <p>This page provides seller and transaction information for paid content in the English version of Alice Personalities.</p>
 
       <h2>Seller and responsible operator</h2>
-      <p>Ryunosuke Futami (Alice Test Operations Team)</p>
+      <p>Ryunosuke Futami (Alice Personalities Operations Team)</p>
 
       <h2>Country of operation</h2>
       <p>Japan</p>
@@ -32,7 +32,7 @@ export default function EnglishCommercePage() {
 
       <h2>Product and price</h2>
       <ul>
-        <li>Alice Test — Complete Edition: ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD, tax included</li>
+        <li>Alice Personalities — Complete Edition: ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD, tax included</li>
         <li>One-time payment; no subscription, automatic renewal, or required additional payment</li>
       </ul>
       <p>The final amount is displayed again in Stripe Checkout before payment.</p>

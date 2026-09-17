@@ -394,7 +394,7 @@ export function buildEnSelfSections(
   const paired = pairedInsights(scores);
   return [
     {
-      title: "Your Alice Test",
+      title: "Your Alice Personalities Result",
       heading: "The way you naturally move through the world",
       body: `${profile.core}\n\n${openness.core} ${conscientiousness.core}\n\n${extraversion.core} ${agreeableness.core} ${paired.change}\n\n${profile.temperamentCore}`,
     },

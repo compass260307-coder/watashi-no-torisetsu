@@ -60,8 +60,8 @@ export interface CreateSessionPayload {
   acquisition_campaign?: string | null;
   acquisition_medium?: string | null;
   // 診断データは言語共通。初回流入言語と現在の表示言語だけを別カラムで持つ。
-  acquisition_locale?: "ja" | "ko" | "en";
-  preferred_locale?: "ja" | "ko" | "en";
+  acquisition_locale?: "ja" | "ko" | "en" | "id";
+  preferred_locale?: "ja" | "ko" | "en" | "id";
   diagnosis_completed_at?: string;
 }
 

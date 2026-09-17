@@ -46,7 +46,7 @@ function messageText(message: UIMessage): string {
 
 function conversationPrompt(
   messages: UIMessage[],
-  locale: "ja" | "ko" | "en",
+  locale: "ja" | "ko" | "en" | "id",
 ): string {
   const transcript = messages
     .map((message) => {
@@ -54,11 +54,15 @@ function conversationPrompt(
         message.role === "user"
           ? locale === "ko"
             ? "이용자"
+            : locale === "id"
+              ? "Pengguna"
             : locale === "en"
               ? "User"
             : "利用者"
           : locale === "ko"
             ? "별자리 상담사"
+            : locale === "id"
+              ? "Alice"
             : locale === "en"
               ? "Alice"
             : "星読み相談員";
@@ -69,7 +73,9 @@ function conversationPrompt(
 
   return locale === "ko"
     ? `아래 대화의 마지막 이용자 메시지에 자연스러운 한국어 존댓말로 답해 주세요. 답변 본문만 작성해 주세요.\n\n${transcript}`
-    : locale === "en"
+    : locale === "id"
+      ? `Jawab pesan terakhir pengguna di bawah ini dalam Bahasa Indonesia yang hangat dan alami. Tulis hanya isi jawaban.\n\n${transcript}`
+      : locale === "en"
       ? `Reply to the final user message below in warm, natural English. Write only the response body.\n\n${transcript}`
       : `以下の会話の最後の利用者メッセージに、自然な日本語で回答してください。回答本文だけを書いてください。\n\n${transcript}`;
 }
@@ -92,6 +98,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Chat access required" }, { status: 403 });
   }
 
+  const body = await readJsonObject(request, 24_000);
+  if (!body.ok) {
+    return NextResponse.json({ error: body.error }, { status: body.status });
+  }
+  const locale = body.value.locale === "ko" ? "ko" : body.value.locale === "en" ? "en" : body.value.locale === "id" ? "id" : "ja";
+
   const rateLimit = await consumeRateLimit(request, {
     scope: "hoshiyomi-chat",
     identifier: session.id,
@@ -100,7 +112,16 @@ export async function POST(request: Request) {
   });
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "少し間をあけてから、もう一度お話しください。" },
+      {
+        error:
+          locale === "id"
+            ? "Tunggu sebentar, lalu coba berbicara lagi."
+            : locale === "ko"
+              ? "잠시 기다린 뒤 다시 이야기해 주세요."
+              : locale === "en"
+                ? "Please wait a moment, then try again."
+                : "少し間をあけてから、もう一度お話しください。",
+      },
       {
         status: 429,
         headers: rateLimit.retryAfterSeconds
@@ -110,11 +131,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = await readJsonObject(request, 24_000);
-  if (!body.ok) {
-    return NextResponse.json({ error: body.error }, { status: body.status });
-  }
-  const locale = body.value.locale === "ko" ? "ko" : body.value.locale === "en" ? "en" : "ja";
   const conversationId = body.value.id;
   if (!isSafeOpaqueToken(conversationId, 8, 64)) {
     return NextResponse.json({ error: "Invalid conversation id" }, { status: 400 });
@@ -133,6 +149,8 @@ export async function POST(request: Request) {
         error:
           locale === "ko"
             ? `메시지는 ${MAX_MESSAGE_LENGTH}자 이내로 입력해 주세요.`
+            : locale === "id"
+              ? `Pesan harus berisi paling banyak ${MAX_MESSAGE_LENGTH} karakter.`
             : locale === "en"
               ? `Keep your message within ${MAX_MESSAGE_LENGTH} characters.`
               : `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。`,
@@ -172,6 +190,8 @@ export async function POST(request: Request) {
         error:
           locale === "ko"
             ? "채팅 횟수를 모두 사용했어요."
+            : locale === "id"
+              ? "Kamu sudah menggunakan semua jawaban Alice."
             : locale === "en"
               ? "You've used all of your Alice answers."
               : "チャットの利用回数を使い切りました。",
@@ -223,6 +243,8 @@ export async function POST(request: Request) {
       console.error("[hoshiyomi] direct model generation failed", error);
       return locale === "ko"
         ? "별을 제대로 읽지 못했어요. 잠시 뒤 다시 이야기해 주세요."
+        : locale === "id"
+          ? "Aku belum dapat membaca bintang dengan jelas. Coba lagi sebentar lagi."
         : locale === "en"
           ? "I couldn't read the stars clearly just now. Please try again in a moment."
           : "うまく星を読めませんでした。少し時間をおいて、もう一度お話しください。";

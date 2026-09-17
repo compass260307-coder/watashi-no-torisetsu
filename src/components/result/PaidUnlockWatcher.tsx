@@ -11,7 +11,7 @@
 //   URL に置き換えて再描画 (= ロック解除表示)。一定時間で反映されなければ手動再読み込み導線。
 
 import { useEffect, useState } from "react";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
 import type { AccessProduct } from "@/lib/access-products";
 
 const NAVY = "#2E2E5C";
@@ -26,7 +26,7 @@ const MAX_TRIES = 20; // 約 40 秒
 function unlockedUrl(
   returnTo: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot",
   ownerToken: string,
-  locale: ResultLocale | "en",
+  locale: AppResultLocale,
 ): string {
   if (
     returnTo === "aisho" ||
@@ -39,7 +39,7 @@ function unlockedUrl(
     url.searchParams.delete("session_id");
     return url.toString();
   }
-  const prefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
+  const prefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : "";
   return `${prefix}/${returnTo}/${ownerToken}`;
 }
 
@@ -50,7 +50,7 @@ export function PaidUnlockWatcher({
   product = "full_access",
 }: {
   ownerToken: string;
-  locale?: ResultLocale | "en";
+  locale?: AppResultLocale;
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
   product?: AccessProduct;
 }) {

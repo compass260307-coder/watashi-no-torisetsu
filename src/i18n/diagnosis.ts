@@ -1,7 +1,8 @@
 import { questions } from "@/lib/questions";
 import type { AnswerValue, Question } from "@/lib/types";
+import { ID_DIAGNOSIS_COPY, ID_QUESTIONS } from "@/i18n/id/diagnosis";
 
-export type DiagnosisLocale = "ja" | "ko" | "en";
+export type DiagnosisLocale = "ja" | "ko" | "en" | "id";
 
 export interface InAppBrowserCopy {
   title: string;
@@ -300,10 +301,10 @@ const EN_QUESTIONS: Question[] = [
   { id: 12, text: "When a friend and I disagree, I often end up going along with them.", facetId: "A_cooperation", dimension: "A", reversed: false },
   { id: 13, text: "I do not want to change my way of doing things just to fit in with others.", facetId: "A_cooperation", dimension: "A", reversed: true },
   { id: 14, text: "I do not mind giving a little if it means everyone can enjoy themselves.", facetId: "A_cooperation", dimension: "A", reversed: false },
-  { id: 15, text: "I often want things to go according to my own opinion.", facetId: "A_cooperation", dimension: "A", reversed: true },
+  { id: 15, text: "I often want things to go my way.", facetId: "A_cooperation", dimension: "A", reversed: true },
   { id: 16, text: "When a friend cries, I feel like I might cry too.", facetId: "A_sympathy", dimension: "A", reversed: false },
   { id: 17, text: "I easily become absorbed in what characters feel in movies or comics.", facetId: "A_sympathy", dimension: "A", reversed: false },
-  { id: 18, text: "I am fairly unconcerned with changes in other people's emotions.", facetId: "A_sympathy", dimension: "A", reversed: true },
+  { id: 18, text: "I do not pay much attention to changes in other people's emotions.", facetId: "A_sympathy", dimension: "A", reversed: true },
   { id: 19, text: "Even a small change in a friend's expression makes me wonder what happened.", facetId: "A_sympathy", dimension: "A", reversed: false },
   { id: 20, text: "When someone says, 'I wish you understood how I feel,' I am not sure what they mean.", facetId: "A_sympathy", dimension: "A", reversed: true },
   { id: 21, text: "Hearing about a place I have never visited makes me want to go there.", facetId: "O_adventurousness", dimension: "O", reversed: false },
@@ -324,7 +325,7 @@ const EN_QUESTIONS: Question[] = [
   { id: 36, text: "My desk and bag are usually well organized.", facetId: "C_orderliness", dimension: "C", reversed: false },
   { id: 37, text: "I carefully manage my schedule with a planner or an app.", facetId: "C_orderliness", dimension: "C", reversed: false },
   { id: 38, text: "A messy room does not bother me very much.", facetId: "C_orderliness", dimension: "C", reversed: true },
-  { id: 39, text: "Before starting something, I first think through the order and plan.", facetId: "C_orderliness", dimension: "C", reversed: false },
+  { id: 39, text: "Before starting something, I think through the steps and make a plan.", facetId: "C_orderliness", dimension: "C", reversed: false },
   { id: 40, text: "I often leave things out, thinking I can tidy them up later.", facetId: "C_orderliness", dimension: "C", reversed: true },
   { id: 41, text: "When I get irritated, it tends to show on my face or in my behavior.", facetId: "N_volatility", dimension: "N", reversed: false },
   { id: 42, text: "When something unpleasant happens, it takes me a while to feel better.", facetId: "N_volatility", dimension: "N", reversed: false },
@@ -341,7 +342,7 @@ const EN_QUESTIONS: Question[] = [
 const EN_COPY: DiagnosisCopy = {
   heroTitle: "Free Personality Test",
   heroSubtitle: "Discover your type through the OCEAN (Big Five) model",
-  heroImageAlt: "Characters from Alice Test",
+  heroImageAlt: "Characters from Alice Personalities",
   nicknameLabel: "Nickname",
   nicknameHelper: "This name will appear on your results page.",
   genderLabel: "Gender (optional)",
@@ -406,7 +407,7 @@ const EN_COPY: DiagnosisCopy = {
       "Finding the type that fits you best...",
       "Narrowing down 32 personality types...",
       "Discovering your distinctive strengths...",
-      "Preparing your Alice Test result...",
+      "Preparing your Alice Personalities result...",
       "Adding the finishing touches...",
       "Your result is almost ready...",
     ],
@@ -453,5 +454,17 @@ export const DIAGNOSIS_LOCALES: Record<
     homePath: "/en",
     resultPath: "/en/result",
     copy: EN_COPY,
+  },
+  id: {
+    locale: "id",
+    questions: ID_QUESTIONS,
+    progressStorageKey: "torisetsu_answers_v2_id",
+    nicknameStorageKey: "torisetsu_nickname_v2_id",
+    genderStorageKey: "torisetsu_gender_v1_id",
+    resultStorageKey: "torisetsu_result_id",
+    startedStorageKey: "torisetsu_diag_started_id",
+    homePath: "/id",
+    resultPath: "/id/result",
+    copy: ID_DIAGNOSIS_COPY,
   },
 };

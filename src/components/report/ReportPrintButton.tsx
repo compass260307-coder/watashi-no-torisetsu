@@ -5,7 +5,7 @@
 export function ReportPrintButton({
   locale = "ja",
 }: {
-  locale?: "ja" | "ko" | "en";
+  locale?: "ja" | "ko" | "en" | "id";
 }) {
   return (
     <button
@@ -17,6 +17,8 @@ export function ReportPrintButton({
         ? "PDF로 저장하기"
         : locale === "en"
           ? "Save as PDF"
+          : locale === "id"
+            ? "Simpan sebagai PDF"
           : "PDFとして保存する"}
     </button>
   );

@@ -2,7 +2,7 @@
 // 友達平均スコア (他者が付けた OCEAN) からモテ寄与度を出し、主/隠れのモテポイントを決定的に選ぶ。
 
 import type { BigFiveDimension } from "./types";
-import type { ResultLocale } from "@/i18n/result";
+import type { AppResultLocale, ResultLocale } from "@/i18n/result";
 
 export type MotePoint = {
   /** 軸ラベル (見出し用の短いキーワード)。 */
@@ -438,7 +438,7 @@ const KO_LOVE_SCENE_BY_AXIS: Record<
 /** モテ寄与度トップ2軸のシーンを 1 段落にまとめて返す。計算不能なら null。 */
 export function resolveLoveScene(
   friendScores: Partial<Record<BigFiveDimension, number>>,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): string | null {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -449,6 +449,16 @@ export function resolveLoveScene(
   if (contrib.length < 2) return null;
 
   contrib.sort((a, b) => b.score - a.score);
+  if (locale === "id") {
+    const labels: Record<BigFiveDimension, string> = {
+      O: "rasa ingin tahu",
+      C: "perhatian pada detail",
+      E: "energi sosial",
+      A: "kepedulian",
+      N: "kepekaan emosional",
+    };
+    return `Misalnya, ${labels[contrib[0].ax]} dan ${labels[contrib[1].ax]} Anda dapat membuat momen sederhana terasa lebih dekat dan berkesan.`;
+  }
   const copy = locale === "ko" ? KO_LOVE_SCENE_BY_AXIS : LOVE_SCENE_BY_AXIS;
   const pick = (i: number) => {
     const { ax, v } = contrib[i];

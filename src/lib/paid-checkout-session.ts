@@ -22,7 +22,7 @@ export type VerifiedPaidCheckoutSession = Readonly<{
   userId: string | null;
   amountTotal: number | null;
   currency: string | null;
-  locale: "ja" | "ko" | "en";
+  locale: "ja" | "ko" | "en" | "id";
   guest: boolean;
   product: MetaPurchaseProduct;
   destinyFeaturesIncluded: boolean;
@@ -101,6 +101,8 @@ export async function verifyPaidMetaPurchaseCheckoutSession(
           ? "ko"
           : session.metadata?.locale === "en"
             ? "en"
+            : session.metadata?.locale === "id"
+              ? "id"
             : "ja",
       guest: session.metadata?.guest === "1",
       product,

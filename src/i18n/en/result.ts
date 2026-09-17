@@ -2,7 +2,7 @@ import type { BigFiveDimension } from "@/lib/types";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 
 export const EN_RESULT_COPY = {
-  metadataTitle: "My Personality Result | Alice Test",
+  metadataTitle: "My Personality Result | Alice Personalities",
   metadataDescription:
     "Your free Big Five personality result, explained through one of 32 character types.",
   heroLabel: "My personality type is",
@@ -53,7 +53,7 @@ export const EN_RESULT_TYPES: Record<ThirtyTwoTypeId, EnResultTypeCopy> = {
   "gentle-koala__N": { name: "Thoughtful Angel", animal: "Angel", essence: "Aesthete", oneLiner: "Wishing for another person's happiness is one of your deepest joys." },
   "gentle-koala__R": { name: "Immovable Golem", animal: "Golem", essence: "Connoisseur", oneLiner: "You want to love what matters to you quietly, deeply, and without hurry." },
   "solo-hedgehog__N": { name: "Shy Ghost", animal: "Ghost", essence: "Detective", oneLiner: "You may say very little, yet somehow you notice almost everything." },
-  "solo-hedgehog__R": { name: "Carefree Skeleton", animal: "Skeleton", essence: "Maverick", oneLiner: "Unbound by expectations, you move through life in your own wind." },
+  "solo-hedgehog__R": { name: "Carefree Skeleton", animal: "Skeleton", essence: "Maverick", oneLiner: "Unbound by expectations, you move through life in your own way." },
 };
 
 export type EnResultAxis = {

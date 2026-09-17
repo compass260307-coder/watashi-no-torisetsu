@@ -103,6 +103,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   const requestUrl = new URL(req.url);
   const isKo = requestUrl.searchParams.get("locale") === "ko";
   const isEn = requestUrl.searchParams.get("locale") === "en";
+  const isId = requestUrl.searchParams.get("locale") === "id";
 
   // ===== プレビュー (開発のみ): ?previewType=<32タイプID> は認可をスキップして
   // PDF生成専用ページのモック描画を PDF 化する =====
@@ -114,6 +115,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   if (isPreview) printParams.set("previewType", rawPreview);
   if (isKo) printParams.set("locale", "ko");
   if (isEn) printParams.set("locale", "en");
+  if (isId) printParams.set("locale", "id");
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未課金にはロック画面 PDF すら作らない) =====
@@ -132,7 +134,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     if (isUndiagnosedPlaceholderUser(data)) {
       const current = await getSession();
       return NextResponse.redirect(
-        `${resolveSiteUrl()}${isKo ? "/ko" : ""}${
+        `${resolveSiteUrl()}${isKo ? "/ko" : isId ? "/id" : ""}${
           current?.id === data.id ? "/diagnosis" : "/login"
         }`,
         303,
@@ -141,7 +143,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     const canDownload = await hasSelfReportAccess(data.id);
     if (!canDownload) {
       return NextResponse.redirect(
-        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/me/${encodeURIComponent(token)}`,
+        `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/me/${encodeURIComponent(token)}`,
         303,
       );
     }
@@ -152,7 +154,7 @@ export async function GET(req: Request, ctx: RouteContext) {
   }
 
   // ===== 日本語版: 診断キャラ別の縦書き小説をそのまま配信 =====
-  if (!isKo && !isEn && reportType) {
+  if (!isKo && !isEn && !isId && reportType) {
     try {
       const pdf = await loadJapaneseStoryPdf(reportType);
       return storyPdfResponse(reportType, pdf);
@@ -177,6 +179,8 @@ export async function GET(req: Request, ctx: RouteContext) {
     : new URL(req.url).origin;
   const pageUrl = isEn
     ? `${origin}/en/report/${encodeURIComponent(token)}/print${printQuery}`
+    : isId
+      ? `${origin}/id/report/${encodeURIComponent(token)}/print${printQuery}`
     : `${origin}/report/${encodeURIComponent(token)}/print${printQuery}`;
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
@@ -207,7 +211,7 @@ export async function GET(req: Request, ctx: RouteContext) {
       printBackground: true,
       // 韓国版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの最終要素後に
       // 生成する空白ページは配布物へ含めない。
-      pageRanges: isKo || isEn ? "1-16" : undefined,
+      pageRanges: isKo || isEn || isId ? "1-16" : undefined,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
 
@@ -216,8 +220,8 @@ export async function GET(req: Request, ctx: RouteContext) {
         "Content-Type": "application/pdf",
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
         "Content-Disposition":
-          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Test Complete Edition.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
+          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : isId ? "panduan-kepribadian-saya.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Personalities Complete Edition.pdf" : isId ? "Panduan Kepribadian Saya.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });
@@ -225,7 +229,7 @@ export async function GET(req: Request, ctx: RouteContext) {
     console.error("[/report/pdf] pdf generation failed:", err);
     // 生成失敗時は解放済みの自己診断結果へ案内する。
     return NextResponse.redirect(
-      `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : ""}/me/${encodeURIComponent(token)}`,
+      `${resolveSiteUrl()}${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/me/${encodeURIComponent(token)}`,
       303,
     );
   } finally {

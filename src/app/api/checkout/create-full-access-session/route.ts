@@ -72,7 +72,7 @@ import {
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
-type CheckoutLocale = "ja" | "ko" | "en";
+type CheckoutLocale = "ja" | "ko" | "en" | "id";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -110,7 +110,7 @@ function accessProductPriceForCheckout(
   entitlements: AccessEntitlements,
   paywallVersion: string,
 ): number {
-  if (locale !== "ja" || paywallVersion === THREE_COURSE_PAYWALL_VERSION) {
+  if ((locale !== "ja" && locale !== "id") || paywallVersion === THREE_COURSE_PAYWALL_VERSION) {
     return accessProductPrice(locale, product, entitlements);
   }
   if (product === "self_report") return LEGACY_JA_ACCESS_PRICES.self_report;
@@ -161,6 +161,12 @@ const CHECKOUT_PRICING = {
     listAmount: EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
     discountAmount:
       EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS,
+  },
+  id: {
+    currency: "jpy",
+    saleAmount: FULL_ACCESS_PRICE_JPY,
+    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
+    discountAmount: FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY,
   },
 } as const satisfies Record<
   CheckoutLocale,
@@ -230,11 +236,20 @@ const CHECKOUT_COPY: Record<
   en: {
     couponId: `wt-release-full-access-off${EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS}-usd`,
     couponName: "Release offer",
-    productName: "Alice Test — Complete Edition",
+    productName: "Alice Personalities — Complete Edition",
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings with one payment.",
     submitMessage:
       "One-time purchase. Keep access to every Complete Edition feature for $4.99, tax included.",
+  },
+  id: {
+    couponId: `wt-release-full-access-off${FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY}-jpy`,
+    couponName: "Penawaran peluncuran",
+    productName: "Alice Personalities — Edisi Lengkap",
+    productDescription:
+      "Buka laporan kepribadian lengkap dan PDF, sudut pandang teman, kecocokan, Peta Takdir, 30 jawaban dari astrolog AI pribadi Alice, serta tiga jenis pembacaan tarot dengan satu kali pembayaran.",
+    submitMessage:
+      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga ¥499, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
   },
 };
 
@@ -253,11 +268,18 @@ const CURRENT_FULL_ACCESS_COPY = {
       "한 번만 결제하면 궁합 진단·운명의 설계도·Alice와의 채팅 30회·타로를 포함한 완전판을 이용할 수 있어요. 30일 환불 보장.",
   },
   en: {
-    productName: "Alice Test — Complete Edition",
+    productName: "Alice Personalities — Complete Edition",
     productDescription:
       "Unlock your full personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 answers from your personal AI astrologer Alice, and all three tarot readings.",
     submitMessage:
       "One-time purchase. Keep access to every Complete Edition feature for $4.99, tax included.",
+  },
+  id: {
+    productName: "Alice Personalities — Edisi Lengkap",
+    productDescription:
+      "Buka laporan kepribadian lengkap dan PDF, sudut pandang teman, kecocokan, Peta Takdir, 30 jawaban dari astrolog AI pribadi Alice, serta tiga jenis pembacaan tarot.",
+    submitMessage:
+      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga ¥499, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
   },
 } as const;
 
@@ -279,6 +301,11 @@ const SELF_REPORT_COPY = {
   en: {
     productName: "Unavailable English plan",
     productDescription: "This plan is not offered in English.",
+    submitMessage: null,
+  },
+  id: {
+    productName: "Paket ini tidak tersedia",
+    productDescription: "Paket ini tidak ditawarkan dalam versi bahasa Indonesia.",
     submitMessage: null,
   },
 } as const;
@@ -303,6 +330,11 @@ const PREMIUM_BUNDLE_COPY = {
     productDescription: "This plan is not offered in English.",
     submitMessage: null,
   },
+  id: {
+    productName: "Paket ini tidak tersedia",
+    productDescription: "Paket ini tidak ditawarkan dalam versi bahasa Indonesia.",
+    submitMessage: null,
+  },
 } as const;
 
 type CheckoutSessionCreateParams = NonNullable<
@@ -317,7 +349,8 @@ function checkoutProductImage(
 ): string | null {
   if (!BASE_URL.startsWith("https://")) return null;
   const path =
-    product === "full_access" || (locale === "ja" && product === "self_report")
+    product === "full_access" ||
+    ((locale === "ja" || locale === "id") && product === "self_report")
       ? "/mascot/hoshiyomi-alice-writing-transparent.png"
       : product === "premium_bundle"
         ? "/mascot/unmei-hero.png"
@@ -550,7 +583,13 @@ export async function POST(request: NextRequest) {
   const paypayRedirect = body.payment_method === "paypay";
   const embedded = body.ui_mode === "embedded" && !paypayRedirect;
   const checkoutLocale: CheckoutLocale =
-    body.locale === "ko" ? "ko" : body.locale === "en" ? "en" : "ja";
+    body.locale === "ko"
+      ? "ko"
+      : body.locale === "en"
+        ? "en"
+        : body.locale === "id"
+          ? "id"
+          : "ja";
   if (body.product !== undefined && !isAccessProduct(body.product)) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
@@ -558,7 +597,7 @@ export async function POST(request: NextRequest) {
   // 不正値は完全版へフォールバックせず、誤課金防止で拒否する。
   const requestedProduct: AccessProduct = body.product ?? "full_access";
   const product: AccessProduct = requestedProduct;
-  if (checkoutLocale === "en" && product !== "full_access") {
+  if ((checkoutLocale === "en" || checkoutLocale === "id") && product !== "full_access") {
     return NextResponse.json(
       { error: "product_not_offered", code: "product_not_offered" },
       { status: 400 },
@@ -594,7 +633,7 @@ export async function POST(request: NextRequest) {
   }
   // 日本版は完全版へ一本化。韓国版の学生プランと、旧購入の権利は維持する。
   // premium_bundle は日本版の旧購入からのアップグレード互換用として許可する。
-  if (checkoutLocale === "ja" && !isCurrentJapaneseAccessProduct(product)) {
+  if ((checkoutLocale === "ja" || checkoutLocale === "id") && !isCurrentJapaneseAccessProduct(product)) {
     return NextResponse.json(
       {
         error: "product_not_offered",
@@ -649,7 +688,7 @@ export async function POST(request: NextRequest) {
   const returnTo = requestedReturnTo;
   const checkoutCopy =
     product === "self_report"
-      ? checkoutLocale === "ja" && usesCurrentOffer
+      ? (checkoutLocale === "ja" || checkoutLocale === "id") && usesCurrentOffer
         ? {
             ...CURRENT_FULL_ACCESS_COPY.ja,
             productName: SELF_REPORT_COPY.ja.productName,
@@ -663,8 +702,8 @@ export async function POST(request: NextRequest) {
             : CHECKOUT_COPY[checkoutLocale];
   const checkoutPricing = CHECKOUT_PRICING[checkoutLocale];
   const priceId =
-    product === "full_access" && checkoutLocale !== "en"
-      ? getFullAccessPriceId(checkoutLocale)
+    product === "full_access" && checkoutLocale === "ko"
+      ? getFullAccessPriceId("ko")
       : null;
   const normalizedPaywallSource = normalizePaywallSource(body.paywall_source);
   const paywallSource =
@@ -808,7 +847,13 @@ export async function POST(request: NextRequest) {
   //   ゲスト → 「購入完了 → 登録メールでログイン」ページ。
   const ownerToken = (buyer?.owner_token ?? "").trim();
   const localePrefix =
-    checkoutLocale === "ko" ? "/ko" : checkoutLocale === "en" ? "/en" : "";
+    checkoutLocale === "ko"
+      ? "/ko"
+      : checkoutLocale === "en"
+        ? "/en"
+        : checkoutLocale === "id"
+          ? "/id"
+          : "";
   const checkoutBaseUrl = getCheckoutBaseUrl(request);
   const aishoPath = `${localePrefix}/aisho`;
   // /aisho からの購入 (return_to='aisho') は、閲覧中のペア (?a=&b=) ごと /aisho に戻す。
@@ -898,6 +943,8 @@ export async function POST(request: NextRequest) {
           ? `${checkoutCopy.productName} 업그레이드`
           : checkoutLocale === "en"
             ? `${checkoutCopy.productName} upgrade`
+            : checkoutLocale === "id"
+              ? `Upgrade ke ${checkoutCopy.productName}`
             : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
     description: checkoutCopy.productDescription,
@@ -912,7 +959,7 @@ export async function POST(request: NextRequest) {
   let chargedAmount: number;
 
   const isStandardJapaneseCoursePurchase =
-    checkoutLocale === "ja" &&
+    (checkoutLocale === "ja" || checkoutLocale === "id") &&
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
@@ -1080,6 +1127,8 @@ export async function POST(request: NextRequest) {
                 ? { display_name: "ワタシのトリセツ" }
                 : checkoutLocale === "ko"
                   ? { display_name: "ALICE 진단" }
+                  : checkoutLocale === "id"
+                    ? { display_name: "Alice Personalities" }
                   : {}),
               icon: {
                 type: "url" as const,
@@ -1128,14 +1177,16 @@ export async function POST(request: NextRequest) {
           product === "full_access"
             ? AISHO_ACCESS_POLICY_FULL_INCLUDED
             : product === "self_report" &&
-                checkoutLocale === "ja" &&
+                (checkoutLocale === "ja" || checkoutLocale === "id") &&
                 usesCurrentOffer
               ? AISHO_ACCESS_POLICY_LITE_INCLUDED
               : AISHO_ACCESS_POLICY_PREMIUM_ONLY,
         upgrade_from: upgradeFrom,
         course_price_minor: String(coursePrice),
         course_price_jpy:
-          checkoutLocale === "ja" ? String(coursePrice) : "",
+          checkoutLocale === "ja" || checkoutLocale === "id"
+            ? String(coursePrice)
+            : "",
         tax_behavior: "inclusive",
         automatic_tax: automaticTaxEnabled ? "1" : "0",
         guest: userId ? "0" : "1",

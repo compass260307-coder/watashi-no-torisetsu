@@ -11,7 +11,7 @@ export function RecoveryUrlBox({
   locale = "ja",
 }: {
   url: string;
-  locale?: ResultLocale | "en";
+  locale?: ResultLocale | "en" | "id";
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -40,12 +40,16 @@ export function RecoveryUrlBox({
             ? "복사했어요 ✓"
             : locale === "en"
               ? "Copied ✓"
-              : "コピーしました ✓"
+              : locale === "id"
+                ? "Tersalin ✓"
+                : "コピーしました ✓"
           : locale === "ko"
             ? "이 주소를 복사해 저장하기"
             : locale === "en"
               ? "Copy and save this recovery link"
-              : "このURLをコピーして保存"}
+              : locale === "id"
+                ? "Salin dan simpan tautan pemulihan"
+                : "このURLをコピーして保存"}
       </button>
     </div>
   );

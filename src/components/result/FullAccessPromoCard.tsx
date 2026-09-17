@@ -108,12 +108,18 @@ const PRICE_COPY = {
         100,
     ),
   },
+  id: {
+    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
+    sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
+    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
+  },
 } as const;
 
 const SELF_REPORT_PRICE_COPY = {
   ja: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
   ko: `₩${SELF_REPORT_PRICE_KRW.toLocaleString("ko-KR")}`,
   en: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
+  id: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
 } as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
@@ -267,13 +273,59 @@ const KO_UNMEI: UnlockItem = {
   peek: KO_PEEK_UNMEI,
 };
 
+const ID_SELF_UNLOCKS: UnlockItem[] = [
+  {
+    title: "Buka semua 9 bagian hasil yang terkunci",
+    desc: "Baca seluruh kelanjutan hasilmu, dari cinta dan karier hingga kesan orang lain dan responsmu dalam berbagai situasi.",
+  },
+  {
+    title: "Ebook pribadi dengan 16+ halaman",
+    desc: "Kepribadian dan ciri khasmu dirangkum menjadi satu buku yang dapat disimpan, dicetak, dan dibaca kapan saja.",
+  },
+  {
+    title: "Chat dengan Alice, astrolog pribadimu",
+    desc: "Alice memahami kepribadian dan peta kelahiranmu, lalu membantumu membahas cinta, pekerjaan, dan hubungan.",
+  },
+  {
+    title: "Buka semua ramalan Alice",
+    desc: "Dapatkan Peta Takdir pribadi serta tarot satu kartu, tiga kartu, dan YA / TIDAK.",
+  },
+  {
+    title: "Buka seluruh analisis kecocokan",
+    desc: "Pelajari kecocokan cinta, persahabatan, dan pekerjaan, termasuk titik rawan salah paham.",
+  },
+  {
+    title: "Buka semua hasil teman setelah teman pertama",
+    desc: "Baca lembar hasil lengkap setiap teman, termasuk karakter, perbedaan persepsi, kecenderungan cinta, dan kecocokan.",
+  },
+  {
+    title: "Perbarui laporan sudut pandang teman kapan saja",
+    desc: "Gabungkan semua jawaban menjadi satu PDF lengkap dan buat ulang setiap kali ada teman baru yang menjawab.",
+  },
+];
+
+const ID_TAKO_UNLOCKS: UnlockItem[] = [
+  ID_SELF_UNLOCKS[5],
+  ID_SELF_UNLOCKS[6],
+  ID_SELF_UNLOCKS[2],
+  ID_SELF_UNLOCKS[3],
+  ID_SELF_UNLOCKS[4],
+  ID_SELF_UNLOCKS[0],
+  ID_SELF_UNLOCKS[1],
+];
+
+const ID_UNMEI: UnlockItem = {
+  title: "Peta Takdir pribadimu",
+  desc: "Pembacaan AI empat bab yang menggabungkan profil kepribadian dan peta kelahiran, plus tiga jenis tarot Alice.",
+};
+
 const EN_SELF_UNLOCKS: UnlockItem[] = [
   {
     title: "Unlock all 9 locked sections of your result",
     desc: "Read every remaining section, from deeper love and career insights to how others see you and how you respond in real-life situations.",
   },
   {
-    title: "Your personal ebook with 16+ pages",
+    title: "A personalized ebook with 16+ pages",
     desc: "Receive your personality and defining traits in a book made for you. Save it, print it, and revisit it whenever you like.",
     peek: EN_PEEK_EBOOK,
   },
@@ -293,7 +345,7 @@ const EN_SELF_UNLOCKS: UnlockItem[] = [
     peek: EN_PEEK_AISHO,
   },
   {
-    title: "Unlock every friend diagnosis after the first",
+    title: "Unlock every friend result after the first",
     desc: "Read each friend's full result sheet, including the character they see, personality gaps, love tendencies, and compatibility.",
   },
   {
@@ -513,6 +565,7 @@ export function FullAccessPromoCard({
 }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const planLocale: AppResultLocale = locale;
   const [selectedStandaloneProduct, setSelectedStandaloneProduct] = useState<
     "self_report" | null
@@ -561,7 +614,11 @@ export function FullAccessPromoCard({
     "full_access",
     displayedEntitlements,
   );
-  const baseUnlocks = isEnglish
+  const baseUnlocks = isIndonesian
+    ? surface === "tako"
+      ? ID_TAKO_UNLOCKS
+      : ID_SELF_UNLOCKS
+    : isEnglish
     ? surface === "tako"
       ? EN_TAKO_UNLOCKS
       : EN_SELF_UNLOCKS
@@ -584,13 +641,13 @@ export function FullAccessPromoCard({
     returnTo === "hoshiyomi"
       ? promoteUnlockItem(
           baseUnlocks,
-          isEnglish ? EN_SELF_UNLOCKS[2] : isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
+          isIndonesian ? ID_SELF_UNLOCKS[2] : isEnglish ? EN_SELF_UNLOCKS[2] : isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
         )
       : returnTo === "unmei"
         ? promoteUnlockItem(
             baseUnlocks,
-            isEnglish ? EN_SELF_UNLOCKS[3] : isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
-            isEnglish ? EN_UNMEI : isKorean ? KO_UNMEI : U_UNMEI,
+            isIndonesian ? ID_SELF_UNLOCKS[3] : isEnglish ? EN_SELF_UNLOCKS[3] : isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
+            isIndonesian ? ID_UNMEI : isEnglish ? EN_UNMEI : isKorean ? KO_UNMEI : U_UNMEI,
           )
         : baseUnlocks;
   const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
@@ -697,8 +754,10 @@ export function FullAccessPromoCard({
     ? "/pricing/self-report-felt-transparent.png"
     : imageSrc;
   const cardImageAlt = isStandaloneSelfReport
-    ? isEnglish
-      ? "A dedicated ebook for your self and friend diagnoses"
+    ? isIndonesian
+      ? "Ebook khusus untuk hasil kepribadian dan temanmu"
+      : isEnglish
+      ? "A dedicated ebook for your personality and friend results"
       : isKorean
       ? "자기 진단과 친구 진단 전용 리포트"
       : "自己診断と友達診断の専用電子書籍"
@@ -706,8 +765,10 @@ export function FullAccessPromoCard({
   const hasImage = !!cardImageSrc;
   // 日本版の新規販売は完全版のみ。韓国版と開発用の旧カード互換は残す。
   const courseSwitchLabel = isStandaloneSelfReport
-    ? isEnglish
-      ? "See the complete version"
+    ? isIndonesian
+      ? "Lihat Edisi Lengkap"
+      : isEnglish
+      ? "See the Complete Edition"
       : isKorean
       ? "완전판 보기"
       : "完全版はこちら"
@@ -722,7 +783,9 @@ export function FullAccessPromoCard({
     >
       {benefitsBeforePrice ? null : (
         <h3 className="text-[16px] font-bold leading-snug text-[#2E2E5C]">
-          {isEnglish
+          {isIndonesian
+            ? "Yang akan terbuka"
+            : isEnglish
             ? "What you’ll unlock"
             : isKorean
             ? "업그레이드로 이용할 수 있는 항목"
@@ -895,7 +958,7 @@ export function FullAccessPromoCard({
             <button
               type="button"
               onClick={onClose}
-              aria-label={isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
+              aria-label={isIndonesian ? "Tutup" : isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
               className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
               style={{ backgroundColor: tone.accent }}
             >
@@ -955,12 +1018,16 @@ export function FullAccessPromoCard({
                 <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
               </svg>
               {isSelfReportProduct
-                ? isEnglish
-                  ? "Complete version"
+                ? isIndonesian
+                  ? "Edisi Lengkap"
+                  : isEnglish
+                  ? "Complete Edition"
                   : isKorean
                   ? "학생 플랜"
                   : "学生向けプラン"
-                : isEnglish
+                : isIndonesian
+                  ? "Buka sekarang"
+                  : isEnglish
                   ? "Unlock now"
                   : isKorean
                   ? "지금 잠금 해제"
@@ -973,7 +1040,13 @@ export function FullAccessPromoCard({
               className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
             >
               {isSelfReportProduct ? (
-                isEnglish ? (
+                isIndonesian ? (
+                  <>
+                    Kisahmu belum
+                    <br />
+                    selesai
+                  </>
+                ) : isEnglish ? (
                   <>
                     Your story isn’t
                     <br />
@@ -992,6 +1065,12 @@ export function FullAccessPromoCard({
                     まだ完結していません
                   </>
                 )
+              ) : isIndonesian ? (
+                <>
+                  Kisahmu belum
+                  <br />
+                  selesai
+                </>
               ) : isEnglish ? (
                 <>
                   Your story isn’t
@@ -1016,12 +1095,16 @@ export function FullAccessPromoCard({
             {/* 続編訴求 */}
             <p className="body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E]">
               {isSelfReportProduct
-                ? isEnglish
-                  ? "Unlock the rest of your diagnosis, your friends’ perspective, and your personal ebook with one payment."
+                ? isIndonesian
+                  ? "Buka kelanjutan hasil kepribadian, pandangan teman, dan ebook pribadimu dengan satu kali pembayaran."
+                  : isEnglish
+                  ? "Unlock the rest of your personality result, your friends’ perspectives, and your personal ebook with one payment."
                   : isKorean
                   ? "자기 진단과 친구 진단, 16페이지 이상의 전용 전자책을 1회 결제로 이용할 수 있어요."
                   : "診断結果の続き・友達から見たあなた・あなただけの電子書籍まで、すべて買い切りで楽しめます。"
-                : isEnglish
+                : isIndonesian
+                  ? "Kamu sudah membaca laporan gratis. Selami cinta, pekerjaan, hubungan, pandangan teman, astrologi, tarot, dan panduan Alice lebih jauh."
+                  : isEnglish
                   ? "You’ve read the free report. Now go one step deeper into love, work, relationships, how friends see you, and Alice’s astrology, tarot, and guidance."
                   : isKorean
                   ? "무료 리포트를 읽었다면 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상과 Alice의 운세·타로·상담까지 모두 열립니다."
@@ -1050,9 +1133,9 @@ export function FullAccessPromoCard({
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
-              ) : locale === "ja" || isEnglish ? (
+              ) : locale === "ja" || isEnglish || isIndonesian ? (
                 <span className="text-[36px] font-black leading-none text-black">
-                  <span className="sr-only">{isEnglish ? "Price" : "価格"}</span>
+                  <span className="sr-only">{isIndonesian ? "Harga" : isEnglish ? "Price" : "価格"}</span>
                   {price.sale}
                 </span>
               ) : (
@@ -1067,7 +1150,9 @@ export function FullAccessPromoCard({
                 hasImage ? "" : "text-center"
               }`}
             >
-              {isEnglish
+              {isIndonesian
+                ? "Sekali bayar — tanpa langganan"
+                : isEnglish
                 ? "One-time payment — no subscription"
                 : isKorean
                 ? "월 구독이 아닌, 1회 결제"
@@ -1077,7 +1162,7 @@ export function FullAccessPromoCard({
             <div className="mt-4">
               <FullAccessCta
                 ownerToken={ownerToken}
-                unauthHref={isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
+                unauthHref={isIndonesian ? "/id/diagnosis" : isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
                 locale={locale}
                 source={
                   isStandaloneSelfReport
@@ -1108,12 +1193,16 @@ export function FullAccessPromoCard({
                 }
               >
                 {isSelfReportProduct
-                  ? isEnglish
-                    ? "Unlock the complete version →"
+                  ? isIndonesian
+                    ? "Buka Edisi Lengkap →"
+                    : isEnglish
+                    ? "Unlock the Complete Edition →"
                     : isKorean
                     ? "학생 플랜으로 해제 →"
                     : SELF_REPORT_UNLOCK_LABEL
-                  : isEnglish
+                  : isIndonesian
+                    ? "Buka semua hasil →"
+                    : isEnglish
                     ? "Unlock all results →"
                     : isKorean
                     ? "모든 결과 잠금 해제 →"
@@ -1142,10 +1231,12 @@ export function FullAccessPromoCard({
                 <path d="M9 12l2 2 4-4" />
               </svg>
               <span>
-                {isEnglish ? "30-day money-back guarantee ·" : isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
+                {isIndonesian ? "Garansi uang kembali 30 hari ·" : isEnglish ? "30-day money-back guarantee ·" : isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
               </span>
               <span>
-                {isEnglish
+                {isIndonesian
+                  ? `Dipercaya oleh ${DIAGNOSIS_COUNT_SNAPSHOT}+ orang`
+                  : isEnglish
                   ? `Trusted by ${DIAGNOSIS_COUNT_SNAPSHOT}+ people`
                   : isKorean
                   ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`

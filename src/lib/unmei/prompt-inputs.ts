@@ -17,6 +17,7 @@ import {
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { EN_RESULT_TYPES } from "@/i18n/en/result";
+import { ID_RESULT_TYPES } from "@/i18n/id/result";
 
 type Scores = Record<string, number>;
 
@@ -36,6 +37,9 @@ const KO_GROUP_LABEL: Record<ThirtyTwoGroup, string> = {
 const EN_GROUP_LABEL: Record<ThirtyTwoGroup, string> = {
   sky: "Sky", land: "Land", sea: "Sea", unknown: "Unknown",
 };
+const ID_GROUP_LABEL: Record<ThirtyTwoGroup, string> = {
+  sky: "Langit", land: "Darat", sea: "Laut", unknown: "Misteri",
+};
 
 export type UnmeiIdentity = {
   typeName: string; // きらめきクラゲ
@@ -47,7 +51,7 @@ export type UnmeiIdentity = {
 export async function resolveUnmeiPromptInputs(
   supabaseAdmin: SupabaseClient,
   userId: string,
-  requestedLocale?: "ja" | "ko" | "en",
+  requestedLocale?: "ja" | "ko" | "en" | "id",
 ): Promise<{
   scores: Scores | null;
   essence: string | null;
@@ -72,11 +76,12 @@ export async function resolveUnmeiPromptInputs(
   try {
     const id = classifyThirtyTwoType(scores);
     const group = thirtyTwoGroup(id);
-    const locale = requestedLocale ?? (data?.preferred_locale === "ko" ? "ko" : data?.preferred_locale === "en" ? "en" : "ja");
+    const locale = requestedLocale ?? (data?.preferred_locale === "ko" ? "ko" : data?.preferred_locale === "en" ? "en" : data?.preferred_locale === "id" ? "id" : "ja");
     const koCopy = locale === "ko" ? KO_RESULT_TYPES[id] : null;
     const enCopy = locale === "en" ? EN_RESULT_TYPES[id] : null;
-    const typeName = enCopy?.name ?? koCopy?.name ?? thirtyTwoName(id);
-    const essence = enCopy?.essence ?? koCopy?.essence ?? thirtyTwoEssence(id);
+    const idCopy = locale === "id" ? ID_RESULT_TYPES[id] : null;
+    const typeName = idCopy?.name ?? enCopy?.name ?? koCopy?.name ?? thirtyTwoName(id);
+    const essence = idCopy?.essence ?? enCopy?.essence ?? koCopy?.essence ?? thirtyTwoEssence(id);
     return {
       scores,
       essence,
@@ -84,8 +89,8 @@ export async function resolveUnmeiPromptInputs(
       animalSlug: thirtyTwoAnimalSlug(id),
       identity: {
         typeName,
-        catchphrase: enCopy?.oneLiner ?? koCopy?.oneLiner ?? thirtyTwoCatchphrase(id),
-        groupLabel: locale === "ko" ? KO_GROUP_LABEL[group] : locale === "en" ? EN_GROUP_LABEL[group] : GROUP_LABEL[group],
+        catchphrase: idCopy?.oneLiner ?? enCopy?.oneLiner ?? koCopy?.oneLiner ?? thirtyTwoCatchphrase(id),
+        groupLabel: locale === "id" ? ID_GROUP_LABEL[group] : locale === "ko" ? KO_GROUP_LABEL[group] : locale === "en" ? EN_GROUP_LABEL[group] : GROUP_LABEL[group],
         groupColor: thirtyTwoColor(id),
       },
     };

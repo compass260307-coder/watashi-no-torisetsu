@@ -28,6 +28,8 @@ export function PerceptionMessageCard({
       <p className="text-[#5B5BEF] font-bold text-sm mb-4 text-center">
         {locale === "en"
           ? `A message from ${perceiverName}`
+          : locale === "id"
+            ? `Pesan dari ${perceiverName}`
           : locale === "ko"
           ? `${perceiverName}님이 남긴 메시지`
           : `${perceiverName}さんからのメッセージ`}

@@ -33,6 +33,16 @@ const COPY = {
       "Your purchase includes a 30-day money-back guarantee. To request a refund, email us from the address used for your purchase at",
     refundAfter: ".",
   },
+  id: {
+    title: "Terima kasih atas pembelianmu!",
+    bodyBefore: "Pembacaanmu terhubung dengan alamat email yang digunakan untuk membeli.",
+    bodyAfter: "Masuk dengan alamat email yang sama untuk mengisi data kelahiran dan membuat",
+    product: "Peta Takdir",
+    productSuffix: ".",
+    refundBefore:
+      "Pembelianmu dilindungi garansi uang kembali 30 hari. Untuk meminta pengembalian dana, kirim email dari alamat yang digunakan untuk membeli ke",
+    refundAfter: ".",
+  },
 } as const;
 
 export default function UnmeiGuestPurchaseComplete({

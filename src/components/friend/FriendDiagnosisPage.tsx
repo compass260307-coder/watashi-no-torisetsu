@@ -98,6 +98,12 @@ const PREVIEW_OWNER_INFO: Record<AppResultLocale, OwnerInfo> = {
     sixteenTypeId: "sparkle-dolphin",
     thirtyTwoTypeId: "sparkle-dolphin__N",
   },
+  id: {
+    ...EMPTY_OWNER_INFO,
+    displayName: "Alya",
+    sixteenTypeId: "sparkle-dolphin",
+    thirtyTwoTypeId: "sparkle-dolphin__N",
+  },
 };
 
 // 1人で完結する友達診断 (2026-07-18): 30 問 = 10 問 × 3 ページ。

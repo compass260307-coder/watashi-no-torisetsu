@@ -22,9 +22,10 @@ const FONT_STACK =
 export default function TopHero({
   locale = "ja",
 }: {
-  locale?: "ja" | "en";
+  locale?: "ja" | "en" | "id";
 }) {
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   return (
     <>
       {/* SEO/CWV: ヒーロー背景 (= LCP 要素) を先読みして描画を早める。
@@ -79,7 +80,9 @@ export default function TopHero({
             どの幅でも構図が崩れない / 640px〜 は従来の clamp)。 */}
         <h1 className="top-hero-h1">
           {isEnglish
-            ? "“So this is how my friends see me.”"
+            ? "Alice Personalities: See yourself through your friends’ eyes."
+            : isIndonesian
+              ? "“Jadi, begini teman-teman melihat diriku.”"
             : "「友達には、こんなワタシが見えてたんだ」"}
         </h1>
 
@@ -92,7 +95,13 @@ export default function TopHero({
             <>
               Discover the “real you” your friends see,
               <br className="hidden sm:inline" />
-              with almost unsettling honesty.
+              with surprising clarity.
+            </>
+          ) : isIndonesian ? (
+            <>
+              Temukan dirimu yang terlihat oleh teman-teman,
+              <br className="hidden sm:inline" />
+              dengan kejujuran yang mengejutkan.
             </>
           ) : (
             <>
@@ -106,13 +115,13 @@ export default function TopHero({
         {/* CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去 */}
         <div className="top-hero-cta-wrap">
           <Link
-            href={isEnglish ? "/en/diagnosis" : "/diagnosis"}
+            href={isEnglish ? "/en/diagnosis" : isIndonesian ? "/id/diagnosis" : "/diagnosis"}
             prefetch={false}
             onClick={() => trackTopCta(locale)}
             className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"
             style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
           >
-            {isEnglish ? "Start the free test →" : "無料で診断をはじめる →"}
+            {isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
           </Link>
         </div>
       </div>

@@ -16,6 +16,8 @@ export default function UnmeiPayPreview({
       <p className="mb-4 text-center text-sm font-bold text-[#8A8AA3]">
         {locale === "en"
           ? "[dev] Embedded checkout"
+          : locale === "id"
+            ? "[dev] Formulir pembayaran dalam chat"
           : locale === "ko"
             ? "[dev] 채팅 결제 양식"
             : "[dev] チャット内決済フォーム"}

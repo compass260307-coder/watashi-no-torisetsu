@@ -79,6 +79,7 @@ export function PaywallOverlay({
 
   const isKorean = cardProps.locale === "ko";
   const isEnglish = cardProps.locale === "en";
+  const isIndonesian = cardProps.locale === "id";
 
   const updateScrollToTopVisibility = () => {
     const container = scrollContainerRef.current;
@@ -109,7 +110,7 @@ export function PaywallOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={isEnglish ? "Unlock results" : isKorean ? "잠금 해제" : "ロック解除"}
+      aria-label={isEnglish ? "Unlock results" : isIndonesian ? "Buka hasil" : isKorean ? "잠금 해제" : "ロック解除"}
       // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
       onClick={onClose}
@@ -133,7 +134,7 @@ export function PaywallOverlay({
       </div>
       <button
         type="button"
-        aria-label={isEnglish ? "Back to the top of this dialog" : isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
+        aria-label={isEnglish ? "Back to the top of this dialog" : isIndonesian ? "Kembali ke bagian atas dialog" : isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
         aria-hidden={!showScrollToTop}
         tabIndex={showScrollToTop ? 0 : -1}
         onClick={(event) => {
@@ -160,7 +161,7 @@ export function PaywallOverlay({
         >
           <path d="m6 15 6-6 6 6" />
         </svg>
-        <span>{isEnglish ? "Top" : isKorean ? "맨 위로" : "上へ"}</span>
+        <span>{isEnglish ? "Top" : isIndonesian ? "Ke atas" : isKorean ? "맨 위로" : "上へ"}</span>
       </button>
     </div>,
     document.body,

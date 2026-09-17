@@ -38,6 +38,10 @@ export function TrisetsuNameTag({
           <>
             <span className="wtr-logo-name">{name}</span>’s profile
           </>
+        ) : locale === "id" ? (
+          <>
+            Profil <span className="wtr-logo-name">{name}</span>
+          </>
         ) : locale === "ko" ? (
           <>
             <span className="wtr-logo-name">{name}</span>의 사용설명서

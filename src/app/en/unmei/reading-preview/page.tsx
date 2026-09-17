@@ -51,7 +51,7 @@ const PREVIEW_CHART: Chart = {
 };
 
 export const metadata: Metadata = {
-  title: { absolute: "Destiny Blueprint Preview | Alice Test" },
+  title: { absolute: "Destiny Blueprint Preview | Alice Personalities" },
   robots: { index: false, follow: false },
 };
 

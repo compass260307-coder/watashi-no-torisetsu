@@ -18,10 +18,17 @@ export async function getTarotAccessState(): Promise<TarotAccessState> {
 }
 
 export function redirectToTarotPaywall(
-  locale: "ja" | "ko" | "en",
+  locale: "ja" | "ko" | "en" | "id",
   ownerToken: string | null,
 ): never {
-  const localePrefix = locale === "ko" ? "/ko" : locale === "en" ? "/en" : "";
+  const localePrefix =
+    locale === "ko"
+      ? "/ko"
+      : locale === "en"
+        ? "/en"
+        : locale === "id"
+          ? "/id"
+          : "";
   const returnPath = ownerToken
     ? `${localePrefix}/me/${encodeURIComponent(ownerToken)}`
     : localePrefix || "/";
@@ -33,7 +40,7 @@ export function redirectToTarotPaywall(
  * 未購入は自分の結果ページ（未診断はトップ）へ戻し、
  * BottomNav にタロット用の課金モーダルを開かせる。
  */
-export async function requireTarotAccess(locale: "ja" | "ko" | "en") {
+export async function requireTarotAccess(locale: "ja" | "ko" | "en" | "id") {
   const access = await getTarotAccessState();
   if (access.purchased) return;
   redirectToTarotPaywall(locale, access.ownerToken);

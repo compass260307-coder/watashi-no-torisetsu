@@ -4,6 +4,6 @@
  */
 export function trackingPageFromPathname(pathname: string): string {
   const segments = pathname.split("/").filter(Boolean);
-  const pageIndex = segments[0] === "ko" ? 1 : 0;
+  const pageIndex = ["ko", "en", "id"].includes(segments[0] ?? "") ? 1 : 0;
   return segments[pageIndex] ?? "top";
 }

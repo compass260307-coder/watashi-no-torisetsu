@@ -169,6 +169,34 @@ const EN_CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   { heading: "What the team quietly relies on", body: "An ordinary habit of yours may already be supporting everyone around you." },
 ];
 
+const ID_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Menerima perhatian tanpa harus berusaha keras", body: "Kedekatan dapat tumbuh meski Anda tidak selalu mencoba membuktikan diri." },
+  { heading: "Mengatakan apa yang Anda butuhkan", body: "Keinginan yang jelas memberi pasangan kesempatan untuk menyayangi Anda dengan tepat." },
+  { heading: "Memberi ruang bagi keheningan", body: "Hari yang tenang tidak otomatis berarti hubungan telah berubah." },
+  { heading: "Menjaga perhatian tetap seimbang", body: "Mengharapkan perhatian kembali adalah bagian wajar dari hubungan yang sehat." },
+];
+
+const ID_LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Hal yang tersembunyi di balik ‘aku baik-baik saja’", body: "Pasangan bisa memilih diam karena hubungan ini penting, bukan karena tidak ada masalah." },
+  { heading: "Saat kesabaran mulai menipis", body: "Momen yang menciptakan beban tak terucap sering memiliki pola yang dapat dikenali." },
+  { heading: "Tanda yang perlu disadari lebih awal", body: "Perubahan kecil dalam nada bicara dapat menunjukkan kebutuhan sebelum berubah menjadi jarak." },
+  { heading: "Pertanyaan yang memulihkan kepercayaan", body: "Percakapan lembut dapat mengubah rasa kesal menjadi sesuatu yang diselesaikan bersama." },
+];
+
+const ID_CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Membangun sesuatu dari nol", body: "Sebagian orang berkembang ketika tidak ada jawaban tetap dan penilaian pribadi mendapat ruang." },
+  { heading: "Peran terbaik Anda dalam tim", body: "Memimpin dari depan dan menguatkan dari belakang membutuhkan energi yang berbeda." },
+  { heading: "Kedalaman atau variasi", body: "Keseimbangan antara spesialisasi dan keluasan memengaruhi keberlanjutan kerja." },
+  { heading: "Lingkungan yang menguras energi", body: "Tempat kerja yang perlahan mengurangi motivasi biasanya memiliki ciri yang jelas." },
+];
+
+const ID_CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
+  { heading: "Jarak kerja yang paling cocok", body: "Hubungan kerja terbaik tidak lebih dekat atau lebih dingin daripada yang dapat Anda jaga." },
+  { heading: "Menetapkan batas pada permintaan", body: "Pilihan kata yang tepat membantu menjaga kapasitas tanpa merusak kepercayaan." },
+  { heading: "Bekerja dengan orang yang sulit", body: "Jarak yang disengaja dapat mengurangi gesekan tanpa memaksakan kedekatan palsu." },
+  { heading: "Hal yang diam-diam diandalkan tim", body: "Kebiasaan yang terasa biasa bagi Anda mungkin sudah menopang orang-orang di sekitar." },
+];
+
 const KO_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
     heading: "애쓰지 않고 곁에 있는 날",
@@ -294,6 +322,8 @@ function LockedBlock({
           <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
             {locale === "en"
               ? "Unlock now"
+              : locale === "id"
+                ? "Buka sekarang"
               : locale === "ko"
                 ? "지금 잠금 해제"
                 : "今すぐロックを解除"}
@@ -307,6 +337,8 @@ function LockedBlock({
           >
             {locale === "en"
               ? "See the complete result"
+              : locale === "id"
+                ? "Lihat hasil lengkap"
               : locale === "ko"
                 ? "지금 확인하기"
                 : "今すぐアクセス"}
@@ -388,6 +420,29 @@ const EN_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
   "Relationships at work": {
     decoyItems: EN_CAREER_RELATIONS_DECOY_ITEMS,
     cardCopy: <>Unlock the Complete Edition to understand your healthiest way of working with people.</>,
+    source: "career_relations_card",
+  },
+};
+
+const ID_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
+  "Panduan bagi orang yang menyukai Anda": {
+    decoyItems: ID_LOVE_DECOY_ITEMS,
+    cardCopy: <>Buka Edisi Lengkap untuk memahami cara seseorang dapat menyayangi Anda dengan baik.</>,
+    source: "love_payoff_card",
+  },
+  "Hal yang mungkin diam-diam ditahan pasangan": {
+    decoyItems: ID_LOVE_ENDURE_DECOY_ITEMS,
+    cardCopy: <>Buka Edisi Lengkap untuk melihat hal yang mungkin sulit diucapkan pasangan.</>,
+    source: "love_endure_card",
+  },
+  "Gaya kerja yang cocok dan lingkungan yang perlu dihindari": {
+    decoyItems: ID_CAREER_FIT_DECOY_ITEMS,
+    cardCopy: <>Buka Edisi Lengkap untuk menemukan gaya dan lingkungan kerja yang paling cocok.</>,
+    source: "career_fit_card",
+  },
+  "Hubungan di tempat kerja": {
+    decoyItems: ID_CAREER_RELATIONS_DECOY_ITEMS,
+    cardCopy: <>Buka Edisi Lengkap untuk memahami cara membangun hubungan kerja yang sehat.</>,
     source: "career_relations_card",
   },
 };
@@ -474,12 +529,16 @@ export function DeepDiveSections({
   const lockedBlockConfig =
     locale === "en"
       ? EN_LOCKED_BLOCK_CONFIG
+      : locale === "id"
+        ? ID_LOCKED_BLOCK_CONFIG
       : locale === "ko"
         ? KO_LOCKED_BLOCK_CONFIG
         : LOCKED_BLOCK_CONFIG;
   const fallbackLockedHeading =
     locale === "en"
       ? "A manual for someone who falls for you"
+      : locale === "id"
+        ? "Panduan bagi orang yang menyukai Anda"
       : locale === "ko"
         ? "나를 좋아하게 된 사람이 읽는 사용설명서"
         : "あなたを好きになった人が読むトリセツ";
@@ -590,10 +649,12 @@ export function DeepDiveSections({
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              {locale === "ko" ? "다른 심층 결과도 해제" : "他の深掘りも解除"}
+              {locale === "id" ? "Buka hasil mendalam lainnya" : locale === "ko" ? "다른 심층 결과도 해제" : "他の深掘りも解除"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
-              {locale === "ko" ? (
+              {locale === "id" ? (
+                <>Baca semua pembahasan mendalam tentang {lockedLabels} di Edisi Lengkap.</>
+              ) : locale === "ko" ? (
                 <>완전판에서 {lockedLabels}의 자세한 내용을 모두 읽을 수 있어요.</>
               ) : (
                 <>
@@ -608,7 +669,7 @@ export function DeepDiveSections({
               source="deepdive_card"
               className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              {locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+              {locale === "id" ? "Lihat sekarang" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
             </PaywallScrollButton>
           </div>
         </div>

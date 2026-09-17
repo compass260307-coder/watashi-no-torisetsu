@@ -79,6 +79,8 @@ export function MutualUnderstandingRadar({
         aria-label={
           locale === "en"
             ? `Big Five radar chart comparing ${selfLabel} and ${otherLabel}`
+            : locale === "id"
+            ? `Grafik radar lima dimensi yang membandingkan ${selfLabel} dan ${otherLabel}`
             : locale === "ko"
             ? `${selfLabel}과 ${otherLabel}의 Big Five 5개 축 레이더 차트`
             : `${selfLabel} と ${otherLabel} の Big Five 5 次元レーダーチャート`

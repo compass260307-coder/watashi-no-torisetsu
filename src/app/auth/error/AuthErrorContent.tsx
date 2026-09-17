@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type AuthErrorLocale = "ja" | "ko" | "en";
+type AuthErrorLocale = "ja" | "ko" | "en" | "id";
 
 interface ReasonContent {
   heading: string;
@@ -105,6 +105,30 @@ const EN_FALLBACK: ReasonContent = {
   primaryAction: { label: "Get a new sign-in link", href: "/en/login" },
 };
 
+const ID_REASON_CONTENT: Record<string, ReasonContent> = {
+  missing_token: {
+    heading: "Tautan ini tidak lengkap",
+    description: "Sebagian tautan mungkin hilang atau tidak tersalin dengan benar. Buka kembali tautan asli dari email Anda.",
+    primaryAction: { label: "Dapatkan tautan masuk baru", href: "/id/login" },
+  },
+  invalid_or_expired: {
+    heading: "Tautan ini tidak dapat digunakan",
+    description: "Tautan sudah kedaluwarsa atau telah digunakan. Tautan masuk berlaku selama satu jam dan hanya dapat digunakan sekali.",
+    primaryAction: { label: "Dapatkan tautan masuk baru", href: "/id/login" },
+  },
+  server_error: {
+    heading: "Terjadi gangguan sementara",
+    description: "Coba lagi beberapa saat lagi. Jika masalah berlanjut, minta tautan masuk baru.",
+    primaryAction: { label: "Dapatkan tautan masuk baru", href: "/id/login" },
+  },
+};
+
+const ID_FALLBACK: ReasonContent = {
+  heading: "Tautan tidak dapat diverifikasi",
+  description: "Minta tautan masuk baru lalu coba lagi.",
+  primaryAction: { label: "Dapatkan tautan masuk baru", href: "/id/login" },
+};
+
 export function AuthErrorContent({
   reason,
   locale = "ja",
@@ -114,14 +138,17 @@ export function AuthErrorContent({
 }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const contentMap = isKorean
     ? KO_REASON_CONTENT
     : isEnglish
       ? EN_REASON_CONTENT
-      : REASON_CONTENT;
+      : isIndonesian
+        ? ID_REASON_CONTENT
+        : REASON_CONTENT;
   const content: ReasonContent =
     (reason ? contentMap[reason] : undefined) ??
-    (isKorean ? KO_FALLBACK : isEnglish ? EN_FALLBACK : FALLBACK);
+    (isKorean ? KO_FALLBACK : isEnglish ? EN_FALLBACK : isIndonesian ? ID_FALLBACK : FALLBACK);
 
   return (
     <main className="flex flex-col flex-1 items-center justify-center px-5 py-10 max-w-lg mx-auto w-full">
@@ -131,7 +158,9 @@ export function AuthErrorContent({
             ? "로그인 링크 오류"
             : isEnglish
               ? "SIGN-IN LINK ERROR"
-              : "AUTH ERROR"}
+              : isIndonesian
+                ? "KESALAHAN TAUTAN MASUK"
+                : "AUTH ERROR"}
         </p>
         <h1 className="text-2xl font-extrabold leading-tight">
           {content.heading}
@@ -154,14 +183,16 @@ export function AuthErrorContent({
       )}
 
       <Link
-        href={isKorean ? "/ko" : isEnglish ? "/en" : "/"}
+        href={isKorean ? "/ko" : isEnglish ? "/en" : isIndonesian ? "/id" : "/"}
         className="text-xs text-muted/70 underline hover:text-foreground text-center mt-8"
       >
         {isKorean
           ? "홈으로 돌아가기"
           : isEnglish
             ? "Back to home"
-            : "トップに戻る"}
+            : isIndonesian
+              ? "Kembali ke beranda"
+              : "トップに戻る"}
       </Link>
     </main>
   );

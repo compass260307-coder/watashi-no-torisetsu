@@ -31,6 +31,7 @@ const HEDGE_TERMS = {
     "추측됩니다",
   ],
   en: ["might", "maybe", "perhaps", "possibly", "probably"],
+  id: ["mungkin", "barangkali", "bisa jadi", "kemungkinan"],
 };
 // reading (hitokoto + 各 section の subline/body) に推量表現が含まれるか。検出語を返す。
 function detectHedges(reading, locale) {
@@ -39,7 +40,7 @@ function detectHedges(reading, locale) {
     parts.push(s?.subline || "", s?.body || "");
   }
   const text = parts.join("\n");
-  const terms = locale === "ko" ? HEDGE_TERMS.ko : locale === "en" ? HEDGE_TERMS.en : HEDGE_TERMS.ja;
+  const terms = locale === "ko" ? HEDGE_TERMS.ko : locale === "en" ? HEDGE_TERMS.en : locale === "id" ? HEDGE_TERMS.id : HEDGE_TERMS.ja;
   return terms.filter((t) => text.includes(t));
 }
 
@@ -51,6 +52,10 @@ function repairInstruction(locale, problems) {
   if (locale === "en") {
     return `\n\nThe previous result had these problems: ${problems.join(", ")}\n` +
       "Rewrite it as JSON only, keep the four required English section titles and ids exactly, and remove uncertain language.";
+  }
+  if (locale === "id") {
+    return `\n\nHasil sebelumnya memiliki masalah berikut: ${problems.join(", ")}\n` +
+      "Tulis ulang hanya sebagai JSON, pertahankan tepat empat id dan judul bagian Bahasa Indonesia yang diwajibkan, serta hapus bahasa yang tidak pasti.";
   }
   return `\n\n前回の出力に次の問題がありました: ${problems.join(", ")}\n` +
     "4章のidと日本語タイトルを正確に守り、推量表現を使わず、JSONだけを再出力してください。";
@@ -202,8 +207,8 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       .maybeSingle();
 
     // 3a. 有効な鑑定が既にあれば再生成しない(キャッシュ規律・API再呼び出し禁止)
-    const locale = opts.locale === "ko" ? "ko" : opts.locale === "en" ? "en" : "ja";
-    const existingLocale = existing?.reading?.locale === "ko" ? "ko" : existing?.reading?.locale === "en" ? "en" : "ja";
+    const locale = opts.locale === "ko" ? "ko" : opts.locale === "en" ? "en" : opts.locale === "id" ? "id" : "ja";
+    const existingLocale = existing?.reading?.locale === "ko" ? "ko" : existing?.reading?.locale === "en" ? "en" : existing?.reading?.locale === "id" ? "id" : "ja";
     if (isReadingReady(existing) && existingLocale === locale) {
       const localeErrors = validateReadingLocale(existing.reading, locale);
       if (localeErrors.length === 0) return { ok: true, cached: true };

@@ -36,9 +36,10 @@ export function FriendIndividualPaywall({
   locale?: AppResultLocale;
 } = {}) {
   const isEn = locale === "en";
+  const isId = locale === "id";
   const who =
     (perceiverName ?? "").trim() ||
-    (isEn ? "A friend" : locale === "ko" ? "친구" : "ともだち");
+    (isEn ? "A friend" : isId ? "Seorang teman" : locale === "ko" ? "친구" : "ともだち");
   const message = (ownerMessage ?? "").trim();
   const isKo = locale === "ko";
 
@@ -51,9 +52,9 @@ export function FriendIndividualPaywall({
       >
         <section className="mx-auto max-w-[520px] pt-10 md:pt-16 text-center">
           <p className="text-[#8A8AA3] font-bold text-[13px] md:text-base leading-relaxed">
-            {isEn ? `${who}'s` : isKo ? `${who}님의` : `${who}さんからの`}
+            {isEn ? `${who}'s` : isId ? `Dari ${who}` : isKo ? `${who}님의` : `${who}さんからの`}
             <br className="md:hidden" />
-            {isEn ? "friend perspective" : isKo ? "개별 결과" : "個別の結果"}
+            {isEn ? "friend perspective" : isId ? "hasil pandangan teman" : isKo ? "개별 결과" : "個別の結果"}
           </p>
 
           {/* A案: 相手からのメッセージ全文 (無料の引き)。診断の中身より先に、恵みとして見せる。 */}
@@ -62,6 +63,8 @@ export function FriendIndividualPaywall({
               <p className="text-[#B08A2E] font-black text-[12px] tracking-wide">
                 {isEn
                   ? `A note from ${who}`
+                  : isId
+                    ? `Pesan dari ${who}`
                   : isKo
                     ? `${who}님의 메시지`
                     : `${who}さんからのメッセージ`}
@@ -73,9 +76,9 @@ export function FriendIndividualPaywall({
           )}
 
           <h1 className="mt-8 text-[#2E2E5C] font-black text-[27px] md:text-[36px] leading-[1.4]">
-            {isEn ? "Unlock the Complete Edition" : isKo ? "이어서 읽으려면" : "この続きは、"}
+            {isEn ? "Unlock the Complete Edition" : isId ? "Untuk terus membaca," : isKo ? "이어서 읽으려면" : "この続きは、"}
             <br />
-            {isEn ? "to keep reading." : isKo ? "완전판을 이용해 주세요." : "全解放でひらきます。"}
+            {isEn ? "to keep reading." : isId ? "buka Edisi Lengkap." : isKo ? "완전판을 이용해 주세요." : "全解放でひらきます。"}
           </h1>
 
           {/* ロックの表現 (診断の中身は載せない・完全にダミーの目隠し) */}
@@ -94,14 +97,14 @@ export function FriendIndividualPaywall({
 
           <div className="mt-8 rounded-3xl bg-[#F7F7FB] px-5 py-6 text-left">
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              🔓 {isEn ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}` : isKo ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}` : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`} {isEn ? "one-time purchase" : isKo ? "한 번만 결제하면" : "一度きりで、"}
+              🔓 {isEn ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}` : isKo ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}` : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`} {isEn ? "one-time purchase" : isId ? "sekali bayar" : isKo ? "한 번만 결제하면" : "一度きりで、"}
               <br />
-              {isEn ? "Unlock every friend result." : isKo ? "모든 결과를 읽을 수 있어요." : "ぜんぶ読めるようになります。"}
+              {isEn ? "Unlock every friend result." : isId ? "Buka semua hasil dari teman." : isKo ? "모든 결과를 읽을 수 있어요." : "ぜんぶ読めるようになります。"}
             </p>
             <ul className="mt-3 space-y-1.5 text-[#5A5A72] font-bold text-[13px] leading-[1.6]">
-              <li>・{isEn ? "Understanding and gaps for every friend" : isKo ? "친구마다 보는 상호 이해와 차이" : "友達ひとりずつの相互理解とギャップ"}</li>
-              <li>・{isEn ? "The complete five-trait comparison" : isKo ? "점수로 보는 관점의 차이" : "スコアで見る「見え方のズレ」の全部"}</li>
-              <li>・{isEn ? "Your full personality, work, and growth story" : isKo ? "자기 진단의 일과 성장 이야기" : "自己診断のキャリア／成長タブ"}</li>
+              <li>・{isEn ? "Understanding and gaps for every friend" : isId ? "Keselarasan dan perbedaan dengan setiap teman" : isKo ? "친구마다 보는 상호 이해와 차이" : "友達ひとりずつの相互理解とギャップ"}</li>
+              <li>・{isEn ? "The complete five-trait comparison" : isId ? "Perbandingan lengkap lima dimensi kepribadian" : isKo ? "점수로 보는 관점의 차이" : "スコアで見る「見え方のズレ」の全部"}</li>
+              <li>・{isEn ? "Your full personality, work, and growth story" : isId ? "Cerita lengkap tentang kepribadian, karier, dan pertumbuhanmu" : isKo ? "자기 진단의 일과 성장 이야기" : "自己診断のキャリア／成長タブ"}</li>
             </ul>
           </div>
 
@@ -112,10 +115,10 @@ export function FriendIndividualPaywall({
                 source={FRIEND_INDIVIDUAL_PAYWALL_SOURCE}
                 locale={locale}
                 returnTo="tako"
-              >{isEn ? "Unlock the Complete Edition" : isKo ? "완전판 열기" : "完全版を解放する"}</FullAccessCta>
+              >{isEn ? "Unlock the Complete Edition" : isId ? "Buka Edisi Lengkap" : isKo ? "완전판 열기" : "完全版を解放する"}</FullAccessCta>
             </div>
             <p className="mt-3 text-[#A0A0B4] font-bold text-[12px]">
-              {isEn ? "One-time purchase · no subscription" : isKo ? "일회성 결제 · 추가 요금 없음" : "買い切り・追加課金なし"}
+              {isEn ? "One-time purchase · no subscription" : isId ? "Sekali bayar · tanpa langganan" : isKo ? "일회성 결제 · 추가 요금 없음" : "買い切り・追加課金なし"}
             </p>
           </div>
         </section>

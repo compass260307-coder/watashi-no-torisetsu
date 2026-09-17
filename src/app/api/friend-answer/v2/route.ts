@@ -143,7 +143,9 @@ export async function POST(request: NextRequest) {
   const rawScale = body.scaleAnswers;
   const rawChoice = body.choiceAnswers;
   const submissionLocale =
-    body.locale === "ko" || body.locale === "en" ? body.locale : "ja";
+    body.locale === "ko" || body.locale === "en" || body.locale === "id"
+      ? body.locale
+      : "ja";
   const rawName =
     typeof body.perceiverName === "string" ? body.perceiverName.trim() : "";
   if (rawName.length > 40 || /[\u0000-\u001F\u007F]/.test(rawName)) {
@@ -159,6 +161,8 @@ export async function POST(request: NextRequest) {
         ? "A friend"
         : submissionLocale === "ko"
           ? "친구"
+          : submissionLocale === "id"
+            ? "Seorang teman"
           : "友達";
   // ③ 本人へのメッセージ (任意・最大200字)。プレーンテキストとして保存し、
   //    表示時は React が自動エスケープ (XSS 対策)。空なら null。

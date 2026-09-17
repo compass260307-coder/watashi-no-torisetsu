@@ -7,7 +7,7 @@ import TarotDrawExperience from "@/components/tarot/TarotDrawExperience";
 import { isTarotMode } from "@/components/tarot/tarot-data";
 
 export const metadata: Metadata = {
-  title: { absolute: "Alice Tarot Preview | Alice Test" },
+  title: { absolute: "Alice Tarot Preview | Alice Personalities" },
   robots: { index: false, follow: false },
 };
 

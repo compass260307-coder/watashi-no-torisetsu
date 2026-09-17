@@ -341,14 +341,14 @@ export default async function EnTakoResultPage({
             <div className="relative flex flex-col items-center px-4 pb-8 pt-3 md:px-6 md:pb-9 md:pt-5">
               <SmoothImage
                 src={result.image}
-                alt={`${result.score}% understanding`}
+                alt={`${result.score}% perspective match`}
                 width={1448}
                 height={1086}
                 unoptimized
                 className="h-auto w-full max-w-[640px] object-contain"
               />
               <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
-                Understanding is {result.score}%, calculated from the gap between {viewer}&apos;s answers and your self-assessment.
+                Your perspectives are {result.score}% aligned, based on the difference between {viewer}&apos;s answers and your self-assessment.
               </p>
             </div>
           </div>
@@ -514,7 +514,7 @@ export default async function EnTakoResultPage({
               </p>
             </div>
             <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
-              Still, there may be moments when {viewer} quietly feels a little distance. These are the patterns most worth noticing.
+              Still, there may be moments when {viewer} feels a little distant. These are the patterns most worth noticing.
             </p>
             <GuidanceList items={concernItems} warning />
           </div>
@@ -593,7 +593,7 @@ export default async function EnTakoResultPage({
       ) : null}
       <MeStickyHeader
         showUnlockCta={hasLockedResults}
-        unlockCtaLabel="Upgrade results"
+        unlockCtaLabel="Unlock all results"
         shareUrl={data.friends.length > 0 ? inviteUrl : undefined}
         shareKind="invite"
         ownerToken={token}

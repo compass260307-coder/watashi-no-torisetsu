@@ -98,7 +98,7 @@ if(/(^|\\.)watashi-torisetsu\\.com$/.test(h))return;
 localStorage.setItem(RK,h);
 }catch(e){}})();`;
 const DOCUMENT_LANGUAGE_SCRIPT = `(function(){try{
-var p=window.location.pathname;document.documentElement.lang=p.indexOf('/ko')===0?'ko':p.indexOf('/en')===0?'en':'ja';
+var p=window.location.pathname;document.documentElement.lang=p.indexOf('/ko')===0?'ko':p.indexOf('/en')===0?'en':p.indexOf('/id')===0?'id':'ja';
 }catch(e){}})();`;
 // 16Personalities の SERP を参考に、キーワード直球タイトル + 会話調ベネフィット
 // の説明文へ (2026-07-13)。サイト名は WebSite JSON-LD で別途表示されるため、

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type TakoEntryLocale = "ja" | "en";
+type TakoEntryLocale = "ja" | "en" | "id";
 
 function UserSearchIcon() {
   return (
@@ -28,7 +28,13 @@ function StepDots({ locale }: { locale: TakoEntryLocale }) {
         { n: 2, label: "Invite", active: false },
         { n: 3, label: "Unlock", active: false },
       ]
-    : [
+    : locale === "id"
+      ? [
+          { n: 1, label: "Tes Anda", active: true },
+          { n: 2, label: "Undang", active: false },
+          { n: 3, label: "Buka", active: false },
+        ]
+      : [
         { n: 1, label: "自己診断", active: true },
         { n: 2, label: "友達に依頼", active: false },
         { n: 3, label: "他己が解禁", active: false },
@@ -60,6 +66,7 @@ function StepDots({ locale }: { locale: TakoEntryLocale }) {
 
 export default function TakoEntryPage({ locale = "ja" }: { locale?: TakoEntryLocale }) {
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-7 text-center" style={{ background: "#FBF8F0" }}>
@@ -70,25 +77,25 @@ export default function TakoEntryPage({ locale = "ja" }: { locale?: TakoEntryLoc
         <UserSearchIcon />
       </div>
       <h1 className="mt-[18px] mb-1.5 text-lg font-bold leading-relaxed text-[#2A3A5C]">
-        {isEnglish ? "Start by getting to know yourself" : "まず、自分を知ることから"}
+        {isEnglish ? "Start by getting to know yourself" : isIndonesian ? "Mulailah dengan mengenal diri sendiri" : "まず、自分を知ることから"}
       </h1>
       <p className="mb-1 text-[12.5px] leading-[1.9] text-[#6B6858]">
-        {isEnglish ? <>To see yourself through your friends’ eyes,<br />complete your own test first.</> : <>「みんなから見たあなた」を知るには、<br />先に自分の診断が必要です。</>}
+        {isEnglish ? <>To see yourself through your friends’ eyes,<br />complete your own test first.</> : isIndonesian ? <>Untuk melihat diri melalui mata teman,<br />selesaikan tes Anda terlebih dahulu.</> : <>「みんなから見たあなた」を知るには、<br />先に自分の診断が必要です。</>}
       </p>
       <p className="mb-6 text-[12.5px] leading-[1.9] text-[#6B6858]">
-        {isEnglish ? <>Once your guide is ready,<br />you can invite friends to describe you.</> : <>自分のトリセツができたら、<br />友達に診断してもらえるようになります。</>}
+        {isEnglish ? <>Once your guide is ready,<br />you can invite friends to describe you.</> : isIndonesian ? <>Setelah panduan Anda siap,<br />undang teman untuk menilai Anda.</> : <>自分のトリセツができたら、<br />友達に診断してもらえるようになります。</>}
       </p>
       <StepDots locale={locale} />
       <Link
-        href={isEnglish ? "/en/diagnosis" : "/diagnosis"}
+        href={isEnglish ? "/en/diagnosis" : isIndonesian ? "/id/diagnosis" : "/diagnosis"}
         className="flex w-full max-w-[360px] items-center justify-center gap-2 rounded-3xl py-3.5 text-[15px] font-bold text-white transition-opacity hover:opacity-90"
         style={{ background: "#2A3A5C" }}
       >
         <SparklesIcon />
-        {isEnglish ? "Start my personality test" : "自己診断をはじめる"}
+        {isEnglish ? "Start my personality test" : isIndonesian ? "Mulai tes kepribadian saya" : "自己診断をはじめる"}
       </Link>
       <p className="mt-3 text-[10.5px] text-[#9A9585]">
-        {isEnglish ? "About 3 minutes · 50 questions" : "3分・50問でわかります"}
+        {isEnglish ? "About 3 minutes · 50 questions" : isIndonesian ? "Sekitar 3 menit · 50 pertanyaan" : "3分・50問でわかります"}
       </p>
     </main>
   );

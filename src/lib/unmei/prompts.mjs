@@ -38,6 +38,13 @@ const FACTOR_EN = {
   A: "Agreeableness",
   N: "Emotional sensitivity",
 };
+const FACTOR_ID = {
+  O: "Keterbukaan",
+  C: "Ketelitian",
+  E: "Ekstroversi",
+  A: "Keramahan",
+  N: "Kepekaan emosional",
+};
 
 // ===== 内容/文体レイヤーの plan (スコア由来・純関数) =====
 // quadrant: A(協調性)と O(開放性)の高低から。O≥5→N/O<5→S、A≥5→F/A<5→T。
@@ -46,7 +53,8 @@ const FACTOR_EN = {
 export function buildUnmeiPlan(scores, locale = "ja") {
   const isKo = locale === "ko";
   const isEn = locale === "en";
-  const factorNames = isKo ? FACTOR_KO : isEn ? FACTOR_EN : FACTOR_JA;
+  const isId = locale === "id";
+  const factorNames = isKo ? FACTOR_KO : isEn ? FACTOR_EN : isId ? FACTOR_ID : FACTOR_JA;
   const s = scores || {};
   const val = (k) => (typeof s[k] === "number" ? s[k] : 5);
   const pct = (k) => Math.round(val(k) * 10);
@@ -70,7 +78,7 @@ export function buildUnmeiPlan(scores, locale = "ja") {
         `(모든 요인이 중앙에 가까우므로 한 요인만 주어로 삼으면 누구에게나 맞는 표현이 된다. ` +
         `두 요인 사이의 내적 긴장을 주어로 삼아 "당신은 이러면서도 동시에 저렇다"는 구조로 제시하고, ` +
         `이 긴장을 두 번째 단락에서 다룰 어긋남의 기원과 연결한다.)`
-      : isEn
+      : isEn || isId
         ? `the combination of ${factorNames[a.k]} ${pct(a.k)} and ${factorNames[b.k]} ${pct(b.k)} (all factors sit near the midpoint, so use the tension between these two factors as the subject)`
       : `${factorNames[a.k]}${pct(a.k)} と ${factorNames[b.k]}${pct(b.k)} の組み合わせ` +
         `（全因子が中央付近のため単独主語だとバーナム化する。2因子の内面の緊張を主語にし、` +
@@ -79,7 +87,7 @@ export function buildUnmeiPlan(scores, locale = "ja") {
     combination = false;
     haichiSubject = isKo
       ? `${factorNames[top.k]}${pct(top.k)}(편차 최대 |${val(top.k).toFixed(1)}-5.0|=${top.dev.toFixed(1)})`
-      : isEn
+      : isEn || isId
         ? `${factorNames[top.k]} ${pct(top.k)} (largest deviation from midpoint: ${top.dev.toFixed(1)})`
         : `${factorNames[top.k]}${pct(top.k)}（乖離最大 |${val(top.k).toFixed(1)}−5.0|=${top.dev.toFixed(1)}）`;
   }
@@ -366,9 +374,31 @@ Return one JSON object only, with no code fence or commentary:
 }
 Return exactly these four sections, in this order, with the exact ids and titles.`;
 
+const INDONESIAN_SYSTEM_PROMPT = `Kamu menulis "Peta Takdir" yang dipersonalisasi untuk Alice Test. Ini adalah bacaan hiburan dan refleksi diri, bukan diagnosis ilmiah.
+
+Gunakan hanya elemen peta kelahiran yang diberikan. Jangan mengarang planet, zodiak, aspek, rumah, atau tanggal. Tulis Bahasa Indonesia yang alami dan meyakinkan tanpa menyatakan kepastian tentang nasib atau kejadian eksternal. Ubah simbolisme astrologi menjadi bahasa sehari-hari dan utamakan kesimpulan pribadi, bukan penjelasan buku teks.
+
+haichi, kokoro, dan chosen masing-masing harus berisi kesimpulan berbasis kepribadian, kisah asal-usul yang memakai setidaknya dua elemen peta yang diberikan dan satu ketegangan, serta satu tindakan praktis. chosen juga harus memiliki waktu yang hanya didasarkan pada data transit, memakai tahun absolut dan musim/rentang luas. grace adalah penutup hangat tanpa tugas.
+
+Jangan membuat klaim tentang kesehatan, usia, kehamilan, hidup atau mati orang lain, atau keputusan keuangan tertentu. Jangan menggantikan tenaga medis, hukum, keuangan, atau layanan darurat. Pertahankan kendali pengguna atas pilihannya. Semua teks yang terlihat harus dalam Bahasa Indonesia.
+
+Kembalikan hanya satu objek JSON tanpa pagar kode:
+{
+  "hitokoto": "pratinjau satu atau dua kalimat",
+  "sections": [
+    { "id": "haichi", "title": "Yang telah kamu bangun", "subline": "...", "body": "..." },
+    { "id": "kokoro", "title": "Dirimu saat bersama orang lain", "subline": "...", "body": "..." },
+    { "id": "chosen", "title": "Titik balik yang akan datang", "subline": "...", "body": "..." },
+    { "id": "grace", "title": "Satu hal terakhir", "subline": "", "body": "..." }
+  ]
+}
+Kembalikan tepat empat bagian ini, dalam urutan ini, dengan id dan judul yang sama persis.`;
+
 export function buildNatalSystemPrompt(locale = "ja") {
   return locale === "ko"
     ? KOREAN_SYSTEM_PROMPT
+    : locale === "id"
+      ? INDONESIAN_SYSTEM_PROMPT
     : locale === "en"
       ? ENGLISH_SYSTEM_PROMPT
       : SYSTEM_PROMPT;
@@ -380,17 +410,19 @@ export function buildNatalSystemPrompt(locale = "ja") {
 export function buildNatalUserPrompt({ chart, scores, essence, typeName, timeUnknown, nowIso, locale = "ja" }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
+  const chartLocale = isId ? "en" : locale;
   const plan = buildUnmeiPlan(scores, locale);
 
   // 章別 chart_elements (この中からのみ選ばせる)
-  const haichiEl = elementsBlock(chart, ["sun", "mercury", "venus", "mars", "saturn", "jupiter", "mc"], timeUnknown, locale);
-  const kokoroEl = elementsBlock(chart, ["sun", "moon", "venus", "mars", "asc"], timeUnknown, locale);
-  const chosenEl = elementsBlock(chart, ["sun", "moon", "jupiter", "saturn", "mc"], timeUnknown, locale);
+  const haichiEl = elementsBlock(chart, ["sun", "mercury", "venus", "mars", "saturn", "jupiter", "mc"], timeUnknown, chartLocale);
+  const kokoroEl = elementsBlock(chart, ["sun", "moon", "venus", "mars", "asc"], timeUnknown, chartLocale);
+  const chosenEl = elementsBlock(chart, ["sun", "moon", "jupiter", "saturn", "mc"], timeUnknown, chartLocale);
   // ④時期の根拠 = トランジット(生成日時点の木星・土星の運行)と本人の太陽/月の関係。
   //   生成日は nowIso (既定=現在)。鑑定は保存されるため、この時期は購入時点のスナップショット。
   const timingBasis = formatTransitBlock(
-    computeTransitTiming(chart, nowIso || new Date().toISOString(), locale),
-    locale,
+    computeTransitTiming(chart, nowIso || new Date().toISOString(), chartLocale),
+    chartLocale,
   );
 
   if (isKo) {
@@ -448,6 +480,30 @@ ${timingBasis}
 Personality quadrant: ${plan.quadrant}
 
 Write haichi and kokoro in roughly 300–450 words each. Write chosen in roughly 400–550 words and ground its broad seasonal timing in the supplied basis. Write grace in roughly 100–180 words. In chosen's subline, use the same leading factor as haichi: ${plan.topFactorPct}. Keep explanations personal and concrete, not textbook-like. Return JSON only.`;
+  }
+
+  if (isId) {
+    return `Gunakan hanya data di bawah ini untuk menulis pembacaan sesuai instruksi sistem dan kembalikan JSON saja.
+Bahasa keluaran: Bahasa Indonesia alami
+
+Skor Big Five: ${plan.pctLine}
+Subjek haichi: ${plan.haichiSubject}
+Profil 32 tipe: ${typeName ?? "(tidak tersedia)"} / esensi: ${essence ?? "(tidak tersedia)"}
+Waktu lahir tidak diketahui: ${timeUnknown === true ? "ya" : "tidak"}
+
+Gunakan hanya elemen peta berikut:
+[haichi]
+${haichiEl || "(tidak ada)"}
+[kokoro]
+${kokoroEl || "(tidak ada)"}
+[chosen]
+${chosenEl || "(tidak ada)"}
+[dasar waktu chosen]
+${timingBasis}
+
+Kuadran kepribadian: ${plan.quadrant}
+
+Tulis haichi dan kokoro sekitar 300–450 kata. Tulis chosen sekitar 400–550 kata dan dasarkan rentang waktunya pada data yang diberikan. Tulis grace sekitar 100–180 kata. Dalam subline chosen, gunakan faktor utama yang sama dengan haichi: ${plan.topFactorPct}. Buat penjelasan pribadi dan konkret, bukan seperti buku teks. Kembalikan JSON saja.`;
   }
 
   return `以下のデータで、システムの指示どおり JSON のみで鑑定を書いてください。

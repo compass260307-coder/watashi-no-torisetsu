@@ -56,6 +56,19 @@ const CHECKOUT_COPY = {
     paypayError: "We couldn’t open PayPay. Please try again.",
     or: "or",
   },
+  id: {
+    error: "Formulir pembayaran tidak dapat dibuka.",
+    retry: "Coba lagi",
+    preview: "Pratinjau formulir pembayaran",
+    email: "Alamat email",
+    card: "Informasi kartu",
+    pay: "Bayar dengan aman",
+    guarantee: "Sekali bayar · garansi uang kembali 30 hari",
+    paypay: "Bayar dengan PayPay",
+    paypayLoading: "Membuka PayPay…",
+    paypayError: "PayPay tidak dapat dibuka. Coba lagi.",
+    or: "atau",
+  },
 } as const;
 
 function PreviewCheckout({ locale }: { locale: AppResultLocale }) {

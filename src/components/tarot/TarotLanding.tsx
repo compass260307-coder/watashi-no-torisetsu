@@ -72,6 +72,13 @@ const EN_TAROT_FAQS = [
   { question: "What if a result feels negative?", answer: "No card guarantees a bad future. Read it as a signal about what deserves care and what you can still change." },
   { question: "Can I discuss my result with Alice?", answer: "Yes. Use the Talk with Alice button after your reading to explore the card and your situation in more depth." },
 ] as const satisfies readonly TarotFaq[];
+const ID_TAROT_FAQS = [
+  { question: "Kapan sebaiknya saya memakai pembacaan tarot?", answer: "Gunakan saat kamu ragu atau ingin mendengar intuisimu lebih jelas. Kartu adalah bahan refleksi, bukan ramalan yang pasti." },
+  { question: "Pembacaan mana yang harus dipilih?", answer: "Pilih Kartu Hari Ini untuk fokus hari ini, Tiga Kartu untuk situasi yang berkembang, dan YA / TIDAK untuk keputusan tertentu." },
+  { question: "Bisakah saya menarik kartu lebih dari sekali?", answer: "Bisa. Namun biasanya lebih bermanfaat untuk merenungkan tarikan pertama sebelum mencoba mencari jawaban lain." },
+  { question: "Bagaimana jika hasilnya terasa negatif?", answer: "Tidak ada kartu yang menjamin masa depan buruk. Bacalah sebagai tanda tentang hal yang perlu dijaga dan masih bisa kamu ubah." },
+  { question: "Bisakah saya membahas hasil dengan Alice?", answer: "Bisa. Gunakan tombol Bicara dengan Alice setelah pembacaan untuk mendalami kartu dan situasimu." },
+] as const satisfies readonly TarotFaq[];
 
 const LANDING_COPY = {
   ja: {
@@ -106,6 +113,17 @@ const LANDING_COPY = {
     draw: "Draw cards",
     openSuffix: " reading",
     faqs: EN_TAROT_FAQS,
+  },
+  id: {
+    title: "Tarot bersama Alice",
+    lead: "Tarot tidak mengunci masa depanmu. Bersama Alice, gunakan kartu untuk melihat hal yang penting sekarang dan memilih langkah berikutnya dengan caramu sendiri.",
+    heroAlt: "Alice membaca kartu tarot di meja",
+    choose: "Apa yang ingin kamu tanyakan hari ini?",
+    disclaimer: "Tarot tidak menentukan masa depan. Gunakan sebagai bahan refleksi untuk memahami perasaan dan pilihanmu.",
+    faqTitle: "Pertanyaan yang sering diajukan",
+    draw: "Tarik kartu",
+    openSuffix: "",
+    faqs: ID_TAROT_FAQS,
   },
 } as const;
 
@@ -242,8 +260,8 @@ function ModeCard({
     <Link
       href={
         previewMode
-          ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/dev-preview?mode=${mode}`
-          : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/${mode}`
+          ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/tarot/dev-preview?mode=${mode}`
+          : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/tarot/${mode}`
       }
       aria-label={`${content.title}${copy.openSuffix}`}
       className={`group relative min-h-[228px] overflow-hidden rounded-[28px] border bg-gradient-to-br p-6 shadow-[0_12px_32px_rgba(46,46,92,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(46,46,92,0.13)] ${accent.border} ${accent.gradient}`}

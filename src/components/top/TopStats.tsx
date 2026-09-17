@@ -11,31 +11,32 @@ export default function TopStats({
   locale = "ja",
 }: {
   diagnosedCount: number;
-  locale?: "ja" | "en";
+  locale?: "ja" | "en" | "id";
 }) {
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   // 数字ごとに異なるアクセント色 (16P 風。felt 世界観に合わせたパステル寄り)。
   const stats = [
     {
-      num: isEnglish ? "50K+" : "5万+",
-      label: isEnglish ? "tests taken today" : "本日の診断回数",
+      num: isEnglish || isIndonesian ? "50K+" : "5万+",
+      label: isEnglish ? "tests taken today" : isIndonesian ? "tes hari ini" : "本日の診断回数",
       color: "#5B5BEF",
     },
     {
-      num: isEnglish
-        ? `${(diagnosedCount / 1_000_000).toLocaleString("en-US")}M+`
+      num: isEnglish || isIndonesian
+        ? `${(diagnosedCount / 1_000_000).toLocaleString(isIndonesian ? "id-ID" : "en-US")}M+`
         : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`,
-      label: isEnglish ? "people tested" : "診断した人",
+      label: isEnglish ? "people tested" : isIndonesian ? "orang telah mengikuti tes" : "診断した人",
       color: "#E86AA6",
     },
     {
-      num: isEnglish ? "20K+" : "2万+",
-      label: isEnglish ? "friend evaluations" : "友達のことを診断した人数",
+      num: isEnglish || isIndonesian ? "20K+" : "2万+",
+      label: isEnglish ? "friend evaluations" : isIndonesian ? "penilaian dari teman" : "友達のことを診断した人数",
       color: "#3FAE8C",
     },
     {
       num: "89%",
-      label: isEnglish ? "accuracy rating" : "正確性の評価",
+      label: isEnglish ? "accuracy rating" : isIndonesian ? "penilaian akurasi" : "正確性の評価",
       color: "#E0A544",
     },
   ];
@@ -47,7 +48,7 @@ export default function TopStats({
     >
       {/* SEO/a11y: セクション見出し (視覚上は非表示、アウトライン構造のみ提供) */}
       <h2 className="sr-only">
-        {isEnglish ? "Test statistics" : "診断実績"}
+        {isEnglish ? "Test statistics" : isIndonesian ? "Statistik tes" : "診断実績"}
       </h2>
       {/* 端から端まで均等な 4 分割 (SP は 2×2)。max-width は付けず全幅で振り分ける。 */}
       <div className="mx-auto grid max-w-[1680px] grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4">

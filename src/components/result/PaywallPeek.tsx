@@ -70,6 +70,8 @@ function PeekOverlay({
       aria-label={
         locale === "en"
           ? `${title} preview`
+          : locale === "id"
+            ? `Pratinjau ${title}`
           : locale === "ko"
             ? `${title} 미리보기`
             : `${title}の例`
@@ -92,7 +94,7 @@ function PeekOverlay({
         <button
           type="button"
           onClick={onClose}
-          aria-label={locale === "en" ? "Close" : locale === "ko" ? "닫기" : "閉じる"}
+          aria-label={locale === "en" ? "Close" : locale === "id" ? "Tutup" : locale === "ko" ? "닫기" : "閉じる"}
           className="absolute -right-2 -top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:scale-105 active:scale-95"
           style={{ backgroundColor: accent }}
         >

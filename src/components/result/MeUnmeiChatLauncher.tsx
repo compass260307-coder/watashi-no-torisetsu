@@ -12,6 +12,7 @@ import UnmeiClient from "@/components/uranai/UnmeiClient";
 import type { AppResultLocale } from "@/i18n/result";
 import {
   ME_UNMEI_CHAT_INTRO_EN,
+  ME_UNMEI_CHAT_INTRO_ID,
   ME_UNMEI_CHAT_INTRO_JA,
   ME_UNMEI_CHAT_INTRO_KO,
 } from "@/i18n/unmei";
@@ -21,6 +22,7 @@ const LAUNCHER_COPY = {
   ja: { close: "チャットを閉じる" },
   ko: { close: "채팅 닫기" },
   en: { close: "Close chat" },
+  id: { close: "Tutup chat" },
 } as const;
 
 export function MeUnmeiChatLauncher({
@@ -120,7 +122,9 @@ export function MeUnmeiChatLauncher({
                   locale={locale}
                   previewMode={previewMode}
                   intro={
-                    locale === "en"
+                    locale === "id"
+                      ? ME_UNMEI_CHAT_INTRO_ID
+                      : locale === "en"
                       ? ME_UNMEI_CHAT_INTRO_EN
                       : locale === "ko"
                       ? ME_UNMEI_CHAT_INTRO_KO

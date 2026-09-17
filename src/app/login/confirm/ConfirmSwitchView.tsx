@@ -27,10 +27,11 @@ export function ConfirmSwitchView({
   cancelHref: string;
   /** 現 Cookie(A) が B と別 user_id か (= 切替警告を出すか)。 */
   isConflict: boolean;
-  locale?: ResultLocale | "en";
+  locale?: ResultLocale | "en" | "id";
 }) {
   const ko = locale === "ko";
   const en = locale === "en";
+  const id = locale === "id";
   return (
     <main className="min-h-dvh bg-white px-4 py-12">
       <div className="mx-auto max-w-[420px]">
@@ -64,9 +65,11 @@ export function ConfirmSwitchView({
             ? "로그인하기 전에"
             : en
               ? "Before you sign in"
+              : id
+                ? "Sebelum Anda masuk"
               : "ログインの前に"}
           <br />
-          {ko ? "확인해 주세요" : en ? "please confirm" : "確認してください"}
+          {ko ? "확인해 주세요" : en ? "please confirm" : id ? "mohon periksa" : "確認してください"}
         </h1>
 
         {isConflict ? (
@@ -75,13 +78,17 @@ export function ConfirmSwitchView({
               ? "이 기기에는 "
               : en
                 ? "This device currently has data for "
-                : "このデバイスには "}
+                : id
+                  ? "Perangkat ini menyimpan data milik "
+                  : "このデバイスには "}
             <span className="text-[#2E2E5C] font-black">{aName}</span>{" "}
             {ko
               ? "님의 진단 데이터가 있어요."
               : en
                 ? "."
-                : "の診断データがあります。"}
+                : id
+                  ? "."
+                  : "の診断データがあります。"}
             <br />
             <span className="text-[#2E2E5C] font-black">
               {maskedEmail}
@@ -90,7 +97,9 @@ export function ConfirmSwitchView({
               ? "주소로 로그인하면 해당 계정의 데이터로 전환돼요."
               : en
                 ? "will switch this device to the data linked to that account."
-                : "でログインすると、表示がそのアカウントに切り替わります。"}
+                : id
+                  ? "akan mengalihkan perangkat ini ke data yang terhubung dengan akun tersebut."
+                  : "でログインすると、表示がそのアカウントに切り替わります。"}
           </p>
         ) : (
           <p className="text-center text-[#2E2E5C]/75 font-bold text-sm leading-relaxed mb-6">
@@ -99,7 +108,9 @@ export function ConfirmSwitchView({
               ? "주소로 로그인해요."
               : en
                 ? "will be used to sign in."
-                : "でログインします。"}
+                : id
+                  ? "akan digunakan untuk masuk."
+                  : "でログインします。"}
           </p>
         )}
 
@@ -112,13 +123,17 @@ export function ConfirmSwitchView({
                   ? `현재 ‘${aName}’님의 데이터는 이 주소로 다시 돌아올 수 있어요. `
                   : en
                     ? `You can return to ${aName}’s current data with this recovery link. `
-                    : `いまの「${aName}」のデータは、このURLから後で戻れます。`}
+                    : id
+                      ? `Anda dapat kembali ke data ${aName} dengan tautan pemulihan ini. `
+                      : `いまの「${aName}」のデータは、このURLから後で戻れます。`}
                 <span className="text-[#5B5BEF]">
                   {ko
                     ? "꼭 저장해 주세요."
                     : en
                       ? "Save it before continuing."
-                      : "必ず保存してください。"}
+                      : id
+                        ? "Simpan sebelum melanjutkan."
+                        : "必ず保存してください。"}
                 </span>
               </p>
               <RecoveryUrlBox url={recoveryUrl} locale={locale} />
@@ -127,7 +142,9 @@ export function ConfirmSwitchView({
                   ? `※ 이 주소를 저장하지 않으면 전환한 뒤 ‘${aName}’님의 데이터로 돌아오지 못할 수 있어요.`
                   : en
                     ? `If you do not save this link, you may not be able to return to ${aName}’s data after switching accounts.`
-                    : `※ このURLを控えないと、切り替え後に「${aName}」のデータへ戻れなくなる場合があります。`}
+                    : id
+                      ? `Jika tautan ini tidak disimpan, Anda mungkin tidak dapat kembali ke data ${aName} setelah berganti akun.`
+                      : `※ このURLを控えないと、切り替え後に「${aName}」のデータへ戻れなくなる場合があります。`}
               </p>
             </div>
           ) : (
@@ -137,7 +154,9 @@ export function ConfirmSwitchView({
                   ? "이 기기의 데이터로 돌아오는 주소를 찾지 못했어요. 계정을 전환하면 현재 데이터로 돌아오지 못할 수 있어요."
                   : en
                     ? "We could not find a recovery link for the data on this device. If you switch accounts, you may not be able to return to it."
-                    : "このデバイスのデータには復帰URLが見つかりませんでした。切り替えると、いまのデータへ戻れなくなる可能性があります。"}
+                    : id
+                      ? "Tautan pemulihan untuk data di perangkat ini tidak ditemukan. Jika Anda berganti akun, data ini mungkin tidak dapat dibuka kembali."
+                      : "このデバイスのデータには復帰URLが見つかりませんでした。切り替えると、いまのデータへ戻れなくなる可能性があります。"}
               </p>
             </div>
           ))}
@@ -151,7 +170,9 @@ export function ConfirmSwitchView({
             ? "이대로 로그인 계속하기"
             : en
               ? "Continue and switch accounts"
-              : "このままログインを続ける"}
+              : id
+                ? "Lanjutkan dan ganti akun"
+                : "このままログインを続ける"}
         </a>
         <Link
           href={cancelHref}
@@ -161,7 +182,9 @@ export function ConfirmSwitchView({
             ? "취소하고 현재 데이터 유지하기"
             : en
               ? "Cancel and keep current data"
-              : "キャンセル（いまのデータのまま）"}
+              : id
+                ? "Batal dan pertahankan data saat ini"
+                : "キャンセル（いまのデータのまま）"}
         </Link>
       </div>
     </main>

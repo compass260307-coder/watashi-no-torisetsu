@@ -42,6 +42,8 @@ export async function generateMetadata({
       absolute:
         sp.locale === "ko"
           ? "친구 진단 완전판 리포트 | 나의 사용설명서"
+          : sp.locale === "id"
+            ? "Laporan Lengkap Analisis Teman | Alice Personalities"
           : "友達診断 完全版レポート | ワタシのトリセツ",
     },
   };
@@ -66,6 +68,14 @@ const KO_AXIS_SHORT: Record<BigFiveDimension, string> = {
   E: "외향성",
   A: "우호성",
   N: "민감성",
+};
+
+const ID_AXIS_SHORT: Record<BigFiveDimension, string> = {
+  O: "Keterbukaan",
+  C: "Ketelitian",
+  E: "Ekstraversi",
+  A: "Keramahan",
+  N: "Kepekaan",
 };
 
 function Paragraphs({ paragraphs }: { paragraphs: string[] }) {
@@ -125,9 +135,11 @@ function InsightList({
 function ComparisonRows({
   axes,
   isKo,
+  isId,
 }: {
   axes: TakoReportOverviewAxis[];
   isKo: boolean;
+  isId: boolean;
 }) {
   return (
     <div className={styles.scoreList}>
@@ -151,8 +163,8 @@ function ComparisonRows({
             />
           </div>
           <p>
-            {isKo ? "친구의 시선" : "友達の目"} {axis.friendPercent}% /{" "}
-            {isKo ? "자기 인식" : "自己認識"} {axis.selfPercent}%
+            {isKo ? "친구의 시선" : isId ? "Pandangan teman" : "友達の目"} {axis.friendPercent}% /{" "}
+            {isKo ? "자기 인식" : isId ? "Penilaian diri" : "自己認識"} {axis.selfPercent}%
           </p>
         </div>
       ))}
@@ -164,10 +176,12 @@ function FriendScoreRows({
   sheet,
   selfScores,
   isKo,
+  isId,
 }: {
   sheet: TakoReportSheet;
   selfScores: Partial<Record<BigFiveDimension, number>>;
   isKo: boolean;
+  isId: boolean;
 }) {
   const axes = (["O", "C", "E", "A", "N"] as BigFiveDimension[]).map(
     (key) => {
@@ -187,7 +201,7 @@ function FriendScoreRows({
     <div className={styles.friendScoreList}>
       {axes.map((axis) => (
         <div key={axis.key} className={styles.friendScoreRow}>
-          <strong>{isKo ? KO_AXIS_SHORT[axis.key] : AXIS_SHORT[axis.key]}</strong>
+          <strong>{isKo ? KO_AXIS_SHORT[axis.key] : isId ? ID_AXIS_SHORT[axis.key] : AXIS_SHORT[axis.key]}</strong>
           <div className={styles.comparisonTrack} aria-hidden="true">
             <span
               className={styles.friendBar}
@@ -210,16 +224,18 @@ function AxisInsightCard({
   axis,
   children,
   isKo,
+  isId,
 }: {
   label: string;
   axis: TakoReportOverviewAxis;
   children: ReactNode;
   isKo: boolean;
+  isId: boolean;
 }) {
   return (
     <div className={styles.axisInsightCard}>
       <p>{label}</p>
-      <strong>{isKo ? KO_AXIS_SHORT[axis.key] : AXIS_SHORT[axis.key]}</strong>
+      <strong>{isKo ? KO_AXIS_SHORT[axis.key] : isId ? ID_AXIS_SHORT[axis.key] : AXIS_SHORT[axis.key]}</strong>
       <span>{children}</span>
     </div>
   );
@@ -231,12 +247,14 @@ function FriendChapter({
   chapterNumber,
   selfScores,
   isKo,
+  isId,
 }: {
   sheet: TakoReportSheet;
   index: number;
   chapterNumber: number;
   selfScores: Partial<Record<BigFiveDimension, number>>;
   isKo: boolean;
+  isId: boolean;
 }) {
   const normalScene = versionCharacterAssetPath(
     `/characters/scenes/${sheet.group}_normal1.webp`,
@@ -255,9 +273,9 @@ function FriendChapter({
         eyebrow={`VOICE ${String(index + 1).padStart(2, "0")}`}
         title={
           <>
-            {isKo ? `${sheet.viewer}의 눈에 비친` : `${sheet.viewer}から見た`}
+            {isKo ? `${sheet.viewer}의 눈에 비친` : isId ? `Diri Anda menurut ${sheet.viewer}` : `${sheet.viewer}から見た`}
             <br />
-            {isKo ? "나의 프로필" : "あなたのプロフィール"}
+            {isKo ? "나의 프로필" : isId ? "Profil Anda" : "あなたのプロフィール"}
           </>
         }
       />
@@ -275,10 +293,12 @@ function FriendChapter({
           <p>
             {isKo
               ? `${sheet.viewer}의 눈에 비친 나`
+              : isId
+                ? `Anda di mata ${sheet.viewer}`
               : `${sheet.viewer}の目に映るあなた`}
           </p>
           <h3>{sheet.essence}</h3>
-          <span>{sheet.charName}{isKo ? " 유형" : "タイプ"}</span>
+          <span>{sheet.charName}{isKo ? " 유형" : isId ? " / tipe" : "タイプ"}</span>
         </div>
       </div>
 
@@ -297,6 +317,8 @@ function FriendChapter({
         <h3>
           {isKo
             ? "이 친구의 눈에는 내가 이렇게 보여요"
+            : isId
+              ? "Beginilah Anda terlihat di mata teman ini"
             : "この友達には、あなたがこう見えている"}
         </h3>
         <Paragraphs paragraphs={sheet.manualParas} />
@@ -304,8 +326,8 @@ function FriendChapter({
 
       <div className={styles.sectionBlock}>
         <div className={styles.sectionHeadingRow}>
-          <h3>{isKo ? "5가지 경향에 나타난 인상" : "5つの傾向に表れた「見え方」"}</h3>
-          <span>{isKo ? "● 친구  ◆ 나" : "● 友達の目　◆ 自己認識"}</span>
+          <h3>{isKo ? "5가지 경향에 나타난 인상" : isId ? "Kesan dalam lima dimensi" : "5つの傾向に表れた「見え方」"}</h3>
+          <span>{isKo ? "● 친구  ◆ 나" : isId ? "● Teman  ◆ Diri sendiri" : "● 友達の目　◆ 自己認識"}</span>
         </div>
         {sheet.deep ? (
           <blockquote className={styles.gapQuote}>
@@ -314,6 +336,12 @@ function FriendChapter({
                 가장 큰 차이는 <strong>{sheet.deep.gap.label}</strong>이에요.
                 나는 {sheet.deep.gap.selfPercent}%라고 느끼고, {sheet.viewer}의
                 눈에는 {sheet.deep.gap.otherPercent}%로 보여요.
+              </>
+            ) : isId ? (
+              <>
+                Perbedaan terbesar ada pada <strong>{sheet.deep.gap.label}</strong>.
+                Anda menilai diri sendiri {sheet.deep.gap.selfPercent}%, sedangkan {sheet.viewer}
+                melihatnya pada {sheet.deep.gap.otherPercent}%.
               </>
             ) : (
               <>
@@ -324,7 +352,7 @@ function FriendChapter({
             )}
           </blockquote>
         ) : null}
-        <FriendScoreRows sheet={sheet} selfScores={selfScores} isKo={isKo} />
+        <FriendScoreRows sheet={sheet} selfScores={selfScores} isKo={isKo} isId={isId} />
       </div>
 
       <div className={styles.sectionBlock}>
@@ -332,6 +360,8 @@ function FriendChapter({
         <h3>
           {isKo
             ? `${sheet.viewer}의 눈에 비친 연애 매력`
+            : isId
+              ? `Daya tarik cinta Anda menurut ${sheet.viewer}`
             : `${sheet.viewer}から見た、恋愛での魅力`}
         </h3>
         <figure className={styles.sceneFigure}>
@@ -346,11 +376,11 @@ function FriendChapter({
         </figure>
         <Paragraphs paragraphs={sheet.loveParas} />
         <h4 className={styles.subheading}>
-          {isKo ? "숨은 연애 매력" : "隠れモテポイント"}
+          {isKo ? "숨은 연애 매력" : isId ? "Daya tarik tersembunyi" : "隠れモテポイント"}
         </h4>
         <InsightList items={sheet.loveChecks} />
         <h4 className={styles.subheading}>
-          {isKo ? `${sheet.viewer}의 힌트` : `${sheet.viewer}からのヒント`}
+          {isKo ? `${sheet.viewer}의 힌트` : isId ? `Petunjuk dari ${sheet.viewer}` : `${sheet.viewer}からのヒント`}
         </h4>
         <InsightList items={sheet.loveHints} tone="love" />
       </div>
@@ -360,6 +390,8 @@ function FriendChapter({
         <h3>
           {isKo
             ? `${sheet.viewer}의 눈에 보인 사랑받는 습관`
+            : isId
+              ? `Kebiasaan menawan yang dilihat ${sheet.viewer}`
             : `${sheet.viewer}が気づいている、愛されるクセ`}
         </h3>
         <Paragraphs paragraphs={sheet.kuseParas} />
@@ -371,6 +403,8 @@ function FriendChapter({
           <h3>
             {isKo
               ? `${sheet.viewer}과의 관계를 키우는 방법`
+              : isId
+                ? `Cara menumbuhkan hubungan dengan ${sheet.viewer}`
               : `${sheet.viewer}との関係の育て方`}
           </h3>
           <figure className={styles.sceneFigure}>
@@ -384,17 +418,17 @@ function FriendChapter({
             />
           </figure>
           <div className={styles.compatibilityStatement}>
-            <span>{isKo ? "서로의 관점으로 읽는 궁합" : "見方から読み解く相性"}</span>
+            <span>{isKo ? "서로의 관점으로 읽는 궁합" : isId ? "Kecocokan dari dua sudut pandang" : "見方から読み解く相性"}</span>
             <strong>{sheet.compat.percent}%</strong>
-            <em>{isKo ? "등급" : "ランク"} {sheet.compat.rank}</em>
+            <em>{isKo ? "등급" : isId ? "Peringkat" : "ランク"} {sheet.compat.rank}</em>
           </div>
           <Paragraphs paragraphs={sheet.compat.summaryParas} />
           <h4 className={styles.subheading}>
-            {isKo ? "관계를 깊게 만드는 힌트" : "関係を深めるヒント"}
+            {isKo ? "관계를 깊게 만드는 힌트" : isId ? "Petunjuk untuk memperdalam hubungan" : "関係を深めるヒント"}
           </h4>
           <InsightList items={sheet.compat.kotsu} />
           <h4 className={styles.subheading}>
-            {isKo ? "관계를 멀어지게 하는 함정" : "関係を壊すワナ"}
+            {isKo ? "관계를 멀어지게 하는 함정" : isId ? "Jebakan yang dapat menjauhkan hubungan" : "関係を壊すワナ"}
           </h4>
           <InsightList items={sheet.compat.wana} tone="caution" />
         </div>
@@ -406,9 +440,11 @@ function FriendChapter({
 function OverviewChapter({
   overview,
   isKo,
+  isId,
 }: {
   overview: TakoReportOverview;
   isKo: boolean;
+  isId: boolean;
 }) {
   const scenePath = versionCharacterAssetPath(
     `/characters/scenes/${overview.group}_normal1.webp`,
@@ -421,9 +457,9 @@ function OverviewChapter({
         eyebrow="SOCIAL MIRROR"
         title={
           <>
-            {isKo ? "친구들의 눈에 비친" : "みんなの目に映る"}
+            {isKo ? "친구들의 눈에 비친" : isId ? "Diri Anda di mata" : "みんなの目に映る"}
             <br />
-            {isKo ? "나의 전체 모습" : "あなたの全体像"}
+            {isKo ? "나의 전체 모습" : isId ? "semua teman" : "あなたの全体像"}
           </>
         }
       />
@@ -443,58 +479,65 @@ function OverviewChapter({
         <p>
           {isKo
             ? `${overview.friendCount}명의 친구 목소리를 모으면`
+            : isId
+              ? `Ketika suara ${overview.friendCount} teman digabungkan`
             : `${overview.friendCount}人の友達の声を重ねると`}
         </p>
         <strong>
           {isKo
             ? `‘${overview.essence}’의 모습으로 보여요`
+            : isId
+              ? `Anda terlihat sebagai sosok “${overview.essence}”`
             : `「${overview.essence}」として映っています`}
         </strong>
-        <span>{overview.charName}{isKo ? " 유형" : "タイプ"}</span>
+        <span>{overview.charName}{isKo ? " 유형" : isId ? " / tipe" : "タイプ"}</span>
       </div>
 
       <div className={styles.sectionBlock}>
-        <h3>{isKo ? "밖에서 보이는 또 다른 나" : "外側から見えている、もう一人のあなた"}</h3>
+        <h3>{isKo ? "밖에서 보이는 또 다른 나" : isId ? "Sisi lain diri Anda yang terlihat dari luar" : "外側から見えている、もう一人のあなた"}</h3>
         <Paragraphs paragraphs={overview.profileParas} />
       </div>
 
       <div className={styles.axisInsightGrid}>
         <AxisInsightCard
-          label={isKo ? "나와 가장 큰 차이" : "自分との最大ギャップ"}
+          label={isKo ? "나와 가장 큰 차이" : isId ? "Perbedaan terbesar dari penilaian diri" : "自分との最大ギャップ"}
           axis={overview.biggestGap}
           isKo={isKo}
+          isId={isId}
         >
-          {overview.biggestGap.diffPoints}{isKo ? "포인트 차이" : "ポイントの違い"}
+          {overview.biggestGap.diffPoints}{isKo ? "포인트 차이" : isId ? " poin berbeda" : "ポイントの違い"}
         </AxisInsightCard>
         {overview.mostSharedAxis ? (
           <AxisInsightCard
-            label={isKo ? "친구들의 시선이 모인 면" : "友達の見方が揃った面"}
+            label={isKo ? "친구들의 시선이 모인 면" : isId ? "Sisi yang dilihat serupa oleh teman" : "友達の見方が揃った面"}
             axis={overview.mostSharedAxis}
             isKo={isKo}
+            isId={isId}
           >
-            {isKo ? "누구와 있어도 잘 전해지는 개성" : "誰といるときにも伝わりやすい個性"}
+            {isKo ? "누구와 있어도 잘 전해지는 개성" : isId ? "Ciri yang mudah terlihat bersama siapa pun" : "誰といるときにも伝わりやすい個性"}
           </AxisInsightCard>
         ) : null}
         {overview.mostVariedAxis ? (
           <AxisInsightCard
-            label={isKo ? "상대에 따라 인상이 달라지는 면" : "相手によって印象が変わる面"}
+            label={isKo ? "상대에 따라 인상이 달라지는 면" : isId ? "Sisi yang tampak berbeda bagi setiap orang" : "相手によって印象が変わる面"}
             axis={overview.mostVariedAxis}
             isKo={isKo}
+            isId={isId}
           >
-            {isKo ? "관계와 상황에 따라 다르게 드러나는 개성" : "関係や場面で出し方が変わる個性"}
+            {isKo ? "관계와 상황에 따라 다르게 드러나는 개성" : isId ? "Ciri yang muncul berbeda sesuai hubungan dan situasi" : "関係や場面で出し方が変わる個性"}
           </AxisInsightCard>
         ) : null}
       </div>
 
       <div className={styles.sectionBlock}>
-        <h3>{isKo ? "자기 인식과 친구들의 시선 사이" : "自己認識と、みんなの目の間にあるもの"}</h3>
+        <h3>{isKo ? "자기 인식과 친구들의 시선 사이" : isId ? "Di antara penilaian diri dan pandangan teman" : "自己認識と、みんなの目の間にあるもの"}</h3>
         <Paragraphs paragraphs={overview.gapParas} />
       </div>
 
       {overview.strengths.length > 0 ? (
         <div className={styles.sectionBlock}>
           <p className={styles.sectionEyebrow}>STRENGTHS THEY SEE</p>
-          <h3>{isKo ? "친구들의 눈이 알고 있는 나의 강점" : "友達の目が知っている、あなたの強み"}</h3>
+          <h3>{isKo ? "친구들의 눈이 알고 있는 나의 강점" : isId ? "Kekuatan Anda yang dikenali teman" : "友達の目が知っている、あなたの強み"}</h3>
           <InsightList items={overview.strengths} />
         </div>
       ) : null}
@@ -502,7 +545,7 @@ function OverviewChapter({
       {overview.surprises.length > 0 ? (
         <div className={styles.sectionBlock}>
           <p className={styles.sectionEyebrow}>WHAT THEY NOTICE</p>
-          <h3>{isKo ? "스스로 놓치기 쉬운 사랑받는 습관" : "自分では見落としやすい、愛されるクセ"}</h3>
+          <h3>{isKo ? "스스로 놓치기 쉬운 사랑받는 습관" : isId ? "Kebiasaan menawan yang mudah Anda lewatkan" : "自分では見落としやすい、愛されるクセ"}</h3>
           <InsightList items={overview.surprises} tone="caution" />
         </div>
       ) : null}
@@ -517,7 +560,8 @@ export default async function TakoReportPrintPage({
   const { token } = await params;
   const sp = await searchParams;
   const isKo = sp.locale === "ko";
-  const locale = isKo ? "ko" : "ja";
+  const isId = sp.locale === "id";
+  const locale = isKo ? "ko" : isId ? "id" : "ja";
 
   const rawPreview = typeof sp.previewType === "string" ? sp.previewType : "";
   const isPreview =
@@ -536,7 +580,7 @@ export default async function TakoReportPrintPage({
       .maybeSingle();
     if (!user) notFound();
     if (!(await hasTakoAccess(user.id as string))) {
-      redirect(`${isKo ? "/ko" : ""}/tako/${encodeURIComponent(token)}`);
+      redirect(`${isKo ? "/ko" : isId ? "/id" : ""}/tako/${encodeURIComponent(token)}`);
     }
     data = await loadOwnerReportData(token);
   }
@@ -549,8 +593,10 @@ export default async function TakoReportPrintPage({
   const ownerName =
     isKo && isPreview
       ? "미리보기"
+      : isId && isPreview
+        ? "Pratinjau"
       : (data.user.display_name ?? "").trim();
-  const generatedAt = new Date().toLocaleDateString(isKo ? "ko-KR" : "ja-JP", {
+  const generatedAt = new Date().toLocaleDateString(isKo ? "ko-KR" : isId ? "id-ID" : "ja-JP", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -571,14 +617,14 @@ export default async function TakoReportPrintPage({
   } as CSSProperties;
 
   const contents = [
-    isKo ? "친구들의 눈에 비친 나의 전체 모습" : "みんなの目に映る、あなたの全体像",
+    isKo ? "친구들의 눈에 비친 나의 전체 모습" : isId ? "Gambaran utuh Anda di mata teman" : "みんなの目に映る、あなたの全体像",
     ...sheets.map((sheet) =>
-      isKo ? `${sheet.viewer}의 눈에 비친 나` : `${sheet.viewer}から見たあなた`,
+      isKo ? `${sheet.viewer}의 눈에 비친 나` : isId ? `Anda di mata ${sheet.viewer}` : `${sheet.viewer}から見たあなた`,
     ),
     ...(withMessages.length > 0
-      ? [isKo ? "친구가 남긴 메시지" : "友達からのメッセージ"]
+      ? [isKo ? "친구가 남긴 메시지" : isId ? "Pesan dari teman" : "友達からのメッセージ"]
       : []),
-    isKo ? "마무리" : "終わりに",
+    isKo ? "마무리" : isId ? "Penutup" : "終わりに",
   ];
 
   return (
@@ -587,7 +633,7 @@ export default async function TakoReportPrintPage({
       style={reportStyle}
     >
       <div className={styles.screenToolbar}>
-        <p>{isKo ? "친구 진단 완전판 PDF 미리보기" : "友達診断 完全版PDF プレビュー"}</p>
+        <p>{isKo ? "친구 진단 완전판 PDF 미리보기" : isId ? "Pratinjau PDF Analisis Teman Lengkap" : "友達診断 完全版PDF プレビュー"}</p>
         <ReportPrintButton locale={locale} />
       </div>
 
@@ -599,21 +645,25 @@ export default async function TakoReportPrintPage({
           imageAlt={overview.charName}
           characterName={overview.charName}
           title={overview.essence}
-          coverTitle={isKo ? "친구들이 본 나" : "みんなから見た"}
+          coverTitle={isKo ? "친구들이 본 나" : isId ? "Saya di mata teman" : "みんなから見た"}
           storyTitle={
             isKo
               ? `${overview.essence}의 이야기`
+              : isId
+                ? `Kisah sang ${overview.essence}`
               : `${overview.essence}のストーリー`
           }
           storyImageSrc={
             friendReportStoryImagePath(overview.imageSrc) ?? undefined
           }
           subtitle={
-            isKo ? "친구들의 눈에 비친 나의 프로필" : "友達の目に映る、あなたのプロフィール"
+            isKo ? "친구들의 눈에 비친 나의 프로필" : isId ? "Profil Anda di mata teman" : "友達の目に映る、あなたのプロフィール"
           }
           quote={
             isKo
               ? `혼자서는 보지 못한 매력을 ${overview.friendCount}명의 친구 시선으로 읽어 내는 한 권.`
+              : isId
+                ? `Sebuah laporan yang membaca pesona yang sulit Anda lihat sendiri melalui sudut pandang ${overview.friendCount} teman.`
               : `自分では見えない魅力を、${overview.friendCount}人の友達の視点から読み解く一冊。`
           }
           readerLabel={
@@ -621,6 +671,10 @@ export default async function TakoReportPrintPage({
               ? ownerName
                 ? `${ownerName}님의 리포트`
                 : "나의 리포트"
+              : isId
+                ? ownerName
+                  ? `Laporan ${ownerName}`
+                  : "Laporan Anda"
               : ownerName
                 ? `${ownerName}さんのレポート`
                 : "あなたのレポート"
@@ -632,32 +686,34 @@ export default async function TakoReportPrintPage({
         <section className={styles.overviewPage}>
           <p className={styles.pageEyebrow}>ABOUT THIS REPORT</p>
           <h2 className={styles.overviewTitle}>
-            {isKo ? "이 리포트를 읽는 방법" : "このレポートの読み方"}
+            {isKo ? "이 리포트를 읽는 방법" : isId ? "Cara membaca laporan ini" : "このレポートの読み方"}
           </h2>
           <p className={styles.leadText}>
             {isKo
               ? "이 한 권은 자기 진단으로 본 나와 친구들의 눈에 비친 나를 겹쳐 읽어 낸 리포트예요. 일치는 ‘나다움이 그대로 전해진 부분’, 차이는 ‘다른 사람이기에 발견한 새로운 모습’이에요. 어느 쪽도 정답이나 우열이 아니라 관계를 더 편안하게 만드는 단서로 읽어 주세요."
+              : isId
+                ? "Laporan ini menyandingkan cara Anda melihat diri sendiri dengan cara teman-teman melihat Anda. Kesamaan menunjukkan sisi diri yang tersampaikan dengan jelas, sedangkan perbedaan mengungkap sisi baru yang terlihat dari luar. Tidak ada jawaban yang lebih benar; gunakan keduanya sebagai petunjuk untuk membangun hubungan yang lebih nyaman."
               : "この一冊は、自己診断で見えたあなたと、友達の目に映ったあなたを重ねて読み解いたものです。一致は「あなたらしさが伝わっている部分」、ギャップは「他者だから見つけられた新しい一面」。どちらも正解や優劣ではなく、関係をより心地よくするための手がかりとして読んでください。"}
           </p>
 
           <div className={styles.profileStatement}>
-            <p>{isKo ? "친구들의 목소리로 만든 밖에서 본 프로필" : "友達の声から生まれた、外側のプロフィール"}</p>
+            <p>{isKo ? "친구들의 목소리로 만든 밖에서 본 프로필" : isId ? "Profil dari luar yang dibentuk oleh suara teman" : "友達の声から生まれた、外側のプロフィール"}</p>
             <strong>{overview.essence}</strong>
             <span>
-              {overview.charName}{isKo ? " 유형 / 관점 일치도 " : "タイプ / 見方の一致 "}
+              {overview.charName}{isKo ? " 유형 / 관점 일치도 " : isId ? " / keselarasan pandangan " : "タイプ / 見方の一致 "}
               {overview.agreement}%
             </span>
           </div>
 
           <div className={styles.scoreSection}>
             <div className={styles.sectionHeadingRow}>
-              <h3>{isKo ? "5가지 성격 경향 비교" : "5つの傾向の比較"}</h3>
-              <span>{isKo ? "● 친구  ◆ 나" : "● 友達の目　◆ 自己認識"}</span>
+              <h3>{isKo ? "5가지 성격 경향 비교" : isId ? "Perbandingan lima dimensi kepribadian" : "5つの傾向の比較"}</h3>
+              <span>{isKo ? "● 친구  ◆ 나" : isId ? "● Teman  ◆ Diri sendiri" : "● 友達の目　◆ 自己認識"}</span>
             </div>
-            <ComparisonRows axes={overview.axes} isKo={isKo} />
+            <ComparisonRows axes={overview.axes} isKo={isKo} isId={isId} />
           </div>
 
-          <nav className={styles.contents} aria-label={isKo ? "목차" : "目次"}>
+          <nav className={styles.contents} aria-label={isKo ? "목차" : isId ? "Daftar isi" : "目次"}>
             <p className={styles.contentsLabel}>CONTENTS</p>
             <ol>
               {contents.map((title, index) => (
@@ -670,7 +726,7 @@ export default async function TakoReportPrintPage({
           </nav>
         </section>
 
-        <OverviewChapter overview={overview} isKo={isKo} />
+        <OverviewChapter overview={overview} isKo={isKo} isId={isId} />
 
         {sheets.map((sheet, index) => (
           <FriendChapter
@@ -680,6 +736,7 @@ export default async function TakoReportPrintPage({
             chapterNumber={index + 2}
             selfScores={data.selfScores}
             isKo={isKo}
+            isId={isId}
           />
         ))}
 
@@ -688,11 +745,13 @@ export default async function TakoReportPrintPage({
             <ChapterHeader
               number={sheets.length + 2}
               eyebrow="LETTERS FROM FRIENDS"
-              title={isKo ? "친구가 남긴 메시지" : "友達からのメッセージ"}
+              title={isKo ? "친구가 남긴 메시지" : isId ? "Pesan dari teman" : "友達からのメッセージ"}
             />
             <p className={styles.messageLead}>
               {isKo
                 ? "진단의 숫자만으로는 담을 수 없는 친구의 말을 그대로 남겨요."
+                : isId
+                  ? "Kami menyimpan kata-kata teman yang tidak dapat diwakili oleh angka diagnosis saja."
                 : "診断の数字だけでは拾いきれない、友達の言葉そのものを残します。"}
             </p>
             <div className={styles.messageList}>
@@ -718,25 +777,27 @@ export default async function TakoReportPrintPage({
 
         <footer className={styles.endPage}>
           <p className={styles.pageEyebrow}>KEEP THIS CLOSE</p>
-          <h2>{isKo ? "내 모습을 잃어버릴 것 같은 순간에." : "自分を見失いそうなときに。"}</h2>
+          <h2>{isKo ? "내 모습을 잃어버릴 것 같은 순간에." : isId ? "Saat Anda merasa kehilangan diri sendiri." : "自分を見失いそうなときに。"}</h2>
           <p>
             {isKo
               ? "내게는 당연한 행동을 친구들은 나만의 매력으로 받아들이고 있어요. 혼자 보는 시선만으로 나를 알기 어려운 순간에는 이 리포트에 남은 친구들의 눈과 말을 다시 열어 보세요."
+              : isId
+                ? "Hal yang terasa biasa bagi Anda dapat diterima teman sebagai pesona khas Anda. Ketika sulit memahami diri hanya dari sudut pandang sendiri, buka kembali pandangan dan kata-kata teman yang tersimpan dalam laporan ini."
               : "あなたが当たり前にしていることを、友達はあなたの魅力として受け取っています。自分だけの視点では分からなくなったときは、このレポートに残った友達の目と言葉を、もう一度開いてみてください。"}
           </p>
           <div className={styles.endMark}>
-            {isKo ? "친구들의 눈에 비친" : "友達の目に映る"}
+            {isKo ? "친구들의 눈에 비친" : isId ? "Diri Anda di mata teman" : "友達の目に映る"}
             <br />
-            {isKo ? "나 역시 나다움의 일부" : "あなたも、あなたらしさの一部"}
+            {isKo ? "나 역시 나다움의 일부" : isId ? "juga bagian dari jati diri Anda" : "あなたも、あなたらしさの一部"}
           </div>
           <p className={styles.generatedAt}>
-            {generatedAt} {isKo ? "발행" : "発行"}
+            {generatedAt} {isKo ? "발행" : isId ? "diterbitkan" : "発行"}
           </p>
           <Link
-            href={`${isKo ? "/ko" : ""}/tako/${encodeURIComponent(isPreview ? "preview" : token)}`}
+            href={`${isKo ? "/ko" : isId ? "/id" : ""}/tako/${encodeURIComponent(isPreview ? "preview" : token)}`}
             className={styles.backLink}
           >
-            {isKo ? "친구 진단 결과로 돌아가기" : "友達診断結果に戻る"}
+            {isKo ? "친구 진단 결과로 돌아가기" : isId ? "Kembali ke hasil analisis teman" : "友達診断結果に戻る"}
           </Link>
         </footer>
       </article>

@@ -275,6 +275,12 @@ const KO_BLIND_DECOY: Item[] = [
     body: "숨겼다고 생각한 마음도 가까운 사람에게는 이미 다정하게 전해지고 있어요.",
   },
 ];
+const ID_BLIND_DECOY: Item[] = [
+  { key: "O", title: "Kebaikan yang sudah terlihat", body: "Perhatian kecil yang terasa alami bagi Anda dapat tinggal lama dalam ingatan orang lain." },
+  { key: "C", title: "Lebih dapat diandalkan dari dugaan", body: "Hal yang terasa biasa bagi Anda dapat terlihat sebagai usaha dan ketulusan." },
+  { key: "E", title: "Suasana baik yang tercipta tanpa sadar", body: "Satu ucapan atau senyuman dapat mengubah suasana lebih besar dari yang Anda kira." },
+  { key: "A", title: "Kepekaan yang sudah terbaca", body: "Sisi yang Anda kira tersembunyi mungkin sudah terasa bagi orang terdekat." },
+];
 
 const KO_TRAITS: Record<
   BigFiveDimension,
@@ -286,6 +292,41 @@ const KO_TRAITS: Record<
   A: { high: "자연스럽게 챙기는 다정함", low: "흔들리지 않는 자기 기준", unknown: "마음을 놓고 기대는 모습" },
   N: { high: "작은 변화를 느끼는 섬세함", low: "쉽게 흔들리지 않는 침착함", unknown: "감정을 솔직하게 표현하는 힘" },
 };
+
+const ID_TRAITS: Record<
+  BigFiveDimension,
+  { high: string; low: string; unknown: string }
+> = {
+  O: { high: "rasa ingin tahu yang kaya", low: "selera yang mendalam", unknown: "sisi yang larut dalam dunia baru" },
+  C: { high: "ketelitian yang dapat diandalkan", low: "keluwesan yang santai", unknown: "kemampuan merencanakan dan memimpin" },
+  E: { high: "energi yang mencerahkan suasana", low: "kemampuan mendengarkan dengan tenang", unknown: "sisi yang menikmati momen sepenuhnya" },
+  A: { high: "kepedulian yang alami", low: "prinsip diri yang kokoh", unknown: "sisi yang berani mengandalkan orang lain" },
+  N: { high: "kepekaan pada perubahan kecil", low: "ketenangan yang stabil", unknown: "kemampuan mengungkapkan emosi" },
+};
+
+function idTitle(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+): string {
+  const trait = window === "unknown" ? ID_TRAITS[key].unknown : high ? ID_TRAITS[key].high : ID_TRAITS[key].low;
+  if (window === "blind") return `${trait} yang lebih dulu dilihat teman`;
+  if (window === "secret") return `${trait} yang belum banyak Anda tunjukkan`;
+  return trait;
+}
+
+function idBody(
+  key: BigFiveDimension,
+  high: boolean,
+  window: "open" | "blind" | "secret" | "unknown",
+  viewer: string,
+): string {
+  const trait = window === "unknown" ? ID_TRAITS[key].unknown : high ? ID_TRAITS[key].high : ID_TRAITS[key].low;
+  if (window === "open") return `Kekuatan yang kalian berdua kenali: “${trait}”. Anda menyadarinya dan ${viewer} melihat hal yang sama.`;
+  if (window === "blind") return `Jawaban ${viewer} menunjukkan “${trait}” dengan lebih jelas. Bagi Anda mungkin terasa biasa, tetapi bagi orang lain ini adalah daya tarik yang khas.`;
+  if (window === "secret") return `Sisi yang belum sepenuhnya terlihat oleh ${viewer}: “${trait}”. Menunjukkannya sedikit demi sedikit dapat memperdalam hubungan.`;
+  return `Kemungkinan yang belum sepenuhnya kalian lihat: “${trait}”. Pengalaman baru dapat membukanya secara alami.`;
+}
 
 function koTitle(
   key: BigFiveDimension,
@@ -326,9 +367,9 @@ function windowsFrom(
   const fill = (t: string) => t.replace(/\{v\}/g, viewer);
   const gaps = buildDimensionGaps(self, friend);
 
-  if (locale === "en" || locale === "ko") {
-    const translatedTitle = locale === "en" ? enTitle : koTitle;
-    const translatedBody = locale === "en" ? enBody : koBody;
+  if (locale === "en" || locale === "ko" || locale === "id") {
+    const translatedTitle = locale === "en" ? enTitle : locale === "ko" ? koTitle : idTitle;
+    const translatedBody = locale === "en" ? enBody : locale === "ko" ? koBody : idBody;
     const open = [...gaps]
       .sort(
         (a, b) =>
@@ -592,13 +633,14 @@ export function JohariWindow({
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const { open, blind, secret, unknown } = windowsFrom(
     selfScores,
     friendScores,
     viewer,
     locale,
   );
-  const blindDecoy = isEn ? EN_BLIND_DECOY : isKo ? KO_BLIND_DECOY : BLIND_DECOY;
+  const blindDecoy = isEn ? EN_BLIND_DECOY : isKo ? KO_BLIND_DECOY : isId ? ID_BLIND_DECOY : BLIND_DECOY;
 
   return (
     <div>
@@ -606,12 +648,14 @@ export function JohariWindow({
         {/* 開放の窓 */}
         <WindowCard
           tone="green"
-          name={isEn ? "Open area" : isKo ? "열린 창" : "開放の窓"}
+          name={isEn ? "Open area" : isKo ? "열린 창" : isId ? "Area terbuka" : "開放の窓"}
           help={
             isEn
               ? `The parts of you that both you and ${viewer} recognize. These are qualities your answers describe in a similar way.`
               : isKo
               ? "나와 친구가 모두 알고 있는 모습이에요. 두 사람의 답변이 비슷하게 나타난 장점이에요."
+              : isId
+              ? `Sisi yang dikenali oleh Anda dan ${viewer}. Jawaban kalian menggambarkannya dengan cara yang serupa.`
               : "自分もその友達も「そうだよね」と認めてる、公認のあなた。ふたりの回答が一致した持ち味だよ。"
           }
           locale={locale}
@@ -622,12 +666,14 @@ export function JohariWindow({
         {/* 盲点の窓 (課金ゲート) */}
         <WindowCard
           tone="indigo"
-          name={isEn ? "Blind area" : isKo ? "보이지 않는 창" : "盲点の窓"}
+          name={isEn ? "Blind area" : isKo ? "보이지 않는 창" : isId ? "Area buta" : "盲点の窓"}
           help={
             isEn
               ? `The parts that ${viewer} can see more clearly than you do. These qualities stand out more strongly in your friend's answers.`
               : isKo
               ? "나는 아직 모르지만 친구에게는 보이는 모습이에요. 친구의 답변에서 더 선명하게 나타난 장점이에요."
+              : isId
+              ? `Sisi yang lebih jelas terlihat oleh ${viewer} daripada oleh Anda sendiri.`
               : "自分では気づいてないけど、友達には見えてるあなた。友達の回答にだけ強く出た持ち味だよ。"
           }
           locale={locale}
@@ -661,13 +707,15 @@ export function JohariWindow({
                     </svg>
                   </span>
                   <p className="mb-1 text-[13px] font-black text-[#2E2E5C] md:text-[15px]">
-                    {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : "今すぐロックを解除"}
+                    {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : isId ? "Buka sekarang" : "今すぐロックを解除"}
                   </p>
                   <p className="mb-3 text-[10px] font-bold leading-[1.7] text-[#8A8AA3] md:text-[12px]">
                     {isEn
                       ? `See the side of you that only ${viewer} can describe.`
                       : isKo
                       ? `${viewer}만 알고 있는 내 모습을 확인할 수 있어요.`
+                      : isId
+                      ? `Lihat sisi diri yang baru dapat dijelaskan oleh ${viewer}.`
                       : `${viewer}だけが知ってるあなたが読めるよ。`}
                   </p>
                   <PaywallScrollButton
@@ -675,7 +723,7 @@ export function JohariWindow({
                     targetId="tako-promo"
                     className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[11px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:py-3 md:text-[13px]"
                   >
-                    {isEn ? "View now" : isKo ? "지금 확인하기" : "今すぐアクセス"}
+                    {isEn ? "View now" : isKo ? "지금 확인하기" : isId ? "Lihat sekarang" : "今すぐアクセス"}
                   </PaywallScrollButton>
                 </div>
               </div>
@@ -688,12 +736,14 @@ export function JohariWindow({
         {/* 秘密の窓 */}
         <WindowCard
           tone="navy"
-          name={isEn ? "Hidden area" : isKo ? "숨겨진 창" : "秘密の窓"}
+          name={isEn ? "Hidden area" : isKo ? "숨겨진 창" : isId ? "Area tersembunyi" : "秘密の窓"}
           help={
             isEn
               ? `The parts you know about yourself that ${viewer} may not have seen yet. These qualities appear more strongly in your own answers.`
               : isKo
               ? "나는 알고 있지만 친구에게는 아직 보여 주지 않은 모습이에요. 내 답변에서 더 선명하게 나타났어요."
+              : isId
+              ? `Sisi yang Anda kenali tetapi mungkin belum dilihat ${viewer}.`
               : "自分は知ってるけど、友達にはまだ見せてないあなた。自分の回答にだけ強く出た持ち味だよ。"
           }
           locale={locale}
@@ -704,12 +754,14 @@ export function JohariWindow({
         {/* 未知の窓 */}
         <WindowCard
           tone="gray"
-          name={isEn ? "Unknown area" : isKo ? "미지의 창" : "未知の窓"}
+          name={isEn ? "Unknown area" : isKo ? "미지의 창" : isId ? "Area belum dikenal" : "未知の窓"}
           help={
             isEn
               ? "Possibilities that neither of you has fully seen yet. New experiences may bring these qualities forward."
               : isKo
               ? "나도 친구도 아직 충분히 만나지 못한 모습이에요. 앞으로 열릴 수 있는 가능성이에요."
+              : isId
+              ? "Kemungkinan yang belum sepenuhnya kalian lihat dan dapat muncul melalui pengalaman baru."
               : "自分も友達もまだ知らない、これから開いていくあなた。診断にはまだ映らない伸びしろだよ。"
           }
           locale={locale}

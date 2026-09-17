@@ -156,8 +156,17 @@ const EN_DECOY_ITEMS: ContentItem[] = [
   { title: "Difficulty asking for help", body: "Friends may wish you had told them sooner that you needed support." },
 ];
 
+const ID_DECOY_ITEMS: ContentItem[] = [
+  { title: "Sisi keras kepala", body: "Teman terkadang melihat betapa kuatnya Anda bertahan setelah mengambil keputusan." },
+  { title: "Balasan yang terlambat", body: "Orang terdekat mungkin bertanya-tanya ketika jawaban terus tertunda." },
+  { title: "Menyimpan perasaan sebenarnya", body: "Senyum dapat membuat orang lain sulit mengetahui apa yang benar-benar Anda butuhkan." },
+  { title: "Energi yang berubah", body: "Teman dekat menyadari perbedaan antara hari Anda yang penuh energi dan hari yang tenang." },
+  { title: "Memikul terlalu banyak", body: "Orang lain dapat khawatir ketika Anda mencoba menanggung semuanya sendirian." },
+  { title: "Sulit meminta bantuan", body: "Teman mungkin berharap Anda mengatakan lebih awal bahwa Anda membutuhkan dukungan." },
+];
+
 function DummyCards({ rows, locale }: { rows: number; locale: AppResultLocale }) {
-  const decoyItems = locale === "en" ? EN_DECOY_ITEMS : locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
+  const decoyItems = locale === "en" ? EN_DECOY_ITEMS : locale === "id" ? ID_DECOY_ITEMS : locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
   return (
     <div
       aria-hidden="true"
@@ -194,6 +203,8 @@ function RelationList({
   const relationLockItems =
     locale === "en"
       ? EN_RELATION_LOCK_ITEMS
+      : locale === "id"
+        ? ID_RELATION_LOCK_ITEMS
       : locale === "ko"
         ? KO_RELATION_LOCK_ITEMS
         : RELATION_LOCK_ITEMS;
@@ -277,9 +288,16 @@ const EN_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
   { label: "Colleagues", color: "#F2C14E" },
 ];
 
+const ID_RELATION_LOCK_ITEMS: { label: string; color: string }[] = [
+  { label: "Teman", color: "#56BFE8" },
+  { label: "Pasangan", color: "#F48BAE" },
+  { label: "Keluarga", color: "#4CAF7D" },
+  { label: "Rekan kerja", color: "#F2C14E" },
+];
+
 function RelationsLocked({ locale }: { locale: AppResultLocale }) {
   const relationLockItems =
-    locale === "en" ? EN_RELATION_LOCK_ITEMS : locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
+    locale === "en" ? EN_RELATION_LOCK_ITEMS : locale === "id" ? ID_RELATION_LOCK_ITEMS : locale === "ko" ? KO_RELATION_LOCK_ITEMS : RELATION_LOCK_ITEMS;
   return (
     <div className="rounded-2xl bg-white px-4 py-8 shadow-[0_2px_12px_rgba(46,46,92,0.06)] md:px-10 md:py-10">
       {/* 鍵付きの円 (SP 2列 / md 3列。友達・恋人・家族・上司の4関係) */}
@@ -291,11 +309,13 @@ function RelationsLocked({ locale }: { locale: AppResultLocale }) {
           <LockGlyph size={14} />
         </span>
         <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-          {locale === "en" ? "Unlock now" : locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
+          {locale === "en" ? "Unlock now" : locale === "id" ? "Buka sekarang" : locale === "ko" ? "지금 잠금 해제" : "今すぐロックを解除"}
         </p>
         <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
           {locale === "en" ? (
             "Unlock the Complete Edition to see what people in each part of your life may find hard to say."
+          ) : locale === "id" ? (
+            "Buka Edisi Lengkap untuk melihat hal yang mungkin sulit dikatakan orang-orang di setiap bagian hidup Anda."
           ) : locale === "ko" ? (
             "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
           ) : (
@@ -311,7 +331,7 @@ function RelationsLocked({ locale }: { locale: AppResultLocale }) {
           source="relations_card"
           className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
         >
-          {locale === "en" ? "See the complete result" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+          {locale === "en" ? "See the complete result" : locale === "id" ? "Lihat hasil lengkap" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
         </PaywallScrollButton>
       </div>
     </div>
@@ -327,12 +347,13 @@ export function PartTwoSections({
 }: PartTwoSectionsProps) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   return (
     <div>
       {/* ブロック順は 好かれやすい → 嫌われやすい → 武器 → 関係別 (2026-07-14 指示)。 */}
       {/* ── 1. 好かれやすい性格 (無料・未解放でも公開)。カードではなく文章 (段落) ── */}
       <div className="mb-10">
-        <SectionHeading title={isEnglish ? "What people naturally like about you" : isKorean ? "호감을 얻기 쉬운 성격" : "好かれやすい性格"} />
+        <SectionHeading title={isEnglish ? "What people naturally like about you" : isIndonesian ? "Hal yang secara alami disukai orang darimu" : isKorean ? "호감을 얻기 쉬운 성격" : "好かれやすい性格"} />
         <div className="px-1">
           {data.likable.map((para, i) => (
             <p
@@ -348,7 +369,7 @@ export function PartTwoSections({
       {/* ── 2. 嫌われやすい性格 (🔒)。hideLocked (獲得モード) では見出しごと出さない ── */}
       {!(hideLocked && !data.dislikable) && (
       <div className="mb-10">
-        <SectionHeading title={isEnglish ? "What people may misunderstand" : isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
+        <SectionHeading title={isEnglish ? "What people may misunderstand" : isIndonesian ? "Hal yang mungkin disalahpahami orang" : isKorean ? "오해받기 쉬운 성격" : "嫌われやすい性格"} />
         {data.dislikable ? (
           <WarnList items={data.dislikable} />
         ) : (
@@ -379,6 +400,10 @@ export function PartTwoSections({
                 ? subjectName
                   ? `${subjectName}’s quietly powerful strengths`
                   : "Your quietly powerful strengths"
+                : isIndonesian
+                ? subjectName
+                  ? `Kekuatan istimewa ${subjectName}`
+                  : "Kekuatan istimewamu"
                 : isKorean
                 ? subjectName
                   ? `부러운 ${subjectName}님만의 무기`
@@ -399,6 +424,8 @@ export function PartTwoSections({
           title={
             isEnglish
               ? "What people around you may find hard to say"
+              : isIndonesian
+              ? "Hal yang mungkin sulit dikatakan orang-orang di sekitarmu"
               : isKorean
               ? "주변 사람들이 나에게 말하지 못한 것"
               : "周りの人が、あなたに言えずにいること"

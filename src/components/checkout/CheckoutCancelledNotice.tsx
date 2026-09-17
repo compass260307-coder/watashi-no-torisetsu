@@ -51,6 +51,7 @@ export function CheckoutCancelledNotice({
 }) {
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
 
   return (
     <div
@@ -58,6 +59,8 @@ export function CheckoutCancelledNotice({
       aria-label={
         isEnglish
           ? "Payment cancellation notice"
+          : isIndonesian
+            ? "Pemberitahuan pembatalan pembayaran"
           : isKorean
             ? "결제 취소 안내"
             : "決済キャンセルのご案内"
@@ -84,7 +87,9 @@ export function CheckoutCancelledNotice({
       >
         <p className="text-[16px] font-black text-[#2E2E5C]">
           {isEnglish
-            ? "Your payment was cancelled"
+            ? "Your payment was canceled"
+            : isIndonesian
+              ? "Pembayaranmu dibatalkan"
             : isKorean
               ? "결제가 취소되었어요"
               : "決済はキャンセルされました"}
@@ -92,6 +97,8 @@ export function CheckoutCancelledNotice({
         <p className="mx-auto mt-2 max-w-[310px] text-[12px] font-bold leading-[1.75] text-[#65657B] md:text-[13px]">
           {isEnglish
             ? `You were not charged. We restored your selection of ${courseName}.`
+            : isIndonesian
+              ? `Tidak ada biaya yang ditagihkan. Pilihan ${courseName} telah dipulihkan.`
             : isKorean
               ? `요금은 청구되지 않았어요. ${courseName}을(를) 선택한 상태로 돌아왔어요.`
               : `料金は発生していません。${courseName}を選択した状態に戻しました。`}
@@ -129,6 +136,7 @@ export function CheckoutCancelledModal({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
 
   const dismiss = useCallback(() => {
     clearCheckoutCancelledParams();
@@ -187,6 +195,8 @@ export function CheckoutCancelledModal({
         aria-label={
           isEnglish
             ? "Payment cancellation notice"
+            : isIndonesian
+              ? "Pemberitahuan pembatalan pembayaran"
             : isKorean
               ? "결제 취소 안내"
               : "決済キャンセルのご案内"
@@ -204,7 +214,7 @@ export function CheckoutCancelledModal({
           ref={closeButtonRef}
           type="button"
           onClick={dismiss}
-          aria-label={isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
+          aria-label={isEnglish ? "Close" : isIndonesian ? "Tutup" : isKorean ? "닫기" : "閉じる"}
           className="absolute -right-1 -top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#2E2E5C] shadow-[0_5px_18px_rgba(23,23,43,0.22)] transition hover:scale-105 active:scale-95"
         >
           <svg

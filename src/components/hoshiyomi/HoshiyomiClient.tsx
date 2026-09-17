@@ -126,7 +126,7 @@ export function HoshiyomiClient({
       "",
       previewMode
         ? `/dev/hoshiyomi-preview${locale === "ko" ? "?locale=ko" : ""}`
-        : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/hoshiyomi`,
+        : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/hoshiyomi`,
     );
   };
 
@@ -185,7 +185,7 @@ export function HoshiyomiClient({
       {locale === "ko" ? (
         <KoTopHeader />
       ) : (
-        <TopHeader locale={locale === "en" ? "en" : "ja"} />
+        <TopHeader locale={locale === "en" ? "en" : locale === "id" ? "id" : "ja"} />
       )}
       <main className="bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] text-[#2E2E5C]">
         <HoshiyomiHome
@@ -203,7 +203,7 @@ export function HoshiyomiClient({
       {locale === "ko" ? (
         <KoTopFooter />
       ) : (
-        <TopFooter locale={locale === "en" ? "en" : "ja"} />
+        <TopFooter locale={locale === "en" ? "en" : locale === "id" ? "id" : "ja"} />
       )}
       {paywallOpen ? (
         <PaywallOverlay
@@ -227,6 +227,10 @@ export function HoshiyomiClient({
               ? canUpgradeToPremium
                 ? "Aliceとの続きを解放する"
                 : "Aliceを試す・本格相談を選ぶ"
+              : locale === "id"
+                ? canUpgradeToPremium
+                  ? "Buka kelanjutan percakapan Anda dengan Alice"
+                  : "Coba Alice atau buka konsultasi lengkap"
               : undefined
           }
           previewMode={previewMode}
@@ -239,6 +243,8 @@ export function HoshiyomiClient({
               ? "AI astrologer Alice"
               : locale === "ko"
                 ? "별자리 상담사"
+                : locale === "id"
+                  ? "Astrolog AI Alice"
                 : "AI占い師 Alice"
           }
           scrollLocked={lineExitOpen}
@@ -330,6 +336,8 @@ function HoshiyomiHome({
                         ? "Continue your conversation with Alice"
                         : locale === "ko"
                           ? copy.exhaustedPlaceholder
+                          : locale === "id"
+                            ? "Lanjutkan percakapan Anda dengan Alice"
                           : "Aliceとの続きを相談する"
                       : hasChatAccess && remaining === 0
                       ? copy.exhaustedPlaceholder
@@ -579,7 +587,7 @@ function RealChatPanel({
       window.history.replaceState(
         null,
         "",
-        `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/hoshiyomi?chat=${conversation.id}`,
+        `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/hoshiyomi?chat=${conversation.id}`,
       );
     },
   });

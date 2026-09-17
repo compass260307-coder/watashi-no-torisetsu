@@ -34,6 +34,11 @@ const EN_CARD_INFO: typeof CARD_INFO = {
   star: { title: "XVII The Star", keyword: "Trusting hope again" },
   sun: { title: "XIX The Sun", keyword: "Clear forward motion" },
 };
+const ID_CARD_INFO: typeof CARD_INFO = {
+  moon: { title: "XVIII Bulan", keyword: "Kebenaran di dalam ketidakpastian" },
+  star: { title: "XVII Bintang", keyword: "Memercayai harapan kembali" },
+  sun: { title: "XIX Matahari", keyword: "Langkah maju yang jelas" },
+};
 const HIDDEN_CARDS: CardName[] = ["moon", "sun", "star", "moon", "sun"];
 
 const SINGLE_READINGS: Record<
@@ -95,7 +100,12 @@ const KO_SINGLE_READINGS: typeof SINGLE_READINGS = {
 const EN_SINGLE_READINGS: typeof SINGLE_READINGS = {
   moon: { summary: "The Moon says you do not need to force a feeling into words before it is ready. Today, notice what is making you waver before you choose an answer.", details: [{ title: "What the card shows", text: "A small discomfort inside the uncertainty may be the doorway back to what you really feel." }, { title: "Take care", text: "Do not let anxiety decide the ending or assume you already know what someone else feels." }, { title: "Try this today", text: "Write down one concern, then separate what you know from what you imagine." }] },
   star: { summary: "The Star invites you to recover hope and trust your own sense of direction. Choose the path that makes your inner world feel a little brighter.", details: [{ title: "What the card shows", text: "When urgency softens, the direction you genuinely want becomes easier to see." }, { title: "Take care", text: "Do not dismiss a quiet discomfort just to match someone else's idea of the right answer." }, { title: "Try this today", text: "Give something you care about ten minutes, without demanding a result." }] },
-  sun: { summary: "The Sun says there is already enough light to move. Honest, joyful action can open what has felt stuck.", details: [{ title: "What the card shows", text: "Candor and momentum can bring warmth and clarity back into the situation." }, { title: "Take care", text: "Do not add promises on excitement alone; check what you can realistically sustain." }, { title: "Try this today", text: "Send the short message you have been postponing." }] },
+  sun: { summary: "The Sun says there is already enough light to move. Honest, joyful action can open what has felt stuck.", details: [{ title: "What the card shows", text: "Candor and momentum can bring warmth and clarity back into the situation." }, { title: "Take care", text: "Do not make promises based on excitement alone; check what you can realistically sustain." }, { title: "Try this today", text: "Send the short message you have been postponing." }] },
+};
+const ID_SINGLE_READINGS: typeof SINGLE_READINGS = {
+  moon: { summary: "Bulan berkata kamu tidak perlu memaksa perasaan menjadi kata-kata sebelum siap. Perhatikan apa yang membuatmu bimbang sebelum memilih jawaban.", details: [{ title: "Yang ditunjukkan kartu", text: "Rasa tidak nyaman kecil di dalam ketidakpastian dapat menjadi pintu menuju perasaanmu yang sebenarnya." }, { title: "Perhatikan", text: "Jangan biarkan kecemasan menentukan akhir atau menganggap kamu sudah tahu perasaan orang lain." }, { title: "Coba hari ini", text: "Tuliskan satu kekhawatiran, lalu pisahkan hal yang kamu ketahui dari yang kamu bayangkan." }] },
+  star: { summary: "Bintang mengajakmu memulihkan harapan dan memercayai arahmu sendiri. Pilih jalan yang membuat batinmu terasa sedikit lebih terang.", details: [{ title: "Yang ditunjukkan kartu", text: "Ketika rasa terburu-buru mereda, arah yang sungguh kamu inginkan menjadi lebih mudah terlihat." }, { title: "Perhatikan", text: "Jangan abaikan rasa tidak nyaman hanya untuk mengikuti jawaban benar versi orang lain." }, { title: "Coba hari ini", text: "Berikan sepuluh menit untuk hal yang kamu pedulikan tanpa menuntut hasil." }] },
+  sun: { summary: "Matahari berkata sudah ada cukup cahaya untuk bergerak. Tindakan yang jujur dan penuh sukacita dapat membuka hal yang terasa buntu.", details: [{ title: "Yang ditunjukkan kartu", text: "Kejujuran dan momentum dapat membawa kehangatan serta kejernihan kembali." }, { title: "Perhatikan", text: "Jangan membuat janji hanya karena bersemangat; periksa apa yang realistis untuk kamu pertahankan." }, { title: "Coba hari ini", text: "Kirim pesan singkat yang selama ini kamu tunda." }] },
 };
 
 type ThreeReading = {
@@ -121,8 +131,12 @@ const KO_THREE_READING: ThreeReading = {
   ],
 };
 const EN_THREE_READING: ThreeReading = {
-  summary: "From the Moon through the Star to the Sun: a period of sharpening your senses through uncertainty is moving toward hope and clear action.",
+  summary: "From the Moon to the Star and then the Sun, these cards trace a path from uncertainty through renewed hope to clear action.",
   details: [{ title: "How the cards connect", text: "The turning point is not erasing uncertainty, but trusting the truth you found inside it." }, { title: "What may change", text: "The direction you choose with genuine conviction can bring more openness to both circumstances and relationships." }, { title: "What you can do now", text: "Without forcing a conclusion, name the option you have been most reluctant to consider." }],
+};
+const ID_THREE_READING: ThreeReading = {
+  summary: "Dari Bulan menuju Bintang lalu Matahari, kartu-kartu ini menggambarkan perjalanan dari ketidakpastian, melewati harapan baru, hingga tindakan yang jelas.",
+  details: [{ title: "Hubungan ketiga kartu", text: "Titik baliknya bukan menghapus ketidakpastian, melainkan memercayai kebenaran yang kamu temukan di dalamnya." }, { title: "Hal yang mungkin berubah", text: "Arah yang kamu pilih dengan keyakinan sejati dapat membuka keadaan dan hubungan." }, { title: "Yang bisa dilakukan sekarang", text: "Tanpa memaksakan kesimpulan, sebutkan pilihan yang paling enggan kamu pertimbangkan." }],
 };
 
 const YES_NO_READINGS: Record<CardName, { answer: string; condition: string; summary: string }> = {
@@ -162,8 +176,13 @@ const KO_YES_NO_READINGS: typeof YES_NO_READINGS = {
 };
 const EN_YES_NO_READINGS: typeof YES_NO_READINGS = {
   moon: { answer: "WAIT", condition: "Do not rush the answer", summary: "The Moon suggests that an important condition is still hidden. Understand what is driving the uncertainty before choosing YES or NO." },
-  star: { answer: "YES", condition: "Move through a small experiment", summary: "The Star quietly supports the direction you hope to take. The answer is YES if you begin with a small, testable step." },
+  star: { answer: "YES", condition: "Move forward with a small experiment", summary: "The Star quietly supports the direction you hope to take. The answer is YES if you begin with a small, testable step." },
   sun: { answer: "YES", condition: "Clarify the terms first", summary: "The Sun points toward movement and clarity. The answer is YES, provided you name the conditions instead of moving through ambiguity." },
+};
+const ID_YES_NO_READINGS: typeof YES_NO_READINGS = {
+  moon: { answer: "TUNGGU", condition: "Jangan terburu-buru menjawab", summary: "Bulan menunjukkan masih ada syarat penting yang tersembunyi. Pahami sumber keraguan sebelum memilih YA atau TIDAK." },
+  star: { answer: "YA", condition: "Maju dengan percobaan kecil", summary: "Bintang mendukung arah yang ingin kamu tuju. Jawabannya YA jika kamu memulai dari langkah kecil yang bisa diuji." },
+  sun: { answer: "YA", condition: "Perjelas syaratnya lebih dulu", summary: "Matahari menunjukkan gerak dan kejernihan. Jawabannya YA, asalkan kamu menyebutkan syaratnya terlebih dahulu." },
 };
 
 const DRAW_COPY = {
@@ -236,7 +255,10 @@ const DRAW_COPY = {
     otherNext: "실패해도 돌아올 수 있을 만큼 작게 첫걸음을 내디뎌 보세요.",
   },
   en: {
-    back: "Back to tarot readings", questionLabel: "What would you like to ask?", questionPlaceholder: "Write the decision on your mind", shuffle: "Shuffle the cards", shuffling: "Alice is shuffling the cards", choosePile: "Choose one pile by instinct", askAlice: "Ask Alice to read the cards", chooseOne: "Choose one card", chooseThree: (count: number) => `Choose three cards  ${count}/3`, talk: "Talk with Alice about this", retry: "Draw again", cutTitle: "The deck is now in three piles", cutBody: "Choose one to cut the deck.", pileAria: (index: number) => `Choose card pile ${index + 1}`, selectOne: "Choose the card that draws you in.", selectThree: "Choose the three cards that draw you in.", cardAria: (index: number, selected: boolean) => `Card ${index + 1}${selected ? ", selected" : ""}`, cardBackAlt: "Face-down tarot card", past: "Past", present: "Present", future: "What comes next", today: "Today's card", cardAlt: (title: string) => `${title} tarot card`, upright: "Upright", readingTitle: "Alice's reading", answerTitle: "The card's answer", checkTitle: "What to check", nextTitle: "Your next step", moonCheck: "Check whether you have all the information needed to decide.", otherCheck: "Name one condition you cannot compromise before you act.", moonNext: "Do not decide today; ask one question about what still concerns you.", otherNext: "Try a first step small enough that you can safely change course.",
+    back: "Back to tarot readings", questionLabel: "What would you like to ask?", questionPlaceholder: "Write down the decision you’re weighing", shuffle: "Shuffle the cards", shuffling: "Alice is shuffling the cards", choosePile: "Choose one pile by instinct", askAlice: "Ask Alice to read the cards", chooseOne: "Choose one card", chooseThree: (count: number) => `Choose three cards · ${count}/3`, talk: "Talk with Alice about this", retry: "Draw again", cutTitle: "The deck is now in three piles", cutBody: "Choose one to cut the deck.", pileAria: (index: number) => `Choose card pile ${index + 1}`, selectOne: "Choose the card that draws you in.", selectThree: "Choose the three cards that draw you in.", cardAria: (index: number, selected: boolean) => `Card ${index + 1}${selected ? ", selected" : ""}`, cardBackAlt: "Face-down tarot card", past: "Past", present: "Present", future: "What comes next", today: "Today's card", cardAlt: (title: string) => `${title} tarot card`, upright: "Upright", readingTitle: "Alice's reading", answerTitle: "The card's answer", checkTitle: "What to check", nextTitle: "Your next step", moonCheck: "Check whether you have all the information needed to decide.", otherCheck: "Name one condition you cannot compromise before you act.", moonNext: "Do not decide today; ask one question about what still concerns you.", otherNext: "Try a first step small enough that you can safely change course.",
+  },
+  id: {
+    back: "Kembali ke pilihan tarot", questionLabel: "Apa yang ingin kamu tanyakan?", questionPlaceholder: "Tuliskan keputusan yang sedang kamu pertimbangkan", shuffle: "Kocok kartu", shuffling: "Alice sedang mengocok kartu", choosePile: "Pilih satu tumpukan berdasarkan intuisimu", askAlice: "Minta Alice membaca kartu", chooseOne: "Pilih satu kartu", chooseThree: (count: number) => `Pilih tiga kartu · ${count}/3`, talk: "Bicara dengan Alice tentang hasil ini", retry: "Tarik lagi", cutTitle: "Dek dibagi menjadi tiga tumpukan", cutBody: "Pilih satu untuk memotong dek.", pileAria: (index: number) => `Pilih tumpukan kartu ${index + 1}`, selectOne: "Pilih kartu yang paling menarikmu.", selectThree: "Pilih tiga kartu yang paling menarikmu.", cardAria: (index: number, selected: boolean) => `Kartu ${index + 1}${selected ? ", dipilih" : ""}`, cardBackAlt: "Kartu tarot tertutup", past: "Masa lalu", present: "Masa kini", future: "Yang akan datang", today: "Kartu hari ini", cardAlt: (title: string) => `Kartu tarot ${title}`, upright: "Tegak", readingTitle: "Pembacaan Alice", answerTitle: "Jawaban kartu", checkTitle: "Hal yang perlu diperiksa", nextTitle: "Langkah berikutnya", moonCheck: "Periksa apakah semua informasi yang diperlukan untuk memutuskan sudah tersedia.", otherCheck: "Sebutkan satu syarat yang tidak dapat kamu kompromikan sebelum bertindak.", moonNext: "Jangan memutuskan hari ini; ajukan satu pertanyaan tentang hal yang masih mengganggumu.", otherNext: "Coba langkah pertama yang cukup kecil agar kamu dapat mengubah arah dengan aman.",
   },
 } as const;
 
@@ -303,8 +325,8 @@ export default function TarotDrawExperience({
           <Link
             href={
               previewMode
-                ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot/dev-preview`
-                : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : ""}/tarot`
+                ? `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/tarot/dev-preview`
+                : `${locale === "ko" ? "/ko" : locale === "en" ? "/en" : locale === "id" ? "/id" : ""}/tarot`
             }
             aria-label={copy.back}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-[#2E2E5C]/8 bg-white text-[#2E2E5C] shadow-sm transition hover:bg-[#F0EDFF]"
@@ -394,7 +416,7 @@ export default function TarotDrawExperience({
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <Link
-                href={locale === "ko" ? "/ko/hoshiyomi" : locale === "en" ? "/en/hoshiyomi" : "/hoshiyomi"}
+                href={locale === "ko" ? "/ko/hoshiyomi" : locale === "en" ? "/en/hoshiyomi" : locale === "id" ? "/id/hoshiyomi" : "/hoshiyomi"}
                 className="flex min-h-13 items-center justify-center rounded-2xl bg-[#5B5BEF] px-5 py-3 text-center text-[14px] font-black text-white shadow-[0_10px_22px_rgba(91,91,239,0.22)] transition hover:bg-[#4D4DD7]"
               >
                 {copy.talk}
@@ -558,7 +580,7 @@ function ArtCard({
   large?: boolean;
 }) {
   const copy = DRAW_COPY[locale];
-  const info = (locale === "ko" ? KO_CARD_INFO : locale === "en" ? EN_CARD_INFO : CARD_INFO)[card];
+  const info = (locale === "id" ? ID_CARD_INFO : locale === "ko" ? KO_CARD_INFO : locale === "en" ? EN_CARD_INFO : CARD_INFO)[card];
   return (
     <div className="text-center">
       <p className="mb-2 text-[10px] font-black tracking-[0.1em] text-[#2E2E5C]/40 md:text-[11px]">{label}</p>
@@ -578,8 +600,8 @@ function ArtCard({
 
 function YesNoResult({ card, question, locale }: { card: CardName; question: string; locale: TarotLocale }) {
   const copy = DRAW_COPY[locale];
-  const reading = (locale === "ko" ? KO_YES_NO_READINGS : locale === "en" ? EN_YES_NO_READINGS : YES_NO_READINGS)[card];
-  const info = (locale === "ko" ? KO_CARD_INFO : locale === "en" ? EN_CARD_INFO : CARD_INFO)[card];
+  const reading = (locale === "id" ? ID_YES_NO_READINGS : locale === "ko" ? KO_YES_NO_READINGS : locale === "en" ? EN_YES_NO_READINGS : YES_NO_READINGS)[card];
+  const info = (locale === "id" ? ID_CARD_INFO : locale === "ko" ? KO_CARD_INFO : locale === "en" ? EN_CARD_INFO : CARD_INFO)[card];
   return (
     <div>
       <p className="mx-auto mb-5 max-w-[520px] text-center text-[12px] font-bold leading-relaxed text-[#2E2E5C]/45">
@@ -599,9 +621,9 @@ function YesNoResult({ card, question, locale }: { card: CardName; question: str
 
 function AliceReading({ mode, card, locale }: { mode: TarotMode; card: CardName; locale: TarotLocale }) {
   const copy = DRAW_COPY[locale];
-  const singleReadings = locale === "ko" ? KO_SINGLE_READINGS : locale === "en" ? EN_SINGLE_READINGS : SINGLE_READINGS;
-  const threeReading = locale === "ko" ? KO_THREE_READING : locale === "en" ? EN_THREE_READING : THREE_READING;
-  const yesNoReadings = locale === "ko" ? KO_YES_NO_READINGS : locale === "en" ? EN_YES_NO_READINGS : YES_NO_READINGS;
+  const singleReadings = locale === "id" ? ID_SINGLE_READINGS : locale === "ko" ? KO_SINGLE_READINGS : locale === "en" ? EN_SINGLE_READINGS : SINGLE_READINGS;
+  const threeReading = locale === "id" ? ID_THREE_READING : locale === "ko" ? KO_THREE_READING : locale === "en" ? EN_THREE_READING : THREE_READING;
+  const yesNoReadings = locale === "id" ? ID_YES_NO_READINGS : locale === "ko" ? KO_YES_NO_READINGS : locale === "en" ? EN_YES_NO_READINGS : YES_NO_READINGS;
   const reading = mode === "three" ? threeReading : singleReadings[card];
   const summary = mode === "yes-no" ? yesNoReadings[card].summary : reading.summary;
   const details =
@@ -664,6 +686,13 @@ function guideMessage(phase: Phase, locale: TarotLocale) {
     if (phase === "selecting") return "You do not need to overthink it. Choose the card that first catches you.";
     if (phase === "revealed") return "I've read these cards alongside what you are living through now.";
     return "Today, I'll read the cards carefully for you.";
+  }
+  if (locale === "id") {
+    if (phase === "shuffling") return "Aku sedang mengocok kartu sambil memikirkan keadaanmu saat ini.";
+    if (phase === "cutting") return "Kartu sudah dibagi menjadi tiga tumpukan. Ikuti intuisimu dan pilih satu.";
+    if (phase === "selecting") return "Tidak perlu terlalu banyak berpikir. Pilih kartu yang pertama menarik perhatianmu.";
+    if (phase === "revealed") return "Aku sudah membaca kartu ini bersama keadaan yang sedang kamu jalani.";
+    return "Hari ini, aku akan membaca kartu dengan teliti untukmu.";
   }
   if (phase === "shuffling") return "あなたの今を思い浮かべながら、カードを混ぜているよ。";
   if (phase === "cutting") return "カードを3つの山に分けたよ。直感でひとつ選んで、デッキを切って。";

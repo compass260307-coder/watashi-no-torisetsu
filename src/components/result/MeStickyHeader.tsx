@@ -313,6 +313,7 @@ export function MeStickyHeader({
   const isInvite = activeShareKind === "invite";
   const isKo = locale === "ko";
   const isEn = locale === "en";
+  const isId = locale === "id";
   const shareCopy = isEn
     ? {
         pickerLabel: "Choose what to share",
@@ -344,6 +345,34 @@ export function MeStickyHeader({
         qrCodeLabel: "Friend test invitation QR code",
         qrCodeDescription: "Ask your friend to scan it with their phone",
       }
+    : isId
+      ? {
+          pickerLabel: "Pilih yang ingin dibagikan",
+          close: "Tutup",
+          pickerTitle: "Bagikan hasilmu",
+          more: "Lainnya",
+          personalityTitle: "Tipe kepribadianmu",
+          personalityDescription: "Skor kepribadian tidak disertakan. Cocok untuk dibagikan di media sosial.",
+          personalityCopy: "Salin tautan tipe kepribadian",
+          personalityCopied: "Tautan tipe kepribadian disalin",
+          friendTitle: "Minta teman mengikuti tes teman",
+          friendDescription: "Bagikan tautan undangan ini agar teman dan keluarga dapat memberi tahu cara mereka melihatmu.",
+          friendCopy: "Salin tautan tes teman",
+          friendCopied: "Tautan tes teman disalin",
+          resultTitle: "Bagikan hasilmu",
+          inviteTitle: "Undang teman mengikuti tes",
+          inviteDescription: "Setiap teman yang menjawab akan menambahkan satu lembar hasil.",
+          inviteLink: "Tautan undangan",
+          characterLink: "Tautan karakter",
+          copied: "Disalin",
+          inviteLinkCopy: "Salin tautan undangan",
+          inviteLinkCopied: "Tautan undangan disalin",
+          characterLinkCopy: "Salin tautan karakter",
+          characterLinkCopied: "Tautan karakter disalin",
+          qrCode: "Kode QR",
+          qrCodeLabel: "Kode QR undangan tes teman",
+          qrCodeDescription: "Minta temanmu memindainya dengan ponsel",
+        }
     : isKo
       ? {
           pickerLabel: "공유할 내용 선택",
@@ -472,13 +501,17 @@ export function MeStickyHeader({
   const title = code ? `${essence ?? ""} (${code})` : (essence ?? "");
   const inviteShareText =
     isEn
-      ? "Tell me how you see me! You can answer the friend-perspective test in Alice Test."
+      ? "Tell me how you see me! You can answer the friend-perspective test in Alice Personalities."
+      : isId
+      ? "Ceritakan bagaimana kamu melihatku! Kamu bisa menjawab tes pandangan teman di Alice Test."
       : locale === "ko"
       ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
       : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
   const characterShareText =
     isEn
-      ? `Alice Test says I’m “${title}”!\nSee my character 👇`
+      ? `Alice Personalities says I’m “${title}”!\nSee my character 👇`
+      : isId
+      ? `Hasil Alice Test-ku adalah “${title}”!\nLihat karakterku 👇`
       : locale === "ko"
       ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
@@ -644,11 +677,15 @@ export function MeStickyHeader({
                     defaultIsInvite
                       ? isKo
                         ? "친구에게 진단 부탁하기"
+                        : isId
+                          ? "Undang teman"
                         : isEn
                           ? "Invite a friend"
                           : "友達に診断してもらう"
                       : isKo
                         ? "결과 공유"
+                        : isId
+                          ? "Bagikan hasil"
                         : isEn
                           ? "Share result"
                           : "結果をシェア"
@@ -676,7 +713,7 @@ export function MeStickyHeader({
                 <Link
                   href={friendDiagnosisHref}
                   aria-label={
-                    isEn ? "Open friend perspective" : isKo ? "친구 진단 페이지로 이동" : "友達診断ページへ移動"
+                    isEn ? "Open friend perspective" : isId ? "Buka halaman pandangan teman" : isKo ? "친구 진단 페이지로 이동" : "友達診断ページへ移動"
                   }
                   className={circleButtonClass}
                   style={circleButtonStyle}
@@ -716,7 +753,7 @@ export function MeStickyHeader({
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  {isEn ? "Invite a friend" : isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                  {isEn ? "Invite a friend" : isId ? "Undang teman" : isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
                 </button>
               )}
 
@@ -770,13 +807,13 @@ export function MeStickyHeader({
                     </svg>
                   )}
                   {reportLabel ??
-                    (isEn ? "Download complete report" : isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
+                    (isEn ? "Download complete report" : isId ? "Unduh laporan lengkap" : isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
                 </a>
               ))}
 
               {diagnosisCta && (
                 <a
-                  href={diagnosisCtaHref ?? (isEn ? "/en/diagnosis" : isKo ? "/ko/diagnosis" : "/diagnosis")}
+                  href={diagnosisCtaHref ?? (isEn ? "/en/diagnosis" : isId ? "/id/diagnosis" : isKo ? "/ko/diagnosis" : "/diagnosis")}
                   data-share-diagnosis-tracked={
                     diagnosisCtaTrackSource &&
                     diagnosisCtaEvent === "share_to_diagnosis_clicked"
@@ -818,7 +855,7 @@ export function MeStickyHeader({
                     <path d="M8.5 11h7M8.5 15h5" />
                   </svg>
                   {diagnosisCtaLabel ??
-                    (isEn ? "Take the free test" : isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
+                    (isEn ? "Take the free test" : isId ? "Ikuti tes gratis" : isKo ? "무료 성격 진단 시작하기" : "無料で性格診断をする")}
                 </a>
               )}
 
@@ -827,7 +864,7 @@ export function MeStickyHeader({
                   type="button"
                   aria-label={
                     unlockCtaLabel ??
-                    (isEn ? "Unlock all results" : isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
+                    (isEn ? "Unlock all results" : isId ? "Buka semua hasil" : isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
                   }
                   onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
                   className="relative inline-flex min-h-10 w-[190px] min-w-[150px] shrink items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
@@ -871,6 +908,8 @@ export function MeStickyHeader({
                   {unlockCtaLabel ??
                     (isEn ? (
                       "Unlock all results"
+                    ) : isId ? (
+                      "Buka semua hasil"
                     ) : isKo ? (
                       "모든 결과 잠금 해제"
                     ) : (

@@ -1,4 +1,4 @@
-export type TarotLocale = "ja" | "ko" | "en";
+export type TarotLocale = "ja" | "ko" | "en" | "id";
 
 type TarotModeConfig = {
   title: string;
@@ -64,10 +64,17 @@ export const EN_TAROT_MODES = {
   "yes-no": { title: "YES / NO", shortTitle: "YES / NO", description: "Ask the cards about a decision", lead: "Hold your question in mind and receive an answer with one practical caution.", selectionCount: 1 },
 } as const satisfies Record<TarotMode, TarotModeConfig>;
 
+export const ID_TAROT_MODES = {
+  one: { title: "Kartu Hari Ini", shortTitle: "Satu kartu", description: "Energi hari ini dan hal yang perlu diingat", lead: "Baca energi hari ini dan niat yang layak kamu bawa.", selectionCount: 1 },
+  three: { title: "Pembacaan Tiga Kartu", shortTitle: "Tiga kartu", description: "Masa lalu, masa kini, dan yang akan datang", lead: "Lihat hubungan masa lalu, masa kini, dan bab berikutnya melalui tiga kartu.", selectionCount: 3 },
+  "yes-no": { title: "YA / TIDAK", shortTitle: "YA / TIDAK", description: "Tanyakan sebuah keputusan kepada kartu", lead: "Pikirkan pertanyaanmu dan terima jawaban beserta satu hal yang perlu diperhatikan.", selectionCount: 1 },
+} as const satisfies Record<TarotMode, TarotModeConfig>;
+
 export const TAROT_MODES_BY_LOCALE = {
   ja: TAROT_MODES,
   ko: KO_TAROT_MODES,
   en: EN_TAROT_MODES,
+  id: ID_TAROT_MODES,
 } as const;
 
 export function tarotModes(locale: TarotLocale) {
