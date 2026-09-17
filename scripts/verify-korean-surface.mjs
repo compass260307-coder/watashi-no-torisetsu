@@ -808,7 +808,7 @@ if (localeSwitch.includes("`/ko/tako/${tokenPath}#friend-${perceptionPath}`")) {
 }
 if (
   !localeSwitch.includes(
-    '`${targetLocale === "ko" ? "/ko" : ""}/tako/${tokenPath}/friend/${perceptionPath}`',
+    '`${localePrefix(targetLocale)}/tako/${tokenPath}/friend/${perceptionPath}`',
   )
 ) {
   problems.push(

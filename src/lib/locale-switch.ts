@@ -6,10 +6,31 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
   "/ko": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
   "/en": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
   "/id": { ja: "/", ko: "/ko", en: "/en", id: "/id" },
-  "/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
-  "/ko/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
-  "/en/about": { ja: "/about", ko: "/ko/about", en: "/en/about" },
-  "/diagnosis": { ja: "/diagnosis", ko: "/ko/diagnosis", en: "/en/diagnosis", id: "/id/diagnosis" },
+  "/about": { ja: "/about", ko: "/ko/about", en: "/en/about", id: "/id/about" },
+  "/ko/about": {
+    ja: "/about",
+    ko: "/ko/about",
+    en: "/en/about",
+    id: "/id/about",
+  },
+  "/en/about": {
+    ja: "/about",
+    ko: "/ko/about",
+    en: "/en/about",
+    id: "/id/about",
+  },
+  "/id/about": {
+    ja: "/about",
+    ko: "/ko/about",
+    en: "/en/about",
+    id: "/id/about",
+  },
+  "/diagnosis": {
+    ja: "/diagnosis",
+    ko: "/ko/diagnosis",
+    en: "/en/diagnosis",
+    id: "/id/diagnosis",
+  },
   "/ko/diagnosis": {
     ja: "/diagnosis",
     ko: "/ko/diagnosis",
@@ -28,91 +49,319 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
     en: "/en/diagnosis",
     id: "/id/diagnosis",
   },
-  "/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
-  "/ko/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
-  "/en/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms" },
-  "/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
-  "/ko/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
-  "/en/privacy": { ja: "/privacy", ko: "/ko/privacy", en: "/en/privacy" },
-  "/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
-  "/ko/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
-  "/en/legal/commerce": { ja: "/legal/commerce", ko: "/ko/legal/commerce", en: "/en/legal/commerce" },
-  "/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
-  "/ko/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
-  "/en/login": { ja: "/login", ko: "/ko/login", en: "/en/login" },
+  "/terms": { ja: "/terms", ko: "/ko/terms", en: "/en/terms", id: "/id/terms" },
+  "/ko/terms": {
+    ja: "/terms",
+    ko: "/ko/terms",
+    en: "/en/terms",
+    id: "/id/terms",
+  },
+  "/en/terms": {
+    ja: "/terms",
+    ko: "/ko/terms",
+    en: "/en/terms",
+    id: "/id/terms",
+  },
+  "/id/terms": {
+    ja: "/terms",
+    ko: "/ko/terms",
+    en: "/en/terms",
+    id: "/id/terms",
+  },
+  "/privacy": {
+    ja: "/privacy",
+    ko: "/ko/privacy",
+    en: "/en/privacy",
+    id: "/id/privacy",
+  },
+  "/ko/privacy": {
+    ja: "/privacy",
+    ko: "/ko/privacy",
+    en: "/en/privacy",
+    id: "/id/privacy",
+  },
+  "/en/privacy": {
+    ja: "/privacy",
+    ko: "/ko/privacy",
+    en: "/en/privacy",
+    id: "/id/privacy",
+  },
+  "/id/privacy": {
+    ja: "/privacy",
+    ko: "/ko/privacy",
+    en: "/en/privacy",
+    id: "/id/privacy",
+  },
+  "/legal/commerce": {
+    ja: "/legal/commerce",
+    ko: "/ko/legal/commerce",
+    en: "/en/legal/commerce",
+    id: "/id/legal/commerce",
+  },
+  "/ko/legal/commerce": {
+    ja: "/legal/commerce",
+    ko: "/ko/legal/commerce",
+    en: "/en/legal/commerce",
+    id: "/id/legal/commerce",
+  },
+  "/en/legal/commerce": {
+    ja: "/legal/commerce",
+    ko: "/ko/legal/commerce",
+    en: "/en/legal/commerce",
+    id: "/id/legal/commerce",
+  },
+  "/id/legal/commerce": {
+    ja: "/legal/commerce",
+    ko: "/ko/legal/commerce",
+    en: "/en/legal/commerce",
+    id: "/id/legal/commerce",
+  },
+  "/login": { ja: "/login", ko: "/ko/login", en: "/en/login", id: "/id/login" },
+  "/ko/login": {
+    ja: "/login",
+    ko: "/ko/login",
+    en: "/en/login",
+    id: "/id/login",
+  },
+  "/en/login": {
+    ja: "/login",
+    ko: "/ko/login",
+    en: "/en/login",
+    id: "/id/login",
+  },
+  "/id/login": {
+    ja: "/login",
+    ko: "/ko/login",
+    en: "/en/login",
+    id: "/id/login",
+  },
   "/login/confirm": {
     ja: "/login/confirm",
     ko: "/ko/login/confirm",
     en: "/en/login/confirm",
+    id: "/id/login/confirm",
   },
   "/ko/login/confirm": {
     ja: "/login/confirm",
     ko: "/ko/login/confirm",
     en: "/en/login/confirm",
+    id: "/id/login/confirm",
   },
   "/en/login/confirm": {
     ja: "/login/confirm",
     ko: "/ko/login/confirm",
     en: "/en/login/confirm",
+    id: "/id/login/confirm",
+  },
+  "/id/login/confirm": {
+    ja: "/login/confirm",
+    ko: "/ko/login/confirm",
+    en: "/en/login/confirm",
+    id: "/id/login/confirm",
   },
   "/auth/error": {
     ja: "/auth/error",
     ko: "/ko/auth/error",
     en: "/en/auth/error",
+    id: "/id/auth/error",
   },
   "/ko/auth/error": {
     ja: "/auth/error",
     ko: "/ko/auth/error",
     en: "/en/auth/error",
+    id: "/id/auth/error",
   },
   "/en/auth/error": {
     ja: "/auth/error",
     ko: "/ko/auth/error",
     en: "/en/auth/error",
+    id: "/id/auth/error",
   },
-  "/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
-  "/ko/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
-  "/en/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
-  "/id/result": { ja: "/result", ko: "/ko/result", en: "/en/result", id: "/id/result" },
+  "/id/auth/error": {
+    ja: "/auth/error",
+    ko: "/ko/auth/error",
+    en: "/en/auth/error",
+    id: "/id/auth/error",
+  },
+  "/result": {
+    ja: "/result",
+    ko: "/ko/result",
+    en: "/en/result",
+    id: "/id/result",
+  },
+  "/ko/result": {
+    ja: "/result",
+    ko: "/ko/result",
+    en: "/en/result",
+    id: "/id/result",
+  },
+  "/en/result": {
+    ja: "/result",
+    ko: "/ko/result",
+    en: "/en/result",
+    id: "/id/result",
+  },
+  "/id/result": {
+    ja: "/result",
+    ko: "/ko/result",
+    en: "/en/result",
+    id: "/id/result",
+  },
   "/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
     en: "/en/purchase-complete",
+    id: "/id/purchase-complete",
   },
   "/ko/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
     en: "/en/purchase-complete",
+    id: "/id/purchase-complete",
   },
   "/en/purchase-complete": {
     ja: "/purchase-complete",
     ko: "/ko/purchase-complete",
     en: "/en/purchase-complete",
+    id: "/id/purchase-complete",
   },
-  "/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
-  "/ko/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
-  "/en/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
-  "/ko/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
-  "/en/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako" },
-  "/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
-  "/ko/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
-  "/en/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho" },
+  "/id/purchase-complete": {
+    ja: "/purchase-complete",
+    ko: "/ko/purchase-complete",
+    en: "/en/purchase-complete",
+    id: "/id/purchase-complete",
+  },
+  "/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/ko/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/en/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/id/friend": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/ko/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/en/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/id/tako": { ja: "/tako", ko: "/ko/tako", en: "/en/tako", id: "/id/tako" },
+  "/aisho": { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho", id: "/id/aisho" },
+  "/ko/aisho": {
+    ja: "/aisho",
+    ko: "/ko/aisho",
+    en: "/en/aisho",
+    id: "/id/aisho",
+  },
+  "/en/aisho": {
+    ja: "/aisho",
+    ko: "/ko/aisho",
+    en: "/en/aisho",
+    id: "/id/aisho",
+  },
+  "/id/aisho": {
+    ja: "/aisho",
+    ko: "/ko/aisho",
+    en: "/en/aisho",
+    id: "/id/aisho",
+  },
   "/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
-  "/ko/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
-  "/en/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
-  "/id/types": { ja: "/types", ko: "/ko/types", en: "/en/types", id: "/id/types" },
-  "/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
-  "/ko/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
-  "/en/articles": { ja: "/articles", ko: "/ko/articles", en: "/en/articles" },
-  "/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
-  "/ko/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
-  "/en/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei" },
-  "/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
-  "/ko/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
-  "/en/hoshiyomi": { ja: "/hoshiyomi", ko: "/ko/hoshiyomi", en: "/en/hoshiyomi" },
-  "/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
-  "/ko/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
-  "/en/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot" },
+  "/ko/types": {
+    ja: "/types",
+    ko: "/ko/types",
+    en: "/en/types",
+    id: "/id/types",
+  },
+  "/en/types": {
+    ja: "/types",
+    ko: "/ko/types",
+    en: "/en/types",
+    id: "/id/types",
+  },
+  "/id/types": {
+    ja: "/types",
+    ko: "/ko/types",
+    en: "/en/types",
+    id: "/id/types",
+  },
+  "/articles": {
+    ja: "/articles",
+    ko: "/ko/articles",
+    en: "/en/articles",
+    id: "/id/articles",
+  },
+  "/ko/articles": {
+    ja: "/articles",
+    ko: "/ko/articles",
+    en: "/en/articles",
+    id: "/id/articles",
+  },
+  "/en/articles": {
+    ja: "/articles",
+    ko: "/ko/articles",
+    en: "/en/articles",
+    id: "/id/articles",
+  },
+  "/id/articles": {
+    ja: "/articles",
+    ko: "/ko/articles",
+    en: "/en/articles",
+    id: "/id/articles",
+  },
+  "/unmei": { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei", id: "/id/unmei" },
+  "/ko/unmei": {
+    ja: "/unmei",
+    ko: "/ko/unmei",
+    en: "/en/unmei",
+    id: "/id/unmei",
+  },
+  "/en/unmei": {
+    ja: "/unmei",
+    ko: "/ko/unmei",
+    en: "/en/unmei",
+    id: "/id/unmei",
+  },
+  "/id/unmei": {
+    ja: "/unmei",
+    ko: "/ko/unmei",
+    en: "/en/unmei",
+    id: "/id/unmei",
+  },
+  "/hoshiyomi": {
+    ja: "/hoshiyomi",
+    ko: "/ko/hoshiyomi",
+    en: "/en/hoshiyomi",
+    id: "/id/hoshiyomi",
+  },
+  "/ko/hoshiyomi": {
+    ja: "/hoshiyomi",
+    ko: "/ko/hoshiyomi",
+    en: "/en/hoshiyomi",
+    id: "/id/hoshiyomi",
+  },
+  "/en/hoshiyomi": {
+    ja: "/hoshiyomi",
+    ko: "/ko/hoshiyomi",
+    en: "/en/hoshiyomi",
+    id: "/id/hoshiyomi",
+  },
+  "/id/hoshiyomi": {
+    ja: "/hoshiyomi",
+    ko: "/ko/hoshiyomi",
+    en: "/en/hoshiyomi",
+    id: "/id/hoshiyomi",
+  },
+  "/tarot": { ja: "/tarot", ko: "/ko/tarot", en: "/en/tarot", id: "/id/tarot" },
+  "/ko/tarot": {
+    ja: "/tarot",
+    ko: "/ko/tarot",
+    en: "/en/tarot",
+    id: "/id/tarot",
+  },
+  "/en/tarot": {
+    ja: "/tarot",
+    ko: "/ko/tarot",
+    en: "/en/tarot",
+    id: "/id/tarot",
+  },
+  "/id/tarot": {
+    ja: "/tarot",
+    ko: "/ko/tarot",
+    en: "/en/tarot",
+    id: "/id/tarot",
+  },
 };
 
 function normalizePathname(pathname: string): string {
@@ -135,12 +384,16 @@ function localePrefix(locale: SwitchLocale): string {
 }
 
 function resultToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?me\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en|id)\/)?me\/([A-Za-z0-9_-]+)\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
 function takoToken(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?tako\/([A-Za-z0-9_-]+)\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en|id)\/)?tako\/([A-Za-z0-9_-]+)\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
@@ -159,12 +412,16 @@ function previewTypeId(pathname: string): string | null {
 }
 
 function articleSlug(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?articles\/([a-z0-9-]+)\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en|id)\/)?articles\/([a-z0-9-]+)\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
 function tarotMode(pathname: string): string | null {
-  const match = pathname.match(/^\/(?:(?:ko|en|id)\/)?tarot\/(one|three|yes-no)\/?$/);
+  const match = pathname.match(
+    /^\/(?:(?:ko|en|id)\/)?tarot\/(one|three|yes-no)\/?$/,
+  );
   return match?.[1] ?? null;
 }
 
@@ -214,11 +471,8 @@ export function localeSwitchPath(
   if (friendIndividual) {
     const tokenPath = encodeURIComponent(friendIndividual.token);
     const perceptionPath = encodeURIComponent(friendIndividual.perceptionId);
-    if (targetLocale === "en") {
-      return finish(`/en/tako/${tokenPath}/friend/${perceptionPath}`);
-    }
     return finish(
-      `${targetLocale === "ko" ? "/ko" : ""}/tako/${tokenPath}/friend/${perceptionPath}`,
+      `${localePrefix(targetLocale)}/tako/${tokenPath}/friend/${perceptionPath}`,
     );
   }
 
@@ -284,11 +538,16 @@ export function localeSwitchPath(
     localized &&
     normalizedPathname !== "/" &&
     normalizedPathname !== "/ko" &&
-    normalizedPathname !== "/en"
+    normalizedPathname !== "/en" &&
+    normalizedPathname !== "/id"
   ) {
     return finish(
       localized[targetLocale] ??
-        (targetLocale === "en" ? "/en" : targetLocale === "id" ? "/id" : (localized[targetLocale] ?? "/")),
+        (targetLocale === "en"
+          ? "/en"
+          : targetLocale === "id"
+            ? "/id"
+            : (localized[targetLocale] ?? "/")),
     );
   }
 
