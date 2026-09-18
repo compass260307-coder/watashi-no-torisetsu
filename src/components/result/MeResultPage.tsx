@@ -248,7 +248,7 @@ async function MeResultPageContent({
   // 公開タイプ別LP (/preview/[typeId]) 判定。ロック状態のモック描画だが、読者は
   // 未診断の訪問者なので課金導線は出さず、獲得モード (/share) と同じく診断CTAへ寄せる
   // (owner_token が "preview" のため購入APIはバリデーションで通らず、CTAを出しても壊れる)。
-  // シェアURLも invite_code がモックで /share/preview になり機能しないため出さない。
+  // シェアはモックの invite_code を使わず、この公開タイプページ自身を共有する。
   // dev の課金導線QA (?previewType&previewLock=1、fromPreview 無し) は従来どおり。
   const publicPreview = previewLocked && sp.fromPreview === "1";
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
@@ -792,6 +792,11 @@ async function MeResultPageContent({
   // 自己診断結果の固定バーは、友達評価の依頼ではなくキャラクター共有に専念する。
   // 共有先は per-owner のキャラOGが出る獲得ページ。
   const characterShareUrl = `${SITE_URL}${localePrefix}/share/${inviteCode}`;
+  const resultShareUrl = acquisition
+    ? undefined
+    : publicPreview && previewType
+      ? `${SITE_URL}${localePrefix}/preview/${encodeURIComponent(previewType)}`
+      : characterShareUrl;
   const acquisitionDiagnosisHref = acquisition
     ? `${localePrefix}/diagnosis?source=${encodeURIComponent(acquisition.inviteCode)}`
     : undefined;
@@ -888,7 +893,7 @@ async function MeResultPageContent({
         (ヘッダーが隠れてもバーは残る)。解除CTAは未解放時のみ (2026-07-15 指示)。 */}
     <MeStickyHeader
       showUnlockCta={acquisition || publicPreview ? false : !partTwoUnlocked}
-      shareUrl={acquisition || publicPreview ? undefined : characterShareUrl}
+      shareUrl={resultShareUrl}
       friendShareUrl={
         (isOwnedResult ||
           (process.env.NODE_ENV === "development" && previewType !== null)) &&
@@ -1129,7 +1134,7 @@ async function MeResultPageContent({
                     number="1"
                     locale={locale}
                     footer={
-                      !acquisition && !publicPreview ? (
+                      !acquisition ? (
                         <div className="flex flex-wrap items-center justify-end gap-3">
                           <ShareModalOpenButton
                             label={isEnglish ? "Share" : isKorean ? "공유" : isIndonesian ? "Bagikan" : "シェア"}
