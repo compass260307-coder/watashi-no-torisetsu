@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Laporan Lengkap | Panduan Kepribadian Saya",
+  robots: { index: false, follow: false },
 };
 
 type Props = {

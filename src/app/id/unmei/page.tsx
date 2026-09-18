@@ -23,11 +23,19 @@ import type { Chart } from "@/lib/unmei/chart-view";
 import { computeMoonDailyArc } from "@/lib/unmei/moon-arc";
 import { resolveUnmeiPromptInputs } from "@/lib/unmei/prompt-inputs";
 import { isReadingLocaleValid, isReadingReady } from "@/lib/unmei/reading";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Peta Takdir",
   description: "Pembacaan pribadi yang menggabungkan profil kepribadian Big Five dengan langit pada saat kamu lahir.",
+  alternates: localizedAlternates(
+    "id",
+    "/unmei",
+    "/ko/unmei",
+    "/en/unmei",
+    "/id/unmei",
+  ),
 };
 
 type PageProps = {

@@ -725,9 +725,14 @@ const criticalChecks = [
     "buildIdDetailedReport(t32, scores)",
   ],
   [
-    "self-report complete PDF output",
+    "self-report fixed 16-page output",
     "src/app/report/[token]/pdf/route.ts",
-    'pageRanges: isKo || isEn ? "1-16" : undefined',
+    'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
+  ],
+  [
+    "self-report 15-page Indonesian story layout",
+    "src/app/report/[token]/print/page.tsx",
+    'locale={isId ? "id" : "ko"}',
   ],
   ["home structured data", "src/app/id/page.tsx", '"@type": "WebApplication"'],
   ["metadata isolation", "src/app/id/layout.tsx", "title: { absolute: TITLE"],

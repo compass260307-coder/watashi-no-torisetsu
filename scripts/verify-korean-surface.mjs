@@ -983,10 +983,10 @@ const selfReportPrint = fs.readFileSync(
   "utf8",
 );
 for (const required of [
-  "const KO_STORY_PAGE_COUNT = 15",
+  "const STORY_PAGE_COUNT = 15",
   "const KO_STORY_THEMES = [",
   "const KO_STORY_ART = [",
-  "buildKoStoryPages(report)",
+  "buildStoryPages(report, locale)",
   'reportLabel={isKo ? "16-PAGE STORY REPORT"',
 ]) {
   if (!selfReportPrint.includes(required)) {
@@ -1002,7 +1002,7 @@ const selfReportPdf = fs.readFileSync(
 );
 for (const required of [
   "나의 사용설명서 성격 스토리.pdf",
-  'pageRanges: isKo || isEn ? "1-16" : undefined',
+  'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
 ]) {
   if (!selfReportPdf.includes(required)) {
     problems.push(

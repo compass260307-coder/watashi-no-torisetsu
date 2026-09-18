@@ -167,7 +167,7 @@ const CHAPTER_SCENES: Partial<
   7: "normal2",
 };
 
-const KO_STORY_PAGE_COUNT = 15;
+const STORY_PAGE_COUNT = 15;
 const KO_STORY_TITLES = [
   "아직 이름 없는 힘",
   "첫 번째 신호",
@@ -184,6 +184,23 @@ const KO_STORY_TITLES = [
   "아침의 풍경",
   "나의 이야기로",
   "빛은 계속된다",
+] as const;
+const ID_STORY_TITLES = [
+  "Kekuatan yang Belum Bernama",
+  "Isyarat Pertama",
+  "Cara Tetap di Sisi Seseorang",
+  "Di Balik Pintu",
+  "Kesan yang Menyebar",
+  "Beratnya Peran",
+  "Pemandangan yang Mengabur",
+  "Malam Setelah Badai",
+  "Mereka yang Menemukan Anda",
+  "Memberi Nama pada Kerapuhan",
+  "Janji Baru",
+  "Cara Membagi Kekuatan",
+  "Pemandangan Pagi",
+  "Menjadi Kisah Anda",
+  "Cahaya Terus Menyala",
 ] as const;
 const KO_STORY_THEMES = [
   "night",
@@ -220,20 +237,20 @@ const KO_STORY_ART = [
   "portrait",
 ] as const;
 
-type KoStoryAtom = {
+type StoryAtom = {
   context: string;
   heading: string;
   body: string;
   quote?: boolean;
 };
 
-type KoStoryPage = {
+type StoryPage = {
   title: string;
-  atoms: KoStoryAtom[];
+  atoms: StoryAtom[];
 };
 
-function koStoryAtoms(report: DetailedReport): KoStoryAtom[] {
-  const atoms: KoStoryAtom[] = [];
+function storyAtoms(report: DetailedReport): StoryAtom[] {
+  const atoms: StoryAtom[] = [];
 
   for (const chapter of report.chapters) {
     for (const section of chapter.sections) {
@@ -280,13 +297,20 @@ function koStoryAtoms(report: DetailedReport): KoStoryAtom[] {
  * 韓国語では縦書きが自然ではないため横書きを維持し、本文を順序どおり15章へ
  * 均等配分する。内容は省略せず、ページごとの文字量だけを揃える。
  */
-function buildKoStoryPages(report: DetailedReport): KoStoryPage[] {
-  const atoms = koStoryAtoms(report);
-  while (atoms.length < KO_STORY_PAGE_COUNT) {
+function buildStoryPages(
+  report: DetailedReport,
+  locale: "ko" | "id",
+): StoryPage[] {
+  const atoms = storyAtoms(report);
+  while (atoms.length < STORY_PAGE_COUNT) {
     atoms.push({
-      context: "마무리",
-      heading: "다시 펼쳐 볼 문장",
-      body: "성격은 정답이 아니라 나를 오래 이해하기 위한 지도예요. 오늘의 나에게 맞는 문장을 천천히 골라 보세요.",
+      context: locale === "ko" ? "마무리" : "Penutup",
+      heading:
+        locale === "ko" ? "다시 펼쳐 볼 문장" : "Kalimat untuk dibaca kembali",
+      body:
+        locale === "ko"
+          ? "성격은 정답이 아니라 나를 오래 이해하기 위한 지도예요. 오늘의 나에게 맞는 문장을 천천히 골라 보세요."
+          : "Kepribadian bukan jawaban mutlak, melainkan peta untuk memahami diri dalam jangka panjang. Pilihlah perlahan kalimat yang paling sesuai dengan diri Anda hari ini.",
     });
   }
 
@@ -294,15 +318,15 @@ function buildKoStoryPages(report: DetailedReport): KoStoryPage[] {
     (atom) => atom.heading.length + atom.body.length + 24,
   );
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-  const pages: KoStoryPage[] = [];
+  const pages: StoryPage[] = [];
   let cursor = 0;
   let consumedWeight = 0;
 
-  for (let pageIndex = 0; pageIndex < KO_STORY_PAGE_COUNT; pageIndex += 1) {
-    const pageAtoms: KoStoryAtom[] = [];
-    const pagesAfter = KO_STORY_PAGE_COUNT - pageIndex - 1;
+  for (let pageIndex = 0; pageIndex < STORY_PAGE_COUNT; pageIndex += 1) {
+    const pageAtoms: StoryAtom[] = [];
+    const pagesAfter = STORY_PAGE_COUNT - pageIndex - 1;
     const targetWeight =
-      (totalWeight * (pageIndex + 1)) / KO_STORY_PAGE_COUNT;
+      (totalWeight * (pageIndex + 1)) / STORY_PAGE_COUNT;
 
     while (cursor < atoms.length) {
       const atomsAfterCurrent = atoms.length - cursor - 1;
@@ -317,7 +341,10 @@ function buildKoStoryPages(report: DetailedReport): KoStoryPage[] {
     }
 
     pages.push({
-      title: KO_STORY_TITLES[pageIndex],
+      title:
+        locale === "ko"
+          ? KO_STORY_TITLES[pageIndex]
+          : ID_STORY_TITLES[pageIndex],
       atoms: pageAtoms,
     });
   }
@@ -451,17 +478,18 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
                 ? `${greeting}さんのレポート`
                 : "あなたのレポート"
           }
-          reportLabel={isKo ? "16-PAGE STORY REPORT" : isId ? "LAPORAN PENEMUAN DIRI" : "SELF-DISCOVERY REPORT"}
+          reportLabel={isKo ? "16-PAGE STORY REPORT" : isId ? "LAPORAN CERITA 16 HALAMAN" : "SELF-DISCOVERY REPORT"}
           fullBleed
         />
 
-        {isKo ? (
-          <KoreanStoryPages
+        {isKo || isId ? (
+          <LocalizedStoryPages
             report={report}
             essence={essence}
             characterName={name}
             characterImagePath={cutImagePath}
             characterGroup={group}
+            locale={isId ? "id" : "ko"}
           />
         ) : (
           <>
@@ -609,20 +637,22 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
   );
 }
 
-function KoreanStoryPages({
+function LocalizedStoryPages({
   report,
   essence,
   characterName,
   characterImagePath,
   characterGroup,
+  locale,
 }: {
   report: DetailedReport;
   essence: string;
   characterName: string;
   characterImagePath: string;
   characterGroup: ReturnType<typeof thirtyTwoGroup>;
+  locale: "ko" | "id";
 }) {
-  const pages = buildKoStoryPages(report);
+  const pages = buildStoryPages(report, locale);
   const themeClasses = {
     aqua: styles.koStoryAqua,
     dawn: styles.koStoryDawn,
@@ -648,10 +678,16 @@ function KoreanStoryPages({
               : "";
         const chapterLabel =
           pageIndex === 0
-            ? "서장"
-            : pageIndex === KO_STORY_PAGE_COUNT - 1
-              ? "여운"
-              : `제${pageIndex}장`;
+            ? locale === "ko"
+              ? "서장"
+              : "PEMBUKA"
+            : pageIndex === STORY_PAGE_COUNT - 1
+              ? locale === "ko"
+                ? "여운"
+                : "EPILOG"
+              : locale === "ko"
+                ? `제${pageIndex}장`
+                : `BAB ${String(pageIndex).padStart(2, "0")}`;
         const art = KO_STORY_ART[pageIndex];
         const artPath =
           art === "portrait"
@@ -701,7 +737,11 @@ function KoreanStoryPages({
             </div>
 
             <footer className={styles.koStoryFooter}>
-              <span>나의 사용설명서 · {essence}의 스토리</span>
+              <span>
+                {locale === "ko"
+                  ? `나의 사용설명서 · ${essence}의 스토리`
+                  : `Panduan Kepribadian Saya · Kisah ${essence}`}
+              </span>
               <span>
                 {characterName} · {String(pageIndex + 2).padStart(2, "0")}
               </span>
