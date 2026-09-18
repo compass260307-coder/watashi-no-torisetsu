@@ -39,6 +39,10 @@ import type { AppResultLocale } from "@/i18n/result";
 import { buildKoSelfSections } from "@/i18n/ko/me";
 import { buildIdSelfSections } from "@/i18n/id/me";
 import {
+  ID_LOVE_BY_TYPE_32,
+  ID_PERCEIVED_BY_TYPE_32,
+} from "@/i18n/id/me-content-32";
+import {
   KO_LOVE_BY_TYPE_32,
   KO_PERCEIVED_BY_TYPE_32,
 } from "@/i18n/ko/me-content-32";
@@ -248,25 +252,10 @@ export function buildTakoReportOverview(
     locale === "ko"
       ? KO_PERCEIVED_BY_TYPE_32[type32]
       : locale === "id"
-        ? null
+        ? ID_PERCEIVED_BY_TYPE_32[type32]
       : perceivedContentFor(type32);
   const koType = locale === "ko" ? KO_RESULT_TYPES[type32] : null;
   const idType = locale === "id" ? ID_RESULT_TYPES[type32] : null;
-  const idStrengths = [...axes]
-    .sort((a, b) => Math.abs(b.friendPercent - 50) - Math.abs(a.friendPercent - 50))
-    .slice(0, 4)
-    .map((axis) => ({
-      title: axis.label,
-      body: `Teman-teman melihat sisi ini pada tingkat ${axis.friendPercent}%. ${axis.friendLeaning} menjadi salah satu kekuatan yang paling mudah mereka kenali dalam diri Anda.`,
-    }));
-  const idSurprises = [...axes]
-    .sort((a, b) => b.diffPoints - a.diffPoints)
-    .slice(0, 4)
-    .map((axis) => ({
-      title: axis.label,
-      body: `Ada selisih ${axis.diffPoints} poin antara penilaian diri dan pandangan teman. Perbedaan ini bukan benar atau salah, melainkan petunjuk tentang sisi Anda yang terlihat berbeda dari luar.`,
-    }));
-
   return {
     type32,
     group: thirtyTwoGroup(type32),
@@ -286,20 +275,14 @@ export function buildTakoReportOverview(
               .filter(Boolean)
         : perceivedManualFor(type32).split("\n\n").filter(Boolean),
     gapParas: buildMinnaProse(deep, undefined, locale),
-    strengths:
-      locale === "id"
-        ? idStrengths
-        : (perceived?.strengths ?? []).slice(0, 4).map((item) => ({
-            title: item.title,
-            body: replaceCollectiveViewer(item.body, locale),
-          })),
-    surprises:
-      locale === "id"
-        ? idSurprises
-        : (perceived?.surprises ?? []).slice(0, 4).map((item) => ({
-            title: item.title,
-            body: replaceCollectiveViewer(item.body, locale),
-          })),
+    strengths: (perceived?.strengths ?? []).slice(0, 4).map((item) => ({
+      title: item.title,
+      body: replaceCollectiveViewer(item.body, locale),
+    })),
+    surprises: (perceived?.surprises ?? []).slice(0, 4).map((item) => ({
+      title: item.title,
+      body: replaceCollectiveViewer(item.body, locale),
+    })),
     axes,
     biggestGap,
     mostSharedAxis: hasSeveralViewers ? byRange[0] : null,
@@ -411,7 +394,7 @@ export function buildTakoReportSheets(
       locale === "ko"
         ? KO_LOVE_BY_TYPE_32[type32]?.body
         : locale === "id"
-          ? `Menurut ${viewer}, gaya cinta Anda mencerminkan sosok ${ID_RESULT_TYPES[type32].essence.toLowerCase()}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nDaya tarik Anda terasa paling kuat ketika kepedulian ditunjukkan secara alami dan kebutuhan pribadi disampaikan dengan jujur.`
+          ? ID_LOVE_BY_TYPE_32[type32]?.body
         : LOVE_BY_TYPE_32[type32]?.body;
     const loveParas = (loveBody ?? "")
       .split("\n\n")
@@ -419,6 +402,8 @@ export function buildTakoReportSheets(
       .slice(0, 2);
     if (locale === "ko" && loveParas[0]?.startsWith("당신")) {
       loveParas[0] = `${viewer}의 눈에 비친 ${loveParas[0]}`;
+    } else if (locale === "id" && loveParas[0]) {
+      loveParas[0] = `Menurut ${viewer}, ${loveParas[0].charAt(0).toLowerCase()}${loveParas[0].slice(1)}`;
     } else if (loveParas[0]?.startsWith("あなたの恋は")) {
       loveParas[0] = `${viewer}から見た${loveParas[0]}`;
     }

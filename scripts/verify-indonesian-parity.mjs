@@ -1,11 +1,99 @@
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 const ROOT = process.cwd();
 const failures = [];
 
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+}
+
+function evaluateStaticNode(node, env) {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+    return node.text;
+  if (ts.isIdentifier(node)) {
+    if (Object.hasOwn(env, node.text)) return env[node.text];
+    throw new Error(`Unknown static identifier: ${node.text}`);
+  }
+  if (ts.isNumericLiteral(node)) return Number(node.text);
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (node.kind === ts.SyntaxKind.NullKeyword) return null;
+  if (ts.isArrayLiteralExpression(node))
+    return node.elements.map((entry) => evaluateStaticNode(entry, env));
+  if (ts.isObjectLiteralExpression(node)) {
+    const result = {};
+    for (const property of node.properties) {
+      if (!ts.isPropertyAssignment(property))
+        throw new Error(`Unsupported static property: ${property.getText()}`);
+      const key = ts.isComputedPropertyName(property.name)
+        ? evaluateStaticNode(property.name.expression, env)
+        : (property.name.text ?? property.name.getText());
+      result[key] = evaluateStaticNode(property.initializer, env);
+    }
+    return result;
+  }
+  if (
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isParenthesizedExpression(node)
+  )
+    return evaluateStaticNode(node.expression, env);
+  if (ts.isTemplateExpression(node)) {
+    return node.templateSpans.reduce(
+      (text, span) =>
+        `${text}${evaluateStaticNode(span.expression, env)}${span.literal.text}`,
+      node.head.text,
+    );
+  }
+  throw new Error(`Unsupported static node: ${ts.SyntaxKind[node.kind]}`);
+}
+
+function extractStaticVariables(relativePath) {
+  const source = read(relativePath);
+  const file = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const env = {};
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+      try {
+        env[declaration.name.text] = evaluateStaticNode(
+          declaration.initializer,
+          env,
+        );
+      } catch {
+        // Runtime-derived declarations are irrelevant to this static parity audit.
+      }
+    }
+  }
+  return env;
+}
+
+function leafEntries(value, currentPath = [], entries = []) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    entries.push({ path: currentPath.join("."), value });
+  } else if (Array.isArray(value)) {
+    value.forEach((entry, index) =>
+      leafEntries(entry, [...currentPath, String(index)], entries),
+    );
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([key, entry]) =>
+      leafEntries(entry, [...currentPath, key], entries),
+    );
+  }
+  return entries;
 }
 
 function walkPages(directory, route = "") {
@@ -113,24 +201,152 @@ if (idTypeCount !== 32)
   );
 equalSets("result type parity", jaTypeIds, idTypeIds);
 
+const jaSelfData = extractStaticVariables(
+  "src/lib/thirty-two-content/self-result-32.ts",
+).selfResultContent32;
+const jaLoveData = extractStaticVariables(
+  "src/lib/love-by-type-32.ts",
+).LOVE_BY_TYPE_32;
+const jaCareerData = extractStaticVariables(
+  "src/lib/career-by-type-32.ts",
+).CAREER_BY_TYPE_32;
+const jaPerceivedData = extractStaticVariables(
+  "src/lib/thirty-two-content/perceived-by-type-32.ts",
+).perceivedByType32;
+const idMeContent = extractStaticVariables("src/i18n/id/me-content-32.ts");
+
+function assertTranslatedShape(label, japanese, indonesian) {
+  if (!japanese || !indonesian) {
+    failures.push(`${label}: static source or translation could not be read`);
+    return;
+  }
+  equalSets(
+    `${label} keys`,
+    new Set(Object.keys(japanese)),
+    new Set(Object.keys(indonesian)),
+  );
+  const japaneseLeaves = leafEntries(japanese);
+  const indonesianLeaves = leafEntries(indonesian);
+  const translatedByPath = new Map(
+    indonesianLeaves.map((entry) => [entry.path, entry.value]),
+  );
+  equalSets(
+    `${label} item structure`,
+    new Set(japaneseLeaves.map((entry) => entry.path)),
+    new Set(indonesianLeaves.map((entry) => entry.path)),
+  );
+  for (const source of japaneseLeaves) {
+    const translated = translatedByPath.get(source.path);
+    if (typeof source.value !== "string" || typeof translated !== "string")
+      continue;
+    if (!translated.trim()) failures.push(`${label}: empty ${source.path}`);
+    if (/[぀-ヿ㐀-鿿]/u.test(translated))
+      failures.push(`${label}: Japanese remains in ${source.path}`);
+    if (
+      source.value.split("\n\n").length !==
+      translated.split("\n\n").length
+    )
+      failures.push(`${label}: paragraph mismatch at ${source.path}`);
+    if (
+      (source.value.match(/\{B\}/g) ?? []).length !==
+      (translated.match(/\{B\}/g) ?? []).length
+    )
+      failures.push(`${label}: placeholder mismatch at ${source.path}`);
+  }
+}
+
+assertTranslatedShape(
+  "32-type self copy",
+  jaSelfData,
+  idMeContent.ID_SELF_RESULT_CONTENT_32,
+);
+assertTranslatedShape(
+  "32-type love copy",
+  jaLoveData,
+  idMeContent.ID_LOVE_BY_TYPE_32,
+);
+assertTranslatedShape(
+  "32-type career copy",
+  jaCareerData,
+  idMeContent.ID_CAREER_BY_TYPE_32,
+);
+assertTranslatedShape(
+  "32-type perceived copy",
+  jaPerceivedData,
+  idMeContent.ID_PERCEIVED_BY_TYPE_32,
+);
+
+const jaPartRules = extractStaticVariables("src/lib/part-two-resolve.ts");
+const jaDeepRules = extractStaticVariables("src/lib/deep-dive-resolve.ts");
+const jaRuleCopy = {
+  WEAPON_SUBJECT_WA: jaPartRules.WEAPON_SUBJECT_WA,
+  WEAPON_SUBJECT_NIWA: jaPartRules.WEAPON_SUBJECT_NIWA,
+  WEAPON_TAIL: jaPartRules.WEAPON_TAIL,
+  DISLIKE_TAIL: jaPartRules.DISLIKE_TAIL,
+  LIKABLE_PROSE: jaPartRules.LIKABLE_PROSE,
+  LIKABLE_CLOSING: jaPartRules.LIKABLE_CLOSING,
+  RELATION_FRIEND: jaPartRules.RELATION_FRIEND,
+  RELATION_LOVER: jaPartRules.RELATION_LOVER,
+  RELATION_FAMILY: jaPartRules.RELATION_FAMILY,
+  RELATION_BOSS: jaPartRules.RELATION_BOSS,
+  SCENE_FRIEND: jaPartRules.SCENE_FRIEND,
+  SCENE_LOVER: jaPartRules.SCENE_LOVER,
+  SCENE_CAREER: jaPartRules.SCENE_CAREER,
+  SCENE_FAMILY: jaPartRules.SCENE_FAMILY,
+  LOVE_HEADINGS: jaDeepRules.LOVE_HEADINGS,
+  LOVE_ENDURE_HEADING: jaDeepRules.LOVE_ENDURE_HEADING,
+  LOVE_ENDURE_PROSE: jaDeepRules.LOVE_ENDURE_PROSE,
+  LOVE_ENDURE_CLOSING: jaDeepRules.LOVE_ENDURE_CLOSING,
+  CAREER_HEADINGS: jaDeepRules.CAREER_HEADINGS,
+  CAREER_RELATIONS_HEADING: jaDeepRules.CAREER_RELATIONS_HEADING,
+  CAREER_RELATIONS_PROSE: jaDeepRules.CAREER_RELATIONS_PROSE,
+  CAREER_RELATIONS_CLOSING: jaDeepRules.CAREER_RELATIONS_CLOSING,
+  LOVE_SPLITS: jaDeepRules.LOVE_SPLITS,
+};
+assertTranslatedShape("shared result copy", jaRuleCopy, idMeContent.ID_ME_RULES);
+if (
+  JSON.stringify(jaDeepRules.LOVE_SPLITS) !==
+  JSON.stringify(idMeContent.ID_ME_RULES?.LOVE_SPLITS)
+)
+  failures.push("love split parity: Indonesian paragraph gates differ from Japanese");
+
 const idMe = read("src/i18n/id/me.ts");
-if ((idMe.match(/\bgated:\s*(?:true|false)/g) ?? []).length !== 12) {
+const jaMoshimoScenes = extractStaticVariables(
+  "src/lib/moshimo-resolve.ts",
+).SCENES;
+const normalizedJaMoshimo = jaMoshimoScenes?.map((scene) => ({
+  title: scene.title,
+  chipLabel:
+    scene.short ?? scene.title.replace(/(で)?のあなた$/, ""),
+  color: scene.color,
+  gated: scene.gated,
+  main: {
+    dim: scene.main.dim,
+    high: scene.main.prose.H,
+    low: scene.main.prose.L,
+  },
+  spice: {
+    dim: scene.spice.dim,
+    high: scene.spice.prose.H,
+    low: scene.spice.prose.L,
+  },
+}));
+const idMoshimoScenes = idMeContent.ID_MOSHIMO_SCENES;
+if (idMoshimoScenes?.length !== 12) {
   failures.push("what-if parity: Indonesian must define 12 scenarios");
 }
-function sceneSignatures(source) {
-  const start = source.indexOf("const SCENES");
-  const end = source.indexOf("export function build", start);
-  if (start < 0 || end < 0) return [];
-  return [
-    ...source
-      .slice(start, end)
-      .matchAll(
-        /gated:\s*(true|false),[\s\S]*?main:\s*\{\s*dim:\s*"([A-Z])"[\s\S]*?spice:\s*\{\s*dim:\s*"([A-Z])"/g,
-      ),
-  ].map((match) => `${match[1]}:${match[2]}:${match[3]}`);
-}
-const jaSceneSignatures = sceneSignatures(read("src/lib/moshimo-resolve.ts"));
-const idSceneSignatures = sceneSignatures(idMe);
+assertTranslatedShape(
+  "what-if scene copy",
+  normalizedJaMoshimo,
+  idMoshimoScenes,
+);
+const sceneSignatures = (scenes = []) =>
+  scenes.map(
+    (scene) =>
+      `${scene.gated}:${scene.color}:${scene.main.dim}:${scene.spice.dim}`,
+  );
+const jaSceneSignatures = sceneSignatures(normalizedJaMoshimo);
+const idSceneSignatures = sceneSignatures(idMoshimoScenes);
 if (
   jaSceneSignatures.length !== 12 ||
   idSceneSignatures.length !== 12 ||
@@ -139,13 +355,15 @@ if (
   )
 ) {
   failures.push(
-    "what-if scoring parity: gate, main dimension, or spice dimension differs from Japanese",
+    "what-if scoring parity: gate, color, main dimension, or spice dimension differs from Japanese",
   );
 }
 for (const marker of [
   "likable: idLikable(scores)",
-  "...DIMS.map((dim) => ({ title: `Kekuatan",
-  "...DIMS.map((dim) => ({ title: `Saat",
+  "ID_PERCEIVED_BY_TYPE_32[typeId]",
+  "WEAPON_SUBJECTS",
+  "ID_ME_RULES.WEAPON_TAIL",
+  "idPerceivedItems(perceived.surprises, ID_ME_RULES.DISLIKE_TAIL)",
   "relations: unlocked ? idRelations(scores) : null",
   "sceneCautions: unlocked ? idSceneCautions(scores) : null",
 ]) {
