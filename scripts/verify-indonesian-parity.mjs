@@ -58,6 +58,29 @@ if (
   );
 }
 
+function questionScoringSignature(source) {
+  return [
+    ...source.matchAll(
+      /\{\s*id:\s*(\d+),\s*text:[\s\S]*?facetId:\s*"([^"]+)",\s*dimension:\s*"([^"]+)",\s*reversed:\s*(true|false)\s*\}/g,
+    ),
+  ].map((match) =>
+    [Number(match[1]), match[2], match[3], match[4]].join(":"),
+  );
+}
+const jaQuestionScoring = questionScoringSignature(jaQuestions);
+const idQuestionScoring = questionScoringSignature(idQuestions);
+if (
+  jaQuestionScoring.length !== 50 ||
+  idQuestionScoring.length !== 50 ||
+  jaQuestionScoring.some(
+    (signature, index) => signature !== idQuestionScoring[index],
+  )
+) {
+  failures.push(
+    "diagnosis scoring parity: Indonesian facet, dimension, or reverse-scoring metadata differs from Japanese",
+  );
+}
+
 const jaArticleSlugs = new Set(
   [...read("src/lib/articles.ts").matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map(
     (match) => match[1],
@@ -71,16 +94,63 @@ const idArticleSlugs = new Set(
 equalSets("article parity", jaArticleSlugs, idArticleSlugs);
 
 const idResult = read("src/i18n/id/result.ts");
-const idTypeCount = [...idResult.matchAll(/^\s*"[a-z-]+__[NR]":\s*\{/gm)]
-  .length;
+const idTypeIds = new Set(
+  [...idResult.matchAll(/^\s*"([a-z-]+__[NR])":\s*\{/gm)].map(
+    (match) => match[1],
+  ),
+);
+const jaTypeIds = new Set(
+  [
+    ...read("src/lib/thirty-two-content/self-result-32.ts").matchAll(
+      /^\s*"([a-z-]+__[NR])":\s*\[/gm,
+    ),
+  ].map((match) => match[1]),
+);
+const idTypeCount = idTypeIds.size;
 if (idTypeCount !== 32)
   failures.push(
     `type parity: expected 32 Indonesian types, found ${idTypeCount}`,
   );
+equalSets("result type parity", jaTypeIds, idTypeIds);
 
 const idMe = read("src/i18n/id/me.ts");
 if ((idMe.match(/\bgated:\s*(?:true|false)/g) ?? []).length !== 12) {
   failures.push("what-if parity: Indonesian must define 12 scenarios");
+}
+function sceneSignatures(source) {
+  const start = source.indexOf("const SCENES");
+  const end = source.indexOf("export function build", start);
+  if (start < 0 || end < 0) return [];
+  return [
+    ...source
+      .slice(start, end)
+      .matchAll(
+        /gated:\s*(true|false),[\s\S]*?main:\s*\{\s*dim:\s*"([A-Z])"[\s\S]*?spice:\s*\{\s*dim:\s*"([A-Z])"/g,
+      ),
+  ].map((match) => `${match[1]}:${match[2]}:${match[3]}`);
+}
+const jaSceneSignatures = sceneSignatures(read("src/lib/moshimo-resolve.ts"));
+const idSceneSignatures = sceneSignatures(idMe);
+if (
+  jaSceneSignatures.length !== 12 ||
+  idSceneSignatures.length !== 12 ||
+  jaSceneSignatures.some(
+    (signature, index) => signature !== idSceneSignatures[index],
+  )
+) {
+  failures.push(
+    "what-if scoring parity: gate, main dimension, or spice dimension differs from Japanese",
+  );
+}
+for (const marker of [
+  "likable: idLikable(scores)",
+  "...DIMS.map((dim) => ({ title: `Kekuatan",
+  "...DIMS.map((dim) => ({ title: `Saat",
+  "relations: unlocked ? idRelations(scores) : null",
+  "sceneCautions: unlocked ? idSceneCautions(scores) : null",
+]) {
+  if (!idMe.includes(marker))
+    failures.push(`result structure parity: missing ${marker}`);
 }
 
 const idBirthRegions = read("src/lib/unmei/id-birth-regions.ts");
@@ -185,6 +255,26 @@ const criticalChecks = [
     "src/lib/aisho-compat.ts",
     'if (locale === "id") return axisCopyId',
   ],
+  [
+    "compatibility hero",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Kecocokan kalian"',
+  ],
+  [
+    "compatibility strengths",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Hal baik dari hubungan kalian"',
+  ],
+  [
+    "compatibility result heading",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Kecocokan dalam empat situasi"',
+  ],
+  [
+    "compatibility caution",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Hal yang perlu dijaga"',
+  ],
   ["compatibility scenes", "src/lib/aisho-scene-copy.ts", "const LOVE_ID"],
   [
     "compatibility API",
@@ -267,5 +357,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Indonesian parity verified: ${japaneseRoutes.size} routes, 50 questions, 32 types, ${jaArticleSlugs.size} articles, 12 what-if scenarios, 38 birth regions, localized email/PDF/checkout flows.`,
+  `Indonesian parity verified: ${japaneseRoutes.size} routes, 50 scoring-identical questions, 32 result types, ${jaArticleSlugs.size} articles, 12 scoring-identical what-if scenarios, 38 birth regions, localized result/email/PDF/checkout flows.`,
 );
