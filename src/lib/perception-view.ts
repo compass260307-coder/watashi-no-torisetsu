@@ -48,6 +48,7 @@ import {
   KO_PERCEIVED_BY_TYPE_32,
   KO_SELF_RESULT_CONTENT_32,
 } from "@/i18n/ko/me-content-32";
+import { ID_PERCEIVED_BY_TYPE_32 } from "@/i18n/id/me-content-32";
 import { buildEnSelfSections } from "@/i18n/en/me";
 import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
 import { buildIdSelfSections } from "@/i18n/id/me";
@@ -203,40 +204,24 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
   const foundContent = isKo
     ? KO_PERCEIVED_BY_TYPE_32[perceived32Id]
     : isId
-      ? null
+      ? ID_PERCEIVED_BY_TYPE_32[perceived32Id]
     : flag32
       ? perceivedContentFor(perceived32Id)
       : getPerceivedContent(perceivedTypeId);
   const foundSeed = seedFromTypeId(perceivedTypeId);
-  const idAxesByStrength = [...ID_RESULT_AXES]
-    .sort((a, b) => (otherScores[b.dim] ?? 5) - (otherScores[a.dim] ?? 5))
-    .slice(0, 3);
-  const idAxesBySurprise = [...ID_RESULT_AXES]
-    .sort((a, b) => Math.abs((otherScores[b.dim] ?? 5) - 5) - Math.abs((otherScores[a.dim] ?? 5) - 5))
-    .slice(0, 3);
-  const strengthParas: FoundParagraph[] = isId
-    ? idAxesByStrength.map((axis) => [
-        { text: `${axis.title}. `, pink: true },
-        { text: (otherScores[axis.dim] ?? 5) >= 5 ? axis.highStrength : axis.lowStrength },
-      ])
-    : foundContent
-    ? isKo
+  const strengthParas: FoundParagraph[] = foundContent
+    ? isKo || isId
       ? foundContent.strengths.slice(0, 3).map((item) => [
           { text: `${item.title}. `, pink: true },
-          { text: item.body },
+          { text: item.body.replace(/\{B\}さん/g, perceiverFull).replace(/\{B\}/g, perceiverFull) },
         ])
       : weaveFound(foundContent.strengths, "strengths", foundSeed, perceivedTypeId)
     : [];
-  const surpriseParas: FoundParagraph[] = isId
-    ? idAxesBySurprise.map((axis) => [
-        { text: `Sisi ${axis.title.toLowerCase()}. `, pink: true },
-        { text: (otherScores[axis.dim] ?? 5) >= 5 ? axis.highGrowth : axis.lowGrowth },
-      ])
-    : foundContent
-    ? isKo
+  const surpriseParas: FoundParagraph[] = foundContent
+    ? isKo || isId
       ? foundContent.surprises.slice(0, 3).map((item) => [
           { text: `${item.title}. `, pink: true },
-          { text: item.body },
+          { text: item.body.replace(/\{B\}さん/g, perceiverFull).replace(/\{B\}/g, perceiverFull) },
         ])
       : weaveFound(foundContent.surprises, "surprises", foundSeed + 1)
     : [];

@@ -41,13 +41,13 @@ const COPY = {
     selfLabelTail: "’s self-view",
   },
   id: {
-    titleLead: "Cara kamu melihat ",
+    titleLead: "Cara Anda melihat ",
     titleTail: "",
     gapLead: "Perbedaan terbesar ada pada ",
     selfLead: " menilai dirinya ",
-    answerLead: "sementara penilaianmu ",
+    answerLead: "sementara penilaian Anda ",
     answerTail: ".",
-    primaryLabel: "Pandanganmu",
+    primaryLabel: "Pandangan Anda",
     selfLabelTail: " menurut dirinya",
   },
 } as const;
@@ -139,7 +139,7 @@ export function FriendGapSection({
           <EnFriendComparison
             selfScores={selfScores}
             friendScores={perceivedScores}
-            friendLabel={locale === "id" ? "Pandanganmu" : "Your view"}
+            friendLabel={locale === "id" ? "Pandangan Anda" : "Your view"}
             locale={locale}
           />
         </section>

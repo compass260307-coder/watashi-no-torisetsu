@@ -252,6 +252,11 @@ function assertTranslatedShape(label, japanese, indonesian) {
       (translated.match(/\{B\}/g) ?? []).length
     )
       failures.push(`${label}: placeholder mismatch at ${source.path}`);
+    if (
+      (source.value.match(/\{name\}/g) ?? []).length !==
+      (translated.match(/\{name\}/g) ?? []).length
+    )
+      failures.push(`${label}: name placeholder mismatch at ${source.path}`);
   }
 }
 
@@ -309,6 +314,78 @@ if (
   JSON.stringify(idMeContent.ID_ME_RULES?.LOVE_SPLITS)
 )
   failures.push("love split parity: Indonesian paragraph gates differ from Japanese");
+
+const jaFriendLove = extractStaticVariables("src/lib/friend-love-content.ts");
+const idFriendResult = extractStaticVariables(
+  "src/i18n/id/friend-result-content.ts",
+);
+for (const [label, jaKey, idKey] of [
+  ["friend love headline copy", "MOTE_BY_AXIS", "ID_MOTE_BY_AXIS"],
+  ["friend love checklist copy", "MOTE_CHECK_BY_AXIS", "ID_MOTE_CHECK_BY_AXIS"],
+  ["friend love extra checklist copy", "MOTE_CHECK_EXTRA_BY_AXIS", "ID_MOTE_CHECK_EXTRA_BY_AXIS"],
+  ["friend love hint copy", "MOTE_HINT_CHECKS_BY_AXIS", "ID_MOTE_HINT_CHECKS_BY_AXIS"],
+  ["friend love scene copy", "LOVE_SCENE_BY_AXIS", "ID_LOVE_SCENE_BY_AXIS"],
+]) {
+  assertTranslatedShape(label, jaFriendLove[jaKey], idFriendResult[idKey]);
+}
+
+const jaTakoDeepDive = extractStaticVariables("src/lib/tako-deepdive.ts");
+const JA_AXIS_TO_KEY = {
+  開放性: "O",
+  誠実性: "C",
+  外向性: "E",
+  協調性: "A",
+  神経症傾向: "N",
+};
+const normalizeJaAxisKeys = (table) =>
+  Object.fromEntries(
+    Object.entries(table ?? {}).map(([key, value]) => [JA_AXIS_TO_KEY[key], value]),
+  );
+assertTranslatedShape(
+  "friend compatibility axis copy",
+  normalizeJaAxisKeys(jaTakoDeepDive.AXIS_INSIGHT_COPY),
+  idFriendResult.ID_AXIS_INSIGHT_COPY,
+);
+assertTranslatedShape(
+  "friend compatibility tips",
+  normalizeJaAxisKeys(jaTakoDeepDive.KOTSU_COPY),
+  idFriendResult.ID_KOTSU_COPY,
+);
+assertTranslatedShape(
+  "friend compatibility warnings",
+  normalizeJaAxisKeys(jaTakoDeepDive.WANA_COPY),
+  idFriendResult.ID_WANA_COPY,
+);
+
+const friendLoveSource = read("src/lib/friend-love-content.ts");
+const takoDeepDiveSource = read("src/lib/tako-deepdive.ts");
+const takoResultSource = read("src/components/result/TakoResultPage.tsx");
+const reportSheetSource = read("src/lib/tako-report-sheets.ts");
+const perceptionViewSource = read("src/lib/perception-view.ts");
+const minnaTypeProseSource = read("src/components/result/MinnaTypeProse.tsx");
+for (const [label, source, marker] of [
+  ["friend headline resolver", friendLoveSource, "locale === \"id\" ? ID_MOTE_BY_AXIS"],
+  ["friend checklist resolver", friendLoveSource, "? ID_MOTE_CHECK_BY_AXIS"],
+  ["friend hint resolver", friendLoveSource, "? ID_MOTE_HINT_CHECKS_BY_AXIS"],
+  ["friend scene resolver", friendLoveSource, "? ID_LOVE_SCENE_BY_AXIS"],
+  ["compatibility axis resolver", takoDeepDiveSource, "? ID_AXIS_INSIGHT_COPY[g.key]"],
+  ["compatibility tip resolver", takoDeepDiveSource, "? ID_KOTSU_COPY[ax.key].off"],
+  ["compatibility warning resolver", takoDeepDiveSource, "? ID_WANA_COPY[ax.key].off"],
+  ["Tako love body", takoResultSource, "? ID_LOVE_BY_TYPE_32[type32]"],
+  ["Tako perceived body", takoResultSource, "? ID_PERCEIVED_BY_TYPE_32[type32]"],
+  ["PDF love checklist", reportSheetSource, "resolveFriendLoveChecklist(f.perceivedScores, locale)"],
+  ["PDF love hints", reportSheetSource, "resolveMoteHints(f.perceivedScores, locale)"],
+  ["perception result body", perceptionViewSource, "? ID_PERCEIVED_BY_TYPE_32[perceived32Id]"],
+  ["Tako manual body", minnaTypeProseSource, "? (ID_SELF_RESULT_CONTENT_32[type32] ?? []).slice(0, 2)"],
+]) {
+  if (!source.includes(marker)) failures.push(`${label}: missing ${marker}`);
+}
+if (reportSheetSource.includes("buildIdLoveItems"))
+  failures.push("PDF love parity: generic Indonesian fallback still exists");
+if (minnaTypeProseSource.includes("Hal-hal yang terasa biasa bagi Anda"))
+  failures.push("Tako manual parity: generic Indonesian fallback still exists");
+if (/if \(locale === "id"\) \{[\s\S]{0,1600}slice\(0, 5\)/.test(takoDeepDiveSource))
+  failures.push("compatibility parity: Indonesian result still limits tips to five items");
 
 const idMe = read("src/i18n/id/me.ts");
 const jaMoshimoScenes = extractStaticVariables(

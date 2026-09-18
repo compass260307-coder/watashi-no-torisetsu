@@ -118,37 +118,6 @@ const ID_REPORT_AXIS_COPY: typeof REPORT_AXIS_COPY = {
   N: { label: "Kepekaan terhadap rangsangan", low: "Menerima dengan tenang", high: "Peka terhadap perubahan kecil" },
 };
 
-function buildIdLoveItems(
-  scores: Partial<Record<BigFiveDimension, number>>,
-  mode: "strength" | "hint",
-): MoteCheckItem[] {
-  const ranked = REPORT_AXIS_ORDER.map((key) => ({
-    key,
-    score: key === "N" ? 10 - (scores[key] ?? 5) : (scores[key] ?? 5),
-  })).sort((a, b) =>
-    mode === "strength" ? b.score - a.score : a.score - b.score,
-  );
-  return ranked.slice(0, mode === "strength" ? 5 : 3).flatMap(({ key }) => {
-    const axis = ID_REPORT_AXIS_COPY[key];
-    if (mode === "strength") {
-      return [{
-        title: axis.label,
-        body: `${axis.high} membuat kehadiran Anda terasa menarik dan mudah diingat dalam hubungan dekat.`,
-      }];
-    }
-    return [
-      {
-        title: `Tunjukkan sisi ${axis.label.toLowerCase()} Anda`,
-        body: `Bagikan satu contoh konkret agar sisi ini lebih mudah dipahami tanpa perlu menebak.`,
-      },
-      {
-        title: `Beri ruang untuk ${axis.label.toLowerCase()}`,
-        body: `Langkah kecil yang konsisten dapat membuat sisi ini terasa lebih alami dalam hubungan.`,
-      },
-    ];
-  });
-}
-
 export type TakoReportOverviewAxis = {
   key: BigFiveDimension;
   label: string;
@@ -358,7 +327,11 @@ export function buildTakoReportSheets(
     if (locale === "ko" && manualParas[0]?.startsWith("당신은")) {
       manualParas[0] = `${viewer}의 눈에 비친 당신은${manualParas[0].slice("당신은".length)}`;
     } else if (locale === "id" && manualParas[0]) {
-      manualParas[0] = `Menurut ${viewer}, ${manualParas[0].charAt(0).toLowerCase()}${manualParas[0].slice(1)}`;
+      const first = manualParas[0];
+      const led = first.startsWith("Anda")
+        ? first
+        : `${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+      manualParas[0] = `Menurut ${viewer}, ${led}`;
     } else if (manualParas[0]?.startsWith("あなた")) {
       manualParas[0] = `${viewer}から見た${manualParas[0]}`;
     }
@@ -375,7 +348,11 @@ export function buildTakoReportSheets(
         ? `${viewer}의 눈에 비친 ${t}`
         : `${viewer}의 눈에는 ${t}`;
     } else if (locale === "id" && reopenIdx < manualParas.length) {
-      manualParas[reopenIdx] = `Dari sudut pandang ${viewer}, ${manualParas[reopenIdx].charAt(0).toLowerCase()}${manualParas[reopenIdx].slice(1)}`;
+      const paragraph = manualParas[reopenIdx];
+      const led = paragraph.startsWith("Anda")
+        ? paragraph
+        : `${paragraph.charAt(0).toLowerCase()}${paragraph.slice(1)}`;
+      manualParas[reopenIdx] = `Dari sudut pandang ${viewer}, ${led}`;
     } else if (reopenIdx < manualParas.length) {
       let t = manualParas[reopenIdx];
       for (const conn of ["そして、", "そして", "しかも", "さらに"]) {
@@ -413,11 +390,11 @@ export function buildTakoReportSheets(
       locale === "id"
         ? ({
             "いつも冷静で頼れる。周りをよく見てるよね。":
-              "Kamu selalu tenang dan dapat diandalkan. Kamu benar-benar memperhatikan keadaan sekitar.",
+              "Anda selalu tenang dan dapat diandalkan. Anda benar-benar memperhatikan keadaan sekitar.",
             "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜":
-              "Kamu selalu tenang dan dapat diandalkan. Setiap bertemu denganmu, aku merasa lebih tenang.",
+              "Anda selalu tenang dan dapat diandalkan. Setiap bertemu dengan Anda, saya merasa lebih tenang.",
             "自分の考えをちゃんと持ってて素敵だと思う！":
-              "Aku suka karena kamu memiliki pendirian yang jelas!",
+              "Saya suka karena Anda memiliki pendirian yang jelas!",
           } as Record<string, string>)[f.message.trim()] ?? f.message.trim()
         : f.message.trim();
 
@@ -448,19 +425,9 @@ export function buildTakoReportSheets(
       deep: buildDeepDive(data.selfScores, f.perceivedScores, locale),
       loveParas,
       loveChecks:
-        locale === "id"
-          ? buildIdLoveItems(f.perceivedScores, "strength")
-          : resolveFriendLoveChecklist(
-              f.perceivedScores,
-              locale === "ko" ? "ko" : "ja",
-            ),
+        resolveFriendLoveChecklist(f.perceivedScores, locale),
       loveHints:
-        locale === "id"
-          ? buildIdLoveItems(f.perceivedScores, "hint")
-          : resolveMoteHints(
-              f.perceivedScores,
-              locale === "ko" ? "ko" : "ja",
-            ),
+        resolveMoteHints(f.perceivedScores, locale),
       compat: estimateCompatFromGaps(
         data.selfScores,
         f.perceivedScores,

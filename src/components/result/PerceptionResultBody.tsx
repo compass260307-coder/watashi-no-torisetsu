@@ -139,7 +139,7 @@ export function PerceptionResultBody({
       : `${p}さん`;
   const koPersonSubject = p === "친구" ? "친구가" : `${p}님이`;
   const koPersonWith = p === "친구" ? "친구와" : `${p}님과`;
-  const resolvedYouWord = youWord ?? (isEn ? "you" : isId ? "dirimu" : isKo ? "나" : "あなた");
+  const resolvedYouWord = youWord ?? (isEn ? "you" : isId ? "diri Anda" : isKo ? "나" : "あなた");
   const trimmedOwnerMessage = (ownerMessage ?? "").trim();
   const koGapDetails = isKo
     ? new Map(
@@ -472,7 +472,7 @@ export function PerceptionResultBody({
               isEn
                 ? `What ${personLabel} noticed in you`
                 : isId
-                  ? `Hal yang ${personLabel} temukan dalam dirimu`
+                  ? `Hal yang ${personLabel} temukan dalam diri Anda`
                 : isKo
                   ? `${koPersonSubject} 발견한 나`
                   : `${personLabel}が見つけたあなた`

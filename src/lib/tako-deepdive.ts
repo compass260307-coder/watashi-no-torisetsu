@@ -14,6 +14,12 @@ import {
 } from "./perception-analysis";
 import type { BigFiveDimension } from "./types";
 import type { AppResultLocale } from "@/i18n/result";
+import {
+  ID_AXIS_INSIGHT_COPY,
+  ID_KOTSU_COPY,
+  ID_WANA_COPY,
+  idEstimatedSummaryParas,
+} from "@/i18n/id/friend-result-content";
 
 // ② 一言テンプレート用の軸名 (発散バーの AXES.title と同一)。
 const WARM_AXIS_LABEL: Record<BigFiveDimension, string> = {
@@ -159,18 +165,19 @@ export function buildMinnaProse(
   }
   if (locale === "id") {
     const who = viewer ?? "teman Anda";
+    const friendWord = viewer ?? "teman Anda";
     const paras: string[] = [];
     if (diff >= 8) {
-      paras.push(`Di mata ${who}, sisi “${gap.label}” Anda terlihat lebih kuat daripada yang Anda sadari. Hal yang terasa biasa bagi Anda justru diterima sebagai kekuatan yang jelas.`);
+      paras.push(`Di mata ${friendWord}, Anda terlihat jauh lebih memiliki “${gap.label}” daripada yang Anda kira. ${who} mengandalkan sisi itu lebih dari yang Anda sadari. Hal yang terasa biasa bagi Anda sudah tersampaikan dengan jelas kepada orang di sekitar.`);
     } else if (diff <= -8) {
-      paras.push(`Anda merasa sisi “${gap.label}” cukup menonjol, tetapi ${who} melihat versi Anda yang lebih santai dan alami. Ketenangan itu dapat membuat orang lebih mudah mendekat.`);
+      paras.push(`Anda merasa cukup kuat menunjukkan “${gap.label}”, tetapi di mata ${friendWord} Anda terlihat lebih santai dan alami. Sikap tanpa ketegangan berlebihan itulah yang membuat orang lain merasa aman untuk mendekat.`);
     } else {
-      paras.push(`Cara Anda dan ${who} melihat “${gap.label}” hampir sama. Citra diri dan kesan dari luar bertemu dengan cukup jelas.`);
+      paras.push(`Cara Anda dan ${who} melihat “${gap.label}” hampir sama. Citra diri dan kesan dari luar bertemu dengan rapi; ini menandakan bahwa diri Anda yang alami sudah tersampaikan dalam hubungan.`);
     }
-    if (hiddenStrength) paras.push(`Selain itu, “${hiddenStrength.label}” yang jarang Anda sadari juga terlihat jelas bagi ${who}.`);
+    if (hiddenStrength) paras.push(`Selain itu, “${hiddenStrength.label}” yang jarang Anda sadari juga telah tersampaikan dengan jelas kepada ${who}.`);
     paras.push(agreement >= 70
-      ? `Kesesuaian sudut pandang kalian adalah ${agreement}%. Diri Anda yang alami sudah tersampaikan dengan baik.`
-      : `Kesesuaian sudut pandang kalian adalah ${agreement}%. Perbedaan ini bukan kesalahan, melainkan sisi diri yang ditemukan teman Anda.`);
+      ? `Kesesuaian cara pandang Anda dan ${who} adalah ${agreement}%. Diri Anda yang alami sudah tersampaikan apa adanya, dan orang di sekitar menerimanya dengan baik.`
+      : `Kesesuaian cara pandang Anda dan ${who} adalah ${agreement}%. Sisi yang terasa biasa bagi Anda mungkin terlihat segar bagi orang lain; kualitas yang belum dikenal pun dapat tersampaikan sedikit demi sedikit.`);
     return paras;
   }
 
@@ -770,24 +777,12 @@ export function estimateCompatFromGaps(
   );
   const axes: EstimatedAxisInsight[] = ordered.map((g) => {
     const label = locale === "id" ? ID_AXIS_LABEL[g.key] : locale === "ko" ? KO_AXIS_LABEL[g.key] : WARM_AXIS_LABEL[g.key];
-    if (locale === "id") {
-      const state: EstimatedAxisInsight["state"] = g.diffPoints <= 10 ? "match" : g.diffPoints <= 25 ? "close" : "gap";
-      const direction = g.otherPercent > g.selfPercent ? "lebih kuat" : "lebih lembut";
-      return {
-        key: g.key,
-        label,
-        state,
-        selfPercent: g.selfPercent,
-        otherPercent: g.otherPercent,
-        body: state === "match"
-          ? `Dalam ${label.toLowerCase()}, Anda dan ${viewer} melihat pola yang hampir sama.`
-          : `${viewer} melihat sisi ${label.toLowerCase()} Anda ${direction} daripada penilaian diri Anda.`,
-      };
-    }
     const copySet =
-      locale === "ko"
-        ? KO_AXIS_INSIGHT_COPY[g.key]
-        : AXIS_INSIGHT_COPY[WARM_AXIS_LABEL[g.key]];
+      locale === "id"
+        ? ID_AXIS_INSIGHT_COPY[g.key]
+        : locale === "ko"
+          ? KO_AXIS_INSIGHT_COPY[g.key]
+          : AXIS_INSIGHT_COPY[WARM_AXIS_LABEL[g.key]];
     const state: EstimatedAxisInsight["state"] =
       g.diffPoints <= 10 ? "match" : g.diffPoints <= 25 ? "close" : "gap";
     const body =
@@ -805,27 +800,6 @@ export function estimateCompatFromGaps(
       body: body.replaceAll("{name}", viewer),
     };
   });
-
-  if (locale === "id") {
-    const aligned = axes.filter((axis) => axis.state === "match");
-    const different = axes.filter((axis) => axis.state !== "match");
-    const summaryParas = [
-      percent >= 70
-        ? `Kecocokan Anda dengan ${viewer} terasa kuat karena banyak sisi diri terbaca dengan cara yang serupa.`
-        : `Hubungan Anda dengan ${viewer} membawa sudut pandang yang berbeda dan dapat membantu kalian saling memahami lebih dalam.`,
-      ...axes.slice(0, 4).map((axis) => axis.body),
-      `Perkiraan kecocokan ${percent}% ini adalah awal percakapan, bukan penilaian akhir atas hubungan kalian.`,
-    ];
-    const kotsu = [...different, ...aligned].slice(0, 5).map((axis) => ({
-      title: `Bicarakan ${axis.label.toLowerCase()}`,
-      body: `Gunakan contoh nyata saat membahas perbedaan dalam ${axis.label.toLowerCase()}, lalu tanyakan kebutuhan masing-masing tanpa menyalahkan.`,
-    }));
-    const wana = [...different, ...aligned].slice(0, 5).map((axis) => ({
-      title: `Jangan menebak dari ${axis.label.toLowerCase()}`,
-      body: `Jangan menganggap satu kebiasaan mewakili seluruh niat ${viewer}. Periksa pemahaman sebelum menarik kesimpulan.`,
-    }));
-    return { percent, stars, rank, summaryParas, axes, kotsu, wana };
-  }
 
   // ===== 5軸の解説を自然な読み物に組む =====
   // 一致した軸 (差が小さい順) → ズレた軸 (差が大きい順) の順で、接続詞をつけて流す。
@@ -847,35 +821,46 @@ export function estimateCompatFromGaps(
   // 2026-07-20 指示で少し短く: シーンは合計 4 つまで (ズレ軸を優先し、残りを一致軸で埋める)。
   const MAX_SCENES = 4;
   const [sumOpen, sumClose] =
-    locale === "ko"
-      ? koEstimatedSummaryParas(percent, viewer)
-      : estimatedSummaryParas(percent, viewer);
+    locale === "id"
+      ? idEstimatedSummaryParas(percent, viewer)
+      : locale === "ko"
+        ? koEstimatedSummaryParas(percent, viewer)
+        : estimatedSummaryParas(percent, viewer);
   const offScenes = offAxes.slice(0, 3).map((ax) => ax.body);
   const matchScenes = matched
     .slice(0, Math.max(0, MAX_SCENES - offScenes.length))
     .map((ax) => ax.body);
   const summaryParas: string[] = [sumOpen];
+  const lowerIdInitial = (text: string) =>
+    locale === "id" ? `${text.charAt(0).toLowerCase()}${text.slice(1)}` : text;
   if (matchScenes.length > 0) {
     // 2 シーンずつ 1 段落に。段落頭だけ接続詞を変える (たとえば → それだけじゃなく)。
     const CHUNK_LEADS =
-      locale === "ko"
-        ? ["예를 들면, ", "그뿐만 아니라, ", "조금 더 말하면, "]
-        : ["たとえば、", "それだけじゃなく、", "さらに言えば、"];
+      locale === "id"
+        ? ["Misalnya, ", "Tidak hanya itu, ", "Lebih lanjut, "]
+        : locale === "ko"
+          ? ["예를 들면, ", "그뿐만 아니라, ", "조금 더 말하면, "]
+          : ["たとえば、", "それだけじゃなく、", "さらに言えば、"];
     for (let i = 0; i < matchScenes.length; i += 2) {
       const lead = CHUNK_LEADS[Math.min(i / 2, CHUNK_LEADS.length - 1)];
       summaryParas.push(
         lead +
           matchScenes
             .slice(i, i + 2)
-            .join(locale === "ko" ? " " : ""),
+            .map((scene, sceneIndex) =>
+              sceneIndex === 0 ? lowerIdInitial(scene) : scene,
+            )
+            .join(locale === "ja" ? "" : " "),
       );
     }
   }
   if (offScenes.length > 0) {
     summaryParas.push(
-      locale === "ko"
-        ? `한편, ${offScenes.join(" 그리고 ")}`
-        : "いっぽうで、" + offScenes.join("それから、"),
+      locale === "id"
+        ? `Di sisi lain, ${offScenes.map(lowerIdInitial).join(" Selain itu, ")}`
+        : locale === "ko"
+          ? `한편, ${offScenes.join(" 그리고 ")}`
+          : "いっぽうで、" + offScenes.join("それから、"),
     );
   }
   summaryParas.push(sumClose);
@@ -885,14 +870,18 @@ export function estimateCompatFromGaps(
   // 残りを一致軸 (差が小さい順) の match 版で埋める。
   const kotsu = [
     ...offAxes.flatMap((ax) =>
-      locale === "ko"
-        ? KO_KOTSU_COPY[ax.key].off
-        : KOTSU_COPY[ax.label].off,
+      locale === "id"
+        ? ID_KOTSU_COPY[ax.key].off
+        : locale === "ko"
+          ? KO_KOTSU_COPY[ax.key].off
+          : KOTSU_COPY[ax.label].off,
     ),
     ...matched.flatMap((ax) =>
-      locale === "ko"
-        ? KO_KOTSU_COPY[ax.key].match
-        : KOTSU_COPY[ax.label].match,
+      locale === "id"
+        ? ID_KOTSU_COPY[ax.key].match
+        : locale === "ko"
+          ? KO_KOTSU_COPY[ax.key].match
+          : KOTSU_COPY[ax.label].match,
     ),
   ]
     .slice(0, 8)
@@ -905,14 +894,18 @@ export function estimateCompatFromGaps(
   // ズレた軸 (差が大きい順) の off 版 2 個ずつを優先し、残りを一致軸の match 版で埋める。
   const wana = [
     ...offAxes.flatMap((ax) =>
-      locale === "ko"
-        ? KO_WANA_COPY[ax.key].off
-        : WANA_COPY[ax.label].off,
+      locale === "id"
+        ? ID_WANA_COPY[ax.key].off
+        : locale === "ko"
+          ? KO_WANA_COPY[ax.key].off
+          : WANA_COPY[ax.label].off,
     ),
     ...matched.flatMap((ax) =>
-      locale === "ko"
-        ? KO_WANA_COPY[ax.key].match
-        : WANA_COPY[ax.label].match,
+      locale === "id"
+        ? ID_WANA_COPY[ax.key].match
+        : locale === "ko"
+          ? KO_WANA_COPY[ax.key].match
+          : WANA_COPY[ax.label].match,
     ),
   ]
     .slice(0, 8)

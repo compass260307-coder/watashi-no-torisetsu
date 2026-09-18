@@ -135,9 +135,9 @@ export async function FriendIndividualResultPage({
         }
       : isId
         ? {
-            favorite_point: "Kamu selalu tenang dan membuat orang lain merasa didukung.",
+            favorite_point: "Anda selalu tenang dan membuat orang lain merasa didukung.",
             animal: "Burung hantu",
-            impression_scene: "Saat semua orang panik, kamu tetap tenang dan membantu.",
+            impression_scene: "Saat semua orang panik, Anda tetap tenang dan membantu.",
           }
       : isKo
         ? {
@@ -153,7 +153,7 @@ export async function FriendIndividualResultPage({
     ownerMessage = isEn
       ? "I finished the test. Thanks for always being there for me!"
       : isId
-        ? "Aku sudah selesai mengisinya. Terima kasih selalu ada untukku!"
+        ? "Saya sudah selesai mengisinya. Terima kasih selalu ada untuk saya!"
       : isKo
         ? "진단 끝났어! 항상 고마워. 다음에 또 밥 먹으러 가자~"
         : "評価おわったよ！いつも助かってます。またごはん行こ〜";

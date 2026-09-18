@@ -50,6 +50,10 @@ import {
   KO_LOVE_BY_TYPE_32,
   KO_PERCEIVED_BY_TYPE_32,
 } from "@/i18n/ko/me-content-32";
+import {
+  ID_LOVE_BY_TYPE_32,
+  ID_PERCEIVED_BY_TYPE_32,
+} from "@/i18n/id/me-content-32";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { ID_RESULT_TYPES } from "@/i18n/id/result";
 import type { AppResultLocale } from "@/i18n/result";
@@ -192,6 +196,14 @@ const CONCERN_TAIL = [
   "隠しているつもりでも、近くにいる人にはちゃんと伝わってる。",
   "一つひとつは小さいけど、積み重なると静かな距離になっていく類のもの。",
   "気づいた日から変えられるクセ。むしろ伸びしろだと思われてる。",
+];
+const ID_CONCERN_TAIL = [
+  "Niat Anda tidak buruk. Namun, satu kalimat lebih dahulu dapat mengubah kesan sepenuhnya.",
+  "Ini tidak sampai membuat Anda dibenci. Justru ini adalah saat kelebihan Anda muncul terlalu kuat; menyadarinya dapat mengubahnya menjadi kekuatan.",
+  "Mungkin hal ini tidak disampaikan langsung, tetapi justru diperhatikan karena hubungan kalian dekat.",
+  "Meski Anda merasa telah menyembunyikannya, orang yang dekat tetap dapat menangkapnya.",
+  "Setiap kejadian tampak kecil, tetapi jika berulang dapat perlahan menciptakan jarak.",
+  "Kebiasaan ini dapat diubah sejak disadari. Orang lain justru melihatnya sebagai ruang untuk bertumbuh.",
 ];
 
 // ⑤「ぶっちゃけ嫌われてない…？」の危険信号リスト。/me の「嫌われやすい性格」WarnList と
@@ -392,7 +404,7 @@ export async function TakoResultPage({
       f.perceivedScores,
       locale,
     );
-    const sheetLove = resolveFriendLove(f.perceivedScores);
+    const sheetLove = resolveFriendLove(f.perceivedScores, locale);
     // 見出し・本文の「誰から見たか」。空/フォールバック名は総称「友達」に落とす。
     const sourceName = f.name.trim();
     const rawName = isKo
@@ -427,9 +439,7 @@ export async function TakoResultPage({
     const loveContent = isKo
       ? KO_LOVE_BY_TYPE_32[type32]
       : isId
-        ? {
-            body: `Menurut ${viewer}, gaya cinta Anda membawa ciri khas ${ID_RESULT_TYPES[type32].essence.toLowerCase()}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nDaya tarik Anda terasa paling kuat ketika Anda menunjukkan kepedulian dengan cara yang alami dan tetap berbicara jujur tentang kebutuhan sendiri.`,
-          }
+        ? ID_LOVE_BY_TYPE_32[type32]
       : LOVE_BY_TYPE_32[type32];
     const loveProse = (loveContent?.body ?? "")
       .split("\n\n")
@@ -440,6 +450,8 @@ export async function TakoResultPage({
     if (loveScene) loveProse.push(loveScene);
     if (isKo && loveProse[0]?.startsWith("당신의 사랑은")) {
       loveProse[0] = `${koSubject(viewer)} 보는 ${loveProse[0]}`;
+    } else if (isId && loveProse[0]?.startsWith("Cinta Anda")) {
+      loveProse[0] = `Menurut ${viewer}, c${loveProse[0].slice(1)}`;
     } else if (loveProse[0]?.startsWith("あなたの恋は")) {
       loveProse[0] = `${viewer}から見た${loveProse[0]}`;
     }
@@ -450,7 +462,7 @@ export async function TakoResultPage({
     const perceived = isKo
       ? KO_PERCEIVED_BY_TYPE_32[type32]
       : isId
-        ? null
+        ? ID_PERCEIVED_BY_TYPE_32[type32]
       : perceivedContentFor(type32);
     const message = isKo
       ? ({
@@ -463,9 +475,9 @@ export async function TakoResultPage({
         } as Record<string, string>)[f.message] ?? f.message
       : isId
         ? ({
-            "いつも冷静で頼れる。周りをよく見てるよね。": "Kamu selalu tenang dan bisa diandalkan. Kamu sangat peka pada keadaan sekitar.",
-            "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜": "Kamu selalu tenang dan bisa diandalkan. Bertemu denganmu membuatku merasa lebih tenang.",
-            "自分の考えをちゃんと持ってて素敵だと思う！": "Aku suka karena kamu memiliki pendirian yang jelas!",
+            "いつも冷静で頼れる。周りをよく見てるよね。": "Anda selalu tenang dan dapat diandalkan. Anda sangat peka terhadap keadaan sekitar.",
+            "いつも冷静で頼れる。周りをよく見てるよね。会うたびに落ち着くわ〜": "Anda selalu tenang dan dapat diandalkan. Bertemu dengan Anda membuat saya merasa lebih tenang.",
+            "自分の考えをちゃんと持ってて素敵だと思う！": "Saya suka karena Anda memiliki pendirian yang jelas!",
           } as Record<string, string>)[f.message] ?? f.message
         : f.message;
     const concernItems: ContentItem[] = perceived
@@ -475,7 +487,9 @@ export async function TakoResultPage({
             ? it.body
                 .replace(/\{B\}님/g, viewer)
                 .replace(/\{B\}/g, viewer)
-            : `${it.body.replace(/\{B\}さん/g, viewer).replace(/\{B\}/g, viewer)}${CONCERN_TAIL[i % CONCERN_TAIL.length]}`,
+            : isId
+              ? `${it.body.replace(/\{B\}さん/g, viewer).replace(/\{B\}/g, viewer)} ${ID_CONCERN_TAIL[i % ID_CONCERN_TAIL.length]}`
+              : `${it.body.replace(/\{B\}さん/g, viewer).replace(/\{B\}/g, viewer)}${CONCERN_TAIL[i % CONCERN_TAIL.length]}`,
         }))
       : [];
     return {
