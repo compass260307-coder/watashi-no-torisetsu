@@ -1,5 +1,9 @@
 import type { ResultLocale } from "@/i18n/result";
-import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
+import {
+  formatIdrMinor,
+  FULL_ACCESS_PRICE_JPY,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
+} from "@/lib/access-products";
 
 type HoshiyomiFaq = Readonly<{ question: string; answer: string }>;
 export type HoshiyomiLocale = ResultLocale | "en" | "id";
@@ -306,7 +310,7 @@ const ID_COPY: HoshiyomiCopy = {
     },
     {
       question: "Pembelian mana yang menyertakan Alice?",
-      answer: `Edisi Lengkap menyertakan 30 jawaban dari Alice dengan pembayaran satu kali ¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}. Ini bukan langganan.`,
+      answer: `Edisi Lengkap menyertakan 30 jawaban dari Alice dengan pembayaran satu kali ${formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)}. Ini bukan langganan.`,
     },
     {
       question: "Bisakah saya berbicara dengan Alice sebelum membuat Peta Takdir?",

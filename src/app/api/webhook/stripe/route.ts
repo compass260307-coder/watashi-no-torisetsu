@@ -585,8 +585,8 @@ async function recordFullAccessPayment(
     payment_kind: paymentKind,
     stripe_session_id: session.id,
     stripe_payment_intent_id: paymentIntentId,
-    // Legacy column name. Values are minor units for the row's currency (JPY/KRW
-    // are both zero-decimal), so currency must always be read alongside it.
+    // Legacy column name. Values are minor units for the row's currency, so the
+    // currency must always be read alongside it (IDR/USD are two-decimal).
     amount_jpy: session.amount_total,
     amount_refunded_minor: 0,
     currency: session.currency,
@@ -984,6 +984,8 @@ async function recordPurchaseCompletedEvent(
           : null,
       locale,
       metadata: {
+        checkout_attempt_id:
+          session.metadata?.checkout_attempt_id ?? "legacy",
         stripe_session_id: session.id,
         user_id: userId,
         product,

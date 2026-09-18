@@ -21,8 +21,10 @@ import UnmeiCheckoutButton from "@/components/uranai/UnmeiCheckoutButton";
 import type { AppResultLocale } from "@/i18n/result";
 import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
+  formatIdrMinor,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
 } from "@/lib/access-products";
@@ -87,6 +89,8 @@ export default function UnmeiPriceCta({
   const standardPrice =
     locale === "en"
       ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`
+      : locale === "id"
+      ? formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)
       : locale === "ko"
       ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`
       : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`;

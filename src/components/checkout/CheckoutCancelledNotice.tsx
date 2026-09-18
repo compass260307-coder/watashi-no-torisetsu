@@ -29,6 +29,20 @@ export function useCheckoutCancelledProduct(): AccessProduct | null {
       return;
     }
 
+    const checkoutAttemptId = params.get("checkout_attempt_id");
+    const checkoutCancelSignature = params.get("checkout_cancel_signature");
+    if (checkoutAttemptId && checkoutCancelSignature) {
+      void fetch("/api/checkout/cancelled", {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkout_attempt_id: checkoutAttemptId,
+          checkout_cancel_signature: checkoutCancelSignature,
+        }),
+      });
+    }
+
     const timer = window.setTimeout(() => setProduct(requestedProduct), 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -113,6 +127,8 @@ function clearCheckoutCancelledParams() {
   const url = new URL(window.location.href);
   url.searchParams.delete("checkout");
   url.searchParams.delete("product");
+  url.searchParams.delete("checkout_attempt_id");
+  url.searchParams.delete("checkout_cancel_signature");
   window.history.replaceState(
     window.history.state,
     "",

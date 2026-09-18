@@ -8,11 +8,20 @@ import {
 import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE } from "@/lib/access-products";
 import { getSession } from "@/lib/session";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Bicara dengan Alice",
   description: "Refleksikan pilihanmu bersama astrolog AI pribadi Alice.",
+  alternates: localizedAlternates(
+    "id",
+    "/hoshiyomi",
+    "/ko/hoshiyomi",
+    "/en/hoshiyomi",
+    "/id/hoshiyomi",
+  ),
+  robots: { index: false, follow: false },
 };
 
 type Props = {

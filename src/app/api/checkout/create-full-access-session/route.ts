@@ -19,6 +19,7 @@
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import type Stripe from "stripe";
 import {
   consumeRateLimit,
@@ -34,6 +35,7 @@ import {
 } from "@/lib/entitlements";
 import {
   accessProductPrice,
+  accessPaywallVersionForLocale,
   AISHO_ACCESS_POLICY_FULL_INCLUDED,
   AISHO_ACCESS_POLICY_LITE_INCLUDED,
   AISHO_ACCESS_POLICY_PREMIUM_ONLY,
@@ -42,11 +44,12 @@ import {
   EMPTY_ACCESS_ENTITLEMENTS,
   EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
-  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   isAccessProduct,
   isCurrentJapaneseAccessProduct,
   isThreeCoursePaywallVersion,
@@ -69,6 +72,8 @@ import {
   DIRECT_PAYWALL_SOURCE,
   normalizePaywallSource,
 } from "@/lib/paywall-source";
+import { normalizeCheckoutAttemptId } from "@/lib/checkout-measurement";
+import { signCheckoutCancellation } from "@/lib/checkout-cancel-signature";
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
@@ -110,7 +115,7 @@ function accessProductPriceForCheckout(
   entitlements: AccessEntitlements,
   paywallVersion: string,
 ): number {
-  if ((locale !== "ja" && locale !== "id") || paywallVersion === THREE_COURSE_PAYWALL_VERSION) {
+  if (locale !== "ja" || paywallVersion === THREE_COURSE_PAYWALL_VERSION) {
     return accessProductPrice(locale, product, entitlements);
   }
   if (product === "self_report") return LEGACY_JA_ACCESS_PRICES.self_report;
@@ -163,15 +168,16 @@ const CHECKOUT_PRICING = {
       EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS,
   },
   id: {
-    currency: "jpy",
-    saleAmount: FULL_ACCESS_PRICE_JPY,
-    listAmount: FULL_ACCESS_LIST_PRICE_JPY,
-    discountAmount: FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY,
+    currency: "idr",
+    saleAmount: ID_FULL_ACCESS_PRICE_IDR_MINOR,
+    listAmount: ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
+    discountAmount:
+      ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR - ID_FULL_ACCESS_PRICE_IDR_MINOR,
   },
 } as const satisfies Record<
   CheckoutLocale,
   {
-    currency: "jpy" | "krw" | "usd";
+    currency: "jpy" | "krw" | "usd" | "idr";
     saleAmount: number;
     listAmount: number;
     discountAmount: number;
@@ -243,13 +249,13 @@ const CHECKOUT_COPY: Record<
       "One-time purchase. Keep access to every Complete Edition feature for $4.99, tax included.",
   },
   id: {
-    couponId: `wt-release-full-access-off${FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY}-jpy`,
+    couponId: "wt-release-full-access-off80000-idr",
     couponName: "Penawaran peluncuran",
     productName: "Alice Personalities — Edisi Lengkap",
     productDescription:
       "Buka laporan kepribadian lengkap dan PDF, sudut pandang teman, kecocokan, Peta Takdir, 30 jawaban dari astrolog AI pribadi Alice, serta tiga jenis pembacaan tarot dengan satu kali pembayaran.",
     submitMessage:
-      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga ¥499, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
+      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga Rp49.000, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
   },
 };
 
@@ -279,7 +285,7 @@ const CURRENT_FULL_ACCESS_COPY = {
     productDescription:
       "Buka laporan kepribadian lengkap dan PDF, sudut pandang teman, kecocokan, Peta Takdir, 30 jawaban dari astrolog AI pribadi Alice, serta tiga jenis pembacaan tarot.",
     submitMessage:
-      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga ¥499, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
+      "Pembelian satu kali. Akses semua fitur Edisi Lengkap seharga Rp49.000, termasuk pajak, dengan jaminan pengembalian dana 30 hari.",
   },
 } as const;
 
@@ -566,6 +572,16 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const checkoutAttemptId =
+    body.checkout_attempt_id === undefined
+      ? randomUUID()
+      : normalizeCheckoutAttemptId(body.checkout_attempt_id);
+  if (!checkoutAttemptId) {
+    return NextResponse.json(
+      { error: "Invalid checkout attempt" },
+      { status: 400 },
+    );
+  }
   if (body.ui_mode !== undefined && body.ui_mode !== "embedded") {
     return NextResponse.json({ error: "Invalid ui mode" }, { status: 400 });
   }
@@ -590,6 +606,12 @@ export async function POST(request: NextRequest) {
         : body.locale === "id"
           ? "id"
           : "ja";
+  if (paypayRedirect && checkoutLocale !== "ja") {
+    return NextResponse.json(
+      { error: "payment_method_not_offered", code: "payment_method_not_offered" },
+      { status: 400 },
+    );
+  }
   if (body.product !== undefined && !isAccessProduct(body.product)) {
     return NextResponse.json({ error: "Invalid product" }, { status: 400 });
   }
@@ -616,10 +638,7 @@ export async function POST(request: NextRequest) {
   // 現行オファー以外を販売しない。公開前のHTML/JSを開いたままのタブや
   // CDN・アプリ内ブラウザの旧画面から、廃止済み価格のCheckoutが作られるのを防ぐ。
   // 409 は既存クライアントも再読込として扱うため、安全に現行カードへ復帰できる。
-  const currentPaywallVersion =
-    checkoutLocale === "en"
-      ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-      : THREE_COURSE_PAYWALL_VERSION;
+  const currentPaywallVersion = accessPaywallVersionForLocale(checkoutLocale);
   if (body.paywall_version !== currentPaywallVersion) {
     return NextResponse.json(
       {
@@ -654,9 +673,7 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const usesCurrentOffer =
-    paywallVersion === THREE_COURSE_PAYWALL_VERSION ||
-    paywallVersion === EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
+  const usesCurrentOffer = paywallVersion === currentPaywallVersion;
   const paywallPlacement =
     body.paywall_placement === undefined
       ? "unknown"
@@ -903,7 +920,12 @@ export async function POST(request: NextRequest) {
   const cancelParams = new URLSearchParams({
     checkout: "cancelled",
     product,
+    checkout_attempt_id: checkoutAttemptId,
   });
+  const cancelSignature = signCheckoutCancellation(checkoutAttemptId);
+  if (cancelSignature) {
+    cancelParams.set("checkout_cancel_signature", cancelSignature);
+  }
   const cancelAnchor =
     returnTo === "me" || returnTo === "tako" || returnTo === "aisho"
       ? "#fullaccess-promo"
@@ -959,7 +981,7 @@ export async function POST(request: NextRequest) {
   let chargedAmount: number;
 
   const isStandardJapaneseCoursePurchase =
-    (checkoutLocale === "ja" || checkoutLocale === "id") &&
+    checkoutLocale === "ja" &&
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
@@ -969,16 +991,16 @@ export async function POST(request: NextRequest) {
       JA_COURSE_CHECKOUT_PRICING[product].saleAmount
       ? await getJapaneseCourseCouponIdCached(stripe, product)
       : null;
-  const isStandardEnglishFullAccessPurchase =
-    checkoutLocale === "en" &&
+  const isStandardLocalizedFullAccessPurchase =
+    (checkoutLocale === "en" || checkoutLocale === "id") &&
     product === "full_access" &&
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
-  const englishFullAccessCouponId =
-    isStandardEnglishFullAccessPurchase &&
+  const localizedFullAccessCouponId =
+    isStandardLocalizedFullAccessPurchase &&
     checkoutPricing.listAmount > checkoutPricing.saleAmount
-      ? await getCouponIdCached(stripe, "en")
+      ? await getCouponIdCached(stripe, checkoutLocale)
       : null;
 
   if (isStandardJapaneseCoursePurchase && japaneseCourseCouponId) {
@@ -997,13 +1019,13 @@ export async function POST(request: NextRequest) {
     discounts = [{ coupon: japaneseCourseCouponId }];
     chargedAmount = effectivePrice;
   } else if (
-    isStandardEnglishFullAccessPurchase &&
-    englishFullAccessCouponId
+    isStandardLocalizedFullAccessPurchase &&
+    localizedFullAccessCouponId
   ) {
     lineItems = [
       {
         price_data: {
-          currency: "usd",
+          currency: checkoutPricing.currency,
           unit_amount: checkoutPricing.listAmount,
           tax_behavior: "inclusive",
           product_data: productData,
@@ -1011,7 +1033,7 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       },
     ];
-    discounts = [{ coupon: englishFullAccessCouponId }];
+    discounts = [{ coupon: localizedFullAccessCouponId }];
     chargedAmount = effectivePrice;
   } else if (product === "self_report") {
     // ライトはサーバー固定の inline price_data。完全版 Price IDへのフォールバックで
@@ -1098,6 +1120,52 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== Stripe Session 作成 =====
+  // クライアントのバッファ送信とは独立した、サーバー正本のCheckout受付イベント。
+  // CTAイベントがページ遷移で欠けても、Stripe作成数を上回る入口を必ず残す。
+  try {
+    const { error: requestEventError } = await supabaseAdmin
+      .from("events")
+      .insert({
+        event_name: "checkout_requested",
+        owner_token: buyer?.owner_token ?? null,
+        locale: checkoutLocale,
+        metadata: {
+          checkout_attempt_id: checkoutAttemptId,
+          guest: !userId,
+          user_id: userId,
+          product,
+          upgrade_from: upgradeFrom,
+          source: paywallSource,
+          paywall_version: paywallVersion,
+          placement: paywallPlacement,
+          return_to: returnTo,
+          locale: checkoutLocale,
+          stripe_mode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_")
+            ? "live"
+            : "test",
+          payment_method: paypayRedirect
+            ? "paypay"
+            : embedded
+              ? "card_embedded"
+              : "redirect",
+        },
+      });
+    if (requestEventError && requestEventError.code !== "23505") {
+      console.error(
+        "[checkout/create-full-access-session] request event insert failed:",
+        { checkout_attempt_id: checkoutAttemptId, error: requestEventError.message },
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[checkout/create-full-access-session] request event insert threw:",
+      {
+        checkout_attempt_id: checkoutAttemptId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
+  }
+
   let stripeSession;
   try {
     const automaticTaxEnabled =
@@ -1150,6 +1218,7 @@ export async function POST(request: NextRequest) {
       // webhook は商品キーで分岐。user_id があればその行、無ければ (guest=1)
       // Stripe 確定 email をキーに紐付ける (email or id・email 優先)。
       metadata: {
+        checkout_attempt_id: checkoutAttemptId,
         user_id: userId ?? "",
         owner_token: ownerToken,
         product,
@@ -1184,9 +1253,9 @@ export async function POST(request: NextRequest) {
         upgrade_from: upgradeFrom,
         course_price_minor: String(coursePrice),
         course_price_jpy:
-          checkoutLocale === "ja" || checkoutLocale === "id"
-            ? String(coursePrice)
-            : "",
+          checkoutLocale === "ja" ? String(coursePrice) : "",
+        course_price_idr_minor:
+          checkoutLocale === "id" ? String(coursePrice) : "",
         tax_behavior: "inclusive",
         automatic_tax: automaticTaxEnabled ? "1" : "0",
         guest: userId ? "0" : "1",
@@ -1219,7 +1288,9 @@ export async function POST(request: NextRequest) {
               : {}),
           }),
     };
-    stripeSession = await stripe.checkout.sessions.create(sessionParams);
+    stripeSession = await stripe.checkout.sessions.create(sessionParams, {
+      idempotencyKey: `full-access:${checkoutAttemptId}`,
+    });
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
     return NextResponse.json(
@@ -1236,12 +1307,14 @@ export async function POST(request: NextRequest) {
       owner_token: buyer?.owner_token ?? null,
       locale: checkoutLocale,
       metadata: {
+        checkout_attempt_id: checkoutAttemptId,
         guest: userId ? false : true,
         user_id: userId,
         stripe_session_id: stripeSession.id,
         product,
         upgrade_from: upgradeFrom,
         charged_amount: chargedAmount,
+        charged_currency: checkoutPricing.currency,
         source: paywallSource,
         paywall_version: paywallVersion,
         placement: paywallPlacement,
@@ -1252,6 +1325,7 @@ export async function POST(request: NextRequest) {
           : embedded
             ? "card_embedded"
             : "redirect",
+        stripe_mode: stripeSession.livemode ? "live" : "test",
       },
     });
     if (eventError) {
@@ -1278,7 +1352,7 @@ export async function POST(request: NextRequest) {
       ? { clientSecret: stripeSession.client_secret }
       : { url: stripeSession.url }),
     amount:
-      checkoutPricing.currency === "usd"
+      checkoutPricing.currency === "usd" || checkoutPricing.currency === "idr"
         ? chargedAmount / 100
         : chargedAmount,
     currency: checkoutPricing.currency.toUpperCase(),

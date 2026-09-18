@@ -86,5 +86,7 @@ Checkout を停止する。
 4. 完全版購入後に `/ko/unmei` で出生情報を入力でき、韓国語鑑定が生成される。
 5. 韓国向け決済手段が実機の Checkout に表示される。
 6. 全額返金後に該当権限が閉じ、別購入がある権限だけ維持される。
-7. `paywall_plan_viewed` → `purchase_cta_clicked` →
-   `checkout_session_created` → `purchase_completed` が `locale=ko` で記録される。
+7. `paywall_plan_viewed` → `purchase_cta_clicked`（クライアント診断用）→
+   `checkout_requested`（サーバー正本）→ `checkout_session_created` →
+   `purchase_completed` が `locale=ko` で記録される。Stripeから戻った場合は
+   `checkout_cancelled` も同じ `checkout_attempt_id` で記録される。

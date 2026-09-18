@@ -10,9 +10,11 @@
 import { Resend } from "resend";
 import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
+  formatIdrMinor,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
@@ -1258,7 +1260,8 @@ function renderDetailedReportHtmlId(
     : "Halo,";
   const credits =
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
-  const price = args.purchaseAmountMinor ?? FULL_ACCESS_PRICE_JPY;
+  const price =
+    args.purchaseAmountMinor ?? ID_FULL_ACCESS_PRICE_IDR_MINOR;
   const features = [
     "Laporan kepribadian lengkap Anda",
     "PDF pribadi yang dapat diunduh",
@@ -1286,7 +1289,7 @@ function renderDetailedReportHtmlId(
 <p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Terima kasih atas pembelian Anda. Satu kali pembayaran telah membuka seluruh pengalaman.</p>
 <p style="margin:0 0 14px;text-align:center;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Buka Edisi Lengkap saya</a></p>
 <p style="margin:0 0 30px;text-align:center;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Unduh PDF saya</a></p>
-<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Rincian pembelian</h2><p style="margin:0 0 16px;color:#51516E;">Edisi Lengkap · ¥${price.toLocaleString("ja-JP")} · termasuk pajak · satu kali pembayaran</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
+<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Rincian pembelian</h2><p style="margin:0 0 16px;color:#51516E;">Edisi Lengkap · ${formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
 <p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#77778D;">Jika Anda membeli sebelum menyelesaikan tes, selesaikan tes terlebih dahulu lalu buka kembali tautan ini.</p>
 <p style="margin:0;font-size:14px;line-height:1.75;color:#51516E;">Untuk bantuan akses, PDF, atau pengembalian dana, hubungi <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;">support@watashi-torisetsu.com</a>.</p>
 </td></tr></table><p style="margin:20px 0 0;font-size:12px;color:#8A8AA3;">&copy; ${ID_SITE_NAME}</p>
@@ -1298,7 +1301,8 @@ function renderDetailedReportTextId(
 ): string {
   const credits =
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
-  const price = args.purchaseAmountMinor ?? FULL_ACCESS_PRICE_JPY;
+  const price =
+    args.purchaseAmountMinor ?? ID_FULL_ACCESS_PRICE_IDR_MINOR;
   return [
     args.greetingName ? `Halo ${args.greetingName},` : "Halo,",
     "",
@@ -1316,7 +1320,7 @@ function renderDetailedReportTextId(
       ? ["", `Ajukan hingga ${credits} pertanyaan kepada Alice:`, args.hoshiyomiUrl]
       : []),
     "",
-    `Edisi Lengkap · ¥${price.toLocaleString("ja-JP")} · termasuk pajak · satu kali pembayaran`,
+    `Edisi Lengkap · ${formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran`,
     "- Laporan kepribadian lengkap dan PDF pribadi",
     "- Sudut pandang teman dan analisis kecocokan",
     "- Peta Takdir, Alice, dan tiga jenis pembacaan tarot",

@@ -27,10 +27,10 @@ import {
   EN_PEEK_UNMEI,
 } from "./paywall-peek-content";
 import {
+  accessPaywallVersionForLocale,
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
-  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
@@ -39,6 +39,9 @@ import {
   FULL_ACCESS_DISCOUNT_PERCENT_KRW,
   FULL_ACCESS_LIST_PRICE_KRW,
   FULL_ACCESS_PRICE_KRW,
+  formatIdrMinor,
+  ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW,
   PREMIUM_BUNDLE_LIST_PRICE_KRW,
   PREMIUM_BUNDLE_PRICE_KRW,
@@ -250,8 +253,8 @@ const ID_PLANS: readonly PlanDefinition[] = [
     product: "full_access",
     eyebrow: "Kepribadian, teman, dan Alice",
     title: "Edisi Lengkap",
-    basePrice: FULL_ACCESS_PRICE_JPY,
-    listPrice: FULL_ACCESS_LIST_PRICE_JPY,
+    basePrice: ID_FULL_ACCESS_PRICE_IDR_MINOR,
+    listPrice: ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
     iconSrc: "/pricing/full-access-connection-felt-transparent.png",
     accent: "#5B5BEF",
     soft: "#EEEEFF",
@@ -275,6 +278,7 @@ function formatJpy(value: number): string {
 
 function formatPrice(value: number, locale: AppResultLocale): string {
   if (locale === "en") return `$${(value / 100).toFixed(2)}`;
+  if (locale === "id") return formatIdrMinor(value);
   return locale === "ko" ? `₩${value.toLocaleString("ko-KR")}` : formatJpy(value);
 }
 
@@ -557,11 +561,7 @@ function LegacyPremiumCard({
             source={ctaSource}
             returnTo={returnTo}
             product={plan.product}
-            paywallVersion={
-              locale === "en"
-                ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-                : THREE_COURSE_PAYWALL_VERSION
-            }
+            paywallVersion={accessPaywallVersionForLocale(locale)}
             placement={onClose ? "modal" : "inline"}
             previewMode={previewMode}
           >
@@ -625,9 +625,7 @@ function PlanCard({
   ebookPeek: UnlockPeek;
 }) {
   const paywallVersion: ThreeCoursePaywallVersion =
-    locale === "en"
-      ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-      : THREE_COURSE_PAYWALL_VERSION;
+    accessPaywallVersionForLocale(locale);
   const purchased = isPurchased(plan.product, entitlements);
   const checkoutPrice = usePlanBasePrice || purchased
     ? plan.basePrice
@@ -958,9 +956,7 @@ export function SelfAccessPlanCarousel({
   const allPlans =
     locale === "id" ? ID_PLANS : locale === "en" ? EN_PLANS : locale === "ko" ? KO_PLANS : JA_PLANS;
   const paywallVersion: ThreeCoursePaywallVersion =
-    locale === "en"
-      ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-      : THREE_COURSE_PAYWALL_VERSION;
+    accessPaywallVersionForLocale(locale);
   const isSingleOffer =
     !legacyStyle && !(previewMode && previewJapaneseThreeCourse);
   const usesSalePresentation = true;
@@ -1284,7 +1280,7 @@ export function SelfAccessPlanCarousel({
           {heading ??
             (isSingleOffer
               ? locale === "id"
-                ? `Buka Edisi Lengkap seharga ${formatPrice(plans[0]?.basePrice ?? FULL_ACCESS_PRICE_JPY, locale)}`
+                ? `Buka Edisi Lengkap seharga ${formatPrice(plans[0]?.basePrice ?? ID_FULL_ACCESS_PRICE_IDR_MINOR, locale)}`
                 : locale === "en"
                 ? `Unlock the Complete Edition for ${formatPrice(plans[0]?.basePrice ?? EN_FULL_ACCESS_PRICE_USD_CENTS, locale)}`
                 : locale === "ko"

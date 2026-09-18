@@ -16,7 +16,7 @@ import {
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
-import { ID_RESULT_TYPES } from "@/i18n/id/result";
+import { ID_SELF_RESULT_CONTENT_32 } from "@/i18n/id/me-content-32";
 import type { AppResultLocale } from "@/i18n/result";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 
@@ -63,18 +63,7 @@ export function MinnaTypeProse({
   const isId = locale === "id";
   // 取扱説明書 + 取扱注意ポイント の2セクションだけ使う (相性は他己文脈から外す)。
   const sections = isId
-    ? [
-        {
-          title: "Panduan diri Anda",
-          heading: "Cara Anda terlihat dari luar",
-          body: `Menurut teman, Anda adalah ${ID_RESULT_TYPES[type32].name}. ${ID_RESULT_TYPES[type32].oneLiner}\n\nHal-hal yang terasa biasa bagi Anda sering kali justru menjadi kekuatan yang paling diingat orang lain.`,
-        },
-        {
-          title: "Hal yang perlu diperhatikan",
-          heading: "Kebiasaan yang terlihat oleh teman",
-          body: "Karena teman melihat Anda dari sudut yang berbeda, selisih kecil bukan berarti ada yang salah. Ini adalah petunjuk tentang sisi diri yang belum Anda sadari sepenuhnya.",
-        },
-      ]
+    ? (ID_SELF_RESULT_CONTENT_32[type32] ?? []).slice(0, 2)
     : (
         isKo ? (KO_SELF_RESULT_CONTENT_32[type32] ?? []) : selfContentFor(type32)
       ).slice(0, 2);
@@ -85,7 +74,11 @@ export function MinnaTypeProse({
   const [manual] = sections;
   const manualParas = manual.body.split("\n\n");
   if (isId) {
-    manualParas[0] = `${who} melihat Anda sebagai seseorang yang ${manualParas[0]?.replace(/^Menurut teman, Anda adalah\s*/i, "") ?? ""}`;
+    const first = manualParas[0] ?? "";
+    const led = first.startsWith("Anda")
+      ? first
+      : `${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+    manualParas[0] = `Menurut ${who}, ${led}`;
   } else if (isKo && manualParas[0]?.startsWith("당신")) {
     manualParas[0] = `${who}이 보는 ${manualParas[0]}`;
   } else if (manualParas[0]?.startsWith("あなた")) {
@@ -113,7 +106,10 @@ export function MinnaTypeProse({
       }
     }
     if (isId) {
-      manualParas[reopenIdx] = `${who} juga melihat bahwa ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+      const led = t.startsWith("Anda")
+        ? t
+        : `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+      manualParas[reopenIdx] = `Menurut ${who}, ${led}`;
     } else if (isKo) {
       manualParas[reopenIdx] = t.startsWith("당신")
         ? `${who}이 보는 ${t}`

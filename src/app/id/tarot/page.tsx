@@ -2,10 +2,18 @@ import type { Metadata } from "next";
 import TarotLanding from "@/components/tarot/TarotLanding";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { getTarotAccessState, redirectToTarotPaywall } from "@/lib/tarot/access";
+import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "Tarot bersama Alice",
   description: "Tiga pembacaan tarot Alice untuk merefleksikan perasaan dan pilihanmu.",
+  alternates: localizedAlternates(
+    "id",
+    "/tarot",
+    "/ko/tarot",
+    "/en/tarot",
+    "/id/tarot",
+  ),
 };
 
 export default async function IndonesianTarotPage({

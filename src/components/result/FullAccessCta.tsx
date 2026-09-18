@@ -15,11 +15,14 @@ import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import { readAdAttribution } from "@/lib/ad-attribution";
+import { createCheckoutAttemptId } from "@/lib/checkout-measurement";
 import type { AppResultLocale } from "@/i18n/result";
 import {
+  accessPaywallVersionForLocale,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
@@ -92,6 +95,8 @@ export function FullAccessCta({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
+  const resolvedPaywallVersion =
+    paywallVersion ?? accessPaywallVersionForLocale(locale);
   const resolvedUnauthHref =
     unauthHref ??
     (locale === "ko"
@@ -123,8 +128,9 @@ export function FullAccessCta({
     const ttp = readCookie("_ttp");
     const fbp = readCookie("_fbp");
     const fbc = readCookie("_fbc");
-    // 課金ファネル計測: 購入CTAクリック = checkout 要求。結果 (409/401/成功) に
-    // かかわらずクリック自体を数える。Stripe 到達はサーバ側 checkout_session_created。
+    const checkoutAttemptId = createCheckoutAttemptId();
+    // クライアント信号は配信欠損の監視用。正規の入口はAPIが記録する
+    // checkout_requested、Stripe到達はcheckout_session_createdを使う。
     track("purchase_cta_clicked", {
       ownerToken: ownerToken ?? null,
       metadata: {
@@ -132,8 +138,9 @@ export function FullAccessCta({
         source: paywallSource,
         locale,
         product,
-        paywall_version: paywallVersion ?? "legacy",
+        paywall_version: resolvedPaywallVersion,
         placement: placement ?? "unknown",
+        checkout_attempt_id: checkoutAttemptId,
       },
     });
     try {
@@ -154,13 +161,14 @@ export function FullAccessCta({
               })()
             : {}),
           paywall_source: paywallSource,
+          checkout_attempt_id: checkoutAttemptId,
           locale,
           product,
           ...(ttclid ? { ttclid } : {}),
           ...(ttp ? { ttp } : {}),
           ...(fbp ? { fbp } : {}),
           ...(fbc ? { fbc } : {}),
-          ...(paywallVersion ? { paywall_version: paywallVersion } : {}),
+          paywall_version: resolvedPaywallVersion,
           ...(placement ? { paywall_placement: placement } : {}),
         }),
       });
@@ -221,6 +229,8 @@ export function FullAccessCta({
                   ? FULL_ACCESS_PRICE_KRW
                   : locale === "en"
                     ? EN_FULL_ACCESS_PRICE_USD_CENTS / 100
+                    : locale === "id"
+                      ? ID_FULL_ACCESS_PRICE_IDR_MINOR / 100
                     : FULL_ACCESS_PRICE_JPY,
           currency:
             typeof data.currency === "string"
@@ -229,6 +239,8 @@ export function FullAccessCta({
                 ? "KRW"
                 : locale === "en"
                   ? "USD"
+                  : locale === "id"
+                    ? "IDR"
                   : "JPY",
         });
         return;

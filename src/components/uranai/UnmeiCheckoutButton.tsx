@@ -2,10 +2,7 @@
 
 import { useState } from "react";
 import type { AppResultLocale } from "@/i18n/result";
-import {
-  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
-  THREE_COURSE_PAYWALL_VERSION,
-} from "@/lib/access-products";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { track } from "@/lib/track";
 
 const BUTTON_COPY = {
@@ -70,10 +67,7 @@ export default function UnmeiCheckoutButton({
   async function handleClick() {
     if (loading) return;
 
-    const paywallVersion =
-      locale === "en"
-        ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-        : THREE_COURSE_PAYWALL_VERSION;
+    const paywallVersion = accessPaywallVersionForLocale(locale);
 
     const metadata = {
       page: "unmei",

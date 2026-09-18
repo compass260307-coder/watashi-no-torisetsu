@@ -18,8 +18,8 @@ const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 const RECENT_PAST_TTL_SECONDS = 60 * 60;
 const RECENT_PAST_WINDOW_MS = 48 * 60 * 60 * 1000;
 const LAST_GOOD_TTL_SECONDS = 7 * 24 * 60 * 60;
-// 計測スキーマのv8と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
-const metricsCache = getCache({ namespace: "metrics-stats-v8" });
+// 計測スキーマのv9と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
+const metricsCache = getCache({ namespace: "metrics-stats-v9" });
 
 type MetricsStats = Awaited<ReturnType<typeof computeStats>>;
 
@@ -69,7 +69,7 @@ function lastGoodCacheKey(
         locale: locale ?? "all",
         // 既存デプロイの最終正常スナップショットを引き継ぐ互換キー。
         // 値を変えると新デプロイ初回の集計失敗時にフォールバックできなくなる。
-        shape: "admin-stats-v8",
+        shape: "admin-stats-v9",
         environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local",
       }),
     )

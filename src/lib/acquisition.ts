@@ -6,7 +6,7 @@
 // 取得ルール:
 //   - source   : utm_source を優先、なければ ref
 //   - campaign : utm_campaign を優先、なければ camp
-//   - medium   : utm_medium の実測値のみ。欠損は推定しない。
+//   - medium   : utm_medium。TikTok広告と確定できる場合だけ paid_social を補完。
 //   - first-touch: source/campaign/mediumを一組として固定。
 //   - 保存キー: wt_acq_source / wt_acq_campaign / wt_acq_medium。
 //
@@ -30,13 +30,33 @@ export interface Acquisition {
   medium?: string | null;
 }
 
+/** TikTokのcampaign/ttclid付き流入は広告と確定できるため、medium欠損を補完する。 */
+export function normalizeAcquisitionMedium(
+  acq: Acquisition,
+  hasTikTokClickId = false,
+): Acquisition {
+  const source = acq.source?.trim() || null;
+  const campaign = acq.campaign?.trim() || null;
+  const medium = acq.medium?.trim() || null;
+  return {
+    source,
+    campaign,
+    medium:
+      medium ||
+      (source?.toLowerCase() === "tiktok" &&
+      (campaign !== null || hasTikTokClickId)
+        ? "paid_social"
+        : null),
+  };
+}
+
 /** utm_source 優先 / なければ ref、utm_campaign 優先 / なければ camp。 */
 export function pickAcquisition(params: URLSearchParams): Acquisition {
-  return {
+  return normalizeAcquisitionMedium({
     source: params.get("utm_source") || params.get("ref"),
     campaign: params.get("utm_campaign") || params.get("camp"),
     medium: params.get("utm_medium"),
-  };
+  }, Boolean(params.get("ttclid")));
 }
 
 /**
@@ -82,11 +102,11 @@ export function saveFirstTouchAcquisition(acq: Acquisition): void {
 /** localStorage に保存済みの first-touch 値を読む。 */
 export function readAcquisition(): Acquisition {
   try {
-    return {
+    return normalizeAcquisitionMedium({
       source: localStorage.getItem(ACQ_SOURCE_KEY),
       campaign: localStorage.getItem(ACQ_CAMPAIGN_KEY),
       medium: localStorage.getItem(ACQ_TOUCH_KEY) ? localStorage.getItem(ACQ_MEDIUM_KEY) : null,
-    };
+    });
   } catch {
     return { source: null, campaign: null, medium: null };
   }
@@ -105,13 +125,15 @@ export function readAcquisition(): Acquisition {
  *   ③ first-touch 保存値 (wt_acq_* = 従来の読み出し先)
  *      → 旧保存値は維持し、欠けたmediumを別の流入から補完しない。
  *   ④ 広告クリック last-touch 保存値 (wt_ad_utm_source / wt_ad_utm_campaign)
- *   ⑤ ttclid 推定: 広告クリックID (wt_ad_ttclid) があれば source='tiktok'。
+ *   ⑤ ttclid 推定: 広告クリックID (wt_ad_ttclid) があれば
+ *      source='tiktok' / medium='paid_social'。
  *      utm 未設定の広告でも有料クリックと確定できるため、リファラーより優先。
  *      ttclid の値自体は Supabase に保存しない (TikTok送信専用)。
  *   ⑥ リファラー補完: 着地時に保存した外部 referrer ホスト (wt_ref_host) を
  *      source 名に変換 (google / tiktok / instagram 等。未知ホストは素のホスト名)。
  * ⑥まで無ければ null (= 従来どおり「直接/不明」扱い)。
- * ⑤⑥は mediumを推定せず、campaign を付けない (どのキャンペーンかは特定できないため null)。
+ * ⑤は広告と確定できるためmediumを補完し、⑥は推定しない。
+ * campaign はどのキャンペーンか特定できないため null。
  */
 export function resolveAcquisitionForSave(search: string): Acquisition {
   const fromUrl = parseAcquisitionFromSearch(search);
@@ -126,16 +148,19 @@ export function resolveAcquisitionForSave(search: string): Acquisition {
     if (saved && [saved.source, saved.campaign, saved.medium].every(
       (value) => value == null || typeof value === "string",
     ) && (saved.source || saved.campaign || saved.medium)) {
-      return { source: saved.source ?? null, campaign: saved.campaign ?? null, medium: saved.medium ?? null };
+      return normalizeAcquisitionMedium({ source: saved.source ?? null, campaign: saved.campaign ?? null, medium: saved.medium ?? null });
     }
   } catch { /* 保存不可・破損時は既存のfallbackへ */ }
   const firstTouch = readAcquisition();
   if (firstTouch.source || firstTouch.campaign || firstTouch.medium) return firstTouch;
   const ad = readAdAttribution();
   if (ad.utmSource || ad.utmCampaign || ad.utmMedium) {
-    return { source: ad.utmSource, campaign: ad.utmCampaign, medium: ad.utmMedium };
+    return normalizeAcquisitionMedium(
+      { source: ad.utmSource, campaign: ad.utmCampaign, medium: ad.utmMedium },
+      Boolean(ad.ttclid),
+    );
   }
-  if (ad.ttclid) return { source: "tiktok", campaign: null, medium: null };
+  if (ad.ttclid) return { source: "tiktok", campaign: null, medium: "paid_social" };
   return { source: sourceFromReferrerHost(readReferrerHost()), campaign: null, medium: null };
 }
 

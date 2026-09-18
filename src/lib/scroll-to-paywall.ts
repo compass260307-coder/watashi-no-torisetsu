@@ -17,7 +17,7 @@ import {
   DIRECT_PAYWALL_SOURCE,
   normalizePaywallSource,
 } from "@/lib/paywall-source";
-import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 
 const PAYWALL_ID = "fullaccess-promo";
 const PULSE_CLASS = "paywall-pulse";
@@ -38,12 +38,18 @@ function currentPage(): string {
   return typeof window === "undefined" ? "" : window.location.pathname;
 }
 
-function supportsCurrentJapaneseOffer(): boolean {
+function currentOfferPaywallVersion(): string {
   const page = currentPage();
-  // 日本語の現行課金面は、カードデザインに関係なく同じバージョンで計測する。
-  // 韓国語面は既存の課金構成を維持するため対象外。
-  if (page === "/ko" || page.startsWith("/ko/")) return false;
-  return (
+  if (page === "/ko" || page.startsWith("/ko/")) {
+    return accessPaywallVersionForLocale("ko");
+  }
+  if (page === "/en" || page.startsWith("/en/")) {
+    return accessPaywallVersionForLocale("en");
+  }
+  if (page === "/id" || page.startsWith("/id/")) {
+    return accessPaywallVersionForLocale("id");
+  }
+  const supportsJapaneseOffer =
     page === "/me" ||
     page.startsWith("/me/") ||
     page === "/tako" ||
@@ -53,8 +59,10 @@ function supportsCurrentJapaneseOffer(): boolean {
     page === "/unmei" ||
     page.startsWith("/unmei/") ||
     page === "/hoshiyomi" ||
-    page.startsWith("/hoshiyomi/")
-  );
+    page.startsWith("/hoshiyomi/");
+  return supportsJapaneseOffer
+    ? accessPaywallVersionForLocale("ja")
+    : "legacy";
 }
 
 function currentProduct(): "full_access" | "premium_bundle" {
@@ -122,9 +130,7 @@ export function scrollToPaywall(
       target: targetId,
       page: trackingPageFromPathname(window.location.pathname),
       product: currentProduct(),
-      paywall_version: supportsCurrentJapaneseOffer()
-        ? THREE_COURSE_PAYWALL_VERSION
-        : "legacy",
+      paywall_version: currentOfferPaywallVersion(),
     },
   });
 

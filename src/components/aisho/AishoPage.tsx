@@ -732,13 +732,15 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={2}
-          title={isKorean ? "두 사람의 좋은 점" : isEnglish ? "What works well" : "ふたりのいいところ"}
+          title={isKorean ? "두 사람의 좋은 점" : isEnglish ? "What works well" : isIndonesian ? "Hal baik dari hubungan kalian" : "ふたりのいいところ"}
         />
         <p className={PROSE}>
           {isEnglish
             ? `There are clear reasons these two can feel comfortable together. ${r.goods[0]}`
             : isKorean
             ? `두 사람이 함께 있을 때 편안한 데에는 분명한 이유가 있어요. ${r.goods[0]}`
+            : isIndonesian
+              ? `Ada alasan yang jelas mengapa kalian dapat merasa nyaman bersama. ${r.goods[0]}`
             : `このふたりがいっしょにいて心地いいのには、ちゃんと理由があるよ。${r.goods[0]}`}
         </p>
         <p className={`${PROSE} mt-3`}>{r.goods[1]}</p>
@@ -752,7 +754,7 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={3}
-          title={isKorean ? "상황별 궁합" : isEnglish ? "Compatibility in four situations" : "シーン別の相性"}
+          title={isKorean ? "상황별 궁합" : isEnglish ? "Compatibility in four situations" : isIndonesian ? "Kecocokan dalam empat situasi" : "シーン別の相性"}
         />
         {sceneUnlocked ? (
           /* ===== 課金済: 各場面の本文 ===== */
@@ -843,7 +845,7 @@ function CompatDetail({
                     className="text-[21px] font-black md:text-[24px]"
                     style={{ color: NAVY }}
                   >
-                    {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : "今すぐロックを解除"}
+                    {isKorean ? "지금 잠금 해제" : isEnglish ? "Unlock now" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
                   </p>
                   {/* PC は1行 (whitespace-nowrap)、SP は2行に自然折り返し。 */}
                   <p className="mx-auto mt-2 max-w-[300px] text-[13px] font-bold leading-relaxed text-[#6A6A7C] md:max-w-none md:whitespace-nowrap md:text-[14px]">
@@ -851,6 +853,8 @@ function CompatDetail({
                       ? "모든 결과를 열고 연애·우정·일·엇갈림, 네 가지 상황 속 두 사람의 궁합을 확인해 보세요."
                       : isEnglish
                         ? "Unlock the full result to explore love, friendship, work, and moments of conflict."
+                        : isIndonesian
+                          ? "Buka seluruh hasil untuk membaca kecocokan kalian dalam cinta, pertemanan, pekerjaan, dan saat terjadi benturan."
                         : "全解放して、恋愛・友情・仕事・すれ違い──4場面ぶんのふたりの相性を読もう。"}
                   </p>
                   <button
@@ -859,7 +863,7 @@ function CompatDetail({
                     className="mx-auto mt-5 inline-flex items-center justify-center rounded-full px-10 py-3 text-[15px] font-black text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e]"
                     style={{ background: NAVY }}
                   >
-                    {isKorean ? "지금 확인하기" : isEnglish ? "View the full result" : "今すぐアクセス"}
+                    {isKorean ? "지금 확인하기" : isEnglish ? "View the full result" : isIndonesian ? "Lihat hasil lengkap" : "今すぐアクセス"}
                   </button>
                 </div>
               </>
@@ -872,13 +876,15 @@ function CompatDetail({
       <section>
         <SectionHeading
           n={4}
-          title={isKorean ? "이것만은 주의" : isEnglish ? "What needs care" : "ここだけ注意"}
+          title={isKorean ? "이것만은 주의" : isEnglish ? "What needs care" : isIndonesian ? "Hal yang perlu dijaga" : "ここだけ注意"}
         />
         <p className={PROSE}>
           {isEnglish
             ? `Even a strong match needs care to stay comfortable over time. Close pairs can become so relaxed that they miss small misunderstandings. ${r.caution}`
             : isKorean
             ? `아무리 궁합이 좋아도 오래 편안하게 지내기 위한 요령은 있어요. 오히려 가까운 두 사람일수록 거리낌이 없어져 작은 엇갈림을 놓치기 쉬워요. ${r.caution}`
+            : isIndonesian
+              ? `Seberapa baik pun kecocokan kalian, tetap ada cara untuk menjaga hubungan agar nyaman dalam jangka panjang. Justru karena sudah dekat, kesalahpahaman kecil lebih mudah terlewat. ${r.caution}`
             : `どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
         </p>
         <p className={`${PROSE} mt-3`}>
@@ -886,6 +892,8 @@ function CompatDetail({
             ? "Do not store discomfort until it becomes resentment. Naming a small concern early makes it easier to understand each other before it grows. Expecting the other person to notice without being told can slowly create distance; a few honest words usually protect what already works well."
             : isKorean
             ? "중요한 건 참고 쌓아 두지 않는 거예요. 불편함이 작을 때 “나는 이렇게 느꼈어”라고 가볍게 말해 두면 크게 꼬이기 전에 자연스럽게 풀려요. 반대로 “말하지 않아도 알아줬으면 좋겠어”가 계속되면 아무리 좋은 궁합도 조금씩 어긋날 수 있어요. 이것만 기억해도 두 사람의 장점은 훨씬 자연스럽게 드러날 거예요."
+            : isIndonesian
+              ? "Yang penting adalah tidak menumpuk ketidaknyamanan. Saat masalah masih kecil, katakan dengan ringan, ‘Aku merasa seperti ini,’ agar kalian dapat meluruskannya sebelum membesar. Mengharapkan pasangan memahami tanpa diberi tahu perlahan dapat menciptakan jarak. Beberapa kata yang jujur biasanya cukup untuk menjaga hal baik yang sudah kalian miliki."
             : "大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
         </p>
       </section>
@@ -910,6 +918,7 @@ function ResultBlock({
   const r = useMemo(() => compat(a, b, locale), [a, b, locale]);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
+  const isIndonesian = locale === "id";
   const [band0, band1] = HERO_BAND;
   // 淡いピンク帯なのでドットは白ではなく濃いローズを薄く乗せる。
   const dotColor = "rgba(214,120,158,0.35)";
@@ -943,7 +952,7 @@ function ResultBlock({
             ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
         <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-6 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-8 md:text-left">
           <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
-            {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : "ふたりの相性"}
+            {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : isIndonesian ? "Kecocokan kalian" : "ふたりの相性"}
           </p>
           <div className="mt-4 md:mt-0 md:shrink-0">
             {/* 透過 PNG (装飾) は unoptimized で直接配信する。
@@ -956,6 +965,8 @@ function ResultBlock({
                     ? `궁합 등급 ${r.rank}`
                     : isEnglish
                       ? `Compatibility rank ${r.rank}`
+                      : isIndonesian
+                        ? `Peringkat kecocokan ${r.rank}`
                       : `相性ランク ${r.rank}`
                 }
                 width={512}

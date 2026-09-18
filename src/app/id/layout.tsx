@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: { absolute: TITLE, template: "%s | Alice Test" },
   description: DESCRIPTION,
   applicationName: "Alice Test",
+  authors: [{ name: "Tim Alice Personalities" }],
+  creator: "Tim Alice Personalities",
+  publisher: "Tim Alice Personalities",
   keywords: ["tes kepribadian", "tes kepribadian gratis", "Big Five", "OCEAN", "32 tipe kepribadian", "Alice Test"],
   openGraph: {
     type: "website",
@@ -19,7 +22,17 @@ export const metadata: Metadata = {
     images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024, alt: "Karakter kepribadian Alice Test" }],
   },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function IndonesianLayout({ children }: Readonly<{ children: React.ReactNode }>) {

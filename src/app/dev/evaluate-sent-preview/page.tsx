@@ -5,7 +5,7 @@ import { FriendIndividualGuide } from "@/components/result/FriendIndividualGuide
 // 友達診断完了後に友達側が着地する /evaluate/sent/[perceptionId] のローカル確認用。
 // 本番は Supabase の実在 perception ID が必要なため、ダミー props で同じ画面を出す。
 // trackSource は渡さない = friend_to_diagnosis_clicked を発火させない (共有Supabaseの計測を汚さない)。
-// ?locale=ko / ?locale=en で各言語版の表示も確認できる。
+// ?locale=ko / ?locale=en / ?locale=id で各言語版の表示も確認できる。
 
 interface PageProps {
   searchParams: Promise<{
@@ -29,7 +29,8 @@ export default async function EvaluateSentPreviewPage({
   const params = await searchParams;
   const isKorean = params.locale === "ko";
   const isEnglish = params.locale === "en";
-  const locale = isKorean ? "ko" : isEnglish ? "en" : "ja";
+  const isIndonesian = params.locale === "id";
+  const locale = isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja";
   const requestedScore = Array.isArray(params.score)
     ? params.score[0]
     : params.score;
@@ -69,7 +70,7 @@ export default async function EvaluateSentPreviewPage({
       <FriendIndividualGuide
         diagnoseHref={`${locale === "ja" ? "" : `/${locale}`}/diagnosis`}
         inviteCode="DEVPREVIEW"
-        targetName={isKorean ? "지우" : isEnglish ? "Alex" : "みさき"}
+        targetName={isKorean ? "지우" : isEnglish ? "Alex" : isIndonesian ? "Ayu" : "みさき"}
         understandingScore={previewScore}
         selfScores={PREVIEW_SELF_SCORES}
         perceivedScores={PREVIEW_PERCEIVED_SCORES}

@@ -113,8 +113,10 @@ export function isPreviewMode(): boolean {
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant/paywall_version, ownerToken)
 //   paywall_plan_viewed          3コースのうち中央表示されたコース (metadata.product/placement)
 //   paywall_scroll_clicked       課金カードへの誘導クリック (metadata.source/page)
-//   purchase_cta_clicked         購入CTAクリック=checkout要求 (metadata.page/source, ownerToken)
+//   purchase_cta_clicked         購入CTAクリック信号 ※クライアント発行、欠損監視用
+//   checkout_requested           Checkout要求受付 ※サーバ発行 (metadata.checkout_attempt_id)
 //   checkout_session_created     Stripe Checkout 作成 ※サーバ発行 (metadata.source/guest)
+//   checkout_cancelled           Stripeから購入元へ戻った ※サーバ発行・試行IDで冪等
 //   purchase_completed           決済完了 ※サーバ発行 (metadata.source)・stripe_session_id で冪等
 //
 // ⚠️ 旧名 friend_v2_* / share_clicked(kind:friend_invite) は既存 DB 行に残るため、

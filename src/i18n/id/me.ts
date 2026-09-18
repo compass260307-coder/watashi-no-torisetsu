@@ -1,4 +1,12 @@
 import { ID_RESULT_AXES, ID_RESULT_TYPES } from "@/i18n/id/result";
+import {
+  ID_CAREER_BY_TYPE_32,
+  ID_LOVE_BY_TYPE_32,
+  ID_ME_RULES,
+  ID_MOSHIMO_SCENES,
+  ID_PERCEIVED_BY_TYPE_32,
+  ID_SELF_RESULT_CONTENT_32,
+} from "@/i18n/id/me-content-32";
 import type { ResolvedDeepDiveSection } from "@/lib/deep-dive-resolve";
 import type { MoshimoScene } from "@/lib/moshimo-resolve";
 import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
@@ -7,6 +15,41 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
 
 type Scores = Partial<Record<BigFiveDimension, number>>;
+type HighLow = "H" | "L";
+type Quad = "HH" | "HL" | "LH" | "LL";
+type SceneRule = {
+  title: string;
+  chipLabel: string;
+  color: string;
+  gated: boolean;
+  main: { dim: BigFiveDimension; high: string; low: string };
+  spice: { dim: BigFiveDimension; high: string; low: string };
+};
+
+const DIMS = ["O", "C", "E", "A", "N"] as const;
+const WEAPON_SUBJECTS = [
+  "Teman Anda",
+  "Orang-orang di sekitar Anda",
+  "Sebenarnya, teman Anda",
+  "Semua orang",
+  "Teman-teman terdekat Anda",
+  "Tanpa Anda sadari, orang-orang di sekitar Anda",
+] as const;
+const LOVE_SPLITS = ID_ME_RULES.LOVE_SPLITS as unknown as Partial<
+  Record<ThirtyTwoTypeId, readonly [number, number]>
+>;
+
+function highLow(scores: Scores, dim: BigFiveDimension): HighLow {
+  return high(scores, dim) ? "H" : "L";
+}
+
+function quad(
+  scores: Scores,
+  first: BigFiveDimension,
+  second: BigFiveDimension,
+): Quad {
+  return `${highLow(scores, first)}${highLow(scores, second)}` as Quad;
+}
 
 function axis(dim: BigFiveDimension) {
   const value = ID_RESULT_AXES.find((item) => item.dim === dim);
@@ -16,6 +59,10 @@ function axis(dim: BigFiveDimension) {
 
 function high(scores: Scores, dim: BigFiveDimension) {
   return (scores[dim] ?? 5) >= 5;
+}
+
+function percent(scores: Scores, dim: BigFiveDimension) {
+  return Math.max(0, Math.min(100, Math.round((scores[dim] ?? 5) * 10)));
 }
 
 function description(scores: Scores, dim: BigFiveDimension) {
@@ -33,86 +80,273 @@ function growth(scores: Scores, dim: BigFiveDimension) {
   return high(scores, dim) ? item.highGrowth : item.lowGrowth;
 }
 
-export function buildIdSelfSections(typeId: ThirtyTwoTypeId, scores: Scores): SelfSection[] {
+function rankedDimensions(scores: Scores) {
+  return DIMS.toSorted(
+    (left, right) =>
+      Math.abs((scores[right] ?? 5) - 5) -
+      Math.abs((scores[left] ?? 5) - 5),
+  );
+}
+
+export function buildIdSelfSections(
+  typeId: ThirtyTwoTypeId,
+  scores: Scores,
+): SelfSection[] {
+  const dedicated = ID_SELF_RESULT_CONTENT_32[typeId];
+  if (dedicated) return dedicated;
+
   const type = ID_RESULT_TYPES[typeId];
+  const [first, second, third] = rankedDimensions(scores);
   return [
     {
-      title: "Panduan diri Anda",
-      heading: "Cara alami Anda bergerak di dunia",
-      body: `${type.oneLiner}\n\n${description(scores, "O")} ${description(scores, "C")}\n\n${description(scores, "E")} ${description(scores, "A")} ${description(scores, "N")}`,
+      title: "Panduan penggunaan",
+      heading: `${type.name} — cara alami Anda bergerak di dunia`,
+      body: `${type.oneLiner} ${description(scores, first)} Karena itu, orang lain sering melihat ciri khas Anda bahkan sebelum Anda sendiri menyadarinya.\n\n${strength(scores, first)} ${strength(scores, second)} Perpaduan ini membuat sosok “${type.essence}” dalam diri Anda terasa nyata dalam tindakan sehari-hari.\n\n${description(scores, third)} Anda paling bersinar ketika dapat menggunakan kekuatan ini tanpa harus mengikuti ritme yang tidak sesuai dengan diri sendiri.\n\nAgar dapat berhubungan baik dengan Anda, orang lain perlu menghargai cara Anda berpikir, memberi ruang untuk memproses sesuatu, dan menyampaikan harapan secara jelas. Pengakuan yang spesifik jauh lebih bermakna bagi Anda daripada pujian yang samar.`,
     },
     {
       title: "Hal yang perlu diperhatikan",
-      heading: "Pola yang layak Anda sadari",
-      body: `${growth(scores, "N")}\n\n${growth(scores, "C")} ${growth(scores, "A")}\n\n${growth(scores, "O")} ${growth(scores, "E")}`,
+      heading: "Saat kekuatan Anda bekerja terlalu keras",
+      body: `${growth(scores, first)} Kekuatan terbesar pun dapat terasa berat ketika Anda lelah atau sedang berada di bawah tekanan.\n\n${growth(scores, second)} Jangan menunggu sampai semuanya menumpuk; penyesuaian kecil yang dilakukan lebih awal biasanya jauh lebih efektif.\n\n${growth(scores, third)} Pada hari yang sulit, beri diri Anda izin untuk meminta bantuan, menunda jawaban, atau mengubah cara yang biasanya digunakan.\n\nHal-hal ini bukan kekurangan yang harus dihapus. Ini adalah petunjuk agar kualitas baik Anda dapat dipakai lebih lama, lebih lembut, dan tanpa mengorbankan diri sendiri.`,
     },
     {
       title: "Pasangan yang cocok",
       heading: "Orang yang membantu Anda menjadi versi terbaik",
-      body: `Anda cenderung merasa nyaman dengan orang yang menghargai ritme dan cara berpikir Anda. ${description(scores, "A")}\n\nHubungan terasa paling sehat ketika kedua pihak dapat berbicara jujur, memberi ruang, dan berbagi tanggung jawab. ${growth(scores, "E")}`,
+      body: `Anda cenderung cocok dengan orang yang menghargai ritme dan cara berpikir Anda, tetapi tetap dapat menyampaikan pendapatnya dengan jujur. ${description(scores, "A")} ${growth(scores, "E")}\n\nBaik dalam pertemanan maupun cinta, hubungan terasa paling sehat ketika kedua pihak dapat berbagi tanggung jawab, memberi ruang tanpa menjauh, dan membicarakan kebutuhan sebelum berubah menjadi kesalahpahaman.`,
     },
   ];
 }
 
-export function buildIdDeepDiveSections(typeId: ThirtyTwoTypeId, scores: Scores, unlocked: boolean): ResolvedDeepDiveSection[] {
-  const type = ID_RESULT_TYPES[typeId];
-  const lockedBlock = (heading: string, body: string) => unlocked ? { heading, body } : { heading, body: "", locked: true };
-  const loveBlocks = [
-    { heading: "Daya tarik Anda dalam cinta", body: `${type.oneLiner}\n\n${strength(scores, "A")} ${description(scores, "E")}`, locked: false },
-    lockedBlock("Panduan bagi orang yang menyukai Anda", `${description(scores, "N")} ${growth(scores, "A")} ${growth(scores, "E")}`),
-    lockedBlock("Hal yang mungkin diam-diam ditahan pasangan", `${growth(scores, "N")} ${growth(scores, "C")}`),
-  ];
-  const careerBlocks = [
-    { heading: "Cara Anda bekerja", body: `${strength(scores, "C")} ${description(scores, "O")}`, locked: false },
-    lockedBlock("Gaya kerja yang cocok dan lingkungan yang perlu dihindari", `${strength(scores, "O")} ${growth(scores, "C")}`),
-    lockedBlock("Hubungan di tempat kerja", `${description(scores, "E")} ${description(scores, "A")} ${growth(scores, "N")}`),
-  ];
+function idLoveEndure(scores: Scores) {
+  const prose = ID_ME_RULES.LOVE_ENDURE_PROSE as Record<
+    BigFiveDimension,
+    Record<HighLow, string>
+  >;
+  const pick = (dim: BigFiveDimension) => prose[dim][highLow(scores, dim)];
   return [
-    { key: "love", tab: "Kecenderungan dalam cinta", note: "Melihat lebih dekat hubungan, kepercayaan, dan ritme emosi Anda.", body: loveBlocks.filter((item) => !item.locked).map((item) => item.body).join("\n\n"), blocks: loveBlocks, locked: false },
-    { key: "career", tab: "Karier dan pertumbuhan", note: "Lingkungan tempat kekuatan Anda dapat berkembang.", body: careerBlocks.filter((item) => !item.locked).map((item) => item.body).join("\n\n"), blocks: careerBlocks, locked: false },
+    pick("N"),
+    pick("A"),
+    `${pick("E")}${pick("C")}`,
+    ID_ME_RULES.LOVE_ENDURE_CLOSING,
+  ].join("\n\n");
+}
+
+function idCareerRelations(scores: Scores) {
+  const prose = ID_ME_RULES.CAREER_RELATIONS_PROSE as Record<
+    BigFiveDimension,
+    Record<HighLow, string>
+  >;
+  const pick = (dim: BigFiveDimension) => prose[dim][highLow(scores, dim)];
+  return [
+    pick("E"),
+    pick("A"),
+    `${pick("N")}${pick("C")}`,
+    ID_ME_RULES.CAREER_RELATIONS_CLOSING,
+  ].join("\n\n");
+}
+
+export function buildIdDeepDiveSections(
+  typeId: ThirtyTwoTypeId,
+  scores: Scores,
+  unlocked: boolean,
+): ResolvedDeepDiveSection[] {
+  const type = ID_RESULT_TYPES[typeId];
+  const gate = (heading: string, body: string) =>
+    unlocked ? { heading, body } : { heading, body: "", locked: true as const };
+  const loveSource = ID_LOVE_BY_TYPE_32[typeId];
+  const loveSplit = LOVE_SPLITS[typeId];
+  const loveParagraphs = loveSource?.body.split("\n\n") ?? [];
+  const lovePayoffStart = loveSplit ? loveSplit[0] + loveSplit[1] : 0;
+  const loveBlocks =
+    loveSource &&
+    loveSplit &&
+    lovePayoffStart > 0 &&
+    lovePayoffStart < loveParagraphs.length
+      ? [
+          {
+            heading: ID_ME_RULES.LOVE_HEADINGS[0],
+            body: loveParagraphs.slice(0, lovePayoffStart).join("\n\n"),
+          },
+          gate(
+            ID_ME_RULES.LOVE_HEADINGS[1],
+            loveParagraphs.slice(lovePayoffStart).join("\n\n"),
+          ),
+          gate(ID_ME_RULES.LOVE_ENDURE_HEADING, idLoveEndure(scores)),
+        ]
+      : [
+          {
+            heading: "Daya tarik Anda dalam cinta",
+            body: `${type.oneLiner}\n\n${strength(scores, "A")} ${description(scores, "E")}\n\n${description(scores, "N")} Inilah alasan perhatian dan cara Anda mendekat terasa khas bagi orang yang menyukai Anda.`,
+          },
+          gate(
+            "Panduan bagi orang yang menyukai Anda",
+            `${description(scores, "N")}\n\n${growth(scores, "A")} ${growth(scores, "E")}\n\nHubungan dengan Anda berkembang ketika perhatian tidak hanya ditebak, tetapi juga dinyatakan lewat kata-kata dan tindakan yang konsisten.`,
+          ),
+          gate(ID_ME_RULES.LOVE_ENDURE_HEADING, idLoveEndure(scores)),
+        ];
+
+  const careerSource = ID_CAREER_BY_TYPE_32[typeId];
+  const careerParagraphs = careerSource?.body.split("\n\n") ?? [];
+  const careerBlocks =
+    careerSource && careerParagraphs.length >= 4
+      ? [
+          {
+            heading: ID_ME_RULES.CAREER_HEADINGS[0],
+            body: careerParagraphs.slice(0, 2).join("\n\n"),
+          },
+          gate(ID_ME_RULES.CAREER_HEADINGS[1], careerParagraphs[2]),
+          gate(
+            ID_ME_RULES.CAREER_RELATIONS_HEADING,
+            idCareerRelations(scores),
+          ),
+        ]
+      : [
+          {
+            heading: "Cara Anda bekerja",
+            body: `${strength(scores, "C")} ${description(scores, "O")}\n\n${type.oneLiner} Dalam pekerjaan, ciri ini terlihat dari cara Anda memilih prioritas, menjaga kualitas, dan merespons perubahan.`,
+          },
+          gate(
+            "Gaya kerja yang cocok dan lingkungan yang perlu dihindari",
+            `${strength(scores, "O")} ${growth(scores, "C")} Lingkungan terbaik memberi tujuan yang jelas sekaligus cukup ruang untuk menggunakan cara kerja Anda sendiri.`,
+          ),
+          gate(
+            ID_ME_RULES.CAREER_RELATIONS_HEADING,
+            idCareerRelations(scores),
+          ),
+        ];
+  return [
+    {
+      key: "love",
+      tab: "Kecenderungan dalam cinta",
+      note: `Keramahan Anda berada di ${percent(scores, "A")}%.`,
+      body: loveBlocks.filter((item) => !item.locked).map((item) => item.body).join("\n\n"),
+      blocks: loveBlocks,
+      locked: false,
+    },
+    {
+      key: "career",
+      tab: "Kecenderungan karier",
+      note: `Ketelitian Anda berada di ${percent(scores, "C")}%.`,
+      body: careerBlocks.filter((item) => !item.locked).map((item) => item.body).join("\n\n"),
+      blocks: careerBlocks,
+      locked: false,
+    },
   ];
 }
 
-export function buildIdPartTwo(typeId: ThirtyTwoTypeId, scores: Scores, unlocked: boolean): ResolvedPartTwo {
+function idLikable(scores: Scores): string[] {
+  const prose = ID_ME_RULES.LIKABLE_PROSE as Record<
+    BigFiveDimension,
+    Record<HighLow, string>
+  >;
+  const pick = (dim: BigFiveDimension) => prose[dim][highLow(scores, dim)];
+  return [
+    pick("E"),
+    `${pick("A")}${pick("C")}`,
+    `${pick("O")}${pick("N")}`,
+    ID_ME_RULES.LIKABLE_CLOSING,
+  ];
+}
+
+function idRelations(scores: Scores) {
+  const friend = ID_ME_RULES.RELATION_FRIEND as Record<Quad, string>;
+  const lover = ID_ME_RULES.RELATION_LOVER as Record<Quad, string>;
+  const family = ID_ME_RULES.RELATION_FAMILY as Record<Quad, string>;
+  const boss = ID_ME_RULES.RELATION_BOSS as Record<Quad, string>;
+  return [
+    { relation: "Dari sudut pandang teman", body: friend[quad(scores, "E", "A")] },
+    { relation: "Dari sudut pandang pasangan", body: lover[quad(scores, "A", "N")] },
+    { relation: "Dari sudut pandang keluarga", body: family[quad(scores, "C", "E")] },
+    { relation: "Dari sudut pandang atasan atau senior", body: boss[quad(scores, "C", "A")] },
+  ];
+}
+
+function idSceneCautions(scores: Scores) {
+  const friend = ID_ME_RULES.SCENE_FRIEND as Record<Quad, string>;
+  const lover = ID_ME_RULES.SCENE_LOVER as Record<Quad, string>;
+  const career = ID_ME_RULES.SCENE_CAREER as Record<Quad, string>;
+  const family = ID_ME_RULES.SCENE_FAMILY as Record<Quad, string>;
+  return [
+    { scene: "Saat bersama teman", body: friend[quad(scores, "E", "A")] },
+    { scene: "Saat bersama pasangan", body: lover[quad(scores, "A", "N")] },
+    { scene: "Dalam karier", body: career[quad(scores, "C", "N")] },
+    { scene: "Saat bersama keluarga", body: family[quad(scores, "C", "E")] },
+  ];
+}
+
+function idPerceivedItems(
+  items: { title: string; body: string }[],
+  tails: readonly string[],
+  subjects?: readonly string[],
+) {
+  return items.map((item, index) => ({
+    ...item,
+    body: `${item.body.replaceAll(
+      "{B}",
+      subjects?.[index % subjects.length] ?? "Teman",
+    )} ${tails[index % tails.length]}`,
+  }));
+}
+
+export function buildIdPartTwo(
+  typeId: ThirtyTwoTypeId,
+  scores: Scores,
+  unlocked: boolean,
+): ResolvedPartTwo {
   const type = ID_RESULT_TYPES[typeId];
-  const weapons = (["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((dim) => ({ title: `Kekuatan ${axis(dim).title}`, body: strength(scores, dim) }));
-  weapons.unshift({ title: "Kekuatan khas Anda", body: type.oneLiner });
+  const perceived = ID_PERCEIVED_BY_TYPE_32[typeId];
+  const [top] = rankedDimensions(scores);
   return {
-    likable: [strength(scores, "A"), strength(scores, "E"), strength(scores, "N")],
-    weapons,
-    dislikable: unlocked ? (["O", "C", "E", "A", "N"] as BigFiveDimension[]).map((dim) => ({ title: `Saat ${axis(dim).title.toLowerCase()} disalahpahami`, body: growth(scores, dim) })) : null,
-    relations: unlocked ? [
-      { relation: "Dengan teman", body: `${description(scores, "E")} ${strength(scores, "A")}` },
-      { relation: "Dengan pasangan", body: `${description(scores, "N")} ${growth(scores, "A")}` },
-      { relation: "Dengan keluarga", body: `${description(scores, "A")} ${growth(scores, "C")}` },
-      { relation: "Di tempat kerja", body: `${description(scores, "C")} ${strength(scores, "O")}` },
-    ] : null,
-    sceneCautions: unlocked ? [
-      { scene: "Dengan teman", body: growth(scores, "E") },
-      { scene: "Dengan pasangan", body: growth(scores, "N") },
-      { scene: "Dalam karier", body: growth(scores, "C") },
-      { scene: "Dengan keluarga", body: growth(scores, "A") },
-    ] : null,
-    gapTeaser: "Teman mungkin melihat kekuatan dan kebiasaan yang terasa biasa saja bagi Anda.",
+    likable: idLikable(scores),
+    weapons: perceived
+      ? idPerceivedItems(
+          perceived.strengths,
+          ID_ME_RULES.WEAPON_TAIL,
+          WEAPON_SUBJECTS,
+        )
+      : [
+          { title: "Kekuatan khas Anda", body: type.oneLiner },
+          ...DIMS.map((dim) => ({
+            title: `Kekuatan ${axis(dim).title}`,
+            body: strength(scores, dim),
+          })),
+        ],
+    dislikable: unlocked
+      ? perceived
+        ? idPerceivedItems(perceived.surprises, ID_ME_RULES.DISLIKE_TAIL)
+        : [
+            {
+              title: "Saat kekuatan khas Anda disalahpahami",
+              body: `${type.oneLiner} Namun, ketika muncul terlalu kuat, orang lain mungkin membutuhkan penjelasan tentang maksud Anda.`,
+            },
+            ...DIMS.map((dim) => ({
+              title: `Saat ${axis(dim).title.toLowerCase()} disalahpahami`,
+              body: growth(scores, dim),
+            })),
+          ]
+      : null,
+    relations: unlocked ? idRelations(scores) : null,
+    sceneCautions: unlocked ? idSceneCautions(scores) : null,
+    gapTeaser: `Sisi “${axis(top).title}” yang terasa paling kuat bagi Anda mungkin terlihat dengan intensitas berbeda di mata teman.`,
     locked: !unlocked,
   };
 }
 
-const SCENES: readonly { title: string; chipLabel: string; color: string; gated: boolean; dim: BigFiveDimension; high: string; low: string }[] = [
-  { title: "Saat foto bersama", chipLabel: "Foto bersama", color: "#F48BAE", gated: true, dim: "E", high: "Anda mencairkan suasana dan membantu semua orang tampil alami di depan kamera.", low: "Anda memilih tempat yang nyaman dan justru menghasilkan ekspresi paling alami." },
-  { title: "Saat lebah masuk ke ruangan", chipLabel: "Ada lebah", color: "#4CAF7D", gated: false, dim: "N", high: "Anda segera menyadari pergerakannya dan tetap waspada sampai situasi benar-benar aman.", low: "Anda tetap tenang, membuka jalan keluar, lalu kembali pada kegiatan semula." },
-  { title: "Saat lift berhenti mendadak", chipLabel: "Lift berhenti", color: "#56BFE8", gated: false, dim: "C", high: "Anda memeriksa panel dan tombol darurat lalu menjalankan langkah praktis secara berurutan.", low: "Anda mencari sinyal, membaca suasana, dan menyesuaikan diri dengan informasi yang tersedia." },
-  { title: "Saat sesuatu terasa tidak beres di minimarket", chipLabel: "Terasa tidak beres", color: "#F2C14E", gated: false, dim: "N", high: "Anda menangkap perubahan suasana lebih cepat daripada kebanyakan orang.", low: "Anda tetap tenang sambil menunggu fakta yang cukup sebelum bertindak." },
-  { title: "Saat listrik tiba-tiba padam", chipLabel: "Listrik padam", color: "#56BFE8", gated: false, dim: "E", high: "Energi Anda membantu mengubah kepanikan menjadi momen yang bisa dihadapi bersama.", low: "Anda diam-diam menyalakan penerangan dan menjadi berguna tanpa perlu mengumumkannya." },
-  { title: "Saat menghadapi orang yang agresif", chipLabel: "Situasi tegang", color: "#F48BAE", gated: true, dim: "A", high: "Nada tenang Anda dapat meredakan situasi sebelum membesar.", low: "Anda menjaga sikap tegas dan tidak memberi reaksi yang sedang dipancing." },
-  { title: "Saat rencana dibatalkan mendadak", chipLabel: "Batal mendadak", color: "#4CAF7D", gated: true, dim: "N", high: "Anda sempat memeriksa kembali percakapan untuk memahami apa yang berubah.", low: "Anda menerima perubahan dengan cepat dan segera menyiapkan rencana lain." },
-  { title: "Jika terdampar di pulau terpencil", chipLabel: "Pulau terpencil", color: "#F2C14E", gated: true, dim: "C", high: "Anda menyusun prioritas air, tempat berlindung, dan makanan sebelum menghabiskan tenaga.", low: "Anda menjelajah dan membangun rencana berdasarkan apa yang benar-benar tersedia." },
-  { title: "Saat memenangkan uang dalam jumlah besar", chipLabel: "Menang undian", color: "#4CAF7D", gated: true, dim: "C", high: "Anda membagi uang untuk keamanan, tanggung jawab, dan kesenangan sebelum merayakan.", low: "Anda menciptakan satu kenangan besar lebih dulu lalu mengatur rinciannya kemudian." },
-  { title: "Saat orang asing memasuki sekolah atau kantor", chipLabel: "Penyusup", color: "#F48BAE", gated: true, dim: "N", high: "Anda cepat menangkap tanda yang tidak biasa dan mencari jalur paling aman.", low: "Anda tetap berfungsi, menunggu informasi tepercaya, dan tidak menyebarkan kepanikan." },
-  { title: "Satu minggu sebelum ujian penting", chipLabel: "Sebelum ujian", color: "#56BFE8", gated: true, dim: "C", high: "Rencana sudah tersusun dan kemajuan yang terlihat membuat minggu terakhir terasa terkendali.", low: "Anda menjaga tekanan tetap ringan lalu mengerahkan fokus kuat saat tugas terasa nyata." },
-  { title: "Saat ketinggalan kendaraan terakhir", chipLabel: "Ketinggalan kereta", color: "#F2C14E", gated: true, dim: "O", high: "Anda mengubah masalah menjadi petualangan kecil dan mencari pilihan yang paling menarik sekaligus masuk akal.", low: "Anda membandingkan rute, harga, dan waktu hingga solusi paling praktis terlihat jelas." },
-];
+const SCENES: readonly SceneRule[] = ID_MOSHIMO_SCENES.map((scene) => ({
+  title: scene.title,
+  chipLabel: scene.chipLabel,
+  color: scene.color,
+  gated: scene.gated,
+  main: { ...scene.main },
+  spice: { ...scene.spice },
+}));
 
-export function buildIdMoshimoScenes(scores: Scores, unlocked: boolean): MoshimoScene[] {
-  return SCENES.map((scene) => ({ title: scene.title, chipLabel: scene.chipLabel, color: scene.color, body: scene.gated && !unlocked ? "" : high(scores, scene.dim) ? scene.high : scene.low, locked: scene.gated && !unlocked }));
+export function buildIdMoshimoScenes(
+  scores: Scores,
+  unlocked: boolean,
+): MoshimoScene[] {
+  const pick = (rule: SceneRule["main"]) => rule[high(scores, rule.dim) ? "high" : "low"];
+  return SCENES.map((scene) => {
+    const locked = scene.gated && !unlocked;
+    return { title: scene.title, chipLabel: scene.chipLabel, color: scene.color, body: locked ? "" : `${pick(scene.main)} ${pick(scene.spice)}`, locked };
+  });
 }

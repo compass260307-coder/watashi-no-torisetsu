@@ -1,11 +1,99 @@
 import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 const ROOT = process.cwd();
 const failures = [];
 
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), "utf8");
+}
+
+function evaluateStaticNode(node, env) {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+    return node.text;
+  if (ts.isIdentifier(node)) {
+    if (Object.hasOwn(env, node.text)) return env[node.text];
+    throw new Error(`Unknown static identifier: ${node.text}`);
+  }
+  if (ts.isNumericLiteral(node)) return Number(node.text);
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (node.kind === ts.SyntaxKind.NullKeyword) return null;
+  if (ts.isArrayLiteralExpression(node))
+    return node.elements.map((entry) => evaluateStaticNode(entry, env));
+  if (ts.isObjectLiteralExpression(node)) {
+    const result = {};
+    for (const property of node.properties) {
+      if (!ts.isPropertyAssignment(property))
+        throw new Error(`Unsupported static property: ${property.getText()}`);
+      const key = ts.isComputedPropertyName(property.name)
+        ? evaluateStaticNode(property.name.expression, env)
+        : (property.name.text ?? property.name.getText());
+      result[key] = evaluateStaticNode(property.initializer, env);
+    }
+    return result;
+  }
+  if (
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isParenthesizedExpression(node)
+  )
+    return evaluateStaticNode(node.expression, env);
+  if (ts.isTemplateExpression(node)) {
+    return node.templateSpans.reduce(
+      (text, span) =>
+        `${text}${evaluateStaticNode(span.expression, env)}${span.literal.text}`,
+      node.head.text,
+    );
+  }
+  throw new Error(`Unsupported static node: ${ts.SyntaxKind[node.kind]}`);
+}
+
+function extractStaticVariables(relativePath) {
+  const source = read(relativePath);
+  const file = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const env = {};
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+      try {
+        env[declaration.name.text] = evaluateStaticNode(
+          declaration.initializer,
+          env,
+        );
+      } catch {
+        // Runtime-derived declarations are irrelevant to this static parity audit.
+      }
+    }
+  }
+  return env;
+}
+
+function leafEntries(value, currentPath = [], entries = []) {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    entries.push({ path: currentPath.join("."), value });
+  } else if (Array.isArray(value)) {
+    value.forEach((entry, index) =>
+      leafEntries(entry, [...currentPath, String(index)], entries),
+    );
+  } else if (value && typeof value === "object") {
+    Object.entries(value).forEach(([key, entry]) =>
+      leafEntries(entry, [...currentPath, key], entries),
+    );
+  }
+  return entries;
 }
 
 function walkPages(directory, route = "") {
@@ -26,6 +114,41 @@ function equalSets(label, left, right) {
     failures.push(
       `${label}: Japanese-only [${leftOnly.join(", ") || "none"}], Indonesian-only [${rightOnly.join(", ") || "none"}]`,
     );
+  }
+}
+
+function jsxStructure(
+  relativePath,
+  tags = ["p", "h2", "h3", "ul", "ol", "li", "table"],
+) {
+  const source = read(relativePath);
+  return Object.fromEntries(
+    tags.map((tag) => [
+      tag,
+      (source.match(new RegExp(`<${tag}(?:\\s|>)`, "g")) ?? []).length,
+    ]),
+  );
+}
+
+for (const [label, japanesePath, indonesianPath, tags] of [
+  ["terms", "src/app/terms/page.tsx", "src/app/id/terms/page.tsx"],
+  ["privacy", "src/app/privacy/page.tsx", "src/app/id/privacy/page.tsx"],
+  [
+    "commerce disclosure",
+    "src/app/legal/commerce/page.tsx",
+    "src/app/id/legal/commerce/page.tsx",
+    ["h2", "h3", "li", "table"],
+  ],
+]) {
+  const japanese = jsxStructure(japanesePath, tags);
+  const indonesian = jsxStructure(indonesianPath, tags);
+  if (JSON.stringify(japanese) !== JSON.stringify(indonesian)) {
+    failures.push(
+      `${label} structure parity: Japanese=${JSON.stringify(japanese)}, Indonesian=${JSON.stringify(indonesian)}`,
+    );
+  }
+  if (/[぀-ヿ㐀-鿿]/u.test(read(indonesianPath))) {
+    failures.push(`${label} localization: Japanese text remains in ${indonesianPath}`);
   }
 }
 
@@ -58,6 +181,29 @@ if (
   );
 }
 
+function questionScoringSignature(source) {
+  return [
+    ...source.matchAll(
+      /\{\s*id:\s*(\d+),\s*text:[\s\S]*?facetId:\s*"([^"]+)",\s*dimension:\s*"([^"]+)",\s*reversed:\s*(true|false)\s*\}/g,
+    ),
+  ].map((match) =>
+    [Number(match[1]), match[2], match[3], match[4]].join(":"),
+  );
+}
+const jaQuestionScoring = questionScoringSignature(jaQuestions);
+const idQuestionScoring = questionScoringSignature(idQuestions);
+if (
+  jaQuestionScoring.length !== 50 ||
+  idQuestionScoring.length !== 50 ||
+  jaQuestionScoring.some(
+    (signature, index) => signature !== idQuestionScoring[index],
+  )
+) {
+  failures.push(
+    "diagnosis scoring parity: Indonesian facet, dimension, or reverse-scoring metadata differs from Japanese",
+  );
+}
+
 const jaArticleSlugs = new Set(
   [...read("src/lib/articles.ts").matchAll(/^\s*slug:\s*"([^"]+)"/gm)].map(
     (match) => match[1],
@@ -70,17 +216,349 @@ const idArticleSlugs = new Set(
 );
 equalSets("article parity", jaArticleSlugs, idArticleSlugs);
 
+function articleStructureSignatures(relativePath, variableName) {
+  const source = read(relativePath);
+  const file = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const signatures = new Map();
+
+  const objectProperty = (object, name) =>
+    object.properties.find(
+      (property) =>
+        ts.isPropertyAssignment(property) && property.name.getText(file) === name,
+    )?.initializer;
+  const arrayLength = (node) =>
+    node && ts.isArrayLiteralExpression(node) ? node.elements.length : 0;
+  const addObject = (object, factor = false) => {
+    const slugNode = objectProperty(object, "slug");
+    if (!slugNode || !ts.isStringLiteral(slugNode)) return;
+    if (factor) {
+      signatures.set(slugNode.text, "2:4:1/3,1/3,2/0,1/0");
+      return;
+    }
+    const lead = objectProperty(object, "lead");
+    const sections = objectProperty(object, "sections");
+    if (!sections || !ts.isArrayLiteralExpression(sections)) return;
+    const sectionSignature = sections.elements.map((section) => {
+      if (!ts.isObjectLiteralExpression(section)) return "0/0";
+      return `${arrayLength(objectProperty(section, "paragraphs"))}/${arrayLength(objectProperty(section, "list"))}`;
+    });
+    signatures.set(
+      slugNode.text,
+      `${arrayLength(lead)}:${sections.elements.length}:${sectionSignature.join(",")}`,
+    );
+  };
+
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        !ts.isIdentifier(declaration.name) ||
+        declaration.name.text !== variableName ||
+        !declaration.initializer ||
+        !ts.isArrayLiteralExpression(declaration.initializer)
+      ) continue;
+      for (const element of declaration.initializer.elements) {
+        if (ts.isObjectLiteralExpression(element)) addObject(element);
+        if (
+          ts.isCallExpression(element) &&
+          ts.isIdentifier(element.expression) &&
+          element.expression.text === "factorArticle" &&
+          element.arguments[0] &&
+          ts.isObjectLiteralExpression(element.arguments[0])
+        ) addObject(element.arguments[0], true);
+      }
+    }
+  }
+  return signatures;
+}
+
+const jaArticleStructures = articleStructureSignatures(
+  "src/lib/articles.ts",
+  "ARTICLES",
+);
+const idArticleStructures = articleStructureSignatures(
+  "src/lib/articles-id.ts",
+  "ID_ARTICLES",
+);
+for (const [slug, signature] of jaArticleStructures) {
+  if (idArticleStructures.get(slug) !== signature) {
+    failures.push(
+      `article structure parity: ${slug} Japanese=${signature}, Indonesian=${idArticleStructures.get(slug) ?? "missing"}`,
+    );
+  }
+}
+
 const idResult = read("src/i18n/id/result.ts");
-const idTypeCount = [...idResult.matchAll(/^\s*"[a-z-]+__[NR]":\s*\{/gm)]
-  .length;
+const idTypeIds = new Set(
+  [...idResult.matchAll(/^\s*"([a-z-]+__[NR])":\s*\{/gm)].map(
+    (match) => match[1],
+  ),
+);
+const jaTypeIds = new Set(
+  [
+    ...read("src/lib/thirty-two-content/self-result-32.ts").matchAll(
+      /^\s*"([a-z-]+__[NR])":\s*\[/gm,
+    ),
+  ].map((match) => match[1]),
+);
+const idTypeCount = idTypeIds.size;
 if (idTypeCount !== 32)
   failures.push(
     `type parity: expected 32 Indonesian types, found ${idTypeCount}`,
   );
+equalSets("result type parity", jaTypeIds, idTypeIds);
+
+const jaSelfData = extractStaticVariables(
+  "src/lib/thirty-two-content/self-result-32.ts",
+).selfResultContent32;
+const jaLoveData = extractStaticVariables(
+  "src/lib/love-by-type-32.ts",
+).LOVE_BY_TYPE_32;
+const jaCareerData = extractStaticVariables(
+  "src/lib/career-by-type-32.ts",
+).CAREER_BY_TYPE_32;
+const jaPerceivedData = extractStaticVariables(
+  "src/lib/thirty-two-content/perceived-by-type-32.ts",
+).perceivedByType32;
+const idMeContent = extractStaticVariables("src/i18n/id/me-content-32.ts");
+
+function assertTranslatedShape(label, japanese, indonesian) {
+  if (!japanese || !indonesian) {
+    failures.push(`${label}: static source or translation could not be read`);
+    return;
+  }
+  equalSets(
+    `${label} keys`,
+    new Set(Object.keys(japanese)),
+    new Set(Object.keys(indonesian)),
+  );
+  const japaneseLeaves = leafEntries(japanese);
+  const indonesianLeaves = leafEntries(indonesian);
+  const translatedByPath = new Map(
+    indonesianLeaves.map((entry) => [entry.path, entry.value]),
+  );
+  equalSets(
+    `${label} item structure`,
+    new Set(japaneseLeaves.map((entry) => entry.path)),
+    new Set(indonesianLeaves.map((entry) => entry.path)),
+  );
+  for (const source of japaneseLeaves) {
+    const translated = translatedByPath.get(source.path);
+    if (typeof source.value !== "string" || typeof translated !== "string")
+      continue;
+    if (!translated.trim()) failures.push(`${label}: empty ${source.path}`);
+    if (/[぀-ヿ㐀-鿿]/u.test(translated))
+      failures.push(`${label}: Japanese remains in ${source.path}`);
+    if (
+      source.value.split("\n\n").length !==
+      translated.split("\n\n").length
+    )
+      failures.push(`${label}: paragraph mismatch at ${source.path}`);
+    if (
+      (source.value.match(/\{B\}/g) ?? []).length !==
+      (translated.match(/\{B\}/g) ?? []).length
+    )
+      failures.push(`${label}: placeholder mismatch at ${source.path}`);
+    if (
+      (source.value.match(/\{name\}/g) ?? []).length !==
+      (translated.match(/\{name\}/g) ?? []).length
+    )
+      failures.push(`${label}: name placeholder mismatch at ${source.path}`);
+  }
+}
+
+assertTranslatedShape(
+  "32-type self copy",
+  jaSelfData,
+  idMeContent.ID_SELF_RESULT_CONTENT_32,
+);
+assertTranslatedShape(
+  "32-type love copy",
+  jaLoveData,
+  idMeContent.ID_LOVE_BY_TYPE_32,
+);
+assertTranslatedShape(
+  "32-type career copy",
+  jaCareerData,
+  idMeContent.ID_CAREER_BY_TYPE_32,
+);
+assertTranslatedShape(
+  "32-type perceived copy",
+  jaPerceivedData,
+  idMeContent.ID_PERCEIVED_BY_TYPE_32,
+);
+
+const jaPartRules = extractStaticVariables("src/lib/part-two-resolve.ts");
+const jaDeepRules = extractStaticVariables("src/lib/deep-dive-resolve.ts");
+const jaRuleCopy = {
+  WEAPON_SUBJECT_WA: jaPartRules.WEAPON_SUBJECT_WA,
+  WEAPON_SUBJECT_NIWA: jaPartRules.WEAPON_SUBJECT_NIWA,
+  WEAPON_TAIL: jaPartRules.WEAPON_TAIL,
+  DISLIKE_TAIL: jaPartRules.DISLIKE_TAIL,
+  LIKABLE_PROSE: jaPartRules.LIKABLE_PROSE,
+  LIKABLE_CLOSING: jaPartRules.LIKABLE_CLOSING,
+  RELATION_FRIEND: jaPartRules.RELATION_FRIEND,
+  RELATION_LOVER: jaPartRules.RELATION_LOVER,
+  RELATION_FAMILY: jaPartRules.RELATION_FAMILY,
+  RELATION_BOSS: jaPartRules.RELATION_BOSS,
+  SCENE_FRIEND: jaPartRules.SCENE_FRIEND,
+  SCENE_LOVER: jaPartRules.SCENE_LOVER,
+  SCENE_CAREER: jaPartRules.SCENE_CAREER,
+  SCENE_FAMILY: jaPartRules.SCENE_FAMILY,
+  LOVE_HEADINGS: jaDeepRules.LOVE_HEADINGS,
+  LOVE_ENDURE_HEADING: jaDeepRules.LOVE_ENDURE_HEADING,
+  LOVE_ENDURE_PROSE: jaDeepRules.LOVE_ENDURE_PROSE,
+  LOVE_ENDURE_CLOSING: jaDeepRules.LOVE_ENDURE_CLOSING,
+  CAREER_HEADINGS: jaDeepRules.CAREER_HEADINGS,
+  CAREER_RELATIONS_HEADING: jaDeepRules.CAREER_RELATIONS_HEADING,
+  CAREER_RELATIONS_PROSE: jaDeepRules.CAREER_RELATIONS_PROSE,
+  CAREER_RELATIONS_CLOSING: jaDeepRules.CAREER_RELATIONS_CLOSING,
+  LOVE_SPLITS: jaDeepRules.LOVE_SPLITS,
+};
+assertTranslatedShape("shared result copy", jaRuleCopy, idMeContent.ID_ME_RULES);
+if (
+  JSON.stringify(jaDeepRules.LOVE_SPLITS) !==
+  JSON.stringify(idMeContent.ID_ME_RULES?.LOVE_SPLITS)
+)
+  failures.push("love split parity: Indonesian paragraph gates differ from Japanese");
+
+const jaFriendLove = extractStaticVariables("src/lib/friend-love-content.ts");
+const idFriendResult = extractStaticVariables(
+  "src/i18n/id/friend-result-content.ts",
+);
+for (const [label, jaKey, idKey] of [
+  ["friend love headline copy", "MOTE_BY_AXIS", "ID_MOTE_BY_AXIS"],
+  ["friend love checklist copy", "MOTE_CHECK_BY_AXIS", "ID_MOTE_CHECK_BY_AXIS"],
+  ["friend love extra checklist copy", "MOTE_CHECK_EXTRA_BY_AXIS", "ID_MOTE_CHECK_EXTRA_BY_AXIS"],
+  ["friend love hint copy", "MOTE_HINT_CHECKS_BY_AXIS", "ID_MOTE_HINT_CHECKS_BY_AXIS"],
+  ["friend love scene copy", "LOVE_SCENE_BY_AXIS", "ID_LOVE_SCENE_BY_AXIS"],
+]) {
+  assertTranslatedShape(label, jaFriendLove[jaKey], idFriendResult[idKey]);
+}
+
+const jaTakoDeepDive = extractStaticVariables("src/lib/tako-deepdive.ts");
+const JA_AXIS_TO_KEY = {
+  開放性: "O",
+  誠実性: "C",
+  外向性: "E",
+  協調性: "A",
+  神経症傾向: "N",
+};
+const normalizeJaAxisKeys = (table) =>
+  Object.fromEntries(
+    Object.entries(table ?? {}).map(([key, value]) => [JA_AXIS_TO_KEY[key], value]),
+  );
+assertTranslatedShape(
+  "friend compatibility axis copy",
+  normalizeJaAxisKeys(jaTakoDeepDive.AXIS_INSIGHT_COPY),
+  idFriendResult.ID_AXIS_INSIGHT_COPY,
+);
+assertTranslatedShape(
+  "friend compatibility tips",
+  normalizeJaAxisKeys(jaTakoDeepDive.KOTSU_COPY),
+  idFriendResult.ID_KOTSU_COPY,
+);
+assertTranslatedShape(
+  "friend compatibility warnings",
+  normalizeJaAxisKeys(jaTakoDeepDive.WANA_COPY),
+  idFriendResult.ID_WANA_COPY,
+);
+
+const friendLoveSource = read("src/lib/friend-love-content.ts");
+const takoDeepDiveSource = read("src/lib/tako-deepdive.ts");
+const takoResultSource = read("src/components/result/TakoResultPage.tsx");
+const reportSheetSource = read("src/lib/tako-report-sheets.ts");
+const perceptionViewSource = read("src/lib/perception-view.ts");
+const minnaTypeProseSource = read("src/components/result/MinnaTypeProse.tsx");
+for (const [label, source, marker] of [
+  ["friend headline resolver", friendLoveSource, "locale === \"id\" ? ID_MOTE_BY_AXIS"],
+  ["friend checklist resolver", friendLoveSource, "? ID_MOTE_CHECK_BY_AXIS"],
+  ["friend hint resolver", friendLoveSource, "? ID_MOTE_HINT_CHECKS_BY_AXIS"],
+  ["friend scene resolver", friendLoveSource, "? ID_LOVE_SCENE_BY_AXIS"],
+  ["compatibility axis resolver", takoDeepDiveSource, "? ID_AXIS_INSIGHT_COPY[g.key]"],
+  ["compatibility tip resolver", takoDeepDiveSource, "? ID_KOTSU_COPY[ax.key].off"],
+  ["compatibility warning resolver", takoDeepDiveSource, "? ID_WANA_COPY[ax.key].off"],
+  ["Tako love body", takoResultSource, "? ID_LOVE_BY_TYPE_32[type32]"],
+  ["Tako perceived body", takoResultSource, "? ID_PERCEIVED_BY_TYPE_32[type32]"],
+  ["PDF love checklist", reportSheetSource, "resolveFriendLoveChecklist(f.perceivedScores, locale)"],
+  ["PDF love hints", reportSheetSource, "resolveMoteHints(f.perceivedScores, locale)"],
+  ["perception result body", perceptionViewSource, "? ID_PERCEIVED_BY_TYPE_32[perceived32Id]"],
+  ["Tako manual body", minnaTypeProseSource, "? (ID_SELF_RESULT_CONTENT_32[type32] ?? []).slice(0, 2)"],
+]) {
+  if (!source.includes(marker)) failures.push(`${label}: missing ${marker}`);
+}
+if (reportSheetSource.includes("buildIdLoveItems"))
+  failures.push("PDF love parity: generic Indonesian fallback still exists");
+if (minnaTypeProseSource.includes("Hal-hal yang terasa biasa bagi Anda"))
+  failures.push("Tako manual parity: generic Indonesian fallback still exists");
+if (/if \(locale === "id"\) \{[\s\S]{0,1600}slice\(0, 5\)/.test(takoDeepDiveSource))
+  failures.push("compatibility parity: Indonesian result still limits tips to five items");
 
 const idMe = read("src/i18n/id/me.ts");
-if ((idMe.match(/\bgated:\s*(?:true|false)/g) ?? []).length !== 12) {
+const jaMoshimoScenes = extractStaticVariables(
+  "src/lib/moshimo-resolve.ts",
+).SCENES;
+const normalizedJaMoshimo = jaMoshimoScenes?.map((scene) => ({
+  title: scene.title,
+  chipLabel:
+    scene.short ?? scene.title.replace(/(で)?のあなた$/, ""),
+  color: scene.color,
+  gated: scene.gated,
+  main: {
+    dim: scene.main.dim,
+    high: scene.main.prose.H,
+    low: scene.main.prose.L,
+  },
+  spice: {
+    dim: scene.spice.dim,
+    high: scene.spice.prose.H,
+    low: scene.spice.prose.L,
+  },
+}));
+const idMoshimoScenes = idMeContent.ID_MOSHIMO_SCENES;
+if (idMoshimoScenes?.length !== 12) {
   failures.push("what-if parity: Indonesian must define 12 scenarios");
+}
+assertTranslatedShape(
+  "what-if scene copy",
+  normalizedJaMoshimo,
+  idMoshimoScenes,
+);
+const sceneSignatures = (scenes = []) =>
+  scenes.map(
+    (scene) =>
+      `${scene.gated}:${scene.color}:${scene.main.dim}:${scene.spice.dim}`,
+  );
+const jaSceneSignatures = sceneSignatures(normalizedJaMoshimo);
+const idSceneSignatures = sceneSignatures(idMoshimoScenes);
+if (
+  jaSceneSignatures.length !== 12 ||
+  idSceneSignatures.length !== 12 ||
+  jaSceneSignatures.some(
+    (signature, index) => signature !== idSceneSignatures[index],
+  )
+) {
+  failures.push(
+    "what-if scoring parity: gate, color, main dimension, or spice dimension differs from Japanese",
+  );
+}
+for (const marker of [
+  "likable: idLikable(scores)",
+  "ID_PERCEIVED_BY_TYPE_32[typeId]",
+  "WEAPON_SUBJECTS",
+  "ID_ME_RULES.WEAPON_TAIL",
+  "idPerceivedItems(perceived.surprises, ID_ME_RULES.DISLIKE_TAIL)",
+  "relations: unlocked ? idRelations(scores) : null",
+  "sceneCautions: unlocked ? idSceneCautions(scores) : null",
+]) {
+  if (!idMe.includes(marker))
+    failures.push(`result structure parity: missing ${marker}`);
 }
 
 const idBirthRegions = read("src/lib/unmei/id-birth-regions.ts");
@@ -176,6 +654,26 @@ const criticalChecks = [
   ],
   ["friend analysis", "src/lib/perception-view.ts", "buildIdSelfSections"],
   [
+    "friend gap prose",
+    "src/components/result/FriendGapSection.tsx",
+    "ID_SELF_RESULT_CONTENT_32",
+  ],
+  [
+    "relationship-specific copy",
+    "src/lib/perception-view.ts",
+    "idRelationFact(maxGap.key, maxGapDir)",
+  ],
+  [
+    "relationship axis detail",
+    "src/components/result/PerceptionResultBody.tsx",
+    "idGapDetail(g.key, dir)",
+  ],
+  [
+    "Johari window scoring parity",
+    "src/components/result/JohariWindow.tsx",
+    'if (locale === "id")',
+  ],
+  [
     "friend paywall",
     "src/components/result/FriendIndividualPaywall.tsx",
     'isId ? "Buka Edisi Lengkap"',
@@ -184,6 +682,26 @@ const criticalChecks = [
     "compatibility details",
     "src/lib/aisho-compat.ts",
     'if (locale === "id") return axisCopyId',
+  ],
+  [
+    "compatibility hero",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Kecocokan kalian"',
+  ],
+  [
+    "compatibility strengths",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Hal baik dari hubungan kalian"',
+  ],
+  [
+    "compatibility result heading",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Kecocokan dalam empat situasi"',
+  ],
+  [
+    "compatibility caution",
+    "src/components/aisho/AishoPage.tsx",
+    'isIndonesian ? "Hal yang perlu dijaga"',
   ],
   ["compatibility scenes", "src/lib/aisho-scene-copy.ts", "const LOVE_ID"],
   [
@@ -212,9 +730,9 @@ const criticalChecks = [
     'locale === "id"',
   ],
   [
-    "destiny PayPay",
+    "destiny checkout excludes JPY-only PayPay for IDR",
     "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
-    'locale === "ja" || locale === "id"',
+    'const supportsPayPay = locale === "ja";',
   ],
   [
     "destiny birth regions",
@@ -226,6 +744,57 @@ const criticalChecks = [
     "src/lib/unmei/chart-view.ts",
     'locale === "id" ? BODY_ID : BODY_JA',
   ],
+  [
+    "destiny landing parity",
+    "src/app/id/unmei/page.tsx",
+    "Yang dapat Anda temukan dalam Peta Takdir",
+  ],
+  [
+    "self-report shared layout",
+    "src/app/id/report/[token]/print/page.tsx",
+    'locale: "id"',
+  ],
+  [
+    "self-report detailed content",
+    "src/app/report/[token]/print/page.tsx",
+    "buildIdDetailedReport(t32, scores)",
+  ],
+  [
+    "self-report fixed 16-page output",
+    "src/app/report/[token]/pdf/route.ts",
+    'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
+  ],
+  [
+    "self-report 15-page Indonesian story layout",
+    "src/app/report/[token]/print/page.tsx",
+    'locale={isId ? "id" : "ko"}',
+  ],
+  ["home structured data", "src/app/id/page.tsx", '"@type": "WebApplication"'],
+  [
+    "diagnosis structured data",
+    "src/app/id/diagnosis/page.tsx",
+    '"@type": "WebApplication"',
+  ],
+  [
+    "report search privacy",
+    "src/app/id/report/layout.tsx",
+    "index: false",
+  ],
+  [
+    "purchase-complete search privacy",
+    "src/app/id/purchase-complete/layout.tsx",
+    "index: false",
+  ],
+  [
+    "tarot shared header",
+    "src/app/id/tarot/layout.tsx",
+    '<TopHeader locale="id" />',
+  ],
+  [
+    "tarot shared footer",
+    "src/app/id/tarot/layout.tsx",
+    '<TopFooter locale="id" />',
+  ],
   ["metadata isolation", "src/app/id/layout.tsx", "title: { absolute: TITLE"],
   [
     "not-found fallback",
@@ -236,6 +805,14 @@ const criticalChecks = [
 for (const [label, file, marker] of criticalChecks) {
   if (!read(file).includes(marker))
     failures.push(`${label}: missing Indonesian branch in ${file}`);
+}
+
+if (
+  /if \(locale === "en" \|\| locale === "id"\)/.test(
+    read("src/components/result/FriendGapSection.tsx"),
+  )
+) {
+  failures.push("friend gap parity: Indonesian still uses the abbreviated English branch");
 }
 
 for (const requiredFile of [
@@ -253,8 +830,8 @@ const catalog = read("docs/COMMERCE_CATALOG.md");
 for (const marker of [
   "### インドネシア語版",
   "Edisi Lengkap",
-  "¥1,290",
-  "¥499",
+  "Rp129.000",
+  "Rp49.000",
 ]) {
   if (!catalog.includes(marker))
     failures.push(`commerce parity: catalog is missing ${marker}`);
@@ -267,5 +844,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Indonesian parity verified: ${japaneseRoutes.size} routes, 50 questions, 32 types, ${jaArticleSlugs.size} articles, 12 what-if scenarios, 38 birth regions, localized email/PDF/checkout flows.`,
+  `Indonesian parity verified: ${japaneseRoutes.size} routes, 50 scoring-identical questions, 32 result types, ${jaArticleSlugs.size} articles, 12 scoring-identical what-if scenarios, 38 birth regions, localized result/email/PDF/checkout flows.`,
 );

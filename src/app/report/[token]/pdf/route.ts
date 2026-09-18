@@ -209,8 +209,9 @@ export async function GET(req: Request, ctx: RouteContext) {
       format: "A4",
       preferCSSPageSize: true,
       printBackground: true,
-      // 韓国版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの最終要素後に
-      // 生成する空白ページは配布物へ含めない。
+      // 韓国版・英語版・インドネシア語版は表紙1 + 本文15の固定構成。
+      // Chromiumが全裁ちの
+      // 最終要素後に生成する空白ページは配布物へ含めない。
       pageRanges: isKo || isEn || isId ? "1-16" : undefined,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });

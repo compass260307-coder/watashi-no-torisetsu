@@ -2,7 +2,14 @@
 // 友達平均スコア (他者が付けた OCEAN) からモテ寄与度を出し、主/隠れのモテポイントを決定的に選ぶ。
 
 import type { BigFiveDimension } from "./types";
-import type { AppResultLocale, ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
+import {
+  ID_LOVE_SCENE_BY_AXIS,
+  ID_MOTE_BY_AXIS,
+  ID_MOTE_CHECK_BY_AXIS,
+  ID_MOTE_CHECK_EXTRA_BY_AXIS,
+  ID_MOTE_HINT_CHECKS_BY_AXIS,
+} from "@/i18n/id/friend-result-content";
 
 export type MotePoint = {
   /** 軸ラベル (見出し用の短いキーワード)。 */
@@ -55,6 +62,7 @@ export type FriendLoveContent = {
  */
 export function resolveFriendLove(
   friendAvgScores: Partial<Record<BigFiveDimension, number>>,
+  locale: AppResultLocale = "ja",
 ): FriendLoveContent | null {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   // モテ寄与度: E/A/O/C はそのまま、N は反転 (低いほど安定=モテ)。
@@ -67,9 +75,10 @@ export function resolveFriendLove(
   if (contrib.length < 2) return null;
 
   contrib.sort((a, b) => b.score - a.score);
+  const copy = locale === "id" ? ID_MOTE_BY_AXIS : MOTE_BY_AXIS;
   return {
-    main: MOTE_BY_AXIS[contrib[0].ax],
-    hidden: MOTE_BY_AXIS[contrib[1].ax],
+    main: copy[contrib[0].ax],
+    hidden: copy[contrib[1].ax],
   };
 }
 
@@ -246,7 +255,7 @@ const KO_MOTE_CHECK_EXTRA_BY_AXIS: typeof MOTE_CHECK_EXTRA_BY_AXIS = {
  */
 export function resolveFriendLoveChecklist(
   friendScores: Partial<Record<BigFiveDimension, number>>,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): MoteCheckItem[] {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -257,11 +266,18 @@ export function resolveFriendLoveChecklist(
   if (contrib.length < 2) return [];
 
   contrib.sort((a, b) => b.score - a.score);
-  const copy = locale === "ko" ? KO_MOTE_CHECK_BY_AXIS : MOTE_CHECK_BY_AXIS;
+  const copy =
+    locale === "id"
+      ? ID_MOTE_CHECK_BY_AXIS
+      : locale === "ko"
+        ? KO_MOTE_CHECK_BY_AXIS
+        : MOTE_CHECK_BY_AXIS;
   const extra =
-    locale === "ko"
-      ? KO_MOTE_CHECK_EXTRA_BY_AXIS
-      : MOTE_CHECK_EXTRA_BY_AXIS;
+    locale === "id"
+      ? ID_MOTE_CHECK_EXTRA_BY_AXIS
+      : locale === "ko"
+        ? KO_MOTE_CHECK_EXTRA_BY_AXIS
+        : MOTE_CHECK_EXTRA_BY_AXIS;
   const items = contrib.map(({ ax, v }) =>
     v >= 5 ? copy[ax].high : copy[ax].low,
   );
@@ -363,7 +379,7 @@ const KO_MOTE_HINT_CHECKS_BY_AXIS: typeof MOTE_HINT_CHECKS_BY_AXIS = {
  */
 export function resolveMoteHints(
   friendScores: Partial<Record<BigFiveDimension, number>>,
-  locale: ResultLocale = "ja",
+  locale: AppResultLocale = "ja",
 ): MoteCheckItem[] {
   const AXES: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const contrib = AXES.map((ax) => {
@@ -375,7 +391,11 @@ export function resolveMoteHints(
 
   contrib.sort((a, b) => a.score - b.score); // 寄与度が低い順
   const copy =
-    locale === "ko" ? KO_MOTE_HINT_CHECKS_BY_AXIS : MOTE_HINT_CHECKS_BY_AXIS;
+    locale === "id"
+      ? ID_MOTE_HINT_CHECKS_BY_AXIS
+      : locale === "ko"
+        ? KO_MOTE_HINT_CHECKS_BY_AXIS
+        : MOTE_HINT_CHECKS_BY_AXIS;
   return contrib.slice(0, 3).flatMap(({ ax }) => copy[ax]);
 }
 
@@ -449,24 +469,22 @@ export function resolveLoveScene(
   if (contrib.length < 2) return null;
 
   contrib.sort((a, b) => b.score - a.score);
-  if (locale === "id") {
-    const labels: Record<BigFiveDimension, string> = {
-      O: "rasa ingin tahu",
-      C: "perhatian pada detail",
-      E: "energi sosial",
-      A: "kepedulian",
-      N: "kepekaan emosional",
-    };
-    return `Misalnya, ${labels[contrib[0].ax]} dan ${labels[contrib[1].ax]} Anda dapat membuat momen sederhana terasa lebih dekat dan berkesan.`;
-  }
-  const copy = locale === "ko" ? KO_LOVE_SCENE_BY_AXIS : LOVE_SCENE_BY_AXIS;
+  const copy =
+    locale === "id"
+      ? ID_LOVE_SCENE_BY_AXIS
+      : locale === "ko"
+        ? KO_LOVE_SCENE_BY_AXIS
+        : LOVE_SCENE_BY_AXIS;
   const pick = (i: number) => {
     const { ax, v } = contrib[i];
     return v >= 5 ? copy[ax].high : copy[ax].low;
   };
-  return locale === "ko"
-    ? `예를 들면, ${pick(0)} ${pick(1)}`
-    : `たとえば、${pick(0)}${pick(1)}`;
+  const first = pick(0);
+  return locale === "id"
+    ? `Misalnya, ${first.charAt(0).toLowerCase()}${first.slice(1)} ${pick(1)}`
+    : locale === "ko"
+      ? `예를 들면, ${pick(0)} ${pick(1)}`
+      : `たとえば、${pick(0)}${pick(1)}`;
 }
 
 
