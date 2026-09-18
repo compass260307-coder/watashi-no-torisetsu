@@ -55,6 +55,12 @@ import { buildIdSelfSections } from "@/i18n/id/me";
 import { ID_RESULT_AXES, ID_RESULT_TYPES } from "@/i18n/id/result";
 import type { AppResultLocale } from "@/i18n/result";
 import { estimateCompatFromGaps } from "./tako-deepdive";
+import {
+  idRelationFact,
+  idRelationNote,
+  idRelationTip,
+  idRelationTipKey,
+} from "@/i18n/id/perception-relation";
 
 export interface PerceptionViewInput {
   /** 本人 (評価対象者) の自己スコア。 */
@@ -236,38 +242,33 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
         "ko",
       )
     : null;
-  const idRelation = isId
-    ? estimateCompatFromGaps(
-        selfScores,
-        otherScores,
-        perceiverFull,
-        "id",
-      )
-    : null;
   const koRelationMiddle = koRelation?.summaryParas.slice(1, -1).join(" ") ?? "";
-  const idRelationMiddle = idRelation?.summaryParas.slice(1, -1).join(" ") ?? "";
   const relationFactBody = isEn
     ? `Your self-view and ${perceiverFull}'s perspective overlap in meaningful ways. The shared ground can make honest conversations feel easier.`
     : isId
-      ? idRelation?.summaryParas[0] ?? "Cara kalian saling melihat memiliki kekuatan yang khas."
+      ? idRelationFact(maxGap.key, maxGapDir)
     : isKo
       ? koRelation?.summaryParas[0] ?? "두 사람이 서로를 바라보는 방식에는 특별한 장점이 있어요."
       : relationGapFact[maxGap.key][maxGapDir];
   const relationGapBody = isEn
     ? `The clearest difference is ${maxGap.label.toLowerCase()}: you rated yourself at ${maxGap.selfPercent}%, while ${perceiverFull} rated you at ${maxGap.otherPercent}%. This is a difference in perspective, not a verdict.`
     : isId
-      ? idRelationMiddle || "Perbedaan sudut pandang adalah kesempatan untuk menemukan sisi baru, bukan tanda bahwa salah satu pihak keliru."
+      ? idRelationNote(maxGap.key, maxGapDir)
     : isKo
       ? koRelationMiddle || "서로 다른 시선은 틀림이 아니라 새로운 모습을 발견할 기회예요."
       : relationGapNote[maxGap.key][maxGapDir];
   const relationTipBody = isEn
     ? "Compare one concrete situation at a time. Specific examples make it easier to understand what each person noticed and why."
     : isId
-      ? idRelation?.summaryParas.at(-1) ?? "Bicarakan satu situasi nyata pada satu waktu agar kalian lebih mudah memahami apa yang diperhatikan masing-masing."
+      ? idRelationTip(maxGap.key, maxGapDir)
     : isKo
       ? koRelation?.summaryParas.at(-1) ?? "차이를 편하게 이야기할수록 관계는 더 깊어질 수 있어요."
       : relationGapTip[maxGap.key][maxGapDir];
-  const relationTipKey = isEn || isId || isKo ? "" : relationGapTipKey[maxGap.key][maxGapDir];
+  const relationTipKey = isId
+    ? idRelationTipKey(maxGap.key, maxGapDir)
+    : isEn || isKo
+      ? ""
+      : relationGapTipKey[maxGap.key][maxGapDir];
   const tipsKey = isEn || isId || isKo
     ? ""
     : flag32

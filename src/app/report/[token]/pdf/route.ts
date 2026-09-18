@@ -15,6 +15,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextResponse } from "next/server";
+import { PDFDocument, PDFName } from "pdf-lib";
 import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasSelfReportAccess } from "@/lib/entitlements";
@@ -96,6 +97,23 @@ async function launchBrowser() {
     process.env.PUPPETEER_EXECUTABLE_PATH ??
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
   return puppeteer.launch({ executablePath: localChrome, headless: true });
+}
+
+async function trimTrailingBlankPages(pdf: Uint8Array) {
+  const document = await PDFDocument.load(pdf);
+  let trimmed = false;
+
+  while (document.getPageCount() > 1) {
+    const page = document.getPage(document.getPageCount() - 1);
+    const resources = page.node.Resources();
+    const hasFonts = resources?.has(PDFName.of("Font")) ?? false;
+    const hasImages = resources?.has(PDFName.of("XObject")) ?? false;
+    if (hasFonts || hasImages) break;
+    document.removePage(document.getPageCount() - 1);
+    trimmed = true;
+  }
+
+  return trimmed ? document.save({ useObjectStreams: false }) : pdf;
 }
 
 export async function GET(req: Request, ctx: RouteContext) {
@@ -209,13 +227,16 @@ export async function GET(req: Request, ctx: RouteContext) {
       format: "A4",
       preferCSSPageSize: true,
       printBackground: true,
-      // 韓国版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの最終要素後に
-      // 生成する空白ページは配布物へ含めない。
-      pageRanges: isKo || isEn || isId ? "1-16" : undefined,
+      // 韓国版・英語版は表紙1 + 本文15の固定構成。Chromiumが全裁ちの
+      // 最終要素後に生成する空白ページは配布物へ含めない。
+      // インドネシア語版は翻訳後の文章量がタイプごとに変わるため、固定範囲で
+      // 後半章を切らず、実際に描画された全ページをそのまま出力する。
+      pageRanges: isKo || isEn ? "1-16" : undefined,
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
+    const completePdf = isId ? await trimTrailingBlankPages(pdf) : pdf;
 
-    return new NextResponse(Buffer.from(pdf), {
+    return new NextResponse(Buffer.from(completePdf), {
       headers: {
         "Content-Type": "application/pdf",
         // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記

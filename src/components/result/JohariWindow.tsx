@@ -367,9 +367,9 @@ function windowsFrom(
   const fill = (t: string) => t.replace(/\{v\}/g, viewer);
   const gaps = buildDimensionGaps(self, friend);
 
-  if (locale === "en" || locale === "ko" || locale === "id") {
-    const translatedTitle = locale === "en" ? enTitle : locale === "ko" ? koTitle : idTitle;
-    const translatedBody = locale === "en" ? enBody : locale === "ko" ? koBody : idBody;
+  if (locale === "en" || locale === "ko") {
+    const translatedTitle = locale === "en" ? enTitle : koTitle;
+    const translatedBody = locale === "en" ? enBody : koBody;
     const open = [...gaps]
       .sort(
         (a, b) =>
@@ -416,6 +416,92 @@ function windowsFrom(
         key: g.key,
         title: translatedTitle(g.key, false, "unknown"),
         body: translatedBody(g.key, false, "unknown", viewer),
+      }));
+
+    return { open, blind, secret, unknown };
+  }
+
+  // インドネシア語版も日本語版と同じ閾値・優先順位で4つの窓を選ぶ。
+  // 文章だけを翻訳し、どの特性がどの窓に入るかは変えない。
+  if (locale === "id") {
+    const open: Item[] = [...gaps]
+      .sort(
+        (a, b) =>
+          Math.abs(a.otherPercent - a.selfPercent) -
+          Math.abs(b.otherPercent - b.selfPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => {
+        const high = (g.selfPercent + g.otherPercent) / 2 >= 50;
+        return {
+          key: g.key,
+          title: idTitle(g.key, high, "open"),
+          body: idBody(g.key, high, "open", viewer),
+        };
+      });
+
+    const blind: Item[] = gaps
+      .filter((g) => g.otherPercent - g.selfPercent >= GAP)
+      .sort(
+        (a, b) =>
+          b.otherPercent - b.selfPercent - (a.otherPercent - a.selfPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => ({
+        key: g.key,
+        title: idTitle(g.key, true, "blind"),
+        body: idBody(g.key, true, "blind", viewer),
+      }));
+    for (const g of gaps
+      .filter((g) => !blind.some((item) => item.key === g.key))
+      .sort(
+        (a, b) => Math.abs(b.otherPercent - 50) - Math.abs(a.otherPercent - 50),
+      )) {
+      if (blind.length >= PER_WINDOW) break;
+      const high = g.otherPercent >= 50;
+      blind.push({
+        key: g.key,
+        title: idTitle(g.key, high, "blind"),
+        body: idBody(g.key, high, "blind", viewer),
+      });
+    }
+
+    const secret: Item[] = gaps
+      .filter((g) => g.selfPercent - g.otherPercent >= GAP)
+      .sort(
+        (a, b) =>
+          b.selfPercent - b.otherPercent - (a.selfPercent - a.otherPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => ({
+        key: g.key,
+        title: idTitle(g.key, true, "secret"),
+        body: idBody(g.key, true, "secret", viewer),
+      }));
+    for (const g of gaps
+      .filter((g) => !secret.some((item) => item.key === g.key))
+      .sort(
+        (a, b) => Math.abs(b.selfPercent - 50) - Math.abs(a.selfPercent - 50),
+      )) {
+      if (secret.length >= PER_WINDOW) break;
+      const high = g.selfPercent >= 50;
+      secret.push({
+        key: g.key,
+        title: idTitle(g.key, high, "secret"),
+        body: idBody(g.key, high, "secret", viewer),
+      });
+    }
+
+    const unknown: Item[] = [...gaps]
+      .sort(
+        (a, b) =>
+          a.selfPercent + a.otherPercent - (b.selfPercent + b.otherPercent),
+      )
+      .slice(0, PER_WINDOW)
+      .map((g) => ({
+        key: g.key,
+        title: idTitle(g.key, false, "unknown"),
+        body: idBody(g.key, false, "unknown", viewer),
       }));
 
     return { open, blind, secret, unknown };

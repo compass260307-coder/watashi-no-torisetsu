@@ -1,5 +1,6 @@
 import EnFriendComparison from "@/components/en/EnFriendComparison";
-import type { AppResultLocale, ResultLocale } from "@/i18n/result";
+import type { AppResultLocale } from "@/i18n/result";
+import { ID_SELF_RESULT_CONTENT_32 } from "@/i18n/id/me-content-32";
 import { KO_SELF_RESULT_CONTENT_32 } from "@/i18n/ko/me-content-32";
 import type { BigFiveScores } from "@/lib/perception-analysis";
 import { buildDeepDive } from "@/lib/tako-deepdive";
@@ -62,12 +63,14 @@ interface FriendGapSectionProps {
 function buildPerceivedProse(
   scores: BigFiveScores,
   targetLabel: string,
-  locale: ResultLocale,
+  locale: AppResultLocale,
 ): string[] {
   const type32 = classifyThirtyTwoType(scores);
   const manual =
     locale === "ko"
       ? KO_SELF_RESULT_CONTENT_32[type32]?.[0]
+      : locale === "id"
+        ? ID_SELF_RESULT_CONTENT_32[type32]?.[0]
       : selfContentFor(type32)[0];
   const paragraphs = (manual?.body ?? "").split("\n\n").filter(Boolean);
   const graphAfter = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
@@ -92,6 +95,24 @@ function buildPerceivedProse(
         return `당신이 보기에 ${text.split("당신").join(targetLabel)}`;
       }
       return text.split("당신").join(targetLabel);
+    }
+
+    if (locale === "id") {
+      let text = paragraph;
+      if (index === 0) {
+        for (const connector of ["Selain itu, ", "Selain itu ", "Dan ", "Lebih dari itu, "]) {
+          if (text.startsWith(connector)) {
+            text = text.slice(connector.length);
+            break;
+          }
+        }
+        if (text.startsWith("Anda")) {
+          const rest = text.slice("Anda".length).split("Anda").join(targetLabel);
+          return `Menurut Anda, ${targetLabel}${rest}`;
+        }
+        return `Menurut Anda, ${text.split("Anda").join(targetLabel)}`;
+      }
+      return text.split("Anda").join(targetLabel);
     }
 
     let text = paragraph;
@@ -122,7 +143,7 @@ export function FriendGapSection({
   locale = "ja",
 }: FriendGapSectionProps) {
   const copy = COPY[locale];
-  if (locale === "en" || locale === "id") {
+  if (locale === "en") {
     return (
       <section className="mx-auto max-w-[1080px] pb-8 pt-12 md:pb-12 md:pt-16">
         <div className="mb-5 md:mb-7">
@@ -133,13 +154,13 @@ export function FriendGapSection({
           </h2>
         </div>
         <section
-          aria-label={locale === "id" ? "Lima dimensi kepribadian" : "Five personality dimensions"}
+          aria-label="Five personality dimensions"
           className="rounded-[22px] bg-[#F4F4FE] px-5 py-6 md:rounded-[28px] md:px-8 md:py-8"
         >
           <EnFriendComparison
             selfScores={selfScores}
             friendScores={perceivedScores}
-            friendLabel={locale === "id" ? "Pandangan Anda" : "Your view"}
+            friendLabel="Your view"
             locale={locale}
           />
         </section>
@@ -168,10 +189,10 @@ export function FriendGapSection({
       <div className="mb-5 rounded-[22px] bg-[#F4F4FE] px-5 py-6 md:mb-7 md:rounded-[28px] md:px-8 md:py-8">
         <p className="text-[16px] font-black leading-[1.85] text-[#2E2E5C] md:text-[22px]">
           {copy.gapLead}
-          {deep.gap.label}。{targetLabel}
+          {deep.gap.label}{locale === "id" ? ". " : "。"}{targetLabel}
           {copy.selfLead}
           <span className="text-[#5B5BEF]">{deep.gap.selfPercent}%</span>
-          {locale === "ko" ? ", " : "、"}
+          {locale === "ko" || locale === "id" ? ", " : "、"}
           {copy.answerLead}
           <span className="text-[#5B5BEF]">{deep.gap.otherPercent}%</span>
           {copy.answerTail}

@@ -25,6 +25,7 @@ import type { PerceptionView } from "@/lib/perception-view";
 import type { BigFiveScores } from "@/lib/perception-analysis";
 import type { AppResultLocale } from "@/i18n/result";
 import { estimateCompatFromGaps } from "@/lib/tako-deepdive";
+import { idGapDetail } from "@/i18n/id/perception-relation";
 
 function mutualLabel(pct: number, locale: AppResultLocale): string {
   if (locale === "id") {
@@ -148,16 +149,6 @@ export function PerceptionResultBody({
           otherScores,
           personLabel,
           "ko",
-        )?.axes ?? []).map((axis) => [axis.key, axis.body]),
-      )
-    : null;
-  const idGapDetails = isId
-    ? new Map(
-        (estimateCompatFromGaps(
-          selfScores,
-          otherScores,
-          personLabel,
-          "id",
         )?.axes ?? []).map((axis) => [axis.key, axis.body]),
       )
     : null;
@@ -357,8 +348,9 @@ export function PerceptionResultBody({
             const detail = isEn
               ? `${personLabel} rated ${g.label.toLowerCase()} at ${g.otherPercent}%, while ${view.displayName}'s self-view was ${g.selfPercent}%. The ${g.diffPoints}-point gap shows where the two perspectives differ most clearly.`
               : isId
-                ? idGapDetails?.get(g.key) ??
-                  "Ada sedikit perbedaan dalam cara kalian melihat sisi ini."
+                ? idx < 2
+                  ? idGapDetail(g.key, dir).full
+                  : idGapDetail(g.key, dir).short
               : isKo
               ? koGapDetails?.get(g.key) ??
                 "두 사람이 서로를 보는 방식에는 조금 다른 점이 있어요."

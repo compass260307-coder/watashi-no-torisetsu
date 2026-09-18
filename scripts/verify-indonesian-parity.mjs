@@ -181,6 +181,84 @@ const idArticleSlugs = new Set(
 );
 equalSets("article parity", jaArticleSlugs, idArticleSlugs);
 
+function articleStructureSignatures(relativePath, variableName) {
+  const source = read(relativePath);
+  const file = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const signatures = new Map();
+
+  const objectProperty = (object, name) =>
+    object.properties.find(
+      (property) =>
+        ts.isPropertyAssignment(property) && property.name.getText(file) === name,
+    )?.initializer;
+  const arrayLength = (node) =>
+    node && ts.isArrayLiteralExpression(node) ? node.elements.length : 0;
+  const addObject = (object, factor = false) => {
+    const slugNode = objectProperty(object, "slug");
+    if (!slugNode || !ts.isStringLiteral(slugNode)) return;
+    if (factor) {
+      signatures.set(slugNode.text, "2:4:1/3,1/3,2/0,1/0");
+      return;
+    }
+    const lead = objectProperty(object, "lead");
+    const sections = objectProperty(object, "sections");
+    if (!sections || !ts.isArrayLiteralExpression(sections)) return;
+    const sectionSignature = sections.elements.map((section) => {
+      if (!ts.isObjectLiteralExpression(section)) return "0/0";
+      return `${arrayLength(objectProperty(section, "paragraphs"))}/${arrayLength(objectProperty(section, "list"))}`;
+    });
+    signatures.set(
+      slugNode.text,
+      `${arrayLength(lead)}:${sections.elements.length}:${sectionSignature.join(",")}`,
+    );
+  };
+
+  for (const statement of file.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        !ts.isIdentifier(declaration.name) ||
+        declaration.name.text !== variableName ||
+        !declaration.initializer ||
+        !ts.isArrayLiteralExpression(declaration.initializer)
+      ) continue;
+      for (const element of declaration.initializer.elements) {
+        if (ts.isObjectLiteralExpression(element)) addObject(element);
+        if (
+          ts.isCallExpression(element) &&
+          ts.isIdentifier(element.expression) &&
+          element.expression.text === "factorArticle" &&
+          element.arguments[0] &&
+          ts.isObjectLiteralExpression(element.arguments[0])
+        ) addObject(element.arguments[0], true);
+      }
+    }
+  }
+  return signatures;
+}
+
+const jaArticleStructures = articleStructureSignatures(
+  "src/lib/articles.ts",
+  "ARTICLES",
+);
+const idArticleStructures = articleStructureSignatures(
+  "src/lib/articles-id.ts",
+  "ID_ARTICLES",
+);
+for (const [slug, signature] of jaArticleStructures) {
+  if (idArticleStructures.get(slug) !== signature) {
+    failures.push(
+      `article structure parity: ${slug} Japanese=${signature}, Indonesian=${idArticleStructures.get(slug) ?? "missing"}`,
+    );
+  }
+}
+
 const idResult = read("src/i18n/id/result.ts");
 const idTypeIds = new Set(
   [...idResult.matchAll(/^\s*"([a-z-]+__[NR])":\s*\{/gm)].map(
@@ -541,6 +619,26 @@ const criticalChecks = [
   ],
   ["friend analysis", "src/lib/perception-view.ts", "buildIdSelfSections"],
   [
+    "friend gap prose",
+    "src/components/result/FriendGapSection.tsx",
+    "ID_SELF_RESULT_CONTENT_32",
+  ],
+  [
+    "relationship-specific copy",
+    "src/lib/perception-view.ts",
+    "idRelationFact(maxGap.key, maxGapDir)",
+  ],
+  [
+    "relationship axis detail",
+    "src/components/result/PerceptionResultBody.tsx",
+    "idGapDetail(g.key, dir)",
+  ],
+  [
+    "Johari window scoring parity",
+    "src/components/result/JohariWindow.tsx",
+    'if (locale === "id")',
+  ],
+  [
     "friend paywall",
     "src/components/result/FriendIndividualPaywall.tsx",
     'isId ? "Buka Edisi Lengkap"',
@@ -611,6 +709,27 @@ const criticalChecks = [
     "src/lib/unmei/chart-view.ts",
     'locale === "id" ? BODY_ID : BODY_JA',
   ],
+  [
+    "destiny landing parity",
+    "src/app/id/unmei/page.tsx",
+    "Yang dapat Anda temukan dalam Peta Takdir",
+  ],
+  [
+    "self-report shared layout",
+    "src/app/id/report/[token]/print/page.tsx",
+    'locale: "id"',
+  ],
+  [
+    "self-report detailed content",
+    "src/app/report/[token]/print/page.tsx",
+    "buildIdDetailedReport(t32, scores)",
+  ],
+  [
+    "self-report complete PDF output",
+    "src/app/report/[token]/pdf/route.ts",
+    'pageRanges: isKo || isEn ? "1-16" : undefined',
+  ],
+  ["home structured data", "src/app/id/page.tsx", '"@type": "WebApplication"'],
   ["metadata isolation", "src/app/id/layout.tsx", "title: { absolute: TITLE"],
   [
     "not-found fallback",
@@ -621,6 +740,14 @@ const criticalChecks = [
 for (const [label, file, marker] of criticalChecks) {
   if (!read(file).includes(marker))
     failures.push(`${label}: missing Indonesian branch in ${file}`);
+}
+
+if (
+  /if \(locale === "en" \|\| locale === "id"\)/.test(
+    read("src/components/result/FriendGapSection.tsx"),
+  )
+) {
+  failures.push("friend gap parity: Indonesian still uses the abbreviated English branch");
 }
 
 for (const requiredFile of [

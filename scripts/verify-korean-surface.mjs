@@ -1002,7 +1002,7 @@ const selfReportPdf = fs.readFileSync(
 );
 for (const required of [
   "나의 사용설명서 성격 스토리.pdf",
-  'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
+  'pageRanges: isKo || isEn ? "1-16" : undefined',
 ]) {
   if (!selfReportPdf.includes(required)) {
     problems.push(
