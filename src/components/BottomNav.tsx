@@ -38,7 +38,7 @@ import {
   ME_ATTENTION_GRANTED_EVENT,
   ME_ATTENTION_PENDING_KEY,
 } from "@/lib/me-attention";
-import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
@@ -206,6 +206,9 @@ export function BottomNav() {
       searchParams.get("locale") === "ko");
   const isEnglish = pathname === "/en" || pathname.startsWith("/en/");
   const isIndonesian = pathname === "/id" || pathname.startsWith("/id/");
+  const paywallVersion = accessPaywallVersionForLocale(
+    isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja",
+  );
   const localePrefix = isKorean
     ? "/ko"
     : isEnglish
@@ -791,7 +794,7 @@ export function BottomNav() {
                           page: trackingPageFromPathname(pathname),
                           surface: courseTarget,
                           destination: courseTarget,
-                          paywall_version: THREE_COURSE_PAYWALL_VERSION,
+                          paywall_version: paywallVersion,
                         },
                       });
                     }
@@ -812,7 +815,7 @@ export function BottomNav() {
                           page: trackingPageFromPathname(pathname),
                           surface: courseTarget,
                           destination: courseTarget,
-                          paywall_version: THREE_COURSE_PAYWALL_VERSION,
+                          paywall_version: paywallVersion,
                         },
                       });
                     }

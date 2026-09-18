@@ -39,6 +39,7 @@ const META_PURCHASE_CONTENT: Record<
   {
     fallbackId: string;
     koFallbackId?: string;
+    idFallbackId?: string;
     name: Readonly<Record<"ja" | "ko" | "en" | "id", string>>;
   }
 > = {
@@ -50,6 +51,7 @@ const META_PURCHASE_CONTENT: Record<
   full_access: {
     fallbackId: "full_access_jpy_499",
     koFallbackId: "full_access_krw_4900",
+    idFallbackId: "full_access_idr_4900000",
     name: { ja: "完全版コース", ko: "완전판 코스", en: "Complete Edition", id: "Edisi Lengkap" },
   },
   premium_bundle: {
@@ -84,6 +86,8 @@ export function metaPurchaseContent(
     ? `${product}_${normalizedCurrency}_${amountMinor}`
     : locale === "ko" && entry.koFallbackId
       ? entry.koFallbackId
+      : locale === "id" && entry.idFallbackId
+        ? entry.idFallbackId
       : entry.fallbackId;
   return { contentIds: [id], contentName: entry.name[locale] };
 }

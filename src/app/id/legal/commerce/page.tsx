@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
-import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
+import {
+  formatIdrMinor,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
+} from "@/lib/access-products";
 
 export const metadata: Metadata = {
   title: "Informasi Penjualan dan Pengembalian Dana",
@@ -15,7 +18,7 @@ export default function IndonesianCommercePage() {
       <h2>Alamat dan telepon</h2><p>Akan diberikan tanpa penundaan jika diminta. Hubungi kami melalui email sebelum membeli.</p>
       <h2>Kontak</h2><p><a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>. Kami biasanya membalas dalam tiga hari kerja.</p>
       <h2>Produk dan harga</h2>
-      <ul><li>Alice Test — Edisi Lengkap: ¥{FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}, termasuk pajak</li><li>Pembayaran satu kali; tanpa langganan, perpanjangan otomatis, atau pembayaran tambahan wajib</li></ul>
+      <ul><li>Alice Test — Edisi Lengkap: {formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)}, termasuk pajak</li><li>Pembayaran satu kali; tanpa langganan, perpanjangan otomatis, atau pembayaran tambahan wajib</li></ul>
       <p>Jumlah akhir ditampilkan kembali di Stripe Checkout sebelum pembayaran.</p>
       <h2>Yang termasuk</h2>
       <ul><li>Laporan kepribadian lengkap dan PDF pribadi</li><li>Sudut pandang teman dan analisis kecocokan</li><li>Peta Takdir</li><li>30 jawaban dari astrolog AI pribadi Alice</li><li>Ketiga pembacaan tarot Alice</li></ul>

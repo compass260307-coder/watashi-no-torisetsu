@@ -9,10 +9,7 @@ import {
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import type { AppResultLocale } from "@/i18n/result";
-import {
-  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
-  THREE_COURSE_PAYWALL_VERSION,
-} from "@/lib/access-products";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { getStripeClient } from "@/lib/stripe-client";
 import { track } from "@/lib/track";
 
@@ -134,10 +131,7 @@ export default function UnmeiEmbeddedCheckout({
       return_to: "unmei" as const,
       locale,
       paywall_source: "unmei_birth_chat",
-      paywall_version:
-        locale === "en"
-          ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-          : THREE_COURSE_PAYWALL_VERSION,
+      paywall_version: accessPaywallVersionForLocale(locale),
       paywall_placement: "inline" as const,
       ...(ownerToken ? { owner_token: ownerToken } : {}),
     }),
@@ -218,7 +212,7 @@ export default function UnmeiEmbeddedCheckout({
     onComplete();
   }, [locale, onComplete, ownerToken, product]);
 
-  const supportsPayPay = locale === "ja" || locale === "id";
+  const supportsPayPay = locale === "ja";
   const paypayButton =
     supportsPayPay ? (
       <div className="mt-2.5">

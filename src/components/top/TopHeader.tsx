@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import { LoginModal } from "@/components/LoginModal";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
-import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { resetLocalData } from "@/lib/reset-data";
 import { localeSwitchPath, type SiteLocale, type SwitchLocale } from "@/lib/locale-switch";
 import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
@@ -293,7 +293,7 @@ export default function TopHeader({
         page: trackingPageFromPathname(pathname),
         surface: "hoshiyomi",
         destination: "hoshiyomi",
-        paywall_version: THREE_COURSE_PAYWALL_VERSION,
+        paywall_version: accessPaywallVersionForLocale(locale),
       },
     });
     setAlicePaywallOpen(true);

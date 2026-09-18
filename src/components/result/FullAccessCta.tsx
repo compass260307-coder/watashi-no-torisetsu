@@ -17,9 +17,11 @@ import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import { readAdAttribution } from "@/lib/ad-attribution";
 import type { AppResultLocale } from "@/i18n/result";
 import {
+  accessPaywallVersionForLocale,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
@@ -92,6 +94,8 @@ export function FullAccessCta({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
+  const resolvedPaywallVersion =
+    paywallVersion ?? accessPaywallVersionForLocale(locale);
   const resolvedUnauthHref =
     unauthHref ??
     (locale === "ko"
@@ -132,7 +136,7 @@ export function FullAccessCta({
         source: paywallSource,
         locale,
         product,
-        paywall_version: paywallVersion ?? "legacy",
+        paywall_version: resolvedPaywallVersion,
         placement: placement ?? "unknown",
       },
     });
@@ -160,7 +164,7 @@ export function FullAccessCta({
           ...(ttp ? { ttp } : {}),
           ...(fbp ? { fbp } : {}),
           ...(fbc ? { fbc } : {}),
-          ...(paywallVersion ? { paywall_version: paywallVersion } : {}),
+          paywall_version: resolvedPaywallVersion,
           ...(placement ? { paywall_placement: placement } : {}),
         }),
       });
@@ -221,6 +225,8 @@ export function FullAccessCta({
                   ? FULL_ACCESS_PRICE_KRW
                   : locale === "en"
                     ? EN_FULL_ACCESS_PRICE_USD_CENTS / 100
+                    : locale === "id"
+                      ? ID_FULL_ACCESS_PRICE_IDR_MINOR / 100
                     : FULL_ACCESS_PRICE_JPY,
           currency:
             typeof data.currency === "string"
@@ -229,6 +235,8 @@ export function FullAccessCta({
                 ? "KRW"
                 : locale === "en"
                   ? "USD"
+                  : locale === "id"
+                    ? "IDR"
                   : "JPY",
         });
         return;

@@ -31,7 +31,7 @@ function tiktokBrowserClaimId(checkoutSessionId: string): string {
 
 function valueInMajorUnit(amount: number | null, currency: string | null) {
   if (amount === null) return undefined;
-  // 現行フルアクセスは JPY / KRW。どちらも Stripe ではゼロ小数通貨。
+  // JPY / KRW はゼロ小数通貨。USD / IDR などはStripeの最小単位から換算する。
   return currency === "jpy" || currency === "krw" ? amount : amount / 100;
 }
 

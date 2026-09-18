@@ -21,6 +21,8 @@ export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
   "en_single_full_access_v2_usd_499" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "en_single_full_access_v3_usd_499_release_1290_list" as const;
+export const ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
+  "id_single_full_access_v1_idr_49000_release_129000_list" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -65,6 +67,7 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+  ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
 export const SINGLE_ALL_ACCESS_PAYWALL_PRODUCT =
@@ -133,6 +136,7 @@ const FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS = new Set<string>([
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+  ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ]);
 
 // 友達機能を含まない旧 self_report 世代の印。
@@ -283,6 +287,10 @@ export const PREMIUM_BUNDLE_PRICE_KRW = 8900;
 // Stripe の USD 金額は最小通貨単位（cent）で保持する。
 export const EN_FULL_ACCESS_LIST_PRICE_USD_CENTS = 1290;
 export const EN_FULL_ACCESS_PRICE_USD_CENTS = 499;
+// インドネシア版は通常価格 Rp129.000 から Rp80.000引き、Rp49.000で販売する。
+// StripeではIDRが2桁小数通貨として扱われるため、最小単位（1/100ルピア）で保持する。
+export const ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR = 12_900_000;
+export const ID_FULL_ACCESS_PRICE_IDR_MINOR = 4_900_000;
 export const SELF_REPORT_DISCOUNT_PERCENT = Math.round(
   (1 - SELF_REPORT_PRICE_JPY / SELF_REPORT_LIST_PRICE_JPY) * 100,
 );
@@ -364,9 +372,22 @@ export function accessProductPrice(
   entitlements: AccessEntitlements,
 ): number {
   if (locale === "en") return EN_FULL_ACCESS_PRICE_USD_CENTS;
+  if (locale === "id") return ID_FULL_ACCESS_PRICE_IDR_MINOR;
   return locale === "ko"
     ? accessProductPriceKrw(product, entitlements)
     : accessProductPriceJpy(product, entitlements);
+}
+
+export function formatIdrMinor(amountMinor: number): string {
+  return `Rp${(amountMinor / 100).toLocaleString("id-ID")}`;
+}
+
+export function accessPaywallVersionForLocale(
+  locale: "ja" | "ko" | "en" | "id",
+): ThreeCoursePaywallVersion {
+  if (locale === "en") return EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
+  if (locale === "id") return ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
+  return THREE_COURSE_PAYWALL_VERSION;
 }
 
 export function isAccessProduct(value: unknown): value is AccessProduct {

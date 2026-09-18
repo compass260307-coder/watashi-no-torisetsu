@@ -212,9 +212,9 @@ const criticalChecks = [
     'locale === "id"',
   ],
   [
-    "destiny PayPay",
+    "destiny checkout excludes JPY-only PayPay for IDR",
     "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
-    'locale === "ja" || locale === "id"',
+    'const supportsPayPay = locale === "ja";',
   ],
   [
     "destiny birth regions",
@@ -253,8 +253,8 @@ const catalog = read("docs/COMMERCE_CATALOG.md");
 for (const marker of [
   "### インドネシア語版",
   "Edisi Lengkap",
-  "¥1,290",
-  "¥499",
+  "Rp129.000",
+  "Rp49.000",
 ]) {
   if (!catalog.includes(marker))
     failures.push(`commerce parity: catalog is missing ${marker}`);

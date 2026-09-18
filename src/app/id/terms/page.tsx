@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
-import { FULL_ACCESS_PRICE_JPY } from "@/lib/access-products";
+import {
+  formatIdrMinor,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
+} from "@/lib/access-products";
 
 export const metadata: Metadata = { title: "Ketentuan Layanan", description: "Ketentuan penggunaan Alice Test versi Bahasa Indonesia." };
 
@@ -13,7 +16,7 @@ export default function IndonesianTermsPage() {
       <h2>3. Tautan hasil dan akses akun</h2><ol><li>Pengguna bertanggung jawab menjaga email dan tautan hasil pribadi.</li><li>Pengguna harus memberikan informasi yang akurat dan tidak memakai informasi orang lain tanpa izin.</li><li>Laporkan akses tanpa izin ke alamat dukungan.</li></ol>
       <h2>4. Anak dan pengguna di bawah umur</h2><p>Pengguna di bawah umur wajib memperoleh persetujuan orang tua atau wali sebelum membeli. Anak di bawah 13 tahun hanya boleh memakai Layanan dengan pengawasan.</p>
       <h2>5. Larangan</h2><ol><li>Melanggar hukum atau hak pihak lain.</li><li>Menyamar, memperoleh tautan atau akses secara curang.</li><li>Mengganggu Layanan, mengeksploitasi celah, atau mencoba akses tanpa izin.</li><li>Melakukan scraping, rekayasa balik, otomatisasi akses, atau eksploitasi komersial tanpa izin.</li><li>Melecehkan, mencemarkan nama baik, atau memberi tekanan tidak semestinya kepada pengguna lain.</li></ol>
-      <h2>6. Konten berbayar</h2><p>Edisi Lengkap berharga ¥{FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")} termasuk pajak dan merupakan pembelian satu kali. Jumlah serta metode akhir ditampilkan di Stripe Checkout. Akses digital diberikan setelah pembayaran dikonfirmasi.</p>
+      <h2>6. Konten berbayar</h2><p>Edisi Lengkap berharga {formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)} termasuk pajak dan merupakan pembelian satu kali. Jumlah serta metode akhir ditampilkan di Stripe Checkout. Akses digital diberikan setelah pembayaran dikonfirmasi.</p>
       <h2>7. Pengembalian dana</h2><p>Permintaan pengembalian dana penuh dapat diajukan dalam 30 hari sesuai <a href="/id/legal/commerce">Informasi Penjualan dan Pengembalian Dana</a>.</p>
       <h2>8. AI, astrologi, dan tarot</h2><p>Konten bersifat hiburan dan refleksi, bukan diagnosis atau nasihat medis, hukum, keuangan, atau profesional. Hasil AI dapat mengandung kesalahan dan tidak menjamin masa depan.</p>
       <h2>9. Hak kekayaan intelektual</h2><p>Hak atas Layanan, teks, desain, karakter, gambar, perangkat lunak, dan merek dimiliki Operator atau pemberi lisensinya. Penggunaan pribadi yang wajar diperbolehkan; penggunaan komersial memerlukan izin.</p>

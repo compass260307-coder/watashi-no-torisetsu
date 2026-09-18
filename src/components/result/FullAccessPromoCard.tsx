@@ -65,12 +65,15 @@ import {
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { AppResultLocale } from "@/i18n/result";
 import {
+  accessPaywallVersionForLocale,
   accessProductPrice,
   EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
-  EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
+  formatIdrMinor,
+  ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
+  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
@@ -109,9 +112,14 @@ const PRICE_COPY = {
     ),
   },
   id: {
-    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
-    sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
-    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
+    list: formatIdrMinor(ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR),
+    sale: formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR),
+    offPercent: Math.round(
+      (1 -
+        ID_FULL_ACCESS_PRICE_IDR_MINOR /
+          ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR) *
+        100,
+    ),
   },
 } as const;
 
@@ -119,7 +127,7 @@ const SELF_REPORT_PRICE_COPY = {
   ja: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
   ko: `₩${SELF_REPORT_PRICE_KRW.toLocaleString("ko-KR")}`,
   en: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
-  id: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
+  id: formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR),
 } as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
@@ -593,8 +601,8 @@ export function FullAccessPromoCard({
   const paywallProduct = usesPlanCarousel
     ? SINGLE_ALL_ACCESS_PAYWALL_PRODUCT
     : product;
-  const paywallVersion = isEnglish
-    ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
+  const paywallVersion = isEnglish || isIndonesian
+    ? accessPaywallVersionForLocale(locale)
     : usesPlanCarousel || isStandaloneSelfReport || usesLegacyFullAccessCard
       ? THREE_COURSE_PAYWALL_VERSION
       : "legacy";
@@ -1173,11 +1181,7 @@ export function FullAccessPromoCard({
                 returnTo={returnTo}
                 product={product}
                 paywallVersion={
-                  isEnglish
-                    ? EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION
-                    : paywallVersion === THREE_COURSE_PAYWALL_VERSION
-                      ? THREE_COURSE_PAYWALL_VERSION
-                      : undefined
+                  paywallVersion === "legacy" ? undefined : paywallVersion
                 }
                 placement={paywallPlacement}
                 previewMode={previewMode}
