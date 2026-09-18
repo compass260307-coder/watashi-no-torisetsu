@@ -984,6 +984,8 @@ async function recordPurchaseCompletedEvent(
           : null,
       locale,
       metadata: {
+        checkout_attempt_id:
+          session.metadata?.checkout_attempt_id ?? "legacy",
         stripe_session_id: session.id,
         user_id: userId,
         product,

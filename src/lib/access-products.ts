@@ -14,7 +14,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v40_ja_full_499_release_1290_list" as const;
+  "legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1 =
   "en_single_full_access_v1_jpy_499" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
@@ -63,6 +63,7 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v38_ja_full_699_single_no_discount",
   "legacy_card_v39_ja_full_699_release_1290_list",
   "legacy_card_v40_ja_full_499_single_no_discount",
+  "legacy_card_v40_ja_full_499_release_1290_list",
   THREE_COURSE_PAYWALL_VERSION,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,

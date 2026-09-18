@@ -51,9 +51,9 @@ const contractChecks = [
     ),
   },
   {
-    label: "Japanese full access paywall version is the frozen v40 offer",
+    label: "Japanese full access measurement generation preserves the frozen offer",
     valid: accessProducts.includes(
-      '"legacy_card_v40_ja_full_499_release_1290_list" as const',
+      '"legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const',
     ),
   },
   {

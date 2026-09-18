@@ -19,6 +19,7 @@
 // クライアントからは金額・数量・price を一切受け取らない (改ざん不可)。
 
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import type Stripe from "stripe";
 import {
   consumeRateLimit,
@@ -71,6 +72,8 @@ import {
   DIRECT_PAYWALL_SOURCE,
   normalizePaywallSource,
 } from "@/lib/paywall-source";
+import { normalizeCheckoutAttemptId } from "@/lib/checkout-measurement";
+import { signCheckoutCancellation } from "@/lib/checkout-cancel-signature";
 
 // 支払いで解放する対象 (= そのトークンの本人 / session 本人)。
 type Buyer = { id: string; email: string | null; owner_token: string | null };
@@ -569,6 +572,16 @@ export async function POST(request: NextRequest) {
     );
   }
   const body = parsedBody.value;
+  const checkoutAttemptId =
+    body.checkout_attempt_id === undefined
+      ? randomUUID()
+      : normalizeCheckoutAttemptId(body.checkout_attempt_id);
+  if (!checkoutAttemptId) {
+    return NextResponse.json(
+      { error: "Invalid checkout attempt" },
+      { status: 400 },
+    );
+  }
   if (body.ui_mode !== undefined && body.ui_mode !== "embedded") {
     return NextResponse.json({ error: "Invalid ui mode" }, { status: 400 });
   }
@@ -907,7 +920,12 @@ export async function POST(request: NextRequest) {
   const cancelParams = new URLSearchParams({
     checkout: "cancelled",
     product,
+    checkout_attempt_id: checkoutAttemptId,
   });
+  const cancelSignature = signCheckoutCancellation(checkoutAttemptId);
+  if (cancelSignature) {
+    cancelParams.set("checkout_cancel_signature", cancelSignature);
+  }
   const cancelAnchor =
     returnTo === "me" || returnTo === "tako" || returnTo === "aisho"
       ? "#fullaccess-promo"
@@ -1102,6 +1120,52 @@ export async function POST(request: NextRequest) {
   }
 
   // ===== Stripe Session 作成 =====
+  // クライアントのバッファ送信とは独立した、サーバー正本のCheckout受付イベント。
+  // CTAイベントがページ遷移で欠けても、Stripe作成数を上回る入口を必ず残す。
+  try {
+    const { error: requestEventError } = await supabaseAdmin
+      .from("events")
+      .insert({
+        event_name: "checkout_requested",
+        owner_token: buyer?.owner_token ?? null,
+        locale: checkoutLocale,
+        metadata: {
+          checkout_attempt_id: checkoutAttemptId,
+          guest: !userId,
+          user_id: userId,
+          product,
+          upgrade_from: upgradeFrom,
+          source: paywallSource,
+          paywall_version: paywallVersion,
+          placement: paywallPlacement,
+          return_to: returnTo,
+          locale: checkoutLocale,
+          stripe_mode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_")
+            ? "live"
+            : "test",
+          payment_method: paypayRedirect
+            ? "paypay"
+            : embedded
+              ? "card_embedded"
+              : "redirect",
+        },
+      });
+    if (requestEventError && requestEventError.code !== "23505") {
+      console.error(
+        "[checkout/create-full-access-session] request event insert failed:",
+        { checkout_attempt_id: checkoutAttemptId, error: requestEventError.message },
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[checkout/create-full-access-session] request event insert threw:",
+      {
+        checkout_attempt_id: checkoutAttemptId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
+  }
+
   let stripeSession;
   try {
     const automaticTaxEnabled =
@@ -1154,6 +1218,7 @@ export async function POST(request: NextRequest) {
       // webhook は商品キーで分岐。user_id があればその行、無ければ (guest=1)
       // Stripe 確定 email をキーに紐付ける (email or id・email 優先)。
       metadata: {
+        checkout_attempt_id: checkoutAttemptId,
         user_id: userId ?? "",
         owner_token: ownerToken,
         product,
@@ -1223,7 +1288,9 @@ export async function POST(request: NextRequest) {
               : {}),
           }),
     };
-    stripeSession = await stripe.checkout.sessions.create(sessionParams);
+    stripeSession = await stripe.checkout.sessions.create(sessionParams, {
+      idempotencyKey: `full-access:${checkoutAttemptId}`,
+    });
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
     return NextResponse.json(
@@ -1240,6 +1307,7 @@ export async function POST(request: NextRequest) {
       owner_token: buyer?.owner_token ?? null,
       locale: checkoutLocale,
       metadata: {
+        checkout_attempt_id: checkoutAttemptId,
         guest: userId ? false : true,
         user_id: userId,
         stripe_session_id: stripeSession.id,
@@ -1257,6 +1325,7 @@ export async function POST(request: NextRequest) {
           : embedded
             ? "card_embedded"
             : "redirect",
+        stripe_mode: stripeSession.livemode ? "live" : "test",
       },
     });
     if (eventError) {

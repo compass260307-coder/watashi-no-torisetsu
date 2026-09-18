@@ -301,6 +301,39 @@ export async function computeStats(
     }
     return ids.size + noId;
   };
+  const isLiveCheckoutAttemptRow = (row: StripeEventRow): boolean =>
+    row.metadata?.stripe_mode !== "test";
+  const countUniqueCheckoutAttempts = (rows: StripeEventRow[]): number => {
+    const keys = new Set<string>();
+    let unknown = 0;
+    for (const row of rows) {
+      const attemptId = row.metadata?.checkout_attempt_id;
+      if (typeof attemptId === "string" && attemptId) {
+        keys.add(attemptId);
+      } else if (row.owner_token) {
+        keys.add(`owner:${row.owner_token}`);
+      } else {
+        unknown++;
+      }
+    }
+    return keys.size + unknown;
+  };
+  const countUniqueCheckoutUsers = (rows: StripeEventRow[]): number => {
+    const keys = new Set<string>();
+    for (const row of rows) {
+      const userId = row.metadata?.user_id;
+      if (row.owner_token) keys.add(`owner:${row.owner_token}`);
+      else if (typeof userId === "string" && userId) keys.add(`user:${userId}`);
+    }
+    return keys.size;
+  };
+  const countAnonymousCheckoutSessions = (rows: StripeEventRow[]): number =>
+    countUniqueStripeSessions(
+      rows.filter((row) => {
+        const userId = row.metadata?.user_id;
+        return !row.owner_token && !(typeof userId === "string" && userId);
+      }),
+    );
 
   // 質問到達: DB 内で一度だけ GROUP BY する。RPC 名は適用済みスキーマとの
   // 互換性維持のため旧名を使い、未適用環境では従来の count クエリへフォールバックする。
@@ -426,10 +459,12 @@ export async function computeStats(
     paywallPlanViewedRows,
     paywallScrollRows,
     purchaseCtaRows,
+    checkoutRequestedRows,
     users,
     rawPerceptions,
     diagQuestionReach,
     checkoutCreatedRows,
+    checkoutCancelledRows,
     purchaseCompletedRows,
     purchaseDeliveryRows,
     friendJourneyRows,
@@ -487,6 +522,9 @@ export async function computeStats(
     fetchAll<PaywallEventRow>(
       evRows(["purchase_cta_clicked"], "session_id, owner_token, metadata"),
     ),
+    fetchAll<StripeEventRow>(
+      evRows(["checkout_requested"], "owner_token, metadata"),
+    ),
     // ----- テーブル (期間は created_at) -----
     fetchAll<{
       id: string;
@@ -524,6 +562,9 @@ export async function computeStats(
     questionReachCounts(),
     fetchAll<StripeEventRow>(
       evRows(["checkout_session_created"], "owner_token, metadata"),
+    ),
+    fetchAll<StripeEventRow>(
+      evRows(["checkout_cancelled"], "owner_token, metadata"),
     ),
     fetchAll<StripeEventRow>(
       evRows(["purchase_completed"], "owner_token, metadata"),
@@ -1704,11 +1745,23 @@ export async function computeStats(
   const courseCtaRows = purchaseCtaRows.filter((row) =>
     isActivePaywallMeta(row.metadata) && isCoursePaywallPageMeta(row.metadata),
   );
+  const courseRequestRows = checkoutRequestedRows.filter(
+    (row) =>
+      isActivePaywallMeta(row.metadata) &&
+      isCoursePaywallReturnMeta(row.metadata) &&
+      isLiveCheckoutAttemptRow(row),
+  );
   const courseCheckoutRows = checkoutCreatedRows.filter(
     (row) =>
       isActivePaywallMeta(row.metadata) &&
       isCoursePaywallReturnMeta(row.metadata) &&
       isLiveStripeRow(row),
+  );
+  const courseCancelledRows = checkoutCancelledRows.filter(
+    (row) =>
+      isActivePaywallMeta(row.metadata) &&
+      isCoursePaywallReturnMeta(row.metadata) &&
+      isLiveCheckoutAttemptRow(row),
   );
   const coursePurchaseRows = purchaseCompletedRows.filter(
     (row) =>
@@ -1721,7 +1774,12 @@ export async function computeStats(
   const coursePlanViewers = toUniquePaywallSessions(coursePlanViewRows);
   const courseScrollClickers = toUniquePaywallSessions(courseScrollRows);
   const courseCtaClickers = toUniquePaywallSessions(courseCtaRows);
+  const courseClientCtaSignals = countUniqueCheckoutAttempts(courseCtaRows);
+  const courseCheckoutRequests = countUniqueCheckoutAttempts(courseRequestRows);
   const courseStripeReached = countUniqueStripeSessions(courseCheckoutRows);
+  const courseCheckoutUsers = countUniqueCheckoutUsers(courseCheckoutRows);
+  const courseAnonymousCheckouts = countAnonymousCheckoutSessions(courseCheckoutRows);
+  const courseCheckoutCancelled = countUniqueCheckoutAttempts(courseCancelledRows);
   const coursePurchasers = countUniquePurchasers(coursePurchaseRows);
   const courseTransactions = countUniqueStripeSessions(coursePurchaseRows);
   const courseNewPurchases = countUniqueStripeSessions(
@@ -1751,7 +1809,13 @@ export async function computeStats(
     const ctaClicks = courseCtaRows.filter(
       (row) => productFromMeta(row.metadata) === product,
     );
+    const requests = courseRequestRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
     const checkouts = courseCheckoutRows.filter(
+      (row) => productFromMeta(row.metadata) === product,
+    );
+    const cancellations = courseCancelledRows.filter(
       (row) => productFromMeta(row.metadata) === product,
     );
     const purchases = coursePurchaseRows.filter(
@@ -1759,7 +1823,12 @@ export async function computeStats(
     );
     const viewers = toUniquePaywallSessions(planViews);
     const ctaClickers = toUniquePaywallSessions(ctaClicks);
+    const clientCtaSignals = countUniqueCheckoutAttempts(ctaClicks);
+    const checkoutRequests = countUniqueCheckoutAttempts(requests);
     const stripeReached = countUniqueStripeSessions(checkouts);
+    const checkoutUsers = countUniqueCheckoutUsers(checkouts);
+    const anonymousCheckouts = countAnonymousCheckoutSessions(checkouts);
+    const checkoutCancelled = countUniqueCheckoutAttempts(cancellations);
     const purchasers = countUniquePurchasers(purchases);
     const transactions = countUniqueStripeSessions(purchases);
     const newPurchases = countUniqueStripeSessions(
@@ -1777,7 +1846,12 @@ export async function computeStats(
       product,
       viewers,
       ctaClickers,
+      clientCtaSignals,
+      checkoutRequests,
       stripeReached,
+      checkoutUsers,
+      anonymousCheckouts,
+      checkoutCancelled,
       purchasers,
       transactions,
       newPurchases,
@@ -1785,9 +1859,12 @@ export async function computeStats(
       currency: courseRevenueCurrency,
       revenueMinor,
       revenueJpy,
-      ctaRate: rate(ctaClickers, viewers),
-      stripeRate: rate(stripeReached, ctaClickers),
+      ctaRate: rate(checkoutRequests, viewers),
+      requestRate: rate(checkoutRequests, viewers),
+      clientSignalDeliveryRate: rate(clientCtaSignals, checkoutRequests),
+      stripeRate: rate(stripeReached, checkoutRequests),
       checkoutCompletionRate: rate(transactions, stripeReached),
+      checkoutCancellationRate: rate(checkoutCancelled, stripeReached),
       purchaseRate: rate(purchasers, viewers),
     };
   });
@@ -2835,7 +2912,7 @@ export async function computeStats(
     paywallFunnel: [
       { label: "課金カード表示", count: courseCardViewers },
       { label: "解除ボタン押下", count: courseScrollClickers },
-      { label: "購入CTA押下", count: courseCtaClickers },
+      { label: "Checkout要求受付（サーバー）", count: courseCheckoutRequests },
       { label: "Stripe到達", count: courseStripeReached },
       { label: "決済完了", count: coursePurchasers },
     ],
@@ -2843,8 +2920,14 @@ export async function computeStats(
       version: activePaywallVersion,
       cardViewers: courseCardViewers,
       planViewers: coursePlanViewers,
+      scrollClickers: courseScrollClickers,
       ctaClickers: courseCtaClickers,
+      clientCtaSignals: courseClientCtaSignals,
+      checkoutRequests: courseCheckoutRequests,
       stripeReached: courseStripeReached,
+      checkoutUsers: courseCheckoutUsers,
+      anonymousCheckouts: courseAnonymousCheckouts,
+      checkoutCancelled: courseCheckoutCancelled,
       purchasers: coursePurchasers,
       transactions: courseTransactions,
       newPurchases: courseNewPurchases,
@@ -2854,6 +2937,15 @@ export async function computeStats(
       revenueJpy: courseRevenueJpy,
       revenuePerViewerJpy: rate(courseRevenueJpy, courseCardViewers),
       purchaseRate: rate(coursePurchasers, courseCardViewers),
+      requestToStripeRate: rate(courseStripeReached, courseCheckoutRequests),
+      checkoutCancellationRate: rate(
+        courseCheckoutCancelled,
+        courseStripeReached,
+      ),
+      clientSignalDeliveryRate: rate(
+        courseClientCtaSignals,
+        courseCheckoutRequests,
+      ),
       plans: coursePlans,
     },
     // 課金ファネル (友達診断ページ発の完全版)。Stripe到達は 2026-07-22 に計測追加。

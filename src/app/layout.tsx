@@ -49,13 +49,13 @@ const BASE_URL = "https://www.watashi-torisetsu.com";
 // 同期実行するためインライン化が必要)。
 //   - source   : utm_source 優先 / なければ ref
 //   - campaign : utm_campaign 優先 / なければ camp
-//   - medium: utm_medium。first-touchは欠損も含む一組で固定
+//   - medium: utm_medium。TikTok広告と確定できる場合だけ paid_social を補完
 //   - 着地URLの組はsessionStorageにも保存し、同じタブの遷移・再読込で維持
 //   - LIFF はクエリを落とすので liff.state / state に退避された元クエリも見る
 // ⚠️ source_user_id / generation (招待ツリー) とは無関係。
 const ACQUISITION_CAPTURE_SCRIPT = `(function(){try{
 var SK='wt_acq_source',CK='wt_acq_campaign',MK='wt_acq_medium',TK='wt_acq_touch_v2',SS='wt_acq_session_v2';
-function pick(p){return{source:p.get('utm_source')||p.get('ref'),campaign:p.get('utm_campaign')||p.get('camp'),medium:p.get('utm_medium')};}
+function pick(p){var s=p.get('utm_source')||p.get('ref'),c=p.get('utm_campaign')||p.get('camp'),m=p.get('utm_medium');if(!m&&s&&s.toLowerCase()==='tiktok'&&(c||p.get('ttclid')))m='paid_social';return{source:s,campaign:c,medium:m};}
 var qp=new URLSearchParams(window.location.search);
 var a=pick(qp);
 if(!a.source&&!a.campaign&&!a.medium){var st=qp.get('liff.state')||qp.get('state');if(st){try{var d=decodeURIComponent(st);var i=d.indexOf('?');a=pick(new URLSearchParams(i>=0?d.slice(i+1):d));}catch(e){}}}
@@ -79,7 +79,9 @@ var qp=new URLSearchParams(window.location.search);
 var hit=false;
 for(var k in KEYS){if(qp.get(k)){hit=true;break;}}
 if(!hit)return;
-for(var k in KEYS){var v=qp.get(k);if(v)localStorage.setItem(KEYS[k],v);else localStorage.removeItem(KEYS[k]);}
+var vals={};for(var k in KEYS)vals[k]=qp.get(k);
+if(!vals.utm_medium&&((vals.utm_source&&vals.utm_source.toLowerCase()==='tiktok'&&vals.utm_campaign)||vals.ttclid))vals.utm_medium='paid_social';
+for(var k in KEYS){var v=vals[k];if(v)localStorage.setItem(KEYS[k],v);else localStorage.removeItem(KEYS[k]);}
 }catch(e){}})();`;
 // 流入元リファラー補完: 外部サイトからの着地時に referrer のホスト名だけを
 // first-touch で保存する (wt_ref_host)。utm 無し流入 (検索・SNS内リンク等) の

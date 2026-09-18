@@ -41,7 +41,9 @@ const PRODUCT_EVENT_NAMES = [
   "paywall_plan_viewed",
   "paywall_scroll_clicked",
   "purchase_cta_clicked",
+  "checkout_requested",
   "checkout_session_created",
+  "checkout_cancelled",
   "purchase_completed",
   ...LINE_ALICE_FUNNEL_EVENT_NAMES,
 ] as const;

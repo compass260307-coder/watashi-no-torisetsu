@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:commerce": "node scripts/verify-commerce-catalog.mjs",
+    "verify:checkout-measurement": "node --experimental-strip-types scripts/checkout-measurement-test.mjs",
     "verify:id": "node scripts/verify-indonesian-parity.mjs",
     "verify:ko": "node scripts/verify-korean-me-content.mjs && node scripts/verify-korean-surface.mjs && node scripts/unmei-prompt-locale-test.mjs",
     "verify:tarot": "node --experimental-strip-types scripts/tarot-entitlement-regression-test.mjs",

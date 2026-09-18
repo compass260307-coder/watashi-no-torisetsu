@@ -60,6 +60,17 @@ Stripe Checkout Session IDのままで、成功済み媒体は監査行を見て
 
 ## ブラウザ計測との整合性
 
+購入ファネルは `checkout_attempt_id` で次の4段を接続する。
+
+- `purchase_cta_clicked`: ブラウザのクリック信号（欠損検知用）
+- `checkout_requested`: APIが受理したサーバー正本の入口
+- `checkout_session_created`: Stripe Session作成成功
+- `purchase_completed` / `checkout_cancelled`: 完了またはキャンセル
+
+集計のCheckout入口には `checkout_requested` を使い、ページ遷移時に欠けうる
+`purchase_cta_clicked` は配信率の監視にだけ使う。Checkout作成はSession数に加えて
+`owner_token` / `user_id` ベースのユーザー数も出力する。
+
 `meta_purchase` はMeta Purchase・GA4 Purchase・Yahoo検索広告へ送る前提とし、
 TikTok Purchaseはアプリから直接補完する。GTMを変更する場合も次の対応を維持する。
 

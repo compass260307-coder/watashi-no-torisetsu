@@ -76,10 +76,24 @@ export async function GET(request: NextRequest) {
     viralCoefficient: round(s.viral.viralCoefficient),
     // 汎用課金指標は payment_history の全商品確定決済。現行3コースだけの
     // 評価値は coursePaywall* として明示し、旧カードや別商品と混ぜない。
-    paywallViewed: s.paywallFunnel[1]?.count ?? 0,
-    paywallScrollClicked: s.paywallFunnel[2]?.count ?? 0,
-    purchaseCtaClicked: s.paywallFunnel[3]?.count ?? 0,
-    checkoutSessionCreated: s.paywallFunnel[4]?.count ?? 0,
+    paywallViewed: s.coursePaywall.cardViewers,
+    paywallScrollClicked: s.coursePaywall.scrollClickers,
+    purchaseCtaClicked: s.coursePaywall.clientCtaSignals,
+    purchaseCtaUsers: s.coursePaywall.ctaClickers,
+    checkoutRequested: s.coursePaywall.checkoutRequests,
+    checkoutSessionCreated: s.coursePaywall.stripeReached,
+    checkoutUsers: s.coursePaywall.checkoutUsers,
+    checkoutAnonymousSessions: s.coursePaywall.anonymousCheckouts,
+    checkoutCancelled: s.coursePaywall.checkoutCancelled,
+    checkoutRequestToStripeRate: round(
+      s.coursePaywall.requestToStripeRate,
+    ),
+    checkoutCancellationRate: round(
+      s.coursePaywall.checkoutCancellationRate,
+    ),
+    purchaseCtaSignalDeliveryRate: round(
+      s.coursePaywall.clientSignalDeliveryRate,
+    ),
     purchaseCompleted: s.purchaseCompleted,
     purchaseConversionRate: round(s.purchaseConversionRate),
     coursePaywallPurchaseCompleted: s.coursePurchaseCompleted,

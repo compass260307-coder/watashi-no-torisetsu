@@ -63,6 +63,15 @@ for (const path of ["/diagnosis", "/ko/diagnosis"]) {
   assert.deepEqual(acq.resolveAcquisitionForSave(""), expected);
 }
 resetBrowser();
+land("?utm_source=tiktok&utm_campaign=Carousel_KR");
+assert.deepEqual(acq.resolveAcquisitionForSave(""), { source: "tiktok", campaign: "Carousel_KR", medium: "paid_social" });
+assert.equal(localStorage.getItem("wt_acq_medium"), "paid_social");
+resetBrowser();
+localStorage.setItem("wt_acq_touch_v2", "1");
+localStorage.setItem("wt_acq_source", "tiktok");
+localStorage.setItem("wt_acq_campaign", "legacy_campaign");
+assert.equal(acq.resolveAcquisitionForSave("").medium, "paid_social");
+resetBrowser();
 localStorage.setItem("wt_acq_source", "instagram");
 localStorage.setItem("wt_ad_utm_medium", "cpc");
 assert.equal(acq.resolveAcquisitionForSave("").medium, null); // legacy source must not borrow ad medium
@@ -90,7 +99,8 @@ localStorage.setItem("wt_ad_utm_medium", "paid_social");
 assert.equal(acq.resolveAcquisitionForSave("").medium, "paid_social");
 resetBrowser();
 localStorage.setItem("wt_ad_ttclid", "test-click");
-assert.equal(classify(acq.resolveAcquisitionForSave("").medium), "不明");
+assert.equal(acq.resolveAcquisitionForSave("").medium, "paid_social");
+assert.equal(classify(acq.resolveAcquisitionForSave("").medium), "広告");
 for (const medium of ["paid_social", "cpc", "PPC", " paid_search ", "display"]) assert.equal(classify(medium), "広告");
 for (const medium of ["organic", "organic_social", " ORGANIC_SEARCH "]) assert.equal(classify(medium), "自然流入");
 for (const medium of [null, undefined, "", "  ", "social", "referral", "email", "direct", "unpaid", "paid-ish", "launch_campaign"]) assert.equal(classify(medium), "不明");
