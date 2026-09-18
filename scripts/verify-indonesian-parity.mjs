@@ -117,6 +117,41 @@ function equalSets(label, left, right) {
   }
 }
 
+function jsxStructure(
+  relativePath,
+  tags = ["p", "h2", "h3", "ul", "ol", "li", "table"],
+) {
+  const source = read(relativePath);
+  return Object.fromEntries(
+    tags.map((tag) => [
+      tag,
+      (source.match(new RegExp(`<${tag}(?:\\s|>)`, "g")) ?? []).length,
+    ]),
+  );
+}
+
+for (const [label, japanesePath, indonesianPath, tags] of [
+  ["terms", "src/app/terms/page.tsx", "src/app/id/terms/page.tsx"],
+  ["privacy", "src/app/privacy/page.tsx", "src/app/id/privacy/page.tsx"],
+  [
+    "commerce disclosure",
+    "src/app/legal/commerce/page.tsx",
+    "src/app/id/legal/commerce/page.tsx",
+    ["h2", "h3", "li", "table"],
+  ],
+]) {
+  const japanese = jsxStructure(japanesePath, tags);
+  const indonesian = jsxStructure(indonesianPath, tags);
+  if (JSON.stringify(japanese) !== JSON.stringify(indonesian)) {
+    failures.push(
+      `${label} structure parity: Japanese=${JSON.stringify(japanese)}, Indonesian=${JSON.stringify(indonesian)}`,
+    );
+  }
+  if (/[぀-ヿ㐀-鿿]/u.test(read(indonesianPath))) {
+    failures.push(`${label} localization: Japanese text remains in ${indonesianPath}`);
+  }
+}
+
 const japaneseRoutes = new Set(
   walkPages("src/app").filter(
     (route) =>
@@ -735,6 +770,31 @@ const criticalChecks = [
     'locale={isId ? "id" : "ko"}',
   ],
   ["home structured data", "src/app/id/page.tsx", '"@type": "WebApplication"'],
+  [
+    "diagnosis structured data",
+    "src/app/id/diagnosis/page.tsx",
+    '"@type": "WebApplication"',
+  ],
+  [
+    "report search privacy",
+    "src/app/id/report/layout.tsx",
+    "index: false",
+  ],
+  [
+    "purchase-complete search privacy",
+    "src/app/id/purchase-complete/layout.tsx",
+    "index: false",
+  ],
+  [
+    "tarot shared header",
+    "src/app/id/tarot/layout.tsx",
+    '<TopHeader locale="id" />',
+  ],
+  [
+    "tarot shared footer",
+    "src/app/id/tarot/layout.tsx",
+    '<TopFooter locale="id" />',
+  ],
   ["metadata isolation", "src/app/id/layout.tsx", "title: { absolute: TITLE"],
   [
     "not-found fallback",
