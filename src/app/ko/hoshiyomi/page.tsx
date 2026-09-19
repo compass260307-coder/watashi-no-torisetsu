@@ -7,11 +7,7 @@ import {
 } from "@/lib/hoshiyomi/store";
 import { localizedAlternates } from "@/lib/locale-seo";
 import { getSession } from "@/lib/session";
-import {
-  hasFullAccess,
-  hasPremiumBundleAccess,
-} from "@/lib/entitlements";
-import { HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE } from "@/lib/access-products";
+import { hasFullAccess } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -52,12 +48,11 @@ export default async function KoreanHoshiyomiPage({ searchParams }: PageProps) {
     chat?: string | string[];
     paid?: string | string[];
   }> = searchParams ?? Promise.resolve({});
-  const [conversationResult, creditResult, fullAccess, premiumAccess, params] =
+  const [conversationResult, creditResult, fullAccess, params] =
     await Promise.all([
       listHoshiyomiConversations(session.id),
       ensureHoshiyomiCreditsFromPurchase(session.id),
       hasFullAccess(session.id),
-      hasPremiumBundleAccess(session.id),
       paramsPromise,
     ]);
   const hasChatAccess =
@@ -83,11 +78,7 @@ export default async function KoreanHoshiyomiPage({ searchParams }: PageProps) {
         totalCredits={creditResult.data.total}
         persistenceReady={conversationResult.available && creditResult.available}
         hasChatAccess={hasChatAccess}
-        canUpgradeToPremium={
-          fullAccess &&
-          !premiumAccess &&
-          creditResult.data.total < HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE
-        }
+        canUpgradeToPremium={false}
         ownerToken={session.owner_token ?? undefined}
         locale="ko"
       />

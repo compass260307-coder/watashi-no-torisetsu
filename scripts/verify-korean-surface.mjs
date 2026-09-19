@@ -35,7 +35,7 @@ for (const required of [
   "잠긴 9개 섹션",
   "Alice 채팅 30회",
   "타로 3종",
-  "현재 완전판 코스와 동일한 내용",
+  "현재 새로 구매할 수 있는 한국어 유료 상품은 완전판 코스 하나입니다",
 ]) {
   if (!koreanCommerce.includes(required)) {
     problems.push(
@@ -47,6 +47,10 @@ for (const forbidden of [
   "잠긴 8개 섹션",
   "AI 점성술사 채팅 5회",
   "프리미엄: 완전판의 모든 기능",
+  "학생 플랜:",
+  "프리미엄 코스:",
+  "SELF_REPORT_PRICE_KRW",
+  "PREMIUM_BUNDLE_PRICE_KRW",
 ]) {
   if (koreanCommerce.includes(forbidden)) {
     problems.push(
@@ -59,15 +63,21 @@ const koreanTerms = fs.readFileSync(
   path.join(ROOT, "src/app/ko/terms/page.tsx"),
   "utf8",
 );
-for (const required of ["현재 완전판에는", "Alice 채팅 30회", "타로 3종"]) {
+for (const required of ["현재 한국어 유료 서비스는 완전판", "Alice 채팅 30회", "타로"]) {
   if (!koreanTerms.includes(required)) {
     problems.push(`src/app/ko/terms/page.tsx: current offer lacks ${required}`);
   }
 }
-if (koreanTerms.includes("프리미엄에만 포함됩니다")) {
-  problems.push(
-    "src/app/ko/terms/page.tsx: destiny and Alice are still premium-only",
-  );
+for (const forbidden of [
+  "프리미엄에만 포함됩니다",
+  "SELF_REPORT_PRICE_KRW",
+  "PREMIUM_BUNDLE_PRICE_KRW",
+]) {
+  if (koreanTerms.includes(forbidden)) {
+    problems.push(
+      `src/app/ko/terms/page.tsx: discontinued Korean offer remains (${forbidden})`,
+    );
+  }
 }
 
 const aishoPage = fs.readFileSync(
@@ -182,7 +192,6 @@ for (const required of [
   "완전판 코스 혜택",
   "완전판에서 잠금 해제",
   "완전판에는 채팅 30회가 포함됩니다.",
-  "프리미엄에서 잠금 해제",
   "Alice의 질문에 답하기",
 ]) {
   if (!meResultPage.includes(required)) {
@@ -195,6 +204,7 @@ for (const forbidden of [
   "showUnmeiPromo && !isKorean",
   "const cautionAllVisible = isKorean || partTwoUnlocked",
   "...(isKorean\n              ? []",
+  'isKorean\n              ? fullAccessPaid\n                ? "프리미엄에서 잠금 해제"',
 ]) {
   if (meResultPage.includes(forbidden)) {
     problems.push(
@@ -355,6 +365,14 @@ for (const required of [
   if (!koreanFooter.includes(required)) {
     problems.push(`effective Korean TopFooter: missing ${required}`);
   }
+}
+if (
+  !koreanFooter.includes('locale !== "ja" &&') ||
+  !koreanFooter.includes('social.href.startsWith("https://line.me/")')
+) {
+  problems.push(
+    "effective Korean TopFooter: Japanese official LINE is not restricted to the Japanese locale",
+  );
 }
 
 const japaneseArticles = fs.readFileSync(
@@ -564,7 +582,7 @@ if (koreanUnmeiLanding.includes("SelfAccessPlanCarousel")) {
 }
 if (
   !koreanUnmeiLanding.includes(
-    'product={hasFull ? "premium_bundle" : "full_access"}',
+    'product="full_access"',
   )
 ) {
   problems.push(
@@ -615,6 +633,7 @@ for (const required of [
   "friend_access_policy: FRIEND_ACCESS_POLICY_LITE_INCLUDED",
   'product === "full_access"\n            ? AISHO_ACCESS_POLICY_FULL_INCLUDED',
   "CURRENT_FULL_ACCESS_COPY[checkoutLocale]",
+  'checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product)',
 ]) {
   if (!checkoutSessionRoute.includes(required)) {
     problems.push(
@@ -697,13 +716,23 @@ const selfAccessPlanCarousel = fs.readFileSync(
 );
 for (const required of [
   "const isSingleOffer =",
-  "KO_LIGHT_ACCESS_ITEMS",
   "KO_FULL_ACCESS_ITEMS",
-  "학생이라면 여기",
+  'const KO_PLANS: readonly PlanDefinition[] = [\n  {\n    product: "full_access"',
 ]) {
   if (!selfAccessPlanCarousel.includes(required)) {
     problems.push(
       `src/components/result/SelfAccessPlanCarousel.tsx: Korean current offer lacks ${required}`,
+    );
+  }
+}
+for (const forbidden of [
+  "학생이라면 여기",
+  'product: "self_report",\n    eyebrow: "학생을 위한 플랜"',
+  'product: "premium_bundle",\n    eyebrow: "나만의 운명 설계도까지"',
+]) {
+  if (selfAccessPlanCarousel.includes(forbidden)) {
+    problems.push(
+      `src/components/result/SelfAccessPlanCarousel.tsx: discontinued Korean offer remains (${forbidden})`,
     );
   }
 }
@@ -840,9 +869,7 @@ const koreanHoshiyomiPage = fs.readFileSync(
   "utf8",
 );
 for (const required of [
-  "hasPremiumBundleAccess",
-  "HOSHIYOMI_CHAT_CREDITS_PREMIUM_BUNDLE",
-  "canUpgradeToPremium={",
+  "canUpgradeToPremium={false}",
   "hasChatAccess={false}",
 ]) {
   if (!koreanHoshiyomiPage.includes(required)) {
@@ -879,7 +906,7 @@ const unmeiPriceCta = fs.readFileSync(
   "utf8",
 );
 for (const required of [
-  'supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access"',
+  'const supportsLegacyUpgrade = locale === "ja";',
   'FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")',
 ]) {
   if (!unmeiPriceCta.includes(required)) {
@@ -962,9 +989,9 @@ if (unmeiPriceCta.includes('locale === "ja" && !hasFull')) {
   );
 }
 
-if (meResultPage.includes('isKorean || fullAccessPaid ? "premium_bundle"')) {
+if (!meResultPage.includes('const unmeiPurchaseProduct = isKorean')) {
   problems.push(
-    "src/components/result/MeResultPage.tsx: Korean destiny upsell still skips full_access",
+    "src/components/result/MeResultPage.tsx: Korean destiny upsell is not restricted to full_access",
   );
 }
 

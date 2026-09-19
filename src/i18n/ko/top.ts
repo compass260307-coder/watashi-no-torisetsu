@@ -19,9 +19,9 @@ export const KO_TOP_CONTENT = {
     cta: "무료로 진단 시작하기 →",
   },
   stats: [
-    { value: "3,000+", label: "오늘의 진단 횟수", color: "#5B5BEF" },
-    { value: "5만+", label: "진단한 사람", color: "#E86AA6" },
-    { value: "7,200+", label: "친구를 진단한 사람", color: "#3FAE8C" },
+    { value: "5만+", label: "오늘의 진단 횟수", color: "#5B5BEF" },
+    { value: "100만+", label: "진단한 사람", color: "#E86AA6" },
+    { value: "2만+", label: "친구를 진단한 사람", color: "#3FAE8C" },
     { value: "89%", label: "정확도 평가", color: "#E0A544" },
   ],
   footer: {

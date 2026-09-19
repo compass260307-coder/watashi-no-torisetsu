@@ -1,8 +1,8 @@
 "use client";
 
 // /unmei 未購入LPの購入CTA (従来導線では価格も表示)。
-// 日本版・韓国版とも、未購入者には現行の完全版を販売する。
-// 運命の設計図を含まない旧完全版保有者にはプレミアムへの差額を出し分ける。
+// 全言語で未購入者には現行の完全版を販売する。
+// プレミアムへの旧差額導線は日本語版だけに残す。
 // 価格の権威は統一Checkout APIであり、ここでの判定は表示用。
 //
 // 判定は BottomNav と同じ流儀:
@@ -26,7 +26,6 @@ import {
   FULL_ACCESS_PRICE_KRW,
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
-  PREMIUM_BUNDLE_PRICE_KRW,
 } from "@/lib/access-products";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
 
@@ -81,9 +80,8 @@ export default function UnmeiPriceCta({
   );
   const [hasFull, setHasFull] = useState(sessionHasFull);
   const cancelledProduct = useCheckoutCancelledProduct();
-  // The English catalog sells only Complete Edition. Legacy premium upgrades remain
-  // available for Japanese/Korean entitlement compatibility only.
-  const supportsLegacyUpgrade = locale === "ja" || locale === "ko";
+  // 韓国語・英語・インドネシア語版は完全版だけを販売する。
+  const supportsLegacyUpgrade = locale === "ja";
   const purchaseProduct =
     supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access";
   const standardPrice =
@@ -94,12 +92,7 @@ export default function UnmeiPriceCta({
       : locale === "ko"
       ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`
       : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`;
-  const upgradePrice =
-    locale === "en"
-      ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`
-      : locale === "ko"
-      ? `₩${(PREMIUM_BUNDLE_PRICE_KRW - FULL_ACCESS_PRICE_KRW).toLocaleString("ko-KR")}`
-      : `¥${PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}`;
+  const upgradePrice = `¥${PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}`;
   const showUpgradePrice = supportsLegacyUpgrade && hasFull;
 
   useEffect(() => {
@@ -222,9 +215,7 @@ export default function UnmeiPriceCta({
       {!launchChat && (showUpgradePrice ? (
         <div className="mt-4">
           <p className="text-[13px] font-bold text-[#2E2E5C]/55 md:text-[14px]">
-            {locale === "ko"
-              ? "완전판 코스 구매 완료"
-              : "完全版コース購入済み"}
+            完全版コース購入済み
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
             {/* 価格は Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
@@ -232,9 +223,7 @@ export default function UnmeiPriceCta({
               {upgradePrice}
             </p>
             <span className="inline-flex rounded-full bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-black text-[#5B5BEF] md:text-[13px]">
-              {locale === "ko"
-                ? "완전판 사용자 한정"
-                : "差額でアップグレード"}
+              差額でアップグレード
             </span>
           </div>
         </div>
