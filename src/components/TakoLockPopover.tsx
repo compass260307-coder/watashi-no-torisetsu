@@ -2,7 +2,7 @@
 
 // 自己診断前のナビ項目ロック中ポップオーバー。
 //   自己診断が終わっていない (owner_token 無し) 状態でボトムナビの
-//   「友達診断」「Alice」「運命」を押したときに、対象タブの少し上から
+//   「友達診断」「Alice」「運命」「タロット」を押したときに、対象タブの少し上から
 //   ぴょこっと出す小カード。
 //   背景は暗くしない (モーダルではなく吹き出し)。外側タップ / Esc / ✕ で閉じ、
 //   外側タップは下の要素の操作 (別タブへの遷移など) をブロックしない。
@@ -13,7 +13,11 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 
-export type DiagnosisLockTarget = "friend" | "astrologer" | "unmei";
+export type DiagnosisLockTarget =
+  | "friend"
+  | "astrologer"
+  | "unmei"
+  | "tarot";
 
 // ja/ko/en の文言セット。ko は既存の /ko/tako ガードページの言い回し
 // (자기 진단 / 자기 진단 시작하기) に合わせる。
@@ -37,6 +41,12 @@ const COPY = {
       bodyLine1: "自己診断が完了すると、",
       bodyLine2: "設計図のコースを選べるよ",
     },
+    tarot: {
+      ariaLabel: "タロットはロック中",
+      heading: "タロットはまだロック中",
+      bodyLine1: "自己診断が完了すると、",
+      bodyLine2: "タロット占いを楽しめるよ",
+    },
   },
   ko: {
     friend: {
@@ -56,6 +66,12 @@ const COPY = {
       heading: "운명의 설계도는 아직 잠겨 있어요",
       bodyLine1: "자기 진단을 완료하면",
       bodyLine2: "설계도 코스를 선택할 수 있어요",
+    },
+    tarot: {
+      ariaLabel: "타로 잠금 안내",
+      heading: "타로는 아직 잠겨 있어요",
+      bodyLine1: "자기 진단을 완료하면",
+      bodyLine2: "타로점을 즐길 수 있어요",
     },
   },
   en: {
@@ -77,6 +93,12 @@ const COPY = {
       bodyLine1: "Complete your personality test",
       bodyLine2: "to unlock the Complete Edition.",
     },
+    tarot: {
+      ariaLabel: "Tarot locked",
+      heading: "Tarot is still locked",
+      bodyLine1: "Complete your personality test",
+      bodyLine2: "to unlock your tarot readings.",
+    },
   },
   id: {
     friend: {
@@ -97,6 +119,12 @@ const COPY = {
       bodyLine1: "Selesaikan tes kepribadianmu",
       bodyLine2: "untuk membuka Edisi Lengkap.",
     },
+    tarot: {
+      ariaLabel: "Tarot terkunci",
+      heading: "Tarot masih terkunci",
+      bodyLine1: "Selesaikan tes kepribadianmu",
+      bodyLine2: "untuk membuka pembacaan tarot.",
+    },
   },
 } as const;
 
@@ -104,6 +132,7 @@ const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
   friend: "30%",
   astrologer: "50%",
   unmei: "70%",
+  tarot: "90%",
 };
 
 interface Props {
@@ -168,7 +197,7 @@ export function TakoLockPopover({
   return createPortal(
     // ナビ (約58px) のすぐ上に固定し、対象タブへ下向きの三角で接続する。
     // タブ位置はナビと同じ「中央寄せ max-w-[480px] の5等分」を再現して合わせる:
-    //   友達30% / Alice50% / 運命70% (ja / ko 共通)。
+    //   友達30% / Alice50% / 運命70% / タロット90% (全言語共通)。
     <div
       className="fixed inset-x-0 z-50 animate-modal-slide-up"
       style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
