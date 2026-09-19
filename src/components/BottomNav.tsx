@@ -47,6 +47,10 @@ import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 const UNMEI_COURSE_PRODUCTS = ["premium_bundle"] as const;
 const ALICE_COURSE_PRODUCTS = ["full_access", "premium_bundle"] as const;
 const TAROT_COURSE_PRODUCTS = ["full_access"] as const;
+const FULL_ACCESS_PAYWALL_IMAGE =
+  "/pricing/full-access-connection-felt-transparent.png";
+const FORTUNE_PAYWALL_IMAGE =
+  "/pricing/premium-destiny-felt-transparent.png";
 const UNMEI_PAYWALL_HASH = "#unlock-unmei";
 const TAROT_PAYWALL_HASH = "#unlock-tarot";
 
@@ -924,6 +928,15 @@ export function BottomNav() {
       {courseLockTarget ? (
         <PaywallOverlay
           ownerToken={ownerToken ?? undefined}
+          // 結果ページ外の共通ナビにはキャラ画像がないため、画像を明示しないと
+          // PCでも max-w-[460px] のモバイル向け単一カラムになる。スマホでは画像が
+          // hidden のまま、md 以上だけ既存の横長2カラム表示へ切り替える。
+          imageSrc={
+            courseLockTarget === "hoshiyomi"
+              ? FULL_ACCESS_PAYWALL_IMAGE
+              : FORTUNE_PAYWALL_IMAGE
+          }
+          imageAlt=""
           locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
           returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
           ctaSource={
