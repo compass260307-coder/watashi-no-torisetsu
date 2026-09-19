@@ -245,10 +245,10 @@ async function MeResultPageContent({
   // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
   const previewLocked =
     !acquisition && previewType !== null && sp.previewLock === "1";
-  // 公開タイプ別LP (/preview/[typeId]) 判定。ロック状態のモック描画だが、読者は
-  // 未診断の訪問者なので課金導線は出さず、獲得モード (/share) と同じく診断CTAへ寄せる
-  // (owner_token が "preview" のため購入APIはバリデーションで通らず、CTAを出しても壊れる)。
-  // シェアはモックの invite_code を使わず、この公開タイプページ自身を共有する。
+  // 公開タイプ別LP (/preview/[typeId]) 判定。ロック状態のモック描画だが、課金カードには
+  // ダミーの owner_token="preview" を渡さない。未診断の訪問者は購入CTAから診断へ送り、
+  // 実在ユーザーだけをCheckoutへ進める。シェアはモックの invite_code を使わず、
+  // この公開タイプページ自身を共有する。
   // dev の課金導線QA (?previewType&previewLock=1、fromPreview 無し) は従来どおり。
   const publicPreview = previewLocked && sp.fromPreview === "1";
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
@@ -999,7 +999,11 @@ async function MeResultPageContent({
         main 単体に塗ると main 外の課金カード/末尾CTAの帯だけ白く抜けて継ぎ目が
         出るため、ラッパーで包んで塗る。 */}
     <div style={resultThemeStyle}>
-    <main className="relative min-h-screen overflow-x-clip px-4 pb-6 md:px-8 md:pb-10">
+    <main
+      className={`relative min-h-screen overflow-x-clip px-4 md:px-8 ${
+        publicPreview ? "pb-0" : "pb-6 md:pb-10"
+      }`}
+    >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の
           薄グレー #F9F9FC (16P 参考・2026-08-26。白カード類が浮き上がる)。
           本文は左右ぎりぎり (mobile px-4 / PC px-8) まで広げ、PC は上限 max-w-[1080px] で中央寄せ。
@@ -1374,7 +1378,9 @@ async function MeResultPageContent({
               !acquisition &&
               !publicPreview;
             return (
-              <section className="mt-16 mb-14">
+              <section
+                className={`mt-16 ${publicPreview ? "mb-0" : "mb-14"}`}
+              >
                 <div className="mb-4 flex items-center gap-3">
                   <span
                     aria-hidden="true"
@@ -1574,7 +1580,7 @@ async function MeResultPageContent({
             </ShareDiagnosisLink>
           </div>
         ) : publicPreview ? (
-          <div className="mt-16 mb-12 text-center">
+          <div className="mt-6 mb-8 text-center">
             <Link
               href={`${localePrefix}/diagnosis`}
               className="inline-flex items-center gap-2 rounded-full bg-[#5B5BEF] px-8 py-4 text-[15px] font-bold text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
@@ -1590,17 +1596,22 @@ async function MeResultPageContent({
       </div>
     </main>
     {/* 学生向けライト課金カード。第二部が未解放のときのみ表示する。 */}
-    {/* 獲得モード/公開プレビューは課金導線なし (フェイルクローズで明示ガード) */}
-    {!partTwoUnlocked && !acquisition && !publicPreview && (
+    {/* 獲得モードは課金導線なし。公開プレビューはダミートークンを渡さず、
+        未診断なら FullAccessCta の通常フローで診断へ送る。 */}
+    {!partTwoUnlocked && !acquisition && (
       <>
         {/* 課金カード面は白帯 (上端ギザ)。解放後の末尾CTA帯と同じ見せ方で、
             グレー本文から白で切り替える (2026-08-26 指示)。 */}
         <div
-          className="-mt-12 pt-8 [&>section]:pb-4 md:-mt-16 md:pt-10"
+          className={
+            publicPreview
+              ? "pt-8 [&>section]:pb-4 md:pt-10"
+              : "-mt-12 pt-8 [&>section]:pb-4 md:-mt-16 md:pt-10"
+          }
           style={{ background: "#FFFFFF", clipPath: JAGGED_CLIP_TOP }}
         >
           <FullAccessPromoCard
-            ownerToken={token}
+            ownerToken={publicPreview ? undefined : token}
             imageSrc={sceneImage("work") ?? sceneImage("normal1") ?? dispImage}
             reportCharacterImageSrc={v3Image}
             imageAlt={dispName}
@@ -1686,6 +1697,7 @@ async function MeResultPageContent({
         locale={locale}
         source="me_share_band"
         group={resultGroup}
+        compact={publicPreview}
       />
     )}
     {/* サイト共通フッター (トップ / /types / /about と同じ)。ボトムナビの高さぶんは
