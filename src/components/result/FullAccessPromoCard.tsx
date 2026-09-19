@@ -23,7 +23,6 @@
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
 import { useEffect, useRef, useState } from "react";
-import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { FullAccessCta } from "./FullAccessCta";
 import { PeekButton, type UnlockPeek } from "./PaywallPeek";
@@ -218,36 +217,36 @@ const STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
 
 const KO_SELF_UNLOCKS: UnlockItem[] = [
   {
-    title: "내 결과의 잠긴 9개 섹션 전체 해제",
-    desc: "연애와 커리어 심층 분석부터 주변에서 보는 인상, 만약의 순간에 드러나는 모습까지 잠긴 내용을 모두 읽을 수 있어요.",
+    title: "내 결과에서 잠긴 9개 섹션 모두 해제",
+    desc: "연애·커리어 심층 분석부터 주변 사람들이 보는 인상, 만약의 상황에서 드러나는 모습까지 진단 결과의 나머지를 모두 읽을 수 있어요.",
   },
   {
     title: "16페이지 이상의 나만의 전자책",
-    desc: "나의 유형을 한 권으로 정리해 이메일로 보내 드려요. 저장하거나 인쇄하고 언제든 다시 확인할 수 있어요.",
+    desc: "나의 성격과 특징을 한 권에 담아 드려요. 저장하거나 인쇄할 수 있어 언제든 다시 읽을 수 있어요.",
     peek: KO_PEEK_EBOOK,
   },
   {
-    title: "당신의 전담 점성술사 ‘Alice’와 채팅",
-    desc: "내 성격과 별을 이해한 Alice에게 고민이나 망설임을 상담할 수 있어요.",
+    title: "나만의 전담 점술가 ‘Alice’와 채팅",
+    desc: "내 성격과 별을 이해하는 Alice가 연애·일·인간관계 등 고민에 맞춰 답해 줘요.",
     peek: KO_PEEK_ALICE,
   },
   {
-    title: "Alice의 운세 기능 전체 해제",
-    desc: "나만의 ‘운명의 설계도’와 오늘의 한 장·세 장 뽑기·YES / NO 타로를 모두 이용할 수 있어요.",
+    title: "Alice의 모든 운세 기능 해제",
+    desc: "나만의 ‘운명의 설계도’에 더해 Alice가 타로 카드를 뽑아 연애·일·인간관계에 대한 고민과 망설임을 점쳐 줘요.",
     peek: KO_PEEK_ALICE_FORTUNE,
   },
   {
     title: "궁합 진단 기능 전체 해제",
-    desc: "궁금한 상대와의 궁합을 연애·우정·일·엇갈림 등 상황별로 자세히 읽을 수 있어요.",
+    desc: "연애·우정·일에서의 궁합부터 서로 엇갈리기 쉬운 지점까지 두 사람의 관계를 자세히 알아볼 수 있어요.",
     peek: KO_PEEK_AISHO,
   },
   {
-    title: "두 번째 친구부터 친구 진단 결과 전체 해제",
-    desc: "친구가 보는 캐릭터, 성격 차이, 연애 성향과 궁합까지 친구별 결과 시트를 모두 읽을 수 있어요.",
+    title: "두 번째 친구부터 친구 진단 결과 모두 해제",
+    desc: "친구가 보는 캐릭터·성격의 차이·연애 성향·궁합까지 친구별 결과 시트를 모두 읽을 수 있어요.",
   },
   {
-    title: "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
-    desc: "모두의 답변을 한데 모은 종합 리포트예요. 답변이 늘 때마다 몇 번이든 업데이트할 수 있어요.",
+    title: "친구들이 보는 나의 분석 리포트를 몇 번이든 업데이트",
+    desc: "친구들의 답변을 모은 타인 분석 PDF를 만들어요. 답변이 늘어날 때마다 최신 내용으로 몇 번이든 업데이트할 수 있어요.",
     peek: KO_PEEK_FRIENDS,
   },
 ];
@@ -796,7 +795,7 @@ export function FullAccessPromoCard({
             : isEnglish
             ? "What you’ll unlock"
             : isKorean
-            ? "업그레이드로 이용할 수 있는 항목"
+            ? "업그레이드하면 얻을 수 있는 것"
             : "アップグレードで手に入るもの"}
         </h3>
       )}
@@ -1115,7 +1114,7 @@ export function FullAccessPromoCard({
                   : isEnglish
                   ? "You’ve read the free report. Now go one step deeper into love, work, relationships, how friends see you, and Alice’s astrology, tarot, and guidance."
                   : isKorean
-                  ? "무료 리포트를 읽었다면 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상과 Alice의 운세·타로·상담까지 모두 열립니다."
+                  ? "무료 리포트를 읽었다면, 이제 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상까지 더욱 구체적으로 깊이 알아볼 수 있어요."
                   : "無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。"}
             </p>
 
@@ -1163,7 +1162,7 @@ export function FullAccessPromoCard({
                 : isEnglish
                 ? "One-time payment — no subscription"
                 : isKorean
-                ? "월 구독이 아닌, 1회 결제"
+                ? "일회성 구매(결제는 1회만)"
                 : "買い切り（お支払いは1回のみ）"}
             </p>
 
@@ -1243,7 +1242,7 @@ export function FullAccessPromoCard({
                   : isEnglish
                   ? `Trusted by ${DIAGNOSIS_COUNT_SNAPSHOT}+ people`
                   : isKorean
-                  ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상이 진단했어요`
+                  ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상의 고객이 신뢰하고 있어요`
                   : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
               </span>
               {courseSwitchLabel ? (
@@ -1259,12 +1258,6 @@ export function FullAccessPromoCard({
                 </>
               ) : null}
             </p>
-
-            {isKorean ? (
-              <KoreanPurchaseLegalNotice
-                className={`mt-2 ${hasImage ? "text-center md:text-left" : "text-center"}`}
-              />
-            ) : null}
 
             {benefitsBeforePrice ? null : unlockBenefitsPanel}
           </div>

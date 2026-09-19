@@ -662,6 +662,10 @@ for (const required of [
   "KO_PEEK_FRIENDS",
   "KO_PEEK_ALICE_FORTUNE",
   "locale={locale}",
+  "업그레이드하면 얻을 수 있는 것",
+  "친구들이 보는 나의 분석 리포트를 몇 번이든 업데이트",
+  "명 이상의 고객이 신뢰하고 있어요",
+  "일회성 구매(결제는 1회만)",
 ]) {
   if (!fullAccessPromoCard.includes(required)) {
     problems.push(
@@ -673,6 +677,10 @@ for (const forbidden of [
   "!isKorean && resolvedCardMode",
   "isKorean || legacyPlanStyle",
   "!isKorean && isStandaloneSelfReport",
+  "업그레이드로 이용할 수 있는 항목",
+  "이메일로 보내 드려요",
+  "명 이상이 진단했어요",
+  "월 구독이 아닌, 1회 결제",
 ]) {
   if (fullAccessPromoCard.includes(forbidden)) {
     problems.push(
