@@ -1205,7 +1205,7 @@ export async function POST(request: NextRequest) {
               ...(checkoutLocale === "ja"
                 ? { display_name: "ワタシのトリセツ" }
                 : checkoutLocale === "ko"
-                  ? { display_name: "ALICE 진단" }
+                  ? { display_name: "앨리스 진단" }
                   : checkoutLocale === "id"
                     ? { display_name: "Alice Personalities" }
                   : {}),
