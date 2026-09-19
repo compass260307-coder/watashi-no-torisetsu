@@ -754,13 +754,8 @@ async function MeResultPageContent({
   //   解決順: キャラ別 <slug>_<variant>.png → グループ共通 <group>_<variant>.png
   //   (例 jellyfish_N_love.png → sea_love.png)
   const sceneSlug = path.basename(v3Image).replace(/\.\w+$/, "");
-  // キャラ別のループ動画。透過 WebM を優先し、Kling の標準出力 MP4 にも対応する。
-  // public/characters/anim/<slug>.<webm|mp4> を置いて prebuild を実行すると自動反映される。
-  const animFiles = characterImages.anims as string[];
-  const animFile = [`${sceneSlug}.webm`, `${sceneSlug}.mp4`].find((file) =>
-    animFiles.includes(file),
-  );
-  const animSrc = animFile ? `/characters/anim/${animFile}` : null;
+  // 診断結果のヒーローは、動画の圧縮感を避けるため 1024px の透過静止画を表示する。
+  // 他画面のキャラクターアニメーションは従来どおり維持する。
   const sceneGroup = flag32 ? thirtyTwoGroup(t32) : null;
   const sceneImage = (variant: string): string | null => {
     const candidates = [
@@ -1034,7 +1029,7 @@ async function MeResultPageContent({
           heroBg={heroBg}
           codeTint={codeTint}
           imageSrc={dispImage}
-          animSrc={animSrc}
+          animSrc={null}
           alt={dispName}
           name={dispName}
           description={personalize(dispDesc)}
