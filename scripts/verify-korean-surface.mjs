@@ -634,6 +634,7 @@ for (const required of [
   'product === "full_access"\n            ? AISHO_ACCESS_POLICY_FULL_INCLUDED',
   "CURRENT_FULL_ACCESS_COPY[checkoutLocale]",
   'checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product)',
+  '{ display_name: "앨리스 진단" }',
 ]) {
   if (!checkoutSessionRoute.includes(required)) {
     problems.push(
@@ -645,6 +646,7 @@ for (const forbidden of [
   'checkoutLocale === "ja" && product === "full_access"',
   "FRIEND_ACCESS_POLICY_FULL_ONLY",
   "usesCurrentJapaneseOffer",
+  '{ display_name: "ALICE 진단" }',
 ]) {
   if (checkoutSessionRoute.includes(forbidden)) {
     problems.push(
