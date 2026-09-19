@@ -205,13 +205,24 @@ export function TakoLockPopover({
       aria-label={copy.ariaLabel}
     >
       <div className="relative mx-auto w-full max-w-[480px]">
+        {/* カードを画面内へ寄せても、吹き出しの先端は押したタブを指し続ける。 */}
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-[7px] h-3.5 w-3.5 -translate-x-1/2 rotate-45 bg-white"
+          style={{
+            left: LEFT_BY_TARGET[target],
+            borderRight: "1px solid rgba(46,46,92,0.10)",
+            borderBottom: "1px solid rgba(46,46,92,0.10)",
+          }}
+        />
         <div
           ref={cardRef}
-          className="absolute bottom-0 -translate-x-1/2 rounded-[20px] bg-white px-5 pb-[18px] pt-5 text-center"
+          className="absolute bottom-0 z-10 -translate-x-1/2 rounded-[20px] bg-white px-5 pb-[18px] pt-5 text-center"
           style={{
             // 320px幅でも左右のタブ上でカードが画面外へ出ない幅に縮める。
             width: "min(220px, 60vw)",
-            left: LEFT_BY_TARGET[target],
+            // 左右端のタブでもカード本体は12pxの余白を残して画面内へ収める。
+            left: `clamp(calc(min(110px, 30vw) + 12px), ${LEFT_BY_TARGET[target]}, calc(100% - min(110px, 30vw) - 12px))`,
             border: "1px solid rgba(46,46,92,0.10)",
             boxShadow: "0 12px 32px rgba(46,46,92,0.18)",
           }}
@@ -238,15 +249,6 @@ export function TakoLockPopover({
                 : "テストを受ける"}
           </button>
 
-          {/* 下向き三角: カード中心 (=対象タブの中心に位置合わせ済み) を指す */}
-          <span
-            aria-hidden="true"
-            className="absolute -bottom-[7px] left-1/2 h-3.5 w-3.5 -translate-x-1/2 rotate-45 bg-white"
-            style={{
-              borderRight: "1px solid rgba(46,46,92,0.10)",
-              borderBottom: "1px solid rgba(46,46,92,0.10)",
-            }}
-          />
         </div>
       </div>
     </div>,
