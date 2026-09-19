@@ -7,8 +7,8 @@ export const ACCESS_PRODUCTS = [
   "premium_bundle",
 ] as const;
 
-// 日本版は完全版 ¥499（自己・友達・相性・運命の設計図・Alice 30回答・タロット）
-// の単一オファー。韓国版の既存コース構成と、過去購入の権利互換は維持する。
+// 日本版・韓国版は、自己・友達・相性・運命の設計図・Alice 30回答・タロットを
+// 含む完全版の単一オファー。旧商品の定義は過去購入の権利互換用に維持する。
 // 商品構成テストの識別子。過去バージョンは履歴の解釈と権利互換用に残すが、
 // 新規Checkoutは現行バージョン以外を受理しない。
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
@@ -23,6 +23,8 @@ export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "en_single_full_access_v3_usd_499_release_1290_list" as const;
 export const ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "id_single_full_access_v1_idr_49000_release_129000_list" as const;
+export const KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
+  "ko_single_full_access_v1_krw_4900_release_12900_list" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -69,6 +71,7 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+  KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ] as const;
 export const MULTI_COURSE_PAYWALL_PRODUCT = "multi_course" as const;
 export const SINGLE_ALL_ACCESS_PAYWALL_PRODUCT =
@@ -79,6 +82,12 @@ export const SINGLE_ALL_ACCESS_PAYWALL_PRODUCT =
 export const CURRENT_JA_ACCESS_PRODUCTS = [
   "full_access",
   "premium_bundle",
+] as const satisfies readonly AccessProduct[];
+
+// 韓国版で新しいCheckoutを作成できる商品。2026-09-19以降は完全版のみ。
+// self_report / premium_bundle は過去購入の権利復元・返金・監査用に残す。
+export const CURRENT_KO_ACCESS_PRODUCTS = [
+  "full_access",
 ] as const satisfies readonly AccessProduct[];
 
 // 「運命の設計図は premium_bundle だけ」という販売世代の監査印。
@@ -138,10 +147,11 @@ const FULL_ACCESS_TAROT_RECOVERY_PAYWALL_VERSIONS = new Set<string>([
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
   ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
+  KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION,
 ]);
 
 // 友達機能を含まない旧 self_report 世代の印。
-// 現行の日韓学生プランは友達機能を含む。値が無い旧購入は購入時の権利を維持する。
+// 販売当時の日韓学生プランは友達機能を含む。値が無い旧購入は購入時の権利を維持する。
 export const FRIEND_ACCESS_POLICY_FULL_ONLY = "full_only_v1" as const;
 
 // 2026-08-21: 日本版の学生向けライトには、Alice以外の完全版機能を含める。
@@ -273,7 +283,8 @@ export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。
 export const PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY = 800;
 
-// 韓国版の公開オファーは日本版と同じ「完全版＋学生向け」。KRW は Stripe 上も
+// 韓国版の新規販売は完全版のみ。旧 self_report / premium_bundle の価格は、
+// 過去購入者の差額・返金・監査互換のために保持する。KRW は Stripe 上も
 // zero-decimal currency なので、ここではウォンの整数をそのまま保持する。
 export const SELF_REPORT_LIST_PRICE_KRW = 4900;
 export const SELF_REPORT_PRICE_KRW = 1900;
@@ -347,7 +358,7 @@ export function accessProductPriceJpy(
   return PREMIUM_BUNDLE_PRICE_JPY;
 }
 
-/** 韓国版3コースのサーバ確定価格。購入済みコース分は差し引く。 */
+/** 韓国版のサーバ確定価格。旧購入から完全版への移行時だけ購入済み額を差し引く。 */
 export function accessProductPriceKrw(
   product: AccessProduct,
   entitlements: AccessEntitlements,
@@ -388,6 +399,7 @@ export function accessPaywallVersionForLocale(
 ): ThreeCoursePaywallVersion {
   if (locale === "en") return EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
   if (locale === "id") return ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
+  if (locale === "ko") return KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION;
   return THREE_COURSE_PAYWALL_VERSION;
 }
 
@@ -402,6 +414,14 @@ export function isCurrentJapaneseAccessProduct(
   value: AccessProduct,
 ): value is (typeof CURRENT_JA_ACCESS_PRODUCTS)[number] {
   return (CURRENT_JA_ACCESS_PRODUCTS as readonly AccessProduct[]).includes(
+    value,
+  );
+}
+
+export function isCurrentKoreanAccessProduct(
+  value: AccessProduct,
+): value is (typeof CURRENT_KO_ACCESS_PRODUCTS)[number] {
+  return (CURRENT_KO_ACCESS_PRODUCTS as readonly AccessProduct[]).includes(
     value,
   );
 }

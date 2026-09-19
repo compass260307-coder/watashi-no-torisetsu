@@ -94,8 +94,8 @@ export default function KoUnmeiLanding({
       <UnmeiViewTracker
         eventName="unmei_lp_view"
         ownerToken={ownerToken}
-        state={hasFull ? "upgrade_eligible" : "standard"}
-        product={hasFull ? "premium_bundle" : "full_access"}
+        state={hasFull ? "purchased" : "standard"}
+        product="full_access"
       />
 
       <div className="bg-[#FFFBF2] px-4 pb-8 pt-6 md:px-8 md:pb-10 md:pt-10">

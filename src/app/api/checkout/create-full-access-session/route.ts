@@ -1,5 +1,5 @@
-// 日本版 (完全版 ¥499 の単一プラン)・韓国版 (完全版 ₩4,900 / 学生向け ₩1,900)・
-// 英語版 (完全版 $4.99 の単一プラン) の
+// 日本版 (完全版 ¥499)・韓国版 (完全版 ₩4,900)・
+// 英語版 (完全版 $4.99)・インドネシア語版 (完全版 Rp49.000) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
 // POST /api/checkout/create-full-access-session
@@ -46,12 +46,14 @@ import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
   FRIEND_ACCESS_POLICY_LITE_INCLUDED,
   FULL_ACCESS_LIST_PRICE_JPY,
+  FULL_ACCESS_LIST_PRICE_KRW,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   isAccessProduct,
   isCurrentJapaneseAccessProduct,
+  isCurrentKoreanAccessProduct,
   isThreeCoursePaywallVersion,
   HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
@@ -157,8 +159,8 @@ const CHECKOUT_PRICING = {
   ko: {
     currency: "krw",
     saleAmount: FULL_ACCESS_PRICE_KRW,
-    listAmount: 12900,
-    discountAmount: 8000,
+    listAmount: FULL_ACCESS_LIST_PRICE_KRW,
+    discountAmount: FULL_ACCESS_LIST_PRICE_KRW - FULL_ACCESS_PRICE_KRW,
   },
   en: {
     currency: "usd",
@@ -650,9 +652,18 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
-  // 日本版は完全版へ一本化。韓国版の学生プランと、旧購入の権利は維持する。
-  // premium_bundle は日本版の旧購入からのアップグレード互換用として許可する。
+  // 日本版・韓国版は完全版へ一本化。旧購入の権利・返金互換は別経路で維持する。
+  // premium_bundle は日本版の旧購入からのアップグレード互換用としてのみ許可する。
   if ((checkoutLocale === "ja" || checkoutLocale === "id") && !isCurrentJapaneseAccessProduct(product)) {
+    return NextResponse.json(
+      {
+        error: "product_not_offered",
+        code: "product_not_offered",
+      },
+      { status: 400 },
+    );
+  }
+  if (checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product)) {
     return NextResponse.json(
       {
         error: "product_not_offered",

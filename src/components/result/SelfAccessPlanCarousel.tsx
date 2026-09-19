@@ -31,7 +31,6 @@ import {
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
-  FULL_ACCESS_LIST_PRICE_JPY,
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
@@ -42,14 +41,7 @@ import {
   formatIdrMinor,
   ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
-  PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW,
-  PREMIUM_BUNDLE_LIST_PRICE_KRW,
-  PREMIUM_BUNDLE_PRICE_KRW,
-  SELF_REPORT_DISCOUNT_PERCENT_KRW,
-  SELF_REPORT_LIST_PRICE_KRW,
-  SELF_REPORT_PRICE_KRW,
   SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
-  THREE_COURSE_PAYWALL_VERSION,
   type AccessEntitlements,
   type AccessProduct,
   type PaywallPlacement,
@@ -92,14 +84,11 @@ const JA_FULL_ACCESS_ITEMS = [
   "占い師『Alice』とのチャット30回",
   JA_TAROT_ITEM,
 ] as const;
-const KO_LIGHT_ACCESS_ITEMS = [
+const KO_FULL_ACCESS_ITEMS = [
   "자기 진단 결과의 잠금 9개 전체 해제",
   "16페이지 이상의 전용 전자책",
   "두 번째 친구부터 친구 진단 결과 전체 해제",
   "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
-] as const;
-const KO_FULL_ACCESS_ITEMS = [
-  ...KO_LIGHT_ACCESS_ITEMS,
   "나만을 위한 ‘운명의 설계도’",
   "점성술사 ‘Alice’와 채팅 30회",
   "Alice의 타로 세 종류 모두 해제",
@@ -194,19 +183,6 @@ function koreanPlanItemPeek(item: string): UnlockPeek | undefined {
 
 const KO_PLANS: readonly PlanDefinition[] = [
   {
-    product: "self_report",
-    eyebrow: "학생을 위한 플랜",
-    title: "학생 플랜",
-    basePrice: SELF_REPORT_PRICE_KRW,
-    listPrice: SELF_REPORT_LIST_PRICE_KRW,
-    badge: `출시 기념 ${SELF_REPORT_DISCOUNT_PERCENT_KRW}% 할인`,
-    iconSrc: "/pricing/self-report-felt-transparent.png",
-    accent: "#4F92A7",
-    soft: "#EAF6F8",
-    inheritedItemCount: 0,
-    items: KO_LIGHT_ACCESS_ITEMS,
-  },
-  {
     product: "full_access",
     eyebrow: "자기 진단·친구 진단·운세까지",
     title: "완전판 코스",
@@ -218,19 +194,6 @@ const KO_PLANS: readonly PlanDefinition[] = [
     soft: "#EEEEFF",
     inheritedItemCount: 0,
     items: KO_FULL_ACCESS_ITEMS,
-  },
-  {
-    product: "premium_bundle",
-    eyebrow: "나만의 운명 설계도까지",
-    title: "프리미엄 코스",
-    basePrice: PREMIUM_BUNDLE_PRICE_KRW,
-    listPrice: PREMIUM_BUNDLE_LIST_PRICE_KRW,
-    badge: `출시 기념 ${PREMIUM_BUNDLE_DISCOUNT_PERCENT_KRW}% 할인`,
-    iconSrc: "/pricing/premium-destiny-felt-transparent.png",
-    accent: "#9A6A24",
-    soft: "#FFF6DF",
-    inheritedItemCount: 0,
-    items: ["완전판 코스의 모든 기능"],
   },
 ] as const;
 
@@ -985,10 +948,6 @@ export function SelfAccessPlanCarousel({
     cancelledPlanIndex >= 0 ? cancelledPlanIndex : defaultPlanIndex;
   const cancelledPlan =
     cancelledPlanIndex >= 0 ? plans[cancelledPlanIndex] : null;
-  const cancelledStudentPlan =
-    isSingleOffer && cancelledProduct === "self_report"
-      ? allPlans[0]
-      : null;
   const [entitlements, setEntitlements] = useState<AccessEntitlements>(
     EMPTY_ACCESS_ENTITLEMENTS,
   );
@@ -1002,9 +961,6 @@ export function SelfAccessPlanCarousel({
       displayedEntitlements.premiumBundle);
   const [activeIndex, setActiveIndex] = useState(defaultPlanIndex);
   const [isCarouselVisible, setIsCarouselVisible] = useState(false);
-  const [studentPlanOpen, setStudentPlanOpen] = useState(
-    cancelledStudentPlan !== null,
-  );
   const scrollerRef = useRef<HTMLDivElement>(null);
   const placement: PaywallPlacement = onClose ? "modal" : "inline";
 
@@ -1085,50 +1041,6 @@ export function SelfAccessPlanCarousel({
     plans,
     paywallVersion,
     previewMode,
-  ]);
-
-  useEffect(() => {
-    if (
-      locale !== "ko" ||
-      !studentPlanOpen ||
-      previewMode ||
-      !isSingleOffer
-    ) {
-      return;
-    }
-    const page = trackingPageFromPathname(window.location.pathname);
-    const product = "self_report";
-    const dedupKey = `torisetsu_paywall_plan_viewed_${THREE_COURSE_PAYWALL_VERSION}_${page}_${placement}_${product}`;
-    try {
-      if (sessionStorage.getItem(dedupKey)) return;
-    } catch {
-      // ストレージ不可でも表示計測は継続する。
-    }
-    track("paywall_plan_viewed", {
-      ownerToken: ownerToken ?? null,
-      metadata: {
-        page,
-        product,
-        paywall_version: THREE_COURSE_PAYWALL_VERSION,
-        offer: SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
-        placement,
-        surface: returnTo,
-        source: "student_offer_link",
-      },
-    });
-    try {
-      sessionStorage.setItem(dedupKey, "1");
-    } catch {
-      // noop
-    }
-  }, [
-    isSingleOffer,
-    locale,
-    ownerToken,
-    placement,
-    previewMode,
-    returnTo,
-    studentPlanOpen,
   ]);
 
   useEffect(() => {
@@ -1368,79 +1280,6 @@ export function SelfAccessPlanCarousel({
           />
         ))}
       </div>
-
-      {isSingleOffer && returnTo === "me" && locale === "ko" ? (
-        <div className="relative z-10 mx-auto -mt-1 max-w-[520px] px-4 pb-4 text-center md:px-6">
-          <button
-            type="button"
-            aria-expanded={studentPlanOpen}
-            aria-controls={`${anchorId}-student-plan`}
-            onClick={() => setStudentPlanOpen((open) => !open)}
-            className="rounded-full px-4 py-2 text-[13px] font-black text-[#4F7080] underline decoration-1 underline-offset-4 transition hover:bg-[#EAF6F8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F92A7]"
-          >
-            {locale === "ko" ? "학생이라면 여기" : "学生の方はこちら"}
-            <span aria-hidden="true" className="ml-1">
-              {studentPlanOpen ? "↑" : "↓"}
-            </span>
-          </button>
-
-          {studentPlanOpen ? (
-            <div id={`${anchorId}-student-plan`} className="mt-3 text-left">
-              <div className="mb-3 rounded-2xl border border-[#CFE5E8] bg-[#F4FBFC] px-4 py-3 text-center">
-                <p className="text-[13px] font-black text-[#345E6B]">
-                  {locale === "ko"
-                    ? `자기 진단과 친구 진단을 1회 결제 ${formatPrice(SELF_REPORT_PRICE_KRW, locale)}에`
-                    : `自己診断＋友達診断を、買い切り${formatPrice(SELF_REPORT_PRICE_JPY, locale)}で`}
-                </p>
-                <p className="mt-1 text-[11px] font-bold leading-relaxed text-[#667A80]">
-                  {locale === "ko"
-                    ? "전용 전자책과 타인 분석 PDF가 포함돼요. 궁합 진단·운명의 설계도·Alice는 포함되지 않아요."
-                    : "専用電子書籍と他己分析PDF、相性診断を含みます。運命の設計図・Aliceは含まれません。"}
-                </p>
-              </div>
-              {cancelledStudentPlan ? (
-                <CheckoutCancelledModal
-                  locale={locale}
-                  courseName={cancelledStudentPlan.title}
-                  imageSrc={cancelledStudentPlan.iconSrc}
-                  retryAction={
-                    <FullAccessCta
-                      ownerToken={ownerToken}
-                      locale={locale}
-                      source="student_offer_link"
-                      returnTo="me"
-                      product="self_report"
-                      paywallVersion={THREE_COURSE_PAYWALL_VERSION}
-                      placement={placement}
-                      compact
-                      previewMode={previewMode}
-                    >
-                      {locale === "ko" ? "학생 플랜으로 다시 결제하기" : "学生向けプランでもう一度決済する"}
-                    </FullAccessCta>
-                  }
-                />
-              ) : null}
-              <div role="list" aria-label={locale === "ko" ? "학생 요금제" : "学生向け料金プラン"} className="flex justify-center">
-                <PlanCard
-                  plan={allPlans[0]}
-                  entitlements={displayedEntitlements}
-                  ownerToken={ownerToken}
-                  ctaSource="student_offer_link"
-                  placement={placement}
-                  returnTo="me"
-                  locale={locale}
-                  previewMode={previewMode}
-                  compactModal={!!onClose}
-                  usePlanBasePrice={previewMode && !hasPreviewPurchase}
-                  moveOneTimePurchaseCaptionBelowPrice
-                  singleOffer
-                  ebookPeek={ebookPeek}
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       <div
         className={

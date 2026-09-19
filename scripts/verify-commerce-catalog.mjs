@@ -22,6 +22,8 @@ const commercePage = read("src/app/legal/commerce/page.tsx");
 const indonesianCommercePage = read(
   "src/app/id/legal/commerce/page.tsx",
 );
+const koreanCommercePage = read("src/app/ko/legal/commerce/page.tsx");
+const koreanTermsPage = read("src/app/ko/terms/page.tsx");
 const indonesianPlans = read(
   "src/components/result/SelfAccessPlanCarousel.tsx",
 );
@@ -73,6 +75,38 @@ const contractChecks = [
     valid: accessProducts.includes(
       '"en_single_full_access_v3_usd_499_release_1290_list" as const',
     ),
+  },
+  {
+    label: "Korean full access checkout price is KRW 4,900",
+    valid: accessProducts.includes(
+      "export const FULL_ACCESS_PRICE_KRW = 4900;",
+    ),
+  },
+  {
+    label: "Korean single-offer paywall version records the frozen offer",
+    valid: accessProducts.includes(
+      '"ko_single_full_access_v1_krw_4900_release_12900_list" as const',
+    ),
+  },
+  {
+    label: "Korean current checkout allowlist contains only full access",
+    valid: accessProducts.includes(
+      'export const CURRENT_KO_ACCESS_PRODUCTS = [\n  "full_access",\n] as const',
+    ),
+  },
+  {
+    label: "Checkout API rejects discontinued Korean products",
+    valid: checkoutRoute.includes(
+      'checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product)',
+    ),
+  },
+  {
+    label: "Korean Stripe Checkout derives pricing from shared constants",
+    valid:
+      checkoutRoute.includes("listAmount: FULL_ACCESS_LIST_PRICE_KRW,") &&
+      checkoutRoute.includes(
+        "FULL_ACCESS_LIST_PRICE_KRW - FULL_ACCESS_PRICE_KRW",
+      ),
   },
   {
     label: "Stripe Checkout uses the frozen reference price",
@@ -187,6 +221,20 @@ const contractChecks = [
     ),
   },
   {
+    label: "Korean commerce disclosure lists only the shared full access price",
+    valid:
+      koreanCommercePage.includes("FULL_ACCESS_PRICE_KRW") &&
+      !koreanCommercePage.includes("SELF_REPORT_PRICE_KRW") &&
+      !koreanCommercePage.includes("PREMIUM_BUNDLE_PRICE_KRW"),
+  },
+  {
+    label: "Korean terms list only the shared full access price",
+    valid:
+      koreanTermsPage.includes("FULL_ACCESS_PRICE_KRW") &&
+      !koreanTermsPage.includes("SELF_REPORT_PRICE_KRW") &&
+      !koreanTermsPage.includes("PREMIUM_BUNDLE_PRICE_KRW"),
+  },
+  {
     label: "Indonesian purchase email renders IDR from Stripe minor units",
     valid:
       emailTemplates.includes("formatIdrMinor(price)") &&
@@ -224,5 +272,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

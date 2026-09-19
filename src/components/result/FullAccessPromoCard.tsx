@@ -601,7 +601,7 @@ export function FullAccessPromoCard({
   const paywallProduct = usesPlanCarousel
     ? SINGLE_ALL_ACCESS_PAYWALL_PRODUCT
     : product;
-  const paywallVersion = isEnglish || isIndonesian
+  const paywallVersion = isEnglish || isIndonesian || isKorean
     ? accessPaywallVersionForLocale(locale)
     : usesPlanCarousel || isStandaloneSelfReport || usesLegacyFullAccessCard
       ? THREE_COURSE_PAYWALL_VERSION

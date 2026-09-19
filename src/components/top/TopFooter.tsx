@@ -603,12 +603,15 @@ export default function TopFooter({
             </p>
           </div>
 
-          {/* SNS 公式アカウント。英語版では国内向けの公式LINEを表示しない。 */}
+          {/* SNS 公式アカウント。日本向けの公式LINEは日本語版だけに表示する。 */}
           <div className="flex items-center gap-3">
             {SOCIALS.filter(
               (social) =>
                 social.href !== "#" &&
-                !(isEn && social.href.startsWith("https://line.me/")),
+                !(
+                  locale !== "ja" &&
+                  social.href.startsWith("https://line.me/")
+                ),
             ).map((s) => (
               <a
                 key={s.label.ja}

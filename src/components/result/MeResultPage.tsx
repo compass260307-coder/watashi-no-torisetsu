@@ -390,9 +390,11 @@ async function MeResultPageContent({
     !acquisition &&
     !destinyFeaturesPaid &&
     (previewType ? !previewLocked : deepDivePaid);
-  const unmeiPurchaseProduct = fullAccessPaid
-    ? "premium_bundle"
-    : "full_access";
+  const unmeiPurchaseProduct = isKorean
+    ? "full_access"
+    : fullAccessPaid
+      ? "premium_bundle"
+      : "full_access";
   // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
   // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
   // 16P「プレミアムキャリアキット」参考: 柔らかいカード + 締まったタイポ +
@@ -405,9 +407,7 @@ async function MeResultPageContent({
             ? "Everything plan benefits"
             : "Complete Edition benefits"
           : isKorean
-          ? fullAccessPaid
-            ? "프리미엄 코스 혜택"
-            : "완전판 코스 혜택"
+          ? "완전판 코스 혜택"
           : isIndonesian
             ? "Manfaat Edisi Lengkap"
           : fullAccessPaid
@@ -423,9 +423,7 @@ async function MeResultPageContent({
                 ? "Unlocked with Everything"
                 : "Unlocked with the Complete Edition"
               : isKorean
-              ? fullAccessPaid
-                ? "프리미엄에서 잠금 해제"
-                : "완전판에서 잠금 해제"
+              ? "완전판에서 잠금 해제"
               : isIndonesian
                 ? "Terbuka dengan Edisi Lengkap"
               : fullAccessPaid
@@ -489,9 +487,7 @@ async function MeResultPageContent({
               body: isEnglish
                 ? "Because Alice already understands your personality and birth chart, you can get straight to the heart of love, work, relationships, and difficult choices."
                 : isKorean
-                ? fullAccessPaid
-                  ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 프리미엄에는 채팅 30회가 포함됩니다."
-                  : "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 완전판에는 채팅 30회가 포함됩니다."
+                ? "내 성격 진단과 출생 차트를 이해한 전담 점성술사에게 고민과 선택을 상담할 수 있어요. 완전판에는 채팅 30회가 포함됩니다."
                 : isIndonesian
                   ? "Alice memahami kepribadian dan peta kelahiran Anda, sehingga pembahasan cinta, pekerjaan, hubungan, dan pilihan sulit dapat langsung menyentuh inti."
                   : "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",

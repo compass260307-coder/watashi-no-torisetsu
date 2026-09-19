@@ -760,6 +760,8 @@ export function BottomNav() {
             const diagnosisTarget: DiagnosisLockTarget =
               it.key === "unmei"
                 ? "unmei"
+                : it.key === "tarot"
+                  ? "tarot"
                 : it.key === "astrologer"
                   ? "astrologer"
                   : "friend";
@@ -785,27 +787,7 @@ export function BottomNav() {
                       : "（ロック中）"
                 }`}
                 onClick={() => {
-                  if (
-                    courseTarget === "unmei" ||
-                    courseTarget === "tarot"
-                  ) {
-                    const source = `nav_locked_${courseTarget}`;
-                    if (!isCoursePaywallPreview) {
-                      track("paywall_scroll_clicked", {
-                        ownerToken,
-                        metadata: {
-                          source,
-                          page: trackingPageFromPathname(pathname),
-                          surface: courseTarget,
-                          destination: courseTarget,
-                          paywall_version: paywallVersion,
-                        },
-                      });
-                    }
-                    setDiagnosisLockTarget(null);
-                    setCoursePaywallSource(source);
-                    setCourseLockTarget(courseTarget);
-                  } else if (!hasToken && !isCoursePaywallPreview) {
+                  if (!hasToken && !isCoursePaywallPreview) {
                     setCourseLockTarget(null);
                     setCoursePaywallSource(null);
                     setDiagnosisLockTarget(diagnosisTarget);
@@ -943,14 +925,18 @@ export function BottomNav() {
             coursePaywallSource ?? `nav_locked_${courseLockTarget}`
           }
           products={
-            courseLockTarget === "hoshiyomi"
+            isKorean
+              ? TAROT_COURSE_PRODUCTS
+              : courseLockTarget === "hoshiyomi"
               ? ALICE_COURSE_PRODUCTS
               : courseLockTarget === "tarot"
                 ? TAROT_COURSE_PRODUCTS
                 : UNMEI_COURSE_PRODUCTS
           }
           defaultProduct={
-            courseLockTarget === "unmei" ? "premium_bundle" : "full_access"
+            !isKorean && courseLockTarget === "unmei"
+              ? "premium_bundle"
+              : "full_access"
           }
           heading={
             courseLockTarget === "hoshiyomi"
