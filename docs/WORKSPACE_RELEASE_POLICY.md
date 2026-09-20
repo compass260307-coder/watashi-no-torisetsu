@@ -74,14 +74,14 @@
 - リリース前にVercel CLIのversion、ログイン主体、接続先project ID、team、Git branchを確認します。
 - Productionのソースは、リモート`main`に存在するコミットだけとします。ローカルにしか存在しないコミットや未コミット差分を`vercel --prod`で直接公開しません。
 - 緊急rollbackでは検証済みの既存Deploymentをpromoteできますが、インシデントを閉じる前に正常版のコミットを`main`へ統合し、次回の`main`デプロイで逆戻りしないことを確認します。
-- 日本語Webの完全版は通常価格1,290円、販売・決済価格499円で固定します。`npm run verify:commerce`とGitHubの`commerce-catalog`チェックを通過しない変更はProductionへ進めません。
+- 日本語Webの完全版は2026-09-20 21:12 JSTから通常価格1,290円、販売・決済価格599円で固定します。`npm run verify:commerce`とGitHubの`commerce-catalog`チェックを通過しない変更はProductionへ進めません。
 - 英語WebのComplete Editionは通常価格$12.90、Release offer $7.91引き、販売・決済価格$4.99で固定します。
 - 非`main`ブランチのpushでも、自動でVercel Previewが起動します。
 - Previewで画面、API、認証、課金、アセット、ログを検証してからProductionへ進みます。
 - migrationとアプリは、DBとの前方・後方互換性を保つ適用順にします。必要なschemaより先に、それを必須とするアプリを公開しません。
 - Productionデプロイ、既存デプロイのpromote、rollbackは、対象と影響を確認し、明示的な許可がある場合だけ実行します。
 - デプロイ前に、Vercel上で利用可能なrollback手順、直前の正常デプロイ、DB変更を戻せるかどうかを確認します。
-- Production反映後は、Vercelのbuild logで`Branch: main`と対象Commitを確認し、`/legal/commerce`の完全版表示が499円であることを独自ドメインから検証します。
+- Production反映後は、Vercelのbuild logで`Branch: main`と対象Commitを確認し、`/legal/commerce`の完全版表示が599円であることを独自ドメインから検証します。
 
 ## 9. バックアップ
 

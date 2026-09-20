@@ -392,7 +392,7 @@ function promoteUnlockItem(
   ];
 }
 
-// 現行日本版では、相性診断も ¥499 の完全版で解放する。
+// 現行日本版では、相性診断も ¥599 の完全版で解放する。
 const AISHO_PRODUCTS: readonly AccessProduct[] = [
   "full_access",
 ];

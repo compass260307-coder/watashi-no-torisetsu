@@ -77,7 +77,7 @@ export function FullAccessCta({
   source?: string;
   /** 購入後の着地。診断・相性・運命の設計図の購入元へ戻す (既定は /me/[token])。 */
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
-  /** 日本版の新規販売は full_access=完全版¥499。その他は過去購入・他言語との互換用。 */
+  /** 日本版の新規販売は full_access=完全版¥599。その他は過去購入・他言語との互換用。 */
   product?: AccessProduct;
   /** 商品比較テストの識別子。未指定は旧単一カード。 */
   paywallVersion?: ThreeCoursePaywallVersion;
