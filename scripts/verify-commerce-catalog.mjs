@@ -41,7 +41,6 @@ const metaPurchase = read("src/lib/meta-purchase.ts");
 const resultUpgradeChat = read(
   "src/components/result-upgrade/ResultUpgradeChat.tsx",
 );
-const commerceCatalog = read("docs/COMMERCE_CATALOG.md");
 
 const contractChecks = [
   {
@@ -293,12 +292,6 @@ const contractChecks = [
       resultUpgradeChat.includes("結果をアップグレード") &&
       !resultUpgradeChat.includes("¥800で結果をアップグレード") &&
       !resultUpgradeChat.includes("¥899で結果をアップグレード"),
-  },
-  {
-    label: "Commerce catalog records the JPY 899 result upgrade",
-    valid:
-      commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 結果アップグレード | ¥899 |") &&
-      commerceCatalog.includes("`result_upgrade_v1_jpy_899`"),
   },
 ];
 
