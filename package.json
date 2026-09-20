@@ -20,6 +20,7 @@
     "verify:tarot": "node --experimental-strip-types scripts/tarot-entitlement-regression-test.mjs",
     "verify:ko:browser": "node scripts/verify-korean-browser.mjs",
     "verify:ko:prod": "node scripts/verify-korean-production.mjs",
+    "verify:en:prod": "node scripts/verify-english-production.mjs",
     "ephemeris:test": "node scripts/ephemeris-test.mjs",
     "unmei:prompt:test": "node scripts/unmei-prompt-locale-test.mjs"
   },

@@ -50,6 +50,7 @@ const jsonLd = {
         price: "0",
         priceCurrency: "JPY",
       },
+      brand: { "@id": `${BASE_URL}/#brand` },
       inLanguage: "ja-JP",
       audience: {
         "@type": "Audience",
@@ -73,10 +74,17 @@ const jsonLd = {
         "앨리스 진단",
         "Alice 진단",
         "나의 사용설명서",
+        "watashi-torisetsu.com",
       ],
       url: BASE_URL,
       inLanguage: ["ja-JP", "ko-KR", "en-US", "id-ID"],
       publisher: { "@id": `${BASE_URL}/#organization` },
+    },
+    {
+      "@type": "Brand",
+      "@id": `${BASE_URL}/#brand`,
+      name: GLOBAL_SITE_NAME,
+      url: BASE_URL,
     },
     {
       "@type": "Organization",
@@ -84,6 +92,7 @@ const jsonLd = {
       name: GLOBAL_SITE_NAME,
       alternateName: "ワタシのトリセツ運営事務局",
       url: BASE_URL,
+      brand: { "@id": `${BASE_URL}/#brand` },
       logo: {
         "@type": "ImageObject",
         url: `${BASE_URL}/icon.png`,

@@ -340,7 +340,7 @@ const EN_QUESTIONS: Question[] = [
 ];
 
 const EN_COPY: DiagnosisCopy = {
-  heroTitle: "Free Personality Test",
+  heroTitle: "Free Big Five Personality Test",
   heroSubtitle: "Discover your type through the OCEAN (Big Five) model",
   heroImageAlt: "Characters from Alice Personalities",
   nicknameLabel: "Nickname",
