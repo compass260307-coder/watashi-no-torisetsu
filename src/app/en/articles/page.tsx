@@ -6,10 +6,12 @@ import { EN_ARTICLES, EN_ARTICLE_CATEGORIES } from "@/lib/articles-en";
 import { EN_BRAND_NAME, localizedAlternates, SITE_URL } from "@/lib/locale-seo";
 
 const NAVY = "#2E2E5C";
+const TITLE = `Personality Test Guides | ${EN_BRAND_NAME}`;
+const DESCRIPTION = "Clear guides to the OCEAN personality model, self-understanding, compatibility, and feedback from friends.";
 
 export const metadata: Metadata = {
-  title: "Articles",
-  description: "Clear guides to the OCEAN personality model, self-understanding, compatibility, and feedback from friends.",
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
   alternates: localizedAlternates("en", "/articles", "/ko/articles", "/en/articles"),
   openGraph: {
     type: "website",
@@ -17,9 +19,15 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP", "ko_KR"],
     url: `${SITE_URL}/en/articles`,
     siteName: EN_BRAND_NAME,
-    title: `Articles | ${EN_BRAND_NAME}`,
-    description: "Clear guides to personality, self-understanding, and relationships.",
+    title: TITLE,
+    description: DESCRIPTION,
     images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/characters/keyvisual.webp"],
   },
 };
 
