@@ -7,8 +7,9 @@
 //   「払ったのに課金カード(ロック)が再表示」→ 再購入(二重課金)や離脱を招く。
 //
 // このコンポーネントは「?paid=1 かつ まだ未反映 (ロック中)」のときだけ親がマウントし、
-//   全画面「決済処理中…」を出しつつ status API をポーリング。full になったら paid= を外した
-//   URL に置き換えて再描画 (= ロック解除表示)。一定時間で反映されなければ手動再読み込み導線。
+//   全画面「決済処理中…」を出しつつ status API をポーリング。完全版系は下部バーの
+//   Alice・運命・タロットがすべて解放されてから paid= を外した URL に置き換えて再描画する。
+//   一定時間で反映されなければ手動再読み込み導線を表示する。
 
 import { useEffect, useState } from "react";
 import type { AppResultLocale } from "@/i18n/result";
@@ -61,7 +62,8 @@ export function PaidUnlockWatcher({
     let tries = 0;
 
     const reloadUnlocked = () => {
-      // paid= を外した URL に置換 (履歴を汚さない)。full 反映済みなので本文が出る。
+      // paid= を外した URL に置換 (履歴を汚さない)。必要な権限がすべて
+      // 反映済みなので、再読込後は本文と下部バーを解放済みで表示できる。
       window.location.replace(unlockedUrl(returnTo, ownerToken, locale));
     };
 
@@ -79,20 +81,23 @@ export function PaidUnlockWatcher({
             selfReport?: boolean;
             premiumBundle?: boolean;
             astrologer?: boolean;
+            unmei?: boolean;
             tarot?: boolean;
           };
+          const allBottomNavAccessGranted =
+            data.astrologer === true &&
+            data.unmei === true &&
+            data.tarot === true;
           const unlocked =
-            returnTo === "tarot"
+            product === "full_access" || product === "premium_bundle"
+              ? allBottomNavAccessGranted
+              : returnTo === "tarot"
               ? data.tarot
               : returnTo === "aisho"
               ? data.full
-              : returnTo === "hoshiyomi" && product === "premium_bundle"
-              ? data.astrologer
               : product === "self_report"
                 ? data.selfReport
-                : product === "premium_bundle"
-                  ? data.premiumBundle
-                  : data.full;
+                : data.full;
           if (unlocked) {
             reloadUnlocked();
             return;
