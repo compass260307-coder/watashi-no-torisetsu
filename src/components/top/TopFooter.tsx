@@ -124,7 +124,7 @@ const CONTENT: Record<TopLocale, FooterContent> = {
       { label: "特定商取引法に基づく表記", href: "/legal/commerce" },
     ],
     legalAriaLabel: "規約",
-    copyright: "ワタシのトリセツ運営事務局",
+    copyright: "Alice Personalities",
     disclaimer:
       "ワタシのトリセツ（私の取説）は、OCEAN（ビッグファイブ）診断と友達の回答で「自分の取扱説明書」を作る無料の性格診断サービスです。診断結果は Big Five 理論をベースにした、自分を知るための参考情報です。医学的・心理学的な診断を行うものではありません。",
     preparing: "（準備中）",
