@@ -62,8 +62,8 @@ const checks = {
       "Alice diagnosis Open Graph title",
     ],
     [
-      /<meta(?=[^>]*property="og:site_name")(?=[^>]*content="앨리스 진단")[^>]*>/,
-      "Alice diagnosis Open Graph site name",
+      /<meta(?=[^>]*property="og:site_name")(?=[^>]*content="Alice Personalities")[^>]*>/,
+      "global Alice Personalities Open Graph site name",
     ],
     [
       /"@type":"Brand"[^<]*"name":"앨리스 진단"/,
@@ -71,9 +71,39 @@ const checks = {
     ],
     [/href="\/ko\/diagnosis"/, "top page links to Korean diagnosis"],
     [/href="\/ko\/tako"/, "top page links to Korean friend diagnosis"],
+    [/href="\/ko\/types"/, "top page links to Korean personality types"],
+    [/href="\/ko\/about"/, "top page links to Korean service introduction"],
     [/aria-label="로그인"|>로그인</, "top page exposes Korean login modal"],
     [/documentElement\.lang=.*\/ko.*ko/, "top page sets document language for Korean routes"],
     [/<div lang="ko"/, "top page wraps content with lang=ko"],
+  ],
+  "/ko/diagnosis": [
+    [
+      /<title>무료 성격 진단 테스트 \| 앨리스 진단<\/title>/,
+      "Alice-branded diagnosis title",
+    ],
+    [/<h1[^>]*>무료 성격 진단 테스트<\/h1>/, "diagnosis H1"],
+  ],
+  "/ko/types": [
+    [
+      /<title>32가지 성격 유형 \| 앨리스 진단<\/title>/,
+      "Alice-branded personality types title",
+    ],
+    [/<h1[^>]*>성격 유형<\/h1>/, "personality types H1"],
+  ],
+  "/ko/about": [
+    [
+      /<title>서비스 소개 \| 앨리스 진단<\/title>/,
+      "Alice-branded service introduction title",
+    ],
+    [/앨리스 진단 서비스 소개/, "service introduction label"],
+  ],
+  "/ko/aisho": [
+    [
+      /<title>궁합 진단 \| 앨리스 진단<\/title>/,
+      "Alice-branded compatibility title",
+    ],
+    [/<h1[^>]*>궁합 진단<\/h1>/, "server-rendered compatibility H1"],
   ],
   "/robots.txt": [
     [/User-Agent: \*/i, "default crawler rule"],
@@ -87,6 +117,10 @@ const checks = {
     [
       /<loc>https:\/\/www\.watashi-torisetsu\.com\/ko<\/loc>/,
       "Korean home URL",
+    ],
+    [
+      /<loc>https:\/\/www\.watashi-torisetsu\.com\/ko\/aisho<\/loc>/,
+      "Korean compatibility URL",
     ],
     [
       /<xhtml:link(?=[^>]*hreflang="ko-KR")(?=[^>]*href="https:\/\/www\.watashi-torisetsu\.com\/ko")[^>]*\/>/,

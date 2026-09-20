@@ -1,8 +1,11 @@
 import type { Metadata, MetadataRoute } from "next";
 
 export const SITE_URL = "https://www.watashi-torisetsu.com";
+// Google Search supports one site name per domain (not per locale subdirectory).
+// Keep page/product names localized, while presenting one shared site identity.
+export const GLOBAL_SITE_NAME = "Alice Personalities";
 export const JA_SITE_NAME = "ワタシのトリセツ";
-export const EN_BRAND_NAME = "Alice Personalities";
+export const EN_BRAND_NAME = GLOBAL_SITE_NAME;
 export const EN_DEFAULT_TITLE = `${EN_BRAND_NAME} | Free Big Five Personality Test`;
 export const EN_DEFAULT_DESCRIPTION =
   "Alice Personalities is a free 50-question Big Five personality test with 32 character types and friend feedback to compare how you see yourself with how others see you.";
@@ -60,7 +63,7 @@ export const EN_HOME_FAQS = [
 export const KO_BRAND_NAME = "앨리스 진단";
 export const KO_SERVICE_NAME = "나의 사용설명서";
 export const KO_CHARACTER_NAME = "Alice";
-export const KO_SITE_NAME = KO_BRAND_NAME;
+export const KO_SITE_NAME = GLOBAL_SITE_NAME;
 export const KO_DEFAULT_TITLE = `${KO_BRAND_NAME} | ${KO_SERVICE_NAME}`;
 export const KO_DEFAULT_DESCRIPTION =
   "앨리스 진단은 Alice가 안내하는 성격 진단이에요. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나의 사용설명서’를 만들어 보세요.";

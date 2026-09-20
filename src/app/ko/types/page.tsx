@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import TypesGalleryPage from "@/components/types/TypesGalleryPage";
 import { KO_TYPES_COPY } from "@/i18n/ko/types";
 import {
+  KO_BRAND_NAME,
   KO_DEFAULT_OG_IMAGE,
   KO_SEO_KEYWORDS,
   KO_SITE_NAME,
 } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
+const TITLE = `32가지 성격 유형 | ${KO_BRAND_NAME}`;
 
 export const metadata: Metadata = {
-  title: KO_TYPES_COPY.title,
+  title: { absolute: TITLE },
   description: KO_TYPES_COPY.description,
   keywords: [
     ...KO_SEO_KEYWORDS,
@@ -35,13 +37,13 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${BASE_URL}/ko/types`,
     siteName: KO_SITE_NAME,
-    title: `${KO_TYPES_COPY.title} | 나의 사용설명서`,
+    title: TITLE,
     description: KO_TYPES_COPY.description,
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${KO_TYPES_COPY.title} | 나의 사용설명서`,
+    title: TITLE,
     description: KO_TYPES_COPY.description,
     images: [KO_DEFAULT_OG_IMAGE.url],
   },

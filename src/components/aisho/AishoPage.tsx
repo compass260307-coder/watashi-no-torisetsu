@@ -1489,10 +1489,36 @@ export default function AishoPage({
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-white flex items-center justify-center">
-          <p className="text-sm font-bold" style={{ color: INACTIVE }}>
-            {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…", "Memuat…")}
-          </p>
+        <main className="flex min-h-screen items-center justify-center bg-white px-6">
+          <div className="max-w-[640px] text-center">
+            <h1
+              className="text-[32px] font-black leading-tight md:text-[42px]"
+              style={{ color: NAVY }}
+            >
+              {aishoText(
+                locale,
+                "相性診断",
+                "궁합 진단",
+                "Compatibility Test",
+                "Tes Kecocokan",
+              )}
+            </h1>
+            <p
+              className="mt-4 text-[15px] font-bold leading-relaxed md:text-base"
+              style={{ color: INACTIVE }}
+            >
+              {aishoText(
+                locale,
+                "ふたつの性格タイプを選んで、ふたりの相性を見てみよう。",
+                "두 가지 성격 유형을 골라 두 사람의 궁합을 알아보세요.",
+                "Choose two personality types to explore their compatibility.",
+                "Pilih dua tipe kepribadian untuk melihat kecocokan mereka.",
+              )}
+            </p>
+            <p className="mt-5 text-sm font-bold" style={{ color: INACTIVE }}>
+              {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…", "Memuat…")}
+            </p>
+          </div>
         </main>
       }
     >

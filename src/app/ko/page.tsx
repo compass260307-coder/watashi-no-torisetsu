@@ -14,6 +14,7 @@ import {
   KO_SEO_KEYWORDS,
   KO_SERVICE_NAME,
   KO_SITE_NAME,
+  GLOBAL_SITE_NAME,
 } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
@@ -101,8 +102,9 @@ const jsonLd = {
     {
       "@type": "WebSite",
       "@id": `${KO_URL}#website`,
-      name: KO_BRAND_NAME,
+      name: GLOBAL_SITE_NAME,
       alternateName: [
+        KO_BRAND_NAME,
         "앨리스 테스트",
         "Alice 진단",
         "Alice 테스트",

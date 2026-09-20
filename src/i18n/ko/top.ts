@@ -1,7 +1,7 @@
 export const KO_TOP_CONTENT = {
   siteName: "앨리스 진단",
   navigation: {
-    diagnosis: "성격 진단 테스트",
+    diagnosis: "무료 성격 진단 테스트",
     friend: "친구 진단 테스트",
     types: "성격 유형",
     login: "로그인",

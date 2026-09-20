@@ -11,6 +11,7 @@ import {
   KO_ABOUT_STEPS,
 } from "@/i18n/ko/about";
 import {
+  KO_BRAND_NAME,
   KO_DEFAULT_OG_IMAGE,
   KO_SEO_KEYWORDS,
   KO_SITE_NAME,
@@ -22,9 +23,10 @@ const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 const DESCRIPTION =
   "나의 사용설명서는 자기 진단과 친구의 평가를 함께 살펴보는 Big Five 기반 자기 이해 서비스예요. 서비스의 원리, 이용 방법, 개인정보 보호와 운영 정보를 확인하세요.";
+const TITLE = `서비스 소개 | ${KO_BRAND_NAME}`;
 
 export const metadata: Metadata = {
-  title: { absolute: "서비스 소개 | 나의 사용설명서" },
+  title: { absolute: TITLE },
   description: DESCRIPTION,
   keywords: [
     ...KO_SEO_KEYWORDS,
@@ -39,13 +41,13 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${BASE_URL}/ko/about`,
     siteName: KO_SITE_NAME,
-    title: "서비스 소개 | 나의 사용설명서",
+    title: TITLE,
     description: DESCRIPTION,
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "서비스 소개 | 나의 사용설명서",
+    title: TITLE,
     description: DESCRIPTION,
     images: [KO_DEFAULT_OG_IMAGE.url],
   },
@@ -89,6 +91,12 @@ export default function KoreanAboutPage() {
 
       <main className="mx-auto w-full max-w-[1080px] flex-1 px-4 pb-20 md:px-8">
         <section className="pt-16 md:pt-24">
+          <p
+            className="mb-3 text-sm font-bold tracking-[0.12em]"
+            style={{ color: SORA }}
+          >
+            앨리스 진단 서비스 소개
+          </p>
           <h1
             className="break-keep font-bold"
             style={{

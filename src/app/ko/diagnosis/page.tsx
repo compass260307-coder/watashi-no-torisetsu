@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
-import { KO_SITE_NAME } from "@/lib/locale-seo";
+import { KO_BRAND_NAME, KO_SITE_NAME } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_DIAGNOSIS_URL = `${BASE_URL}/ko/diagnosis`;
-const TITLE = "무료 성격 진단 테스트 | 나의 사용설명서";
+const TITLE = `무료 성격 진단 테스트 | ${KO_BRAND_NAME}`;
 const DESCRIPTION =
   "Big Five 이론을 바탕으로 한 50문항 무료 성격 진단이에요. OCEAN 성격 특성을 분석해 32가지 캐릭터 유형 중 나와 닮은 유형을 찾아보세요.";
 
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "나의 사용설명서 무료 성격 진단 테스트",
+  name: `${KO_BRAND_NAME} 무료 성격 진단 테스트`,
   url: KO_DIAGNOSIS_URL,
   description: DESCRIPTION,
   applicationCategory: "LifestyleApplication",

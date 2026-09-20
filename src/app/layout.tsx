@@ -6,6 +6,7 @@ import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { BottomNav } from "@/components/BottomNav";
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-K39CJGCF";
 const GOOGLE_TAG_MANAGER_SCRIPT = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -117,7 +118,7 @@ export const metadata: Metadata = {
     template: "%s｜ワタシのトリセツ",
   },
   description: SHARED_DESCRIPTION,
-  applicationName: "ワタシのトリセツ",
+  applicationName: GLOBAL_SITE_NAME,
   keywords: [
     "ワタシのトリセツ",
     "私のトリセツ",
@@ -159,7 +160,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ja_JP",
     url: BASE_URL,
-    siteName: "ワタシのトリセツ",
+    siteName: GLOBAL_SITE_NAME,
     title: SHARED_TITLE,
     description: SHARED_DESCRIPTION,
     images: [
