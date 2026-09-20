@@ -13,10 +13,23 @@ function leanLabel(value: number, left: string, right: string): string {
   const distance = value - 50;
   const absoluteDistance = Math.abs(distance);
 
-  if (absoluteDistance <= 7) return "가운데에 가까움";
+  if (absoluteDistance <= 7) return "평균에 가까움";
 
   const pole = distance > 0 ? right : left;
-  if (absoluteDistance <= 20) return `조금 ${pole}`;
+  const naturalPole =
+    ({
+      현실적: "현실적인 편",
+      탐구적: "탐구적인 편",
+      유연함: "유연한 편",
+      계획적: "계획적인 편",
+      내향적: "내향적인 편",
+      외향적: "외향적인 편",
+      독립적: "독립적인 편",
+      협력적: "협력적인 편",
+      안정적: "안정적인 편",
+      섬세함: "섬세한 편",
+    } as Record<string, string>)[pole] ?? `${pole}인 편`;
+  if (absoluteDistance <= 20) return `조금 ${naturalPole}`;
   return `${pole} 성향`;
 }
 

@@ -12,13 +12,18 @@ import type { AppResultLocale } from "@/i18n/result";
 // 診断ページ下部 (フッター直上) のシェアバンド。16P のシェア帯
 // (ギザギザ縁のグレー帯 + 実績数 + SNS 丸ボタン) を参考に、サイトの
 // デザイン言語で実装する。
-//   - 数字は TopStats と同じ累計診断数の仮値 (app/page.tsx の DIAGNOSED_COUNT と同値)。
+//   - 数字はロケールごとの表示実績値。日本語・韓国語は 20万+、英語・インドネシア語は従来値を維持する。
 //   - ボタンは LINE(ko は KakaoTalk) / X / Facebook / リンクコピー + その他 (Web Share 対応端末のみ)。
 //     アイコン・共有 URL 形式・ref 付与は MeStickyHeader のシェアモーダルと同じ。
 //   - 計測は share_clicked (kind: diagnosis / source: diagnosis_share_band)。
 //   - 共有 URL は診断ページ自体 (/diagnosis, ko は /ko/diagnosis)。
 
-const DEFAULT_DIAGNOSED_COUNT = 50000;
+const DEFAULT_DIAGNOSED_COUNT: Record<AppResultLocale, number> = {
+  ja: 200_000,
+  ko: 200_000,
+  en: 50_000,
+  id: 50_000,
+};
 
 // 上端だけギザギザ・下端フラット版。直下に別の帯が密着するとき、下端のギザで
 // 背後の色が波状に覗くのを防ぐ (/me 末尾CTA帯 → シェア帯の接続・2026-08-26)。
@@ -32,7 +37,7 @@ export const JAGGED_CLIP =
 
 export function DiagnosisShareBand({
   locale,
-  diagnosedCount = DEFAULT_DIAGNOSED_COUNT,
+  diagnosedCount,
   // 設置面の識別用 (share_clicked の source)。/me 下部にも設置するため prop 化 (2026-08-17)。
   source = "diagnosis_share_band",
   // 帯の背景色。/me はページの薄グレー (#FBFBFD) に合わせる (2026-08-26)。
@@ -55,6 +60,8 @@ export function DiagnosisShareBand({
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
+  const resolvedDiagnosedCount =
+    diagnosedCount ?? DEFAULT_DIAGNOSED_COUNT[locale];
   const actionTone = group ? resultActionColorsForGroup(group) : null;
   const themedCircleStyle = actionTone
     ? {
@@ -77,12 +84,12 @@ export function DiagnosisShareBand({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const countText = isId
-    ? `${diagnosedCount.toLocaleString("id-ID")}+ hasil`
+    ? `${resolvedDiagnosedCount.toLocaleString("id-ID")}+ hasil`
     : isEn
-    ? `${diagnosedCount.toLocaleString("en-US")}+ results`
+    ? `${resolvedDiagnosedCount.toLocaleString("en-US")}+ results`
     : isKo
-      ? `${(diagnosedCount / 10000).toLocaleString("ko-KR")}만+`
-      : `${(diagnosedCount / 10000).toLocaleString("ja-JP")}万+`;
+      ? `${(resolvedDiagnosedCount / 10000).toLocaleString("ko-KR")}만+`
+      : `${(resolvedDiagnosedCount / 10000).toLocaleString("ja-JP")}万+`;
 
   const fireShare = (
     channel:

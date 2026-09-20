@@ -182,7 +182,7 @@ export function buildKoSelfSections(
       body: `${type.oneLiner} ${firstCopy.body}\n\n${secondCopy.body} ${type.essence}라는 이름처럼, 자신의 리듬을 지킬 때 가장 자연스러운 매력이 드러나요.\n\n사람들이 당신을 편안하게 대하려면 결과만 재촉하기보다 생각과 감정이 움직이는 속도를 존중해 주는 것이 좋아요. 잘하고 있는 부분을 구체적으로 알아봐 주면 훨씬 큰 힘을 낼 수 있어요.\n\n혼자 정리할 시간과 믿을 수 있는 사람과 연결되는 시간이 모두 필요해요. 둘 사이의 균형을 찾으면 가진 장점이 오래 안정적으로 이어져요.`,
     },
     {
-      title: "주의해서 다룰 점",
+      title: "조심해야 할 점",
       heading: "장점이 너무 강해질 때를 살펴봐요",
       body: `${firstCopy.title}은 분명한 강점이지만, 여유가 없을 때는 한쪽 방식만 고집하게 만들 수 있어요. 잘하려는 마음이 커질수록 잠깐 멈춰 지금 필요한 것이 무엇인지 확인해 보세요.\n\n${thirdCopy.body} 이 성향이 강하게 나타나는 날에는 혼자 참거나 너무 빠르게 결론 내리지 않는 것이 중요해요.\n\n피곤할수록 익숙한 방식으로 모든 문제를 해결하려 하기 쉬워요. 작은 부탁을 건네고, 바로 답하지 않아도 되는 시간을 스스로 허락해 주세요.\n\n주의점은 고쳐야 할 결함이 아니라 장점을 오래 쓰기 위한 사용법이에요. 내 신호를 먼저 알아차리면 같은 성향이 훨씬 부드러운 힘으로 바뀌어요.`,
     },
@@ -289,11 +289,11 @@ export function buildKoDeepDiveSections(
         },
         unlocked
           ? {
-              heading: "잘 맞는 일과 피하는 편이 좋은 직장",
+              heading: "잘 맞는 일과 피하면 좋은 환경",
               body: translatedCareerParagraphs[2] ?? "",
             }
           : {
-              heading: "잘 맞는 일과 피하는 편이 좋은 직장",
+              heading: "잘 맞는 일과 피하면 좋은 환경",
               body: "",
               locked: true,
             },
@@ -315,11 +315,11 @@ export function buildKoDeepDiveSections(
     },
     unlocked
       ? {
-          heading: "잘 맞는 일과 피하고 싶은 환경",
+          heading: "잘 맞는 일과 피하면 좋은 환경",
           body: `${direction(scores, "C") === "high" ? "역할과 목표가 분명하고 책임 있게 완성할 수 있는 환경" : "방법을 스스로 선택하고 변화에 유연하게 대응할 수 있는 환경"}에서 강점이 잘 살아나요. 반대로 장점을 쓸 여지가 없고 한 가지 방식만 강요하는 곳에서는 에너지가 빠르게 줄 수 있어요.`,
         }
       : {
-          heading: "잘 맞는 일과 피하고 싶은 환경",
+          heading: "잘 맞는 일과 피하면 좋은 환경",
           body: "",
           locked: true,
         },
@@ -385,8 +385,8 @@ function buildKoLikable(scores: Scores): string[] {
     KO_LIKABLE_PROSE[dimension][highLow(scores, dimension)];
   return [
     paragraph("E"),
-    `${paragraph("A")}${paragraph("C")}`,
-    `${paragraph("O")}${paragraph("N")}`,
+    `${paragraph("A")} ${paragraph("C")}`,
+    `${paragraph("O")} ${paragraph("N")}`,
     KO_LIKABLE_CLOSING,
   ];
 }
@@ -530,7 +530,7 @@ export const KO_ME_COPY = {
   selfAriaLabel: "내가 보는 나",
   bigFiveTitle: "다섯 가지 성격 경향",
   friendSectionTitle: "친구가 보는 나",
-  cautionTitle: "주의해서 다룰 점",
+  cautionTitle: "조심해야 할 점",
   unlockNow: "지금 잠금 해제",
   accessNow: "지금 확인하기",
   friendLockDescription:
