@@ -14,7 +14,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const;
+  "legacy_card_v42_ja_full_599_release_1290_measurement_v3" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1 =
   "en_single_full_access_v1_jpy_499" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
@@ -270,14 +270,16 @@ export function purchaseIncludesAishoFeatures(
   return policy !== AISHO_ACCESS_POLICY_PREMIUM_ONLY;
 }
 
-// 日本版の現行価格。新規販売は相性診断も含む完全版 ¥499 のみ。
+// 日本版の現行価格。新規販売は相性診断も含む完全版 ¥599 のみ。
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
-// 完全版は通常価格 ¥1,290 から「リリース記念」¥791引きを表示し、
-// 実際の請求額は固定カタログどおり ¥499 とする。
+// 2026-09-20 21:12 JSTから、完全版は通常価格 ¥1,290 から
+// 「リリース記念」¥691引きを表示し、実際の請求額を ¥599 とする。
+export const FULL_ACCESS_PRICE_EFFECTIVE_AT =
+  "2026-09-20T21:12:00+09:00" as const;
 export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
-export const FULL_ACCESS_PRICE_JPY = 499;
+export const FULL_ACCESS_PRICE_JPY = 599;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。

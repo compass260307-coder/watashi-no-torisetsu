@@ -47,15 +47,21 @@ const contractChecks = [
     ),
   },
   {
-    label: "Japanese full access checkout price is JPY 499",
+    label: "Japanese full access checkout price is JPY 599",
     valid: accessProducts.includes(
-      "export const FULL_ACCESS_PRICE_JPY = 499;",
+      "export const FULL_ACCESS_PRICE_JPY = 599;",
     ),
   },
   {
-    label: "Japanese full access measurement generation preserves the frozen offer",
+    label: "Japanese full access price change records its effective time",
     valid: accessProducts.includes(
-      '"legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const',
+      '"2026-09-20T21:12:00+09:00" as const',
+    ),
+  },
+  {
+    label: "Japanese full access measurement generation records the JPY 599 offer",
+    valid: accessProducts.includes(
+      '"legacy_card_v42_ja_full_599_release_1290_measurement_v3" as const',
     ),
   },
   {
@@ -113,7 +119,7 @@ const contractChecks = [
     valid: checkoutRoute.includes("listAmount: FULL_ACCESS_LIST_PRICE_JPY,"),
   },
   {
-    label: "Stripe Checkout uses the frozen JPY 499 sale price",
+    label: "Stripe Checkout uses the frozen JPY 599 sale price",
     valid: checkoutRoute.includes("saleAmount: FULL_ACCESS_PRICE_JPY,"),
   },
   {
@@ -255,8 +261,8 @@ const contractChecks = [
     valid: checkoutRoute.includes("course_price_idr_minor:"),
   },
   {
-    label: "Purchase analytics fallback identifies the JPY 499 product",
-    valid: metaPurchase.includes('fallbackId: "full_access_jpy_499"'),
+    label: "Purchase analytics fallback identifies the JPY 599 product",
+    valid: metaPurchase.includes('fallbackId: "full_access_jpy_599"'),
   },
 ];
 
@@ -272,5 +278,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 599 from JPY 1,290 effective 2026-09-20 21:12 JST; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );
