@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import {
+  KO_BRAND_NAME,
   KO_DEFAULT_OG_IMAGE,
   KO_SITE_NAME,
   localizedAlternates,
 } from "@/lib/locale-seo";
 
+const TITLE = `궁합 진단 | ${KO_BRAND_NAME}`;
+
 export const metadata: Metadata = {
-  title: "궁합 진단",
+  title: { absolute: TITLE },
   description:
     "궁금한 사람과의 궁합을 캐릭터 두 개만 골라 알아보세요. 내 진단 결과가 없어도 괜찮아요. 두 사람의 균형과 좋은 점, 상황별 궁합을 확인할 수 있어요.",
   alternates: localizedAlternates("ko", "/aisho", "/ko/aisho"),
   openGraph: {
-    title: "궁합 진단｜나의 사용설명서",
+    title: TITLE,
     description:
       "궁금한 사람과의 궁합을 캐릭터 두 개만 골라 알아보세요. 내 진단 결과가 없어도 괜찮아요.",
     url: "/ko/aisho",
@@ -23,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "궁합 진단｜나의 사용설명서",
+    title: TITLE,
     description:
       "궁금한 사람과의 궁합을 캐릭터 두 개만 골라 알아보세요. 내 진단 결과가 없어도 괜찮아요.",
     images: [KO_DEFAULT_OG_IMAGE.url],

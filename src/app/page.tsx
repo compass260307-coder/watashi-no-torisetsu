@@ -6,6 +6,7 @@ import TopStats from "@/components/top/TopStats";
 import TopFooter from "@/components/top/TopFooter";
 import { TopViewTracker } from "@/components/top/TopAnalytics";
 import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 
@@ -58,20 +59,23 @@ const jsonLd = {
     {
       "@type": "WebSite",
       "@id": `${BASE_URL}/#website`,
-      name: "ワタシのトリセツ",
+      name: GLOBAL_SITE_NAME,
       // 表記ゆれ (私の取説 等) での検索・サイト名認識のヒント。
       // Google はサイト名の判定に WebSite.alternateName を参照する。
       alternateName: [
+        "ワタシのトリセツ",
         "私のトリセツ",
         "わたしのトリセツ",
         "ワタシの取説",
         "私の取説",
         "私の取扱説明書",
-        "Alice Personalities",
         "Alice Test",
+        "앨리스 진단",
+        "Alice 진단",
+        "나의 사용설명서",
       ],
       url: BASE_URL,
-      inLanguage: "ja-JP",
+      inLanguage: ["ja-JP", "ko-KR", "en-US", "id-ID"],
       publisher: { "@id": `${BASE_URL}/#organization` },
     },
     {
