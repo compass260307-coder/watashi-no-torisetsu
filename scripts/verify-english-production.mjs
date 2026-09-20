@@ -12,7 +12,7 @@ const checks = {
       /"@type":"Brand"[^<]*"name":"Alice Personalities"/,
       "domain-level Alice Personalities brand",
     ],
-    [/>Alice Personalities<\/a>/, "visible Alice Personalities home identity"],
+    [/>ワタシのトリセツ<\/a>/, "visible Japanese home identity"],
   ],
   "/en": [
     [
