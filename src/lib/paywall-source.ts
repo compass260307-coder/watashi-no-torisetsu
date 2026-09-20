@@ -51,6 +51,8 @@ const PAYWALL_SOURCES = new Set([
   "unmei_hero",
   // 出生情報を保存した後に表示する、運命チャット内のプレミアムカード。
   "unmei_birth_chat",
+  // 完全版購入後、Aliceへの自由回答を保存した直後の¥899結果アップグレード。
+  "result_upgrade_after_answers",
   // 下部ナビのロック中「運命」からコース選択を開いた導線。
   "nav_locked_unmei",
   // 下部ナビのロック中「タロット」から課金カードを開いた導線。

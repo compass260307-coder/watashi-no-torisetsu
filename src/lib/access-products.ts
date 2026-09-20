@@ -284,6 +284,11 @@ export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。
 export const PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY = 800;
+// 2026-09-21に明示承認された、診断結果購入者向けの結果アップグレード。
+// 他のpremium_bundle互換導線と混ぜず、paywall_sourceが専用導線のときだけ使う。
+export const RESULT_UPGRADE_PRICE_JPY = 899;
+export const RESULT_UPGRADE_OFFER_VERSION =
+  "result_upgrade_v1_jpy_899" as const;
 
 // 韓国版の新規販売は完全版のみ。旧 self_report / premium_bundle の価格は、
 // 過去購入者の差額・返金・監査互換のために保持する。KRW は Stripe 上も

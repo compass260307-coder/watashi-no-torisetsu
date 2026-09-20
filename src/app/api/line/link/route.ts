@@ -5,8 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
 import {
-  aliceConversationStarterQuickReplies,
   pushLineMessages,
+  quickReplies,
 } from "@/lib/line";
 import { lineAliceChatEnabled } from "@/lib/line-alice";
 import { recordLineEvent } from "@/lib/line-events";
@@ -202,11 +202,21 @@ export async function POST(request: NextRequest) {
         type: "text",
         text: lineLinkSuccessMessage({
           displayName: result.user.displayName,
+          personalizedTypeName: result.user.typeName,
+          resultUpgraded: result.user.resultUpgraded,
           switched: result.switched,
           chatEnabled,
         }),
         ...(chatEnabled
-          ? { quickReply: aliceConversationStarterQuickReplies() }
+          ? {
+              quickReply: result.user.resultUpgraded
+                ? quickReplies("Aliceに恋愛相談", "恋のタロット", "相性占い")
+                : quickReplies(
+                    "将来について相談したい",
+                    "友達について相談したい",
+                    "恋愛について相談したい",
+                  ),
+            }
           : {}),
       },
     ]);

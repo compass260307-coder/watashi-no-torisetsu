@@ -27,7 +27,6 @@ const SITE_NAME = "ワタシのトリセツ";
 const KO_SITE_NAME = "나의 사용설명서";
 const EN_SITE_NAME = "Alice Personalities";
 const ID_SITE_NAME = "Alice Personalities";
-const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
 const SITE_URL = resolveSiteUrl();
 type EmailLocale = "ja" | "ko" | "en" | "id";
 
@@ -796,7 +795,6 @@ export function renderDetailedReportHtml(
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
-  const showLineInvitation = !isSelfReport;
   const heroImageUrl = `${SITE_URL}${
     isPremiumBundle
       ? "/mascot/unmei-hero.png"
@@ -917,21 +915,8 @@ export function renderDetailedReportHtml(
                 </p>
                 <p style="margin:0 0 30px;font-size:15px;line-height:1.9;color:#5A5A6E;">
                   ご購入ありがとうございます。<br />
-                  「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。${showLineInvitation ? " また、LINEでAliceとのおしゃべりや毎日の占いを楽しめる「Alice Plus」も体験できます。" : ""}
+                  「${reportName}」のご用意ができました。購入いただいた内容は、下のボタンからいつでもご覧いただけます。
                 </p>
-
-                ${
-                  showLineInvitation
-                    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px;background:#F0FBF4;border:1px solid #CDEFD9;border-radius:14px;">
-                  <tr>
-                    <td style="padding:26px 24px;text-align:center;">
-                      <h2 style="margin:0 0 20px;font-size:20px;font-weight:800;line-height:1.55;color:#2E2E5C;">LINEでAlice Plusを体験しよう</h2>
-                      <a class="cta-link" href="${LINE_ADD_FRIEND_URL}" style="display:block;padding:15px 18px;background:#06C755;color:#FFFFFF;text-align:center;text-decoration:none;font-size:15px;font-weight:800;line-height:1.4;border-radius:999px;box-shadow:0 4px 0 #04933F;">LINEでAlice Plusを体験する&nbsp; &#8594;</a>
-                    </td>
-                  </tr>
-                </table>`
-                    : ""
-                }
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 32px;">
                   <tr>
@@ -997,7 +982,6 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     args.hoshiyomiChatCredits ?? HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS;
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
-  const showLineInvitation = !isSelfReport;
   const reportName = isSelfReport
     ? "ワタシのトリセツ 学生向けプラン"
     : isPremiumBundle
@@ -1037,16 +1021,7 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     "",
     "ご購入ありがとうございます。",
     `「${reportName}」のご用意ができました。`,
-    `購入いただいた内容は、下のリンクからいつでもご覧いただけます。${showLineInvitation ? " また、LINEでAliceとのおしゃべりや毎日の占いを楽しめる「Alice Plus」も体験できます。" : ""}`,
-    ...(showLineInvitation
-      ? [
-          "",
-          "【LINEでAlice Plusを体験しよう】",
-          "",
-          "■ LINEでAlice Plusを体験する",
-          LINE_ADD_FRIEND_URL,
-        ]
-      : []),
+    "購入いただいた内容は、下のリンクからいつでもご覧いただけます。",
     "",
     "■ 解放された自己診断結果を見る",
     args.meUrl,

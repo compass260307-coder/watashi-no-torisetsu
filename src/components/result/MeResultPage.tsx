@@ -107,6 +107,9 @@ import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
+import { ResultUpgradeGenerationWatcher } from "@/components/result-upgrade/ResultUpgradeGenerationWatcher";
+import { ResultUpgradeChatLauncher } from "@/components/result-upgrade/ResultUpgradeChatLauncher";
+import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import { ShareDiagnosisLink } from "@/components/share/ShareDiagnosisLink";
 import type {
@@ -141,6 +144,12 @@ import {
   verifyPaidSelfAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
+import {
+  isResultUpgradeReady,
+  resultUpgradeSelfSections,
+  type ResultUpgradeRow,
+} from "@/lib/result-upgrade";
+import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 
 const SITE_URL =
   resolveSiteUrl();
@@ -245,6 +254,20 @@ async function MeResultPageContent({
   // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
   const previewLocked =
     !acquisition && previewType !== null && sp.previewLock === "1";
+  // ローカル専用の購入後プレビュー。通常の ?previewType は本文確認用のため
+  // 商品権利までは付与しないが、専用 dev ルートから previewProduct=full_access
+  // を渡した場合だけ、現行 ¥599 完全版を購入済みとして画面全体を再現する。
+  // production ではクエリを無視し、公開プレビューから権利状態を偽装できないようにする。
+  const previewProduct =
+    process.env.NODE_ENV === "development" &&
+    previewType !== null &&
+    sp.previewProduct === "full_access"
+      ? "full_access"
+      : null;
+  const previewUpgrade =
+    process.env.NODE_ENV === "development" &&
+    previewType !== null &&
+    sp.previewUpgrade === "1";
   // 公開タイプ別LP (/preview/[typeId]) 判定。ロック状態のモック描画だが、課金カードには
   // ダミーの owner_token="preview" を渡さない。未診断の訪問者は購入CTAから診断へ送り、
   // 実在ユーザーだけをCheckoutへ進める。シェアはモックの invite_code を使わず、
@@ -293,11 +316,12 @@ async function MeResultPageContent({
   if (!user) {
     notFound();
   }
+  const currentSession = previewType ? null : await getSession();
+  const ownsResultSession = currentSession?.id === user.id;
   if (!previewType && isUndiagnosedPlaceholderUser(user)) {
-    const current = await getSession();
     const prefix = localePrefix;
     redirect(
-      current?.id === user.id ? `${prefix}/diagnosis` : `${prefix}/login`,
+      ownsResultSession ? `${prefix}/diagnosis` : `${prefix}/login`,
     );
   }
 
@@ -367,14 +391,82 @@ async function MeResultPageContent({
     premiumBundlePaid,
     destinyFeaturesPaid,
   ] = previewType
-    ? [false, false, false, false]
+    ? previewProduct === "full_access"
+      ? [true, true, previewUpgrade, true]
+      : [false, false, false, false]
     : await Promise.all([
         hasSelfReportAccess(user.id as string),
         hasFullAccess(user.id as string),
         hasPremiumBundleAccess(user.id as string),
         hasUnmeiAccess(user.id as string),
       ]);
+  // 自由回答には私的な内容が含まれるため、専用結果は owner_token を知るだけの閲覧者には
+  // 出さず、本人セッションで開いた /me にだけ反映する。
+  const previewResultUpgrade: ResultUpgradeRow | null = previewUpgrade
+    ? {
+        user_id: "preview",
+        answers: [
+          "映画を観たり、海の近くを散歩したりする",
+          "初めてのレシピで料理を作ったこと",
+          "穏やかで、よく人の話を聞く人",
+          "お互いの時間を尊重しながら、安心して本音を話せること",
+          "大切な人との時間を守りながら、新しい仕事にも挑戦すること",
+        ],
+        source_type_id: previewType ?? "sparkle-dolphin__N",
+        source_character_path: "/dev/result-upgrade-character-preview.png",
+        state: "ready",
+        personalized_type_name: "静かな芯を持つ寄添者",
+        personalized_intro:
+          "映画の世界に静かに浸る夜も、海の気配を感じながら歩く時間も、心を元の位置へ戻すための大切な余白です。穏やかに見えて、内側には納得するまで続けたい負けず嫌いがある。新しいレシピを試すときの集中力も、仕事で挑戦を増やしたい気持ちも、その静かな芯から生まれています。大切な人の声の調子や会話の間をよく覚えていて、話せるときが来るまで待てるやさしさも、あなたらしさのひとつです。誰かとの時間を守ることと、自分の世界を広げること。その両方を大切にできる道を、急がず丁寧に選んでいけます。勢いだけで前へ進むのではなく、一度立ち止まって自分の感覚を確かめるからこそ、選んだあとの歩みはぶれにくい。静かな時間の中で育てた好奇心を、現実の一歩へ変えていける人です。",
+        reading: {
+          title: "あなたの静かな強さを読む鑑定書",
+          subtitle: "映画に浸る夜、海の気配を探す散歩、新しいレシピ。日々の選び方に表れる、静かな強さの記録です。",
+          sections: [
+            {
+              title: "静けさの中で、世界を広げる人",
+              body: "休日の午後、部屋を少し暗くして映画を一本観る。物語の余韻が残ったまま近所を歩き、海の気配がする方へ足を延ばす。そんな時間が、あなたにとっての休息です。何もしないことで空っぽになるのではなく、好きな景色や言葉を静かに取り込みながら、散らばった気持ちを元の場所へ戻しています。\n\nにぎやかな場所が嫌いなわけではありません。ただ、外から届く刺激が多いほど、自分の感覚を確かめる時間も必要になります。誰かに急かされず、その日の気分で観るものや歩く道を選べること。その小さな自由が、心の調子を整えてくれます。周りに合わせる場面が続いたあとほど、一人で選べる時間が深い呼吸のように働きます。\n\nこうして取り戻した余白は、新しいレシピを試す好奇心や、仕事でもう一歩踏み込んでみたい気持ちへつながっています。休む時間と挑戦する時間は、あなたの中では別々ではありません。静かに過ごした夜の先で、次に試してみたいことが自然に浮かんできます。\n\n思いついたことをすぐ大きな目標にしないのも、あなたらしいところです。まずは味を少し変える、いつもと違う道を歩く、気になったことを一つ調べる。小さく試しながら、自分に合うものだけを残していく。その積み重ねによって、無理なく世界を広げていけます。",
+            },
+            {
+              title: "大切な人を急かさず、そばにいる",
+              body: "大切な人と一緒に過ごしているとき、あなたは相手の声の調子や、ふと途切れた会話をよく覚えています。何かあったのかなと思っても、すぐに答えを求めるのではなく、話せる空気になるまでそばにいる。相手の領域へ踏み込みすぎず、それでも一人にはしない距離を自然に選んでいます。\n\n言葉にされていない気持ちを感じ取れるぶん、相手が望むより先に動こうとする日もあります。喜んでほしい、安心してほしいという思いからしたことでも、反応が薄いと少しだけ心に残る。それでも責めるより、自分の受け取り方を見直そうとするため、本音が表に出るまでには時間がかかります。\n\nあなたが関係の中で本当に欲しいのは、いつも一緒にいることより、離れている時間にも信頼が残っていることです。話さない日があっても、次に会ったとき自然に続きを話せる。そんな関係では、世話を焼きすぎる必要がなくなり、あなた自身も安心して新しいことへ向かえます。\n\nだからこそ、大切な人には「何でもいい」ではなく、小さな希望を一つ伝えてみることが合っています。行きたい場所、食べたいもの、今日は少し静かにいたいという気分。相手に合わせる前に自分の希望を置くことは、わがままではありません。お互いの輪郭が見えるほど、あなたのやさしさは我慢ではなく信頼として届きます。",
+            },
+            {
+              title: "納得できるところまで、静かに試す",
+              body: "初めて作る料理では、手順どおりに完成させるだけでなく、次はもう少し味を変えてみようと考える。仕事でも、一度引き受けたことは自分が納得できるところまで整えたい。そうした小さな場面に、表からは見えにくい負けず嫌いが現れています。\n\n人と張り合って一番になりたい、という強さではありません。昨日の自分より少し分かることを増やしたい。途中で投げ出して、心に引っかかりを残したくない。その気持ちが、あなたをもう一度だけ試してみる方へ動かします。周りには穏やかに見えても、内側では細かな違いをよく見ていて、自分なりの基準を簡単には手放しません。\n\n仕事では、目的だけ渡されて方法を任される場面で力を発揮します。決まった手順を繰り返すより、もっと自然な進め方がないかを考え、少しずつ整えていく方が向いています。人の役に立つ実感があり、自分の工夫を試せる環境なら、静かな集中力が長く続きます。\n\n一方で、納得したい気持ちが強い日は、休むタイミングを見失うことがあります。そんなときは完成を急ぐより、「今日はここまで分かった」と区切る方があなたには合っています。続きが残っていても、それは失敗ではありません。考えを寝かせたあとに戻ると、前の日には見えなかった整え方を見つけられます。",
+            },
+            {
+              title: "予定のない午後に現れる、あなたらしさ",
+              body: "観たい映画を選び、気の向くまま歩き、帰ったら新しい料理を試してみる。予定を詰めない日の選び方に、自分の感覚を信じる姿勢が表れています。誰かが決めた正解より、その日の心が少し動いた方向を確かめながら選んでいます。\n\n急な出来事が起きたときも、いきなり前へ出るのではなく、まず周りの空気を見る。困っている人がいれば、相手が受け取りやすい形を考えてから声をかけます。その一拍があるため、派手には見えなくても、場を落ち着かせる役割を自然に引き受けています。\n\n予定どおりに進まない日は、最初こそ少し戸惑います。それでも、使える時間や今できることが見えてくると、気持ちを切り替えるのは早い方です。空いた時間に別の楽しみを見つけたり、翌日の準備へ回したりする。予想外を無理に喜ぼうとはしませんが、そのまま無駄にはしません。\n\n一人でいるときと誰かといるときで、あなたのやさしさは形を変えます。一人の時間では自分を整える静けさに、誰かといる時間では相手を急かさない余白になる。どちらも、目の前の時間を雑に扱いたくない気持ちから生まれています。日常の小さな選択にこそ、あなたの静かな芯がよく表れています。",
+            },
+            {
+              title: "抱え込む前に、今日はここまでと決める",
+              body: "納得したい気持ちが強い日は、休むタイミングを見失うことがあります。まだできる、もう少し整えたいと思うほど、終わりを自分で決めにくくなる。周りから見れば十分に進んでいても、自分の中では未完成の部分ばかりが目に入ります。\n\nさらに、大切な人のことが気になると、自分の疲れを後回しにしがちです。頼まれたことへ先に応え、空いた時間で自分の課題を進めようとするため、静かな夜ほどやることが増えていく。誰にも気づかれないまま余裕が減り、ある日急に何もしたくなくなることがあります。\n\nそんな日は、できなかったことを数えるより、「今日はここまで分かった」と言葉にして区切る方が合っています。休むことを予定の外に置かず、映画一本分の時間や、近所を一周する時間として先に確保する。具体的な形があると、罪悪感を持たずに立ち止まれます。\n\n深い青のノートには、完成したことではなく、試したことだけを星印で残してみてください。新しい味を一度試した。気になっていた仕事を調べた。大切な人へ自分の希望を一つ伝えた。小さな記録が増えるほど、歩みは思っているより続いていると分かります。自分の速度を守ることが、次の挑戦を長く楽しむための土台になります。",
+            },
+          ],
+          closingMessage: "静かに過ごす夜も、新しいことを試す日も、どちらも同じあなたです。深い青のノートに小さな星を増やすように、自分の速度で進んでいけます。",
+        },
+        character_storage_path: "preview/result-upgrade-character-preview.png",
+        text_model: "preview",
+        image_model: "preview",
+        attempts: 1,
+        generation_started_at: new Date(0).toISOString(),
+        generated_at: new Date(0).toISOString(),
+        last_error: null,
+        created_at: new Date(0).toISOString(),
+        updated_at: new Date(0).toISOString(),
+      }
+    : null;
+  const resultUpgrade =
+    previewResultUpgrade ??
+    (locale === "ja" && ownsResultSession && fullAccessPaid
+      ? await loadResultUpgradeForUser(user.id)
+      : null);
+  const resultUpgradeReady = isResultUpgradeReady(resultUpgrade);
+  const upgradedSelfSections = resultUpgradeSelfSections(
+    resultUpgradeReady ? resultUpgrade.reading : null,
+  );
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
+  // 専用 dev ルートでは現行 ¥599 完全版の権利も再現する。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
   // 獲得モード (/share) は未課金相当で解決する (課金コンテンツの本文は解決しない =
   // フェイルクローズ)。ロックUI自体も hideLocked で出さず「無いもの」として扱う。
@@ -390,16 +482,82 @@ async function MeResultPageContent({
     !acquisition &&
     !destinyFeaturesPaid &&
     (previewType ? !previewLocked : deepDivePaid);
+  // 現行の日本版 完全版を購入済みの人を、自由回答→専用結果生成の追加診断へつなぐ。
+  const showResultUpgradePlaceholder =
+    locale === "ja" &&
+    !acquisition &&
+    !publicPreview &&
+    fullAccessPaid &&
+    destinyFeaturesPaid &&
+    (!premiumBundlePaid || !resultUpgrade);
+  const resultUpgradeOwnerName = user.display_name?.trim() || "あなた";
+  const resultUpgradeCtaLabel = premiumBundlePaid
+    ? "Aliceの質問に答える"
+    : "結果をアップグレード";
   const unmeiPurchaseProduct = isKorean
     ? "full_access"
     : fullAccessPaid
       ? "premium_bundle"
       : "full_access";
+  const resultUpgradeFeatures = [
+    {
+      iconBg: "#F1EEFF",
+      iconColor: "#6558D9",
+      icon: (
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="9.5" cy="8" r="3.2" />
+          <path d="M4 19c.7-3.8 2.6-5.8 5.5-5.8 2.2 0 3.8 1 4.8 2.8" />
+          <path d="m18 3 .6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6L18 3Z" />
+          <path d="m18.5 11.5.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4.4-1.2Z" />
+        </svg>
+      ),
+      title: "あなた専用のキャラクターを生成",
+      body: "あなたの答えをもとに、表情・服装・小物・背景まで仕立てた、世界に一体だけのキャラクターが生まれます。",
+    },
+    {
+      iconBg: "#EAF5FF",
+      iconColor: "#397DB8",
+      icon: (
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M5 3h8l4 4v14H5V3Z" />
+          <path d="M13 3v4h4M8 11h6M8 14.5h4" />
+          <path d="m18.5 14 .5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5Z" />
+        </svg>
+      ),
+      title: "あなただけのためにAliceが鑑定書を作成",
+      body: "これまでの診断結果とあなたの質問に対する答えを合わせて、Aliceがあなた専用の鑑定書を作成します。",
+    },
+    {
+      iconBg: "#EAF8F2",
+      iconColor: "#2F856E",
+      icon: (
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 5h16v10H9l-5 4V5Z" />
+          <path d="M8 10h.01M12 10h.01M16 10h.01" strokeWidth="2.7" />
+        </svg>
+      ),
+      title: "LINEでAliceと対話できる",
+      body: "完成したキャラクターと鑑定結果を知っているAliceに、結果のことや今の悩みをLINEで相談できます。",
+    },
+    {
+      iconBg: "#FFF3D9",
+      iconColor: "#9A6A24",
+      icon: (
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M11.5 20C7 16.8 4 13.9 4 10.7c0-2.4 1.8-4.2 4.1-4.2 1.5 0 2.7.7 3.4 1.9.8-1.2 2-1.9 3.5-1.9 2.3 0 4 1.8 4 4.2 0 3.2-3 6.1-7.5 9.3Z" />
+          <path d="m19 2.5.55 1.7 1.7.55-1.7.55L19 7l-.55-1.7-1.7-.55 1.7-.55L19 2.5Z" />
+        </svg>
+      ),
+      title: "LINEでAliceに恋愛占い",
+      body: "タロットや四柱推命を使って、気になる相手との相性など、恋愛に関することをAliceが占います。",
+    },
+  ];
   // 運命の設計図 アップセルカード。② 恋愛傾向の直後 (DeepDiveSections の loveFooter
   // スロット = 旧 FriendLoveTeaser の位置) に差し込む (2026-07-26 指示)。
   // 16P「プレミアムキャリアキット」参考: 柔らかいカード + 締まったタイポ +
   // 色分けした六角形アイコン + 特典を縦に読み進める構成 + 横長CTA。
-  const unmeiPromoCard = !showUnmeiPromo ? null : (
+  const unmeiPromoCard =
+    !showUnmeiPromo && !showResultUpgradePlaceholder ? null : (
     <section
       aria-label={
         isEnglish
@@ -410,12 +568,17 @@ async function MeResultPageContent({
           ? "완전판 코스 혜택"
           : isIndonesian
             ? "Manfaat Edisi Lengkap"
-          : fullAccessPaid
-            ? "全部入りの特典"
-            : "完全版の特典"
+          : showResultUpgradePlaceholder
+            ? "わたし専用キャラクターの案内"
+            : fullAccessPaid
+              ? "全部入りの特典"
+              : "完全版の特典"
       }
     >
-      <div className="animate-premium-glow rounded-[23px] border border-[#F1DDAA] bg-white px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14">
+      <div
+        className="animate-premium-glow rounded-[23px] border border-[#F1DDAA] px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14"
+        style={{ backgroundColor: "#FFFFFF" }}
+      >
         <div className="mx-auto mb-8 max-w-[800px] text-center md:mb-10">
           <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
             {isEnglish
@@ -426,9 +589,11 @@ async function MeResultPageContent({
               ? "완전판에서 잠금 해제"
               : isIndonesian
                 ? "Terbuka dengan Edisi Lengkap"
-              : fullAccessPaid
-                ? "全部入りで解放"
-                : "完全版で解放"}
+              : showResultUpgradePlaceholder
+                ? `${resultUpgradeOwnerName}専用`
+                : fullAccessPaid
+                  ? "全部入りで解放"
+                  : "完全版で解放"}
           </span>
           <h2 className="mb-3 text-[24px] font-bold leading-[1.35] text-[#2E2E5C] md:text-[36px]">
             {isEnglish
@@ -437,13 +602,15 @@ async function MeResultPageContent({
               ? "질문에 답하고, 운명의 설계도를 완성해 보세요"
               : isIndonesian
                 ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
-                : "Aliceの質問に答えて、運命の設計図を完成させよう"}
+                : showResultUpgradePlaceholder
+                  ? "Aliceの質問に答えて、あなた専用の結果をアップグレードしよう"
+                  : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
         </div>
         {/* Alice の吹き出しは 2026-08-26 撤去。同文は CTA で開くチャットの冒頭挨拶
             (ME_UNMEI_CHAT_INTRO_JA) として送られる。 */}
         <ul className="mx-auto mb-11 flex max-w-[820px] flex-col gap-7 md:mb-12 md:gap-8">
-          {[
+          {(showResultUpgradePlaceholder ? resultUpgradeFeatures : [
             {
               iconBg: "#EAF5FF",
               iconColor: "#397DB8",
@@ -566,7 +733,7 @@ async function MeResultPageContent({
                   ? "Lihat kecocokan dari peringkat S hingga C untuk cinta, persahabatan, pekerjaan, dan momen salah paham."
                   : "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
             },
-          ].map((feature) => (
+          ]).map((feature) => (
             <li
               key={feature.title}
               className="grid grid-cols-[58px_1fr] items-start gap-4 md:grid-cols-[72px_1fr] md:gap-6"
@@ -595,18 +762,34 @@ async function MeResultPageContent({
           ))}
         </ul>
         <div className="text-center">
-          <MeUnmeiChatLauncher
-            ownerToken={previewType ? null : token}
-            locale={locale}
-            product={unmeiPurchaseProduct}
-            previewMode={Boolean(previewType)}
-            className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
-          >
-            {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : isIndonesian ? "Jawab pertanyaan Alice" : "Aliceの質問に答える"}
-            <span aria-hidden="true" className="text-xl font-medium">
-              →
-            </span>
-          </MeUnmeiChatLauncher>
+          {showResultUpgradePlaceholder ? (
+            <ResultUpgradeChatLauncher
+              ownerToken={previewType ? "preview" : token}
+              existingAnswers={resultUpgrade?.answers ?? []}
+              initialState={resultUpgrade?.state}
+              premiumPaid={premiumBundlePaid}
+              preview={Boolean(previewType)}
+              className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+            >
+              {resultUpgradeCtaLabel}
+              <span aria-hidden="true" className="text-xl font-medium">
+                →
+              </span>
+            </ResultUpgradeChatLauncher>
+          ) : (
+            <MeUnmeiChatLauncher
+              ownerToken={previewType ? null : token}
+              locale={locale}
+              product={unmeiPurchaseProduct}
+              previewMode={Boolean(previewType)}
+              className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+            >
+              {isEnglish ? "Answer Alice’s questions" : isKorean ? "Alice의 질문에 답하기" : isIndonesian ? "Jawab pertanyaan Alice" : "Aliceの質問に答える"}
+              <span aria-hidden="true" className="text-xl font-medium">
+                →
+              </span>
+            </MeUnmeiChatLauncher>
+          )}
         </div>
       </div>
     </section>
@@ -662,8 +845,26 @@ async function MeResultPageContent({
   // 獲得モードはロック要素をサーバ側で除去する。DeepDiveSections は client component の
   // ため、props に残すと見出しが RSC ペイロードに載ってしまう (本文は "" だが痕跡も消す)。
   // あわせて本文/見出しの二人称もシェア主の名前へ置換する。
+  const resultAwareDeepDiveSections = upgradedSelfSections
+    ? deepDiveSectionsRaw.map((section) => {
+        const personalized =
+          section.key === "love"
+            ? upgradedSelfSections.love
+            : section.key === "career"
+              ? upgradedSelfSections.career
+              : null;
+        if (!personalized) return section;
+        return {
+          ...section,
+          tab: personalized.title,
+          body: personalized.body,
+          blocks: undefined,
+          locked: false,
+        };
+      })
+    : deepDiveSectionsRaw;
   const deepDiveSections = acquisition
-    ? deepDiveSectionsRaw
+    ? resultAwareDeepDiveSections
         .filter((s) => !s.locked && s.body !== null)
         .map((s) => ({
           ...s,
@@ -678,7 +879,7 @@ async function MeResultPageContent({
               body: personalize(b.body),
             })),
         }))
-    : deepDiveSectionsRaw;
+    : resultAwareDeepDiveSections;
   // ※「みんなの目」(他己) は /tako/[token] へ移設。/me では算出しない。
   // /me ヒーローのバンド背景色: グループ別の濃トーン (16P の色帯参考)。
   // キャラ画像は透過版を使い、白文字の称号・ラベルが立つ濃さにする。
@@ -730,6 +931,9 @@ async function MeResultPageContent({
       : flag32
         ? thirtyTwoEssence(t32)
         : sixteenType.essence;
+  const displayEssence = resultUpgradeReady
+    ? resultUpgrade.personalized_type_name
+    : dispEssence;
   // キャラ画像: /types と同じく背景除去済みの透過版 (characters/cut) を優先。
   //   v3 原画の地色は帯色と微妙にズレて四角い縁が見えるため、透過版なら帯に完全に馴染む。
   //   透過版が無いタイプのみ v3 にフォールバック。
@@ -737,13 +941,23 @@ async function MeResultPageContent({
     ? thirtyTwoImagePath(t32)
     : characterImagePath(sixteenTypeId);
   const dispImage = preferCutImage(v3Image);
+  const displayCharacterImage = resultUpgradeReady
+    ? previewUpgrade
+      ? "/dev/result-upgrade-character-preview.png"
+      : `/api/result-upgrade/character/${encodeURIComponent(token)}${
+          resultUpgrade.generated_at
+            ? `?v=${encodeURIComponent(resultUpgrade.generated_at)}`
+            : ""
+        }`
+    : dispImage;
   // SP ヒーローの画像引き上げ量。画像上端の透過余白が小さいキャラは、
   // 称号や OCEAN コードに重ならないよう引き上げを弱める。
   const cutTopMargin: number | undefined = (
     characterImages.cutTopMargin as Record<string, number>
   )[path.basename(dispImage.split(/[?#]/, 1)[0])];
-  const heroPullClass =
-    cutTopMargin === undefined || cutTopMargin >= 0.1
+  const heroPullClass = resultUpgradeReady
+    ? "mt-0"
+    : cutTopMargin === undefined || cutTopMargin >= 0.1
       ? "-mt-8"
       : cutTopMargin >= 0.05
         ? "-mt-4"
@@ -898,6 +1112,7 @@ async function MeResultPageContent({
           ? `${localePrefix}/tako/${encodeURIComponent(token)}`
           : undefined
       }
+      lineAddHref={resultUpgradeReady ? "#line-alice-link" : undefined}
       ownerToken={acquisition || publicPreview ? undefined : token}
       inviteCode={acquisition?.inviteCode ?? (publicPreview ? undefined : inviteCode)}
       qrImageSrc={isOwnedResult ? preferFaceImage(v3Image) : null}
@@ -906,10 +1121,14 @@ async function MeResultPageContent({
       diagnosisCtaTrackSource={acquisition ? "sticky_bar" : undefined}
       diagnosisCtaEvent="share_to_diagnosis_clicked"
       previewMode={previewType !== null}
-      essence={dispEssence}
+      essence={displayEssence}
       code={dispCode}
       reportHref={
-        showUnmeiPromo
+        resultUpgradeReady
+          ? "/result-upgrade/reading"
+          : showResultUpgradePlaceholder
+            ? undefined
+          : showUnmeiPromo
           ? isEnglish
             ? "/en/unmei"
             : isKorean
@@ -934,7 +1153,9 @@ async function MeResultPageContent({
             : undefined
       }
       reportLabel={
-        showUnmeiPromo
+        resultUpgradeReady
+          ? "専用鑑定書を見る"
+          : showUnmeiPromo
           ? isEnglish
             ? "Upgrade my result"
             : isKorean
@@ -952,10 +1173,38 @@ async function MeResultPageContent({
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
-      circleTone={showUnmeiPromo ? "gold" : undefined}
+      circleTone={showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
       group={resultGroup}
       reportCta={
-        showUnmeiPromo ? (
+        showResultUpgradePlaceholder ? (
+          <ResultUpgradeChatLauncher
+            ownerToken={previewType ? "preview" : token}
+            existingAnswers={resultUpgrade?.answers ?? []}
+            initialState={resultUpgrade?.state}
+            premiumPaid={premiumBundlePaid}
+            preview={Boolean(previewType)}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white transition-transform hover:translate-y-0.5 active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
+            style={resultActionButtonStyle}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 20V6" />
+              <path d="m7 11 5-5 5 5" />
+              <path d="M19 2v4M17 4h4" />
+              <path d="M5 16v4M3 18h4" />
+            </svg>
+            {resultUpgradeCtaLabel}
+          </ResultUpgradeChatLauncher>
+        ) : showUnmeiPromo ? (
           <MeUnmeiChatLauncher
             ownerToken={previewType ? null : token}
             locale={locale}
@@ -998,10 +1247,16 @@ async function MeResultPageContent({
     {/* 本文〜末尾CTA/課金カードまでを薄グレー1枚で面にする (16P 参考・2026-08-26)。
         main 単体に塗ると main 外の課金カード/末尾CTAの帯だけ白く抜けて継ぎ目が
         出るため、ラッパーで包んで塗る。 */}
+    {isOwnedResult &&
+      ownsResultSession &&
+      premiumBundlePaid &&
+      resultUpgrade && (
+        <ResultUpgradeGenerationWatcher initialState={resultUpgrade.state} />
+      )}
     <div style={resultThemeStyle}>
     <main
       className={`relative min-h-screen overflow-x-clip px-4 md:px-8 ${
-        publicPreview ? "pb-0" : "pb-6 md:pb-10"
+        publicPreview || resultUpgradeReady ? "pb-0" : "pb-6 md:pb-10"
       }`}
     >
       {/* 枠・カード(水色ボーダー/角丸/grid-bg/カードpadding)を撤去。背景は全面 main の
@@ -1028,15 +1283,20 @@ async function MeResultPageContent({
                     ? "Tipe kepribadian Anda:"
                   : "あなたの性格タイプ:"
           }
-          essence={dispEssence}
+          essence={displayEssence}
           scores={stored}
           heroBg={heroBg}
           codeTint={codeTint}
-          imageSrc={dispImage}
+          imageSrc={displayCharacterImage}
+          fullBleedImageSrc={resultUpgradeReady ? displayCharacterImage : undefined}
           animSrc={null}
-          alt={dispName}
+          alt={resultUpgradeReady ? resultUpgrade.personalized_type_name : dispName}
           name={dispName}
-          description={personalize(dispDesc)}
+          description={
+            resultUpgradeReady
+              ? resultUpgrade.personalized_intro
+              : personalize(dispDesc)
+          }
           heroPullClass={heroPullClass}
           jobSlot={
             acquisition
@@ -1085,7 +1345,11 @@ async function MeResultPageContent({
           className="mb-10"
         >
           {(() => {
-            const paragraphs = sections[0] ? sections[0].body.split("\n\n") : [];
+            const paragraphs = upgradedSelfSections
+              ? upgradedSelfSections.overview.body.split("\n\n")
+              : sections[0]
+                ? sections[0].body.split("\n\n")
+                : [];
             const introImage = sceneImage("normal1");
             const imageAfter = Math.max(0, Math.floor(paragraphs.length / 2) - 1);
             const beforeGraph = paragraphs.slice(0, imageAfter + 1);
@@ -1097,6 +1361,11 @@ async function MeResultPageContent({
                 {beforeGraph.length > 0 && (
                   <section className="mb-14">
                     <div className="px-1 pb-1">
+                      {upgradedSelfSections && (
+                        <h2 className="mb-4 text-[25px] font-black leading-tight text-[#2E2E5C] md:text-[30px]">
+                          {upgradedSelfSections.overview.title}
+                        </h2>
+                      )}
                       {beforeGraph.map((para, pIdx) => (
                         <p key={`intro-${pIdx}`} className={paraClass}>
                           {para}
@@ -1238,6 +1507,21 @@ async function MeResultPageContent({
               className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
             />
           )}
+          {upgradedSelfSections && (
+            <div className="mb-8 px-1">
+              <h3 className="mb-3 text-[21px] font-black leading-tight text-[#2E2E5C] md:text-[24px]">
+                {upgradedSelfSections.everyday.title}
+              </h3>
+              {upgradedSelfSections.everyday.body.split("\n\n").map((para, index) => (
+                <p
+                  key={`upgraded-everyday-${index}`}
+                  className="body-gothic mb-4 text-[17px] font-normal leading-[1.4] text-[#1A1A1A] last:mb-0"
+                >
+                  {para}
+                </p>
+              ))}
+            </div>
+          )}
           <MoshimoScenes
             // 獲得モードは無料シーンのみ (課金シーンは鍵チップごと出さない) + 名前置換。
             // 公開プレビューも同様に無料シーンのみ (解除カードの課金CTAを出さない)。
@@ -1257,6 +1541,12 @@ async function MeResultPageContent({
             locale={locale}
           />
         </section>
+
+        {/* ¥599購入後アップセルカード (2枚目): ④もしもの時のあなたを
+            読み終えた区切りで、⑤友達から見たあなたへ進む前にも再提示する。 */}
+        {showResultUpgradePlaceholder && unmeiPromoCard && (
+          <div className="mt-16">{unmeiPromoCard}</div>
+        )}
 
         {/* ===== ⑤ 友達から見たあなた (16P 風ロックティーザー) =====
             ぼかしたダミーバーの上に「今すぐロックを解除」カードを重ね、
@@ -1356,13 +1646,17 @@ async function MeResultPageContent({
 
         {/* 運命の設計図カード (2枚目): ⑤友達から見たあなた と ⑥注意点 の間にも
             同じものを置く (2026-07-26 指示)。 */}
-        {unmeiPromoCard && <div className="mt-16">{unmeiPromoCard}</div>}
+        {showUnmeiPromo && unmeiPromoCard && (
+          <div className="mt-16">{unmeiPromoCard}</div>
+        )}
 
         {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル) =====
             2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
         {sections[1] &&
           (() => {
-            const paragraphs = sections[1].body.split("\n\n");
+            const paragraphs = upgradedSelfSections
+              ? upgradedSelfSections.caution.body.split("\n\n")
+              : sections[1].body.split("\n\n");
             // 未解放時は先頭1段落のみ無料。日本版・韓国版で同じ境界にする。
             //   1段落目は「〜ありませんか。」で終わるフック、2段落目は「それから、」
             //   始まりの続き物なので、この境界で切ると自然なクリフハンガーになる。
@@ -1415,6 +1709,11 @@ async function MeResultPageContent({
                   />
                 )}
                 <div className="px-1 pb-1">
+                  {upgradedSelfSections && (
+                    <h3 className="mb-3 text-[21px] font-black leading-tight text-[#2E2E5C] md:text-[24px]">
+                      {upgradedSelfSections.caution.title}
+                    </h3>
+                  )}
                   {visibleParagraphs.map((para, pIdx) => (
                     <p
                       key={`caution-${pIdx}`}
@@ -1566,6 +1865,28 @@ async function MeResultPageContent({
             </section>
           )}
 
+        {/* 結果アップグレード特典: 専用タイプ・自由回答・鑑定書をLINEのAliceへ引き継ぐ。 */}
+        {resultUpgradeReady &&
+          locale === "ja" &&
+          !acquisition &&
+          !publicPreview &&
+          (isOwnedResult ||
+            (process.env.NODE_ENV === "development" && previewType !== null)) && (
+            <div className="relative left-1/2 w-screen -translate-x-1/2 bg-white px-4 pb-16 pt-8 md:px-8 md:pb-20 md:pt-10">
+              <div
+                id="line-alice-link"
+                className="mx-auto max-w-[1080px] scroll-mt-28"
+              >
+                <LineAliceLinkCard
+                  variant="personalized"
+                  ownerToken={previewType ? undefined : token}
+                  personalizedTypeName={resultUpgrade.personalized_type_name}
+                  trackingSource="result_upgrade"
+                />
+              </div>
+            </div>
+          )}
+
         {/* ===== 獲得CTA (/share 経由 + 公開タイプ別LP): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}
         {acquisition && acquisitionDiagnosisHref ? (
           <div className="mt-16 mb-12 text-center">
@@ -1595,6 +1916,16 @@ async function MeResultPageContent({
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
+    {/* ¥599購入後アップセルカード（3枚目）: 診断本文の読了後、
+        「20万+」のシェアエリアへ進む前に白いフル幅の面で再提示する。 */}
+    {showResultUpgradePlaceholder && unmeiPromoCard && (
+      <div
+        className="w-full px-4 py-14 md:px-8 md:py-16"
+        style={{ backgroundColor: "#FFFFFF" }}
+      >
+        <div className="mx-auto max-w-[1080px]">{unmeiPromoCard}</div>
+      </div>
+    )}
     {/* 学生向けライト課金カード。第二部が未解放のときのみ表示する。 */}
     {/* 獲得モードは課金導線なし。公開プレビューはダミートークンを渡さず、
         未診断なら FullAccessCta の通常フローで診断へ送る。 */}

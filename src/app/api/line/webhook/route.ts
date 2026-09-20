@@ -34,7 +34,7 @@ import {
   generateLineAliceReply,
   lineAliceChatEnabled,
   lineFreeTotalLimit,
-  type LineAliceUser,
+  loadLineAliceUser,
 } from "@/lib/line-alice";
 import {
   buildLineLoveFootprintsPageUrl,
@@ -86,6 +86,8 @@ import {
   type LineTarotCard,
 } from "@/lib/line-tarot";
 import { resolveSiteUrl } from "@/lib/site-url";
+import { isResultUpgradeReady } from "@/lib/result-upgrade";
+import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -156,6 +158,10 @@ const NON_TEXT_MESSAGE =
 
 const GENERATION_ERROR_MESSAGE =
   "ごめんなさい、いまうまく言葉にできませんでした。少し時間をおいて、もう一度話しかけてみてください。";
+
+async function hasResultUpgradeLineAccess(userId: string): Promise<boolean> {
+  return isResultUpgradeReady(await loadResultUpgradeForUser(userId));
+}
 
 export async function POST(request: NextRequest) {
   if (!process.env.LINE_CHANNEL_SECRET) {
@@ -266,12 +272,27 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
 
   if (event.replyToken) {
     const linked = Boolean(existing?.user_id);
+    const linkedUser = existing?.user_id
+      ? await loadLineAliceUser(existing.user_id)
+      : null;
+    const personalizedTypeName =
+      linkedUser?.resultUpgrade?.personalizedTypeName ?? null;
     await replyLineMessages(event.replyToken, [
       {
         type: "text",
-        text: linked ? WELCOME_BACK_MESSAGE : WELCOME_MESSAGE,
+        text: linked
+          ? personalizedTypeName
+            ? [
+                "おかえりなさい。Aliceです。",
+                `「${personalizedTypeName}」の鑑定結果も、話してくれたことも、ちゃんと覚えていますよ。`,
+                "今日は、どんなことを一緒に見てみましょうか？",
+              ].join("\n")
+            : WELCOME_BACK_MESSAGE
+          : WELCOME_MESSAGE,
         quickReply: linked
-          ? quickReplies("今日の恋模様", "Aliceに恋愛相談")
+          ? personalizedTypeName
+            ? quickReplies("Aliceに恋愛相談", "恋のタロット", "相性占い")
+            : quickReplies("今日の恋模様", "Aliceに恋愛相談")
           : quickReplies("使い方"),
       },
     ]);
@@ -432,15 +453,8 @@ async function handleAliceChat(
     }
   }
 
-  const { data: user, error } = await supabaseAdmin
-    .from("users")
-    .select("id, display_name, type_id, scores")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error || !user) {
-    console.error("[line/webhook] linked user lookup failed", {
-      message: error?.message ?? "not_found",
-    });
+  const user = await loadLineAliceUser(userId);
+  if (!user) {
     await replyLineMessages(replyToken, [
       { type: "text", text: GENERATION_ERROR_MESSAGE },
     ]);
@@ -452,12 +466,7 @@ async function handleAliceChat(
   try {
     const replyText = await generateLineAliceReply({
       lineUserId,
-      user: {
-        id: user.id,
-        display_name: user.display_name ?? null,
-        type_id: user.type_id ?? null,
-        scores: (user.scores ?? null) as Record<string, number> | null,
-      } satisfies LineAliceUser,
+      user,
       text,
     });
     await replyLineMessages(replyToken, [{ type: "text", text: replyText }]);
@@ -492,8 +501,11 @@ async function handleAishoCommand(
   replyToken: string,
   userId: string,
 ): Promise<void> {
-  const isPlus = await hasActiveLinePlus(userId);
-  if (!isPlus) {
+  const [isPlus, hasUpgradeAccess] = await Promise.all([
+    hasActiveLinePlus(userId),
+    hasResultUpgradeLineAccess(userId),
+  ]);
+  if (!isPlus && !hasUpgradeAccess) {
     if (!linePlusEnabled()) {
       await replyLineMessages(replyToken, [
         {
@@ -1059,12 +1071,8 @@ async function handleThemeFortune(
     return;
   }
 
-  const { data: user, error } = await supabaseAdmin
-    .from("users")
-    .select("id, display_name, type_id, scores")
-    .eq("id", userId)
-    .maybeSingle();
-  if (error || !user) {
+  const user = await loadLineAliceUser(userId);
+  if (!user) {
     await replyLineMessages(replyToken, [
       { type: "text", text: GENERATION_ERROR_MESSAGE },
     ]);
@@ -1075,12 +1083,7 @@ async function handleThemeFortune(
   try {
     const fortune = await generateThemeFortune({
       lineUserId,
-      user: {
-        id: user.id,
-        display_name: user.display_name ?? null,
-        type_id: user.type_id ?? null,
-        scores: (user.scores ?? null) as Record<string, number> | null,
-      },
+      user,
       theme,
       requestText,
     });
@@ -1213,12 +1216,8 @@ async function handleLineCommand(
   }
 
   if (command === "fortune") {
-    const { data: user, error } = await supabaseAdmin
-      .from("users")
-      .select("id, display_name, type_id, scores")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error || !user) {
+    const user = await loadLineAliceUser(userId);
+    if (!user) {
       await replyLineMessages(replyToken, [
         { type: "text", text: GENERATION_ERROR_MESSAGE },
       ]);
@@ -1229,12 +1228,7 @@ async function handleLineCommand(
     try {
       const fortune = await getOrCreateDailyLoveFortune({
         lineUserId,
-        user: {
-          id: user.id,
-          display_name: user.display_name ?? null,
-          type_id: user.type_id ?? null,
-          scores: (user.scores ?? null) as Record<string, number> | null,
-        },
+        user,
       });
       await replyLineMessages(replyToken, [
         {
@@ -1380,11 +1374,14 @@ async function handleLineCommand(
   }
 
   // result: 自己診断と友達診断をまとめて返す
-  const { data: user } = await supabaseAdmin
-    .from("users")
-    .select("owner_token")
-    .eq("id", userId)
-    .maybeSingle();
+  const [{ data: user }, aliceUser] = await Promise.all([
+    supabaseAdmin
+      .from("users")
+      .select("owner_token")
+      .eq("id", userId)
+      .maybeSingle(),
+    loadLineAliceUser(userId),
+  ]);
   if (!user?.owner_token) {
     await replyLineMessages(replyToken, [
       {
@@ -1395,13 +1392,19 @@ async function handleLineCommand(
     return;
   }
   const site = resolveSiteUrl();
+  const personalizedTypeName =
+    aliceUser?.resultUpgrade?.personalizedTypeName ?? null;
   await replyLineMessages(replyToken, [
     {
       type: "text",
       text: [
-        "あなたの結果は、ここからいつでも読み返せます。",
+        personalizedTypeName
+          ? `あなた専用の「${personalizedTypeName}」の結果は、ここからいつでも読み返せます。`
+          : "あなたの結果は、ここからいつでも読み返せます。",
         "",
-        "📖 自己診断 (あなたのトリセツ)",
+        personalizedTypeName
+          ? "📖 アップグレード済みの自己診断"
+          : "📖 自己診断 (あなたのトリセツ)",
         `${site}/me/${user.owner_token}`,
         "",
         "👀 友達診断 (まわりから見えているあなた)",
@@ -1516,8 +1519,11 @@ async function handleTarotCommand(
   replyToken: string,
   userId: string,
 ): Promise<void> {
-  const isPlus = await hasActiveLinePlus(userId);
-  if (!isPlus) {
+  const [isPlus, hasUpgradeAccess] = await Promise.all([
+    hasActiveLinePlus(userId),
+    hasResultUpgradeLineAccess(userId),
+  ]);
+  if (!isPlus && !hasUpgradeAccess) {
     await replyTarotUpsell(lineUserId, replyToken);
     return;
   }
@@ -1545,8 +1551,11 @@ async function handleTarotPick(
   userId: string,
   pos: number,
 ): Promise<void> {
-  const isPlus = await hasActiveLinePlus(userId);
-  if (!isPlus) {
+  const [isPlus, hasUpgradeAccess] = await Promise.all([
+    hasActiveLinePlus(userId),
+    hasResultUpgradeLineAccess(userId),
+  ]);
+  if (!isPlus && !hasUpgradeAccess) {
     // 解約後に古いピッカーを触ったケースなど
     await replyTarotUpsell(lineUserId, replyToken);
     return;
@@ -1682,11 +1691,17 @@ async function handleLinkCode(
       type: "text",
       text: lineLinkSuccessMessage({
         displayName: result.user.displayName,
+        personalizedTypeName: result.user.typeName,
+        resultUpgraded: result.user.resultUpgraded,
         switched: result.switched,
         chatEnabled,
       }),
       ...(chatEnabled
-        ? { quickReply: quickReplies("今日の恋模様", "Aliceに恋愛相談") }
+        ? {
+            quickReply: result.user.resultUpgraded
+              ? quickReplies("Aliceに恋愛相談", "恋のタロット", "相性占い")
+              : quickReplies("今日の恋模様", "Aliceに恋愛相談"),
+          }
         : {}),
     },
   ]);
