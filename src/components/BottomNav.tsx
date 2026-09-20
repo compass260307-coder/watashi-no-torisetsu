@@ -1,6 +1,6 @@
 "use client";
 
-// 全ページ共通の下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
+// 自己診断完了後に表示する下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
 //   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
 //   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
@@ -68,8 +68,6 @@ const INACTIVE = "#9BA3B4";
 //   - /share/    : キャラシェアの獲得ランディング (新規向け・診断CTA 1点に集中させる)
 // ※ /me・/tako・/ は「ナビの目的地」なので (フローティングCTAがあっても) ナビは表示したまま。
 //   友達診断タブは /friend-evaluation ではなく /tako/[token] を指す。
-// ※ /diagnosis (自己診断の回答フロー) はサイト共通chrome統一のためナビを表示する。
-//   下部の StickyCtaFooter は aboveBottomNav でナビの上に持ち上げて衝突を避ける。
 const HIDE_ON_PREFIXES = [
   "/friend/",
   // /evaluate/sent (評価送信後の案内ページ) ではナビを出す (2026-08-04:
@@ -243,10 +241,9 @@ export function BottomNav() {
   const [takoUrl, setTakoUrl] = useState(() =>
     `${localePrefix}/tako`,
   );
-  // 未診断 (token 無し) なら友達診断タブをロック表示にし、タップでポップアップを出す。
-  //   初期値 true (=ロックなし) にすると診断済みユーザーに一瞬ロックが見えるのを避けられる
-  //   一方、未診断ユーザーには hydration 後にバッジが現れるが、こちらの方が違和感が小さい。
-  const [hasToken, setHasToken] = useState(true);
+  // owner token は診断の保存完了後にだけ発行される。SSR / hydration 前も未確認として
+  // false に倒し、未診断ユーザーへナビが一瞬表示されることも防ぐ。
+  const [hasToken, setHasToken] = useState(false);
   const [diagnosisLockTarget, setDiagnosisLockTarget] =
     useState<DiagnosisLockTarget | null>(null);
   const [courseLockTarget, setCourseLockTarget] =
@@ -261,6 +258,13 @@ export function BottomNav() {
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
+  // ナビ自体を検証する開発用ページは、診断データがなくても表示できるようにする。
+  const isBottomNavPreview =
+    process.env.NODE_ENV === "development" &&
+    (isTakoAttentionPreview ||
+      isAstrologerPreview ||
+      isPaidNavigationPreview ||
+      isCoursePaywallPreview);
   // 常設ナビは全ページで表示されるため、リンク先を自動取得すると1表示あたりの
   // Edge Requestsが大きく増える。遷移自体はNext Linkのまま、取得はタップ時に行う。
   const navigationPrefetch = false;
@@ -683,8 +687,8 @@ export function BottomNav() {
     ],
   );
 
-  // フロー系ページ (下部固定CTAあり) ではナビを描画しない。
-  if (navHidden) {
+  // フロー系ページに加え、自己診断が完了していない間はナビを描画しない。
+  if (navHidden || (!hasToken && !isBottomNavPreview)) {
     return null;
   }
 
