@@ -58,6 +58,8 @@ import {
   HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
+  RESULT_UPGRADE_OFFER_VERSION,
+  RESULT_UPGRADE_PRICE_JPY,
   SELF_REPORT_LIST_PRICE_JPY,
   SELF_REPORT_PRICE_JPY,
   TAROT_ACCESS_POLICY_FULL_INCLUDED,
@@ -827,12 +829,31 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
-  const effectivePrice = accessProductPriceForCheckout(
-    checkoutLocale,
-    product,
-    entitlements,
-    paywallVersion,
-  );
+  const isResultUpgradeCheckout =
+    checkoutLocale === "ja" &&
+    product === "premium_bundle" &&
+    paywallSource === "result_upgrade_after_answers";
+  if (
+    isResultUpgradeCheckout &&
+    !entitlements.full &&
+    !entitlements.selfReport
+  ) {
+    return NextResponse.json(
+      {
+        error: "result_upgrade_ineligible",
+        code: "result_upgrade_ineligible",
+      },
+      { status: 409 },
+    );
+  }
+  const effectivePrice = isResultUpgradeCheckout
+    ? RESULT_UPGRADE_PRICE_JPY
+    : accessProductPriceForCheckout(
+        checkoutLocale,
+        product,
+        entitlements,
+        paywallVersion,
+      );
   const coursePrice = accessProductPriceForCheckout(
     checkoutLocale,
     product,
@@ -1148,6 +1169,9 @@ export async function POST(request: NextRequest) {
           upgrade_from: upgradeFrom,
           source: paywallSource,
           paywall_version: paywallVersion,
+          ...(isResultUpgradeCheckout
+            ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+            : {}),
           placement: paywallPlacement,
           return_to: returnTo,
           locale: checkoutLocale,
@@ -1273,6 +1297,9 @@ export async function POST(request: NextRequest) {
         email: customerEmail ?? "",
         paywall_source: paywallSource,
         paywall_version: paywallVersion,
+        ...(isResultUpgradeCheckout
+          ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+          : {}),
         paywall_placement: paywallPlacement,
         return_to: returnTo,
         locale: checkoutLocale,
@@ -1328,6 +1355,9 @@ export async function POST(request: NextRequest) {
         charged_currency: checkoutPricing.currency,
         source: paywallSource,
         paywall_version: paywallVersion,
+        ...(isResultUpgradeCheckout
+          ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+          : {}),
         placement: paywallPlacement,
         return_to: returnTo,
         locale: checkoutLocale,

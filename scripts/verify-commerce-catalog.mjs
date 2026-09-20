@@ -38,6 +38,10 @@ const embeddedCheckout = read(
   "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
 );
 const metaPurchase = read("src/lib/meta-purchase.ts");
+const resultUpgradeChat = read(
+  "src/components/result-upgrade/ResultUpgradeChat.tsx",
+);
+const commerceCatalog = read("docs/COMMERCE_CATALOG.md");
 
 const contractChecks = [
   {
@@ -264,6 +268,38 @@ const contractChecks = [
     label: "Purchase analytics fallback identifies the JPY 599 product",
     valid: metaPurchase.includes('fallbackId: "full_access_jpy_599"'),
   },
+  {
+    label: "Japanese result upgrade checkout price is JPY 899",
+    valid: accessProducts.includes(
+      "export const RESULT_UPGRADE_PRICE_JPY = 899;",
+    ),
+  },
+  {
+    label: "Result upgrade has a dedicated measurement version",
+    valid: accessProducts.includes(
+      '"result_upgrade_v1_jpy_899" as const',
+    ),
+  },
+  {
+    label: "Checkout API applies the dedicated result upgrade price",
+    valid:
+      checkoutRoute.includes(
+        'paywallSource === "result_upgrade_after_answers"',
+      ) && checkoutRoute.includes("? RESULT_UPGRADE_PRICE_JPY"),
+  },
+  {
+    label: "Result upgrade CTA does not duplicate the price in its label",
+    valid:
+      resultUpgradeChat.includes("結果をアップグレード") &&
+      !resultUpgradeChat.includes("¥800で結果をアップグレード") &&
+      !resultUpgradeChat.includes("¥899で結果をアップグレード"),
+  },
+  {
+    label: "Commerce catalog records the JPY 899 result upgrade",
+    valid:
+      commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 結果アップグレード | ¥899 |") &&
+      commerceCatalog.includes("`result_upgrade_v1_jpy_899`"),
+  },
 ];
 
 const failures = contractChecks.filter(({ valid }) => !valid);
@@ -278,5 +314,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 599 from JPY 1,290 effective 2026-09-20 21:12 JST; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 599 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

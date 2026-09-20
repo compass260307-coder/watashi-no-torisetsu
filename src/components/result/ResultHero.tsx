@@ -6,6 +6,7 @@
 
 import { CharacterHero } from "./CharacterHero";
 import type { CharacterHeroJobSlot } from "./CharacterHero";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { BigFiveDimension } from "@/lib/types";
 import type { AppResultLocale } from "@/i18n/result";
 import { characterAnimationForImage } from "@/lib/character-image";
@@ -25,6 +26,8 @@ interface ResultHeroProps {
   dotColor?: string;
   /** キャラ画像 */
   imageSrc: string;
+  /** 指定時はキャラ枠を出さず、生成画像をヒーロー全面に敷く。 */
+  fullBleedImageSrc?: string;
   /**
    * キャラのループ動画。undefined なら imageSrc と同名の動画を自動検出し、
    * null なら静止画を維持する。再生失敗時は imageSrc を表示する。
@@ -64,6 +67,7 @@ export function ResultHero({
   codeTint,
   dotColor = "rgba(255,255,255,0.55)",
   imageSrc,
+  fullBleedImageSrc,
   animSrc,
   alt,
   name,
@@ -79,20 +83,43 @@ export function ResultHero({
     (typeof scores[k] === "number" ? (scores[k] as number) : 5) >= 5;
   const resolvedAnimSrc =
     animSrc === undefined ? characterAnimationForImage(imageSrc) : animSrc;
+  const hasFullBleedImage = Boolean(fullBleedImageSrc);
 
   return (
     <div
-      className="relative mx-[calc(50%-50vw)] w-screen overflow-hidden"
+      className={`relative mx-[calc(50%-50vw)] w-screen overflow-hidden ${
+        hasFullBleedImage ? "min-h-[560px] md:min-h-[640px]" : ""
+      }`}
       style={{
         background: heroBg,
         clipPath:
           "polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - clamp(24px, 3.2vw, 64px)))",
       }}
     >
+      {fullBleedImageSrc && (
+        <>
+          <SmoothImage
+            src={fullBleedImageSrc}
+            alt=""
+            fill
+            priority
+            unoptimized
+            sizes="100vw"
+            className="object-cover object-center md:object-[65%_50%]"
+          />
+          {/* 写真の明暗に左右されず、左側のタイプ名を読めるようにする。 */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(21,24,55,0.08)_10%,rgba(21,24,55,0.78)_100%)] md:bg-[linear-gradient(90deg,rgba(21,24,55,0.82)_0%,rgba(21,24,55,0.56)_42%,rgba(21,24,55,0.08)_76%,rgba(21,24,55,0.14)_100%)]"
+          />
+        </>
+      )}
       {/* 上部中央の放射状グロー */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
+        className={`pointer-events-none absolute inset-x-0 top-0 h-[320px] ${
+          hasFullBleedImage ? "opacity-30" : ""
+        }`}
         style={{
           background:
             "radial-gradient(ellipse at top center, rgba(255,255,255,0.6) 0%, transparent 68%)",
@@ -115,11 +142,25 @@ export function ResultHero({
       ))}
       {/* 中身: SP=縦積み中央 / PC(twoColumn)=2カラム */}
       <div
-        className={`relative ${contentMaxWidthClass} mx-auto px-4 md:px-8 pt-9 md:pt-14 pb-2 ${
-          twoColumn ? "md:flex md:items-center md:gap-8" : ""
+        className={`relative ${contentMaxWidthClass} mx-auto px-4 md:px-8 ${
+          hasFullBleedImage
+            ? "flex min-h-[560px] items-end pb-24 pt-12 md:min-h-[640px] md:items-center md:pb-16 md:pt-16"
+            : "pb-2 pt-9 md:pt-14"
+        } ${
+          twoColumn && !hasFullBleedImage
+            ? "md:flex md:items-center md:gap-8"
+            : ""
         }`}
       >
-        <div className={twoColumn ? "md:flex-1" : ""}>
+        <div
+          className={
+            hasFullBleedImage
+              ? "w-full max-w-[720px]"
+              : twoColumn
+                ? "md:flex-1"
+                : ""
+          }
+        >
           {/* 称号 (label + essence) */}
           <div className={`text-center ${twoColumn ? "md:text-left" : ""}`}>
             <p className="mb-1 text-[16px] font-bold tracking-[0.02em] text-white md:text-[19px]">
@@ -131,6 +172,9 @@ export function ResultHero({
               className="whitespace-nowrap font-bold leading-[1.04] text-white"
               style={{
                 fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
+                textShadow: hasFullBleedImage
+                  ? "0 3px 18px rgba(12, 15, 40, 0.42)"
+                  : undefined,
               }}
             >
               {essence}
@@ -150,7 +194,7 @@ export function ResultHero({
                   className="font-extrabold leading-none"
                   style={{
                     fontSize: high ? "30px" : "20px",
-                    color: codeTint,
+                    color: hasFullBleedImage ? "#FFFFFF" : codeTint,
                     opacity: high ? 1 : 0.55,
                   }}
                 >
@@ -161,28 +205,30 @@ export function ResultHero({
           </div>
         </div>
         {/* キャラ画像 */}
-        <div
-          className={`max-w-[640px] mx-auto ${heroPullClass} md:mt-0 md:max-w-[560px] ${
-            twoColumn ? "md:flex-1" : ""
-          }`}
-        >
-          <CharacterHero
-            imageSrc={imageSrc}
-            animSrc={resolvedAnimSrc}
-            alt={alt}
-            essence={essence}
-            name={name}
-            description={description}
-            imageAspectClassName={imageAspectClassName}
-            imageFitClassName="object-contain"
-            imageCardClassName=""
-            imageSizes="(min-width: 768px) 600px, 100vw"
-            hideDecorations
-            hideJobGauge
-            jobSlot={jobSlot}
-            locale={locale}
-          />
-        </div>
+        {!hasFullBleedImage && (
+          <div
+            className={`max-w-[640px] mx-auto ${heroPullClass} md:mt-0 md:max-w-[560px] ${
+              twoColumn ? "md:flex-1" : ""
+            }`}
+          >
+            <CharacterHero
+              imageSrc={imageSrc}
+              animSrc={resolvedAnimSrc}
+              alt={alt}
+              essence={essence}
+              name={name}
+              description={description}
+              imageAspectClassName={imageAspectClassName}
+              imageFitClassName="object-contain"
+              imageCardClassName=""
+              imageSizes="(min-width: 768px) 600px, 100vw"
+              hideDecorations
+              hideJobGauge
+              jobSlot={jobSlot}
+              locale={locale}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
