@@ -3,6 +3,7 @@ const BASE_URL = (
 ).replace(/\/+$/, "");
 
 const ROUTES = [
+  "/",
   "/ko",
   "/ko/diagnosis",
   "/ko/tako",
@@ -30,6 +31,25 @@ const unpaidMeToken = process.env.KO_VERIFY_UNPAID_ME_TOKEN?.trim();
 if (unpaidMeToken) ROUTES.push(`/ko/me/${encodeURIComponent(unpaidMeToken)}`);
 
 const checks = {
+  "/": [
+    [
+      /<title>友達と作る無料性格診断テスト｜Alice Personalities<\/title>/,
+      "Alice Personalities home title",
+    ],
+    [
+      /<meta name="application-name" content="Alice Personalities"\/?>/,
+      "Alice Personalities application name",
+    ],
+    [
+      /<meta(?=[^>]*property="og:site_name")(?=[^>]*content="Alice Personalities")[^>]*>/,
+      "Alice Personalities Open Graph site name",
+    ],
+    [
+      /"@type":"WebSite"[^<]*"name":"Alice Personalities"/,
+      "Alice Personalities WebSite structured-data name",
+    ],
+    [/>Alice Personalities<\/a>/, "visible Alice Personalities home identity"],
+  ],
   "/ko": [
     [
       /<title>앨리스 진단 \| 나의 사용설명서<\/title>/,

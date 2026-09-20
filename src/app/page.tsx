@@ -81,7 +81,8 @@ const jsonLd = {
     {
       "@type": "Organization",
       "@id": `${BASE_URL}/#organization`,
-      name: "ワタシのトリセツ運営事務局",
+      name: GLOBAL_SITE_NAME,
+      alternateName: "ワタシのトリセツ運営事務局",
       url: BASE_URL,
       logo: {
         "@type": "ImageObject",
