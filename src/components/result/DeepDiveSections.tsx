@@ -470,13 +470,13 @@ const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
     ),
     source: "love_endure_card",
   },
-  "잘 맞는 일과 피하고 싶은 환경": {
+  "잘 맞는 일과 피하면 좋은 환경": {
     decoyItems: KO_CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
         완전판 리포트에서,
         <br className="md:hidden" />
-        잘 맞는 일과 피하는 편이 좋은 환경을 확인해 보세요.
+        나에게 잘 맞는 일과 피하면 좋은 환경을 확인해 보세요.
       </>
     ),
     source: "career_fit_card",

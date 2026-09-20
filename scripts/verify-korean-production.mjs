@@ -52,13 +52,11 @@ const checks = {
       "ja-JP hreflang",
     ],
     [
-      /<h1[^>]*>앨리스 진단<\/h1>/,
-      "visible Alice diagnosis H1",
+      /<h1[^>]*>“친구들에게는 이런 내가 보였구나”<\/h1>/,
+      "friend-view hero H1",
     ],
-    [
-      /앨리스 테스트\(Alice 진단·Alice 테스트\)/,
-      "visible Korean and Latin Alice query variants",
-    ],
+    [/친구에게 보이는 ‘진짜 나’를,/, "friend-view hero description"],
+    [/놀랄 만큼 솔직하게 알 수 있어요\./, "honest-result hero description"],
     [
       /<meta(?=[^>]*property="og:title")(?=[^>]*content="앨리스 진단 \| 나의 사용설명서")[^>]*>/,
       "Alice diagnosis Open Graph title",
@@ -123,6 +121,11 @@ const forbidden = {
     [/<meta name="robots" content="[^"]*noindex/i, "top page must remain indexable"],
     [/href="\/diagnosis"/, "top page must not link to Japanese diagnosis"],
     [/href="\/tako"/, "top page must not link to Japanese friend diagnosis"],
+    [/Alice와 함께 만드는 나만의 사용설명서/, "stale Alice hero description"],
+    [
+      /앨리스 테스트\(Alice 진단·Alice 테스트\)/,
+      "stale keyword-stuffed hero description",
+    ],
   ],
   "/robots.txt": [
     [/^Disallow:\s*\/ko\s*$/im, "Korean home must not be blocked"],
