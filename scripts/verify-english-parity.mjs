@@ -136,15 +136,15 @@ forbidText(
   "TopSeoContent",
   "removed home information blocks",
 );
-forbidText(
+requireText(
   "src/app/globals.css",
-  'html[lang="en"] {\n  --font-noto-sans:',
-  "English/Japanese font-family parity",
+  '--font-noto-sans: "Noto Sans JP", "Noto Sans",',
+  "Japanese Noto Sans JP font stack",
 );
 requireText(
   "src/app/globals.css",
-  '--font-noto-sans: "Noto Sans", "Noto Sans JP",',
-  "shared Noto Sans font stack",
+  'html[lang="en"] {\n  --font-noto-sans: "Noto Sans", "Noto Sans JP",',
+  "English Noto Sans font stack",
 );
 
 forbidText(
