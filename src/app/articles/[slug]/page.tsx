@@ -43,6 +43,7 @@ export async function generateMetadata({
       `/articles/${article.slug}`,
       `/ko/articles/${article.slug}`,
       `/en/articles/${article.slug}`,
+      `/id/articles/${article.slug}`,
     ),
     openGraph: {
       type: "article",

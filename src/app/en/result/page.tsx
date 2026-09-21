@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import EnResultRedirect from "@/components/en/EnResultRedirect";
+import ResultRedirect from "@/components/result/ResultRedirect";
 
 export const metadata: Metadata = { title: "Loading your result", robots: { index: false, follow: false } };
 
-export default function EnglishResultPage() { return <EnResultRedirect />; }
+export default function EnglishResultPage() {
+  return <ResultRedirect locale="en" />;
+}

@@ -18,7 +18,13 @@ export const metadata: Metadata = {
   title: "記事・コラム",
   description:
     "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する、ワタシのトリセツの記事・コラム一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
-  alternates: localizedAlternates("ja", "/articles", "/ko/articles", "/en/articles"),
+  alternates: localizedAlternates(
+    "ja",
+    "/articles",
+    "/ko/articles",
+    "/en/articles",
+    "/id/articles",
+  ),
   openGraph: {
     type: "website",
     locale: "ja_JP",

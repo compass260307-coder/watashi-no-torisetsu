@@ -524,7 +524,7 @@ export function MeStickyHeader({
   const xUrl = activeShareUrl
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(activeShareUrl, "x"))}`
     : undefined;
-  const lineUrl = activeShareUrl && !isKo
+  const lineUrl = activeShareUrl && !isKo && !isEn
     ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(activeShareUrl, "line")}`)}`
     : undefined;
   // Facebook は sharer.php (テキストは付与不可・URL のみ)。
@@ -1023,7 +1023,7 @@ export function MeStickyHeader({
                       카카오톡
                     </span>
                   </button>
-                ) : (
+                ) : isEn ? null : (
                   <a
                     href={lineUrl}
                     target="_blank"
@@ -1249,7 +1249,7 @@ export function MeStickyHeader({
                       카카오톡
                     </span>
                   </button>
-                ) : (
+                ) : isEn ? null : (
                   <a
                     href={lineUrl}
                     target="_blank"

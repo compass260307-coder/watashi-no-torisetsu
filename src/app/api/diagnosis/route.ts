@@ -369,10 +369,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // English paid-report email copy is not launched yet. Indonesian has a
-    // dedicated template and follows the same post-diagnosis delivery path
-    // as Japanese and Korean.
-    if (postDiagnosisReportEmail && locale !== "en") {
+    // Every supported locale follows the same post-diagnosis delivery path.
+    if (postDiagnosisReportEmail) {
       try {
         await sendDetailedReportEmail({
           to: postDiagnosisReportEmail,

@@ -18,7 +18,13 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Aliceと話す",
   description: "性格診断と星読み鑑定をもとに、AI占い師「Alice」と対話できます。",
-  alternates: localizedAlternates("ja", "/hoshiyomi", "/ko/hoshiyomi"),
+  alternates: localizedAlternates(
+    "ja",
+    "/hoshiyomi",
+    "/ko/hoshiyomi",
+    "/en/hoshiyomi",
+    "/id/hoshiyomi",
+  ),
   robots: { index: false, follow: false },
 };
 

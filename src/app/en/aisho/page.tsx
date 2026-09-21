@@ -14,7 +14,13 @@ const URL = `${SITE_URL}/en/aisho`;
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
-  alternates: localizedAlternates("en", "/aisho", "/ko/aisho", "/en/aisho"),
+  alternates: localizedAlternates(
+    "en",
+    "/aisho",
+    "/ko/aisho",
+    "/en/aisho",
+    "/id/aisho",
+  ),
   openGraph: { type: "website", locale: "en_US", alternateLocale: ["ja_JP", "ko_KR"], url: URL, siteName: EN_BRAND_NAME, title: TITLE, description: DESCRIPTION, images: [EN_DEFAULT_OG_IMAGE] },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
 };

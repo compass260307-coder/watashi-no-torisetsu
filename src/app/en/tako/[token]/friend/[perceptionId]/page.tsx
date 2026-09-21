@@ -18,6 +18,7 @@ export async function generateMetadata({ params }: {
       `/tako/${tokenPath}/friend/${perceptionPath}`,
       `/ko/tako/${tokenPath}/friend/${perceptionPath}`,
       `/en/tako/${tokenPath}/friend/${perceptionPath}`,
+      `/id/tako/${tokenPath}/friend/${perceptionPath}`,
     ),
     robots: { index: false, follow: false },
   };

@@ -17,6 +17,8 @@ export async function generateMetadata({
       "ja",
       `/tako/${tokenPath}`,
       `/ko/tako/${tokenPath}`,
+      `/en/tako/${tokenPath}`,
+      `/id/tako/${tokenPath}`,
     ),
     robots: { index: false, follow: false },
   };

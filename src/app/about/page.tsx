@@ -5,7 +5,13 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const metadata: Metadata = {
   title: "サービスについて",
   description: "ワタシのトリセツは、自分の診断と友達からの他己評価をかけ合わせて作る自己理解サービス。Big Five 心理学をベースに、「友達から見えているワタシ」がわかります。",
-  alternates: localizedAlternates("ja", "/about", "/ko/about"),
+  alternates: localizedAlternates(
+    "ja",
+    "/about",
+    "/ko/about",
+    "/en/about",
+    "/id/about",
+  ),
   openGraph: {
     title: "サービスについて｜ワタシのトリセツ",
     description: "自分の診断と友達からの他己評価をかけ合わせて作る、自分の取扱説明書。",

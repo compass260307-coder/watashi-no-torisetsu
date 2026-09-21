@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
+import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
@@ -12,10 +13,10 @@ import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { PaywallModal } from "@/components/result/PaywallModal";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import { ResultHero } from "@/components/result/ResultHero";
-import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { TakoFaq } from "@/components/result/TakoFaq";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
+import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
 import {
@@ -28,6 +29,10 @@ import { hasTakoAccess } from "@/lib/entitlements";
 import { enFriendInsights } from "@/lib/en-friend-insights";
 import { heroColorsForGroup } from "@/lib/hero-colors";
 import { loadOwnerReportData } from "@/lib/owner-report-data";
+import {
+  createMetaPurchaseClaimToken,
+  verifyPaidFullAccessCheckoutSession,
+} from "@/lib/paid-checkout-session";
 import { buildDimensionGaps } from "@/lib/perception-analysis";
 import { resolveSiteUrl } from "@/lib/site-url";
 import {
@@ -157,14 +162,33 @@ function GuidanceList({
 export default async function EnTakoResultPage({
   token,
   paid = false,
+  sessionId,
 }: {
   token: string;
   paid?: boolean;
+  sessionId?: string | string[];
 }) {
-  const data = await loadOwnerReportData(token);
+  const [data, paidCheckoutSession] = await Promise.all([
+    loadOwnerReportData(token),
+    paid
+      ? verifyPaidFullAccessCheckoutSession(sessionId)
+      : Promise.resolve(null),
+  ]);
   if (!data) notFound();
 
   const purchased = await hasTakoAccess(data.user.id);
+  const shouldTrackMetaPurchase =
+    paidCheckoutSession?.userId === (data.user.id as string);
+  const metaPurchaseClaimToken =
+    shouldTrackMetaPurchase && paidCheckoutSession
+      ? createMetaPurchaseClaimToken(paidCheckoutSession.id)
+      : null;
+  const paidAccessProduct =
+    paidCheckoutSession?.product === "premium_bundle"
+      ? "premium_bundle"
+      : paidCheckoutSession?.product === "full_access"
+        ? "full_access"
+        : "self_report";
   const inviteUrl = `${resolveSiteUrl()}/en/friend/${encodeURIComponent(data.inviteCode)}`;
   const qrImageSrc = data.ownerType32
     ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
@@ -586,10 +610,27 @@ export default async function EnTakoResultPage({
 
   return (
     <div className="min-h-dvh bg-white">
+      {shouldTrackMetaPurchase &&
+      paidCheckoutSession &&
+      metaPurchaseClaimToken ? (
+        <MetaPurchaseDataLayer
+          checkoutSessionId={paidCheckoutSession.id}
+          product={paidCheckoutSession.product}
+          claimToken={metaPurchaseClaimToken}
+        />
+      ) : null}
       <PreferredLocaleSync ownerToken={token} locale="en" />
-      <ResultViewTracker ownerToken={token} friendCount={data.friendEvalCount} />
+      <TakoViewTracker
+        ownerToken={token}
+        inviteCode={data.inviteCode}
+      />
       {paid && !purchased ? (
-        <PaidUnlockWatcher ownerToken={token} locale="en" returnTo="tako" />
+        <PaidUnlockWatcher
+          ownerToken={token}
+          locale="en"
+          returnTo="tako"
+          product={paidAccessProduct}
+        />
       ) : null}
       <MeStickyHeader
         showUnlockCta={hasLockedResults}

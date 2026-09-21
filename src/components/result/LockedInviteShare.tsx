@@ -3,7 +3,8 @@
 // ロック中の「友達に評価してもらう」招待導線 (QR + シェアピル)。
 // TakoLockedState / OthersPerceptionSection(/me) / 解除後 /tako で共用。課金導線は一切含めない。
 //
-// - シェアピル: X(黒) / LINE(ko は KakaoTalk) / リンク(ブランド紫) の 3 つを横並び。ラベル付きの塗りピルで
+// - シェアピル: 日本語・インドネシア語は LINE、韓国語は KakaoTalk、英語はどちらも非表示。
+//   X(黒) / Facebook / その他は全言語で表示する。ラベル付きの塗りピルで
 //   世界観に合わせる (色は CharacterShareButton と同系統)。
 // - QR: 友達評価への招待URL (inviteCode 付き) を対面スキャン用に表示。
 // - 見出し/長い注意書きは持たない (呼び出し側の文脈に委ねてシンプルに)。
@@ -90,7 +91,7 @@ export function LockedInviteShare({
   }, [inviteCode, ownerToken, trackSource]);
 
   // チャネル別に ?ref を付けて、この招待から来た友達の流入元 (acquisition_source) を計測する。
-  const lineUrl = isKorean
+  const lineUrl = isKorean || isEnglish
     ? undefined
     : `https://line.me/R/msg/text/?${encodeURIComponent(
         `${shareText} ${withRef(inviteUrl, "line")}`,
@@ -219,7 +220,7 @@ export function LockedInviteShare({
             </span>
             카카오톡
           </button>
-        ) : (
+        ) : isEnglish ? null : (
           <a
             href={lineUrl}
             target="_blank"

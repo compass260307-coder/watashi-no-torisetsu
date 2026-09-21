@@ -128,7 +128,15 @@ export async function sendFriendPerceptionEmail(
 
   const ownerDisplay =
     (args.ownerName ?? "").trim() || (locale === "en" ? "you" : locale === "id" ? "Anda" : "あなた");
-  const meUrl = `${SITE_URL}${locale === "en" ? "/en/tako" : locale === "id" ? "/id/tako" : "/me"}/${encodeURIComponent(args.ownerToken)}`;
+  const localePrefix =
+    locale === "ko"
+      ? "/ko"
+      : locale === "en"
+        ? "/en"
+        : locale === "id"
+          ? "/id"
+          : "";
+  const meUrl = `${SITE_URL}${localePrefix}/me/${encodeURIComponent(args.ownerToken)}`;
   const subject =
     locale === "en"
       ? `${args.perceiverName} shared a new perspective on you`

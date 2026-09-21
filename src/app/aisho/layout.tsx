@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   title: "相性診断",
   description:
     "気になるあの子との相性を、キャラを選ぶだけで診断。自分の診断がなくてもOK。ワタシのトリセツの性格タイプで、ふたりのバランス・いいところ・シーン別の相性がわかる。",
-  alternates: localizedAlternates("ja", "/aisho", "/ko/aisho"),
+  alternates: localizedAlternates(
+    "ja",
+    "/aisho",
+    "/ko/aisho",
+    "/en/aisho",
+    "/id/aisho",
+  ),
   openGraph: {
     title: "相性診断｜ワタシのトリセツ",
     description:
