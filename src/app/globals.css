@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  /* 本文ゴシック。ラテン文字は Noto Sans、日本語文字は Noto Sans JP を
-     Google Fonts 直接配信 (layout.tsx の <link>) で読み、
+  /* 本文ゴシック。日本語ページは Noto Sans JP、英語ページは下の
+     html[lang="en"] 上書きで Noto Sans を優先し、
+     Google Fonts 直接配信 (layout.tsx の <link>) で読む。
      Vercel からは配信しない (Edge Requests 課金対策 2026-09-04)。next/font は使用禁止
      (セルフホスト化で 1 訪問 ≈ 140 woff2 / 1.9MB の課金に戻るため)。ウェイトは 400/700 のみ。
      フォールバック: 未ロード時や未対応グリフはヒラギノ角ゴ → Meiryo。
@@ -11,7 +12,7 @@
      末尾に汎用 sans-serif を置かないのは意図的: ko ページ等では参照側が
      'Apple SD Gothic Neo' などを後ろに続けており、ここで generic を挟むと
      そこへ到達しなくなるため (generic は各参照側の末尾にある)。 */
-  --font-noto-sans: "Noto Sans", "Noto Sans JP", "Hiragino Kaku Gothic ProN",
+  --font-noto-sans: "Noto Sans JP", "Noto Sans", "Hiragino Kaku Gothic ProN",
     "Hiragino Sans", Meiryo;
 
   /* feat/top-page: Sora ブランドカラー (トップヒーローのアクセント) */
@@ -45,6 +46,13 @@
    ここは韓国語向けシステムスタックのみで良い (generic は参照側の末尾にある)。 */
 html[lang="ko"] {
   --font-noto-sans: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic";
+}
+
+/* 英語ページのラテン文字・数字・記号だけは Noto Sans を優先する。
+   日本語ページの価格表記 (¥499 など) は上の Noto Sans JP を維持する。 */
+html[lang="en"] {
+  --font-noto-sans: "Noto Sans", "Noto Sans JP", -apple-system,
+    BlinkMacSystemFont, "Segoe UI";
 }
 
 /* 自己診断結果ページの課金導線。ページ側で分類別の色トークンを渡し、
