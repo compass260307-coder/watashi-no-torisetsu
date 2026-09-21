@@ -1173,7 +1173,7 @@ RevenueCat は Phase 3 で server 側の sandbox / webhook に着手し、Phase 
 
 事業判断は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を正本とする。
 
-- Web: 無料診断、SNS・招待ループによる拡散、¥599買い切りによる初回課金。
+- Web: 無料診断、SNS・招待ループによる拡散、¥499買い切りによる初回課金。
 - LINE: 日本におけるAliceとの継続関係とAlice Plusによる継続課金。
 - アプリ: 将来の世界共通コミュニティ。ユーザー同士のつながりとネットワーク効果を担う。
 

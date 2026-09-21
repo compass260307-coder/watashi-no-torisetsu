@@ -256,7 +256,7 @@ async function MeResultPageContent({
     !acquisition && previewType !== null && sp.previewLock === "1";
   // ローカル専用の購入後プレビュー。通常の ?previewType は本文確認用のため
   // 商品権利までは付与しないが、専用 dev ルートから previewProduct=full_access
-  // を渡した場合だけ、現行 ¥599 完全版を購入済みとして画面全体を再現する。
+  // を渡した場合だけ、現行 ¥499 完全版を購入済みとして画面全体を再現する。
   // production ではクエリを無視し、公開プレビューから権利状態を偽装できないようにする。
   const previewProduct =
     process.env.NODE_ENV === "development" &&
@@ -466,7 +466,7 @@ async function MeResultPageContent({
     resultUpgradeReady ? resultUpgrade.reading : null,
   );
   // プレビュー (?previewType) は /tako のモック同様「解放後」の見た目で描画する (コンテンツ QA 用)。
-  // 専用 dev ルートでは現行 ¥599 完全版の権利も再現する。
+  // 専用 dev ルートでは現行 ¥499 完全版の権利も再現する。
   // ただし ?previewLock=1 のときは未課金ロック状態を再現する (課金導線の確認用)。
   // 獲得モード (/share) は未課金相当で解決する (課金コンテンツの本文は解決しない =
   // フェイルクローズ)。ロックUI自体も hideLocked で出さず「無いもの」として扱う。
@@ -1542,7 +1542,7 @@ async function MeResultPageContent({
           />
         </section>
 
-        {/* ¥599購入後アップセルカード (2枚目): ④もしもの時のあなたを
+        {/* ¥499購入後アップセルカード (2枚目): ④もしもの時のあなたを
             読み終えた区切りで、⑤友達から見たあなたへ進む前にも再提示する。 */}
         {showResultUpgradePlaceholder && unmeiPromoCard && (
           <div className="mt-16">{unmeiPromoCard}</div>
@@ -1916,7 +1916,7 @@ async function MeResultPageContent({
             ナビゲーションはサイト共通フッター + ボトムナビに集約。 */}
       </div>
     </main>
-    {/* ¥599購入後アップセルカード（3枚目）: 診断本文の読了後、
+    {/* ¥499購入後アップセルカード（3枚目）: 診断本文の読了後、
         「20万+」のシェアエリアへ進む前に白いフル幅の面で再提示する。 */}
     {showResultUpgradePlaceholder && unmeiPromoCard && (
       <div
