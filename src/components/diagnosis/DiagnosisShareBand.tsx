@@ -13,7 +13,8 @@ import type { AppResultLocale } from "@/i18n/result";
 // (ギザギザ縁のグレー帯 + 実績数 + SNS 丸ボタン) を参考に、サイトの
 // デザイン言語で実装する。
 //   - 数字はロケールごとの表示実績値。日本語・韓国語は 20万+、英語・インドネシア語は従来値を維持する。
-//   - ボタンは LINE(ko は KakaoTalk) / X / Facebook / リンクコピー + その他 (Web Share 対応端末のみ)。
+//   - ボタンは日本語・インドネシア語のみ LINE、韓国語は KakaoTalk。
+//     英語は LINE を出さず、共通の X / Facebook / リンクコピー + その他を表示する。
 //     アイコン・共有 URL 形式・ref 付与は MeStickyHeader のシェアモーダルと同じ。
 //   - 計測は share_clicked (kind: diagnosis / source: diagnosis_share_band)。
 //   - 共有 URL は診断ページ自体 (/diagnosis, ko は /ko/diagnosis)。
@@ -106,7 +107,7 @@ export function DiagnosisShareBand({
     });
 
   // 共有内容は診断ページの URL だけ (宣伝文は付けない。2026-08-01 指示)。
-  const lineUrl = shareUrl && !isKo
+  const lineUrl = shareUrl && !isKo && !isEn
     ? `https://line.me/R/msg/text/?${encodeURIComponent(withRef(shareUrl, "line"))}`
     : undefined;
   const xUrl = shareUrl
@@ -201,7 +202,7 @@ export function DiagnosisShareBand({
             >
               <KakaoTalkGlyph className="h-[26px] w-[26px]" />
             </button>
-          ) : (
+          ) : isEn ? null : (
             <a
               href={lineUrl}
               target="_blank"

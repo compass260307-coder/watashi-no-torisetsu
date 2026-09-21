@@ -12,7 +12,13 @@ const DESCRIPTION = "Clear guides to the OCEAN personality model, self-understan
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
-  alternates: localizedAlternates("en", "/articles", "/ko/articles", "/en/articles"),
+  alternates: localizedAlternates(
+    "en",
+    "/articles",
+    "/ko/articles",
+    "/en/articles",
+    "/id/articles",
+  ),
   openGraph: {
     type: "website",
     locale: "en_US",

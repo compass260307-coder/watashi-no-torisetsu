@@ -14,7 +14,18 @@ import { getSession } from "@/lib/session";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Talk with Alice", description: "Reflect with your personal AI astrologer in English.", alternates: localizedAlternates("en", "/hoshiyomi", "/ko/hoshiyomi", "/en/hoshiyomi") };
+export const metadata: Metadata = {
+  title: "Talk with Alice",
+  description: "Reflect with your personal AI astrologer in English.",
+  alternates: localizedAlternates(
+    "en",
+    "/hoshiyomi",
+    "/ko/hoshiyomi",
+    "/en/hoshiyomi",
+    "/id/hoshiyomi",
+  ),
+  robots: { index: false, follow: false },
+};
 
 type Props = {
   searchParams?: Promise<{

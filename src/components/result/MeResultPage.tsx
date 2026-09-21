@@ -1948,7 +1948,6 @@ async function MeResultPageContent({
             imageAlt={dispName}
             group={resultGroup}
             locale={locale}
-            cardMode={isEnglish ? "legacy" : undefined}
             noShadow
             benefitsBeforePrice
           />
@@ -1961,7 +1960,6 @@ async function MeResultPageContent({
           imageAlt={dispName}
           group={resultGroup}
           locale={locale}
-          cardMode={isEnglish ? "legacy" : undefined}
         />
       </>
     )}
@@ -2035,7 +2033,7 @@ async function MeResultPageContent({
         TopFooter 側ではなく余白で吸収されるため、そのまま置く。
         /me は直上に波形のシェア帯があり、フッター上端の直線が二重線に見えるため
         topBorder={false} で上端線を消す (他ページのフッターは据え置き)。 */}
-    {isEnglish ? <EnSiteFooter /> : isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} locale={isIndonesian ? "id" : "ja"} />}
+    {isEnglish ? <EnSiteFooter topBorder={false} /> : isKorean ? <KoTopFooter topBorder={false} /> : <TopFooter topBorder={false} locale={isIndonesian ? "id" : "ja"} />}
     </>
   );
 }

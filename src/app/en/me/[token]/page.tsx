@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: { absolute: EN_RESULT_COPY.metadataTitle },
     description: EN_RESULT_COPY.metadataDescription,
-    alternates: { canonical: `/en/me/${encoded}`, languages: { "ja-JP": `/me/${encoded}`, "ko-KR": `/ko/me/${encoded}`, "en-US": `/en/me/${encoded}`, "x-default": `/me/${encoded}` } },
+    alternates: { canonical: `/en/me/${encoded}`, languages: { "ja-JP": `/me/${encoded}`, "ko-KR": `/ko/me/${encoded}`, "en-US": `/en/me/${encoded}`, "id-ID": `/id/me/${encoded}`, "x-default": `/me/${encoded}` } },
     robots: { index: false, follow: false },
   };
 }

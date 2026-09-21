@@ -6,7 +6,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const metadata: Metadata = {
   title: "Sales & Refund Policy",
   description: "Seller, payment, delivery, and refund information for the English Complete Edition.",
-  alternates: localizedAlternates("en", "/legal/commerce", "/ko/legal/commerce", "/en/legal/commerce"),
+  alternates: localizedAlternates("en", "/legal/commerce", "/ko/legal/commerce", "/en/legal/commerce", "/id/legal/commerce"),
   robots: { index: true, follow: true },
 };
 
