@@ -12,13 +12,14 @@ create index if not exists events_checkout_attempt_lookup_idx
   )
   and metadata ->> 'checkout_attempt_id' is not null;
 
--- React Strict Mode・再読込・通信再送が重なってもキャンセルは1試行1行にする。
-create unique index if not exists events_checkout_cancelled_attempt_uidx
+-- 既存データには通信再送による重複があるため、データは削除せず
+-- 参照用インデックのみ追加する。集計は checkout_attempt_id で重複を除外する。
+create index if not exists events_checkout_cancelled_attempt_idx
   on public.events (((metadata ->> 'checkout_attempt_id')))
   where event_name = 'checkout_cancelled'
   and metadata ->> 'checkout_attempt_id' is not null;
 
-create unique index if not exists events_checkout_requested_attempt_uidx
+create index if not exists events_checkout_requested_attempt_idx
   on public.events (((metadata ->> 'checkout_attempt_id')))
   where event_name = 'checkout_requested'
   and metadata ->> 'checkout_attempt_id' is not null;

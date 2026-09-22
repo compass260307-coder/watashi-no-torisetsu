@@ -19,7 +19,6 @@ import TopHeader from "@/components/top/TopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import { useCheckoutCancelledProduct } from "@/components/checkout/CheckoutCancelledNotice";
-import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import {
   HOSHIYOMI_COPY,
@@ -63,7 +62,6 @@ export function HoshiyomiClient({
   const cancelledProduct = useCheckoutCancelledProduct();
   const [remaining, setRemaining] = useState(initialRemaining);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [active, setActive] = useState<ActiveConversation | null>(() =>
     selectedConversation
       ? { id: selectedConversation.id, messages: selectedConversation.messages }
@@ -131,16 +129,6 @@ export function HoshiyomiClient({
   };
 
   const handlePaywallExitAttempt = () => {
-    if (lineExitOpen) return;
-    if (locale === "ja" && !previewMode) {
-      setLineExitOpen(true);
-      return;
-    }
-    setPaywallOpen(false);
-  };
-
-  const closeLineExitFlow = () => {
-    setLineExitOpen(false);
     setPaywallOpen(false);
   };
 
@@ -194,8 +182,6 @@ export function HoshiyomiClient({
           persistenceReady={persistenceReady}
           hasChatAccess={hasChatAccess}
           canUpgradeToPremium={canUpgradeToPremium}
-          ownerToken={ownerToken}
-          previewMode={previewMode}
           locale={locale}
           onStart={startConversation}
         />
@@ -247,14 +233,7 @@ export function HoshiyomiClient({
                   ? "Astrolog AI Alice"
                 : "AI占い師 Alice"
           }
-          scrollLocked={lineExitOpen}
           onClose={handlePaywallExitAttempt}
-        />
-      ) : null}
-      {lineExitOpen ? (
-        <HoshiyomiLineExitModal
-          ownerToken={ownerToken}
-          onClose={closeLineExitFlow}
         />
       ) : null}
     </>
@@ -267,8 +246,6 @@ function HoshiyomiHome({
   persistenceReady,
   hasChatAccess,
   canUpgradeToPremium,
-  ownerToken,
-  previewMode,
   locale,
   onStart,
 }: {
@@ -277,8 +254,6 @@ function HoshiyomiHome({
   persistenceReady: boolean;
   hasChatAccess: boolean;
   canUpgradeToPremium: boolean;
-  ownerToken?: string;
-  previewMode: boolean;
   locale: HoshiyomiLocale;
   onStart: (text: string) => void;
 }) {
@@ -384,15 +359,7 @@ function HoshiyomiHome({
       </section>
 
       <section className="mx-auto max-w-[1040px] px-5 pb-10 pt-4 md:px-8 md:pb-14 md:pt-6">
-        {/* LINE連携 (Alice Plus)。ja限定 */}
-        {locale === "ja" && !previewMode ? (
-          <LineAliceLinkCard
-            ownerToken={ownerToken}
-            trackingSource="hoshiyomi_home"
-          />
-        ) : null}
-
-        <p className="mt-10 text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
+        <p className="text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
           {copy.entertainmentNotice}
         </p>
       </section>
@@ -490,44 +457,6 @@ function HoshiyomiFaqModal({
           {copy.contactSuffix}
         </p>
       </section>
-    </div>,
-    document.body,
-  );
-}
-
-function HoshiyomiLineExitModal({
-  ownerToken,
-  onClose,
-}: {
-  ownerToken?: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="LINEでもAliceと話す"
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#2E2E5C]/35 px-3 py-5 backdrop-blur-[2px] md:py-8"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-[1120px] px-3 pb-6 pt-10 md:px-6 md:pb-10"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <LineAliceLinkCard
-          ownerToken={ownerToken}
-          trackingSource="hoshiyomi_paywall_exit"
-          onClose={onClose}
-        />
-      </div>
     </div>,
     document.body,
   );

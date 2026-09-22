@@ -38,6 +38,9 @@ const embeddedCheckout = read(
   "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
 );
 const metaPurchase = read("src/lib/meta-purchase.ts");
+const resultUpgradeChat = read(
+  "src/components/result-upgrade/ResultUpgradeChat.tsx",
+);
 
 const contractChecks = [
   {
@@ -53,9 +56,15 @@ const contractChecks = [
     ),
   },
   {
-    label: "Japanese full access measurement generation preserves the frozen offer",
+    label: "Japanese full access price change records its effective time",
     valid: accessProducts.includes(
-      '"legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const',
+      '"2026-09-21T10:02:00+09:00" as const',
+    ),
+  },
+  {
+    label: "Japanese full access measurement generation records the restored JPY 499 offer",
+    valid: accessProducts.includes(
+      '"legacy_card_v43_ja_full_499_restored_1290_measurement_v4" as const',
     ),
   },
   {
@@ -255,8 +264,36 @@ const contractChecks = [
     valid: checkoutRoute.includes("course_price_idr_minor:"),
   },
   {
-    label: "Purchase analytics fallback identifies the JPY 499 product",
-    valid: metaPurchase.includes('fallbackId: "full_access_jpy_499"'),
+    label: "Purchase analytics fallback identifies the restored JPY 499 product",
+    valid: metaPurchase.includes(
+      'fallbackId: "full_access_jpy_499_restored_v43"',
+    ),
+  },
+  {
+    label: "Japanese result upgrade checkout price is JPY 899",
+    valid: accessProducts.includes(
+      "export const RESULT_UPGRADE_PRICE_JPY = 899;",
+    ),
+  },
+  {
+    label: "Result upgrade has a dedicated measurement version",
+    valid: accessProducts.includes(
+      '"result_upgrade_v1_jpy_899" as const',
+    ),
+  },
+  {
+    label: "Checkout API applies the dedicated result upgrade price",
+    valid:
+      checkoutRoute.includes(
+        'paywallSource === "result_upgrade_after_answers"',
+      ) && checkoutRoute.includes("? RESULT_UPGRADE_PRICE_JPY"),
+  },
+  {
+    label: "Result upgrade CTA does not duplicate the price in its label",
+    valid:
+      resultUpgradeChat.includes("結果をアップグレード") &&
+      !resultUpgradeChat.includes("¥800で結果をアップグレード") &&
+      !resultUpgradeChat.includes("¥899で結果をアップグレード"),
   },
 ];
 
@@ -272,5 +309,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

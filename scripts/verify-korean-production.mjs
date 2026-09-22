@@ -48,7 +48,7 @@ const checks = {
       /"@type":"WebSite"[^<]*"name":"Alice Personalities"/,
       "Alice Personalities WebSite structured-data name",
     ],
-    [/>Alice Personalities<\/a>/, "visible Alice Personalities home identity"],
+    [/>ワタシのトリセツ<\/a>/, "visible Japanese home identity"],
   ],
   "/ko": [
     [

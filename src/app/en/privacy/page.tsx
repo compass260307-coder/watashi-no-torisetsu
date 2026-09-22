@@ -5,7 +5,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How the English version of Alice Personalities handles personal information.",
-  alternates: localizedAlternates("en", "/privacy", "/ko/privacy", "/en/privacy"),
+  alternates: localizedAlternates("en", "/privacy", "/ko/privacy", "/en/privacy", "/id/privacy"),
   robots: { index: true, follow: true },
 };
 

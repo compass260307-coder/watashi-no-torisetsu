@@ -10,12 +10,13 @@
 
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
-import puppeteer from "puppeteer-core";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasTakoAccess } from "@/lib/entitlements";
+import { launchPdfBrowser } from "@/lib/pdf-browser";
 import { resolveSiteUrl } from "@/lib/site-url";
 
 export const maxDuration = 60;
+export const runtime = "nodejs";
 
 interface RouteContext {
   params: Promise<{ token: string }>;
@@ -80,7 +81,7 @@ async function launchBrowser() {
       // (コールドスタート時のみ数秒かかる。バージョンは package と一致させること)。
       executablePath = await chromium.executablePath(CHROMIUM_PACK_URL);
     }
-    return puppeteer.launch({
+    return launchPdfBrowser({
       args: chromium.args,
       executablePath,
       headless: true,
@@ -89,7 +90,7 @@ async function launchBrowser() {
   const localChrome =
     process.env.PUPPETEER_EXECUTABLE_PATH ??
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  return puppeteer.launch({ executablePath: localChrome, headless: true });
+  return launchPdfBrowser({ executablePath: localChrome, headless: true });
 }
 
 export async function GET(req: Request, ctx: RouteContext) {

@@ -25,7 +25,7 @@ export default function CommercePage() {
     <>
       <LegalDocument
         title="特定商取引法に基づく表記"
-        lastUpdated="2026 年 9 月 11 日"
+        lastUpdated="2026 年 9 月 20 日"
       >
         <p>
           「ワタシのトリセツ」における有料サービスの提供について、特定商取引法第

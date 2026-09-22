@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
+import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { MetaPurchaseFromQuery } from "@/components/MetaPurchaseFromQuery";
 import { useSearchParams } from "next/navigation";
@@ -1486,11 +1487,22 @@ export default function AishoPage({
 }: {
   locale?: AppResultLocale;
 }) {
+  const localePrefix = locale === "ja" ? "" : `/${locale}`;
+
   return (
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-white px-6">
           <div className="max-w-[640px] text-center">
+            <p className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-[#5B5BEF]">
+              {aishoText(
+                locale,
+                "ワタシのトリセツ",
+                "나의 사용설명서",
+                "Alice Personalities",
+                "Alice Personalities",
+              )}
+            </p>
             <h1
               className="text-[32px] font-black leading-tight md:text-[42px]"
               style={{ color: NAVY }}
@@ -1499,7 +1511,7 @@ export default function AishoPage({
                 locale,
                 "相性診断",
                 "궁합 진단",
-                "Compatibility Test",
+                "Personality Compatibility Test",
                 "Tes Kecocokan",
               )}
             </h1>
@@ -1511,10 +1523,46 @@ export default function AishoPage({
                 locale,
                 "ふたつの性格タイプを選んで、ふたりの相性を見てみよう。",
                 "두 가지 성격 유형을 골라 두 사람의 궁합을 알아보세요.",
-                "Choose two personality types to explore their compatibility.",
+                "Compare any two of our 32 Big Five personality types and explore how their relationship works.",
                 "Pilih dua tipe kepribadian untuk melihat kecocokan mereka.",
               )}
             </p>
+            <nav
+              aria-label={aishoText(
+                locale,
+                "相性診断の関連リンク",
+                "궁합 진단 관련 링크",
+                "Compatibility test links",
+                "Tautan tes kecocokan",
+              )}
+              className="mt-7 flex flex-wrap justify-center gap-3"
+            >
+              <Link
+                href={`${localePrefix}/types`}
+                className="rounded-full border border-[#D6D2F7] px-5 py-3 font-black text-[#4949C9]"
+              >
+                {aishoText(
+                  locale,
+                  "32タイプを見る",
+                  "32가지 성격 유형 보기",
+                  "Browse 32 personality types",
+                  "Lihat 32 tipe kepribadian",
+                )}
+              </Link>
+              <Link
+                href={`${localePrefix}/diagnosis`}
+                prefetch={false}
+                className="rounded-full bg-[#5B5BEF] px-5 py-3 font-black text-white"
+              >
+                {aishoText(
+                  locale,
+                  "無料性格診断を受ける",
+                  "무료 성격 진단 시작하기",
+                  "Take the free Big Five test",
+                  "Ikuti tes Big Five gratis",
+                )}
+              </Link>
+            </nav>
             <p className="mt-5 text-sm font-bold" style={{ color: INACTIVE }}>
               {aishoText(locale, "読み込み中…", "불러오는 중…", "Loading…", "Memuat…")}
             </p>

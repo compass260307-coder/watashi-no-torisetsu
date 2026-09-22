@@ -1,18 +1,10 @@
 import type { Metadata } from "next";
 // feat/top-page: トップを「診断をはじめる」一点に絞った 1 画面ヒーローに刷新。
-import TopHeader from "@/components/top/TopHeader";
-import TopHero from "@/components/top/TopHero";
-import TopStats from "@/components/top/TopStats";
-import TopFooter from "@/components/top/TopFooter";
-import { TopViewTracker } from "@/components/top/TopAnalytics";
+import TopPage from "@/components/top/TopPage";
 import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
 import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
-
-// CTA 補足の診断人数。⚠️ 当面は丸めた固定値 (仮)。
-// 後で Supabase の実カウント (例: diagnosis_completed のユニーク数) に差し替える前提。
-const DIAGNOSED_COUNT = 1_000_000;
 
 // LP本体は静的配信し、診断済みユーザーの転送だけをクライアントへ分離する。
 export const dynamic = "force-static";
@@ -50,6 +42,7 @@ const jsonLd = {
         price: "0",
         priceCurrency: "JPY",
       },
+      brand: { "@id": `${BASE_URL}/#brand` },
       inLanguage: "ja-JP",
       audience: {
         "@type": "Audience",
@@ -73,10 +66,17 @@ const jsonLd = {
         "앨리스 진단",
         "Alice 진단",
         "나의 사용설명서",
+        "watashi-torisetsu.com",
       ],
       url: BASE_URL,
       inLanguage: ["ja-JP", "ko-KR", "en-US", "id-ID"],
       publisher: { "@id": `${BASE_URL}/#organization` },
+    },
+    {
+      "@type": "Brand",
+      "@id": `${BASE_URL}/#brand`,
+      name: GLOBAL_SITE_NAME,
+      url: BASE_URL,
     },
     {
       "@type": "Organization",
@@ -84,6 +84,7 @@ const jsonLd = {
       name: GLOBAL_SITE_NAME,
       alternateName: "ワタシのトリセツ運営事務局",
       url: BASE_URL,
+      brand: { "@id": `${BASE_URL}/#brand` },
       logo: {
         "@type": "ImageObject",
         url: `${BASE_URL}/icon.png`,
@@ -94,19 +95,14 @@ const jsonLd = {
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col">
+    <>
       <HomeSessionRedirect />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <TopViewTracker locale="ja" />
-
-      <TopHeader />
-      <TopHero />
-      <TopStats diagnosedCount={DIAGNOSED_COUNT} />
-      <TopFooter />
-    </main>
+      <TopPage locale="ja" />
+    </>
   );
 }

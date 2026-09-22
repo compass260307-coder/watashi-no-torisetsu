@@ -52,6 +52,8 @@ interface MeStickyHeaderProps {
   friendShareUrl?: string;
   /** 本人の友達診断ページ (/tako/[token]) への遷移先。指定時は上部バーに導線を出す。 */
   friendDiagnosisHref?: string;
+  /** アップグレード済み結果で表示するLINE追加導線。指定時はシェア/友達診断を置き換える。 */
+  lineAddHref?: string;
   /**
    * シェアボタンの種別 (2026-07-28)。
    *   - "character" (既定): 自分の結果 (キャラ) をシェアする従来モード (/me)。
@@ -206,6 +208,7 @@ export function MeStickyHeader({
   shareUrl,
   friendShareUrl,
   friendDiagnosisHref,
+  lineAddHref,
   shareKind = "character",
   ownerToken,
   inviteCode,
@@ -234,7 +237,9 @@ export function MeStickyHeader({
     showUnlockCta ||
     Boolean(shareUrl) ||
     Boolean(friendDiagnosisHref) ||
+    Boolean(lineAddHref) ||
     Boolean(reportHref) ||
+    Boolean(reportCta) ||
     Boolean(diagnosisCta);
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -519,7 +524,7 @@ export function MeStickyHeader({
   const xUrl = activeShareUrl
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(withRef(activeShareUrl, "x"))}`
     : undefined;
-  const lineUrl = activeShareUrl && !isKo
+  const lineUrl = activeShareUrl && !isKo && !isEn
     ? `https://line.me/R/msg/text/?${encodeURIComponent(`${shareText}\n${withRef(activeShareUrl, "line")}`)}`
     : undefined;
   // Facebook は sharer.php (テキストは付与不可・URL のみ)。
@@ -670,7 +675,31 @@ export function MeStickyHeader({
               }`}
             >
               {/* シェア先は上部に並べず、丸ボタンからシェアカードへ集約する。 */}
-              {shareUrl && (
+              {lineAddHref && (
+                <a
+                  href={lineAddHref}
+                  aria-label="LINE追加"
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#06C755] px-3.5 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_2px_0_#049E44] transition-all hover:translate-y-0.5 hover:brightness-[0.98] hover:shadow-[0_1px_0_#049E44] active:scale-[0.99] sm:min-h-11 sm:px-4 sm:text-[13px]"
+                >
+                  <svg
+                    width="19"
+                    height="19"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="currentColor"
+                      fillRule="evenodd"
+                      d="M12 3C6.48 3 2 6.72 2 11.3c0 4.1 3.54 7.53 8.32 8.18.32.07.76.22.87.5.1.25.07.64.03.89l-.14.84c-.04.25-.2.98.87.53 1.07-.45 5.78-3.4 7.89-5.82C21.3 14.82 22 13.2 22 11.3 22 6.72 17.52 3 12 3Zm-4.1 10.82H5.84a.54.54 0 0 1-.54-.54V9.16a.54.54 0 1 1 1.08 0v3.58H7.9a.54.54 0 1 1 0 1.08Zm1.6-.54a.54.54 0 1 1-1.08 0V9.16a.54.54 0 1 1 1.08 0v4.12Zm4.48 0a.54.54 0 0 1-.98.32l-2.03-2.77v2.45a.54.54 0 1 1-1.08 0V9.16a.54.54 0 0 1 .98-.32l2.03 2.77V9.16a.54.54 0 1 1 1.08 0v4.12Zm3.44-2.6a.54.54 0 1 1 0 1.08h-1.5v.98h1.5a.54.54 0 1 1 0 1.08h-2.04a.54.54 0 0 1-.54-.54V9.16c0-.3.24-.54.54-.54h2.04a.54.54 0 1 1 0 1.08h-1.5v.98h1.5Z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  LINE追加
+                </a>
+              )}
+
+              {!lineAddHref && shareUrl && (
                 <button
                   type="button"
                   aria-label={
@@ -709,7 +738,7 @@ export function MeStickyHeader({
                 </button>
               )}
 
-              {friendDiagnosisHref && (
+              {!lineAddHref && friendDiagnosisHref && (
                 <Link
                   href={friendDiagnosisHref}
                   aria-label={
@@ -725,7 +754,7 @@ export function MeStickyHeader({
               {/* invite モード (/tako ロック中) の明示CTAピル: シェア丸ボタンと同じ招待
                   モーダルを開く (2026-08-03 指示。「ロックを解除」ピルと同スタイル)。
                   他のピル (レポート/解除CTA) が出る画面では二重にしない。 */}
-              {defaultIsInvite && !reportHref && !showUnlockCta && (
+              {defaultIsInvite && !reportHref && !reportCta && !showUnlockCta && (
                 <button
                   type="button"
                   aria-haspopup="dialog"
@@ -994,7 +1023,7 @@ export function MeStickyHeader({
                       카카오톡
                     </span>
                   </button>
-                ) : (
+                ) : isEn ? null : (
                   <a
                     href={lineUrl}
                     target="_blank"
@@ -1220,7 +1249,7 @@ export function MeStickyHeader({
                       카카오톡
                     </span>
                   </button>
-                ) : (
+                ) : isEn ? null : (
                   <a
                     href={lineUrl}
                     target="_blank"

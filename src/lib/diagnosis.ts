@@ -203,7 +203,7 @@ function generateReasons(
 
 // 役割は modifier-data.ts の getModifierParagraph に譲渡。
 // 後方互換のため関数自体は残し、空文字を返す。
-function generateSupplement(_scores: Record<BigFiveDimension, number>): string {
+function generateSupplement(): string {
   return "";
 }
 
@@ -222,7 +222,7 @@ export function diagnose(
   const fullCode = buildFullCode(typeId, cModifier, nModifier);
   const modifierLabel = getModifierLabel(cModifier, nModifier);
   const reasons = generateReasons(scores);
-  const supplement = generateSupplement(scores);
+  const supplement = generateSupplement();
 
   return {
     scores,

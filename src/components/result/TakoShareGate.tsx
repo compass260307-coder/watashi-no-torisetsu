@@ -1,26 +1,15 @@
 "use client";
 
-// 友達診断 /tako の「あと◯人で開く」ゲートの前面(主役)カード = シェア連動カウンター。
-//   狙いは「カウントを減らしたくなる」体験 (他者が答えるほど自己理解が完成する核と一致)。
-//   静的な数字表示ではなく、送る=減らすレバーが主役。
+// 友達診断 /tako のロックゲート前面カード。QRと各共有ボタンを主役にし、
+// 回答が届いたときのバナーと、奥の結果を一時的にチラ見する操作をまとめる。
 //
-//   三層構造 (TakoRevealStage) の一番手前レイヤーとして載る。報酬チラ見せ(奥レイヤー)と
-//   招待QRは親側が持つため、このカードは {見出し / 数字 / 診断中 / スロット / CTA} に専念する。
+//   三層構造 (TakoRevealStage) の一番手前レイヤーとして載る。
 //   ほぼ不透明カード + 影で常にくっきり浮かせる (可読性担保)。
-//
-// 状態モデル: 各招待スロットは empty / pending(診断中) / answered。
-//   remaining = threshold - answered、pending = 診断中(近似)、toSend = 空きスロット。
-//   gate 解放は answered >= threshold (親 TakoLockedState 側の分岐に従う)。
-//
-// 世界観: 既存フェルトトークン内で完結 (NAVY / INACTIVE / ラベンダー / 点線ステッチ)。
-//   新規カラーは足さない。モーションは数字・スロットのみ (globals.css の gate-* を使用)。
-//   prefers-reduced-motion は globals.css 側で静止。
 //
 // パララックス競合対策: ドラッグ開始させたくない操作要素には data-no-drag を付ける
 //   (親 TakoRevealStage が pointerdown 時に closest('[data-no-drag]') を見て握らない)。
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { track } from "@/lib/track";
@@ -40,19 +29,10 @@ const sharePill =
   "inline-flex flex-1 items-center justify-center rounded-full py-3 text-white transition-transform active:scale-95";
 
 const NAVY = "#2E2E5C";
-const INACTIVE = "#9BA3B4";
 const LAVENDER = "#5B5BEF";
 // フロスト(半透明)カード上で小さいグレー文字が沈まないよう、一段濃いグレー。
 const READ_GRAY = "#6B7280";
 const STITCH = "#C9DEF5"; // 点線ステッチ枠 (既存 friend-evaluation と同色)
-
-// 頭文字プレースホルダの淡色トーン (顔画像が無い answered のフォールバック / FriendList と同系)。
-const AVATAR_TONES = [
-  { bg: "#EAF6FA", fg: "#3D9DB1" },
-  { bg: "#FBF4DA", fg: "#C4A83F" },
-  { bg: "#EAF6E5", fg: "#6DAA50" },
-  { bg: "#F4F4FE", fg: "#5B5BEF" },
-] as const;
 
 export type GateAnsweredFriend = {
   perceptionId: string;
@@ -99,25 +79,12 @@ interface TakoShareGateProps {
   locale?: ResultLocale;
 }
 
-// remaining ごとの見出しコピー。gate はロック時 (remaining>=1) のみ描画される想定。
-function headingFor(remaining: number): string {
-  if (remaining <= 0) return "開きました！";
-  if (remaining === 1) return "ラストひとり！";
-  if (remaining === 2) return "いい調子、あと2人";
-  return "仲間を集めよう";
-}
-
 export function TakoShareGate({
   answered,
-  pendingCount,
   threshold,
-  onPrimaryAction,
-  primaryFallbackHref,
   shownAnsweredCount,
   deliveredCount = 0,
   bounceKey = 0,
-  revealFromIndex = 0,
-  onAnsweredTap,
   qrInviteUrl,
   qrImageSrc,
   ownerToken,
@@ -132,22 +99,6 @@ export function TakoShareGate({
   );
   const peek = useTakoPeek();
   const remaining = Math.max(0, threshold - answeredCount);
-  // pending は残りスロットを超えない。answered+pending が threshold を超えないよう抑える。
-  const pending = Math.max(0, Math.min(pendingCount, remaining));
-  // 送る先 = まだ誰も触れていない空きスロット。
-  const toSend = Math.max(0, remaining - pending);
-
-  // スロット並び: [answered..., pending..., empty...] で threshold 個。
-  type Slot =
-    | { kind: "answered"; friend: GateAnsweredFriend; idx: number }
-    | { kind: "pending" }
-    | { kind: "empty" };
-  const slots: Slot[] = Array.from({ length: threshold }, (_, i) => {
-    if (i < answeredCount)
-      return { kind: "answered", friend: answered[i], idx: i };
-    if (i < answeredCount + pending) return { kind: "pending" };
-    return { kind: "empty" };
-  });
 
   // シェアボタン行 (LINE、ko は KakaoTalk / X / リンクコピー / その他)。channel 別に計測を発火。
   const [copied, setCopied] = useState(false);
@@ -467,167 +418,5 @@ export function TakoShareGate({
         </div>
       )}
     </div>
-  );
-}
-
-// answered: 「その友達から見たあなた」の顔 + ニックネーム。onTap 有りならタップ可能 (④ 相性ループ)。
-function AnsweredSlot({
-  friend,
-  idx,
-  revealDelayMs = 0,
-  onTap,
-}: {
-  friend: GateAnsweredFriend;
-  idx: number;
-  /** 再訪リビール時、順次ポップさせる遅延(ms)。 */
-  revealDelayMs?: number;
-  /** ④ タップで相性ループ詳細を開く。未指定なら非タップ。 */
-  onTap?: () => void;
-}) {
-  const tone = AVATAR_TONES[idx % AVATAR_TONES.length];
-  const initial = (friend.name || "と").trim().charAt(0) || "と";
-
-  const face = (
-    <div
-      className="animate-gate-slot-pop relative flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full md:h-[88px] md:w-[88px]"
-      style={{ background: tone.bg, animationDelay: `${revealDelayMs}ms` }}
-    >
-      {friend.imageSrc ? (
-        <Image
-          src={friend.imageSrc}
-          alt={`${friend.name}から見たあなた`}
-          width={88}
-          height={88}
-          unoptimized
-          className="h-full w-full object-contain"
-        />
-      ) : (
-        <span
-          className="text-[28px] font-black md:text-[34px]"
-          style={{ color: tone.fg }}
-        >
-          {initial}
-        </span>
-      )}
-      {/* 回答済みチェックの縫い付けバッジ */}
-      <span
-        className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-white md:h-7 md:w-7"
-        style={{ background: "#8FCE70" }}
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-3.5 w-3.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 12l5 5L20 6" />
-        </svg>
-      </span>
-    </div>
-  );
-
-  const nameRow = (
-    <span
-      className="max-w-full truncate text-[13px] font-black md:text-[14px]"
-      style={{ color: NAVY }}
-    >
-      {friend.name}
-    </span>
-  );
-
-  if (!onTap) {
-    return (
-      <>
-        {face}
-        {nameRow}
-      </>
-    );
-  }
-
-  // タップ可能: 「押せる気配」は最小限 (淡いリング + 小さな「見る」チップ)。
-  return (
-    <button
-      type="button"
-      onClick={onTap}
-      data-no-drag
-      aria-label={`${friend.name}から見たあなたを見る`}
-      className="group flex flex-col items-center gap-2 rounded-2xl outline-none transition-transform active:scale-95"
-    >
-      <span className="relative rounded-full ring-2 ring-transparent transition-[box-shadow] group-hover:ring-[#E0E3F3] group-focus-visible:ring-[#B9C0E8]">
-        {face}
-        {/* 押せる気配のミニチップ */}
-        <span
-          className="absolute -top-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[9px] font-black shadow-[0_2px_6px_rgba(46,46,92,0.15)]"
-          style={{ color: LAVENDER }}
-          aria-hidden="true"
-        >
-          見る
-        </span>
-      </span>
-      {nameRow}
-    </button>
-  );
-}
-
-// pending: 点線ステッチ + ゆっくり明滅 + 「診断中」ラベル。
-function PendingSlot() {
-  return (
-    <>
-      <div
-        className="animate-gate-slot-breathe flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-dashed md:h-[88px] md:w-[88px]"
-        style={{ borderColor: STITCH, background: "#F6F7FC" }}
-        aria-hidden="true"
-      >
-        <span className="flex gap-1">
-          {[0, 1, 2].map((d) => (
-            <span
-              key={d}
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: INACTIVE }}
-            />
-          ))}
-        </span>
-      </div>
-      <span
-        className="text-[13px] font-bold md:text-[14px]"
-        style={{ color: INACTIVE }}
-      >
-        診断中
-      </span>
-    </>
-  );
-}
-
-// empty: 点線ステッチの空フェルト枠。
-function EmptySlot() {
-  return (
-    <>
-      <div
-        className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-dashed md:h-[88px] md:w-[88px]"
-        style={{ borderColor: STITCH, background: "#F9FAFE" }}
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-7 w-7"
-          fill="none"
-          stroke={STITCH}
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        >
-          <path d="M12 6v12M6 12h12" />
-        </svg>
-      </div>
-      <span
-        className="text-[13px] font-bold md:text-[14px]"
-        style={{ color: "#C4CBD8" }}
-      >
-        あきスロット
-      </span>
-    </>
   );
 }

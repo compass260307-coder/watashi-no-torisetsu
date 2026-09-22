@@ -11,11 +11,9 @@ import {
 } from "@/lib/locale-seo";
 
 const URL = `${SITE_URL}/en`;
-const ALTERNATE_NAMES = [
-  "Alice Personality Test",
-  "Alice Big Five Test",
-  "Alice Test",
-];
+const WEBSITE_ID = `${SITE_URL}/#website`;
+const BRAND_ID = `${SITE_URL}/#brand`;
+const ORGANIZATION_ID = `${SITE_URL}/#organization`;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -24,30 +22,19 @@ const jsonLd = {
       "@type": "WebApplication",
       "@id": `${URL}#app`,
       name: EN_BRAND_NAME,
-      alternateName: ALTERNATE_NAMES,
       description: EN_DEFAULT_DESCRIPTION,
       url: URL,
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any",
       inLanguage: "en-US",
-      isPartOf: { "@id": `${URL}#website` },
-      brand: { "@id": `${URL}#brand` },
-      publisher: { "@id": `${URL}#organization` },
+      isPartOf: { "@id": WEBSITE_ID },
+      brand: { "@id": BRAND_ID },
+      publisher: { "@id": ORGANIZATION_ID },
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "USD",
       },
-    },
-    {
-      "@type": "WebSite",
-      "@id": `${URL}#website`,
-      name: EN_BRAND_NAME,
-      alternateName: ALTERNATE_NAMES,
-      description: EN_DEFAULT_DESCRIPTION,
-      url: URL,
-      inLanguage: "en-US",
-      publisher: { "@id": `${URL}#organization` },
     },
     {
       "@type": "WebPage",
@@ -56,7 +43,7 @@ const jsonLd = {
       description: EN_DEFAULT_DESCRIPTION,
       url: URL,
       inLanguage: "en-US",
-      isPartOf: { "@id": `${URL}#website` },
+      isPartOf: { "@id": WEBSITE_ID },
       about: { "@id": `${URL}#app` },
       hasPart: { "@id": `${URL}#faq` },
     },
@@ -74,17 +61,16 @@ const jsonLd = {
     },
     {
       "@type": "Brand",
-      "@id": `${URL}#brand`,
+      "@id": BRAND_ID,
       name: EN_BRAND_NAME,
-      alternateName: "Alice",
-      url: URL,
+      url: SITE_URL,
     },
     {
       "@type": "Organization",
-      "@id": `${URL}#organization`,
+      "@id": ORGANIZATION_ID,
       name: "Alice Personalities Operations Team",
-      url: URL,
-      brand: { "@id": `${URL}#brand` },
+      url: SITE_URL,
+      brand: { "@id": BRAND_ID },
       logo: `${SITE_URL}/icon.png`,
     },
   ],

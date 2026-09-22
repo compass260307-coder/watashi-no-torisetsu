@@ -18,11 +18,12 @@ export type LineAliceTrackingSource =
   | "hoshiyomi_home"
   | "hoshiyomi_paywall_exit"
   | "bottom_nav_alice_paywall_exit"
-  | "bottom_nav_unmei_paywall_exit";
+  | "bottom_nav_unmei_paywall_exit"
+  | "result_upgrade";
 
 export type LineAliceTrackingMetadata = {
   source: LineAliceTrackingSource;
-  variant: "conversation" | "fortune";
+  variant: "conversation" | "fortune" | "personalized";
   flow?: "liff" | "manual";
   kind?: "liff" | "manual";
   http_status?: number;

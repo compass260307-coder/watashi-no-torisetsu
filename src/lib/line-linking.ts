@@ -1,6 +1,10 @@
 import "server-only";
 
 import { hashLineLinkCode } from "@/lib/line";
+import {
+  isResultUpgradeReady,
+} from "@/lib/result-upgrade";
+import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
   classifyThirtyTwoType,
@@ -28,6 +32,7 @@ export type LineLinkedUser = LineDiagnosisSummary & {
   id: string;
   displayName: string | null;
   ownerToken: string | null;
+  resultUpgraded: boolean;
 };
 
 export type ConsumeLineLinkCodeResult = {
@@ -68,10 +73,13 @@ function normalizeScores(
   return Object.keys(scores).length > 0 ? scores : null;
 }
 
-function toLinkedUser(row: UserRow): LineLinkedUser {
+async function toLinkedUser(row: UserRow): Promise<LineLinkedUser> {
   const scores = normalizeScores(row.scores);
+  const resultUpgrade = await loadResultUpgradeForUser(row.id);
   let typeName: string | null = null;
-  if (scores) {
+  if (isResultUpgradeReady(resultUpgrade)) {
+    typeName = resultUpgrade.personalized_type_name;
+  } else if (scores) {
     try {
       typeName = thirtyTwoName(classifyThirtyTwoType(scores));
     } catch {
@@ -84,6 +92,7 @@ function toLinkedUser(row: UserRow): LineLinkedUser {
     ownerToken: row.owner_token,
     diagnosedAt: row.diagnosis_completed_at ?? row.created_at,
     typeName,
+    resultUpgraded: isResultUpgradeReady(resultUpgrade),
   };
 }
 
@@ -167,16 +176,22 @@ export async function consumeLineLinkCode(input: {
 
 export function lineLinkSuccessMessage(input: {
   displayName: string | null;
+  personalizedTypeName?: string | null;
+  resultUpgraded?: boolean;
   switched: boolean;
   chatEnabled: boolean;
 }): string {
   const firstLine = input.switched
     ? "連携先を新しい診断結果に切り替えました。"
-    : `連携できました。${input.displayName ? `${input.displayName}さん` : "あなた"}のトリセツ、たしかに受け取りました。`;
+    : input.resultUpgraded && input.personalizedTypeName
+      ? `連携できました。${input.displayName ? `${input.displayName}さん` : "あなた"}専用の「${input.personalizedTypeName}」の鑑定結果、たしかに受け取りました。`
+      : `連携できました。${input.displayName ? `${input.displayName}さん` : "あなた"}のトリセツ、たしかに受け取りました。`;
   return [
     firstLine,
     input.chatEnabled
-      ? "これで、あなたに合わせてお話しできます。下の質問から、気になるものを選んでみてくださいね。"
+      ? input.resultUpgraded
+        ? "これからは、自由回答で話してくれたことや専用鑑定書も覚えたAliceとしてお話しします。恋愛相談やタロット、相性占いから気になるものを選んでみてくださいね。"
+        : "これで、あなたに合わせてお話しできます。下の質問から、気になるものを選んでみてくださいね。"
       : "ここでお話しできる準備が整ったら、まっさきにお知らせしますね。",
   ].join("\n");
 }

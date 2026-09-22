@@ -63,6 +63,7 @@ export interface DiagnosisCopy {
 interface DiagnosisLocaleSettings {
   locale: DiagnosisLocale;
   questions: Question[];
+  persistProgress: boolean;
   progressStorageKey: string;
   nicknameStorageKey: string;
   genderStorageKey: string;
@@ -340,7 +341,7 @@ const EN_QUESTIONS: Question[] = [
 ];
 
 const EN_COPY: DiagnosisCopy = {
-  heroTitle: "Free Personality Test",
+  heroTitle: "Free Big Five Personality Test",
   heroSubtitle: "Discover your type through the OCEAN (Big Five) model",
   heroImageAlt: "Characters from Alice Personalities",
   nicknameLabel: "Nickname",
@@ -374,7 +375,7 @@ const EN_COPY: DiagnosisCopy = {
   },
   resume: {
     title: "🔖 Continue where you left off?",
-    lead: "You have saved answers (",
+    lead: "You have saved answers",
     unit: "questions",
     countSuffix: ").",
     tail: "You can continue from your previous session.",
@@ -422,6 +423,7 @@ export const DIAGNOSIS_LOCALES: Record<
   ja: {
     locale: "ja",
     questions,
+    persistProgress: false,
     progressStorageKey: "torisetsu_answers_v2",
     nicknameStorageKey: "torisetsu_nickname_v2",
     genderStorageKey: "torisetsu_gender_v1",
@@ -434,6 +436,7 @@ export const DIAGNOSIS_LOCALES: Record<
   ko: {
     locale: "ko",
     questions: KO_QUESTIONS,
+    persistProgress: true,
     progressStorageKey: "torisetsu_answers_v2_ko",
     nicknameStorageKey: "torisetsu_nickname_v2_ko",
     genderStorageKey: "torisetsu_gender_v1_ko",
@@ -446,6 +449,7 @@ export const DIAGNOSIS_LOCALES: Record<
   en: {
     locale: "en",
     questions: EN_QUESTIONS,
+    persistProgress: false,
     progressStorageKey: "torisetsu_answers_v2_en",
     nicknameStorageKey: "torisetsu_nickname_v2_en",
     genderStorageKey: "torisetsu_gender_v1_en",
@@ -458,6 +462,7 @@ export const DIAGNOSIS_LOCALES: Record<
   id: {
     locale: "id",
     questions: ID_QUESTIONS,
+    persistProgress: true,
     progressStorageKey: "torisetsu_answers_v2_id",
     nicknameStorageKey: "torisetsu_nickname_v2_id",
     genderStorageKey: "torisetsu_gender_v1_id",

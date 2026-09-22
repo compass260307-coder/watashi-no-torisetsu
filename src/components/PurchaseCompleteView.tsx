@@ -8,6 +8,7 @@ import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import type { AppResultLocale } from "@/i18n/result";
 import { HOSHIYOMI_CHAT_CREDITS_CURRENT_FULL_ACCESS } from "@/lib/access-products";
@@ -27,6 +28,44 @@ type PurchaseCompleteViewProps = {
   friendFeaturesIncluded?: boolean;
   locale?: AppResultLocale;
 };
+
+export function PurchaseUnverifiedView({
+  locale,
+}: {
+  locale: "ja" | "en";
+}) {
+  const isEnglish = locale === "en";
+  const localePrefix = isEnglish ? "/en" : "";
+
+  return (
+    <div className="flex min-h-dvh flex-col bg-[#F1F1F7] text-[#2E2E5C]">
+      <TopHeader locale={locale} />
+      <main className="flex flex-1 flex-col items-center justify-center px-5 py-14 text-center">
+        <h1 className="text-[22px] font-black">
+          {isEnglish
+            ? "We could not verify this purchase"
+            : "決済情報を確認できませんでした"}
+        </h1>
+        <p className="mt-3 max-w-[420px] text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
+          {isEnglish
+            ? "Open the return link from the Stripe checkout confirmation."
+            : "Stripeの決済完了画面から戻ったURLをそのまま開いてください。"}
+          <br />
+          {isEnglish
+            ? "If payment completed, also check the email address used at checkout."
+            : "決済済みの場合は、購入時のメールアドレスもご確認ください。"}
+        </p>
+        <Link
+          href={localePrefix || "/"}
+          className="mt-6 text-[12px] text-[#2E2E5C]/50 underline underline-offset-2"
+        >
+          {isEnglish ? "Back to home" : "トップに戻る"}
+        </Link>
+      </main>
+      <TopFooter locale={locale} />
+    </div>
+  );
+}
 
 export function PurchaseCompleteView({
   isGuestPurchase = false,
