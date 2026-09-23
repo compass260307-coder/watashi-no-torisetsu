@@ -24,6 +24,7 @@
     "unmei:prompt:test": "node scripts/unmei-prompt-locale-test.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.40",
     "@ai-sdk/react": "^4.0.67",
     "@line/bot-sdk": "^11.2.0",
     "@sparticuz/chromium": "^149.0.0",
