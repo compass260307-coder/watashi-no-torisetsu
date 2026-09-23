@@ -8,7 +8,6 @@ import { hasPremiumBundleAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
-import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +25,12 @@ export default async function ResultUpgradeReadingPage() {
     <>
       <div className="print:hidden"><TopHeader /></div>
       <main className="min-h-screen bg-[#E9E3D7] px-3 py-10 print:bg-white print:px-0 print:py-0 md:px-8 md:py-16">
+        {/* 生成キャラ画像はセッション認証付き API 配信のため常に unoptimized
+            (next/image の内部フェッチは Cookie を引き継がず 404 になる)。 */}
         <ResultUpgradeReadingDocument
           imageSrc={`/api/result-upgrade/character/${encodeURIComponent(ownerToken)}${row.generated_at ? `?v=${encodeURIComponent(row.generated_at)}` : ""}`}
           imageAlt={row.personalized_type_name}
-          imageUnoptimized={UNOPTIMIZED_IN_DEV}
+          imageUnoptimized
           personalizedTypeName={row.personalized_type_name}
           personalizedIntro={row.personalized_intro}
           reading={row.reading}
