@@ -6,6 +6,11 @@
 //
 // 認可: x-api-key (CLAUDE_API_KEY、後方互換で ANTHROPIC_API_KEY も可)。
 // モデル: CLAUDE_MODEL (例 claude-sonnet-4-6)。
+//
+// cacheSystem: true で system をプロンプトキャッシュ対象にする (5分TTL)。
+//   同一 system で5分以内に再呼び出しされるチャット用途で入力コストを削減できる。
+//   キャッシュ書き込みは通常の1.25倍のため、一発生成系では有効化しないこと。
+//   効果は raw.usage.cache_read_input_tokens / cache_creation_input_tokens で確認する。
 
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -16,6 +21,7 @@ export async function callClaude({
   maxTokens = 1500,
   temperature = 0.6,
   timeoutMs = 60_000,
+  cacheSystem = false,
 }) {
   const apiKey = process.env.CLAUDE_API_KEY ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("CLAUDE_API_KEY not set");
@@ -27,7 +33,11 @@ export async function callClaude({
     temperature,
     messages: [{ role: "user", content: prompt }],
   };
-  if (system) body.system = system;
+  if (system) {
+    body.system = cacheSystem
+      ? [{ type: "text", text: system, cache_control: { type: "ephemeral" } }]
+      : system;
+  }
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
