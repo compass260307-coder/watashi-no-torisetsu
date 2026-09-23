@@ -3,6 +3,7 @@
 // 理解度 → 五つの性格傾向 → 自己診断CTA の順で案内する。
 
 import Image from "next/image";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import { KO_ABOUT_FAQ } from "@/i18n/ko/about";
@@ -245,7 +246,7 @@ export function FriendIndividualGuide({
               width={1448}
               height={1086}
               loading="eager"
-              unoptimized
+              unoptimized={UNOPTIMIZED_IN_DEV}
               sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) 600px, 700px"
               className="mx-auto h-auto w-full max-w-[580px] lg:ml-auto lg:max-w-[600px]"
             />

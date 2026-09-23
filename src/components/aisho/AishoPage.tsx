@@ -18,6 +18,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { MetaPurchaseFromQuery } from "@/components/MetaPurchaseFromQuery";
 import { useSearchParams } from "next/navigation";
 import {
@@ -192,31 +193,18 @@ function CloseIcon() {
   );
 }
 
-// ---- ヘッダーのループ動画 (kling 生成のアイドルループ) ---------------------
-// autoplay + muted + loop。prefers-reduced-motion: reduce では再生しない。
+// ---- ヘッダーのヒーロー画像 (動画は使わない方針・2026-09-23) ----------------
+// 旧ループ動画の先頭フレームを WebP 化した静止画を表示する。
 
-function HeroLoopVideo() {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      video.pause();
-    }
-  }, []);
+function HeroStillImage() {
   return (
-    <video
-      ref={ref}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="auto"
-      aria-hidden="true"
+    <SmoothImage
+      src="/aisho/hero-still.webp"
+      alt=""
+      width={1916}
+      height={1080}
       className="w-full rounded-3xl object-cover"
-    >
-      <source src="/aisho/hero-loop.mp4" type="video/mp4" />
-    </video>
+    />
   );
 }
 
@@ -956,8 +944,8 @@ function ResultBlock({
             {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : isIndonesian ? "Kecocokan kalian" : "ふたりの相性"}
           </p>
           <div className="mt-4 md:mt-0 md:shrink-0">
-            {/* 透過 PNG (装飾) は unoptimized で直接配信する。
-                dev の画像 optimizer がこの手の PNG で固まりローディングが終わらないため。 */}
+            {/* 透過 PNG (装飾) は dev のみ unoptimized で直接配信する
+                (dev の画像 optimizer がこの手の PNG で固まるため)。本番は最適化して転送量を抑える。 */}
             {rankImg ? (
               <SmoothImage
                 src={rankImg}
@@ -972,7 +960,7 @@ function ResultBlock({
                 }
                 width={512}
                 height={512}
-                unoptimized
+                unoptimized={UNOPTIMIZED_IN_DEV}
                 priority
                 className="w-[80vw] max-w-[500px] md:w-[560px] md:max-w-[52vw] object-contain"
               />
@@ -1381,7 +1369,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                 </p>
               </div>
               <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
-                <HeroLoopVideo />
+                <HeroStillImage />
               </div>
             </header>
 

@@ -18,6 +18,7 @@ import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
 import {
   buildEnDeepDiveSections,
@@ -368,7 +369,7 @@ export default async function EnTakoResultPage({
                 alt={`${result.score}% perspective match`}
                 width={1448}
                 height={1086}
-                unoptimized
+                unoptimized={UNOPTIMIZED_IN_DEV}
                 className="h-auto w-full max-w-[640px] object-contain"
               />
               <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
@@ -505,7 +506,7 @@ export default async function EnTakoResultPage({
                 alt={`Compatibility rank ${compatibilityRank}`}
                 width={512}
                 height={512}
-                unoptimized
+                unoptimized={UNOPTIMIZED_IN_DEV}
                 className="mt-3 w-full max-w-[560px] object-contain md:max-w-[640px]"
               />
               <p className="mt-3 text-[12px] font-bold text-white">

@@ -1289,7 +1289,6 @@ async function MeResultPageContent({
           codeTint={codeTint}
           imageSrc={displayCharacterImage}
           fullBleedImageSrc={resultUpgradeReady ? displayCharacterImage : undefined}
-          animSrc={null}
           alt={resultUpgradeReady ? resultUpgrade.personalized_type_name : dispName}
           name={dispName}
           description={

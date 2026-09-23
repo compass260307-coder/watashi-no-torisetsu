@@ -6,6 +6,7 @@
 // props 無し・フックなしの静的表示なので Server Component のまま (Image のみ)。
 
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
@@ -274,7 +275,7 @@ export function TakoValueSections({
                     src={s.img}
                     alt={s.title}
                     fill
-                    unoptimized
+                    unoptimized={UNOPTIMIZED_IN_DEV}
                     sizes="(max-width: 767px) 80px, 340px"
                     className="object-contain p-1.5 md:p-3"
                   />

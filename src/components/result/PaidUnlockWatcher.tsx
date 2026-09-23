@@ -16,9 +16,14 @@ import type { AppResultLocale } from "@/i18n/result";
 import type { AccessProduct } from "@/lib/access-products";
 
 const NAVY = "#2E2E5C";
-const POLL_INTERVAL_MS = 2000;
+// ポーリングは 2 秒から始めて徐々に間隔を広げる (×1.5、上限 10 秒)。
+// webhook は通常数秒で反映されるため序盤は素早く確認し、後半を疎にして
+// Function 呼び出し回数を約半分 (20回→10回) に抑えつつ、待ち受けは約60秒に延ばす。
 const FIRST_DELAY_MS = 1200;
-const MAX_TRIES = 20; // 約 40 秒
+const INITIAL_POLL_INTERVAL_MS = 2000;
+const POLL_BACKOFF_FACTOR = 1.5;
+const MAX_POLL_INTERVAL_MS = 10_000;
+const MAX_TRIES = 10; // 累計 約 60 秒
 
 // 反映後 (またはタイムアウト後の手動再読込) の戻し先 URL。
 //   me/tako: /{me|tako}/{token} (paid= を外した canonical URL)。
@@ -60,6 +65,7 @@ export function PaidUnlockWatcher({
   useEffect(() => {
     let cancelled = false;
     let tries = 0;
+    let pollDelay = INITIAL_POLL_INTERVAL_MS;
 
     const reloadUnlocked = () => {
       // paid= を外した URL に置換 (履歴を汚さない)。必要な権限がすべて
@@ -111,7 +117,11 @@ export function PaidUnlockWatcher({
         setTimedOut(true);
         return;
       }
-      window.setTimeout(poll, POLL_INTERVAL_MS);
+      window.setTimeout(poll, pollDelay);
+      pollDelay = Math.min(
+        Math.round(pollDelay * POLL_BACKOFF_FACTOR),
+        MAX_POLL_INTERVAL_MS,
+      );
     };
 
     const first = window.setTimeout(poll, FIRST_DELAY_MS);

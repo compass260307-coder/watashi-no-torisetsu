@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
         pathname: "/characters/**",
         search: `?v=${GENERATED_CHARACTER_ASSET_VERSION}`,
       },
+      // 課金後の生成キャラ画像 (Supabase Storage を API 経由で配信)。
+      // ?v=<generated_at> の可変クエリ付きなので search 制約なしで許可し、
+      // /me ヒーロー全面表示と鑑定書ページを next/image で軽量配信できるようにする。
+      { pathname: "/api/result-upgrade/character/**" },
     ],
   },
 

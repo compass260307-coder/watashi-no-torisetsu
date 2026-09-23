@@ -24,7 +24,10 @@ export async function GET(
   }
   const { data } = await supabaseAdmin
     .from("result_upgrades")
-    .select("*")
+    // isResultUpgradeReady の判定と画像ダウンロードに必要な列だけ取得する
+    .select(
+      "state, personalized_type_name, personalized_intro, reading, character_storage_path",
+    )
     .eq("user_id", user.id)
     .maybeSingle();
   const row = data as ResultUpgradeRow | null;
