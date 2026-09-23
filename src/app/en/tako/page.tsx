@@ -13,6 +13,7 @@ export const metadata: Metadata = {
       "ja-JP": "/tako",
       "ko-KR": "/ko/tako",
       "en-US": "/en/tako",
+      "id-ID": "/id/tako",
       "x-default": "/tako",
     },
   },

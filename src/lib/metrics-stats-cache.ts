@@ -18,6 +18,9 @@ const LIVE_RANGE_TTL_SECONDS = 5 * 60;
 const RECENT_PAST_TTL_SECONDS = 60 * 60;
 const RECENT_PAST_WINDOW_MS = 48 * 60 * 60 * 1000;
 const LAST_GOOD_TTL_SECONDS = 7 * 24 * 60 * 60;
+// /api/metrics の Vercel 上限は300秒。集計が長引いた場合もRuntimeに強制終了
+// される前にlast-goodへ切り替えられるよう、60秒の退避余白を確保する。
+const COMPUTE_SOFT_TIMEOUT_MS = 240 * 1000;
 // 計測スキーマのv9と旧キャッシュを分離する。キーはさらにデプロイ単位で分ける。
 const metricsCache = getCache({ namespace: "metrics-stats-v9" });
 
@@ -103,6 +106,30 @@ function isMetricsStats(value: unknown): value is MetricsStats {
   );
 }
 
+async function computeStatsBeforeDeadline(
+  from: string | null,
+  to: string | null,
+  locale?: MetricsStatsLocale,
+): Promise<MetricsStats> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      computeStats(from, to, { locale }),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(
+            new Error(
+              `[metrics-cache] computation exceeded ${COMPUTE_SOFT_TIMEOUT_MS}ms soft deadline`,
+            ),
+          );
+        }, COMPUTE_SOFT_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
 export async function getCachedStats(
   from: string | null,
   to: string | null,
@@ -121,10 +148,11 @@ export async function getCachedStats(
 
   let stats: MetricsStats;
   try {
-    stats = await computeStats(from, to, { locale: options.locale });
+    stats = await computeStatsBeforeDeadline(from, to, options.locale);
   } catch (error) {
-    // 全期間集計がDBのstatement_timeoutに当たっても、直近の正常スナップショットが
-    // あれば定期取得を全損させない。形状検査で旧コードのキャッシュ混入を防ぐ。
+    // 全期間集計がDBのstatement_timeoutまたはsoft deadlineに当たっても、直近の
+    // 正常スナップショットがあれば定期取得を全損させない。形状検査で旧コードの
+    // キャッシュ混入を防ぐ。
     try {
       const lastGood = await metricsCache.get(lastGoodKey);
       if (isMetricsStats(lastGood)) {

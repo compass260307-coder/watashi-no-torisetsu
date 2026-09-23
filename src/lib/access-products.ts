@@ -14,7 +14,7 @@ export const ACCESS_PRODUCTS = [
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v41_ja_full_499_release_1290_measurement_v2" as const;
+  "legacy_card_v43_ja_full_499_restored_1290_measurement_v4" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1 =
   "en_single_full_access_v1_jpy_499" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
@@ -66,6 +66,8 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v39_ja_full_699_release_1290_list",
   "legacy_card_v40_ja_full_499_single_no_discount",
   "legacy_card_v40_ja_full_499_release_1290_list",
+  "legacy_card_v41_ja_full_499_release_1290_measurement_v2",
+  "legacy_card_v42_ja_full_599_release_1290_measurement_v3",
   THREE_COURSE_PAYWALL_VERSION,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
@@ -274,14 +276,21 @@ export function purchaseIncludesAishoFeatures(
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
-// 完全版は通常価格 ¥1,290 から「リリース記念」¥791引きを表示し、
-// 実際の請求額は固定カタログどおり ¥499 とする。
+// 2026-09-21の明示判断で、完全版を通常価格 ¥1,290 から
+// 「リリース記念」¥791引き、実際の請求額 ¥499 へ戻す。
+export const FULL_ACCESS_PRICE_EFFECTIVE_AT =
+  "2026-09-21T10:02:00+09:00" as const;
 export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
 export const FULL_ACCESS_PRICE_JPY = 499;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。
 export const PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY = 800;
+// 2026-09-21に明示承認された、診断結果購入者向けの結果アップグレード。
+// 他のpremium_bundle互換導線と混ぜず、paywall_sourceが専用導線のときだけ使う。
+export const RESULT_UPGRADE_PRICE_JPY = 899;
+export const RESULT_UPGRADE_OFFER_VERSION =
+  "result_upgrade_v1_jpy_899" as const;
 
 // 韓国版の新規販売は完全版のみ。旧 self_report / premium_bundle の価格は、
 // 過去購入者の差額・返金・監査互換のために保持する。KRW は Stripe 上も

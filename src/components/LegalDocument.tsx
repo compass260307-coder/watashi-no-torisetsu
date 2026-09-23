@@ -1,7 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import EnSiteFooter from "@/components/en/EnSiteFooter";
-import EnSiteHeader from "@/components/en/EnSiteHeader";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 
@@ -20,7 +18,7 @@ export default function LegalDocument({ title, lastUpdated, children, locale = "
 
   return (
     <>
-    {isEnglish ? <EnSiteHeader /> : <TopHeader locale={isIndonesian ? "id" : "ja"} />}
+    <TopHeader locale={isEnglish ? "en" : isIndonesian ? "id" : "ja"} />
     <main className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-5 pt-14 pb-4">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground leading-tight">
@@ -46,7 +44,7 @@ export default function LegalDocument({ title, lastUpdated, children, locale = "
         </div>
       </div>
     </main>
-    {isEnglish ? <EnSiteFooter /> : <TopFooter locale={isIndonesian ? "id" : "ja"} />}
+    <TopFooter locale={isEnglish ? "en" : isIndonesian ? "id" : "ja"} />
     </>
   );
 }

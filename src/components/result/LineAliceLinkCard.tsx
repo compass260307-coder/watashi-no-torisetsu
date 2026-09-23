@@ -8,7 +8,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { LineAliceTrackingSource } from "@/lib/line-alice-analytics";
 import { trackLineAliceEvent } from "@/lib/track";
-import { versionCharacterAssetPath } from "@/lib/character-image";
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID ?? "";
 const LINE_ADD_FRIEND_URL = "https://line.me/R/ti/p/%40867domoo";
@@ -106,11 +105,13 @@ export default function LineAliceLinkCard({
   onClose,
   variant = "conversation",
   ownerToken,
+  personalizedTypeName,
   trackingSource,
 }: {
   onClose?: () => void;
-  variant?: "conversation" | "fortune";
+  variant?: "conversation" | "fortune" | "personalized";
   ownerToken?: string;
+  personalizedTypeName?: string;
   trackingSource: LineAliceTrackingSource;
 }) {
   const [linkStatus, setLinkStatus] = useState<LinkStatus>("checking");
@@ -121,6 +122,7 @@ export default function LineAliceLinkCard({
   const cardRef = useRef<HTMLElement | null>(null);
   const viewTrackedRef = useRef(false);
   const promotesFortune = variant === "fortune";
+  const promotesPersonalized = variant === "personalized";
 
   useEffect(() => {
     let cancelled = false;
@@ -360,7 +362,7 @@ export default function LineAliceLinkCard({
         <span className="absolute inset-x-0 bottom-0 h-[92px] bg-[#386F82] [clip-path:polygon(7%_18%,40%_0,91%_18%,100%_62%,63%_100%,17%_82%,0_38%)] md:h-[108px]" />
         <span className="absolute bottom-[19px] right-[10px] h-[58px] w-[72px] bg-[#2D829B] [clip-path:polygon(18%_0,100%_25%,82%_100%,0_72%)] md:bottom-[22px] md:right-[12px] md:h-[68px] md:w-[84px]" />
         <Image
-          src={versionCharacterAssetPath("/characters/face/angel_N.webp")}
+          src="/mascot/hoshiyomi-alice-avatar-transparent.png"
           alt=""
           width={512}
           height={512}
@@ -374,16 +376,30 @@ export default function LineAliceLinkCard({
 
       <div className="relative">
         <h2 className="text-[24px] font-black leading-[1.5] md:text-[32px]">
-          LINEでも
-          <br />
-          {promotesFortune ? "Aliceが占います" : "Aliceと話せます"}
+          {promotesPersonalized ? (
+            <>
+              この結果を知っているAliceと
+              <br />
+              LINEで話せます
+            </>
+          ) : (
+            <>
+              LINEでも
+              <br />
+              {promotesFortune ? "Aliceが占います" : "Aliceと話せます"}
+            </>
+          )}
         </h2>
         <p className="mt-3 max-w-[600px] text-[14px] font-bold leading-[1.85] text-white/90 md:text-[16px]">
-          {promotesFortune
+          {promotesPersonalized
+            ? `${personalizedTypeName ? `「${personalizedTypeName}」の` : "あなた専用の"}鑑定結果と、Aliceに話してくれたことをそのままLINEへ引き継げます。`
+            : promotesFortune
             ? "診断結果を知っているAliceに、LINEでいつでも占ってもらえます。"
             : "診断結果を知っているAliceと、LINEでいつでもおしゃべり。"}
           <br className="hidden md:block" />
-          今日の占いも毎日引けて、無料で会話ができます。
+          {promotesPersonalized
+            ? "恋愛相談・恋のタロット・四柱推命の相性占いから、気になるものを選べます。"
+            : "今日の占いも毎日引けて、無料で会話ができます。"}
         </p>
       </div>
 
@@ -392,7 +408,9 @@ export default function LineAliceLinkCard({
           <div className="rounded-2xl border border-white/50 bg-white/95 px-5 py-5 text-center shadow-[0_10px_28px_rgba(43,99,119,0.18)]">
             <p className="text-[17px] font-black text-[#2E2E5C]">連携済み ✓</p>
             <p className="mt-1 text-[12px] font-bold text-[#2E2E5C]/55">
-              Aliceはあなたの診断結果を覚えています
+              {promotesPersonalized && personalizedTypeName
+                ? `Aliceは「${personalizedTypeName}」の鑑定結果を覚えています`
+                : "Aliceはあなたの診断結果を覚えています"}
             </p>
             <a
               href={LINE_ADD_FRIEND_URL}
@@ -416,7 +434,9 @@ export default function LineAliceLinkCard({
                 ? "連携状態を確認中…"
                 : main.status === "loading"
                   ? "連携コードを発行中…"
-                  : "LINEでAliceと話す"}
+                  : promotesPersonalized
+                    ? "専用のAliceをLINEに連携"
+                    : "LINEでAliceと話す"}
             </button>
             {main.status === "error" ? (
               <div className="mt-4 rounded-xl bg-white/90 px-4 py-3 text-center text-[13px] font-bold leading-relaxed text-[#B33A12]">

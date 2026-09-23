@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   title: "Aliceのタロット占い",
   description:
     "Aliceと一緒にカードを引いて、今日の流れや迷っていることを読み解くタロット占いです。",
-  alternates: localizedAlternates("ja", "/tarot", "/ko/tarot"),
+  alternates: localizedAlternates(
+    "ja",
+    "/tarot",
+    "/ko/tarot",
+    "/en/tarot",
+    "/id/tarot",
+  ),
 };
 
 export default function TarotLayout({ children }: { children: ReactNode }) {

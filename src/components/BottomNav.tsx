@@ -12,7 +12,6 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { createPortal } from "react-dom";
 import {
   useEffect,
   useMemo,
@@ -23,7 +22,6 @@ import {
   TakoLockPopover,
   type DiagnosisLockTarget,
 } from "@/components/TakoLockPopover";
-import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
@@ -251,7 +249,6 @@ export function BottomNav() {
   const [coursePaywallSource, setCoursePaywallSource] = useState<string | null>(
     null,
   );
-  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
@@ -415,23 +412,6 @@ export function BottomNav() {
     isPaidNavigationPreview || (resolvedCourseAccess?.tarot ?? false);
 
   const handleCoursePaywallExitAttempt = () => {
-    if (lineExitOpen) return;
-    if (
-      courseLockTarget &&
-      !isKorean &&
-      !isEnglish &&
-      !isIndonesian &&
-      !isCoursePaywallPreview
-    ) {
-      setLineExitOpen(true);
-      return;
-    }
-    setCourseLockTarget(null);
-    setCoursePaywallSource(null);
-  };
-
-  const closeLineExitFlow = () => {
-    setLineExitOpen(false);
     setCourseLockTarget(null);
     setCoursePaywallSource(null);
   };
@@ -954,70 +934,9 @@ export function BottomNav() {
               : undefined
           }
           previewMode={isCoursePaywallPreview}
-          scrollLocked={lineExitOpen}
           onClose={handleCoursePaywallExitAttempt}
         />
       ) : null}
-      {lineExitOpen ? (
-        <BottomNavLineExitModal
-          ownerToken={ownerToken ?? undefined}
-          onClose={closeLineExitFlow}
-          variant={
-            courseLockTarget === "unmei" || courseLockTarget === "tarot"
-              ? "fortune"
-              : "conversation"
-          }
-        />
-      ) : null}
     </nav>
-  );
-}
-
-function BottomNavLineExitModal({
-  ownerToken,
-  onClose,
-  variant,
-}: {
-  ownerToken?: string;
-  onClose: () => void;
-  variant: "conversation" | "fortune";
-}) {
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={
-        variant === "fortune"
-          ? "LINEでAliceに占ってもらう"
-          : "LINEでもAliceと話す"
-      }
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-[#2E2E5C]/35 px-3 py-5 backdrop-blur-[2px] md:py-8"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-[1120px] px-3 pb-6 pt-10 md:px-6 md:pb-10"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <LineAliceLinkCard
-          ownerToken={ownerToken}
-          trackingSource={
-            variant === "fortune"
-              ? "bottom_nav_unmei_paywall_exit"
-              : "bottom_nav_alice_paywall_exit"
-          }
-          onClose={onClose}
-          variant={variant}
-        />
-      </div>
-    </div>,
-    document.body,
   );
 }

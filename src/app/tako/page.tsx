@@ -4,7 +4,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
   title: "友達診断",
-  alternates: localizedAlternates("ja", "/tako", "/ko/tako", "/en/tako"),
+  alternates: localizedAlternates("ja", "/tako", "/ko/tako", "/en/tako", "/id/tako"),
   robots: { index: false, follow: false },
 };
 

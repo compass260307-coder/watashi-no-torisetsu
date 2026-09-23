@@ -1,6 +1,4 @@
 import TarotLanding from "@/components/tarot/TarotLanding";
-import EnSiteHeader from "@/components/en/EnSiteHeader";
-import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import {
   getTarotAccessState,
@@ -13,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Alice Tarot",
   description: "Choose from three reflective tarot readings with Alice.",
-  alternates: localizedAlternates("en", "/tarot", "/ko/tarot", "/en/tarot"),
+  alternates: localizedAlternates("en", "/tarot", "/ko/tarot", "/en/tarot", "/id/tarot"),
 };
 
 type Props = { searchParams?: Promise<{ paid?: string | string[] }> };
@@ -25,25 +23,15 @@ export default async function EnglishTarotPage({ searchParams }: Props) {
   if (!access.purchased) {
     if (query.paid === "1" && access.ownerToken) {
       return (
-        <div className="min-h-dvh bg-[#F8F8FC] text-[#2E2E5C]">
-          <EnSiteHeader />
-          <PaidUnlockWatcher
-            ownerToken={access.ownerToken}
-            locale="en"
-            returnTo="tarot"
-          />
-          <EnSiteFooter />
-        </div>
+        <PaidUnlockWatcher
+          ownerToken={access.ownerToken}
+          locale="en"
+          returnTo="tarot"
+        />
       );
     }
     redirectToTarotPaywall("en", access.ownerToken);
   }
 
-  return (
-    <div className="min-h-dvh bg-[#F8F8FC] text-[#2E2E5C]">
-      <EnSiteHeader />
-      <TarotLanding locale="en" />
-      <EnSiteFooter />
-    </div>
-  );
+  return <TarotLanding locale="en" />;
 }

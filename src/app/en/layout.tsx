@@ -36,9 +36,9 @@ export const metadata: Metadata = {
 
 export default function EnglishLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div lang="en" className="flex min-h-dvh flex-1 flex-col">
+    <>
       <DocumentLanguage lang="en" />
       {children}
-    </div>
+    </>
   );
 }

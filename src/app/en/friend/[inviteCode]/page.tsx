@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import EnFriendDiagnosisPage from "@/components/en/EnFriendDiagnosisPage";
+import FriendDiagnosisPage from "@/components/friend/FriendDiagnosisPage";
 
 const TITLE = "Describe a friend | Alice Personalities";
 const DESCRIPTION =
@@ -29,5 +29,5 @@ export default function EnglishFriendInvitePage({
 }: {
   params: Promise<{ inviteCode: string }>;
 }) {
-  return <EnFriendDiagnosisPage params={params} />;
+  return <FriendDiagnosisPage params={params} locale="en" />;
 }

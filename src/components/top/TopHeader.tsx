@@ -70,7 +70,7 @@ type TopLocale = SiteLocale | "en" | "id";
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
 const CONTENT: Record<TopLocale, HeaderContent> = {
   ja: {
-    siteName: "Alice Personalities",
+    siteName: "ワタシのトリセツ",
     homeHref: "/",
     nav: [
       { label: "性格診断テスト", href: "/diagnosis" },

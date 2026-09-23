@@ -208,48 +208,54 @@ export default function DiagnosisPageContent({
     }
 
     try {
-      const saved = localStorage.getItem(settings.progressStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Partial<SavedProgress>;
-        // #4 バージョン整合: 旧フォーマット / 構成不一致は破棄して最初から
-        if (!parsed || parsed.v !== questionSetVersion) {
-          localStorage.removeItem(settings.progressStorageKey);
-        } else {
-          // 不正な保存値は弾く
-          const valid: Record<number, AnswerValue> = {};
-          for (const [k, v] of Object.entries(parsed.answers ?? {})) {
-            const id = Number(k);
-            if (
-              Number.isInteger(id) &&
-              id >= 1 &&
-              id <= TOTAL_QUESTIONS &&
-              typeof v === "number" &&
-              v >= 1 &&
-              v <= 7
-            ) {
-              valid[id] = v as AnswerValue;
-            }
-          }
-          if (Object.keys(valid).length > 0) {
-            // 再開ページ: 保存ページが有効ならそれ、無効なら最初の未回答ページ
-            let page = parsed.page;
-            if (
-              typeof page !== "number" ||
-              !Number.isInteger(page) ||
-              page < 0 ||
-              page > TOTAL_PAGES - 1
-            ) {
-              const firstUnanswered = activeQuestions.find(
-                (q) => valid[q.id] === undefined,
-              );
-              page = firstUnanswered
-                ? Math.floor((firstUnanswered.id - 1) / QUESTIONS_PER_PAGE)
-                : TOTAL_PAGES - 1;
-            }
-            // #2 自動復元はせず、選択UI (続きから / 最初から) を出すため候補だけ保持
-            setPendingResume({ answers: valid, page });
-          } else {
+      // 日本語版・英語版は、サーバー側の診断状態と端末保存の食い違いを
+      // 避けるため途中回答を永続化しない。旧データも再開候補に使わない。
+      if (!settings.persistProgress) {
+        localStorage.removeItem(settings.progressStorageKey);
+      } else {
+        const saved = localStorage.getItem(settings.progressStorageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Partial<SavedProgress>;
+          // #4 バージョン整合: 旧フォーマット / 構成不一致は破棄して最初から
+          if (!parsed || parsed.v !== questionSetVersion) {
             localStorage.removeItem(settings.progressStorageKey);
+          } else {
+            // 不正な保存値は弾く
+            const valid: Record<number, AnswerValue> = {};
+            for (const [k, v] of Object.entries(parsed.answers ?? {})) {
+              const id = Number(k);
+              if (
+                Number.isInteger(id) &&
+                id >= 1 &&
+                id <= TOTAL_QUESTIONS &&
+                typeof v === "number" &&
+                v >= 1 &&
+                v <= 7
+              ) {
+                valid[id] = v as AnswerValue;
+              }
+            }
+            if (Object.keys(valid).length > 0) {
+              // 再開ページ: 保存ページが有効ならそれ、無効なら最初の未回答ページ
+              let page = parsed.page;
+              if (
+                typeof page !== "number" ||
+                !Number.isInteger(page) ||
+                page < 0 ||
+                page > TOTAL_PAGES - 1
+              ) {
+                const firstUnanswered = activeQuestions.find(
+                  (q) => valid[q.id] === undefined,
+                );
+                page = firstUnanswered
+                  ? Math.floor((firstUnanswered.id - 1) / QUESTIONS_PER_PAGE)
+                  : TOTAL_PAGES - 1;
+              }
+              // #2 自動復元はせず、選択UI (続きから / 最初から) を出すため候補だけ保持
+              setPendingResume({ answers: valid, page });
+            } else {
+              localStorage.removeItem(settings.progressStorageKey);
+            }
           }
         }
       }
@@ -285,6 +291,7 @@ export default function DiagnosisPageContent({
 
   // #1 自動保存: 回答 or ページ変更のたびに、回答内容 + 現在ページ + バージョンを保存
   useEffect(() => {
+    if (!settings.persistProgress) return;
     if (!hydrated) return;
     if (Object.keys(answers).length === 0) return;
     try {
@@ -297,7 +304,14 @@ export default function DiagnosisPageContent({
     } catch {
       // quota など失敗してもクリティカルではない
     }
-  }, [answers, currentPage, hydrated, questionSetVersion, settings.progressStorageKey]);
+  }, [
+    answers,
+    currentPage,
+    hydrated,
+    questionSetVersion,
+    settings.persistProgress,
+    settings.progressStorageKey,
+  ]);
 
   // ページ送り / 質問ステップ突入時: 先頭 (一番上の質問) へスクロールを戻す。
   // クリックハンドラ内の同期 scrollTo は再レンダー前に走り効かないことがあるため、
@@ -801,10 +815,6 @@ export default function DiagnosisPageContent({
                     </Link>
                     에서 확인할 수 있습니다.
                   </p>
-                ) : locale === "en" ? (
-                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
-                    By viewing your result, you agree that your answers and nickname may be used to calculate and save your personality result.
-                  </p>
                 ) : locale === "id" ? (
                   <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
                     Dengan melihat hasil, Anda menyetujui penggunaan jawaban dan nama panggilan untuk menghitung serta menyimpan hasil kepribadian Anda.
@@ -831,11 +841,9 @@ export default function DiagnosisPageContent({
         )}
       </main>
       {/* フッター直上の 16P 風シェアバンド (実績数 + SNS ボタン) */}
-      {locale !== "en" ? (
-        <div className="mt-10">
-          <DiagnosisShareBand locale={locale} />
-        </div>
-      ) : null}
+      <div className="mt-10">
+        <DiagnosisShareBand locale={locale} />
+      </div>
     </div>
     {/* サイト共通フッター (直上のシェアバンドの波エッジが区切りになるため上端線は消す) */}
     {isKorean ? (

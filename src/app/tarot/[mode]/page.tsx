@@ -27,6 +27,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       "ja",
       `/tarot/${mode}`,
       `/ko/tarot/${mode}`,
+      `/en/tarot/${mode}`,
+      `/id/tarot/${mode}`,
     ),
   };
 }

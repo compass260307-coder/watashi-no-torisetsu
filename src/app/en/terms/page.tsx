@@ -6,7 +6,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms governing the English version of Alice Personalities.",
-  alternates: localizedAlternates("en", "/terms", "/ko/terms", "/en/terms"),
+  alternates: localizedAlternates("en", "/terms", "/ko/terms", "/en/terms", "/id/terms"),
   robots: { index: true, follow: true },
 };
 
