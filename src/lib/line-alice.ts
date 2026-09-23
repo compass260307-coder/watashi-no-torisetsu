@@ -186,12 +186,33 @@ export async function generateLineAliceReply(input: {
     maxTokens: MAX_OUTPUT_TOKENS,
     temperature: 0.7,
     timeoutMs: 40_000,
+    // system は同一ユーザーの会話中は安定した長い前置きなので、連続対話中の再処理を省く。
+    // 返信間隔が5分を超えるとキャッシュ失効で書き込み分 (1.25倍) が毎回かかるため、
+    // 下の usage ログで cache_read が実際に発生しているかを監視すること。
+    cacheSystem: true,
   });
 
   const text = (result.text ?? "").trim();
   if (!text) throw new Error("empty_ai_response");
 
-  const usage = (result.raw as { usage?: { input_tokens?: number; output_tokens?: number } })?.usage;
+  const usage = (
+    result.raw as {
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        cache_creation_input_tokens?: number;
+        cache_read_input_tokens?: number;
+      };
+    }
+  )?.usage;
+  if (usage) {
+    console.log("[line-alice] usage", {
+      input_tokens: usage.input_tokens ?? 0,
+      output_tokens: usage.output_tokens ?? 0,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+      cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+    });
+  }
   await persistExchange({
     lineUserId: input.lineUserId,
     userId: input.user.id,
