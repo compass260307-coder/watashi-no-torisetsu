@@ -8,6 +8,7 @@ import { hasPremiumBundleAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function ResultUpgradeReadingPage() {
         <ResultUpgradeReadingDocument
           imageSrc={`/api/result-upgrade/character/${encodeURIComponent(ownerToken)}${row.generated_at ? `?v=${encodeURIComponent(row.generated_at)}` : ""}`}
           imageAlt={row.personalized_type_name}
-          imageUnoptimized
+          imageUnoptimized={UNOPTIMIZED_IN_DEV}
           personalizedTypeName={row.personalized_type_name}
           personalizedIntro={row.personalized_intro}
           reading={row.reading}

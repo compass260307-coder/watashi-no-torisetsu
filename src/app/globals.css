@@ -78,26 +78,6 @@ html[lang="en"] {
   background-color: var(--result-action-color, #5b5bef) !important;
 }
 
-/* 結果ヒーローの透過アニメーションを端末別に切り替える。
-   iOS系ブラウザでは動画のalphaが無視されることがあるため、タッチ端末はanimated WebPを使う。 */
-.character-mobile-animation {
-  display: none;
-}
-
-.character-desktop-animation {
-  display: block;
-}
-
-@media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  .character-mobile-animation {
-    display: block;
-  }
-
-  .character-desktop-animation {
-    display: none;
-  }
-}
-
 /* ダーク追従 (将来ダークテーマ有効時に備えトークンで対応)。
    トーンを落とした左右ティント。意味づけは light と同じ (左右の手がかりのみ)。 */
 @media (prefers-color-scheme: dark) {

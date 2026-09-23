@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import {
   thirtyTwoName,
   thirtyTwoEssence,
@@ -148,7 +149,7 @@ export function TakoAnsweredDetail({
                 }
                 width={96}
                 height={96}
-                unoptimized
+                unoptimized={UNOPTIMIZED_IN_DEV}
                 className="h-full w-full object-contain"
               />
             ) : (

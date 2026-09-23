@@ -5,10 +5,11 @@
 //   - 背景: 白 / テキスト: ブランドネイビー #2E2E5C
 //   - 進捗バー: 淡ブルートラック + Sora ブルー #5B5BEF 塗り (CTA と同色)
 //   - チェックリスト: 完了 = Sora ブルーのチェック、未完 = 淡ブルーの空円
-//   - マスコット: フェルト調ペンギンのループ動画 (Kling 生成・5秒ループ)。
-//     reduced-motion 環境では再生せず静止画 (poster) を表示
+//   - マスコット: フェルト調ペンギンの静止画 (動画は使わない方針・2026-09-23。
+//     旧ループ動画の先頭フレームを WebP 化したもの)
 //   - MESSAGES / STEPS の文言・タイマー進行は従来のまま
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -50,18 +51,6 @@ export function DiagnosisAnalyzingLoader({
 } = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  // prefers-reduced-motion: 再生を止めて poster (静止画) のままにする
-  useEffect(() => {
-    if (
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches &&
-      videoRef.current
-    ) {
-      videoRef.current.pause();
-      videoRef.current.removeAttribute("autoplay");
-    }
-  }, []);
 
   const messageCount = messages.length;
   const stepCount = steps.length;
@@ -82,22 +71,19 @@ export function DiagnosisAnalyzingLoader({
 
   return (
     <div
-      // 背景は動画の地色 (#FCFCFC 実測) に合わせ、動画の四角い縁を不可視化する
+      // 背景は画像の地色 (#FCFCFC 実測) に合わせ、画像の四角い縁を不可視化する
       className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#FCFCFC] px-5 py-10"
       style={{ fontFamily }}
     >
-      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。
-          poster は置かない (動画開始時に別画像が一瞬見えるチラつきの原因になるため。
-          reduced-motion 時は動画の先頭フレームが静止表示される)。 */}
-      {/* -mb: 動画フレーム下側の余白 (絵柄の外側) を詰めてメッセージに近づける */}
+      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。 */}
+      {/* -mb: 画像フレーム下側の余白 (絵柄の外側) を詰めてメッセージに近づける */}
       <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
-        <video
-          ref={videoRef}
-          src="/mascot/analyzing-loop.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
+        <SmoothImage
+          src="/mascot/analyzing-still.webp"
+          alt=""
+          width={1660}
+          height={1244}
+          priority
           className="h-full w-auto scale-[1.16] object-contain"
         />
       </div>

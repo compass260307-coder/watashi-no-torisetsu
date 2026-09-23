@@ -17,8 +17,9 @@
 //   スクロールで下部セクションが現れて三層の世界観が切れるのを防ぐ。招待/シェアは CTA→送信シート
 //   (③ TakoSendSheet)に集約 (QRもシート末尾に在る)。課金導線・無料バイパスは一切作らない。
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ProofFacesBand } from "@/components/ProofFacesBand";
+import { SmoothImage } from "@/components/ui/SmoothImage";
 import { TakoShareGate, type GateAnsweredFriend } from "./TakoShareGate";
 import { TakoRevealStage } from "./TakoRevealStage";
 import { TakoSendSheet } from "./TakoSendSheet";
@@ -37,35 +38,26 @@ import type { ResultLocale } from "@/i18n/result";
 const NAVY = "#2E2E5C";
 const INACTIVE = "#9BA3B4";
 
-// FV 右側のループ動画 (旧ロックページの FV を復活、2026-07-18)。/aisho の HeroLoopVideo と
-// 同流儀 (autoPlay/muted/loop、prefers-reduced-motion で一時停止)。読み込み前でも崩れない
-// よう、コンテナに淡いグラデ背景を持たせる。
-function TakoHeroVideo() {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      video.pause();
-    }
-  }, []);
+// FV 右側のヒーロー画像 (動画は使わない方針・2026-09-23。旧ループ動画の先頭フレームを
+// WebP 化したもの)。読み込み前でも崩れないよう、淡いグラデ背景を持たせる。
+function TakoHeroImage() {
   return (
-    <video
-      ref={ref}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="auto"
+    <div
       aria-hidden="true"
-      className="w-full rounded-3xl object-contain"
+      className="w-full overflow-hidden rounded-3xl"
       style={{
         background:
           "linear-gradient(135deg, #EEF0FB 0%, #F6F3FC 50%, #EAF6F9 100%)",
       }}
     >
-      <source src="/tako/hero-loop.mp4" type="video/mp4" />
-    </video>
+      <SmoothImage
+        src="/tako/hero-still.webp"
+        alt=""
+        width={1916}
+        height={1080}
+        className="w-full object-contain"
+      />
+    </div>
   );
 }
 
@@ -195,7 +187,7 @@ export function TakoLockedState({
           </p>
         </div>
         <div className="mt-5 md:mt-0 md:w-[46%] md:max-w-[620px] md:shrink-0">
-          <TakoHeroVideo />
+          <TakoHeroImage />
         </div>
       </header>
 

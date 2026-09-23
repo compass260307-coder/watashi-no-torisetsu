@@ -25,6 +25,7 @@ import {
   sceneImageFor,
 } from "@/components/result/MinnaTypeProse";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoFaq } from "@/components/result/TakoFaq";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
@@ -840,7 +841,7 @@ export async function TakoResultPage({
                                   }
                                   width={1448}
                                   height={1086}
-                                  unoptimized
+                                  unoptimized={UNOPTIMIZED_IN_DEV}
                                   className="h-auto w-full max-w-[640px] object-contain"
                                 />
                                 <p className="mt-3 max-w-[760px] text-center text-[12px] font-bold text-white">
@@ -1058,7 +1059,7 @@ export async function TakoResultPage({
                                     }
                                     width={512}
                                     height={512}
-                                    unoptimized
+                                    unoptimized={UNOPTIMIZED_IN_DEV}
                                     className="mt-3 w-full max-w-[560px] object-contain md:max-w-[640px]"
                                   />
                                 ) : (

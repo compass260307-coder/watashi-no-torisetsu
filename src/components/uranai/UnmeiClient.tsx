@@ -57,7 +57,12 @@ const CLIENT_COPY = {
 
 // 生成完了までのタイムアウト (指示書④: 無限スピナー禁止・60秒で再試行案内)
 const TIMEOUT_MS = 60_000;
-const POLL_INTERVAL_MS = 3_000;
+// ポーリングは 3 秒から始めて徐々に間隔を広げる (×1.4、上限 8 秒)。
+// 生成は数十秒かかることが多く、固定 3 秒間隔だと 1 回の生成で 20 回の
+// Function 呼び出しになるため、後半を疎にして呼び出し回数を約半分に抑える。
+const INITIAL_POLL_INTERVAL_MS = 3_000;
+const POLL_BACKOFF_FACTOR = 1.4;
+const MAX_POLL_INTERVAL_MS = 8_000;
 // 60秒で完了しなかった場合、手動リトライ案内を出す前に自動で再生成を試みる回数。
 // (サーバ側の生成試行上限とは別の、クライアント発の再キック。上限超過はサーバが 'failed' で止める)
 const MAX_AUTO_RETRIES = 2;
@@ -80,12 +85,12 @@ export default function UnmeiClient({
   // (別画面のスピナーに切り替えず、会話の続きとして待たせる)。
   const [viaChat, setViaChat] = useState(false);
   const deadlineRef = useRef<number | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoRetriesRef = useRef<number>(0);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
-      clearInterval(pollRef.current);
+      clearTimeout(pollRef.current);
       pollRef.current = null;
     }
   }, []);
@@ -116,7 +121,8 @@ export default function UnmeiClient({
   const startPolling = useCallback(() => {
     stopPolling();
     deadlineRef.current = Date.now() + TIMEOUT_MS;
-    pollRef.current = setInterval(async () => {
+    let delay = INITIAL_POLL_INTERVAL_MS;
+    const tick = async () => {
       try {
         const res = await fetch(`/api/unmei/status?locale=${locale}`, {
           cache: "no-store",
@@ -147,16 +153,30 @@ export default function UnmeiClient({
       }
       if (deadlineRef.current && Date.now() >= deadlineRef.current) {
         if (autoRetriesRef.current > 0) {
-          // 自動再生成: もう一度キックして待機時間を延長
+          // 自動再生成: もう一度キックして待機時間を延長。素早い確認間隔に戻す。
           autoRetriesRef.current -= 1;
           deadlineRef.current = Date.now() + TIMEOUT_MS;
+          delay = INITIAL_POLL_INTERVAL_MS;
           void kickGeneration(false);
         } else {
           stopPolling();
           setState("timeout");
+          return;
         }
       }
-    }, POLL_INTERVAL_MS);
+      // fetch 中に stopPolling された (画面遷移等) 場合は次をスケジュールしない
+      if (!pollRef.current) return;
+      pollRef.current = setTimeout(tick, delay);
+      delay = Math.min(
+        Math.round(delay * POLL_BACKOFF_FACTOR),
+        MAX_POLL_INTERVAL_MS,
+      );
+    };
+    pollRef.current = setTimeout(tick, delay);
+    delay = Math.min(
+      Math.round(delay * POLL_BACKOFF_FACTOR),
+      MAX_POLL_INTERVAL_MS,
+    );
   }, [locale, router, stopPolling, kickGeneration, onReady]);
 
   const startPending = useCallback(() => {
