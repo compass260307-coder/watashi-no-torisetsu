@@ -9,8 +9,9 @@
 //   生成せず /me へ 303 (フェイルクローズ。ロック画面の PDF も作らない)。
 // - Chromium は Vercel では @sparticuz/chromium、ローカルではインストール済みの
 //   Chrome (channel: "chrome") を使う。
-// - 生成に数秒かかるため maxDuration を明示。タイプ別に内容が固定なので
-//   将来重くなったらタイプ単位のキャッシュを検討。
+// - 生成に数秒かかるため maxDuration を明示。
+// - ko/en/id の生成結果は Supabase Storage にキャッシュし、内容 (診断完了時刻・
+//   表示名・print 版数) が同じ再ダウンロードは Chromium を起動せず返す。
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,6 +22,11 @@ import { launchPdfBrowser } from "@/lib/pdf-browser";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
+import {
+  getCachedReportPdf,
+  putCachedReportPdf,
+  reportPdfCachePath,
+} from "@/lib/report-pdf-cache";
 import {
   classifyThirtyTwoType,
   thirtyTwoCharacterSlug,
@@ -119,10 +125,12 @@ export async function GET(req: Request, ctx: RouteContext) {
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未課金にはロック画面 PDF すら作らない) =====
+  // ko/en/id の生成キャッシュのキー素材 (内容を決める入力)。preview では使わない。
+  let cachePath: string | null = null;
   if (!isPreview) {
     const { data, error } = await supabaseAdmin
       .from("users")
-      .select("id, diagnosis_completed_at, scores")
+      .select("id, diagnosis_completed_at, scores, display_name")
       .eq("owner_token", token)
       .maybeSingle();
     if (error) {
@@ -151,6 +159,15 @@ export async function GET(req: Request, ctx: RouteContext) {
     reportType = classifyThirtyTwoType(
       (data.scores ?? {}) as Partial<Record<BigFiveDimension, number>>,
     );
+
+    if (isKo || isEn || isId) {
+      cachePath = reportPdfCachePath(
+        "self",
+        data.id as string,
+        isKo ? "ko" : isEn ? "en" : "id",
+        [data.diagnosis_completed_at, data.display_name],
+      );
+    }
   }
 
   // ===== 日本語版: 診断キャラ別の縦書き小説をそのまま配信 =====
@@ -182,6 +199,24 @@ export async function GET(req: Request, ctx: RouteContext) {
     : isId
       ? `${origin}/id/report/${encodeURIComponent(token)}/print${printQuery}`
     : `${origin}/report/${encodeURIComponent(token)}/print${printQuery}`;
+
+  const chromiumPdfResponse = (bytes: Uint8Array) =>
+    new NextResponse(Buffer.from(bytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
+        "Content-Disposition":
+          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : isId ? "panduan-kepribadian-saya.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Personalities Complete Edition.pdf" : isId ? "Panduan Kepribadian Saya.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+
+  // 内容が同じ生成済み PDF があれば Chromium を起動せずに返す。
+  if (cachePath) {
+    const cached = await getCachedReportPdf(cachePath);
+    if (cached) return chromiumPdfResponse(new Uint8Array(cached));
+  }
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
@@ -216,16 +251,8 @@ export async function GET(req: Request, ctx: RouteContext) {
       margin: { top: "0", bottom: "0", left: "0", right: "0" },
     });
 
-    return new NextResponse(Buffer.from(pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        // 日本語ファイル名は RFC 5987 (filename*)、ASCII フォールバック併記
-        "Content-Disposition":
-          `attachment; filename="${isKo ? "my-personality-story-ko.pdf" : isEn ? "my-user-manual-complete-edition.pdf" : isId ? "panduan-kepribadian-saya.pdf" : "watashi-no-torisetsu-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 성격 스토리.pdf" : isEn ? "Alice Personalities Complete Edition.pdf" : isId ? "Panduan Kepribadian Saya.pdf" : "ワタシのトリセツ詳細レポート.pdf")}`,
-        "Cache-Control": "private, no-store",
-      },
-    });
+    if (cachePath) await putCachedReportPdf(cachePath, pdf);
+    return chromiumPdfResponse(pdf);
   } catch (err) {
     console.error("[/report/pdf] pdf generation failed:", err);
     // 生成失敗時は解放済みの自己診断結果へ案内する。

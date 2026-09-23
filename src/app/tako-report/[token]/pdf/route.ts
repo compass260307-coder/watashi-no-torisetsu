@@ -6,7 +6,9 @@
 //
 // - 認可はページと同じ token + hasTakoAccess。未購入・不明 token は本文を生成せず
 //   /tako へ 303 (フェイルクローズ)。
-// - 友達が増えるたびに内容が変わるためキャッシュしない (毎回生成)。
+// - 内容は友達回答が増えたときにだけ変わるため、生成結果を Supabase Storage に
+//   キャッシュする。キーは (診断完了時刻・表示名・回答の件数と最新時刻・print 版数)。
+//   一致すれば Chromium を起動せず保存済みバイトを返す。
 
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
@@ -14,6 +16,11 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasTakoAccess } from "@/lib/entitlements";
 import { launchPdfBrowser } from "@/lib/pdf-browser";
 import { resolveSiteUrl } from "@/lib/site-url";
+import {
+  getCachedReportPdf,
+  putCachedReportPdf,
+  reportPdfCachePath,
+} from "@/lib/report-pdf-cache";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -114,10 +121,11 @@ export async function GET(req: Request, ctx: RouteContext) {
   const printQuery = printParams.size > 0 ? `?${printParams.toString()}` : "";
 
   // ===== 認可 (ページと同一条件。未購入にはロック画面 PDF すら作らない) =====
+  let cachePath: string | null = null;
   if (!isPreview) {
     const { data, error } = await supabaseAdmin
       .from("users")
-      .select("id")
+      .select("id, diagnosis_completed_at, display_name")
       .eq("owner_token", token)
       .maybeSingle();
     if (error) {
@@ -132,6 +140,26 @@ export async function GET(req: Request, ctx: RouteContext) {
         303,
       );
     }
+
+    // キャッシュキー素材: 友達回答の件数と最新時刻 (回答が増減すればキーが変わる)。
+    const { data: latestPerception, count: perceptionCount } =
+      await supabaseAdmin
+        .from("friend_perceptions")
+        .select("created_at", { count: "exact" })
+        .eq("target_user_id", data.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+    cachePath = reportPdfCachePath(
+      "tako",
+      data.id as string,
+      isKo ? "ko" : isEn ? "en" : isId ? "id" : "ja",
+      [
+        data.diagnosis_completed_at,
+        data.display_name,
+        perceptionCount ?? 0,
+        latestPerception?.[0]?.created_at ?? null,
+      ],
+    );
   }
 
   // ===== PDF生成専用ページを描画して PDF 化 =====
@@ -143,6 +171,23 @@ export async function GET(req: Request, ctx: RouteContext) {
     : isId
       ? `${origin}/id/tako-report/${encodeURIComponent(token)}/print${printQuery}`
     : `${origin}/tako-report/${encodeURIComponent(token)}/print${printQuery}`;
+
+  const takoPdfResponse = (bytes: Uint8Array) =>
+    new NextResponse(Buffer.from(bytes), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition":
+          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : isId ? "analisis-kepribadian-teman.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+
+  // 内容が同じ生成済み PDF があれば Chromium を起動せずに返す。
+  if (cachePath) {
+    const cached = await getCachedReportPdf(cachePath);
+    if (cached) return takoPdfResponse(new Uint8Array(cached));
+  }
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {
@@ -182,15 +227,8 @@ export async function GET(req: Request, ctx: RouteContext) {
     });
     const fullBleedPdf = await expandFirstPageToFullBleed(pdf);
 
-    return new NextResponse(Buffer.from(fullBleedPdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition":
-          `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : isId ? "analisis-kepribadian-teman.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
-        "Cache-Control": "no-store",
-      },
-    });
+    if (cachePath) await putCachedReportPdf(cachePath, fullBleedPdf);
+    return takoPdfResponse(fullBleedPdf);
   } catch (err) {
     console.error("[/tako-report/pdf] generation failed:", err);
     return NextResponse.json({ error: "pdf_failed" }, { status: 500 });
