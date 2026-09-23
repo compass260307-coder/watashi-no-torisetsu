@@ -215,7 +215,27 @@ export async function POST(request: Request) {
         model: process.env.CLAUDE_MODEL,
         maxTokens: 900,
         timeoutMs: 45_000,
+        // instructions はユーザー内で安定した長い前置きなので、連続対話中の再処理を省く
+        cacheSystem: true,
       });
+      const usage = (
+        response.raw as {
+          usage?: {
+            input_tokens?: number;
+            output_tokens?: number;
+            cache_creation_input_tokens?: number;
+            cache_read_input_tokens?: number;
+          };
+        }
+      )?.usage;
+      if (usage) {
+        console.log("[hoshiyomi] usage", {
+          input_tokens: usage.input_tokens ?? 0,
+          output_tokens: usage.output_tokens ?? 0,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+          cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+        });
+      }
       const text = response.text?.trim();
       if (!text) throw new Error("Claude returned an empty response");
 
