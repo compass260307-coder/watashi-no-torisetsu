@@ -7,7 +7,6 @@
 import { CharacterHero } from "./CharacterHero";
 import type { CharacterHeroJobSlot } from "./CharacterHero";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import type { BigFiveDimension } from "@/lib/types";
 import type { AppResultLocale } from "@/i18n/result";
 
@@ -90,12 +89,15 @@ export function ResultHero({
     >
       {fullBleedImageSrc && (
         <>
+          {/* 生成キャラ画像はセッション認証付き API 配信のため常に unoptimized。
+              next/image の内部フェッチは元リクエストの Cookie を引き継がず 404 になる
+              (fetchInternalImage は url/method/socket のみのモックで実行される)。 */}
           <SmoothImage
             src={fullBleedImageSrc}
             alt=""
             fill
             priority
-            unoptimized={UNOPTIMIZED_IN_DEV}
+            unoptimized
             sizes="100vw"
             className="object-cover object-center md:object-[65%_50%]"
           />
