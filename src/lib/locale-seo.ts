@@ -1,4 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
+import { KO_DEFAULT_OG_IMAGE_PATH } from "@/lib/og-images";
 
 export const SITE_URL = "https://www.watashi-torisetsu.com";
 // Google Search supports one site name per domain (not per locale subdirectory).
@@ -90,7 +91,7 @@ export const KO_SEO_KEYWORDS: string[] = [
   "대학생 성격 테스트",
 ];
 export const KO_DEFAULT_OG_IMAGE = {
-  url: "/ogp-v5.jpg",
+  url: KO_DEFAULT_OG_IMAGE_PATH,
   width: 1200,
   height: 630,
   alt: "앨리스 진단 - Alice가 안내하는 나의 사용설명서 성격 테스트",

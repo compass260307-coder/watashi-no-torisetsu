@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
-import { KO_BRAND_NAME, KO_SITE_NAME } from "@/lib/locale-seo";
+import { KO_BRAND_NAME, KO_DEFAULT_OG_IMAGE, KO_SITE_NAME } from "@/lib/locale-seo";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_DIAGNOSIS_URL = `${BASE_URL}/ko/diagnosis`;
@@ -39,20 +39,13 @@ export const metadata: Metadata = {
     siteName: KO_SITE_NAME,
     title: TITLE,
     description: DESCRIPTION,
-    images: [
-      {
-        url: "/ogp-v5.jpg",
-        width: 1200,
-        height: 630,
-        alt: "나의 사용설명서 무료 성격 진단",
-      },
-    ],
+    images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/ogp-v5.jpg"],
+    images: [KO_DEFAULT_OG_IMAGE.url],
   },
   robots: { index: true, follow: true },
 };
