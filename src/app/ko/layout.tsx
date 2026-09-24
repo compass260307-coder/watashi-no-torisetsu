@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
 import { DocumentLanguage } from "@/components/DocumentLanguage";
 import {
   KO_DEFAULT_DESCRIPTION,
@@ -9,12 +8,10 @@ import {
   KO_SITE_NAME,
 } from "@/lib/locale-seo";
 
-const notoSansKR = Noto_Sans_KR({
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
-  display: "swap",
-  preload: false,
-});
+// 日本語版と同様にGoogleから直接配信し、分割フォントのVercel課金を抑える。
+// 書体・ウェイトは従来どおり。接続ヒントはルートlayoutで共有する。
+const KOREAN_FONTS_CSS_URL =
+  "https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap";
 
 export const metadata: Metadata = {
   title: {
@@ -59,7 +56,15 @@ export default function KoreanLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div lang="ko" className={`${notoSansKR.className} flex min-h-dvh flex-1 flex-col`}>
+    <div
+      lang="ko"
+      className="flex min-h-dvh flex-1 flex-col"
+      style={{
+        fontFamily: '"Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      }}
+    >
+      {/* Reactがheadへ移動・重複排除し、韓国語ページでのみ読み込む。 */}
+      <link rel="stylesheet" href={KOREAN_FONTS_CSS_URL} precedence="default" />
       <DocumentLanguage lang="ko" />
       {children}
     </div>
