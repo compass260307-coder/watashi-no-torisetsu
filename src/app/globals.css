@@ -41,7 +41,7 @@
 
 /* /ko では日本語 webfont (Noto Sans JP) の woff2 を 1 本も引かせない。
    <head> の DOCUMENT_LANGUAGE_SCRIPT が初回描画前に html[lang] を ko へ確定させるため、
-   この上書きが最初から効く (ko 本文は ko/layout の Noto Sans KR (next/font) が担う)。
+   この上書きが最初から効く (ko 本文は ko/layout のGoogle直接配信 Noto Sans KR が担う)。
    参照側 (ko articles 等) は末尾に 'Apple SD Gothic Neo' 等を続けているため、
    ここは韓国語向けシステムスタックのみで良い (generic は参照側の末尾にある)。 */
 html[lang="ko"] {
