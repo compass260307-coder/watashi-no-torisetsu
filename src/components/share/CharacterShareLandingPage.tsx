@@ -27,6 +27,7 @@ import {
 import { sixteenTypes } from "@/lib/sixteen-types";
 import type { BigFiveDimension } from "@/lib/types";
 import { localizedAlternates } from "@/lib/locale-seo";
+import { characterShareOgImagePath } from "@/lib/og-images";
 import { ShareLandingTracker } from "@/components/share/ShareLandingTracker";
 
 const SITE_URL = resolveSiteUrl();
@@ -117,7 +118,7 @@ export async function generateCharacterShareMetadata({
       ? `${d.name} is the ${d.essence} type`
       : `${d.name}さんは【${d.essence}】でした`;
   const characterSlug = thirtyTwoCharacterSlug(d.t32);
-  const ogImage = `${SITE_URL}/og-characters/${characterSlug}.jpg?v=20260825`;
+  const ogImage = `${SITE_URL}${characterShareOgImagePath(characterSlug, locale)}`;
   return {
     title: { absolute: `${title}｜${siteName}` },
     description,

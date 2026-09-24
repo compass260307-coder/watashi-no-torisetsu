@@ -4,8 +4,10 @@ import MeResultPage from "@/components/result/MeResultPage";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import { KO_TYPE_ZUKAN_DESCRIPTIONS } from "@/i18n/ko/types";
 import { KO_DEFAULT_OG_IMAGE, KO_SITE_NAME } from "@/lib/locale-seo";
+import { characterShareOgImagePath } from "@/lib/og-images";
 import {
   allThirtyTwoTypeIds,
+  thirtyTwoCharacterSlug,
   type ThirtyTwoTypeId,
 } from "@/lib/thirty-two-types";
 
@@ -34,7 +36,7 @@ export async function generateMetadata({
   const japaneseUrl = `${BASE_URL}/preview/${typeId}`;
   const koreanUrl = `${BASE_URL}/ko/preview/${typeId}`;
   const englishUrl = `${BASE_URL}/en/preview/${typeId}`;
-  const imageUrl = KO_DEFAULT_OG_IMAGE.url;
+  const imageUrl = characterShareOgImagePath(thirtyTwoCharacterSlug(id), "ko");
 
   return {
     title: type.essence,
@@ -60,7 +62,7 @@ export async function generateMetadata({
           url: imageUrl,
           width: KO_DEFAULT_OG_IMAGE.width,
           height: KO_DEFAULT_OG_IMAGE.height,
-          alt: KO_DEFAULT_OG_IMAGE.alt,
+          alt: `${type.essence} | 나의 사용설명서`,
         },
       ],
     },

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
+import { KO_DEFAULT_OG_IMAGE_PATH } from "@/lib/og-images";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk } from "@/lib/kakao-share";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
@@ -118,7 +119,7 @@ export function DiagnosisShareBand({
     ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(withRef(shareUrl, "facebook"))}`
     : undefined;
   const pinterestUrl = shareUrl
-    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL(isEn ? "/characters/keyvisual.webp" : "/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isId ? "Alice Test | Tes kepribadian Big Five gratis" : isEn ? "Alice Personalities | Free Big Five personality test" : isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
+    ? `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(withRef(shareUrl, "pinterest"))}&media=${encodeURIComponent(new URL(isKo ? KO_DEFAULT_OG_IMAGE_PATH : isEn ? "/characters/keyvisual.webp" : "/ogp-v5.jpg", shareUrl).toString())}&description=${encodeURIComponent(isId ? "Alice Test | Tes kepribadian Big Five gratis" : isEn ? "Alice Personalities | Free Big Five personality test" : isKo ? "나의 사용설명서 무료 성격 진단" : "ワタシのトリセツ｜無料性格診断テスト")}`
     : undefined;
 
   const handleNativeShare = async () => {
