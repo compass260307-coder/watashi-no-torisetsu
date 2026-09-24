@@ -86,15 +86,15 @@ const contractChecks = [
     ),
   },
   {
-    label: "Korean full access checkout price is KRW 4,900",
+    label: "Korean full access checkout price is KRW 2,900",
     valid: accessProducts.includes(
-      "export const FULL_ACCESS_PRICE_KRW = 4900;",
+      "export const FULL_ACCESS_PRICE_KRW = 2900;",
     ),
   },
   {
     label: "Korean single-offer paywall version records the frozen offer",
     valid: accessProducts.includes(
-      '"ko_single_full_access_v1_krw_4900_release_12900_list" as const',
+      '"ko_single_full_access_v2_krw_2900_release_12900_list" as const',
     ),
   },
   {
@@ -309,5 +309,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is the only current Korean offer at KRW 2,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

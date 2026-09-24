@@ -1,4 +1,4 @@
-// 日本版 (完全版 ¥499)・韓国版 (完全版 ₩4,900)・
+// 日本版 (完全版 ¥499)・韓国版 (完全版 ₩2,900)・
 // 英語版 (完全版 $4.99)・インドネシア語版 (完全版 Rp49.000) の
 // Stripe Checkout Session を作成する。購入済みコースがある場合は差額をサーバで算出する。
 //
@@ -235,7 +235,7 @@ const CHECKOUT_COPY: Record<
       "一度きりの買い切りで、すべての診断結果・PDF・運命の設計図をずっと見返せます。30日間の返金保証つき。",
   },
   ko: {
-    couponId: "full-access-anchor-off8000-krw",
+    couponId: `full-access-anchor-off${FULL_ACCESS_LIST_PRICE_KRW - FULL_ACCESS_PRICE_KRW}-krw`,
     couponName: "출시 기념",
     productName: "나의 사용설명서 완전판 패키지",
     productDescription:
