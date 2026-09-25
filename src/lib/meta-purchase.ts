@@ -50,7 +50,7 @@ const META_PURCHASE_CONTENT: Record<
   },
   full_access: {
     fallbackId: "full_access_jpy_499_restored_v43",
-    koFallbackId: "full_access_krw_2900",
+    koFallbackId: "full_access_krw_4900",
     idFallbackId: "full_access_idr_4900000",
     name: { ja: "完全版コース", ko: "완전판 코스", en: "Complete Edition", id: "Edisi Lengkap" },
   },

@@ -13,7 +13,7 @@
 
 | 商品キー | 表示価格 | 解放範囲 |
 | --- | ---: | --- |
-| `full_access` | ₩2,900 | 自己診断、専用電子書籍、友達診断、他己分析PDF、相性診断、運命の設計図、Alice 30回答、タロット3種 |
+| `full_access` | ₩4,900 | 自己診断、専用電子書籍、友達診断、他己分析PDF、相性診断、運命の設計図、Alice 30回答、タロット3種 |
 
 `self_report`（旧学生プラン ₩1,900）と `premium_bundle`（旧プレミアム ₩8,900）は過去購入・権利互換のために残し、新しいCheckoutを作成しない。旧学生プラン購入者が完全版へ移行する場合に限り、既存の差額計算をサーバー側で維持する。
 
@@ -26,7 +26,7 @@
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_FULL_ACCESS_KRW`: active / one-time / KRW / ₩2,900 の Price
+- `STRIPE_PRICE_FULL_ACCESS_KRW`: active / one-time / KRW / ₩4,900 の Price
 
 完全版の Price が金額・通貨・買い切り条件と一致しない、または Stripe から取得
 できない場合、Checkout は `price_configuration_invalid` で停止する。
@@ -76,8 +76,8 @@ Checkout を停止する。
 ## リリース確認
 
 1. 韓国語の自己診断・友達診断・運命・Aliceの購入導線には完全版だけが表示される。
-2. 未購入時の Checkout 金額が完全版 ₩2,900になり、`self_report` と `premium_bundle` の新規Checkoutは `product_not_offered` で拒否される。
-3. 旧学生プラン購入者には完全版への差額₩1,000が適用される。
+2. 未購入時の Checkout 金額が完全版 ₩4,900になり、`self_report` と `premium_bundle` の新規Checkoutは `product_not_offered` で拒否される。
+3. 旧学生プラン購入者には完全版への差額₩3,000が適用される。
 4. 完全版購入後に `/ko/unmei` で出生情報を入力でき、韓国語鑑定が生成される。
 5. 韓国向け決済手段が実機の Checkout に表示される。
 6. 全額返金後に該当権限が閉じ、別購入がある権限だけ維持される。
@@ -92,3 +92,10 @@ Checkout を停止する。
 - 公開前に、対象環境の `STRIPE_PRICE_FULL_ACCESS_KRW` をKRW・₩2,900・買い切りの有効なPriceへ切り替え、Checkout金額を確認する。自動税計算時は税込Priceが必要。旧₩4,900のPriceのままでは安全検証で503になるため、コードだけを公開しない。
 - 旧学生プランから完全版への差額は現行価格との差額₩1,000。販売停止中プレミアムへの旧完全版購入者の互換差額は₩4,000を維持する。
 - 公開時は表示・Checkoutの最終金額・購入計測バージョンを照合し、適用日時をリリース記録へ残す。
+
+## 2026-09-25 リリース記念カード
+
+- 明示承認により通常価格₩12,900から₩8,000引き、販売・決済価格₩4,900とする。カードは旧日本版と同じレイアウトで `출시 기념 62% 할인` を表示する。
+- 計測バージョン: `ko_single_full_access_v3_krw_4900_release_card_12900_list`。
+- `STRIPE_PRICE_FULL_ACCESS_KRW` は税込・KRW・買い切り・4,900の有効なPriceを指定する。旧未指定税設定Priceは再利用しない。クーポンは `full-access-anchor-off8000-krw`。
+- 公開後、表示とCheckout請求額4,900・日本版499円維持を確認する。

@@ -68,6 +68,7 @@ import {
   accessProductPrice,
   EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
   FULL_ACCESS_LIST_PRICE_JPY,
+  FULL_ACCESS_LIST_PRICE_KRW,
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   formatIdrMinor,
@@ -96,9 +97,9 @@ const PRICE_COPY = {
     offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
   },
   ko: {
-    list: "₩12,900",
+    list: `₩${FULL_ACCESS_LIST_PRICE_KRW.toLocaleString("ko-KR")}`,
     sale: `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`,
-    offPercent: 62,
+    offPercent: Math.round((1 - FULL_ACCESS_PRICE_KRW / FULL_ACCESS_LIST_PRICE_KRW) * 100),
   },
   en: {
     list: `$${(EN_FULL_ACCESS_LIST_PRICE_USD_CENTS / 100).toFixed(2)}`,
@@ -1140,6 +1141,29 @@ export function FullAccessPromoCard({
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {SELF_REPORT_PRICE_COPY[locale]}
                 </span>
+              ) : isKorean ? (
+                <div
+                  className={`flex flex-col gap-2 md:flex-row md:items-baseline md:gap-2.5 ${
+                    hasImage ? "items-start" : "items-center"
+                  }`}
+                >
+                  <span className="inline-flex items-baseline gap-2.5 whitespace-nowrap">
+                    <span className="sr-only">정상가</span>
+                    <s className="text-[16px] font-bold text-[#A0A0B4] line-through">
+                      {price.list}
+                    </s>
+                    <span className="text-[36px] font-black leading-none text-black">
+                      <span className="sr-only">할인가</span>
+                      {price.sale}
+                    </span>
+                  </span>
+                  <span
+                    className="rounded-md px-2 py-0.5 text-[12px] font-black text-white md:order-first"
+                    style={{ backgroundColor: actionTone.accent }}
+                  >
+                    출시 기념 {price.offPercent}% 할인
+                  </span>
+                </div>
               ) : locale === "ja" || isEnglish || isIndonesian ? (
                 <span className="text-[36px] font-black leading-none text-black">
                   <span className="sr-only">{isIndonesian ? "Harga" : isEnglish ? "Price" : "価格"}</span>
