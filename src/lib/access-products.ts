@@ -24,7 +24,7 @@ export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
 export const ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "id_single_full_access_v1_idr_49000_release_129000_list" as const;
 export const KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
-  "ko_single_full_access_v2_krw_2900_release_12900_list" as const;
+  "ko_single_full_access_v3_krw_4900_release_card_12900_list" as const;
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",
@@ -298,7 +298,7 @@ export const RESULT_UPGRADE_OFFER_VERSION =
 export const SELF_REPORT_LIST_PRICE_KRW = 4900;
 export const SELF_REPORT_PRICE_KRW = 1900;
 export const FULL_ACCESS_LIST_PRICE_KRW = 12900;
-export const FULL_ACCESS_PRICE_KRW = 2900;
+export const FULL_ACCESS_PRICE_KRW = 4900;
 // 旧完全版から販売停止中プレミアムへの互換差額を維持する。
 export const LEGACY_FULL_ACCESS_PRICE_KRW = 4900;
 export const PREMIUM_BUNDLE_LIST_PRICE_KRW = 19800;
