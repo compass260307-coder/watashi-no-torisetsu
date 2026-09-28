@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DocumentLanguage } from "@/components/DocumentLanguage";
+import { KakaoSdkLoader } from "@/components/KakaoSdkLoader";
 import {
   KO_DEFAULT_DESCRIPTION,
   KO_DEFAULT_OG_IMAGE,
@@ -66,6 +67,7 @@ export default function KoreanLayout({
       {/* Reactがheadへ移動・重複排除し、韓国語ページでのみ読み込む。 */}
       <link rel="stylesheet" href={KOREAN_FONTS_CSS_URL} precedence="default" />
       <DocumentLanguage lang="ko" />
+      <KakaoSdkLoader />
       {children}
     </div>
   );
