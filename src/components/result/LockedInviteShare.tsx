@@ -14,7 +14,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
-import { shareToKakaoTalk } from "@/lib/kakao-share";
+import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import type { AppResultLocale } from "@/i18n/result";
 
 interface LockedInviteShareProps {
@@ -41,7 +41,7 @@ interface LockedInviteShareProps {
 
 const SHARE_TEXT: Record<AppResultLocale, string> = {
   ja: "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ",
-  ko: "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단 테스트에 참여할 수 있어.",
+  ko: KO_FRIEND_INVITE_TEXT,
   en: "How do you see me? Answer 30 quick questions and compare your view with mine.",
   id: "Menurutmu aku seperti apa? Jawab 30 pertanyaan singkat dan bandingkan pandanganmu dengan penilaianku sendiri.",
 };
@@ -57,6 +57,8 @@ export function LockedInviteShare({
   locale = "ja",
 }: LockedInviteShareProps) {
   const [copied, setCopied] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
+  const [kakaoNote, setKakaoNote] = useState("");
   const [qrOpen, setQrOpen] = useState(!deferQr);
   const rootRef = useRef<HTMLDivElement>(null);
   const uiShownFired = useRef(false);
@@ -104,13 +106,14 @@ export function LockedInviteShare({
   )}`;
 
   const fire = (
-    channel: "x" | "line" | "kakao" | "facebook" | "share" | "copy",
+    channel: "x" | "line" | "kakao" | "facebook" | "share" | "copy" | "native",
+    details = {},
   ) => {
     if (!trackSource) return;
     track("friend_invite_clicked", {
       ownerToken,
       inviteCode,
-      metadata: { channel, source: trackSource },
+      metadata: { channel, source: trackSource, ...details },
     });
   };
 
@@ -127,13 +130,18 @@ export function LockedInviteShare({
   };
 
   const handleKakao = async () => {
+    if (kakaoBusy) return;
+    setKakaoBusy(true);
+    setKakaoNote("");
     const url = withRef(inviteUrl, "kakao");
     const result = await shareToKakaoTalk({
       text: shareText,
       url,
-      fallbackCopy: () => copyInviteValue(url),
+      fallbackCopy: copyInviteValue,
     });
-    if (result !== "unavailable") fire("kakao");
+    setKakaoBusy(false);
+    setKakaoNote(kakaoShareFeedback(result));
+    if (result !== "unavailable" && result !== "cancelled") fire(result, kakaoShareMetadata(result));
   };
 
   const handleCopy = async () => {
@@ -213,6 +221,8 @@ export function LockedInviteShare({
           <button
             type="button"
             onClick={handleKakao}
+            disabled={kakaoBusy}
+            aria-busy={kakaoBusy}
             className={shareButton}
           >
             <span className={`${shareIcon} bg-[#FEE500] text-[#3C1E1E]`}>
@@ -307,7 +317,7 @@ export function LockedInviteShare({
         </span>
       </button>
       <p aria-live="polite" className="mt-1.5 min-h-5 text-[11px] font-bold text-[#5B5BEF]">
-        {copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました") : ""}
+        {kakaoNote || (copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました") : "")}
       </p>
 
       {/* QRは補助導線。ユーザーが選んだ時だけ展開する。 */}

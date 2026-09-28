@@ -15,14 +15,12 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
-import { shareToKakaoTalk } from "@/lib/kakao-share";
+import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import { useTakoPeek } from "./TakoRevealStage";
 import type { ResultLocale } from "@/i18n/result";
 
 const SHARE_TEXT =
   "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
-const KO_SHARE_TEXT =
-  "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요.";
 
 // シェアボタン共通の塗りピル (LockedInviteShare と同系統・アイコンのみ)。
 const sharePill =
@@ -92,7 +90,7 @@ export function TakoShareGate({
   locale = "ja",
 }: TakoShareGateProps) {
   const isKo = locale === "ko";
-  const shareText = isKo ? KO_SHARE_TEXT : SHARE_TEXT;
+  const shareText = isKo ? KO_FRIEND_INVITE_TEXT : SHARE_TEXT;
   const answeredCount = Math.min(
     shownAnsweredCount ?? answered.length,
     threshold,
@@ -102,6 +100,8 @@ export function TakoShareGate({
 
   // シェアボタン行 (LINE、ko は KakaoTalk / X / リンクコピー / その他)。channel 別に計測を発火。
   const [copied, setCopied] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
+  const [kakaoNote, setKakaoNote] = useState("");
 
   // 送信UIの露出計測 (2026-08-04): 招待未実行の内訳を「ここまでスクロールしていない」と
   // 「見たのに送らない」に分解するため、シェアボタン行が視界に半分入った時点で1回だけ発火。
@@ -133,11 +133,11 @@ export function TakoShareGate({
     return () => io.disconnect();
   }, [ownerToken, inviteCode]);
 
-  const fireShare = (channel: string) => {
+  const fireShare = (channel: string, details = {}) => {
     track("friend_invite_clicked", {
       ownerToken,
       inviteCode,
-      metadata: { channel, source: "tako_locked_gate" },
+      metadata: { channel, source: "tako_locked_gate", ...details },
     });
   };
 
@@ -154,14 +154,18 @@ export function TakoShareGate({
   };
 
   const handleKakaoShare = async () => {
-    if (!qrInviteUrl) return;
+    if (!qrInviteUrl || kakaoBusy) return;
+    setKakaoBusy(true);
+    setKakaoNote("");
     const url = withRef(qrInviteUrl, "kakao");
     const result = await shareToKakaoTalk({
       text: shareText,
       url,
-      fallbackCopy: () => copyInviteValue(url),
+      fallbackCopy: copyInviteValue,
     });
-    if (result !== "unavailable") fireShare("kakao");
+    setKakaoBusy(false);
+    setKakaoNote(kakaoShareFeedback(result));
+    if (result !== "unavailable" && result !== "cancelled") fireShare(result, kakaoShareMetadata(result));
   };
 
   const handleCopy = async () => {
@@ -300,6 +304,8 @@ export function TakoShareGate({
             <button
               type="button"
               onClick={handleKakaoShare}
+              disabled={kakaoBusy}
+              aria-busy={kakaoBusy}
               aria-label="카카오톡으로 보내기"
               className={sharePill}
               style={{ background: "#FEE500", color: "#3C1E1E" }}
@@ -374,6 +380,8 @@ export function TakoShareGate({
           </button>
         </div>
       )}
+
+      {isKo && <p role="status" className="mt-2 text-center text-xs font-bold text-[#5B5BEF]">{kakaoNote}</p>}
 
       {/* ===== 退避トリガ: 押している間だけ手前カードを透過させ奥をチラ見。
           カード内に置くことで端末サイズ/下部ナビに隠れず常時タップ可能。
