@@ -60,20 +60,57 @@ export function PaywallOverlay({
   ctaSource?: string;
   scrollLocked?: boolean;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
-  // 開いている間は背面スクロールをロック + Esc で閉じる。
+  // 開いている間は背面スクロールとフォーカスを閉じ込め、閉じたら元の操作先に戻す。
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
+    const dialog = dialogRef.current;
+    const focusableElements = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter(
+        (element) =>
+          !element.hasAttribute("disabled") &&
+          element.getAttribute("aria-hidden") !== "true" &&
+          element.getClientRects().length > 0,
+      );
+    focusableElements()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const elements = focusableElements();
+      if (elements.length === 0) {
+        e.preventDefault();
+        dialog?.focus();
+        return;
+      }
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      const focusIsOutside = !dialog?.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || focusIsOutside)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || focusIsOutside)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus();
     };
   }, [onClose]);
 
@@ -108,8 +145,10 @@ export function PaywallOverlay({
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
+      tabIndex={-1}
       aria-label={isEnglish ? "Unlock results" : isIndonesian ? "Buka hasil" : isKorean ? "잠금 해제" : "ロック解除"}
       // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
