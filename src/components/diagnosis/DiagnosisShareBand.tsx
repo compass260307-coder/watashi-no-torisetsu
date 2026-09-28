@@ -5,7 +5,7 @@ import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KO_DEFAULT_OG_IMAGE_PATH } from "@/lib/og-images";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
-import { shareToKakaoTalk } from "@/lib/kakao-share";
+import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata } from "@/lib/kakao-share";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import type { AppResultLocale } from "@/i18n/result";
@@ -76,6 +76,8 @@ export function DiagnosisShareBand({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
+  const [kakaoNote, setKakaoNote] = useState("");
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setShareUrl(
@@ -102,9 +104,10 @@ export function DiagnosisShareBand({
       | "pinterest"
       | "copy"
       | "native",
+    details = {},
   ) =>
     track("share_clicked", {
-      metadata: { channel, kind: "diagnosis", source },
+      metadata: { channel, kind: "diagnosis", source, ...details },
     });
 
   // 共有内容は診断ページの URL だけ (宣伝文は付けない。2026-08-01 指示)。
@@ -159,14 +162,18 @@ export function DiagnosisShareBand({
   };
 
   const handleKakaoShare = async () => {
-    if (!shareUrl) return;
+    if (!shareUrl || kakaoBusy) return;
+    setKakaoBusy(true);
+    setKakaoNote("");
     const value = withRef(shareUrl, "kakao");
     const result = await shareToKakaoTalk({
       text: value,
       url: value,
-      fallbackCopy: () => copyShareValue(value),
+      fallbackCopy: copyShareValue,
     });
-    if (result !== "unavailable") fireShare("kakao");
+    setKakaoBusy(false);
+    setKakaoNote(kakaoShareFeedback(result));
+    if (result !== "unavailable" && result !== "cancelled") fireShare(result, kakaoShareMetadata(result));
   };
 
   const handleCopy = async () => {
@@ -198,6 +205,8 @@ export function DiagnosisShareBand({
               type="button"
               aria-label="카카오톡으로 공유"
               onClick={handleKakaoShare}
+              disabled={kakaoBusy}
+              aria-busy={kakaoBusy}
               className={`${circle} border-[#F4D400] text-[#3C1E1E]`}
               style={themedCircleStyle}
             >
@@ -313,6 +322,7 @@ export function DiagnosisShareBand({
           {isId ? "Tautan disalin ✓" : isEn ? "Link copied ✓" : isKo ? "링크를 복사했어요 ✓" : "リンクをコピーしました ✓"}
         </p>
       </div>
+      {isKo && <p role="status" className="mt-3 px-4 text-center text-xs font-bold text-[#5B5BEF]">{kakaoNote}</p>}
     </section>
   );
 }

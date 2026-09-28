@@ -31,7 +31,7 @@ import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
-import { shareToKakaoTalk } from "@/lib/kakao-share";
+import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
 import type { AppResultLocale } from "@/i18n/result";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
@@ -243,6 +243,8 @@ export function MeStickyHeader({
     Boolean(diagnosisCta);
   const [hidden, setHidden] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
+  const [kakaoNote, setKakaoNote] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
   const [sharePickerOpen, setSharePickerOpen] = useState(false);
   const [pickerCopiedKind, setPickerCopiedKind] =
@@ -547,13 +549,14 @@ export function MeStickyHeader({
     kind: "character" | "invite",
     channel: "copy" | "x" | "line" | "kakao" | "facebook" | "native",
     sourceOverride?: string,
+    details = {},
   ) => {
     if (previewMode) return;
     if (kind === "invite") {
       track("friend_invite_clicked", {
         ownerToken,
         inviteCode,
-        metadata: { channel, source: "tako_sticky_bar" },
+        metadata: { channel, source: "tako_sticky_bar", ...details },
       });
       return;
     }
@@ -564,6 +567,7 @@ export function MeStickyHeader({
         channel,
         kind: "character",
         source: sourceOverride ?? shareSource,
+        ...details,
       },
     });
   };
@@ -617,14 +621,20 @@ export function MeStickyHeader({
   };
 
   const handleKakaoShare = async () => {
-    if (!activeShareUrl) return;
+    if (!activeShareUrl || kakaoBusy) return;
+    setKakaoBusy(true);
+    setKakaoNote("");
     const url = withRef(activeShareUrl, "kakao");
     const result = await shareToKakaoTalk({
-      text: shareText,
+      text: activeShareKind === "invite" ? KO_FRIEND_INVITE_TEXT : shareText,
       url,
-      fallbackCopy: () => copyShareValue(url),
+      fallbackCopy: copyShareValue,
     });
-    if (result !== "unavailable") fireShare("kakao");
+    setKakaoBusy(false);
+    setKakaoNote(kakaoShareFeedback(result));
+    if (result !== "unavailable" && result !== "cancelled") {
+      fireShareForKind(activeShareKind, result, undefined, kakaoShareMetadata(result));
+    }
   };
 
   const handleCopy = async () => {
@@ -1011,6 +1021,8 @@ export function MeStickyHeader({
                     type="button"
                     aria-label="카카오톡으로 공유"
                     onClick={handleKakaoShare}
+                    disabled={kakaoBusy}
+                    aria-busy={kakaoBusy}
                     className="flex flex-col items-center gap-1.5"
                   >
                     <span
@@ -1116,6 +1128,8 @@ export function MeStickyHeader({
                   </button>
                 )}
               </div>
+
+              {isKo && <p role="status" className="mt-2 text-center text-xs font-bold text-[#5B5BEF]">{kakaoNote}</p>}
 
               <div className="mt-6">
                 <h3 className="text-[16px] font-black text-[#2E2E5C] md:text-[18px]">
@@ -1237,6 +1251,8 @@ export function MeStickyHeader({
                     type="button"
                     aria-label="카카오톡으로 공유"
                     onClick={handleKakaoShare}
+                    disabled={kakaoBusy}
+                    aria-busy={kakaoBusy}
                     className="flex flex-col items-center gap-1.5"
                   >
                     <span
@@ -1406,6 +1422,8 @@ export function MeStickyHeader({
                     : shareCopy.characterLinkCopied
                   : ""}
               </span>
+
+              {isKo && <p role="status" className="mt-2 text-center text-xs font-bold text-[#5B5BEF]">{kakaoNote}</p>}
 
               {/* invite モードのみ: 対面スキャン用QR (LockedInviteShare と同じ流儀・
                   2026-08-03 指示)。リンク行と同じフル幅・中央にキャラ顔 (丸抜き・白リング)。

@@ -19,7 +19,7 @@ import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { SHARE_TEXT, lineShareUrl } from "@/lib/tako-share";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
-import { shareToKakaoTalk } from "@/lib/kakao-share";
+import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import type { ResultLocale } from "@/i18n/result";
 
 const NAVY = "#2E2E5C";
@@ -89,7 +89,7 @@ export function TakoSendSheet({
   const shareText =
     shareTextOverride ??
     (isKo
-      ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
+      ? KO_FRIEND_INVITE_TEXT
       : SHARE_TEXT);
   // reduced は一度だけ遅延評価 (シートは開いた時=クライアントでのみ描画)。
   const [reduced] = useState(
@@ -98,6 +98,7 @@ export function TakoSendSheet({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [copied, setCopied] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -129,7 +130,7 @@ export function TakoSendSheet({
     ? ""
     : `${shareText} ${withRef(inviteUrl, "line")}`;
 
-  const fire = (channel: string) =>
+  const fire = (channel: string, details = {}) =>
     track(
       trackingKind === "self_diagnosis"
         ? "friend_to_diagnosis_invite_clicked"
@@ -137,7 +138,7 @@ export function TakoSendSheet({
       {
         ownerToken,
         inviteCode,
-        metadata: { channel, source: "tako_send_sheet" },
+        metadata: { channel, source: "tako_send_sheet", ...details },
       },
     );
 
@@ -163,16 +164,25 @@ export function TakoSendSheet({
   };
 
   const handleKakao = async () => {
+    if (kakaoBusy) return;
+    setKakaoBusy(true);
+    setNote(null);
     const url = withRef(inviteUrl, "kakao");
     const result = await shareToKakaoTalk({
       text: shareText,
       url,
-      fallbackCopy: () => copyInviteLink(url),
+      fallbackCopy: copyInviteLink,
     });
-    if (result === "unavailable") return;
-    fire(result === "copy" ? "kakao_copy" : "kakao");
-    onSent();
-    onClose();
+    setKakaoBusy(false);
+    setNote(kakaoShareFeedback(result));
+    if (result === "unavailable" || result === "cancelled") return;
+    fire(result, kakaoShareMetadata(result));
+    // Opening Kakao or copying a link does not confirm delivery. Keep the sheet
+    // and its instructions visible instead of adding a fictitious pending friend.
+    if (result === "native") {
+      onSent();
+      onClose();
+    }
   };
 
   // 他アプリで送る: Web Share API → 未対応なら copy。
@@ -188,8 +198,9 @@ export function TakoSendSheet({
         onClose();
         return;
       }
-    } catch {
-      // キャンセル/失敗 → copy にフォールバック
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      // 失敗時だけ copy にフォールバック。
     }
     await handleCopy("os_share_fallback");
   };
@@ -219,7 +230,7 @@ export function TakoSendSheet({
     const succeeded = await copyInviteLink(withRef(inviteUrl, "copy"));
     if (!succeeded) return;
     fire(channel);
-    onSent();
+    if (!isKo) onSent();
   };
 
   const heading =
@@ -316,12 +327,14 @@ export function TakoSendSheet({
           <button
             type="button"
             onClick={handleKakao}
+            disabled={kakaoBusy}
+            aria-busy={kakaoBusy}
             data-no-drag
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[17px] font-black shadow-[0_8px_24px_rgba(60,30,30,0.16)] transition-transform active:scale-[0.98]"
             style={{ background: "#FEE500", color: "#3C1E1E" }}
           >
             <KakaoTalkGlyph className="h-5 w-5" />
-            카카오톡으로 보내기
+            {kakaoBusy ? "공유 여는 중…" : "카카오톡으로 보내기"}
           </button>
         ) : (
           <a
@@ -383,7 +396,7 @@ export function TakoSendSheet({
         </div>
 
         {note && (
-          <p className="mt-3 text-center text-[12.5px] font-bold" style={{ color: LAVENDER }}>
+          <p role="status" className="mt-3 text-center text-[12.5px] font-bold" style={{ color: LAVENDER }}>
             {note}
           </p>
         )}
