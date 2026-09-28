@@ -148,11 +148,15 @@ export type OwnerReportData = {
 export async function loadOwnerReportData(
   token: string,
 ): Promise<OwnerReportData | null> {
-  const { data: userRow } = await supabaseAdmin
+  const { data: userRow, error: userError } = await supabaseAdmin
     .from("users")
     .select("id, type_id, scores, display_name, invite_code, owner_token")
     .eq("owner_token", token)
     .maybeSingle();
+  if (userError) {
+    console.error("[owner-report] users lookup failed:", userError);
+    throw new Error("Unable to load friend diagnosis data");
+  }
   if (!userRow) return null;
 
   const user: OwnerReportUser = {
@@ -166,7 +170,7 @@ export async function loadOwnerReportData(
   const selfScores = user.scores;
 
   // friend_perceptions (件数 + perceived_scores + qualitative_data)
-  const { data: perceptionRows } = await supabaseAdmin
+  const { data: perceptionRows, error: perceptionsError } = await supabaseAdmin
     .from("friend_perceptions")
     .select(
       "id, perceived_scores, perceiver_name, perceiver_user_id, perceived_type_id, perceived_modifier_n_r, qualitative_data, created_at",
@@ -174,6 +178,10 @@ export async function loadOwnerReportData(
     .eq("target_user_id", user.id)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
+  if (perceptionsError) {
+    console.error("[owner-report] friend perceptions lookup failed:", perceptionsError);
+    throw new Error("Unable to load friend diagnosis data");
+  }
   const rows = perceptionRows ?? [];
   const friendEvalCount = rows.length;
 
@@ -220,10 +228,14 @@ export async function loadOwnerReportData(
   );
   const friendOwnTypeById = new Map<string, ThirtyTwoTypeId>();
   if (perceiverIds.length > 0) {
-    const { data: friendUsers } = await supabaseAdmin
+    const { data: friendUsers, error: friendUsersError } = await supabaseAdmin
       .from("users")
       .select("id, scores")
       .in("id", perceiverIds);
+    if (friendUsersError) {
+      console.error("[owner-report] friend users lookup failed:", friendUsersError);
+      throw new Error("Unable to load friend diagnosis data");
+    }
     for (const u of friendUsers ?? []) {
       const scores = (u.scores ?? {}) as Partial<
         Record<BigFiveDimension, number>
