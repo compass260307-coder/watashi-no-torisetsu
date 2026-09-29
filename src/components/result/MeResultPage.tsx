@@ -1,3 +1,5 @@
+import { XTrack } from "@/components/XTrack";
+import { X_DIAGNOSIS_COMPLETE_EVENT_ID } from "@/lib/xPixel";
 // プレミアム化 v3 Day 9: 個人の永続アクセス点 (/me/[token])
 // Phase 1.5-α Day 10: Koi キャラ風 + Brand v2 に再構成
 // Phase 1.5-α Day 11: 自己診断 7 章レポート (全無料) に拡張、¥500 訴求カード削除、
@@ -1061,6 +1063,13 @@ async function MeResultPageContent({
     // 中央寄せ) で見せ、グループ色の背景帯 (旧 heroBand) は撤去した。
     // 最外周の枠線・カード・中央寄せ余白は撤去のまま、本文は左右ぎりぎり + PC 上限 1080px。
     <>
+      {isOwnedResult && ownsResultSession && user.diagnosis_completed_at && (
+        <XTrack
+          eventId={X_DIAGNOSIS_COMPLETE_EVENT_ID}
+          params={{ conversion_id: user.id }}
+          requireDiagnosisCompletion
+        />
+      )}
       {shouldTrackMetaPurchase &&
         paidCheckoutSession &&
         metaPurchaseClaimToken && (

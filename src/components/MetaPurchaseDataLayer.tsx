@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { XTrack } from "@/components/XTrack";
+import { X_PURCHASE_EVENT_ID } from "@/lib/xPixel";
 
 import {
   metaPurchaseStorageKey,
@@ -64,6 +66,7 @@ export function MetaPurchaseDataLayer({
   product: MetaPurchaseProduct;
   claimToken: string;
 }) {
+  const [xPurchase, setXPurchase] = useState<ClaimResponse | null>(null);
   useEffect(() => {
     const metaKey = metaPurchaseStorageKey(product, checkoutSessionId);
     const tiktokKey = tiktokPurchaseStorageKey(product, checkoutSessionId);
@@ -92,6 +95,12 @@ export function MetaPurchaseDataLayer({
       .then(async (claim) => {
         if (!claim) return;
         if (claim.checkoutSessionId !== checkoutSessionId) return;
+
+        // prepare retrieves a paid Stripe session on the server. For JPY,
+        // valueInMajorUnit returns amount_total unchanged (zero-decimal currency).
+        if (claim.currency === "JPY" && typeof claim.value === "number" && Number.isFinite(claim.value)) {
+          setXPurchase(claim);
+        }
 
         const target = window as PurchaseTarget;
         let metaPushed = false;
@@ -180,5 +189,11 @@ export function MetaPurchaseDataLayer({
       });
   }, [checkoutSessionId, product, claimToken]);
 
-  return null;
+  return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" ? (
+    <XTrack
+      key={checkoutSessionId}
+      eventId={X_PURCHASE_EVENT_ID}
+      params={{ value: xPurchase.value, currency: "JPY", conversion_id: checkoutSessionId }}
+    />
+  ) : null;
 }
