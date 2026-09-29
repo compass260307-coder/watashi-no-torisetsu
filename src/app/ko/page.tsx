@@ -159,6 +159,16 @@ export default function KoreanHomePage() {
       <KoTopViewTracker />
       <KoTopHeader />
       <KoTopHero />
+      <section aria-labelledby="ko-service-intro" className="bg-white px-6 py-10 text-center sm:py-14">
+        <div className="mx-auto max-w-[720px]">
+          <h2 id="ko-service-intro" className="break-keep text-xl font-bold text-[#2E2E5C] sm:text-2xl">
+            앨리스 진단으로 알아보는 나의 성격
+          </h2>
+          <p className="mt-4 break-keep text-base leading-relaxed text-[#5D6078] sm:text-lg">
+            {DESCRIPTION}
+          </p>
+        </div>
+      </section>
       <KoTopStats />
       <KoTopFooter />
     </main>
