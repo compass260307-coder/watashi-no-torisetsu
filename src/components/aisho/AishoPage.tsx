@@ -1,3 +1,5 @@
+"use client";
+
 // 相性診断ページ /aisho・/ko/aisho
 //
 // 32タイプから2つ選んで相性を見る、診断不要の回遊コンテンツ。
@@ -5,8 +7,6 @@
 // ロジックは lib/aisho-compat.ts (テーブル直引き・数値化なし)。
 // 配色はネイビー #2A3A5C 直書き・非アクティブ #9BA3B4・グループ色は THIRTY_TWO_GROUP_COLOR。
 // アイコンは依存ライブラリ不使用・インラインSVG (BottomNav.tsx 流儀)。
-
-"use client";
 
 import {
   Suspense,

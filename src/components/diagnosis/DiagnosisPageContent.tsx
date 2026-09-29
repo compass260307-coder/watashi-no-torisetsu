@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { X_DIAGNOSIS_PENDING_PREFIX } from "@/lib/xPixel";
 import { diagnose } from "@/lib/diagnosis";
 import { track, isPreviewMode } from "@/lib/track";
 import { resolveAcquisitionForSave } from "@/lib/acquisition";
@@ -557,6 +558,13 @@ export default function DiagnosisPageContent({
         localStorage.setItem("torisetsu_invite_code", data.inviteCode);
       }
       if (data.ownerToken) {
+        if (res.ok && typeof data.userId === "string") {
+          try {
+            sessionStorage.setItem(X_DIAGNOSIS_PENDING_PREFIX + data.userId, String(Date.now()));
+          } catch {
+            // No completion marker means no X conversion on the result page.
+          }
+        }
         // 保存APIが成功してからだけ完了イベントを送る。KPIの正本は
         // users.diagnosis_completed_at だが、イベントファネルも偽陽性にしない。
         track("diagnosis_completed", {
