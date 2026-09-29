@@ -67,7 +67,7 @@ export const KO_CHARACTER_NAME = "Alice";
 export const KO_SITE_NAME = GLOBAL_SITE_NAME;
 export const KO_DEFAULT_TITLE = `${KO_BRAND_NAME} | ${KO_SERVICE_NAME}`;
 export const KO_DEFAULT_DESCRIPTION =
-  "앨리스 진단은 Alice가 안내하는 성격 진단이에요. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나의 사용설명서’를 만들어 보세요.";
+  "앨리스 진단(Alice Personalities)은 빅파이브 기반의 50문항 무료 성격 테스트예요. 32가지 캐릭터 유형으로 내 성격을 알아보고, 친구가 바라본 내 모습과 비교해 보세요.";
 export const KO_SEO_KEYWORDS: string[] = [
   "앨리스 진단",
   "앨리스 테스트",
