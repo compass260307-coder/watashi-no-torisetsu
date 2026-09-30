@@ -22,7 +22,7 @@ import {
   TakoLockPopover,
   type DiagnosisLockTarget,
 } from "@/components/TakoLockPopover";
-import { PaywallOverlay } from "@/components/result/PaywallModal";
+import { DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_ATTENTION_PENDING_KEY,

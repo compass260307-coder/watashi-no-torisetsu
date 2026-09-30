@@ -5,7 +5,7 @@
 //   - 背景クリック / Esc / × で閉じる。
 //   - 開いている間は背面のスクロールをロック。
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { LoginCard } from "./LoginCard";
 import type { ResultLocale } from "@/i18n/result";
@@ -19,11 +19,31 @@ export function LoginModal({
   onClose: () => void;
   locale?: ResultLocale | "en" | "id";
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   // Esc で閉じる + 背面スクロールロック (open の間だけ)
   useEffect(() => {
     if (!open) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusable = () => Array.from(cardRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+    ) ?? []).filter((element) => element.getClientRects().length > 0);
+    focusable()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+      if (e.key === "Tab") {
+        const elements = focusable();
+        const first = elements[0];
+        const last = elements[elements.length - 1];
+        if (!cardRef.current?.contains(document.activeElement) ||
+            (e.shiftKey && document.activeElement === first) ||
+            (!e.shiftKey && document.activeElement === last)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -31,6 +51,7 @@ export function LoginModal({
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      previousFocus?.focus();
     };
   }, [open, onClose]);
 
@@ -54,7 +75,7 @@ export function LoginModal({
         aria-hidden="true"
       />
       {/* カード本体 (暗幕より前面) */}
-      <div className="relative z-10 w-full max-w-[440px]">
+      <div ref={cardRef} className="relative z-10 w-full max-w-[440px]">
         <LoginCard onClose={onClose} locale={locale} />
       </div>
     </div>,

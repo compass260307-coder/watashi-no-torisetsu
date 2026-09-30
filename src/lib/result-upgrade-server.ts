@@ -1,11 +1,6 @@
 import "server-only";
 
-import { isThirtyTwoEnabled } from "@/lib/feature-flags";
 import { preferCutImage } from "@/lib/character-image";
-import {
-  characterImagePath,
-  classifySixteenType,
-} from "@/lib/sixteen-types";
 import {
   classifyThirtyTwoType,
   thirtyTwoImagePath,
@@ -57,19 +52,10 @@ export async function resolveResultUpgradeBase(userId: string): Promise<{
   }
 
   const scores = (data.scores ?? {}) as StoredScores;
-  if (isThirtyTwoEnabled()) {
-    const sourceTypeId = classifyThirtyTwoType(scores);
-    return {
-      sourceTypeId,
-      sourceCharacterPath: preferCutImage(thirtyTwoImagePath(sourceTypeId)),
-      scores,
-    };
-  }
-
-  const sourceTypeId = classifySixteenType(scores);
+  const sourceTypeId = classifyThirtyTwoType(scores);
   return {
     sourceTypeId,
-    sourceCharacterPath: preferCutImage(characterImagePath(sourceTypeId)),
+    sourceCharacterPath: preferCutImage(thirtyTwoImagePath(sourceTypeId)),
     scores,
   };
 }

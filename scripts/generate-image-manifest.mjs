@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
+import { verifyPublicAssets } from "./verify-public-assets.mjs";
 
 const root = process.cwd();
 const listDir = (rel, ext = ".webp") => {
@@ -102,3 +103,4 @@ fs.writeFileSync(
 console.log(
   `character-images.json: cut=${manifest.cut.length} scenes=${manifest.scenes.length} face=${manifest.face.length} topMargin=${Object.keys(cutTopMargin).length}`,
 );
+verifyPublicAssets(root);

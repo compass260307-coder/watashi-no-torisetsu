@@ -1,5 +1,7 @@
 "use client";
 
+import { isChunkLoadError } from "@/lib/chunk-load-error";
+
 // global-error.tsx は root layout の外側で発火する。
 // ここでは next/font 等が使えないため最小限のインライン CSS のみ。
 export default function GlobalError({
@@ -9,6 +11,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const chunkError = isChunkLoadError(error);
   console.error(error);
   return (
     <html lang="ja">
@@ -33,11 +36,13 @@ export default function GlobalError({
         <p
           style={{ fontSize: "0.875rem", color: "#666", marginBottom: 24 }}
         >
-          ご迷惑をおかけして申し訳ありません。
+          {chunkError
+            ? "ページの読み込みに失敗しました。更新すると、入力中の内容が失われる場合があります。"
+            : "ご迷惑をおかけして申し訳ありません。"}
         </p>
         <button
           type="button"
-          onClick={() => reset()}
+          onClick={() => chunkError ? window.location.reload() : reset()}
           style={{
             background: "linear-gradient(135deg, #fd267a 0%, #ff7854 100%)",
             color: "#fff",
@@ -50,7 +55,7 @@ export default function GlobalError({
             boxShadow: "0 4px 16px rgba(254, 60, 114, 0.25)",
           }}
         >
-          もう一度試す
+          {chunkError ? "ページを更新" : "もう一度試す"}
         </button>
       </body>
     </html>

@@ -7,6 +7,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { BottomNav } from "@/components/BottomNav";
 import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
+import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 
 // Define the queue synchronously in <head>, before result-page effects run.
 const X_PIXEL_SCRIPT = `!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');twq('config','rg1zg');`;
@@ -216,6 +217,7 @@ export default function RootLayout({
       className={mPlusRounded.variable}
     >
       <head>
+        <script id="static-asset-recovery" dangerouslySetInnerHTML={{ __html: STATIC_ASSET_RECOVERY_SCRIPT }} />
         <script id="x-pixel" dangerouslySetInnerHTML={{ __html: X_PIXEL_SCRIPT }} />
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
         <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
