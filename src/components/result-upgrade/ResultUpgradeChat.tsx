@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FullAccessCta } from "@/components/result/FullAccessCta";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
+import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
 
 type Props = {
   ownerToken: string;
@@ -17,7 +18,6 @@ type Props = {
 
 type Screen = "questions" | "saving" | "purchase" | "generating" | "failed";
 
-const POLL_INTERVAL_MS = 2_000;
 const ALICE_REPLY_DELAY_MS = 900;
 const UPGRADE_PREPARATION_DELAY_MS = 15_000;
 const ALICE_AVATAR_SRC = "/mascot/hoshiyomi-alice-avatar-transparent.png";
@@ -67,53 +67,15 @@ export function ResultUpgradeChat({
 
   useEffect(() => {
     if (preview || screen !== "generating" || !premiumPaid) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    async function kick() {
-      try {
-        await fetch("/api/result-upgrade/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force: retryKey > 0 }),
-        });
-      } catch {
-        // status ポーリングで回復する。
-      }
-    }
-
-    async function poll() {
-      if (cancelled) return;
-      try {
-        const response = await fetch("/api/result-upgrade/status", {
-          cache: "no-store",
-        });
-        if (response.ok) {
-          const data = (await response.json()) as { state?: string };
-          if (data.state === "ready") {
-            router.replace(
-              ownerToken
-                ? `/me/${encodeURIComponent(ownerToken)}?upgraded=1`
-                : "/result-upgrade/reading",
-            );
-            return;
-          }
-          if (data.state === "failed") {
-            setScreen("failed");
-            return;
-          }
-        }
-      } catch {
-        // 一時的な通信失敗は次のポーリングで回復する。
-      }
-      timer = setTimeout(poll, POLL_INTERVAL_MS);
-    }
-
-    void kick().then(poll);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
+    return watchResultUpgrade({
+      force: retryKey > 0,
+      onReady: () => router.replace(
+        ownerToken
+          ? `/me/${encodeURIComponent(ownerToken)}?upgraded=1`
+          : "/result-upgrade/reading",
+      ),
+      onFailed: () => setScreen("failed"),
+    });
   }, [ownerToken, premiumPaid, preview, retryKey, router, screen]);
 
   async function submitAnswer() {

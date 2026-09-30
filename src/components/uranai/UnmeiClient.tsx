@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
 import type { AppResultLocale } from "@/i18n/result";
+import { isTerminalPollResponse, startVisiblePolling } from "@/lib/visible-polling";
 
 type State = "no_birth" | "pending" | "timeout" | "ready";
 
@@ -85,18 +86,18 @@ export default function UnmeiClient({
   // (別画面のスピナーに切り替えず、会話の続きとして待たせる)。
   const [viaChat, setViaChat] = useState(false);
   const deadlineRef = useRef<number | null>(null);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<(() => void) | null>(null);
   const autoRetriesRef = useRef<number>(0);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
-      clearTimeout(pollRef.current);
+      pollRef.current();
       pollRef.current = null;
     }
   }, []);
 
   // 生成をキック。force=true はサーバ側の自動再生成上限を超えた手動リトライ。
-  const kickGeneration = useCallback(async (force = false) => {
+  const kickGeneration = useCallback(async (force: boolean, signal: AbortSignal) => {
     try {
       const localeOwnerToken = purchaseOwnerToken ?? ownerToken;
       if (locale !== "ja" && localeOwnerToken) {
@@ -104,105 +105,118 @@ export default function UnmeiClient({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ownerToken: localeOwnerToken, locale }),
+          signal,
         });
-        if (!preference.ok) return;
+        if (signal.aborted || !preference.ok) return false;
       }
-      await fetch("/api/unmei/generate", {
+      const response = await fetch("/api/unmei/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ force, locale }),
+        signal,
       });
+      return !signal.aborted && !isTerminalPollResponse(response);
     } catch {
-      /* ポーリング側で回復可能なので握りつぶす */
+      // 開始要求が届いている可能性があるので、再送せずstatusで確認する。
+      return !signal.aborted;
     }
   }, [locale, ownerToken, purchaseOwnerToken]);
 
-  // 60秒で MAX_AUTO_RETRIES まで自動再生成、尽きたら手動案内。
-  const startPolling = useCallback(() => {
+  // Visible, serial checks. Each run owns its AbortSignal so a replaced run
+  // cannot update the UI, re-kick generation, or schedule another timer.
+  const startPolling = useCallback((force = false) => {
     stopPolling();
-    deadlineRef.current = Date.now() + TIMEOUT_MS;
+    let kicked = false;
+    let failures = 0;
+    let retryGraceUntil = 0;
     let delay = INITIAL_POLL_INTERVAL_MS;
-    const tick = async () => {
+    pollRef.current = startVisiblePolling(async (signal) => {
+      if (!kicked) {
+        kicked = true;
+        deadlineRef.current = Date.now() + TIMEOUT_MS;
+        const started = await kickGeneration(force, signal);
+        if (signal.aborted) return false;
+        if (!started) {
+          setState("timeout");
+          return false;
+        }
+        if (force) retryGraceUntil = Date.now() + 10_000;
+        delay = Math.round(delay * POLL_BACKOFF_FACTOR);
+        return INITIAL_POLL_INTERVAL_MS;
+      }
       try {
         const res = await fetch(`/api/unmei/status?locale=${locale}`, {
           cache: "no-store",
+          signal,
         });
-        if (res.ok) {
-          const j = await res.json();
-          if (j?.state === "ready") {
-            stopPolling();
-            setState("ready");
-            if (onReady) onReady();
-            else router.refresh(); // サーバコンポーネントを再描画して鑑定を表示
-            return;
-          }
-          if (j?.state === "no_birth") {
-            stopPolling();
-            setState("no_birth");
-            return;
-          }
-          if (j?.state === "failed") {
-            // サーバが自動再生成の上限に達した → 手動リトライ待ち
-            stopPolling();
-            setState("timeout");
-            return;
-          }
+        if (signal.aborted) return false;
+        if (isTerminalPollResponse(res)) {
+          setState("timeout");
+          return false;
+        }
+        if (!res.ok) throw new Error("Status unavailable");
+        const j = await res.json();
+        if (signal.aborted) return false;
+        failures = 0;
+        if (j?.state === "pending") retryGraceUntil = 0;
+        if (j?.state === "ready") {
+          setState("ready");
+          if (onReady) onReady();
+          else router.refresh();
+          return false;
+        }
+        if (j?.state === "no_birth") {
+          setState("no_birth");
+          return false;
+        }
+        if ((j?.state === "failed" && Date.now() >= retryGraceUntil) || j?.state === "unpurchased") {
+          setState("timeout");
+          return false;
         }
       } catch {
-        /* 一時的なネットワークエラーは次のポーリングで回復 */
+        if (signal.aborted) return false;
+        failures += 1;
       }
+      if (failures >= 5) {
+        setState("timeout");
+        return false;
+      }
+      if (document.hidden) return delay;
       if (deadlineRef.current && Date.now() >= deadlineRef.current) {
         if (autoRetriesRef.current > 0) {
-          // 自動再生成: もう一度キックして待機時間を延長。素早い確認間隔に戻す。
           autoRetriesRef.current -= 1;
           deadlineRef.current = Date.now() + TIMEOUT_MS;
           delay = INITIAL_POLL_INTERVAL_MS;
-          void kickGeneration(false);
+          const started = await kickGeneration(false, signal);
+          if (signal.aborted) return false;
+          if (!started) {
+            setState("timeout");
+            return false;
+          }
         } else {
-          stopPolling();
           setState("timeout");
-          return;
+          return false;
         }
       }
-      // fetch 中に stopPolling された (画面遷移等) 場合は次をスケジュールしない
-      if (!pollRef.current) return;
-      pollRef.current = setTimeout(tick, delay);
-      delay = Math.min(
-        Math.round(delay * POLL_BACKOFF_FACTOR),
-        MAX_POLL_INTERVAL_MS,
-      );
-    };
-    pollRef.current = setTimeout(tick, delay);
-    delay = Math.min(
-      Math.round(delay * POLL_BACKOFF_FACTOR),
-      MAX_POLL_INTERVAL_MS,
-    );
+      const nextDelay = delay;
+      delay = Math.min(Math.round(delay * POLL_BACKOFF_FACTOR), MAX_POLL_INTERVAL_MS);
+      return nextDelay;
+    });
   }, [locale, router, stopPolling, kickGeneration, onReady]);
 
-  const startPending = useCallback(() => {
+  const drive = useCallback((force: boolean) => {
+    autoRetriesRef.current = MAX_AUTO_RETRIES;
     setState("pending");
-    startPolling();
+    startPolling(force);
   }, [startPolling]);
 
-  // 新規の生成ドライブ開始(自動再生成カウンタをリセット)。
-  const drive = useCallback(
-    (force: boolean) => {
-      autoRetriesRef.current = MAX_AUTO_RETRIES;
-      void kickGeneration(force);
-      startPending();
-    },
-    [kickGeneration, startPending],
-  );
-
-  // 初期状態が pending の場合、マウント時に生成をドライブ
   useEffect(() => {
     if (initialState === "pending") {
       autoRetriesRef.current = MAX_AUTO_RETRIES;
-      void kickGeneration(false);
       startPolling();
     }
-    return () => stopPolling();
-  }, [initialState, kickGeneration, startPolling, stopPolling]);
+    return stopPolling;
+  }, [initialState, startPolling, stopPolling]);
 
   const handleSaved = useCallback(() => {
     setViaChat(true);

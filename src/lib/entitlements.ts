@@ -224,6 +224,13 @@ export async function getAccessPurchaseEntitlements(
 
 export type Plan = "free" | "full";
 
+// Only share these promises inside one request, for the same user. Never retain
+// them across requests: a webhook/refund must be visible on the next check.
+export type AccessCheckPromises = {
+  full?: Promise<boolean>;
+  purchases?: ReturnType<typeof getAccessPurchaseEntitlements>;
+};
+
 /** DB からプランを引く。取得失敗時は安全側 (free) に倒す。 */
 export async function getPlan(userId: string): Promise<Plan> {
   const { data, error } = await supabaseAdmin
@@ -283,6 +290,7 @@ export async function hasFullAccess(
  */
 export async function hasUnmeiAccess(
   userId: string | null | undefined,
+  checks?: AccessCheckPromises,
 ): Promise<boolean> {
   if (!userId) return false;
 
@@ -305,7 +313,7 @@ export async function hasUnmeiAccess(
     if (rows && rows.length > 0) return true;
   }
 
-  const entitlements = await getAccessPurchaseEntitlements(userId);
+  const entitlements = await (checks?.purchases ?? getAccessPurchaseEntitlements(userId));
   if (entitlements.destinyFeatures) return true;
   // 決済履歴がある完全版は、その購入時のpolicyを優先する。
   // payment_history導入前の旧plan='full'だけ後方互換で残す。
@@ -374,10 +382,11 @@ export async function hasTarotAccess(
  */
 export async function hasSelfReportAccess(
   userId: string | null | undefined,
+  checks?: AccessCheckPromises,
 ): Promise<boolean> {
   if (!userId) return false;
 
-  if (await hasFullAccess(userId)) return true;
+  if (await (checks?.full ?? hasFullAccess(userId))) return true;
   if (await anyCompletedPayment([userId], "self_report")) return true;
 
   const { data, error } = await supabaseAdmin
@@ -442,14 +451,15 @@ async function anyTakoUnlockPayment(userIds: string[]): Promise<boolean> {
  */
 export async function hasTakoAccess(
   userId: string | null | undefined,
+  checks?: AccessCheckPromises,
 ): Promise<boolean> {
   if (!userId) return false;
 
   // ⓪ full_access / premium_bundle / 旧 plan='full' は友達診断を解放。
-  if (await hasFullAccess(userId)) return true;
+  if (await (checks?.full ?? hasFullAccess(userId))) return true;
 
   // ① self_report は購入世代のポリシーに応じて友達機能を解放する。
-  if ((await getAccessPurchaseEntitlements(userId)).friendFeatures) return true;
+  if ((await (checks?.purchases ?? getAccessPurchaseEntitlements(userId))).friendFeatures) return true;
 
   // ② 旧 ¥799 単体購入者の権限維持: 自分の行での tako_unlock 購入
   if (await anyTakoUnlockPayment([userId])) return true;

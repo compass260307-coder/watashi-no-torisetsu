@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
   const fullPromise = hasFullAccess(userId);
   // premiumBundle と tarot は同じ購入履歴から判定するため、一度だけ取得する。
   const purchasesPromise = getAccessPurchaseEntitlements(userId);
+  const checks = { full: fullPromise, purchases: purchasesPromise };
   // plan の反映前でも completed の完全版購入があれば、従来どおりクレジットを復元する。
   // 未購入者だけ復元を省略し、full の購入者は他の権限チェックと並行して進める。
   const creditsPromise = fullPromise.then(async (full) => {
@@ -77,11 +78,11 @@ export async function GET(request: NextRequest) {
   const [full, selfReport, friend, purchases, credits, unmei] =
     await Promise.all([
       fullPromise,
-      hasSelfReportAccess(userId),
-      hasTakoAccess(userId),
+      hasSelfReportAccess(userId, checks),
+      hasTakoAccess(userId, checks),
       purchasesPromise,
       creditsPromise,
-      hasUnmeiAccess(userId),
+      hasUnmeiAccess(userId, checks),
     ]);
   // チャットの利用可否は full が前提。未購入者には残高の掃除・購入履歴からの
   // クレジット復元を行わず、決済直後の full 判定は従来どおり最新値を読む。

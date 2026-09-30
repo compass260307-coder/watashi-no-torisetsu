@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 import type { AppResultLocale } from "@/i18n/result";
 import type { AccessProduct } from "@/lib/access-products";
+import { isTerminalPollResponse, startVisiblePolling } from "@/lib/visible-polling";
 
 const NAVY = "#2E2E5C";
 // ポーリングは 2 秒から始めて徐々に間隔を広げる (×1.5、上限 10 秒)。
@@ -63,7 +64,6 @@ export function PaidUnlockWatcher({
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
     let tries = 0;
     let pollDelay = INITIAL_POLL_INTERVAL_MS;
 
@@ -73,14 +73,18 @@ export function PaidUnlockWatcher({
       window.location.replace(unlockedUrl(returnTo, ownerToken, locale));
     };
 
-    const poll = async () => {
-      if (cancelled) return;
+    return startVisiblePolling(async (signal) => {
       tries += 1;
       try {
         const res = await fetch(
           `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
-          { cache: "no-store" },
+          { cache: "no-store", signal },
         );
+        if (signal.aborted) return false;
+        if (isTerminalPollResponse(res)) {
+          setTimedOut(true);
+          return false;
+        }
         if (res.ok) {
           const data = (await res.json()) as {
             full?: boolean;
@@ -90,6 +94,7 @@ export function PaidUnlockWatcher({
             unmei?: boolean;
             tarot?: boolean;
           };
+          if (signal.aborted) return false;
           const allBottomNavAccessGranted =
             data.astrologer === true &&
             data.unmei === true &&
@@ -106,29 +111,24 @@ export function PaidUnlockWatcher({
                 : data.full;
           if (unlocked) {
             reloadUnlocked();
-            return;
+            return false;
           }
         }
       } catch {
         // ネットワーク一時失敗は無視して次のポーリングへ
       }
-      if (cancelled) return;
+      if (signal.aborted) return false;
       if (tries >= MAX_TRIES) {
         setTimedOut(true);
-        return;
+        return false;
       }
-      window.setTimeout(poll, pollDelay);
+      const nextDelay = pollDelay;
       pollDelay = Math.min(
         Math.round(pollDelay * POLL_BACKOFF_FACTOR),
         MAX_POLL_INTERVAL_MS,
       );
-    };
-
-    const first = window.setTimeout(poll, FIRST_DELAY_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(first);
-    };
+      return nextDelay;
+    }, FIRST_DELAY_MS);
   }, [locale, ownerToken, product, returnTo]);
 
   return (
