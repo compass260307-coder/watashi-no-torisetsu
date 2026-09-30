@@ -2,12 +2,11 @@
 
 import { Component, lazy, Suspense, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { PaywallOverlay } from "@/components/result/PaywallModal";
 
-// Keep global navigation independent of checkout, report previews and login code.
-// These wrappers must only be mounted when the corresponding dialog is open.
-const PaywallOverlay = lazy(() =>
-  import("@/components/result/PaywallModal").then((mod) => ({ default: mod.PaywallOverlay })),
-);
+// Keep checkout code in the initial bundle so opening a purchase dialog does not
+// wait for another JavaScript download. Login remains loaded on demand.
+// Both wrappers are mounted only while their corresponding dialog is open.
 const LoginModal = lazy(() =>
   import("@/components/LoginModal").then((mod) => ({ default: mod.LoginModal })),
 );
@@ -80,12 +79,10 @@ class OverlayErrorBoundary extends Component<FeedbackProps & { children: ReactNo
   }
 }
 
-export function DeferredPaywallOverlay(props: ComponentProps<typeof PaywallOverlay>) {
+export function EagerPaywallOverlay(props: ComponentProps<typeof PaywallOverlay>) {
   return (
     <OverlayErrorBoundary onClose={props.onClose} locale={props.locale}>
-    <Suspense fallback={<LoadingDialog onClose={props.onClose} locale={props.locale} />}>
       <PaywallOverlay {...props} />
-    </Suspense>
     </OverlayErrorBoundary>
   );
 }

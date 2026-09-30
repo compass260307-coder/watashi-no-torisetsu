@@ -12,7 +12,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DeferredLoginModal as LoginModal, DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
+import { DeferredLoginModal as LoginModal, EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { resetLocalData } from "@/lib/reset-data";
