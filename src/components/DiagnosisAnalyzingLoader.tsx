@@ -5,10 +5,10 @@
 //   - 背景: 白 / テキスト: ブランドネイビー #2E2E5C
 //   - 進捗バー: 淡ブルートラック + Sora ブルー #5B5BEF 塗り (CTA と同色)
 //   - チェックリスト: 完了 = Sora ブルーのチェック、未完 = 淡ブルーの空円
-//   - マスコット: フェルト調ペンギンの静止画 (動画は使わない方針・2026-09-23。
-//     旧ループ動画の先頭フレームを WebP 化したもの)
+//   - マスコット: 元の5秒ループ動画を透過化。Safari は HEVC、その他は VP9。
+//     reduced-motion / 再生不可時は同じ動画の透過済み先頭フレームを表示。
 //   - MESSAGES / STEPS の文言・タイマー進行は従来のまま
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 
 const FONT_STACK =
@@ -17,6 +17,19 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 const TRACK = "#E6E6FB"; // Sora ブルーの淡ティント (トラック / 空円)
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+function subscribeToReducedMotion(onChange: () => void) {
+  const query = window.matchMedia(REDUCED_MOTION_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+function getReducedMotion() {
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+function getServerReducedMotion() {
+  return true;
+}
 
 const MESSAGES = [
   "あなたの回答を読み込んでいます...",
@@ -51,6 +64,12 @@ export function DiagnosisAnalyzingLoader({
 } = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const reducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotion,
+    getServerReducedMotion,
+  );
 
   const messageCount = messages.length;
   const stepCount = steps.length;
@@ -71,21 +90,48 @@ export function DiagnosisAnalyzingLoader({
 
   return (
     <div
-      // 背景は画像の地色 (#FCFCFC 実測) に合わせ、画像の四角い縁を不可視化する
       className="flex min-h-screen flex-1 flex-col items-center justify-center bg-[#FCFCFC] px-5 py-10"
       style={{ fontFamily }}
     >
-      {/* 少し拡大して端をクロップ (右下の Kling ウォーターマーク隠し)。 */}
-      {/* -mb: 画像フレーム下側の余白 (絵柄の外側) を詰めてメッセージに近づける */}
+      {/* 動画と poster の両方がアルファ付き。元の表示サイズと余白を維持する。 */}
       <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
-        <SmoothImage
-          src="/mascot/analyzing-still.webp"
-          alt=""
-          width={1660}
-          height={1244}
-          priority
-          className="h-full w-auto scale-[1.16] object-contain"
-        />
+        {reducedMotion || videoFailed ? (
+          <SmoothImage
+            src="/mascot/analyzing-loop-alpha-poster.webp"
+            alt=""
+            width={832}
+            height={624}
+            priority
+            unoptimized
+            className="h-full w-auto scale-[1.16] object-contain"
+          />
+        ) : (
+          <video
+            width={832}
+            height={624}
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster="/mascot/analyzing-loop-alpha-poster.webp"
+            onError={(event) => {
+              // React also bubbles <source> errors here. An unsupported HEVC
+              // candidate must still allow Chrome to try the following WebM.
+              if (event.target === event.currentTarget) setVideoFailed(true);
+            }}
+            className="h-full w-auto scale-[1.16] object-contain"
+          >
+            <source
+              src="/mascot/analyzing-loop-alpha.mov"
+              type={'video/quicktime; codecs="hvc1"'}
+            />
+            <source
+              src="/mascot/analyzing-loop-alpha.webm"
+              type={'video/webm; codecs="vp9"'}
+              onError={() => setVideoFailed(true)}
+            />
+          </video>
+        )}
       </div>
 
       <p

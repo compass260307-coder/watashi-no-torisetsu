@@ -1,5 +1,9 @@
 # /types キャラモーション動画 量産ガイド
 
+> **例外 (2026-09-30)**: ユーザーの指定により、診断解析待ちのペンギンだけは元の5秒ループ動画を維持する。
+> `DiagnosisAnalyzingLoader` は背景透過した VP9 WebM / HEVC MOV を使用し、動きを減らす設定・再生不可時だけ同じ動画の透過 poster を表示する。
+> 再生成: `node scripts/generate-analyzing-alpha-video.mjs <元のanalyzing-loop.mp4>`。他のキャラクター・ヒーローは静止画方針を維持する。
+
 > **廃止 (2026-09-23)**: サーバー費用(転送量)削減のため「動画は一切使わない」方針が決定。
 > キャラアニメ (webm/mov/動くWebP)・ヒーローループ動画・解析待ち動画はすべて静止画に置換し、
 > 素材 (`public/characters/anim*`、各 `*-loop.mp4`) と生成スクリプト
