@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { NextResponse } from "next/server";
 import { consumeRateLimit, isSafeOpaqueToken, readJsonObject } from "@/lib/api-security";
+import { anthropicUsage, recordAiUsage } from "@/lib/ai-usage.mjs";
 import { callClaude } from "@/lib/claude.mjs";
 import { buildHoshiyomiInstructions } from "@/lib/hoshiyomi/prompt";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/lib/hoshiyomi/store";
 import { checkOrigin } from "@/lib/origin-check";
 import { getSession } from "@/lib/session";
+import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasFullAccess } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
@@ -209,33 +211,54 @@ export async function POST(request: Request) {
     originalMessages: messages,
     generateId: createIdGenerator({ prefix: "msg", size: 16 }),
     async execute({ writer }) {
-      const response = await callClaude({
-        system: instructions,
-        prompt: conversationPrompt(messages, locale),
-        model: process.env.CLAUDE_MODEL,
-        maxTokens: 900,
-        timeoutMs: 45_000,
-        // instructions はユーザー内で安定した長い前置きなので、連続対話中の再処理を省く
-        cacheSystem: true,
-      });
-      const usage = (
-        response.raw as {
-          usage?: {
-            input_tokens?: number;
-            output_tokens?: number;
-            cache_creation_input_tokens?: number;
-            cache_read_input_tokens?: number;
-          };
-        }
-      )?.usage;
-      if (usage) {
-        console.log("[hoshiyomi] usage", {
-          input_tokens: usage.input_tokens ?? 0,
-          output_tokens: usage.output_tokens ?? 0,
-          cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
-          cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+      const model = process.env.CLAUDE_MODEL ?? "unknown";
+      const startedAt = Date.now();
+      let response;
+      try {
+        response = await callClaude({
+          system: instructions,
+          prompt: conversationPrompt(messages, locale),
+          model: process.env.CLAUDE_MODEL,
+          maxTokens: 900,
+          timeoutMs: 45_000,
+          // instructions はユーザー内で安定した長い前置きなので、連続対話中の再処理を省く
+          cacheSystem: true,
         });
+      } catch (error) {
+        await recordAiUsage(supabaseAdmin, {
+          userId: session.id,
+          feature: "hoshiyomi_chat",
+          provider: "anthropic",
+          model,
+          modality: "text",
+          status: "failed",
+          generationKey: reservationId,
+          attempt: 1,
+          durationMs: Date.now() - startedAt,
+          error,
+          metadata: { locale, cache_system: true },
+        });
+        throw error;
       }
+      const normalizedUsage = anthropicUsage(response.raw);
+      await recordAiUsage(supabaseAdmin, {
+        userId: session.id,
+        feature: "hoshiyomi_chat",
+        provider: "anthropic",
+        model,
+        modality: "text",
+        status: "succeeded",
+        generationKey: reservationId,
+        attempt: 1,
+        durationMs: Date.now() - startedAt,
+        providerRequestId: response.raw?.id,
+        ...normalizedUsage,
+        metadata: {
+          locale,
+          cache_system: true,
+          output_generated: Boolean(response.text?.trim()),
+        },
+      });
       const text = response.text?.trim();
       if (!text) throw new Error("Claude returned an empty response");
 
