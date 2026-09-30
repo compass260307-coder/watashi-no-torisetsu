@@ -462,13 +462,14 @@ input[type="reset"]:active {
    発火しなくなり自然に停止)。
    ============================================================ */
 /* feat/top-page: ヒーローのキービジュアル出し分け。
-   PC/タブレット (640px〜) = 横長 keyvisual.png、スマホ (〜639px) = 縦長
-   keyvisual-mobile.png (横長を cover すると左右が大きく切れるため専用画像)。
+   PC/タブレット (640px〜) = 横長 keyvisual.webp、スマホ (〜639px) = 縦長
+   keyvisual-mobile.webp (横長を cover すると左右が大きく切れるため専用画像)。
+   画像URLは静的importでハッシュ化し、preloadと共通のCSS変数から受け取る。
    どちらも cover + center bottom: 上端の純白帯をクロップしつつ、
    下端の白い雲 (フッター連結) とキャラ帯を常に画面下に見せる。 */
 .top-hero-bg {
   background-color: #e4e0f4;
-  background-image: url("/characters/keyvisual.webp");
+  background-image: var(--top-hero-desktop);
   background-size: cover;
   background-position: center bottom;
   background-repeat: no-repeat;
@@ -476,7 +477,7 @@ input[type="reset"]:active {
 
 @media (max-width: 639px) {
   .top-hero-bg {
-    background-image: url("/characters/keyvisual-mobile.webp");
+    background-image: var(--top-hero-mobile);
   }
 }
 

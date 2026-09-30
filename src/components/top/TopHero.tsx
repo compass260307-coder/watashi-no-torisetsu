@@ -14,6 +14,7 @@
 
 import Link from "next/link";
 import { trackTopCta } from "@/components/top/TopAnalytics";
+import { TOP_HERO_BACKGROUNDS, TOP_HERO_BACKGROUND_STYLE } from "@/lib/top-hero-background";
 
 // H1・本文ともゴシック (Noto Sans JP)。H1 は 800(極太) で塊感を出す。
 const FONT_STACK =
@@ -34,13 +35,13 @@ export default function TopHero({
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual.webp"
+        href={TOP_HERO_BACKGROUNDS.desktop}
         media="(min-width: 640px)"
       />
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual-mobile.webp"
+        href={TOP_HERO_BACKGROUNDS.mobile}
         media="(max-width: 639px)"
       />
     <section
@@ -50,7 +51,7 @@ export default function TopHero({
       // 画像を丸ごと見せる (78vh 固定だと上だけクロップされ、キャラ帯が
       // コピー・CTA の真裏まで上がってきて文字が読めなくなるため)。
       className="top-hero-bg relative h-[178vw] w-full overflow-hidden sm:h-[61vw] sm:min-h-[78vh]"
-      style={{ fontFamily: FONT_STACK }}
+      style={{ ...TOP_HERO_BACKGROUND_STYLE, fontFamily: FONT_STACK }}
     >
       {/* 背景: キービジュアルを CSS background (cover/center bottom) でフルブリード。
           上端の純白をクロップして白余白を詰める。上端の雲の切れ目を、青空に届かない
