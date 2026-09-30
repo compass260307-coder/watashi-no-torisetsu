@@ -4,6 +4,8 @@ import { Noto_Sans_KR } from "next/font/google";
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
   subsets: ["latin"],
+  // Korean reports load this font when used; other locales do not need it.
+  preload: false,
 });
 
 // 友達診断 完全版レポート (PDF生成専用ページ + DLルート) は個人向けのため noindex

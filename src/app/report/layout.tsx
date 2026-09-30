@@ -4,6 +4,8 @@ import { Noto_Sans_KR } from "next/font/google";
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
   subsets: ["latin"],
+  // Korean reports load this font when used; other locales do not need it.
+  preload: false,
 });
 
 // PDFダウンロードとPDF生成専用ページは個人向けのため noindex
