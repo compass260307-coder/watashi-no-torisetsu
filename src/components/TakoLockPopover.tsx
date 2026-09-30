@@ -1,4 +1,7 @@
 "use client";
+import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+
+import { useUiText } from "@/i18n/ui/use-ui-copy";
 
 // 自己診断前のナビ項目ロック中ポップオーバー。
 //   自己診断が終わっていない (owner_token 無し) 状態でボトムナビの
@@ -9,9 +12,9 @@
 //   デザインは自己診断結果ページ (/me) に合わせる: 白カード + #2E2E5C 見出し +
 //   丸数字ステップ + フェルトのマスコット (public/mascot)。
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 
 export type DiagnosisLockTarget =
   | "friend"
@@ -21,112 +24,7 @@ export type DiagnosisLockTarget =
 
 // ja/ko/en の文言セット。ko は既存の /ko/tako ガードページの言い回し
 // (자기 진단 / 자기 진단 시작하기) に合わせる。
-const COPY = {
-  ja: {
-    friend: {
-      ariaLabel: "友達診断はロック中",
-      heading: "友達診断はまだロック中",
-      bodyLine1: "自己診断が完了すると、",
-      bodyLine2: "友達に診断してもらえるよ",
-    },
-    astrologer: {
-      ariaLabel: "Aliceはロック中",
-      heading: "Aliceはまだロック中",
-      bodyLine1: "自己診断が完了すると、",
-      bodyLine2: "Aliceのコースを選べるよ",
-    },
-    unmei: {
-      ariaLabel: "運命の設計図はロック中",
-      heading: "運命の設計図はまだロック中",
-      bodyLine1: "自己診断が完了すると、",
-      bodyLine2: "設計図のコースを選べるよ",
-    },
-    tarot: {
-      ariaLabel: "タロットはロック中",
-      heading: "タロットはまだロック中",
-      bodyLine1: "自己診断が完了すると、",
-      bodyLine2: "タロット占いを楽しめるよ",
-    },
-  },
-  ko: {
-    friend: {
-      ariaLabel: "친구 진단 잠금 안내",
-      heading: "친구 진단은 아직 잠겨 있어요",
-      bodyLine1: "자기 진단을 완료하면",
-      bodyLine2: "친구에게 진단을 받을 수 있어요",
-    },
-    astrologer: {
-      ariaLabel: "상담사 잠금 안내",
-      heading: "상담사는 아직 잠겨 있어요",
-      bodyLine1: "자기 진단을 완료하면",
-      bodyLine2: "상담 코스를 선택할 수 있어요",
-    },
-    unmei: {
-      ariaLabel: "운명의 설계도 잠금 안내",
-      heading: "운명의 설계도는 아직 잠겨 있어요",
-      bodyLine1: "자기 진단을 완료하면",
-      bodyLine2: "설계도 코스를 선택할 수 있어요",
-    },
-    tarot: {
-      ariaLabel: "타로 잠금 안내",
-      heading: "타로는 아직 잠겨 있어요",
-      bodyLine1: "자기 진단을 완료하면",
-      bodyLine2: "타로점을 즐길 수 있어요",
-    },
-  },
-  en: {
-    friend: {
-      ariaLabel: "Friend test locked",
-      heading: "The friend test is still locked",
-      bodyLine1: "Complete your personality test",
-      bodyLine2: "to invite friends to describe you.",
-    },
-    astrologer: {
-      ariaLabel: "Alice locked",
-      heading: "Alice is still locked",
-      bodyLine1: "Complete your personality test",
-      bodyLine2: "to unlock the Complete Edition.",
-    },
-    unmei: {
-      ariaLabel: "Destiny Blueprint locked",
-      heading: "Destiny Blueprint is still locked",
-      bodyLine1: "Complete your personality test",
-      bodyLine2: "to unlock the Complete Edition.",
-    },
-    tarot: {
-      ariaLabel: "Tarot locked",
-      heading: "Tarot is still locked",
-      bodyLine1: "Complete your personality test",
-      bodyLine2: "to unlock your tarot readings.",
-    },
-  },
-  id: {
-    friend: {
-      ariaLabel: "Tes teman terkunci",
-      heading: "Tes teman masih terkunci",
-      bodyLine1: "Selesaikan tes kepribadianmu",
-      bodyLine2: "untuk mengundang teman menilaimu.",
-    },
-    astrologer: {
-      ariaLabel: "Alice terkunci",
-      heading: "Alice masih terkunci",
-      bodyLine1: "Selesaikan tes kepribadianmu",
-      bodyLine2: "untuk membuka Edisi Lengkap.",
-    },
-    unmei: {
-      ariaLabel: "Peta Takdir terkunci",
-      heading: "Peta Takdir masih terkunci",
-      bodyLine1: "Selesaikan tes kepribadianmu",
-      bodyLine2: "untuk membuka Edisi Lengkap.",
-    },
-    tarot: {
-      ariaLabel: "Tarot terkunci",
-      heading: "Tarot masih terkunci",
-      bodyLine1: "Selesaikan tes kepribadianmu",
-      bodyLine2: "untuk membuka pembacaan tarot.",
-    },
-  },
-} as const;
+
 
 const LEFT_BY_TARGET: Record<DiagnosisLockTarget, string> = {
   friend: "30%",
@@ -148,7 +46,8 @@ export function TakoLockPopover({
   locale = "ja",
   target = "friend",
 }: Props) {
-  const copy = COPY[locale][target];
+  const uiText = useUiText(locale, "TakoLockPopover");
+  const copy = useUiCopy(locale).lock[target];
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -242,11 +141,7 @@ export function TakoLockPopover({
             onClick={handleStart}
             className="block w-full rounded-full bg-[#2E2E5C] py-2.5 text-[13.5px] font-bold text-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            {locale === "ko"
-              ? "자기 진단 시작하기"
-              : locale === "en"
-                ? "Take the test"
-                : "テストを受ける"}
+            {uiText("テストを受ける")}
           </button>
 
         </div>

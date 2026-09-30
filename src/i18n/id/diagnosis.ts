@@ -1,4 +1,4 @@
-import type { DiagnosisCopy } from "@/i18n/diagnosis";
+import type { DiagnosisCopy, DiagnosisLocaleSettings } from "@/i18n/diagnosis";
 import type { Question } from "@/lib/types";
 
 export const ID_QUESTIONS: Question[] = [
@@ -30,8 +30,10 @@ export const ID_QUESTIONS: Question[] = [
   { id: 26, text: "Saat melamun, cerita sering muncul dengan sendirinya di benak saya.", facetId: "O_imagination", dimension: "O", reversed: false },
   { id: 27, text: "Ketika melihat pemandangan yang sama, saya merasa memikirkan lebih banyak kemungkinan daripada orang lain.", facetId: "O_imagination", dimension: "O", reversed: false },
   { id: 28, text: "Saya hampir tidak pernah tenggelam dalam khayalan atau imajinasi.", facetId: "O_imagination", dimension: "O", reversed: true },
-  { id: 29, text: "Saya suka membayangkan, ‘Bagaimana jika...?’",
-    facetId: "O_imagination", dimension: "O", reversed: false },
+  {
+    id: 29, text: "Saya suka membayangkan, ‘Bagaimana jika...?’",
+    facetId: "O_imagination", dimension: "O", reversed: false
+  },
   { id: 30, text: "Saya lebih suka hanya memikirkan hal-hal yang realistis.", facetId: "O_imagination", dimension: "O", reversed: true },
   { id: 31, text: "Saya selalu memiliki tujuan yang benar-benar ingin saya capai.", facetId: "C_achievement", dimension: "C", reversed: false },
   { id: 32, text: "Dalam ujian atau tugas, saya menargetkan hasil di atas rata-rata.", facetId: "C_achievement", dimension: "C", reversed: false },
@@ -129,4 +131,18 @@ export const ID_DIAGNOSIS_COPY: DiagnosisCopy = {
     ],
     steps: ["Membaca jawaban", "Menganalisis ciri", "Menentukan tipe", "Membuat manual Anda"],
   },
+};
+
+export const ID_DIAGNOSIS_SETTINGS: DiagnosisLocaleSettings = {
+  locale: "id",
+  questions: ID_QUESTIONS,
+  persistProgress: true,
+  progressStorageKey: "torisetsu_answers_v2_id",
+  nicknameStorageKey: "torisetsu_nickname_v2_id",
+  genderStorageKey: "torisetsu_gender_v1_id",
+  resultStorageKey: "torisetsu_result_id",
+  startedStorageKey: "torisetsu_diag_started_id",
+  homePath: "/id",
+  resultPath: "/id/result",
+  copy: ID_DIAGNOSIS_COPY,
 };

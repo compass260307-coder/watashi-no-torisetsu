@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
-import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
 import type { SiteLocale } from "@/lib/locale-switch";
 import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
@@ -25,288 +25,10 @@ const FONT_STACK =
 // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
 // tako: 友達診断テスト。href は実行時に上書き (BottomNav/TopHeader と同じ /tako/[token] 解決)。
 // children: 親リンクの下に小さく入れ子表示するサブリンク (内部リンク用)。
-type FooterLink = {
-  label: string;
-  href: string;
-  external?: boolean;
-  newTab?: boolean;
-  disabled?: boolean;
-  tako?: boolean;
-  course?: "astrologer" | "unmei" | "tarot";
-  children?: { label: string; href: string }[];
-};
 
-type FooterContent = {
-  columns: { title: string; links: FooterLink[] }[];
-  legalLinks: { label: string; href: string }[];
-  legalAriaLabel: string;
-  copyright: string;
-  disclaimer: string;
-  preparing: string;
-  takoBaseHref: string;
-};
+
 
 type TopLocale = SiteLocale | "en" | "id";
-
-const CONTENT: Record<TopLocale, FooterContent> = {
-  ja: {
-    // 3 カラム (診断 / サービス / サポート)。規約系は最下段 (コピーライト横) に移動。
-    columns: [
-      {
-        title: "診断",
-        links: [
-          { label: "性格診断テスト", href: "/diagnosis" },
-          { label: "友達診断テスト", href: "/tako", tako: true },
-          { label: "性格タイプ", href: "/types" },
-          { label: "相性診断", href: "/aisho" },
-          {
-            label: "Alice",
-            href: "/hoshiyomi",
-            course: "astrologer",
-          },
-          {
-            label: "運命の設計図",
-            href: "/unmei",
-            course: "unmei",
-          },
-          { label: "タロット占い", href: "/tarot", course: "tarot" },
-        ],
-      },
-      {
-        title: "サービス",
-        links: [
-          { label: "サービスについて", href: "/about" },
-          {
-            label: "記事・コラム",
-            href: "/articles",
-            // 主要記事への入れ子リンク。フッターは全ページ共通なので、サイト全域からの
-            // 内部リンクになる (クロール促進)。ラベルは短縮形・4本まで。
-            children: [
-              { label: "OCEAN診断とは", href: "/articles/ocean-shindan" },
-              { label: "他己分析のやり方", href: "/articles/tako-bunseki" },
-              {
-                label: "トリセツの作り方",
-                href: "/articles/torisetsu-tsukurikata",
-              },
-              {
-                label: "16タイプとの違い",
-                href: "/articles/sixteen-types-vs-ocean",
-              },
-            ],
-          },
-          {
-            label: "運営会社",
-            href: "https://sora-team.com",
-            external: true,
-            newTab: true,
-          },
-          // ⚠️ note / 記事: URL が決まったら有効化する。
-          // { label: "note / 記事", href: "", external: true, newTab: true },
-        ],
-      },
-      {
-        title: "サポート",
-        links: [
-          {
-            label: "お問い合わせ",
-            href: "mailto:support@watashi-torisetsu.com",
-            external: true,
-          },
-          // ⚠️ よくある質問: 専用ページ未実装のため一旦非表示 (現状は /about 内の一節のみ)。
-          // { label: "よくある質問", href: "/faq" },
-        ],
-      },
-    ],
-    // 最下段 (コピーライト横に小さく横並び) の規約リンク。
-    legalLinks: [
-      { label: "利用規約", href: "/terms" },
-      { label: "プライバシーポリシー", href: "/privacy" },
-      { label: "特定商取引法に基づく表記", href: "/legal/commerce" },
-    ],
-    legalAriaLabel: "規約",
-    copyright: "ワタシのトリセツ",
-    disclaimer:
-      "ワタシのトリセツ（私の取説）は、OCEAN（ビッグファイブ）診断と友達の回答で「自分の取扱説明書」を作る無料の性格診断サービスです。診断結果は Big Five 理論をベースにした、自分を知るための参考情報です。医学的・心理学的な診断を行うものではありません。",
-    preparing: "（準備中）",
-    takoBaseHref: "/tako",
-  },
-  ko: {
-    columns: [
-      {
-        title: KO_TOP_CONTENT.footer.diagnosisTitle,
-        links: [
-          { label: KO_TOP_CONTENT.navigation.diagnosis, href: "/ko/diagnosis" },
-          {
-            label: KO_TOP_CONTENT.navigation.friend,
-            href: "/ko/tako",
-            tako: true,
-          },
-          { label: KO_TOP_CONTENT.navigation.types, href: "/ko/types" },
-          { label: "궁합 진단", href: "/ko/aisho" },
-          {
-            label: "Alice",
-            href: "/ko/hoshiyomi",
-            course: "astrologer",
-          },
-          {
-            label: "운명의 설계도",
-            href: "/ko/unmei",
-            course: "unmei",
-          },
-          { label: "타로", href: "/ko/tarot", course: "tarot" },
-        ],
-      },
-      {
-        title: KO_TOP_CONTENT.footer.serviceTitle,
-        links: [
-          { label: KO_TOP_CONTENT.siteName, href: "/ko" },
-          { label: KO_TOP_CONTENT.footer.about, href: "/ko/about" },
-          {
-            label: KO_TOP_CONTENT.footer.articles,
-            href: "/ko/articles",
-            children: [
-              { label: "OCEAN 진단이란?", href: "/ko/articles/ocean-shindan" },
-              { label: "타인 분석 방법", href: "/ko/articles/tako-bunseki" },
-              {
-                label: "사용설명서 만드는 법",
-                href: "/ko/articles/torisetsu-tsukurikata",
-              },
-              {
-                label: "16가지 유형과의 차이",
-                href: "/ko/articles/sixteen-types-vs-ocean",
-              },
-            ],
-          },
-          {
-            label: KO_TOP_CONTENT.footer.company,
-            href: "https://sora-team.com",
-            external: true,
-            newTab: true,
-          },
-        ],
-      },
-      {
-        title: KO_TOP_CONTENT.footer.supportTitle,
-        links: [
-          {
-            label: KO_TOP_CONTENT.footer.contact,
-            href: "mailto:support@watashi-torisetsu.com",
-            external: true,
-          },
-        ],
-      },
-    ],
-    legalLinks: [
-      { label: KO_TOP_CONTENT.footer.terms, href: "/ko/terms" },
-      { label: KO_TOP_CONTENT.footer.privacy, href: "/ko/privacy" },
-      { label: KO_TOP_CONTENT.footer.commerce, href: "/ko/legal/commerce" },
-    ],
-    legalAriaLabel: "법적 고지",
-    copyright: KO_TOP_CONTENT.footer.copyright,
-    disclaimer: KO_TOP_CONTENT.footer.disclaimer,
-    preparing: "(준비 중)",
-    takoBaseHref: "/ko/tako",
-  },
-  en: {
-    columns: [
-      {
-        title: "Tests",
-        links: [
-          { label: "Personality test", href: "/en/diagnosis" },
-          { label: "Friend test", href: "/en/tako", tako: true },
-          { label: "Personality types", href: "/en/types" },
-          { label: "Compatibility", href: "/en/aisho" },
-          { label: "Alice", href: "/en/hoshiyomi", course: "astrologer" },
-          { label: "Destiny Blueprint", href: "/en/unmei", course: "unmei" },
-          { label: "Alice Tarot", href: "/en/tarot", course: "tarot" },
-        ],
-      },
-      {
-        title: "Services",
-        links: [
-          { label: "About this service", href: "/en/about" },
-          {
-            label: "Articles",
-            href: "/en/articles",
-            children: [
-              { label: "What is the OCEAN model?", href: "/en/articles/ocean-shindan" },
-              { label: "How to ask for feedback", href: "/en/articles/tako-bunseki" },
-              { label: "Your personality guide", href: "/en/articles/torisetsu-tsukurikata" },
-              { label: "OCEAN vs. 16 types", href: "/en/articles/sixteen-types-vs-ocean" },
-            ],
-          },
-          {
-            label: "Company",
-            href: "https://sora-team.com",
-            external: true,
-            newTab: true,
-          },
-        ],
-      },
-      {
-        title: "Support",
-        links: [
-          {
-            label: "Contact us",
-            href: "mailto:support@watashi-torisetsu.com",
-            external: true,
-          },
-        ],
-      },
-    ],
-    legalLinks: [
-      { label: "Terms", href: "/en/terms" },
-      { label: "Privacy Policy", href: "/en/privacy" },
-      { label: "Sales & Refund Policy", href: "/en/legal/commerce" },
-    ],
-    legalAriaLabel: "Legal information",
-    copyright: "Alice Personalities",
-    disclaimer:
-      "Alice Personalities is a free personality experience based on the Big Five model and feedback from friends. Results are for self-reflection and are not a medical or psychological diagnosis.",
-    preparing: " (Coming soon)",
-    takoBaseHref: "/en/tako",
-  },
-  id: {
-    columns: [
-      {
-        title: "Tes",
-        links: [
-          { label: "Tes kepribadian", href: "/id/diagnosis" },
-          { label: "Tes dari teman", href: "/id/tako", tako: true },
-          { label: "Tipe kepribadian", href: "/id/types" },
-          { label: "Kecocokan", href: "/id/aisho" },
-          { label: "Alice", href: "/id/hoshiyomi", course: "astrologer" },
-          { label: "Peta Takdir", href: "/id/unmei", course: "unmei" },
-          { label: "Tarot Alice", href: "/id/tarot", course: "tarot" },
-        ],
-      },
-      {
-        title: "Layanan",
-        links: [
-          { label: "Tentang layanan", href: "/id/about" },
-          { label: "Artikel", href: "/id/articles" },
-          { label: "Perusahaan", href: "https://sora-team.com", external: true, newTab: true },
-        ],
-      },
-      {
-        title: "Dukungan",
-        links: [
-          { label: "Hubungi kami", href: "mailto:support@watashi-torisetsu.com", external: true },
-        ],
-      },
-    ],
-    legalLinks: [
-      { label: "Ketentuan", href: "/id/terms" },
-      { label: "Kebijakan Privasi", href: "/id/privacy" },
-      { label: "Informasi Penjualan & Pengembalian Dana", href: "/id/legal/commerce" },
-    ],
-    legalAriaLabel: "Informasi hukum",
-    copyright: "Alice Test",
-    disclaimer: "Alice Test adalah pengalaman kepribadian berdasarkan model Big Five dan penilaian teman. Hasilnya ditujukan untuk refleksi diri, bukan diagnosis medis atau psikologis.",
-    preparing: " (Segera hadir)",
-    takoBaseHref: "/id/tako",
-  },
-};
 
 // SNS 公式アカウント。href が "#" (未開設) のものは描画時に除外される。
 // 開設したら href を実 URL に差し替えるだけで表示される。
@@ -357,10 +79,11 @@ export default function TopFooter({
   topBorder?: boolean;
   locale?: TopLocale;
 }) {
+  const uiText = useUiText(locale, "top.TopFooter");
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
-  const content = CONTENT[locale];
+  const content = useUiCopy(locale).footer;
   const pathname = usePathname() ?? (isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : "/");
 
   // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:
@@ -498,7 +221,7 @@ export default function TopFooter({
                     href={l.href}
                     prefetch={navigationPrefetch}
                     aria-label={`${l.label}${
-                      isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
+                      uiText("（ロック中）")
                     }`}
                     className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
                     style={{ color: "#9BA3B4" }}

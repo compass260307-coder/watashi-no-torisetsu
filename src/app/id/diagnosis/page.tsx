@@ -1,5 +1,5 @@
+import DiagnosisPageContent from "@/components/diagnosis/id/DiagnosisPage";
 import type { Metadata } from "next";
-import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
 
 const TITLE = "Ikuti Alice Test – Tes Kepribadian Big Five Gratis";
 const DESCRIPTION = "Jawab 50 pertanyaan untuk melihat profil Big Five Anda dan menemukan karakter yang paling sesuai dari 32 tipe.";
@@ -49,7 +49,7 @@ export default function IndonesianDiagnosisPage() {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         }}
       />
-      <DiagnosisPageContent locale="id" />
+      <DiagnosisPageContent />
     </>
   );
 }

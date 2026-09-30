@@ -1,5 +1,6 @@
 "use client";
 
+import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
 // feat/top-page: 独立した白いヘッダーバー (16Personalities 型)。
 // 構造: ロゴ(左) | メニュー + ログイン + 言語切替(右寄せ)。PC は横並び、SP はハンバーガー。
 // 白背景・ダーク文字。下にキービジュアルのヒーローが続く。sticky で追従。
@@ -9,209 +10,42 @@
 // DOM は旧 KoTopHeader 側の改良 (オーバーレイの button 化・ドロワーの
 // pointer-events ラッパー) を両ロケールに採用。
 
-import { useEffect, useId, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { DeferredLoginModal as LoginModal, EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
+import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
 import { resetLocalData } from "@/lib/reset-data";
-import { localeSwitchPath, type SiteLocale, type SwitchLocale } from "@/lib/locale-switch";
-import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
-import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
+import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
 
-type NavItem = {
-  label: string;
-  href: string;
-  // 友達診断テスト: owner_token があれば /tako/[token] に解決、無ければロック表示
-  // (BottomNav の友達診断タブと同じ挙動)。
-  tako?: boolean;
-  // ログイン: 別ページ遷移ではなく、現在のページの上にモーダルで重ねる。
-  login?: boolean;
-  // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
-  disabled?: boolean;
-  // Alice: 購入権限がある場合だけリンク化し、それ以外は鍵付き課金導線にする。
-  course?: "astrologer";
-};
 
-type HeaderContent = {
-  siteName: string;
-  homeHref: string;
-  nav: NavItem[];
-  preparing: string;
-  currentLangLabel: string;
-  languageOptions: {
-    locale: SwitchLocale;
-    localLabel: string;
-    nativeLabel: string;
-  }[];
-  languageModalTitle: string;
-  ariaLangSwitch: string;
-  ariaLangMenuClose: string;
-  menuTitle: string;
-  ariaMenuOpen: string;
-  ariaMenuClose: string;
-  reset: { label: string; confirm: string; run: string; cancel: string };
-};
 
 type TopLocale = SiteLocale | "en" | "id";
 
 // ナビ表記ルール: 機能名は「性格診断テスト / 友達診断テスト / 性格タイプ」で統一。
 // (旧表記: 相互理解度 → 友達診断テスト、キャラ図鑑 → 性格タイプ。ナビのみの変更で
 //  各ページ内のタイトル等は別途。) ログインは右端・言語切替の左に置く。
-const CONTENT: Record<TopLocale, HeaderContent> = {
-  ja: {
-    siteName: "ワタシのトリセツ",
-    homeHref: "/",
-    nav: [
-      { label: "性格診断テスト", href: "/diagnosis" },
-      { label: "友達診断テスト", href: "/tako", tako: true },
-      { label: "性格タイプ", href: "/types" },
-      { label: "相性診断", href: "/aisho" },
-      { label: "Alice", href: "/hoshiyomi", course: "astrologer" },
-      { label: "タロット", href: "/tarot" },
-      { label: "ログイン", href: "/login", login: true },
-    ],
-    preparing: "（準備中）",
-    currentLangLabel: "日本語",
-    languageOptions: [
-      { locale: "en", localLabel: "英語", nativeLabel: "English" },
-      { locale: "ko", localLabel: "韓国語", nativeLabel: "한국어" },
-      { locale: "id", localLabel: "インドネシア語", nativeLabel: "Bahasa Indonesia" },
-    ],
-    languageModalTitle: "言語",
-    ariaLangSwitch: "言語を切り替え",
-    ariaLangMenuClose: "言語メニューを閉じる",
-    menuTitle: "メニュー",
-    ariaMenuOpen: "メニューを開く",
-    ariaMenuClose: "メニューを閉じる",
-    reset: {
-      label: "データをリセット",
-      confirm:
-        "診断結果や招待リンクがこの端末から消えます。もとに戻せません。",
-      run: "リセットする",
-      cancel: "キャンセル",
-    },
-  },
-  ko: {
-    siteName: KO_TOP_CONTENT.siteName,
-    homeHref: "/ko",
-    nav: [
-      { label: KO_TOP_CONTENT.navigation.diagnosis, href: "/ko/diagnosis" },
-      { label: KO_TOP_CONTENT.navigation.friend, href: "/ko/tako", tako: true },
-      { label: KO_TOP_CONTENT.navigation.types, href: "/ko/types" },
-      { label: "궁합 진단", href: "/ko/aisho" },
-      {
-        label: "Alice",
-        href: "/ko/hoshiyomi",
-        course: "astrologer",
-      },
-      { label: "타로", href: "/ko/tarot" },
-      { label: KO_TOP_CONTENT.navigation.login, href: "/ko/login", login: true },
-    ],
-    preparing: `(${KO_TOP_CONTENT.navigation.preparing})`,
-    currentLangLabel: "한국어",
-    languageOptions: [
-      { locale: "ja", localLabel: "일본어", nativeLabel: "日本語" },
-      { locale: "en", localLabel: "영어", nativeLabel: "English" },
-      { locale: "id", localLabel: "인도네시아어", nativeLabel: "Bahasa Indonesia" },
-    ],
-    languageModalTitle: "언어",
-    ariaLangSwitch: "언어 변경",
-    ariaLangMenuClose: "언어 메뉴 닫기",
-    menuTitle: KO_TOP_CONTENT.navigation.menu,
-    ariaMenuOpen: KO_TOP_CONTENT.navigation.menuOpen,
-    ariaMenuClose: KO_TOP_CONTENT.navigation.menuClose,
-    reset: {
-      label: "데이터 초기화",
-      confirm: "진단 결과와 초대 링크가 이 기기에서 삭제되며 되돌릴 수 없어요.",
-      run: "초기화",
-      cancel: "취소",
-    },
-  },
-  en: {
-    siteName: "Alice Personalities",
-    homeHref: "/en",
-    nav: [
-      { label: "Personality test", href: "/en/diagnosis" },
-      { label: "Friend test", href: "/en/tako", tako: true },
-      { label: "Personality types", href: "/en/types" },
-      { label: "Compatibility", href: "/en/aisho" },
-      { label: "Alice", href: "/en/hoshiyomi", course: "astrologer" },
-      { label: "Tarot", href: "/en/tarot" },
-      { label: "Sign in", href: "/en/login", login: true },
-    ],
-    preparing: " (Coming soon)",
-    currentLangLabel: "English",
-    languageOptions: [
-      { locale: "ja", localLabel: "Japanese", nativeLabel: "日本語" },
-      { locale: "ko", localLabel: "Korean", nativeLabel: "한국어" },
-      { locale: "id", localLabel: "Indonesian", nativeLabel: "Bahasa Indonesia" },
-    ],
-    languageModalTitle: "Language",
-    ariaLangSwitch: "Change language",
-    ariaLangMenuClose: "Close language menu",
-    menuTitle: "Menu",
-    ariaMenuOpen: "Open menu",
-    ariaMenuClose: "Close menu",
-    reset: {
-      label: "Reset local data",
-      confirm: "Your test results and invitation links will be removed from this device. This cannot be undone.",
-      run: "Reset",
-      cancel: "Cancel",
-    },
-  },
-  id: {
-    siteName: "Alice Test",
-    homeHref: "/id",
-    nav: [
-      { label: "Tes kepribadian", href: "/id/diagnosis" },
-      { label: "Tes dari teman", href: "/id/tako", tako: true },
-      { label: "Tipe kepribadian", href: "/id/types" },
-      { label: "Kecocokan", href: "/id/aisho" },
-      { label: "Alice", href: "/id/hoshiyomi", course: "astrologer" },
-      { label: "Tarot", href: "/id/tarot" },
-      { label: "Masuk", href: "/id/login", login: true },
-    ],
-    preparing: " (Segera hadir)",
-    currentLangLabel: "Bahasa Indonesia",
-    languageOptions: [
-      { locale: "ja", localLabel: "Bahasa Jepang", nativeLabel: "日本語" },
-      { locale: "en", localLabel: "Bahasa Inggris", nativeLabel: "English" },
-      { locale: "ko", localLabel: "Bahasa Korea", nativeLabel: "한국어" },
-    ],
-    languageModalTitle: "Bahasa",
-    ariaLangSwitch: "Ganti bahasa",
-    ariaLangMenuClose: "Tutup menu bahasa",
-    menuTitle: "Menu",
-    ariaMenuOpen: "Buka menu",
-    ariaMenuClose: "Tutup menu",
-    reset: {
-      label: "Reset data lokal",
-      confirm: "Hasil tes dan tautan undangan akan dihapus dari perangkat ini. Tindakan ini tidak dapat dibatalkan.",
-      run: "Reset",
-      cancel: "Batal",
-    },
-  },
-};
 
 export default function TopHeader({
   locale = "ja",
 }: {
   locale?: TopLocale;
 }) {
+  const uiText = useUiText(locale, "top.TopHeader");
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
-  const content = CONTENT[locale];
+  const content = useUiCopy(locale).header;
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const languageDialogRef = useRef<HTMLDialogElement>(null);
@@ -420,7 +254,7 @@ export default function TopHeader({
                 key={n.href}
                 type="button"
                 aria-label={`${n.label}${
-                  isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
+                  uiText("（ロック中）")
                 }`}
                 onClick={openAlicePaywall}
                 className={`${navLinkClass} flex items-center gap-1`}
@@ -571,7 +405,7 @@ export default function TopHeader({
                   type="button"
                   tabIndex={open ? 0 : -1}
                   aria-label={`${n.label}${
-                    isKo ? " (잠김)" : isEn ? " (Locked)" : isId ? " (Terkunci)" : "（ロック中）"
+                    uiText("（ロック中）")
                   }`}
                   onClick={() => {
                     setOpen(false);
@@ -744,9 +578,7 @@ export default function TopHeader({
           heading={
             isKo
               ? undefined
-              : isEn
-                ? "Try Alice or unlock the complete experience"
-                : "Aliceを試す・本格相談を選ぶ"
+              : uiText("Aliceを試す・本格相談を選ぶ")
           }
           onClose={() => setAlicePaywallOpen(false)}
         />

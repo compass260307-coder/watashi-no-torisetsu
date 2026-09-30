@@ -81,7 +81,6 @@ equalSets("article parity", japaneseArticleSlugs, englishArticleSlugs);
 for (const [route, component] of [
   ["about", "AboutPageContent"],
   ["aisho", "AishoPage"],
-  ["diagnosis", "DiagnosisPageContent"],
   ["login", "LoginPageContent"],
   ["result", "ResultRedirect"],
   ["types", "TypesGalleryPage"],
@@ -177,24 +176,11 @@ forbidText(
   'postDiagnosisReportEmail && locale !== "en"',
   "English detailed-report email exclusion",
 );
-for (const [locale, label] of [
-  ["ja", "Japanese diagnosis progress persistence"],
-  ["en", "English diagnosis progress persistence"],
-]) {
-  requireText(
-    "src/i18n/diagnosis.ts",
-    `${locale}: {\n    locale: "${locale}",`,
-    label,
-  );
-}
-const diagnosisLocaleSource = read("src/i18n/diagnosis.ts");
 for (const locale of ["ja", "en"]) {
-  const localeBlock = diagnosisLocaleSource.match(
-    new RegExp(`${locale}: \\{[\\s\\S]*?\\n  \\},`),
-  )?.[0];
-  if (!localeBlock?.includes("persistProgress: false")) {
-    failures.push(`${locale} diagnosis must not persist partial answers`);
-  }
+  const route = `src/app/${locale === "ja" ? "" : "en/"}diagnosis/page.tsx`;
+  requireText(route, `@/components/diagnosis/${locale}/DiagnosisPage`, "locale-specific diagnosis entry");
+  requireText(`src/components/diagnosis/${locale}/DiagnosisPage.tsx`, `settings={${locale.toUpperCase()}_DIAGNOSIS_SETTINGS}`, "shared diagnosis settings");
+  requireText(`src/i18n/${locale}/diagnosis.ts`, "persistProgress: false", "diagnosis progress persistence");
 }
 forbidText(
   "src/components/result/MeResultPage.tsx",

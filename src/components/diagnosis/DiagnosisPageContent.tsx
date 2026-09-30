@@ -1,39 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { X_DIAGNOSIS_PENDING_PREFIX } from "@/lib/xPixel";
-import { diagnose } from "@/lib/diagnosis";
-import { track, isPreviewMode } from "@/lib/track";
+import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
+import { DiagnosisProgressBar } from "@/components/diagnosis/DiagnosisProgressBar";
+import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
+import { QuestionCard } from "@/components/diagnosis/QuestionCard";
+import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
+import { InAppBrowserModal } from "@/components/InAppBrowserModal";
+import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import {
+  type DiagnosisCopy,
+  type DiagnosisLocaleSettings,
+} from "@/i18n/diagnosis";
 import { resolveAcquisitionForSave } from "@/lib/acquisition";
 import { hashEmailSha256, readAdAttribution } from "@/lib/ad-attribution";
+import { diagnose } from "@/lib/diagnosis";
 import {
   clearPendingSourceCode,
   readPendingSourceCode,
   savePendingSourceCode,
 } from "@/lib/me-attention";
+import { isPreviewMode, track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
-import {
-  DIAGNOSIS_LOCALES,
-  type DiagnosisCopy,
-  type DiagnosisLocale,
-} from "@/i18n/diagnosis";
-import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
-import { DiagnosisProgressBar } from "@/components/diagnosis/DiagnosisProgressBar";
-import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
-import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
-import { QuestionCard } from "@/components/diagnosis/QuestionCard";
-import { InAppBrowserModal } from "@/components/InAppBrowserModal";
-import TopHeader from "@/components/top/TopHeader";
-import TopFooter from "@/components/top/TopFooter";
-import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import KoTopFooter from "@/components/ko/top/KoTopFooter";
-import EnSiteHeader from "@/components/en/EnSiteHeader";
-import EnSiteFooter from "@/components/en/EnSiteFooter";
-import IdSiteHeader from "@/components/id/IdSiteHeader";
-import IdSiteFooter from "@/components/id/IdSiteFooter";
-import { ScrollHideHeader } from "@/components/ScrollHideHeader";
+import { X_DIAGNOSIS_PENDING_PREFIX } from "@/lib/xPixel";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
 // Noto Sans) に統一。CTA も共通の sunYellow ではなくトップの sora-cta ピルを使う。
@@ -149,12 +139,15 @@ function prefersReducedMotion(): boolean {
 }
 
 export default function DiagnosisPageContent({
-  locale,
+  settings, header, footer, consentNotice,
 }: {
-  locale: DiagnosisLocale;
+  settings: DiagnosisLocaleSettings;
+  header: ReactNode;
+  footer: ReactNode;
+  consentNotice?: ReactNode;
 }) {
   const router = useRouter();
-  const settings = DIAGNOSIS_LOCALES[locale];
+  const locale = settings.locale;
   const activeQuestions = settings.questions;
   const copy = settings.copy;
   const isKorean = locale === "ko";
@@ -643,7 +636,7 @@ export default function DiagnosisPageContent({
     <>
     {/* サイト共通ヘッダー (16P 風スクロール連動) */}
     <ScrollHideHeader>
-      {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : isIndonesian ? <IdSiteHeader /> : <TopHeader />}
+      {header}
     </ScrollHideHeader>
     <div
       // 下端はシェアバンドが受けるので pb は付けない (バンド〜フッター間の白帯を作らない)。
@@ -815,19 +808,7 @@ export default function DiagnosisPageContent({
                     {copy.submitError}
                   </p>
                 )}
-                {locale === "ko" ? (
-                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
-                    결과 보기를 누르면 답변과 닉네임이 진단 결과 계산·저장에 사용됩니다. 자세한 내용은{" "}
-                    <Link href="/ko/privacy" className="font-bold underline underline-offset-2">
-                      개인정보처리방침
-                    </Link>
-                    에서 확인할 수 있습니다.
-                  </p>
-                ) : locale === "id" ? (
-                  <p className="max-w-xl text-[11px] leading-[1.7] text-[#2E2E5C]/55">
-                    Dengan melihat hasil, Anda menyetujui penggunaan jawaban dan nama panggilan untuk menghitung serta menyimpan hasil kepribadian Anda.
-                  </p>
-                ) : null}
+                {consentNotice}
               </div>
             </div>
           </div>
@@ -854,15 +835,7 @@ export default function DiagnosisPageContent({
       </div>
     </div>
     {/* サイト共通フッター (直上のシェアバンドの波エッジが区切りになるため上端線は消す) */}
-    {isKorean ? (
-      <KoTopFooter topBorder={false} />
-    ) : isEnglish ? (
-      <EnSiteFooter topBorder={false} />
-    ) : isIndonesian ? (
-      <IdSiteFooter />
-    ) : (
-      <TopFooter topBorder={false} />
-    )}
+    {footer}
     </>
   );
 }
