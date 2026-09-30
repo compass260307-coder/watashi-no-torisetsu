@@ -13,6 +13,8 @@
 //   LINE_FREE_DAILY_MESSAGES   - 旧設定名。移行互換のため上記が未設定のときだけ参照
 //   LINE_ALICE_MODEL           - モデル上書き (未設定なら CLAUDE_MODEL)
 
+import { randomUUID } from "node:crypto";
+import { anthropicUsage, recordAiUsage } from "@/lib/ai-usage.mjs";
 import { callClaude } from "@/lib/claude.mjs";
 import {
   isResultUpgradeReady,
@@ -178,49 +180,73 @@ export async function generateLineAliceReply(input: {
   const content = input.text.slice(0, MAX_INPUT_CHARS);
   const history = await loadRecentHistory(input.lineUserId);
   const modelId = dialogueModelId();
+  const generationKey = randomUUID();
+  const startedAt = Date.now();
 
-  const result = await callClaude({
-    system: buildInstructions(input.user),
-    prompt: buildConversationPrompt(history, content),
-    model: modelId,
-    maxTokens: MAX_OUTPUT_TOKENS,
-    temperature: 0.7,
-    timeoutMs: 40_000,
-    // system は同一ユーザーの会話中は安定した長い前置きなので、連続対話中の再処理を省く。
-    // 返信間隔が5分を超えるとキャッシュ失効で書き込み分 (1.25倍) が毎回かかるため、
-    // 下の usage ログで cache_read が実際に発生しているかを監視すること。
-    cacheSystem: true,
-  });
+  let result;
+  try {
+    result = await callClaude({
+      system: buildInstructions(input.user),
+      prompt: buildConversationPrompt(history, content),
+      model: modelId,
+      maxTokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.7,
+      timeoutMs: 40_000,
+      // system は同一ユーザーの会話中は安定した長い前置きなので、連続対話中の再処理を省く。
+      // 返信間隔が5分を超えるとキャッシュ失効で書き込み分 (1.25倍) が毎回かかるため、
+      // usage 台帳で cache_read が実際に発生しているかを監視すること。
+      cacheSystem: true,
+    });
+  } catch (error) {
+    await recordAiUsage(supabaseAdmin, {
+      userId: input.user.id,
+      feature: "line_alice_chat",
+      provider: "anthropic",
+      model: modelId,
+      modality: "text",
+      status: "failed",
+      generationKey,
+      attempt: 1,
+      durationMs: Date.now() - startedAt,
+      error,
+      metadata: {
+        locale: "ja",
+        cache_system: true,
+      },
+    });
+    throw error;
+  }
 
   const text = (result.text ?? "").trim();
+  const usage = anthropicUsage(result.raw);
+  await recordAiUsage(supabaseAdmin, {
+    userId: input.user.id,
+    feature: "line_alice_chat",
+    provider: "anthropic",
+    model: modelId,
+    modality: "text",
+    status: "succeeded",
+    generationKey,
+    attempt: 1,
+    durationMs: Date.now() - startedAt,
+    providerRequestId: result.raw?.id,
+    ...usage,
+    metadata: {
+      locale: "ja",
+      cache_system: true,
+      output_generated: Boolean(text),
+    },
+  });
   if (!text) throw new Error("empty_ai_response");
 
-  const usage = (
-    result.raw as {
-      usage?: {
-        input_tokens?: number;
-        output_tokens?: number;
-        cache_creation_input_tokens?: number;
-        cache_read_input_tokens?: number;
-      };
-    }
-  )?.usage;
-  if (usage) {
-    console.log("[line-alice] usage", {
-      input_tokens: usage.input_tokens ?? 0,
-      output_tokens: usage.output_tokens ?? 0,
-      cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
-      cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
-    });
-  }
   await persistExchange({
     lineUserId: input.lineUserId,
     userId: input.user.id,
     userText: content,
     assistantText: text,
     model: modelId,
-    inputTokens: usage?.input_tokens ?? null,
-    outputTokens: usage?.output_tokens ?? null,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
   });
 
   return text;

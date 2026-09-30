@@ -2028,7 +2028,19 @@ async function grantUnmeiByEmailOrId(
       rows = (data as Array<{ id: string }> | null | undefined) ?? [];
     }
     for (const r of rows) {
-      await supabaseAdmin.from("natal_readings").upsert({ user_id: r.id, reading: {}, model: "pending", generated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      // Webhook再配信でready済み鑑定をpendingへ戻さない。行が無い場合だけ作る。
+      const { error } = await supabaseAdmin
+        .from("natal_readings")
+        .upsert(
+          {
+            user_id: r.id,
+            reading: {},
+            model: "pending",
+            generated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id", ignoreDuplicates: true },
+        );
+      if (error) throw error;
     }
   } catch (e) {
     console.error("[unmei] natal_readings placeholder upsert failed:", e);
@@ -2041,8 +2053,21 @@ async function grantUnmeiToUserId(userId: string): Promise<void> {
   const nowIso = new Date().toISOString();
   const { error } = await supabaseAdmin.from("users").update({ unmei: true, plan: "full", unmei_at: nowIso }).eq("id", userId);
   if (error) throw new Error(`[unmei] grant to user failed: ${error.message}`);
-  // ensure natal_readings placeholder
-  await supabaseAdmin.from("natal_readings").upsert({ user_id: userId, reading: {}, model: "pending", generated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  // 行が無い場合だけplaceholderを作る。再配信で生成済み鑑定を破壊しない。
+  const { error: readingError } = await supabaseAdmin
+    .from("natal_readings")
+    .upsert(
+      {
+        user_id: userId,
+        reading: {},
+        model: "pending",
+        generated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
+  if (readingError) {
+    throw new Error(`[unmei] natal reading placeholder failed: ${readingError.message}`);
+  }
 }
 
 // 鑑定生成トリガー (非致命)。

@@ -8,6 +8,8 @@
 // テーマ別占い (恋愛運/友達運/勉強運): Plus 特典。最近の会話履歴を織り込んで生成し、
 // user + assistant の両方を履歴に残す (会話の一部として扱う)。
 
+import { randomUUID } from "node:crypto";
+import { anthropicUsage, recordAiUsage } from "@/lib/ai-usage.mjs";
 import { callClaude } from "@/lib/claude.mjs";
 import {
   buildLineAliceDiagnosisProfile,
@@ -51,6 +53,63 @@ function dialogueModel(): string {
   return value;
 }
 
+async function callFortuneClaude(input: {
+  userId: string;
+  feature: "line_daily_fortune" | "line_theme_fortune";
+  model: string;
+  system: string;
+  prompt: string;
+  metadata: Record<string, unknown>;
+}) {
+  const generationKey = randomUUID();
+  const startedAt = Date.now();
+  let result;
+  try {
+    result = await callClaude({
+      system: input.system,
+      prompt: input.prompt,
+      model: input.model,
+      maxTokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.9,
+      timeoutMs: 40_000,
+    });
+  } catch (error) {
+    await recordAiUsage(supabaseAdmin, {
+      userId: input.userId,
+      feature: input.feature,
+      provider: "anthropic",
+      model: input.model,
+      modality: "text",
+      status: "failed",
+      generationKey,
+      attempt: 1,
+      durationMs: Date.now() - startedAt,
+      error,
+      metadata: input.metadata,
+    });
+    throw error;
+  }
+  const usage = anthropicUsage(result.raw);
+  await recordAiUsage(supabaseAdmin, {
+    userId: input.userId,
+    feature: input.feature,
+    provider: "anthropic",
+    model: input.model,
+    modality: "text",
+    status: "succeeded",
+    generationKey,
+    attempt: 1,
+    durationMs: Date.now() - startedAt,
+    providerRequestId: result.raw?.id,
+    ...usage,
+    metadata: {
+      ...input.metadata,
+      output_generated: Boolean(result.text?.trim()),
+    },
+  });
+  return { result, usage };
+}
+
 export async function getOrCreateDailyLoveFortune(input: {
   lineUserId: string;
   user: LineAliceUser;
@@ -66,13 +125,13 @@ export async function getOrCreateDailyLoveFortune(input: {
   if (cached?.content) return cached.content;
 
   const model = dialogueModel();
-  const result = await callClaude({
+  const { result } = await callFortuneClaude({
+    userId: input.user.id,
+    feature: "line_daily_fortune",
+    model,
     system: buildDailyInstructions(input.user),
     prompt: `今日の日付: ${fortuneDate}\nこの人の「今日の恋模様」を書いてください。`,
-    model,
-    maxTokens: MAX_OUTPUT_TOKENS,
-    temperature: 0.9,
-    timeoutMs: 40_000,
+    metadata: { fortune_date: fortuneDate },
   });
   const text = (result.text ?? "").trim();
   if (!text) throw new Error("empty_fortune");
@@ -130,28 +189,25 @@ export async function generateThemeFortune(input: {
   lines.push(`今日の日付: ${jstDateString()}`);
   lines.push(`この人の「${theme.label}」を深掘りして占ってください。`);
 
-  const result = await callClaude({
+  const { result, usage } = await callFortuneClaude({
+    userId: input.user.id,
+    feature: "line_theme_fortune",
+    model,
     system: buildThemeInstructions(input.user, input.theme),
     prompt: lines.join("\n"),
-    model,
-    maxTokens: MAX_OUTPUT_TOKENS,
-    temperature: 0.9,
-    timeoutMs: 40_000,
+    metadata: { theme: input.theme },
   });
   const text = (result.text ?? "").trim();
   if (!text) throw new Error("empty_theme_fortune");
 
-  const usage = (
-    result.raw as { usage?: { input_tokens?: number; output_tokens?: number } }
-  )?.usage;
   await persistExchange({
     lineUserId: input.lineUserId,
     userId: input.user.id,
     userText: input.requestText,
     assistantText: text,
     model,
-    inputTokens: usage?.input_tokens ?? null,
-    outputTokens: usage?.output_tokens ?? null,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
   });
   return text;
 }
