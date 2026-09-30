@@ -332,13 +332,15 @@ if (
   );
 }
 
+const koreanUiCopy = ["src/i18n/ui/messages/ko.ts", "src/i18n/ui/messages/ko-labels.ts", "src/i18n/ui/peeks/ko.ts"].map((file) => fs.readFileSync(path.join(ROOT, file), "utf8")).join("\n");
+
 const koreanHeaderPath = "src/components/ko/top/KoTopHeader.tsx";
 const sharedHeaderPath = "src/components/top/TopHeader.tsx";
-const koreanHeader = [koreanHeaderPath, sharedHeaderPath]
+const koreanHeader = [koreanHeaderPath, sharedHeaderPath, "src/i18n/ui/messages/ko.ts"]
   .map((file) => fs.readFileSync(path.join(ROOT, file), "utf8"))
   .join("\n");
 for (const required of [
-  "import { LoginModal }",
+  "DeferredLoginModal as LoginModal",
   'locale="ko"',
   "데이터 초기화",
   "resetLocalData",
@@ -350,7 +352,7 @@ for (const required of [
 
 const koreanFooterPath = "src/components/ko/top/KoTopFooter.tsx";
 const sharedFooterPath = "src/components/top/TopFooter.tsx";
-const koreanFooter = [koreanFooterPath, sharedFooterPath]
+const koreanFooter = [koreanFooterPath, sharedFooterPath, "src/i18n/ui/messages/ko.ts"]
   .map((file) => fs.readFileSync(path.join(ROOT, file), "utf8"))
   .join("\n");
 for (const required of [
@@ -367,8 +369,9 @@ for (const required of [
   }
 }
 if (
-  !koreanFooter.includes('locale !== "ja" &&') ||
-  !koreanFooter.includes('social.href.startsWith("https://line.me/")')
+  koreanFooter.includes("https://line.me/") &&
+  (!koreanFooter.includes('locale !== "ja" &&') ||
+    !koreanFooter.includes('social.href.startsWith("https://line.me/")'))
 ) {
   problems.push(
     "effective Korean TopFooter: Japanese official LINE is not restricted to the Japanese locale",
@@ -658,7 +661,7 @@ for (const forbidden of [
 const fullAccessPromoCard = fs.readFileSync(
   path.join(ROOT, "src/components/result/FullAccessPromoCard.tsx"),
   "utf8",
-);
+) + "\n" + koreanUiCopy;
 for (const required of [
   "KO_PEEK_EBOOK",
   "KO_PEEK_FRIENDS",
@@ -692,7 +695,7 @@ for (const forbidden of [
 }
 
 const paywallPeekContent = fs.readFileSync(
-  path.join(ROOT, "src/components/result/paywall-peek-content.ts"),
+  path.join(ROOT, "src/i18n/ui/peeks/ko.ts"),
   "utf8",
 );
 for (const asset of [
@@ -712,7 +715,7 @@ for (const asset of [
 ]) {
   if (!paywallPeekContent.includes(`/paywall-peek/${asset}`)) {
     problems.push(
-      `src/components/result/paywall-peek-content.ts: Korean paywall preview lacks ${asset}`,
+      `src/i18n/ui/peeks/ko.ts: Korean paywall preview lacks ${asset}`,
     );
   }
   if (!fs.existsSync(path.join(ROOT, "public/paywall-peek", asset))) {
@@ -723,7 +726,7 @@ for (const asset of [
 const selfAccessPlanCarousel = fs.readFileSync(
   path.join(ROOT, "src/components/result/SelfAccessPlanCarousel.tsx"),
   "utf8",
-);
+) + "\n" + koreanUiCopy;
 for (const required of [
   "const isSingleOffer =",
   "KO_FULL_ACCESS_ITEMS",
@@ -773,7 +776,8 @@ const japaneseTopPage = fs.readFileSync(
   path.join(ROOT, "src/app/page.tsx"),
   "utf8",
 );
-if (!japaneseTopPage.includes('<TopViewTracker locale="ja" />')) {
+if (!japaneseTopPage.includes('<TopPage locale="ja" />') ||
+    !fs.readFileSync(path.join(ROOT, "src/components/top/TopPage.tsx"), "utf8").includes("<TopViewTracker locale={locale}")) {
   problems.push("src/app/page.tsx: Japanese top_viewed tracking is missing");
 }
 const japaneseTopHero = fs.readFileSync(
@@ -830,9 +834,14 @@ for (const route of ["/ko/tarot"]) {
   }
 }
 
+const koreanMessages = fs.readFileSync(path.join(ROOT, "src/i18n/ui/messages/ko.ts"), "utf8");
+for (const section of ["header", "footer"]) {
+  const sectionSource = koreanMessages.match(new RegExp(`const ${section}: [^=]+ = \{[\\s\\S]*?\\n\\};`))?.[0];
+  if (!sectionSource?.includes('href: "/ko/tarot"')) {
+    problems.push(`Korean ${section}: tarot navigation is missing`);
+  }
+}
 for (const [file, required] of [
-  ["src/components/top/TopHeader.tsx", 'href: "/ko/tarot"'],
-  ["src/components/top/TopFooter.tsx", 'href: "/ko/tarot"'],
   ["src/components/BottomNav.tsx", 'href: "/ko/tarot"'],
 ]) {
   const source = fs.readFileSync(path.join(ROOT, file), "utf8");
@@ -944,7 +953,7 @@ if (unmeiReading.includes('locale === "ja" ? <UnmeiChartDetails')) {
 }
 
 for (const required of [
-  "koreanPlanItemPeek(item)",
+  "carouselCopy.peekForItem(item, ebookPeek)",
   "KO_PEEK_EBOOK",
   "KO_PEEK_FRIENDS",
   "KO_PEEK_ALICE",

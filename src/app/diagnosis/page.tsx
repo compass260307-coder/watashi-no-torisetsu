@@ -1,5 +1,5 @@
-import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
+import DiagnosisPageContent from "@/components/diagnosis/ja/DiagnosisPage";
 
 export default function DiagnosisPage() {
-  return <DiagnosisPageContent locale="ja" />;
+  return <DiagnosisPageContent />;
 }

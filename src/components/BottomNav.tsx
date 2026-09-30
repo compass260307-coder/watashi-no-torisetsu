@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
+
 // 自己診断完了後に表示する下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
 //   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
@@ -10,6 +12,29 @@
 //   - アクティブ判定は usePathname()。トリセツ(2) の URL は既存 HamburgerMenu と同じく
 //     localStorage torisetsu_owner_token から /me/[token] を解決 (無ければ /diagnosis)。
 
+import { EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
+import {
+  TakoLockPopover,
+  type DiagnosisLockTarget,
+} from "@/components/TakoLockPopover";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
+import {
+  ME_ATTENTION_GRANTED_EVENT,
+  ME_ATTENTION_PENDING_KEY,
+} from "@/lib/me-attention";
+import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
+import {
+  TAKO_ATTENTION_GRANTED_EVENT,
+  TAKO_ATTENTION_PENDING_KEY,
+  takoAttentionImpressionKey,
+} from "@/lib/tako-attention";
+import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
+import {
+  UNMEI_ATTENTION_PENDING_KEY,
+  unmeiAttentionImpressionKey,
+} from "@/lib/unmei-attention";
+import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -18,29 +43,6 @@ import {
   useState,
   type ReactElement,
 } from "react";
-import {
-  TakoLockPopover,
-  type DiagnosisLockTarget,
-} from "@/components/TakoLockPopover";
-import { EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
-import {
-  TAKO_ATTENTION_GRANTED_EVENT,
-  TAKO_ATTENTION_PENDING_KEY,
-  takoAttentionImpressionKey,
-} from "@/lib/tako-attention";
-import {
-  UNMEI_ATTENTION_PENDING_KEY,
-  unmeiAttentionImpressionKey,
-} from "@/lib/unmei-attention";
-import {
-  ME_ATTENTION_GRANTED_EVENT,
-  ME_ATTENTION_PENDING_KEY,
-} from "@/lib/me-attention";
-import { accessPaywallVersionForLocale } from "@/lib/access-products";
-import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
-import { track } from "@/lib/track";
-import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 
 const UNMEI_COURSE_PRODUCTS = ["premium_bundle"] as const;
 const ALICE_COURSE_PRODUCTS = ["full_access", "premium_bundle"] as const;
@@ -206,6 +208,8 @@ export function BottomNav() {
       searchParams.get("locale") === "ko");
   const isEnglish = pathname === "/en" || pathname.startsWith("/en/");
   const isIndonesian = pathname === "/id" || pathname.startsWith("/id/");
+  const navCopy = useUiCopy(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja").nav;
+  const uiText = useUiText(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja", "BottomNav");
   const paywallVersion = accessPaywallVersionForLocale(
     isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja",
   );
@@ -431,10 +435,10 @@ export function BottomNav() {
       isKorean
         ? [
             // 日本版と同じ5タブ構成。表示文言と遷移先だけ韓国向けにする。
-            { key: "me", label: "자기 진단", href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
+            { key: "me", label: navCopy.me, href: torisetsuUrl, active: isKoreanResult, Icon: ClipboardIcon },
             {
               key: "friend",
-              label: "친구 진단",
+              label: navCopy.friend,
               href: isTakoAttentionPreview
                 ? "/ko/tako/preview?previewLocked=1&friends=0"
                 : takoUrl,
@@ -449,7 +453,7 @@ export function BottomNav() {
             },
             {
               key: "astrologer",
-              label: "Alice",
+              label: navCopy.astrologer,
               href: isAstrologerPreview
                 ? "/dev/hoshiyomi-preview?locale=ko"
                 : "/ko/hoshiyomi",
@@ -463,7 +467,7 @@ export function BottomNav() {
             },
             {
               key: "unmei",
-              label: "운명",
+              label: navCopy.unmei,
               href: "/ko/unmei",
               active: pathname.startsWith("/ko/unmei"),
               Icon: NatalWheelIcon,
@@ -473,7 +477,7 @@ export function BottomNav() {
             },
             {
               key: "tarot",
-              label: "타로",
+              label: navCopy.tarot,
               href: "/ko/tarot",
               active: pathname.startsWith("/ko/tarot"),
               Icon: TarotCardsIcon,
@@ -486,14 +490,14 @@ export function BottomNav() {
           ? [
               {
                 key: "me",
-                label: "My result",
+                label: navCopy.me,
                 href: torisetsuUrl,
                 active: isEnglishResult,
                 Icon: ClipboardIcon,
               },
               {
                 key: "friend",
-                label: "Friends",
+                label: navCopy.friend,
                 href: isTakoAttentionPreview
                   ? "/en/tako/preview?previewLocked=1&friends=0"
                   : takoUrl,
@@ -508,7 +512,7 @@ export function BottomNav() {
               },
               {
                 key: "astrologer",
-                label: "Alice",
+                label: navCopy.astrologer,
                 href: isAstrologerPreview
                   ? "/dev/hoshiyomi-preview?locale=en"
                   : "/en/hoshiyomi",
@@ -522,7 +526,7 @@ export function BottomNav() {
               },
               {
                 key: "unmei",
-                label: "Destiny",
+                label: navCopy.unmei,
                 href: "/en/unmei",
                 active: pathname.startsWith("/en/unmei"),
                 Icon: NatalWheelIcon,
@@ -532,7 +536,7 @@ export function BottomNav() {
               },
               {
                 key: "tarot",
-                label: "Tarot",
+                label: navCopy.tarot,
                 href: "/en/tarot",
                 active: pathname.startsWith("/en/tarot"),
                 Icon: TarotCardsIcon,
@@ -545,14 +549,14 @@ export function BottomNav() {
             ? [
                 {
                   key: "me",
-                  label: "Hasil saya",
+                  label: navCopy.me,
                   href: torisetsuUrl,
                   active: isIndonesianResult,
                   Icon: ClipboardIcon,
                 },
                 {
                   key: "friend",
-                  label: "Teman",
+                  label: navCopy.friend,
                   href: takoUrl,
                   active:
                     pathname.startsWith("/id/friend") ||
@@ -562,7 +566,7 @@ export function BottomNav() {
                 },
                 {
                   key: "astrologer",
-                  label: "Alice",
+                  label: navCopy.astrologer,
                   href: "/id/hoshiyomi",
                   active: pathname.startsWith("/id/hoshiyomi"),
                   Icon: AstrologerIcon,
@@ -572,7 +576,7 @@ export function BottomNav() {
                 },
                 {
                   key: "unmei",
-                  label: "Takdir",
+                  label: navCopy.unmei,
                   href: "/id/unmei",
                   active: pathname.startsWith("/id/unmei"),
                   Icon: NatalWheelIcon,
@@ -582,7 +586,7 @@ export function BottomNav() {
                 },
                 {
                   key: "tarot",
-                  label: "Tarot",
+                  label: navCopy.tarot,
                   href: "/id/tarot",
                   active: pathname.startsWith("/id/tarot"),
                   Icon: TarotCardsIcon,
@@ -593,11 +597,11 @@ export function BottomNav() {
               ]
             : [
             // タロットは未購入時も鍵付きで表示する。
-            { key: "me", label: "自己診断", href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
+            { key: "me", label: navCopy.me, href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
               key: "friend",
-              label: "友達診断",
+              label: navCopy.friend,
               href: isTakoAttentionPreview
                 ? "/tako/preview?previewLocked=1&friends=0"
                 : takoUrl,
@@ -612,7 +616,7 @@ export function BottomNav() {
             // 運命の設計図と同じくタップで診断案内 / 課金カードを開く。
             {
               key: "astrologer",
-              label: "Alice",
+              label: navCopy.astrologer,
               href: isAstrologerPreview
                 ? "/dev/hoshiyomi-preview"
                 : "/hoshiyomi",
@@ -628,7 +632,7 @@ export function BottomNav() {
             // URL直打ちはページ側のサーバーガードが同じモーダルへ戻す。
             {
               key: "unmei",
-              label: "運命",
+              label: navCopy.unmei,
               href: "/unmei",
               active: pathname.startsWith("/unmei"),
               Icon: NatalWheelIcon,
@@ -638,7 +642,7 @@ export function BottomNav() {
             },
             {
               key: "tarot",
-              label: "タロット",
+              label: navCopy.tarot,
               href: isPaidNavigationPreview ? "/tarot/dev-preview" : "/tarot",
               active: pathname.startsWith("/tarot"),
               Icon: TarotCardsIcon,
@@ -648,6 +652,7 @@ export function BottomNav() {
             },
           ],
     [
+      navCopy,
       hasToken,
       hasAliceNavigationAccess,
       hasTarotNavigationAccess,
@@ -676,13 +681,7 @@ export function BottomNav() {
     <nav
       data-bottom-nav
       aria-label={
-        isKorean
-          ? "전역 내비게이션"
-          : isEnglish
-            ? "Global navigation"
-            : isIndonesian
-              ? "Navigasi utama"
-            : "グローバルナビゲーション"
+        uiText("グローバルナビゲーション")
       }
       className="fixed inset-x-0 bottom-0 z-40 bg-white print:hidden"
       style={{
@@ -719,13 +718,7 @@ export function BottomNav() {
                 type="button"
                 disabled
                 aria-label={`${it.label}${
-                  isKorean
-                    ? " (준비 중)"
-                    : isEnglish
-                      ? " (Coming soon)"
-                      : isIndonesian
-                        ? " (Segera hadir)"
-                      : " (準備中)"
+                  uiText(" (準備中)")
                 }`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
                 style={{ color: INACTIVE }}
@@ -762,13 +755,7 @@ export function BottomNav() {
                 key={it.key}
                 type="button"
                 aria-label={`${it.label}${
-                  isKorean
-                    ? " (잠김)"
-                    : isEnglish
-                      ? " (Locked)"
-                      : isIndonesian
-                        ? " (Terkunci)"
-                      : "（ロック中）"
+                  uiText("（ロック中）")
                 }`}
                 onClick={() => {
                   if (!hasToken && !isCoursePaywallPreview) {
@@ -926,11 +913,7 @@ export function BottomNav() {
             courseLockTarget === "hoshiyomi"
               ? isKorean
                 ? undefined
-                : isEnglish
-                  ? "Try Alice or unlock the complete experience"
-                  : isIndonesian
-                    ? "Coba Alice atau buka pengalaman lengkap"
-                  : "Aliceを試す・本格相談を選ぶ"
+                : uiText("Aliceを試す・本格相談を選ぶ")
               : undefined
           }
           previewMode={isCoursePaywallPreview}

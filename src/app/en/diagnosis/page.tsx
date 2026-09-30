@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
+import DiagnosisPageContent from "@/components/diagnosis/en/DiagnosisPage";
 import { EN_BRAND_NAME, EN_DEFAULT_OG_IMAGE } from "@/lib/locale-seo";
+import type { Metadata } from "next";
 
 const TITLE = "Free Big Five Personality Test | Alice Personalities";
 const DESCRIPTION = "Answer 50 questions to discover your Big Five personality profile, match with one of 32 characters, and invite friends to share how they see you.";
@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function EnglishDiagnosisPage() {
-  return <DiagnosisPageContent locale="en" />;
+  return <DiagnosisPageContent />;
 }

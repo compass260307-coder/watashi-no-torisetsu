@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { AppResultLocale } from "@/i18n/result";
+import { isTerminalPollResponse, startVisiblePolling } from "@/lib/visible-polling";
 
 type Phase = "confirming" | "generating" | "failed" | "timeout";
 
@@ -31,30 +32,42 @@ export default function UnmeiCheckoutConfirming({
     if (preview) return;
 
     const displayStartedAt = Date.now();
-    const deadline = Date.now() + TIMEOUT_MS;
+    let deadline = 0;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let generationKicked = false;
+    let failures = 0;
+    let retryGraceUntil = 0;
 
-    async function kickGeneration(force: boolean) {
+    async function kickGeneration(force: boolean, signal: AbortSignal) {
       try {
-        await fetch("/api/unmei/generate", {
+        const response = await fetch("/api/unmei/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ force }),
+          signal,
         });
+        return !signal.aborted && !isTerminalPollResponse(response);
       } catch {
         // status の次回ポーリングで回復できるため、ここでは待機を続ける。
+        return !signal.aborted;
       }
     }
 
-    async function poll() {
-      if (cancelled) return;
+    const stopPolling = startVisiblePolling(async (signal) => {
+      if (!deadline) deadline = Date.now() + TIMEOUT_MS;
       try {
-        const res = await fetch("/api/unmei/status", { cache: "no-store" });
+        const res = await fetch("/api/unmei/status", { cache: "no-store", signal });
+        if (signal.aborted) return false;
+        if (isTerminalPollResponse(res)) {
+          setPhase("failed");
+          return false;
+        }
+        if (!res.ok) throw new Error("Status unavailable");
         if (res.ok) {
           const data = (await res.json()) as { state?: string };
-          if (cancelled) return;
+          if (signal.aborted) return false;
+          failures = 0;
 
           if (data.state === "ready") {
             const remainingDisplayTime = Math.max(
@@ -74,7 +87,7 @@ export default function UnmeiCheckoutConfirming({
                 );
               }
             }, remainingDisplayTime);
-            return;
+            return false;
           }
           if (data.state === "no_birth") {
             // 通常は決済前に保存済み。万一未保存なら入力画面へ安全に戻す。
@@ -87,36 +100,44 @@ export default function UnmeiCheckoutConfirming({
                   ? "/ko/unmei"
                   : "/unmei",
             );
-            return;
+            return false;
           }
-          if (data.state === "failed") {
+          if (data.state === "pending") retryGraceUntil = 0;
+          if (data.state === "failed" && Date.now() >= retryGraceUntil && !(retryKey > 0 && !generationKicked)) {
             setPhase("failed");
-            return;
+            return false;
           }
-          if (data.state === "pending") {
+          if (data.state === "pending" || data.state === "failed") {
             setPhase("generating");
-            if (!generationKicked) {
+            if (!generationKicked && !document.hidden) {
               generationKicked = true;
-              void kickGeneration(retryKey > 0);
+              deadline = Date.now() + TIMEOUT_MS;
+              const started = await kickGeneration(retryKey > 0, signal);
+              if (signal.aborted) return false;
+              if (!started) {
+                setPhase("failed");
+                return false;
+              }
+              if (retryKey > 0) retryGraceUntil = Date.now() + 10_000;
             }
           } else {
             setPhase("confirming");
           }
         }
       } catch {
-        // 一時的なネットワークエラーは次のポーリングで回復する。
+        if (signal.aborted) return false;
+        failures += 1;
       }
 
-      if (Date.now() >= deadline) {
+      if (failures >= 5 || Date.now() >= deadline) {
         setPhase("timeout");
-        return;
+        return false;
       }
-      timer = setTimeout(poll, POLL_INTERVAL_MS);
-    }
-
-    void poll();
+      return POLL_INTERVAL_MS * Math.min(2 ** failures, 4);
+    });
     return () => {
       cancelled = true;
+      stopPolling();
       if (timer) clearTimeout(timer);
     };
   }, [locale, preview, retryKey, router]);

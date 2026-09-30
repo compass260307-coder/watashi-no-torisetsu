@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiText } from "@/i18n/ui/use-ui-copy";
+
 // 日本版・韓国版の商品カードで共用する課金導線ボタン。
 // クリックで /api/checkout/create-full-access-session を叩き、返ってきた Stripe Checkout
 // URL へ遷移する。金額・price はサーバ側 (Price 固定) で決まり、ここからは一切渡さない。
@@ -8,14 +10,6 @@
 // ローディング / エラー表示を持つ (CLAUDE.md: エラー・ローディング・空状態を用意)。
 // 既に full の場合 (409 already_full) はページを再読込して本文表示へ戻す。
 
-import { useState, type CSSProperties } from "react";
-import { normalizePaywallSource } from "@/lib/paywall-source";
-import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
-import { track } from "@/lib/track";
-import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
-import { readAdAttribution } from "@/lib/ad-attribution";
-import { createCheckoutAttemptId } from "@/lib/checkout-measurement";
 import type { AppResultLocale } from "@/i18n/result";
 import {
   accessPaywallVersionForLocale,
@@ -31,6 +25,14 @@ import {
   type PaywallPlacement,
   type ThreeCoursePaywallVersion,
 } from "@/lib/access-products";
+import { readAdAttribution } from "@/lib/ad-attribution";
+import { createCheckoutAttemptId } from "@/lib/checkout-measurement";
+import { normalizePaywallSource } from "@/lib/paywall-source";
+import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
+import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
+import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
+import { useState, type CSSProperties } from "react";
 
 function readCookie(name: string): string | null {
   const prefix = `${name}=`;
@@ -92,6 +94,7 @@ export function FullAccessCta({
   /** CTA下辺の立体影。accentColor と組で指定する。 */
   shadowColor?: string;
 }) {
+  const uiText = useUiText(locale, "result.FullAccessCta");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
@@ -194,13 +197,7 @@ export function FullAccessCta({
       }
       if (!res.ok) {
         setError(
-          locale === "ko"
-            ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
-            : locale === "en"
-              ? "We couldn't open checkout. Please try again in a moment."
-              : locale === "id"
-                ? "Halaman pembayaran tidak dapat dibuka. Coba lagi sebentar lagi."
-              : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+          uiText("うまく開けませんでした。少し待ってからもう一度お試しください。"),
         );
         setLoading(false);
         return;
@@ -246,24 +243,12 @@ export function FullAccessCta({
         return;
       }
       setError(
-        locale === "ko"
-          ? "페이지를 열지 못했어요. 잠시 뒤 다시 시도해 주세요."
-          : locale === "en"
-            ? "We couldn't open checkout. Please try again in a moment."
-            : locale === "id"
-              ? "Halaman pembayaran tidak dapat dibuka. Coba lagi sebentar lagi."
-            : "うまく開けませんでした。少し待ってからもう一度お試しください。",
+        uiText("うまく開けませんでした。少し待ってからもう一度お試しください。"),
       );
       setLoading(false);
     } catch {
       setError(
-        locale === "ko"
-          ? "통신에 실패했어요. 연결 상태가 좋은 곳에서 다시 시도해 주세요."
-          : locale === "en"
-            ? "Connection failed. Check your connection and try again."
-            : locale === "id"
-              ? "Koneksi gagal. Periksa koneksi lalu coba lagi."
-            : "通信に失敗しました。電波のいい場所でもう一度お試しください。",
+        uiText("通信に失敗しました。電波のいい場所でもう一度お試しください。"),
       );
       setLoading(false);
     }
@@ -284,9 +269,9 @@ export function FullAccessCta({
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
-          ? locale === "ko" ? "열고 있어요…" : locale === "en" ? "Opening…" : locale === "id" ? "Membuka…" : "ひらいています…"
+          ? uiText("ひらいています…")
           : error
-            ? locale === "ko" ? "다시 시도하기 →" : locale === "en" ? "Try again →" : locale === "id" ? "Coba lagi →" : "もう一度ためす →"
+            ? uiText("もう一度ためす →")
             : children}
       </button>
       {error && (
@@ -294,11 +279,7 @@ export function FullAccessCta({
           {error}
           <br />
           <span className="text-[#8A8AA3]">
-            {locale === "ko"
-              ? "위 버튼으로 다시 시도해 주세요."
-              : locale === "id"
-                ? "Coba lagi dengan tombol di atas."
-              : "上のボタンでもう一度お試しください。"}
+            {uiText("上のボタンでもう一度お試しください。")}
           </span>
         </p>
       )}

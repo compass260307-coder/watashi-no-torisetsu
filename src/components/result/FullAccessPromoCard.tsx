@@ -1,5 +1,9 @@
 "use client";
 
+import { useUiText } from "@/i18n/ui/use-ui-copy";
+
+import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+
 // PR3: 課金案内カード (トップ以外の全ページ最下部に常設)。
 // 2026-07-11: MBTI 参考でデザイン刷新 (画像 + 横並び・グループ色・折り紙装飾・値引き表記)。
 //
@@ -22,39 +26,26 @@
 //   - imageSrc: あるとき横並び (md+) の MBTI レイアウト。無いとき中央 1 カラム。
 //   - group:    カードの地色/アクセント/装飾のグループ色。未指定は unknown (ラベンダー)。
 
-import { useEffect, useRef, useState } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { useEffect, useRef, useState } from "react";
 import { FullAccessCta } from "./FullAccessCta";
 import { PeekButton, type UnlockPeek } from "./PaywallPeek";
+
+import type { AppResultLocale } from "@/i18n/result";
 import {
-  PEEK_AISHO,
-  PEEK_ALICE,
-  PEEK_ALICE_FORTUNE,
-  PEEK_EBOOK,
-  PEEK_FRIENDS,
-  PEEK_UNMEI,
-  KO_PEEK_AISHO,
-  KO_PEEK_ALICE,
-  KO_PEEK_ALICE_FORTUNE,
-  KO_PEEK_EBOOK,
-  KO_PEEK_FRIENDS,
-  KO_PEEK_UNMEI,
-  EN_PEEK_AISHO,
-  EN_PEEK_ALICE,
-  EN_PEEK_ALICE_FORTUNE,
-  EN_PEEK_EBOOK,
-  EN_PEEK_FRIENDS,
-  EN_PEEK_UNMEI,
-} from "./paywall-peek-content";
-import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
+  accessPaywallVersionForLocale,
+  accessProductPrice,
+  SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
+  THREE_COURSE_PAYWALL_VERSION,
+  type AccessEntitlements,
+  type AccessProduct
+} from "@/lib/access-products";
+import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
 import {
   cardColorsForGroup,
   heroColorsForGroup,
   resultActionColorsForGroup,
 } from "@/lib/hero-colors";
-import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
-import { track } from "@/lib/track";
-import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import {
   friendReportPeekImagePath,
@@ -62,73 +53,12 @@ import {
   selfReportStoryPreviewPagePath,
 } from "@/lib/report-story-images";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import type { AppResultLocale } from "@/i18n/result";
-import {
-  accessPaywallVersionForLocale,
-  accessProductPrice,
-  EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,
-  FULL_ACCESS_LIST_PRICE_JPY,
-  FULL_ACCESS_LIST_PRICE_KRW,
-  FULL_ACCESS_PRICE_JPY,
-  FULL_ACCESS_PRICE_KRW,
-  formatIdrMinor,
-  ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
-  ID_FULL_ACCESS_PRICE_IDR_MINOR,
-  EN_FULL_ACCESS_PRICE_USD_CENTS,
-  SELF_REPORT_PRICE_JPY,
-  SELF_REPORT_PRICE_KRW,
-  SELF_REPORT_UNLOCK_LABEL,
-  SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
-  THREE_COURSE_PAYWALL_VERSION,
-  type AccessEntitlements,
-  type AccessProduct,
-} from "@/lib/access-products";
+import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
-
-const LEGACY_FULL_ACCESS_DISCOUNT_PERCENT = Math.round(
-  (1 - FULL_ACCESS_PRICE_JPY / FULL_ACCESS_LIST_PRICE_JPY) * 100,
-);
+import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
-const PRICE_COPY = {
-  ja: {
-    list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
-    sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
-    offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
-  },
-  ko: {
-    list: `₩${FULL_ACCESS_LIST_PRICE_KRW.toLocaleString("ko-KR")}`,
-    sale: `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`,
-    offPercent: Math.round((1 - FULL_ACCESS_PRICE_KRW / FULL_ACCESS_LIST_PRICE_KRW) * 100),
-  },
-  en: {
-    list: `$${(EN_FULL_ACCESS_LIST_PRICE_USD_CENTS / 100).toFixed(2)}`,
-    sale: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
-    offPercent: Math.round(
-      (1 -
-        EN_FULL_ACCESS_PRICE_USD_CENTS /
-          EN_FULL_ACCESS_LIST_PRICE_USD_CENTS) *
-        100,
-    ),
-  },
-  id: {
-    list: formatIdrMinor(ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR),
-    sale: formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR),
-    offPercent: Math.round(
-      (1 -
-        ID_FULL_ACCESS_PRICE_IDR_MINOR /
-          ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR) *
-        100,
-    ),
-  },
-} as const;
-
-const SELF_REPORT_PRICE_COPY = {
-  ja: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`,
-  ko: `₩${SELF_REPORT_PRICE_KRW.toLocaleString("ko-KR")}`,
-  en: `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`,
-  id: formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR),
-} as const;
 
 // 解放される項目 (見出し + マイクロコピー)。2026-07-22: 自己診断＋友達診断を
 // すべて含む完全版パッケージに一本化。パッと価値が伝わる項目に集約。
@@ -136,248 +66,16 @@ const SELF_REPORT_PRICE_COPY = {
 type UnlockItem = { title: string; desc: string; peek?: UnlockPeek };
 
 // 自己分析の電子書籍/PDF・自己/友達の解放の共通パーツ (ページ間で文言を揃える)。
-const U_FRIEND_RESULTS: UnlockItem = {
-  title: "2人目以降の友達診断結果をすべて解放",
-  desc: "友達から見たキャラ・性格のギャップ・恋愛傾向・相性まで、友達ごとの結果シートをすべて読めます。",
-};
-const U_FRIEND_REPORT: UnlockItem = {
-  title: "みんなから見たあなたの分析レポートを何度でも更新",
-  desc: "友達の回答をまとめた他己分析PDFを作成。回答が増えるたびに、最新の内容へ何度でも更新できます。",
-  peek: PEEK_FRIENDS,
-};
+
+
 // 完全版に含むAliceの占い機能。運命の設計図とタロットを1項目にまとめる。
-const U_ALICE_FORTUNE: UnlockItem = {
-  title: "Aliceによる占い機能をすべて解放",
-  desc: "あなただけの「運命の設計図」に加えて、Aliceがタロットを引き、恋愛・仕事・人間関係の悩みや迷いを占ってくれます。",
-  peek: PEEK_ALICE_FORTUNE,
-};
+
 // 運命タブから開いたカードでは、設計図そのものを主役にして先頭へ置く。
-const U_UNMEI: UnlockItem = {
-  title: "あなた専用「運命の設計図」",
-  desc: "性格診断と出生図を掛け合わせた4章仕立てのAI鑑定。今日の1枚・3枚引き・YES / NOのタロットも楽しめます。",
-  peek: PEEK_UNMEI,
-};
-const U_ALICE: UnlockItem = {
-  title: "あなたの専属占い師「Alice」とのチャット",
-  desc: "あなたの性格や星を理解したAliceが、恋愛・仕事・人間関係など、あなたの悩みに合わせて答えます。",
-  peek: PEEK_ALICE,
-};
-const U_AISHO: UnlockItem = {
-  title: "相性診断機能をすべて解放",
-  desc: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで、2人の関係を詳しく読み解けます。",
-  peek: PEEK_AISHO,
-};
+
 // 自己診断結果ページ (/me) 用。
-const SELF_UNLOCKS: UnlockItem[] = [
-  {
-    // 覗き見(?)は付けない (2026-08-17 オーナー指示)。
-    title: "あなたの結果のロック中の9セクションをすべて解放",
-    desc: "恋愛・キャリアの深掘りから、周りから見た印象、もしもの時のあなたまで、診断結果の続きをすべて読めます。",
-  },
-  {
-    title: "16ページ以上のあなただけの電子書籍",
-    desc: "あなたの性格や特徴を一冊にまとめてお届け。保存・印刷できるので、いつでも読み返せます。",
-    peek: PEEK_EBOOK,
-  },
-];
+
 
 // 日本語完全版カードの並び。設置ページに関連する項目を先頭へ置く。
-const FULL_ACCESS_SELF_UNLOCKS: UnlockItem[] = [
-  SELF_UNLOCKS[0],
-  SELF_UNLOCKS[1],
-  U_ALICE,
-  U_ALICE_FORTUNE,
-  U_AISHO,
-  U_FRIEND_RESULTS,
-  U_FRIEND_REPORT,
-];
-const FULL_ACCESS_TAKO_UNLOCKS: UnlockItem[] = [
-  U_FRIEND_RESULTS,
-  U_FRIEND_REPORT,
-  U_ALICE,
-  U_ALICE_FORTUNE,
-  U_AISHO,
-  SELF_UNLOCKS[0],
-  SELF_UNLOCKS[1],
-];
-
-const STUDENT_LITE_UNLOCKS: UnlockItem[] = [
-  SELF_UNLOCKS[0],
-  SELF_UNLOCKS[1],
-  U_FRIEND_RESULTS,
-  U_FRIEND_REPORT,
-  U_AISHO,
-];
-const STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
-  U_FRIEND_RESULTS,
-  U_FRIEND_REPORT,
-  SELF_UNLOCKS[0],
-  SELF_UNLOCKS[1],
-  U_AISHO,
-];
-
-const KO_SELF_UNLOCKS: UnlockItem[] = [
-  {
-    title: "내 결과에서 잠긴 9개 섹션 모두 해제",
-    desc: "연애·커리어 심층 분석부터 주변 사람들이 보는 인상, 만약의 상황에서 드러나는 모습까지 진단 결과의 나머지를 모두 읽을 수 있어요.",
-  },
-  {
-    title: "16페이지 이상의 나만의 전자책",
-    desc: "나의 성격과 특징을 한 권에 담아 드려요. 저장하거나 인쇄할 수 있어 언제든 다시 읽을 수 있어요.",
-    peek: KO_PEEK_EBOOK,
-  },
-  {
-    title: "나만의 전담 점술가 ‘Alice’와 채팅",
-    desc: "내 성격과 별을 이해하는 Alice가 연애·일·인간관계 등 고민에 맞춰 답해 줘요.",
-    peek: KO_PEEK_ALICE,
-  },
-  {
-    title: "Alice의 모든 운세 기능 해제",
-    desc: "나만의 ‘운명의 설계도’에 더해 Alice가 타로 카드를 뽑아 연애·일·인간관계에 대한 고민과 망설임을 점쳐 줘요.",
-    peek: KO_PEEK_ALICE_FORTUNE,
-  },
-  {
-    title: "궁합 진단 기능 전체 해제",
-    desc: "연애·우정·일에서의 궁합부터 서로 엇갈리기 쉬운 지점까지 두 사람의 관계를 자세히 알아볼 수 있어요.",
-    peek: KO_PEEK_AISHO,
-  },
-  {
-    title: "두 번째 친구부터 친구 진단 결과 모두 해제",
-    desc: "친구가 보는 캐릭터·성격의 차이·연애 성향·궁합까지 친구별 결과 시트를 모두 읽을 수 있어요.",
-  },
-  {
-    title: "친구들이 보는 나의 분석 리포트를 몇 번이든 업데이트",
-    desc: "친구들의 답변을 모은 타인 분석 PDF를 만들어요. 답변이 늘어날 때마다 최신 내용으로 몇 번이든 업데이트할 수 있어요.",
-    peek: KO_PEEK_FRIENDS,
-  },
-];
-
-const KO_TAKO_UNLOCKS: UnlockItem[] = [
-  KO_SELF_UNLOCKS[5],
-  KO_SELF_UNLOCKS[6],
-  KO_SELF_UNLOCKS[2],
-  KO_SELF_UNLOCKS[3],
-  KO_SELF_UNLOCKS[4],
-  KO_SELF_UNLOCKS[0],
-  KO_SELF_UNLOCKS[1],
-];
-
-const KO_STUDENT_LITE_UNLOCKS: UnlockItem[] = [
-  KO_SELF_UNLOCKS[0],
-  KO_SELF_UNLOCKS[5],
-  KO_SELF_UNLOCKS[6],
-  KO_SELF_UNLOCKS[1],
-];
-const KO_STUDENT_LITE_TAKO_UNLOCKS: UnlockItem[] = [
-  KO_SELF_UNLOCKS[5],
-  KO_SELF_UNLOCKS[6],
-  KO_SELF_UNLOCKS[0],
-  KO_SELF_UNLOCKS[1],
-];
-
-const KO_UNMEI: UnlockItem = {
-  title: "나만의 ‘운명의 설계도’",
-  desc: "성격 진단과 출생도를 함께 읽는 4장 구성의 AI 감정이에요. 오늘의 한 장·세 장 뽑기·YES / NO 타로도 즐길 수 있어요.",
-  peek: KO_PEEK_UNMEI,
-};
-
-const ID_SELF_UNLOCKS: UnlockItem[] = [
-  {
-    title: "Buka semua 9 bagian hasil yang terkunci",
-    desc: "Baca seluruh kelanjutan hasilmu, dari cinta dan karier hingga kesan orang lain dan responsmu dalam berbagai situasi.",
-  },
-  {
-    title: "Ebook pribadi dengan 16+ halaman",
-    desc: "Kepribadian dan ciri khasmu dirangkum menjadi satu buku yang dapat disimpan, dicetak, dan dibaca kapan saja.",
-  },
-  {
-    title: "Chat dengan Alice, astrolog pribadimu",
-    desc: "Alice memahami kepribadian dan peta kelahiranmu, lalu membantumu membahas cinta, pekerjaan, dan hubungan.",
-  },
-  {
-    title: "Buka semua ramalan Alice",
-    desc: "Dapatkan Peta Takdir pribadi serta tarot satu kartu, tiga kartu, dan YA / TIDAK.",
-  },
-  {
-    title: "Buka seluruh analisis kecocokan",
-    desc: "Pelajari kecocokan cinta, persahabatan, dan pekerjaan, termasuk titik rawan salah paham.",
-  },
-  {
-    title: "Buka semua hasil teman setelah teman pertama",
-    desc: "Baca lembar hasil lengkap setiap teman, termasuk karakter, perbedaan persepsi, kecenderungan cinta, dan kecocokan.",
-  },
-  {
-    title: "Perbarui laporan sudut pandang teman kapan saja",
-    desc: "Gabungkan semua jawaban menjadi satu PDF lengkap dan buat ulang setiap kali ada teman baru yang menjawab.",
-  },
-];
-
-const ID_TAKO_UNLOCKS: UnlockItem[] = [
-  ID_SELF_UNLOCKS[5],
-  ID_SELF_UNLOCKS[6],
-  ID_SELF_UNLOCKS[2],
-  ID_SELF_UNLOCKS[3],
-  ID_SELF_UNLOCKS[4],
-  ID_SELF_UNLOCKS[0],
-  ID_SELF_UNLOCKS[1],
-];
-
-const ID_UNMEI: UnlockItem = {
-  title: "Peta Takdir pribadimu",
-  desc: "Pembacaan AI empat bab yang menggabungkan profil kepribadian dan peta kelahiran, plus tiga jenis tarot Alice.",
-};
-
-const EN_SELF_UNLOCKS: UnlockItem[] = [
-  {
-    title: "Unlock all 9 locked sections of your result",
-    desc: "Read every remaining section, from deeper love and career insights to how others see you and how you respond in real-life situations.",
-  },
-  {
-    title: "A personalized ebook with 16+ pages",
-    desc: "Receive your personality and defining traits in a book made for you. Save it, print it, and revisit it whenever you like.",
-    peek: EN_PEEK_EBOOK,
-  },
-  {
-    title: "Chat with Alice, your personal astrologer",
-    desc: "Alice understands your personality and birth chart, and helps you think through love, work, relationships, and whatever is on your mind.",
-    peek: EN_PEEK_ALICE,
-  },
-  {
-    title: "Unlock every Alice reading",
-    desc: "Get your personal Destiny Blueprint plus one-card, three-card, and YES / NO tarot readings.",
-    peek: EN_PEEK_ALICE_FORTUNE,
-  },
-  {
-    title: "Unlock the complete compatibility reading",
-    desc: "Explore compatibility in love, friendship, and work, including the points where the two of you are most likely to misunderstand each other.",
-    peek: EN_PEEK_AISHO,
-  },
-  {
-    title: "Unlock every friend result after the first",
-    desc: "Read each friend's full result sheet, including the character they see, personality gaps, love tendencies, and compatibility.",
-  },
-  {
-    title: "Update your friends' perspective report anytime",
-    desc: "Turn everyone's answers into one complete PDF, then regenerate it whenever more friends respond.",
-    peek: EN_PEEK_FRIENDS,
-  },
-];
-
-const EN_TAKO_UNLOCKS: UnlockItem[] = [
-  EN_SELF_UNLOCKS[5],
-  EN_SELF_UNLOCKS[6],
-  EN_SELF_UNLOCKS[2],
-  EN_SELF_UNLOCKS[3],
-  EN_SELF_UNLOCKS[4],
-  EN_SELF_UNLOCKS[0],
-  EN_SELF_UNLOCKS[1],
-];
-
-const EN_UNMEI: UnlockItem = {
-  title: "Your personal Destiny Blueprint",
-  desc: "A four-chapter AI reading that combines your personality profile and birth chart, plus one-card, three-card, and YES / NO tarot.",
-  peek: EN_PEEK_UNMEI,
-};
 
 function promoteUnlockItem(
   items: UnlockItem[],
@@ -571,6 +269,8 @@ export function FullAccessPromoCard({
   /** 自己診断結果ページ末尾では、解放内容を価格・購入導線より先に見せる。 */
   benefitsBeforePrice?: boolean;
 }) {
+  const uiText = useUiText(locale, "result.FullAccessPromoCard");
+  const uiCopy = useUiCopy(locale);
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
   const isIndonesian = locale === "id";
@@ -622,49 +322,22 @@ export function FullAccessPromoCard({
     "full_access",
     displayedEntitlements,
   );
-  const baseUnlocks = isIndonesian
-    ? surface === "tako"
-      ? ID_TAKO_UNLOCKS
-      : ID_SELF_UNLOCKS
-    : isEnglish
-    ? surface === "tako"
-      ? EN_TAKO_UNLOCKS
-      : EN_SELF_UNLOCKS
-    : isKorean
-    ? product === "self_report"
-      ? surface === "tako"
-        ? KO_STUDENT_LITE_TAKO_UNLOCKS
-        : KO_STUDENT_LITE_UNLOCKS
-      : surface === "tako"
-        ? KO_TAKO_UNLOCKS
-        : KO_SELF_UNLOCKS
-    : product === "self_report"
-      ? surface === "tako"
-        ? STUDENT_LITE_TAKO_UNLOCKS
-        : STUDENT_LITE_UNLOCKS
-      : surface === "tako"
-        ? FULL_ACCESS_TAKO_UNLOCKS
-        : FULL_ACCESS_SELF_UNLOCKS;
-  const contextualUnlocks =
-    returnTo === "hoshiyomi"
-      ? promoteUnlockItem(
-          baseUnlocks,
-          isIndonesian ? ID_SELF_UNLOCKS[2] : isEnglish ? EN_SELF_UNLOCKS[2] : isKorean ? KO_SELF_UNLOCKS[2] : U_ALICE,
-        )
-      : returnTo === "unmei"
-        ? promoteUnlockItem(
-            baseUnlocks,
-            isIndonesian ? ID_SELF_UNLOCKS[3] : isEnglish ? EN_SELF_UNLOCKS[3] : isKorean ? KO_SELF_UNLOCKS[3] : U_ALICE_FORTUNE,
-            isIndonesian ? ID_UNMEI : isEnglish ? EN_UNMEI : isKorean ? KO_UNMEI : U_UNMEI,
-          )
-        : baseUnlocks;
+  const { promo: copy, peeks, basePeeks } = uiCopy;
+  const baseUnlocks = product === "self_report"
+    ? surface === "tako" ? copy.studentTako : copy.studentSelf
+    : surface === "tako" ? copy.tako : copy.self;
+  const contextualUnlocks = returnTo === "hoshiyomi"
+    ? promoteUnlockItem(baseUnlocks, copy.alice)
+    : returnTo === "unmei"
+      ? promoteUnlockItem(baseUnlocks, copy.fortune, copy.unmei)
+      : baseUnlocks;
   const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
   const characterFriendCover = friendReportPeekImagePath(reportCharacterSource);
   const characterSelfCover = selfReportPeekImagePath(reportCharacterSource);
   const characterSelfStoryPage =
     selfReportStoryPreviewPagePath(reportCharacterSource);
-  const ebookPeek = isEnglish ? EN_PEEK_EBOOK : PEEK_EBOOK;
-  const friendsPeek = isEnglish ? EN_PEEK_FRIENDS : PEEK_FRIENDS;
+  const ebookPeek = basePeeks.ebook;
+  const friendsPeek = basePeeks.friends;
   // English previews use dedicated localized artwork. The per-character report
   // assets are Japanese PDFs, so substituting them here leaks Japanese text
   // into the English paywall modal.
@@ -721,29 +394,25 @@ export function FullAccessPromoCard({
   const unlocks = contextualUnlocks.map((item) => {
     if (
       characterEbookPeek &&
-      (item.peek === PEEK_EBOOK ||
-        item.peek === KO_PEEK_EBOOK ||
-        item.peek === EN_PEEK_EBOOK)
+      item.peek === peeks.ebook
     ) {
       return {
         ...item,
-        peek: isKorean ? KO_PEEK_EBOOK : characterEbookPeek,
+        peek: isKorean ? peeks.ebook : characterEbookPeek,
       };
     }
     if (
       characterFriendsPeek &&
-      (item.peek === PEEK_FRIENDS ||
-        item.peek === KO_PEEK_FRIENDS ||
-        item.peek === EN_PEEK_FRIENDS)
+      item.peek === peeks.friends
     ) {
       return {
         ...item,
-        peek: isKorean ? KO_PEEK_FRIENDS : characterFriendsPeek,
+        peek: isKorean ? peeks.friends : characterFriendsPeek,
       };
     }
     return item;
   });
-  const price = PRICE_COPY[locale];
+  const price = copy.price;
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
   const groupTone = cardColorsForGroup(group);
@@ -762,24 +431,12 @@ export function FullAccessPromoCard({
     ? "/pricing/self-report-felt-transparent.png"
     : imageSrc;
   const cardImageAlt = isStandaloneSelfReport
-    ? isIndonesian
-      ? "Ebook khusus untuk hasil kepribadian dan temanmu"
-      : isEnglish
-      ? "A dedicated ebook for your personality and friend results"
-      : isKorean
-      ? "자기 진단과 친구 진단 전용 리포트"
-      : "自己診断と友達診断の専用電子書籍"
+    ? uiText("自己診断と友達診断の専用電子書籍")
     : imageAlt;
   const hasImage = !!cardImageSrc;
   // 日本版の新規販売は完全版のみ。韓国版と開発用の旧カード互換は残す。
   const courseSwitchLabel = isStandaloneSelfReport
-    ? isIndonesian
-      ? "Lihat Edisi Lengkap"
-      : isEnglish
-      ? "See the Complete Edition"
-      : isKorean
-      ? "완전판 보기"
-      : "完全版はこちら"
+    ? uiText("完全版はこちら")
     : null;
   const unlockBenefitsPanel = (
     <div
@@ -791,13 +448,7 @@ export function FullAccessPromoCard({
     >
       {benefitsBeforePrice ? null : (
         <h3 className="text-[16px] font-bold leading-snug text-[#2E2E5C]">
-          {isIndonesian
-            ? "Yang akan terbuka"
-            : isEnglish
-            ? "What you’ll unlock"
-            : isKorean
-            ? "업그레이드하면 얻을 수 있는 것"
-            : "アップグレードで手に入るもの"}
+          {uiText("アップグレードで手に入るもの")}
         </h3>
       )}
       <ul
@@ -966,7 +617,7 @@ export function FullAccessPromoCard({
             <button
               type="button"
               onClick={onClose}
-              aria-label={isIndonesian ? "Tutup" : isEnglish ? "Close" : isKorean ? "닫기" : "閉じる"}
+              aria-label={uiText("閉じる")}
               className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_4px_14px_rgba(46,46,92,0.3)] transition hover:scale-105 active:scale-95"
               style={{ backgroundColor: tone.accent }}
             >
@@ -1026,20 +677,8 @@ export function FullAccessPromoCard({
                 <path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.9l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95L12 2.5z" />
               </svg>
               {isSelfReportProduct
-                ? isIndonesian
-                  ? "Edisi Lengkap"
-                  : isEnglish
-                  ? "Complete Edition"
-                  : isKorean
-                  ? "학생 플랜"
-                  : "学生向けプラン"
-                : isIndonesian
-                  ? "Buka sekarang"
-                  : isEnglish
-                  ? "Unlock now"
-                  : isKorean
-                  ? "지금 잠금 해제"
-                  : "今すぐロックを解除"}
+                ? uiText("学生向けプラン")
+                : uiText("今すぐロックを解除")}
             </span>
 
             {/* 見出し */}
@@ -1047,76 +686,16 @@ export function FullAccessPromoCard({
               id={`${anchorId}-title`}
               className="mt-2.5 text-[26px] font-bold leading-[1.3] text-[#2E2E5C] md:text-[34px]"
             >
-              {isSelfReportProduct ? (
-                isIndonesian ? (
-                  <>
-                    Kisahmu belum
-                    <br />
-                    selesai
-                  </>
-                ) : isEnglish ? (
-                  <>
-                    Your story isn’t
-                    <br />
-                    finished yet
-                  </>
-                ) : isKorean ? (
-                  <>
-                    자기 진단을
-                    <br />
-                    더 깊이
-                  </>
-                ) : (
-                  <>
-                    あなたの物語は
-                    <br />
-                    まだ完結していません
-                  </>
-                )
-              ) : isIndonesian ? (
-                <>
-                  Kisahmu belum
-                  <br />
-                  selesai
-                </>
-              ) : isEnglish ? (
-                <>
-                  Your story isn’t
-                  <br />
-                  finished yet
-                </>
-              ) : isKorean ? (
-                <>
-                  당신의 이야기는
-                  <br />
-                  아직 끝나지 않았어요
-                </>
-              ) : (
-                <>
-                  あなたの物語は
-                  <br />
-                  まだ完結していません
-                </>
-              )}
+              {(isSelfReportProduct ? copy.studentHeading : copy.heading)[0]}
+              <br />
+              {(isSelfReportProduct ? copy.studentHeading : copy.heading)[1]}
             </h2>
 
             {/* 続編訴求 */}
             <p className="body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E]">
               {isSelfReportProduct
-                ? isIndonesian
-                  ? "Buka kelanjutan hasil kepribadian, pandangan teman, dan ebook pribadimu dengan satu kali pembayaran."
-                  : isEnglish
-                  ? "Unlock the rest of your personality result, your friends’ perspectives, and your personal ebook with one payment."
-                  : isKorean
-                  ? "자기 진단과 친구 진단, 16페이지 이상의 전용 전자책을 1회 결제로 이용할 수 있어요."
-                  : "診断結果の続き・友達から見たあなた・あなただけの電子書籍まで、すべて買い切りで楽しめます。"
-                : isIndonesian
-                  ? "Kamu sudah membaca laporan gratis. Selami cinta, pekerjaan, hubungan, pandangan teman, astrologi, tarot, dan panduan Alice lebih jauh."
-                  : isEnglish
-                  ? "You’ve read the free report. Now go one step deeper into love, work, relationships, how friends see you, and Alice’s astrology, tarot, and guidance."
-                  : isKorean
-                  ? "무료 리포트를 읽었다면, 이제 한 걸음 더 깊이 들어가 보세요. 연애·일·인간관계·친구가 보는 인상까지 더욱 구체적으로 깊이 알아볼 수 있어요."
-                  : "無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。"}
+                ? uiText("診断結果の続き・友達から見たあなた・あなただけの電子書籍まで、すべて買い切りで楽しめます。")
+                : uiText("無料レポートを読んだら、次はもう一歩深くへ。恋愛・仕事・人間関係・友達から見た印象まで、さらに具体的に深掘りします。")}
             </p>
 
             {benefitsBeforePrice ? unlockBenefitsPanel : null}
@@ -1139,7 +718,7 @@ export function FullAccessPromoCard({
                 </>
               ) : isSelfReportProduct ? (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
-                  {SELF_REPORT_PRICE_COPY[locale]}
+                  {copy.selfReportPrice}
                 </span>
               ) : isKorean ? (
                 <div
@@ -1166,7 +745,7 @@ export function FullAccessPromoCard({
                 </div>
               ) : locale === "ja" || isEnglish || isIndonesian ? (
                 <span className="text-[36px] font-black leading-none text-black">
-                  <span className="sr-only">{isIndonesian ? "Harga" : isEnglish ? "Price" : "価格"}</span>
+                  <span className="sr-only">{uiText("価格")}</span>
                   {price.sale}
                 </span>
               ) : (
@@ -1181,13 +760,7 @@ export function FullAccessPromoCard({
                 hasImage ? "" : "text-center"
               }`}
             >
-              {isIndonesian
-                ? "Sekali bayar — tanpa langganan"
-                : isEnglish
-                ? "One-time payment — no subscription"
-                : isKorean
-                ? "일회성 구매(결제는 1회만)"
-                : "買い切り（お支払いは1回のみ）"}
+              {uiText("買い切り（お支払いは1回のみ）")}
             </p>
 
             <div className="mt-4">
@@ -1219,21 +792,7 @@ export function FullAccessPromoCard({
                     : actionTone.shadow
                 }
               >
-                {isSelfReportProduct
-                  ? isIndonesian
-                    ? "Buka Edisi Lengkap →"
-                    : isEnglish
-                    ? "Unlock the Complete Edition →"
-                    : isKorean
-                    ? "학생 플랜으로 해제 →"
-                    : SELF_REPORT_UNLOCK_LABEL
-                  : isIndonesian
-                    ? "Buka semua hasil →"
-                    : isEnglish
-                    ? "Unlock all results →"
-                    : isKorean
-                    ? "모든 결과 잠금 해제 →"
-                    : "全ての結果をアンロック →"}
+                {isSelfReportProduct ? copy.studentCta : uiText("全ての結果をアンロック →")}
               </FullAccessCta>
             </div>
 
@@ -1258,16 +817,10 @@ export function FullAccessPromoCard({
                 <path d="M9 12l2 2 4-4" />
               </svg>
               <span>
-                {isIndonesian ? "Garansi uang kembali 30 hari ·" : isEnglish ? "30-day money-back guarantee ·" : isKorean ? "30일 환불 보장 ·" : "30日間の返金保証・"}
+                {uiText("30日間の返金保証・")}
               </span>
               <span>
-                {isIndonesian
-                  ? `Dipercaya oleh ${DIAGNOSIS_COUNT_SNAPSHOT}+ orang`
-                  : isEnglish
-                  ? `Trusted by ${DIAGNOSIS_COUNT_SNAPSHOT}+ people`
-                  : isKorean
-                  ? `${DIAGNOSIS_COUNT_SNAPSHOT}명 이상의 고객이 신뢰하고 있어요`
-                  : `${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
+                {uiText("{DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています", { DIAGNOSIS_COUNT_SNAPSHOT })}
               </span>
               {courseSwitchLabel ? (
                 <>

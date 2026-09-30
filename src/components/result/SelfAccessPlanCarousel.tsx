@@ -1,57 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import { useUiText } from "@/i18n/ui/use-ui-copy";
+
+import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+
 import {
   CheckoutCancelledModal,
   useCheckoutCancelledProduct,
 } from "@/components/checkout/CheckoutCancelledNotice";
 import { KoreanPurchaseLegalNotice } from "@/components/checkout/KoreanPurchaseLegalNotice";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FullAccessCta } from "./FullAccessCta";
 import { PeekButton, type UnlockPeek } from "./PaywallPeek";
-import {
-  PEEK_AISHO,
-  PEEK_ALICE,
-  PEEK_EBOOK,
-  PEEK_FRIENDS,
-  PEEK_UNMEI,
-  KO_PEEK_AISHO,
-  KO_PEEK_ALICE,
-  KO_PEEK_EBOOK,
-  KO_PEEK_FRIENDS,
-  KO_PEEK_UNMEI,
-  EN_PEEK_AISHO,
-  EN_PEEK_ALICE,
-  EN_PEEK_EBOOK,
-  EN_PEEK_FRIENDS,
-  EN_PEEK_UNMEI,
-} from "./paywall-peek-content";
+
+import type { AppResultLocale } from "@/i18n/result";
 import {
   accessPaywallVersionForLocale,
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
   EN_FULL_ACCESS_PRICE_USD_CENTS,
-  FULL_ACCESS_PRICE_JPY,
-  PREMIUM_BUNDLE_LIST_PRICE_JPY,
-  PREMIUM_BUNDLE_PRICE_JPY,
-  SELF_REPORT_PRICE_JPY,
-  FULL_ACCESS_DISCOUNT_PERCENT_KRW,
-  FULL_ACCESS_LIST_PRICE_KRW,
-  FULL_ACCESS_PRICE_KRW,
   formatIdrMinor,
-  ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
+  FULL_ACCESS_PRICE_JPY,
+  FULL_ACCESS_PRICE_KRW,
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
   type AccessEntitlements,
   type AccessProduct,
   type PaywallPlacement,
-  type ThreeCoursePaywallVersion,
+  type ThreeCoursePaywallVersion
 } from "@/lib/access-products";
+import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
-import type { AppResultLocale } from "@/i18n/result";
 
 type PlanDefinition = Readonly<{
   product: AccessProduct;
@@ -66,174 +48,6 @@ type PlanDefinition = Readonly<{
   items: readonly string[];
   inheritedItemCount: number;
 }>;
-
-const JA_DESTINY_ITEM = "あなた専用「運命の設計図」";
-const JA_AISHO_ITEM = "相性診断機能を解放";
-const JA_TAROT_ITEM = "Aliceのタロット占い3種類をすべて解放";
-const KO_AISHO_ITEM = "두 사람의 궁합 진단 결과 전체 해제";
-const JA_LIGHT_ACCESS_ITEMS = [
-  "自己診断結果のロック9つ全て",
-  "16ページ以上の専用の電子書籍",
-  "２人目以降の友達診断の結果",
-  "何度でも作り直せる他己分析PDF",
-  JA_AISHO_ITEM,
-] as const;
-const JA_FULL_ACCESS_ITEMS = [
-  ...JA_LIGHT_ACCESS_ITEMS,
-  JA_DESTINY_ITEM,
-  "占い師『Alice』とのチャット30回",
-  JA_TAROT_ITEM,
-] as const;
-const KO_FULL_ACCESS_ITEMS = [
-  "자기 진단 결과의 잠금 9개 전체 해제",
-  "16페이지 이상의 전용 전자책",
-  "두 번째 친구부터 친구 진단 결과 전체 해제",
-  "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
-  "나만을 위한 ‘운명의 설계도’",
-  "점성술사 ‘Alice’와 채팅 30회",
-  "Alice의 타로 세 종류 모두 해제",
-  KO_AISHO_ITEM,
-] as const;
-const EN_FULL_ACCESS_ITEMS = [
-  "Unlock all 9 locked sections of your personality result",
-  "A personalized ebook with 16+ pages",
-  "Unlock every friend result after the first",
-  "Update your friends’ perspective PDF anytime",
-  "Unlock the complete compatibility reading",
-  "Your personal Destiny Blueprint",
-  "30 replies from your personal astrologer, Alice",
-  "Unlock all three Alice tarot readings",
-] as const;
-const ID_FULL_ACCESS_ITEMS = [
-  "Buka semua 9 bagian hasil kepribadian yang terkunci",
-  "Ebook pribadi dengan 16+ halaman",
-  "Buka semua hasil teman setelah teman pertama",
-  "Perbarui PDF sudut pandang teman kapan saja",
-  "Buka seluruh analisis kecocokan",
-  "Peta Takdir pribadimu",
-  "30 jawaban dari astrolog pribadimu, Alice",
-  "Buka ketiga pembacaan tarot Alice",
-] as const;
-
-const JA_PLANS: readonly PlanDefinition[] = [
-  {
-    product: "self_report",
-    eyebrow: "学生の方へ",
-    title: "学生向けプラン",
-    basePrice: SELF_REPORT_PRICE_JPY,
-    iconSrc: "/pricing/self-report-felt-transparent.png",
-    accent: "#4F92A7",
-    soft: "#EAF6F8",
-    inheritedItemCount: 0,
-    items: JA_LIGHT_ACCESS_ITEMS,
-  },
-  {
-    product: "full_access",
-    eyebrow: "自己・友達・占いまで",
-    title: "完全版コース",
-    basePrice: FULL_ACCESS_PRICE_JPY,
-    iconSrc: "/pricing/full-access-connection-felt-transparent.png",
-    accent: "#5B5BEF",
-    soft: "#EEEEFF",
-    inheritedItemCount: 0,
-    items: JA_FULL_ACCESS_ITEMS,
-  },
-  {
-    product: "premium_bundle",
-    eyebrow: "すべてを、これひとつで",
-    title: "全部入り・買い切り",
-    basePrice: PREMIUM_BUNDLE_PRICE_JPY,
-    listPrice: PREMIUM_BUNDLE_LIST_PRICE_JPY,
-    iconSrc: "/pricing/premium-destiny-felt-transparent.png",
-    accent: "#9A6A24",
-    soft: "#FFF6DF",
-    inheritedItemCount: 0,
-    items: ["完全版コースのすべての機能"],
-  },
-] as const;
-
-function japanesePlanItemPeek(
-  item: string,
-  ebookPeek: UnlockPeek,
-): UnlockPeek | undefined {
-  if (item.includes("Alice")) return PEEK_ALICE;
-  if (item.includes("相性診断")) return PEEK_AISHO;
-  if (item.includes("運命の設計図")) return PEEK_UNMEI;
-  if (item.includes("電子書籍") || item.includes("自己分析PDF")) {
-    return ebookPeek;
-  }
-  if (item.includes("友達診断") || item.includes("他己分析PDF")) {
-    return PEEK_FRIENDS;
-  }
-  return undefined;
-}
-
-function koreanPlanItemPeek(item: string): UnlockPeek | undefined {
-  if (item.includes("Alice") || item.includes("점성술사 채팅")) {
-    return KO_PEEK_ALICE;
-  }
-  if (item.includes("궁합")) return KO_PEEK_AISHO;
-  if (item.includes("운명의 설계도")) return KO_PEEK_UNMEI;
-  if (item.includes("전자책")) return KO_PEEK_EBOOK;
-  if (item.includes("친구 진단") || item.includes("타인 분석 PDF")) {
-    return KO_PEEK_FRIENDS;
-  }
-  return undefined;
-}
-
-const KO_PLANS: readonly PlanDefinition[] = [
-  {
-    product: "full_access",
-    eyebrow: "자기 진단·친구 진단·운세까지",
-    title: "완전판 코스",
-    basePrice: FULL_ACCESS_PRICE_KRW,
-    listPrice: FULL_ACCESS_LIST_PRICE_KRW,
-    badge: `출시 기념 ${FULL_ACCESS_DISCOUNT_PERCENT_KRW}% 할인`,
-    iconSrc: "/pricing/full-access-connection-felt-transparent.png",
-    accent: "#5B5BEF",
-    soft: "#EEEEFF",
-    inheritedItemCount: 0,
-    items: KO_FULL_ACCESS_ITEMS,
-  },
-] as const;
-
-const EN_PLANS: readonly PlanDefinition[] = [
-  {
-    product: "full_access",
-    eyebrow: "Personality, friends, and Alice",
-    title: "Complete Edition",
-    basePrice: EN_FULL_ACCESS_PRICE_USD_CENTS,
-    iconSrc: "/pricing/full-access-connection-felt-transparent.png",
-    accent: "#5B5BEF",
-    soft: "#EEEEFF",
-    inheritedItemCount: 0,
-    items: EN_FULL_ACCESS_ITEMS,
-  },
-] as const;
-
-const ID_PLANS: readonly PlanDefinition[] = [
-  {
-    product: "full_access",
-    eyebrow: "Kepribadian, teman, dan Alice",
-    title: "Edisi Lengkap",
-    basePrice: ID_FULL_ACCESS_PRICE_IDR_MINOR,
-    listPrice: ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
-    iconSrc: "/pricing/full-access-connection-felt-transparent.png",
-    accent: "#5B5BEF",
-    soft: "#EEEEFF",
-    inheritedItemCount: 0,
-    items: ID_FULL_ACCESS_ITEMS,
-  },
-] as const;
-
-function englishPlanItemPeek(item: string): UnlockPeek | undefined {
-  if (item.includes("Alice")) return EN_PEEK_ALICE;
-  if (item.includes("compatibility")) return EN_PEEK_AISHO;
-  if (item.includes("Destiny Blueprint")) return EN_PEEK_UNMEI;
-  if (item.includes("ebook")) return EN_PEEK_EBOOK;
-  if (item.includes("friend")) return EN_PEEK_FRIENDS;
-  return undefined;
-}
 
 function formatJpy(value: number): string {
   return `¥${value.toLocaleString("ja-JP")}`;
@@ -260,116 +74,9 @@ function isPurchased(
   return entitlements.premiumBundle;
 }
 
-function baseCtaLabel(product: AccessProduct, locale: AppResultLocale): string {
-  if (locale === "id") {
-    return product === "full_access" ? "Buka Edisi Lengkap →" : "Buka sekarang →";
-  }
-  if (locale === "en") {
-    if (product === "full_access") return "Unlock all results →";
-    return "Unlock now →";
-  }
-  if (locale === "ko") {
-    if (product === "self_report") return "학생 플랜으로 잠금 해제";
-    if (product === "full_access") return "완전판으로 잠금 해제";
-    return "프리미엄으로 잠금 해제";
-  }
-  if (product === "self_report") return "学生向けプランで開放する →";
-  if (product === "full_access") return "完全版で開放する →";
-  return "全部入りを解放する →";
-}
-
 // 運命の設計図アップセル (LegacyPremiumCard) の特典リスト。現行の販売は
 // premium_bundle のみのため、内容は全部入りの仕様 (チャット30回・相性込み)。
-const LEGACY_PREMIUM_FEATURES = {
-  id: [
-    {
-      title: "Pembacaan AI empat bab",
-      desc: "Baca kisahmu dari perjalanan masa lalu hingga titik balik yang akan datang.",
-    },
-    {
-      title: "30 jawaban dari astrolog pribadimu",
-      desc: "Minta panduan dari astrolog yang memahami kepribadian dan peta kelahiranmu.",
-    },
-    {
-      title: "Roda peta kelahiran pribadi",
-      desc: "Lihat susunan langit saat kamu lahir sebagai peta pribadi.",
-    },
-    {
-      title: "Kepribadian dan astrologi dalam satu analisis",
-      desc: "Pahami dirimu lebih dalam melalui sifat kepribadian dan astrologimu.",
-    },
-    {
-      title: "Buka analisis kecocokan",
-      desc: "Lihat peringkat kecocokan S sampai C untuk cinta, persahabatan, dan pekerjaan.",
-    },
-  ],
-  en: [
-    {
-      title: "A four-part AI reading",
-      desc: "Read your story from the path behind you to the turning points ahead.",
-    },
-    {
-      title: "30 replies from your personal astrologer",
-      desc: "Ask for guidance from an astrologer who understands your personality and birth chart.",
-    },
-    {
-      title: "Your personal birth-chart wheel",
-      desc: "See the sky at the moment you were born drawn as a personal blueprint.",
-    },
-    {
-      title: "Personality and astrology together",
-      desc: "Understand yourself more deeply by reading your personality and astrological traits together.",
-    },
-    {
-      title: "Unlock compatibility readings",
-      desc: "See S-to-C compatibility ratings with separate readings for love, friendship, and work.",
-    },
-  ],
-  ja: [
-    {
-      title: "4章立てのAI鑑定文",
-      desc: "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
-    },
-    {
-      title: "専属AI占い師に相談30回",
-      desc: "あなたの性格と星を全部知っている相手だから、話が早い。迷ったとき、いつでも。",
-    },
-    {
-      title: "出生図ホイール",
-      desc: "生まれた瞬間の星の配置から、あなたが本来持っている素質を一枚に。",
-    },
-    {
-      title: "性格診断 × 星の掛け合わせ",
-      desc: "「診断結果、当たってたけどなんで?」の答えが、星側から見えてきます。",
-    },
-    {
-      title: "相性診断機能を解放",
-      desc: "気になる相手との相性をS〜Cランクで判定。恋愛・友情・仕事、場面ごとの読み解きまで。",
-    },
-  ],
-  ko: [
-    {
-      title: "네 장으로 이어지는 AI 감정서",
-      desc: "지금까지의 걸음부터 앞으로 찾아올 전환점까지 읽어 드려요.",
-    },
-    {
-      title: "전담 AI 점성술사와 상담 30회",
-      desc: "성격 진단과 출생 차트를 이해한 점성술사에게 고민을 상담할 수 있어요.",
-    },
-    {
-      title: "나만의 출생 차트 휠",
-      desc: "태어난 순간의 천체 배치를 한 장의 설계도로 그려 드려요.",
-    },
-    {
-      title: "성격 진단과 별의 교차 해석",
-      desc: "성격과 별의 기질을 함께 살펴 나만의 모습을 깊이 이해해요.",
-    },
-    {
-      title: "궁합 진단 기능 해제",
-      desc: "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 해석까지 읽을 수 있어요.",
-    },
-  ],
-} as const;
+
 
 function LegacyPremiumCard({
   plan,
@@ -392,10 +99,11 @@ function LegacyPremiumCard({
   anchorId: string;
   onClose?: () => void;
 }) {
+  const uiText = useUiText(locale, "result.SelfAccessPlanCarousel");
   // LegacyPremiumCard は premium_bundle 専用 (2コース期の完全版分岐は 2026-08-26 撤去)。
   const checkoutPrice = accessProductPrice(locale, plan.product, entitlements);
   const isUpgrade = checkoutPrice !== plan.basePrice;
-  const features = LEGACY_PREMIUM_FEATURES[locale];
+  const features = useUiCopy(locale).carousel.premiumFeatures;
 
   return (
     <section
@@ -417,7 +125,7 @@ function LegacyPremiumCard({
         <button
           type="button"
           onClick={onClose}
-          aria-label={locale === "id" ? "Tutup" : locale === "en" ? "Close" : locale === "ko" ? "닫기" : "閉じる"}
+          aria-label={uiText("閉じる")}
           className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-[#2E2E5C] text-white shadow-[0_4px_12px_rgba(46,46,92,0.22)] transition hover:scale-105 active:scale-95 md:right-4 md:top-4 md:h-10 md:w-10"
         >
           <svg
@@ -450,34 +158,16 @@ function LegacyPremiumCard({
       <div className="relative z-10 px-6 py-8 text-left sm:px-8 md:px-12 md:py-7">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F3E4BD] px-3 py-1.5 text-[12px] font-black text-[#80571E]">
           <span aria-hidden="true">★</span>
-          {locale === "id"
-            ? "Buka semuanya"
-            : locale === "en"
-            ? "Unlock everything"
-            : locale === "ko"
-              ? "프리미엄에서 잠금 해제"
-              : "全部入りで解放"}
+          {uiText("全部入りで解放")}
         </span>
         <h2
           id={`${anchorId}-title`}
           className="mt-3 max-w-[650px] text-[27px] font-bold leading-[1.25] text-[#2E2E5C] sm:text-[31px] md:text-[36px]"
         >
-          {locale === "id"
-            ? "Buka kelanjutan kisahmu"
-            : locale === "en"
-            ? "Unlock the rest of your story"
-            : locale === "ko"
-              ? "나만의 운명의 설계도를 모두 잠금 해제하세요"
-              : "あなたの物語の続きを、全部入りで解放"}
+          {uiText("あなたの物語の続きを、全部入りで解放")}
         </h2>
         <p className="mt-3 max-w-[650px] text-[13.5px] font-bold leading-[1.7] text-[#5F6072] md:text-[15px]">
-          {locale === "id"
-            ? "Lanjutkan hasil kepribadianmu dengan Peta Takdir pribadi dan panduan Alice."
-            : locale === "en"
-            ? "Go beyond your personality result with your personal Destiny Blueprint and guidance from Alice."
-            : locale === "ko"
-              ? "출생 차트와 성격 진단을 함께 읽어, 지금까지의 걸음과 앞으로 찾아올 전환점을 하나의 이야기로 정리했어요."
-              : "性格診断で分かったのは、いまのあなた。ここから先は、これまでの歩みと、これから訪れる転換点の話です。出生図と掛け合わせた、あなただけの1冊をつくりました。"}
+          {uiText("性格診断で分かったのは、いまのあなた。ここから先は、これまでの歩みと、これから訪れる転換点の話です。出生図と掛け合わせた、あなただけの1冊をつくりました。")}
         </p>
 
         <ul className="mt-4 grid max-w-[670px] list-disc gap-1.5 pl-5 text-[13.5px] leading-[1.55] text-[#45475A] md:text-[14px]">
@@ -492,17 +182,11 @@ function LegacyPremiumCard({
         <div className="mt-5">
           {isUpgrade ? (
             <p className="mb-1 text-[12px] font-black text-[#9A6A24]">
-              {locale === "id"
-                ? "Bayar selisihnya saja"
-                : locale === "en"
-                ? "Pay only the difference"
-                : locale === "ko"
-                  ? "구매한 코스와의 차액만"
-                  : "購入済みコースとの差額だけ"}
+              {uiText("購入済みコースとの差額だけ")}
             </p>
           ) : plan.listPrice ? (
             <p className="mb-1 text-[13px] font-bold tabular-nums text-[#A0A0B4] line-through">
-              {locale === "id" ? "Harga acuan" : locale === "en" ? "Regular" : locale === "ko" ? "정가" : "通常"} {priceNode(plan.listPrice, locale)}
+              {uiText("通常")} {priceNode(plan.listPrice, locale)}
             </p>
           ) : null}
           <div className="flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
@@ -528,24 +212,12 @@ function LegacyPremiumCard({
             placement={onClose ? "modal" : "inline"}
             previewMode={previewMode}
           >
-            {locale === "id"
-              ? "Buka semua hasil"
-              : locale === "en"
-              ? "Upgrade all results"
-              : locale === "ko"
-                ? "결과를 프리미엄으로 업그레이드"
-                : "結果を全部入りにアップグレード"}
+            {uiText("結果を全部入りにアップグレード")}
           </FullAccessCta>
         </div>
 
         <p className="mt-2 text-[12px] font-bold text-[#7D7E8E]">
-          {locale === "id"
-            ? "Sekali bayar · garansi uang kembali 30 hari"
-            : locale === "en"
-            ? "One-time payment · 30-day money-back guarantee"
-            : locale === "ko"
-              ? "한 번만 결제 · 30일 환불 보장"
-              : "買い切り・30日間の返金保証つき"}
+          {uiText("買い切り・30日間の返金保証つき")}
         </p>
         {locale === "ko" ? (
           <KoreanPurchaseLegalNotice className="mt-3 max-w-[560px] text-left" />
@@ -587,6 +259,8 @@ function PlanCard({
   ctaLabel?: string;
   ebookPeek: UnlockPeek;
 }) {
+  const uiText = useUiText(locale, "result.SelfAccessPlanCarousel");
+  const { carousel: carouselCopy } = useUiCopy(locale);
   const paywallVersion: ThreeCoursePaywallVersion =
     accessPaywallVersionForLocale(locale);
   const purchased = isPurchased(plan.product, entitlements);
@@ -648,13 +322,7 @@ function PlanCard({
           >
             <path d="m5 12 4 4L19 6" />
           </svg>
-          {locale === "id"
-            ? "Dibeli"
-            : locale === "en"
-            ? "Purchased"
-            : locale === "ko"
-              ? "구매 완료 코스"
-              : "購入済みコース"}
+          {uiText("購入済みコース")}
         </div>
       ) : null}
 
@@ -700,21 +368,15 @@ function PlanCard({
       >
         {isUpgrade ? (
           <p className="text-[12px] font-bold tabular-nums text-[#7F8294] line-through md:text-[13px]">
-            {locale === "id" ? "Harga acuan" : locale === "en" ? "Regular" : locale === "ko" ? "정가" : "通常"} {priceNode(upgradeReferencePrice, locale)}
+            {uiText("通常")} {priceNode(upgradeReferencePrice, locale)}
           </p>
         ) : plan.listPrice ? (
           <p className="text-[12px] font-bold tabular-nums text-[#9A9DB0] line-through md:text-[13px]">
-            {locale === "id" ? "Harga acuan" : locale === "en" ? "Regular" : locale === "ko" ? "정가" : "通常"} {priceNode(plan.listPrice, locale)}
+            {uiText("通常")} {priceNode(plan.listPrice, locale)}
           </p>
         ) : moveOneTimePurchaseCaptionBelowPrice ? null : (
           <p className="text-[10px] font-black md:text-[11px]" style={{ color: plan.accent }}>
-            {locale === "id"
-              ? "Sekali bayar"
-              : locale === "en"
-              ? "One-time purchase"
-              : locale === "ko"
-                ? "모두 1회 결제"
-                : "すべて買い切り"}
+            {uiText("すべて買い切り")}
           </p>
         )}
         <div className="mt-1 flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
@@ -729,9 +391,7 @@ function PlanCard({
               className="mb-0.5 shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-black md:text-[11px]"
               style={{ backgroundColor: plan.soft, color: plan.accent }}
             >
-              {locale === "ko"
-                ? `총 ${upgradeDiscountPercent}% 할인`
-                : `${upgradeDiscountPercent}% OFF`}
+              {uiText("{upgradeDiscountPercent}% OFF", { upgradeDiscountPercent })}
             </span>
           ) : plan.badge ? (
             <span
@@ -744,13 +404,7 @@ function PlanCard({
         </div>
         {moveOneTimePurchaseCaptionBelowPrice ? (
           <p className="mt-1 text-[10px] font-bold text-[#7F8294] md:text-[11px]">
-            {locale === "id"
-              ? "Sekali bayar (tanpa langganan)"
-              : locale === "en"
-              ? "One-time payment (no subscription)"
-              : locale === "ko"
-                ? "1회 결제(추가 구독 없음)"
-                : "買い切り（お支払いは1回のみ）"}
+            {uiText("買い切り（お支払いは1回のみ）")}
           </p>
         ) : null}
       </div>
@@ -765,7 +419,7 @@ function PlanCard({
             className="flex w-full items-center justify-center rounded-full border-2 px-6 py-3.5 text-[14px] font-black"
             style={{ borderColor: plan.accent, color: plan.accent }}
           >
-            {locale === "id" ? "Dibeli" : locale === "en" ? "Purchased" : locale === "ko" ? "구매 완료" : "購入済み"}
+            {uiText("購入済み")}
           </div>
         ) : (
           <FullAccessCta
@@ -782,17 +436,9 @@ function PlanCard({
             {ctaLabel ??
               (isUpgrade
                 ? plan.product === "premium_bundle"
-                  ? locale === "en"
-                    ? "Upgrade everything"
-                    : locale === "ko"
-                      ? "프리미엄으로 업그레이드"
-                      : "全部入りにアップグレード"
-                  : locale === "en"
-                    ? "Upgrade to the Complete Edition"
-                    : locale === "ko"
-                      ? "완전판으로 업그레이드"
-                      : "完全版にアップグレード"
-                : baseCtaLabel(plan.product, locale))}
+                  ? uiText("全部入りにアップグレード")
+                  : uiText("完全版にアップグレード")
+                : carouselCopy.ctaLabel(plan.product))}
           </FullAccessCta>
         )}
       </div>
@@ -804,14 +450,7 @@ function PlanCard({
       >
         {visibleItems.map((item, index) => {
           const inherited = index < plan.inheritedItemCount;
-          const peek =
-            locale === "id"
-              ? undefined
-              : locale === "en"
-              ? englishPlanItemPeek(item)
-              : locale === "ko"
-                ? koreanPlanItemPeek(item)
-                : japanesePlanItemPeek(item, ebookPeek);
+          const peek = carouselCopy.peekForItem(item, ebookPeek);
           const premiumIntroduction =
             plan.product === "premium_bundle" && inherited;
           const premiumDifference =
@@ -890,7 +529,7 @@ export function SelfAccessPlanCarousel({
   legacyStyle = false,
   heading,
   ctaLabel,
-  ebookPeek = PEEK_EBOOK,
+  ebookPeek: suppliedEbookPeek,
 }: {
   ownerToken?: string;
   anchorId: string;
@@ -916,8 +555,10 @@ export function SelfAccessPlanCarousel({
   /** 電子書籍のチラ見せ。診断結果では本人のタイプ別最新表紙を渡す。 */
   ebookPeek?: UnlockPeek;
 }) {
-  const allPlans =
-    locale === "id" ? ID_PLANS : locale === "en" ? EN_PLANS : locale === "ko" ? KO_PLANS : JA_PLANS;
+  const uiText = useUiText(locale, "result.SelfAccessPlanCarousel");
+  const { carousel: copy, peeks } = useUiCopy(locale);
+  const allPlans = copy.plans;
+  const ebookPeek = suppliedEbookPeek ?? peeks.ebook;
   const paywallVersion: ThreeCoursePaywallVersion =
     accessPaywallVersionForLocale(locale);
   const isSingleOffer =
@@ -1128,7 +769,7 @@ export function SelfAccessPlanCarousel({
         <button
           type="button"
           onClick={onClose}
-          aria-label={locale === "id" ? "Tutup" : locale === "en" ? "Close" : locale === "ko" ? "닫기" : "閉じる"}
+          aria-label={uiText("閉じる")}
           className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#2E2E5C] text-white shadow-[0_5px_16px_rgba(46,46,92,0.28)] transition hover:scale-105 active:scale-95 md:right-3 md:top-3 md:h-10 md:w-10"
         >
           <svg
@@ -1162,13 +803,7 @@ export function SelfAccessPlanCarousel({
               compact
               previewMode={previewMode}
             >
-              {locale === "id"
-                ? "Coba paket yang sama lagi"
-                : locale === "en"
-                ? "Try the same plan again"
-                : locale === "ko"
-                  ? "같은 코스로 다시 결제하기"
-                  : "同じコースでもう一度決済する"}
+              {uiText("同じコースでもう一度決済する")}
             </FullAccessCta>
           }
         />
@@ -1198,20 +833,14 @@ export function SelfAccessPlanCarousel({
                 : locale === "ko"
                   ? `완전판을 ${formatPrice(plans[0]?.basePrice ?? FULL_ACCESS_PRICE_KRW, locale)}에 모두 해제`
                   : `完全版を、${formatJpy(plans[0]?.basePrice ?? FULL_ACCESS_PRICE_JPY)}で全開放`
-              : locale === "id"
-                ? "Pilih yang ingin kamu buka"
-                : locale === "en"
-                ? "Choose what you want to unlock"
-                : locale === "ko"
-                  ? "나에게 맞는 해제 범위를 선택하세요"
-                  : "あなたに合う解放範囲を選ぶ")}
+              : uiText("あなたに合う解放範囲を選ぶ"))}
         </h2>
       </div>
 
       {plans.length > 1 ? (
         <div
           role="tablist"
-          aria-label={locale === "id" ? "Pilih paket" : locale === "en" ? "Choose a plan" : locale === "ko" ? "코스 선택" : "コースを選択"}
+          aria-label={uiText("コースを選択")}
           className="mx-4 mt-3 grid grid-cols-3 gap-1 rounded-full bg-[#EDEEF6] p-1 md:hidden"
         >
           {plans.map((plan, index) => {
@@ -1240,7 +869,7 @@ export function SelfAccessPlanCarousel({
       <div
         ref={scrollerRef}
         role="list"
-        aria-label={locale === "id" ? "Paket" : locale === "en" ? "Plans" : locale === "ko" ? "요금제" : "料金プラン"}
+        aria-label={uiText("料金プラン")}
         onScroll={handleScroll}
         className={`flex items-stretch snap-x snap-mandatory overflow-x-auto pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-4 md:px-6 md:pt-1.5 lg:overflow-visible lg:snap-none ${
           onClose
@@ -1322,13 +951,7 @@ export function SelfAccessPlanCarousel({
                 : "whitespace-nowrap leading-none"
             }
           >
-            {locale === "id"
-              ? `Garansi uang kembali 30 hari · Dipercaya oleh ${DIAGNOSIS_COUNT_SNAPSHOT}+ orang`
-              : locale === "en"
-              ? `30-day money-back guarantee · Trusted by ${DIAGNOSIS_COUNT_SNAPSHOT}+ people`
-              : locale === "ko"
-                ? "30일 환불 보장 · 많은 고객이 신뢰하고 있습니다"
-                : `30日間の返金保証・${DIAGNOSIS_COUNT_SNAPSHOT}人以上から信頼されています`}
+            {uiText("30日間の返金保証・{DIAGNOSIS_COUNT_SNAPSHOT}人以上から信頼されています", { DIAGNOSIS_COUNT_SNAPSHOT })}
           </p>
         </div>
         {locale === "ko" ? (

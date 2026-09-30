@@ -25,10 +25,10 @@ const indonesianCommercePage = read(
 const koreanCommercePage = read("src/app/ko/legal/commerce/page.tsx");
 const koreanTermsPage = read("src/app/ko/terms/page.tsx");
 const indonesianPlans = read(
-  "src/components/result/SelfAccessPlanCarousel.tsx",
+  "src/i18n/ui/messages/id.ts",
 );
 const fullAccessPromo = read(
-  "src/components/result/FullAccessPromoCard.tsx",
+  "src/i18n/ui/messages/id.ts",
 );
 const fullAccessCta = read("src/components/result/FullAccessCta.tsx");
 const hoshiyomiCopy = read("src/i18n/hoshiyomi.ts");

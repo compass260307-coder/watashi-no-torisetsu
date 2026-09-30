@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiText } from "@/i18n/ui/use-ui-copy";
+
 // ロック要素の「今すぐアクセス」等を押したとき、その場でポップアップ表示する課金モーダル。
 // 2026-07-22: 最下部カードへのスクロールから、モーダル形式に変更 (16Personalities 参考)。
 //
@@ -15,14 +17,14 @@
 // のほか、下部ナビのロック相性タブなど「タップでその場で開きたい」呼び出し元が
 // open/onClose を自前管理して直接使えるようにした。
 
+import type { AppResultLocale } from "@/i18n/result";
+import type { AccessProduct } from "@/lib/access-products";
+import type { PaywallCardMode } from "@/lib/feature-flags";
+import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
+import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FullAccessPromoCard } from "./FullAccessPromoCard";
-import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
-import type { AccessProduct } from "@/lib/access-products";
-import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
-import type { AppResultLocale } from "@/i18n/result";
-import type { PaywallCardMode } from "@/lib/feature-flags";
 
 interface PaywallModalProps {
   ownerToken?: string;
@@ -60,6 +62,7 @@ export function PaywallOverlay({
   ctaSource?: string;
   scrollLocked?: boolean;
 }) {
+  const uiText = useUiText(cardProps.locale ?? "ja", "result.PaywallModal");
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -114,9 +117,6 @@ export function PaywallOverlay({
     };
   }, [onClose]);
 
-  const isKorean = cardProps.locale === "ko";
-  const isEnglish = cardProps.locale === "en";
-  const isIndonesian = cardProps.locale === "id";
 
   const updateScrollToTopVisibility = () => {
     const container = scrollContainerRef.current;
@@ -149,7 +149,7 @@ export function PaywallOverlay({
       role="dialog"
       aria-modal="true"
       tabIndex={-1}
-      aria-label={isEnglish ? "Unlock results" : isIndonesian ? "Buka hasil" : isKorean ? "잠금 해제" : "ロック解除"}
+      aria-label={uiText("ロック解除")}
       // 背景は固定 (スクロールしない)。箱を中央に置き、中身だけスクロールさせる。
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2E2E5C]/55 px-3 py-5 backdrop-blur-sm md:py-8"
       onClick={onClose}
@@ -173,7 +173,7 @@ export function PaywallOverlay({
       </div>
       <button
         type="button"
-        aria-label={isEnglish ? "Back to the top of this dialog" : isIndonesian ? "Kembali ke bagian atas dialog" : isKorean ? "모달 맨 위로 이동" : "モーダル上部へ戻る"}
+        aria-label={uiText("モーダル上部へ戻る")}
         aria-hidden={!showScrollToTop}
         tabIndex={showScrollToTop ? 0 : -1}
         onClick={(event) => {
@@ -200,7 +200,7 @@ export function PaywallOverlay({
         >
           <path d="m6 15 6-6 6 6" />
         </svg>
-        <span>{isEnglish ? "Top" : isIndonesian ? "Ke atas" : isKorean ? "맨 위로" : "上へ"}</span>
+        <span>{uiText("上へ")}</span>
       </button>
     </div>,
     document.body,

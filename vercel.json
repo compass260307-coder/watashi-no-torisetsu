@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "node scripts/ignore-documentation-build.mjs",
   "functions": {
     "src/app/api/hoshiyomi/chat/route.ts": {
       "supportsCancellation": true

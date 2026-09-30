@@ -1,8 +1,9 @@
 "use client";
+import { useUiCopy } from "@/i18n/ui/use-ui-copy";
 
+import { PaywallOverlay } from "@/components/result/PaywallModal";
 import { Component, lazy, Suspense, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { PaywallOverlay } from "@/components/result/PaywallModal";
 
 // Keep checkout code in the initial bundle so opening a purchase dialog does not
 // wait for another JavaScript download. Login remains loaded on demand.
@@ -11,20 +12,13 @@ const LoginModal = lazy(() =>
   import("@/components/LoginModal").then((mod) => ({ default: mod.LoginModal })),
 );
 
-const LOADING_COPY = {
-  ja: ["読み込み中…", "閉じる", "読み込みに失敗しました。ページを更新すると、入力中の内容が失われる場合があります。", "ページを更新"],
-  ko: ["불러오는 중…", "닫기", "불러오지 못했습니다. 새로고침하면 입력 중인 내용이 사라질 수 있습니다.", "새로고침"],
-  en: ["Loading…", "Close", "Could not load. Reloading may discard unsaved answers.", "Reload page"],
-  id: ["Memuat…", "Tutup", "Gagal dimuat. Memuat ulang dapat menghapus jawaban yang belum disimpan.", "Muat ulang"],
-  th: ["กำลังโหลด…", "ปิด", "โหลดไม่ได้ การโหลดใหม่อาจทำให้คำตอบที่ยังไม่ได้บันทึกหายไป", "โหลดหน้าใหม่"],
-} as const;
-
 type FeedbackProps = {
   onClose: () => void;
-  locale?: keyof typeof LOADING_COPY;
+  locale?: "ja" | "en" | "ko" | "id";
 };
 
 function LoadingDialog({ onClose, locale = "ja", failed = false }: FeedbackProps & { failed?: boolean }) {
+  const copy = useUiCopy(locale).loading;
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -52,7 +46,7 @@ function LoadingDialog({ onClose, locale = "ja", failed = false }: FeedbackProps
   }, [onClose]);
 
   if (typeof document === "undefined") return null;
-  const [loading, close, failure, reload] = LOADING_COPY[locale];
+  const [loading, close, failure, reload] = copy;
   return createPortal(
     <div ref={dialogRef} className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/45 px-5"
       role="dialog" aria-modal="true" aria-label={failed ? failure : loading}>

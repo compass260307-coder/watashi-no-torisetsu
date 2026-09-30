@@ -268,6 +268,9 @@ export default function TypesGalleryPage({
                               alt={essence}
                               width={512}
                               height={512}
+                              // Match the 1/2/4-column grid, its padding and gaps,
+                              // including the 420px cap below the sm breakpoint.
+                              sizes="(min-width: 1024px) calc(25vw - 34px), (min-width: 768px) calc(50vw - 44px), (min-width: 640px) calc(50vw - 16px), (min-width: 444px) 420px, calc(100vw - 24px)"
                               placeholderColor="transparent"
                               loading={
                                 groupIndex === 0 && typeIndex < 4

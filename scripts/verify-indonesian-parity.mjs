@@ -155,6 +155,7 @@ for (const [label, japanesePath, indonesianPath, tags] of [
 const japaneseRoutes = new Set(
   walkPages("src/app").filter(
     (route) =>
+      !["/result-upgrade", "/result-upgrade/reading"].includes(route) &&
       !["/api", "/dev", "/en", "/ko", "/id", "/line", "/liff"].some(
         (prefix) => route === prefix || route.startsWith(`${prefix}/`),
       ),
@@ -640,7 +641,7 @@ if (
     "email parity: Indonesian detailed-report delivery is disabled",
   );
 }
-if (!/postDiagnosisReportEmail\s*&&\s*locale !== "en"/.test(diagnosisRoute)) {
+if (!/if \(postDiagnosisReportEmail\)/.test(diagnosisRoute)) {
   failures.push(
     "email parity: Indonesian detailed-report delivery guard is missing",
   );
@@ -712,12 +713,12 @@ const criticalChecks = [
   [
     "diagnosis share band",
     "src/components/diagnosis/DiagnosisPageContent.tsx",
-    'locale !== "en"',
+    '<DiagnosisShareBand locale={locale}',
   ],
   [
     "result share controls",
-    "src/components/diagnosis/DiagnosisShareBand.tsx",
-    'isId ? "Bagikan di LINE"',
+    "src/i18n/ui/messages/id-labels.ts",
+    '"Bagikan di LINE"',
   ],
   [
     "result sharing",

@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import DiagnosisPageContent from "@/components/diagnosis/DiagnosisPageContent";
+import DiagnosisPageContent from "@/components/diagnosis/ko/DiagnosisPage";
 import { KO_BRAND_NAME, KO_DEFAULT_OG_IMAGE, KO_SITE_NAME } from "@/lib/locale-seo";
+import type { Metadata } from "next";
 
 const BASE_URL = "https://www.watashi-torisetsu.com";
 const KO_DIAGNOSIS_URL = `${BASE_URL}/ko/diagnosis`;
@@ -75,7 +75,7 @@ export default function KoreanDiagnosisPage() {
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
         }}
       />
-      <DiagnosisPageContent locale="ko" />
+      <DiagnosisPageContent />
     </>
   );
 }

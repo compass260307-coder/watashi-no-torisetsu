@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
 
 export function ResultUpgradeGenerationWatcher({
   initialState,
@@ -10,51 +11,21 @@ export function ResultUpgradeGenerationWatcher({
   initialState: string;
 }) {
   const router = useRouter();
-  const [state, setState] = useState(initialState);
+  const [progress, setProgress] = useState<{ source: string; state: string } | null>(null);
+  const state = progress?.source === initialState ? progress.state : initialState;
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (state === "ready") return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    async function kick() {
-      try {
-        await fetch("/api/result-upgrade/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force: retryKey > 0 }),
-        });
-      } catch {
-        // 次回のstatus取得で回復する。
-      }
-    }
-
-    async function poll() {
-      if (cancelled) return;
-      try {
-        const response = await fetch("/api/result-upgrade/status", { cache: "no-store" });
-        if (response.ok) {
-          const data = (await response.json()) as { state?: string };
-          if (data.state === "ready") {
-            setState("ready");
-            router.refresh();
-            return;
-          }
-          if (typeof data.state === "string") setState(data.state);
-        }
-      } catch {
-        // 一時的な通信失敗は待機を継続する。
-      }
-      timer = setTimeout(poll, 2_000);
-    }
-
-    void kick().then(poll);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [retryKey, router, state]);
+    if (initialState === "ready" || (initialState === "failed" && retryKey === 0)) return;
+    return watchResultUpgrade({
+      force: retryKey > 0,
+      onReady: () => {
+        setProgress({ source: initialState, state: "ready" });
+        router.refresh();
+      },
+      onFailed: () => setProgress({ source: initialState, state: "failed" }),
+    });
+  }, [initialState, retryKey, router]);
 
   if (state === "ready") {
     return (
@@ -74,7 +45,7 @@ export function ResultUpgradeGenerationWatcher({
           type="button"
           onClick={() => {
             setRetryKey((value) => value + 1);
-            setState("generating");
+            setProgress({ source: initialState, state: "generating" });
           }}
           className="rounded-full bg-[#8A3932] px-4 py-2 text-white"
         >

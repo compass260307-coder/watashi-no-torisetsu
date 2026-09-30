@@ -203,6 +203,7 @@ function HeroStillImage() {
       alt=""
       width={1916}
       height={1080}
+      sizes="(min-width: 1080px) 468px, (min-width: 768px) calc(46vw - 29.44px), calc(100vw - 32px)"
       className="w-full rounded-3xl object-cover"
     />
   );
@@ -274,6 +275,7 @@ function Slot({
             alt={typeEssence(id, locale)}
             width={300}
             height={300}
+            sizes="(min-width: 768px) 190px, 120px"
             className="absolute bottom-0 left-1/2 w-[120px] md:w-[190px] max-w-none -translate-x-1/2"
           />
         ) : (
@@ -282,6 +284,7 @@ function Slot({
             alt={typeEssence(id, locale)}
             width={240}
             height={240}
+            sizes="(min-width: 924px) 384px, (min-width: 768px) calc(50vw - 78px), (min-width: 592px) 254px, calc(50vw - 42px)"
             className="h-full w-full rounded-[14px] object-cover"
           />
         )}
@@ -960,6 +963,7 @@ function ResultBlock({
                 }
                 width={512}
                 height={512}
+                sizes="(min-width: 1077px) 560px, (min-width: 768px) 52vw, (min-width: 625px) 500px, 80vw"
                 unoptimized={UNOPTIMIZED_IN_DEV}
                 priority
                 className="w-[80vw] max-w-[500px] md:w-[560px] md:max-w-[52vw] object-contain"
@@ -1069,6 +1073,7 @@ function TypeGrid({
                           alt={typeEssence(id, locale)}
                           width={168}
                           height={168}
+                          sizes="(min-width: 768px) 84px, 72px"
                           className="absolute bottom-0 left-4 w-[72px] md:w-[84px] max-w-none"
                         />
                         {/* 役職名は画像を除いた残り幅の中央に置く */}
@@ -1101,6 +1106,7 @@ function TypeGrid({
                         alt={typeEssence(id, locale)}
                         width={96}
                         height={96}
+                        sizes="(min-width: 768px) 64px, 56px"
                         className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-cover shrink-0"
                       />
                       <span
@@ -1263,6 +1269,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                 alt={typeEssence(slotA, locale)}
                 width={360}
                 height={360}
+                sizes="(min-width: 706px) 240px, 34vw"
                 className="w-[34vw] max-w-[240px] object-contain"
               />
               <span
@@ -1283,6 +1290,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                 alt={typeEssence(slotB, locale)}
                 width={360}
                 height={360}
+                sizes="(min-width: 706px) 240px, 34vw"
                 className="w-[34vw] max-w-[240px] object-contain"
               />
             </div>

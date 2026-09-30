@@ -1,5 +1,6 @@
 import KoTopCta from "@/components/ko/top/KoTopCta";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+import { TOP_HERO_BACKGROUNDS, TOP_HERO_BACKGROUND_STYLE } from "@/lib/top-hero-background";
 
 export default function KoTopHero() {
   return (
@@ -7,17 +8,20 @@ export default function KoTopHero() {
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual.webp"
+        href={TOP_HERO_BACKGROUNDS.desktop}
         media="(min-width: 640px)"
       />
       <link
         rel="preload"
         as="image"
-        href="/characters/keyvisual-mobile.webp"
+        href={TOP_HERO_BACKGROUNDS.mobile}
         media="(max-width: 639px)"
       />
 
-      <section className="top-hero-bg relative h-[178vw] w-full overflow-hidden sm:h-[61vw] sm:min-h-[78vh]">
+      <section
+        className="top-hero-bg relative h-[178vw] w-full overflow-hidden sm:h-[61vw] sm:min-h-[78vh]"
+        style={TOP_HERO_BACKGROUND_STYLE}
+      >
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[5%]"

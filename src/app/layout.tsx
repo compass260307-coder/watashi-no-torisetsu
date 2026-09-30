@@ -1,13 +1,14 @@
-import { Suspense } from "react";
+import { BottomNav } from "@/components/BottomNav";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
+import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
+import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
-import GoogleAnalytics from "@/components/GoogleAnalytics";
-import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
-import { BottomNav } from "@/components/BottomNav";
-import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
-import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 
 // Define the queue synchronously in <head>, before result-page effects run.
 const X_PIXEL_SCRIPT = `!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');twq('config','rg1zg');`;
@@ -256,10 +257,15 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: AD_CLICK_CAPTURE_SCRIPT }} />
         {/* 流入元リファラー補完: 外部 referrer ホストの first-touch キャプチャ (wt_ref_host) */}
         <script dangerouslySetInnerHTML={{ __html: REFERRER_CAPTURE_SCRIPT }} />
-        {children}
-        {/* 全ページ共通ボトムナビ (ハンバーガー撤去の代替) */}
         <Suspense fallback={null}>
-          <BottomNav />
+          <LocaleUiBoundary>
+            {children}
+            {/* Keep this inner boundary: BottomNav's useSearchParams must not
+                move the statically rendered page body to client-only rendering. */}
+            <Suspense fallback={null}>
+              <BottomNav />
+            </Suspense>
+          </LocaleUiBoundary>
         </Suspense>
         <GoogleAnalytics />
         <Script id="google-tag-manager" strategy="afterInteractive">
