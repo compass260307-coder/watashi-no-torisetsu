@@ -12,8 +12,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LoginModal } from "@/components/LoginModal";
-import { PaywallOverlay } from "@/components/result/PaywallModal";
+import { DeferredLoginModal as LoginModal, DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { resetLocalData } from "@/lib/reset-data";
@@ -722,11 +721,9 @@ export default function TopHeader({
       </dialog>
 
       {/* ログインモーダル (現在のページの上に重ねる) */}
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        locale={locale}
-      />
+      {loginOpen ? (
+        <LoginModal open onClose={() => setLoginOpen(false)} locale={locale} />
+      ) : null}
 
       {/* 未診断でロック中の友達診断テストを押したときの吹き出し (BottomNav と共用)。
           画面下部・ボトムナビの友達診断タブの真上に出る。 */}

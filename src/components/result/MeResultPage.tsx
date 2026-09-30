@@ -37,7 +37,6 @@ import { getSession } from "@/lib/session";
 import {
   classifySixteenType,
   sixteenTypes,
-  characterImagePath,
 } from "@/lib/sixteen-types";
 import { selfResultContent } from "@/lib/self-result-content";
 // 32タイプ本文 (フラグ on 時のみ・本文だけ32化。型名/画像は16のまま)
@@ -404,6 +403,9 @@ async function MeResultPageContent({
       ]);
   // 自由回答には私的な内容が含まれるため、専用結果は owner_token を知るだけの閲覧者には
   // 出さず、本人セッションで開いた /me にだけ反映する。
+  const previewCharacterImage = preferCutImage(
+    thirtyTwoImagePath(previewType ?? "sparkle-dolphin__N"),
+  );
   const previewResultUpgrade: ResultUpgradeRow | null = previewUpgrade
     ? {
         user_id: "preview",
@@ -415,7 +417,7 @@ async function MeResultPageContent({
           "大切な人との時間を守りながら、新しい仕事にも挑戦すること",
         ],
         source_type_id: previewType ?? "sparkle-dolphin__N",
-        source_character_path: "/dev/result-upgrade-character-preview.png",
+        source_character_path: previewCharacterImage,
         state: "ready",
         personalized_type_name: "静かな芯を持つ寄添者",
         personalized_intro:
@@ -447,7 +449,7 @@ async function MeResultPageContent({
           ],
           closingMessage: "静かに過ごす夜も、新しいことを試す日も、どちらも同じあなたです。深い青のノートに小さな星を増やすように、自分の速度で進んでいけます。",
         },
-        character_storage_path: "preview/result-upgrade-character-preview.png",
+        character_storage_path: "preview-character",
         text_model: "preview",
         image_model: "preview",
         attempts: 1,
@@ -939,13 +941,11 @@ async function MeResultPageContent({
   // キャラ画像: /types と同じく背景除去済みの透過版 (characters/cut) を優先。
   //   v3 原画の地色は帯色と微妙にズレて四角い縁が見えるため、透過版なら帯に完全に馴染む。
   //   透過版が無いタイプのみ v3 にフォールバック。
-  const v3Image = flag32
-    ? thirtyTwoImagePath(t32)
-    : characterImagePath(sixteenTypeId);
+  const v3Image = thirtyTwoImagePath(t32);
   const dispImage = preferCutImage(v3Image);
   const displayCharacterImage = resultUpgradeReady
     ? previewUpgrade
-      ? "/dev/result-upgrade-character-preview.png"
+      ? previewCharacterImage
       : `/api/result-upgrade/character/${encodeURIComponent(token)}${
           resultUpgrade.generated_at
             ? `?v=${encodeURIComponent(resultUpgrade.generated_at)}`

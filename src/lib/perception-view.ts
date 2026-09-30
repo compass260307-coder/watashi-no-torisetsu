@@ -3,7 +3,7 @@
 // で共有する「計算ロジック」。スコア計算・タイプ判定・ギャップは perception-analysis 等の
 // 既存ロジックをそのまま使い、ここでは表示用の文字列/データに束ねるだけ (意味は不変)。
 
-import { classifySixteenType, sixteenTypes, characterImagePath } from "./sixteen-types";
+import { classifySixteenType, sixteenTypes } from "./sixteen-types";
 import { isThirtyTwoEnabled } from "./feature-flags";
 import {
   classifyThirtyTwoType,
@@ -175,9 +175,7 @@ export function buildPerceptionView(input: PerceptionViewInput): PerceptionView 
       : flag32
         ? thirtyTwoEssence(perceived32Id)
         : perceivedType16.essence;
-  const dispImage = flag32
-    ? thirtyTwoImagePath(perceived32Id)
-    : characterImagePath(perceivedTypeId);
+  const dispImage = thirtyTwoImagePath(perceived32Id);
   const dispDesc = isEn
     ? enType.oneLiner
     : isId

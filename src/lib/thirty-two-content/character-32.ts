@@ -3,10 +3,8 @@
 // ユーザー確定の対応表どおり。base16 の元の動物/性格は無視し、生息地グループ優先で
 // 名前・動物画像・essence・oneLiner・グループ色を上書きする。
 //   - グループ = base16 の E×O (空=G3 / 陸=G2 / 海=G1 / 未知=G4)
-//   - 画像は public/characters/v3/<slug>.png (slug は <英名>_<N|R>)
-//   - フラグ on のときだけ表示パスがこれを参照する。off は従来16 (sixteenTypes / v2)。
-//
-// 本番16データ (sixteen-types.ts / public/characters/v2) は無改変。
+//   - 画像は public/characters/v3/<slug>.webp (slug は <英名>_<N|R>)。
+//   - 画像は現行32キャラに統一。16タイプ分類はテキスト・スコアの互換用に残す。
 
 import type { ThirtyTwoTypeId } from "../thirty-two-types";
 
@@ -19,7 +17,7 @@ export interface ThirtyTwoCharacter {
   oneLiner: string; // 一文紹介 (フラグ on 時のヒーロー/ShareCard 説明文)
   catchphrase: string; // キャラ名言 (ヒーロー・コード直下。グレース基調・セリフ体で1行表示)
   zukanDesc: string; // 図鑑専用の一言説明文 (/zukan-internal カード。性格を端的に説明する事典風)
-  slug: string; // 画像ファイル名 (拡張子なし) 例: parakeet_N → /characters/v3/parakeet_N.png
+  slug: string; // 画像ファイル名 (拡張子なし) 例: parakeet_N → /characters/v3/parakeet_N.webp
   group: ThirtyTwoGroup;
 }
 

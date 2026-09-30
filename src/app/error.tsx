@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import Link from "next/link";
+import { isChunkLoadError } from "@/lib/chunk-load-error";
 
 export default function Error({
   error,
@@ -11,6 +12,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const chunkError = isChunkLoadError(error);
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -30,17 +32,17 @@ export default function Error({
           ごめんなさい、エラーが発生しました🐧
         </h1>
         <p className="text-sm text-muted leading-relaxed mb-8">
-          一時的な問題かもしれません。
-          <br />
-          もう一度お試しください。
+          {chunkError
+            ? "ページの読み込みに失敗しました。更新すると、入力中の内容が失われる場合があります。"
+            : "一時的な問題かもしれません。もう一度お試しください。"}
         </p>
         <div className="flex flex-col gap-3 items-center">
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={() => chunkError ? window.location.reload() : reset()}
             className="rounded-full bg-primary-gradient px-8 py-4 text-base font-bold text-white shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] transition-transform"
           >
-            もう一度試す
+            {chunkError ? "ページを更新" : "もう一度試す"}
           </button>
           <Link
             href="/"

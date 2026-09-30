@@ -230,14 +230,3 @@ const ANIMAL_SLUG: Record<SixteenTypeId, string> = {
 export function animalSlugForType(id: SixteenTypeId): string {
   return ANIMAL_SLUG[id] ?? "rabbit";
 }
-
-// キャラ画像アセットのバージョン。同名で差し替えた時のキャッシュ更新用。
-// 確実に効かせるためクエリ(?v=)ではなくバージョン付きディレクトリ /characters/v{N}/ を使う
-// (この非標準 Next では next/image がローカル src のクエリを扱えず画像が出ないため)。
-// 差し替え時はこの数値を上げ、public/characters/v{N}/ に画像を置く。
-export const CHARACTER_ASSET_VERSION = 2;
-
-/** 型 → キャラ画像パス (/characters/v{N}/{animal}.png、ディレクトリでキャッシュバスト) */
-export function characterImagePath(id: SixteenTypeId): string {
-  return `/characters/v${CHARACTER_ASSET_VERSION}/${animalSlugForType(id)}.png`;
-}
