@@ -50,6 +50,7 @@ export function DiagnosisHero({
             alt={imageAlt}
             width={1448}
             height={1086}
+            sizes="(min-width: 768px) 460px, (min-width: 452px) 420px, calc(100vw - 32px)"
             priority
             className="mx-auto h-auto w-full max-w-[420px] md:w-[460px] md:max-w-none"
           />

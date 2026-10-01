@@ -148,6 +148,7 @@ export function ArticleGrid({
                   alt={a.imageAlt}
                   width={724}
                   height={543}
+                  sizes="(min-width: 1144px) 296px, (min-width: 1024px) calc((100vw - 256px) / 3), (min-width: 784px) 300px, (min-width: 640px) calc(50vw - 92px), (min-width: 412px) 300px, calc(100vw - 112px)"
                   className="h-auto w-full max-w-[300px]"
                 />
               </div>
