@@ -1,58 +1,41 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { trackX, X_DIAGNOSIS_PENDING_PREFIX, type XEventParams } from "@/lib/xPixel";
+import { useEffect } from "react";
+import { trackXEventsOnce, type XEventParams } from "@/lib/xPixel";
 
-const sentEvents = new Set<string>();
-
-export function XTrack({ eventId, params, requireDiagnosisCompletion = false }: {
-  eventId: string;
+export function XTrack({ eventIds, params, requireDiagnosisCompletion = false }: {
+  eventIds: readonly string[];
   params: XEventParams;
   requireDiagnosisCompletion?: boolean;
 }) {
-  const sent = useRef(false);
+  const eventIdsKey = eventIds.join(",");
+  const { conversion_id: conversionId, value, currency } = params;
   useEffect(() => {
-    if (sent.current || typeof window.twq !== "function") return;
-    const key = `wt_x_sent_v1:${eventId}:${params.conversion_id}`;
-    if (sentEvents.has(key)) return;
-    // Page-independent key: the same Stripe session stays claimed across
-    // client navigation, full page loads and reloads within this tab.
-    try {
-      if (sessionStorage.getItem(key) === "1") return;
-    } catch {
-      // Fall back to the existing persistent and in-memory guards.
-    }
-    try {
-      if (localStorage.getItem(key) === "1") return;
-    } catch {
-      // In-memory deduplication still covers Strict Mode and remounts.
-    }
-    if (requireDiagnosisCompletion) {
-      // Only the tab that successfully saved this diagnosis may consume the marker.
-      // Missing/expired storage fails closed, including shared result links.
-      try {
-        const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
-        const savedAt = Number(sessionStorage.getItem(markerKey));
-        const age = Date.now() - savedAt;
-        if (!savedAt || age < 0 || age > 10 * 60 * 1000) return;
-        sessionStorage.removeItem(markerKey);
-      } catch {
-        return;
+    if (!eventIdsKey || !conversionId) return;
+    let active = true;
+    let attempts = 0;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const send = async () => {
+      const complete = await trackXEventsOnce(
+        eventIdsKey.split(","),
+        {
+          conversion_id: conversionId,
+          ...(value !== undefined ? { value } : {}),
+          ...(currency !== undefined ? { currency } : {}),
+        },
+        requireDiagnosisCompletion,
+        () => active,
+      );
+      // Covers a delayed twq loader or a temporarily failing destination.
+      if (active && !complete && ++attempts < 20) {
+        timeout = setTimeout(() => { void send(); }, 250);
       }
-    }
-    sent.current = true;
-    sentEvents.add(key);
-    try {
-      sessionStorage.setItem(key, "1");
-    } catch {
-      // Storage restrictions must not interrupt the purchase completion page.
-    }
-    trackX(eventId, params);
-    try {
-      localStorage.setItem(key, "1");
-    } catch {
-      // The conversion_id is also stable for advertising-side deduplication.
-    }
-  }, [eventId, params, requireDiagnosisCompletion]);
+    };
+    void send();
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [eventIdsKey, conversionId, value, currency, requireDiagnosisCompletion]);
   return null;
 }

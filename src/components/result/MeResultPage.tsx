@@ -1,5 +1,5 @@
 import { XTrack } from "@/components/XTrack";
-import { X_DIAGNOSIS_COMPLETE_EVENT_ID } from "@/lib/xPixel";
+import { X_DIAGNOSIS_COMPLETE_EVENT_IDS } from "@/lib/xPixel";
 // プレミアム化 v3 Day 9: 個人の永続アクセス点 (/me/[token])
 // Phase 1.5-α Day 10: Koi キャラ風 + Brand v2 に再構成
 // Phase 1.5-α Day 11: 自己診断 7 章レポート (全無料) に拡張、¥500 訴求カード削除、
@@ -1065,7 +1065,7 @@ async function MeResultPageContent({
     <>
       {isOwnedResult && ownsResultSession && user.diagnosis_completed_at && (
         <XTrack
-          eventId={X_DIAGNOSIS_COMPLETE_EVENT_ID}
+          eventIds={X_DIAGNOSIS_COMPLETE_EVENT_IDS}
           params={{ conversion_id: user.id }}
           requireDiagnosisCompletion
         />
