@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { XTrack } from "@/components/XTrack";
-import { X_PURCHASE_EVENT_ID } from "@/lib/xPixel";
+import { wasXPurchaseSent, xPurchaseEventIds } from "@/lib/xPixel";
 
 import {
   metaPurchaseStorageKey,
@@ -72,7 +72,7 @@ export function MetaPurchaseDataLayer({
     const tiktokKey = tiktokPurchaseStorageKey(product, checkoutSessionId);
     const pendingKey = `${product}:${checkoutSessionId}`;
     if (
-      (wasSent(metaKey) && wasSent(tiktokKey)) ||
+      (wasSent(metaKey) && wasSent(tiktokKey) && wasXPurchaseSent(checkoutSessionId)) ||
       pendingPurchases.has(pendingKey)
     ) {
       return;
@@ -96,9 +96,13 @@ export function MetaPurchaseDataLayer({
         if (!claim) return;
         if (claim.checkoutSessionId !== checkoutSessionId) return;
 
-        // prepare retrieves a paid Stripe session on the server. For JPY,
-        // valueInMajorUnit returns amount_total unchanged (zero-decimal currency).
-        if (claim.currency === "JPY" && typeof claim.value === "number" && Number.isFinite(claim.value)) {
+        // Only server-verified live payments, with actual amount and currency.
+        // No fixed price, default currency or test-mode X purchase event.
+        if (
+          claim.checkoutSessionId.startsWith("cs_live_") &&
+          typeof claim.currency === "string" && /^[A-Z]{3}$/.test(claim.currency) &&
+          typeof claim.value === "number" && Number.isFinite(claim.value) && claim.value >= 0
+        ) {
           setXPurchase(claim);
         }
 
@@ -189,11 +193,11 @@ export function MetaPurchaseDataLayer({
       });
   }, [checkoutSessionId, product, claimToken]);
 
-  return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" ? (
+  return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" && typeof xPurchase.currency === "string" ? (
     <XTrack
       key={checkoutSessionId}
-      eventId={X_PURCHASE_EVENT_ID}
-      params={{ value: xPurchase.value, currency: "JPY", conversion_id: checkoutSessionId }}
+      eventIds={xPurchaseEventIds(xPurchase.currency)}
+      params={{ value: xPurchase.value, currency: xPurchase.currency, conversion_id: checkoutSessionId }}
     />
   ) : null;
 }
