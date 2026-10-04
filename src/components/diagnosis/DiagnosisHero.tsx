@@ -1,4 +1,6 @@
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import type { StaticImageData } from "next/image";
+import diagnosisHero from "../../../public/mascot/diagnosis-hero.png";
 
 // 診断ページ冒頭のヒーロー。/tako (友達診断) の FV と同じ「左=見出し / 右=イラスト」構成。
 //   - PC (md+): 見出し flex-1 (左) + イラスト (右)。SP: 縦積み (見出し→イラスト)。
@@ -16,12 +18,12 @@ const NAVY = "#2E2E5C";
 export function DiagnosisHero({
   title = "性格診断テスト",
   subtitle = "OCEAN（Big Five）性格特性モデル",
-  imageSrc = "/mascot/diagnosis-hero.png",
+  imageSrc = diagnosisHero,
   imageAlt = "ワタシのトリセツのマスコット",
 }: {
   title?: string;
   subtitle?: string;
-  imageSrc?: string;
+  imageSrc?: string | StaticImageData;
   imageAlt?: string;
 } = {}) {
   return (

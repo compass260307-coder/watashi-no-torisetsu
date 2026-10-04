@@ -589,7 +589,9 @@ export default function DiagnosisPageContent({
               ? `/en/me/${encodeURIComponent(data.ownerToken)}`
               : isIndonesian
                 ? `/id/me/${encodeURIComponent(data.ownerToken)}`
-                : `/result/${data.ownerToken}`,
+                : locale === "ja"
+                  ? `/me/${encodeURIComponent(data.ownerToken)}`
+                  : `/result/${data.ownerToken}`,
         );
         return;
       }
