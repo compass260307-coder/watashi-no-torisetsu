@@ -13,8 +13,9 @@
 
 import { useEffect, useState } from "react";
 import type { AppResultLocale } from "@/i18n/result";
+import { requestFullAccessStatus } from "@/lib/full-access-status-client";
 import type { AccessProduct } from "@/lib/access-products";
-import { isTerminalPollResponse, startVisiblePolling } from "@/lib/visible-polling";
+import { startVisiblePolling } from "@/lib/visible-polling";
 
 const NAVY = "#2E2E5C";
 // ポーリングは 2 秒から始めて徐々に間隔を広げる (×1.5、上限 10 秒)。
@@ -76,25 +77,9 @@ export function PaidUnlockWatcher({
     return startVisiblePolling(async (signal) => {
       tries += 1;
       try {
-        const res = await fetch(
-          `/api/checkout/full-access-status?owner_token=${encodeURIComponent(ownerToken)}`,
-          { cache: "no-store", signal },
-        );
+        const data = await requestFullAccessStatus(ownerToken, { fresh: true });
         if (signal.aborted) return false;
-        if (isTerminalPollResponse(res)) {
-          setTimedOut(true);
-          return false;
-        }
-        if (res.ok) {
-          const data = (await res.json()) as {
-            full?: boolean;
-            selfReport?: boolean;
-            premiumBundle?: boolean;
-            astrologer?: boolean;
-            unmei?: boolean;
-            tarot?: boolean;
-          };
-          if (signal.aborted) return false;
+        if (data) {
           const allBottomNavAccessGranted =
             data.astrologer === true &&
             data.unmei === true &&

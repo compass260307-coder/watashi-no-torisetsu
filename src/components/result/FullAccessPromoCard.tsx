@@ -55,7 +55,7 @@ import {
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
+import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
@@ -307,11 +307,8 @@ export function FullAccessPromoCard({
       ? THREE_COURSE_PAYWALL_VERSION
       : "legacy";
   const paywallPlacement = onClose ? "modal" : "inline";
-  const [entitlements, setEntitlements] = useState<AccessEntitlements>({
-    selfReport: false,
-    full: false,
-    premiumBundle: false,
-  });
+  const status = useFullAccessStatus(ownerToken && !previewMode && usesLegacyFullAccessCard ? ownerToken : null);
+  const entitlements: AccessEntitlements = status ?? { selfReport: false, full: false, premiumBundle: false };
   const displayedEntitlements = previewMode
     ? (previewEntitlements ?? entitlements)
     : entitlements;
@@ -474,21 +471,7 @@ export function FullAccessPromoCard({
     );
   }
 
-  useEffect(() => {
-    if (!ownerToken || previewMode || !usesLegacyFullAccessCard) return;
-    let cancelled = false;
-    void requestFullAccessStatus(ownerToken).then((data) => {
-      if (cancelled || !data) return;
-      setEntitlements({
-        selfReport: data.selfReport === true,
-        full: data.full === true,
-        premiumBundle: data.premiumBundle === true,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerToken, previewMode, usesLegacyFullAccessCard]);
+
 
   // 課金ファネル計測: カードがビューポートに入ったら paywall_viewed を1回送る。
   // dedup はページ単位で sessionStorage (タブ内1回)。

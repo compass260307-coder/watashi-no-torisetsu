@@ -170,6 +170,11 @@ export async function getAccessPurchaseEntitlements(
       aishoFeatures: false,
     };
   }
+  return accessPurchaseEntitlementsFromRows(payments);
+}
+
+/** 同一リクエストで取得済みの履歴から、既存の購入ポリシーを判定する。 */
+export function accessPurchaseEntitlementsFromRows(payments: AccessPaymentRow[]) {
   const valid = validAccessPaymentRows(payments);
   const premiumBundle = valid.some(
     (row) => row.payment_kind === "premium_bundle",
