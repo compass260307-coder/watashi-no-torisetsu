@@ -1,7 +1,7 @@
 export const X_DIAGNOSIS_COMPLETE_EVENT_ID = "tw-rg1zg-rg1zv";
 export const X_PURCHASE_EVENT_ID = "tw-rg1zg-rg1zz";
 export const X_ADDITIONAL_DIAGNOSIS_EVENT_ID = "tw-rezdw-reze3";
-export const X_ADDITIONAL_PURCHASE_EVENT_ID = "tw-rezdw-1436v3";
+export const X_ADDITIONAL_PURCHASE_EVENT_ID = "tw-rezdw-rgdz4";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
   X_ADDITIONAL_DIAGNOSIS_EVENT_ID,
@@ -82,6 +82,12 @@ export async function trackXEventsOnce(
   const send = (): boolean => {
     if (!isActive() || typeof window.twq !== "function") return false;
     const keys = eventIds.map((eventId) => `wt_x_sent_v1:${eventId}:${params.conversion_id}`);
+    // Preserve purchase hand-offs across the rezdw event replacement. Do not
+    // replay an old payment, even if Meta/TikTok's acknowledgement was missing.
+    const previousPurchaseSent = wasXPurchaseSent(params.conversion_id) ||
+      wasSent(`wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`);
+    const destinationSent = (index: number): boolean => wasSent(keys[index]) ||
+      (eventIds[index] === X_ADDITIONAL_PURCHASE_EVENT_ID && previousPurchaseSent);
     const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     if (requireDiagnosisCompletion && !keys.every(wasSent)) {
       try {
@@ -93,12 +99,12 @@ export async function trackXEventsOnce(
       }
     }
     for (let index = 0; index < eventIds.length; index++) {
-      if (!wasSent(keys[index]) && trackX(eventIds[index], params)) {
+      if (!destinationSent(index) && trackX(eventIds[index], params)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
       }
     }
-    const complete = keys.every(wasSent);
+    const complete = keys.every((_key, index) => destinationSent(index));
     if (complete && requireDiagnosisCompletion) {
       try {
         window.sessionStorage.removeItem(markerKey);
