@@ -21,6 +21,7 @@ import { isMissingCoreKpiColumn } from "./core-kpis";
 import {
   SESSION_COOKIE_NAME,
   SESSION_MARKER_COOKIE_NAME,
+  SESSION_ACCESS_CACHE_COOKIE_NAME,
 } from "./session-constants";
 import { supabaseAdmin } from "./supabase-server";
 
@@ -265,6 +266,7 @@ export async function createSession(
     "1",
     buildSessionMarkerCookieOptions(),
   );
+  c.set(SESSION_ACCESS_CACHE_COOKIE_NAME, nanoid(16), buildSessionMarkerCookieOptions());
 
   return { user: createdUser, token };
 }
@@ -295,6 +297,7 @@ export async function rotateSession(userId: string): Promise<string> {
     "1",
     buildSessionMarkerCookieOptions(),
   );
+  c.set(SESSION_ACCESS_CACHE_COOKIE_NAME, nanoid(16), buildSessionMarkerCookieOptions());
 
   return token;
 }
@@ -317,4 +320,5 @@ export async function destroySession(userId: string): Promise<void> {
   const c = await cookies();
   c.delete(SESSION_COOKIE_NAME);
   c.delete(SESSION_MARKER_COOKIE_NAME);
+  c.delete(SESSION_ACCESS_CACHE_COOKIE_NAME);
 }

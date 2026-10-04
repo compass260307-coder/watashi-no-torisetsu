@@ -33,7 +33,7 @@ import {
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
-import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
+import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 
 type PlanDefinition = Readonly<{
   product: AccessProduct;
@@ -589,9 +589,8 @@ export function SelfAccessPlanCarousel({
     cancelledPlanIndex >= 0 ? cancelledPlanIndex : defaultPlanIndex;
   const cancelledPlan =
     cancelledPlanIndex >= 0 ? plans[cancelledPlanIndex] : null;
-  const [entitlements, setEntitlements] = useState<AccessEntitlements>(
-    EMPTY_ACCESS_ENTITLEMENTS,
-  );
+  const status = useFullAccessStatus(ownerToken && !previewMode ? ownerToken : null);
+  const entitlements: AccessEntitlements = status ?? EMPTY_ACCESS_ENTITLEMENTS;
   const displayedEntitlements = previewMode
     ? (previewEntitlements ?? EMPTY_ACCESS_ENTITLEMENTS)
     : entitlements;
@@ -684,25 +683,7 @@ export function SelfAccessPlanCarousel({
     previewMode,
   ]);
 
-  useEffect(() => {
-    if (!ownerToken || previewMode) return;
-    let cancelled = false;
-    void requestFullAccessStatus(ownerToken)
-      .then((data) => {
-        if (cancelled || !data) return;
-        setEntitlements({
-          selfReport: data.selfReport === true,
-          full: data.full === true,
-          premiumBundle: data.premiumBundle === true,
-        });
-      })
-      .catch(() => {
-        // 表示価格は未購入時の定価へ安全に倒す。決済額はサーバ側で再判定する。
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerToken, previewMode]);
+
 
   const handleScroll = () => {
     const scroller = scrollerRef.current;

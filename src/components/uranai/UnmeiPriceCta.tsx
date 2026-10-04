@@ -7,7 +7,7 @@
 //
 // 判定は BottomNav と同じ流儀:
 //   - ログイン session の owner_token か localStorage の torisetsu_owner_token
-//   - full 確認済み token は torisetsu_full_token にキャッシュ (即時反映)
+//   - セッションとユーザーを区別した5分間の共有キャッシュを使用
 //   - 未確認は /api/checkout/full-access-status で確認
 // 判定できない/失敗時は日本版の現行完全版価格のまま (安全側)。
 
@@ -27,10 +27,9 @@ import {
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
 } from "@/lib/access-products";
-import { requestFullAccessStatus } from "@/lib/use-course-navigation-access";
+import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 
 const OWNER_TOKEN_KEY = "torisetsu_owner_token";
-const FULL_TOKEN_KEY = "torisetsu_full_token";
 
 export default function UnmeiPriceCta({
   sessionOwnerToken,
@@ -78,7 +77,8 @@ export default function UnmeiPriceCta({
   const [ownerToken, setOwnerToken] = useState<string | null>(
     sessionOwnerToken,
   );
-  const [hasFull, setHasFull] = useState(sessionHasFull);
+  const status = useFullAccessStatus(!sessionHasFull && !previewMode ? ownerToken : null);
+  const hasFull = sessionHasFull || status?.full === true;
   const cancelledProduct = useCheckoutCancelledProduct();
   // 韓国語・英語・インドネシア語版は完全版だけを販売する。
   const supportsLegacyUpgrade = locale === "ja";
@@ -96,50 +96,13 @@ export default function UnmeiPriceCta({
   const showUpgradePrice = supportsLegacyUpgrade && hasFull;
 
   useEffect(() => {
-    if (hasFull) return;
-    let cancelled = false;
-    let ownerTokenTimer: number | null = null;
-    let token = sessionOwnerToken;
-    try {
-      if (!token) token = localStorage.getItem(OWNER_TOKEN_KEY);
-      if (token && localStorage.getItem(FULL_TOKEN_KEY) === token) {
-        const cachedToken = token;
-        ownerTokenTimer = window.setTimeout(() => {
-          if (cancelled) return;
-          setOwnerToken(cachedToken);
-          setHasFull(true);
-        }, 0);
-        return () => {
-          cancelled = true;
-          if (ownerTokenTimer !== null) window.clearTimeout(ownerTokenTimer);
-        };
-      }
-    } catch {
-      // localStorage 不可環境: 通常価格のまま
-    }
-    if (!token) return;
-    const resolvedToken = token;
-    ownerTokenTimer = window.setTimeout(() => {
-      if (!cancelled) setOwnerToken(resolvedToken);
+    const timer = window.setTimeout(() => {
+      let token = sessionOwnerToken;
+      try { if (!token) token = localStorage.getItem(OWNER_TOKEN_KEY); } catch { /* noop */ }
+      setOwnerToken(token);
     }, 0);
-    void requestFullAccessStatus(resolvedToken)
-      .then((d) => {
-        if (cancelled || !d?.full) return;
-        setHasFull(true);
-        try {
-          localStorage.setItem(FULL_TOKEN_KEY, resolvedToken);
-        } catch {
-          // noop
-        }
-      })
-      .catch(() => {
-        // 判定失敗時は通常価格のまま (安全側)
-      });
-    return () => {
-      cancelled = true;
-      if (ownerTokenTimer !== null) window.clearTimeout(ownerTokenTimer);
-    };
-  }, [hasFull, sessionOwnerToken]);
+    return () => window.clearTimeout(timer);
+  }, [sessionOwnerToken]);
 
   if (variant === "compact") {
     return (

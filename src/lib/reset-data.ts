@@ -1,4 +1,5 @@
-import { SESSION_MARKER_COOKIE_NAME } from "./session-constants";
+import { invalidateFullAccessStatus } from "./full-access-status-client";
+import { SESSION_MARKER_COOKIE_NAME, SESSION_ACCESS_CACHE_COOKIE_NAME } from "./session-constants";
 
 // 「データをリセット」で消すストレージキー (診断フロー関連) を一元管理する。
 // SP ハンバーガーメニュー (TopHeader) と 自己診断結果ページ (/me) の両方から使う。
@@ -6,6 +7,7 @@ import { SESSION_MARKER_COOKIE_NAME } from "./session-constants";
 // 「最初にどこから来たか」は変えない)。
 export const RESET_KEYS = [
   "torisetsu_owner_token",
+  "torisetsu_full_token",
   "torisetsu_result",
   "torisetsu_result_ko",
   "torisetsu_invite_code",
@@ -42,5 +44,7 @@ export function resetLocalData() {
   }
   // HttpOnly session は残しても、自動復元マーカーを消せばトップに留まれる。
   document.cookie = `${SESSION_MARKER_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${SESSION_ACCESS_CACHE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
+  invalidateFullAccessStatus();
   window.location.href = "/";
 }
