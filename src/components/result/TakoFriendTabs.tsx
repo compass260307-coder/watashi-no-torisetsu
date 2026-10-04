@@ -1,5 +1,6 @@
 "use client";
 
+import friendsWaiting from "../../../public/empty-states/tako-friends-waiting-felt.png";
 // /tako 友達タブ (2026-07-18 1人完結モデル):
 //   友達1人ごとに独立した結果シートができ、名前タブで切り替える。
 //   平均 (みんなの目) は廃止。パネル本体はサーバで全員ぶん描画済みを props で受け取り、
@@ -630,7 +631,7 @@ export function TakoFriendTabs({
                   </p>
                 </div>
                 <Image
-                  src="/empty-states/tako-friends-waiting-felt.png"
+                  src={friendsWaiting}
                   alt=""
                   aria-hidden="true"
                   width={1402}
@@ -652,7 +653,7 @@ export function TakoFriendTabs({
       {tabs.length === 0 ? (
         <section className="-mx-4 flex min-h-[calc(100dvh-230px)] flex-col items-center justify-center bg-[#F7F7FA] px-4 pb-28 pt-14 text-center md:mx-0 md:min-h-[560px] md:pb-20 md:pt-16">
           <Image
-            src="/empty-states/tako-friends-waiting-felt.png"
+            src={friendsWaiting}
             alt=""
             aria-hidden="true"
             width={1402}

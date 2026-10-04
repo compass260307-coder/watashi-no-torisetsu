@@ -5,18 +5,58 @@
 // フロー本体は /unmei のチャット決済 (UnmeiClient purchase モード) をそのまま使い、
 // 生成完了時だけ /unmei の鑑定ページへ遷移する (onReady)。
 
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import UnmeiClient from "@/components/uranai/UnmeiClient";
 import type { AppResultLocale } from "@/i18n/result";
-import {
-  ME_UNMEI_CHAT_INTRO_EN,
-  ME_UNMEI_CHAT_INTRO_ID,
-  ME_UNMEI_CHAT_INTRO_JA,
-  ME_UNMEI_CHAT_INTRO_KO,
-} from "@/i18n/unmei";
 import { track } from "@/lib/track";
+
+// Keep the purchase dialog eager. Only this optional, post-purchase chat and
+// its birth/checkout dependencies are downloaded when the chat is opened.
+const MeUnmeiChat = lazy(() =>
+  import("./MeUnmeiChat").then((module) => ({ default: module.MeUnmeiChat })),
+);
+
+const CHAT_FEEDBACK = {
+  ja: { loading: "Aliceを呼んでいます…", failed: "チャットを読み込めませんでした。", reload: "ページを再読み込み" },
+  en: { loading: "Loading Alice…", failed: "The chat could not be loaded.", reload: "Reload this page" },
+  ko: { loading: "Alice를 부르고 있어요…", failed: "채팅을 불러오지 못했어요.", reload: "페이지 새로고침" },
+  id: { loading: "Memuat Alice…", failed: "Chat tidak dapat dimuat.", reload: "Muat ulang halaman" },
+  th: { loading: "กำลังเรียก Alice…", failed: "ไม่สามารถโหลดแชตได้", reload: "โหลดหน้านี้ใหม่" },
+} as const;
+
+function ChatLoading({ locale }: { locale: AppResultLocale }) {
+  return (
+    <div role="status" aria-live="polite" className="flex min-h-56 items-center justify-center gap-3 rounded-3xl bg-[#2E2E5C] px-6 text-sm font-bold text-white">
+      <span aria-hidden="true" className="h-5 w-5 rounded-full border-2 border-white/20 border-t-white motion-safe:animate-spin" />
+      {CHAT_FEEDBACK[locale].loading}
+    </div>
+  );
+}
+
+// A failed optional download must leave the result page and close button usable.
+class ChatLoadBoundary extends Component<{ locale: AppResultLocale; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    const copy = CHAT_FEEDBACK[this.props.locale];
+    return (
+      <div role="alert" className="rounded-3xl bg-[#2E2E5C] px-6 py-16 text-center text-sm font-bold text-white">
+        <p>{copy.failed}</p>
+        <button type="button" className="mt-4 rounded-full border px-5 py-2" onClick={() => window.location.reload()}>{copy.reload}</button>
+      </div>
+    );
+  }
+}
 
 const LAUNCHER_COPY = {
   ja: { close: "チャットを閉じる" },
@@ -116,31 +156,25 @@ export function MeUnmeiChatLauncher({
                     ✕
                   </span>
                 </button>
-                <UnmeiClient
-                  initialState="no_birth"
-                  purchase={{ ownerToken, product }}
-                  locale={locale}
-                  previewMode={previewMode}
-                  intro={
-                    locale === "id"
-                      ? ME_UNMEI_CHAT_INTRO_ID
-                      : locale === "en"
-                      ? ME_UNMEI_CHAT_INTRO_EN
-                      : locale === "ko"
-                      ? ME_UNMEI_CHAT_INTRO_KO
-                      : ME_UNMEI_CHAT_INTRO_JA
-                  }
-                  hideHeaderStars
-                  onReady={() =>
-                    router.push(
-                      locale === "en"
-                        ? "/en/unmei"
-                        : locale === "ko"
-                          ? "/ko/unmei"
-                          : "/unmei",
-                    )
-                  }
-                />
+                <ChatLoadBoundary locale={locale}>
+                  <Suspense fallback={<ChatLoading locale={locale} />}>
+                    <MeUnmeiChat
+                      ownerToken={ownerToken}
+                      product={product}
+                      locale={locale}
+                      previewMode={previewMode}
+                      onReady={() =>
+                        router.push(
+                          locale === "en"
+                            ? "/en/unmei"
+                            : locale === "ko"
+                              ? "/ko/unmei"
+                              : "/unmei",
+                        )
+                      }
+                    />
+                  </Suspense>
+                </ChatLoadBoundary>
               </div>
             </div>,
             document.body,
