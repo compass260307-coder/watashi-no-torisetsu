@@ -139,6 +139,27 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
 }
 
 const meta = load("src/lib/meta-purchase.ts");
+// Replacing the event must not resend an old payment under the new event ID.
+for (const marker of ["group", "previous-event"]) {
+  const e = environment();
+  const params = { conversion_id: "offline-cutover", value: 499, currency: "JPY" };
+  const oldKey = `wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`;
+  e.local.set(marker === "group" ? `wt_x_purchase_sent_v1:${params.conversion_id}` : oldKey, "1");
+  e.local.set(`wt_x_sent_v1:${e.pixel.X_PURCHASE_EVENT_ID}:${params.conversion_id}`, "1");
+  assert.equal(await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), params), true);
+  assert.equal(e.calls.length, 0, "Old hand-offs suppress both purchase destinations on reload");
+}
+{
+  const e = environment();
+  const params = { conversion_id: "offline-partial-cutover", value: 499, currency: "JPY" };
+  e.local.set(`wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`, "1");
+  await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), params);
+  assert.deepEqual(e.calls.map((call) => call[1]), [e.pixel.X_PURCHASE_EVENT_ID], "Only the unsent original account is retried");
+  const fresh = { ...params, conversion_id: "offline-new-payment" };
+  await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
+  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4"]);
+  assert.equal(e.calls.some((call) => call[1] === "tw-rezdw-1436v3"), false);
+}
 {
   const e = environment();
   const effects = []; const timers = new Map(); let nextTimer = 0;
