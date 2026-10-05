@@ -8,7 +8,7 @@ export function preloadResultImage(scores: Record<BigFiveDimension, number>) {
   const key = dimensions.map(dimension => scores[dimension] >= 5 ? "+" : "-").join("");
   const source = (recipe.sources as Record<string, string>)[key];
   if (!source) return;
-  const url = (width: number) => `${recipe.endpoint}?url=${encodeURIComponent(source)}&w=${width}&q=${recipe.quality}`;
+  const url = (width: number) => `${recipe.endpoint}?url=${encodeURIComponent(source)}&w=${width}&q=${recipe.quality}${recipe.deploymentId ? `&dpl=${recipe.deploymentId}` : ""}`;
   const image = new Image();
   image.sizes = recipe.sizes;
   image.srcset = recipe.widths.map(width => `${url(width)} ${width}w`).join(", ");

@@ -42,9 +42,9 @@ for (let mask = 0; mask < 32; mask++) {
 const first = Object.values(hints)[0];
 const firstUrl = new URL(first.src, "http://local.invalid");
 const widths = first.srcSet.split(", ").map(item => Number(item.slice(item.lastIndexOf(" ") + 1, -1)));
-const recipe = { endpoint: firstUrl.pathname, quality: firstUrl.searchParams.get("q"), widths, sizes: first.sizes, sources: {} };
+const recipe = { endpoint: firstUrl.pathname, quality: firstUrl.searchParams.get("q"), deploymentId: firstUrl.searchParams.get("dpl"), widths, sizes: first.sizes, sources: {} };
 function imageUrl(source, width) {
-  return `${recipe.endpoint}?url=${encodeURIComponent(source)}&w=${width}&q=${recipe.quality}`;
+  return `${recipe.endpoint}?url=${encodeURIComponent(source)}&w=${width}&q=${recipe.quality}${recipe.deploymentId ? `&dpl=${recipe.deploymentId}` : ""}`;
 }
 for (const [key, props] of Object.entries(hints)) {
   const source = new URL(props.src, "http://local.invalid").searchParams.get("url");
