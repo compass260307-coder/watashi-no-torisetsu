@@ -1,7 +1,7 @@
 "use client";
-import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy } from "@/i18n/ui/use-navigation-copy";
 
-import { useUiText } from "@/i18n/ui/use-ui-copy";
+import { useNavigationText } from "@/i18n/ui/use-navigation-copy";
 
 // 自己診断前のナビ項目ロック中ポップオーバー。
 //   自己診断が終わっていない (owner_token 無し) 状態でボトムナビの
@@ -46,8 +46,8 @@ export function TakoLockPopover({
   locale = "ja",
   target = "friend",
 }: Props) {
-  const uiText = useUiText(locale, "TakoLockPopover");
-  const copy = useUiCopy(locale).lock[target];
+  const uiText = useNavigationText(locale, "TakoLockPopover");
+  const copy = useNavigationCopy(locale).lock[target];
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);

@@ -138,3 +138,6 @@ export interface UiCopy {
     }[];
   };
 }
+
+// Purchase/result dictionaries do not carry navigation or question-screen copy.
+export type PurchaseUiCopy = Omit<UiCopy, "header" | "footer" | "nav" | "lock" | "loading">;

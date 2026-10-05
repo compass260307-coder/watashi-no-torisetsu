@@ -1,7 +1,7 @@
 "use client";
 
-import Footer from "@/components/top/TopFooter";
 import Header from "@/components/top/TopHeader";
+import Footer from "@/components/top/TopFooter";
 import { JA_DIAGNOSIS_SETTINGS } from "@/i18n/ja/diagnosis";
 import DiagnosisPageContent from "../DiagnosisPageContent";
 

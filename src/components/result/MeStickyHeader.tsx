@@ -19,6 +19,9 @@
 
 import Link from "next/link";
 import {
+  Component,
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
@@ -26,7 +29,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { QRCodeSVG } from "qrcode.react";
+import { preloadResultQrCode } from "@/lib/result-qr-loader";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
@@ -36,6 +39,15 @@ import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
 import type { AppResultLocale } from "@/i18n/result";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
+
+// QR is needed only inside the friend invitation dialog. Keep it out of result
+// generation warmup; share actions remain usable while the optional QR loads.
+const QRCodeSVG = lazy(() => preloadResultQrCode().then(module => ({ default: module.QRCodeSVG })));
+class QrCodeBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? null : this.props.children; }
+}
 
 interface MeStickyHeaderProps {
   /** ヘッダー本体 (TopHeader)。 */
@@ -246,6 +258,9 @@ export function MeStickyHeader({
   const [kakaoBusy, setKakaoBusy] = useState(false);
   const [kakaoNote, setKakaoNote] = useState("");
   const [shareOpen, setShareOpen] = useState(false);
+  useEffect(() => {
+    if (shareOpen) void preloadResultQrCode().catch(() => {});
+  }, [shareOpen]);
   const [sharePickerOpen, setSharePickerOpen] = useState(false);
   const [pickerCopiedKind, setPickerCopiedKind] =
     useState<"character" | "invite" | null>(null);
@@ -1439,6 +1454,8 @@ export function MeStickyHeader({
                     aria-label={shareCopy.qrCodeLabel}
                   >
                     <div className="relative">
+                      <QrCodeBoundary>
+                      <Suspense fallback={<div className="aspect-square w-full" aria-hidden="true" />}>
                       <QRCodeSVG
                         value={withRef(activeShareUrl, "qr")}
                         size={248}
@@ -1448,6 +1465,8 @@ export function MeStickyHeader({
                         level="H"
                         marginSize={0}
                       />
+                      </Suspense>
+                      </QrCodeBoundary>
                       {/* 中央のキャラ顔 (丸抜き・白リング)。LockedInviteShare と同じ被覆率 */}
                       {qrImageSrc && (
                         <span className="absolute left-1/2 top-1/2 block w-[34%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-white ring-4 ring-white shadow-[0_2px_8px_rgba(46,46,92,0.18)]">

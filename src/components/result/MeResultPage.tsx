@@ -88,7 +88,7 @@ import { BigFiveDivergingBars } from "@/components/result/BigFiveDivergingBars";
 import { computeJob, JOB_FRIEND_THRESHOLD, JOBS } from "@/lib/job";
 import { classifyType } from "@/lib/diagnosis";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
-import { MeUnmeiChatLauncher } from "@/components/result/MeUnmeiChatLauncher";
+import { MeUnmeiChatLauncher, PaidMeChatPreload } from "@/components/result/MeUnmeiChatLauncher";
 import { PaywallModal } from "@/components/result/PaywallModal";
 import {
   DiagnosisShareBand,
@@ -1090,6 +1090,7 @@ async function MeResultPageContent({
       )}
       {/* 友達診断の赤バッジ付与: /me を表示した全員に言語を問わず1回。 */}
       {isOwnedResult && <TakoAttentionOnResult ownerToken={token} />}
+      {isOwnedResult && showUnmeiPromo && <PaidMeChatPreload />}
       {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
       {isOwnedResult && fullAccessPaid && !premiumBundlePaid && (
         <UnmeiAttentionOnPaid ownerToken={token} />

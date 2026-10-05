@@ -13,6 +13,9 @@ import {
 } from "@/i18n/diagnosis";
 import { resolveAcquisitionForSave } from "@/lib/acquisition";
 import { hashEmailSha256, readAdAttribution } from "@/lib/ad-attribution";
+import { preloadResultImage } from "@/lib/result-image-preload";
+import { preloadLocalizedPurchaseCopy } from "@/i18n/ui/purchase-copy-loader";
+import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { diagnose } from "@/lib/diagnosis";
 import {
   clearPendingSourceCode,
@@ -475,6 +478,12 @@ export default function DiagnosisPageContent({
     setSubmitting(true);
 
     const result = diagnose(answers);
+    // Speculation runs alongside the existing 20-second minimum. Never await it
+    // or let a download failure affect saving, tracking, or result navigation.
+    // Full route prefetch below warms the eager purchase UI too. Importing it
+    // separately creates a duplicate bundle in the installed bundler.
+    if (locale !== "ja") void preloadLocalizedPurchaseCopy(locale).catch(() => {});
+    try { preloadResultImage(result.scores); } catch { /* Optional image warmup never blocks the result. */ }
     try {
       localStorage.setItem(settings.resultStorageKey, JSON.stringify(result));
     } catch {
@@ -502,6 +511,7 @@ export default function DiagnosisPageContent({
       } catch {
         // 無視
       }
+      try { router.prefetch(settings.resultPath, { kind: "full" as PrefetchOptions["kind"] }); } catch { /* Optional warmup. */ }
       await waitMin();
       clearProgress();
       router.push(settings.resultPath);
@@ -580,9 +590,7 @@ export default function DiagnosisPageContent({
         clearPendingSourceCode();
         // 友達診断の赤バッジはここでは出さない。/me 側 (TakoAttentionOnResult) が
         // 初回表示時に全員へ付与する (2026-08-03 変更。旧: 課金完了後のみ)。
-        await waitMin();
-        clearProgress();
-        router.push(
+        const resultPath = (
           isKorean
             ? `/ko/me/${encodeURIComponent(data.ownerToken)}`
             : isEnglish
@@ -591,8 +599,14 @@ export default function DiagnosisPageContent({
                 ? `/id/me/${encodeURIComponent(data.ownerToken)}`
                 : locale === "ja"
                   ? `/me/${encodeURIComponent(data.ownerToken)}`
-                  : `/result/${data.ownerToken}`,
+                  : `/result/${data.ownerToken}`
         );
+        // Full prefetch includes this dynamic route's RSC, client JS and CSS.
+        // The option is verified against the installed Next.js 16.2.6 router.
+        try { router.prefetch(resultPath, { kind: "full" as PrefetchOptions["kind"] }); } catch { /* Optional warmup. */ }
+        await waitMin();
+        clearProgress();
+        router.push(resultPath);
         return;
       }
     } catch {

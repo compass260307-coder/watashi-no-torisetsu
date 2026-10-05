@@ -1,6 +1,6 @@
 "use client";
 
-import { useUiText } from "@/i18n/ui/use-ui-copy";
+import { useDiagnosisText } from "@/i18n/ui/use-diagnosis-copy";
 
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import type { AppResultLocale } from "@/i18n/result";
@@ -61,7 +61,7 @@ export function DiagnosisShareBand({
   /** /me では結果グループに合わせ、シェアボタンのリングと補助色を切り替える。 */
   group?: ThirtyTwoGroup;
 }) {
-  const uiText = useUiText(locale, "diagnosis.DiagnosisShareBand");
+  const uiText = useDiagnosisText(locale, "diagnosis.DiagnosisShareBand");
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";

@@ -4,11 +4,16 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+let pendingChat: Promise<typeof import("./ResultUpgradeChat")> | undefined;
+function preloadChat() {
+  return pendingChat ??= import("./ResultUpgradeChat").catch(error => {
+    pendingChat = undefined;
+    throw error;
+  });
+}
+
 const ResultUpgradeChat = dynamic(
-  () =>
-    import("@/components/result-upgrade/ResultUpgradeChat").then(
-      (module) => module.ResultUpgradeChat,
-    ),
+  () => preloadChat().then(module => module.ResultUpgradeChat),
   {
     ssr: false,
     loading: () => (
@@ -40,6 +45,9 @@ export function ResultUpgradeChatLauncher({
   style,
   children,
 }: ResultUpgradeChatLauncherProps) {
+  // The server mounts this launcher only for purchased results.
+  // Warm code without requesting answers or starting Checkout.
+  useEffect(() => { if (!preview) void preloadChat().catch(() => {}); }, [preview]);
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);

@@ -104,3 +104,6 @@ console.log(
   `character-images.json: cut=${manifest.cut.length} scenes=${manifest.scenes.length} face=${manifest.face.length} topMargin=${Object.keys(cutTopMargin).length}`,
 );
 verifyPublicAssets(root);
+
+// Keep the generation-stage image hints synchronized with every asset build.
+await import("./generate-result-image-preload.mjs");

@@ -1,5 +1,5 @@
 "use client";
-import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy } from "@/i18n/ui/use-navigation-copy";
 import { usePathname } from "next/navigation";
 import { Component, type ReactNode } from "react";
 function InitialLocaleCopy({ children }: {
@@ -8,9 +8,9 @@ function InitialLocaleCopy({ children }: {
   const pathname = usePathname();
   const segment = pathname.split("/")[1];
   const locale = segment === "en" || segment === "ko" || segment === "id" ? segment : "ja";
-  // Resolve the current language during initial rendering, before any payment
-  // button becomes interactive. Opening the eager paywall needs no dictionary fetch.
-  useUiCopy(locale);
+  // Japanese resolves only lightweight navigation here. Other locales retain
+  // their existing shared dictionary to avoid extra small resource requests.
+  useNavigationCopy(locale);
   return children;
 }
 export class LocaleUiBoundary extends Component<{
