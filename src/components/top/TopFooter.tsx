@@ -1,7 +1,7 @@
 "use client";
 
 import { TakoLockPopover } from "@/components/TakoLockPopover";
-import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 import type { SiteLocale } from "@/lib/locale-switch";
 import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
@@ -79,11 +79,11 @@ export default function TopFooter({
   topBorder?: boolean;
   locale?: TopLocale;
 }) {
-  const uiText = useUiText(locale, "top.TopFooter");
+  const uiText = useNavigationText(locale, "top.TopFooter");
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
-  const content = useUiCopy(locale).footer;
+  const content = useNavigationCopy(locale).footer;
   const pathname = usePathname() ?? (isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : "/");
 
   // 友達診断テストの遷移先を BottomNav/TopHeader と同じルールで解決:

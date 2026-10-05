@@ -1,5 +1,3 @@
-"use client";
-
 // feat/top-page: トップページ ヒーロー (16Personalities 型・キービジュアル 1 枚構成)
 //
 // 構成:
@@ -10,11 +8,10 @@
 //     アイラベル → H1 → サブ → CTA → 実績バー の縦並び。max-width 680px。
 //   - レスポンシブ: H1/サブ/CTA をスマホで縮小、カラムは左右 24px パディングで全幅。
 //
-// クライアントコンポーネントなのはメニュー(開閉)のみ。
+// Static copy/decorations stay on the server; CTA and the shared image helper are client islands.
 
-import Link from "next/link";
-import { trackTopCta } from "@/components/top/TopAnalytics";
-import { TOP_HERO_BACKGROUNDS, TOP_HERO_BACKGROUND_STYLE } from "@/lib/top-hero-background";
+import { TopDiagnosisCta, TopHeroImage } from "@/components/top/TopAnalytics";
+import { TOP_HERO_BACKGROUNDS } from "@/lib/top-hero-background";
 
 // H1・本文ともゴシック (Noto Sans JP)。H1 は 800(極太) で塊感を出す。
 const FONT_STACK =
@@ -45,15 +42,19 @@ export default function TopHero({
         media="(max-width: 639px)"
       />
     <section
-      // 背景キービジュアルは PC=横長 / SP=縦長 を media query で出し分けるため
-      // globals.css の .top-hero-bg に分離 (インライン style では出し分け不可)。
+      // Hero の高さは既存 .top-hero-bg を維持。画像は picture の media で選択し、
+      // 元の CSS background は無効にして同じ画像が背後に重ならないようにする。
       // SP のヒーロー高さは縦長画像のアスペクト比 (941:1672 ≒ 100:178) に固定し、
       // 画像を丸ごと見せる (78vh 固定だと上だけクロップされ、キャラ帯が
       // コピー・CTA の真裏まで上がってきて文字が読めなくなるため)。
       className="top-hero-bg relative h-[178vw] w-full overflow-hidden sm:h-[61vw] sm:min-h-[78vh]"
-      style={{ ...TOP_HERO_BACKGROUND_STYLE, fontFamily: FONT_STACK }}
+      style={{ backgroundImage: "none", fontFamily: FONT_STACK }}
     >
-      {/* 背景: キービジュアルを CSS background (cover/center bottom) でフルブリード。
+      {/* Keep native picture selection and the same hashed asset URLs. Image's
+          small shared runtime is reused by diagnosis instead of downloading
+          another combined navigation/image chunk at the first question. */}
+      <TopHeroImage mobile={TOP_HERO_BACKGROUNDS.mobile} desktop={TOP_HERO_BACKGROUNDS.desktop} />
+      {/* キービジュアルは従来と同じ cover/center bottom でフルブリード。
           上端の純白をクロップして白余白を詰める。上端の雲の切れ目を、青空に届かない
           ごく短い白グラデ(h-5%)だけで軽く溶かす(空を白く曇らせない)。 */}
       <div
@@ -115,15 +116,9 @@ export default function TopHero({
 
         {/* CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去 */}
         <div className="top-hero-cta-wrap">
-          <Link
-            href={isEnglish ? "/en/diagnosis" : isIndonesian ? "/id/diagnosis" : "/diagnosis"}
-            prefetch={false}
-            onClick={() => trackTopCta(locale)}
-            className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"
-            style={{ boxShadow: "0 8px 20px rgba(91,91,239,0.30)" }}
-          >
+          <TopDiagnosisCta locale={locale}>
             {isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
-          </Link>
+          </TopDiagnosisCta>
         </div>
       </div>
     </section>

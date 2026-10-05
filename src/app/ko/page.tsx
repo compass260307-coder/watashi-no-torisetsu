@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
-import KoTopHeader from "@/components/ko/top/KoTopHeader";
+import KoTopHeader from "@/components/top/TopPurchaseHeader";
 import KoTopHero from "@/components/ko/top/KoTopHero";
 import KoTopStats from "@/components/ko/top/KoTopStats";
 import { KoTopViewTracker } from "@/components/ko/top/KoTopAnalytics";
@@ -157,7 +157,7 @@ export default function KoreanHomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <KoTopViewTracker />
-      <KoTopHeader />
+      <KoTopHeader locale="ko" />
       <KoTopHero />
       <section aria-labelledby="ko-service-intro" className="bg-white px-6 py-10 text-center sm:py-14">
         <div className="mx-auto max-w-[720px]">

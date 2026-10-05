@@ -1,6 +1,6 @@
 "use client";
 
-import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 // feat/top-page: 独立した白いヘッダーバー (16Personalities 型)。
 // 構造: ロゴ(左) | メニュー + ログイン + 言語切替(右寄せ)。PC は横並び、SP はハンバーガー。
 // 白背景・ダーク文字。下にキービジュアルのヒーローが続く。sticky で追従。
@@ -10,8 +10,9 @@ import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
 // DOM は旧 KoTopHeader 側の改良 (オーバーレイの button 化・ドロワーの
 // pointer-events ラッパー) を両ロケールに採用。
 
-import { DeferredLoginModal as LoginModal, EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
+import { DeferredLoginModal as LoginModal, DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
+import { preloadPaywall } from "@/lib/paywall-loader";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
 import { resetLocalData } from "@/lib/reset-data";
@@ -21,7 +22,8 @@ import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import type { PaywallOverlay as PurchaseOverlayType } from "@/components/result/PaywallModal";
+import { useEffect, useId, useRef, useState, type ComponentProps, type ComponentType } from "react";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -38,14 +40,18 @@ type TopLocale = SiteLocale | "en" | "id";
 
 export default function TopHeader({
   locale = "ja",
+  PurchaseOverlay = PaywallOverlay,
+  preloadPurchaseOnIntent = true,
 }: {
   locale?: TopLocale;
+  preloadPurchaseOnIntent?: boolean;
+  PurchaseOverlay?: ComponentType<ComponentProps<typeof PurchaseOverlayType>>;
 }) {
-  const uiText = useUiText(locale, "top.TopHeader");
+  const uiText = useNavigationText(locale, "top.TopHeader");
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
-  const content = useUiCopy(locale).header;
+  const content = useNavigationCopy(locale).header;
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const languageDialogRef = useRef<HTMLDialogElement>(null);
@@ -117,6 +123,10 @@ export default function TopHeader({
   // 未確認・未購入は安全側のロック表示。購入済みと確認できた場合だけリンクを解放する。
   const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
 
+  const warmPurchase = () => {
+    if (preloadPurchaseOnIntent && PurchaseOverlay === PaywallOverlay) void preloadPaywall(locale).catch(() => {});
+  };
+  const purchaseIntent = { onPointerEnter: warmPurchase, onFocus: warmPurchase, onTouchStart: warmPurchase };
   const openAlicePaywall = () => {
     const source = "nav_locked_hoshiyomi";
     track("paywall_scroll_clicked", {
@@ -256,6 +266,7 @@ export default function TopHeader({
                 aria-label={`${n.label}${
                   uiText("（ロック中）")
                 }`}
+                {...purchaseIntent}
                 onClick={openAlicePaywall}
                 className={`${navLinkClass} flex items-center gap-1`}
                 style={{ color: "#9BA3B4" }}
@@ -307,7 +318,8 @@ export default function TopHeader({
             type="button"
             aria-label={content.ariaMenuOpen}
             aria-expanded={open}
-            onClick={() => setOpen(true)}
+            {...purchaseIntent}
+            onClick={() => { warmPurchase(); setOpen(true); }}
             className="flex h-10 w-10 items-center justify-center"
           >
             <MenuIcon />
@@ -407,6 +419,7 @@ export default function TopHeader({
                   aria-label={`${n.label}${
                     uiText("（ロック中）")
                   }`}
+                  {...purchaseIntent}
                   onClick={() => {
                     setOpen(false);
                     openAlicePaywall();
@@ -568,7 +581,7 @@ export default function TopHeader({
       />
 
       {alicePaywallOpen ? (
-        <PaywallOverlay
+        <PurchaseOverlay
           ownerToken={ownerToken ?? undefined}
           locale={locale}
           returnTo="hoshiyomi"

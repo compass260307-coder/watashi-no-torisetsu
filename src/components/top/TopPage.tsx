@@ -1,5 +1,5 @@
+import TopHeader from "@/components/top/TopPurchaseHeader";
 import TopFooter from "@/components/top/TopFooter";
-import TopHeader from "@/components/top/TopHeader";
 import TopHero from "@/components/top/TopHero";
 import TopStats from "@/components/top/TopStats";
 import { TopViewTracker } from "@/components/top/TopAnalytics";

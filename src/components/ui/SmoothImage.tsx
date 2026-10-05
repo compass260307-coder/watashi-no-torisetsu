@@ -20,11 +20,14 @@ const DEFAULT_PLACEHOLDER = "transparent";
 interface SmoothImageProps extends ImageProps {
   // 読み込み中の地色。既定は透明 (箱なし)。不透明画像で空白を色で埋めたいときのみ指定。
   placeholderColor?: string;
+  // Native picture heroes already have media-specific hints; show them immediately.
+  fadeIn?: boolean;
 }
 
 export function SmoothImage({
   placeholderColor = DEFAULT_PLACEHOLDER,
   priority,
+  fadeIn = true,
   className,
   style,
   onLoad,
@@ -39,7 +42,7 @@ export function SmoothImage({
   }, []);
 
   // priority はフェードなし (即時描画で LCP を遅らせない)。それ以外はスッとフェードイン。
-  const fade = !priority;
+  const fade = fadeIn && !priority;
 
   return (
     // alt は呼び出し側から {...rest} 経由で必ず渡す (静的解析では追えないため無効化)。

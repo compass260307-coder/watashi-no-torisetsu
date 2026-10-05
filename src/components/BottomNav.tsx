@@ -1,6 +1,6 @@
 "use client";
 
-import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 
 // 自己診断完了後に表示する下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
@@ -12,11 +12,12 @@ import { useUiCopy, useUiText } from "@/i18n/ui/use-ui-copy";
 //   - アクティブ判定は usePathname()。トリセツ(2) の URL は既存 HamburgerMenu と同じく
 //     localStorage torisetsu_owner_token から /me/[token] を解決 (無ければ /diagnosis)。
 
-import { EagerPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
+import { DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import {
   TakoLockPopover,
   type DiagnosisLockTarget,
 } from "@/components/TakoLockPopover";
+import { preloadPaywall } from "@/lib/paywall-loader";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import {
   ME_ATTENTION_GRANTED_EVENT,
@@ -208,8 +209,9 @@ export function BottomNav() {
       searchParams.get("locale") === "ko");
   const isEnglish = pathname === "/en" || pathname.startsWith("/en/");
   const isIndonesian = pathname === "/id" || pathname.startsWith("/id/");
-  const navCopy = useUiCopy(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja").nav;
-  const uiText = useUiText(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja", "BottomNav");
+  const locale = isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja";
+  const navCopy = useNavigationCopy(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja").nav;
+  const uiText = useNavigationText(isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja", "BottomNav");
   const paywallVersion = accessPaywallVersionForLocale(
     isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja",
   );
@@ -757,6 +759,9 @@ export function BottomNav() {
                 aria-label={`${it.label}${
                   uiText("（ロック中）")
                 }`}
+                onPointerEnter={() => { if (hasToken || isCoursePaywallPreview) void preloadPaywall(locale).catch(() => {}); }}
+                onFocus={() => { if (hasToken || isCoursePaywallPreview) void preloadPaywall(locale).catch(() => {}); }}
+                onTouchStart={() => { if (hasToken || isCoursePaywallPreview) void preloadPaywall(locale).catch(() => {}); }}
                 onClick={() => {
                   if (!hasToken && !isCoursePaywallPreview) {
                     setCourseLockTarget(null);

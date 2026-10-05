@@ -18,11 +18,12 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { AppResultLocale } from "@/i18n/result";
 import { track } from "@/lib/track";
+import { preloadMeChat } from "@/lib/me-chat-loader";
 
 // Keep the purchase dialog eager. Only this optional, post-purchase chat and
-// its birth/checkout dependencies are downloaded when the chat is opened.
+// its birth/checkout dependencies warm only after purchase, or when opened.
 const MeUnmeiChat = lazy(() =>
-  import("./MeUnmeiChat").then((module) => ({ default: module.MeUnmeiChat })),
+  preloadMeChat().then((module) => ({ default: module.MeUnmeiChat })),
 );
 
 const CHAT_FEEDBACK = {
@@ -182,4 +183,10 @@ export function MeUnmeiChatLauncher({
         : null}
     </>
   );
+}
+
+// The server mounts this only after the existing purchase authorization succeeds.
+export function PaidMeChatPreload() {
+  useEffect(() => { void preloadMeChat().catch(() => {}); }, []);
+  return null;
 }

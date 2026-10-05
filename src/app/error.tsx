@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { SmoothImage } from "@/components/ui/SmoothImage";
-import Link from "next/link";
+import recoveryImage from "../../public/types/penguin-recovery.webp";
 import { isChunkLoadError } from "@/lib/chunk-load-error";
 
 export default function Error({
@@ -20,12 +19,13 @@ export default function Error({
   return (
     <main className="min-h-dvh flex flex-col items-center justify-center px-5 py-10 bg-gradient-to-b from-pink-50 to-white">
       <div className="text-center max-w-md">
-        <SmoothImage
-          src="/types/penguin-base.png"
+        {/* Native fallback avoids downloading the router/image widgets for recovery. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={recoveryImage.src}
           alt=""
           width={144}
           height={144}
-          priority
           className="mx-auto mb-6 w-32 h-32 object-contain"
         />
         <h1 className="text-2xl font-extrabold text-foreground mb-3">
@@ -44,12 +44,14 @@ export default function Error({
           >
             {chunkError ? "ページを更新" : "もう一度試す"}
           </button>
-          <Link
+          {/* Hard navigation also works if the application router failed. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
             href="/"
             className="text-sm text-pink-500 hover:underline mt-2"
           >
             トップに戻る
-          </Link>
+          </a>
         </div>
       </div>
     </main>

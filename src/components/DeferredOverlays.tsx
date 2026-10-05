@@ -1,13 +1,14 @@
 "use client";
-import { useUiCopy } from "@/i18n/ui/use-ui-copy";
+import { useNavigationCopy } from "@/i18n/ui/use-navigation-copy";
 
-import { PaywallOverlay } from "@/components/result/PaywallModal";
+import type { PaywallOverlay } from "@/components/result/PaywallModal";
+import { preloadPaywall } from "@/lib/paywall-loader";
 import { Component, lazy, Suspense, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-// Keep checkout code in the initial bundle so opening a purchase dialog does not
-// wait for another JavaScript download. Login remains loaded on demand.
-// Both wrappers are mounted only while their corresponding dialog is open.
+// Navigation keeps only the dialog shell; result pages still import their
+// purchase UI eagerly. Intent and result-generation warm this shared module.
+const LazyPaywall = lazy(() => preloadPaywall().then(module => ({ default: module.PaywallOverlay })));
 const LoginModal = lazy(() =>
   import("@/components/LoginModal").then((mod) => ({ default: mod.LoginModal })),
 );
@@ -18,7 +19,7 @@ type FeedbackProps = {
 };
 
 function LoadingDialog({ onClose, locale = "ja", failed = false }: FeedbackProps & { failed?: boolean }) {
-  const copy = useUiCopy(locale).loading;
+  const copy = useNavigationCopy(locale).loading;
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -73,10 +74,12 @@ class OverlayErrorBoundary extends Component<FeedbackProps & { children: ReactNo
   }
 }
 
-export function EagerPaywallOverlay(props: ComponentProps<typeof PaywallOverlay>) {
+export function DeferredPaywallOverlay(props: ComponentProps<typeof PaywallOverlay>) {
   return (
     <OverlayErrorBoundary onClose={props.onClose} locale={props.locale}>
-      <PaywallOverlay {...props} />
+      <Suspense fallback={<LoadingDialog onClose={props.onClose} locale={props.locale} />}>
+        <LazyPaywall {...props} />
+      </Suspense>
     </OverlayErrorBoundary>
   );
 }

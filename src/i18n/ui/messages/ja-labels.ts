@@ -1,13 +1,5 @@
-// Small UI labels, kept with their selected language rather than shared code.
 const labels: Record<string, Record<string, string>> = {
-  "top.TopHeader": {
-    "（ロック中）": "（ロック中）",
-    "Aliceを試す・本格相談を選ぶ": "Aliceを試す・本格相談を選ぶ"
-  },
-  "top.TopFooter": {
-    "（ロック中）": "（ロック中）"
-  },
-  "result.FullAccessPromoCard": {
+"result.FullAccessPromoCard": {
     "自己診断と友達診断の専用電子書籍": "自己診断と友達診断の専用電子書籍",
     "完全版はこちら": "完全版はこちら",
     "アップグレードで手に入るもの": "アップグレードで手に入るもの",
@@ -22,7 +14,7 @@ const labels: Record<string, Record<string, string>> = {
     "30日間の返金保証・": "30日間の返金保証・",
     "{DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています": "{DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています"
   },
-  "result.SelfAccessPlanCarousel": {
+"result.SelfAccessPlanCarousel": {
     "閉じる": "閉じる",
     "全部入りで解放": "全部入りで解放",
     "あなたの物語の続きを、全部入りで解放": "あなたの物語の続きを、全部入りで解放",
@@ -44,48 +36,28 @@ const labels: Record<string, Record<string, string>> = {
     "{upgradeDiscountPercent}% OFF": "{upgradeDiscountPercent}% OFF",
     "30日間の返金保証・{DIAGNOSIS_COUNT_SNAPSHOT}人以上から信頼されています": "30日間の返金保証・{DIAGNOSIS_COUNT_SNAPSHOT}人以上から信頼されています"
   },
-  "result.FullAccessCta": {
+"result.FullAccessCta": {
     "うまく開けませんでした。少し待ってからもう一度お試しください。": "うまく開けませんでした。少し待ってからもう一度お試しください。",
     "通信に失敗しました。電波のいい場所でもう一度お試しください。": "通信に失敗しました。電波のいい場所でもう一度お試しください。",
     "ひらいています…": "ひらいています…",
     "もう一度ためす →": "もう一度ためす →",
     "上のボタンでもう一度お試しください。": "上のボタンでもう一度お試しください。"
   },
-  "result.PaywallModal": {
+"result.PaywallModal": {
     "ロック解除": "ロック解除",
     "モーダル上部へ戻る": "モーダル上部へ戻る",
     "上へ": "上へ"
   },
-  "result.PaywallPeek": {
+"result.PaywallPeek": {
     "閉じる": "閉じる",
     "{title}の例": "{title}の例",
     "{title}の中身をチラ見せ": "{title}の中身をチラ見せ"
   },
-  "TakoLockPopover": {
-    "テストを受ける": "テストを受ける"
-  },
-  "checkout.CheckoutCancelledNotice": {
+"checkout.CheckoutCancelledNotice": {
     "決済キャンセルのご案内": "決済キャンセルのご案内",
     "決済はキャンセルされました": "決済はキャンセルされました",
     "閉じる": "閉じる",
     "料金は発生していません。{courseName}を選択した状態に戻しました。": "料金は発生していません。{courseName}を選択した状態に戻しました。"
-  },
-  "diagnosis.DiagnosisShareBand": {
-    "ワタシのトリセツ｜無料性格診断テスト": "ワタシのトリセツ｜無料性格診断テスト",
-    "診断テストをシェア": "診断テストをシェア",
-    "LINEでシェア": "LINEでシェア",
-    "Xでシェア": "Xでシェア",
-    "Facebookでシェア": "Facebookでシェア",
-    "Pinterestに保存": "Pinterestに保存",
-    "リンクをコピー": "リンクをコピー",
-    "その他の方法でシェア": "その他の方法でシェア",
-    "リンクをコピーしました ✓": "リンクをコピーしました ✓"
-  },
-  "BottomNav": {
-    "グローバルナビゲーション": "グローバルナビゲーション",
-    " (準備中)": " (準備中)",
-    "（ロック中）": "（ロック中）",
-    "Aliceを試す・本格相談を選ぶ": "Aliceを試す・本格相談を選ぶ"
   }
 };
 export default labels;
