@@ -2,9 +2,12 @@ export const X_DIAGNOSIS_COMPLETE_EVENT_ID = "tw-rg1zg-rg1zv";
 export const X_PURCHASE_EVENT_ID = "tw-rg1zg-rg1zz";
 export const X_ADDITIONAL_DIAGNOSIS_EVENT_ID = "tw-rezdw-reze3";
 export const X_ADDITIONAL_PURCHASE_EVENT_ID = "tw-rezdw-rgdz4";
+export const X_RGG36_DIAGNOSIS_EVENT_ID = "tw-rgg36-rgg37";
+export const X_RGG36_PURCHASE_EVENT_ID = "tw-rgg36-rgg3b";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
   X_ADDITIONAL_DIAGNOSIS_EVENT_ID,
+  X_RGG36_DIAGNOSIS_EVENT_ID,
 ] as const;
 export const X_DIAGNOSIS_PENDING_PREFIX = "wt_x_diagnosis_pending_v1:";
 
@@ -12,9 +15,10 @@ const sentEvents = new Set<string>();
 const X_PURCHASE_SENT_PREFIX = "wt_x_purchase_sent_v1:";
 
 // Keep rg1zg's existing JPY scope; rezdw uses the actual settlement currency.
+// rgg36's requested JPY event applies only to verified JPY settlements.
 export function xPurchaseEventIds(currency: string): readonly string[] {
   return currency === "JPY"
-    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID]
+    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID]
     : [X_ADDITIONAL_PURCHASE_EVENT_ID];
 }
 
@@ -26,11 +30,11 @@ export type XEventParams = {
 
 declare global {
   interface Window {
-    twq?: (command: "event", eventId: string, params: XEventParams) => void;
+    twq?: (command: "event", eventId: string, params: Partial<XEventParams>) => void;
   }
 }
 
-export function trackX(eventId: string, params: XEventParams): boolean {
+export function trackX(eventId: string, params: Partial<XEventParams>): boolean {
   if (typeof window === "undefined" || typeof window.twq !== "function") return false;
   try {
     window.twq("event", eventId, params);
@@ -82,12 +86,13 @@ export async function trackXEventsOnce(
   const send = (): boolean => {
     if (!isActive() || typeof window.twq !== "function") return false;
     const keys = eventIds.map((eventId) => `wt_x_sent_v1:${eventId}:${params.conversion_id}`);
-    // Preserve purchase hand-offs across the rezdw event replacement. Do not
+    // Preserve purchase hand-offs across event replacements/account additions. Do not
     // replay an old payment, even if Meta/TikTok's acknowledgement was missing.
     const previousPurchaseSent = wasXPurchaseSent(params.conversion_id) ||
       wasSent(`wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`);
     const destinationSent = (index: number): boolean => wasSent(keys[index]) ||
-      (eventIds[index] === X_ADDITIONAL_PURCHASE_EVENT_ID && previousPurchaseSent);
+      ((eventIds[index] === X_ADDITIONAL_PURCHASE_EVENT_ID ||
+        eventIds[index] === X_RGG36_PURCHASE_EVENT_ID) && previousPurchaseSent);
     const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     if (requireDiagnosisCompletion && !keys.every(wasSent)) {
       try {
@@ -99,7 +104,9 @@ export async function trackXEventsOnce(
       }
     }
     for (let index = 0; index < eventIds.length; index++) {
-      if (!destinationSent(index) && trackX(eventIds[index], params)) {
+      // The new diagnosis tag needs no payload; dedupe still uses the action ID.
+      const eventParams = eventIds[index] === X_RGG36_DIAGNOSIS_EVENT_ID ? {} : params;
+      if (!destinationSent(index) && trackX(eventIds[index], eventParams)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
       }
