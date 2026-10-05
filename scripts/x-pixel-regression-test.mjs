@@ -55,8 +55,24 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   vm.runInContext(script.replaceAll(";twq(", ";window.twq("), context);
   assert.equal(loaders, 1);
   assert.deepEqual(Array.from(window.twq.queue, (args) => Array.from(args)), [
-    ["config", "rg1zg"], ["config", "rezdw"],
+    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"],
   ]);
+  vm.runInContext(script.replaceAll(";twq(", ";window.twq("), context);
+  assert.equal(loaders, 1, "Replaying the inline script must not load uwt.js twice");
+  const existingCalls = [];
+  vm.runInContext(script.replaceAll(";twq(", ";window.twq("), vm.createContext({
+    window: { twq: (...args) => existingCalls.push(args) }, document,
+  }));
+  assert.equal(loaders, 1, "An existing twq must reuse its loader");
+  assert.deepEqual(normalize(existingCalls), [
+    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"],
+  ]);
+}
+{
+  const ssr = load("src/lib/xPixel.ts");
+  assert.equal(ssr.trackX(ssr.X_RGG36_DIAGNOSIS_EVENT_ID, {}), false);
+  assert.equal(await ssr.trackXEventsOnce(ssr.X_DIAGNOSIS_COMPLETE_EVENT_IDS, { conversion_id: "offline-ssr" }, true), false);
+  assert.equal(ssr.wasXPurchaseSent("offline-ssr"), false);
 }
 {
   const e = environment();
@@ -72,9 +88,11 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   e.window.sessionStorage.setItem(marker, String(Date.now()));
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, true), true);
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids));
+  assert.deepEqual(normalize(e.calls[2]), ["event", "tw-rgg36-rgg37", {}]);
+  assert.deepEqual(normalize(e.calls.slice(0, 2).map((call) => call[2])), [params, params], "Existing diagnosis payloads are unchanged");
   assert.equal(e.window.sessionStorage.getItem(marker), null);
   await e.pixel.trackXEventsOnce(ids, params, true);
-  assert.equal(e.calls.length, 2, "Remount/Strict Mode must not repeat either tag");
+  assert.equal(e.calls.length, 3, "Remount/Strict Mode must not repeat any tag");
   const reload = environment({ local: e.local });
   await reload.pixel.trackXEventsOnce(ids, params, true);
   assert.equal(reload.calls.length, 0, "Reload must use persistent per-event keys");
@@ -91,10 +109,27 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, true), false);
-  assert.ok(e.window.sessionStorage.getItem(marker), "Keep marker until both destinations succeed");
+  assert.ok(e.window.sessionStorage.getItem(marker), "Keep marker until all destinations succeed");
   failAdditional = false;
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, true), true);
-  assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids));
+  assert.deepEqual(e.calls.map((call) => call[1]).sort(), Array.from(ids).sort());
+}
+{
+  const e = environment();
+  const params = { conversion_id: "offline-new-diagnosis-retry" };
+  const marker = e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+  e.window.sessionStorage.setItem(marker, String(Date.now()));
+  e.window.twq = (...args) => {
+    if (args[1] === e.pixel.X_RGG36_DIAGNOSIS_EVENT_ID) throw Error("blocked");
+    e.calls.push(args);
+  };
+  assert.equal(await e.pixel.trackXEventsOnce(e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, params, true), false);
+  assert.equal(e.calls.length, 2);
+  assert.ok(e.window.sessionStorage.getItem(marker));
+  const reload = environment({ local: e.local });
+  reload.window.sessionStorage = e.window.sessionStorage;
+  assert.equal(await reload.pixel.trackXEventsOnce(reload.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, params, true), true);
+  assert.deepEqual(normalize(reload.calls), [["event", "tw-rgg36-rgg37", {}]], "Reload retries only the unsent new diagnosis tag");
 }
 {
   const e = environment();
@@ -120,7 +155,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   await Promise.all([
     first.pixel.trackXEventsOnce(ids, params), second.pixel.trackXEventsOnce(ids, params),
   ]);
-  assert.equal(first.calls.length + second.calls.length, 2);
+  assert.equal(first.calls.length + second.calls.length, 3);
   assert.equal(first.pixel.wasXPurchaseSent(params.conversion_id), true);
   assert.equal(second.pixel.wasXPurchaseSent(params.conversion_id), true);
 }
@@ -157,7 +192,7 @@ for (const marker of ["group", "previous-event"]) {
   assert.deepEqual(e.calls.map((call) => call[1]), [e.pixel.X_PURCHASE_EVENT_ID], "Only the unsent original account is retried");
   const fresh = { ...params, conversion_id: "offline-new-payment" };
   await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
-  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4"]);
+  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b"]);
   assert.equal(e.calls.some((call) => call[1] === "tw-rezdw-1436v3"), false);
 }
 {
@@ -186,7 +221,24 @@ for (const marker of ["group", "previous-event"]) {
     await flush();
     unmount();
   }
-  assert.equal(e.calls.length, 2, "Effect replay/remount must send only one event per account");
+  assert.equal(e.calls.length, 3, "Effect replay/remount must send only one event per account");
+}
+{
+  const e = environment();
+  const params = { conversion_id: "offline-new-purchase-retry", value: 1234, currency: "JPY" };
+  const ids = e.pixel.xPurchaseEventIds(params.currency);
+  e.window.twq = (...args) => {
+    if (args[1] === e.pixel.X_RGG36_PURCHASE_EVENT_ID) throw Error("blocked");
+    e.calls.push(args);
+  };
+  assert.equal(await e.pixel.trackXEventsOnce(ids, params), false);
+  assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false, "Do not complete the purchase group before the new tag succeeds");
+  assert.deepEqual(normalize(e.calls.map((call) => call[2])), [params, params], "Existing purchase payloads are unchanged");
+  const reload = environment({ local: e.local });
+  assert.equal(await reload.pixel.trackXEventsOnce(ids, params), true);
+  assert.deepEqual(normalize(reload.calls), [["event", "tw-rgg36-rgg3b", params]], "Reload retries only the new purchase tag, using the actual amount");
+  await reload.pixel.trackXEventsOnce(ids, params);
+  assert.equal(reload.calls.length, 1);
 }
 // Exercise the actual prepare route with an in-memory verified Stripe session.
 async function preparedClaim(currency, amount, confirmed = true) {
@@ -201,7 +253,7 @@ async function preparedClaim(currency, amount, confirmed = true) {
   });
   return api.POST({});
 }
-for (const [currency, minor, value] of [["jpy", 499, 499], ["krw", 4900, 4900], ["usd", 499, 4.99], ["idr", 4900000, 49000], ["thb", 9900, 99]]) {
+for (const [currency, minor, value] of [["jpy", 499, 499], ["jpy", 1234, 1234], ["krw", 4900, 4900], ["usd", 499, 4.99], ["idr", 4900000, 49000], ["thb", 9900, 99]]) {
   const result = await preparedClaim(currency, minor);
   assert.equal(result.status, 200);
   assert.equal(result.body.value, value);
@@ -246,7 +298,15 @@ for (const currency of ["JPY", "USD", "KRW", "IDR", "THB"]) {
   assert.deepEqual(Array.from(e.element.props.eventIds), Array.from(e.pixel.xPurchaseEventIds(currency)));
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
-  assert.equal(e.calls.length, currency === "JPY" ? 2 : 1);
+  assert.equal(e.calls.length, currency === "JPY" ? 3 : 1);
+}
+{
+  const claim = { checkoutSessionId: "cs_live_offline_discount", value: 321, currency: "JPY" };
+  const e = await purchaseComponent(claim, true);
+  await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
+  assert.deepEqual(normalize(e.calls[2]), ["event", "tw-rgg36-rgg3b", {
+    conversion_id: claim.checkoutSessionId, value: 321, currency: "JPY",
+  }], "The new purchase tag receives the verified settlement amount, not a fixed catalog price");
 }
 for (const claim of [
   { checkoutSessionId: "cs_test_offline", value: 499, currency: "JPY" },
