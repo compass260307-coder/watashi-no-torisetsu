@@ -7,6 +7,11 @@ import { SmoothImage } from "@/components/ui/SmoothImage";
 import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
 import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
 
+import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
+import { ResultUpgradeSessionCheck } from "./ResultUpgradeSessionCheck";
+import { clearResultUpgradeDraft, loadResultUpgradeDraft, saveResultUpgradeDraft } from "@/lib/result-upgrade-draft";
+
+
 type Props = {
   ownerToken: string;
   existingAnswers?: string[];
@@ -38,6 +43,11 @@ export function ResultUpgradeChat({
   modal = false,
 }: Props) {
   const router = useRouter();
+  const locale = "ja";
+  const localePrefix = "";
+  const copy = { saveError: "回答を保存できませんでした。通信環境を確認して、もう一度お試しください。" };
+  const sessionCopy = RESULT_UPGRADE_SESSION_COPY[locale];
+  const [sessionVerified, setSessionVerified] = useState(preview);
   const hasSavedAnswers = existingAnswers.length === RESULT_UPGRADE_QUESTIONS.length;
   const [answers, setAnswers] = useState<string[]>(existingAnswers);
   const [draft, setDraft] = useState("");
@@ -53,6 +63,7 @@ export function ResultUpgradeChat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const answerSubmittingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const draftRestoredRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -66,7 +77,14 @@ export function ResultUpgradeChat({
   }, [aliceTyping, answers, index, screen]);
 
   useEffect(() => {
-    if (preview || screen !== "generating" || !premiumPaid) return;
+    if (!preview && sessionVerified && screen === "questions") {
+      saveResultUpgradeDraft(ownerToken, answers, draft);
+    }
+  }, [answers, draft, ownerToken, preview, screen, sessionVerified]);
+
+
+  useEffect(() => {
+    if (preview || !sessionVerified || screen !== "generating" || !premiumPaid) return;
     return watchResultUpgrade({
       force: retryKey > 0,
       onReady: () => router.replace(
@@ -76,7 +94,7 @@ export function ResultUpgradeChat({
       ),
       onFailed: () => setScreen("failed"),
     });
-  }, [ownerToken, premiumPaid, preview, retryKey, router, screen]);
+  }, [ownerToken, premiumPaid, preview, retryKey, router, screen, sessionVerified]);
 
   async function submitAnswer() {
     const answer = draft.trim();
@@ -115,14 +133,33 @@ export function ResultUpgradeChat({
       const response = await fetch("/api/result-upgrade/answers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: nextAnswers }),
+        body: JSON.stringify({ answers: nextAnswers, ownerToken }),
       });
-      if (!response.ok) throw new Error("save failed");
+      if (!isMountedRef.current) return;
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        if (response.status === 401 || data?.error === "result owner mismatch") {
+          setSessionVerified(false);
+        }
+        if (response.status === 409 && data?.error === "already generated") {
+          clearResultUpgradeDraft(ownerToken);
+          router.replace(`${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`);
+          return;
+        }
+        throw new Error(response.status === 403 ? sessionCopy.forbidden
+          : response.status === 429 ? sessionCopy.rateLimited
+          : response.status === 400 ? sessionCopy.invalidAnswers
+          : sessionCopy.unavailable);
+      }
+      clearResultUpgradeDraft(ownerToken);
       await minimumPreparationDelay;
       if (!isMountedRef.current) return;
       setScreen(premiumPaid ? "generating" : "purchase");
-    } catch {
-      setError("回答を保存できませんでした。通信環境を確認して、もう一度お試しください。");
+    } catch (failure) {
+      if (!isMountedRef.current) return;
+      setError(failure instanceof Error && [sessionCopy.forbidden, sessionCopy.rateLimited,
+        sessionCopy.invalidAnswers, sessionCopy.unavailable].some(message => message === failure.message)
+        ? failure.message : copy.saveError);
       setScreen("questions");
       setAnswers(nextAnswers.slice(0, -1));
       setIndex(nextAnswers.length - 1);
@@ -130,6 +167,26 @@ export function ResultUpgradeChat({
     } finally {
       answerSubmittingRef.current = false;
     }
+  }
+
+  if (!sessionVerified) {
+    return <ResultUpgradeSessionCheck ownerToken={ownerToken} locale={locale} onVerified={() => {
+      if (!draftRestoredRef.current) {
+        draftRestoredRef.current = true;
+        if (!hasSavedAnswers) {
+          const saved = loadResultUpgradeDraft(ownerToken);
+          if (saved) {
+            setAnswers(saved.answers);
+            setIndex(saved.answers.length);
+            setDraft(saved.draft);
+          }
+        } else {
+          clearResultUpgradeDraft(ownerToken);
+        }
+      }
+      setSessionVerified(true);
+      setError(null);
+    }} />;
   }
 
   return (
