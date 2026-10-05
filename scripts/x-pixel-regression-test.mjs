@@ -90,7 +90,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids));
   assert.deepEqual(normalize(e.calls[2]), ["event", "tw-rgg36-rgg9b", {}]);
   assert.deepEqual(normalize(e.calls.slice(0, 2).map((call) => call[2])), [params, params], "Existing diagnosis payloads are unchanged");
-  assert.deepEqual(normalize(e.calls[3]), ["event", "tw-rgi5k-rgi5m", params]);
+  assert.deepEqual(normalize(e.calls[3]), ["event", "tw-rgi5k-rgi5r", params]);
   assert.equal(e.window.sessionStorage.getItem(marker), null);
   await e.pixel.trackXEventsOnce(ids, params, true);
   assert.equal(e.calls.length, 4, "Remount/Strict Mode must not repeat any tag");
@@ -175,6 +175,17 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
 }
 
 const meta = load("src/lib/meta-purchase.ts");
+// Keep completed purchases suppressed when correcting the rgi5k event mapping.
+{
+  const e = environment();
+  const params = { conversion_id: "offline-rgi5k-mapping-cutover", value: 499, currency: "JPY" };
+  for (const id of ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5r"]) {
+    e.local.set(`wt_x_sent_v1:${id}:${params.conversion_id}`, "1");
+  }
+  e.local.set(`wt_x_purchase_sent_v1:${params.conversion_id}`, "1");
+  assert.equal(await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), params), true);
+  assert.equal(e.calls.length, 0, "Correcting the ID must not replay a completed purchase");
+}
 // Replacing the event must not resend an old payment under the new event ID.
 for (const marker of ["group", "previous-event"]) {
   const e = environment();
@@ -193,7 +204,7 @@ for (const marker of ["group", "previous-event"]) {
   assert.deepEqual(e.calls.map((call) => call[1]), [e.pixel.X_PURCHASE_EVENT_ID], "Only the unsent original account is retried");
   const fresh = { ...params, conversion_id: "offline-new-payment" };
   await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
-  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5r"]);
+  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m"]);
   assert.equal(e.calls.some((call) => call[1] === "tw-rezdw-1436v3"), false);
 }
 {
@@ -289,8 +300,8 @@ for (const diagnosis of [true, false]) {
     ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"],
   ]);
   assert.deepEqual(queued.slice(4).map((call) => call[1]), [
-    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5m",
-    "tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5r",
+    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r",
+    "tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m",
   ]);
   assert.equal(loaders, 1);
   // Simulate the library consuming its FIFO queue, then switching to live firing.
@@ -301,7 +312,7 @@ for (const diagnosis of [true, false]) {
   assert.equal(e.calls.length, 12, "No replay after the queued events have been consumed");
   const fresh = { ...purchase, conversion_id: "offline-ready-purchase" };
   await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
-  assert.deepEqual(normalize(e.calls.slice(-1)), [["event", "tw-rgi5k-rgi5r", fresh]]);
+  assert.deepEqual(normalize(e.calls.slice(-1)), [["event", "tw-rgi5k-rgi5m", fresh]]);
 }
 // Exercise the actual prepare route with an in-memory verified Stripe session.
 async function preparedClaim(currency, amount, confirmed = true) {
