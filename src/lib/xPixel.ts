@@ -2,7 +2,7 @@ export const X_DIAGNOSIS_COMPLETE_EVENT_ID = "tw-rg1zg-rg1zv";
 export const X_PURCHASE_EVENT_ID = "tw-rg1zg-rg1zz";
 export const X_ADDITIONAL_DIAGNOSIS_EVENT_ID = "tw-rezdw-reze3";
 export const X_ADDITIONAL_PURCHASE_EVENT_ID = "tw-rezdw-rgdz4";
-export const X_RGG36_DIAGNOSIS_EVENT_ID = "tw-rgg36-rgg37";
+export const X_RGG36_DIAGNOSIS_EVENT_ID = "tw-rgg36-rgg9b";
 export const X_RGG36_PURCHASE_EVENT_ID = "tw-rgg36-rgg3b";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,

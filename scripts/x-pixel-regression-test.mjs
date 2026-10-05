@@ -88,7 +88,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   e.window.sessionStorage.setItem(marker, String(Date.now()));
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, true), true);
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids));
-  assert.deepEqual(normalize(e.calls[2]), ["event", "tw-rgg36-rgg37", {}]);
+  assert.deepEqual(normalize(e.calls[2]), ["event", "tw-rgg36-rgg9b", {}]);
   assert.deepEqual(normalize(e.calls.slice(0, 2).map((call) => call[2])), [params, params], "Existing diagnosis payloads are unchanged");
   assert.equal(e.window.sessionStorage.getItem(marker), null);
   await e.pixel.trackXEventsOnce(ids, params, true);
@@ -129,7 +129,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   const reload = environment({ local: e.local });
   reload.window.sessionStorage = e.window.sessionStorage;
   assert.equal(await reload.pixel.trackXEventsOnce(reload.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, params, true), true);
-  assert.deepEqual(normalize(reload.calls), [["event", "tw-rgg36-rgg37", {}]], "Reload retries only the unsent new diagnosis tag");
+  assert.deepEqual(normalize(reload.calls), [["event", "tw-rgg36-rgg9b", {}]], "Reload retries only the unsent new diagnosis tag");
 }
 {
   const e = environment();
