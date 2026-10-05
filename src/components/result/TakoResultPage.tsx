@@ -841,6 +841,7 @@ export async function TakoResultPage({
                                   }
                                   width={1448}
                                   height={1086}
+                                  sizes="(min-width: 704px) 640px, calc(100vw - 64px)"
                                   unoptimized={UNOPTIMIZED_IN_DEV}
                                   className="h-auto w-full max-w-[640px] object-contain"
                                 />

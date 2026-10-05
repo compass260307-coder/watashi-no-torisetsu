@@ -1386,6 +1386,7 @@ async function MeResultPageContent({
                           alt=""
                           width={960}
                           height={640}
+                          sizes="(min-width: 832px) 760px, (min-width: 768px) calc(100vw - 72px), (min-width: 600px) 560px, calc(100vw - 40px)"
                           className="mx-auto mt-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
                         />
                       )}
@@ -1513,6 +1514,7 @@ async function MeResultPageContent({
               alt=""
               width={960}
               height={640}
+              sizes="(min-width: 768px) 680px, (min-width: 552px) 520px, calc(100vw - 32px)"
               className="mx-auto -mt-1 mb-2 h-auto w-full max-w-[520px] md:-mt-1 md:mb-3 md:max-w-[680px]"
             />
           )}
@@ -1714,6 +1716,7 @@ async function MeResultPageContent({
                     alt=""
                     width={960}
                     height={640}
+                    sizes="(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
                     className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                   />
                 )}
