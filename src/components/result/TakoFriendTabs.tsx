@@ -344,10 +344,14 @@ export function TakoFriendTabs({
                   }}
                 >
                   {tab.imageSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={tab.imageSrc}
                       alt=""
+                      width={48}
+                      height={48}
+                      sizes="48px"
+                      quality={75}
+                      loading="eager"
                       className="block h-full w-full object-cover"
                     />
                   ) : (
