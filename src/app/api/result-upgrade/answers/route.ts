@@ -46,6 +46,11 @@ export async function POST(request: Request) {
   if (!body.ok) {
     return NextResponse.json({ error: body.error }, { status: body.status });
   }
+  // The URL token identifies the result being edited; it never replaces login.
+  // Reject a session switched in another tab rather than saving to that account.
+  if (body.value.ownerToken !== undefined && body.value.ownerToken !== session.owner_token) {
+    return NextResponse.json({ error: "result owner mismatch" }, { status: 403 });
+  }
   const answers = normalizeResultUpgradeAnswers(body.value.answers);
   if (!answers) {
     return NextResponse.json({ error: "invalid answers" }, { status: 400 });
