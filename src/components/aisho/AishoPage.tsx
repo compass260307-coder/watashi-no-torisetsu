@@ -18,6 +18,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { AISHO_RANK_IMAGE_DIMENSIONS } from "@/lib/aisho-rank-image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { MetaPurchaseFromQuery } from "@/components/MetaPurchaseFromQuery";
 import { useSearchParams } from "next/navigation";
@@ -961,8 +962,8 @@ function ResultBlock({
                         ? `Peringkat kecocokan ${r.rank}`
                       : `相性ランク ${r.rank}`
                 }
-                width={512}
-                height={512}
+                width={AISHO_RANK_IMAGE_DIMENSIONS[r.rank].width}
+                height={AISHO_RANK_IMAGE_DIMENSIONS[r.rank].height}
                 sizes="(min-width: 1077px) 560px, (min-width: 768px) 52vw, (min-width: 625px) 500px, 80vw"
                 unoptimized={UNOPTIMIZED_IN_DEV}
                 priority
