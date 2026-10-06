@@ -25,6 +25,7 @@ import {
   sceneImageFor,
 } from "@/components/result/MinnaTypeProse";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { AISHO_RANK_IMAGE_DIMENSIONS } from "@/lib/aisho-rank-image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoFaq } from "@/components/result/TakoFaq";
@@ -962,6 +963,7 @@ export async function TakoResultPage({
                                   alt=""
                                   width={960}
                                   height={640}
+                                  sizes="(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
                                   className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                                 />
                               )}
@@ -1058,8 +1060,9 @@ export async function TakoResultPage({
                                           ? `Peringkat kecocokan ${c.rank}`
                                         : `相性ランク ${c.rank}`
                                     }
-                                    width={512}
-                                    height={512}
+                                    width={AISHO_RANK_IMAGE_DIMENSIONS[c.rank].width}
+                                    height={AISHO_RANK_IMAGE_DIMENSIONS[c.rank].height}
+                                    sizes="(min-width: 768px) 640px, (min-width: 624px) 560px, calc(100vw - 64px)"
                                     unoptimized={UNOPTIMIZED_IN_DEV}
                                     className="mt-3 w-full max-w-[560px] object-contain md:max-w-[640px]"
                                   />

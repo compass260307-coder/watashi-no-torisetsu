@@ -18,6 +18,7 @@ import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { AISHO_RANK_IMAGE_DIMENSIONS } from "@/lib/aisho-rank-image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { EN_RESULT_AXES, EN_RESULT_TYPES } from "@/i18n/en/result";
 import {
@@ -398,6 +399,7 @@ export default async function EnTakoResultPage({
                   alt=""
                   width={960}
                   height={640}
+                  sizes="(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
                   className="mx-auto my-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
                 />
               ) : null}
@@ -463,6 +465,7 @@ export default async function EnTakoResultPage({
                   alt=""
                   width={960}
                   height={640}
+                  sizes="(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
                   className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
                 />
               ) : null}
@@ -504,8 +507,9 @@ export default async function EnTakoResultPage({
               <SmoothImage
                 src={`/aisho/ranks/${compatibilityRank}.webp`}
                 alt={`Compatibility rank ${compatibilityRank}`}
-                width={512}
-                height={512}
+                width={AISHO_RANK_IMAGE_DIMENSIONS[compatibilityRank].width}
+                height={AISHO_RANK_IMAGE_DIMENSIONS[compatibilityRank].height}
+                sizes="(min-width: 768px) 640px, (min-width: 624px) 560px, calc(100vw - 64px)"
                 unoptimized={UNOPTIMIZED_IN_DEV}
                 className="mt-3 w-full max-w-[560px] object-contain md:max-w-[640px]"
               />

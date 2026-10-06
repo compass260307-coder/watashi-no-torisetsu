@@ -136,6 +136,7 @@ export function MinnaTypeProse({
                     alt=""
                     width={960}
                     height={640}
+                    sizes="(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
                     className="mx-auto my-8 h-auto w-full max-w-[560px] md:max-w-[760px]"
                   />
                 )}

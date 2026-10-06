@@ -570,6 +570,11 @@ export function DeepDiveSections({
               alt=""
               width={960}
               height={640}
+              sizes={
+                sec.key === "love" || sec.key === "career"
+                  ? "(min-width: 824px) 760px, (min-width: 768px) calc(100vw - 64px), (min-width: 592px) 560px, calc(100vw - 32px)"
+                  : undefined
+              }
               className="mx-auto mb-6 h-auto w-full max-w-[560px] md:max-w-[760px]"
             />
           )}
