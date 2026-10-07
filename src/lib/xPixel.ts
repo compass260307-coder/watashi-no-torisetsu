@@ -10,6 +10,8 @@ export const X_RGKNS_DIAGNOSIS_EVENT_ID = "tw-rgkns-rgkoe";
 export const X_RGKNS_PURCHASE_EVENT_ID = "tw-rgkns-rgknu";
 export const X_RGKQM_DIAGNOSIS_EVENT_ID = "tw-rgkqm-rgkr4";
 export const X_RGKQM_PURCHASE_EVENT_ID = "tw-rgkqm-rgkr6";
+export const X_RGM4U_DIAGNOSIS_EVENT_ID = "tw-rgm4u-rgm58";
+export const X_RGM4U_PURCHASE_EVENT_ID = "tw-rgm4u-rgm4y";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
   X_ADDITIONAL_DIAGNOSIS_EVENT_ID,
@@ -17,6 +19,7 @@ export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_RGI5K_DIAGNOSIS_EVENT_ID,
   X_RGKNS_DIAGNOSIS_EVENT_ID,
   X_RGKQM_DIAGNOSIS_EVENT_ID,
+  X_RGM4U_DIAGNOSIS_EVENT_ID,
 ] as const;
 export const X_DIAGNOSIS_PENDING_PREFIX = "wt_x_diagnosis_pending_v1:";
 
@@ -26,11 +29,11 @@ const X_PURCHASE_SENT_PREFIX = "wt_x_purchase_sent_v1:";
 // Keep rg1zg's existing JPY scope; rezdw uses the actual settlement currency.
 // rgg36's requested JPY event applies only to verified JPY settlements.
 // rgi5k follows the existing purchase flow in every verified settlement currency.
-// rgkns and rgkqm also follow every verified settlement, with payload-free events.
+// rgkns, rgkqm, and rgm4u also follow every verified settlement, with payload-free events.
 export function xPurchaseEventIds(currency: string): readonly string[] {
   return currency === "JPY"
-    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID]
-    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID];
+    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID]
+    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID];
 }
 
 export type XEventParams = {
@@ -106,7 +109,8 @@ export async function trackXEventsOnce(
         eventIds[index] === X_RGG36_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGI5K_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGKNS_PURCHASE_EVENT_ID ||
-        eventIds[index] === X_RGKQM_PURCHASE_EVENT_ID) && previousPurchaseSent);
+        eventIds[index] === X_RGKQM_PURCHASE_EVENT_ID ||
+        eventIds[index] === X_RGM4U_PURCHASE_EVENT_ID) && previousPurchaseSent);
     const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     if (requireDiagnosisCompletion && !keys.every(wasSent)) {
       try {
@@ -118,13 +122,15 @@ export async function trackXEventsOnce(
       }
     }
     for (let index = 0; index < eventIds.length; index++) {
-      // Preserve rgg36's payload-free diagnosis and rgkns/rgkqm's empty payloads.
+      // Preserve rgg36's payload-free diagnosis and rgkns/rgkqm/rgm4u's empty payloads.
       // The action ID still keys local dedupe even when it is not sent to X.
       const eventParams = eventIds[index] === X_RGG36_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGKNS_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGKNS_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGKQM_DIAGNOSIS_EVENT_ID ||
-        eventIds[index] === X_RGKQM_PURCHASE_EVENT_ID ? {} : params;
+        eventIds[index] === X_RGKQM_PURCHASE_EVENT_ID ||
+        eventIds[index] === X_RGM4U_DIAGNOSIS_EVENT_ID ||
+        eventIds[index] === X_RGM4U_PURCHASE_EVENT_ID ? {} : params;
       if (!destinationSent(index) && trackX(eventIds[index], eventParams)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
