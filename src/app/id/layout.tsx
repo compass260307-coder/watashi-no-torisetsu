@@ -1,13 +1,14 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import type { Metadata } from "next";
 import { DocumentLanguage } from "@/components/DocumentLanguage";
 
-const TITLE = "Alice Test – Tes Kepribadian Big Five Gratis";
+const TITLE = `${GLOBAL_SITE_NAME} – Tes Kepribadian Big Five Gratis`;
 const DESCRIPTION = "Jawab 50 pertanyaan, temukan tipe kepribadian Big Five Anda dari 32 karakter, dan pahami kekuatan serta ruang tumbuh Anda.";
 
 export const metadata: Metadata = {
-  title: { absolute: TITLE, template: "%s | Alice Test" },
+  title: { absolute: TITLE, template: `%s | ${GLOBAL_SITE_NAME}` },
   description: DESCRIPTION,
-  applicationName: "Alice Test",
+  applicationName: GLOBAL_SITE_NAME,
   authors: [{ name: "Tim Alice Personalities" }],
   creator: "Tim Alice Personalities",
   publisher: "Tim Alice Personalities",
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "id_ID",
     alternateLocale: ["ja_JP", "ko_KR", "en_US"],
-    siteName: "Alice Test",
+    siteName: GLOBAL_SITE_NAME,
     title: TITLE,
     description: DESCRIPTION,
     images: [{ url: "/characters/keyvisual.webp", width: 1536, height: 1024, alt: "Karakter kepribadian Alice Test" }],

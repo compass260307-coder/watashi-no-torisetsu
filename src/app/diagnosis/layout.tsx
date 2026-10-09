@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import type { Metadata } from "next";
 import {
   DIAGNOSIS_SEO_DESCRIPTION,
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ja_JP",
     url: `${BASE_URL}/diagnosis`,
-    siteName: "ワタシのトリセツ",
+    siteName: GLOBAL_SITE_NAME,
     title: `${DIAGNOSIS_SEO_TITLE}｜ワタシのトリセツ`,
     description: DIAGNOSIS_SEO_DESCRIPTION,
     images: [

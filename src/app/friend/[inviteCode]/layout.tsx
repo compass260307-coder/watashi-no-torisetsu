@@ -12,7 +12,7 @@ import {
   thirtyTwoImagePath,
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
-import { localizedAlternates } from "@/lib/locale-seo";
+import { GLOBAL_SITE_NAME, localizedAlternates } from "@/lib/locale-seo";
 
 const SITE_URL = resolveSiteUrl();
 const FALLBACK_DESCRIPTION =
@@ -41,7 +41,7 @@ function buildMetadata(opts: {
       title: opts.title,
       description: opts.description,
       type: "website",
-      siteName: "ワタシのトリセツ",
+      siteName: GLOBAL_SITE_NAME,
       url: opts.url,
       images: [
         { url: opts.imageUrl, width: 1200, height: 630, alt: opts.imageAlt },
