@@ -1040,6 +1040,10 @@ export async function POST(request: NextRequest) {
       : {}),
   };
 
+  const submitMessage = isResultUpgradeCheckout && checkoutLocale === "ko"
+    ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
+    : checkoutCopy.submitMessage;
+
   let lineItems: NonNullable<CheckoutSessionCreateParams["line_items"]>;
   let discounts: CheckoutSessionCreateParams["discounts"];
   let chargedAmount: number;
@@ -1274,11 +1278,11 @@ export async function POST(request: NextRequest) {
           }
         : {}),
       // 支払い直前の補足コピーがある商品だけ表示する。
-      ...(checkoutCopy.submitMessage
+      ...(submitMessage
         ? {
             custom_text: {
               submit: {
-                message: checkoutCopy.submitMessage,
+                message: submitMessage,
               },
             },
           }

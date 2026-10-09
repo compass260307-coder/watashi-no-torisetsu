@@ -79,6 +79,9 @@ assert.equal(params.metadata.course_price_minor, '8900');
 assert.equal(params.metadata.upgrade_from, 'full_access');
 assert.match(params.success_url, /\/ko\/me\/owner-token/);
 assert.equal(params.metadata.locale, 'ko');
+assert.match(params.custom_text.submit.message, /5개 답변/);
+assert.match(params.custom_text.submit.message, /1회 결제/);
+assert(!params.custom_text.submit.message.includes('궁합 진단'));
 for (const [input, expected] of [
   [{ full: false }, 409], [{ full: false, selfReport: true }, 409],
   [{ session: false }, 403], [{ sessionId: 'another-owner' }, 403],
