@@ -100,7 +100,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   assert.deepEqual(normalize(e.calls[8]), ["event", "tw-rgskb-rgski", {}]);
   assert.equal(e.window.sessionStorage.getItem(marker), null);
   await e.pixel.trackXEventsOnce(ids, params, true);
-  assert.deepEqual(normalize(e.calls[9]), ["event", "tw-rgtx5-rgtxe", {}]);
+  assert.deepEqual(normalize(e.calls[9]), ["event", "tw-rgtx5-rgu2v", {}]);
   assert.equal(e.calls.length, 10, "Remount/Strict Mode must not repeat any tag");
   const reload = environment({ local: e.local });
   await reload.pixel.trackXEventsOnce(ids, params, true);
@@ -477,7 +477,7 @@ for (const diagnosis of [true, false]) {
   const e = environment();
   const params = { conversion_id: `offline-rgtx5-retry-${diagnosis}`, value: 499, currency: "JPY" };
   const ids = diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds("JPY");
-  const newId = diagnosis ? "tw-rgtx5-rgtxe" : "tw-rgtx5-rgtx9";
+  const newId = diagnosis ? "tw-rgtx5-rgu2v" : "tw-rgtx5-rgtx9";
   const marker = e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
   if (diagnosis) e.window.sessionStorage.setItem(marker, String(Date.now()));
   e.window.twq = (...args) => {
@@ -509,6 +509,27 @@ for (const diagnosis of [true, false]) {
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), !diagnosis);
   assert.equal(e.calls.length, 0, "No new event on historical result/purchase views");
 }
+// Correcting rgtx5's diagnosis ID must not replay a previously handed-off
+// diagnosis, even while other destinations still have a fresh retry marker.
+for (const storageName of ["sessionStorage", "localStorage"]) {
+  const e = environment();
+  const params = { conversion_id: `offline-rgtx5-id-correction-${storageName}` };
+  const ids = e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS;
+  assert.equal(ids.includes("tw-rgtx5-rgtxe"), false, "Old ID is no longer a destination");
+  assert.equal(e.pixel.X_RGTX5_DIAGNOSIS_EVENT_ID, "tw-rgtx5-rgu2v");
+  e.window[storageName].setItem(`wt_x_sent_v1:tw-rgtx5-rgtxe:${params.conversion_id}`, "1");
+  const marker = e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+  e.window.sessionStorage.setItem(marker, String(Date.now()));
+  assert.equal(await e.pixel.trackXEventsOnce(ids, params, true), true);
+  assert.deepEqual(e.calls.map(call => call[1]), Array.from(ids).filter(id => id !== "tw-rgtx5-rgu2v"), "Only unsent existing destinations may retry");
+  assert.equal(e.window.sessionStorage.getItem(marker), null);
+  await e.pixel.trackXEventsOnce(ids, params, true);
+  assert.equal(e.calls.length, 9, "A remount must not send the corrected event again");
+  const reload = environment({ local: e.local });
+  reload.window.sessionStorage = e.window.sessionStorage;
+  await reload.pixel.trackXEventsOnce(ids, params, true);
+  assert.equal(reload.calls.length, 0, "Reload must not turn the ID correction into a conversion");
+}
 // Actual loader + event helper: configs precede events while uwt.js is delayed.
 {
   const e = environment();
@@ -534,7 +555,7 @@ for (const diagnosis of [true, false]) {
     ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"], ["config", "rgskb"], ["config", "rgtx5"],
   ]);
   assert.deepEqual(queued.slice(10).map((call) => call[1]), [
-    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58", "tw-rgob2-rgobn", "tw-rgskb-rgski", "tw-rgtx5-rgtxe",
+    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58", "tw-rgob2-rgobn", "tw-rgskb-rgski", "tw-rgtx5-rgu2v",
     "tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj", "tw-rgskb-rgskd", "tw-rgtx5-rgtx9",
   ]);
   assert.deepEqual(normalize(queued.filter((call) => call[1] === "tw-rgkqm-rgkr4" || call[1] === "tw-rgkqm-rgkr6")), [
@@ -549,8 +570,8 @@ for (const diagnosis of [true, false]) {
   assert.deepEqual(normalize(queued.filter((call) => call[1] === "tw-rgskb-rgski" || call[1] === "tw-rgskb-rgskd")), [
     ["event", "tw-rgskb-rgski", {}], ["event", "tw-rgskb-rgskd", {}],
   ]);
-  assert.deepEqual(normalize(queued.filter(call => call[1] === "tw-rgtx5-rgtxe" || call[1] === "tw-rgtx5-rgtx9")), [
-    ["event", "tw-rgtx5-rgtxe", {}], ["event", "tw-rgtx5-rgtx9", {}],
+  assert.deepEqual(normalize(queued.filter(call => call[1] === "tw-rgtx5-rgu2v" || call[1] === "tw-rgtx5-rgtx9")), [
+    ["event", "tw-rgtx5-rgu2v", {}], ["event", "tw-rgtx5-rgtx9", {}],
   ]);
   assert.equal(loaders, 1);
   // Simulate the library consuming its FIFO queue, then switching to live firing.

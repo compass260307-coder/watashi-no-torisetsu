@@ -16,7 +16,7 @@ export const X_RGOB2_DIAGNOSIS_EVENT_ID = "tw-rgob2-rgobn";
 export const X_RGOB2_PURCHASE_EVENT_ID = "tw-rgob2-rgobj";
 export const X_RGSKB_DIAGNOSIS_EVENT_ID = "tw-rgskb-rgski";
 export const X_RGSKB_PURCHASE_EVENT_ID = "tw-rgskb-rgskd";
-export const X_RGTX5_DIAGNOSIS_EVENT_ID = "tw-rgtx5-rgtxe";
+export const X_RGTX5_DIAGNOSIS_EVENT_ID = "tw-rgtx5-rgu2v";
 export const X_RGTX5_PURCHASE_EVENT_ID = "tw-rgtx5-rgtx9";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
@@ -113,7 +113,11 @@ export async function trackXEventsOnce(
     // replay an old payment, even if Meta/TikTok's acknowledgement was missing.
     const previousPurchaseSent = wasXPurchaseSent(params.conversion_id) ||
       wasSent(`wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`);
+    // Keep diagnosis hand-offs recorded before the rgtx5 event-ID correction.
+    // A partially sent completion may still retry its other destinations.
     const destinationSent = (index: number): boolean => wasSent(keys[index]) ||
+      (eventIds[index] === X_RGTX5_DIAGNOSIS_EVENT_ID &&
+        wasSent(`wt_x_sent_v1:tw-rgtx5-rgtxe:${params.conversion_id}`)) ||
       ((eventIds[index] === X_ADDITIONAL_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGG36_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGI5K_PURCHASE_EVENT_ID ||
