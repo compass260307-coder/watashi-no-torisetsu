@@ -14,6 +14,8 @@ export const X_RGM4U_DIAGNOSIS_EVENT_ID = "tw-rgm4u-rgm58";
 export const X_RGM4U_PURCHASE_EVENT_ID = "tw-rgm4u-rgm4y";
 export const X_RGOB2_DIAGNOSIS_EVENT_ID = "tw-rgob2-rgobn";
 export const X_RGOB2_PURCHASE_EVENT_ID = "tw-rgob2-rgobj";
+export const X_RGSKB_DIAGNOSIS_EVENT_ID = "tw-rgskb-rgski";
+export const X_RGSKB_PURCHASE_EVENT_ID = "tw-rgskb-rgskd";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
   X_ADDITIONAL_DIAGNOSIS_EVENT_ID,
@@ -23,6 +25,7 @@ export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_RGKQM_DIAGNOSIS_EVENT_ID,
   X_RGM4U_DIAGNOSIS_EVENT_ID,
   X_RGOB2_DIAGNOSIS_EVENT_ID,
+  X_RGSKB_DIAGNOSIS_EVENT_ID,
 ] as const;
 export const X_DIAGNOSIS_PENDING_PREFIX = "wt_x_diagnosis_pending_v1:";
 
@@ -32,11 +35,11 @@ const X_PURCHASE_SENT_PREFIX = "wt_x_purchase_sent_v1:";
 // Keep rg1zg's existing JPY scope; rezdw uses the actual settlement currency.
 // rgg36's requested JPY event applies only to verified JPY settlements.
 // rgi5k follows the existing purchase flow in every verified settlement currency.
-// rgkns, rgkqm, rgm4u, and rgob2 also follow every verified settlement, with payload-free events.
+// rgkns, rgkqm, rgm4u, rgob2, and rgskb also follow every verified settlement, with payload-free events.
 export function xPurchaseEventIds(currency: string): readonly string[] {
   return currency === "JPY"
-    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID]
-    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID];
+    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID]
+    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID];
 }
 
 export type XEventParams = {
@@ -114,7 +117,8 @@ export async function trackXEventsOnce(
         eventIds[index] === X_RGKNS_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGKQM_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGM4U_PURCHASE_EVENT_ID ||
-        eventIds[index] === X_RGOB2_PURCHASE_EVENT_ID) && previousPurchaseSent);
+        eventIds[index] === X_RGOB2_PURCHASE_EVENT_ID ||
+        eventIds[index] === X_RGSKB_PURCHASE_EVENT_ID) && previousPurchaseSent);
     const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     if (requireDiagnosisCompletion && !keys.every(wasSent)) {
       try {
@@ -126,7 +130,7 @@ export async function trackXEventsOnce(
       }
     }
     for (let index = 0; index < eventIds.length; index++) {
-      // Preserve rgg36's payload-free diagnosis and rgkns/rgkqm/rgm4u/rgob2's empty payloads.
+      // Preserve rgg36's payload-free diagnosis and rgkns/rgkqm/rgm4u/rgob2/rgskb's empty payloads.
       // The action ID still keys local dedupe even when it is not sent to X.
       const eventParams = eventIds[index] === X_RGG36_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGKNS_DIAGNOSIS_EVENT_ID ||
@@ -136,7 +140,9 @@ export async function trackXEventsOnce(
         eventIds[index] === X_RGM4U_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGM4U_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGOB2_DIAGNOSIS_EVENT_ID ||
-        eventIds[index] === X_RGOB2_PURCHASE_EVENT_ID ? {} : params;
+        eventIds[index] === X_RGOB2_PURCHASE_EVENT_ID ||
+        eventIds[index] === X_RGSKB_DIAGNOSIS_EVENT_ID ||
+        eventIds[index] === X_RGSKB_PURCHASE_EVENT_ID ? {} : params;
       if (!destinationSent(index) && trackX(eventIds[index], eventParams)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
