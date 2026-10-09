@@ -120,7 +120,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
     default: SHARED_TITLE,
-    template: "%s｜ワタシのトリセツ",
+    template: `%s｜${GLOBAL_SITE_NAME}`,
   },
   description: SHARED_DESCRIPTION,
   applicationName: GLOBAL_SITE_NAME,

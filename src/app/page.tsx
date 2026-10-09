@@ -31,7 +31,7 @@ const jsonLd = {
     {
       "@type": "WebApplication",
       "@id": `${BASE_URL}/#app`,
-      name: "ワタシのトリセツ",
+      name: GLOBAL_SITE_NAME,
       description:
         "約3分でできるOCEAN(Big Five)理論ベースの無料性格診断テスト。16タイプ性格診断よりも細かい32タイプのキャラに分類され、友達の回答で自分では気づかない一面まで見えてくる大学生向けサービス。",
       url: BASE_URL,
@@ -53,21 +53,7 @@ const jsonLd = {
       "@type": "WebSite",
       "@id": `${BASE_URL}/#website`,
       name: GLOBAL_SITE_NAME,
-      // 表記ゆれ (私の取説 等) での検索・サイト名認識のヒント。
-      // Google はサイト名の判定に WebSite.alternateName を参照する。
-      alternateName: [
-        "ワタシのトリセツ",
-        "私のトリセツ",
-        "わたしのトリセツ",
-        "ワタシの取説",
-        "私の取説",
-        "私の取扱説明書",
-        "Alice Test",
-        "앨리스 진단",
-        "Alice 진단",
-        "나의 사용설명서",
-        "watashi-torisetsu.com",
-      ],
+      // Use a single global site name; localized product names are not fallbacks.
       url: BASE_URL,
       inLanguage: ["ja-JP", "ko-KR", "en-US", "id-ID"],
       publisher: { "@id": `${BASE_URL}/#organization` },

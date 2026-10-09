@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import type { Metadata } from "next";
 import KoResultPageClient from "@/components/ko/result/KoResultPageClient";
 import { KO_RESULT_COPY } from "@/i18n/ko/result";
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     url: KO_RESULT_URL,
-    siteName: "나의 사용설명서",
+    siteName: GLOBAL_SITE_NAME,
     title: KO_RESULT_COPY.metadataTitle,
     description: KO_RESULT_COPY.metadataDescription,
     images: [KO_DEFAULT_OG_IMAGE],

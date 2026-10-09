@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import DiagnosisPageContent from "@/components/diagnosis/id/DiagnosisPage";
 import type { Metadata } from "next";
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: { canonical: "/id/diagnosis", languages: { "ja-JP": "/diagnosis", "ko-KR": "/ko/diagnosis", "en-US": "/en/diagnosis", "id-ID": "/id/diagnosis", "x-default": "/diagnosis" } },
-  openGraph: { type: "website", locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: "/id/diagnosis", siteName: "Alice Test", title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
+  openGraph: { type: "website", locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: "/id/diagnosis", siteName: GLOBAL_SITE_NAME, title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
   twitter: {
     card: "summary_large_image",
     title: TITLE,

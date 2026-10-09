@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 // 記事一覧 (/articles)。SEO 用解説コンテンツの入り口。
 // 記事は src/lib/articles.ts が単一情報源。
 // カード表示とカテゴリー絞り込みは ArticleGrid (client) に委譲。
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     alternateLocale: ["ko_KR", "en_US"],
     url: `${SITE_URL}/articles`,
-    siteName: "ワタシのトリセツ",
+    siteName: GLOBAL_SITE_NAME,
     title: "記事・コラム｜ワタシのトリセツ",
     description:
       "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する記事一覧。",

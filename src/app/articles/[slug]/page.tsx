@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 // 記事詳細 (/articles/[slug])。SEO 用の解説コンテンツ。
 // 内容は src/lib/articles.ts が単一情報源 (UI / metadata / JSON-LD すべてここから派生)。
 // /preview/[typeId] と同じくビルド時に静的生成し、未知 slug は即 404。
@@ -49,7 +50,7 @@ export async function generateMetadata({
       type: "article",
       locale: "ja_JP",
       alternateLocale: ["ko_KR", "en_US"],
-      siteName: "ワタシのトリセツ",
+      siteName: GLOBAL_SITE_NAME,
       title: `${article.title}｜ワタシのトリセツ`,
       description: article.description,
       url: `${BASE_URL}/articles/${article.slug}`,

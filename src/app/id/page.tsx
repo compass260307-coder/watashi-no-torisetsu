@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import IdTopPage from "@/components/id/IdTopPage";
 import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
-import { SITE_URL } from "@/lib/locale-seo";
+import { GLOBAL_SITE_NAME, SITE_URL } from "@/lib/locale-seo";
 
-const TITLE = "Tes Kepribadian Big Five Gratis | Alice Test";
+const TITLE = `Tes Kepribadian Big Five Gratis | ${GLOBAL_SITE_NAME}`;
 const DESCRIPTION = "Kenali diri lewat 50 pertanyaan dan temukan satu dari 32 tipe karakter berdasarkan model Big Five.";
 const ID_URL = `${SITE_URL}/id`;
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: { canonical: "/id", languages: { "ja-JP": "/", "ko-KR": "/ko", "en-US": "/en", "id-ID": "/id", "x-default": "/" } },
-  openGraph: { type: "website", locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: `${SITE_URL}/id`, siteName: "Alice Test", title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
+  openGraph: { type: "website", locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: `${SITE_URL}/id`, siteName: GLOBAL_SITE_NAME, title: TITLE, description: DESCRIPTION, images: ["/characters/keyvisual.webp"] },
 };
 
 const jsonLd = {
@@ -28,7 +28,7 @@ const jsonLd = {
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any",
       inLanguage: "id-ID",
-      isPartOf: { "@id": `${ID_URL}#website` },
+      isPartOf: { "@id": `${SITE_URL}/#website` },
       brand: { "@id": `${ID_URL}#brand` },
       publisher: { "@id": `${ID_URL}#organization` },
       offers: { "@type": "Offer", price: "0", priceCurrency: "IDR" },
@@ -36,12 +36,11 @@ const jsonLd = {
     },
     {
       "@type": "WebSite",
-      "@id": `${ID_URL}#website`,
-      name: "Alice Personalities",
-      alternateName: ["Alice Test", "Tes Kepribadian Alice"],
-      url: ID_URL,
-      inLanguage: "id-ID",
-      publisher: { "@id": `${ID_URL}#organization` },
+      "@id": `${SITE_URL}/#website`,
+      name: GLOBAL_SITE_NAME,
+      url: SITE_URL,
+      inLanguage: ["ja-JP", "ko-KR", "en-US", "id-ID"],
+      publisher: { "@id": `${SITE_URL}/#organization` },
     },
     {
       "@type": "WebPage",
@@ -50,7 +49,7 @@ const jsonLd = {
       description: DESCRIPTION,
       url: ID_URL,
       inLanguage: "id-ID",
-      isPartOf: { "@id": `${ID_URL}#website` },
+      isPartOf: { "@id": `${SITE_URL}/#website` },
       about: { "@id": `${ID_URL}#brand` },
       mainEntity: { "@id": `${ID_URL}#app` },
       publisher: { "@id": `${ID_URL}#organization` },

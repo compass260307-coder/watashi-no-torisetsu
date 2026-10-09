@@ -1,3 +1,4 @@
+import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import MeResultPage from "@/components/result/MeResultPage";
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${type.name} — ${type.essence}`,
     description: type.oneLiner,
     alternates: { canonical: idPath, languages: { "ja-JP": `/preview/${typeId}`, "ko-KR": `/ko/preview/${typeId}`, "en-US": `/en/preview/${typeId}`, "id-ID": idPath, "x-default": `/preview/${typeId}` } },
-    openGraph: { locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: `${SITE_URL}${idPath}`, title: `${type.name} | Alice Test`, description: type.oneLiner, siteName: "Alice Test", images: ["/characters/keyvisual.webp"] },
+    openGraph: { locale: "id_ID", alternateLocale: ["ja_JP", "ko_KR", "en_US"], url: `${SITE_URL}${idPath}`, title: `${type.name} | Alice Test`, description: type.oneLiner, siteName: GLOBAL_SITE_NAME, images: ["/characters/keyvisual.webp"] },
     robots: { index: true, follow: true },
   };
 }
