@@ -56,7 +56,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   vm.runInContext(script.replaceAll(";twq(", ";window.twq("), context);
   assert.equal(loaders, 1);
   assert.deepEqual(Array.from(window.twq.queue, (args) => Array.from(args)), [
-    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"],
+    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"], ["config", "rgskb"],
   ]);
   vm.runInContext(script.replaceAll(";twq(", ";window.twq("), context);
   assert.equal(loaders, 1, "Replaying the inline script must not load uwt.js twice");
@@ -66,7 +66,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   }));
   assert.equal(loaders, 1, "An existing twq must reuse its loader");
   assert.deepEqual(normalize(existingCalls), [
-    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"],
+    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"], ["config", "rgskb"],
   ]);
 }
 {
@@ -96,9 +96,10 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   assert.deepEqual(normalize(e.calls[5]), ["event", "tw-rgkqm-rgkr4", {}]);
   assert.deepEqual(normalize(e.calls[6]), ["event", "tw-rgm4u-rgm58", {}]);
   assert.deepEqual(normalize(e.calls[7]), ["event", "tw-rgob2-rgobn", {}]);
+  assert.deepEqual(normalize(e.calls[8]), ["event", "tw-rgskb-rgski", {}]);
   assert.equal(e.window.sessionStorage.getItem(marker), null);
   await e.pixel.trackXEventsOnce(ids, params, true);
-  assert.equal(e.calls.length, 8, "Remount/Strict Mode must not repeat any tag");
+  assert.equal(e.calls.length, 9, "Remount/Strict Mode must not repeat any tag");
   const reload = environment({ local: e.local });
   await reload.pixel.trackXEventsOnce(ids, params, true);
   assert.equal(reload.calls.length, 0, "Reload must use persistent per-event keys");
@@ -130,7 +131,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, params, true), false);
-  assert.equal(e.calls.length, 7);
+  assert.equal(e.calls.length, 8);
   assert.ok(e.window.sessionStorage.getItem(marker));
   const reload = environment({ local: e.local });
   reload.window.sessionStorage = e.window.sessionStorage;
@@ -161,7 +162,7 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   await Promise.all([
     first.pixel.trackXEventsOnce(ids, params), second.pixel.trackXEventsOnce(ids, params),
   ]);
-  assert.equal(first.calls.length + second.calls.length, 8);
+  assert.equal(first.calls.length + second.calls.length, 9);
   assert.equal(first.pixel.wasXPurchaseSent(params.conversion_id), true);
   assert.equal(second.pixel.wasXPurchaseSent(params.conversion_id), true);
 }
@@ -172,10 +173,10 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   e.window.sessionStorage = blockedStorage;
   const params = { conversion_id: "offline-no-storage", value: 4.99, currency: "USD" };
   const ids = e.pixel.xPurchaseEventIds(params.currency);
-  assert.deepEqual(Array.from(ids), [e.pixel.X_ADDITIONAL_PURCHASE_EVENT_ID, e.pixel.X_RGI5K_PURCHASE_EVENT_ID, e.pixel.X_RGKNS_PURCHASE_EVENT_ID, e.pixel.X_RGKQM_PURCHASE_EVENT_ID, e.pixel.X_RGM4U_PURCHASE_EVENT_ID, e.pixel.X_RGOB2_PURCHASE_EVENT_ID]);
+  assert.deepEqual(Array.from(ids), [e.pixel.X_ADDITIONAL_PURCHASE_EVENT_ID, e.pixel.X_RGI5K_PURCHASE_EVENT_ID, e.pixel.X_RGKNS_PURCHASE_EVENT_ID, e.pixel.X_RGKQM_PURCHASE_EVENT_ID, e.pixel.X_RGM4U_PURCHASE_EVENT_ID, e.pixel.X_RGOB2_PURCHASE_EVENT_ID, e.pixel.X_RGSKB_PURCHASE_EVENT_ID]);
   await e.pixel.trackXEventsOnce(ids, params);
   await e.pixel.trackXEventsOnce(ids, params);
-  assert.equal(e.calls.length, 6, "In-memory dedupe still covers remounts");
+  assert.equal(e.calls.length, 7, "In-memory dedupe still covers remounts");
   assert.equal(await e.pixel.trackXEventsOnce(e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, params, true), false);
 }
 
@@ -209,7 +210,7 @@ for (const marker of ["group", "previous-event"]) {
   assert.deepEqual(e.calls.map((call) => call[1]), [e.pixel.X_PURCHASE_EVENT_ID], "Only the unsent original account is retried");
   const fresh = { ...params, conversion_id: "offline-new-payment" };
   await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
-  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj"]);
+  assert.deepEqual(e.calls.slice(1).map((call) => call[1]), ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj", "tw-rgskb-rgskd"]);
   assert.equal(e.calls.some((call) => call[1] === "tw-rezdw-1436v3"), false);
 }
 for (const diagnosis of [true, false]) {
@@ -243,9 +244,9 @@ for (const diagnosis of [true, false]) {
     await flush();
     unmount();
   }
-  assert.equal(e.calls.length, 8, "Effect replay/remount must send only one event per account");
-  assert.deepEqual(normalize(e.calls.at(-3)), ["event", diagnosis ? "tw-rgkqm-rgkr4" : "tw-rgkqm-rgkr6", {}]);
-  assert.deepEqual(normalize(e.calls.at(-2)), ["event", diagnosis ? "tw-rgm4u-rgm58" : "tw-rgm4u-rgm4y", {}]);
+  assert.equal(e.calls.length, 9, "Effect replay/remount must send only one event per account");
+  assert.deepEqual(normalize(e.calls.at(-4)), ["event", diagnosis ? "tw-rgkqm-rgkr4" : "tw-rgkqm-rgkr6", {}]);
+  assert.deepEqual(normalize(e.calls.at(-3)), ["event", diagnosis ? "tw-rgm4u-rgm58" : "tw-rgm4u-rgm4y", {}]);
 }
 {
   const e = environment();
@@ -277,7 +278,7 @@ for (const diagnosis of [true, false]) {
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), false);
-  assert.equal(e.calls.length, 7, "Existing events succeed even if rgi5k fails");
+  assert.equal(e.calls.length, 8, "Existing events succeed even if rgi5k fails");
   if (diagnosis) assert.ok(e.window.sessionStorage.getItem(marker));
   else assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
   const reload = environment({ local: e.local });
@@ -334,7 +335,7 @@ for (const diagnosis of [true, false]) {
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), false);
-  assert.equal(e.calls.length, 7);
+  assert.equal(e.calls.length, 8);
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids).filter((id) => id !== newId));
   if (diagnosis) assert.ok(e.window.sessionStorage.getItem(marker));
   else assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
@@ -371,7 +372,7 @@ for (const diagnosis of [true, false]) {
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), false);
-  assert.equal(e.calls.length, 7);
+  assert.equal(e.calls.length, 8);
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids).filter((id) => id !== newId));
   if (diagnosis) assert.ok(e.window.sessionStorage.getItem(marker));
   else assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
@@ -408,7 +409,7 @@ for (const diagnosis of [true, false]) {
     e.calls.push(args);
   };
   assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), false);
-  assert.equal(e.calls.length, 7);
+  assert.equal(e.calls.length, 8);
   assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids).filter((id) => id !== newId));
   if (diagnosis) assert.ok(e.window.sessionStorage.getItem(marker));
   else assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
@@ -426,6 +427,43 @@ for (const diagnosis of [true, false]) {
   const previousIds = diagnosis
     ? ["tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58"]
     : ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y"];
+  for (const id of previousIds) e.local.set(`wt_x_sent_v1:${id}:${params.conversion_id}`, "1");
+  if (!diagnosis) e.local.set(`wt_x_purchase_sent_v1:${params.conversion_id}`, "1");
+  const ids = diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds("JPY");
+  assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), !diagnosis);
+  assert.equal(e.calls.length, 0, "No new event on historical result/purchase views");
+}
+// rgskb failures must not repeat any other account events.
+for (const diagnosis of [true, false]) {
+  const e = environment();
+  const params = { conversion_id: `offline-rgskb-retry-${diagnosis}`, value: 499, currency: "JPY" };
+  const ids = diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds("JPY");
+  const newId = diagnosis ? "tw-rgskb-rgski" : "tw-rgskb-rgskd";
+  const marker = e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+  if (diagnosis) e.window.sessionStorage.setItem(marker, String(Date.now()));
+  e.window.twq = (...args) => {
+    if (args[1] === newId) throw Error("blocked");
+    e.calls.push(args);
+  };
+  assert.equal(await e.pixel.trackXEventsOnce(ids, params, diagnosis), false);
+  assert.equal(e.calls.length, 8);
+  assert.deepEqual(e.calls.map((call) => call[1]), Array.from(ids).filter((id) => id !== newId));
+  if (diagnosis) assert.ok(e.window.sessionStorage.getItem(marker));
+  else assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
+  const reload = environment({ local: e.local });
+  reload.window.sessionStorage = e.window.sessionStorage;
+  assert.equal(await reload.pixel.trackXEventsOnce(ids, params, diagnosis), true);
+  assert.deepEqual(normalize(reload.calls), [["event", newId, {}]]);
+  await reload.pixel.trackXEventsOnce(ids, params, diagnosis);
+  assert.equal(reload.calls.length, 1, "Only the failed rgskb destination is retried once");
+}
+// Adding rgskb must not replay a conversion already completed by all eight accounts.
+for (const diagnosis of [true, false]) {
+  const e = environment();
+  const params = { conversion_id: `offline-rgskb-existing-conversion-${diagnosis}`, value: 499, currency: "JPY" };
+  const previousIds = diagnosis
+    ? ["tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58", "tw-rgob2-rgobn"]
+    : ["tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj"];
   for (const id of previousIds) e.local.set(`wt_x_sent_v1:${id}:${params.conversion_id}`, "1");
   if (!diagnosis) e.local.set(`wt_x_purchase_sent_v1:${params.conversion_id}`, "1");
   const ids = diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds("JPY");
@@ -453,12 +491,12 @@ for (const diagnosis of [true, false]) {
   await send();
   await send();
   const queued = Array.from(e.window.twq.queue, (args) => Array.from(args));
-  assert.deepEqual(queued.slice(0, 8), [
-    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"],
+  assert.deepEqual(queued.slice(0, 9), [
+    ["config", "rg1zg"], ["config", "rezdw"], ["config", "rgg36"], ["config", "rgi5k"], ["config", "rgkns"], ["config", "rgkqm"], ["config", "rgm4u"], ["config", "rgob2"], ["config", "rgskb"],
   ]);
-  assert.deepEqual(queued.slice(8).map((call) => call[1]), [
-    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58", "tw-rgob2-rgobn",
-    "tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj",
+  assert.deepEqual(queued.slice(9).map((call) => call[1]), [
+    "tw-rg1zg-rg1zv", "tw-rezdw-reze3", "tw-rgg36-rgg9b", "tw-rgi5k-rgi5r", "tw-rgkns-rgkoe", "tw-rgkqm-rgkr4", "tw-rgm4u-rgm58", "tw-rgob2-rgobn", "tw-rgskb-rgski",
+    "tw-rg1zg-rg1zz", "tw-rezdw-rgdz4", "tw-rgg36-rgg3b", "tw-rgi5k-rgi5m", "tw-rgkns-rgknu", "tw-rgkqm-rgkr6", "tw-rgm4u-rgm4y", "tw-rgob2-rgobj", "tw-rgskb-rgskd",
   ]);
   assert.deepEqual(normalize(queued.filter((call) => call[1] === "tw-rgkqm-rgkr4" || call[1] === "tw-rgkqm-rgkr6")), [
     ["event", "tw-rgkqm-rgkr4", {}], ["event", "tw-rgkqm-rgkr6", {}],
@@ -469,16 +507,19 @@ for (const diagnosis of [true, false]) {
   assert.deepEqual(normalize(queued.filter((call) => call[1] === "tw-rgob2-rgobn" || call[1] === "tw-rgob2-rgobj")), [
     ["event", "tw-rgob2-rgobn", {}], ["event", "tw-rgob2-rgobj", {}],
   ]);
+  assert.deepEqual(normalize(queued.filter((call) => call[1] === "tw-rgskb-rgski" || call[1] === "tw-rgskb-rgskd")), [
+    ["event", "tw-rgskb-rgski", {}], ["event", "tw-rgskb-rgskd", {}],
+  ]);
   assert.equal(loaders, 1);
   // Simulate the library consuming its FIFO queue, then switching to live firing.
   e.window.twq.exe = (...args) => e.calls.push(args);
   for (const args of queued) e.window.twq.exe(...args);
   e.window.twq.queue.length = 0;
   await send();
-  assert.equal(e.calls.length, 24, "No replay after the queued events have been consumed");
+  assert.equal(e.calls.length, 27, "No replay after the queued events have been consumed");
   const fresh = { ...purchase, conversion_id: "offline-ready-purchase" };
   await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("JPY"), fresh);
-  assert.deepEqual(normalize(e.calls.slice(-5)), [["event", "tw-rgi5k-rgi5m", fresh], ["event", "tw-rgkns-rgknu", {}], ["event", "tw-rgkqm-rgkr6", {}], ["event", "tw-rgm4u-rgm4y", {}], ["event", "tw-rgob2-rgobj", {}]]);
+  assert.deepEqual(normalize(e.calls.slice(-6)), [["event", "tw-rgi5k-rgi5m", fresh], ["event", "tw-rgkns-rgknu", {}], ["event", "tw-rgkqm-rgkr6", {}], ["event", "tw-rgm4u-rgm4y", {}], ["event", "tw-rgob2-rgobj", {}], ["event", "tw-rgskb-rgskd", {}]]);
 }
 // Exercise the actual prepare route with an in-memory verified Stripe session.
 async function preparedClaim(currency, amount, confirmed = true) {
@@ -538,11 +579,12 @@ for (const currency of ["JPY", "USD", "KRW", "IDR", "THB"]) {
   assert.deepEqual(Array.from(e.element.props.eventIds), Array.from(e.pixel.xPurchaseEventIds(currency)));
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
-  assert.equal(e.calls.length, currency === "JPY" ? 8 : 6);
-  assert.deepEqual(normalize(e.calls.at(-4)), ["event", "tw-rgkns-rgknu", {}]);
-  assert.deepEqual(normalize(e.calls.at(-3)), ["event", "tw-rgkqm-rgkr6", {}]);
-  assert.deepEqual(normalize(e.calls.at(-2)), ["event", "tw-rgm4u-rgm4y", {}]);
-  assert.deepEqual(normalize(e.calls.at(-1)), ["event", "tw-rgob2-rgobj", {}]);
+  assert.equal(e.calls.length, currency === "JPY" ? 9 : 7);
+  assert.deepEqual(normalize(e.calls.at(-5)), ["event", "tw-rgkns-rgknu", {}]);
+  assert.deepEqual(normalize(e.calls.at(-4)), ["event", "tw-rgkqm-rgkr6", {}]);
+  assert.deepEqual(normalize(e.calls.at(-3)), ["event", "tw-rgm4u-rgm4y", {}]);
+  assert.deepEqual(normalize(e.calls.at(-2)), ["event", "tw-rgob2-rgobj", {}]);
+  assert.deepEqual(normalize(e.calls.at(-1)), ["event", "tw-rgskb-rgskd", {}]);
 }
 {
   const claim = { checkoutSessionId: "cs_live_offline_discount", value: 321, currency: "JPY" };
