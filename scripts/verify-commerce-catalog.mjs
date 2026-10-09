@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -11,7 +11,10 @@ function read(relativePath) {
   return readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-const commerceCatalog = read("docs/COMMERCE_CATALOG.md");
+// Documentation is excluded from Vercel uploads; CI still validates its offer row.
+const commerceCatalog = existsSync(path.join(repositoryRoot, "docs/COMMERCE_CATALOG.md"))
+  ? read("docs/COMMERCE_CATALOG.md")
+  : null;
 const accessProducts = read("src/lib/access-products.ts");
 const checkoutRoute = read(
   "src/app/api/checkout/create-full-access-session/route.ts",
@@ -46,7 +49,7 @@ const resultUpgradeChat = read(
 
 const contractChecks = [
   { label: "Korean purchaser-only upgrade freezes KRW 8,900 and its offer version",
-    valid: accessProducts.includes("export const KO_RESULT_UPGRADE_PRICE_KRW = 8_900;") && accessProducts.includes('"result_upgrade_v1_krw_8900" as const') && commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 결과 업그레이드 | ₩8,900 |") },
+    valid: accessProducts.includes("export const KO_RESULT_UPGRADE_PRICE_KRW = 8_900;") && accessProducts.includes('"result_upgrade_v1_krw_8900" as const') && (commerceCatalog === null || commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 결과 업그레이드 | ₩8,900 |")) },
   { label: "Korean result upgrade requires saved answers and owner login",
     valid: checkoutRoute.includes('upgrade?.locale !== "ko" || !normalizeResultUpgradeAnswers(upgrade?.answers)') && checkoutRoute.includes("session.id !== userId") && checkoutRoute.includes('!(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")') },
   {
