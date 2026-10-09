@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -11,6 +11,10 @@ function read(relativePath) {
   return readFileSync(path.join(repositoryRoot, relativePath), "utf8");
 }
 
+// Documentation is excluded from Vercel uploads; CI still validates its offer row.
+const commerceCatalog = existsSync(path.join(repositoryRoot, "docs/COMMERCE_CATALOG.md"))
+  ? read("docs/COMMERCE_CATALOG.md")
+  : null;
 const accessProducts = read("src/lib/access-products.ts");
 const checkoutRoute = read(
   "src/app/api/checkout/create-full-access-session/route.ts",
@@ -38,11 +42,16 @@ const embeddedCheckout = read(
   "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
 );
 const metaPurchase = read("src/lib/meta-purchase.ts");
+const resultUpgradeCopy = read("src/i18n/result-upgrade.ts");
 const resultUpgradeChat = read(
   "src/components/result-upgrade/ResultUpgradeChat.tsx",
 );
 
 const contractChecks = [
+  { label: "Korean purchaser-only upgrade freezes KRW 8,900 and its offer version",
+    valid: accessProducts.includes("export const KO_RESULT_UPGRADE_PRICE_KRW = 8_900;") && accessProducts.includes('"result_upgrade_v1_krw_8900" as const') && (commerceCatalog === null || commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 결과 업그레이드 | ₩8,900 |")) },
+  { label: "Korean result upgrade requires saved answers and owner login",
+    valid: checkoutRoute.includes('upgrade?.locale !== "ko" || !normalizeResultUpgradeAnswers(upgrade?.answers)') && checkoutRoute.includes("session.id !== userId") && checkoutRoute.includes('!(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")') },
   {
     label: "Japanese full access reference price is JPY 1,290",
     valid: accessProducts.includes(
@@ -230,16 +239,18 @@ const contractChecks = [
     ),
   },
   {
-    label: "Korean commerce disclosure lists only the shared full access price",
+    label: "Korean commerce disclosure lists full access and the purchaser-only upgrade",
     valid:
       koreanCommercePage.includes("FULL_ACCESS_PRICE_KRW") &&
+      koreanCommercePage.includes("KO_RESULT_UPGRADE_PRICE_KRW") &&
       !koreanCommercePage.includes("SELF_REPORT_PRICE_KRW") &&
       !koreanCommercePage.includes("PREMIUM_BUNDLE_PRICE_KRW"),
   },
   {
-    label: "Korean terms list only the shared full access price",
+    label: "Korean terms list full access and the purchaser-only upgrade",
     valid:
       koreanTermsPage.includes("FULL_ACCESS_PRICE_KRW") &&
+      koreanTermsPage.includes("KO_RESULT_UPGRADE_PRICE_KRW") &&
       !koreanTermsPage.includes("SELF_REPORT_PRICE_KRW") &&
       !koreanTermsPage.includes("PREMIUM_BUNDLE_PRICE_KRW"),
   },
@@ -286,12 +297,14 @@ const contractChecks = [
     valid:
       checkoutRoute.includes(
         'paywallSource === "result_upgrade_after_answers"',
-      ) && checkoutRoute.includes("? RESULT_UPGRADE_PRICE_JPY"),
+      ) &&
+      /const resultUpgradePrice = checkoutLocale === "ko"\s*\? KO_RESULT_UPGRADE_PRICE_KRW\s*: RESULT_UPGRADE_PRICE_JPY/.test(checkoutRoute) &&
+      /const effectivePrice = isResultUpgradeCheckout\s*\? resultUpgradePrice/.test(checkoutRoute),
   },
   {
     label: "Result upgrade CTA does not duplicate the price in its label",
     valid:
-      resultUpgradeChat.includes("結果をアップグレード") &&
+      resultUpgradeCopy.includes('"cta": "結果をアップグレード"') && resultUpgradeChat.includes("{copy.cta}") &&
       !resultUpgradeChat.includes("¥800で結果をアップグレード") &&
       !resultUpgradeChat.includes("¥899で結果をアップグレード"),
   },
@@ -309,5 +322,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is the only current Korean offer at KRW 4,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is KRW 4,900 and the purchaser-only result upgrade is KRW 8,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

@@ -406,7 +406,7 @@ async function MeResultPageContent({
   const previewCharacterImage = preferCutImage(
     thirtyTwoImagePath(previewType ?? "sparkle-dolphin__N"),
   );
-  const previewResultUpgrade: ResultUpgradeRow | null = previewUpgrade
+  const previewResultUpgrade: ResultUpgradeRow | null = previewUpgrade && !isKorean
     ? {
         user_id: "preview",
         answers: [
@@ -462,7 +462,7 @@ async function MeResultPageContent({
     : null;
   const resultUpgrade =
     previewResultUpgrade ??
-    (locale === "ja" && ownsResultSession && fullAccessPaid
+    ((locale === "ja" || isKorean) && ownsResultSession && fullAccessPaid
       ? await loadResultUpgradeForUser(user.id)
       : null);
   const resultUpgradeReady = isResultUpgradeReady(resultUpgrade);
@@ -488,16 +488,16 @@ async function MeResultPageContent({
     (previewType ? !previewLocked : deepDivePaid);
   // 現行の日本版 完全版を購入済みの人を、自由回答→専用結果生成の追加診断へつなぐ。
   const showResultUpgradePlaceholder =
-    locale === "ja" &&
+    (locale === "ja" || isKorean) &&
     !acquisition &&
     !publicPreview &&
     fullAccessPaid &&
     destinyFeaturesPaid &&
     (!premiumBundlePaid || !resultUpgrade);
-  const resultUpgradeOwnerName = user.display_name?.trim() || "あなた";
+  const resultUpgradeOwnerName = user.display_name?.trim() || (isKorean ? "회원님" : "あなた");
   const resultUpgradeCtaLabel = premiumBundlePaid
-    ? "Aliceの質問に答える"
-    : "結果をアップグレード";
+    ? (isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える")
+    : (isKorean ? "결과 업그레이드" : "結果をアップグレード");
   const unmeiPurchaseProduct = isKorean
     ? "full_access"
     : fullAccessPaid
@@ -515,8 +515,8 @@ async function MeResultPageContent({
           <path d="m18.5 11.5.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4.4-1.2Z" />
         </svg>
       ),
-      title: "あなた専用のキャラクターを生成",
-      body: "あなたの答えをもとに、表情・服装・小物・背景まで仕立てた、世界に一体だけのキャラクターが生まれます。",
+      title: (isKorean ? "나만의 캐릭터 생성" : "あなた専用のキャラクターを生成"),
+      body: (isKorean ? "답변을 바탕으로 표정, 의상, 소품, 배경까지 나답게 꾸민 캐릭터를 만들어요." : "あなたの答えをもとに、表情・服装・小物・背景まで仕立てた、世界に一体だけのキャラクターが生まれます。"),
     },
     {
       iconBg: "#EAF5FF",
@@ -528,8 +528,8 @@ async function MeResultPageContent({
           <path d="m18.5 14 .5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5.5-1.5Z" />
         </svg>
       ),
-      title: "あなただけのためにAliceが鑑定書を作成",
-      body: "これまでの診断結果とあなたの質問に対する答えを合わせて、Aliceがあなた専用の鑑定書を作成します。",
+      title: (isKorean ? "Alice가 작성하는 나만의 보고서" : "あなただけのためにAliceが鑑定書を作成"),
+      body: (isKorean ? "기존 진단 결과와 5개 질문의 답변을 함께 읽고, 나만의 유형 이름과 자기 분석 결과, 전용 보고서를 만들어요." : "これまでの診断結果とあなたの質問に対する答えを合わせて、Aliceがあなた専用の鑑定書を作成します。"),
     },
     {
       iconBg: "#EAF8F2",
@@ -569,7 +569,7 @@ async function MeResultPageContent({
             ? "Everything plan benefits"
             : "Complete Edition benefits"
           : isKorean
-          ? "완전판 코스 혜택"
+          ? (showResultUpgradePlaceholder ? "나만의 결과 업그레이드" : "완전판 코스 혜택")
           : isIndonesian
             ? "Manfaat Edisi Lengkap"
           : showResultUpgradePlaceholder
@@ -590,7 +590,7 @@ async function MeResultPageContent({
                 ? "Unlocked with Everything"
                 : "Unlocked with the Complete Edition"
               : isKorean
-              ? "완전판에서 잠금 해제"
+              ? (showResultUpgradePlaceholder ? `${resultUpgradeOwnerName}만을 위한 결과` : "완전판에서 잠금 해제")
               : isIndonesian
                 ? "Terbuka dengan Edisi Lengkap"
               : showResultUpgradePlaceholder
@@ -603,7 +603,7 @@ async function MeResultPageContent({
             {isEnglish
               ? "Answer Alice’s questions to complete your Destiny Blueprint"
               : isKorean
-              ? "질문에 답하고, 운명의 설계도를 완성해 보세요"
+              ? (showResultUpgradePlaceholder ? "Alice의 질문에 답하고, 나만의 결과를 완성해 보세요" : "질문에 답하고, 운명의 설계도를 완성해 보세요")
               : isIndonesian
                 ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
                 : showResultUpgradePlaceholder
@@ -614,7 +614,7 @@ async function MeResultPageContent({
         {/* Alice の吹き出しは 2026-08-26 撤去。同文は CTA で開くチャットの冒頭挨拶
             (ME_UNMEI_CHAT_INTRO_JA) として送られる。 */}
         <ul className="mx-auto mb-11 flex max-w-[820px] flex-col gap-7 md:mb-12 md:gap-8">
-          {(showResultUpgradePlaceholder ? resultUpgradeFeatures : [
+          {(showResultUpgradePlaceholder ? (isKorean ? resultUpgradeFeatures.slice(0, 2) : resultUpgradeFeatures) : [
             {
               iconBg: "#EAF5FF",
               iconColor: "#397DB8",
@@ -768,6 +768,7 @@ async function MeResultPageContent({
         <div className="text-center">
           {showResultUpgradePlaceholder ? (
             <ResultUpgradeChatLauncher
+              locale={isKorean ? "ko" : "ja"}
               ownerToken={previewType ? "preview" : token}
               existingAnswers={resultUpgrade?.answers ?? []}
               initialState={resultUpgrade?.state}
@@ -1122,7 +1123,7 @@ async function MeResultPageContent({
           ? `${localePrefix}/tako/${encodeURIComponent(token)}`
           : undefined
       }
-      lineAddHref={resultUpgradeReady ? "#line-alice-link" : undefined}
+      lineAddHref={resultUpgradeReady && !isKorean ? "#line-alice-link" : undefined}
       ownerToken={acquisition || publicPreview ? undefined : token}
       inviteCode={acquisition?.inviteCode ?? (publicPreview ? undefined : inviteCode)}
       qrImageSrc={isOwnedResult ? preferFaceImage(v3Image) : null}
@@ -1135,7 +1136,7 @@ async function MeResultPageContent({
       code={dispCode}
       reportHref={
         resultUpgradeReady
-          ? "/result-upgrade/reading"
+          ? `${localePrefix}/result-upgrade/reading`
           : showResultUpgradePlaceholder
             ? undefined
           : showUnmeiPromo
@@ -1164,7 +1165,7 @@ async function MeResultPageContent({
       }
       reportLabel={
         resultUpgradeReady
-          ? "専用鑑定書を見る"
+          ? (isKorean ? "나만의 보고서 보기" : "専用鑑定書を見る")
           : showUnmeiPromo
           ? isEnglish
             ? "Upgrade my result"
@@ -1188,6 +1189,7 @@ async function MeResultPageContent({
       reportCta={
         showResultUpgradePlaceholder ? (
           <ResultUpgradeChatLauncher
+              locale={isKorean ? "ko" : "ja"}
             ownerToken={previewType ? "preview" : token}
             existingAnswers={resultUpgrade?.answers ?? []}
             initialState={resultUpgrade?.state}
@@ -1261,7 +1263,7 @@ async function MeResultPageContent({
       ownsResultSession &&
       premiumBundlePaid &&
       resultUpgrade && (
-        <ResultUpgradeGenerationWatcher initialState={resultUpgrade.state} />
+        <ResultUpgradeGenerationWatcher locale={isKorean ? "ko" : "ja"} initialState={resultUpgrade.state} />
       )}
     <div style={resultThemeStyle}>
     <main

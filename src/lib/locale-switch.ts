@@ -364,6 +364,12 @@ const LOCALIZED_PATHS: Record<string, Partial<Record<SwitchLocale, string>>> = {
   },
 };
 
+for (const route of ["/result-upgrade", "/result-upgrade/reading"]) {
+  const pair = { ja: route, ko: `/ko${route}` };
+  LOCALIZED_PATHS[route] = pair;
+  LOCALIZED_PATHS[`/ko${route}`] = pair;
+}
+
 function normalizePathname(pathname: string): string {
   if (pathname === "/") return pathname;
   return pathname.replace(/\/+$/, "");

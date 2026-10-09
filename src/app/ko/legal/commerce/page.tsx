@@ -6,7 +6,7 @@ import {
   SITE_URL,
   localizedAlternates,
 } from "@/lib/locale-seo";
-import { FULL_ACCESS_PRICE_KRW } from "@/lib/access-products";
+import { FULL_ACCESS_PRICE_KRW, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
 
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
@@ -41,7 +41,7 @@ export default function KoreanCommercePage() {
   return (
     <KoreanLegalDocument
       title="사업자 정보 및 판매·환불 조건"
-      lastUpdated="2026년 9월 19일"
+      lastUpdated="2026년 10월 9일"
     >
       <p>
         나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
@@ -85,14 +85,15 @@ export default function KoreanCommercePage() {
           진단 결과, 여러 번 다시 만들 수 있는 친구 분석 PDF, 궁합 진단, 한국어
           운명의 설계도, AI 점성술사 Alice 채팅 30회, 타로 3종 포함)
         </li>
-        <li>구독, 자동 갱신 또는 추가 결제 없음</li>
+        <li>결과 업그레이드: {krw(KO_RESULT_UPGRADE_PRICE_KRW)} · 완전판 구매자 전용 선택 상품 · 1회 결제 (5개 답변으로 만드는 전용 캐릭터, 유형 이름, 자기 분석 결과와 보고서)</li>
+        <li>구독 또는 자동 갱신 없음. 완전판에 포함된 기능에는 추가 결제가 필요하지 않습니다.</li>
       </ul>
       <p>
         표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
         화면에서 다시 확인할 수 있습니다.
       </p>
       <p>
-        현재 새로 구매할 수 있는 한국어 유료 상품은 완전판 코스 하나입니다. 과거
+        완전판 구매자는 5개 질문에 답한 뒤 결과 업그레이드를 선택하여 구매할 수 있습니다. 업그레이드는 별도 상품이며 완전판 기능을 이용하는 데 필수는 아닙니다. 과거
         학생 플랜 구매자는 기존 결제 금액을 반영한 차액으로 완전판을 제공받을 수
         있습니다. 과거 학생 플랜·프리미엄 구매자의 기존 이용 권한과 환불 조건은
         그대로 유지됩니다.
@@ -111,6 +112,8 @@ export default function KoreanCommercePage() {
         웹 결과와 PDF는 구매 후에도 같은 결과 링크에서 반복해서 이용할 수 있습니다.
         친구 진단 PDF는 답변한 친구가 한 명 이상 있을 때 생성됩니다.
       </p>
+
+      <p>결과 업그레이드는 결제 확인 후 생성됩니다. 전용 캐릭터와 보고서는 로그인한 구매자 본인만 볼 수 있으며, 생성에 실패하면 추가 결제 없이 다시 시도할 수 있습니다.</p>
 
       <h2>판매 가격 외 비용</h2>
       <p>

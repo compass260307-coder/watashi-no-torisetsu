@@ -35,7 +35,8 @@ for (const required of [
   "잠긴 9개 섹션",
   "Alice 채팅 30회",
   "타로 3종",
-  "현재 새로 구매할 수 있는 한국어 유료 상품은 완전판 코스 하나입니다",
+  "완전판 구매자는 5개 질문에 답한 뒤 결과 업그레이드를",
+  "KO_RESULT_UPGRADE_PRICE_KRW",
 ]) {
   if (!koreanCommerce.includes(required)) {
     problems.push(
@@ -63,7 +64,7 @@ const koreanTerms = fs.readFileSync(
   path.join(ROOT, "src/app/ko/terms/page.tsx"),
   "utf8",
 );
-for (const required of ["현재 한국어 유료 서비스는 완전판", "Alice 채팅 30회", "타로"]) {
+for (const required of ["한국어 완전판은", "KO_RESULT_UPGRADE_PRICE_KRW", "Alice 채팅 30회", "타로"]) {
   if (!koreanTerms.includes(required)) {
     problems.push(`src/app/ko/terms/page.tsx: current offer lacks ${required}`);
   }

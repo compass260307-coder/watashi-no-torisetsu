@@ -1,18 +1,20 @@
 "use client";
 
+import { KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
+import { localePath } from "@/i18n/config";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FullAccessCta } from "@/components/result/FullAccessCta";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
 import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
-
+import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
+import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
 import { ResultUpgradeSessionCheck } from "./ResultUpgradeSessionCheck";
 import { clearResultUpgradeDraft, loadResultUpgradeDraft, saveResultUpgradeDraft } from "@/lib/result-upgrade-draft";
 
-
 type Props = {
+  locale?: ResultUpgradeLocale;
   ownerToken: string;
   existingAnswers?: string[];
   initialState?: string | null;
@@ -26,16 +28,11 @@ type Screen = "questions" | "saving" | "purchase" | "generating" | "failed";
 const ALICE_REPLY_DELAY_MS = 900;
 const UPGRADE_PREPARATION_DELAY_MS = 15_000;
 const ALICE_AVATAR_SRC = "/mascot/hoshiyomi-alice-avatar-transparent.png";
-const ALICE_QUESTION_MESSAGES = [
-  "まずは、暇な時間って何をすることが多い？",
-  "ありがとう！じゃあ、最近つい時間を忘れちゃったことってある？",
-  "なるほど！周りの人からは、どんな人って言われることが多い？",
-  "じゃあ、次は…恋愛で大事にしていること、何かある？",
-  "教えてくれてありがとう！最後に、あなたの将来の夢を聞かせて？",
-] as const;
+
 
 export function ResultUpgradeChat({
   ownerToken,
+  locale = "ja",
   existingAnswers = [],
   initialState,
   premiumPaid,
@@ -43,11 +40,11 @@ export function ResultUpgradeChat({
   modal = false,
 }: Props) {
   const router = useRouter();
-  const locale = "ja";
-  const localePrefix = "";
-  const copy = { saveError: "回答を保存できませんでした。通信環境を確認して、もう一度お試しください。" };
+  const copy = RESULT_UPGRADE_COPY[locale];
   const sessionCopy = RESULT_UPGRADE_SESSION_COPY[locale];
   const [sessionVerified, setSessionVerified] = useState(preview);
+  const ALICE_QUESTION_MESSAGES = copy.questionMessages;
+  const localePrefix = localePath(locale, "/") === "/" ? "" : localePath(locale, "/");
   const hasSavedAnswers = existingAnswers.length === RESULT_UPGRADE_QUESTIONS.length;
   const [answers, setAnswers] = useState<string[]>(existingAnswers);
   const [draft, setDraft] = useState("");
@@ -82,19 +79,18 @@ export function ResultUpgradeChat({
     }
   }, [answers, draft, ownerToken, preview, screen, sessionVerified]);
 
-
   useEffect(() => {
     if (preview || !sessionVerified || screen !== "generating" || !premiumPaid) return;
     return watchResultUpgrade({
       force: retryKey > 0,
       onReady: () => router.replace(
         ownerToken
-          ? `/me/${encodeURIComponent(ownerToken)}?upgraded=1`
-          : "/result-upgrade/reading",
+          ? `${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`
+          : `${localePrefix}/result-upgrade/reading`,
       ),
       onFailed: () => setScreen("failed"),
     });
-  }, [ownerToken, premiumPaid, preview, retryKey, router, screen, sessionVerified]);
+  }, [ownerToken, premiumPaid, preview, retryKey, router, screen, localePrefix, sessionVerified]);
 
   async function submitAnswer() {
     const answer = draft.trim();
@@ -133,7 +129,7 @@ export function ResultUpgradeChat({
       const response = await fetch("/api/result-upgrade/answers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: nextAnswers, ownerToken }),
+        body: JSON.stringify({ answers: nextAnswers, locale, ownerToken }),
       });
       if (!isMountedRef.current) return;
       if (!response.ok) {
@@ -209,7 +205,7 @@ export function ResultUpgradeChat({
         />
         <div>
           <p className="text-[16px] font-black">Alice</p>
-          <p className="text-[12px] font-bold text-white/65">あなた専用の結果をつくる会話</p>
+          <p className="text-[12px] font-bold text-white/65">{copy.conversationSubtitle}</p>
         </div>
         <span className="ml-auto text-[#F5D66B]" aria-hidden="true">✦</span>
       </div>
@@ -217,7 +213,7 @@ export function ResultUpgradeChat({
       <div className="flex-1 overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7">
         <div className="space-y-5">
           <AliceBubble>
-            ここからは、診断の選択肢だけでは見えなかったあなたを少し教えてください。短くても、じっくり話しても大丈夫です。
+            {copy.intro}
           </AliceBubble>
           {answers.map((answer, answerIndex) => (
             <div key={`${answerIndex}-${answer}`} className="space-y-5">
@@ -234,46 +230,55 @@ export function ResultUpgradeChat({
             <AliceBubble>{ALICE_QUESTION_MESSAGES[0]}</AliceBubble>
           )}
 
-          {aliceTyping && <AliceTypingBubble />}
+          {aliceTyping && <AliceTypingBubble locale={locale} />}
 
-          {screen === "saving" && <UpgradePreparationBubble />}
+          {screen === "saving" && <UpgradePreparationBubble locale={locale} />}
 
           {screen === "purchase" && (
             <div className="rounded-[24px] border border-[#EFD79B] bg-white p-5 shadow-[0_8px_25px_rgba(154,106,36,0.10)] md:p-7">
-              <p className="text-[12px] font-black tracking-[0.12em] text-[#9A6A24]">回答の保存ができました</p>
+              <p className="text-[12px] font-black tracking-[0.12em] text-[#9A6A24]">{copy.saved}</p>
               <h2 className="mt-2 text-[23px] font-black leading-[1.45] text-[#2E2E5C] md:text-[28px]">
-                世界に一体だけのキャラクターと、あなた専用の鑑定書を作成します
+                {copy.purchaseTitle}
               </h2>
               <p className="mt-3 text-[14px] leading-[1.8] text-[#66657B]">
-                元の診断キャラクターを受け継ぎながら、今のあなたに似合う表情・服装・小物・背景へ。型名と結果の冒頭文も、あなた専用になります。
+                {copy.purchaseBody}
               </p>
+              {locale === "ko" && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} · 1회 결제</p>}
               <div className="mt-6">
-                {preview ? (
+                {preview && locale === "ko" ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white opacity-60"
+                  >
+                    {copy.cta}
+                  </button>
+                ) : preview ? (
                   <form action="/api/dev/result-upgrade-checkout" method="post">
                     <button
                       type="submit"
                       className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white shadow-[0_4px_0_#7F5518] transition hover:translate-y-0.5 hover:shadow-[0_2px_0_#7F5518]"
                     >
-                      結果をアップグレード
+                      {copy.cta}
                     </button>
                   </form>
                 ) : (
                   <FullAccessCta
                     ownerToken={ownerToken}
-                    locale="ja"
+                    locale={locale}
                     product="premium_bundle"
                     returnTo="me"
                     source="result_upgrade_after_answers"
                     accentColor="#A87322"
                     shadowColor="#7F5518"
                   >
-                    結果をアップグレード
+                    {copy.cta}
                   </FullAccessCta>
                 )}
               </div>
               {!preview && (
                 <p className="mt-3 text-center text-[11px] font-bold text-[#8A8AA3]">
-                  買い切り・追加料金なし
+                  {copy.oneTime}
                 </p>
               )}
             </div>
@@ -281,14 +286,14 @@ export function ResultUpgradeChat({
 
           {screen === "generating" && (
             <AliceBubble>
-              ありがとう。あなたの答えと、これまでの診断結果を重ねながら、キャラクターと鑑定書を作っています。
-              <LoadingDots />
+              {copy.generating}
+              <LoadingDots locale={locale} />
             </AliceBubble>
           )}
 
           {screen === "failed" && (
             <AliceBubble>
-              作成が途中で止まってしまいました。回答は保存されています。
+              {copy.failed}
               <button
                 type="button"
                 onClick={() => {
@@ -297,7 +302,7 @@ export function ResultUpgradeChat({
                 }}
                 className="mt-3 block rounded-full bg-[#5B5BEF] px-5 py-2.5 text-[13px] font-black text-white"
               >
-                もう一度作成する
+                {copy.retry}
               </button>
             </AliceBubble>
           )}
@@ -321,20 +326,20 @@ export function ResultUpgradeChat({
               maxLength={500}
               rows={2}
               disabled={aliceTyping}
-              placeholder="自由に話してみてください"
+              placeholder={copy.placeholder}
               className="min-h-[52px] flex-1 resize-none rounded-2xl border border-[#DAD7EB] bg-[#FAFAFD] px-4 py-3 text-[14px] leading-relaxed text-[#2E2E5C] outline-none transition focus:border-[#7774E8] focus:ring-2 focus:ring-[#7774E8]/15 disabled:cursor-wait disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => void submitAnswer()}
               disabled={aliceTyping || !draft.trim()}
-              aria-label="回答を送る"
+              aria-label={copy.submit}
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-xl font-black text-white shadow-[0_3px_0_#3D3DC4] transition active:translate-y-0.5 disabled:opacity-35"
             >
               ↑
             </button>
           </div>
-          <p className="mt-2 px-1 text-[11px] font-bold text-[#9997AA]">一言でも、長く話してもOK</p>
+          <p className="mt-2 px-1 text-[11px] font-bold text-[#9997AA]">{copy.answerHint}</p>
         </div>
       )}
     </div>
@@ -358,15 +363,16 @@ function AliceBubble({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AliceTypingBubble() {
+function AliceTypingBubble({ locale }: { locale: ResultUpgradeLocale }) {
+  const copy = RESULT_UPGRADE_COPY[locale];
   return (
     <AliceBubble>
       <span
         className="flex min-w-20 items-center gap-2 py-0.5 text-[12px] text-[#8A8AA3]"
         role="status"
-        aria-label="Aliceが入力中"
+        aria-label={copy.typingAria}
       >
-        <span>入力中</span>
+        <span>{copy.typing}</span>
         <span className="flex gap-1" aria-hidden="true">
           {[0, 1, 2].map((dot) => (
             <span
@@ -381,14 +387,15 @@ function AliceTypingBubble() {
   );
 }
 
-function UpgradePreparationBubble() {
+function UpgradePreparationBubble({ locale }: { locale: ResultUpgradeLocale }) {
+  const copy = RESULT_UPGRADE_COPY[locale];
   return (
     <AliceBubble>
       <div role="status" aria-live="polite">
-        <p>ありがとう。いま、あなたの回答をこれまでの診断結果と照らし合わせています。</p>
+        <p>{copy.preparing}</p>
         <div className="mt-3 flex items-center gap-2 text-[12px] text-[#7774A6]">
-          <span>あなた専用の結果をつくる準備中</span>
-          <LoadingDots compact />
+          <span>{copy.preparingStatus}</span>
+          <LoadingDots compact locale={locale} />
         </div>
         <div className="mt-4 space-y-2" aria-hidden="true">
           <span className="block h-1.5 w-full animate-pulse rounded-full bg-[#E7E5F7]" />
@@ -400,9 +407,10 @@ function UpgradePreparationBubble() {
   );
 }
 
-function LoadingDots({ compact = false }: { compact?: boolean }) {
+function LoadingDots({ compact = false, locale }: { compact?: boolean; locale: ResultUpgradeLocale }) {
+  const copy = RESULT_UPGRADE_COPY[locale];
   return (
-    <span className={`${compact ? "" : "mt-2"} flex gap-1`} aria-label="作成中">
+    <span className={`${compact ? "" : "mt-2"} flex gap-1`} aria-label={copy.creating}>
       {[0, 1, 2].map((dot) => (
         <span
           key={dot}

@@ -25,6 +25,11 @@ export const ID_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "id_single_full_access_v1_idr_49000_release_129000_list" as const;
 export const KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION =
   "ko_single_full_access_v3_krw_4900_release_card_12900_list" as const;
+export const KO_RESULT_UPGRADE_PRICE_KRW = 8_900;
+export const KO_RESULT_UPGRADE_OFFER_VERSION =
+  "result_upgrade_v1_krw_8900" as const;
+
+
 export const THREE_COURSE_PAYWALL_VERSIONS = [
   "three_course_v1",
   "three_course_v2_no_images",

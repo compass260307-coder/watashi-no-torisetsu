@@ -1,7 +1,9 @@
+import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { ResultUpgradeReading } from "@/lib/result-upgrade";
 
 interface ResultUpgradeReadingDocumentProps {
+  locale?: ResultUpgradeLocale;
   imageSrc: string;
   imageAlt: string;
   imageUnoptimized?: boolean;
@@ -38,6 +40,7 @@ function LanternOrb({ className }: { className: string }) {
 
 export function ResultUpgradeReadingDocument({
   imageSrc,
+  locale = "ja",
   imageAlt,
   imageUnoptimized = false,
   imageAspectClassName = "aspect-[16/10]",
@@ -45,6 +48,7 @@ export function ResultUpgradeReadingDocument({
   personalizedIntro,
   reading,
 }: ResultUpgradeReadingDocumentProps) {
+  const copy = RESULT_UPGRADE_COPY[locale];
   return (
     <article
       className="mx-auto max-w-[900px] overflow-hidden rounded-[6px] border border-[#211B17] bg-[#F4E3CC] text-[#1E1915] shadow-[0_24px_80px_rgba(55,35,24,0.20)] print:max-w-none print:rounded-none print:shadow-none"
@@ -88,7 +92,7 @@ export function ResultUpgradeReadingDocument({
           className="absolute right-5 top-[41%] z-10 text-[11px] font-black tracking-[0.28em] text-[#C93D34] md:right-9"
           style={{ writingMode: "vertical-rl" }}
         >
-          あなただけのために読み解いた記録
+          {copy.documentRecord}
         </p>
 
         <div className="absolute inset-x-7 bottom-14 z-10 md:inset-x-16 md:bottom-16">
@@ -96,7 +100,7 @@ export function ResultUpgradeReadingDocument({
             PERSONAL PORTRAIT / 01
           </p>
           <h1 className="mt-3 text-[48px] font-black leading-[1.02] tracking-[-0.05em] text-[#16120F] md:text-[72px]">
-            個人鑑定書
+            {copy.documentTitle}
           </h1>
           <div className="mt-6 h-[5px] w-20 bg-[#D9473C]" />
           <p className="mt-6 max-w-[700px] text-balance text-[24px] font-black leading-[1.5] md:text-[34px]">
@@ -124,14 +128,14 @@ export function ResultUpgradeReadingDocument({
               />
             </div>
             <span className="absolute -bottom-4 right-5 bg-[#D9473C] px-4 py-2 text-[10px] font-black tracking-[0.24em] text-[#FFF2E3]">
-              あなただけの一枚
+              {copy.documentImage}
             </span>
           </div>
 
           <div className="mt-14 border-t border-[#211B17] pt-7 md:grid md:grid-cols-[150px_1fr] md:gap-10">
             <div>
               <p className="text-[46px] font-black leading-none text-[#D9473C]">01</p>
-              <p className="mt-2 text-[9px] font-black tracking-[0.2em]">あなたのタイプ</p>
+              <p className="mt-2 text-[9px] font-black tracking-[0.2em]">{copy.documentType}</p>
             </div>
             <div className="mt-5 md:mt-0">
               <h2 className="text-balance text-[29px] font-black leading-[1.4] md:text-[42px]">
@@ -161,7 +165,7 @@ export function ResultUpgradeReadingDocument({
                   {String(index + 1).padStart(2, "0")}
                 </p>
                 <p className="pb-1 text-[9px] font-black tracking-[0.26em] md:mt-3 md:pb-0">
-                  読み解き
+                  {copy.documentReading}
                 </p>
               </div>
               <div className="mt-5 md:mt-0">
@@ -181,7 +185,7 @@ export function ResultUpgradeReadingDocument({
         <section className="relative mt-18 break-inside-avoid overflow-hidden border border-[#211B17] bg-[#E34A3E] px-7 py-10 text-[#1A1411] md:mt-24 md:px-12 md:py-14">
           <LanternOrb className="-right-20 -top-24 h-[240px] w-[240px] opacity-25" />
           <p className="relative text-[10px] font-black tracking-[0.26em]">
-            結びの言葉
+            {copy.documentClosing}
           </p>
           <p className="relative mt-6 whitespace-pre-line text-[16px] font-bold leading-[2.05] md:max-w-[680px] md:text-[18px]">
             {reading.closingMessage}
@@ -189,7 +193,7 @@ export function ResultUpgradeReadingDocument({
           <div className="relative mt-9 flex items-end justify-between gap-6 border-t border-black/35 pt-6">
             <div>
               <p className="text-[9px] font-black tracking-[0.22em] text-black/55">
-                あなたへ
+                {copy.documentTo}
               </p>
               <p className="mt-1 text-[25px] font-black tracking-[0.08em]">Alice</p>
             </div>

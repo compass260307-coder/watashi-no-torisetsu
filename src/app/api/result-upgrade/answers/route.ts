@@ -51,6 +51,10 @@ export async function POST(request: Request) {
   if (body.value.ownerToken !== undefined && body.value.ownerToken !== session.owner_token) {
     return NextResponse.json({ error: "result owner mismatch" }, { status: 403 });
   }
+  const locale = body.value.locale ?? "ja";
+  if (locale !== "ja" && locale !== "ko") {
+    return NextResponse.json({ error: "invalid locale" }, { status: 400 });
+  }
   const answers = normalizeResultUpgradeAnswers(body.value.answers);
   if (!answers) {
     return NextResponse.json({ error: "invalid answers" }, { status: 400 });
@@ -79,6 +83,7 @@ export async function POST(request: Request) {
   const { error } = await supabaseAdmin.from("result_upgrades").upsert(
     {
       user_id: session.id,
+      locale,
       answers,
       source_type_id: base.sourceTypeId,
       source_character_path: base.sourceCharacterPath,

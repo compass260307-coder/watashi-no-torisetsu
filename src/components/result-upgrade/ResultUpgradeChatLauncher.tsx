@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -18,13 +20,19 @@ const ResultUpgradeChat = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-full min-h-0 items-center justify-center rounded-[28px] bg-[#F5F4FB] text-[14px] font-bold text-[#2E2E5C]/60">
-        Aliceを呼んでいます…
+        <UpgradeLoadingLabel />
       </div>
     ),
   },
 );
 
+function UpgradeLoadingLabel() {
+  const pathname = usePathname();
+  return RESULT_UPGRADE_COPY[pathname?.startsWith("/ko/") ? "ko" : "ja"].calling;
+}
+
 type ResultUpgradeChatLauncherProps = {
+  locale?: ResultUpgradeLocale;
   ownerToken: string;
   existingAnswers?: string[];
   initialState?: string | null;
@@ -37,6 +45,7 @@ type ResultUpgradeChatLauncherProps = {
 
 export function ResultUpgradeChatLauncher({
   ownerToken,
+  locale = "ja",
   existingAnswers = [],
   initialState,
   premiumPaid,
@@ -45,6 +54,7 @@ export function ResultUpgradeChatLauncher({
   style,
   children,
 }: ResultUpgradeChatLauncherProps) {
+  const copy = RESULT_UPGRADE_COPY[locale];
   // The server mounts this launcher only for purchased results.
   // Warm code without requesting answers or starting Checkout.
   useEffect(() => { if (!preview) void preloadChat().catch(() => {}); }, [preview]);
@@ -90,14 +100,14 @@ export function ResultUpgradeChatLauncher({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label="Aliceと結果をアップグレード"
+              aria-label={copy.dialog}
               className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/60 p-2 backdrop-blur-sm md:p-6"
             >
               <div className="relative h-[calc(100dvh-1rem)] w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)] md:h-[min(760px,calc(100dvh-3rem))]">
                 <button
                   ref={closeRef}
                   type="button"
-                  aria-label="チャットを閉じる"
+                  aria-label={copy.close}
                   onClick={() => setOpen(false)}
                   className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
@@ -106,6 +116,7 @@ export function ResultUpgradeChatLauncher({
                   </span>
                 </button>
                 <ResultUpgradeChat
+                  locale={locale}
                   ownerToken={ownerToken}
                   existingAnswers={existingAnswers}
                   initialState={initialState}

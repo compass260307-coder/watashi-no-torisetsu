@@ -19,6 +19,7 @@ import {
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
+  KO_RESULT_UPGRADE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
   type AccessProduct,
@@ -214,6 +215,7 @@ export function FullAccessCta({
           value:
             typeof data.amount === "number"
               ? data.amount
+              : locale === "ko" && product === "premium_bundle" && source === "result_upgrade_after_answers" ? KO_RESULT_UPGRADE_PRICE_KRW
               : product === "self_report"
                 ? locale === "ko"
                   ? SELF_REPORT_PRICE_KRW

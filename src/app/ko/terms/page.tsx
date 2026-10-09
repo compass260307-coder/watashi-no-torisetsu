@@ -6,7 +6,7 @@ import {
   SITE_URL,
   localizedAlternates,
 } from "@/lib/locale-seo";
-import { FULL_ACCESS_PRICE_KRW } from "@/lib/access-products";
+import { FULL_ACCESS_PRICE_KRW, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
 
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 
 export default function KoreanTermsPage() {
   return (
-    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 9월 19일">
+    <KoreanLegalDocument title="이용약관" lastUpdated="2026년 10월 9일">
       <p>
         이 이용약관(이하 “약관”)은 나의 사용설명서 운영팀(이하 “운영자”)이
         제공하는 “나의 사용설명서” 한국어 서비스(이하 “서비스”)의 이용 조건을
@@ -123,8 +123,7 @@ export default function KoreanTermsPage() {
       <h2>제6조 유료 서비스 및 결제</h2>
       <ol>
         <li>
-          현재 한국어 유료 서비스는 완전판 {krw(FULL_ACCESS_PRICE_KRW)}의 1회
-          결제로 제공되며 구독이나 자동 갱신은 없습니다.
+          한국어 완전판은 {krw(FULL_ACCESS_PRICE_KRW)}의 1회 결제로 제공됩니다. 완전판 구매자는 5개 질문에 답한 뒤 결과 업그레이드를 {krw(KO_RESULT_UPGRADE_PRICE_KRW)}에 선택하여 구매할 수 있습니다. 구독이나 자동 갱신은 없습니다.
         </li>
         <li>
           완전판에는 자기 진단, 전용 전자책, 친구 진단, 친구 분석 PDF, 궁합 진단,
