@@ -1,5 +1,7 @@
 "use client";
 
+import { localePath } from "@/i18n/config";
+import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,10 +9,13 @@ import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
 
 export function ResultUpgradeGenerationWatcher({
   initialState,
+  locale = "ja",
 }: {
   initialState: string;
+  locale?: ResultUpgradeLocale;
 }) {
   const router = useRouter();
+  const copy = RESULT_UPGRADE_COPY[locale];
   const [progress, setProgress] = useState<{ source: string; state: string } | null>(null);
   const state = progress?.source === initialState ? progress.state : initialState;
   const [retryKey, setRetryKey] = useState(0);
@@ -30,9 +35,9 @@ export function ResultUpgradeGenerationWatcher({
   if (state === "ready") {
     return (
       <div className="bg-[#FFF8E8] px-4 py-3 text-center text-[13px] font-bold text-[#72501D]">
-        あなた専用の結果が完成しました。{" "}
-        <Link href="/result-upgrade/reading" className="underline underline-offset-2">
-          鑑定書を見る
+        {copy.ready}{" "}
+        <Link href={localePath(locale, "/result-upgrade/reading")} className="underline underline-offset-2">
+          {copy.view}
         </Link>
       </div>
     );
@@ -40,7 +45,7 @@ export function ResultUpgradeGenerationWatcher({
   if (state === "failed") {
     return (
       <div className="flex flex-wrap items-center justify-center gap-3 bg-[#FFF1F0] px-4 py-3 text-[13px] font-bold text-[#8A3932]">
-        作成が途中で止まりました。回答は保存されています。
+        {locale !== "ja" ? copy.failed : "作成が途中で止まりました。回答は保存されています。"}
         <button
           type="button"
           onClick={() => {
@@ -49,14 +54,14 @@ export function ResultUpgradeGenerationWatcher({
           }}
           className="rounded-full bg-[#8A3932] px-4 py-2 text-white"
         >
-          もう一度作成する
+          {copy.retry}
         </button>
       </div>
     );
   }
   return (
     <div className="bg-[#FFF8E8] px-4 py-3 text-center text-[13px] font-bold text-[#72501D]">
-      Aliceがあなた専用のキャラクターと鑑定書を作成しています…
+      {copy.watcher}
     </div>
   );
 }

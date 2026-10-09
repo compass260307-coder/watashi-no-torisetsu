@@ -6,7 +6,7 @@ import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
 
 type Props = {
   ownerToken: string;
-  locale?: Extract<Parameters<typeof LoginCard>[0]["locale"], "ja" | "th">;
+  locale?: Extract<Parameters<typeof LoginCard>[0]["locale"], "ja" | "ko">;
   onVerified: () => void;
 };
 

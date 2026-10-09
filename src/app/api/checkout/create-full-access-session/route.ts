@@ -26,6 +26,7 @@ import {
   isSafeOpaqueToken,
   readJsonObject,
 } from "@/lib/api-security";
+import { normalizeResultUpgradeAnswers } from "@/lib/result-upgrade";
 import { getSession } from "@/lib/session";
 import {
   getAccessPurchaseEntitlements,
@@ -58,6 +59,8 @@ import {
   HOSHIYOMI_CHAT_POLICY_FULL_ALL_INCLUDED,
   PREMIUM_BUNDLE_LIST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
+  KO_RESULT_UPGRADE_OFFER_VERSION,
+  KO_RESULT_UPGRADE_PRICE_KRW,
   RESULT_UPGRADE_OFFER_VERSION,
   RESULT_UPGRADE_PRICE_JPY,
   SELF_REPORT_LIST_PRICE_JPY,
@@ -665,7 +668,8 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product)) {
+  if (checkoutLocale === "ko" && !isCurrentKoreanAccessProduct(product) &&
+    !(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")) {
     return NextResponse.json(
       {
         error: "product_not_offered",
@@ -830,13 +834,13 @@ export async function POST(request: NextRequest) {
     );
   }
   const isResultUpgradeCheckout =
-    checkoutLocale === "ja" &&
+    (checkoutLocale === "ja" || checkoutLocale === "ko") &&
     product === "premium_bundle" &&
     paywallSource === "result_upgrade_after_answers";
   if (
     isResultUpgradeCheckout &&
     !entitlements.full &&
-    !entitlements.selfReport
+    (checkoutLocale !== "ja" || !entitlements.selfReport)
   ) {
     return NextResponse.json(
       {
@@ -846,15 +850,39 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
+  // Korean upgrade answers are private: require the logged-in owner and five saved answers.
+  if (isResultUpgradeCheckout && checkoutLocale === "ko") {
+    const session = await getSession(request);
+    if (!session || session.id !== userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+    const { data: upgrade, error } = await supabaseAdmin
+      .from("result_upgrades")
+      .select("locale, answers")
+      .eq("user_id", session.id)
+      .maybeSingle();
+    if (error) {
+      return NextResponse.json({ error: "result upgrade database is not ready" }, { status: 503 });
+    }
+    if (upgrade?.locale !== "ko" || !normalizeResultUpgradeAnswers(upgrade?.answers)) {
+      return NextResponse.json({ error: "result_upgrade_answers_required", code: "result_upgrade_answers_required" }, { status: 409 });
+    }
+  }
+  const resultUpgradePrice = checkoutLocale === "ko"
+    ? KO_RESULT_UPGRADE_PRICE_KRW
+    : RESULT_UPGRADE_PRICE_JPY;
+  const resultUpgradeOfferVersion = checkoutLocale === "ko"
+    ? KO_RESULT_UPGRADE_OFFER_VERSION
+    : RESULT_UPGRADE_OFFER_VERSION;
   const effectivePrice = isResultUpgradeCheckout
-    ? RESULT_UPGRADE_PRICE_JPY
+    ? resultUpgradePrice
     : accessProductPriceForCheckout(
         checkoutLocale,
         product,
         entitlements,
         paywallVersion,
       );
-  const coursePrice = accessProductPriceForCheckout(
+  const coursePrice = isResultUpgradeCheckout ? resultUpgradePrice : accessProductPriceForCheckout(
     checkoutLocale,
     product,
     EMPTY_ACCESS_ENTITLEMENTS,
@@ -992,7 +1020,9 @@ export async function POST(request: NextRequest) {
     tax_code?: string;
   } = {
     name:
-      upgradeFrom !== "none"
+      isResultUpgradeCheckout && checkoutLocale === "ko"
+        ? "결과 업그레이드"
+        : upgradeFrom !== "none"
         ? checkoutLocale === "ko"
           ? `${checkoutCopy.productName} 업그레이드`
           : checkoutLocale === "en"
@@ -1001,7 +1031,9 @@ export async function POST(request: NextRequest) {
               ? `Upgrade ke ${checkoutCopy.productName}`
             : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
-    description: checkoutCopy.productDescription,
+    description: isResultUpgradeCheckout && checkoutLocale === "ko"
+      ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
+      : checkoutCopy.productDescription,
     ...(productImage ? { images: [productImage] } : {}),
     ...(process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES
       ? { tax_code: process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES }
@@ -1013,6 +1045,7 @@ export async function POST(request: NextRequest) {
   let chargedAmount: number;
 
   const isStandardJapaneseCoursePurchase =
+    !isResultUpgradeCheckout &&
     checkoutLocale === "ja" &&
     usesCurrentOffer &&
     upgradeFrom === "none" &&
@@ -1170,7 +1203,7 @@ export async function POST(request: NextRequest) {
           source: paywallSource,
           paywall_version: paywallVersion,
           ...(isResultUpgradeCheckout
-            ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+            ? { offer_version: resultUpgradeOfferVersion }
             : {}),
           placement: paywallPlacement,
           return_to: returnTo,
@@ -1298,7 +1331,7 @@ export async function POST(request: NextRequest) {
         paywall_source: paywallSource,
         paywall_version: paywallVersion,
         ...(isResultUpgradeCheckout
-          ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+          ? { offer_version: resultUpgradeOfferVersion }
           : {}),
         paywall_placement: paywallPlacement,
         return_to: returnTo,
@@ -1356,7 +1389,7 @@ export async function POST(request: NextRequest) {
         source: paywallSource,
         paywall_version: paywallVersion,
         ...(isResultUpgradeCheckout
-          ? { offer_version: RESULT_UPGRADE_OFFER_VERSION }
+          ? { offer_version: resultUpgradeOfferVersion }
           : {}),
         placement: paywallPlacement,
         return_to: returnTo,

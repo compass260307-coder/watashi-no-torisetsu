@@ -53,6 +53,7 @@ import {
 } from "@/lib/entitlements";
 import {
   hoshiyomiChatCreditTarget,
+  KO_RESULT_UPGRADE_OFFER_VERSION,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
@@ -855,6 +856,7 @@ async function sendDetailedReportEmailBestEffort(
     }
 
     await sendDetailedReportEmail({
+      resultUpgrade: session.metadata?.offer_version === KO_RESULT_UPGRADE_OFFER_VERSION,
       to,
       ownerToken: row.owner_token,
       ownerName: row.display_name,

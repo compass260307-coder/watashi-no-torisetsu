@@ -6,6 +6,19 @@ export const RESULT_UPGRADE_QUESTIONS = [
   "あなたの将来の夢は？",
 ] as const;
 
+
+export const KO_RESULT_UPGRADE_QUESTIONS = [
+  "여유 시간이 생기면 주로 뭘 하세요?",
+  "최근에 시간 가는 줄 모르고 빠져든 일은 무엇인가요?",
+  "주변 사람들은 어떤 사람이라고 말하나요?",
+  "연애에서 중요하게 생각하는 건 무엇인가요?",
+  "앞으로 이루고 싶은 꿈은 무엇인가요?",
+] as const;
+
+export function resultUpgradeQuestions(locale: "ja" | "ko" = "ja"): readonly string[] {
+  return locale === "ko" ? KO_RESULT_UPGRADE_QUESTIONS : RESULT_UPGRADE_QUESTIONS;
+}
+
 export type ResultUpgradeState =
   | "answers_ready"
   | "generating"
@@ -47,6 +60,7 @@ export function resultUpgradeSelfSections(
 
 export type ResultUpgradeRow = {
   user_id: string;
+  locale?: "ja" | "ko";
   answers: string[];
   source_type_id: string;
   source_character_path: string;

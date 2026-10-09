@@ -17,6 +17,7 @@ import {
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
+  KO_RESULT_UPGRADE_PRICE_KRW,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
   type AccessProduct,
@@ -261,6 +262,7 @@ export async function sendTrisetsuCompleteEmail(
 }
 
 interface SendDetailedReportArgs {
+  resultUpgrade?: boolean;
   to: string;
   ownerToken: string;
   ownerName?: string | null;
@@ -326,7 +328,9 @@ export async function sendDetailedReportEmail(
       ? product === "self_report"
         ? `【${KO_SITE_NAME}】학생 플랜이 열렸어요`
         : product === "premium_bundle"
-          ? `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
+          ? args.resultUpgrade
+            ? `【${KO_SITE_NAME}】결과 업그레이드 구매 안내`
+            : `【${KO_SITE_NAME}】프리미엄 코스가 열렸어요`
           : `【${KO_SITE_NAME}】완전판 리포트를 보내 드립니다`
       : locale === "en"
         ? `Your ${EN_SITE_NAME} Complete Edition is ready`
@@ -338,13 +342,27 @@ export async function sendDetailedReportEmail(
           ? `【${SITE_NAME}】全部入りを解放しました`
           : `【${SITE_NAME}】完全版レポートをお届けします`;
 
+  const upgradeText = locale === "ko" && product === "premium_bundle" && args.resultUpgrade
+    ? [
+        greetingName ? `${greetingName}님, 안녕하세요.` : "안녕하세요.",
+        "결과 업그레이드를 구매해 주셔서 감사합니다.",
+        `결제 금액: ₩${(args.purchaseAmountMinor ?? KO_RESULT_UPGRADE_PRICE_KRW).toLocaleString("ko-KR")} (세금 포함 · 1회 결제)`,
+        "저장한 5개 답변으로 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서를 만들어요.",
+        "아래 링크에서 구매한 계정으로 로그인하면 생성 상태와 결과를 확인할 수 있어요. 생성에 실패하면 추가 결제 없이 다시 시도할 수 있어요.",
+        meUrl,
+        "결제일로부터 30일 이내 전액 환불을 요청할 수 있어요. 문의 및 환불: support@watashi-torisetsu.com",
+        "판매자: 후타미 류노스케 (일본)",
+        `${SITE_URL}/ko/legal/commerce`,
+      ].join("\n\n")
+    : null;
   try {
     const result = await resend.emails.send({
       from,
       to: args.to,
       subject,
-      html:
-        locale === "ko"
+      html: upgradeText
+        ? `<div style="font-family:sans-serif;line-height:1.8;white-space:pre-wrap">${escapeHtml(upgradeText)}<p><a href="${escapeHtml(meUrl)}">나만의 결과 보기</a></p></div>`
+        : locale === "ko"
           ? renderDetailedReportHtmlKo({
               pdfUrl,
               meUrl,
@@ -404,7 +422,7 @@ export async function sendDetailedReportEmail(
               purchaseAmountMinor: args.purchaseAmountMinor,
               purchaseAmountJpy: args.purchaseAmountJpy,
             }),
-      text:
+      text: upgradeText ?? (
         locale === "ko"
           ? renderDetailedReportTextKo({
               pdfUrl,
@@ -461,7 +479,7 @@ export async function sendDetailedReportEmail(
               hoshiyomiChatCredits: args.hoshiyomiChatCredits,
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
-            }),
+            })),
     });
     if (result.error) {
       console.error(
