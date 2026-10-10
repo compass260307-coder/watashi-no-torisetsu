@@ -42,11 +42,11 @@ function getVideoSource() {
   const safari = /Safari/.test(navigator.userAgent) &&
     !/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(navigator.userAgent);
   return ios || safari
-    ? "/mascot/analyzing-loop-transparent.mp4"
-    : "/mascot/analyzing-loop-transparent.webm";
+    ? "/mascot/analyzing-loop-cutout-v2.mp4"
+    : "/mascot/analyzing-loop-cutout-v2.webm";
 }
 function getServerVideoSource() {
-  return "/mascot/analyzing-loop-transparent.webm";
+  return "/mascot/analyzing-loop-cutout-v2.webm";
 }
 
 const MESSAGES = [
@@ -120,7 +120,7 @@ export function DiagnosisAnalyzingLoader({
       <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
         {reducedMotion || videoFailed ? (
           <SmoothImage
-            src="/mascot/analyzing-loop-transparent-poster.webp"
+            src="/mascot/analyzing-loop-cutout-v2-poster.webp"
             alt=""
             width={832}
             height={624}
@@ -137,7 +137,7 @@ export function DiagnosisAnalyzingLoader({
             muted
             loop
             playsInline
-            poster="/mascot/analyzing-loop-transparent-poster.webp"
+            poster="/mascot/analyzing-loop-cutout-v2-poster.webp"
             onError={() => setVideoFailed(true)}
             className="h-full w-auto scale-[1.16] object-contain"
           />
