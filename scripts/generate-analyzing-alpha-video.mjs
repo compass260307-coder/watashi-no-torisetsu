@@ -1,10 +1,11 @@
 // Rebuild the loading animation from its original 5-second MP4, without redrawing it.
 // Usage: node scripts/generate-analyzing-alpha-video.mjs /path/to/analyzing-loop.mp4
-// Requires FFmpeg on macOS (HEVC with alpha uses VideoToolbox).
+// Requires FFmpeg and Swift on macOS 14+ (Vision foreground segmentation); HEVC with alpha uses VideoToolbox.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import sharp from "sharp";
+import { fileURLToPath } from "node:url";
 
 const input = process.argv[2] && resolve(process.argv[2]);
 if (!input || !existsSync(input)) {
@@ -12,7 +13,7 @@ if (!input || !existsSync(input)) {
 }
 
 const output = resolve("public/mascot");
-const assetName = "analyzing-loop-transparent";
+const assetName = "analyzing-loop-cutout-v2";
 const scratch = resolve(".codex_tmp");
 mkdirSync(scratch, { recursive: true });
 const temporary = mkdtempSync(join(scratch, "analyzing-alpha-"));
@@ -25,69 +26,86 @@ function ffmpeg(args) {
   if (result.status !== 0) throw new Error(`FFmpeg exited with ${result.status}`);
 }
 
-// Remove only neutral pixels connected to the outside of the canvas. This
-// preserves the pale faces and book pages enclosed by the character outlines.
-async function removeBackground(inputFrame, outputFrame) {
+// Vision segments the complete subject instead of retaining pale floor shadows.
+// Undo the source white matte along the soft contour; keep pale faces and books.
+async function removeBackground(inputFrame, maskFrame, outputFrame) {
   const { data, info } = await sharp(inputFrame).ensureAlpha().raw()
     .toBuffer({ resolveWithObject: true });
   const { width, height } = info;
-  const count = width * height;
-  const visited = new Uint8Array(count);
-  const queue = new Uint32Array(count);
-  let start = 0;
-  let end = 0;
-  function visit(pixel) {
-    if (visited[pixel]) return;
-    visited[pixel] = 1;
+  const mask = await sharp(maskFrame).greyscale().raw().toBuffer();
+  // Vision includes a thin fringe of the source white canvas. Contract its soft
+  // mask by two source pixels (less than one displayed pixel) before unmatting.
+  const horizontal = Buffer.alloc(mask.length);
+  const contracted = Buffer.alloc(mask.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let alpha = 255;
+      for (let dx = -2; dx <= 2; dx++) {
+        alpha = Math.min(alpha, mask[y * width + Math.max(0, Math.min(width - 1, x + dx))]);
+      }
+      horizontal[y * width + x] = alpha;
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let alpha = 255;
+      for (let dy = -2; dy <= 2; dy++) {
+        alpha = Math.min(alpha, horizontal[Math.max(0, Math.min(height - 1, y + dy)) * width + x]);
+      }
+      contracted[y * width + x] = alpha;
+    }
+  }
+  let steam = Buffer.alloc(width * height, 255);
+  for (let pixel = 0; pixel < mask.length; pixel++) {
+    const x = pixel % width;
+    const y = Math.floor(pixel / width);
     const offset = pixel * 4;
     const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
     const max = Math.max(data[offset], data[offset + 1], data[offset + 2]);
-    if (min >= 220 && max - min <= 22) queue[end++] = pixel;
+    // The generated off-white puff beside the chimney is part of the backdrop.
+    // Limit color cleanup to that area so cream faces and pages stay intact.
+    if (x > 553 && y < 178 && min >= 205 && max - min <= 65) steam[pixel] = 0;
   }
-  for (let x = 0; x < width; x++) {
-    visit(x);
-    visit((height - 1) * width + x);
-  }
-  for (let y = 1; y < height - 1; y++) {
-    visit(y * width);
-    visit(y * width + width - 1);
-  }
-  while (start < end) {
-    const pixel = queue[start++];
-    const x = pixel % width;
-    if (x > 0) visit(pixel - 1);
-    if (x < width - 1) visit(pixel + 1);
-    if (pixel >= width) visit(pixel - width);
-    if (pixel < count - width) visit(pixel + width);
-  }
-  for (let i = 0; i < end; i++) {
-    const offset = queue[i] * 4;
-    const min = Math.min(data[offset], data[offset + 1], data[offset + 2]);
-    const alpha = Math.max(0, Math.min(1, (244 - min) / 24));
+  steam = await sharp(steam, { raw: { width, height, channels: 1 } })
+    .blur(0.6).greyscale().raw().toBuffer();
+  for (let pixel = 0; pixel < mask.length; pixel++) {
+    const offset = pixel * 4;
+    const y = Math.floor(pixel / width);
+    // Explicitly clear the entire watermark strip in every frame.
+    const alpha = y >= 560 ? 0 : (contracted[pixel] / 255) * (steam[pixel] / 255);
     data[offset + 3] = Math.round(alpha * 255);
-    // Undo the original white matte at soft edges to avoid a white halo.
     for (let channel = 0; channel < 3; channel++) {
       data[offset + channel] = alpha === 0 ? 0 : Math.max(0, Math.min(255,
         Math.round((data[offset + channel] - (1 - alpha) * 249) / alpha)));
     }
   }
-  // This strip contains only empty background and the source watermark.
-  for (let pixel = 560 * width; pixel < count; pixel++) data[pixel * 4 + 3] = 0;
   await sharp(data, { raw: { width, height, channels: 4 } }).png().toFile(outputFrame);
 }
 
 try {
   const originalFrames = join(temporary, "original");
   const alphaFrames = join(temporary, "alpha");
+  const maskFrames = join(temporary, "masks");
   mkdirSync(originalFrames);
   mkdirSync(alphaFrames);
+  mkdirSync(maskFrames);
   const master = join(temporary, "alpha.mkv");
   ffmpeg([
     "-i", input,
     "-vf", "fps=24,scale=832:624:flags=lanczos", join(originalFrames, "%04d.png"),
   ]);
+  const segmentation = spawnSync("swift", [
+    "-module-cache-path", join(temporary, "swift-cache"),
+    join(dirname(fileURLToPath(import.meta.url)), "analyzing-foreground-mask.swift"),
+    originalFrames, maskFrames,
+  ], { stdio: "inherit", env: {
+    ...process.env, CLANG_MODULE_CACHE_PATH: join(temporary, "clang-cache"),
+  } });
+  if (segmentation.error) throw segmentation.error;
+  if (segmentation.status !== 0) throw new Error("Foreground segmentation failed");
   for (const frame of readdirSync(originalFrames).sort()) {
-    await removeBackground(join(originalFrames, frame), join(alphaFrames, frame));
+    await removeBackground(join(originalFrames, frame), join(maskFrames, frame),
+      join(alphaFrames, frame));
   }
   ffmpeg([
     "-framerate", "24", "-i", join(alphaFrames, "%04d.png"),
@@ -95,12 +113,16 @@ try {
   ]);
   ffmpeg([
     "-i", master, "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p",
-    "-b:v", "0", "-crf", "32", "-deadline", "good", "-cpu-used", "4",
+    "-b:v", "0", "-crf", "24", "-deadline", "good", "-cpu-used", "4",
     "-auto-alt-ref", "0", "-an", join(output, `${assetName}.webm`),
   ]);
   ffmpeg([
-    "-i", master, "-c:v", "hevc_videotoolbox", "-pix_fmt", "bgra",
-    "-allow_sw", "1", "-alpha_quality", "0.9", "-b:v", "700k",
+    "-i", master,
+    // VideoToolbox defaults to premultiplied alpha. VP9/poster use straight
+    // alpha; explicitly premultiply HEVC input to prevent Safari white fringes.
+    "-vf", "format=gbrap,premultiply=inplace=1,format=bgra",
+    "-c:v", "hevc_videotoolbox", "-pix_fmt", "bgra",
+    "-allow_sw", "1", "-alpha_quality", "1", "-b:v", "1200k",
     "-tag:v", "hvc1", "-an", "-movflags", "+faststart",
     join(output, `${assetName}.mp4`),
   ]);
