@@ -31,13 +31,31 @@ function getServerReducedMotion() {
   return true;
 }
 
+function subscribeToVideoSource() {
+  return () => {};
+}
+function getVideoSource() {
+  // iOS browsers all use WebKit. WebM playback support does not guarantee
+  // alpha support, so do not let source negotiation choose WebM on Apple WebKit.
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const safari = /Safari/.test(navigator.userAgent) &&
+    !/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(navigator.userAgent);
+  return ios || safari
+    ? "/mascot/analyzing-loop-transparent.mp4"
+    : "/mascot/analyzing-loop-transparent.webm";
+}
+function getServerVideoSource() {
+  return "/mascot/analyzing-loop-transparent.webm";
+}
+
 const MESSAGES = [
   "あなたの回答を読み込んでいます...",
   "Big Five 心理学で解析中...",
   "開放性・誠実性・外向性を判定...",
   "協調性・神経症傾向を分析...",
   "あなたを表すタイプを探しています...",
-  "8タイプから絞り込み中...",
+  "32タイプから絞り込み中...",
   "あなただけの強みを見つけています...",
   "あなたの取扱説明書を綴っています...",
   "最後の仕上げをしています...",
@@ -70,6 +88,11 @@ export function DiagnosisAnalyzingLoader({
     getReducedMotion,
     getServerReducedMotion,
   );
+  const videoSource = useSyncExternalStore(
+    subscribeToVideoSource,
+    getVideoSource,
+    getServerVideoSource,
+  );
 
   const messageCount = messages.length;
   const stepCount = steps.length;
@@ -97,7 +120,7 @@ export function DiagnosisAnalyzingLoader({
       <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
         {reducedMotion || videoFailed ? (
           <SmoothImage
-            src="/mascot/analyzing-loop-alpha-poster.webp"
+            src="/mascot/analyzing-loop-transparent-poster.webp"
             alt=""
             width={832}
             height={624}
@@ -107,30 +130,17 @@ export function DiagnosisAnalyzingLoader({
           />
         ) : (
           <video
+            src={videoSource}
             width={832}
             height={624}
             autoPlay
             muted
             loop
             playsInline
-            poster="/mascot/analyzing-loop-alpha-poster.webp"
-            onError={(event) => {
-              // React also bubbles <source> errors here. An unsupported HEVC
-              // candidate must still allow Chrome to try the following WebM.
-              if (event.target === event.currentTarget) setVideoFailed(true);
-            }}
+            poster="/mascot/analyzing-loop-transparent-poster.webp"
+            onError={() => setVideoFailed(true)}
             className="h-full w-auto scale-[1.16] object-contain"
-          >
-            <source
-              src="/mascot/analyzing-loop-alpha.mov"
-              type={'video/quicktime; codecs="hvc1"'}
-            />
-            <source
-              src="/mascot/analyzing-loop-alpha.webm"
-              type={'video/webm; codecs="vp9"'}
-              onError={() => setVideoFailed(true)}
-            />
-          </video>
+          />
         )}
       </div>
 
