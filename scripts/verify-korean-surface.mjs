@@ -135,13 +135,18 @@ for (const required of [
   "useSearchParams",
   'pathname.startsWith("/dev/")',
   'searchParams.get("locale") === "ko"',
-  "const localePrefix = isKorean",
 ]) {
   if (!bottomNav.includes(required)) {
     problems.push(
       `src/components/BottomNav.tsx: localized development paywall navigation lacks ${required}`,
     );
   }
+}
+
+if (!/const localePrefix\s*=\s*[^;]*\bisKorean\s*\?\s*["']\/ko["']/s.test(bottomNav)) {
+  problems.push(
+    "src/components/BottomNav.tsx: localized development paywall navigation lacks the Korean locale prefix",
+  );
 }
 
 const rootLayout = fs.readFileSync(
@@ -341,7 +346,6 @@ const koreanHeader = [koreanHeaderPath, sharedHeaderPath, "src/i18n/ui/messages/
   .map((file) => fs.readFileSync(path.join(ROOT, file), "utf8"))
   .join("\n");
 for (const required of [
-  "DeferredLoginModal as LoginModal",
   'locale="ko"',
   "데이터 초기화",
   "resetLocalData",
@@ -349,6 +353,13 @@ for (const required of [
   if (!koreanHeader.includes(required)) {
     problems.push(`effective Korean TopHeader: missing ${required}`);
   }
+}
+
+const headerImportsLoginModal =
+  /import\s*\{\s*LoginModal\s*\}\s*from\s*["']@\/components\/LoginModal["']/.test(koreanHeader) ||
+  /import\s*\{[^}]*DeferredLoginModal\s+as\s+LoginModal[^}]*\}\s*from\s*["']@\/components\/DeferredOverlays["']/.test(koreanHeader);
+if (!headerImportsLoginModal || !/<LoginModal\b/.test(koreanHeader)) {
+  problems.push("effective Korean TopHeader: localized login modal is not connected");
 }
 
 const koreanFooterPath = "src/components/ko/top/KoTopFooter.tsx";
@@ -785,9 +796,22 @@ const japaneseTopHero = fs.readFileSync(
   path.join(ROOT, "src/components/top/TopHero.tsx"),
   "utf8",
 );
+const topAnalytics = fs.readFileSync(
+  path.join(ROOT, "src/components/top/TopAnalytics.tsx"),
+  "utf8",
+);
+// The hero may own the click handler or delegate it to the shared client CTA.
+const heroTracksTopCta =
+  /import\s*\{[^}]*\btrackTopCta\b[^}]*\}\s*from\s*["']@\/components\/top\/TopAnalytics["']/.test(japaneseTopHero) &&
+  /onClick=\{\(\)\s*=>\s*trackTopCta\((?:"ja"|locale)\)\}/.test(japaneseTopHero);
+const sharedCtaTracksTopCta =
+  /import\s*\{[^}]*\bTopDiagnosisCta\b[^}]*\}\s*from\s*["']@\/components\/top\/TopAnalytics["']/.test(japaneseTopHero) &&
+  /<TopDiagnosisCta\s+locale=\{locale\}/.test(japaneseTopHero) &&
+  /export function TopDiagnosisCta\b/.test(topAnalytics) &&
+  /onClick=\{\(\)\s*=>\s*trackTopCta\(locale\)\}/.test(topAnalytics);
 if (
-  !japaneseTopHero.includes('onClick={() => trackTopCta("ja")}') &&
-  !japaneseTopHero.includes('onClick={() => trackTopCta(locale)}')
+  !/export function trackTopCta\([^)]*\)\s*\{\s*track\(["']top_cta_clicked["']/.test(topAnalytics) ||
+  (!heroTracksTopCta && !sharedCtaTracksTopCta)
 ) {
   problems.push(
     "src/components/top/TopHero.tsx: Japanese top_cta_clicked tracking is missing",
@@ -998,9 +1022,37 @@ const meUnmeiLauncher = fs.readFileSync(
   path.join(ROOT, "src/components/result/MeUnmeiChatLauncher.tsx"),
   "utf8",
 );
-if (!meUnmeiLauncher.includes("ME_UNMEI_CHAT_INTRO_KO")) {
+const meUnmeiChat = fs.readFileSync(
+  path.join(ROOT, "src/components/result/MeUnmeiChat.tsx"),
+  "utf8",
+);
+// The launcher loads the optional chat; the chat selects the localized intro.
+const meChatLoaderPath = path.join(ROOT, "src/lib/me-chat-loader.ts");
+const meChatLoader = fs.existsSync(meChatLoaderPath)
+  ? fs.readFileSync(meChatLoaderPath, "utf8")
+  : "";
+const launcherLoadsChat =
+  /const MeUnmeiChat\s*=\s*lazy\(\(\)\s*=>\s*import\(["']\.\/MeUnmeiChat["']\)/.test(meUnmeiLauncher) ||
+  (/import\s*\{\s*preloadMeChat\s*\}\s*from\s*["']@\/lib\/me-chat-loader["']/.test(meUnmeiLauncher) &&
+    /const MeUnmeiChat\s*=\s*lazy\(\(\)\s*=>\s*preloadMeChat\(\)/.test(meUnmeiLauncher) &&
+    /export function preloadMeChat\b/.test(meChatLoader) &&
+    /return\s+pending\s*\?\?=\s*import\(["']@\/components\/result\/MeUnmeiChat["']\)/.test(meChatLoader));
+if (
+  !launcherLoadsChat ||
+  !/default:\s*module\.MeUnmeiChat/.test(meUnmeiLauncher) ||
+  !/<MeUnmeiChat\b[^>]*locale=\{locale\}/s.test(meUnmeiLauncher)
+) {
   problems.push(
-    "src/components/result/MeUnmeiChatLauncher.tsx: Korean result flow lacks the dedicated chat introduction",
+    "src/components/result/MeUnmeiChatLauncher.tsx: localized chat is not connected to the result flow",
+  );
+}
+if (
+  !/import\s*\{[^}]*\bME_UNMEI_CHAT_INTRO_KO\b[^}]*\}\s*from\s*["']@\/i18n\/unmei["']/.test(meUnmeiChat) ||
+  !/<UnmeiClient\b[^>]*locale=\{locale\}/s.test(meUnmeiChat) ||
+  !/intro=\{[^}]*locale\s*===\s*["']ko["']\s*\?\s*ME_UNMEI_CHAT_INTRO_KO/s.test(meUnmeiChat)
+) {
+  problems.push(
+    "src/components/result/MeUnmeiChat.tsx: Korean result flow lacks the dedicated chat introduction",
   );
 }
 if (unmeiPriceCta.includes('locale === "ja" && !hasFull')) {
@@ -1049,13 +1101,18 @@ const selfReportPdf = fs.readFileSync(
 );
 for (const required of [
   "나의 사용설명서 성격 스토리.pdf",
-  'pageRanges: isKo || isEn || isId ? "1-16" : undefined',
 ]) {
   if (!selfReportPdf.includes(required)) {
     problems.push(
       `src/app/report/[token]/pdf/route.ts: Korean 16-page PDF delivery lacks ${required}`,
     );
   }
+}
+
+if (!/pageRanges:\s*(?:isTh\s*\|\|\s*)?isKo\s*\|\|\s*isEn\s*\|\|\s*isId\s*\?\s*"1-16"\s*:\s*undefined/.test(selfReportPdf)) {
+  problems.push(
+    "src/app/report/[token]/pdf/route.ts: Korean PDF delivery lacks the 1-16 page range",
+  );
 }
 
 if (problems.length) {
