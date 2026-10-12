@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { randomUUID } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server.js';
 
 // Exercise the real route with isolated session, DB and Stripe dependencies. No network or secrets.
 const root = resolve(import.meta.dirname, '..');
@@ -20,6 +21,7 @@ function compile(path, overrides, env = {}, expose = []) {
 }
 const policy = compile('src/lib/access-products.ts', {});
 const answersLib = compile('src/lib/result-upgrade.ts', {});
+const commerceDisclosure = compile('src/lib/checkout-commerce-disclosure.ts', {});
 const copy = compile('src/i18n/result-upgrade.ts', {});
 assert.deepEqual(Object.keys(copy.RESULT_UPGRADE_COPY.ko).sort(), Object.keys(copy.RESULT_UPGRADE_COPY.ja).sort());
 assert.equal(answersLib.resultUpgradeQuestions('ko').length, 5);
@@ -42,7 +44,7 @@ async function checkout({ full = true, selfReport = false, premium = false, purc
     insert: async () => ({ error: null }),
   }; } };
   const route = compile('src/app/api/checkout/create-full-access-session/route.ts', {
-    'next/server': { NextResponse: { json: (value, options) => Response.json(value, options) } },
+    'next/server': { NextResponse },
     'node:crypto': { randomUUID },
     '@/lib/api-security': { consumeRateLimit: async () => ({ allowed: true }), isSafeOpaqueToken: () => true,
       readJsonObject: async request => ({ ok: true, value: await request.json() }) },
@@ -51,6 +53,7 @@ async function checkout({ full = true, selfReport = false, premium = false, purc
       hasPremiumBundleAccess: async () => premium, getAccessPurchaseEntitlements: async () => ({ full: purchaseFull, selfReport, premiumBundle: premium }) },
     '@/lib/access-products': policy,
     '@/lib/result-upgrade': answersLib,
+    '@/lib/checkout-commerce-disclosure': commerceDisclosure,
     '@/lib/thirty-two-types': { allThirtyTwoTypeIds: () => [] },
     '@/lib/stripe-server': { getStripe: () => stripe, getFullAccessPriceId: () => 'price_full_4900' },
     '@/lib/origin-check': { checkOrigin: () => ({ ok: true }) },
@@ -59,14 +62,15 @@ async function checkout({ full = true, selfReport = false, premium = false, purc
     '@/lib/checkout-measurement': { normalizeCheckoutAttemptId: x => x },
     '@/lib/checkout-cancel-signature': { signCheckoutCancellation: () => 'isolated-signature' },
   });
-  const request = new Request('http://localhost/api/checkout/create-full-access-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locale: 'ko', owner_token: 'owner-token', product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', paywall_version: policy.KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION, ...body }) });
+  const request = new NextRequest('http://localhost/api/checkout/create-full-access-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locale: 'ko', owner_token: 'owner-token', product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', paywall_version: policy.KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION, ...body }) });
   const response = await route.POST(request);
-  return { status: response.status, data: await response.json(), calls };
+  return { status: response.status, data: await response.json(), calls, cookie: response.headers.get('set-cookie') };
 }
 const upgrade = await checkout();
 assert.equal(upgrade.status, 200);
 assert.equal(upgrade.data.amount, 8900);
 assert.equal(upgrade.data.currency, 'KRW');
+assert.match(upgrade.cookie, /wt_checkout_commerce_locale=ko/);
 const params = upgrade.calls[0];
 assert.equal(params.mode, 'payment');
 assert.equal(params.line_items[0].price_data.unit_amount, 8900);
@@ -81,6 +85,7 @@ assert.match(params.success_url, /\/ko\/me\/owner-token/);
 assert.equal(params.metadata.locale, 'ko');
 assert.match(params.custom_text.submit.message, /5개 답변/);
 assert.match(params.custom_text.submit.message, /1회 결제/);
+assert.match(params.custom_text.submit.message, /\[판매 및 환불 안내\]\(http:\/\/localhost:3000\/ko\/legal\/commerce\)/);
 assert(!params.custom_text.submit.message.includes('궁합 진단'));
 for (const [input, expected] of [
   [{ full: false }, 409], [{ full: false, selfReport: true }, 409],
@@ -93,6 +98,7 @@ for (const [input, expected] of [
   const result = await checkout(input);
   assert.equal(result.status, expected, JSON.stringify(input));
   assert.equal(result.calls.length, 0, 'Rejected checkout must never call Stripe');
+  assert.equal(result.cookie, null, 'Rejected checkout must not change the disclosure language');
 }
 const full = await checkout({ full: false, product: 'full_access', paywall_source: 'direct' });
 assert.equal(full.status, 200);
@@ -100,9 +106,13 @@ assert.equal(full.data.amount, 4900);
 assert.equal(full.calls[0].line_items[0].price_data.unit_amount, 12900);
 assert.equal(full.calls[0].discounts[0].coupon, 'full-access-anchor-off8000-krw');
 assert.equal(full.calls[0].metadata.offer_version, undefined);
+assert.match(full.cookie, /wt_checkout_commerce_locale=ko/);
+assert.match(full.calls[0].custom_text.submit.message, /\/ko\/legal\/commerce/);
 const ja = await checkout({ locale: 'ja', paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });
 assert.equal(ja.data.amount, 899);
 assert.equal(ja.calls[0].metadata.offer_version, policy.RESULT_UPGRADE_OFFER_VERSION);
+assert.match(ja.cookie, /Max-Age=0/);
+assert(!ja.calls[0].custom_text.submit?.message?.includes('/ko/legal/commerce'));
 console.log('Korean result upgrade regression passed: fixed 8,900 KRW checkout, purchaser/owner/answer restrictions, Korean copy, and unchanged KR/JP pricing.');
 
 const legacyJa = await checkout({ locale: 'ja', purchaseFull: false, paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });

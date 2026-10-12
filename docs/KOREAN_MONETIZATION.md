@@ -57,6 +57,14 @@ Checkout を停止する。
 
 ## Webhook と返金
 
+### Checkoutからの韓国語の販売・返金案内
+
+- Stripeのアカウント共通「商取引告知」URLは `/legal/commerce` を維持する。
+- 韓国語Checkout作成の成功時に、言語だけの `wt_checkout_commerce_locale=ko` Cookieを設定する。Cookieは `/legal/commerce` に限定し、HttpOnly・SameSite=Lax・24時間の有効期限を使う。HTTPSではSecureを付ける。他言語のCheckout作成が成功すると同じCookieを消す。
+- `/legal/commerce` へのStripeからの遷移、またはRefererのない遷移でそのCookieがある場合だけ、`/ko/legal/commerce` へ307転送する。転送はキャッシュしない。サイト内の日本語リンク・言語切替は転送しない。
+- 支払い直前の説明にも、韓国語の「판매 및 환불 안내」への直接リンクを付ける。別端末やCookieが使えない環境でもこのリンクを利用できる。
+- 回帰確認: `node --experimental-strip-types scripts/checkout-commerce-disclosure-test.mjs`。ローカルサーバーを起動して `CHECKOUT_LEGAL_VERIFY_BASE_URL=http://localhost:3000` を付けると、実際の転送と日本語導線の維持をHTTPでも検証する。Stripe Sessionや支払いは作成しない。
+
 購読イベント:
 
 - `checkout.session.completed`
@@ -108,3 +116,12 @@ Checkout を停止する。
 - `/ko/result-upgrade` と `/ko/result-upgrade/reading` はnoindex。回答・鑑定書・生成キャラクターは本人ログインで保護する。KRではLINE連携を案内しない。
 - `npm run verify:ko:upgrade` で回答保存・購入条件・税込金額・計測バージョン・韓国語購入メール、および既存KR/JP価格を回帰検証する。
 - リリース前にリモートの適用履歴と `result_upgrades.locale` 制約を確認し、`ko` が未対応なら制約拡張のmigrationを先に検証・適用する。アプリだけを先に公開しない。
+
+### 2026-10-12 結果アップグレードの言語制約修正（本番適用済み）
+
+- 本番DBを読み取りで確認。`20261009222340_add_korean_result_upgrade_locale` は適用済み、`20260924114300_add_thai_locale` は未適用。現在の `result_upgrades_locale_check` は `ja / ko`、localeはNOT NULL・既定値 `ja`、RLSは有効。
+- 適用済みの旧SQLは変更せず、`20261012153300_fix_result_upgrade_locale_constraint.sql` で既存の同名制約を `ja / th / ko` に置き換える。旧タイ語制約が存在しても更新をスキップしない。制約の検証と置換は同一トランザクションで行い、既存回答・RLS・policy・grantは変更しない。
+- 隔離PostgreSQLで `scripts/result-upgrade-locale-migration-test.mjs` を実行する。PGliteを別ディレクトリに導入している場合は `PGLITE_MODULE_PATH` にその `dist/index.js` を指定する。旧タイ語制約での不具合再現、本番の日本語・韓国語制約からの拡張、3言語の保存、既存データ・権限の維持、再実行、検証失敗時のrollbackを確認する。
+- 本番への適用は別途承認後に修正migrationだけを対象に行う。無関係な未適用migrationをまとめて適用しない。適用後に制約が `ja / th / ko`、validatedであること、NOT NULL・既定値 `ja`・RLS・grantが維持されていること、および適用履歴を再確認する。
+
+- 2026-10-12、明示承認後に本番へ修正migrationだけを適用。`ja / th / ko`・validated、NOT NULL・既定値 `ja`・RLS・policy・grantの維持を確認。既存764件（日本語）の件数も維持。履歴のSQL MD5 `1ed0bacfb4368ab54ad954abf5c8a6cf` はリリースSQLと一致。
