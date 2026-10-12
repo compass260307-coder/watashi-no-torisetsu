@@ -22,6 +22,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import type Stripe from "stripe";
 import {
+  checkoutCommerceDisclosureCookie,
+  koreanCheckoutSubmitMessage,
+} from "@/lib/checkout-commerce-disclosure";
+import {
   consumeRateLimit,
   isSafeOpaqueToken,
   readJsonObject,
@@ -1040,9 +1044,12 @@ export async function POST(request: NextRequest) {
       : {}),
   };
 
-  const submitMessage = isResultUpgradeCheckout && checkoutLocale === "ko"
+  const productSubmitMessage = isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
     : checkoutCopy.submitMessage;
+  const submitMessage = checkoutLocale === "ko"
+    ? koreanCheckoutSubmitMessage(productSubmitMessage, BASE_URL)
+    : productSubmitMessage;
 
   let lineItems: NonNullable<CheckoutSessionCreateParams["line_items"]>;
   let discounts: CheckoutSessionCreateParams["discounts"];
@@ -1424,7 +1431,7 @@ export async function POST(request: NextRequest) {
 
   // amount / currency は meta_initiate_checkout (GTM) 用の実売価格。
   // 実課金額の源泉はサーバ (ロケール別 Price) なので、クライアントに持たせない。
-  return NextResponse.json({
+  const response = NextResponse.json({
     sessionId: stripeSession.id,
     ...(embedded
       ? { clientSecret: stripeSession.client_secret }
@@ -1435,4 +1442,10 @@ export async function POST(request: NextRequest) {
         : chargedAmount,
     currency: checkoutPricing.currency.toUpperCase(),
   });
+  // Set this only after Checkout succeeds; a later non-Korean Checkout clears it.
+  response.cookies.set(checkoutCommerceDisclosureCookie(
+    checkoutLocale,
+    request.nextUrl.protocol === "https:",
+  ));
+  return response;
 }
