@@ -705,7 +705,7 @@ export function FullAccessPromoCard({
                 </span>
               ) : locale === "ja" || isKorean || isEnglish || isIndonesian ? (
                 <span className={`text-[36px] ${isKorean ? "font-bold" : "font-black"} leading-none text-black`}>
-                  <span className="sr-only">{uiText("価格")}</span>
+                  <span className="sr-only">{isKorean ? "가격" : uiText("価格")}</span>
                   {price.sale}
                 </span>
               ) : (
