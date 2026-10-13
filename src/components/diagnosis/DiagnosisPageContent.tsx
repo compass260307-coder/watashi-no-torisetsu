@@ -24,7 +24,7 @@ import {
 } from "@/lib/me-attention";
 import { isPreviewMode, track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
-import { X_DIAGNOSIS_PENDING_PREFIX } from "@/lib/xPixel";
+import { markXDiagnosisSaved } from "@/lib/xPixel";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -184,6 +184,7 @@ export default function DiagnosisPageContent({
   const [showRediagnoseModal, setShowRediagnoseModal] = useState(false);
 
   const trackedStart = useRef(false);
+  const diagnosisOriginLocale = useRef(locale);
   // 各質問要素への参照 (回答時の次質問オートスクロール用)。キー = question.id。
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -562,11 +563,7 @@ export default function DiagnosisPageContent({
       }
       if (data.ownerToken) {
         if (res.ok && typeof data.userId === "string") {
-          try {
-            sessionStorage.setItem(X_DIAGNOSIS_PENDING_PREFIX + data.userId, String(Date.now()));
-          } catch {
-            // No completion marker means no X conversion on the result page.
-          }
+          markXDiagnosisSaved(data.userId, diagnosisOriginLocale.current);
         }
         // 保存APIが成功してからだけ完了イベントを送る。KPIの正本は
         // users.diagnosis_completed_at だが、イベントファネルも偽陽性にしない。

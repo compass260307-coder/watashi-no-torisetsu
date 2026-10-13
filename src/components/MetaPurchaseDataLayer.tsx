@@ -17,6 +17,7 @@ type ClaimResponse = {
   contentIds?: string[];
   contentName?: string;
   xPurchaseAccessConfirmed?: boolean;
+  checkoutLocale?: string;
 };
 
 // Strict Mode のeffect再実行や同一ページ内の複数マウントが、prepare完了前に
@@ -195,7 +196,7 @@ export function MetaPurchaseDataLayer({
   }, [checkoutSessionId, product, claimToken]);
 
   // The redirect may precede Stripe's webhook. Retry the signed prepare request
-  // for rh5rd only; never repeat Meta/TikTok pushes or send before access exists.
+  // for rh5rd/rh617; never repeat Meta/TikTok pushes or send before access exists.
   const waitingForXAccess = xPurchase?.checkoutSessionId === checkoutSessionId &&
     xPurchase.xPurchaseAccessConfirmed !== true;
   useEffect(() => {
@@ -229,7 +230,7 @@ export function MetaPurchaseDataLayer({
   return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" && typeof xPurchase.currency === "string" ? (
     <XTrack
       key={checkoutSessionId}
-      eventIds={xPurchaseEventIds(xPurchase.currency)}
+      eventIds={xPurchaseEventIds(xPurchase.currency, xPurchase.checkoutLocale)}
       params={{ value: xPurchase.value, currency: xPurchase.currency, conversion_id: checkoutSessionId }}
       purchaseAccessConfirmed={xPurchase.xPurchaseAccessConfirmed === true}
     />
