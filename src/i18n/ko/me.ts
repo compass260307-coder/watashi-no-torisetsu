@@ -520,7 +520,7 @@ export function buildKoPartTwo(
         ? DREAMER_SCENE_CAUTIONS
         : buildKoSceneCautions(scores)
       : null,
-    gapTeaser: `스스로 가장 강하다고 느끼는 ${AXIS_NAME[top]}. 친구의 눈에는 조금 다른 농도로 보일 수 있어요.`,
+    gapTeaser: `스스로 가장 강하다고 느끼는 ${AXIS_NAME[top]}. 친구에게는 조금 다른 모습으로 보일 수 있어요.`,
     locked: !unlocked,
   };
 }
@@ -534,7 +534,7 @@ export const KO_ME_COPY = {
   unlockNow: "지금 잠금 해제",
   accessNow: "지금 확인하기",
   friendLockDescription:
-    "완전판 리포트에서 친구에게 오해받기 쉬운 포인트를 확인해 보세요.",
+    "완전판 리포트에서 친구가 나를 오해하기 쉬운 부분을 확인해 보세요.",
   teaseAnimal: (animal: string) =>
-    `친구의 눈에는 당신이 ‘${animal}’ 같은 사람으로 보이기 시작했어요…`,
+    `친구가 보는 당신의 모습은 ‘${animal}’에 가까워요…`,
 } as const;

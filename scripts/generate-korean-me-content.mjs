@@ -7,6 +7,17 @@ const OUT_FILE = path.join(ROOT, "src/i18n/ko/me-content-32.ts");
 const TRANSLATION_CACHE = "/tmp/watashi-ko-papago-cache.json";
 const TRANSLATE_URL = "https://papago.naver.com/api/text/translation";
 
+// Preserve the reviewed Korean copy unless regeneration is explicitly requested.
+if (
+  fs.readFileSync(OUT_FILE, "utf8").includes("수동 교정 내용을 유지") &&
+  !process.argv.includes("--overwrite-reviewed")
+) {
+  throw new Error(
+    "Korean copy has been manually reviewed. Update it in place, or explicitly pass --overwrite-reviewed to regenerate it.",
+  );
+}
+
+
 function unwrap(node) {
   let current = node;
   while (
