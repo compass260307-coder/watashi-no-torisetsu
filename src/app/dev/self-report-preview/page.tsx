@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
+import KoreanLayout from "@/app/ko/layout";
 import {
   paywallCardMode,
   type PaywallCardMode,
@@ -124,7 +125,7 @@ export default async function SelfReportPreviewPage({
     return `/dev/self-report-preview?${next.toString()}`;
   };
 
-  return (
+  const preview = (
     <main className="min-h-dvh bg-[#F6F7FB] py-8 md:py-12">
       <div className="mx-auto max-w-[820px] px-4 text-center">
         <p className="text-[11px] font-black tracking-[0.14em] text-[#5B5BEF]">
@@ -242,4 +243,6 @@ export default async function SelfReportPreviewPage({
       />
     </main>
   );
+
+  return locale === "ko" ? <KoreanLayout>{preview}</KoreanLayout> : preview;
 }

@@ -183,7 +183,7 @@ function CheckItem({
         {/* タイトル + 覗き見(?)。? は文章の末尾にインラインで続ける
             (2行に折り返しても最後の文字のすぐ後ろに来る。右端に浮かせない)。
             [text-wrap:pretty] で ? のぶん幅が詰まっても1文字孤立行を防ぐ。 */}
-        <span className="block text-[14px] font-black leading-snug text-[#2E2E5C] [text-wrap:pretty]">
+        <span className={`block text-[14px] ${locale === "ko" ? "font-bold" : "font-black"} leading-snug text-[#2E2E5C] [text-wrap:pretty]`}>
           {title}
           {peek && (
             <PeekButton
@@ -573,7 +573,7 @@ export function FullAccessPromoCard({
   return (
     <section
       aria-labelledby={`${anchorId}-title`}
-      className="px-4 pt-6 pb-10 md:px-8"
+      className={`${isKorean ? "body-gothic " : ""}px-4 pt-6 pb-10 md:px-8`}
     >
         <div
           id={anchorId}
@@ -648,7 +648,7 @@ export function FullAccessPromoCard({
             }
           >
             {/* バッジ (★ + 今すぐロックを解除) */}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[14px] font-black text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]">
+            <span className={`inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[14px] ${isKorean ? "font-bold" : "font-black"} text-[#2E2E5C] shadow-[0_2px_8px_rgba(46,46,92,0.10)]`}>
               <svg
                 width="14"
                 height="14"
@@ -685,7 +685,7 @@ export function FullAccessPromoCard({
 
             {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
             <div
-              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isKorean || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
                 hasImage ? "" : "justify-center"
               }`}
             >
@@ -703,31 +703,8 @@ export function FullAccessPromoCard({
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
                   {copy.selfReportPrice}
                 </span>
-              ) : isKorean ? (
-                <div
-                  className={`flex flex-col gap-2 md:flex-row md:items-baseline md:gap-2.5 ${
-                    hasImage ? "items-start" : "items-center"
-                  }`}
-                >
-                  <span className="inline-flex items-baseline gap-2.5 whitespace-nowrap">
-                    <span className="sr-only">정상가</span>
-                    <s className="text-[16px] font-bold text-[#A0A0B4] line-through">
-                      {price.list}
-                    </s>
-                    <span className="text-[36px] font-black leading-none text-black">
-                      <span className="sr-only">할인가</span>
-                      {price.sale}
-                    </span>
-                  </span>
-                  <span
-                    className="rounded-md px-2 py-0.5 text-[12px] font-black text-white md:order-first"
-                    style={{ backgroundColor: actionTone.accent }}
-                  >
-                    출시 기념 {price.offPercent}% 할인
-                  </span>
-                </div>
-              ) : locale === "ja" || isEnglish || isIndonesian ? (
-                <span className="text-[36px] font-black leading-none text-black">
+              ) : locale === "ja" || isKorean || isEnglish || isIndonesian ? (
+                <span className={`text-[36px] ${isKorean ? "font-bold" : "font-black"} leading-none text-black`}>
                   <span className="sr-only">{uiText("価格")}</span>
                   {price.sale}
                 </span>
