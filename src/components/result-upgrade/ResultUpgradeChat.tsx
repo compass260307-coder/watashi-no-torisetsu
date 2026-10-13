@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FullAccessCta } from "@/components/result/FullAccessCta";
 import { SmoothImage } from "@/components/ui/SmoothImage";
-import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
+import { ResultUpgradeSpendPause } from "./ResultUpgradeSpendPause";
+import { watchResultUpgrade, type ResultUpgradeSpendPauseStatus } from "@/lib/result-upgrade-polling";
 import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
 import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
@@ -23,7 +24,7 @@ type Props = {
   modal?: boolean;
 };
 
-type Screen = "questions" | "saving" | "purchase" | "generating" | "failed";
+type Screen = "questions" | "saving" | "purchase" | "generating" | "failed" | "blocked";
 
 const ALICE_REPLY_DELAY_MS = 900;
 const UPGRADE_PREPARATION_DELAY_MS = 15_000;
@@ -57,6 +58,7 @@ export function ResultUpgradeChat({
   const [aliceTyping, setAliceTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [spendPause, setSpendPause] = useState<ResultUpgradeSpendPauseStatus | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const answerSubmittingRef = useRef(false);
   const isMountedRef = useRef(true);
@@ -79,10 +81,14 @@ export function ResultUpgradeChat({
     }
   }, [answers, draft, ownerToken, preview, screen, sessionVerified]);
 
+  const watchGeneration = !preview && sessionVerified && premiumPaid &&
+    (screen === "generating" || screen === "failed" || screen === "blocked");
   useEffect(() => {
-    if (preview || !sessionVerified || screen !== "generating" || !premiumPaid) return;
+    if (!watchGeneration) return;
     return watchResultUpgrade({
       force: retryKey > 0,
+      checkBeforeKick: true,
+      onBlocked: (status) => { setSpendPause(status); setScreen("blocked"); },
       onReady: () => router.replace(
         ownerToken
           ? `${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`
@@ -90,7 +96,7 @@ export function ResultUpgradeChat({
       ),
       onFailed: () => setScreen("failed"),
     });
-  }, [ownerToken, premiumPaid, preview, retryKey, router, screen, localePrefix, sessionVerified]);
+  }, [watchGeneration, retryKey, router, ownerToken, localePrefix]);
 
   async function submitAnswer() {
     const answer = draft.trim();
@@ -288,6 +294,16 @@ export function ResultUpgradeChat({
             <AliceBubble>
               {copy.generating}
               <LoadingDots locale={locale} />
+            </AliceBubble>
+          )}
+
+          {screen === "blocked" && (
+            <AliceBubble>
+              <ResultUpgradeSpendPause locale={locale} {...spendPause} onResume={() => {
+                setSpendPause(null);
+                setScreen("generating");
+                setRetryKey((value) => value + 1);
+              }} />
             </AliceBubble>
           )}
 

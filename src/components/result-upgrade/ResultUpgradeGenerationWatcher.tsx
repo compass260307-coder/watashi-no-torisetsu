@@ -5,7 +5,8 @@ import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upg
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { watchResultUpgrade } from "@/lib/result-upgrade-polling";
+import { ResultUpgradeSpendPause } from "./ResultUpgradeSpendPause";
+import { watchResultUpgrade, type ResultUpgradeSpendPauseStatus } from "@/lib/result-upgrade-polling";
 
 export function ResultUpgradeGenerationWatcher({
   initialState,
@@ -19,11 +20,17 @@ export function ResultUpgradeGenerationWatcher({
   const [progress, setProgress] = useState<{ source: string; state: string } | null>(null);
   const state = progress?.source === initialState ? progress.state : initialState;
   const [retryKey, setRetryKey] = useState(0);
+  const [spendPause, setSpendPause] = useState<ResultUpgradeSpendPauseStatus | null>(null);
 
   useEffect(() => {
-    if (initialState === "ready" || (initialState === "failed" && retryKey === 0)) return;
+    if (initialState === "ready") return;
     return watchResultUpgrade({
       force: retryKey > 0,
+      checkBeforeKick: true,
+      onBlocked: (status) => {
+        setSpendPause(status);
+        setProgress({ source: initialState, state: "blocked" });
+      },
       onReady: () => {
         setProgress({ source: initialState, state: "ready" });
         router.refresh();
@@ -31,6 +38,18 @@ export function ResultUpgradeGenerationWatcher({
       onFailed: () => setProgress({ source: initialState, state: "failed" }),
     });
   }, [initialState, retryKey, router]);
+
+  if (state === "blocked") {
+    return (
+      <div className="bg-[#FFF8E8] px-4 py-3 text-center text-[13px] font-bold text-[#72501D]">
+        <ResultUpgradeSpendPause locale={locale} {...spendPause} onResume={() => {
+          setSpendPause(null);
+          setProgress({ source: initialState, state: "generating" });
+          setRetryKey((value) => value + 1);
+        }} />
+      </div>
+    );
+  }
 
   if (state === "ready") {
     return (
