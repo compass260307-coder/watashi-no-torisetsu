@@ -3,6 +3,7 @@ import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
+import { resultUpgradeSpendBlock } from "@/lib/ai-spend-guard";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,13 @@ export async function GET(request: Request) {
   if (!row) return NextResponse.json({ ok: true, state: "no_answers", premium });
   if (isResultUpgradeReady(row)) {
     return NextResponse.json({ ok: true, state: "ready", premium: true });
+  }
+  const spendBlock = resultUpgradeSpendBlock(row);
+  if (spendBlock) {
+    return NextResponse.json({
+      ok: true, state: "blocked", premium, attempts: row.attempts,
+      code: spendBlock.code, retryAt: spendBlock.retryAt, canRetry: spendBlock.canRetry,
+    });
   }
   return NextResponse.json({
     ok: true,

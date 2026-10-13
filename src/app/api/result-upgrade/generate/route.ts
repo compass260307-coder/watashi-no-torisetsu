@@ -5,6 +5,7 @@ import { checkOrigin } from "@/lib/origin-check";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import type { ResultUpgradeRow } from "@/lib/result-upgrade";
+import { resultUpgradeSpendBlock } from "@/lib/ai-spend-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -19,16 +20,6 @@ export async function POST(request: Request) {
   if (!(await hasPremiumBundleAccess(session.id))) {
     return NextResponse.json({ state: "unpurchased" }, { status: 403 });
   }
-  const rateLimit = await consumeRateLimit(request, {
-    scope: "result-upgrade-generate",
-    identifier: session.id,
-    limit: 6,
-    windowSeconds: 3600,
-  });
-  if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
   let force = false;
   if (request.body) {
     const body = await readJsonObject(request, 1_000);
@@ -37,20 +28,48 @@ export async function POST(request: Request) {
     }
     force = body.value.force === true;
   }
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("result_upgrades")
-    .select("state, attempts")
+    .select("state, attempts, last_error, updated_at, generation_started_at")
     .eq("user_id", session.id)
     .maybeSingle();
-  const existing = data as Pick<ResultUpgradeRow, "state" | "attempts"> | null;
+  if (error) return NextResponse.json({ error: "Generation state unavailable" }, { status: 503 });
+  const existing = data as Pick<ResultUpgradeRow,
+    "state" | "attempts" | "last_error" | "updated_at" | "generation_started_at"
+  > | null;
   if (!existing) {
     return NextResponse.json({ state: "no_answers" }, { status: 409 });
   }
   if (existing.state === "ready") {
     return NextResponse.json({ ok: true, state: "ready", skipped: true });
   }
+  if (existing.state === "generating" && existing.generation_started_at &&
+      Date.now() - Date.parse(existing.generation_started_at) < 5 * 60_000) {
+    return NextResponse.json({ ok: true, state: "generating", skipped: true });
+  }
+  const spendBlock = resultUpgradeSpendBlock(existing);
+  if (spendBlock && (!force || !spendBlock.canRetry)) {
+    return NextResponse.json({
+      ok: true, state: "blocked", skipped: true,
+      code: spendBlock.code, retryAt: spendBlock.retryAt, canRetry: spendBlock.canRetry,
+    });
+  }
   if (existing.state === "failed" && existing.attempts >= 3 && !force) {
     return NextResponse.json({ ok: true, state: "failed" });
+  }
+
+  // Only a request that can start generation consumes the recovery allowance.
+  const rateLimit = await consumeRateLimit(request, {
+    scope: "result-upgrade-generate",
+    identifier: session.id,
+    limit: 6,
+    windowSeconds: 3600,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests", code: "rate_limited" }, {
+      status: 429,
+      headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 60) },
+    });
   }
 
   after(async () => {

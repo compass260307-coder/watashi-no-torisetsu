@@ -2,7 +2,13 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateText, jsonSchema, Output } from "ai";
+import { createGateway, generateText, jsonSchema, Output } from "ai";
+import {
+  aiSpendBlockCode,
+  fetchWithAiSpendGuard,
+  resultUpgradeSpendBlock,
+  storedGenerationError,
+} from "@/lib/ai-spend-guard";
 import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import {
   aiSdkUsage,
@@ -30,6 +36,7 @@ const RESULT_UPGRADE_BUCKET = "result-upgrade-characters";
 const MAX_ATTEMPTS = 3;
 const STALE_LOCK_MS = 5 * 60_000;
 const THIRTY_TWO_TYPE_IDS = new Set<string>(allThirtyTwoTypeIds());
+const imageGateway = createGateway({ fetch: fetchWithAiSpendGuard });
 
 type GeneratedResultCopy = {
   personalizedTypeName: string;
@@ -199,7 +206,7 @@ async function generatePersonalizedCharacter(
   let result;
   try {
     result = await generateText({
-      model,
+      model: imageGateway(model),
       providerOptions: {
         gateway: {
           user: row.user_id,
@@ -308,12 +315,6 @@ function storedCharacter(row: ResultUpgradeRow): {
   return { storagePath: row.character_storage_path, model: row.image_model };
 }
 
-function errorMessage(reason: unknown): string {
-  return reason instanceof Error
-    ? reason.message.slice(0, 500)
-    : "generation failed";
-}
-
 export async function generateResultUpgradeForUser(
   userId: string,
   options: { force?: boolean } = {},
@@ -326,6 +327,10 @@ export async function generateResultUpgradeForUser(
   if (error || !data) return { error: "answers not found" };
   const row = data as ResultUpgradeRow;
   if (row.state === "ready") return { ok: true, skipped: "ready" };
+  const spendBlock = resultUpgradeSpendBlock(row);
+  if (spendBlock && (!options.force || !spendBlock.canRetry)) {
+    return { skipped: "spend_blocked", attempts: row.attempts };
+  }
 
   if (row.state === "generating") {
     const startedAt = row.generation_started_at
@@ -469,18 +474,20 @@ export async function generateResultUpgradeForUser(
   }
 
   const failures = [copyResult, characterResult]
-    .filter(
-      (result): result is PromiseRejectedResult =>
-        result.status === "rejected",
-    )
-    .map((result) => errorMessage(result.reason));
-  const message = failures.join(" / ").slice(0, 500) || "generation failed";
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) => result.reason);
+  const spendFailure = failures.find((reason) => aiSpendBlockCode(reason));
+  const message = spendFailure !== undefined
+    ? storedGenerationError(spendFailure)
+    : failures.map(storedGenerationError).join(" / ").slice(0, 500) || "generation failed";
+  // A service spend limit is not a failed content-generation attempt.
+  const failedAttempts = spendFailure !== undefined ? row.attempts : attempt;
   const failedAt = new Date().toISOString();
   const { data: failedRow } = await supabaseAdmin
     .from("result_upgrades")
     .update({
       state: "failed",
-      attempts: attempt,
+      attempts: failedAttempts,
       generation_started_at: null,
       last_error: message,
       updated_at: failedAt,
@@ -492,5 +499,5 @@ export async function generateResultUpgradeForUser(
     .maybeSingle();
   if (!failedRow) return { skipped: "superseded" };
   console.error("[result-upgrade] generation failed:", message);
-  return { error: message, attempts: attempt };
+  return { error: message, attempts: failedAttempts };
 }
