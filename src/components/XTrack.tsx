@@ -3,10 +3,11 @@
 import { useEffect } from "react";
 import { trackXEventsOnce, type XEventParams } from "@/lib/xPixel";
 
-export function XTrack({ eventIds, params, requireDiagnosisCompletion = false }: {
+export function XTrack({ eventIds, params, requireDiagnosisCompletion = false, purchaseAccessConfirmed = false }: {
   eventIds: readonly string[];
   params: XEventParams;
   requireDiagnosisCompletion?: boolean;
+  purchaseAccessConfirmed?: boolean;
 }) {
   const eventIdsKey = eventIds.join(",");
   const { conversion_id: conversionId, value, currency } = params;
@@ -25,6 +26,7 @@ export function XTrack({ eventIds, params, requireDiagnosisCompletion = false }:
         },
         requireDiagnosisCompletion,
         () => active,
+        purchaseAccessConfirmed,
       );
       // Covers a delayed twq loader or a temporarily failing destination.
       if (active && !complete && ++attempts < 20) {
@@ -36,6 +38,6 @@ export function XTrack({ eventIds, params, requireDiagnosisCompletion = false }:
       active = false;
       clearTimeout(timeout);
     };
-  }, [eventIdsKey, conversionId, value, currency, requireDiagnosisCompletion]);
+  }, [eventIdsKey, conversionId, value, currency, requireDiagnosisCompletion, purchaseAccessConfirmed]);
   return null;
 }
