@@ -10,7 +10,6 @@ import {
   verifyMetaPurchaseClaimToken,
 } from "@/lib/paid-checkout-session";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { hasGrantedXPurchaseAccess } from "@/lib/x-purchase-access";
 
 export const runtime = "nodejs";
 
@@ -152,6 +151,5 @@ export async function POST(request: Request) {
     currency: session.currency?.toUpperCase() ?? undefined,
     contentIds: content.contentIds,
     contentName: content.contentName,
-    xPurchaseAccessConfirmed: await hasGrantedXPurchaseAccess(session),
   });
 }
