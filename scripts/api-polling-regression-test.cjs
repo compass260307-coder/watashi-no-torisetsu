@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node executes this CommonJS test harness directly. */
 // Runs actual TypeScript modules with deterministic timers / in-memory DB.
 // No browser, network, credentials or production data are used.
 const assert = require("node:assert/strict");
@@ -13,8 +14,8 @@ function loader(globals = {}, mocks = {}) {
   function load(file) {
     file = path.resolve(root, file);
     if (cache.has(file)) return cache.get(file).exports;
-    const module = { exports: {} };
-    cache.set(file, module);
+    const loadedModule = { exports: {} };
+    cache.set(file, loadedModule);
     const js = ts.transpileModule(fs.readFileSync(file, "utf8"), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
     }).outputText;
@@ -28,10 +29,10 @@ function loader(globals = {}, mocks = {}) {
       return load(`${resolved}.ts`);
     };
     vm.runInNewContext(js, {
-      module, exports: module.exports, require: localRequire,
+      module: loadedModule, exports: loadedModule.exports, require: localRequire,
       AbortController, Response, URL, console, ...globals,
     }, { filename: file });
-    return module.exports;
+    return loadedModule.exports;
   }
   return load;
 }
