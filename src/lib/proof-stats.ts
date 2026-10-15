@@ -5,4 +5,4 @@
 //           FullAccessPromoCard (課金カードの信頼行)。
 
 /** 無料診断の累計完了者数（2026-10-13、ユーザー指定の値へ更新）。 */
-export const DIAGNOSIS_COUNT_SNAPSHOT = "974,029";
+export const DIAGNOSIS_COUNT_SNAPSHOT = "947,029";
