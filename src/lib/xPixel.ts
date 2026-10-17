@@ -20,8 +20,6 @@ export const X_RGTX5_DIAGNOSIS_EVENT_ID = "tw-rgtx5-rgu2v";
 export const X_RGTX5_PURCHASE_EVENT_ID = "tw-rgtx5-rgtx9";
 export const X_RGYO2_DIAGNOSIS_EVENT_ID = "tw-rgyo2-rgyo3";
 export const X_RGYO2_PURCHASE_EVENT_ID = "tw-rgyo2-rgyo4";
-export const X_RH5RD_DIAGNOSIS_EVENT_ID = "tw-rh5rd-rh5sh";
-export const X_RH5RD_PURCHASE_EVENT_ID = "tw-rh5rd-rh5sg";
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_DIAGNOSIS_COMPLETE_EVENT_ID,
   X_ADDITIONAL_DIAGNOSIS_EVENT_ID,
@@ -34,7 +32,6 @@ export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = [
   X_RGSKB_DIAGNOSIS_EVENT_ID,
   X_RGTX5_DIAGNOSIS_EVENT_ID,
   X_RGYO2_DIAGNOSIS_EVENT_ID,
-  X_RH5RD_DIAGNOSIS_EVENT_ID,
 ] as const;
 export const X_DIAGNOSIS_PENDING_PREFIX = "wt_x_diagnosis_pending_v1:";
 
@@ -44,11 +41,11 @@ const X_PURCHASE_SENT_PREFIX = "wt_x_purchase_sent_v1:";
 // Keep rg1zg's existing JPY scope; rezdw uses the actual settlement currency.
 // rgg36's requested JPY event applies only to verified JPY settlements.
 // rgi5k follows the existing purchase flow in every verified settlement currency.
-// rgkns, rgkqm, rgm4u, rgob2, rgskb, rgtx5, rgyo2, and rh5rd follow every verified settlement, with payload-free events.
+// rgkns, rgkqm, rgm4u, rgob2, rgskb, rgtx5, and rgyo2 also follow every verified settlement, with payload-free events.
 export function xPurchaseEventIds(currency: string): readonly string[] {
   return currency === "JPY"
-    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID, X_RGTX5_PURCHASE_EVENT_ID, X_RGYO2_PURCHASE_EVENT_ID, X_RH5RD_PURCHASE_EVENT_ID]
-    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID, X_RGTX5_PURCHASE_EVENT_ID, X_RGYO2_PURCHASE_EVENT_ID, X_RH5RD_PURCHASE_EVENT_ID];
+    ? [X_PURCHASE_EVENT_ID, X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGG36_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID, X_RGTX5_PURCHASE_EVENT_ID, X_RGYO2_PURCHASE_EVENT_ID]
+    : [X_ADDITIONAL_PURCHASE_EVENT_ID, X_RGI5K_PURCHASE_EVENT_ID, X_RGKNS_PURCHASE_EVENT_ID, X_RGKQM_PURCHASE_EVENT_ID, X_RGM4U_PURCHASE_EVENT_ID, X_RGOB2_PURCHASE_EVENT_ID, X_RGSKB_PURCHASE_EVENT_ID, X_RGTX5_PURCHASE_EVENT_ID, X_RGYO2_PURCHASE_EVENT_ID];
 }
 
 export type XEventParams = {
@@ -109,33 +106,19 @@ export async function trackXEventsOnce(
   params: XEventParams,
   requireDiagnosisCompletion = false,
   isActive: () => boolean = () => true,
-  purchaseAccessConfirmed = false,
 ): Promise<boolean> {
   if (typeof window === "undefined" || !params.conversion_id || !eventIds.length) return false;
 
   const send = (): boolean => {
     if (!isActive() || typeof window.twq !== "function") return false;
-    const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
-    let savedAt = 0;
-    if (requireDiagnosisCompletion) {
-      try {
-        savedAt = Number(window.sessionStorage.getItem(markerKey));
-      } catch {
-        // An already sent conversion can still finish via its in-memory keys.
-      }
-    }
-    const baseKeys = eventIds.map((eventId) => `wt_x_sent_v1:${eventId}:${params.conversion_id}`);
-    // A separately saved re-diagnosis is a new action for rh5rd. Preserve the
-    // existing accounts' per-user keys and use the saved marker as its action ID.
-    const keys = baseKeys.map((key, index) =>
-      requireDiagnosisCompletion && savedAt && eventIds[index] === X_RH5RD_DIAGNOSIS_EVENT_ID
-        ? `${key}:${savedAt}` : key);
+    const keys = eventIds.map((eventId) => `wt_x_sent_v1:${eventId}:${params.conversion_id}`);
     // Preserve purchase hand-offs across event replacements/account additions. Do not
     // replay an old payment, even if Meta/TikTok's acknowledgement was missing.
     const previousPurchaseSent = wasXPurchaseSent(params.conversion_id) ||
       wasSent(`wt_x_sent_v1:tw-rezdw-1436v3:${params.conversion_id}`);
+    // Keep diagnosis hand-offs recorded before the rgtx5 event-ID correction.
+    // A partially sent completion may still retry its other destinations.
     const destinationSent = (index: number): boolean => wasSent(keys[index]) ||
-      // Preserve the production hand-off made before rgtx5's ID correction.
       (eventIds[index] === X_RGTX5_DIAGNOSIS_EVENT_ID &&
         wasSent(`wt_x_sent_v1:tw-rgtx5-rgtxe:${params.conversion_id}`)) ||
       ((eventIds[index] === X_ADDITIONAL_PURCHASE_EVENT_ID ||
@@ -147,17 +130,19 @@ export async function trackXEventsOnce(
         eventIds[index] === X_RGOB2_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGSKB_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGTX5_PURCHASE_EVENT_ID ||
-        eventIds[index] === X_RGYO2_PURCHASE_EVENT_ID ||
-        eventIds[index] === X_RH5RD_PURCHASE_EVENT_ID) && previousPurchaseSent);
-    if (requireDiagnosisCompletion && !keys.every((_key, index) => destinationSent(index))) {
-      const age = Date.now() - savedAt;
-      if (!savedAt || age < 0 || age > 10 * 60 * 1000) return false;
+        eventIds[index] === X_RGYO2_PURCHASE_EVENT_ID) && previousPurchaseSent);
+    const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+    if (requireDiagnosisCompletion && !keys.every(wasSent)) {
+      try {
+        const savedAt = Number(window.sessionStorage.getItem(markerKey));
+        const age = Date.now() - savedAt;
+        if (!savedAt || age < 0 || age > 10 * 60 * 1000) return false;
+      } catch {
+        return false;
+      }
     }
     for (let index = 0; index < eventIds.length; index++) {
-      // Only the new account waits for persisted access. Keep legacy timing and
-      // leave the group marker unset so a delayed webhook can finish this fan-out.
-      if (eventIds[index] === X_RH5RD_PURCHASE_EVENT_ID && !purchaseAccessConfirmed) continue;
-      // Preserve rgg36's payload-free diagnosis and the existing empty payloads.
+      // Preserve rgg36's payload-free diagnosis and rgkns/rgkqm/rgm4u/rgob2/rgskb/rgtx5/rgyo2's empty payloads.
       // The action ID still keys local dedupe even when it is not sent to X.
       const eventParams = eventIds[index] === X_RGG36_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGKNS_DIAGNOSIS_EVENT_ID ||
@@ -173,13 +158,10 @@ export async function trackXEventsOnce(
         eventIds[index] === X_RGTX5_DIAGNOSIS_EVENT_ID ||
         eventIds[index] === X_RGTX5_PURCHASE_EVENT_ID ||
         eventIds[index] === X_RGYO2_DIAGNOSIS_EVENT_ID ||
-        eventIds[index] === X_RGYO2_PURCHASE_EVENT_ID ||
-        eventIds[index] === X_RH5RD_DIAGNOSIS_EVENT_ID ||
-        eventIds[index] === X_RH5RD_PURCHASE_EVENT_ID ? {} : params;
+        eventIds[index] === X_RGYO2_PURCHASE_EVENT_ID ? {} : params;
       if (!destinationSent(index) && trackX(eventIds[index], eventParams)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
-        if (eventIds[index] === X_RH5RD_DIAGNOSIS_EVENT_ID) rememberSent(baseKeys[index]);
       }
     }
     const complete = keys.every((_key, index) => destinationSent(index));

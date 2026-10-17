@@ -16,7 +16,6 @@ type ClaimResponse = {
   currency?: string;
   contentIds?: string[];
   contentName?: string;
-  xPurchaseAccessConfirmed?: boolean;
 };
 
 // Strict Mode のeffect再実行や同一ページ内の複数マウントが、prepare完了前に
@@ -194,44 +193,11 @@ export function MetaPurchaseDataLayer({
       });
   }, [checkoutSessionId, product, claimToken]);
 
-  // The redirect may precede Stripe's webhook. Retry the signed prepare request
-  // for rh5rd only; never repeat Meta/TikTok pushes or send before access exists.
-  const waitingForXAccess = xPurchase?.checkoutSessionId === checkoutSessionId &&
-    xPurchase.xPurchaseAccessConfirmed !== true;
-  useEffect(() => {
-    if (!waitingForXAccess || wasXPurchaseSent(checkoutSessionId)) return;
-    let active = true;
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const retry = async () => {
-      try {
-        const response = await fetch("/api/checkout/meta-purchase", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkout_session_id: checkoutSessionId, claim_token: claimToken, action: "prepare" }),
-        });
-        const claim: ClaimResponse | null = response.ok ? await response.json() : null;
-        if (!active) return;
-        if (claim?.checkoutSessionId === checkoutSessionId && claim.xPurchaseAccessConfirmed === true) {
-          setXPurchase((current) => current?.checkoutSessionId === checkoutSessionId
-            ? { ...current, xPurchaseAccessConfirmed: true } : current);
-          return;
-        }
-      } catch {
-        // Keep access unconfirmed on errors; a later visit can retry.
-      }
-      if (active && ++attempts < 8) timer = setTimeout(() => { void retry(); }, 1500);
-    };
-    timer = setTimeout(() => { void retry(); }, 1500);
-    return () => { active = false; clearTimeout(timer); };
-  }, [waitingForXAccess, checkoutSessionId, claimToken]);
-
   return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" && typeof xPurchase.currency === "string" ? (
     <XTrack
       key={checkoutSessionId}
       eventIds={xPurchaseEventIds(xPurchase.currency)}
       params={{ value: xPurchase.value, currency: xPurchase.currency, conversion_id: checkoutSessionId }}
-      purchaseAccessConfirmed={xPurchase.xPurchaseAccessConfirmed === true}
     />
   ) : null;
 }
