@@ -748,7 +748,7 @@ export async function TakoResultPage({
                           </h2>
                           <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
                             {isKo
-                              ? `${sh.viewer}의 답변은 이미 도착했어요. 두 번째 친구부터의 결과 시트는 완전판에서 모두 열려요.`
+                              ? `${sh.viewer}의 답변은 이미 도착했어요. 두 번째 친구부터의 분석 결과는 완전판에서 모두 열려요.`
                               : isId
                                 ? `Jawaban ${sh.viewer} sudah tiba. Hasil dari teman kedua dan seterusnya terbuka dalam Edisi Lengkap.`
                               : `${sh.viewer}の回答はもう届いてるよ。2人目からの結果シートは、完全版でぜんぶ開くよ。`}
@@ -757,7 +757,7 @@ export async function TakoResultPage({
                             source="tako_sheet_lock"
                             description={
                               isKo
-                                ? `완전판에서는 ${koSubject(sh.viewer)} 보는 내 캐릭터, 성격 차이, 연애 성향, 궁합까지 결과 시트 전체를 읽을 수 있어요.`
+                                ? `완전판에서는 ${koSubject(sh.viewer)} 보는 내 캐릭터, 성격 차이, 연애 성향, 궁합까지 분석 결과 전체를 읽을 수 있어요.`
                                 : isId
                                   ? `Dalam Edisi Lengkap, baca seluruh hasil menurut ${sh.viewer}: karakter Anda, perbedaan kepribadian, kecenderungan cinta, dan kecocokan.`
                                 : `完全版で、${sh.viewer}から見たあなたのキャラ・性格のギャップ・恋愛傾向・相性まで、この結果シートをまるごと読めます。`
@@ -1287,7 +1287,7 @@ export async function TakoResultPage({
                       </div>
                       <p className="body-gothic mb-6 text-[15px] font-normal leading-[1.6] text-[#1A1A1A]">
                         {isKo
-                          ? `나의 자기 진단과 ${sh.viewer}의 답변을 겹쳐 네 개의 창으로 나눴어요.`
+                          ? `내 진단 결과와 ${sh.viewer}의 답변을 겹쳐 네 개의 창으로 나눴어요.`
                           : isId
                             ? `Kami menggabungkan penilaian diri Anda dan jawaban ${sh.viewer}, lalu membaginya menjadi empat area.`
                           : `あなたの自己診断と${sh.viewer}の回答を重ねて、4つの窓に仕分けたよ。`}

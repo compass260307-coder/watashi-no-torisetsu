@@ -43,7 +43,7 @@ export const KO_TYPE_ZUKAN_DESCRIPTIONS: Record<
   "brisk-tiger__R":
     "질서를 지키고 조직을 안정적으로 움직여요. 압박 앞에서도 흔들리지 않아요.",
   "smiley-panda__N":
-    "자리의 공기를 부드럽게 바꾸고 매력을 보여 줘요. 사람들의 반응을 빠르게 알아차려요.",
+    "분위기를 부드럽게 바꾸며 자연스럽게 매력을 드러내요. 사람들의 반응을 빠르게 알아차려요.",
   "smiley-panda__R":
     "분위기를 띄우고 모두를 즐겁게 해요. 배짱이 있고 남의 시선에 쉽게 흔들리지 않아요.",
   "playful-raccoon__N":

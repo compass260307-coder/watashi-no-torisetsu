@@ -80,7 +80,7 @@ export function MinnaTypeProse({
       : `${first.charAt(0).toLowerCase()}${first.slice(1)}`;
     manualParas[0] = `Menurut ${who}, ${led}`;
   } else if (isKo && manualParas[0]?.startsWith("당신")) {
-    manualParas[0] = `${who}이 보는 ${manualParas[0]}`;
+    manualParas[0] = `${who}의 시선으로 보면, ${manualParas[0]}`;
   } else if (manualParas[0]?.startsWith("あなた")) {
     manualParas[0] = `${who}から見た${manualParas[0]}`;
   }
@@ -111,9 +111,7 @@ export function MinnaTypeProse({
         : `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
       manualParas[reopenIdx] = `Menurut ${who}, ${led}`;
     } else if (isKo) {
-      manualParas[reopenIdx] = t.startsWith("당신")
-        ? `${who}이 보는 ${t}`
-        : `${who}이 보기에는 ${t}`;
+      manualParas[reopenIdx] = `${who}의 시선으로 보면, ${t}`;
     } else {
       manualParas[reopenIdx] = t.startsWith("あなたは")
         ? `${who}から見たあなたは${t.slice("あなたは".length)}`

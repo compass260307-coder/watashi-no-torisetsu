@@ -139,7 +139,7 @@ assert(!messages[0].html.includes('<script>'));
 assert(!messages[0].text.includes('프리미엄 코스'));
 await email.sendDetailedReportEmail({ to: 'owner@example.test', ownerToken: 'owner-token', locale: 'ko', product: 'full_access', purchaseAmountMinor: 4900 });
 assert.match(messages[1].text, /₩4,900/);
-assert.match(messages[1].text, /완전판 코스/);
+assert.match(messages[1].text, /완전판/);
 console.log('Receipt regression passed: Korean upgrade details and escaped HTML; existing complete-edition receipt preserved.');
 
 async function saveAnswers({ ownerToken = 'owner-token', locale = 'ko', values = answers, loggedIn = true, fullAccess = true, state = null } = {}) {

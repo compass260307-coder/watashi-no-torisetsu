@@ -13,7 +13,7 @@ function leanLabel(value: number, left: string, right: string): string {
   const distance = value - 50;
   const absoluteDistance = Math.abs(distance);
 
-  if (absoluteDistance <= 7) return "평균에 가까움";
+  if (absoluteDistance <= 7) return "중간에 가까움";
 
   const pole = distance > 0 ? right : left;
   const naturalPole =

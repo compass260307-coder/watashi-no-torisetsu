@@ -77,7 +77,7 @@ function leanLabel(
     return locale === "en"
       ? "Near the middle"
       : locale === "ko"
-        ? "평균에 가까움"
+        ? "중간에 가까움"
         : locale === "id"
           ? "Dekat titik tengah"
         : "ほぼ中央";
@@ -97,7 +97,9 @@ function leanLabel(
         안정적: "안정적인 편",
         섬세함: "섬세한 편",
       } as Record<string, string>)[pole] ?? `${pole}인 편`;
-    return ad <= 20 ? `조금 ${naturalPole}` : `${pole} 성향`;
+    const tendency =
+      pole === "유연함" ? "유연한" : pole === "섬세함" ? "섬세한" : pole;
+    return ad <= 20 ? `조금 ${naturalPole}` : `${tendency} 성향`;
   }
   if (locale === "id") return ad <= 20 ? `Cenderung ${pole.toLowerCase()}` : pole;
   return ad <= 20 ? `やや${pole}寄り` : `${pole}寄り`;

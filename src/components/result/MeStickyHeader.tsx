@@ -403,17 +403,17 @@ export function MeStickyHeader({
           more: "기타",
           personalityTitle: "나의 성격 유형",
           personalityDescription:
-            "성격 점수는 포함되지 않아요. SNS 공유에 추천해요.",
+            "성격 점수는 포함되지 않아요. SNS에 부담 없이 공유해 보세요.",
           personalityCopy: "성격 유형 링크 복사",
           personalityCopied: "성격 유형 링크를 복사했어요",
           friendTitle: "친구 진단 부탁하기",
           friendDescription:
-            "친구나 가족에게 나에 대한 인상을 답해 달라고 부탁하는 링크예요.",
+            "친구나 가족에게 내가 어떻게 보이는지 물어보는 링크예요.",
           friendCopy: "친구 진단 링크 복사",
           friendCopied: "친구 진단 링크를 복사했어요",
           resultTitle: "결과를 공유해요",
           inviteTitle: "친구에게 진단을 부탁해요",
-          inviteDescription: "답해 준 친구 수만큼 결과 시트가 늘어나요",
+          inviteDescription: "친구가 답할 때마다 새로운 분석 결과가 추가돼요",
           inviteLink: "초대 링크",
           characterLink: "캐릭터 링크",
           copied: "복사했어요",
@@ -535,7 +535,7 @@ export function MeStickyHeader({
       : isId
       ? `Hasil Alice Test-ku adalah “${title}”!\nLihat karakterku 👇`
       : locale === "ko"
-      ? `나의 사용설명서는 ‘${title}’ 유형이었어요!\n내 캐릭터를 확인해 보세요👇`
+      ? `‘나의 사용설명서’에서 저는 ‘${title}’ 유형으로 나왔어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
   const shareText = isInvite ? inviteShareText : characterShareText;
   const xUrl = activeShareUrl

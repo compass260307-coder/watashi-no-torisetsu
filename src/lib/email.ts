@@ -555,7 +555,7 @@ function renderText(url: string, locale: EmailLocale): string {
     return [
       `${KO_SITE_NAME} - 로그인 링크`,
       "",
-      `아래 링크를 열면 ${KO_SITE_NAME}의 내 데이터에 로그인할 수 있어요.`,
+      `아래 링크로 ${KO_SITE_NAME}에 로그인하고 저장된 진단 결과를 확인할 수 있어요.`,
       "",
       url,
       "",
@@ -671,7 +671,7 @@ function renderMagicLinkHtmlKo(url: string): string {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;"><tr><td>
         <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
         <h1 style="margin:0 0 28px;font-size:22px;font-weight:700;line-height:1.5;text-align:center;color:#2A2520;">로그인 링크를 보내 드립니다</h1>
-        <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">아래 버튼을 누르면 ${KO_SITE_NAME}의 내 데이터에 로그인할 수 있어요.</p>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">아래 버튼을 눌러 ${KO_SITE_NAME}에 로그인하고 저장된 진단 결과를 확인해 주세요.</p>
         <p style="margin:0 0 32px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">로그인하기</a></p>
         <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">이 링크는 <strong>1시간</strong> 뒤 만료되며 한 번만 사용할 수 있어요.<br />버튼이 열리지 않으면 아래 주소를 브라우저에 붙여 넣어 주세요.</p>
         <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">${url}</p>

@@ -92,7 +92,7 @@ export function PurchaseCompleteView({
     ? product === "self_report"
       ? "학생 플랜"
       : product === "premium_bundle"
-        ? "프리미엄 코스"
+        ? "프리미엄"
         : "완전판 리포트"
     : product === "self_report"
       ? "学生向けプラン"
@@ -100,7 +100,6 @@ export function PurchaseCompleteView({
         ? "全部入り"
         : "完全版レポート";
   const reportObjectParticle = isKo && product === "self_report" ? "을" : "를";
-  const reportSubjectParticle = isKo && product === "self_report" ? "이" : "가";
   const hasDestinyFeatures =
     destinyFeaturesIncluded ?? product === "premium_bundle";
   // AI占い師チャットは設計図と独立。現行の日本版完全版と
@@ -198,7 +197,7 @@ export function PurchaseCompleteView({
               <>
                 결제에 사용한 이메일 주소로
                 <br />
-                나의 <span style={{ color: NAVY }}>{reportName}</span>
+                <span style={{ color: NAVY }}>{reportName}</span>
                 {reportObjectParticle} 보내 드렸어요.
               </>
             ) : (
@@ -264,7 +263,7 @@ export function PurchaseCompleteView({
                 <span style={{ color: NAVY }}>무료 성격 진단</span>으로 안내해
                 드려요.
                 <br />
-                진단이 끝나면 {reportName}{reportSubjectParticle} 열립니다.
+                진단이 끝나면 {reportName}{reportObjectParticle} 확인할 수 있어요.
               </>
             ) : (
               <>
@@ -351,7 +350,7 @@ export function PurchaseCompleteView({
           </p>
           <p className="mt-1 text-[12px] font-bold leading-[1.8] text-[#77778F]">
             {isKo
-              ? "두 번째 친구부터의 진단 결과와 여러 번 다시 만들 수 있는 친구 진단 분석 PDF가 열립니다."
+              ? "두 번째 친구부터 모든 진단 결과를 확인하고, 친구들의 답변을 모은 분석 PDF를 횟수 제한 없이 업데이트할 수 있어요."
               : isEn
                 ? "Unlock every friend result and an updated friend-analysis PDF whenever new responses arrive."
                 : "2人目以降の友達診断結果と、何度でも作り直せる他己分析PDFが解放されます。"}

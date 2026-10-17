@@ -61,7 +61,7 @@ const KO_TAROT_FAQS = [
   {
     question: "타로 결과를 Alice와 상담할 수 있나요?",
     answer:
-      "네. 결과 화면의 ‘이 결과를 Alice와 이야기하기’에서 Alice와의 대화로 이동해, 마음에 걸린 카드와 지금의 기분을 더 깊이 정리할 수 있어요.",
+      "네. 결과 화면의 ‘이 결과로 Alice와 대화하기’에서 Alice와의 대화로 이동해, 마음에 걸린 카드와 지금의 기분을 더 깊이 정리할 수 있어요.",
   },
 ] as const satisfies readonly TarotFaq[];
 

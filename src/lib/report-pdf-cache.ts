@@ -53,8 +53,12 @@ export function reportPdfCachePath(
   locale: string,
   keyParts: readonly unknown[],
 ): string {
+  // 韓国語の本文校正後は、修正前に生成されたPDFを再利用しない。
+  const version = locale === "ko"
+    ? `${REPORT_PDF_CACHE_VERSION}:20261017-ko-copy-22`
+    : REPORT_PDF_CACHE_VERSION;
   const hash = createHash("sha256")
-    .update(JSON.stringify([REPORT_PDF_CACHE_VERSION, ...keyParts]))
+    .update(JSON.stringify([version, ...keyParts]))
     .digest("hex")
     .slice(0, 24);
   return `${kind}/${userId}/${locale}/${hash}.pdf`;

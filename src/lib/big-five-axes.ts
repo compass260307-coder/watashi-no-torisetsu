@@ -130,7 +130,7 @@ export function leanLabel(
 ): string {
   const d = value - 50;
   const ad = Math.abs(d);
-  if (ad <= 7) return locale === "ko" ? "평균에 가까움" : "ほぼ中央";
+  if (ad <= 7) return locale === "ko" ? "중간에 가까움" : "ほぼ中央";
   const pole = d > 0 ? right : left;
   if (locale === "ko") {
     const naturalPole =
@@ -146,7 +146,9 @@ export function leanLabel(
         안정적: "안정적인 편",
         섬세함: "섬세한 편",
       } as Record<string, string>)[pole] ?? `${pole}인 편`;
-    return ad <= 20 ? `조금 ${naturalPole}` : `${pole} 성향`;
+    const tendency =
+      pole === "유연함" ? "유연한" : pole === "섬세함" ? "섬세한" : pole;
+    return ad <= 20 ? `조금 ${naturalPole}` : `${tendency} 성향`;
   }
   return ad <= 20 ? `やや${pole}寄り` : `${pole}寄り`;
 }

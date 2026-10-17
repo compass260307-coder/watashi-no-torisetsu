@@ -136,9 +136,9 @@ const KO_COPY: HoshiyomiCopy = {
         "나의 성격 진단과, 이미 만들었다면 운명의 설계도까지 참고하며 고민과 감정을 정리해 주는 AI 대화 상대예요. 미래를 단정하지 않고 스스로 납득할 수 있는 선택을 찾도록 도와드려요.",
     },
     {
-      question: "어떤 코스에서 이용할 수 있나요?",
+      question: "어떤 상품에 포함되어 있나요?",
       answer:
-        "완전판 코스(₩4,900)에서 Alice와 30회 채팅할 수 있어요. 한국어판에서 현재 판매하는 유료 상품은 완전판 하나이며, 월정액이 아닌 1회 결제예요.",
+        "완전판(₩4,900)에서 Alice와 30회 채팅할 수 있어요. 한국어판에서 현재 판매하는 유료 상품은 완전판 하나이며, 월정액이 아닌 1회 결제예요.",
     },
     {
       question: "운명의 설계도를 아직 만들지 않아도 대화할 수 있나요?",
@@ -183,7 +183,7 @@ const KO_COPY: HoshiyomiCopy = {
   exhaustedPlaceholder: "채팅 횟수를 모두 사용했어요",
   inputPlaceholder: "지금 무엇이 마음에 걸리나요?",
   startAria: "대화 시작하기",
-  purchaseHint: "상담 내용을 보내면 채팅이 포함된 코스를 선택할 수 있어요.",
+  purchaseHint: "상담 내용을 보내면 Alice 채팅이 포함된 완전판을 안내해 드려요.",
   persistencePending: "대화 저장 기능을 준비하고 있어요. 데이터베이스 업데이트 후 이용할 수 있어요.",
   historyTitle: "지난 대화",
   historyEmpty: "아직 대화가 없어요. 지금 마음에 걸리는 일부터 이야기해 보세요.",
@@ -209,7 +209,7 @@ const KO_COPY: HoshiyomiCopy = {
   sentMessages: (used, total) => `메시지를 ${used}/${total}회 보냈어요.`,
   faqButton: "궁금한 점이 있나요?",
   remainingMessages: (remaining, total) =>
-    `채팅 ${remaining}회 남음 (구매 횟수 ${total}회)`,
+    `채팅 ${remaining}회 남음 (구매한 이용 횟수 ${total}회)`,
   dateLocale: "ko-KR",
 };
 

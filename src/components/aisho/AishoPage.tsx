@@ -496,7 +496,7 @@ function AishoResultLock({ locale }: { locale: AppResultLocale }) {
         </h1>
         <p className="mx-auto mt-3 max-w-[520px] text-[14px] font-bold leading-[1.75] text-[#6A6A7C] md:text-[16px]">
           {isKorean
-            ? "완전판 코스에서 두 사람의 궁합 결과 전체를 확인할 수 있어요."
+            ? "완전판에서 두 사람의 궁합 결과 전체를 확인할 수 있어요."
             : isEnglish
               ? "The Complete Edition unlocks the full compatibility result for this pair."
               : isIndonesian
@@ -641,7 +641,7 @@ function CompatDetail({
           {isEnglish
             ? `The connection between “${nameA}” and “${nameB}” is ${percentLead(r.percent, locale)}. Their compatibility score is ${r.percent}%, making them ${r.summary.toLowerCase()}. The number reflects several concrete reasons this relationship can keep growing.`
             : isKorean
-            ? `「${nameA}」와 「${nameB}」의 궁합은 ${percentLead(r.percent, locale)}. 궁합도는 ${r.percent}%, 한마디로 ${r.summary}인 두 사람이에요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
+            ? `‘${nameA}’ 유형과 ‘${nameB}’ 유형의 궁합은 ${percentLead(r.percent, locale)}. 궁합 점수는 ${r.percent}%예요. 한마디로 ‘${r.summary}’${r.summary.endsWith("사람") ? "이라고" : "라고"} 할 수 있어요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
             : isIndonesian
               ? `Hubungan antara “${nameA}” dan “${nameB}” ${percentLead(r.percent, locale)}. Skor kecocokannya ${r.percent}%: ${r.summary.toLowerCase()}. Angka ini mencerminkan alasan nyata mengapa hubungan mereka dapat terus berkembang.`
               : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}

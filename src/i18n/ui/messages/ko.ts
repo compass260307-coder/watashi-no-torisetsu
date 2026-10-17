@@ -220,22 +220,22 @@ const KO_UNMEI: UnlockItem = {
   desc: "성격 진단과 출생 차트를 함께 해석한 4장 구성의 AI 리포트예요. 오늘의 한 장·세 장 뽑기·YES / NO 타로도 즐길 수 있어요.",
   peek: KO_PEEK_UNMEI,
 };
-const KO_AISHO_ITEM = "두 사람의 궁합 진단 결과 전체 해제";
+const KO_AISHO_ITEM = "두 사람의 궁합 진단 결과 모두 보기";
 const KO_FULL_ACCESS_ITEMS = [
-  "자기 진단 결과의 잠금 9개 전체 해제",
+  "성격 진단의 상세 결과 9개 모두 보기",
   "16페이지 이상의 전용 전자책",
-  "두 번째 친구부터 친구 진단 결과 전체 해제",
-  "몇 번이든 다시 만들 수 있는 타인 분석 PDF",
+  "두 번째 친구부터 모든 진단 결과 보기",
+  "횟수 제한 없이 업데이트하는 친구 시선 분석 리포트(PDF)",
   "나만을 위한 ‘운명의 설계도’",
   "점성술사 ‘Alice’와 채팅 30회",
-  "Alice의 타로 세 종류 모두 해제",
+  "Alice의 타로 3종 모두 이용",
   KO_AISHO_ITEM,
 ] as const;
 const KO_PLANS: readonly PlanDefinition[] = [
   {
     product: "full_access",
     eyebrow: "자기 진단·친구 진단·운세까지",
-    title: "완전판 코스",
+    title: "완전판",
     basePrice: FULL_ACCESS_PRICE_KRW,
     listPrice: FULL_ACCESS_LIST_PRICE_KRW,
     badge: `출시 기념 ${FULL_ACCESS_DISCOUNT_PERCENT_KRW}% 할인`,
@@ -256,7 +256,7 @@ function peekForItem(item: string): UnlockPeek | undefined {
     return peeks.unmei;
   if (item.includes("전자책"))
     return peeks.ebook;
-  if (item.includes("친구 진단") || item.includes("타인 분석 PDF")) {
+  if (item.includes("친구 진단") || item.includes("친구부터") || item.includes("친구 시선 분석")) {
     return peeks.friends;
   }
   return undefined;
@@ -306,7 +306,7 @@ const copy: UiCopy = {
         return "완전판으로 잠금 해제"; return "프리미엄으로 잠금 해제";
     }, plans: KO_PLANS, premiumFeatures: [
       {
-        title: "네 장으로 이어지는 AI 감정서",
+        title: "4장으로 구성된 AI 별자리 리포트",
         desc: "지금까지의 걸음부터 앞으로 찾아올 전환점까지 읽어 드려요.",
       },
       {
@@ -314,7 +314,7 @@ const copy: UiCopy = {
         desc: "성격 진단과 출생 차트를 이해한 점성술사에게 고민을 상담할 수 있어요.",
       },
       {
-        title: "나만의 출생 차트 휠",
+        title: "나만의 출생 차트",
         desc: "태어난 순간의 천체 배치를 한 장의 설계도로 그려 드려요.",
       },
       {
@@ -322,7 +322,7 @@ const copy: UiCopy = {
         desc: "성격과 별의 기질을 함께 살펴 나만의 모습을 깊이 이해해요.",
       },
       {
-        title: "궁합 진단 기능 해제",
+        title: "궁합 진단 이용",
         desc: "궁금한 상대와의 궁합을 S~C 등급으로 확인하고 연애·우정·일 등 상황별 해석까지 읽을 수 있어요.",
       },
     ]
