@@ -18,7 +18,7 @@ const server = createServer((_request, response) => {
 });
 await new Promise((done) => server.listen(0, "127.0.0.1", done));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const profile = resolve(".codex_tmp", `x-rh5rd-browser-${Date.now()}`);
+const profile = resolve(".codex_tmp", `x-pixel-browser-${Date.now()}`);
 mkdirSync(profile, { recursive: true });
 let browser;
 try {
@@ -42,9 +42,9 @@ try {
     return page;
   }
   const page = await newPage();
-  assert.deepEqual(await page.evaluate(() => window.calls), ["rg1zg", "rezdw", "rgg36", "rgi5k", "rgkns", "rgkqm", "rgm4u", "rgob2", "rgskb", "rgtx5", "rgyo2", "rh5rd"].map((id) => ["config", id]));
+  assert.deepEqual(await page.evaluate(() => window.calls), ["rg1zg", "rezdw", "rgg36", "rgi5k", "rgkns", "rgkqm", "rgm4u", "rgob2", "rgskb", "rgtx5", "rgyo2"].map((id) => ["config", id]));
   await page.evaluate((script) => { (0, eval)(script); }, loader);
-  assert.equal(await page.evaluate(() => window.calls.length), 12, "Replaying initialization must not configure any pixel twice");
+  assert.equal(await page.evaluate(() => window.calls.length), 11, "Replaying initialization must not configure any pixel twice");
   assert.equal(stubLoads, 1, "Replaying initialization must reuse uwt.js");
   const events = (target) => target.evaluate(() => window.calls.filter((call) => call[0] === "event"));
   async function diagnosis(target, saved = false) {
@@ -58,39 +58,34 @@ try {
   assert.equal((await events(page)).length, 0);
   assert.equal(await diagnosis(page, true), true);
   assert.equal(await diagnosis(page), true);
-  assert.equal((await events(page)).length, 12);
-  assert.deepEqual((await events(page)).at(-1), ["event", "tw-rh5rd-rh5sh", {}]);
+  assert.equal((await events(page)).length, 11);
+  assert.deepEqual((await events(page)).at(-1), ["event", "tw-rgyo2-rgyo3", {}]);
   await page.reload({ waitUntil: "load" });
   await diagnosis(page);
   assert.equal((await events(page)).length, 0);
 
-  async function purchase(target, access, id = "browser-payment") {
-    return target.evaluate(async ({ access, id }) => {
+  async function purchase(target, id = "browser-payment") {
+    return target.evaluate(async (id) => {
       const p = window.pixel;
-      return p.trackXEventsOnce(p.xPurchaseEventIds("JPY"), { conversion_id: id, value: 499, currency: "JPY" }, false, () => true, access);
-    }, { access, id });
+      return p.trackXEventsOnce(p.xPurchaseEventIds("JPY"), { conversion_id: id, value: 499, currency: "JPY" }, false);
+    }, id);
   }
-  assert.equal(await purchase(page, false), false);
+  assert.equal(await purchase(page), true);
   assert.equal((await events(page)).length, 11);
-  assert.equal((await events(page)).some((call) => call[1] === "tw-rh5rd-rh5sg"), false);
+  assert.equal((await events(page)).some((call) => /rh5rd/.test(call[1])), false);
+  await purchase(page);
+  assert.equal((await events(page)).length, 11);
   await page.reload({ waitUntil: "load" });
-  assert.equal(await purchase(page, false), false);
-  assert.equal((await events(page)).length, 0);
-  assert.equal(await purchase(page, true), true);
-  assert.deepEqual(await events(page), [["event", "tw-rh5rd-rh5sg", {}]]);
-  await purchase(page, true);
-  assert.equal((await events(page)).length, 1);
-  await page.reload({ waitUntil: "load" });
-  await purchase(page, true);
+  await purchase(page);
   assert.equal((await events(page)).length, 0);
 
   const second = await newPage();
   assert.equal(await page.evaluate(() => Boolean(navigator.locks)), true);
-  await Promise.all([purchase(page, true, "browser-two-tabs"), purchase(second, true, "browser-two-tabs")]);
-  assert.equal((await events(page)).length + (await events(second)).length, 12);
-  assert.equal(stubLoads, 5, "Each of five documents loads the stub exactly once");
+  await Promise.all([purchase(page, "browser-two-tabs"), purchase(second, "browser-two-tabs")]);
+  assert.equal((await events(page)).length + (await events(second)).length, 11);
+  assert.equal(stubLoads, 4, "Each of four documents loads the stub exactly once");
   assert.deepEqual(blocked, []);
-  console.log("Chrome offline X pixel checks passed: 12 configs, gated diagnosis/purchase, reload and cross-tab dedupe; no external requests sent.");
+  console.log("Chrome offline X pixel checks passed: 11 configs, diagnosis/purchase, reload and cross-tab dedupe; no external requests sent.");
 } finally {
   await browser?.close();
   await new Promise((done) => server.close(done));
