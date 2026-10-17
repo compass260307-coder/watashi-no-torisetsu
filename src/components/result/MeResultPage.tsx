@@ -569,7 +569,7 @@ async function MeResultPageContent({
             ? "Everything plan benefits"
             : "Complete Edition benefits"
           : isKorean
-          ? (showResultUpgradePlaceholder ? "나만의 결과 업그레이드" : "완전판 코스 혜택")
+          ? (showResultUpgradePlaceholder ? "나만의 결과 업그레이드" : "완전판 혜택")
           : isIndonesian
             ? "Manfaat Edisi Lengkap"
           : showResultUpgradePlaceholder
@@ -627,14 +627,14 @@ async function MeResultPageContent({
               title: isEnglish
                 ? "A four-chapter AI reading"
                 : isKorean
-                ? "네 장으로 이어지는 AI 감정서"
+                ? "4장으로 구성된 AI 별자리 리포트"
                 : isIndonesian
                   ? "Pembacaan AI dalam empat bab"
                   : "4章立てのAI鑑定文",
               body: isEnglish
                 ? "From the strengths you’ve built to the turning points ahead, your story is interpreted from beginning to end, with one practical next step."
                 : isKorean
-                ? "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장으로 풀고 바로 실천할 작은 한 걸음까지 담았어요."
+                ? "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장에 담고, 바로 실천할 수 있는 작은 행동도 함께 제안해요."
                 : isIndonesian
                   ? "Dari kekuatan yang Anda bangun hingga titik balik di masa depan, kisah Anda dibaca secara utuh dengan langkah praktis berikutnya."
                   : "幼少期から、これから訪れる転換点まで。あなたの物語を最初から最後まで読み解きます。",
@@ -678,7 +678,7 @@ async function MeResultPageContent({
               title: isEnglish
                 ? "Your personal birth-chart wheel"
                 : isKorean
-                ? "나만의 출생 차트 휠"
+                ? "나만의 출생 차트"
                 : isIndonesian
                   ? "Roda peta kelahiran pribadi"
                   : "出生図ホイール",
@@ -1499,8 +1499,8 @@ async function MeResultPageContent({
                   : "You in everyday moments"
                   : isKorean
                     ? acquisition
-                      ? `만약의 순간에 나타나는 ${acquisition.sharerName}님`
-                      : "만약의 순간에 나타나는 나"
+                      ? `이런 상황에서 드러나는 ${acquisition.sharerName}님의 모습`
+                      : "이런 상황에서 드러나는 나의 모습"
                     : isIndonesian
                       ? acquisition
                         ? `${acquisition.sharerName} dalam berbagai situasi`
@@ -1702,7 +1702,7 @@ async function MeResultPageContent({
                         : "Handle with care"
                       : isKorean
                         ? acquisition
-                          ? `${acquisition.sharerName}님의 주의해서 다룰 점`
+                          ? `${acquisition.sharerName}님이 조심하면 좋을 점`
                           : KO_ME_COPY.cautionTitle
                         : isIndonesian
                           ? acquisition
@@ -1780,7 +1780,7 @@ async function MeResultPageContent({
                             { title: "지치기 전 신호를 찾는 법", body: "한계에 닿기 조금 전에 나타나는 신호를 미리 정해 두는 것이 요령이에요." },
                             { title: "관계를 해치지 않고 거절하는 법", body: "어색해지지 않게 ‘오늘은 어려워요’라고 전하는 방법이 있어요." },
                             { title: "나를 뒤로 미루지 않는 요령", body: "일정의 맨 앞에 나를 위한 시간을 먼저 넣어 두세요." },
-                            { title: "다정함을 나누는 방향 바로잡기", body: "가까운 사람에게 오히려 소홀해지기 쉬운 다정함의 방향을 정돈해요." },
+                            { title: "다정함을 나누는 방향 바로잡기", body: "다른 사람을 챙기느라 가까운 사람에게 소홀해지지는 않았는지 돌아봐요." },
                           ]
                         : isIndonesian
                         ? [
@@ -2024,7 +2024,7 @@ async function MeResultPageContent({
                   <path d="M21 12a9 9 0 1 1-2.64-6.36" />
                   <path d="M21 3v6h-6" />
                 </svg>
-                {isEnglish ? "Retake the main test" : isKorean ? "메인 테스트 다시 받기" : isIndonesian ? "Ulangi tes utama" : "メインテストを再度受ける"}
+                {isEnglish ? "Retake the main test" : isKorean ? "성격 진단 다시 하기" : isIndonesian ? "Ulangi tes utama" : "メインテストを再度受ける"}
               </Link>
             )}
           </div>

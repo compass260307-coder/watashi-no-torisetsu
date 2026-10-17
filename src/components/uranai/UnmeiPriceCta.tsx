@@ -149,8 +149,8 @@ export default function UnmeiPriceCta({
               ? "Edisi Lengkap"
               : locale === "ko"
               ? purchaseProduct === "full_access"
-                ? "완전판 코스"
-                : "프리미엄 코스"
+                ? "완전판"
+                : "프리미엄"
               : purchaseProduct === "full_access"
                 ? "完全版"
                 : "全部入り・買い切り"
@@ -169,7 +169,7 @@ export default function UnmeiPriceCta({
                 : locale === "id"
                 ? "Coba pembayaran lagi"
                 : locale === "ko"
-                ? "같은 코스로 다시 결제하기"
+                ? "같은 상품으로 다시 결제하기"
                 : "同じコースでもう一度決済する"}
             </UnmeiCheckoutButton>
           }

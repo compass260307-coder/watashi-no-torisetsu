@@ -129,7 +129,7 @@ export function MoshimoScenes({
                 : isIndonesian
                 ? null
                 : isKorean
-                ? "만약의 순간에 나타나는 내 모습도 모두 확인해 보세요."
+                ? "다양한 상황에서 드러나는 내 모습을 모두 확인해 보세요."
                 : "もしもの時のあなたをぜんぶ見てみましょう。"}
             </p>
             <PaywallScrollButton

@@ -80,7 +80,7 @@ export default function KoreanCommercePage() {
       <h2>상품명과 판매 가격</h2>
       <ul>
         <li>
-          완전판 코스: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
+          완전판: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
           잠긴 9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구
           진단 결과, 여러 번 다시 만들 수 있는 친구 분석 PDF, 궁합 진단, 한국어
           운명의 설계도, AI 점성술사 Alice 채팅 30회, 타로 3종 포함)

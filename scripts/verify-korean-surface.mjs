@@ -87,7 +87,7 @@ const aishoPage = fs.readFileSync(
 );
 if (
   !aishoPage.includes(
-    "완전판 코스에서 두 사람의 궁합 결과 전체를 확인할 수 있어요.",
+    "완전판에서 두 사람의 궁합 결과 전체를 확인할 수 있어요.",
   )
 ) {
   problems.push(
@@ -195,7 +195,7 @@ if (/const showUnmeiPromo\s*=\s*!isKorean/.test(meResultPage)) {
 }
 for (const required of [
   "MeUnmeiChatLauncher",
-  "완전판 코스 혜택",
+  "완전판 혜택",
   "완전판에서 잠금 해제",
   "완전판에는 채팅 30회가 포함됩니다.",
   "Alice의 질문에 답하기",
@@ -682,7 +682,7 @@ for (const required of [
   "업그레이드하면 얻을 수 있는 것",
   "친구들이 보는 나의 리포트 무제한 업데이트",
   "명 이상의 고객이 신뢰하고 있어요",
-  "일회성 구매(결제는 1회만)",
+  "한 번만 결제 · 자동 결제 없음",
 ]) {
   if (!fullAccessPromoCard.includes(required)) {
     problems.push(

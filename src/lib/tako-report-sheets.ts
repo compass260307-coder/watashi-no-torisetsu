@@ -346,7 +346,7 @@ export function buildTakoReportSheets(
       }
       manualParas[reopenIdx] = t.startsWith("당신")
         ? `${viewer}의 눈에 비친 ${t}`
-        : `${viewer}의 눈에는 ${t}`;
+        : `${viewer}${viewer === "친구" ? "가" : "이"} 보기에, ${t.replace(/^이 배려는/, "당신의 배려는")}`;
     } else if (locale === "id" && reopenIdx < manualParas.length) {
       const paragraph = manualParas[reopenIdx];
       const led = paragraph.startsWith("Anda")

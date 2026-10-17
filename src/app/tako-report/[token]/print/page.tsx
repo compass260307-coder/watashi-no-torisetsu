@@ -402,7 +402,7 @@ function FriendChapter({
           <p className={styles.sectionEyebrow}>RELATIONSHIP GUIDE</p>
           <h3>
             {isKo
-              ? `${sheet.viewer}과의 관계를 키우는 방법`
+              ? `${sheet.viewer}${sheet.viewer === "친구" ? "와" : "과"}의 관계를 키우는 방법`
               : isId
                 ? `Cara menumbuhkan hubungan dengan ${sheet.viewer}`
               : `${sheet.viewer}との関係の育て方`}
@@ -697,7 +697,7 @@ export default async function TakoReportPrintPage({
           </p>
 
           <div className={styles.profileStatement}>
-            <p>{isKo ? "친구들의 목소리로 만든 밖에서 본 프로필" : isId ? "Profil dari luar yang dibentuk oleh suara teman" : "友達の声から生まれた、外側のプロフィール"}</p>
+            <p>{isKo ? "친구들의 목소리로 완성한 나의 프로필" : isId ? "Profil dari luar yang dibentuk oleh suara teman" : "友達の声から生まれた、外側のプロフィール"}</p>
             <strong>{overview.essence}</strong>
             <span>
               {overview.charName}{isKo ? " 유형 / 관점 일치도 " : isId ? " / keselarasan pandangan " : "タイプ / 見方の一致 "}
@@ -780,7 +780,7 @@ export default async function TakoReportPrintPage({
           <h2>{isKo ? "내 모습을 잃어버릴 것 같은 순간에." : isId ? "Saat Anda merasa kehilangan diri sendiri." : "自分を見失いそうなときに。"}</h2>
           <p>
             {isKo
-              ? "내게는 당연한 행동을 친구들은 나만의 매력으로 받아들이고 있어요. 혼자 보는 시선만으로 나를 알기 어려운 순간에는 이 리포트에 남은 친구들의 눈과 말을 다시 열어 보세요."
+              ? "내게는 당연한 행동을 친구들은 나만의 매력으로 받아들이고 있어요. 혼자 보는 시선만으로 나를 알기 어려운 순간에는 이 리포트에 담긴 친구들의 시선과 말을 다시 읽어 보세요."
               : isId
                 ? "Hal yang terasa biasa bagi Anda dapat diterima teman sebagai pesona khas Anda. Ketika sulit memahami diri hanya dari sudut pandang sendiri, buka kembali pandangan dan kata-kata teman yang tersimpan dalam laporan ini."
               : "あなたが当たり前にしていることを、友達はあなたの魅力として受け取っています。自分だけの視点では分からなくなったときは、このレポートに残った友達の目と言葉を、もう一度開いてみてください。"}

@@ -77,6 +77,7 @@ function buildPerceivedProse(
 
   return paragraphs.slice(graphAfter + 1).map((paragraph, index) => {
     if (locale === "ko") {
+      const subject = targetLabel === "친구" ? "친구분" : targetLabel;
       let text = paragraph;
       if (index === 0) {
         for (const connector of ["그리고, ", "그리고 ", "그리고", "게다가 ", "더욱이 "]) {
@@ -89,12 +90,12 @@ function buildPerceivedProse(
           const rest = text
             .slice("당신은".length)
             .split("당신")
-            .join(targetLabel);
-          return `당신이 보는 ${targetLabel}은${rest}`;
+            .join(subject);
+          return `당신이 보는 ${subject}은${rest}`;
         }
-        return `당신이 보기에 ${text.split("당신").join(targetLabel)}`;
+        return `당신이 보기에 ${text.split("당신").join(subject)}`;
       }
-      return text.split("당신").join(targetLabel);
+      return text.split("당신").join(subject);
     }
 
     if (locale === "id") {

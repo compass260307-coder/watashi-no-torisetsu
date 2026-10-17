@@ -21,7 +21,7 @@ const FEATURES = [
     ),
   },
   {
-    title: "AI가 들려주는 네 장의 감정서",
+    title: "AI가 들려주는 네 장의 별자리 이야기",
     body: "쌓아 온 강점, 관계 속의 나, 앞으로의 전환점, 마지막 메시지를 네 장으로 풀어요. 어려운 점성술 용어 대신 나에게 직접 말을 거는 문장과 바로 실천할 작은 한 걸음을 담았습니다.",
     bg: "#BEF2F9",
     dark: "#1D6E86",
@@ -119,7 +119,7 @@ export default function KoUnmeiLanding({
                 </span>
               </h1>
               <p className="mt-3 text-[15px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[16px]">
-                별의 배치와 Big Five 성격 진단을 함께 읽어, 나만의 감정서를 만들어 보세요.
+                별의 배치와 Big Five 성격 진단을 함께 읽어, 나만의 별자리 리포트를 만들어 보세요.
               </p>
               <UnmeiPriceCta
                 sessionOwnerToken={ownerToken}

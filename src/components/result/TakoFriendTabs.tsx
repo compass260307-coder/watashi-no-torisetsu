@@ -628,7 +628,7 @@ export function TakoFriendTabs({
                       : isEn
                         ? "Each new response adds another friend result."
                         : isKo
-                        ? "답변이 도착할 때마다 친구별 결과 시트가 늘어나요."
+                        ? "답변이 도착할 때마다 친구별 분석 결과가 추가돼요."
                         : isId
                           ? "Setiap jawaban baru menambahkan satu lembar hasil teman."
                           : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}

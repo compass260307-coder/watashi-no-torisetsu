@@ -581,7 +581,7 @@ const KO_AXIS_INSIGHT_COPY: Record<
     match:
       "약속과 계획을 대하는 감각이 비슷해서 함께 움직일 때 불필요한 스트레스가 적어요.",
     higher:
-      "{name}은 약속과 해야 할 일을 지키는 당신을 보며 ‘이 사람에게 맡기면 괜찮다’고 느끼고 있어요.",
+      "{name}은 약속을 지키고 해야 할 일을 끝까지 해내는 당신을 보며 ‘이 사람에게 맡기면 괜찮다’고 느끼고 있어요.",
     lower:
       "당신 나름의 계획은 {name}에게 조금 더 자유롭게 보이는 듯해요. 중요한 일정만 미리 맞추면 훨씬 편해져요.",
   },
@@ -622,7 +622,7 @@ const KO_KOTSU_COPY: Record<
     ],
     off: [
       { title: "초대의 온도 맞추기", body: "새로운 일을 권할 때는 ‘나는 궁금한데 어때?’라고 먼저 물어보세요." },
-      { title: "익숙한 안과 새로운 안 준비하기", body: "두 가지 선택지를 함께 내놓으면 속도가 달라도 둘 다 편하게 고를 수 있어요." },
+      { title: "익숙한 곳과 새로운 곳을 함께 제안하기", body: "두 가지 선택지를 함께 내놓으면 속도가 달라도 둘 다 편하게 고를 수 있어요." },
     ],
   },
   C: {
@@ -673,7 +673,7 @@ const KO_WANA_COPY: Record<
 > = {
   O: {
     match: [
-      { title: "신나는 계획의 과부하", body: "둘 다 좋다고 하다 보면 시간과 비용이 꽉 찰 수 있어요. 가끔은 한 사람이 브레이크를 맡아 주세요." },
+      { title: "신나는 계획의 과부하", body: "둘 다 좋다고 하다 보면 일정이 빽빽해지고 지출도 늘어날 수 있어요. 가끔은 한 사람이 브레이크를 맡아 주세요." },
       { title: "흥미가 동시에 식는 순간", body: "열기가 같이 식어도 ‘잘 지내?’라는 짧은 연락은 이어 가세요." },
     ],
     off: [
@@ -694,11 +694,11 @@ const KO_WANA_COPY: Record<
   E: {
     match: [
       { title: "함께 지칠 때까지 놀기", body: "즐거운 두 사람일수록 피로를 늦게 알아차려요. 먼저 쉬자고 말하는 것도 친밀함이에요." },
-      { title: "두 사람 안에서만 끝내기", body: "가끔은 각자의 관계와 시간을 보내야 다시 나눌 이야기도 생겨요." },
+      { title: "두 사람 안에서만 끝내기", body: "가끔은 각자 다른 친구들과 시간을 보내면 다시 만났을 때 나눌 이야기도 늘어나요." },
     ],
     off: [
       { title: "서로 다른 텐션을 방치하기", body: "한쪽만 계속 신나 있으면 다른 쪽은 조용히 지칠 수 있어요." },
-      { title: "침묵을 불만으로 오해하기", body: "말이 없는 시간이 화난 뜻은 아니라는 걸 서로 기억해 주세요." },
+      { title: "침묵을 불만으로 오해하기", body: "말이 없다고 해서 화가 난 것은 아니라는 걸 서로 기억해 주세요." },
     ],
   },
   A: {
@@ -723,27 +723,40 @@ const KO_WANA_COPY: Record<
   },
 };
 
+// Korean callers use either a name ending in 님 or the unnamed fallback 친구.
+function fillKoViewer(text: string, viewer: string): string {
+  const endings: Record<string, string> =
+    viewer === "친구" ? { 은: "는", 이: "가", 과: "와", 이에요: "예요" } : {};
+  return text.replace(
+    /\{name\}(이에요|은|이|과)?/g,
+    (_match, ending: string = "") => `${viewer}${endings[ending] ?? ending}`,
+  );
+}
+
 function koEstimatedSummaryParas(percent: number, viewer: string): string[] {
+  const topic = fillKoViewer("{name}은", viewer);
+  const subject = fillKoViewer("{name}이", viewer);
+  const companion = fillKoViewer("{name}과", viewer);
   if (percent >= 85) {
     return [
-      `답변을 보면 ${viewer}은 당신을 꽤 정확히 이해하고 있어요. 있는 그대로 있어도 편안한 관계예요.`,
+      `답변을 보면 ${topic} 당신을 꽤 정확히 이해하고 있어요. 있는 그대로 있어도 편안한 관계예요.`,
       `말하지 않은 부분까지 알아봐 주는 건 당연한 일이 아니에요. 이 이해와 안심이 두 사람 관계의 가장 큰 힘이에요.`,
     ];
   }
   if (percent >= 70) {
     return [
-      `${viewer}이 보는 당신과 스스로 생각하는 당신은 대체로 겹쳐요. 가끔 생기는 차이도 편하게 이야기할 수 있는 거리예요.`,
+      `${subject} 보는 당신과 스스로 생각하는 당신은 대체로 겹쳐요. 가끔 생기는 차이도 편하게 이야기할 수 있는 거리예요.`,
       `모든 것이 같지 않아서 오히려 좋아요. 서로를 이해하는 바탕 위에서 차이를 새로운 발견처럼 즐길 수 있어요.`,
     ];
   }
   if (percent >= 55) {
     return [
       `${viewer}에게 보이는 당신은 자기 인식과 조금 다른 부분이 있어요. 그 차이가 서로를 더 알아 갈 여지를 만들어요.`,
-      `차이는 나쁜 것이 아니라 ${viewer}이 당신도 몰랐던 모습을 발견했다는 뜻이에요. 직접 물어보면 좋은 대화가 시작될 거예요.`,
+      `차이는 나쁜 것이 아니라 ${subject} 당신도 몰랐던 모습을 발견했다는 뜻이에요. 직접 물어보면 좋은 대화가 시작될 거예요.`,
     ];
   }
   return [
-    `${viewer}과는 서로 보는 방식의 차이가 큰 편이에요. 맞지 않는다기보다 예상 밖의 나를 알려 주는 소중한 관계예요.`,
+    `${companion}는 서로 보는 방식의 차이가 큰 편이에요. 맞지 않는다기보다 예상 밖의 나를 알려 주는 소중한 관계예요.`,
     `그 사람 앞에서 보이는 모습과 스스로 생각하는 모습은 둘 다 진짜 당신이에요. 두 모습을 함께 알수록 더 자유로워질 수 있어요.`,
   ];
 }
@@ -797,7 +810,7 @@ export function estimateCompatFromGaps(
       state,
       selfPercent: g.selfPercent,
       otherPercent: g.otherPercent,
-      body: body.replaceAll("{name}", viewer),
+      body: locale === "ko" ? fillKoViewer(body, viewer) : body.replaceAll("{name}", viewer),
     };
   });
 
@@ -887,7 +900,7 @@ export function estimateCompatFromGaps(
     .slice(0, 8)
     .map((k) => ({
       title: k.title,
-      body: k.body.replaceAll("{name}", viewer),
+      body: locale === "ko" ? fillKoViewer(k.body, viewer) : k.body.replaceAll("{name}", viewer),
     }));
 
   // ===== 関係を壊すワナ (8つ) =====

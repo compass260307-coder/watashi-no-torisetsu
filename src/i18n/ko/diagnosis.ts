@@ -170,9 +170,9 @@ const KO_COPY: DiagnosisCopy = {
       value: "other", label: "기타"
     },
   ],
-  nicknameEmptyError: "별명을 입력해 주세요",
+  nicknameEmptyError: "닉네임을 입력해 주세요",
   nicknameTooLongError: (max) => `${max}자 이내로 입력해 주세요`,
-  nicknameRequired: "별명을 입력해 주세요",
+  nicknameRequired: "닉네임을 입력해 주세요",
   nextButton: "다음",
   resultButton: "결과 보기",
   submittingButton: "진단 중...",
@@ -202,7 +202,7 @@ const KO_COPY: DiagnosisCopy = {
   },
   rediagnose: {
     title: "🔄 다시 진단하기",
-    lead: "이전 진단과 사용설명서 도감은 ",
+    lead: "이전 진단 결과와 사용설명서는 ",
     emphasis: "모두 그대로 남아 있어요",
     emphasisSuffix: ".",
     tail: "새로운 나를 발견해 볼까요? 🐧",

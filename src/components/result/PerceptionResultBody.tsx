@@ -475,7 +475,7 @@ export function PerceptionResultBody({
             perceiverName={p}
             strengthParas={view.strengthParas}
             surpriseParas={view.surpriseParas}
-            strengthLabel={isId ? `Kekuatan yang dilihat ${personLabel}` : isKo ? `${personLabel}이 인정한 강점` : undefined}
+            strengthLabel={isId ? `Kekuatan yang dilihat ${personLabel}` : isKo ? `${koPersonSubject} 인정한 강점` : undefined}
             surpriseLabel={isId ? `Penemuan tak terduga dari ${personLabel}` : isKo ? `${personLabel}의 의외의 발견` : undefined}
           />
         </section>

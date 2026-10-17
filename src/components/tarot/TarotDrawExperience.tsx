@@ -73,7 +73,7 @@ const SINGLE_READINGS: Record<
 
 const KO_SINGLE_READINGS: typeof SINGLE_READINGS = {
   moon: {
-    summary: "달은 아직 말이 되지 않은 마음을 서둘러 결정하지 않아도 된다고 전해요. 오늘은 답을 내리기보다 내가 무엇 때문에 흔들리는지 차분히 살펴보는 날이에요.",
+    summary: "달은 아직 말로 표현하지 못한 마음을 서둘러 결정하지 않아도 된다고 전해요. 오늘은 답을 내리기보다 내가 무엇 때문에 흔들리는지 차분히 살펴보는 날이에요.",
     details: [
       { title: "카드가 보여 주는 것", text: "모호함 속에 숨은 작은 위화감이 진심으로 돌아가는 입구가 돼요." },
       { title: "오늘의 주의점", text: "불안한 마음으로 결론을 내리거나 상대의 마음을 단정하지 마세요." },
@@ -227,13 +227,13 @@ const DRAW_COPY = {
     shuffle: "카드 섞기",
     shuffling: "Alice가 카드를 섞고 있어요",
     choosePile: "직감을 따라 카드 더미 하나를 골라 주세요",
-    askAlice: "Alice에게 해석 받기",
+    askAlice: "Alice의 해석 보기",
     chooseOne: "카드 한 장을 골라 주세요",
     chooseThree: (count: number) => `카드 세 장을 골라 주세요　${count}/3`,
-    talk: "이 결과를 Alice와 이야기하기",
+    talk: "이 결과로 Alice와 대화하기",
     retry: "다시 뽑기",
     cutTitle: "덱을 세 개의 더미로 나누었어요",
-    cutBody: "하나를 골라 카드를 컷해 주세요.",
+    cutBody: "카드 더미 하나를 골라 주세요.",
     pileAria: (index: number) => `${index + 1}번째 카드 더미 선택`,
     selectOne: "마음이 끌리는 한 장을 골라 주세요.",
     selectThree: "마음이 끌리는 세 장을 골라 주세요.",
@@ -675,7 +675,7 @@ function PrimaryAction({ children, disabled, onClick }: { children: React.ReactN
 function guideMessage(phase: Phase, locale: TarotLocale) {
   if (locale === "ko") {
     if (phase === "shuffling") return "지금의 당신을 떠올리며 카드를 섞고 있어요.";
-    if (phase === "cutting") return "카드를 세 개의 더미로 나누었어요. 직감으로 하나를 골라 덱을 컷해 주세요.";
+    if (phase === "cutting") return "카드를 세 개의 더미로 나누었어요. 직감에 따라 카드 더미 하나를 골라 주세요.";
     if (phase === "selecting") return "너무 많이 생각하지 않아도 괜찮아요. 처음 마음이 간 카드를 골라 주세요.";
     if (phase === "revealed") return "나온 카드를 지금의 당신과 겹쳐 읽어 보았어요.";
     return "오늘은 Alice가 당신을 위해 카드를 정성껏 읽어 드릴게요.";
