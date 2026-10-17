@@ -625,13 +625,25 @@ function JapanFlagIcon() {
   );
 }
 
-// 太極旗アイコン (言語切替マーク)。小サイズで潰れる四卦は省略し、太極のみの簡略版。
+// 太極旗アイコン。四卦と傾けた太極を含め、小さな表示でも韓国旗と分かるようにする。
 function KoreaFlagIcon() {
   return (
-    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
-      <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
-      <path d="M7 7.5a4 4 0 0 1 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#CD2E3A" />
-      <path d="M7 7.5a4 4 0 0 0 8 0 2 2 0 0 1-4 0 2 2 0 0 0-4 0Z" fill="#0047A0" />
+    <svg width="30" height="20" viewBox="0 0 60 40" className="shrink-0" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="58.5" height="38.5" rx="4" fill="#FFFFFF" stroke="#DADDE6" strokeWidth="1.5" />
+      <g transform="translate(30 20)">
+        <g transform="rotate(-56.3099)" strokeWidth="1.6667">
+          <path d="M-5-20.8333H5M-5-18.3333H5M-5-15.8333H5M-5 15.8333H5M-5 18.3333H5M-5 20.8333H5" stroke="#171717" />
+          <path d="M0 15V21.6667" stroke="#FFFFFF" strokeWidth="0.8333" />
+        </g>
+        <g transform="rotate(56.3099)" strokeWidth="1.6667">
+          <path d="M-5-20.8333H5M-5-18.3333H5M-5-15.8333H5M-5 15.8333H5M-5 18.3333H5M-5 20.8333H5" stroke="#171717" />
+          <path d="M0-21.6667V-20M0-16.6667V-15M0 17.5V19.1667" stroke="#FFFFFF" strokeWidth="0.8333" />
+        </g>
+        <g transform="rotate(33.6901)">
+          <circle r="10" fill="#0047A0" />
+          <path d="M-10 0a10 10 0 0 1 20 0 5 5 0 0 0-10 0 5 5 0 0 1-10 0Z" fill="#CD2E3A" />
+        </g>
+      </g>
     </svg>
   );
 }

@@ -1264,17 +1264,14 @@ export function MeStickyHeader({
                 {isKo ? (
                   <button
                     type="button"
-                    aria-label="카카오톡으로 공유"
                     onClick={handleKakaoShare}
                     disabled={kakaoBusy}
                     aria-busy={kakaoBusy}
-                    className="flex flex-col items-center gap-1.5"
+                    aria-label={isInvite ? "카카오톡으로 친구에게 부탁하기" : "카카오톡으로 내 유형 보내기"}
+                    className="flex flex-col items-center gap-1.5 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#3C1E1E] disabled:cursor-wait disabled:opacity-60"
                   >
-                    <span
-                      className="flex h-12 w-12 items-center justify-center rounded-full text-[#3C1E1E] transition-transform hover:scale-105"
-                      style={{ background: "#FEE500" }}
-                    >
-                      <KakaoTalkGlyph className="h-6 w-6" />
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FEE500] transition-transform hover:scale-105">
+                      <KakaoTalkGlyph className="h-7 w-7" />
                     </span>
                     <span className="text-[11px] font-bold text-[#2E2E5C]/70">
                       카카오톡
