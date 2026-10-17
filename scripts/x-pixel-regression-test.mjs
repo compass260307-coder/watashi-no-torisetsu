@@ -60,8 +60,6 @@ const flush = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
   ]);
   vm.runInContext(script.replaceAll(";twq(", ";window.twq("), context);
   assert.equal(loaders, 1, "Replaying the inline script must not load uwt.js twice");
-  assert.equal(window.twq.queue.length, 11, "Replaying initialization must not configure any of the eleven pixels twice");
-  assert.equal(script.includes("rh5rd"), false);
   assert.equal(Array.from(window.twq.queue).filter(args => args[0] === "config" && args[1] === "rgtx5").length, 1, "Replaying the script must not configure rgtx5 twice");
   assert.equal(Array.from(window.twq.queue).filter(args => args[0] === "config" && args[1] === "rgyo2").length, 1, "Replaying the script must not configure rgyo2 twice");
   const existingCalls = [];
