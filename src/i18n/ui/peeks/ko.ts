@@ -82,10 +82,10 @@ const KO_PEEK_ALICE: UnlockPeek = {
   ],
 };
 const KO_PEEK_AISHO: UnlockPeek = {
-  img: "/paywall-peek/ko-aisho-result-summary-screen-2026.webp",
+  img: "/paywall-peek/ko-aisho-summary-complete-20261018.webp",
   alt: "실제 궁합 진단 결과 화면",
-  width: 560,
-  height: 718,
+  width: 1120,
+  height: 1436,
   points: [
     "두 사람의 궁합을 S~C 등급과 궁합 점수로 보여 줘요",
     "배려·정서·가치관·생활 리듬·사교 균형을 분석해요",
@@ -94,16 +94,16 @@ const KO_PEEK_AISHO: UnlockPeek = {
   ],
   pages: [
     {
-      img: "/paywall-peek/ko-aisho-result-balance-screen-2026.webp",
+      img: "/paywall-peek/ko-aisho-balance-complete-20261018.webp",
       alt: "실제 궁합 진단의 5축 균형 분석 화면",
-      width: 560,
-      height: 718,
+      width: 1120,
+      height: 1436,
     },
     {
-      img: "/paywall-peek/ko-aisho-result-summary-screen-2026.webp",
+      img: "/paywall-peek/ko-aisho-summary-complete-20261018.webp",
       alt: "실제 궁합 진단의 등급과 총평 화면",
-      width: 560,
-      height: 718,
+      width: 1120,
+      height: 1436,
     },
   ],
 };
