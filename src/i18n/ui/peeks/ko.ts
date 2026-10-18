@@ -149,12 +149,23 @@ const KO_PEEK_ALICE_FORTUNE: UnlockPeek = {
     "구매 후 운명의 설계도와 타로를 언제든 즐길 수 있어요",
   ],
   pages: [
-    ...(KO_PEEK_UNMEI.pages?.slice(0, 2) ?? []),
     {
-      img: "/paywall-peek/ko-tarot-reading-result.webp",
-      alt: "Alice가 타로 카드 세 장을 해석하는 실제 결과 화면",
-      width: 390,
-      height: 600,
+      img: "/paywall-peek/ko-fortune-chart-20261017.webp",
+      alt: "별의 배치와 태양·달의 위치가 한눈에 보이는 출생 차트 예시",
+      width: 780,
+      height: 1000,
+    },
+    {
+      img: "/paywall-peek/ko-fortune-identity-20261017.webp",
+      alt: "별자리와 성격 유형, 나를 설명하는 문장이 담긴 운명의 설계도 예시",
+      width: 780,
+      height: 1000,
+    },
+    {
+      img: "/paywall-peek/ko-fortune-tarot-20261017.webp",
+      alt: "타로 카드 세 장과 Alice의 해석을 함께 볼 수 있는 결과 예시",
+      width: 780,
+      height: 1200,
     },
   ],
 };
