@@ -723,7 +723,9 @@ for (const asset of [
   "ko-unmei-scene-0.webp",
   "ko-unmei-scene-1.webp",
   "ko-unmei-scene-2.webp",
-  "ko-tarot-reading-result.webp",
+  "ko-fortune-chart-20261017.webp",
+  "ko-fortune-identity-20261017.webp",
+  "ko-fortune-tarot-20261017.webp",
 ]) {
   if (!paywallPeekContent.includes(`/paywall-peek/${asset}`)) {
     problems.push(
