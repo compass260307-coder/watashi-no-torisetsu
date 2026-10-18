@@ -2,6 +2,7 @@ import { BottomNav } from "@/components/BottomNav";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
+import { X_PIXEL_SCRIPT } from "@/lib/x-pixel-config";
 import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
@@ -9,9 +10,6 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
-
-// Define the queue synchronously in <head>, before result-page effects run.
-const X_PIXEL_SCRIPT = `!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');twq('config','rg1zg');twq('config','rezdw');twq('config','rgg36');twq('config','rgi5k');twq('config','rgkns');twq('config','rgkqm');twq('config','rgm4u');twq('config','rgob2');twq('config','rgskb');if(!window.__wt_x_rgtx5_configured){window.twq('config','rgtx5');window.__wt_x_rgtx5_configured=true;}if(!window.__wt_x_rgyo2_configured){window.twq('config','rgyo2');window.__wt_x_rgyo2_configured=true;}`;
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-K39CJGCF";
 const GOOGLE_TAG_MANAGER_SCRIPT = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
