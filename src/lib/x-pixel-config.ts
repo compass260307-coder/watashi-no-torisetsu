@@ -29,6 +29,7 @@ export const ACTIVE_X_PIXELS: readonly XPixelConfig[] = [
     diagnosis: { eventId: "tw-rgtx5-rgu2v", legacyEventIds: ["tw-rgtx5-rgtxe"] },
     purchase: { eventId: "tw-rgtx5-rgtx9" },
   },
+  { id: "rhj3s", diagnosis: { eventId: "tw-rhj3s-rhj43" }, purchase: { eventId: "tw-rhj3s-rhj45" } },
 ];
 
 // Define twq synchronously before result-page effects. Preserve the existing
