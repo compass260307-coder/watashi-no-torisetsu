@@ -3,6 +3,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
 import { X_PIXEL_SCRIPT } from "@/lib/x-pixel-config";
+import { MEASUREMENT_INIT_SCRIPT } from "@/lib/verified-conversions";
 import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
@@ -218,6 +219,7 @@ export default function RootLayout({
       <head>
         <script id="static-asset-recovery" dangerouslySetInnerHTML={{ __html: STATIC_ASSET_RECOVERY_SCRIPT }} />
         <script id="x-pixel" dangerouslySetInnerHTML={{ __html: X_PIXEL_SCRIPT }} />
+        <script id="measurement-init" dangerouslySetInnerHTML={{ __html: MEASUREMENT_INIT_SCRIPT }} />
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
         <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
         {/* Noto Sans JP: Google Fonts 直接配信 (@import ではなく link / preconnect 必須)。
