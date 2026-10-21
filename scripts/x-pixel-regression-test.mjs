@@ -2,7 +2,6 @@
 // checkout, database or application API receives any request.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
 import vm from "node:vm";
 import ts from "typescript";
 
@@ -35,7 +34,6 @@ function env({ code = helperSource, local = new Map(), locks, session = new Map(
   return { calls, window, pixel, local, session };
 }
 const ids = ["rgg36"];
-const diagnosisIds = ["tw-rgg36-rgg9b"];
 const purchaseIds = ["tw-rgg36-rgg3b"];
 const params = { conversion_id: "offline-four-pixels", value: 499, currency: "JPY" };
 const sentKey = (id, conversion = params.conversion_id) => "wt_x_sent_v1:" + id + ":" + conversion;
@@ -48,138 +46,70 @@ async function send(e, diagnosis = false, currency = "JPY", active = () => true)
     { ...params, currency }, diagnosis, active);
 }
 assert.deepEqual(normalize(config.ACTIVE_X_PIXELS.map((p) => p.id)), ids);
-assert.ok(source("src/app/layout.tsx").includes('import { X_PIXEL_SCRIPT } from "@/lib/x-pixel-config"'));
-{
-  const window = { location: { pathname: "/" } }; let loads = 0;
-  const document = { createElement: () => ({}),
-    getElementsByTagName: () => [{ parentNode: { insertBefore: () => loads++ } }] };
-  const context = vm.createContext({ window, document });
-  vm.runInContext(config.X_PIXEL_SCRIPT, context);
-  assert.equal(loads, 1);
-  assert.deepEqual(Array.from(window.twq.queue, (args) => Array.from(args)), ids.map((id) => ["config", id]));
-  vm.runInContext(config.X_PIXEL_SCRIPT, context);
-  assert.equal(loads, 1);
-  // Preserve existing initialization and guard the added rgm4u config too.
-  assert.deepEqual(Array.from(window.twq.queue, (args) => Array.from(args)), [...ids, ...ids].map((id) => ["config", id]));
+assert.equal(config.X_PIXEL_SCRIPT, undefined);
+for (const path of ["src/app/layout.tsx", "src/lib/x-pixel-config.ts", "src/lib/xPixel.ts", "src/lib/verified-conversions.ts"]) {
+  assert.doesNotMatch(source(path), /twq|static\.ads-twitter\.com|uwt\.js/, "No direct X code: " + path);
 }
-{
-  const p = moduleFrom(helperSource, { "@/lib/x-pixel-config": config, "@/lib/verified-conversions": moduleFrom(source("src/lib/verified-conversions.ts")) });
-  assert.equal(p.trackX(diagnosisIds[0], {}), false);
-  assert.equal(await p.trackXEventsOnce(diagnosisIds, params, true), false);
-  assert.equal(p.wasXPurchaseSent(params.conversion_id), false);
-}
-{
-  const e = env();
-  assert.deepEqual(normalize(e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS), diagnosisIds);
-  assert.deepEqual(normalize(e.pixel.xPurchaseEventIds("JPY")), purchaseIds);
-  for (const currency of ["USD", "KRW", "THB", "IDR", "EUR"]) {
-    assert.deepEqual(normalize(e.pixel.xPurchaseEventIds(currency)), purchaseIds.slice(1));
-  }
-  assert.equal(await send(e, true), false);
-  assert.equal(e.calls.length, 0);
-  for (const at of [Date.now() - 600001, Date.now() + 60000]) {
-    marker(e, at); assert.equal(await send(e, true), false);
-  }
-  marker(e); assert.equal(await send(e, true), true);
-  assert.deepEqual(normalize(e.calls), diagnosisIds.map((id) => ["event", id, {}]));
-  assert.equal(e.session.has(e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id), false);
-  await send(e, true); assert.equal(e.calls.length, ids.length);
-  const reload = env({ local: e.local }); await send(reload, true);
-  assert.equal(reload.calls.length, 0);
-}
-for (const currency of ["JPY", "USD", "KRW", "THB", "IDR", "EUR"]) {
-  const e = env(); assert.equal(await send(e, false, currency), currency === "JPY");
-  const wanted = currency === "JPY" ? purchaseIds : purchaseIds.slice(1);
-  assert.deepEqual(normalize(e.calls), wanted.map((id) => ["event", id,
-    id === purchaseIds[0] ? { ...params, currency } : {}]));
-  assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), currency === "JPY");
-  await send(e, false, currency); assert.equal(e.calls.length, wanted.length);
-  const reload = env({ local: e.local }); await send(reload, false, currency);
-  assert.equal(reload.calls.length, 0);
-}
-// Each retained destination can fail and retry independently.
-for (const diagnosis of [false, true]) for (const failed of diagnosis ? diagnosisIds : purchaseIds) {
-  const e = env(); if (diagnosis) marker(e);
-  e.window.twq = (...args) => { if (args[1] === failed) throw Error("offline blocked"); e.calls.push(args); };
-  assert.equal(await send(e, diagnosis), false);
-  assert.equal(e.calls.length, ids.length - 1);
-  if (!diagnosis) assert.equal(e.pixel.wasXPurchaseSent(params.conversion_id), false);
-  const reload = env({ local: e.local, session: e.session });
-  assert.equal(await send(reload, diagnosis), true);
-  assert.deepEqual(reload.calls.map((c) => c[1]), [failed]);
-}
-// Pre-cutover hand-offs must never be replayed.
-for (const historical of [groupKey, sentKey("tw-rezdw-1436v3")]) {
-  const e = env({ local: new Map([[historical, "1"]]) });
-  assert.equal(await send(e), true); assert.equal(e.calls.length, 0);
-}
-for (const diagnosis of [false, true]) {
-  const e = env(); if (diagnosis) marker(e);
-  assert.equal(await send(e, diagnosis, "JPY", () => false), false);
-  assert.equal(e.calls.length, 0);
-}
-{
-  const e = env();
-  for (const id of ["rg1zg", "rezdw", "rgi5k", "rgkns", "rgkqm", "rgm4u", "rgyo2", "rh5rd", "rh617", "rgob2", "rgskb", "rgtx5", "rhj3s"]) {
-    assert.equal(e.pixel.trackX("tw-" + id + "-removed", {}), false);
-  }
-  assert.equal(e.calls.length, 0);
-}
-{
-  const local = new Map(); let tail = Promise.resolve();
-  const locks = { request: (_name, fn) => { const run = tail.then(fn); tail = run.catch(() => {}); return run; } };
-  const a = env({ local, locks }), b = env({ local, locks });
-  await Promise.all([send(a), send(b)]);
-  assert.equal(a.calls.length + b.calls.length, ids.length);
-}
-{
-  const e = env();
-  for (const name of ["localStorage", "sessionStorage"]) Object.defineProperty(e.window, name, {
-    get() { throw Error("offline storage denied"); },
+assert.doesNotMatch(source("src/app/layout.tsx"), /id="x-pixel"/);
+for (const locale of ["ja", "ko", "en", "id"]) for (const currency of ["JPY", "USD", "KRW", "IDR", "THB"]) {
+  const e = env(); e.pixel.markXDiagnosisSaved(params.conversion_id, locale);
+  assert.equal(await send(e, true, currency), true);
+  assert.equal(await send(e, false, currency), currency === "JPY");
+  const events = e.window.dataLayer;
+  assert.equal(events.length, currency === "JPY" ? 2 : 1);
+  assert.equal(events[0].event, "diagnosis_completed");
+  assert.equal(events[0].event_id, params.conversion_id);
+  assert.equal(events[0].conversion_id, params.conversion_id);
+  assert.equal(events[0].x_transport, "gtm");
+  if (currency === "JPY") assert.deepEqual(normalize(events[1]), {
+    event: "purchase_verified", event_id: params.conversion_id, conversion_id: params.conversion_id,
+    value: 499, currency: "JPY", x_transport: "gtm", measurement_version: 1,
   });
-  assert.equal(await send(e, true), false);
-  assert.equal(await send(e), true);
-  await send(e); assert.equal(e.calls.length, ids.length);
+  assert.equal(e.calls.length, 0);
+  const reload = env({ local: e.local, session: e.session });
+  marker(reload); await send(reload, true); await send(reload, false, currency);
+  assert.equal(reload.window.dataLayer, undefined, "Reload must not replay hand-offs");
 }
-// Keep rgm4u hand-offs from before its removal; restoring it must not replay them.
-for (const diagnosis of [false, true]) {
-  const id = diagnosis ? "tw-rgm4u-rgm58" : "tw-rgm4u-rgm4y";
-  const e = env({ local: new Map([[sentKey(id), "1"]]) });
-  if (diagnosis) marker(e);
-  await send(e, diagnosis);
-  assert.equal(e.calls.filter((call) => call[1] === id).length, 0);
+for (const at of [null, Date.now()-600001, Date.now()+60000]) {
+  const e=env(); if(at)marker(e,at);
+  assert.equal(await send(e,true),false); assert.equal(e.window.dataLayer,undefined);
 }
-let differentialCases = 0;
-if (process.env.X_PIXEL_BASELINE_REF) {
-  const oldCode = execFileSync("git", ["show", process.env.X_PIXEL_BASELINE_REF + ":src/lib/xPixel.ts"], { encoding: "utf8", cwd: root });
-  const oldConfig = moduleFrom(execFileSync("git", ["show", process.env.X_PIXEL_BASELINE_REF + ":src/lib/x-pixel-config.ts"], { encoding: "utf8", cwd: root }));
-  assert.deepEqual(normalize(config.ACTIVE_X_PIXELS), normalize(oldConfig.ACTIVE_X_PIXELS.filter((p) => p.id === "rgg36")), "Michi config must be unchanged");
-  for (const locale of ["ja", "ko"]) for (const diagnosis of [false, true]) for (const currency of ["JPY", "USD", "KRW", "THB", "IDR"])
-    for (const mode of ["fresh", "missing-marker", "expired", "cancelled", "prior-group", "prior-event", ...ids]) {
-      const old = env({ code: oldCode, pixelConfig: oldConfig }), current = env();
-      for (const e of [old, current]) {
-        if (diagnosis && mode !== "missing-marker") {
-          e.pixel.markXDiagnosisSaved(params.conversion_id, locale);
-          const at = String(Date.now() - (mode === "expired" ? 600001 : 0));
-          e.session.set(e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id, at);
-          if (locale === "ko") e.session.set(e.pixel.X_KO_DIAGNOSIS_PENDING_PREFIX + params.conversion_id, at);
-        }
-        if (mode === "prior-group") e.local.set(groupKey, "1");
-        if (mode === "prior-event") e.local.set(sentKey(diagnosis ? diagnosisIds[0] : purchaseIds[0]), "1");
-        if (ids.includes(mode)) e.window.twq = (...args) => {
-          if (args[1].startsWith("tw-" + mode + "-")) throw Error("offline blocked");
-          e.calls.push(args);
-        };
-        await e.pixel.trackXEventsOnce(diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds(currency, locale),
-          { ...params, currency }, diagnosis, () => mode !== "cancelled");
-      }
-      const retained = (calls) => normalize(calls.filter((c) => /^tw-rgg36-/.test(c[1])));
-      assert.deepEqual(retained(current.calls), retained(old.calls), locale + "/" + diagnosis + "/" + currency + "/" + mode);
-      differentialCases++;
-    }
+for (const historical of [groupKey, sentKey(purchaseIds[0]), sentKey("tw-rezdw-1436v3")]) {
+  const e = env({ local:new Map([[historical,"1"]]) }); await send(e);
+  assert.equal(e.window.dataLayer,undefined,"Do not replay successful direct-X purchases");
 }
-console.log("Offline X checks passed: michi-only config, exact event IDs/payloads, currencies, markers, historical dedupe, per-destination retries, reload, cross-tab and storage failures; " +
-  differentialCases + " production-baseline comparisons. No external events sent.");
+{
+  // A stage-1 dataLayer hand-off with a failed direct tag is not a GTM delivery.
+  const e=env({local:new Map([[`wt_verified_handoff_v1:purchase_verified:${params.conversion_id}`,"1"]])});
+  assert.equal(await send(e),true); assert.equal(e.window.dataLayer.length,1);
+}
+{
+  const e=env(); delete e.window.twq;
+  assert.equal(await send(e),true,"GTM hand-off must not wait for the removed loader");
+  assert.equal(e.window.dataLayer.length,1);
+}
+{
+  const e=env();marker(e);e.window.dataLayer={push(){throw Error("blocked consumer");}};
+  assert.equal(await send(e,true),false);
+  assert.equal(e.session.has(e.pixel.X_DIAGNOSIS_PENDING_PREFIX+params.conversion_id),true);
+  const retry=env({local:e.local,session:e.session});assert.equal(await send(retry,true),true);
+  assert.equal(retry.window.dataLayer.length,1);assert.equal(retry.calls.length,0);
+}
+{
+  const local=new Map();let tail=Promise.resolve();const locks={request(_n,fn){const run=tail.then(fn);tail=run.catch(()=>{});return run;}};
+  const a=env({local,locks}),b=env({local,locks});await Promise.all([send(a),send(b)]);
+  assert.equal((a.window.dataLayer??[]).length+(b.window.dataLayer??[]).length,1);
+}
+{
+  const e=env();for(const name of ["localStorage","sessionStorage"])Object.defineProperty(e.window,name,{get(){throw Error("denied");}});
+  assert.equal(await send(e,true),false);assert.equal(await send(e),true);await send(e);
+  assert.equal(e.window.dataLayer.length,1);assert.equal(e.calls.length,0);
+}
+{
+  const window={};const m=moduleFrom(source("src/lib/verified-conversions.ts"));vm.runInNewContext(m.MEASUREMENT_INIT_SCRIPT,{window});
+  assert.deepEqual(normalize(window.dataLayer),[{event:"measurement_ready",x_transport:"gtm",measurement_version:1}]);
+}
+console.log("GTM-only gates passed: locales/currencies, saved diagnosis, no loader dependence, historical direct purchases, retries, reload, cross-tab and storage failures. No direct X calls.");
 
 const load = (path, deps, globals) => moduleFrom(source(path), deps, globals);
 const meta = load("src/lib/meta-purchase.ts");
@@ -219,16 +149,18 @@ for (const currency of ["JPY", "USD", "KRW", "IDR", "THB"]) {
   assert.deepEqual(Array.from(e.element.props.eventIds), Array.from(e.pixel.xPurchaseEventIds(currency)));
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
-  assert.equal(e.calls.length, currency === "JPY" ? ids.length : ids.length - 1);
+  assert.equal(e.calls.length, 0);
+  assert.equal((e.window.dataLayer ?? []).length, currency === "JPY" ? 1 : 0);
 
 }
 {
   const claim = { checkoutSessionId: "cs_live_offline_discount", value: 321, currency: "JPY" };
   const e = await purchaseComponent(claim, true);
   await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
-  assert.deepEqual(normalize(e.calls[0]), ["event", "tw-rgg36-rgg3b", {
-    conversion_id: claim.checkoutSessionId, value: 321, currency: "JPY",
-  }], "The new purchase tag receives the verified settlement amount, not a fixed catalog price");
+  assert.deepEqual(normalize(e.window.dataLayer[0]), { event: "purchase_verified", event_id: claim.checkoutSessionId,
+    conversion_id: claim.checkoutSessionId, value: 321, currency: "JPY", x_transport: "gtm", measurement_version: 1
+  }, "GTM receives the actual verified amount");
+  assert.equal(e.calls.length, 0);
 }
 for (const claim of [
   { checkoutSessionId: "cs_test_offline", value: 499, currency: "JPY" },
@@ -247,7 +179,7 @@ for (const claim of [
   assert.equal(e.calls.length, 0);
 }
 
-console.log("Actual purchase component checks passed: verified live settlements only, actual amounts/currencies, X after Meta/TikTok ack, invalid/test/failed claims excluded; all fetches stubbed.");
+console.log("Actual purchase component checks passed: verified live settlements only, actual amounts/currencies, GTM after Meta/TikTok ack, invalid/test/failed claims excluded; all fetches stubbed.");
 
 // Execute the real signed prepare handler and Stripe session verifier. Only
 // Stripe retrieval, rate limiting and DB are stubbed; no application DB writes.
@@ -293,34 +225,3 @@ assert.equal((await route.POST(request('invalid'))).status, 403);
 const diagnosisSource = source('src/components/diagnosis/DiagnosisPageContent.tsx');
 assert.match(diagnosisSource, /if \(res\.ok && typeof data\.userId === "string"\)\s*\{\s*markXDiagnosisSaved\(data\.userId, locale\)/);
 console.log('Signed prepare route + Stripe verifier checks passed: trusted session locale, paid/complete/payment gate, actual KRW amount, invalid token, no database writes.');
-
-// GTM preparation uses exactly the existing saved/verified rgg36 gates.
-{
-  const e = env();
-  assert.equal(await send(e, true), false);
-  assert.equal(e.window.dataLayer, undefined);
-  marker(e); await send(e, true); await send(e);
-  assert.deepEqual(normalize(e.window.dataLayer), [
-    { event: "diagnosis_completed", event_id: params.conversion_id, conversion_id: params.conversion_id, x_transport: "direct", measurement_version: 1 },
-    { event: "purchase_verified", event_id: params.conversion_id, conversion_id: params.conversion_id, value: 499, currency: "JPY", x_transport: "direct", measurement_version: 1 },
-  ]);
-  const reload = env({ local: e.local, session: e.session });
-  marker(reload); await send(reload, true); await send(reload);
-  assert.equal(reload.window.dataLayer, undefined);
-}
-for (const historical of [groupKey, sentKey(purchaseIds[0]), sentKey("tw-rezdw-1436v3")]) {
-  const e = env({ local: new Map([[historical, "1"]]) }); await send(e);
-  assert.equal(e.window.dataLayer, undefined, "Do not replay past purchases into GTM");
-}
-{
-  const e = env(); e.window.dataLayer = { push() { throw Error("blocked consumer"); } };
-  assert.equal(await send(e), true, "Failed dataLayer must never interrupt direct X");
-  assert.equal(e.calls.length, 1);
-}
-{
-  const window = {};
-  const measurement = moduleFrom(source("src/lib/verified-conversions.ts"));
-  vm.runInNewContext(measurement.MEASUREMENT_INIT_SCRIPT, { window });
-  assert.deepEqual(normalize(window.dataLayer), [{ event: "measurement_ready", x_transport: "direct", measurement_version: 1 }]);
-}
-console.log("GTM preparation passed: verified gates, stable IDs/amounts, no historical replay, reload dedupe, transport isolation, direct-X continuity when dataLayer fails.");

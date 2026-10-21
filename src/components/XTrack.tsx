@@ -26,7 +26,7 @@ export function XTrack({ eventIds, params, requireDiagnosisCompletion = false }:
         requireDiagnosisCompletion,
         () => active,
       );
-      // Covers a delayed twq loader or a temporarily failing destination.
+      // Retry a temporarily unavailable dataLayer hand-off.
       if (active && !complete && ++attempts < 20) {
         timeout = setTimeout(() => { void send(); }, 250);
       }

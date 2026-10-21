@@ -1,13 +1,11 @@
 export type XPixelConfig = {
   id: string;
-  configureOnce?: boolean;
   locale?: "ko";
   diagnosis: { eventId: string; legacyEventIds?: readonly string[]; includeParams?: boolean };
   purchase: { eventId: string; currency?: string; includeParams?: boolean };
 };
 
-// Add/remove a destination here. Base initialization and both event fan-outs
-// are derived from this same list; keep each account's existing event contract.
+// Keep the verified rgg36 scope and legacy dedupe IDs. GTM owns X delivery.
 export const ACTIVE_X_PIXELS: readonly XPixelConfig[] = [
   {
     id: "rgg36",
@@ -15,15 +13,3 @@ export const ACTIVE_X_PIXELS: readonly XPixelConfig[] = [
     purchase: { eventId: "tw-rgg36-rgg3b", currency: "JPY", includeParams: true },
   },
 ];
-
-// Define twq synchronously before result-page effects. Preserve the existing
-// loader and existing initialization behavior. Locale-scoped pixels also
-// initialize on demand before a verified conversion on an unprefixed route.
-export const X_PIXEL_SCRIPT = `!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');` +
-  ACTIVE_X_PIXELS.map((pixel) => {
-    const call = `window.twq('config',${JSON.stringify(pixel.id)});`;
-    if (!pixel.configureOnce) return call;
-    const guard = JSON.stringify(`__wt_x_${pixel.id}_configured`);
-    const init = `if(!window[${guard}]){${call}window[${guard}]=true;}`;
-    return pixel.locale ? `if(/^\\/${pixel.locale}(?:\\/|$)/.test(window.location.pathname)){${init}}` : init;
-  }).join("");
