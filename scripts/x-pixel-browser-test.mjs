@@ -17,7 +17,7 @@ vm.runInNewContext(configCode, { exports: config });
 const html = `<html><head><script>${config.X_PIXEL_SCRIPT}</script><script>
 window.xConfig=(function(){var exports={};${configCode};return exports})();
 window.pixel=(function(){var exports={};var require=function(n){if(n==='@/lib/x-pixel-config')return window.xConfig;throw Error(n)};${helperCode};return exports})();
-</script></head><body>Offline five-pixel browser checks</body></html>`;
+</script></head><body>Offline seven-pixel browser checks</body></html>`;
 const server = createServer((_request, response) => { response.writeHead(200, { 'Content-Type': 'text/html' }); response.end(html); });
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
@@ -39,7 +39,7 @@ try {
   }
   const a = await page();
   assert.deepEqual(await a.evaluate(() => ({ cookie: document.cookie, local: Object.keys(localStorage), session: Object.keys(sessionStorage) })), { cookie: '', local: [], session: [] });
-  assert.deepEqual(await a.evaluate(() => window.calls), ['rgg36', 'rgob2', 'rgskb', 'rgtx5', 'rhj3s'].map((id) => ['config', id]));
+  assert.deepEqual(await a.evaluate(() => window.calls), ['rgg36', 'rgob2', 'rgskb', 'rgtx5', 'rhj3s', 'rgm4u'].map((id) => ['config', id]));
   const events = (p) => p.evaluate(() => window.calls.filter((c) => c[0] === 'event'));
   const diagnosis = (p, mark = false) => p.evaluate(async (mark) => {
     const x = window.pixel;
@@ -48,8 +48,8 @@ try {
   }, mark);
   assert.equal(await diagnosis(a), false);
   assert.equal(await diagnosis(a, true), true);
-  assert.deepEqual(await events(a), ['tw-rgg36-rgg9b', 'tw-rgob2-rgobn', 'tw-rgskb-rgski', 'tw-rgtx5-rgu2v', 'tw-rhj3s-rhj43'].map((id) => ['event', id, {}]));
-  await diagnosis(a); assert.equal((await events(a)).length, 5);
+  assert.deepEqual(await events(a), ['tw-rgg36-rgg9b', 'tw-rgob2-rgobn', 'tw-rgskb-rgski', 'tw-rgtx5-rgu2v', 'tw-rhj3s-rhj43', 'tw-rgm4u-rgm58'].map((id) => ['event', id, {}]));
+  await diagnosis(a); assert.equal((await events(a)).length, 6);
   await a.reload({ waitUntil: 'load' }); await diagnosis(a); assert.equal((await events(a)).length, 0);
   const purchase = (p, id, currency = 'JPY') => p.evaluate(async ({ id, currency }) => {
     const x = window.pixel;
@@ -58,17 +58,17 @@ try {
   assert.equal(await purchase(a, 'offline-browser-payment'), true);
   assert.deepEqual(await events(a), [
     ['event', 'tw-rgg36-rgg3b', { conversion_id: 'offline-browser-payment', value: 499, currency: 'JPY' }],
-    ...['tw-rgob2-rgobj', 'tw-rgskb-rgskd', 'tw-rgtx5-rgtx9', 'tw-rhj3s-rhj45'].map((id) => ['event', id, {}]),
+    ...['tw-rgob2-rgobj', 'tw-rgskb-rgskd', 'tw-rgtx5-rgtx9', 'tw-rhj3s-rhj45', 'tw-rgm4u-rgm4y'].map((id) => ['event', id, {}]),
   ]);
   await a.reload({ waitUntil: 'load' }); await purchase(a, 'offline-browser-payment'); assert.equal((await events(a)).length, 0);
-  await purchase(a, 'offline-browser-usd', 'USD'); assert.equal((await events(a)).length, 4);
+  await purchase(a, 'offline-browser-usd', 'USD'); assert.equal((await events(a)).length, 5);
   const b = await page(); await a.reload({ waitUntil: 'load' });
   assert.equal(await a.evaluate(() => Boolean(navigator.locks)), true);
   await Promise.all([purchase(a, 'offline-browser-two-tabs'), purchase(b, 'offline-browser-two-tabs')]);
-  assert.equal((await events(a)).length + (await events(b)).length, 5);
+  assert.equal((await events(a)).length + (await events(b)).length, 6);
   assert.equal(loads, 5);
   const ko = await page('/ko');
-  assert.deepEqual(await ko.evaluate(() => window.calls.filter((c) => c[0] === 'config').map((c) => c[1])), ['rgg36', 'rgob2', 'rgskb', 'rgtx5', 'rhj3s', 'rh617']);
+  assert.deepEqual(await ko.evaluate(() => window.calls.filter((c) => c[0] === 'config').map((c) => c[1])), ['rgg36', 'rgob2', 'rgskb', 'rgtx5', 'rhj3s', 'rh617', 'rgm4u']);
   await ko.evaluate(() => window.pixel.markXDiagnosisSaved('browser-ko-result', 'ko'));
   await ko.goto(origin + '/me/common-result', { waitUntil: 'load' });
   assert.equal(await ko.evaluate(() => window.calls.some((c) => c[1] === 'rh617')), false);
@@ -86,5 +86,5 @@ try {
   assert.equal(await ko.evaluate(() => document.querySelectorAll('script[src="https://static.ads-twitter.com/uwt.js"]').length), 1);
   console.log('Korean Chrome checks passed: /ko → shared result URL, correct config before conversion, diagnosis/reload and purchase/cross-tab dedupe; one uwt.js per document.');
   assert.deepEqual(blocked, []);
-  console.log('Fresh Chrome checks passed: empty cookies/storage, 5 configs/diagnosis/JPY purchases, 4 non-JPY purchases, reload and cross-tab dedupe. No external requests sent.');
+  console.log('Fresh Chrome checks passed: empty cookies/storage, 6 global configs/diagnosis/JPY purchases, 5 non-JPY purchases, reload and cross-tab dedupe. No external requests sent.');
 } finally { await browser?.close(); await new Promise((done) => server.close(done)); }
