@@ -12,6 +12,7 @@ import {
 
 type ClaimResponse = {
   checkoutSessionId?: string;
+  checkoutLocale?: string;
   value?: number;
   currency?: string;
   contentIds?: string[];
@@ -196,7 +197,7 @@ export function MetaPurchaseDataLayer({
   return xPurchase?.checkoutSessionId === checkoutSessionId && typeof xPurchase.value === "number" && typeof xPurchase.currency === "string" ? (
     <XTrack
       key={checkoutSessionId}
-      eventIds={xPurchaseEventIds(xPurchase.currency)}
+      eventIds={xPurchaseEventIds(xPurchase.currency, xPurchase.checkoutLocale)}
       params={{ value: xPurchase.value, currency: xPurchase.currency, conversion_id: checkoutSessionId }}
     />
   ) : null;
