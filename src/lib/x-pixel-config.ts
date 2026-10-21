@@ -38,6 +38,12 @@ export const ACTIVE_X_PIXELS: readonly XPixelConfig[] = [
     diagnosis: { eventId: "tw-rh617-rh619" },
     purchase: { eventId: "tw-rh617-rh61c" },
   },
+  {
+    id: "rgm4u",
+    configureOnce: true,
+    diagnosis: { eventId: "tw-rgm4u-rgm58" },
+    purchase: { eventId: "tw-rgm4u-rgm4y" },
+  },
 ];
 
 // Define twq synchronously before result-page effects. Preserve the existing
