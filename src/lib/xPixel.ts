@@ -41,36 +41,6 @@ export type XEventParams = {
   currency?: string;
 };
 
-declare global {
-  interface Window {
-    twq?: {
-      (command: "event", eventId: string, params: Partial<XEventParams>): void;
-      (command: "config", pixelId: string): void;
-    };
-  }
-}
-
-export function trackX(eventId: string, params: Partial<XEventParams>): boolean {
-  if (!eventConfigs.has(eventId) || typeof window === "undefined" || typeof window.twq !== "function") return false;
-  try {
-    const pixel = ACTIVE_X_PIXELS.find((pixel) => pixel.locale &&
-      (pixel.diagnosis.eventId === eventId || pixel.purchase.eventId === eventId));
-    if (pixel) {
-      const guard = `__wt_x_${pixel.id}_configured`;
-      const target = window as unknown as Record<string, unknown>;
-      if (!target[guard]) {
-        window.twq("config", pixel.id);
-        target[guard] = true;
-      }
-    }
-    window.twq("event", eventId, params);
-    return true;
-  } catch {
-    // A blocked or failing advertising tag must not interrupt the result page.
-    return false;
-  }
-}
-
 function wasSent(key: string): boolean {
   if (sentEvents.has(key)) return true;
   for (const storageName of ["sessionStorage", "localStorage"] as const) {
@@ -98,8 +68,8 @@ export function wasXPurchaseSent(checkoutSessionId: string): boolean {
   return typeof window !== "undefined" && wasSent(X_PURCHASE_SENT_PREFIX + checkoutSessionId);
 }
 
-// Preserve each remaining destination's legacy dedupe key and failure retries.
-// Removing an account must not block completion of the active fan-out.
+// Compatibility names/keys preserve direct-X history across the GTM cutover.
+// This module now hands verified actions only to dataLayer; it never calls X.
 export async function trackXEventsOnce(
   eventIds: readonly string[],
   params: XEventParams,
@@ -110,7 +80,7 @@ export async function trackXEventsOnce(
     eventIds.some((eventId) => !eventConfigs.has(eventId))) return false;
 
   const send = (): boolean => {
-    if (!isActive() || typeof window.twq !== "function") return false;
+    if (!isActive()) return false;
     const markerKey = X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     const koreanMarkerKey = X_KO_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
     let savedAt = 0;
@@ -149,13 +119,10 @@ export async function trackXEventsOnce(
       }
     }
     for (let index = 0; index < destinations.length; index++) {
-      const eventParams = eventConfigs.get(destinations[index])?.includeParams ? params : {};
-      if (!destinationSent(index)) {
-        // Prepare GTM without changing direct X delivery or its success contract.
-        pushVerifiedConversion(requireDiagnosisCompletion ? "diagnosis_completed" : "purchase_verified", params);
-      }
-      if (!destinationSent(index) && trackX(destinations[index], eventParams)) {
-        // This records hand-off to twq, not confirmation of receipt by X.
+      if (!destinationSent(index) && pushVerifiedConversion(
+        requireDiagnosisCompletion ? "diagnosis_completed" : "purchase_verified", params,
+      )) {
+        // Keep the old keys to avoid replaying payments sent by direct X.
         rememberSent(keys[index]);
       }
     }

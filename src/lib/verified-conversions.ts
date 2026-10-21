@@ -1,6 +1,6 @@
-// Phase 1 keeps direct X delivery. GTM must require x_transport === "gtm"
-// before sending any X tag, so publishing its tags cannot duplicate direct X.
-export const X_MEASUREMENT_TRANSPORT: "direct" | "gtm" = "direct";
+// Phase 2: publish transport-gated GTM tags BEFORE releasing this version.
+// Stage-1 documents keep x_transport=direct and their direct X delivery.
+export const X_MEASUREMENT_TRANSPORT: "direct" | "gtm" = "gtm";
 export const MEASUREMENT_INIT_SCRIPT = `window.dataLayer=window.dataLayer||[];window.dataLayer.push({event:'measurement_ready',x_transport:'${X_MEASUREMENT_TRANSPORT}',measurement_version:1});`;
 
 type VerifiedEvent = "purchase_verified" | "diagnosis_completed";
@@ -12,7 +12,7 @@ const sent = new Set<string>();
 // put owner/session auth tokens, email, or the raw Checkout URL in dataLayer.
 export function pushVerifiedConversion(event: VerifiedEvent, params: VerifiedParams): boolean {
   if (typeof window === "undefined" || !params.conversion_id) return false;
-  const key = `wt_verified_handoff_v1:${event}:${params.conversion_id}`;
+  const key = `wt_verified_handoff_v1:${X_MEASUREMENT_TRANSPORT}:${event}:${params.conversion_id}`;
   if (sent.has(key)) return true;
   for (const storageName of ["localStorage", "sessionStorage"] as const) {
     try {
@@ -36,7 +36,7 @@ export function pushVerifiedConversion(event: VerifiedEvent, params: VerifiedPar
     }
     return true;
   } catch {
-    // Phase 1 direct X must continue even when a dataLayer consumer throws.
+    // Leave the action unacknowledged so the existing retry can try again.
     return false;
   }
 }

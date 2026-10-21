@@ -1,5 +1,7 @@
 # みち（rgg36）の2段階移行
 
+このブランチは段階2の待機用。本番は段階1（PR #247 / main `d7661f2f` / `dpl_G3vSyK2ZNs9d6oF9qXHqsTpDzj51`）で直接計測を継続する。GTM側の準備と公開の指示があるまで、このPRをマージ・本番公開しない。
+
 ## 段階1：先に単独公開
 
 - 直接初期化・送信するPixelは `rgg36` だけ。
@@ -43,3 +45,38 @@ GTM側で次を準備し、ユーザーの公開指示が出るまで停止状�
 - 実際の購入コンポーネント・署名付きprepare・Stripe検証をstubで実行し、未払い・テスト・不正なSessionを除外。
 - Chromeは新規profile・外部通信遮断でreload、複数タブ、通貨、診断ゲートを確認。
 - ESLint、TypeScript、本番build、commerce契約検証を実行。広告・DBへテストイベントは送らない。
+
+## GTMに用意するCustom HTML（このPRではGTMを変更しない）
+
+全タグに上記の `x_transport == gtm` と本番hostの条件を必ず付ける。DLVはdataLayer変数Version 2として `conversion_id` / `value` / `currency` を参照する。タグ公開後に公開コンテナの条件を確認してから段階2を公開する。
+
+ベース（各イベントタグのセットアップにも使用。once per pageと下記ガードを維持）:
+
+```html
+<script>
+!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+if(!window.__wt_x_rgg36_configured){window.twq('config','rgg36');window.__wt_x_rgg36_configured=true;}
+</script>
+```
+
+診断（Custom Event `diagnosis_completed`）:
+
+```html
+<script>
+window.twq('event','tw-rgg36-rgg9b',{conversion_id:'{{DLV - conversion_id}}'});
+</script>
+```
+
+購入（Custom Event `purchase_verified`、追加条件 `currency == JPY`）:
+
+```html
+<script>
+window.twq('event','tw-rgg36-rgg3b',{
+  conversion_id:'{{DLV - conversion_id}}',
+  value:Number('{{DLV - value}}'),
+  currency:'{{DLV - currency}}'
+});
+</script>
+```
+
+GTMの購入タグを `meta_purchase`・URL一致・ページ表示へ結び直さない。移行中に同時存在する古いdocumentの `x_transport: direct` を対象にしない。ブラウザの既存キーは残し、送信済み注文を再送しない。
