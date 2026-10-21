@@ -14,36 +14,6 @@ export const ACTIVE_X_PIXELS: readonly XPixelConfig[] = [
     diagnosis: { eventId: "tw-rgg36-rgg9b" },
     purchase: { eventId: "tw-rgg36-rgg3b", currency: "JPY", includeParams: true },
   },
-  {
-    id: "rgob2",
-    diagnosis: { eventId: "tw-rgob2-rgobn" },
-    purchase: { eventId: "tw-rgob2-rgobj" },
-  },
-  {
-    id: "rgskb",
-    diagnosis: { eventId: "tw-rgskb-rgski" },
-    purchase: { eventId: "tw-rgskb-rgskd" },
-  },
-  {
-    id: "rgtx5",
-    configureOnce: true,
-    diagnosis: { eventId: "tw-rgtx5-rgu2v", legacyEventIds: ["tw-rgtx5-rgtxe"] },
-    purchase: { eventId: "tw-rgtx5-rgtx9" },
-  },
-  { id: "rhj3s", diagnosis: { eventId: "tw-rhj3s-rhj43" }, purchase: { eventId: "tw-rhj3s-rhj45" } },
-  {
-    id: "rh617",
-    configureOnce: true,
-    locale: "ko",
-    diagnosis: { eventId: "tw-rh617-rh619" },
-    purchase: { eventId: "tw-rh617-rh61c" },
-  },
-  {
-    id: "rgm4u",
-    configureOnce: true,
-    diagnosis: { eventId: "tw-rgm4u-rgm58" },
-    purchase: { eventId: "tw-rgm4u-rgm4y" },
-  },
 ];
 
 // Define twq synchronously before result-page effects. Preserve the existing

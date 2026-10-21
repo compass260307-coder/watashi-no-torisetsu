@@ -1,3 +1,4 @@
+import { pushVerifiedConversion } from "@/lib/verified-conversions";
 import { ACTIVE_X_PIXELS } from "@/lib/x-pixel-config";
 
 export const X_DIAGNOSIS_COMPLETE_EVENT_IDS = ACTIVE_X_PIXELS.filter((pixel) => !pixel.locale).map((pixel) => pixel.diagnosis.eventId);
@@ -26,8 +27,7 @@ const eventConfigs = new Map(ACTIVE_X_PIXELS.flatMap((pixel) => [
   [pixel.purchase.eventId, pixel.purchase],
 ] as const));
 
-// rgg36 remains JPY-only. The other active accounts follow every verified
-// settlement with empty payloads, exactly as before.
+// Preserve michi/rgg36: diagnosis in every locale; purchase only in JPY.
 export function xPurchaseEventIds(currency: string, checkoutLocale?: string): readonly string[] {
   return ACTIVE_X_PIXELS
     .filter((pixel) => (!pixel.locale || pixel.locale === checkoutLocale) &&
@@ -150,6 +150,10 @@ export async function trackXEventsOnce(
     }
     for (let index = 0; index < destinations.length; index++) {
       const eventParams = eventConfigs.get(destinations[index])?.includeParams ? params : {};
+      if (!destinationSent(index)) {
+        // Prepare GTM without changing direct X delivery or its success contract.
+        pushVerifiedConversion(requireDiagnosisCompletion ? "diagnosis_completed" : "purchase_verified", params);
+      }
       if (!destinationSent(index) && trackX(destinations[index], eventParams)) {
         // This records hand-off to twq, not confirmation of receipt by X.
         rememberSent(keys[index]);
