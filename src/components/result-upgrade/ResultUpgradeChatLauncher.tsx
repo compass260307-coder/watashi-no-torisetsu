@@ -1,5 +1,6 @@
 "use client";
 
+import { LineResultUpgradeLink } from "./LineResultUpgradeLink";
 import { usePathname } from "next/navigation";
 import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import dynamic from "next/dynamic";
@@ -82,6 +83,10 @@ export function ResultUpgradeChatLauncher({
       (previousFocus ?? trigger)?.focus();
     };
   }, [open]);
+
+  if (locale === "ja" && !premiumPaid) {
+    return <LineResultUpgradeLink ownerToken={ownerToken} preview={preview} className={className} style={style}>{children}</LineResultUpgradeLink>;
+  }
 
   return (
     <>

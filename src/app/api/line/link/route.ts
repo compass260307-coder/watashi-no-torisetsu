@@ -14,6 +14,8 @@ import {
   consumeLineLinkCode,
   lineLinkSuccessMessage,
 } from "@/lib/line-linking";
+import { startLineUpgradeChat } from "@/lib/line-upgrade-chat";
+import { verifyLineUpgradeIntent } from "@/lib/line-upgrade-intent";
 import { checkOrigin } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
@@ -73,6 +75,11 @@ export async function POST(request: NextRequest) {
       { error: "invalid_request", message: "連携情報が正しくありません。" },
       400,
     );
+  }
+
+  const upgradeChat = parsed.value.intentToken !== undefined;
+  if (upgradeChat && !verifyLineUpgradeIntent(code, parsed.value.intentToken)) {
+    return json({ error: "invalid_upgrade_intent", message: "アップグレードの連携期限が切れました。結果ページのカードから開き直してください。" }, 400);
   }
 
   const rateLimit = await consumeRateLimit(request, {
@@ -195,7 +202,12 @@ export async function POST(request: NextRequest) {
       },
       ownerToken: result.user.ownerToken,
     });
+  }
 
+  if (upgradeChat) {
+    const messages = await startLineUpgradeChat(lineUserId, result.user.id);
+    await pushLineMessages(lineUserId, messages);
+  } else if (newlyLinked) {
     const chatEnabled = lineAliceChatEnabled();
     await pushLineMessages(lineUserId, [
       {
@@ -224,6 +236,7 @@ export async function POST(request: NextRequest) {
 
   return json({
     linked: true,
+    upgradeChat,
     switched: result.switched,
     alreadyLinked: result.status === "already_linked",
   });

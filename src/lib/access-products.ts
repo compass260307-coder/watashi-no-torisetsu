@@ -294,6 +294,11 @@ export const PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY = 800;
 // 2026-09-21に明示承認された、診断結果購入者向けの結果アップグレード。
 // 他のpremium_bundle互換導線と混ぜず、paywall_sourceが専用導線のときだけ使う。
 export const RESULT_UPGRADE_PRICE_JPY = 899;
+// 2026-10-21: LINE限定。クーポン適用後の請求額899円を維持する。
+export const LINE_RESULT_UPGRADE_LIST_PRICE_JPY = 1398;
+export const LINE_RESULT_UPGRADE_COUPON_JPY = 499;
+export const LINE_RESULT_UPGRADE_OFFER_VERSION =
+  "ja_line_result_upgrade_v2_1398_coupon499_20261021" as const;
 export const RESULT_UPGRADE_OFFER_VERSION =
   "result_upgrade_v1_jpy_899" as const;
 

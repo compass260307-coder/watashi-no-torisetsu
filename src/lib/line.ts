@@ -135,7 +135,7 @@ export function verifyLineSignature(
   return timingSafeEqual(received, expected);
 }
 
-async function callLineApi(path: string, body: unknown): Promise<boolean> {
+async function callLineApi(path: string, body: unknown, retryKey?: string): Promise<boolean> {
   const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) {
     console.error("[line] LINE_CHANNEL_ACCESS_TOKEN is not configured");
@@ -147,9 +147,13 @@ async function callLineApi(path: string, body: unknown): Promise<boolean> {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      ...(retryKey ? { "X-Line-Retry-Key": retryKey } : {}),
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
   });
+
+  if (retryKey && response.status === 409 && response.headers.get("x-line-accepted-request-id")) return true;
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -187,8 +191,9 @@ export async function replyLineMessages(
 export async function pushLineMessages(
   lineUserId: string,
   messages: LineOutgoingMessage[],
+  retryKey?: string,
 ): Promise<boolean> {
-  return callLineApi("/v2/bot/message/push", { to: lineUserId, messages });
+  return callLineApi("/v2/bot/message/push", { to: lineUserId, messages }, retryKey);
 }
 
 /**

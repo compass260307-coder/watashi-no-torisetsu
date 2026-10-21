@@ -19,6 +19,7 @@ import {
   buildLineMissionsPageUrl,
   buildLinePlusPageUrl,
 } from "@/lib/line-plus";
+import { buildLineResultUpgradeUrl } from "@/lib/line-result-upgrade";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
   }
   const accessToken = body.accessToken ?? "";
   const dest =
+    body.dest === "result-upgrade" ||
     body.dest === "plus" ||
     body.dest === "missions" ||
     body.dest === "menu" ||
@@ -104,7 +106,9 @@ export async function POST(request: NextRequest) {
   }
 
   let url: string;
-  if (dest === "plus") {
+  if (dest === "result-upgrade") {
+    url = buildLineResultUpgradeUrl(lineUserId, account.user_id);
+  } else if (dest === "plus") {
     url = buildLinePlusPageUrl(lineUserId);
   } else if (dest === "missions") {
     url = buildLineMissionsPageUrl(lineUserId);

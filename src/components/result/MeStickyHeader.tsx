@@ -100,7 +100,7 @@ interface MeStickyHeaderProps {
   reportCta?: React.ReactNode;
   /** バーの丸ボタン (シェア/友達診断) の配色。/me の完全版課金後はアップグレード
    *  ピルがゴールドになるため "gold" で隣のトーンを揃える (2026-08-26)。既定 indigo。 */
-  circleTone?: "indigo" | "gold";
+  circleTone?: "indigo" | "gold" | "line";
   /** 結果グループ。指定時は circleTone より優先してCTA・丸ボタンをタイプ色にする。 */
   group?: ThirtyTwoGroup;
   /**
@@ -455,7 +455,9 @@ export function MeStickyHeader({
           qrCodeLabel: "友達診断への招待QRコード",
           qrCodeDescription: "友達のスマホでスキャンしてもらってね",
         };
-  const actionTone = group ? resultActionColorsForGroup(group) : null;
+  const actionTone = circleTone === "line"
+    ? { accent: "#06C755", border: "#B9EACD", shadow: "#04933F" }
+    : group ? resultActionColorsForGroup(group) : null;
   const circleButtonStyle: CSSProperties | undefined = actionTone
     ? {
         borderColor: actionTone.border,

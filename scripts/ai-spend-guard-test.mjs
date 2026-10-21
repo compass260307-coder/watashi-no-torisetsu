@@ -64,7 +64,7 @@ async function routeCase(row, { force = false, allowed = true, dbError = null, s
     '@/lib/api-security': { consumeRateLimit: async () => { rateCalls++; return { allowed, retryAfterSeconds: 90 }; }, readJsonObject: async r => ({ ok: true, value: await r.json() }) },
     '@/lib/entitlements': { hasPremiumBundleAccess: async () => purchased },
     '@/lib/origin-check': { checkOrigin: () => ({ ok: true }) },
-    '@/lib/session': { getSession: async () => session ? { id: 'owner' } : null },
+    '@/lib/line-result-upgrade': { getResultUpgradeSession: async () => session ? { id: 'owner' } : null },
     '@/lib/supabase-server': { supabaseAdmin: db },
     '@/lib/ai-spend-guard': guard,
   });
@@ -88,7 +88,7 @@ assert.equal((await routeCase(blockedRow, { session: false })).status, 401);
 assert.equal((await routeCase(blockedRow, { purchased: false })).status, 403);
 const statusRoute = compile('src/app/api/result-upgrade/status/route.ts', {
   'next/server': { NextResponse }, '@/lib/entitlements': { hasFullAccess: async () => true, hasPremiumBundleAccess: async () => true },
-  '@/lib/session': { getSession: async () => ({ id: 'owner' }) },
+  '@/lib/line-result-upgrade': { getResultUpgradeSession: async () => ({ id: 'owner' }) },
   '@/lib/result-upgrade-server': { loadResultUpgradeForUser: async () => blockedRow },
   '@/lib/result-upgrade': { isResultUpgradeReady: () => false }, '@/lib/ai-spend-guard': guard,
 });
@@ -97,8 +97,8 @@ assert.equal(status.state, 'blocked'); assert.equal(status.code, 'budget_exceede
 assert.equal('last_error' in status, false);
 console.log('PASS: route guards, legacy high-attempt recovery, no allowance spent on blocked/ready/in-progress, safe status response.');
 
-async function workerCase({ force = false, updatedAt = oldDate, failure = null } = {}) {
-  const row = { ...blockedRow, user_id: 'owner', updated_at: updatedAt, answers: ['one'], source_character_path: '/character.webp',
+async function workerCase({ force = false, updatedAt = oldDate, failure = null, answers = ["one", "two", "three", "four", "five"] } = {}) {
+  const row = { ...blockedRow, user_id: 'owner', updated_at: updatedAt, answers, source_character_path: '/character.webp',
     personalized_type_name: 'saved type', personalized_intro: 'saved intro', text_model: 'saved-text-model', reading: { sections: [{ body: 'saved body' }] }, character_storage_path: null, image_model: null };
   const updates = []; let aiCalls = 0; let uploads = 0;
   const db = { from() { let update; return {
@@ -115,11 +115,15 @@ async function workerCase({ force = false, updatedAt = oldDate, failure = null }
     '@/lib/ai-spend-guard': guard, '@/lib/ai-usage.mjs': { aiSdkUsage: () => ({}), gatewayGenerationId: () => null, recordAiUsage: async () => {} },
     '@/i18n/ko/result': { KO_RESULT_TYPES: {} }, '@/lib/site-url': { resolveSiteUrl: () => 'https://local.test' },
     '@/lib/supabase-server': { supabaseAdmin: db }, '@/lib/thirty-two-types': { allThirtyTwoTypeIds: () => [], thirtyTwoEssence: () => '' },
-    '@/lib/sixteen-types': { sixteenTypes: {} }, '@/lib/result-upgrade': { resultUpgradeQuestions: () => ['question'] },
+    '@/lib/sixteen-types': { sixteenTypes: {} }, '@/lib/result-upgrade': { ...compile('src/lib/result-upgrade.ts'), resultUpgradeQuestions: () => ['question'] },
   }, { fetch: async () => new Response(new Uint8Array([1]), { headers: { 'content-type': 'image/webp' } }) });
   const result = await worker.generateResultUpgradeForUser('owner', { force });
   return { result, updates, aiCalls, uploads };
 }
+const partial = await workerCase({ force: true, answers: ["one"] });
+assert.equal(partial.result.skipped, "incomplete_answers");
+assert.equal(partial.aiCalls, 0);
+assert.equal(partial.updates.length, 0);
 assert.equal((await workerCase()).aiCalls, 0);
 assert.equal((await workerCase({ force: true, updatedAt: new Date().toISOString() })).aiCalls, 0);
 const completed = await workerCase({ force: true });

@@ -54,6 +54,7 @@ import {
 import {
   hoshiyomiChatCreditTarget,
   KO_RESULT_UPGRADE_OFFER_VERSION,
+  RESULT_UPGRADE_OFFER_VERSION,
   purchaseIncludesDestinyFeatures,
   purchaseIncludesFriendFeatures,
   purchaseIncludesHoshiyomiChat,
@@ -64,6 +65,7 @@ import {
   enqueueServerPurchaseConversions,
   type ServerPurchaseConversionInput,
 } from "@/lib/server-purchase-conversions";
+import { enqueueLineResultUpgrade, isLineResultUpgradePurchase, processLineResultUpgrade } from "@/lib/line-upgrade-fulfillment";
 import { pushLineMessages, quickReplies } from "@/lib/line";
 import { lineFreeTotalLimit } from "@/lib/line-alice";
 import {
@@ -97,7 +99,7 @@ function purchaseLocale(session: Stripe.Checkout.Session): PurchaseLocale {
 
 export const runtime = "nodejs";
 // AI 生成 (after) で最大 100 秒程度 + 余裕
-export const maxDuration = 150;
+export const maxDuration = 300;
 
 async function queueServerPurchaseConversions(
   input: ServerPurchaseConversionInput,
@@ -856,7 +858,10 @@ async function sendDetailedReportEmailBestEffort(
     }
 
     await sendDetailedReportEmail({
-      resultUpgrade: session.metadata?.offer_version === KO_RESULT_UPGRADE_OFFER_VERSION,
+      resultUpgrade: session.metadata?.offer_version === KO_RESULT_UPGRADE_OFFER_VERSION ||
+        session.metadata?.offer_version === RESULT_UPGRADE_OFFER_VERSION ||
+        isLineResultUpgradePurchase(session),
+      salesChannel: session.metadata?.locale === "ja" && session.metadata?.sales_channel === "line" ? "line" : undefined,
       to,
       ownerToken: row.owner_token,
       ownerName: row.display_name,
@@ -1767,13 +1772,16 @@ async function handleCheckoutPaid(
     }
     await persistPurchaseLocale(session, paymentUserId);
     await recordPurchaseCompletedEvent(session, paymentUserId, paidAt);
+    // Persist before acknowledging Stripe; the existing scheduled worker recovers interruptions.
+    const fulfillmentId = await enqueueLineResultUpgrade(session, paymentUserId);
+    if (fulfillmentId) after(() => processLineResultUpgrade(fulfillmentId));
     await queueServerPurchaseConversions({
       session,
       userId: paymentUserId,
       product: "premium_bundle",
       paidAt,
     });
-    after(() =>
+    if (!isLineResultUpgradePurchase(session)) after(() =>
       triggerUnmeiGeneration(
         paymentUserId,
         purchaseLocale(session),

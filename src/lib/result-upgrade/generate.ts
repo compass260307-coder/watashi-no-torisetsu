@@ -28,6 +28,7 @@ import {
 } from "@/lib/sixteen-types";
 import {
   resultUpgradeQuestions,
+  normalizeResultUpgradeAnswers,
   type ResultUpgradeReading,
   type ResultUpgradeRow,
 } from "@/lib/result-upgrade";
@@ -327,6 +328,7 @@ export async function generateResultUpgradeForUser(
   if (error || !data) return { error: "answers not found" };
   const row = data as ResultUpgradeRow;
   if (row.state === "ready") return { ok: true, skipped: "ready" };
+  if (!normalizeResultUpgradeAnswers(row.answers)) return { skipped: "incomplete_answers" };
   const spendBlock = resultUpgradeSpendBlock(row);
   if (spendBlock && (!options.force || !spendBlock.canRetry)) {
     return { skipped: "spend_blocked", attempts: row.attempts };

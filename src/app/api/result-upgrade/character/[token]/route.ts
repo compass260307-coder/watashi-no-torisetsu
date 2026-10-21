@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isSafeOpaqueToken } from "@/lib/api-security";
-import { getSession } from "@/lib/session";
+import { hasPremiumBundleAccess } from "@/lib/entitlements";
+import { getResultUpgradeSession } from "@/lib/line-result-upgrade";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { isResultUpgradeReady, type ResultUpgradeRow } from "@/lib/result-upgrade";
 
@@ -18,19 +19,20 @@ export async function GET(
     .eq("owner_token", token)
     .maybeSingle();
   if (!user) return new NextResponse(null, { status: 404 });
-  const session = await getSession(request as never);
-  if (!session || session.id !== user.id) {
+  const session = await getResultUpgradeSession(request);
+  if (!session || session.id !== user.id || !(await hasPremiumBundleAccess(session.id))) {
     return new NextResponse(null, { status: 404 });
   }
   const { data } = await supabaseAdmin
     .from("result_upgrades")
     // isResultUpgradeReady の判定と画像ダウンロードに必要な列だけ取得する
     .select(
-      "state, personalized_type_name, personalized_intro, reading, character_storage_path",
+      "state, locale, personalized_type_name, personalized_intro, reading, character_storage_path",
     )
     .eq("user_id", user.id)
     .maybeSingle();
   const row = data as ResultUpgradeRow | null;
+  if (new URL(request.url).searchParams.get("channel") === "line" && row?.locale !== "ja") return new NextResponse(null, { status: 404 });
   if (!isResultUpgradeReady(row)) return new NextResponse(null, { status: 404 });
 
   const { data: image, error } = await supabaseAdmin.storage

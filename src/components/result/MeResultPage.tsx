@@ -110,7 +110,6 @@ import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import { ResultUpgradeGenerationWatcher } from "@/components/result-upgrade/ResultUpgradeGenerationWatcher";
 import { ResultUpgradeChatLauncher } from "@/components/result-upgrade/ResultUpgradeChatLauncher";
-import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import { ShareDiagnosisLink } from "@/components/share/ShareDiagnosisLink";
 import type {
@@ -494,11 +493,12 @@ async function MeResultPageContent({
     fullAccessPaid &&
     destinyFeaturesPaid &&
     (!premiumBundlePaid || !resultUpgrade);
+  const isLineUpgradeOffer = locale === "ja" && showResultUpgradePlaceholder && !premiumBundlePaid;
   const resultUpgradeOwnerName = user.display_name?.trim() || (isKorean ? "회원님" : "あなた");
   const resultUpgradeCtaLabel = premiumBundlePaid
     ? (isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える")
-    : (isKorean ? "결과 업그레이드" : "結果をアップグレード");
-  const unmeiPurchaseProduct = isKorean
+    : (isKorean ? "결과 업그레이드" : "LINEでアップグレード");
+  const unmeiPurchaseProduct = isKorean || locale === "ja"
     ? "full_access"
     : fullAccessPaid
       ? "premium_bundle"
@@ -580,11 +580,11 @@ async function MeResultPageContent({
       }
     >
       <div
-        className="animate-premium-glow rounded-[23px] border border-[#F1DDAA] px-5 py-10 shadow-[0_8px_24px_rgba(46,46,92,0.055)] md:px-14 md:py-14"
+        className={`rounded-[23px] border px-5 py-10 md:px-14 md:py-14 ${isLineUpgradeOffer ? "border-[#B9EACD] shadow-[0_8px_32px_rgba(6,199,85,0.14)]" : "animate-premium-glow border-[#F1DDAA] shadow-[0_8px_24px_rgba(46,46,92,0.055)]"}`}
         style={{ backgroundColor: "#FFFFFF" }}
       >
         <div className="mx-auto mb-8 max-w-[800px] text-center md:mb-10">
-          <span className="mb-4 inline-flex rounded-full bg-[#FFF6DF] px-4 py-2 text-[12px] font-black tracking-[0.08em] text-[#9A6A24] md:text-[13px]">
+          <span className={`mb-4 inline-flex rounded-full px-4 py-2 text-[12px] font-black tracking-[0.08em] md:text-[13px] ${isLineUpgradeOffer ? "bg-[#E9F9EF] text-[#007A33]" : "bg-[#FFF6DF] text-[#9A6A24]"}`}>
             {isEnglish
               ? fullAccessPaid
                 ? "Unlocked with Everything"
@@ -607,7 +607,7 @@ async function MeResultPageContent({
               : isIndonesian
                 ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
                 : showResultUpgradePlaceholder
-                  ? "Aliceの質問に答えて、あなた専用の結果をアップグレードしよう"
+                  ? "LINEで質問に答えて、あなた専用の結果をアップグレードしよう"
                   : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
         </div>
@@ -748,8 +748,8 @@ async function MeResultPageContent({
                 style={{
                   clipPath:
                     "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-                  backgroundColor: feature.iconBg,
-                  color: feature.iconColor,
+                  backgroundColor: isLineUpgradeOffer ? "#E9F9EF" : feature.iconBg,
+                  color: isLineUpgradeOffer ? "#059E44" : feature.iconColor,
                 }}
               >
                 {feature.icon}
@@ -774,7 +774,7 @@ async function MeResultPageContent({
               initialState={resultUpgrade?.state}
               premiumPaid={premiumBundlePaid}
               preview={Boolean(previewType)}
-              className="inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full bg-[#9A6A24] px-9 py-4 text-[16px] font-bold text-white shadow-[0_7px_18px_rgba(154,106,36,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)] md:min-w-[320px] md:text-[18px]"
+              className={`inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full px-9 py-4 text-[16px] font-bold text-white transition-all hover:-translate-y-0.5 md:min-w-[320px] md:text-[18px] ${isLineUpgradeOffer ? "bg-[#06C755] shadow-[0_7px_18px_rgba(6,199,85,0.28)] hover:bg-[#05B34C] hover:shadow-[0_10px_22px_rgba(6,199,85,0.32)]" : "bg-[#9A6A24] shadow-[0_7px_18px_rgba(154,106,36,0.28)] hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)]"}`}
             >
               {resultUpgradeCtaLabel}
               <span aria-hidden="true" className="text-xl font-medium">
@@ -1123,7 +1123,6 @@ async function MeResultPageContent({
           ? `${localePrefix}/tako/${encodeURIComponent(token)}`
           : undefined
       }
-      lineAddHref={resultUpgradeReady && !isKorean ? "#line-alice-link" : undefined}
       ownerToken={acquisition || publicPreview ? undefined : token}
       inviteCode={acquisition?.inviteCode ?? (publicPreview ? undefined : inviteCode)}
       qrImageSrc={isOwnedResult ? preferFaceImage(v3Image) : null}
@@ -1184,7 +1183,7 @@ async function MeResultPageContent({
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
-      circleTone={showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
+      circleTone={isLineUpgradeOffer ? "line" : showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
       group={resultGroup}
       reportCta={
         showResultUpgradePlaceholder ? (
@@ -1196,7 +1195,7 @@ async function MeResultPageContent({
             premiumPaid={premiumBundlePaid}
             preview={Boolean(previewType)}
             className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white transition-transform hover:translate-y-0.5 active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
-            style={resultActionButtonStyle}
+            style={isLineUpgradeOffer ? { backgroundColor: "#06C755", boxShadow: "0 4px 0 #04933F" } : resultActionButtonStyle}
           >
             <svg
               width="15"
@@ -1877,28 +1876,6 @@ async function MeResultPageContent({
                 <span aria-hidden="true">→</span>
               </Link>
             </section>
-          )}
-
-        {/* 結果アップグレード特典: 専用タイプ・自由回答・鑑定書をLINEのAliceへ引き継ぐ。 */}
-        {resultUpgradeReady &&
-          locale === "ja" &&
-          !acquisition &&
-          !publicPreview &&
-          (isOwnedResult ||
-            (process.env.NODE_ENV === "development" && previewType !== null)) && (
-            <div className="relative left-1/2 w-screen -translate-x-1/2 bg-white px-4 pb-16 pt-8 md:px-8 md:pb-20 md:pt-10">
-              <div
-                id="line-alice-link"
-                className="mx-auto max-w-[1080px] scroll-mt-28"
-              >
-                <LineAliceLinkCard
-                  variant="personalized"
-                  ownerToken={previewType ? undefined : token}
-                  personalizedTypeName={resultUpgrade.personalized_type_name}
-                  trackingSource="result_upgrade"
-                />
-              </div>
-            </div>
           )}
 
         {/* ===== 獲得CTA (/share 経由 + 公開タイプ別LP): ボタンのみ (2026-07-26 指示でカード/コピーは撤去) ===== */}

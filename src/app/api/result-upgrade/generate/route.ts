@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
 import { hasPremiumBundleAccess } from "@/lib/entitlements";
 import { checkOrigin } from "@/lib/origin-check";
-import { getSession } from "@/lib/session";
+import { getResultUpgradeSession } from "@/lib/line-result-upgrade";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import type { ResultUpgradeRow } from "@/lib/result-upgrade";
 import { resultUpgradeSpendBlock } from "@/lib/ai-spend-guard";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
-  const session = await getSession(request as never);
+  const session = await getResultUpgradeSession(request);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!(await hasPremiumBundleAccess(session.id))) {
     return NextResponse.json({ state: "unpurchased" }, { status: 403 });
@@ -28,17 +28,29 @@ export async function POST(request: Request) {
     }
     force = body.value.force === true;
   }
+  if (new URL(request.url).searchParams.get("channel") === "line") {
+    const limit = await consumeRateLimit(request, { scope: "line-upgrade-resume", identifier: session.id, limit: 6, windowSeconds: 3600 });
+    if (!limit.allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    after(async () => {
+      const { resumeLineResultUpgradeForUser } = await import("@/lib/line-upgrade-fulfillment");
+      await resumeLineResultUpgradeForUser(session.id, force);
+    });
+    return NextResponse.json({ ok: true, state: "pending" });
+  }
   const { data, error } = await supabaseAdmin
     .from("result_upgrades")
-    .select("state, attempts, last_error, updated_at, generation_started_at")
+    .select("state, locale, attempts, last_error, updated_at, generation_started_at")
     .eq("user_id", session.id)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Generation state unavailable" }, { status: 503 });
   const existing = data as Pick<ResultUpgradeRow,
-    "state" | "attempts" | "last_error" | "updated_at" | "generation_started_at"
+    "state" | "locale" | "attempts" | "last_error" | "updated_at" | "generation_started_at"
   > | null;
   if (!existing) {
     return NextResponse.json({ state: "no_answers" }, { status: 409 });
+  }
+  if (new URL(request.url).searchParams.get("channel") === "line" && existing.locale !== "ja") {
+    return NextResponse.json({ error: "upgrade locale mismatch" }, { status: 403 });
   }
   if (existing.state === "ready") {
     return NextResponse.json({ ok: true, state: "ready", skipped: true });

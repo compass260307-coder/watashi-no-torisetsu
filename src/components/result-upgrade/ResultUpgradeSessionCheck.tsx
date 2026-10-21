@@ -8,10 +8,11 @@ type Props = {
   ownerToken: string;
   locale?: Extract<Parameters<typeof LoginCard>[0]["locale"], "ja" | "ko">;
   onVerified: () => void;
+  salesChannel?: "web" | "line";
 };
 
 /** Keep the chat's answers in memory while the user restores their session. */
-export function ResultUpgradeSessionCheck({ ownerToken, locale = "ja", onVerified }: Props) {
+export function ResultUpgradeSessionCheck({ ownerToken, locale = "ja", onVerified, salesChannel = "web" }: Props) {
   const copy = RESULT_UPGRADE_SESSION_COPY[locale];
   const [state, setState] = useState<"checking" | "login" | "mismatch" | "error">("checking");
   const [retry, setRetry] = useState(0);
@@ -24,7 +25,7 @@ export function ResultUpgradeSessionCheck({ ownerToken, locale = "ja", onVerifie
     let active = true;
     async function check() {
       try {
-        const response = await fetch("/api/session/owner", {
+        const response = await fetch(salesChannel === "line" && locale === "ja" ? "/api/line/result-upgrade/session" : "/api/session/owner", {
           cache: "no-store",
           credentials: "same-origin",
           signal: controller.signal,
@@ -47,18 +48,18 @@ export function ResultUpgradeSessionCheck({ ownerToken, locale = "ja", onVerifie
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [ownerToken, retry]);
+  }, [ownerToken, retry, salesChannel, locale]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto rounded-[28px] bg-[#F5F4FB] p-5 text-[#2E2E5C]">
       <p className="text-[18px] font-black">Alice</p>
       <p role="status" className="mt-3 text-[14px] font-bold leading-[1.8]">
-        {state === "checking" ? copy.checking : state === "error" ? copy.checkError : state === "mismatch" ? copy.mismatch : copy.loginRequired}
+        {state === "checking" ? copy.checking : state === "error" ? copy.checkError : state === "mismatch" ? copy.mismatch : salesChannel === "line" ? "LINEの本人確認の有効期限が切れています。LINEメニューから開き直してください。" : copy.loginRequired}
       </p>
       {(state === "login" || state === "mismatch") && (
         <>
-          <p className="mt-2 text-[13px] leading-[1.8]">{copy.keepAnswers}</p>
-          <div className="mx-auto mt-4 w-full max-w-[440px]"><LoginCard locale={locale} /></div>
+          <p className="mt-2 text-[13px] leading-[1.8]">{salesChannel === "line" ? "入力した回答は保存されています。LINEメニューで本人確認して、続きから進めてください。" : copy.keepAnswers}</p>
+          <div className="mx-auto mt-4 w-full max-w-[440px]">{salesChannel === "line" ? <a href="/line/menu" className="font-bold underline">LINEメニューから開き直す</a> : <LoginCard locale={locale} />}</div>
         </>
       )}
       {state !== "checking" && (
