@@ -86,6 +86,7 @@ import {
   type LineTarotCard,
 } from "@/lib/line-tarot";
 import { resolveSiteUrl } from "@/lib/site-url";
+import { answerLineUpgradeChat, cancelLineUpgradeChat, hasLineUpgradeChat, startLineUpgradeChat } from "@/lib/line-upgrade-chat";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -271,6 +272,10 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
   });
 
   if (event.replyToken) {
+    if (existing?.user_id && await hasLineUpgradeChat(lineUserId, existing.user_id)) {
+      await replyLineMessages(event.replyToken, await startLineUpgradeChat(lineUserId, existing.user_id));
+      return;
+    }
     const linked = Boolean(existing?.user_id);
     const linkedUser = existing?.user_id
       ? await loadLineAliceUser(existing.user_id)
@@ -362,8 +367,16 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
     if (command !== "aisho") {
       await deleteLineAishoSession(lineUserId);
     }
+    if (command !== "upgrade") await cancelLineUpgradeChat(lineUserId, account.user_id);
     await handleLineCommand(command, lineUserId, replyToken, account.user_id);
     return;
+  }
+  if (isText && rawText) {
+    const messages = await answerLineUpgradeChat({ lineUserId, userId: account.user_id, text: rawText, messageId: event.message?.id });
+    if (messages !== null) {
+      if (messages.length) await replyLineMessages(replyToken, messages);
+      return;
+    }
   }
   if (
     isText &&
@@ -844,6 +857,7 @@ async function handleAishoSessionMessage(
 // リッチメニューのメッセージ型ボタンは、このキーワードをそのままトークに送る。
 // 旧メニューのキーワードも互換のため残す
 type LineCommand =
+  | "upgrade"
   | "plus"
   | "result"
   | "help"
@@ -859,6 +873,7 @@ type LineCommand =
 
 function matchLineCommand(text: string): LineCommand | null {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, "");
+  if (["結果アップグレード", "専用鑑定書", "専用キャラクター"].includes(normalized)) return "upgrade";
   if (["プラン", "plus", "aliceplus", "アリスプラス"].includes(normalized)) {
     return "plus";
   }
@@ -1186,6 +1201,7 @@ async function handleLineCommand(
           "💕 相性占い — 生年月日からふたりの相性を見る",
           "📖 自分のタイプ — 診断結果を見返す",
           "🎯 ミッション — 友達を招待してプレゼント",
+          "✨ 結果アップグレード — 専用キャラと鑑定書",
           "",
           "もっと遊びたい人は、Alice Plusも試してみてくださいね。",
         ].join("\n"),
@@ -1196,6 +1212,11 @@ async function handleLineCommand(
 
   // ここから下は連携済み前提 (呼び出し側で保証)。型ガードとして早期return
   if (!userId) return;
+
+  if (command === "upgrade") {
+    await replyLineMessages(replyToken, await startLineUpgradeChat(lineUserId, userId));
+    return;
+  }
 
   if (command === "aisho") {
     await handleAishoCommand(lineUserId, replyToken, userId);

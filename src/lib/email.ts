@@ -18,6 +18,7 @@ import {
   PREMIUM_BUNDLE_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_KRW,
   KO_RESULT_UPGRADE_PRICE_KRW,
+  RESULT_UPGRADE_PRICE_JPY,
   SELF_REPORT_PRICE_JPY,
   SELF_REPORT_PRICE_KRW,
   type AccessProduct,
@@ -263,6 +264,7 @@ export async function sendTrisetsuCompleteEmail(
 
 interface SendDetailedReportArgs {
   resultUpgrade?: boolean;
+  salesChannel?: "line";
   to: string;
   ownerToken: string;
   ownerName?: string | null;
@@ -316,7 +318,9 @@ export async function sendDetailedReportEmail(
         : locale === "id"
           ? "/id"
           : "";
-  const meUrl = `${SITE_URL}${prefix}/me/${token}`;
+  const meUrl = locale === "ja" && args.salesChannel === "line"
+    ? `https://line.me/R/oaMessage/%40867domoo/?${encodeURIComponent("結果アップグレード")}`
+    : `${SITE_URL}${prefix}/me/${token}`;
   const pdfUrl =
     locale === "en" || locale === "id"
       ? `${SITE_URL}${prefix}/report/${token}/pdf`
@@ -339,7 +343,7 @@ export async function sendDetailedReportEmail(
         : product === "self_report"
         ? `【${SITE_NAME}】学生向けプランを解放しました`
         : product === "premium_bundle"
-          ? `【${SITE_NAME}】全部入りを解放しました`
+          ? args.resultUpgrade ? `【${SITE_NAME}】結果アップグレードのご購入について` : `【${SITE_NAME}】全部入りを解放しました`
           : `【${SITE_NAME}】完全版レポートをお届けします`;
 
   const upgradeText = locale === "ko" && product === "premium_bundle" && args.resultUpgrade
@@ -354,6 +358,16 @@ export async function sendDetailedReportEmail(
         "판매자: 후타미 류노스케 (일본)",
         `${SITE_URL}/ko/legal/commerce`,
       ].join("\n\n")
+    : locale === "ja" && product === "premium_bundle" && args.resultUpgrade
+    ? [
+        greetingName ? `${greetingName}さん、ご購入ありがとうございます。` : "ご購入ありがとうございます。",
+        `結果アップグレード：税込${args.purchaseAmountMinor ?? RESULT_UPGRADE_PRICE_JPY}円（買い切り）。Alice Plusの定期課金とは別のお支払いです。`,
+        "保存した5つの自由回答から、専用キャラクター、専用タイプ名、自己診断結果、5章の専用鑑定書を作成します。",
+        "LINEメニューの「結果アップグレード」から生成状況と結果を確認できます。途中で止まった場合も再購入せずに続きから進めてください。",
+        meUrl,
+        "お支払いから30日以内の全額返金、お問い合わせ：support@watashi-torisetsu.com",
+        `${SITE_URL}/legal/commerce`,
+      ].join("\n\n")
     : null;
   try {
     const result = await resend.emails.send({
@@ -361,7 +375,7 @@ export async function sendDetailedReportEmail(
       to: args.to,
       subject,
       html: upgradeText
-        ? `<div style="font-family:sans-serif;line-height:1.8;white-space:pre-wrap">${escapeHtml(upgradeText)}<p><a href="${escapeHtml(meUrl)}">나만의 결과 보기</a></p></div>`
+        ? `<div style="font-family:sans-serif;line-height:1.8;white-space:pre-wrap">${escapeHtml(upgradeText)}<p><a href="${escapeHtml(meUrl)}">${locale === "ja" ? "LINEで専用の結果を受け取る" : "나만의 결과 보기"}</a></p></div>`
         : locale === "ko"
           ? renderDetailedReportHtmlKo({
               pdfUrl,

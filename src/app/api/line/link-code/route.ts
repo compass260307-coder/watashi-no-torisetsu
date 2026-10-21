@@ -9,6 +9,8 @@ import {
   isSafeOpaqueToken,
   readJsonObject,
 } from "@/lib/api-security";
+import { hasFullAccess } from "@/lib/entitlements";
+import { signLineUpgradeIntent } from "@/lib/line-upgrade-intent";
 import { hashLineLinkCode } from "@/lib/line";
 import { checkOrigin } from "@/lib/origin-check";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
@@ -90,6 +92,7 @@ export async function POST(request: NextRequest) {
 
   let kind: CodeKind = "manual";
   let ownerToken: unknown;
+  let upgradeIntent = false;
   if (request.body) {
     const parsed = await readJsonObject(request, 1024);
     if (!parsed.ok) {
@@ -101,6 +104,9 @@ export async function POST(request: NextRequest) {
       }
       kind = parsed.value.kind;
     }
+    if (parsed.value.intent !== undefined && parsed.value.intent !== "result_upgrade") return json({ error: "invalid_intent" }, 400);
+    upgradeIntent = parsed.value.intent === "result_upgrade";
+    if (upgradeIntent && kind !== "liff") return json({ error: "invalid_kind" }, 400);
     ownerToken = parsed.value.owner_token;
   }
 
@@ -111,6 +117,8 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return json({ error: "login_required" }, 401);
   }
+
+  if (upgradeIntent && !(await hasFullAccess(user.id))) return json({ error: "full_access_required" }, 403);
 
   const { data: diagnosis, error: diagnosisError } = await supabaseAdmin
     .from("users")
@@ -189,7 +197,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!error) {
-      return json({ code, expires_at: expiresAt, kind });
+      return json({ code, expires_at: expiresAt, kind, ...(upgradeIntent ? { intent_token: signLineUpgradeIntent(code) } : {}) });
     }
     // 23505 = 有効コードの衝突。別の乱数で再試行
     if (error.code !== "23505") {

@@ -15,6 +15,8 @@ function read(relativePath) {
 const commerceCatalog = existsSync(path.join(repositoryRoot, "docs/COMMERCE_CATALOG.md"))
   ? read("docs/COMMERCE_CATALOG.md")
   : null;
+const catalogIncludes = (value) => commerceCatalog === null || commerceCatalog.includes(value);
+const devResultUpgradeCheckout = read("src/app/api/dev/result-upgrade-checkout/route.ts");
 const accessProducts = read("src/lib/access-products.ts");
 const checkoutRoute = read(
   "src/app/api/checkout/create-full-access-session/route.ts",
@@ -48,10 +50,22 @@ const resultUpgradeChat = read(
 );
 
 const contractChecks = [
+  { label: "LINE result upgrade is JPY 1398 minus a JPY 499 coupon, billing JPY 899",
+    valid: accessProducts.includes("export const LINE_RESULT_UPGRADE_LIST_PRICE_JPY = 1398;") &&
+      accessProducts.includes("export const LINE_RESULT_UPGRADE_COUPON_JPY = 499;") &&
+      checkoutRoute.includes("if (lineUpgradeCheckout && lineUpgradeCouponId)") &&
+      checkoutRoute.includes("unit_amount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY") &&
+      catalogIncludes("`ja_line_result_upgrade_v2_1398_coupon499_20261021`") },
+  { label: "Japanese new result upgrades require verified LINE identity and preserve JPY 899",
+    valid: checkoutRoute.includes('const lineUpgradeCheckout = checkoutLocale === "ja" && product === "premium_bundle"') &&
+      checkoutRoute.includes('body.sales_channel === "line" ? await getLineResultUpgradeSession() : null') &&
+      checkoutRoute.includes('if (lineUpgradeCheckout && (!lineBuyer || body.paywall_source !== "result_upgrade_after_answers"))') &&
+      checkoutRoute.includes('lineUpgradeCheckout ? "/line/result-upgrade?paid=1') &&
+      catalogIncludes("`ja_line_result_upgrade_v1_20261021`") },
   { label: "Korean purchaser-only upgrade freezes KRW 8,900 and its offer version",
     valid: accessProducts.includes("export const KO_RESULT_UPGRADE_PRICE_KRW = 8_900;") && accessProducts.includes('"result_upgrade_v1_krw_8900" as const') && (commerceCatalog === null || commerceCatalog.includes("| 購入者限定 | `premium_bundle` | 결과 업그레이드 | ₩8,900 |")) },
   { label: "Korean result upgrade requires saved answers and owner login",
-    valid: checkoutRoute.includes('upgrade?.locale !== "ko" || !normalizeResultUpgradeAnswers(upgrade?.answers)') && checkoutRoute.includes("session.id !== userId") && checkoutRoute.includes('!(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")') },
+    valid: checkoutRoute.includes('upgrade?.locale !== checkoutLocale || !normalizeResultUpgradeAnswers(upgrade?.answers)') && checkoutRoute.includes("session.id !== userId") && checkoutRoute.includes('!(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")') },
   {
     label: "Japanese full access reference price is JPY 1,290",
     valid: accessProducts.includes(
@@ -307,6 +321,20 @@ const contractChecks = [
       resultUpgradeCopy.includes('"cta": "結果をアップグレード"') && resultUpgradeChat.includes("{copy.cta}") &&
       !resultUpgradeChat.includes("¥800で結果をアップグレード") &&
       !resultUpgradeChat.includes("¥899で結果をアップグレード"),
+  },
+  {
+    label: "Development result upgrade checkout uses the shared JPY 899 price",
+    valid:
+      devResultUpgradeCheckout.includes('from "@/lib/access-products"') &&
+      devResultUpgradeCheckout.includes("unit_amount: linePreview ? LINE_RESULT_UPGRADE_LIST_PRICE_JPY : RESULT_UPGRADE_PRICE_JPY") &&
+      devResultUpgradeCheckout.includes("amount_off: LINE_RESULT_UPGRADE_COUPON_JPY") &&
+      devResultUpgradeCheckout.includes('startsWith("sk_test_")'),
+  },
+  {
+    label: "Commerce catalog records the JPY 899 result upgrade",
+    valid:
+      catalogIncludes("| 購入者限定 | `premium_bundle` | 結果アップグレード | ¥899 |") &&
+      catalogIncludes("`result_upgrade_v1_jpy_899`"),
   },
 ];
 

@@ -8,17 +8,20 @@ export type ResultUpgradeSpendPauseStatus = {
 /** One generation kick per mount/manual retry, followed by bounded status reads. */
 export function watchResultUpgrade({
   force,
+  channel = "web",
   onReady,
   onFailed,
   onBlocked,
   checkBeforeKick = false,
 }: {
   force: boolean;
+  channel?: "web" | "line";
   onReady: () => void;
   onFailed: () => void;
   onBlocked?: (status: ResultUpgradeSpendPauseStatus) => void;
   checkBeforeKick?: boolean;
 }): () => void {
+  const channelQuery = channel === "line" ? "?channel=line" : "";
   let kicked = false;
   let failures = 0;
   let delay = 2_000;
@@ -34,7 +37,7 @@ export function watchResultUpgrade({
       if (!deadline) deadline = Date.now() + 5 * 60_000;
       if (checkBeforeKick) {
         try {
-          const response = await fetch("/api/result-upgrade/status", { cache: "no-store", signal });
+          const response = await fetch(`/api/result-upgrade/status${channelQuery}`, { cache: "no-store", signal });
           if (signal.aborted) return false;
           if (isTerminalPollResponse(response)) { onFailed(); return false; }
           if (!response.ok) throw new Error("Status unavailable");
@@ -60,7 +63,7 @@ export function watchResultUpgrade({
       }
       kicked = true;
       try {
-        const response = await fetch("/api/result-upgrade/generate", {
+        const response = await fetch(`/api/result-upgrade/generate${channelQuery}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ force }),
@@ -88,7 +91,7 @@ export function watchResultUpgrade({
     if (document.hidden) return 0;
 
     try {
-      const response = await fetch("/api/result-upgrade/status", {
+      const response = await fetch(`/api/result-upgrade/status${channelQuery}`, {
         cache: "no-store",
         signal,
       });

@@ -17,6 +17,8 @@ export default function BottomNavPaywallPreviewPage() {
           下の「運命」のロックを押すと、
           <br />
           実際の課金カードが開きます。
+          <br />
+          カードを閉じると、LINE登録ポップが開きます。
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3 text-left">
           <div className="rounded-2xl bg-[#F1F1FF] px-4 py-3">
@@ -33,7 +35,7 @@ export default function BottomNavPaywallPreviewPage() {
           </div>
         </div>
         <p className="mt-5 rounded-2xl bg-[#F7F8FC] px-4 py-3 text-[11px] font-bold leading-[1.7] text-[#7A8498]">
-          プレビュー中は計測・権限確認・Stripe決済を実行しません。
+          プレビュー中は計測・権限確認・Stripe決済・LINE登録を実行しません。
         </p>
       </section>
     </main>

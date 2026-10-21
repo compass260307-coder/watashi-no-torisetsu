@@ -567,7 +567,7 @@ export function SelfAccessPlanCarousel({
   const plans = useMemo(
     () => {
       const selectedPlans = products
-        ? allPlans.filter((plan) => products.includes(plan.product))
+        ? allPlans.filter((plan) => locale === "ja" && !previewJapaneseThreeCourse ? plan.product === "full_access" : products.includes(plan.product))
         : allPlans;
       return isSingleOffer
         ? products
@@ -575,7 +575,7 @@ export function SelfAccessPlanCarousel({
           : allPlans.filter((plan) => plan.product === "full_access")
         : selectedPlans;
     },
-    [allPlans, isSingleOffer, products],
+    [allPlans, isSingleOffer, products, locale, previewJapaneseThreeCourse],
   );
   const defaultPlanIndex = Math.max(
     0,

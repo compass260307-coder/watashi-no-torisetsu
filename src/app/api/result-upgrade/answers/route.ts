@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
-import { hasFullAccess } from "@/lib/entitlements";
+import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { checkOrigin } from "@/lib/origin-check";
 import {
+  LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH,
   normalizeResultUpgradeAnswers,
   type ResultUpgradeRow,
 } from "@/lib/result-upgrade";
@@ -10,7 +11,7 @@ import {
   isMissingResultUpgradeTable,
   resolveResultUpgradeBase,
 } from "@/lib/result-upgrade-server";
-import { getSession } from "@/lib/session";
+import { getResultUpgradeSession } from "@/lib/line-result-upgrade";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
-  const session = await getSession(request as never);
+  const session = await getResultUpgradeSession(request);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!(await hasFullAccess(session.id))) {
     return NextResponse.json({ error: "full access required" }, { status: 403 });
@@ -55,14 +56,18 @@ export async function POST(request: Request) {
   if (locale !== "ja" && locale !== "ko") {
     return NextResponse.json({ error: "invalid locale" }, { status: 400 });
   }
+  const lineFlow = new URL(request.url).searchParams.get("channel") === "line";
+  if ((lineFlow && locale !== "ja") || (locale === "ja" && !lineFlow && !(await hasPremiumBundleAccess(session.id)))) {
+    return NextResponse.json({ error: "line_channel_required" }, { status: 403 });
+  }
   const answers = normalizeResultUpgradeAnswers(body.value.answers);
-  if (!answers) {
+  if (!answers || (lineFlow && answers.some(answer => answer.length > LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH))) {
     return NextResponse.json({ error: "invalid answers" }, { status: 400 });
   }
 
   const { data: existing, error: existingError } = await supabaseAdmin
     .from("result_upgrades")
-    .select("state")
+    .select("state, locale")
     .eq("user_id", session.id)
     .maybeSingle();
   if (isMissingResultUpgradeTable(existingError)) {
@@ -73,6 +78,9 @@ export async function POST(request: Request) {
   }
   if (existingError) {
     return NextResponse.json({ error: "load failed" }, { status: 500 });
+  }
+  if (lineFlow && existing && existing.locale !== "ja") {
+    return NextResponse.json({ error: "upgrade locale mismatch" }, { status: 409 });
   }
   if ((existing as Pick<ResultUpgradeRow, "state"> | null)?.state === "ready") {
     return NextResponse.json({ error: "already generated" }, { status: 409 });

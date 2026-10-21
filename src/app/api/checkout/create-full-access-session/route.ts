@@ -32,6 +32,7 @@ import {
 } from "@/lib/api-security";
 import { normalizeResultUpgradeAnswers } from "@/lib/result-upgrade";
 import { getSession } from "@/lib/session";
+import { getLineResultUpgradeSession } from "@/lib/line-result-upgrade";
 import {
   getAccessPurchaseEntitlements,
   hasFullAccess,
@@ -65,6 +66,9 @@ import {
   PREMIUM_BUNDLE_PRICE_JPY,
   KO_RESULT_UPGRADE_OFFER_VERSION,
   KO_RESULT_UPGRADE_PRICE_KRW,
+  LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
+  LINE_RESULT_UPGRADE_COUPON_JPY,
+  LINE_RESULT_UPGRADE_OFFER_VERSION,
   RESULT_UPGRADE_OFFER_VERSION,
   RESULT_UPGRADE_PRICE_JPY,
   SELF_REPORT_LIST_PRICE_JPY,
@@ -431,8 +435,9 @@ async function resolveAnchorCoupon(
 async function resolveJapaneseCourseCoupon(
   stripe: StripeClient,
   product: AccessProduct,
+  override?: { listAmount: number; saleAmount: number; couponId: string; couponName: string },
 ): Promise<string | null> {
-  const pricing = JA_COURSE_CHECKOUT_PRICING[product];
+  const pricing = override ?? JA_COURSE_CHECKOUT_PRICING[product];
   const discountAmount = pricing.listAmount - pricing.saleAmount;
   const isExpectedCoupon = (
     coupon: Awaited<ReturnType<StripeClient["coupons"]["retrieve"]>>,
@@ -452,7 +457,7 @@ async function resolveJapaneseCourseCoupon(
         amount_off: discountAmount,
         currency: "jpy",
         duration: "once",
-        name: JA_COURSE_COUPON_NAME,
+        name: override?.couponName ?? JA_COURSE_COUPON_NAME,
       });
       return created.id;
     } catch {
@@ -630,6 +635,14 @@ export async function POST(request: NextRequest) {
   // 不正値は完全版へフォールバックせず、誤課金防止で拒否する。
   const requestedProduct: AccessProduct = body.product ?? "full_access";
   const product: AccessProduct = requestedProduct;
+  const lineUpgradeCheckout = checkoutLocale === "ja" && product === "premium_bundle";
+  const lineBuyer = lineUpgradeCheckout && body.sales_channel === "line" ? await getLineResultUpgradeSession() : null;
+  if (lineUpgradeCheckout && (!lineBuyer || body.paywall_source !== "result_upgrade_after_answers")) {
+    return NextResponse.json({ error: "line_channel_required", code: "line_channel_required" }, { status: 403 });
+  }
+  if (lineUpgradeCheckout && !lineBuyer?.lineUserId) {
+    return NextResponse.json({ error: "line_recipient_required" }, { status: 403 });
+  }
   if ((checkoutLocale === "en" || checkoutLocale === "id") && product !== "full_access") {
     return NextResponse.json(
       { error: "product_not_offered", code: "product_not_offered" },
@@ -778,8 +791,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let buyer: Buyer | null = null;
-  if (bodyToken) {
+  let buyer: Buyer | null = lineBuyer;
+  if (lineBuyer && bodyToken && bodyToken !== lineBuyer.owner_token) {
+    return NextResponse.json({ error: "result owner mismatch" }, { status: 403 });
+  }
+  if (bodyToken && !lineBuyer) {
     const { data } = await supabaseAdmin
       .from("users")
       .select("id, email, owner_token")
@@ -854,9 +870,9 @@ export async function POST(request: NextRequest) {
       { status: 409 },
     );
   }
-  // Korean upgrade answers are private: require the logged-in owner and five saved answers.
-  if (isResultUpgradeCheckout && checkoutLocale === "ko") {
-    const session = await getSession(request);
+  // Saved answers are private: require the logged-in owner and five answers in the purchase language.
+  if ((isResultUpgradeCheckout && checkoutLocale === "ko") || lineUpgradeCheckout) {
+    const session = lineUpgradeCheckout ? lineBuyer : await getSession(request);
     if (!session || session.id !== userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -868,14 +884,16 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: "result upgrade database is not ready" }, { status: 503 });
     }
-    if (upgrade?.locale !== "ko" || !normalizeResultUpgradeAnswers(upgrade?.answers)) {
+    if (upgrade?.locale !== checkoutLocale || !normalizeResultUpgradeAnswers(upgrade?.answers)) {
       return NextResponse.json({ error: "result_upgrade_answers_required", code: "result_upgrade_answers_required" }, { status: 409 });
     }
   }
   const resultUpgradePrice = checkoutLocale === "ko"
     ? KO_RESULT_UPGRADE_PRICE_KRW
     : RESULT_UPGRADE_PRICE_JPY;
-  const resultUpgradeOfferVersion = checkoutLocale === "ko"
+  const resultUpgradeOfferVersion = lineUpgradeCheckout
+    ? LINE_RESULT_UPGRADE_OFFER_VERSION
+    : checkoutLocale === "ko"
     ? KO_RESULT_UPGRADE_OFFER_VERSION
     : RESULT_UPGRADE_OFFER_VERSION;
   const effectivePrice = isResultUpgradeCheckout
@@ -953,7 +971,7 @@ export async function POST(request: NextRequest) {
       : null;
   })();
   const successPath =
-    returnTo === "aisho"
+    lineUpgradeCheckout ? "/line/result-upgrade?paid=1&session_id={CHECKOUT_SESSION_ID}" : returnTo === "aisho"
       ? `${aishoPath}?${aishoPairQuery ? `${aishoPairQuery}&` : ""}paid=1&session_id={CHECKOUT_SESSION_ID}`
       : returnTo === "hoshiyomi"
         ? `${localePrefix}/hoshiyomi?paid=1&session_id={CHECKOUT_SESSION_ID}`
@@ -970,7 +988,7 @@ export async function POST(request: NextRequest) {
   // キャンセルは購入前にいたページへ戻す。/aisho はゲスト (owner_token なし) でも
   // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
   const cancelBasePath =
-    returnTo === "aisho"
+    lineUpgradeCheckout ? "/line/result-upgrade" : returnTo === "aisho"
       ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
       : returnTo === "hoshiyomi"
         ? `${localePrefix}/hoshiyomi`
@@ -1024,7 +1042,7 @@ export async function POST(request: NextRequest) {
     tax_code?: string;
   } = {
     name:
-      isResultUpgradeCheckout && checkoutLocale === "ko"
+      lineUpgradeCheckout ? "結果アップグレード（LINE限定）" : isResultUpgradeCheckout && checkoutLocale === "ko"
         ? "결과 업그레이드"
         : upgradeFrom !== "none"
         ? checkoutLocale === "ko"
@@ -1035,7 +1053,9 @@ export async function POST(request: NextRequest) {
               ? `Upgrade ke ${checkoutCopy.productName}`
             : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
-    description: isResultUpgradeCheckout && checkoutLocale === "ko"
+    description: lineUpgradeCheckout
+      ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
+      : isResultUpgradeCheckout && checkoutLocale === "ko"
       ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
       : checkoutCopy.productDescription,
     ...(productImage ? { images: [productImage] } : {}),
@@ -1044,7 +1064,9 @@ export async function POST(request: NextRequest) {
       : {}),
   };
 
-  const productSubmitMessage = isResultUpgradeCheckout && checkoutLocale === "ko"
+  const productSubmitMessage = lineUpgradeCheckout
+    ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。Alice Plusの定期課金とは別購入で、LINEメニューから結果を受け取れます。30日間の返金保証。`
+    : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
     : checkoutCopy.submitMessage;
   const submitMessage = checkoutLocale === "ko"
@@ -1079,7 +1101,28 @@ export async function POST(request: NextRequest) {
       ? await getCouponIdCached(stripe, checkoutLocale)
       : null;
 
-  if (isStandardJapaneseCoursePurchase && japaneseCourseCouponId) {
+  const lineUpgradeCouponId = lineUpgradeCheckout
+    ? await resolveJapaneseCourseCoupon(stripe, product, {
+        listAmount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
+        saleAmount: RESULT_UPGRADE_PRICE_JPY,
+        couponId: `wt-line-result-upgrade-off${LINE_RESULT_UPGRADE_COUPON_JPY}-jpy`,
+        couponName: "LINE結果アップグレードクーポン",
+      })
+    : null;
+
+  if (lineUpgradeCheckout && lineUpgradeCouponId) {
+    lineItems = [{
+      price_data: {
+        currency: "jpy",
+        unit_amount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
+        tax_behavior: "inclusive",
+        product_data: productData,
+      },
+      quantity: 1,
+    }];
+    discounts = [{ coupon: lineUpgradeCouponId }];
+    chargedAmount = RESULT_UPGRADE_PRICE_JPY;
+  } else if (isStandardJapaneseCoursePurchase && japaneseCourseCouponId) {
     const pricing = JA_COURSE_CHECKOUT_PRICING[product];
     lineItems = [
       {
@@ -1214,7 +1257,7 @@ export async function POST(request: NextRequest) {
           source: paywallSource,
           paywall_version: paywallVersion,
           ...(isResultUpgradeCheckout
-            ? { offer_version: resultUpgradeOfferVersion }
+            ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
             : {}),
           placement: paywallPlacement,
           return_to: returnTo,
@@ -1342,7 +1385,7 @@ export async function POST(request: NextRequest) {
         paywall_source: paywallSource,
         paywall_version: paywallVersion,
         ...(isResultUpgradeCheckout
-          ? { offer_version: resultUpgradeOfferVersion }
+          ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
           : {}),
         paywall_placement: paywallPlacement,
         return_to: returnTo,
@@ -1400,7 +1443,7 @@ export async function POST(request: NextRequest) {
         source: paywallSource,
         paywall_version: paywallVersion,
         ...(isResultUpgradeCheckout
-          ? { offer_version: resultUpgradeOfferVersion }
+          ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
           : {}),
         placement: paywallPlacement,
         return_to: returnTo,

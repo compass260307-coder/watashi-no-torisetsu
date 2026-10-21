@@ -3,6 +3,7 @@ import LegalDocument from "@/components/LegalDocument";
 import {
   FULL_ACCESS_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
+  RESULT_UPGRADE_PRICE_JPY,
 } from "@/lib/access-products";
 import { LINE_PLUS_PLANS } from "@/lib/line-plus-products";
 import { localizedAlternates } from "@/lib/locale-seo";
@@ -68,6 +69,7 @@ export default function CommercePage() {
             完全版: {FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}
             円（税込・買い切り。自己診断のロックされた9セクション、16ページ以上の専用電子書籍、2人目以降の友達診断結果、何度でも更新できる他己分析PDF、相性診断、運命の設計図、AI占い師「Alice」とのチャット相談30回分、3種類のタロット占いを含む）
           </li>
+          <li>結果アップグレード（LINE限定・完全版購入者向け）: {RESULT_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}円（税込・買い切り。5つの自由回答をもとに専用キャラクター、専用タイプ名、自己診断結果、5章の専用鑑定書を作成。Alice Plusの月額・年額料金とは別の追加購入です）</li>
           <li>
             全部入り・買い切り: {PREMIUM_BUNDLE_PRICE_JPY.toLocaleString("ja-JP")}
             円（税込。旧購入からのアップグレード互換用。現在の完全版と同等の内容を含む）

@@ -48,6 +48,7 @@ async function checkout({ full = true, selfReport = false, premium = false, purc
     'node:crypto': { randomUUID },
     '@/lib/api-security': { consumeRateLimit: async () => ({ allowed: true }), isSafeOpaqueToken: () => true,
       readJsonObject: async request => ({ ok: true, value: await request.json() }) },
+    '@/lib/line-result-upgrade': { getLineResultUpgradeSession: async () => null },
     '@/lib/session': { getSession: async () => session ? { ...buyer, id: sessionId } : null },
     '@/lib/entitlements': { hasFullAccess: async () => full, hasSelfReportAccess: async () => selfReport,
       hasPremiumBundleAccess: async () => premium, getAccessPurchaseEntitlements: async () => ({ full: purchaseFull, selfReport, premiumBundle: premium }) },
@@ -109,16 +110,9 @@ assert.equal(full.calls[0].metadata.offer_version, undefined);
 assert.match(full.cookie, /wt_checkout_commerce_locale=ko/);
 assert.match(full.calls[0].custom_text.submit.message, /\/ko\/legal\/commerce/);
 const ja = await checkout({ locale: 'ja', paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });
-assert.equal(ja.data.amount, 899);
-assert.equal(ja.calls[0].metadata.offer_version, policy.RESULT_UPGRADE_OFFER_VERSION);
-assert.match(ja.cookie, /Max-Age=0/);
-assert(!ja.calls[0].custom_text.submit?.message?.includes('/ko/legal/commerce'));
-console.log('Korean result upgrade regression passed: fixed 8,900 KRW checkout, purchaser/owner/answer restrictions, Korean copy, and unchanged KR/JP pricing.');
-
-const legacyJa = await checkout({ locale: 'ja', purchaseFull: false, paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });
-assert.equal(legacyJa.data.amount, 899);
-assert.equal(legacyJa.calls[0].line_items[0].price_data.unit_amount, 899);
-assert.equal(legacyJa.calls[0].discounts, undefined);
+assert.equal(ja.status, 403);
+assert.equal(ja.calls.length, 0, 'Japanese upgrades are purchased only through verified LINE access');
+console.log('Korean result upgrade regression passed; Japanese new upgrades require LINE.');
 
 const messages = [];
 const email = compile('src/lib/email.ts', {
@@ -150,7 +144,7 @@ async function saveAnswers({ ownerToken = 'owner-token', locale = 'ko', values =
     '@/lib/api-security': { consumeRateLimit: async () => ({ allowed: true }), readJsonObject: async request => ({ ok: true, value: await request.json() }) },
     '@/lib/entitlements': { hasFullAccess: async () => fullAccess },
     '@/lib/origin-check': { checkOrigin: () => ({ ok: true }) },
-    '@/lib/session': { getSession: async () => loggedIn ? session : null },
+    '@/lib/line-result-upgrade': { getResultUpgradeSession: async () => loggedIn ? session : null },
     '@/lib/result-upgrade': answersLib,
     '@/lib/result-upgrade-server': { isMissingResultUpgradeTable: () => false, resolveResultUpgradeBase: async () => ({ sourceTypeId: 'sparkle-dolphin__N', sourceCharacterPath: '/existing.webp' }) },
     '@/lib/supabase-server': { supabaseAdmin: { from() { return { select() { return this; }, eq() { return this; }, maybeSingle: async () => ({ data: state ? { state } : null }), upsert: async value => { saves.push(value); return { error: null }; } }; } } },

@@ -108,3 +108,6 @@ export function isResultUpgradeReady(
       row.reading?.sections?.length,
   );
 }
+
+// LINEで新しく受け付ける回答。既存Web購入者の回答制限は維持する。
+export const LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH = 50;

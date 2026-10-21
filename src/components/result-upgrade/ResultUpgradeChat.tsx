@@ -1,6 +1,6 @@
 "use client";
 
-import { KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
+import { LINE_RESULT_UPGRADE_LIST_PRICE_JPY, LINE_RESULT_UPGRADE_COUPON_JPY, RESULT_UPGRADE_PRICE_JPY, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
 import { localePath } from "@/i18n/config";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { FullAccessCta } from "@/components/result/FullAccessCta";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { ResultUpgradeSpendPause } from "./ResultUpgradeSpendPause";
 import { watchResultUpgrade, type ResultUpgradeSpendPauseStatus } from "@/lib/result-upgrade-polling";
-import { RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
+import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
 import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
 import { ResultUpgradeSessionCheck } from "./ResultUpgradeSessionCheck";
@@ -22,6 +22,7 @@ type Props = {
   premiumPaid: boolean;
   preview?: boolean;
   modal?: boolean;
+  salesChannel?: "web" | "line";
 };
 
 type Screen = "questions" | "saving" | "purchase" | "generating" | "failed" | "blocked";
@@ -39,7 +40,11 @@ export function ResultUpgradeChat({
   premiumPaid,
   preview = false,
   modal = false,
+  salesChannel = "web",
 }: Props) {
+  const lineFlow = locale === "ja" && salesChannel === "line";
+  const maxAnswerLength = lineFlow ? LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH : 500;
+  const channelQuery = lineFlow ? "?channel=line" : "";
   const router = useRouter();
   const copy = RESULT_UPGRADE_COPY[locale];
   const sessionCopy = RESULT_UPGRADE_SESSION_COPY[locale];
@@ -86,21 +91,22 @@ export function ResultUpgradeChat({
   useEffect(() => {
     if (!watchGeneration) return;
     return watchResultUpgrade({
+      channel: lineFlow ? "line" : "web",
       force: retryKey > 0,
       checkBeforeKick: true,
       onBlocked: (status) => { setSpendPause(status); setScreen("blocked"); },
       onReady: () => router.replace(
-        ownerToken
+        lineFlow ? "/line/result-upgrade/reading" : ownerToken
           ? `${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`
           : `${localePrefix}/result-upgrade/reading`,
       ),
       onFailed: () => setScreen("failed"),
     });
-  }, [watchGeneration, retryKey, router, ownerToken, localePrefix]);
+  }, [watchGeneration, retryKey, router, ownerToken, localePrefix, lineFlow]);
 
   async function submitAnswer() {
     const answer = draft.trim();
-    if (!answer || answer.length > 500 || answerSubmittingRef.current) return;
+    if (!answer || answer.length > maxAnswerLength || answerSubmittingRef.current) return;
     answerSubmittingRef.current = true;
     const nextAnswers = [...answers, answer];
     setAnswers(nextAnswers);
@@ -132,7 +138,7 @@ export function ResultUpgradeChat({
     }
 
     try {
-      const response = await fetch("/api/result-upgrade/answers", {
+      const response = await fetch(`/api/result-upgrade/answers${channelQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: nextAnswers, locale, ownerToken }),
@@ -145,7 +151,7 @@ export function ResultUpgradeChat({
         }
         if (response.status === 409 && data?.error === "already generated") {
           clearResultUpgradeDraft(ownerToken);
-          router.replace(`${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`);
+          router.replace(lineFlow ? "/line/result-upgrade/reading" : `${localePrefix}/me/${encodeURIComponent(ownerToken)}?upgraded=1`);
           return;
         }
         throw new Error(response.status === 403 ? sessionCopy.forbidden
@@ -172,7 +178,7 @@ export function ResultUpgradeChat({
   }
 
   if (!sessionVerified) {
-    return <ResultUpgradeSessionCheck ownerToken={ownerToken} locale={locale} onVerified={() => {
+    return <ResultUpgradeSessionCheck salesChannel={salesChannel} ownerToken={ownerToken} locale={locale} onVerified={() => {
       if (!draftRestoredRef.current) {
         draftRestoredRef.current = true;
         if (!hasSavedAnswers) {
@@ -249,6 +255,11 @@ export function ResultUpgradeChat({
               <p className="mt-3 text-[14px] leading-[1.8] text-[#66657B]">
                 {copy.purchaseBody}
               </p>
+              {lineFlow && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
+                <p>通常価格 <s>¥{LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}</s></p>
+                <p>クーポン適用 −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
+                <p className="text-xl font-black text-[#2E2E5C]">お支払い ¥{RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）</p>
+              </div>}
               {locale === "ko" && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} · 1회 결제</p>}
               <div className="mt-6">
                 {preview && locale === "ko" ? (
@@ -273,6 +284,7 @@ export function ResultUpgradeChat({
                     ownerToken={ownerToken}
                     locale={locale}
                     product="premium_bundle"
+                    salesChannel={salesChannel}
                     returnTo="me"
                     source="result_upgrade_after_answers"
                     accentColor="#A87322"
@@ -339,7 +351,7 @@ export function ResultUpgradeChat({
                   void submitAnswer();
                 }
               }}
-              maxLength={500}
+              maxLength={maxAnswerLength}
               rows={2}
               disabled={aliceTyping}
               placeholder={copy.placeholder}

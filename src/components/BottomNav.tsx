@@ -24,6 +24,7 @@ import {
   ME_ATTENTION_PENDING_KEY,
 } from "@/lib/me-attention";
 import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
+import PaywallLineExitModal from "@/components/result/PaywallLineExitModal";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
@@ -39,6 +40,7 @@ import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -252,6 +254,7 @@ export function BottomNav() {
     useState<DiagnosisLockTarget | null>(null);
   const [courseLockTarget, setCourseLockTarget] =
     useState<CourseLockTarget | null>(null);
+  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [coursePaywallSource, setCoursePaywallSource] = useState<string | null>(
     null,
   );
@@ -417,9 +420,19 @@ export function BottomNav() {
   const hasTarotNavigationAccess =
     isPaidNavigationPreview || (resolvedCourseAccess?.tarot ?? false);
 
-  const handleCoursePaywallExitAttempt = () => {
+  const closeLineExitFlow = useCallback(() => {
+    setLineExitOpen(false);
     setCourseLockTarget(null);
     setCoursePaywallSource(null);
+  }, []);
+
+  const handleCoursePaywallExitAttempt = () => {
+    // 以前の日本語版の設置位置だけに、通常のLINE登録を復元する。
+    if (courseLockTarget && !isKorean && !isEnglish && !isIndonesian) {
+      setLineExitOpen(true);
+      return;
+    }
+    closeLineExitFlow();
   };
 
   // 現在地判定込みのタブ定義。pathname / 動的URL が変わった時だけ再計算 (常駐再レンダ軽量化)。
@@ -883,7 +896,7 @@ export function BottomNav() {
         locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
         target={diagnosisLockTarget ?? "friend"}
       />
-      {courseLockTarget ? (
+      {courseLockTarget && !lineExitOpen ? (
         <PaywallOverlay
           ownerToken={ownerToken ?? undefined}
           // 結果ページ外の共通ナビにはキャラ画像がないため、画像を明示しないと
@@ -923,6 +936,15 @@ export function BottomNav() {
           }
           previewMode={isCoursePaywallPreview}
           onClose={handleCoursePaywallExitAttempt}
+        />
+      ) : null}
+      {lineExitOpen ? (
+        <PaywallLineExitModal
+          ownerToken={ownerToken ?? undefined}
+          onClose={closeLineExitFlow}
+          variant={courseLockTarget === "hoshiyomi" ? "conversation" : "fortune"}
+          trackingSource={courseLockTarget === "hoshiyomi" ? "bottom_nav_alice_paywall_exit" : "bottom_nav_unmei_paywall_exit"}
+          previewMode={isCoursePaywallPreview}
         />
       ) : null}
     </nav>

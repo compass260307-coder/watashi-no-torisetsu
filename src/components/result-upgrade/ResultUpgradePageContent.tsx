@@ -1,18 +1,23 @@
 import { localePath } from "@/i18n/config";
 import type { ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { redirect } from "next/navigation";
+import { LineUpgradeReceipt } from "@/components/result-upgrade/LineUpgradeReceipt";
+import { LineUpgradePaymentPending } from "@/components/result-upgrade/LineUpgradePaymentPending";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import { ResultUpgradeChat } from "@/components/result-upgrade/ResultUpgradeChat";
 import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
+import { LINE_UPGRADE_TALK_URL } from "@/lib/line-upgrade-dialogue";
+import { getLineResultUpgradeSession } from "@/lib/line-result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 
-export default async function ResultUpgradePageContent({ locale = "ja" }: { locale?: ResultUpgradeLocale }) {
+export default async function ResultUpgradePageContent({ locale = "ja", salesChannel = "web", paymentReturned = false }: { locale?: ResultUpgradeLocale; salesChannel?: "web" | "line"; paymentReturned?: boolean }) {
   const prefix = localePath(locale, "/") === "/" ? "" : localePath(locale, "/");
-  const session = await getSession();
-  if (!session) redirect(`${prefix}/diagnosis`);
+  const lineFlow = locale === "ja" && salesChannel === "line";
+  const session = lineFlow ? await getLineResultUpgradeSession() : await getSession();
+  if (!session) redirect(lineFlow ? "/line/menu" : `${prefix}/diagnosis`);
   if (!(await hasFullAccess(session.id))) {
     redirect(session.owner_token ? `${prefix}/me/${encodeURIComponent(session.owner_token)}` : `${prefix}/diagnosis`);
   }
@@ -20,7 +25,23 @@ export default async function ResultUpgradePageContent({ locale = "ja" }: { loca
     hasPremiumBundleAccess(session.id),
     loadResultUpgradeForUser(session.id),
   ]);
-  if (isResultUpgradeReady(row)) redirect(`${prefix}/result-upgrade/reading`);
+  if (lineFlow && row && row.locale !== "ja") redirect("/line/menu");
+  if (lineFlow && (!row || row.answers.length < 5)) redirect(LINE_UPGRADE_TALK_URL);
+  if (lineFlow && paymentReturned && !premiumPaid) return <LineUpgradePaymentPending />;
+  if (lineFlow && premiumPaid) {
+    if (!paymentReturned && isResultUpgradeReady(row)) redirect("/line/result-upgrade/reading");
+    return <>
+      <TopHeader locale={locale} />
+      <main className="min-h-[75vh] bg-[#F5F4FB] px-4 py-12"><LineUpgradeReceipt failed={row?.state === "failed"} /></main>
+      <TopFooter locale={locale} />
+    </>;
+  }
+  // Existing Web buyers retain access; new Japanese purchases start in LINE.
+  if (locale === "ja" && !lineFlow && !premiumPaid) {
+    redirect(session.owner_token ? `/me/${encodeURIComponent(session.owner_token)}` : "/diagnosis");
+  }
+  if (lineFlow && isResultUpgradeReady(row) && !premiumPaid) redirect("/line/menu");
+  if (isResultUpgradeReady(row)) redirect(lineFlow ? "/line/result-upgrade/reading" : `${prefix}/result-upgrade/reading`);
 
   return (
     <>
@@ -38,6 +59,7 @@ export default async function ResultUpgradePageContent({ locale = "ja" }: { loca
         </div>
         <ResultUpgradeChat
           locale={locale}
+          salesChannel={salesChannel}
           ownerToken={session.owner_token ?? ""}
           existingAnswers={row?.answers ?? []}
           initialState={row?.state ?? null}

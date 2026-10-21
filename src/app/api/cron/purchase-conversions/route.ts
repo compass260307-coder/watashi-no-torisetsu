@@ -1,10 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+import { processDueLineResultUpgrades } from "@/lib/line-upgrade-fulfillment";
 import { processDueServerPurchaseConversions } from "@/lib/server-purchase-conversions";
 
 export const runtime = "nodejs";
-export const maxDuration = 150;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 function hasValidCronAuthorization(
@@ -28,8 +29,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processDueServerPurchaseConversions(25);
-    return NextResponse.json(result, {
+    const [result, lineUpgrades] = await Promise.all([processDueServerPurchaseConversions(25), processDueLineResultUpgrades(1)]);
+    return NextResponse.json({ ...result, lineUpgrades }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {

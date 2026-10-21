@@ -15,6 +15,7 @@ interface LiffLike {
   login(): void;
   getAccessToken(): string | null;
   getIDToken(): string | null;
+  getFriendship(): Promise<{ friendFlag: boolean }>;
 }
 
 declare global {
@@ -33,7 +34,7 @@ type ViewState =
   | { kind: "unlinked" }
   | { kind: "conflict"; code: string; idToken: string; current: CurrentLink | null }
   | { kind: "switching" }
-  | { kind: "linked"; switched: boolean }
+  | { kind: "linked"; switched: boolean; upgradeChat?: boolean }
   | {
       kind: "error";
       message: string;
@@ -44,7 +45,7 @@ type ViewState =
 type LiffFlow = "link" | "route" | "unknown";
 
 type LinkDiagnosisResult =
-  | { kind: "linked"; switched: boolean }
+  | { kind: "linked"; switched: boolean; upgradeChat?: boolean }
   | { kind: "conflict"; current: CurrentLink | null }
   | {
       kind: "error";
@@ -184,6 +185,7 @@ async function linkDiagnosis(input: {
   code: string;
   idToken: string;
   force: boolean;
+  intentToken?: string;
 }): Promise<LinkDiagnosisResult> {
   try {
     const response = await fetchWithTimeout("/api/line/link", {
@@ -194,6 +196,7 @@ async function linkDiagnosis(input: {
     const body = (await response.json().catch(() => ({}))) as {
       linked?: boolean;
       switched?: boolean;
+      upgradeChat?: boolean;
       error?: string;
       message?: string;
       currentLink?: CurrentLink | null;
@@ -215,7 +218,7 @@ async function linkDiagnosis(input: {
           "連携がうまくいきませんでした。結果ページからもう一度お試しください。",
       };
     }
-    return { kind: "linked", switched: body.switched === true };
+    return { kind: "linked", switched: body.switched === true, upgradeChat: body.upgradeChat === true };
   } catch {
     return {
       kind: "error",
@@ -236,6 +239,13 @@ function formatDiagnosisDate(value: string | null): string | null {
     month: "long",
     day: "numeric",
   }).format(date);
+}
+
+async function openUpgradeTalk() {
+  const friendship = await window.liff?.getFriendship().catch(() => null);
+  window.location.assign(friendship?.friendFlag === false
+    ? LINE_TALK_URL
+    : "https://line.me/R/oaMessage/%40867domoo");
 }
 
 function PageCard({ children }: { children: ReactNode }) {
@@ -307,7 +317,7 @@ export default function LiffRouterClient() {
           }
           trackLiffProgress({ stage: "id_token_ready", flow, attemptId });
           trackLiffProgress({ stage: "link_requested", flow, attemptId });
-          const result = await linkDiagnosis({ code, idToken, force: false });
+          const result = await linkDiagnosis({ code, idToken, force: false, intentToken: resolveLiffParam("intent_token") ?? undefined });
           if (cancelled) return;
           if (result.kind === "conflict") {
             trackLiffProgress({ stage: "link_conflict", flow, attemptId });
@@ -321,6 +331,7 @@ export default function LiffRouterClient() {
             trackLiffProgress({ stage: "link_completed", flow, attemptId });
             clearAttemptId();
             setState(result);
+            if (result.upgradeChat) await openUpgradeTalk();
           } else {
             trackLiffProgress({
               stage: "failed",
@@ -410,7 +421,7 @@ export default function LiffRouterClient() {
       flow: "link",
       attemptId: attemptIdRef.current,
     });
-    const result = await linkDiagnosis({ code, idToken, force: true });
+    const result = await linkDiagnosis({ code, idToken, force: true, intentToken: resolveLiffParam("intent_token") ?? undefined });
     if (result.kind === "linked") {
       trackLiffProgress({
         stage: "link_completed",
@@ -418,7 +429,8 @@ export default function LiffRouterClient() {
         attemptId: attemptIdRef.current,
       });
       clearAttemptId();
-      setState({ kind: "linked", switched: true });
+      setState({ kind: "linked", switched: true, upgradeChat: result.upgradeChat });
+      if (result.upgradeChat) await openUpgradeTalk();
     } else if (result.kind === "conflict") {
       setState({ kind: "conflict", code, idToken, current: result.current });
     } else {
@@ -444,9 +456,7 @@ export default function LiffRouterClient() {
           {state.switched ? "連携先を切り替えました" : "連携できました"}
         </h1>
         <p className="mt-3 text-sm font-medium leading-relaxed text-[#2E2E5C]/65">
-          Aliceに話しかけてみてください。
-          <br />
-          あなたの診断結果をもとにお話しできます。
+          {state.upgradeChat ? "LINEのトークにアップグレードの質問をお送りしました。届いていない場合は友だち追加後に「結果アップグレード」と送ってください。" : <>Aliceに話しかけてみてください。<br />あなたの診断結果をもとにお話しできます。</>}
         </p>
         <a
           href={LINE_TALK_URL}

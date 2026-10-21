@@ -63,6 +63,7 @@ export function FullAccessCta({
   locale = "ja",
   source,
   returnTo,
+  salesChannel = "web",
   product = "full_access",
   paywallVersion,
   placement,
@@ -82,6 +83,7 @@ export function FullAccessCta({
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi" | "tarot";
   /** 日本版の新規販売は full_access=完全版¥499。その他は過去購入・他言語との互換用。 */
   product?: AccessProduct;
+  salesChannel?: "web" | "line";
   /** 商品比較テストの識別子。未指定は旧単一カード。 */
   paywallVersion?: ThreeCoursePaywallVersion;
   /** 同じカードの常設表示とモーダル表示を分ける。 */
@@ -168,6 +170,7 @@ export function FullAccessCta({
           checkout_attempt_id: checkoutAttemptId,
           locale,
           product,
+          ...(salesChannel === "line" ? { sales_channel: "line" } : {}),
           ...(ttclid ? { ttclid } : {}),
           ...(ttp ? { ttp } : {}),
           ...(fbp ? { fbp } : {}),

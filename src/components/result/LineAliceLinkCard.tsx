@@ -107,17 +107,20 @@ export default function LineAliceLinkCard({
   ownerToken,
   personalizedTypeName,
   trackingSource,
+  previewMode = false,
 }: {
   onClose?: () => void;
   variant?: "conversation" | "fortune" | "personalized";
   ownerToken?: string;
   personalizedTypeName?: string;
   trackingSource: LineAliceTrackingSource;
+  previewMode?: boolean;
 }) {
-  const [linkStatus, setLinkStatus] = useState<LinkStatus>("checking");
+  const [linkStatus, setLinkStatus] = useState<LinkStatus>(previewMode ? "unlinked" : "checking");
   const [main, setMain] = useState<MainState>({ status: "idle" });
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [manual, setManual] = useState<ManualState>({ status: "idle" });
+  const [previewClicked, setPreviewClicked] = useState(false);
   const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
   const viewTrackedRef = useRef(false);
@@ -125,6 +128,7 @@ export default function LineAliceLinkCard({
   const promotesPersonalized = variant === "personalized";
 
   useEffect(() => {
+    if (previewMode) return;
     let cancelled = false;
     const checkLinked = async () => {
       try {
@@ -146,9 +150,10 @@ export default function LineAliceLinkCard({
     return () => {
       cancelled = true;
     };
-  }, [ownerToken]);
+  }, [ownerToken, previewMode]);
 
   useEffect(() => {
+    if (previewMode) return;
     const card = cardRef.current;
     if (!card || viewTrackedRef.current) return;
 
@@ -180,7 +185,7 @@ export default function LineAliceLinkCard({
     );
     observer.observe(card);
     return () => observer.disconnect();
-  }, [ownerToken, trackingSource, variant]);
+  }, [ownerToken, trackingSource, variant, previewMode]);
 
   const issueCode = async (kind: CodeKind): Promise<IssuedCode> => {
     const cached = readCachedCode(ownerToken, kind);
@@ -404,7 +409,25 @@ export default function LineAliceLinkCard({
       </div>
 
       <div className="relative mt-6 md:mt-8 md:max-w-[560px]">
-        {linkStatus === "linked" ? (
+        {previewMode ? (
+          <>
+            <p className="mb-3 text-center text-[12px] font-bold text-white/90">
+              友だち追加と診断結果の連携が同時に完了します
+            </p>
+            <button
+              type="button"
+              onClick={() => setPreviewClicked(true)}
+              className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#06C755] px-6 text-[15px] font-black text-white shadow-[0_6px_0_#04933F] hover:bg-[#10D55F] active:translate-y-1 active:shadow-none"
+            >
+              LINEでAliceと話す
+            </button>
+            <p role="status" className="mt-4 text-center text-[12px] font-bold leading-relaxed text-white/90">
+              {previewClicked
+                ? "実際の画面ではLINE登録へ進みます。ローカルでは移動しません。"
+                : "ローカル確認用：LINE登録・連携・計測は実行しません。"}
+            </p>
+          </>
+        ) : linkStatus === "linked" ? (
           <div className="rounded-2xl border border-white/50 bg-white/95 px-5 py-5 text-center shadow-[0_10px_28px_rgba(43,99,119,0.18)]">
             <p className="text-[17px] font-black text-[#2E2E5C]">連携済み ✓</p>
             <p className="mt-1 text-[12px] font-bold text-[#2E2E5C]/55">

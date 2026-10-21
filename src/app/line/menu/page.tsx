@@ -90,6 +90,7 @@ export default function LineMenuPage() {
     { label: "相性占い", description: "ふたりの相性をAliceに聞く", href: talkCommandUrl("相性占い"), icon: "friends", tone: "mint" },
   ];
   const moreItems: MenuItem[] = [
+    { label: "結果アップグレード", description: "専用キャラ・タイプ名・鑑定書", href: talkCommandUrl("結果アップグレード"), icon: "study", tone: "gold" },
     { label: "恋の足あと", description: "これまでの恋を振り返る", href: personalPageUrl("love-footprints", "恋の足あと"), icon: "book", tone: "rose" },
     { label: "診断結果", description: "自分のタイプを見返す", href: personalPageUrl("me", "診断結果"), icon: "study", tone: "lavender" },
     { label: "ミッション", description: "進捗とプレゼントを見る", href: personalPageUrl("missions", "ミッション"), icon: "target", tone: "mint" },
