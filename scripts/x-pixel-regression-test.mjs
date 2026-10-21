@@ -46,10 +46,10 @@ async function send(e, diagnosis = false, currency = "JPY", active = () => true)
   return e.pixel.trackXEventsOnce(diagnosis ? e.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS : e.pixel.xPurchaseEventIds(currency),
     { ...params, currency }, diagnosis, active);
 }
-assert.deepEqual(normalize(config.ACTIVE_X_PIXELS.map((p) => p.id)), ids);
+assert.deepEqual(normalize(config.ACTIVE_X_PIXELS.map((p) => p.id)), [...ids, "rh617"]);
 assert.ok(source("src/app/layout.tsx").includes('import { X_PIXEL_SCRIPT } from "@/lib/x-pixel-config"'));
 {
-  const window = {}; let loads = 0;
+  const window = { location: { pathname: "/" } }; let loads = 0;
   const document = { createElement: () => ({}),
     getElementsByTagName: () => [{ parentNode: { insertBefore: () => loads++ } }] };
   const context = vm.createContext({ window, document });
@@ -149,7 +149,7 @@ let differentialCases = 0;
 if (process.env.X_PIXEL_BASELINE_REF) {
   const oldCode = execFileSync("git", ["show", process.env.X_PIXEL_BASELINE_REF + ":src/lib/xPixel.ts"], { encoding: "utf8", cwd: root });
   const oldConfig = moduleFrom(execFileSync("git", ["show", process.env.X_PIXEL_BASELINE_REF + ":src/lib/x-pixel-config.ts"], { encoding: "utf8", cwd: root }));
-  assert.deepEqual(normalize(config.ACTIVE_X_PIXELS.slice(0, 4)), normalize(oldConfig.ACTIVE_X_PIXELS), "Existing four configs must be unchanged");
+  assert.deepEqual(normalize(config.ACTIVE_X_PIXELS.slice(0, 5)), normalize(oldConfig.ACTIVE_X_PIXELS), "Existing five configs must be unchanged");
   for (const diagnosis of [false, true]) for (const currency of ["JPY", "USD", "KRW", "THB", "IDR"])
     for (const mode of ["fresh", "missing-marker", "expired", "cancelled", "prior-group", "prior-event", ...ids]) {
       const old = env({ code: oldCode, pixelConfig: oldConfig }), current = env();
@@ -163,7 +163,7 @@ if (process.env.X_PIXEL_BASELINE_REF) {
         };
         await send(e, diagnosis, currency, () => mode !== "cancelled");
       }
-      const retained = (calls) => normalize(calls.filter((c) => /^tw-(rgg36|rgob2|rgskb|rgtx5)-/.test(c[1])));
+      const retained = (calls) => normalize(calls.filter((c) => /^tw-(rgg36|rgob2|rgskb|rgtx5|rhj3s)-/.test(c[1])));
       assert.deepEqual(retained(current.calls), retained(old.calls), diagnosis + "/" + currency + "/" + mode);
       differentialCases++;
     }
@@ -238,3 +238,108 @@ for (const claim of [
 }
 
 console.log("Actual purchase component checks passed: verified live settlements only, actual amounts/currencies, X after Meta/TikTok ack, invalid/test/failed claims excluded; all fetches stubbed.");
+
+// Korean provenance survives unprefixed result/payment URLs without a sticky
+// language flag. Existing five destinations keep their exact behavior above.
+const koDiagnosis = "tw-rh617-rh619", koPurchase = "tw-rh617-rh61c";
+const koEvents = (e) => e.calls.filter((c) => c[0] === "event" && c[1].startsWith("tw-rh617-"));
+for (const path of ["/ko", "/ko/diagnosis", "/ko/me/example", "/", "/en", "/korean"]) {
+  const window = { location: { pathname: path } }; let loads = 0;
+  const document = { createElement: () => ({}), getElementsByTagName: () => [{ parentNode: { insertBefore: () => loads++ } }] };
+  const context = vm.createContext({ window, document });
+  vm.runInContext(config.X_PIXEL_SCRIPT, context); vm.runInContext(config.X_PIXEL_SCRIPT, context);
+  assert.equal(loads, 1);
+  assert.equal(Array.from(window.twq.queue).filter((c) => c[1] === "rh617").length, path === "/ko" || path.startsWith("/ko/") ? 1 : 0);
+}
+for (const locale of ["ja", "ko", "en", "id", undefined]) {
+  const e = env();
+  e.pixel.markXDiagnosisSaved(params.conversion_id, locale);
+  assert.equal(await send(e, true), true);
+  assert.deepEqual(normalize(koEvents(e)), locale === "ko" ? [["event", koDiagnosis, {}]] : []);
+  await send(e, true); assert.equal(koEvents(e).length, locale === "ko" ? 1 : 0);
+  const reload = env({ local: e.local, session: e.session }); await send(reload, true);
+  assert.equal(koEvents(reload).length, 0);
+  for (const currency of ["JPY", "KRW", "USD"]) {
+    const payment = env();
+    const eventIds = payment.pixel.xPurchaseEventIds(currency, locale);
+    assert.equal(eventIds.includes(koPurchase), locale === "ko");
+    await payment.pixel.trackXEventsOnce(eventIds, { ...params, currency });
+    assert.deepEqual(normalize(koEvents(payment)), locale === "ko" ? [["event", koPurchase, {}]] : []);
+  }
+}
+for (const mode of ["missing", "expired", "future", "mismatched", "changed-to-ja", "failed-tag"]) {
+  const e = env(); const general = e.pixel.X_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+  const korean = e.pixel.X_KO_DIAGNOSIS_PENDING_PREFIX + params.conversion_id;
+  if (mode !== "missing") e.pixel.markXDiagnosisSaved(params.conversion_id, "ko");
+  if (mode === "expired" || mode === "future") {
+    const at = String(Date.now() + (mode === "expired" ? -600001 : 60000)); e.session.set(general, at); e.session.set(korean, at);
+  }
+  if (mode === "mismatched") e.session.set(korean, "1");
+  if (mode === "changed-to-ja") e.pixel.markXDiagnosisSaved(params.conversion_id, "ja");
+  if (mode === "failed-tag") e.window.twq = (...args) => { if (args[1] === koDiagnosis) throw Error("blocked"); e.calls.push(args); };
+  await send(e, true); assert.equal(koEvents(e).length, 0);
+  if (mode === "failed-tag") {
+    assert.equal(e.session.has(general), true);
+    const retry = env({ local: e.local, session: e.session }); await send(retry, true);
+    assert.deepEqual(normalize(koEvents(retry)), [["event", koDiagnosis, {}]]);
+    assert.equal(retry.calls.filter((c) => c[0] === "event").length, 1);
+  }
+}
+for (const historical of [groupKey, sentKey("tw-rezdw-1436v3"), sentKey(koPurchase)]) {
+  const e = env({ local: new Map([[historical, "1"]]) });
+  await e.pixel.trackXEventsOnce(e.pixel.xPurchaseEventIds("KRW", "ko"), params);
+  assert.equal(koEvents(e).length, 0, "Do not replay old purchases after restoring a destination");
+}
+{
+  const e = await purchaseComponent({ checkoutSessionId: "cs_live_offline_ko", value: 4990, currency: "KRW", checkoutLocale: "ko" }, true);
+  assert.ok(e.element.props.eventIds.includes(koPurchase));
+  await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
+  assert.deepEqual(normalize(koEvents(e)), [["event", koPurchase, {}]]);
+  assert.deepEqual(normalize(e.calls.filter((c) => c[0] === "config")), [["config", "rh617"]]);
+}
+console.log("Korean checks passed: scoped base, exact empty payloads, saved locale, URL-independent selection, failed/stale saves, retries, historical payments and Japanese isolation.");
+
+// Execute the real signed prepare handler and Stripe session verifier. Only
+// Stripe retrieval, rate limiting and DB are stubbed; no application DB writes.
+const crypto = await import('node:crypto');
+let stripeSession;
+const paidCheckout = load('src/lib/paid-checkout-session.ts', {
+  'server-only': {}, 'node:crypto': crypto,
+  '@/lib/stripe-server': { getStripe: () => ({ checkout: { sessions: { retrieve: async () => stripeSession } } }) },
+  '@/lib/meta-purchase': meta,
+  '@/lib/access-products': {
+    hoshiyomiChatCreditTarget: () => 0, purchaseIncludesDestinyFeatures: () => false,
+    purchaseIncludesFriendFeatures: () => false, purchaseIncludesHoshiyomiChat: () => false,
+    purchaseIncludesTarotFeatures: () => false,
+  },
+}, { process: { env: { RATE_LIMIT_SECRET: 'offline-test-signing-secret' } }, Buffer });
+const route = load('src/app/api/checkout/meta-purchase/route.ts', {
+  'node:crypto': crypto, 'next/server': { NextResponse: Response },
+  '@/lib/api-security': { consumeRateLimit: async () => ({ allowed: true }), readJsonObject: async (request) => ({ ok: true, value: await request.json() }) },
+  '@/lib/meta-purchase': meta, '@/lib/origin-check': { checkOrigin: () => ({ ok: true }) },
+  '@/lib/paid-checkout-session': paidCheckout,
+  '@/lib/supabase-server': { supabaseAdmin: { from: () => { throw Error('DB access forbidden in prepare test'); } } },
+});
+const sessionId = 'cs_live_offlineServerKo';
+const claimToken = paidCheckout.createMetaPurchaseClaimToken(sessionId);
+const request = (token = claimToken) => new Request('https://offline.test/api/checkout/meta-purchase', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ checkout_session_id: sessionId, claim_token: token, action: 'prepare', checkoutLocale: 'ko' }),
+});
+for (const locale of ['ko', 'ja', 'en', 'id']) {
+  stripeSession = { id: sessionId, status: 'complete', payment_status: 'paid', mode: 'payment', amount_total: 4900, currency: 'krw', metadata: { locale, product: 'full_access' } };
+  const response = await route.POST(request()); assert.equal(response.status, 200);
+  const claim = await response.json(); assert.equal(claim.checkoutLocale, locale);
+  assert.equal(claim.currency, 'KRW'); assert.equal(claim.value, 4900);
+  const e = await purchaseComponent(claim, true);
+  await e.pixel.trackXEventsOnce(e.element.props.eventIds, e.element.props.params);
+  assert.equal(koEvents(e).length, locale === 'ko' ? 1 : 0);
+}
+for (const change of [{ status: 'open' }, { payment_status: 'unpaid' }, { mode: 'subscription' }]) {
+  stripeSession = { id: sessionId, status: 'complete', payment_status: 'paid', mode: 'payment', amount_total: 4900, currency: 'krw', metadata: { locale: 'ko', product: 'full_access' }, ...change };
+  assert.equal((await route.POST(request())).status, 400);
+}
+assert.equal((await route.POST(request('invalid'))).status, 403);
+const diagnosisSource = source('src/components/diagnosis/DiagnosisPageContent.tsx');
+assert.match(diagnosisSource, /if \(res\.ok && typeof data\.userId === "string"\)\s*\{\s*markXDiagnosisSaved\(data\.userId, locale\)/);
+console.log('Signed prepare route + Stripe verifier checks passed: trusted session locale, paid/complete/payment gate, actual KRW amount, invalid token, no database writes.');

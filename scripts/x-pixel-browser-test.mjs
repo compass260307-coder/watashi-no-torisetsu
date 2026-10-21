@@ -27,7 +27,7 @@ let browser;
 try {
   browser = await puppeteer.launch({ executablePath: process.env.CHROME_EXECUTABLE_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, userDataDir: profile });
   const blocked = []; let loads = 0;
-  async function page() {
+  async function page(path = "/") {
     const p = await browser.newPage(); await p.setRequestInterception(true);
     p.on('request', (r) => {
       if (r.url() === 'https://static.ads-twitter.com/uwt.js') {
@@ -35,7 +35,7 @@ try {
       } else if (r.url().startsWith(origin)) void r.continue();
       else { blocked.push(r.url()); void r.abort(); }
     });
-    await p.goto(origin, { waitUntil: 'load' }); return p;
+    await p.goto(origin + path, { waitUntil: 'load' }); return p;
   }
   const a = await page();
   assert.deepEqual(await a.evaluate(() => ({ cookie: document.cookie, local: Object.keys(localStorage), session: Object.keys(sessionStorage) })), { cookie: '', local: [], session: [] });
@@ -67,6 +67,24 @@ try {
   await Promise.all([purchase(a, 'offline-browser-two-tabs'), purchase(b, 'offline-browser-two-tabs')]);
   assert.equal((await events(a)).length + (await events(b)).length, 5);
   assert.equal(loads, 5);
+  const ko = await page('/ko');
+  assert.deepEqual(await ko.evaluate(() => window.calls.filter((c) => c[0] === 'config').map((c) => c[1])), ['rgg36', 'rgob2', 'rgskb', 'rgtx5', 'rhj3s', 'rh617']);
+  await ko.evaluate(() => window.pixel.markXDiagnosisSaved('browser-ko-result', 'ko'));
+  await ko.goto(origin + '/me/common-result', { waitUntil: 'load' });
+  assert.equal(await ko.evaluate(() => window.calls.some((c) => c[1] === 'rh617')), false);
+  await ko.evaluate(() => window.pixel.trackXEventsOnce(window.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, { conversion_id: 'browser-ko-result' }, true));
+  assert.deepEqual((await events(ko)).filter((c) => c[1].startsWith('tw-rh617-')), [['event', 'tw-rh617-rh619', {}]]);
+  await ko.evaluate(() => window.pixel.trackXEventsOnce(window.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, { conversion_id: 'browser-ko-result' }, true));
+  assert.equal((await events(ko)).filter((c) => c[1] === 'tw-rh617-rh619').length, 1);
+  await ko.reload({ waitUntil: 'load' });
+  await ko.evaluate(() => window.pixel.trackXEventsOnce(window.pixel.X_DIAGNOSIS_COMPLETE_EVENT_IDS, { conversion_id: 'browser-ko-result' }, true));
+  assert.equal((await events(ko)).length, 0);
+  const koPurchase = (p) => p.evaluate(() => window.pixel.trackXEventsOnce(window.pixel.xPurchaseEventIds('KRW', 'ko'), { conversion_id: 'cs_live_browser_ko', value: 4900, currency: 'KRW' }));
+  await Promise.all([koPurchase(ko), koPurchase(b)]);
+  assert.equal((await events(ko)).concat(await events(b)).filter((c) => c[1] === 'tw-rh617-rh61c').length, 1);
+  await ko.reload({ waitUntil: 'load' }); await koPurchase(ko); assert.equal((await events(ko)).length, 0);
+  assert.equal(await ko.evaluate(() => document.querySelectorAll('script[src="https://static.ads-twitter.com/uwt.js"]').length), 1);
+  console.log('Korean Chrome checks passed: /ko → shared result URL, correct config before conversion, diagnosis/reload and purchase/cross-tab dedupe; one uwt.js per document.');
   assert.deepEqual(blocked, []);
   console.log('Fresh Chrome checks passed: empty cookies/storage, 5 configs/diagnosis/JPY purchases, 4 non-JPY purchases, reload and cross-tab dedupe. No external requests sent.');
 } finally { await browser?.close(); await new Promise((done) => server.close(done)); }

@@ -147,6 +147,7 @@ export async function POST(request: Request) {
   );
   return NextResponse.json({
     checkoutSessionId: session.id,
+    checkoutLocale: session.locale,
     value: valueInMajorUnit(session.amountTotal, session.currency),
     currency: session.currency?.toUpperCase() ?? undefined,
     contentIds: content.contentIds,
