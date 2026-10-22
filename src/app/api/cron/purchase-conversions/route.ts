@@ -29,10 +29,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [result, lineUpgrades] = await Promise.all([processDueServerPurchaseConversions(25), processDueLineResultUpgrades(1)]);
-    return NextResponse.json({ ...result, lineUpgrades }, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    const [result, lineUpgrades] = await Promise.all([
+      processDueServerPurchaseConversions(),
+      processDueLineResultUpgrades(1),
+    ]);
+    return NextResponse.json(
+      { ...result, lineUpgrades },
+      {
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     console.error("[cron/purchase-conversions] worker failed", error);
     return NextResponse.json(

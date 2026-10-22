@@ -101,7 +101,17 @@ const duplicate = settings.readTikTokSettings({
 assert.equal(duplicate.pixels.has(codes[0]), false);
 assert.equal(duplicate.pixels.has(codes[2]), true);
 
-function flow(overrides = {}) {
+function flow(overrides = {}, timing = {}) {
+  let clock = timing.now ?? now;
+  const pauses = [];
+  class ClockDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : [clock]));
+    }
+    static now() {
+      return clock;
+    }
+  }
   const env = {
     META_PIXEL_ID: "123456",
     META_CONVERSIONS_API_TOKEN: "isolated-meta-token",
@@ -117,7 +127,7 @@ function flow(overrides = {}) {
   const cfg = compile(
     "src/lib/purchase-conversion-config.ts",
     { "server-only": {} },
-    { process: { env } },
+    { process: { env }, Date: ClockDate },
   );
   const outbox = new Map(),
     events = new Map(),
@@ -195,6 +205,21 @@ function flow(overrides = {}) {
       select() {
         return this;
       },
+      in(key, values) {
+        conditions.push((r) => values.includes(r[key]));
+        return this;
+      },
+      lt(key, value) {
+        conditions.push((r) => Date.parse(r[key]) < Date.parse(value));
+        return this;
+      },
+      gt(key, value) {
+        conditions.push((r) => Date.parse(r[key]) > Date.parse(value));
+        return this;
+      },
+      limit() {
+        return this;
+      },
       eq(key, value) {
         conditions.push((r) => r[key] === value);
         return this;
@@ -224,11 +249,20 @@ function flow(overrides = {}) {
   const db = {
     from: query,
     async rpc(name, args) {
-      assert.equal(name, "claim_due_purchase_conversion_deliveries");
+      assert.ok(
+        [
+          "claim_due_purchase_conversion_deliveries",
+          "claim_due_configured_purchase_conversion_deliveries",
+        ].includes(name),
+      );
+      if (name === "claim_due_configured_purchase_conversion_deliveries")
+        assert.equal(typeof args.p_include_meta, "boolean");
       const rows = [...outbox.values()]
         .filter(
           (r) =>
             ["pending", "failed"].includes(r.status) &&
+            Date.parse(r.next_attempt_at) <= clock &&
+            (args.p_include_meta !== false || r.provider !== "meta") &&
             (!args.p_session_id || r.stripe_session_id === args.p_session_id),
         )
         .slice(0, args.p_limit);
@@ -251,10 +285,12 @@ function flow(overrides = {}) {
         getStripe: () => ({
           checkout: {
             sessions: {
-              retrieve: async (id) => {
+              retrieve: async (id, params, options) => {
+                assert.equal(options.timeout, 10_000);
+                assert.equal(options.maxNetworkRetries, 0);
                 retrievals.push(id);
                 if (beforeRetrieve) beforeRetrieve();
-                return structuredClone(purchase.session);
+                return { ...structuredClone(purchase.session), id };
               },
             },
           },
@@ -264,6 +300,15 @@ function flow(overrides = {}) {
     },
     {
       process: { env },
+      Date: ClockDate,
+      setTimeout(fn, ms) {
+        if (ms === 200) {
+          pauses.push(clock);
+          clock += ms;
+          return setTimeout(fn, 0);
+        }
+        return setTimeout(fn, ms);
+      },
       fetch: async (url, init) => {
         const body = JSON.parse(init.body);
         const code = body.event_source_id ?? "meta";
@@ -284,6 +329,14 @@ function flow(overrides = {}) {
   );
   return {
     service,
+    pauses,
+    advance(ms) {
+      clock += ms;
+    },
+    makeDue() {
+      for (const row of outbox.values())
+        row.next_attempt_at = new Date(clock - 1000).toISOString();
+    },
     cfg,
     env,
     purchase,
@@ -339,6 +392,7 @@ assert.ok(
   ),
 );
 f.faults.clear();
+f.makeDue();
 summary = await f.service.processDueServerPurchaseConversions();
 assert.equal(summary.sent, 1);
 assert.equal(f.retrievals.length, 1);
@@ -428,6 +482,7 @@ await recovery.service.enqueueServerPurchaseConversions(recovery.purchase);
 recovery.failCompletion();
 await recovery.service.deliverServerPurchaseConversions(recovery.purchase);
 const sentCalls = recovery.calls.length;
+recovery.makeDue();
 await recovery.service.processDueServerPurchaseConversions();
 assert.equal(recovery.calls.length, sentCalls);
 
@@ -437,6 +492,127 @@ summary = await retrieval.service.processDueServerPurchaseConversions();
 assert.equal(summary.sent, 4);
 assert.equal(retrieval.retrievals.length, 1);
 
+// Missing, partial and whitespace-only Meta configuration must consume no leases.
+for (const vars of [
+  {
+    META_PIXEL_ID: "",
+    META_CONVERSIONS_API_TOKEN: "",
+    META_GRAPH_API_VERSION: "",
+  },
+  { META_PIXEL_ID: " " },
+  { META_CONVERSIONS_API_TOKEN: "" },
+  { META_GRAPH_API_VERSION: "" },
+]) {
+  const disabled = flow(vars);
+  await disabled.service.enqueueServerPurchaseConversions(disabled.purchase);
+  const meta = [...disabled.outbox.values()].find((r) => r.provider === "meta");
+  meta.status = "failed";
+  meta.attempts = 7;
+  const before = structuredClone(meta);
+  const result = await disabled.service.processDueServerPurchaseConversions(3);
+  assert.equal(result.sent, 3);
+  assert.deepEqual(meta, before);
+  assert.ok(disabled.calls.every((c) => c.code !== "meta"));
+  Object.assign(disabled.env, {
+    META_PIXEL_ID: "123",
+    META_CONVERSIONS_API_TOKEN: "isolated",
+    META_GRAPH_API_VERSION: "v99.0",
+  });
+  assert.equal(
+    (await disabled.service.processDueServerPurchaseConversions()).sent,
+    1,
+  );
+  assert.equal(meta.status, "sent");
+  assert.equal(meta.attempts, 8);
+}
+
+// A failed delivery keeps its backoff rather than being re-claimed by the next batch.
+const retryBackoff = flow({ META_PIXEL_ID: "" });
+await retryBackoff.service.enqueueServerPurchaseConversions(
+  retryBackoff.purchase,
+);
+retryBackoff.faults.set(codes[1], new Error("isolated provider failure"));
+const backoffResult =
+  await retryBackoff.service.processDueServerPurchaseConversions(100);
+assert.equal(backoffResult.claimed, 3);
+assert.equal(backoffResult.sent, 2);
+assert.equal(backoffResult.failed, 1);
+assert.equal(retryBackoff.calls.length, 3);
+assert.equal(
+  [...retryBackoff.outbox.values()].find((r) => r.destination_id === codes[1])
+    .attempts,
+  1,
+);
+
+const catchupNow = Date.parse("2026-10-22T04:00:00Z");
+function backlog(paidAt) {
+  const worker = flow({ META_PIXEL_ID: "" }, { now: catchupNow });
+  for (let i = 0; i < 120; i++)
+    worker.outbox.set(`backlog-${i}`, {
+      id: `backlog-${i}`,
+      provider: "tiktok",
+      destination_id: codes[i % 3],
+      stripe_session_id: `cs_isolated_backlog_${i}`,
+      user_id: null,
+      product: "full_access",
+      paid_at: paidAt,
+      status: "pending",
+      attempts: 0,
+      next_attempt_at: "2026-10-22T03:00:00Z",
+      last_error: null,
+    });
+  return worker;
+}
+const catchup = backlog("2026-10-22T02:00:00Z");
+assert.equal(
+  (await catchup.service.processDueServerPurchaseConversions()).sent,
+  100,
+);
+assert.equal(catchup.calls.length, 100);
+assert.equal(
+  [...catchup.outbox.values()].filter((r) => r.status === "pending").length,
+  20,
+);
+assert.equal(catchup.pauses.length, 24);
+assert.equal(
+  (await catchup.service.processDueServerPurchaseConversions()).sent,
+  20,
+);
+// Once only new purchases remain, the default automatically returns to 25.
+for (const row of catchup.outbox.values()) {
+  row.status = "pending";
+  row.paid_at = "2026-10-22T03:30:00Z";
+}
+assert.equal(
+  (await catchup.service.processDueServerPurchaseConversions()).claimed,
+  25,
+);
+const regular = backlog("2026-10-22T03:30:00Z");
+assert.equal(
+  (await regular.service.processDueServerPurchaseConversions()).sent,
+  25,
+);
+const agedCohort = backlog("2026-10-22T02:00:00Z");
+agedCohort.advance(8 * day);
+assert.equal(
+  (await agedCohort.service.processDueServerPurchaseConversions()).claimed,
+  25,
+);
+assert.equal(agedCohort.calls.length, 0);
+const budget = backlog("2026-10-22T02:00:00Z");
+budget.beforeRetrieve(() => budget.advance(240_000));
+assert.equal(
+  (await budget.service.processDueServerPurchaseConversions()).claimed,
+  4,
+);
+assert.equal(
+  [...budget.outbox.values()].filter(
+    (r) => r.status === "pending" && r.attempts === 0,
+  ).length,
+  116,
+);
+assert.ok([...budget.outbox.values()].every((r) => r.status !== "processing"));
+
 let runs = 0;
 const route = compile(
   "src/app/api/cron/purchase-conversions/route.ts",
@@ -444,7 +620,8 @@ const route = compile(
     "node:crypto": crypto,
     "next/server": { NextResponse },
     "@/lib/server-purchase-conversions": {
-      processDueServerPurchaseConversions: async () => {
+      processDueServerPurchaseConversions: async (...args) => {
+        assert.equal(args.length, 0);
         runs++;
         return { sent: 0 };
       },
@@ -476,5 +653,5 @@ assert.equal(
 );
 assert.equal(runs, 1);
 console.log(
-  "PASS: pixel isolation, partial/malformed config, deduplication, immutable event IDs/times, expiry before Stripe/HTTP, acknowledgements, audit recovery, shared Stripe lookup, and cron authorization (all mocked; no live sends).",
+  "PASS: pixel isolation, partial/malformed config, deduplication, immutable event IDs/times, expiry before Stripe/HTTP, acknowledgements, audit recovery, shared Stripe lookup, Meta cron exclusion/resumption, finite 100-job catch-up, pacing/time budget, and cron authorization (all mocked; no live sends).",
 );
