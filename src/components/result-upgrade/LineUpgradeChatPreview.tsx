@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
-import { LINE_UPGRADE_INTRO, LINE_UPGRADE_CANCEL, LINE_UPGRADE_PREPARING_MESSAGE, LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_OFFER_MESSAGE, lineUpgradeQuestion } from "@/lib/line-upgrade-dialogue";
+import { LINE_UPGRADE_INTRO, LINE_UPGRADE_CANCEL, LINE_UPGRADE_PREPARING_MESSAGE, LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_OFFER_MESSAGE, LINE_UPGRADE_PRICE_MESSAGE, LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS, LINE_UPGRADE_CARD_DELAY_MS, lineUpgradeQuestion } from "@/lib/line-upgrade-dialogue";
 import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
 import { LineUpgradePurchaseCardPreview } from "./LineUpgradePurchaseCardPreview";
 
@@ -12,14 +12,21 @@ export function LineUpgradeChatPreview({ purchaseReady = false }: { purchaseRead
   const [answers, setAnswers] = useState<string[]>(purchaseReady ? Array(5).fill("プレビューの回答") : []);
   const [text, setText] = useState("");
   const [stopped, setStopped] = useState(false);
-  const [prepared, setPrepared] = useState(false);
+  const [offerStage, setOfferStage] = useState(0);
   useEffect(() => {
     if (answers.length !== RESULT_UPGRADE_QUESTIONS.length || stopped) return;
-    const timer = window.setTimeout(() => {
-      setPrepared(true);
-      setMessages(previous => [...previous, { role: "alice", text: LINE_UPGRADE_OFFER_MESSAGE }]);
-    }, LINE_UPGRADE_PREPARATION_DELAY_MS);
-    return () => window.clearTimeout(timer);
+    const timers = [
+      window.setTimeout(() => {
+        setOfferStage(1);
+        setMessages(previous => [...previous, { role: "alice", text: LINE_UPGRADE_OFFER_MESSAGE }]);
+      }, LINE_UPGRADE_PREPARATION_DELAY_MS),
+      window.setTimeout(() => {
+        setOfferStage(2);
+        setMessages(previous => [...previous, { role: "alice", text: LINE_UPGRADE_PRICE_MESSAGE }]);
+      }, LINE_UPGRADE_PREPARATION_DELAY_MS + LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS),
+      window.setTimeout(() => setOfferStage(3), LINE_UPGRADE_PREPARATION_DELAY_MS + LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS + LINE_UPGRADE_CARD_DELAY_MS),
+    ];
+    return () => timers.forEach(timer => window.clearTimeout(timer));
   }, [answers.length, stopped]);
   function send(event: FormEvent) {
     event.preventDefault();
@@ -34,8 +41,8 @@ export function LineUpgradeChatPreview({ purchaseReady = false }: { purchaseRead
       <header className="bg-[#06C755] px-5 py-4 text-lg font-black text-white">Alice ─ LINEトーク</header>
       <div aria-live="polite" className="space-y-4 bg-[#92ACC7] p-5">
         {messages.map((message, index) => <p key={index} className={`whitespace-pre-wrap rounded-2xl p-4 text-sm leading-7 ${message.role === "you" ? "ml-12 bg-[#9BE579]" : "mr-6 bg-white"}`}>{message.text}</p>)}
-        {answers.length === RESULT_UPGRADE_QUESTIONS.length && !prepared && <p role="status" className="mr-6 animate-pulse rounded-2xl bg-white p-4 text-sm">回答をまとめているよ…🌙</p>}
-        {prepared && <>
+        {answers.length === RESULT_UPGRADE_QUESTIONS.length && offerStage === 0 && <p role="status" className="mr-6 animate-pulse rounded-2xl bg-white p-4 text-sm">回答をまとめているよ…🌙</p>}
+        {offerStage === 3 && <>
           <LineUpgradePurchaseCardPreview />
           <div className="rounded-2xl bg-white p-4 text-sm">
           <p className="mt-3 text-xs text-[#66657B]">Stripeのテスト決済画面で確認できます。実際の課金はありません。</p>

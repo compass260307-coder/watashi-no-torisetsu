@@ -3,7 +3,7 @@ import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { deterministicLineEventId } from "@/lib/line-events";
 import { quickReplies, type LineOutgoingMessage } from "@/lib/line";
 import { buildLineResultUpgradeUrl, buildLineResultUpgradeCheckoutUrl } from "@/lib/line-result-upgrade";
-import { LINE_UPGRADE_INTRO, LINE_UPGRADE_RESUME, LINE_UPGRADE_CANCELLED, LINE_UPGRADE_CANCEL, LINE_UPGRADE_OFFER_MESSAGE, lineUpgradeQuestion, lineUpgradePurchaseMessage, lineUpgradePurchaseCard } from "@/lib/line-upgrade-dialogue";
+import { LINE_UPGRADE_INTRO, LINE_UPGRADE_RESUME, LINE_UPGRADE_CANCELLED, LINE_UPGRADE_CANCEL, LINE_UPGRADE_OFFER_MESSAGE, LINE_UPGRADE_PRICE_MESSAGE, lineUpgradeQuestion, lineUpgradePurchaseMessage, lineUpgradePurchaseCard } from "@/lib/line-upgrade-dialogue";
 import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, isResultUpgradeReady, normalizeResultUpgradeAnswers, RESULT_UPGRADE_QUESTIONS, type ResultUpgradeRow } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser, resolveResultUpgradeBase } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -44,6 +44,7 @@ async function completion(lineUserId: string, userId: string, paid: boolean): Pr
   if (paid) return [{ type: "text", text: `${lineUpgradePurchaseMessage(true)}\n\n${buildLineResultUpgradeUrl(lineUserId, userId)}` }];
   return [
     { type: "text", text: LINE_UPGRADE_OFFER_MESSAGE },
+    { type: "text", text: LINE_UPGRADE_PRICE_MESSAGE },
     lineUpgradePurchaseCard(buildLineResultUpgradeCheckoutUrl(lineUserId, userId)),
   ];
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { setTimeout as wait } from "node:timers/promises";
 import { pushLineMessages, replyLineMessages, startLineLoadingAnimation, type LineOutgoingMessage } from "@/lib/line";
-import { LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_PREPARING_MESSAGE } from "@/lib/line-upgrade-dialogue";
+import { LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_PREPARING_MESSAGE, LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS, LINE_UPGRADE_CARD_DELAY_MS } from "@/lib/line-upgrade-dialogue";
 
 async function deliver(lineUserId: string, messages: LineOutgoingMessage[], replyToken?: string) {
   const send = (outgoing: LineOutgoingMessage[]) => replyToken
@@ -15,8 +15,12 @@ async function deliver(lineUserId: string, messages: LineOutgoingMessage[], repl
       // A cosmetic indicator must never block delivery when LINE cannot display it.
       await startLineLoadingAnimation(lineUserId, 10).catch(() => {});
       await wait(LINE_UPGRADE_PREPARATION_DELAY_MS);
-      if (!(await pushLineMessages(lineUserId, messages))) {
-        console.error("[line/upgrade-offer] purchase card delivery failed");
+      for (const [index, message] of messages.entries()) {
+        if (index > 0) await wait(message.type === "flex" ? LINE_UPGRADE_CARD_DELAY_MS : LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS);
+        if (!(await pushLineMessages(lineUserId, [message]))) {
+          console.error("[line/upgrade-offer] purchase card delivery failed");
+          return;
+        }
       }
     } catch {
       console.error("[line/upgrade-offer] purchase card delivery interrupted");

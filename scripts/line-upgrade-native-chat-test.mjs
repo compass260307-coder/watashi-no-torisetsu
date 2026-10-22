@@ -98,9 +98,9 @@ for (const [i,text] of ['落ち着いている','お互いを尊重する','好�
  const messages=await flow.service.answerLineUpgradeChat({...a,text,messageId:`remaining-${i}`});
  if (i<2) assert.match(messages[0].text,new RegExp(`質問 ${i+4}/5`));
  else {
-   assert.equal(messages[1].type, 'flex');
-   assert.match(JSON.stringify(messages[1]), /¥899/);
-   assert.match(messages[1].contents.footer.contents[0].action.uri, /signed-purchase\?checkout=1/);
+   assert.equal(messages[2].type, 'flex');
+   assert.match(JSON.stringify(messages[2]), /¥899/);
+   assert.match(messages[2].contents.footer.contents[0].action.uri, /signed-purchase\?checkout=1/);
  }
 }
 assert.equal(flow.row().answers.length,5);
@@ -109,8 +109,8 @@ assert.equal(await flow.service.answerLineUpgradeChat({...a,text:'通常の会�
 assert(!JSON.stringify([...flow.events.values()]).includes('散歩をする'),'Analytics/control metadata never stores personal answer text');
 console.log('PASS: five native LINE questions, private persistence, retries, length limit, resume, per-account isolation and webhook idempotency through final answer.');
 const repeated = await flow.service.startLineUpgradeChat('line','owner');
-assert.equal(repeated[1].type, 'flex', 'Saved five answers also return the purchase card');
-assert.equal(repeated[1].contents.footer.contents[0].action.label, '購入手続きへ');
+assert.equal(repeated[2].type, 'flex', 'Saved five answers also return the purchase card');
+assert.equal(repeated[2].contents.footer.contents[0].action.label, '購入手続きへ');
 const paidConversation = conversation({paid:true,initialRow:flow.row()});
 const paidMessages = await paidConversation.service.startLineUpgradeChat('line','owner');
 assert(paidMessages.every(message=>message.type==='text'), 'Existing purchasers never receive another purchase card');
