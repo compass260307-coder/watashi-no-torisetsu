@@ -524,6 +524,8 @@ function syncMetricsRaw() {
     // 日報のタイムゾーンはAsia/Tokyoに設定済み。毎回の再設定は巨大な
     // スプレッドシート全体の処理を起こし、同期開始前にタイムアウトする。
     const errors = [];
+    // Optional aggregate companion: no new trigger, no changes to raw cursors.
+    if (typeof syncHyperReportUnlocked_ === "function") syncHyperReportUnlocked_();
     const jobKeys = Object.keys(RAW_SYNC_JOBS);
     const shareIndex = jobKeys.indexOf("shareEvents");
     const lineIndex = jobKeys.indexOf("lineFollowEvents");
