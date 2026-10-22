@@ -1,62 +1,141 @@
 # 課金コンバージョン計測
 
-Stripe Webhook を正本として、設定済みの広告媒体へ購入イベントをサーバー送信する。
-ブラウザの `meta_purchase` と同じ Stripe Checkout Session ID を `event_id` に使うため、
-ブラウザ／サーバーの両方から届いても媒体側で重複排除できる。
-Checkout作成時に取得できた `_fbp` / `_fbc`、`ttclid` / `_ttp` もStripe metadata経由で
-引き継ぎ、各媒体の照合キーとして送る（アプリのイベントDBには生値を保存しない）。
+Stripe Webhookを正本として、Meta CAPIとTikTok Events APIへ購入を送る。
+ブラウザ・GTM・価格・Stripeの決済検証は変更しない。
+両媒体とも `event_id` はStripe Checkout Session ID、`event_time` は
+最初にoutboxへ保存した `paid_at` のまま。再送時刻へ置き換えない。
 
-## Vercel環境変数
+## 設定する環境変数
 
-Metaを有効にする場合は、次の3つを同じ環境に設定する。
+値は管理者がVercelの対象プロジェクトで入力する。秘密値をチャット、
+Git、`NEXT_PUBLIC_*`へ入れない。ProductionとPreviewを分離し、
+Previewへ本番トークンを流用しない。
 
-- `META_PIXEL_ID`
-- `META_CONVERSIONS_API_TOKEN`
-- `META_GRAPH_API_VERSION`（Meta Events Managerで現在利用するバージョン）
+| 名前 | 形式 | 取得場所・用途 |
+| --- | --- | --- |
+| `TIKTOK_PIXELS` | JSON配列。各要素は `{"pixelCode":"20文字のコード","accessToken":"トークン"}` | TikTok Ads Manager → Tools → Events Manager → 対象ピクセル → Settings → Events API → Generate Access Token。3ピクセルそれぞれにアクセスできるトークンを入力 |
+| `META_PIXEL_ID` | 数字の文字列 | Meta Events Manager → 対象データセット／ピクセル → Settings。ブラウザと同じIDを使用 |
+| `META_CONVERSIONS_API_TOKEN` | アクセストークン文字列 | 同じデータセットのSettings → Conversions API → Set up manually → Generate access token |
+| `META_GRAPH_API_VERSION` | `v数字.数字`（例: `vXX.0` のXXを実際のサポート中バージョンに置換） | [Meta Graph APIバージョン](https://developers.facebook.com/docs/graph-api/changelog/versions)でサポート中のバージョンを確認 |
+| `CRON_SECRET` | 推測困難なランダム文字列（32バイト以上を推奨） | ローカルの暗号学的乱数で作成しVercelへ入力。Vercel Cronが `Authorization: Bearer <値>` を自動付与 |
+| `STRIPE_SECRET_KEY` | Stripeのサーバー秘密鍵 | 既存設定。Stripe Dashboard → Developers → API keys。cronのSession再取得に使用。値・決済検証は今回変更しない |
+| `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | プロジェクトURL／サーバー用キー | 既存設定。SupabaseプロジェクトのConnect／API設定。service-roleキーは公開しない |
 
-TikTokを有効にする場合は、次の2つを同じ環境に設定する。
+`TIKTOK_PIXELS` の入力テンプレート（以下のダミートークンは必ず置換）:
 
-- `TIKTOK_PIXEL_CODE`
-- `TIKTOK_EVENTS_API_TOKEN`
+```json
+[
+  {"pixelCode":"D9V8IIBC77UFF28NGHK0","accessToken":"REPLACE_TOKEN_1"},
+  {"pixelCode":"DAUFBCRC77U5PB60GLP0","accessToken":"REPLACE_TOKEN_2"},
+  {"pixelCode":"DAV7P7RC77UA36CC79E0","accessToken":"REPLACE_TOKEN_3"}
+]
+```
 
-定期再送APIをVercel Cronからのみ呼び出すため、次も設定する。
+JSONの外側をシェル用のシングルクォートで囲まず、JSONそのものをVercelへ入力する。
+3つの既知の送信先は、未設定・JSON不正でもキューへ残す。
+トークン欠落やピクセルコード重複はそのピクセルだけ失敗する。
+JSON全体が壊れている場合はTikTokの各ジョブが設定エラーになり、Metaは継続する。
+有効な追加コードも別の送信先として扱う。
 
-- `CRON_SECRET`
+旧 `TIKTOK_PIXEL_CODE` / `TIKTOK_EVENTS_API_TOKEN` はJSONが未設定の場合だけ
+単一ピクセルの互換設定として使える。3ピクセル送信には `TIKTOK_PIXELS` を使う。
+広告費集計用の `TIKTOK_ACCESS_TOKEN` とは用途が異なる。
 
-2026-08-24時点の本番GTM公開コンテナで確認したIDは次のとおり。
+2026-08-24に確認したMeta IDは `2851061085248770`。
+今回ブラウザ・GTMの再検証はしていないため、入力時は対象データセットと照合する。
+環境変数の追加だけでは稼働中Deploymentへ反映されない。設定後の公開は別途承認を得る。
 
-- Meta Pixel ID: `2851061085248770`
-- TikTok Pixel Code: `D9V8IIBC77UFF28NGHK0`
+## 再送期限と重複除外
 
-アクセストークンは公開コンテナから取得できないため、各媒体のEvents Managerで発行する。
+- Meta: [公式Server Event Parameters](https://developers.facebook.com/documentation/ads-commerce/conversions-api/parameters/server-event.md)で、event_timeは最大7日前、7日を超えたイベントを含むリクエストは全体がエラーになると確認（2026-10-22）。
+- TikTok: [現行Web Events API 2.0の公式リファレンス](https://business-api.tiktok.com/gateway/docs/index?doc_id=1771100865818625&language=ENGLISH)は、event_timeを実際の発生時刻のUnix秒とし、即時送信を推奨している。確認した資料にWebイベントの最大受付日数の明記は見つからなかった。今回の運用上の再送上限を7日とする。広告の7日クリック帰属期間や、オフライン送信期限をWebの受付期限と混同しない。
+- 安全側の境界として `paid_at <= 現在時刻 - 7日` を `expired` にし、
+  理由を `last_error` へ保存する。Metaの受付上限とTikTokのローカル方針を理由文で区別する。
+- DBで古い行を終了してからバッチ上限を適用し、Stripe Session取得前・媒体HTTP送信直前にも期限を確認する。
+- 送信済み行は保持する。期限切れを設定変更で復活させたり、現在時刻のイベントとして送り直したりしない。
+- [TikTok公式の重複除外仕様](https://business-api.tiktok.com/gateway/docs/index?doc_id=1771100865818625&language=ENGLISH)の単位は `event_source_id + event_id + event`。サーバーでも3ピクセルに同じSession ID・Purchaseを送る。
 
-秘密値はリポジトリや `NEXT_PUBLIC_*` に置かず、Vercelの
-Production／Previewごとに設定する。設定変更後は再デプロイする。
-媒体の認証情報が未設定・不完全でも購入処理は止めず、キューに残して
-設定完了後の再送対象にする。
+同じevent_idでも、媒体の重複除外期間を延長できるわけではない。
+[TikTok公式の説明](https://ads.tiktok.com/resources/help/article/tiktok-adobe-eapi-implementation-guide?lang=en)は48時間以内の重複イベントを除外するとしている。
+そのため、数日前にブラウザから送られた購入の初回サーバー再送について、重複除外を保証しない。
+過去分の再送開始はこの点も確認してから承認する。
 
-## 監査と再試行
+## outboxと互換移行
 
-- 支払い・返金の正本: `payment_history`
-- アプリ内の購入完了ファクト: `purchase_completed` / `unmei_*_complete`
-- 媒体へのサーバー送信成功: `server_purchase_conversion_sent`
-- ブラウザでGTMへ渡した記録: `meta_purchase_claimed`
-- ブラウザでTikTok Pixelへ渡した記録: `browser_tiktok_purchase_pushed`
-- サーバー送信待ち／再送: `purchase_conversion_outbox`
+新outboxは `purchase_conversion_delivery_outbox`。
+`(provider, destination_id, stripe_session_id)` を一意キーにする。
+TikTokのdestination_idはピクセルコード、Metaは既存の単一送信先を表す空文字。
+アクセストークン・メール・広告Cookieの生値はoutboxへ保存しない。
 
-Webhook内では決済・権限・購入イベントとキュー投入までを必須にする。
-これらは単一のDB transactionではないが、Stripe Checkout Session IDを共通の
-冪等キーにして順番に保存し、途中で失敗した場合はWebhookを500にしてStripeの
-再送で安全に再開する。キューのclaimはDB関数内で行ロックを取り、原子的に
-`processing`へ遷移させる。
-媒体API通信は応答後に即時実行し、失敗時は1時間ごとのVercel Cronが
-指数バックオフ（最大24時間）で再送する。媒体障害はStripe Webhookの
-200応答、購入権限、購入メールを巻き込まない。再送時も `event_id` は
-Stripe Checkout Session IDのままで、成功済み媒体は監査行を見てスキップする。
+`pending/failed → processing → sent/failed/expired` と遷移し、
+claimは行ロックと `SKIP LOCKED` で原子的に行う。15分のleaseで中断を回復する。
+失敗は5分から指数バックオフ（最大24時間）。1つの送信先のエラーで他を止めない。
+HTTP 2xxだけで成功とせず、TikTokのcode=0、Metaのevents_received=1も確認する。
+APIの生レスポンス・トークンをエラーログへ残さない。
 
-デプロイ時は先に `2026-08-24-purchase-conversion-outbox.sql` を適用し、
-その後にアプリをデプロイする。順序を逆にすると新規決済のWebhookが
-キュー保存で再試行になる。
+`server_purchase_conversion_sent` の監査キーもTikTokはピクセル単位。
+従来送信先D9V8IIBC77UFF28NGHK0は従来の監査キーを引き継ぎ、
+追加2つの成功判定には使わない。監査metadataへpixel_codeを保存する。
+監査保存後にoutbox更新が失敗しても、次回は送信済み監査を参照する。
+
+旧 `purchase_conversion_outbox` の一意制約・RPCは維持する。
+新migrationとclaim処理は次の順で旧行を移す。
+
+1. 期限切れのpending/failed（およびlease切れprocessing）を理由付きexpiredにする。
+2. 期限内の旧行をMeta 1先・TikTok 3先の新ジョブへコピーする。
+   従来のsentはMeta／元のTikTok先だけsentとして引き継ぐ。
+3. コピーした旧pending/failed行を `expanded`（理由: 新outboxへ移管）にする。
+   attemptsとpaid_atは保持し、旧ワーカーから再claimされないようにする。
+4. 有効なprocessing leaseは触らず、旧ワーカーの終了またはlease切れ後に取り込む。
+   新旧Webhookが切り替わる間に旧テーブルへ追加された行も、次回claimで取り込む。
+
+移行・再実行は一意制約で冪等。期限内の既存failedは新キューで即時再送可能にし、
+次回試行時刻が24時間後でも古いバックオフを待たせない。
+
+## 公開手順（今回のPRでは実行しない）
+
+1. Supabaseの適用履歴と本番outboxの制約・関数を再確認する。
+2. ローカル／隔離DBで検証した `20261022003000_purchase_conversion_destinations.sql` を、
+   承認後に適用する。既存の `2026-08-24-purchase-conversion-outbox.sql` が作成した
+   テーブル・RPCが前提。古い非標準名migrationを再適用・repairしない。
+3. 管理者が上記環境変数を入力する。本番トークンをPreviewへ入れない。
+4. 別途公開の承認を得てアプリを公開する。旧アプリも旧キューへ保存できるため、
+   schemaを先に追加できる。schema未適用のまま新アプリを公開しない。
+5. 本番テストイベントやcronの手動呼び出しはしない。自然購入と通常cronで
+   新outboxのsent/failed/expired、pixel_code別成功監査を確認する。
+6. ロールバック時は新outboxの未送信行が残るため、新workerの停止による再送中断を
+   考慮する。新テーブルを削除したり、旧expanded行を一括再送したりしない。
+
+## 2026-10-22 読み取り調査
+
+対象: Vercel `compass260307-coders-projects/watashi-no-torisetsu`、
+Project ID `prj_4a4NYE4o9zlnDVz8pa8FGeUwq90s`。
+
+- Production環境変数名の一覧でCRON_SECRETは登録済み（作成157日前）。
+  TIKTOK_* / META_* は登録なし。値は表示・変更していない。
+- 00:00:41.512 JSTの `GET /api/cron/purchase-conversions` はHTTP 200。
+  Deployment `dpl_2A2qFKzE8EeX8UHtXAFvAXVSYK3B`、branch main。
+  25件の設定不足エラーが記録され、attempts=2以上の再送も確認した。
+- `vercel logs --environment production --since 24h --limit 100
+  --query /api/cron/purchase-conversions --status-code 401 --json` は結果0件。
+  無条件の24時間検索はタイムアウトしたため、全リクエストを網羅したとは言わない。
+  直近1時間の同ルート検索では上記200の1リクエストを確認。
+  取得可能な直近ログでは「CRON_SECRET未設定で401停止」は裏付けられなかった。
+- 00:09 JSTに全8,900行をページングして読み取り集計。
+  TikTok・Metaは各4,450行すべて設定不足のfailed。
+  各4,128行が7日超、各322行が7日以内、attemptsは1〜32。
+  件数は観測時点のスナップショットで、移行・公開時には変動する。
+- 本番DBの制約（provider/session一意、4状態）とclaim関数をSELECTで確認。
+  Supabase管理画面のmigration履歴も読み取り確認。
+  新migrationは未適用。本番へのイベント送信・cron手動起動はしていない。
+
+## ローカル検証
+
+- `node scripts/purchase-conversion-delivery-test.mjs`: 全通信をmock。実送信なし。
+- `PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js node scripts/purchase-conversion-migration-test.mjs`: ローカルのインメモリPostgreSQLで旧schemaから移行。環境ファイルやリモートDBへ接続しない。PGliteは検証用のignoredディレクトリへインストールし、アプリ依存には追加しない。
+- 対象ESLint、ルート／隔離環境のTypeScript、本番ビルド（`npm run build:local`）、`npm run verify:commerce`（48項目）合格。
+- 隔離環境のbuildにはダミーSupabase設定を使用。本番資格情報や送信先トークンを使用していない。
+- 即時／cronの応答に含まれる`expired`は、claim後に期限切れと判定した件数。DBがclaim前に整理した古い行はテーブルのstatusで確認する。
 
 ## ブラウザ計測との整合性
 
