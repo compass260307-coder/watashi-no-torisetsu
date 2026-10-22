@@ -11,7 +11,9 @@ grant all on public.hyper_report_dirty_dates to service_role;
 
 -- Existing event_name indexes narrow to follows but do not key the LINE user.
 -- Keep lookup cost bounded when an existing user's attribution/link changes.
-create index idx_events_hyper_line_follow_user_created
+-- Production: precreate CONCURRENTLY with the standalone operations script and
+-- verify its definition/indisvalid first. Do not rebuild it in this transaction.
+create index if not exists idx_events_hyper_line_follow_user_created
   on public.events ((metadata->>'line_user_id'), created_at)
   where event_name='line_follow';
 

@@ -28,7 +28,14 @@ await db.exec(`
  insert into line_accounts values ('30000000-0000-4000-8000-000000000001','private-line-id','00000000-0000-4000-8000-000000000001');
  insert into line_plus_subscriptions values ('40000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','2026-10-21T03:00Z','sub_real','canceled');
 `);
+// Simulate the production prerequisite: a verified index already exists. The
+// transaction migration must reuse its OID, without rebuilding or duplicating it.
+const indexSql=readFileSync(new URL('../supabase/operations/20261022_hyper_report_line_follow_index.sql',import.meta.url),'utf8');
+assert.match(indexSql,/create index concurrently if not exists/i);
+await db.exec(indexSql.replace(/create index concurrently/i,'create index'));
+const originalIndexOid=(await db.query(`select oid from pg_class where relname='idx_events_hyper_line_follow_user_created'`)).rows[0].oid;
 await db.exec(readFileSync(new URL('../supabase/migrations/20261022050000_hyper_report_aggregates.sql',import.meta.url),'utf8'));
+assert.equal((await db.query(`select oid from pg_class where relname='idx_events_hyper_line_follow_user_created'`)).rows[0].oid,originalIndexOid);
 // A fresh user's INSERT must work even when related-fact tables cannot be
 // resolved: any accidental search of these names fails this transaction.
 await db.exec(`begin;

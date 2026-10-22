@@ -33,14 +33,14 @@ data_daily はA:Eでupsert。再集計した日から消えたキーは数値列
 
 users の INSERT トリガーは診断日を変更日テーブルに記録するだけで、payment_history・line_plus_subscriptions・events は検索しない。UPDATE・DELETE は従来どおり関連する過去日を再集計対象にする。
 
-2026-10-22に本番DBのIndexes画面で `idx_events_event_name` と `idx_events_event_name_created_at_id (event_name, created_at, id)` の存在を確認した。これらでline_followへ絞れるが、`metadata->>'line_user_id'` をキーにした既存インデックスはない。PRのmigrationへ `idx_events_hyper_line_follow_user_created`（LINEユーザーID式＋created_at、`WHERE event_name='line_follow'`）を追加し、UPDATE・DELETEとLINE連携変更時の検索を支える。本番には未作成。新規ユーザーのINSERTではこの検索自体を実行しない。
+2026-10-22に本番DBのIndexes画面で `idx_events_event_name` と `idx_events_event_name_created_at_id (event_name, created_at, id)` の存在を確認した。これらでline_followへ絞れるが、`metadata->>'line_user_id'` をキーにした既存インデックスはない。本番では `supabase/operations/20261022_hyper_report_line_follow_index.sql` の **CREATE INDEX CONCURRENTLY** を単独実行し、`idx_events_hyper_line_follow_user_created`（LINEユーザーID式＋created_at、`WHERE event_name='line_follow'`）を事前作成する。既存定義とpg_indexのindisvalid/indisreadyを確認してから、migration内の `CREATE INDEX IF NOT EXISTS` で再利用する。通常のCREATE INDEXで本番のevents書き込みを待たせない。CONCURRENTLYはBEGIN/COMMITや複数文をまとめるtransaction内で実行しない。新規ユーザーのINSERTではこの検索自体を実行しない。
 
 ### マージ承認後の導入順序
 
 本PRの作成だけではDB・Web・Apps Script・シートは更新されない。マージ、本番DB適用、デプロイ、Apps Script保存と認可はそれぞれ承認後に行う。
 
-1. 適用履歴とremote schemaを再確認し、隔離DBで `20261022050000_hyper_report_aggregates.sql` を検証後、承認された環境へ適用する。過去の未適用migrationをまとめてdb pushしない。
-2. Vercelに `HYPER_REPORT_FX_JPY_PER_UNIT` を設定する。値はJSONで、KRWは既存韓国日報と同じ **1ウォン＝0.1193156円** を使用する。JPYは常に1。USDは1ドルあたりの採用レートを運用者が決める。設定例：`{"krw":0.1193156,"usd":150}`。この `usd:150` はJSON書式を示す仮値であり、採用済み・現在の為替レートではない。USDは実際に採用する値へ置き換えてから登録する。USDの決済額はセントからドルへ直してこのレートを掛ける（例：499セント→4.99ドル）。設定レートを変更したら後述の再取得を行う。認証情報はGitへ置かない。
+1. 適用履歴とremote schemaを再確認する。`supabase/operations/20261022_hyper_report_line_follow_index.sql` を **単独で** 実行し、定義・対象テーブル・indisvalid=true・indisready=trueを確認する。その後、検証済み `20261022050000_hyper_report_aggregates.sql` を承認済みDBへ適用する。migration側はIF NOT EXISTSで同じインデックスを再利用する。未適用migrationをまとめてdb pushしない。
+2. Vercelに `HYPER_REPORT_FX_JPY_PER_UNIT` を設定する。値はJSONで、KRWは既存韓国日報と同じ **1ウォン＝0.1193156円** を使用する。JPYは常に1。USDは2026-10-22の運用者承認により **1ドル＝150円（管理用の固定値）** を採用する。Productionへの設定値：`{"krw":0.1193156,"usd":150}`。USDは米国展開の本格化時に見直す。市場の実勢レートとして扱わない。USDの決済額はセントからドルへ直してこのレートを掛ける（例：499セント→4.99ドル）。設定レートを変更したら後述の再取得を行う。認証情報はGitへ置かない。
 3. 承認後にWebを配布し、Bearer認証付き `/api/metrics/hyper-report?date=YYYY-MM-DD` を検証する。無認証401、誤った日付400、未適用/換算未設定503を確認。
 4. **既存のApps Scriptプロジェクト**に `google-sheets-hyper-report-sync.gs` を追加。既存のsyncMetricsRawには、生データ同期とflushの後に置いた任意呼び出しと残り時間の判定を反映する。月別保存用補助ファイル、既存コード、プロパティ、rawカーソル、15分トリガーを保持する。
 5. 現行マニフェストと `google-sheets-hyper-report-sync-appsscript.json` を比較し、既存スコープをすべて維持したまま `https://www.googleapis.com/auth/spreadsheets` を追加する。別の日報ファイルをopenByIdで編集するため、currentonlyのみでは不足する。Googleの権限追加を運用者が確認・再承認する。SHEETS_METRICS_KEYは既存値を使用し、Supabase service_roleキーをApps Scriptへ入れない。
@@ -49,6 +49,28 @@ users の INSERT トリガーは診断日を変更日テーブルに記録する
 初回の過去分は2026-10-01から1実行最大3日。2026-10-22時点の22日分は最大8実行（約2時間、既存同期後に十分な実行時間がある回に進む）。今日・昨日は最初に成功した実行から更新。既存の生データ同期とflushを先に完了させ、開始から4分以上経過していた場合は集計同期をスキップする。集計の処理予算は最大45秒かつトリガー開始から5分までとし、期限を過ぎた場合は新たな書き込みとチェックポイント更新をしない。個々のGoogleネットワーク呼び出しは途中中断できないが、先に完了した既存同期を妨げない。初回取得の進捗は `HYPER_REPORT_BACKFILL_NEXT` で確認できる。
 
 再取得：停止中に `HYPER_REPORT_BACKFILL_NEXT` を必要な開始日に戻す。日付バージョンプロパティを消さずに過去分を再計算できる。停止は `HYPER_REPORT_ACTIVE=0` のみ。既存syncMetricsRawトリガーを削除しない。DB追加物は残しても既存同期へ影響しない。ロールバックで既存テーブル・決済ファクトを削除しない。
+
+### 本番公開後：運用者が手で行うApps Script設定
+
+1. **現在15分のsyncMetricsRawトリガーが動いている既存プロジェクト**を開く。新しいApps Scriptプロジェクトやトリガーは作らない。作業前に現行ソース・appsscript.json・プロパティを控え、`HYPER_REPORT_ACTIVE=0` のまま準備する。
+2. `scripts/google-sheets-hyper-report-sync.gs` を新しいスクリプトファイルとして追加する。既存の月別raw用ファイル、API URL、SHEETS_METRICS_KEY/METRICS_KEYと全rawカーソルを維持する。
+3. `scripts/google-sheets-diagnosis-sync.gs` は**全体を置換せず**、既存syncMetricsRawへ本PRの差分を入れる。ロック取得成功後に `const syncStartedAt = Date.now();` を追加し、既存ジョブのループと `SpreadsheetApp.flush();` の後へ次の処理を置く。既存エラーを投げる処理とfinallyのロック解除は残す。
+
+```javascript
+if (typeof syncHyperReportUnlocked_ === "function" &&
+    Date.now() - syncStartedAt < 240000) {
+  try {
+    syncHyperReportUnlocked_(syncStartedAt + 300000);
+  } catch (_) {
+    console.warn("hyper-report: optional sync failed after raw jobs completed");
+  }
+}
+```
+
+4. 現行の `appsscript.json` と `scripts/google-sheets-hyper-report-sync-appsscript.json` を比較する。既存サービス・既存スコープを削除せず、別のファイルへ書くための `https://www.googleapis.com/auth/spreadsheets` を追加する。タイムゾーンはAsia/Tokyo。`syncHyperReportOnce` を一度実行し、Googleの追加認可を完了する。この時点はACTIVE=0なので集計の書き込みをしない。
+5. スクリプトプロパティを確認：`HYPER_REPORT_START_DATE=2026-10-01`、`HYPER_REPORT_ACTIVE=0`、既存の同期用キーはそのまま。初回は `HYPER_REPORT_BACKFILL_NEXT` や `HYPER_REPORT_SINCE` を新規に設定しない。
+6. ソースと権限が揃った**最後に** `HYPER_REPORT_ACTIVE=1` にする。`syncHyperReportOnce` を手動実行すると既存のロックを使って初回を確認できる。以後は既存の15分トリガーで動く。有効化・初回実行が終わったら確認担当へ知らせる。
+7. 初回確認：data_dailyに日付値とA:Pの数値が入り、Q1の配列数式が残ること。同期状態B2に同期時刻、B3は空、B4は「未接続（段階1）」、B5は空であること。data_hourlyは今日・昨日のみ。旧日報とraw同期のカーソルも続いていること。初回は10月の全日を一度に取得せず、過去分は最大3日/実行で増える。
 
 ### 検証
 
