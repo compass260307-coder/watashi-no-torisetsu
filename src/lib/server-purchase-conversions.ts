@@ -488,12 +488,16 @@ async function markOutboxFailed(
 async function claimOutboxRows(
   limit: number,
   sessionId: string | null,
+  includeMeta?: boolean,
 ): Promise<PurchaseConversionOutboxRow[]> {
   const { data, error } = await supabaseAdmin.rpc(
-    "claim_due_purchase_conversion_deliveries",
+    includeMeta === undefined
+      ? "claim_due_purchase_conversion_deliveries"
+      : "claim_due_configured_purchase_conversion_deliveries",
     {
       p_limit: Math.max(1, Math.min(limit, 100)),
       p_session_id: sessionId,
+      ...(includeMeta === undefined ? {} : { p_include_meta: includeMeta }),
     },
   );
   if (error) {
@@ -504,20 +508,27 @@ async function claimOutboxRows(
   return (data ?? []) as PurchaseConversionOutboxRow[];
 }
 
-function metaConfig(): {
+function readMetaConfig(): {
   pixelId: string;
   accessToken: string;
   apiVersion: string;
-} {
+} | null {
   const pixelId = process.env.META_PIXEL_ID?.trim();
   const accessToken = process.env.META_CONVERSIONS_API_TOKEN?.trim();
   const apiVersion = process.env.META_GRAPH_API_VERSION?.trim();
-  if (!pixelId || !accessToken || !apiVersion) {
+  return pixelId && accessToken && apiVersion
+    ? { pixelId, accessToken, apiVersion }
+    : null;
+}
+
+function metaConfig() {
+  const config = readMetaConfig();
+  if (!config) {
     throw new Error(
       "[purchase-conversion] Meta server tracking configuration is incomplete",
     );
   }
-  return { pixelId, accessToken, apiVersion };
+  return config;
 }
 
 type DeliveryResult = "sent" | "failed" | "expired";
@@ -623,12 +634,38 @@ export async function deliverServerPurchaseConversions(
   }
 }
 
+// Purchases predating the first post-release cron are the finite catch-up cohort.
+// Once sent or expired, they cannot keep the temporary increase enabled.
+const CATCHUP_PAID_BEFORE = "2026-10-22T03:00:00.000Z";
+const CRON_WORK_BUDGET_MS = 240_000;
+const CRON_BATCH_PAUSE_MS = 200;
+
+async function purchaseConversionCronLimit(): Promise<number> {
+  const { data, error } = await supabaseAdmin
+    .from("purchase_conversion_delivery_outbox")
+    .select("id")
+    .eq("provider", "tiktok")
+    .in("status", ["pending", "failed", "processing"])
+    .lt("paid_at", CATCHUP_PAID_BEFORE)
+    .gt("paid_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    throw new Error("[purchase-conversion] catch-up backlog lookup failed");
+  }
+  return data ? 100 : 25;
+}
+
 /** Process durable jobs claimed by the Vercel Cron route. */
 export async function processDueServerPurchaseConversions(
-  limit = 25,
+  limit?: number,
 ): Promise<PurchaseConversionDeliverySummary> {
-  // Claim also expires the entire stale backlog before applying the batch limit.
-  const rows = await claimOutboxRows(limit, null);
+  const deadline = Date.now() + CRON_WORK_BUDGET_MS;
+  const runLimit = Math.max(
+    1,
+    Math.min(limit ?? (await purchaseConversionCronLimit()), 100),
+  );
+  const includeMeta = readMetaConfig() !== null;
   const stripe = getStripe();
   const sessionRequests = new Map<string, Promise<Stripe.Checkout.Session>>();
   const getSession = (sessionId: string) => {
@@ -638,16 +675,29 @@ export async function processDueServerPurchaseConversions(
       throw new Error(
         "[purchase-conversion] STRIPE_SECRET_KEY is not configured for retry worker",
       );
-    const request = stripe.checkout.sessions.retrieve(sessionId);
+    // A slow Stripe lookup must not consume the entire 300s cron duration.
+    const request = stripe.checkout.sessions.retrieve(
+      sessionId,
+      {},
+      {
+        timeout: 10_000,
+        maxNetworkRetries: 0,
+      },
+    );
     sessionRequests.set(sessionId, request);
     return request;
   };
 
-  const results: DeliveryResult[] = [];
-  // Four concurrent jobs keep provider pressure bounded while staying well
-  // within the cron function duration even when a provider hits the 8s timeout.
-  for (let start = 0; start < rows.length; start += 4) {
-    const batch = rows.slice(start, start + 4);
+  const summary = { claimed: 0, sent: 0, failed: 0, expired: 0 };
+  // Claim four at a time: after the budget, untouched jobs remain due instead
+  // of waiting for a processing lease. Claim always expires ALL providers first.
+  while (summary.claimed < runLimit && Date.now() < deadline) {
+    const batch = await claimOutboxRows(
+      Math.min(4, runLimit - summary.claimed),
+      null,
+      includeMeta,
+    );
+    if (!batch.length) break;
     const batchResults = await Promise.all(
       batch.map(async (row) => {
         try {
@@ -670,7 +720,18 @@ export async function processDueServerPurchaseConversions(
         }
       }),
     );
-    results.push(...batchResults);
+    const result = summarize(batch, batchResults);
+    summary.claimed += result.claimed;
+    summary.sent += result.sent;
+    summary.failed += result.failed;
+    summary.expired += result.expired;
+    // Four concurrent single-event calls, followed by a 200ms gap, are well
+    // below TikTok's 1,000 QPS per advertiser/developer-app limit.
+    if (summary.claimed < runLimit && Date.now() < deadline) {
+      await new Promise<void>((resolve) =>
+        setTimeout(resolve, CRON_BATCH_PAUSE_MS),
+      );
+    }
   }
-  return summarize(rows, results);
+  return summary;
 }
