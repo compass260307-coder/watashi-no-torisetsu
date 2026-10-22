@@ -26,36 +26,47 @@ assert.equal(card.type,'flex');
 assert(card.altText.length <= 400);
 assert(Buffer.byteLength(JSON.stringify(card.contents)) < 30_000);
 assert.equal(card.contents.type,'bubble');
-assert.equal(card.contents.header.backgroundColor,'#06C755');
+assert.equal(card.contents.header,undefined);
+assert.equal(card.contents.body,undefined);
+assert.equal(card.contents.footer.contents.length,1);
+assert.equal(card.contents.footer.contents[0].color,'#06C755');
 assert.equal(card.contents.footer.contents[0].action.uri,checkoutUrl);
 assert.equal(card.contents.footer.contents[0].action.label,'購入手続きへ');
-const text = JSON.stringify(card.contents);
-for(const value of ['¥1,398','−¥499','¥899','買い切り','30日間','LINEにキャラクターと鑑定書']) assert(text.includes(value));
+const text = dialogue.LINE_UPGRADE_PRICE_MESSAGE;
+for(const value of ['¥1398','¥499','¥899','買い切り','30日間']) assert(text.includes(value));
 if(process.argv.includes('--write-example')) writeFileSync('flex-card-example.json',JSON.stringify({messages:[card]},null,2));
-console.log('PASS: native purchase card contains the fixed offer, guarantee, delivery and signed checkout URI within LINE limits.');
+console.log('PASS: price message contains the fixed offer and guarantee; the compact card contains only the signed purchase button within LINE limits.');
 
 const callbacks=[];const sends=[];const waits=[];
+let failPush=false;
 const offer=compile('src/lib/line-upgrade-offer-delivery.ts',{
   'server-only':{},'next/server':{after:callback=>callbacks.push(callback)},
   'node:timers/promises':{setTimeout:async ms=>{waits.push(ms);}},
   '@/lib/line-upgrade-dialogue':dialogue,
   '@/lib/line':{
     replyLineMessages:async(token,messages)=>{sends.push({kind:'reply',token,messages});return true;},
-    pushLineMessages:async(to,messages)=>{sends.push({kind:'push',to,messages});return true;},
+    pushLineMessages:async(to,messages)=>{sends.push({kind:'push',to,messages});return !failPush;},
     startLineLoadingAnimation:async(_user,seconds)=>{assert.equal(seconds,10);throw new Error('Indicator unavailable');},
   },
 });
-await offer.replyLineUpgradeMessages('one-use-reply','owner',[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},card]);
+await offer.replyLineUpgradeMessages('one-use-reply','owner',[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},{type:'text',text:dialogue.LINE_UPGRADE_PRICE_MESSAGE},card]);
 assert.equal(sends.length,1);
 assert.equal(sends[0].messages[0].text,dialogue.LINE_UPGRADE_PREPARING_MESSAGE);
 assert.equal(callbacks.length,1);
 await callbacks.shift()();
-assert.equal(waits[0],6000);
-assert.equal(sends[1].kind,'push');
-assert.equal(sends[1].messages[1],card);
+assert.deepEqual(waits,[6000,1500,3000]);
+assert.equal(sends[1].messages[0].text,dialogue.LINE_UPGRADE_OFFER_MESSAGE);
+assert.equal(sends[2].messages[0].text,dialogue.LINE_UPGRADE_PRICE_MESSAGE);
+assert.equal(sends[3].messages[0],card);
+assert(sends.slice(1).every(send=>send.kind==='push' && send.messages.length===1));
 assert.equal(sends.filter(item=>item.kind==='reply').length,1,'Reply tokens are used once and never after the delay');
 await offer.replyLineUpgradeMessages('question-reply','owner',[{type:'text',text:'質問 1/5'}]);
 assert.equal(callbacks.length,0,'Questions never wait for cosmetic preparation');
+const before=sends.length;
+await offer.pushLineUpgradeMessages('owner',[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},{type:'text',text:dialogue.LINE_UPGRADE_PRICE_MESSAGE},card]);
+failPush=true;
+await callbacks.shift()();
+assert.equal(sends.length,before+2,'Failed preparation-complete message prevents the price and purchase card from overtaking it');
 console.log('PASS: a preparation message precedes the delayed card; indicator failure does not block delivery, and questions do not wait.');
 
 const requests = [];
