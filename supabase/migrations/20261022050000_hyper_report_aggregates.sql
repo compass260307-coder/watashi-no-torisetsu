@@ -9,6 +9,12 @@ alter table public.hyper_report_dirty_dates enable row level security;
 revoke all on public.hyper_report_dirty_dates from public, anon, authenticated;
 grant all on public.hyper_report_dirty_dates to service_role;
 
+-- Existing event_name indexes narrow to follows but do not key the LINE user.
+-- Keep lookup cost bounded when an existing user's attribution/link changes.
+create index idx_events_hyper_line_follow_user_created
+  on public.events ((metadata->>'line_user_id'), created_at)
+  where event_name='line_follow';
+
 create function public.hyper_report_mark_date(p_at timestamptz)
 returns void language sql security definer set search_path = '' as $$
   insert into public.hyper_report_dirty_dates(date, changed_at)
@@ -28,6 +34,9 @@ begin
   ]) x where x is not null loop
     if tg_table_name = 'users' then
       perform public.hyper_report_mark_date((r->>'diagnosis_completed_at')::timestamptz);
+      -- A newly inserted user cannot have related facts. Do not delay diagnosis
+      -- saves with payment/subscription/follow searches on the INSERT path.
+      if tg_op = 'INSERT' then continue; end if;
       uid := (r->>'id')::uuid;
       for payment in select coalesce(paid_at,created_at) at from public.payment_history where user_id=uid loop
         perform public.hyper_report_mark_date(payment.at);

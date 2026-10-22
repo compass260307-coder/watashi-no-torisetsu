@@ -29,11 +29,26 @@ await db.exec(`
  insert into line_plus_subscriptions values ('40000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','2026-10-21T03:00Z','sub_real','canceled');
 `);
 await db.exec(readFileSync(new URL('../supabase/migrations/20261022050000_hyper_report_aggregates.sql',import.meta.url),'utf8'));
+// A fresh user's INSERT must work even when related-fact tables cannot be
+// resolved: any accidental search of these names fails this transaction.
+await db.exec(`begin;
+ alter table payment_history rename to hidden_payment_history;
+ alter table line_plus_subscriptions rename to hidden_line_plus_subscriptions;
+ alter table events rename to hidden_events;
+ insert into users values ('00000000-0000-4000-8000-000000000099','2026-10-01T01:00Z','ja','x','paid_social','new',null);
+`);
+assert.equal((await db.query(`select count(*)::integer n from hyper_report_dirty_dates where date='2026-10-01'`)).rows[0].n,1);
+await db.exec('rollback');
+const followIndex=(await db.query(`select indexdef from pg_indexes where indexname='idx_events_hyper_line_follow_user_created'`)).rows[0].indexdef;
+assert.match(followIndex,/line_user_id/);
+assert.match(followIndex,/created_at/);
+assert.match(followIndex,/WHERE.*line_follow/);
 const day = async (date,fx={krw:0.1,usd:150}) => (await db.query('select hyper_report_day($1,$2) data',[date,fx])).rows[0].data;
 let data = await day('2026-10-21');
 const jp = data.daily.find(r=>r.country==='jp');
 assert.deepEqual([jp.diagnoses,jp.purchases_full,jp.purchases_upsell,jp.purchases_total,jp.revenue_jpy,jp.line_follows,jp.sub_starts],[1,1,1,2,400,1,1]);
 assert.equal(data.daily.find(r=>r.country==='kr').revenue_jpy,400);
+assert.equal((await day('2026-10-21',{krw:0.1193156,usd:150})).daily.find(r=>r.country==='kr').revenue_jpy,477.26);
 assert.equal(data.hourly.find(r=>r.country==='jp'&&r.diagnoses===1).hour,0);
 assert.equal(data.hourly.find(r=>r.country==='kr'&&r.diagnoses===1).hour,23);
 assert.equal((await day('2026-10-22')).daily.find(r=>r.country==='us').revenue_jpy,598.5);

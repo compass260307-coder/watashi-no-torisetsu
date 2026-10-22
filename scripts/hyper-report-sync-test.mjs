@@ -54,6 +54,31 @@ assert(!ok.calls.some(url=>url.includes('date=2026-09-01')));
 const failed=harness({fail:true});failed.run();assert.equal(failed.state.HYPER_REPORT_SINCE,undefined);
 const malformed=harness({invalid:true});malformed.run();assert.equal(malformed.state.HYPER_REPORT_SINCE,undefined);assert.equal(malformed.writes.length,1); // status error only
 const inactive=harness({inactive:true});inactive.run();assert.equal(inactive.calls.length,0);assert.equal(inactive.writes.length,0);
+const expired=harness();expired.ctx.syncHyperReportUnlocked_(Date.now()-1);
+assert.equal(expired.calls.length,0);assert.equal(expired.writes.length,0);assert.equal(expired.state.HYPER_REPORT_SINCE,undefined);
+const defaults=harness();delete defaults.state.HYPER_REPORT_START_DATE;defaults.run();
+assert(defaults.calls.some(url=>url.includes('date=2026-10-01')));
+
+// Execute the actual existing trigger entry point with slow raw job adapters.
+// Raw jobs and their flush must finish before any aggregate work starts.
+const rawSource=readFileSync(new URL('./google-sheets-diagnosis-sync.gs',import.meta.url),'utf8');
+function runRawThenAggregate(rawDuration,hyperThrows=false) {
+  let clock=0;const events=[];
+  class TestDate extends Date {static now(){return clock;}}
+  const context=vm.createContext({Date:TestDate,console,
+    LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>events.push('release')})},
+    PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})},
+    SpreadsheetApp:{flush:()=>{events.push('flush');clock=rawDuration;}}});
+  vm.runInContext(rawSource,context);
+  context.syncJob_=job=>events.push('raw:'+job.apiPath);
+  context.syncHyperReportUnlocked_=deadline=>{assert.equal(deadline,300000);events.push('hyper');if(hyperThrows)throw new Error('optional failure');};
+  context.syncMetricsRaw();return events;
+}
+assert.deepEqual(runRawThenAggregate(0).slice(-3),['flush','hyper','release']);
+assert(runRawThenAggregate(239999).includes('hyper'));
+assert(!runRawThenAggregate(240000).includes('hyper'));
+assert(!runRawThenAggregate(350000).includes('hyper'));
+assert.deepEqual(runRawThenAggregate(0,true).slice(-3),['flush','hyper','release']);
 
 // Execute the actual route with RPC-only DB adapter. No raw table reads allowed.
 const route=readFileSync(new URL('../src/app/api/metrics/hyper-report/route.ts',import.meta.url),'utf8');

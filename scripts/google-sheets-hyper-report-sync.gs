@@ -79,11 +79,12 @@ function hyperStatusError_() {
     rows:[{values:[hyperCell_('同期失敗。集計API・円換算設定・シートの列と権限を確認してください')]}],fields:'userEnteredValue'}}]});
 }
 
-function syncHyperReportUnlocked_() {
+function syncHyperReportUnlocked_(executionDeadline) {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('HYPER_REPORT_ACTIVE') !== '1') return;
   try {
-    var deadline = Date.now()+45000;
+    var deadline = Math.min(Date.now()+45000, executionDeadline || Infinity);
+    if (Date.now() >= deadline) return;
     var book = SpreadsheetApp.openById(HYPER_REPORT_BOOK_);
     if (book.getSpreadsheetTimeZone() !== 'Asia/Tokyo') throw new Error('シートのタイムゾーンが不一致');
     var daily = book.getSheetByName('data_daily'), hourly = book.getSheetByName('data_hourly'), status = book.getSheetByName('同期状態');
@@ -102,7 +103,7 @@ function syncHyperReportUnlocked_() {
       versions[entry.date] = entry.version;
       return props.getProperty('HYPER_REPORT_DAY_VERSION_'+entry.date) !== entry.version;
     }).map(function (entry) { return entry.date; }).sort();
-    var backfill = props.getProperty('HYPER_REPORT_BACKFILL_NEXT') || props.getProperty('HYPER_REPORT_START_DATE') || (plan.today.slice(0,4)+'-01-01');
+    var backfill = props.getProperty('HYPER_REPORT_BACKFILL_NEXT') || props.getProperty('HYPER_REPORT_START_DATE') || '2026-10-01';
     hyperSerial_(backfill);
     var dates = [plan.today,hyperShiftDate_(plan.today,-1),hyperShiftDate_(plan.today,-2)].concat(queue.slice(0,3));
     var next = backfill;
@@ -155,13 +156,16 @@ function syncHyperReportUnlocked_() {
     requests.push({updateCells:{range:{sheetId:status.getSheetId(),startRowIndex:1,endRowIndex:5,startColumnIndex:1,endColumnIndex:2},
       rows:[plan.as_of,ads && ads.synced_at || '',ads && ads.source || '未接続（段階1）',''].map(function (v) {return {values:[hyperCell_(v)]};}),fields:'userEnteredValue'}});
     // Atomic publish: daily, hourly, status either all apply or none apply.
+    if (Date.now() >= deadline) return;
     hyperSheetsRequest_({requests:requests});
     // Ambiguous/failed HTTP never advances checkpoints. Repeating is idempotent.
     var checkpoints = {HYPER_REPORT_BACKFILL_NEXT:next,HYPER_REPORT_SINCE:plan.as_of};
     dates.forEach(function (day) { if (versions[day]) checkpoints['HYPER_REPORT_DAY_VERSION_'+day] = versions[day]; });
     props.setProperties(checkpoints);
   } catch (error) {
-    try { hyperStatusError_(); } catch (_) { /* Preserve existing jobs even if status cannot be written. */ }
+    if (Date.now() < deadline) {
+      try { hyperStatusError_(); } catch (_) { /* Preserve existing jobs even if status cannot be written. */ }
+    }
     console.warn('hyper-report: 同期失敗（既存同期を継続）');
   }
 }
