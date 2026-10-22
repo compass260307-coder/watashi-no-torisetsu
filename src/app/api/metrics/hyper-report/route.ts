@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       ? await supabaseAdmin.rpc("hyper_report_day", { p_date: date, p_fx: fx })
       : await supabaseAdmin.rpc("hyper_report_plan", { p_since: since || null });
     if (error || !data) throw new Error("Aggregate unavailable");
-    return NextResponse.json({ version: 1, ...data, ad_status: { source: "未接続（段階1）", synced_at: null } }, { headers: metricsPrivateHeaders });
+    return NextResponse.json({ version: 1, ...data, ad_status: data.ad_status ?? { source: "未接続（段階1）", synced_at: null } }, { headers: metricsPrivateHeaders });
   } catch {
     // Never return database error details, credentials, raw facts, or tokens.
     return NextResponse.json({ error: "集計を取得できません。DB適用状態と円換算レートを確認してください" }, { status: 503, headers: metricsPrivateHeaders });

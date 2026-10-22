@@ -7,6 +7,10 @@
   },
   "crons": [
     {
+      "path": "/api/cron/ad-spend",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/purchase-conversions",
       "schedule": "0 * * * *"
     }

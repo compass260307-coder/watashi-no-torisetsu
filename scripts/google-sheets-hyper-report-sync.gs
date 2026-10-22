@@ -154,7 +154,7 @@ function syncHyperReportUnlocked_(executionDeadline) {
     var remaining = queue.filter(function (day) { return dates.indexOf(day)<0; });
     if (remaining.length) console.log('hyper-report: 過去更新の残り'+remaining.length+'日');
     requests.push({updateCells:{range:{sheetId:status.getSheetId(),startRowIndex:1,endRowIndex:5,startColumnIndex:1,endColumnIndex:2},
-      rows:[plan.as_of,ads && ads.synced_at || '',ads && ads.source || '未接続（段階1）',''].map(function (v) {return {values:[hyperCell_(v)]};}),fields:'userEnteredValue'}});
+      rows:[plan.as_of,ads && ads.synced_at || '',ads && ads.source || '未接続（段階1）',ads && ads.error || ''].map(function (v) {return {values:[hyperCell_(v)]};}),fields:'userEnteredValue'}});
     // Atomic publish: daily, hourly, status either all apply or none apply.
     if (Date.now() >= deadline) return;
     hyperSheetsRequest_({requests:requests});
