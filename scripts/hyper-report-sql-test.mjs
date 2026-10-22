@@ -28,14 +28,11 @@ await db.exec(`
  insert into line_accounts values ('30000000-0000-4000-8000-000000000001','private-line-id','00000000-0000-4000-8000-000000000001');
  insert into line_plus_subscriptions values ('40000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','2026-10-21T03:00Z','sub_real','canceled');
 `);
-// Simulate the production prerequisite: a verified index already exists. The
-// transaction migration must reuse its OID, without rebuilding or duplicating it.
-const indexSql=readFileSync(new URL('../supabase/operations/20261022_hyper_report_line_follow_index.sql',import.meta.url),'utf8');
-assert.match(indexSql,/create index concurrently if not exists/i);
-await db.exec(indexSql.replace(/create index concurrently/i,'create index'));
-const originalIndexOid=(await db.query(`select oid from pg_class where relname='idx_events_hyper_line_follow_user_created'`)).rows[0].oid;
-await db.exec(readFileSync(new URL('../supabase/migrations/20261022050000_hyper_report_aggregates.sql',import.meta.url),'utf8'));
-assert.equal((await db.query(`select oid from pg_class where relname='idx_events_hyper_line_follow_user_created'`)).rows[0].oid,originalIndexOid);
+const migration=readFileSync(new URL('../supabase/migrations/20261022050000_hyper_report_aggregates.sql',import.meta.url),'utf8');
+assert.doesNotMatch(migration,/create\s+index/i);
+const triggerBody=migration.split('create function public.hyper_report_track_change()')[1].split('$$;')[0];
+assert.doesNotMatch(triggerBody,/from\s+public\.events/i);
+await db.exec(migration);
 // A fresh user's INSERT must work even when related-fact tables cannot be
 // resolved: any accidental search of these names fails this transaction.
 await db.exec(`begin;
@@ -46,10 +43,23 @@ await db.exec(`begin;
 `);
 assert.equal((await db.query(`select count(*)::integer n from hyper_report_dirty_dates where date='2026-10-01'`)).rows[0].n,1);
 await db.exec('rollback');
-const followIndex=(await db.query(`select indexdef from pg_indexes where indexname='idx_events_hyper_line_follow_user_created'`)).rows[0].indexdef;
-assert.match(followIndex,/line_user_id/);
-assert.match(followIndex,/created_at/);
-assert.match(followIndex,/WHERE.*line_follow/);
+// UPDATE/DELETE users and account-link changes must not query events either.
+// Old payment/subscription dates still become dirty; old follow dates do not.
+await db.exec(`begin;
+ alter table events rename to hidden_events;
+ insert into hidden_events values ('20000000-0000-4000-8000-000000000099','line_follow','2020-01-02T00:00Z','{"line_user_id":"private-old-follow"}');
+ insert into line_accounts values ('30000000-0000-4000-8000-000000000099','private-old-follow','00000000-0000-4000-8000-000000000001');
+ truncate hyper_report_dirty_dates;
+ update users set acquisition_medium='test-changed' where id='00000000-0000-4000-8000-000000000001';
+ update line_accounts set user_id='00000000-0000-4000-8000-000000000002' where line_user_id='private-old-follow';
+ delete from line_accounts where line_user_id='private-old-follow';
+ delete from users where id='00000000-0000-4000-8000-000000000004';
+`);
+const changedDates=(await db.query('select date::text from hyper_report_dirty_dates')).rows.map(r=>r.date);
+assert(changedDates.includes('2026-10-21')); // payment/subscription dates preserved
+assert(!changedDates.includes('2020-01-02')); // historical LINE attribution not queued
+assert.equal((await db.query("select count(*)::int n from hyper_report_dirty_dates where date=(statement_timestamp() at time zone 'Asia/Tokyo')::date")).rows[0].n,1);
+await db.exec('rollback');
 const day = async (date,fx={krw:0.1,usd:150}) => (await db.query('select hyper_report_day($1,$2) data',[date,fx])).rows[0].data;
 let data = await day('2026-10-21');
 const jp = data.daily.find(r=>r.country==='jp');

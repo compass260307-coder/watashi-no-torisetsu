@@ -9,14 +9,6 @@ alter table public.hyper_report_dirty_dates enable row level security;
 revoke all on public.hyper_report_dirty_dates from public, anon, authenticated;
 grant all on public.hyper_report_dirty_dates to service_role;
 
--- Existing event_name indexes narrow to follows but do not key the LINE user.
--- Keep lookup cost bounded when an existing user's attribution/link changes.
--- Production: precreate CONCURRENTLY with the standalone operations script and
--- verify its definition/indisvalid first. Do not rebuild it in this transaction.
-create index if not exists idx_events_hyper_line_follow_user_created
-  on public.events ((metadata->>'line_user_id'), created_at)
-  where event_name='line_follow';
-
 create function public.hyper_report_mark_date(p_at timestamptz)
 returns void language sql security definer set search_path = '' as $$
   insert into public.hyper_report_dirty_dates(date, changed_at)
@@ -29,6 +21,13 @@ create function public.hyper_report_track_change()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare r jsonb; uid uuid; payment record;
 begin
+  -- Avoid reading historical events on the interactive account-link path.
+  -- The exporter always refreshes today, yesterday and the day before yesterday.
+  -- LINE attribution changes outside that window require an explicit backfill.
+  if tg_table_name = 'line_accounts' then
+    perform public.hyper_report_mark_date(statement_timestamp());
+    return null;
+  end if;
   -- Mark BOTH old and new dates, including deleted facts and moved attribution.
   for r in select x from unnest(array[
     case when tg_op <> 'INSERT' then to_jsonb(old) end,
@@ -43,10 +42,7 @@ begin
       for payment in select coalesce(paid_at,created_at) at from public.payment_history where user_id=uid loop
         perform public.hyper_report_mark_date(payment.at);
       end loop;
-      for payment in select created_at at from public.line_plus_subscriptions where user_id=uid
-        union select e.created_at from public.events e join public.line_accounts a
-          on a.line_user_id=e.metadata->>'line_user_id'
-          where e.event_name='line_follow' and a.user_id=uid loop
+      for payment in select created_at at from public.line_plus_subscriptions where user_id=uid loop
         perform public.hyper_report_mark_date(payment.at);
       end loop;
     elsif tg_table_name = 'payment_history' then
@@ -55,11 +51,6 @@ begin
       perform public.hyper_report_mark_date((r->>'created_at')::timestamptz);
     elsif tg_table_name = 'events' and r->>'event_name' = 'line_follow' then
       perform public.hyper_report_mark_date((r->>'created_at')::timestamptz);
-    elsif tg_table_name = 'line_accounts' then
-      for payment in select created_at at from public.events
-        where event_name='line_follow' and metadata->>'line_user_id'=r->>'line_user_id' loop
-        perform public.hyper_report_mark_date(payment.at);
-      end loop;
     end if;
   end loop;
   return null;

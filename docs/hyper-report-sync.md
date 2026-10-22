@@ -15,7 +15,7 @@
 - 診断・購入とも users の診断時 acquisition_source/medium/campaign を使用。campaignだけ acquisition_campaign がNULLなら旧campaignへフォールバック。欠損 source/medium/campaign は空文字。決済時のsourceや広告名から診断の帰属を変更しない。
 - purchases_full は payment_kind=full_access。purchases_upsell はそれ以外の有償決済、purchases_total は両者の和。料金・商品内容を変更しない。
 - amount_jpy は既存DBの列名であり、実際は元通貨の最小単位。JPY/KRWはそのまま、USDは100で除算後、設定レートで円換算する。返金額を同じ元通貨で先に控除する。通貨・レートが不明な場合は同期全体を失敗させ、前回値を保持する。
-- line_follows は line_follow イベント数（再フォローを含む）。line_accounts の現在の連携先ユーザーで帰属し、未連携は jp/空source/空medium/空campaign。後から連携した場合は過去日を再集計する。
+- line_follows は line_follow イベント数（再フォローを含む）。line_accounts の現在の連携先ユーザーで帰属し、未連携は jp/空source/空medium/空campaign。後から連携した場合、今日・昨日・一昨日の定期再取得で帰属を反映する。**3日より前のLINE登録の帰属変更は自動では再集計されない**。必要時は該当日を含む期間を手動で再取得する。
 - sub_starts は line_plus_subscriptions の実Stripeサブスク（IDが sub_ で開始）の作成件数。解約後も開始件数を保持。手動付与・買い切り権利は除外する。
 - 段階1では広告費・表示・クリック=0、広告最終同期は空、取得元は「未接続（段階1）」。広告接続前の0は実績取得済みを意味しない。
 
@@ -23,7 +23,7 @@
 
 DB関数と変更日テーブルはRLS有効、anon/authenticated/PUBLICに権限なし。APIは既存SHEETS_METRICS_KEY（旧METRICS_KEY互換）をBearerで照合し、no-storeで配信する。メール、元ID、匿名ID、トークン等の個別レコードを返さない。DB側はjsonbの単一値で返すため、PostgRESTの1000行制限で切れない。
 
-毎回、今日〜一昨日、変更待ちの古い日3日、初回取得の過去日3日まで再計算する。変更日のバージョンを日別に保存し、古い返金、削除、流入の修正、LINE連携も追随する。全履歴を15分ごとにスキャンしない。変更日テーブルは日付と更新時刻だけを保持する。
+毎回、今日〜一昨日、変更待ちの古い日3日、初回取得の過去日3日まで再計算する。変更日のバージョンを日別に保存し、古い返金、削除、診断・購入の流入の修正に追随する。LINE連携による帰属変更は毎回再取得する今日・昨日・一昨日の範囲で反映し、それより前のLINE登録日は自動で変更日へ追加しない。全履歴を15分ごとにスキャンしない。変更日テーブルは日付と更新時刻だけを保持する。
 
 data_daily はA:Eでupsert。再集計した日から消えたキーは数値列を0にして古い合計を残さない。data_hourlyは今日・昨日のみ、前回の余分な行も削除する。日付はSheetsの日付シリアル値＋日付書式、広告名等の文字はstringValueで書くため数式として実行されない。書き込みはSheets APIの1つの原子的batchUpdate。Q列とヘッダーには書かない。不足時は行数だけ拡張する。
 
@@ -31,15 +31,17 @@ data_daily はA:Eでupsert。再集計した日から消えたキーは数値列
 
 ### 診断保存とLINEフォロー検索の負荷
 
-users の INSERT トリガーは診断日を変更日テーブルに記録するだけで、payment_history・line_plus_subscriptions・events は検索しない。UPDATE・DELETE は従来どおり関連する過去日を再集計対象にする。
+users の INSERT トリガーは診断日を変更日テーブルに記録するだけで、payment_history・line_plus_subscriptions・events は検索しない。users の UPDATE・DELETE は診断日、関連するpayment_historyとline_plus_subscriptionsの日付を記録するが、events（line_follow）は検索しない。line_accounts の INSERT・UPDATE・DELETE は変更のあった現在日（JST）だけを記録し、過去のeventsを検索しない。line_followイベント自体の追加・更新・削除は、そのイベント日を変更日として記録する。
 
-2026-10-22に本番DBのIndexes画面で `idx_events_event_name` と `idx_events_event_name_created_at_id (event_name, created_at, id)` の存在を確認した。これらでline_followへ絞れるが、`metadata->>'line_user_id'` をキーにした既存インデックスはない。本番では `supabase/operations/20261022_hyper_report_line_follow_index.sql` の **CREATE INDEX CONCURRENTLY** を単独実行し、`idx_events_hyper_line_follow_user_created`（LINEユーザーID式＋created_at、`WHERE event_name='line_follow'`）を事前作成する。既存定義とpg_indexのindisvalid/indisreadyを確認してから、migration内の `CREATE INDEX IF NOT EXISTS` で再利用する。通常のCREATE INDEXで本番のevents書き込みを待たせない。CONCURRENTLYはBEGIN/COMMITや複数文をまとめるtransaction内で実行しない。新規ユーザーのINSERTではこの検索自体を実行しない。
+毎回、今日・昨日・一昨日を再取得するため、通常のLINE登録→アカウント連携はこの範囲で反映される。**3日より前のLINE登録の帰属変更は自動では再集計されない**。過去のLINE登録へ連携先・流入の変更を反映する必要がある場合は、後述の再取得で対象日まで戻す。
+
+2026-10-22の本番確認：既存の `idx_events_event_name` と `idx_events_event_name_created_at_id (event_name, created_at, id)` を確認。line_followは359件。既存event_nameインデックスで絞りmetadataのLINEユーザーIDを照合する検索のEXPLAIN ANALYZEは477.341ms（333ブロックのディスク読み込み）だったため、トリガーからこの検索を取り除いた。追加インデックスは作成しない。途中終了で残った `idx_events_hyper_line_follow_user_created` はDROP INDEX CONCURRENTLYで削除済みであり、migration・運用SQLからも除外した。日別集計は既存のevent_name＋created_atインデックスを使用できる。
 
 ### マージ承認後の導入順序
 
 本PRの作成だけではDB・Web・Apps Script・シートは更新されない。マージ、本番DB適用、デプロイ、Apps Script保存と認可はそれぞれ承認後に行う。
 
-1. 適用履歴とremote schemaを再確認する。`supabase/operations/20261022_hyper_report_line_follow_index.sql` を **単独で** 実行し、定義・対象テーブル・indisvalid=true・indisready=trueを確認する。その後、検証済み `20261022050000_hyper_report_aggregates.sql` を承認済みDBへ適用する。migration側はIF NOT EXISTSで同じインデックスを再利用する。未適用migrationをまとめてdb pushしない。
+1. 適用履歴とremote schemaを再確認し、検証済み `20261022050000_hyper_report_aggregates.sql` を承認済みDBへ適用する。eventsへの追加インデックス作成や直接接続での事前作業は不要。未適用migrationをまとめてdb pushしない。
 2. Vercelに `HYPER_REPORT_FX_JPY_PER_UNIT` を設定する。値はJSONで、KRWは既存韓国日報と同じ **1ウォン＝0.1193156円** を使用する。JPYは常に1。USDは2026-10-22の運用者承認により **1ドル＝150円（管理用の固定値）** を採用する。Productionへの設定値：`{"krw":0.1193156,"usd":150}`。USDは米国展開の本格化時に見直す。市場の実勢レートとして扱わない。USDの決済額はセントからドルへ直してこのレートを掛ける（例：499セント→4.99ドル）。設定レートを変更したら後述の再取得を行う。認証情報はGitへ置かない。
 3. 承認後にWebを配布し、Bearer認証付き `/api/metrics/hyper-report?date=YYYY-MM-DD` を検証する。無認証401、誤った日付400、未適用/換算未設定503を確認。
 4. **既存のApps Scriptプロジェクト**に `google-sheets-hyper-report-sync.gs` を追加。既存のsyncMetricsRawには、生データ同期とflushの後に置いた任意呼び出しと残り時間の判定を反映する。月別保存用補助ファイル、既存コード、プロパティ、rawカーソル、15分トリガーを保持する。
