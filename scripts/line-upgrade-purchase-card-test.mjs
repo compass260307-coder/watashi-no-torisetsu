@@ -26,7 +26,9 @@ assert.equal(card.type,'flex');
 assert(card.altText.length <= 400);
 assert(Buffer.byteLength(JSON.stringify(card.contents)) < 30_000);
 assert.equal(card.contents.type,'bubble');
-assert.equal(card.contents.header,undefined);
+assert.equal(card.contents.header.backgroundColor,'#06C755');
+assert.equal(card.contents.header.contents[0].text,'Alice - 結果のアップグレード');
+assert.equal(card.contents.header.contents[1].text,'30日間の返金保証付き');
 assert.equal(card.contents.body,undefined);
 assert.equal(card.contents.footer.contents.length,1);
 assert.equal(card.contents.footer.contents[0].color,'#06C755');
@@ -35,7 +37,7 @@ assert.equal(card.contents.footer.contents[0].action.label,'購入手続きへ')
 const text = dialogue.LINE_UPGRADE_PRICE_MESSAGE;
 for(const value of ['¥1398','¥499','¥899','買い切り','30日間']) assert(text.includes(value));
 if(process.argv.includes('--write-example')) writeFileSync('flex-card-example.json',JSON.stringify({messages:[card]},null,2));
-console.log('PASS: price message contains the fixed offer and guarantee; the compact card contains only the signed purchase button within LINE limits.');
+console.log('PASS: price message contains the fixed offer and guarantee; the compact card identifies Alice and the guarantee with the signed purchase button within LINE limits.');
 
 const callbacks=[];const sends=[];const waits=[];
 let failPush=false;

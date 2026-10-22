@@ -18,17 +18,26 @@ export const LINE_UPGRADE_OFFER_MESSAGE = "準備が完了したよ！";
 export const LINE_UPGRADE_PRICE_MESSAGE = `結果のアップグレードは通常価格¥${LINE_RESULT_UPGRADE_LIST_PRICE_JPY}のところ、¥${LINE_RESULT_UPGRADE_COUPON_JPY}のクーポンを使えるから、お支払いは¥${RESULT_UPGRADE_PRICE_JPY}の買い切りだよ！30日間の返金保証があるから、満足しなかったら連絡してね！`;
 
 export const LINE_UPGRADE_CARD_COPY = {
+  title: "Alice - 結果のアップグレード",
+  guarantee: "30日間の返金保証付き",
   payment: `お支払い ¥${RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）`,
   button: "購入手続きへ",
 } as const;
 
-/** Pricing is sent separately; the card only presents the signed purchase action. */
+/** Pricing is sent separately; the compact card identifies Alice and the guarantee. */
 export function lineUpgradePurchaseCard(checkoutUrl: string): LineFlexMessage {
   return {
     type: "flex",
     altText: `結果のアップグレード：${LINE_UPGRADE_CARD_COPY.button}（¥${RESULT_UPGRADE_PRICE_JPY}・買い切り）`,
     contents: {
       type: "bubble", size: "mega",
+      header: {
+        type: "box", layout: "vertical", backgroundColor: "#06C755", paddingAll: "20px", spacing: "sm",
+        contents: [
+          { type: "text", text: LINE_UPGRADE_CARD_COPY.title, color: "#FFFFFF", size: "md", weight: "bold", wrap: true },
+          { type: "text", text: LINE_UPGRADE_CARD_COPY.guarantee, color: "#FFFFFF", size: "sm", wrap: true },
+        ],
+      },
       footer: {
         type: "box", layout: "vertical", paddingAll: "20px",
         contents: [{ type: "button", style: "primary", color: "#06C755", action: { type: "uri", label: LINE_UPGRADE_CARD_COPY.button, uri: checkoutUrl } }],
