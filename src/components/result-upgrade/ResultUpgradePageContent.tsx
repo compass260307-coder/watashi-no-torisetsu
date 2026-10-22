@@ -50,11 +50,13 @@ export default async function ResultUpgradePageContent({ locale = "ja", salesCha
         <div className="mx-auto mb-7 max-w-[720px] text-center">
           <p className="text-[12px] font-black tracking-[0.14em] text-[#9A6A24]">RESULT UPGRADE</p>
           <h1 className="mt-2 text-[28px] font-black leading-[1.4] text-[#2E2E5C] md:text-[38px]">
-            {locale === "ko" ? "Alice의 질문에 답하고," : "Aliceの質問に答えて、"}
-            <br className="sm:hidden" />{locale === "ko" ? "나만의 결과를 만나 보세요" : "あなた専用の結果へ"}
+            {lineFlow ? "あなた専用の結果へアップグレード" : <>
+              {locale === "ko" ? "Alice의 질문에 답하고," : "Aliceの質問に答えて、"}
+              <br className="sm:hidden" />{locale === "ko" ? "나만의 결과를 만나 보세요" : "あなた専用の結果へ"}
+            </>}
           </h1>
           <p className="mx-auto mt-3 max-w-[600px] text-[14px] leading-[1.8] text-[#66657B] md:text-[16px]">
-            {locale === "ko" ? "선택지는 없어요. 평소 나의 모습을 자유롭게 이야기해 주세요." : "選択肢はありません。普段のあなたを自由に話してください。"}
+            {lineFlow ? "5つの回答は保存済みだよ🌿 内容と金額を確認してね。購入後は自動で生成して、LINEにキャラクターと鑑定書のリンクを届けるよ。" : locale === "ko" ? "선택지는 없어요. 평소 나의 모습을 자유롭게 이야기해 주세요." : "選択肢はありません。普段のあなたを自由に話してください。"}
           </p>
         </div>
         <ResultUpgradeChat

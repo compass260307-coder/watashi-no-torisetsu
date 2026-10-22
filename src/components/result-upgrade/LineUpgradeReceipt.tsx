@@ -16,7 +16,7 @@ export function LineUpgradeReceipt({ failed = false, preview = false }: {failed?
   }
   return <section className="mx-auto max-w-xl rounded-3xl border border-[#B9EACD] bg-white px-6 py-9 text-center text-[#2E2E5C] shadow-[0_12px_36px_rgba(6,199,85,0.12)]">
     <span className="rounded-full bg-[#E9F9EF] px-4 py-2 text-xs font-bold text-[#007A33]">お支払い完了 · ¥899</span>
-    <h1 className="mt-6 text-2xl font-black">あとはLINEで待っていてね</h1>
+    <h1 className="mt-6 text-2xl font-black">お支払いを確認したよ🌙</h1>
     <p className="mt-5 text-left text-sm leading-8">{LINE_UPGRADE_PAID_MESSAGE}</p>
     <a href={preview?"#line-delivery-preview":"https://line.me/R/oaMessage/%40867domoo"} className="mt-7 inline-flex rounded-full bg-[#06C755] px-7 py-3 font-bold text-white">{preview?"LINEでの受け取りを見る":"AliceとのLINEトークに戻る"}</a>
     {(failed || !preview) && <div className="mt-5 text-sm leading-7">

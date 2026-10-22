@@ -2,8 +2,8 @@ import "server-only";
 import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { deterministicLineEventId } from "@/lib/line-events";
 import { quickReplies, type LineOutgoingMessage } from "@/lib/line";
-import { buildLineResultUpgradeUrl } from "@/lib/line-result-upgrade";
-import { LINE_UPGRADE_INTRO, LINE_UPGRADE_RESUME, LINE_UPGRADE_CANCELLED, LINE_UPGRADE_CANCEL, lineUpgradeQuestion, lineUpgradePurchaseMessage } from "@/lib/line-upgrade-dialogue";
+import { buildLineResultUpgradeUrl, buildLineResultUpgradeCheckoutUrl } from "@/lib/line-result-upgrade";
+import { LINE_UPGRADE_INTRO, LINE_UPGRADE_RESUME, LINE_UPGRADE_CANCELLED, LINE_UPGRADE_CANCEL, LINE_UPGRADE_OFFER_MESSAGE, lineUpgradeQuestion, lineUpgradePurchaseMessage, lineUpgradePurchaseCard } from "@/lib/line-upgrade-dialogue";
 import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, isResultUpgradeReady, normalizeResultUpgradeAnswers, RESULT_UPGRADE_QUESTIONS, type ResultUpgradeRow } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser, resolveResultUpgradeBase } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -41,7 +41,11 @@ export async function hasLineUpgradeChat(lineUserId: string, userId: string) {
 }
 async function completion(lineUserId: string, userId: string, paid: boolean): Promise<LineOutgoingMessage[]> {
   await setActive(lineUserId, userId, false);
-  return [{ type: "text", text: `${lineUpgradePurchaseMessage(paid)}\n\n${buildLineResultUpgradeUrl(lineUserId, userId)}` }];
+  if (paid) return [{ type: "text", text: `${lineUpgradePurchaseMessage(true)}\n\n${buildLineResultUpgradeUrl(lineUserId, userId)}` }];
+  return [
+    { type: "text", text: LINE_UPGRADE_OFFER_MESSAGE },
+    lineUpgradePurchaseCard(buildLineResultUpgradeCheckoutUrl(lineUserId, userId)),
+  ];
 }
 // Preserve previously saved answers; the 50-character limit applies to new messages.
 function validDraft(row: ResultUpgradeRow) {
