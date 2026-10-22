@@ -519,6 +519,7 @@ function syncShareRestOnce() {
 function syncMetricsRaw() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
+  const syncStartedAt = Date.now();
 
   try {
     // 日報のタイムゾーンはAsia/Tokyoに設定済み。毎回の再設定は巨大な
@@ -542,6 +543,16 @@ function syncMetricsRaw() {
       }
     });
     SpreadsheetApp.flush();
+    // Finish and flush all existing raw jobs before the optional aggregate sync.
+    // Leave at least two minutes of the six-minute Apps Script runtime available.
+    if (typeof syncHyperReportUnlocked_ === "function" &&
+        Date.now() - syncStartedAt < 240000) {
+      try {
+        syncHyperReportUnlocked_(syncStartedAt + 300000);
+      } catch (_) {
+        console.warn("hyper-report: optional sync failed after raw jobs completed");
+      }
+    }
     if (errors.length > 0) throw new Error(errors.join("\n"));
   } finally {
     lock.releaseLock();
