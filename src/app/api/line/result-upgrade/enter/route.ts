@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
   const user = await resolveLineResultUpgradeIdentity(token);
   const identity = user ? verifyLineResultUpgradeIdentity(token) : null;
   if (!identity) return NextResponse.redirect(new URL("/line/menu", request.url));
-  const response = NextResponse.redirect(new URL("/line/result-upgrade", request.url));
+  const destination = request.nextUrl.searchParams.get("checkout") === "1"
+    ? "/line/result-upgrade/checkout" : "/line/result-upgrade";
+  const response = NextResponse.redirect(new URL(destination, request.url));
   response.cookies.set(LINE_RESULT_UPGRADE_COOKIE, token, {
     httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/",
     maxAge: Math.min(LINE_RESULT_UPGRADE_TTL_SECONDS, Math.floor((identity.expiresAt - Date.now()) / 1000)),

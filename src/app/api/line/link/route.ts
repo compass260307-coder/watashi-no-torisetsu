@@ -15,6 +15,7 @@ import {
   lineLinkSuccessMessage,
 } from "@/lib/line-linking";
 import { startLineUpgradeChat } from "@/lib/line-upgrade-chat";
+import { pushLineUpgradeMessages } from "@/lib/line-upgrade-offer-delivery";
 import { verifyLineUpgradeIntent } from "@/lib/line-upgrade-intent";
 import { checkOrigin } from "@/lib/origin-check";
 
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
 
   if (upgradeChat) {
     const messages = await startLineUpgradeChat(lineUserId, result.user.id);
-    await pushLineMessages(lineUserId, messages);
+    await pushLineUpgradeMessages(lineUserId, messages);
   } else if (newlyLinked) {
     const chatEnabled = lineAliceChatEnabled();
     await pushLineMessages(lineUserId, [

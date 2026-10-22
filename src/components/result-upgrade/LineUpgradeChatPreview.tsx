@@ -1,19 +1,31 @@
 "use client";
-import { useState, type FormEvent } from "react";
-import { LINE_UPGRADE_INTRO, LINE_UPGRADE_CANCEL, lineUpgradeQuestion, lineUpgradePurchaseMessage } from "@/lib/line-upgrade-dialogue";
+import { useEffect, useState, type FormEvent } from "react";
+import { LINE_UPGRADE_INTRO, LINE_UPGRADE_CANCEL, LINE_UPGRADE_PREPARING_MESSAGE, LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_OFFER_MESSAGE, lineUpgradeQuestion } from "@/lib/line-upgrade-dialogue";
 import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
+import { LineUpgradePurchaseCardPreview } from "./LineUpgradePurchaseCardPreview";
 
 type Message = { role: "alice" | "you"; text: string };
-export function LineUpgradeChatPreview() {
-  const [messages, setMessages] = useState<Message[]>([{ role: "alice", text: LINE_UPGRADE_INTRO }, { role: "alice", text: lineUpgradeQuestion(0) }]);
-  const [answers, setAnswers] = useState<string[]>([]);
+export function LineUpgradeChatPreview({ purchaseReady = false }: { purchaseReady?: boolean }) {
+  const [messages, setMessages] = useState<Message[]>(purchaseReady
+    ? [{ role: "alice", text: LINE_UPGRADE_PREPARING_MESSAGE }]
+    : [{ role: "alice", text: LINE_UPGRADE_INTRO }, { role: "alice", text: lineUpgradeQuestion(0) }]);
+  const [answers, setAnswers] = useState<string[]>(purchaseReady ? Array(5).fill("プレビューの回答") : []);
   const [text, setText] = useState("");
   const [stopped, setStopped] = useState(false);
+  const [prepared, setPrepared] = useState(false);
+  useEffect(() => {
+    if (answers.length !== RESULT_UPGRADE_QUESTIONS.length || stopped) return;
+    const timer = window.setTimeout(() => {
+      setPrepared(true);
+      setMessages(previous => [...previous, { role: "alice", text: LINE_UPGRADE_OFFER_MESSAGE }]);
+    }, LINE_UPGRADE_PREPARATION_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [answers.length, stopped]);
   function send(event: FormEvent) {
     event.preventDefault();
     if (!text.trim() || text.trim().length > LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH || stopped || answers.length >= RESULT_UPGRADE_QUESTIONS.length) return;
     const next = [...answers, text.trim()]; setAnswers(next);
-    setMessages(previous => [...previous, { role: "you", text: text.trim() }, { role: "alice", text: next.length === RESULT_UPGRADE_QUESTIONS.length ? lineUpgradePurchaseMessage() : lineUpgradeQuestion(next.length) }]);
+    setMessages(previous => [...previous, { role: "you", text: text.trim() }, { role: "alice", text: next.length === RESULT_UPGRADE_QUESTIONS.length ? LINE_UPGRADE_PREPARING_MESSAGE : lineUpgradeQuestion(next.length) }]);
     setText("");
   }
   return <main className="min-h-screen bg-[#F5F4FB] px-4 py-8 text-[#2E2E5C]">
@@ -22,13 +34,13 @@ export function LineUpgradeChatPreview() {
       <header className="bg-[#06C755] px-5 py-4 text-lg font-black text-white">Alice ─ LINEトーク</header>
       <div aria-live="polite" className="space-y-4 bg-[#92ACC7] p-5">
         {messages.map((message, index) => <p key={index} className={`whitespace-pre-wrap rounded-2xl p-4 text-sm leading-7 ${message.role === "you" ? "ml-12 bg-[#9BE579]" : "mr-6 bg-white"}`}>{message.text}</p>)}
-        {answers.length === RESULT_UPGRADE_QUESTIONS.length && <div className="rounded-2xl bg-white p-4 text-sm">
-          <form action="/api/dev/result-upgrade-checkout?channel=line" method="post">
-            <button type="submit" className="font-bold text-[#0068CC] underline underline-offset-4">購入画面へ進む · ¥899</button>
-          </form>
+        {answers.length === RESULT_UPGRADE_QUESTIONS.length && !prepared && <p role="status" className="mr-6 animate-pulse rounded-2xl bg-white p-4 text-sm">回答をまとめているよ…🌙</p>}
+        {prepared && <>
+          <LineUpgradePurchaseCardPreview />
+          <div className="rounded-2xl bg-white p-4 text-sm">
           <p className="mt-3 text-xs text-[#66657B]">Stripeのテスト決済画面で確認できます。実際の課金はありません。</p>
-          <a href="/dev/line-result-upgrade-complete-preview" className="mt-3 inline-block font-bold text-[#007A33] underline underline-offset-4">支払いなしで決済完了後の画面を確認する</a>
-        </div>}
+          <a href="/dev/line-result-upgrade-complete-preview" className="mt-3 inline-block font-bold text-[#007A33] underline underline-offset-4">支払いを省略して「作成中→お届け」を確認する</a>
+        </div></>}
       </div>
       {!stopped && answers.length < RESULT_UPGRADE_QUESTIONS.length && <form onSubmit={send} className="flex items-end gap-3 bg-white p-4">
         <textarea aria-label="LINEで答える内容" value={text} onChange={event => setText(event.target.value)} maxLength={LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH} rows={3} className="min-w-0 flex-1 rounded-xl border p-3" placeholder="自由に話してね" />

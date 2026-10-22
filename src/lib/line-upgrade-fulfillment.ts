@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { hasPremiumBundleAccess } from "@/lib/entitlements";
 import { deterministicLineEventId } from "@/lib/line-events";
 import { pushLineMessages } from "@/lib/line";
-import { lineUpgradeDeliveryMessages } from "@/lib/line-upgrade-delivery-copy";
+import { LINE_UPGRADE_PAID_MESSAGE, lineUpgradeDeliveryMessages } from "@/lib/line-upgrade-delivery-copy";
 import { signLineUpgradeImage } from "@/lib/line-upgrade-image-token";
 import { signLineResultUpgradeIdentity } from "@/lib/line-result-upgrade-token";
 import { isResultUpgradeReady, normalizeResultUpgradeAnswers } from "@/lib/result-upgrade";
@@ -22,6 +22,7 @@ type Job = {
   user_id: string; line_user_id: string; session_id: string; attempts: number;
   next_at: string; lease_until?: string; delivery_at?: number; delivery_origin?: string;
   generated_at?: string; error?: string;
+  preparation_at?: number; preparation_sent?: boolean; preparation_message?: string;
 };
 type Purchase = { id: string; payment_status: string; amount_total: number | null; currency: string | null; metadata: Record<string,string> | null };
 export function isLineResultUpgradePurchase(session: Pick<Purchase,"metadata">): boolean {
@@ -79,6 +80,20 @@ export async function processLineResultUpgrade(id: string, options: {force?: boo
       const block=resultUpgradeSpendBlock(row);
       if(block && (!options.force || !block.canRetry)) {
         await save(id,job,{...job,status:"pending",error:"spend_blocked",next_at:new Date(Math.max(Date.now()+60*60_000,Date.parse(block.retryAt ?? "")||0)).toISOString()});return;
+      }
+      // Persist the notice and retry key before sending, independently of final delivery.
+      if (!job.preparation_at) {
+        job = await save(id, job, { ...job, preparation_at: Date.now(), preparation_message: LINE_UPGRADE_PAID_MESSAGE });
+      }
+      if (!job.preparation_sent) {
+        if (Date.now() - job.preparation_at! >= PUSH_RETRY_MS) {
+          await save(id, job, { ...job, status: "attention", error: "preparation_retry_window_expired" }); return;
+        }
+        const retryKey = deterministicLineEventId(`${EVENT}:preparation`, job.session_id);
+        if (!(await pushLineMessages(job.line_user_id, [{ type: "text", text: job.preparation_message ?? LINE_UPGRADE_PAID_MESSAGE }], retryKey))) {
+          throw new Error("preparation_push_failed");
+        }
+        job = await save(id, job, { ...job, preparation_sent: true });
       }
       const {generateResultUpgradeForUser}=await import("@/lib/result-upgrade/generate");
       await generateResultUpgradeForUser(job.user_id,{force:options.force});

@@ -72,7 +72,7 @@ function conversation({ full = true, paid = false, initialRow = null } = {}) {
   const service = compile('src/lib/line-upgrade-chat.ts', {
     'server-only': {}, '@/lib/entitlements': { hasFullAccess: async () => full, hasPremiumBundleAccess: async () => paid },
     '@/lib/line-events': { deterministicLineEventId: eventId }, '@/lib/line': { quickReplies },
-    '@/lib/line-result-upgrade': { buildLineResultUpgradeUrl: () => 'https://example.test/signed-purchase' },
+    '@/lib/line-result-upgrade': { buildLineResultUpgradeUrl: () => 'https://example.test/signed-purchase', buildLineResultUpgradeCheckoutUrl: () => 'https://example.test/signed-purchase?checkout=1' },
     '@/lib/line-upgrade-dialogue': dialogue, '@/lib/result-upgrade': result,
     '@/lib/result-upgrade-server': { loadResultUpgradeForUser: async () => clone(row), resolveResultUpgradeBase: async () => ({ sourceTypeId: 'type', sourceCharacterPath: '/image.png' }) },
     '@/lib/supabase-server': { supabaseAdmin: { from: query } },
@@ -97,13 +97,24 @@ assert.match((await flow.service.answerLineUpgradeChat({...a,text:'読書',messa
 for (const [i,text] of ['落ち着いている','お互いを尊重する','好きな仕事を続ける'].entries()) {
  const messages=await flow.service.answerLineUpgradeChat({...a,text,messageId:`remaining-${i}`});
  if (i<2) assert.match(messages[0].text,new RegExp(`質問 ${i+4}/5`));
- else { assert.match(messages[0].text,/¥899/);assert.match(messages[0].text,/signed-purchase/); }
+ else {
+   assert.equal(messages[1].type, 'flex');
+   assert.match(JSON.stringify(messages[1]), /¥899/);
+   assert.match(messages[1].contents.footer.contents[0].action.uri, /signed-purchase\?checkout=1/);
+ }
 }
 assert.equal(flow.row().answers.length,5);
 assert.equal((await flow.service.answerLineUpgradeChat({...a,text:'好きな仕事を続ける',messageId:'remaining-2'})).length,0,'Final answer redelivery never falls through to ordinary AI');
 assert.equal(await flow.service.answerLineUpgradeChat({...a,text:'通常の会話へ戻る',messageId:'after'}),null);
 assert(!JSON.stringify([...flow.events.values()]).includes('散歩をする'),'Analytics/control metadata never stores personal answer text');
 console.log('PASS: five native LINE questions, private persistence, retries, length limit, resume, per-account isolation and webhook idempotency through final answer.');
+const repeated = await flow.service.startLineUpgradeChat('line','owner');
+assert.equal(repeated[1].type, 'flex', 'Saved five answers also return the purchase card');
+assert.equal(repeated[1].contents.footer.contents[0].action.label, '購入手続きへ');
+const paidConversation = conversation({paid:true,initialRow:flow.row()});
+const paidMessages = await paidConversation.service.startLineUpgradeChat('line','owner');
+assert(paidMessages.every(message=>message.type==='text'), 'Existing purchasers never receive another purchase card');
+assert.match(paidMessages[0].text,/追加のお支払いはいらない/);
 const boundary = conversation();
 await boundary.service.startLineUpgradeChat('line','owner');
 assert.match((await boundary.service.answerLineUpgradeChat({...a,text:'あ'.repeat(51),messageId:'over-limit'}))[0].text,/50文字/);
@@ -125,6 +136,7 @@ async function link({ token, status = 'linked', force = false } = {}) {
     '@/lib/line-alice': {lineAliceChatEnabled:()=>true}, '@/lib/line-events': {recordLineEvent:async()=>{}},
     '@/lib/line-linking': {consumeLineLinkCode:async()=>{consumed++;return {status,user:{id:'owner',ownerToken:'owner-token'},switched:force};},lineLinkSuccessMessage:()=> '普通の連携案内'},
     '@/lib/line-upgrade-chat': {startLineUpgradeChat:async()=>{starts++;return first;}}, '@/lib/line-upgrade-intent': intent,
+    '@/lib/line-upgrade-offer-delivery': {pushLineUpgradeMessages:async(_user,messages)=>{sends.push(messages);return true;}},
     '@/lib/origin-check': {checkOrigin:()=>({ok:true})},
   }, {process:{env:{LINE_LOGIN_CHANNEL_ID:'test-channel'}},fetch:async()=>new Response(JSON.stringify({iss:'https://access.line.me',aud:'test-channel',sub:'U'+'1'.repeat(32),exp:Math.floor(Date.now()/1000)+3600}))});
   const response=await route.POST(new NextRequest('https://example.test/api/line/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,idToken:'i'.repeat(40),force,...(token!==undefined?{intentToken:token}:{})})}));

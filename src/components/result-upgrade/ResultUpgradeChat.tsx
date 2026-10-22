@@ -204,7 +204,7 @@ export function ResultUpgradeChat({
       }`}
     >
       <div
-        className={`flex items-center gap-3 bg-[#2E2E5C] px-5 py-4 text-white ${
+        className={`flex items-center gap-3 ${lineFlow ? "bg-[#06C755]" : "bg-[#2E2E5C]"} px-5 py-4 text-white ${
           modal ? "pr-16" : ""
         }`}
       >
@@ -217,17 +217,17 @@ export function ResultUpgradeChat({
         />
         <div>
           <p className="text-[16px] font-black">Alice</p>
-          <p className="text-[12px] font-bold text-white/65">{copy.conversationSubtitle}</p>
+          <p className="text-[12px] font-bold text-white/80">{lineFlow && screen === "purchase" ? "アップグレード内容の確認" : copy.conversationSubtitle}</p>
         </div>
         <span className="ml-auto text-[#F5D66B]" aria-hidden="true">✦</span>
       </div>
 
       <div className="flex-1 overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7">
         <div className="space-y-5">
-          <AliceBubble>
+          {!(lineFlow && screen === "purchase") && <AliceBubble>
             {copy.intro}
-          </AliceBubble>
-          {answers.map((answer, answerIndex) => (
+          </AliceBubble>}
+          {!(lineFlow && screen === "purchase") && answers.map((answer, answerIndex) => (
             <div key={`${answerIndex}-${answer}`} className="space-y-5">
               <div className="ml-auto max-w-[82%] rounded-2xl rounded-br-[5px] bg-[#5B5BEF] px-4 py-3 text-[14px] font-bold leading-[1.8] text-white shadow-sm">
                 {answer}

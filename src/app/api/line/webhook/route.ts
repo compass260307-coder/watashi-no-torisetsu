@@ -87,6 +87,7 @@ import {
 } from "@/lib/line-tarot";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { answerLineUpgradeChat, cancelLineUpgradeChat, hasLineUpgradeChat, startLineUpgradeChat } from "@/lib/line-upgrade-chat";
+import { replyLineUpgradeMessages } from "@/lib/line-upgrade-offer-delivery";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -273,7 +274,7 @@ async function handleFollow(event: LineWebhookEvent): Promise<void> {
 
   if (event.replyToken) {
     if (existing?.user_id && await hasLineUpgradeChat(lineUserId, existing.user_id)) {
-      await replyLineMessages(event.replyToken, await startLineUpgradeChat(lineUserId, existing.user_id));
+      await replyLineUpgradeMessages(event.replyToken, lineUserId, await startLineUpgradeChat(lineUserId, existing.user_id));
       return;
     }
     const linked = Boolean(existing?.user_id);
@@ -374,7 +375,7 @@ async function handleMessage(event: LineWebhookEvent): Promise<void> {
   if (isText && rawText) {
     const messages = await answerLineUpgradeChat({ lineUserId, userId: account.user_id, text: rawText, messageId: event.message?.id });
     if (messages !== null) {
-      if (messages.length) await replyLineMessages(replyToken, messages);
+      if (messages.length) await replyLineUpgradeMessages(replyToken, lineUserId, messages);
       return;
     }
   }
@@ -1214,7 +1215,7 @@ async function handleLineCommand(
   if (!userId) return;
 
   if (command === "upgrade") {
-    await replyLineMessages(replyToken, await startLineUpgradeChat(lineUserId, userId));
+    await replyLineUpgradeMessages(replyToken, lineUserId, await startLineUpgradeChat(lineUserId, userId));
     return;
   }
 

@@ -10,6 +10,12 @@ export function buildLineResultUpgradeUrl(lineUserId: string, userId: string, is
   return `${resolveSiteUrl()}/api/line/result-upgrade/enter?token=${encodeURIComponent(token)}`;
 }
 
+export function buildLineResultUpgradeCheckoutUrl(lineUserId: string, userId: string): string {
+  const url = new URL(buildLineResultUpgradeUrl(lineUserId, userId));
+  url.searchParams.set("checkout", "1");
+  return url.toString();
+}
+
 export async function resolveLineResultUpgradeIdentity(token: string) {
   const identity = verifyLineResultUpgradeIdentity(token);
   if (!identity) return null;
