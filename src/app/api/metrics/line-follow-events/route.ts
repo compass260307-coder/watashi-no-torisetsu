@@ -1,5 +1,6 @@
 // Google Sheets 向けの LINE フォローイベント差分エンドポイント。
-// line_follow だけを返し、生の LINE userId は HMAC 参照IDに変換する。
+// line_follow（友だち追加）と line_unfollow（ブロック）を返し、生の LINE userId は
+// HMAC 参照IDに変換する。unfollow の relink は常に空欄。
 //
 // GET /api/metrics/line-follow-events?after=<ISO>&after_id=<UUID>&limit=<1..999>
 
@@ -30,7 +31,7 @@ const columns = [
 
 type LineFollowFact = {
   id: string;
-  event_name: "line_follow";
+  event_name: "line_follow" | "line_unfollow";
   metadata: Record<string, unknown> | null;
   created_at: string;
 };
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
     supabaseAdmin
       .from("events")
       .select("id, event_name, metadata, created_at")
-      .eq("event_name", "line_follow");
+      .in("event_name", ["line_follow", "line_unfollow"]);
 
   let facts: LineFollowFact[] = [];
   let queryError: { code?: string; message?: string } | null = null;
