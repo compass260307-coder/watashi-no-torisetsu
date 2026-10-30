@@ -1,10 +1,11 @@
 import Script from "next/script";
+import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
 
 // GA4 の gtag.js 本体ローダ + 初期化スニペット。
-// production 環境かつ NEXT_PUBLIC_GA_MEASUREMENT_ID 設定済の場合のみ出力。
+// 計測許可環境 (本番) かつ NEXT_PUBLIC_GA_MEASUREMENT_ID 設定済の場合のみ出力。
 export default function GoogleAnalytics() {
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = isThirdPartyMeasurementEnabled();
 
   if (!isProduction || !gaId) return null;
 

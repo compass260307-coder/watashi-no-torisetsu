@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
 
 declare global {
   interface Window {
@@ -21,7 +22,7 @@ export default function GoogleAnalyticsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = isThirdPartyMeasurementEnabled();
 
   useEffect(() => {
     if (!isProduction || !gaId || typeof window === "undefined") return;

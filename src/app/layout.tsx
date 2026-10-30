@@ -3,6 +3,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
 import { MEASUREMENT_INIT_SCRIPT } from "@/lib/verified-conversions";
+import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
 import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
@@ -209,6 +210,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // ローカル開発 (next dev / 開発用 Supabase) では本番 GTM コンテナを読み込まない。
+  const thirdPartyMeasurementEnabled = isThirdPartyMeasurementEnabled();
   return (
     <html
       lang="ja"
@@ -240,15 +243,17 @@ export default function RootLayout({
           paddingBottom: "calc(56px + max(env(safe-area-inset-bottom) - 14px, 0px))",
         }}
       >
-        <noscript>
-          <iframe
-            src={`https://www.googletagmanager.com/ns.html?id=${GOOGLE_TAG_MANAGER_ID}`}
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-            title="Google Tag Manager"
-          />
-        </noscript>
+        {thirdPartyMeasurementEnabled && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${GOOGLE_TAG_MANAGER_ID}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+              title="Google Tag Manager"
+            />
+          </noscript>
+        )}
         {/* Day 12-C3: 流入元 first-touch キャプチャ (最上流・同期実行) */}
         <script dangerouslySetInnerHTML={{ __html: ACQUISITION_CAPTURE_SCRIPT }} />
         {/* TikTok広告CV計測: ttclid + utm_* の last-touch キャプチャ (wt_ad_*) */}
@@ -266,9 +271,11 @@ export default function RootLayout({
           </LocaleUiBoundary>
         </Suspense>
         <GoogleAnalytics />
-        <Script id="google-tag-manager" strategy="afterInteractive">
-          {GOOGLE_TAG_MANAGER_SCRIPT}
-        </Script>
+        {thirdPartyMeasurementEnabled && (
+          <Script id="google-tag-manager" strategy="afterInteractive">
+            {GOOGLE_TAG_MANAGER_SCRIPT}
+          </Script>
+        )}
         <Suspense fallback={null}>
           <GoogleAnalyticsTracker />
         </Suspense>
