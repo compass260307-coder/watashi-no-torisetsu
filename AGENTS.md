@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Workspace and release guardrails
 
-- Work only in `/Volumes/WATASHI-SSD/WATASHI_WORKSPACE/projects/watashi-no-torisetsu`. Treat any old Desktop copy as read-only backup material. Before work, verify both `pwd` and `git rev-parse --show-toplevel`; do not rename the SSD or workspace directories, and do not disconnect the SSD while work is running.
+- Work only in `/Users/ryunosukefutami/Developer/sora/watashi-no-torisetsu` on the Mac mini. The external SSD (`WATASHI-SSD`) and any old Desktop copy are backup-only: never edit, build, or run Git write operations there. Before work, verify both `pwd` and `git rev-parse --show-toplevel`; do not rename the workspace directories.
 - Allow only one writing task in this repository at a time. Other concurrent tasks must remain read-only. Do not overlap Git operations, dependency updates, or build generation with another running task.
 - Product lineup, prices, billing types, and trial periods are frozen at the 2026-09-13 catalog in [`docs/COMMERCE_CATALOG.md`](docs/COMMERCE_CATALOG.md). Do not add or remove plans, change prices, run price promotions or price A/B tests, or alter included entitlements unless the user explicitly authorizes that business decision. Copy, funnel, design, and reliability improvements may proceed only when they preserve the frozen catalog.
 - The Japanese Web `full_access` offer is fixed at a JPY 1,290 reference price and JPY 499 checkout price effective 2026-09-21 10:02 JST. Run `npm run verify:commerce`; production builds enforce this contract.
