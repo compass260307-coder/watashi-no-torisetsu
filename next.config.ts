@@ -101,6 +101,10 @@ const nextConfig: NextConfig = {
       { source: "/perceptions/:ownerToken", destination: "/me/:ownerToken", permanent: true },
       // /zukan/all (公開図鑑) は除外し、それ以外の /zukan/<token> のみ /me へ。
       { source: "/zukan/:ownerToken((?!all$).+)", destination: "/me/:ownerToken", permanent: true },
+      // 旧 /friend 入口 (現行は /tako)。config redirect はクエリを転送先へ引き継ぐため、
+      // 広告・共有リンクの utm_* / ttclid を着地先の計測で捕捉できる。
+      { source: "/friend", destination: "/tako", permanent: false },
+      { source: "/:locale(ko|en|id)/friend", destination: "/:locale/tako", permanent: false },
     ];
   },
 };
