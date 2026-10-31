@@ -461,7 +461,7 @@ async function MeResultPageContent({
     : null;
   const resultUpgrade =
     previewResultUpgrade ??
-    ((locale === "ja" || isKorean) && ownsResultSession && fullAccessPaid
+    ((locale === "ja" || isKorean) && ownsResultSession && fullAccessPaid && premiumBundlePaid
       ? await loadResultUpgradeForUser(user.id)
       : null);
   const resultUpgradeReady = isResultUpgradeReady(resultUpgrade);

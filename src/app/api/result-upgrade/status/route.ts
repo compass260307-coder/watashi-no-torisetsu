@@ -20,11 +20,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "upgrade locale mismatch" }, { status: 403 });
   }
   if (!row) return NextResponse.json({ ok: true, state: "no_answers", premium });
-  if (new URL(request.url).searchParams.get("channel") === "line" && !premium) {
+  if (!premium) {
     return NextResponse.json({ ok: true, state: "unpurchased", premium: false });
   }
   if (isResultUpgradeReady(row)) {
-    return NextResponse.json({ ok: true, state: "ready", premium: true });
+    return NextResponse.json({ ok: true, state: "ready", premium });
   }
   const spendBlock = resultUpgradeSpendBlock(row);
   if (spendBlock) {

@@ -1,4 +1,5 @@
 import "server-only";
+import { hasPremiumBundleAccess } from "@/lib/entitlements";
 
 import { randomUUID } from "node:crypto";
 import { anthropic } from "@ai-sdk/anthropic";
@@ -320,6 +321,9 @@ export async function generateResultUpgradeForUser(
   userId: string,
   options: { force?: boolean } = {},
 ): Promise<{ ok?: true; skipped?: string; attempts?: number; error?: string }> {
+  // Background callers must recheck current payment rights, independently of
+  // page props, saved results, query flags or earlier API authorization.
+  if (!(await hasPremiumBundleAccess(userId))) return { error: "purchase required" };
   const { data, error } = await supabaseAdmin
     .from("result_upgrades")
     .select("*")

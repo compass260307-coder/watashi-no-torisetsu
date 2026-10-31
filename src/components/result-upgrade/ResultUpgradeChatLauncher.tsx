@@ -84,7 +84,7 @@ export function ResultUpgradeChatLauncher({
     };
   }, [open]);
 
-  if (locale === "ja" && !premiumPaid) {
+  if (locale === "ja") {
     return <LineResultUpgradeLink ownerToken={ownerToken} preview={preview} className={className} style={style}>{children}</LineResultUpgradeLink>;
   }
 
