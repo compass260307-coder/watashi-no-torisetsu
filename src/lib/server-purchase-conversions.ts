@@ -16,6 +16,7 @@ import {
 import { resolveSiteUrl } from "@/lib/site-url";
 import { getStripe } from "@/lib/stripe-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
+import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
 
 type Provider = "meta" | "tiktok";
 
@@ -144,6 +145,12 @@ async function fetchJsonWithTimeout(
   url: string,
   init: RequestInit,
 ): Promise<{ ok: boolean; status: number; body: string }> {
+  // ローカル開発や開発用 Supabase からは、トークンが設定されていても広告媒体へ送らない。
+  if (!isThirdPartyMeasurementEnabled()) {
+    throw new Error(
+      "[purchase-conversion] third-party delivery is disabled in this environment",
+    );
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
   try {

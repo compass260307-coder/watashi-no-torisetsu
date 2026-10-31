@@ -113,6 +113,7 @@ function flow(overrides = {}, timing = {}) {
     }
   }
   const env = {
+    NODE_ENV: "production",
     META_PIXEL_ID: "123456",
     META_CONVERSIONS_API_TOKEN: "isolated-meta-token",
     META_GRAPH_API_VERSION: "v99.0",
@@ -297,6 +298,11 @@ function flow(overrides = {}, timing = {}) {
         }),
       },
       "@/lib/supabase-server": { supabaseAdmin: db },
+      "@/lib/third-party-measurement": compile(
+        "src/lib/third-party-measurement.ts",
+        {},
+        { process: { env } },
+      ),
     },
     {
       process: { env },
@@ -352,6 +358,22 @@ function flow(overrides = {}, timing = {}) {
       beforeRetrieve = fn;
     },
   };
+}
+
+// Local development and the dev Supabase project never reach ad providers,
+// even with tokens configured; the rows stay in the outbox as failures.
+for (const vars of [
+  { NODE_ENV: "development" },
+  { NEXT_PUBLIC_DISABLE_THIRD_PARTY_MEASUREMENT: "1" },
+  { NEXT_PUBLIC_SUPABASE_URL: "https://umhgnunxeupvxnrvatde.supabase.co" },
+]) {
+  const local = flow(vars);
+  await local.service.enqueueServerPurchaseConversions(local.purchase);
+  const result = await local.service.deliverServerPurchaseConversions(
+    local.purchase,
+  );
+  assert.equal(result.sent, 0);
+  assert.equal(local.calls.length, 0);
 }
 
 const f = flow();
