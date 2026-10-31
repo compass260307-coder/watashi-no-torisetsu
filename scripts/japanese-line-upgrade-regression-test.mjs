@@ -217,3 +217,11 @@ assert.equal((await statusCase()).data.premium, false, 'A generated result does 
 assert.equal((await statusCase({ premium: true })).data.state, 'ready');
 assert.equal((await statusCase({ locale: 'en', premium: true })).status, 403);
 console.log('PASS: LINE payment polling respects purchase revocation and result language.');
+
+for (const channel of ['web','line']) {
+ const revoked=await statusCase({channel,premium:false});
+ assert.equal(revoked.data.premium,false);
+ assert.equal(revoked.data.state,'unpurchased','A stored ready row never grants payment rights');
+ assert.equal((await statusCase({channel,premium:true})).data.state,'ready');
+}
+console.log('PASS: Web and LINE both require live purchase rights before reporting a generated result ready.');

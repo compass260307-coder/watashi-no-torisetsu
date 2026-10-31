@@ -169,6 +169,7 @@ const koreanTypes = compile('src/i18n/ko/result.ts', {});
 const prompts = [];
 const usageRecords = [];
 const generation = compile('src/lib/result-upgrade/generate.ts', {
+    '@/lib/entitlements': { hasPremiumBundleAccess: async () => true },
   'server-only': {},
   'node:crypto': { randomUUID },
   '@ai-sdk/anthropic': { anthropic: model => model },

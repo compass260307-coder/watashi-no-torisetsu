@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
-import { ResultUpgradeChat } from "@/components/result-upgrade/ResultUpgradeChat";
+import { LineResultUpgradeLink } from "@/components/result-upgrade/LineResultUpgradeLink";
 import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
 import { getSession } from "@/lib/session";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
@@ -19,7 +19,7 @@ export default async function ResultUpgradePage() {
     hasPremiumBundleAccess(session.id),
     loadResultUpgradeForUser(session.id),
   ]);
-  if (isResultUpgradeReady(row)) redirect("/result-upgrade/reading");
+  if (premiumPaid && isResultUpgradeReady(row)) redirect("/result-upgrade/reading");
 
   return (
     <>
@@ -28,19 +28,19 @@ export default async function ResultUpgradePage() {
         <div className="mx-auto mb-7 max-w-[720px] text-center">
           <p className="text-[12px] font-black tracking-[0.14em] text-[#9A6A24]">RESULT UPGRADE</p>
           <h1 className="mt-2 text-[28px] font-black leading-[1.4] text-[#2E2E5C] md:text-[38px]">
-            Aliceの質問に答えて、
+            LINEでAliceの質問に答えて、
             <br className="sm:hidden" />あなた専用の結果へ
           </h1>
           <p className="mx-auto mt-3 max-w-[600px] text-[14px] leading-[1.8] text-[#66657B] md:text-[16px]">
-            選択肢はありません。普段のあなたを自由に話してください。
+            質問はLINEのトークで進めます。保存済みの回答があれば、続きから再開できます。
           </p>
         </div>
-        <ResultUpgradeChat
-          ownerToken={session.owner_token ?? ""}
-          existingAnswers={row?.answers ?? []}
-          initialState={row?.state ?? null}
-          premiumPaid={premiumPaid}
-        />
+        <div className="text-center">
+          <LineResultUpgradeLink ownerToken={session.owner_token ?? ""}
+            className="inline-flex rounded-full bg-[#06C755] px-7 py-4 font-bold text-white">
+            LINEで結果アップグレードを始める
+          </LineResultUpgradeLink>
+        </div>
       </main>
       <TopFooter />
     </>

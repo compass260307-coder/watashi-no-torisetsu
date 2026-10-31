@@ -97,7 +97,7 @@ assert.equal(status.state, 'blocked'); assert.equal(status.code, 'budget_exceede
 assert.equal('last_error' in status, false);
 console.log('PASS: route guards, legacy high-attempt recovery, no allowance spent on blocked/ready/in-progress, safe status response.');
 
-async function workerCase({ force = false, updatedAt = oldDate, failure = null, answers = ["one", "two", "three", "four", "five"] } = {}) {
+async function workerCase({ purchased = true, force = false, updatedAt = oldDate, failure = null, answers = ["one", "two", "three", "four", "five"] } = {}) {
   const row = { ...blockedRow, user_id: 'owner', updated_at: updatedAt, answers, source_character_path: '/character.webp',
     personalized_type_name: 'saved type', personalized_intro: 'saved intro', text_model: 'saved-text-model', reading: { sections: [{ body: 'saved body' }] }, character_storage_path: null, image_model: null };
   const updates = []; let aiCalls = 0; let uploads = 0;
@@ -106,6 +106,7 @@ async function workerCase({ force = false, updatedAt = oldDate, failure = null, 
     maybeSingle: async () => update ? { data: { user_id: 'owner' }, error: null } : { data: row, error: null },
   }; }, storage: { from: () => ({ upload: async () => { uploads++; return { error: null }; }, remove: async () => ({ error: null }) }) } };
   const worker = compile('src/lib/result-upgrade/generate.ts', {
+    '@/lib/entitlements': { hasPremiumBundleAccess: async () => purchased },
     'server-only': {}, 'node:crypto': { randomUUID: () => 'generation' }, '@ai-sdk/anthropic': { anthropic: x => x },
     'ai': { createGateway: () => model => model, jsonSchema: x => x, Output: { object: x => x }, generateText: async options => {
       aiCalls++; assert(!options.output, 'Saved text must not be regenerated');
@@ -148,3 +149,10 @@ for (const locale of ['ja', 'ko']) {
   assert(recovered.includes(localizedCopy.RESULT_UPGRADE_COPY[locale].resume));
 }
 console.log('PASS: Japanese/Korean pause message, cooldown disables resume, explicit recovery enables it.');
+
+for (const force of [false,true]) {
+ const denied=await workerCase({purchased:false,force});
+ assert.equal(denied.result.error,'purchase required');
+ assert.equal(denied.aiCalls,0);assert.equal(denied.uploads,0);assert.equal(denied.updates.length,0);
+}
+console.log('PASS: unpaid/revoked worker calls cannot generate, upload or mutate state, including force retries.');
