@@ -39,37 +39,43 @@ for(const value of ['¥1398','¥499','¥899','買い切り','30日間']) assert(
 if(process.argv.includes('--write-example')) writeFileSync('flex-card-example.json',JSON.stringify({messages:[card]},null,2));
 console.log('PASS: price message contains the fixed offer and guarantee; the compact card identifies Alice and the guarantee with the signed purchase button within LINE limits.');
 
-const callbacks=[];const sends=[];const waits=[];
-let failPush=false;
+const sends=[];const errors=[];
+let deliveryResult=true;let throwDelivery=false;
 const offer=compile('src/lib/line-upgrade-offer-delivery.ts',{
-  'server-only':{},'next/server':{after:callback=>callbacks.push(callback)},
-  'node:timers/promises':{setTimeout:async ms=>{waits.push(ms);}},
-  '@/lib/line-upgrade-dialogue':dialogue,
+  'server-only':{},
   '@/lib/line':{
-    replyLineMessages:async(token,messages)=>{sends.push({kind:'reply',token,messages});return true;},
-    pushLineMessages:async(to,messages)=>{sends.push({kind:'push',to,messages});return !failPush;},
-    startLineLoadingAnimation:async(_user,seconds)=>{assert.equal(seconds,10);throw new Error('Indicator unavailable');},
+    replyLineMessages:async(token,messages)=>{sends.push({kind:'reply',token,messages});if(throwDelivery) throw new Error('secret-provider-detail');return deliveryResult;},
+    pushLineMessages:async(to,messages)=>{sends.push({kind:'push',to,messages});return deliveryResult;},
   },
-});
-await offer.replyLineUpgradeMessages('one-use-reply','owner',[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},{type:'text',text:dialogue.LINE_UPGRADE_PRICE_MESSAGE},card]);
-assert.equal(sends.length,1);
-assert.equal(sends[0].messages[0].text,dialogue.LINE_UPGRADE_PREPARING_MESSAGE);
-assert.equal(callbacks.length,1);
-await callbacks.shift()();
-assert.deepEqual(waits,[6000,1500,3000]);
-assert.equal(sends[1].messages[0].text,dialogue.LINE_UPGRADE_OFFER_MESSAGE);
-assert.equal(sends[2].messages[0].text,dialogue.LINE_UPGRADE_PRICE_MESSAGE);
-assert.equal(sends[3].messages[0],card);
-assert(sends.slice(1).every(send=>send.kind==='push' && send.messages.length===1));
-assert.equal(sends.filter(item=>item.kind==='reply').length,1,'Reply tokens are used once and never after the delay');
-await offer.replyLineUpgradeMessages('question-reply','owner',[{type:'text',text:'質問 1/5'}]);
-assert.equal(callbacks.length,0,'Questions never wait for cosmetic preparation');
-const before=sends.length;
-await offer.pushLineUpgradeMessages('owner',[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},{type:'text',text:dialogue.LINE_UPGRADE_PRICE_MESSAGE},card]);
-failPush=true;
-await callbacks.shift()();
-assert.equal(sends.length,before+2,'Failed preparation-complete message prevents the price and purchase card from overtaking it');
-console.log('PASS: a preparation message precedes the delayed card; indicator failure does not block delivery, and questions do not wait.');
+},{console:{error:message=>errors.push(message)}});
+const messages=[{type:'text',text:dialogue.LINE_UPGRADE_OFFER_MESSAGE},{type:'text',text:dialogue.LINE_UPGRADE_PRICE_MESSAGE},card];
+const pendingReply=offer.replyLineUpgradeMessages('one-use-reply','owner',messages);
+assert.equal(sends.length,1,'Reply starts immediately without a timer or background callback');
+assert.equal(await pendingReply,true);
+assert.equal(sends[0].kind,'reply');assert.equal(sends[0].token,'one-use-reply');
+assert.equal(sends[0].messages,messages);assert.equal(messages.length,3);
+assert.match(messages[0].text,/ありがとう/);
+assert.equal(sends.filter(send=>send.kind==='push').length,0);
+await offer.replyLineUpgradeMessages('duplicate','owner',[]);
+assert.equal(sends.length,1,'Duplicate webhooks do not consume a reply token');
+assert.equal(await offer.replyLineUpgradeMessages('too-many','owner',Array(6).fill(card)),false);
+assert.equal(sends.length,1,'More than five messages are rejected before sending');
+await offer.replyLineUpgradeMessages('five','owner',Array(5).fill({type:'text',text:'test'}));
+assert.equal(sends.length,2,'Five messages are permitted in a single request');
+deliveryResult=false;
+assert.equal(await offer.replyLineUpgradeMessages('failed','owner',messages),false);
+throwDelivery=true;
+assert.equal(await offer.replyLineUpgradeMessages('throw','owner',messages),false);
+assert.equal(sends.length,4,'Failures never retry the token or fall back to push');
+assert.equal(errors.filter(message=>message.includes('reply delivery failed')).length,2);
+assert(!JSON.stringify(errors).includes('secret-provider-detail'));
+assert(!JSON.stringify(errors).includes(checkoutUrl));
+throwDelivery=false;deliveryResult=true;
+await offer.replyLineUpgradeMessages('user-retry','owner',messages);
+assert.equal(sends.at(-1).kind,'reply','An explicit user action can deliver a fresh offer');
+await offer.pushLineUpgradeMessages('owner',messages);
+assert.equal(sends.at(-1).kind,'push');assert.equal(sends.at(-1).messages,messages);
+console.log('PASS: immediate single Reply with the complete offer, zero Push fallback, message limits, safe failure logging and user retry; LIFF push is one batch.');
 
 const requests = [];
 let responseStatus=200;
