@@ -1,14 +1,14 @@
 # Workspace Backup and Release Policy
 
-この文書は、SSD移行後の正式な作業環境、Git整理、バックアップ、DB migration、Vercelリリースに関する運用ルールの正本です。事故を避け、変更を機能単位で検証・復元できる状態に保つことを目的とします。
+この文書は、Mac mini移行後の正式な作業環境、Git整理、バックアップ、DB migration、Vercelリリースに関する運用ルールの正本です。事故を避け、変更を機能単位で検証・復元できる状態に保つことを目的とします。
 
 ## 1. 正式な作業環境
 
-- 正式な作業パスは `/Volumes/WATASHI-SSD/WATASHI_WORKSPACE/projects/watashi-no-torisetsu` です。
-- 旧Desktop版はバックアップ専用です。参照はできますが、編集やGit操作の対象にしません。
+- 正式な作業パスはMac miniの `/Users/ryunosukefutami/Developer/sora/watashi-no-torisetsu` です。
+- 外付けSSD(WATASHI-SSD)と旧Desktop版はバックアップ専用です。参照はできますが、編集、ビルド、Git書き込み操作の対象にしません。
 - 作業開始時に `pwd` と `git rev-parse --show-toplevel` を実行し、両方が正式パスを示すことを確認します。
-- SSD名やフォルダ構成を、合意なく変更しません。スクリプトや設定に固定パスがある可能性を考慮します。
-- コマンド、ビルド、Git操作、ファイル生成が動作中の間はSSDを取り外しません。
+- 作業フォルダ構成を、合意なく変更しません。スクリプトや設定に固定パスがある可能性を考慮します。
+- SSDへのバックアップ書き込み中はSSDを取り外しません。
 
 ## 2. 同時作業
 
