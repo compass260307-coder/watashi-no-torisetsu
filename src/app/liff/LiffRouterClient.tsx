@@ -4,6 +4,7 @@
 // リッチメニューから本人専用ページへルーティングする。
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { LINE_UPGRADE_TALK_URL } from "@/lib/line-upgrade-dialogue";
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID ?? "";
 const LINE_TALK_URL = "https://line.me/R/ti/p/%40867domoo";
@@ -241,13 +242,6 @@ function formatDiagnosisDate(value: string | null): string | null {
   }).format(date);
 }
 
-async function openUpgradeTalk() {
-  const friendship = await window.liff?.getFriendship().catch(() => null);
-  window.location.assign(friendship?.friendFlag === false
-    ? LINE_TALK_URL
-    : "https://line.me/R/oaMessage/%40867domoo");
-}
-
 function PageCard({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#F6F3FF] px-6 py-10">
@@ -331,7 +325,6 @@ export default function LiffRouterClient() {
             trackLiffProgress({ stage: "link_completed", flow, attemptId });
             clearAttemptId();
             setState(result);
-            if (result.upgradeChat) await openUpgradeTalk();
           } else {
             trackLiffProgress({
               stage: "failed",
@@ -430,7 +423,6 @@ export default function LiffRouterClient() {
       });
       clearAttemptId();
       setState({ kind: "linked", switched: true, upgradeChat: result.upgradeChat });
-      if (result.upgradeChat) await openUpgradeTalk();
     } else if (result.kind === "conflict") {
       setState({ kind: "conflict", code, idToken, current: result.current });
     } else {
@@ -456,14 +448,18 @@ export default function LiffRouterClient() {
           {state.switched ? "連携先を切り替えました" : "連携できました"}
         </h1>
         <p className="mt-3 text-sm font-medium leading-relaxed text-[#2E2E5C]/65">
-          {state.upgradeChat ? "LINEのトークにアップグレードの質問をお送りしました。届いていない場合は友だち追加後に「結果アップグレード」と送ってください。" : <>Aliceに話しかけてみてください。<br />あなたの診断結果をもとにお話しできます。</>}
+          {state.upgradeChat ? "下のボタンでLINEを開き、入力された「結果アップグレード」を送信してください。保存済みの回答があれば続きから、初めての方は1問目から始まります。" : <>Aliceに話しかけてみてください。<br />あなたの診断結果をもとにお話しできます。</>}
         </p>
         <a
-          href={LINE_TALK_URL}
+          href={state.upgradeChat ? LINE_UPGRADE_TALK_URL : LINE_TALK_URL}
           className="mt-7 block w-full rounded-2xl bg-[#06C755] px-6 py-3.5 text-sm font-black text-white shadow-[0_5px_0_#04933F] active:translate-y-1 active:shadow-none"
         >
-          Aliceとのトークを開く
+          {state.upgradeChat ? "「結果アップグレード」を送って始める" : "Aliceとのトークを開く"}
         </a>
+        {state.upgradeChat && <p className="mt-4 text-xs leading-relaxed text-[#2E2E5C]/65">
+          自動送信はされません。LINEで送信ボタンを押してください。<br />
+          まだ友だちでない方は<a href={LINE_TALK_URL} className="font-bold underline">友だち追加</a>後、この画面のボタンから進んでください。
+        </p>}
       </PageCard>
     );
   }

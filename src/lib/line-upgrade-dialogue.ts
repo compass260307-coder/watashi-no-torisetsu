@@ -10,11 +10,7 @@ export const LINE_UPGRADE_CANCEL = "アップグレードを中止";
 export const LINE_UPGRADE_INTRO = "来てくれてありがとう🌙 あなたのことをもう少し知りたいから、5つだけ聞かせてね。短い答えでも、ゆっくり話してくれても大丈夫だよ。";
 export const LINE_UPGRADE_RESUME = "おかえりなさい🌷 これまでに話してくれたことは保存してあるから、続きから聞かせてね。";
 export const LINE_UPGRADE_CANCELLED = "うん、ここで中止しておくね🌿 また話したくなったら「結果アップグレード」と送ってね。続きから再開できるよ。";
-export const LINE_UPGRADE_PREPARATION_DELAY_MS = 6000;
-export const LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS = 1500;
-export const LINE_UPGRADE_CARD_DELAY_MS = 3000;
-export const LINE_UPGRADE_PREPARING_MESSAGE = "5つのお話を聞かせてくれてありがとう。あなた専用の結果を作る準備を進めているよ。少し待ってね🌷";
-export const LINE_UPGRADE_OFFER_MESSAGE = "準備が完了したよ！";
+export const LINE_UPGRADE_OFFER_MESSAGE = "5つのお話を聞かせてくれてありがとう🌷 あなた専用のキャラクターと鑑定書を作れるよ。";
 export const LINE_UPGRADE_PRICE_MESSAGE = `結果のアップグレードは通常価格¥${LINE_RESULT_UPGRADE_LIST_PRICE_JPY}のところ、¥${LINE_RESULT_UPGRADE_COUPON_JPY}のクーポンを使えるから、お支払いは¥${RESULT_UPGRADE_PRICE_JPY}の買い切りだよ！30日間の返金保証があるから、満足しなかったら連絡してね！`;
 
 export const LINE_UPGRADE_CARD_COPY = {

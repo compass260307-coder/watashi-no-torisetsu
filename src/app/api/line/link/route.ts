@@ -14,8 +14,6 @@ import {
   consumeLineLinkCode,
   lineLinkSuccessMessage,
 } from "@/lib/line-linking";
-import { startLineUpgradeChat } from "@/lib/line-upgrade-chat";
-import { pushLineUpgradeMessages } from "@/lib/line-upgrade-offer-delivery";
 import { verifyLineUpgradeIntent } from "@/lib/line-upgrade-intent";
 import { checkOrigin } from "@/lib/origin-check";
 
@@ -205,10 +203,9 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (upgradeChat) {
-    const messages = await startLineUpgradeChat(lineUserId, result.user.id);
-    await pushLineUpgradeMessages(lineUserId, messages);
-  } else if (newlyLinked) {
+  // Upgrade linking only establishes identity. The user sends the command from
+  // the completion screen; its webhook supplies the reply token for question 1.
+  if (!upgradeChat && newlyLinked) {
     const chatEnabled = lineAliceChatEnabled();
     await pushLineMessages(lineUserId, [
       {

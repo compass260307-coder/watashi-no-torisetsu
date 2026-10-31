@@ -1,37 +1,28 @@
 import "server-only";
-import { after } from "next/server";
-import { setTimeout as wait } from "node:timers/promises";
-import { pushLineMessages, replyLineMessages, startLineLoadingAnimation, type LineOutgoingMessage } from "@/lib/line";
-import { LINE_UPGRADE_PREPARATION_DELAY_MS, LINE_UPGRADE_PREPARING_MESSAGE, LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS, LINE_UPGRADE_CARD_DELAY_MS } from "@/lib/line-upgrade-dialogue";
+import { pushLineMessages, replyLineMessages, type LineOutgoingMessage } from "@/lib/line";
 
-async function deliver(lineUserId: string, messages: LineOutgoingMessage[], replyToken?: string) {
-  const send = (outgoing: LineOutgoingMessage[]) => replyToken
-    ? replyLineMessages(replyToken, outgoing) : pushLineMessages(lineUserId, outgoing);
-  // Questions and existing purchasers retain their immediate response.
-  if (!messages.some(message => message.type === "flex")) return send(messages);
-  if (!(await send([{ type: "text", text: LINE_UPGRADE_PREPARING_MESSAGE }]))) return false;
-  after(async () => {
-    try {
-      // A cosmetic indicator must never block delivery when LINE cannot display it.
-      await startLineLoadingAnimation(lineUserId, 10).catch(() => {});
-      await wait(LINE_UPGRADE_PREPARATION_DELAY_MS);
-      for (const [index, message] of messages.entries()) {
-        if (index > 0) await wait(message.type === "flex" ? LINE_UPGRADE_CARD_DELAY_MS : LINE_UPGRADE_OFFER_MESSAGE_DELAY_MS);
-        if (!(await pushLineMessages(lineUserId, [message]))) {
-          console.error("[line/upgrade-offer] purchase card delivery failed");
-          return;
-        }
-      }
-    } catch {
-      console.error("[line/upgrade-offer] purchase card delivery interrupted");
-    }
-  });
-  return true;
+async function deliver(messages: LineOutgoingMessage[], send: () => Promise<boolean>, kind: "reply" | "push") {
+  // Duplicate webhooks return no messages. Never consume a reply token for them.
+  if (!messages.length) return true;
+  if (messages.length > 5) {
+    console.error(`[line/upgrade-offer] ${kind} rejected: too many messages`);
+    return false;
+  }
+  try {
+    if (await send()) return true;
+  } catch {
+    // Do not log tokens, signed purchase URLs, answers or provider response bodies.
+  }
+  console.error(`[line/upgrade-offer] ${kind} delivery failed; retry via result upgrade command`);
+  return false;
 }
 
-export function replyLineUpgradeMessages(replyToken: string, lineUserId: string, messages: LineOutgoingMessage[]) {
-  return deliver(lineUserId, messages, replyToken);
+export function replyLineUpgradeMessages(replyToken: string, _lineUserId: string, messages: LineOutgoingMessage[]) {
+  // Send the entire offer immediately, with one use of the webhook's reply token.
+  // No background delay, automatic retry or push fallback after an uncertain reply.
+  return deliver(messages, () => replyLineMessages(replyToken, messages), "reply");
 }
 export function pushLineUpgradeMessages(lineUserId: string, messages: LineOutgoingMessage[]) {
-  return deliver(lineUserId, messages);
+  // LIFF linking has no reply token. Keep this path separate from webhook replies.
+  return deliver(messages, () => pushLineMessages(lineUserId, messages), "push");
 }
