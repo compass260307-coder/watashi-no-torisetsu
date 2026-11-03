@@ -14,8 +14,10 @@ export function LoginModal({
   open,
   onClose,
   locale = "ja",
+  notice,
 }: {
   open: boolean;
+  notice?: string;
   onClose: () => void;
   locale?: ResultLocale | "en" | "id";
 }) {
@@ -27,7 +29,7 @@ export function LoginModal({
     const focusable = () => Array.from(cardRef.current?.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]',
     ) ?? []).filter((element) => element.getClientRects().length > 0);
-    focusable()[0]?.focus();
+    (cardRef.current?.querySelector<HTMLElement>('input[type="email"]') ?? focusable()[0])?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -61,7 +63,7 @@ export function LoginModal({
   // body 直下へポータルして BottomNav 等 (z-50) より確実に前面に出す。
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center px-5 py-10"
+      className="fixed inset-0 z-[120] flex items-center justify-center px-4 py-6 sm:px-6"
       role="dialog"
       aria-modal="true"
       aria-label={
@@ -70,13 +72,13 @@ export function LoginModal({
     >
       {/* 暗幕: クリックで閉じる */}
       <div
-        className="absolute inset-0 bg-[#2E2E5C]/45 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[#242438]/40"
         onClick={onClose}
         aria-hidden="true"
       />
       {/* カード本体 (暗幕より前面) */}
-      <div ref={cardRef} className="relative z-10 w-full max-w-[440px]">
-        <LoginCard onClose={onClose} locale={locale} />
+      <div ref={cardRef} className="relative z-10 max-h-[calc(100dvh-3rem)] w-full max-w-[540px] overflow-y-auto overscroll-contain rounded-2xl">
+        <LoginCard onClose={onClose} locale={locale} notice={notice} />
       </div>
     </div>,
     document.body,

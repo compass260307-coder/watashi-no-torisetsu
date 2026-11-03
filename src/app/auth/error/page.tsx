@@ -1,23 +1,10 @@
-// プレミアム化 v3 Day 8: マジックリンク検証エラーページ。
-//
-// /auth/error?reason=missing_token|invalid_or_expired|server_error
+import { redirect } from "next/navigation";
+import type { LoginParams } from "@/lib/login-recovery";
 
-import { AuthErrorContent } from "./AuthErrorContent";
-
-type SearchParams = Promise<{ reason?: string; locale?: string }>;
-
-export default async function AuthErrorPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const { reason, locale } = await searchParams;
-  return (
-    <AuthErrorContent
-      reason={reason}
-      locale={
-        locale === "ko" || locale === "en" || locale === "id" ? locale : "ja"
-      }
-    />
-  );
+export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<LoginParams> }) {
+  const params = await searchParams;
+  const reason = typeof params.reason === "string" ? params.reason : "failed";
+  const locale = params.locale;
+  const prefix = locale === "en" || locale === "ko" || locale === "id" ? `/${locale}` : "";
+  redirect(`${prefix}/login?login_error=` + encodeURIComponent(reason));
 }

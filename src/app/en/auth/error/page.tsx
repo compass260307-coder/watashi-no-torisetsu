@@ -1,19 +1,8 @@
-import type { Metadata } from "next";
-import { AuthErrorContent } from "@/app/auth/error/AuthErrorContent";
+import { redirect } from "next/navigation";
+import type { LoginParams } from "@/lib/login-recovery";
 
-type PageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export const metadata: Metadata = {
-  title: { absolute: "Sign-in link error | Alice Personalities" },
-  robots: { index: false, follow: false },
-};
-
-export default async function EnglishAuthErrorPage({
-  searchParams,
-}: PageProps) {
+export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<LoginParams> }) {
   const params = await searchParams;
-  const reason = typeof params.reason === "string" ? params.reason : undefined;
-  return <AuthErrorContent reason={reason} locale="en" />;
+  const reason = typeof params.reason === "string" ? params.reason : "failed";
+  redirect("/en/login?login_error=" + encodeURIComponent(reason));
 }

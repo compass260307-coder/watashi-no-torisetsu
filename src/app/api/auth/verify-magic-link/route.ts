@@ -17,6 +17,7 @@
 // CSRF 対策は token のエントロピー (240 bit) + 1 時間期限 + 単発消費で代替。
 
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/request-origin";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { rotateSession, getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
@@ -37,12 +38,11 @@ function localeOf(request: NextRequest): AuthLocale {
 }
 
 function errorRedirect(request: NextRequest, reason: string): NextResponse {
-  // request.nextUrl は常に絶対 URL なので、これを base に取れば SITE_URL の
-  // 値に依存せず安全。Vercel / localhost / preview 全環境で動く。
+  // Preserve the incoming host, including 127.0.0.1 during local OAuth.
   const locale = localeOf(request);
   const url = new URL(
     locale === "ja" ? "/auth/error" : `/${locale}/auth/error`,
-    request.nextUrl,
+    requestOrigin(request),
   );
   url.searchParams.set("reason", reason);
   return NextResponse.redirect(url);
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
   if (conflict && !confirmed) {
     const url = new URL(
       locale === "ja" ? "/login/confirm" : `/${locale}/login/confirm`,
-      request.nextUrl,
+      requestOrigin(request),
     );
     url.searchParams.set("token", token);
     return NextResponse.redirect(url);
@@ -183,9 +183,9 @@ export async function GET(request: NextRequest) {
     // 運命の設計図の購入者は出生情報の入力が先。マジックリンクの言語を保ち、
     // 韓国語リンクから日本語版 /unmei へ戻してしまわないようにする。
     const dest = userRow.unmei ? `${prefix}/unmei` : `${prefix}/diagnosis`;
-    return NextResponse.redirect(new URL(dest, request.nextUrl));
+    return NextResponse.redirect(new URL(dest, requestOrigin(request)));
   }
 
   const dest = ownerToken ? `${prefix}/me/${ownerToken}` : prefix || "/";
-  return NextResponse.redirect(new URL(dest, request.nextUrl));
+  return NextResponse.redirect(new URL(dest, requestOrigin(request)));
 }

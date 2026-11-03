@@ -15,6 +15,7 @@ import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { preloadPaywall } from "@/lib/paywall-loader";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { localeSwitchPath, type SiteLocale } from "@/lib/locale-switch";
+import { loginNotice } from "@/lib/login-recovery";
 import { resetLocalData } from "@/lib/reset-data";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
@@ -57,6 +58,7 @@ export default function TopHeader({
   const languageDialogRef = useRef<HTMLDialogElement>(null);
   const languageTitleId = useId();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [loginMessage, setLoginMessage] = useState<string | undefined>();
   // データリセットは誤操作防止のためドロワー内で確認ステップを挟む。
   const [confirmReset, setConfirmReset] = useState(false);
   const pathname = usePathname() ?? content.homeHref;
@@ -99,7 +101,15 @@ export default function TopHeader({
     setOwnerToken(token);
     setHasToken(Boolean(token));
     setCurrentSearch(window.location.search);
-  }, [pathname]);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("login") === "1") {
+      setLoginMessage(loginNotice(locale, url.searchParams.get("login_error")));
+      setLoginOpen(true);
+      url.searchParams.delete("login");
+      url.searchParams.delete("login_error");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
+  }, [pathname, locale]);
 
   const nativeLanguageNames: Record<TopLocale, string> = {
     ja: "日本語",
@@ -569,7 +579,7 @@ export default function TopHeader({
 
       {/* ログインモーダル (現在のページの上に重ねる) */}
       {loginOpen ? (
-        <LoginModal open onClose={() => setLoginOpen(false)} locale={locale} />
+        <LoginModal open onClose={() => { setLoginOpen(false); setLoginMessage(undefined); }} locale={locale} notice={loginMessage} />
       ) : null}
 
       {/* 未診断でロック中の友達診断テストを押したときの吹き出し (BottomNav と共用)。
