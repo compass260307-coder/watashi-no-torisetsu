@@ -62,6 +62,7 @@ export function ResultUpgradeChatLauncher({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -81,10 +82,34 @@ export function ResultUpgradeChatLauncher({
       overflow: "hidden", position: "fixed", top: `-${scrollY}px`, width: "100%",
     });
     const viewport = window.visualViewport;
+    let stableHeight = viewport?.height ?? window.innerHeight;
+    let stableWidth = window.innerWidth;
+    let keyboardOpen = false;
+    let previousInset = 0;
     const syncViewport = () => {
-      if (!viewportRef.current) return;
-      viewportRef.current.style.top = `${viewport?.offsetTop ?? 0}px`;
-      viewportRef.current.style.height = `${viewport?.height ?? window.innerHeight}px`;
+      const overlay = viewportRef.current;
+      if (!overlay) return;
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+      const offsetTop = viewport?.offsetTop ?? 0;
+      if (window.innerWidth !== stableWidth) {
+        stableWidth = window.innerWidth;
+        stableHeight = window.innerHeight;
+        keyboardOpen = false;
+      }
+      const editing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName ?? "");
+      keyboardOpen = stableHeight - visibleHeight > 120 && (editing || keyboardOpen);
+      if (!keyboardOpen) stableHeight = visibleHeight;
+      // The keyboard occludes the chat; it must not resize/recenter the whole panel.
+      overlay.style.top = `${offsetTop}px`;
+      overlay.style.height = `${stableHeight}px`;
+      const panelBottom = panelRef.current?.getBoundingClientRect().bottom ?? offsetTop + stableHeight;
+      const inset = keyboardOpen ? Math.max(0, panelBottom - offsetTop - visibleHeight + 8) : 0;
+      overlay.style.setProperty("--upgrade-keyboard-inset", `${inset}px`);
+      if (inset > 0 && inset !== previousInset) {
+        const conversation = panelRef.current?.querySelector<HTMLElement>("[data-upgrade-conversation]");
+        conversation?.scrollTo({ top: conversation.scrollHeight, behavior: "instant" });
+      }
+      previousInset = inset;
     };
     syncViewport();
     viewport?.addEventListener("resize", syncViewport);
@@ -129,7 +154,7 @@ export function ResultUpgradeChatLauncher({
               aria-label={copy.dialog}
               className="fixed inset-x-0 top-0 h-svh z-[120] flex items-center justify-center bg-[#2E2E5C]/60 p-2 backdrop-blur-sm md:p-6"
             >
-              <div className="relative h-full max-h-[760px] min-h-0 w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
+              <div ref={panelRef} className="relative h-full max-h-[760px] min-h-0 w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
                 <button
                   ref={closeRef}
                   type="button"

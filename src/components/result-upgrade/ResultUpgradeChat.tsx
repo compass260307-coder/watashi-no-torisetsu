@@ -66,6 +66,7 @@ export function ResultUpgradeChat({
   const [retryKey, setRetryKey] = useState(0);
   const [spendPause, setSpendPause] = useState<ResultUpgradeSpendPauseStatus | null>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
+  const answerInputRef = useRef<HTMLTextAreaElement>(null);
   const answerSubmittingRef = useRef(false);
   const isMountedRef = useRef(true);
   const draftRestoredRef = useRef(false);
@@ -76,6 +77,13 @@ export function ResultUpgradeChat({
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    const input = answerInputRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight + 2, 112)}px`;
+  }, [draft, sessionVerified, screen]);
 
   useEffect(() => {
     const conversation = conversationRef.current;
@@ -221,10 +229,17 @@ export function ResultUpgradeChat({
           <p className="text-[16px] font-black">Alice</p>
           <p className="text-[12px] font-bold text-white/80">{lineFlow && screen === "purchase" ? "アップグレード内容の確認" : copy.conversationSubtitle}</p>
         </div>
-        <span className="ml-auto text-[#F5D66B]" aria-hidden="true">✦</span>
       </div>
 
-      <div ref={conversationRef} className="min-h-0 flex-1 overscroll-contain overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7">
+      <div
+        ref={conversationRef}
+        data-upgrade-conversation
+        className="min-h-0 flex-1 overscroll-contain overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7"
+        style={modal ? {
+          clipPath: "inset(0 0 var(--upgrade-keyboard-inset, 0px) 0)",
+          paddingBottom: "calc(1.5rem + var(--upgrade-keyboard-inset, 0px))",
+        } : undefined}
+      >
         <div className="space-y-5">
           {!(lineFlow && screen === "purchase") && <AliceBubble>
             {copy.intro}
@@ -347,10 +362,14 @@ export function ResultUpgradeChat({
       </div>
 
       {screen === "questions" && index < RESULT_UPGRADE_QUESTIONS.length && (
-        <div className="shrink-0 border-t border-[#ECEAF5] bg-white p-4 md:p-5">
+        <div
+          className="relative z-10 shrink-0 border-t border-[#ECEAF5] bg-white p-3 md:p-4"
+          style={modal ? { transform: "translateY(calc(0px - var(--upgrade-keyboard-inset, 0px)))" } : undefined}
+        >
           {error && <p className="mb-2 text-[12px] font-bold text-red-600">{error}</p>}
           <div className="flex items-end gap-2">
             <textarea
+              ref={answerInputRef}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
@@ -360,22 +379,22 @@ export function ResultUpgradeChat({
                 }
               }}
               maxLength={maxAnswerLength}
-              rows={2}
+              rows={1}
               disabled={aliceTyping}
               placeholder={copy.placeholder}
-              className="min-h-[52px] min-w-0 flex-1 resize-none rounded-2xl border border-[#DAD7EB] bg-[#FAFAFD] px-4 py-3 text-[16px] md:text-[14px] leading-relaxed text-[#2E2E5C] outline-none transition focus:border-[#7774E8] focus:ring-2 focus:ring-[#7774E8]/15 disabled:cursor-wait disabled:opacity-60"
+              className="min-h-[44px] max-h-[112px] min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-[#DAD7EB] bg-[#FAFAFD] px-3 py-2 text-[16px] md:text-[14px] leading-6 text-[#2E2E5C] outline-none transition focus:border-[#7774E8] focus:ring-2 focus:ring-[#7774E8]/15 disabled:cursor-wait disabled:opacity-60"
             />
             <button
               type="button"
               onClick={() => void submitAnswer()}
               disabled={aliceTyping || !draft.trim()}
               aria-label={copy.submit}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-xl font-black text-white shadow-[0_3px_0_#3D3DC4] transition active:translate-y-0.5 disabled:opacity-35"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#5B5BEF] text-xl font-black text-white shadow-[0_3px_0_#3D3DC4] transition active:translate-y-0.5 disabled:opacity-35"
             >
               ↑
             </button>
           </div>
-          <p className="mt-2 px-1 text-[11px] font-bold text-[#9997AA]">{copy.answerHint}</p>
+          {locale !== "ja" && <p className="mt-1 px-1 text-[11px] font-bold leading-4 text-[#9997AA]">{copy.answerHint}</p>}
         </div>
       )}
     </div>

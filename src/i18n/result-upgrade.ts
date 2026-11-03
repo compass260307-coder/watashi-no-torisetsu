@@ -65,7 +65,7 @@ export const RESULT_UPGRADE_COPY = {
   "blocked": "現在、作成を一時停止しています。回答と作成済みの内容は保存されています。少し時間をおいて再開してください。",
   "resume": "作成を再開する",
   "retry": "もう一度作成する",
-  "placeholder": "自由に話してみてください",
+  "placeholder": "自由に入力してください",
   "submit": "回答を送る",
   "answerHint": "一言でも、長く話してもOK",
   "typingAria": "Aliceが入力中",
