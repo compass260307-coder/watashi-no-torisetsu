@@ -1,5 +1,6 @@
 "use client";
 
+import { LINE_UPGRADE_OFFER_MESSAGE, LINE_UPGRADE_PRICE_MESSAGE } from "@/lib/line-upgrade-dialogue";
 import { LINE_RESULT_UPGRADE_LIST_PRICE_JPY, LINE_RESULT_UPGRADE_COUPON_JPY, RESULT_UPGRADE_PRICE_JPY, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access-products";
 import { localePath } from "@/i18n/config";
 import { useEffect, useRef, useState } from "react";
@@ -64,7 +65,7 @@ export function ResultUpgradeChat({
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [spendPause, setSpendPause] = useState<ResultUpgradeSpendPauseStatus | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const answerSubmittingRef = useRef(false);
   const isMountedRef = useRef(true);
   const draftRestoredRef = useRef(false);
@@ -77,7 +78,8 @@ export function ResultUpgradeChat({
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const conversation = conversationRef.current;
+    conversation?.scrollTo({ top: conversation.scrollHeight, behavior: "smooth" });
   }, [aliceTyping, answers, index, screen]);
 
   useEffect(() => {
@@ -204,7 +206,7 @@ export function ResultUpgradeChat({
       }`}
     >
       <div
-        className={`flex items-center gap-3 ${lineFlow ? "bg-[#06C755]" : "bg-[#2E2E5C]"} px-5 py-4 text-white ${
+        className={`flex shrink-0 items-center gap-3 ${lineFlow ? "bg-[#06C755]" : "bg-[#2E2E5C]"} px-5 py-4 text-white ${
           modal ? "pr-16" : ""
         }`}
       >
@@ -222,7 +224,7 @@ export function ResultUpgradeChat({
         <span className="ml-auto text-[#F5D66B]" aria-hidden="true">✦</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7">
+      <div ref={conversationRef} className="min-h-0 flex-1 overscroll-contain overflow-y-auto bg-[#F5F4FB] px-4 py-6 md:px-7">
         <div className="space-y-5">
           {!(lineFlow && screen === "purchase") && <AliceBubble>
             {copy.intro}
@@ -246,6 +248,12 @@ export function ResultUpgradeChat({
 
           {screen === "saving" && <UpgradePreparationBubble locale={locale} />}
 
+          {screen === "purchase" && locale === "ja" && !lineFlow && (
+            <>
+              <AliceBubble>{LINE_UPGRADE_OFFER_MESSAGE}</AliceBubble>
+              <AliceBubble>{LINE_UPGRADE_PRICE_MESSAGE}</AliceBubble>
+            </>
+          )}
           {screen === "purchase" && (
             <div className="rounded-[24px] border border-[#EFD79B] bg-white p-5 shadow-[0_8px_25px_rgba(154,106,36,0.10)] md:p-7">
               <p className="text-[12px] font-black tracking-[0.12em] text-[#9A6A24]">{copy.saved}</p>
@@ -255,12 +263,11 @@ export function ResultUpgradeChat({
               <p className="mt-3 text-[14px] leading-[1.8] text-[#66657B]">
                 {copy.purchaseBody}
               </p>
-              {lineFlow && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
+              {locale === "ja" && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
                 <p>通常価格 <s>¥{LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}</s></p>
                 <p>クーポン適用 −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
                 <p className="text-xl font-black text-[#2E2E5C]">お支払い ¥{RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）</p>
               </div>}
-              {locale === "ja" && !lineFlow && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">¥{RESULT_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}（税込・買い切り）</p>}
               {locale === "ko" && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} · 1회 결제</p>}
               <div className="mt-6">
                 {preview && locale === "ko" ? (
@@ -335,19 +342,19 @@ export function ResultUpgradeChat({
               </button>
             </AliceBubble>
           )}
-          <div ref={bottomRef} />
+
         </div>
       </div>
 
       {screen === "questions" && index < RESULT_UPGRADE_QUESTIONS.length && (
-        <div className="border-t border-[#ECEAF5] bg-white p-4 md:p-5">
+        <div className="shrink-0 border-t border-[#ECEAF5] bg-white p-4 md:p-5">
           {error && <p className="mb-2 text-[12px] font-bold text-red-600">{error}</p>}
           <div className="flex items-end gap-2">
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   void submitAnswer();
                 }
@@ -356,7 +363,7 @@ export function ResultUpgradeChat({
               rows={2}
               disabled={aliceTyping}
               placeholder={copy.placeholder}
-              className="min-h-[52px] flex-1 resize-none rounded-2xl border border-[#DAD7EB] bg-[#FAFAFD] px-4 py-3 text-[14px] leading-relaxed text-[#2E2E5C] outline-none transition focus:border-[#7774E8] focus:ring-2 focus:ring-[#7774E8]/15 disabled:cursor-wait disabled:opacity-60"
+              className="min-h-[52px] min-w-0 flex-1 resize-none rounded-2xl border border-[#DAD7EB] bg-[#FAFAFD] px-4 py-3 text-[16px] md:text-[14px] leading-relaxed text-[#2E2E5C] outline-none transition focus:border-[#7774E8] focus:ring-2 focus:ring-[#7774E8]/15 disabled:cursor-wait disabled:opacity-60"
             />
             <button
               type="button"

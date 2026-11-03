@@ -50,10 +50,10 @@ const resultUpgradeChat = read(
 );
 
 const contractChecks = [
-  { label: "LINE result upgrade is JPY 1398 minus a JPY 499 coupon, billing JPY 899",
+  { label: "Web and LINE result upgrades are JPY 1398 minus a JPY 499 coupon, billing JPY 899",
     valid: accessProducts.includes("export const LINE_RESULT_UPGRADE_LIST_PRICE_JPY = 1398;") &&
       accessProducts.includes("export const LINE_RESULT_UPGRADE_COUPON_JPY = 499;") &&
-      checkoutRoute.includes("if (lineUpgradeCheckout && lineUpgradeCouponId)") &&
+      checkoutRoute.includes("if (japaneseUpgradeCheckout && lineUpgradeCouponId)") &&
       checkoutRoute.includes("unit_amount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY") &&
       catalogIncludes("`ja_line_result_upgrade_v2_1398_coupon499_20261021`") },
   { label: "Japanese Web upgrades require owner login and saved answers; LINE identity and JPY 899 preserved",
