@@ -992,7 +992,7 @@ export async function POST(request: NextRequest) {
   // キャンセルは購入前にいたページへ戻す。/aisho はゲスト (owner_token なし) でも
   // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
   const cancelBasePath =
-    lineUpgradeCheckout ? "/line/result-upgrade" : isResultUpgradeCheckout && checkoutLocale === "ja" ? "/result-upgrade" : returnTo === "aisho"
+    lineUpgradeCheckout ? "/line/result-upgrade" : isResultUpgradeCheckout && checkoutLocale === "ja" ? `${localePrefix}/me/${ownerToken}` : returnTo === "aisho"
       ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
       : returnTo === "hoshiyomi"
         ? `${localePrefix}/hoshiyomi`
