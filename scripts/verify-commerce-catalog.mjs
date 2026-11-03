@@ -56,8 +56,12 @@ const contractChecks = [
       checkoutRoute.includes("if (lineUpgradeCheckout && lineUpgradeCouponId)") &&
       checkoutRoute.includes("unit_amount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY") &&
       catalogIncludes("`ja_line_result_upgrade_v2_1398_coupon499_20261021`") },
-  { label: "Japanese new result upgrades require verified LINE identity and preserve JPY 899",
-    valid: checkoutRoute.includes('const lineUpgradeCheckout = checkoutLocale === "ja" && product === "premium_bundle"') &&
+  { label: "Japanese Web upgrades require owner login and saved answers; LINE identity and JPY 899 preserved",
+    valid: checkoutRoute.includes('const lineUpgradeCheckout = japaneseUpgradeCheckout && body.sales_channel === "line"') &&
+      checkoutRoute.includes("if (isResultUpgradeCheckout) {") &&
+      checkoutRoute.includes("session.id !== userId") &&
+      checkoutRoute.includes("!normalizeResultUpgradeAnswers(upgrade?.answers)") &&
+      accessProducts.includes("export const RESULT_UPGRADE_PRICE_JPY = 899;") &&
       checkoutRoute.includes('body.sales_channel === "line" ? await getLineResultUpgradeSession() : null') &&
       checkoutRoute.includes('if (lineUpgradeCheckout && (!lineBuyer || body.paywall_source !== "result_upgrade_after_answers"))') &&
       checkoutRoute.includes('lineUpgradeCheckout ? "/line/result-upgrade?paid=1') &&

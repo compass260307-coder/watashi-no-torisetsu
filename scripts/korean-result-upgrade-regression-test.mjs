@@ -110,9 +110,9 @@ assert.equal(full.calls[0].metadata.offer_version, undefined);
 assert.match(full.cookie, /wt_checkout_commerce_locale=ko/);
 assert.match(full.calls[0].custom_text.submit.message, /\/ko\/legal\/commerce/);
 const ja = await checkout({ locale: 'ja', paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });
-assert.equal(ja.status, 403);
-assert.equal(ja.calls.length, 0, 'Japanese upgrades are purchased only through verified LINE access');
-console.log('Korean result upgrade regression passed; Japanese new upgrades require LINE.');
+assert.equal(ja.status, 409);
+assert.equal(ja.calls.length, 0, 'Japanese Web upgrades reject saved answers in another language');
+console.log('Korean result upgrade regression passed; Japanese Web upgrades require answers in Japanese.');
 
 const messages = [];
 const email = compile('src/lib/email.ts', {

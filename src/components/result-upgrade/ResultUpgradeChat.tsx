@@ -260,6 +260,7 @@ export function ResultUpgradeChat({
                 <p>クーポン適用 −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
                 <p className="text-xl font-black text-[#2E2E5C]">お支払い ¥{RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）</p>
               </div>}
+              {locale === "ja" && !lineFlow && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">¥{RESULT_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}（税込・買い切り）</p>}
               {locale === "ko" && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} · 1회 결제</p>}
               <div className="mt-6">
                 {preview && locale === "ko" ? (

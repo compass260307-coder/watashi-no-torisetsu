@@ -363,7 +363,9 @@ export async function sendDetailedReportEmail(
         greetingName ? `${greetingName}さん、ご購入ありがとうございます。` : "ご購入ありがとうございます。",
         `結果アップグレード：税込${args.purchaseAmountMinor ?? RESULT_UPGRADE_PRICE_JPY}円（買い切り）。Alice Plusの定期課金とは別のお支払いです。`,
         "保存した5つの自由回答から、専用キャラクター、専用タイプ名、自己診断結果、5章の専用鑑定書を作成します。",
-        "LINEメニューの「結果アップグレード」から生成状況と結果を確認できます。途中で止まった場合も再購入せずに続きから進めてください。",
+        args.salesChannel === "line"
+          ? "LINEメニューの「結果アップグレード」から生成状況と結果を確認できます。途中で止まった場合も再購入せずに続きから進めてください。"
+          : "下のリンクから購入したアカウントでログインし、生成状況と結果を確認できます。途中で止まった場合も再購入せずに続きから進めてください。",
         meUrl,
         "お支払いから30日以内の全額返金、お問い合わせ：support@watashi-torisetsu.com",
         `${SITE_URL}/legal/commerce`,
@@ -375,7 +377,7 @@ export async function sendDetailedReportEmail(
       to: args.to,
       subject,
       html: upgradeText
-        ? `<div style="font-family:sans-serif;line-height:1.8;white-space:pre-wrap">${escapeHtml(upgradeText)}<p><a href="${escapeHtml(meUrl)}">${locale === "ja" ? "LINEで専用の結果を受け取る" : "나만의 결과 보기"}</a></p></div>`
+        ? `<div style="font-family:sans-serif;line-height:1.8;white-space:pre-wrap">${escapeHtml(upgradeText)}<p><a href="${escapeHtml(meUrl)}">${locale === "ja" ? args.salesChannel === "line" ? "LINEで専用の結果を受け取る" : "Webで専用の結果を受け取る" : "나만의 결과 보기"}</a></p></div>`
         : locale === "ko"
           ? renderDetailedReportHtmlKo({
               pdfUrl,
